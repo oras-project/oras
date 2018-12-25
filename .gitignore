@@ -14,3 +14,9 @@
 # VS Code
 .vscode
 debug
+
+# Jetbrains
+.idea
+
+# Custom
+coverage.*
