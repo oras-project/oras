@@ -3,17 +3,17 @@ package oras
 import (
 	"context"
 	"encoding/json"
-	"errors"
+
 	"github.com/containerd/containerd/remotes"
-	"github.com/opencontainers/go-digest"
-	"github.com/opencontainers/image-spec/specs-go"
+	digest "github.com/opencontainers/go-digest"
+	specs "github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // Push pushes files to the remote
 func Push(ctx context.Context, resolver remotes.Resolver, ref string, contents map[string][]byte) error {
 	if resolver == nil {
-		return errors.New("resolver is undefined")
+		return ErrResolverUndefined
 	}
 
 	pusher, err := resolver.Pusher(ctx, ref)
