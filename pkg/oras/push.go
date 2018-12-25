@@ -49,7 +49,7 @@ func Push(ctx context.Context, resolver remotes.Resolver, ref string, contents m
 	// Manifest
 	manifest := ocispec.Manifest{
 		Versioned: specs.Versioned{
-			SchemaVersion: 1,
+			SchemaVersion: 2, // historical value. does not pertain to OCI or docker version
 		},
 		Config: config,
 		Layers: layers,

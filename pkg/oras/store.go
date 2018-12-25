@@ -42,10 +42,6 @@ func (s *MemoryStore) FetchHandler(fetcher remotes.Fetcher) images.HandlerFunc {
 			"size":      desc.Size,
 		}))
 
-		// if desc.MediaType == images.MediaTypeDockerSchema1Manifest {
-		// 	return nil, fmt.Errorf("%v not supported", desc.MediaType)
-		// }
-
 		log.G(ctx).Debug("fetch")
 		rc, err := fetcher.Fetch(ctx, desc)
 		if err != nil {

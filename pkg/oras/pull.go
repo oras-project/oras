@@ -18,7 +18,6 @@ func Pull(ctx context.Context, resolver remotes.Resolver, ref string) (map[strin
 	if err != nil {
 		return nil, err
 	}
-	desc.MediaType = ocispec.MediaTypeImageManifest
 	fetcher, err := resolver.Fetcher(ctx, ref)
 	if err != nil {
 		return nil, err
