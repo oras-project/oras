@@ -16,6 +16,10 @@ func Push(ctx context.Context, resolver remotes.Resolver, ref string, contents m
 		return ErrResolverUndefined
 	}
 
+	if contents == nil {
+		return ErrEmptyContents
+	}
+
 	pusher, err := resolver.Pusher(ctx, ref)
 	if err != nil {
 		return err

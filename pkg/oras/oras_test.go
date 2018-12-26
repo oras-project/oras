@@ -25,6 +25,7 @@ var (
 
 type ORASTestSuite struct {
 	suite.Suite
+	Context context.Context
 	DockerRegistryHost string
 }
 
@@ -33,6 +34,8 @@ func newResolver() remotes.Resolver{
 }
 
 func (suite *ORASTestSuite) SetupSuite() {
+	suite.Context = context.Background()
+
 	config := &configuration.Configuration{}
 	port, err := freeport.GetFreePort()
 	if err != nil {
@@ -55,20 +58,18 @@ func (suite *ORASTestSuite) TearDownSuite() {
 
 func (suite *ORASTestSuite) TestPush() {
 	var err error
-	var ctx context.Context
 	var ref string
 	var contents map[string][]byte
 
-	err = Push(ctx, nil, ref, contents)
+	err = Push(suite.Context, nil, ref, contents)
 	suite.NotNil(err, "error pushing with empty resolver")
 
-	ctx = context.Background()
-	err = Push(ctx, newResolver(), ref, contents)
+	err = Push(suite.Context, newResolver(), ref, contents)
 	suite.NotNil(err, "error pushing when context missing hostname")
 
 	ref = fmt.Sprintf("%s/empty", suite.DockerRegistryHost)
-	err = Push(ctx, newResolver(), ref, contents)
-	suite.Nil(err, "no error pushing with empty contents")
+	err = Push(suite.Context, newResolver(), ref, contents)
+	suite.NotNil(err, "error pushing with empty contents")
 
 	// Load contents with test chart tgz (as single layer)
 	contents = make(map[string][]byte)
@@ -78,7 +79,7 @@ func (suite *ORASTestSuite) TestPush() {
 	contents[basename] = content
 
 	ref = fmt.Sprintf("%s/chart-tgz", suite.DockerRegistryHost)
-	err = Push(ctx, newResolver(), ref, contents)
+	err = Push(suite.Context, newResolver(), ref, contents)
 	suite.Nil(err, "no error pushing test chart tgz (as single layer)")
 
 	// Load contents with test chart dir (each file as layer)
@@ -99,21 +100,36 @@ func (suite *ORASTestSuite) TestPush() {
 	filepath.Walk(".", ff)
 
 	ref = fmt.Sprintf("%s/chart-dir", suite.DockerRegistryHost)
-	err = Push(ctx, newResolver(), ref, contents)
+	err = Push(suite.Context, newResolver(), ref, contents)
 	suite.Nil(err, "no error pushing test chart dir (each file as layer)")
 }
 
 func (suite *ORASTestSuite) TestPull() {
 	var err error
-	var ctx context.Context
 	var ref string
 	var contents map[string][]byte
 
-	contents, err = Pull(ctx, nil, ref)
+	contents, err = Pull(suite.Context, nil, ref)
 	suite.NotNil(err, "error pulling with empty resolver")
 	suite.Nil(contents, "contents nil pulling with empty resolver")
+
+	// Pull non-existant
+	ref = fmt.Sprintf("%s/nonexistant", suite.DockerRegistryHost)
+	contents, err = Pull(suite.Context, newResolver(), ref)
+	suite.NotNil(err, "error pulling non-existant ref")
+	suite.Nil(contents, "contents empty with error")
+
+	// Pull chart-tgz
+	ref = fmt.Sprintf("%s/chart-tgz", suite.DockerRegistryHost)
+	_, err = Pull(suite.Context, newResolver(), ref)
+	suite.Nil(err, "no error pulling chart-tgz ref")
+
+	// Pull chart-dir
+	ref = fmt.Sprintf("%s/chart-dir", suite.DockerRegistryHost)
+	_, err = Pull(suite.Context, newResolver(), ref)
+	suite.Nil(err, "no error pulling chart-dir ref")
 }
 
-func TestPushTestSuite(t *testing.T) {
+func TestORASTestSuite(t *testing.T) {
 	suite.Run(t, new(ORASTestSuite))
 }
