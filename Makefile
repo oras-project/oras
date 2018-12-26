@@ -10,7 +10,6 @@ fix-deps:
 
 .PHONY: test
 test:
-	rm -rf .test/ && mkdir .test/
 	CGO_ENABLED=0 go test -v -covermode=atomic -coverprofile=coverage.out github.com/shizhMSFT/oras/pkg/oras
 	go tool cover -html=coverage.out -o=coverage.html
 
