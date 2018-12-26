@@ -8,7 +8,7 @@ update-deps:
 .PHONY: test
 test:
 	rm -rf .test/ && mkdir .test/
-	go test -v -covermode=atomic -coverprofile=coverage.out github.com/shizhMSFT/oras/pkg/oras
+	CGO_ENABLED=0 go test -v -covermode=atomic -coverprofile=coverage.out github.com/shizhMSFT/oras/pkg/oras
 	go tool cover -html=coverage.out -o=coverage.html
 
 .PHONY: covhtml
