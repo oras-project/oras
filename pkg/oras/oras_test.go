@@ -25,13 +25,14 @@ var (
 
 type ORASTestSuite struct {
 	suite.Suite
-	Resolver           remotes.Resolver
 	DockerRegistryHost string
 }
 
-func (suite *ORASTestSuite) SetupSuite() {
-	suite.Resolver = docker.NewResolver(docker.ResolverOptions{})
+func newResolver() remotes.Resolver{
+	return docker.NewResolver(docker.ResolverOptions{})
+}
 
+func (suite *ORASTestSuite) SetupSuite() {
 	config := &configuration.Configuration{}
 	port, err := freeport.GetFreePort()
 	if err != nil {
@@ -55,7 +56,6 @@ func (suite *ORASTestSuite) TearDownSuite() {
 func (suite *ORASTestSuite) TestPush() {
 	var err error
 	var ctx context.Context
-	var resolver remotes.Resolver
 	var ref string
 	var contents map[string][]byte
 
@@ -63,12 +63,11 @@ func (suite *ORASTestSuite) TestPush() {
 	suite.NotNil(err, "error pushing with empty resolver")
 
 	ctx = context.Background()
-	resolver = docker.NewResolver(docker.ResolverOptions{})
-	err = Push(ctx, resolver, ref, contents)
+	err = Push(ctx, newResolver(), ref, contents)
 	suite.NotNil(err, "error pushing when context missing hostname")
 
 	ref = fmt.Sprintf("%s/empty", suite.DockerRegistryHost)
-	err = Push(ctx, resolver, ref, contents)
+	err = Push(ctx, newResolver(), ref, contents)
 	suite.Nil(err, "no error pushing with empty contents")
 
 	// Load contents with test chart tgz (as single layer)
@@ -79,7 +78,7 @@ func (suite *ORASTestSuite) TestPush() {
 	contents[basename] = content
 
 	ref = fmt.Sprintf("%s/chart-tgz", suite.DockerRegistryHost)
-	err = Push(ctx, resolver, ref, contents)
+	err = Push(ctx, newResolver(), ref, contents)
 	suite.Nil(err, "no error pushing test chart tgz (as single layer)")
 
 	// Load contents with test chart dir (each file as layer)
@@ -100,7 +99,7 @@ func (suite *ORASTestSuite) TestPush() {
 	filepath.Walk(".", ff)
 
 	ref = fmt.Sprintf("%s/chart-dir", suite.DockerRegistryHost)
-	err = Push(ctx, resolver, ref, contents)
+	err = Push(ctx, newResolver(), ref, contents)
 	suite.Nil(err, "no error pushing test chart dir (each file as layer)")
 }
 
