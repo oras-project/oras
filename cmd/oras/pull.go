@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"path"
 
@@ -13,6 +14,7 @@ import (
 type pullOptions struct {
 	targetRef string
 	output    string
+	verbose   bool
 	username  string
 	password  string
 }
@@ -20,7 +22,7 @@ type pullOptions struct {
 func pullCmd() *cobra.Command {
 	var opts pullOptions
 	cmd := &cobra.Command{
-		Use:   "pull [OPTIONS] NAME[:TAG|@DIGEST]",
+		Use:   "pull name[:tag|@digest]",
 		Short: "Pull files from remote registry",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -30,6 +32,7 @@ func pullCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "output directory")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
 	cmd.Flags().StringVarP(&opts.username, "username", "u", "", "registry username")
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password")
 	return cmd
@@ -48,6 +51,9 @@ func runPull(opts pullOptions) error {
 		}
 		if err := ioutil.WriteFile(name, content, 0644); err != nil {
 			return err
+		}
+		if opts.verbose {
+			fmt.Println(name)
 		}
 	}
 

@@ -19,7 +19,7 @@ type pushOptions struct {
 func pushCmd() *cobra.Command {
 	var opts pushOptions
 	cmd := &cobra.Command{
-		Use:   "push [OPTIONS] NAME[:TAG|@DIGEST] FILE [FILE...]",
+		Use:   "push name[:tag|@digest] file [file...]",
 		Short: "Push files to remote registry",
 		Args:  cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {

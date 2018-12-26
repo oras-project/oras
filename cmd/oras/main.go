@@ -8,7 +8,7 @@ import (
 
 func main() {
 	cmd := &cobra.Command{
-		Use:          "oras [OPTIONS] COMMAND",
+		Use:          "oras [command]",
 		SilenceUsage: true,
 	}
 	cmd.AddCommand(pullCmd(), pushCmd())
