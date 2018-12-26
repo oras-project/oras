@@ -4,11 +4,7 @@
 
 [[constraint]]
   name = "github.com/containerd/containerd"
-  version = "1.1.5"
-
-[[constraint]]
-  name = "github.com/docker/distribution"
-  version = "2.7.0"
+  version = "1.2.1"
 
 [[constraint]]
   name = "github.com/opencontainers/go-digest"
@@ -17,31 +13,3 @@
 [[constraint]]
   name = "github.com/opencontainers/image-spec"
   version = "1.0.1"
-
-[[constraint]]
-  name = "github.com/phayes/freeport"
-  version = "1.0.2"
-
-[[constraint]]
-  name = "github.com/stretchr/testify"
-  version = "1.2.2"
-
-[[constraint]]
-  name = "github.com/yvasiyarov/gorelic"
-  revision = "a9bba5b9ab508a086f9a12b8c51fab68478e2128"
-
-[[constraint]]
-  name = "github.com/yvasiyarov/newrelic_platform_go"
-  revision = "b21fdbd4370f3717f3bbd2bf41c223bc273068e6"
-
-[[constraint]]
-  name = "github.com/miekg/dns"
-  revision = "0d29b283ac0f967dd3a02739bf26a22702210d7a"
-
-[[constraint]]
-  name = "github.com/xenolf/lego"
-  revision = "a9d8cec0e6563575e5868a005359ac97911b5985"
-
-[[constraint]]
-  name = "github.com/dmcgowan/letsencrypt"
-  revision = "1847a81d2087eba73081db43989e54dabe0768cd"
