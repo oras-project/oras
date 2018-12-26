@@ -53,7 +53,7 @@
   version = "v0.4.1"
 
 [[projects]]
-  digest = "1:aeb8a3c88503ace4a5ac883491fcff76a610636ba9dc4753dc18740aae5cc937"
+  digest = "1:7643865a2cdb66fb14d8361611a75b370a99211ac44983505b3eecb4a6a7a882"
   name = "github.com/bugsnag/bugsnag-go"
   packages = [
     ".",
@@ -63,8 +63,7 @@
     "sessions",
   ]
   pruneopts = "UT"
-  revision = "834d8fee64233ea79b0389ad7a5a438261788f66"
-  version = "v1.4.0"
+  revision = "109a9d63f2b57c4623f4912b256bac4a7a63517d"
 
 [[projects]]
   digest = "1:3049c43c6d1cfaa347acd27d6342187f8f38d9f416bbba7b02b43f82848302d2"

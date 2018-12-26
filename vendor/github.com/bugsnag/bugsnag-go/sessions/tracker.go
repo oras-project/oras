@@ -130,7 +130,12 @@ func (s *sessionTracker) flushSessionsAndRepeatSignal(shutdown chan<- os.Signal,
 			s.config.logf("%v", err)
 		}
 	}
-	syscall.Kill(syscall.Getpid(), sig)
+
+	if p, err := os.FindProcess(os.Getpid()); err != nil {
+		s.config.logf("%v", err)
+	} else {
+		p.Signal(sig)
+	}
 }
 
 func (s *sessionTracker) FlushSessions() {

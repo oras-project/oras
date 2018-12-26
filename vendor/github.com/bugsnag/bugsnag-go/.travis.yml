@@ -11,7 +11,27 @@ addons:
 
 jobs:
   include:
-    - stage: gotest
+    - stage: go test (windows)
+      script: go get -v -d -t ./...; go test -v ./headers ./gin ./martini ./negroni ./sessions .
+      os: windows
+      go: "1.7"
+    - script: go get -v -d -t ./...; go test -v ./headers ./gin ./martini ./negroni ./sessions .
+      os: windows
+      go: "1.8"
+    - script: go get -v -d -t ./...; go test -v ./headers ./gin ./martini ./negroni ./sessions .
+      os: windows
+      go: "1.9"
+    - script: go get -v -d -t ./...; go test -v ./headers ./gin ./martini ./negroni ./sessions .
+      os: windows
+      go: "1.10"
+    - script: go get -v -d -t ./...; go test -v ./headers ./gin ./martini ./negroni ./sessions .
+      os: windows
+      go: "1.11"
+    - script: go get -v -d -t ./...; go test -v ./headers ./gin ./martini ./negroni ./sessions .
+      os: windows
+      go: "master"
+
+    - stage: go test
       script: make ci
       go: "1.7"
     - script: make ci
