@@ -3,14 +3,10 @@ package main
 import (
 	"context"
 	"io/ioutil"
-	"os"
 	"path"
 
 	"github.com/shizhMSFT/oras/pkg/oras"
 
-	"github.com/containerd/containerd/remotes/docker"
-	"github.com/docker/cli/cli/config"
-	"github.com/docker/docker/registry"
 	"github.com/spf13/cobra"
 )
 
@@ -40,29 +36,7 @@ func pullCmd() *cobra.Command {
 }
 
 func runPull(opts pullOptions) error {
-	cfg := config.LoadDefaultConfigFile(os.Stderr)
-	credential := func(hostName string) (string, string, error) {
-		if hostName == registry.DefaultV2Registry.Host {
-			hostName = registry.IndexServer
-		}
-		auth, err := cfg.GetAuthConfig(hostName)
-		if err != nil {
-			return "", "", err
-		}
-		if auth.IdentityToken != "" {
-			return "", auth.IdentityToken, nil
-		}
-		return auth.Username, auth.Password, nil
-	}
-	if opts.username != "" {
-		credential = func(hostName string) (string, string, error) {
-			return opts.username, opts.password, nil
-		}
-	}
-	resolver := docker.NewResolver(docker.ResolverOptions{
-		Credentials: credential,
-	})
-
+	resolver := newResolver(opts.username, opts.password)
 	contents, err := oras.Pull(context.Background(), resolver, opts.targetRef)
 	if err != nil {
 		return err
