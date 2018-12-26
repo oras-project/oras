@@ -56,7 +56,7 @@ func (suite *PushTestSuite) TestPush() {
 
 	ref = fmt.Sprintf("%s/myapp", suite.DockerRegistryHost)
 	err = Push(ctx, resolver, ref, contents)
-	suite.NotNil(err, "error with empty contents")
+	suite.Nil(err, "no error with empty contents")
 }
 
 func TestPushTestSuite(t *testing.T) {
