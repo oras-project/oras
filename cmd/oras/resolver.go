@@ -24,7 +24,7 @@ func newResolver(username, password string) remotes.Resolver {
 		}
 		return auth.Username, auth.Password, nil
 	}
-	if username != "" {
+	if username != "" || password != "" {
 		credential = func(hostName string) (string, string, error) {
 			return username, password, nil
 		}
