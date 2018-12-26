@@ -20,3 +20,24 @@ oras pull localhost:5000/hello:latest
 ```
 oras pull -u username -p password myregistry.io/myimage:latest
 ```
+
+## Running in Docker
+### Build the image
+```
+docker build -t oras .
+```
+
+### Run on Linux
+```
+docker run --rm -it -v $(pwd):/workplace oras pull localhost:5000/hello:latest
+```
+
+### Run on Windows PowerShell
+```
+docker run --rm -it -v ${pwd}:/workplace oras pull localhost:5000/hello:latest
+```
+
+### Run on Windows Commands
+```
+docker run --rm -it -v %cd%:/workplace oras pull localhost:5000/hello:latest
+```
