@@ -8,6 +8,7 @@ import (
 
 	"github.com/shizhMSFT/oras/pkg/oras"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -15,8 +16,10 @@ type pullOptions struct {
 	targetRef string
 	output    string
 	verbose   bool
-	username  string
-	password  string
+
+	debug    bool
+	username string
+	password string
 }
 
 func pullCmd() *cobra.Command {
@@ -33,12 +36,18 @@ func pullCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "output directory")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
+
+	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
 	cmd.Flags().StringVarP(&opts.username, "username", "u", "", "registry username")
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password")
 	return cmd
 }
 
 func runPull(opts pullOptions) error {
+	if opts.debug {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
+
 	resolver := newResolver(opts.username, opts.password)
 	contents, err := oras.Pull(context.Background(), resolver, opts.targetRef)
 	if err != nil {

@@ -6,14 +6,17 @@ import (
 
 	"github.com/shizhMSFT/oras/pkg/oras"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 type pushOptions struct {
 	targetRef string
 	filenames []string
-	username  string
-	password  string
+
+	debug    bool
+	username string
+	password string
 }
 
 func pushCmd() *cobra.Command {
@@ -29,12 +32,17 @@ func pushCmd() *cobra.Command {
 		},
 	}
 
+	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
 	cmd.Flags().StringVarP(&opts.username, "username", "u", "", "registry username")
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password")
 	return cmd
 }
 
 func runPush(opts pushOptions) error {
+	if opts.debug {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
+
 	resolver := newResolver(opts.username, opts.password)
 
 	contents := make(map[string][]byte)
