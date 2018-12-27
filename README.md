@@ -14,6 +14,28 @@ For more backgound on this topic, please see
 `oras` is a CLI that allows you to push and pull files from
 any registry with OCI image support.
 
+### Installation
+
+Install from latest release (v0.1.0):
+
+```
+# on Linux
+curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.1.0/oras_0.1.0_linux_amd64.tar.gz
+
+# on macOS
+curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.1.0/oras_0.1.0_darwin_amd64.tar.gz
+
+# on Windows
+curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.1.0/oras_0.1.0_linux_amd64.tar.gz
+
+mkdir -p oras/
+tar -zxf oras_0.1.0_*.tar.gz -C oras/
+mv oras/bin/oras /usr/local/bin/
+rm -rf oras_0.1.0_*.tar.gz oras/
+```
+
+The checksums for the `.tar.gz` files can be found [here](https://github.com/shizhMSFT/oras/releases/tag/v0.1.0).
+
 ### Push files to remote registry
 ```
 oras push localhost:5000/hello:latest hello.txt
