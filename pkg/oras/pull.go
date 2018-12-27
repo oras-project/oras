@@ -41,8 +41,6 @@ func Pull(ctx context.Context, resolver remotes.Resolver, ref string) (map[strin
 		if content, ok := store.Get(layer); ok {
 			if title, ok := layer.Annotations[ocispec.AnnotationTitle]; ok && len(title) > 0 {
 				res[title] = content
-			} else {
-				res[layer.Digest.Encoded()] = content
 			}
 		}
 	}
