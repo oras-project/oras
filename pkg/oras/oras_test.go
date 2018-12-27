@@ -56,7 +56,7 @@ func (suite *ORASTestSuite) TearDownSuite() {
 	return
 }
 
-func (suite *ORASTestSuite) TestPush() {
+func (suite *ORASTestSuite) Test_0_Push() {
 	var err error
 	var ref string
 	var contents map[string][]byte
@@ -67,7 +67,7 @@ func (suite *ORASTestSuite) TestPush() {
 	err = Push(suite.Context, newResolver(), ref, contents)
 	suite.NotNil(err, "error pushing when context missing hostname")
 
-	ref = fmt.Sprintf("%s/empty", suite.DockerRegistryHost)
+	ref = fmt.Sprintf("%s/empty:test", suite.DockerRegistryHost)
 	err = Push(suite.Context, newResolver(), ref, contents)
 	suite.NotNil(err, "error pushing with empty contents")
 
@@ -78,7 +78,7 @@ func (suite *ORASTestSuite) TestPush() {
 	basename := filepath.Base(testChartTgz)
 	contents[basename] = content
 
-	ref = fmt.Sprintf("%s/chart-tgz", suite.DockerRegistryHost)
+	ref = fmt.Sprintf("%s/chart-tgz:test", suite.DockerRegistryHost)
 	err = Push(suite.Context, newResolver(), ref, contents)
 	suite.Nil(err, "no error pushing test chart tgz (as single layer)")
 
@@ -99,12 +99,12 @@ func (suite *ORASTestSuite) TestPush() {
 	os.Chdir(testChartDir)
 	filepath.Walk(".", ff)
 
-	ref = fmt.Sprintf("%s/chart-dir", suite.DockerRegistryHost)
+	ref = fmt.Sprintf("%s/chart-dir:test", suite.DockerRegistryHost)
 	err = Push(suite.Context, newResolver(), ref, contents)
 	suite.Nil(err, "no error pushing test chart dir (each file as layer)")
 }
 
-func (suite *ORASTestSuite) TestPull() {
+func (suite *ORASTestSuite) Test_1_Pull() {
 	var err error
 	var ref string
 	var contents map[string][]byte
@@ -114,18 +114,18 @@ func (suite *ORASTestSuite) TestPull() {
 	suite.Nil(contents, "contents nil pulling with empty resolver")
 
 	// Pull non-existant
-	ref = fmt.Sprintf("%s/nonexistant", suite.DockerRegistryHost)
+	ref = fmt.Sprintf("%s/nonexistant:test", suite.DockerRegistryHost)
 	contents, err = Pull(suite.Context, newResolver(), ref)
 	suite.NotNil(err, "error pulling non-existant ref")
 	suite.Nil(contents, "contents empty with error")
 
 	// Pull chart-tgz
-	ref = fmt.Sprintf("%s/chart-tgz", suite.DockerRegistryHost)
+	ref = fmt.Sprintf("%s/chart-tgz:test", suite.DockerRegistryHost)
 	_, err = Pull(suite.Context, newResolver(), ref)
 	suite.Nil(err, "no error pulling chart-tgz ref")
 
 	// Pull chart-dir
-	ref = fmt.Sprintf("%s/chart-dir", suite.DockerRegistryHost)
+	ref = fmt.Sprintf("%s/chart-dir:test", suite.DockerRegistryHost)
 	_, err = Pull(suite.Context, newResolver(), ref)
 	suite.Nil(err, "no error pulling chart-dir ref")
 }
