@@ -98,7 +98,7 @@ func (suite *ORASTestSuite) Test_0_Push() {
 			if err != nil {
 				return err
 			}
-			contents[filename] = content
+			contents[filepath.ToSlash(filename)] = content
 		}
 		return nil
 	}
