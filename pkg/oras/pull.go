@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/containerd/containerd/images"
+	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/remotes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
@@ -31,7 +32,7 @@ func Pull(ctx context.Context, resolver remotes.Resolver, ref string) (map[strin
 		return nil, nil
 	})
 	store := NewMemoryStore()
-	handlers := images.Handlers(store.FetchHandler(fetcher), picker, images.ChildrenHandler(store))
+	handlers := images.Handlers(filterHandler(), store.FetchHandler(fetcher), picker, images.ChildrenHandler(store))
 	if err := images.Dispatch(ctx, handlers, desc); err != nil {
 		return nil, err
 	}
@@ -39,11 +40,28 @@ func Pull(ctx context.Context, resolver remotes.Resolver, ref string) (map[strin
 	res := make(map[string][]byte)
 	for _, layer := range layers {
 		if content, ok := store.Get(layer); ok {
-			if title, ok := layer.Annotations[ocispec.AnnotationTitle]; ok && len(title) > 0 {
-				res[title] = content
+			if name, ok := layer.Annotations[ocispec.AnnotationTitle]; ok && len(name) > 0 {
+				res[name] = content
 			}
 		}
 	}
 
 	return res, nil
+}
+
+func filterHandler() images.HandlerFunc {
+	return func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		switch desc.MediaType {
+		case ocispec.MediaTypeImageManifest, ocispec.MediaTypeImageIndex:
+			return nil, nil
+		case ocispec.MediaTypeImageLayer:
+			if name, ok := desc.Annotations[ocispec.AnnotationTitle]; ok && len(name) > 0 {
+				return nil, nil
+			}
+			log.G(ctx).Warnf("layer_no_name: %v", desc.Digest)
+		default:
+			log.G(ctx).Warnf("unknown_type: %v", desc.MediaType)
+		}
+		return nil, images.ErrStopHandler
+	}
 }
