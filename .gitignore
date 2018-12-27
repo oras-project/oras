@@ -21,3 +21,6 @@ debug
 # Custom
 coverage.*
 hello.txt
+bin/
+dist/
+*.tar.gz
