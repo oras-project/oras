@@ -113,7 +113,7 @@ func (suite *ORASTestSuite) Test_0_Push() {
 	suite.Nil(err, "no error pushing test chart dir (each file as layer)")
 }
 
-// Pull refs
+// Pull files and verify contents
 func (suite *ORASTestSuite) Test_1_Pull() {
 	var err error
 	var ref string

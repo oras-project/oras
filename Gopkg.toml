@@ -14,6 +14,11 @@
   name = "github.com/opencontainers/image-spec"
   version = "1.0.1"
 
+# Test dependency
+[[constraint]]
+  name = "github.com/docker/distribution"
+  version = "2.7.0"
+
 # These overrides below necessary for using docker/distribution as a test dependency
 [[override]]
   name = "github.com/yvasiyarov/newrelic_platform_go"
