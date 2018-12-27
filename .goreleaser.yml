@@ -1,0 +1,16 @@
+builds:
+- main: ./cmd/oras
+  binary: ./bin/oras
+  env:
+  - CGO_ENABLED=0
+  goos:
+  - darwin
+  - linux
+  - windows
+  goarch:
+  - amd64
+
+archive:
+  format: tar.gz
+  files:
+  - LICENSE
