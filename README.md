@@ -26,7 +26,7 @@ curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.1.0/oras_0.1.0_l
 curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.1.0/oras_0.1.0_darwin_amd64.tar.gz
 
 # on Windows
-curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.1.0/oras_0.1.0_linux_amd64.tar.gz
+curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.1.0/oras_0.1.0_windows_amd64.tar.gz
 
 mkdir -p oras/
 tar -zxf oras_0.1.0_*.tar.gz -C oras/
