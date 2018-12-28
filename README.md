@@ -19,7 +19,47 @@ For more backgound on this topic, please see
 `oras` is a CLI that allows you to push and pull files from
 any registry with OCI image support.
 
-### Installation
+### Pushing files to remote registry
+```
+oras push localhost:5000/hello:latest hello.txt
+```
+
+### Pulling files from remote registry
+```
+oras pull localhost:5000/hello:latest
+```
+
+### Login Credentials
+`oras` uses the local docker credential by default. Please run `docker login` in advance for any private registries.
+
+`oras` also accepts explicit credentials via options. For example,
+```
+oras pull -u username -p password myregistry.io/myimage:latest
+```
+
+### Run in Docker
+
+Public image is available on [Docker Hub](https://hub.docker.com/r/ocistorage/oras) at `ocistorage/oras`
+
+#### Run on Mac/Linux
+```
+docker run --rm -it -v $(pwd):/workplace ocistorage/oras:latest \
+  pull localhost:5000/hello:latest
+```
+
+#### Run on Windows PowerShell
+```
+docker run --rm -it -v ${pwd}:/workplace ocistorage/oras:latest \
+  pull localhost:5000/hello:latest
+```
+
+#### Run on Windows Commands
+```
+docker run --rm -it -v %cd%:/workplace ocistorage/oras:latest \
+  pull localhost:5000/hello:latest
+```
+
+### Install the binary
 
 Install from latest release (v0.1.0):
 
@@ -39,46 +79,14 @@ mv oras/bin/oras /usr/local/bin/
 rm -rf oras_0.1.0_*.tar.gz oras/
 ```
 
-The checksums for the `.tar.gz` files can be found [here](https://github.com/shizhMSFT/oras/releases/tag/v0.1.0).
+Then, to run:
 
-### Push files to remote registry
 ```
-oras push localhost:5000/hello:latest hello.txt
-```
-
-### Pull files from remote registry
-```
-oras pull localhost:5000/hello:latest
+oras help
 ```
 
-### Login Credentials
-`oras` uses the local docker credential by default. Therefore, please run `docker login` in advance for any private registries.
+The checksums for the `.tar.gz` files above can be found [here](https://github.com/shizhMSFT/oras/releases/tag/v0.1.0).
 
-`oras` also accepts explicit credentials via options. For example,
-```
-oras pull -u username -p password myregistry.io/myimage:latest
-```
-
-### Running in Docker
-#### Build the image
-```
-docker build -t oras .
-```
-
-#### Run on Linux
-```
-docker run --rm -it -v $(pwd):/workplace oras pull localhost:5000/hello:latest
-```
-
-#### Run on Windows PowerShell
-```
-docker run --rm -it -v ${pwd}:/workplace oras pull localhost:5000/hello:latest
-```
-
-#### Run on Windows Commands
-```
-docker run --rm -it -v %cd%:/workplace oras pull localhost:5000/hello:latest
-```
 
 ## Go Module
 
