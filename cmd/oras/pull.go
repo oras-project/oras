@@ -13,9 +13,10 @@ import (
 )
 
 type pullOptions struct {
-	targetRef string
-	output    string
-	verbose   bool
+	targetRef         string
+	allowedMediaTypes []string
+	output            string
+	verbose           bool
 
 	debug    bool
 	username string
@@ -34,6 +35,7 @@ func pullCmd() *cobra.Command {
 		},
 	}
 
+	cmd.Flags().StringArrayVarP(&opts.allowedMediaTypes, "allowed-media-type", "t", nil, "allowed media types to be pulled")
 	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "output directory")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
 
@@ -49,16 +51,16 @@ func runPull(opts pullOptions) error {
 	}
 
 	resolver := newResolver(opts.username, opts.password)
-	contents, err := oras.Pull(context.Background(), resolver, opts.targetRef)
+	blobs, err := oras.Pull(context.Background(), resolver, opts.targetRef, opts.allowedMediaTypes...)
 	if err != nil {
 		return err
 	}
 
-	for name, content := range contents {
+	for name, blob := range blobs {
 		if opts.output != "" {
 			name = path.Join(opts.output, name)
 		}
-		if err := ioutil.WriteFile(name, content, 0644); err != nil {
+		if err := ioutil.WriteFile(name, blob.Content, 0644); err != nil {
 			return err
 		}
 		if opts.verbose {

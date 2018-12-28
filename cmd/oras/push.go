@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"io/ioutil"
+	"strings"
 
 	"github.com/shizhMSFT/oras/pkg/oras"
 
@@ -12,7 +13,7 @@ import (
 
 type pushOptions struct {
 	targetRef string
-	filenames []string
+	fileRefs  []string
 
 	debug    bool
 	username string
@@ -27,7 +28,7 @@ func pushCmd() *cobra.Command {
 		Args:  cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
-			opts.filenames = args[1:]
+			opts.fileRefs = args[1:]
 			return runPush(opts)
 		},
 	}
@@ -45,14 +46,23 @@ func runPush(opts pushOptions) error {
 
 	resolver := newResolver(opts.username, opts.password)
 
-	contents := make(map[string][]byte)
-	for _, filename := range opts.filenames {
+	blobs := make(map[string]oras.Blob)
+	for _, fileRef := range opts.fileRefs {
+		ref := strings.SplitN(fileRef, ":", 2)
+		filename := ref[0]
+		var mediaType string
+		if len(ref) == 2 {
+			mediaType = ref[1]
+		}
 		content, err := ioutil.ReadFile(filename)
 		if err != nil {
 			return err
 		}
-		contents[filename] = content
+		blobs[filename] = oras.Blob{
+			MediaType: mediaType,
+			Content:   content,
+		}
 	}
 
-	return oras.Push(context.Background(), resolver, opts.targetRef, contents)
+	return oras.Push(context.Background(), resolver, opts.targetRef, blobs)
 }
