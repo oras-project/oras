@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
+	"sync"
 
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
@@ -21,13 +22,13 @@ var (
 
 // MemoryStore stores contents in the memory
 type MemoryStore struct {
-	content map[string][]byte
+	content *sync.Map
 }
 
 // NewMemoryStore creates a new memory store
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		content: make(map[string][]byte),
+		content: &sync.Map{},
 	}
 }
 
@@ -60,18 +61,22 @@ func (s *MemoryStore) FetchHandler(fetcher remotes.Fetcher) images.HandlerFunc {
 
 // Set adds the content to the store
 func (s *MemoryStore) Set(desc ocispec.Descriptor, content []byte) {
-	s.content[desc.Digest.String()] = content
+	s.content.Store(desc.Digest, content)
 }
 
 // Get finds the content from the store
 func (s *MemoryStore) Get(desc ocispec.Descriptor) ([]byte, bool) {
-	content, ok := s.content[desc.Digest.String()]
+	value, ok := s.content.Load(desc.Digest)
+	if !ok {
+		return nil, false
+	}
+	content, ok := value.([]byte)
 	return content, ok
 }
 
 // ReaderAt provides contents
 func (s *MemoryStore) ReaderAt(ctx context.Context, desc ocispec.Descriptor) (content.ReaderAt, error) {
-	if content, ok := s.content[desc.Digest.String()]; ok {
+	if content, ok := s.Get(desc); ok {
 		return newReaderAt(content), nil
 
 	}
