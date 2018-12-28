@@ -1,4 +1,8 @@
 # OCI Registry As Storage
+
+[![Go Report Card](https://goreportcard.com/badge/github.com/shizhMSFT/oras)](https://goreportcard.com/report/github.com/shizhMSFT/oras)
+[![GoDoc](https://godoc.org/github.com/shizhMSFT/oras?status.svg)](https://godoc.org/github.com/shizhMSFT/oras)
+
 `oras` can push/pull any files from/to any registry with OCI image support.
 
 Registries with known support:
