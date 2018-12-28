@@ -67,7 +67,7 @@ func filterHandler(allowedMediaTypes ...string) images.HandlerFunc {
 			if name, ok := desc.Annotations[ocispec.AnnotationTitle]; ok && len(name) > 0 {
 				return nil, nil
 			}
-			log.G(ctx).Warnf("layer_no_name: %v", desc.Digest)
+			log.G(ctx).Warnf("blob_no_name: %v", desc.Digest)
 		default:
 			log.G(ctx).Warnf("unknown_type: %v", desc.MediaType)
 		}
