@@ -21,12 +21,36 @@ any registry with OCI image support.
 
 ### Pushing files to remote registry
 ```
-oras push localhost:5000/hello:latest hello.txt
+oras push localhost:5000/hello:latest hi.txt
+```
+
+The default media type for all files is `application/vnd.oci.image.layer.v1.tar`.
+
+The push a custom media type, use the format `filename[:type]`:
+```
+oras push localhost:5000/hello:latest hi.txt:application/vnd.me.hi
+```
+
+To push multiple files with different media types:
+```
+oras push localhost:5000/hello:latest hi.txt:application/vnd.me.hi bye.txt:application/vnd.me.bye
 ```
 
 ### Pulling files from remote registry
 ```
 oras pull localhost:5000/hello:latest
+```
+
+By default, only blobs with media type `application/vnd.oci.image.layer.v1.tar` will be downloaded.
+
+To specify which media types to download, use the `--media-type`/`-t` flag:
+```
+oras pull localhost:5000/hello:latest -t application/vnd.me.hi
+```
+
+Or to allow all media types, use the `--allow-all`/`-a` flag:
+```
+oras pull localhost:5000/hello:latest -a
 ```
 
 ### Login Credentials
@@ -43,20 +67,20 @@ Public image is available on [Docker Hub](https://hub.docker.com/r/ocistorage/or
 
 #### Run on Mac/Linux
 ```
-docker run --rm -it -v $(pwd):/workplace ocistorage/oras:latest \
-  pull localhost:5000/hello:v0.2.0
+docker run --rm -it -v $(pwd):/workplace ocistorage/oras:v0.2.0 \
+  pull myregistry.io/hello:latest
 ```
 
 #### Run on Windows PowerShell
 ```
-docker run --rm -it -v ${pwd}:/workplace ocistorage/oras:latest \
-  pull localhost:5000/hello:v0.2.0
+docker run --rm -it -v ${pwd}:/workplace ocistorage/oras:v0.2.0 \
+  pull myregistry.io/hello:latest
 ```
 
 #### Run on Windows Commands
 ```
-docker run --rm -it -v %cd%:/workplace ocistorage/oras:latest \
-  pull localhost:5000/hello:v0.2.0
+docker run --rm -it -v %cd%:/workplace ocistorage/oras:v0.2.0 \
+  pull myregistry.io/hello:latest
 ```
 
 ### Install the binary
@@ -117,9 +141,9 @@ func check(e error) {
 
 func main() {
 	ref := "localhost:5000/oras:test"
-	fileName := "hello.txt"
+	fileName := "hi.txt"
 	fileContent := []byte("Hello World!\n")
-	customMediaType := "my.custom.media.type"
+	customMediaType := "application/vnd.me.hi"
 
 	ctx := context.Background()
 	resolver := docker.NewResolver(docker.ResolverOptions{})
