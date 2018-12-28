@@ -66,31 +66,31 @@ func (suite *ORASTestSuite) SetupSuite() {
 func (suite *ORASTestSuite) Test_0_Push() {
 	var err error
 	var ref string
-	var contents map[string][]byte
+	var blobs map[string]Blob
 
-	err = Push(newContext(), nil, ref, contents)
+	err = Push(newContext(), nil, ref, blobs)
 	suite.NotNil(err, "error pushing with empty resolver")
 
-	err = Push(newContext(), newResolver(), ref, contents)
+	err = Push(newContext(), newResolver(), ref, blobs)
 	suite.NotNil(err, "error pushing when context missing hostname")
 
 	ref = fmt.Sprintf("%s/empty:test", suite.DockerRegistryHost)
-	err = Push(newContext(), newResolver(), ref, contents)
-	suite.NotNil(ErrEmptyContents, err, "error pushing with empty contents")
+	err = Push(newContext(), newResolver(), ref, blobs)
+	suite.NotNil(ErrEmptyBlobs, err, "error pushing with empty blobs")
 
-	// Load contents with test chart tgz (as single layer)
-	contents = make(map[string][]byte)
+	// Load blobs with test chart tgz (as single layer)
+	blobs = make(map[string]Blob)
 	content, err := ioutil.ReadFile(testTarball)
 	suite.Nil(err, "no error loading test chart")
 	basename := filepath.Base(testTarball)
-	contents[basename] = content
+	blobs[basename] = Blob{Content: content}
 
 	ref = fmt.Sprintf("%s/chart-tgz:test", suite.DockerRegistryHost)
-	err = Push(newContext(), newResolver(), ref, contents)
+	err = Push(newContext(), newResolver(), ref, blobs)
 	suite.Nil(err, "no error pushing test chart tgz (as single layer)")
 
-	// Load contents with test chart dir (each file as layer)
-	contents = make(map[string][]byte)
+	// Load blobs with test chart dir (each file as layer)
+	blobs = make(map[string]Blob)
 	var ff = func(pathX string, infoX os.FileInfo, errX error) error {
 		if !infoX.IsDir() {
 			filename := filepath.Join(filepath.Dir(pathX), infoX.Name())
@@ -98,7 +98,7 @@ func (suite *ORASTestSuite) Test_0_Push() {
 			if err != nil {
 				return err
 			}
-			contents[filepath.ToSlash(filename)] = content
+			blobs[filepath.ToSlash(filename)] = Blob{Content: content}
 		}
 		return nil
 	}
@@ -109,48 +109,48 @@ func (suite *ORASTestSuite) Test_0_Push() {
 	os.Chdir(cwd)
 
 	ref = fmt.Sprintf("%s/chart-dir:test", suite.DockerRegistryHost)
-	err = Push(newContext(), newResolver(), ref, contents)
+	err = Push(newContext(), newResolver(), ref, blobs)
 	suite.Nil(err, "no error pushing test chart dir (each file as layer)")
 }
 
-// Pull files and verify contents
+// Pull files and verify blobs
 func (suite *ORASTestSuite) Test_1_Pull() {
 	var err error
 	var ref string
-	var contents map[string][]byte
+	var blobs map[string]Blob
 
-	contents, err = Pull(newContext(), nil, ref)
+	blobs, err = Pull(newContext(), nil, ref)
 	suite.NotNil(err, "error pulling with empty resolver")
-	suite.Nil(contents, "contents nil pulling with empty resolver")
+	suite.Nil(blobs, "blobs nil pulling with empty resolver")
 
 	// Pull non-existant
 	ref = fmt.Sprintf("%s/nonexistant:test", suite.DockerRegistryHost)
-	contents, err = Pull(newContext(), newResolver(), ref)
+	blobs, err = Pull(newContext(), newResolver(), ref)
 	suite.NotNil(err, "error pulling non-existant ref")
-	suite.Nil(contents, "contents empty with error")
+	suite.Nil(blobs, "blobs empty with error")
 
 	// Pull chart-tgz
 	ref = fmt.Sprintf("%s/chart-tgz:test", suite.DockerRegistryHost)
-	contents, err = Pull(newContext(), newResolver(), ref)
+	blobs, err = Pull(newContext(), newResolver(), ref)
 	suite.Nil(err, "no error pulling chart-tgz ref")
 
-	// Verify the contents, single layer/file
+	// Verify the blobs, single layer/file
 	content, err := ioutil.ReadFile(testTarball)
 	suite.Nil(err, "no error loading test chart")
-	suite.Equal(content, contents[filepath.Base(testTarball)], ".tgz content matches on pull")
+	suite.Equal(content, blobs[filepath.Base(testTarball)].Content, ".tgz content matches on pull")
 
 	// Pull chart-dir
 	ref = fmt.Sprintf("%s/chart-dir:test", suite.DockerRegistryHost)
-	contents, err = Pull(newContext(), newResolver(), ref)
+	blobs, err = Pull(newContext(), newResolver(), ref)
 	suite.Nil(err, "no error pulling chart-dir ref")
 
-	// Verify the contents, multiple layers/files
+	// Verify the blobs, multiple layers/files
 	cwd, _ := os.Getwd()
 	os.Chdir(testDir)
 	for _, filename := range testDirFiles {
 		content, err = ioutil.ReadFile(filename)
 		suite.Nil(err, fmt.Sprintf("no error loading %s", filename))
-		suite.Equal(content, contents[filename], fmt.Sprintf("%s content matches on pull", filename))
+		suite.Equal(content, blobs[filename].Content, fmt.Sprintf("%s content matches on pull", filename))
 	}
 	os.Chdir(cwd)
 }

@@ -12,13 +12,13 @@ import (
 )
 
 // Push pushes files to the remote
-func Push(ctx context.Context, resolver remotes.Resolver, ref string, contents map[string][]byte) error {
+func Push(ctx context.Context, resolver remotes.Resolver, ref string, blobs map[string]Blob) error {
 	if resolver == nil {
 		return ErrResolverUndefined
 	}
 
-	if contents == nil {
-		return ErrEmptyContents
+	if blobs == nil {
+		return ErrEmptyBlobs
 	}
 
 	pusher, err := resolver.Pusher(ctx, ref)
@@ -26,7 +26,7 @@ func Push(ctx context.Context, resolver remotes.Resolver, ref string, contents m
 		return err
 	}
 
-	desc, provider, err := pack(contents)
+	desc, provider, err := pack(blobs)
 	if err != nil {
 		return err
 	}
@@ -34,7 +34,7 @@ func Push(ctx context.Context, resolver remotes.Resolver, ref string, contents m
 	return remotes.PushContent(ctx, pusher, desc, provider, nil)
 }
 
-func pack(contents map[string][]byte) (ocispec.Descriptor, content.Provider, error) {
+func pack(blobs map[string]Blob) (ocispec.Descriptor, content.Provider, error) {
 	store := NewMemoryStore()
 
 	// Config
@@ -48,16 +48,20 @@ func pack(contents map[string][]byte) (ocispec.Descriptor, content.Provider, err
 
 	// Layer
 	var layers []ocispec.Descriptor
-	for name, content := range contents {
+	for name, blob := range blobs {
+		mediaType := blob.MediaType
+		if mediaType == "" {
+			mediaType = DefaultBlobMediaType
+		}
 		layer := ocispec.Descriptor{
-			MediaType: ocispec.MediaTypeImageLayer,
-			Digest:    digest.FromBytes(content),
-			Size:      int64(len(content)),
+			MediaType: mediaType,
+			Digest:    digest.FromBytes(blob.Content),
+			Size:      int64(len(blob.Content)),
 			Annotations: map[string]string{
 				ocispec.AnnotationTitle: name,
 			},
 		}
-		store.Set(layer, content)
+		store.Set(layer, blob.Content)
 		layers = append(layers, layer)
 	}
 

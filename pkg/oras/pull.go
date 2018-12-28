@@ -10,7 +10,7 @@ import (
 )
 
 // Pull pull files from the remote
-func Pull(ctx context.Context, resolver remotes.Resolver, ref string) (map[string][]byte, error) {
+func Pull(ctx context.Context, resolver remotes.Resolver, ref string, allowedMediaTypes ...string) (map[string]Blob, error) {
 	if resolver == nil {
 		return nil, ErrResolverUndefined
 	}
@@ -24,24 +24,33 @@ func Pull(ctx context.Context, resolver remotes.Resolver, ref string) (map[strin
 		return nil, err
 	}
 
-	var layers []ocispec.Descriptor
+	var blobs []ocispec.Descriptor
 	picker := images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		if desc.MediaType == ocispec.MediaTypeImageLayer {
-			layers = append(layers, desc)
+		if isAllowedMediaType(desc.MediaType, allowedMediaTypes...) {
+			blobs = append(blobs, desc)
+			return nil, nil
 		}
 		return nil, nil
 	})
 	store := NewMemoryStore()
-	handlers := images.Handlers(filterHandler(), store.FetchHandler(fetcher), picker, images.ChildrenHandler(store))
+	handlers := images.Handlers(
+		filterHandler(allowedMediaTypes...),
+		store.FetchHandler(fetcher),
+		picker,
+		images.ChildrenHandler(store),
+	)
 	if err := images.Dispatch(ctx, handlers, desc); err != nil {
 		return nil, err
 	}
 
-	res := make(map[string][]byte)
-	for _, layer := range layers {
-		if content, ok := store.Get(layer); ok {
-			if name, ok := layer.Annotations[ocispec.AnnotationTitle]; ok && len(name) > 0 {
-				res[name] = content
+	res := make(map[string]Blob)
+	for _, blob := range blobs {
+		if content, ok := store.Get(blob); ok {
+			if name, ok := blob.Annotations[ocispec.AnnotationTitle]; ok && len(name) > 0 {
+				res[name] = Blob{
+					MediaType: blob.MediaType,
+					Content:   content,
+				}
 			}
 		}
 	}
@@ -49,19 +58,31 @@ func Pull(ctx context.Context, resolver remotes.Resolver, ref string) (map[strin
 	return res, nil
 }
 
-func filterHandler() images.HandlerFunc {
+func filterHandler(allowedMediaTypes ...string) images.HandlerFunc {
 	return func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		switch desc.MediaType {
-		case ocispec.MediaTypeImageManifest, ocispec.MediaTypeImageIndex:
+		switch {
+		case isAllowedMediaType(desc.MediaType, ocispec.MediaTypeImageManifest, ocispec.MediaTypeImageIndex):
 			return nil, nil
-		case ocispec.MediaTypeImageLayer:
+		case isAllowedMediaType(desc.MediaType, allowedMediaTypes...):
 			if name, ok := desc.Annotations[ocispec.AnnotationTitle]; ok && len(name) > 0 {
 				return nil, nil
 			}
-			log.G(ctx).Warnf("layer_no_name: %v", desc.Digest)
+			log.G(ctx).Warnf("blob_no_name: %v", desc.Digest)
 		default:
 			log.G(ctx).Warnf("unknown_type: %v", desc.MediaType)
 		}
 		return nil, images.ErrStopHandler
 	}
+}
+
+func isAllowedMediaType(mediaType string, allowedMediaTypes ...string) bool {
+	if len(allowedMediaTypes) == 0 {
+		return true
+	}
+	for _, allowedMediaType := range allowedMediaTypes {
+		if mediaType == allowedMediaType {
+			return true
+		}
+	}
+	return false
 }
