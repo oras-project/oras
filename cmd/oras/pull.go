@@ -13,10 +13,11 @@ import (
 )
 
 type pullOptions struct {
-	targetRef         string
-	allowedMediaTypes []string
-	output            string
-	verbose           bool
+	targetRef          string
+	allowedMediaTypes  []string
+	allowAllMediaTypes bool
+	output             string
+	verbose            bool
 
 	debug    bool
 	username string
@@ -35,7 +36,8 @@ func pullCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringArrayVarP(&opts.allowedMediaTypes, "allowed-media-type", "t", nil, "allowed media types to be pulled")
+	cmd.Flags().StringArrayVarP(&opts.allowedMediaTypes, "media-type", "t", nil, "allowed media types to be pulled")
+	cmd.Flags().BoolVarP(&opts.allowAllMediaTypes, "allow-all", "a", false, "allow all media types to be pulled")
 	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "output directory")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
 
@@ -48,6 +50,11 @@ func pullCmd() *cobra.Command {
 func runPull(opts pullOptions) error {
 	if opts.debug {
 		logrus.SetLevel(logrus.DebugLevel)
+	}
+	if opts.allowAllMediaTypes {
+		opts.allowedMediaTypes = nil
+	} else if len(opts.allowedMediaTypes) == 0 {
+		opts.allowedMediaTypes = []string{oras.DefaultBlobMediaType}
 	}
 
 	resolver := newResolver(opts.username, opts.password)
