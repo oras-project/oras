@@ -9,6 +9,9 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
+// AllowAllMediaTypes allows to download all media types
+const AllowAllMediaTypes = "*"
+
 // Pull pull files from the remote
 func Pull(ctx context.Context, resolver remotes.Resolver, ref string, allowedMediaTypes ...string) (map[string]Blob, error) {
 	if resolver == nil {
@@ -29,16 +32,19 @@ func Pull(ctx context.Context, resolver remotes.Resolver, ref string, allowedMed
 
 	var blobs []ocispec.Descriptor
 	picker := images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		for _, mediaType := range allowedMediaTypes {
-			if desc.MediaType == mediaType {
-				blobs = append(blobs, desc)
-				return nil, nil
-			}
+		if isAllowedMediaType(desc.MediaType, allowedMediaTypes...) {
+			blobs = append(blobs, desc)
+			return nil, nil
 		}
 		return nil, nil
 	})
 	store := NewMemoryStore()
-	handlers := images.Handlers(filterHandler(), store.FetchHandler(fetcher), picker, images.ChildrenHandler(store))
+	handlers := images.Handlers(
+		filterHandler(allowedMediaTypes...),
+		store.FetchHandler(fetcher),
+		picker,
+		images.ChildrenHandler(store),
+	)
 	if err := images.Dispatch(ctx, handlers, desc); err != nil {
 		return nil, err
 	}
@@ -58,12 +64,12 @@ func Pull(ctx context.Context, resolver remotes.Resolver, ref string, allowedMed
 	return res, nil
 }
 
-func filterHandler() images.HandlerFunc {
+func filterHandler(allowedMediaTypes ...string) images.HandlerFunc {
 	return func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		switch desc.MediaType {
-		case ocispec.MediaTypeImageManifest, ocispec.MediaTypeImageIndex:
+		switch {
+		case isAllowedMediaType(desc.MediaType, ocispec.MediaTypeImageManifest, ocispec.MediaTypeImageIndex):
 			return nil, nil
-		case ocispec.MediaTypeImageLayer:
+		case isAllowedMediaType(desc.MediaType, allowedMediaTypes...):
 			if name, ok := desc.Annotations[ocispec.AnnotationTitle]; ok && len(name) > 0 {
 				return nil, nil
 			}
@@ -73,4 +79,13 @@ func filterHandler() images.HandlerFunc {
 		}
 		return nil, images.ErrStopHandler
 	}
+}
+
+func isAllowedMediaType(mediaType string, allowedMediaTypes ...string) bool {
+	for _, allowedMediaType := range allowedMediaTypes {
+		if mediaType == allowedMediaType || allowedMediaType == AllowAllMediaTypes {
+			return true
+		}
+	}
+	return false
 }
