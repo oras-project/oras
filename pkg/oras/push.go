@@ -51,7 +51,7 @@ func pack(blobs map[string]Blob) (ocispec.Descriptor, content.Provider, error) {
 	for name, blob := range blobs {
 		mediaType := blob.MediaType
 		if mediaType == "" {
-			mediaType = ocispec.MediaTypeImageLayer
+			mediaType = DefaultBlobMediaType
 		}
 		layer := ocispec.Descriptor{
 			MediaType: mediaType,
