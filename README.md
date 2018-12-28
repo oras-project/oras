@@ -44,39 +44,39 @@ Public image is available on [Docker Hub](https://hub.docker.com/r/ocistorage/or
 #### Run on Mac/Linux
 ```
 docker run --rm -it -v $(pwd):/workplace ocistorage/oras:latest \
-  pull localhost:5000/hello:latest
+  pull localhost:5000/hello:v0.2.0
 ```
 
 #### Run on Windows PowerShell
 ```
 docker run --rm -it -v ${pwd}:/workplace ocistorage/oras:latest \
-  pull localhost:5000/hello:latest
+  pull localhost:5000/hello:v0.2.0
 ```
 
 #### Run on Windows Commands
 ```
 docker run --rm -it -v %cd%:/workplace ocistorage/oras:latest \
-  pull localhost:5000/hello:latest
+  pull localhost:5000/hello:v0.2.0
 ```
 
 ### Install the binary
 
-Install from latest release (v0.1.0):
+Install from latest release (v0.2.0):
 
 ```
 # on Linux
-curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.1.0/oras_0.1.0_linux_amd64.tar.gz
+curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.2.0/oras_0.2.0_linux_amd64.tar.gz
 
 # on macOS
-curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.1.0/oras_0.1.0_darwin_amd64.tar.gz
+curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.2.0/oras_0.2.0_darwin_amd64.tar.gz
 
 # on Windows
-curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.1.0/oras_0.1.0_windows_amd64.tar.gz
+curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.2.0/oras_0.2.0_windows_amd64.tar.gz
 
 mkdir -p oras/
-tar -zxf oras_0.1.0_*.tar.gz -C oras/
+tar -zxf oras_0.2.0_*.tar.gz -C oras/
 mv oras/bin/oras /usr/local/bin/
-rm -rf oras_0.1.0_*.tar.gz oras/
+rm -rf oras_0.2.0_*.tar.gz oras/
 ```
 
 Then, to run:
@@ -85,7 +85,7 @@ Then, to run:
 oras help
 ```
 
-The checksums for the `.tar.gz` files above can be found [here](https://github.com/shizhMSFT/oras/releases/tag/v0.1.0).
+The checksums for the `.tar.gz` files above can be found [here](https://github.com/shizhMSFT/oras/releases/tag/v0.2.0).
 
 
 ## Go Module
@@ -103,9 +103,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+
 	"github.com/containerd/containerd/remotes/docker"
 	"github.com/shizhMSFT/oras/pkg/oras"
-	"io/ioutil"
 )
 
 func check(e error) {
@@ -118,13 +119,17 @@ func main() {
 	ref := "localhost:5000/oras:test"
 	fileName := "hello.txt"
 	fileContent := []byte("Hello World!\n")
+	customMediaType := "my.custom.media.type"
 
 	ctx := context.Background()
 	resolver := docker.NewResolver(docker.ResolverOptions{})
 
-	// Push file(s) to registry
-	pushContents := make(map[string][]byte)
-	pushContents[fileName] = fileContent
+	// Push file(s) w custom mediatype to registry
+	pushContents := make(map[string]oras.Blob)
+	pushContents[fileName] = oras.Blob{
+		Content: fileContent,
+		MediaType: customMediaType,
+	}
 	fmt.Printf("Pushing %s to %s... ", fileName, ref)
 	err := oras.Push(ctx, resolver, ref, pushContents)
 	check(err)
@@ -132,9 +137,10 @@ func main() {
 
 	// Pull file(s) from registry and save to disk
 	fmt.Printf("Pulling from %s and saving to %s... ", ref, fileName)
-	pullContents, err := oras.Pull(ctx, resolver, ref)
+	allowedMediaTypes := []string{customMediaType}
+	pullContents, err := oras.Pull(ctx, resolver, ref, allowedMediaTypes...)
 	check(err)
-	err = ioutil.WriteFile(fileName, pullContents[fileName], 0644)
+	err = ioutil.WriteFile(fileName, pullContents[fileName].Content, 0644)
 	check(err)
 	fmt.Println("success!")
 	fmt.Printf("Try running 'cat %s'\n", fileName)
