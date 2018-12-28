@@ -9,16 +9,10 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// AllowAllMediaTypes allows to download all media types
-const AllowAllMediaTypes = "*"
-
 // Pull pull files from the remote
 func Pull(ctx context.Context, resolver remotes.Resolver, ref string, allowedMediaTypes ...string) (map[string]Blob, error) {
 	if resolver == nil {
 		return nil, ErrResolverUndefined
-	}
-	if len(allowedMediaTypes) == 0 {
-		allowedMediaTypes = []string{ocispec.MediaTypeImageLayer}
 	}
 
 	_, desc, err := resolver.Resolve(ctx, ref)
@@ -82,8 +76,11 @@ func filterHandler(allowedMediaTypes ...string) images.HandlerFunc {
 }
 
 func isAllowedMediaType(mediaType string, allowedMediaTypes ...string) bool {
+	if len(allowedMediaTypes) == 0 {
+		return true
+	}
 	for _, allowedMediaType := range allowedMediaTypes {
-		if mediaType == allowedMediaType || allowedMediaType == AllowAllMediaTypes {
+		if mediaType == allowedMediaType {
 			return true
 		}
 	}
