@@ -1,0 +1,37 @@
+# Note: must set env var GITHUB_TOKEN for goreleaser
+version: '1.0'
+stages:
+- test
+- build
+- release
+steps:
+  UnitTest:
+    title: Run unit tests
+    stage: test
+    image: golang:1.11
+    working_directory: &workdir /go/src/github.com/${{CF_REPO_OWNER}}
+    commands:
+    - &link ln -s /codefresh/volume/${{CF_REPO_NAME}} ${{CF_REPO_NAME}} && cd ${{CF_REPO_NAME}}
+    - echo make test
+  BuildDockerImage:
+    title: Build Docker image
+    stage: build
+    type: build
+    image_name: ${{CF_REPO_OWNER}}/${{CF_REPO_NAME}}
+  UploadReleaseArtifacts:
+    title: Upload release artifacts
+    stage: release
+    image: goreleaser/goreleaser:v0.95.0
+    working_directory: *workdir
+    commands:
+    - *link
+    - git checkout tags/${{CF_BRANCH_TAG_NORMALIZED}}
+    - goreleaser --rm-dist
+  PushDockerImageTagged:
+    title: Push Docker image (tag)
+    stage: release
+    type: push
+    candidate: ${{BuildDockerImage}}
+    image_name: ocistorage/${{CF_REPO_NAME}}
+    tag: ${{CF_BRANCH_TAG_NORMALIZED}}
+    registry: dockerhub
