@@ -10,9 +10,12 @@ import (
 )
 
 // Pull pull files from the remote
-func Pull(ctx context.Context, resolver remotes.Resolver, ref string) (map[string][]byte, error) {
+func Pull(ctx context.Context, resolver remotes.Resolver, ref string, allowedMediaTypes ...string) (map[string]Blob, error) {
 	if resolver == nil {
 		return nil, ErrResolverUndefined
+	}
+	if len(allowedMediaTypes) == 0 {
+		allowedMediaTypes = []string{ocispec.MediaTypeImageLayer}
 	}
 
 	_, desc, err := resolver.Resolve(ctx, ref)
@@ -24,10 +27,13 @@ func Pull(ctx context.Context, resolver remotes.Resolver, ref string) (map[strin
 		return nil, err
 	}
 
-	var layers []ocispec.Descriptor
+	var blobs []ocispec.Descriptor
 	picker := images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		if desc.MediaType == ocispec.MediaTypeImageLayer {
-			layers = append(layers, desc)
+		for _, mediaType := range allowedMediaTypes {
+			if desc.MediaType == mediaType {
+				blobs = append(blobs, desc)
+				return nil, nil
+			}
 		}
 		return nil, nil
 	})
@@ -37,11 +43,14 @@ func Pull(ctx context.Context, resolver remotes.Resolver, ref string) (map[strin
 		return nil, err
 	}
 
-	res := make(map[string][]byte)
-	for _, layer := range layers {
-		if content, ok := store.Get(layer); ok {
-			if name, ok := layer.Annotations[ocispec.AnnotationTitle]; ok && len(name) > 0 {
-				res[name] = content
+	res := make(map[string]Blob)
+	for _, blob := range blobs {
+		if content, ok := store.Get(blob); ok {
+			if name, ok := blob.Annotations[ocispec.AnnotationTitle]; ok && len(name) > 0 {
+				res[name] = Blob{
+					MediaType: blob.MediaType,
+					Content:   content,
+				}
 			}
 		}
 	}

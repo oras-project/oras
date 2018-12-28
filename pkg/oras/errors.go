@@ -6,5 +6,5 @@ import "errors"
 var (
 	ErrNotFound          = errors.New("not_found")
 	ErrResolverUndefined = errors.New("resolver_undefined")
-	ErrEmptyContents     = errors.New("empty_contents")
+	ErrEmptyBlobs        = errors.New("empty_blobs")
 )
