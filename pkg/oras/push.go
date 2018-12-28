@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/remotes"
 	digest "github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go"
@@ -24,6 +25,16 @@ func Push(ctx context.Context, resolver remotes.Resolver, ref string, contents m
 	if err != nil {
 		return err
 	}
+
+	desc, provider, err := pack(contents)
+	if err != nil {
+		return err
+	}
+
+	return remotes.PushContent(ctx, pusher, desc, provider, nil)
+}
+
+func pack(contents map[string][]byte) (ocispec.Descriptor, content.Provider, error) {
 	store := NewMemoryStore()
 
 	// Config
@@ -60,7 +71,7 @@ func Push(ctx context.Context, resolver remotes.Resolver, ref string, contents m
 	}
 	manifestBytes, err := json.Marshal(manifest)
 	if err != nil {
-		return err
+		return ocispec.Descriptor{}, nil, err
 	}
 	manifestDescriptor := ocispec.Descriptor{
 		MediaType: ocispec.MediaTypeImageManifest,
@@ -69,5 +80,5 @@ func Push(ctx context.Context, resolver remotes.Resolver, ref string, contents m
 	}
 	store.Set(manifestDescriptor, manifestBytes)
 
-	return remotes.PushContent(ctx, pusher, manifestDescriptor, store, nil)
+	return manifestDescriptor, store, nil
 }
