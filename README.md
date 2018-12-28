@@ -1,5 +1,6 @@
 # OCI Registry As Storage
 
+[![Codefresh build status](https://g.codefresh.io/api/badges/pipeline/shizh/shizhMSFT%2Foras%2Fmaster?type=cf-1)](https://g.codefresh.io/public/accounts/shizh/pipelines/shizhMSFT/oras/master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/shizhMSFT/oras)](https://goreportcard.com/report/github.com/shizhMSFT/oras)
 [![GoDoc](https://godoc.org/github.com/shizhMSFT/oras?status.svg)](https://godoc.org/github.com/shizhMSFT/oras)
 
