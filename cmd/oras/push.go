@@ -2,11 +2,12 @@ package main
 
 import (
 	"context"
-	"io/ioutil"
 	"strings"
 
+	"github.com/shizhMSFT/oras/pkg/content"
 	"github.com/shizhMSFT/oras/pkg/oras"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -46,7 +47,10 @@ func runPush(opts pushOptions) error {
 
 	resolver := newResolver(opts.username, opts.password)
 
-	blobs := make(map[string]oras.Blob)
+	var (
+		files []ocispec.Descriptor
+		store = content.NewFileStore("")
+	)
 	for _, fileRef := range opts.fileRefs {
 		ref := strings.SplitN(fileRef, ":", 2)
 		filename := ref[0]
@@ -54,15 +58,12 @@ func runPush(opts pushOptions) error {
 		if len(ref) == 2 {
 			mediaType = ref[1]
 		}
-		content, err := ioutil.ReadFile(filename)
+		file, err := store.Add(filename, mediaType, "")
 		if err != nil {
 			return err
 		}
-		blobs[filename] = oras.Blob{
-			MediaType: mediaType,
-			Content:   content,
-		}
+		files = append(files, file)
 	}
 
-	return oras.Push(context.Background(), resolver, opts.targetRef, blobs)
+	return oras.Push(context.Background(), resolver, opts.targetRef, store, files)
 }
