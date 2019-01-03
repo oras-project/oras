@@ -15,20 +15,20 @@ import (
 
 // ensure interface
 var (
-	_ content.Provider = &Memorytore{}
-	_ content.Ingester = &Memorytore{}
+	_ content.Provider = &Memorystore{}
+	_ content.Ingester = &Memorystore{}
 )
 
-// Memorytore provides content from the memory
-type Memorytore struct {
+// Memorystore provides content from the memory
+type Memorystore struct {
 	descriptor map[digest.Digest]ocispec.Descriptor
 	content    map[digest.Digest][]byte
 	lock       *sync.Mutex
 }
 
 // NewMemoryStore creats a new memory store
-func NewMemoryStore() *Memorytore {
-	return &Memorytore{
+func NewMemoryStore() *Memorystore {
+	return &Memorystore{
 		descriptor: make(map[digest.Digest]ocispec.Descriptor),
 		content:    make(map[digest.Digest][]byte),
 		lock:       &sync.Mutex{},
@@ -36,7 +36,7 @@ func NewMemoryStore() *Memorytore {
 }
 
 // Add adds content
-func (s *Memorytore) Add(name, mediaType string, content []byte) {
+func (s *Memorystore) Add(name, mediaType string, content []byte) ocispec.Descriptor {
 	var annotations map[string]string
 	if name != "" {
 		annotations = map[string]string{
@@ -52,10 +52,11 @@ func (s *Memorytore) Add(name, mediaType string, content []byte) {
 	}
 
 	s.set(desc, content)
+	return desc
 }
 
 // ReaderAt provides contents
-func (s *Memorytore) ReaderAt(ctx context.Context, desc ocispec.Descriptor) (content.ReaderAt, error) {
+func (s *Memorystore) ReaderAt(ctx context.Context, desc ocispec.Descriptor) (content.ReaderAt, error) {
 	desc, content, ok := s.get(desc)
 	if !ok {
 		return nil, ErrNotFound
@@ -70,7 +71,7 @@ func (s *Memorytore) ReaderAt(ctx context.Context, desc ocispec.Descriptor) (con
 }
 
 // Writer begins or resumes the active writer identified by desc
-func (s *Memorytore) Writer(ctx context.Context, opts ...content.WriterOpt) (content.Writer, error) {
+func (s *Memorystore) Writer(ctx context.Context, opts ...content.WriterOpt) (content.Writer, error) {
 	var wOpts content.WriterOpts
 	for _, opt := range opts {
 		if err := opt(&wOpts); err != nil {
@@ -94,7 +95,7 @@ func (s *Memorytore) Writer(ctx context.Context, opts ...content.WriterOpt) (con
 		},
 	}, nil
 }
-func (s *Memorytore) set(desc ocispec.Descriptor, content []byte) {
+func (s *Memorystore) set(desc ocispec.Descriptor, content []byte) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -102,7 +103,7 @@ func (s *Memorytore) set(desc ocispec.Descriptor, content []byte) {
 	s.content[desc.Digest] = content
 }
 
-func (s *Memorytore) get(desc ocispec.Descriptor) (ocispec.Descriptor, []byte, bool) {
+func (s *Memorystore) get(desc ocispec.Descriptor) (ocispec.Descriptor, []byte, bool) {
 	desc, ok := s.descriptor[desc.Digest]
 	if !ok {
 		return ocispec.Descriptor{}, nil, false
@@ -112,7 +113,7 @@ func (s *Memorytore) get(desc ocispec.Descriptor) (ocispec.Descriptor, []byte, b
 }
 
 type memoryWriter struct {
-	store    *Memorytore
+	store    *Memorystore
 	buffer   *bytes.Buffer
 	desc     ocispec.Descriptor
 	digester digest.Digester
