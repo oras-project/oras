@@ -44,6 +44,10 @@ func (s *Memorystore) Add(name, mediaType string, content []byte) ocispec.Descri
 		}
 	}
 
+	if mediaType == "" {
+		mediaType = DefaultBlobMediaType
+	}
+
 	desc := ocispec.Descriptor{
 		MediaType:   mediaType,
 		Digest:      digest.FromBytes(content),

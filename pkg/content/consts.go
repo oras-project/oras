@@ -1,4 +1,4 @@
-package oras
+package content
 
 import ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 

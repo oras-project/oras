@@ -25,6 +25,7 @@ var (
 type FileStore struct {
 	root       string
 	descriptor *sync.Map // map[digest.Digest]ocispec.Descriptor
+	pathMap    *sync.Map
 }
 
 // NewFileStore creats a new file store
@@ -32,12 +33,21 @@ func NewFileStore(rootPath string) *FileStore {
 	return &FileStore{
 		root:       rootPath,
 		descriptor: &sync.Map{},
+		pathMap:    &sync.Map{},
 	}
 }
 
 // Add adds a file reference
-func (s *FileStore) Add(name, mediaType string) (ocispec.Descriptor, error) {
-	path := s.resolvePath(name)
+func (s *FileStore) Add(name, mediaType, path string) (ocispec.Descriptor, error) {
+	if mediaType == "" {
+		mediaType = DefaultBlobMediaType
+	}
+
+	if path == "" {
+		path = name
+	}
+	path = s.MapPath(name, path)
+
 	fileInfo, err := os.Stat(path)
 	if err != nil {
 		return ocispec.Descriptor{}, err
@@ -75,7 +85,7 @@ func (s *FileStore) ReaderAt(ctx context.Context, desc ocispec.Descriptor) (cont
 	if !ok {
 		return nil, ErrNoName
 	}
-	path := s.resolvePath(name)
+	path := s.ResolvePath(name)
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -101,7 +111,7 @@ func (s *FileStore) Writer(ctx context.Context, opts ...content.WriterOpt) (cont
 	if !ok {
 		return nil, ErrNoName
 	}
-	path := s.resolvePath(name)
+	path := s.ResolvePath(name)
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return nil, err
 	}
@@ -124,6 +134,25 @@ func (s *FileStore) Writer(ctx context.Context, opts ...content.WriterOpt) (cont
 			UpdatedAt: now,
 		},
 	}, nil
+}
+
+// MapPath maps name to path
+func (s *FileStore) MapPath(name, path string) string {
+	path = s.resolvePath(path)
+	s.pathMap.Store(name, path)
+	return path
+}
+
+// ResolvePath returns the path by name
+func (s *FileStore) ResolvePath(name string) string {
+	if value, ok := s.pathMap.Load(name); ok {
+		if path, ok := value.(string); ok {
+			return path
+		}
+	}
+
+	// using the name as a fallback solution
+	return s.resolvePath(name)
 }
 
 func (s *FileStore) resolvePath(path string) string {
