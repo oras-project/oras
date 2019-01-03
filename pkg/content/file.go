@@ -36,20 +36,20 @@ func NewFileStore(rootPath string) *FileStore {
 }
 
 // Add adds a file reference
-func (s *FileStore) Add(name, mediaType string) error {
+func (s *FileStore) Add(name, mediaType string) (ocispec.Descriptor, error) {
 	path := s.resolvePath(name)
 	fileInfo, err := os.Stat(path)
 	if err != nil {
-		return err
+		return ocispec.Descriptor{}, err
 	}
 	file, err := os.Open(path)
 	if err != nil {
-		return err
+		return ocispec.Descriptor{}, err
 	}
 	defer file.Close()
 	digest, err := digest.FromReader(file)
 	if err != nil {
-		return err
+		return ocispec.Descriptor{}, err
 	}
 
 	desc := ocispec.Descriptor{
@@ -62,7 +62,7 @@ func (s *FileStore) Add(name, mediaType string) error {
 	}
 
 	s.set(desc)
-	return nil
+	return desc, nil
 }
 
 // ReaderAt provides contents
