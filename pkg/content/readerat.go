@@ -24,3 +24,11 @@ type sizeReaderAt struct {
 func (ra sizeReaderAt) Size() int64 {
 	return ra.size
 }
+
+type nopCloser struct {
+	io.ReaderAt
+}
+
+func (nopCloser) Close() error {
+	return nil
+}

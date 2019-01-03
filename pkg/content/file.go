@@ -24,7 +24,7 @@ var (
 // FileStore provides content from the file system
 type FileStore struct {
 	root       string
-	descriptor *sync.Map // map[string]ocispec.Descriptor
+	descriptor *sync.Map // map[digest.Digest]ocispec.Descriptor
 }
 
 // NewFileStore creats a new file store
@@ -71,7 +71,7 @@ func (s *FileStore) ReaderAt(ctx context.Context, desc ocispec.Descriptor) (cont
 	if !ok {
 		return nil, ErrNotFound
 	}
-	name, ok := s.resolveName(desc)
+	name, ok := resolveName(desc)
 	if !ok {
 		return nil, ErrNoName
 	}
@@ -97,7 +97,7 @@ func (s *FileStore) Writer(ctx context.Context, opts ...content.WriterOpt) (cont
 	}
 	desc := wOpts.Desc
 
-	name, ok := s.resolveName(desc)
+	name, ok := resolveName(desc)
 	if !ok {
 		return nil, ErrNoName
 	}
@@ -124,11 +124,6 @@ func (s *FileStore) Writer(ctx context.Context, opts ...content.WriterOpt) (cont
 			UpdatedAt: now,
 		},
 	}, nil
-}
-
-func (s *FileStore) resolveName(desc ocispec.Descriptor) (string, bool) {
-	name, ok := desc.Annotations[ocispec.AnnotationTitle]
-	return name, ok
 }
 
 func (s *FileStore) resolvePath(path string) string {
@@ -190,12 +185,20 @@ func (w *fileWriter) Commit(ctx context.Context, size int64, expected digest.Dig
 	if w.file == nil {
 		return errors.Wrap(errdefs.ErrFailedPrecondition, "cannot commit on closed writer")
 	}
-	fileInfo, err := w.file.Stat()
+	file := w.file
+	w.file = nil
+
+	if err := file.Sync(); err != nil {
+		file.Close()
+		return errors.Wrap(err, "sync failed")
+	}
+
+	fileInfo, err := file.Stat()
 	if err != nil {
-		w.Close()
+		file.Close()
 		return errors.Wrap(err, "stat failed")
 	}
-	if err := w.Close(); err != nil {
+	if err := file.Close(); err != nil {
 		return errors.Wrap(err, "failed to close file")
 	}
 
@@ -217,13 +220,10 @@ func (w *fileWriter) Close() error {
 		return nil
 	}
 
-	file := w.file
+	w.file.Sync()
+	err := w.file.Close()
 	w.file = nil
-	if err := file.Sync(); err != nil {
-		file.Close()
-		return errors.Wrap(err, "sync failed")
-	}
-	return file.Close()
+	return err
 }
 
 func (w *fileWriter) Truncate(size int64) error {
