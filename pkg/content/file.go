@@ -206,6 +206,7 @@ func (w *fileWriter) Commit(ctx context.Context, size int64, expected digest.Dig
 		return errors.Wrapf(errdefs.ErrFailedPrecondition, "unexpected commit digest %s, expected %s", dgst, expected)
 	}
 
+	w.store.set(w.desc)
 	return nil
 }
 
