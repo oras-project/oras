@@ -61,7 +61,7 @@ func (p *FileProvider) ReaderAt(ctx context.Context, desc ocispec.Descriptor) (c
 		return nil, ErrNotFound
 	}
 	desc = value.(ocispec.Descriptor)
-	filename, ok := desc.Annotations[ocispec.AnnotationTitle]
+	filename := desc.Annotations[ocispec.AnnotationTitle]
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
