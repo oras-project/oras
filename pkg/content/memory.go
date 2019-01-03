@@ -51,13 +51,13 @@ func (s *Memorystore) Add(name, mediaType string, content []byte) ocispec.Descri
 		Annotations: annotations,
 	}
 
-	s.set(desc, content)
+	s.Set(desc, content)
 	return desc
 }
 
 // ReaderAt provides contents
 func (s *Memorystore) ReaderAt(ctx context.Context, desc ocispec.Descriptor) (content.ReaderAt, error) {
-	desc, content, ok := s.get(desc)
+	desc, content, ok := s.Get(desc)
 	if !ok {
 		return nil, ErrNotFound
 	}
@@ -95,7 +95,9 @@ func (s *Memorystore) Writer(ctx context.Context, opts ...content.WriterOpt) (co
 		},
 	}, nil
 }
-func (s *Memorystore) set(desc ocispec.Descriptor, content []byte) {
+
+// Set adds the content to the store
+func (s *Memorystore) Set(desc ocispec.Descriptor, content []byte) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -103,7 +105,11 @@ func (s *Memorystore) set(desc ocispec.Descriptor, content []byte) {
 	s.content[desc.Digest] = content
 }
 
-func (s *Memorystore) get(desc ocispec.Descriptor) (ocispec.Descriptor, []byte, bool) {
+// Get finds the content from the store
+func (s *Memorystore) Get(desc ocispec.Descriptor) (ocispec.Descriptor, []byte, bool) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	desc, ok := s.descriptor[desc.Digest]
 	if !ok {
 		return ocispec.Descriptor{}, nil, false
@@ -161,7 +167,7 @@ func (w *memoryWriter) Commit(ctx context.Context, size int64, expected digest.D
 		return errors.Wrapf(errdefs.ErrFailedPrecondition, "unexpected commit digest %s, expected %s", dgst, expected)
 	}
 
-	w.store.set(w.desc, content)
+	w.store.Set(w.desc, content)
 	return nil
 }
 
