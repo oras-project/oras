@@ -71,7 +71,7 @@ func (s *FileStore) ReaderAt(ctx context.Context, desc ocispec.Descriptor) (cont
 	if !ok {
 		return nil, ErrNotFound
 	}
-	name, ok := resolveName(desc)
+	name, ok := ResolveName(desc)
 	if !ok {
 		return nil, ErrNoName
 	}
@@ -97,7 +97,7 @@ func (s *FileStore) Writer(ctx context.Context, opts ...content.WriterOpt) (cont
 	}
 	desc := wOpts.Desc
 
-	name, ok := resolveName(desc)
+	name, ok := ResolveName(desc)
 	if !ok {
 		return nil, ErrNoName
 	}

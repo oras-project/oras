@@ -80,7 +80,7 @@ func (s *Memorystore) Writer(ctx context.Context, opts ...content.WriterOpt) (co
 	}
 	desc := wOpts.Desc
 
-	name, _ := resolveName(desc)
+	name, _ := ResolveName(desc)
 	now := time.Now()
 	return &memoryWriter{
 		store:    s,

@@ -4,7 +4,6 @@ import "errors"
 
 // Common errors
 var (
-	ErrNotFound          = errors.New("not_found")
 	ErrResolverUndefined = errors.New("resolver_undefined")
-	ErrEmptyBlobs        = errors.New("empty_blobs")
+	ErrEmptyDescriptors  = errors.New("empty_descriptors")
 )

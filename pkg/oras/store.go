@@ -1,104 +1,66 @@
 package oras
 
 import (
-	"bytes"
 	"context"
-	"io"
-	"io/ioutil"
-	"sync"
 
 	"github.com/containerd/containerd/content"
-	"github.com/containerd/containerd/images"
-	"github.com/containerd/containerd/log"
-	"github.com/containerd/containerd/remotes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/sirupsen/logrus"
+	orascontent "github.com/shizhMSFT/oras/pkg/content"
 )
 
 // ensure interface
 var (
-	_ content.Provider = &MemoryStore{}
+	_ content.Provider = &hybridStore{}
+	_ content.Ingester = &hybridStore{}
 )
 
-// MemoryStore stores contents in the memory
-type MemoryStore struct {
-	content *sync.Map
+type hybridStore struct {
+	cache    *orascontent.Memorystore
+	provider content.Provider
+	ingester content.Ingester
 }
 
-// NewMemoryStore creates a new memory store
-func NewMemoryStore() *MemoryStore {
-	return &MemoryStore{
-		content: &sync.Map{},
+func newHybridStoreFromProvider(provider content.Provider) *hybridStore {
+	return &hybridStore{
+		cache:    orascontent.NewMemoryStore(),
+		provider: provider,
 	}
 }
 
-// FetchHandler returnes a handler that will fetch all content into the memory store
-// discovered in a call to Dispath.
-// Use with ChildrenHandler to do a full recurisive fetch.
-func (s *MemoryStore) FetchHandler(fetcher remotes.Fetcher) images.HandlerFunc {
-	return func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		ctx = log.WithLogger(ctx, log.G(ctx).WithFields(logrus.Fields{
-			"digest":    desc.Digest,
-			"mediatype": desc.MediaType,
-			"size":      desc.Size,
-		}))
-
-		log.G(ctx).Debug("fetch")
-		rc, err := fetcher.Fetch(ctx, desc)
-		if err != nil {
-			return nil, err
-		}
-		defer rc.Close()
-
-		content, err := ioutil.ReadAll(rc)
-		if err != nil {
-			return nil, err
-		}
-		s.Set(desc, content)
-		return nil, nil
+func newHybridStoreFromIngester(ingester content.Ingester) *hybridStore {
+	return &hybridStore{
+		cache:    orascontent.NewMemoryStore(),
+		ingester: ingester,
 	}
 }
 
-// Set adds the content to the store
-func (s *MemoryStore) Set(desc ocispec.Descriptor, content []byte) {
-	s.content.Store(desc.Digest, content)
-}
-
-// Get finds the content from the store
-func (s *MemoryStore) Get(desc ocispec.Descriptor) ([]byte, bool) {
-	value, ok := s.content.Load(desc.Digest)
-	if !ok {
-		return nil, false
-	}
-	content, ok := value.([]byte)
-	return content, ok
+func (s *hybridStore) Set(desc ocispec.Descriptor, content []byte) {
+	s.cache.Set(desc, content)
 }
 
 // ReaderAt provides contents
-func (s *MemoryStore) ReaderAt(ctx context.Context, desc ocispec.Descriptor) (content.ReaderAt, error) {
-	if content, ok := s.Get(desc); ok {
-		return newReaderAt(content), nil
-
+func (s *hybridStore) ReaderAt(ctx context.Context, desc ocispec.Descriptor) (content.ReaderAt, error) {
+	readerAt, err := s.cache.ReaderAt(ctx, desc)
+	if err == nil {
+		return readerAt, nil
 	}
-	return nil, ErrNotFound
-}
-
-type readerAt struct {
-	io.ReaderAt
-	size int64
-}
-
-func newReaderAt(content []byte) *readerAt {
-	return &readerAt{
-		ReaderAt: bytes.NewReader(content),
-		size:     int64(len(content)),
+	if s.provider != nil {
+		return s.provider.ReaderAt(ctx, desc)
 	}
+	return nil, err
 }
 
-func (r *readerAt) Close() error {
-	return nil
-}
+// Writer begins or resumes the active writer identified by desc
+func (s *hybridStore) Writer(ctx context.Context, opts ...content.WriterOpt) (content.Writer, error) {
+	var wOpts content.WriterOpts
+	for _, opt := range opts {
+		if err := opt(&wOpts); err != nil {
+			return nil, err
+		}
+	}
 
-func (r *readerAt) Size() int64 {
-	return r.size
+	if isAllowedMediaType(wOpts.Desc.MediaType, ocispec.MediaTypeImageManifest, ocispec.MediaTypeImageIndex) || s.ingester == nil {
+		return s.cache.Writer(ctx, opts...)
+	}
+	return s.ingester.Writer(ctx, opts...)
 }
