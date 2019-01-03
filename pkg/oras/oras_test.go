@@ -96,7 +96,9 @@ func (suite *ORASTestSuite) Test_0_Push() {
 	suite.Nil(err, "no error pushing test chart tgz (as single layer)")
 
 	// Load descriptors with test chart dir (each file as layer)
-	store = orascontent.NewFileStore(testDir)
+	testDirAbs, err := filepath.Abs(testDir)
+	suite.Nil(err, "no error parsing test directory")
+	store = orascontent.NewFileStore(testDirAbs)
 	descriptors = []ocispec.Descriptor{}
 	var ff = func(pathX string, infoX os.FileInfo, errX error) error {
 		if !infoX.IsDir() {
