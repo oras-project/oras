@@ -11,7 +11,7 @@ Registries with known support:
 - [Distribution](https://github.com/docker/distribution) (open source, version 2.7+)
 - [Azure Container Registry](https://azure.microsoft.com/en-us/services/container-registry/)
 
-For more backgound on this topic, please see
+For more background on this topic, please see
 [this post](https://www.opencontainers.org/blog/2018/10/11/oci-image-support-comes-to-open-source-docker-registry).
 
 ## CLI
