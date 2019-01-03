@@ -27,8 +27,8 @@ type FileStore struct {
 	descriptor *sync.Map // map[string]ocispec.Descriptor
 }
 
-// NewFileProvider creats a new file provider
-func NewFileProvider(rootPath string) *FileStore {
+// NewFileStore creats a new file store
+func NewFileStore(rootPath string) *FileStore {
 	return &FileStore{
 		root:       rootPath,
 		descriptor: &sync.Map{},
