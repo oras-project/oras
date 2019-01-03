@@ -17,7 +17,7 @@ func Push(ctx context.Context, resolver remotes.Resolver, ref string, provider c
 		return ErrResolverUndefined
 	}
 
-	if descriptors == nil {
+	if len(descriptors) == 0 {
 		return ErrEmptyDescriptors
 	}
 
