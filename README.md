@@ -128,10 +128,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/shizhMSFT/oras/pkg/content"
-
 	"github.com/containerd/containerd/remotes/docker"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/shizhMSFT/oras/pkg/content"
 	"github.com/shizhMSFT/oras/pkg/oras"
 )
 
