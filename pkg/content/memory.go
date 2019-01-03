@@ -23,6 +23,7 @@ var (
 type Memorystore struct {
 	descriptor map[digest.Digest]ocispec.Descriptor
 	content    map[digest.Digest][]byte
+	nameMap    map[string]ocispec.Descriptor
 	lock       *sync.Mutex
 }
 
@@ -31,6 +32,7 @@ func NewMemoryStore() *Memorystore {
 	return &Memorystore{
 		descriptor: make(map[digest.Digest]ocispec.Descriptor),
 		content:    make(map[digest.Digest][]byte),
+		nameMap:    make(map[string]ocispec.Descriptor),
 		lock:       &sync.Mutex{},
 	}
 }
@@ -107,6 +109,10 @@ func (s *Memorystore) Set(desc ocispec.Descriptor, content []byte) {
 
 	s.descriptor[desc.Digest] = desc
 	s.content[desc.Digest] = content
+
+	if name, ok := ResolveName(desc); ok && name != "" {
+		s.nameMap[name] = desc
+	}
 }
 
 // Get finds the content from the store
@@ -115,6 +121,19 @@ func (s *Memorystore) Get(desc ocispec.Descriptor) (ocispec.Descriptor, []byte, 
 	defer s.lock.Unlock()
 
 	desc, ok := s.descriptor[desc.Digest]
+	if !ok {
+		return ocispec.Descriptor{}, nil, false
+	}
+	content, ok := s.content[desc.Digest]
+	return desc, content, ok
+}
+
+// GetByName finds the content from the store by name (i.e. AnnotationTitle)
+func (s *Memorystore) GetByName(name string) (ocispec.Descriptor, []byte, bool) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	desc, ok := s.nameMap[name]
 	if !ok {
 		return ocispec.Descriptor{}, nil, false
 	}
