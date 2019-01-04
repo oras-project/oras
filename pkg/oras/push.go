@@ -12,13 +12,13 @@ import (
 )
 
 // Push pushes files to the remote
-func Push(ctx context.Context, resolver remotes.Resolver, ref string, blobs map[string]Blob) error {
+func Push(ctx context.Context, resolver remotes.Resolver, ref string, provider content.Provider, descriptors []ocispec.Descriptor) error {
 	if resolver == nil {
 		return ErrResolverUndefined
 	}
 
-	if blobs == nil {
-		return ErrEmptyBlobs
+	if len(descriptors) == 0 {
+		return ErrEmptyDescriptors
 	}
 
 	pusher, err := resolver.Pusher(ctx, ref)
@@ -26,7 +26,7 @@ func Push(ctx context.Context, resolver remotes.Resolver, ref string, blobs map[
 		return err
 	}
 
-	desc, provider, err := pack(blobs)
+	desc, provider, err := pack(provider, descriptors)
 	if err != nil {
 		return err
 	}
@@ -34,8 +34,8 @@ func Push(ctx context.Context, resolver remotes.Resolver, ref string, blobs map[
 	return remotes.PushContent(ctx, pusher, desc, provider, nil)
 }
 
-func pack(blobs map[string]Blob) (ocispec.Descriptor, content.Provider, error) {
-	store := NewMemoryStore()
+func pack(provider content.Provider, descriptors []ocispec.Descriptor) (ocispec.Descriptor, content.Provider, error) {
+	store := newHybridStoreFromProvider(provider)
 
 	// Config
 	configBytes := []byte("{}")
@@ -46,32 +46,13 @@ func pack(blobs map[string]Blob) (ocispec.Descriptor, content.Provider, error) {
 	}
 	store.Set(config, configBytes)
 
-	// Layer
-	var layers []ocispec.Descriptor
-	for name, blob := range blobs {
-		mediaType := blob.MediaType
-		if mediaType == "" {
-			mediaType = DefaultBlobMediaType
-		}
-		layer := ocispec.Descriptor{
-			MediaType: mediaType,
-			Digest:    digest.FromBytes(blob.Content),
-			Size:      int64(len(blob.Content)),
-			Annotations: map[string]string{
-				ocispec.AnnotationTitle: name,
-			},
-		}
-		store.Set(layer, blob.Content)
-		layers = append(layers, layer)
-	}
-
 	// Manifest
 	manifest := ocispec.Manifest{
 		Versioned: specs.Versioned{
 			SchemaVersion: 2, // historical value. does not pertain to OCI or docker version
 		},
 		Config: config,
-		Layers: layers,
+		Layers: descriptors,
 	}
 	manifestBytes, err := json.Marshal(manifest)
 	if err != nil {

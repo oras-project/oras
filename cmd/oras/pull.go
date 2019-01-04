@@ -3,9 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
-	"path"
 
+	"github.com/shizhMSFT/oras/pkg/content"
 	"github.com/shizhMSFT/oras/pkg/oras"
 
 	"github.com/sirupsen/logrus"
@@ -54,24 +53,21 @@ func runPull(opts pullOptions) error {
 	if opts.allowAllMediaTypes {
 		opts.allowedMediaTypes = nil
 	} else if len(opts.allowedMediaTypes) == 0 {
-		opts.allowedMediaTypes = []string{oras.DefaultBlobMediaType}
+		opts.allowedMediaTypes = []string{content.DefaultBlobMediaType}
 	}
 
 	resolver := newResolver(opts.username, opts.password)
-	blobs, err := oras.Pull(context.Background(), resolver, opts.targetRef, opts.allowedMediaTypes...)
+	store := content.NewFileStore(opts.output)
+	files, err := oras.Pull(context.Background(), resolver, opts.targetRef, store, opts.allowedMediaTypes...)
 	if err != nil {
 		return err
 	}
 
-	for name, blob := range blobs {
-		if opts.output != "" {
-			name = path.Join(opts.output, name)
-		}
-		if err := ioutil.WriteFile(name, blob.Content, 0644); err != nil {
-			return err
-		}
-		if opts.verbose {
-			fmt.Println(name)
+	if opts.verbose {
+		for _, file := range files {
+			if name, ok := content.ResolveName(file); ok {
+				fmt.Println(name)
+			}
 		}
 	}
 

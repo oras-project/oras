@@ -2,15 +2,18 @@ package oras
 
 import (
 	"context"
+	"sync"
 
+	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/remotes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	orascontent "github.com/shizhMSFT/oras/pkg/content"
 )
 
 // Pull pull files from the remote
-func Pull(ctx context.Context, resolver remotes.Resolver, ref string, allowedMediaTypes ...string) (map[string]Blob, error) {
+func Pull(ctx context.Context, resolver remotes.Resolver, ref string, ingester content.Ingester, allowedMediaTypes ...string) ([]ocispec.Descriptor, error) {
 	if resolver == nil {
 		return nil, ErrResolverUndefined
 	}
@@ -19,23 +22,33 @@ func Pull(ctx context.Context, resolver remotes.Resolver, ref string, allowedMed
 	if err != nil {
 		return nil, err
 	}
+
 	fetcher, err := resolver.Fetcher(ctx, ref)
 	if err != nil {
 		return nil, err
 	}
 
-	var blobs []ocispec.Descriptor
+	return fetchContent(ctx, fetcher, desc, ingester, allowedMediaTypes...)
+}
+
+func fetchContent(ctx context.Context, fetcher remotes.Fetcher, desc ocispec.Descriptor, ingester content.Ingester, allowedMediaTypes ...string) ([]ocispec.Descriptor, error) {
+	var descriptors []ocispec.Descriptor
+	lock := &sync.Mutex{}
 	picker := images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		if isAllowedMediaType(desc.MediaType, allowedMediaTypes...) {
-			blobs = append(blobs, desc)
+			if name, ok := orascontent.ResolveName(desc); ok && len(name) > 0 {
+				lock.Lock()
+				defer lock.Unlock()
+				descriptors = append(descriptors, desc)
+			}
 			return nil, nil
 		}
 		return nil, nil
 	})
-	store := NewMemoryStore()
+	store := newHybridStoreFromIngester(ingester)
 	handlers := images.Handlers(
 		filterHandler(allowedMediaTypes...),
-		store.FetchHandler(fetcher),
+		remotes.FetchHandler(store, fetcher),
 		picker,
 		images.ChildrenHandler(store),
 	)
@@ -43,19 +56,7 @@ func Pull(ctx context.Context, resolver remotes.Resolver, ref string, allowedMed
 		return nil, err
 	}
 
-	res := make(map[string]Blob)
-	for _, blob := range blobs {
-		if content, ok := store.Get(blob); ok {
-			if name, ok := blob.Annotations[ocispec.AnnotationTitle]; ok && len(name) > 0 {
-				res[name] = Blob{
-					MediaType: blob.MediaType,
-					Content:   content,
-				}
-			}
-		}
-	}
-
-	return res, nil
+	return descriptors, nil
 }
 
 func filterHandler(allowedMediaTypes ...string) images.HandlerFunc {
@@ -64,7 +65,7 @@ func filterHandler(allowedMediaTypes ...string) images.HandlerFunc {
 		case isAllowedMediaType(desc.MediaType, ocispec.MediaTypeImageManifest, ocispec.MediaTypeImageIndex):
 			return nil, nil
 		case isAllowedMediaType(desc.MediaType, allowedMediaTypes...):
-			if name, ok := desc.Annotations[ocispec.AnnotationTitle]; ok && len(name) > 0 {
+			if name, ok := orascontent.ResolveName(desc); ok && len(name) > 0 {
 				return nil, nil
 			}
 			log.G(ctx).Warnf("blob_no_name: %v", desc.Digest)
