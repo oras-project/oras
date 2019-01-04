@@ -2,6 +2,9 @@ package content
 
 import (
 	"context"
+	"fmt"
+	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -13,58 +16,139 @@ import (
 
 type ContentTestSuite struct {
 	suite.Suite
+	TestMemoryStore *Memorystore
+	TestFileStore   *FileStore
 }
 
 var (
 	testDirRoot, _ = filepath.Abs("../../.test")
+	testFileName   = filepath.Join(testDirRoot, "testfile")
+	testRef        = "abc123"
+	testContent    = []byte("Hello World!")
+	testDescriptor = ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageConfig,
+		Digest:    digest.FromBytes(testContent),
+		Size:      int64(len(testContent)),
+		Annotations: map[string]string{
+			ocispec.AnnotationTitle: testRef,
+		},
+	}
+	testBadContent = []byte("doesnotexist")
+	testBadDescriptor = ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageConfig,
+		Digest:    digest.FromBytes(testBadContent),
+		Size:      int64(len(testBadContent)),
+	}
 )
 
-func (suite *ContentTestSuite) TestStores() {
-	memoryStore := NewMemoryStore()
-	fileStore := NewFileStore(testDirRoot)
+func (suite *ContentTestSuite) SetupSuite() {
+	testMemoryStore := NewMemoryStore()
+	testMemoryStore.Add(testRef, "", testContent)
+	suite.TestMemoryStore = testMemoryStore
 
+	os.Remove(testFileName)
+	err := ioutil.WriteFile(testFileName, testContent, 0644)
+	suite.Nil(err, "no error creating test file on disk")
+	testFileStore := NewFileStore(testDirRoot)
+	_, err = testFileStore.Add(testRef, "", testFileName)
+	suite.Nil(err, "no error adding item to file store")
+	suite.TestFileStore = testFileStore
+}
+
+// Tests all Writers (Ingesters)
+func (suite *ContentTestSuite) Test_0_Ingesters() {
 	ingesters := map[string]content.Ingester{
-		"memory": memoryStore,
-		"file":   fileStore,
+		"memory": suite.TestMemoryStore,
+		"file":   suite.TestFileStore,
 	}
 
-	providers := map[string]content.Provider{
-		"memory": memoryStore,
-		"file":   fileStore,
-	}
+	for key, ingester := range ingesters {
 
-	// Writers (Ingesters)
-	for _, ingester := range ingesters {
+		// Bad ref
 		ctx := context.Background()
-		refOpt := content.WithRef("localhost:5000/test1:latest")
-		ingester.Writer(ctx, refOpt)
+		refOpt := content.WithDescriptor(testBadDescriptor)
+		writer, err := ingester.Writer(ctx, refOpt)
+		if key == "file" {
+			suite.NotNil(err, fmt.Sprintf("no error getting writer w bad ref for %s store", key))
+		}
 
-		// TODO: test writer.Write()
-		/*
-			writer, err := ingester.Writer(ctx, refOpt)
-			suite.Nil(err, fmt.Sprintf("no error creating %s writer", key))
-			suite.NotNil(writer)
-		*/
+		// Good ref
+		ctx = context.Background()
+		refOpt = content.WithDescriptor(testDescriptor)
+		writer, err = ingester.Writer(ctx, refOpt)
+		suite.Nil(err, fmt.Sprintf("no error getting writer w good ref for %s store", key))
+		_, err = writer.Write(testContent)
+		suite.Nil(err, fmt.Sprintf("no error using writer.Write w good ref for %s store", key))
+		err = writer.Commit(ctx,  testDescriptor.Size, testDescriptor.Digest)
+		suite.Nil(err, fmt.Sprintf("no error using writer.Commit w good ref for %s store", key))
+
+		digest := writer.Digest()
+		suite.Equal(testDescriptor.Digest, digest, fmt.Sprintf("correct digest for %s store", key))
+		status, err := writer.Status()
+		suite.Nil(err, fmt.Sprintf("no error retrieving writer status for %s store", key))
+		suite.Equal(testRef, status.Ref, fmt.Sprintf("correct status for %s store", key))
+
+		err = writer.Close()
+		suite.Nil(err, fmt.Sprintf("no error closing writer w bad ref for %s store", key))
+		err = writer.Commit(ctx, testDescriptor.Size, testDescriptor.Digest)
+		suite.NotNil(err, fmt.Sprintf("error using writer.Commit when closed w good ref for %s store", key))
+
+		// re-init writer after closing
+		writer, _ = ingester.Writer(ctx, refOpt)
+		writer.Write(testContent)
+
+		// invalid truncate size
+		err = writer.Truncate(123456789)
+		suite.NotNil(err, fmt.Sprintf("error using writer.Truncate w invalid size, good ref for %s store", key))
+
+		// valid truncate size
+		err = writer.Truncate(0)
+		suite.Nil(err, fmt.Sprintf("no error using writer.Truncate w valid size, good ref for %s store", key))
+
+		writer.Commit(ctx,  testDescriptor.Size, testDescriptor.Digest)
+
+		// bad size
+		err = writer.Commit(ctx, 1, testDescriptor.Digest)
+		fmt.Println(err)
+		suite.NotNil(err, fmt.Sprintf("error using writer.Commit w bad size, good ref for %s store", key))
+
+		// bad digest
+		writer, _ = ingester.Writer(ctx, refOpt)
+		err = writer.Commit(ctx, testDescriptor.Size, testBadDescriptor.Digest)
+		suite.NotNil(err, fmt.Sprintf("error using writer.Commit w bad digest, good ref for %s store", key))
+	}
+}
+
+// Tests all Readers (Providers)
+func (suite *ContentTestSuite) Test_1_Providers() {
+	providers := map[string]content.Provider{
+		"memory": suite.TestMemoryStore,
+		"file":   suite.TestFileStore,
 	}
 
 	// Readers (Providers)
-	for _, provider := range providers {
-		ctx := context.Background()
-		configBytes := []byte("hello world")
-		descriptor := ocispec.Descriptor{
-			MediaType: ocispec.MediaTypeImageConfig,
-			Digest:    digest.FromBytes(configBytes),
-			Size:      int64(len(configBytes)),
-		}
-		provider.ReaderAt(ctx, descriptor)
+	for key, provider := range providers {
 
-		// TODO: test reader.ReadAt()
-		/*
-			reader, err := provider.ReaderAt(ctx, descriptor)
-			suite.Nil(err, fmt.Sprintf("no error creating %s reader", key))
-			suite.NotNil(reader)
-		*/
+		// Bad ref
+		ctx := context.Background()
+		_, err := provider.ReaderAt(ctx, testBadDescriptor)
+		suite.NotNil(err, fmt.Sprintf("error with bad ref for %s store", key))
+
+		// Good ref
+		ctx = context.Background()
+		_, err = provider.ReaderAt(ctx, testDescriptor)
+		suite.Nil(err, fmt.Sprintf("no error with good ref for %s store", key))
 	}
+}
+
+func (suite *ContentTestSuite) Test_2_GetByName() {
+	// NotFound
+	_, _, ok := suite.TestMemoryStore.GetByName("doesnotexist")
+	suite.False(ok, "unable to find non-existant ref by name for memory store")
+
+	// Found
+	_, _, ok = suite.TestMemoryStore.GetByName(testRef)
+	suite.True(ok, "able to find non-existant ref by name for memory store")
 }
 
 func TestContentTestSuite(t *testing.T) {
