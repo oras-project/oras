@@ -88,6 +88,7 @@ func (suite *ContentTestSuite) Test_0_Ingesters() {
 		suite.Nil(err, fmt.Sprintf("no error retrieving writer status for %s store", key))
 		suite.Equal(testRef, status.Ref, fmt.Sprintf("correct status for %s store", key))
 
+		// close writer
 		err = writer.Close()
 		suite.Nil(err, fmt.Sprintf("no error closing writer w bad ref for %s store", key))
 		err = writer.Commit(ctx, testDescriptor.Size, testDescriptor.Digest)
@@ -114,7 +115,7 @@ func (suite *ContentTestSuite) Test_0_Ingesters() {
 
 		// bad digest
 		writer, _ = ingester.Writer(ctx, refOpt)
-		err = writer.Commit(ctx, testDescriptor.Size, testBadDescriptor.Digest)
+		err = writer.Commit(ctx, 0, testBadDescriptor.Digest)
 		suite.NotNil(err, fmt.Sprintf("error using writer.Commit w bad digest, good ref for %s store", key))
 	}
 }
@@ -136,8 +137,15 @@ func (suite *ContentTestSuite) Test_1_Providers() {
 
 		// Good ref
 		ctx = context.Background()
-		_, err = provider.ReaderAt(ctx, testDescriptor)
+		readerAt, err := provider.ReaderAt(ctx, testDescriptor)
 		suite.Nil(err, fmt.Sprintf("no error with good ref for %s store", key))
+
+		// readerat Size()
+		suite.Equal(testDescriptor.Size, readerAt.Size(), fmt.Sprintf("readerat size matches for %s store", key))
+
+		// readerat Close()
+		err = readerAt.Close()
+		suite.Nil(err, fmt.Sprintf("no error closing readerat for %s store", key))
 	}
 }
 
