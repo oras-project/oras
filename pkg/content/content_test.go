@@ -146,6 +146,14 @@ func (suite *ContentTestSuite) Test_1_Providers() {
 		// readerat Close()
 		err = readerAt.Close()
 		suite.Nil(err, fmt.Sprintf("no error closing readerat for %s store", key))
+
+		// file missing
+		if key == "file" {
+			os.Remove(testFileName)
+			ctx := context.Background()
+			_, err := provider.ReaderAt(ctx, testDescriptor)
+			suite.NotNil(err, fmt.Sprintf("error with good ref for %s store (file missing)", key))
+		}
 	}
 }
 
