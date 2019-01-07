@@ -19,7 +19,8 @@ debug
 .idea
 
 # Custom
-coverage.*
+.cover/
+.test/
 hello.txt
 bin/
 dist/
