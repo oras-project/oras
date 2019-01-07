@@ -67,40 +67,40 @@ Public image is available on [Docker Hub](https://hub.docker.com/r/ocistorage/or
 
 #### Run on Mac/Linux
 ```
-docker run --rm -it -v $(pwd):/workplace ocistorage/oras:v0.2.0 \
+docker run --rm -it -v $(pwd):/workplace ocistorage/oras:v0.3.0 \
   pull myregistry.io/hello:latest
 ```
 
 #### Run on Windows PowerShell
 ```
-docker run --rm -it -v ${pwd}:/workplace ocistorage/oras:v0.2.0 \
+docker run --rm -it -v ${pwd}:/workplace ocistorage/oras:v0.3.0 \
   pull myregistry.io/hello:latest
 ```
 
 #### Run on Windows Commands
 ```
-docker run --rm -it -v %cd%:/workplace ocistorage/oras:v0.2.0 \
+docker run --rm -it -v %cd%:/workplace ocistorage/oras:v0.3.0 \
   pull myregistry.io/hello:latest
 ```
 
 ### Install the binary
 
-Install from latest release (v0.2.0):
+Install from latest release (v0.3.0):
 
 ```
 # on Linux
-curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.2.0/oras_0.2.0_linux_amd64.tar.gz
+curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.3.0/oras_0.3.0_linux_amd64.tar.gz
 
 # on macOS
-curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.2.0/oras_0.2.0_darwin_amd64.tar.gz
+curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.3.0/oras_0.3.0_darwin_amd64.tar.gz
 
 # on Windows
-curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.2.0/oras_0.2.0_windows_amd64.tar.gz
+curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.3.0/oras_0.3.0_windows_amd64.tar.gz
 
 mkdir -p oras/
-tar -zxf oras_0.2.0_*.tar.gz -C oras/
+tar -zxf oras_0.3.0_*.tar.gz -C oras/
 mv oras/bin/oras /usr/local/bin/
-rm -rf oras_0.2.0_*.tar.gz oras/
+rm -rf oras_0.3.0_*.tar.gz oras/
 ```
 
 Then, to run:
@@ -109,7 +109,7 @@ Then, to run:
 oras help
 ```
 
-The checksums for the `.tar.gz` files above can be found [here](https://github.com/shizhMSFT/oras/releases/tag/v0.2.0).
+The checksums for the `.tar.gz` files above can be found [here](https://github.com/shizhMSFT/oras/releases/tag/v0.3.0).
 
 
 ## Go Module
