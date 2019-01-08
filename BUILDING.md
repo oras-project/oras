@@ -42,7 +42,7 @@ To remove all files not manged by git, run `make clean` (be careful!)
 
 Requires [dep](https://golang.github.io/dep/).
 
-Add new dependencies directly to `Gopkg.toml` and run `dep ensure`.'
+Add new dependencies directly to `Gopkg.toml` and run `dep ensure`.
 
 To update all dependencies, run `make update-deps`.
 

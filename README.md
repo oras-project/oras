@@ -19,7 +19,7 @@ For more background on this topic, please see
 First, you must have access to a registry with OCI image support (see list above).
 
 The simplest way to get started is to run the official
-[ Docker registry image](https://hub.docker.com/_/registry) locally:
+[Docker registry image](https://hub.docker.com/_/registry) locally:
 
 ```
 docker run -it --rm -p 5000:5000 registry:2.7.0
