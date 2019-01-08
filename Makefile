@@ -1,3 +1,6 @@
+CLI_EXE=oras
+CLI_PKG=github.com/shizhMSFT/oras/cmd/oras
+
 .PHONY: update-deps
 update-deps:
 	dep ensure --update
@@ -19,3 +22,21 @@ covhtml:
 .PHONY: clean
 clean:
 	git status --ignored --short | grep '^!! ' | sed 's/!! //' | xargs rm -rf
+
+.PHONY: build
+build: build-linux build-mac build-windows
+
+.PHONY: build-linux
+build-linux:
+	GOARCH=amd64 CGO_ENABLED=0 GOOS=linux go build -v --ldflags="-w" \
+		-o bin/linux/amd64/$(CLI_EXE) $(CLI_PKG)
+
+.PHONY: build-mac
+build-mac:
+	GOARCH=amd64 CGO_ENABLED=0 GOOS=darwin go build -v --ldflags="-w" \
+		-o bin/darwin/amd64/$(CLI_EXE) $(CLI_PKG)
+
+.PHONY: build-windows
+build-windows:
+	GOARCH=amd64 CGO_ENABLED=0 GOOS=windows go build -v --ldflags="-w" \
+		-o bin/windows/amd64/$(CLI_EXE) $(CLI_PKG)

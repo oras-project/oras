@@ -7,6 +7,6 @@ FROM alpine
 LABEL maintainer="shizh@microsoft.com"
 RUN apk --update add ca-certificates
 COPY --from=builder /go/bin/oras /bin/oras
-RUN mkdir /workplace
-WORKDIR /workplace 
+RUN mkdir /workspace
+WORKDIR /workspace
 ENTRYPOINT  ["/bin/oras"]

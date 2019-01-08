@@ -24,8 +24,19 @@ type pushOptions struct {
 func pushCmd() *cobra.Command {
 	var opts pushOptions
 	cmd := &cobra.Command{
-		Use:   "push name[:tag|@digest] file [file...]",
+		Use:   "push name[:tag|@digest] file[:type] [file...]",
 		Short: "Push files to remote registry",
+		Long: `Push files to remote registry
+
+Example - Push file "hi.txt" with the "application/vnd.oci.image.layer.v1.tar" media type (default):
+  oras push localhost:5000/hello:latest hi.txt
+
+Example - Pull file "hi.txt" with the custom "application/vnd.me.hi" media type:
+  oras push localhost:5000/hello:latest hi.txt:application/vnd.me.hi
+
+Example - Push multiple files with different media types:
+  oras push localhost:5000/hello:latest hi.txt:application/vnd.me.hi bye.txt:application/vnd.me.bye
+`,
 		Args:  cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]

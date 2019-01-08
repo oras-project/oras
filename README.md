@@ -14,10 +14,72 @@ Registries with known support:
 For more background on this topic, please see
 [this post](https://www.opencontainers.org/blog/2018/10/11/oci-image-support-comes-to-open-source-docker-registry).
 
+## Getting Started
+
+First, you must have access to a registry with OCI image support (see list above).
+
+The simplest way to get started is to run the official
+[ Docker registry image](https://hub.docker.com/_/registry) locally:
+
+```
+docker run -it --rm -p 5000:5000 registry:2.7.0
+```
+
+This will start a Distribution server at `localhost:5000`
+(with wide-open access and no persistence).
+
+Next, install the `oras` CLI (see platform-specific installation instructions below).
+
+Push a sample file to the registry:
+
+```
+cd /tmp && echo "hello world" > hi.txt
+oras push localhost:5000/hello:latest hi.txt
+```
+
+Pull the file from the registry:
+```
+cd /tmp && rm -f hi.txt
+oras pull localhost:5000/hello:latest
+cat hi.txt  # should print "hello world"
+```
+
+Please see the **Go Module** section below for how this can be imported and used
+inside a Go project.
+
 ## CLI
 
 `oras` is a CLI that allows you to push and pull files from
 any registry with OCI image support.
+
+### Install the binary
+
+Install from latest release (v0.3.1):
+
+```
+# on Linux
+curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.3.1/oras_0.3.1_linux_amd64.tar.gz
+
+# on macOS
+curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.3.1/oras_0.3.1_darwin_amd64.tar.gz
+
+# on Windows
+curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.3.1/oras_0.3.1_windows_amd64.tar.gz
+
+mkdir -p oras/
+tar -zxf oras_0.3.1_*.tar.gz -C oras/
+mv oras/bin/oras /usr/local/bin/
+rm -rf oras_0.3.1_*.tar.gz oras/
+```
+
+Then, to run:
+
+```
+oras help
+```
+
+The checksums for the `.tar.gz` files above can be found [here](https://github.com/shizhMSFT/oras/releases/tag/v0.3.1).
+
 
 ### Pushing files to remote registry
 ```
@@ -67,50 +129,18 @@ Public image is available on [Docker Hub](https://hub.docker.com/r/ocistorage/or
 
 #### Run on Mac/Linux
 ```
-docker run --rm -it -v $(pwd):/workplace ocistorage/oras:v0.3.0 \
-  pull myregistry.io/hello:latest
+docker run --rm -it -v $(pwd):/workspace ocistorage/oras:v0.3.1 help
 ```
 
 #### Run on Windows PowerShell
 ```
-docker run --rm -it -v ${pwd}:/workplace ocistorage/oras:v0.3.0 \
-  pull myregistry.io/hello:latest
+docker run --rm -it -v ${pwd}:/workspace ocistorage/oras:v0.3.1 help
 ```
 
 #### Run on Windows Commands
 ```
-docker run --rm -it -v %cd%:/workplace ocistorage/oras:v0.3.0 \
-  pull myregistry.io/hello:latest
+docker run --rm -it -v %cd%:/workspace ocistorage/oras:v0.3.1 help
 ```
-
-### Install the binary
-
-Install from latest release (v0.3.0):
-
-```
-# on Linux
-curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.3.0/oras_0.3.0_linux_amd64.tar.gz
-
-# on macOS
-curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.3.0/oras_0.3.0_darwin_amd64.tar.gz
-
-# on Windows
-curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.3.0/oras_0.3.0_windows_amd64.tar.gz
-
-mkdir -p oras/
-tar -zxf oras_0.3.0_*.tar.gz -C oras/
-mv oras/bin/oras /usr/local/bin/
-rm -rf oras_0.3.0_*.tar.gz oras/
-```
-
-Then, to run:
-
-```
-oras help
-```
-
-The checksums for the `.tar.gz` files above can be found [here](https://github.com/shizhMSFT/oras/releases/tag/v0.3.0).
-
 
 ## Go Module
 
