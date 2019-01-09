@@ -52,20 +52,25 @@ inside a Go project.
 `oras` is a CLI that allows you to push and pull files from
 any registry with OCI image support.
 
-### Install the binary
 
-Install from latest release (v0.3.1):
+### Installation
 
+Install `oras` using [GoFish](https://gofi.sh/):
 ```
-# on Linux
+gofish install oras
+==> Installing oras...
+🐠  oras 0.3.1: installed in 65.131245ms
+```
+
+or install manually from the latest [release artifacts](https://github.com/shizhMSFT/oras/releases):
+```
+# Linux
 curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.3.1/oras_0.3.1_linux_amd64.tar.gz
 
-# on macOS
+# macOS
 curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.3.1/oras_0.3.1_darwin_amd64.tar.gz
 
-# on Windows
-curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.3.1/oras_0.3.1_windows_amd64.tar.gz
-
+# unpack, install, dispose
 mkdir -p oras/
 tar -zxf oras_0.3.1_*.tar.gz -C oras/
 mv oras/bin/oras /usr/local/bin/
@@ -78,10 +83,28 @@ Then, to run:
 oras help
 ```
 
-The checksums for the `.tar.gz` files above can be found [here](https://github.com/shizhMSFT/oras/releases/tag/v0.3.1).
+### Docker Image 
+
+A public Docker image containing the CLI is available on [Docker Hub](https://hub.docker.com/r/ocistorage/oras):
+
+```
+docker run -it --rm -v $(pwd):/workspace ocistorage/oras:v0.3.1 help
+```
+
+Note: the default WORKDIR  in the image is `/workspace`.
 
 
-### Pushing files to remote registry
+### Login Credentials
+`oras` uses the local Docker credentials by default. Please run `docker login` in advance for any private registries.
+
+`oras` also accepts explicit credentials via options, for example,
+```
+oras pull -u username -p password myregistry.io/myimage:latest
+```
+
+### Usage
+
+#### Pushing files to remote registry
 ```
 oras push localhost:5000/hello:latest hi.txt
 ```
@@ -98,7 +121,7 @@ To push multiple files with different media types:
 oras push localhost:5000/hello:latest hi.txt:application/vnd.me.hi bye.txt:application/vnd.me.bye
 ```
 
-### Pulling files from remote registry
+#### Pulling files from remote registry
 ```
 oras pull localhost:5000/hello:latest
 ```
@@ -113,33 +136,6 @@ oras pull localhost:5000/hello:latest -t application/vnd.me.hi
 Or to allow all media types, use the `--allow-all`/`-a` flag:
 ```
 oras pull localhost:5000/hello:latest -a
-```
-
-### Login Credentials
-`oras` uses the local docker credential by default. Please run `docker login` in advance for any private registries.
-
-`oras` also accepts explicit credentials via options. For example,
-```
-oras pull -u username -p password myregistry.io/myimage:latest
-```
-
-### Run in Docker
-
-Public image is available on [Docker Hub](https://hub.docker.com/r/ocistorage/oras) at `ocistorage/oras`
-
-#### Run on Mac/Linux
-```
-docker run --rm -it -v $(pwd):/workspace ocistorage/oras:v0.3.1 help
-```
-
-#### Run on Windows PowerShell
-```
-docker run --rm -it -v ${pwd}:/workspace ocistorage/oras:v0.3.1 help
-```
-
-#### Run on Windows Commands
-```
-docker run --rm -it -v %cd%:/workspace ocistorage/oras:v0.3.1 help
 ```
 
 ## Go Module
