@@ -71,10 +71,10 @@ curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.3.1/oras_0.3.1_l
 curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.3.1/oras_0.3.1_darwin_amd64.tar.gz
 
 # unpack, install, dispose
-mkdir -p oras/
-tar -zxf oras_0.3.1_*.tar.gz -C oras/
-mv oras/bin/oras /usr/local/bin/
-rm -rf oras_0.3.1_*.tar.gz oras/
+mkdir -p oras-install/
+tar -zxf oras_0.3.1_*.tar.gz -C oras-install/
+mv oras-install/oras /usr/local/bin/
+rm -rf oras_0.3.1_*.tar.gz oras-install/
 ```
 
 Then, to run:

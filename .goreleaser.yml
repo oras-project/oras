@@ -1,6 +1,6 @@
 builds:
 - main: ./cmd/oras
-  binary: ./bin/oras
+  binary: ./oras
   env:
   - CGO_ENABLED=0
   goos:
