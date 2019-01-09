@@ -30,7 +30,7 @@ make build-linux
 Windows:
 
 ```
-# builds to bin/windows/amd64/oras
+# builds to bin/windows/amd64/oras.exe
 make build-windows
 ```
 

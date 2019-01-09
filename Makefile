@@ -39,4 +39,4 @@ build-mac:
 .PHONY: build-windows
 build-windows:
 	GOARCH=amd64 CGO_ENABLED=0 GOOS=windows go build -v --ldflags="-w" \
-		-o bin/windows/amd64/$(CLI_EXE) $(CLI_PKG)
+		-o bin/windows/amd64/$(CLI_EXE).exe $(CLI_PKG)
