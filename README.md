@@ -68,7 +68,7 @@ curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.3.1/oras_0.3.1_w
 
 mkdir -p oras/
 tar -zxf oras_0.3.1_*.tar.gz -C oras/
-mv oras/bin/oras /usr/local/bin/
+mv oras/bin/oras* /usr/local/bin/
 rm -rf oras_0.3.1_*.tar.gz oras/
 ```
 
