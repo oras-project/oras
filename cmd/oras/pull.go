@@ -15,6 +15,8 @@ type pullOptions struct {
 	targetRef          string
 	allowedMediaTypes  []string
 	allowAllMediaTypes bool
+	overwrite          bool
+	pathTraversal      bool
 	output             string
 	verbose            bool
 
@@ -39,7 +41,7 @@ Example - Pull only files with the custom "application/vnd.me.hi" media type:
 Example - Pull all files, any media type:
   oras pull localhost:5000/hello:latest -a
 `,
-		Args:  cobra.ExactArgs(1),
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
 			return runPull(opts)
@@ -48,6 +50,8 @@ Example - Pull all files, any media type:
 
 	cmd.Flags().StringArrayVarP(&opts.allowedMediaTypes, "media-type", "t", nil, "allowed media types to be pulled")
 	cmd.Flags().BoolVarP(&opts.allowAllMediaTypes, "allow-all", "a", false, "allow all media types to be pulled")
+	cmd.Flags().BoolVarP(&opts.overwrite, "force", "f", false, "allow overwrite on existing files")
+	cmd.Flags().BoolVarP(&opts.pathTraversal, "allow-path-traversal", "T", false, "allow storing files out of the output directory")
 	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "output directory")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
 
@@ -69,6 +73,8 @@ func runPull(opts pullOptions) error {
 
 	resolver := newResolver(opts.username, opts.password)
 	store := content.NewFileStore(opts.output)
+	store.AllowOverwrite = opts.overwrite
+	store.AllowPathTraversalOnWrite = opts.pathTraversal
 	files, err := oras.Pull(context.Background(), resolver, opts.targetRef, store, opts.allowedMediaTypes...)
 	if err != nil {
 		return err
