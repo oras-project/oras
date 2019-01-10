@@ -24,7 +24,7 @@ var (
 
 // FileStore provides content from the file system
 type FileStore struct {
-	AllowOverwrite            bool
+	DisableOverwrite          bool
 	AllowPathTraversalOnWrite bool
 
 	root       string
@@ -130,7 +130,7 @@ func (s *FileStore) Writer(ctx context.Context, opts ...content.WriterOpt) (cont
 			return nil, ErrPathTraversalDisallowed
 		}
 	}
-	if !s.AllowOverwrite {
+	if s.DisableOverwrite {
 		if _, err := os.Stat(path); err == nil {
 			return nil, ErrOverwriteDisallowed
 		} else if !os.IsNotExist(err) {
