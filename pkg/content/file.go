@@ -117,16 +117,16 @@ func (s *FileStore) Writer(ctx context.Context, opts ...content.WriterOpt) (cont
 	}
 	path := s.ResolvePath(name)
 	if !s.AllowPathTraversalOnWrite {
-		root, err := filepath.Abs(s.root)
+		base, err := filepath.Abs(s.root)
 		if err != nil {
 			return nil, err
 		}
-		path, err := filepath.Abs(path)
+		target, err := filepath.Abs(path)
 		if err != nil {
 			return nil, err
 		}
-		rel, err := filepath.Rel(root, path)
-		if err != nil || strings.HasPrefix(rel, "../") {
+		rel, err := filepath.Rel(base, target)
+		if err != nil || strings.HasPrefix(filepath.ToSlash(rel), "../") {
 			return nil, ErrPathTraversalDisallowed
 		}
 	}
