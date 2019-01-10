@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/containerd/containerd/content"
-	"github.com/opencontainers/go-digest"
+	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/suite"
 )
@@ -33,7 +33,7 @@ var (
 			ocispec.AnnotationTitle: testRef,
 		},
 	}
-	testBadContent = []byte("doesnotexist")
+	testBadContent    = []byte("doesnotexist")
 	testBadDescriptor = ocispec.Descriptor{
 		MediaType: ocispec.MediaTypeImageConfig,
 		Digest:    digest.FromBytes(testBadContent),
@@ -50,6 +50,7 @@ func (suite *ContentTestSuite) SetupSuite() {
 	err := ioutil.WriteFile(testFileName, testContent, 0644)
 	suite.Nil(err, "no error creating test file on disk")
 	testFileStore := NewFileStore(testDirRoot)
+	testFileStore.AllowOverwrite = true
 	_, err = testFileStore.Add(testRef, "", testFileName)
 	suite.Nil(err, "no error adding item to file store")
 	suite.TestFileStore = testFileStore
@@ -79,7 +80,7 @@ func (suite *ContentTestSuite) Test_0_Ingesters() {
 		suite.Nil(err, fmt.Sprintf("no error getting writer w good ref for %s store", key))
 		_, err = writer.Write(testContent)
 		suite.Nil(err, fmt.Sprintf("no error using writer.Write w good ref for %s store", key))
-		err = writer.Commit(ctx,  testDescriptor.Size, testDescriptor.Digest)
+		err = writer.Commit(ctx, testDescriptor.Size, testDescriptor.Digest)
 		suite.Nil(err, fmt.Sprintf("no error using writer.Commit w good ref for %s store", key))
 
 		digest := writer.Digest()
@@ -106,7 +107,7 @@ func (suite *ContentTestSuite) Test_0_Ingesters() {
 		err = writer.Truncate(0)
 		suite.Nil(err, fmt.Sprintf("no error using writer.Truncate w valid size, good ref for %s store", key))
 
-		writer.Commit(ctx,  testDescriptor.Size, testDescriptor.Digest)
+		writer.Commit(ctx, testDescriptor.Size, testDescriptor.Digest)
 
 		// bad size
 		err = writer.Commit(ctx, 1, testDescriptor.Digest)
