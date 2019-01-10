@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -23,6 +24,9 @@ var (
 
 // FileStore provides content from the file system
 type FileStore struct {
+	AllowOverwrite            bool
+	AllowPathTraversalOnWrite bool
+
 	root       string
 	descriptor *sync.Map // map[digest.Digest]ocispec.Descriptor
 	pathMap    *sync.Map
@@ -112,10 +116,31 @@ func (s *FileStore) Writer(ctx context.Context, opts ...content.WriterOpt) (cont
 		return nil, ErrNoName
 	}
 	path := s.ResolvePath(name)
+	if !s.AllowPathTraversalOnWrite {
+		base, err := filepath.Abs(s.root)
+		if err != nil {
+			return nil, err
+		}
+		target, err := filepath.Abs(path)
+		if err != nil {
+			return nil, err
+		}
+		rel, err := filepath.Rel(base, target)
+		if err != nil || strings.HasPrefix(filepath.ToSlash(rel), "../") {
+			return nil, ErrPathTraversalDisallowed
+		}
+	}
+	if !s.AllowOverwrite {
+		if _, err := os.Stat(path); err == nil {
+			return nil, ErrOverwriteDisallowed
+		} else if !os.IsNotExist(err) {
+			return nil, err
+		}
+	}
+
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return nil, err
 	}
-
 	file, err := os.Create(path)
 	if err != nil {
 		return nil, err

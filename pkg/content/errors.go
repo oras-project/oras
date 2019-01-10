@@ -8,3 +8,9 @@ var (
 	ErrNoName          = errors.New("no_name")
 	ErrUnsupportedSize = errors.New("unsupported_size")
 )
+
+// FileStore errors
+var (
+	ErrPathTraversalDisallowed = errors.New("path_traversal_disallowed")
+	ErrOverwriteDisallowed     = errors.New("overwrite_disallowed")
+)
