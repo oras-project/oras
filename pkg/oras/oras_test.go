@@ -16,7 +16,7 @@ import (
 	_ "github.com/docker/distribution/registry/storage/driver/inmemory"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/phayes/freeport"
-	orascontent "github.com/shizhMSFT/oras/pkg/content"
+	orascontent "github.com/deislabs/oras/pkg/content"
 	"github.com/stretchr/testify/suite"
 )
 

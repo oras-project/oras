@@ -1,5 +1,5 @@
 CLI_EXE=oras
-CLI_PKG=github.com/shizhMSFT/oras/cmd/oras
+CLI_PKG=github.com/deislabs/oras/cmd/oras
 
 .PHONY: update-deps
 update-deps:

@@ -9,7 +9,7 @@ import (
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/remotes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	orascontent "github.com/shizhMSFT/oras/pkg/content"
+	orascontent "github.com/deislabs/oras/pkg/content"
 )
 
 // Pull pull files from the remote

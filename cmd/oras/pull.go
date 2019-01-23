@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/shizhMSFT/oras/pkg/content"
-	"github.com/shizhMSFT/oras/pkg/oras"
+	"github.com/deislabs/oras/pkg/content"
+	"github.com/deislabs/oras/pkg/oras"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"

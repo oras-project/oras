@@ -1,8 +1,8 @@
 # OCI Registry As Storage
 
-[![Codefresh build status](https://g.codefresh.io/api/badges/pipeline/shizh/shizhMSFT%2Foras%2Fmaster?type=cf-1)](https://g.codefresh.io/public/accounts/shizh/pipelines/shizhMSFT/oras/master)
-[![Go Report Card](https://goreportcard.com/badge/github.com/shizhMSFT/oras)](https://goreportcard.com/report/github.com/shizhMSFT/oras)
-[![GoDoc](https://godoc.org/github.com/shizhMSFT/oras?status.svg)](https://godoc.org/github.com/shizhMSFT/oras)
+[![Codefresh build status](https://g.codefresh.io/api/badges/pipeline/shizh/deislabs%2Foras%2Fmaster?type=cf-1)](https://g.codefresh.io/public/accounts/shizh/pipelines/deislabs/oras/master)
+[![Go Report Card](https://goreportcard.com/badge/github.com/deislabs/oras)](https://goreportcard.com/report/github.com/deislabs/oras)
+[![GoDoc](https://godoc.org/github.com/deislabs/oras?status.svg)](https://godoc.org/github.com/deislabs/oras)
 
 `oras` can push/pull any files to/from any registry with OCI image support.
 
@@ -62,13 +62,13 @@ gofish install oras
 🐠  oras 0.3.2: installed in 65.131245ms
 ```
 
-or install manually from the latest [release artifacts](https://github.com/shizhMSFT/oras/releases):
+or install manually from the latest [release artifacts](https://github.com/deislabs/oras/releases):
 ```
 # Linux
-curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.3.2/oras_0.3.2_linux_amd64.tar.gz
+curl -LO https://github.com/deislabs/oras/releases/download/v0.3.2/oras_0.3.2_linux_amd64.tar.gz
 
 # macOS
-curl -LO https://github.com/shizhMSFT/oras/releases/download/v0.3.2/oras_0.3.2_darwin_amd64.tar.gz
+curl -LO https://github.com/deislabs/oras/releases/download/v0.3.2/oras_0.3.2_darwin_amd64.tar.gz
 
 # unpack, install, dispose
 mkdir -p oras-install/
@@ -140,7 +140,7 @@ oras pull localhost:5000/hello:latest -a
 
 ## Go Module
 
-The package `github.com/shizhMSFT/oras/pkg/oras` can quickly be imported in other Go-based tools that
+The package `github.com/deislabs/oras/pkg/oras` can quickly be imported in other Go-based tools that
 wish to benefit from the ability to store arbitrary content in container registries.
 
 Example:
@@ -156,8 +156,8 @@ import (
 
 	"github.com/containerd/containerd/remotes/docker"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/shizhMSFT/oras/pkg/content"
-	"github.com/shizhMSFT/oras/pkg/oras"
+	"github.com/deislabs/oras/pkg/content"
+	"github.com/deislabs/oras/pkg/oras"
 )
 
 func check(e error) {
