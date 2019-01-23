@@ -5,7 +5,7 @@ import (
 
 	"github.com/containerd/containerd/content"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	orascontent "github.com/shizhMSFT/oras/pkg/content"
+	orascontent "github.com/deislabs/oras/pkg/content"
 )
 
 // ensure interface
