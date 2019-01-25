@@ -1,4 +1,5 @@
 # OCI Registry As Storage
+[![Codefresh build status]( https://g.codefresh.io/api/badges/pipeline/orasbot/deislabs%2Foras%2Fmaster?type=cf-1)]( https://g.codefresh.io/public/accounts/orasbot/pipelines/deislabs/oras/master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/deislabs/oras)](https://goreportcard.com/report/github.com/deislabs/oras)
 [![GoDoc](https://godoc.org/github.com/deislabs/oras?status.svg)](https://godoc.org/github.com/deislabs/oras)
 
@@ -88,7 +89,16 @@ Then, to run:
 ```
 oras help
 ```
+### Docker Image 	
 
+A public Docker image containing the CLI is available on [Docker Hub](https://hub.docker.com/r/orasbot/oras):	
+
+```	
+docker run -it --rm -v $(pwd):/workspace orasbot/oras:v0.3.3 help
+```	
+
+Note: the default WORKDIR  in the image is `/workspace`.
+ 
 ### Login Credentials
 `oras` uses the local Docker credentials by default. Please run `docker login` in advance for any private registries.
 
