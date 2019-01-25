@@ -22,5 +22,5 @@ steps:
     stage: release
     type: push
     candidate: ${{BuildDockerImage}}
-    image_name: ocistorage/${{CF_REPO_NAME}}
+    image_name: orasbot/${{CF_REPO_NAME}}
     registry: dockerhub
