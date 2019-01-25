@@ -1,9 +1,13 @@
 # OCI Registry As Storage
-
-[![Codefresh build status](https://g.codefresh.io/api/badges/pipeline/shizh/deislabs%2Foras%2Fmaster?type=cf-1)](https://g.codefresh.io/public/accounts/shizh/pipelines/deislabs/oras/master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/deislabs/oras)](https://goreportcard.com/report/github.com/deislabs/oras)
 [![GoDoc](https://godoc.org/github.com/deislabs/oras?status.svg)](https://godoc.org/github.com/deislabs/oras)
 
+[Registries are evolving as Cloud Native Artifact Stores](https://stevelasker.blog/2019/01/25/cloud-native-artifact-stores-evolve-from-container-registries/). To enable this goal, Microsoft has donated ORAS as means to enable various client libraries with a way to submit artifacts to [OCI Spec Compliant](https://github.com/opencontainers/image-spec) registires. This repo is a staging ground for some yet to be determined upstream home. 
+
+As of Jan 24th, 2019, we're still evolving the library to incorporate annotation support. While we're initially testing ORAS with [Helm 3 Registries](https://github.com/helm/community/blob/3689b3202e35361274241dc4ec188e1e6f1a2e53/proposals/helm-repo-container-registry-convergence/readme.md) and [CNAB](https://cnab.io), we're very interested in feedback and contributions for other artifacts. 
+
+
+## Getting Started
 `oras` can push/pull any files to/from any registry with OCI image support.
 
 Registries with known support:
@@ -11,10 +15,11 @@ Registries with known support:
 - [Distribution](https://github.com/docker/distribution) (open source, version 2.7+)
 - [Azure Container Registry](https://azure.microsoft.com/en-us/services/container-registry/)
 
-For more background on this topic, please see
-[this post](https://www.opencontainers.org/blog/2018/10/11/oci-image-support-comes-to-open-source-docker-registry).
+For more background on this topic, please see:
 
-## Getting Started
+- [OCI Image Support Comes to Open Source Docker Registry](https://www.opencontainers.org/blog/2018/10/11/oci-image-support-comes-to-open-source-docker-registry)
+- [Registries are evolving as Cloud Native Artifact Stores](https://stevelasker.blog/2019/01/25/cloud-native-artifact-stores-evolve-from-container-registries/)
+
 
 First, you must have access to a registry with OCI image support (see list above).
 
