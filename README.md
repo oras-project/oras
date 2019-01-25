@@ -1,18 +1,24 @@
 # OCI Registry As Storage
-
-[![Codefresh build status](https://g.codefresh.io/api/badges/pipeline/shizh/deislabs%2Foras%2Fmaster?type=cf-1)](https://g.codefresh.io/public/accounts/shizh/pipelines/deislabs/oras/master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/deislabs/oras)](https://goreportcard.com/report/github.com/deislabs/oras)
 [![GoDoc](https://godoc.org/github.com/deislabs/oras?status.svg)](https://godoc.org/github.com/deislabs/oras)
 
-`oras` can push/pull any files to/from any registry with OCI image support.
+[Registries are evolving as Cloud Native Artifact Stores](https://stevelasker.blog/2019/01/25/cloud-native-artifact-stores-evolve-from-container-registries/). To enable this goal, Microsoft has donated ORAS as means to enable various client libraries with a way to submit artifacts to [OCI Spec Compliant](https://github.com/opencontainers/image-spec) registires. This repo is a staging ground for some yet to be determined upstream home. 
 
-Registries with known support:
+As of Jan 24th, 2019, we're still evolving the library to incorporate annotation support. While we're initially testing ORAS with [Helm 3 Registries](https://github.com/helm/community/blob/3689b3202e35361274241dc4ec188e1e6f1a2e53/proposals/helm-repo-container-registry-convergence/readme.md) and [CNAB](https://cnab.io), we're very interested in feedback and contributions for other artifacts. 
+
+## More Background
+For more background, please see:
+
+- [OCI Image Support Comes to Open Source Docker Registry](https://www.opencontainers.org/blog/2018/10/11/oci-image-support-comes-to-open-source-docker-registry)
+- [Registries are evolving as Cloud Native Artifact Stores](https://stevelasker.blog/2019/01/25/cloud-native-artifact-stores-evolve-from-container-registries/)
+
+## Registries with known support
+
+`oras` can push/pull any files to/from any registry with OCI image support of various mime types.
 
 - [Distribution](https://github.com/docker/distribution) (open source, version 2.7+)
-- [Azure Container Registry](https://azure.microsoft.com/en-us/services/container-registry/)
-
-For more background on this topic, please see
-[this post](https://www.opencontainers.org/blog/2018/10/11/oci-image-support-comes-to-open-source-docker-registry).
+- [Azure Container Registry](https://aka.ms/acr/docs)
+- Quay.io is coming soon
 
 ## Getting Started
 
@@ -83,17 +89,6 @@ Then, to run:
 oras help
 ```
 
-### Docker Image 
-
-A public Docker image containing the CLI is available on [Docker Hub](https://hub.docker.com/r/ocistorage/oras):
-
-```
-docker run -it --rm -v $(pwd):/workspace ocistorage/oras:v0.3.2 help
-```
-
-Note: the default WORKDIR  in the image is `/workspace`.
-
-
 ### Login Credentials
 `oras` uses the local Docker credentials by default. Please run `docker login` in advance for any private registries.
 
@@ -104,7 +99,7 @@ oras pull -u username -p password myregistry.io/myimage:latest
 
 ### Usage
 
-#### Pushing files to remote registry
+#### Pushing single files to remote registry
 ```
 oras push localhost:5000/hello:latest hi.txt
 ```
@@ -115,6 +110,9 @@ The push a custom media type, use the format `filename[:type]`:
 ```
 oras push localhost:5000/hello:latest hi.txt:application/vnd.me.hi
 ```
+
+#### Pushing multiple files to remote registry
+Just as docker images support multiple "layers", ORAS supports pushing multiple files. The file type is up to the implementer. You can push tar, yaml, text or whatever your artifact should be represented as.
 
 To push multiple files with different media types:
 ```
