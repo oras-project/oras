@@ -17,7 +17,7 @@
 # Test dependency
 [[constraint]]
   name = "github.com/docker/distribution"
-  version = "2.7.0"
+  version = "^2.7.1"
 
 # These overrides below necessary for using docker/distribution as a test dependency
 [[override]]
@@ -35,3 +35,8 @@
 [[override]]
   name = "github.com/bugsnag/bugsnag-go"
   revision = "109a9d63f2b57c4623f4912b256bac4a7a63517d"
+
+[[override]]
+  name = "rsc.io/letsencrypt"
+  branch = "master"
+  source = "https://github.com/dmcgowan/letsencrypt.git"

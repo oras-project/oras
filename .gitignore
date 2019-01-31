@@ -25,3 +25,4 @@ hello.txt
 bin/
 dist/
 *.tar.gz
+vendor/
