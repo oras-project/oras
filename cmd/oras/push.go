@@ -16,9 +16,11 @@ type pushOptions struct {
 	targetRef string
 	fileRefs  []string
 
-	debug    bool
-	username string
-	password string
+	configMediaType   string
+	configAnnotations map[string]string
+	debug             bool
+	username          string
+	password          string
 }
 
 func pushCmd() *cobra.Command {
@@ -37,7 +39,7 @@ Example - Pull file "hi.txt" with the custom "application/vnd.me.hi" media type:
 Example - Push multiple files with different media types:
   oras push localhost:5000/hello:latest hi.txt:application/vnd.me.hi bye.txt:application/vnd.me.bye
 `,
-		Args:  cobra.MinimumNArgs(2),
+		Args: cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
 			opts.fileRefs = args[1:]
@@ -46,6 +48,8 @@ Example - Push multiple files with different media types:
 	}
 
 	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
+	cmd.Flags().StringVarP(&opts.configMediaType, "type", "t", ocispec.MediaTypeImageConfig, "configuration descriptor media type")
+	cmd.Flags().StringToStringVarP(&opts.configAnnotations, "annotation", "a", nil, "annotations for the config descriptor")
 	cmd.Flags().StringVarP(&opts.username, "username", "u", "", "registry username")
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password")
 	return cmd
@@ -76,5 +80,5 @@ func runPush(opts pushOptions) error {
 		files = append(files, file)
 	}
 
-	return oras.Push(context.Background(), resolver, opts.targetRef, store, files)
+	return oras.Push(context.Background(), resolver, opts.targetRef, store, opts.configMediaType, opts.configAnnotations, files)
 }

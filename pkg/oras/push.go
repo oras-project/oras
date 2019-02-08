@@ -12,7 +12,7 @@ import (
 )
 
 // Push pushes files to the remote
-func Push(ctx context.Context, resolver remotes.Resolver, ref string, provider content.Provider, descriptors []ocispec.Descriptor) error {
+func Push(ctx context.Context, resolver remotes.Resolver, ref string, provider content.Provider, configMediaType string, configAnnotations map[string]string, descriptors []ocispec.Descriptor) error {
 	if resolver == nil {
 		return ErrResolverUndefined
 	}
@@ -26,7 +26,7 @@ func Push(ctx context.Context, resolver remotes.Resolver, ref string, provider c
 		return err
 	}
 
-	desc, provider, err := pack(provider, descriptors)
+	desc, provider, err := pack(provider, configMediaType, configAnnotations, descriptors)
 	if err != nil {
 		return err
 	}
@@ -34,16 +34,19 @@ func Push(ctx context.Context, resolver remotes.Resolver, ref string, provider c
 	return remotes.PushContent(ctx, pusher, desc, provider, nil)
 }
 
-func pack(provider content.Provider, descriptors []ocispec.Descriptor) (ocispec.Descriptor, content.Provider, error) {
+func pack(provider content.Provider, configMediaType string, configAnnontations map[string]string, descriptors []ocispec.Descriptor) (ocispec.Descriptor, content.Provider, error) {
+
 	store := newHybridStoreFromProvider(provider)
 
-	// Config
+	// Get the config Blob
 	configBytes := []byte("{}")
 	config := ocispec.Descriptor{
-		MediaType: ocispec.MediaTypeImageConfig,
-		Digest:    digest.FromBytes(configBytes),
-		Size:      int64(len(configBytes)),
+		MediaType:   configMediaType,
+		Digest:      digest.FromBytes(configBytes),
+		Size:        int64(len(configBytes)),
+		Annotations: configAnnontations,
 	}
+
 	store.Set(config, configBytes)
 
 	// Manifest
@@ -63,6 +66,7 @@ func pack(provider content.Provider, descriptors []ocispec.Descriptor) (ocispec.
 		Digest:    digest.FromBytes(manifestBytes),
 		Size:      int64(len(manifestBytes)),
 	}
+
 	store.Set(manifestDescriptor, manifestBytes)
 
 	return manifestDescriptor, store, nil
