@@ -11,32 +11,34 @@ import (
 
 // Resolver returns a new authenticated resolver.
 func (c *Client) Resolver(_ context.Context) (remotes.Resolver, error) {
-	credential := func(hostname string) (string, string, error) {
-		hostname = resolveHostname(hostname)
-		var (
-			auth types.AuthConfig
-			err  error
-		)
-		for _, cfg := range c.configs {
-			auth, err = cfg.GetAuthConfig(hostname)
-			if err != nil {
-				// fall back to next config
-				continue
-			}
-			if auth.IdentityToken != "" {
-				return "", auth.IdentityToken, nil
-			}
-			if auth.Username == "" && auth.Password == "" {
-				// fall back to next config
-				continue
-			}
-			return auth.Username, auth.Password, nil
-		}
-		return "", "", err
-	}
 	return docker.NewResolver(docker.ResolverOptions{
-		Credentials: credential,
+		Credentials: c.Credential,
 	}), nil
+}
+
+// Credential returns the login credential of the request host.
+func (c *Client) Credential(hostname string) (string, string, error) {
+	hostname = resolveHostname(hostname)
+	var (
+		auth types.AuthConfig
+		err  error
+	)
+	for _, cfg := range c.configs {
+		auth, err = cfg.GetAuthConfig(hostname)
+		if err != nil {
+			// fall back to next config
+			continue
+		}
+		if auth.IdentityToken != "" {
+			return "", auth.IdentityToken, nil
+		}
+		if auth.Username == "" && auth.Password == "" {
+			// fall back to next config
+			continue
+		}
+		return auth.Username, auth.Password, nil
+	}
+	return "", "", err
 }
 
 // resolveHostname resolves Docker specific hostnames
