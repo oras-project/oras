@@ -45,6 +45,10 @@ func NewClient(configPaths ...string) (auth.Client, error) {
 	}, nil
 }
 
+func (c *Client) primaryCredentialsStore(hostname string) credentials.Store {
+	return c.configs[0].GetCredentialsStore(hostname)
+}
+
 // loadConfigFile reads the configuration files from the given path.
 func loadConfigFile(path string) (*configfile.ConfigFile, error) {
 	cfg := configfile.New(path)

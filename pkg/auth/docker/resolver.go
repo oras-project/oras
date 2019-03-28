@@ -11,16 +11,14 @@ import (
 
 // Resolver returns a new authenticated resolver.
 func (c *Client) Resolver(_ context.Context) (remotes.Resolver, error) {
-	credential := func(hostName string) (string, string, error) {
-		if hostName == registry.DefaultV2Registry.Host {
-			hostName = registry.IndexServer
-		}
+	credential := func(hostname string) (string, string, error) {
+		hostname = resolveHostname(hostname)
 		var (
 			auth types.AuthConfig
 			err  error
 		)
 		for _, cfg := range c.configs {
-			auth, err = cfg.GetAuthConfig(hostName)
+			auth, err = cfg.GetAuthConfig(hostname)
 			if err != nil {
 				// fall back to next config
 				continue
@@ -39,4 +37,13 @@ func (c *Client) Resolver(_ context.Context) (remotes.Resolver, error) {
 	return docker.NewResolver(docker.ResolverOptions{
 		Credentials: credential,
 	}), nil
+}
+
+// resolveHostname resolves Docker specific hostnames
+func resolveHostname(hostname string) string {
+	switch hostname {
+	case registry.IndexHostname, registry.IndexName, registry.DefaultV2Registry.Host:
+		return registry.IndexServer
+	}
+	return hostname
 }
