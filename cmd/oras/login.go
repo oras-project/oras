@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -20,6 +21,7 @@ type loginOptions struct {
 	fromStdin bool
 
 	debug    bool
+	configs  []string
 	username string
 	password string
 }
@@ -54,6 +56,7 @@ Example - Login with username and password by prompt:
 	}
 
 	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
+	cmd.Flags().StringArrayVarP(&opts.configs, "config", "c", nil, "auth config path")
 	cmd.Flags().StringVarP(&opts.username, "username", "u", "", "registry username")
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password or identity token")
 	cmd.Flags().BoolVarP(&opts.fromStdin, "password-stdin", "", false, "read password or identity token from stdin")
@@ -66,7 +69,7 @@ func runLogin(opts loginOptions) error {
 	}
 
 	// Prepare auth client
-	cli, err := auth.NewClient()
+	cli, err := auth.NewClient(opts.configs...)
 	if err != nil {
 		return err
 	}
@@ -87,15 +90,30 @@ func runLogin(opts loginOptions) error {
 			}
 			opts.username = strings.TrimSpace(username)
 		}
-		if opts.password, err = readLine("Password: ", true); err != nil {
-			return err
+		if opts.username == "" {
+			if opts.password, err = readLine("Token: ", true); err != nil {
+				return err
+			} else if opts.password == "" {
+				return errors.New("token required")
+			}
+		} else {
+			if opts.password, err = readLine("Password: ", true); err != nil {
+				return err
+			} else if opts.password == "" {
+				return errors.New("password required")
+			}
 		}
 	} else {
 		fmt.Fprintln(os.Stderr, "WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
 	}
 
 	// Login
-	return cli.Login(context.Background(), opts.hostname, opts.username, opts.password)
+	if err := cli.Login(context.Background(), opts.hostname, opts.username, opts.password); err != nil {
+		return err
+	}
+
+	fmt.Println("Login Succeeded")
+	return nil
 }
 
 func readLine(prompt string, slient bool) (string, error) {

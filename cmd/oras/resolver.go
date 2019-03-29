@@ -11,7 +11,7 @@ import (
 	"github.com/containerd/containerd/remotes/docker"
 )
 
-func newResolver(username, password string) remotes.Resolver {
+func newResolver(username, password string, configs ...string) remotes.Resolver {
 	if username != "" || password != "" {
 		return docker.NewResolver(docker.ResolverOptions{
 			Credentials: func(hostName string) (string, string, error) {
@@ -19,7 +19,7 @@ func newResolver(username, password string) remotes.Resolver {
 			},
 		})
 	}
-	cli, err := auth.NewClient()
+	cli, err := auth.NewClient(configs...)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "WARNING: Error loading auth file: %v\n", err)
 	}

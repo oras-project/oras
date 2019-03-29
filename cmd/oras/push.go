@@ -17,6 +17,7 @@ type pushOptions struct {
 	fileRefs  []string
 
 	debug    bool
+	configs  []string
 	username string
 	password string
 }
@@ -37,7 +38,7 @@ Example - Pull file "hi.txt" with the custom "application/vnd.me.hi" media type:
 Example - Push multiple files with different media types:
   oras push localhost:5000/hello:latest hi.txt:application/vnd.me.hi bye.txt:application/vnd.me.bye
 `,
-		Args:  cobra.MinimumNArgs(2),
+		Args: cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
 			opts.fileRefs = args[1:]
@@ -46,6 +47,7 @@ Example - Push multiple files with different media types:
 	}
 
 	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
+	cmd.Flags().StringArrayVarP(&opts.configs, "config", "c", nil, "auth config path")
 	cmd.Flags().StringVarP(&opts.username, "username", "u", "", "registry username")
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password")
 	return cmd
@@ -56,7 +58,7 @@ func runPush(opts pushOptions) error {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
-	resolver := newResolver(opts.username, opts.password)
+	resolver := newResolver(opts.username, opts.password, opts.configs...)
 
 	var (
 		files []ocispec.Descriptor

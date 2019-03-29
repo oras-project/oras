@@ -12,7 +12,8 @@ import (
 type logoutOptions struct {
 	hostname string
 
-	debug bool
+	debug   bool
+	configs []string
 }
 
 func logoutCmd() *cobra.Command {
@@ -33,6 +34,7 @@ Example - Logout:
 	}
 
 	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
+	cmd.Flags().StringArrayVarP(&opts.configs, "config", "c", nil, "auth config path")
 	return cmd
 }
 
@@ -41,7 +43,7 @@ func runLogout(opts logoutOptions) error {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
-	cli, err := auth.NewClient()
+	cli, err := auth.NewClient(opts.configs...)
 	if err != nil {
 		return err
 	}
