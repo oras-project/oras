@@ -39,12 +39,12 @@ func TarDirectory(root, prefix string, w io.Writer) error {
 		mode := info.Mode()
 		if mode&os.ModeSymlink != 0 {
 			if link, err = os.Readlink(link); err != nil {
-				return err
+				return errors.Wrap(err, path)
 			}
 		}
 		header, err := tar.FileInfoHeader(info, link)
 		if err != nil {
-			return err
+			return errors.Wrap(err, path)
 		}
 		header.Name = name
 		header.Uid = 0
@@ -54,7 +54,7 @@ func TarDirectory(root, prefix string, w io.Writer) error {
 
 		// Write file
 		if err := tw.WriteHeader(header); err != nil {
-			return err
+			return errors.Wrap(err, "tar")
 		}
 		if mode.IsRegular() {
 			file, err := os.Open(path)
