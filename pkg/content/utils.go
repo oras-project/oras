@@ -23,13 +23,13 @@ func TarDirectory(root, prefix string, w io.Writer) error {
 	defer tw.Close()
 	if err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return errors.Wrap(err, path)
+			return err
 		}
 
 		// Rename path
 		name, err := filepath.Rel(root, path)
 		if err != nil {
-			return errors.Wrap(err, path)
+			return err
 		}
 		name = filepath.Join(prefix, name)
 		name = filepath.ToSlash(name)
@@ -38,8 +38,8 @@ func TarDirectory(root, prefix string, w io.Writer) error {
 		var link string
 		mode := info.Mode()
 		if mode&os.ModeSymlink != 0 {
-			if link, err = os.Readlink(link); err != nil {
-				return errors.Wrap(err, path)
+			if link, err = os.Readlink(path); err != nil {
+				return err
 			}
 		}
 		header, err := tar.FileInfoHeader(info, link)
@@ -59,7 +59,7 @@ func TarDirectory(root, prefix string, w io.Writer) error {
 		if mode.IsRegular() {
 			file, err := os.Open(path)
 			if err != nil {
-				return errors.Wrap(err, path)
+				return err
 			}
 			if _, err := io.Copy(tw, file); err != nil {
 				return errors.Wrap(err, path)
