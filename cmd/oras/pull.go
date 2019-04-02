@@ -70,7 +70,7 @@ func runPull(opts pullOptions) error {
 	if opts.allowAllMediaTypes {
 		opts.allowedMediaTypes = nil
 	} else if len(opts.allowedMediaTypes) == 0 {
-		opts.allowedMediaTypes = []string{content.DefaultBlobMediaType}
+		opts.allowedMediaTypes = []string{content.DefaultBlobMediaType, content.DefaultBlobDirMediaType}
 	}
 
 	resolver := newResolver(opts.username, opts.password, opts.configs...)

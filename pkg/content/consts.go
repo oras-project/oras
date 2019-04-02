@@ -17,4 +17,6 @@ const (
 const (
 	// AnnotationDigest is the annotation key for the digest of the uncompressed content
 	AnnotationDigest = "io.deis.oras.content.digest"
+	// AnnotationUnpack is the annotation key for indication of unpacking
+	AnnotationUnpack = "io.deis.oras.content.unpack"
 )

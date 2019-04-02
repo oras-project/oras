@@ -136,6 +136,7 @@ func (s *FileStore) descFromDir(name, mediaType, root string) (ocispec.Descripto
 		Size:      info.Size(),
 		Annotations: map[string]string{
 			AnnotationDigest: tarDigester.Digest().String(),
+			AnnotationUnpack: "true",
 		},
 	}, nil
 }
