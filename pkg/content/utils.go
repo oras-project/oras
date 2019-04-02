@@ -2,6 +2,7 @@ package content
 
 import (
 	"archive/tar"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -16,9 +17,9 @@ func ResolveName(desc ocispec.Descriptor) (string, bool) {
 	return name, ok
 }
 
-// TarDirectory walks the directory specified by path, and tar those files with a new
+// tarDirectory walks the directory specified by path, and tar those files with a new
 // path prefix.
-func TarDirectory(root, prefix string, w io.Writer) error {
+func tarDirectory(root, prefix string, w io.Writer) error {
 	tw := tar.NewWriter(w)
 	defer tw.Close()
 	if err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
@@ -61,6 +62,7 @@ func TarDirectory(root, prefix string, w io.Writer) error {
 			if err != nil {
 				return err
 			}
+			defer file.Close()
 			if _, err := io.Copy(tw, file); err != nil {
 				return errors.Wrap(err, path)
 			}
@@ -71,4 +73,57 @@ func TarDirectory(root, prefix string, w io.Writer) error {
 		return err
 	}
 	return nil
+}
+
+// extractTarDirectory extracts tar file to a directory specified by the `root`
+// parameter. The file name prefix is ensured to be the string specified by the
+// `prefix` parameter and is trimmed.
+func extractTarDirectory(root, prefix string, r io.Reader) error {
+	tr := tar.NewReader(r)
+	for {
+		header, err := tr.Next()
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+
+		// Name check
+		name := header.Name
+		if rel, err := filepath.Rel(prefix, name); err != nil {
+			return err
+		} else if filepath.HasPrefix(rel, "../") {
+			return fmt.Errorf("%q does not have prefix %q", name, prefix)
+		}
+		path := filepath.Join(root, name)
+
+		// Create content
+		switch header.Typeflag {
+		case tar.TypeReg:
+			err = writeFile(path, tr, header.FileInfo().Mode())
+		case tar.TypeDir:
+			err = os.MkdirAll(path, header.FileInfo().Mode())
+		case tar.TypeLink:
+			err = os.Symlink(header.Linkname, path)
+		default:
+			continue // Non-regular files are skipped
+		}
+		if err != nil {
+			return err
+		}
+
+		// Change access time and modification time if possible (error ignored)
+		os.Chtimes(path, header.AccessTime, header.ModTime)
+	}
+}
+
+func writeFile(path string, r io.Reader, perm os.FileMode) error {
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	_, err = io.Copy(file, r)
+	return err
 }

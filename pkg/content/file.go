@@ -110,7 +110,7 @@ func (s *FileStore) descFromDir(name, mediaType, root string) (ocispec.Descripto
 	zw := gzip.NewWriter(io.MultiWriter(file, digester.Hash()))
 	defer zw.Close()
 	tarDigester := digest.Canonical.Digester()
-	if err := TarDirectory(root, name, io.MultiWriter(zw, tarDigester.Hash())); err != nil {
+	if err := tarDirectory(root, name, io.MultiWriter(zw, tarDigester.Hash())); err != nil {
 		return ocispec.Descriptor{}, err
 	}
 
