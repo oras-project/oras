@@ -75,6 +75,7 @@ func runPull(opts pullOptions) error {
 
 	resolver := newResolver(opts.username, opts.password, opts.configs...)
 	store := content.NewFileStore(opts.output)
+	defer store.Close()
 	store.DisableOverwrite = opts.keepOldFiles
 	store.AllowPathTraversalOnWrite = opts.pathTraversal
 	files, err := oras.Pull(context.Background(), resolver, opts.targetRef, store, opts.allowedMediaTypes...)
