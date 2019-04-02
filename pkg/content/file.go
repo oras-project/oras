@@ -1,8 +1,10 @@
 package content
 
 import (
+	"compress/gzip"
 	"context"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,6 +32,7 @@ type FileStore struct {
 	root       string
 	descriptor *sync.Map // map[digest.Digest]ocispec.Descriptor
 	pathMap    *sync.Map
+	tmpFiles   *sync.Map
 }
 
 // NewFileStore creats a new file store
@@ -38,15 +41,12 @@ func NewFileStore(rootPath string) *FileStore {
 		root:       rootPath,
 		descriptor: &sync.Map{},
 		pathMap:    &sync.Map{},
+		tmpFiles:   &sync.Map{},
 	}
 }
 
 // Add adds a file reference
 func (s *FileStore) Add(name, mediaType, path string) (ocispec.Descriptor, error) {
-	if mediaType == "" {
-		mediaType = DefaultBlobMediaType
-	}
-
 	if path == "" {
 		path = name
 	}
@@ -56,6 +56,26 @@ func (s *FileStore) Add(name, mediaType, path string) (ocispec.Descriptor, error
 	if err != nil {
 		return ocispec.Descriptor{}, err
 	}
+
+	var desc ocispec.Descriptor
+	if fileInfo.IsDir() {
+		desc, err = s.descFromDir(name, mediaType, path)
+	} else {
+		desc, err = s.descFromFile(fileInfo, mediaType, path)
+	}
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	if desc.Annotations == nil {
+		desc.Annotations = make(map[string]string)
+	}
+	desc.Annotations[ocispec.AnnotationTitle] = name
+
+	s.set(desc)
+	return desc, nil
+}
+
+func (s *FileStore) descFromFile(info os.FileInfo, mediaType, path string) (ocispec.Descriptor, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return ocispec.Descriptor{}, err
@@ -66,17 +86,79 @@ func (s *FileStore) Add(name, mediaType, path string) (ocispec.Descriptor, error
 		return ocispec.Descriptor{}, err
 	}
 
-	desc := ocispec.Descriptor{
+	if mediaType == "" {
+		mediaType = DefaultBlobMediaType
+	}
+	return ocispec.Descriptor{
 		MediaType: mediaType,
 		Digest:    digest,
-		Size:      fileInfo.Size(),
-		Annotations: map[string]string{
-			ocispec.AnnotationTitle: name,
-		},
+		Size:      info.Size(),
+	}, nil
+}
+
+func (s *FileStore) descFromDir(name, mediaType, root string) (ocispec.Descriptor, error) {
+	// generate temp file
+	file, err := s.tempFile()
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	defer file.Close()
+	s.MapPath(name, file.Name())
+
+	// compress directory
+	digester := digest.Canonical.Digester()
+	zw := gzip.NewWriter(io.MultiWriter(file, digester.Hash()))
+	defer zw.Close()
+	tarDigester := digest.Canonical.Digester()
+	if err := TarDirectory(root, name, io.MultiWriter(zw, tarDigester.Hash())); err != nil {
+		return ocispec.Descriptor{}, err
 	}
 
-	s.set(desc)
-	return desc, nil
+	// flush all
+	if err := zw.Close(); err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	if err := file.Sync(); err != nil {
+		return ocispec.Descriptor{}, err
+	}
+
+	// generate descriptor
+	if mediaType == "" {
+		mediaType = DefaultBlobDirMediaType
+	}
+	info, err := file.Stat()
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	return ocispec.Descriptor{
+		MediaType: mediaType,
+		Digest:    digester.Digest(),
+		Size:      info.Size(),
+		Annotations: map[string]string{
+			AnnotationDigest: tarDigester.Digest().String(),
+		},
+	}, nil
+}
+
+func (s *FileStore) tempFile() (*os.File, error) {
+	file, err := ioutil.TempFile("", TempFilePattern)
+	if err != nil {
+		return nil, err
+	}
+	s.tmpFiles.Store(file.Name(), file)
+	return file, nil
+}
+
+// Close frees up resources used by the file store
+func (s *FileStore) Close() error {
+	var errs []string
+	s.tmpFiles.Range(func(name, _ interface{}) bool {
+		if err := os.Remove(name.(string)); err != nil {
+			errs = append(errs, err.Error())
+		}
+		return true
+	})
+	return errors.New(strings.Join(errs, "; "))
 }
 
 // ReaderAt provides contents

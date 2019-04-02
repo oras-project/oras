@@ -2,5 +2,19 @@ package content
 
 import ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-// DefaultBlobMediaType specifies the default blob media type
-const DefaultBlobMediaType = ocispec.MediaTypeImageLayer
+const (
+	// DefaultBlobMediaType specifies the default blob media type
+	DefaultBlobMediaType = ocispec.MediaTypeImageLayer
+	// DefaultBlobDirMediaType specifies the default blob directory media type
+	DefaultBlobDirMediaType = ocispec.MediaTypeImageLayerGzip
+)
+
+const (
+	// TempFilePattern specifies the pattern to create temporary files
+	TempFilePattern = "oras"
+)
+
+const (
+	// AnnotationDigest is the annotation key for the digest of the uncompressed content
+	AnnotationDigest = "io.deis.oras.content.digest"
+)
