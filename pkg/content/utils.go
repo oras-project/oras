@@ -109,6 +109,8 @@ func extractTarDirectory(root, prefix string, r io.Reader) error {
 		case tar.TypeDir:
 			err = os.MkdirAll(path, header.FileInfo().Mode())
 		case tar.TypeLink:
+			err = os.Link(header.Linkname, path)
+		case tar.TypeSymlink:
 			err = os.Symlink(header.Linkname, path)
 		default:
 			continue // Non-regular files are skipped
