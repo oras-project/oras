@@ -106,7 +106,15 @@ func runPush(opts pushOptions) error {
 			return err
 		}
 		if annotations != nil {
-			file.Annotations = annotations[filename]
+			if value, ok := annotations[filename]; ok {
+				if file.Annotations == nil {
+					file.Annotations = value
+				} else {
+					for k, v := range value {
+						file.Annotations[k] = v
+					}
+				}
+			}
 		}
 		files = append(files, file)
 	}
