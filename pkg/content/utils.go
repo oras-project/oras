@@ -93,12 +93,14 @@ func extractTarDirectory(root, prefix string, r io.Reader) error {
 
 		// Name check
 		name := header.Name
-		if rel, err := filepath.Rel(prefix, name); err != nil {
+		path, err := filepath.Rel(prefix, name)
+		if err != nil {
 			return err
-		} else if filepath.HasPrefix(rel, "../") {
+		}
+		if filepath.HasPrefix(path, "../") {
 			return fmt.Errorf("%q does not have prefix %q", name, prefix)
 		}
-		path := filepath.Join(root, name)
+		path = filepath.Join(root, path)
 
 		// Create content
 		switch header.Typeflag {
