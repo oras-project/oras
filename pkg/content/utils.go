@@ -2,11 +2,13 @@ package content
 
 import (
 	"archive/tar"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
+	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 )
@@ -126,4 +128,32 @@ func writeFile(path string, r io.Reader, perm os.FileMode) error {
 	defer file.Close()
 	_, err = io.Copy(file, r)
 	return err
+}
+
+func extractTarGzip(root, prefix, filename, checksum string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	zr, err := gzip.NewReader(file)
+	if err != nil {
+		return err
+	}
+	defer zr.Close()
+	var r io.Reader = zr
+	var verifier digest.Verifier
+	if checksum != "" {
+		if digest, err := digest.Parse(checksum); err == nil {
+			verifier = digest.Verifier()
+			r = io.TeeReader(r, verifier)
+		}
+	}
+	if err := extractTarDirectory(root, prefix, r); err != nil {
+		return err
+	}
+	if verifier != nil && !verifier.Verified() {
+		return errors.New("content digest mismatch")
+	}
+	return nil
 }

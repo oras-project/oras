@@ -221,10 +221,26 @@ func (s *FileStore) Writer(ctx context.Context, opts ...content.WriterOpt) (cont
 		}
 	}
 
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return nil, err
+	var (
+		file        *os.File
+		err         error
+		afterCommit func() error
+	)
+	if value, ok := desc.Annotations[AnnotationUnpack]; ok && value == "true" {
+		if err := os.MkdirAll(path, 0755); err != nil {
+			return nil, err
+		}
+		file, err = s.tempFile()
+		afterCommit = func() error {
+			checksum := desc.Annotations[AnnotationDigest]
+			return extractTarGzip(path, name, file.Name(), checksum)
+		}
+	} else {
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			return nil, err
+		}
+		file, err = os.Create(path)
 	}
-	file, err := os.Create(path)
 	if err != nil {
 		return nil, err
 	}
@@ -241,6 +257,7 @@ func (s *FileStore) Writer(ctx context.Context, opts ...content.WriterOpt) (cont
 			StartedAt: now,
 			UpdatedAt: now,
 		},
+		afterCommit: afterCommit,
 	}, nil
 }
 
@@ -284,11 +301,12 @@ func (s *FileStore) get(desc ocispec.Descriptor) (ocispec.Descriptor, bool) {
 }
 
 type fileWriter struct {
-	store    *FileStore
-	file     *os.File
-	desc     ocispec.Descriptor
-	digester digest.Digester
-	status   content.Status
+	store       *FileStore
+	file        *os.File
+	desc        ocispec.Descriptor
+	digester    digest.Digester
+	status      content.Status
+	afterCommit func() error
 }
 
 func (w *fileWriter) Status() (content.Status, error) {
@@ -347,6 +365,9 @@ func (w *fileWriter) Commit(ctx context.Context, size int64, expected digest.Dig
 	}
 
 	w.store.set(w.desc)
+	if w.afterCommit != nil {
+		return w.afterCommit()
+	}
 	return nil
 }
 
