@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"os"
 	"strings"
 
 	"github.com/deislabs/oras/pkg/content"
@@ -13,9 +15,10 @@ import (
 )
 
 type pushOptions struct {
-	targetRef         string
-	fileRefs          []string
-	manifestConfigRef string
+	targetRef           string
+	fileRefs            []string
+	manifestConfigRef   string
+	manifestAnnotations string
 
 	debug    bool
 	username string
@@ -47,6 +50,7 @@ Example - Push multiple files with different media types:
 	}
 
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "manifest-config", "", "", "manifest config file")
+	cmd.Flags().StringVarP(&opts.manifestAnnotations, "manifest-annotations", "", "", "manifest annotation file")
 	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
 	cmd.Flags().StringVarP(&opts.username, "username", "u", "", "registry username")
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password")
@@ -58,13 +62,24 @@ func runPush(opts pushOptions) error {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
-	resolver := newResolver(opts.username, opts.password)
-
+	// load files
 	var (
-		files    []ocispec.Descriptor
-		store    = content.NewFileStore("")
-		pushOpts []oras.PushOpt
+		annotations map[string]map[string]string
+		files       []ocispec.Descriptor
+		store       = content.NewFileStore("")
+		pushOpts    []oras.PushOpt
 	)
+	if opts.manifestAnnotations != "" {
+		if err := decodeJSON(opts.manifestAnnotations, &annotations); err != nil {
+			return err
+		}
+		if value, ok := annotations["$config"]; ok {
+			pushOpts = append(pushOpts, oras.WithConfigAnnotations(value))
+		}
+		if value, ok := annotations["$manifest"]; ok {
+			pushOpts = append(pushOpts, oras.WithManifestAnnotations(value))
+		}
+	}
 	if opts.manifestConfigRef != "" {
 		ref := strings.SplitN(opts.manifestConfigRef, ":", 2)
 		filename := ref[0]
@@ -72,7 +87,7 @@ func runPush(opts pushOptions) error {
 		if len(ref) == 2 {
 			mediaType = ref[1]
 		}
-		file, err := store.Add("", mediaType, filename)
+		file, err := store.Add("$config", mediaType, filename)
 		if err != nil {
 			return err
 		}
@@ -90,8 +105,22 @@ func runPush(opts pushOptions) error {
 		if err != nil {
 			return err
 		}
+		if annotations != nil {
+			file.Annotations = annotations[filename]
+		}
 		files = append(files, file)
 	}
 
+	// ready to push
+	resolver := newResolver(opts.username, opts.password)
 	return oras.Push(context.Background(), resolver, opts.targetRef, store, files, pushOpts...)
+}
+
+func decodeJSON(filename string, v interface{}) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	return json.NewDecoder(file).Decode(v)
 }
