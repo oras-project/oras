@@ -45,7 +45,7 @@
   version = "v0.4.1"
 
 [[projects]]
-  digest = "1:7643865a2cdb66fb14d8361611a75b370a99211ac44983505b3eecb4a6a7a882"
+  digest = "1:0e3ee0c357dba5073fa9ac183b3380fc3c500e8eca5d3b951b00a6bb8415664e"
   name = "github.com/bugsnag/bugsnag-go"
   packages = [
     ".",
@@ -55,7 +55,8 @@
     "sessions",
   ]
   pruneopts = "UT"
-  revision = "109a9d63f2b57c4623f4912b256bac4a7a63517d"
+  revision = "d5b63da7e1f93d83e3980e5ab2bf33179bad7b2a"
+  version = "v1.5.0"
 
 [[projects]]
   digest = "1:3049c43c6d1cfaa347acd27d6342187f8f38d9f416bbba7b02b43f82848302d2"
@@ -66,7 +67,7 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:1872596d45cb52913fcdea90d468f3e57435959e9c0d99ccb316ee76de341313"
+  digest = "1:37f8940c4d3c41536ea882b1ca3498e403c04892dfc34bd0d670ed9eafccda9a"
   name = "github.com/containerd/containerd"
   packages = [
     "content",
@@ -79,8 +80,8 @@
     "remotes/docker",
   ]
   pruneopts = "UT"
-  revision = "9754871865f7fe2f4e74d43e2fc7ccd237edcbce"
-  version = "v1.2.2"
+  revision = "894b81a4b802e4eb2a91d1ce216b8817763c29fb"
+  version = "v1.2.6"
 
 [[projects]]
   branch = "master"
@@ -161,7 +162,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:efa1ffae5c8d2f00f499708e7acfa16cd9d74b8e69f0f555765043321b523f50"
+  digest = "1:0a6a6b660e9f624f8a8d2602b12fb1ecfba05cd0314f5bb9daddd8b6d6b2a10b"
   name = "github.com/docker/docker"
   packages = [
     "api/types",
@@ -648,9 +649,13 @@
     "github.com/containerd/containerd/remotes",
     "github.com/containerd/containerd/remotes/docker",
     "github.com/docker/cli/cli/config",
+    "github.com/docker/cli/cli/config/configfile",
+    "github.com/docker/cli/cli/config/credentials",
     "github.com/docker/distribution/configuration",
     "github.com/docker/distribution/registry",
     "github.com/docker/distribution/registry/storage/driver/inmemory",
+    "github.com/docker/docker/api/types",
+    "github.com/docker/docker/pkg/term",
     "github.com/docker/docker/registry",
     "github.com/opencontainers/go-digest",
     "github.com/opencontainers/image-spec/specs-go",
