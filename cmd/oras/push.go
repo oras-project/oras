@@ -130,7 +130,7 @@ func runPush(opts pushOptions) error {
 	}
 
 	// ready to push
-	resolver := newResolver(opts.username, opts.password)
+	resolver := newResolver(opts.username, opts.password, opts.configs...)
 	return oras.Push(context.Background(), resolver, opts.targetRef, store, files, pushOpts...)
 }
 
