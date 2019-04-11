@@ -35,11 +35,14 @@ func pushCmd() *cobra.Command {
 Example - Push file "hi.txt" with the "application/vnd.oci.image.layer.v1.tar" media type (default):
   oras push localhost:5000/hello:latest hi.txt
 
-Example - Pull file "hi.txt" with the custom "application/vnd.me.hi" media type:
+Example - Push file "hi.txt" with the custom "application/vnd.me.hi" media type:
   oras push localhost:5000/hello:latest hi.txt:application/vnd.me.hi
 
 Example - Push multiple files with different media types:
   oras push localhost:5000/hello:latest hi.txt:application/vnd.me.hi bye.txt:application/vnd.me.bye
+
+Example - Push file "hi.txt" with the custom manifest config "config.json" of the custom "application/vnd.me.config" media type:
+  oras push --manifest-config config.json:application/vnd.me.config localhost:5000/hello:latest hi.txt
 `,
 		Args: cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
