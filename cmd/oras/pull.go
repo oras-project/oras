@@ -21,6 +21,7 @@ type pullOptions struct {
 	verbose            bool
 
 	debug    bool
+	configs  []string
 	username string
 	password string
 }
@@ -56,6 +57,7 @@ Example - Pull all files, any media type:
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
 
 	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
+	cmd.Flags().StringArrayVarP(&opts.configs, "config", "c", nil, "auth config path")
 	cmd.Flags().StringVarP(&opts.username, "username", "u", "", "registry username")
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password")
 	return cmd
@@ -71,7 +73,7 @@ func runPull(opts pullOptions) error {
 		opts.allowedMediaTypes = []string{content.DefaultBlobMediaType}
 	}
 
-	resolver := newResolver(opts.username, opts.password)
+	resolver := newResolver(opts.username, opts.password, opts.configs...)
 	store := content.NewFileStore(opts.output)
 	store.DisableOverwrite = opts.keepOldFiles
 	store.AllowPathTraversalOnWrite = opts.pathTraversal

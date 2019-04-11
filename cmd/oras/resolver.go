@@ -1,35 +1,32 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"os"
+
+	auth "github.com/deislabs/oras/pkg/auth/docker"
 
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
-	"github.com/docker/cli/cli/config"
-	"github.com/docker/docker/registry"
 )
 
-func newResolver(username, password string) remotes.Resolver {
-	cfg := config.LoadDefaultConfigFile(os.Stderr)
-	credential := func(hostName string) (string, string, error) {
-		if hostName == registry.DefaultV2Registry.Host {
-			hostName = registry.IndexServer
-		}
-		auth, err := cfg.GetAuthConfig(hostName)
-		if err != nil {
-			return "", "", err
-		}
-		if auth.IdentityToken != "" {
-			return "", auth.IdentityToken, nil
-		}
-		return auth.Username, auth.Password, nil
-	}
+func newResolver(username, password string, configs ...string) remotes.Resolver {
 	if username != "" || password != "" {
-		credential = func(hostName string) (string, string, error) {
-			return username, password, nil
-		}
+		return docker.NewResolver(docker.ResolverOptions{
+			Credentials: func(hostName string) (string, string, error) {
+				return username, password, nil
+			},
+		})
 	}
-	return docker.NewResolver(docker.ResolverOptions{
-		Credentials: credential,
-	})
+	cli, err := auth.NewClient(configs...)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "WARNING: Error loading auth file: %v\n", err)
+	}
+	resolver, err := cli.Resolver(context.Background())
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "WARNING: Error loading resolver: %v\n", err)
+		resolver = docker.NewResolver(docker.ResolverOptions{})
+	}
+	return resolver
 }

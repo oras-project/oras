@@ -26,6 +26,7 @@ type pushOptions struct {
 	manifestAnnotations string
 
 	debug    bool
+	configs  []string
 	username string
 	password string
 }
@@ -60,6 +61,7 @@ Example - Push file "hi.txt" with the custom manifest config "config.json" of th
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "manifest-config", "", "", "manifest config file")
 	cmd.Flags().StringVarP(&opts.manifestAnnotations, "manifest-annotations", "", "", "manifest annotation file")
 	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
+	cmd.Flags().StringArrayVarP(&opts.configs, "config", "c", nil, "auth config path")
 	cmd.Flags().StringVarP(&opts.username, "username", "u", "", "registry username")
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password")
 	return cmd
@@ -128,7 +130,7 @@ func runPush(opts pushOptions) error {
 	}
 
 	// ready to push
-	resolver := newResolver(opts.username, opts.password)
+	resolver := newResolver(opts.username, opts.password, opts.configs...)
 	return oras.Push(context.Background(), resolver, opts.targetRef, store, files, pushOpts...)
 }
 
