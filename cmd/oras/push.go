@@ -14,6 +14,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	annotationConfig   = "$config"
+	annotationManifest = "$manifest"
+)
+
 type pushOptions struct {
 	targetRef           string
 	fileRefs            []string
@@ -76,10 +81,10 @@ func runPush(opts pushOptions) error {
 		if err := decodeJSON(opts.manifestAnnotations, &annotations); err != nil {
 			return err
 		}
-		if value, ok := annotations["$config"]; ok {
+		if value, ok := annotations[annotationConfig]; ok {
 			pushOpts = append(pushOpts, oras.WithConfigAnnotations(value))
 		}
-		if value, ok := annotations["$manifest"]; ok {
+		if value, ok := annotations[annotationManifest]; ok {
 			pushOpts = append(pushOpts, oras.WithManifestAnnotations(value))
 		}
 	}
@@ -90,7 +95,7 @@ func runPush(opts pushOptions) error {
 		if len(ref) == 2 {
 			mediaType = ref[1]
 		}
-		file, err := store.Add("$config", mediaType, filename)
+		file, err := store.Add(annotationConfig, mediaType, filename)
 		if err != nil {
 			return err
 		}
