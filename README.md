@@ -29,7 +29,7 @@ The simplest way to get started is to run the official
 [Docker registry image](https://hub.docker.com/_/registry) locally:
 
 ```
-docker run -it --rm -p 5000:5000 registry:2.7.0
+docker run -it --rm -p 5000:5000 registry
 ```
 
 This will start a Distribution server at `localhost:5000`
@@ -120,7 +120,7 @@ Next, start a registry using that file for auth:
 docker run -it --rm -p 5000:5000 \
     -v $(pwd)/auth.htpasswd:/etc/docker/registry/auth.htpasswd \
     -e REGISTRY_AUTH="{htpasswd: {realm: localhost, path: /etc/docker/registry/auth.htpasswd}}" \
-    registry:2
+    registry
 ```
 
 In a new window, login with `oras`:
