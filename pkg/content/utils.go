@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -97,7 +98,7 @@ func extractTarDirectory(root, prefix string, r io.Reader) error {
 		if err != nil {
 			return err
 		}
-		if filepath.HasPrefix(path, "../") {
+		if strings.HasPrefix(path, "../") {
 			return fmt.Errorf("%q does not have prefix %q", name, prefix)
 		}
 		path = filepath.Join(root, path)
