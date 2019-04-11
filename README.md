@@ -99,12 +99,40 @@ docker run -it --rm -v $(pwd):/workspace orasbot/oras:v0.3.3 help
 
 Note: the default WORKDIR  in the image is `/workspace`.
  
-### Login Credentials
-`oras` uses the local Docker credentials by default. Please run `docker login` in advance for any private registries.
+### Authentication
+
+Run `oras login` in advance for any private registries. By default, this will store credentials in `~/.docker/config.json` (same file as used by Docker). If you have authenticated to a registry previously using `docker login`, the credentials will be reused. Use the `-c`/`--config` option to specify an alternate location.
 
 `oras` also accepts explicit credentials via options, for example,
 ```
 oras pull -u username -p password myregistry.io/myimage:latest
+```
+
+#### Example using with Docker registry
+
+First, create a valid htpasswd file (must use `-B` for bcrypt):
+```
+htpasswd -cB -b auth.htpasswd myuser mypass
+```
+
+Next, start a registry using that file for auth:
+```
+docker run -it --rm -p 5000:5000 \
+    -v $(pwd)/auth.htpasswd:/etc/docker/registry/auth.htpasswd \
+    -e REGISTRY_AUTH="{htpasswd: {realm: localhost, path: /etc/docker/registry/auth.htpasswd}}" \
+    registry:2
+```
+
+In a new window, login with `oras`:
+```
+oras login -u myuser -p mypass localhost:5000
+```
+
+You will notice a new entry for `localhost:5000` appear in `~/.docker/config.json`.
+
+To remove the entry from the credentials file, use `oras logout`:
+```
+oras logout localhost:5000
 ```
 
 ### Usage
