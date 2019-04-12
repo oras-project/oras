@@ -65,25 +65,25 @@ func ValidateNameAsPath(desc ocispec.Descriptor) error {
 	// no empty name
 	path, ok := orascontent.ResolveName(desc)
 	if !ok || path == "" {
-		return errors.Wrap(ErrInvalidName, "empty name")
+		return orascontent.ErrNoName
 	}
 
 	// path should be clean
 	if filepath.Clean(path) != path {
-		return errors.Wrap(ErrInvalidName, "dirty path: "+path)
+		return errors.Wrap(ErrDirtyPath, path)
 	}
 
 	// path should be slash-separated
 	if filepath.ToSlash(path) != path {
-		return errors.Wrap(ErrInvalidName, "path not slash-separated: "+path)
+		return errors.Wrap(ErrPathNotSlashSeparated, path)
 	}
 
 	// disallow path traversal
 	if filepath.IsAbs(path) {
-		return errors.Wrap(ErrInvalidName, "absolute path disallowed: "+path)
+		return errors.Wrap(ErrAbsolutePathDisallowed, path)
 	}
 	if strings.HasPrefix(path, "../") {
-		return errors.Wrap(ErrInvalidName, "path traversal disallowed: "+path)
+		return errors.Wrap(ErrPathTraversalDisallowed, path)
 	}
 
 	return nil
