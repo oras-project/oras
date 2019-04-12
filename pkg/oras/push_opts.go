@@ -80,7 +80,7 @@ func ValidateNameAsPath(desc ocispec.Descriptor) error {
 	}
 
 	// disallow absolute path
-	if strings.HasPrefix(path, "/") {
+	if filepath.IsAbs(path) || strings.HasPrefix(path, "/") {
 		return errors.Wrap(ErrAbsolutePathDisallowed, path)
 	}
 

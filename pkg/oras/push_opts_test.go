@@ -39,6 +39,8 @@ func (suite *PushOptsSuite) TestValidateNameAsPath() {
 	suite.Error(err, "unix: absolute path disallowed")
 	err = ValidateNameAsPath(descFromName("C:\\foo\\bar"))
 	suite.Error(err, "windows: absolute path disallowed")
+	err = ValidateNameAsPath(descFromName("C:/foo/bar"))
+	suite.Error(err, "windows: absolute path disallowed")
 
 	// disallow path traversal
 	err = ValidateNameAsPath(descFromName("foo/../../bar"))
