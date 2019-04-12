@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"path/filepath"
 
 	"github.com/deislabs/oras/pkg/content"
 	"github.com/deislabs/oras/pkg/oras"
@@ -100,7 +101,12 @@ func runPush(opts pushOptions) error {
 	}
 	for _, fileRef := range opts.fileRefs {
 		filename, mediaType := parseFileRef(fileRef, "")
-		file, err := store.Add(filename, mediaType, "")
+		name := filepath.Clean(filename)
+		if !filepath.IsAbs(name) {
+			// convert to slash-separated path unless it is absolute path
+			name = filepath.ToSlash(name)
+		}
+		file, err := store.Add(name, mediaType, filename)
 		if err != nil {
 			return err
 		}
