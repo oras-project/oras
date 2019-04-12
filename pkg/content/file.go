@@ -198,49 +198,11 @@ func (s *FileStore) Writer(ctx context.Context, opts ...content.WriterOpt) (cont
 	if !ok {
 		return nil, ErrNoName
 	}
-	path := s.ResolvePath(name)
-	if !s.AllowPathTraversalOnWrite {
-		base, err := filepath.Abs(s.root)
-		if err != nil {
-			return nil, err
-		}
-		target, err := filepath.Abs(path)
-		if err != nil {
-			return nil, err
-		}
-		rel, err := filepath.Rel(base, target)
-		if err != nil || strings.HasPrefix(filepath.ToSlash(rel), "../") {
-			return nil, ErrPathTraversalDisallowed
-		}
+	path, err := s.resolveWritePath(name)
+	if err != nil {
+		return nil, err
 	}
-	if s.DisableOverwrite {
-		if _, err := os.Stat(path); err == nil {
-			return nil, ErrOverwriteDisallowed
-		} else if !os.IsNotExist(err) {
-			return nil, err
-		}
-	}
-
-	var (
-		file        *os.File
-		err         error
-		afterCommit func() error
-	)
-	if value, ok := desc.Annotations[AnnotationUnpack]; ok && value == "true" {
-		if err := os.MkdirAll(path, 0755); err != nil {
-			return nil, err
-		}
-		file, err = s.tempFile()
-		afterCommit = func() error {
-			checksum := desc.Annotations[AnnotationDigest]
-			return extractTarGzip(path, name, file.Name(), checksum)
-		}
-	} else {
-		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-			return nil, err
-		}
-		file, err = os.Create(path)
-	}
+	file, afterCommit, err := s.createWritePath(path, desc, name)
 	if err != nil {
 		return nil, err
 	}
@@ -259,6 +221,52 @@ func (s *FileStore) Writer(ctx context.Context, opts ...content.WriterOpt) (cont
 		},
 		afterCommit: afterCommit,
 	}, nil
+}
+
+func (s *FileStore) resolveWritePath(name string) (string, error) {
+	path := s.ResolvePath(name)
+	if !s.AllowPathTraversalOnWrite {
+		base, err := filepath.Abs(s.root)
+		if err != nil {
+			return "", err
+		}
+		target, err := filepath.Abs(path)
+		if err != nil {
+			return "", err
+		}
+		rel, err := filepath.Rel(base, target)
+		if err != nil || strings.HasPrefix(filepath.ToSlash(rel), "../") {
+			return "", ErrPathTraversalDisallowed
+		}
+	}
+	if s.DisableOverwrite {
+		if _, err := os.Stat(path); err == nil {
+			return "", ErrOverwriteDisallowed
+		} else if !os.IsNotExist(err) {
+			return "", err
+		}
+	}
+	return path, nil
+}
+
+func (s *FileStore) createWritePath(path string, desc ocispec.Descriptor, prefix string) (*os.File, func() error, error) {
+	if value, ok := desc.Annotations[AnnotationUnpack]; !ok || value != "true" {
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			return nil, nil, err
+		}
+		file, err := os.Create(path)
+		return file, nil, err
+	}
+
+	if err := os.MkdirAll(path, 0755); err != nil {
+		return nil, nil, err
+	}
+	file, err := s.tempFile()
+	checksum := desc.Annotations[AnnotationDigest]
+	afterCommit := func() error {
+		return extractTarGzip(path, prefix, file.Name(), checksum)
+	}
+	return file, afterCommit, err
 }
 
 // MapPath maps name to path
