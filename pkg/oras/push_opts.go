@@ -85,7 +85,7 @@ func ValidateNameAsPath(desc ocispec.Descriptor) error {
 	}
 
 	// disallow path traversal
-	if strings.HasPrefix(path, "../") {
+	if strings.HasPrefix(path, "../") || path == ".." {
 		return errors.Wrap(ErrPathTraversalDisallowed, path)
 	}
 
