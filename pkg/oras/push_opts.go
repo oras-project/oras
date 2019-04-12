@@ -69,12 +69,12 @@ func ValidateNameAsPath(desc ocispec.Descriptor) error {
 	}
 
 	// path should be clean
-	if filepath.Clean(path) != path {
+	if target := filepath.ToSlash(filepath.Clean(path)); target != path {
 		return errors.Wrap(ErrDirtyPath, path)
 	}
 
 	// path should be slash-separated
-	if filepath.ToSlash(path) != path {
+	if target := filepath.ToSlash(path); target != path {
 		return errors.Wrap(ErrPathNotSlashSeparated, path)
 	}
 
