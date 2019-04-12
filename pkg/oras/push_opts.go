@@ -61,6 +61,7 @@ func WithNameValidation(validate func(desc ocispec.Descriptor) error) PushOpt {
 // ValidateNameAsPath validates name in the descriptor as file path in order
 // to generate good packages intended to be pulled using the FileStore or
 // the oras cli.
+// For cross-platform considerations, only unix paths are accepted.
 func ValidateNameAsPath(desc ocispec.Descriptor) error {
 	// no empty name
 	path, ok := orascontent.ResolveName(desc)
@@ -78,10 +79,12 @@ func ValidateNameAsPath(desc ocispec.Descriptor) error {
 		return errors.Wrap(ErrPathNotSlashSeparated, path)
 	}
 
-	// disallow path traversal
-	if filepath.IsAbs(path) {
+	// disallow absolute path
+	if strings.HasPrefix(path, "/") {
 		return errors.Wrap(ErrAbsolutePathDisallowed, path)
 	}
+
+	// disallow path traversal
 	if strings.HasPrefix(path, "../") {
 		return errors.Wrap(ErrPathTraversalDisallowed, path)
 	}
