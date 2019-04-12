@@ -75,7 +75,7 @@ func ValidateNameAsPath(desc ocispec.Descriptor) error {
 	}
 
 	// path should be slash-separated
-	if target := filepath.ToSlash(path); target != path {
+	if strings.Contains(path, "\\") {
 		return errors.Wrap(ErrPathNotSlashSeparated, path)
 	}
 
