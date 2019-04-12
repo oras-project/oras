@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"os"
-	"strings"
 
 	"github.com/deislabs/oras/pkg/content"
 	"github.com/deislabs/oras/pkg/oras"
@@ -91,12 +90,7 @@ func runPush(opts pushOptions) error {
 		}
 	}
 	if opts.manifestConfigRef != "" {
-		ref := strings.SplitN(opts.manifestConfigRef, ":", 2)
-		filename := ref[0]
-		mediaType := ocispec.MediaTypeImageConfig
-		if len(ref) == 2 {
-			mediaType = ref[1]
-		}
+		filename, mediaType := parseFileRef(opts.manifestConfigRef, ocispec.MediaTypeImageConfig)
 		file, err := store.Add(annotationConfig, mediaType, filename)
 		if err != nil {
 			return err
@@ -105,12 +99,7 @@ func runPush(opts pushOptions) error {
 		pushOpts = append(pushOpts, oras.WithConfig(file))
 	}
 	for _, fileRef := range opts.fileRefs {
-		ref := strings.SplitN(fileRef, ":", 2)
-		filename := ref[0]
-		var mediaType string
-		if len(ref) == 2 {
-			mediaType = ref[1]
-		}
+		filename, mediaType := parseFileRef(fileRef, "")
 		file, err := store.Add(filename, mediaType, "")
 		if err != nil {
 			return err
