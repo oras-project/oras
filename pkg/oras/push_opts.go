@@ -79,9 +79,15 @@ func ValidateNameAsPath(desc ocispec.Descriptor) error {
 		return errors.Wrap(ErrPathNotSlashSeparated, path)
 	}
 
-	// disallow absolute path
-	if filepath.IsAbs(path) || strings.HasPrefix(path, "/") {
+	// disallow absolute path: covers unix and windows format
+	if strings.HasPrefix(path, "/") {
 		return errors.Wrap(ErrAbsolutePathDisallowed, path)
+	}
+	if len(path) > 2 {
+		c := path[0]
+		if path[1] == ':' && path[2] == '/' && ('a' <= c && c <= 'z' || 'A' <= c && c <= 'Z') {
+			return errors.Wrap(ErrAbsolutePathDisallowed, path)
+		}
 	}
 
 	// disallow path traversal
