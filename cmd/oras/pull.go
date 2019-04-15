@@ -84,12 +84,12 @@ func runPull(opts pullOptions) error {
 	}
 
 	if opts.verbose {
-		fmt.Printf("%s: digest: %s size: %d\n", opts.targetRef, manifest.Digest, manifest.Size)
 		for _, file := range files {
 			if name, ok := content.ResolveName(file); ok {
 				fmt.Println(name)
 			}
 		}
+		fmt.Printf("pulled %s: %s\n", opts.targetRef, manifest.Digest)
 	}
 
 	return nil

@@ -144,7 +144,7 @@ func runPush(opts pushOptions) error {
 	}
 
 	if opts.verbose {
-		fmt.Printf("%s: digest: %s size: %d\n", opts.targetRef, manifest.Digest, manifest.Size)
+		fmt.Printf("pushed %s: %s\n", opts.targetRef, manifest.Digest)
 	}
 	return nil
 }
