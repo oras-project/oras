@@ -19,10 +19,17 @@ func Push(ctx context.Context, resolver remotes.Resolver, ref string, provider c
 	if len(descriptors) == 0 {
 		return ErrEmptyDescriptors
 	}
-	var opt pushOpts
+	opt := pushOptsDefaults()
 	for _, o := range opts {
-		if err := o(&opt); err != nil {
+		if err := o(opt); err != nil {
 			return err
+		}
+	}
+	if opt.validateName != nil {
+		for _, desc := range descriptors {
+			if err := opt.validateName(desc); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -31,7 +38,7 @@ func Push(ctx context.Context, resolver remotes.Resolver, ref string, provider c
 		return err
 	}
 
-	desc, provider, err := pack(provider, descriptors, &opt)
+	desc, provider, err := pack(provider, descriptors, opt)
 	if err != nil {
 		return err
 	}

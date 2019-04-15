@@ -20,10 +20,11 @@ const (
 )
 
 type pushOptions struct {
-	targetRef           string
-	fileRefs            []string
-	manifestConfigRef   string
-	manifestAnnotations string
+	targetRef              string
+	fileRefs               []string
+	manifestConfigRef      string
+	manifestAnnotations    string
+	pathValidationDisabled bool
 
 	debug    bool
 	configs  []string
@@ -60,6 +61,7 @@ Example - Push file "hi.txt" with the custom manifest config "config.json" of th
 
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "manifest-config", "", "", "manifest config file")
 	cmd.Flags().StringVarP(&opts.manifestAnnotations, "manifest-annotations", "", "", "manifest annotation file")
+	cmd.Flags().BoolVarP(&opts.pathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
 	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
 	cmd.Flags().StringArrayVarP(&opts.configs, "config", "c", nil, "auth config path")
 	cmd.Flags().StringVarP(&opts.username, "username", "u", "", "registry username")
@@ -99,6 +101,9 @@ func runPush(opts pushOptions) error {
 		}
 		file.Annotations = nil
 		pushOpts = append(pushOpts, oras.WithConfig(file))
+	}
+	if opts.pathValidationDisabled {
+		pushOpts = append(pushOpts, oras.WithNameValidation(nil))
 	}
 	for _, fileRef := range opts.fileRefs {
 		filename, mediaType := parseFileRef(fileRef, "")

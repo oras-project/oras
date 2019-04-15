@@ -235,7 +235,11 @@ func (s *FileStore) resolveWritePath(name string) (string, error) {
 			return "", err
 		}
 		rel, err := filepath.Rel(base, target)
-		if err != nil || strings.HasPrefix(filepath.ToSlash(rel), "../") {
+		if err != nil {
+			return "", ErrPathTraversalDisallowed
+		}
+		rel = filepath.ToSlash(rel)
+		if strings.HasPrefix(rel, "../") || rel == ".." {
 			return "", ErrPathTraversalDisallowed
 		}
 	}
