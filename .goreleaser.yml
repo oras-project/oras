@@ -9,7 +9,7 @@ builds:
   - windows
   goarch:
   - amd64
-  flags:
+  ldflags:
   - -w
   - -X pkg/version.Version={{.Version}}
   - -X pkg/version.BuildMetadata=
