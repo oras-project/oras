@@ -9,6 +9,11 @@ builds:
   - windows
   goarch:
   - amd64
+  flags:
+  - -w
+  - -X pkg/version.Version={{.Tag}}
+  - -X pkg/version.BuildMetadata=
+  - -X pkg/version.GitCommit={{.FullCommit}}
 
 archive:
   format: tar.gz
