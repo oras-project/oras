@@ -10,10 +10,9 @@ builds:
   goarch:
   - amd64
   ldflags:
-  - -w
-  - -X github.com/deislabs/oras/pkg/version.Version={{.Version}}
-  - -X github.com/deislabs/oras/pkg/version.BuildMetadata=
-  - -X github.com/deislabs/oras/pkg/version.GitCommit={{.FullCommit}}
+  # one-line ldflags to bypass the goreleaser bugs
+  # the git tree state is guaranteed to clean by goreleaser
+  - -w -X github.com/deislabs/oras/pkg/version.Version={{.Version}} -X github.com/deislabs/oras/pkg/version.GitCommit={{.FullCommit}} -X github.com/deislabs/oras/pkg/version.BuildMetadata= -X github.com/deislabs/oras/pkg/version.GitTreeState=clean
 
 archive:
   format: tar.gz
