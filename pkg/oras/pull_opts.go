@@ -11,8 +11,16 @@ func pullOptsDefaults() *pullOpts {
 	return &pullOpts{}
 }
 
+// WithAllowedMediaType sets the allowed media types
+func WithAllowedMediaType(allowedMediaTypes ...string) PullOpt {
+	return func(o *pullOpts) error {
+		o.allowedMediaTypes = append(o.allowedMediaTypes, allowedMediaTypes...)
+		return nil
+	}
+}
+
 // WithAllowedMediaTypes sets the allowed media types
-func WithAllowedMediaTypes(allowedMediaTypes ...string) PullOpt {
+func WithAllowedMediaTypes(allowedMediaTypes []string) PullOpt {
 	return func(o *pullOpts) error {
 		o.allowedMediaTypes = append(o.allowedMediaTypes, allowedMediaTypes...)
 		return nil
