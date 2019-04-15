@@ -191,15 +191,16 @@ import (
 	"fmt"
 
 	"github.com/containerd/containerd/remotes/docker"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/deislabs/oras/pkg/content"
 	"github.com/deislabs/oras/pkg/oras"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 func check(e error) {
 	if e != nil {
 		panic(e)
 	}
+	fmt.Println("success!")
 }
 
 func main() {
@@ -215,18 +216,17 @@ func main() {
 	memoryStore := content.NewMemoryStore()
 	desc := memoryStore.Add(fileName, customMediaType, fileContent)
 	pushContents := []ocispec.Descriptor{desc}
-	fmt.Printf("Pushing %s to %s... ", fileName, ref)
+	fmt.Printf("Pushing %s to %s...\n", fileName, ref)
 	err := oras.Push(ctx, resolver, ref, memoryStore, pushContents)
 	check(err)
-	fmt.Println("success!")
 
 	// Pull file(s) from registry and save to disk
-	fmt.Printf("Pulling from %s and saving to %s... ", ref, fileName)
+	fmt.Printf("Pulling from %s and saving to %s...\n", ref, fileName)
 	fileStore := content.NewFileStore("")
+	defer fileStore.Close()
 	allowedMediaTypes := []string{customMediaType}
 	_, err = oras.Pull(ctx, resolver, ref, fileStore, allowedMediaTypes...)
 	check(err)
-	fmt.Println("success!")
 	fmt.Printf("Try running 'cat %s'\n", fileName)
 }
 ```
