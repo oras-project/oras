@@ -138,13 +138,13 @@ func runPush(opts pushOptions) error {
 
 	// ready to push
 	resolver := newResolver(opts.username, opts.password, opts.configs...)
-	manifest, err := oras.Push(context.Background(), resolver, opts.targetRef, store, files, pushOpts...)
+	desc, err := oras.Push(context.Background(), resolver, opts.targetRef, store, files, pushOpts...)
 	if err != nil {
 		return err
 	}
 
 	if opts.verbose {
-		fmt.Printf("pushed %s: %s\n", opts.targetRef, manifest.Digest)
+		fmt.Printf("pushed %s: %s\n", opts.targetRef, desc.Digest)
 	}
 	return nil
 }
