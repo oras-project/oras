@@ -1,8 +1,10 @@
 package content
 
 import (
+	"compress/gzip"
 	"context"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,6 +32,7 @@ type FileStore struct {
 	root       string
 	descriptor *sync.Map // map[digest.Digest]ocispec.Descriptor
 	pathMap    *sync.Map
+	tmpFiles   *sync.Map
 }
 
 // NewFileStore creats a new file store
@@ -38,15 +41,12 @@ func NewFileStore(rootPath string) *FileStore {
 		root:       rootPath,
 		descriptor: &sync.Map{},
 		pathMap:    &sync.Map{},
+		tmpFiles:   &sync.Map{},
 	}
 }
 
 // Add adds a file reference
 func (s *FileStore) Add(name, mediaType, path string) (ocispec.Descriptor, error) {
-	if mediaType == "" {
-		mediaType = DefaultBlobMediaType
-	}
-
 	if path == "" {
 		path = name
 	}
@@ -56,6 +56,26 @@ func (s *FileStore) Add(name, mediaType, path string) (ocispec.Descriptor, error
 	if err != nil {
 		return ocispec.Descriptor{}, err
 	}
+
+	var desc ocispec.Descriptor
+	if fileInfo.IsDir() {
+		desc, err = s.descFromDir(name, mediaType, path)
+	} else {
+		desc, err = s.descFromFile(fileInfo, mediaType, path)
+	}
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	if desc.Annotations == nil {
+		desc.Annotations = make(map[string]string)
+	}
+	desc.Annotations[ocispec.AnnotationTitle] = name
+
+	s.set(desc)
+	return desc, nil
+}
+
+func (s *FileStore) descFromFile(info os.FileInfo, mediaType, path string) (ocispec.Descriptor, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return ocispec.Descriptor{}, err
@@ -66,17 +86,80 @@ func (s *FileStore) Add(name, mediaType, path string) (ocispec.Descriptor, error
 		return ocispec.Descriptor{}, err
 	}
 
-	desc := ocispec.Descriptor{
+	if mediaType == "" {
+		mediaType = DefaultBlobMediaType
+	}
+	return ocispec.Descriptor{
 		MediaType: mediaType,
 		Digest:    digest,
-		Size:      fileInfo.Size(),
-		Annotations: map[string]string{
-			ocispec.AnnotationTitle: name,
-		},
+		Size:      info.Size(),
+	}, nil
+}
+
+func (s *FileStore) descFromDir(name, mediaType, root string) (ocispec.Descriptor, error) {
+	// generate temp file
+	file, err := s.tempFile()
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	defer file.Close()
+	s.MapPath(name, file.Name())
+
+	// compress directory
+	digester := digest.Canonical.Digester()
+	zw := gzip.NewWriter(io.MultiWriter(file, digester.Hash()))
+	defer zw.Close()
+	tarDigester := digest.Canonical.Digester()
+	if err := tarDirectory(root, name, io.MultiWriter(zw, tarDigester.Hash())); err != nil {
+		return ocispec.Descriptor{}, err
 	}
 
-	s.set(desc)
-	return desc, nil
+	// flush all
+	if err := zw.Close(); err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	if err := file.Sync(); err != nil {
+		return ocispec.Descriptor{}, err
+	}
+
+	// generate descriptor
+	if mediaType == "" {
+		mediaType = DefaultBlobDirMediaType
+	}
+	info, err := file.Stat()
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	return ocispec.Descriptor{
+		MediaType: mediaType,
+		Digest:    digester.Digest(),
+		Size:      info.Size(),
+		Annotations: map[string]string{
+			AnnotationDigest: tarDigester.Digest().String(),
+			AnnotationUnpack: "true",
+		},
+	}, nil
+}
+
+func (s *FileStore) tempFile() (*os.File, error) {
+	file, err := ioutil.TempFile("", TempFilePattern)
+	if err != nil {
+		return nil, err
+	}
+	s.tmpFiles.Store(file.Name(), file)
+	return file, nil
+}
+
+// Close frees up resources used by the file store
+func (s *FileStore) Close() error {
+	var errs []string
+	s.tmpFiles.Range(func(name, _ interface{}) bool {
+		if err := os.Remove(name.(string)); err != nil {
+			errs = append(errs, err.Error())
+		}
+		return true
+	})
+	return errors.New(strings.Join(errs, "; "))
 }
 
 // ReaderAt provides contents
@@ -115,33 +198,11 @@ func (s *FileStore) Writer(ctx context.Context, opts ...content.WriterOpt) (cont
 	if !ok {
 		return nil, ErrNoName
 	}
-	path := s.ResolvePath(name)
-	if !s.AllowPathTraversalOnWrite {
-		base, err := filepath.Abs(s.root)
-		if err != nil {
-			return nil, err
-		}
-		target, err := filepath.Abs(path)
-		if err != nil {
-			return nil, err
-		}
-		rel, err := filepath.Rel(base, target)
-		if err != nil || strings.HasPrefix(filepath.ToSlash(rel), "../") {
-			return nil, ErrPathTraversalDisallowed
-		}
-	}
-	if s.DisableOverwrite {
-		if _, err := os.Stat(path); err == nil {
-			return nil, ErrOverwriteDisallowed
-		} else if !os.IsNotExist(err) {
-			return nil, err
-		}
-	}
-
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+	path, err := s.resolveWritePath(name)
+	if err != nil {
 		return nil, err
 	}
-	file, err := os.Create(path)
+	file, afterCommit, err := s.createWritePath(path, desc, name)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +219,54 @@ func (s *FileStore) Writer(ctx context.Context, opts ...content.WriterOpt) (cont
 			StartedAt: now,
 			UpdatedAt: now,
 		},
+		afterCommit: afterCommit,
 	}, nil
+}
+
+func (s *FileStore) resolveWritePath(name string) (string, error) {
+	path := s.ResolvePath(name)
+	if !s.AllowPathTraversalOnWrite {
+		base, err := filepath.Abs(s.root)
+		if err != nil {
+			return "", err
+		}
+		target, err := filepath.Abs(path)
+		if err != nil {
+			return "", err
+		}
+		rel, err := filepath.Rel(base, target)
+		if err != nil || strings.HasPrefix(filepath.ToSlash(rel), "../") {
+			return "", ErrPathTraversalDisallowed
+		}
+	}
+	if s.DisableOverwrite {
+		if _, err := os.Stat(path); err == nil {
+			return "", ErrOverwriteDisallowed
+		} else if !os.IsNotExist(err) {
+			return "", err
+		}
+	}
+	return path, nil
+}
+
+func (s *FileStore) createWritePath(path string, desc ocispec.Descriptor, prefix string) (*os.File, func() error, error) {
+	if value, ok := desc.Annotations[AnnotationUnpack]; !ok || value != "true" {
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			return nil, nil, err
+		}
+		file, err := os.Create(path)
+		return file, nil, err
+	}
+
+	if err := os.MkdirAll(path, 0755); err != nil {
+		return nil, nil, err
+	}
+	file, err := s.tempFile()
+	checksum := desc.Annotations[AnnotationDigest]
+	afterCommit := func() error {
+		return extractTarGzip(path, prefix, file.Name(), checksum)
+	}
+	return file, afterCommit, err
 }
 
 // MapPath maps name to path
@@ -201,11 +309,12 @@ func (s *FileStore) get(desc ocispec.Descriptor) (ocispec.Descriptor, bool) {
 }
 
 type fileWriter struct {
-	store    *FileStore
-	file     *os.File
-	desc     ocispec.Descriptor
-	digester digest.Digester
-	status   content.Status
+	store       *FileStore
+	file        *os.File
+	desc        ocispec.Descriptor
+	digester    digest.Digester
+	status      content.Status
+	afterCommit func() error
 }
 
 func (w *fileWriter) Status() (content.Status, error) {
@@ -264,6 +373,9 @@ func (w *fileWriter) Commit(ctx context.Context, size int64, expected digest.Dig
 	}
 
 	w.store.set(w.desc)
+	if w.afterCommit != nil {
+		return w.afterCommit()
+	}
 	return nil
 }
 

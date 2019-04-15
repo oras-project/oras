@@ -79,6 +79,7 @@ func runPush(opts pushOptions) error {
 		store       = content.NewFileStore("")
 		pushOpts    []oras.PushOpt
 	)
+	defer store.Close()
 	if opts.manifestAnnotations != "" {
 		if err := decodeJSON(opts.manifestAnnotations, &annotations); err != nil {
 			return err
