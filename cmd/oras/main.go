@@ -11,7 +11,7 @@ func main() {
 		Use:          "oras [command]",
 		SilenceUsage: true,
 	}
-	cmd.AddCommand(pullCmd(), pushCmd(), loginCmd(), logoutCmd())
+	cmd.AddCommand(pullCmd(), pushCmd(), loginCmd(), logoutCmd(), versionCmd())
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
 	}
