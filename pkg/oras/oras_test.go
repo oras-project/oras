@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	orascontent "github.com/deislabs/oras/pkg/content"
+
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
 	"github.com/docker/distribution/configuration"
@@ -16,7 +18,6 @@ import (
 	_ "github.com/docker/distribution/registry/storage/driver/inmemory"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/phayes/freeport"
-	orascontent "github.com/deislabs/oras/pkg/content"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -74,14 +75,14 @@ func (suite *ORASTestSuite) Test_0_Push() {
 		store       *orascontent.FileStore
 	)
 
-	err = Push(newContext(), nil, ref, nil, descriptors)
+	_, err = Push(newContext(), nil, ref, nil, descriptors)
 	suite.NotNil(err, "error pushing with empty resolver")
 
-	err = Push(newContext(), newResolver(), ref, nil, descriptors)
+	_, err = Push(newContext(), newResolver(), ref, nil, descriptors)
 	suite.NotNil(err, "error pushing when context missing hostname")
 
 	ref = fmt.Sprintf("%s/empty:test", suite.DockerRegistryHost)
-	err = Push(newContext(), newResolver(), ref, nil, descriptors)
+	_, err = Push(newContext(), newResolver(), ref, nil, descriptors)
 	suite.NotNil(ErrEmptyDescriptors, err, "error pushing with empty descriptors")
 
 	// Load descriptors with test chart tgz (as single layer)
@@ -92,7 +93,7 @@ func (suite *ORASTestSuite) Test_0_Push() {
 	descriptors = []ocispec.Descriptor{desc}
 
 	ref = fmt.Sprintf("%s/chart-tgz:test", suite.DockerRegistryHost)
-	err = Push(newContext(), newResolver(), ref, store, descriptors)
+	_, err = Push(newContext(), newResolver(), ref, store, descriptors)
 	suite.Nil(err, "no error pushing test chart tgz (as single layer)")
 
 	// Load descriptors with test chart dir (each file as layer)
@@ -119,7 +120,7 @@ func (suite *ORASTestSuite) Test_0_Push() {
 	os.Chdir(cwd)
 
 	ref = fmt.Sprintf("%s/chart-dir:test", suite.DockerRegistryHost)
-	err = Push(newContext(), newResolver(), ref, store, descriptors)
+	_, err = Push(newContext(), newResolver(), ref, store, descriptors)
 	suite.Nil(err, "no error pushing test chart dir (each file as layer)")
 }
 
@@ -132,21 +133,21 @@ func (suite *ORASTestSuite) Test_1_Pull() {
 		store       *orascontent.Memorystore
 	)
 
-	descriptors, err = Pull(newContext(), nil, ref, nil)
+	_, descriptors, err = Pull(newContext(), nil, ref, nil)
 	suite.NotNil(err, "error pulling with empty resolver")
 	suite.Nil(descriptors, "descriptors nil pulling with empty resolver")
 
 	// Pull non-existant
 	store = orascontent.NewMemoryStore()
 	ref = fmt.Sprintf("%s/nonexistant:test", suite.DockerRegistryHost)
-	descriptors, err = Pull(newContext(), newResolver(), ref, store)
+	_, descriptors, err = Pull(newContext(), newResolver(), ref, store)
 	suite.NotNil(err, "error pulling non-existant ref")
 	suite.Nil(descriptors, "descriptors empty with error")
 
 	// Pull chart-tgz
 	store = orascontent.NewMemoryStore()
 	ref = fmt.Sprintf("%s/chart-tgz:test", suite.DockerRegistryHost)
-	descriptors, err = Pull(newContext(), newResolver(), ref, store)
+	_, descriptors, err = Pull(newContext(), newResolver(), ref, store)
 	suite.Nil(err, "no error pulling chart-tgz ref")
 
 	// Verify the descriptors, single layer/file
@@ -160,7 +161,7 @@ func (suite *ORASTestSuite) Test_1_Pull() {
 	// Pull chart-dir
 	store = orascontent.NewMemoryStore()
 	ref = fmt.Sprintf("%s/chart-dir:test", suite.DockerRegistryHost)
-	descriptors, err = Pull(newContext(), newResolver(), ref, store)
+	_, descriptors, err = Pull(newContext(), newResolver(), ref, store)
 	suite.Nil(err, "no error pulling chart-dir ref")
 
 	// Verify the descriptors, multiple layers/files

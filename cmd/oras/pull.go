@@ -78,12 +78,13 @@ func runPull(opts pullOptions) error {
 	defer store.Close()
 	store.DisableOverwrite = opts.keepOldFiles
 	store.AllowPathTraversalOnWrite = opts.pathTraversal
-	files, err := oras.Pull(context.Background(), resolver, opts.targetRef, store, opts.allowedMediaTypes...)
+	manifest, files, err := oras.Pull(context.Background(), resolver, opts.targetRef, store, oras.WithAllowedMediaTypes(opts.allowedMediaTypes...))
 	if err != nil {
 		return err
 	}
 
 	if opts.verbose {
+		fmt.Printf("%s: digest: %s size: %d\n", opts.targetRef, manifest.Digest, manifest.Size)
 		for _, file := range files {
 			if name, ok := content.ResolveName(file); ok {
 				fmt.Println(name)
