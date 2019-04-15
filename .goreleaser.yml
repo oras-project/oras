@@ -11,9 +11,9 @@ builds:
   - amd64
   ldflags:
   - -w
-  - -X pkg/version.Version={{.Version}}
-  - -X pkg/version.BuildMetadata=
-  - -X pkg/version.GitCommit={{.FullCommit}}
+  - -X github.com/deislabs/oras/pkg/version.Version={{.Version}}
+  - -X github.com/deislabs/oras/pkg/version.BuildMetadata=
+  - -X github.com/deislabs/oras/pkg/version.GitCommit={{.FullCommit}}
 
 archive:
   format: tar.gz
