@@ -11,7 +11,7 @@ builds:
   - amd64
   flags:
   - -w
-  - -X pkg/version.Version={{.Tag}}
+  - -X pkg/version.Version={{.Version}}
   - -X pkg/version.BuildMetadata=
   - -X pkg/version.GitCommit={{.FullCommit}}
 
