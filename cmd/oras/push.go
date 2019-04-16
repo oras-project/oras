@@ -144,7 +144,8 @@ func runPush(opts pushOptions) error {
 	}
 
 	if opts.verbose {
-		fmt.Printf("pushed %s: %s\n", opts.targetRef, desc.Digest)
+		fmt.Println("Pushed", opts.targetRef)
+		fmt.Println(desc.Digest)
 	}
 	return nil
 }

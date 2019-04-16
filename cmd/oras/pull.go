@@ -89,7 +89,8 @@ func runPull(opts pullOptions) error {
 				fmt.Println(name)
 			}
 		}
-		fmt.Printf("pulled %s: %s\n", opts.targetRef, desc.Digest)
+		fmt.Println("Pulled", opts.targetRef)
+		fmt.Println(desc.Digest)
 	}
 
 	return nil
