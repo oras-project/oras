@@ -9,7 +9,7 @@ import (
 
 // Common errors
 var (
-	ErrNotLoggedIn = errors.New("not_logged_in")
+	ErrNotLoggedIn = errors.New("not logged in")
 )
 
 // Client provides authentication operations for remotes.
