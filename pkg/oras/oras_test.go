@@ -177,6 +177,64 @@ func (suite *ORASTestSuite) Test_1_Pull() {
 	os.Chdir(cwd)
 }
 
+// Push and pull with customized media types
+func (suite *ORASTestSuite) Test_2_MediaType() {
+	var (
+		testData = [][]string{
+			{"hi.txt", "application/vnd.me.hi", "hi"},
+			{"bye.txt", "application/vnd.me.bye", "bye"},
+		}
+		err         error
+		ref         string
+		descriptors []ocispec.Descriptor
+		store       *orascontent.Memorystore
+	)
+
+	// Push content with customized media types
+	store = orascontent.NewMemoryStore()
+	descriptors = nil
+	for _, data := range testData {
+		desc := store.Add(data[0], data[1], []byte(data[2]))
+		descriptors = append(descriptors, desc)
+	}
+	ref = fmt.Sprintf("%s/media-type:test", suite.DockerRegistryHost)
+	_, err = Push(newContext(), newResolver(), ref, store, descriptors)
+	suite.Nil(err, "no error pushing test data with customized media type")
+
+	// Pull with all media types
+	store = orascontent.NewMemoryStore()
+	ref = fmt.Sprintf("%s/media-type:test", suite.DockerRegistryHost)
+	_, descriptors, err = Pull(newContext(), newResolver(), ref, store)
+	suite.Nil(err, "no error pulling media-type ref")
+	suite.Equal(2, len(descriptors), "number of contents matches on pull")
+	for _, data := range testData {
+		_, actualContent, ok := store.GetByName(data[0])
+		suite.True(ok, "find in memory")
+		content := []byte(data[2])
+		suite.Equal(content, actualContent, "test content matches on pull")
+	}
+
+	// Pull with specified media type
+	store = orascontent.NewMemoryStore()
+	ref = fmt.Sprintf("%s/media-type:test", suite.DockerRegistryHost)
+	_, descriptors, err = Pull(newContext(), newResolver(), ref, store, WithAllowedMediaType(testData[0][1]))
+	suite.Nil(err, "no error pulling media-type ref")
+	suite.Equal(1, len(descriptors), "number of contents matches on pull")
+	for _, data := range testData[:1] {
+		_, actualContent, ok := store.GetByName(data[0])
+		suite.True(ok, "find in memory")
+		content := []byte(data[2])
+		suite.Equal(content, actualContent, "test content matches on pull")
+	}
+
+	// Pull with non-existing media type
+	store = orascontent.NewMemoryStore()
+	ref = fmt.Sprintf("%s/media-type:test", suite.DockerRegistryHost)
+	_, descriptors, err = Pull(newContext(), newResolver(), ref, store, WithAllowedMediaType("non.existing.media.type"))
+	suite.Nil(err, "no error pulling media-type ref")
+	suite.Equal(0, len(descriptors), "number of contents matches on pull")
+}
+
 func TestORASTestSuite(t *testing.T) {
 	suite.Run(t, new(ORASTestSuite))
 }
