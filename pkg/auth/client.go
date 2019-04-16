@@ -2,8 +2,14 @@ package auth
 
 import (
 	"context"
+	"errors"
 
 	"github.com/containerd/containerd/remotes"
+)
+
+// Common errors
+var (
+	ErrNotLoggedIn = errors.New("not_logged_in")
 )
 
 // Client provides authentication operations for remotes.
