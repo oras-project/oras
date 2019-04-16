@@ -64,11 +64,10 @@ Example - Pull all files, any media type:
 }
 
 func runPull(opts pullOptions) error {
-	if !opts.verbose {
-		logrus.SetLevel(logrus.ErrorLevel)
-	}
 	if opts.debug {
 		logrus.SetLevel(logrus.DebugLevel)
+	} else {
+		logrus.SetLevel(logrus.ErrorLevel)
 	}
 	if opts.allowAllMediaTypes {
 		opts.allowedMediaTypes = nil
