@@ -48,10 +48,6 @@ func (suite *DockerClientTestSuite) SetupSuite() {
 	suite.Client, ok = client.(*Client)
 	suite.True(ok, "NewClient returns a *docker.Client inside")
 
-	// Disable credential store for testing
-	// suite.True(len(suite.Client.configs) != 0, "client has config loaded")
-	// suite.Client.configs[0].CredentialsStore = ""
-
 	// Create htpasswd file with bcrypt
 	secret, err := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.DefaultCost)
 	suite.Nil(err, "no error generating bcrypt password for test htpasswd file")
