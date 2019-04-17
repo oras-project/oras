@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/deislabs/oras/pkg/content"
+	ctxo "github.com/deislabs/oras/pkg/context"
 	"github.com/deislabs/oras/pkg/oras"
 
 	"github.com/sirupsen/logrus"
@@ -64,8 +65,11 @@ Example - Pull all files, any media type:
 }
 
 func runPull(opts pullOptions) error {
+	ctx := context.Background()
 	if opts.debug {
 		logrus.SetLevel(logrus.DebugLevel)
+	} else {
+		ctx = ctxo.WithLoggerDiscarded(ctx)
 	}
 	if opts.allowAllMediaTypes {
 		opts.allowedMediaTypes = nil
@@ -78,7 +82,7 @@ func runPull(opts pullOptions) error {
 	defer store.Close()
 	store.DisableOverwrite = opts.keepOldFiles
 	store.AllowPathTraversalOnWrite = opts.pathTraversal
-	desc, files, err := oras.Pull(context.Background(), resolver, opts.targetRef, store, oras.WithAllowedMediaTypes(opts.allowedMediaTypes))
+	desc, files, err := oras.Pull(ctx, resolver, opts.targetRef, store, oras.WithAllowedMediaTypes(opts.allowedMediaTypes))
 	if err != nil {
 		return err
 	}
