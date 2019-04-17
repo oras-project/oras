@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/containerd/containerd/remotes/docker"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/deislabs/oras/pkg/content"
 	"github.com/deislabs/oras/pkg/oras"
+
+	"github.com/containerd/containerd/remotes/docker"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 func check(e error) {
@@ -29,17 +30,18 @@ func main() {
 	memoryStore := content.NewMemoryStore()
 	desc := memoryStore.Add(fileName, customMediaType, fileContent)
 	pushContents := []ocispec.Descriptor{desc}
-	fmt.Printf("Pushing %s to %s... ", fileName, ref)
-	err := oras.Push(ctx, resolver, ref, memoryStore, pushContents)
+	fmt.Printf("Pushing %s to %s...\n", fileName, ref)
+	desc, err := oras.Push(ctx, resolver, ref, memoryStore, pushContents)
 	check(err)
-	fmt.Println("success!")
+	fmt.Printf("Pushed to %s with digest %s\n", ref, desc.Digest)
 
 	// Pull file(s) from registry and save to disk
-	fmt.Printf("Pulling from %s and saving to %s... ", ref, fileName)
+	fmt.Printf("Pulling from %s and saving to %s...\n", ref, fileName)
 	fileStore := content.NewFileStore("")
+	defer fileStore.Close()
 	allowedMediaTypes := []string{customMediaType}
-	_, err = oras.Pull(ctx, resolver, ref, fileStore, allowedMediaTypes...)
+	desc, _, err = oras.Pull(ctx, resolver, ref, fileStore, oras.WithAllowedMediaTypes(allowedMediaTypes))
 	check(err)
-	fmt.Println("success!")
+	fmt.Printf("Pulled from %s with digest %s\n", ref, desc.Digest)
 	fmt.Printf("Try running 'cat %s'\n", fileName)
 }

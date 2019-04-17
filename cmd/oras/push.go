@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -25,6 +26,7 @@ type pushOptions struct {
 	manifestConfigRef      string
 	manifestAnnotations    string
 	pathValidationDisabled bool
+	verbose                bool
 
 	debug    bool
 	configs  []string
@@ -62,6 +64,7 @@ Example - Push file "hi.txt" with the custom manifest config "config.json" of th
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "manifest-config", "", "", "manifest config file")
 	cmd.Flags().StringVarP(&opts.manifestAnnotations, "manifest-annotations", "", "", "manifest annotation file")
 	cmd.Flags().BoolVarP(&opts.pathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
 	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
 	cmd.Flags().StringArrayVarP(&opts.configs, "config", "c", nil, "auth config path")
 	cmd.Flags().StringVarP(&opts.username, "username", "u", "", "registry username")
@@ -114,6 +117,9 @@ func runPush(opts pushOptions) error {
 			// convert to slash-separated path unless it is absolute path
 			name = filepath.ToSlash(name)
 		}
+		if opts.verbose {
+			fmt.Println(name)
+		}
 		file, err := store.Add(name, mediaType, filename)
 		if err != nil {
 			return err
@@ -134,7 +140,16 @@ func runPush(opts pushOptions) error {
 
 	// ready to push
 	resolver := newResolver(opts.username, opts.password, opts.configs...)
-	return oras.Push(context.Background(), resolver, opts.targetRef, store, files, pushOpts...)
+	desc, err := oras.Push(context.Background(), resolver, opts.targetRef, store, files, pushOpts...)
+	if err != nil {
+		return err
+	}
+
+	if opts.verbose {
+		fmt.Println("Pushed", opts.targetRef)
+		fmt.Println(desc.Digest)
+	}
+	return nil
 }
 
 func decodeJSON(filename string, v interface{}) error {

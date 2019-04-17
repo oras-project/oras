@@ -9,6 +9,10 @@ builds:
   - windows
   goarch:
   - amd64
+  ldflags:
+  # one-line ldflags to bypass the goreleaser bugs
+  # the git tree state is guaranteed to be clean by goreleaser
+  - -w -X github.com/deislabs/oras/internal/version.Version={{.Version}} -X github.com/deislabs/oras/internal/version.GitCommit={{.FullCommit}} -X github.com/deislabs/oras/internal/version.BuildMetadata= -X github.com/deislabs/oras/internal/version.GitTreeState=clean
 
 archive:
   format: tar.gz

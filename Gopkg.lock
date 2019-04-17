@@ -113,7 +113,7 @@
   version = "v18.09.1"
 
 [[projects]]
-  digest = "1:e5d368e406b0d21ccea6737852e32eb3532c43a1732668f6676fbdfba7e8f02d"
+  digest = "1:a2c9e1bc5a6c59b4a0c79a003baac90d0c496881c2ec0663579543c2192fa0ed"
   name = "github.com/docker/distribution"
   packages = [
     ".",
@@ -134,6 +134,7 @@
     "registry/api/errcode",
     "registry/api/v2",
     "registry/auth",
+    "registry/auth/htpasswd",
     "registry/client",
     "registry/client/auth",
     "registry/client/auth/challenge",
@@ -509,9 +510,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:2af384bf8f275e9bd00280fe7baa475fd336e1d198a272452adf14275f05fb5e"
+  digest = "1:8cc146ad95f6179d301d6169c4878a757ede043c020830ab04a2b97f28eaae0f"
   name = "golang.org/x/crypto"
   packages = [
+    "bcrypt",
+    "blowfish",
     "ed25519",
     "ed25519/internal/edwards25519",
     "ocsp",
@@ -653,6 +656,7 @@
     "github.com/docker/cli/cli/config/credentials",
     "github.com/docker/distribution/configuration",
     "github.com/docker/distribution/registry",
+    "github.com/docker/distribution/registry/auth/htpasswd",
     "github.com/docker/distribution/registry/storage/driver/inmemory",
     "github.com/docker/docker/api/types",
     "github.com/docker/docker/pkg/term",
@@ -665,6 +669,7 @@
     "github.com/sirupsen/logrus",
     "github.com/spf13/cobra",
     "github.com/stretchr/testify/suite",
+    "golang.org/x/crypto/bcrypt",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
