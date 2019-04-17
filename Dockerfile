@@ -1,7 +1,10 @@
 FROM golang:1.11-alpine as builder
-ADD . /go/src/github.com/deislabs/oras
-WORKDIR /go/src/github.com/deislabs/oras
-RUN go install github.com/deislabs/oras/cmd/oras
+RUN apk add git make
+ENV ORASPKG /go/src/github.com/deislabs/oras
+ADD . ${ORASPKG}
+WORKDIR ${ORASPKG}
+RUN make build-linux
+RUN mv ${ORASPKG}/bin/linux/amd64/oras /go/bin/oras
 
 FROM alpine
 LABEL maintainer="shizh@microsoft.com"
