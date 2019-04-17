@@ -8,13 +8,13 @@ GIT_DIRTY   = $(shell test -n "`git status --porcelain`" && echo "dirty" || echo
 
 LDFLAGS = -w
 ifdef VERSION
-	LDFLAGS += -X $(PROJECT_PKG)/pkg/version.BuildMetadata=$(VERSION)
+	LDFLAGS += -X $(PROJECT_PKG)/internal/version.BuildMetadata=$(VERSION)
 endif
 ifneq ($(GIT_TAG),)
-	LDFLAGS += -X $(PROJECT_PKG)/pkg/version.BuildMetadata=
+	LDFLAGS += -X $(PROJECT_PKG)/internal/version.BuildMetadata=
 endif
-LDFLAGS += -X $(PROJECT_PKG)/pkg/version.GitCommit=${GIT_COMMIT}
-LDFLAGS += -X $(PROJECT_PKG)/pkg/version.GitTreeState=${GIT_DIRTY}
+LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitCommit=${GIT_COMMIT}
+LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitTreeState=${GIT_DIRTY}
 
 .PHONY: test
 test: vendor

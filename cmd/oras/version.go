@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/deislabs/oras/pkg/version"
+	"github.com/deislabs/oras/internal/version"
 
 	"github.com/spf13/cobra"
 )
