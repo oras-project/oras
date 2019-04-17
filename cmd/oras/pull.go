@@ -78,7 +78,7 @@ func runPull(opts pullOptions) error {
 	defer store.Close()
 	store.DisableOverwrite = opts.keepOldFiles
 	store.AllowPathTraversalOnWrite = opts.pathTraversal
-	files, err := oras.Pull(context.Background(), resolver, opts.targetRef, store, opts.allowedMediaTypes...)
+	desc, files, err := oras.Pull(context.Background(), resolver, opts.targetRef, store, oras.WithAllowedMediaTypes(opts.allowedMediaTypes))
 	if err != nil {
 		return err
 	}
@@ -89,6 +89,8 @@ func runPull(opts pullOptions) error {
 				fmt.Println(name)
 			}
 		}
+		fmt.Println("Pulled", opts.targetRef)
+		fmt.Println(desc.Digest)
 	}
 
 	return nil
