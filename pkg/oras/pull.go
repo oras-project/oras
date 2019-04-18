@@ -68,11 +68,7 @@ func fetchContent(ctx context.Context, fetcher remotes.Fetcher, desc ocispec.Des
 		images.ChildrenHandler(store),
 	)
 
-	dispatch := images.Dispatch
-	if opts.inSequence {
-		dispatch = dispatchBFS
-	}
-	if err := dispatch(ctx, images.Handlers(handlers...), desc); err != nil {
+	if err := opts.dispatch(ctx, images.Handlers(handlers...), desc); err != nil {
 		return nil, err
 	}
 
