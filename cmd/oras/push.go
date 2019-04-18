@@ -113,7 +113,7 @@ func runPush(opts pushOptions) error {
 	if opts.pathValidationDisabled {
 		pushOpts = append(pushOpts, oras.WithNameValidation(nil))
 	}
-	files, annotations, err := loadFiles(store, annotations, &opts)
+	files, err := loadFiles(store, annotations, &opts)
 	if err != nil {
 		return err
 	}
@@ -141,7 +141,7 @@ func decodeJSON(filename string, v interface{}) error {
 	return json.NewDecoder(file).Decode(v)
 }
 
-func loadFiles(store *content.FileStore, annotations map[string]map[string]string, opts *pushOptions) ([]ocispec.Descriptor, map[string]map[string]string, error) {
+func loadFiles(store *content.FileStore, annotations map[string]map[string]string, opts *pushOptions) ([]ocispec.Descriptor, error) {
 	var files []ocispec.Descriptor
 	for _, fileRef := range opts.fileRefs {
 		filename, mediaType := parseFileRef(fileRef, "")
@@ -155,7 +155,7 @@ func loadFiles(store *content.FileStore, annotations map[string]map[string]strin
 		}
 		file, err := store.Add(name, mediaType, filename)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		if annotations != nil {
 			if value, ok := annotations[filename]; ok {
@@ -170,7 +170,7 @@ func loadFiles(store *content.FileStore, annotations map[string]map[string]strin
 		}
 		files = append(files, file)
 	}
-	return files, annotations, nil
+	return files, nil
 }
 
 func pushStatusTrack() images.Handler {
