@@ -1,8 +1,11 @@
 package oras
 
+import "github.com/containerd/containerd/images"
+
 type pullOpts struct {
 	allowedMediaTypes []string
 	inSequence        bool
+	baseHandlers      []images.Handler
 }
 
 // PullOpt allows callers to set options on the oras pull
@@ -32,4 +35,13 @@ func WithAllowedMediaTypes(allowedMediaTypes []string) PullOpt {
 func WithPullInSequence(o *pullOpts) error {
 	o.inSequence = true
 	return nil
+}
+
+// WithPullBaseHandler provides base handlers, which will be called before
+// any pull specific handlers.
+func WithPullBaseHandler(handlers ...images.Handler) PullOpt {
+	return func(o *pullOpts) error {
+		o.baseHandlers = append(o.baseHandlers, handlers...)
+		return nil
+	}
 }

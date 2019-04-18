@@ -58,8 +58,11 @@ func fetchContent(ctx context.Context, fetcher remotes.Fetcher, desc ocispec.Des
 		return nil, nil
 	})
 	store := newHybridStoreFromIngester(ingester)
-	handlers := images.Handlers(
+	handlers := []images.Handler{
 		filterHandler(opts.allowedMediaTypes...),
+	}
+	handlers = append(handlers, opts.baseHandlers...)
+	handlers = append(handlers,
 		remotes.FetchHandler(store, fetcher),
 		picker,
 		images.ChildrenHandler(store),
@@ -69,7 +72,7 @@ func fetchContent(ctx context.Context, fetcher remotes.Fetcher, desc ocispec.Des
 	if opts.inSequence {
 		dispatch = dispatchBFS
 	}
-	if err := dispatch(ctx, handlers, desc); err != nil {
+	if err := dispatch(ctx, images.Handlers(handlers...), desc); err != nil {
 		return nil, err
 	}
 
