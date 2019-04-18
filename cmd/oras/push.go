@@ -77,7 +77,7 @@ func runPush(opts pushOptions) error {
 	ctx := context.Background()
 	if opts.debug {
 		logrus.SetLevel(logrus.DebugLevel)
-	} else {
+	} else if !opts.verbose {
 		ctx = ctxo.WithLoggerDiscarded(ctx)
 	}
 
@@ -147,10 +147,9 @@ func runPush(opts pushOptions) error {
 		return err
 	}
 
-	if opts.verbose {
-		fmt.Println("Pushed", opts.targetRef)
-		fmt.Println(desc.Digest)
-	}
+	fmt.Println("Pushed", opts.targetRef)
+	fmt.Println("Digest:", desc.Digest)
+
 	return nil
 }
 
