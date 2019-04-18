@@ -10,6 +10,7 @@ import (
 	"github.com/deislabs/oras/pkg/oras"
 
 	"github.com/containerd/containerd/images"
+	"github.com/containerd/containerd/reference"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
@@ -34,7 +35,7 @@ type pullOptions struct {
 func pullCmd() *cobra.Command {
 	var opts pullOptions
 	cmd := &cobra.Command{
-		Use:   "pull name[:tag|@digest]",
+		Use:   "pull <name:tag|name@digest>",
 		Short: "Pull files from remote registry",
 		Long: `Pull files from remote registry
 
@@ -92,6 +93,9 @@ func runPull(opts pullOptions) error {
 		oras.WithPullCallbackHandler(pullStatusTrack()),
 	)
 	if err != nil {
+		if err == reference.ErrObjectRequired {
+			return fmt.Errorf("image reference format is invalid. Please specify <name:tag|name@digest>")
+		}
 		return err
 	}
 	fmt.Println("Pulled", opts.targetRef)
