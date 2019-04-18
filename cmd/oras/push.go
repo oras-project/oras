@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/deislabs/oras/pkg/content"
 	ctxo "github.com/deislabs/oras/pkg/context"
@@ -143,7 +144,7 @@ func runPush(opts pushOptions) error {
 
 	// ready to push
 	resolver := newResolver(opts.username, opts.password, opts.configs...)
-	pushOpts = append(pushOpts, oras.WithPushBaseHandler(images.HandlerFunc(pushStatusTrack)))
+	pushOpts = append(pushOpts, oras.WithPushBaseHandler(pushStatusTrack()))
 	desc, err := oras.Push(ctx, resolver, opts.targetRef, store, files, pushOpts...)
 	if err != nil {
 		return err
@@ -164,9 +165,14 @@ func decodeJSON(filename string, v interface{}) error {
 	return json.NewDecoder(file).Decode(v)
 }
 
-func pushStatusTrack(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-	if name, ok := content.ResolveName(desc); ok {
-		fmt.Println("Uploading", desc.Digest.Encoded()[:12], name)
-	}
-	return nil, nil
+func pushStatusTrack() images.Handler {
+	var printLock sync.Mutex
+	return images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		if name, ok := content.ResolveName(desc); ok {
+			printLock.Lock()
+			defer printLock.Unlock()
+			fmt.Println("Uploading", desc.Digest.Encoded()[:12], name)
+		}
+		return nil, nil
+	})
 }
