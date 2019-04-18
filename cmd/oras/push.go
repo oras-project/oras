@@ -11,6 +11,7 @@ import (
 	ctxo "github.com/deislabs/oras/pkg/context"
 	"github.com/deislabs/oras/pkg/oras"
 
+	"github.com/containerd/containerd/images"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -142,6 +143,7 @@ func runPush(opts pushOptions) error {
 
 	// ready to push
 	resolver := newResolver(opts.username, opts.password, opts.configs...)
+	pushOpts = append(pushOpts, oras.WithPushBaseHandler(images.HandlerFunc(pushStatusTrack)))
 	desc, err := oras.Push(ctx, resolver, opts.targetRef, store, files, pushOpts...)
 	if err != nil {
 		return err
@@ -160,4 +162,11 @@ func decodeJSON(filename string, v interface{}) error {
 	}
 	defer file.Close()
 	return json.NewDecoder(file).Decode(v)
+}
+
+func pushStatusTrack(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+	if name, ok := content.ResolveName(desc); ok {
+		fmt.Println("Uploading", desc.Digest, name)
+	}
+	return nil, nil
 }
