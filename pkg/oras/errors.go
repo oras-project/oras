@@ -20,4 +20,5 @@ var (
 )
 
 // ErrStopProcessing is used to stop processing an oras operation.
+// This error only makes sense in sequential pulling operation.
 var ErrStopProcessing = fmt.Errorf("stop processing")
