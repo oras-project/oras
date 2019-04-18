@@ -120,7 +120,7 @@ func runPush(opts pushOptions) error {
 			name = filepath.ToSlash(name)
 		}
 		if opts.verbose {
-			fmt.Println(name)
+			fmt.Println("Preparing", name)
 		}
 		file, err := store.Add(name, mediaType, filename)
 		if err != nil {
