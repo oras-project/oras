@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/deislabs/oras/pkg/content"
+	ctxo "github.com/deislabs/oras/pkg/context"
 	"github.com/deislabs/oras/pkg/oras"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -73,8 +74,11 @@ Example - Push file "hi.txt" with the custom manifest config "config.json" of th
 }
 
 func runPush(opts pushOptions) error {
+	ctx := context.Background()
 	if opts.debug {
 		logrus.SetLevel(logrus.DebugLevel)
+	} else {
+		ctx = ctxo.WithLoggerDiscarded(ctx)
 	}
 
 	// load files
@@ -138,7 +142,7 @@ func runPush(opts pushOptions) error {
 
 	// ready to push
 	resolver := newResolver(opts.username, opts.password, opts.configs...)
-	desc, err := oras.Push(context.Background(), resolver, opts.targetRef, store, files, pushOpts...)
+	desc, err := oras.Push(ctx, resolver, opts.targetRef, store, files, pushOpts...)
 	if err != nil {
 		return err
 	}
