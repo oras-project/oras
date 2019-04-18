@@ -11,6 +11,7 @@ import (
 
 	orascontent "github.com/deislabs/oras/pkg/content"
 
+	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
 	"github.com/docker/distribution/configuration"
@@ -233,6 +234,83 @@ func (suite *ORASTestSuite) Test_2_MediaType() {
 	_, descriptors, err = Pull(newContext(), newResolver(), ref, store, WithAllowedMediaType("non.existing.media.type"))
 	suite.Nil(err, "no error pulling media-type ref")
 	suite.Equal(0, len(descriptors), "number of contents matches on pull")
+}
+
+// Pull with condition
+func (suite *ORASTestSuite) Test_3_Conditional_Pull() {
+	var (
+		testData = [][]string{
+			{"version.txt", "edge"},
+			{"content.txt", "hello world"},
+		}
+		err         error
+		ref         string
+		descriptors []ocispec.Descriptor
+		store       *orascontent.Memorystore
+		stop        bool
+	)
+
+	// Push test content
+	store = orascontent.NewMemoryStore()
+	descriptors = nil
+	for _, data := range testData {
+		desc := store.Add(data[0], "", []byte(data[1]))
+		descriptors = append(descriptors, desc)
+	}
+	ref = fmt.Sprintf("%s/conditional-pull:test", suite.DockerRegistryHost)
+	_, err = Push(newContext(), newResolver(), ref, store, descriptors)
+	suite.Nil(err, "no error pushing test data")
+
+	// Pull all contents in sequence
+	store = orascontent.NewMemoryStore()
+	ref = fmt.Sprintf("%s/conditional-pull:test", suite.DockerRegistryHost)
+	_, descriptors, err = Pull(newContext(), newResolver(), ref, store, WithPullByBFS)
+	suite.Nil(err, "no error pulling ref")
+	suite.Equal(2, len(descriptors), "number of contents matches on pull")
+	for i, data := range testData {
+		_, actualContent, ok := store.GetByName(data[0])
+		suite.True(ok, "find in memory")
+		content := []byte(data[1])
+		suite.Equal(content, actualContent, "test content matches on pull")
+		name, _ := orascontent.ResolveName(descriptors[i])
+		suite.Equal(data[0], name, "content sequence matches on pull")
+	}
+
+	// Selective pull contents: stop at the very beginning
+	store = orascontent.NewMemoryStore()
+	ref = fmt.Sprintf("%s/conditional-pull:test", suite.DockerRegistryHost)
+	_, descriptors, err = Pull(newContext(), newResolver(), ref, store, WithPullByBFS,
+		WithPullBaseHandler(images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			if name, ok := orascontent.ResolveName(desc); ok && name == testData[0][0] {
+				return nil, ErrStopProcessing
+			}
+			return nil, nil
+		})))
+	suite.Nil(err, "no error pulling ref")
+	suite.Equal(0, len(descriptors), "number of contents matches on pull")
+
+	// Selective pull contents: stop in the middle
+	store = orascontent.NewMemoryStore()
+	ref = fmt.Sprintf("%s/conditional-pull:test", suite.DockerRegistryHost)
+	stop = false
+	_, descriptors, err = Pull(newContext(), newResolver(), ref, store, WithPullByBFS,
+		WithPullBaseHandler(images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			if stop {
+				return nil, ErrStopProcessing
+			}
+			if name, ok := orascontent.ResolveName(desc); ok && name == testData[0][0] {
+				stop = true
+			}
+			return nil, nil
+		})))
+	suite.Nil(err, "no error pulling ref")
+	suite.Equal(1, len(descriptors), "number of contents matches on pull")
+	for _, data := range testData[:1] {
+		_, actualContent, ok := store.GetByName(data[0])
+		suite.True(ok, "find in memory")
+		content := []byte(data[1])
+		suite.Equal(content, actualContent, "test content matches on pull")
+	}
 }
 
 func TestORASTestSuite(t *testing.T) {
