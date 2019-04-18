@@ -8,6 +8,9 @@ import (
 	ctxo "github.com/deislabs/oras/pkg/context"
 	"github.com/deislabs/oras/pkg/oras"
 
+	"github.com/containerd/containerd/images"
+	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -68,7 +71,7 @@ func runPull(opts pullOptions) error {
 	ctx := context.Background()
 	if opts.debug {
 		logrus.SetLevel(logrus.DebugLevel)
-	} else {
+	} else if !opts.verbose {
 		ctx = ctxo.WithLoggerDiscarded(ctx)
 	}
 	if opts.allowAllMediaTypes {
@@ -82,20 +85,29 @@ func runPull(opts pullOptions) error {
 	defer store.Close()
 	store.DisableOverwrite = opts.keepOldFiles
 	store.AllowPathTraversalOnWrite = opts.pathTraversal
-	desc, files, err := oras.Pull(ctx, resolver, opts.targetRef, store, oras.WithAllowedMediaTypes(opts.allowedMediaTypes))
+
+	desc, _, err := oras.Pull(ctx, resolver, opts.targetRef, store,
+		oras.WithAllowedMediaTypes(opts.allowedMediaTypes),
+		oras.WithPullCallbackHandler(images.HandlerFunc(pullStatusTrack)),
+	)
 	if err != nil {
 		return err
 	}
-
-	if opts.verbose {
-		for _, file := range files {
-			if name, ok := content.ResolveName(file); ok {
-				fmt.Println(name)
-			}
-		}
-		fmt.Println("Pulled", opts.targetRef)
-		fmt.Println(desc.Digest)
-	}
+	fmt.Println("Pulled", opts.targetRef)
+	fmt.Println("Digest:", desc.Digest)
 
 	return nil
+}
+
+func pullStatusTrack(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+	if name, ok := content.ResolveName(desc); ok {
+		digestString := desc.Digest.String()
+		if err := desc.Digest.Validate(); err == nil {
+			if algo := desc.Digest.Algorithm(); algo == digest.SHA256 {
+				digestString = desc.Digest.Encoded()[:12]
+			}
+		}
+		fmt.Println("Downloaded", digestString, name)
+	}
+	return nil, nil
 }
