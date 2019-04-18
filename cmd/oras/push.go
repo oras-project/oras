@@ -166,7 +166,7 @@ func decodeJSON(filename string, v interface{}) error {
 
 func pushStatusTrack(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 	if name, ok := content.ResolveName(desc); ok {
-		fmt.Println("Uploading", desc.Digest, name)
+		fmt.Println("Uploading", desc.Digest.Encoded()[:12], name)
 	}
 	return nil, nil
 }
