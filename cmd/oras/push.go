@@ -86,7 +86,6 @@ func runPush(opts pushOptions) error {
 	// load files
 	var (
 		annotations map[string]map[string]string
-		files       []ocispec.Descriptor
 		store       = content.NewFileStore("")
 		pushOpts    []oras.PushOpt
 	)
@@ -114,32 +113,9 @@ func runPush(opts pushOptions) error {
 	if opts.pathValidationDisabled {
 		pushOpts = append(pushOpts, oras.WithNameValidation(nil))
 	}
-	for _, fileRef := range opts.fileRefs {
-		filename, mediaType := parseFileRef(fileRef, "")
-		name := filepath.Clean(filename)
-		if !filepath.IsAbs(name) {
-			// convert to slash-separated path unless it is absolute path
-			name = filepath.ToSlash(name)
-		}
-		if opts.verbose {
-			fmt.Println("Preparing", name)
-		}
-		file, err := store.Add(name, mediaType, filename)
-		if err != nil {
-			return err
-		}
-		if annotations != nil {
-			if value, ok := annotations[filename]; ok {
-				if file.Annotations == nil {
-					file.Annotations = value
-				} else {
-					for k, v := range value {
-						file.Annotations[k] = v
-					}
-				}
-			}
-		}
-		files = append(files, file)
+	files, annotations, err := loadFiles(store, annotations, &opts)
+	if err != nil {
+		return err
 	}
 
 	// ready to push
@@ -163,6 +139,38 @@ func decodeJSON(filename string, v interface{}) error {
 	}
 	defer file.Close()
 	return json.NewDecoder(file).Decode(v)
+}
+
+func loadFiles(store *content.FileStore, annotations map[string]map[string]string, opts *pushOptions) ([]ocispec.Descriptor, map[string]map[string]string, error) {
+	var files []ocispec.Descriptor
+	for _, fileRef := range opts.fileRefs {
+		filename, mediaType := parseFileRef(fileRef, "")
+		name := filepath.Clean(filename)
+		if !filepath.IsAbs(name) {
+			// convert to slash-separated path unless it is absolute path
+			name = filepath.ToSlash(name)
+		}
+		if opts.verbose {
+			fmt.Println("Preparing", name)
+		}
+		file, err := store.Add(name, mediaType, filename)
+		if err != nil {
+			return nil, nil, err
+		}
+		if annotations != nil {
+			if value, ok := annotations[filename]; ok {
+				if file.Annotations == nil {
+					file.Annotations = value
+				} else {
+					for k, v := range value {
+						file.Annotations[k] = v
+					}
+				}
+			}
+		}
+		files = append(files, file)
+	}
+	return files, annotations, nil
 }
 
 func pushStatusTrack() images.Handler {
