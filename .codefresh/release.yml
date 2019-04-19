@@ -8,11 +8,12 @@ steps:
   UnitTest:
     title: Run unit tests
     stage: test
-    image: golang:1.11
+    image: golang:1.11-alpine
     working_directory: &workdir /go/src/github.com/${{CF_REPO_OWNER}}
     commands:
+    - apk add git make bash file
     - &link ln -s /codefresh/volume/${{CF_REPO_NAME}} ${{CF_REPO_NAME}} && cd ${{CF_REPO_NAME}}
-    - echo make test
+    - make test
   BuildDockerImage:
     title: Build Docker image
     stage: build
