@@ -8,6 +8,6 @@ steps:
     image: golang:1.11-alpine
     working_directory: /go/src/github.com/${{CF_REPO_OWNER}}
     commands:
-    - apk add git make file
+    - apk add git make bash file
     - ln -s /codefresh/volume/${{CF_REPO_NAME}} ${{CF_REPO_NAME}} && cd ${{CF_REPO_NAME}}
     - make test
