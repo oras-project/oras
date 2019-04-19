@@ -48,7 +48,8 @@ build-windows: vendor
 
 .PHONY: check-encoding
 check-encoding:
-	! find {cmd,pkg,internal} -not -type d -exec file "{}" ";" | grep CRLF
+	! find {cmd,pkg,internal,examples} -name "*.go" -type f -exec file "{}" ";" | grep CRLF
+	! find scripts -name "*.sh" -type f -exec file "{}" ";" | grep CRLF
 
 .PHONY: fix-encoding
 fix-encoding:
