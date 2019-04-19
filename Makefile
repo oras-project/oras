@@ -17,7 +17,7 @@ LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitCommit=${GIT_COMMIT}
 LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitTreeState=${GIT_DIRTY}
 
 .PHONY: test
-test: vendor
+test: vendor check-encoding
 	./scripts/test.sh
 
 .PHONY: covhtml
@@ -45,6 +45,10 @@ build-mac: vendor
 build-windows: vendor
 	GOARCH=amd64 CGO_ENABLED=0 GOOS=windows go build -v --ldflags="$(LDFLAGS)" \
 		-o bin/windows/amd64/$(CLI_EXE).exe $(CLI_PKG)
+
+.PHONY: check-encoding
+check-encoding:
+	! find {cmd,pkg,internal} -not -type d -exec file "{}" ";" | grep CRLF
 
 $(DEP):
 	go get -u github.com/golang/dep/cmd/dep
