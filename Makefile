@@ -50,6 +50,10 @@ build-windows: vendor
 check-encoding:
 	! find {cmd,pkg,internal} -not -type d -exec file "{}" ";" | grep CRLF
 
+.PHONY: fix-encoding
+fix-encoding:
+	find {cmd,pkg,internal} -type f -name "*.go" -exec sed -i -e "s/\r//g" {} +
+
 $(DEP):
 	go get -u github.com/golang/dep/cmd/dep
 
