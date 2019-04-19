@@ -53,7 +53,8 @@ check-encoding:
 
 .PHONY: fix-encoding
 fix-encoding:
-	find {cmd,pkg,internal} -type f -name "*.go" -exec sed -i -e "s/\r//g" {} +
+	find {cmd,pkg,internal,examples} -type f -name "*.go" -exec sed -i -e "s/\r//g" {} +
+	find scripts -type f -name "*.sh" -exec sed -i -e "s/\r//g" {} +
 
 $(DEP):
 	go get -u github.com/golang/dep/cmd/dep
