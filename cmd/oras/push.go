@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/deislabs/oras/pkg/content"
 	ctxo "github.com/deislabs/oras/pkg/context"
 	"github.com/deislabs/oras/pkg/oras"
 
+	"github.com/containerd/containerd/images"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -77,14 +79,13 @@ func runPush(opts pushOptions) error {
 	ctx := context.Background()
 	if opts.debug {
 		logrus.SetLevel(logrus.DebugLevel)
-	} else {
+	} else if !opts.verbose {
 		ctx = ctxo.WithLoggerDiscarded(ctx)
 	}
 
 	// load files
 	var (
 		annotations map[string]map[string]string
-		files       []ocispec.Descriptor
 		store       = content.NewFileStore("")
 		pushOpts    []oras.PushOpt
 	)
@@ -112,6 +113,36 @@ func runPush(opts pushOptions) error {
 	if opts.pathValidationDisabled {
 		pushOpts = append(pushOpts, oras.WithNameValidation(nil))
 	}
+	files, err := loadFiles(store, annotations, &opts)
+	if err != nil {
+		return err
+	}
+
+	// ready to push
+	resolver := newResolver(opts.username, opts.password, opts.configs...)
+	pushOpts = append(pushOpts, oras.WithPushBaseHandler(pushStatusTrack()))
+	desc, err := oras.Push(ctx, resolver, opts.targetRef, store, files, pushOpts...)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Pushed", opts.targetRef)
+	fmt.Println("Digest:", desc.Digest)
+
+	return nil
+}
+
+func decodeJSON(filename string, v interface{}) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	return json.NewDecoder(file).Decode(v)
+}
+
+func loadFiles(store *content.FileStore, annotations map[string]map[string]string, opts *pushOptions) ([]ocispec.Descriptor, error) {
+	var files []ocispec.Descriptor
 	for _, fileRef := range opts.fileRefs {
 		filename, mediaType := parseFileRef(fileRef, "")
 		name := filepath.Clean(filename)
@@ -120,11 +151,11 @@ func runPush(opts pushOptions) error {
 			name = filepath.ToSlash(name)
 		}
 		if opts.verbose {
-			fmt.Println(name)
+			fmt.Println("Preparing", name)
 		}
 		file, err := store.Add(name, mediaType, filename)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if annotations != nil {
 			if value, ok := annotations[filename]; ok {
@@ -139,26 +170,17 @@ func runPush(opts pushOptions) error {
 		}
 		files = append(files, file)
 	}
-
-	// ready to push
-	resolver := newResolver(opts.username, opts.password, opts.configs...)
-	desc, err := oras.Push(ctx, resolver, opts.targetRef, store, files, pushOpts...)
-	if err != nil {
-		return err
-	}
-
-	if opts.verbose {
-		fmt.Println("Pushed", opts.targetRef)
-		fmt.Println(desc.Digest)
-	}
-	return nil
+	return files, nil
 }
 
-func decodeJSON(filename string, v interface{}) error {
-	file, err := os.Open(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	return json.NewDecoder(file).Decode(v)
+func pushStatusTrack() images.Handler {
+	var printLock sync.Mutex
+	return images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		if name, ok := content.ResolveName(desc); ok {
+			printLock.Lock()
+			defer printLock.Unlock()
+			fmt.Println("Uploading", desc.Digest.Encoded()[:12], name)
+		}
+		return nil, nil
+	})
 }
