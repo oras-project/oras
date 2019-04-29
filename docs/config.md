@@ -36,6 +36,10 @@ oras push --manifest-config config.json:application/vnd.oras.config.v1+json loca
 
 In addition, it is possible to pass a null device `/dev/null` (`NUL` on Windows) to `oras` for an empty config file.
 
+```sh
+oras push --manifest-config /dev/null:application/vnd.oras.config.v1+json localhost:5000/hello:latest hi.txt
+```
+
 ### GO Package
 
 Customizing the configuration object in GO is as simple as passing [oras.WithConfig()](<https://godoc.org/github.com/deislabs/oras/pkg/oras#WithConfig>) option to `oras.Push()`.
@@ -43,10 +47,10 @@ Customizing the configuration object in GO is as simple as passing [oras.WithCon
 Suppose there is a descriptor `configDesc` referencing the config file in the content provider `store`.
 
 ```go
-ocispec.Descriptor{
-	MediaType: mediaType, // config media type
-	Digest:    digest,    // sha256 digest of the config file
-	Size:      size,      // config file size
+configDesc := ocispec.Descriptor{
+    MediaType: mediaType, // config media type
+    Digest:    digest,    // sha256 digest of the config file
+    Size:      size,      // config file size
 }
 ```
 
@@ -58,7 +62,7 @@ _, err := oras.Push(ctx, resolver, ref, store, contents, oras.WithConfig(configD
 
 ## Docker Behaviors
 
-The config used by `oras` is not a real config. Therefore, the pushed image cannot be recognized and pulled by `docker` as expected. In this section, docker behaviors are shown given various configs.
+The config used by `oras` is not a real config. Therefore, the pushed image cannot be recognized or pulled by `docker` as expected. In this section, docker behaviors are shown given various configs.
 
 ### Empty Config File
 
@@ -93,13 +97,13 @@ invalid rootfs in image configuration
 ```
 $ cat config.json
 {
-        "architecture": "cloud",
-        "os": "oras"
+    "architecture": "cloud",
+    "os": "oras"
 }
 $ oras push --manifest-config config.json localhost:5000/hello:latest hi.txt
 Uploading a948904f2f0f hi.txt
 Pushed localhost:5000/hello:latest
-Digest: sha256:5a711a870cc806cb17628596e414947a87512c4cbbc3f29432e93a1e459b8737
+Digest: sha256:4732e48d7c9ccbc096292070c143c92dd19a163c93abccea7f1fa7517ef70a22
 $ docker pull localhost:5000/hello:latest
 latest: Pulling from hello
 a948904f2f0f: Extracting [==================================================>]      12B/12B
