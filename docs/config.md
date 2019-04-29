@@ -42,7 +42,7 @@ oras push --manifest-config /dev/null:application/vnd.oras.config.v1+json localh
 
 ### GO Package
 
-Customizing the configuration object in GO is as simple as passing [oras.WithConfig()](<https://godoc.org/github.com/deislabs/oras/pkg/oras#WithConfig>) option to `oras.Push()`.
+Customizing the configuration object in GO is as simple as passing [oras.WithConfig()](<https://godoc.org/github.com/deislabs/oras/pkg/oras#WithConfig>) option to [oras.Push()](https://godoc.org/github.com/deislabs/oras/pkg/oras#Push).
 
 Suppose there is a descriptor `configDesc` referencing the config file in the content provider `store`.
 
