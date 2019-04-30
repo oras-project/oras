@@ -60,6 +60,13 @@ To push with custom config, execute
 _, err := oras.Push(ctx, resolver, ref, store, contents, oras.WithConfig(configDesc))
 ```
 
+If the caller wants to customize the config media type only, pass the [oras.WithConfigMediaType()](<https://godoc.org/github.com/deislabs/oras/pkg/oras#WithConfigMediaType>) option to [oras.Push()](https://godoc.org/github.com/deislabs/oras/pkg/oras#Push).
+
+```go
+_, err := oras.Push(ctx, resolver, ref, store, contents,
+                    oras.WithConfigMediaType("application/vnd.oras.config.v1+json"))
+```
+
 ## Docker Behaviors
 
 The config used by `oras` is not a real config. Therefore, the pushed image cannot be recognized or pulled by `docker` as expected. In this section, docker behaviors are shown given various configs.
