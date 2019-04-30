@@ -65,7 +65,9 @@ func pack(provider content.Provider, descriptors []ocispec.Descriptor, opts *pus
 	} else {
 		config = *opts.config
 	}
-	config.Annotations = opts.configAnnotations
+	if opts.configAnnotations != nil {
+		config.Annotations = opts.configAnnotations
+	}
 
 	// Manifest
 	manifest := ocispec.Manifest{
