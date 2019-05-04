@@ -4,20 +4,22 @@ stages:
 - build
 - release
 steps:
+
   UnitTest:
     title: Run unit tests
     stage: test
     image: golang:1.11-alpine
-    working_directory: /go/src/github.com/${{CF_REPO_OWNER}}
     commands:
     - apk add git make bash file
-    - ln -s /codefresh/volume/${{CF_REPO_NAME}} ${{CF_REPO_NAME}} && cd ${{CF_REPO_NAME}}
+    - cf_export GOCACHE="${{CF_VOLUME_PATH}}/gocache"
+    - cf_export GOPATH="${{CF_VOLUME_PATH}}/gopath"
     - make test
   BuildDockerImage:
     title: Build Docker image
     stage: build
     type: build
     image_name: ${{CF_REPO_OWNER}}/${{CF_REPO_NAME}}
+    tag: ${{CF_BRANCH_TAG_NORMALIZED}}
   PushDockerImage:
     title: Push Docker image (latest)
     stage: release

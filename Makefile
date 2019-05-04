@@ -17,7 +17,7 @@ LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitCommit=${GIT_COMMIT}
 LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitTreeState=${GIT_DIRTY}
 
 .PHONY: test
-test: vendor check-encoding
+test: check-encoding
 	./scripts/test.sh
 
 .PHONY: covhtml
@@ -29,20 +29,20 @@ clean:
 	git status --ignored --short | grep '^!! ' | sed 's/!! //' | xargs rm -rf
 
 .PHONY: build
-build: build-linux build-mac build-windows vendor
+build: build-linux build-mac build-windows
 
 .PHONY: build-linux
-build-linux: vendor
+build-linux:
 	GOARCH=amd64 CGO_ENABLED=0 GOOS=linux go build -v --ldflags="$(LDFLAGS)" \
 		-o bin/linux/amd64/$(CLI_EXE) $(CLI_PKG)
 
 .PHONY: build-mac
-build-mac: vendor
+build-mac:
 	GOARCH=amd64 CGO_ENABLED=0 GOOS=darwin go build -v --ldflags="$(LDFLAGS)" \
 		-o bin/darwin/amd64/$(CLI_EXE) $(CLI_PKG)
 
 .PHONY: build-windows
-build-windows: vendor
+build-windows:
 	GOARCH=amd64 CGO_ENABLED=0 GOOS=windows go build -v --ldflags="$(LDFLAGS)" \
 		-o bin/windows/amd64/$(CLI_EXE).exe $(CLI_PKG)
 
@@ -59,12 +59,12 @@ fix-encoding:
 $(DEP):
 	go get -u github.com/golang/dep/cmd/dep
 
-# install vendored dependencies
-vendor: Gopkg.lock
-	$(DEP) ensure -v --vendor-only
+# # install vendored dependencies
+# vendor: Gopkg.lock
+# 	$(DEP) ensure -v --vendor-only
 
-# update vendored dependencies
-Gopkg.lock: Gopkg.toml
-	$(DEP) ensure -v --no-vendor
+# # update vendored dependencies
+# Gopkg.lock: Gopkg.toml
+# 	$(DEP) ensure -v --no-vendor
 
-Gopkg.toml: $(DEP)
+# Gopkg.toml: $(DEP)
