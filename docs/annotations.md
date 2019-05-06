@@ -4,7 +4,7 @@
 
 ## Make Annotations
 
-Making annotations are supported by both the command line tool and the GO package. However, reading the annotations from the remote is limited and only possible with the GO package.
+Making annotations are supported by both the command line tool and the Go package. However, reading the annotations from the remote is limited and only possible with the Go package.
 
 ### Command Line Tool
 
@@ -80,9 +80,9 @@ results in
 }
 ```
 
-### GO Package
+### Go Package
 
-Making annotations in GO is as simple as modifying the `Annotations` field of the [Descriptor](<https://godoc.org/github.com/opencontainers/image-spec/specs-go/v1#Descriptor>) struct objects before passing them to [oras.Push()](https://godoc.org/github.com/deislabs/oras/pkg/oras#Push) with or without the option [oras.WithConfig()](<https://godoc.org/github.com/deislabs/oras/pkg/oras#WithConfig>).
+Making annotations in Go is as simple as modifying the `Annotations` field of the [Descriptor](<https://godoc.org/github.com/opencontainers/image-spec/specs-go/v1#Descriptor>) struct objects before passing them to [oras.Push()](https://godoc.org/github.com/deislabs/oras/pkg/oras#Push) with or without the option [oras.WithConfig()](<https://godoc.org/github.com/deislabs/oras/pkg/oras#WithConfig>).
 
 The caller can pass the push option [oras.WithConfigAnnotations()](<https://godoc.org/github.com/deislabs/oras/pkg/oras#WithConfigAnnotations>) to make annotations to the default config. Similarly, The caller can pass the push option [oras.WithManifestAnnotations()](<https://godoc.org/github.com/deislabs/oras/pkg/oras#WithManifestAnnotations>) to make annotations to the manifest.
 

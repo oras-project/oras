@@ -16,7 +16,7 @@ The descriptor of the default configuration object is fixed as follows.
 
 Projects may leverage `oras` to push their own artifacts to a remote registry. In that case, users may compose their own configuration object with an alternative media type to identify their artifacts. The configuration object may follow the [OCI Image Configuration](<https://github.com/opencontainers/image-spec/blob/master/config.md#properties>) spec.
 
-Config customization is achievable via the command line tool `oras` or the GO package. 
+Config customization is achievable via the command line tool `oras` or the Go package. 
 
 ### Command Line Tool
 
@@ -40,9 +40,9 @@ In addition, it is possible to pass a null device `/dev/null` (`NUL` on Windows)
 oras push --manifest-config /dev/null:application/vnd.oras.config.v1+json localhost:5000/hello:latest hi.txt
 ```
 
-### GO Package
+### Go Package
 
-Customizing the configuration object in GO is as simple as passing [oras.WithConfig()](<https://godoc.org/github.com/deislabs/oras/pkg/oras#WithConfig>) option to [oras.Push()](https://godoc.org/github.com/deislabs/oras/pkg/oras#Push).
+Customizing the configuration object in Go is as simple as passing [oras.WithConfig()](<https://godoc.org/github.com/deislabs/oras/pkg/oras#WithConfig>) option to [oras.Push()](https://godoc.org/github.com/deislabs/oras/pkg/oras#Push).
 
 Suppose there is a descriptor `configDesc` referencing the config file in the content provider `store`.
 
