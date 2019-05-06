@@ -1,6 +1,6 @@
 FROM golang:1.11-alpine as builder
 RUN apk add git make
-ENV ORASPKG /go/src/github.com/deislabs/oras
+ENV ORASPKG /oras
 ADD . ${ORASPKG}
 WORKDIR ${ORASPKG}
 RUN make build-linux
