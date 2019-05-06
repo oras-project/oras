@@ -68,6 +68,9 @@ func pack(provider content.Provider, descriptors []ocispec.Descriptor, opts *pus
 	if opts.configAnnotations != nil {
 		config.Annotations = opts.configAnnotations
 	}
+	if opts.configMediaType != "" {
+		config.MediaType = opts.configMediaType
+	}
 
 	// Manifest
 	manifest := ocispec.Manifest{
