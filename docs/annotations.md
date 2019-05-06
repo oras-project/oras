@@ -1,6 +1,6 @@
 # Manifest Annotations
 
-[Annotations](<https://github.com/opencontainers/image-spec/blob/master/annotations.md>) are supported by [OCI Image Manifest](<https://github.com/opencontainers/image-spec/blob/master/manifest.md#image-manifest>) and [OCI Content Descriptors](<https://github.com/opencontainers/image-spec/blob/master/descriptor.md>) so as `oras`.
+[Annotations](<https://github.com/opencontainers/image-spec/blob/master/annotations.md>), which are supported by [OCI Image Manifest](<https://github.com/opencontainers/image-spec/blob/master/manifest.md#image-manifest>) and [OCI Content Descriptors](<https://github.com/opencontainers/image-spec/blob/master/descriptor.md>), are also supported by `oras`.
 
 ## Make Annotations
 
