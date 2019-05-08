@@ -1,7 +1,6 @@
 PROJECT_PKG = github.com/deislabs/oras
 CLI_EXE     = oras
 CLI_PKG     = $(PROJECT_PKG)/cmd/oras
-DEP         = $(GOPATH)/bin/dep
 GIT_COMMIT  = $(shell git rev-parse HEAD)
 GIT_TAG     = $(shell git describe --tags --abbrev=0 --exact-match 2>/dev/null)
 GIT_DIRTY   = $(shell test -n "`git status --porcelain`" && echo "dirty" || echo "clean")
@@ -17,7 +16,7 @@ LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitCommit=${GIT_COMMIT}
 LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitTreeState=${GIT_DIRTY}
 
 .PHONY: test
-test: check-encoding
+test: vendor check-encoding
 	./scripts/test.sh
 
 .PHONY: covhtml
@@ -56,15 +55,6 @@ fix-encoding:
 	find cmd pkg internal examples -type f -name "*.go" -exec sed -i -e "s/\r//g" {} +
 	find scripts -type f -name "*.sh" -exec sed -i -e "s/\r//g" {} +
 
-$(DEP):
-	go get -u github.com/golang/dep/cmd/dep
-
-# # install vendored dependencies
-# vendor: Gopkg.lock
-# 	$(DEP) ensure -v --vendor-only
-
-# # update vendored dependencies
-# Gopkg.lock: Gopkg.toml
-# 	$(DEP) ensure -v --no-vendor
-
-# Gopkg.toml: $(DEP)
+.PHONY: vendor
+vendor:
+	GO111MODULE=on go mod vendor
