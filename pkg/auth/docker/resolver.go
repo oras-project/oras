@@ -5,7 +5,7 @@ import (
 
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
-	"github.com/docker/docker/api/types"
+	ctypes "github.com/docker/cli/cli/config/types"
 	"github.com/docker/docker/registry"
 )
 
@@ -20,7 +20,7 @@ func (c *Client) Resolver(_ context.Context) (remotes.Resolver, error) {
 func (c *Client) Credential(hostname string) (string, string, error) {
 	hostname = resolveHostname(hostname)
 	var (
-		auth types.AuthConfig
+		auth ctypes.AuthConfig
 		err  error
 	)
 	for _, cfg := range c.configs {
