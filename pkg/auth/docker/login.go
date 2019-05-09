@@ -3,6 +3,7 @@ package docker
 import (
 	"context"
 
+	ctypes "github.com/docker/cli/cli/config/types"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/registry"
 )
@@ -36,5 +37,5 @@ func (c *Client) Login(ctx context.Context, hostname, username, secret string) e
 	}
 
 	// Store credential
-	return c.primaryCredentialsStore(hostname).Store(cred)
+	return c.primaryCredentialsStore(hostname).Store(ctypes.AuthConfig(cred))
 }

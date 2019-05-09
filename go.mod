@@ -11,7 +11,7 @@ require (
 	github.com/bugsnag/panicwrap v1.2.0 // indirect
 	github.com/containerd/containerd v1.2.6
 	github.com/containerd/continuity v0.0.0-20181203112020-004b46473808 // indirect
-	github.com/docker/cli v0.0.0-20181219132003-336b2a5cac7f
+	github.com/docker/cli v0.0.0-20190506213505-d88565df0c2d
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker v1.14.0-0.20190131205458-8a43b7bb99cd
 	github.com/docker/docker-credential-helpers v0.6.1 // indirect
