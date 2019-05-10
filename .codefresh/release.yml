@@ -20,9 +20,8 @@ steps:
   UploadReleaseArtifacts:
     title: Upload release artifacts
     stage: release
-    image: goreleaser/goreleaser:v0.95.0
+    image: goreleaser/goreleaser:v0.106.0
     commands:
-    - go mod download
     - git checkout tags/${{CF_BRANCH_TAG_NORMALIZED}}
     - goreleaser --rm-dist
   PushDockerImageTagged:
