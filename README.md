@@ -7,7 +7,9 @@
 
 [Registries are evolving as Cloud Native Artifact Stores](https://stevelasker.blog/2019/01/25/cloud-native-artifact-stores-evolve-from-container-registries/). To enable this goal, Microsoft has donated ORAS as means to enable various client libraries with a way to submit artifacts to [OCI Spec Compliant](https://github.com/opencontainers/image-spec) registires. This repo is a staging ground for some yet to be determined upstream home. 
 
-As of Jan 24th, 2019, we're still evolving the library to incorporate annotation support. While we're initially testing ORAS with [Helm 3 Registries](https://github.com/helm/community/blob/3689b3202e35361274241dc4ec188e1e6f1a2e53/proposals/helm-repo-container-registry-convergence/readme.md) and [CNAB](https://cnab.io), we're very interested in feedback and contributions for other artifacts. 
+As of Jan 24th, 2019, we're still evolving the library to incorporate annotation support. While we're initially testing ORAS with [Helm 3 Registries](https://github.com/helm/community/blob/3689b3202e35361274241dc4ec188e1e6f1a2e53/proposals/helm-repo-container-registry-convergence/readme.md) and [CNAB](https://cnab.io), we're very interested in feedback and contributions for other artifacts.
+
+*Want to reach the ORAS community and developers? Join us in the [CNCF Slack](https://slack.cncf.io/) **#oras** channel*
 
 ## More Background
 For more background, please see:
