@@ -68,11 +68,7 @@ func (s *OCIStore) LoadIndex() error {
 
 	s.nameMap = make(map[string]ocispec.Descriptor)
 	for _, desc := range s.index.Manifests {
-		if desc.Annotations == nil {
-			continue
-		}
-		name := desc.Annotations[ocispec.AnnotationRefName]
-		if name != "" {
+		if name := desc.Annotations[ocispec.AnnotationRefName]; name != "" {
 			s.nameMap[name] = desc
 		}
 	}
@@ -103,9 +99,6 @@ func (s *OCIStore) AddReference(name string, desc ocispec.Descriptor) {
 
 	if _, ok := s.nameMap[name]; ok {
 		for i, ref := range s.index.Manifests {
-			if ref.Annotations == nil {
-				continue
-			}
 			if name == ref.Annotations[ocispec.AnnotationRefName] {
 				s.index.Manifests[i] = desc
 				return
@@ -129,9 +122,6 @@ func (s *OCIStore) DeleteReference(name string) {
 
 	delete(s.nameMap, name)
 	for i, desc := range s.index.Manifests {
-		if desc.Annotations == nil {
-			continue
-		}
 		if name == desc.Annotations[ocispec.AnnotationRefName] {
 			s.index.Manifests[i] = s.index.Manifests[len(s.index.Manifests)-1]
 			s.index.Manifests = s.index.Manifests[:len(s.index.Manifests)-1]
