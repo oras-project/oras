@@ -3,15 +3,18 @@ package oras
 import (
 	"context"
 
+	orascontent "github.com/deislabs/oras/pkg/content"
+
 	"github.com/containerd/containerd/images"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 type pullOpts struct {
-	allowedMediaTypes []string
-	dispatch          func(context.Context, images.Handler, ...ocispec.Descriptor) error
-	baseHandlers      []images.Handler
-	callbackHandlers  []images.Handler
+	allowedMediaTypes      []string
+	dispatch               func(context.Context, images.Handler, ...ocispec.Descriptor) error
+	baseHandlers           []images.Handler
+	callbackHandlers       []images.Handler
+	contentProvideIngester orascontent.ProvideIngester
 }
 
 // PullOpt allows callers to set options on the oras pull
@@ -59,6 +62,15 @@ func WithPullBaseHandler(handlers ...images.Handler) PullOpt {
 func WithPullCallbackHandler(handlers ...images.Handler) PullOpt {
 	return func(o *pullOpts) error {
 		o.callbackHandlers = append(o.callbackHandlers, handlers...)
+		return nil
+	}
+}
+
+// WithContentProvideIngester opt to the provided Provider and Ingester
+// for file system I/O, including caches.
+func WithContentProvideIngester(store orascontent.ProvideIngester) PullOpt {
+	return func(o *pullOpts) error {
+		o.contentProvideIngester = store
 		return nil
 	}
 }

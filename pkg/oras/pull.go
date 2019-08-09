@@ -57,7 +57,11 @@ func fetchContent(ctx context.Context, fetcher remotes.Fetcher, desc ocispec.Des
 		}
 		return nil, nil
 	})
-	store := newHybridStoreFromIngester(ingester)
+
+	store := opts.contentProvideIngester
+	if store == nil {
+		store = newHybridStoreFromIngester(ingester)
+	}
 	handlers := []images.Handler{
 		filterHandler(opts.allowedMediaTypes...),
 	}
