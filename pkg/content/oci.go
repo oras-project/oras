@@ -17,8 +17,9 @@ import (
 type OCIStore struct {
 	content.Store
 
-	root  string
-	index *ocispec.Index
+	root    string
+	index   *ocispec.Index
+	nameMap map[string]ocispec.Descriptor
 }
 
 // NewOCIStore creates a new OCI store
@@ -55,12 +56,28 @@ func (s *OCIStore) LoadIndex() error {
 				SchemaVersion: 2, // historical value
 			},
 		}
+		s.nameMap = make(map[string]ocispec.Descriptor)
 
 		return nil
 	}
 	defer indexFile.Close()
 
-	return json.NewDecoder(indexFile).Decode(&s.index)
+	if err := json.NewDecoder(indexFile).Decode(&s.index); err != nil {
+		return err
+	}
+
+	s.nameMap = make(map[string]ocispec.Descriptor)
+	for _, desc := range s.index.Manifests {
+		if desc.Annotations == nil {
+			continue
+		}
+		name := desc.Annotations[ocispec.AnnotationRefName]
+		if name != "" {
+			s.nameMap[name] = desc
+		}
+	}
+
+	return nil
 }
 
 // SaveIndex writes the index.json to the file system
@@ -72,6 +89,60 @@ func (s *OCIStore) SaveIndex() error {
 
 	path := filepath.Join(s.root, OCIImageIndexFile)
 	return ioutil.WriteFile(path, indexJSON, 0644)
+}
+
+// AddReference adds or updates an reference to index.
+func (s *OCIStore) AddReference(name string, desc ocispec.Descriptor) {
+	if desc.Annotations == nil {
+		desc.Annotations = map[string]string{
+			ocispec.AnnotationRefName: name,
+		}
+	} else {
+		desc.Annotations[ocispec.AnnotationRefName] = name
+	}
+
+	if _, ok := s.nameMap[name]; ok {
+		for i, ref := range s.index.Manifests {
+			if ref.Annotations == nil {
+				continue
+			}
+			if name == ref.Annotations[ocispec.AnnotationRefName] {
+				s.index.Manifests[i] = desc
+				return
+			}
+		}
+
+		// Process should not reach here.
+		// Fallthrough to `Add` scenario and recover.
+	}
+
+	s.index.Manifests = append(s.index.Manifests, desc)
+	s.nameMap[name] = desc
+	return
+}
+
+// DeleteReference deletes an reference from index.
+func (s *OCIStore) DeleteReference(name string) {
+	if _, ok := s.nameMap[name]; !ok {
+		return
+	}
+
+	delete(s.nameMap, name)
+	for i, desc := range s.index.Manifests {
+		if desc.Annotations == nil {
+			continue
+		}
+		if name == desc.Annotations[ocispec.AnnotationRefName] {
+			s.index.Manifests[i] = s.index.Manifests[len(s.index.Manifests)-1]
+			s.index.Manifests = s.index.Manifests[:len(s.index.Manifests)-1]
+			return
+		}
+	}
+}
+
+// ListReferences lists all references in index.
+func (s *OCIStore) ListReferences() map[string]ocispec.Descriptor {
+	return s.nameMap
 }
 
 // validateOCILayoutFile ensures the `oci-layout` file
