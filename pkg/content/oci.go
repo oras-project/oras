@@ -8,6 +8,7 @@ import (
 
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/content/local"
+	specs "github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
@@ -30,9 +31,11 @@ func NewOCIStore(rootPath string) (*OCIStore, error) {
 	store := &OCIStore{
 		Store: fileStore,
 		root:  rootPath,
-		index: &ocispec.Index{},
 	}
 	if err := store.validateOCILayoutFile(); err != nil {
+		return nil, err
+	}
+	if err := store.LoadIndex(); err != nil {
 		return nil, err
 	}
 
@@ -44,7 +47,16 @@ func (s *OCIStore) LoadIndex() error {
 	path := filepath.Join(s.root, OCIImageIndexFile)
 	indexFile, err := os.Open(path)
 	if err != nil {
-		return err
+		if !os.IsNotExist(err) {
+			return err
+		}
+		s.index = &ocispec.Index{
+			Versioned: specs.Versioned{
+				SchemaVersion: 2, // historical value
+			},
+		}
+
+		return nil
 	}
 	defer indexFile.Close()
 
