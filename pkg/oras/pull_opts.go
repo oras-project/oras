@@ -15,6 +15,7 @@ type pullOpts struct {
 	baseHandlers           []images.Handler
 	callbackHandlers       []images.Handler
 	contentProvideIngester orascontent.ProvideIngester
+	filterName             func(ocispec.Descriptor) bool
 }
 
 // PullOpt allows callers to set options on the oras pull
@@ -22,7 +23,8 @@ type PullOpt func(o *pullOpts) error
 
 func pullOptsDefaults() *pullOpts {
 	return &pullOpts{
-		dispatch: images.Dispatch,
+		dispatch:   images.Dispatch,
+		filterName: filterName,
 	}
 }
 
@@ -71,6 +73,16 @@ func WithPullCallbackHandler(handlers ...images.Handler) PullOpt {
 func WithContentProvideIngester(store orascontent.ProvideIngester) PullOpt {
 	return func(o *pullOpts) error {
 		o.contentProvideIngester = store
+		return nil
+	}
+}
+
+// WithPullEmptyNameAllowed allows pulling blobs with empty name.
+func WithPullEmptyNameAllowed() PullOpt {
+	return func(o *pullOpts) error {
+		o.filterName = func(ocispec.Descriptor) bool {
+			return true
+		}
 		return nil
 	}
 }
