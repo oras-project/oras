@@ -84,10 +84,10 @@ func (suite *DockerClientTestSuite) TearDownSuite() {
 func (suite *DockerClientTestSuite) Test_0_Login() {
 	var err error
 
-	err = suite.Client.Login(newContext(), suite.DockerRegistryHost, "oscar", "opponent")
+	err = suite.Client.Login(newContext(), suite.DockerRegistryHost, "oscar", "opponent", false)
 	suite.NotNil(err, "error logging into registry with invalid credentials")
 
-	err = suite.Client.Login(newContext(), suite.DockerRegistryHost, testUsername, testPassword)
+	err = suite.Client.Login(newContext(), suite.DockerRegistryHost, testUsername, testPassword, false)
 	suite.Nil(err, "no error logging into registry with valid credentials")
 }
 func (suite *DockerClientTestSuite) Test_2_Logout() {
