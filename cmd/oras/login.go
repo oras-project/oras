@@ -24,6 +24,7 @@ type loginOptions struct {
 	configs  []string
 	username string
 	password string
+	insecure bool
 }
 
 func loginCmd() *cobra.Command {
@@ -47,6 +48,9 @@ Example - Login with identity token from stdin:
 
 Example - Login with username and password by prompt:
   oras login localhost:5000
+
+Example - Login with insecure registry from command line:
+  oras login --insecure localhost:5000
 `,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -60,6 +64,7 @@ Example - Login with username and password by prompt:
 	cmd.Flags().StringVarP(&opts.username, "username", "u", "", "registry username")
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password or identity token")
 	cmd.Flags().BoolVarP(&opts.fromStdin, "password-stdin", "", false, "read password or identity token from stdin")
+	cmd.Flags().BoolVarP(&opts.insecure, "insecure", "k", false, "allow connections to SSL registry without certs")
 	return cmd
 }
 
@@ -108,7 +113,7 @@ func runLogin(opts loginOptions) error {
 	}
 
 	// Login
-	if err := cli.Login(context.Background(), opts.hostname, opts.username, opts.password); err != nil {
+	if err := cli.Login(context.Background(), opts.hostname, opts.username, opts.password, opts.insecure); err != nil {
 		return err
 	}
 

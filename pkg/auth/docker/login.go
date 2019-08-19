@@ -9,7 +9,7 @@ import (
 )
 
 // Login logs in to a docker registry identified by the hostname.
-func (c *Client) Login(ctx context.Context, hostname, username, secret string) error {
+func (c *Client) Login(ctx context.Context, hostname, username, secret string, insecure bool) error {
 	hostname = resolveHostname(hostname)
 	cred := types.AuthConfig{
 		Username:      username,
@@ -21,10 +21,16 @@ func (c *Client) Login(ctx context.Context, hostname, username, secret string) e
 		cred.Password = secret
 	}
 
-	// Login to ensure valid credential
-	remote, err := registry.NewService(registry.ServiceOptions{
+	opts := registry.ServiceOptions{
 		V2Only: true,
-	})
+	}
+
+	if insecure {
+		opts.InsecureRegistries = []string{hostname}
+	}
+
+	// Login to ensure valid credential
+	remote, err := registry.NewService(opts)
 	if err != nil {
 		return err
 	}
