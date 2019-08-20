@@ -139,6 +139,40 @@ To remove the entry from the credentials file, use `oras logout`:
 oras logout localhost:5000
 ```
 
+#### Example using with insecure Docker registry
+
+You want to login the registry without certificate if using the self-signed certificate or unencrypted HTTP connection Docker registry. `oras` support `--insecure` flag to login, it like the Docker daemon `insecure-registries` configuration.
+
+First, create a valid htpasswd file (must use `-B` for bcrypt):
+
+```
+htpasswd -cB -b auth.htpasswd myuser mypass
+```
+
+Next, start a registry using that file for auth and listen the `0.0.0.0` address:
+
+```
+docker run -it --rm -p 8443:443 \
+    -v $(pwd)/auth.htpasswd:/etc/docker/registry/auth.htpasswd \
+    -e REGISTRY_AUTH="{htpasswd: {realm: localhost, path: /etc/docker/registry/auth.htpasswd}}" \
+    -e REGISTRY_HTTP_ADDR=0.0.0.0:443 \
+    registry
+```
+
+In a new window, login with `oras` using the ip address not localhost:
+
+```
+oras login -u myuser -p mypass --insecure <registry-ip>:8443
+```
+
+You will notice a new entry for `<registry-ip>:8443` appear in `~/.docker/config.json`.
+
+To remove the entry from the credentials file, use `oras logout`:
+
+```
+oras logout <registry-ip>:8443
+```
+
 ### Usage
 
 #### Pushing single files to remote registry
