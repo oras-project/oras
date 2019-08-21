@@ -73,30 +73,106 @@ To login to the registry without a certificate, a self-signed certificate, or an
   ```sh
   htpasswd -cB -b auth.htpasswd myuser mypass
   ```
+  
+- Generate your self-signed certificates:
+  
+  ```sh
+  $ mkdir -p certs
+  $ openssl req \
+    -newkey rsa:4096 -nodes -sha256 -keyout certs/domain.key \
+    -x509 -days 365 -out certs/domain.crt
+  ```
 
 - Start a registry using that file for auth and listen the `0.0.0.0` address:
 
   ```sh
-  docker run -it --rm -p 8443:443 \
+  docker run -it --rm -p 5000:5000 \
+      -v `pwd`/certs:/certs \
       -v $(pwd)/auth.htpasswd:/etc/docker/registry/auth.htpasswd \
       -e REGISTRY_AUTH="{htpasswd: {realm: localhost, path: /etc/docker/registry/auth.htpasswd}}" \
-      -e REGISTRY_HTTP_ADDR=0.0.0.0:443 \
+      -e REGISTRY_HTTP_ADDR=0.0.0.0:5000 \
+      -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt \
+      -e REGISTRY_HTTP_TLS_KEY=/certs/domain.key \
       registry
   ```
 
 - In a new window, login with `oras` using the ip address not localhost:
 
   ```sh
-  oras login -u myuser -p mypass --insecure <registry-ip>:8443
+  oras login -u myuser -p mypass --insecure <registry-ip>:5000
   ```
 
-You will notice a new entry for `<registry-ip>:8443` appear in `~/.docker/config.json`.
+You will notice a new entry for `<registry-ip>:5000` appear in `~/.docker/config.json`.
 
-To remove the entry from the credentials file, use `oras logout`:
+Then you can pull files from the registry or push files to the registry.
 
-```sh
-oras logout <registry-ip>:8443
-```
+- To push single file to this registry:
+
+  ```sh
+  oras push <registry-ip>:5000/library/hello:latest hi.txt --insecure
+  ```
+
+- To pull files from this registry:
+
+  ```sh
+  oras pull <registry-ip>:5000/library/hello:latest --insecure
+  ```
+
+- To remove the entry from the credentials file, use `oras logout`:
+
+  ```sh
+  oras logout <registry-ip>:5000
+  ```
+
+#### Using an plain HTTP Docker registry
+
+To pull or push the HTTP Docker registry. `oras` support `--plain-http` flag to pull or push.
+
+The `--plain-http` flag mean that you want to use http instead of https to connect the Docker registry.
+
+- Create a valid htpasswd file (must use `-B` for bcrypt):
+
+  ```sh
+  htpasswd -cB -b auth.htpasswd myuser mypass
+  ```
+
+- Start a registry using that file for auth and listen the `0.0.0.0` address:
+
+  ```sh
+  docker run -it --rm -p 5000:5000 \
+    -v $(pwd)/auth.htpasswd:/etc/docker/registry/auth.htpasswd \
+    -e REGISTRY_AUTH="{htpasswd: {realm: localhost, path: /etc/docker/registry/auth.htpasswd}}" \
+    -e REGISTRY_HTTP_ADDR=0.0.0.0:5000 \
+    registry
+  ```
+
+- In a new window, login with `oras` using the ip address not localhost:
+
+  ```sh
+  oras login -u myuser -p mypass --insecure <registry-ip>:5000
+  ```
+
+You will notice a new entry for `<registry-ip>:5000` appear in `~/.docker/config.json`.
+
+Then you can pull files from the registry or push files to the registry.
+
+- To push single file to this registry:
+
+  ```sh
+  oras push <registry-ip>:5000/library/hello:latest hi.txt --plain-http
+  ```
+
+- To pull files from this registry:
+
+  ```sh
+  oras pull <registry-ip>:5000/library/hello:latest --plain-http
+  ```
+
+- To remove the entry from the credentials file, use `oras logout`:
+
+  ```sh
+  oras logout <registry-ip>:5000
+  ```
 
 ### [Azure Container Registry (ACR)](https://aka.ms/acr)
 
