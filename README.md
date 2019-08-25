@@ -70,22 +70,22 @@ Install `oras` using [GoFish](https://gofi.sh/):
 ```
 gofish install oras
 ==> Installing oras...
-🐠  oras 0.5.0: installed in 65.131245ms
+🐠  oras 0.7.0: installed in 65.131245ms
 ```
 
 or install manually from the latest [release artifacts](https://github.com/deislabs/oras/releases):
 ```
 # Linux
-curl -LO https://github.com/deislabs/oras/releases/download/v0.5.0/oras_0.5.0_linux_amd64.tar.gz
+curl -LO https://github.com/deislabs/oras/releases/download/v0.7.0/oras_0.7.0_linux_amd64.tar.gz
 
 # macOS
-curl -LO https://github.com/deislabs/oras/releases/download/v0.5.0/oras_0.5.0_darwin_amd64.tar.gz
+curl -LO https://github.com/deislabs/oras/releases/download/v0.7.0/oras_0.7.0_darwin_amd64.tar.gz
 
 # unpack, install, dispose
 mkdir -p oras-install/
-tar -zxf oras_0.5.0_*.tar.gz -C oras-install/
+tar -zxf oras_0.7.0_*.tar.gz -C oras-install/
 mv oras-install/oras /usr/local/bin/
-rm -rf oras_0.5.0_*.tar.gz oras-install/
+rm -rf oras_0.7.0_*.tar.gz oras-install/
 ```
 
 Then, to run:
@@ -98,7 +98,7 @@ oras help
 A public Docker image containing the CLI is available on [Docker Hub](https://hub.docker.com/r/orasbot/oras):	
 
 ```	
-docker run -it --rm -v $(pwd):/workspace orasbot/oras:v0.5.0 help
+docker run -it --rm -v $(pwd):/workspace orasbot/oras:v0.7.0 help
 ```	
 
 Note: the default WORKDIR  in the image is `/workspace`.
