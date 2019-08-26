@@ -7,11 +7,12 @@ import (
 
 	"github.com/containerd/containerd/images"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"golang.org/x/sync/semaphore"
 )
 
 type pullOpts struct {
 	allowedMediaTypes      []string
-	dispatch               func(context.Context, images.Handler, ...ocispec.Descriptor) error
+	dispatch               func(context.Context, images.Handler, *semaphore.Weighted, ...ocispec.Descriptor) error
 	baseHandlers           []images.Handler
 	callbackHandlers       []images.Handler
 	contentProvideIngester orascontent.ProvideIngester

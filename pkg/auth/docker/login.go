@@ -21,9 +21,7 @@ func (c *Client) Login(ctx context.Context, hostname, username, secret string, i
 		cred.Password = secret
 	}
 
-	opts := registry.ServiceOptions{
-		V2Only: true,
-	}
+	opts := registry.ServiceOptions{}
 
 	if insecure {
 		opts.InsecureRegistries = []string{hostname}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/containerd/containerd/content"
+	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/remotes"
 	digest "github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go"
@@ -38,18 +39,26 @@ func Push(ctx context.Context, resolver remotes.Resolver, ref string, provider c
 		return ocispec.Descriptor{}, err
 	}
 
-	desc, provider, err := pack(provider, descriptors, opt)
+	desc, store, err := pack(provider, descriptors, opt)
 	if err != nil {
 		return ocispec.Descriptor{}, err
 	}
 
-	if err := remotes.PushContent(ctx, pusher, desc, provider, nil, opt.baseHandlers...); err != nil {
+	var wrapper func(images.Handler) images.Handler
+	if len(opt.baseHandlers) > 0 {
+		wrapper = func(h images.Handler) images.Handler {
+			return images.Handlers(append(opt.baseHandlers, h)...)
+		}
+	}
+
+	if err := remotes.PushContent(ctx, pusher, desc, store, nil, wrapper); err != nil {
 		return ocispec.Descriptor{}, err
 	}
 	return desc, nil
 }
 
-func pack(provider content.Provider, descriptors []ocispec.Descriptor, opts *pushOpts) (ocispec.Descriptor, content.Provider, error) {
+//func pack(store *hybridStore, descriptors []ocispec.Descriptor, opts *pushOpts) (ocispec.Descriptor, error) {
+func pack(provider content.Provider, descriptors []ocispec.Descriptor, opts *pushOpts) (ocispec.Descriptor, content.Store, error) {
 	store := newHybridStoreFromProvider(provider)
 
 	// Config

@@ -12,6 +12,7 @@ import (
 	"github.com/containerd/containerd/remotes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/semaphore"
 )
 
 // Pull pull files from the remote
@@ -73,7 +74,7 @@ func fetchContent(ctx context.Context, fetcher remotes.Fetcher, desc ocispec.Des
 	)
 	handlers = append(handlers, opts.callbackHandlers...)
 
-	if err := opts.dispatch(ctx, images.Handlers(handlers...), desc); err != nil {
+	if err := opts.dispatch(ctx, images.Handlers(handlers...), nil, desc); err != nil {
 		return nil, err
 	}
 
@@ -110,7 +111,7 @@ func isAllowedMediaType(mediaType string, allowedMediaTypes ...string) bool {
 }
 
 // dispatchBFS behaves the same as images.Dispatch() but in sequence with breath-first search.
-func dispatchBFS(ctx context.Context, handler images.Handler, descs ...ocispec.Descriptor) error {
+func dispatchBFS(ctx context.Context, handler images.Handler, weighted *semaphore.Weighted, descs ...ocispec.Descriptor) error {
 	for i := 0; i < len(descs); i++ {
 		desc := descs[i]
 		children, err := handler.Handle(ctx, desc)
