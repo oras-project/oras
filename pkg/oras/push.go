@@ -7,6 +7,7 @@ import (
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/remotes"
+	artifact "github.com/deislabs/oras/pkg/artifact"
 	digest "github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -66,7 +67,7 @@ func pack(provider content.Provider, descriptors []ocispec.Descriptor, opts *pus
 	if opts.config == nil {
 		configBytes := []byte("{}")
 		config = ocispec.Descriptor{
-			MediaType: ocispec.MediaTypeImageConfig,
+			MediaType: artifact.UnknownConfigMediaType,
 			Digest:    digest.FromBytes(configBytes),
 			Size:      int64(len(configBytes)),
 		}
