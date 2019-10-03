@@ -23,6 +23,7 @@ For more background, please see:
 
 - [Distribution](https://github.com/docker/distribution) (open source, version 2.7+)
 - [Azure Container Registry](https://aka.ms/acr/docs)
+- [Docker Hub](https://hub.docker.com) (currently requires the `--manifest-config` option on push, you can use `{}` as a manifest config)
 - Quay.io is coming soon
 
 ## Getting Started
