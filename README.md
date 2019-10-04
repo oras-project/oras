@@ -1,224 +1,207 @@
 # OCI Registry As Storage
+
 [![Codefresh build status]( https://g.codefresh.io/api/badges/pipeline/orasbot/deislabs%2Foras%2Fmaster?type=cf-1)]( https://g.codefresh.io/public/accounts/orasbot/pipelines/deislabs/oras/master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/deislabs/oras)](https://goreportcard.com/report/github.com/deislabs/oras)
 [![GoDoc](https://godoc.org/github.com/deislabs/oras?status.svg)](https://godoc.org/github.com/deislabs/oras)
 
-![](./oras.png)
+![ORAS](./oras.png)
 
-[Registries are evolving as Cloud Native Artifact Stores](https://stevelasker.blog/2019/01/25/cloud-native-artifact-stores-evolve-from-container-registries/). To enable this goal, Microsoft has donated ORAS as means to enable various client libraries with a way to submit artifacts to [OCI Spec Compliant](https://github.com/opencontainers/image-spec) registries. This repo is a staging ground for some yet to be determined upstream home. 
+[Registries are evolving as Cloud Native Artifact Stores](https://stevelasker.blog/2019/01/25/cloud-native-artifact-stores-evolve-from-container-registries/). To enable this goal, Microsoft has donated ORAS as a means to enable various client libraries with a way to push artifacts to [OCI Spec Compliant](https://github.com/opencontainers/image-spec) registries.
 
-As of Jan 24th, 2019, we're still evolving the library to incorporate annotation support. While we're initially testing ORAS with [Helm 3 Registries](https://github.com/helm/community/blob/3689b3202e35361274241dc4ec188e1e6f1a2e53/proposals/helm-repo-container-registry-convergence/readme.md) and [CNAB](https://cnab.io), we're very interested in feedback and contributions for other artifacts.
+ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-module) to be included with your CLI, enabling a native experience: `myclient push artifacts.azurecr.io/myartifact:1.0 ./mything.thang`
 
-*Want to reach the ORAS community and developers? Join us in the [CNCF Slack](https://slack.cncf.io/) **#oras** channel*
+## Table of Contents
 
-## More Background
-For more background, please see:
+- [ORAS Background](#oras-background)
+- [Supported Registries](./implementors.md#registries-supporting-artifacts)
+- [Artifacts Implementing ORAS](./implementors.md#artifact-types-using-oras)
+- [Getting Started](#getting-started)
+- [ORAS CLI](#oras-cli)
+- [ORAS Go Module](#oras-go-module)
+- [Contributing](#contributing)
+- [Maintainers](./MAINTAINERS)
+
+## ORAS Background
 
 - [OCI Image Support Comes to Open Source Docker Registry](https://www.opencontainers.org/blog/2018/10/11/oci-image-support-comes-to-open-source-docker-registry)
-- [Registries are evolving as Cloud Native Artifact Stores](https://stevelasker.blog/2019/01/25/cloud-native-artifact-stores-evolve-from-container-registries/)
-
-## Registries with known support
-
-`oras` can push/pull any files to/from any registry with OCI image support of various mime types.
-
-- [Distribution](https://github.com/docker/distribution) (open source, version 2.7+)
-- [Azure Container Registry](https://aka.ms/acr/docs)
-- [Docker Hub](https://hub.docker.com) (currently requires the `--manifest-config` option on push, you can use `{}` as a manifest config)
-- Quay.io is coming soon
+- [Registries Are Evolving as Cloud Native Artifact Stores](https://stevelasker.blog/2019/01/25/cloud-native-artifact-stores-evolve-from-container-registries/)
+- [OCI Adopts Artifacts Project](https://www.opencontainers.org/blog/2019/09/10/new-oci-artifacts-project)
+- [GitHub: OCI Artifacts Project](https://github.com/opencontainers/artifacts)
 
 ## Getting Started
 
-First, you must have access to a registry with OCI image support (see list above).
+[Select from one the registries that support OCI Artifacts](./implementors.md). Each registry identifies how they support authentication.
 
-The simplest way to get started is to run the official
-[Docker registry image](https://hub.docker.com/_/registry) locally:
+## ORAS CLI
 
-```
-docker run -it --rm -p 5000:5000 registry
-```
+ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-module) to be included with your CLI, enabling a native experience: `myclient push artifacts.azurecr.io/myartifact:1.0 ./mything.thang`
 
-This will start a Distribution server at `localhost:5000`
-(with wide-open access and no persistence).
+### CLI Installation
 
-Next, install the `oras` CLI (see platform-specific installation instructions below).
+- Install `oras` using [GoFish](https://gofi.sh/):
 
-Push a sample file to the registry:
+  ```sh
+  gofish install oras
+  ==> Installing oras...
+  🐠  oras 0.7.0: installed in 65.131245ms
+  ```
 
-```
-cd /tmp && echo "hello world" > hi.txt
-oras push localhost:5000/hello:latest hi.txt
-```
+- Install from the latest [release artifacts](https://github.com/deislabs/oras/releases):
 
-Pull the file from the registry:
-```
-cd /tmp && rm -f hi.txt
-oras pull localhost:5000/hello:latest
-cat hi.txt  # should print "hello world"
-```
+  - Linux
 
-Please see the **Go Module** section below for how this can be imported and used
-inside a Go project.
+    ```sh
+    curl -LO https://github.com/deislabs/oras/releases/download/v0.7.0/oras_0.7.0_linux_amd64.tar.gz
+    mkdir -p oras-install/
+    tar -zxf oras_0.7.0_*.tar.gz -C oras-install/
+    mv oras-install/oras /usr/local/bin/
+    rm -rf oras_0.7.0_*.tar.gz oras-install/
+    ```
 
-## CLI
+  - macOS
 
-`oras` is a CLI that allows you to push and pull files from
-any registry with OCI image support.
+    ```sh
+    curl -LO https://github.com/deislabs/oras/releases/download/v0.7.0/oras_0.7.0_darwin_amd64.tar.gz
+    mkdir -p oras-install/
+    tar -zxf oras_0.7.0_*.tar.gz -C oras-install/
+    mv oras-install/oras /usr/local/bin/
+    rm -rf oras_0.7.0_*.tar.gz oras-install/
+    ```
 
+  - Windows
 
-### Installation
+    Add `%USERPROFILE%\bin\` to your `PATH` environment variable so that `oras.exe` can be found.
 
-Install `oras` using [GoFish](https://gofi.sh/):
-```
-gofish install oras
-==> Installing oras...
-🐠  oras 0.7.0: installed in 65.131245ms
-```
+    ```sh
+    curl.exe -sLO  https://github.com/deislabs/oras/releases/download/v0.7.0/oras_0.7.0_windows_amd64.tar.gz
+    tar.exe -xvzf oras_0.7.0_windows_amd64.tar.gz
+    mkdir -p %USERPROFILE%\bin\
+    copy oras.exe %USERPROFILE%\bin\
+    set PATH=%USERPROFILE%\bin\;%PATH%
+    ```
 
-or install manually from the latest [release artifacts](https://github.com/deislabs/oras/releases):
-```
-# Linux
-curl -LO https://github.com/deislabs/oras/releases/download/v0.7.0/oras_0.7.0_linux_amd64.tar.gz
+  - Docker Image
 
-# macOS
-curl -LO https://github.com/deislabs/oras/releases/download/v0.7.0/oras_0.7.0_darwin_amd64.tar.gz
+    A public Docker image containing the CLI is available on [Docker Hub](https://hub.docker.com/r/orasbot/oras):
 
-# unpack, install, dispose
-mkdir -p oras-install/
-tar -zxf oras_0.7.0_*.tar.gz -C oras-install/
-mv oras-install/oras /usr/local/bin/
-rm -rf oras_0.7.0_*.tar.gz oras-install/
-```
+    ```sh
+    docker run -it --rm -v $(pwd):/workspace orasbot/oras:v0.7.0 help
+    ```
 
-Then, to run:
+    > Note: the default WORKDIR  in the image is `/workspace`.
 
-```
-oras help
-```
-### Docker Image 	
+### ORAS Authentication
 
-A public Docker image containing the CLI is available on [Docker Hub](https://hub.docker.com/r/orasbot/oras):	
+Run `oras login` in advance for any private registries. By default, this will store credentials in `~/.docker/config.json` *(same file used by the docker client)*. If you have previously authenticated to a registry using `docker login`, the credentials will be reused.
 
-```	
-docker run -it --rm -v $(pwd):/workspace orasbot/oras:v0.7.0 help
-```	
+Use the `-c`/`--config` option to specify an alternate location.
 
-Note: the default WORKDIR  in the image is `/workspace`.
- 
-### Authentication
-
-Run `oras login` in advance for any private registries. By default, this will store credentials in `~/.docker/config.json` (same file as used by Docker). If you have authenticated to a registry previously using `docker login`, the credentials will be reused. Use the `-c`/`--config` option to specify an alternate location.
+> While ORAS leverages the local docker client config store, ORAS does NOT have a dependency on Docker Desktop running or being installed. ORAS can be used independently of a local docker daemon.
 
 `oras` also accepts explicit credentials via options, for example,
-```
+
+```sh
 oras pull -u username -p password myregistry.io/myimage:latest
 ```
 
-#### Example using with Docker registry
+See [Supported Registries](./implementors.md) for registry specific authentication usage.
 
-First, create a valid htpasswd file (must use `-B` for bcrypt):
-```
-htpasswd -cB -b auth.htpasswd myuser mypass
-```
+### Pushing Artifacts with Single Files
 
-Next, start a registry using that file for auth:
-```
-docker run -it --rm -p 5000:5000 \
-    -v $(pwd)/auth.htpasswd:/etc/docker/registry/auth.htpasswd \
-    -e REGISTRY_AUTH="{htpasswd: {realm: localhost, path: /etc/docker/registry/auth.htpasswd}}" \
-    registry
-```
+Pushing single files involves referencing the unique artifact type and at least one file.
 
-In a new window, login with `oras`:
-```
-oras login -u myuser -p mypass localhost:5000
-```
+The following sample defines a new Artifact Type of **Acme Rocket**, using `application/vnd.acme.rocket.config.v1+json` as the `manifest.config.mediaType`
 
-You will notice a new entry for `localhost:5000` appear in `~/.docker/config.json`.
+- Create a sample file to push/pull as an artifact
 
-To remove the entry from the credentials file, use `oras logout`:
-```
-oras logout localhost:5000
-```
+  ```sh
+  echo "hello world" > artifact.txt
+  ```
 
-#### Example using with insecure Docker registry
+- Push the sample file to the registry:
 
-You want to login the registry without certificate if using the self-signed certificate or unencrypted HTTP connection Docker registry. `oras` support `--insecure` flag to login, it like the Docker daemon `insecure-registries` configuration.
+  ```sh
+  oras push localhost:5000/hello-artifact:v1 \
+  --manifest-config /dev/null:application/vnd.acme.rocket.config.v1+json \
+  ./artifact.txt
+  ```
 
-First, create a valid htpasswd file (must use `-B` for bcrypt):
+- Pull the file from the registry:
 
-```
-htpasswd -cB -b auth.htpasswd myuser mypass
-```
+  ```sh
+  rm -f artifact.txt # first delete the file
+  oras pull localhost:5000/hello-artifact:v1
+  cat artifact.txt  # should print "hello world"
+  ```
 
-Next, start a registry using that file for auth and listen the `0.0.0.0` address:
+- The push a custom layer `mediaType`, representing a unique artifact blob, use the format `filename[:type]`:
 
-```
-docker run -it --rm -p 8443:443 \
-    -v $(pwd)/auth.htpasswd:/etc/docker/registry/auth.htpasswd \
-    -e REGISTRY_AUTH="{htpasswd: {realm: localhost, path: /etc/docker/registry/auth.htpasswd}}" \
-    -e REGISTRY_HTTP_ADDR=0.0.0.0:443 \
-    registry
-```
+  ```sh
+  oras push localhost:5000/hello-artifact:v2 \
+  --manifest-config /dev/null:application/vnd.acme.rocket.config.v1+json \
+    artifact.txt:application/vnd.acme.rocket.layer.v1+txt
+  ```
 
-In a new window, login with `oras` using the ip address not localhost:
+### Pushing Artifacts with Config Files
 
-```
-oras login -u myuser -p mypass --insecure <registry-ip>:8443
-```
+The [OCI distribution-spec][distribution-spec] provides for storing optional config objects. These can be used by the artifact to determine how or where to process and/or route the blobs.
 
-You will notice a new entry for `<registry-ip>:8443` appear in `~/.docker/config.json`.
+- Create a config file
 
-To remove the entry from the credentials file, use `oras logout`:
+  ```sh
+  echo "{\"name\":\"foo\",\"value\":\"bar\"}" > config.json
+  ```
 
-```
-oras logout <registry-ip>:8443
-```
+- Push an the artifact, with the `config.json` file
 
-### Usage
+  ```sh
+  oras push localhost:5000/hello-artifact:v2 \
+  --manifest-config config.json:application/vnd.acme.rocket.config.v1+json \
+    artifact.txt:application/vnd.acme.rocket.layer.v1+txt
+  ```
 
-#### Pushing single files to remote registry
-```
-oras push localhost:5000/hello:latest hi.txt
-```
+### Pushing Artifacts with Multiple Files
 
-The default media type for all files is `application/vnd.oci.image.layer.v1.tar`.
+Just as container images support multiple "layers", represented as blobs, ORAS supports pushing multiple files. The file type is up to the artifact author. You can push `.tar` to represent a collection of files or individual files like `.yaml`, `.txt` or whatever your artifact should be represented as. Each blob (layer) type should have a `mediaType` to represent the type of blob. See [OCI Artifacts][artifacts] for more details.
 
-The push a custom media type, use the format `filename[:type]`:
-```
-oras push localhost:5000/hello:latest hi.txt:application/vnd.me.hi
-```
+- Create additional blobs
 
-#### Pushing multiple files to remote registry
-Just as docker images support multiple "layers", ORAS supports pushing multiple files. The file type is up to the implementer. You can push tar, yaml, text or whatever your artifact should be represented as.
+  ```sh
+  echo "Docs on this artifact" > readme.md
+  ```
 
-To push multiple files with different media types:
-```
-oras push localhost:5000/hello:latest hi.txt:application/vnd.me.hi bye.txt:application/vnd.me.bye
-```
+- Create a config file, referencing the doc file
 
-#### Pulling files from remote registry
-```
-oras pull localhost:5000/hello:latest
-```
+  ```sh
+  echo "{\"doc\":\"readme.md\"}" > config.json
+  ```
 
-By default, only blobs with media type `application/vnd.oci.image.layer.v1.tar` will be downloaded.
+- Push multiple files with different `mediaTypes`:
 
-To specify which media types to download, use the `--media-type`/`-t` flag:
-```
-oras pull localhost:5000/hello:latest -t application/vnd.me.hi
+  ```sh
+  oras push localhost:5000/hello-artifact:v2 \
+    --manifest-config config.json:application/vnd.acme.rocket.config.v1+json \
+    artifact.txt:application/vnd.acme.rocket.config.v1+json \
+    readme.md:application/vnd.acme.rocket.docs.layer.v1+json
+  ```
+
+### Pulling Artifacts
+
+Pulling artifacts involves specifying the content addressable artifact, along with the type of artifact.
+> See: [Issue 130](https://github.com/deislabs/oras/issues/130) for elimnating `-a` and `--media-type`
+
+```sh
+oras pull localhost:5000/hello-artifact:v2 -a
 ```
 
-Or to allow all media types, use the `--allow-all`/`-a` flag:
-```
-oras pull localhost:5000/hello:latest -a
-```
+## ORAS Go Module
 
-## Go Module
+While the ORAS CLI provides a great way to get started, and test registry support for [OCI Artifacts][artifacts], the primary experience enables a native experience for your artifact of choice. Using the ORAS Go Module, you can develop your own push/pull experience: `myclient push artifacts.azurecr.io/myartifact:1.0 ./mything.thang`
 
 The package `github.com/deislabs/oras/pkg/oras` can quickly be imported in other Go-based tools that
 wish to benefit from the ability to store arbitrary content in container registries.
 
-Example:
+### ORAS Go Module Example
 
 [Source](examples/simple_push_pull.go)
 
@@ -271,3 +254,13 @@ func main() {
 	fmt.Printf("Try running 'cat %s'\n", fileName)
 }
 ```
+
+## Contributing
+
+Want to reach the ORAS community and developers?
+We're very interested in feedback and contributions for other artifacts.
+
+[Join us](https://slack.cncf.io/) at [CNCF Slack](https://cloud-native.slack.com) under the **#oras** channel
+
+[artifacts]:            https://github.com/opencontainers/artifacts
+[distribution-spec]:    https://github.com/opencontainers/distribution-spec/
