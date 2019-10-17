@@ -1,4 +1,4 @@
-FROM golang:1.11-alpine as builder
+FROM golang:1.13-alpine as builder
 RUN apk add git make
 ENV ORASPKG /oras
 ADD . ${ORASPKG}
