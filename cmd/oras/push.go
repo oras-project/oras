@@ -31,10 +31,12 @@ type pushOptions struct {
 	pathValidationDisabled bool
 	verbose                bool
 
-	debug    bool
-	configs  []string
-	username string
-	password string
+	debug     bool
+	configs   []string
+	username  string
+	password  string
+	insecure  bool
+	plainHTTP bool
 }
 
 func pushCmd() *cobra.Command {
@@ -55,6 +57,12 @@ Example - Push multiple files with different media types:
 
 Example - Push file "hi.txt" with the custom manifest config "config.json" of the custom "application/vnd.me.config" media type:
   oras push --manifest-config config.json:application/vnd.me.config localhost:5000/hello:latest hi.txt
+
+Example - Push file to the insecure registry:
+  oras push localhost:5000/hello:latest hi.txt --insecure
+
+Example - Push file to the HTTP registry:
+  oras push localhost:5000/hello:latest hi.txt --plain-http
 `,
 		Args: cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -72,6 +80,8 @@ Example - Push file "hi.txt" with the custom manifest config "config.json" of th
 	cmd.Flags().StringArrayVarP(&opts.configs, "config", "c", nil, "auth config path")
 	cmd.Flags().StringVarP(&opts.username, "username", "u", "", "registry username")
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password")
+	cmd.Flags().BoolVarP(&opts.insecure, "insecure", "", false, "allow connections to SSL registry without certs")
+	cmd.Flags().BoolVarP(&opts.plainHTTP, "plain-http", "", false, "use plain http and not https")
 	return cmd
 }
 
@@ -119,7 +129,7 @@ func runPush(opts pushOptions) error {
 	}
 
 	// ready to push
-	resolver := newResolver(opts.username, opts.password, opts.configs...)
+	resolver := newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
 	pushOpts = append(pushOpts, oras.WithPushBaseHandler(pushStatusTrack()))
 	desc, err := oras.Push(ctx, resolver, opts.targetRef, store, files, pushOpts...)
 	if err != nil {
