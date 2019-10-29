@@ -8,7 +8,7 @@ steps:
   UnitTest:
     title: Run unit tests
     stage: test
-    image: golang:1.11-alpine
+    image: golang:1.13-alpine
     commands:
     - apk add git make bash file
     - cf_export GOCACHE="${{CF_VOLUME_PATH}}/gocache"
@@ -27,3 +27,4 @@ steps:
     candidate: ${{BuildDockerImage}}
     image_name: orasbot/${{CF_REPO_NAME}}
     registry: dockerhub
+
