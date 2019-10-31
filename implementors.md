@@ -195,7 +195,7 @@ ACR Artifact Documentation: [aka.ms/acr/artifacts](https://aka.ms/acr/artifacts)
 
   ```sh
   oras push myregistry.azurecr.io/samples/artifact:1.0 \
-      --manifest-config /dev/null:application/vnd.unknown.config.v1+json \
+      --manifest-config /dev/null:application/vnd.unknown.config.v1 \
       ./artifact.txt:application/vnd.unknown.layer.v1+txt
   ```
 
