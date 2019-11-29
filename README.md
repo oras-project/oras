@@ -181,7 +181,7 @@ Just as container images support multiple "layers", represented as blobs, ORAS s
   ```sh
   oras push localhost:5000/hello-artifact:v2 \
     --manifest-config config.json:application/vnd.acme.rocket.config.v1+json \
-    artifact.txt:application/vnd.acme.rocket.config.v1+json \
+    artifact.txt:application/vnd.acme.rocket.layer.v1+txt \
     readme.md:application/vnd.acme.rocket.docs.layer.v1+json
   ```
 
