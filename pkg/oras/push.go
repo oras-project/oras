@@ -83,6 +83,10 @@ func pack(provider content.Provider, descriptors []ocispec.Descriptor, opts *pus
 	}
 
 	// Manifest
+	if opts.manifest != nil {
+		return *opts.manifest, store, nil
+	}
+
 	manifest := ocispec.Manifest{
 		Versioned: specs.Versioned{
 			SchemaVersion: 2, // historical value. does not pertain to OCI or docker version

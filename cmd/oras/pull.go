@@ -26,10 +26,12 @@ type pullOptions struct {
 	output             string
 	verbose            bool
 
-	debug    bool
-	configs  []string
-	username string
-	password string
+	debug     bool
+	configs   []string
+	username  string
+	password  string
+	insecure  bool
+	plainHTTP bool
 }
 
 func pullCmd() *cobra.Command {
@@ -47,6 +49,12 @@ Example - Pull only files with the custom "application/vnd.me.hi" media type:
 
 Example - Pull all files, any media type:
   oras pull localhost:5000/hello:latest -a
+
+Example - Pull files from the insecure registry:
+  oras pull localhost:5000/hello:latest --insecure
+
+Example - Pull files from the HTTP registry:
+  oras pull localhost:5000/hello:latest --plain-http
 `,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -66,6 +74,8 @@ Example - Pull all files, any media type:
 	cmd.Flags().StringArrayVarP(&opts.configs, "config", "c", nil, "auth config path")
 	cmd.Flags().StringVarP(&opts.username, "username", "u", "", "registry username")
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password")
+	cmd.Flags().BoolVarP(&opts.insecure, "insecure", "", false, "allow connections to SSL registry without certs")
+	cmd.Flags().BoolVarP(&opts.plainHTTP, "plain-http", "", false, "use plain http and not https")
 	return cmd
 }
 
@@ -82,7 +92,7 @@ func runPull(opts pullOptions) error {
 		opts.allowedMediaTypes = []string{content.DefaultBlobMediaType, content.DefaultBlobDirMediaType}
 	}
 
-	resolver := newResolver(opts.username, opts.password, opts.configs...)
+	resolver := newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
 	store := content.NewFileStore(opts.output)
 	defer store.Close()
 	store.DisableOverwrite = opts.keepOldFiles
