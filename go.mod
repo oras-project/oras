@@ -3,7 +3,9 @@ module github.com/deislabs/oras
 go 1.13
 
 replace (
+	github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.3.2+incompatible
 	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.4.2
+	github.com/docker/distribution => github.com/docker/distribution v0.0.0-20191216044856-a8371794149d
 	github.com/docker/docker => github.com/moby/moby v1.4.2-0.20200203170920-46ec8731fbce
 )
 
