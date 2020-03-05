@@ -85,7 +85,7 @@ func pack(provider content.Provider, descriptors []ocispec.Descriptor, opts *pus
 	}
 
 	if descriptors == nil {
-		descriptors = []ocispec.Descriptor{} // make it an empty array to avoid potential server-side bugs
+		descriptors = []ocispec.Descriptor{} // make it an empty array to prevent potential server-side bugs
 	}
 	manifest := ocispec.Manifest{
 		Versioned: specs.Versioned{
