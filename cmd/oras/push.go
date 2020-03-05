@@ -64,7 +64,7 @@ Example - Push file to the insecure registry:
 Example - Push file to the HTTP registry:
   oras push localhost:5000/hello:latest hi.txt --plain-http
 `,
-		Args: cobra.MinimumNArgs(2),
+		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
 			opts.fileRefs = args[1:]
@@ -126,6 +126,9 @@ func runPush(opts pushOptions) error {
 	files, err := loadFiles(store, annotations, &opts)
 	if err != nil {
 		return err
+	}
+	if len(files) == 0 {
+		fmt.Println("Uploading empty artifact")
 	}
 
 	// ready to push
