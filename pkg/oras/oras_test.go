@@ -84,7 +84,7 @@ func (suite *ORASTestSuite) Test_0_Push() {
 
 	ref = fmt.Sprintf("%s/empty:test", suite.DockerRegistryHost)
 	_, err = Push(newContext(), newResolver(), ref, nil, descriptors)
-	suite.NotNil(ErrEmptyDescriptors, err, "error pushing with empty descriptors")
+	suite.Nil(err, "no error pushing with empty descriptors")
 
 	// Load descriptors with test chart tgz (as single layer)
 	store = orascontent.NewFileStore("")
