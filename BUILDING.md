@@ -11,7 +11,7 @@ All code under the `pkg/` directory should be thoroughly tested.
 
 ## Building binary
 
-Use `make build` to build all platofrm binaries to the `bin/` directory.
+Use `make build` to build all platform binaries to the `bin/` directory.
 
 Mac:
 
