@@ -11,25 +11,33 @@ All code under the `pkg/` directory should be thoroughly tested.
 
 ## Building binary
 
-Use `make test` to build all platofrm binaries to the `bin/` directory.
+Use `make build` to build all platform binaries to the `bin/` directory.
 
 Mac:
 
-```
+```bash
 # builds to bin/darwin/amd64/oras
 make build-mac
 ```
 
 Linux:
 
-```
+```bash
 # builds to bin/linux/amd64/oras
 make build-linux
 ```
 
+Linux  ARM64:
+
+```bash
+# builds to bin/linux/amd64/oras
+make build-linux
+```
+
+
 Windows:
 
-```
+```bash
 # builds to bin/windows/amd64/oras.exe
 make build-windows
 ```
