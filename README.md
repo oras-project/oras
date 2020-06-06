@@ -6,20 +6,18 @@
 
 ![ORAS](./oras.png)
 
-[Registries are evolving as Cloud Native Artifact Stores](https://stevelasker.blog/2019/01/25/cloud-native-artifact-stores-evolve-from-container-registries/). To enable this goal, Microsoft has donated ORAS as a means to enable various client libraries with a way to push artifacts to [OCI Spec Compliant](https://github.com/opencontainers/image-spec) registries.
+[Registries are evolving as Cloud Native Artifact Stores](https://stevelasker.blog/2019/01/25/cloud-native-artifact-stores-evolve-from-container-registries/). To enable this goal, Microsoft has donated ORAS as a means to enable various client libraries with a way to push [OCI Artifacts][artifacts] to [OCI Spec Compliant](https://github.com/opencontainers/oci-conformance) registries.
 
 ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-module) to be included with your CLI, enabling a native experience: `myclient push artifacts.azurecr.io/myartifact:1.0 ./mything.thang`
 
 ## Table of Contents
 
+- [Table of Contents](#table-of-contents)
 - [ORAS Background](#oras-background)
-- [Supported Registries](./implementors.md#registries-supporting-artifacts)
-- [Artifacts Implementing ORAS](./implementors.md#artifact-types-using-oras)
 - [Getting Started](#getting-started)
 - [ORAS CLI](#oras-cli)
 - [ORAS Go Module](#oras-go-module)
 - [Contributing](#contributing)
-- [Maintainers](./MAINTAINERS)
 
 ## ORAS Background
 
@@ -109,8 +107,9 @@ See [Supported Registries](./implementors.md) for registry specific authenticati
 ### Pushing Artifacts with Single Files
 
 Pushing single files involves referencing the unique artifact type and at least one file.
+Defining an Artifact uses the `config.mediaType` as the unique identifier. If a config object is provided, the `mediaType` extension defines the config filetype. If a null config is passed, the config extension is removed.
 
-The following sample defines a new Artifact Type of **Acme Rocket**, using `application/vnd.acme.rocket.config.v1+json` as the `manifest.config.mediaType`
+The following sample defines a new Artifact Type of **Acme Rocket**, using `application/vnd.acme.rocket.config` as the `manifest.config.mediaType`
 
 - Create a sample file to push/pull as an artifact
 
@@ -122,7 +121,7 @@ The following sample defines a new Artifact Type of **Acme Rocket**, using `appl
 
   ```sh
   oras push localhost:5000/hello-artifact:v1 \
-  --manifest-config /dev/null:application/vnd.acme.rocket.config.v1+json \
+  --manifest-config /dev/null:application/vnd.acme.rocket.config \
   ./artifact.txt
   ```
 
@@ -138,13 +137,13 @@ The following sample defines a new Artifact Type of **Acme Rocket**, using `appl
 
   ```sh
   oras push localhost:5000/hello-artifact:v2 \
-  --manifest-config /dev/null:application/vnd.acme.rocket.config.v1+json \
+  --manifest-config /dev/null:application/vnd.acme.rocket.config \
     artifact.txt:application/vnd.acme.rocket.layer.v1+txt
   ```
 
 ### Pushing Artifacts with Config Files
 
-The [OCI distribution-spec][distribution-spec] provides for storing optional config objects. These can be used by the artifact to determine how or where to process and/or route the blobs.
+The [OCI distribution-spec][distribution-spec] provides for storing optional config objects. These can be used by the artifact to determine how or where to process and/or route the blobs. When providing a config object, the version and file type is required.
 
 - Create a config file
 
@@ -188,7 +187,7 @@ Just as container images support multiple "layers", represented as blobs, ORAS s
 ### Pulling Artifacts
 
 Pulling artifacts involves specifying the content addressable artifact, along with the type of artifact.
-> See: [Issue 130](https://github.com/deislabs/oras/issues/130) for elimnating `-a` and `--media-type`
+> See: [Issue 130](https://github.com/deislabs/oras/issues/130) for eliminating `-a` and `--media-type`
 
 ```sh
 oras pull localhost:5000/hello-artifact:v2 -a

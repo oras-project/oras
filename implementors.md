@@ -208,7 +208,7 @@ ACR Artifact Documentation: [aka.ms/acr/artifacts](https://aka.ms/acr/artifacts)
 
 ## Adding Your Registry or Artifact Type
 
-Do you support Artifacts and ORAS? Please [submit a PR](https://github.com/deislabs/oras/pulls), using similar formatting above. We're happy to promote all usage, as well as feedback.
+Do you support [OCI Artifacts][artifacts] and would like your registry and/or project listed here? Please [submit a PR](https://github.com/deislabs/oras/pulls), using similar formatting above. We're happy to promote all usage, as well as feedback.
 
 [artifacts]:            https://github.com/opencontainers/artifacts
 [distribution-spec]:    https://github.com/opencontainers/distribution-spec/
