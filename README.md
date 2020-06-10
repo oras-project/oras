@@ -12,12 +12,14 @@ ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-m
 
 ## Table of Contents
 
-- [Table of Contents](#table-of-contents)
 - [ORAS Background](#oras-background)
+- [Supported Registries](./implementors.md#registries-supporting-artifacts)
+- [Artifacts Implementing ORAS](./implementors.md#artifact-types-using-oras)
 - [Getting Started](#getting-started)
 - [ORAS CLI](#oras-cli)
 - [ORAS Go Module](#oras-go-module)
 - [Contributing](#contributing)
+- [Maintainers](./MAINTAINERS)
 
 ## ORAS Background
 
