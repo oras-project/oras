@@ -6,7 +6,7 @@
 
 ![ORAS](./oras.png)
 
-[Registries are evolving as Cloud Native Artifact Stores](https://stevelasker.blog/2019/01/25/cloud-native-artifact-stores-evolve-from-container-registries/). To enable this goal, Microsoft has donated ORAS as a means to enable various client libraries with a way to push [OCI Artifacts][artifacts] to [OCI Spec Compliant](https://github.com/opencontainers/oci-conformance) registries.
+[Registries are evolving as Cloud Native Artifact Stores](https://stevelasker.blog/2019/01/25/cloud-native-artifact-stores-evolve-from-container-registries/). To enable this goal, Microsoft has donated ORAS as a means to enable various client libraries with a way to push [OCI Artifacts][artifacts] to [OCI Conformant](https://github.com/opencontainers/oci-conformance) registries.
 
 ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-module) to be included with your CLI, enabling a native experience: `myclient push artifacts.azurecr.io/myartifact:1.0 ./mything.thang`
 
@@ -109,7 +109,7 @@ See [Supported Registries](./implementors.md) for registry specific authenticati
 ### Pushing Artifacts with Single Files
 
 Pushing single files involves referencing the unique artifact type and at least one file.
-Defining an Artifact uses the `config.mediaType` as the unique identifier. If a config object is provided, the `mediaType` extension defines the config filetype. If a null config is passed, the config extension is removed.
+Defining an Artifact uses the `config.mediaType` as the unique artifact type. If a config object is provided, the `mediaType` extension defines the config filetype. If a `null` config is passed, the config extension must be removed.
 
 See: [Defining a Unique Artifact Type](https://github.com/opencontainers/artifacts/blob/master/artifact-authors.md#defining-a-unique-artifact-type)
 
@@ -137,7 +137,7 @@ The following sample defines a new Artifact Type of **Acme Rocket**, using `appl
   cat artifact.txt  # should print "hello world"
   ```
 
-- The push a layer `mediaType`, representing the artifact blob type, use the format `filename[:type]`:
+- Push the sample file, with a layer `mediaType`, using the format `filename[:type]`:
 
   ```sh
   oras push localhost:5000/hello-artifact:v2 \
@@ -168,7 +168,7 @@ The [OCI distribution-spec][distribution-spec] provides for storing optional con
 Just as container images support multiple "layers" represented as blobs, ORAS supports pushing multiple layers. The layer type is up to the artifact author. You may push `.tar` representing a collection of files, individual files like `.yaml`, `.txt` or whatever your artifact should be represented as. Each layer type should have a `mediaType` representing the type of blob content.
 In this example, we'll push a collection of files.
 
-- A single root file (`artifact.txt`) that represents overview content that might be displayed as a repository overview
+- A single file (`artifact.txt`) that represents overview content that might be displayed as a repository overview
 - A collection of files (`docs/*`) that represents detailed content. When specifying a directory, ORAS will automatically tar the contents.
 
 See [OCI Artifacts][artifacts] for more details.
