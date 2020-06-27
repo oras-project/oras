@@ -22,13 +22,6 @@ type Client struct {
 // All changes will only be written to the first config file.
 func NewClient(configPaths ...string) (auth.Client, error) {
 	var configs []*configfile.ConfigFile
-	for _, path := range configPaths {
-		cfg, err := loadConfigFile(path)
-		if err != nil {
-			return nil, errors.Wrap(err, path)
-		}
-		configs = append(configs, cfg)
-	}
 	if len(configs) == 0 {
 		cfg, err := config.Load(config.Dir())
 		if err != nil {
@@ -37,7 +30,18 @@ func NewClient(configPaths ...string) (auth.Client, error) {
 		if !cfg.ContainsAuth() {
 			cfg.CredentialsStore = credentials.DetectDefaultStore(cfg.CredentialsStore)
 		}
-		configs = []*configfile.ConfigFile{cfg}
+
+		return &Client{
+			configs: []*configfile.ConfigFile{cfg},
+		}, nil
+	}
+
+	for _, path := range configPaths {
+		cfg, err := loadConfigFile(path)
+		if err != nil {
+			return nil, errors.Wrap(err, path)
+		}
+		configs = append(configs, cfg)
 	}
 
 	return &Client{
