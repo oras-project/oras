@@ -22,7 +22,7 @@ type Client struct {
 // All changes will only be written to the first config file.
 func NewClient(configPaths ...string) (auth.Client, error) {
 	var configs []*configfile.ConfigFile
-	if len(configs) == 0 {
+	if len(configPaths) == 0 {
 		cfg, err := config.Load(config.Dir())
 		if err != nil {
 			return nil, err
