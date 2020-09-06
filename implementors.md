@@ -10,6 +10,7 @@ See [OCI Artifacts][artifacts] for how to add OCI Artifacts support to your regi
 
 - [docker/distribution](#docker-distribution) - local/offline verification
 - [Azure Container Registry](#azure-container-registry-acr)
+- [Amazon Elastic Container Registry](#amazon-elastic-container-registry-ecr)
 
 ## Artifact Types Using ORAS
 
@@ -172,6 +173,33 @@ Then you can pull files from the registry or push files to the registry.
 
   ```sh
   oras logout <registry-ip>:5000
+  ```
+  
+### [Amazon Elastic Container Registry (ECR)](https://aws.amazon.com/ecr/)
+
+ECR Artifact Blog Post: <https://aws.amazon.com/blogs/containers/oci-artifact-support-in-amazon-ecr/>
+
+- Authenticating with ECR using the AWS CLI
+  ```sh
+  aws ecr get-login-password --region $AWS_REGION --profile $PROFILE | oras login \
+      --password-stdin \
+      --username AWS \
+      "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+  ```
+
+- Pushing Artifacts to ECR
+
+  ```sh
+  oras push $REPO_URI:1.0 \
+      --manifest-config /dev/null:application/vnd.unknown.config.v1+json \
+      ./artifact.txt:application/vnd.unknown.layer.v1+txt
+  ```
+
+- Pulling Artifacts from ECR
+
+  ```sh
+  oras pull $REPO_URI:1.0 \
+    --media-type application/vnd.unknown.layer.v1+txt
   ```
 
 ### [Azure Container Registry (ACR)](https://aka.ms/acr)
