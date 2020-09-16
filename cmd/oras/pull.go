@@ -98,7 +98,7 @@ func runPull(opts pullOptions) error {
 	store.DisableOverwrite = opts.keepOldFiles
 	store.AllowPathTraversalOnWrite = opts.pathTraversal
 
-	desc, _, err := oras.Pull(ctx, resolver, opts.targetRef, store,
+	desc, artifacts, err := oras.Pull(ctx, resolver, opts.targetRef, store,
 		oras.WithAllowedMediaTypes(opts.allowedMediaTypes),
 		oras.WithPullCallbackHandler(pullStatusTrack()),
 	)
@@ -107,6 +107,9 @@ func runPull(opts pullOptions) error {
 			return fmt.Errorf("image reference format is invalid. Please specify <name:tag|name@digest>")
 		}
 		return err
+	}
+	if len(artifacts) == 0 {
+		fmt.Println("Downloaded empty artifact")
 	}
 	fmt.Println("Pulled", opts.targetRef)
 	fmt.Println("Digest:", desc.Digest)

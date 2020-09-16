@@ -6,7 +6,7 @@
 
 ![ORAS](./oras.png)
 
-[Registries are evolving as Cloud Native Artifact Stores](https://stevelasker.blog/2019/01/25/cloud-native-artifact-stores-evolve-from-container-registries/). To enable this goal, Microsoft has donated ORAS as a means to enable various client libraries with a way to push artifacts to [OCI Spec Compliant](https://github.com/opencontainers/image-spec) registries.
+[Registries are evolving as Cloud Native Artifact Stores](https://stevelasker.blog/2019/01/25/cloud-native-artifact-stores-evolve-from-container-registries/). To enable this goal, Microsoft has donated ORAS as a means to enable various client libraries with a way to push [OCI Artifacts][artifacts] to [OCI Conformant](https://github.com/opencontainers/oci-conformance) registries.
 
 ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-module) to be included with your CLI, enabling a native experience: `myclient push artifacts.azurecr.io/myartifact:1.0 ./mything.thang`
 
@@ -109,8 +109,11 @@ See [Supported Registries](./implementors.md) for registry specific authenticati
 ### Pushing Artifacts with Single Files
 
 Pushing single files involves referencing the unique artifact type and at least one file.
+Defining an Artifact uses the `config.mediaType` as the unique artifact type. If a config object is provided, the `mediaType` extension defines the config filetype. If a `null` config is passed, the config extension must be removed.
 
-The following sample defines a new Artifact Type of **Acme Rocket**, using `application/vnd.acme.rocket.config.v1+json` as the `manifest.config.mediaType`
+See: [Defining a Unique Artifact Type](https://github.com/opencontainers/artifacts/blob/master/artifact-authors.md#defining-a-unique-artifact-type)
+
+The following sample defines a new Artifact Type of **Acme Rocket**, using `application/vnd.acme.rocket.config` as the `manifest.config.mediaType`.
 
 - Create a sample file to push/pull as an artifact
 
@@ -122,7 +125,7 @@ The following sample defines a new Artifact Type of **Acme Rocket**, using `appl
 
   ```sh
   oras push localhost:5000/hello-artifact:v1 \
-  --manifest-config /dev/null:application/vnd.acme.rocket.config.v1+json \
+  --manifest-config /dev/null:application/vnd.acme.rocket.config \
   ./artifact.txt
   ```
 
@@ -134,17 +137,17 @@ The following sample defines a new Artifact Type of **Acme Rocket**, using `appl
   cat artifact.txt  # should print "hello world"
   ```
 
-- The push a custom layer `mediaType`, representing a unique artifact blob, use the format `filename[:type]`:
+- Push the sample file, with a layer `mediaType`, using the format `filename[:type]`:
 
   ```sh
   oras push localhost:5000/hello-artifact:v2 \
-  --manifest-config /dev/null:application/vnd.acme.rocket.config.v1+json \
-    artifact.txt:application/vnd.acme.rocket.layer.v1+txt
+  --manifest-config /dev/null:application/vnd.acme.rocket.config \
+    artifact.txt:text/plain
   ```
 
 ### Pushing Artifacts with Config Files
 
-The [OCI distribution-spec][distribution-spec] provides for storing optional config objects. These can be used by the artifact to determine how or where to process and/or route the blobs.
+The [OCI distribution-spec][distribution-spec] provides for storing optional config objects. These can be used by the artifact to determine how or where to process and/or route the blobs. When providing a config object, the version and file type is required.
 
 - Create a config file
 
@@ -157,20 +160,28 @@ The [OCI distribution-spec][distribution-spec] provides for storing optional con
   ```sh
   oras push localhost:5000/hello-artifact:v2 \
   --manifest-config config.json:application/vnd.acme.rocket.config.v1+json \
-    artifact.txt:application/vnd.acme.rocket.layer.v1+txt
+    artifact.txt:text/plain
   ```
 
 ### Pushing Artifacts with Multiple Files
 
-Just as container images support multiple "layers", represented as blobs, ORAS supports pushing multiple files. The file type is up to the artifact author. You can push `.tar` to represent a collection of files or individual files like `.yaml`, `.txt` or whatever your artifact should be represented as. Each blob (layer) type should have a `mediaType` to represent the type of blob. See [OCI Artifacts][artifacts] for more details.
+Just as container images support multiple "layers" represented as blobs, ORAS supports pushing multiple layers. The layer type is up to the artifact author. You may push `.tar` representing a collection of files, individual files like `.yaml`, `.txt` or whatever your artifact should be represented as. Each layer type should have a `mediaType` representing the type of blob content.
+In this example, we'll push a collection of files.
+
+- A single file (`artifact.txt`) that represents overview content that might be displayed as a repository overview
+- A collection of files (`docs/*`) that represents detailed content. When specifying a directory, ORAS will automatically tar the contents.
+
+See [OCI Artifacts][artifacts] for more details.
 
 - Create additional blobs
 
   ```sh
-  echo "Docs on this artifact" > readme.md
+  mkdir docs
+  echo "Docs on this artifact" > ./docs/readme.md
+  echo "More content for this artifact" > ./docs/readme2.md
   ```
 
-- Create a config file, referencing the doc file
+- Create a config file, referencing the entry doc file
 
   ```sh
   echo "{\"doc\":\"readme.md\"}" > config.json
@@ -181,14 +192,47 @@ Just as container images support multiple "layers", represented as blobs, ORAS s
   ```sh
   oras push localhost:5000/hello-artifact:v2 \
     --manifest-config config.json:application/vnd.acme.rocket.config.v1+json \
-    artifact.txt:application/vnd.acme.rocket.layer.v1+txt \
-    readme.md:application/vnd.acme.rocket.docs.layer.v1+json
+    artifact.txt:text/plain \
+    ./docs/:application/vnd.acme.rocket.docs.layer.v1+tar
+  ```
+
+- The push would generate the following manifest:
+
+  ```json
+  {
+    "schemaVersion": 2,
+    "config": {
+      "mediaType": "application/vnd.acme.rocket.config.v1+json",
+      "digest": "sha256:7aa5d0dee9a3a73c81db4356cf7aa5666e175d96e68ee763eeb977bd7ba59ee5",
+      "size": 20
+    },
+    "layers": [
+      {
+        "mediaType": "text/plain",
+        "digest": "sha256:a948904f2f0f479b8f8197694b30184b0d2ed1c1cd2a1ec0fb85d299a192a447",
+        "size": 12,
+        "annotations": {
+          "org.opencontainers.image.title": "artifact.txt"
+        }
+      },
+      {
+        "mediaType": "application/vnd.acme.rocket.docs.layer.v1+tar",
+        "digest": "sha256:20ae7d51e2365405e6942439140d897548e1d4610db60354aef8a5ce1f1699a7",
+        "size": 196,
+        "annotations": {
+          "io.deis.oras.content.digest": "sha256:4329ea6c620ca4e9cedc5f5e8040432114cb5d64fc53107ea870db149e3d2b9e",
+          "io.deis.oras.content.unpack": "true",
+          "org.opencontainers.image.title": "docs"
+        }
+      }
+    ]
+  }
   ```
 
 ### Pulling Artifacts
 
 Pulling artifacts involves specifying the content addressable artifact, along with the type of artifact.
-> See: [Issue 130](https://github.com/deislabs/oras/issues/130) for elimnating `-a` and `--media-type`
+> See: [Issue 130](https://github.com/deislabs/oras/issues/130) for eliminating `-a` and `--media-type`
 
 ```sh
 oras pull localhost:5000/hello-artifact:v2 -a
