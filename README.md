@@ -1,6 +1,6 @@
 # OCI Registry As Storage
 
-[![Codefresh build status]( https://g.codefresh.io/api/badges/pipeline/orasbot/deislabs%2Foras%2Fmaster?type=cf-1)]( https://g.codefresh.io/public/accounts/orasbot/pipelines/deislabs/oras/master)
+[![GitHub Actions status](https://github.com/deislabs/oras/workflows/build/badge.svg)](https://github.com/deislabs/oras/actions?query=workflow%3Abuild)
 [![Go Report Card](https://goreportcard.com/badge/github.com/deislabs/oras)](https://goreportcard.com/report/github.com/deislabs/oras)
 [![GoDoc](https://godoc.org/github.com/deislabs/oras?status.svg)](https://godoc.org/github.com/deislabs/oras)
 
