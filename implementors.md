@@ -11,6 +11,7 @@ See [OCI Artifacts][artifacts] for how to add OCI Artifacts support to your regi
 - [docker/distribution](#docker-distribution) - local/offline verification
 - [Azure Container Registry](#azure-container-registry-acr)
 - [Amazon Elastic Container Registry](#amazon-elastic-container-registry-ecr)
+- [Google Artifact Registry](#google-artifact-registry-gar)
 
 ## Artifact Types Using ORAS
 
@@ -231,6 +232,28 @@ ACR Artifact Documentation: [aka.ms/acr/artifacts](https://aka.ms/acr/artifacts)
 
   ```sh
   oras pull myregistry.azurecr.io/samples/artifact:1.0 \
+    --media-type application/vnd.unknown.layer.v1+txt
+  ```
+
+### [Google Artifact Registry (GAR)](https://cloud.google.com/artifact-registry)
+
+- Authenticating with GAR using the gcloud command-line tool
+
+  ```sh
+  gcloud auth configure-docker ${REGION}-docker.pkg.dev
+  ```
+
+- Pushing Artifacts to GAR
+
+  ```sh
+  oras push ${REGION}-docker.pkg.dev/${GCP_PROJECT}/samples/artifact:1.0 \
+    ./artifact.txt:application/vnd.unknown.layer.v1+txt
+  ```
+
+- Pulling Artifacts from GAR
+
+  ```sh
+  oras pull ${REGION}-docker.pkg.dev/${GCP_PROJECT}/samples/artifact:1.0 \
     --media-type application/vnd.unknown.layer.v1+txt
   ```
 
