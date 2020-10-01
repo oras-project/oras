@@ -29,7 +29,6 @@ func newResolver(username, password string, insecure bool, plainHTTP bool, confi
 	}
 	opts.Client = client
 
-
 	if username != "" || password != "" {
 		opts.Credentials = func(hostName string) (string, string, error) {
 			return username, password, nil

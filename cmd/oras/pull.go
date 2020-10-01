@@ -3,16 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"sync"
+	"os"
 
 	"github.com/deislabs/oras/pkg/content"
 	ctxo "github.com/deislabs/oras/pkg/context"
 	"github.com/deislabs/oras/pkg/oras"
 
-	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/reference"
-	"github.com/opencontainers/go-digest"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -100,7 +97,7 @@ func runPull(opts pullOptions) error {
 
 	desc, artifacts, err := oras.Pull(ctx, resolver, opts.targetRef, store,
 		oras.WithAllowedMediaTypes(opts.allowedMediaTypes),
-		oras.WithPullCallbackHandler(pullStatusTrack()),
+		oras.WithPullStatusTrack(os.Stdout),
 	)
 	if err != nil {
 		if err == reference.ErrObjectRequired {
@@ -115,22 +112,4 @@ func runPull(opts pullOptions) error {
 	fmt.Println("Digest:", desc.Digest)
 
 	return nil
-}
-
-func pullStatusTrack() images.Handler {
-	var printLock sync.Mutex
-	return images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		if name, ok := content.ResolveName(desc); ok {
-			digestString := desc.Digest.String()
-			if err := desc.Digest.Validate(); err == nil {
-				if algo := desc.Digest.Algorithm(); algo == digest.SHA256 {
-					digestString = desc.Digest.Encoded()[:12]
-				}
-			}
-			printLock.Lock()
-			defer printLock.Unlock()
-			fmt.Println("Downloaded", digestString, name)
-		}
-		return nil, nil
-	})
 }
