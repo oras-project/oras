@@ -26,3 +26,9 @@ const (
 	// Reference: https://github.com/opencontainers/image-spec/blob/master/image-layout.md#indexjson-file
 	OCIImageIndexFile = "index.json"
 )
+
+const (
+	// DefaultBlocksize default size of each slice of bytes read in each write through in gunzipand untar.
+	// Simply uses the same size as io.Copy()
+	DefaultBlocksize = 32768
+)
