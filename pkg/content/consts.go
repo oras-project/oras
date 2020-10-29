@@ -1,6 +1,9 @@
 package content
 
-import ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+import (
+	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+)
 
 const (
 	// DefaultBlobMediaType specifies the default blob media type
@@ -31,4 +34,9 @@ const (
 	// DefaultBlocksize default size of each slice of bytes read in each write through in gunzipand untar.
 	// Simply uses the same size as io.Copy()
 	DefaultBlocksize = 32768
+)
+
+const (
+	// what you get for a blank digest
+	BlankHash = digest.Digest("sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
 )
