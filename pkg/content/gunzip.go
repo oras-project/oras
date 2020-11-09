@@ -9,9 +9,18 @@ import (
 )
 
 // NewGunzipWriter wrap a writer with a gunzip, so that the stream is gunzipped
-func NewGunzipWriter(writer content.Writer, blocksize int) content.Writer {
-	if blocksize == 0 {
-		blocksize = DefaultBlocksize
+//
+// By default, it calculates the hash when writing. If the option `skipHash` is true,
+// it will skip doing the hash. Skipping the hash is intended to be used only
+// if you are confident about the validity of the data being passed to the writer,
+// and wish to save on the hashing time.
+func NewGunzipWriter(writer content.Writer, opts ...WriterOpt) content.Writer {
+	// process opts for default
+	wOpts := DefaultWriterOpts()
+	for _, opt := range opts {
+		if err := opt(&wOpts); err != nil {
+			return nil
+		}
 	}
 	return NewPassthroughWriter(writer, func(r io.Reader, w io.Writer, done chan<- error) {
 		gr, err := gzip.NewReader(r)
@@ -20,7 +29,7 @@ func NewGunzipWriter(writer content.Writer, blocksize int) content.Writer {
 			return
 		}
 		// write out the uncompressed data
-		b := make([]byte, blocksize, blocksize)
+		b := make([]byte, wOpts.Blocksize, wOpts.Blocksize)
 		for {
 			var n int
 			n, err = gr.Read(b)
@@ -44,5 +53,5 @@ func NewGunzipWriter(writer content.Writer, blocksize int) content.Writer {
 		}
 		gr.Close()
 		done <- err
-	})
+	}, opts...)
 }

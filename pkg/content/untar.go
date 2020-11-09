@@ -9,10 +9,20 @@ import (
 )
 
 // NewUntarWriter wrap a writer with an untar, so that the stream is untarred
-func NewUntarWriter(writer content.Writer, blocksize int) content.Writer {
-	if blocksize == 0 {
-		blocksize = DefaultBlocksize
+//
+// By default, it calculates the hash when writing. If the option `skipHash` is true,
+// it will skip doing the hash. Skipping the hash is intended to be used only
+// if you are confident about the validity of the data being passed to the writer,
+// and wish to save on the hashing time.
+func NewUntarWriter(writer content.Writer, opts ...WriterOpt) content.Writer {
+	// process opts for default
+	wOpts := DefaultWriterOpts()
+	for _, opt := range opts {
+		if err := opt(&wOpts); err != nil {
+			return nil
+		}
 	}
+
 	return NewPassthroughWriter(writer, func(r io.Reader, w io.Writer, done chan<- error) {
 		tr := tar.NewReader(r)
 		var err error
@@ -31,7 +41,7 @@ func NewUntarWriter(writer content.Writer, blocksize int) content.Writer {
 			// write out the untarred data
 			// we can handle io.EOF, just go to the next file
 			// any other errors should stop and get reported
-			b := make([]byte, blocksize, blocksize)
+			b := make([]byte, wOpts.Blocksize, wOpts.Blocksize)
 			for {
 				var n int
 				n, err = tr.Read(b)
@@ -58,5 +68,5 @@ func NewUntarWriter(writer content.Writer, blocksize int) content.Writer {
 			}
 		}
 		done <- err
-	})
+	}, opts...)
 }
