@@ -1,6 +1,8 @@
 package content
 
 import (
+	"errors"
+
 	"github.com/opencontainers/go-digest"
 )
 
@@ -47,9 +49,13 @@ func WithOutputHash(hash digest.Digest) WriterOpt {
 }
 
 // WithBlocksize set the blocksize used by the processor of data.
-// The default is DefaultBlocksize, which is the same as that used by io.Copy
+// The default is DefaultBlocksize, which is the same as that used by io.Copy.
+// Includes a safety check to ensure the caller doesn't actively set it to <= 0.
 func WithBlocksize(blocksize int) WriterOpt {
 	return func(w *WriterOpts) error {
+		if blocksize <= 0 {
+			return errors.New("blocksize must be greater than or equal to 0")
+		}
 		w.Blocksize = blocksize
 		return nil
 	}
