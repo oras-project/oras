@@ -19,7 +19,7 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/google/go-cmp v0.4.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
-	github.com/opencontainers/go-digest v1.0.0-rc1
+	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/opencontainers/runc v0.1.1 // indirect
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
