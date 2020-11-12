@@ -15,33 +15,46 @@ type IoContentWriter struct {
 	writer   io.Writer
 	digester digest.Digester
 	size     int64
+	hash     *digest.Digest
 }
 
-// NewIoContentWriter create a new IoContentWriter. blocksize is the size of the block to copy,
-// in bytes, between the parent and child. The default, when 0, is to simply use
-// whatever golang defaults to with io.Copy
-func NewIoContentWriter(writer io.Writer, blocksize int) content.Writer {
+// NewIoContentWriter create a new IoContentWriter.
+//
+// By default, it calculates the hash when writing. If the option `skipHash` is true,
+// it will skip doing the hash. Skipping the hash is intended to be used only
+// if you are confident about the validity of the data being passed to the writer,
+// and wish to save on the hashing time.
+func NewIoContentWriter(writer io.Writer, opts ...WriterOpt) content.Writer {
 	w := writer
 	if w == nil {
 		w = ioutil.Discard
 	}
+	// process opts for default
+	wOpts := DefaultWriterOpts()
+	for _, opt := range opts {
+		if err := opt(&wOpts); err != nil {
+			return nil
+		}
+	}
 	ioc := &IoContentWriter{
 		writer:   w,
 		digester: digest.Canonical.Digester(),
+		// we take the OutputHash, since the InputHash goes to the passthrough writer,
+		// which then passes the processed output to us
+		hash: wOpts.OutputHash,
 	}
 	return NewPassthroughWriter(ioc, func(r io.Reader, w io.Writer, done chan<- error) {
 		// write out the data to the io writer
 		var (
 			err error
 		)
-		if blocksize == 0 {
-			_, err = io.Copy(w, r)
-		} else {
-			b := make([]byte, blocksize, blocksize)
-			_, err = io.CopyBuffer(w, r, b)
-		}
+		// we could use io.Copy, but calling it with the default blocksize is identical to
+		// io.CopyBuffer. Otherwise, we would need some way to let the user flag "I want to use
+		// io.Copy", when it should not matter to them
+		b := make([]byte, wOpts.Blocksize, wOpts.Blocksize)
+		_, err = io.CopyBuffer(w, r, b)
 		done <- err
-	})
+	}, opts...)
 }
 
 func (w *IoContentWriter) Write(p []byte) (n int, err error) {
@@ -49,8 +62,10 @@ func (w *IoContentWriter) Write(p []byte) (n int, err error) {
 	if err != nil {
 		return 0, err
 	}
-	w.digester.Hash().Write(p[:n])
 	w.size += int64(n)
+	if w.hash == nil {
+		w.digester.Hash().Write(p[:n])
+	}
 	return
 }
 
