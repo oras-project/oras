@@ -3,10 +3,9 @@ module github.com/deislabs/oras
 go 1.13
 
 replace (
-	github.com/docker/docker => github.com/moby/moby v17.12.0-ce-rc1.0.20200618181300-9dc6525e6118+incompatible
 	github.com/docker/distribution => github.com/docker/distribution v0.0.0-20191216044856-a8371794149d
+	github.com/docker/docker => github.com/moby/moby v17.12.0-ce-rc1.0.20200618181300-9dc6525e6118+incompatible
 )
-
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
@@ -20,7 +19,7 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/google/go-cmp v0.4.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
-	github.com/opencontainers/go-digest v1.0.0-rc1
+	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/opencontainers/runc v0.1.1 // indirect
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
