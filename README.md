@@ -23,9 +23,9 @@ ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-m
 
 ## ORAS Background
 
-- [OCI Image Support Comes to Open Source Docker Registry](https://www.opencontainers.org/blog/2018/10/11/oci-image-support-comes-to-open-source-docker-registry)
+- [OCI Image Support Comes to Open Source Docker Registry](https://opencontainers.org/posts/blog/2018-10-11-oci-image-support-comes-to-open-source-docker-registry/)
 - [Registries Are Evolving as Cloud Native Artifact Stores](https://stevelasker.blog/2019/01/25/cloud-native-artifact-stores-evolve-from-container-registries/)
-- [OCI Adopts Artifacts Project](https://www.opencontainers.org/blog/2019/09/10/new-oci-artifacts-project)
+- [OCI Adopts Artifacts Project](https://opencontainers.org/posts/blog/2019-09-10-new-oci-artifacts-project/)
 - [GitHub: OCI Artifacts Project](https://github.com/opencontainers/artifacts)
 
 ## Getting Started
