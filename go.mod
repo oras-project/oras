@@ -10,7 +10,7 @@ replace (
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
 	github.com/Microsoft/hcsshim v0.8.8 // indirect
-	github.com/containerd/containerd v1.4.1
+	github.com/containerd/containerd v1.4.2
 	github.com/containerd/continuity v0.0.0-20200107194136-26c1120b8d41 // indirect
 	github.com/docker/cli v0.0.0-20200130152716-5d0cf8839492
 	github.com/docker/distribution v0.0.0-20191216044856-a8371794149d
