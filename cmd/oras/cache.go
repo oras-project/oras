@@ -34,6 +34,17 @@ func (s *cachedStore) ReaderAt(ctx context.Context, desc ocispec.Descriptor) (co
 
 // Writer writes to the cache if not exists, and then copy the cache to the base store.
 func (s *cachedStore) Writer(ctx context.Context, opts ...content.WriterOpt) (content.Writer, error) {
+	var wOpts content.WriterOpts
+	for _, opt := range opts {
+		if err := opt(&wOpts); err != nil {
+			return nil, err
+		}
+	}
+	switch wOpts.Desc.MediaType {
+	case ocispec.MediaTypeImageManifest, ocispec.MediaTypeImageIndex:
+		return s.cache.Writer(ctx, opts...)
+	}
+
 	cacheWriter, err := s.cache.Writer(ctx, opts...)
 	if err != nil {
 		if !errdefs.IsAlreadyExists(err) {
