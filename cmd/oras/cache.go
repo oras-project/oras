@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 
+	orascontent "github.com/deislabs/oras/pkg/content"
+
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/content/local"
 	"github.com/containerd/containerd/errdefs"
-	orascontent "github.com/deislabs/oras/pkg/content"
+	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 )
@@ -57,8 +59,12 @@ func (s *cachedStore) Writer(ctx context.Context, opts ...content.WriterOpt) (co
 		return nil, errdefs.ErrAlreadyExists
 	}
 
-	_ = cacheWriter
-	panic("copy to base on commit not implemented")
+	return &callbackWriter{
+		Writer: cacheWriter,
+		onCommit: func(ctx context.Context) error {
+			return s.applyCache(ctx, wOpts.Desc, opts...)
+		},
+	}, nil
 }
 
 // applyCache copies the content from cache to the base store
@@ -93,4 +99,16 @@ func (s *cachedStore) applyCache(ctx context.Context, desc ocispec.Descriptor, o
 	}
 
 	return nil
+}
+
+type callbackWriter struct {
+	content.Writer
+	onCommit func(ctx context.Context) error
+}
+
+func (cw *callbackWriter) Commit(ctx context.Context, size int64, expected digest.Digest, opts ...content.Opt) error {
+	if err := cw.Writer.Commit(ctx, size, expected, opts...); err != nil {
+		return err
+	}
+	return cw.onCommit(ctx)
 }
