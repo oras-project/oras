@@ -53,6 +53,10 @@ Example - Pull files from the insecure registry:
 
 Example - Pull files from the HTTP registry:
   oras pull localhost:5000/hello:latest --plain-http
+
+Example - Pull files with local cache:
+  export ORAS_CACHE=~/.oras/cache
+  oras pull localhost:5000/hello:latest
 `,
 		Args: cobra.ExactArgs(1),
 		PreRun: func(cmd *cobra.Command, args []string) {
