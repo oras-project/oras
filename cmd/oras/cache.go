@@ -8,6 +8,7 @@ import (
 	"github.com/containerd/containerd/errdefs"
 	orascontent "github.com/deislabs/oras/pkg/content"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/pkg/errors"
 )
 
 type cachedStore struct {
@@ -50,7 +51,7 @@ func (s *cachedStore) Writer(ctx context.Context, opts ...content.WriterOpt) (co
 		if !errdefs.IsAlreadyExists(err) {
 			return nil, err
 		}
-		if err := s.syncWrite(ctx, opts...); err != nil {
+		if err := s.applyCache(ctx, wOpts.Desc, opts...); err != nil {
 			return nil, err
 		}
 		return nil, errdefs.ErrAlreadyExists
@@ -60,6 +61,36 @@ func (s *cachedStore) Writer(ctx context.Context, opts ...content.WriterOpt) (co
 	panic("copy to base on commit not implemented")
 }
 
-func (s *cachedStore) syncWrite(ctx context.Context, opts ...content.WriterOpt) error {
-	panic("not implemented")
+// applyCache copies the content from cache to the base store
+func (s *cachedStore) applyCache(ctx context.Context, desc ocispec.Descriptor, opts ...content.WriterOpt) error {
+	cw, err := s.base.Writer(ctx, opts...)
+	if err != nil {
+		if errdefs.IsAlreadyExists(err) {
+			return nil
+		}
+		return err
+	}
+
+	ws, err := cw.Status()
+	if err != nil {
+		return err
+	}
+
+	if ws.Offset != desc.Size {
+		ra, err := s.cache.ReaderAt(ctx, desc)
+		if err != nil {
+			return err
+		}
+		defer ra.Close()
+
+		if err := content.CopyReaderAt(cw, ra, desc.Size); err != nil {
+			return err
+		}
+	}
+
+	if err := cw.Commit(ctx, desc.Size, desc.Digest); err != nil && !errdefs.IsAlreadyExists(err) {
+		return errors.Wrapf(err, "failed commit on ref %q", ws.Ref)
+	}
+
+	return nil
 }
