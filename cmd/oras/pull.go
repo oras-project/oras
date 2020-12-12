@@ -22,6 +22,7 @@ type pullOptions struct {
 	pathTraversal      bool
 	output             string
 	verbose            bool
+	cacheRoot          string
 
 	debug     bool
 	configs   []string
@@ -52,8 +53,15 @@ Example - Pull files from the insecure registry:
 
 Example - Pull files from the HTTP registry:
   oras pull localhost:5000/hello:latest --plain-http
+
+Example - Pull files with local cache:
+  export ORAS_CACHE=~/.oras/cache
+  oras pull localhost:5000/hello:latest
 `,
 		Args: cobra.ExactArgs(1),
+		PreRun: func(cmd *cobra.Command, args []string) {
+			opts.cacheRoot = os.Getenv("ORAS_CACHE")
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
 			return runPull(opts)
@@ -95,10 +103,19 @@ func runPull(opts pullOptions) error {
 	store.DisableOverwrite = opts.keepOldFiles
 	store.AllowPathTraversalOnWrite = opts.pathTraversal
 
-	desc, artifacts, err := oras.Pull(ctx, resolver, opts.targetRef, store,
+	pullOpts := []oras.PullOpt{
 		oras.WithAllowedMediaTypes(opts.allowedMediaTypes),
 		oras.WithPullStatusTrack(os.Stdout),
-	)
+	}
+	if opts.cacheRoot != "" {
+		cachedStore, err := newStoreWithCache(store, opts.cacheRoot)
+		if err != nil {
+			return err
+		}
+		pullOpts = append(pullOpts, oras.WithContentProvideIngester(cachedStore))
+	}
+
+	desc, artifacts, err := oras.Pull(ctx, resolver, opts.targetRef, store, pullOpts...)
 	if err != nil {
 		if err == reference.ErrObjectRequired {
 			return fmt.Errorf("image reference format is invalid. Please specify <name:tag|name@digest>")
