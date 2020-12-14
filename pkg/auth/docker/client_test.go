@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -75,6 +76,28 @@ func (suite *DockerClientTestSuite) SetupSuite() {
 
 	// Start Docker registry
 	go dockerRegistry.ListenAndServe()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+	for {
+		select {
+		case <-ctx.Done():
+			suite.FailNow("docker registry timed out")
+		default:
+		}
+		req, err := http.NewRequestWithContext(
+			ctx,
+			http.MethodGet,
+			fmt.Sprintf("http://%s/v2/", suite.DockerRegistryHost),
+			nil,
+		)
+		suite.Nil(err, "no error in generate a /v2/ request")
+		resp, err := http.DefaultClient.Do(req)
+		if err == nil {
+			resp.Body.Close()
+			break
+		}
+		time.Sleep(time.Second)
+	}
 }
 
 func (suite *DockerClientTestSuite) TearDownSuite() {
