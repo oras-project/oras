@@ -84,7 +84,12 @@ func (suite *DockerClientTestSuite) SetupSuite() {
 			suite.FailNow("docker registry timed out")
 		default:
 		}
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("http://%s/v2/", suite.DockerRegistryHost), nil)
+		req, err := http.NewRequestWithContext(
+			ctx,
+			http.MethodGet,
+			fmt.Sprintf("http://%s/v2/", suite.DockerRegistryHost),
+			nil,
+		)
 		suite.Nil(err, "no error in generate a /v2/ request")
 		resp, err := http.DefaultClient.Do(req)
 		if err == nil {
