@@ -1,8 +1,13 @@
 package oras
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"context"
+	_ "crypto/sha256"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -17,6 +22,7 @@ import (
 	"github.com/docker/distribution/configuration"
 	"github.com/docker/distribution/registry"
 	_ "github.com/docker/distribution/registry/storage/driver/inmemory"
+	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
@@ -310,6 +316,129 @@ func (suite *ORASTestSuite) Test_3_Conditional_Pull() {
 		suite.True(ok, "find in memory")
 		content := []byte(data[1])
 		suite.Equal(content, actualContent, "test content matches on pull")
+	}
+}
+
+// Test for vulnerability GHSA-g5v4-5x39-vwhx
+func (suite *ORASTestSuite) Test_4_GHSA_g5v4_5x39_vwhx() {
+	var testVulnerability = func(headers []tar.Header, tag string, expectedError string) {
+		// Step 1: build malicious tar+gzip
+		buf := bytes.NewBuffer(nil)
+		digester := digest.Canonical.Digester()
+		zw := gzip.NewWriter(io.MultiWriter(buf, digester.Hash()))
+		tarDigester := digest.Canonical.Digester()
+		tw := tar.NewWriter(io.MultiWriter(zw, tarDigester.Hash()))
+		for _, header := range headers {
+			err := tw.WriteHeader(&header)
+			suite.Nil(err, "error writing header")
+		}
+		err := tw.Close()
+		suite.Nil(err, "error closing tar")
+		err = zw.Close()
+		suite.Nil(err, "error closing gzip")
+
+		// Step 2: construct malicious descriptor
+		evilDesc := ocispec.Descriptor{
+			MediaType: ocispec.MediaTypeImageLayerGzip,
+			Digest:    digester.Digest(),
+			Size:      int64(buf.Len()),
+			Annotations: map[string]string{
+				orascontent.AnnotationDigest: tarDigester.Digest().String(),
+				orascontent.AnnotationUnpack: "true",
+				ocispec.AnnotationTitle:      "foo",
+			},
+		}
+
+		// Step 3: upload malicious artifact to registry
+		memoryStore := orascontent.NewMemoryStore()
+		memoryStore.Set(evilDesc, buf.Bytes())
+		ref := fmt.Sprintf("%s/evil:%s", suite.DockerRegistryHost, tag)
+		_, err = Push(newContext(), newResolver(), ref, memoryStore, []ocispec.Descriptor{evilDesc})
+		suite.Nil(err, "no error pushing test data")
+
+		// Step 4: pull malicious tar with oras filestore and ensure error
+		tempDir, err := ioutil.TempDir("", "oras_test")
+		if err != nil {
+			suite.FailNow("error creating temp directory", err)
+		}
+		defer os.RemoveAll(tempDir)
+		store := orascontent.NewFileStore(tempDir)
+		defer store.Close()
+		ref = fmt.Sprintf("%s/evil:%s", suite.DockerRegistryHost, tag)
+		_, _, err = Pull(newContext(), newResolver(), ref, store)
+		suite.NotNil(err, "error expected pulling malicious tar")
+		suite.Contains(err.Error(),
+			expectedError,
+			"did not get correct error message",
+		)
+	}
+
+	tests := []struct {
+		name          string
+		headers       []tar.Header
+		tag           string
+		expectedError string
+	}{
+		{
+			name: "Test symbolic link path traversal",
+			headers: []tar.Header{
+				{
+					Typeflag: tar.TypeDir,
+					Name:     "foo/subdir/",
+					Mode:     0755,
+				},
+				{ // Symbolic link to `foo`
+					Typeflag: tar.TypeSymlink,
+					Name:     "foo/subdir/parent",
+					Linkname: "..",
+					Mode:     0755,
+				},
+				{ // Symbolic link to `../etc/passwd`
+					Typeflag: tar.TypeSymlink,
+					Name:     "foo/subdir/parent/passwd",
+					Linkname: "../../etc/passwd",
+					Mode:     0644,
+				},
+				{ // Symbolic link to `../etc`
+					Typeflag: tar.TypeSymlink,
+					Name:     "foo/subdir/parent/etc",
+					Linkname: "../../etc",
+					Mode:     0644,
+				},
+			},
+			tag:           "symlink_path",
+			expectedError: "no symbolic link allowed",
+		},
+		{
+			name: "Test symbolic link pointing to outside",
+			headers: []tar.Header{
+				{ // Symbolic link to `/etc/passwd`
+					Typeflag: tar.TypeSymlink,
+					Name:     "foo/passwd",
+					Linkname: "../../../etc/passwd",
+					Mode:     0644,
+				},
+			},
+			tag:           "symlink",
+			expectedError: "is outside of",
+		},
+		{
+			name: "Test hard link pointing to outside",
+			headers: []tar.Header{
+				{ // Hard link to `/etc/passwd`
+					Typeflag: tar.TypeLink,
+					Name:     "foo/passwd",
+					Linkname: "../../../etc/passwd",
+					Mode:     0644,
+				},
+			},
+			tag:           "hardlink",
+			expectedError: "is outside of",
+		},
+	}
+	for _, test := range tests {
+		suite.T().Log(test.name)
+		testVulnerability(test.headers, test.tag, test.expectedError)
 	}
 }
 
