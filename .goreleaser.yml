@@ -24,3 +24,5 @@ archives:
 
 signs:
   - artifacts: all
+    args: ["--output", "${signature}", "--detach-sign", "--armor", "${artifact}"]
+    signature: "${artifact}.asc"
