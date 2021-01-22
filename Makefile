@@ -5,6 +5,8 @@ GIT_COMMIT  = $(shell git rev-parse HEAD)
 GIT_TAG     = $(shell git describe --tags --abbrev=0 --exact-match 2>/dev/null)
 GIT_DIRTY   = $(shell test -n "`git status --porcelain`" && echo "dirty" || echo "clean")
 
+TARGET_OBJS ?= checksums.txt darwin_amd64.tar.gz linux_amd64.tar.gz windows_amd64.tar.gz
+
 LDFLAGS = -w
 ifdef VERSION
 	LDFLAGS += -X $(PROJECT_PKG)/internal/version.BuildMetadata=$(VERSION)
@@ -63,3 +65,17 @@ fix-encoding:
 .PHONY: vendor
 vendor:
 	GO111MODULE=on go mod vendor
+
+.PHONY: fetch-dist
+fetch-dist:
+	mkdir -p _dist
+	cd _dist && \
+	for obj in ${TARGET_OBJS} ; do \
+		curl -sSL -o oras_${VERSION}_$${obj} https://github.com/deislabs/oras/releases/download/v${VERSION}/oras_${VERSION}_$${obj} ; \
+	done
+
+.PHONY: sign
+sign:
+	for f in $$(ls _dist/*.{gz,.txt} 2>/dev/null) ; do \
+		gpg --armor --detach-sign $${f} ; \
+	done
