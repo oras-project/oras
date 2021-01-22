@@ -76,6 +76,6 @@ fetch-dist:
 
 .PHONY: sign
 sign:
-	for f in $$(ls _dist/*.{gz,.txt} 2>/dev/null) ; do \
+	for f in $$(ls _dist/*.{gz,txt} 2>/dev/null) ; do \
 		gpg --armor --detach-sign $${f} ; \
 	done
