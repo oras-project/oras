@@ -32,7 +32,7 @@ func TestDecompressStore(t *testing.T) {
 	}
 
 	memStore := content.NewMemoryStore()
-	decompressStore := content.NewDecompressStore(memStore, 0)
+	decompressStore := content.NewDecompressStore(memStore, content.WithBlocksize(0))
 	ctx := context.Background()
 	decompressWriter, err := decompressStore.Writer(ctx, ctrcontent.WithDescriptor(gzipDescriptor))
 	if err != nil {

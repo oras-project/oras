@@ -2,7 +2,9 @@ package content
 
 import (
 	"context"
+	"errors"
 	"io"
+	"time"
 
 	"github.com/containerd/containerd/content"
 	"github.com/opencontainers/go-digest"
@@ -136,4 +138,125 @@ func (u *underlyingWriter) Digest() digest.Digest {
 		return *u.hash
 	}
 	return u.digester.Digest()
+}
+
+// PassthroughMultiWriter single writer that passes through to multiple writers, allowing the passthrough
+// function to select which writer to use.
+type PassthroughMultiWriter struct {
+	writers   []*PassthroughWriter
+	pipew     *io.PipeWriter
+	digester  digest.Digester
+	size      int64
+	reader    *io.PipeReader
+	hash      *digest.Digest
+	done      chan error
+	startedAt time.Time
+	updatedAt time.Time
+	ref       string
+}
+
+func NewPassthroughMultiWriter(writers []content.Writer, f func(r io.Reader, w []io.Writer, done chan<- error), opts ...WriterOpt) content.Writer {
+	// process opts for default
+	wOpts := DefaultWriterOpts()
+	for _, opt := range opts {
+		if err := opt(&wOpts); err != nil {
+			return nil
+		}
+	}
+
+	var pws []*PassthroughWriter
+	r, w := io.Pipe()
+	for _, writer := range writers {
+		pws = append(pws, &PassthroughWriter{
+			writer:   writer,
+			pipew:    w,
+			digester: digest.Canonical.Digester(),
+			underlyingWriter: &underlyingWriter{
+				writer:   writer,
+				digester: digest.Canonical.Digester(),
+				hash:     wOpts.OutputHash,
+			},
+			reader: r,
+			hash:   wOpts.InputHash,
+			done:   make(chan error, 1),
+		})
+	}
+
+	pmw := &PassthroughMultiWriter{
+		writers:   pws,
+		startedAt: time.Now(),
+		updatedAt: time.Now(),
+		done:      make(chan error, 1),
+	}
+	// get our output writers
+	var uws []io.Writer
+	for _, uw := range pws {
+		uws = append(uws, uw.underlyingWriter)
+	}
+	go f(r, uws, pmw.done)
+	return pmw
+}
+
+func (pmw *PassthroughMultiWriter) Write(p []byte) (n int, err error) {
+	n, err = pmw.pipew.Write(p)
+	if pmw.hash == nil {
+		pmw.digester.Hash().Write(p[:n])
+	}
+	pmw.size += int64(n)
+	pmw.updatedAt = time.Now()
+	return
+}
+
+func (pmw *PassthroughMultiWriter) Close() error {
+	pmw.pipew.Close()
+	for _, w := range pmw.writers {
+		w.Close()
+	}
+	return nil
+}
+
+// Digest may return empty digest or panics until committed.
+func (pmw *PassthroughMultiWriter) Digest() digest.Digest {
+	if pmw.hash != nil {
+		return *pmw.hash
+	}
+	return pmw.digester.Digest()
+}
+
+// Commit commits the blob (but no roll-back is guaranteed on an error).
+// size and expected can be zero-value when unknown.
+// Commit always closes the writer, even on error.
+// ErrAlreadyExists aborts the writer.
+func (pmw *PassthroughMultiWriter) Commit(ctx context.Context, size int64, expected digest.Digest, opts ...content.Opt) error {
+	pmw.pipew.Close()
+	err := <-pmw.done
+	pmw.reader.Close()
+	if err != nil && err != io.EOF {
+		return err
+	}
+
+	// Some underlying writers will validate an expected digest, so we need the option to pass it
+	// that digest. That is why we caluclate the digest of the underlying writer throughout the write process.
+	for _, w := range pmw.writers {
+		// maybe this should be Commit(ctx, pw.underlyingWriter.size, pw.underlyingWriter.Digest(), opts...)
+		w.done <- err
+		if err := w.Commit(ctx, size, expected, opts...); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Status returns the current state of write
+func (pmw *PassthroughMultiWriter) Status() (content.Status, error) {
+	return content.Status{
+		StartedAt: pmw.startedAt,
+		UpdatedAt: pmw.updatedAt,
+		Total:     pmw.size,
+	}, nil
+}
+
+// Truncate updates the size of the target blob, but cannot do anything with a multiwriter
+func (pmw *PassthroughMultiWriter) Truncate(size int64) error {
+	return errors.New("truncate unavailable on multiwriter")
 }

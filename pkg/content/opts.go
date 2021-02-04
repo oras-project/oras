@@ -7,9 +7,10 @@ import (
 )
 
 type WriterOpts struct {
-	InputHash  *digest.Digest
-	OutputHash *digest.Digest
-	Blocksize  int
+	InputHash           *digest.Digest
+	OutputHash          *digest.Digest
+	Blocksize           int
+	MultiWriterIngester bool
 }
 
 type WriterOpt func(*WriterOpts) error
@@ -57,6 +58,16 @@ func WithBlocksize(blocksize int) WriterOpt {
 			return errors.New("blocksize must be greater than or equal to 0")
 		}
 		w.Blocksize = blocksize
+		return nil
+	}
+}
+
+// WithMultiWriterIngester the passed ingester also implements MultiWriter
+// and should be used as such. If this is set to true, but the ingester does not
+// implement MultiWriter, calling Writer should return an error.
+func WithMultiWriterIngester() WriterOpt {
+	return func(w *WriterOpts) error {
+		w.MultiWriterIngester = true
 		return nil
 	}
 }
