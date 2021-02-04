@@ -13,7 +13,7 @@ require (
 	github.com/Microsoft/hcsshim v0.8.14 // indirect
 	github.com/containerd/containerd v1.4.3
 	github.com/containerd/continuity v0.0.0-20201208142359-180525291bb7 // indirect
-	github.com/docker/cli v20.10.2+incompatible
+	github.com/docker/cli v20.10.3+incompatible
 	github.com/docker/distribution v0.0.0-00010101000000-000000000000
 	github.com/docker/docker v0.0.0-00010101000000-000000000000
 	github.com/docker/docker-credential-helpers v0.6.3 // indirect
@@ -29,5 +29,6 @@ require (
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
+	golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c // indirect
 	gotest.tools/v3 v3.0.3 // indirect
 )
