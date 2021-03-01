@@ -15,7 +15,7 @@ require (
 	github.com/Microsoft/hcsshim v0.8.14 // indirect
 	github.com/containerd/containerd v1.4.3
 	github.com/containerd/continuity v0.0.0-20201208142359-180525291bb7 // indirect
-	github.com/docker/cli v20.10.3+incompatible
+	github.com/docker/cli v20.10.4+incompatible
 	github.com/docker/distribution v0.0.0-20191216044856-a8371794149d
 	github.com/docker/docker v17.12.0-ce-rc1.0.20200618181300-9dc6525e6118+incompatible
 	github.com/docker/docker-credential-helpers v0.6.3 // indirect
