@@ -11,15 +11,17 @@ type WriterOpts struct {
 	OutputHash          *digest.Digest
 	Blocksize           int
 	MultiWriterIngester bool
+	IgnoreNoName        bool
 }
 
 type WriterOpt func(*WriterOpts) error
 
 func DefaultWriterOpts() WriterOpts {
 	return WriterOpts{
-		InputHash:  nil,
-		OutputHash: nil,
-		Blocksize:  DefaultBlocksize,
+		InputHash:    nil,
+		OutputHash:   nil,
+		Blocksize:    DefaultBlocksize,
+		IgnoreNoName: false,
 	}
 }
 
@@ -68,6 +70,16 @@ func WithBlocksize(blocksize int) WriterOpt {
 func WithMultiWriterIngester() WriterOpt {
 	return func(w *WriterOpts) error {
 		w.MultiWriterIngester = true
+		return nil
+	}
+}
+
+// WithIgnoreNoName some ingesters, when creating a Writer, return an error if
+// the descriptor does not have a valid name on the descriptor. Passing WithIgnoreNoName
+// tells the writer not to return an error, but rather to pass the data to a nil writer.
+func WithIgnoreNoName() WriterOpt {
+	return func(w *WriterOpts) error {
+		w.IgnoreNoName = true
 		return nil
 	}
 }
