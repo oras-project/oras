@@ -258,7 +258,7 @@ ACR Artifact Documentation: [aka.ms/acr/artifacts](https://aka.ms/acr/artifacts)
     --media-type application/vnd.unknown.layer.v1+txt
   ```
 
-### [GitHub Container Registry (GHCR)](https://docs.github.com/en/packages/guides/about-github-container-registry)
+### [GitHub Packages container registry (GHCR)](https://docs.github.com/en/packages/guides/about-github-container-registry)
 
 - [Authenticating with GHCR](https://docs.github.com/en/packages/guides/pushing-and-pulling-docker-images#authenticating-to-github-container-registry)
 
