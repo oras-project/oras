@@ -12,7 +12,7 @@ See [OCI Artifacts][artifacts] for how to add OCI Artifacts support to your regi
 - [Azure Container Registry](#azure-container-registry-acr)
 - [Amazon Elastic Container Registry](#amazon-elastic-container-registry-ecr)
 - [Google Artifact Registry](#google-artifact-registry-gar)
-- [GitHub Container Registry](#github-container-registry)
+- [GitHub Packages container registry](#github-container-registry)
 
 ## Artifact Types Using ORAS
 
