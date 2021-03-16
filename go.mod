@@ -1,6 +1,6 @@
 module github.com/deislabs/oras
 
-go 1.15
+go 1.16
 
 replace (
 	// WARNING! Do NOT replace these without also replacing their lines in the `require` stanza below.
