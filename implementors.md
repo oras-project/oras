@@ -12,6 +12,7 @@ See [OCI Artifacts][artifacts] for how to add OCI Artifacts support to your regi
 - [Azure Container Registry](#azure-container-registry-acr)
 - [Amazon Elastic Container Registry](#amazon-elastic-container-registry-ecr)
 - [Google Artifact Registry](#google-artifact-registry-gar)
+- [GitHub Packages container registry](#github-container-registry)
 
 ## Artifact Types Using ORAS
 
@@ -254,6 +255,28 @@ ACR Artifact Documentation: [aka.ms/acr/artifacts](https://aka.ms/acr/artifacts)
 
   ```sh
   oras pull ${REGION}-docker.pkg.dev/${GCP_PROJECT}/samples/artifact:1.0 \
+    --media-type application/vnd.unknown.layer.v1+txt
+  ```
+
+### [GitHub Packages container registry (GHCR)](https://docs.github.com/en/packages/guides/about-github-container-registry)
+
+- [Authenticating with GHCR](https://docs.github.com/en/packages/guides/pushing-and-pulling-docker-images#authenticating-to-github-container-registry)
+
+  ```sh
+  echo $GITHUB_PAT | oras login https://ghcr.io -u GITHUB_USERNAME --password-stdin
+  ```
+  
+- Pushing Artifacts to GHCR
+
+  ```sh
+  oras push ghcr.io/${GITHUB_OWNER}/samples/artifact:1.0 \
+    ./artifact.txt:application/vnd.unknown.layer.v1+txt
+  ```
+  
+- Pulling Artifacts from GHCR
+
+  ```sh
+  oras pull ghcr.io/${GITHUB_OWNER}/samples/artifact:1.0 \
     --media-type application/vnd.unknown.layer.v1+txt
   ```
 
