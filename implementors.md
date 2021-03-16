@@ -13,6 +13,7 @@ See [OCI Artifacts][artifacts] for how to add OCI Artifacts support to your regi
 - [Amazon Elastic Container Registry](#amazon-elastic-container-registry-ecr)
 - [Google Artifact Registry](#google-artifact-registry-gar)
 - [GitHub Packages container registry](#github-container-registry)
+- [Bundle Bar](#bundle-bar)
 
 ## Artifact Types Using ORAS
 
@@ -277,6 +278,28 @@ ACR Artifact Documentation: [aka.ms/acr/artifacts](https://aka.ms/acr/artifacts)
 
   ```sh
   oras pull ghcr.io/${GITHUB_OWNER}/samples/artifact:1.0 \
+    --media-type application/vnd.unknown.layer.v1+txt
+  ```
+
+### [Bundle Bar](https://bundle.bar/docs/supported-clients/oras/)
+
+- Authenticating with Bundle Bar
+
+  ```sh
+  echo $BB_TOKEN | oras login bundle.bar -u $BB_USER --password-stdin
+  ```
+
+- Pushing Artifacts to Bundle Bar
+
+  ```sh
+  oras push bundle.bar/u/${BB_USER}/samples/artifact:1.0 \
+    ./artifact.txt:application/vnd.unknown.layer.v1+txt
+  ```
+
+- Pulling Artifacts from Bundle Bar
+
+  ```sh
+  oras pull bundle.bar/u/${BB_USER}/samples/artifact:1.0 \
     --media-type application/vnd.unknown.layer.v1+txt
   ```
 
