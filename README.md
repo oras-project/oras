@@ -43,7 +43,7 @@ ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-m
   ```sh
   gofish install oras
   ==> Installing oras...
-  🐠  oras 0.9.0: installed in 65.131245ms
+  🐠  oras 0.11.0: installed in 65.131245ms
   ```
 
 - Install from the latest [release artifacts](https://github.com/deislabs/oras/releases):
@@ -51,21 +51,21 @@ ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-m
   - Linux
 
     ```sh
-    curl -LO https://github.com/deislabs/oras/releases/download/v0.9.0/oras_0.9.0_linux_amd64.tar.gz
+    curl -LO https://github.com/deislabs/oras/releases/download/v0.11.0/oras_0.11.0_linux_amd64.tar.gz
     mkdir -p oras-install/
-    tar -zxf oras_0.9.0_*.tar.gz -C oras-install/
+    tar -zxf oras_0.11.0_*.tar.gz -C oras-install/
     mv oras-install/oras /usr/local/bin/
-    rm -rf oras_0.9.0_*.tar.gz oras-install/
+    rm -rf oras_0.11.0_*.tar.gz oras-install/
     ```
 
   - macOS
 
     ```sh
-    curl -LO https://github.com/deislabs/oras/releases/download/v0.9.0/oras_0.9.0_darwin_amd64.tar.gz
+    curl -LO https://github.com/deislabs/oras/releases/download/v0.11.0/oras_0.11.0_darwin_amd64.tar.gz
     mkdir -p oras-install/
-    tar -zxf oras_0.9.0_*.tar.gz -C oras-install/
+    tar -zxf oras_0.11.0_*.tar.gz -C oras-install/
     mv oras-install/oras /usr/local/bin/
-    rm -rf oras_0.9.0_*.tar.gz oras-install/
+    rm -rf oras_0.11.0_*.tar.gz oras-install/
     ```
 
   - Windows
@@ -73,8 +73,8 @@ ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-m
     Add `%USERPROFILE%\bin\` to your `PATH` environment variable so that `oras.exe` can be found.
 
     ```sh
-    curl.exe -sLO  https://github.com/deislabs/oras/releases/download/v0.9.0/oras_0.9.0_windows_amd64.tar.gz
-    tar.exe -xvzf oras_0.9.0_windows_amd64.tar.gz
+    curl.exe -sLO  https://github.com/deislabs/oras/releases/download/v0.11.0/oras_0.11.0_windows_amd64.tar.gz
+    tar.exe -xvzf oras_0.11.0_windows_amd64.tar.gz
     mkdir -p %USERPROFILE%\bin\
     copy oras.exe %USERPROFILE%\bin\
     set PATH=%USERPROFILE%\bin\;%PATH%
@@ -85,7 +85,7 @@ ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-m
     A public Docker image containing the CLI is available on [GitHub Container Registry](https://github.com/orgs/deislabs/packages/container/package/oras):
 
     ```sh
-    docker run -it --rm -v $(pwd):/workspace ghcr.io/deislabs/oras:v0.9.0 help
+    docker run -it --rm -v $(pwd):/workspace ghcr.io/deislabs/oras:v0.11.0 help
     ```
 
     > Note: the default WORKDIR  in the image is `/workspace`.
