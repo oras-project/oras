@@ -20,22 +20,25 @@ var (
 )
 
 type hybridStore struct {
-	cache    *orascontent.Memorystore
-	provider content.Provider
-	ingester content.Ingester
+	cache            *orascontent.Memorystore
+	cachedMediaTypes []string
+	provider         content.Provider
+	ingester         content.Ingester
 }
 
-func newHybridStoreFromProvider(provider content.Provider) *hybridStore {
+func newHybridStoreFromProvider(provider content.Provider, cachedMediaTypes []string) *hybridStore {
 	return &hybridStore{
-		cache:    orascontent.NewMemoryStore(),
-		provider: provider,
+		cache:            orascontent.NewMemoryStore(),
+		cachedMediaTypes: cachedMediaTypes,
+		provider:         provider,
 	}
 }
 
-func newHybridStoreFromIngester(ingester content.Ingester) *hybridStore {
+func newHybridStoreFromIngester(ingester content.Ingester, cachedMediaTypes []string) *hybridStore {
 	return &hybridStore{
-		cache:    orascontent.NewMemoryStore(),
-		ingester: ingester,
+		cache:            orascontent.NewMemoryStore(),
+		cachedMediaTypes: cachedMediaTypes,
+		ingester:         ingester,
 	}
 }
 
@@ -64,7 +67,7 @@ func (s *hybridStore) Writer(ctx context.Context, opts ...content.WriterOpt) (co
 		}
 	}
 
-	if isAllowedMediaType(wOpts.Desc.MediaType, ocispec.MediaTypeImageManifest, ocispec.MediaTypeImageIndex) || s.ingester == nil {
+	if isAllowedMediaType(wOpts.Desc.MediaType, s.cachedMediaTypes...) || s.ingester == nil {
 		cacheWriter, err := s.cache.Writer(ctx, opts...)
 		if err != nil {
 			return nil, err
