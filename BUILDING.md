@@ -19,6 +19,12 @@ Mac:
 # builds to bin/darwin/amd64/oras
 make build-mac
 ```
+Mac ARM64:
+
+```bash
+# builds to bin/darwin/arm64/oras
+make build-mac-arm64
+```
 
 Linux:
 
