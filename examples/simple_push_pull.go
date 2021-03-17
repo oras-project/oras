@@ -37,7 +37,7 @@ func main() {
 
 	// Pull file(s) from registry and save to disk
 	fmt.Printf("Pulling from %s and saving to %s...\n", ref, fileName)
-	fileStore := content.NewFileStore("")
+	fileStore := content.NewFileStore("", content.WithIgnoreNoName())
 	defer fileStore.Close()
 	allowedMediaTypes := []string{customMediaType}
 	desc, _, err = oras.Pull(ctx, resolver, ref, fileStore, oras.WithAllowedMediaTypes(allowedMediaTypes))
