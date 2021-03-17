@@ -8,9 +8,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/containerd/containerd/images"
 	orascontent "github.com/deislabs/oras/pkg/content"
 
+	"github.com/containerd/containerd/images"
+	artifactspecs "github.com/opencontainers/artifacts/specs-go"
+	artifactspec "github.com/opencontainers/artifacts/specs-go/v2"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 )
@@ -23,6 +25,7 @@ type pushOpts struct {
 	manifestAnnotations map[string]string
 	validateName        func(desc ocispec.Descriptor) error
 	baseHandlers        []images.Handler
+	artifact            *artifactspec.Artifact
 }
 
 func pushOptsDefaults() *pushOpts {
@@ -147,4 +150,19 @@ func pushStatusTrack(writer io.Writer) images.Handler {
 		}
 		return nil, nil
 	})
+}
+
+// AsArtifact set oras to push contents as an artifact
+func AsArtifact(artifactType string, manifests ...ocispec.Descriptor) PushOpt {
+	return func(o *pushOpts) error {
+		o.artifact = &artifactspec.Artifact{
+			Versioned: artifactspecs.Versioned{
+				SchemaVersion: 2, // historical value. does not pertain to OCI or docker version
+			},
+			MediaType:    artifactspec.MediaTypeArtifact,
+			ArtifactType: artifactType,
+			Manifests:    convertV1DescriptorsToV2(manifests),
+		}
+		return nil
+	}
 }

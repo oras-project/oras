@@ -11,7 +11,9 @@ import (
 	ctxo "github.com/deislabs/oras/pkg/context"
 	"github.com/deislabs/oras/pkg/oras"
 
+	"github.com/containerd/containerd/remotes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -26,6 +28,8 @@ type pushOptions struct {
 	fileRefs               []string
 	manifestConfigRef      string
 	manifestAnnotations    string
+	artifactType           string
+	artifactRefs           []string
 	pathValidationDisabled bool
 	verbose                bool
 
@@ -72,6 +76,8 @@ Example - Push file to the HTTP registry:
 
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "manifest-config", "", "", "manifest config file")
 	cmd.Flags().StringVarP(&opts.manifestAnnotations, "manifest-annotations", "", "", "manifest annotation file")
+	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
+	cmd.Flags().StringArrayVarP(&opts.artifactRefs, "artifact-reference", "", nil, "artifact reference")
 	cmd.Flags().BoolVarP(&opts.pathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
 	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
@@ -91,11 +97,21 @@ func runPush(opts pushOptions) error {
 		ctx = ctxo.WithLoggerDiscarded(ctx)
 	}
 
+	// bake artifact
+	var pushOpts []oras.PushOpt
+	resolver := newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
+	if opts.artifactType != "" {
+		manifests, err := loadReferences(ctx, resolver, opts.artifactRefs)
+		if err != nil {
+			return err
+		}
+		pushOpts = append(pushOpts, oras.AsArtifact(opts.artifactType, manifests...))
+	}
+
 	// load files
 	var (
 		annotations map[string]map[string]string
 		store       = content.NewFileStore("")
-		pushOpts    []oras.PushOpt
 	)
 	defer store.Close()
 	if opts.manifestAnnotations != "" {
@@ -130,7 +146,6 @@ func runPush(opts pushOptions) error {
 	}
 
 	// ready to push
-	resolver := newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
 	pushOpts = append(pushOpts, oras.WithPushStatusTrack(os.Stdout))
 	desc, err := oras.Push(ctx, resolver, opts.targetRef, store, files, pushOpts...)
 	if err != nil {
@@ -182,4 +197,16 @@ func loadFiles(store *content.FileStore, annotations map[string]map[string]strin
 		files = append(files, file)
 	}
 	return files, nil
+}
+
+func loadReferences(ctx context.Context, resolver remotes.Resolver, refs []string) ([]ocispec.Descriptor, error) {
+	descs := make([]ocispec.Descriptor, 0, len(refs))
+	for _, ref := range refs {
+		_, desc, err := resolver.Resolve(ctx, ref)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to resolve ref %q", ref)
+		}
+		descs = append(descs, desc)
+	}
+	return descs, nil
 }

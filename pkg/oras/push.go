@@ -2,12 +2,12 @@ package oras
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/remotes"
 	artifact "github.com/deislabs/oras/pkg/artifact"
+	artifactspec "github.com/opencontainers/artifacts/specs-go/v2"
 	digest "github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -55,9 +55,14 @@ func Push(ctx context.Context, resolver remotes.Resolver, ref string, provider c
 	return desc, nil
 }
 
-//func pack(store *hybridStore, descriptors []ocispec.Descriptor, opts *pushOpts) (ocispec.Descriptor, error) {
 func pack(provider content.Provider, descriptors []ocispec.Descriptor, opts *pushOpts) (ocispec.Descriptor, content.Store, error) {
 	store := newHybridStoreFromProvider(provider, nil)
+	if opts.manifest != nil {
+		return *opts.manifest, store, nil
+	}
+	if descriptors == nil {
+		descriptors = []ocispec.Descriptor{} // make it an empty array to prevent potential server-side bugs
+	}
 
 	// Config
 	var config ocispec.Descriptor
@@ -80,31 +85,46 @@ func pack(provider content.Provider, descriptors []ocispec.Descriptor, opts *pus
 	}
 
 	// Manifest
-	if opts.manifest != nil {
-		return *opts.manifest, store, nil
+	var desc ocispec.Descriptor
+	var err error
+	if opts.artifact != nil {
+		artifact := *opts.artifact
+		artifact.Config = convertV1DescriptorToV2(config)
+		artifact.Blobs = convertV1DescriptorsToV2(descriptors)
+		artifact.Annotations = opts.manifestAnnotations
+		desc, err = store.SetObject(artifact.MediaType, artifact)
+	} else {
+		desc, err = store.SetObject(ocispec.MediaTypeImageManifest, ocispec.Manifest{
+			Versioned: specs.Versioned{
+				SchemaVersion: 2, // historical value. does not pertain to OCI or docker version
+			},
+			Config:      config,
+			Layers:      descriptors,
+			Annotations: opts.manifestAnnotations,
+		})
 	}
-
-	if descriptors == nil {
-		descriptors = []ocispec.Descriptor{} // make it an empty array to prevent potential server-side bugs
-	}
-	manifest := ocispec.Manifest{
-		Versioned: specs.Versioned{
-			SchemaVersion: 2, // historical value. does not pertain to OCI or docker version
-		},
-		Config:      config,
-		Layers:      descriptors,
-		Annotations: opts.manifestAnnotations,
-	}
-	manifestBytes, err := json.Marshal(manifest)
 	if err != nil {
 		return ocispec.Descriptor{}, nil, err
 	}
-	manifestDescriptor := ocispec.Descriptor{
-		MediaType: ocispec.MediaTypeImageManifest,
-		Digest:    digest.FromBytes(manifestBytes),
-		Size:      int64(len(manifestBytes)),
-	}
-	store.Set(manifestDescriptor, manifestBytes)
 
-	return manifestDescriptor, store, nil
+	return desc, store, nil
+}
+
+func convertV1DescriptorsToV2(descs []ocispec.Descriptor) []artifactspec.Descriptor {
+	results := make([]artifactspec.Descriptor, 0, len(descs))
+	for _, desc := range descs {
+		results = append(results, convertV1DescriptorToV2(desc))
+	}
+	return results
+}
+
+func convertV1DescriptorToV2(desc ocispec.Descriptor) artifactspec.Descriptor {
+	return artifactspec.Descriptor{
+		MediaType:   desc.MediaType,
+		Digest:      desc.Digest,
+		Size:        desc.Size,
+		URLs:        desc.URLs,
+		Annotations: desc.Annotations,
+		Platform:    (*artifactspec.Platform)(desc.Platform),
+	}
 }

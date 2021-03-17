@@ -8,6 +8,7 @@ import (
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/content/local"
 	"github.com/containerd/containerd/errdefs"
+	artifactspec "github.com/opencontainers/artifacts/specs-go/v2"
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -44,7 +45,7 @@ func (s *cachedStore) Writer(ctx context.Context, opts ...content.WriterOpt) (co
 		}
 	}
 	switch wOpts.Desc.MediaType {
-	case ocispec.MediaTypeImageManifest, ocispec.MediaTypeImageIndex:
+	case ocispec.MediaTypeImageManifest, ocispec.MediaTypeImageIndex, artifactspec.MediaTypeArtifact:
 		return s.cache.Writer(ctx, opts...)
 	}
 

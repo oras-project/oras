@@ -2,6 +2,7 @@ package oras
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"time"
@@ -44,6 +45,20 @@ func newHybridStoreFromIngester(ingester content.Ingester, cachedMediaTypes []st
 
 func (s *hybridStore) Set(desc ocispec.Descriptor, content []byte) {
 	s.cache.Set(desc, content)
+}
+
+func (s *hybridStore) SetObject(mediaType string, object interface{}) (ocispec.Descriptor, error) {
+	content, err := json.Marshal(object)
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	desc := ocispec.Descriptor{
+		MediaType: mediaType,
+		Digest:    digest.FromBytes(content),
+		Size:      int64(len(content)),
+	}
+	s.Set(desc, content)
+	return desc, nil
 }
 
 // ReaderAt provides contents
