@@ -33,13 +33,12 @@ Linux:
 make build-linux
 ```
 
-Linux  ARM64:
+Linux ARM64:
 
 ```bash
-# builds to bin/linux/amd64/oras
-make build-linux
+# builds to bin/linux/arm64/oras
+make build-linux-arm64
 ```
-
 
 Windows:
 
