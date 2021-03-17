@@ -12,6 +12,10 @@ builds:
   - windows
   goarch:
   - amd64
+  - arm64
+  ignore:
+  - goos: windows
+    goarch: arm64
   ldflags:
   # one-line ldflags to bypass the goreleaser bugs
   # the git tree state is guaranteed to be clean by goreleaser
@@ -20,7 +24,7 @@ builds:
 archives:
   - format: tar.gz
     files:
-      - LICENSE
+    - LICENSE
 
 #signs:
 #  - artifacts: all
