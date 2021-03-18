@@ -362,7 +362,7 @@ func (suite *ORASTestSuite) Test_4_GHSA_g5v4_5x39_vwhx() {
 			suite.FailNow("error creating temp directory", err)
 		}
 		defer os.RemoveAll(tempDir)
-		store := orascontent.NewFileStore(tempDir, orascontent.WithIgnoreNoName())
+		store := orascontent.NewFileStore(tempDir)
 		defer store.Close()
 		ref = fmt.Sprintf("%s/evil:%s", suite.DockerRegistryHost, tag)
 		_, _, err = Pull(newContext(), newResolver(), ref, store)
