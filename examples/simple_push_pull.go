@@ -33,7 +33,7 @@ func main() {
 	customMediaType := "my.custom.media.type"
 
 	ctx := context.Background()
-	resolver := docker.NewResolver(docker.ResolverOptions{})
+	resolver := docker.NewResolver(docker.ResolverOptions{PlainHTTP: true})
 
 	// Push file(s) w custom mediatype to registry
 	memoryStore := content.NewMemoryStore()
