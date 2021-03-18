@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/deislabs/oras/pkg/content"
 	"github.com/deislabs/oras/pkg/oras"
@@ -17,14 +18,22 @@ func check(e error) {
 	}
 }
 
+func getLocalRegistryHostname() string {
+	hostname := "localhost"
+	if v := os.Getenv("LOCAL_REGISTRY_HOSTNAME"); v != "" {
+		hostname = v
+	}
+	return hostname
+}
+
 func main() {
-	ref := "localhost:5000/oras:test"
+	ref := fmt.Sprintf("%s:5000/oras:test", getLocalRegistryHostname())
 	fileName := "hello.txt"
 	fileContent := []byte("Hello World!\n")
 	customMediaType := "my.custom.media.type"
 
 	ctx := context.Background()
-	resolver := docker.NewResolver(docker.ResolverOptions{})
+	resolver := docker.NewResolver(docker.ResolverOptions{PlainHTTP: true})
 
 	// Push file(s) w custom mediatype to registry
 	memoryStore := content.NewMemoryStore()

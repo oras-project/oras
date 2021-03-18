@@ -25,8 +25,8 @@ func TestFileStoreNoName(t *testing.T) {
 		opts []content.WriterOpt
 		err  error
 	}{
-		{nil, content.ErrNoName},
-		{[]content.WriterOpt{content.WithIgnoreNoName()}, nil},
+		{nil, nil},
+		{[]content.WriterOpt{content.WithErrorOnNoName()}, content.ErrNoName},
 	}
 	for _, tt := range tests {
 		rootPath, err := ioutil.TempDir("", "oras_filestore_test")

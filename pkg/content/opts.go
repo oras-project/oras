@@ -21,7 +21,7 @@ func DefaultWriterOpts() WriterOpts {
 		InputHash:    nil,
 		OutputHash:   nil,
 		Blocksize:    DefaultBlocksize,
-		IgnoreNoName: false,
+		IgnoreNoName: true,
 	}
 }
 
@@ -74,9 +74,21 @@ func WithMultiWriterIngester() WriterOpt {
 	}
 }
 
+// WithErrorOnNoName some ingesters, when creating a Writer, do not return an error if
+// the descriptor does not have a valid name on the descriptor. Passing WithErrorOnNoName
+// tells the writer to return an error instead of passing the data to a nil writer.
+func WithErrorOnNoName() WriterOpt {
+	return func(w *WriterOpts) error {
+		w.IgnoreNoName = false
+		return nil
+	}
+}
+
 // WithIgnoreNoName some ingesters, when creating a Writer, return an error if
 // the descriptor does not have a valid name on the descriptor. Passing WithIgnoreNoName
 // tells the writer not to return an error, but rather to pass the data to a nil writer.
+//
+// Deprecated: Use WithErrorOnNoName
 func WithIgnoreNoName() WriterOpt {
 	return func(w *WriterOpts) error {
 		w.IgnoreNoName = true

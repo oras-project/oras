@@ -49,7 +49,7 @@ func (suite *ContentTestSuite) SetupSuite() {
 	os.Remove(testFileName)
 	err := ioutil.WriteFile(testFileName, testContent, 0644)
 	suite.Nil(err, "no error creating test file on disk")
-	testFileStore := NewFileStore(testDirRoot)
+	testFileStore := NewFileStore(testDirRoot, WithErrorOnNoName())
 	_, err = testFileStore.Add(testRef, "", testFileName)
 	suite.Nil(err, "no error adding item to file store")
 	suite.TestFileStore = testFileStore

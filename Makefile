@@ -21,6 +21,10 @@ LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitTreeState=${GIT_DIRTY}
 test: vendor check-encoding
 	./scripts/test.sh
 
+.PHONY: acceptance
+acceptance:
+	./scripts/acceptance.sh
+
 .PHONY: covhtml
 covhtml:
 	open .cover/coverage.html

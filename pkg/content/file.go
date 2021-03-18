@@ -41,7 +41,7 @@ type FileStore struct {
 // NewFileStore creats a new file store
 func NewFileStore(rootPath string, opts ...WriterOpt) *FileStore {
 	// we have to process the opts to find if they told us to change defaults
-	var wOpts WriterOpts
+	wOpts := DefaultWriterOpts()
 	for _, opt := range opts {
 		if err := opt(&wOpts); err != nil {
 			continue
