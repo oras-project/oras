@@ -18,7 +18,9 @@ jobs:
       - name: run unit tests
         run: make test
       - name: run acceptance tests
-        run: make acceptance
+        run: |
+          export LOCAL_REGISTRY_HOSTNAME="$(hostname -I | awk '{print $1}')"
+          make acceptance
       - name: upload coverage report
         uses: actions/upload-artifact@master
         with:
