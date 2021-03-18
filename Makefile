@@ -5,7 +5,7 @@ GIT_COMMIT  = $(shell git rev-parse HEAD)
 GIT_TAG     = $(shell git describe --tags --abbrev=0 --exact-match 2>/dev/null)
 GIT_DIRTY   = $(shell test -n "`git status --porcelain`" && echo "dirty" || echo "clean")
 
-TARGET_OBJS ?= checksums.txt darwin_amd64.tar.gz linux_amd64.tar.gz windows_amd64.tar.gz
+TARGET_OBJS ?= checksums.txt darwin_amd64.tar.gz darwin_arm64.tar.gz linux_amd64.tar.gz linux_arm64.tar.gz windows_amd64.tar.gz
 
 LDFLAGS = -w
 ifdef VERSION
@@ -30,7 +30,7 @@ clean:
 	git status --ignored --short | grep '^!! ' | sed 's/!! //' | xargs rm -rf
 
 .PHONY: build
-build: build-linux build-linux-arm64 build-mac build-windows
+build: build-linux build-linux-arm64 build-mac build-mac-arm64 build-windows
 
 .PHONY: build-linux
 build-linux:
@@ -46,6 +46,11 @@ build-linux-arm64:
 build-mac:
 	GOARCH=amd64 CGO_ENABLED=0 GOOS=darwin go build -v --ldflags="$(LDFLAGS)" \
 		-o bin/darwin/amd64/$(CLI_EXE) $(CLI_PKG)
+
+.PHONY: build-mac-arm64
+build-mac-arm64:
+	GOARCH=arm64 CGO_ENABLED=0 GOOS=darwin go build -v --ldflags="$(LDFLAGS)" \
+		-o bin/darwin/arm64/$(CLI_EXE) $(CLI_PKG)
 
 .PHONY: build-windows
 build-windows:
