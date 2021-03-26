@@ -11,8 +11,8 @@ import (
 	orascontent "github.com/deislabs/oras/pkg/content"
 
 	"github.com/containerd/containerd/images"
-	artifactspecs "github.com/opencontainers/artifacts/specs-go"
-	artifactspec "github.com/opencontainers/artifacts/specs-go/v2"
+	artifactspecs "github.com/notaryproject/artifacts/specs-go"
+	artifactspec "github.com/notaryproject/artifacts/specs-go/v2"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 )
@@ -159,7 +159,7 @@ func AsArtifact(artifactType string, manifests ...ocispec.Descriptor) PushOpt {
 			Versioned: artifactspecs.Versioned{
 				SchemaVersion: 2, // historical value. does not pertain to OCI or docker version
 			},
-			MediaType:    artifactspec.MediaTypeArtifact,
+			MediaType:    artifactspec.MediaTypeArtifactManifest,
 			ArtifactType: artifactType,
 			Manifests:    convertV1DescriptorsToV2(manifests),
 		}

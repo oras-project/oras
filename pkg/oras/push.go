@@ -7,7 +7,7 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/remotes"
 	artifact "github.com/deislabs/oras/pkg/artifact"
-	artifactspec "github.com/opencontainers/artifacts/specs-go/v2"
+	artifactspec "github.com/notaryproject/artifacts/specs-go/v2"
 	digest "github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -65,23 +65,25 @@ func pack(provider content.Provider, descriptors []ocispec.Descriptor, opts *pus
 	}
 
 	// Config
-	var config ocispec.Descriptor
-	if opts.config == nil {
+	var config *ocispec.Descriptor
+	if opts.config != nil {
+		config = opts.config
+	} else if opts.artifact == nil {
 		configBytes := []byte("{}")
-		config = ocispec.Descriptor{
+		config = &ocispec.Descriptor{
 			MediaType: artifact.UnknownConfigMediaType,
 			Digest:    digest.FromBytes(configBytes),
 			Size:      int64(len(configBytes)),
 		}
-		store.Set(config, configBytes)
-	} else {
-		config = *opts.config
+		store.Set(*config, configBytes)
 	}
-	if opts.configAnnotations != nil {
-		config.Annotations = opts.configAnnotations
-	}
-	if opts.configMediaType != "" {
-		config.MediaType = opts.configMediaType
+	if config != nil {
+		if opts.configAnnotations != nil {
+			config.Annotations = opts.configAnnotations
+		}
+		if opts.configMediaType != "" {
+			config.MediaType = opts.configMediaType
+		}
 	}
 
 	// Manifest
@@ -89,7 +91,10 @@ func pack(provider content.Provider, descriptors []ocispec.Descriptor, opts *pus
 	var err error
 	if opts.artifact != nil {
 		artifact := *opts.artifact
-		artifact.Config = convertV1DescriptorToV2(config)
+		if config != nil {
+			artifactConfig := convertV1DescriptorToV2(*config)
+			artifact.Config = &artifactConfig
+		}
 		artifact.Blobs = convertV1DescriptorsToV2(descriptors)
 		artifact.Annotations = opts.manifestAnnotations
 		desc, err = store.SetObject(artifact.MediaType, artifact)
@@ -98,7 +103,7 @@ func pack(provider content.Provider, descriptors []ocispec.Descriptor, opts *pus
 			Versioned: specs.Versioned{
 				SchemaVersion: 2, // historical value. does not pertain to OCI or docker version
 			},
-			Config:      config,
+			Config:      *config,
 			Layers:      descriptors,
 			Annotations: opts.manifestAnnotations,
 		})

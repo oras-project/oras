@@ -10,7 +10,7 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/remotes"
-	artifactspec "github.com/opencontainers/artifacts/specs-go/v2"
+	artifactspec "github.com/notaryproject/artifacts/specs-go/v2"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/semaphore"
@@ -85,7 +85,11 @@ func fetchContent(ctx context.Context, fetcher remotes.Fetcher, desc ocispec.Des
 func filterHandler(opts *pullOpts, allowedMediaTypes ...string) images.HandlerFunc {
 	return func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		switch {
-		case isAllowedMediaType(desc.MediaType, ocispec.MediaTypeImageManifest, ocispec.MediaTypeImageIndex, artifactspec.MediaTypeArtifact):
+		case isAllowedMediaType(desc.MediaType,
+			ocispec.MediaTypeImageManifest,
+			ocispec.MediaTypeImageIndex,
+			artifactspec.MediaTypeArtifactManifest,
+		):
 			return nil, nil
 		case isAllowedMediaType(desc.MediaType, allowedMediaTypes...):
 			if opts.filterName(desc) {

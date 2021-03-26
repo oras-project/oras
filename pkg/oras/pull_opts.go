@@ -9,7 +9,7 @@ import (
 	orascontent "github.com/deislabs/oras/pkg/content"
 
 	"github.com/containerd/containerd/images"
-	artifactspec "github.com/opencontainers/artifacts/specs-go/v2"
+	artifactspec "github.com/notaryproject/artifacts/specs-go/v2"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/sync/semaphore"
@@ -30,9 +30,13 @@ type PullOpt func(o *pullOpts) error
 
 func pullOptsDefaults() *pullOpts {
 	return &pullOpts{
-		dispatch:         images.Dispatch,
-		filterName:       filterName,
-		cachedMediaTypes: []string{ocispec.MediaTypeImageManifest, ocispec.MediaTypeImageIndex, artifactspec.MediaTypeArtifact},
+		dispatch:   images.Dispatch,
+		filterName: filterName,
+		cachedMediaTypes: []string{
+			ocispec.MediaTypeImageManifest,
+			ocispec.MediaTypeImageIndex,
+			artifactspec.MediaTypeArtifactManifest,
+		},
 	}
 }
 
