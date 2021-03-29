@@ -28,6 +28,7 @@ type pushOptions struct {
 	fileRefs               []string
 	manifestConfigRef      string
 	manifestAnnotations    string
+	manifestExport         string
 	artifactType           string
 	artifactRefs           []string
 	pathValidationDisabled bool
@@ -76,6 +77,7 @@ Example - Push file to the HTTP registry:
 
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "manifest-config", "", "", "manifest config file")
 	cmd.Flags().StringVarP(&opts.manifestAnnotations, "manifest-annotations", "", "", "manifest annotation file")
+	cmd.Flags().StringVarP(&opts.manifestExport, "export-manifest", "", "", "export the pushed manifest")
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().StringArrayVarP(&opts.artifactRefs, "artifact-reference", "", nil, "artifact reference")
 	cmd.Flags().BoolVarP(&opts.pathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
@@ -143,6 +145,16 @@ func runPush(opts pushOptions) error {
 	}
 	if len(files) == 0 {
 		fmt.Println("Uploading empty artifact")
+	}
+
+	// export manifest
+	if opts.manifestExport != "" {
+		manifestFile, err := os.Create(opts.manifestExport)
+		if err != nil {
+			return err
+		}
+		defer manifestFile.Close()
+		pushOpts = append(pushOpts, oras.WithManifestWriter(manifestFile))
 	}
 
 	// ready to push

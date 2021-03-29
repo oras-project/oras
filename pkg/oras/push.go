@@ -87,8 +87,8 @@ func pack(provider content.Provider, descriptors []ocispec.Descriptor, opts *pus
 	}
 
 	// Manifest
-	var desc ocispec.Descriptor
-	var err error
+	var mediaType string
+	var content interface{}
 	if opts.artifact != nil {
 		artifact := *opts.artifact
 		if config != nil {
@@ -97,19 +97,27 @@ func pack(provider content.Provider, descriptors []ocispec.Descriptor, opts *pus
 		}
 		artifact.Blobs = convertV1DescriptorsToV2(descriptors)
 		artifact.Annotations = opts.manifestAnnotations
-		desc, err = store.SetObject(artifact.MediaType, artifact)
+		mediaType = artifact.MediaType
+		content = artifact
 	} else {
-		desc, err = store.SetObject(ocispec.MediaTypeImageManifest, ocispec.Manifest{
+		mediaType = ocispec.MediaTypeImageManifest
+		content = ocispec.Manifest{
 			Versioned: specs.Versioned{
 				SchemaVersion: 2, // historical value. does not pertain to OCI or docker version
 			},
 			Config:      *config,
 			Layers:      descriptors,
 			Annotations: opts.manifestAnnotations,
-		})
+		}
 	}
+	desc, contentBytes, err := store.SetObject(mediaType, content)
 	if err != nil {
 		return ocispec.Descriptor{}, nil, err
+	}
+	if opts.manifestWriter != nil {
+		if _, err := opts.manifestWriter.Write(contentBytes); err != nil {
+			return ocispec.Descriptor{}, nil, err
+		}
 	}
 
 	return desc, store, nil

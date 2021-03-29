@@ -23,6 +23,7 @@ type pushOpts struct {
 	configAnnotations   map[string]string
 	manifest            *ocispec.Descriptor
 	manifestAnnotations map[string]string
+	manifestWriter      io.Writer
 	validateName        func(desc ocispec.Descriptor) error
 	baseHandlers        []images.Handler
 	artifact            *artifactspec.Artifact
@@ -73,6 +74,14 @@ func WithManifest(manifest ocispec.Descriptor) PushOpt {
 func WithManifestAnnotations(annotations map[string]string) PushOpt {
 	return func(o *pushOpts) error {
 		o.manifestAnnotations = annotations
+		return nil
+	}
+}
+
+// WithManifestWriter exports the pushed manifest
+func WithManifestWriter(writer io.Writer) PushOpt {
+	return func(o *pushOpts) error {
+		o.manifestWriter = writer
 		return nil
 	}
 }

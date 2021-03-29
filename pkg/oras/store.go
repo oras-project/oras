@@ -47,10 +47,10 @@ func (s *hybridStore) Set(desc ocispec.Descriptor, content []byte) {
 	s.cache.Set(desc, content)
 }
 
-func (s *hybridStore) SetObject(mediaType string, object interface{}) (ocispec.Descriptor, error) {
+func (s *hybridStore) SetObject(mediaType string, object interface{}) (ocispec.Descriptor, []byte, error) {
 	content, err := json.Marshal(object)
 	if err != nil {
-		return ocispec.Descriptor{}, err
+		return ocispec.Descriptor{}, nil, err
 	}
 	desc := ocispec.Descriptor{
 		MediaType: mediaType,
@@ -58,7 +58,7 @@ func (s *hybridStore) SetObject(mediaType string, object interface{}) (ocispec.D
 		Size:      int64(len(content)),
 	}
 	s.Set(desc, content)
-	return desc, nil
+	return desc, content, nil
 }
 
 // ReaderAt provides contents
