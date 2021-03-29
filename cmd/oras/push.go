@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	iresolver "github.com/deislabs/oras/internal/resolver"
 	"github.com/deislabs/oras/pkg/content"
 	ctxo "github.com/deislabs/oras/pkg/context"
 	"github.com/deislabs/oras/pkg/oras"
@@ -33,6 +34,7 @@ type pushOptions struct {
 	artifactRefs           []string
 	pathValidationDisabled bool
 	verbose                bool
+	dryRun                 bool
 
 	debug     bool
 	configs   []string
@@ -88,6 +90,7 @@ Example - Push file to the HTTP registry:
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password")
 	cmd.Flags().BoolVarP(&opts.insecure, "insecure", "", false, "allow connections to SSL registry without certs")
 	cmd.Flags().BoolVarP(&opts.plainHTTP, "plain-http", "", false, "use plain http and not https")
+	cmd.Flags().BoolVarP(&opts.dryRun, "dry-run", "", false, "push to a dummy registry instead of the real remote")
 	return cmd
 }
 
@@ -99,9 +102,16 @@ func runPush(opts pushOptions) error {
 		ctx = ctxo.WithLoggerDiscarded(ctx)
 	}
 
+	// specify resolver
+	var resolver remotes.Resolver
+	if opts.dryRun {
+		resolver = iresolver.Dummy()
+	} else {
+		resolver = newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
+	}
+
 	// bake artifact
 	var pushOpts []oras.PushOpt
-	resolver := newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
 	if opts.artifactType != "" {
 		manifests, err := loadReferences(ctx, resolver, opts.artifactRefs)
 		if err != nil {
