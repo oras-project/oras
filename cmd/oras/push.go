@@ -90,7 +90,7 @@ Example - Push file to the HTTP registry:
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password")
 	cmd.Flags().BoolVarP(&opts.insecure, "insecure", "", false, "allow connections to SSL registry without certs")
 	cmd.Flags().BoolVarP(&opts.plainHTTP, "plain-http", "", false, "use plain http and not https")
-	cmd.Flags().BoolVarP(&opts.dryRun, "dry-run", "", false, "push to a dummy registry instead of the real remote")
+	cmd.Flags().BoolVarP(&opts.dryRun, "dry-run", "", false, "push to a dummy registry instead of the actual remote registry")
 	return cmd
 }
 
@@ -106,6 +106,7 @@ func runPush(opts pushOptions) error {
 	var resolver remotes.Resolver
 	if opts.dryRun {
 		resolver = iresolver.Dummy()
+		fmt.Println("Entered dry-run mode")
 	} else {
 		resolver = newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
 	}

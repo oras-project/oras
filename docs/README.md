@@ -7,3 +7,5 @@ In addition to the common usage, the advanced topics of `oras` are documented at
 - [Manifest Config](config.md)
 - [Manifest Annotations](annotations.md)
 - [Content Store](store.md)
+- [Advanced Push](push_adv.md)
+- [Artifact: Next Generation](artifact.md)
