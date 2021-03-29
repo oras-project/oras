@@ -372,8 +372,8 @@ github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f/go.mod h1:ZdcZmHo+
 github.com/ncw/swift v1.0.47/go.mod h1:23YIA4yWVnGwv2dQlN4bB7egfYX6YLn0Yo/S6zZO/ZM=
 github.com/notaryproject/artifacts v0.0.0-20210325201627-49d06c9f1a07 h1:geJlhRFBwSJXhIv7KMgAXBz1Ie6wsuFeE5vuau3B4AQ=
 github.com/notaryproject/artifacts v0.0.0-20210325201627-49d06c9f1a07/go.mod h1:za0DINIIQLPCBn9AhLfPjywgT51o0zll644gbIXiQiQ=
-github.com/notaryproject/containerd v1.5.0-beta.4.0.20210326100849-6094ad5d5479 h1:zan+c1XrL2pyc6RuR+xYJ43SgB2AOXnLH99uAQQrn5w=
-github.com/notaryproject/containerd v1.5.0-beta.4.0.20210326100849-6094ad5d5479/go.mod h1:uvn4m2BuoisfEj5I7GLoCJguWejxwLUlyM0L4XnVWY8=
+github.com/notaryproject/containerd v1.5.0-beta.4.0.20210329094736-a683d692c2d3 h1:lY6WLYzlPQkGkRCyoG/PPe7NmJNiiMHdrmeErbp64wA=
+github.com/notaryproject/containerd v1.5.0-beta.4.0.20210329094736-a683d692c2d3/go.mod h1:uvn4m2BuoisfEj5I7GLoCJguWejxwLUlyM0L4XnVWY8=
 github.com/oklog/ulid v1.3.1/go.mod h1:CirwcVhetQ6Lv90oh/F+FBtV6XMibvdAFo93nm5qn4U=
 github.com/olekukonko/tablewriter v0.0.0-20170122224234-a0225b3f23b5/go.mod h1:vsDQFd/mU46D+Z4whnwzcISnGGzXWMclvtLoiIKAKIo=
 github.com/onsi/ginkgo v0.0.0-20151202141238-7f8ab55aaf3b/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
