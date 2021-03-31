@@ -11,8 +11,8 @@ import (
 	orascontent "github.com/deislabs/oras/pkg/content"
 
 	"github.com/containerd/containerd/images"
-	artifactspecs "github.com/notaryproject/artifacts/specs-go"
-	artifactspec "github.com/notaryproject/artifacts/specs-go/v2"
+	artifactspecs "github.com/opencontainers/artifacts/specs-go"
+	artifactspec "github.com/opencontainers/artifacts/specs-go/v2"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 )

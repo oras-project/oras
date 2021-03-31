@@ -8,7 +8,7 @@ import (
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/remotes"
-	artifactspec "github.com/notaryproject/artifacts/specs-go/v2"
+	artifactspec "github.com/opencontainers/artifacts/specs-go/v2"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -54,7 +54,7 @@ func (r *dummyResolver) Pusher(ctx context.Context, ref string) (remotes.Pusher,
 
 // Discoverer returns a new discoverer for the provided reference
 func (r *dummyResolver) Discoverer(ctx context.Context, ref string) (remotes.Discoverer, error) {
-	return remotes.DiscovererFunc(func(ctx context.Context, desc ocispec.Descriptor, artifactType string) ([]artifactspec.Artifact, error) {
+	return remotes.DiscovererFunc(func(ctx context.Context, desc ocispec.Descriptor, artifactType string) (map[digest.Digest]artifactspec.Artifact, error) {
 		return nil, errors.Wrap(errdefs.ErrNotFound, "dummy resolver")
 	}), nil
 }

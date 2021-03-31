@@ -81,11 +81,8 @@ func runDiscover(opts discoverOptions) error {
 
 	fmt.Println("Discovered", len(artifacts), "artifacts referencing", opts.targetRef)
 	fmt.Println("Digest:", desc.Digest)
-	for _, artifact := range artifacts {
-		fmt.Println("Reference:", artifact.ArtifactType)
-		for _, blob := range artifact.Blobs {
-			fmt.Println("-", blob.Digest)
-		}
+	for digest := range artifacts {
+		fmt.Println("Reference:", digest)
 	}
 
 	return nil

@@ -10,7 +10,7 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/remotes"
-	artifactspec "github.com/notaryproject/artifacts/specs-go/v2"
+	artifactspec "github.com/opencontainers/artifacts/specs-go/v2"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/semaphore"

@@ -8,7 +8,7 @@ import (
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/content/local"
 	"github.com/containerd/containerd/errdefs"
-	artifactspec "github.com/notaryproject/artifacts/specs-go/v2"
+	artifactspec "github.com/opencontainers/artifacts/specs-go/v2"
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"

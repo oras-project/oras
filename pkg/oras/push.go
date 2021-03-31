@@ -7,7 +7,7 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/remotes"
 	artifact "github.com/deislabs/oras/pkg/artifact"
-	artifactspec "github.com/notaryproject/artifacts/specs-go/v2"
+	artifactspec "github.com/opencontainers/artifacts/specs-go/v2"
 	digest "github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
