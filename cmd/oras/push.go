@@ -114,7 +114,11 @@ func runPush(opts pushOptions) error {
 	// bake artifact
 	var pushOpts []oras.PushOpt
 	if opts.artifactType != "" {
-		manifests, err := loadReferences(ctx, resolver, opts.artifactRefs)
+		refResolver := resolver
+		if iresolver.IsDummy(resolver) {
+			refResolver = newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
+		}
+		manifests, err := loadReferences(ctx, refResolver, opts.artifactRefs)
 		if err != nil {
 			return err
 		}

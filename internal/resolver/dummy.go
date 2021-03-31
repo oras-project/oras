@@ -25,6 +25,11 @@ func Dummy() remotes.Resolver {
 	return dummyResolverInstance
 }
 
+// IsDummy checks if the resolver is dummy
+func IsDummy(resolver remotes.Resolver) bool {
+	return resolver == dummyResolverInstance
+}
+
 func (r *dummyResolver) Resolve(ctx context.Context, ref string) (name string, desc ocispec.Descriptor, err error) {
 	return "", ocispec.Descriptor{}, errors.Wrap(errdefs.ErrNotFound, "dummy resolver")
 }
