@@ -18,6 +18,7 @@ type pullOptions struct {
 	targetRef          string
 	allowedMediaTypes  []string
 	allowAllMediaTypes bool
+	allowEmptyName     bool
 	keepOldFiles       bool
 	pathTraversal      bool
 	output             string
@@ -70,6 +71,7 @@ Example - Pull files with local cache:
 
 	cmd.Flags().StringArrayVarP(&opts.allowedMediaTypes, "media-type", "t", nil, "allowed media types to be pulled")
 	cmd.Flags().BoolVarP(&opts.allowAllMediaTypes, "allow-all", "a", false, "allow all media types to be pulled")
+	cmd.Flags().BoolVarP(&opts.allowEmptyName, "allow-empty-name", "", false, "allow pulling files with empty name")
 	cmd.Flags().BoolVarP(&opts.keepOldFiles, "keep-old-files", "k", false, "do not replace existing files when pulling, treat them as errors")
 	cmd.Flags().BoolVarP(&opts.pathTraversal, "allow-path-traversal", "T", false, "allow storing files out of the output directory")
 	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "output directory")
@@ -113,6 +115,9 @@ func runPull(opts pullOptions) error {
 			return err
 		}
 		pullOpts = append(pullOpts, oras.WithContentProvideIngester(cachedStore))
+	}
+	if opts.allowEmptyName {
+		pullOpts = append(pullOpts, oras.WithPullEmptyNameAllowed())
 	}
 
 	desc, artifacts, err := oras.Pull(ctx, resolver, opts.targetRef, store, pullOpts...)
