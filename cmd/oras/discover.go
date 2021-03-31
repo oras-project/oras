@@ -2,13 +2,18 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 
 	ctxo "github.com/deislabs/oras/pkg/context"
 	"github.com/deislabs/oras/pkg/oras"
 
 	"github.com/containerd/containerd/reference"
+	artifactspec "github.com/opencontainers/artifacts/specs-go/v2"
+	digest "github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -16,6 +21,7 @@ import (
 type discoverOptions struct {
 	targetRef    string
 	artifactType string
+	outputJSON   bool
 	verbose      bool
 
 	debug     bool
@@ -50,6 +56,7 @@ Example - Discover artifacts of type "" linked with the specified reference:
 	}
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
+	cmd.Flags().BoolVarP(&opts.outputJSON, "output-json", "", false, "output in JSON format")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
 
 	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
@@ -79,11 +86,32 @@ func runDiscover(opts discoverOptions) error {
 		return err
 	}
 
-	fmt.Println("Discovered", len(artifacts), "artifacts referencing", opts.targetRef)
-	fmt.Println("Digest:", desc.Digest)
-	for digest := range artifacts {
-		fmt.Println("Reference:", digest)
+	if opts.outputJSON {
+		output := struct {
+			Manifest   ocispec.Descriptor                      `json:"manifest"`
+			References map[digest.Digest]artifactspec.Artifact `json:"references"`
+		}{
+			Manifest:   desc,
+			References: artifacts,
+		}
+		printJSON(output)
+	} else {
+		fmt.Println("Discovered", len(artifacts), "artifacts referencing", opts.targetRef)
+		fmt.Println("Digest:", desc.Digest)
+		for digest, artifact := range artifacts {
+			fmt.Println("Reference:", digest)
+			if opts.verbose {
+				printJSON(artifact)
+			}
+		}
 	}
 
 	return nil
+}
+
+func printJSON(object interface{}) {
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+	encoder.Encode(object)
 }
