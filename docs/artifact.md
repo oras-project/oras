@@ -96,34 +96,33 @@ Since the JSON output in the verbose mode is human-friendly but not user-friendl
 
 ```json
 {
-  "manifest": {
-    "mediaType": "application/vnd.oci.image.manifest.v1+json",
-    "digest": "sha256:c38fe4b80a6c5c23b211365408bdb8deeda5132cd802c988fb4cd0b972ccfb9f",
-    "size": 395
-  },
-  "references": {
-    "sha256:9ac59685f09eee88a1294e6872d13ba83fe44b934ae5992645ef5952d590d29e": {
-      "schemaVersion": 2,
-      "mediaType": "application/vnd.oci.artifact.manifest.v1+json",
-      "artifactType": "application/vnd.cncf.notary.v2",
-      "blobs": [
-        {
-          "mediaType": "application/vnd.oci.image.layer.v1.tar",
-          "digest": "sha256:556ec1d63c2153fc9645c6af2d87b0ebe66d356457d95d7cce4617aa9f9ec27f",
-          "size": 2373,
-          "annotations": {
-            "org.opencontainers.image.title": "hello.jwt"
+  "digest": "sha256:c38fe4b80a6c5c23b211365408bdb8deeda5132cd802c988fb4cd0b972ccfb9f",
+  "links": [
+    {
+      "digest": "sha256:9ac59685f09eee88a1294e6872d13ba83fe44b934ae5992645ef5952d590d29e",
+      "manifest": {
+        "schemaVersion": 2,
+        "mediaType": "application/vnd.oci.artifact.manifest.v1+json",
+        "artifactType": "application/vnd.cncf.notary.v2",
+        "blobs": [
+          {
+            "mediaType": "application/vnd.oci.image.layer.v1.tar",
+            "digest": "sha256:556ec1d63c2153fc9645c6af2d87b0ebe66d356457d95d7cce4617aa9f9ec27f",
+            "size": 2373,
+            "annotations": {
+              "org.opencontainers.image.title": "hello.jwt"
+            }
           }
-        }
-      ],
-      "manifests": [
-        {
-          "mediaType": "application/vnd.oci.image.manifest.v1+json",
-          "digest": "sha256:c38fe4b80a6c5c23b211365408bdb8deeda5132cd802c988fb4cd0b972ccfb9f",
-          "size": 395
-        }
-      ]
+        ],
+        "manifests": [
+          {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:c38fe4b80a6c5c23b211365408bdb8deeda5132cd802c988fb4cd0b972ccfb9f",
+            "size": 395
+          }
+        ]
+      }
     }
-  }
+  ]
 }
 ```

@@ -11,6 +11,7 @@ import (
 	"github.com/deislabs/oras/pkg/oras"
 
 	"github.com/containerd/containerd/reference"
+	"github.com/containerd/containerd/remotes"
 	artifactspec "github.com/opencontainers/artifacts/specs-go/v2"
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -78,7 +79,7 @@ func runDiscover(opts discoverOptions) error {
 
 	resolver := newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
 
-	desc, artifacts, err := oras.Discover(ctx, resolver, opts.targetRef, opts.artifactType)
+	desc, refs, err := oras.Discover(ctx, resolver, opts.targetRef, opts.artifactType)
 	if err != nil {
 		if err == reference.ErrObjectRequired {
 			return fmt.Errorf("image reference format is invalid. Please specify <name:tag|name@digest>")
@@ -87,26 +88,42 @@ func runDiscover(opts discoverOptions) error {
 	}
 
 	if opts.outputJSON {
-		output := struct {
-			Manifest   ocispec.Descriptor                      `json:"manifest"`
-			References map[digest.Digest]artifactspec.Artifact `json:"references"`
-		}{
-			Manifest:   desc,
-			References: artifacts,
-		}
-		printJSON(output)
+		printDiscoveredReferences(desc, refs)
 	} else {
-		fmt.Println("Discovered", len(artifacts), "artifacts referencing", opts.targetRef)
+		fmt.Println("Discovered", len(refs), "artifacts referencing", opts.targetRef)
 		fmt.Println("Digest:", desc.Digest)
-		for digest, artifact := range artifacts {
-			fmt.Println("Reference:", digest)
+		for _, ref := range refs {
+			fmt.Println("Reference:", ref.Digest)
 			if opts.verbose {
-				printJSON(artifact)
+				printJSON(ref.Artifact)
 			}
 		}
 	}
 
 	return nil
+}
+
+func printDiscoveredReferences(desc ocispec.Descriptor, refs []remotes.DiscoveredArtifact) {
+	type reference struct {
+		Digest   digest.Digest         `json:"digest"`
+		Manifest artifactspec.Artifact `json:"manifest"`
+	}
+	output := struct {
+		Digest     digest.Digest `json:"digest"`
+		References []reference   `json:"links"`
+	}{
+		Digest:     desc.Digest,
+		References: make([]reference, len(refs)),
+	}
+
+	for i, ref := range refs {
+		output.References[i] = reference{
+			Digest:   ref.Digest,
+			Manifest: ref.Artifact,
+		}
+	}
+
+	printJSON(output)
 }
 
 func printJSON(object interface{}) {
