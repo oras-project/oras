@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 
@@ -44,12 +43,6 @@ Example - Discover artifacts of type "" linked with the specified reference:
   oras discover --artifact-type application/vnd.cncf.notary.v2 localhost:5000/hello:latest
 `,
 		Args: cobra.ExactArgs(1),
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if opts.artifactType == "" {
-				return errors.New("artifact type not specified")
-			}
-			return nil
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
 			return runDiscover(opts)
