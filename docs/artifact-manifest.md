@@ -1,5 +1,9 @@
 # OCI Artifact Manifest (Experimental)
 
+The prototype-2 branch of ORAS implements [oci.artifact.manifest][oci-artifact-manifest], supporting references between artifact types. This capability enables a graph of objects to be established, including signatures, SBoMs and other artifact types.
+
+![](./media/net-monitor-graph.svg)
+
 `oras` supports the [oci.artifact.manifest][oci-artifact-manifest-spec], enabling, persistence, discovery and retrieval of artifacts and artifact references.
 
 This document covers:
