@@ -14,9 +14,10 @@ ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-m
 
 This prototype-2 branch of ORAS implements [oci.artifact.manifest][oci-artifact-manifest], supporting references between artifact types. This capability enables a graph of objects to be established, including signatures, SBoMs and other artifact types.
 
-See [oci.artifact.manifest](./docs/artifact-manifest.md) support for how to use `oras push` & `oras discover` for working with referenced artifact types.
-
 ![](docs/media/net-monitor-graph.svg)
+
+See [OCI Artifact Manifest (Experimental)](./docs/artifact-manifest.md) docs for how to use `oras push` & `oras discover` for working with referenced artifact types.
+
 
 ## Table of Contents
 
