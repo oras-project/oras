@@ -1,4 +1,4 @@
-# OCI Registry As Storage
+# OCI Registry As Storage (Experimental)
 
 [![GitHub Actions status](https://github.com/deislabs/oras/workflows/build/badge.svg)](https://github.com/deislabs/oras/actions?query=workflow%3Abuild)
 [![Go Report Card](https://goreportcard.com/badge/github.com/deislabs/oras)](https://goreportcard.com/report/github.com/deislabs/oras)
@@ -9,6 +9,14 @@
 [Registries are evolving as Cloud Native Artifact Stores](https://stevelasker.blog/2019/01/25/cloud-native-artifact-stores-evolve-from-container-registries/). To enable this goal, Microsoft has donated ORAS as a means to enable various client libraries with a way to push [OCI Artifacts][artifacts] to [OCI Conformant](https://github.com/opencontainers/oci-conformance) registries.
 
 ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-module) to be included with your CLI, enabling a native experience: `myclient push artifacts.azurecr.io/myartifact:1.0 ./mything.thang`
+
+## References Prototype (Experimental)
+
+This prototype-2 branch of ORAS implements [oci.artifact.manifest][oci-artifact-manifest], supporting references between artifact types. This capability enables a graph of objects to be established, including signatures, SBoMs and other artifact types.
+
+See [oci.artifact.manifest](./docs/artifact-manifest.md) support for how to use `oras push` & `oras discover` for working with referenced artifact types.
+
+![](docs/media/net-monitor-graph.svg)
 
 ## Table of Contents
 
@@ -306,5 +314,6 @@ We're very interested in feedback and contributions for other artifacts.
 
 [Join us](https://slack.cncf.io/) at [CNCF Slack](https://cloud-native.slack.com) under the **#oras** channel
 
-[artifacts]:            https://github.com/opencontainers/artifacts
-[distribution-spec]:    https://github.com/opencontainers/distribution-spec/
+[artifacts]:              https://github.com/opencontainers/artifacts
+[distribution-spec]:      https://github.com/opencontainers/distribution-spec/
+[oci-artifact-manifest]:  https://github.com/opencontainers/artifacts/pull/29
