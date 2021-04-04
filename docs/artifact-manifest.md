@@ -2,7 +2,57 @@
 
 `oras` supports the [oci.artifact.manifest][oci-artifact-manifest-spec], enabling, persistence, discovery and retrieval of artifacts and artifact references.
 
-## Run Distribution with OCI Artifact Manifest Support
+This document covers:
+
+- [Building the Experimental Branch](#building-the-experimental-branch)
+- [Runing Distribution with OCI Artifact Manifest Support](#running-distribution-with-oci-artifact-manifest-support)
+- [Pushing Artifact References](#pushing-artifact-references)
+- [Discovering Artifact References](#discovering-artifact-references)
+- [Discovering Artifacts with `artifactType` Filtering](#discovering-artifacts-with-artifactType-filtering)
+- [Pulling Artifact References](#pulling-artifact-references)
+
+## Building the Experimental Branch
+
+- Build the `oci-artifact.manifest` experimental branch:
+  ```bash
+  git clone https://github.com/deislabs/oras.git
+  cd oras
+  git checkout prototype-2
+  make build
+  ```
+- Copy `oras` to a central location for easy reference
+  ```bash
+  # linux, including wsl:
+  sudo cp ./bin/linux/amd64/oras /usr/local/bin/oras
+  ```
+- Verify the version, noting the `+unreleased` version:
+  ```bash
+  oras version
+
+  Version:        0.11.1+unreleased
+  Go version:     go1.16.2
+  Git commit:     6977a420ff804c49a401950502f5d98a9ed62812
+  Git tree state: clean
+  ```
+- Verify the additional `discover` command, confirming the experimental branch
+  ```bash
+  oras --help
+  Usage:
+    oras [command]
+
+  Available Commands:
+    discover    discover artifacts from remote registry
+    help        Help about any command
+    login       Log in to a remote registry
+    logout      Log out from a remote registry
+    pull        Pull files from remote registry
+    push        Push files to remote registry
+    version     Show the oras version information
+  ```
+
+See the [developers guide](../BUILDING.md) for more details on building `oras`
+
+## Running Distribution with OCI Artifact Manifest Support
 
 Run a local instance of distribution, with `oci.artifact.manifest` support. The image is built from: [notaryproject/distribution/tree/prototype-2](https://github.com/notaryproject/distribution/tree/prototype-2)
 > Note: this is a temporary location as oci.artifact.manifest is being developed under the [Notary v2][notary-v2-project] project.
@@ -11,7 +61,7 @@ Run a local instance of distribution, with `oci.artifact.manifest` support. The 
 docker run -it -p 5000:5000 --name oci-artifact-registry notaryv2/registry:nv2-prototype-2
 ```
 
-## Push Artifact References
+## Pushing Artifact References
 
 `oras push` will utilize the [oci.artifact.manifest][oci-artifact-manifest] when `--artifact-type` is specified. The OPTIONAL `--artifact-reference` accepts both tags and digests. Tag references are converted to digests when persisted.
 
@@ -41,7 +91,7 @@ For example, push a simulated SBoM artifact `sbom.json` of `application/x.exampl
   Digest: sha256:f4232599e2d5246ec1f4dc419bacd5510a02c2f0e3c98b800f38c8cbbd61550d
   ```
 
-## Discover
+## Discovering Artifact References
 
 To find the list of artifacts that reference a target artifact (such as a container image), the `oras discover` api provides a quick means to list all, or specific artifact references.
 
@@ -80,7 +130,7 @@ To find the list of artifacts that reference a target artifact (such as a contai
   }
   ```
 
-## Discover with `artifactType` filtering
+## Discovering Artifacts with `artifactType` Filtering
 
 - Create a sample signature document:
   ```shell
@@ -135,7 +185,7 @@ To find the list of artifacts that reference a target artifact (such as a contai
 
 > Note: see [issue #255](https://github.com/deislabs/oras/issues/255) for `default` and `--verbose` output options
 
-## Pull
+## Pulling Artifact References
 
 Pulling an artifact is the same as the regular `oras pull`. This example 
 
