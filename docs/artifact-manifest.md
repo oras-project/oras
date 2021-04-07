@@ -1,6 +1,6 @@
 # OCI Artifact Manifest (Experimental)
 
-The prototype-2 branch of ORAS implements [oci.artifact.manifest][oci-artifact-manifest], supporting references between artifact types. This capability enables a graph of objects to be established, including signatures, SBoMs and other artifact types.
+The prototype-2 branch of ORAS implements [oci.artifact.manifest][oci-artifact-manifest], supporting references between artifact types. This capability enables a graph of objects to be established, including signatures, Software Bill of Materials (SBoMs) and other artifact types.
 
 ![](./media/net-monitor-graph.svg)
 
@@ -69,7 +69,7 @@ docker run -it -p 5000:5000 --name oci-artifact-registry notaryv2/registry:nv2-p
 
 `oras push` will utilize the [oci.artifact.manifest][oci-artifact-manifest] when `--artifact-type` is specified. The OPTIONAL `--artifact-reference` accepts both tags and digests. Tag references are converted to digests when persisted.
 
-For example, push a simulated SBoM artifact `sbom.json` of `application/x.example.sbom.v0` type linking to another artifact `localhost:5000/test:latest`:
+For example, push a simulated Software Bill of Materials (SBoM) artifact `sbom.json` of `application/x.example.sbom.v0` type, linking to another artifact `localhost:5000/test:latest`:
 
 - Push `hello-world:latest` to the locally instanced registry:
   ```bash
@@ -140,7 +140,7 @@ To find the list of artifacts that reference a target artifact (such as a contai
   ```shell
   echo '{"version": "0.0.0.0", "target": "docker.io/hello-world:latest", "signature": "pat-doe"}' > signature.json
   ```
-- Push the SBoM, referencing the `hello-world:latest` image:
+- Push the signature, referencing the `hello-world:latest` image:
   ```shell
   oras push localhost:5000/hello-world \
       --artifact-type application/x.example.signature.v0 \
