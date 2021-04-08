@@ -200,7 +200,7 @@ Pulling an artifact is the same as the regular `oras pull`. This example
         oras discover \
           --output-json \
           --artifact-type application/x.example.signature.v0 \
-          localhost:5000/hello-world:latest | jq -r .links[0].digest)
+          localhost:5000/hello-world:latest | jq -r .references[0].digest)
   ```
 
 - Generates output:

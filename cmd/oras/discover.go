@@ -103,7 +103,7 @@ func printDiscoveredReferences(desc ocispec.Descriptor, refs []remotes.Discovere
 	}
 	output := struct {
 		Digest     digest.Digest `json:"digest"`
-		References []reference   `json:"links"`
+		References []reference   `json:"references"`
 	}{
 		Digest:     desc.Digest,
 		References: make([]reference, len(refs)),
