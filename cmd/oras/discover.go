@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	ctxo "github.com/deislabs/oras/pkg/context"
 	"github.com/deislabs/oras/pkg/oras"
@@ -81,22 +82,43 @@ func runDiscover(opts discoverOptions) error {
 	}
 
 	if opts.outputJSON {
-		printDiscoveredReferences(desc, refs)
+		printDiscoveredReferencesJSON(desc, refs)
 	} else {
 		fmt.Println("Discovered", len(refs), "artifacts referencing", opts.targetRef)
 		fmt.Println("Digest:", desc.Digest)
-		for _, ref := range refs {
-			fmt.Println("Reference:", ref.Digest)
-			if opts.verbose {
-				printJSON(ref.Artifact)
-			}
+
+		if len(refs) != 0 {
+			fmt.Println()
+			printDiscoveredReferencesTable(refs, opts.verbose)
 		}
 	}
 
 	return nil
 }
 
-func printDiscoveredReferences(desc ocispec.Descriptor, refs []remotes.DiscoveredArtifact) {
+func printDiscoveredReferencesTable(refs []remotes.DiscoveredArtifact, verbose bool) {
+	typeNameTitle := "Artifact Type"
+	typeNameLength := len(typeNameTitle)
+	for _, ref := range refs {
+		if length := len(ref.Artifact.ArtifactType); length > typeNameLength {
+			typeNameLength = length
+		}
+	}
+
+	print := func(key string, value interface{}) {
+		fmt.Println(key, strings.Repeat(" ", typeNameLength-len(key)+1), value)
+	}
+
+	print(typeNameTitle, "Digest")
+	for _, ref := range refs {
+		print(ref.Artifact.ArtifactType, ref.Digest)
+		if verbose {
+			printJSON(ref.Artifact)
+		}
+	}
+}
+
+func printDiscoveredReferencesJSON(desc ocispec.Descriptor, refs []remotes.DiscoveredArtifact) {
 	type reference struct {
 		Digest   digest.Digest         `json:"digest"`
 		Manifest artifactspec.Artifact `json:"manifest"`
