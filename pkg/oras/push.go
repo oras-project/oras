@@ -49,7 +49,7 @@ func Push(ctx context.Context, resolver remotes.Resolver, ref string, provider c
 		}
 	}
 
-	if err := remotes.PushContent(ctx, pusher, desc, store, nil, wrapper); err != nil {
+	if err := remotes.PushContent(ctx, pusher, desc, store, nil, nil, wrapper); err != nil {
 		return ocispec.Descriptor{}, err
 	}
 	return desc, nil

@@ -5,7 +5,7 @@ go 1.16
 replace (
 	// WARNING! Do NOT replace these without also replacing their lines in the `require` stanza below.
 	// These `replace` stanzas are IGNORED when this is imported as a library
-	github.com/containerd/containerd => github.com/shizhMSFT/containerd v1.2.1-0.20210408082833-9fda821b6398
+	github.com/containerd/containerd => github.com/notaryproject/containerd v1.5.0-beta.4.0.20210409054504-dff6ab0d7741
 	github.com/docker/distribution => github.com/docker/distribution v0.0.0-20191216044856-a8371794149d
 	github.com/docker/docker => github.com/moby/moby v17.12.0-ce-rc1.0.20200618181300-9dc6525e6118+incompatible
 	github.com/opencontainers/artifacts => github.com/aviral26/artifacts v0.0.0-20210331072334-fac4f3a4da4e
