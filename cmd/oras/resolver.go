@@ -39,7 +39,7 @@ func newResolver(username, password string, insecure bool, plainHTTP bool, confi
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "WARNING: Error loading auth file: %v\n", err)
 	}
-	resolver, err := cli.Resolver(context.Background(), client, plainHTTP)
+	resolver, err := cli.Resolver(context.Background(), client, plainHTTP, "")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "WARNING: Error loading resolver: %v\n", err)
 		resolver = docker.NewResolver(opts)
