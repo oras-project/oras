@@ -10,7 +10,7 @@ replace (
 )
 
 require (
-	github.com/containerd/containerd v1.5.0-rc.3
+	github.com/containerd/containerd v1.5.0
 	github.com/docker/cli v20.10.6+incompatible
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker v17.12.0-ce-rc1.0.20200618181300-9dc6525e6118+incompatible
