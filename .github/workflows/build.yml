@@ -13,16 +13,8 @@ jobs:
       - name: setup go environment
         uses: actions/setup-go@v1
         with:
-          go-version: '1.16.2'
-      - name: run unit tests
-        run: make test
-      - name: run acceptance tests
-        run: |
-          export LOCAL_REGISTRY_HOSTNAME="$(hostname -I | awk '{print $1}')"
-          make acceptance
-      - name: upload coverage report
-        uses: actions/upload-artifact@master
-        with:
-          name: oras-coverage-report-${{ github.sha }}
-          path: .cover/
-        if: always()
+          go-version: '1.16.3'
+      - name: Build CLI
+        run: make build-linux
+      - name: Check version
+        run: bin/linux/amd64/oras version

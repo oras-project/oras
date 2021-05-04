@@ -7,9 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/deislabs/oras/pkg/content"
-	ctxo "github.com/deislabs/oras/pkg/context"
-	"github.com/deislabs/oras/pkg/oras"
+	"github.com/oras-project/oras-go/pkg/content"
+	ctxo "github.com/oras-project/oras-go/pkg/context"
+	"github.com/oras-project/oras-go/pkg/oras"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
