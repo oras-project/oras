@@ -238,6 +238,20 @@ Pulling artifacts involves specifying the content addressable artifact, along wi
 oras pull localhost:5000/hello-artifact:v2 -a
 ```
 
+### Using cache when pulling artifacts
+
+In order to save unnecessary network bandwidth and disk I/O oras should provides a solution to pull the artifacts into a local content-address storage (CAS) if the content does not exist, and then copy the artifact to the desired storage.
+
+The cache directory is specified by using the environment variable `ORAS_CACHE`. If not specified, cache is not used.
+
+```sh
+# Set cache root
+export ORAS_CACHE=~/.oras/cache
+
+# Pull artifacts as usual
+oras pull localhost:5000/hello:latest
+```
+
 ## ORAS Go Module
 
 While the ORAS CLI provides a great way to get started, and test registry support for [OCI Artifacts][artifacts], the primary experience enables a native experience for your artifact of choice. Using the ORAS Go Module, you can develop your own push/pull experience: `myclient push artifacts.azurecr.io/myartifact:1.0 ./mything.thang`
