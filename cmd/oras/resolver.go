@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 
-	auth "github.com/deislabs/oras/pkg/auth/docker"
+	auth "github.com/oras-project/oras-go/pkg/auth/docker"
 
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"

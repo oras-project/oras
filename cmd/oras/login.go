@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	auth "github.com/deislabs/oras/pkg/auth/docker"
+	auth "github.com/oras-project/oras-go/pkg/auth/docker"
 
 	"github.com/docker/docker/pkg/term"
 	"github.com/sirupsen/logrus"

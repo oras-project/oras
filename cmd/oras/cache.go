@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	orascontent "github.com/deislabs/oras/pkg/content"
+	orascontent "github.com/oras-project/oras-go/pkg/content"
 
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/content/local"

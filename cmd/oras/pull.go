@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/deislabs/oras/pkg/content"
-	ctxo "github.com/deislabs/oras/pkg/context"
-	"github.com/deislabs/oras/pkg/oras"
+	"github.com/oras-project/oras-go/pkg/content"
+	ctxo "github.com/oras-project/oras-go/pkg/context"
+	"github.com/oras-project/oras-go/pkg/oras"
 
 	"github.com/containerd/containerd/reference"
 	"github.com/sirupsen/logrus"

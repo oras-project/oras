@@ -4,7 +4,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/deislabs/oras)](https://goreportcard.com/report/github.com/deislabs/oras)
 [![GoDoc](https://godoc.org/github.com/deislabs/oras?status.svg)](https://godoc.org/github.com/deislabs/oras)
 
-![ORAS](./oras.png)
+![ORAS](https://github.com/oras-project/oras-www/raw/main/docs/assets/images/oras.png)
 
 [Registries are evolving as Cloud Native Artifact Stores](https://stevelasker.blog/2019/01/25/cloud-native-artifact-stores-evolve-from-container-registries/). To enable this goal, Microsoft has donated ORAS as a means to enable various client libraries with a way to push [OCI Artifacts][artifacts] to [OCI Conformant](https://github.com/opencontainers/oci-conformance) registries.
 
@@ -43,7 +43,7 @@ ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-m
   ```sh
   gofish install oras
   ==> Installing oras...
-  🐠  oras 0.11.1: installed in 65.131245ms
+  🐠  oras 0.12.0: installed in 65.131245ms
   ```
 
 - Install from the latest [release artifacts](https://github.com/deislabs/oras/releases):
@@ -51,21 +51,21 @@ ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-m
   - Linux
 
     ```sh
-    curl -LO https://github.com/deislabs/oras/releases/download/v0.11.1/oras_0.11.1_linux_amd64.tar.gz
+    curl -LO https://github.com/deislabs/oras/releases/download/v0.12.0/oras_0.12.0_linux_amd64.tar.gz
     mkdir -p oras-install/
-    tar -zxf oras_0.11.1_*.tar.gz -C oras-install/
+    tar -zxf oras_0.12.0_*.tar.gz -C oras-install/
     mv oras-install/oras /usr/local/bin/
-    rm -rf oras_0.11.1_*.tar.gz oras-install/
+    rm -rf oras_0.12.0_*.tar.gz oras-install/
     ```
 
   - macOS
 
     ```sh
-    curl -LO https://github.com/deislabs/oras/releases/download/v0.11.1/oras_0.11.1_darwin_amd64.tar.gz
+    curl -LO https://github.com/deislabs/oras/releases/download/v0.12.0/oras_0.12.0_darwin_amd64.tar.gz
     mkdir -p oras-install/
-    tar -zxf oras_0.11.1_*.tar.gz -C oras-install/
+    tar -zxf oras_0.12.0_*.tar.gz -C oras-install/
     mv oras-install/oras /usr/local/bin/
-    rm -rf oras_0.11.1_*.tar.gz oras-install/
+    rm -rf oras_0.12.0_*.tar.gz oras-install/
     ```
 
   - Windows
@@ -73,8 +73,8 @@ ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-m
     Add `%USERPROFILE%\bin\` to your `PATH` environment variable so that `oras.exe` can be found.
 
     ```sh
-    curl.exe -sLO  https://github.com/deislabs/oras/releases/download/v0.11.1/oras_0.11.1_windows_amd64.tar.gz
-    tar.exe -xvzf oras_0.11.1_windows_amd64.tar.gz
+    curl.exe -sLO  https://github.com/deislabs/oras/releases/download/v0.12.0/oras_0.12.0_windows_amd64.tar.gz
+    tar.exe -xvzf oras_0.12.0_windows_amd64.tar.gz
     mkdir -p %USERPROFILE%\bin\
     copy oras.exe %USERPROFILE%\bin\
     set PATH=%USERPROFILE%\bin\;%PATH%
@@ -85,7 +85,7 @@ ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-m
     A public Docker image containing the CLI is available on [GitHub Container Registry](https://github.com/orgs/deislabs/packages/container/package/oras):
 
     ```sh
-    docker run -it --rm -v $(pwd):/workspace ghcr.io/deislabs/oras:v0.11.1 help
+    docker run -it --rm -v $(pwd):/workspace ghcr.io/deislabs/oras:v0.12.0 help
     ```
 
     > Note: the default WORKDIR  in the image is `/workspace`.
@@ -254,64 +254,7 @@ oras pull localhost:5000/hello:latest
 
 ## ORAS Go Module
 
-While the ORAS CLI provides a great way to get started, and test registry support for [OCI Artifacts][artifacts], the primary experience enables a native experience for your artifact of choice. Using the ORAS Go Module, you can develop your own push/pull experience: `myclient push artifacts.azurecr.io/myartifact:1.0 ./mything.thang`
-
-The package `github.com/deislabs/oras/pkg/oras` can quickly be imported in other Go-based tools that
-wish to benefit from the ability to store arbitrary content in container registries.
-
-### ORAS Go Module Example
-
-[Source](examples/simple_push_pull.go)
-
-```go
-package main
-
-import (
-	"context"
-	"fmt"
-
-	"github.com/deislabs/oras/pkg/content"
-	"github.com/deislabs/oras/pkg/oras"
-
-	"github.com/containerd/containerd/remotes/docker"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-)
-
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
-
-func main() {
-	ref := "localhost:5000/oras:test"
-	fileName := "hello.txt"
-	fileContent := []byte("Hello World!\n")
-	customMediaType := "my.custom.media.type"
-
-	ctx := context.Background()
-	resolver := docker.NewResolver(docker.ResolverOptions{})
-
-	// Push file(s) w custom mediatype to registry
-	memoryStore := content.NewMemoryStore()
-	desc := memoryStore.Add(fileName, customMediaType, fileContent)
-	pushContents := []ocispec.Descriptor{desc}
-	fmt.Printf("Pushing %s to %s...\n", fileName, ref)
-	desc, err := oras.Push(ctx, resolver, ref, memoryStore, pushContents)
-	check(err)
-	fmt.Printf("Pushed to %s with digest %s\n", ref, desc.Digest)
-
-	// Pull file(s) from registry and save to disk
-	fmt.Printf("Pulling from %s and saving to %s...\n", ref, fileName)
-	fileStore := content.NewFileStore("")
-	defer fileStore.Close()
-	allowedMediaTypes := []string{customMediaType}
-	desc, _, err = oras.Pull(ctx, resolver, ref, fileStore, oras.WithAllowedMediaTypes(allowedMediaTypes))
-	check(err)
-	fmt.Printf("Pulled from %s with digest %s\n", ref, desc.Digest)
-	fmt.Printf("Try running 'cat %s'\n", fileName)
-}
-```
+See https://github.com/oras-project/oras-go
 
 ## Contributing
 

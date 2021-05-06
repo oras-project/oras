@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	auth "github.com/deislabs/oras/pkg/auth/docker"
+	auth "github.com/oras-project/oras-go/pkg/auth/docker"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"

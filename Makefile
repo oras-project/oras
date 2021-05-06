@@ -19,11 +19,7 @@ LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitTreeState=${GIT_DIRTY}
 
 .PHONY: test
 test: vendor check-encoding
-	./scripts/test.sh
-
-.PHONY: acceptance
-acceptance:
-	./scripts/acceptance.sh
+	echo "TODO: add unit tests"
 
 .PHONY: covhtml
 covhtml:
