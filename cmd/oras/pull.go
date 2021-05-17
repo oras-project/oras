@@ -147,9 +147,12 @@ func appendPullManifestConfigHandlers(pullOpts []oras.PullOpt, manifestConfigRef
 	marker := images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) (children []ocispec.Descriptor, err error) {
 		if desc.MediaType == mediaType {
 			pullOnce.Do(func() {
-				annotations := desc.Annotations
-				if annotations == nil {
-					annotations = make(map[string]string)
+				if desc.Annotations != nil {
+					delete(desc.Annotations, ocispec.AnnotationTitle)
+				}
+				annotations := make(map[string]string)
+				for k, v := range desc.Annotations {
+					annotations[k] = v
 				}
 				annotations[ocispec.AnnotationTitle] = filename
 				desc.Annotations = annotations
