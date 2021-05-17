@@ -6,6 +6,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/oras-project/oras-go/pkg/artifact"
 	"github.com/oras-project/oras-go/pkg/content"
 	ctxo "github.com/oras-project/oras-go/pkg/context"
 	"github.com/oras-project/oras-go/pkg/oras"
@@ -140,7 +141,7 @@ func runPull(opts pullOptions) error {
 }
 
 func appendPullManifestConfigHandlers(pullOpts []oras.PullOpt, manifestConfigRef string) []oras.PullOpt {
-	filename, mediaType := parseFileRef(manifestConfigRef, ocispec.MediaTypeImageConfig)
+	filename, mediaType := parseFileRef(manifestConfigRef, artifact.UnknownConfigMediaType)
 
 	var pullOnce sync.Once
 	marker := images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) (children []ocispec.Descriptor, err error) {
