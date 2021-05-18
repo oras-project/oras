@@ -13,8 +13,8 @@ ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-m
 ## Table of Contents
 
 - [ORAS Background](#oras-background)
-- [Supported Registries](./implementors.md#registries-supporting-artifacts)
-- [Artifacts Implementing ORAS](./implementors.md#artifact-types-using-oras)
+- [Supported Registries](https://oras.land/implementors/#registries-supporting-artifacts)
+- [Artifacts Implementing ORAS](https://oras.land/implementors/#artifact-types-using-oras)
 - [Getting Started](#getting-started)
 - [ORAS CLI](#oras-cli)
 - [ORAS Go Module](#oras-go-module)
@@ -30,7 +30,7 @@ ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-m
 
 ## Getting Started
 
-[Select from one the registries that support OCI Artifacts](./implementors.md). Each registry identifies how they support authentication.
+[Select from one the registries that support OCI Artifacts](https://oras.land/implementors/). Each registry identifies how they support authentication.
 
 ## ORAS CLI
 
@@ -104,7 +104,7 @@ Use the `-c`/`--config` option to specify an alternate location.
 oras pull -u username -p password myregistry.io/myimage:latest
 ```
 
-See [Supported Registries](./implementors.md) for registry specific authentication usage.
+See [Supported Registries](https://oras.land/implementors/) for registry specific authentication usage.
 
 ### Pushing Artifacts with Single Files
 
