@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/oras-project/oras-go/pkg/artifact"
 	"github.com/oras-project/oras-go/pkg/content"
 	ctxo "github.com/oras-project/oras-go/pkg/context"
 	"github.com/oras-project/oras-go/pkg/oras"
@@ -110,7 +111,7 @@ func runPush(opts pushOptions) error {
 		}
 	}
 	if opts.manifestConfigRef != "" {
-		filename, mediaType := parseFileRef(opts.manifestConfigRef, ocispec.MediaTypeImageConfig)
+		filename, mediaType := parseFileRef(opts.manifestConfigRef, artifact.UnknownConfigMediaType)
 		file, err := store.Add(annotationConfig, mediaType, filename)
 		if err != nil {
 			return err
