@@ -4,12 +4,16 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 
+	"github.com/oras-project/oras-go/pkg/artifact"
 	"github.com/oras-project/oras-go/pkg/content"
 	ctxo "github.com/oras-project/oras-go/pkg/context"
 	"github.com/oras-project/oras-go/pkg/oras"
 
+	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/reference"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -21,6 +25,7 @@ type pullOptions struct {
 	keepOldFiles       bool
 	pathTraversal      bool
 	output             string
+	manifestConfigRef  string
 	verbose            bool
 	cacheRoot          string
 
@@ -73,6 +78,7 @@ Example - Pull files with local cache:
 	cmd.Flags().BoolVarP(&opts.keepOldFiles, "keep-old-files", "k", false, "do not replace existing files when pulling, treat them as errors")
 	cmd.Flags().BoolVarP(&opts.pathTraversal, "allow-path-traversal", "T", false, "allow storing files out of the output directory")
 	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "output directory")
+	cmd.Flags().StringVarP(&opts.manifestConfigRef, "manifest-config", "", "", "output manifest config file")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
 
 	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
@@ -114,6 +120,9 @@ func runPull(opts pullOptions) error {
 		}
 		pullOpts = append(pullOpts, oras.WithContentProvideIngester(cachedStore))
 	}
+	if opts.manifestConfigRef != "" {
+		pullOpts = appendPullManifestConfigHandlers(pullOpts, opts.manifestConfigRef)
+	}
 
 	desc, artifacts, err := oras.Pull(ctx, resolver, opts.targetRef, store, pullOpts...)
 	if err != nil {
@@ -129,4 +138,41 @@ func runPull(opts pullOptions) error {
 	fmt.Println("Digest:", desc.Digest)
 
 	return nil
+}
+
+func appendPullManifestConfigHandlers(pullOpts []oras.PullOpt, manifestConfigRef string) []oras.PullOpt {
+	filename, mediaType := parseFileRef(manifestConfigRef, artifact.UnknownConfigMediaType)
+
+	var pullOnce sync.Once
+	marker := images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) (children []ocispec.Descriptor, err error) {
+		if desc.MediaType == mediaType {
+			pullOnce.Do(func() {
+				if desc.Annotations != nil {
+					delete(desc.Annotations, ocispec.AnnotationTitle)
+				}
+				annotations := make(map[string]string)
+				for k, v := range desc.Annotations {
+					annotations[k] = v
+				}
+				annotations[ocispec.AnnotationTitle] = filename
+				desc.Annotations = annotations
+				children = []ocispec.Descriptor{desc}
+			})
+		}
+		return
+	})
+	stopper := images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		if desc.MediaType == mediaType {
+			if name, _ := content.ResolveName(desc); name == "" {
+				return nil, images.ErrStopHandler
+			}
+		}
+		return nil, nil
+	})
+
+	return append(pullOpts,
+		oras.WithPullEmptyNameAllowed(),
+		oras.WithAllowedMediaType(mediaType),
+		oras.WithPullBaseHandler(marker, stopper),
+	)
 }
