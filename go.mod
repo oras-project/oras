@@ -11,7 +11,7 @@ replace (
 
 require (
 	github.com/containerd/containerd v1.5.0
-	github.com/docker/docker v17.12.0-ce-rc1.0.20200618181300-9dc6525e6118+incompatible
+	github.com/docker/docker v17.12.1-ce+incompatible
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/oras-project/oras-go v0.1.0
