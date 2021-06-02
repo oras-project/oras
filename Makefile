@@ -1,4 +1,4 @@
-PROJECT_PKG = github.com/deislabs/oras
+PROJECT_PKG = github.com/oras-project/oras
 CLI_EXE     = oras
 CLI_PKG     = $(PROJECT_PKG)/cmd/oras
 GIT_COMMIT  = $(shell git rev-parse HEAD)
@@ -74,7 +74,7 @@ fetch-dist:
 	mkdir -p _dist
 	cd _dist && \
 	for obj in ${TARGET_OBJS} ; do \
-		curl -sSL -o oras_${VERSION}_$${obj} https://github.com/deislabs/oras/releases/download/v${VERSION}/oras_${VERSION}_$${obj} ; \
+		curl -sSL -o oras_${VERSION}_$${obj} https://github.com/oras-project/oras/releases/download/v${VERSION}/oras_${VERSION}_$${obj} ; \
 	done
 
 .PHONY: sign

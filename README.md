@@ -1,8 +1,8 @@
 # OCI Registry As Storage
 
-[![GitHub Actions status](https://github.com/deislabs/oras/workflows/build/badge.svg)](https://github.com/deislabs/oras/actions?query=workflow%3Abuild)
-[![Go Report Card](https://goreportcard.com/badge/github.com/deislabs/oras)](https://goreportcard.com/report/github.com/deislabs/oras)
-[![GoDoc](https://godoc.org/github.com/deislabs/oras?status.svg)](https://godoc.org/github.com/deislabs/oras)
+[![GitHub Actions status](https://github.com/oras-project/oras/workflows/build/badge.svg)](https://github.com/oras-project/oras/actions?query=workflow%3Abuild)
+[![Go Report Card](https://goreportcard.com/badge/github.com/oras-project/oras)](https://goreportcard.com/report/github.com/oras-project/oras)
+[![GoDoc](https://godoc.org/github.com/oras-project/oras?status.svg)](https://godoc.org/github.com/oras-project/oras)
 
 ![ORAS](https://github.com/oras-project/oras-www/raw/main/docs/assets/images/oras.png)
 
@@ -46,12 +46,12 @@ ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-m
   🐠  oras 0.12.0: installed in 65.131245ms
   ```
 
-- Install from the latest [release artifacts](https://github.com/deislabs/oras/releases):
+- Install from the latest [release artifacts](https://github.com/oras-project/oras/releases):
 
   - Linux
 
     ```sh
-    curl -LO https://github.com/deislabs/oras/releases/download/v0.12.0/oras_0.12.0_linux_amd64.tar.gz
+    curl -LO https://github.com/oras-project/oras/releases/download/v0.12.0/oras_0.12.0_linux_amd64.tar.gz
     mkdir -p oras-install/
     tar -zxf oras_0.12.0_*.tar.gz -C oras-install/
     mv oras-install/oras /usr/local/bin/
@@ -61,7 +61,7 @@ ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-m
   - macOS
 
     ```sh
-    curl -LO https://github.com/deislabs/oras/releases/download/v0.12.0/oras_0.12.0_darwin_amd64.tar.gz
+    curl -LO https://github.com/oras-project/oras/releases/download/v0.12.0/oras_0.12.0_darwin_amd64.tar.gz
     mkdir -p oras-install/
     tar -zxf oras_0.12.0_*.tar.gz -C oras-install/
     mv oras-install/oras /usr/local/bin/
@@ -73,7 +73,7 @@ ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-m
     Add `%USERPROFILE%\bin\` to your `PATH` environment variable so that `oras.exe` can be found.
 
     ```sh
-    curl.exe -sLO  https://github.com/deislabs/oras/releases/download/v0.12.0/oras_0.12.0_windows_amd64.tar.gz
+    curl.exe -sLO  https://github.com/oras-project/oras/releases/download/v0.12.0/oras_0.12.0_windows_amd64.tar.gz
     tar.exe -xvzf oras_0.12.0_windows_amd64.tar.gz
     mkdir -p %USERPROFILE%\bin\
     copy oras.exe %USERPROFILE%\bin\
@@ -82,10 +82,10 @@ ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-m
 
   - Docker Image
 
-    A public Docker image containing the CLI is available on [GitHub Container Registry](https://github.com/orgs/deislabs/packages/container/package/oras):
+    A public Docker image containing the CLI is available on [GitHub Container Registry](https://github.com/orgs/oras-project/packages/container/package/oras):
 
     ```sh
-    docker run -it --rm -v $(pwd):/workspace ghcr.io/deislabs/oras:v0.12.0 help
+    docker run -it --rm -v $(pwd):/workspace ghcr.io/oras-project/oras:v0.12.0 help
     ```
 
     > Note: the default WORKDIR  in the image is `/workspace`.
@@ -232,7 +232,7 @@ See [OCI Artifacts][artifacts] for more details.
 ### Pulling Artifacts
 
 Pulling artifacts involves specifying the content addressable artifact, along with the type of artifact.
-> See: [Issue 130](https://github.com/deislabs/oras/issues/130) for eliminating `-a` and `--media-type`
+> See: [Issue 130](https://github.com/oras-project/oras/issues/130) for eliminating `-a` and `--media-type`
 
 ```sh
 oras pull localhost:5000/hello-artifact:v2 -a
