@@ -3,10 +3,9 @@ package main
 import (
 	"context"
 
-	auth "github.com/oras-project/oras-go/pkg/auth/docker"
-
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	auth "oras.land/oras-go/pkg/auth/docker"
 )
 
 type logoutOptions struct {

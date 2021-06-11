@@ -1,4 +1,4 @@
-FROM docker.io/library/golang:1.16.3-alpine as builder
+FROM docker.io/library/golang:1.16.5-alpine as builder
 RUN apk add git make
 ENV ORASPKG /oras
 ADD . ${ORASPKG}

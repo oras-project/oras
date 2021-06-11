@@ -7,14 +7,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/oras-project/oras-go/pkg/artifact"
-	"github.com/oras-project/oras-go/pkg/content"
-	ctxo "github.com/oras-project/oras-go/pkg/context"
-	"github.com/oras-project/oras-go/pkg/oras"
-
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"oras.land/oras-go/pkg/artifact"
+	"oras.land/oras-go/pkg/content"
+	ctxo "oras.land/oras-go/pkg/context"
+	"oras.land/oras-go/pkg/oras"
 )
 
 const (

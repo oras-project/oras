@@ -5,9 +5,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/oras-project/oras/internal/version"
-
 	"github.com/spf13/cobra"
+
+	"oras.land/oras/internal/version"
 )
 
 func versionCmd() *cobra.Command {

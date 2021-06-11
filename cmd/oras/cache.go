@@ -3,14 +3,13 @@ package main
 import (
 	"context"
 
-	orascontent "github.com/oras-project/oras-go/pkg/content"
-
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/content/local"
 	"github.com/containerd/containerd/errdefs"
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
+	orascontent "oras.land/oras-go/pkg/content"
 )
 
 type cachedStore struct {

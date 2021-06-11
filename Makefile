@@ -1,4 +1,4 @@
-PROJECT_PKG = github.com/oras-project/oras
+PROJECT_PKG = oras.land/oras
 CLI_EXE     = oras
 CLI_PKG     = $(PROJECT_PKG)/cmd/oras
 GIT_COMMIT  = $(shell git rev-parse HEAD)
