@@ -9,11 +9,10 @@ import (
 	"os"
 	"strings"
 
-	auth "github.com/oras-project/oras-go/pkg/auth/docker"
-
 	"github.com/docker/docker/pkg/term"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	auth "oras.land/oras-go/pkg/auth/docker"
 )
 
 type loginOptions struct {

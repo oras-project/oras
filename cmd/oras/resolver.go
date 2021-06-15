@@ -7,10 +7,9 @@ import (
 	"net/http"
 	"os"
 
-	auth "github.com/oras-project/oras-go/pkg/auth/docker"
-
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
+	auth "oras.land/oras-go/pkg/auth/docker"
 )
 
 func newResolver(username, password string, insecure bool, plainHTTP bool, configs ...string) remotes.Resolver {
