@@ -19,7 +19,7 @@ ORAS is both a [CLI](#oras-cli) for initial testing and a [Go Module](#oras-go-m
 - [ORAS CLI](#oras-cli)
 - [ORAS Go Module](#oras-go-module)
 - [Contributing](#contributing)
-- [Maintainers](./MAINTAINERS)
+- [Maintainers](./OWNERS)
 
 ## ORAS Background
 
