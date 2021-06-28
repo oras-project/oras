@@ -91,10 +91,6 @@ func pack(provider content.Provider, descriptors []ocispec.Descriptor, opts *pus
 	var content interface{}
 	if opts.artifact != nil {
 		artifact := *opts.artifact
-		if config != nil {
-			artifactConfig := convertV1DescriptorToV2(*config)
-			artifact.Config = &artifactConfig
-		}
 		artifact.Blobs = convertV1DescriptorsToV2(descriptors)
 		artifact.Annotations = opts.manifestAnnotations
 		mediaType = artifact.MediaType

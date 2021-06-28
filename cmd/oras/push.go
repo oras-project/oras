@@ -31,7 +31,7 @@ type pushOptions struct {
 	manifestAnnotations    string
 	manifestExport         string
 	artifactType           string
-	artifactRefs           []string
+	artifactRef            string
 	pathValidationDisabled bool
 	verbose                bool
 	dryRun                 bool
@@ -81,7 +81,7 @@ Example - Push file to the HTTP registry:
 	cmd.Flags().StringVarP(&opts.manifestAnnotations, "manifest-annotations", "", "", "manifest annotation file")
 	cmd.Flags().StringVarP(&opts.manifestExport, "export-manifest", "", "", "export the pushed manifest")
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
-	cmd.Flags().StringArrayVarP(&opts.artifactRefs, "artifact-reference", "", nil, "artifact reference")
+	cmd.Flags().StringVarP(&opts.artifactRef, "artifact-reference", "", "", "artifact reference")
 	cmd.Flags().BoolVarP(&opts.pathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
 	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
@@ -118,11 +118,11 @@ func runPush(opts pushOptions) error {
 		if iresolver.IsDummy(resolver) {
 			refResolver = newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
 		}
-		manifests, err := loadReferences(ctx, refResolver, opts.artifactRefs)
+		_, manifest, err := refResolver.Resolve(ctx, opts.artifactRef)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "failed to resolve ref %q", opts.artifactRef)
 		}
-		pushOpts = append(pushOpts, oras.AsArtifact(opts.artifactType, manifests...))
+		pushOpts = append(pushOpts, oras.AsArtifact(opts.artifactType, manifest))
 	}
 
 	// load files
@@ -224,16 +224,4 @@ func loadFiles(store *content.FileStore, annotations map[string]map[string]strin
 		files = append(files, file)
 	}
 	return files, nil
-}
-
-func loadReferences(ctx context.Context, resolver remotes.Resolver, refs []string) ([]ocispec.Descriptor, error) {
-	descs := make([]ocispec.Descriptor, 0, len(refs))
-	for _, ref := range refs {
-		_, desc, err := resolver.Resolve(ctx, ref)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to resolve ref %q", ref)
-		}
-		descs = append(descs, desc)
-	}
-	return descs, nil
 }

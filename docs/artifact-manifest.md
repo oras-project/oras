@@ -1,6 +1,6 @@
 # OCI Artifact Manifest (Experimental)
 
-The prototype-2 branch of ORAS implements [oci.artifact.manifest][oci-artifact-manifest], supporting references between artifact types. This capability enables a graph of objects to be established, including signatures, Software Bill of Materials (SBoMs) and other artifact types.
+The `prototype-3` branch of ORAS implements [oci.artifact.manifest][oci-artifact-manifest], supporting references between artifact types. This capability enables a graph of objects to be established, including signatures, Software Bill of Materials (SBoMs) and other artifact types.
 
 ![](./media/net-monitor-graph.svg)
 
@@ -21,7 +21,7 @@ This document covers:
   ```bash
   git clone https://github.com/deislabs/oras.git
   cd oras
-  git checkout prototype-2
+  git checkout prototype-3
   make build
   ```
 - Copy `oras` to a central location for easy reference
@@ -58,11 +58,12 @@ See the [developers guide](../BUILDING.md) for more details on building `oras`
 
 ## Running Distribution with OCI Artifact Manifest Support
 
-Run a local instance of distribution, with `oci.artifact.manifest` support. The image is built from: [notaryproject/distribution/tree/prototype-2](https://github.com/notaryproject/distribution/tree/prototype-2)
+Run a local instance of distribution, with `oci.artifact.manifest` support. The image can be built from: [aviral26/distribution#prototype-3](https://github.com/aviral26/distribution/tree/prototype-3)
 > Note: this is a temporary location as oci.artifact.manifest is being developed under the [Notary v2][notary-v2-project] project.
 
 ```bash
-docker run -it -p 5000:5000 --name oci-artifact-registry notaryv2/registry:nv2-prototype-2
+docker build -t notaryv2/registry:nv2-prototype-3 https://github.com/aviral26/distribution.git#prototype-3
+docker run -it -p 5000:5000 --name oci-artifact-registry notaryv2/registry:nv2-prototype-3
 ```
 
 ## Pushing Artifact References
@@ -92,7 +93,7 @@ For example, push a simulated Software Bill of Materials (SBoM) artifact `sbom.j
   ```shell
   Uploading 204e7c423c89 sbom.json
   Pushed localhost:5000/hello-world
-  Digest: sha256:f4232599e2d5246ec1f4dc419bacd5510a02c2f0e3c98b800f38c8cbbd61550d
+  Digest: sha256:419eb76df0b2ff3ce10e66b45454017500ed9bf0bf1b11d244c9a1319b666e7e
   ```
 
 ## Discovering Artifact References
@@ -109,10 +110,10 @@ To find the list of artifacts that reference a target artifact (such as a contai
     "digest": "sha256:1b26826f602946860c279fce658f31050cff2c596583af237d971f4629b57792",
     "references": [
       {
-        "digest": "sha256:fa31146981940964ced259bd2edd36c10277207e3be4d161bdb96e5e418fc2e0",
+        "digest": "sha256:419eb76df0b2ff3ce10e66b45454017500ed9bf0bf1b11d244c9a1319b666e7e",
         "manifest": {
-          "schemaVersion": 2,
-          "mediaType": "application/vnd.oci.artifact.manifest.v1+json",
+          "schemaVersion": 3,
+          "mediaType": "application/vnd.oci.artifact.manifest.v1-rc1+json",
           "artifactType": "application/x.example.sbom.v0",
           "blobs": [
             {
@@ -121,13 +122,11 @@ To find the list of artifacts that reference a target artifact (such as a contai
               "size": 84
             }
           ],
-          "manifests": [
-            {
-              "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-              "digest": "sha256:1b26826f602946860c279fce658f31050cff2c596583af237d971f4629b57792",
-              "size": 525
-            }
-          ]
+          "subjectManifest": {
+            "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+            "digest": "sha256:1b26826f602946860c279fce658f31050cff2c596583af237d971f4629b57792",
+            "size": 525
+          }
         }
       }
     ]
@@ -162,25 +161,23 @@ To find the list of artifacts that reference a target artifact (such as a contai
     "digest": "sha256:1b26826f602946860c279fce658f31050cff2c596583af237d971f4629b57792",
     "references": [
       {
-        "digest": "sha256:c5fbdddecc83f1af8743983ce114452b856b77e92a5c7f4075c0110ea1e35e38",
+        "digest": "sha256:ddb1133f6b1590ee60e6cc4d2128213cae13a803d82e86312899de4f8ae722f4",
         "manifest": {
-          "schemaVersion": 2,
-          "mediaType": "application/vnd.oci.artifact.manifest.v1+json",
+          "schemaVersion": 3,
+          "mediaType": "application/vnd.oci.artifact.manifest.v1-rc1+json",
           "artifactType": "application/x.example.signature.v0",
           "blobs": [
             {
               "mediaType": "application/tar",
-              "digest": "sha256:01aafb7acd80d5d25c7619b2d7ddd4912434f58dec3e479b822197fd8a385552",
-              "size": 91
+              "digest": "sha256:9612e2644edc473901f615b4914d6cc0f3035324021e507da6f2c061baadfdba",
+              "size": 89
             }
           ],
-          "manifests": [
-            {
-              "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-              "digest": "sha256:1b26826f602946860c279fce658f31050cff2c596583af237d971f4629b57792",
-              "size": 525
-            }
-          ]
+          "subjectManifest": {
+            "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+            "digest": "sha256:1b26826f602946860c279fce658f31050cff2c596583af237d971f4629b57792",
+            "size": 525
+          }
         }
       }
     ]
@@ -205,9 +202,9 @@ Pulling an artifact is the same as the regular `oras pull`. This example
 
 - Generates output:
   ```
-  Downloaded 01aafb7acd80 signature.json
-  Pulled localhost:5000/hello-world@sha256:c5fbdddecc83f1af8743983ce114452b856b77e92a5c7f4075c0110ea1e35e38
-  Digest: sha256:c5fbdddecc83f1af8743983ce114452b856b77e92a5c7f4075c0110ea1e35e38
+  Downloaded 9612e2644edc signature.json
+  Pulled localhost:5000/hello-world@sha256:ddb1133f6b1590ee60e6cc4d2128213cae13a803d82e86312899de4f8ae722f4
+  Digest: sha256:ddb1133f6b1590ee60e6cc4d2128213cae13a803d82e86312899de4f8ae722f4
   ```
 
 For more information see the [oci.artifact.manifest][oci-artifact-manifest] overview for various scenarios and usage.

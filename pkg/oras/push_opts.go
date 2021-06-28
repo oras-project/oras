@@ -162,15 +162,15 @@ func pushStatusTrack(writer io.Writer) images.Handler {
 }
 
 // AsArtifact set oras to push contents as an artifact
-func AsArtifact(artifactType string, manifests ...ocispec.Descriptor) PushOpt {
+func AsArtifact(artifactType string, manifest ocispec.Descriptor) PushOpt {
 	return func(o *pushOpts) error {
 		o.artifact = &artifactspec.Artifact{
 			Versioned: artifactspecs.Versioned{
-				SchemaVersion: 2, // historical value. does not pertain to OCI or docker version
+				SchemaVersion: 3,
 			},
-			MediaType:    artifactspec.MediaTypeArtifactManifest,
-			ArtifactType: artifactType,
-			Manifests:    convertV1DescriptorsToV2(manifests),
+			MediaType:       artifactspec.MediaTypeArtifactManifest,
+			ArtifactType:    artifactType,
+			SubjectManifest: convertV1DescriptorToV2(manifest),
 		}
 		return nil
 	}
