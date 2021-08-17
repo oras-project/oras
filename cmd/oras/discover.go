@@ -117,7 +117,7 @@ func getAllReferences(ctx context.Context, resolver remotes.Resolver, targetRef 
 		branch := treeNode.AddBranch(fmt.Sprintf("[%s]%s", r.Artifact.ArtifactType, r.Digest))
 		if queryGraph {
 			nestedRef := fmt.Sprintf("%s@%s", spec.Locator, r.Digest)
-			_, refs1, err := getAllReferences(ctx, resolver, nestedRef, artifactType, branch, queryGraph)
+			_, refs1, err := getAllReferences(ctx, resolver, nestedRef, "", branch, queryGraph)
 			if err != nil {
 				return ocispec.Descriptor{}, nil, err
 			}
