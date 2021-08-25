@@ -17,12 +17,13 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/xlab/treeprint"
 )
 
 type discoverOptions struct {
 	targetRef    string
 	artifactType string
-	outputJSON   bool
+	outputType   string
 	verbose      bool
 
 	debug     bool
@@ -51,7 +52,7 @@ Example - Discover artifacts of type "" linked with the specified reference:
 	}
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
-	cmd.Flags().BoolVarP(&opts.outputJSON, "output-json", "", false, "output in JSON format")
+	cmd.Flags().StringVarP(&opts.outputType, "output", "o", "table", fmt.Sprintf("Format in which to display references (%s, %s, or %s). tree format will show all references including nested", "table", "json", "tree"))
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
 
 	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
@@ -73,27 +74,59 @@ func runDiscover(opts discoverOptions) error {
 
 	resolver := newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
 
-	desc, refs, err := oras.Discover(ctx, resolver, opts.targetRef, opts.artifactType)
+	rootNode := treeprint.NewWithRoot(opts.targetRef)
+	desc, refs, err := getAllReferences(ctx, resolver, opts.targetRef, opts.artifactType, rootNode, opts.outputType == "tree")
 	if err != nil {
-		if err == reference.ErrObjectRequired {
-			return fmt.Errorf("image reference format is invalid. Please specify <name:tag|name@digest>")
-		}
 		return err
 	}
 
-	if opts.outputJSON {
-		printDiscoveredReferencesJSON(desc, refs)
-	} else {
-		fmt.Println("Discovered", len(refs), "artifacts referencing", opts.targetRef)
+	switch opts.outputType {
+	case "tree":
+		fmt.Println(rootNode.String())
+	case "json":
+		printDiscoveredReferencesJSON(desc, *refs)
+	default:
+		fmt.Println("Discovered", len(*refs), "artifacts referencing", opts.targetRef)
 		fmt.Println("Digest:", desc.Digest)
 
-		if len(refs) != 0 {
+		if len(*refs) != 0 {
 			fmt.Println()
-			printDiscoveredReferencesTable(refs, opts.verbose)
+			printDiscoveredReferencesTable(*refs, opts.verbose)
 		}
 	}
 
 	return nil
+}
+
+func getAllReferences(ctx context.Context, resolver remotes.Resolver, targetRef string, artifactType string, treeNode treeprint.Tree, queryGraph bool) (ocispec.Descriptor, *[]remotes.DiscoveredArtifact, error) {
+	var results []remotes.DiscoveredArtifact
+	spec, err := reference.Parse(targetRef)
+	if err != nil {
+		return ocispec.Descriptor{}, nil, err
+	}
+
+	desc, refs, err := oras.Discover(ctx, resolver, targetRef, artifactType)
+	if err != nil {
+		if err == reference.ErrObjectRequired {
+			return ocispec.Descriptor{}, nil, fmt.Errorf("image reference format is invalid. Please specify <name:tag|name@digest>")
+		}
+		return ocispec.Descriptor{}, nil, err
+	}
+
+	for _, r := range refs {
+		branch := treeNode.AddBranch(fmt.Sprintf("[%s]%s", r.Artifact.ArtifactType, r.Digest))
+		if queryGraph {
+			nestedRef := fmt.Sprintf("%s@%s", spec.Locator, r.Digest)
+			_, refs1, err := getAllReferences(ctx, resolver, nestedRef, "", branch, queryGraph)
+			if err != nil {
+				return ocispec.Descriptor{}, nil, err
+			}
+			results = append(results, *refs1...)
+		}
+	}
+	results = append(results, refs...)
+
+	return desc, &results, nil
 }
 
 func printDiscoveredReferencesTable(refs []remotes.DiscoveredArtifact, verbose bool) {
