@@ -1,0 +1,59 @@
+name: Release oras-project/registry container image
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+-alpha"
+
+jobs:
+  publish:
+    name: Build and publish container image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      REGISTRY: ghcr.io
+      REPOSITORY: ${{ format('{0}/registry', github.repository_owner) }}
+      DOCKER_BUILDTAGS: "include_oss include_gcs"
+      CGO_ENABLED: 1
+      GO111MODULE: "auto"
+      GOPATH: ${{ github.workspace }}
+      GOOS: linux
+      COMMIT_RANGE: ${{ github.event_name == 'pull_request' && format('{0}..{1}',github.event.pull_request.base.sha, github.event.pull_request.head.sha) || format('{0}..{1}', github.event.before, github.event.after) }}
+
+    steps:
+      - name: Get git tag
+        id: get_git_tag
+        run: echo ::set-output name=git_tag::${GITHUB_REF#refs/tags/}
+
+      - name: Check out source code
+        if: ${{ success() }}
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ steps.get_git_tag.outputs.git_tag }}
+
+      - name: Set docker image tag
+        env:
+          GIT_TAG: ${{ steps.get_git_tag.outputs.git_tag }}
+        id: get_image_tag
+        run: echo ::set-output name=docker_tag::${GIT_TAG}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        if: ${{ success() }}
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:${{ steps.get_image_tag.outputs.docker_tag }}
+            ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:latest
