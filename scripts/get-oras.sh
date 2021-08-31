@@ -2,14 +2,17 @@
 
 # This script find the release by tag, downloads it to the user's home directory
 # extracts the binary to a folder in the user's home directory
-# then tries to link that binary to /usr/local/bin, if it fails to do that
-# it will try to link to $GOPATH/bin instead
+# Then it creates an install-oras.sh file that you can call be . to alias the oras binary
+# To put it all together you can execute it in one line as: 
+# get-oras.sh;. install-oras.sh
+# or if you are installing from curl: 
+# curl $host/get-oras.sh | sh;. install-oras.sh
 
 ORAS_DOWNLOAD_LINK="$1"
 
 # Logging
 log() {
-    echo -e "[$(date --rfc-3339=seconds)]: $*"
+    echo "[$(date --rfc-3339=seconds)]: $*"
 }
 
 failure() {
@@ -53,34 +56,32 @@ ORAS_RELEASE_DIR=${ORAS_RELEASE_DIR:-"$HOME/oras-releases/$TAG"}
 ORAS_INSTALL_DIR=${ORAS_INSTALL_DIR:-"/usr/local/bin"}
 ORAS_FILE_NAME=${ORAS_FILE_NAME:-"oras"}
 ORAS_RELEASE_LOCATION=${ORAS_RELEASE_LOCATION:-"$ORAS_RELEASE_DIR/$ORAS_FILE_NAME"}
+ORAS_INSTALLER_NAME=${ORAS_INSTALLER_NAME:-'install-oras.sh'}
 
 callAPI() {
     local auth=$1
     local url=$2
-    notice "calling api: $url"
 
-    # Do we have curl? 
     if [ -z $(hash | grep curl=) ]; then
         curl $auth -s $url
     else
-        notice "missing `curl`, installing"
-        apt install curl
-        callAPI $1 $2
+        failure "missing `curl`, install curl and wget"
+        exit 1
     fi
 }
 
 downloadFile() {
     local url=$1
     local output=$2
-    notice "downloading file: $url, writing to: $output"
+    notice "Downloading file: $url"
+    notice "Writing to file: $output"
 
     # Do we have wget?
     if [ -z $(hash | grep wget=) ]; then
         wget --no-verbose --https-only --wait=15 --limit-rate=500k $url -O $output
     else
-        notice "missing `wget`, installing"
-        apt install wget
-        downloadFile $1 $2
+        failure "missing `wget`, install wget (and curl)"
+        exit 1
     fi
 }
 
@@ -89,32 +90,27 @@ getReleaseDownloadLink() {
     local tag=$2
     local os=$3
     local arch=$4
-    local releases=$(callAPI $BASIC_AUTH https://api.github.com/repos/$repo/releases/tags/$tag | grep -B 3 -E '"name":.*gz"')
-
-    # Notes:
-    # Architectures and Assets will alternate between field and value, so match the name you're looking for
-    # then get the asset id from the assets array
-    local architectures=$(echo "$releases" | grep -E '"name": "(.*)"')
-    local assets=$(echo "$releases" | grep -E '"id":(.*)')
-
-    for i in "${!architectures[@]}"; do
-        if [ "${architectures[$i]}" = *$os* && "${architectures[$i]}" = *$arch* ]; then
-            if [ "${assets[i]}" =~ ([0-9]+) ]; then
-                local assetid="${BASH_REMATCH[0]}"
-                log "Asset id found: $assetid"
-            fi
-        fi
-    done
+    local release=$os"_"$arch
+    local search="\"name\": \"(.*)$release.tar.gz\""
+    local assetid=$(callAPI $BASIC_AUTH https://api.github.com/repos/$repo/releases/tags/$tag | grep -C 2 -E "\"name\": \"(.*)$release.tar.gz\"" | awk -F '"id": ' '{print $2}' | awk -F ',' '{print $1}')
 
     # If we couldn't find anything then return 1 to exit the script
     if [ -z $assetid ]; then
-        failure "Could not find release asset for $os_$arch"
+        failure "Could not find release asset for $release"
         return 1
     fi
 
-    local downloadurl=($(callAPI $BASIC_AUTH "https://api.github.com/repos/$repo/releases/assets/$assetid" | grep -E '"browser_download_url": "(.*)"'))
+    ORAS_DOWNLOAD_LINK=$(callAPI $BASIC_AUTH "https://api.github.com/repos/$repo/releases/assets/$assetid" | grep -E '"browser_download_url": "(.*)"' | awk -F ' ' '{print $2}' | awk -F '"' '{print $2}' | awk -F '"' '{print $1}')
+}
 
-    ORAS_DOWNLOAD_LINK=$(echo "${downloadurl[1]}" | awk -F '"' '{print $2}')
+# Create an installer so that you can do `./get-oras | sh & . ./install-oras.sh`
+createInstaller() {
+cat <<EOF > $ORAS_INSTALLER_NAME
+#!/bin/sh
+
+alias oras="$ORAS_RELEASE_LOCATION"
+oras
+EOF
 }
 
 MAIN_EXIT_CODE=0
@@ -128,21 +124,15 @@ main() {
   notice "This will take a moment to begin"
   downloadFile $ORAS_DOWNLOAD_LINK $ARCHIVE_NAME
 
-  log "Extracting to, $ORAS_RELEASE_DIR"
+  log "Extracting to: $ORAS_RELEASE_DIR"
   mkdir -p $ORAS_RELEASE_DIR
   tar -xvzf $ARCHIVE_NAME -C $ORAS_RELEASE_DIR
 
-  log "Linking, $ORAS_RELEASE_LOCATION to $ORAS_INSTALL_DIR"
-  ln -s $ORAS_RELEASE_LOCATION $ORAS_INSTALL_DIR
+  log "Creating installer for: $ORAS_RELEASE_DIR -> $ORAS_INSTALLER_NAME"
+  createInstaller
+  chmod +x $ORAS_INSTALLER_NAME
 
-  # Check if we were able to install oras
-  if [ -z $(ls $ORAS_INSTALL_DIR/$TAG) ]; then
-    MAIN_EXIT_CODE=1
-    failure "Failed to link oras to $ORAS_INSTALL_DIR"
-    
-  fi
-
-  notice "If you've experienced any issues with this script, please attach $LOGFILE in your github issue."
+  notice 'To complete installation execute: `. install-oras.sh`'
 }
 
 main
