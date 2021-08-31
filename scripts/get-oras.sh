@@ -1,12 +1,12 @@
 #!/bin/sh
 
-# This script find the release by tag, downloads it to the user's home directory
+# This script finds the release by tag, downloads it to the user's home directory
 # extracts the binary to a folder in the user's home directory
 # Then it creates an install-oras.sh file that you can call be . to alias the oras binary
 # To put it all together you can execute it in one line as: 
-# get-oras.sh;. install-oras.sh
+# `get-oras.sh;. install-oras.sh` or `REPO="" TAG="" get-oras.sh;. install-oras.sh`
 # or if you are installing from curl: 
-# curl $host/get-oras.sh | sh;. install-oras.sh
+# `curl $host/get-oras.sh | sh;. install-oras.sh` or `curl $some-url/get-oras.sh | REPO="" TAG="" sh;. install-oras.sh`
 
 ORAS_DOWNLOAD_LINK="$1"
 
