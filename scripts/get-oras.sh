@@ -26,8 +26,6 @@ notice() {
     local NC='\033[0m' # No Color
     log "${CYAN}$*${NC}"
 }
-set -e -o nolog
-set --
 
 # Search Parameters
 REPO=${REPO:-'oras-project/oras'}
@@ -57,6 +55,9 @@ ORAS_INSTALL_DIR=${ORAS_INSTALL_DIR:-"/usr/local/bin"}
 ORAS_FILE_NAME=${ORAS_FILE_NAME:-"oras"}
 ORAS_RELEASE_LOCATION=${ORAS_RELEASE_LOCATION:-"$ORAS_RELEASE_DIR/$ORAS_FILE_NAME"}
 ORAS_INSTALLER_NAME=${ORAS_INSTALLER_NAME:-'install-oras.sh'}
+
+set -e -o nolog
+set --
 
 callAPI() {
     local auth=$1
