@@ -3,10 +3,12 @@ package content
 import (
 	"compress/gzip"
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -197,13 +199,50 @@ func (s *FileStore) ReaderAt(ctx context.Context, desc ocispec.Descriptor) (cont
 	}, nil
 }
 
+var (
+	referenceRegex = regexp.MustCompile(`[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}`)
+)
+
+func validate(reference string) (string, string, string, error) {
+	matches := referenceRegex.FindAllString(reference, -1)
+	// Technically a namespace is allowed to have "/"'s, while a reference is not allowed to
+	// That means if you string match the reference regex, then you should end up with basically the first segment being the host
+	// the middle part being the namespace
+	// and the last part should be the tag
+
+	// This should be the case most of the time
+	if len(matches) == 3 {
+		return matches[0], matches[1], matches[2], nil
+	}
+
+	if len(matches) == 0 {
+		return "", "", "", ErrNoName
+	}
+
+	host := matches[0]
+	namespace := strings.Join(matches[1:len(matches)-1], "-")
+	ref := matches[len(matches)-1]
+
+	return host, namespace, ref, nil
+}
+
 func WithNoNameHandler() content.WriterOpt {
 	return func(opts *content.WriterOpts) error {
 		if opts.Desc.Annotations == nil {
 			opts.Desc.Annotations = make(map[string]string)
 		}
 
-		opts.Desc.Annotations[ocispec.AnnotationTitle] = opts.Desc.Digest.String() + ".dat"
+		_, namespace, ref, err := validate(opts.Ref)
+		if err != nil {
+			return err
+		}
+
+		ext := "json"
+		if !strings.HasSuffix(opts.Desc.MediaType, "+json") {
+			ext = "dat"
+		}
+
+		opts.Desc.Annotations[ocispec.AnnotationTitle] = fmt.Sprintf("%s-%s.%s", namespace, ref, ext)
 		return nil
 	}
 }

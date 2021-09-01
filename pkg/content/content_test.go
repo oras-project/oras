@@ -18,6 +18,7 @@ type ContentTestSuite struct {
 	suite.Suite
 	TestMemoryStore *Memorystore
 	TestFileStore   *FileStore
+	TestFileStore2  *FileStore
 }
 
 var (
@@ -39,10 +40,14 @@ var (
 		Digest:    digest.FromBytes(testBadContent),
 		Size:      int64(len(testBadContent)),
 	}
+
+	testRef2             = "example.com/helm/example/ref:v1"
+	testFileName2        = filepath.Join(testDirRoot, "ref-v1.json")
+	testContent2         = []byte("Hello World!2")
 	testNoNameDescriptor = ocispec.Descriptor{
 		MediaType:   ocispec.MediaTypeImageConfig,
-		Digest:      digest.FromBytes(testContent),
-		Size:        int64(len(testContent)),
+		Digest:      digest.FromBytes(testContent2),
+		Size:        int64(len(testContent2)),
 		Annotations: map[string]string{},
 	}
 )
@@ -59,6 +64,14 @@ func (suite *ContentTestSuite) SetupSuite() {
 	_, err = testFileStore.Add(testRef, "", testFileName)
 	suite.Nil(err, "no error adding item to file store")
 	suite.TestFileStore = testFileStore
+
+	os.Remove(testFileName2)
+	err = ioutil.WriteFile(testFileName2, testContent2, 0644)
+	suite.Nil(err, "no error creating test file on disk")
+	testFileStore2 := NewFileStore(testDirRoot, WithNoName())
+	_, err = testFileStore.Add(testRef2, "", testFileName2)
+	suite.Nil(err, "no error adding item to file store")
+	suite.TestFileStore2 = testFileStore2
 }
 
 // Tests all Writers (Ingesters)
@@ -66,6 +79,7 @@ func (suite *ContentTestSuite) Test_0_Ingesters() {
 	ingesters := map[string]content.Ingester{
 		"memory": suite.TestMemoryStore,
 		"file":   suite.TestFileStore,
+		"file2":  suite.TestFileStore2,
 	}
 
 	for key, ingester := range ingesters {
@@ -81,10 +95,9 @@ func (suite *ContentTestSuite) Test_0_Ingesters() {
 		// No name ref
 		ctx = context.Background()
 		refOpt = content.WithDescriptor(testNoNameDescriptor)
-		noNameHandler := WithNoNameHandler()
-		writer, err = ingester.Writer(ctx, refOpt, noNameHandler)
+		writer, err = ingester.Writer(ctx, refOpt, content.WithRef(testRef2), WithNoNameHandler())
 		suite.Nil(err, fmt.Sprintf("no error getting writer w good ref for %s store", key))
-		_, err = writer.Write(testContent)
+		_, err = writer.Write(testContent2)
 		suite.Nil(err, fmt.Sprintf("no error using writer.Write w good ref for %s store", key))
 		err = writer.Commit(ctx, testNoNameDescriptor.Size, testNoNameDescriptor.Digest)
 		suite.Nil(err, fmt.Sprintf("no error using writer.Commit w good ref for %s store", key))
@@ -93,7 +106,7 @@ func (suite *ContentTestSuite) Test_0_Ingesters() {
 		suite.Equal(testNoNameDescriptor.Digest, digest, fmt.Sprintf("correct digest for %s store", key))
 		status, err := writer.Status()
 		suite.Nil(err, fmt.Sprintf("no error retrieving writer status for %s store", key))
-		suite.Equal(testNoNameDescriptor.Digest.String()+".dat", status.Ref, fmt.Sprintf("correct status for %s store", key))
+		suite.Equal("helm-example-ref-v1.json", status.Ref, fmt.Sprintf("correct status for %s store", key))
 
 		// close writer
 		err = writer.Close()
@@ -101,29 +114,9 @@ func (suite *ContentTestSuite) Test_0_Ingesters() {
 		err = writer.Commit(ctx, testNoNameDescriptor.Size, testNoNameDescriptor.Digest)
 		suite.NotNil(err, fmt.Sprintf("error using writer.Commit when closed w good ref for %s store", key))
 
-		// re-init writer after closing
-		writer, _ = ingester.Writer(ctx, refOpt)
-		writer.Write(testContent)
-
-		// invalid truncate size
-		err = writer.Truncate(123456789)
-		suite.NotNil(err, fmt.Sprintf("error using writer.Truncate w invalid size, good ref for %s store", key))
-
-		// valid truncate size
-		err = writer.Truncate(0)
-		suite.Nil(err, fmt.Sprintf("no error using writer.Truncate w valid size, good ref for %s store", key))
-
-		writer.Commit(ctx, testNoNameDescriptor.Size, testNoNameDescriptor.Digest)
-
-		// bad size
-		err = writer.Commit(ctx, 1, testNoNameDescriptor.Digest)
-		fmt.Println(err)
-		suite.NotNil(err, fmt.Sprintf("error using writer.Commit w bad size, good ref for %s store", key))
-
-		// bad digest
-		writer, _ = ingester.Writer(ctx, refOpt)
-		err = writer.Commit(ctx, 0, testNoNameDescriptor.Digest)
-		suite.NotNil(err, fmt.Sprintf("error using writer.Commit w bad digest, good ref for %s store", key))
+		if key == "file2" {
+			continue
+		}
 
 		// Good ref
 		ctx = context.Background()
