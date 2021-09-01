@@ -36,6 +36,7 @@ type FileStore struct {
 	pathMap      *sync.Map
 	tmpFiles     *sync.Map
 	ignoreNoName bool
+	handleNoName bool
 }
 
 // NewFileStore creats a new file store
@@ -53,6 +54,7 @@ func NewFileStore(rootPath string, opts ...WriterOpt) *FileStore {
 		pathMap:      &sync.Map{},
 		tmpFiles:     &sync.Map{},
 		ignoreNoName: wOpts.IgnoreNoName,
+		handleNoName: wOpts.HandleNoName,
 	}
 }
 
@@ -195,14 +197,32 @@ func (s *FileStore) ReaderAt(ctx context.Context, desc ocispec.Descriptor) (cont
 	}, nil
 }
 
+func HandlNoName() content.WriterOpt {
+	return func(opts *content.WriterOpts) error {
+		if opts.Desc.Annotations != nil {
+			opts.Desc.Annotations[ocispec.AnnotationTitle] = opts.Desc.Digest.String() + ".dat"
+		}
+		return nil
+	}
+}
+
 // Writer begins or resumes the active writer identified by desc
 func (s *FileStore) Writer(ctx context.Context, opts ...content.WriterOpt) (content.Writer, error) {
 	var wOpts content.WriterOpts
+
 	for _, opt := range opts {
 		if err := opt(&wOpts); err != nil {
 			return nil, err
 		}
 	}
+	// If there is an error just resume normal behavior
+	if s.handleNoName {
+		err := HandlNoName()(&wOpts)
+		if err != nil {
+			return nil, ErrHandleNoName
+		}
+	}
+
 	desc := wOpts.Desc
 
 	name, ok := ResolveName(desc)

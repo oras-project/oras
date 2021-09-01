@@ -12,6 +12,7 @@ type WriterOpts struct {
 	Blocksize           int
 	MultiWriterIngester bool
 	IgnoreNoName        bool
+	HandleNoName        bool
 }
 
 type WriterOpt func(*WriterOpts) error
@@ -22,6 +23,14 @@ func DefaultWriterOpts() WriterOpts {
 		OutputHash:   nil,
 		Blocksize:    DefaultBlocksize,
 		IgnoreNoName: true,
+		HandleNoName: false,
+	}
+}
+
+func WithNoName() WriterOpt {
+	return func(w *WriterOpts) error {
+		w.HandleNoName = true
+		return nil
 	}
 }
 

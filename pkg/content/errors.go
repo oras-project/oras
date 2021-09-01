@@ -6,6 +6,7 @@ import "errors"
 var (
 	ErrNotFound           = errors.New("not_found")
 	ErrNoName             = errors.New("no_name")
+	ErrHandleNoName       = errors.New("could_not_handle_no_name")
 	ErrUnsupportedSize    = errors.New("unsupported_size")
 	ErrUnsupportedVersion = errors.New("unsupported_version")
 )
