@@ -93,7 +93,7 @@ getReleaseDownloadLink() {
     local arch=$4
     local release=$os"_"$arch
     local search="\"name\": \"(.*)$release.tar.gz\""
-    local assetid=$(callAPI $BASIC_AUTH https://api.github.com/repos/$repo/releases/tags/$tag | grep -C 2 -E "\"name\": \"(.*)$release.tar.gz\"" | awk -F '"id": ' '{print $2}' | awk -F ',' '{print $1}')
+    local assetid=$(callAPI $BASIC_AUTH https://api.github.com/repos/$repo/releases/tags/$tag | grep -C 2 -E "$search" | awk -F '"id": ' '{print $2}' | awk -F ',' '{print $1}')
 
     # If we couldn't find anything then return 1 to exit the script
     if [ -z $assetid ]; then
