@@ -197,11 +197,13 @@ func (s *FileStore) ReaderAt(ctx context.Context, desc ocispec.Descriptor) (cont
 	}, nil
 }
 
-func HandlNoName() content.WriterOpt {
+func WithNoNameHandler() content.WriterOpt {
 	return func(opts *content.WriterOpts) error {
-		if opts.Desc.Annotations != nil {
-			opts.Desc.Annotations[ocispec.AnnotationTitle] = opts.Desc.Digest.String() + ".dat"
+		if opts.Desc.Annotations == nil {
+			opts.Desc.Annotations = make(map[string]string)
 		}
+
+		opts.Desc.Annotations[ocispec.AnnotationTitle] = opts.Desc.Digest.String() + ".dat"
 		return nil
 	}
 }
@@ -217,7 +219,7 @@ func (s *FileStore) Writer(ctx context.Context, opts ...content.WriterOpt) (cont
 	}
 	// If there is an error just resume normal behavior
 	if s.handleNoName {
-		err := HandlNoName()(&wOpts)
+		err := WithNoNameHandler()(&wOpts)
 		if err != nil {
 			return nil, ErrHandleNoName
 		}
