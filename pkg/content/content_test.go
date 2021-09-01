@@ -78,6 +78,53 @@ func (suite *ContentTestSuite) Test_0_Ingesters() {
 			suite.NotNil(err, fmt.Sprintf("no error getting writer w bad ref for %s store", key))
 		}
 
+		// No name ref
+		ctx = context.Background()
+		refOpt = content.WithDescriptor(testNoNameDescriptor)
+		noNameHandler := WithNoNameHandler()
+		writer, err = ingester.Writer(ctx, refOpt, noNameHandler)
+		suite.Nil(err, fmt.Sprintf("no error getting writer w good ref for %s store", key))
+		_, err = writer.Write(testContent)
+		suite.Nil(err, fmt.Sprintf("no error using writer.Write w good ref for %s store", key))
+		err = writer.Commit(ctx, testNoNameDescriptor.Size, testNoNameDescriptor.Digest)
+		suite.Nil(err, fmt.Sprintf("no error using writer.Commit w good ref for %s store", key))
+
+		digest := writer.Digest()
+		suite.Equal(testNoNameDescriptor.Digest, digest, fmt.Sprintf("correct digest for %s store", key))
+		status, err := writer.Status()
+		suite.Nil(err, fmt.Sprintf("no error retrieving writer status for %s store", key))
+		suite.Equal(testNoNameDescriptor.Digest.String()+".dat", status.Ref, fmt.Sprintf("correct status for %s store", key))
+
+		// close writer
+		err = writer.Close()
+		suite.Nil(err, fmt.Sprintf("no error closing writer w bad ref for %s store", key))
+		err = writer.Commit(ctx, testNoNameDescriptor.Size, testNoNameDescriptor.Digest)
+		suite.NotNil(err, fmt.Sprintf("error using writer.Commit when closed w good ref for %s store", key))
+
+		// re-init writer after closing
+		writer, _ = ingester.Writer(ctx, refOpt)
+		writer.Write(testContent)
+
+		// invalid truncate size
+		err = writer.Truncate(123456789)
+		suite.NotNil(err, fmt.Sprintf("error using writer.Truncate w invalid size, good ref for %s store", key))
+
+		// valid truncate size
+		err = writer.Truncate(0)
+		suite.Nil(err, fmt.Sprintf("no error using writer.Truncate w valid size, good ref for %s store", key))
+
+		writer.Commit(ctx, testNoNameDescriptor.Size, testNoNameDescriptor.Digest)
+
+		// bad size
+		err = writer.Commit(ctx, 1, testNoNameDescriptor.Digest)
+		fmt.Println(err)
+		suite.NotNil(err, fmt.Sprintf("error using writer.Commit w bad size, good ref for %s store", key))
+
+		// bad digest
+		writer, _ = ingester.Writer(ctx, refOpt)
+		err = writer.Commit(ctx, 0, testNoNameDescriptor.Digest)
+		suite.NotNil(err, fmt.Sprintf("error using writer.Commit w bad digest, good ref for %s store", key))
+
 		// Good ref
 		ctx = context.Background()
 		refOpt = content.WithDescriptor(testDescriptor)
@@ -88,9 +135,9 @@ func (suite *ContentTestSuite) Test_0_Ingesters() {
 		err = writer.Commit(ctx, testDescriptor.Size, testDescriptor.Digest)
 		suite.Nil(err, fmt.Sprintf("no error using writer.Commit w good ref for %s store", key))
 
-		digest := writer.Digest()
+		digest = writer.Digest()
 		suite.Equal(testDescriptor.Digest, digest, fmt.Sprintf("correct digest for %s store", key))
-		status, err := writer.Status()
+		status, err = writer.Status()
 		suite.Nil(err, fmt.Sprintf("no error retrieving writer status for %s store", key))
 		suite.Equal(testRef, status.Ref, fmt.Sprintf("correct status for %s store", key))
 
@@ -124,52 +171,6 @@ func (suite *ContentTestSuite) Test_0_Ingesters() {
 		err = writer.Commit(ctx, 0, testBadDescriptor.Digest)
 		suite.NotNil(err, fmt.Sprintf("error using writer.Commit w bad digest, good ref for %s store", key))
 
-		// No name ref
-		ctx = context.Background()
-		refOpt = content.WithDescriptor(testNoNameDescriptor)
-		noNameHandler := WithNoNameHandler()
-		writer, err = ingester.Writer(ctx, refOpt, noNameHandler)
-		suite.Nil(err, fmt.Sprintf("no error getting writer w good ref for %s store", key))
-		_, err = writer.Write(testContent)
-		suite.Nil(err, fmt.Sprintf("no error using writer.Write w good ref for %s store", key))
-		err = writer.Commit(ctx, testNoNameDescriptor.Size, testNoNameDescriptor.Digest)
-		suite.Nil(err, fmt.Sprintf("no error using writer.Commit w good ref for %s store", key))
-
-		digest = writer.Digest()
-		suite.Equal(testNoNameDescriptor.Digest, digest, fmt.Sprintf("correct digest for %s store", key))
-		status, err = writer.Status()
-		suite.Nil(err, fmt.Sprintf("no error retrieving writer status for %s store", key))
-		suite.Equal(testNoNameDescriptor.Digest.String()+".dat", status.Ref, fmt.Sprintf("correct status for %s store", key))
-
-		// close writer
-		err = writer.Close()
-		suite.Nil(err, fmt.Sprintf("no error closing writer w bad ref for %s store", key))
-		err = writer.Commit(ctx, testNoNameDescriptor.Size, testNoNameDescriptor.Digest)
-		suite.NotNil(err, fmt.Sprintf("error using writer.Commit when closed w good ref for %s store", key))
-
-		// re-init writer after closing
-		writer, _ = ingester.Writer(ctx, refOpt)
-		writer.Write(testContent)
-
-		// invalid truncate size
-		err = writer.Truncate(123456789)
-		suite.NotNil(err, fmt.Sprintf("error using writer.Truncate w invalid size, good ref for %s store", key))
-
-		// valid truncate size
-		err = writer.Truncate(0)
-		suite.Nil(err, fmt.Sprintf("no error using writer.Truncate w valid size, good ref for %s store", key))
-
-		writer.Commit(ctx, testNoNameDescriptor.Size, testNoNameDescriptor.Digest)
-
-		// bad size
-		err = writer.Commit(ctx, 1, testNoNameDescriptor.Digest)
-		fmt.Println(err)
-		suite.NotNil(err, fmt.Sprintf("error using writer.Commit w bad size, good ref for %s store", key))
-
-		// bad digest
-		writer, _ = ingester.Writer(ctx, refOpt)
-		err = writer.Commit(ctx, 0, testNoNameDescriptor.Digest)
-		suite.NotNil(err, fmt.Sprintf("error using writer.Commit w bad digest, good ref for %s store", key))
 	}
 }
 
