@@ -7,10 +7,10 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/remotes"
 	artifact "github.com/deislabs/oras/pkg/artifact"
-	artifactspec "github.com/opencontainers/artifacts/specs-go/v2"
 	digest "github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	artifactspec "github.com/oras-project/artifacts-spec/specs-go/v1"
 )
 
 // Push pushes files to the remote
@@ -91,10 +91,6 @@ func pack(provider content.Provider, descriptors []ocispec.Descriptor, opts *pus
 	var content interface{}
 	if opts.artifact != nil {
 		artifact := *opts.artifact
-		if config != nil {
-			artifactConfig := convertV1DescriptorToV2(*config)
-			artifact.Config = &artifactConfig
-		}
 		artifact.Blobs = convertV1DescriptorsToV2(descriptors)
 		artifact.Annotations = opts.manifestAnnotations
 		mediaType = artifact.MediaType
@@ -138,6 +134,5 @@ func convertV1DescriptorToV2(desc ocispec.Descriptor) artifactspec.Descriptor {
 		Size:        desc.Size,
 		URLs:        desc.URLs,
 		Annotations: desc.Annotations,
-		Platform:    (*artifactspec.Platform)(desc.Platform),
 	}
 }

@@ -386,6 +386,7 @@ github.com/onsi/gomega v0.0.0-20151007035656-2152b45fa28a/go.mod h1:C1qb7wdrVGGV
 github.com/onsi/gomega v0.0.0-20170829124025-dcabb60a477c/go.mod h1:C1qb7wdrVGGVU+Z6iS04AVkA3Q65CEZX59MT0QO5uiA=
 github.com/onsi/gomega v1.7.0/go.mod h1:ex+gbHU/CVuBBDIJjb2X0qEXbFg53c61hWP/1CpauHY=
 github.com/onsi/gomega v1.7.1/go.mod h1:XdKZgCCFLUoM/7CFJVPcG8C1xQ1AJ0vpAezJrB7JYyY=
+github.com/opencontainers/artifacts v0.0.0-20210209205009-a282023000bd/go.mod h1:SD8DjsrkV/11lBKhbcjodFNeLmkZVCvDYPoXKZeGH5Q=
 github.com/opencontainers/go-digest v0.0.0-20170106003457-a6d0ee40d420/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=
 github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8Oi/yOhh5U=
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
@@ -398,6 +399,14 @@ github.com/opencontainers/runtime-spec v1.0.1/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/
 github.com/opencontainers/runtime-spec v1.0.2/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
 github.com/opencontainers/runtime-spec v1.0.3-0.20200929063507-e6143ca7d51d/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
 github.com/opencontainers/selinux v1.8.0/go.mod h1:RScLhm78qiWa2gbVCcGkC7tCGdgk3ogry1nUQF8Evvo=
+github.com/oras-project/artifacts-spec v0.0.0-20210830204616-bd9edb3a9b43 h1:WDAdGkL9gSREKHLV3eyIWalP9Q7Nf+MTnDvXi1X6xR4=
+github.com/oras-project/artifacts-spec v0.0.0-20210830204616-bd9edb3a9b43/go.mod h1:Xch2aLzSwtkhbFFN6LUzTfLtukYvMMdXJ4oZ8O7BOdc=
+github.com/oras-project/containerd v1.5.0-beta.4.0.20210414031158-5724862e07ff h1:4ix+GgOj1cHiOLZMkysU5/usgRhiSzYLkbVbfH5IMr8=
+github.com/oras-project/containerd v1.5.0-beta.4.0.20210414031158-5724862e07ff/go.mod h1:VMsSqat+Y2ZaXuQZl7COtOkGB1n9PFxu7KKTBXkNtt0=
+github.com/oras-project/containerd v1.5.0-beta.4.0.20210903081938-39fb7981ffb4 h1:L8B3UxwWyPXY/IhpLWXBPJQERQDKSvufXG8C6qGMv2U=
+github.com/oras-project/containerd v1.5.0-beta.4.0.20210903081938-39fb7981ffb4/go.mod h1:tMt2m3FYr7Hd8NBrZTdqLXQald+ciH7lcB9JV98Skaw=
+github.com/oras-project/containerd v1.5.0-beta.4.0.20210903105219-0950109ddf9c h1:o/+myPWL2IQbqoalqfrWxwlp+CT8viWkeijo3saZKtk=
+github.com/oras-project/containerd v1.5.0-beta.4.0.20210903105219-0950109ddf9c/go.mod h1:tMt2m3FYr7Hd8NBrZTdqLXQald+ciH7lcB9JV98Skaw=
 github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
 github.com/pelletier/go-toml v1.8.1/go.mod h1:T2/BmBdy8dvIRq1a/8aqjN41wvWlN4lrapLU/GW4pbc=

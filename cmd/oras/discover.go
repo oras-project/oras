@@ -12,9 +12,9 @@ import (
 
 	"github.com/containerd/containerd/reference"
 	"github.com/containerd/containerd/remotes"
-	artifactspec "github.com/opencontainers/artifacts/specs-go/v2"
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	artifactspec "github.com/oras-project/artifacts-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/xlab/treeprint"
@@ -98,8 +98,8 @@ func runDiscover(opts discoverOptions) error {
 	return nil
 }
 
-func getAllReferences(ctx context.Context, resolver remotes.Resolver, targetRef string, artifactType string, treeNode treeprint.Tree, queryGraph bool) (ocispec.Descriptor, *[]remotes.DiscoveredArtifact, error) {
-	var results []remotes.DiscoveredArtifact
+func getAllReferences(ctx context.Context, resolver remotes.Resolver, targetRef string, artifactType string, treeNode treeprint.Tree, queryGraph bool) (ocispec.Descriptor, *[]artifactspec.Descriptor, error) {
+	var results []artifactspec.Descriptor
 	spec, err := reference.Parse(targetRef)
 	if err != nil {
 		return ocispec.Descriptor{}, nil, err
@@ -114,7 +114,7 @@ func getAllReferences(ctx context.Context, resolver remotes.Resolver, targetRef 
 	}
 
 	for _, r := range refs {
-		branch := treeNode.AddBranch(fmt.Sprintf("[%s]%s", r.Artifact.ArtifactType, r.Digest))
+		branch := treeNode.AddBranch(fmt.Sprintf("[%s]%s", r.ArtifactType, r.Digest))
 		if queryGraph {
 			nestedRef := fmt.Sprintf("%s@%s", spec.Locator, r.Digest)
 			_, refs1, err := getAllReferences(ctx, resolver, nestedRef, "", branch, queryGraph)
@@ -129,11 +129,11 @@ func getAllReferences(ctx context.Context, resolver remotes.Resolver, targetRef 
 	return desc, &results, nil
 }
 
-func printDiscoveredReferencesTable(refs []remotes.DiscoveredArtifact, verbose bool) {
+func printDiscoveredReferencesTable(refs []artifactspec.Descriptor, verbose bool) {
 	typeNameTitle := "Artifact Type"
 	typeNameLength := len(typeNameTitle)
 	for _, ref := range refs {
-		if length := len(ref.Artifact.ArtifactType); length > typeNameLength {
+		if length := len(ref.ArtifactType); length > typeNameLength {
 			typeNameLength = length
 		}
 	}
@@ -144,17 +144,17 @@ func printDiscoveredReferencesTable(refs []remotes.DiscoveredArtifact, verbose b
 
 	print(typeNameTitle, "Digest")
 	for _, ref := range refs {
-		print(ref.Artifact.ArtifactType, ref.Digest)
+		print(ref.ArtifactType, ref.Digest)
 		if verbose {
-			printJSON(ref.Artifact)
+			printJSON(ref)
 		}
 	}
 }
 
-func printDiscoveredReferencesJSON(desc ocispec.Descriptor, refs []remotes.DiscoveredArtifact) {
+func printDiscoveredReferencesJSON(desc ocispec.Descriptor, refs []artifactspec.Descriptor) {
 	type reference struct {
-		Digest   digest.Digest         `json:"digest"`
-		Manifest artifactspec.Artifact `json:"manifest"`
+		Digest   digest.Digest `json:"digest"`
+		Artifact string        `json:"artifactType"`
 	}
 	output := struct {
 		Digest     digest.Digest `json:"digest"`
@@ -167,7 +167,7 @@ func printDiscoveredReferencesJSON(desc ocispec.Descriptor, refs []remotes.Disco
 	for i, ref := range refs {
 		output.References[i] = reference{
 			Digest:   ref.Digest,
-			Manifest: ref.Artifact,
+			Artifact: ref.ArtifactType,
 		}
 	}
 
