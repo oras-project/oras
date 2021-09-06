@@ -232,5 +232,4 @@ func loadReference(ctx context.Context, resolver remotes.Resolver, reference str
 		return desc, errors.Wrapf(err, "failed to resolve ref %q", reference)
 	}
 	return desc, nil
-
 }

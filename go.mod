@@ -18,7 +18,6 @@ require (
 	github.com/docker/docker-credential-helpers v0.6.3 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
-	github.com/opencontainers/artifacts v0.0.0-20210209205009-a282023000bd // indirect
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/oras-project/artifacts-spec v0.0.0-20210830204616-bd9edb3a9b43
