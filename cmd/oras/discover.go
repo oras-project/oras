@@ -12,12 +12,12 @@ import (
 
 	"github.com/containerd/containerd/reference"
 	"github.com/containerd/containerd/remotes"
+	"github.com/need-being/go-tree"
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	artifactspec "github.com/oras-project/artifacts-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/xlab/treeprint"
 )
 
 type discoverOptions struct {
@@ -74,7 +74,7 @@ func runDiscover(opts discoverOptions) error {
 
 	resolver := newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
 
-	rootNode := treeprint.NewWithRoot(opts.targetRef)
+	rootNode := tree.New(opts.targetRef)
 	desc, refs, err := getAllReferences(ctx, resolver, opts.targetRef, opts.artifactType, rootNode, opts.outputType == "tree")
 	if err != nil {
 		return err
@@ -82,7 +82,7 @@ func runDiscover(opts discoverOptions) error {
 
 	switch opts.outputType {
 	case "tree":
-		fmt.Println(rootNode.String())
+		tree.Print(rootNode)
 	case "json":
 		printDiscoveredReferencesJSON(desc, *refs)
 	default:
@@ -98,7 +98,7 @@ func runDiscover(opts discoverOptions) error {
 	return nil
 }
 
-func getAllReferences(ctx context.Context, resolver remotes.Resolver, targetRef string, artifactType string, treeNode treeprint.Tree, queryGraph bool) (ocispec.Descriptor, *[]artifactspec.Descriptor, error) {
+func getAllReferences(ctx context.Context, resolver remotes.Resolver, targetRef string, artifactType string, treeNode *tree.Node, queryGraph bool) (ocispec.Descriptor, *[]artifactspec.Descriptor, error) {
 	var results []artifactspec.Descriptor
 	spec, err := reference.Parse(targetRef)
 	if err != nil {
@@ -114,7 +114,7 @@ func getAllReferences(ctx context.Context, resolver remotes.Resolver, targetRef 
 	}
 
 	for _, r := range refs {
-		branch := treeNode.AddBranch(fmt.Sprintf("[%s]%s", r.ArtifactType, r.Digest))
+		branch := treeNode.AddPath(r.ArtifactType, r.Digest)
 		if queryGraph {
 			nestedRef := fmt.Sprintf("%s@%s", spec.Locator, r.Digest)
 			_, refs1, err := getAllReferences(ctx, resolver, nestedRef, "", branch, queryGraph)
