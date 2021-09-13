@@ -81,7 +81,7 @@ Example - Push file to the HTTP registry:
 	cmd.Flags().StringVarP(&opts.manifestAnnotations, "manifest-annotations", "", "", "manifest annotation file")
 	cmd.Flags().StringVarP(&opts.manifestExport, "export-manifest", "", "", "export the pushed manifest")
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
-	cmd.Flags().StringVarP(&opts.artifactRefs, "artifact-reference", "", "", "artifact reference")
+	cmd.Flags().StringVarP(&opts.artifactRefs, "subject", "s", "", "subject artifact")
 	cmd.Flags().BoolVarP(&opts.pathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
 	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
