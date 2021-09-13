@@ -93,6 +93,7 @@ func pack(provider content.Provider, descriptors []ocispec.Descriptor, opts *pus
 		artifact := *opts.artifact
 		artifact.Blobs = convertV1DescriptorsToV2(descriptors)
 		artifact.Annotations = opts.manifestAnnotations
+		mediaType = artifactspec.MediaTypeArtifactManifest
 		content = artifact
 	} else {
 		mediaType = ocispec.MediaTypeImageManifest
