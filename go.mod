@@ -7,15 +7,13 @@ replace (
 	// These `replace` stanzas are IGNORED when this is imported as a library
 	github.com/containerd/containerd => github.com/oras-project/containerd v1.5.0-beta.4.0.20210910235406-4d64a7c8e9f9
 	github.com/containerd/containerd/api => github.com/oras-project/containerd/api v0.0.0-20210910235406-4d64a7c8e9f9
-	// This one keeps switching versions
-	github.com/oras-project/artifacts-spec => github.com/oras-project/artifacts-spec v0.0.0-20210910233110-813953a626ae
 	github.com/docker/distribution => github.com/docker/distribution v0.0.0-20191216044856-a8371794149d
 	github.com/docker/docker => github.com/moby/moby v17.12.0-ce-rc1.0.20200618181300-9dc6525e6118+incompatible
+	github.com/oras-project/artifacts-spec => github.com/oras-project/artifacts-spec v0.0.0-20210910233110-813953a626ae
 )
 
 require (
 	github.com/containerd/containerd v1.5.1
-	github.com/containerd/containerd/api v1.5.0-beta.3 // indirect
 	github.com/docker/cli v20.10.5+incompatible
 	github.com/docker/distribution v0.0.0-20191216044856-a8371794149d
 	github.com/docker/docker v17.12.0-ce-rc1.0.20200618181300-9dc6525e6118+incompatible
@@ -33,4 +31,5 @@ require (
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	gotest.tools v2.2.0+incompatible // indirect
 )
