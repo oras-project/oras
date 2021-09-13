@@ -164,9 +164,8 @@ func pushStatusTrack(writer io.Writer) images.Handler {
 func AsArtifact(artifactType string, manifest ocispec.Descriptor) PushOpt {
 	return func(o *pushOpts) error {
 		o.artifact = &artifactspec.Manifest{
-			MediaType:       artifactspec.MediaTypeArtifactManifest,
-			ArtifactType:    artifactType,
-			SubjectManifest: convertV1DescriptorToV2(manifest),
+			ArtifactType: artifactType,
+			Subject:      convertV1DescriptorToV2(manifest),
 		}
 		return nil
 	}
