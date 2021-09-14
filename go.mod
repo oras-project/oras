@@ -5,8 +5,8 @@ go 1.16
 replace (
 	// WARNING! Do NOT replace these without also replacing their lines in the `require` stanza below.
 	// These `replace` stanzas are IGNORED when this is imported as a library
-	github.com/containerd/containerd => github.com/oras-project/containerd v1.5.0-beta.4.0.20210910235406-4d64a7c8e9f9
-	github.com/containerd/containerd/api => github.com/oras-project/containerd/api v0.0.0-20210910235406-4d64a7c8e9f9
+	github.com/containerd/containerd => github.com/oras-project/containerd v1.5.0-beta.4.0.20210914182246-c90d5cff6817
+	github.com/containerd/containerd/api => github.com/oras-project/containerd/api v0.0.0-20210914182246-c90d5cff6817
 	// This one keeps switching versions
 	github.com/oras-project/artifacts-spec => github.com/oras-project/artifacts-spec v0.0.0-20210910233110-813953a626ae
 	github.com/docker/distribution => github.com/docker/distribution v0.0.0-20191216044856-a8371794149d
