@@ -108,7 +108,7 @@ func runPush(opts pushOptions) error {
 		resolver = iresolver.Dummy()
 		fmt.Println("Entered dry-run mode")
 	} else {
-		resolver = newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
+		resolver, _ = newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
 	}
 
 	// bake artifact
@@ -116,7 +116,7 @@ func runPush(opts pushOptions) error {
 	if opts.artifactType != "" {
 		refResolver := resolver
 		if iresolver.IsDummy(resolver) {
-			refResolver = newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
+			refResolver, _ = newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
 		}
 		manifest, err := loadReference(ctx, refResolver, opts.artifactRefs)
 		if err != nil {

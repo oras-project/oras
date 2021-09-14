@@ -99,7 +99,7 @@ func runPull(opts pullOptions) error {
 		opts.allowedMediaTypes = []string{content.DefaultBlobMediaType, content.DefaultBlobDirMediaType}
 	}
 
-	resolver := newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
+	resolver, _ := newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
 	store := content.NewFileStore(opts.output)
 	defer store.Close()
 	store.DisableOverwrite = opts.keepOldFiles

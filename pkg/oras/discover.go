@@ -2,6 +2,7 @@ package oras
 
 import (
 	"context"
+	"errors"
 
 	"github.com/containerd/containerd/remotes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -15,9 +16,12 @@ func Discover(ctx context.Context, resolver remotes.Resolver, ref, artifactType 
 		return ocispec.Descriptor{}, nil, err
 	}
 
-	discoverer, err := resolver.Discoverer(ctx, ref)
-	if err != nil {
-		return ocispec.Descriptor{}, nil, err
+	discoverer, ok := resolver.(interface {
+		Discover(ctx context.Context, desc ocispec.Descriptor, artifactType string) ([]artifactspec.Descriptor, error)
+	})
+
+	if !ok {
+		return ocispec.Descriptor{}, nil, errors.New("not implemented")
 	}
 
 	artifacts, err := discoverer.Discover(ctx, desc, artifactType)
