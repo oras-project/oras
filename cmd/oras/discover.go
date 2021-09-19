@@ -75,13 +75,13 @@ func runDiscover(opts discoverOptions) error {
 
 	resolver, dopts := newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
 
-	resolver, err := orasdocker.WithDiscover(opts.targetRef, resolver, dopts)
+	discoverer, err := orasdocker.WithDiscover(opts.targetRef, resolver, dopts)
 	if err != nil {
 		return err
 	}
 
 	rootNode := tree.New(opts.targetRef)
-	desc, refs, err := getAllReferences(ctx, resolver, opts.targetRef, opts.artifactType, rootNode, opts.outputType == "tree")
+	desc, refs, err := getAllReferences(ctx, discoverer, opts.targetRef, opts.artifactType, rootNode, opts.outputType == "tree")
 	if err != nil {
 		return err
 	}

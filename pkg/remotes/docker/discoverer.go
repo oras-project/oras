@@ -38,51 +38,57 @@ import (
 	"golang.org/x/net/context/ctxhttp"
 )
 
-func WithDiscover(ref string, resolver remotes.Resolver, opts docker.ResolverOptions) (remotes.Resolver, error) {
-	hosts, err := opts.Hosts(ref)
-	if err != nil {
-		return nil, err
-	}
+func WithDiscover(ref string, resolver remotes.Resolver, opts *docker.ResolverOptions) (remotes.Resolver, error) {
+	opts = NewOpts(opts)
 
 	r, err := reference.Parse(ref)
 	if err != nil {
 		return nil, err
 	}
 
-	return dockerDiscoverer{
+	return &dockerDiscoverer{
 		header:     opts.Headers,
-		hosts:      hosts,
+		hosts:      opts.Hosts,
 		refspec:    r,
 		repository: strings.TrimPrefix(r.Locator, r.Hostname()+"/"),
 		Resolver:   resolver}, nil
 }
 
 type dockerDiscoverer struct {
-	hosts      []docker.RegistryHost
+	hosts      docker.RegistryHosts
 	header     http.Header
 	refspec    reference.Spec
 	repository string
 	remotes.Resolver
 }
 
-func (d *dockerDiscoverer) filterHosts(caps docker.HostCapabilities) (hosts []docker.RegistryHost) {
-	for _, host := range d.hosts {
-		if host.Capabilities.Has(caps) {
+func (d *dockerDiscoverer) filterHosts(caps docker.HostCapabilities) (hosts []docker.RegistryHost, err error) {
+	h, err := d.hosts(d.refspec.Hostname())
+	if err != nil {
+		return nil, err
+	}
+	for _, host := range h {
+		if host.Capabilities.Has(caps) || strings.Contains(host.Host, "localhost") {
 			hosts = append(hosts, host)
 		}
 	}
-	return
+
+	return hosts, nil
 }
 
 func (d *dockerDiscoverer) Discover(ctx context.Context, desc ocispec.Descriptor, artifactType string) ([]artifactspec.Descriptor, error) {
 	ctx = log.WithLogger(ctx, log.G(ctx).WithField("digest", desc.Digest))
 
-	hosts := d.filterHosts(8)
+	hosts, err := d.filterHosts(8)
+	if err != nil {
+		return nil, err
+	}
+
 	if len(hosts) == 0 {
 		return nil, errdefs.NotFound(errors.New("no discover hosts"))
 	}
 
-	ctx, err := docker.ContextWithRepositoryScope(ctx, d.refspec, false)
+	ctx, err = docker.ContextWithRepositoryScope(ctx, d.refspec, false)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +98,7 @@ func (d *dockerDiscoverer) Discover(ctx context.Context, desc ocispec.Descriptor
 	query := "?" + v.Encode()
 
 	var firstErr error
-	for _, originalHost := range d.hosts {
+	for _, originalHost := range hosts {
 		host := originalHost
 		host.Path = strings.TrimSuffix(host.Path, "/v2") + "/oras/artifacts/v1"
 
