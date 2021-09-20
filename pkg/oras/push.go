@@ -7,6 +7,8 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/remotes"
 	artifact "github.com/deislabs/oras/pkg/artifact"
+	orasimages "github.com/deislabs/oras/pkg/images"
+	"github.com/deislabs/oras/pkg/remotes/docker"
 	digest "github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -42,6 +44,8 @@ func Push(ctx context.Context, resolver remotes.Resolver, ref string, provider c
 		return ocispec.Descriptor{}, err
 	}
 
+	opt.baseHandlers = append(opt.baseHandlers, orasimages.AppendArtifactsHandler(store))
+
 	var wrapper func(images.Handler) images.Handler
 	if len(opt.baseHandlers) > 0 {
 		wrapper = func(h images.Handler) images.Handler {
@@ -49,7 +53,7 @@ func Push(ctx context.Context, resolver remotes.Resolver, ref string, provider c
 		}
 	}
 
-	if err := remotes.PushContent(ctx, pusher, desc, store, nil, nil, wrapper); err != nil {
+	if err := docker.PushContent(ctx, pusher, desc, store, nil, nil, wrapper); err != nil {
 		return ocispec.Descriptor{}, err
 	}
 	return desc, nil

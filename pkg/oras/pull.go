@@ -4,12 +4,12 @@ import (
 	"context"
 	"sync"
 
-	orascontent "github.com/deislabs/oras/pkg/content"
-
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/remotes"
+	orascontent "github.com/deislabs/oras/pkg/content"
+	orasimages "github.com/deislabs/oras/pkg/images"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	artifactspec "github.com/oras-project/artifacts-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -72,6 +72,7 @@ func fetchContent(ctx context.Context, fetcher remotes.Fetcher, desc ocispec.Des
 		remotes.FetchHandler(store, fetcher),
 		picker,
 		images.ChildrenHandler(store),
+		orasimages.AppendArtifactsHandler(store),
 	)
 	handlers = append(handlers, opts.callbackHandlers...)
 

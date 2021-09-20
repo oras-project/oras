@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"regexp"
 	"strings"
 
 	"github.com/containerd/containerd/log"
@@ -50,7 +51,9 @@ func WithDiscover(ref string, resolver remotes.Resolver, opts *docker.ResolverOp
 		header:     opts.Headers,
 		hosts:      opts.Hosts,
 		refspec:    r,
+		reference:  ref,
 		repository: strings.TrimPrefix(r.Locator, r.Hostname()+"/"),
+		tracker:    docker.NewInMemoryTracker(),
 		Resolver:   resolver}, nil
 }
 
@@ -58,17 +61,22 @@ type dockerDiscoverer struct {
 	hosts      docker.RegistryHosts
 	header     http.Header
 	refspec    reference.Spec
+	reference  string
 	repository string
+	tracker    docker.StatusTracker
 	remotes.Resolver
 }
+
+var localhostRegex = regexp.MustCompile(`(?:^localhost$)|(?:^localhost:\\d{0,5}$)`)
 
 func (d *dockerDiscoverer) filterHosts(caps docker.HostCapabilities) (hosts []docker.RegistryHost, err error) {
 	h, err := d.hosts(d.refspec.Hostname())
 	if err != nil {
 		return nil, err
 	}
+
 	for _, host := range h {
-		if host.Capabilities.Has(caps) || strings.Contains(host.Host, "localhost") {
+		if host.Capabilities.Has(caps) || localhostRegex.MatchString(host.Host) {
 			hosts = append(hosts, host)
 		}
 	}
@@ -79,7 +87,7 @@ func (d *dockerDiscoverer) filterHosts(caps docker.HostCapabilities) (hosts []do
 func (d *dockerDiscoverer) Discover(ctx context.Context, desc ocispec.Descriptor, artifactType string) ([]artifactspec.Descriptor, error) {
 	ctx = log.WithLogger(ctx, log.G(ctx).WithField("digest", desc.Digest))
 
-	hosts, err := d.filterHosts(8)
+	hosts, err := d.filterHosts(docker.HostCapabilityResolve)
 	if err != nil {
 		return nil, err
 	}
@@ -138,10 +146,10 @@ func (d *dockerDiscoverer) discover(ctx context.Context, req *request) ([]artifa
 		return nil, errors.Errorf("unexpected status code %v: %s - Server message: %s", req.String(), resp.Status, registryErr.Error())
 	}
 
-	result := struct {
+	result := &struct {
 		References []artifactspec.Descriptor `json:"references"`
 	}{}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
 		return nil, err
 	}
 

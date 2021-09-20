@@ -8,6 +8,7 @@ import (
 	"github.com/deislabs/oras/pkg/content"
 	ctxo "github.com/deislabs/oras/pkg/context"
 	"github.com/deislabs/oras/pkg/oras"
+	"github.com/deislabs/oras/pkg/remotes/docker"
 
 	"github.com/containerd/containerd/reference"
 	"github.com/sirupsen/logrus"
@@ -99,7 +100,13 @@ func runPull(opts pullOptions) error {
 		opts.allowedMediaTypes = []string{content.DefaultBlobMediaType, content.DefaultBlobDirMediaType}
 	}
 
-	resolver, _ := newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
+	resolver, ropts := newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
+
+	resolver, err := docker.WithDiscover(opts.targetRef, resolver, ropts)
+	if err != nil {
+		return err
+	}
+
 	store := content.NewFileStore(opts.output)
 	defer store.Close()
 	store.DisableOverwrite = opts.keepOldFiles
