@@ -7,12 +7,13 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/containerd/containerd/remotes"
+	"github.com/containerd/containerd/remotes/docker"
 	iresolver "github.com/deislabs/oras/internal/resolver"
 	"github.com/deislabs/oras/pkg/content"
 	ctxo "github.com/deislabs/oras/pkg/context"
 	"github.com/deislabs/oras/pkg/oras"
-
-	"github.com/containerd/containerd/remotes"
+	orasDocker "github.com/deislabs/oras/pkg/remotes/docker"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -103,26 +104,16 @@ func runPush(opts pushOptions) error {
 	}
 
 	// specify resolver
-	var resolver remotes.Resolver
+	var (
+		resolver remotes.Resolver
+		ropts    *docker.ResolverOptions
+		err      error
+	)
 	if opts.dryRun {
 		resolver = iresolver.Dummy()
 		fmt.Println("Entered dry-run mode")
 	} else {
-		resolver = newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
-	}
-
-	// bake artifact
-	var pushOpts []oras.PushOpt
-	if opts.artifactType != "" {
-		refResolver := resolver
-		if iresolver.IsDummy(resolver) {
-			refResolver = newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
-		}
-		manifest, err := loadReference(ctx, refResolver, opts.artifactRefs)
-		if err != nil {
-			return err
-		}
-		pushOpts = append(pushOpts, oras.AsArtifact(opts.artifactType, manifest))
+		resolver, ropts = newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
 	}
 
 	// load files
@@ -130,6 +121,23 @@ func runPush(opts pushOptions) error {
 		annotations map[string]map[string]string
 		store       = content.NewFileStore("")
 	)
+
+	// bake artifact
+	var pushOpts []oras.PushOpt
+	if opts.artifactType != "" {
+		resolver, err = orasDocker.WithDiscover(opts.artifactRefs, resolver, orasDocker.NewOpts(ropts))
+		if err != nil {
+			return err
+		}
+
+		manifest, err := loadReference(ctx, resolver, opts.artifactRefs)
+		if err != nil {
+			return err
+		}
+
+		pushOpts = append(pushOpts, oras.AsArtifact(opts.artifactType, manifest))
+	}
+
 	defer store.Close()
 	if opts.manifestAnnotations != "" {
 		if err := decodeJSON(opts.manifestAnnotations, &annotations); err != nil {

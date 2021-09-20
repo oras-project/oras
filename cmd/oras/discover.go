@@ -12,6 +12,7 @@ import (
 
 	"github.com/containerd/containerd/reference"
 	"github.com/containerd/containerd/remotes"
+	orasdocker "github.com/deislabs/oras/pkg/remotes/docker"
 	"github.com/need-being/go-tree"
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -72,10 +73,15 @@ func runDiscover(opts discoverOptions) error {
 		ctx = ctxo.WithLoggerDiscarded(ctx)
 	}
 
-	resolver := newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
+	resolver, dopts := newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
+
+	discoverer, err := orasdocker.WithDiscover(opts.targetRef, resolver, dopts)
+	if err != nil {
+		return err
+	}
 
 	rootNode := tree.New(opts.targetRef)
-	desc, refs, err := getAllReferences(ctx, resolver, opts.targetRef, opts.artifactType, rootNode, opts.outputType == "tree")
+	desc, refs, err := getAllReferences(ctx, discoverer, opts.targetRef, opts.artifactType, rootNode, opts.outputType == "tree")
 	if err != nil {
 		return err
 	}

@@ -57,11 +57,8 @@ func (r *dummyResolver) Pusher(ctx context.Context, ref string) (remotes.Pusher,
 	}), nil
 }
 
-// Discoverer returns a new discoverer for the provided reference
-func (r *dummyResolver) Discoverer(ctx context.Context, ref string) (remotes.Discoverer, error) {
-	return remotes.DiscovererFunc(func(ctx context.Context, desc ocispec.Descriptor, artifactType string) ([]artifactspec.Descriptor, error) {
-		return nil, errors.Wrap(errdefs.ErrNotFound, "dummy resolver")
-	}), nil
+func (r *dummyResolver) Discover(ctx context.Context, resolver remotes.Resolver, ref, artifactType string) (ocispec.Descriptor, []artifactspec.Descriptor, error) {
+	return ocispec.Descriptor{}, nil, errors.Wrap(errdefs.ErrNotFound, "dummy resolver")
 }
 
 type dummyWriter struct {
