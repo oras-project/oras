@@ -125,17 +125,12 @@ func runPush(opts pushOptions) error {
 	// bake artifact
 	var pushOpts []oras.PushOpt
 	if opts.artifactType != "" {
-		refResolver := resolver
-		if iresolver.IsDummy(resolver) {
-			refResolver, _ = newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
-		} else {
-			resolver, err = orasDocker.WithDiscover(opts.artifactRefs, resolver, orasDocker.NewOpts(ropts))
-			if err != nil {
-				return err
-			}
+		resolver, err = orasDocker.WithDiscover(opts.artifactRefs, resolver, orasDocker.NewOpts(ropts))
+		if err != nil {
+			return err
 		}
 
-		manifest, err := loadReference(ctx, refResolver, opts.artifactRefs)
+		manifest, err := loadReference(ctx, resolver, opts.artifactRefs)
 		if err != nil {
 			return err
 		}
