@@ -10,6 +10,7 @@ import (
 
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/containerd/reference"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
 	remoteserrors "github.com/containerd/containerd/remotes/errors"
@@ -27,6 +28,15 @@ func (d *dockerDiscoverer) Pusher(ctx context.Context, ref string) (remotes.Push
 func (d *dockerDiscoverer) Push(ctx context.Context, desc ocispec.Descriptor) (content.Writer, error) {
 	switch desc.MediaType {
 	case artifactspec.MediaTypeArtifactManifest:
+		r, err := reference.Parse(d.reference)
+		if err != nil {
+			return nil, err
+		}
+		ctx, err := docker.ContextWithRepositoryScope(ctx, r, true)
+		if err != nil {
+			return nil, err
+		}
+
 		h, err := d.filterHosts(docker.HostCapabilityPush)
 		if err != nil {
 			return nil, err
