@@ -39,6 +39,14 @@ import (
 	"golang.org/x/net/context/ctxhttp"
 )
 
+// ErrorCodeMetadataUnknown is returned when requested metadata does not exist
+var ErrorCodeMetadataUnknown = docker.Register("errcode", docker.ErrorDescriptor{
+	Value:          "METADATA_UNKNOWN",
+	Message:        "the specified metadata does not exist",
+	Description:    `This is the error when the metadata requested does not exist.`,
+	HTTPStatusCode: http.StatusNotFound,
+})
+
 func WithDiscover(ref string, resolver remotes.Resolver, opts *docker.ResolverOptions) (remotes.Resolver, error) {
 	opts = NewOpts(opts)
 
@@ -142,6 +150,13 @@ func (d *dockerDiscoverer) discover(ctx context.Context, req *request) ([]artifa
 		var registryErr docker.Errors
 		if err := json.NewDecoder(resp.Body).Decode(&registryErr); err != nil || registryErr.Len() < 1 {
 			return nil, errors.Errorf("unexpected status code %v: %v", req.String(), resp.Status)
+		}
+
+		// 404 Not Found with METADATA_UNKNOWN error code implies empty referrer list.
+		if resp.StatusCode == http.StatusNotFound {
+			if err, ok := registryErr[0].(docker.Error); ok && err.Code == ErrorCodeMetadataUnknown {
+				return nil, nil
+			}
 		}
 		return nil, errors.Errorf("unexpected status code %v: %s - Server message: %s", req.String(), resp.Status, registryErr.Error())
 	}
