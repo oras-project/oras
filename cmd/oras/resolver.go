@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
 	"net/http"
@@ -52,10 +51,7 @@ func newResolver(username, password string, insecure bool, plainHTTP bool, confi
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "WARNING: Error loading auth file: %v\n", err)
 	}
-	resolver, err := cli.Resolver(context.Background(), client, plainHTTP)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "WARNING: Error loading resolver: %v\n", err)
-		resolver = docker.NewResolver(*opts)
-	}
-	return resolver, opts
+	dockerCli := cli.(*auth.Client)
+	opts.Credentials = dockerCli.Credential
+	return docker.NewResolver(*opts), opts
 }
