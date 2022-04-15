@@ -5,7 +5,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	auth "oras.land/oras-go/pkg/auth/docker"
+	"oras.land/oras/pkg/auth/docker"
 )
 
 type logoutOptions struct {
@@ -42,7 +42,7 @@ func runLogout(opts logoutOptions) error {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
-	cli, err := auth.NewClient(opts.configs...)
+	cli, err := docker.NewClient(opts.configs...)
 	if err != nil {
 		return err
 	}
