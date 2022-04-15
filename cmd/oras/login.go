@@ -1,3 +1,18 @@
+/*
+Copyright The ORAS Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package main
 
 import (
@@ -12,18 +27,21 @@ import (
 	"github.com/docker/docker/pkg/term"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	auth "oras.land/oras-go/pkg/auth/docker"
+	"oras.land/oras/pkg/auth"
+	"oras.land/oras/pkg/auth/docker"
+	"oras.land/oras/pkg/auth/general"
 )
 
 type loginOptions struct {
 	hostname  string
 	fromStdin bool
 
-	debug    bool
-	configs  []string
-	username string
-	password string
-	insecure bool
+	debug      bool
+	dockerCred bool
+	configs    []string
+	username   string
+	password   string
+	insecure   bool
 }
 
 func loginCmd() *cobra.Command {
@@ -60,20 +78,27 @@ Example - Login with insecure registry from command line:
 
 	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
 	cmd.Flags().StringArrayVarP(&opts.configs, "config", "c", nil, "auth config path")
+	cmd.Flags().BoolVarP(&opts.dockerCred, "docker", "", false, "use docker credential")
 	cmd.Flags().StringVarP(&opts.username, "username", "u", "", "registry username")
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password or identity token")
 	cmd.Flags().BoolVarP(&opts.fromStdin, "password-stdin", "", false, "read password or identity token from stdin")
 	cmd.Flags().BoolVarP(&opts.insecure, "insecure", "k", false, "allow connections to SSL registry without certs")
+	cmd.Flags().BoolVarP(&opts.insecure, "plain-http", "", false, "allow connectsion to registry without SSL")
 	return cmd
 }
 
-func runLogin(opts loginOptions) error {
+func runLogin(opts loginOptions) (err error) {
 	if opts.debug {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
 	// Prepare auth client
-	cli, err := auth.NewClient(opts.configs...)
+	var cli auth.Client
+	if opts.dockerCred {
+		cli, err = docker.NewClient(opts.configs...)
+	} else {
+		cli, err = general.NewClient()
+	}
 	if err != nil {
 		return err
 	}
@@ -112,7 +137,13 @@ func runLogin(opts loginOptions) error {
 	}
 
 	// Login
-	if err := cli.Login(context.Background(), opts.hostname, opts.username, opts.password, opts.insecure); err != nil {
+	if err := cli.Login(&auth.LoginSettings{
+		Context:  context.Background(),
+		Hostname: opts.hostname,
+		Username: opts.username,
+		Secret:   opts.password,
+		Insecure: opts.insecure,
+	}); err != nil {
 		return err
 	}
 
