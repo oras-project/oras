@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/content/local"
 	"github.com/containerd/containerd/errdefs"
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
 	orascontent "oras.land/oras-go/pkg/content"
 )
 
@@ -94,7 +94,7 @@ func (s *cachedStore) applyCache(ctx context.Context, desc ocispec.Descriptor, o
 	}
 
 	if err := cw.Commit(ctx, desc.Size, desc.Digest); err != nil && !errdefs.IsAlreadyExists(err) {
-		return errors.Wrapf(err, "failed commit on ref %q", ws.Ref)
+		return fmt.Errorf("failed commit on ref %q: %w", ws.Ref, err)
 	}
 
 	return nil
