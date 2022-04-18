@@ -11,11 +11,20 @@ replace (
 
 require (
 	github.com/containerd/containerd v1.6.2
-	github.com/docker/docker v17.12.1-ce+incompatible
+	github.com/docker/cli v20.10.14+incompatible
+	github.com/docker/docker v20.10.11+incompatible
+	github.com/moby/moby v20.10.14+incompatible
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.2
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.1
-	github.com/spf13/cobra v1.4.0
+	github.com/spf13/cobra v1.3.0
 	oras.land/oras-go v0.4.0
+	oras.land/oras-go/v2 v2.0.0-20220415135518-c34895e747dc
+)
+
+require (
+	github.com/containerd/continuity v0.3.0 // indirect
+	github.com/opencontainers/runc v1.1.1 // indirect
+	gotest.tools/v3 v3.1.0 // indirect
 )
