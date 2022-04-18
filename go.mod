@@ -2,29 +2,13 @@ module oras.land/oras
 
 go 1.16
 
-replace (
-	// WARNING! Do NOT replace these without also replacing their lines in the `require` stanza below.
-	// These `replace` stanzas are IGNORED when this is imported as a library
-	github.com/docker/distribution => github.com/docker/distribution v0.0.0-20191216044856-a8371794149d
-	github.com/docker/docker => github.com/moby/moby v17.12.0-ce-rc1.0.20200618181300-9dc6525e6118+incompatible
-)
-
 require (
 	github.com/containerd/containerd v1.6.2
-	github.com/docker/cli v20.10.14+incompatible
-	github.com/docker/docker v20.10.11+incompatible
-	github.com/moby/moby v20.10.14+incompatible
+	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.2
-	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.3.0
 	oras.land/oras-go v0.4.0
-	oras.land/oras-go/v2 v2.0.0-20220415135518-c34895e747dc
-)
-
-require (
-	github.com/containerd/continuity v0.3.0 // indirect
-	github.com/opencontainers/runc v1.1.1 // indirect
-	gotest.tools/v3 v3.1.0 // indirect
+	rsc.io/letsencrypt v0.0.3 // indirect
 )
