@@ -16,12 +16,7 @@ limitations under the License.
 package general
 
 import (
-	"context"
-	"crypto/tls"
-	"net/http"
-
 	"oras.land/oras-go/v2/registry/remote"
-	"oras.land/oras-go/v2/registry/remote/auth"
 	iface "oras.land/oras/pkg/auth"
 )
 
@@ -32,21 +27,7 @@ func (c *Client) Login(settings *iface.LoginSettings) error {
 		return err
 	}
 	reg.PlainHTTP = settings.PlainHTTP
-	authClient := &auth.Client{
-		Credential: func(ctx context.Context, reg string) (auth.Credential, error) {
-			return auth.Credential{
-				Username: settings.Username,
-				Password: settings.Secret,
-			}, nil
-		},
-		Client: &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			},
-		},
-	}
-	authClient.SetUserAgent(settings.UserAgent)
-	reg.Client = authClient
+	reg.Client = settings.GetAuthClient()
 	// Login to ensure credential is valid
 	return reg.Ping(settings.Context)
 }

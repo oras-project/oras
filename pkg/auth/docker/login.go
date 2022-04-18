@@ -16,11 +16,9 @@ limitations under the License.
 package docker
 
 import (
-	"context"
-
-	ctypes "github.com/docker/cli/cli/config/types"
-	"github.com/docker/docker/api/types"
+	"github.com/docker/cli/cli/config/types"
 	"github.com/moby/moby/registry"
+	"oras.land/oras-go/v2/registry/remote"
 	iface "oras.land/oras/pkg/auth"
 )
 
@@ -28,7 +26,7 @@ import (
 func (c *Client) Login(settings *iface.LoginSettings) error {
 	hostname := resolveHostname(settings.Hostname)
 	cred := types.AuthConfig{
-		Username:      settings.Username,
+		Username:      settings.Secret,
 		ServerAddress: hostname,
 	}
 	if settings.Username == "" {
@@ -37,35 +35,19 @@ func (c *Client) Login(settings *iface.LoginSettings) error {
 		cred.Password = settings.Secret
 	}
 
-	opts := registry.ServiceOptions{}
-
-	if settings.Insecure {
-		opts.InsecureRegistries = []string{hostname}
-	}
-
 	// Login to ensure valid credential
-	remote, err := registry.NewService(opts)
+	remote, err := remote.NewRegistry(settings.Hostname)
 	if err != nil {
 		return err
 	}
-	ctx := settings.Context
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	userAgent := settings.UserAgent
-	if userAgent == "" {
-		userAgent = "oras"
-	}
-	if _, token, err := remote.Auth(ctx, &cred, userAgent); err != nil {
+	remote.PlainHTTP = settings.PlainHTTP
+	remote.Client = settings.GetAuthClient()
+	if err = remote.Ping(settings.Context); err != nil {
 		return err
-	} else if token != "" {
-		cred.Username = ""
-		cred.Password = ""
-		cred.IdentityToken = token
 	}
 
 	// Store credential
-	return c.primaryCredentialsStore(hostname).Store(ctypes.AuthConfig(cred))
+	return c.primaryCredentialsStore(hostname).Store(cred)
 
 }
 

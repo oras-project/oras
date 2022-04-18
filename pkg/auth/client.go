@@ -17,7 +17,11 @@ package auth
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
+	"net/http"
+
+	"oras.land/oras-go/v2/registry/remote/auth"
 )
 
 // Common errors
@@ -44,4 +48,24 @@ type Client interface {
 	Login(settings *LoginSettings) error
 	// Logout logs out from a remote server identified by the hostname.
 	Logout(ctx context.Context, hostname string) error
+}
+
+func (settings *LoginSettings) GetAuthClient() (client *auth.Client) {
+	client = &auth.Client{
+		Credential: func(ctx context.Context, reg string) (auth.Credential, error) {
+			return auth.Credential{
+				Username: settings.Username,
+				Password: settings.Secret,
+			}, nil
+		},
+		Client: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: settings.Insecure,
+				},
+			},
+		},
+	}
+	client.SetUserAgent(settings.UserAgent)
+	return
 }

@@ -27,6 +27,7 @@ import (
 	"github.com/moby/term"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"oras.land/oras/internal/version"
 	"oras.land/oras/pkg/auth"
 	"oras.land/oras/pkg/auth/docker"
 	"oras.land/oras/pkg/auth/general"
@@ -36,12 +37,12 @@ type loginOptions struct {
 	hostname  string
 	fromStdin bool
 
-	debug      bool
-	dockerCred bool
-	configs    []string
-	username   string
-	password   string
-	insecure   bool
+	debug    bool
+	credType string
+	configs  []string
+	username string
+	password string
+	insecure bool
 }
 
 func loginCmd() *cobra.Command {
@@ -78,7 +79,7 @@ Example - Login with insecure registry from command line:
 
 	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
 	cmd.Flags().StringArrayVarP(&opts.configs, "config", "c", nil, "auth config path")
-	cmd.Flags().BoolVarP(&opts.dockerCred, "docker", "", false, "use docker credential")
+	cmd.Flags().StringVarP(&opts.credType, "cred-type", "t", "docker", "save docker credential")
 	cmd.Flags().StringVarP(&opts.username, "username", "u", "", "registry username")
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password or identity token")
 	cmd.Flags().BoolVarP(&opts.fromStdin, "password-stdin", "", false, "read password or identity token from stdin")
@@ -94,9 +95,10 @@ func runLogin(opts loginOptions) (err error) {
 
 	// Prepare auth client
 	var cli auth.Client
-	if opts.dockerCred {
+	switch opts.credType {
+	case "docker":
 		cli, err = docker.NewClient(opts.configs...)
-	} else {
+	default:
 		cli, err = general.NewClient()
 	}
 	if err != nil {
@@ -138,11 +140,12 @@ func runLogin(opts loginOptions) (err error) {
 
 	// Login
 	if err := cli.Login(&auth.LoginSettings{
-		Context:  context.Background(),
-		Hostname: opts.hostname,
-		Username: opts.username,
-		Secret:   opts.password,
-		Insecure: opts.insecure,
+		Context:   context.Background(),
+		Hostname:  opts.hostname,
+		Username:  opts.username,
+		Secret:    opts.password,
+		Insecure:  opts.insecure,
+		UserAgent: "oras" + version.GetVersion(),
 	}); err != nil {
 		return err
 	}
