@@ -16,13 +16,12 @@ limitations under the License.
 package docker
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
 	"github.com/docker/cli/cli/config/credentials"
-	"github.com/pkg/errors"
-
 	"oras.land/oras/pkg/auth"
 )
 
@@ -54,7 +53,7 @@ func NewClient(configPaths ...string) (auth.Client, error) {
 	for _, path := range configPaths {
 		cfg, err := loadConfigFile(path)
 		if err != nil {
-			return nil, errors.Wrap(err, path)
+			return nil, fmt.Errorf(path, err)
 		}
 		configs = append(configs, cfg)
 	}
