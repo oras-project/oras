@@ -79,7 +79,7 @@ Example - Login with insecure registry from command line:
 
 	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
 	cmd.Flags().StringArrayVarP(&opts.configs, "config", "c", nil, "auth config path")
-	cmd.Flags().StringVarP(&opts.credType, "cred-type", "t", "docker", "save docker credential")
+	cmd.Flags().StringVarP(&opts.credType, "cred-type", "t", "docker", "type of the saved credential")
 	cmd.Flags().StringVarP(&opts.username, "username", "u", "", "registry username")
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password or identity token")
 	cmd.Flags().BoolVarP(&opts.fromStdin, "password-stdin", "", false, "read password or identity token from stdin")
