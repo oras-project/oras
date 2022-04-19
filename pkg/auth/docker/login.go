@@ -22,7 +22,8 @@ import (
 	iface "oras.land/oras/pkg/auth"
 )
 
-// Login logs in to a docker registry identified by the hostname with custom options.
+// Login logs in to a docker registry identified by the hostname with custom
+// options.
 func (c *Client) Login(settings *iface.LoginSettings) error {
 	hostname := resolveHostname(settings.Hostname)
 	cred := types.AuthConfig{
