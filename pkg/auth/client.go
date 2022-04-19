@@ -53,10 +53,16 @@ type Client interface {
 func (settings *LoginSettings) GetAuthClient() (client *auth.Client) {
 	client = &auth.Client{
 		Credential: func(ctx context.Context, reg string) (auth.Credential, error) {
-			return auth.Credential{
-				Username: settings.Username,
-				Password: settings.Secret,
-			}, nil
+			if settings.Username != "" {
+				return auth.Credential{
+					Username: settings.Username,
+					Password: settings.Secret,
+				}, nil
+			} else {
+				return auth.Credential{
+					AccessToken: settings.Secret,
+				}, nil
+			}
 		},
 		Client: &http.Client{
 			Transport: &http.Transport{
