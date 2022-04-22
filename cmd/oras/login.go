@@ -20,7 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 
@@ -28,6 +28,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"oras.land/oras/internal/version"
+	"oras.land/oras/pkg"
 	"oras.land/oras/pkg/auth"
 	"oras.land/oras/pkg/auth/docker"
 )
@@ -43,6 +44,7 @@ type loginOptions struct {
 	password  string
 	insecure  bool
 	plainHttp bool
+	verbose   bool
 }
 
 func loginCmd() *cobra.Command {
@@ -85,12 +87,20 @@ Example - Login with insecure registry from command line:
 	cmd.Flags().BoolVarP(&opts.fromStdin, "password-stdin", "", false, "read password or identity token from stdin")
 	cmd.Flags().BoolVarP(&opts.insecure, "insecure", "k", false, "allow connections to SSL registry without certs")
 	cmd.Flags().BoolVarP(&opts.plainHttp, "allow-plain-http", "", false, "allow insecure connections to registry without SSL")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
 	return cmd
 }
 
 func runLogin(opts loginOptions) (err error) {
+	ctx := context.Background()
 	if opts.debug {
 		logrus.SetLevel(logrus.DebugLevel)
+		ctx = pkg.TracedContext(ctx)
+	} else if !opts.verbose {
+		logger := logrus.New()
+		logger.Out = io.Discard
+		e := logger.WithContext(ctx)
+		ctx = context.WithValue(ctx, loggerKey{}, e)
 	}
 
 	// Prepare auth client
@@ -107,7 +117,7 @@ func runLogin(opts loginOptions) (err error) {
 
 	// Prompt credential
 	if opts.fromStdin {
-		password, err := ioutil.ReadAll(os.Stdin)
+		password, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			return err
 		}
@@ -140,7 +150,7 @@ func runLogin(opts loginOptions) (err error) {
 
 	// Login
 	if err := cli.Login(&auth.LoginSettings{
-		Context:   context.Background(),
+		Context:   ctx,
 		Hostname:  opts.hostname,
 		Username:  opts.username,
 		Secret:    opts.password,
