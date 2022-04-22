@@ -37,12 +37,13 @@ type loginOptions struct {
 	hostname  string
 	fromStdin bool
 
-	debug    bool
-	credType string
-	configs  []string
-	username string
-	password string
-	insecure bool
+	debug     bool
+	credType  string
+	configs   []string
+	username  string
+	password  string
+	insecure  bool
+	plainHttp bool
 }
 
 func loginCmd() *cobra.Command {
@@ -84,7 +85,7 @@ Example - Login with insecure registry from command line:
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password or identity token")
 	cmd.Flags().BoolVarP(&opts.fromStdin, "password-stdin", "", false, "read password or identity token from stdin")
 	cmd.Flags().BoolVarP(&opts.insecure, "insecure", "k", false, "allow connections to SSL registry without certs")
-	cmd.Flags().BoolVarP(&opts.insecure, "plain-http", "", false, "allow connectsion to registry without SSL")
+	cmd.Flags().BoolVarP(&opts.plainHttp, "allow-plain-http", "", false, "allow connectsion to registry without SSL")
 	return cmd
 }
 
@@ -145,6 +146,7 @@ func runLogin(opts loginOptions) (err error) {
 		Username:  opts.username,
 		Secret:    opts.password,
 		Insecure:  opts.insecure,
+		PlainHTTP: opts.plainHttp,
 		UserAgent: "oras" + version.GetVersion(),
 	}); err != nil {
 		return err
