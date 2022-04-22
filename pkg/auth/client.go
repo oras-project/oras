@@ -48,6 +48,9 @@ type Client interface {
 	Login(settings *LoginSettings) error
 	// Logout logs out from a remote server identified by the hostname.
 	Logout(ctx context.Context, hostname string) error
+	// LoadCredential loads the username and secret for a logged-in remote
+	// server.
+	LoadCredential(ctx context.Context, hostname string) (username, secret string)
 }
 
 func (settings *LoginSettings) GetAuthClient() (client *auth.Client) {

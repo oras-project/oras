@@ -16,13 +16,18 @@ limitations under the License.
 package docker
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
 	"github.com/docker/cli/cli/config/credentials"
+	"github.com/docker/cli/cli/config/types"
+	"github.com/moby/moby/registry"
+	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/pkg/auth"
+	iface "oras.land/oras/pkg/auth"
 )
 
 // Client provides authentication operations for docker registries.
@@ -86,4 +91,76 @@ func loadConfigFile(path string) (*configfile.ConfigFile, error) {
 		cfg.CredentialsStore = credentials.DetectDefaultStore(cfg.CredentialsStore)
 	}
 	return cfg, nil
+}
+
+// Logout logs out from a docker registry identified by the hostname.
+func (c *Client) Logout(_ context.Context, hostname string) error {
+	hostname = resolveHostname(hostname)
+
+	var configs []*configfile.ConfigFile
+	for _, config := range c.configs {
+		if _, ok := config.AuthConfigs[hostname]; ok {
+			configs = append(configs, config)
+		}
+	}
+	if len(configs) == 0 {
+		return auth.ErrNotLoggedIn
+	}
+
+	// Log out form the primary config only as backups are read-only.
+	return c.primaryCredentialsStore(hostname).Erase(hostname)
+}
+
+// Login logs in to a docker registry identified by the hostname with custom
+// options.
+func (c *Client) Login(settings *iface.LoginSettings) error {
+	hostname := resolveHostname(settings.Hostname)
+	cred := types.AuthConfig{
+		Username:      settings.Secret,
+		ServerAddress: hostname,
+	}
+	if settings.Username == "" {
+		cred.IdentityToken = settings.Secret
+	} else {
+		cred.Password = settings.Secret
+	}
+
+	// Login to ensure valid credential
+	remote, err := remote.NewRegistry(settings.Hostname)
+	if err != nil {
+		return err
+	}
+	remote.PlainHTTP = settings.PlainHTTP
+	remote.Client = settings.GetAuthClient()
+	if err = remote.Ping(settings.Context); err != nil {
+		return err
+	}
+
+	// Store credential
+	return c.primaryCredentialsStore(hostname).Store(cred)
+
+}
+
+// resolveHostname resolves Docker specific hostnames
+func resolveHostname(hostname string) string {
+	switch hostname {
+	case registry.IndexHostname, registry.IndexName, registry.DefaultV2Registry.Host:
+		return registry.IndexServer
+	}
+	return hostname
+}
+
+// LoadCredential loads the username and secret for a certain remote server.
+// Returns empty strings if the remote server is not logged in.
+func (c *Client) LoadCredential(ctx context.Context, hostname string) (username, secret string) {
+	for _, config := range c.configs {
+		authConfig, err := config.GetAuthConfig(hostname)
+		if err == nil {
+			if authConfig.IdentityToken != "" {
+				return "", authConfig.IdentityToken
+			}
+			return authConfig.Username, authConfig.Password
+		}
+	}
+	return
 }
