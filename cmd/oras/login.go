@@ -30,7 +30,6 @@ import (
 	"oras.land/oras/internal/version"
 	"oras.land/oras/pkg/auth"
 	"oras.land/oras/pkg/auth/docker"
-	"oras.land/oras/pkg/auth/general"
 )
 
 type loginOptions struct {
@@ -100,7 +99,7 @@ func runLogin(opts loginOptions) (err error) {
 	case "docker":
 		cli, err = docker.NewClient(opts.configs...)
 	default:
-		cli, err = general.NewClient()
+		return errors.New("Unsupported credential type '" + opts.credType + "'")
 	}
 	if err != nil {
 		return err
