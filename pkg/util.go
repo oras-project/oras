@@ -5,6 +5,7 @@ import (
 	"net/http/httptrace"
 
 	"github.com/sirupsen/logrus"
+	"oras.land/oras/internal/version"
 )
 
 func TracedContext(ctx context.Context) context.Context {
@@ -27,4 +28,8 @@ func TracedContext(ctx context.Context) context.Context {
 		},
 	}
 	return httptrace.WithClientTrace(ctx, trace)
+}
+
+func GetUserAgent() string {
+	return "oras/" + version.GetVersion()
 }

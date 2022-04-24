@@ -27,7 +27,6 @@ import (
 	"github.com/moby/term"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"oras.land/oras/internal/version"
 	"oras.land/oras/pkg"
 	"oras.land/oras/pkg/auth"
 	"oras.land/oras/pkg/auth/docker"
@@ -156,7 +155,7 @@ func runLogin(opts loginOptions) (err error) {
 		Secret:    opts.password,
 		Insecure:  opts.insecure,
 		PlainHTTP: opts.plainHttp,
-		UserAgent: "oras" + version.GetVersion(),
+		UserAgent: pkg.GetUserAgent(),
 	}); err != nil {
 		return err
 	}
