@@ -116,7 +116,7 @@ func (c *Client) Logout(_ context.Context, hostname string) error {
 func (c *Client) Login(settings *iface.LoginSettings) error {
 	hostname := resolveHostname(settings.Hostname)
 	cred := types.AuthConfig{
-		Username:      settings.Secret,
+		Username:      settings.Username,
 		ServerAddress: hostname,
 	}
 	if settings.Username == "" {
