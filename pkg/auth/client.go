@@ -24,6 +24,10 @@ import (
 	"oras.land/oras-go/v2/registry/remote/auth"
 )
 
+const (
+	DOCKER_CREDENTIAL_TYPE = "docker"
+)
+
 // Common errors
 var (
 	ErrNotLoggedIn = errors.New("not logged in")

@@ -32,19 +32,22 @@ import (
 	"oras.land/oras/pkg/auth/docker"
 )
 
-type loginOptions struct {
-	hostname  string
-	fromStdin bool
+type (
+	loggerKey    struct{}
+	loginOptions struct {
+		hostname  string
+		fromStdin bool
 
-	debug     bool
-	credType  string
-	configs   []string
-	username  string
-	password  string
-	insecure  bool
-	plainHttp bool
-	verbose   bool
-}
+		debug     bool
+		credType  string
+		configs   []string
+		username  string
+		password  string
+		insecure  bool
+		plainHttp bool
+		verbose   bool
+	}
+)
 
 func loginCmd() *cobra.Command {
 	var opts loginOptions
@@ -80,7 +83,7 @@ Example - Login with insecure registry from command line:
 
 	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
 	cmd.Flags().StringArrayVarP(&opts.configs, "config", "c", nil, "auth config path")
-	cmd.Flags().StringVarP(&opts.credType, "cred-type", "t", "docker", "type of the saved credential")
+	cmd.Flags().StringVarP(&opts.credType, "cred-type", "t", auth.DOCKER_CREDENTIAL_TYPE, "type of the saved credential")
 	cmd.Flags().StringVarP(&opts.username, "username", "u", "", "registry username")
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password or identity token")
 	cmd.Flags().BoolVarP(&opts.fromStdin, "password-stdin", "", false, "read password or identity token from stdin")
@@ -105,7 +108,7 @@ func runLogin(opts loginOptions) (err error) {
 	// Prepare auth client
 	var cli auth.Client
 	switch opts.credType {
-	case "docker":
+	case auth.DOCKER_CREDENTIAL_TYPE:
 		cli, err = docker.NewClient(opts.configs...)
 	default:
 		return errors.New("Unsupported credential type '" + opts.credType + "'")
