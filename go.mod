@@ -5,7 +5,6 @@ go 1.18
 require (
 	github.com/containerd/containerd v1.6.2
 	github.com/docker/cli v20.10.14+incompatible
-	github.com/moby/moby v20.10.14+incompatible
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.2

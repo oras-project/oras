@@ -18,18 +18,20 @@ package main
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"strings"
 
 	"github.com/moby/term"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"oras.land/oras/pkg"
-	"oras.land/oras/pkg/auth"
-	"oras.land/oras/pkg/auth/docker"
+	"oras.land/oras-go/v2/registry/remote"
+	v2auth "oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras/internal/credential"
+	"oras.land/oras/internal/trace"
 )
 
 type (
@@ -39,7 +41,6 @@ type (
 		fromStdin bool
 
 		debug     bool
-		credType  string
 		configs   []string
 		username  string
 		password  string
@@ -83,7 +84,6 @@ Example - Login with insecure registry from command line:
 
 	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
 	cmd.Flags().StringArrayVarP(&opts.configs, "config", "c", nil, "auth config path")
-	cmd.Flags().StringVarP(&opts.credType, "cred-type", "t", auth.DOCKER_CREDENTIAL_TYPE, "type of the saved credential")
 	cmd.Flags().StringVarP(&opts.username, "username", "u", "", "registry username")
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password or identity token")
 	cmd.Flags().BoolVarP(&opts.fromStdin, "password-stdin", "", false, "read password or identity token from stdin")
@@ -94,25 +94,21 @@ Example - Login with insecure registry from command line:
 }
 
 func runLogin(opts loginOptions) (err error) {
-	ctx := context.Background()
+	ctx := trace.ContextWithLogger(
+		context.Background(),
+		opts.verbose,
+		opts.debug)
+	var rt http.RoundTripper = &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: opts.insecure,
+		},
+	}
 	if opts.debug {
-		logrus.SetLevel(logrus.DebugLevel)
-		ctx = pkg.TracedContext(ctx)
-	} else if !opts.verbose {
-		logger := logrus.New()
-		logger.Out = io.Discard
-		e := logger.WithContext(ctx)
-		ctx = context.WithValue(ctx, loggerKey{}, e)
+		ctx, rt = trace.ContextWithClientTrace(ctx, rt)
 	}
 
 	// Prepare auth client
-	var cli auth.Client
-	switch opts.credType {
-	case auth.DOCKER_CREDENTIAL_TYPE:
-		cli, err = docker.NewClient(opts.configs...)
-	default:
-		return errors.New("Unsupported credential type '" + opts.credType + "'")
-	}
+	store, err := credential.NewStore(opts.configs...)
 	if err != nil {
 		return err
 	}
@@ -150,16 +146,29 @@ func runLogin(opts loginOptions) (err error) {
 		fmt.Fprintln(os.Stderr, "WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
 	}
 
-	// Login
-	if err := cli.Login(&auth.LoginSettings{
-		Context:   ctx,
-		Hostname:  opts.hostname,
-		Username:  opts.username,
-		Secret:    opts.password,
-		Insecure:  opts.insecure,
-		PlainHTTP: opts.plainHttp,
-		UserAgent: pkg.GetUserAgent(),
-	}); err != nil {
+	// Ping to ensure credential is valid
+	remote, err := remote.NewRegistry(opts.hostname)
+	if err != nil {
+		return err
+	}
+	remote.PlainHTTP = opts.plainHttp
+	var cred v2auth.Credential
+	if opts.username == "" {
+		cred.RefreshToken = opts.password
+	} else {
+		cred.Username = opts.username
+		cred.Password = opts.password
+	}
+	client := credential.ClientWithCredential(&v2auth.Client{}, cred)
+	client.SetUserAgent("oras")
+	client.Client = &http.Client{Transport: rt}
+	remote.Client = client
+	if err = remote.Ping(ctx); err != nil {
+		return err
+	}
+
+	// Store the validated credential
+	if err := store.Store(opts.hostname, cred); err != nil {
 		return err
 	}
 
