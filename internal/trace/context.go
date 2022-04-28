@@ -28,7 +28,6 @@ type loggerKey struct{}
 // ContextWithLogger returns a context with logrus log entry.
 func ContextWithLogger(ctx context.Context, verbose, debug bool) context.Context {
 	log := logrus.New()
-	ctx = context.WithValue(ctx, loggerKey{}, log.WithContext(ctx))
 
 	if debug {
 		log.SetLevel(logrus.DebugLevel)
@@ -36,6 +35,5 @@ func ContextWithLogger(ctx context.Context, verbose, debug bool) context.Context
 		log.Out = ioutil.Discard
 	}
 
-	ctx = context.WithValue(ctx, loggerKey{}, log.WithContext(ctx))
-	return ctx
+	return context.WithValue(ctx, loggerKey{}, log.WithContext(ctx))
 }
