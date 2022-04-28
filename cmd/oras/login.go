@@ -18,37 +18,34 @@ package main
 import (
 	"bufio"
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"strings"
 
 	"github.com/moby/term"
 	"github.com/spf13/cobra"
+
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/internal/credential"
 	"oras.land/oras/internal/trace"
+	"oras.land/oras/internal/util"
 )
 
-type (
-	loggerKey    struct{}
-	loginOptions struct {
-		hostname  string
-		fromStdin bool
+type loginOptions struct {
+	hostname  string
+	fromStdin bool
 
-		debug     bool
-		configs   []string
-		username  string
-		password  string
-		insecure  bool
-		plainHttp bool
-		verbose   bool
-	}
-)
+	debug     bool
+	configs   []string
+	username  string
+	password  string
+	insecure  bool
+	plainHttp bool
+	verbose   bool
+}
 
 func loginCmd() *cobra.Command {
 	var opts loginOptions
@@ -144,30 +141,11 @@ func runLogin(opts loginOptions) (err error) {
 		return err
 	}
 	remote.PlainHTTP = opts.plainHttp
-	var cred auth.Credential
-	if opts.username == "" {
-		cred.RefreshToken = opts.password
-	} else {
-		cred.Username = opts.username
-		cred.Password = opts.password
-	}
-	client := &auth.Client{
-		Credential: func(context.Context, string) (auth.Credential, error) {
+	cred := util.AuthCredential(opts.username, opts.password)
+	remote.Client = util.AuthClient(
+		func(context.Context, string) (auth.Credential, error) {
 			return cred, nil
-		},
-		Client: &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: opts.insecure,
-				},
-			},
-		},
-	}
-	client.SetUserAgent("oras")
-	if opts.debug {
-		client.Client.Transport = trace.NewTransport(client.Client.Transport)
-	}
-	remote.Client = client
+		}, opts.insecure, opts.debug)
 	if err = remote.Ping(ctx); err != nil {
 		return err
 	}

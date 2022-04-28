@@ -38,7 +38,7 @@ func NewStore(configPaths ...string) (*Store, error) {
 	for _, path := range configPaths {
 		cfg, err := loadConfigFile(path)
 		if err != nil {
-			return nil, fmt.Errorf(path, err)
+			return nil, fmt.Errorf("%s: %w", path, err)
 		}
 		configs = append(configs, cfg)
 	}

@@ -41,14 +41,14 @@ func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error
 	ctx := req.Context()
 	e := ctx.Value(loggerKey{}).(*logrus.Entry)
 
-	e.Debugf(" Request URL: '%v'\n", req.URL)
-	e.Debugf(" Request method:'%v'\n", req.Method)
-	e.Debugf(" Request headers:\n")
+	e.Debugf(" Request URL: '%v'", req.URL)
+	e.Debugf(" Request method:'%v'", req.Method)
+	e.Debugf(" Request headers:")
 	logHeader(req.Header, e)
 
 	if resp != nil {
-		e.Debugf(" Response Status: '%v'\n", resp.Status)
-		e.Debugf(" Response headers:\n")
+		e.Debugf(" Response Status: '%v'", resp.Status)
+		e.Debugf(" Response headers:")
 		logHeader(resp.Header, e)
 	}
 	return resp, err
@@ -59,12 +59,12 @@ func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error
 func logHeader(header http.Header, e *logrus.Entry) {
 	if len(header) > 0 {
 		for k, v := range header {
-			if k == "Authorization" {
-				v = append(v[0:0], "*****")
+			if strings.ToLower(k) == "authorization" {
+				v = []string{"*****"}
 			}
-			e.Debugf("   '%s': '%s'\n", k, strings.Join(v, ", "))
+			e.Debugf("   '%s': '%s'", k, strings.Join(v, ", "))
 		}
 	} else {
-		e.Debugf("   There is no header\n")
+		e.Debugf("   Empty header")
 	}
 }
