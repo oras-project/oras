@@ -43,7 +43,11 @@ func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error
 	logHeader(req.Header, e)
 
 	resp, err = t.base.RoundTrip(req)
-	if err != nil && resp != nil {
+	if err != nil {
+		e.Errorf("Error in getting response: %w", err.Error())
+	} else if resp == nil {
+		e.Errorf("No response obtained for request [%s]%s", req.Method, req.URL)
+	} else {
 		e.Debugf(" Response Status: '%v'", resp.Status)
 		e.Debugf(" Response headers:")
 		logHeader(resp.Header, e)
