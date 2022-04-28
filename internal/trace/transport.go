@@ -16,7 +16,6 @@ limitations under the License.
 package trace
 
 import (
-	"io"
 	"net/http"
 	"strings"
 
@@ -46,15 +45,11 @@ func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error
 	e.Debugf(" Request method:'%v'\n", req.Method)
 	e.Debugf(" Request headers:\n")
 	logHeader(req.Header, e)
-	e.Debugf(" Request body:\n")
-	logBody(req.Body, req.ContentLength, e)
 
 	if resp != nil {
 		e.Debugf(" Response Status: '%v'\n", resp.Status)
 		e.Debugf(" Response headers:\n")
 		logHeader(resp.Header, e)
-		e.Debugf(" Response content length: %v\n", resp.ContentLength)
-		logBody(resp.Body, resp.ContentLength, e)
 	}
 	return resp, err
 }
@@ -71,19 +66,5 @@ func logHeader(header http.Header, e *logrus.Entry) {
 		}
 	} else {
 		e.Debugf("   There is no header\n")
-	}
-}
-
-// logBody prints out the body
-func logBody(rc io.ReadCloser, length int64, e *logrus.Entry) {
-	if length <= 0 {
-		e.Debugf("   The request has no body\n")
-	} else {
-		body, err := io.ReadAll(rc)
-		if err != nil {
-			e.Error("Failed to read the body: %s", err)
-			return
-		}
-		e.Debugf("   %s", string(body))
 	}
 }
