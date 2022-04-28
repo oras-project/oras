@@ -16,9 +16,8 @@ limitations under the License.
 package trace
 
 import (
-	"context"
+	"io"
 	"net/http"
-	"net/http/httptrace"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -27,52 +26,37 @@ import (
 // Transport is an http.RoundTripper that keeps track of the in-flight
 // request and add hooks to report HTTP tracing events.
 type Transport struct {
-	base     http.RoundTripper
-	request  *http.Request
-	response *http.Response
+	base    http.RoundTripper
+	request *http.Request
+}
+
+func NewTransport(base http.RoundTripper) *Transport {
+	return &Transport{base: base}
 }
 
 // RoundTrip calls base roundtrip while keeping track of the current request.
 func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
 	t.request = req
 	resp, err = t.base.RoundTrip(req)
-	t.response = resp
-	return resp, err
-}
 
-// ConnectDone prints request information when the connection is done.
-func (t *Transport) ConnectDone(ctx context.Context, network, addr string, err error) {
+	ctx := req.Context()
 	e := ctx.Value(loggerKey{}).(*logrus.Entry)
-	r := t.request
-	e.Debugf("Done HTTPS connection: %s\n", r.Host)
-}
-
-// ConnStarted prints request information when the connection starts.
-func (t *Transport) ConnStarted(ctx context.Context, network, addr string) {
-	e := ctx.Value(loggerKey{}).(*logrus.Entry)
-	r := t.request
-	e.Debugf("Starting new HTTPS connection: %s\n", r.Host)
-}
-
-// GotConn prints the http request and response detail of the used connection.
-func (t *Transport) GotConn(ctx context.Context, info httptrace.GotConnInfo) {
-	e := ctx.Value(loggerKey{}).(*logrus.Entry)
-
-	req := t.request
-	resp := t.response
 
 	e.Debugf(" Request URL: '%v'\n", req.URL)
 	e.Debugf(" Request method:'%v'\n", req.Method)
 	e.Debugf(" Request headers:\n")
 	logHeader(req.Header, e)
 	e.Debugf(" Request body:\n")
+	logBody(req.Body, req.ContentLength, e)
 
 	if resp != nil {
 		e.Debugf(" Response Status: '%v'\n", resp.Status)
 		e.Debugf(" Response headers:\n")
 		logHeader(resp.Header, e)
 		e.Debugf(" Response content length: %v\n", resp.ContentLength)
+		logBody(resp.Body, resp.ContentLength, e)
 	}
+	return resp, err
 }
 
 // logHeader prints out the provided header keys and values, with auth header
@@ -87,5 +71,19 @@ func logHeader(header http.Header, e *logrus.Entry) {
 		}
 	} else {
 		e.Debugf("   There is no header\n")
+	}
+}
+
+// logBody prints out the body
+func logBody(rc io.ReadCloser, length int64, e *logrus.Entry) {
+	if length <= 0 {
+		e.Debugf("   The request has no body\n")
+	} else {
+		body, err := io.ReadAll(rc)
+		if err != nil {
+			e.Error("Failed to read the body: %s", err)
+			return
+		}
+		e.Debugf("   %s", string(body))
 	}
 }

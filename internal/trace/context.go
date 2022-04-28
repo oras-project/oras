@@ -18,8 +18,6 @@ package trace
 import (
 	"context"
 	"io/ioutil"
-	"net/http"
-	"net/http/httptrace"
 
 	"github.com/sirupsen/logrus"
 )
@@ -40,21 +38,4 @@ func ContextWithLogger(ctx context.Context, verbose, debug bool) context.Context
 
 	ctx = context.WithValue(ctx, loggerKey{}, log.WithContext(ctx))
 	return ctx
-}
-
-// ContextWithClientTrace hooks a round tripper to the provided context.
-// Returns the hooked context and the tracing round tripper.
-func ContextWithClientTrace(ctx context.Context, rt http.RoundTripper) (context.Context, http.RoundTripper) {
-	t := &Transport{base: rt}
-	return httptrace.WithClientTrace(ctx, &httptrace.ClientTrace{
-		ConnectStart: func(network, addr string) {
-			t.ConnStarted(ctx, network, addr)
-		},
-		ConnectDone: func(network, addr string, err error) {
-			t.ConnectDone(ctx, network, addr, err)
-		},
-		GotConn: func(info httptrace.GotConnInfo) {
-			t.GotConn(ctx, info)
-		},
-	}), t
 }

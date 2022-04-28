@@ -98,14 +98,6 @@ func runLogin(opts loginOptions) (err error) {
 		context.Background(),
 		opts.verbose,
 		opts.debug)
-	var rt http.RoundTripper = &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: opts.insecure,
-		},
-	}
-	if opts.debug {
-		ctx, rt = trace.ContextWithClientTrace(ctx, rt)
-	}
 
 	// Prepare auth client
 	store, err := credential.NewStore(opts.configs...)
@@ -161,7 +153,16 @@ func runLogin(opts loginOptions) (err error) {
 	}
 	client := credential.ClientWithCredential(&v2auth.Client{}, cred)
 	client.SetUserAgent("oras")
-	client.Client = &http.Client{Transport: rt}
+	client.Client = &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: opts.insecure,
+			},
+		},
+	}
+	if opts.debug {
+		client.Client.Transport = trace.NewTransport(client.Client.Transport)
+	}
 	remote.Client = client
 	if err = remote.Ping(ctx); err != nil {
 		return err
