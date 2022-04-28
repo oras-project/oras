@@ -51,11 +51,13 @@ func NewStore(configPaths ...string) (*Store, error) {
 // loadConfigFile reads the credential-related configurationfrom the given path.
 func loadConfigFile(path string) (*configfile.ConfigFile, error) {
 	var cfg *configfile.ConfigFile
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		// config file not exists
-		cfg = configfile.New(path)
-	} else if err == nil {
-		// exists & load from file
+	if _, err := os.Stat(path); err != nil {
+		if os.IsNotExist(err) {
+			cfg = configfile.New(path)
+		} else {
+			return nil, err
+		}
+	} else {
 		file, err := os.Open(path)
 		if err != nil {
 			return nil, err
@@ -65,9 +67,6 @@ func loadConfigFile(path string) (*configfile.ConfigFile, error) {
 		if err := cfg.LoadFromReader(file); err != nil {
 			return nil, err
 		}
-	} else {
-		// return err
-		return nil, err
 	}
 
 	if !cfg.ContainsAuth() {
@@ -101,7 +100,10 @@ func (s *Store) Erase(registry string) error {
 // If nil, the credential is always resolved to `EmptyCredential`.
 func (s *Store) Credential(ctx context.Context, registry string) (auth.Credential, error) {
 	for _, c := range s.configs {
-		authConf, _ := c.GetCredentialsStore(registry).Get(registry)
+		authConf, err := c.GetCredentialsStore(registry).Get(registry)
+		if err != nil {
+			return auth.EmptyCredential, err
+		}
 		cred := auth.Credential{
 			Username:     authConf.Username,
 			Password:     authConf.Password,
@@ -111,7 +113,6 @@ func (s *Store) Credential(ctx context.Context, registry string) (auth.Credentia
 		if cred != auth.EmptyCredential {
 			return cred, nil
 		}
-
 	}
 	return auth.EmptyCredential, nil
 }

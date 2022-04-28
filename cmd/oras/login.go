@@ -29,10 +29,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"oras.land/oras-go/v2/registry/remote"
-	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/internal/credential"
+	"oras.land/oras/internal/http"
 	"oras.land/oras/internal/trace"
-	"oras.land/oras/internal/util"
 )
 
 type loginOptions struct {
@@ -147,11 +146,12 @@ func runLogin(opts loginOptions) (err error) {
 		return err
 	}
 	remote.PlainHTTP = opts.plainHttp
-	cred := util.AuthCredential(opts.username, opts.password)
-	remote.Client = util.AuthClient(
-		func(context.Context, string) (auth.Credential, error) {
-			return cred, nil
-		}, opts.insecure, opts.debug)
+	cred := credential.Credential(opts.username, opts.password)
+	remote.Client = http.NewClient(http.ClientOptions{
+		Credential:    cred,
+		SkipTLSVerify: opts.insecure,
+		Debug:         opts.debug,
+	})
 	if err = remote.Ping(ctx); err != nil {
 		return err
 	}
