@@ -112,12 +112,3 @@ func (s *Store) Credential(ctx context.Context, registry string) (auth.Credentia
 	}
 	return auth.EmptyCredential, nil
 }
-
-// ClientWithCredential adds a credential provider function to the provided
-// client. The function will alway return the provided credential.
-func ClientWithCredential(client *auth.Client, cred auth.Credential) *auth.Client {
-	client.Credential = func(context.Context, string) (auth.Credential, error) {
-		return cred, nil
-	}
-	return client
-}

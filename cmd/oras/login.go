@@ -29,7 +29,7 @@ import (
 	"github.com/moby/term"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/registry/remote"
-	v2auth "oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/internal/credential"
 	"oras.land/oras/internal/trace"
 )
@@ -144,22 +144,26 @@ func runLogin(opts loginOptions) (err error) {
 		return err
 	}
 	remote.PlainHTTP = opts.plainHttp
-	var cred v2auth.Credential
+	var cred auth.Credential
 	if opts.username == "" {
 		cred.RefreshToken = opts.password
 	} else {
 		cred.Username = opts.username
 		cred.Password = opts.password
 	}
-	client := credential.ClientWithCredential(&v2auth.Client{}, cred)
-	client.SetUserAgent("oras")
-	client.Client = &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: opts.insecure,
+	client := &auth.Client{
+		Credential: func(context.Context, string) (auth.Credential, error) {
+			return cred, nil
+		},
+		Client: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: opts.insecure,
+				},
 			},
 		},
 	}
+	client.SetUserAgent("oras")
 	if opts.debug {
 		client.Client.Transport = trace.NewTransport(client.Client.Transport)
 	}
