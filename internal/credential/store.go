@@ -76,7 +76,7 @@ func loadConfigFile(path string) (*configfile.ConfigFile, error) {
 	return cfg, nil
 }
 
-// Store retrieves a credential for a given registry.
+// Store stores a credential for a given registry.
 func (s *Store) Store(registry string, cred auth.Credential) error {
 	authConf := types.AuthConfig{
 		Username:      cred.Username,
