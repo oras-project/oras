@@ -48,20 +48,25 @@ func NewStore(configPaths ...string) (*Store, error) {
 	}, nil
 }
 
-// loadConfigFile reads the configuration files from the given path.
+// loadConfigFile reads the credential-related configurationfrom the given path.
 func loadConfigFile(path string) (*configfile.ConfigFile, error) {
-	cfg := configfile.New(path)
-	if _, err := os.Stat(path); err == nil {
-		// if the config file already exists, load from file
+	var cfg *configfile.ConfigFile
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		// config file not exists
+		cfg = configfile.New(path)
+	} else if err == nil {
+		// exists & load from file
 		file, err := os.Open(path)
 		if err != nil {
 			return nil, err
 		}
 		defer file.Close()
+		cfg = configfile.New(path)
 		if err := cfg.LoadFromReader(file); err != nil {
 			return nil, err
 		}
-	} else if !os.IsNotExist(err) {
+	} else {
+		// return err
 		return nil, err
 	}
 
@@ -80,18 +85,13 @@ func (s *Store) Store(registry string, cred auth.Credential) error {
 		IdentityToken: cred.RefreshToken,
 		RegistryToken: cred.AccessToken,
 	}
-	for _, c := range s.configs {
-		return c.GetCredentialsStore(registry).Store(authConf)
-	}
-	return nil
+
+	return s.configs[0].GetCredentialsStore(registry).Store(authConf)
 }
 
 // Store erase a credential for a given registry.
 func (s *Store) Erase(registry string) error {
-	for _, c := range s.configs {
-		return c.GetCredentialsStore(registry).Erase(registry)
-	}
-	return nil
+	return s.configs[0].GetCredentialsStore(registry).Erase(registry)
 }
 
 // Credential specifies the function for resolving the credential for the
@@ -102,12 +102,15 @@ func (s *Store) Erase(registry string) error {
 func (s *Store) Credential(ctx context.Context, registry string) (auth.Credential, error) {
 	for _, c := range s.configs {
 		authConf, _ := c.GetCredentialsStore(registry).Get(registry)
-		return auth.Credential{
+		cred := auth.Credential{
 			Username:     authConf.Username,
 			Password:     authConf.Password,
 			AccessToken:  authConf.RegistryToken,
 			RefreshToken: authConf.IdentityToken,
-		}, nil
+		}
+		if cred != auth.EmptyCredential {
+			return cred, nil
+		}
 
 	}
 	return auth.EmptyCredential, nil
