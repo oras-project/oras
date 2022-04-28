@@ -25,8 +25,7 @@ import (
 // Transport is an http.RoundTripper that keeps track of the in-flight
 // request and add hooks to report HTTP tracing events.
 type Transport struct {
-	base    http.RoundTripper
-	request *http.Request
+	base http.RoundTripper
 }
 
 func NewTransport(base http.RoundTripper) *Transport {
@@ -35,9 +34,6 @@ func NewTransport(base http.RoundTripper) *Transport {
 
 // RoundTrip calls base roundtrip while keeping track of the current request.
 func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
-	t.request = req
-	resp, err = t.base.RoundTrip(req)
-
 	ctx := req.Context()
 	e := ctx.Value(loggerKey{}).(*logrus.Entry)
 
@@ -46,7 +42,8 @@ func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error
 	e.Debugf(" Request headers:")
 	logHeader(req.Header, e)
 
-	if resp != nil {
+	resp, err = t.base.RoundTrip(req)
+	if err != nil && resp != nil {
 		e.Debugf(" Response Status: '%v'", resp.Status)
 		e.Debugf(" Response headers:")
 		logHeader(resp.Header, e)
