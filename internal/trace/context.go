@@ -17,7 +17,6 @@ package trace
 
 import (
 	"context"
-	"io/ioutil"
 
 	"github.com/sirupsen/logrus"
 )
@@ -25,15 +24,9 @@ import (
 // loggerKey is the associated key type for logger entry in context.
 type loggerKey struct{}
 
-// ContextWithLogger returns a context with logrus log entry.
-func ContextWithLogger(ctx context.Context, verbose, debug bool) context.Context {
-	log := logrus.New()
-
-	if debug {
-		log.SetLevel(logrus.DebugLevel)
-	} else if !verbose {
-		log.Out = ioutil.Discard
-	}
-
-	return context.WithValue(ctx, loggerKey{}, log.WithContext(ctx))
+// WithLoggerLevel returns a context with logrus log entry.
+func WithLoggerLevel(ctx context.Context, level logrus.Level) (context.Context, logrus.FieldLogger) {
+	logger := logrus.New()
+	logger.SetLevel(level)
+	return context.WithValue(ctx, loggerKey{}, logger.WithContext(ctx)), logger
 }

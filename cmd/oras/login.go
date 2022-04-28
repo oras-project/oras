@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/moby/term"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"oras.land/oras-go/v2/registry/remote"
@@ -91,10 +92,15 @@ Example - Login with insecure registry from command line:
 }
 
 func runLogin(opts loginOptions) (err error) {
-	ctx := trace.ContextWithLogger(
-		context.Background(),
-		opts.verbose,
-		opts.debug)
+	var logLevel logrus.Level
+	if opts.debug {
+		logLevel = logrus.DebugLevel
+	} else if opts.verbose {
+		logLevel = logrus.InfoLevel
+	} else {
+		logLevel = logrus.WarnLevel
+	}
+	ctx, _ := trace.WithLoggerLevel(context.Background(), logLevel)
 
 	// Prepare auth client
 	store, err := credential.NewStore(opts.configs...)
