@@ -29,7 +29,7 @@ const loggerKey contextKey = iota
 // WithLoggerLevel returns a context with logrus log entry.
 func WithLoggerLevel(ctx context.Context, level logrus.Level) (context.Context, logrus.FieldLogger) {
 	logger := logrus.New()
-	logger.SetFormatter(&logrus.TextFormatter{ForceColors: true})
+	logger.SetFormatter(&logrus.TextFormatter{DisableQuote: true})
 	logger.SetLevel(level)
 	entry := logger.WithContext(ctx)
 	return context.WithValue(ctx, loggerKey, entry), entry
