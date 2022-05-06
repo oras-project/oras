@@ -67,7 +67,6 @@ func TestStore_storeGetErase(t *testing.T) {
 	if got != auth.EmptyCredential {
 		t.Fatalf("expect: %v, got: %v", auth.EmptyCredential, got)
 	}
-
 }
 
 func TestStore_getEmptyCred(t *testing.T) {
@@ -83,5 +82,4 @@ func TestStore_getEmptyCred(t *testing.T) {
 	if got != auth.EmptyCredential {
 		t.Fatalf("expect: %v, got: %v", auth.EmptyCredential, got)
 	}
-
 }
