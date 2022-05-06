@@ -35,6 +35,7 @@ func WithLoggerLevel(ctx context.Context, level logrus.Level) (context.Context, 
 	return context.WithValue(ctx, loggerKey, entry), entry
 }
 
+// Logger return the logger attached to context or the standard one.
 func Logger(ctx context.Context) logrus.FieldLogger {
 	logger, ok := ctx.Value(loggerKey).(logrus.FieldLogger)
 	if !ok {
