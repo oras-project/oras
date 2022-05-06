@@ -1,3 +1,18 @@
+/*
+Copyright The ORAS Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package main
 
 import (
@@ -5,25 +20,31 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 
 	"github.com/moby/term"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	auth "oras.land/oras-go/pkg/auth/docker"
+
+	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras/internal/credential"
+	"oras.land/oras/internal/http"
+	"oras.land/oras/internal/trace"
 )
 
 type loginOptions struct {
 	hostname  string
 	fromStdin bool
 
-	debug    bool
-	configs  []string
-	username string
-	password string
-	insecure bool
+	debug     bool
+	configs   []string
+	username  string
+	password  string
+	insecure  bool
+	plainHttp bool
+	verbose   bool
 }
 
 func loginCmd() *cobra.Command {
@@ -64,23 +85,31 @@ Example - Login with insecure registry from command line:
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password or identity token")
 	cmd.Flags().BoolVarP(&opts.fromStdin, "password-stdin", "", false, "read password or identity token from stdin")
 	cmd.Flags().BoolVarP(&opts.insecure, "insecure", "k", false, "allow connections to SSL registry without certs")
+	cmd.Flags().BoolVarP(&opts.plainHttp, "plain-http", "", false, "allow insecure connections to registry without SSL")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
 	return cmd
 }
 
-func runLogin(opts loginOptions) error {
+func runLogin(opts loginOptions) (err error) {
+	var logLevel logrus.Level
 	if opts.debug {
-		logrus.SetLevel(logrus.DebugLevel)
+		logLevel = logrus.DebugLevel
+	} else if opts.verbose {
+		logLevel = logrus.InfoLevel
+	} else {
+		logLevel = logrus.WarnLevel
 	}
+	ctx, _ := trace.WithLoggerLevel(context.Background(), logLevel)
 
 	// Prepare auth client
-	cli, err := auth.NewClient(opts.configs...)
+	store, err := credential.NewStore(opts.configs...)
 	if err != nil {
 		return err
 	}
 
 	// Prompt credential
 	if opts.fromStdin {
-		password, err := ioutil.ReadAll(os.Stdin)
+		password, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			return err
 		}
@@ -111,8 +140,24 @@ func runLogin(opts loginOptions) error {
 		fmt.Fprintln(os.Stderr, "WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
 	}
 
-	// Login
-	if err := cli.Login(context.Background(), opts.hostname, opts.username, opts.password, opts.insecure); err != nil {
+	// Ping to ensure credential is valid
+	remote, err := remote.NewRegistry(opts.hostname)
+	if err != nil {
+		return err
+	}
+	remote.PlainHTTP = opts.plainHttp
+	cred := credential.Credential(opts.username, opts.password)
+	remote.Client = http.NewClient(http.ClientOptions{
+		Credential:    cred,
+		SkipTLSVerify: opts.insecure,
+		Debug:         opts.debug,
+	})
+	if err = remote.Ping(ctx); err != nil {
+		return err
+	}
+
+	// Store the validated credential
+	if err := store.Store(opts.hostname, cred); err != nil {
 		return err
 	}
 
