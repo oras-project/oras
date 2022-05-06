@@ -3,11 +3,11 @@ module oras.land/oras
 go 1.18
 
 require (
-	github.com/containerd/containerd v1.6.2
+	github.com/containerd/containerd v1.6.4
 	github.com/docker/cli v20.10.15+incompatible
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6
 	github.com/opencontainers/go-digest v1.0.0
-	github.com/opencontainers/image-spec v1.0.2
+	github.com/opencontainers/image-spec v1.0.3-0.20211202183452-c5a74bcca799
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.4.0
 	oras.land/oras-go v0.4.0
@@ -38,7 +38,7 @@ require (
 	github.com/opencontainers/runc v1.1.1 // indirect
 	github.com/oras-project/artifacts-spec v1.0.0-draft.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/prometheus/client_golang v1.11.0 // indirect
+	github.com/prometheus/client_golang v1.11.1 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.30.0 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
