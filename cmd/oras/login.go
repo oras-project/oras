@@ -86,7 +86,7 @@ Example - Login with insecure registry from command line:
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password or identity token")
 	cmd.Flags().BoolVarP(&opts.fromStdin, "password-stdin", "", false, "read password or identity token from stdin")
 	cmd.Flags().BoolVarP(&opts.insecure, "insecure", "k", false, "allow connections to SSL registry without certs")
-	cmd.Flags().StringVarP(&opts.caFilePath, "ca-file", "", "", "allow connections to SSL registry without certs")
+	cmd.Flags().StringVarP(&opts.caFilePath, "ca-file", "", "", "user specified certificate authority file for the registry client")
 	cmd.Flags().BoolVarP(&opts.plainHttp, "plain-http", "", false, "allow insecure connections to registry without SSL")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
 	return cmd
