@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"net/http"
 
 	"oras.land/oras-go/v2/registry/remote"
@@ -18,6 +19,7 @@ type ClientOptions struct {
 	CredentialStore *credential.Store
 	SkipTLSVerify   bool
 	Debug           bool
+	RootCAs         *x509.CertPool
 }
 
 func NewClient(opts ClientOptions) remote.Client {
@@ -26,6 +28,7 @@ func NewClient(opts ClientOptions) remote.Client {
 			Transport: &http.Transport{
 				TLSClientConfig: &tls.Config{
 					InsecureSkipVerify: opts.SkipTLSVerify,
+					RootCAs:            opts.RootCAs,
 				},
 			},
 		},

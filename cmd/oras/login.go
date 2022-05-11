@@ -38,13 +38,14 @@ type loginOptions struct {
 	hostname  string
 	fromStdin bool
 
-	debug     bool
-	configs   []string
-	username  string
-	password  string
-	insecure  bool
-	plainHttp bool
-	verbose   bool
+	debug       bool
+	configs     []string
+	caFilePaths []string
+	username    string
+	password    string
+	insecure    bool
+	plainHttp   bool
+	verbose     bool
 }
 
 func loginCmd() *cobra.Command {
@@ -85,6 +86,7 @@ Example - Login with insecure registry from command line:
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password or identity token")
 	cmd.Flags().BoolVarP(&opts.fromStdin, "password-stdin", "", false, "read password or identity token from stdin")
 	cmd.Flags().BoolVarP(&opts.insecure, "insecure", "k", false, "allow connections to SSL registry without certs")
+	cmd.Flags().StringArrayVarP(&opts.caFilePaths, "insecure-ca-files", "", nil, "allow connections to SSL registry without certs")
 	cmd.Flags().BoolVarP(&opts.plainHttp, "plain-http", "", false, "allow insecure connections to registry without SSL")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
 	return cmd
@@ -147,10 +149,15 @@ func runLogin(opts loginOptions) (err error) {
 	}
 	remote.PlainHTTP = opts.plainHttp
 	cred := credential.Credential(opts.username, opts.password)
+	rootCAs, err := http.LoadRootCAs(opts.caFilePaths)
+	if err != nil {
+		return err
+	}
 	remote.Client = http.NewClient(http.ClientOptions{
 		Credential:    cred,
 		SkipTLSVerify: opts.insecure,
 		Debug:         opts.debug,
+		RootCAs:       rootCAs,
 	})
 	if err = remote.Ping(ctx); err != nil {
 		return err

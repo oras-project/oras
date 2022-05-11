@@ -15,9 +15,13 @@ limitations under the License.
 package http_test
 
 import (
+	"context"
+	"crypto/x509"
+	"encoding/pem"
 	"testing"
 
 	nhttp "net/http"
+	"net/http/httptest"
 
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/internal/http"
@@ -31,6 +35,7 @@ func Test_NewClient_credential(t *testing.T) {
 		Credential: wanted,
 	}
 	client := http.NewClient(opts)
+
 	got, err := client.(*auth.Client).Credential(nil, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -41,16 +46,48 @@ func Test_NewClient_credential(t *testing.T) {
 	}
 }
 
-func Test_NewClient_tlsConfig(t *testing.T) {
+func Test_NewClient_skipTlsVerify(t *testing.T) {
 	opts := http.ClientOptions{
 		SkipTLSVerify: true,
 	}
 
 	wanted := opts.SkipTLSVerify
 	client := http.NewClient(opts)
+
 	config := client.(*auth.Client).Client.Transport.(*nhttp.Transport).TLSClientConfig
 	got := config.InsecureSkipVerify
 	if got != wanted {
 		t.Fatalf("expect: %v, got: %v", wanted, got)
+	}
+}
+
+func Test_NewClient_CARoots(t *testing.T) {
+	// Test server
+	ts := httptest.NewTLSServer(nhttp.HandlerFunc(func(w nhttp.ResponseWriter, r *nhttp.Request) {
+		p := r.URL.Path
+		m := r.Method
+		switch {
+		case p == "/v2/" && m == "GET":
+			w.WriteHeader(nhttp.StatusOK)
+		}
+	}))
+	defer ts.Close()
+
+	// Test CA pool
+	pool := x509.NewCertPool()
+	c := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ts.Certificate().Raw})
+	pool.AppendCertsFromPEM(c)
+	opts := http.ClientOptions{
+		RootCAs: pool,
+	}
+
+	client := http.NewClient(opts)
+	req, err := nhttp.NewRequestWithContext(context.Background(), nhttp.MethodGet, ts.URL, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	_, err = client.Do(req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
