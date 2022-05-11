@@ -35,7 +35,6 @@ func Test_NewClient_credential(t *testing.T) {
 		Credential: wanted,
 	}
 	client := http.NewClient(opts)
-
 	got, err := client.(*auth.Client).Credential(nil, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -53,7 +52,6 @@ func Test_NewClient_skipTlsVerify(t *testing.T) {
 
 	wanted := opts.SkipTLSVerify
 	client := http.NewClient(opts)
-
 	config := client.(*auth.Client).Client.Transport.(*nhttp.Transport).TLSClientConfig
 	got := config.InsecureSkipVerify
 	if got != wanted {
