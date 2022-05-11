@@ -6,8 +6,8 @@ import (
 	"os"
 )
 
-func LoadRootCAs(path string) (pool *x509.CertPool, err error) {
-	pool, err = x509.SystemCertPool()
+func LoadRootCAs(path string) (*x509.CertPool, error) {
+	pool, err := x509.SystemCertPool()
 	if err != nil {
 		return nil, err
 	}
