@@ -25,10 +25,11 @@ jobs:
         run: |
           docker build -t ${{ steps.prepare.outputs.ref }} .
       - name: docker login
-        uses: docker/login-action@v1
+        uses: docker/login-action@v2
         with:
           registry: ghcr.io
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: docker push
         run: |
           docker push ${{ steps.prepare.outputs.ref }}
