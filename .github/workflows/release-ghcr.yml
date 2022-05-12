@@ -22,18 +22,15 @@ jobs:
           echo ::set-output name=version::${VERSION}
           echo ::set-output name=ref::ghcr.io/${{ github.repository }}:${VERSION}
       - name: docker login
-        uses: docker/login-action@v1
+        uses: docker/login-action@v2
         with:
           registry: ghcr.io
-          username: ${{ secrets.RELEASE_GHCR_USER_NAME }}
-          password: ${{ secrets.RELEASE_GHCR_USER_TOKEN }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: docker build
         run: |          
           docker buildx create --use --name build --node build --driver-opt network=host
           docker buildx build --platform linux/amd64,linux/arm64,darwin/arm64 -t ${{ steps.prepare.outputs.ref }} --push .
-      - name: docker push
-        run: |
-          docker push ${{ steps.prepare.outputs.ref }}
       - name: clear
         if: always()
         run: |
