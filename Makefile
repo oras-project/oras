@@ -33,7 +33,7 @@ clean:
 build: build-linux-amd64 build-linux-arm64 build-mac build-mac-arm64 build-windows
 
 .PHONY: build-linux-amd64
-build-linux:
+build-linux-amd64:
 	GOARCH=amd64 CGO_ENABLED=0 GOOS=linux go build -v --ldflags="$(LDFLAGS)" \
 		-o bin/linux/amd64/$(CLI_EXE) $(CLI_PKG)
 
