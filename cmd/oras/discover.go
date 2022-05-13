@@ -155,7 +155,7 @@ func discover(ctx context.Context, repo *remote.Repository, ref, artifactType st
 	var res []artifactspec.Descriptor
 	if err := repo.Referrers(ctx, desc, func(referrers []artifactspec.Descriptor) error {
 		for _, referrer := range referrers {
-			if referrer.ArtifactType == artifactType {
+			if artifactType == "" || referrer.ArtifactType == artifactType {
 				res = append(res, referrer)
 			}
 		}
