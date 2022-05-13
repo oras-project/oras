@@ -14,6 +14,7 @@ func main() {
 	cmd.AddCommand(
 		pullCmd(),
 		pushCmd(),
+		copyCmd(),
 		discoverCmd(),
 		loginCmd(),
 		logoutCmd(),
