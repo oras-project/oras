@@ -135,10 +135,11 @@ func runPush(opts pushOptions) error {
 	defer store.Close()
 
 	// Pack manifests
+	var desc ocispec.Descriptor
 	if opts.artifactType != "" {
-		err = packArtifact(ctx, repo, store, annotations, &opts)
+		desc, err = packArtifact(ctx, repo, store, annotations, &opts)
 	} else {
-		err = packManifest(ctx, store, annotations, &opts)
+		desc, err = packManifest(ctx, store, annotations, &opts)
 	}
 	if err != nil {
 		return err
@@ -152,8 +153,11 @@ func runPush(opts pushOptions) error {
 		verbose: opts.verbose,
 	}
 
-	tag := repo.Reference.ReferenceOrDefault()
-	desc, err := oras.Copy(ctx, store, tagStaged, tracker, tag)
+	if tag := repo.Reference.Reference; tag == "" {
+		err = oras.CopyGraph(ctx, store, tracker, desc)
+	} else {
+		desc, err = oras.Copy(ctx, store, tagStaged, tracker, tag)
+	}
 	if err != nil {
 		return err
 	}
@@ -164,14 +168,14 @@ func runPush(opts pushOptions) error {
 	return nil
 }
 
-func packArtifact(ctx context.Context, remote content.Resolver, store *file.Store, annotations map[string]map[string]string, opts *pushOptions) error {
+func packArtifact(ctx context.Context, remote content.Resolver, store *file.Store, annotations map[string]map[string]string, opts *pushOptions) (ocispec.Descriptor, error) {
 	subject, err := remote.Resolve(ctx, opts.artifactSubject)
 	if err != nil {
-		return err
+		return ocispec.Descriptor{}, err
 	}
 	files, err := loadFiles(ctx, store, annotations, opts)
 	if err != nil {
-		return err
+		return ocispec.Descriptor{}, err
 	}
 
 	manifest := artifactspec.Manifest{
@@ -183,7 +187,7 @@ func packArtifact(ctx context.Context, remote content.Resolver, store *file.Stor
 	}
 	manifestBytes, err := json.Marshal(manifest)
 	if err != nil {
-		return fmt.Errorf("failed to marshal manifest: %w", err)
+		return ocispec.Descriptor{}, fmt.Errorf("failed to marshal manifest: %w", err)
 	}
 	manifestDesc := ocispec.Descriptor{
 		MediaType: artifactspec.MediaTypeArtifactManifest,
@@ -193,12 +197,15 @@ func packArtifact(ctx context.Context, remote content.Resolver, store *file.Stor
 
 	// store manifest
 	if err := store.Push(ctx, manifestDesc, bytes.NewReader(manifestBytes)); err != nil && !errors.Is(err, errdef.ErrAlreadyExists) {
-		return fmt.Errorf("failed to push manifest: %w", err)
+		return ocispec.Descriptor{}, fmt.Errorf("failed to push manifest: %w", err)
 	}
-	return store.Tag(ctx, manifestDesc, tagStaged)
+	if err := store.Tag(ctx, manifestDesc, tagStaged); err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	return manifestDesc, nil
 }
 
-func packManifest(ctx context.Context, store *file.Store, annotations map[string]map[string]string, opts *pushOptions) error {
+func packManifest(ctx context.Context, store *file.Store, annotations map[string]map[string]string, opts *pushOptions) (ocispec.Descriptor, error) {
 	var packOpts oras.PackOptions
 	packOpts.ConfigAnnotations = annotations[annotationConfig]
 	packOpts.ManifestAnnotations = annotations[annotationManifest]
@@ -206,20 +213,23 @@ func packManifest(ctx context.Context, store *file.Store, annotations map[string
 		filename, mediaType := parseFileRef(opts.manifestConfigRef, ocispec.MediaTypeImageConfig)
 		file, err := store.Add(ctx, annotationConfig, mediaType, filename)
 		if err != nil {
-			return err
+			return ocispec.Descriptor{}, err
 		}
 		file.Annotations = packOpts.ConfigAnnotations
 		packOpts.ConfigDescriptor = &file
 	}
 	files, err := loadFiles(ctx, store, annotations, opts)
 	if err != nil {
-		return err
+		return ocispec.Descriptor{}, err
 	}
 	manifestDesc, err := oras.Pack(ctx, store, files, packOpts)
 	if err != nil {
-		return err
+		return ocispec.Descriptor{}, err
 	}
-	return store.Tag(ctx, manifestDesc, tagStaged)
+	if err := store.Tag(ctx, manifestDesc, tagStaged); err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	return manifestDesc, nil
 }
 
 func decodeJSON(filename string, v interface{}) error {
