@@ -43,9 +43,9 @@ build-linux-arm64:
 		-o bin/linux/arm64/$(CLI_EXE) $(CLI_PKG)
 
 .PHONY: build-linux-arm32
-build-linux-arm64:
+build-linux-arm32:
 	GOARCH=arm64 CGO_ENABLED=0 GOOS=linux go build -v --ldflags="$(LDFLAGS)" \
-		-o bin/linux/arm32/$(CLI_EXE) $(CLI_PKG)
+		-o bin/linux/arm/$(CLI_EXE) $(CLI_PKG)
 
 .PHONY: build-mac
 build-mac:
