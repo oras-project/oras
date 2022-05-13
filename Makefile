@@ -30,7 +30,7 @@ clean:
 	git status --ignored --short | grep '^!! ' | sed 's/!! //' | xargs rm -rf
 
 .PHONY: build
-build: build-linux build-linux-arm64 build-mac build-mac-arm64 build-windows
+build: build-linux build-linux-arm64 build-linux-arm32 build-mac build-mac-arm64 build-windows
 
 .PHONY: build-linux
 build-linux:
@@ -41,6 +41,11 @@ build-linux:
 build-linux-arm64:
 	GOARCH=arm64 CGO_ENABLED=0 GOOS=linux go build -v --ldflags="$(LDFLAGS)" \
 		-o bin/linux/arm64/$(CLI_EXE) $(CLI_PKG)
+
+.PHONY: build-linux-arm32
+build-linux-arm64:
+	GOARCH=arm64 CGO_ENABLED=0 GOOS=linux go build -v --ldflags="$(LDFLAGS)" \
+		-o bin/linux/arm32/$(CLI_EXE) $(CLI_PKG)
 
 .PHONY: build-mac
 build-mac:

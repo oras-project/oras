@@ -30,7 +30,7 @@ jobs:
       - name: docker build
         run: |          
           docker buildx create --use --name build --node build --driver-opt network=host
-          docker buildx build --platform linux/amd64,linux/arm64,darwin/arm64 -t ${{ steps.prepare.outputs.ref }} --push .
+          docker buildx build --platform linux/amd64,linux/arm64,,linux/arm32 -t ${{ steps.prepare.outputs.ref }} --push .
       - name: clear
         if: always()
         run: |
