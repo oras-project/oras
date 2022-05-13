@@ -115,7 +115,8 @@ func runPull(opts pullOptions) error {
 		verbose:    opts.verbose,
 	}
 
-	desc, err := oras.Copy(ctx, repo, opts.targetRef, tracker, "")
+	tag := repo.Reference.ReferenceOrDefault()
+	desc, err := oras.Copy(ctx, repo, tag, tracker, "")
 	if err != nil {
 		return err
 	}

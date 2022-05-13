@@ -152,7 +152,8 @@ func runPush(opts pushOptions) error {
 		verbose: opts.verbose,
 	}
 
-	desc, err := oras.Copy(ctx, store, tagStaged, tracker, opts.targetRef)
+	tag := repo.Reference.ReferenceOrDefault()
+	desc, err := oras.Copy(ctx, store, tagStaged, tracker, tag)
 	if err != nil {
 		return err
 	}
