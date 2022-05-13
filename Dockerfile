@@ -4,7 +4,7 @@ RUN apk add git make
 ENV ORASPKG /oras
 ADD . ${ORASPKG}
 WORKDIR ${ORASPKG}
-RUN make build-$(echo $TARGETPLATFORM | sed 's/\//-/g')
+RUN make "build-$(echo $TARGETPLATFORM | sed 's/\//-/g')"
 RUN mv ${ORASPKG}/bin/${TARGETPLATFORM}/oras /go/bin/oras
 
 FROM docker.io/library/alpine:3.13.5
