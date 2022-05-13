@@ -85,16 +85,16 @@ func runPull(opts pullOptions) error {
 	ctx, _ := trace.WithLoggerLevel(context.Background(), logLevel)
 
 	// Prepare client
-	remote, err := remote.NewRepository(opts.targetRef)
+	repo, err := remote.NewRepository(opts.targetRef)
 	if err != nil {
 		return err
 	}
-	remote.PlainHTTP = opts.plainHTTP
+	setPlainHTTP(repo, opts.plainHTTP)
 	credStore, err := credential.NewStore(opts.configs...)
 	if err != nil {
 		return err
 	}
-	remote.Client = http.NewClient(http.ClientOptions{
+	repo.Client = http.NewClient(http.ClientOptions{
 		Credential:      credential.Credential(opts.username, opts.password),
 		CredentialStore: credStore,
 		SkipTLSVerify:   opts.insecure,
@@ -107,7 +107,7 @@ func runPull(opts pullOptions) error {
 	store.DisableOverwrite = opts.keepOldFiles
 	store.AllowPathTraversalOnWrite = opts.pathTraversal
 
-	target := &statusTracker{
+	tracker := &statusTracker{
 		Target:     store,
 		out:        os.Stdout,
 		printAfter: true,
@@ -115,7 +115,7 @@ func runPull(opts pullOptions) error {
 		verbose:    opts.verbose,
 	}
 
-	desc, err := oras.Copy(ctx, remote, opts.targetRef, target, "")
+	desc, err := oras.Copy(ctx, repo, opts.targetRef, tracker, "")
 	if err != nil {
 		return err
 	}

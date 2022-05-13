@@ -76,16 +76,16 @@ func runDiscover(opts discoverOptions) error {
 	ctx, _ := trace.WithLoggerLevel(context.Background(), logLevel)
 
 	// Prepare client
-	remote, err := remote.NewRepository(opts.targetRef)
+	repo, err := remote.NewRepository(opts.targetRef)
 	if err != nil {
 		return err
 	}
-	remote.PlainHTTP = opts.plainHTTP
+	setPlainHTTP(repo, opts.plainHTTP)
 	credStore, err := credential.NewStore(opts.configs...)
 	if err != nil {
 		return err
 	}
-	remote.Client = http.NewClient(http.ClientOptions{
+	repo.Client = http.NewClient(http.ClientOptions{
 		Credential:      credential.Credential(opts.username, opts.password),
 		CredentialStore: credStore,
 		SkipTLSVerify:   opts.insecure,
@@ -94,7 +94,7 @@ func runDiscover(opts discoverOptions) error {
 
 	// discover artifacts
 	rootNode := tree.New(opts.targetRef)
-	desc, refs, err := getAllReferences(ctx, remote, opts.targetRef, opts.artifactType, rootNode, opts.outputType == "tree")
+	desc, refs, err := getAllReferences(ctx, repo, opts.targetRef, opts.artifactType, rootNode, opts.outputType == "tree")
 	if err != nil {
 		return err
 	}

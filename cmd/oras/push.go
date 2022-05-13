@@ -106,16 +106,16 @@ func runPush(opts pushOptions) error {
 	ctx, _ := trace.WithLoggerLevel(context.Background(), logLevel)
 
 	// Prepare client
-	remote, err := remote.NewRepository(opts.targetRef)
+	repo, err := remote.NewRepository(opts.targetRef)
 	if err != nil {
 		return err
 	}
-	remote.PlainHTTP = opts.plainHTTP
+	setPlainHTTP(repo, opts.plainHTTP)
 	credStore, err := credential.NewStore(opts.configs...)
 	if err != nil {
 		return err
 	}
-	remote.Client = http.NewClient(http.ClientOptions{
+	repo.Client = http.NewClient(http.ClientOptions{
 		Credential:      credential.Credential(opts.username, opts.password),
 		CredentialStore: credStore,
 		SkipTLSVerify:   opts.insecure,
@@ -136,7 +136,7 @@ func runPush(opts pushOptions) error {
 
 	// Pack manifests
 	if opts.artifactType != "" {
-		err = packArtifact(ctx, remote, store, annotations, &opts)
+		err = packArtifact(ctx, repo, store, annotations, &opts)
 	} else {
 		err = packManifest(ctx, store, annotations, &opts)
 	}
@@ -145,14 +145,14 @@ func runPush(opts pushOptions) error {
 	}
 
 	// ready to push
-	target := &statusTracker{
-		Target:  remote,
+	tracker := &statusTracker{
+		Target:  repo,
 		out:     os.Stdout,
 		prompt:  "Uploading",
 		verbose: opts.verbose,
 	}
 
-	desc, err := oras.Copy(ctx, store, tagStaged, target, opts.targetRef)
+	desc, err := oras.Copy(ctx, store, tagStaged, tracker, opts.targetRef)
 	if err != nil {
 		return err
 	}

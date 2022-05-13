@@ -43,7 +43,7 @@ type loginOptions struct {
 	username  string
 	password  string
 	insecure  bool
-	plainHttp bool
+	plainHTTP bool
 	verbose   bool
 }
 
@@ -85,7 +85,7 @@ Example - Login with insecure registry from command line:
 	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password or identity token")
 	cmd.Flags().BoolVarP(&opts.fromStdin, "password-stdin", "", false, "read password or identity token from stdin")
 	cmd.Flags().BoolVarP(&opts.insecure, "insecure", "k", false, "allow connections to SSL registry without certs")
-	cmd.Flags().BoolVarP(&opts.plainHttp, "plain-http", "", false, "allow insecure connections to registry without SSL")
+	cmd.Flags().BoolVarP(&opts.plainHTTP, "plain-http", "", false, "allow insecure connections to registry without SSL")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
 	return cmd
 }
@@ -141,18 +141,18 @@ func runLogin(opts loginOptions) (err error) {
 	}
 
 	// Ping to ensure credential is valid
-	remote, err := remote.NewRegistry(opts.hostname)
+	registry, err := remote.NewRegistry(opts.hostname)
 	if err != nil {
 		return err
 	}
-	remote.PlainHTTP = opts.plainHttp
+	setPlainHTTP((*remote.Repository)(&registry.RepositoryOptions), opts.plainHTTP)
 	cred := credential.Credential(opts.username, opts.password)
-	remote.Client = http.NewClient(http.ClientOptions{
+	registry.Client = http.NewClient(http.ClientOptions{
 		Credential:    cred,
 		SkipTLSVerify: opts.insecure,
 		Debug:         opts.debug,
 	})
-	if err = remote.Ping(ctx); err != nil {
+	if err = registry.Ping(ctx); err != nil {
 		return err
 	}
 
