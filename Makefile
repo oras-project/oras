@@ -30,13 +30,10 @@ clean:
 	git status --ignored --short | grep '^!! ' | sed 's/!! //' | xargs rm -rf
 
 .PHONY: build
-build: build-linux build-mac build-mac-arm64 build-windows
+build: build-linux build-linux-arm64 build-mac build-mac-arm64 build-windows
 
 .PHONY: build-linux
-build-linux: build-linux-amd64 build-linux-arm64 build-linux-arm32
-
-.PHONY: build-linux-amd64
-build-linux-amd64:
+build-linux:
 	GOARCH=amd64 CGO_ENABLED=0 GOOS=linux go build -v --ldflags="$(LDFLAGS)" \
 		-o bin/linux/amd64/$(CLI_EXE) $(CLI_PKG)
 
@@ -45,14 +42,10 @@ build-linux-arm64:
 	GOARCH=arm64 CGO_ENABLED=0 GOOS=linux go build -v --ldflags="$(LDFLAGS)" \
 		-o bin/linux/arm64/$(CLI_EXE) $(CLI_PKG)
 
-.PHONY: build-linux-arm32
-build-linux-arm32:
-	GOARCH=arm64 CGO_ENABLED=0 GOOS=linux go build -v --ldflags="$(LDFLAGS)" \
-		-o bin/linux/arm/$(CLI_EXE) $(CLI_PKG)
-	mkdir -p bin/linux/arm/v5 && ln -f bin/linux/arm/$(CLI_EXE) \
-		bin/linux/arm/v5/$(CLI_EXE) 
-	mkdir -p bin/linux/arm/v7 && ln -f bin/linux/arm/$(CLI_EXE) \
-		bin/linux/arm/v7/$(CLI_EXE) 
+.PHONY: build-linux-arm-v7
+build-linux-arm-v7:
+	GOARCH=arm CGO_ENABLED=0 GOOS=linux go build -v --ldflags="$(LDFLAGS)" \
+		-o bin/linux/arm/v7/$(CLI_EXE) $(CLI_PKG)
 
 .PHONY: build-mac
 build-mac:
