@@ -4,7 +4,7 @@ var (
 	// Version is the current version of the oras.
 	Version = "0.14.0"
 	// BuildMetadata is the extra build time data
-	BuildMetadata = "shizhMSFT"
+	BuildMetadata = "shizh.1"
 	// GitCommit is the git sha1
 	GitCommit = ""
 	// GitTreeState is the state of the git tree
