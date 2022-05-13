@@ -13,34 +13,42 @@ import (
 
 type statusTracker struct {
 	oras.Target
-	out     io.Writer
-	lock    sync.Mutex
-	prompt  string
-	verbose bool
+	out        io.Writer
+	printLock  sync.Mutex
+	printAfter bool
+	prompt     string
+	verbose    bool
 }
 
 func (t *statusTracker) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
-	if err := t.Target.Push(ctx, expected, content); err != nil {
-		return err
-	}
-
-	name, ok := expected.Annotations[ocispec.AnnotationTitle]
-	if !ok {
-		if !t.verbose {
-			return nil
+	print := func() {
+		name, ok := expected.Annotations[ocispec.AnnotationTitle]
+		if !ok {
+			if !t.verbose {
+				return
+			}
+			name = expected.MediaType
 		}
-		name = expected.MediaType
-	}
 
-	digestString := expected.Digest.String()
-	if err := expected.Digest.Validate(); err == nil {
-		if algo := expected.Digest.Algorithm(); algo == digest.SHA256 {
-			digestString = expected.Digest.Encoded()[:12]
+		digestString := expected.Digest.String()
+		if err := expected.Digest.Validate(); err == nil {
+			if algo := expected.Digest.Algorithm(); algo == digest.SHA256 {
+				digestString = expected.Digest.Encoded()[:12]
+			}
 		}
+		t.printLock.Lock()
+		defer t.printLock.Unlock()
+		fmt.Fprintln(t.out, t.prompt, digestString, name)
 	}
-	t.lock.Lock()
-	defer t.lock.Unlock()
-	fmt.Fprintln(t.out, t.prompt, digestString, name)
 
-	return nil
+	if t.printAfter {
+		if err := t.Target.Push(ctx, expected, content); err != nil {
+			return err
+		}
+		print()
+		return nil
+	}
+
+	print()
+	return t.Target.Push(ctx, expected, content)
 }

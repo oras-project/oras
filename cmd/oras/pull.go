@@ -108,10 +108,11 @@ func runPull(opts pullOptions) error {
 	store.AllowPathTraversalOnWrite = opts.pathTraversal
 
 	target := &statusTracker{
-		Target:  store,
-		out:     os.Stdout,
-		prompt:  "Downloaded",
-		verbose: opts.verbose,
+		Target:     store,
+		out:        os.Stdout,
+		printAfter: true,
+		prompt:     "Downloaded",
+		verbose:    opts.verbose,
 	}
 
 	desc, err := oras.Copy(ctx, remote, opts.targetRef, target, "")
