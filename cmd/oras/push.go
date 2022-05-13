@@ -185,7 +185,7 @@ func packArtifact(ctx context.Context, remote content.Resolver, store *file.Stor
 		return fmt.Errorf("failed to marshal manifest: %w", err)
 	}
 	manifestDesc := ocispec.Descriptor{
-		MediaType: ocispec.MediaTypeImageManifest,
+		MediaType: artifactspec.MediaTypeArtifactManifest,
 		Digest:    digest.FromBytes(manifestBytes),
 		Size:      int64(len(manifestBytes)),
 	}
