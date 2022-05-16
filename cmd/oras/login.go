@@ -31,21 +31,13 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/internal/credential"
 	"oras.land/oras/internal/http"
+	"oras.land/oras/internal/option"
 	"oras.land/oras/internal/trace"
 )
 
 type loginOptions struct {
-	hostname  string
-	fromStdin bool
-
-	debug      bool
-	configs    []string
-	caFilePath string
-	username   string
-	password   string
-	insecure   bool
-	plainHTTP  bool
-	verbose    bool
+	option.Common
+	option.Remote
 }
 
 func loginCmd() *cobra.Command {
@@ -75,28 +67,22 @@ Example - Login with insecure registry from command line:
 `,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.hostname = args[0]
+			opts.Hostname = args[0]
 			return runLogin(opts)
 		},
 	}
 
-	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
-	cmd.Flags().StringArrayVarP(&opts.configs, "config", "c", nil, "auth config path")
-	cmd.Flags().StringVarP(&opts.username, "username", "u", "", "registry username")
-	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password or identity token")
-	cmd.Flags().BoolVarP(&opts.fromStdin, "password-stdin", "", false, "read password or identity token from stdin")
-	cmd.Flags().BoolVarP(&opts.insecure, "insecure", "k", false, "allow connections to SSL registry without certs")
-	cmd.Flags().StringVarP(&opts.caFilePath, "ca-file", "", "", "server certificate authority file for the remote registry")
-	cmd.Flags().BoolVarP(&opts.plainHTTP, "plain-http", "", false, "allow insecure connections to registry without SSL")
-	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
+	opts.Remote.ApplyFlagsTo(cmd.Flags())
+	opts.Common.ApplyFlagsTo(cmd.Flags())
+
 	return cmd
 }
 
 func runLogin(opts loginOptions) (err error) {
 	var logLevel logrus.Level
-	if opts.debug {
+	if opts.Debug {
 		logLevel = logrus.DebugLevel
-	} else if opts.verbose {
+	} else if opts.Verbose {
 		logLevel = logrus.InfoLevel
 	} else {
 		logLevel = logrus.WarnLevel
@@ -104,37 +90,37 @@ func runLogin(opts loginOptions) (err error) {
 	ctx, _ := trace.WithLoggerLevel(context.Background(), logLevel)
 
 	// Prepare auth client
-	store, err := credential.NewStore(opts.configs...)
+	store, err := credential.NewStore(opts.Configs...)
 	if err != nil {
 		return err
 	}
 
 	// Prompt credential
-	if opts.fromStdin {
+	if opts.FromStdin {
 		password, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			return err
 		}
-		opts.password = strings.TrimSuffix(string(password), "\n")
-		opts.password = strings.TrimSuffix(opts.password, "\r")
-	} else if opts.password == "" {
-		if opts.username == "" {
+		opts.Password = strings.TrimSuffix(string(password), "\n")
+		opts.Password = strings.TrimSuffix(opts.Password, "\r")
+	} else if opts.Password == "" {
+		if opts.Username == "" {
 			username, err := readLine("Username: ", false)
 			if err != nil {
 				return err
 			}
-			opts.username = strings.TrimSpace(username)
+			opts.Username = strings.TrimSpace(username)
 		}
-		if opts.username == "" {
-			if opts.password, err = readLine("Token: ", true); err != nil {
+		if opts.Username == "" {
+			if opts.Password, err = readLine("Token: ", true); err != nil {
 				return err
-			} else if opts.password == "" {
+			} else if opts.Password == "" {
 				return errors.New("token required")
 			}
 		} else {
-			if opts.password, err = readLine("Password: ", true); err != nil {
+			if opts.Password, err = readLine("Password: ", true); err != nil {
 				return err
-			} else if opts.password == "" {
+			} else if opts.Password == "" {
 				return errors.New("password required")
 			}
 		}
@@ -143,20 +129,20 @@ func runLogin(opts loginOptions) (err error) {
 	}
 
 	// Ping to ensure credential is valid
-	remote, err := remote.NewRegistry(opts.hostname)
+	remote, err := remote.NewRegistry(opts.Hostname)
 	if err != nil {
 		return err
 	}
-	remote.PlainHTTP = opts.plainHTTP
-	cred := credential.Credential(opts.username, opts.password)
-	rootCAs, err := http.LoadCertPool(opts.caFilePath)
+	remote.PlainHTTP = opts.PlainHTTP
+	cred := credential.Credential(opts.Username, opts.Password)
+	rootCAs, err := http.LoadCertPool(opts.CaFilePath)
 	if err != nil {
 		return err
 	}
 	remote.Client = http.NewClient(http.ClientOptions{
 		Credential:    cred,
-		SkipTLSVerify: opts.insecure,
-		Debug:         opts.debug,
+		SkipTLSVerify: opts.Insecure,
+		Debug:         opts.Debug,
 		RootCAs:       rootCAs,
 	})
 	if err = remote.Ping(ctx); err != nil {
@@ -164,7 +150,7 @@ func runLogin(opts loginOptions) (err error) {
 	}
 
 	// Store the validated credential
-	if err := store.Store(opts.hostname, cred); err != nil {
+	if err := store.Store(opts.Hostname, cred); err != nil {
 		return err
 	}
 
