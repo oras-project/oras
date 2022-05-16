@@ -44,7 +44,7 @@ type loginOptions struct {
 	username   string
 	password   string
 	insecure   bool
-	plainHttp  bool
+	plainHTTP  bool
 	verbose    bool
 }
 
@@ -87,7 +87,7 @@ Example - Login with insecure registry from command line:
 	cmd.Flags().BoolVarP(&opts.fromStdin, "password-stdin", "", false, "read password or identity token from stdin")
 	cmd.Flags().BoolVarP(&opts.insecure, "insecure", "k", false, "allow connections to SSL registry without certs")
 	cmd.Flags().StringVarP(&opts.caFilePath, "ca-file", "", "", "server certificate authority file for the remote registry")
-	cmd.Flags().BoolVarP(&opts.plainHttp, "plain-http", "", false, "allow insecure connections to registry without SSL")
+	cmd.Flags().BoolVarP(&opts.plainHTTP, "plain-http", "", false, "allow insecure connections to registry without SSL")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
 	return cmd
 }
@@ -147,7 +147,7 @@ func runLogin(opts loginOptions) (err error) {
 	if err != nil {
 		return err
 	}
-	remote.PlainHTTP = opts.plainHttp
+	remote.PlainHTTP = opts.plainHTTP
 	cred := credential.Credential(opts.username, opts.password)
 	rootCAs, err := http.LoadCertPool(opts.caFilePath)
 	if err != nil {
