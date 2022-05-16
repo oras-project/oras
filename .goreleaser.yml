@@ -13,9 +13,14 @@ builds:
   goarch:
   - amd64
   - arm64
+  - arm
   ignore:
   - goos: windows
     goarch: arm64
+  - goos: windows
+    goarch: arm
+  - goos: darwin
+    goarch: arm
   ldflags:
   # one-line ldflags to bypass the goreleaser bugs
   # the git tree state is guaranteed to be clean by goreleaser
