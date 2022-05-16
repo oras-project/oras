@@ -17,7 +17,6 @@ package http_test
 import (
 	"context"
 	"crypto/x509"
-	"encoding/pem"
 	"testing"
 
 	nhttp "net/http"
@@ -73,8 +72,7 @@ func Test_NewClient_CARoots(t *testing.T) {
 
 	// Test CA pool
 	pool := x509.NewCertPool()
-	c := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ts.Certificate().Raw})
-	pool.AppendCertsFromPEM(c)
+	pool.AddCert(ts.Certificate())
 	opts := http.ClientOptions{
 		RootCAs: pool,
 	}
