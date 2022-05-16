@@ -7,7 +7,7 @@ WORKDIR ${ORASPKG}
 RUN make "build-$(echo $TARGETPLATFORM | sed 's/\//-/g')"
 RUN mv ${ORASPKG}/bin/${TARGETPLATFORM}/oras /go/bin/oras
 
-FROM docker.io/library/alpine:3.13.5
+FROM docker.io/library/alpine:3.15.4
 RUN apk --update add ca-certificates
 COPY --from=builder /go/bin/oras /bin/oras
 RUN mkdir /workspace
