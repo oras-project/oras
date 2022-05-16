@@ -36,6 +36,9 @@ archives:
     - goos: windows
       format: zip
 
+release:
+  draft: true
+  prerelease: auto
 #signs:
 #  - artifacts: all
 #    args: ["--output", "${signature}", "--detach-sign", "--armor", "${artifact}"]
