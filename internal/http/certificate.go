@@ -7,6 +7,9 @@ import (
 )
 
 func LoadCertPool(path string) (*x509.CertPool, error) {
+	if path == "" {
+		return nil, nil
+	}
 	pool := x509.NewCertPool()
 	pemBytes, err := os.ReadFile(path)
 	if err != nil {
