@@ -2,8 +2,7 @@ package option
 
 import "github.com/spf13/pflag"
 
-type Remote struct {
-	Hostname   string
+type Auth struct {
 	Configs    []string
 	CaFilePath string
 	FromStdin  bool
@@ -13,7 +12,7 @@ type Remote struct {
 	Insecure   bool
 }
 
-func (opts *Remote) ApplyFlagsTo(fs *pflag.FlagSet) {
+func (opts *Auth) ApplyFlagsTo(fs *pflag.FlagSet) {
 	fs.StringArrayVarP(&opts.Configs, "config", "c", nil, "auth config path")
 	fs.StringVarP(&opts.Username, "username", "u", "", "registry username")
 	fs.StringVarP(&opts.Password, "password", "p", "", "registry password or identity token")

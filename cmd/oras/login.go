@@ -36,13 +36,14 @@ import (
 )
 
 type loginOptions struct {
+	Hostname string
 	option.Common
-	option.Remote
+	option.Auth
 }
 
 func loginCmd() *cobra.Command {
 	var opts loginOptions
-	cmd := &cobra.Command{
+	return &cobra.Command{
 		Use:   "login registry",
 		Short: "Log in to a remote registry",
 		Long: `Log in to a remote registry
@@ -68,14 +69,11 @@ Example - Login with insecure registry from command line:
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Hostname = args[0]
+			opts.Auth.ApplyFlagsTo(cmd.Flags())
+			opts.Common.ApplyFlagsTo(cmd.Flags())
 			return runLogin(opts)
 		},
 	}
-
-	opts.Remote.ApplyFlagsTo(cmd.Flags())
-	opts.Common.ApplyFlagsTo(cmd.Flags())
-
-	return cmd
 }
 
 func runLogin(opts loginOptions) (err error) {
