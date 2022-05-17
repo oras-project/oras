@@ -8,7 +8,7 @@ type TLS struct {
 	Insecure   bool
 }
 
-func (tls TLS) ApplyFlagsTo(fs *pflag.FlagSet) {
+func (tls *TLS) ApplyFlagsTo(fs *pflag.FlagSet) {
 	fs.BoolVarP(&tls.Insecure, "insecure", "k", false, "allow connections to SSL registry without certs")
 	fs.StringVarP(&tls.CaFilePath, "ca-file", "", "", "server certificate authority file for the remote registry")
 	fs.BoolVarP(&tls.PlainHTTP, "plain-http", "", false, "allow insecure connections to registry without SSL")

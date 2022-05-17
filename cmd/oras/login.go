@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"reflect"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -36,14 +35,18 @@ import (
 )
 
 type loginOptions struct {
-	option.Common
-	option.Credential
-	option.TLS
+	*option.Common
+	*option.Credential
+	*option.TLS
 	Hostname string
 }
 
 func loginCmd() *cobra.Command {
-	var opts loginOptions
+	opts := loginOptions{
+		Common:     &option.Common{},
+		Credential: &option.Credential{},
+		TLS:        &option.TLS{},
+	}
 	cmd := &cobra.Command{
 		Use:   "login registry",
 		Short: "Log in to a remote registry",
@@ -73,14 +76,7 @@ Example - Login with insecure registry from command line:
 			return runLogin(opts)
 		},
 	}
-
-	v := reflect.ValueOf(opts)
-	for i := 0; i < v.NumField(); i++ {
-		iface := v.Field(i).Interface()
-		if a, ok := iface.(option.Applier); ok {
-			a.ApplyFlagsTo(cmd.Flags())
-		}
-	}
+	option.ApplyFlags(opts, cmd)
 	return cmd
 }
 

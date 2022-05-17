@@ -7,7 +7,7 @@ type Common struct {
 	Verbose bool
 }
 
-func (common Common) ApplyFlagsTo(fs *pflag.FlagSet) {
+func (common *Common) ApplyFlagsTo(fs *pflag.FlagSet) {
 	fs.BoolVarP(&common.Debug, "debug", "d", false, "debug mode")
 	fs.BoolVarP(&common.Verbose, "verbose", "v", false, "verbose output")
 }
