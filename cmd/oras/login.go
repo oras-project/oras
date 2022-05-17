@@ -28,9 +28,9 @@ import (
 
 	"github.com/moby/term"
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/credential"
 	"oras.land/oras/internal/http"
-	"oras.land/oras/internal/option"
 	"oras.land/oras/internal/trace"
 )
 
