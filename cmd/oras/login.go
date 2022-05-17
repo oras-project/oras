@@ -20,14 +20,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
+	"reflect"
 	"strings"
 
-	"github.com/moby/term"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/moby/term"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/internal/credential"
 	"oras.land/oras/internal/http"
@@ -36,14 +36,15 @@ import (
 )
 
 type loginOptions struct {
-	Hostname string
 	option.Common
-	option.Auth
+	option.Credential
+	option.TLS
+	Hostname string
 }
 
 func loginCmd() *cobra.Command {
 	var opts loginOptions
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "login registry",
 		Short: "Log in to a remote registry",
 		Long: `Log in to a remote registry
@@ -69,11 +70,18 @@ Example - Login with insecure registry from command line:
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Hostname = args[0]
-			opts.Auth.ApplyFlagsTo(cmd.Flags())
-			opts.Common.ApplyFlagsTo(cmd.Flags())
 			return runLogin(opts)
 		},
 	}
+
+	v := reflect.ValueOf(opts)
+	for i := 0; i < v.NumField(); i++ {
+		iface := v.Field(i).Interface()
+		if a, ok := iface.(option.Applier); ok {
+			a.ApplyFlagsTo(cmd.Flags())
+		}
+	}
+	return cmd
 }
 
 func runLogin(opts loginOptions) (err error) {
@@ -87,22 +95,13 @@ func runLogin(opts loginOptions) (err error) {
 	}
 	ctx, _ := trace.WithLoggerLevel(context.Background(), logLevel)
 
-	// Prepare auth client
-	store, err := credential.NewStore(opts.Configs...)
-	if err != nil {
+	if err := opts.Credential.Prompt(); err != nil {
 		return err
 	}
 
-	// Prompt credential
-	if opts.FromStdin {
-		password, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			return err
-		}
-		opts.Password = strings.TrimSuffix(string(password), "\n")
-		opts.Password = strings.TrimSuffix(opts.Password, "\r")
-	} else if opts.Password == "" {
+	if opts.Password == "" {
 		if opts.Username == "" {
+			// prompt for username
 			username, err := readLine("Username: ", false)
 			if err != nil {
 				return err
@@ -110,20 +109,26 @@ func runLogin(opts loginOptions) (err error) {
 			opts.Username = strings.TrimSpace(username)
 		}
 		if opts.Username == "" {
+			// prompt for token
 			if opts.Password, err = readLine("Token: ", true); err != nil {
 				return err
 			} else if opts.Password == "" {
 				return errors.New("token required")
 			}
 		} else {
+			// prompt for password
 			if opts.Password, err = readLine("Password: ", true); err != nil {
 				return err
 			} else if opts.Password == "" {
 				return errors.New("password required")
 			}
 		}
-	} else {
-		fmt.Fprintln(os.Stderr, "WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
+	}
+
+	// Prepare auth client
+	store, err := credential.NewStore(opts.Configs...)
+	if err != nil {
+		return err
 	}
 
 	// Ping to ensure credential is valid
