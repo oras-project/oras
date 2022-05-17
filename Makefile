@@ -54,7 +54,7 @@ build-linux-arm-v7:
 build-mac: build-mac-arm64 build-mac-amd64
 
 .PHONY: build-mac-amd64
-build-mac:
+build-mac-amd64:
 	GOARCH=amd64 CGO_ENABLED=0 GOOS=darwin go build -v --ldflags="$(LDFLAGS)" \
 		-o bin/darwin/amd64/$(CLI_EXE) $(CLI_PKG)
 
