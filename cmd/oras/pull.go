@@ -18,15 +18,13 @@ import (
 )
 
 type pullOptions struct {
-	targetRef          string
-	allowedMediaTypes  []string
-	allowAllMediaTypes bool
-	keepOldFiles       bool
-	pathTraversal      bool
-	output             string
-	manifestConfigRef  string
-	verbose            bool
-	cacheRoot          string
+	targetRef         string
+	keepOldFiles      bool
+	pathTraversal     bool
+	output            string
+	manifestConfigRef string
+	verbose           bool
+	cacheRoot         string
 
 	debug     bool
 	configs   []string
@@ -72,8 +70,6 @@ Example - Pull files with local cache:
 		},
 	}
 
-	cmd.Flags().StringArrayVarP(&opts.allowedMediaTypes, "media-type", "t", nil, "allowed media types to be pulled")
-	cmd.Flags().BoolVarP(&opts.allowAllMediaTypes, "allow-all", "a", false, "allow all media types to be pulled")
 	cmd.Flags().BoolVarP(&opts.keepOldFiles, "keep-old-files", "k", false, "do not replace existing files when pulling, treat them as errors")
 	cmd.Flags().BoolVarP(&opts.pathTraversal, "allow-path-traversal", "T", false, "allow storing files out of the output directory")
 	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "output directory")
@@ -96,12 +92,6 @@ func runPull(opts pullOptions) error {
 	} else if !opts.verbose {
 		ctx = ctxo.WithLoggerDiscarded(ctx)
 	}
-	if opts.allowAllMediaTypes {
-		opts.allowedMediaTypes = nil
-	} else if len(opts.allowedMediaTypes) == 0 {
-		opts.allowedMediaTypes = []string{content.DefaultBlobMediaType, content.DefaultBlobDirMediaType}
-	}
-
 	resolver := newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
 	store := content.NewFileStore(opts.output)
 	defer store.Close()
@@ -109,7 +99,7 @@ func runPull(opts pullOptions) error {
 	store.AllowPathTraversalOnWrite = opts.pathTraversal
 
 	pullOpts := []oras.PullOpt{
-		oras.WithAllowedMediaTypes(opts.allowedMediaTypes),
+		oras.WithAllowedMediaTypes([]string{}),
 		oras.WithPullStatusTrack(os.Stdout),
 	}
 	if opts.cacheRoot != "" {
