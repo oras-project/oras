@@ -13,9 +13,16 @@ builds:
   goarch:
   - amd64
   - arm64
+  - arm
+  goarm:
+  - '7'
   ignore:
   - goos: windows
     goarch: arm64
+  - goos: windows
+    goarch: arm
+  - goos: darwin
+    goarch: arm
   ldflags:
   # one-line ldflags to bypass the goreleaser bugs
   # the git tree state is guaranteed to be clean by goreleaser
@@ -29,6 +36,9 @@ archives:
     - goos: windows
       format: zip
 
+release:
+  draft: true
+  prerelease: auto
 #signs:
 #  - artifacts: all
 #    args: ["--output", "${signature}", "--detach-sign", "--armor", "${artifact}"]
