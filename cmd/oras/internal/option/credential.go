@@ -31,8 +31,8 @@ type Credential struct {
 	Password          string
 }
 
-// ApplyFlagsTo applies flags to a command flag set.
-func (cred *Credential) ApplyFlagsTo(fs *pflag.FlagSet) {
+// ApplyFlags applies flags to a command flag set.
+func (cred *Credential) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringArrayVarP(&cred.Configs, "config", "c", nil, "auth config path")
 	fs.StringVarP(&cred.Username, "username", "u", "", "registry username")
 	fs.StringVarP(&cred.Password, "password", "p", "", "registry password or identity token")

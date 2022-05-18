@@ -28,8 +28,8 @@ type Common struct {
 	Verbose bool
 }
 
-// ApplyFlagsTo applies flags to a command flag set.
-func (common *Common) ApplyFlagsTo(fs *pflag.FlagSet) {
+// ApplyFlags applies flags to a command flag set.
+func (common *Common) ApplyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&common.Debug, "debug", "d", false, "debug mode")
 	fs.BoolVarP(&common.Verbose, "verbose", "v", false, "verbose output")
 }

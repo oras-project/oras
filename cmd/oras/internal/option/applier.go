@@ -20,19 +20,21 @@ import (
 	"github.com/spf13/pflag"
 )
 
-// Applier applies flags to a command flag set.
-type applier interface {
-	ApplyFlagsTo(*pflag.FlagSet)
+// FlagApplier applies flags to a command flag set.
+type FlagApplier interface {
+	ApplyFlags(*pflag.FlagSet)
 }
 
-// ApplyFlags applies applicable fields of the passed-in options to the target
-// flag set.
-func ApplyFlags(opts interface{}, target *pflag.FlagSet) {
-	v := reflect.ValueOf(opts)
+// ApplyFlags applies applicable fields of the passed-in option pointer to the
+// target flag set.
+// NOTE: The option argument need to be a pointer to the options, so its value
+// is on heap and addressable.
+func ApplyFlags(optsPtr interface{}, target *pflag.FlagSet) {
+	v := reflect.ValueOf(optsPtr).Elem()
 	for i := 0; i < v.NumField(); i++ {
-		iface := v.Field(i).Interface()
-		if a, ok := iface.(applier); ok {
-			a.ApplyFlagsTo(target)
+		iface := v.Field(i).Addr().Interface()
+		if a, ok := iface.(FlagApplier); ok {
+			a.ApplyFlags(target)
 		}
 	}
 }

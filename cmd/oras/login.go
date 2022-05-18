@@ -31,18 +31,14 @@ import (
 )
 
 type loginOptions struct {
-	*option.Common
-	*option.Credential
-	*option.TLS
+	option.Common
+	option.Credential
+	option.TLS
 	Hostname string
 }
 
 func loginCmd() *cobra.Command {
-	opts := loginOptions{
-		Common:     &option.Common{},
-		Credential: &option.Credential{},
-		TLS:        &option.TLS{},
-	}
+	var opts loginOptions
 	cmd := &cobra.Command{
 		Use:   "login registry",
 		Short: "Log in to a remote registry",
@@ -75,7 +71,7 @@ Example - Login with insecure registry from command line:
 			return runLogin(opts)
 		},
 	}
-	option.ApplyFlags(opts, cmd.Flags())
+	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
 
