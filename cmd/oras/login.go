@@ -17,21 +17,17 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
 
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-
 	"github.com/moby/term"
+	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/credential"
 	"oras.land/oras/internal/http"
-	"oras.land/oras/internal/trace"
 )
 
 type loginOptions struct {
@@ -71,6 +67,9 @@ Example - Login with insecure registry from command line:
   oras login --insecure localhost:5000
 `,
 		Args: cobra.ExactArgs(1),
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return preRunLogin(opts)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Hostname = args[0]
 			return runLogin(opts)
@@ -80,21 +79,10 @@ Example - Login with insecure registry from command line:
 	return cmd
 }
 
-func runLogin(opts loginOptions) (err error) {
-	var logLevel logrus.Level
-	if opts.Debug {
-		logLevel = logrus.DebugLevel
-	} else if opts.Verbose {
-		logLevel = logrus.InfoLevel
-	} else {
-		logLevel = logrus.WarnLevel
-	}
-	ctx, _ := trace.WithLoggerLevel(context.Background(), logLevel)
-
+func preRunLogin(opts loginOptions) (err error) {
 	if err := opts.Credential.Prompt(); err != nil {
 		return err
 	}
-
 	if opts.Password == "" {
 		if opts.Username == "" {
 			// prompt for username
@@ -120,6 +108,11 @@ func runLogin(opts loginOptions) (err error) {
 			}
 		}
 	}
+	return nil
+}
+
+func runLogin(opts loginOptions) (err error) {
+	ctx, _ := opts.SetLoggerLevel()
 
 	// Prepare auth client
 	store, err := credential.NewStore(opts.Configs...)
@@ -134,7 +127,7 @@ func runLogin(opts loginOptions) (err error) {
 	}
 	remote.PlainHTTP = opts.PlainHTTP
 	cred := credential.Credential(opts.Username, opts.Password)
-	rootCAs, err := http.LoadCertPool(opts.CaFilePath)
+	rootCAs, err := http.LoadCertPool(opts.CACertFilePath)
 	if err != nil {
 		return err
 	}
@@ -144,6 +137,23 @@ func runLogin(opts loginOptions) (err error) {
 		Debug:         opts.Debug,
 		RootCAs:       rootCAs,
 	})
+
+	// // test
+	// dcred := &types.AuthConfig{
+	// 	ServerAddress: "https://" + opts.Hostname,
+	// 	IdentityToken: opts.Password,
+	// }
+	// dopts := dregistry.ServiceOptions{}
+	// dremote, err := dregistry.NewService(dopts)
+	// if err != nil {
+	// 	return err
+	// }
+	// if _, _, err := dremote.Auth(ctx, dcred, "test"); err != nil {
+	// 	return err
+	// }
+
+	// // test
+
 	if err = remote.Ping(ctx); err != nil {
 		return err
 	}
