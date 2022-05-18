@@ -99,7 +99,6 @@ func runPull(opts pullOptions) error {
 	store.AllowPathTraversalOnWrite = opts.pathTraversal
 
 	pullOpts := []oras.PullOpt{
-		oras.WithAllowedMediaTypes([]string{}),
 		oras.WithPullStatusTrack(os.Stdout),
 	}
 	if opts.cacheRoot != "" {
