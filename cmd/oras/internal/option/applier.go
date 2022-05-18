@@ -28,7 +28,7 @@ type FlagApplier interface {
 // ApplyFlags applies applicable fields of the passed-in option pointer to the
 // target flag set.
 // NOTE: The option argument need to be a pointer to the options, so its value
-// is on heap and addressable.
+// becomes addressable.
 func ApplyFlags(optsPtr interface{}, target *pflag.FlagSet) {
 	v := reflect.ValueOf(optsPtr).Elem()
 	for i := 0; i < v.NumField(); i++ {
