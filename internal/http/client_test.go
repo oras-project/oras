@@ -16,6 +16,7 @@ package http_test
 
 import (
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 	"testing"
 
@@ -25,6 +26,22 @@ import (
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/internal/http"
 )
+
+var ts *httptest.Server
+
+func TestMain(m *testing.M) {
+	// Test server
+	ts = httptest.NewTLSServer(nhttp.HandlerFunc(func(w nhttp.ResponseWriter, r *nhttp.Request) {
+		p := r.URL.Path
+		m := r.Method
+		switch {
+		case p == "/v2/" && m == "GET":
+			w.WriteHeader(nhttp.StatusOK)
+		}
+	}))
+	defer ts.Close()
+	m.Run()
+}
 
 func Test_NewClient_credential(t *testing.T) {
 	wanted := auth.Credential{
@@ -45,39 +62,29 @@ func Test_NewClient_credential(t *testing.T) {
 }
 
 func Test_NewClient_skipTlsVerify(t *testing.T) {
-	opts := http.ClientOptions{
-		SkipTLSVerify: true,
+	client := http.NewClient(http.ClientOptions{
+		TLSConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	})
+	req, err := nhttp.NewRequestWithContext(context.Background(), nhttp.MethodGet, ts.URL, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-
-	wanted := opts.SkipTLSVerify
-	client := http.NewClient(opts)
-	config := client.(*auth.Client).Client.Transport.(*nhttp.Transport).TLSClientConfig
-	got := config.InsecureSkipVerify
-	if got != wanted {
-		t.Fatalf("expect: %v, got: %v", wanted, got)
+	_, err = client.Do(req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
 func Test_NewClient_CARoots(t *testing.T) {
-	// Test server
-	ts := httptest.NewTLSServer(nhttp.HandlerFunc(func(w nhttp.ResponseWriter, r *nhttp.Request) {
-		p := r.URL.Path
-		m := r.Method
-		switch {
-		case p == "/v2/" && m == "GET":
-			w.WriteHeader(nhttp.StatusOK)
-		}
-	}))
-	defer ts.Close()
-
-	// Test CA pool
 	pool := x509.NewCertPool()
 	pool.AddCert(ts.Certificate())
-	opts := http.ClientOptions{
-		RootCAs: pool,
-	}
-
-	client := http.NewClient(opts)
+	client := http.NewClient(http.ClientOptions{
+		TLSConfig: &tls.Config{
+			RootCAs: pool,
+		},
+	})
 	req, err := nhttp.NewRequestWithContext(context.Background(), nhttp.MethodGet, ts.URL, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

@@ -75,12 +75,12 @@ Example - Login with insecure registry from command line:
 			return runLogin(opts)
 		},
 	}
-	option.ApplyFlags(opts, cmd)
+	option.ApplyFlags(opts, cmd.Flags())
 	return cmd
 }
 
 func preRunLogin(opts loginOptions) (err error) {
-	if err := opts.Credential.Prompt(); err != nil {
+	if err := opts.Credential.ReadPassword(); err != nil {
 		return err
 	}
 	if opts.Password == "" {
@@ -125,15 +125,14 @@ func runLogin(opts loginOptions) (err error) {
 	}
 	remote.PlainHTTP = opts.PlainHTTP
 	cred := credential.Credential(opts.Username, opts.Password)
-	rootCAs, err := opts.TLS.CertPool()
+	config, err := opts.TLS.Config()
 	if err != nil {
 		return err
 	}
 	remote.Client = http.NewClient(http.ClientOptions{
-		Credential:    cred,
-		SkipTLSVerify: opts.Insecure,
-		Debug:         opts.Debug,
-		RootCAs:       rootCAs,
+		Credential: cred,
+		TLSConfig:  config,
+		Debug:      opts.Debug,
 	})
 	if err = remote.Ping(ctx); err != nil {
 		return err

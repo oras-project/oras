@@ -1,22 +1,38 @@
+/*
+Copyright The ORAS Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 package option
 
 import (
 	"reflect"
 
-	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
+// Applier applies flags to a command flag set.
 type applier interface {
 	ApplyFlagsTo(*pflag.FlagSet)
 }
 
-func ApplyFlags(opts interface{}, target *cobra.Command) {
+// ApplyFlags applies applicable fields of the passed-in options to the target
+// flag set.
+func ApplyFlags(opts interface{}, target *pflag.FlagSet) {
 	v := reflect.ValueOf(opts)
 	for i := 0; i < v.NumField(); i++ {
 		iface := v.Field(i).Interface()
 		if a, ok := iface.(applier); ok {
-			a.ApplyFlagsTo(target.Flags())
+			a.ApplyFlagsTo(target)
 		}
 	}
 }
