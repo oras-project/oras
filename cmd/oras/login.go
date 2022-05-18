@@ -127,7 +127,7 @@ func runLogin(opts loginOptions) (err error) {
 	}
 	remote.PlainHTTP = opts.PlainHTTP
 	cred := credential.Credential(opts.Username, opts.Password)
-	rootCAs, err := http.LoadCertPool(opts.CACertFilePath)
+	rootCAs, err := opts.TLS.CertPool()
 	if err != nil {
 		return err
 	}
@@ -137,22 +137,6 @@ func runLogin(opts loginOptions) (err error) {
 		Debug:         opts.Debug,
 		RootCAs:       rootCAs,
 	})
-
-	// // test
-	// dcred := &types.AuthConfig{
-	// 	ServerAddress: "https://" + opts.Hostname,
-	// 	IdentityToken: opts.Password,
-	// }
-	// dopts := dregistry.ServiceOptions{}
-	// dremote, err := dregistry.NewService(dopts)
-	// if err != nil {
-	// 	return err
-	// }
-	// if _, _, err := dremote.Auth(ctx, dcred, "test"); err != nil {
-	// 	return err
-	// }
-
-	// // test
 
 	if err = remote.Ping(ctx); err != nil {
 		return err
