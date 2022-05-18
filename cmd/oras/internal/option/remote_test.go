@@ -13,19 +13,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package http_test
+package option_test
 
 import (
 	"context"
-	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
+	"os"
+	"path/filepath"
 	"testing"
 
 	nhttp "net/http"
 	"net/http/httptest"
 
+	"github.com/google/uuid"
 	"oras.land/oras-go/v2/registry/remote/auth"
-	"oras.land/oras/internal/http"
+	"oras.land/oras/cmd/oras/internal/option"
 )
 
 var ts *httptest.Server
@@ -44,30 +47,37 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
-func Test_NewClient_credential(t *testing.T) {
-	wanted := auth.Credential{
-		Username: "username",
+func Test_AuthClient_RawCredential(t *testing.T) {
+	want := auth.Credential{
+		Username: uuid.New().String(),
+		Password: uuid.New().String(),
 	}
-	opts := http.ClientOptions{
-		Credential: wanted,
+	opts := option.Remote{
+		Username: want.Username,
+		Password: want.Password,
 	}
-	client := http.NewClient(opts)
-	got, err := client.(*auth.Client).Credential(nil, "")
+	client, err := opts.AuthClient(false, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	got, err := client.Credential(nil, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if got != wanted {
-		t.Fatalf("expect: %v, got: %v", wanted, got)
+	if got.Username != want.Username || got.Password != want.Password {
+		t.Fatalf("expect: %v, got: %v", want, got)
 	}
 }
 
 func Test_NewClient_skipTlsVerify(t *testing.T) {
-	client := http.NewClient(http.ClientOptions{
-		TLSConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
-	})
+	opts := option.Remote{
+		Insecure: true,
+	}
+	client, err := opts.AuthClient(false, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	req, err := nhttp.NewRequestWithContext(context.Background(), nhttp.MethodGet, ts.URL, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -79,13 +89,21 @@ func Test_NewClient_skipTlsVerify(t *testing.T) {
 }
 
 func Test_NewClient_CARoots(t *testing.T) {
+	caPath := filepath.Join(t.TempDir(), "oras-test.pem")
+	if err := os.WriteFile(caPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ts.Certificate().Raw}), 0644); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
 	pool := x509.NewCertPool()
 	pool.AddCert(ts.Certificate())
-	client := http.NewClient(http.ClientOptions{
-		TLSConfig: &tls.Config{
-			RootCAs: pool,
-		},
-	})
+
+	opts := option.Remote{
+		CACertFilePath: caPath,
+	}
+	client, err := opts.AuthClient(false, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	req, err := nhttp.NewRequestWithContext(context.Background(), nhttp.MethodGet, ts.URL, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

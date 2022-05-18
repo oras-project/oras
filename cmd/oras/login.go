@@ -24,16 +24,13 @@ import (
 
 	"github.com/moby/term"
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/credential"
-	"oras.land/oras/internal/http"
 )
 
 type loginOptions struct {
 	option.Common
-	option.Credential
-	option.TLS
+	option.Remote
 	Hostname string
 }
 
@@ -76,7 +73,7 @@ Example - Login with insecure registry from command line:
 }
 
 func preRunLogin(opts loginOptions) (err error) {
-	if err := opts.Credential.ReadPassword(); err != nil {
+	if err := opts.ReadPassword(); err != nil {
 		return err
 	}
 	if opts.Password == "" {
@@ -115,26 +112,15 @@ func runLogin(opts loginOptions) (err error) {
 		return err
 	}
 	// Ping to ensure credential is valid
-	remote, err := remote.NewRegistry(opts.Hostname)
+	remote, err := opts.Remote.NewRegistry(opts.Hostname, opts.Common, nil)
 	if err != nil {
 		return err
 	}
-	remote.PlainHTTP = opts.PlainHTTP
-	cred := credential.Credential(opts.Username, opts.Password)
-	config, err := opts.TLS.Config()
-	if err != nil {
-		return err
-	}
-	remote.Client = http.NewClient(http.ClientOptions{
-		Credential: cred,
-		TLSConfig:  config,
-		Debug:      opts.Debug,
-	})
 	if err = remote.Ping(ctx); err != nil {
 		return err
 	}
 	// Store the validated credential
-	if err := store.Store(opts.Hostname, cred); err != nil {
+	if err := store.Store(opts.Hostname, opts.Credential()); err != nil {
 		return err
 	}
 	fmt.Println("Login Succeeded")
