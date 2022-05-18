@@ -113,13 +113,11 @@ func preRunLogin(opts loginOptions) (err error) {
 
 func runLogin(opts loginOptions) (err error) {
 	ctx, _ := opts.SetLoggerLevel()
-
 	// Prepare auth client
 	store, err := credential.NewStore(opts.Configs...)
 	if err != nil {
 		return err
 	}
-
 	// Ping to ensure credential is valid
 	remote, err := remote.NewRegistry(opts.Hostname)
 	if err != nil {
@@ -137,16 +135,13 @@ func runLogin(opts loginOptions) (err error) {
 		Debug:         opts.Debug,
 		RootCAs:       rootCAs,
 	})
-
 	if err = remote.Ping(ctx); err != nil {
 		return err
 	}
-
 	// Store the validated credential
 	if err := store.Store(opts.Hostname, cred); err != nil {
 		return err
 	}
-
 	fmt.Println("Login Succeeded")
 	return nil
 }
