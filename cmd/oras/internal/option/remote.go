@@ -20,15 +20,15 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	nhttp "net/http"
+	"net/http"
 	"os"
 	"strings"
 
 	"github.com/spf13/pflag"
-	oremote "oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/internal/credential"
-	"oras.land/oras/internal/http"
+	"oras.land/oras/internal/crypto"
 	"oras.land/oras/internal/trace"
 	"oras.land/oras/internal/version"
 )
@@ -45,40 +45,40 @@ type Remote struct {
 }
 
 // ApplyFlags applies flags to a command flag set.
-func (remote *Remote) ApplyFlags(fs *pflag.FlagSet) {
-	fs.StringArrayVarP(&remote.Configs, "config", "c", nil, "auth config path")
-	fs.StringVarP(&remote.Username, "username", "u", "", "registry username")
-	fs.StringVarP(&remote.Password, "password", "p", "", "registry password or identity token")
-	fs.BoolVarP(&remote.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
-	fs.BoolVarP(&remote.Insecure, "insecure", "", false, "allow connections to SSL registry without certs")
-	fs.StringVarP(&remote.CACertFilePath, "ca-file", "", "", "server certificate authority file for the remote registry")
-	fs.BoolVarP(&remote.PlainHTTP, "plain-http", "", false, "allow insecure connections to registry without SSL")
+func (opts *Remote) ApplyFlags(fs *pflag.FlagSet) {
+	fs.StringArrayVarP(&opts.Configs, "config", "c", nil, "auth config path")
+	fs.StringVarP(&opts.Username, "username", "u", "", "registry username")
+	fs.StringVarP(&opts.Password, "password", "p", "", "registry password or identity token")
+	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
+	fs.BoolVarP(&opts.Insecure, "insecure", "", false, "allow connections to SSL registry without certs")
+	fs.StringVarP(&opts.CACertFilePath, "ca-file", "", "", "server certificate authority file for the remote registry")
+	fs.BoolVarP(&opts.PlainHTTP, "plain-http", "", false, "allow insecure connections to registry without SSL")
 }
 
 // ReadPassword tries to read password with optional cmd prompt.
-func (remote *Remote) ReadPassword() (err error) {
-	if remote.Password != "" {
+func (opts *Remote) ReadPassword() (err error) {
+	if opts.Password != "" {
 		fmt.Fprintln(os.Stderr, "WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
-	} else if remote.PasswordFromStdin {
+	} else if opts.PasswordFromStdin {
 		// Prompt for credential
 		password, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			return err
 		}
-		remote.Password = strings.TrimSuffix(string(password), "\n")
-		remote.Password = strings.TrimSuffix(remote.Password, "\r")
+		opts.Password = strings.TrimSuffix(string(password), "\n")
+		opts.Password = strings.TrimSuffix(opts.Password, "\r")
 	}
 	return nil
 }
 
 // tlsConfig assembles the tls config.
-func (remote *Remote) tlsConfig() (*tls.Config, error) {
+func (opts *Remote) tlsConfig() (*tls.Config, error) {
 	config := &tls.Config{
-		InsecureSkipVerify: remote.Insecure,
+		InsecureSkipVerify: opts.Insecure,
 	}
-	if remote.CACertFilePath != "" {
+	if opts.CACertFilePath != "" {
 		var err error
-		config.RootCAs, err = http.LoadCertPool(remote.CACertFilePath)
+		config.RootCAs, err = crypto.LoadCertPool(opts.CACertFilePath)
 		if err != nil {
 			return nil, err
 		}
@@ -86,15 +86,15 @@ func (remote *Remote) tlsConfig() (*tls.Config, error) {
 	return config, nil
 }
 
-// authClient assembles a oras auth client
-func (remote *Remote) authClient(debug bool) (client *auth.Client, err error) {
-	config, err := remote.tlsConfig()
+// authClient assembles a oras auth client.
+func (opts *Remote) authClient(debug bool) (client *auth.Client, err error) {
+	config, err := opts.tlsConfig()
 	if err != nil {
 		return nil, err
 	}
 	client = &auth.Client{
-		Client: &nhttp.Client{
-			Transport: &nhttp.Transport{
+		Client: &http.Client{
+			Transport: &http.Transport{
 				TLSClientConfig: config,
 			},
 		},
@@ -104,13 +104,13 @@ func (remote *Remote) authClient(debug bool) (client *auth.Client, err error) {
 		client.Client.Transport = trace.NewTransport(client.Client.Transport)
 	}
 
-	cred := remote.Credential()
+	cred := opts.Credential()
 	if cred != auth.EmptyCredential {
 		client.Credential = func(ctx context.Context, s string) (auth.Credential, error) {
 			return cred, nil
 		}
 	} else {
-		store, err := credential.NewStore(remote.Configs...)
+		store, err := credential.NewStore(opts.Configs...)
 		if err != nil {
 			return nil, err
 		}
@@ -120,18 +120,18 @@ func (remote *Remote) authClient(debug bool) (client *auth.Client, err error) {
 }
 
 // Credential returns a credential based on the remote options.
-func (remote *Remote) Credential() auth.Credential {
-	return credential.Credential(remote.Username, remote.Password)
+func (opts *Remote) Credential() auth.Credential {
+	return credential.Credential(opts.Username, opts.Password)
 }
 
 // NewRegistry assembles a oras remote registry.
-func (remote *Remote) NewRegistry(hostname string, common Common) (reg *oremote.Registry, err error) {
-	reg, err = oremote.NewRegistry(hostname)
+func (opts *Remote) NewRegistry(hostname string, common Common) (reg *remote.Registry, err error) {
+	reg, err = remote.NewRegistry(hostname)
 	if err != nil {
 		return nil, err
 	}
-	reg.PlainHTTP = remote.PlainHTTP
-	if reg.Client, err = remote.authClient(common.Debug); err != nil {
+	reg.PlainHTTP = opts.PlainHTTP
+	if reg.Client, err = opts.authClient(common.Debug); err != nil {
 		return nil, err
 	}
 	return
