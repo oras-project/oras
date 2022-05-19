@@ -30,17 +30,17 @@ type Common struct {
 }
 
 // ApplyFlags applies flags to a command flag set.
-func (common *Common) ApplyFlags(fs *pflag.FlagSet) {
-	fs.BoolVarP(&common.Debug, "debug", "d", false, "debug mode")
-	fs.BoolVarP(&common.Verbose, "verbose", "v", false, "verbose output")
+func (opts *Common) ApplyFlags(fs *pflag.FlagSet) {
+	fs.BoolVarP(&opts.Debug, "debug", "d", false, "debug mode")
+	fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "verbose output")
 }
 
 // SetLoggerLevel sets up the logger based on common options.
-func (common *Common) SetLoggerLevel() (context.Context, logrus.FieldLogger) {
+func (opts *Common) SetLoggerLevel() (context.Context, logrus.FieldLogger) {
 	var logLevel logrus.Level
-	if common.Debug {
+	if opts.Debug {
 		logLevel = logrus.DebugLevel
-	} else if common.Verbose {
+	} else if opts.Verbose {
 		logLevel = logrus.InfoLevel
 	} else {
 		logLevel = logrus.WarnLevel

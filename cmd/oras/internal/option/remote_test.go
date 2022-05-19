@@ -13,11 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package option_test
+package option
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"os"
 	"path/filepath"
@@ -26,9 +28,7 @@ import (
 	nhttp "net/http"
 	"net/http/httptest"
 
-	"github.com/google/uuid"
 	"oras.land/oras-go/v2/registry/remote/auth"
-	"oras.land/oras/cmd/oras/internal/option"
 )
 
 var ts *httptest.Server
@@ -47,16 +47,20 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
-func Test_AuthClient_RawCredential(t *testing.T) {
-	want := auth.Credential{
-		Username: uuid.New().String(),
-		Password: uuid.New().String(),
+func Test_authClient_RawCredential(t *testing.T) {
+	password := make([]byte, 12)
+	if _, err := rand.Read(password); err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-	opts := option.Remote{
+	want := auth.Credential{
+		Username: "mocked^^??oras-@@!#",
+		Password: base64.StdEncoding.EncodeToString(password),
+	}
+	opts := Remote{
 		Username: want.Username,
 		Password: want.Password,
 	}
-	client, err := opts.AuthClient(false)
+	client, err := opts.authClient(false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -70,11 +74,11 @@ func Test_AuthClient_RawCredential(t *testing.T) {
 	}
 }
 
-func Test_NewClient_skipTlsVerify(t *testing.T) {
-	opts := option.Remote{
+func Test_authClient_skipTlsVerify(t *testing.T) {
+	opts := Remote{
 		Insecure: true,
 	}
-	client, err := opts.AuthClient(false)
+	client, err := opts.authClient(false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -88,7 +92,7 @@ func Test_NewClient_skipTlsVerify(t *testing.T) {
 	}
 }
 
-func Test_NewClient_CARoots(t *testing.T) {
+func Test_authClient_CARoots(t *testing.T) {
 	caPath := filepath.Join(t.TempDir(), "oras-test.pem")
 	if err := os.WriteFile(caPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ts.Certificate().Raw}), 0644); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -97,10 +101,10 @@ func Test_NewClient_CARoots(t *testing.T) {
 	pool := x509.NewCertPool()
 	pool.AddCert(ts.Certificate())
 
-	opts := option.Remote{
+	opts := Remote{
 		CACertFilePath: caPath,
 	}
-	client, err := opts.AuthClient(false)
+	client, err := opts.authClient(false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
