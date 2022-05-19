@@ -88,7 +88,7 @@ func (remote *Remote) tlsConfig() (config *ctls.Config, err error) {
 }
 
 // AuthClient assembles a oras auth client
-func (remote *Remote) AuthClient(debug bool, store *credential.Store) (client *auth.Client, err error) {
+func (remote *Remote) AuthClient(debug bool) (client *auth.Client, err error) {
 	config, err := remote.tlsConfig()
 	if err != nil {
 		return nil, err
@@ -104,12 +104,18 @@ func (remote *Remote) AuthClient(debug bool, store *credential.Store) (client *a
 	if debug {
 		client.Client.Transport = trace.NewTransport(client.Client.Transport)
 	}
-	if store != nil {
-		client.Credential = store.Credential
-	} else {
+
+	cred := credential.Credential(remote.Username, remote.Password)
+	if cred != auth.EmptyCredential {
 		client.Credential = func(ctx context.Context, s string) (auth.Credential, error) {
 			return remote.Credential(), nil
 		}
+	} else {
+		store, err := credential.NewStore(remote.Configs...)
+		if err != nil {
+			return nil, err
+		}
+		client.Credential = store.Credential
 	}
 	return
 }
@@ -120,13 +126,13 @@ func (remote *Remote) Credential() auth.Credential {
 }
 
 // NewRegistry assembles a oras remote registry.
-func (remote *Remote) NewRegistry(hostname string, common Common, store *credential.Store) (reg *oremote.Registry, err error) {
+func (remote *Remote) NewRegistry(hostname string, common Common) (reg *oremote.Registry, err error) {
 	reg, err = oremote.NewRegistry(hostname)
 	if err != nil {
 		return nil, err
 	}
 	reg.PlainHTTP = remote.PlainHTTP
-	if reg.Client, err = remote.AuthClient(common.Debug, store); err != nil {
+	if reg.Client, err = remote.AuthClient(common.Debug); err != nil {
 		return nil, err
 	}
 	return
