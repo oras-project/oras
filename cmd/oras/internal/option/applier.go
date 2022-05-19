@@ -33,9 +33,12 @@ type FlagApplier interface {
 func ApplyFlags(optsPtr interface{}, target *pflag.FlagSet) {
 	v := reflect.ValueOf(optsPtr).Elem()
 	for i := 0; i < v.NumField(); i++ {
-		iface := v.Field(i).Addr().Interface()
-		if a, ok := iface.(FlagApplier); ok {
-			a.ApplyFlags(target)
+		f := v.Field(i)
+		if f.CanSet() {
+			iface := f.Addr().Interface()
+			if a, ok := iface.(FlagApplier); ok {
+				a.ApplyFlags(target)
+			}
 		}
 	}
 }

@@ -17,8 +17,7 @@ package option
 
 import (
 	"context"
-	ctls "crypto/tls"
-	"crypto/x509"
+	"crypto/tls"
 	"fmt"
 	"io"
 	nhttp "net/http"
@@ -51,7 +50,7 @@ func (remote *Remote) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&remote.Username, "username", "u", "", "registry username")
 	fs.StringVarP(&remote.Password, "password", "p", "", "registry password or identity token")
 	fs.BoolVarP(&remote.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
-	fs.BoolVarP(&remote.Insecure, "insecure", "k", false, "allow connections to SSL registry without certs")
+	fs.BoolVarP(&remote.Insecure, "insecure", "", false, "allow connections to SSL registry without certs")
 	fs.StringVarP(&remote.CACertFilePath, "ca-file", "", "", "server certificate authority file for the remote registry")
 	fs.BoolVarP(&remote.PlainHTTP, "plain-http", "", false, "allow insecure connections to registry without SSL")
 }
@@ -73,22 +72,22 @@ func (remote *Remote) ReadPassword() (err error) {
 }
 
 // tlsConfig assembles the tls config.
-func (remote *Remote) tlsConfig() (config *ctls.Config, err error) {
-	config = &ctls.Config{}
-	var caPool *x509.CertPool
-	if remote.CACertFilePath == "" {
-		caPool = nil
-	} else if caPool, err = http.LoadCertPool(remote.CACertFilePath); err != nil {
-		return nil, err
+func (remote *Remote) tlsConfig() (*tls.Config, error) {
+	config := &tls.Config{
+		InsecureSkipVerify: remote.Insecure,
 	}
-
-	config.RootCAs = caPool
-	config.InsecureSkipVerify = remote.Insecure
-	return
+	if remote.CACertFilePath != "" {
+		var err error
+		config.RootCAs, err = http.LoadCertPool(remote.CACertFilePath)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return config, nil
 }
 
-// AuthClient assembles a oras auth client
-func (remote *Remote) AuthClient(debug bool) (client *auth.Client, err error) {
+// authClient assembles a oras auth client
+func (remote *Remote) authClient(debug bool) (client *auth.Client, err error) {
 	config, err := remote.tlsConfig()
 	if err != nil {
 		return nil, err
@@ -105,10 +104,10 @@ func (remote *Remote) AuthClient(debug bool) (client *auth.Client, err error) {
 		client.Client.Transport = trace.NewTransport(client.Client.Transport)
 	}
 
-	cred := credential.Credential(remote.Username, remote.Password)
+	cred := remote.Credential()
 	if cred != auth.EmptyCredential {
 		client.Credential = func(ctx context.Context, s string) (auth.Credential, error) {
-			return remote.Credential(), nil
+			return cred, nil
 		}
 	} else {
 		store, err := credential.NewStore(remote.Configs...)
@@ -132,7 +131,7 @@ func (remote *Remote) NewRegistry(hostname string, common Common) (reg *oremote.
 		return nil, err
 	}
 	reg.PlainHTTP = remote.PlainHTTP
-	if reg.Client, err = remote.AuthClient(common.Debug); err != nil {
+	if reg.Client, err = remote.authClient(common.Debug); err != nil {
 		return nil, err
 	}
 	return

@@ -61,7 +61,7 @@ Example - Login with insecure registry from command line:
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return preRunLogin(opts)
+			return opts.ReadPassword()
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Hostname = args[0]
@@ -72,10 +72,10 @@ Example - Login with insecure registry from command line:
 	return cmd
 }
 
-func preRunLogin(opts loginOptions) (err error) {
-	if err := opts.ReadPassword(); err != nil {
-		return err
-	}
+func runLogin(opts loginOptions) (err error) {
+	ctx, _ := opts.SetLoggerLevel()
+
+	// prompt for credential
 	if opts.Password == "" {
 		if opts.Username == "" {
 			// prompt for username
@@ -101,11 +101,6 @@ func preRunLogin(opts loginOptions) (err error) {
 			}
 		}
 	}
-	return nil
-}
-
-func runLogin(opts loginOptions) (err error) {
-	ctx, _ := opts.SetLoggerLevel()
 
 	// Ping to ensure credential is valid
 	remote, err := opts.Remote.NewRegistry(opts.Hostname, opts.Common)
