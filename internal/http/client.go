@@ -29,6 +29,8 @@ func NewClient(opts ClientOptions) remote.Client {
 				},
 			},
 		},
+		Cache:    auth.NewCache(),
+		ClientID: "oras",
 	}
 	client.SetUserAgent("oras/" + version.GetVersion())
 	if opts.Debug {
