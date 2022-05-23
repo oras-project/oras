@@ -98,6 +98,7 @@ func (opts *Remote) authClient(debug bool) (client *auth.Client, err error) {
 				TLSClientConfig: config,
 			},
 		},
+		Cache: auth.NewCache(),
 	}
 	client.SetUserAgent("oras/" + version.GetVersion())
 	if debug {
