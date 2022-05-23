@@ -29,5 +29,4 @@ func (opts *Push) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&opts.ManifestAnnotations, "manifest-annotations", "", "", "manifest annotation file")
 	fs.BoolVarP(&opts.PathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
 	fs.StringVarP(&opts.ManifestConfigRef, "manifest-config", "", "", "manifest config file")
-
 }
