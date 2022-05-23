@@ -101,6 +101,7 @@ func runLogin(opts loginOptions) (err error) {
 			}
 		}
 	}
+
 	// Ping to ensure credential is valid
 	remote, err := opts.Remote.NewRegistry(opts.Hostname, opts.Common)
 	if err != nil {
