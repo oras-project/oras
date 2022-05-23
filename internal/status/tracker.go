@@ -50,7 +50,7 @@ func NewPushTracker(target oras.Target, verbose bool) *StatusTracker {
 	}
 }
 
-// Push pushes a descriptor with status tracking.
+// Push pushes the content, matching the expected descriptor with status tracking.
 // Current implementation is a workaround before oras-go v2 supports copy
 // option, see https://github.com/oras-project/oras-go/issues/59.
 func (t *StatusTracker) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
