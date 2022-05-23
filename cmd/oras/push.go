@@ -57,6 +57,9 @@ Example - Push file to the HTTP registry:
   oras push localhost:5000/hello:latest hi.txt --plain-http
 `,
 		Args: cobra.MinimumNArgs(1),
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return opts.ReadPassword()
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
 			opts.fileRefs = args[1:]
