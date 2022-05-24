@@ -27,8 +27,10 @@ import (
 	"oras.land/oras-go/v2"
 )
 
-// StatusTracker is used to track status when interacting with the target CAS.
-type StatusTracker struct {
+// Tracker is used to track status when interacting with the target CAS.
+// Note: This Tracker is a workaround. Implementation will be enhanced once
+// oras-project/oras-go#150 is merged.
+type Tracker struct {
 	oras.Target
 	out          io.Writer
 	printLock    sync.Mutex
@@ -39,8 +41,8 @@ type StatusTracker struct {
 }
 
 // NewPushTracker returns a new status tracking object.
-func NewPushTracker(target oras.Target, verbose bool) *StatusTracker {
-	return &StatusTracker{
+func NewPushTracker(target oras.Target, verbose bool) *Tracker {
+	return &Tracker{
 		Target:       target,
 		out:          os.Stdout,
 		prompt:       "Uploading",
@@ -53,7 +55,7 @@ func NewPushTracker(target oras.Target, verbose bool) *StatusTracker {
 // Push pushes the content, matching the expected descriptor with status tracking.
 // Current implementation is a workaround before oras-go v2 supports copy
 // option, see https://github.com/oras-project/oras-go/issues/59.
-func (t *StatusTracker) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
+func (t *Tracker) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
 	print := func() {
 		name, ok := expected.Annotations[ocispec.AnnotationTitle]
 		if !ok {
@@ -63,15 +65,9 @@ func (t *StatusTracker) Push(ctx context.Context, expected ocispec.Descriptor, c
 			name = expected.MediaType
 		}
 
-		digestString := expected.Digest.String()
-		if err := expected.Digest.Validate(); err == nil {
-			if algo := expected.Digest.Algorithm(); algo == digest.SHA256 {
-				digestString = expected.Digest.Encoded()[:12]
-			}
-		}
 		t.printLock.Lock()
 		defer t.printLock.Unlock()
-		fmt.Fprintln(t.out, t.prompt, digestString, name)
+		fmt.Fprintln(t.out, t.prompt, digestString(expected), name)
 	}
 
 	if t.printAfter {
@@ -89,12 +85,23 @@ func (t *StatusTracker) Push(ctx context.Context, expected ocispec.Descriptor, c
 // Exists check if a descriptor exists in the store with status tracking.
 // Current implementation is a workaround before oras-go v2 supports copy
 // option, see https://github.com/oras-project/oras-go/issues/59.
-func (t *StatusTracker) Exists(ctx context.Context, target ocispec.Descriptor) (bool, error) {
+func (t *Tracker) Exists(ctx context.Context, target ocispec.Descriptor) (bool, error) {
 	existed, err := t.Target.Exists(ctx, target)
 	if t.printExisted && err == nil && existed {
 		t.printLock.Lock()
 		defer t.printLock.Unlock()
-		fmt.Fprintln(t.out, target.Digest.Encoded()[:12]+": Blob already exists")
+		fmt.Fprintln(t.out, digestString(target)+": Blob already exists")
 	}
 	return existed, err
+}
+
+// digestString gets the digest string from the descriptor for displaying
+func digestString(desc ocispec.Descriptor) (digestString string) {
+	digestString = desc.Digest.String()
+	if err := desc.Digest.Validate(); err == nil {
+		if algo := desc.Digest.Algorithm(); algo == digest.SHA256 {
+			digestString = desc.Digest.Encoded()[:12]
+		}
+	}
+	return digestString
 }

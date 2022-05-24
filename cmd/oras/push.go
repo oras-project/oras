@@ -89,15 +89,7 @@ Example - Push file to the HTTP registry:
 func runPush(opts pushOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
 
-	ref, err := registry.ParseReference(opts.targetRef)
-	if err != nil {
-		return err
-	}
-	reg, err := opts.NewRegistry(ref.Registry, opts.Common)
-	if err != nil {
-		return err
-	}
-	dst, err := reg.Repository(ctx, ref.Repository)
+	dst, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
 	}
@@ -117,12 +109,11 @@ func runPush(opts pushOptions) error {
 
 	// Ready to push
 	tracker := status.NewPushTracker(dst, opts.Verbose)
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
 	desc, err := packManifest(ctx, store, annotations, &opts)
 	if err != nil {
 		return err
 	}
+	ref, err := registry.ParseReference(opts.targetRef)
 	if tag := ref.Reference; tag == "" {
 		err = oras.CopyGraph(ctx, store, tracker, desc)
 	} else {
@@ -187,7 +178,7 @@ func packManifest(ctx context.Context, store *file.Store, annotations map[string
 	packOpts.ConfigAnnotations = annotations[annotationConfig]
 	packOpts.ManifestAnnotations = annotations[annotationManifest]
 	if opts.ManifestConfigRef != "" {
-		filename, mediaType := parseFileRef(opts.ManifestConfigRef, ocispec.MediaTypeImageConfig)
+		filename, mediaType := parseFileRef(opts.ManifestConfigRef, oras.MediaTypeUnknownConfig)
 		file, err := store.Add(ctx, annotationConfig, mediaType, filename)
 		if err != nil {
 			return ocispec.Descriptor{}, err

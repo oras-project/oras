@@ -137,3 +137,17 @@ func (opts *Remote) NewRegistry(hostname string, common Common) (reg *remote.Reg
 	}
 	return
 }
+
+// NewRepository assembles a oras remote repository.
+func (opts *Remote) NewRepository(reference string, common Common) (repo *remote.Repository, err error) {
+	repo, err = remote.NewRepository(reference)
+	if err != nil {
+		return nil, err
+	}
+
+	repo.PlainHTTP = opts.PlainHTTP
+	if repo.Client, err = opts.authClient(common.Debug); err != nil {
+		return nil, err
+	}
+	return
+}
