@@ -40,10 +40,12 @@ const (
 type pushOptions struct {
 	option.Common
 	option.Remote
-	option.Push
 
-	targetRef string
-	fileRefs  []string
+	targetRef              string
+	fileRefs               []string
+	pathValidationDisabled bool
+	manifestAnnotations    string
+	manifestConfigRef      string
 }
 
 func pushCmd() *cobra.Command {
@@ -82,6 +84,10 @@ Example - Push file to the HTTP registry:
 		},
 	}
 
+	cmd.Flags().StringVarP(&opts.manifestAnnotations, "manifest-annotations", "", "", "manifest annotation file")
+	cmd.Flags().BoolVarP(&opts.pathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
+	cmd.Flags().StringVarP(&opts.manifestConfigRef, "manifest-config", "", "", "manifest config file")
+
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
@@ -96,8 +102,8 @@ func runPush(opts pushOptions) error {
 
 	// Load annotations
 	var annotations map[string]map[string]string
-	if opts.ManifestAnnotations != "" {
-		if err := decodeJSON(opts.ManifestAnnotations, &annotations); err != nil {
+	if opts.manifestAnnotations != "" {
+		if err := decodeJSON(opts.manifestAnnotations, &annotations); err != nil {
 			return err
 		}
 	}
@@ -105,7 +111,7 @@ func runPush(opts pushOptions) error {
 	// Prepare manifest
 	store := file.New("")
 	defer store.Close()
-	store.AllowPathTraversalOnWrite = opts.PathValidationDisabled
+	store.AllowPathTraversalOnWrite = opts.pathValidationDisabled
 
 	// Ready to push
 	tracker := status.NewPushTracker(dst, opts.Verbose)
@@ -114,6 +120,9 @@ func runPush(opts pushOptions) error {
 		return err
 	}
 	ref, err := registry.ParseReference(opts.targetRef)
+	if err != nil {
+		return err
+	}
 	if tag := ref.Reference; tag == "" {
 		err = oras.CopyGraph(ctx, store, tracker, desc)
 	} else {
@@ -177,8 +186,8 @@ func packManifest(ctx context.Context, store *file.Store, annotations map[string
 	var packOpts oras.PackOptions
 	packOpts.ConfigAnnotations = annotations[annotationConfig]
 	packOpts.ManifestAnnotations = annotations[annotationManifest]
-	if opts.ManifestConfigRef != "" {
-		filename, mediaType := parseFileRef(opts.ManifestConfigRef, oras.MediaTypeUnknownConfig)
+	if opts.manifestConfigRef != "" {
+		filename, mediaType := parseFileRef(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
 		file, err := store.Add(ctx, annotationConfig, mediaType, filename)
 		if err != nil {
 			return ocispec.Descriptor{}, err
