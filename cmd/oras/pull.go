@@ -26,15 +26,20 @@ import (
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/status"
 )
 
 type (
 	pullOptions struct {
 		option.Common
 		option.Remote
-		option.Pull
-		targetRef string
-		cacheRoot string
+
+		targetRef         string
+		cacheRoot         string
+		KeepOldFiles      bool
+		PathTraversal     bool
+		Output            string
+		ManifestConfigRef string
 	}
 )
 
@@ -75,6 +80,10 @@ Example - Pull files with local cache:
 		},
 	}
 
+	cmd.Flags().BoolVarP(&opts.KeepOldFiles, "keep-old-files", "k", false, "do not replace existing files when pulling, treat them as errors")
+	cmd.Flags().BoolVarP(&opts.PathTraversal, "allow-path-traversal", "T", false, "allow storing files out of the output directory")
+	cmd.Flags().StringVarP(&opts.Output, "output", "o", "", "output directory")
+	cmd.Flags().StringVarP(&opts.ManifestConfigRef, "manifest-config", "", "", "output manifest config file")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
@@ -82,15 +91,7 @@ Example - Pull files with local cache:
 func runPull(opts pullOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
 
-	ref, err := registry.ParseReference(opts.targetRef)
-	if err != nil {
-		return err
-	}
-	reg, err := opts.NewRegistry(ref.Registry, opts.Common)
-	if err != nil {
-		return err
-	}
-	repo, err := reg.Repository(ctx, ref.Repository)
+	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
 	}
@@ -105,19 +106,29 @@ func runPull(opts pullOptions) error {
 	var dstStore = file.New(dir)
 	dstStore.AllowPathTraversalOnWrite = opts.PathTraversal
 	dstStore.DisableOverwrite = opts.KeepOldFiles
+
+	manifestConfigName, manifestConfigMedia := "", ""
+	if opts.ManifestConfigRef != "" {
+		manifestConfigName, manifestConfigMedia = parseFileRef(opts.ManifestConfigRef, oras.MediaTypeUnknownConfig)
+	}
 	var src, dst oras.Target = repo, dstStore
+	tracker := status.NewPullTracker(dst, manifestConfigName, manifestConfigMedia)
+	ref, err := registry.ParseReference(opts.targetRef)
+	if err != nil {
+		return err
+	}
 
 	if opts.cacheRoot != "" {
 		cache, err := oci.New(opts.cacheRoot)
 		if err != nil {
 			return err
 		}
-		if _, err = oras.Copy(ctx, src, ref.Reference, cache, ref.Reference); err != nil {
+		if _, err = oras.Copy(ctx, src, ref.Reference, cache, ref.ReferenceOrDefault()); err != nil {
 			return err
 		}
 		src = cache
 	}
-	desc, err := oras.Copy(ctx, src, ref.Reference, dst, ref.Reference)
+	desc, err := oras.Copy(ctx, src, ref.Reference, tracker, ref.Reference)
 	if err != nil {
 		return err
 	}
@@ -134,5 +145,3 @@ func runPull(opts pullOptions) error {
 
 	return nil
 }
-
-// TODO: support option 'manifest-config', output manifest config file

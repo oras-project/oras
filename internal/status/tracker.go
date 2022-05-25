@@ -32,15 +32,17 @@ import (
 // oras-project/oras-go#150 is merged.
 type Tracker struct {
 	oras.Target
-	out          io.Writer
-	printLock    sync.Mutex
-	printAfter   bool
-	printExisted bool
-	prompt       string
-	verbose      bool
+	out             io.Writer
+	printLock       sync.Mutex
+	printAfter      bool
+	printExisted    bool
+	prompt          string
+	verbose         bool
+	configName      string
+	configMediaType string
 }
 
-// NewPushTracker returns a new status tracking object.
+// NewPushTracker returns a new status tracking object for push command.
 func NewPushTracker(target oras.Target, verbose bool) *Tracker {
 	return &Tracker{
 		Target:       target,
@@ -52,17 +54,37 @@ func NewPushTracker(target oras.Target, verbose bool) *Tracker {
 	}
 }
 
+// NewPullTracker returns a new status tracking object for pull command.
+func NewPullTracker(target oras.Target, configName, configMediaType string) *Tracker {
+	return &Tracker{
+		Target:          target,
+		out:             os.Stdout,
+		prompt:          "Downloaded",
+		verbose:         false,
+		printAfter:      true,
+		printExisted:    false,
+		configName:      configName,
+		configMediaType: configMediaType,
+	}
+}
+
 // Push pushes the content, matching the expected descriptor with status tracking.
 // Current implementation is a workaround before oras-go v2 supports copy
 // option, see https://github.com/oras-project/oras-go/issues/59.
 func (t *Tracker) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
 	print := func() {
-		name, ok := expected.Annotations[ocispec.AnnotationTitle]
-		if !ok {
-			if !t.verbose {
-				return
+		var name string
+		if t.configMediaType != "" && t.configMediaType == expected.MediaType {
+			name = t.configName
+		} else {
+			var ok bool
+			name, ok = expected.Annotations[ocispec.AnnotationTitle]
+			if !ok {
+				if !t.verbose {
+					return
+				}
+				name = expected.MediaType
 			}
-			name = expected.MediaType
 		}
 
 		t.printLock.Lock()
