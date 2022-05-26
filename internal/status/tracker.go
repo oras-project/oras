@@ -32,14 +32,13 @@ import (
 // oras-project/oras-go#150 is merged.
 type Tracker struct {
 	oras.Target
-	out             io.Writer
-	printLock       sync.Mutex
-	printAfter      bool
-	printExisted    bool
-	prompt          string
-	verbose         bool
-	configName      string
-	configMediaType string
+	out          io.Writer
+	printLock    sync.Mutex
+	printAfter   bool
+	printExisted bool
+	prompt       string
+	verbose      bool
+	*ManifestConfigOption
 }
 
 // NewPushTracker returns a new status tracking object for push command.
@@ -55,36 +54,43 @@ func NewPushTracker(target oras.Target, verbose bool) *Tracker {
 }
 
 // NewPullTracker returns a new status tracking object for pull command.
-func NewPullTracker(target oras.Target, configName, configMediaType string) *Tracker {
+func NewPullTracker(target oras.Target, option *ManifestConfigOption) *Tracker {
 	return &Tracker{
-		Target:          target,
-		out:             os.Stdout,
-		prompt:          "Downloaded",
-		verbose:         false,
-		printAfter:      true,
-		printExisted:    false,
-		configName:      configName,
-		configMediaType: configMediaType,
+		Target:               target,
+		out:                  os.Stdout,
+		prompt:               "Downloaded",
+		verbose:              false,
+		printAfter:           true,
+		printExisted:         false,
+		ManifestConfigOption: option,
 	}
+}
+
+// ManifestConfigOption contains options for rewriting config
+type ManifestConfigOption struct {
+	Name      string
+	MediaType string
 }
 
 // Push pushes the content, matching the expected descriptor with status tracking.
 // Current implementation is a workaround before oras-go v2 supports copy
 // option, see https://github.com/oras-project/oras-go/issues/59.
 func (t *Tracker) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
+	option := t.ManifestConfigOption
+	if option != nil && option.MediaType == expected.MediaType && option.Name != "" {
+		if expected.Annotations == nil {
+			expected.Annotations = make(map[string]string)
+		}
+		expected.Annotations[ocispec.AnnotationTitle] = option.Name
+	}
+
 	print := func() {
-		var name string
-		if t.configMediaType != "" && t.configMediaType == expected.MediaType {
-			name = t.configName
-		} else {
-			var ok bool
-			name, ok = expected.Annotations[ocispec.AnnotationTitle]
-			if !ok {
-				if !t.verbose {
-					return
-				}
-				name = expected.MediaType
+		name, ok := expected.Annotations[ocispec.AnnotationTitle]
+		if !ok {
+			if !t.verbose {
+				return
 			}
+			name = expected.MediaType
 		}
 
 		t.printLock.Lock()

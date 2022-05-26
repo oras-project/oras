@@ -107,12 +107,16 @@ func runPull(opts pullOptions) error {
 	dstStore.AllowPathTraversalOnWrite = opts.PathTraversal
 	dstStore.DisableOverwrite = opts.KeepOldFiles
 
-	manifestConfigName, manifestConfigMedia := "", ""
+	var mco *status.ManifestConfigOption
 	if opts.ManifestConfigRef != "" {
-		manifestConfigName, manifestConfigMedia = parseFileRef(opts.ManifestConfigRef, oras.MediaTypeUnknownConfig)
+		name, media := parseFileRef(opts.ManifestConfigRef, oras.MediaTypeUnknownConfig)
+		mco = &status.ManifestConfigOption{
+			Name:      name,
+			MediaType: media,
+		}
 	}
 	var src, dst oras.Target = repo, dstStore
-	tracker := status.NewPullTracker(dst, manifestConfigName, manifestConfigMedia)
+	tracker := status.NewPullTracker(dst, mco)
 	ref, err := registry.ParseReference(opts.targetRef)
 	if err != nil {
 		return err
