@@ -66,13 +66,14 @@ func NewPullTracker(target oras.Target, option *ManifestConfigOption) *Tracker {
 	}
 }
 
-// ManifestConfigOption contains options for rewriting config
+// ManifestConfigOption contains options for manifest config.
 type ManifestConfigOption struct {
 	Name      string
 	MediaType string
 }
 
-// Push pushes the content, matching the expected descriptor with status tracking.
+// Push pushes the content, matching the expected descriptor with status
+// tracking.
 // Current implementation is a workaround before oras-go v2 supports copy
 // option, see https://github.com/oras-project/oras-go/issues/59.
 func (t *Tracker) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
@@ -123,7 +124,7 @@ func (t *Tracker) Exists(ctx context.Context, target ocispec.Descriptor) (bool, 
 	return existed, err
 }
 
-// digestString gets the digest string from the descriptor for displaying
+// digestString gets the digest string from the descriptor for displaying.
 func digestString(desc ocispec.Descriptor) (digestString string) {
 	digestString = desc.Digest.String()
 	if err := desc.Digest.Validate(); err == nil {
