@@ -26,7 +26,6 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/file"
-	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/status"
 )
@@ -119,11 +118,7 @@ func runPush(opts pushOptions) error {
 	if err != nil {
 		return err
 	}
-	ref, err := registry.ParseReference(opts.targetRef)
-	if err != nil {
-		return err
-	}
-	if tag := ref.Reference; tag == "" {
+	if tag := dst.Reference.Reference; tag == "" {
 		err = oras.CopyGraph(ctx, store, tracker, desc)
 	} else {
 		desc, err = oras.Copy(ctx, store, tagStaged, tracker, tag)

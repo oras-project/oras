@@ -118,7 +118,7 @@ func (t *Tracker) Exists(ctx context.Context, target ocispec.Descriptor) (bool, 
 	if t.printExisted && err == nil && existed {
 		t.printLock.Lock()
 		defer t.printLock.Unlock()
-		fmt.Fprintln(t.out, digestString(target)+": Blob already exists")
+		fmt.Fprintln(t.out, digestString(target), "already exists")
 	}
 	return existed, err
 }
