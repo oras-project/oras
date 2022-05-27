@@ -29,19 +29,17 @@ import (
 	"oras.land/oras/internal/status"
 )
 
-type (
-	pullOptions struct {
-		option.Common
-		option.Remote
+type pullOptions struct {
+	option.Common
+	option.Remote
 
-		targetRef         string
-		cacheRoot         string
-		KeepOldFiles      bool
-		PathTraversal     bool
-		Output            string
-		ManifestConfigRef string
-	}
-)
+	targetRef         string
+	cacheRoot         string
+	KeepOldFiles      bool
+	PathTraversal     bool
+	Output            string
+	ManifestConfigRef string
+}
 
 func pullCmd() *cobra.Command {
 	var opts pullOptions
@@ -82,7 +80,7 @@ Example - Pull files with local cache:
 
 	cmd.Flags().BoolVarP(&opts.KeepOldFiles, "keep-old-files", "k", false, "do not replace existing files when pulling, treat them as errors")
 	cmd.Flags().BoolVarP(&opts.PathTraversal, "allow-path-traversal", "T", false, "allow storing files out of the output directory")
-	cmd.Flags().StringVarP(&opts.Output, "output", "o", "", "output directory")
+	cmd.Flags().StringVarP(&opts.Output, "output", "o", ".", "output directory")
 	cmd.Flags().StringVarP(&opts.ManifestConfigRef, "manifest-config", "", "", "output manifest config file")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
@@ -97,12 +95,6 @@ func runPull(opts pullOptions) error {
 	}
 
 	dir := opts.Output
-	if dir == "" {
-		dir, err = os.Getwd()
-		if err != nil {
-			return err
-		}
-	}
 	var dstStore = file.New(dir)
 	dstStore.AllowPathTraversalOnWrite = opts.PathTraversal
 	dstStore.DisableOverwrite = opts.KeepOldFiles
