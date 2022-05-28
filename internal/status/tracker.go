@@ -32,13 +32,13 @@ import (
 // oras-project/oras-go#150 is merged.
 type Tracker struct {
 	oras.Target
+	*ManifestConfigOption
 	out          io.Writer
 	printLock    sync.Mutex
 	printAfter   bool
 	printExisted bool
 	prompt       string
 	verbose      bool
-	*ManifestConfigOption
 }
 
 // NewPushTracker returns a new status tracking object for push command.
