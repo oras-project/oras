@@ -21,10 +21,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/content/oci"
-	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/status"
 )
@@ -88,17 +86,13 @@ Example - Pull files with local cache:
 
 func runPull(opts pullOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
-
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
 	}
-
-	dir := opts.Output
-	var dstStore = file.New(dir)
+	var dstStore = file.New(opts.Output)
 	dstStore.AllowPathTraversalOnWrite = opts.PathTraversal
 	dstStore.DisableOverwrite = opts.KeepOldFiles
-
 	var mco *status.ManifestConfigOption
 	if opts.ManifestConfigRef != "" {
 		name, media := parseFileRef(opts.ManifestConfigRef, oras.MediaTypeUnknownConfig)
@@ -107,12 +101,6 @@ func runPull(opts pullOptions) error {
 			MediaType: media,
 		}
 	}
-	var src, dst oras.Target = repo, dstStore
-	ref, err := registry.ParseReference(opts.targetRef)
-	if err != nil {
-		return err
-	}
-
 	var cache oras.Target
 	if opts.cacheRoot != "" {
 		cache, err = oci.New(opts.cacheRoot)
@@ -120,22 +108,18 @@ func runPull(opts pullOptions) error {
 			return err
 		}
 	}
+	tracker := status.NewPullTracker(dstStore, mco, cache)
 
-	tracker := status.NewPullTracker(dst, mco, cache)
-	desc, err := oras.Copy(ctx, src, ref.Reference, tracker, ref.Reference)
+	// Copy
+	desc, err := oras.Copy(ctx, repo, repo.Reference.Reference, tracker, repo.Reference.Reference)
 	if err != nil {
 		return err
 	}
-	artifacts, err := content.DownEdges(ctx, src, desc)
-	if err != nil {
-		return err
-	}
-
-	if len(artifacts) == 0 {
+	if tracker.PulledEmpty() {
 		fmt.Println("Downloaded empty artifact")
+	} else {
+		fmt.Println("Pulled", opts.targetRef)
+		fmt.Println("Digest:", desc.Digest)
 	}
-	fmt.Println("Pulled", opts.targetRef)
-	fmt.Println("Digest:", desc.Digest)
-
 	return nil
 }
