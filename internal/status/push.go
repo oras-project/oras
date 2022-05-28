@@ -63,7 +63,6 @@ func (t *PushTracker) Push(ctx context.Context, expected ocispec.Descriptor, con
 			}
 			name = expected.MediaType
 		}
-
 		t.printLock.Lock()
 		defer t.printLock.Unlock()
 		fmt.Fprintln(t.out, t.prompt, digestString(expected), name)
@@ -86,7 +85,6 @@ func (t *PushTracker) Exists(ctx context.Context, target ocispec.Descriptor) (bo
 		t.printLock.Lock()
 		defer t.printLock.Unlock()
 		fmt.Fprintln(t.out, "Existed  ", digestString(target), target.Annotations[ocispec.AnnotationTitle])
-
 	}
 	return existed, err
 }

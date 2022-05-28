@@ -85,7 +85,6 @@ func (t *PullTracker) Push(ctx context.Context, expected ocispec.Descriptor, con
 			}
 			name = expected.MediaType
 		}
-
 		t.printLock.Lock()
 		defer t.printLock.Unlock()
 		fmt.Fprintln(t.out, t.prompt, digestString(expected), name)
