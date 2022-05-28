@@ -21,7 +21,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
@@ -126,16 +125,12 @@ func runPull(opts pullOptions) error {
 	if err != nil {
 		return err
 	}
-	artifacts, err := content.DownEdges(ctx, src, desc)
-	if err != nil {
-		return err
-	}
 
-	if len(artifacts) == 0 {
+	if tracker.PulledEmpty() {
 		fmt.Println("Downloaded empty artifact")
+	} else {
+		fmt.Println("Pulled", opts.targetRef)
+		fmt.Println("Digest:", desc.Digest)
 	}
-	fmt.Println("Pulled", opts.targetRef)
-	fmt.Println("Digest:", desc.Digest)
-
 	return nil
 }

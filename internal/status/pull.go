@@ -32,11 +32,12 @@ import (
 type PullTracker struct {
 	oras.Target
 	*ManifestConfigOption
-	out       io.Writer
-	printLock sync.Mutex
-	prompt    string
-	verbose   bool
-	cache     oras.Target
+	out         io.Writer
+	printLock   sync.Mutex
+	prompt      string
+	verbose     bool
+	cache       oras.Target
+	pulledEmpty bool
 }
 
 // NewPullTracker returns a new status tracking object for pull command.
@@ -48,6 +49,7 @@ func NewPullTracker(target oras.Target, option *ManifestConfigOption, cache oras
 		verbose:              false,
 		ManifestConfigOption: option,
 		cache:                cache,
+		pulledEmpty:          true,
 	}
 }
 
@@ -55,6 +57,11 @@ func NewPullTracker(target oras.Target, option *ManifestConfigOption, cache oras
 type ManifestConfigOption struct {
 	Name      string
 	MediaType string
+}
+
+// PulledEmpty returns whether no artifacts were pulled.
+func (t *PullTracker) PulledEmpty() bool {
+	return t.pulledEmpty
 }
 
 // Push pushes the content, matching the expected descriptor with status
@@ -82,6 +89,7 @@ func (t *PullTracker) Push(ctx context.Context, expected ocispec.Descriptor, con
 		t.printLock.Lock()
 		defer t.printLock.Unlock()
 		fmt.Fprintln(t.out, t.prompt, digestString(expected), name)
+		t.pulledEmpty = false
 	}
 
 	src := t.Target
