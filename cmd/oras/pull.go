@@ -108,22 +108,20 @@ func runPull(opts pullOptions) error {
 		}
 	}
 	var src, dst oras.Target = repo, dstStore
-	tracker := status.NewPullTracker(dst, mco)
 	ref, err := registry.ParseReference(opts.targetRef)
 	if err != nil {
 		return err
 	}
 
+	var cache oras.Target
 	if opts.cacheRoot != "" {
-		cache, err := oci.New(opts.cacheRoot)
+		cache, err = oci.New(opts.cacheRoot)
 		if err != nil {
 			return err
 		}
-		if _, err = oras.Copy(ctx, src, ref.Reference, cache, ref.ReferenceOrDefault()); err != nil {
-			return err
-		}
-		src = cache
 	}
+
+	tracker := status.NewPullTracker(dst, mco, cache)
 	desc, err := oras.Copy(ctx, src, ref.Reference, tracker, ref.Reference)
 	if err != nil {
 		return err
