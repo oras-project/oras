@@ -20,6 +20,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -144,8 +145,12 @@ func (opts *Remote) NewRepository(reference string, common Common) (repo *remote
 	if err != nil {
 		return nil, err
 	}
-
-	repo.PlainHTTP = opts.PlainHTTP
+	switch host, _, _ := net.SplitHostPort(repo.Reference.Registry); host {
+	case "localhost":
+		repo.PlainHTTP = true
+	default:
+		repo.PlainHTTP = opts.PlainHTTP
+	}
 	if repo.Client, err = opts.authClient(common.Debug); err != nil {
 		return nil, err
 	}
