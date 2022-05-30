@@ -4,16 +4,24 @@ on:
   push:
     branches: main
 
+  pull_request:
+    branches: main
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [1.18]
+      fail-fast: true
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: setup go environment
+      - name: Setup Go ${{ matrix.go-version }}
         uses: actions/setup-go@v3
         with:
-          go-version: '1.18.1'
+          go-version: ${{ matrix.go-version }}
+          check-latest: true
       - name: Build CLI
         run: make build-linux-amd64
       - name: run unit tests
