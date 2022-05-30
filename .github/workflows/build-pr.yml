@@ -17,5 +17,7 @@ jobs:
           go-version: '1.18.1'
       - name: Build CLI
         run: make build-linux-amd64
+      - name: run unit tests
+        run: make test
       - name: Check version
         run: bin/linux/amd64/oras version
