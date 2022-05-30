@@ -65,8 +65,7 @@ func TestRemote_FlagsInit(t *testing.T) {
 		Remote
 	}
 
-	fs := pflag.NewFlagSet("oras-test", pflag.ExitOnError)
-	test.ApplyFlags(fs)
+	ApplyFlags(&test, pflag.NewFlagSet("oras-test", pflag.ExitOnError))
 }
 
 func TestRemote_authClient_RawCredential(t *testing.T) {

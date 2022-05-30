@@ -26,6 +26,5 @@ func TestCommon_FlagsInit(t *testing.T) {
 		Common
 	}
 
-	fs := pflag.NewFlagSet("oras-test", pflag.ExitOnError)
-	test.ApplyFlags(fs)
+	ApplyFlags(&test, pflag.NewFlagSet("oras-test", pflag.ExitOnError))
 }
