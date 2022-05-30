@@ -1,3 +1,18 @@
+/*
+Copyright The ORAS Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package main
 
 import (
@@ -8,33 +23,28 @@ import (
 	"path/filepath"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/pkg/artifact"
-	"oras.land/oras-go/pkg/content"
-	ctxo "oras.land/oras-go/pkg/context"
-	"oras.land/oras-go/pkg/oras"
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content/file"
+	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/status"
 )
 
 const (
 	annotationConfig   = "$config"
 	annotationManifest = "$manifest"
+	tagStaged          = "staged"
 )
 
 type pushOptions struct {
+	option.Common
+	option.Remote
+
 	targetRef              string
 	fileRefs               []string
-	manifestConfigRef      string
-	manifestAnnotations    string
 	pathValidationDisabled bool
-	verbose                bool
-
-	debug     bool
-	configs   []string
-	username  string
-	password  string
-	insecure  bool
-	plainHTTP bool
+	manifestAnnotations    string
+	manifestConfigRef      string
 }
 
 func pushCmd() *cobra.Command {
@@ -63,6 +73,9 @@ Example - Push file to the HTTP registry:
   oras push localhost:5000/hello:latest hi.txt --plain-http
 `,
 		Args: cobra.MinimumNArgs(1),
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return opts.ReadPassword()
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
 			opts.fileRefs = args[1:]
@@ -70,69 +83,46 @@ Example - Push file to the HTTP registry:
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.manifestConfigRef, "manifest-config", "", "", "manifest config file")
 	cmd.Flags().StringVarP(&opts.manifestAnnotations, "manifest-annotations", "", "", "manifest annotation file")
 	cmd.Flags().BoolVarP(&opts.pathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
-	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
-	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
-	cmd.Flags().StringArrayVarP(&opts.configs, "config", "c", nil, "auth config path")
-	cmd.Flags().StringVarP(&opts.username, "username", "u", "", "registry username")
-	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password")
-	cmd.Flags().BoolVarP(&opts.insecure, "insecure", "", false, "allow connections to SSL registry without certs")
-	cmd.Flags().BoolVarP(&opts.plainHTTP, "plain-http", "", false, "use plain http and not https")
+	cmd.Flags().StringVarP(&opts.manifestConfigRef, "manifest-config", "", "", "manifest config file")
+
+	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
 
 func runPush(opts pushOptions) error {
-	ctx := context.Background()
-	if opts.debug {
-		logrus.SetLevel(logrus.DebugLevel)
-	} else if !opts.verbose {
-		ctx = ctxo.WithLoggerDiscarded(ctx)
+	ctx, _ := opts.SetLoggerLevel()
+
+	dst, err := opts.NewRepository(opts.targetRef, opts.Common)
+	if err != nil {
+		return err
 	}
 
-	// load files
-	var (
-		annotations map[string]map[string]string
-		store       = content.NewFileStore("")
-		pushOpts    []oras.PushOpt
-	)
-	defer store.Close()
+	// Load annotations
+	var annotations map[string]map[string]string
 	if opts.manifestAnnotations != "" {
 		if err := decodeJSON(opts.manifestAnnotations, &annotations); err != nil {
 			return err
 		}
-		if value, ok := annotations[annotationConfig]; ok {
-			pushOpts = append(pushOpts, oras.WithConfigAnnotations(value))
-		}
-		if value, ok := annotations[annotationManifest]; ok {
-			pushOpts = append(pushOpts, oras.WithManifestAnnotations(value))
-		}
 	}
-	if opts.manifestConfigRef != "" {
-		filename, mediaType := parseFileRef(opts.manifestConfigRef, artifact.UnknownConfigMediaType)
-		file, err := store.Add(annotationConfig, mediaType, filename)
-		if err != nil {
-			return err
-		}
-		file.Annotations = nil
-		pushOpts = append(pushOpts, oras.WithConfig(file))
-	}
-	if opts.pathValidationDisabled {
-		pushOpts = append(pushOpts, oras.WithNameValidation(nil))
-	}
-	files, err := loadFiles(store, annotations, &opts)
+
+	// Prepare manifest
+	store := file.New("")
+	defer store.Close()
+	store.AllowPathTraversalOnWrite = opts.pathValidationDisabled
+
+	// Ready to push
+	tracker := status.NewPushTracker(dst, opts.Verbose)
+	desc, err := packManifest(ctx, store, annotations, &opts)
 	if err != nil {
 		return err
 	}
-	if len(files) == 0 {
-		fmt.Println("Uploading empty artifact")
+	if tag := dst.Reference.Reference; tag == "" {
+		err = oras.CopyGraph(ctx, store, tracker, desc)
+	} else {
+		desc, err = oras.Copy(ctx, store, tagStaged, tracker, tag)
 	}
-
-	// ready to push
-	resolver := newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
-	pushOpts = append(pushOpts, oras.WithPushStatusTrack(os.Stdout))
-	desc, err := oras.Push(ctx, resolver, opts.targetRef, store, files, pushOpts...)
 	if err != nil {
 		return err
 	}
@@ -152,7 +142,7 @@ func decodeJSON(filename string, v interface{}) error {
 	return json.NewDecoder(file).Decode(v)
 }
 
-func loadFiles(store *content.FileStore, annotations map[string]map[string]string, opts *pushOptions) ([]ocispec.Descriptor, error) {
+func loadFiles(ctx context.Context, store *file.Store, annotations map[string]map[string]string, opts *pushOptions) ([]ocispec.Descriptor, error) {
 	var files []ocispec.Descriptor
 	for _, fileRef := range opts.fileRefs {
 		filename, mediaType := parseFileRef(fileRef, "")
@@ -161,10 +151,10 @@ func loadFiles(store *content.FileStore, annotations map[string]map[string]strin
 			// convert to slash-separated path unless it is absolute path
 			name = filepath.ToSlash(name)
 		}
-		if opts.verbose {
+		if opts.Verbose {
 			fmt.Println("Preparing", name)
 		}
-		file, err := store.Add(name, mediaType, filename)
+		file, err := store.Add(ctx, name, mediaType, filename)
 		if err != nil {
 			return nil, err
 		}
@@ -181,5 +171,35 @@ func loadFiles(store *content.FileStore, annotations map[string]map[string]strin
 		}
 		files = append(files, file)
 	}
+	if len(files) == 0 {
+		fmt.Println("Uploading empty artifact")
+	}
 	return files, nil
+}
+
+func packManifest(ctx context.Context, store *file.Store, annotations map[string]map[string]string, opts *pushOptions) (ocispec.Descriptor, error) {
+	var packOpts oras.PackOptions
+	packOpts.ConfigAnnotations = annotations[annotationConfig]
+	packOpts.ManifestAnnotations = annotations[annotationManifest]
+	if opts.manifestConfigRef != "" {
+		filename, mediaType := parseFileRef(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
+		file, err := store.Add(ctx, annotationConfig, mediaType, filename)
+		if err != nil {
+			return ocispec.Descriptor{}, err
+		}
+		file.Annotations = packOpts.ConfigAnnotations
+		packOpts.ConfigDescriptor = &file
+	}
+	files, err := loadFiles(ctx, store, annotations, opts)
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	manifestDesc, err := oras.Pack(ctx, store, files, packOpts)
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	if err := store.Tag(ctx, manifestDesc, tagStaged); err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	return manifestDesc, nil
 }
