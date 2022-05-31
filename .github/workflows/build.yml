@@ -24,5 +24,13 @@ jobs:
           check-latest: true
       - name: Build CLI
         run: make build-linux-amd64
-      - name: Check version
+      - name: Run Unit Tests
+        run: make test
+      - name: Check Version
         run: bin/linux/amd64/oras version
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@master
+        with:
+          name: oras-coverage-report-${{ github.sha }}
+          path: .cover/
+        if: always()
