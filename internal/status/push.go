@@ -35,7 +35,6 @@ type PushTracker struct {
 	out          io.Writer
 	printLock    sync.Mutex
 	printExisted bool
-	prompt       string
 	verbose      bool
 }
 
@@ -44,7 +43,6 @@ func NewPushTracker(target oras.Target, verbose bool) *PushTracker {
 	return &PushTracker{
 		Target:       target,
 		out:          os.Stdout,
-		prompt:       "Uploading",
 		verbose:      verbose,
 		printExisted: true,
 	}
@@ -65,14 +63,11 @@ func (t *PushTracker) Push(ctx context.Context, expected ocispec.Descriptor, con
 		}
 		t.printLock.Lock()
 		defer t.printLock.Unlock()
-		fmt.Fprintln(t.out, t.prompt, digestString(expected), name)
+		fmt.Fprintln(t.out, "Uploading", digestString(expected), name)
 	}
 
-	if err := t.Target.Push(ctx, expected, content); err != nil {
-		return err
-	}
 	print()
-	return nil
+	return t.Target.Push(ctx, expected, content)
 }
 
 // Exists check if a descriptor exists in the store with status tracking.
