@@ -117,9 +117,8 @@ func runPull(opts pullOptions) error {
 	}
 	if tracker.PulledEmpty() {
 		fmt.Println("Downloaded empty artifact")
-	} else {
-		fmt.Println("Pulled", opts.targetRef)
-		fmt.Println("Digest:", desc.Digest)
 	}
+	fmt.Println("Pulled", opts.targetRef)
+	fmt.Println("Digest:", desc.Digest)
 	return nil
 }
