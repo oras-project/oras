@@ -132,7 +132,7 @@ func runPush(opts pushOptions) error {
 	copyOptions.SkippedCopyHandler = func(ctx context.Context, desc ocispec.Descriptor) error {
 		printLock.Lock()
 		defer printLock.Unlock()
-		fmt.Fprintln(os.Stdout, digest.Short(desc), "already exists")
+		fmt.Fprintln(os.Stdout, "Existed ", digest.Short(desc), desc.Annotations[ocispec.AnnotationTitle])
 		return nil
 	}
 

@@ -5,7 +5,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// Short gets the short digest string from the descriptor for displaying
+// Short gets the short digest string from the descriptor for displaying.
 func Short(desc ocispec.Descriptor) (digestString string) {
 	digestString = desc.Digest.String()
 	if err := desc.Digest.Validate(); err == nil {
