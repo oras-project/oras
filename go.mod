@@ -2,8 +2,7 @@ module oras.land/oras
 
 go 1.18
 
-// Fill in the local lib path
-// replace oras.land/oras-go/v2 => <local-oras-go-path>
+replace oras.land/oras-go/v2 =>  github.com/Wwwsylvia/oras-go v0.0.0-20220531114509-01c69a252a40
 
 require (
 	github.com/containerd/containerd v1.6.4
