@@ -22,8 +22,8 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/file"
-	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/cache"
 	"oras.land/oras/internal/status"
 )
 
@@ -101,14 +101,14 @@ func runPull(opts pullOptions) error {
 			MediaType: media,
 		}
 	}
-	var cache oras.Target
+	var dst oras.Target = dstStore
 	if opts.cacheRoot != "" {
-		cache, err = oci.New(opts.cacheRoot)
+		dst, err = cache.New(dst, opts.cacheRoot)
 		if err != nil {
 			return err
 		}
 	}
-	tracker := status.NewPullTracker(dstStore, mco, cache)
+	tracker := status.NewPullTracker(dst, mco)
 
 	// Copy
 	desc, err := oras.Copy(ctx, repo, repo.Reference.Reference, tracker, repo.Reference.Reference)

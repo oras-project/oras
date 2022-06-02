@@ -34,21 +34,17 @@ type PullTracker struct {
 	*ManifestConfigOption
 	out         io.Writer
 	printLock   sync.Mutex
-	prompt      string
 	verbose     bool
-	cache       oras.Target
 	pulledEmpty bool
 }
 
 // NewPullTracker returns a new status tracking object for pull command.
-func NewPullTracker(target oras.Target, option *ManifestConfigOption, cache oras.Target) *PullTracker {
+func NewPullTracker(target oras.Target, option *ManifestConfigOption) *PullTracker {
 	return &PullTracker{
 		Target:               target,
-		out:                  os.Stdout,
-		prompt:               "Downloaded",
-		verbose:              false,
 		ManifestConfigOption: option,
-		cache:                cache,
+		out:                  os.Stdout,
+		verbose:              false,
 		pulledEmpty:          true,
 	}
 }
@@ -87,24 +83,11 @@ func (t *PullTracker) Push(ctx context.Context, expected ocispec.Descriptor, con
 		}
 		t.printLock.Lock()
 		defer t.printLock.Unlock()
-		fmt.Fprintln(t.out, t.prompt, digestString(expected), name)
+		fmt.Fprintln(t.out, "Downloaded", digestString(expected), name)
 		t.pulledEmpty = false
 	}
 
-	src := t.Target
-	if t.cache != nil {
-		existed, err := t.cache.Exists(ctx, expected)
-		if err != nil {
-			return err
-		}
-		if !existed {
-			if err := t.cache.Push(ctx, expected, content); err != nil {
-				return err
-			}
-		}
-		src = t.cache
-	}
-	if err := src.Push(ctx, expected, content); err != nil {
+	if err := t.Target.Push(ctx, expected, content); err != nil {
 		return err
 	}
 	print()
