@@ -2,6 +2,9 @@ module oras.land/oras
 
 go 1.18
 
+// Fill in the local lib path
+// replace oras.land/oras-go/v2 => <local-oras-go-path>
+
 require (
 	github.com/containerd/containerd v1.6.4
 	github.com/docker/cli v20.10.16+incompatible
@@ -12,7 +15,7 @@ require (
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/pflag v1.0.5
 	oras.land/oras-go v0.4.0
-	oras.land/oras-go/v2 v2.0.0-20220415135518-c34895e747dc
+	oras.land/oras-go/v2 v2.0.0
 )
 
 require (

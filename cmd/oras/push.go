@@ -21,13 +21,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/file"
+	"oras.land/oras/cmd/oras/internal/digest"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/status"
 )
 
 const (
@@ -113,15 +114,36 @@ func runPush(opts pushOptions) error {
 	store.AllowPathTraversalOnWrite = opts.pathValidationDisabled
 
 	// Ready to push
-	tracker := status.NewPushTracker(dst, opts.Verbose)
+	copyOptions := oras.CopyOptions{}
+	var printLock sync.Mutex
+	copyOptions.PreCopyHandler = func(ctx context.Context, desc ocispec.Descriptor) error {
+		name, ok := desc.Annotations[ocispec.AnnotationTitle]
+		if !ok {
+			if !opts.Verbose {
+				return nil
+			}
+			name = desc.MediaType
+		}
+		printLock.Lock()
+		defer printLock.Unlock()
+		fmt.Fprintln(os.Stdout, "Uploading", digest.Short(desc), name)
+		return nil
+	}
+	copyOptions.SkippedCopyHandler = func(ctx context.Context, desc ocispec.Descriptor) error {
+		printLock.Lock()
+		defer printLock.Unlock()
+		fmt.Fprintln(os.Stdout, digest.Short(desc), "already exists")
+		return nil
+	}
+
 	desc, err := packManifest(ctx, store, annotations, &opts)
 	if err != nil {
 		return err
 	}
 	if tag := dst.Reference.Reference; tag == "" {
-		err = oras.CopyGraph(ctx, store, tracker, desc)
+		err = oras.CopyGraph(ctx, store, dst, desc, copyOptions.CopyGraphOptions)
 	} else {
-		desc, err = oras.Copy(ctx, store, tagStaged, tracker, tag)
+		desc, err = oras.Copy(ctx, store, tagStaged, dst, tag, copyOptions)
 	}
 	if err != nil {
 		return err
