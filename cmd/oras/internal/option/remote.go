@@ -154,9 +154,8 @@ func (opts *Remote) NewRepository(reference string, common Common) (repo *remote
 
 // isPlainHttp returns the plain http flag for a regsitry
 func (opts *Remote) isPlainHttp(registry string) bool {
-	switch host, _, _ := net.SplitHostPort(registry); host {
-	case "":
-	case "localhost":
+	host, _, _ := net.SplitHostPort(registry)
+	if host == "localhost" || registry == "localhost" {
 		return true
 	}
 	return opts.PlainHTTP
