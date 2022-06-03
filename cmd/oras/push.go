@@ -21,14 +21,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/file"
-	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/internal/output"
 )
 
 const (
@@ -115,27 +114,9 @@ func runPush(opts pushOptions) error {
 
 	// Ready to push
 	copyOptions := oras.CopyOptions{}
-	var printLock sync.Mutex
-	copyOptions.PreCopyHandler = func(ctx context.Context, desc ocispec.Descriptor) error {
-		name, ok := desc.Annotations[ocispec.AnnotationTitle]
-		if !ok {
-			if !opts.Verbose {
-				return nil
-			}
-			name = desc.MediaType
-		}
-		printLock.Lock()
-		defer printLock.Unlock()
-		fmt.Fprintln(os.Stdout, "Uploading", display.ToShort(desc), name)
-		return nil
-	}
-	copyOptions.SkippedCopyHandler = func(ctx context.Context, desc ocispec.Descriptor) error {
-		printLock.Lock()
-		defer printLock.Unlock()
-		fmt.Fprintln(os.Stdout, "Existed ", display.ToShort(desc), desc.Annotations[ocispec.AnnotationTitle])
-		return nil
-	}
-
+	var tracker output.Tracker = output.NewStatus(opts.Verbose)
+	copyOptions.PreCopyHandler = tracker.BeforeNodeCopied
+	copyOptions.SkippedCopyHandler = tracker.OnCopySkipped
 	desc, err := packManifest(ctx, store, annotations, &opts)
 	if err != nil {
 		return err
