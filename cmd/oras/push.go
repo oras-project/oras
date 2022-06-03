@@ -27,7 +27,7 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/file"
-	"oras.land/oras/cmd/oras/internal/digest"
+	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -126,13 +126,13 @@ func runPush(opts pushOptions) error {
 		}
 		printLock.Lock()
 		defer printLock.Unlock()
-		fmt.Fprintln(os.Stdout, "Uploading", digest.Short(desc), name)
+		fmt.Fprintln(os.Stdout, "Uploading", display.ToShort(desc), name)
 		return nil
 	}
 	copyOptions.SkippedCopyHandler = func(ctx context.Context, desc ocispec.Descriptor) error {
 		printLock.Lock()
 		defer printLock.Unlock()
-		fmt.Fprintln(os.Stdout, "Existed ", digest.Short(desc), desc.Annotations[ocispec.AnnotationTitle])
+		fmt.Fprintln(os.Stdout, "Existed ", display.ToShort(desc), desc.Annotations[ocispec.AnnotationTitle])
 		return nil
 	}
 
