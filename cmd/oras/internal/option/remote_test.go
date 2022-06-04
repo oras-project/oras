@@ -205,3 +205,18 @@ func TestRemote_NewRepository(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestRemote_isPlainHttp_localhost(t *testing.T) {
+	opts := Remote{PlainHTTP: false}
+	got := opts.isPlainHttp("localhost")
+	if got != true {
+		t.Fatalf("tls should be disabled when domain is localhost")
+
+	}
+
+	got = opts.isPlainHttp("localhost:9090")
+	if got != true {
+		t.Fatalf("tls should be disabled when domain is localhost")
+
+	}
+}

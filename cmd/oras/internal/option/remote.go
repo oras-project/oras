@@ -20,6 +20,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -131,7 +132,7 @@ func (opts *Remote) NewRegistry(hostname string, common Common) (reg *remote.Reg
 	if err != nil {
 		return nil, err
 	}
-	reg.PlainHTTP = opts.PlainHTTP
+	reg.PlainHTTP = opts.isPlainHttp(reg.Reference.Registry)
 	if reg.Client, err = opts.authClient(common.Debug); err != nil {
 		return nil, err
 	}
@@ -144,10 +145,18 @@ func (opts *Remote) NewRepository(reference string, common Common) (repo *remote
 	if err != nil {
 		return nil, err
 	}
-
-	repo.PlainHTTP = opts.PlainHTTP
+	repo.PlainHTTP = opts.isPlainHttp(repo.Reference.Registry)
 	if repo.Client, err = opts.authClient(common.Debug); err != nil {
 		return nil, err
 	}
 	return
+}
+
+// isPlainHttp returns the plain http flag for a regsitry.
+func (opts *Remote) isPlainHttp(registry string) bool {
+	host, _, _ := net.SplitHostPort(registry)
+	if host == "localhost" || registry == "localhost" {
+		return true
+	}
+	return opts.PlainHTTP
 }
