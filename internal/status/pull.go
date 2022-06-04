@@ -15,81 +15,8 @@ limitations under the License.
 
 package status
 
-import (
-	"context"
-	"fmt"
-	"io"
-	"os"
-	"sync"
-
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras-go/v2"
-)
-
-// PullTracker is used to track status when pulling from the target CAS.
-// Note: This PullTracker is a workaround. Implementation will be enhanced once
-// oras-project/oras-go#150 is merged.
-type PullTracker struct {
-	oras.Target
-	*ManifestConfigOption
-	out         io.Writer
-	printLock   sync.Mutex
-	verbose     bool
-	pulledEmpty bool
-}
-
-// NewPullTracker returns a new status tracking object for pull command.
-func NewPullTracker(target oras.Target, option *ManifestConfigOption) *PullTracker {
-	return &PullTracker{
-		Target:               target,
-		ManifestConfigOption: option,
-		out:                  os.Stdout,
-		verbose:              false,
-		pulledEmpty:          true,
-	}
-}
-
 // ManifestConfigOption contains options for manifest config.
 type ManifestConfigOption struct {
 	Name      string
 	MediaType string
-}
-
-// PulledEmpty returns whether no artifacts were pulled.
-func (t *PullTracker) PulledEmpty() bool {
-	return t.pulledEmpty
-}
-
-// Push pushes the content, matching the expected descriptor with status
-// tracking.
-// Current implementation is a workaround before oras-go v2 supports copy
-// option, see https://github.com/oras-project/oras-go/issues/59.
-func (t *PullTracker) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
-	option := t.ManifestConfigOption
-	if option != nil && option.MediaType == expected.MediaType && option.Name != "" {
-		if expected.Annotations == nil {
-			expected.Annotations = make(map[string]string)
-		}
-		expected.Annotations[ocispec.AnnotationTitle] = option.Name
-	}
-
-	print := func() {
-		name, ok := expected.Annotations[ocispec.AnnotationTitle]
-		if !ok {
-			if !t.verbose {
-				return
-			}
-			name = expected.MediaType
-		}
-		t.printLock.Lock()
-		defer t.printLock.Unlock()
-		fmt.Fprintln(t.out, "Downloaded", digestString(expected), name)
-		t.pulledEmpty = false
-	}
-
-	if err := t.Target.Push(ctx, expected, content); err != nil {
-		return err
-	}
-	print()
-	return nil
 }

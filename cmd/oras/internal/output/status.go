@@ -16,51 +16,29 @@ limitations under the License.
 package output
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os"
 	"sync"
-
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// Struct writes status output.
+// Status writes status output.
 type Status struct {
-	lock    sync.Mutex
-	verbose bool
-	out     io.Writer
+	lock sync.Mutex
+	out  io.Writer
 }
 
-// NewStatus returns a new status struct.
-func NewStatus(verbose bool) *Status {
+// NewStatus returns a new status struct for pull operation.
+func NewStatus() *Status {
 	return &Status{
-		verbose: verbose,
-		out:     os.Stdout,
+		out: os.Stdout,
 	}
-}
-
-// BeforeNodeCopied outputs status before a node got copied.
-func (w *Status) BeforeNodeCopied(ctx context.Context, desc ocispec.Descriptor) error {
-	name, ok := desc.Annotations[ocispec.AnnotationTitle]
-	if !ok {
-		if !w.verbose {
-			return nil
-		}
-		name = desc.MediaType
-	}
-	return w.print("Uploading", ToShort(desc), name)
-}
-
-// OnCopySkipped outputs status when a node copy is skipped.
-func (w *Status) OnCopySkipped(ctx context.Context, desc ocispec.Descriptor) error {
-	return w.print("Existed ", ToShort(desc), desc.Annotations[ocispec.AnnotationTitle])
 }
 
 // print outputs status with locking.
-func (w *Status) print(a ...any) error {
-	w.lock.Lock()
-	defer w.lock.Unlock()
-	_, err := fmt.Fprintln(w.out, a...)
+func (s *Status) Print(a ...any) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	_, err := fmt.Fprintln(s.out, a...)
 	return err
 }
