@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/file"
+	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/cache"
 	"oras.land/oras/internal/status"
@@ -85,11 +86,22 @@ Example - Pull files with local cache:
 }
 
 func runPull(opts pullOptions) error {
-	ctx, _ := opts.SetLoggerLevel()
+	//Cache
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
 	}
+	var src oras.Target = repo
+	if opts.cacheRoot != "" {
+		ociStore, err := oci.New(opts.cacheRoot)
+		if err != nil {
+			return err
+		}
+		src = cache.New(repo, ociStore)
+	}
+
+	// Copy Options
+	ctx, _ := opts.SetLoggerLevel()
 	var dstStore = file.New(opts.Output)
 	dstStore.AllowPathTraversalOnWrite = opts.PathTraversal
 	dstStore.DisableOverwrite = opts.KeepOldFiles
@@ -101,17 +113,11 @@ func runPull(opts pullOptions) error {
 			MediaType: media,
 		}
 	}
-	var dst oras.Target = dstStore
-	if opts.cacheRoot != "" {
-		dst, err = cache.New(dst, opts.cacheRoot)
-		if err != nil {
-			return err
-		}
-	}
+	dst := dstStore
 	tracker := status.NewPullTracker(dst, mco)
 
 	// Copy
-	desc, err := oras.Copy(ctx, repo, repo.Reference.Reference, tracker, repo.Reference.Reference)
+	desc, err := oras.Copy(ctx, src, repo.Reference.Reference, tracker, repo.Reference.Reference)
 	if err != nil {
 		return err
 	}

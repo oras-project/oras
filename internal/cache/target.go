@@ -18,42 +18,78 @@ package cache
 import (
 	"context"
 	"io"
+	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras-go/v2/content"
 )
+
+type closer func() error
+
+func (fn closer) Close() error {
+	return fn()
+}
 
 // Cache target struct.
 type target struct {
 	oras.Target
-	cache oras.Target
+	cache content.Storage
 }
 
 // New generates a new target storage with caching.
-func New(base oras.Target, root string) (oras.Target, error) {
-	cache, err := oci.New(root)
+func New(source oras.Target, cache content.Storage) oras.Target {
+	return &target{
+		Target: source,
+		cache:  cache,
+	}
+}
+
+// Fetch fetches the content identified by the descriptor.
+func (p *target) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
+	rc, err := p.cache.Fetch(ctx, target)
+	if err == nil {
+		return rc, nil
+	}
+
+	rc, err = p.Target.Fetch(ctx, target)
 	if err != nil {
 		return nil, err
 	}
-	return &target{
-		Target: base,
-		cache:  cache,
+	pr, pw := io.Pipe()
+	var wg sync.WaitGroup
+	wg.Add(1)
+	var pushErr error
+	go func() {
+		defer wg.Done()
+		pushErr = p.cache.Push(ctx, target, pr)
+	}()
+	c := closer(func() error {
+		rcErr := rc.Close()
+		if err := pw.Close(); err != nil {
+			return err
+		}
+		wg.Wait()
+		if pushErr != nil {
+			return pushErr
+		}
+		return rcErr
+	})
+
+	return struct {
+		io.Reader
+		io.Closer
+	}{
+		Reader: io.TeeReader(rc, pw),
+		Closer: c,
 	}, nil
 }
 
-// Push pushes the descriptor into target storage with caching.
-func (s *target) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
-	existed, err := s.cache.Exists(ctx, expected)
-	if err != nil {
-		return err
+// Exists returns true if the described content exists.
+func (p *target) Exists(ctx context.Context, desc ocispec.Descriptor) (bool, error) {
+	exists, err := p.cache.Exists(ctx, desc)
+	if err == nil && exists {
+		return true, nil
 	}
-	if !existed {
-		return s.cache.Push(ctx, expected, content)
-	}
-	rc, err := s.cache.Fetch(ctx, expected)
-	if err != nil {
-		return err
-	}
-	return s.Target.Push(ctx, expected, rc)
+	return p.Target.Exists(ctx, desc)
 }
