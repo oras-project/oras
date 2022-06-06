@@ -2,7 +2,7 @@ module oras.land/oras
 
 go 1.18
 
-replace oras.land/oras-go/v2 => github.com/qweeah/oras-go v2.0.0-20220604135931-e297442087c4
+replace oras.land/oras-go/v2 => github.com/Wwwsylvia/oras-go/v2 v2.0.0-20220602162351-5d467e496c73
 
 require (
 	github.com/docker/cli v20.10.16+incompatible
