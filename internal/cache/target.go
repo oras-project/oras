@@ -84,3 +84,12 @@ func (p *target) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadC
 		Closer: c,
 	}, nil
 }
+
+// Exists returns true if the described content exists.
+func (p *target) Exists(ctx context.Context, desc ocispec.Descriptor) (bool, error) {
+	exists, err := p.cache.Exists(ctx, desc)
+	if err == nil && exists {
+		return true, nil
+	}
+	return p.Target.Exists(ctx, desc)
+}
