@@ -16,16 +16,18 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/cache"
-	"oras.land/oras/internal/status"
 )
 
 type pullOptions struct {
@@ -101,27 +103,40 @@ func runPull(opts pullOptions) error {
 	}
 
 	// Copy Options
+	copyOptions := oras.CopyOptions{}
+	status := output.NewStatus()
+	pulledEmpty := true
+	copyOptions.PostCopyHandler = func(ctx context.Context, desc ocispec.Descriptor) error {
+		var name string
+		n, m := parseFileRef(opts.ManifestConfigRef, oras.MediaTypeUnknownConfig)
+		if m == desc.MediaType {
+			name = n
+		}
+		if name == "" {
+			name = desc.Annotations[ocispec.AnnotationTitle]
+		}
+		if name == "" && opts.Verbose {
+			name = desc.MediaType
+		}
+		if name != "" {
+
+			pulledEmpty = false
+			return status.Print("Downloaded", output.ToShort(desc), name)
+		}
+		return nil
+	}
+
 	ctx, _ := opts.SetLoggerLevel()
 	var dstStore = file.New(opts.Output)
 	dstStore.AllowPathTraversalOnWrite = opts.PathTraversal
 	dstStore.DisableOverwrite = opts.KeepOldFiles
-	var mco *status.ManifestConfigOption
-	if opts.ManifestConfigRef != "" {
-		name, media := parseFileRef(opts.ManifestConfigRef, oras.MediaTypeUnknownConfig)
-		mco = &status.ManifestConfigOption{
-			Name:      name,
-			MediaType: media,
-		}
-	}
-	dst := dstStore
-	tracker := status.NewPullTracker(dst, mco)
 
 	// Copy
-	desc, err := oras.Copy(ctx, src, repo.Reference.Reference, tracker, repo.Reference.Reference)
+	desc, err := oras.Copy(ctx, src, repo.Reference.Reference, dstStore, repo.Reference.Reference, copyOptions)
 	if err != nil {
 		return err
 	}
-	if tracker.PulledEmpty() {
+	if pulledEmpty {
 		fmt.Println("Downloaded empty artifact")
 	}
 	fmt.Println("Pulled", opts.targetRef)
