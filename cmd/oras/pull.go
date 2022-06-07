@@ -102,7 +102,7 @@ func runPull(opts pullOptions) error {
 
 	// Copy Options
 	ctx, _ := opts.SetLoggerLevel()
-	var dstStore = file.New(opts.Output)
+	dstStore := file.New(opts.Output)
 	dstStore.AllowPathTraversalOnWrite = opts.PathTraversal
 	dstStore.DisableOverwrite = opts.KeepOldFiles
 	var mco *status.ManifestConfigOption
