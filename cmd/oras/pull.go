@@ -106,7 +106,7 @@ func runPull(opts pullOptions) error {
 	copyOptions := oras.CopyOptions{}
 	status := output.NewStatus()
 	pulledEmpty := true
-	copyOptions.PostCopyHandler = func(ctx context.Context, desc ocispec.Descriptor) error {
+	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		var name string
 		n, m := parseFileRef(opts.ManifestConfigRef, oras.MediaTypeUnknownConfig)
 		if m == desc.MediaType {
@@ -119,7 +119,6 @@ func runPull(opts pullOptions) error {
 			name = desc.MediaType
 		}
 		if name != "" {
-
 			pulledEmpty = false
 			return status.Print("Downloaded", output.ToShort(desc), name)
 		}

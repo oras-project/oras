@@ -2,8 +2,6 @@ module oras.land/oras
 
 go 1.18
 
-replace oras.land/oras-go/v2 => github.com/Wwwsylvia/oras-go/v2 v2.0.0-20220602162351-5d467e496c73
-
 require (
 	github.com/docker/cli v20.10.16+incompatible
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6
@@ -12,13 +10,12 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/pflag v1.0.5
-	oras.land/oras-go v0.4.0
-	oras.land/oras-go/v2 v2.0.0
+	oras.land/oras-go/v2 v2.0.0-20220615052649-4ed4d30e890b
 )
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
-	github.com/docker/docker v20.10.16+incompatible // indirect
+	github.com/docker/docker v20.10.17+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.6.4 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/oras-project/artifacts-spec v1.0.0-draft.1.1 // indirect

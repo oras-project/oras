@@ -115,7 +115,7 @@ func runPush(opts pushOptions) error {
 	// Ready to push
 	copyOptions := oras.CopyOptions{}
 	status := output.NewStatus()
-	copyOptions.PreCopyHandler = func(ctx context.Context, desc ocispec.Descriptor) error {
+	copyOptions.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		name, ok := desc.Annotations[ocispec.AnnotationTitle]
 		if !ok {
 			if !opts.Verbose {
@@ -125,7 +125,7 @@ func runPush(opts pushOptions) error {
 		}
 		return status.Print("Uploading", output.ToShort(desc), name)
 	}
-	copyOptions.SkippedCopyHandler = func(ctx context.Context, desc ocispec.Descriptor) error {
+	copyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 		return status.Print("Existed ", output.ToShort(desc), desc.Annotations[ocispec.AnnotationTitle])
 	}
 	desc, err := packManifest(ctx, store, annotations, &opts)
