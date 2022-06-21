@@ -22,7 +22,7 @@ import (
 
 var printLock sync.Mutex
 
-// Print outputs status with locking.
+// Print objects to display concurrent-safely
 func Print(a ...any) error {
 	printLock.Lock()
 	defer printLock.Unlock()
