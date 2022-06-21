@@ -1,37 +1,45 @@
+/*
+Copyright The ORAS Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package main
 
 import (
 	"context"
 	"fmt"
 	"os"
-	"sync"
 
-	"github.com/containerd/containerd/images"
-	"github.com/containerd/containerd/reference"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/pkg/artifact"
-	"oras.land/oras-go/pkg/content"
-	ctxo "oras.land/oras-go/pkg/context"
-	"oras.land/oras-go/pkg/oras"
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content/file"
+	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/cache"
 )
 
 type pullOptions struct {
-	targetRef         string
-	keepOldFiles      bool
-	pathTraversal     bool
-	output            string
-	manifestConfigRef string
-	verbose           bool
-	cacheRoot         string
+	option.Common
+	option.Remote
 
-	debug     bool
-	configs   []string
-	username  string
-	password  string
-	insecure  bool
-	plainHTTP bool
+	targetRef         string
+	cacheRoot         string
+	KeepOldFiles      bool
+	PathTraversal     bool
+	Output            string
+	ManifestConfigRef string
 }
 
 func pullCmd() *cobra.Command {
@@ -61,8 +69,9 @@ Example - Pull files with local cache:
   oras pull localhost:5000/hello:latest
 `,
 		Args: cobra.ExactArgs(1),
-		PreRun: func(cmd *cobra.Command, args []string) {
+		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.cacheRoot = os.Getenv("ORAS_CACHE")
+			return opts.ReadPassword()
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
@@ -70,97 +79,57 @@ Example - Pull files with local cache:
 		},
 	}
 
-	cmd.Flags().BoolVarP(&opts.keepOldFiles, "keep-old-files", "k", false, "do not replace existing files when pulling, treat them as errors")
-	cmd.Flags().BoolVarP(&opts.pathTraversal, "allow-path-traversal", "T", false, "allow storing files out of the output directory")
-	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "output directory")
-	cmd.Flags().StringVarP(&opts.manifestConfigRef, "manifest-config", "", "", "output manifest config file")
-	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
-
-	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
-	cmd.Flags().StringArrayVarP(&opts.configs, "config", "c", nil, "auth config path")
-	cmd.Flags().StringVarP(&opts.username, "username", "u", "", "registry username")
-	cmd.Flags().StringVarP(&opts.password, "password", "p", "", "registry password")
-	cmd.Flags().BoolVarP(&opts.insecure, "insecure", "", false, "allow connections to SSL registry without certs")
-	cmd.Flags().BoolVarP(&opts.plainHTTP, "plain-http", "", false, "use plain http and not https")
+	cmd.Flags().BoolVarP(&opts.KeepOldFiles, "keep-old-files", "k", false, "do not replace existing files when pulling, treat them as errors")
+	cmd.Flags().BoolVarP(&opts.PathTraversal, "allow-path-traversal", "T", false, "allow storing files out of the output directory")
+	cmd.Flags().StringVarP(&opts.Output, "output", "o", ".", "output directory")
+	// cmd.Flags().StringVarP(&opts.ManifestConfigRef, "manifest-config", "", "", "output manifest config file")
+	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
 
 func runPull(opts pullOptions) error {
-	ctx := context.Background()
-	if opts.debug {
-		logrus.SetLevel(logrus.DebugLevel)
-	} else if !opts.verbose {
-		ctx = ctxo.WithLoggerDiscarded(ctx)
+	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
+	if err != nil {
+		return err
 	}
-	resolver := newResolver(opts.username, opts.password, opts.insecure, opts.plainHTTP, opts.configs...)
-	store := content.NewFileStore(opts.output)
-	defer store.Close()
-	store.DisableOverwrite = opts.keepOldFiles
-	store.AllowPathTraversalOnWrite = opts.pathTraversal
-
-	pullOpts := []oras.PullOpt{
-		oras.WithPullStatusTrack(os.Stdout),
-	}
+	var src oras.Target = repo
 	if opts.cacheRoot != "" {
-		cachedStore, err := newStoreWithCache(store, opts.cacheRoot)
+		ociStore, err := oci.New(opts.cacheRoot)
 		if err != nil {
 			return err
 		}
-		pullOpts = append(pullOpts, oras.WithContentProvideIngester(cachedStore))
-	}
-	if opts.manifestConfigRef != "" {
-		pullOpts = appendPullManifestConfigHandlers(pullOpts, opts.manifestConfigRef)
+		src = cache.New(repo, ociStore)
 	}
 
-	desc, artifacts, err := oras.Pull(ctx, resolver, opts.targetRef, store, pullOpts...)
-	if err != nil {
-		if err == reference.ErrObjectRequired {
-			return fmt.Errorf("image reference format is invalid. Please specify <name:tag|name@digest>")
+	// Copy Options
+	copyOptions := oras.DefaultCopyOptions
+	pulledEmpty := true
+	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		name := desc.Annotations[ocispec.AnnotationTitle]
+		if name == "" && opts.Verbose {
+			name = desc.MediaType
 		}
+		if name != "" {
+			pulledEmpty = false
+			return display.Print("Downloaded", display.ShortDigest(desc), name)
+		}
+		return nil
+	}
+
+	ctx, _ := opts.SetLoggerLevel()
+	var dst = file.New(opts.Output)
+	dst.AllowPathTraversalOnWrite = opts.PathTraversal
+	dst.DisableOverwrite = opts.KeepOldFiles
+
+	// Copy
+	desc, err := oras.Copy(ctx, src, repo.Reference.Reference, dst, repo.Reference.Reference, copyOptions)
+	if err != nil {
 		return err
 	}
-	if len(artifacts) == 0 {
+	if pulledEmpty {
 		fmt.Println("Downloaded empty artifact")
 	}
 	fmt.Println("Pulled", opts.targetRef)
 	fmt.Println("Digest:", desc.Digest)
-
 	return nil
-}
-
-func appendPullManifestConfigHandlers(pullOpts []oras.PullOpt, manifestConfigRef string) []oras.PullOpt {
-	filename, mediaType := parseFileRef(manifestConfigRef, artifact.UnknownConfigMediaType)
-
-	var pullOnce sync.Once
-	marker := images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) (children []ocispec.Descriptor, err error) {
-		if desc.MediaType == mediaType {
-			pullOnce.Do(func() {
-				if desc.Annotations != nil {
-					delete(desc.Annotations, ocispec.AnnotationTitle)
-				}
-				annotations := make(map[string]string)
-				for k, v := range desc.Annotations {
-					annotations[k] = v
-				}
-				annotations[ocispec.AnnotationTitle] = filename
-				desc.Annotations = annotations
-				children = []ocispec.Descriptor{desc}
-			})
-		}
-		return
-	})
-	stopper := images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		if desc.MediaType == mediaType {
-			if name, _ := content.ResolveName(desc); name == "" {
-				return nil, images.ErrStopHandler
-			}
-		}
-		return nil, nil
-	})
-
-	return append(pullOpts,
-		oras.WithPullEmptyNameAllowed(),
-		oras.WithAllowedMediaType(mediaType),
-		oras.WithPullBaseHandler(marker, stopper),
-	)
 }
