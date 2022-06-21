@@ -82,6 +82,7 @@ Example - Pull files with local cache:
 	cmd.Flags().BoolVarP(&opts.KeepOldFiles, "keep-old-files", "k", false, "do not replace existing files when pulling, treat them as errors")
 	cmd.Flags().BoolVarP(&opts.PathTraversal, "allow-path-traversal", "T", false, "allow storing files out of the output directory")
 	cmd.Flags().StringVarP(&opts.Output, "output", "o", ".", "output directory")
+	// cmd.Flags().StringVarP(&opts.ManifestConfigRef, "manifest-config", "", "", "output manifest config file")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
@@ -104,7 +105,7 @@ func runPull(opts pullOptions) error {
 	copyOptions := oras.DefaultCopyOptions
 	pulledEmpty := true
 	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		var name string
+		name := desc.Annotations[ocispec.AnnotationTitle]
 		if name == "" && opts.Verbose {
 			name = desc.MediaType
 		}
