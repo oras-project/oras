@@ -125,7 +125,7 @@ func runPush(opts pushOptions) error {
 		return display.Print("Uploading", display.ShortDigest(desc), name)
 	}
 	copyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-		return display.Print("Exists  ", display.ShortDigest(desc), desc.Annotations[ocispec.AnnotationTitle])
+		return display.Print("Exists   ", display.ShortDigest(desc), desc.Annotations[ocispec.AnnotationTitle])
 	}
 	desc, err := packManifest(ctx, store, annotations, &opts)
 	if err != nil {
