@@ -26,8 +26,8 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/file"
+	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/cmd/oras/internal/output"
 )
 
 const (
@@ -113,8 +113,7 @@ func runPush(opts pushOptions) error {
 	store.AllowPathTraversalOnWrite = opts.pathValidationDisabled
 
 	// Ready to push
-	copyOptions := oras.CopyOptions{}
-	status := output.NewStatus()
+	copyOptions := oras.DefaultCopyOptions
 	copyOptions.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		name, ok := desc.Annotations[ocispec.AnnotationTitle]
 		if !ok {
@@ -123,10 +122,10 @@ func runPush(opts pushOptions) error {
 			}
 			name = desc.MediaType
 		}
-		return status.Print("Uploading", output.ToShort(desc), name)
+		return display.Print("Uploading", display.ShortDigest(desc), name)
 	}
 	copyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-		return status.Print("Existed ", output.ToShort(desc), desc.Annotations[ocispec.AnnotationTitle])
+		return display.Print("Exists  ", display.ShortDigest(desc), desc.Annotations[ocispec.AnnotationTitle])
 	}
 	desc, err := packManifest(ctx, store, annotations, &opts)
 	if err != nil {

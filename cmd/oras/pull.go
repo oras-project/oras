@@ -25,8 +25,8 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/cache"
 )
 
@@ -88,7 +88,6 @@ Example - Pull files with local cache:
 }
 
 func runPull(opts pullOptions) error {
-	//Cache
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
@@ -103,8 +102,7 @@ func runPull(opts pullOptions) error {
 	}
 
 	// Copy Options
-	copyOptions := oras.CopyOptions{}
-	status := output.NewStatus()
+	copyOptions := oras.DefaultCopyOptions
 	pulledEmpty := true
 	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		var name string
@@ -120,18 +118,18 @@ func runPull(opts pullOptions) error {
 		}
 		if name != "" {
 			pulledEmpty = false
-			return status.Print("Downloaded", output.ToShort(desc), name)
+			return display.Print("Downloaded", display.ShortDigest(desc), name)
 		}
 		return nil
 	}
 
 	ctx, _ := opts.SetLoggerLevel()
-	var dstStore = file.New(opts.Output)
-	dstStore.AllowPathTraversalOnWrite = opts.PathTraversal
-	dstStore.DisableOverwrite = opts.KeepOldFiles
+	var dst = file.New(opts.Output)
+	dst.AllowPathTraversalOnWrite = opts.PathTraversal
+	dst.DisableOverwrite = opts.KeepOldFiles
 
 	// Copy
-	desc, err := oras.Copy(ctx, src, repo.Reference.Reference, dstStore, repo.Reference.Reference, copyOptions)
+	desc, err := oras.Copy(ctx, src, repo.Reference.Reference, dst, repo.Reference.Reference, copyOptions)
 	if err != nil {
 		return err
 	}

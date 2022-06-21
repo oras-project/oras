@@ -13,20 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package output
+package display
 
 import (
-	"github.com/opencontainers/go-digest"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"fmt"
+	"sync"
 )
 
-// ToShort converts the digest of the descriptor to a short form for displaying.
-func ToShort(desc ocispec.Descriptor) (digestString string) {
-	digestString = desc.Digest.String()
-	if err := desc.Digest.Validate(); err == nil {
-		if algo := desc.Digest.Algorithm(); algo == digest.SHA256 {
-			digestString = desc.Digest.Encoded()[:12]
-		}
-	}
-	return digestString
+var printLock sync.Mutex
+
+// Print outputs status with locking.
+func Print(a ...any) error {
+	printLock.Lock()
+	defer printLock.Unlock()
+	_, err := fmt.Println(a...)
+	return err
 }

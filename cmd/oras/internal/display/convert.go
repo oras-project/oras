@@ -13,32 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package output
+package display
 
 import (
-	"fmt"
-	"io"
-	"os"
-	"sync"
+	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// Status writes status output.
-type Status struct {
-	lock sync.Mutex
-	out  io.Writer
-}
-
-// NewStatus returns a new status struct for pull operation.
-func NewStatus() *Status {
-	return &Status{
-		out: os.Stdout,
+// ShortDigest converts the digest of the descriptor to a short form for displaying.
+func ShortDigest(desc ocispec.Descriptor) (digestString string) {
+	digestString = desc.Digest.String()
+	if err := desc.Digest.Validate(); err == nil {
+		if algo := desc.Digest.Algorithm(); algo == digest.SHA256 {
+			digestString = desc.Digest.Encoded()[:12]
+		}
 	}
-}
-
-// print outputs status with locking.
-func (s *Status) Print(a ...any) error {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	_, err := fmt.Fprintln(s.out, a...)
-	return err
+	return digestString
 }
