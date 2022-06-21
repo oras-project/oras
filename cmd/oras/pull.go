@@ -82,7 +82,7 @@ Example - Pull files with local cache:
 	cmd.Flags().BoolVarP(&opts.KeepOldFiles, "keep-old-files", "k", false, "do not replace existing files when pulling, treat them as errors")
 	cmd.Flags().BoolVarP(&opts.PathTraversal, "allow-path-traversal", "T", false, "allow storing files out of the output directory")
 	cmd.Flags().StringVarP(&opts.Output, "output", "o", ".", "output directory")
-	// cmd.Flags().StringVarP(&opts.ManifestConfigRef, "manifest-config", "", "", "output manifest config file")
+	cmd.Flags().StringVarP(&opts.ManifestConfigRef, "manifest-config", "", "", "output manifest config file")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
@@ -101,11 +101,35 @@ func runPull(opts pullOptions) error {
 		src = cache.New(repo, ociStore)
 	}
 
+	ctx, _ := opts.SetLoggerLevel()
+	var dst = file.New(opts.Output)
+	dst.AllowPathTraversalOnWrite = opts.PathTraversal
+	dst.DisableOverwrite = opts.KeepOldFiles
 	// Copy Options
 	copyOptions := oras.DefaultCopyOptions
 	pulledEmpty := true
 	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		name := desc.Annotations[ocispec.AnnotationTitle]
+		var name string
+		n, m := parseFileRef(opts.ManifestConfigRef, oras.MediaTypeUnknownConfig)
+		if m == desc.MediaType {
+			// Push manifest config to the file target
+			name = n
+			rc, err := dst.Fetch(ctx, desc)
+			if err != nil {
+				return err
+			}
+			defer rc.Close()
+			if desc.Annotations == nil {
+				desc.Annotations = make(map[string]string)
+			}
+			desc.Annotations[ocispec.AnnotationTitle] = name
+			if err = dst.Push(ctx, desc, rc); err != nil {
+				return err
+			}
+		}
+		if name == "" {
+			name = desc.Annotations[ocispec.AnnotationTitle]
+		}
 		if name == "" && opts.Verbose {
 			name = desc.MediaType
 		}
@@ -115,11 +139,6 @@ func runPull(opts pullOptions) error {
 		}
 		return nil
 	}
-
-	ctx, _ := opts.SetLoggerLevel()
-	var dst = file.New(opts.Output)
-	dst.AllowPathTraversalOnWrite = opts.PathTraversal
-	dst.DisableOverwrite = opts.KeepOldFiles
 
 	// Copy
 	desc, err := oras.Copy(ctx, src, repo.Reference.Reference, dst, repo.Reference.Reference, copyOptions)
