@@ -110,9 +110,8 @@ func runPull(opts pullOptions) error {
 		if err != nil {
 			return nil, err
 		}
-		ret := []ocispec.Descriptor{}
+		var ret []ocispec.Descriptor
 		for _, s := range successors {
-
 			if s.MediaType == configMediaType {
 				// Add annotation for manifest config
 				if s.Annotations == nil {
