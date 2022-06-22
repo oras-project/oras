@@ -100,11 +100,11 @@ func runPull(opts pullOptions) error {
 		}
 		src = cache.New(repo, ociStore)
 	}
-
 	ctx, _ := opts.SetLoggerLevel()
 	var dst = file.New(opts.Output)
 	dst.AllowPathTraversalOnWrite = opts.PathTraversal
 	dst.DisableOverwrite = opts.KeepOldFiles
+
 	// Copy Options
 	copyOptions := oras.DefaultCopyOptions
 	pulledEmpty := true
