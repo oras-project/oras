@@ -119,8 +119,7 @@ func runPull(opts pullOptions) error {
 				}
 				s.Annotations[ocispec.AnnotationTitle] = configFileName
 			}
-			if s.Annotations[ocispec.AnnotationTitle] != "" {
-				// Only copy named blobs
+			if content.IsManifest(s) || s.Annotations[ocispec.AnnotationTitle] != "" {
 				ret = append(ret, s)
 			}
 		}
