@@ -112,22 +112,16 @@ func runPull(opts pullOptions) error {
 		}
 		ret := []ocispec.Descriptor{}
 		for _, s := range successors {
+
 			if s.MediaType == configMediaType {
+				// Add annotation for manifest config
 				if s.Annotations == nil {
 					s.Annotations = make(map[string]string)
 				}
 				s.Annotations[ocispec.AnnotationTitle] = configFileName
 			}
-
-			if s.Annotations[ocispec.AnnotationTitle] == "" {
-				if opts.Verbose {
-					// Display skipped
-					if err = display.Print("Skipped   ", display.ShortDigest(desc), desc.MediaType); err != nil {
-						return nil, err
-					}
-				}
-			} else {
-				// Copy named blobs
+			if s.Annotations[ocispec.AnnotationTitle] != "" {
+				// Only copy named blobs
 				ret = append(ret, s)
 			}
 		}
@@ -138,10 +132,7 @@ func runPull(opts pullOptions) error {
 	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		name := desc.Annotations[ocispec.AnnotationTitle]
 		if name == "" {
-			if !opts.Verbose {
-				return nil
-			}
-			name = desc.MediaType
+			return nil
 		}
 		pulledEmpty = false
 		return display.Print("Downloaded", display.ShortDigest(desc), name)
