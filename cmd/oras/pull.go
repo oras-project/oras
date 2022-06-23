@@ -23,6 +23,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras/cmd/oras/internal/display"
@@ -82,7 +83,7 @@ Example - Pull files with local cache:
 	cmd.Flags().BoolVarP(&opts.KeepOldFiles, "keep-old-files", "k", false, "do not replace existing files when pulling, treat them as errors")
 	cmd.Flags().BoolVarP(&opts.PathTraversal, "allow-path-traversal", "T", false, "allow storing files out of the output directory")
 	cmd.Flags().StringVarP(&opts.Output, "output", "o", ".", "output directory")
-	// cmd.Flags().StringVarP(&opts.ManifestConfigRef, "manifest-config", "", "", "output manifest config file")
+	cmd.Flags().StringVarP(&opts.ManifestConfigRef, "manifest-config", "", "", "output manifest config file")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
@@ -103,17 +104,42 @@ func runPull(opts pullOptions) error {
 
 	// Copy Options
 	copyOptions := oras.DefaultCopyOptions
+	configFileName, configMediaType := parseFileRef(opts.ManifestConfigRef, oras.MediaTypeUnknownConfig)
+	copyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		successors, err := content.Successors(ctx, fetcher, desc)
+		if err != nil {
+			return nil, err
+		}
+		var ret []ocispec.Descriptor
+		for _, s := range successors {
+			if s.MediaType == configMediaType {
+				// Add annotation for manifest config
+				if s.Annotations == nil {
+					s.Annotations = make(map[string]string)
+				}
+				s.Annotations[ocispec.AnnotationTitle] = configFileName
+			} else if s.Annotations[ocispec.AnnotationTitle] == "" {
+				ss, err := content.Successors(ctx, fetcher, s)
+				if err != nil {
+					return nil, err
+				}
+				if len(ss) == 0 {
+					continue
+				}
+			}
+			ret = append(ret, s)
+		}
+		return ret, nil
+	}
+
 	pulledEmpty := true
 	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		name := desc.Annotations[ocispec.AnnotationTitle]
-		if name == "" && opts.Verbose {
-			name = desc.MediaType
+		if name == "" {
+			return nil
 		}
-		if name != "" {
-			pulledEmpty = false
-			return display.Print("Downloaded", display.ShortDigest(desc), name)
-		}
-		return nil
+		pulledEmpty = false
+		return display.Print("Downloaded", display.ShortDigest(desc), name)
 	}
 
 	ctx, _ := opts.SetLoggerLevel()
