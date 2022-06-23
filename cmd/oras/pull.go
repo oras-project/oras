@@ -21,12 +21,14 @@ import (
 	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	artifactspec "github.com/oras-project/artifacts-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras/cmd/oras/internal/display"
+	dockerspec "oras.land/oras/cmd/oras/internal/docker"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/cache"
 )
@@ -119,7 +121,7 @@ func runPull(opts pullOptions) error {
 				}
 				s.Annotations[ocispec.AnnotationTitle] = configFileName
 			}
-			if content.IsManifest(s) || s.Annotations[ocispec.AnnotationTitle] != "" {
+			if isManifest(s) || s.Annotations[ocispec.AnnotationTitle] != "" {
 				ret = append(ret, s)
 			}
 		}
@@ -152,4 +154,14 @@ func runPull(opts pullOptions) error {
 	fmt.Println("Pulled", opts.targetRef)
 	fmt.Println("Digest:", desc.Digest)
 	return nil
+}
+
+func isManifest(node ocispec.Descriptor) bool {
+	switch node.MediaType {
+	case dockerspec.MediaTypeManifest, ocispec.MediaTypeImageManifest:
+	case dockerspec.MediaTypeManifestList, ocispec.MediaTypeImageIndex:
+	case artifactspec.MediaTypeArtifactManifest:
+		return true
+	}
+	return false
 }
