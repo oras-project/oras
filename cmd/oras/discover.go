@@ -31,10 +31,16 @@ func discoverCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "discover [options] <name:tag|name@digest>",
 		Short: "discover artifacts from remote registry",
-		Long: `discover artifacts from remote registry
+		Long: `discover artifacts from remote regislatesttry
 
-Example - Discover artifacts of type "" linked with the specified reference:
-  oras discover --artifact-type application/vnd.cncf.notary.v2 localhost:5000/hello:latest
+Example - Discover all the artifacts linked with the specified reference:
+  oras discover localhost:5000/hello
+
+Example - Discover all the artifacts linked with the specified reference in a tree view:
+  oras discover localhost:5000/hello -o tree
+
+Example - Discover artifacts of type test-artifact test-artifact linked with the specified reference:
+  oras discover --artifact test-artifact localhost:5000/hello
 `,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
