@@ -96,22 +96,23 @@ func getAllReferences(ctx context.Context, repo *remote.Repository, desc ocispec
 		for _, r := range referrers {
 			if artifactType == "" || artifactType == r.ArtifactType {
 				results = append(results, r)
-				if queryGraph {
-					// Find all referrers
-					referrerNode := node.AddPath(r.ArtifactType, r.Digest)
-					_, nestedReferrers, err := getAllReferences(
-						ctx, repo,
-						ocispec.Descriptor{
-							Digest:    r.Digest,
-							Size:      r.Size,
-							MediaType: r.MediaType,
-						},
-						artifactType, referrerNode, queryGraph)
-					if err != nil {
-						return err
-					}
-					results = append(results, *nestedReferrers...)
+				if !queryGraph {
+					continue
 				}
+				// Find all referrers
+				referrerNode := node.AddPath(r.ArtifactType, r.Digest)
+				_, nestedReferrers, err := getAllReferences(
+					ctx, repo,
+					ocispec.Descriptor{
+						Digest:    r.Digest,
+						Size:      r.Size,
+						MediaType: r.MediaType,
+					},
+					artifactType, referrerNode, queryGraph)
+				if err != nil {
+					return err
+				}
+				results = append(results, *nestedReferrers...)
 			}
 		}
 		return nil
