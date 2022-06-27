@@ -10,7 +10,6 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/option"
 
-	"github.com/containerd/containerd/reference"
 	"github.com/need-being/go-tree"
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -112,9 +111,6 @@ func getAllReferences(ctx context.Context, repo *remote.Repository, desc ocispec
 		return nil
 	})
 	if err != nil {
-		if err == reference.ErrObjectRequired {
-			return ocispec.Descriptor{}, nil, fmt.Errorf("image reference format is invalid. Please specify <name:tag|name@digest>")
-		}
 		return ocispec.Descriptor{}, nil, err
 	}
 	return desc, &results, nil
