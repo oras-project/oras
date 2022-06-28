@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -44,6 +45,7 @@ type pushOptions struct {
 	fileRefs               []string
 	pathValidationDisabled bool
 	manifestAnnotations    string
+	manifestExport         string
 	manifestConfigRef      string
 }
 
@@ -86,6 +88,7 @@ Example - Push file to the HTTP registry:
 	cmd.Flags().StringVarP(&opts.manifestAnnotations, "manifest-annotations", "", "", "manifest annotation file")
 	cmd.Flags().BoolVarP(&opts.pathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "manifest-config", "", "", "manifest config file")
+	cmd.Flags().StringVarP(&opts.manifestExport, "export-manifest", "", "", "export the pushed manifest")
 
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
@@ -131,6 +134,24 @@ func runPush(opts pushOptions) error {
 	if err != nil {
 		return err
 	}
+
+	// export manifest
+	if opts.manifestExport != "" {
+		manifestFile, err := os.Create(opts.manifestExport)
+		if err != nil {
+			return err
+		}
+		defer manifestFile.Close()
+		rc, err := store.Fetch(ctx, desc)
+		if err != nil {
+			return err
+		}
+		defer rc.Close()
+		if _, err = io.Copy(manifestFile, rc); err != nil {
+			return err
+		}
+	}
+
 	if tag := dst.Reference.Reference; tag == "" {
 		err = oras.CopyGraph(ctx, store, dst, desc, copyOptions.CopyGraphOptions)
 	} else {
