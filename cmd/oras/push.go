@@ -135,17 +135,6 @@ func runPush(opts pushOptions) error {
 		return err
 	}
 
-	// export manifest
-	if opts.manifestExport != "" {
-		manifestBytes, err := content.FetchAll(ctx, store, desc)
-		if err != nil {
-			return err
-		}
-		if err = os.WriteFile(opts.manifestExport, manifestBytes, 0666); err != nil {
-			return err
-		}
-	}
-
 	if tag := dst.Reference.Reference; tag == "" {
 		err = oras.CopyGraph(ctx, store, dst, desc, copyOptions.CopyGraphOptions)
 	} else {
@@ -158,6 +147,16 @@ func runPush(opts pushOptions) error {
 	fmt.Println("Pushed", opts.targetRef)
 	fmt.Println("Digest:", desc.Digest)
 
+	// export manifest
+	if opts.manifestExport != "" {
+		manifestBytes, err := content.FetchAll(ctx, store, desc)
+		if err != nil {
+			return err
+		}
+		if err = os.WriteFile(opts.manifestExport, manifestBytes, 0666); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
