@@ -5,7 +5,7 @@ GIT_COMMIT  = $(shell git rev-parse HEAD)
 GIT_TAG     = $(shell git describe --tags --abbrev=0 --exact-match 2>/dev/null)
 GIT_DIRTY   = $(shell test -n "`git status --porcelain`" && echo "dirty" || echo "clean")
 
-TARGET_OBJS ?= checksums.txt darwin_amd64.tar.gz darwin_arm64.tar.gz linux_amd64.tar.gz linux_arm64.tar.gz windows_amd64.tar.gz
+TARGET_OBJS ?= checksums.txt darwin_amd64.tar.gz darwin_arm64.tar.gz linux_amd64.tar.gz linux_arm64.tar.gz linux_armv7.tar.gz windows_amd64.zip
 
 LDFLAGS = -w
 ifdef VERSION
