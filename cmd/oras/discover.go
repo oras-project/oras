@@ -43,6 +43,9 @@ Example - Discover artifacts of type test-artifact test-artifact linked with the
   oras discover --artifact test-artifact localhost:5000/hello
 `,
 		Args: cobra.ExactArgs(1),
+		PreRun: func(cmd *cobra.Command, args []string) {
+			fmt.Println("Command discover is experimental and under development.")
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
 			return runDiscover(opts)
