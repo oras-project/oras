@@ -25,6 +25,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -44,6 +45,7 @@ type pushOptions struct {
 	fileRefs               []string
 	pathValidationDisabled bool
 	manifestAnnotations    string
+	manifestExport         string
 	manifestConfigRef      string
 }
 
@@ -86,6 +88,7 @@ Example - Push file to the HTTP registry:
 	cmd.Flags().StringVarP(&opts.manifestAnnotations, "manifest-annotations", "", "", "manifest annotation file")
 	cmd.Flags().BoolVarP(&opts.pathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "manifest-config", "", "", "manifest config file")
+	cmd.Flags().StringVarP(&opts.manifestExport, "export-manifest", "", "", "export the pushed manifest")
 
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
@@ -143,6 +146,16 @@ func runPush(opts pushOptions) error {
 	fmt.Println("Pushed", opts.targetRef)
 	fmt.Println("Digest:", desc.Digest)
 
+	// export manifest
+	if opts.manifestExport != "" {
+		manifestBytes, err := content.FetchAll(ctx, store, desc)
+		if err != nil {
+			return err
+		}
+		if err = os.WriteFile(opts.manifestExport, manifestBytes, 0666); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
