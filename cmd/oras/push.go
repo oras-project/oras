@@ -134,7 +134,6 @@ func runPush(opts pushOptions) error {
 	if err != nil {
 		return err
 	}
-
 	if tag := dst.Reference.Reference; tag == "" {
 		err = oras.CopyGraph(ctx, store, dst, desc, copyOptions.CopyGraphOptions)
 	} else {
