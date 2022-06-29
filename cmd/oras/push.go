@@ -19,13 +19,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -137,17 +137,11 @@ func runPush(opts pushOptions) error {
 
 	// export manifest
 	if opts.manifestExport != "" {
-		manifestFile, err := os.Create(opts.manifestExport)
+		manifestBytes, err := content.FetchAll(ctx, store, desc)
 		if err != nil {
 			return err
 		}
-		defer manifestFile.Close()
-		rc, err := store.Fetch(ctx, desc)
-		if err != nil {
-			return err
-		}
-		defer rc.Close()
-		if _, err = io.Copy(manifestFile, rc); err != nil {
+		if err = os.WriteFile(opts.manifestExport, manifestBytes, 0666); err != nil {
 			return err
 		}
 	}
