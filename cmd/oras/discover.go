@@ -116,7 +116,7 @@ func runDiscover(opts discoverOptions) error {
 func fetchReferrers(ctx context.Context, repo *remote.Repository, desc ocispec.Descriptor, artifactType string) ([]artifactspec.Descriptor, error) {
 	var results []artifactspec.Descriptor
 	err := repo.Referrers(ctx, desc, artifactType, func(referrers []artifactspec.Descriptor) error {
-		results = referrers
+		results = append(results, referrers...)
 		return nil
 	})
 	if err != nil {
