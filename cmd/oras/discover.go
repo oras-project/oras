@@ -105,7 +105,7 @@ func runDiscover(opts discoverOptions) error {
 	default:
 		fmt.Println("Discovered", len(refs), "artifacts referencing", opts.targetRef)
 		fmt.Println("Digest:", desc.Digest)
-		if len(refs) != 0 {
+		if len(refs) > 0 {
 			fmt.Println()
 			printDiscoveredReferencesTable(refs, opts.Verbose)
 		}
