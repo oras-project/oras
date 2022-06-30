@@ -86,7 +86,12 @@ func runDiscover(opts discoverOptions) error {
 	if err != nil {
 		return err
 	}
-	desc, refs, err := getAllReferences(ctx, repo, desc, opts.artifactType, root, opts.outputType == "tree")
+	var refs []artifactspec.Descriptor
+	if opts.outputType == "tree" {
+		refs, err = fetchAllReferrers(ctx, repo, desc, opts.artifactType, root)
+	} else {
+		refs, err = fetchReferrers(ctx, repo, desc, opts.artifactType)
+	}
 	if err != nil {
 		return err
 	}
@@ -99,7 +104,6 @@ func runDiscover(opts discoverOptions) error {
 	default:
 		fmt.Println("Discovered", len(refs), "artifacts referencing", opts.targetRef)
 		fmt.Println("Digest:", desc.Digest)
-
 		if len(refs) != 0 {
 			fmt.Println()
 			printDiscoveredReferencesTable(refs, opts.Verbose)
@@ -108,35 +112,42 @@ func runDiscover(opts discoverOptions) error {
 	return nil
 }
 
-func getAllReferences(ctx context.Context, repo *remote.Repository, desc ocispec.Descriptor, artifactType string, node *tree.Node, queryGraph bool) (ocispec.Descriptor, []artifactspec.Descriptor, error) {
+func fetchReferrers(ctx context.Context, repo *remote.Repository, desc ocispec.Descriptor, artifactType string) ([]artifactspec.Descriptor, error) {
 	var results []artifactspec.Descriptor
 	err := repo.Referrers(ctx, desc, artifactType, func(referrers []artifactspec.Descriptor) error {
-		for _, r := range referrers {
-			results = append(results, r)
-			if !queryGraph {
-				continue
-			}
-			// Find all referrers
-			referrerNode := node.AddPath(r.ArtifactType, r.Digest)
-			_, nestedReferrers, err := getAllReferences(
-				ctx, repo,
-				ocispec.Descriptor{
-					Digest:    r.Digest,
-					Size:      r.Size,
-					MediaType: r.MediaType,
-				},
-				artifactType, referrerNode, queryGraph)
-			if err != nil {
-				return err
-			}
-			results = append(results, nestedReferrers...)
-		}
+		results = referrers
 		return nil
 	})
 	if err != nil {
-		return ocispec.Descriptor{}, nil, err
+		return nil, err
 	}
-	return desc, results, nil
+	return results, nil
+}
+
+func fetchAllReferrers(ctx context.Context, repo *remote.Repository, desc ocispec.Descriptor, artifactType string, node *tree.Node) ([]artifactspec.Descriptor, error) {
+	var results []artifactspec.Descriptor
+	results, err := fetchReferrers(ctx, repo, desc, artifactType)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, r := range results {
+		// Find all indirect referrers
+		referrerNode := node.AddPath(r.ArtifactType, r.Digest)
+		nestedReferrers, err := fetchAllReferrers(
+			ctx, repo,
+			ocispec.Descriptor{
+				Digest:    r.Digest,
+				Size:      r.Size,
+				MediaType: r.MediaType,
+			},
+			artifactType, referrerNode)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, nestedReferrers...)
+	}
+	return results, nil
 }
 
 func printDiscoveredReferencesTable(refs []artifactspec.Descriptor, verbose bool) {
