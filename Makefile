@@ -34,7 +34,8 @@ clean:
 	git status --ignored --short | grep '^!! ' | sed 's/!! //' | xargs rm -rf
 
 .PHONY: build
-build: build-linux build-linux-arm64 build-mac build-mac-arm64 build-windows
+#build: build-linux build-linux-arm64 build-mac build-mac-arm64 build-windows
+build: build-linux build-mac
 
 .PHONY: build-linux
 build-linux:

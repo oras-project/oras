@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/containerd/containerd/reference"
 	"os"
 	"path/filepath"
 
@@ -125,16 +126,18 @@ func runPush(opts pushOptions) error {
 	// bake artifact
 	var pushOpts []oras.PushOpt
 	if opts.artifactType != "" {
-		resolver, err = orasDocker.WithDiscover(opts.artifactRefs, resolver, orasDocker.NewOpts(ropts))
-		if err != nil {
+		var manifest ocispec.Descriptor
+		var replacement remotes.Resolver
+		replacement, err = orasDocker.WithDiscover(opts.artifactRefs, resolver, orasDocker.NewOpts(ropts))
+		if err == nil {
+			resolver = replacement
+			manifest, err = loadReference(ctx, resolver2, opts.artifactRefs)
+			if err != nil {
+				return err
+			}
+		} else if err != reference.ErrHostnameRequired {
 			return err
 		}
-
-		manifest, err := loadReference(ctx, resolver, opts.artifactRefs)
-		if err != nil {
-			return err
-		}
-
 		pushOpts = append(pushOpts, oras.AsArtifact(opts.artifactType, manifest))
 	}
 
