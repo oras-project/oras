@@ -1,3 +1,18 @@
+/*
+Copyright The ORAS Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package main
 
 import (
@@ -44,7 +59,7 @@ Example - Discover artifacts of type test-artifact test-artifact linked with the
 `,
 		Args: cobra.ExactArgs(1),
 		PreRun: func(cmd *cobra.Command, args []string) {
-			fmt.Println("Command discover is experimental and under development.")
+			fmt.Println("Command discover is in preview and might have breaking changes coming.")
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
@@ -53,7 +68,7 @@ Example - Discover artifacts of type test-artifact test-artifact linked with the
 	}
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
-	cmd.Flags().StringVarP(&opts.outputType, "output", "o", "table", fmt.Sprintf("Format in which to display references (%s, %s, or %s). tree format will show all references including nested", "table", "json", "tree"))
+	cmd.Flags().StringVarP(&opts.outputType, "output", "o", "table", "format in which to display references (table, json, or tree). tree format will show all references including nested")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
@@ -67,7 +82,7 @@ func runDiscover(opts discoverOptions) error {
 
 	// discover artifacts
 	root := tree.New(opts.targetRef)
-	desc, err := repo.Resolve(ctx, repo.Reference.Reference)
+	desc, err := repo.Resolve(ctx, repo.Reference.ReferenceOrDefault())
 	if err != nil {
 		return err
 	}
@@ -80,20 +95,20 @@ func runDiscover(opts discoverOptions) error {
 	case "tree":
 		tree.Print(root)
 	case "json":
-		printDiscoveredReferencesJSON(desc, *refs)
+		printDiscoveredReferencesJSON(desc, refs)
 	default:
-		fmt.Println("Discovered", len(*refs), "artifacts referencing", opts.targetRef)
+		fmt.Println("Discovered", len(refs), "artifacts referencing", opts.targetRef)
 		fmt.Println("Digest:", desc.Digest)
 
-		if len(*refs) != 0 {
+		if len(refs) != 0 {
 			fmt.Println()
-			printDiscoveredReferencesTable(*refs, opts.Verbose)
+			printDiscoveredReferencesTable(refs, opts.Verbose)
 		}
 	}
 	return nil
 }
 
-func getAllReferences(ctx context.Context, repo *remote.Repository, desc ocispec.Descriptor, artifactType string, node *tree.Node, queryGraph bool) (ocispec.Descriptor, *[]artifactspec.Descriptor, error) {
+func getAllReferences(ctx context.Context, repo *remote.Repository, desc ocispec.Descriptor, artifactType string, node *tree.Node, queryGraph bool) (ocispec.Descriptor, []artifactspec.Descriptor, error) {
 	var results []artifactspec.Descriptor
 	err := repo.Referrers(ctx, desc, func(referrers []artifactspec.Descriptor) error {
 		for _, r := range referrers {
@@ -115,7 +130,7 @@ func getAllReferences(ctx context.Context, repo *remote.Repository, desc ocispec
 				if err != nil {
 					return err
 				}
-				results = append(results, *nestedReferrers...)
+				results = append(results, nestedReferrers...)
 			}
 		}
 		return nil
@@ -123,7 +138,7 @@ func getAllReferences(ctx context.Context, repo *remote.Repository, desc ocispec
 	if err != nil {
 		return ocispec.Descriptor{}, nil, err
 	}
-	return desc, &results, nil
+	return desc, results, nil
 }
 
 func printDiscoveredReferencesTable(refs []artifactspec.Descriptor, verbose bool) {
@@ -149,22 +164,25 @@ func printDiscoveredReferencesTable(refs []artifactspec.Descriptor, verbose bool
 }
 
 func printDiscoveredReferencesJSON(desc ocispec.Descriptor, refs []artifactspec.Descriptor) {
-	type reference struct {
-		Digest   digest.Digest `json:"digest"`
-		Artifact string        `json:"artifactType"`
+	type referrerDesc struct {
+		Digest    digest.Digest `json:"digest"`
+		MediaType string        `json:"mediaType"`
+		Artifact  string        `json:"artifactType"`
+		Size      int64         `json:"size"`
 	}
 	output := struct {
-		Digest     digest.Digest `json:"digest"`
-		References []reference   `json:"references"`
+		// https://github.com/oras-project/artifacts-spec/blob/main/manifest-referrers-api.md#artifact-referrers-api-results
+		Referrers []referrerDesc `json:"referrers"`
 	}{
-		Digest:     desc.Digest,
-		References: make([]reference, len(refs)),
+		Referrers: make([]referrerDesc, len(refs)),
 	}
 
 	for i, ref := range refs {
-		output.References[i] = reference{
-			Digest:   ref.Digest,
-			Artifact: ref.ArtifactType,
+		output.Referrers[i] = referrerDesc{
+			Digest:    ref.Digest,
+			Artifact:  ref.ArtifactType,
+			Size:      ref.Size,
+			MediaType: ref.MediaType,
 		}
 	}
 
