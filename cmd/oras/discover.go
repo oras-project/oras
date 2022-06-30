@@ -46,16 +46,16 @@ func discoverCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Hidden: true,
 		Use:    "discover [options] <name:tag|name@digest>",
-		Short:  "Discover artifacts from remote registry",
-		Long: `Discover artifacts from remote registry
+		Short:  "Discover referrers of a manifest in the remote registry",
+		Long: `Discover referrers of a manifest in the remote registry
 
-Example - Discover all the artifacts linked with the specified reference:
+Example - Discover direct referrers of manifest 'hello:latest' in registry 'localhost:5000':
   oras discover localhost:5000/hello
 
-Example - Discover all the artifacts linked with the specified reference in a tree view:
+Example - Discover all the referrers of manifest 'hello:latest' in registry 'localhost:5000' in a tree view:
   oras discover localhost:5000/hello -o tree
 
-Example - Discover artifacts of type test-artifact test-artifact linked with the specified reference:
+Example - Discover referrers with type 'test-artifact' of manifest 'hello:latest' in registry 'localhost:5000':
   oras discover --artifact test-artifact localhost:5000/hello
 `,
 		Args: cobra.ExactArgs(1),
@@ -69,7 +69,7 @@ Example - Discover artifacts of type test-artifact test-artifact linked with the
 	}
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
-	cmd.Flags().StringVarP(&opts.outputType, "output", "o", "table", "format in which to display references (table, json, or tree). tree format will show all references including nested")
+	cmd.Flags().StringVarP(&opts.outputType, "output", "o", "table", "format in which to display referrers (table, json, or tree). tree format will also show indirect referrers")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
