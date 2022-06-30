@@ -25,7 +25,6 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -40,12 +39,12 @@ const (
 type pushOptions struct {
 	option.Common
 	option.Remote
+	option.Pusher
 
 	targetRef              string
 	fileRefs               []string
 	pathValidationDisabled bool
 	manifestAnnotations    string
-	manifestExport         string
 	manifestConfigRef      string
 }
 
@@ -88,7 +87,6 @@ Example - Push file to the HTTP registry:
 	cmd.Flags().StringVarP(&opts.manifestAnnotations, "manifest-annotations", "", "", "manifest annotation file")
 	cmd.Flags().BoolVarP(&opts.pathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "manifest-config", "", "", "manifest config file")
-	cmd.Flags().StringVarP(&opts.manifestExport, "export-manifest", "", "", "export the pushed manifest")
 
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
@@ -96,11 +94,6 @@ Example - Push file to the HTTP registry:
 
 func runPush(opts pushOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
-
-	dst, err := opts.NewRepository(opts.targetRef, opts.Common)
-	if err != nil {
-		return err
-	}
 
 	// Load annotations
 	var annotations map[string]map[string]string
@@ -134,7 +127,13 @@ func runPush(opts pushOptions) error {
 	if err != nil {
 		return err
 	}
-	if tag := dst.Reference.Reference; tag == "" {
+
+	// Push
+	dst, err := opts.NewRepository(opts.targetRef, opts.Common)
+	if err != nil {
+		return err
+	}
+	if tag := dst.Reference.Reference; tag == "" || opts.DigestOnly {
 		err = oras.CopyGraph(ctx, store, dst, desc, copyOptions.CopyGraphOptions)
 	} else {
 		desc, err = oras.Copy(ctx, store, tagStaged, dst, tag, copyOptions)
@@ -146,17 +145,8 @@ func runPush(opts pushOptions) error {
 	fmt.Println("Pushed", opts.targetRef)
 	fmt.Println("Digest:", desc.Digest)
 
-	// export manifest
-	if opts.manifestExport != "" {
-		manifestBytes, err := content.FetchAll(ctx, store, desc)
-		if err != nil {
-			return err
-		}
-		if err = os.WriteFile(opts.manifestExport, manifestBytes, 0666); err != nil {
-			return err
-		}
-	}
-	return nil
+	// Export manifest
+	return opts.ExportManifest(ctx, desc, store)
 }
 
 func decodeJSON(filename string, v interface{}) error {
