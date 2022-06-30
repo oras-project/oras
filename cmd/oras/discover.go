@@ -44,9 +44,10 @@ type discoverOptions struct {
 func discoverCmd() *cobra.Command {
 	var opts discoverOptions
 	cmd := &cobra.Command{
-		Use:   "discover [options] <name:tag|name@digest>",
-		Short: "discover artifacts from remote registry",
-		Long: `discover artifacts from remote registry
+		Hidden: true,
+		Use:    "discover [options] <name:tag|name@digest>",
+		Short:  "Discover artifacts from remote registry",
+		Long: `Discover artifacts from remote registry
 
 Example - Discover all the artifacts linked with the specified reference:
   oras discover localhost:5000/hello
