@@ -124,13 +124,14 @@ func runPush(opts pushOptions) error {
 
 	// bake artifact
 	var pushOpts []oras.PushOpt
-	if opts.artifactType != "" {
+	if opts.artifactType != "" && opts.artifactRefs != "" {
 		resolver, err = orasDocker.WithDiscover(opts.artifactRefs, resolver, orasDocker.NewOpts(ropts))
 		if err != nil {
 			return err
 		}
 
-		manifest, err := loadReference(ctx, resolver, opts.artifactRefs)
+		var manifest ocispec.Descriptor
+		manifest, err = loadReference(ctx, resolver, opts.artifactRefs)
 		if err != nil {
 			return err
 		}
