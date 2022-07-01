@@ -101,8 +101,7 @@ func runDiscover(opts discoverOptions) error {
 		return err
 	}
 	if opts.outputType == "json" {
-		printDiscoveredReferencesJSON(desc, refs)
-		return nil
+		return printDiscoveredReferencesJSON(desc, refs)
 	}
 
 	fmt.Println("Discovered", len(refs), "artifacts referencing", opts.targetRef)
@@ -172,7 +171,7 @@ func printDiscoveredReferencesTable(refs []artifactspec.Descriptor, verbose bool
 	}
 }
 
-func printDiscoveredReferencesJSON(desc ocispec.Descriptor, refs []artifactspec.Descriptor) {
+func printDiscoveredReferencesJSON(desc ocispec.Descriptor, refs []artifactspec.Descriptor) error {
 	type referrerDesc struct {
 		Digest    digest.Digest `json:"digest"`
 		MediaType string        `json:"mediaType"`
@@ -180,7 +179,7 @@ func printDiscoveredReferencesJSON(desc ocispec.Descriptor, refs []artifactspec.
 		Size      int64         `json:"size"`
 	}
 	output := struct {
-		// https://github.com/oras-project/artifacts-spec/blob/main/manifest-referrers-api.md#artifact-referrers-api-results
+		// Reference: https://github.com/oras-project/artifacts-spec/blob/v1.0.0-rc.1/manifest-referrers-api.md#artifact-referrers-api-results
 		Referrers []referrerDesc `json:"referrers"`
 	}{
 		Referrers: make([]referrerDesc, len(refs)),
@@ -195,12 +194,12 @@ func printDiscoveredReferencesJSON(desc ocispec.Descriptor, refs []artifactspec.
 		}
 	}
 
-	printJSON(output)
+	return printJSON(output)
 }
 
-func printJSON(object interface{}) {
+func printJSON(object interface{}) error {
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetEscapeHTML(false)
 	encoder.SetIndent("", "  ")
-	encoder.Encode(object)
+	return encoder.Encode(object)
 }
