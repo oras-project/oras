@@ -83,6 +83,7 @@ func runDiscover(opts discoverOptions) error {
 	ref := repo.Reference.ReferenceOrDefault()
 	if ref != repo.Reference.Reference {
 		fmt.Println("Using default tag:", ref)
+		repo.Reference.Reference = ref
 	}
 	desc, err := repo.Resolve(ctx, ref)
 	if err != nil {
@@ -90,7 +91,7 @@ func runDiscover(opts discoverOptions) error {
 	}
 
 	if opts.outputType == "tree" {
-		root := tree.New(opts.targetRef)
+		root := tree.New(repo.Reference.String())
 		err = fetchAllReferrers(ctx, repo, desc, opts.artifactType, root)
 		if err != nil {
 			return err
@@ -106,7 +107,7 @@ func runDiscover(opts discoverOptions) error {
 		return printDiscoveredReferrersJSON(desc, refs)
 	}
 
-	fmt.Println("Discovered", len(refs), "artifacts referencing", opts.targetRef)
+	fmt.Println("Discovered", len(refs), "artifacts referencing", repo.Reference)
 	fmt.Println("Digest:", desc.Digest)
 	if len(refs) > 0 {
 		fmt.Println()
