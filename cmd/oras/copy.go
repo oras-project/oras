@@ -8,14 +8,10 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
-	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/trace"
 )
 
 type copyOptions struct {
-	option.Common
-	option.Remote
-
 	src        pullOptions
 	dst        pushOptions
 	rescursive bool
@@ -45,17 +41,17 @@ func copyCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringArrayVar(&opts.Remote.Configs, "from-config", nil, "source auth config path")
-	cmd.Flags().StringVar(&opts.Remote.Username, "from-username", "", "source registry username")
-	cmd.Flags().StringVar(&opts.Remote.Password, "from-password", "", "source registry password")
-	cmd.Flags().BoolVar(&opts.Remote.Insecure, "from-insecure", false, "allow connections to SSL registry without certs")
-	cmd.Flags().BoolVar(&opts.Remote.PlainHTTP, "from-plain-http", false, "use plain http and not https")
+	cmd.Flags().StringArrayVar(&opts.src.Remote.Configs, "from-config", nil, "source auth config path")
+	cmd.Flags().StringVar(&opts.src.Remote.Username, "from-username", "", "source registry username")
+	cmd.Flags().StringVar(&opts.src.Remote.Password, "from-password", "", "source registry password")
+	cmd.Flags().BoolVar(&opts.src.Remote.Insecure, "from-insecure", false, "allow connections to SSL registry without certs")
+	cmd.Flags().BoolVar(&opts.src.Remote.PlainHTTP, "from-plain-http", false, "use plain http and not https")
 
-	cmd.Flags().StringArrayVar(&opts.Remote.Configs, "to-config", nil, "target auth config path")
-	cmd.Flags().StringVar(&opts.Remote.Username, "to-username", "", "target registry username")
-	cmd.Flags().StringVar(&opts.Remote.Password, "to-password", "", "target registry password")
-	cmd.Flags().BoolVar(&opts.Remote.Insecure, "to-insecure", false, "allow connections to SSL registry without certs")
-	cmd.Flags().BoolVar(&opts.Remote.PlainHTTP, "to-plain-http", false, "use plain http and not https")
+	cmd.Flags().StringArrayVar(&opts.dst.Remote.Configs, "to-config", nil, "target auth config path")
+	cmd.Flags().StringVar(&opts.dst.Remote.Username, "to-username", "", "target registry username")
+	cmd.Flags().StringVar(&opts.dst.Remote.Password, "to-password", "", "target registry password")
+	cmd.Flags().BoolVar(&opts.dst.Remote.Insecure, "to-insecure", false, "allow connections to SSL registry without certs")
+	cmd.Flags().BoolVar(&opts.dst.Remote.PlainHTTP, "to-plain-http", false, "use plain http and not https")
 
 	cmd.Flags().BoolVarP(&opts.rescursive, "recursive", "r", false, "recursively copy artifacts that reference the artifact being copied")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
