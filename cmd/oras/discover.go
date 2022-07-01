@@ -82,7 +82,11 @@ func runDiscover(opts discoverOptions) error {
 	}
 
 	// discover artifacts
-	desc, err := repo.Resolve(ctx, repo.Reference.ReferenceOrDefault())
+	ref := repo.Reference.ReferenceOrDefault()
+	if ref != repo.Reference.Reference {
+		fmt.Println("Using default tag:", ref)
+	}
+	desc, err := repo.Resolve(ctx, ref)
 	if err != nil {
 		return err
 	}
