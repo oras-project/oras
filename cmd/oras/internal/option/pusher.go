@@ -26,13 +26,11 @@ import (
 
 // Pusher option struct.
 type Pusher struct {
-	DigestOnly     bool
 	ManifestExport string
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Pusher) ApplyFlags(fs *pflag.FlagSet) {
-	fs.BoolVarP(&opts.DigestOnly, "digest-only", "", false, "will manifest(s) be pushed without tagging")
 	fs.StringVarP(&opts.ManifestExport, "export-manifest", "", "", "export the pushed manifest")
 }
 

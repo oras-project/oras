@@ -73,7 +73,7 @@ Example - Push file to the insecure registry:
 Example - Push file to the HTTP registry:
   oras push localhost:5000/hello:latest hi.txt --plain-http
 `,
-		Args: cobra.MinimumNArgs(1),
+		Args: cobra.MinimumNArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return opts.ReadPassword()
 		},
@@ -133,7 +133,7 @@ func runPush(opts pushOptions) error {
 	if err != nil {
 		return err
 	}
-	if tag := dst.Reference.Reference; tag == "" || opts.DigestOnly {
+	if tag := dst.Reference.Reference; tag == "" {
 		err = oras.CopyGraph(ctx, store, dst, desc, copyOptions.CopyGraphOptions)
 	} else {
 		desc, err = oras.Copy(ctx, store, tagStaged, dst, tag, copyOptions)
