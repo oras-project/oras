@@ -44,10 +44,11 @@ type discoverOptions struct {
 func discoverCmd() *cobra.Command {
 	var opts discoverOptions
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "discover [options] <name:tag|name@digest>",
-		Short:  "Discover referrers of a manifest in the remote registry",
-		Long: `Discover referrers of a manifest in the remote registry
+		Use:   "discover [options] <name:tag|name@digest>",
+		Short: "[Preview] Discover referrers of a manifest in the remote registry",
+		Long: `[Preview] Discover referrers of a manifest in the remote registry
+
+** This command is in preview and under development. **
 
 Example - Discover direct referrers of manifest 'hello:latest' in registry 'localhost:5000':
   oras discover localhost:5000/hello
@@ -59,9 +60,6 @@ Example - Discover referrers with type 'test-artifact' of manifest 'hello:latest
   oras discover --artifact test-artifact localhost:5000/hello
 `,
 		Args: cobra.ExactArgs(1),
-		PreRun: func(cmd *cobra.Command, args []string) {
-			fmt.Println("Command discover is in preview and might have breaking changes coming.")
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
 			return runDiscover(opts)
@@ -105,14 +103,14 @@ func runDiscover(opts discoverOptions) error {
 		return err
 	}
 	if opts.outputType == "json" {
-		return printDiscoveredReferencesJSON(desc, refs)
+		return printDiscoveredReferrersJSON(desc, refs)
 	}
 
 	fmt.Println("Discovered", len(refs), "artifacts referencing", opts.targetRef)
 	fmt.Println("Digest:", desc.Digest)
 	if len(refs) > 0 {
 		fmt.Println()
-		printDiscoveredReferencesTable(refs, opts.Verbose)
+		printDiscoveredReferrersTable(refs, opts.Verbose)
 	}
 	return nil
 }
@@ -153,7 +151,7 @@ func fetchAllReferrers(ctx context.Context, repo *remote.Repository, desc ocispe
 	return nil
 }
 
-func printDiscoveredReferencesTable(refs []artifactspec.Descriptor, verbose bool) {
+func printDiscoveredReferrersTable(refs []artifactspec.Descriptor, verbose bool) {
 	typeNameTitle := "Artifact Type"
 	typeNameLength := len(typeNameTitle)
 	for _, ref := range refs {
@@ -175,7 +173,9 @@ func printDiscoveredReferencesTable(refs []artifactspec.Descriptor, verbose bool
 	}
 }
 
-func printDiscoveredReferencesJSON(desc ocispec.Descriptor, refs []artifactspec.Descriptor) error {
+// printDiscoveredReferrersJSON prints referrer list in JSON equivalent to the
+// API result: https://github.com/oras-project/artifacts-spec/blob/v1.0.0-rc.1/manifest-referrers-api.md#artifact-referrers-api-results
+func printDiscoveredReferrersJSON(desc ocispec.Descriptor, refs []artifactspec.Descriptor) error {
 	type referrerDesc struct {
 		Digest    digest.Digest `json:"digest"`
 		MediaType string        `json:"mediaType"`
@@ -183,7 +183,6 @@ func printDiscoveredReferencesJSON(desc ocispec.Descriptor, refs []artifactspec.
 		Size      int64         `json:"size"`
 	}
 	output := struct {
-		// Reference: https://github.com/oras-project/artifacts-spec/blob/v1.0.0-rc.1/manifest-referrers-api.md#artifact-referrers-api-results
 		Referrers []referrerDesc `json:"referrers"`
 	}{
 		Referrers: make([]referrerDesc, len(refs)),
