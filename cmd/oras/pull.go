@@ -27,6 +27,7 @@ import (
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/input"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/cache"
 )
@@ -104,7 +105,7 @@ func runPull(opts pullOptions) error {
 
 	// Copy Options
 	copyOptions := oras.DefaultCopyOptions
-	configFileName, configMediaType := parseFileRef(opts.ManifestConfigRef, oras.MediaTypeUnknownConfig)
+	configPath, configMediaType := input.ParseFileReference(opts.ManifestConfigRef, oras.MediaTypeUnknownConfig)
 	copyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		successors, err := content.Successors(ctx, fetcher, desc)
 		if err != nil {
@@ -117,7 +118,7 @@ func runPull(opts pullOptions) error {
 				if s.Annotations == nil {
 					s.Annotations = make(map[string]string)
 				}
-				s.Annotations[ocispec.AnnotationTitle] = configFileName
+				s.Annotations[ocispec.AnnotationTitle] = configPath
 			} else if s.Annotations[ocispec.AnnotationTitle] == "" {
 				ss, err := content.Successors(ctx, fetcher, s)
 				if err != nil {

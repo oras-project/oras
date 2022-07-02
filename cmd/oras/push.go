@@ -20,14 +20,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/input"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/content"
 )
 
 const (
@@ -158,59 +159,32 @@ func decodeJSON(filename string, v interface{}) error {
 	return json.NewDecoder(file).Decode(v)
 }
 
-func loadFiles(ctx context.Context, store *file.Store, annotations map[string]map[string]string, opts *pushOptions) ([]ocispec.Descriptor, error) {
-	var files []ocispec.Descriptor
-	for _, fileRef := range opts.fileRefs {
-		filename, mediaType := parseFileRef(fileRef, "")
-		name := filepath.Clean(filename)
-		if !filepath.IsAbs(name) {
-			// convert to slash-separated path unless it is absolute path
-			name = filepath.ToSlash(name)
-		}
-		if opts.Verbose {
-			fmt.Println("Preparing", name)
-		}
-		file, err := store.Add(ctx, name, mediaType, filename)
-		if err != nil {
-			return nil, err
-		}
-		if annotations != nil {
-			if value, ok := annotations[filename]; ok {
-				if file.Annotations == nil {
-					file.Annotations = value
-				} else {
-					for k, v := range value {
-						file.Annotations[k] = v
-					}
-				}
-			}
-		}
-		files = append(files, file)
-	}
-	if len(files) == 0 {
-		fmt.Println("Uploading empty artifact")
-	}
-	return files, nil
-}
-
 func packManifest(ctx context.Context, store *file.Store, annotations map[string]map[string]string, opts *pushOptions) (ocispec.Descriptor, error) {
 	var packOpts oras.PackOptions
 	packOpts.ConfigAnnotations = annotations[annotationConfig]
 	packOpts.ManifestAnnotations = annotations[annotationManifest]
+
 	if opts.manifestConfigRef != "" {
-		filename, mediaType := parseFileRef(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
-		file, err := store.Add(ctx, annotationConfig, mediaType, filename)
+		path, mediatype := input.ParseFileReference(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
+		desc, err := store.Add(ctx, annotationConfig, mediatype, path)
 		if err != nil {
 			return ocispec.Descriptor{}, err
 		}
-		file.Annotations = packOpts.ConfigAnnotations
-		packOpts.ConfigDescriptor = &file
+		desc.Annotations = packOpts.ConfigAnnotations
+		packOpts.ConfigDescriptor = &desc
 	}
-	files, err := loadFiles(ctx, store, annotations, opts)
+	var refs []content.FileReference
+	for _, ref := range opts.fileRefs {
+		refs = append(refs, content.NewFileReference(input.ParseFileReference(ref, "")))
+	}
+	descs, err := content.LoadFiles(ctx, store, annotations, refs, opts.Verbose)
 	if err != nil {
 		return ocispec.Descriptor{}, err
 	}
-	manifestDesc, err := oras.Pack(ctx, store, files, packOpts)
+	if len(descs) == 0 {
+		fmt.Println("Uploading empty artifact")
+	}
+	manifestDesc, err := oras.Pack(ctx, store, descs, packOpts)
 	if err != nil {
 		return ocispec.Descriptor{}, err
 	}
