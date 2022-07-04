@@ -66,7 +66,6 @@ func runCopy(opts copyOptions) error {
 		return err
 	}
 
-	// TODO: cache
 	// TODO: copy option
 
 	// Copy
