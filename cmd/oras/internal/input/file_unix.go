@@ -10,7 +10,8 @@ func ParseFileReference(reference string, mediaType string) (filePath, mediatype
 
 	i := strings.LastIndex(reference, ":")
 	if i < 0 {
-		return indator, mediaType
+		return reference, mediaType
 	}
-	return indator[:i], indator[i+1:]
+	return reference[:i], reference[i+1:]
+
 }
