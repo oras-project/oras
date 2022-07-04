@@ -43,17 +43,31 @@ type Remote struct {
 	Username          string
 	PasswordFromStdin bool
 	Password          string
+	// TODO
+	Mark           string
+	BlockPassStdin bool
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Remote) ApplyFlags(fs *pflag.FlagSet) {
-	fs.StringArrayVarP(&opts.Configs, "config", "c", nil, "auth config path")
-	fs.StringVarP(&opts.Username, "username", "u", "", "registry username")
-	fs.StringVarP(&opts.Password, "password", "p", "", "registry password or identity token")
-	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
-	fs.BoolVarP(&opts.Insecure, "insecure", "", false, "allow connections to SSL registry without certs")
-	fs.StringVarP(&opts.CACertFilePath, "ca-file", "", "", "server certificate authority file for the remote registry")
-	fs.BoolVarP(&opts.PlainHTTP, "plain-http", "", false, "allow insecure connections to registry without SSL")
+	fs.StringArrayVarP(&opts.Configs, opts.Mark+"config", "c", nil, "auth config path")
+	fs.StringVarP(&opts.Username, opts.Mark+"username", "u", "", "registry username")
+	fs.StringVarP(&opts.Password, opts.Mark+"password", "p", "", "registry password or identity token")
+	if !opts.BlockPassStdin {
+		fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
+	}
+	fs.BoolVarP(&opts.Insecure, opts.Mark+"insecure", "", false, "allow connections to SSL registry without certs")
+	fs.StringVarP(&opts.CACertFilePath, opts.Mark+"ca-file", "", "", "server certificate authority file for the remote registry")
+	fs.BoolVarP(&opts.PlainHTTP, opts.Mark+"plain-http", "", false, "allow insecure connections to registry without SSL")
+}
+
+// set f
+func (opts *Remote) SetMark(nameMark string) {
+	opts.Mark = nameMark
+}
+
+func (opts *Remote) SetBlockPassStdin() {
+	opts.BlockPassStdin = true
 }
 
 // ReadPassword tries to read password with optional cmd prompt.
