@@ -2,13 +2,15 @@ module oras.land/oras
 
 go 1.18
 
+replace oras.land/oras-go/v2 => github.com/Wwwsylvia/oras-go/v2 v2.0.0-20220701092122-1da7dc54ddb3
+
 require (
 	github.com/docker/cli v20.10.17+incompatible
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6
 	github.com/need-being/go-tree v0.1.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.3-0.20211202183452-c5a74bcca799
-	github.com/oras-project/artifacts-spec v1.0.0-rc.1
+	github.com/oras-project/artifacts-spec v1.0.0-rc.1.0.20220627172241-0b167f815b72
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
