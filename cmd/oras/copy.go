@@ -32,12 +32,12 @@ func copyCmd() *cobra.Command {
 		Aliases: []string{"cp"},
 		Short:   "Copy files from ref to ref",
 		Long: `Copy artifacts from one reference to another reference
-	# Examples 
-	## Copy image only 
-	oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
-	## Copy image and artifacts
-	oras cp -r localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
-		`,
+
+Examples - Copy image only 
+  oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
+Examples - Copy image and artifacts
+  oras cp -r localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
+`,
 		Args: cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.srcRef = args[0]
