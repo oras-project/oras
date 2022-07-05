@@ -44,30 +44,31 @@ type Remote struct {
 	PasswordFromStdin bool
 	Password          string
 	// TODO
-	Mark           string
-	BlockPassStdin bool
+	flagPrefix     string
+	blockPassStdin bool
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Remote) ApplyFlags(fs *pflag.FlagSet) {
-	fs.StringArrayVarP(&opts.Configs, opts.Mark+"config", "c", nil, "auth config path")
-	fs.StringVarP(&opts.Username, opts.Mark+"username", "u", "", "registry username")
-	fs.StringVarP(&opts.Password, opts.Mark+"password", "p", "", "registry password or identity token")
-	if !opts.BlockPassStdin {
+	fs.StringArrayVarP(&opts.Configs, opts.flagPrefix+"config", "c", nil, "auth config path")
+	fs.StringVarP(&opts.Username, opts.flagPrefix+"username", "u", "", "registry username")
+	fs.StringVarP(&opts.Password, opts.flagPrefix+"password", "p", "", "registry password or identity token")
+	if !opts.blockPassStdin {
 		fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
 	}
-	fs.BoolVarP(&opts.Insecure, opts.Mark+"insecure", "", false, "allow connections to SSL registry without certs")
-	fs.StringVarP(&opts.CACertFilePath, opts.Mark+"ca-file", "", "", "server certificate authority file for the remote registry")
-	fs.BoolVarP(&opts.PlainHTTP, opts.Mark+"plain-http", "", false, "allow insecure connections to registry without SSL")
+	fs.BoolVarP(&opts.Insecure, opts.flagPrefix+"insecure", "", false, "allow connections to SSL registry without certs")
+	fs.StringVarP(&opts.CACertFilePath, opts.flagPrefix+"ca-file", "", "", "server certificate authority file for the remote registry")
+	fs.BoolVarP(&opts.PlainHTTP, opts.flagPrefix+"plain-http", "", false, "allow insecure connections to registry without SSL")
 }
 
-// set f
-func (opts *Remote) SetMark(nameMark string) {
-	opts.Mark = nameMark
+// SetMark set flagPrefix value.
+func (opts *Remote) SetMark(hostname string) {
+	opts.flagPrefix = hostname
 }
 
+// SetBlockPassStdin set blockPassStdin value.
 func (opts *Remote) SetBlockPassStdin() {
-	opts.BlockPassStdin = true
+	opts.blockPassStdin = true
 }
 
 // ReadPassword tries to read password with optional cmd prompt.
