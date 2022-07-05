@@ -45,12 +45,12 @@ func copyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "copy <from-ref> <to-ref>",
 		Aliases: []string{"cp"},
-		Short:   "Copy files from ref to ref",
+		Short:   "Copy a manifest between repositories",
 		Long: `Copy artifacts from one reference to another reference
 
-Examples - Copy image only 
+Examples - Copy the manifest tagged 'v1' from from repository 'localhost:5000/net-monitor' to repository 'localhost:5000/net-monitor-copy' 
   oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
-Examples - Copy image and artifacts
+Examples - Copy the manifest tagged 'v1' and referrer artifacts from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy'
   oras cp -r localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
 `,
 		Args: cobra.MinimumNArgs(2),
