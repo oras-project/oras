@@ -16,11 +16,13 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"fmt"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
+	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -61,7 +63,7 @@ Examples - Copy the manifest tagged 'v1' and referrer artifacts from repository 
 	}
 
 	cmd.Flags().BoolVarP(&opts.rescursive, "recursive", "r", false, "recursively copy artifacts that reference the artifact being copied")
-
+	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
 
@@ -81,6 +83,23 @@ func runCopy(opts copyOptions) error {
 	}
 
 	// TODO: copy option
+	copyOptions := oras.DefaultCopyOptions
+	extendCopyOptions := oras.DefaultExtendedCopyOptions
+	preCopy := func(ctx context.Context, desc ocispec.Descriptor) error {
+		name, ok := desc.Annotations[ocispec.AnnotationTitle]
+		if !ok {
+			if !opts.Verbose {
+				return nil
+			}
+			name = desc.MediaType
+		}
+		return display.Print("Uploading", display.ShortDigest(desc), name)
+	}
+	onCopySkipped := func(ctx context.Context, desc ocispec.Descriptor) error {
+		return display.Print("Exists   ", display.ShortDigest(desc), desc.Annotations[ocispec.AnnotationTitle])
+	}
+	copyOptions.PreCopy, extendCopyOptions.PreCopy = preCopy, preCopy
+	copyOptions.OnCopySkipped, extendCopyOptions.OnCopySkipped = onCopySkipped, onCopySkipped
 
 	// Copy
 	srcRef := src.Reference
@@ -90,9 +109,9 @@ func runCopy(opts copyOptions) error {
 	}
 	var desc ocispec.Descriptor
 	if opts.rescursive {
-		desc, err = oras.ExtendedCopy(ctx, src, srcRef.ReferenceOrDefault(), dst, dstRef.ReferenceOrDefault(), oras.DefaultExtendedCopyOptions)
+		desc, err = oras.ExtendedCopy(ctx, src, srcRef.ReferenceOrDefault(), dst, dstRef.ReferenceOrDefault(), extendCopyOptions)
 	} else {
-		desc, err = oras.Copy(ctx, src, srcRef.ReferenceOrDefault(), dst, dstRef.ReferenceOrDefault(), oras.DefaultCopyOptions)
+		desc, err = oras.Copy(ctx, src, srcRef.ReferenceOrDefault(), dst, dstRef.ReferenceOrDefault(), copyOptions)
 	}
 	if err != nil {
 		return err
