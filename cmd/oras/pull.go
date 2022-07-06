@@ -95,7 +95,7 @@ func runPull(opts pullOptions) error {
 		return err
 	}
 	if repo.Reference.Reference == "" {
-		return errors.ErrInvalidReference
+		return errors.ErrInvalidReference(repo.Reference.String())
 	}
 	var src oras.Target = repo
 	if opts.cacheRoot != "" {

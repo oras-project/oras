@@ -2,6 +2,6 @@ package errors
 
 import "errors"
 
-var (
-	ErrInvalidReference = errors.New("image reference format is invalid. Please specify <name:tag|name@digest>")
-)
+func ErrInvalidReference(reference string) error {
+	return errors.New("image reference format is invalid. Expected <name:tag|name@digest>, got '" + reference + "'")
+}
