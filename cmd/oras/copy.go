@@ -36,19 +36,18 @@ type copyOptions struct {
 
 func copyCmd() *cobra.Command {
 	var opts copyOptions
-	opts.src.SetMark("from-")
-	opts.dst.SetMark("to-")
-
+	opts.src.SetPrefix("source")
+	opts.dst.SetPrefix("destination")
 	opts.src.SetBlockPassStdin()
 	opts.dst.SetBlockPassStdin()
 
 	cmd := &cobra.Command{
 		Use:     "copy <from-ref> <to-ref>",
 		Aliases: []string{"cp"},
-		Short:   "Copy a manifest between repositories",
-		Long: `Copy artifacts from one reference to another reference
+		Short:   "Copy manifests between repositories",
+		Long: `Copy manifests between repositories
 
-Examples - Copy the manifest tagged 'v1' from from repository 'localhost:5000/net-monitor' to repository 'localhost:5000/net-monitor-copy' 
+Examples - Copy the manifest tagged 'v1' from repository 'localhost:5000/net-monitor' to repository 'localhost:5000/net-monitor-copy' 
   oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
 Examples - Copy the manifest tagged 'v1' and referrer artifacts from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy'
   oras cp -r localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
@@ -91,21 +90,9 @@ func runCopy(opts copyOptions) error {
 	}
 	var desc ocispec.Descriptor
 	if opts.rescursive {
-		desc, err = oras.ExtendedCopy(ctx,
-			src,
-			srcRef.ReferenceOrDefault(),
-			dst,
-			dstRef.ReferenceOrDefault(),
-			oras.DefaultExtendedCopyOptions,
-		)
+		desc, err = oras.ExtendedCopy(ctx, src, srcRef.ReferenceOrDefault(), dst, dstRef.ReferenceOrDefault(), oras.DefaultExtendedCopyOptions)
 	} else {
-		desc, err = oras.Copy(ctx,
-			src,
-			srcRef.ReferenceOrDefault(),
-			dst,
-			dstRef.ReferenceOrDefault(),
-			oras.DefaultCopyOptions,
-		)
+		desc, err = oras.Copy(ctx, src, srcRef.ReferenceOrDefault(), dst, dstRef.ReferenceOrDefault(), oras.DefaultCopyOptions)
 	}
 	if err != nil {
 		return err

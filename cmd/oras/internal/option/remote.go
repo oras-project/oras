@@ -43,30 +43,33 @@ type Remote struct {
 	Username          string
 	PasswordFromStdin bool
 	Password          string
-	// TODO
+
+	notePrefix     string
 	flagPrefix     string
 	blockPassStdin bool
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Remote) ApplyFlags(fs *pflag.FlagSet) {
-	fs.StringArrayVarP(&opts.Configs, opts.flagPrefix+"config", "c", nil, "auth config path")
-	fs.StringVarP(&opts.Username, opts.flagPrefix+"username", "u", "", "registry username")
-	fs.StringVarP(&opts.Password, opts.flagPrefix+"password", "p", "", "registry password or identity token")
+	fs.StringVarP(&opts.Username, opts.flagPrefix+"username", "u", "", opts.notePrefix+"registry username")
+	fs.StringVarP(&opts.Password, opts.flagPrefix+"password", "p", "", opts.notePrefix+"registry password or identity token")
+	fs.BoolVarP(&opts.Insecure, opts.flagPrefix+"insecure", "", false, "allow connections to "+opts.notePrefix+"SSL registry without certs")
+	fs.BoolVarP(&opts.PlainHTTP, opts.flagPrefix+"plain-http", "", false, "allow insecure connections to "+opts.notePrefix+"registry without SSL")
+	fs.StringVarP(&opts.CACertFilePath, opts.flagPrefix+"ca-file", "", "", "server certificate authority file for the remote "+opts.notePrefix+"registry")
+
+	fs.StringArrayVarP(&opts.Configs, "config", "c", nil, "auth config path")
 	if !opts.blockPassStdin {
 		fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
 	}
-	fs.BoolVarP(&opts.Insecure, opts.flagPrefix+"insecure", "", false, "allow connections to SSL registry without certs")
-	fs.StringVarP(&opts.CACertFilePath, opts.flagPrefix+"ca-file", "", "", "server certificate authority file for the remote registry")
-	fs.BoolVarP(&opts.PlainHTTP, opts.flagPrefix+"plain-http", "", false, "allow insecure connections to registry without SSL")
 }
 
-// SetMark set flagPrefix value.
-func (opts *Remote) SetMark(hostname string) {
-	opts.flagPrefix = hostname
+// SetPrefix sets prefix for applicable flags.
+func (opts *Remote) SetPrefix(target string) {
+	opts.flagPrefix = target + "-"
+	opts.notePrefix = target + " "
 }
 
-// SetBlockPassStdin set blockPassStdin value.
+// SetBlockPassStdin disables Password input from Stdin.
 func (opts *Remote) SetBlockPassStdin() {
 	opts.blockPassStdin = true
 }
