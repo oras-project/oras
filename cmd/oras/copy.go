@@ -82,7 +82,7 @@ func runCopy(opts copyOptions) error {
 		return err
 	}
 
-	// TODO: copy option
+	// Prepare copyOptions
 	copyOptions := oras.DefaultCopyOptions
 	extendCopyOptions := oras.DefaultExtendedCopyOptions
 	preCopy := func(ctx context.Context, desc ocispec.Descriptor) error {

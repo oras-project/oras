@@ -50,14 +50,8 @@ func pullCmd() *cobra.Command {
 		Short: "Pull files from remote registry",
 		Long: `Pull files from remote registry
 
-Example - Pull only files with the "application/vnd.oci.image.layer.v1.tar" media type (default):
+Example - Pull all files:
   oras pull localhost:5000/hello:latest
-
-Example - Pull only files with the custom "application/vnd.me.hi" media type:
-  oras pull localhost:5000/hello:latest -t application/vnd.me.hi
-
-Example - Pull all files, any media type:
-  oras pull localhost:5000/hello:latest -a
 
 Example - Pull files from the insecure registry:
   oras pull localhost:5000/hello:latest --insecure
@@ -92,6 +86,9 @@ func runPull(opts pullOptions) error {
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
+	}
+	if repo.Reference.Reference == "" {
+		return newErrInvalidReference(repo.Reference)
 	}
 	var src oras.Target = repo
 	if opts.cacheRoot != "" {
