@@ -24,8 +24,8 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/display"
-	"oras.land/oras/cmd/oras/internal/input"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/internal/parse"
 	"oras.land/oras/internal/content"
 )
 
@@ -81,7 +81,7 @@ func runAttach(opts attachOptions) error {
 	}
 	var refs []content.FileReference
 	for _, ref := range opts.fileRefs {
-		refs = append(refs, content.NewFileReference(input.ParseFileReference(ref, "")))
+		refs = append(refs, content.NewFileReference(parse.FileReference(ref, "")))
 	}
 	ociDescs, err := content.LoadFiles(ctx, store, nil, refs, opts.Verbose)
 	if err != nil {

@@ -26,8 +26,8 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/display"
-	"oras.land/oras/cmd/oras/internal/input"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/internal/parse"
 	"oras.land/oras/internal/content"
 )
 
@@ -154,7 +154,7 @@ func packManifest(ctx context.Context, store *file.Store, annotations map[string
 	packOpts.ManifestAnnotations = annotations[annotationManifest]
 
 	if opts.manifestConfigRef != "" {
-		path, mediatype := input.ParseFileReference(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
+		path, mediatype := parse.FileReference(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
 		desc, err := store.Add(ctx, annotationConfig, mediatype, path)
 		if err != nil {
 			return ocispec.Descriptor{}, err
@@ -164,7 +164,7 @@ func packManifest(ctx context.Context, store *file.Store, annotations map[string
 	}
 	var refs []content.FileReference
 	for _, ref := range opts.fileRefs {
-		refs = append(refs, content.NewFileReference(input.ParseFileReference(ref, "")))
+		refs = append(refs, content.NewFileReference(parse.FileReference(ref, "")))
 	}
 	descs, err := content.LoadFiles(ctx, store, annotations, refs, opts.Verbose)
 	if err != nil {
