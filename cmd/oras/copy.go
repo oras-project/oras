@@ -82,9 +82,9 @@ func runCopy(opts copyOptions) error {
 		return err
 	}
 
-	// Prepare copyOptions
-	copyOptions := oras.DefaultCopyOptions
-	extendCopyOptions := oras.DefaultExtendedCopyOptions
+	// Prepare orasCopyOptions
+	orasCopyOptions := oras.DefaultCopyOptions
+	orasExtendCopyOptions := oras.DefaultExtendedCopyOptions
 	preCopy := func(ctx context.Context, desc ocispec.Descriptor) error {
 		name, ok := desc.Annotations[ocispec.AnnotationTitle]
 		if !ok {
@@ -98,8 +98,8 @@ func runCopy(opts copyOptions) error {
 	onCopySkipped := func(ctx context.Context, desc ocispec.Descriptor) error {
 		return display.Print("Exists   ", display.ShortDigest(desc), desc.Annotations[ocispec.AnnotationTitle])
 	}
-	copyOptions.PreCopy, extendCopyOptions.PreCopy = preCopy, preCopy
-	copyOptions.OnCopySkipped, extendCopyOptions.OnCopySkipped = onCopySkipped, onCopySkipped
+	orasCopyOptions.PreCopy, orasExtendCopyOptions.PreCopy = preCopy, preCopy
+	orasCopyOptions.OnCopySkipped, orasExtendCopyOptions.OnCopySkipped = onCopySkipped, onCopySkipped
 
 	// Copy
 	srcRef := src.Reference
@@ -109,9 +109,9 @@ func runCopy(opts copyOptions) error {
 	}
 	var desc ocispec.Descriptor
 	if opts.rescursive {
-		desc, err = oras.ExtendedCopy(ctx, src, srcRef.ReferenceOrDefault(), dst, dstRef.ReferenceOrDefault(), extendCopyOptions)
+		desc, err = oras.ExtendedCopy(ctx, src, srcRef.ReferenceOrDefault(), dst, dstRef.ReferenceOrDefault(), orasExtendCopyOptions)
 	} else {
-		desc, err = oras.Copy(ctx, src, srcRef.ReferenceOrDefault(), dst, dstRef.ReferenceOrDefault(), copyOptions)
+		desc, err = oras.Copy(ctx, src, srcRef.ReferenceOrDefault(), dst, dstRef.ReferenceOrDefault(), orasCopyOptions)
 	}
 	if err != nil {
 		return err
