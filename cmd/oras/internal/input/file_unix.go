@@ -7,7 +7,6 @@ import "strings"
 
 // ParseFileReference parse file reference on windows.
 func ParseFileReference(reference string, mediaType string) (filePath, mediatype string) {
-
 	i := strings.LastIndex(reference, ":")
 	if i < 0 {
 		return reference, mediaType

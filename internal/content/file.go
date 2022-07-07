@@ -24,11 +24,13 @@ import (
 	"oras.land/oras-go/v2/content/file"
 )
 
+// FileReference refers to a local file.
 type FileReference struct {
 	FileName  string
 	MediaType string
 }
 
+// NewFileReference creates a new file reference struct.
 func NewFileReference(filePath string, mediaType string) FileReference {
 	return FileReference{
 		FileName:  filePath,
@@ -36,6 +38,8 @@ func NewFileReference(filePath string, mediaType string) FileReference {
 	}
 }
 
+// LoadFiles loads file reference to a file store and and returns the
+// descriptors.
 func LoadFiles(ctx context.Context, store *file.Store, annotations map[string]map[string]string, refs []FileReference, verbose bool) ([]ocispec.Descriptor, error) {
 	files := make([]ocispec.Descriptor, len(refs))
 	for i, ref := range refs {
