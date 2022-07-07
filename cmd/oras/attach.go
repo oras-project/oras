@@ -71,8 +71,6 @@ func runAttach(opts attachOptions) error {
 	// Prepare manifest
 	store := file.New("")
 	defer store.Close()
-
-	// Packing
 	dst, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
