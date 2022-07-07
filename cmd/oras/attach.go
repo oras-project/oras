@@ -79,9 +79,6 @@ func runAttach(opts attachOptions) error {
 	if err != nil {
 		return err
 	}
-	packOpts := oras.PackArtifactOptions{
-		Subject: OCIToArtifact(subject),
-	}
 	var refs []content.FileReference
 	for _, ref := range opts.fileRefs {
 		refs = append(refs, content.NewFileReference(input.ParseFileReference(ref, "")))
@@ -94,7 +91,11 @@ func runAttach(opts attachOptions) error {
 	for i := range ociDescs {
 		orasDescs[i] = *OCIToArtifact(ociDescs[i])
 	}
-	manifestDesc, err := oras.PackArtifact(ctx, store, opts.artifactType, orasDescs, packOpts)
+	manifestDesc, err := oras.PackArtifact(
+		ctx, store, opts.artifactType, orasDescs,
+		oras.PackArtifactOptions{
+			Subject: OCIToArtifact(subject),
+		})
 	if err != nil {
 		return err
 	}
