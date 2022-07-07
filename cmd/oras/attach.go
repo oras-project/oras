@@ -82,7 +82,7 @@ func runAttach(opts attachOptions) error {
 	for i := range ociDescs {
 		orasDescs[i] = *OCIToArtifact(ociDescs[i])
 	}
-	manifestDesc, err := oras.PackArtifact(ctx, store, orasDescs, opts.artifactType, packOpts)
+	manifestDesc, err := oras.PackArtifact(ctx, store, opts.artifactType, orasDescs, packOpts)
 	if err != nil {
 		return err
 	}
