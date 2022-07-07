@@ -75,6 +75,9 @@ func runAttach(opts attachOptions) error {
 	if err != nil {
 		return err
 	}
+	if dst.Reference.Reference == "" {
+		return newErrInvalidReference(dst.Reference)
+	}
 	subject, err := dst.Resolve(ctx, dst.Reference.Reference)
 	if err != nil {
 		return err
