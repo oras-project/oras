@@ -111,19 +111,8 @@ func runPush(opts pushOptions) error {
 
 	// Ready to push
 	copyOptions := oras.DefaultCopyOptions
-	copyOptions.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		name, ok := desc.Annotations[ocispec.AnnotationTitle]
-		if !ok {
-			if !opts.Verbose {
-				return nil
-			}
-			name = desc.MediaType
-		}
-		return display.Print("Uploading", display.ShortDigest(desc), name)
-	}
-	copyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-		return display.Print("Exists   ", display.ShortDigest(desc), desc.Annotations[ocispec.AnnotationTitle])
-	}
+	copyOptions.PreCopy = display.PreCopyStatus(func() bool { return !opts.Verbose })
+	copyOptions.OnCopySkipped = display.CopySkippedStatus
 	desc, err := packManifest(ctx, store, annotations, &opts)
 	if err != nil {
 		return err
