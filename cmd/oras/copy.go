@@ -104,9 +104,14 @@ func runCopy(opts copyOptions) error {
 	// Copy
 	srcRef := src.Reference
 	dstRef := dst.Reference
-	if dstRef.Reference == "" {
-		dstRef.Reference = srcRef.ReferenceOrDefault()
+	if srcRef.Reference == "" {
+		return newErrInvalidReference(srcRef)
 	}
+
+	// if dstRef.Reference == "" {
+	// 	dstRef.Reference = srcRef.ReferenceOrDefault()
+	// }
+
 	var desc ocispec.Descriptor
 	if opts.rescursive {
 		desc, err = oras.ExtendedCopy(ctx, src, srcRef.ReferenceOrDefault(), dst, dstRef.ReferenceOrDefault(), orasExtendCopyOptions)
