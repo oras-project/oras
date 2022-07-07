@@ -102,21 +102,21 @@ func runCopy(opts copyOptions) error {
 	orasCopyOptions.OnCopySkipped, orasExtendCopyOptions.OnCopySkipped = onCopySkipped, onCopySkipped
 
 	// Copy
-	srcRef := src.Reference
-	dstRef := dst.Reference
-	if srcRef.Reference == "" {
-		return newErrInvalidReference(srcRef)
+	orasSrcRef := src.Reference
+	orasDstRef := dst.Reference
+	if orasSrcRef.Reference == "" {
+		return newErrInvalidReference(orasSrcRef)
 	}
 
-	// if dstRef.Reference == "" {
-	// 	dstRef.Reference = srcRef.ReferenceOrDefault()
+	// if orasDstRef.Reference == "" {
+	// 	orasDstRef.Reference = orasSrcRef.ReferenceOrDefault()
 	// }
 
 	var desc ocispec.Descriptor
 	if opts.rescursive {
-		desc, err = oras.ExtendedCopy(ctx, src, srcRef.ReferenceOrDefault(), dst, dstRef.ReferenceOrDefault(), orasExtendCopyOptions)
+		desc, err = oras.ExtendedCopy(ctx, src, orasSrcRef.ReferenceOrDefault(), dst, orasDstRef.ReferenceOrDefault(), orasExtendCopyOptions)
 	} else {
-		desc, err = oras.Copy(ctx, src, srcRef.ReferenceOrDefault(), dst, dstRef.ReferenceOrDefault(), orasCopyOptions)
+		desc, err = oras.Copy(ctx, src, orasSrcRef.ReferenceOrDefault(), dst, orasDstRef.ReferenceOrDefault(), orasCopyOptions)
 	}
 	if err != nil {
 		return err
