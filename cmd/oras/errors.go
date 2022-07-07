@@ -13,11 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package errors
+package main
 
-import "errors"
+import (
+	"fmt"
 
-// ErrInvalidReference creates a new error based on the reference string.
-func ErrInvalidReference(reference string) error {
-	return errors.New("image reference format is invalid. Expected <name:tag|name@digest>, got '" + reference + "'")
+	"oras.land/oras-go/v2/registry"
+)
+
+// newErrInvalidReference creates a new error based on the reference string.
+func newErrInvalidReference(ref registry.Reference) error {
+	return fmt.Errorf("image reference format is invalid. Expected <name:tag|name@digest>, got %q", ref)
 }
