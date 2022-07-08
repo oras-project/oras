@@ -1,4 +1,4 @@
-//go:build windows
+//go:build !windows
 
 /*
 Copyright The ORAS Authors.
@@ -15,28 +15,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package parse
+package main
 
-import (
-	"strings"
-	"unicode"
-)
+import "strings"
 
-// FileReference parses file reference on windows.
-// Windows systems does not allow ':' in the file path except for drive letter.
-func FileReference(reference string, mediaType string) (filePath, mediatype string) {
-	i := strings.Index(reference, ":")
+// parseFileReference parses file reference on unix.
+func parseFileReference(reference string, mediaType string) (filePath, mediatype string) {
+	i := strings.LastIndex(reference, ":")
 	if i < 0 {
 		return reference, mediaType
 	}
-
-	// In case it is C:\
-	if i == 1 && len(reference) > 2 && reference[2] == '\\' && unicode.IsLetter(rune(reference[0])) {
-		i = strings.Index(reference[3:], ":")
-		if i < 0 {
-			return reference, mediaType
-		}
-		i += 3
-	}
 	return reference[:i], reference[i+1:]
+
 }
