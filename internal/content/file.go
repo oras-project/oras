@@ -55,14 +55,12 @@ func LoadFiles(ctx context.Context, store *file.Store, annotations map[string]ma
 		if err != nil {
 			return nil, err
 		}
-		if annotations != nil {
-			if value, ok := annotations[ref.FileName]; ok {
-				if desc.Annotations == nil {
-					desc.Annotations = value
-				} else {
-					for k, v := range value {
-						desc.Annotations[k] = v
-					}
+		if value, ok := annotations[ref.FileName]; ok {
+			if desc.Annotations == nil {
+				desc.Annotations = value
+			} else {
+				for k, v := range value {
+					desc.Annotations[k] = v
 				}
 			}
 		}
