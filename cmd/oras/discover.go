@@ -81,6 +81,7 @@ func runDiscover(opts discoverOptions) error {
 	if repo.Reference.Reference == "" {
 		return newErrInvalidReference(repo.Reference)
 	}
+
 	// discover artifacts
 	desc, err := repo.Resolve(ctx, repo.Reference.Reference)
 	if err != nil {
