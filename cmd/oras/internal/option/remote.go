@@ -43,41 +43,38 @@ type Remote struct {
 	Username          string
 	PasswordFromStdin bool
 	Password          string
-
-	notePrefix     string
-	flagPrefix     string
-	blockPassStdin bool
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Remote) ApplyFlags(fs *pflag.FlagSet) {
-	shortUser, shortPassword := "u", "p"
-	if opts.notePrefix != "" && opts.flagPrefix != "" && opts.blockPassStdin {
-		shortUser, shortPassword = "", ""
+	opts.ApplyFlagsWithPrefix(fs, "")
+	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
+}
+
+// ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
+// Commonly used for non-unary remote targets.
+func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix string) {
+	var (
+		shortUser     string
+		shortPassword string
+		flagPrefix    string
+		notePrefix    string
+	)
+	if prefix == "" {
+		shortUser, shortPassword = "u", "p"
+	} else {
+		flagPrefix = prefix + "-"
+		notePrefix = prefix + " "
 	}
-	fs.StringVarP(&opts.Username, opts.flagPrefix+"username", shortUser, "", opts.notePrefix+"registry username")
-	fs.StringVarP(&opts.Password, opts.flagPrefix+"password", shortPassword, "", opts.notePrefix+"registry password or identity token")
-	fs.BoolVarP(&opts.Insecure, opts.flagPrefix+"insecure", "", false, "allow connections to "+opts.notePrefix+"SSL registry without certs")
-	fs.BoolVarP(&opts.PlainHTTP, opts.flagPrefix+"plain-http", "", false, "allow insecure connections to "+opts.notePrefix+"registry without SSL check")
-	fs.StringVarP(&opts.CACertFilePath, opts.flagPrefix+"ca-file", "", "", "server certificate authority file for the remote "+opts.notePrefix+"registry")
+	fs.StringVarP(&opts.Username, flagPrefix+"username", shortUser, "", notePrefix+"registry username")
+	fs.StringVarP(&opts.Password, flagPrefix+"password", shortPassword, "", notePrefix+"registry password or identity token")
+	fs.BoolVarP(&opts.Insecure, flagPrefix+"insecure", "", false, "allow connections to "+notePrefix+"SSL registry without certs")
+	fs.BoolVarP(&opts.PlainHTTP, flagPrefix+"plain-http", "", false, "allow insecure connections to "+notePrefix+"registry without SSL check")
+	fs.StringVarP(&opts.CACertFilePath, flagPrefix+"ca-file", "", "", "server certificate authority file for the remote "+notePrefix+"registry")
 
 	if fs.Lookup("config") != nil {
 		fs.StringArrayVarP(&opts.Configs, "config", "c", nil, "auth config path")
 	}
-	if !opts.blockPassStdin && fs.Lookup("password-stdin") != nil {
-		fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
-	}
-}
-
-// SetPrefix sets prefix for applicable flags.
-func (opts *Remote) SetPrefix(target string) {
-	opts.flagPrefix = target + "-"
-	opts.notePrefix = target + " "
-}
-
-// SetBlockPassStdin disables Password input from Stdin.
-func (opts *Remote) SetBlockPassStdin() {
-	opts.blockPassStdin = true
 }
 
 // ReadPassword tries to read password with optional cmd prompt.

@@ -27,8 +27,8 @@ import (
 )
 
 type copyOptions struct {
-	Src option.Remote
-	Dst option.Remote
+	src option.Remote
+	dst option.Remote
 	option.Common
 	rescursive bool
 
@@ -38,11 +38,6 @@ type copyOptions struct {
 
 func copyCmd() *cobra.Command {
 	var opts copyOptions
-	opts.Src.SetPrefix("source")
-	opts.Dst.SetPrefix("destination")
-	opts.Src.SetBlockPassStdin()
-	opts.Dst.SetBlockPassStdin()
-
 	cmd := &cobra.Command{
 		Use:     "copy <from-ref> <to-ref>",
 		Aliases: []string{"cp"},
@@ -63,7 +58,10 @@ Examples - Copy the manifest tagged 'v1' and referrer artifacts from repository 
 	}
 
 	cmd.Flags().BoolVarP(&opts.rescursive, "recursive", "r", false, "recursively copy artifacts that reference the artifact being copied")
+	opts.src.ApplyFlagsWithPrefix(cmd.Flags(), "source")
+	opts.dst.ApplyFlagsWithPrefix(cmd.Flags(), "destination")
 	option.ApplyFlags(&opts, cmd.Flags())
+
 	return cmd
 }
 
@@ -71,13 +69,13 @@ func runCopy(opts copyOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
 
 	// Prepare source
-	src, err := opts.Src.NewRepository(opts.srcRef, opts.Common)
+	src, err := opts.src.NewRepository(opts.srcRef, opts.Common)
 	if err != nil {
 		return err
 	}
 
 	// Prepare destination
-	dst, err := opts.Dst.NewRepository(opts.dstRef, opts.Common)
+	dst, err := opts.dst.NewRepository(opts.dstRef, opts.Common)
 	if err != nil {
 		return err
 	}
