@@ -121,7 +121,7 @@ func runAttach(opts attachOptions) error {
 	fmt.Println("ORAS Artifact Digest:", manifestDesc.Digest)
 
 	// Export manifest
-	return opts.ExportManifest(ctx, manifestDesc, store)
+	return opts.ExportManifest(ctx, store, manifestDesc)
 }
 
 // OCIToArtifact converts OCI descriptor to artifact descriptor.

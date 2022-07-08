@@ -35,11 +35,11 @@ func (opts *Pusher) ApplyFlags(fs *pflag.FlagSet) {
 }
 
 // ExportManifest saves the pushed manifest to a local file.
-func (opts *Pusher) ExportManifest(ctx context.Context, pushed ocispec.Descriptor, pushedTo content.Fetcher) error {
+func (opts *Pusher) ExportManifest(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) error {
 	if opts.ManifestExportPath == "" {
 		return nil
 	}
-	manifestBytes, err := content.FetchAll(ctx, pushedTo, pushed)
+	manifestBytes, err := content.FetchAll(ctx, fetcher, desc)
 	if err != nil {
 		return err
 	}

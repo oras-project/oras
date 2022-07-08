@@ -137,7 +137,7 @@ func runPush(opts pushOptions) error {
 	fmt.Println("Digest:", desc.Digest)
 
 	// Export manifest
-	return opts.ExportManifest(ctx, desc, store)
+	return opts.ExportManifest(ctx, store, desc)
 }
 
 func decodeJSON(filename string, v interface{}) error {
