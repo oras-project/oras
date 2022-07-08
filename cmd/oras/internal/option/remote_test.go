@@ -195,7 +195,7 @@ func TestRemote_NewRepository(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if err = repo.Tags(context.Background(), func(got []string) error {
+	if err = repo.Tags(context.Background(), "", func(got []string) error {
 		want := []string{"tag"}
 		if len(got) != len(testTagList.Tags) || !reflect.DeepEqual(got, want) {
 			return fmt.Errorf("expect: %v, got: %v", testTagList.Tags, got)

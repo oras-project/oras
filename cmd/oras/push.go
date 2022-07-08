@@ -17,15 +17,11 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -40,13 +36,10 @@ const (
 type pushOptions struct {
 	option.Common
 	option.Remote
+	option.Pusher
 
-	targetRef              string
-	fileRefs               []string
-	pathValidationDisabled bool
-	manifestAnnotations    string
-	manifestExport         string
-	manifestConfigRef      string
+	targetRef         string
+	manifestConfigRef string
 }
 
 func pushCmd() *cobra.Command {
@@ -80,15 +73,12 @@ Example - Push file to the HTTP registry:
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
-			opts.fileRefs = args[1:]
+			opts.FileRefs = args[1:]
 			return runPush(opts)
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.manifestAnnotations, "manifest-annotations", "", "", "manifest annotation file")
-	cmd.Flags().BoolVarP(&opts.pathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "manifest-config", "", "", "manifest config file")
-	cmd.Flags().StringVarP(&opts.manifestExport, "export-manifest", "", "", "export the pushed manifest")
 
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
@@ -96,41 +86,28 @@ Example - Push file to the HTTP registry:
 
 func runPush(opts pushOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
-
-	dst, err := opts.NewRepository(opts.targetRef, opts.Common)
+	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err
-	}
-
-	// Load annotations
-	var annotations map[string]map[string]string
-	if opts.manifestAnnotations != "" {
-		if err := decodeJSON(opts.manifestAnnotations, &annotations); err != nil {
-			return err
-		}
 	}
 
 	// Prepare manifest
 	store := file.New("")
 	defer store.Close()
-	store.AllowPathTraversalOnWrite = opts.pathValidationDisabled
+	store.AllowPathTraversalOnWrite = opts.PathValidationDisabled
 
 	// Ready to push
 	copyOptions := oras.DefaultCopyOptions
-	copyOptions.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		name, ok := desc.Annotations[ocispec.AnnotationTitle]
-		if !ok {
-			if !opts.Verbose {
-				return nil
-			}
-			name = desc.MediaType
-		}
-		return display.Print("Uploading", display.ShortDigest(desc), name)
-	}
-	copyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-		return display.Print("Exists   ", display.ShortDigest(desc), desc.Annotations[ocispec.AnnotationTitle])
-	}
+	copyOptions.PreCopy = display.StatusPrinter("Uploading", opts.Verbose)
+	copyOptions.OnCopySkipped = display.StatusPrinter("Exists   ", opts.Verbose)
+	copyOptions.PostCopy = display.StatusPrinter("Uploaded ", opts.Verbose)
 	desc, err := packManifest(ctx, store, annotations, &opts)
+	if err != nil {
+		return err
+	}
+
+	// Push
+	dst, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
 	}
@@ -146,81 +123,29 @@ func runPush(opts pushOptions) error {
 	fmt.Println("Pushed", opts.targetRef)
 	fmt.Println("Digest:", desc.Digest)
 
-	// export manifest
-	if opts.manifestExport != "" {
-		manifestBytes, err := content.FetchAll(ctx, store, desc)
-		if err != nil {
-			return err
-		}
-		if err = os.WriteFile(opts.manifestExport, manifestBytes, 0666); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func decodeJSON(filename string, v interface{}) error {
-	file, err := os.Open(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	return json.NewDecoder(file).Decode(v)
-}
-
-func loadFiles(ctx context.Context, store *file.Store, annotations map[string]map[string]string, opts *pushOptions) ([]ocispec.Descriptor, error) {
-	var files []ocispec.Descriptor
-	for _, fileRef := range opts.fileRefs {
-		filename, mediaType := parseFileRef(fileRef, "")
-		name := filepath.Clean(filename)
-		if !filepath.IsAbs(name) {
-			// convert to slash-separated path unless it is absolute path
-			name = filepath.ToSlash(name)
-		}
-		if opts.Verbose {
-			fmt.Println("Preparing", name)
-		}
-		file, err := store.Add(ctx, name, mediaType, filename)
-		if err != nil {
-			return nil, err
-		}
-		if annotations != nil {
-			if value, ok := annotations[filename]; ok {
-				if file.Annotations == nil {
-					file.Annotations = value
-				} else {
-					for k, v := range value {
-						file.Annotations[k] = v
-					}
-				}
-			}
-		}
-		files = append(files, file)
-	}
-	if len(files) == 0 {
-		fmt.Println("Uploading empty artifact")
-	}
-	return files, nil
+	// Export manifest
+	return opts.ExportManifest(ctx, store, desc)
 }
 
 func packManifest(ctx context.Context, store *file.Store, annotations map[string]map[string]string, opts *pushOptions) (ocispec.Descriptor, error) {
 	var packOpts oras.PackOptions
 	packOpts.ConfigAnnotations = annotations[annotationConfig]
 	packOpts.ManifestAnnotations = annotations[annotationManifest]
+
 	if opts.manifestConfigRef != "" {
-		filename, mediaType := parseFileRef(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
-		file, err := store.Add(ctx, annotationConfig, mediaType, filename)
+		path, mediatype := parseFileReference(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
+		desc, err := store.Add(ctx, annotationConfig, mediatype, path)
 		if err != nil {
 			return ocispec.Descriptor{}, err
 		}
-		file.Annotations = packOpts.ConfigAnnotations
-		packOpts.ConfigDescriptor = &file
+		desc.Annotations = packOpts.ConfigAnnotations
+		packOpts.ConfigDescriptor = &desc
 	}
-	files, err := loadFiles(ctx, store, annotations, opts)
+	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
 	if err != nil {
 		return ocispec.Descriptor{}, err
 	}
-	manifestDesc, err := oras.Pack(ctx, store, files, packOpts)
+	manifestDesc, err := oras.Pack(ctx, store, descs, packOpts)
 	if err != nil {
 		return ocispec.Descriptor{}, err
 	}

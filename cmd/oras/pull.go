@@ -101,7 +101,7 @@ func runPull(opts pullOptions) error {
 
 	// Copy Options
 	copyOptions := oras.DefaultCopyOptions
-	configFileName, configMediaType := parseFileRef(opts.ManifestConfigRef, oras.MediaTypeUnknownConfig)
+	configPath, configMediaType := parseFileReference(opts.ManifestConfigRef, oras.MediaTypeUnknownConfig)
 	copyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		successors, err := content.Successors(ctx, fetcher, desc)
 		if err != nil {
@@ -114,7 +114,7 @@ func runPull(opts pullOptions) error {
 				if s.Annotations == nil {
 					s.Annotations = make(map[string]string)
 				}
-				s.Annotations[ocispec.AnnotationTitle] = configFileName
+				s.Annotations[ocispec.AnnotationTitle] = configPath
 			} else if s.Annotations[ocispec.AnnotationTitle] == "" {
 				ss, err := content.Successors(ctx, fetcher, s)
 				if err != nil {
@@ -130,13 +130,14 @@ func runPull(opts pullOptions) error {
 	}
 
 	pulledEmpty := true
+	copyOptions.PreCopy = display.StatusPrinter("Downloading", opts.Verbose)
 	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		name := desc.Annotations[ocispec.AnnotationTitle]
 		if name == "" {
 			return nil
 		}
 		pulledEmpty = false
-		return display.Print("Downloaded", display.ShortDigest(desc), name)
+		return display.Print("Downloaded ", display.ShortDigest(desc), name)
 	}
 
 	ctx, _ := opts.SetLoggerLevel()
