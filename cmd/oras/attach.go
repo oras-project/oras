@@ -16,12 +16,14 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"fmt"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	artifactspec "github.com/oras-project/artifacts-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -107,6 +109,13 @@ func runAttach(opts attachOptions) error {
 
 	// Prepare Push
 	graphCopyOptions := oras.DefaultCopyGraphOptions
+	graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		if isEqualOCIDescriptor(node, desc) {
+			// Skip subject
+			return ociDescs, nil
+		}
+		return content.Successors(ctx, fetcher, node)
+	}
 	graphCopyOptions.PreCopy = display.StatusPrinter("Uploading", opts.Verbose)
 	graphCopyOptions.OnCopySkipped = display.StatusPrinter("Exists   ", opts.Verbose)
 	graphCopyOptions.PostCopy = display.StatusPrinter("Uploaded ", opts.Verbose)
@@ -122,6 +131,10 @@ func runAttach(opts attachOptions) error {
 
 	// Export manifest
 	return opts.ExportManifest(ctx, store, desc)
+}
+
+func isEqualOCIDescriptor(a, b ocispec.Descriptor) bool {
+	return a.Size == b.Size && a.Digest == b.Digest && a.MediaType == b.MediaType
 }
 
 // ociToArtifact converts OCI descriptor to artifact descriptor.
