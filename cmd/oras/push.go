@@ -27,7 +27,6 @@ import (
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/content"
 )
 
 const (
@@ -42,7 +41,6 @@ type pushOptions struct {
 	option.Pusher
 
 	targetRef              string
-	fileRefs               []string
 	pathValidationDisabled bool
 	manifestAnnotations    string
 	manifestConfigRef      string
@@ -79,7 +77,7 @@ Example - Push file to the HTTP registry:
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
-			opts.fileRefs = args[1:]
+			opts.FileRefs = args[1:]
 			return runPush(opts)
 		},
 	}
@@ -162,11 +160,7 @@ func packManifest(ctx context.Context, store *file.Store, annotations map[string
 		desc.Annotations = packOpts.ConfigAnnotations
 		packOpts.ConfigDescriptor = &desc
 	}
-	var refs []content.FileReference
-	for _, ref := range opts.fileRefs {
-		refs = append(refs, content.NewFileReference(parseFileReference(ref, "")))
-	}
-	descs, err := content.LoadFiles(ctx, store, annotations, refs, opts.Verbose)
+	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
 	if err != nil {
 		return ocispec.Descriptor{}, err
 	}

@@ -25,7 +25,6 @@ import (
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/content"
 )
 
 type attachOptions struct {
@@ -35,7 +34,6 @@ type attachOptions struct {
 
 	targetRef    string
 	artifactType string
-	fileRefs     []string
 }
 
 func attachCmd() *cobra.Command {
@@ -56,7 +54,7 @@ Example - Attach file 'hi.txt' with type 'sig/example' to manifest 'hello:test' 
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
-			opts.fileRefs = args[1:]
+			opts.FileRefs = args[1:]
 			return runAttach(opts)
 		},
 	}
@@ -83,11 +81,7 @@ func runAttach(opts attachOptions) error {
 	if err != nil {
 		return err
 	}
-	var refs []content.FileReference
-	for _, ref := range opts.fileRefs {
-		refs = append(refs, content.NewFileReference(parseFileReference(ref, "")))
-	}
-	ociDescs, err := content.LoadFiles(ctx, store, nil, refs, opts.Verbose)
+	ociDescs, err := loadFiles(ctx, store, nil, opts.FileRefs, opts.Verbose)
 	if err != nil {
 		return err
 	}

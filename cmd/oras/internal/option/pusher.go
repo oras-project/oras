@@ -27,6 +27,7 @@ import (
 // Pusher option struct.
 type Pusher struct {
 	ManifestExportPath string
+	FileRefs           []string
 }
 
 // ApplyFlags applies flags to a command flag set.
