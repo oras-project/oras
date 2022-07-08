@@ -118,7 +118,7 @@ func runAttach(opts attachOptions) error {
 	}
 
 	fmt.Println("Files attached to", opts.targetRef)
-	fmt.Println("ORAS artifact manifest digest:", manifestDesc.Digest)
+	fmt.Println("ORAS Artifact Digest:", manifestDesc.Digest)
 
 	// Export manifest
 	return opts.ExportManifest(ctx, manifestDesc, store)
