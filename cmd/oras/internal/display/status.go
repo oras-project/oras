@@ -21,22 +21,16 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// PreCopyStatus returns a tracking function for uploading status.
-func PreCopyStatus(skip func() bool) func(context.Context, ocispec.Descriptor) error {
+// Output returns a tracking function for uploading status.
+func Output(status string, verbose bool) func(context.Context, ocispec.Descriptor) error {
 	return func(ctx context.Context, desc ocispec.Descriptor) error {
 		name, ok := desc.Annotations[ocispec.AnnotationTitle]
 		if !ok {
-			if skip() {
+			if !verbose {
 				return nil
 			}
 			name = desc.MediaType
 		}
-		return Print("Uploading", ShortDigest(desc), name)
+		return Print(status, ShortDigest(desc), name)
 	}
-}
-
-// PreCopyStatus is a tracking function which will be called when uploading
-// can be skipped.
-func CopySkippedStatus(ctx context.Context, desc ocispec.Descriptor) error {
-	return Print("Exists   ", ShortDigest(desc), desc.Annotations[ocispec.AnnotationTitle])
 }
