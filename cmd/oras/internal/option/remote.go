@@ -51,14 +51,20 @@ type Remote struct {
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Remote) ApplyFlags(fs *pflag.FlagSet) {
-	fs.StringVarP(&opts.Username, opts.flagPrefix+"username", "u", "", opts.notePrefix+"registry username")
-	fs.StringVarP(&opts.Password, opts.flagPrefix+"password", "p", "", opts.notePrefix+"registry password or identity token")
+	shortUser, shortPassword := "u", "p"
+	if opts.notePrefix != "" && opts.flagPrefix != "" && opts.blockPassStdin {
+		shortUser, shortPassword = "", ""
+	}
+	fs.StringVarP(&opts.Username, opts.flagPrefix+"username", shortUser, "", opts.notePrefix+"registry username")
+	fs.StringVarP(&opts.Password, opts.flagPrefix+"password", shortPassword, "", opts.notePrefix+"registry password or identity token")
 	fs.BoolVarP(&opts.Insecure, opts.flagPrefix+"insecure", "", false, "allow connections to "+opts.notePrefix+"SSL registry without certs")
-	fs.BoolVarP(&opts.PlainHTTP, opts.flagPrefix+"plain-http", "", false, "allow insecure connections to "+opts.notePrefix+"registry without SSL")
+	fs.BoolVarP(&opts.PlainHTTP, opts.flagPrefix+"plain-http", "", false, "allow insecure connections to "+opts.notePrefix+"registry without SSL check")
 	fs.StringVarP(&opts.CACertFilePath, opts.flagPrefix+"ca-file", "", "", "server certificate authority file for the remote "+opts.notePrefix+"registry")
 
-	fs.StringArrayVarP(&opts.Configs, "config", "c", nil, "auth config path")
-	if !opts.blockPassStdin {
+	if fs.Lookup("config") != nil {
+		fs.StringArrayVarP(&opts.Configs, "config", "c", nil, "auth config path")
+	}
+	if !opts.blockPassStdin && fs.Lookup("password-stdin") != nil {
 		fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
 	}
 }
