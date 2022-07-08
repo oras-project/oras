@@ -46,7 +46,6 @@ type pushOptions struct {
 	fileRefs               []string
 	pathValidationDisabled bool
 	manifestAnnotations    string
-	manifestExport         string
 	manifestConfigRef      string
 }
 
