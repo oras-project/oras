@@ -47,13 +47,13 @@ type Remote struct {
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Remote) ApplyFlags(fs *pflag.FlagSet) {
-	opts.ApplyFlagsWithPrefix(fs, "")
+	opts.ApplyFlagsWithPrefix(fs, "", "")
 	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
 }
 
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
 // Commonly used for non-unary remote targets.
-func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix string) {
+func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
 	var (
 		shortUser     string
 		shortPassword string
@@ -64,7 +64,7 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix string) {
 		shortUser, shortPassword = "u", "p"
 	} else {
 		flagPrefix = prefix + "-"
-		notePrefix = prefix + " "
+		notePrefix = description + " "
 	}
 	fs.StringVarP(&opts.Username, flagPrefix+"username", shortUser, "", notePrefix+"registry username")
 	fs.StringVarP(&opts.Password, flagPrefix+"password", shortPassword, "", notePrefix+"registry password or identity token")

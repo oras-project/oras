@@ -41,15 +41,18 @@ func copyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "copy <from-ref> <to-ref>",
 		Aliases: []string{"cp"},
-		Short:   "Copy manifests between repositories",
-		Long: `Copy manifests between repositories
+		Short:   "[Preview] Copy artifacts from one target to another",
+		Long: `[Preview] Copy artifacts from one target to another
 
-Examples - Copy the manifest tagged 'v1' from repository 'localhost:5000/net-monitor' to repository 'localhost:5000/net-monitor-copy' 
+** This command is in preview and under development. **
+
+Examples - Copy the artifact tagged 'v1' from repository 'localhost:5000/net-monitor' to repository 'localhost:5000/net-monitor-copy' 
   oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
-Examples - Copy the manifest tagged 'v1' and referrer artifacts from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy'
+
+Examples - Copy the artifact tagged 'v1' and its referrers from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy'
   oras cp -r localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
 `,
-		Args: cobra.MinimumNArgs(2),
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.srcRef = args[0]
 			opts.dstRef = args[1]
@@ -57,9 +60,9 @@ Examples - Copy the manifest tagged 'v1' and referrer artifacts from repository 
 		},
 	}
 
-	cmd.Flags().BoolVarP(&opts.rescursive, "recursive", "r", false, "recursively copy artifacts that reference the artifact being copied")
-	opts.src.ApplyFlagsWithPrefix(cmd.Flags(), "source")
-	opts.dst.ApplyFlagsWithPrefix(cmd.Flags(), "destination")
+	cmd.Flags().BoolVarP(&opts.rescursive, "recursive", "r", false, "recursively copy artifacts and its referrer artifacts")
+	opts.src.ApplyFlagsWithPrefix(cmd.Flags(), "from", "source")
+	opts.dst.ApplyFlagsWithPrefix(cmd.Flags(), "to", "destination")
 	option.ApplyFlags(&opts, cmd.Flags())
 
 	return cmd
@@ -80,57 +83,48 @@ func runCopy(opts copyOptions) error {
 		return err
 	}
 
-	// Prepare cpOpts
-	cpOpts := oras.DefaultCopyOptions
-	extendCpOpts := oras.DefaultExtendedCopyOptions
-	preCopy := func(ctx context.Context, desc ocispec.Descriptor) error {
-		name, ok := desc.Annotations[ocispec.AnnotationTitle]
-		if !ok {
-			if !opts.Verbose {
-				return nil
+	// Prepare copy options
+	extendedCopyOptions := oras.DefaultExtendedCopyOptions
+	outputStatus := func(status string) func(context.Context, ocispec.Descriptor) error {
+		return func(ctx context.Context, desc ocispec.Descriptor) error {
+			name, ok := desc.Annotations[ocispec.AnnotationTitle]
+			if !ok {
+				if !opts.Verbose {
+					return nil
+				}
+				name = desc.MediaType
 			}
-			name = desc.MediaType
+			return display.Print(status, display.ShortDigest(desc), name)
 		}
-		return display.Print("Uploading", display.ShortDigest(desc), name)
 	}
-	onCopySkipped := func(ctx context.Context, desc ocispec.Descriptor) error {
-		return display.Print("Exists   ", display.ShortDigest(desc), desc.Annotations[ocispec.AnnotationTitle])
-	}
-	cpOpts.PreCopy, extendCpOpts.PreCopy = preCopy, preCopy
-	cpOpts.OnCopySkipped, extendCpOpts.OnCopySkipped = onCopySkipped, onCopySkipped
+	extendedCopyOptions.PreCopy = outputStatus("Copying")
+	extendedCopyOptions.PostCopy = outputStatus("Copied ")
+	extendedCopyOptions.OnCopySkipped = outputStatus("Exists ")
 
 	if src.Reference.Reference == "" {
 		return newErrInvalidReference(src.Reference)
 	}
 
-	// if dst.Reference.Reference == "" continue with no-tag
-
+	// push to the destination with digest only if no tag specified
 	var desc ocispec.Descriptor
-	if opts.rescursive {
-		if ref := dst.Reference.Reference; ref == "" {
-			desc, err = src.Resolve(ctx, src.Reference.Reference)
-			if err != nil {
-				return err
-			}
-			err = oras.ExtendedCopyGraph(ctx, src, dst, desc, extendCpOpts.ExtendedCopyGraphOptions)
-		} else {
-			desc, err = oras.ExtendedCopy(ctx, src, opts.srcRef, dst, opts.dstRef, extendCpOpts)
-		}
+	if ref := dst.Reference.Reference; ref == "" {
+		desc, err = src.Resolve(ctx, src.Reference.Reference)
 		if err != nil {
 			return err
+		}
+		if opts.rescursive {
+			err = oras.ExtendedCopyGraph(ctx, src, dst, desc, extendedCopyOptions.ExtendedCopyGraphOptions)
+		} else {
+			err = oras.CopyGraph(ctx, src, dst, desc, extendedCopyOptions.CopyGraphOptions)
 		}
 	} else {
-		if ref := dst.Reference.Reference; ref == "" {
-			desc, err = src.Resolve(ctx, src.Reference.Reference)
-			if err != nil {
-				return err
-			}
-			err = oras.CopyGraph(ctx, src, dst, desc, cpOpts.CopyGraphOptions)
+		if opts.rescursive {
+			desc, err = oras.ExtendedCopy(ctx, src, opts.srcRef, dst, opts.dstRef, extendedCopyOptions)
 		} else {
-			desc, err = oras.Copy(ctx, src, opts.srcRef, dst, opts.dstRef, cpOpts)
-		}
-		if err != nil {
-			return err
+			copyOptions := oras.CopyOptions{
+				CopyGraphOptions: extendedCopyOptions.CopyGraphOptions,
+			}
+			desc, err = oras.Copy(ctx, src, opts.srcRef, dst, opts.dstRef, copyOptions)
 		}
 	}
 	if err != nil {
