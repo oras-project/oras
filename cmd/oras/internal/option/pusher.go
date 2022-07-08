@@ -26,22 +26,22 @@ import (
 
 // Pusher option struct.
 type Pusher struct {
-	ManifestExport string
+	ManifestExportPath string
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Pusher) ApplyFlags(fs *pflag.FlagSet) {
-	fs.StringVarP(&opts.ManifestExport, "export-manifest", "", "", "export the pushed manifest")
+	fs.StringVarP(&opts.ManifestExportPath, "export-manifest", "", "", "export the pushed manifest")
 }
 
 // ExportManifest saves the pushed manifest to a local file.
 func (opts *Pusher) ExportManifest(ctx context.Context, pushed ocispec.Descriptor, pushedTo content.Fetcher) error {
-	if opts.ManifestExport == "" {
+	if opts.ManifestExportPath == "" {
 		return nil
 	}
 	manifestBytes, err := content.FetchAll(ctx, pushedTo, pushed)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(opts.ManifestExport, manifestBytes, 0666)
+	return os.WriteFile(opts.ManifestExportPath, manifestBytes, 0666)
 }

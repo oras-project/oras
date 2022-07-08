@@ -43,8 +43,10 @@ func attachCmd() *cobra.Command {
 	var opts attachOptions
 	cmd := &cobra.Command{
 		Use:   "attach name[:tag|@digest] file[:type] [file...]",
-		Short: "Attach files to an existed manifest",
-		Long: `Attach files to an existed manifest
+		Short: "[Preview] Attach files to an existed manifest",
+		Long: `[Preview] Attach files to an existed manifest
+
+** This command is in preview and under development. **
 
 Example - Attach file 'hi.txt' with type 'sig/example' to manifest 'hello:test' in registry 'localhost:5000'
   oras attach localhost:5000/hello:test hi.txt --artifact-type sig/example
@@ -104,19 +106,19 @@ func runAttach(opts attachOptions) error {
 	}
 
 	// Prepare Push
-	copyOptions := oras.DefaultCopyOptions
-	copyOptions.PreCopy = display.Output("Uploading", opts.Verbose)
-	copyOptions.OnCopySkipped = display.Output("Existed  ", opts.Verbose)
-	copyOptions.PostCopy = display.Output("Uploaded ", opts.Verbose)
+	graphCopyOptions := oras.DefaultCopyGraphOptions
+	graphCopyOptions.PreCopy = display.Output("Uploading", opts.Verbose)
+	graphCopyOptions.OnCopySkipped = display.Output("Existed  ", opts.Verbose)
+	graphCopyOptions.PostCopy = display.Output("Uploaded ", opts.Verbose)
 
 	// Push
-	err = oras.CopyGraph(ctx, store, dst, manifestDesc, copyOptions.CopyGraphOptions)
+	err = oras.CopyGraph(ctx, store, dst, manifestDesc, graphCopyOptions)
 	if err != nil {
 		return err
 	}
 
 	fmt.Println("Files attached to", opts.targetRef)
-	fmt.Println("Digest:", manifestDesc.Digest)
+	fmt.Println("ORAS artifact manifest digest:", manifestDesc.Digest)
 
 	// Export manifest
 	return opts.ExportManifest(ctx, manifestDesc, store)

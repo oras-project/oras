@@ -19,7 +19,7 @@ package parse
 
 import "strings"
 
-// ParseFileReference parse file reference on windows.
+// ParseFileReference parses file reference on non-windows OS.
 func FileReference(reference string, mediaType string) (filePath, mediatype string) {
 	i := strings.LastIndex(reference, ":")
 	if i < 0 {

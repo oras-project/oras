@@ -22,7 +22,7 @@ import (
 	"unicode"
 )
 
-// FileReference parse file reference on windows.
+// FileReference parses file reference on windows.
 // Windows systems does not allow ':' in the file path except for drive letter.
 func FileReference(reference string, mediaType string) (filePath, mediatype string) {
 	i := strings.Index(reference, ":")
