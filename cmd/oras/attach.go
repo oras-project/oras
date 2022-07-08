@@ -107,9 +107,9 @@ func runAttach(opts attachOptions) error {
 
 	// Prepare Push
 	graphCopyOptions := oras.DefaultCopyGraphOptions
-	graphCopyOptions.PreCopy = display.Output("Uploading", opts.Verbose)
-	graphCopyOptions.OnCopySkipped = display.Output("Existed  ", opts.Verbose)
-	graphCopyOptions.PostCopy = display.Output("Uploaded ", opts.Verbose)
+	graphCopyOptions.PreCopy = display.StatusPrinter("Uploading", opts.Verbose)
+	graphCopyOptions.OnCopySkipped = display.StatusPrinter("Existed  ", opts.Verbose)
+	graphCopyOptions.PostCopy = display.StatusPrinter("Uploaded ", opts.Verbose)
 
 	// Push
 	err = oras.CopyGraph(ctx, store, dst, manifestDesc, graphCopyOptions)

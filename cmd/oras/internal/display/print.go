@@ -16,8 +16,11 @@ limitations under the License.
 package display
 
 import (
+	"context"
 	"fmt"
 	"sync"
+
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 var printLock sync.Mutex
@@ -28,4 +31,18 @@ func Print(a ...any) error {
 	defer printLock.Unlock()
 	_, err := fmt.Println(a...)
 	return err
+}
+
+// StatusPrinter returns a tracking function for transfer status.
+func StatusPrinter(status string, verbose bool) func(context.Context, ocispec.Descriptor) error {
+	return func(ctx context.Context, desc ocispec.Descriptor) error {
+		name, ok := desc.Annotations[ocispec.AnnotationTitle]
+		if !ok {
+			if !verbose {
+				return nil
+			}
+			name = desc.MediaType
+		}
+		return Print(status, ShortDigest(desc), name)
+	}
 }
