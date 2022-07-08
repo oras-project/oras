@@ -164,9 +164,6 @@ func packManifest(ctx context.Context, store *file.Store, annotations map[string
 	if err != nil {
 		return ocispec.Descriptor{}, err
 	}
-	if len(descs) == 0 {
-		fmt.Println("Uploading empty artifact")
-	}
 	manifestDesc, err := oras.Pack(ctx, store, descs, packOpts)
 	if err != nil {
 		return ocispec.Descriptor{}, err
