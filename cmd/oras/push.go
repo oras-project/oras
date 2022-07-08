@@ -99,7 +99,7 @@ func runPush(opts pushOptions) error {
 	// Ready to push
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.PreCopy = display.StatusPrinter("Uploading", opts.Verbose)
-	copyOptions.OnCopySkipped = display.StatusPrinter("Existed  ", opts.Verbose)
+	copyOptions.OnCopySkipped = display.StatusPrinter("Exists   ", opts.Verbose)
 	copyOptions.PostCopy = display.StatusPrinter("Uploaded ", opts.Verbose)
 	desc, err := packManifest(ctx, store, annotations, &opts)
 	if err != nil {

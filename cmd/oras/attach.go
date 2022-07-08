@@ -40,7 +40,7 @@ func attachCmd() *cobra.Command {
 	var opts attachOptions
 	cmd := &cobra.Command{
 		Use:   "attach name<:tag|@digest> file[:type] [file...]",
-		Short: "[Preview] Attach files to an existing  artifact",
+		Short: "[Preview] Attach files to an existing artifact",
 		Long: `[Preview] Attach files to an existing artifact
 
 ** This command is in preview and under development. **
@@ -83,22 +83,23 @@ func runAttach(opts attachOptions) error {
 	if dst.Reference.Reference == "" {
 		return newErrInvalidReference(dst.Reference)
 	}
-	subject, err := dst.Resolve(ctx, dst.Reference.Reference)
+	ociSubject, err := dst.Resolve(ctx, dst.Reference.Reference)
 	if err != nil {
 		return err
 	}
+	subject := ociToArtifact(ociSubject)
 	ociDescs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
 	if err != nil {
 		return err
 	}
 	orasDescs := make([]artifactspec.Descriptor, len(ociDescs))
 	for i := range ociDescs {
-		orasDescs[i] = *OCIToArtifact(ociDescs[i])
+		orasDescs[i] = ociToArtifact(ociDescs[i])
 	}
-	manifestDesc, err := oras.PackArtifact(
+	desc, err := oras.PackArtifact(
 		ctx, store, opts.artifactType, orasDescs,
 		oras.PackArtifactOptions{
-			Subject: OCIToArtifact(subject),
+			Subject: &subject,
 		})
 	if err != nil {
 		return err
@@ -107,25 +108,25 @@ func runAttach(opts attachOptions) error {
 	// Prepare Push
 	graphCopyOptions := oras.DefaultCopyGraphOptions
 	graphCopyOptions.PreCopy = display.StatusPrinter("Uploading", opts.Verbose)
-	graphCopyOptions.OnCopySkipped = display.StatusPrinter("Existed  ", opts.Verbose)
+	graphCopyOptions.OnCopySkipped = display.StatusPrinter("Exists   ", opts.Verbose)
 	graphCopyOptions.PostCopy = display.StatusPrinter("Uploaded ", opts.Verbose)
 
 	// Push
-	err = oras.CopyGraph(ctx, store, dst, manifestDesc, graphCopyOptions)
+	err = oras.CopyGraph(ctx, store, dst, desc, graphCopyOptions)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("Files attached to", opts.targetRef)
-	fmt.Println("ORAS Artifact Digest:", manifestDesc.Digest)
+	fmt.Println("Attached to", opts.targetRef)
+	fmt.Println("Digest:", desc.Digest)
 
 	// Export manifest
-	return opts.ExportManifest(ctx, store, manifestDesc)
+	return opts.ExportManifest(ctx, store, desc)
 }
 
-// OCIToArtifact converts OCI descriptor to artifact descriptor.
-func OCIToArtifact(desc ocispec.Descriptor) *artifactspec.Descriptor {
-	return &artifactspec.Descriptor{
+// ociToArtifact converts OCI descriptor to artifact descriptor.
+func ociToArtifact(desc ocispec.Descriptor) artifactspec.Descriptor {
+	return artifactspec.Descriptor{
 		MediaType:   desc.MediaType,
 		Digest:      desc.Digest,
 		Size:        desc.Size,
