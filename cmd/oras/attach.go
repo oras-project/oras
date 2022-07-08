@@ -40,13 +40,13 @@ func attachCmd() *cobra.Command {
 	var opts attachOptions
 	cmd := &cobra.Command{
 		Use:   "attach name[:tag|@digest] file[:type] [file...]",
-		Short: "[Preview] Attach files to an existed manifest",
-		Long: `[Preview] Attach files to an existed manifest
+		Short: "[Preview] Attach files to an existing manifest",
+		Long: `[Preview] Attach files to an existing manifest
 
 ** This command is in preview and under development. **
 
-Example - Attach file 'hi.txt' with type 'sig/example' to manifest 'hello:test' in registry 'localhost:5000'
-  oras attach localhost:5000/hello:test hi.txt --artifact-type sig/example
+Example - Attach file 'hi.txt' with type 'doc/example' to manifest 'hello:test' in registry 'localhost:5000'
+  oras attach localhost:5000/hello:test hi.txt --artifact-type doc/example
 `,
 		Args: cobra.MinimumNArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
