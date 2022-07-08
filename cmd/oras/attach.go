@@ -67,9 +67,19 @@ Example - Attach file 'hi.txt' with type 'doc/example' to manifest 'hello:test' 
 func runAttach(opts attachOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
 
+	// Load annotations
+	var annotations map[string]map[string]string
+	if opts.ManifestAnnotations != "" {
+		if err := decodeJSON(opts.ManifestAnnotations, &annotations); err != nil {
+			return err
+		}
+	}
+
 	// Prepare manifest
 	store := file.New("")
 	defer store.Close()
+	store.AllowPathTraversalOnWrite = opts.PathValidationDisabled
+
 	dst, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
@@ -81,7 +91,7 @@ func runAttach(opts attachOptions) error {
 	if err != nil {
 		return err
 	}
-	ociDescs, err := loadFiles(ctx, store, nil, opts.FileRefs, opts.Verbose)
+	ociDescs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
 	if err != nil {
 		return err
 	}

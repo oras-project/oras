@@ -26,13 +26,19 @@ import (
 
 // Pusher option struct.
 type Pusher struct {
-	ManifestExportPath string
-	FileRefs           []string
+	ManifestExportPath     string
+	PathValidationDisabled bool
+	ManifestAnnotations    string
+
+	FileRefs []string
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Pusher) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&opts.ManifestExportPath, "export-manifest", "", "", "export the pushed manifest")
+	fs.StringVarP(&opts.ManifestAnnotations, "manifest-annotations", "", "", "manifest annotation file")
+	fs.BoolVarP(&opts.PathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
+
 }
 
 // ExportManifest saves the pushed manifest to a local file.

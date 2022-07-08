@@ -17,9 +17,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -40,10 +38,8 @@ type pushOptions struct {
 	option.Remote
 	option.Pusher
 
-	targetRef              string
-	pathValidationDisabled bool
-	manifestAnnotations    string
-	manifestConfigRef      string
+	targetRef         string
+	manifestConfigRef string
 }
 
 func pushCmd() *cobra.Command {
@@ -82,8 +78,6 @@ Example - Push file to the HTTP registry:
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.manifestAnnotations, "manifest-annotations", "", "", "manifest annotation file")
-	cmd.Flags().BoolVarP(&opts.pathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "manifest-config", "", "", "manifest config file")
 
 	option.ApplyFlags(&opts, cmd.Flags())
@@ -95,8 +89,8 @@ func runPush(opts pushOptions) error {
 
 	// Load annotations
 	var annotations map[string]map[string]string
-	if opts.manifestAnnotations != "" {
-		if err := decodeJSON(opts.manifestAnnotations, &annotations); err != nil {
+	if opts.ManifestAnnotations != "" {
+		if err := decodeJSON(opts.ManifestAnnotations, &annotations); err != nil {
 			return err
 		}
 	}
@@ -104,7 +98,7 @@ func runPush(opts pushOptions) error {
 	// Prepare manifest
 	store := file.New("")
 	defer store.Close()
-	store.AllowPathTraversalOnWrite = opts.pathValidationDisabled
+	store.AllowPathTraversalOnWrite = opts.PathValidationDisabled
 
 	// Ready to push
 	copyOptions := oras.DefaultCopyOptions
@@ -135,15 +129,6 @@ func runPush(opts pushOptions) error {
 
 	// Export manifest
 	return opts.ExportManifest(ctx, store, desc)
-}
-
-func decodeJSON(filename string, v interface{}) error {
-	file, err := os.Open(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	return json.NewDecoder(file).Decode(v)
 }
 
 func packManifest(ctx context.Context, store *file.Store, annotations map[string]map[string]string, opts *pushOptions) (ocispec.Descriptor, error) {
