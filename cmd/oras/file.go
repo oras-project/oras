@@ -17,9 +17,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -57,14 +55,4 @@ func loadFiles(ctx context.Context, store *file.Store, annotations map[string]ma
 		fmt.Println("Uploading empty artifact")
 	}
 	return files, nil
-}
-
-// decodeJSON decodes a json file v to filename.
-func decodeJSON(filename string, v interface{}) error {
-	file, err := os.Open(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	return json.NewDecoder(file).Decode(v)
 }

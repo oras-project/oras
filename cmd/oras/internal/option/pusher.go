@@ -17,6 +17,7 @@ package option
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -38,7 +39,6 @@ func (opts *Pusher) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&opts.ManifestExportPath, "export-manifest", "", "", "export the pushed manifest")
 	fs.StringVarP(&opts.ManifestAnnotations, "manifest-annotations", "", "", "manifest annotation file")
 	fs.BoolVarP(&opts.PathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
-
 }
 
 // ExportManifest saves the pushed manifest to a local file.
@@ -51,4 +51,25 @@ func (opts *Pusher) ExportManifest(ctx context.Context, fetcher content.Fetcher,
 		return err
 	}
 	return os.WriteFile(opts.ManifestExportPath, manifestBytes, 0666)
+}
+
+// LoadAnnotations loads the annotation map.
+func (opts *Pusher) LoadAnnotations() (map[string]map[string]string, error) {
+	var annotations map[string]map[string]string
+	if opts.ManifestAnnotations != "" {
+		if err := decodeJSON(opts.ManifestAnnotations, &annotations); err != nil {
+			return nil, err
+		}
+	}
+	return annotations, nil
+}
+
+// decodeJSON decodes a json file v to filename.
+func decodeJSON(filename string, v interface{}) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	return json.NewDecoder(file).Decode(v)
 }

@@ -66,13 +66,9 @@ Example - Attach file 'hi.txt' with type 'doc/example' to manifest 'hello:test' 
 
 func runAttach(opts attachOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
-
-	// Load annotations
-	var annotations map[string]map[string]string
-	if opts.ManifestAnnotations != "" {
-		if err := decodeJSON(opts.ManifestAnnotations, &annotations); err != nil {
-			return err
-		}
+	annotations, err := opts.LoadAnnotations()
+	if err != nil {
+		return err
 	}
 
 	// Prepare manifest
