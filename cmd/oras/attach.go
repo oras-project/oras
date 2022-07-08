@@ -40,8 +40,8 @@ func attachCmd() *cobra.Command {
 	var opts attachOptions
 	cmd := &cobra.Command{
 		Use:   "attach name<:tag|@digest> file[:type] [file...]",
-		Short: "[Preview] Attach files to an existing manifest",
-		Long: `[Preview] Attach files to an existing manifest
+		Short: "[Preview] Attach files to an existing  artifact",
+		Long: `[Preview] Attach files to an existing artifact
 
 ** This command is in preview and under development. **
 
@@ -66,7 +66,7 @@ Example - Attach file 'hi.txt' with type 'doc/example' to manifest 'hello:test' 
 
 func runAttach(opts attachOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
-	annotations, err := opts.LoadAnnotations()
+	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err
 	}

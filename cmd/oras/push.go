@@ -86,7 +86,7 @@ Example - Push file to the HTTP registry:
 
 func runPush(opts pushOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
-	annotations, err := opts.LoadAnnotations()
+	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err
 	}

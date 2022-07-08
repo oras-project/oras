@@ -53,8 +53,8 @@ func (opts *Pusher) ExportManifest(ctx context.Context, fetcher content.Fetcher,
 	return os.WriteFile(opts.ManifestExportPath, manifestBytes, 0666)
 }
 
-// LoadAnnotations loads the annotation map.
-func (opts *Pusher) LoadAnnotations() (map[string]map[string]string, error) {
+// LoadManifestAnnotations loads the manifest annotation map.
+func (opts *Pusher) LoadManifestAnnotations() (map[string]map[string]string, error) {
 	var annotations map[string]map[string]string
 	if opts.ManifestAnnotations != "" {
 		if err := decodeJSON(opts.ManifestAnnotations, &annotations); err != nil {
