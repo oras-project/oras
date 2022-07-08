@@ -78,14 +78,12 @@ func runDiscover(opts discoverOptions) error {
 	if err != nil {
 		return err
 	}
+	if repo.Reference.Reference == "" {
+		return newErrInvalidReference(repo.Reference)
+	}
 
 	// discover artifacts
-	ref := repo.Reference.ReferenceOrDefault()
-	if ref != repo.Reference.Reference {
-		fmt.Println("Using default tag:", ref)
-		repo.Reference.Reference = ref
-	}
-	desc, err := repo.Resolve(ctx, ref)
+	desc, err := repo.Resolve(ctx, repo.Reference.Reference)
 	if err != nil {
 		return err
 	}
