@@ -16,7 +16,6 @@ limitations under the License.
 package main
 
 import (
-	"context"
 	"fmt"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -85,21 +84,9 @@ func runCopy(opts copyOptions) error {
 
 	// Prepare copy options
 	extendedCopyOptions := oras.DefaultExtendedCopyOptions
-	outputStatus := func(status string) func(context.Context, ocispec.Descriptor) error {
-		return func(ctx context.Context, desc ocispec.Descriptor) error {
-			name, ok := desc.Annotations[ocispec.AnnotationTitle]
-			if !ok {
-				if !opts.Verbose {
-					return nil
-				}
-				name = desc.MediaType
-			}
-			return display.Print(status, display.ShortDigest(desc), name)
-		}
-	}
-	extendedCopyOptions.PreCopy = outputStatus("Copying")
-	extendedCopyOptions.PostCopy = outputStatus("Copied ")
-	extendedCopyOptions.OnCopySkipped = outputStatus("Exists ")
+	extendedCopyOptions.PreCopy = display.StatusPrinter("Copying ", opts.Verbose)
+	extendedCopyOptions.PostCopy = display.StatusPrinter("Copied  ", opts.Verbose)
+	extendedCopyOptions.OnCopySkipped = display.StatusPrinter("Exists  ", opts.Verbose)
 
 	if src.Reference.Reference == "" {
 		return newErrInvalidReference(src.Reference)
@@ -131,7 +118,7 @@ func runCopy(opts copyOptions) error {
 		return err
 	}
 
-	fmt.Println("Copied", opts.srcRef, "=>", opts.dstRef)
+	fmt.Println("Copied  ", opts.srcRef, "=>", opts.dstRef)
 	fmt.Println("Digest:", desc.Digest)
 
 	return nil

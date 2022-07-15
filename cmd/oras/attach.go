@@ -90,7 +90,7 @@ func runAttach(opts attachOptions) error {
 		return err
 	}
 	subject := ociToArtifact(ociSubject)
-	ociDescs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
+	ociDescs, digestToNames, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
 	if err != nil {
 		return err
 	}
@@ -116,9 +116,9 @@ func runAttach(opts attachOptions) error {
 		}
 		return content.Successors(ctx, fetcher, node)
 	}
-	graphCopyOptions.PreCopy = display.StatusPrinter("Uploading", opts.Verbose)
-	graphCopyOptions.OnCopySkipped = display.StatusPrinter("Exists   ", opts.Verbose)
-	graphCopyOptions.PostCopy = display.StatusPrinter("Uploaded ", opts.Verbose)
+	graphCopyOptions.PreCopy = display.MultiStatusPrinter("Uploading", digestToNames, opts.Verbose)
+	graphCopyOptions.OnCopySkipped = display.MultiStatusPrinter("Exists   ", digestToNames, opts.Verbose)
+	graphCopyOptions.PostCopy = display.MultiStatusPrinter("Uploaded ", digestToNames, opts.Verbose)
 
 	// Push
 	err = oras.CopyGraph(ctx, store, dst, desc, graphCopyOptions)
