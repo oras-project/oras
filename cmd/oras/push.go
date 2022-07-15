@@ -97,11 +97,11 @@ func runPush(opts pushOptions) error {
 	store.AllowPathTraversalOnWrite = opts.PathValidationDisabled
 
 	// Ready to push
+	desc, names, err := packManifest(ctx, store, annotations, &opts)
 	copyOptions := oras.DefaultCopyOptions
-	copyOptions.PreCopy = display.StatusPrinter("Uploading", opts.Verbose)
-	copyOptions.OnCopySkipped = display.StatusPrinter("Exists   ", opts.Verbose)
-	copyOptions.PostCopy = display.StatusPrinter("Uploaded ", opts.Verbose)
-	desc, err := packManifest(ctx, store, annotations, &opts)
+	copyOptions.PreCopy = display.MultiStatusPrinter("Uploading", names, opts.Verbose)
+	copyOptions.OnCopySkipped = display.MultiStatusPrinter("Exists   ", names, opts.Verbose)
+	copyOptions.PostCopy = display.MultiStatusPrinter("Uploaded ", names, opts.Verbose)
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func runPush(opts pushOptions) error {
 	return opts.ExportManifest(ctx, store, desc)
 }
 
-func packManifest(ctx context.Context, store *file.Store, annotations map[string]map[string]string, opts *pushOptions) (ocispec.Descriptor, error) {
+func packManifest(ctx context.Context, store *file.Store, annotations map[string]map[string]string, opts *pushOptions) (ocispec.Descriptor, map[string][]string, error) {
 	var packOpts oras.PackOptions
 	packOpts.ConfigAnnotations = annotations[annotationConfig]
 	packOpts.ManifestAnnotations = annotations[annotationManifest]
@@ -136,21 +136,21 @@ func packManifest(ctx context.Context, store *file.Store, annotations map[string
 		path, mediatype := parseFileReference(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
 		desc, err := store.Add(ctx, annotationConfig, mediatype, path)
 		if err != nil {
-			return ocispec.Descriptor{}, err
+			return ocispec.Descriptor{}, nil, err
 		}
 		desc.Annotations = packOpts.ConfigAnnotations
 		packOpts.ConfigDescriptor = &desc
 	}
-	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
+	descs, names, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
 	if err != nil {
-		return ocispec.Descriptor{}, err
+		return ocispec.Descriptor{}, nil, err
 	}
 	manifestDesc, err := oras.Pack(ctx, store, descs, packOpts)
 	if err != nil {
-		return ocispec.Descriptor{}, err
+		return ocispec.Descriptor{}, nil, err
 	}
 	if err := store.Tag(ctx, manifestDesc, tagStaged); err != nil {
-		return ocispec.Descriptor{}, err
+		return ocispec.Descriptor{}, nil, err
 	}
-	return manifestDesc, nil
+	return manifestDesc, names, nil
 }
