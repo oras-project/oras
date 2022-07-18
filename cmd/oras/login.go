@@ -75,6 +75,11 @@ Example - Login with insecure registry from command line:
 func runLogin(opts loginOptions) (err error) {
 	ctx, _ := opts.SetLoggerLevel()
 
+	// https://github.com/oras-project/oras/issues/446
+	if !opts.PlainHTTP && opts.Hostname == "https://ghcr.io" {
+		opts.Hostname = "ghcr.io"
+	}
+
 	// prompt for credential
 	if opts.Password == "" {
 		if opts.Username == "" {
