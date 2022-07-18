@@ -93,7 +93,7 @@ func getManifest(opts getManifestOptions) error {
 		return err
 	}
 	if desc.Size != int64(len(manifest)) || !verifier.Verified() {
-		errors.New("digest verification failed")
+		return errors.New("digest verification failed")
 	}
 
 	// Output
