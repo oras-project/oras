@@ -28,6 +28,10 @@ jobs:
         run: make test
       - name: Check Version
         run: bin/linux/amd64/oras version
+      - name: Run tests
+        run: go test -race -v -coverprofile=coverage.txt .
+      - name: Upload coverage to codecov.io
+        uses: codecov/codecov-action@v3
       - name: Upload Coverage Report
         uses: actions/upload-artifact@master
         with:
