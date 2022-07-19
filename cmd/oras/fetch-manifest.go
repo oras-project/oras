@@ -17,12 +17,16 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"os"
+	"strings"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -31,14 +35,16 @@ type getManifestOptions struct {
 	option.Remote
 
 	targetRef string
-	output    string
-	pretty    bool
+	raw       bool
+	indent    int
+	platform  string
+	mediaType string
 }
 
 func fetchManifestCmd() *cobra.Command {
 	var opts getManifestOptions
 	cmd := &cobra.Command{
-		Use:   "fetch-manifest <name:tag|name@digest>",
+		Use:   "fetch-manifest [flags] <name:tag|name@digest>",
 		Short: "[Preview] Fetch manifest of the target artifact",
 		Long: `[Preview] Fetch manifest of the target artifact
 ** This command is in preview and under development. **
@@ -46,11 +52,11 @@ func fetchManifestCmd() *cobra.Command {
 Example - Get manifest:
   oras get-manifest localhost:5000/hello:latest
 
-Example - Get manifest and save to manifest.json:
-  oras get-manifest -output manifest.json localhost:5000/hello:latest
+Example - Get manifest with specified media type:
+  oras get-manifest --media-type 'application/vnd.oci.image.manifest.v1+json' localhost:5000/hello:latest
 
-Example - Get manifest with prettified json result:
-  oras get-manifest --pretty localhost:5000/hello:latest
+Example - Get manifest with raw json result:
+  oras get-manifest --raw localhost:5000/hello:latest
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -62,8 +68,10 @@ Example - Get manifest with prettified json result:
 		},
 	}
 
-	cmd.Flags().BoolVar(&opts.pretty, "pretty", false, "show prettified json result")
-	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "file path to save the output")
+	cmd.Flags().BoolVarP(&opts.raw, "raw", "r", false, "output raw manifest without formatting")
+	cmd.Flags().IntVarP(&opts.indent, "indent", "n", 4, "number of spaces for indentation")
+	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", "", "number of spaces for indentation")
+	// cmd.Flags().StringVarP(&opts.platform, "platform", "p", "", "number of spaces for indentation")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
@@ -77,43 +85,45 @@ func getManifest(opts getManifestOptions) error {
 	if repo.Reference.Reference == "" {
 		return newErrInvalidReference(repo.Reference)
 	}
+	if opts.mediaType != "" {
+		repo.ManifestMediaTypes = []string{opts.mediaType}
+	}
 
-	// Read and verify digest
-	desc, rc, err := repo.FetchReference(ctx, opts.targetRef)
+	// TODO: platform will be added when oras-project/oras-go#210 is done
+	_, manifest, err := fetchAndVerify(ctx, repo, opts.targetRef)
 	if err != nil {
 		return err
-	}
-	defer rc.Close()
-	verifier := desc.Digest.Verifier()
-	r := io.TeeReader(rc, verifier)
-
-	manifest := make([]byte, desc.Size)
-	_, err = io.ReadFull(r, manifest)
-	if err != nil {
-		return err
-	}
-	if desc.Size != int64(len(manifest)) || !verifier.Verified() {
-		return errors.New("digest verification failed")
 	}
 
 	// Output
-	var writer io.Writer
-	if opts.output != "" {
-		file, err := os.Create(opts.output)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-		writer = file
-	} else {
-		writer = os.Stdout
-	}
 	var out bytes.Buffer
-	if opts.pretty {
-		json.Indent(&out, manifest, "", "\t")
-	} else {
+	if !opts.raw {
 		out = *bytes.NewBuffer(manifest)
+	} else {
+		json.Indent(&out, manifest, "", strings.Repeat(" ", opts.indent))
 	}
-	out.WriteTo(writer)
+	out.WriteTo(os.Stdout)
 	return nil
+}
+
+func fetchAndVerify(ctx context.Context, refFetcher registry.ReferenceFetcher, reference string) (ocispec.Descriptor, []byte, error) {
+	// TODO: replace this when oras-project/oras-go#102 is done
+	// Read and verify digest
+	desc, rc, err := refFetcher.FetchReference(ctx, reference)
+	if err != nil {
+		return ocispec.Descriptor{}, nil, err
+	}
+	defer rc.Close()
+	// TODO: use io.ReadAll with validation when oras-project/oras-go#128 is done
+	verifier := desc.Digest.Verifier()
+	r := io.TeeReader(rc, verifier)
+	manifest := make([]byte, desc.Size)
+	_, err = io.ReadFull(r, manifest)
+	if err != nil {
+		return ocispec.Descriptor{}, nil, err
+	}
+	if desc.Size != int64(len(manifest)) || !verifier.Verified() {
+		return ocispec.Descriptor{}, nil, errors.New("digest verification failed")
+	}
+	return desc, manifest, nil
 }
