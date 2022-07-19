@@ -35,12 +35,12 @@ type getManifestOptions struct {
 	pretty    bool
 }
 
-func getManifestCmd() *cobra.Command {
+func fetchManifestCmd() *cobra.Command {
 	var opts getManifestOptions
 	cmd := &cobra.Command{
-		Use:   "get-manifest <name:tag|name@digest>",
-		Short: "[Preview] Get manifest of the target artifact",
-		Long: `[Preview] Get manifest of the target artifact
+		Use:   "fetch-manifest <name:tag|name@digest>",
+		Short: "[Preview] Fetch manifest of the target artifact",
+		Long: `[Preview] Fetch manifest of the target artifact
 ** This command is in preview and under development. **
 
 Example - Get manifest:
