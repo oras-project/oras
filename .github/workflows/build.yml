@@ -33,8 +33,10 @@ jobs:
         with:
           name: oras-coverage-report-${{ github.sha }}
           path: .cover/
+          verbose: true
         if: always()
       - name: Upload coverage to codecov.io
         uses: codecov/codecov-action@v3
         with:
           directory: .cover/
+          verbose: true
