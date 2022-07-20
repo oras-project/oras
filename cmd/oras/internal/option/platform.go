@@ -22,17 +22,23 @@ import (
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 )
 
-// MultiArch option struct.
-type MultiArch struct {
+// Platform option struct.
+type Platform struct {
 	Platform string
 }
 
+// ApplyFlags applies flags to a command flag set.
+func (opts *Platform) ApplyFlags(fs *pflag.FlagSet) {
+	fs.StringVarP(&opts.Platform, "platform", "", "", "fetch the manifest of a specific platform if target is multi-platform capable")
+}
+
 // ParsePlatform parses the input platform flag to an oci platform type.
-func (opts *MultiArch) ParsePlatform() (ocispec.Platform, error) {
+func (opts *Platform) ParsePlatform() (ocispec.Platform, error) {
 	var p ocispec.Platform
 	parts := strings.SplitN(opts.Platform, ":", 2)
 	if len(parts) == 2 {
@@ -58,25 +64,25 @@ func (opts *MultiArch) ParsePlatform() (ocispec.Platform, error) {
 	return p, nil
 }
 
-// Fetch fetches reference from target.
+// FetchManifest fetches the manifest content of reference from target.
 // If platform flag not empty, will fetch the specified platform.
-func (opts *MultiArch) Fetch(ctx context.Context, target oras.Target, reference string) ([]byte, error) {
+func (opts *Platform) FetchManifest(ctx context.Context, target oras.Target, reference string) ([]byte, error) {
 	desc, manifest, err := fetchAndVerify(ctx, target, reference)
 	if err != nil {
 		return nil, err
 	}
 	if opts.Platform != "" {
 		// TODO: replace this with oras-go support when oras-project/oras-go#210 is done
-		if desc.MediaType != ocispec.MediaTypeImageIndex || desc.MediaType != "application/vnd.docker.distribution.manifest.list.v2+json" {
+		if desc.MediaType != ocispec.MediaTypeImageIndex && desc.MediaType != "application/vnd.docker.distribution.manifest.list.v2+json" {
 			return nil, fmt.Errorf("%q is not a multi-platform media type", desc.MediaType)
 		}
 		return opts.fetchPlatform(ctx, target, manifest)
 	}
-	return nil, nil
+	return manifest, nil
 }
 
 // TODO: replace this with oras-go support when oras-project/oras-go#210 is done
-func (opts *MultiArch) fetchPlatform(ctx context.Context, fetcher content.Fetcher, root []byte) ([]byte, error) {
+func (opts *Platform) fetchPlatform(ctx context.Context, fetcher content.Fetcher, root []byte) ([]byte, error) {
 	target, err := opts.ParsePlatform()
 	if err != nil {
 		return nil, err
