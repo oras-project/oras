@@ -17,7 +17,6 @@ package option
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -66,51 +65,44 @@ func (opts *Platform) ParsePlatform() (ocispec.Platform, error) {
 
 // FetchManifest fetches the manifest content of reference from target.
 // If platform flag not empty, will fetch the specified platform.
-func (opts *Platform) FetchManifest(ctx context.Context, target oras.Target, reference string) ([]byte, error) {
-	desc, manifest, err := fetchAndVerify(ctx, target, reference)
+func (opts *Platform) FetchManifest(ctx context.Context, target oras.Target, reference string) (manifest []byte, err error) {
+	desc, err := target.Resolve(ctx, reference)
 	if err != nil {
-		return nil, err
+		return
 	}
+
 	if opts.Platform != "" {
-		// TODO: replace this with oras-go support when oras-project/oras-go#210 is done
 		if desc.MediaType != ocispec.MediaTypeImageIndex && desc.MediaType != "application/vnd.docker.distribution.manifest.list.v2+json" {
 			return nil, fmt.Errorf("%q is not a multi-platform media type", desc.MediaType)
 		}
-		return opts.fetchPlatform(ctx, target, manifest)
+		// TODO: replace this with oras-go support when oras-project/oras-go#210 is done
+		if desc, err = opts.fetchPlatform(ctx, target, desc); err != nil {
+			return
+		}
 	}
-	return manifest, nil
+	return content.FetchAll(ctx, target, desc)
 }
 
 // TODO: replace this with oras-go support when oras-project/oras-go#210 is done
-func (opts *Platform) fetchPlatform(ctx context.Context, fetcher content.Fetcher, root []byte) ([]byte, error) {
-	target, err := opts.ParsePlatform()
+func (opts *Platform) fetchPlatform(ctx context.Context, fetcher content.Fetcher, root ocispec.Descriptor) (desc ocispec.Descriptor, err error) {
+	want, err := opts.ParsePlatform()
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	var index ocispec.Index
-	if err := json.Unmarshal(root, &index); err != nil {
-		return nil, err
+	manifests, err := content.Successors(ctx, fetcher, root)
+	if err != nil {
+		return
 	}
 
-	for _, m := range index.Manifests {
-		if target.OS == m.Platform.OS &&
-			target.Architecture == m.Platform.Architecture &&
-			(target.Variant == "" || target.Variant == m.Platform.Variant) &&
-			(target.OSVersion == "" || target.OSVersion == m.Platform.OSVersion) {
-			return content.FetchAll(ctx, fetcher, m)
+	for _, got := range manifests {
+		// TODO: Platform.OSFeatures is ignored
+		if want.OS == got.Platform.OS &&
+			want.Architecture == got.Platform.Architecture &&
+			(want.Variant == "" || want.Variant == got.Platform.Variant) &&
+			(want.OSVersion == "" || want.OSVersion == got.Platform.OSVersion) {
+			return got, nil
 		}
 	}
-	return nil, fmt.Errorf("failed to find platform matching the flag %q", opts.Platform)
-}
-
-func fetchAndVerify(ctx context.Context, target oras.Target, reference string) (ocispec.Descriptor, []byte, error) {
-	// TODO: replace this when oras-project/oras-go#102 is done
-	// Read and verify digest
-	desc, err := target.Resolve(ctx, reference)
-	if err != nil {
-		return ocispec.Descriptor{}, nil, err
-	}
-	manifest, err := content.FetchAll(ctx, target, desc)
-	return desc, manifest, err
+	return desc, fmt.Errorf("failed to find platform matching the flag %q", opts.Platform)
 }
