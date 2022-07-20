@@ -28,7 +28,7 @@ import (
 type fetchManifestOptions struct {
 	option.Common
 	option.Remote
-	option.MultiArch
+	option.Platform
 
 	targetRef string
 	raw       bool
@@ -57,20 +57,20 @@ Example - Get manifest with raw json result:
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return opts.ReadPassword()
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
-			return getManifest(opts)
+			return fetchManifest(opts)
 		},
 	}
 
 	cmd.Flags().BoolVarP(&opts.raw, "raw", "r", false, "output raw manifest without formatting")
-	cmd.Flags().IntVarP(&opts.indent, "indent", "n", 4, "number of spaces for indentation")
+	cmd.Flags().IntVarP(&opts.indent, "indent", "n", 2, "number of spaces for indentation")
 	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", "", "accepted media types")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
 
-func getManifest(opts fetchManifestOptions) error {
+func fetchManifest(opts fetchManifestOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
@@ -84,12 +84,12 @@ func getManifest(opts fetchManifestOptions) error {
 	}
 
 	// Fetch and output
-	manifest, err := opts.MultiArch.Fetch(ctx, repo, opts.targetRef)
+	manifest, err := opts.Platform.FetchManifest(ctx, repo, opts.targetRef)
 	if err != nil {
 		return err
 	}
 	var out bytes.Buffer
-	if !opts.raw {
+	if opts.raw {
 		out = *bytes.NewBuffer(manifest)
 	} else {
 		json.Indent(&out, manifest, "", strings.Repeat(" ", opts.indent))
