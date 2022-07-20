@@ -44,14 +44,14 @@ func fetchManifestCmd() *cobra.Command {
 		Long: `[Preview] Fetch manifest of the target artifact
 ** This command is in preview and under development. **
 
-Example - Get manifest:
-  oras get-manifest localhost:5000/hello:latest
+Example - Fetch manifest:
+  oras fetch-manifest localhost:5000/hello:latest
 
-Example - Get manifest with specified media type:
-  oras get-manifest --media-type 'application/vnd.oci.image.manifest.v1+json' localhost:5000/hello:latest
+Example - Fetch manifest with specified media type:
+  oras fetch-manifest --media-type 'application/vnd.oci.image.manifest.v1+json' localhost:5000/hello:latest
 
-Example - Get manifest with raw json result:
-  oras get-manifest --raw localhost:5000/hello:latest
+Example - Fetch manifest with raw json result:
+  oras fetch-manifest --raw localhost:5000/hello:latest
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
