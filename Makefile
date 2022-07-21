@@ -64,9 +64,16 @@ build-mac-arm64:
 		-o bin/darwin/arm64/$(CLI_EXE) $(CLI_PKG)
 
 .PHONY: build-windows
-build-windows:
+build-windows: build-windows-amd64 build-windows-arm64
+
+build-windows-amd64:
 	GOARCH=amd64 CGO_ENABLED=0 GOOS=windows go build -v --ldflags="$(LDFLAGS)" \
 		-o bin/windows/amd64/$(CLI_EXE).exe $(CLI_PKG)
+
+.PHONY: build-windows-arm64
+build-windows:
+	GOARCH=arm64 CGO_ENABLED=0 GOOS=windows go build -v --ldflags="$(LDFLAGS)" \
+		-o bin/windows/arm64/$(CLI_EXE).exe $(CLI_PKG)
 
 .PHONY: check-encoding
 check-encoding:
