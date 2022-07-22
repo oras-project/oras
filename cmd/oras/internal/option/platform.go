@@ -46,11 +46,8 @@ func (opts *Platform) ParsePlatform() (ocispec.Platform, error) {
 	}
 
 	parts = strings.Split(parts[0], "/")
-	if len(parts) < 2 {
+	if len(parts) < 2 || len(parts) > 3 {
 		return ocispec.Platform{}, fmt.Errorf("failed to parse platform '%s': expected format os/arch[/variant]", opts.Platform)
-	}
-	if len(parts) > 3 {
-		return ocispec.Platform{}, fmt.Errorf("failed to parse platform '%s': too many slashes", opts.Platform)
 	}
 
 	// OS/Arch/[Variant]
