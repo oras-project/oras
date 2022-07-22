@@ -84,17 +84,17 @@ func runCopy(opts copyOptions) error {
 
 	// Prepare copy options
 	extendedCopyOptions := oras.DefaultExtendedCopyOptions
-	extendedCopyOptions.PreCopy = display.StatusPrinter("Copying ", opts.Verbose)
-	extendedCopyOptions.PostCopy = display.StatusPrinter("Copied  ", opts.Verbose)
-	extendedCopyOptions.OnCopySkipped = display.StatusPrinter("Exists  ", opts.Verbose)
+	extendedCopyOptions.PreCopy = display.TypedStatusPrinter("Copying ")
+	extendedCopyOptions.PostCopy = display.TypedStatusPrinter("Copied  ")
+	extendedCopyOptions.OnCopySkipped = display.TypedStatusPrinter("Exists  ")
 
 	if src.Reference.Reference == "" {
 		return newErrInvalidReference(src.Reference)
 	}
 
-	// push to the destination with digest only if no tag specified
 	var desc ocispec.Descriptor
 	if ref := dst.Reference.Reference; ref == "" {
+		// push to the destination with digest only if no tag specified
 		desc, err = src.Resolve(ctx, src.Reference.Reference)
 		if err != nil {
 			return err
