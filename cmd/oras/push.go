@@ -99,9 +99,9 @@ func runPush(opts pushOptions) error {
 	// Ready to push
 	desc, names, err := packManifest(ctx, store, annotations, &opts)
 	copyOptions := oras.DefaultCopyOptions
-	copyOptions.PreCopy = display.MultiStatusPrinter("Uploading", names, opts.Verbose)
-	copyOptions.OnCopySkipped = display.MultiStatusPrinter("Exists   ", names, opts.Verbose)
-	copyOptions.PostCopy = display.MultiStatusPrinter("Uploaded ", names, opts.Verbose)
+	copyOptions.PreCopy = display.NamedStatusesPrinter("Uploading", names, opts.Verbose)
+	copyOptions.OnCopySkipped = display.NamedStatusesPrinter("Exists   ", names, opts.Verbose)
+	copyOptions.PostCopy = display.NamedStatusesPrinter("Uploaded ", names, opts.Verbose)
 	if err != nil {
 		return err
 	}

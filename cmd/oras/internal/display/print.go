@@ -40,16 +40,8 @@ func NamedStatusPrinter(status string, verbose bool) func(context.Context, ocisp
 	}
 }
 
-// TypedStatusPrinter returns a tracking function for transfer status with media
-// types.
-func TypedStatusPrinter(status string) func(context.Context, ocispec.Descriptor) error {
-	return func(ctx context.Context, desc ocispec.Descriptor) error {
-		return Print(status, ShortDigest(desc), desc.MediaType)
-	}
-}
-
-// MultiStatusPrinter returns a tracking function for transfer status.
-func MultiStatusPrinter(status string, digestToNames map[string][]string, verbose bool) func(context.Context, ocispec.Descriptor) error {
+// NamedStatusesPrinter returns a tracking function for transfer status.
+func NamedStatusesPrinter(status string, digestToNames map[string][]string, verbose bool) func(context.Context, ocispec.Descriptor) error {
 	return func(ctx context.Context, desc ocispec.Descriptor) error {
 		names, ok := digestToNames[desc.Digest.String()]
 		if !ok {
@@ -61,6 +53,14 @@ func MultiStatusPrinter(status string, digestToNames map[string][]string, verbos
 			}
 		}
 		return nil
+	}
+}
+
+// TypedStatusPrinter returns a tracking function for transfer status with media
+// types.
+func TypedStatusPrinter(status string) func(context.Context, ocispec.Descriptor) error {
+	return func(ctx context.Context, desc ocispec.Descriptor) error {
+		return Print(status, ShortDigest(desc), desc.MediaType)
 	}
 }
 
