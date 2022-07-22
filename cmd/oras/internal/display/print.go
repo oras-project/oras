@@ -33,10 +33,18 @@ func Print(a ...any) error {
 	return err
 }
 
-// StatusPrinter returns a tracking function for transfer status.
-func StatusPrinter(status string, verbose bool) func(context.Context, ocispec.Descriptor) error {
+// NamedStatusPrinter returns a tracking function for transfer status with names.
+func NamedStatusPrinter(status string, verbose bool) func(context.Context, ocispec.Descriptor) error {
 	return func(ctx context.Context, desc ocispec.Descriptor) error {
 		return printStatus(ctx, desc, status, verbose)
+	}
+}
+
+// TypedStatusPrinter returns a tracking function for transfer status with media
+// types.
+func TypedStatusPrinter(status string) func(context.Context, ocispec.Descriptor) error {
+	return func(ctx context.Context, desc ocispec.Descriptor) error {
+		return Print(status, ShortDigest(desc), desc.MediaType)
 	}
 }
 
