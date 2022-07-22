@@ -36,5 +36,3 @@ jobs:
         if: always()
       - name: Upload coverage to codecov.io
         uses: codecov/codecov-action@v3
-        with:
-          verbose: true
