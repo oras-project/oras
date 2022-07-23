@@ -36,8 +36,8 @@ func (opts *Platform) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&opts.Platform, "platform", "", "", "fetch the manifest of a specific platform if target is multi-platform capable")
 }
 
-// ParsePlatform parses the input platform flag to an oci platform type.
-func (opts *Platform) ParsePlatform() (ocispec.Platform, error) {
+// parse parses the input platform flag to an oci platform type.
+func (opts *Platform) parse() (ocispec.Platform, error) {
 	var p ocispec.Platform
 	parts := strings.SplitN(opts.Platform, ":", 2)
 	if len(parts) == 2 {
@@ -52,7 +52,13 @@ func (opts *Platform) ParsePlatform() (ocispec.Platform, error) {
 
 	// OS/Arch/[Variant]
 	p.OS = parts[0]
+	if p.OS == "" {
+		return ocispec.Platform{}, fmt.Errorf("invalide platform: OS cannot be empty")
+	}
 	p.Architecture = parts[1]
+	if p.Architecture == "" {
+		return ocispec.Platform{}, fmt.Errorf("invalide platform: Architecture cannot be empty")
+	}
 	if len(parts) > 2 {
 		p.Variant = parts[2]
 	}
@@ -82,7 +88,7 @@ func (opts *Platform) FetchManifest(ctx context.Context, target oras.Target, ref
 
 // TODO: replace this with oras-go support when oras-project/oras-go#210 is done
 func (opts *Platform) fetchPlatform(ctx context.Context, fetcher content.Fetcher, root ocispec.Descriptor) (desc ocispec.Descriptor, err error) {
-	want, err := opts.ParsePlatform()
+	want, err := opts.parse()
 	if err != nil {
 		return
 	}
