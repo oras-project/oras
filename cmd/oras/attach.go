@@ -116,9 +116,12 @@ func runAttach(opts attachOptions) error {
 		}
 		return content.Successors(ctx, fetcher, node)
 	}
-	graphCopyOptions.PreCopy = display.NamedStatusesPrinter("Uploading", digestToNames, opts.Verbose)
-	graphCopyOptions.OnCopySkipped = display.NamedStatusesPrinter("Exists   ", digestToNames, opts.Verbose)
-	graphCopyOptions.PostCopy = display.NamedStatusesPrinter("Uploaded ", digestToNames, opts.Verbose)
+	getNames := func(desc ocispec.Descriptor) []string {
+		return digestToNames[desc.Digest.String()]
+	}
+	graphCopyOptions.PreCopy = display.StatusPrinter("Uploading", getNames, opts.Verbose)
+	graphCopyOptions.OnCopySkipped = display.StatusPrinter("Exists   ", getNames, opts.Verbose)
+	graphCopyOptions.PostCopy = display.StatusPrinter("Uploaded ", getNames, opts.Verbose)
 
 	// Push
 	err = oras.CopyGraph(ctx, store, dst, desc, graphCopyOptions)
