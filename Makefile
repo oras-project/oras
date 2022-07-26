@@ -18,8 +18,8 @@ LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitCommit=${GIT_COMMIT}
 LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitTreeState=${GIT_DIRTY}
 
 .PHONY: test
-test: vendor check-encoding
-	./scripts/test.sh
+test: 
+	go test -race -v -coverprofile=coverage.txt -covermode=atomic ./...
 
 .PHONY: covhtml
 covhtml:

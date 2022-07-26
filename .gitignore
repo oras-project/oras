@@ -19,6 +19,7 @@ debug
 .idea
 
 # Custom
+coverage.txt
 bin/
 dist/
 *.tar.gz
