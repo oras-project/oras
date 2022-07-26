@@ -20,7 +20,7 @@ func main() {
 		discoverCmd(),
 		copyCmd(),
 		attachCmd(),
-		fetchManifestCmd(),
+		manifestCmd(),
 	)
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
