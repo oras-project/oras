@@ -19,9 +19,6 @@ debug
 .idea
 
 # Custom
-.cover/
-.test/
-hello.txt
 bin/
 dist/
 *.tar.gz

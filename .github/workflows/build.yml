@@ -25,7 +25,7 @@ jobs:
       - name: Build CLI
         run: make build-linux-amd64
       - name: Run Unit Tests
-        run: make test
+        run: go test -race -v -coverprofile=coverage.txt -covermode=atomic ./...
       - name: Check Version
         run: bin/linux/amd64/oras version
       - name: Upload Coverage Report
