@@ -18,6 +18,7 @@ package option
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -68,32 +69,34 @@ func (opts *Platform) parse() (ocispec.Platform, error) {
 
 // FetchManifest fetches the manifest content of reference from target.
 // If platform flag not empty, will fetch the specified platform.
-func (opts *Platform) FetchManifest(ctx context.Context, target *remote.Repository, reference string) (manifest []byte, err error) {
-	desc, rc, err := target.FetchReference(ctx, reference)
+func (opts *Platform) FetchManifest(ctx context.Context, repo *remote.Repository, reference string) (manifest []byte, err error) {
+	desc, rc, err := repo.FetchReference(ctx, reference)
 	if err != nil {
 		return
 	}
+	defer rc.Close()
 
 	if opts.Platform != "" {
 		if desc.MediaType != ocispec.MediaTypeImageIndex && desc.MediaType != "application/vnd.docker.distribution.manifest.list.v2+json" {
 			return nil, fmt.Errorf("%q is not a multi-platform media type", desc.MediaType)
 		}
 		// TODO: replace this with oras-go support when oras-project/oras-go#210 is done
-		if desc, err = opts.fetchPlatform(ctx, target, desc); err != nil {
+		if desc, rc, err = opts.fetchPlatform(ctx, repo, desc); err != nil {
 			return
 		}
+		defer rc.Close()
 	}
 	return content.ReadAll(rc, desc)
 }
 
 // TODO: replace this with oras-go support when oras-project/oras-go#210 is done
-func (opts *Platform) fetchPlatform(ctx context.Context, fetcher content.Fetcher, root ocispec.Descriptor) (desc ocispec.Descriptor, err error) {
+func (opts *Platform) fetchPlatform(ctx context.Context, repo *remote.Repository, root ocispec.Descriptor) (empty ocispec.Descriptor, rc io.ReadCloser, err error) {
 	want, err := opts.parse()
 	if err != nil {
 		return
 	}
 
-	manifests, err := content.Successors(ctx, fetcher, root)
+	manifests, err := content.Successors(ctx, repo, root)
 	if err != nil {
 		return
 	}
@@ -104,8 +107,9 @@ func (opts *Platform) fetchPlatform(ctx context.Context, fetcher content.Fetcher
 			want.Architecture == got.Platform.Architecture &&
 			(want.Variant == "" || want.Variant == got.Platform.Variant) &&
 			(want.OSVersion == "" || want.OSVersion == got.Platform.OSVersion) {
-			return got, nil
+			rc, err := repo.Fetch(ctx, got)
+			return got, rc, err
 		}
 	}
-	return desc, fmt.Errorf("failed to find platform matching the flag %q", opts.Platform)
+	return empty, nil, fmt.Errorf("failed to find platform matching the flag %q", opts.Platform)
 }
