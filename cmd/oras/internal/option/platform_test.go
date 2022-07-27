@@ -25,8 +25,17 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2/registry/remote"
 )
+
+func TestPlatform_ApplyFlags(t *testing.T) {
+	var test struct{ Platform }
+	ApplyFlags(&test, pflag.NewFlagSet("oras-test", pflag.ExitOnError))
+	if test.Platform.Platform != "" {
+		t.Fatalf("expecting platform to be empty but got: %v", test.Platform.Platform)
+	}
+}
 
 func TestPlatform_parse_invalidPlatform(t *testing.T) {
 	var checker = func(flag string) {
