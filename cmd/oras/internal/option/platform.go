@@ -22,8 +22,8 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/pflag"
-	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/registry/remote"
 )
 
 // Platform option struct.
@@ -68,8 +68,8 @@ func (opts *Platform) parse() (ocispec.Platform, error) {
 
 // FetchManifest fetches the manifest content of reference from target.
 // If platform flag not empty, will fetch the specified platform.
-func (opts *Platform) FetchManifest(ctx context.Context, target oras.Target, reference string) (manifest []byte, err error) {
-	desc, err := target.Resolve(ctx, reference)
+func (opts *Platform) FetchManifest(ctx context.Context, target *remote.Repository, reference string) (manifest []byte, err error) {
+	desc, rc, err := target.FetchReference(ctx, reference)
 	if err != nil {
 		return
 	}
@@ -83,7 +83,7 @@ func (opts *Platform) FetchManifest(ctx context.Context, target oras.Target, ref
 			return
 		}
 	}
-	return content.FetchAll(ctx, target, desc)
+	return content.ReadAll(rc, desc)
 }
 
 // TODO: replace this with oras-go support when oras-project/oras-go#210 is done
