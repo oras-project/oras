@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 
 	"github.com/need-being/go-tree"
@@ -79,7 +80,7 @@ func runDiscover(opts discoverOptions) error {
 		return err
 	}
 	if repo.Reference.Reference == "" {
-		return newErrInvalidReference(repo.Reference)
+		return errors.NewErrInvalidReference(repo.Reference)
 	}
 
 	// discover artifacts

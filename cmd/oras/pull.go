@@ -27,6 +27,7 @@ import (
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/cache"
 )
@@ -88,7 +89,7 @@ func runPull(opts pullOptions) error {
 		return err
 	}
 	if repo.Reference.Reference == "" {
-		return newErrInvalidReference(repo.Reference)
+		return errors.NewErrInvalidReference(repo.Reference)
 	}
 	var src oras.Target = repo
 	if opts.cacheRoot != "" {
