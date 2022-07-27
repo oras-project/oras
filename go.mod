@@ -8,11 +8,11 @@ require (
 	github.com/need-being/go-tree v0.1.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.3-0.20211202183452-c5a74bcca799
-	github.com/oras-project/artifacts-spec v1.0.0-rc.1.0.20220707054150-eddd1d8790c9
+	github.com/oras-project/artifacts-spec v1.0.0-rc.2
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
-	oras.land/oras-go/v2 v2.0.0-20220720102610-b898737f6fb5
+	oras.land/oras-go/v2 v2.0.0-20220726123138-064752f3088e
 )
 
 require (
