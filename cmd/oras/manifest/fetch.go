@@ -30,10 +30,11 @@ type fetchOptions struct {
 	option.Remote
 	option.Platform
 
-	targetRef string
-	pretty    bool
-	indent    int
-	mediaType string
+	targetRef       string
+	pretty          bool
+	indent          int
+	mediaType       string
+	fetchDescriptor bool
 }
 
 func fetchManifest(opts fetchOptions) error {
@@ -50,15 +51,20 @@ func fetchManifest(opts fetchOptions) error {
 	}
 
 	// Fetch and output
-	manifest, err := opts.Platform.FetchManifest(ctx, repo, opts.targetRef)
+	var content []byte
+	if opts.fetchDescriptor {
+		content, err = opts.FetchDescriptor(ctx, repo, opts.targetRef)
+	} else {
+		content, err = opts.Platform.FetchManifest(ctx, repo, opts.targetRef)
+	}
 	if err != nil {
 		return err
 	}
 	var out bytes.Buffer
 	if opts.pretty {
-		json.Indent(&out, manifest, "", strings.Repeat(" ", opts.indent))
+		json.Indent(&out, content, "", strings.Repeat(" ", opts.indent))
 	} else {
-		out = *bytes.NewBuffer(manifest)
+		out = *bytes.NewBuffer(content)
 	}
 	out.WriteTo(os.Stdout)
 	return nil

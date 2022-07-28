@@ -59,6 +59,7 @@ Example - Fetch manifest with prettified json result:
 	}
 
 	cmd.Flags().BoolVarP(&opts.pretty, "pretty", "", false, "output prettified manifest")
+	cmd.Flags().BoolVarP(&opts.fetchDescriptor, "descriptor", "", false, "fetch a descriptor of the manifest")
 	cmd.Flags().IntVarP(&opts.indent, "indent", "n", 2, "number of spaces for indentation")
 	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", "", "accepted media types")
 	option.ApplyFlags(&opts, cmd.Flags())
