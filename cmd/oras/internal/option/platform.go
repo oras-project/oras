@@ -48,7 +48,7 @@ func (opts *Platform) parse() (ocispec.Platform, error) {
 	var p ocispec.Platform
 	parts := strings.SplitN(opts.Platform, ":", 2)
 	if len(parts) == 2 {
-		// OSVersion is splitted by comma
+		// OSVersion is splitted by colon
 		p.OSVersion = parts[1]
 	}
 
@@ -60,11 +60,11 @@ func (opts *Platform) parse() (ocispec.Platform, error) {
 	// OS/Arch/[Variant]
 	p.OS = parts[0]
 	if p.OS == "" {
-		return ocispec.Platform{}, fmt.Errorf("invalide platform: OS cannot be empty")
+		return ocispec.Platform{}, fmt.Errorf("invalid platform: OS cannot be empty")
 	}
 	p.Architecture = parts[1]
 	if p.Architecture == "" {
-		return ocispec.Platform{}, fmt.Errorf("invalide platform: Architecture cannot be empty")
+		return ocispec.Platform{}, fmt.Errorf("invalid platform: Architecture cannot be empty")
 	}
 	if len(parts) > 2 {
 		p.Variant = parts[2]
