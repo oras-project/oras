@@ -17,8 +17,8 @@ package option
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"io"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -73,12 +73,35 @@ func (opts *Platform) parse() (ocispec.Platform, error) {
 	return p, nil
 }
 
+// FetchDescriptor fetches a minimal descriptor of reference from target.
+// If platform flag not empty, will fetch the specified platform.
+func (opts *Platform) FetchDescriptor(ctx context.Context, repo registry.Repository, reference string) ([]byte, error) {
+	desc, err := repo.Resolve(ctx, reference)
+	if err != nil {
+		return nil, err
+	}
+
+	if opts.Platform != "" {
+		if desc.MediaType != ocispec.MediaTypeImageIndex && desc.MediaType != "application/vnd.docker.distribution.manifest.list.v2+json" {
+			return nil, errors.Wrapf(errMediatypeUnsupported, "%q is not a multi-platform manifest", desc.MediaType)
+		}
+		if desc, err = opts.fetchPlatform(ctx, repo, desc); err != nil {
+			return nil, err
+		}
+	}
+	return json.Marshal(ocispec.Descriptor{
+		MediaType: desc.MediaType,
+		Digest:    desc.Digest,
+		Size:      desc.Size,
+	})
+}
+
 // FetchManifest fetches the manifest content of reference from target.
 // If platform flag not empty, will fetch the specified platform.
-func (opts *Platform) FetchManifest(ctx context.Context, repo registry.Repository, reference string) (manifest []byte, err error) {
+func (opts *Platform) FetchManifest(ctx context.Context, repo registry.Repository, reference string) ([]byte, error) {
 	desc, rc, err := repo.FetchReference(ctx, reference)
 	if err != nil {
-		return
+		return nil, err
 	}
 	defer rc.Close()
 
@@ -87,15 +110,18 @@ func (opts *Platform) FetchManifest(ctx context.Context, repo registry.Repositor
 			return nil, errors.Wrapf(errMediatypeUnsupported, "%q is not a multi-platform manifest", desc.MediaType)
 		}
 		// TODO: replace this with oras-go support when oras-project/oras-go#210 is done
-		if desc, rc, err = opts.fetchPlatform(ctx, repo, desc); err != nil {
-			return
+		if desc, err = opts.fetchPlatform(ctx, repo, desc); err != nil {
+			return nil, err
+		}
+		if rc, err = repo.Fetch(ctx, desc); err != nil {
+			return nil, err
 		}
 		defer rc.Close()
 	}
 	return content.ReadAll(rc, desc)
 }
 
-func (opts *Platform) fetchPlatform(ctx context.Context, repo registry.Repository, root ocispec.Descriptor) (empty ocispec.Descriptor, rc io.ReadCloser, err error) {
+func (opts *Platform) fetchPlatform(ctx context.Context, repo registry.Repository, root ocispec.Descriptor) (empty ocispec.Descriptor, err error) {
 	want, err := opts.parse()
 	if err != nil {
 		return
@@ -106,15 +132,15 @@ func (opts *Platform) fetchPlatform(ctx context.Context, repo registry.Repositor
 		return
 	}
 
-	for _, got := range manifests {
+	for _, desc := range manifests {
+		got := desc.Platform
 		// TODO: Platform.OSFeatures is ignored
-		if want.OS == got.Platform.OS &&
-			want.Architecture == got.Platform.Architecture &&
-			(want.Variant == "" || want.Variant == got.Platform.Variant) &&
-			(want.OSVersion == "" || want.OSVersion == got.Platform.OSVersion) {
-			rc, err := repo.Fetch(ctx, got)
-			return got, rc, err
+		if want.OS == got.OS &&
+			want.Architecture == got.Architecture &&
+			(want.Variant == "" || want.Variant == got.Variant) &&
+			(want.OSVersion == "" || want.OSVersion == got.OSVersion) {
+			return desc, nil
 		}
 	}
-	return empty, nil, errors.Wrapf(errNoMatchFound, "failed to find platform matching the flag %q", opts.Platform)
+	return empty, errors.Wrapf(errNoMatchFound, "failed to find platform matching the flag %q", opts.Platform)
 }
