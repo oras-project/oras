@@ -74,6 +74,13 @@ type entry struct {
 	ocispec.Descriptor
 	content []byte
 }
+
+type buildOption struct {
+	content   string
+	mediaType string
+	tag       string
+}
+
 type repoMock struct {
 	content map[string]entry
 	remote.Repository
@@ -93,21 +100,27 @@ func (mock *repoMock) Fetch(ctx context.Context, target ocispec.Descriptor) (io.
 	return nil, fmt.Errorf("Unexpected descriptor %v", target)
 }
 
-func newRepoMock(contents []string, types []string) *repoMock {
-	var mock repoMock
-	if len(contents) != len(types) {
-		panic(fmt.Sprintf("Invalid mocking data: %v, %v", contents, types))
+func (mock *repoMock) Resolve(ctx context.Context, reference string) (ocispec.Descriptor, error) {
+	if r, ok := mock.content[reference]; ok {
+		return r.Descriptor, nil
 	}
+	return ocispec.Descriptor{}, fmt.Errorf("Unexpected reference %v", reference)
+}
 
+func newRepoMock(opts []buildOption) *repoMock {
+	var mock repoMock
 	mock.content = make(map[string]entry)
-	for i, c := range contents {
-		b := []byte(c)
+	for _, o := range opts {
+		b := []byte(o.content)
 		desc := ocispec.Descriptor{
-			MediaType: types[i],
+			MediaType: o.mediaType,
 			Digest:    digest.FromBytes(b),
 			Size:      int64(len(b)),
 		}
 		mock.content[string(desc.Digest)] = entry{desc, b}
+		if o.tag != "" {
+			mock.content[o.tag] = entry{desc, b}
+		}
 	}
 	return &mock
 }
@@ -117,12 +130,18 @@ const (
 	amd64 = "linux/amd64"
 	armv5 = "linux/arm/v5"
 	armv7 = "linux/arm/v7"
+
+	indexDesc = `{"mediaType":"application/vnd.oci.image.index.v1+json","digest":"sha256:bdcc003fa2d7882789773fe5fee506ef370dce5ce7988fd420587f144fc700db","size":452}`
+	armv5Desc = `{"mediaType":"application/vnd.docker.distribution.manifest.v2+json","digest":"sha256:27cb13102d774dc36e0bc93f528db7e4f004a6e9636cb6926b1e389668535309","size":12}`
+	amd64Desc = `{"mediaType":"application/vnd.docker.distribution.manifest.v2+json","digest":"sha256:baf0239e48ff4c47ebac3ba02b5cf1506b69cd5a0c0d0c825a53ba65976fb942","size":11}`
 )
 
-func TestPlatform_FetchManifest_indexAndPlatformMatch(t *testing.T) {
+func TestPlatform_FetchManifest_indexAndPlatform(t *testing.T) {
 	repo := newRepoMock(
-		[]string{index, amd64, armv5},
-		[]string{ocispec.MediaTypeImageIndex, ocispec.MediaTypeImageManifest, ocispec.MediaTypeImageManifest})
+		[]buildOption{
+			{index, ocispec.MediaTypeImageIndex, ""},
+			{amd64, ocispec.MediaTypeImageManifest, ""},
+			{armv5, ocispec.MediaTypeImageManifest, ""}})
 
 	// Get index manifest
 	opts := Platform{""}
@@ -147,10 +166,38 @@ func TestPlatform_FetchManifest_indexAndPlatformMatch(t *testing.T) {
 	}
 }
 
-func TestPlatform_FetchManifest_errNotMulti(t *testing.T) {
+func TestPlatform_FetchDescriptor_indexAndPlatform(t *testing.T) {
 	repo := newRepoMock(
-		[]string{amd64},
-		[]string{ocispec.MediaTypeImageManifest})
+		[]buildOption{
+			{index, ocispec.MediaTypeImageIndex, "multi-index"},
+			{amd64, ocispec.MediaTypeImageManifest, ""},
+			{armv5, ocispec.MediaTypeImageManifest, ""}})
+
+	// Get index manifest
+	opts := Platform{""}
+	indexBytes := []byte(index)
+	got, err := opts.FetchDescriptor(context.Background(), repo, digest.FromBytes(indexBytes).String())
+	if err != nil || !bytes.Equal(got, []byte(indexDesc)) {
+		t.Fatal(err)
+	}
+
+	// Get manifest for specific platform
+	opts = Platform{amd64}
+	want := []byte(amd64Desc)
+	got, err = opts.FetchDescriptor(context.Background(), repo, "multi-index")
+	if err != nil || !bytes.Equal(got, want) {
+		t.Fatal(err)
+	}
+	opts = Platform{armv5}
+	got, err = opts.FetchDescriptor(context.Background(), repo, "multi-index")
+	// got, err = opts.FetchDescriptor(context.Background(), repo, digest.FromBytes(indexBytes).String())
+	if err != nil || !bytes.Equal(got, []byte(armv5Desc)) {
+		t.Fatal(err)
+	}
+}
+
+func TestPlatform_FetchManifest_errNotMulti(t *testing.T) {
+	repo := newRepoMock([]buildOption{{amd64, ocispec.MediaTypeImageManifest, ""}})
 
 	// Unknow media type
 	opts := Platform{amd64}
@@ -164,7 +211,7 @@ func TestPlatform_FetchManifest_errNoMatch(t *testing.T) {
 	opts := Platform{armv7}
 	_, err := opts.FetchManifest(
 		context.Background(),
-		newRepoMock([]string{index}, []string{ocispec.MediaTypeImageIndex}),
+		newRepoMock([]buildOption{{index, ocispec.MediaTypeImageIndex, ""}}),
 		digest.FromBytes([]byte(index)).String())
 	if !errors.Is(err, errNoMatchFound) {
 		t.Fatalf("Expecting error: %v, got: %v", errNoMatchFound, err)
@@ -174,7 +221,7 @@ func TestPlatform_FetchManifest_errNoMatch(t *testing.T) {
 func TestPlatform_FetchManifest_miscErr(t *testing.T) {
 	// Should throw err when repo is empty
 	opts := Platform{""}
-	ret, err := opts.FetchManifest(context.Background(), newRepoMock(nil, nil), "mocked-reference")
+	ret, err := opts.FetchManifest(context.Background(), newRepoMock(nil), "mocked-reference")
 	if err == nil {
 		t.Fatalf("Should fail FetchReference, unexpected return value: %v", ret)
 	}
@@ -183,7 +230,7 @@ func TestPlatform_FetchManifest_miscErr(t *testing.T) {
 	opts = Platform{"INV@LID_PLATFORM"}
 	ret, err = opts.FetchManifest(
 		context.Background(),
-		newRepoMock([]string{index}, []string{ocispec.MediaTypeImageIndex}),
+		newRepoMock([]buildOption{{index, ocispec.MediaTypeImageIndex, ""}}),
 		digest.FromBytes([]byte(index)).String())
 	if err == nil {
 		t.Fatalf("Should fail parsing the platform, unexpected return value: %v", ret)
