@@ -96,7 +96,7 @@ func runPull(opts pullOptions) error {
 		if err != nil {
 			return err
 		}
-		src = cache.New(repo, ociStore)
+		src = cache.NewTarget(repo, ociStore)
 	}
 
 	// Copy Options

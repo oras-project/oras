@@ -23,7 +23,6 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/registry"
 )
 
 type closer func() error
@@ -32,62 +31,37 @@ func (fn closer) Close() error {
 	return fn()
 }
 
-// Cache proxy struct.
-type proxy struct {
+// Cache target struct.
+type target struct {
 	oras.Target
-	registry.ReferenceFetcher
 	cache content.Storage
 }
 
-// New generates a new target storage with caching.
-func New(source oras.Target, cache content.Storage) oras.Target {
-	return &proxy{
-		Target: source,
+// NewTarget generates a new target with caching.
+func NewTarget(origin oras.Target, cache content.Storage) *target {
+	return &target{
+		Target: origin,
 		cache:  cache,
 	}
 }
 
 // Fetch fetches the content identified by the descriptor.
-func (p *proxy) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
-	rc, err := p.cache.Fetch(ctx, target)
+func (t *target) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
+	rc, err := t.cache.Fetch(ctx, target)
 	if err == nil {
 		// Fetch from cache
 		return rc, nil
 	}
 
-	if rc, err = p.Target.Fetch(ctx, target); err != nil {
+	if rc, err = t.Target.Fetch(ctx, target); err != nil {
 		return nil, err
 	}
 
 	// Fetch from origin with caching
-	return withCaching(ctx, rc, target, p.cache), nil
+	return piped(ctx, rc, target, t.cache), nil
 }
 
-// FetchReference fetches the content identified by the reference from the
-// remote and cache the fetched content.
-// Cached content will only be read via Fetch, FetchReference will always fetch
-// From origin.
-func (p *proxy) FetchReference(ctx context.Context, reference string) (ocispec.Descriptor, io.ReadCloser, error) {
-	target, rc, err := p.ReferenceFetcher.FetchReference(ctx, reference)
-	if err != nil {
-		return ocispec.Descriptor{}, nil, err
-	}
-
-	// skip caching if the content already exists in cache
-	exists, err := p.cache.Exists(ctx, target)
-	if err != nil {
-		return ocispec.Descriptor{}, nil, err
-	}
-	if exists {
-		// no need to do tee'd push
-		return target, rc, nil
-	}
-
-	// Fetch from origin with caching
-	return target, withCaching(ctx, rc, target, p.cache), nil
-}
-
-func withCaching(ctx context.Context, in io.ReadCloser, target ocispec.Descriptor, cache content.Storage) io.ReadCloser {
+func piped(ctx context.Context, in io.ReadCloser, target ocispec.Descriptor, cache content.Storage) io.ReadCloser {
 	pr, pw := io.Pipe()
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -118,10 +92,10 @@ func withCaching(ctx context.Context, in io.ReadCloser, target ocispec.Descripto
 }
 
 // Exists returns true if the described content exists.
-func (p *proxy) Exists(ctx context.Context, desc ocispec.Descriptor) (bool, error) {
-	exists, err := p.cache.Exists(ctx, desc)
+func (t *target) Exists(ctx context.Context, desc ocispec.Descriptor) (bool, error) {
+	exists, err := t.cache.Exists(ctx, desc)
 	if err == nil && exists {
 		return true, nil
 	}
-	return p.Target.Exists(ctx, desc)
+	return t.Target.Exists(ctx, desc)
 }
