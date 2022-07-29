@@ -27,7 +27,7 @@ import (
 	"oras.land/oras-go/v2/content/memory"
 )
 
-func TestProxyCache(t *testing.T) {
+func TestProxy_cache(t *testing.T) {
 	blob := []byte("hello world")
 	desc := ocispec.Descriptor{
 		MediaType: "test",
@@ -79,7 +79,7 @@ func TestProxyCache(t *testing.T) {
 	}
 }
 
-func TestProxyPushPassThrough(t *testing.T) {
+func TestProxy_pushPassThrough(t *testing.T) {
 	blob := []byte("hello world")
 	desc := ocispec.Descriptor{
 		MediaType: "test",
