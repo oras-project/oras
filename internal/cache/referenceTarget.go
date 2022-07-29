@@ -22,6 +22,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 )
 
@@ -54,6 +55,9 @@ func NewReferenceTarget(origin iReferenceTarget, cache content.Storage) *referen
 // Cached content will only be read via Fetch, FetchReference will always fetch
 // From origin.
 func (r *referenceTarget) FetchReference(ctx context.Context, reference string) (ocispec.Descriptor, io.ReadCloser, error) {
+	if r.ReferenceFetcher == nil {
+		return ocispec.Descriptor{}, nil, errdef.ErrUnsupported
+	}
 	target, rc, err := r.ReferenceFetcher.FetchReference(ctx, reference)
 	if err != nil {
 		return ocispec.Descriptor{}, nil, err

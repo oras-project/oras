@@ -206,6 +206,11 @@ func TestProxy_fetchReference(t *testing.T) {
 
 	// repeated fetch should not touch base CAS
 	p.Target = nil
+	p.ReferenceFetcher = nil
+	_, _, err = p.FetchReference(ctx, repo.Reference.Reference)
+	if err == nil {
+		t.Fatal("Expecting FeferenceTarget.FetchReference() to fail")
+	}
 	got, err = content.FetchAll(ctx, p, desc)
 	if err != nil {
 		t.Fatal("ReferenceTarget.Fetch() error =", err)
