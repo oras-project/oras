@@ -28,9 +28,5 @@ jobs:
         run: make test
       - name: Check Version
         run: bin/linux/amd64/oras version
-      - name: Upload Coverage Report
-        uses: actions/upload-artifact@master
-        with:
-          name: oras-coverage-report-${{ github.sha }}
-          path: .cover/
-        if: always()
+      - name: Upload coverage to codecov.io
+        uses: codecov/codecov-action@v3

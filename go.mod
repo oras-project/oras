@@ -8,11 +8,11 @@ require (
 	github.com/need-being/go-tree v0.1.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.3-0.20211202183452-c5a74bcca799
-	github.com/oras-project/artifacts-spec v1.0.0-rc.1.0.20220707054150-eddd1d8790c9
-	github.com/sirupsen/logrus v1.8.1
+	github.com/oras-project/artifacts-spec v1.0.0-rc.2
+	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
-	oras.land/oras-go/v2 v2.0.0-rc.1
+	oras.land/oras-go/v2 v2.0.0-20220726123138-064752f3088e
 )
 
 require (
@@ -23,5 +23,5 @@ require (
 	github.com/opencontainers/distribution-spec/specs-go v0.0.0-20220620172159-4ab4752c3b86 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20210616094352-59db8d763f22 // indirect
+	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
 )
