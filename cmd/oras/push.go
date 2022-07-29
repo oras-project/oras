@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	artifactspec "github.com/oras-project/artifacts-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/file"
@@ -40,6 +41,7 @@ type pushOptions struct {
 
 	targetRef         string
 	manifestConfigRef string
+	artifactType      string
 }
 
 func pushCmd() *cobra.Command {
@@ -79,6 +81,7 @@ Example - Push file to the HTTP registry:
 	}
 
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "manifest-config", "", "", "manifest config file")
+	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
@@ -101,7 +104,13 @@ func runPush(opts pushOptions) error {
 	copyOptions.PreCopy = display.StatusPrinter("Uploading", opts.Verbose)
 	copyOptions.OnCopySkipped = display.StatusPrinter("Exists   ", opts.Verbose)
 	copyOptions.PostCopy = display.StatusPrinter("Uploaded ", opts.Verbose)
-	desc, err := packManifest(ctx, store, annotations, &opts)
+
+	var desc ocispec.Descriptor
+	if opts.artifactType == "" {
+		desc, err = packOCIManifest(ctx, store, annotations, &opts)
+	} else {
+		desc, err = packORASArtifactManifest(ctx, store, annotations, &opts)
+	}
 	if err != nil {
 		return err
 	}
@@ -127,7 +136,7 @@ func runPush(opts pushOptions) error {
 	return opts.ExportManifest(ctx, store, desc)
 }
 
-func packManifest(ctx context.Context, store *file.Store, annotations map[string]map[string]string, opts *pushOptions) (ocispec.Descriptor, error) {
+func packOCIManifest(ctx context.Context, store *file.Store, annotations map[string]map[string]string, opts *pushOptions) (ocispec.Descriptor, error) {
 	var packOpts oras.PackOptions
 	packOpts.ConfigAnnotations = annotations[annotationConfig]
 	packOpts.ManifestAnnotations = annotations[annotationManifest]
@@ -146,6 +155,25 @@ func packManifest(ctx context.Context, store *file.Store, annotations map[string
 		return ocispec.Descriptor{}, err
 	}
 	manifestDesc, err := oras.Pack(ctx, store, descs, packOpts)
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	if err := store.Tag(ctx, manifestDesc, tagStaged); err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	return manifestDesc, nil
+}
+
+func packORASArtifactManifest(ctx context.Context, store *file.Store, annotations map[string]map[string]string, opts *pushOptions) (ocispec.Descriptor, error) {
+	ociDescs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	orasDescs := make([]artifactspec.Descriptor, len(ociDescs))
+	for i := range ociDescs {
+		orasDescs[i] = ociToArtifact(ociDescs[i])
+	}
+	manifestDesc, err := oras.PackArtifact(ctx, store, opts.artifactType, orasDescs, oras.PackArtifactOptions{})
 	if err != nil {
 		return ocispec.Descriptor{}, err
 	}
