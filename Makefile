@@ -65,16 +65,14 @@ build-mac-arm64:
 
 .PHONY: build-windows
 build-windows: build-windows-amd64 build-windows-arm64
-
 .PHONY: build-windows-amd64
+build-windows-amd64:
 	GOARCH=amd64 CGO_ENABLED=0 GOOS=windows go build -v --ldflags="$(LDFLAGS)" \
 		-o bin/windows/amd64/$(CLI_EXE).exe $(CLI_PKG)
-
 .PHONY: build-windows-arm64
-build-windows:
+build-windows-arm64:
 	GOARCH=arm64 CGO_ENABLED=0 GOOS=windows go build -v --ldflags="$(LDFLAGS)" \
 		-o bin/windows/arm64/$(CLI_EXE).exe $(CLI_PKG)
-
 .PHONY: check-encoding
 check-encoding:
 	! find cmd internal -name "*.go" -type f -exec file "{}" ";" | grep CRLF
