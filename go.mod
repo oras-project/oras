@@ -2,6 +2,8 @@ module oras.land/oras
 
 go 1.18
 
+replace oras.land/oras-go/v2 => github.com/lizMSFT/oras-go/v2 v2.0.0-20220802063949-39386ace9f6e
+
 require (
 	github.com/docker/cli v20.10.17+incompatible
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6

@@ -22,15 +22,10 @@ import (
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry"
-)
-
-var (
-	errMediatypeUnsupported = errors.New("Unsupported media type")
-	errNoMatchFound         = errors.New("No matched platform found")
 )
 
 // Platform option struct.
@@ -76,18 +71,13 @@ func (opts *Platform) parse() (ocispec.Platform, error) {
 // FetchDescriptor fetches a minimal descriptor of reference from target.
 // If platform flag not empty, will fetch the specified platform.
 func (opts *Platform) FetchDescriptor(ctx context.Context, repo registry.Repository, reference string) ([]byte, error) {
-	desc, err := repo.Resolve(ctx, reference)
+	ro, err := opts.resolveOption()
 	if err != nil {
 		return nil, err
 	}
-
-	if opts.Platform != "" {
-		if desc.MediaType != ocispec.MediaTypeImageIndex && desc.MediaType != "application/vnd.docker.distribution.manifest.list.v2+json" {
-			return nil, errors.Wrapf(errMediatypeUnsupported, "%q is not a multi-platform manifest", desc.MediaType)
-		}
-		if desc, err = opts.fetchPlatform(ctx, repo, desc); err != nil {
-			return nil, err
-		}
+	desc, err := oras.Resolve(ctx, repo, reference, ro)
+	if err != nil {
+		return nil, err
 	}
 	return json.Marshal(ocispec.Descriptor{
 		MediaType: desc.MediaType,
@@ -99,48 +89,30 @@ func (opts *Platform) FetchDescriptor(ctx context.Context, repo registry.Reposit
 // FetchManifest fetches the manifest content of reference from target.
 // If platform flag not empty, will fetch the specified platform.
 func (opts *Platform) FetchManifest(ctx context.Context, repo registry.Repository, reference string) ([]byte, error) {
-	desc, rc, err := repo.FetchReference(ctx, reference)
+	ro, err := opts.resolveOption()
+	if err != nil {
+		return nil, err
+	}
+	desc, err := oras.Resolve(ctx, repo, reference, ro)
+	if err != nil {
+		return nil, err
+	}
+
+	rc, err := repo.Fetch(ctx, desc)
 	if err != nil {
 		return nil, err
 	}
 	defer rc.Close()
-
-	if opts.Platform != "" {
-		if desc.MediaType != ocispec.MediaTypeImageIndex && desc.MediaType != "application/vnd.docker.distribution.manifest.list.v2+json" {
-			return nil, errors.Wrapf(errMediatypeUnsupported, "%q is not a multi-platform manifest", desc.MediaType)
-		}
-		// TODO: replace this with oras-go support when oras-project/oras-go#210 is done
-		if desc, err = opts.fetchPlatform(ctx, repo, desc); err != nil {
-			return nil, err
-		}
-		if rc, err = repo.Fetch(ctx, desc); err != nil {
-			return nil, err
-		}
-		defer rc.Close()
-	}
 	return content.ReadAll(rc, desc)
 }
 
-func (opts *Platform) fetchPlatform(ctx context.Context, repo registry.Repository, root ocispec.Descriptor) (empty ocispec.Descriptor, err error) {
-	want, err := opts.parse()
-	if err != nil {
-		return
-	}
-
-	manifests, err := content.Successors(ctx, repo, root)
-	if err != nil {
-		return
-	}
-
-	for _, desc := range manifests {
-		got := desc.Platform
-		// TODO: Platform.OSFeatures is ignored
-		if want.OS == got.OS &&
-			want.Architecture == got.Architecture &&
-			(want.Variant == "" || want.Variant == got.Variant) &&
-			(want.OSVersion == "" || want.OSVersion == got.OSVersion) {
-			return desc, nil
+func (opts *Platform) resolveOption() (ro oras.ResolveOptions, err error) {
+	if opts.Platform != "" {
+		var p ocispec.Platform
+		if p, err = opts.parse(); err != nil {
+			return
 		}
+		ro.TargetPlatform = &p
 	}
-	return empty, errors.Wrapf(errNoMatchFound, "failed to find platform matching the flag %q", opts.Platform)
+	return
 }

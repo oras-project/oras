@@ -26,6 +26,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/pflag"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
 )
 
@@ -134,6 +135,8 @@ const (
 	indexDesc = `{"mediaType":"application/vnd.oci.image.index.v1+json","digest":"sha256:bdcc003fa2d7882789773fe5fee506ef370dce5ce7988fd420587f144fc700db","size":452}`
 	armv5Desc = `{"mediaType":"application/vnd.docker.distribution.manifest.v2+json","digest":"sha256:27cb13102d774dc36e0bc93f528db7e4f004a6e9636cb6926b1e389668535309","size":12}`
 	amd64Desc = `{"mediaType":"application/vnd.docker.distribution.manifest.v2+json","digest":"sha256:baf0239e48ff4c47ebac3ba02b5cf1506b69cd5a0c0d0c825a53ba65976fb942","size":11}`
+	badType   = "application/a.not.supported.manifest.v2+jso"
+	badDesc   = `{"mediaType":"application/a.not.supported.manifest.v2+json","digest":"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","size":0}`
 )
 
 func TestPlatform_FetchManifest_indexAndPlatform(t *testing.T) {
@@ -197,13 +200,13 @@ func TestPlatform_FetchDescriptor_indexAndPlatform(t *testing.T) {
 }
 
 func TestPlatform_FetchManifest_errNotMulti(t *testing.T) {
-	repo := newRepoMock([]buildOption{{amd64, ocispec.MediaTypeImageManifest, ""}})
+	repo := newRepoMock([]buildOption{{"", badType, badDesc}})
 
 	// Unknow media type
 	opts := Platform{amd64}
-	_, err := opts.FetchManifest(context.Background(), repo, digest.FromBytes([]byte(amd64)).String())
-	if !errors.Is(err, errMediatypeUnsupported) {
-		t.Fatalf("Expecting error: %v, got: %v", errMediatypeUnsupported, err)
+	_, err := opts.FetchManifest(context.Background(), repo, digest.FromBytes([]byte("")).String())
+	if !errors.Is(err, errdef.ErrUnsupported) {
+		t.Fatalf("Expecting error: %v, got: %v", errdef.ErrUnsupported, err)
 	}
 }
 func TestPlatform_FetchManifest_errNoMatch(t *testing.T) {
@@ -213,8 +216,8 @@ func TestPlatform_FetchManifest_errNoMatch(t *testing.T) {
 		context.Background(),
 		newRepoMock([]buildOption{{index, ocispec.MediaTypeImageIndex, ""}}),
 		digest.FromBytes([]byte(index)).String())
-	if !errors.Is(err, errNoMatchFound) {
-		t.Fatalf("Expecting error: %v, got: %v", errNoMatchFound, err)
+	if !errors.Is(err, errdef.ErrNotFound) {
+		t.Fatalf("Expecting error: %v, got: %v", errdef.ErrNotFound, err)
 	}
 }
 
