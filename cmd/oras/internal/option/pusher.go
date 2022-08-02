@@ -45,7 +45,7 @@ type Pusher struct {
 // ApplyFlags applies flags to a command flag set.
 func (opts *Pusher) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&opts.ManifestExportPath, "export-manifest", "", "", "export the pushed manifest")
-	fs.StringArrayVarP(&opts.ManifestAnnotationSlice, "annotations", "a", []string{}, "manifest annotations")
+	fs.StringArrayVarP(&opts.ManifestAnnotationSlice, "annotation", "a", []string{}, "manifest annotations")
 	fs.StringVarP(&opts.ManifestAnnotations, "manifest-annotations-file", "", "", "manifest annotation file")
 	fs.BoolVarP(&opts.PathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
 }
