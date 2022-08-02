@@ -18,18 +18,26 @@ package option
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
+	"regexp"
+	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2/content"
 )
 
+const (
+	annotationManifest = "$manifest"
+)
+
 // Pusher option struct.
 type Pusher struct {
-	ManifestExportPath     string
-	PathValidationDisabled bool
-	ManifestAnnotations    string
+	ManifestExportPath      string
+	PathValidationDisabled  bool
+	ManifestAnnotations     string
+	ManifestAnnotationSlice []string
 
 	FileRefs []string
 }
@@ -37,7 +45,8 @@ type Pusher struct {
 // ApplyFlags applies flags to a command flag set.
 func (opts *Pusher) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&opts.ManifestExportPath, "export-manifest", "", "", "export the pushed manifest")
-	fs.StringVarP(&opts.ManifestAnnotations, "manifest-annotations", "", "", "manifest annotation file")
+	fs.StringArrayVarP(&opts.ManifestAnnotationSlice, "annotations", "a", []string{}, "manifest annotations")
+	fs.StringVarP(&opts.ManifestAnnotations, "manifest-annotations-file", "", "", "manifest annotation file")
 	fs.BoolVarP(&opts.PathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
 }
 
@@ -55,9 +64,20 @@ func (opts *Pusher) ExportManifest(ctx context.Context, fetcher content.Fetcher,
 
 // LoadManifestAnnotations loads the manifest annotation map.
 func (opts *Pusher) LoadManifestAnnotations() (map[string]map[string]string, error) {
-	var annotations map[string]map[string]string
+	var err error
+	annotations := make(map[string]map[string]string)
+	// OPTION 1: cannot be used at the same time
+	if opts.ManifestAnnotations != "" && len(opts.ManifestAnnotationSlice) != 0 {
+		return nil, errors.New("annotation confliction")
+	}
+	// OPTION 2: Prioritize the flag input // can be enable by comment OPTION 1 above
 	if opts.ManifestAnnotations != "" {
-		if err := decodeJSON(opts.ManifestAnnotations, &annotations); err != nil {
+		if err = decodeJSON(opts.ManifestAnnotations, &annotations); err != nil {
+			return nil, err
+		}
+	}
+	if len(opts.ManifestAnnotationSlice) != 0 {
+		if err = getAnnotationsMap(opts.ManifestAnnotationSlice, annotations); err != nil {
 			return nil, err
 		}
 	}
@@ -72,4 +92,23 @@ func decodeJSON(filename string, v interface{}) error {
 	}
 	defer file.Close()
 	return json.NewDecoder(file).Decode(v)
+}
+
+// getAnnotationsMap get resharp annotationslice to target type
+func getAnnotationsMap(ManifestAnnotationSlice []string, annotations map[string]map[string]string) error {
+	re := regexp.MustCompile(`=\s*`)
+	annotationsMap := make(map[string]string)
+	for _, rawAnnotation := range ManifestAnnotationSlice {
+		annotation := re.Split(rawAnnotation, 2)
+		annotation[0], annotation[1] = strings.TrimSpace(annotation[0]), strings.TrimSpace(annotation[1])
+		if len(annotation) != 2 {
+			return errors.New("invalid annotation")
+		}
+		if _, ok := annotationsMap[annotation[0]]; ok {
+			return errors.New("annotation key conflict")
+		}
+		annotationsMap[annotation[0]] = annotation[1]
+	}
+	annotations[annotationManifest] = annotationsMap
+	return nil
 }
