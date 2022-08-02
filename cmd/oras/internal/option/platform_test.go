@@ -221,12 +221,29 @@ func TestPlatform_FetchManifest_errNoMatch(t *testing.T) {
 	}
 }
 
+func TestPlatform_FetchDescriptor_miscErr(t *testing.T) {
+	// Should throw err when input platform string is invalid
+	opts := Platform{"INV@LID_PLATFORM"}
+	ret, err := opts.FetchDescriptor(context.Background(), newRepoMock(nil), "")
+	if err == nil {
+		t.Fatalf("Should fail parse platform, unexpected return value: %v", ret)
+	}
+
+	// Should throw err when repo is nil
+	opts = Platform{""}
+	ret, err = opts.FetchDescriptor(context.Background(), newRepoMock(nil), "invalid-RefERENCE")
+	if err == nil {
+		t.Fatalf("Should fail oras.Resolve, unexpected return value: %v", ret)
+	}
+
+}
+
 func TestPlatform_FetchManifest_miscErr(t *testing.T) {
 	// Should throw err when repo is empty
 	opts := Platform{""}
 	ret, err := opts.FetchManifest(context.Background(), newRepoMock(nil), "mocked-reference")
 	if err == nil {
-		t.Fatalf("Should fail FetchReference, unexpected return value: %v", ret)
+		t.Fatalf("Should fail oras.Resolve, unexpected return value: %v", ret)
 	}
 
 	// Should throw err when repo is empty when parsing invalid platform string
