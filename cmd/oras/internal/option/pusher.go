@@ -66,17 +66,18 @@ func (opts *Pusher) ExportManifest(ctx context.Context, fetcher content.Fetcher,
 func (opts *Pusher) LoadManifestAnnotations() (map[string]map[string]string, error) {
 	var err error
 	annotations := make(map[string]map[string]string)
-	// OPTION 1: cannot be used at the same time
-	if opts.ManifestAnnotations != "" && len(opts.ManifestAnnotationSlice) != 0 {
+	manifestAnnotationSliceLength := len(opts.ManifestAnnotationSlice)
+	// OPTION 1: --annotation & --manifest-annotations-file cannot be used at the same time
+	if opts.ManifestAnnotations != "" && manifestAnnotationSliceLength != 0 {
 		return nil, errors.New("annotation confliction")
 	}
-	// OPTION 2: Prioritize the flag input // can be enable by comment OPTION 1 above
+	// OPTION 2: Prioritize the --annotation// can be enable by comment OPTION 1 above
 	if opts.ManifestAnnotations != "" {
 		if err = decodeJSON(opts.ManifestAnnotations, &annotations); err != nil {
 			return nil, err
 		}
 	}
-	if len(opts.ManifestAnnotationSlice) != 0 {
+	if manifestAnnotationSliceLength != 0 {
 		if err = getAnnotationsMap(opts.ManifestAnnotationSlice, annotations); err != nil {
 			return nil, err
 		}
@@ -97,18 +98,18 @@ func decodeJSON(filename string, v interface{}) error {
 // getAnnotationsMap get resharp annotationslice to target type
 func getAnnotationsMap(ManifestAnnotationSlice []string, annotations map[string]map[string]string) error {
 	re := regexp.MustCompile(`=\s*`)
-	annotationsMap := make(map[string]string)
+	rawAnnotationsMap := make(map[string]string)
 	for _, rawAnnotation := range ManifestAnnotationSlice {
-		annotation := re.Split(rawAnnotation, 2)
-		annotation[0], annotation[1] = strings.TrimSpace(annotation[0]), strings.TrimSpace(annotation[1])
-		if len(annotation) != 2 {
+		rawAnnotation := re.Split(rawAnnotation, 2)
+		rawAnnotation[0], rawAnnotation[1] = strings.TrimSpace(rawAnnotation[0]), strings.TrimSpace(rawAnnotation[1])
+		if annotationLength := len(rawAnnotation); annotationLength != 2 {
 			return errors.New("invalid annotation")
 		}
-		if _, ok := annotationsMap[annotation[0]]; ok {
+		if _, ok := rawAnnotationsMap[rawAnnotation[0]]; ok {
 			return errors.New("annotation key conflict")
 		}
-		annotationsMap[annotation[0]] = annotation[1]
+		rawAnnotationsMap[rawAnnotation[0]] = rawAnnotation[1]
 	}
-	annotations[annotationManifest] = annotationsMap
+	annotations[annotationManifest] = rawAnnotationsMap
 	return nil
 }
