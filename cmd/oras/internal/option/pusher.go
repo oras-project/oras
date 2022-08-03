@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -71,8 +72,11 @@ func (opts *Pusher) LoadManifestAnnotations() (map[string]map[string]string, err
 			return nil, err
 		}
 	}
-	if manifestAnnotationSliceLength := len(opts.ManifestAnnotationSlice); opts.ManifestAnnotations == "" &&
-		manifestAnnotationSliceLength != 0 {
+	if manifestAnnotationSliceLength := len(opts.ManifestAnnotationSlice); manifestAnnotationSliceLength != 0 {
+		if opts.ManifestAnnotations != "" {
+			fmt.Fprintln(os.Stderr, "WARNING! --manifest--anotation are ignored if --manifest-annotation-file is specified.")
+			return annotations, nil
+		}
 		if err = getAnnotationsMap(opts.ManifestAnnotationSlice, annotations); err != nil {
 			return nil, err
 		}
