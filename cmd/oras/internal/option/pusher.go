@@ -66,18 +66,13 @@ func (opts *Pusher) ExportManifest(ctx context.Context, fetcher content.Fetcher,
 func (opts *Pusher) LoadManifestAnnotations() (map[string]map[string]string, error) {
 	var err error
 	annotations := make(map[string]map[string]string)
-	manifestAnnotationSliceLength := len(opts.ManifestAnnotationSlice)
-	// OPTION 1: --annotation & --manifest-annotations-file cannot be used at the same time
-	if opts.ManifestAnnotations != "" && manifestAnnotationSliceLength != 0 {
-		return nil, errors.New("annotation confliction")
-	}
-	// OPTION 2: Prioritize the --annotation// can be enable by comment OPTION 1 above
 	if opts.ManifestAnnotations != "" {
 		if err = decodeJSON(opts.ManifestAnnotations, &annotations); err != nil {
 			return nil, err
 		}
 	}
-	if manifestAnnotationSliceLength != 0 {
+	if manifestAnnotationSliceLength := len(opts.ManifestAnnotationSlice); opts.ManifestAnnotations == "" &&
+		manifestAnnotationSliceLength != 0 {
 		if err = getAnnotationsMap(opts.ManifestAnnotationSlice, annotations); err != nil {
 			return nil, err
 		}
