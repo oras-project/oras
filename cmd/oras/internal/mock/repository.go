@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// mock contains mocked components for unit testing
+// mock contains mocked components for unit testing.
 package mock
 
 import (
@@ -64,14 +64,14 @@ func New() *repository {
 	return &repository{}
 }
 
-// Blob represents a content blob to mock in CAS.
+// Blob mocks a content blob stored in content-addressable storage.
 type Blob struct {
 	Content   string
 	MediaType string
 	Tag       string
 }
 
-// Remount remounts blobs to the CAS of the repo.
+// Remount remounts the underlying CAS of the repository.
 func (repo *repository) Remount(blobs []Blob) {
 	repo.cas = make(map[string]content)
 	for _, blob := range blobs {
@@ -90,7 +90,7 @@ func (repo *repository) Remount(blobs []Blob) {
 
 var errNotImplemented = errors.New("not implemented")
 
-// FetchReference mocks the fetching with a reference.
+// FetchReference mocks the fetching via a reference ref.
 func (repo *repository) FetchReference(ctx context.Context, ref string) (ocispec.Descriptor, io.ReadCloser, error) {
 	if repo.isReferenceFetcher {
 		if c, ok := repo.cas[ref]; ok {
@@ -101,7 +101,7 @@ func (repo *repository) FetchReference(ctx context.Context, ref string) (ocispec
 	return ocispec.Descriptor{}, nil, errNotImplemented
 }
 
-// Fetch mocks fetching.
+// Fetch mocks fetching the target descriptor.
 func (repo *repository) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
 	if repo.isFetcher {
 		if r, ok := repo.cas[target.Digest.String()]; ok {
@@ -112,7 +112,7 @@ func (repo *repository) Fetch(ctx context.Context, target ocispec.Descriptor) (i
 	return nil, errNotImplemented
 }
 
-// Resolve mocks resolving.
+// Resolve mocks resolving via a reference.
 func (repo *repository) Resolve(ctx context.Context, reference string) (ocispec.Descriptor, error) {
 	if repo.isResolver {
 		if r, ok := repo.cas[reference]; ok {

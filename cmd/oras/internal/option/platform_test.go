@@ -28,8 +28,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/mock"
 )
 
-var repo = mock.New().WithFetch().WithFetchReference().WithResolve()
-
 func TestPlatform_ApplyFlags(t *testing.T) {
 	var test struct{ Platform }
 	ApplyFlags(&test, pflag.NewFlagSet("oras-test", pflag.ExitOnError))
@@ -83,6 +81,8 @@ const (
 	badType   = "application/a.not.supported.manifest.v2+jso"
 	badDesc   = `{"mediaType":"application/a.not.supported.manifest.v2+json","digest":"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","size":0}`
 )
+
+var repo = mock.New().WithFetch().WithFetchReference().WithResolve()
 
 func TestPlatform_FetchManifest_indexAndPlatform(t *testing.T) {
 	repo.Remount([]mock.Blob{
@@ -203,5 +203,4 @@ func TestPlatform_FetchManifest_miscErr(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Should fail parsing the platform, unexpected return value: %v", ret)
 	}
-
 }
