@@ -34,8 +34,8 @@ type content struct {
 }
 
 type repository struct {
-	cas map[string]content
-	remote.Repository
+	cas                map[string]content
+	remote.Repository  // make tests compile
 	isFetcher          bool
 	isReferenceFetcher bool
 	isResolver         bool
@@ -92,33 +92,37 @@ var errNotImplemented = errors.New("not implemented")
 
 // FetchReference mocks the fetching via a reference ref.
 func (repo *repository) FetchReference(ctx context.Context, ref string) (ocispec.Descriptor, io.ReadCloser, error) {
-	if repo.isReferenceFetcher {
-		if c, ok := repo.cas[ref]; ok {
-			return c.Descriptor, io.NopCloser(bytes.NewReader(c.blob)), nil
-		}
-		return ocispec.Descriptor{}, nil, fmt.Errorf("got unexpected reference %q", ref)
+	if !repo.isReferenceFetcher {
+		return ocispec.Descriptor{}, nil, errNotImplemented
 	}
-	return ocispec.Descriptor{}, nil, errNotImplemented
+
+	if c, ok := repo.cas[ref]; ok {
+		return c.Descriptor, io.NopCloser(bytes.NewReader(c.blob)), nil
+	}
+	return ocispec.Descriptor{}, nil, fmt.Errorf("got unexpected reference %q", ref)
 }
 
 // Fetch mocks fetching the target descriptor.
 func (repo *repository) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
-	if repo.isFetcher {
-		if r, ok := repo.cas[target.Digest.String()]; ok {
-			return io.NopCloser(bytes.NewReader(r.blob)), nil
-		}
-		return nil, fmt.Errorf("unexpected descriptor %v", target)
+	if !repo.isFetcher {
+		return nil, errNotImplemented
 	}
-	return nil, errNotImplemented
+
+	if r, ok := repo.cas[target.Digest.String()]; ok {
+		return io.NopCloser(bytes.NewReader(r.blob)), nil
+	}
+	return nil, fmt.Errorf("unexpected descriptor %v", target)
+
 }
 
 // Resolve mocks resolving via a reference.
 func (repo *repository) Resolve(ctx context.Context, reference string) (ocispec.Descriptor, error) {
-	if repo.isResolver {
-		if r, ok := repo.cas[reference]; ok {
-			return r.Descriptor, nil
-		}
-		return ocispec.Descriptor{}, fmt.Errorf("unexpected reference %v", reference)
+	if !repo.isResolver {
+		return ocispec.Descriptor{}, errNotImplemented
 	}
-	return ocispec.Descriptor{}, errNotImplemented
+
+	if r, ok := repo.cas[reference]; ok {
+		return r.Descriptor, nil
+	}
+	return ocispec.Descriptor{}, fmt.Errorf("unexpected reference %v", reference)
 }
