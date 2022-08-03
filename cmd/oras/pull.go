@@ -128,7 +128,7 @@ func runPull(opts pullOptions) error {
 					return nil, err
 				}
 				if len(ss) == 0 {
-					display.Print("Skipped ", display.ShortDigest(desc), s.MediaType)
+					display.Print("Skipped ", display.ShortDigest(s), s.MediaType)
 					continue
 				}
 			}
