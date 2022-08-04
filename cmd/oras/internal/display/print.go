@@ -41,12 +41,12 @@ func StatusPrinter(status string, getNames func(desc ocispec.Descriptor) []strin
 			// caller provided names
 			names = getNames(desc)
 		} else if name := desc.Annotations[ocispec.AnnotationTitle]; name != "" {
-			// append title annotation to name if it's not empty
+			// append title annotation to name
 			names = append(names, name)
 		}
 		if len(names) == 0 {
 			if !verbose {
-				// no print if no name found and not verbosing
+				// no status
 				return nil
 			}
 			names = []string{desc.MediaType}
