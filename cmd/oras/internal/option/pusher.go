@@ -35,10 +35,10 @@ const (
 
 // Pusher option struct.
 type Pusher struct {
-	ManifestExportPath      string
-	PathValidationDisabled  bool
-	ManifestAnnotations     string
-	ManifestAnnotationSlice []string
+	ManifestExportPath     string
+	PathValidationDisabled bool
+	AnnotationsFilePath    string
+	ManifestAnnotations    []string
 
 	FileRefs []string
 }
@@ -46,8 +46,8 @@ type Pusher struct {
 // ApplyFlags applies flags to a command flag set.
 func (opts *Pusher) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&opts.ManifestExportPath, "export-manifest", "", "", "export the pushed manifest")
-	fs.StringArrayVarP(&opts.ManifestAnnotationSlice, "annotation", "a", []string{}, "manifest annotations")
-	fs.StringVarP(&opts.ManifestAnnotations, "manifest-annotations-file", "", "", "manifest annotation file")
+	fs.StringArrayVarP(&opts.ManifestAnnotations, "annotation", "a", nil, "manifest annotations")
+	fs.StringVarP(&opts.AnnotationsFilePath, "annotations-file", "", "", "path of the annotation file")
 	fs.BoolVarP(&opts.PathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
 }
 
@@ -64,20 +64,19 @@ func (opts *Pusher) ExportManifest(ctx context.Context, fetcher content.Fetcher,
 }
 
 // LoadManifestAnnotations loads the manifest annotation map.
-func (opts *Pusher) LoadManifestAnnotations() (map[string]map[string]string, error) {
-	var err error
-	annotations := make(map[string]map[string]string)
-	if opts.ManifestAnnotations != "" {
-		if err = decodeJSON(opts.ManifestAnnotations, &annotations); err != nil {
+func (opts *Pusher) LoadManifestAnnotations() (annotations map[string]map[string]string, err error) {
+	annotations = make(map[string]map[string]string)
+	if opts.AnnotationsFilePath != "" {
+		if err = decodeJSON(opts.AnnotationsFilePath, &annotations); err != nil {
 			return nil, err
 		}
 	}
-	if manifestAnnotationSliceLength := len(opts.ManifestAnnotationSlice); manifestAnnotationSliceLength != 0 {
-		if opts.ManifestAnnotations != "" {
+	if annotationsLength := len(opts.ManifestAnnotations); annotationsLength != 0 {
+		if opts.AnnotationsFilePath != "" {
 			fmt.Fprintln(os.Stderr, "WARNING! --manifest--anotation are ignored if --manifest-annotation-file is specified.")
 			return annotations, nil
 		}
-		if err = getAnnotationsMap(opts.ManifestAnnotationSlice, annotations); err != nil {
+		if err = getAnnotationsMap(opts.ManifestAnnotations, annotations); err != nil {
 			return nil, err
 		}
 	}
@@ -95,15 +94,15 @@ func decodeJSON(filename string, v interface{}) error {
 }
 
 // getAnnotationsMap get resharp annotationslice to target type
-func getAnnotationsMap(ManifestAnnotationSlice []string, annotations map[string]map[string]string) error {
+func getAnnotationsMap(ManifestAnnotations []string, annotations map[string]map[string]string) error {
 	re := regexp.MustCompile(`=\s*`)
 	rawAnnotationsMap := make(map[string]string)
-	for _, rawAnnotation := range ManifestAnnotationSlice {
-		rawAnnotation := re.Split(rawAnnotation, 2)
-		rawAnnotation[0], rawAnnotation[1] = strings.TrimSpace(rawAnnotation[0]), strings.TrimSpace(rawAnnotation[1])
+	for _, rawAnnotationStr := range ManifestAnnotations {
+		rawAnnotation := re.Split(rawAnnotationStr, 2)
 		if annotationLength := len(rawAnnotation); annotationLength != 2 {
-			return errors.New("invalid annotation")
+			return errors.New("annotation MUST be a key-value pair")
 		}
+		rawAnnotation[0], rawAnnotation[1] = strings.TrimSpace(rawAnnotation[0]), strings.TrimSpace(rawAnnotation[1])
 		if _, ok := rawAnnotationsMap[rawAnnotation[0]]; ok {
 			return errors.New("annotation key conflict")
 		}
