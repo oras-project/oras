@@ -101,15 +101,22 @@ func runPull(opts pullOptions) error {
 
 	// Copy Options
 	copyOptions := oras.DefaultCopyOptions
-	configPath, configMediaType := parseFileReference(opts.ManifestConfigRef, oras.MediaTypeUnknownConfig)
+	configPath, configMediaType := parseFileReference(opts.ManifestConfigRef, "")
 	copyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		successors, err := content.Successors(ctx, fetcher, desc)
 		if err != nil {
 			return nil, err
 		}
 		var ret []ocispec.Descriptor
-		for _, s := range successors {
-			if s.MediaType == configMediaType {
+		for i, s := range successors {
+			// Check whether the node's MediaType matches the specified MediaType.
+			// If the mediaType is not specified, check whether the parent node
+			// is a manifest.
+			// Note: For a manifest, the 0th indexed element is always a manifest
+			// config.
+			if s.MediaType == configMediaType || (configMediaType == "" && i == 0 &&
+				(desc.MediaType == "application/vnd.docker.distribution.manifest.v2+json" ||
+					desc.MediaType == ocispec.MediaTypeImageManifest)) {
 				// Add annotation for manifest config
 				if s.Annotations == nil {
 					s.Annotations = make(map[string]string)
