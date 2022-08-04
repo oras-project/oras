@@ -38,11 +38,15 @@ func StatusPrinter(status string, getNames func(desc ocispec.Descriptor) []strin
 	return func(ctx context.Context, desc ocispec.Descriptor) error {
 		var names []string
 		if getNames != nil {
+			// caller provided names
 			names = getNames(desc)
+		} else if name := desc.Annotations[ocispec.AnnotationTitle]; name != "" {
+			// append title annotation to name if it's not empty
+			names = append(names, name)
 		}
 		if len(names) == 0 {
-			// no name found
 			if !verbose {
+				// no print if no name found and not verbosing
 				return nil
 			}
 			names = []string{desc.MediaType}
