@@ -34,18 +34,18 @@ func Print(a ...any) error {
 }
 
 // NamedStatusPrinter returns a tracking function for transfer status with names.
-func NamedStatusPrinter(status string, verbose bool) func(context.Context, ocispec.Descriptor) error {
+func StatusPrinter(status string, getNames func(desc ocispec.Descriptor) []string, verbose bool) func(context.Context, ocispec.Descriptor) error {
 	return func(ctx context.Context, desc ocispec.Descriptor) error {
-		return printStatus(ctx, desc, status, verbose)
-	}
-}
-
-// NamedStatusesPrinter returns a tracking function for transfer status.
-func NamedStatusesPrinter(status string, digestToNames map[string][]string, verbose bool) func(context.Context, ocispec.Descriptor) error {
-	return func(ctx context.Context, desc ocispec.Descriptor) error {
-		names, ok := digestToNames[desc.Digest.String()]
-		if !ok {
-			return printStatus(ctx, desc, status, verbose)
+		var names []string
+		if getNames != nil {
+			names = getNames(desc)
+		}
+		if len(names) == 0 {
+			// no name found
+			if !verbose {
+				return nil
+			}
+			names = []string{desc.MediaType}
 		}
 		for _, n := range names {
 			if err := Print(status, ShortDigest(desc), n); err != nil {
@@ -53,24 +53,6 @@ func NamedStatusesPrinter(status string, digestToNames map[string][]string, verb
 			}
 		}
 		return nil
-	}
-}
-
-// TypedStatusPrinter returns a tracking function for transfer status with media
-// types.
-func TypedStatusPrinter(status string) func(context.Context, ocispec.Descriptor) error {
-	return func(ctx context.Context, desc ocispec.Descriptor) error {
-		return Print(status, ShortDigest(desc), desc.MediaType)
-	}
-}
-
-func printStatus(ctx context.Context, desc ocispec.Descriptor, status string, verbose bool) error {
-	name, ok := desc.Annotations[ocispec.AnnotationTitle]
-	if !ok {
-		if !verbose {
-			return nil
-		}
-		name = desc.MediaType
 	}
 	return Print(status, ShortDigest(desc), name)
 }

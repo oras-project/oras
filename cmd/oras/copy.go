@@ -84,9 +84,9 @@ func runCopy(opts copyOptions) error {
 
 	// Prepare copy options
 	extendedCopyOptions := oras.DefaultExtendedCopyOptions
-	extendedCopyOptions.PreCopy = display.TypedStatusPrinter("Copying ")
-	extendedCopyOptions.PostCopy = display.TypedStatusPrinter("Copied  ")
-	extendedCopyOptions.OnCopySkipped = display.TypedStatusPrinter("Exists  ")
+	extendedCopyOptions.PreCopy = display.StatusPrinter("Copying ", nil, true)
+	extendedCopyOptions.PostCopy = display.StatusPrinter("Copied  ", nil, true)
+	extendedCopyOptions.OnCopySkipped = display.StatusPrinter("Exists  ", nil, true)
 
 	if src.Reference.Reference == "" {
 		return newErrInvalidReference(src.Reference)
