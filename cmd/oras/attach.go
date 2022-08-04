@@ -108,6 +108,7 @@ func runAttach(opts attachOptions) error {
 	}
 
 	// Prepare Push
+	committed := make(map[string]string)
 	graphCopyOptions := oras.DefaultCopyGraphOptions
 	graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		if isEqualOCIDescriptor(node, desc) {
@@ -118,8 +119,12 @@ func runAttach(opts attachOptions) error {
 	}
 	graphCopyOptions.PreCopy = display.StatusPrinter("Uploading", opts.Verbose)
 	graphCopyOptions.OnCopySkipped = display.StatusPrinter("Exists   ", opts.Verbose)
-	graphCopyOptions.PostCopy = display.StatusPrinter("Uploaded ", opts.Verbose)
-
+	graphCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		if err := display.SuccessorPrinter("Skipped  ", store, committed, opts.Verbose)(ctx, desc); err != nil {
+			return err
+		}
+		return display.StatusPrinter("Uploaded ", opts.Verbose)(ctx, desc)
+	}
 	// Push
 	err = oras.CopyGraph(ctx, store, dst, desc, graphCopyOptions)
 	if err != nil {

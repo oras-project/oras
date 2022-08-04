@@ -21,6 +21,7 @@ import (
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2/content"
 )
 
 var printLock sync.Mutex
@@ -44,5 +45,26 @@ func StatusPrinter(status string, verbose bool) func(context.Context, ocispec.De
 			name = desc.MediaType
 		}
 		return Print(status, ShortDigest(desc), name)
+	}
+}
+
+// SuccessorPrinter returns a tracking function to print status for successors.
+func SuccessorPrinter(status string, fetcher content.Fetcher, committed map[string]string, verbose bool) func(context.Context, ocispec.Descriptor) error {
+	return func(ctx context.Context, desc ocispec.Descriptor) error {
+		committed[desc.Digest.String()] = desc.Annotations[ocispec.AnnotationTitle]
+		successors, err := content.Successors(ctx, fetcher, desc)
+		if err != nil {
+			return err
+		}
+		for _, s := range successors {
+			name := s.Annotations[ocispec.AnnotationTitle]
+			if committed[s.Digest.String()] != name {
+				// Reprint status for deduplicated content
+				if err := StatusPrinter(status, verbose)(ctx, s); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
 	}
 }

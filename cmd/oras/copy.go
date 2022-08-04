@@ -84,6 +84,7 @@ func runCopy(opts copyOptions) error {
 	}
 
 	// Prepare copy options
+	committed := make(map[string]string)
 	extendedCopyOptions := oras.DefaultExtendedCopyOptions
 	outputStatus := func(status string) func(context.Context, ocispec.Descriptor) error {
 		return func(ctx context.Context, desc ocispec.Descriptor) error {
@@ -98,7 +99,12 @@ func runCopy(opts copyOptions) error {
 		}
 	}
 	extendedCopyOptions.PreCopy = outputStatus("Copying")
-	extendedCopyOptions.PostCopy = outputStatus("Copied ")
+	extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		if err := display.SuccessorPrinter("Skipped  ", dst, committed, opts.Verbose)(ctx, desc); err != nil {
+			return err
+		}
+		return display.StatusPrinter("Copied ", opts.Verbose)(ctx, desc)
+	}
 	extendedCopyOptions.OnCopySkipped = outputStatus("Exists ")
 
 	if src.Reference.Reference == "" {
