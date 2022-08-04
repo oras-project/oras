@@ -37,8 +37,8 @@ func Print(a ...any) error {
 // StatusPrinter returns a tracking function for transfer status.
 func StatusPrinter(status string, verbose bool) func(context.Context, ocispec.Descriptor) error {
 	return func(ctx context.Context, desc ocispec.Descriptor) error {
-		name, ok := desc.Annotations[ocispec.AnnotationTitle]
-		if !ok {
+		name := desc.Annotations[ocispec.AnnotationTitle]
+		if name == "" {
 			if !verbose {
 				return nil
 			}

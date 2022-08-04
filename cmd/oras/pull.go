@@ -122,13 +122,17 @@ func runPull(opts pullOptions) error {
 					s.Annotations = make(map[string]string)
 				}
 				s.Annotations[ocispec.AnnotationTitle] = configPath
-			} else if s.Annotations[ocispec.AnnotationTitle] == "" {
+			}
+			if s.Annotations[ocispec.AnnotationTitle] == "" {
 				ss, err := content.Successors(ctx, fetcher, s)
 				if err != nil {
 					return nil, err
 				}
 				if len(ss) == 0 {
-					display.StatusPrinter("Skipped", opts.Verbose)
+					err = display.StatusPrinter("Skipped    ", opts.Verbose)(ctx, s)
+					if err != nil {
+						return nil, err
+					}
 					continue
 				}
 			}
@@ -141,10 +145,10 @@ func runPull(opts pullOptions) error {
 	copyOptions.PreCopy = display.StatusPrinter("Downloading", opts.Verbose)
 	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		name := desc.Annotations[ocispec.AnnotationTitle]
-		if name == "" {
+		pulledEmpty = name == ""
+		if name == "" && !opts.Verbose {
 			return nil
 		}
-		pulledEmpty = false
 		return display.Print("Downloaded ", display.ShortDigest(desc), name)
 	}
 
