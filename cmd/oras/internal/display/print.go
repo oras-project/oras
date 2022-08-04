@@ -54,5 +54,4 @@ func StatusPrinter(status string, getNames func(desc ocispec.Descriptor) []strin
 		}
 		return nil
 	}
-	return Print(status, ShortDigest(desc), name)
 }
