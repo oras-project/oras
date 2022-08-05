@@ -109,11 +109,11 @@ func runPull(opts pullOptions) error {
 		}
 		var ret []ocispec.Descriptor
 		for i, s := range successors {
-			// Check whether the node's MediaType matches the specified MediaType.
-			// If the mediaType is not specified, check whether the parent node
-			// is a manifest.
-			// Note: For a manifest, the 0th indexed element is always a manifest
-			// config.
+			// Save the config when:
+			// 1) MediaType matches, or
+			// 2) MediaType not specified and current node is config.
+			// Note: For a manifest, the 0th indexed element is always a
+			// manifest config.
 			if s.MediaType == configMediaType || (configMediaType == "" && i == 0 &&
 				(desc.MediaType == "application/vnd.docker.distribution.manifest.v2+json" ||
 					desc.MediaType == ocispec.MediaTypeImageManifest)) {
