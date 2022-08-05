@@ -93,7 +93,7 @@ func decodeJSON(filename string, v interface{}) error {
 	return json.NewDecoder(file).Decode(v)
 }
 
-// getAnnotationsMap get resharp annotationslice to target type
+// getAnnotationsMap resharps annotationslice to k-v type and updates annotations
 func getAnnotationsMap(ManifestAnnotations []string, annotations map[string]map[string]string) error {
 	re := regexp.MustCompile(`=\s*`)
 	rawAnnotationsMap := make(map[string]string)
