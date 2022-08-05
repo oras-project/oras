@@ -19,19 +19,42 @@ import (
 	"testing"
 
 	"gotest.tools/v3/assert"
-	"gotest.tools/v3/assert/cmp"
+	"gotest.tools/v3/fs"
 )
 
 func TestPusher_LoadManifestAnnotations(t *testing.T) {
+	//  all --manifest--anotation are ignored if --manifest-annotation-file is specified.
+	file := fs.NewFile(t, "test-file", fs.WithContent(`{
+		"$config": {
+		  "hello": "world"
+		},
+		"$manifest": {
+		  "foo": "bar"
+		},
+		"cake.txt": {
+		  "fun": "more cream"
+		}
+	  }`))
+	defer file.Remove()
 	opts := Pusher{
-		AnnotationsFilePath: "",
-		ManifestAnnotations: []string{"testKey=testVal"},
+		AnnotationsFilePath: file.Path(),
+		ManifestAnnotations: []string{"Key=Val"},
 	}
-	annotation, err := opts.LoadManifestAnnotations()
+	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	assert.Assert(t, cmp.Contains(annotation, "$manifest"))
+	assert.DeepEqual(t, annotations, map[string]map[string]string{
+		"$config": {
+			"hello": "world",
+		},
+		"$manifest": {
+			"foo": "bar",
+		},
+		"cake.txt": {
+			"fun": "more cream",
+		},
+	})
 }
 
 func TestPusher_getAnnotationsMap(t *testing.T) {
