@@ -33,8 +33,6 @@ import (
 	"oras.land/oras/internal/docker"
 )
 
-type void struct{}
-
 type pullOptions struct {
 	option.Common
 	option.Remote
@@ -87,8 +85,7 @@ Example - Pull files with local cache:
 }
 
 func runPull(opts pullOptions) error {
-	set := make(map[string]void)
-	var printed void
+	printed := make(map[string]bool)
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
@@ -133,12 +130,12 @@ func runPull(opts pullOptions) error {
 					return nil, err
 				}
 				if len(ss) == 0 {
-					if _, exists := set[string(s.Digest)]; !exists {
+					if !printed[s.Digest.String()] {
 						err = display.StatusPrinter("Skipped    ", opts.Verbose)(ctx, s)
 						if err != nil {
 							return nil, err
 						}
-						set[string(s.Digest)] = printed
+						printed[s.Digest.String()] = true
 					}
 					continue
 				}
