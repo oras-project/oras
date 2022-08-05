@@ -35,13 +35,39 @@ func TestPusher_LoadManifestAnnotations(t *testing.T) {
 }
 
 func TestPusher_getAnnotationsMap(t *testing.T) {
-	manifestAnnotations := []string{"testKey=testVal"}
+	// Item do not contains '='
+	invalidAnnotations0 := []string{
+		"Key",
+	}
+	// Duplication Key
+	invalidAnnotations1 := []string{
+		"Key=0",
+		"Key=1",
+	}
+	// Valid Annotations
+	manifestAnnotations := []string{
+		"Key0=",                // 1. Item not contains 'val'
+		"Key1=Val",             // 2. Normal Item
+		"Key2=${env:USERNAME}", // 3. Item contains variable eg. "${env:USERNAME}"
+		" Key3 = Val ",         // 4. Item trim conversion
+	}
 	annotations := map[string]map[string]string{}
+	if err := getAnnotationsMap(invalidAnnotations0, annotations); err != nil {
+		assert.Error(t, err, "annotation MUST be a key-value pair")
+	}
+	if err := getAnnotationsMap(invalidAnnotations1, annotations); err != nil {
+		assert.Error(t, err, "annotation key conflict")
+	}
 	if err := getAnnotationsMap(manifestAnnotations, annotations); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if _, ok := annotations["$manifest"]; !ok {
-		t.Fatalf("unexpected error: failed when looking for `$manifest` in annotations")
+		t.Fatalf("unexpected error: failed when looking for '$manifest' in annotations")
 	}
-	assert.Assert(t, cmp.Contains(annotations["$manifest"], "testKey"))
+	assert.DeepEqual(t, annotations, map[string]map[string]string{"$manifest": {
+		"Key0": "",
+		"Key1": "Val",
+		"Key2": "${env:USERNAME}",
+		"Key3": "Val",
+	}})
 }
