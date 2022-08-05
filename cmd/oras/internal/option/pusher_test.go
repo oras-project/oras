@@ -35,10 +35,13 @@ func TestPusher_LoadManifestAnnotations(t *testing.T) {
 }
 
 func TestPusher_getAnnotationsMap(t *testing.T) {
-	manifestAnnotations := []string{"testkey=testVal"}
+	manifestAnnotations := []string{"testKey=testVal"}
 	annotations := map[string]map[string]string{}
 	if err := getAnnotationsMap(manifestAnnotations, annotations); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	assert.Assert(t, cmp.Contains(annotations, "$manifest"))
+	if _, ok := annotations["$manifest"]; !ok {
+		t.Fatalf("unexpected error: failed when looking for `$manifest` in annotations")
+	}
+	assert.Assert(t, cmp.Contains(annotations["$manifest"], "testKey"))
 }
