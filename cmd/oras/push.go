@@ -41,7 +41,7 @@ type pushOptions struct {
 
 	targetRef         string
 	manifestConfigRef string
-	artifactTpye      string
+	artifactType      string
 }
 
 func pushCmd() *cobra.Command {
@@ -74,6 +74,9 @@ Example - Push file to the HTTP registry:
 `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if opts.artifactType != "" && opts.manifestConfigRef != "" {
+				return errors.New("--artifact-type and --manifest-config cannot both be provided")
+			}
 			return opts.ReadPassword()
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -84,17 +87,13 @@ Example - Push file to the HTTP registry:
 	}
 
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "manifest-config", "", "", "manifest config file")
-	cmd.Flags().StringVarP(&opts.artifactTpye, "artifact-type", "", "", "media type of config or manifest")
+	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "media type of config or manifest")
 
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
 
 func runPush(opts pushOptions) error {
-	if opts.artifactTpye != "" && opts.manifestConfigRef != "" {
-		return errors.New("--artifact-type and --manifest-config cannot be both provided")
-	}
-
 	ctx, _ := opts.SetLoggerLevel()
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
@@ -142,8 +141,8 @@ func packManifest(ctx context.Context, store *file.Store, annotations map[string
 	packOpts.ConfigAnnotations = annotations[annotationConfig]
 	packOpts.ManifestAnnotations = annotations[annotationManifest]
 
-	if opts.artifactTpye != "" {
-		packOpts.ConfigMediaType = opts.artifactTpye
+	if opts.artifactType != "" {
+		packOpts.ConfigMediaType = opts.artifactType
 	}
 	if opts.manifestConfigRef != "" {
 		path, mediatype := parseFileReference(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
