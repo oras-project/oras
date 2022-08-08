@@ -17,6 +17,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -59,7 +60,7 @@ Example - Push file "hi.txt" with the custom "application/vnd.me.hi" media type:
 Example - Push multiple files with different media types:
   oras push localhost:5000/hello:latest hi.txt:application/vnd.me.hi bye.txt:application/vnd.me.bye
 
-Example - Push file "hi.txt" with the custom "application/vnd.me.config" artifact type:
+Example - Push file "hi.txt" with "application/vnd.me.config" as config type:
   oras push --artifact-type application/vnd.me.config localhost:5000/hello:latest hi.txt
 
 Example - Push file "hi.txt" with the custom manifest config "config.json" of the custom "application/vnd.me.config" media type:
@@ -83,13 +84,17 @@ Example - Push file to the HTTP registry:
 	}
 
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "manifest-config", "", "", "manifest config file")
-	cmd.Flags().StringVarP(&opts.artifactTpye, "artifact-type", "", "", "artifact type")
+	cmd.Flags().StringVarP(&opts.artifactTpye, "artifact-type", "", "", "media type of config or manifest")
 
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
 
 func runPush(opts pushOptions) error {
+	if opts.artifactTpye != "" && opts.manifestConfigRef != "" {
+		return errors.New("--artifact-type and --manifest-config cannot be both provided")
+	}
+
 	ctx, _ := opts.SetLoggerLevel()
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
@@ -141,9 +146,6 @@ func packManifest(ctx context.Context, store *file.Store, annotations map[string
 		packOpts.ConfigMediaType = opts.artifactTpye
 	}
 	if opts.manifestConfigRef != "" {
-		if opts.artifactTpye != "" {
-			fmt.Println("--manifest-config will override --artifact-type")
-		}
 		path, mediatype := parseFileReference(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
 		desc, err := store.Add(ctx, annotationConfig, mediatype, path)
 		if err != nil {
