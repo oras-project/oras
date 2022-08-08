@@ -16,30 +16,17 @@ limitations under the License.
 package option
 
 import (
+	"errors"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"reflect"
 	"testing"
-
-	"gotest.tools/v3/assert"
-	"gotest.tools/v3/fs"
 )
 
 func TestPusher_LoadManifestAnnotations(t *testing.T) {
 	// when --manifest--anotation and --manifest-annotation-file are specified exit with error.
-	file := fs.NewFile(t, "test-file", fs.WithContent(`{
-		"$config": {
-		  "hello": "world"
-		},
-	  }`))
-	defer file.Remove()
-	opts := Pusher{
-		AnnotationsFilePath: file.Path(),
-		ManifestAnnotations: []string{"Key=Val"},
-	}
-	_, err := opts.LoadManifestAnnotations()
-	assert.Error(t, err, "annotation input conflict")
-}
-
-func TestPusher_decodeJSON(t *testing.T) {
-	file := fs.NewFile(t, "test-file", fs.WithContent(`{
+	testContent := `{
 		"$config": {
 		  "hello": "world"
 		},
@@ -49,17 +36,41 @@ func TestPusher_decodeJSON(t *testing.T) {
 		"cake.txt": {
 		  "fun": "more cream"
 		}
-	  }`))
-	defer file.Remove()
+	  }`
+	testFile := filepath.Join(t.TempDir(), "testAnnotationFile")
+	os.WriteFile(testFile, []byte(testContent), fs.ModePerm)
 	opts := Pusher{
-		AnnotationsFilePath: file.Path(),
+		AnnotationsFilePath: testFile,
+		ManifestAnnotations: []string{"Key=Val"},
+	}
+	if _, err := opts.LoadManifestAnnotations(); !errors.Is(err, errAnnotationConflict) {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestPusher_decodeJSON(t *testing.T) {
+	testContent := `{
+		"$config": {
+		  "hello": "world"
+		},
+		"$manifest": {
+		  "foo": "bar"
+		},
+		"cake.txt": {
+		  "fun": "more cream"
+		}
+	  }`
+	testFile := filepath.Join(t.TempDir(), "testAnnotationFile")
+	os.WriteFile(testFile, []byte(testContent), fs.ModePerm)
+	opts := Pusher{
+		AnnotationsFilePath: testFile,
 	}
 	annotations := make(map[string]map[string]string)
 	err := decodeJSON(opts.AnnotationsFilePath, &annotations)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	assert.DeepEqual(t, annotations, map[string]map[string]string{
+	if !reflect.DeepEqual(annotations, map[string]map[string]string{
 		"$config": {
 			"hello": "world",
 		},
@@ -69,7 +80,9 @@ func TestPusher_decodeJSON(t *testing.T) {
 		"cake.txt": {
 			"fun": "more cream",
 		},
-	})
+	}) {
+		t.Fatalf("unexpected error: %v", errors.New("content not match"))
+	}
 }
 
 func TestPusher_getAnnotationsMap(t *testing.T) {
@@ -90,11 +103,11 @@ func TestPusher_getAnnotationsMap(t *testing.T) {
 		" Key3 = Val ",         // 4. Item trim conversion
 	}
 	annotations := map[string]map[string]string{}
-	if err := getAnnotationsMap(invalidAnnotations0, annotations); err != nil {
-		assert.Error(t, err, "annotation MUST be a key-value pair")
+	if err := getAnnotationsMap(invalidAnnotations0, annotations); !errors.Is(err, errAnnotationFormat) {
+		t.Fatalf("unexpected error: %v", err)
 	}
-	if err := getAnnotationsMap(invalidAnnotations1, annotations); err != nil {
-		assert.Error(t, err, "annotation key conflict")
+	if err := getAnnotationsMap(invalidAnnotations1, annotations); !errors.Is(err, errAnnotationDuplication) {
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if err := getAnnotationsMap(manifestAnnotations, annotations); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -102,10 +115,14 @@ func TestPusher_getAnnotationsMap(t *testing.T) {
 	if _, ok := annotations["$manifest"]; !ok {
 		t.Fatalf("unexpected error: failed when looking for '$manifest' in annotations")
 	}
-	assert.DeepEqual(t, annotations, map[string]map[string]string{"$manifest": {
-		"Key0": "",
-		"Key1": "Val",
-		"Key2": "${env:USERNAME}",
-		"Key3": "Val",
-	}})
+	if !reflect.DeepEqual(annotations,
+		map[string]map[string]string{"$manifest": {
+			"Key0": "",
+			"Key1": "Val",
+			"Key2": "${env:USERNAME}",
+			"Key3": "Val",
+		},
+		}) {
+		t.Fatalf("unexpected error: %v", errors.New("content not match"))
+	}
 }

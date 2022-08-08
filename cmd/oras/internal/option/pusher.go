@@ -33,6 +33,12 @@ const (
 	annotationManifest = "$manifest"
 )
 
+var (
+	errAnnotationConflict    = errors.New("annotation input conflict")
+	errAnnotationFormat      = errors.New("annotation MUST be a key-value pair")
+	errAnnotationDuplication = errors.New("annotation key duplication")
+)
+
 // Pusher option struct.
 type Pusher struct {
 	ManifestExportPath     string
@@ -68,7 +74,7 @@ func (opts *Pusher) LoadManifestAnnotations() (annotations map[string]map[string
 	annotations = make(map[string]map[string]string)
 	if opts.AnnotationsFilePath != "" && len(opts.ManifestAnnotations) != 0 {
 		fmt.Fprintln(os.Stderr, "WARNING! --manifest--anotation and --manifest-annotation-file can not be apply at the same time.")
-		return nil, errors.New("annotation input conflict")
+		return nil, errAnnotationConflict
 	}
 	if opts.AnnotationsFilePath != "" {
 		if err = decodeJSON(opts.AnnotationsFilePath, &annotations); err != nil {
@@ -100,11 +106,11 @@ func getAnnotationsMap(ManifestAnnotations []string, annotations map[string]map[
 	for _, rawAnnotationStr := range ManifestAnnotations {
 		rawAnnotation := re.Split(rawAnnotationStr, 2)
 		if annotationLength := len(rawAnnotation); annotationLength != 2 {
-			return errors.New("annotation MUST be a key-value pair")
+			return errAnnotationFormat
 		}
 		rawAnnotation[0], rawAnnotation[1] = strings.TrimSpace(rawAnnotation[0]), strings.TrimSpace(rawAnnotation[1])
 		if _, ok := rawAnnotationsMap[rawAnnotation[0]]; ok {
-			return errors.New("annotation key conflict")
+			return errAnnotationDuplication
 		}
 		rawAnnotationsMap[rawAnnotation[0]] = rawAnnotation[1]
 	}

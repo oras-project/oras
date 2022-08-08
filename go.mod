@@ -12,7 +12,6 @@ require (
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
-	gotest.tools/v3 v3.0.2
 	oras.land/oras-go/v2 v2.0.0-20220726123138-064752f3088e
 )
 
@@ -20,7 +19,6 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/docker/docker v20.10.17+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.6.4 // indirect
-	github.com/google/go-cmp v0.4.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/opencontainers/distribution-spec/specs-go v0.0.0-20220620172159-4ab4752c3b86 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
