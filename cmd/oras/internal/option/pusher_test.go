@@ -23,7 +23,22 @@ import (
 )
 
 func TestPusher_LoadManifestAnnotations(t *testing.T) {
-	//  all --manifest--anotation are ignored if --manifest-annotation-file is specified.
+	// when --manifest--anotation and --manifest-annotation-file are specified exit with error.
+	file := fs.NewFile(t, "test-file", fs.WithContent(`{
+		"$config": {
+		  "hello": "world"
+		},
+	  }`))
+	defer file.Remove()
+	opts := Pusher{
+		AnnotationsFilePath: file.Path(),
+		ManifestAnnotations: []string{"Key=Val"},
+	}
+	_, err := opts.LoadManifestAnnotations()
+	assert.Error(t, err, "annotation input conflict")
+}
+
+func TestPusher_decodeJSON(t *testing.T) {
 	file := fs.NewFile(t, "test-file", fs.WithContent(`{
 		"$config": {
 		  "hello": "world"
@@ -38,9 +53,9 @@ func TestPusher_LoadManifestAnnotations(t *testing.T) {
 	defer file.Remove()
 	opts := Pusher{
 		AnnotationsFilePath: file.Path(),
-		ManifestAnnotations: []string{"Key=Val"},
 	}
-	annotations, err := opts.LoadManifestAnnotations()
+	annotations := make(map[string]map[string]string)
+	err := decodeJSON(opts.AnnotationsFilePath, &annotations)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

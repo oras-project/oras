@@ -66,16 +66,16 @@ func (opts *Pusher) ExportManifest(ctx context.Context, fetcher content.Fetcher,
 // LoadManifestAnnotations loads the manifest annotation map.
 func (opts *Pusher) LoadManifestAnnotations() (annotations map[string]map[string]string, err error) {
 	annotations = make(map[string]map[string]string)
+	if opts.AnnotationsFilePath != "" && len(opts.ManifestAnnotations) != 0 {
+		fmt.Fprintln(os.Stderr, "WARNING! --manifest--anotation and --manifest-annotation-file can not be apply at the same time.")
+		return nil, errors.New("annotation input conflict")
+	}
 	if opts.AnnotationsFilePath != "" {
 		if err = decodeJSON(opts.AnnotationsFilePath, &annotations); err != nil {
 			return nil, err
 		}
 	}
 	if annotationsLength := len(opts.ManifestAnnotations); annotationsLength != 0 {
-		if opts.AnnotationsFilePath != "" {
-			fmt.Fprintln(os.Stderr, "WARNING! --manifest--anotation are ignored if --manifest-annotation-file is specified.")
-			return annotations, nil
-		}
 		if err = getAnnotationsMap(opts.ManifestAnnotations, annotations); err != nil {
 			return nil, err
 		}
