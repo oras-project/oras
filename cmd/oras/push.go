@@ -71,6 +71,9 @@ Example - Push file to the insecure registry:
 
 Example - Push file to the HTTP registry:
   oras push localhost:5000/hello:latest hi.txt --plain-http
+
+Example - Push oras artifact manifest type with no file:
+  oras push localhost:5000/hello:latest --artifact-type empty/example
 `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -136,33 +139,45 @@ func runPush(opts pushOptions) error {
 	return opts.ExportManifest(ctx, store, desc)
 }
 
-func packManifest(ctx context.Context, store *file.Store, annotations map[string]map[string]string, opts *pushOptions) (ocispec.Descriptor, error) {
+func packManifest(ctx context.Context, store *file.Store, annotations map[string]map[string]string, opts *pushOptions) (manifestDesc ocispec.Descriptor, err error) {
 	var packOpts oras.PackOptions
 	packOpts.ConfigAnnotations = annotations[annotationConfig]
 	packOpts.ManifestAnnotations = annotations[annotationManifest]
 
-	if opts.artifactType != "" {
-		packOpts.ConfigMediaType = opts.artifactType
-	}
-	if opts.manifestConfigRef != "" {
-		path, mediatype := parseFileReference(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
-		desc, err := store.Add(ctx, annotationConfig, mediatype, path)
+	if len(opts.FileRefs) != 0 {
+		// pack OCI artifact
+		if opts.artifactType != "" {
+			packOpts.ConfigMediaType = opts.artifactType
+		}
+		if opts.manifestConfigRef != "" {
+			path, mediatype := parseFileReference(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
+			desc, err := store.Add(ctx, annotationConfig, mediatype, path)
+			if err != nil {
+				return ocispec.Descriptor{}, err
+			}
+			desc.Annotations = packOpts.ConfigAnnotations
+			packOpts.ConfigDescriptor = &desc
+		}
+		descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
 		if err != nil {
 			return ocispec.Descriptor{}, err
 		}
-		desc.Annotations = packOpts.ConfigAnnotations
-		packOpts.ConfigDescriptor = &desc
-	}
-	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
-	if err != nil {
-		return ocispec.Descriptor{}, err
-	}
-	manifestDesc, err := oras.Pack(ctx, store, descs, packOpts)
-	if err != nil {
-		return ocispec.Descriptor{}, err
+		manifestDesc, err = oras.Pack(ctx, store, descs, packOpts)
+		if err != nil {
+			return ocispec.Descriptor{}, err
+		}
+	} else {
+		// pack ORAS artifact
+		if opts.artifactType == "" {
+			return ocispec.Descriptor{}, errors.New("artifact type required when no file specified")
+		}
+		manifestDesc, err = oras.PackArtifact(ctx, store, opts.artifactType, nil, oras.PackArtifactOptions{})
+		if err != nil {
+			return ocispec.Descriptor{}, err
+		}
 	}
 	if err := store.Tag(ctx, manifestDesc, tagStaged); err != nil {
 		return ocispec.Descriptor{}, err
 	}
-	return manifestDesc, nil
+	return
 }
