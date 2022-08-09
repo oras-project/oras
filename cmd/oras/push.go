@@ -36,7 +36,7 @@ const (
 type pushOptions struct {
 	option.Common
 	option.Remote
-	option.Pusher
+	option.Packer
 
 	targetRef         string
 	manifestConfigRef string

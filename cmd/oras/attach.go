@@ -32,7 +32,7 @@ import (
 type attachOptions struct {
 	option.Common
 	option.Remote
-	option.Pusher
+	option.Packer
 
 	targetRef    string
 	artifactType string

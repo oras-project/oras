@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -34,13 +33,13 @@ const (
 )
 
 var (
-	errAnnotationConflict    = errors.New("annotation input conflict")
+	errAnnotationConflict    = errors.New("annotations cannot be specified via flags and file at the same time")
 	errAnnotationFormat      = errors.New("annotation MUST be a key-value pair")
 	errAnnotationDuplication = errors.New("annotation key duplication")
 )
 
-// Pusher option struct.
-type Pusher struct {
+// Packer option struct.
+type Packer struct {
 	ManifestExportPath     string
 	PathValidationDisabled bool
 	AnnotationsFilePath    string
@@ -50,7 +49,7 @@ type Pusher struct {
 }
 
 // ApplyFlags applies flags to a command flag set.
-func (opts *Pusher) ApplyFlags(fs *pflag.FlagSet) {
+func (opts *Packer) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&opts.ManifestExportPath, "export-manifest", "", "", "export the pushed manifest")
 	fs.StringArrayVarP(&opts.ManifestAnnotations, "annotation", "a", nil, "manifest annotations")
 	fs.StringVarP(&opts.AnnotationsFilePath, "annotations-file", "", "", "path of the annotation file")
@@ -58,7 +57,7 @@ func (opts *Pusher) ApplyFlags(fs *pflag.FlagSet) {
 }
 
 // ExportManifest saves the pushed manifest to a local file.
-func (opts *Pusher) ExportManifest(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) error {
+func (opts *Packer) ExportManifest(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) error {
 	if opts.ManifestExportPath == "" {
 		return nil
 	}
@@ -70,10 +69,9 @@ func (opts *Pusher) ExportManifest(ctx context.Context, fetcher content.Fetcher,
 }
 
 // LoadManifestAnnotations loads the manifest annotation map.
-func (opts *Pusher) LoadManifestAnnotations() (annotations map[string]map[string]string, err error) {
+func (opts *Packer) LoadManifestAnnotations() (annotations map[string]map[string]string, err error) {
 	annotations = make(map[string]map[string]string)
 	if opts.AnnotationsFilePath != "" && len(opts.ManifestAnnotations) != 0 {
-		fmt.Fprintln(os.Stderr, "WARNING! --manifest--anotation and --manifest-annotation-file can not be apply at the same time.")
 		return nil, errAnnotationConflict
 	}
 	if opts.AnnotationsFilePath != "" {
@@ -82,7 +80,7 @@ func (opts *Pusher) LoadManifestAnnotations() (annotations map[string]map[string
 		}
 	}
 	if annotationsLength := len(opts.ManifestAnnotations); annotationsLength != 0 {
-		if err = getAnnotationsMap(opts.ManifestAnnotations, annotations); err != nil {
+		if err = parseAnnotationFlags(opts.ManifestAnnotations, annotations); err != nil {
 			return nil, err
 		}
 	}
@@ -99,20 +97,20 @@ func decodeJSON(filename string, v interface{}) error {
 	return json.NewDecoder(file).Decode(v)
 }
 
-// getAnnotationsMap resharps annotationslice to k-v type and updates annotations
-func getAnnotationsMap(ManifestAnnotations []string, annotations map[string]map[string]string) error {
-	re := regexp.MustCompile(`=\s*`)
+// parseAnnotationFlags resharps annotationslice to k-v type and updates annotations
+func parseAnnotationFlags(ManifestAnnotations []string, annotations map[string]map[string]string) error {
 	rawAnnotationsMap := make(map[string]string)
-	for _, rawAnnotationStr := range ManifestAnnotations {
-		rawAnnotation := re.Split(rawAnnotationStr, 2)
-		if annotationLength := len(rawAnnotation); annotationLength != 2 {
+	for _, anno := range ManifestAnnotations {
+		parts := strings.SplitN(anno, "=", 2)
+		if len(parts) != 2 {
 			return errAnnotationFormat
 		}
-		rawAnnotation[0], rawAnnotation[1] = strings.TrimSpace(rawAnnotation[0]), strings.TrimSpace(rawAnnotation[1])
-		if _, ok := rawAnnotationsMap[rawAnnotation[0]]; ok {
-			return errAnnotationDuplication
+		parts[0], parts[1] = strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+		if _, ok := rawAnnotationsMap[parts[0]]; ok {
+
+			return fmt.Errorf("found annotation key, %v, more than once, %w", parts[0], errAnnotationDuplication)
 		}
-		rawAnnotationsMap[rawAnnotation[0]] = rawAnnotation[1]
+		rawAnnotationsMap[parts[0]] = parts[1]
 	}
 	annotations[annotationManifest] = rawAnnotationsMap
 	return nil

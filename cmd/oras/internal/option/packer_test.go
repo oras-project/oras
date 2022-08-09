@@ -24,7 +24,7 @@ import (
 	"testing"
 )
 
-func TestPusher_LoadManifestAnnotations(t *testing.T) {
+func TestPacker_LoadManifestAnnotations(t *testing.T) {
 	// when --manifest--anotation and --manifest-annotation-file are specified exit with error.
 	testContent := `{
 		"$config": {
@@ -39,7 +39,7 @@ func TestPusher_LoadManifestAnnotations(t *testing.T) {
 	  }`
 	testFile := filepath.Join(t.TempDir(), "testAnnotationFile")
 	os.WriteFile(testFile, []byte(testContent), fs.ModePerm)
-	opts := Pusher{
+	opts := Packer{
 		AnnotationsFilePath: testFile,
 		ManifestAnnotations: []string{"Key=Val"},
 	}
@@ -48,7 +48,7 @@ func TestPusher_LoadManifestAnnotations(t *testing.T) {
 	}
 }
 
-func TestPusher_decodeJSON(t *testing.T) {
+func TestPacker_decodeJSON(t *testing.T) {
 	testContent := `{
 		"$config": {
 		  "hello": "world"
@@ -62,7 +62,7 @@ func TestPusher_decodeJSON(t *testing.T) {
 	  }`
 	testFile := filepath.Join(t.TempDir(), "testAnnotationFile")
 	os.WriteFile(testFile, []byte(testContent), fs.ModePerm)
-	opts := Pusher{
+	opts := Packer{
 		AnnotationsFilePath: testFile,
 	}
 	annotations := make(map[string]map[string]string)
@@ -85,7 +85,7 @@ func TestPusher_decodeJSON(t *testing.T) {
 	}
 }
 
-func TestPusher_getAnnotationsMap(t *testing.T) {
+func TestPacker_parseAnnotationFlags(t *testing.T) {
 	// Item do not contains '='
 	invalidAnnotations0 := []string{
 		"Key",
@@ -103,13 +103,13 @@ func TestPusher_getAnnotationsMap(t *testing.T) {
 		" Key3 = Val ",         // 4. Item trim conversion
 	}
 	annotations := map[string]map[string]string{}
-	if err := getAnnotationsMap(invalidAnnotations0, annotations); !errors.Is(err, errAnnotationFormat) {
+	if err := parseAnnotationFlags(invalidAnnotations0, annotations); !errors.Is(err, errAnnotationFormat) {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if err := getAnnotationsMap(invalidAnnotations1, annotations); !errors.Is(err, errAnnotationDuplication) {
+	if err := parseAnnotationFlags(invalidAnnotations1, annotations); !errors.Is(err, errAnnotationDuplication) {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if err := getAnnotationsMap(manifestAnnotations, annotations); err != nil {
+	if err := parseAnnotationFlags(manifestAnnotations, annotations); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if _, ok := annotations["$manifest"]; !ok {
