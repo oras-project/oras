@@ -24,6 +24,10 @@ import (
 	"testing"
 )
 
+func TestPacker_FlagInit(t *testing.T) {
+	// flag init
+}
+
 func TestPacker_LoadManifestAnnotations(t *testing.T) {
 	// when --manifest--anotation and --manifest-annotation-file are specified exit with error.
 	testContent := `{
@@ -40,7 +44,7 @@ func TestPacker_LoadManifestAnnotations(t *testing.T) {
 	testFile := filepath.Join(t.TempDir(), "testAnnotationFile")
 	os.WriteFile(testFile, []byte(testContent), fs.ModePerm)
 	opts := Packer{
-		AnnotationsFilePath: testFile,
+		AnnotationFilePath:  testFile,
 		ManifestAnnotations: []string{"Key=Val"},
 	}
 	if _, err := opts.LoadManifestAnnotations(); !errors.Is(err, errAnnotationConflict) {
@@ -63,10 +67,10 @@ func TestPacker_decodeJSON(t *testing.T) {
 	testFile := filepath.Join(t.TempDir(), "testAnnotationFile")
 	os.WriteFile(testFile, []byte(testContent), fs.ModePerm)
 	opts := Packer{
-		AnnotationsFilePath: testFile,
+		AnnotationFilePath: testFile,
 	}
 	annotations := make(map[string]map[string]string)
-	err := decodeJSON(opts.AnnotationsFilePath, &annotations)
+	err := decodeJSON(opts.AnnotationFilePath, &annotations)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -42,7 +42,7 @@ var (
 type Packer struct {
 	ManifestExportPath     string
 	PathValidationDisabled bool
-	AnnotationsFilePath    string
+	AnnotationFilePath     string
 	ManifestAnnotations    []string
 
 	FileRefs []string
@@ -52,7 +52,7 @@ type Packer struct {
 func (opts *Packer) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&opts.ManifestExportPath, "export-manifest", "", "", "export the pushed manifest")
 	fs.StringArrayVarP(&opts.ManifestAnnotations, "annotation", "a", nil, "manifest annotations")
-	fs.StringVarP(&opts.AnnotationsFilePath, "annotations-file", "", "", "path of the annotation file")
+	fs.StringVarP(&opts.AnnotationFilePath, "annotation-file", "", "", "path of the annotation file")
 	fs.BoolVarP(&opts.PathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
 }
 
@@ -71,11 +71,11 @@ func (opts *Packer) ExportManifest(ctx context.Context, fetcher content.Fetcher,
 // LoadManifestAnnotations loads the manifest annotation map.
 func (opts *Packer) LoadManifestAnnotations() (annotations map[string]map[string]string, err error) {
 	annotations = make(map[string]map[string]string)
-	if opts.AnnotationsFilePath != "" && len(opts.ManifestAnnotations) != 0 {
+	if opts.AnnotationFilePath != "" && len(opts.ManifestAnnotations) != 0 {
 		return nil, errAnnotationConflict
 	}
-	if opts.AnnotationsFilePath != "" {
-		if err = decodeJSON(opts.AnnotationsFilePath, &annotations); err != nil {
+	if opts.AnnotationFilePath != "" {
+		if err = decodeJSON(opts.AnnotationFilePath, &annotations); err != nil {
 			return nil, err
 		}
 	}
@@ -99,19 +99,19 @@ func decodeJSON(filename string, v interface{}) error {
 
 // parseAnnotationFlags resharps annotationslice to k-v type and updates annotations
 func parseAnnotationFlags(ManifestAnnotations []string, annotations map[string]map[string]string) error {
-	rawAnnotationsMap := make(map[string]string)
+	manifestAnnotations := make(map[string]string)
 	for _, anno := range ManifestAnnotations {
 		parts := strings.SplitN(anno, "=", 2)
 		if len(parts) != 2 {
 			return errAnnotationFormat
 		}
 		parts[0], parts[1] = strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
-		if _, ok := rawAnnotationsMap[parts[0]]; ok {
+		if _, ok := manifestAnnotations[parts[0]]; ok {
 
 			return fmt.Errorf("found annotation key, %v, more than once, %w", parts[0], errAnnotationDuplication)
 		}
-		rawAnnotationsMap[parts[0]] = parts[1]
+		manifestAnnotations[parts[0]] = parts[1]
 	}
-	annotations[annotationManifest] = rawAnnotationsMap
+	annotations[annotationManifest] = manifestAnnotations
 	return nil
 }
