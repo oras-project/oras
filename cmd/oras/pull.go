@@ -125,6 +125,7 @@ func runPull(opts pullOptions) error {
 				s.Annotations[ocispec.AnnotationTitle] = configPath
 			}
 			if s.Annotations[ocispec.AnnotationTitle] == "" {
+				// skip fetching unamed leaf nodes
 				ss, err := content.Successors(ctx, fetcher, s)
 				if err != nil {
 					return nil, err
@@ -155,6 +156,7 @@ func runPull(opts pullOptions) error {
 			}
 			name = desc.MediaType
 		} else {
+			// no named content pulled
 			pulledEmpty = false
 		}
 		return display.Print("Downloaded ", display.ShortDigest(desc), name)

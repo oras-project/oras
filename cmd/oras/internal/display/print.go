@@ -40,6 +40,7 @@ func StatusPrinter(status string, verbose bool) func(context.Context, ocispec.De
 		name := desc.Annotations[ocispec.AnnotationTitle]
 		if name == "" {
 			if !verbose {
+				// no status for unamed content
 				return nil
 			}
 			name = desc.MediaType
