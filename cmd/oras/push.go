@@ -167,6 +167,7 @@ func packManifest(ctx context.Context, store *file.Store, annotations map[string
 	} else {
 		// pack ORAS artifact
 		if opts.artifactType == "" {
+			// TODO: this check should be done during pre-run with mandatory annotation checking
 			return ocispec.Descriptor{}, errors.New("artifact type required when no file specified")
 		}
 		manifestDesc, err = oras.PackArtifact(ctx, store, opts.artifactType, nil, oras.PackArtifactOptions{})
