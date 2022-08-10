@@ -41,13 +41,9 @@ func (opts *Platform) ApplyFlags(fs *pflag.FlagSet) {
 // parse parses the input platform flag to an oci platform type.
 func (opts *Platform) parse() (ocispec.Platform, error) {
 	var p ocispec.Platform
-	parts := strings.SplitN(opts.Platform, ":", 2)
-	if len(parts) == 2 {
-		// OSVersion is splitted by colon
-		p.OSVersion = parts[1]
-	}
-
-	parts = strings.Split(parts[0], "/")
+	var platformStr string
+	platformStr, p.OSVersion, _ = strings.Cut(opts.Platform, ":")
+	parts := strings.Split(platformStr, "/")
 	if len(parts) < 2 || len(parts) > 3 {
 		return ocispec.Platform{}, fmt.Errorf("failed to parse platform '%s': expected format os/arch[/variant]", opts.Platform)
 	}
