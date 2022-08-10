@@ -118,9 +118,12 @@ func runAttach(opts attachOptions) error {
 		return content.Successors(ctx, fetcher, node)
 	}
 	graphCopyOptions.PreCopy = display.StatusPrinter("Uploading", opts.Verbose)
-	graphCopyOptions.OnCopySkipped = display.StatusPrinter("Exists   ", opts.Verbose)
+	graphCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
+		committed[desc.Digest.String()] = desc.Annotations[ocispec.AnnotationTitle]
+		return display.StatusPrinter("Exists   ", opts.Verbose)(ctx, desc)
+	}
 	graphCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		if err := display.SuccessorPrinter("Skipped  ", store, committed, opts.Verbose)(ctx, desc); err != nil {
+		if err := display.SuccessorStatusPrinter("Skipped  ", store, committed, opts.Verbose)(ctx, desc); err != nil {
 			return err
 		}
 		return display.StatusPrinter("Uploaded ", opts.Verbose)(ctx, desc)

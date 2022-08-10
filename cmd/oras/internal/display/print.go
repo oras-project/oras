@@ -48,10 +48,9 @@ func StatusPrinter(status string, verbose bool) func(context.Context, ocispec.De
 	}
 }
 
-// SuccessorPrinter returns a tracking function to print status for successors.
-func SuccessorPrinter(status string, fetcher content.Fetcher, committed map[string]string, verbose bool) func(context.Context, ocispec.Descriptor) error {
+// SuccessorStatusPrinter returns a tracking function to print status for successors.
+func SuccessorStatusPrinter(status string, fetcher content.Fetcher, committed map[string]string, verbose bool) func(context.Context, ocispec.Descriptor) error {
 	return func(ctx context.Context, desc ocispec.Descriptor) error {
-		committed[desc.Digest.String()] = desc.Annotations[ocispec.AnnotationTitle]
 		successors, err := content.Successors(ctx, fetcher, desc)
 		if err != nil {
 			return err

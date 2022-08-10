@@ -110,9 +110,13 @@ func runPush(opts pushOptions) error {
 	committed := make(map[string]string)
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.PreCopy = display.StatusPrinter("Uploading", opts.Verbose)
-	copyOptions.OnCopySkipped = display.StatusPrinter("Exists   ", opts.Verbose)
+	copyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
+		committed[desc.Digest.String()] = desc.Annotations[ocispec.AnnotationTitle]
+		return display.StatusPrinter("Exists   ", opts.Verbose)(ctx, desc)
+	}
 	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		if err := display.SuccessorPrinter("Skipped  ", store, committed, opts.Verbose)(ctx, desc); err != nil {
+		committed[desc.Digest.String()] = desc.Annotations[ocispec.AnnotationTitle]
+		if err := display.SuccessorStatusPrinter("Skipped  ", store, committed, opts.Verbose)(ctx, desc); err != nil {
 			return err
 		}
 		return display.StatusPrinter("Uploaded ", opts.Verbose)(ctx, desc)

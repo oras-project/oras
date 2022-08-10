@@ -86,34 +86,26 @@ func runCopy(opts copyOptions) error {
 	// Prepare copy options
 	committed := make(map[string]string)
 	extendedCopyOptions := oras.DefaultExtendedCopyOptions
-	outputStatus := func(status string) func(context.Context, ocispec.Descriptor) error {
-		return func(ctx context.Context, desc ocispec.Descriptor) error {
-			name, ok := desc.Annotations[ocispec.AnnotationTitle]
-			if !ok {
-				if !opts.Verbose {
-					return nil
-				}
-				name = desc.MediaType
-			}
-			return display.Print(status, display.ShortDigest(desc), name)
-		}
-	}
-	extendedCopyOptions.PreCopy = outputStatus("Copying")
+	extendedCopyOptions.PreCopy = display.StatusPrinter("Copying", opts.Verbose)
 	extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		if err := display.SuccessorPrinter("Skipped  ", dst, committed, opts.Verbose)(ctx, desc); err != nil {
+		committed[desc.Digest.String()] = desc.Annotations[ocispec.AnnotationTitle]
+		if err := display.SuccessorStatusPrinter("Skipped", dst, committed, opts.Verbose)(ctx, desc); err != nil {
 			return err
 		}
 		return display.StatusPrinter("Copied ", opts.Verbose)(ctx, desc)
 	}
-	extendedCopyOptions.OnCopySkipped = outputStatus("Exists ")
+	extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
+		committed[desc.Digest.String()] = desc.Annotations[ocispec.AnnotationTitle]
+		return display.StatusPrinter("Exists ", opts.Verbose)(ctx, desc)
+	}
 
 	if src.Reference.Reference == "" {
 		return newErrInvalidReference(src.Reference)
 	}
 
-	// push to the destination with digest only if no tag specified
 	var desc ocispec.Descriptor
 	if ref := dst.Reference.Reference; ref == "" {
+		// push to the destination with digest only if no tag specified
 		desc, err = src.Resolve(ctx, src.Reference.Reference)
 		if err != nil {
 			return err
