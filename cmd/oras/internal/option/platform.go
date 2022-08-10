@@ -39,25 +39,24 @@ func (opts *Platform) ApplyFlags(fs *pflag.FlagSet) {
 }
 
 // parse parses the input platform flag to an oci platform type.
-func (opts *Platform) parse() (ocispec.Platform, error) {
-	var p ocispec.Platform
+func (opts *Platform) parse() (p ocispec.Platform, err error) {
 	var platformStr string
+
+	// OS/Arch/[Variant][:OSVersion]
 	platformStr, p.OSVersion, _ = strings.Cut(opts.Platform, ":")
 	parts := strings.Split(platformStr, "/")
 	if len(parts) < 2 || len(parts) > 3 {
-		return ocispec.Platform{}, fmt.Errorf("failed to parse platform '%s': expected format os/arch[/variant]", opts.Platform)
+		return p, fmt.Errorf("failed to parse platform '%s': expected format os/arch[/variant]", opts.Platform)
 	}
-
-	// OS/Arch/[Variant]
 	p.OS = parts[0]
 	if p.OS == "" {
-		return ocispec.Platform{}, fmt.Errorf("invalid platform: OS cannot be empty")
+		return p, fmt.Errorf("invalid platform: OS cannot be empty")
 	}
 	p.Architecture = parts[1]
 	if p.Architecture == "" {
-		return ocispec.Platform{}, fmt.Errorf("invalid platform: Architecture cannot be empty")
+		return p, fmt.Errorf("invalid platform: Architecture cannot be empty")
 	}
-	if len(parts) > 2 {
+	if len(parts) == 3 {
 		p.Variant = parts[2]
 	}
 
