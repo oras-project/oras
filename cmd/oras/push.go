@@ -158,23 +158,21 @@ func packManifest(ctx context.Context, store *file.Store, annotations map[string
 			desc.Annotations = packOpts.ConfigAnnotations
 			packOpts.ConfigDescriptor = &desc
 		}
-		descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
+		var descs []ocispec.Descriptor
+		descs, err = loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
 		if err != nil {
 			return ocispec.Descriptor{}, err
 		}
 		manifestDesc, err = oras.Pack(ctx, store, descs, packOpts)
-		if err != nil {
-			return ocispec.Descriptor{}, err
-		}
 	} else {
 		// pack ORAS artifact
 		if opts.artifactType == "" {
 			return ocispec.Descriptor{}, errors.New("artifact type required when no file specified")
 		}
 		manifestDesc, err = oras.PackArtifact(ctx, store, opts.artifactType, nil, oras.PackArtifactOptions{})
-		if err != nil {
-			return ocispec.Descriptor{}, err
-		}
+	}
+	if err != nil {
+		return ocispec.Descriptor{}, err
 	}
 	if err := store.Tag(ctx, manifestDesc, tagStaged); err != nil {
 		return ocispec.Descriptor{}, err
