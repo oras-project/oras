@@ -52,9 +52,9 @@ Example - Fetch manifest with prettified json result:
 			return opts.ReadPassword()
 		},
 		Aliases: []string{"get"},
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
-			return fetchManifest(opts)
+			return fetchManifest(cmd, opts)
 		},
 	}
 

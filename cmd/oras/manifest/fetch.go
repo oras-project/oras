@@ -18,9 +18,9 @@ package manifest
 import (
 	"bytes"
 	"encoding/json"
-	"os"
 	"strings"
 
+	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -37,7 +37,7 @@ type fetchOptions struct {
 	fetchDescriptor bool
 }
 
-func fetchManifest(opts fetchOptions) error {
+func fetchManifest(cmd *cobra.Command, opts fetchOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
@@ -66,6 +66,6 @@ func fetchManifest(opts fetchOptions) error {
 	} else {
 		out = *bytes.NewBuffer(content)
 	}
-	out.WriteTo(os.Stdout)
+	out.WriteTo(cmd.OutOrStdout())
 	return nil
 }
