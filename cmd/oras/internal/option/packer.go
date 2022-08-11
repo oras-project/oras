@@ -35,7 +35,7 @@ const (
 var (
 	errAnnotationConflict    = errors.New("annotations cannot be specified via flags and file at the same time")
 	errAnnotationFormat      = errors.New("annotation MUST be a key-value pair")
-	errAnnotationDuplication = errors.New("annotation key duplication")
+	errAnnotationDuplication = errors.New("duplicate annotation key")
 )
 
 // Packer option struct.
@@ -70,7 +70,6 @@ func (opts *Packer) ExportManifest(ctx context.Context, fetcher content.Fetcher,
 
 // LoadManifestAnnotations loads the manifest annotation map.
 func (opts *Packer) LoadManifestAnnotations() (annotations map[string]map[string]string, err error) {
-	annotations = make(map[string]map[string]string)
 	if opts.AnnotationFilePath != "" && len(opts.ManifestAnnotations) != 0 {
 		return nil, errAnnotationConflict
 	}
@@ -80,11 +79,12 @@ func (opts *Packer) LoadManifestAnnotations() (annotations map[string]map[string
 		}
 	}
 	if annotationsLength := len(opts.ManifestAnnotations); annotationsLength != 0 {
+		annotations = make(map[string]map[string]string)
 		if err = parseAnnotationFlags(opts.ManifestAnnotations, annotations); err != nil {
 			return nil, err
 		}
 	}
-	return annotations, nil
+	return
 }
 
 // decodeJSON decodes a json file v to filename.
@@ -98,19 +98,18 @@ func decodeJSON(filename string, v interface{}) error {
 }
 
 // parseAnnotationFlags resharps annotationslice to k-v type and updates annotations
-func parseAnnotationFlags(ManifestAnnotations []string, annotations map[string]map[string]string) error {
+func parseAnnotationFlags(annotationsFlagParam []string, annotations map[string]map[string]string) error {
 	manifestAnnotations := make(map[string]string)
-	for _, anno := range ManifestAnnotations {
-		parts := strings.SplitN(anno, "=", 2)
-		if len(parts) != 2 {
+	for _, anno := range annotationsFlagParam {
+		key, val, success := strings.Cut(anno, "=")
+		if !success {
 			return errAnnotationFormat
 		}
-		parts[0], parts[1] = strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
-		if _, ok := manifestAnnotations[parts[0]]; ok {
-
-			return fmt.Errorf("found annotation key, %v, more than once, %w", parts[0], errAnnotationDuplication)
+		key, val = strings.TrimSpace(key), strings.TrimSpace(val)
+		if _, ok := manifestAnnotations[key]; ok {
+			return fmt.Errorf("%w: %v, ", errAnnotationDuplication, key)
 		}
-		manifestAnnotations[parts[0]] = parts[1]
+		manifestAnnotations[key] = val
 	}
 	annotations[annotationManifest] = manifestAnnotations
 	return nil
