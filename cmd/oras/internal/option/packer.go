@@ -33,7 +33,7 @@ const (
 )
 
 var (
-	errAnnotationConflict    = errors.New("annotations cannot be specified via flags and file at the same time")
+	errAnnotationConflict    = errors.New("annotations cannot be specified via `--annotation` and `--annotation-file` at the same time")
 	errAnnotationFormat      = errors.New("annotation MUST be a key-value pair")
 	errAnnotationDuplication = errors.New("duplicate annotation key")
 )
@@ -98,9 +98,9 @@ func decodeJSON(filename string, v interface{}) error {
 }
 
 // parseAnnotationFlags resharps annotationslice to k-v type and updates annotations
-func parseAnnotationFlags(annotationsFlagParam []string, annotations map[string]map[string]string) error {
+func parseAnnotationFlags(annotationFlagParam []string, annotations map[string]map[string]string) error {
 	manifestAnnotations := make(map[string]string)
-	for _, anno := range annotationsFlagParam {
+	for _, anno := range annotationFlagParam {
 		key, val, success := strings.Cut(anno, "=")
 		if !success {
 			return errAnnotationFormat
