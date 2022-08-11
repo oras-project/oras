@@ -60,9 +60,7 @@ Example - Attach file 'hi.txt' with type 'doc/example' to manifest 'hello:test' 
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
-			if len(args) > 1 {
-				opts.FileRefs = args[1:]
-			}
+			opts.FileRefs = args[1:]
 			return runAttach(opts)
 		},
 	}
