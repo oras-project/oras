@@ -18,6 +18,7 @@ package option
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -62,6 +63,16 @@ func (opts *Pusher) LoadManifestAnnotations() (map[string]map[string]string, err
 		}
 	}
 	return annotations, nil
+}
+
+// ValidateEmpty checks whether blobs or manifest annotation are empty.
+func (opts *Pusher) ValidateEmpty() error {
+	if len(opts.FileRefs) == 0 {
+		if opts.ManifestAnnotations == "" {
+			return errors.New("no blob and manifest annotation are provided")
+		}
+	}
+	return nil
 }
 
 // decodeJSON decodes a json file v to filename.

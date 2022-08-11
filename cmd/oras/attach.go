@@ -53,8 +53,8 @@ Example - Attach file 'hi.txt' with type 'doc/example' to manifest 'hello:test' 
 `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if validateEmpty(cmd, args) {
-				return fmt.Errorf("no blob and manifest annotation are provided")
+			if err := opts.Pusher.ValidateEmpty(); err != nil {
+				return err
 			}
 			return opts.ReadPassword()
 		},
@@ -70,17 +70,6 @@ Example - Attach file 'hi.txt' with type 'doc/example' to manifest 'hello:test' 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
-}
-
-// validateEmpty checks whether blobs or manifest annotation are empty.
-func validateEmpty(cmd *cobra.Command, args []string) bool {
-	if len(args) == 1 {
-		annotationManifestFlag := cmd.Flags().Lookup("manifest-annotations")
-		if annotationManifestFlag.Value.String() == "" {
-			return true
-		}
-	}
-	return false
 }
 
 func runAttach(opts attachOptions) error {
