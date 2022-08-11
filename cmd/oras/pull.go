@@ -156,7 +156,7 @@ func runPull(opts pullOptions) error {
 			}
 			name = desc.MediaType
 		} else {
-			// no named content pulled
+			// named content downloaded
 			pulledEmpty = false
 		}
 		return display.Print("Downloaded ", display.ShortDigest(desc), name)
