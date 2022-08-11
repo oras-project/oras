@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"oras.land/oras/cmd/oras/repository"
 )
 
 func main() {
@@ -20,6 +21,7 @@ func main() {
 		discoverCmd(),
 		copyCmd(),
 		attachCmd(),
+		repository.Cmd(),
 	)
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)

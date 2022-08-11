@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package repository
 
 import (
 	"fmt"
@@ -32,28 +32,49 @@ type repositoryOptions struct {
 // 	rootCmd.AddCommand(versionCmd)
 // }
 
+func Cmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "repository [command]",
+		Short: "repository operations",
+	}
+
+	cmd.AddCommand(repositoryCmd())
+	return cmd
+}
+
 func repositoryCmd() *cobra.Command {
+	var opts repositoryOptions
 	// in case need option
 	cmd := &cobra.Command{
-		Use:   "version",
+		Use:   "list [REGISTRY]",
 		Short: "Print the version number of Hugo",
 		Long:  `All software has versions. This is Hugo's`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println("Hugo Static Site Generator v0.9 -- HEAD")
-			return runRepository()
+			opts.hostname = args[0]
+			return runRepository(opts)
 		},
 	}
-
 	// cmd.Flags()
 
-	// option.ApplyFlags()
+	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
 
 func runRepository(opts repositoryOptions) error {
+	ctx, _ := opts.SetLoggerLevel()
 	// get all repository from the registry
 	reg, err := opts.Remote.NewRegistry(opts.hostname, opts.Common)
-	fmt.Print(reg.Repositories(), err)
+	// https://docs.docker.com/registry/spec/api/#catalog
+	if err != nil {
+		return err
+	}
+	// RepositoryListPageSize
+	reg.Repositories(ctx, "", func(repos []string) error {
+		for _, repo := range repos {
+			fmt.Println(repo)
+		}
+		return nil
+	})
 	// list all repository
 	return nil
 }
