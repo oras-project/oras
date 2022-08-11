@@ -51,13 +51,18 @@ func attachCmd() *cobra.Command {
 Example - Attach file 'hi.txt' with type 'doc/example' to manifest 'hello:test' in registry 'localhost:5000'
   oras attach localhost:5000/hello:test hi.txt --artifact-type doc/example
 `,
-		Args: cobra.MinimumNArgs(2),
+		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if validateEmpty(cmd, args) {
+				return fmt.Errorf("no blob and manifest annotation are provided")
+			}
 			return opts.ReadPassword()
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
-			opts.FileRefs = args[1:]
+			if len(args) > 1 {
+				opts.FileRefs = args[1:]
+			}
 			return runAttach(opts)
 		},
 	}
@@ -65,6 +70,17 @@ Example - Attach file 'hi.txt' with type 'doc/example' to manifest 'hello:test' 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
+}
+
+// validateEmpty checks whether blobs or manifest annotation are empty.
+func validateEmpty(cmd *cobra.Command, args []string) bool {
+	if len(args) == 1 {
+		annotationManifestFlag := cmd.Flags().Lookup("manifest-annotations")
+		if annotationManifestFlag.Value.String() == "" {
+			return true
+		}
+	}
+	return false
 }
 
 func runAttach(opts attachOptions) error {
