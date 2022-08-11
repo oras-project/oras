@@ -40,18 +40,18 @@ const (
    },
    "layers": [
       {
-        "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
-        "size": 2479,
-        "digest": "sha256:2db29710123e3e53a794f2694094b9b4338aa9ee5c40b930cb8063a1be392c54"
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 2479,
+         "digest": "sha256:2db29710123e3e53a794f2694094b9b4338aa9ee5c40b930cb8063a1be392c54"
       }
    ]
 }`
 )
 
-var _ = Describe("Manifest", func() {
-	Context("user", func() {
+var _ = Context("User", func() {
+	Describe("use manifest command to", func() {
 		When("look for supported command and help", func() {
-			It("list available commands", func() {
+			It("should show available commands", func() {
 				cmd := manifest.Cmd()
 				cmd.SetArgs([]string{"-h"})
 				km := output.NewKeywordMatcher([]string{
@@ -59,11 +59,11 @@ var _ = Describe("Manifest", func() {
 					"[Preview] Fetch",
 				})
 				cmd.SetOutput(km)
-				Expect(cmd.Execute()).Should(Succeed(), "Execution should succeed")
+				Expect(cmd.Execute()).Should(Succeed())
 				want, matched := km.Status()
 				Expect(matched).To(Equal(want))
 			})
-			It("list fetch-related commands", func() {
+			It("should show fetch-related help doc", func() {
 				cmd := manifest.Cmd()
 				cmd.SetArgs([]string{"fetch", "-h"})
 				km := output.NewKeywordMatcher([]string{
@@ -71,35 +71,25 @@ var _ = Describe("Manifest", func() {
 					"[Preview] Fetch",
 				})
 				cmd.SetOutput(km)
-				Expect(cmd.Execute()).Should(Succeed(), "Execution should succeed")
+				Expect(cmd.Execute()).Should(Succeed())
 				want, matched := km.Status()
 				Expect(matched).To(Equal(want))
 			})
-			It("use get alias", func() {
+			It("should also work with alias get", func() {
 				cmd := manifest.Cmd()
 				cmd.SetArgs([]string{"get", "-h"})
 				cmd.SetOutput(io.Discard)
-				Expect(cmd.Execute()).Should(Succeed(), "Execution should succeed")
+				Expect(cmd.Execute()).Should(Succeed())
 			})
 		})
 
-		When("fetching manifest", func() {
-			It("no artifact reference provided", func() {
+		When("fetch manifest", func() {
+			It("should fail if no artifact reference provided", func() {
 				cmd := manifest.Cmd()
-				cmd.SetArgs([]string{"fetch", "-d"})
+				cmd.SetArgs([]string{"fetch"})
 				km := output.NewKeywordMatcher([]string{"Error:"})
 				cmd.SetOutput(km)
-				Expect(cmd.Execute()).ShouldNot(Succeed(), "Execution should fail")
-				want, matched := km.Status()
-				Expect(matched).To(Equal(want))
-			})
-
-			It("no artifact reference provided", func() {
-				cmd := manifest.Cmd()
-				cmd.SetArgs([]string{"fetch", "-d"})
-				km := output.NewKeywordMatcher([]string{"Error:"})
-				cmd.SetOutput(km)
-				Expect(cmd.Execute()).ShouldNot(Succeed(), "Execution should fail")
+				Expect(cmd.Execute()).ShouldNot(Succeed())
 				want, matched := km.Status()
 				Expect(matched).To(Equal(want))
 			})
@@ -109,7 +99,7 @@ var _ = Describe("Manifest", func() {
 				cmd.SetArgs([]string{"fetch", "docker.io/library/hello-world:latest"})
 				w := output.NewWriter()
 				cmd.SetOutput(w)
-				Expect(cmd.Execute()).Should(Succeed(), "Execution should succeed")
+				Expect(cmd.Execute()).Should(Succeed())
 				Expect(string(w.ReadAll())).To(Equal(manifest_latest), "Should read out manifest content as expected")
 			})
 
@@ -118,7 +108,7 @@ var _ = Describe("Manifest", func() {
 				cmd.SetArgs([]string{"fetch", "docker.io/library/hello-world@" + digest_latest})
 				w := output.NewWriter()
 				cmd.SetOutput(w)
-				Expect(cmd.Execute()).Should(Succeed(), "Execution should succeed")
+				Expect(cmd.Execute()).Should(Succeed())
 				Expect(string(w.ReadAll())).To(Equal(manifest_latest), "Should read out manifest content as expected")
 			})
 
@@ -127,7 +117,7 @@ var _ = Describe("Manifest", func() {
 				cmd.SetArgs([]string{"fetch", "docker.io/library/hello-world@" + digest_latest, "--descriptor"})
 				w := output.NewWriter()
 				cmd.SetOutput(w)
-				Expect(cmd.Execute()).Should(Succeed(), "Execution should succeed")
+				Expect(cmd.Execute()).Should(Succeed())
 				Expect(string(w.ReadAll())).To(Equal(descriptor_latest), "Should read out manifest content as expected")
 			})
 
@@ -136,7 +126,7 @@ var _ = Describe("Manifest", func() {
 				cmd.SetArgs([]string{"fetch", "docker.io/library/hello-world@" + digest_latest, "--platform", "linux/amd64"})
 				w := output.NewWriter()
 				cmd.SetOutput(w)
-				Expect(cmd.Execute()).Should(Succeed(), "Execution should succeed")
+				Expect(cmd.Execute()).Should(Succeed())
 				Expect(string(w.ReadAll())).To(Equal(manifest_linuxAMD64), "Should read out manifest content as expected")
 			})
 
@@ -145,7 +135,7 @@ var _ = Describe("Manifest", func() {
 				cmd.SetArgs([]string{"fetch", "docker.io/library/hello-world@" + digest_latest, "--platform", "linux/amd64", "--descriptor"})
 				w := output.NewWriter()
 				cmd.SetOutput(w)
-				Expect(cmd.Execute()).Should(Succeed(), "Execution should succeed")
+				Expect(cmd.Execute()).Should(Succeed())
 				Expect(string(w.ReadAll())).To(Equal(descriptor_linuxAMD64), "Should read out manifest content as expected")
 			})
 		})
