@@ -71,7 +71,13 @@ Example - Push file to the insecure registry:
 
 Example - Push file to the HTTP registry:
   oras push localhost:5000/hello:latest hi.txt --plain-http
-`,
+
+Example - Push repository with manifest annotations
+  oras push localhost:5000/hello:latest --annotaion "key=val"
+
+Example - Push repository with manifest annotation file
+  oras push localhost:5000/hello:latest --annotaion-file annotation.json
+  `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.artifactType != "" && opts.manifestConfigRef != "" {
