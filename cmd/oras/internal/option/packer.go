@@ -33,8 +33,8 @@ const (
 )
 
 var (
-	errAnnotationConflict    = errors.New("annotations cannot be specified via `--annotation` and `--annotation-file` at the same time")
-	errAnnotationFormat      = errors.New("annotation MUST be a key-value pair")
+	errAnnotationConflict    = errors.New("`--annotation` and `--annotation-file` cannot be both specified")
+	errAnnotationFormat      = errors.New("missing key in `--annotation` flag")
 	errAnnotationDuplication = errors.New("duplicate annotation key")
 )
 
@@ -78,7 +78,7 @@ func (opts *Packer) LoadManifestAnnotations() (annotations map[string]map[string
 			return nil, err
 		}
 	}
-	if annotationsLength := len(opts.ManifestAnnotations); annotationsLength != 0 {
+	if len(opts.ManifestAnnotations) != 0 {
 		annotations = make(map[string]map[string]string)
 		if err = parseAnnotationFlags(opts.ManifestAnnotations, annotations); err != nil {
 			return nil, err
@@ -97,13 +97,13 @@ func decodeJSON(filename string, v interface{}) error {
 	return json.NewDecoder(file).Decode(v)
 }
 
-// parseAnnotationFlags resharps annotationslice to k-v type and updates annotations
-func parseAnnotationFlags(annotationFlagParam []string, annotations map[string]map[string]string) error {
+// parseAnnotationFlags parses annotation flags into a map.
+func parseAnnotationFlags(flags []string, annotations map[string]map[string]string) error {
 	manifestAnnotations := make(map[string]string)
-	for _, anno := range annotationFlagParam {
+	for _, anno := range flags {
 		key, val, success := strings.Cut(anno, "=")
 		if !success {
-			return errAnnotationFormat
+			return fmt.Errorf("%w: %s", errAnnotationFormat, anno)
 		}
 		key, val = strings.TrimSpace(key), strings.TrimSpace(val)
 		if _, ok := manifestAnnotations[key]; ok {
