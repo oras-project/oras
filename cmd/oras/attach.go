@@ -18,6 +18,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	artifactspec "github.com/oras-project/artifacts-spec/specs-go/v1"
@@ -108,7 +109,7 @@ func runAttach(opts attachOptions) error {
 	}
 
 	// Prepare Push
-	committed := make(map[string]string)
+	committed := &sync.Map{}
 	graphCopyOptions := oras.DefaultCopyGraphOptions
 	graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		if isEqualOCIDescriptor(node, desc) {
@@ -119,10 +120,11 @@ func runAttach(opts attachOptions) error {
 	}
 	graphCopyOptions.PreCopy = display.StatusPrinter("Uploading", opts.Verbose)
 	graphCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-		committed[desc.Digest.String()] = desc.Annotations[ocispec.AnnotationTitle]
+		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
 		return display.StatusPrinter("Exists   ", opts.Verbose)(ctx, desc)
 	}
 	graphCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
 		if err := display.SuccessorStatusPrinter("Skipped  ", store, committed, opts.Verbose)(ctx, desc); err != nil {
 			return err
 		}

@@ -49,7 +49,7 @@ func StatusPrinter(status string, verbose bool) func(context.Context, ocispec.De
 }
 
 // SuccessorStatusPrinter returns a tracking function to print status for successors.
-func SuccessorStatusPrinter(status string, fetcher content.Fetcher, committed map[string]string, verbose bool) func(context.Context, ocispec.Descriptor) error {
+func SuccessorStatusPrinter(status string, fetcher content.Fetcher, committed *sync.Map, verbose bool) func(context.Context, ocispec.Descriptor) error {
 	return func(ctx context.Context, desc ocispec.Descriptor) error {
 		successors, err := content.Successors(ctx, fetcher, desc)
 		if err != nil {
@@ -57,7 +57,7 @@ func SuccessorStatusPrinter(status string, fetcher content.Fetcher, committed ma
 		}
 		for _, s := range successors {
 			name := s.Annotations[ocispec.AnnotationTitle]
-			if committed[s.Digest.String()] != name {
+			if v, ok := committed.Load(s.Digest.String()); !ok || v != name {
 				// Reprint status for deduplicated content
 				if err := StatusPrinter(status, verbose)(ctx, s); err != nil {
 					return err

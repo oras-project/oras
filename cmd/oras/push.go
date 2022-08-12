@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -106,15 +107,15 @@ func runPush(opts pushOptions) error {
 	store.AllowPathTraversalOnWrite = opts.PathValidationDisabled
 
 	// Ready to push
-	committed := make(map[string]string)
+	committed := &sync.Map{}
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.PreCopy = display.StatusPrinter("Uploading", opts.Verbose)
 	copyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-		committed[desc.Digest.String()] = desc.Annotations[ocispec.AnnotationTitle]
+		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
 		return display.StatusPrinter("Exists   ", opts.Verbose)(ctx, desc)
 	}
 	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		committed[desc.Digest.String()] = desc.Annotations[ocispec.AnnotationTitle]
+		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
 		if err := display.SuccessorStatusPrinter("Skipped  ", store, committed, opts.Verbose)(ctx, desc); err != nil {
 			return err
 		}
