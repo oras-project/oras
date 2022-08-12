@@ -18,6 +18,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -84,30 +85,28 @@ func runCopy(opts copyOptions) error {
 	}
 
 	// Prepare copy options
+	committed := &sync.Map{}
 	extendedCopyOptions := oras.DefaultExtendedCopyOptions
-	outputStatus := func(status string) func(context.Context, ocispec.Descriptor) error {
-		return func(ctx context.Context, desc ocispec.Descriptor) error {
-			name, ok := desc.Annotations[ocispec.AnnotationTitle]
-			if !ok {
-				if !opts.Verbose {
-					return nil
-				}
-				name = desc.MediaType
-			}
-			return display.Print(status, display.ShortDigest(desc), name)
+	extendedCopyOptions.PreCopy = display.StatusPrinter("Copying", opts.Verbose)
+	extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+		if err := display.PrintSuccessorStatus(ctx, desc, "Skipped", dst, committed, opts.Verbose); err != nil {
+			return err
 		}
+		return display.PrintStatus(desc, "Copied ", opts.Verbose)
 	}
-	extendedCopyOptions.PreCopy = outputStatus("Copying")
-	extendedCopyOptions.PostCopy = outputStatus("Copied ")
-	extendedCopyOptions.OnCopySkipped = outputStatus("Exists ")
+	extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
+		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+		return display.PrintStatus(desc, "Exists ", opts.Verbose)
+	}
 
 	if src.Reference.Reference == "" {
 		return newErrInvalidReference(src.Reference)
 	}
 
-	// push to the destination with digest only if no tag specified
 	var desc ocispec.Descriptor
 	if ref := dst.Reference.Reference; ref == "" {
+		// push to the destination with digest only if no tag specified
 		desc, err = src.Resolve(ctx, src.Reference.Reference)
 		if err != nil {
 			return err
