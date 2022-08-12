@@ -66,10 +66,10 @@ func (t *target) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadC
 	}
 
 	// Fetch from origin with caching
-	return t.cachedReadCloser(ctx, rc, target), nil
+	return t.cacheReadCloser(ctx, rc, target), nil
 }
 
-func (t *target) cachedReadCloser(ctx context.Context, rc io.ReadCloser, target ocispec.Descriptor) io.ReadCloser {
+func (t *target) cacheReadCloser(ctx context.Context, rc io.ReadCloser, target ocispec.Descriptor) io.ReadCloser {
 	pr, pw := io.Pipe()
 	var wg sync.WaitGroup
 
@@ -135,5 +135,5 @@ func (t *referenceTarget) FetchReference(ctx context.Context, reference string) 
 	}
 
 	// Fetch from origin with caching
-	return target, t.cachedReadCloser(ctx, rc, target), nil
+	return target, t.cacheReadCloser(ctx, rc, target), nil
 }
