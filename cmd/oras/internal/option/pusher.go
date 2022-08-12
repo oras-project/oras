@@ -26,7 +26,11 @@ import (
 	"oras.land/oras-go/v2/content"
 )
 
-const validateEmptyErrorStr = "no blob and manifest annotation are provided"
+const (
+	annotationConfig      = "$config"
+	annotationManifest    = "$manifest"
+	validateEmptyErrorStr = "no blob and manifest annotation are provided"
+)
 
 // Pusher option struct.
 type Pusher struct {
@@ -63,8 +67,8 @@ func (opts *Pusher) LoadManifestAnnotations() (map[string]map[string]string, err
 		if err := decodeJSON(opts.ManifestAnnotations, &annotations); err != nil {
 			return nil, err
 		}
-		if annotations["config"]["annotations"] == "" || annotations["annotations"] == nil {
-			return nil, errors.New(validateEmptyErrorStr)
+		if err := validateEmptyManifestAnnotations(annotations); err != nil {
+			return nil, err
 		}
 	}
 	return annotations, nil
@@ -88,4 +92,12 @@ func decodeJSON(filename string, v interface{}) error {
 	}
 	defer file.Close()
 	return json.NewDecoder(file).Decode(v)
+}
+
+// validateEmptyManifestAnnotations check whether existing ManifestAnnotations contain no value.
+func validateEmptyManifestAnnotations(annotations map[string]map[string]string) error {
+	if len(annotations[annotationConfig]) == 0 && len(annotations[annotationManifest]) == 0 {
+		return errors.New(validateEmptyErrorStr)
+	}
+	return nil
 }
