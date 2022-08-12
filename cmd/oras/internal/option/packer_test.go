@@ -87,7 +87,7 @@ func TestPacker_LoadManifestAnnotations_annotationFlag(t *testing.T) {
 	invalidFlag0 := []string{
 		"Key",
 	}
-	annotations := map[string]map[string]string{}
+	var annotations map[string]map[string]string
 	opts := Packer{ManifestAnnotations: invalidFlag0}
 	_, err := opts.LoadManifestAnnotations()
 	if !errors.Is(err, errAnnotationFormat) {
@@ -113,7 +113,7 @@ func TestPacker_LoadManifestAnnotations_annotationFlag(t *testing.T) {
 		" Key3 = Val ",         // 4. Item trim conversion
 	}
 	opts = Packer{ManifestAnnotations: validFlag}
-	_, err = opts.LoadManifestAnnotations()
+	annotations, err = opts.LoadManifestAnnotations()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
