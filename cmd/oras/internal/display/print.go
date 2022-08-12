@@ -68,7 +68,7 @@ func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, status s
 	}
 	for _, s := range successors {
 		name := s.Annotations[ocispec.AnnotationTitle]
-		if v, ok := committed.Load(s.Digest.String()); !ok || v != name {
+		if v, ok := committed.Load(s.Digest.String()); ok && v != name {
 			// Reprint status for deduplicated content
 			if err := PrintStatus(s, status, verbose); err != nil {
 				return err
