@@ -121,7 +121,7 @@ var _ = Context("User", func() {
 				Expect(string(w.ReadAll())).To(Equal(descriptor_latest), "Should read out manifest content as expected")
 			})
 
-			It("fetch manifest with target platform", func() {
+			It("fetch manifest with target platform from a manifest list", func() {
 				cmd := manifest.Cmd()
 				cmd.SetArgs([]string{"fetch", "docker.io/library/hello-world@" + digest_latest, "--platform", "linux/amd64"})
 				w := output.NewWriter()
@@ -133,6 +133,24 @@ var _ = Context("User", func() {
 			It("fetch descriptor with target platform", func() {
 				cmd := manifest.Cmd()
 				cmd.SetArgs([]string{"fetch", "docker.io/library/hello-world@" + digest_latest, "--platform", "linux/amd64", "--descriptor"})
+				w := output.NewWriter()
+				cmd.SetOutput(w)
+				Expect(cmd.Execute()).Should(Succeed())
+				Expect(string(w.ReadAll())).To(Equal(descriptor_linuxAMD64), "Should read out manifest content as expected")
+			})
+
+			It("fetch manifest with platform validation", func() {
+				cmd := manifest.Cmd()
+				cmd.SetArgs([]string{"fetch", "docker.io/library/hello-world@" + digest_linuxAMD64, "--platform", "linux/amd64"})
+				w := output.NewWriter()
+				cmd.SetOutput(w)
+				Expect(cmd.Execute()).Should(Succeed())
+				Expect(string(w.ReadAll())).To(Equal(manifest_linuxAMD64), "Should read out manifest content as expected")
+			})
+
+			It("fetch descriptor with platform validation", func() {
+				cmd := manifest.Cmd()
+				cmd.SetArgs([]string{"fetch", "docker.io/library/hello-world@" + digest_linuxAMD64, "--platform", "linux/amd64", "--descriptor"})
 				w := output.NewWriter()
 				cmd.SetOutput(w)
 				Expect(cmd.Execute()).Should(Succeed())
