@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package upload
+package file
 
 import (
 	"fmt"
@@ -24,8 +24,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// PrepareContent opens the given file and generates descriptor from the given
-// file.
+// PrepareContent prepares the content descriptor from the file.
 func PrepareContent(path string, mediaType string) (ocispec.Descriptor, io.ReadCloser, error) {
 	if path == "" {
 		return ocispec.Descriptor{}, nil, fmt.Errorf("missing file name")

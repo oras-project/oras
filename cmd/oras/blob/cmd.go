@@ -33,19 +33,19 @@ func Cmd() *cobra.Command {
 func pushCmd() *cobra.Command {
 	var opts pushBlobOptions
 	cmd := &cobra.Command{
-		Use:   "push name[:tag|@digest] file",
+		Use:   "push name[@digest] file [flags]",
 		Short: "[Preview] Push a blob to remote registry",
 		Long: `[Preview] Push a blob to remote registry
 ** This command is in preview and under development. **
 
 Example - Push blob "hi.txt":
-  oras blob push localhost:5000/hello:latest hi.txt
+  oras blob push localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5 hi.txt
 
 Example - Push blob to the insecure registry:
-  oras blob push localhost:5000/hello:latest hi.txt --insecure
+  oras blob push localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5 hi.txt --insecure
 
 Example - Push blob to the HTTP registry:
-  oras blob push localhost:5000/hello:latest hi.txt --plain-http		
+  oras blob push localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5 hi.txt --plain-http		
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {

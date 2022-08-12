@@ -17,10 +17,11 @@ package blob
 
 import (
 	"fmt"
+	"strings"
 
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/upload"
+	"oras.land/oras/internal/file"
 )
 
 type pushBlobOptions struct {
@@ -39,13 +40,15 @@ func pushBlob(opts pushBlobOptions) (err error) {
 	}
 
 	// prepare blob content
-	desc, fp, err := upload.PrepareContent(opts.fileRef, "application/octet-stream")
+	desc, rc, err := file.PrepareContent(opts.fileRef, "application/octet-stream")
 	if err != nil {
 		return err
 	}
 	defer func() {
-		if closeErr := fp.Close(); err == nil {
-			err = closeErr
+		if closeErr := rc.Close(); err == nil {
+			if closeErr != nil && !strings.Contains(closeErr.Error(), "file already closed") {
+				err = closeErr
+			}
 		}
 	}()
 
@@ -59,7 +62,7 @@ func pushBlob(opts pushBlobOptions) (err error) {
 			return err
 		}
 	} else {
-		if err = repo.Push(ctx, desc, fp); err != nil {
+		if err = repo.Push(ctx, desc, rc); err != nil {
 			return err
 		}
 	}
