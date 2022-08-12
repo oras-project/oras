@@ -12,7 +12,7 @@ require (
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
-	oras.land/oras-go/v2 v2.0.0-20220726123138-064752f3088e
+	oras.land/oras-go/v2 v2.0.0-20220804053649-e135557babfa
 )
 
 require (
