@@ -23,7 +23,7 @@ import (
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "blob [command]",
-		Short: "Blob operations",
+		Short: "[Preview] Blob operations",
 	}
 
 	cmd.AddCommand(pushCmd())
@@ -34,8 +34,9 @@ func pushCmd() *cobra.Command {
 	var opts pushBlobOptions
 	cmd := &cobra.Command{
 		Use:   "push name[:tag|@digest] file",
-		Short: "Push a blob to remote registry",
-		Long: `Push a blob to remote registry
+		Short: "[Preview] Push a blob to remote registry",
+		Long: `[Preview] Push a blob to remote registry
+** This command is in preview and under development. **
 
 Example - Push blob "hi.txt":
   oras blob push localhost:5000/hello:latest hi.txt
@@ -52,7 +53,7 @@ Example - Push blob to the HTTP registry:
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
-			opts.FileRef = args[1]
+			opts.fileRef = args[1]
 			return pushBlob(opts)
 		},
 	}
