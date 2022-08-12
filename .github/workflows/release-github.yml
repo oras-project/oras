@@ -16,7 +16,7 @@ jobs:
       - name: setup go environment
         uses: actions/setup-go@v3
         with:
-          go-version: '1.18.1'
+          go-version: '1.19.0'
       - name: run goreleaser
         uses: goreleaser/goreleaser-action@v2
         with:

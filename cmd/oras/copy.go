@@ -30,7 +30,7 @@ type copyOptions struct {
 	src option.Remote
 	dst option.Remote
 	option.Common
-	rescursive bool
+	recursive bool
 
 	srcRef string
 	dstRef string
@@ -60,7 +60,7 @@ Examples - Copy the artifact tagged 'v1' and its referrers from repository 'loca
 		},
 	}
 
-	cmd.Flags().BoolVarP(&opts.rescursive, "recursive", "r", false, "recursively copy artifacts and its referrer artifacts")
+	cmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "recursively copy artifacts and its referrer artifacts")
 	opts.src.ApplyFlagsWithPrefix(cmd.Flags(), "from", "source")
 	opts.dst.ApplyFlagsWithPrefix(cmd.Flags(), "to", "destination")
 	option.ApplyFlags(&opts, cmd.Flags())
@@ -110,13 +110,13 @@ func runCopy(opts copyOptions) error {
 		if err != nil {
 			return err
 		}
-		if opts.rescursive {
+		if opts.recursive {
 			err = oras.ExtendedCopyGraph(ctx, src, dst, desc, extendedCopyOptions.ExtendedCopyGraphOptions)
 		} else {
 			err = oras.CopyGraph(ctx, src, dst, desc, extendedCopyOptions.CopyGraphOptions)
 		}
 	} else {
-		if opts.rescursive {
+		if opts.recursive {
 			desc, err = oras.ExtendedCopy(ctx, src, opts.srcRef, dst, opts.dstRef, extendedCopyOptions)
 		} else {
 			copyOptions := oras.CopyOptions{
