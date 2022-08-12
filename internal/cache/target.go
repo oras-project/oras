@@ -23,6 +23,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/registry"
 )
 
 type closer func() error
@@ -37,12 +38,19 @@ type target struct {
 	cache content.Storage
 }
 
-// NewTarget generates a new target with caching.
-func NewTarget(origin oras.Target, cache content.Storage) *target {
-	return &target{
-		Target: origin,
+// New generates a new target storage with caching.
+func New(source oras.Target, cache content.Storage) oras.Target {
+	t := &target{
+		Target: source,
 		cache:  cache,
 	}
+	if refFetcher, ok := source.(registry.ReferenceFetcher); ok {
+		return &referenceTarget{
+			target:           t,
+			ReferenceFetcher: refFetcher,
+		}
+	}
+	return t
 }
 
 // Fetch fetches the content identified by the descriptor.
@@ -58,27 +66,27 @@ func (t *target) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadC
 	}
 
 	// Fetch from origin with caching
-	return piped(ctx, rc, target, t.cache), nil
+	return t.cachedReadCloser(ctx, rc, target), nil
 }
 
-func piped(ctx context.Context, in io.ReadCloser, target ocispec.Descriptor, cache content.Storage) io.ReadCloser {
+func (t *target) cachedReadCloser(ctx context.Context, rc io.ReadCloser, target ocispec.Descriptor) io.ReadCloser {
 	pr, pw := io.Pipe()
 	var wg sync.WaitGroup
-	wg.Add(1)
 
+	wg.Add(1)
 	var pushErr error
 	go func() {
 		defer wg.Done()
-		pushErr = cache.Push(ctx, target, pr)
+		pushErr = t.cache.Push(ctx, target, pr)
 	}()
 
 	return struct {
 		io.Reader
 		io.Closer
 	}{
-		Reader: io.TeeReader(in, pw),
+		Reader: io.TeeReader(rc, pw),
 		Closer: closer(func() error {
-			rcErr := in.Close()
+			rcErr := rc.Close()
 			if err := pw.Close(); err != nil {
 				return err
 			}
@@ -98,4 +106,34 @@ func (t *target) Exists(ctx context.Context, desc ocispec.Descriptor) (bool, err
 		return true, nil
 	}
 	return t.Target.Exists(ctx, desc)
+}
+
+// Cache referenceTarget struct.
+type referenceTarget struct {
+	*target
+	registry.ReferenceFetcher
+}
+
+// FetchReference fetches the content identified by the reference from the
+// remote and cache the fetched content.
+// Cached content will only be read via Fetch, FetchReference will always fetch
+// From origin.
+func (t *referenceTarget) FetchReference(ctx context.Context, reference string) (ocispec.Descriptor, io.ReadCloser, error) {
+	target, rc, err := t.ReferenceFetcher.FetchReference(ctx, reference)
+	if err != nil {
+		return ocispec.Descriptor{}, nil, err
+	}
+
+	// skip caching if the content already exists in cache
+	exists, err := t.cache.Exists(ctx, target)
+	if err != nil {
+		return ocispec.Descriptor{}, nil, err
+	}
+	if exists {
+		// no need to do tee'd push
+		return target, rc, nil
+	}
+
+	// Fetch from origin with caching
+	return target, t.cachedReadCloser(ctx, rc, target), nil
 }

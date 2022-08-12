@@ -33,6 +33,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 )
 
@@ -44,7 +45,7 @@ func TestProxy_fetchCache(t *testing.T) {
 		Size:      int64(len(blob)),
 	}
 
-	p := NewTarget(memory.New(), memory.New())
+	p := New(memory.New(), memory.New())
 	ctx := context.Background()
 
 	err := p.Push(ctx, desc, bytes.NewReader(blob))
@@ -70,7 +71,7 @@ func TestProxy_fetchCache(t *testing.T) {
 
 	// repeated fetch should not touch base CAS
 	// nil base will generate panic if the base CAS is touched
-	p.Target = nil
+	p.(*target).Target = nil
 
 	exists, err = p.Exists(ctx, desc)
 	if err != nil {
@@ -96,7 +97,7 @@ func TestProxy_pushPassThrough(t *testing.T) {
 		Size:      int64(len(blob)),
 	}
 
-	p := NewTarget(memory.New(), memory.New())
+	p := New(memory.New(), memory.New())
 	ctx := context.Background()
 
 	// before push
@@ -174,11 +175,11 @@ func TestProxy_fetchReference(t *testing.T) {
 		t.Fatalf("NewRepository() error = %v", err)
 	}
 	repo.PlainHTTP = true
-	p := NewReferenceTarget(repo, memory.New())
+	p := New(repo, memory.New())
 	ctx := context.Background()
 
 	// first fetch reference
-	gotDesc, rc, err := p.FetchReference(ctx, repo.Reference.Reference)
+	gotDesc, rc, err := p.(registry.ReferenceFetcher).FetchReference(ctx, repo.Reference.Reference)
 	if err != nil {
 		t.Fatal("ReferenceTarget.FetchReference() error =", err)
 	}
@@ -205,12 +206,7 @@ func TestProxy_fetchReference(t *testing.T) {
 	}
 
 	// repeated fetch should not touch base CAS
-	p.Target = nil
-	p.ReferenceFetcher = nil
-	_, _, err = p.FetchReference(ctx, repo.Reference.Reference)
-	if err == nil {
-		t.Fatal("Expecting FeferenceTarget.FetchReference() to fail")
-	}
+	p.(*referenceTarget).Target = nil
 	got, err = content.FetchAll(ctx, p, desc)
 	if err != nil {
 		t.Fatal("ReferenceTarget.Fetch() error =", err)
