@@ -112,14 +112,14 @@ func runPush(opts pushOptions) error {
 	copyOptions.PreCopy = display.StatusPrinter("Uploading", opts.Verbose)
 	copyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return display.StatusPrinter("Exists   ", opts.Verbose)(ctx, desc)
+		return display.PrintStatus(desc, "Exists   ", opts.Verbose)
 	}
 	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		if err := display.SuccessorStatusPrinter("Skipped  ", store, committed, opts.Verbose)(ctx, desc); err != nil {
+		if err := display.PrintSuccessorStatus(ctx, desc, "Skipped  ", store, committed, opts.Verbose); err != nil {
 			return err
 		}
-		return display.StatusPrinter("Uploaded ", opts.Verbose)(ctx, desc)
+		return display.PrintStatus(desc, "Uploaded ", opts.Verbose)
 	}
 	desc, err := packManifest(ctx, store, annotations, &opts)
 	if err != nil {

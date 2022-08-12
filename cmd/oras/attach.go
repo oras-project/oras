@@ -121,14 +121,14 @@ func runAttach(opts attachOptions) error {
 	graphCopyOptions.PreCopy = display.StatusPrinter("Uploading", opts.Verbose)
 	graphCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return display.StatusPrinter("Exists   ", opts.Verbose)(ctx, desc)
+		return display.PrintStatus(desc, "Exists   ", opts.Verbose)
 	}
 	graphCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		if err := display.SuccessorStatusPrinter("Skipped  ", store, committed, opts.Verbose)(ctx, desc); err != nil {
+		if err := display.PrintSuccessorStatus(ctx, desc, "Skipped  ", store, committed, opts.Verbose); err != nil {
 			return err
 		}
-		return display.StatusPrinter("Uploaded ", opts.Verbose)(ctx, desc)
+		return display.PrintStatus(desc, "Uploaded ", opts.Verbose)
 	}
 	// Push
 	err = oras.CopyGraph(ctx, store, dst, desc, graphCopyOptions)

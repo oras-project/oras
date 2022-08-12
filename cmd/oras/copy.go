@@ -90,14 +90,14 @@ func runCopy(opts copyOptions) error {
 	extendedCopyOptions.PreCopy = display.StatusPrinter("Copying", opts.Verbose)
 	extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		if err := display.SuccessorStatusPrinter("Skipped", dst, committed, opts.Verbose)(ctx, desc); err != nil {
+		if err := display.PrintSuccessorStatus(ctx, desc, "Skipped", dst, committed, opts.Verbose); err != nil {
 			return err
 		}
-		return display.StatusPrinter("Copied ", opts.Verbose)(ctx, desc)
+		return display.PrintStatus(desc, "Copied ", opts.Verbose)
 	}
 	extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return display.StatusPrinter("Exists ", opts.Verbose)(ctx, desc)
+		return display.PrintStatus(desc, "Exists ", opts.Verbose)
 	}
 
 	if src.Reference.Reference == "" {

@@ -48,22 +48,32 @@ func StatusPrinter(status string, verbose bool) func(context.Context, ocispec.De
 	}
 }
 
-// SuccessorStatusPrinter returns a tracking function to print status for successors.
-func SuccessorStatusPrinter(status string, fetcher content.Fetcher, committed *sync.Map, verbose bool) func(context.Context, ocispec.Descriptor) error {
-	return func(ctx context.Context, desc ocispec.Descriptor) error {
-		successors, err := content.Successors(ctx, fetcher, desc)
-		if err != nil {
-			return err
+// PrintStatus prints transfer status.
+func PrintStatus(desc ocispec.Descriptor, status string, verbose bool) error {
+	name, ok := desc.Annotations[ocispec.AnnotationTitle]
+	if !ok {
+		if !verbose {
+			return nil
 		}
-		for _, s := range successors {
-			name := s.Annotations[ocispec.AnnotationTitle]
-			if v, ok := committed.Load(s.Digest.String()); !ok || v != name {
-				// Reprint status for deduplicated content
-				if err := StatusPrinter(status, verbose)(ctx, s); err != nil {
-					return err
-				}
+		name = desc.MediaType
+	}
+	return Print(status, ShortDigest(desc), name)
+}
+
+// PrintSuccessorStatus prints transfer status of successors.
+func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, status string, fetcher content.Fetcher, committed *sync.Map, verbose bool) error {
+	successors, err := content.Successors(ctx, fetcher, desc)
+	if err != nil {
+		return err
+	}
+	for _, s := range successors {
+		name := s.Annotations[ocispec.AnnotationTitle]
+		if v, ok := committed.Load(s.Digest.String()); !ok || v != name {
+			// Reprint status for deduplicated content
+			if err := PrintStatus(s, status, verbose); err != nil {
+				return err
 			}
 		}
-		return nil
 	}
+	return nil
 }
