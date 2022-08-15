@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"oras.land/oras/cmd/oras/blob"
 	"oras.land/oras/cmd/oras/manifest"
 	"oras.land/oras/cmd/oras/repository"
 	"oras.land/oras/cmd/oras/tag"
@@ -23,6 +24,7 @@ func main() {
 		discoverCmd(),
 		copyCmd(),
 		attachCmd(),
+		blob.Cmd(),
 		manifest.Cmd(),
 		tag.TagCmd(),
 		repository.Cmd(),
