@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -101,7 +102,7 @@ func runCopy(opts copyOptions) error {
 	}
 
 	if src.Reference.Reference == "" {
-		return newErrInvalidReference(src.Reference)
+		return errors.NewErrInvalidReference(src.Reference)
 	}
 
 	var desc ocispec.Descriptor
