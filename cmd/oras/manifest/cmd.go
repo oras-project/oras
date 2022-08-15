@@ -13,15 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package errors
+package manifest
 
 import (
-	"fmt"
-
-	"oras.land/oras-go/v2/registry"
+	"github.com/spf13/cobra"
 )
 
-// NewErrInvalidReference creates a new error based on the reference string.
-func NewErrInvalidReference(ref registry.Reference) error {
-	return fmt.Errorf("%s: invalid image reference, expecting <name:tag|name@digest>", ref)
+func Cmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "manifest [fetch]",
+		Short: "[Preview] Manifest operations",
+	}
+
+	cmd.AddCommand(
+		fetchCmd(),
+	)
+	return cmd
 }
