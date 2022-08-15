@@ -1,6 +1,6 @@
 module oras.land/oras
 
-go 1.18
+go 1.19
 
 replace oras.land/oras-go/v2 => github.com/lizMSFT/oras-go/v2 v2.0.0-20220802063949-39386ace9f6e
 
@@ -14,7 +14,7 @@ require (
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
-	oras.land/oras-go/v2 v2.0.0-20220726123138-064752f3088e
+	oras.land/oras-go/v2 v2.0.0-20220804053649-e135557babfa
 )
 
 require (

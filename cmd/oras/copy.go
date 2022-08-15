@@ -18,6 +18,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -31,7 +32,7 @@ type copyOptions struct {
 	src option.Remote
 	dst option.Remote
 	option.Common
-	rescursive bool
+	recursive bool
 
 	srcRef string
 	dstRef string
@@ -61,7 +62,7 @@ Examples - Copy the artifact tagged 'v1' and its referrers from repository 'loca
 		},
 	}
 
-	cmd.Flags().BoolVarP(&opts.rescursive, "recursive", "r", false, "recursively copy artifacts and its referrer artifacts")
+	cmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "recursively copy artifacts and its referrer artifacts")
 	opts.src.ApplyFlagsWithPrefix(cmd.Flags(), "from", "source")
 	opts.dst.ApplyFlagsWithPrefix(cmd.Flags(), "to", "destination")
 	option.ApplyFlags(&opts, cmd.Flags())
@@ -85,41 +86,39 @@ func runCopy(opts copyOptions) error {
 	}
 
 	// Prepare copy options
+	committed := &sync.Map{}
 	extendedCopyOptions := oras.DefaultExtendedCopyOptions
-	outputStatus := func(status string) func(context.Context, ocispec.Descriptor) error {
-		return func(ctx context.Context, desc ocispec.Descriptor) error {
-			name, ok := desc.Annotations[ocispec.AnnotationTitle]
-			if !ok {
-				if !opts.Verbose {
-					return nil
-				}
-				name = desc.MediaType
-			}
-			return display.Print(status, display.ShortDigest(desc), name)
+	extendedCopyOptions.PreCopy = display.StatusPrinter("Copying", opts.Verbose)
+	extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+		if err := display.PrintSuccessorStatus(ctx, desc, "Skipped", dst, committed, opts.Verbose); err != nil {
+			return err
 		}
+		return display.PrintStatus(desc, "Copied ", opts.Verbose)
 	}
-	extendedCopyOptions.PreCopy = outputStatus("Copying")
-	extendedCopyOptions.PostCopy = outputStatus("Copied ")
-	extendedCopyOptions.OnCopySkipped = outputStatus("Exists ")
+	extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
+		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+		return display.PrintStatus(desc, "Exists ", opts.Verbose)
+	}
 
 	if src.Reference.Reference == "" {
 		return errors.NewErrInvalidReference(src.Reference)
 	}
 
-	// push to the destination with digest only if no tag specified
 	var desc ocispec.Descriptor
 	if ref := dst.Reference.Reference; ref == "" {
+		// push to the destination with digest only if no tag specified
 		desc, err = src.Resolve(ctx, src.Reference.Reference)
 		if err != nil {
 			return err
 		}
-		if opts.rescursive {
+		if opts.recursive {
 			err = oras.ExtendedCopyGraph(ctx, src, dst, desc, extendedCopyOptions.ExtendedCopyGraphOptions)
 		} else {
 			err = oras.CopyGraph(ctx, src, dst, desc, extendedCopyOptions.CopyGraphOptions)
 		}
 	} else {
-		if opts.rescursive {
+		if opts.recursive {
 			desc, err = oras.ExtendedCopy(ctx, src, opts.srcRef, dst, opts.dstRef, extendedCopyOptions)
 		} else {
 			copyOptions := oras.CopyOptions{
