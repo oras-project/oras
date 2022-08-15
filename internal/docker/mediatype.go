@@ -13,15 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package errors
+package docker
 
-import (
-	"fmt"
-
-	"oras.land/oras-go/v2/registry"
+// docker media types
+const (
+	MediaTypeManifest = "application/vnd.docker.distribution.manifest.v2+json"
 )
-
-// newErrInvalidReference creates a new error based on the reference string.
-func newErrInvalidReference(ref registry.Reference) error {
-	return fmt.Errorf("%s: invalid image reference, expecting <name:tag|name@digest>", ref)
-}
