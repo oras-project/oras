@@ -18,8 +18,6 @@ github.com/google/go-cmp v0.4.0 h1:xsAVV57WRhGj6kEIi8ReJzQlHHqcBYCElAvkovg3B/4=
 github.com/google/go-cmp v0.4.0/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/inconshreveable/mousetrap v1.0.0 h1:Z8tu5sraLXCXIcARxBp/8cbvlwVa7Z1NHg9XEKhtSvM=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
-github.com/lizMSFT/oras-go/v2 v2.0.0-20220802063949-39386ace9f6e h1:lPM7vvmg/tlIi1CF50L6JSNqYb3HyYePgEk5ttFM75A=
-github.com/lizMSFT/oras-go/v2 v2.0.0-20220802063949-39386ace9f6e/go.mod h1:IZRIoIJqkAH6x0pL3tVnpyPUyZgthjSyPcH2kgJvBMo=
 github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 h1:dcztxKSvZ4Id8iPpHERQBbIJfabdt4wUm5qy3wOL2Zc=
 github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6/go.mod h1:E2VnQOmVuvZB6UYnnDB0qG5Nq/1tD9acaOpo6xmt0Kw=
 github.com/need-being/go-tree v0.1.0 h1:blQrtD006cFm97UDeMUfixwPc9o06A6c+uLaUskdNNw=
@@ -69,5 +67,5 @@ gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c h1:dUUwHk2QECo/6vqA44rthZ8ie
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gotest.tools/v3 v3.0.2 h1:kG1BFyqVHuQoVQiR1bWGnfz/fmHvvuiSPIV7rvl360E=
 gotest.tools/v3 v3.0.2/go.mod h1:3SzNCllyD9/Y+b5r9JIKQ474KzkZyqLqEfYqMsX94Bk=
-oras.land/oras-go/v2 v2.0.0-20220726123138-064752f3088e h1:0j9CmQd4yoAwwAeykCWKf1i/X45yvOgER9XZNtDGI7w=
-oras.land/oras-go/v2 v2.0.0-20220726123138-064752f3088e/go.mod h1:IZRIoIJqkAH6x0pL3tVnpyPUyZgthjSyPcH2kgJvBMo=
+oras.land/oras-go/v2 v2.0.0-20220811104040-c76df08a8be7 h1:7QhAXkn5aA+ClZ9KlNGAOXJ7djEYk21MK4DuDkjc5BI=
+oras.land/oras-go/v2 v2.0.0-20220811104040-c76df08a8be7/go.mod h1:IZRIoIJqkAH6x0pL3tVnpyPUyZgthjSyPcH2kgJvBMo=
