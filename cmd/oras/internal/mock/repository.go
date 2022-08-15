@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// mock contains mocked components for unit testing.
+// Package mock contains mocking components for unit testing.
 package mock
 
 import (
