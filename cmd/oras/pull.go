@@ -29,6 +29,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/cache"
+	"oras.land/oras/internal/docker"
 )
 
 type pullOptions struct {
@@ -114,9 +115,7 @@ func runPull(opts pullOptions) error {
 			// 2) MediaType not specified and current node is config.
 			// Note: For a manifest, the 0th indexed element is always a
 			// manifest config.
-			if s.MediaType == configMediaType || (configMediaType == "" && i == 0 &&
-				(desc.MediaType == "application/vnd.docker.distribution.manifest.v2+json" ||
-					desc.MediaType == ocispec.MediaTypeImageManifest)) {
+			if s.MediaType == configMediaType || (configMediaType == "" && i == 0 && isManifestMediaType(desc.MediaType)) {
 				// Add annotation for manifest config
 				if s.Annotations == nil {
 					s.Annotations = make(map[string]string)
@@ -163,4 +162,8 @@ func runPull(opts pullOptions) error {
 	fmt.Println("Pulled", opts.targetRef)
 	fmt.Println("Digest:", desc.Digest)
 	return nil
+}
+
+func isManifestMediaType(mediaType string) bool {
+	return mediaType == docker.MediaTypeManifest || mediaType == ocispec.MediaTypeImageManifest
 }
