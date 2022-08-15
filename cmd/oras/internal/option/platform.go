@@ -55,8 +55,7 @@ func (opts *Platform) Parse() (*ocispec.Platform, error) {
 	case 1:
 		p.Architecture = runtime.GOARCH
 	default:
-		return nil, fmt.Errorf("failed to parse platform '%s': expected format os[/arch[/variant]]", opts.Platform)
-
+		return nil, fmt.Errorf("failed to parse platform %q: expected format os[/arch[/variant]]", opts.Platform)
 	}
 	p.OS = parts[0]
 	if p.OS == "" {
