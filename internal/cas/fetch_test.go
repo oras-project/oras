@@ -91,7 +91,6 @@ func TestPlatform_FetchDescriptor_indexAndPlatform(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, err = cas.FetchDescriptor(context.Background(), repo, indexTag, &ocispec.Platform{OS: "linux", Architecture: "arm", Variant: "v5"})
-	// got, err = opts.FetchDescriptor(context.Background(), repo, digest.FromBytes(indexBytes).String())
 	if err != nil || !bytes.Equal(got, []byte(armv5Desc)) {
 		t.Fatal(err)
 	}
@@ -135,5 +134,12 @@ func TestPlatform_FetchManifest_miscErr(t *testing.T) {
 	ret, err := cas.FetchManifest(context.Background(), repo, "mocked-reference", nil)
 	if err == nil {
 		t.Fatalf("Should fail oras.Resolve, unexpected return value: %v", ret)
+	}
+	// Should throw err when resolve succeeds but fetch fails
+	tmpRepo := mock.New().WithFetchReference().WithResolve()
+	tmpRepo.Remount([]mock.Blob{{Content: amd64, MediaType: ocispec.MediaTypeImageManifest, Tag: ""}})
+	ret, err = cas.FetchManifest(context.Background(), tmpRepo, digest.FromBytes([]byte(amd64)).String(), nil)
+	if err == nil {
+		t.Fatalf("Should fail oras.Fetch, unexpected return value: %v", ret)
 	}
 }
