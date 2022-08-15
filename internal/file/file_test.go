@@ -16,7 +16,6 @@ limitations under the License.
 package file_test
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -31,44 +30,64 @@ import (
 func TestFile_PrepareContent(t *testing.T) {
 	// generate test content
 	tempDir := t.TempDir()
-	dirPath := filepath.Join(tempDir, "testdir")
-	if err := os.MkdirAll(dirPath, 0777); err != nil {
-		t.Fatal("error calling Mkdir(), error =", err)
-	}
 	content := []byte("hello world!")
 	fileName := "test.txt"
-	path := filepath.Join(dirPath, fileName)
-	if err := ioutil.WriteFile(path, content, 0444); err != nil {
+	path := filepath.Join(tempDir, fileName)
+	if err := os.WriteFile(path, content, 0444); err != nil {
 		t.Fatal("error calling WriteFile(), error =", err)
 	}
 
 	blobMediaType := "application/octet-stream"
-	wantDesc := ocispec.Descriptor{
+	want := ocispec.Descriptor{
 		MediaType: blobMediaType,
 		Digest:    digest.FromBytes(content),
 		Size:      int64(len(content)),
 	}
 
 	// test PrepareContent
-	gotDesc, rc, err := file.PrepareContent(path, blobMediaType)
+	got, rc, err := file.PrepareContent(path, blobMediaType)
 	defer rc.Close()
 	if err != nil {
 		t.Fatal("PrepareContent() error=", err)
 	}
-	if !reflect.DeepEqual(gotDesc, wantDesc) {
-		t.Errorf("PrepareContent() = %v, want %v", gotDesc, wantDesc)
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("PrepareContent() = %v, want %v", got, want)
 	}
+}
+
+func TestFile_PrepareContent_errMissingFileName(t *testing.T) {
+	// generate test content
+	tempDir := t.TempDir()
+	content := []byte("hello world!")
+	fileName := "test.txt"
+	path := filepath.Join(tempDir, fileName)
+	if err := os.WriteFile(path, content, 0444); err != nil {
+		t.Fatal("error calling WriteFile(), error =", err)
+	}
+	blobMediaType := "application/octet-stream"
 
 	// test PrepareContent with missing file name
-	_, _, err = file.PrepareContent("", blobMediaType)
+	_, _, err := file.PrepareContent("", blobMediaType)
 	expected := "missing file name"
 	if err.Error() != expected {
 		t.Fatalf("PrepareContent() error = %v, wantErr %v", err, expected)
 	}
+}
+
+func TestFile_PrepareContent_errOpenFile(t *testing.T) {
+	// generate test content
+	tempDir := t.TempDir()
+	content := []byte("hello world!")
+	fileName := "test.txt"
+	path := filepath.Join(tempDir, fileName)
+	if err := os.WriteFile(path, content, 0444); err != nil {
+		t.Fatal("error calling WriteFile(), error =", err)
+	}
+	blobMediaType := "application/octet-stream"
 
 	// test PrepareContent with nonexistent file
-	_, _, err = file.PrepareContent("nonexistent.txt", blobMediaType)
-	expected = "failed to open nonexistent.txt"
+	_, _, err := file.PrepareContent("nonexistent.txt", blobMediaType)
+	expected := "failed to open nonexistent.txt"
 	if !strings.Contains(err.Error(), expected) {
 		t.Fatalf("PrepareContent() error = %v, wantErr %v", err, expected)
 	}

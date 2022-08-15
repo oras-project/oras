@@ -17,8 +17,8 @@ package blob
 
 import (
 	"fmt"
-	"strings"
 
+	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/file"
@@ -30,6 +30,35 @@ type pushBlobOptions struct {
 
 	fileRef   string
 	targetRef string
+}
+
+func pushCmd() *cobra.Command {
+	var opts pushBlobOptions
+	cmd := &cobra.Command{
+		Use:   "push <name> file [flags]",
+		Short: "[Preview] Push a blob to remote registry",
+		Long: `[Preview] Push a blob to remote registry
+** This command is in preview and under development. **
+
+Example - Push blob "hi.txt":
+  oras blob push localhost:5000/hello hi.txt
+
+Example - Push blob to the insecure registry:
+  oras blob push localhost:5000/hello hi.txt --insecure
+`,
+		Args: cobra.ExactArgs(2),
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return opts.ReadPassword()
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.targetRef = args[0]
+			opts.fileRef = args[1]
+			return pushBlob(opts)
+		},
+	}
+
+	option.ApplyFlags(&opts, cmd.Flags())
+	return cmd
 }
 
 func pushBlob(opts pushBlobOptions) (err error) {
@@ -44,13 +73,7 @@ func pushBlob(opts pushBlobOptions) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if closeErr := rc.Close(); err == nil {
-			if closeErr != nil && !strings.Contains(closeErr.Error(), "file already closed") {
-				err = closeErr
-			}
-		}
-	}()
+	defer rc.Close()
 
 	exists, err := repo.Exists(ctx, desc)
 	if err != nil {
