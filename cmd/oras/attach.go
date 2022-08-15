@@ -53,7 +53,7 @@ Example - Attach file 'hi.txt' with type 'doc/example' to manifest 'hello:test' 
 `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := opts.Pusher.ValidateEmpty(); err != nil {
+			if err := opts.Pusher.ValidateEmpty(args); err != nil {
 				return err
 			}
 			return opts.ReadPassword()

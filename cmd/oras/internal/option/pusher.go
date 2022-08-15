@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -27,9 +28,8 @@ import (
 )
 
 const (
-	annotationConfig      = "$config"
-	annotationManifest    = "$manifest"
-	validateEmptyErrorStr = "no blob and manifest annotation are provided"
+	annotationConfig   = "$config"
+	annotationManifest = "$manifest"
 )
 
 // Pusher option struct.
@@ -67,19 +67,17 @@ func (opts *Pusher) LoadManifestAnnotations() (map[string]map[string]string, err
 		if err := decodeJSON(opts.ManifestAnnotations, &annotations); err != nil {
 			return nil, err
 		}
-		if err := validateEmptyManifestAnnotations(annotations); err != nil {
-			return nil, err
+		if len(annotations[annotationManifest]) == 0 && len(opts.FileRefs) == 0 {
+			return nil, fmt.Errorf("no blob and manifest annotation file %s is empty", opts.ManifestAnnotations)
 		}
 	}
 	return annotations, nil
 }
 
 // ValidateEmpty checks whether blobs or manifest annotation are empty.
-func (opts *Pusher) ValidateEmpty() error {
-	if len(opts.FileRefs) == 0 {
-		if opts.ManifestAnnotations == "" {
-			return errors.New(validateEmptyErrorStr)
-		}
+func (opts *Pusher) ValidateEmpty(args []string) error {
+	if len(args) == 1 && opts.ManifestAnnotations == "" {
+		return errors.New("no blob and manifest annotation are provided")
 	}
 	return nil
 }
@@ -92,12 +90,4 @@ func decodeJSON(filename string, v interface{}) error {
 	}
 	defer file.Close()
 	return json.NewDecoder(file).Decode(v)
-}
-
-// validateEmptyManifestAnnotations check whether existing ManifestAnnotations contain no value.
-func validateEmptyManifestAnnotations(annotations map[string]map[string]string) error {
-	if len(annotations[annotationConfig]) == 0 && len(annotations[annotationManifest]) == 0 {
-		return errors.New(validateEmptyErrorStr)
-	}
-	return nil
 }
