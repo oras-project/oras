@@ -21,8 +21,11 @@ import (
 	"os"
 	"strings"
 
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/cache"
 )
 
 type fetchOptions struct {
@@ -50,12 +53,17 @@ func fetchManifest(opts fetchOptions) error {
 		repo.ManifestMediaTypes = []string{opts.mediaType}
 	}
 
+	var target oras.Target = repo
+	if !opts.fetchDescriptor {
+		target = cache.New(repo, memory.New())
+	}
+
 	// Fetch and output
 	var content []byte
 	if opts.fetchDescriptor {
-		content, err = opts.FetchDescriptor(ctx, repo, opts.targetRef)
+		content, err = opts.FetchDescriptor(ctx, target, opts.targetRef)
 	} else {
-		content, err = opts.Platform.FetchManifest(ctx, repo, opts.targetRef)
+		content, err = opts.FetchManifest(ctx, target, opts.targetRef)
 	}
 	if err != nil {
 		return err

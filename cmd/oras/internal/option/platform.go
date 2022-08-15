@@ -25,7 +25,6 @@ import (
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/registry"
 )
 
 // Platform option struct.
@@ -65,12 +64,8 @@ func (opts *Platform) parse() (p ocispec.Platform, err error) {
 
 // FetchDescriptor fetches a minimal descriptor of reference from target.
 // If platform flag not empty, will fetch the specified platform.
-func (opts *Platform) FetchDescriptor(ctx context.Context, repo registry.Repository, reference string) ([]byte, error) {
-	ro, err := opts.resolveOption()
-	if err != nil {
-		return nil, err
-	}
-	desc, err := oras.Resolve(ctx, repo, reference, ro)
+func (opts *Platform) FetchDescriptor(ctx context.Context, target oras.Target, reference string) ([]byte, error) {
+	desc, err := opts.resolve(ctx, target, reference)
 	if err != nil {
 		return nil, err
 	}
@@ -83,17 +78,12 @@ func (opts *Platform) FetchDescriptor(ctx context.Context, repo registry.Reposit
 
 // FetchManifest fetches the manifest content of reference from target.
 // If platform flag not empty, will fetch the specified platform.
-func (opts *Platform) FetchManifest(ctx context.Context, repo registry.Repository, reference string) ([]byte, error) {
-	ro, err := opts.resolveOption()
+func (opts *Platform) FetchManifest(ctx context.Context, target oras.Target, reference string) ([]byte, error) {
+	desc, err := opts.resolve(ctx, target, reference)
 	if err != nil {
 		return nil, err
 	}
-	desc, err := oras.Resolve(ctx, repo, reference, ro)
-	if err != nil {
-		return nil, err
-	}
-
-	rc, err := repo.Fetch(ctx, desc)
+	rc, err := target.Fetch(ctx, desc)
 	if err != nil {
 		return nil, err
 	}
@@ -101,13 +91,14 @@ func (opts *Platform) FetchManifest(ctx context.Context, repo registry.Repositor
 	return content.ReadAll(rc, desc)
 }
 
-func (opts *Platform) resolveOption() (ro oras.ResolveOptions, err error) {
+func (opts *Platform) resolve(ctx context.Context, target oras.Target, reference string) (ocispec.Descriptor, error) {
+	var ro oras.ResolveOptions
 	if opts.Platform != "" {
-		var p ocispec.Platform
-		if p, err = opts.parse(); err != nil {
-			return
+		if p, err := opts.parse(); err != nil {
+			return ocispec.Descriptor{}, err
+		} else {
+			ro.TargetPlatform = &p
 		}
-		ro.TargetPlatform = &p
 	}
-	return
+	return oras.Resolve(ctx, target, reference, ro)
 }
