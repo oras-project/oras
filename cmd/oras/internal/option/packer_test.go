@@ -110,7 +110,6 @@ func TestPacker_LoadManifestAnnotations_annotationFlag(t *testing.T) {
 		"Key0=",                // 1. Item not contains 'val'
 		"Key1=Val",             // 2. Normal Item
 		"Key2=${env:USERNAME}", // 3. Item contains variable eg. "${env:USERNAME}"
-		" Key3 = Val ",         // 4. Item trim conversion
 	}
 	opts = Packer{ManifestAnnotations: validFlag}
 	annotations, err = opts.LoadManifestAnnotations()
@@ -125,7 +124,6 @@ func TestPacker_LoadManifestAnnotations_annotationFlag(t *testing.T) {
 			"Key0": "",
 			"Key1": "Val",
 			"Key2": "${env:USERNAME}",
-			"Key3": "Val",
 		},
 		}) {
 		t.Fatalf("unexpected error: %v", errors.New("content not match"))

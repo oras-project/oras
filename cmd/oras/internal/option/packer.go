@@ -105,7 +105,6 @@ func parseAnnotationFlags(flags []string, annotations map[string]map[string]stri
 		if !success {
 			return fmt.Errorf("%w: %s", errAnnotationFormat, anno)
 		}
-		key, val = strings.TrimSpace(key), strings.TrimSpace(val)
 		if _, ok := manifestAnnotations[key]; ok {
 			return fmt.Errorf("%w: %v, ", errAnnotationDuplication, key)
 		}
