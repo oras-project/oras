@@ -135,8 +135,8 @@ func TestPlatform_FetchManifest_miscErr(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Should fail oras.Resolve, unexpected return value: %v", ret)
 	}
-	// Should throw err when resolve succeeds but fetch fails
-	tmpRepo := mock.New().WithFetchReference().WithResolve()
+	// Should throw err when resolve succeeds but fetch reference fails
+	tmpRepo := mock.New().WithResolve()
 	tmpRepo.Remount([]mock.Blob{{Content: amd64, MediaType: ocispec.MediaTypeImageManifest, Tag: ""}})
 	ret, err = cas.FetchManifest(context.Background(), tmpRepo, digest.FromBytes([]byte(amd64)).String(), nil)
 	if err == nil {
