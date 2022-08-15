@@ -26,6 +26,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/cache"
+	"oras.land/oras/internal/cas"
 )
 
 type fetchOptions struct {
@@ -42,6 +43,10 @@ type fetchOptions struct {
 
 func fetchManifest(opts fetchOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
+	tagetPlatform, err := opts.Parse()
+	if err != nil {
+		return err
+	}
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
@@ -61,9 +66,9 @@ func fetchManifest(opts fetchOptions) error {
 	// Fetch and output
 	var content []byte
 	if opts.fetchDescriptor {
-		content, err = opts.FetchDescriptor(ctx, target, opts.targetRef)
+		content, err = cas.FetchDescriptor(ctx, target, opts.targetRef, tagetPlatform)
 	} else {
-		content, err = opts.FetchManifest(ctx, target, opts.targetRef)
+		content, err = cas.FetchManifest(ctx, target, opts.targetRef, tagetPlatform)
 	}
 	if err != nil {
 		return err

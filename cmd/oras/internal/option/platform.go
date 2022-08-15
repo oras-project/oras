@@ -16,15 +16,11 @@ limitations under the License.
 package option
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/pflag"
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
 )
 
 // Platform option struct.
@@ -38,67 +34,27 @@ func (opts *Platform) ApplyFlags(fs *pflag.FlagSet) {
 }
 
 // parse parses the input platform flag to an oci platform type.
-func (opts *Platform) parse() (p ocispec.Platform, err error) {
+func (opts *Platform) Parse() (*ocispec.Platform, error) {
 	var platformStr string
+	var p ocispec.Platform
 
 	// OS/Arch/[Variant][:OSVersion]
 	platformStr, p.OSVersion, _ = strings.Cut(opts.Platform, ":")
 	parts := strings.Split(platformStr, "/")
 	if len(parts) < 2 || len(parts) > 3 {
-		return p, fmt.Errorf("failed to parse platform '%s': expected format os/arch[/variant]", opts.Platform)
+		return nil, fmt.Errorf("failed to parse platform '%s': expected format os/arch[/variant]", opts.Platform)
 	}
 	p.OS = parts[0]
 	if p.OS == "" {
-		return p, fmt.Errorf("invalid platform: OS cannot be empty")
+		return nil, fmt.Errorf("invalid platform: OS cannot be empty")
 	}
 	p.Architecture = parts[1]
 	if p.Architecture == "" {
-		return p, fmt.Errorf("invalid platform: Architecture cannot be empty")
+		return nil, fmt.Errorf("invalid platform: Architecture cannot be empty")
 	}
 	if len(parts) == 3 {
 		p.Variant = parts[2]
 	}
 
-	return p, nil
-}
-
-// FetchDescriptor fetches a minimal descriptor of reference from target.
-// If platform flag not empty, will fetch the specified platform.
-func (opts *Platform) FetchDescriptor(ctx context.Context, target oras.Target, reference string) ([]byte, error) {
-	desc, err := opts.resolve(ctx, target, reference)
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(ocispec.Descriptor{
-		MediaType: desc.MediaType,
-		Digest:    desc.Digest,
-		Size:      desc.Size,
-	})
-}
-
-// FetchManifest fetches the manifest content of reference from target.
-// If platform flag not empty, will fetch the specified platform.
-func (opts *Platform) FetchManifest(ctx context.Context, target oras.Target, reference string) ([]byte, error) {
-	desc, err := opts.resolve(ctx, target, reference)
-	if err != nil {
-		return nil, err
-	}
-	rc, err := target.Fetch(ctx, desc)
-	if err != nil {
-		return nil, err
-	}
-	defer rc.Close()
-	return content.ReadAll(rc, desc)
-}
-
-func (opts *Platform) resolve(ctx context.Context, target oras.Target, reference string) (ocispec.Descriptor, error) {
-	var ro oras.ResolveOptions
-	if opts.Platform != "" {
-		if p, err := opts.parse(); err != nil {
-			return ocispec.Descriptor{}, err
-		} else {
-			ro.TargetPlatform = &p
-		}
-	}
-	return oras.Resolve(ctx, target, reference, ro)
+	return &p, nil
 }
