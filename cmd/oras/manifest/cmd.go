@@ -26,7 +26,9 @@ func Cmd() *cobra.Command {
 		Short: "[Preview] Manifest operations",
 	}
 
-	cmd.AddCommand(fetchCmd())
+	cmd.AddCommand(
+		fetchCmd(),
+	)
 	return cmd
 }
 
