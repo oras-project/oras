@@ -18,15 +18,12 @@ package manifest
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/cache"
 	"oras.land/oras/internal/cas"
 )
 
@@ -37,7 +34,6 @@ type fetchOptions struct {
 
 	targetRef       string
 	pretty          bool
-	indent          int
 	mediaTypes      []string
 	fetchDescriptor bool
 }
@@ -70,7 +66,7 @@ Example - Fetch manifest with prettified json result:
 			return opts.ReadPassword()
 		},
 		Aliases: []string{"get"},
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
 			return fetchManifest(opts)
 		},
@@ -78,7 +74,6 @@ Example - Fetch manifest with prettified json result:
 
 	cmd.Flags().BoolVarP(&opts.pretty, "pretty", "", false, "output prettified manifest")
 	cmd.Flags().BoolVarP(&opts.fetchDescriptor, "descriptor", "", false, "fetch a descriptor of the manifest")
-	cmd.Flags().IntVarP(&opts.indent, "indent", "n", 3, "number of spaces for indentation")
 	cmd.Flags().StringSliceVarP(&opts.mediaTypes, "media-type", "", nil, "accepted media types")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
@@ -99,27 +94,23 @@ func fetchManifest(opts fetchOptions) error {
 	}
 	repo.ManifestMediaTypes = opts.mediaTypes
 
-	var target oras.Target = repo
-	if !opts.fetchDescriptor {
-		target = cache.New(repo, memory.New())
-	}
-
 	// Fetch and output
 	var content []byte
 	if opts.fetchDescriptor {
-		content, err = cas.FetchDescriptor(ctx, target, opts.targetRef, tagetPlatform)
+		content, err = cas.FetchDescriptor(ctx, repo, opts.targetRef, tagetPlatform)
 	} else {
-		content, err = cas.FetchManifest(ctx, target, opts.targetRef, tagetPlatform)
+		content, err = cas.FetchManifest(ctx, repo, opts.targetRef, tagetPlatform)
 	}
 	if err != nil {
 		return err
 	}
-	var out bytes.Buffer
 	if opts.pretty {
-		json.Indent(&out, content, "", strings.Repeat(" ", opts.indent))
-	} else {
-		out = *bytes.NewBuffer(content)
+		buf := bytes.NewBuffer(nil)
+		if err = json.Indent(buf, content, "", "  "); err != nil {
+			return fmt.Errorf("failed to prettify: %w", err)
+		}
+		content = buf.Bytes()
 	}
-	out.WriteTo(os.Stdout)
-	return nil
+	_, err = os.Stdout.Write(content)
+	return err
 }

@@ -22,6 +22,9 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras-go/v2/registry"
+	"oras.land/oras/internal/cache"
 )
 
 // FetchDescriptor fetches a minimal descriptor of reference from target.
@@ -41,7 +44,21 @@ func FetchDescriptor(ctx context.Context, target oras.Target, reference string, 
 // FetchManifest fetches the manifest content of reference from target.
 // If platform flag not empty, will fetch the specified platform.
 func FetchManifest(ctx context.Context, target oras.Target, reference string, p *ocispec.Platform) ([]byte, error) {
-	desc, err := oras.Resolve(ctx, target, reference, oras.ResolveOptions{TargetPlatform: p})
+	// TODO: improve implementation once oras-go#102 is resolved
+	if p == nil {
+		if rf, ok := target.(registry.ReferenceFetcher); ok {
+			desc, rc, err := rf.FetchReference(ctx, reference)
+			if err != nil {
+				return nil, err
+			}
+			defer rc.Close()
+			return content.ReadAll(rc, desc)
+		}
+	}
+	target = cache.New(target, memory.New())
+	desc, err := oras.Resolve(ctx, target, reference, oras.ResolveOptions{
+		TargetPlatform: p,
+	})
 	if err != nil {
 		return nil, err
 	}
