@@ -44,7 +44,7 @@ Example - Fetch raw manifest:
   oras manifest fetch localhost:5000/hello:latest
 
 Example - Fetch the descriptor of a manifest:
-  oras manifest fetch localhost:5000/hello:latest --descriptor
+  oras manifest fetch --descriptor localhost:5000/hello:latest
 
 Example - Fetch manifest with specified media type:
   oras manifest fetch --media-type 'application/vnd.oci.image.manifest.v1+json' localhost:5000/hello:latest
