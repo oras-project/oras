@@ -13,20 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package manifest
+package docker
 
-import (
-	"github.com/spf13/cobra"
+// docker media types
+const (
+	MediaTypeManifest = "application/vnd.docker.distribution.manifest.v2+json"
 )
-
-func Cmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "manifest [fetch]",
-		Short: "[Preview] Manifest operations",
-	}
-
-	cmd.AddCommand(
-		fetchCmd(),
-	)
-	return cmd
-}

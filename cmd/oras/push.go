@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -37,7 +38,7 @@ const (
 type pushOptions struct {
 	option.Common
 	option.Remote
-	option.Pusher
+	option.Packer
 
 	targetRef         string
 	manifestConfigRef string
@@ -71,7 +72,13 @@ Example - Push file to the insecure registry:
 
 Example - Push file to the HTTP registry:
   oras push localhost:5000/hello:latest hi.txt --plain-http
-`,
+
+Example - Push repository with manifest annotations
+  oras push localhost:5000/hello:latest --annotaion "key=val"
+
+Example - Push repository with manifest annotation file
+  oras push localhost:5000/hello:latest --annotaion-file annotation.json
+  `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.artifactType != "" && opts.manifestConfigRef != "" {
@@ -106,10 +113,20 @@ func runPush(opts pushOptions) error {
 	store.AllowPathTraversalOnWrite = opts.PathValidationDisabled
 
 	// Ready to push
+	committed := &sync.Map{}
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.PreCopy = display.StatusPrinter("Uploading", opts.Verbose)
-	copyOptions.OnCopySkipped = display.StatusPrinter("Exists   ", opts.Verbose)
-	copyOptions.PostCopy = display.StatusPrinter("Uploaded ", opts.Verbose)
+	copyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
+		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+		return display.PrintStatus(desc, "Exists   ", opts.Verbose)
+	}
+	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+		if err := display.PrintSuccessorStatus(ctx, desc, "Skipped  ", store, committed, opts.Verbose); err != nil {
+			return err
+		}
+		return display.PrintStatus(desc, "Uploaded ", opts.Verbose)
+	}
 	desc, err := packManifest(ctx, store, annotations, &opts)
 	if err != nil {
 		return err
