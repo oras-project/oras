@@ -110,6 +110,7 @@ func fetchManifest(opts fetchOptions) error {
 			return fmt.Errorf("failed to prettify: %w", err)
 		}
 		content = buf.Bytes()
+		buf.WriteByte('\n')
 	}
 	_, err = os.Stdout.Write(content)
 	return err
