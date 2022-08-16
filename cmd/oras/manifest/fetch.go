@@ -109,8 +109,9 @@ func fetchManifest(opts fetchOptions) error {
 		if err = json.Indent(buf, content, "", "  "); err != nil {
 			return fmt.Errorf("failed to prettify: %w", err)
 		}
-		content = buf.Bytes()
+
 		buf.WriteByte('\n')
+		content = buf.Bytes()
 	}
 	_, err = os.Stdout.Write(content)
 	return err
