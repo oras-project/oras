@@ -77,6 +77,9 @@ func (opts *Packer) LoadManifestAnnotations() (annotations map[string]map[string
 		if err = decodeJSON(opts.AnnotationFilePath, &annotations); err != nil {
 			return nil, err
 		}
+		if len(annotations[annotationManifest]) == 0 && len(opts.FileRefs) == 0 {
+			return nil, fmt.Errorf("no blob and manifest annotation file %s is empty", opts.AnnotationFilePath)
+		}
 	}
 	if len(opts.ManifestAnnotations) != 0 {
 		annotations = make(map[string]map[string]string)

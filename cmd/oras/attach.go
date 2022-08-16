@@ -17,6 +17,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -27,7 +28,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/display"
-	"oras.land/oras/cmd/oras/internal/errors"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -53,14 +54,14 @@ Example - Attach file 'hi.txt' with type 'doc/example' to manifest 'hello:test' 
   oras attach localhost:5000/hello:test hi.txt --artifact-type doc/example
 
 Example - Attach and update manifest annotations
-  oras attach localhost:5000/hello:latest hi.txt --artifact-type doc/example --annotaion "key=val"
+  oras attach localhost:5000/hello:latest hi.txt --artifact-type doc/example --annotation "key=val"
 
 Example - Attach and update annotation from manifest annotation file
-  oras attach localhost:5000/hello:latest hi.txt --artifact-type doc/example --annotaion-file annotation.json
+  oras attach localhost:5000/hello:latest hi.txt --artifact-type doc/example --annotation-file annotation.json
 `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := opts.Pusher.ValidateEmpty(args); err != nil {
+			if err := validateEmpty(args[1:], opts); err != nil {
 				return err
 			}
 			return opts.ReadPassword()
@@ -94,7 +95,7 @@ func runAttach(opts attachOptions) error {
 		return err
 	}
 	if dst.Reference.Reference == "" {
-		return errors.NewErrInvalidReference(dst.Reference)
+		return oerrors.NewErrInvalidReference(dst.Reference)
 	}
 	ociSubject, err := dst.Resolve(ctx, dst.Reference.Reference)
 	if err != nil {
@@ -166,4 +167,12 @@ func ociToArtifact(desc ocispec.Descriptor) artifactspec.Descriptor {
 		URLs:        desc.URLs,
 		Annotations: desc.Annotations,
 	}
+}
+
+// validateEmpty checks whether blobs or manifest annotation are empty.
+func validateEmpty(args []string, opts attachOptions) error {
+	if len(args) == 0 && opts.Packer.AnnotationFilePath == "" && len(opts.Packer.ManifestAnnotations) == 0 {
+		return errors.New("no blob and manifest annotation are provided")
+	}
+	return nil
 }
