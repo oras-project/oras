@@ -18,11 +18,14 @@ package manifest
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
-	"oras.land/oras/cmd/oras/internal/errors"
+	"oras.land/oras-go/v2/errdef"
+
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/cas"
 )
@@ -81,7 +84,7 @@ Example - Fetch manifest with prettified json result:
 
 func fetchManifest(opts fetchOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
-	tagetPlatform, err := opts.Parse()
+	targetPlatform, err := opts.Parse()
 	if err != nil {
 		return err
 	}
@@ -90,18 +93,21 @@ func fetchManifest(opts fetchOptions) error {
 		return err
 	}
 	if repo.Reference.Reference == "" {
-		return errors.NewErrInvalidReference(repo.Reference)
+		return oerrors.NewErrInvalidReference(repo.Reference)
 	}
 	repo.ManifestMediaTypes = opts.mediaTypes
 
 	// Fetch and output
 	var content []byte
 	if opts.fetchDescriptor {
-		content, err = cas.FetchDescriptor(ctx, repo, opts.targetRef, tagetPlatform)
+		content, err = cas.FetchDescriptor(ctx, repo, opts.targetRef, targetPlatform)
 	} else {
-		content, err = cas.FetchManifest(ctx, repo, opts.targetRef, tagetPlatform)
+		content, err = cas.FetchManifest(ctx, repo, opts.targetRef, targetPlatform)
 	}
 	if err != nil {
+		if errors.Is(err, errdef.ErrNotFound) {
+			return fmt.Errorf("no matching manifest was found in %s", opts.targetRef)
+		}
 		return err
 	}
 	if opts.pretty {
