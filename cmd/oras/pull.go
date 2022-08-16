@@ -27,8 +27,10 @@ import (
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/cache"
+	"oras.land/oras/internal/docker"
 )
 
 type pullOptions struct {
@@ -88,7 +90,7 @@ func runPull(opts pullOptions) error {
 		return err
 	}
 	if repo.Reference.Reference == "" {
-		return newErrInvalidReference(repo.Reference)
+		return errors.NewErrInvalidReference(repo.Reference)
 	}
 	var src oras.Target = repo
 	if opts.cacheRoot != "" {
@@ -101,15 +103,20 @@ func runPull(opts pullOptions) error {
 
 	// Copy Options
 	copyOptions := oras.DefaultCopyOptions
-	configPath, configMediaType := parseFileReference(opts.ManifestConfigRef, oras.MediaTypeUnknownConfig)
+	configPath, configMediaType := parseFileReference(opts.ManifestConfigRef, "")
 	copyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		successors, err := content.Successors(ctx, fetcher, desc)
 		if err != nil {
 			return nil, err
 		}
 		var ret []ocispec.Descriptor
-		for _, s := range successors {
-			if s.MediaType == configMediaType {
+		for i, s := range successors {
+			// Save the config when:
+			// 1) MediaType matches, or
+			// 2) MediaType not specified and current node is config.
+			// Note: For a manifest, the 0th indexed element is always a
+			// manifest config.
+			if s.MediaType == configMediaType || (configMediaType == "" && i == 0 && isManifestMediaType(desc.MediaType)) {
 				// Add annotation for manifest config
 				if s.Annotations == nil {
 					s.Annotations = make(map[string]string)
@@ -156,4 +163,8 @@ func runPull(opts pullOptions) error {
 	fmt.Println("Pulled", opts.targetRef)
 	fmt.Println("Digest:", desc.Digest)
 	return nil
+}
+
+func isManifestMediaType(mediaType string) bool {
+	return mediaType == docker.MediaTypeManifest || mediaType == ocispec.MediaTypeImageManifest
 }
