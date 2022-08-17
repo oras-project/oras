@@ -17,6 +17,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -27,7 +28,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/display"
-	"oras.land/oras/cmd/oras/internal/errors"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -60,9 +61,6 @@ Example - Attach and update annotation from manifest annotation file
 `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := opts.Packer.ValidateEmpty(args[1:]); err != nil {
-				return err
-			}
 			return opts.ReadPassword()
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -83,6 +81,9 @@ func runAttach(opts attachOptions) error {
 	if err != nil {
 		return err
 	}
+	if err := validateBlobAndAnnotationEmpty(opts, annotations); err != nil {
+		return err
+	}
 
 	// Prepare manifest
 	store := file.New("")
@@ -94,7 +95,7 @@ func runAttach(opts attachOptions) error {
 		return err
 	}
 	if dst.Reference.Reference == "" {
-		return errors.NewErrInvalidReference(dst.Reference)
+		return oerrors.NewErrInvalidReference(dst.Reference)
 	}
 	ociSubject, err := dst.Resolve(ctx, dst.Reference.Reference)
 	if err != nil {
@@ -166,4 +167,15 @@ func ociToArtifact(desc ocispec.Descriptor) artifactspec.Descriptor {
 		URLs:        desc.URLs,
 		Annotations: desc.Annotations,
 	}
+}
+
+// validateBlobAndAnnotationEmpty checks whether blobs or manifest annotation are empty.
+func validateBlobAndAnnotationEmpty(opts attachOptions, annotations map[string]map[string]string) error {
+	if len(opts.FileRefs) == 0 && opts.Packer.AnnotationFilePath == "" && len(opts.Packer.ManifestAnnotations) == 0 {
+		return errors.New("no blob or manifest annotation are provided")
+	}
+	if len(annotations[annotationManifest]) == 0 && len(opts.FileRefs) == 0 {
+		return fmt.Errorf("no blob and manifest annotation file %s is empty", opts.AnnotationFilePath)
+	}
+	return nil
 }
