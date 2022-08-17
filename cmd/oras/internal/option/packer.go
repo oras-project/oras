@@ -90,6 +90,14 @@ func (opts *Packer) LoadManifestAnnotations() (annotations map[string]map[string
 	return
 }
 
+// ValidateEmpty checks whether blobs or manifest annotation are empty.
+func (opts *Packer) ValidateEmpty(args []string) error {
+	if len(args) == 0 && opts.AnnotationFilePath == "" && len(opts.ManifestAnnotations) == 0 {
+		return errors.New("no blob and manifest annotation are provided")
+	}
+	return nil
+}
+
 // decodeJSON decodes a json file v to filename.
 func decodeJSON(filename string, v interface{}) error {
 	file, err := os.Open(filename)
