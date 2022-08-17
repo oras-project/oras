@@ -81,7 +81,7 @@ func runAttach(opts attachOptions) error {
 	if err != nil {
 		return err
 	}
-	if len(opts.FileRefs) == 0 && len(annotations[annotationManifest]) == 0 {
+	if len(opts.FileRefs) == 0 && len(annotations[option.AnnotationManifest]) == 0 {
 		return errors.New("no blob or manifest annotation are provided")
 	}
 

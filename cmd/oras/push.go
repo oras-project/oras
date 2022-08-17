@@ -30,9 +30,7 @@ import (
 )
 
 const (
-	annotationConfig   = "$config"
-	annotationManifest = "$manifest"
-	tagStaged          = "staged"
+	tagStaged = "staged"
 )
 
 type pushOptions struct {
@@ -74,10 +72,10 @@ Example - Push file to the HTTP registry:
   oras push localhost:5000/hello:latest hi.txt --plain-http
 
 Example - Push repository with manifest annotations
-  oras push localhost:5000/hello:latest --annotaion "key=val"
+  oras push localhost:5000/hello:latest --annotation "key=val"
 
 Example - Push repository with manifest annotation file
-  oras push localhost:5000/hello:latest --annotaion-file annotation.json
+  oras push localhost:5000/hello:latest --annotation-file annotation.json
   `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -155,15 +153,15 @@ func runPush(opts pushOptions) error {
 
 func packManifest(ctx context.Context, store *file.Store, annotations map[string]map[string]string, opts *pushOptions) (ocispec.Descriptor, error) {
 	var packOpts oras.PackOptions
-	packOpts.ConfigAnnotations = annotations[annotationConfig]
-	packOpts.ManifestAnnotations = annotations[annotationManifest]
+	packOpts.ConfigAnnotations = annotations[option.AnnotationConfig]
+	packOpts.ManifestAnnotations = annotations[option.AnnotationManifest]
 
 	if opts.artifactType != "" {
 		packOpts.ConfigMediaType = opts.artifactType
 	}
 	if opts.manifestConfigRef != "" {
 		path, mediatype := parseFileReference(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
-		desc, err := store.Add(ctx, annotationConfig, mediatype, path)
+		desc, err := store.Add(ctx, option.AnnotationConfig, mediatype, path)
 		if err != nil {
 			return ocispec.Descriptor{}, err
 		}
