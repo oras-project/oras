@@ -81,8 +81,8 @@ func runAttach(opts attachOptions) error {
 	if err != nil {
 		return err
 	}
-	if err := validateBlobAndAnnotationEmpty(opts, annotations); err != nil {
-		return err
+	if len(opts.FileRefs) == 0 && len(annotations[annotationManifest]) == 0 {
+		return errors.New("no blob or manifest annotation are provided")
 	}
 
 	// Prepare manifest
@@ -167,15 +167,4 @@ func ociToArtifact(desc ocispec.Descriptor) artifactspec.Descriptor {
 		URLs:        desc.URLs,
 		Annotations: desc.Annotations,
 	}
-}
-
-// validateBlobAndAnnotationEmpty checks whether blobs or manifest annotation are empty.
-func validateBlobAndAnnotationEmpty(opts attachOptions, annotations map[string]map[string]string) error {
-	if len(opts.FileRefs) == 0 && opts.Packer.AnnotationFilePath == "" && len(opts.Packer.ManifestAnnotations) == 0 {
-		return errors.New("no blob or manifest annotation are provided")
-	}
-	if len(annotations[annotationManifest]) == 0 && len(opts.FileRefs) == 0 {
-		return fmt.Errorf("no blob and manifest annotation file %s is empty", opts.AnnotationFilePath)
-	}
-	return nil
 }
