@@ -28,7 +28,7 @@ import (
 	"oras.land/oras-go/v2/content"
 )
 
-// Pre-Defined Annotation Keys
+// pre-defined annotation Keys
 const (
 	AnnotationManifest = "$manifest"
 	AnnotationConfig   = "$config"
