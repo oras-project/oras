@@ -110,6 +110,7 @@ func runPull(opts pullOptions) error {
 			return nil, err
 		}
 		var ret []ocispec.Descriptor
+		// For each successor s, save its config to Annotations and skip unnamed content.
 		for i, s := range successors {
 			// Save the config when:
 			// 1) MediaType matches, or
@@ -127,6 +128,7 @@ func runPull(opts pullOptions) error {
 				if err != nil {
 					return nil, err
 				}
+				// Skip s if s is unnamed and has no successors.
 				if len(ss) == 0 {
 					continue
 				}
