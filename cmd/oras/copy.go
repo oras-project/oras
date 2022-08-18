@@ -24,6 +24,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/errors"
 )
 
 type copyOptions struct {
@@ -102,7 +103,7 @@ func runCopy(opts copyOptions) error {
 	extendedCopyOptions.OnCopySkipped = outputStatus("Exists ")
 
 	if src.Reference.Reference == "" {
-		return newErrInvalidReference(src.Reference)
+		return errors.NewErrInvalidReference(src.Reference)
 	}
 
 	// push to the destination with digest only if no tag specified

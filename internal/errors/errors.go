@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package errors
 
 import (
 	"fmt"
@@ -21,7 +21,7 @@ import (
 	"oras.land/oras-go/v2/registry"
 )
 
-// newErrInvalidReference creates a new error based on the reference string.
-func newErrInvalidReference(ref registry.Reference) error {
+// NewErrInvalidReference creates a new error based on the reference string.
+func NewErrInvalidReference(ref registry.Reference) error {
 	return fmt.Errorf("%s: invalid image reference, expecting <name:tag|name@digest>", ref)
 }

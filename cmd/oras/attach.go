@@ -27,6 +27,7 @@ import (
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/errors"
 )
 
 type attachOptions struct {
@@ -83,7 +84,7 @@ func runAttach(opts attachOptions) error {
 		return err
 	}
 	if dst.Reference.Reference == "" {
-		return newErrInvalidReference(dst.Reference)
+		return errors.NewErrInvalidReference(dst.Reference)
 	}
 	ociSubject, err := dst.Resolve(ctx, dst.Reference.Reference)
 	if err != nil {
