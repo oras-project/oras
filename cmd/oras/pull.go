@@ -110,7 +110,9 @@ func runPull(opts pullOptions) error {
 			return nil, err
 		}
 		var ret []ocispec.Descriptor
-		// For each successor s, save its config to Annotations and skip unnamed content.
+		// Iterate all the successors to
+		// 1) Add name annotation if configPath is not empty
+		// 2) Skip fetching unamed leaf nodes
 		for i, s := range successors {
 			// Save the config when:
 			// 1) MediaType matches, or
