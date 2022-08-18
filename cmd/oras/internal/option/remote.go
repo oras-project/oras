@@ -72,8 +72,8 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	fs.BoolVarP(&opts.PlainHTTP, flagPrefix+"plain-http", "", false, "allow insecure connections to "+notePrefix+"registry without SSL check")
 	fs.StringVarP(&opts.CACertFilePath, flagPrefix+"ca-file", "", "", "server certificate authority file for the remote "+notePrefix+"registry")
 
-	if fs.Lookup("config") != nil {
-		fs.StringArrayVarP(&opts.Configs, "config", "c", nil, "auth config path")
+	if fs.Lookup("registry-config") != nil {
+		fs.StringArrayVarP(&opts.Configs, "registry-config", "", nil, "auth config path")
 	}
 }
 
