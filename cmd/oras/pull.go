@@ -151,8 +151,8 @@ func runPull(opts pullOptions) error {
 	pulledEmpty := true
 	copyOptions.PreCopy = display.StatusPrinter("Downloading", opts.Verbose)
 	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		name := desc.Annotations[ocispec.AnnotationTitle]
-		if name == "" {
+		name, ok := desc.Annotations[ocispec.AnnotationTitle]
+		if !ok {
 			if !opts.Verbose {
 				return nil
 			}
