@@ -110,6 +110,9 @@ func runPull(opts pullOptions) error {
 			return nil, err
 		}
 		var ret []ocispec.Descriptor
+		// Iterate all the successors to
+		// 1) Add name annotation if configPath is not empty
+		// 2) Skip fetching unamed leaf nodes
 		for i, s := range successors {
 			// Save the config when:
 			// 1) MediaType matches, or
@@ -127,6 +130,7 @@ func runPull(opts pullOptions) error {
 				if err != nil {
 					return nil, err
 				}
+				// Skip s if s is unnamed and has no successors.
 				if len(ss) == 0 {
 					continue
 				}
