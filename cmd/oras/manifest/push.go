@@ -14,9 +14,9 @@ limitations under the License.
 package manifest
 
 import (
-	"errors"
 	"fmt"
 
+	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/file"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -29,6 +29,39 @@ type pushOptions struct {
 	targetRef string
 	fileRef   string
 	mediaType string
+}
+
+func pushCmd() *cobra.Command {
+	var opts pushOptions
+	cmd := &cobra.Command{
+		Use:   "push name[:tag|@digest] file",
+		Short: "[Preview] Push a manifest to remote registry",
+		Long: `[Preview] Push a manifest to remote registry
+** This command is in preview and under development. **
+
+Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'latest':
+  oras manifest push localhost:5000/hello:latest manifest.json
+
+  Example - Push an ORAS artifact manifest to repository 'locahost:5000/hello' and tag with 'latest':
+  oras manifest push localhost:5000/hello:latest oras_manifest.json --media-type application/vnd.cncf.oras.artifact.manifest.v1+json
+
+  Example - Push a manifest to the insecure registry:
+  oras manifest push localhost:5000/hello:latest manifest.json
+`,
+		Args: cobra.ExactArgs(2),
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return opts.ReadPassword()
+		},
+		RunE: func(_ *cobra.Command, args []string) error {
+			opts.targetRef = args[0]
+			opts.fileRef = args[1]
+			return pushManifest(opts)
+		},
+	}
+
+	option.ApplyFlags(&opts, cmd.Flags())
+	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", "", "media type of manifest")
+	return cmd
 }
 
 func pushManifest(opts pushOptions) error {
@@ -44,7 +77,7 @@ func pushManifest(opts pushOptions) error {
 	} else {
 		mediaType, err = file.ParseMediaType(opts.fileRef)
 		if err != nil {
-			return errors.New("media type cannot be recognized")
+			return err
 		}
 	}
 
@@ -53,11 +86,7 @@ func pushManifest(opts pushOptions) error {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if closeErr := rc.Close(); err == nil {
-			err = closeErr
-		}
-	}()
+	defer rc.Close()
 
 	exists, err := repo.Exists(ctx, desc)
 	if err != nil {

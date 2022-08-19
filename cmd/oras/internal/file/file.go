@@ -17,6 +17,7 @@ package file
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -66,6 +67,9 @@ func ParseMediaType(path string) (string, error) {
 	var manifest map[string]interface{}
 	if err := json.Unmarshal(manifestByte, &manifest); err != nil {
 		return "", err
+	}
+	if manifest["mediaType"] == nil {
+		return "", errors.New("media type is not recognized")
 	}
 	return fmt.Sprint(manifest["mediaType"]), nil
 }
