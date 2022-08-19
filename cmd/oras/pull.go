@@ -120,6 +120,9 @@ func runPull(opts pullOptions) error {
 			// Note: For a manifest, the 0th indexed element is always a
 			// manifest config.
 			if s.MediaType == configMediaType || (configMediaType == "" && i == 0 && isManifestMediaType(desc.MediaType)) {
+				if configPath == "" {
+					continue
+				}
 				// Add annotation for manifest config
 				if s.Annotations == nil {
 					s.Annotations = make(map[string]string)
