@@ -17,7 +17,6 @@ package manifest
 
 import (
 	"github.com/spf13/cobra"
-	"oras.land/oras/cmd/oras/internal/option"
 )
 
 func Cmd() *cobra.Command {
@@ -26,31 +25,8 @@ func Cmd() *cobra.Command {
 		Short: "[Preview] Manifest operations",
 	}
 
-	cmd.AddCommand(deleteCmd())
-	return cmd
-}
-
-func deleteCmd() *cobra.Command {
-	var opts deleteOptions
-	cmd := &cobra.Command{
-		Use:   "delete name[:tag|@digest]",
-		Short: "[Preview] Delete a manifest from remote registry",
-		Long: `[Preview] Delete a manifest from remote registry
-** This command is in preview and under development. **
-
-Example - Delete manifest:
-  oras manifest delete localhost:5000/hello:latest
-`,
-		Args: cobra.ExactArgs(1),
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return opts.ReadPassword()
-		},
-		RunE: func(_ *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
-			return deleteManifest(opts)
-		},
-	}
-
-	option.ApplyFlags(&opts, cmd.Flags())
+	cmd.AddCommand(
+		deleteCmd(),
+	)
 	return cmd
 }
