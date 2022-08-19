@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -85,6 +86,7 @@ Example - Pull files with local cache:
 }
 
 func runPull(opts pullOptions) error {
+	var printed sync.Map
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
@@ -133,6 +135,11 @@ func runPull(opts pullOptions) error {
 				}
 				// Skip s if s is unnamed and has no successors.
 				if len(ss) == 0 {
+					if _, loaded := printed.LoadOrStore(s.Digest.String(), true); !loaded {
+						if err = display.PrintStatus(s, "Skipped    ", opts.Verbose); err != nil {
+							return nil, err
+						}
+					}
 					continue
 				}
 			}
