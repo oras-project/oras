@@ -45,6 +45,7 @@ func StatusPrinter(status string, verbose bool) func(context.Context, ocispec.De
 func PrintStatus(desc ocispec.Descriptor, status string, verbose bool) error {
 	name, ok := desc.Annotations[ocispec.AnnotationTitle]
 	if !ok {
+		// no status for unnamed content
 		if !verbose {
 			return nil
 		}
