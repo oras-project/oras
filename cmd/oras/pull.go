@@ -135,12 +135,11 @@ func runPull(opts pullOptions) error {
 				}
 				// Skip s if s is unnamed and has no successors.
 				if len(ss) == 0 {
-					if _, exists := printed.Load(s.Digest.String()); !exists {
+					if _, loaded := printed.LoadOrStore(s.Digest.String(), true); !loaded {
 						err = display.PrintStatus(s, "Skipped    ", opts.Verbose)
 						if err != nil {
 							return nil, err
 						}
-						printed.Store(s.Digest.String(), true)
 					}
 					continue
 				}
