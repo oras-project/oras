@@ -39,8 +39,6 @@ func pipe(ptrFrom **os.File) (io.WriteCloser, io.Reader, func()) {
 	}
 }
 
-// var mutex sync.Mutex
-
 func MatchOut(text string, cmd *cobra.Command, output string) {
 	var r io.Reader
 	var wc io.WriteCloser
