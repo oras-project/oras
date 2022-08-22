@@ -34,11 +34,12 @@ const (
 	armv5 = "linux/arm/v5"
 	armv7 = "linux/arm/v7"
 
-	indexDesc = `{"mediaType":"application/vnd.oci.image.index.v1+json","digest":"sha256:bdcc003fa2d7882789773fe5fee506ef370dce5ce7988fd420587f144fc700db","size":452}`
-	armv5Desc = `{"mediaType":"application/vnd.docker.distribution.manifest.v2+json","digest":"sha256:27cb13102d774dc36e0bc93f528db7e4f004a6e9636cb6926b1e389668535309","size":12}`
-	amd64Desc = `{"mediaType":"application/vnd.docker.distribution.manifest.v2+json","digest":"sha256:baf0239e48ff4c47ebac3ba02b5cf1506b69cd5a0c0d0c825a53ba65976fb942","size":11}`
-	badType   = "application/a.not.supported.manifest.v2+jso"
-	badDesc   = `{"mediaType":"application/a.not.supported.manifest.v2+json","digest":"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","size":0}`
+	indexDesc   = `{"mediaType":"application/vnd.oci.image.index.v1+json","digest":"sha256:bdcc003fa2d7882789773fe5fee506ef370dce5ce7988fd420587f144fc700db","size":452}`
+	armv5Desc   = `{"mediaType":"application/vnd.docker.distribution.manifest.v2+json","digest":"sha256:27cb13102d774dc36e0bc93f528db7e4f004a6e9636cb6926b1e389668535309","size":12}`
+	amd64Desc   = `{"mediaType":"application/vnd.docker.distribution.manifest.v2+json","digest":"sha256:baf0239e48ff4c47ebac3ba02b5cf1506b69cd5a0c0d0c825a53ba65976fb942","size":11}`
+	badType     = "application/a.not.supported.manifest.v2+jso"
+	badDesc     = `{"mediaType":"application/a.not.supported.manifest.v2+json","digest":"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","size":0}`
+	blobContent = `Hello World`
 )
 
 var repo = mock.New().WithFetch().WithFetchReference().WithResolve()
@@ -141,5 +142,17 @@ func TestPlatform_FetchManifest_miscErr(t *testing.T) {
 	ret, err = cas.FetchManifest(context.Background(), tmpRepo, digest.FromBytes([]byte(amd64)).String(), nil)
 	if err == nil {
 		t.Fatalf("Should fail oras.Fetch, unexpected return value: %v", ret)
+	}
+}
+
+func Test_FetchBlob(t *testing.T) {
+	repo.Remount([]mock.Blob{
+		{Content: blobContent, MediaType: "application/octet-stream", Tag: ""}})
+
+	// Get blob
+	contentBytes := []byte(blobContent)
+	got, err := cas.FetchBlob(context.Background(), repo, digest.FromBytes(contentBytes).String())
+	if err != nil || !bytes.Equal(got, contentBytes) {
+		t.Fatal(err)
 	}
 }
