@@ -63,7 +63,7 @@ Example - Push file "hi.txt" with "application/vnd.me.config" as config type:
   oras push --artifact-type application/vnd.me.config localhost:5000/hello:latest hi.txt
 
 Example - Push file "hi.txt" with the custom manifest config "config.json" of the custom "application/vnd.me.config" media type:
-  oras push --manifest-config config.json:application/vnd.me.config localhost:5000/hello:latest hi.txt
+  oras push --config config.json:application/vnd.me.config localhost:5000/hello:latest hi.txt
 
 Example - Push file to the insecure registry:
   oras push localhost:5000/hello:latest hi.txt --insecure
@@ -80,7 +80,7 @@ Example - Push repository with manifest annotation file
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.artifactType != "" && opts.manifestConfigRef != "" {
-				return errors.New("--artifact-type and --manifest-config cannot both be provided")
+				return errors.New("--artifact-type and --config cannot both be provided")
 			}
 			return opts.ReadPassword()
 		},
@@ -91,7 +91,7 @@ Example - Push repository with manifest annotation file
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.manifestConfigRef, "manifest-config", "", "", "manifest config file")
+	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "manifest config file")
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "media type of config or manifest")
 
 	option.ApplyFlags(&opts, cmd.Flags())
