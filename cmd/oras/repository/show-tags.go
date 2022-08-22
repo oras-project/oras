@@ -22,16 +22,16 @@ import (
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
-type listOptions struct {
+type showTagsOptions struct {
 	option.Remote
 	option.Common
-	hostname string
+	targetRef string
 }
 
-func listCmd() *cobra.Command {
-	var opts listOptions
+func showTagsCmd() *cobra.Command {
+	var opts showTagsOptions
 	cmd := &cobra.Command{
-		Use:   "list [REGISTRY]",
+		Use:   "show-tags <target-ref>",
 		Short: "[Preview] List the repositories under the registry",
 		Long: `[Preview] List the repositories under the registry
 ** This command is in preview and under development. **
@@ -47,31 +47,27 @@ Example - Fetch manifest with prettified json result:
   oras manifest fetch --pretty localhost:5000/hello:latest
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.hostname = args[0]
-			return listRepository(opts)
+			opts.targetRef = args[0]
+			return showTags(opts)
 		},
 	}
-
 	// cmd.Flags()
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
 
-func listRepository(opts listOptions) error {
+func showTags(opts showTagsOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
-	// get all repository from the registry
-	reg, err := opts.Remote.NewRegistry(opts.hostname, opts.Common)
-	// https://docs.docker.com/registry/spec/api/#catalog
+	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
 	}
-	// RepositoryListPageSize
-	reg.Repositories(ctx, "", func(repos []string) error {
-		for _, repo := range repos {
-			fmt.Println(repo)
+	repo.Tags(ctx, "", func(tags []string) error {
+		for _, tag := range tags {
+			fmt.Println(tag)
 		}
 		return nil
 	})
-	// list all repository
+	// list all tags
 	return nil
 }
