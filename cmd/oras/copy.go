@@ -48,10 +48,10 @@ func copyCmd() *cobra.Command {
 
 ** This command is in preview and under development. **
 
-Examples - Copy the artifact tagged 'v1' from repository 'localhost:5000/net-monitor' to repository 'localhost:5000/net-monitor-copy' 
+Example - Copy the artifact tagged 'v1' from repository 'localhost:5000/net-monitor' to repository 'localhost:5000/net-monitor-copy' 
   oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
 
-Examples - Copy the artifact tagged 'v1' and its referrers from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy'
+Example - Copy the artifact tagged 'v1' and its referrers from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy'
   oras cp -r localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
 `,
 		Args: cobra.ExactArgs(2),

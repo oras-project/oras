@@ -92,7 +92,7 @@ Example - Push repository with manifest annotation file
 	}
 
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "manifest config file")
-	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "media type of config or manifest")
+	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "media type of the manifest config")
 
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
