@@ -58,7 +58,7 @@ Example - Discover all the referrers of manifest 'hello:latest' in registry 'loc
   oras discover localhost:5000/hello -o tree
 
 Example - Discover referrers with type 'test-artifact' of manifest 'hello:latest' in registry 'localhost:5000':
-  oras discover --artifact test-artifact localhost:5000/hello
+  oras discover --artifact-type test-artifact localhost:5000/hello
 `,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
