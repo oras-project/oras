@@ -20,7 +20,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"sync"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -40,7 +39,7 @@ func pipe(ptrFrom **os.File) (io.WriteCloser, io.Reader, func()) {
 	}
 }
 
-var mutex sync.Mutex
+// var mutex sync.Mutex
 
 func MatchOut(text string, cmd *cobra.Command, output string) {
 	var r io.Reader
@@ -48,9 +47,7 @@ func MatchOut(text string, cmd *cobra.Command, output string) {
 	var close func()
 
 	ginkgo.It(text, func() {
-		mutex.Lock()
 		wc, r, close = pipe(&os.Stdout)
-		defer mutex.Unlock()
 		defer close()
 
 		Expect(cmd.Execute()).Should(Succeed())
@@ -60,7 +57,6 @@ func MatchOut(text string, cmd *cobra.Command, output string) {
 		str := string(b)
 		Expect(str).To(Equal(output))
 	})
-
 }
 
 func MatchOutWithKeyWords(text string, cmd *cobra.Command, keywords []string) {
@@ -69,10 +65,9 @@ func MatchOutWithKeyWords(text string, cmd *cobra.Command, keywords []string) {
 	var close func()
 
 	ginkgo.It(text, func() {
-		mutex.Lock()
 		wc, r, close = pipe(&os.Stdout)
-		defer mutex.Unlock()
 		defer close()
+
 		visited := make(map[string]bool)
 		for _, w := range keywords {
 			visited[w] = false
@@ -101,10 +96,9 @@ func MatchErrWithKeyWords(text string, cmd *cobra.Command, keywords []string) {
 	var close func()
 
 	ginkgo.It(text, func() {
-		mutex.Lock()
 		wc, r, close = pipe(&os.Stderr)
-		defer mutex.Unlock()
 		defer close()
+
 		visited := make(map[string]bool)
 		for _, w := range keywords {
 			visited[w] = false
