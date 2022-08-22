@@ -28,8 +28,10 @@ import (
 	"oras.land/oras-go/v2/content"
 )
 
+// Pre-defined annotation keys for annotation file
 const (
-	annotationManifest = "$manifest"
+	AnnotationManifest = "$manifest"
+	AnnotationConfig   = "$config"
 )
 
 var (
@@ -110,6 +112,6 @@ func parseAnnotationFlags(flags []string, annotations map[string]map[string]stri
 		}
 		manifestAnnotations[key] = val
 	}
-	annotations[annotationManifest] = manifestAnnotations
+	annotations[AnnotationManifest] = manifestAnnotations
 	return nil
 }

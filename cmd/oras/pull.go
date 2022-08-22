@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -79,12 +80,13 @@ Example - Pull files with local cache:
 	cmd.Flags().BoolVarP(&opts.KeepOldFiles, "keep-old-files", "k", false, "do not replace existing files when pulling, treat them as errors")
 	cmd.Flags().BoolVarP(&opts.PathTraversal, "allow-path-traversal", "T", false, "allow storing files out of the output directory")
 	cmd.Flags().StringVarP(&opts.Output, "output", "o", ".", "output directory")
-	cmd.Flags().StringVarP(&opts.ManifestConfigRef, "manifest-config", "", "", "output manifest config file")
+	cmd.Flags().StringVarP(&opts.ManifestConfigRef, "config", "", "", "output manifest config file")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
 
 func runPull(opts pullOptions) error {
+	var printed sync.Map
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
@@ -110,24 +112,34 @@ func runPull(opts pullOptions) error {
 			return nil, err
 		}
 		var ret []ocispec.Descriptor
+		// Iterate all the successors to
+		// 1) Add name annotation to config if configPath is not empty
+		// 2) Skip fetching unnamed leaf nodes
 		for i, s := range successors {
 			// Save the config when:
 			// 1) MediaType matches, or
 			// 2) MediaType not specified and current node is config.
 			// Note: For a manifest, the 0th indexed element is always a
 			// manifest config.
-			if s.MediaType == configMediaType || (configMediaType == "" && i == 0 && isManifestMediaType(desc.MediaType)) {
+			if (s.MediaType == configMediaType || (configMediaType == "" && i == 0 && isManifestMediaType(desc.MediaType))) && configPath != "" {
 				// Add annotation for manifest config
 				if s.Annotations == nil {
 					s.Annotations = make(map[string]string)
 				}
 				s.Annotations[ocispec.AnnotationTitle] = configPath
-			} else if s.Annotations[ocispec.AnnotationTitle] == "" {
+			}
+			if s.Annotations[ocispec.AnnotationTitle] == "" {
 				ss, err := content.Successors(ctx, fetcher, s)
 				if err != nil {
 					return nil, err
 				}
+				// Skip s if s is unnamed and has no successors.
 				if len(ss) == 0 {
+					if _, loaded := printed.LoadOrStore(s.Digest.String(), true); !loaded {
+						if err = display.PrintStatus(s, "Skipped    ", opts.Verbose); err != nil {
+							return nil, err
+						}
+					}
 					continue
 				}
 			}
@@ -139,11 +151,16 @@ func runPull(opts pullOptions) error {
 	pulledEmpty := true
 	copyOptions.PreCopy = display.StatusPrinter("Downloading", opts.Verbose)
 	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		name := desc.Annotations[ocispec.AnnotationTitle]
-		if name == "" {
-			return nil
+		name, ok := desc.Annotations[ocispec.AnnotationTitle]
+		if !ok {
+			if !opts.Verbose {
+				return nil
+			}
+			name = desc.MediaType
+		} else {
+			// named content downloaded
+			pulledEmpty = false
 		}
-		pulledEmpty = false
 		return display.Print("Downloaded ", display.ShortDigest(desc), name)
 	}
 

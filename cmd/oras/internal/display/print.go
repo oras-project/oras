@@ -37,14 +37,7 @@ func Print(a ...any) error {
 // StatusPrinter returns a tracking function for transfer status.
 func StatusPrinter(status string, verbose bool) func(context.Context, ocispec.Descriptor) error {
 	return func(ctx context.Context, desc ocispec.Descriptor) error {
-		name, ok := desc.Annotations[ocispec.AnnotationTitle]
-		if !ok {
-			if !verbose {
-				return nil
-			}
-			name = desc.MediaType
-		}
-		return Print(status, ShortDigest(desc), name)
+		return PrintStatus(desc, status, verbose)
 	}
 }
 
@@ -52,6 +45,7 @@ func StatusPrinter(status string, verbose bool) func(context.Context, ocispec.De
 func PrintStatus(desc ocispec.Descriptor, status string, verbose bool) error {
 	name, ok := desc.Annotations[ocispec.AnnotationTitle]
 	if !ok {
+		// no status for unnamed content
 		if !verbose {
 			return nil
 		}
