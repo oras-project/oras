@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -29,15 +30,13 @@ import (
 )
 
 const (
-	annotationConfig   = "$config"
-	annotationManifest = "$manifest"
-	tagStaged          = "staged"
+	tagStaged = "staged"
 )
 
 type pushOptions struct {
 	option.Common
 	option.Remote
-	option.Pusher
+	option.Packer
 
 	targetRef         string
 	manifestConfigRef string
@@ -71,7 +70,13 @@ Example - Push file to the insecure registry:
 
 Example - Push file to the HTTP registry:
   oras push localhost:5000/hello:latest hi.txt --plain-http
-`,
+
+Example - Push repository with manifest annotations
+  oras push localhost:5000/hello:latest --annotation "key=val"
+
+Example - Push repository with manifest annotation file
+  oras push localhost:5000/hello:latest --annotation-file annotation.json
+  `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.artifactType != "" && opts.manifestConfigRef != "" {
@@ -106,10 +111,20 @@ func runPush(opts pushOptions) error {
 	store.AllowPathTraversalOnWrite = opts.PathValidationDisabled
 
 	// Ready to push
+	committed := &sync.Map{}
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.PreCopy = display.StatusPrinter("Uploading", opts.Verbose)
-	copyOptions.OnCopySkipped = display.StatusPrinter("Exists   ", opts.Verbose)
-	copyOptions.PostCopy = display.StatusPrinter("Uploaded ", opts.Verbose)
+	copyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
+		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+		return display.PrintStatus(desc, "Exists   ", opts.Verbose)
+	}
+	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+		if err := display.PrintSuccessorStatus(ctx, desc, "Skipped  ", store, committed, opts.Verbose); err != nil {
+			return err
+		}
+		return display.PrintStatus(desc, "Uploaded ", opts.Verbose)
+	}
 	desc, err := packManifest(ctx, store, annotations, &opts)
 	if err != nil {
 		return err
@@ -138,15 +153,15 @@ func runPush(opts pushOptions) error {
 
 func packManifest(ctx context.Context, store *file.Store, annotations map[string]map[string]string, opts *pushOptions) (ocispec.Descriptor, error) {
 	var packOpts oras.PackOptions
-	packOpts.ConfigAnnotations = annotations[annotationConfig]
-	packOpts.ManifestAnnotations = annotations[annotationManifest]
+	packOpts.ConfigAnnotations = annotations[option.AnnotationConfig]
+	packOpts.ManifestAnnotations = annotations[option.AnnotationManifest]
 
 	if opts.artifactType != "" {
 		packOpts.ConfigMediaType = opts.artifactType
 	}
 	if opts.manifestConfigRef != "" {
 		path, mediatype := parseFileReference(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
-		desc, err := store.Add(ctx, annotationConfig, mediatype, path)
+		desc, err := store.Add(ctx, option.AnnotationConfig, mediatype, path)
 		if err != nil {
 			return ocispec.Descriptor{}, err
 		}

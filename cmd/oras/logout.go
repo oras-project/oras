@@ -46,7 +46,7 @@ Example - Logout:
 	}
 
 	cmd.Flags().BoolVarP(&opts.debug, "debug", "d", false, "debug mode")
-	cmd.Flags().StringArrayVarP(&opts.configs, "config", "c", nil, "auth config path")
+	cmd.Flags().StringArrayVarP(&opts.configs, "registry-config", "", nil, "auth config path")
 	return cmd
 }
 

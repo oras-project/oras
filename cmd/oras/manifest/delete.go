@@ -17,8 +17,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/errors"
 )
 
 type deleteOptions struct {
