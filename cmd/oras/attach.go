@@ -17,7 +17,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	artifactspec "github.com/oras-project/artifacts-spec/specs-go/v1"
@@ -26,13 +28,14 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/display"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
 type attachOptions struct {
 	option.Common
 	option.Remote
-	option.Pusher
+	option.Packer
 
 	targetRef    string
 	artifactType string
@@ -49,8 +52,14 @@ func attachCmd() *cobra.Command {
 
 Example - Attach file 'hi.txt' with type 'doc/example' to manifest 'hello:test' in registry 'localhost:5000'
   oras attach localhost:5000/hello:test hi.txt --artifact-type doc/example
+
+Example - Attach and update manifest annotations
+  oras attach localhost:5000/hello:latest hi.txt --artifact-type doc/example --annotation "key=val"
+
+Example - Attach and update annotation from manifest annotation file
+  oras attach localhost:5000/hello:latest hi.txt --artifact-type doc/example --annotation-file annotation.json
 `,
-		Args: cobra.MinimumNArgs(2),
+		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return opts.ReadPassword()
 		},
@@ -72,6 +81,9 @@ func runAttach(opts attachOptions) error {
 	if err != nil {
 		return err
 	}
+	if len(opts.FileRefs) == 0 && len(annotations[option.AnnotationManifest]) == 0 {
+		return errors.New("no blob or manifest annotation are provided")
+	}
 
 	// Prepare manifest
 	store := file.New("")
@@ -83,7 +95,7 @@ func runAttach(opts attachOptions) error {
 		return err
 	}
 	if dst.Reference.Reference == "" {
-		return newErrInvalidReference(dst.Reference)
+		return oerrors.NewErrInvalidReference(dst.Reference)
 	}
 	ociSubject, err := dst.Resolve(ctx, dst.Reference.Reference)
 	if err != nil {
@@ -108,6 +120,7 @@ func runAttach(opts attachOptions) error {
 	}
 
 	// Prepare Push
+	committed := &sync.Map{}
 	graphCopyOptions := oras.DefaultCopyGraphOptions
 	graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		if isEqualOCIDescriptor(node, desc) {
@@ -117,9 +130,17 @@ func runAttach(opts attachOptions) error {
 		return content.Successors(ctx, fetcher, node)
 	}
 	graphCopyOptions.PreCopy = display.StatusPrinter("Uploading", opts.Verbose)
-	graphCopyOptions.OnCopySkipped = display.StatusPrinter("Exists   ", opts.Verbose)
-	graphCopyOptions.PostCopy = display.StatusPrinter("Uploaded ", opts.Verbose)
-
+	graphCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
+		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+		return display.PrintStatus(desc, "Exists   ", opts.Verbose)
+	}
+	graphCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+		if err := display.PrintSuccessorStatus(ctx, desc, "Skipped  ", store, committed, opts.Verbose); err != nil {
+			return err
+		}
+		return display.PrintStatus(desc, "Uploaded ", opts.Verbose)
+	}
 	// Push
 	err = oras.CopyGraph(ctx, store, dst, desc, graphCopyOptions)
 	if err != nil {
