@@ -43,6 +43,7 @@ var (
 // Packer option struct.
 type Packer struct {
 	ManifestExportPath     string
+	ManifestDescExportPath string
 	PathValidationDisabled bool
 	AnnotationFilePath     string
 	ManifestAnnotations    []string
@@ -53,6 +54,7 @@ type Packer struct {
 // ApplyFlags applies flags to a command flag set.
 func (opts *Packer) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&opts.ManifestExportPath, "export-manifest", "", "", "export the pushed manifest")
+	fs.StringVarP(&opts.ManifestDescExportPath, "export-manifest-descriptor", "", "", "export the descriptor of pushed manifest")
 	fs.StringArrayVarP(&opts.ManifestAnnotations, "annotation", "a", nil, "manifest annotations")
 	fs.StringVarP(&opts.AnnotationFilePath, "annotation-file", "", "", "path of the annotation file")
 	fs.BoolVarP(&opts.PathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
@@ -68,6 +70,22 @@ func (opts *Packer) ExportManifest(ctx context.Context, fetcher content.Fetcher,
 		return err
 	}
 	return os.WriteFile(opts.ManifestExportPath, manifestBytes, 0666)
+}
+
+// ExportManifestDesc saves the descriptor of pushed manifest to a local file.
+func (opts *Packer) ExportManifestDesc(desc ocispec.Descriptor) error {
+	if opts.ManifestDescExportPath == "" {
+		return nil
+	}
+	manifestDescBytes, err := json.Marshal(ocispec.Descriptor{
+		MediaType: desc.MediaType,
+		Digest:    desc.Digest,
+		Size:      desc.Size,
+	})
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(opts.ManifestDescExportPath, manifestDescBytes, 0666)
 }
 
 // LoadManifestAnnotations loads the manifest annotation map.

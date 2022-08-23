@@ -147,6 +147,10 @@ func runPush(opts pushOptions) error {
 	fmt.Println("Pushed", opts.targetRef)
 	fmt.Println("Digest:", desc.Digest)
 
+	// Export manifest descriptor
+	if err := opts.ExportManifestDesc(desc); err != nil {
+		return err
+	}
 	// Export manifest
 	return opts.ExportManifest(ctx, store, desc)
 }
