@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package matcher
+package tester
 
 import (
 	"fmt"
@@ -39,9 +39,7 @@ func pipe(ptrFrom **os.File) (io.WriteCloser, io.Reader, func()) {
 	}
 }
 
-// var mutex sync.Mutex
-
-func MatchOut(text string, cmd *cobra.Command, output string) {
+func RunAndMatchOut(text string, cmd *cobra.Command, args []string, output string) {
 	var r io.Reader
 	var wc io.WriteCloser
 	var close func()
@@ -50,6 +48,7 @@ func MatchOut(text string, cmd *cobra.Command, output string) {
 		wc, r, close = pipe(&os.Stdout)
 		defer close()
 
+		cmd.SetArgs(args)
 		Expect(cmd.Execute()).Should(Succeed())
 		wc.Close()
 		b, err := io.ReadAll(r)
@@ -59,7 +58,7 @@ func MatchOut(text string, cmd *cobra.Command, output string) {
 	})
 }
 
-func MatchOutWithKeyWords(text string, cmd *cobra.Command, keywords []string) {
+func RunAndMatchOutKeyWords(text string, cmd *cobra.Command, args []string, keywords []string) {
 	var r io.Reader
 	var wc io.WriteCloser
 	var close func()
@@ -72,6 +71,7 @@ func MatchOutWithKeyWords(text string, cmd *cobra.Command, keywords []string) {
 		for _, w := range keywords {
 			visited[w] = false
 		}
+		cmd.SetArgs(args)
 		Expect(cmd.Execute()).Should(Succeed())
 		wc.Close()
 		b, err := io.ReadAll(r)
@@ -90,7 +90,7 @@ func MatchOutWithKeyWords(text string, cmd *cobra.Command, keywords []string) {
 	})
 }
 
-func MatchErrWithKeyWords(text string, cmd *cobra.Command, keywords []string) {
+func RunAndMatchErrKeyWords(text string, cmd *cobra.Command, args []string, keywords []string) {
 	var r io.Reader
 	var wc io.WriteCloser
 	var close func()
@@ -103,6 +103,7 @@ func MatchErrWithKeyWords(text string, cmd *cobra.Command, keywords []string) {
 		for _, w := range keywords {
 			visited[w] = false
 		}
+		cmd.SetArgs(args)
 		Expect(cmd.Execute()).ShouldNot(Succeed())
 		wc.Close()
 		b, err := io.ReadAll(r)

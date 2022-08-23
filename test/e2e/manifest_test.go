@@ -17,9 +17,8 @@ package e2e
 
 import (
 	. "github.com/onsi/ginkgo/v2"
-	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/manifest"
-	"oras.land/oras/test/e2e/matcher"
+	"oras.land/oras/test/e2e/tester"
 )
 
 const (
@@ -49,62 +48,62 @@ const (
 var _ = Context("User", func() {
 	Describe("runs manifest command", func() {
 		When("looking for supported command and help", func() {
-			var cmd *cobra.Command
-			cmd = manifest.Cmd()
-			cmd.SetArgs([]string{"-h"})
-			matcher.MatchOutWithKeyWords("should show available commands", cmd, []string{
-				"[Preview] Manifest",
-				"[Preview] Fetch",
-			})
+			tester.RunAndMatchOutKeyWords("should show available commands",
+				manifest.Cmd(),
+				[]string{"-h"},
+				[]string{"[Preview] Manifest", "[Preview] Fetch"})
 
-			cmd = manifest.Cmd()
-			cmd.SetArgs([]string{"fetch", "-h"})
-			matcher.MatchOutWithKeyWords("should show fetch-related help doc", cmd, []string{
-				"** This command is in preview and under development. **",
-				"[Preview] Fetch",
-			})
+			tester.RunAndMatchOutKeyWords("should show fetch-related help doc",
+				manifest.Cmd(),
+				[]string{"fetch", "-h"},
+				[]string{"** This command is in preview and under development. **", "[Preview] Fetch"})
 
-			cmd = manifest.Cmd()
-			cmd.SetArgs([]string{"fetch", "-h"})
-			matcher.MatchOutWithKeyWords("should also work with alias get", cmd, []string{
-				"** This command is in preview and under development. **",
-				"[Preview] Fetch",
-			})
+			tester.RunAndMatchOutKeyWords("should also work with alias get",
+				manifest.Cmd(),
+				[]string{"fetch", "-h"},
+				[]string{"** This command is in preview and under development. **", "[Preview] Fetch"})
 		})
 
 		When("fetching manifest", func() {
-			var cmd *cobra.Command
-			cmd = manifest.Cmd()
-			cmd.SetArgs([]string{"fetch"})
-			matcher.MatchErrWithKeyWords("should fail if no artifact reference provided", cmd, []string{"Error:"})
+			tester.RunAndMatchErrKeyWords("should fail if no artifact reference provided",
+				manifest.Cmd(),
+				[]string{"fetch"},
+				[]string{"Error:"})
 
-			cmd = manifest.Cmd()
-			cmd.SetArgs([]string{"fetch", "docker.io/library/hello-world:latest"})
-			matcher.MatchOut("should fetch manifest list with tag", cmd, manifest_latest)
+			tester.RunAndMatchOut("should fetch manifest list with tag",
+				manifest.Cmd(),
+				[]string{"fetch", "docker.io/library/hello-world:latest"},
+				manifest_latest)
 
-			cmd = manifest.Cmd()
-			cmd.SetArgs([]string{"fetch", "docker.io/library/hello-world@" + digest_latest})
-			matcher.MatchOut("should fetch manifest list with digest", cmd, manifest_latest)
+			tester.RunAndMatchOut("should fetch manifest list with digest",
+				manifest.Cmd(),
+				[]string{"fetch", "docker.io/library/hello-world@" + digest_latest},
+				manifest_latest)
 
-			cmd = manifest.Cmd()
-			cmd.SetArgs([]string{"fetch", "docker.io/library/hello-world@" + digest_latest, "--descriptor"})
-			matcher.MatchOut("should fetch descriptor with digest", cmd, descriptor_latest)
+			tester.RunAndMatchOut("should fetch descriptor with digest",
+				manifest.Cmd(),
+				[]string{"fetch", "docker.io/library/hello-world@" + digest_latest, "--descriptor"},
+				descriptor_latest)
 
-			cmd = manifest.Cmd()
-			cmd.SetArgs([]string{"fetch", "docker.io/library/hello-world@" + digest_latest, "--platform", "linux/amd64"})
-			matcher.MatchOut("should fetch manifest with target platform from a manifest list", cmd, manifest_linuxAMD64)
+			tester.RunAndMatchOut("should fetch manifest with target platform from a manifest list",
+				manifest.Cmd(),
+				[]string{"fetch", "docker.io/library/hello-world@" + digest_latest, "--platform", "linux/amd64"},
+				manifest_linuxAMD64)
 
-			cmd = manifest.Cmd()
-			cmd.SetArgs([]string{"fetch", "docker.io/library/hello-world@" + digest_latest, "--platform", "linux/amd64", "--descriptor"})
-			matcher.MatchOut("should fetch descriptor with target platform", cmd, descriptor_linuxAMD64)
+			tester.RunAndMatchOut("should fetch descriptor with target platform",
+				manifest.Cmd(),
+				[]string{"fetch", "docker.io/library/hello-world@" + digest_latest, "--platform", "linux/amd64", "--descriptor"},
+				descriptor_linuxAMD64)
 
-			cmd = manifest.Cmd()
-			cmd.SetArgs([]string{"fetch", "docker.io/library/hello-world@" + digest_linuxAMD64, "--platform", "linux/amd64"})
-			matcher.MatchOut("should fetch manifest with platform validation", cmd, manifest_linuxAMD64)
+			tester.RunAndMatchOut("should fetch manifest with platform validation",
+				manifest.Cmd(),
+				[]string{"fetch", "docker.io/library/hello-world@" + digest_linuxAMD64, "--platform", "linux/amd64"},
+				manifest_linuxAMD64)
 
-			cmd = manifest.Cmd()
-			cmd.SetArgs([]string{"fetch", "docker.io/library/hello-world@" + digest_linuxAMD64, "--platform", "linux/amd64", "--descriptor"})
-			matcher.MatchOut("should fetch manifest with platform validation", cmd, descriptor_linuxAMD64)
+			tester.RunAndMatchOut("should fetch manifest with platform validation",
+				manifest.Cmd(),
+				[]string{"fetch", "docker.io/library/hello-world@" + digest_linuxAMD64, "--platform", "linux/amd64", "--descriptor"},
+				descriptor_linuxAMD64)
 		})
 	})
 })
