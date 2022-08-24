@@ -31,21 +31,14 @@ type showTagsOptions struct {
 func showTagsCmd() *cobra.Command {
 	var opts showTagsOptions
 	cmd := &cobra.Command{
-		Use:   "show-tags <target-ref>",
-		Short: "[Preview] List the repositories under the registry",
-		Long: `[Preview] List the repositories under the registry
+		Use:   "show-tags REPO [flags]",
+		Short: "[Preview] Show tags of the target repository",
+		Long: `[Preview] Show tags of the target repository
 ** This command is in preview and under development. **
-Example - Fetch raw manifest:
-  oras manifest fetch localhost:5000/hello:latest
-Example - Fetch the descriptor of a manifest:
-  oras manifest fetch --descriptor localhost:5000/hello:latest
-Example - Fetch manifest with specified media type:
-  oras manifest fetch --media-type 'application/vnd.oci.image.manifest.v1+json' localhost:5000/hello:latest
-Example - Fetch manifest with certain platform:
-  oras manifest fetch --platform 'linux/arm/v5' localhost:5000/hello:latest
-Example - Fetch manifest with prettified json result:
-  oras manifest fetch --pretty localhost:5000/hello:latest
+Example - Show tags of the target repository:
+  oras repository show-tags localhost:5000/hello
 `,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
 			return showTags(opts)
