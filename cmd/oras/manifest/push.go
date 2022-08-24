@@ -17,7 +17,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/file"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -88,23 +87,13 @@ func pushManifest(opts pushOptions) error {
 	}
 	defer rc.Close()
 
-	exists, err := repo.Exists(ctx, desc)
+	if tag := repo.Reference.Reference; tag != "" {
+		err = repo.PushReference(ctx, desc, rc, tag)
+	} else {
+		err = repo.Push(ctx, desc, rc)
+	}
 	if err != nil {
 		return err
-	}
-	if exists {
-		statusPrinter := display.StatusPrinter("Exists   ", opts.Verbose)
-		if err := statusPrinter(ctx, desc); err != nil {
-			return err
-		}
-	} else {
-		if err = repo.Push(ctx, desc, rc); err != nil {
-			return err
-		}
-	}
-
-	if tag := repo.Reference.Reference; tag != "" {
-		repo.Tag(ctx, desc, tag)
 	}
 
 	fmt.Println("Pushed", opts.targetRef)
