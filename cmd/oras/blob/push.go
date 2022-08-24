@@ -36,8 +36,8 @@ func pushCmd() *cobra.Command {
 	var opts pushBlobOptions
 	cmd := &cobra.Command{
 		Use:   "push <name> file [flags]",
-		Short: "[Preview] Push a blob to remote registry",
-		Long: `[Preview] Push a blob to remote registry
+		Short: "[Preview] Push a blob to a remote registry",
+		Long: `[Preview] Push a blob to a remote registry
 ** This command is in preview and under development. **
 
 Example - Push blob "hi.txt":
@@ -80,7 +80,7 @@ func pushBlob(opts pushBlobOptions) (err error) {
 		return err
 	}
 	if exists {
-		if err := display.PrintStatus(desc, "Exists   ", opts.Verbose); err != nil {
+		if err := display.PrintStatus(desc, "Exists", opts.Verbose); err != nil {
 			return err
 		}
 	} else {
