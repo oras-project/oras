@@ -64,12 +64,14 @@ var _ = Context("User", func() {
 				[]string{"** This command is in preview and under development. **", "[Preview] Fetch"})
 		})
 
-		When("fetching manifest", func() {
-			tester.RunAndMatchErrKeyWords("should fail if no artifact reference provided",
+		When("fetching manifest with no artifact reference provided", func() {
+			tester.RunAndMatchErrKeyWords("should fail",
 				manifest.Cmd(),
 				[]string{"fetch"},
 				[]string{"Error:"})
+		})
 
+		When("fetching manifest list content", func() {
 			tester.RunAndMatchOut("should fetch manifest list with tag",
 				manifest.Cmd(),
 				[]string{"fetch", "docker.io/library/hello-world:latest"},
@@ -79,16 +81,25 @@ var _ = Context("User", func() {
 				manifest.Cmd(),
 				[]string{"fetch", "docker.io/library/hello-world@" + digest_latest},
 				manifest_latest)
+		})
 
+		When("fetching manifest content", func() {
+			tester.RunAndMatchOut("should fetch manifest with target platform",
+				manifest.Cmd(),
+				[]string{"fetch", "docker.io/library/hello-world@" + digest_latest, "--platform", "linux/amd64"},
+				manifest_linuxAMD64)
+
+			tester.RunAndMatchOut("should fetch manifest with platform validation",
+				manifest.Cmd(),
+				[]string{"fetch", "docker.io/library/hello-world@" + digest_linuxAMD64, "--platform", "linux/amd64"},
+				manifest_linuxAMD64)
+		})
+
+		When("fetching descriptor", func() {
 			tester.RunAndMatchOut("should fetch descriptor with digest",
 				manifest.Cmd(),
 				[]string{"fetch", "docker.io/library/hello-world@" + digest_latest, "--descriptor"},
 				descriptor_latest)
-
-			tester.RunAndMatchOut("should fetch manifest with target platform from a manifest list",
-				manifest.Cmd(),
-				[]string{"fetch", "docker.io/library/hello-world@" + digest_latest, "--platform", "linux/amd64"},
-				manifest_linuxAMD64)
 
 			tester.RunAndMatchOut("should fetch descriptor with target platform",
 				manifest.Cmd(),
@@ -97,13 +108,9 @@ var _ = Context("User", func() {
 
 			tester.RunAndMatchOut("should fetch manifest with platform validation",
 				manifest.Cmd(),
-				[]string{"fetch", "docker.io/library/hello-world@" + digest_linuxAMD64, "--platform", "linux/amd64"},
-				manifest_linuxAMD64)
-
-			tester.RunAndMatchOut("should fetch manifest with platform validation",
-				manifest.Cmd(),
 				[]string{"fetch", "docker.io/library/hello-world@" + digest_linuxAMD64, "--platform", "linux/amd64", "--descriptor"},
 				descriptor_linuxAMD64)
 		})
+
 	})
 })
