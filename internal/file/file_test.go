@@ -16,6 +16,7 @@ limitations under the License.
 package file_test
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -27,6 +28,8 @@ import (
 	"oras.land/oras/internal/file"
 )
 
+const blobMediaType = "application/mock-octet-stream"
+
 func TestFile_PrepareContent(t *testing.T) {
 	// generate test content
 	tempDir := t.TempDir()
@@ -37,7 +40,6 @@ func TestFile_PrepareContent(t *testing.T) {
 		t.Fatal("error calling WriteFile(), error =", err)
 	}
 
-	blobMediaType := "application/octet-stream"
 	want := ocispec.Descriptor{
 		MediaType: blobMediaType,
 		Digest:    digest.FromBytes(content),
@@ -53,19 +55,16 @@ func TestFile_PrepareContent(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("PrepareContent() = %v, want %v", got, want)
 	}
+	actualContent, err := io.ReadAll(rc)
+	if err != nil {
+		t.Fatal("PrepareContent(): not able to read content from rc, error=", err)
+	}
+	if !reflect.DeepEqual(actualContent, content) {
+		t.Errorf("PrepareContent() = %v, want %v", actualContent, content)
+	}
 }
 
 func TestFile_PrepareContent_errMissingFileName(t *testing.T) {
-	// generate test content
-	tempDir := t.TempDir()
-	content := []byte("hello world!")
-	fileName := "test.txt"
-	path := filepath.Join(tempDir, fileName)
-	if err := os.WriteFile(path, content, 0444); err != nil {
-		t.Fatal("error calling WriteFile(), error =", err)
-	}
-	blobMediaType := "application/octet-stream"
-
 	// test PrepareContent with missing file name
 	_, _, err := file.PrepareContent("", blobMediaType)
 	expected := "missing file name"
@@ -75,16 +74,6 @@ func TestFile_PrepareContent_errMissingFileName(t *testing.T) {
 }
 
 func TestFile_PrepareContent_errOpenFile(t *testing.T) {
-	// generate test content
-	tempDir := t.TempDir()
-	content := []byte("hello world!")
-	fileName := "test.txt"
-	path := filepath.Join(tempDir, fileName)
-	if err := os.WriteFile(path, content, 0444); err != nil {
-		t.Fatal("error calling WriteFile(), error =", err)
-	}
-	blobMediaType := "application/octet-stream"
-
 	// test PrepareContent with nonexistent file
 	_, _, err := file.PrepareContent("nonexistent.txt", blobMediaType)
 	expected := "failed to open nonexistent.txt"

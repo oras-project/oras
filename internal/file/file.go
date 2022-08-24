@@ -49,10 +49,9 @@ func PrepareContent(path string, mediaType string) (ocispec.Descriptor, io.ReadC
 		return ocispec.Descriptor{}, nil, err
 	}
 
-	desc := ocispec.Descriptor{
+	return ocispec.Descriptor{
 		MediaType: mediaType,
 		Digest:    dgst,
 		Size:      fi.Size(),
-	}
-	return desc, fp, nil
+	}, fp, nil
 }

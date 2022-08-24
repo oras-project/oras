@@ -43,7 +43,7 @@ func pushCmd() *cobra.Command {
 Example - Push blob "hi.txt":
   oras blob push localhost:5000/hello hi.txt
 
-Example - Push blob to the insecure registry:
+Example - Push blob without TLS:
   oras blob push localhost:5000/hello hi.txt --insecure
 `,
 		Args: cobra.ExactArgs(2),
@@ -80,8 +80,7 @@ func pushBlob(opts pushBlobOptions) (err error) {
 		return err
 	}
 	if exists {
-		statusPrinter := display.StatusPrinter("Exists   ", opts.Verbose)
-		if err := statusPrinter(ctx, desc); err != nil {
+		if err := display.PrintStatus(desc, "Exists   ", opts.Verbose); err != nil {
 			return err
 		}
 	} else {
