@@ -16,6 +16,7 @@ limitations under the License.
 package file
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -24,10 +25,24 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// PrepareContent prepares the content descriptor from the file.
+// PrepareContent prepares the content descriptor from the file path.
 func PrepareContent(path string, mediaType string) (ocispec.Descriptor, io.ReadCloser, error) {
 	if path == "" {
 		return ocispec.Descriptor{}, nil, fmt.Errorf("missing file name")
+	}
+
+	if path == "-" {
+		content, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return ocispec.Descriptor{}, nil, err
+		}
+		rc := io.NopCloser(bytes.NewReader(content))
+
+		return ocispec.Descriptor{
+			MediaType: mediaType,
+			Digest:    digest.FromBytes(content),
+			Size:      int64(len(content)),
+		}, rc, nil
 	}
 
 	fp, err := os.Open(path)

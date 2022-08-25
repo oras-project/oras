@@ -16,6 +16,8 @@ limitations under the License.
 package blob
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -26,6 +28,7 @@ import (
 
 type pushBlobOptions struct {
 	option.Common
+	option.Output
 	option.Remote
 
 	fileRef   string
@@ -42,6 +45,15 @@ func pushCmd() *cobra.Command {
 
 Example - Push blob "hi.txt":
   oras blob push localhost:5000/hello hi.txt
+
+Example - Push blob from stdin:
+oras blob push localhost:5000/hello -
+
+Example - Push blob "hi.txt" and output the descriptor
+  oras blob push localhost:5000/hello hi.txt --descriptor
+
+Example - Push blob "hi.txt" and output the prettified descriptor
+  oras blob push localhost:5000/hello hi.txt --descriptor --pretty
 
 Example - Push blob without TLS:
   oras blob push localhost:5000/hello hi.txt --insecure
@@ -63,6 +75,11 @@ Example - Push blob without TLS:
 
 func pushBlob(opts pushBlobOptions) (err error) {
 	ctx, _ := opts.SetLoggerLevel()
+
+	if opts.fileRef == "-" && opts.PasswordFromStdin {
+		return errors.New("`-` read file from input and `--password-stdin` read password from input cannot be both used")
+	}
+
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
@@ -80,13 +97,23 @@ func pushBlob(opts pushBlobOptions) (err error) {
 		return err
 	}
 	if exists {
-		if err := display.PrintStatus(desc, "Exists", opts.Verbose); err != nil {
+		verbose := opts.Verbose && !opts.OutputDescriptor
+		if err := display.PrintStatus(desc, "Exists", verbose); err != nil {
 			return err
 		}
 	} else {
 		if err = repo.Push(ctx, desc, rc); err != nil {
 			return err
 		}
+	}
+
+	if opts.OutputDescriptor {
+		descBytes, err := json.Marshal(desc)
+		if err != nil {
+			return fmt.Errorf("failed to marshal blob: %w", err)
+		}
+		err = opts.OutputContent(descBytes)
+		return err
 	}
 
 	fmt.Println("Pushed", opts.targetRef)
