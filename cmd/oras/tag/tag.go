@@ -40,8 +40,8 @@ func TagCmd() *cobra.Command {
 		Long: `[Preview] tag a manifest in the remote registry
 ** This command is in preview and under development. **
 
-Example -  Tag a manifest with tag v1.0.1 to repository 'locahost:5000/hello' and tag with 'v1.0.2':
-oras manifest push localhost:5000/hello:v1.0.1 v1.0.2
+Example -  Tag the manifest 'v1.0.1' in 'locahost:5000/hello' to 'v1.0.2':
+oras tag localhost:5000/hello:v1.0.1 v1.0.2
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
