@@ -69,7 +69,5 @@ func tagManifest(opts tagOptions) error {
 		return errors.NewErrInvalidReference(repo.Reference)
 	}
 
-	oras.Tag(ctx, repo, opts.srcRef, opts.targetRef)
-
-	return nil
+	return oras.Tag(ctx, repo, opts.srcRef, opts.targetRef)
 }
