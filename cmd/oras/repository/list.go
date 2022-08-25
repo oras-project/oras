@@ -19,13 +19,20 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
 type repositoryOptions struct {
 	option.Remote
 	option.Common
-	hostname string
+	hostname      string
+	first         int
+	skip          int
+	startwith     string
+	endwith       string
+	contains      string
+	paginationKey int
 }
 
 func listCmd() *cobra.Command {
@@ -46,24 +53,37 @@ Example - Fetch raw manifest:
 	}
 
 	option.ApplyFlags(&opts, cmd.Flags())
+	cmd.Flags().IntVar(&opts.first, "first", 1000, "the first X records")
+	cmd.Flags().IntVar(&opts.skip, "skip", 0, "skip the first X record")
+	cmd.Flags().StringVar(&opts.startwith, "startwith", "", "records start with X")
+	cmd.Flags().StringVar(&opts.endwith, "endwith", "", "records start with X")
+	cmd.Flags().StringVar(&opts.contains, "contains", "", "records start with X")
 	return cmd
 }
 
 func listRepository(opts repositoryOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
-	// get all repository from the registry
 	reg, err := opts.Remote.NewRegistry(opts.hostname, opts.Common)
 	// https://docs.docker.com/registry/spec/api/#catalog
 	if err != nil {
 		return err
 	}
-	// RepositoryListPageSize
-	reg.Repositories(ctx, "", func(repos []string) error {
-		for _, repo := range repos {
-			fmt.Println(repo)
+	if err := reg.Repositories(ctx, "", func(repos []string) error {
+		repos = display.Filter(repos, opts.startwith, opts.endwith, opts.contains)
+		repos = display.Cut(repos, opts.first, opts.skip)
+		for {
+			page, nextKey := display.Pagination(repos, opts.paginationKey)
+			for _, repo := range page {
+				fmt.Println(repo)
+			}
+			opts.paginationKey = nextKey
+			if len(page) == 0 {
+				break
+			}
 		}
 		return nil
-	})
-	// list all repository
+	}); err != nil {
+		return err
+	}
 	return nil
 }
