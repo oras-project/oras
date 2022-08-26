@@ -2,7 +2,7 @@ name: build
 
 on:
   push:
-    branches: e2e-refactor
+    branches: binary-e2e
 
   pull_request:
     branches: main
@@ -22,17 +22,8 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
           check-latest: true
-      - name: Build CLI
-        run: make build-linux-amd64
-      - name: Start Distribution
-        run:  |
-          docker stop oras-distro-e2e
-          docker run -dp --rm 5000:5000 --name oras-distro-e2e ghcr.io/oras-project/registry:v0.0.3-alpha
-      - name: Run Unit Tests
+      - name: Run Tests
         run: make test
-      - name: Stop Distribution
-        run: |
-          docker stop oras-distro-e2e
       - name: Check Version
         run: bin/linux/amd64/oras version
       - name: Upload coverage to codecov.io
