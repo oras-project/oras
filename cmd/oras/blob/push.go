@@ -16,9 +16,9 @@ limitations under the License.
 package blob
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/display"
@@ -28,7 +28,8 @@ import (
 
 type pushBlobOptions struct {
 	option.Common
-	option.Output
+	option.Descriptor
+	option.Pretty
 	option.Remote
 
 	fileRef   string
@@ -96,26 +97,27 @@ func pushBlob(opts pushBlobOptions) (err error) {
 	if err != nil {
 		return err
 	}
-	if exists {
-		verbose := opts.Verbose && !opts.OutputDescriptor
-		if err := display.PrintStatus(desc, "Exists", verbose); err != nil {
-			return err
-		}
-	} else {
+	if !exists {
 		if err = repo.Push(ctx, desc, rc); err != nil {
 			return err
 		}
 	}
 
+	// outputs blob's descriptor
 	if opts.OutputDescriptor {
-		descBytes, err := json.Marshal(desc)
+		bytes, err := opts.Marshal(desc)
 		if err != nil {
-			return fmt.Errorf("failed to marshal blob: %w", err)
+			return err
 		}
-		err = opts.OutputContent(descBytes)
+		err = opts.Output(os.Stdout, bytes)
 		return err
 	}
 
+	if exists {
+		if err := display.PrintStatus(desc, "Exists", opts.Verbose); err != nil {
+			return err
+		}
+	}
 	fmt.Println("Pushed", opts.targetRef)
 	fmt.Println("Digest:", desc.Digest)
 
