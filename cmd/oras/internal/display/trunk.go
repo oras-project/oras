@@ -31,7 +31,13 @@ func Filter(input []string, startwith, endwith, contains string) []string {
 
 // cut help size the input
 func Cut(input []string, first, skip int) []string {
-	return nil
+	if skip >= cap(input) {
+		return []string{}
+	}
+	if skip+first >= cap(input) {
+		return input[skip:]
+	}
+	return input[skip : skip+first]
 }
 
 // pagination the large slice input
