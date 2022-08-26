@@ -16,16 +16,15 @@ limitations under the License.
 package blob
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
 
-	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/cache"
 	"oras.land/oras/internal/cas"
@@ -33,12 +32,13 @@ import (
 
 type fetchBlobOptions struct {
 	option.Common
+	option.Descriptor
+	option.Pretty
 	option.Remote
 
-	cacheRoot       string
-	fetchDescriptor bool
-	output          string
-	targetRef       string
+	cacheRoot  string
+	outputPath string
+	targetRef  string
 }
 
 func fetchCmd() *cobra.Command {
@@ -65,33 +65,36 @@ Example - Fetch blob from the insecure registry:
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
-			if !strings.Contains(opts.targetRef, "@") {
-				return fmt.Errorf("%s: image reference not support, expecting <name@digest>", opts.targetRef)
-			}
 			return fetchBlob(opts)
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "output directory")
-	cmd.Flags().BoolVarP(&opts.fetchDescriptor, "descriptor", "", false, "fetch a descriptor of the manifest")
+	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "output directory")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
 
 func fetchBlob(opts fetchBlobOptions) (err error) {
 	ctx, _ := opts.SetLoggerLevel()
+
+	if opts.outputPath == "" && !opts.OutputDescriptor {
+		return errors.New("either `--output` or `--descriptor` must be provided")
+	}
+
+	if opts.outputPath == "-" && opts.OutputDescriptor {
+		return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
+	}
+
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
 	}
 
-	if repo.Reference.Reference == "" {
-		return errors.NewErrInvalidReference(repo.Reference)
+	if repo.Reference.Reference == "" || !strings.Contains(opts.targetRef, "@") {
+		return fmt.Errorf("%s: blob reference not support, expecting <name@digest>", opts.targetRef)
 	}
 
-	var src oras.Target = cas.BlobTarget{
-		BlobStore: repo.Blobs(),
-	}
+	var src oras.Target = cas.BlobTarget(repo.Blobs())
 	if opts.cacheRoot != "" {
 		ociStore, err := oci.New(opts.cacheRoot)
 		if err != nil {
@@ -100,28 +103,35 @@ func fetchBlob(opts fetchBlobOptions) (err error) {
 		src = cache.New(src, ociStore)
 	}
 
-	// Fetch and output
-	var content []byte
-	if opts.fetchDescriptor {
-		content, err = cas.FetchDescriptor(ctx, src, opts.targetRef, nil)
-	} else {
-		content, err = cas.FetchBlob(ctx, src, opts.targetRef)
-	}
+	// fetch blob
+	content, err := cas.FetchBlob(ctx, src, opts.targetRef)
 	if err != nil {
 		return err
 	}
 
-	if opts.output != "" {
-		if err = os.WriteFile(opts.output, content, 0666); err != nil {
+	// outputs blob content if "--output -" is used
+	if opts.outputPath == "-" {
+		_, err = os.Stdout.Write(content)
+		return err
+	}
+
+	// save blob content into the local file if the output path is provided
+	if opts.outputPath != "" {
+		if err = os.WriteFile(opts.outputPath, content, 0666); err != nil {
 			return err
 		}
 	}
 
-	printable := utf8.Valid(content)
-	if printable {
-		_, err = os.Stdout.Write(content)
-	} else {
-		fmt.Println("Warning: This blob is an unreadable binary file that can mess up your terminal. You can add the flag \"--output\" to save it locally.")
+	// outputs blob's descriptor if `--descriptor` is used
+	if opts.OutputDescriptor {
+		desc, err := cas.FetchDescriptor(ctx, src, opts.targetRef, nil)
+		if err != nil {
+			return err
+		}
+		err = opts.Output(os.Stdout, desc)
+		if err != nil {
+			return err
+		}
 	}
 
 	return err

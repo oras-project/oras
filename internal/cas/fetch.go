@@ -70,14 +70,6 @@ func FetchManifest(ctx context.Context, target oras.ReadOnlyTarget, reference st
 	return content.ReadAll(rc, desc)
 }
 
-type BlobTarget struct {
-	registry.BlobStore
-}
-
-func (b BlobTarget) Tag(ctx context.Context, desc ocispec.Descriptor, reference string) error {
-	return nil
-}
-
 // FetchBlob fetches the blob content of reference from blob store.
 func FetchBlob(ctx context.Context, blob oras.Target, reference string) ([]byte, error) {
 	rf := blob.(registry.ReferenceFetcher)
@@ -87,4 +79,18 @@ func FetchBlob(ctx context.Context, blob oras.Target, reference string) ([]byte,
 	}
 	defer rc.Close()
 	return content.ReadAll(rc, desc)
+}
+
+// BlobTarget returns a ORAS Target with a no-op Tag method wrapping the
+// provided blob store b.
+func BlobTarget(b registry.BlobStore) oras.Target {
+	return blobTarget{b}
+}
+
+type blobTarget struct {
+	registry.BlobStore
+}
+
+func (blobTarget) Tag(ctx context.Context, desc ocispec.Descriptor, reference string) error {
+	return nil
 }
