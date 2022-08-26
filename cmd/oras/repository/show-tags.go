@@ -26,6 +26,7 @@ type showTagsOptions struct {
 	option.Remote
 	option.Common
 	targetRef string
+	last      string
 }
 
 func showTagsCmd() *cobra.Command {
@@ -44,7 +45,7 @@ Example - Show tags of the target repository:
 			return showTags(opts)
 		},
 	}
-	// cmd.Flags()
+	cmd.Flags().StringVar(&opts.last, "last", "", "start after the tag specified by `last`")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
@@ -55,12 +56,11 @@ func showTags(opts showTagsOptions) error {
 	if err != nil {
 		return err
 	}
-	repo.Tags(ctx, "", func(tags []string) error {
+	repo.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
 			fmt.Println(tag)
 		}
 		return nil
 	})
-	// list all tags
 	return nil
 }
