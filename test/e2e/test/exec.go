@@ -30,7 +30,7 @@ func ExecAndMatchOut(text string, cmdName *string, args []string, output string)
 	ginkgo.It(text, func() {
 		session, err := gexec.Start(exec.Command(*cmdName, args...), stdout, io.Discard)
 		Expect(err).ShouldNot(HaveOccurred())
-		Eventually(session, "30s").Should(gexec.Exit(0))
+		Eventually(session, "10s").Should(gexec.Exit(0))
 		Expect((string)(stdout.ReadAll())).To(Equal(output))
 	})
 }
@@ -41,7 +41,7 @@ func ExecAndMatchOutKeyWords(text string, cmdName *string, args []string, keywor
 	ginkgo.It(text, func() {
 		session, err := gexec.Start(exec.Command(*cmdName, args...), stdout, io.Discard)
 		Expect(err).ShouldNot(HaveOccurred())
-		Eventually(session).Should(gexec.Exit(0))
+		Eventually(session, "10s").Should(gexec.Exit(0))
 
 		visited := make(map[string]bool)
 		for _, w := range keywords {
@@ -66,7 +66,7 @@ func ExecAndMatchErrKeyWords(text string, cmdName *string, args []string, keywor
 	ginkgo.It(text, func() {
 		session, err := gexec.Start(exec.Command(*cmdName, args...), io.Discard, stderr)
 		Expect(err).ShouldNot(HaveOccurred())
-		Eventually(session).Should(gexec.Exit(1))
+		Eventually(session, "10s").Should(gexec.Exit(1))
 
 		visited := make(map[string]bool)
 		for _, w := range keywords {
