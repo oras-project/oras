@@ -14,7 +14,9 @@ limitations under the License.
 package command
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -49,14 +51,18 @@ const (
 var orasPath string
 var _ = BeforeSuite(func() {
 	orasPath = os.Getenv("ORAS_PATH")
-
 	if orasPath == "" {
 		// fallback to native build to facilitate locally debugging
 		var err error
 		orasPath, err = gexec.Build("oras.land/oras/cmd/oras")
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		DeferCleanup(gexec.CleanupBuildArtifacts)
+		return
 	}
+	wd, err := os.Getwd()
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	orasPath = filepath.Join(wd, orasPath)
+	fmt.Printf("Testing based on CLI in %q\n", orasPath)
 })
 
 var _ = Context("ORAS", func() {

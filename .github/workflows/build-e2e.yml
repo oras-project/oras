@@ -31,7 +31,7 @@ jobs:
       - name: Run Tests
         run: make test
         env: 
-          ORAS_PATH: bin/linux/amd64/oras
+          ORAS_PATH: ../../../bin/linux/amd64/oras
       - name: Check Version
         run: bin/linux/amd64/oras version
       - name: Upload coverage to codecov.io
