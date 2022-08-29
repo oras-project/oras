@@ -25,7 +25,7 @@ jobs:
       - name: start distribution
         run: |
           docker stop oras-e2e || true
-          docker run -dp 5000:5000 --name oras-e2e ghcr.io/oras-project/registry:v0.0.3-alpha
+          docker run -dp 5000:5000 --rm --name oras-e2e ghcr.io/oras-project/registry:v0.0.3-alpha
       - name: Run Tests
         run: make test
       - name: Upload coverage to codecov.io
