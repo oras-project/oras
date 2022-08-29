@@ -97,7 +97,7 @@ func fetchManifest(opts fetchOptions) error {
 	repo.ManifestMediaTypes = opts.mediaTypes
 
 	// Fetch and output
-	var content1 []byte
+	var content []byte
 	if opts.fetchDescriptor {
 		content, err = cas.FetchDescriptor(ctx, repo, opts.targetRef, targetPlatform)
 	} else {
