@@ -31,7 +31,7 @@ func ExecAndMatchOut(text string, cmdName *string, args []string, output string)
 		session, err := gexec.Start(exec.Command(*cmdName, args...), stdout, io.Discard)
 		Expect(err).ShouldNot(HaveOccurred())
 		Eventually(session, "30s").Should(gexec.Exit(0))
-		Expect(stdout.ReadAll()).To(Equal([]byte(output)))
+		Expect((string)(stdout.ReadAll())).To(Equal(output))
 	})
 }
 
