@@ -1,4 +1,4 @@
-name: build
+name: e2e-poc-build
 
 on:
   push:
