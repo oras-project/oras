@@ -62,7 +62,7 @@ var _ = BeforeSuite(func() {
 	wd, err := os.Getwd()
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	orasPath = filepath.Join(wd, orasPath)
-	fmt.Printf("Testing based on CLI in %q\n", orasPath)
+	fmt.Printf("Testing based on binary locates in %q\n", orasPath)
 })
 
 var _ = Context("ORAS", func() {
