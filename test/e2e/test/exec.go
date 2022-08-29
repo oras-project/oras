@@ -24,22 +24,22 @@ import (
 	"github.com/onsi/gomega/gexec"
 )
 
-func ExecAndMatchOut(text string, cmdName *string, args []string, output string) {
+func ExecAndMatchOut(text string, args []string, output string) {
 	stdout := NewWriter()
 
 	ginkgo.It(text, func() {
-		session, err := gexec.Start(exec.Command(*cmdName, args...), stdout, io.Discard)
+		session, err := gexec.Start(exec.Command(OrasPath, args...), stdout, io.Discard)
 		Expect(err).ShouldNot(HaveOccurred())
 		Eventually(session, "10s").Should(gexec.Exit(0))
 		Expect((string)(stdout.ReadAll())).To(Equal(output))
 	})
 }
 
-func ExecAndMatchOutKeyWords(text string, cmdName *string, args []string, keywords []string) {
+func ExecAndMatchOutKeyWords(text string, args []string, keywords []string) {
 	stdout := NewWriter()
 
 	ginkgo.It(text, func() {
-		session, err := gexec.Start(exec.Command(*cmdName, args...), stdout, io.Discard)
+		session, err := gexec.Start(exec.Command(OrasPath, args...), stdout, io.Discard)
 		Expect(err).ShouldNot(HaveOccurred())
 		Eventually(session, "10s").Should(gexec.Exit(0))
 
@@ -60,11 +60,11 @@ func ExecAndMatchOutKeyWords(text string, cmdName *string, args []string, keywor
 	})
 }
 
-func ExecAndMatchErrKeyWords(text string, cmdName *string, args []string, keywords []string) {
+func ExecAndMatchErrKeyWords(text string, args []string, keywords []string) {
 	stderr := NewWriter()
 
 	ginkgo.It(text, func() {
-		session, err := gexec.Start(exec.Command(*cmdName, args...), io.Discard, stderr)
+		session, err := gexec.Start(exec.Command(OrasPath, args...), io.Discard, stderr)
 		Expect(err).ShouldNot(HaveOccurred())
 		Eventually(session, "10s").Should(gexec.Exit(1))
 
