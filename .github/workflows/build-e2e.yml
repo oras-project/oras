@@ -22,14 +22,20 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
           check-latest: true
-      - name: start distribution
+      - name: Build CLI
+        run: make build-linux-amd64
+      - name: Start Distribution
         run: |
           docker stop oras-e2e || true
           docker run -dp 5000:5000 --rm --name oras-e2e ghcr.io/oras-project/registry:v0.0.3-alpha
       - name: Run Tests
         run: make test
+        env: 
+          ORAS_PATH: bin/linux/amd64/oras
+      - name: Check Version
+        run: bin/linux/amd64/oras version
       - name: Upload coverage to codecov.io
         uses: codecov/codecov-action@v3
-      - name: stop distribution
+      - name: Stop Distribution
         run: |
           docker stop oras-e2e || true
