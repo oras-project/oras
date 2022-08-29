@@ -22,7 +22,14 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
           check-latest: true
+      - name: start distribution
+        run: |
+          docker stop --name oras-e2e || true
+          docker run -dp 5000:5000 --name oras-e2e ghcr.io/oras-project/registry:v0.0.3-alpha
       - name: Run Tests
         run: make test
       - name: Upload coverage to codecov.io
         uses: codecov/codecov-action@v3
+      - name: stop distribution
+        run: |
+          docker stop --name oras-e2e || true
