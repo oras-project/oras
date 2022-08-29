@@ -35,9 +35,14 @@ func showTagsCmd() *cobra.Command {
 		Use:   "show-tags REPO [flags]",
 		Short: "[Preview] Show tags of the target repository",
 		Long: `[Preview] Show tags of the target repository
+
 ** This command is in preview and under development. **
+
 Example - Show tags of the target repository:
   oras repository show-tags localhost:5000/hello
+
+Example - Show tags of the target repository that include values lexically after last:
+  oras repository show-tags localhost:5000/hello --last "last_tag"
 `,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

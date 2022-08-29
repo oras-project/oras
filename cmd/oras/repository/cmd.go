@@ -19,7 +19,7 @@ import (
 
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "repository [list]",
+		Use:   "repository [command]",
 		Short: "[Preview] Repository operations",
 	}
 
