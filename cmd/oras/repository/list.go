@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -28,22 +27,26 @@ type repositoryOptions struct {
 	option.Common
 	hostname string
 	last     string
-	first    int
-	skip     int
 }
 
 func listCmd() *cobra.Command {
 	var opts repositoryOptions
 	cmd := &cobra.Command{
-		Use:     "list REGISTRY [flags]",
-		Aliases: []string{"l"},
-		Short:   "[Preview] List the repositories under the registry",
+		Use: "list REGISTRY [flags]",
+
+		Short: "[Preview] List the repositories under the registry",
 		Long: `[Preview] List the repositories under the registry
+
 ** This command is in preview and under development. **
+
 Example - List the repositories under the registry:
   oras repository list localhost:5000
+
+Example - List the repositories under the registry that include values lexically after last:
+  oras repository list localhost:5000 --last "last_repo"
 `,
-		Args: cobra.ExactArgs(1),
+		Args:    cobra.ExactArgs(1),
+		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.hostname = args[0]
 			return listRepository(opts)
@@ -52,8 +55,6 @@ Example - List the repositories under the registry:
 
 	option.ApplyFlags(&opts, cmd.Flags())
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the repository specified by `last`")
-	cmd.Flags().IntVar(&opts.first, "first", 1000, "the first X records")
-	cmd.Flags().IntVar(&opts.skip, "skip", 0, "skip the first X record")
 	return cmd
 }
 
@@ -64,7 +65,6 @@ func listRepository(opts repositoryOptions) error {
 		return err
 	}
 	if err := reg.Repositories(ctx, opts.last, func(repos []string) error {
-		repos = display.Cut(repos, opts.first, opts.skip)
 		for _, repo := range repos {
 			fmt.Println(repo)
 		}
