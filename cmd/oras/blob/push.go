@@ -61,11 +61,14 @@ Example - Push blob without TLS:
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			opts.targetRef = args[0]
+			opts.fileRef = args[1]
+			if opts.fileRef == "-" && opts.PasswordFromStdin {
+				return errors.New("`-` read file from input and `--password-stdin` read password from input cannot be both used")
+			}
 			return opts.ReadPassword()
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
-			opts.fileRef = args[1]
 			return pushBlob(opts)
 		},
 	}
@@ -76,10 +79,6 @@ Example - Push blob without TLS:
 
 func pushBlob(opts pushBlobOptions) (err error) {
 	ctx, _ := opts.SetLoggerLevel()
-
-	if opts.fileRef == "-" && opts.PasswordFromStdin {
-		return errors.New("`-` read file from input and `--password-stdin` read password from input cannot be both used")
-	}
 
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
@@ -109,8 +108,7 @@ func pushBlob(opts pushBlobOptions) (err error) {
 		if err != nil {
 			return err
 		}
-		err = opts.Output(os.Stdout, bytes)
-		return err
+		return opts.Output(os.Stdout, bytes)
 	}
 
 	if exists {

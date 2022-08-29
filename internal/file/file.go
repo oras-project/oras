@@ -25,7 +25,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// PrepareContent prepares the content descriptor from the file path.
+// PrepareContent prepares the content descriptor from the file path or stdin.
 func PrepareContent(path string, mediaType string) (ocispec.Descriptor, io.ReadCloser, error) {
 	if path == "" {
 		return ocispec.Descriptor{}, nil, fmt.Errorf("missing file name")

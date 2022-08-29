@@ -64,6 +64,51 @@ func TestFile_PrepareContent(t *testing.T) {
 	}
 }
 
+func TestFile_PrepareContent_readFromStdin(t *testing.T) {
+	// generate test content
+	content := []byte("hello world!")
+	tmpfile, err := os.CreateTemp("", "test")
+	if err != nil {
+		t.Fatal("error calling CreateTemp(), error =", err)
+	}
+
+	defer os.Remove(tmpfile.Name()) // clean up
+
+	if _, err := tmpfile.Write(content); err != nil {
+		t.Fatal("error calling Write(), error =", err)
+	}
+	if _, err := tmpfile.Seek(0, 0); err != nil {
+		t.Fatal("error calling Seek(), error =", err)
+	}
+
+	oldStdin := os.Stdin
+	defer func() { os.Stdin = oldStdin }() // Restore original Stdin
+
+	os.Stdin = tmpfile
+	want := ocispec.Descriptor{
+		MediaType: blobMediaType,
+		Digest:    digest.FromBytes(content),
+		Size:      int64(len(content)),
+	}
+
+	// test PrepareContent
+	got, rc, err := file.PrepareContent("-", blobMediaType)
+	defer rc.Close()
+	if err != nil {
+		t.Fatal("PrepareContent() error=", err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("PrepareContent() = %v, want %v", got, want)
+	}
+	actualContent, err := io.ReadAll(rc)
+	if err != nil {
+		t.Fatal("PrepareContent(): not able to read content from rc, error=", err)
+	}
+	if !reflect.DeepEqual(actualContent, content) {
+		t.Errorf("PrepareContent() = %v, want %v", actualContent, content)
+	}
+}
+
 func TestFile_PrepareContent_errMissingFileName(t *testing.T) {
 	// test PrepareContent with missing file name
 	_, _, err := file.PrepareContent("", blobMediaType)
