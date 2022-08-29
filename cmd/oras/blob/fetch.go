@@ -52,8 +52,14 @@ func fetchCmd() *cobra.Command {
 Example - Fetch raw blob:
   oras blob fetch localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 
+Example - Fetch the blob and save it to a local file
+  oras blob fetch localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5 --output blob.tar.gz
+
+Example - Fetch the blob and stdout the raw blob content
+  oras blob fetch localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5 --output -
+
 Example - Fetch the descriptor of a blob:
-  oras blob fetch --descriptor localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
+  oras blob fetch localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5 --descriptor
 
 Example - Fetch blob from the insecure registry:
   oras blob fetch localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5 --insecure
@@ -91,7 +97,7 @@ func fetchBlob(opts fetchBlobOptions) (err error) {
 	}
 
 	if repo.Reference.Reference == "" || !strings.Contains(opts.targetRef, "@") {
-		return fmt.Errorf("%s: blob reference not support, expecting <name@digest>", opts.targetRef)
+		return fmt.Errorf("%s: blob reference must be of the form <name@digest>", opts.targetRef)
 	}
 
 	var src oras.Target = cas.BlobTarget(repo.Blobs())
@@ -134,5 +140,5 @@ func fetchBlob(opts fetchBlobOptions) (err error) {
 		}
 	}
 
-	return err
+	return nil
 }

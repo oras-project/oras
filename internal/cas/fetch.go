@@ -87,10 +87,13 @@ func BlobTarget(b registry.BlobStore) oras.Target {
 	return blobTarget{b}
 }
 
+// blobTarget is a ORAS Target for BlobStore.
 type blobTarget struct {
 	registry.BlobStore
 }
 
+// Tag is a no-op method with a receiver of blobTarget type. It is an
+// implementation of Target.Tag() in order to make blobTarget as a ORAS Target.
 func (blobTarget) Tag(ctx context.Context, desc ocispec.Descriptor, reference string) error {
 	return nil
 }
