@@ -61,11 +61,13 @@ func showTags(opts showTagsOptions) error {
 	if err != nil {
 		return err
 	}
-	repo.Tags(ctx, opts.last, func(tags []string) error {
+	if err = repo.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
 			fmt.Println(tag)
 		}
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
 	return nil
 }
