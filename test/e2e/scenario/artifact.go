@@ -15,7 +15,7 @@ package scenario
 
 import (
 	. "github.com/onsi/ginkgo/v2"
-	"oras.land/oras/test/e2e/test"
+	"oras.land/oras/test/e2e/utils"
 )
 
 const (
@@ -25,11 +25,11 @@ const (
 
 var _ = Context("ORAS user", Ordered, func() {
 	Describe("runs commands without login", func() {
-		When("running attach command", func() {
-			test.ExecAndMatchErrKeyWords("should fail and show error",
-				[]string{"attach", test.Host + "/hello:test", "hi.txt", "--artifact-type", "doc/example"},
-				[]string{"Error:", "credential required"},
-			)
-		})
+		utils.WhenLoginWithoutCred([]string{"attach", utils.Host + "/repo:tag", "-a", "test=true", "--artifact-type", "doc/example"})
+		utils.WhenLoginWithoutCred([]string{"copy", utils.Host + "/repo:from", utils.Host + "/repo:to"})
+		utils.WhenLoginWithoutCred([]string{"discover", utils.Host + "/repo:tag"})
+		utils.WhenLoginWithoutCred([]string{"manifest", "fetch", utils.Host + "/repo:tag"})
+		utils.WhenLoginWithoutCred([]string{"push", "-a", "key=value", utils.Host + "/repo:tag"})
+		utils.WhenLoginWithoutCred([]string{"pull", utils.Host + "/repo:tag"})
 	})
 })
