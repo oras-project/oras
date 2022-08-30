@@ -32,13 +32,13 @@ jobs:
             --mount type=bind,source=$(pwd)/test/e2e/testdata/passwd_bcrypt,target=/etc/docker/registry/passwd \
             ghcr.io/oras-project/registry:latest
       - name: Run Tests
-        run: make test
+        run: |
+          trap docker stop oras-e2e || true ERR
+          make test
+          docker stop oras-e2e || true
         env: 
           ORAS_PATH: ../../../bin/linux/amd64/oras
       - name: Check Version
         run: bin/linux/amd64/oras version
       - name: Upload coverage to codecov.io
         uses: codecov/codecov-action@v3
-      - name: Stop Distribution
-        run: |
-          docker stop oras-e2e || true
