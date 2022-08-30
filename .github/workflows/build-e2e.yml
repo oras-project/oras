@@ -38,6 +38,7 @@ jobs:
           docker stop oras-e2e || true
         env: 
           ORAS_PATH: ../../../bin/linux/amd64/oras
+          REGISTRY_HOST: localhost:5000
       - name: Check Version
         run: bin/linux/amd64/oras version
       - name: Upload coverage to codecov.io

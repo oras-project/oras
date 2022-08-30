@@ -11,10 +11,13 @@ import (
 )
 
 var OrasPath string
+var Host string
 
 func init() {
+	OrasPath = os.Getenv("ORAS_PATH")
+	Host = os.Getenv("REGISTRY_HOST")
+
 	var _ = BeforeSuite(func() {
-		OrasPath = os.Getenv("ORAS_PATH")
 		if OrasPath == "" {
 			// fallback to native build to facilitate locally debugging
 			var err error
