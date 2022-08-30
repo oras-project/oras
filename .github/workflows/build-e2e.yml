@@ -27,7 +27,6 @@ jobs:
       - name: Start Distribution
         run: |
           docker stop oras-e2e || true
-          docker run -dp 5000:5000 --rm --name oras-e2e ghcr.io/oras-project/registry:v0.0.3-alpha
           docker run -d -p 5000:5000 --rm --name oras-e2e \
             --mount type=bind,source=$(pwd)/test/e2e/testdata/config-example-with-extensions.yml,target=/etc/docker/registry/config.yml \
             --mount type=bind,source=$(pwd)/test/e2e/testdata/passwd_bcrypt.yml,target=/etc/docker/registry/passwd \
