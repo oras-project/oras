@@ -15,7 +15,7 @@ package command
 
 import (
 	. "github.com/onsi/ginkgo/v2"
-	"oras.land/oras/test/e2e/test"
+	test "oras.land/oras/test/e2e/utils"
 )
 
 const (
