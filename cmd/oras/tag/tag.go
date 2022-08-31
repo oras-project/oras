@@ -16,8 +16,6 @@ limitations under the License.
 package tag
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/errors"
@@ -54,7 +52,6 @@ oras tag localhost:5000/hello:v1.0.1 v1.0.2
 		},
 	}
 	option.ApplyFlags(&opts, cmd.Flags())
-	fmt.Println("Tagged", opts.targetRef)
 	return cmd
 }
 
