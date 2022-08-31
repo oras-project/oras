@@ -25,7 +25,7 @@ import (
 )
 
 func description(text string, args []string) string {
-	return fmt.Sprintf("%s: %s", text, strings.Join(args, " "))
+	return fmt.Sprintf("%s: oras %s", text, strings.Join(args, " "))
 }
 
 func Exec(text string, args []string, r *match.Result) {
