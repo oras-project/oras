@@ -14,7 +14,6 @@ limitations under the License.
 package utils
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -32,7 +31,7 @@ func init() {
 	OrasPath = os.Getenv("ORAS_PATH")
 	Host = os.Getenv("ORAS_REGISTRY_HOST")
 	if Host == "" {
-		panic(errors.New("cannot find host name for distribution set in ORAS_REGISTRY_HOST"))
+		os.Stderr.Write([]byte(fmt.Sprintln("cannot find host name in ORAS_REGISTRY_HOST, using localhost:5000 instead")))
 	}
 	if err := (registry.Reference{Registry: Host}).ValidateRegistry(); Host == "" || err != nil {
 		panic(err)

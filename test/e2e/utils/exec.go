@@ -24,14 +24,10 @@ import (
 	"github.com/onsi/gomega/gexec"
 )
 
-func addArgs(text string, args []string) string {
-	return fmt.Sprintf("%s: oras %v", text, strings.Join(args, " "))
-}
-
 func ExecAndMatchOut(text string, args []string, output string) {
 	stdout := NewWriter()
 
-	ginkgo.It(addArgs(text, args), func() {
+	ginkgo.It(text, func() {
 		session, err := gexec.Start(exec.Command(OrasPath, args...), stdout, io.Discard)
 		Expect(err).ShouldNot(HaveOccurred())
 		Eventually(session, "10s").Should(gexec.Exit(0))
@@ -42,7 +38,7 @@ func ExecAndMatchOut(text string, args []string, output string) {
 func ExecAndMatchOutKeyWords(text string, args []string, keywords []string) {
 	stdout := NewWriter()
 
-	ginkgo.It(addArgs(text, args), func() {
+	ginkgo.It(text, func() {
 		session, err := gexec.Start(exec.Command(OrasPath, args...), stdout, io.Discard)
 		Expect(err).ShouldNot(HaveOccurred())
 		Eventually(session, "10s").Should(gexec.Exit(0))
@@ -59,7 +55,11 @@ func ExecAndMatchOutKeyWords(text string, args []string, keywords []string) {
 		}
 
 		if len(visited) != 0 {
-			Expect(fmt.Sprintf("%v", visited)).To(Equal(""))
+			var missed []string
+			for k := range visited {
+				missed = append(missed, fmt.Sprintf("%q", k))
+			}
+			Expect(fmt.Sprintf("Failed to match: %v\n", missed) + fmt.Sprintf("Quoted output: %q\n", str)).To(Equal(""))
 		}
 	})
 }
@@ -67,7 +67,7 @@ func ExecAndMatchOutKeyWords(text string, args []string, keywords []string) {
 func ExecAndMatchErrKeyWords(text string, args []string, keywords []string) {
 	stderr := NewWriter()
 
-	ginkgo.It(addArgs(text, args), func() {
+	ginkgo.It(text, func() {
 		session, err := gexec.Start(exec.Command(OrasPath, args...), io.Discard, stderr)
 		Expect(err).ShouldNot(HaveOccurred())
 		Eventually(session, "10s").Should(gexec.Exit(1))
@@ -84,7 +84,12 @@ func ExecAndMatchErrKeyWords(text string, args []string, keywords []string) {
 		}
 
 		if len(visited) != 0 {
-			Expect(fmt.Sprintf("%v", visited)).To(Equal(""))
+			var missed []string
+			for k := range visited {
+				missed = append(missed, fmt.Sprintf("%q", k))
+			}
+			Expect(fmt.Sprintf("Keywords missed: %v ===> ", missed) + fmt.Sprintf("Quoted output: %q", str)).To(Equal(""))
 		}
+		Expect(len(visited)).To(Equal(0))
 	})
 }
