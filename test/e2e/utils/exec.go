@@ -55,7 +55,11 @@ func ExecAndMatchOutKeyWords(text string, args []string, keywords []string) {
 		}
 
 		if len(visited) != 0 {
-			Expect(fmt.Sprintf("%v", visited)).To(Equal(""))
+			var missed []string
+			for k := range visited {
+				missed = append(missed, fmt.Sprintf("%q", k))
+			}
+			Expect(fmt.Sprintf("Failed to match: %v\n", missed) + fmt.Sprintf("Quoted output: %q\n", str)).To(Equal(""))
 		}
 	})
 }
@@ -80,7 +84,12 @@ func ExecAndMatchErrKeyWords(text string, args []string, keywords []string) {
 		}
 
 		if len(visited) != 0 {
-			Expect(fmt.Sprintf("%v", visited)).To(Equal(""))
+			var missed []string
+			for k := range visited {
+				missed = append(missed, fmt.Sprintf("%q", k))
+			}
+			Expect(fmt.Sprintf("Keywords missed: %v ===> ", missed) + fmt.Sprintf("Quoted output: %q", str)).To(Equal(""))
 		}
+		Expect(len(visited)).To(Equal(0))
 	})
 }
