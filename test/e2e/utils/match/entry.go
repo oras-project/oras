@@ -11,18 +11,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package step
+package match
 
-import (
-	"github.com/onsi/ginkgo/v2"
-	"oras.land/oras/test/e2e/utils"
-	"oras.land/oras/test/e2e/utils/match"
-)
+import "io"
 
-func WhenRunWithoutLogin(args []string) {
-	ginkgo.When("running "+args[0]+" command", func() {
-		utils.Exec("should failed",
-			args,
-			match.ErrorKeywords([]string{"Error:", "credential required"}))
-	})
+type Entry struct {
+	Writer io.Writer
+	m      Matchable
+}
+
+func newEntry(m Matchable) Entry {
+	return Entry{NewWriter(), m}
+}
+
+func (e *Entry) Match() {
+	if e.Writer == io.Discard {
+		return
+	}
+	e.m.matchTo(e.Writer)
 }

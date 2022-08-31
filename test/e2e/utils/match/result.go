@@ -11,18 +11,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package step
+package match
 
-import (
-	"github.com/onsi/ginkgo/v2"
-	"oras.land/oras/test/e2e/utils"
-	"oras.land/oras/test/e2e/utils/match"
-)
+import "io"
 
-func WhenRunWithoutLogin(args []string) {
-	ginkgo.When("running "+args[0]+" command", func() {
-		utils.Exec("should failed",
-			args,
-			match.ErrorKeywords([]string{"Error:", "credential required"}))
-	})
+type Result struct {
+	Stdout     Entry
+	Stderr     Entry
+	Stdin      io.Reader
+	ShouldFail bool
+}
+
+// NewResult generates a result type and returns the pointer.
+func NewResult(stdout Matchable, stderr Matchable, stdin io.Reader, shouldFail bool) *Result {
+	return &Result{
+		Stdout:     stdout.NewMatchEntry(),
+		Stderr:     stderr.NewMatchEntry(),
+		Stdin:      stdin,
+		ShouldFail: shouldFail,
+	}
 }

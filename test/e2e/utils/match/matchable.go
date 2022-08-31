@@ -11,21 +11,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package utils
+package match
 
-type writer struct {
-	content []byte
-}
+import "io"
 
-func NewWriter() *writer {
-	return &writer{}
-}
-
-func (w *writer) Write(p []byte) (n int, err error) {
-	w.content = append(w.content, p...)
-	return len(p), nil
-}
-
-func (w *writer) ReadAll() []byte {
-	return w.content
+type Matchable interface {
+	NewMatchEntry() Entry
+	matchTo(w io.Writer)
 }

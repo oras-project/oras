@@ -14,9 +14,12 @@ limitations under the License.
 package scenario
 
 import (
+	"strings"
+
 	. "github.com/onsi/ginkgo/v2"
 	"oras.land/oras/test/e2e/step"
 	"oras.land/oras/test/e2e/utils"
+	"oras.land/oras/test/e2e/utils/match"
 )
 
 const (
@@ -25,21 +28,34 @@ const (
 )
 
 var _ = Context("ORAS user", Ordered, func() {
-	Describe("runs commands without login", func() {
-		step.WhenLoginWithoutLogin([]string{"attach", utils.Host + "/repo:tag", "-a", "test=true", "--artifact-type", "doc/example"})
-		step.WhenLoginWithoutLogin([]string{"copy", utils.Host + "/repo:from", utils.Host + "/repo:to"})
-		step.WhenLoginWithoutLogin([]string{"discover", utils.Host + "/repo:tag"})
-		step.WhenLoginWithoutLogin([]string{"push", "-a", "key=value", utils.Host + "/repo:tag"})
-		step.WhenLoginWithoutLogin([]string{"pull", utils.Host + "/repo:tag"})
-
-		step.WhenLoginWithoutLogin([]string{"manifest", "fetch", utils.Host + "/repo:tag"})
-	})
 
 	Describe("logs in", func() {
 		When("should succeed with basic auth", func() {
-			utils.ExecAndMatchOut("should succeed with ",
+			utils.Exec("should succeed with username&password flags",
 				[]string{"login", utils.Host, "-u", USERNAME, "-p", PASSWORD},
-				"Login Succeeded")
+				match.NewResult(match.Content("Login Succeeded\n"), match.Keyword([]string{"WARNING", "Using --password via the CLI is insecure", "Use --password-stdin"}), nil, false))
+
+			utils.Exec("should succeed with username flag and password from stdin",
+				[]string{"login", utils.Host, "-u", USERNAME, "--password-stdin"},
+				match.NewResult(match.Content("Login Succeeded\n"), match.Skip, strings.NewReader(PASSWORD), false))
 		})
+	})
+
+	Describe("logs out", func() {
+		When("should succeed", func() {
+			utils.Exec("should logout",
+				[]string{"logout", utils.Host},
+				match.NewResult(match.Skip, match.Skip, nil, false))
+		})
+	})
+
+	Describe("runs commands without login", func() {
+		step.WhenRunWithoutLogin([]string{"attach", utils.Host + "/repo:tag", "-a", "test=true", "--artifact-type", "doc/example"})
+		step.WhenRunWithoutLogin([]string{"copy", utils.Host + "/repo:from", utils.Host + "/repo:to"})
+		step.WhenRunWithoutLogin([]string{"discover", utils.Host + "/repo:tag"})
+		step.WhenRunWithoutLogin([]string{"push", "-a", "key=value", utils.Host + "/repo:tag"})
+		step.WhenRunWithoutLogin([]string{"pull", utils.Host + "/repo:tag"})
+
+		step.WhenRunWithoutLogin([]string{"manifest", "fetch", utils.Host + "/repo:tag"})
 	})
 })

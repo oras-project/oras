@@ -15,81 +15,35 @@ package utils
 
 import (
 	"fmt"
-	"io"
 	"os/exec"
 	"strings"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"oras.land/oras/test/e2e/utils/match"
 )
 
-func ExecAndMatchOut(text string, args []string, output string) {
-	stdout := NewWriter()
-
-	ginkgo.It(text, func() {
-		session, err := gexec.Start(exec.Command(OrasPath, args...), stdout, io.Discard)
-		Expect(err).ShouldNot(HaveOccurred())
-		Eventually(session, "10s").Should(gexec.Exit(0))
-		Expect((string)(stdout.ReadAll())).To(Equal(output))
-	})
+func description(text string, args []string) string {
+	return fmt.Sprintf("%s: %s", text, strings.Join(args, " "))
 }
 
-func ExecAndMatchOutKeyWords(text string, args []string, keywords []string) {
-	stdout := NewWriter()
+func Exec(text string, args []string, r *match.Result) {
+	cmd := exec.Command(OrasPath, args...)
+	if r.Stdin != nil {
+		cmd.Stdin = r.Stdin
+	}
 
-	ginkgo.It(text, func() {
-		session, err := gexec.Start(exec.Command(OrasPath, args...), stdout, io.Discard)
-		Expect(err).ShouldNot(HaveOccurred())
-		Eventually(session, "10s").Should(gexec.Exit(0))
-
-		visited := make(map[string]bool)
-		for _, w := range keywords {
-			visited[w] = false
+	ginkgo.It(description(text, args), func() {
+		session, err := gexec.Start(cmd, r.Stdout.Writer, r.Stderr.Writer)
+		if r.ShouldFail {
+			Expect(err).ShouldNot(HaveOccurred())
+			Eventually(session, "10s").Should(gexec.Exit(1))
+		} else {
+			Expect(err).ShouldNot(HaveOccurred())
+			Eventually(session, "10s").Should(gexec.Exit(0))
 		}
-		str := string(stdout.ReadAll())
-		for k := range visited {
-			if strings.Contains(str, k) {
-				delete(visited, k)
-			}
-		}
-
-		if len(visited) != 0 {
-			var missed []string
-			for k := range visited {
-				missed = append(missed, fmt.Sprintf("%q", k))
-			}
-			Expect(fmt.Sprintf("Failed to match: %v\n", missed) + fmt.Sprintf("Quoted output: %q\n", str)).To(Equal(""))
-		}
-	})
-}
-
-func ExecAndMatchErrKeyWords(text string, args []string, keywords []string) {
-	stderr := NewWriter()
-
-	ginkgo.It(text, func() {
-		session, err := gexec.Start(exec.Command(OrasPath, args...), io.Discard, stderr)
-		Expect(err).ShouldNot(HaveOccurred())
-		Eventually(session, "10s").Should(gexec.Exit(1))
-
-		visited := make(map[string]bool)
-		for _, w := range keywords {
-			visited[w] = false
-		}
-		str := string(stderr.ReadAll())
-		for k := range visited {
-			if strings.Contains(str, k) {
-				delete(visited, k)
-			}
-		}
-
-		if len(visited) != 0 {
-			var missed []string
-			for k := range visited {
-				missed = append(missed, fmt.Sprintf("%q", k))
-			}
-			Expect(fmt.Sprintf("Keywords missed: %v ===> ", missed) + fmt.Sprintf("Quoted output: %q", str)).To(Equal(""))
-		}
-		Expect(len(visited)).To(Equal(0))
+		r.Stdout.Match()
+		r.Stderr.Match()
 	})
 }

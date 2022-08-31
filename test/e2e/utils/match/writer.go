@@ -11,18 +11,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package step
+package match
 
-import (
-	"github.com/onsi/ginkgo/v2"
-	"oras.land/oras/test/e2e/utils"
-	"oras.land/oras/test/e2e/utils/match"
-)
+type writer struct {
+	content []byte
+}
 
-func WhenRunWithoutLogin(args []string) {
-	ginkgo.When("running "+args[0]+" command", func() {
-		utils.Exec("should failed",
-			args,
-			match.ErrorKeywords([]string{"Error:", "credential required"}))
-	})
+func NewWriter() *writer {
+	return &writer{}
+}
+
+func (w *writer) Write(p []byte) (n int, err error) {
+	w.content = append(w.content, p...)
+	return len(p), nil
+}
+
+func (w *writer) ReadAll() []byte {
+	return w.content
 }

@@ -11,20 +11,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package utils
+package match
 
 import (
-	"fmt"
-	"strings"
+	"io"
 
-	"github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
-func WhenLoginWithoutCred(argv []string) {
-	ginkgo.When("running "+argv[0]+" command", func() {
-		ExecAndMatchErrKeyWords(fmt.Sprintf("should failed to run: oras %v", strings.Join(argv, " ")),
-			argv,
-			[]string{"Error:", "credential required"},
-		)
-	})
+type Content string
+
+func (c Content) NewMatchEntry() Entry {
+	if c == "" {
+		return Entry{io.Discard, nil}
+	}
+	return newEntry(c)
 }
+
+func (c Content) matchTo(w io.Writer) {
+	Expect(string(w.(*writer).ReadAll())).To(Equal(string(c)))
+}
+
+// Skip can be used when no matching wanted.
+var Skip Content = ""

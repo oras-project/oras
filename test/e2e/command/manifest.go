@@ -15,7 +15,8 @@ package command
 
 import (
 	. "github.com/onsi/ginkgo/v2"
-	test "oras.land/oras/test/e2e/utils"
+	"oras.land/oras/test/e2e/utils"
+	"oras.land/oras/test/e2e/utils/match"
 )
 
 const (
@@ -45,57 +46,57 @@ const (
 var _ = Context("ORAS", func() {
 	Describe("runs manifest command", func() {
 		When("looking for supported command and help", func() {
-			test.ExecAndMatchOutKeyWords("should show available commands",
+			utils.Exec("should show available commands",
 				[]string{"manifest", "-h"},
-				[]string{"[Preview] Manifest", "[Preview] Fetch"})
+				match.SuccessKeywords([]string{"[Preview] Manifest", "[Preview] Fetch"}))
 
-			test.ExecAndMatchOutKeyWords("should show fetch-related help doc",
+			utils.Exec("should show fetch-related help doc",
 				[]string{"manifest", "fetch", "-h"},
-				[]string{"** This command is in preview and under development. **", "[Preview] Fetch"})
+				match.SuccessKeywords([]string{"** This command is in preview and under development. **", "[Preview] Fetch"}))
 
-			test.ExecAndMatchOutKeyWords("should also work with alias get",
+			utils.Exec("should also work with alias get",
 				[]string{"manifest", "fetch", "-h"},
-				[]string{"** This command is in preview and under development. **", "[Preview] Fetch"})
+				match.SuccessKeywords([]string{"** This command is in preview and under development. **", "[Preview] Fetch"}))
 		})
 
 		When("fetching manifest with no artifact reference provided", func() {
-			test.ExecAndMatchErrKeyWords("should fail",
+			utils.Exec("should fail",
 				[]string{"manifest", "fetch"},
-				[]string{"Error:"})
+				match.SuccessKeywords([]string{"Error:"}))
 		})
 
 		When("fetching manifest list content", func() {
-			test.ExecAndMatchOut("should fetch manifest list with tag",
+			utils.Exec("should fetch manifest list with tag",
 				[]string{"manifest", "fetch", "docker.io/library/hello-world:latest"},
-				manifest_latest)
+				match.SuccessContent(manifest_latest))
 
-			test.ExecAndMatchOut("should fetch manifest list with digest",
+			utils.Exec("should fetch manifest list with digest",
 				[]string{"manifest", "fetch", "docker.io/library/hello-world@" + digest_latest},
-				manifest_latest)
+				match.SuccessContent(manifest_latest))
 		})
 
 		When("fetching manifest content", func() {
-			test.ExecAndMatchOut("should fetch manifest with target platform",
+			utils.Exec("should fetch manifest with target platform",
 				[]string{"manifest", "fetch", "docker.io/library/hello-world@" + digest_latest, "--platform", "linux/amd64"},
-				manifest_linuxAMD64)
+				match.SuccessContent(manifest_linuxAMD64))
 
-			test.ExecAndMatchOut("should fetch manifest with platform validation",
+			utils.Exec("should fetch manifest with platform validation",
 				[]string{"manifest", "fetch", "docker.io/library/hello-world@" + digest_linuxAMD64, "--platform", "linux/amd64"},
-				manifest_linuxAMD64)
+				match.SuccessContent(manifest_linuxAMD64))
 		})
 
 		When("fetching descriptor", func() {
-			test.ExecAndMatchOut("should fetch descriptor with digest",
+			utils.Exec("should fetch descriptor with digest",
 				[]string{"manifest", "fetch", "docker.io/library/hello-world@" + digest_latest, "--descriptor"},
-				descriptor_latest)
+				match.SuccessContent(descriptor_latest))
 
-			test.ExecAndMatchOut("should fetch descriptor with target platform",
+			utils.Exec("should fetch descriptor with target platform",
 				[]string{"manifest", "fetch", "docker.io/library/hello-world@" + digest_latest, "--platform", "linux/amd64", "--descriptor"},
-				descriptor_linuxAMD64)
+				match.SuccessContent(descriptor_linuxAMD64))
 
-			test.ExecAndMatchOut("should fetch manifest with platform validation",
+			utils.Exec("should fetch manifest with platform validation",
 				[]string{"manifest", "fetch", "docker.io/library/hello-world@" + digest_linuxAMD64, "--platform", "linux/amd64", "--descriptor"},
-				descriptor_linuxAMD64)
+				match.SuccessContent(descriptor_linuxAMD64))
 		})
 	})
 })
