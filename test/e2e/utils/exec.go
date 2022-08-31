@@ -24,10 +24,14 @@ import (
 	"github.com/onsi/gomega/gexec"
 )
 
+func addArgs(text string, args []string) string {
+	return fmt.Sprintf("%s: oras %v", text, strings.Join(args, " "))
+}
+
 func ExecAndMatchOut(text string, args []string, output string) {
 	stdout := NewWriter()
 
-	ginkgo.It(text, func() {
+	ginkgo.It(addArgs(text, args), func() {
 		session, err := gexec.Start(exec.Command(OrasPath, args...), stdout, io.Discard)
 		Expect(err).ShouldNot(HaveOccurred())
 		Eventually(session, "10s").Should(gexec.Exit(0))
@@ -38,7 +42,7 @@ func ExecAndMatchOut(text string, args []string, output string) {
 func ExecAndMatchOutKeyWords(text string, args []string, keywords []string) {
 	stdout := NewWriter()
 
-	ginkgo.It(text, func() {
+	ginkgo.It(addArgs(text, args), func() {
 		session, err := gexec.Start(exec.Command(OrasPath, args...), stdout, io.Discard)
 		Expect(err).ShouldNot(HaveOccurred())
 		Eventually(session, "10s").Should(gexec.Exit(0))
@@ -63,7 +67,7 @@ func ExecAndMatchOutKeyWords(text string, args []string, keywords []string) {
 func ExecAndMatchErrKeyWords(text string, args []string, keywords []string) {
 	stderr := NewWriter()
 
-	ginkgo.It(text, func() {
+	ginkgo.It(addArgs(text, args), func() {
 		session, err := gexec.Start(exec.Command(OrasPath, args...), io.Discard, stderr)
 		Expect(err).ShouldNot(HaveOccurred())
 		Eventually(session, "10s").Should(gexec.Exit(1))

@@ -11,19 +11,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package utils
+package step
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/onsi/ginkgo/v2"
+	"oras.land/oras/test/e2e/utils"
 )
 
-func WhenLoginWithoutCred(argv []string) {
-	ginkgo.When("running "+argv[0]+" command", func() {
-		ExecAndMatchErrKeyWords(fmt.Sprintf("should failed to run: oras %v", strings.Join(argv, " ")),
-			argv,
+func WhenLoginWithoutLogin(args []string) {
+	ginkgo.When("running "+args[0]+" command", func() {
+		utils.ExecAndMatchErrKeyWords("should failed",
+			args,
 			[]string{"Error:", "credential required"},
 		)
 	})
