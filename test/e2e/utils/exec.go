@@ -36,11 +36,10 @@ func Exec(text string, args []string, r *match.Result) {
 
 	ginkgo.It(description(text, args), func() {
 		session, err := gexec.Start(cmd, r.Stdout.Writer, r.Stderr.Writer)
+		Expect(err).ShouldNot(HaveOccurred())
 		if r.ShouldFail {
-			Expect(err).ShouldNot(HaveOccurred())
 			Eventually(session, "10s").Should(gexec.Exit(1))
 		} else {
-			Expect(err).ShouldNot(HaveOccurred())
 			Eventually(session, "10s").Should(gexec.Exit(0))
 		}
 		r.Stdout.Match()

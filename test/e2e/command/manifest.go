@@ -55,7 +55,7 @@ var _ = Context("ORAS", func() {
 				match.SuccessKeywords([]string{"** This command is in preview and under development. **", "[Preview] Fetch"}))
 
 			utils.Exec("should also work with alias get",
-				[]string{"manifest", "fetch", "-h"},
+				[]string{"manifest", "get", "-h"},
 				match.SuccessKeywords([]string{"** This command is in preview and under development. **", "[Preview] Fetch"}))
 		})
 
