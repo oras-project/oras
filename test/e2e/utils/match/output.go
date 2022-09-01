@@ -13,19 +13,19 @@ limitations under the License.
 
 package match
 
-type writer struct {
+type output struct {
 	content []byte
 }
 
-func NewWriter() *writer {
-	return &writer{}
+func newOutput() *output {
+	return &output{}
 }
 
-func (w *writer) Write(p []byte) (n int, err error) {
+func (w *output) Write(p []byte) (n int, err error) {
 	w.content = append(w.content, p...)
 	return len(p), nil
 }
 
-func (w *writer) ReadAll() []byte {
+func (w *output) readAll() []byte {
 	return w.content
 }

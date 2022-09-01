@@ -13,9 +13,6 @@ limitations under the License.
 
 package match
 
-import "io"
-
 type Matchable interface {
-	NewMatchEntry() Entry
-	matchTo(w io.Writer)
+	match(w *output)
 }

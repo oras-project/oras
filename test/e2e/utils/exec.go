@@ -36,11 +36,12 @@ func Exec(text string, args []string, r *match.Result) {
 		}
 		session, err := gexec.Start(cmd, r.Stdout.Writer, r.Stderr.Writer)
 		Expect(err).ShouldNot(HaveOccurred())
+
+		exitCode := 0
 		if r.ShouldFail {
-			Eventually(session, "10s").Should(gexec.Exit(1))
-		} else {
-			Eventually(session, "10s").Should(gexec.Exit(0))
+			exitCode = 1
 		}
+		Eventually(session, "10s").Should(gexec.Exit(exitCode))
 		r.Stdout.Match()
 		r.Stderr.Match()
 	})

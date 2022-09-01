@@ -14,23 +14,12 @@ limitations under the License.
 package match
 
 import (
-	"io"
-
 	. "github.com/onsi/gomega"
 )
 
+// Content provides whole matching of a output.
 type Content string
 
-func (c Content) NewMatchEntry() Entry {
-	if c == "" {
-		return Entry{io.Discard, nil}
-	}
-	return newEntry(c)
+func (c Content) match(w *output) {
+	Expect(string(w.readAll())).To(Equal(string(c)))
 }
-
-func (c Content) matchTo(w io.Writer) {
-	Expect(string(w.(*writer).ReadAll())).To(Equal(string(c)))
-}
-
-// Skip can be used when no matching wanted.
-var Skip Content = ""

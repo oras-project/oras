@@ -15,18 +15,15 @@ package match
 
 import "io"
 
-type Entry struct {
+type entry struct {
 	Writer io.Writer
 	m      Matchable
 }
 
-func newEntry(m Matchable) Entry {
-	return Entry{NewWriter(), m}
-}
-
-func (e *Entry) Match() {
+func (e *entry) Match() {
 	if e.Writer == io.Discard {
 		return
 	}
-	e.m.matchTo(e.Writer)
+
+	e.m.match(e.Writer.(*output))
 }

@@ -16,17 +16,17 @@ package match
 // ErrorKeywords returns a result to matching failure execution with keywords
 // in stderr.
 func ErrorKeywords(keywords []string) *Result {
-	return NewResult(Skip, Keyword(keywords), nil, true)
+	return NewResult(nil, nil, Keyword(keywords), true)
 }
 
 // SuccessKeywords returns a result to matching success execution with keywords
 // in stdout.
 func SuccessKeywords(keywords []string) *Result {
-	return NewResult(Skip, Keyword(keywords), nil, false)
+	return NewResult(nil, Keyword(keywords), nil, false)
 }
 
 // SuccessContent returns a result to match success execution with stdout
 // content.
 func SuccessContent(content string) *Result {
-	return NewResult(Content(content), Skip, nil, false)
+	return NewResult(nil, Content(content), nil, false)
 }

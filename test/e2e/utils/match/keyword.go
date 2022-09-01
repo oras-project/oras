@@ -15,7 +15,6 @@ package match
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
 	. "github.com/onsi/gomega"
@@ -23,20 +22,13 @@ import (
 
 type Keyword []string
 
-func (kw Keyword) NewMatchEntry() Entry {
-	if kw == nil {
-		return Entry{io.Discard, nil}
-	}
-	return newEntry(kw)
-}
-
-func (kw Keyword) matchTo(w io.Writer) {
+func (kw Keyword) match(w *output) {
 	visited := make(map[string]bool)
 	for _, w := range kw {
 		visited[w] = false
 	}
 
-	str := string(w.(*writer).ReadAll())
+	str := string(w.readAll())
 	for k := range visited {
 		if strings.Contains(str, k) {
 			delete(visited, k)

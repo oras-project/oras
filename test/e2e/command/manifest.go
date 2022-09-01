@@ -62,7 +62,7 @@ var _ = Context("ORAS", func() {
 		When("fetching manifest with no artifact reference provided", func() {
 			utils.Exec("should fail",
 				[]string{"manifest", "fetch"},
-				match.SuccessKeywords([]string{"Error:"}))
+				match.ErrorKeywords([]string{"Error:"}))
 		})
 
 		When("fetching manifest list content", func() {

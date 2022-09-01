@@ -16,18 +16,25 @@ package match
 import "io"
 
 type Result struct {
-	Stdout     Entry
-	Stderr     Entry
+	Stdout     *entry
+	Stderr     *entry
 	Stdin      io.Reader
 	ShouldFail bool
 }
 
 // NewResult generates a result type and returns the pointer.
-func NewResult(stdout Matchable, stderr Matchable, stdin io.Reader, shouldFail bool) *Result {
+func NewResult(stdin io.Reader, stdout Matchable, stderr Matchable, shouldFail bool) *Result {
 	return &Result{
-		Stdout:     stdout.NewMatchEntry(),
-		Stderr:     stderr.NewMatchEntry(),
+		Stdout:     entryFromMatchable(stdout),
+		Stderr:     entryFromMatchable(stderr),
 		Stdin:      stdin,
 		ShouldFail: shouldFail,
 	}
+}
+
+func entryFromMatchable(m Matchable) *entry {
+	if m == nil {
+		return &entry{io.Discard, nil}
+	}
+	return &entry{newOutput(), m}
 }
