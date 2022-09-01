@@ -77,11 +77,7 @@ func (opts *Packer) ExportManifestDesc(desc ocispec.Descriptor) error {
 	if opts.ManifestDescExportPath == "" {
 		return nil
 	}
-	manifestDescBytes, err := json.Marshal(ocispec.Descriptor{
-		MediaType: desc.MediaType,
-		Digest:    desc.Digest,
-		Size:      desc.Size,
-	})
+	manifestDescBytes, err := json.Marshal(desc)
 	if err != nil {
 		return err
 	}
