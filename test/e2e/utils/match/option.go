@@ -41,6 +41,11 @@ func entryFromMatchable(m Matchable) *entry {
 
 // Match matches captured with wanted.
 func (o *Option) Match() {
-	o.Stdout.match()
-	o.Stderr.match()
+	if o.Stdout != nil {
+		o.Stdout.match()
+	}
+
+	if o.Stderr != nil {
+		o.Stderr.match()
+	}
 }

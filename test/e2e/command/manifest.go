@@ -47,12 +47,13 @@ const (
 
 var _ = Context("ORAS beginners", func() {
 	Describe("run manifest command", func() {
-		When("looking for supported command and help", func() {
-			step.RunAndShowPreviewInHelp([]string{"manifest"})
-			step.RunAndShowPreviewInHelp([]string{"manifest", "fetch"}, preview_desc)
-			step.RunAndShowPreviewInHelp([]string{"manifest", "get"}, preview_desc)
-		})
+		step.RunAndShowPreviewInHelp([]string{"manifest"})
+		step.RunAndShowPreviewInHelp([]string{"manifest", "fetch"}, preview_desc)
 
+		When("call sub-commands with aliases", func() {
+			utils.Exec(match.SuccessKeywords("[Preview] Fetch", "** This command is in preview and under development. **"), "should succeed",
+				"manifest", "get", "--help")
+		})
 		When("fetching manifest with no artifact reference provided", func() {
 			utils.Exec(match.ErrorKeywords("Error:"), "should fail",
 				"manifest", "fetch",

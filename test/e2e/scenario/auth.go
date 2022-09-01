@@ -28,7 +28,6 @@ const (
 )
 
 var _ = Context("ORAS user", Ordered, func() {
-
 	Describe("logs in", func() {
 		When("should succeed with basic auth", func() {
 			utils.Exec(match.NewOption(nil, match.Content("Login Succeeded\n"), match.Keywords([]string{"WARNING", "Using --password via the CLI is insecure", "Use --password-stdin"}), false),
@@ -42,10 +41,8 @@ var _ = Context("ORAS user", Ordered, func() {
 	})
 
 	Describe("logs out", func() {
-		When("should succeed", func() {
-			utils.Exec(&match.Error,
-				"should logout",
-				"logout", utils.Host)
+		When("should succeed", Focus, func() {
+			utils.Exec(&match.Success, "should logout", "logout", utils.Host)
 		})
 	})
 

@@ -22,6 +22,9 @@ type entry struct {
 
 // Writer returns a writer for capturing or discarding stdout/stderr.
 func (e *entry) Writer() io.Writer {
+	if e == nil {
+		return nil
+	}
 	return e.w
 }
 
