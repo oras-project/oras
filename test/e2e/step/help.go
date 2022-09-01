@@ -25,7 +25,7 @@ import (
 // RunAndShowPreviewInHelp runs
 func RunAndShowPreviewInHelp(args []string, keywords ...string) {
 	ginkgo.When(fmt.Sprintf("running %q command", strings.Join(args, " ")), func() {
-		keywords = append(keywords, "[Preview] "+args[len(args)-1], "\nUsage:", "\nExample - ")
+		keywords = append(keywords, "[Preview] "+args[len(args)-1], "\nUsage:")
 		utils.Exec(match.SuccessKeywords(keywords...),
 			"should succeed",
 			append(args, "--help")...)

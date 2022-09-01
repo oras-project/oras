@@ -41,7 +41,7 @@ var _ = Context("ORAS user", Ordered, func() {
 	})
 
 	Describe("logs out", func() {
-		When("should succeed", Focus, func() {
+		When("should succeed", func() {
 			utils.Exec(&match.Success, "should logout", "logout", utils.Host)
 		})
 	})
