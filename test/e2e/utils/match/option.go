@@ -38,3 +38,9 @@ func entryFromMatchable(m Matchable) *entry {
 	}
 	return &entry{newOutput(), m}
 }
+
+// Match matches captured with wanted.
+func (o *Option) Match() {
+	o.Stdout.match()
+	o.Stderr.match()
+}

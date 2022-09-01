@@ -16,14 +16,18 @@ package match
 import "io"
 
 type entry struct {
-	Writer io.Writer
-	m      Matchable
+	w io.Writer
+	m Matchable
 }
 
-func (e *entry) Match() {
-	if e.Writer == io.Discard {
+func (e *entry) Writer() io.Writer {
+	return e.w
+}
+
+func (e *entry) match() {
+	if e.w == io.Discard {
 		return
 	}
 
-	e.m.match(e.Writer.(*output))
+	e.m.match(e.w.(*output))
 }

@@ -28,21 +28,22 @@ func description(text string, args []string) string {
 	return fmt.Sprintf("%s: oras %s", text, strings.Join(args, " "))
 }
 
-func Exec(text string, args []string, r *match.Option) {
+// Exec helps execute `OrasPath args...` with text as description and o as
+// matching option.
+func Exec(text string, args []string, o *match.Option) {
 	ginkgo.It(description(text, args), func() {
 		cmd := exec.Command(OrasPath, args...)
-		if r.Stdin != nil {
-			cmd.Stdin = r.Stdin
+		if o.Stdin != nil {
+			cmd.Stdin = o.Stdin
 		}
-		session, err := gexec.Start(cmd, r.Stdout.Writer, r.Stderr.Writer)
+		session, err := gexec.Start(cmd, o.Stdout.Writer(), o.Stderr.Writer())
 		Expect(err).ShouldNot(HaveOccurred())
 
 		exitCode := 0
-		if r.ShouldFail {
+		if o.ShouldFail {
 			exitCode = 1
 		}
 		Eventually(session, "10s").Should(gexec.Exit(exitCode))
-		r.Stdout.Match()
-		r.Stderr.Match()
+		o.Match()
 	})
 }
