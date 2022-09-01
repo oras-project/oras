@@ -29,12 +29,11 @@ func description(text string, args []string) string {
 }
 
 func Exec(text string, args []string, r *match.Result) {
-	cmd := exec.Command(OrasPath, args...)
-	if r.Stdin != nil {
-		cmd.Stdin = r.Stdin
-	}
-
 	ginkgo.It(description(text, args), func() {
+		cmd := exec.Command(OrasPath, args...)
+		if r.Stdin != nil {
+			cmd.Stdin = r.Stdin
+		}
 		session, err := gexec.Start(cmd, r.Stdout.Writer, r.Stderr.Writer)
 		Expect(err).ShouldNot(HaveOccurred())
 		if r.ShouldFail {
