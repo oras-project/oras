@@ -13,6 +13,7 @@ limitations under the License.
 
 package match
 
+// Matchable provides matching method towards an output.
 type Matchable interface {
 	match(w *output)
 }

@@ -20,6 +20,7 @@ type entry struct {
 	m Matchable
 }
 
+// Writer returns a writer for capturing or discarding stdout/stderr.
 func (e *entry) Writer() io.Writer {
 	return e.w
 }

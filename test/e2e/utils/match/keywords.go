@@ -20,6 +20,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+// Keywords provides selective matching of the output.
+// The match will pass if all key words exists in the output.
 type Keywords []string
 
 func (kw Keywords) match(w *output) {

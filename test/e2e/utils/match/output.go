@@ -21,6 +21,7 @@ func newOutput() *output {
 	return &output{}
 }
 
+// Write captures p into the content.
 func (w *output) Write(p []byte) (n int, err error) {
 	w.content = append(w.content, p...)
 	return len(p), nil
