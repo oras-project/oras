@@ -30,7 +30,7 @@ func description(text string, args []string) string {
 
 // Exec helps execute `OrasPath args...` with text as description and o as
 // matching option.
-func Exec(text string, args []string, o *match.Option) {
+func Exec(o *match.Option, text string, args ...string) {
 	ginkgo.It(description(text, args), func() {
 		cmd := exec.Command(OrasPath, args...)
 		if o.Stdin != nil {

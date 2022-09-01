@@ -21,17 +21,19 @@ import (
 )
 
 // Keywords provides selective matching of the output.
-// The match will pass if all key words exists in the output.
+// The match will pass if all key words existed case-insensitively in the
+// output.
 type Keywords []string
 
 func (kw Keywords) match(w *output) {
 	visited := make(map[string]bool)
 	for _, w := range kw {
-		visited[w] = false
+		visited[strings.ToLower(w)] = false
 	}
 
 	str := string(w.readAll())
 	for k := range visited {
+		str := strings.ToLower(str)
 		if strings.Contains(str, k) {
 			delete(visited, k)
 		}

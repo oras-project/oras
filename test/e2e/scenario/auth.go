@@ -31,31 +31,31 @@ var _ = Context("ORAS user", Ordered, func() {
 
 	Describe("logs in", func() {
 		When("should succeed with basic auth", func() {
-			utils.Exec("should succeed with username&password flags",
-				[]string{"login", utils.Host, "-u", USERNAME, "-p", PASSWORD},
-				match.NewOption(nil, match.Content("Login Succeeded\n"), match.Keywords([]string{"WARNING", "Using --password via the CLI is insecure", "Use --password-stdin"}), false))
+			utils.Exec(match.NewOption(nil, match.Content("Login Succeeded\n"), match.Keywords([]string{"WARNING", "Using --password via the CLI is insecure", "Use --password-stdin"}), false),
+				"should succeed with username&password flags",
+				"login", utils.Host, "-u", USERNAME, "-p", PASSWORD)
 
-			utils.Exec("should succeed with username flag and password from stdin",
-				[]string{"login", utils.Host, "-u", USERNAME, "--password-stdin"},
-				match.NewOption(strings.NewReader(PASSWORD), match.Content("Login Succeeded\n"), nil, false))
+			utils.Exec(match.NewOption(strings.NewReader(PASSWORD), match.Content("Login Succeeded\n"), nil, false),
+				"should succeed with username flag and password from stdin",
+				"login", utils.Host, "-u", USERNAME, "--password-stdin")
 		})
 	})
 
 	Describe("logs out", func() {
 		When("should succeed", func() {
-			utils.Exec("should logout",
-				[]string{"logout", utils.Host},
-				match.NewOption(nil, nil, nil, false))
+			utils.Exec(&match.Error,
+				"should logout",
+				"logout", utils.Host)
 		})
 	})
 
 	Describe("runs commands without login", func() {
-		step.WhenRunWithoutLogin([]string{"attach", utils.Host + "/repo:tag", "-a", "test=true", "--artifact-type", "doc/example"})
-		step.WhenRunWithoutLogin([]string{"copy", utils.Host + "/repo:from", utils.Host + "/repo:to"})
-		step.WhenRunWithoutLogin([]string{"discover", utils.Host + "/repo:tag"})
-		step.WhenRunWithoutLogin([]string{"push", "-a", "key=value", utils.Host + "/repo:tag"})
-		step.WhenRunWithoutLogin([]string{"pull", utils.Host + "/repo:tag"})
+		step.WhenRunWithoutLogin("attach", utils.Host+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
+		step.WhenRunWithoutLogin("copy", utils.Host+"/repo:from", utils.Host+"/repo:to")
+		step.WhenRunWithoutLogin("discover", utils.Host+"/repo:tag")
+		step.WhenRunWithoutLogin("push", "-a", "key=value", utils.Host+"/repo:tag")
+		step.WhenRunWithoutLogin("pull", utils.Host+"/repo:tag")
 
-		step.WhenRunWithoutLogin([]string{"manifest", "fetch", utils.Host + "/repo:tag"})
+		step.WhenRunWithoutLogin("manifest", "fetch", utils.Host+"/repo:tag")
 	})
 })

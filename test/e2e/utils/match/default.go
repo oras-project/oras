@@ -13,15 +13,21 @@ limitations under the License.
 
 package match
 
+// Matching error execution.
+var Error = Option{nil, nil, nil, true}
+
+// Matching success execution.
+var Success = Option{nil, nil, nil, false}
+
 // ErrorKeywords returns an option for matching stderr keywords in failure
 // execution.
-func ErrorKeywords(keywords []string) *Option {
+func ErrorKeywords(keywords ...string) *Option {
 	return NewOption(nil, nil, Keywords(keywords), true)
 }
 
 // SuccessKeywords returns an option for matching stdout keywords in success
 // execution.
-func SuccessKeywords(keywords []string) *Option {
+func SuccessKeywords(keywords ...string) *Option {
 	return NewOption(nil, Keywords(keywords), nil, false)
 }
 

@@ -14,15 +14,20 @@ limitations under the License.
 package step
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/onsi/ginkgo/v2"
 	"oras.land/oras/test/e2e/utils"
 	"oras.land/oras/test/e2e/utils/match"
 )
 
-func WhenRunWithoutLogin(args ...string) {
-	ginkgo.When("running "+args[0]+" command", func() {
-		utils.Exec(match.ErrorKeywords("Error:", "credential required"),
-			"should failed",
-			args...)
+// RunAndShowPreviewInHelp runs
+func RunAndShowPreviewInHelp(args []string, keywords ...string) {
+	ginkgo.When(fmt.Sprintf("running %q command", strings.Join(args, " ")), func() {
+		keywords = append(keywords, "[Preview] "+args[len(args)-1])
+		utils.Exec(match.SuccessKeywords(keywords...),
+			"should succeed",
+			append(args, "--help")...)
 	})
 }

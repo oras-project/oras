@@ -11,18 +11,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package step
+package command
 
 import (
-	"github.com/onsi/ginkgo/v2"
-	"oras.land/oras/test/e2e/utils"
-	"oras.land/oras/test/e2e/utils/match"
+	. "github.com/onsi/ginkgo/v2"
 )
 
-func WhenRunWithoutLogin(args ...string) {
-	ginkgo.When("running "+args[0]+" command", func() {
-		utils.Exec(match.ErrorKeywords("Error:", "credential required"),
-			"should failed",
-			args...)
+var _ = Context("ORAS beginners", func() {
+	Describe("run attach command", func() {
+
 	})
-}
+})
