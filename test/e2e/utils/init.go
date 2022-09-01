@@ -31,7 +31,8 @@ func init() {
 	OrasPath = os.Getenv("ORAS_PATH")
 	Host = os.Getenv("ORAS_REGISTRY_HOST")
 	if Host == "" {
-		os.Stderr.Write([]byte(fmt.Sprintln("cannot find host name in ORAS_REGISTRY_HOST, using localhost:5000 instead")))
+		Host = "localhost:5000"
+		os.Stderr.Write([]byte(fmt.Sprintln("cannot find host name in ORAS_REGISTRY_HOST, using " + Host + " instead")))
 	}
 	if err := (registry.Reference{Registry: Host}).ValidateRegistry(); Host == "" || err != nil {
 		panic(err)
@@ -48,7 +49,7 @@ func init() {
 		wd, err := os.Getwd()
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		OrasPath = filepath.Join(wd, OrasPath)
-		fmt.Printf("Testing based on binary locates in %q\n", OrasPath)
+		fmt.Printf("Testing based on temp binary locates in %q\n", OrasPath)
 	})
 
 }
