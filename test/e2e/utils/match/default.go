@@ -13,20 +13,20 @@ limitations under the License.
 
 package match
 
-// ErrorKeywords returns a result to matching failure execution with keywords
-// in stderr.
-func ErrorKeywords(keywords []string) *Result {
-	return NewResult(nil, nil, Keyword(keywords), true)
+// ErrorKeywords returns an option for matching stderr keywords in failure
+// execution.
+func ErrorKeywords(keywords []string) *Option {
+	return NewOption(nil, nil, Keywords(keywords), true)
 }
 
-// SuccessKeywords returns a result to matching success execution with keywords
-// in stdout.
-func SuccessKeywords(keywords []string) *Result {
-	return NewResult(nil, Keyword(keywords), nil, false)
+// SuccessKeywords returns an option for matching stdout keywords in success
+// execution.
+func SuccessKeywords(keywords []string) *Option {
+	return NewOption(nil, Keywords(keywords), nil, false)
 }
 
-// SuccessContent returns a result to match success execution with stdout
-// content.
-func SuccessContent(content string) *Result {
-	return NewResult(nil, Content(content), nil, false)
+// SuccessContent returns an option for matching stdout content in success
+// execution.
+func SuccessContent(content string) *Option {
+	return NewOption(nil, Content(content), nil, false)
 }

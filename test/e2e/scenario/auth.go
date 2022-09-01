@@ -33,11 +33,11 @@ var _ = Context("ORAS user", Ordered, func() {
 		When("should succeed with basic auth", func() {
 			utils.Exec("should succeed with username&password flags",
 				[]string{"login", utils.Host, "-u", USERNAME, "-p", PASSWORD},
-				match.NewResult(nil, match.Content("Login Succeeded\n"), match.Keyword([]string{"WARNING", "Using --password via the CLI is insecure", "Use --password-stdin"}), false))
+				match.NewOption(nil, match.Content("Login Succeeded\n"), match.Keywords([]string{"WARNING", "Using --password via the CLI is insecure", "Use --password-stdin"}), false))
 
 			utils.Exec("should succeed with username flag and password from stdin",
 				[]string{"login", utils.Host, "-u", USERNAME, "--password-stdin"},
-				match.NewResult(strings.NewReader(PASSWORD), match.Content("Login Succeeded\n"), nil, false))
+				match.NewOption(strings.NewReader(PASSWORD), match.Content("Login Succeeded\n"), nil, false))
 		})
 	})
 
@@ -45,7 +45,7 @@ var _ = Context("ORAS user", Ordered, func() {
 		When("should succeed", func() {
 			utils.Exec("should logout",
 				[]string{"logout", utils.Host},
-				match.NewResult(nil, nil, nil, false))
+				match.NewOption(nil, nil, nil, false))
 		})
 	})
 

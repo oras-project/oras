@@ -20,9 +20,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-type Keyword []string
+type Keywords []string
 
-func (kw Keyword) match(w *output) {
+func (kw Keywords) match(w *output) {
 	visited := make(map[string]bool)
 	for _, w := range kw {
 		visited[w] = false

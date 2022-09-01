@@ -15,16 +15,16 @@ package match
 
 import "io"
 
-type Result struct {
+type Option struct {
 	Stdout     *entry
 	Stderr     *entry
 	Stdin      io.Reader
 	ShouldFail bool
 }
 
-// NewResult generates a result type and returns the pointer.
-func NewResult(stdin io.Reader, stdout Matchable, stderr Matchable, shouldFail bool) *Result {
-	return &Result{
+// NewOption generates a result type and returns the pointer.
+func NewOption(stdin io.Reader, stdout Matchable, stderr Matchable, shouldFail bool) *Option {
+	return &Option{
 		Stdout:     entryFromMatchable(stdout),
 		Stderr:     entryFromMatchable(stderr),
 		Stdin:      stdin,

@@ -17,7 +17,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// Content provides whole matching of a output.
+// Content provides whole matching of the output.
 type Content string
 
 func (c Content) match(w *output) {

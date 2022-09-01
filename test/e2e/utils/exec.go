@@ -28,7 +28,7 @@ func description(text string, args []string) string {
 	return fmt.Sprintf("%s: oras %s", text, strings.Join(args, " "))
 }
 
-func Exec(text string, args []string, r *match.Result) {
+func Exec(text string, args []string, r *match.Option) {
 	ginkgo.It(description(text, args), func() {
 		cmd := exec.Command(OrasPath, args...)
 		if r.Stdin != nil {
