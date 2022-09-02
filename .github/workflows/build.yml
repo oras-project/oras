@@ -37,7 +37,7 @@ jobs:
           make test
           docker stop oras-e2e || true
         env: 
-          ORAS_PATH: $GITHUB_WORKSPACE/bin/linux/amd64/oras
+          ORAS_PATH: ../../../bin/linux/amd64/oras
           ORAS_REGISTRY_HOST: localhost:5000
       - name: Check Version
         run: bin/linux/amd64/oras version
