@@ -13,14 +13,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package option
 
 import (
 	"fmt"
 	"strings"
+
+	"github.com/spf13/pflag"
 )
 
-func AskForComfirmation() (bool, error) {
+// Confirmation option struct.
+type Confirmation struct {
+	Confirmed bool
+}
+
+// ApplyFlags applies flags to a command flag set.
+func (opts *Confirmation) ApplyFlags(fs *pflag.FlagSet) {
+	fs.BoolVarP(&opts.Confirmed, "yes", "y", false, "do not prompt for confirmation")
+}
+
+func (opts *Confirmation) AskForComfirmation(message string) (bool, error) {
+	fmt.Print(message)
+
 	var response string
 	_, err := fmt.Scanln(&response)
 	if err != nil {
@@ -33,7 +47,6 @@ func AskForComfirmation() (bool, error) {
 	case "n", "no":
 		return false, nil
 	default:
-		fmt.Println("please type (y)es or (n)o and then press enter")
-		return AskForComfirmation()
+		return opts.AskForComfirmation(message)
 	}
 }
