@@ -16,6 +16,7 @@ package scenario
 import (
 	"strings"
 
+	"github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/v2"
 	"oras.land/oras/test/e2e/step"
 	"oras.land/oras/test/e2e/utils"
@@ -56,3 +57,11 @@ var _ = Context("ORAS user", Ordered, func() {
 		step.WhenRunWithoutLogin("manifest", "fetch", utils.Host+"/repo:tag")
 	})
 })
+
+func whenRunWithoutLogin(args ...string) {
+	ginkgo.When("running "+args[0]+" command", func() {
+		utils.Exec(match.ErrorKeywords("Error:", "credential required"),
+			"should failed",
+			args...)
+	})
+}

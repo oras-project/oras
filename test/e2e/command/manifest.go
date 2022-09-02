@@ -14,6 +14,9 @@ limitations under the License.
 package command
 
 import (
+	"fmt"
+	"strings"
+
 	. "github.com/onsi/ginkgo/v2"
 	"oras.land/oras/test/e2e/step"
 	"oras.land/oras/test/e2e/utils"
@@ -42,3 +45,12 @@ var _ = Context("ORAS beginners", func() {
 		})
 	})
 })
+
+func runAndShowPreviewInHelp(args []string, keywords ...string) {
+	When(fmt.Sprintf("running %q command", strings.Join(args, " ")), func() {
+		keywords = append(keywords, "[Preview] "+args[len(args)-1], "\nUsage:")
+		utils.Exec(match.SuccessKeywords(keywords...),
+			"should succeed",
+			append(args, "--help")...)
+	})
+}
