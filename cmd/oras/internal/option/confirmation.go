@@ -33,20 +33,20 @@ func (opts *Confirmation) ApplyFlags(fs *pflag.FlagSet) {
 }
 
 func (opts *Confirmation) AskForComfirmation(message string) (bool, error) {
-	fmt.Print(message)
+	for {
+		fmt.Print(message)
 
-	var response string
-	_, err := fmt.Scanln(&response)
-	if err != nil {
-		return false, err
-	}
+		var response string
+		_, err := fmt.Scanln(&response)
+		if err != nil {
+			return false, err
+		}
 
-	switch strings.ToLower(response) {
-	case "y", "yes":
-		return true, nil
-	case "n", "no":
-		return false, nil
-	default:
-		return opts.AskForComfirmation(message)
+		switch strings.ToLower(response) {
+		case "y", "yes":
+			return true, nil
+		case "n", "no":
+			return false, nil
+		}
 	}
 }
