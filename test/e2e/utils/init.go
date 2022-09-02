@@ -28,7 +28,6 @@ var OrasPath string
 var Host string
 
 func init() {
-	OrasPath = os.Getenv("ORAS_PATH")
 	Host = os.Getenv("ORAS_REGISTRY_HOST")
 	if Host == "" {
 		Host = "localhost:5000"
@@ -38,18 +37,27 @@ func init() {
 		panic(err)
 	}
 	var _ = BeforeSuite(func() {
-		if OrasPath == "" {
+		OrasPath = os.Getenv("ORAS_PATH")
+
+		if filepath.IsAbs(OrasPath) {
+			// test against OrasPath directly
+			fmt.Printf("Testing based on pre-built binary locates in %q\n", OrasPath)
+		} else if workspacePath := os.Getenv("GITHUB_WORKSPACE"); filepath.IsAbs(OrasPath) && workspacePath != "" {
+			// Add workspacePath as prefix
+			OrasPath = filepath.Join(workspacePath, OrasPath)
+			var err error
+			OrasPath, err = filepath.Abs(OrasPath)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			fmt.Printf("Testing based on pre-built binary locates in %q\n", OrasPath)
+		} else {
 			// fallback to native build to facilitate locally debugging
 			var err error
 			OrasPath, err = gexec.Build("oras.land/oras/cmd/oras")
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			DeferCleanup(gexec.CleanupBuildArtifacts)
-			return
+			fmt.Printf("Testing based on temp binary locates in %q\n", OrasPath)
 		}
-		wd, err := os.Getwd()
-		gomega.Expect(err).NotTo(gomega.HaveOccurred())
-		OrasPath = filepath.Join(wd, OrasPath)
-		fmt.Printf("Testing based on temp binary locates in %q\n", OrasPath)
 	})
 
 }
