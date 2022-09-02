@@ -18,7 +18,6 @@ import (
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
-	"oras.land/oras/test/e2e/step"
 	"oras.land/oras/test/e2e/utils"
 	"oras.land/oras/test/e2e/utils/match"
 )
@@ -30,8 +29,8 @@ const (
 
 var _ = Context("ORAS beginners", func() {
 	Describe("run manifest command", func() {
-		step.RunAndShowPreviewInHelp([]string{"manifest"})
-		step.RunAndShowPreviewInHelp([]string{"manifest", "fetch"}, preview_desc, example_desc)
+		runAndShowPreviewInHelp([]string{"manifest"})
+		runAndShowPreviewInHelp([]string{"manifest", "fetch"}, preview_desc, example_desc)
 
 		When("call sub-commands with aliases", func() {
 			utils.Exec(match.SuccessKeywords("[Preview] Fetch", preview_desc, example_desc),

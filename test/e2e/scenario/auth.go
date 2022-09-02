@@ -16,9 +16,7 @@ package scenario
 import (
 	"strings"
 
-	"github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/v2"
-	"oras.land/oras/test/e2e/step"
 	"oras.land/oras/test/e2e/utils"
 	"oras.land/oras/test/e2e/utils/match"
 )
@@ -48,18 +46,18 @@ var _ = Context("ORAS user", Ordered, func() {
 	})
 
 	Describe("runs commands without login", func() {
-		step.WhenRunWithoutLogin("attach", utils.Host+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
-		step.WhenRunWithoutLogin("copy", utils.Host+"/repo:from", utils.Host+"/repo:to")
-		step.WhenRunWithoutLogin("discover", utils.Host+"/repo:tag")
-		step.WhenRunWithoutLogin("push", "-a", "key=value", utils.Host+"/repo:tag")
-		step.WhenRunWithoutLogin("pull", utils.Host+"/repo:tag")
+		whenRunWithoutLogin("attach", utils.Host+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
+		whenRunWithoutLogin("copy", utils.Host+"/repo:from", utils.Host+"/repo:to")
+		whenRunWithoutLogin("discover", utils.Host+"/repo:tag")
+		whenRunWithoutLogin("push", "-a", "key=value", utils.Host+"/repo:tag")
+		whenRunWithoutLogin("pull", utils.Host+"/repo:tag")
 
-		step.WhenRunWithoutLogin("manifest", "fetch", utils.Host+"/repo:tag")
+		whenRunWithoutLogin("manifest", "fetch", utils.Host+"/repo:tag")
 	})
 })
 
 func whenRunWithoutLogin(args ...string) {
-	ginkgo.When("running "+args[0]+" command", func() {
+	When("running "+args[0]+" command", func() {
 		utils.Exec(match.ErrorKeywords("Error:", "credential required"),
 			"should failed",
 			args...)
