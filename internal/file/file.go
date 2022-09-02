@@ -50,12 +50,12 @@ func PrepareContent(path string, mediaType string) (ocispec.Descriptor, io.ReadC
 		return ocispec.Descriptor{}, nil, fmt.Errorf("failed to open %s: %w", path, err)
 	}
 
-	fi, err := os.Stat(path)
+	dgst, err := digest.FromReader(fp)
 	if err != nil {
-		return ocispec.Descriptor{}, nil, fmt.Errorf("failed to stat %s: %w", path, err)
+		return ocispec.Descriptor{}, nil, err
 	}
 
-	dgst, err := digest.FromReader(fp)
+	size, err := fp.Seek(0, io.SeekCurrent)
 	if err != nil {
 		return ocispec.Descriptor{}, nil, err
 	}
@@ -67,6 +67,6 @@ func PrepareContent(path string, mediaType string) (ocispec.Descriptor, io.ReadC
 	return ocispec.Descriptor{
 		MediaType: mediaType,
 		Digest:    dgst,
-		Size:      fi.Size(),
+		Size:      size,
 	}, fp, nil
 }
