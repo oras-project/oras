@@ -42,6 +42,7 @@ func pushCmd() *cobra.Command {
 		Use:   "push <name> file [flags]",
 		Short: "[Preview] Push a blob to a remote registry",
 		Long: `[Preview] Push a blob to a remote registry
+
 ** This command is in preview and under development. **
 
 Example - Push blob "hi.txt":
