@@ -24,7 +24,7 @@ import (
 type state = string
 
 // state represents the expected value of second and third fields next status log.
-type stateKey struct {
+type StateKey struct {
 	Digest string
 	Name   string
 }
@@ -38,17 +38,15 @@ type edge = struct {
 	to   *node
 }
 
-// statusOption specifies options for status log matching.
-//   - trasitions: edges in the state machine graph.
-//   - keys: array of identifiers for state subject.
-type statusOption struct {
+// StatusOption specifies options for status log matching.
+type StatusOption struct {
 	edges   map[state]edge
 	start   *node
 	end     *node
 	verbose bool
 }
 
-func (opts *statusOption) addPath(s ...string) {
+func (opts *StatusOption) addPath(s ...string) {
 	last := opts.start
 	for i := 0; i < len(s)-1; i++ {
 		e, ok := opts.edges[s[i]]
@@ -59,27 +57,27 @@ func (opts *statusOption) addPath(s ...string) {
 		}
 		last = e.to
 	}
+	opts.edges[s[len(s)-1]] = edge{last, opts.end}
 }
 
-// Status type helps matching status log of a oras command.
-type Status struct {
-	states      map[stateKey]*node
-	needMatch   map[stateKey]bool
-	matchResult map[state][]stateKey
+// status type helps matching status log of a oras command.
+type status struct {
+	states  map[StateKey]*node
+	Matched map[state][]StateKey
 
-	statusOption
+	StatusOption
 }
 
 // NewStatus generates a instance for matchable status logs.
-func NewStatus(keys []stateKey, verbose bool, opts statusOption) *Status {
-	s := Status{
-		states:       make(map[stateKey]*node),
-		matchResult:  make(map[string][]stateKey),
-		statusOption: opts,
+func NewStatus(keys []StateKey, verbose bool, opts StatusOption) *status {
+	s := status{
+		states:       make(map[StateKey]*node),
+		Matched:      make(map[string][]StateKey),
+		StatusOption: opts,
 	}
 	for _, k := range keys {
 		// optimize keys query
-		s.needMatch[k] = true
+		s.states[k] = opts.start
 	}
 	s.verbose = verbose
 	s.start = opts.start
@@ -88,7 +86,7 @@ func NewStatus(keys []stateKey, verbose bool, opts statusOption) *Status {
 }
 
 // switchState moves a node forward in the state machine graph.
-func (s *Status) switchState(st state, key stateKey) {
+func (s *status) switchState(st state, key StateKey) {
 	curr, ok := s.states[key]
 	gomega.Expect(ok).To(gomega.BeTrue(), fmt.Sprintf("Should find state node for %v", key))
 
@@ -98,12 +96,14 @@ func (s *Status) switchState(st state, key stateKey) {
 
 	s.states[key] = e.to
 	if e.to == s.end {
-		s.matchResult[st] = append(s.matchResult[st], key)
+		// collect last state for matching
+		s.Matched[st] = append(s.Matched[st], key)
 	}
 }
 
-func (s *Status) match(w *output) {
-	for _, line := range w.readAll() {
+func (s *status) match(w *output) {
+	// walk
+	for _, line := range strings.Split(string(w.readAll()), "\n") {
 		// get state key
 		fields := strings.Fields(string(line))
 
@@ -115,8 +115,9 @@ func (s *Status) match(w *output) {
 		if cnt <= 2 || cnt > 3 {
 			continue
 		}
-		key := stateKey{fields[1], fields[2]}
-		if !s.needMatch[key] {
+		key := StateKey{fields[1], fields[2]}
+		if _, ok := s.states[key]; !ok {
+			// ignore other logs
 			return
 		}
 

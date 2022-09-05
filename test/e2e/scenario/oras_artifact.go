@@ -22,6 +22,7 @@ import (
 )
 
 var _ = Context("ORAS user", Ordered, func() {
+	repo := "oras-artifact"
 	Describe("logs in", func() {
 		When("should succeed with basic auth", func() {
 			utils.Exec(match.NewOption(strings.NewReader(PASSWORD), match.Content("Login Succeeded\n"), nil, false),
@@ -30,23 +31,19 @@ var _ = Context("ORAS user", Ordered, func() {
 		})
 	})
 
-	Describe("runs commands without login", Ordered, func() {
+	Describe("pushes image and check", Focus, Ordered, func() {
+		tag := "image"
 		When("pushing an image", func() {
-			match.NewStatus([]match.StateKey{
-				{}
-			})
+			status := match.NewStatus([]match.StateKey{
+				{Digest: "b5bb9d8014a0", Name: "foo1"},
+				{Digest: "b5bb9d8014a0", Name: "foo2"},
+				{Digest: "7d865e959b24", Name: "bar"},
+				{Digest: "e3b0c44298fc", Name: "application/vnd.unknown.config.v1+json"},
+				{Digest: "992db6dcc803", Name: "application/vnd.oci.image.manifest.v1+json"},
+			}, true, *match.MatchableStatus("push", true))
 
-			utils.Exec(match.NewOption(nil,
-			utils.Exec(match.NewOption(nil, match.Content("Login Succeeded\n"), nil, false),
-				"should succeed with username flag and password from stdin",
-				"login", utils.Host, "-u", USERNAME, "--password-stdin")
+			utils.Exec(match.NewOption(nil, status, nil, false), "should succeed with username flag and password from stdin",
+				"push", utils.Reference(utils.Host, repo, tag), utils.ImageBlob("foobar/foo1"), utils.ImageBlob("foobar/foo2"), utils.ImageBlob("foobar/bar"), "-v")
 		})
-		whenRunWithoutLogin("attach", utils.Host+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
-		whenRunWithoutLogin("copy", utils.Host+"/repo:from", utils.Host+"/repo:to")
-		whenRunWithoutLogin("discover", utils.Host+"/repo:tag")
-		whenRunWithoutLogin("push", "-a", "key=value", utils.Host+"/repo:tag")
-		whenRunWithoutLogin("pull", utils.Host+"/repo:tag")
-
-		whenRunWithoutLogin("manifest", "fetch", utils.Host+"/repo:tag")
 	})
 })

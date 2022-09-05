@@ -31,9 +31,11 @@ var artifactDirPath string
 
 func init() {
 	pwd, err := os.Getwd()
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
-	imageDirPath = filepath.Join(pwd, "image")
-	artifactDirPath = filepath.Join(pwd, "artifact")
+	if err != nil {
+		panic(err)
+	}
+	imageDirPath = filepath.Join(pwd, "..", "testdata", "images")
+	artifactDirPath = filepath.Join(pwd, "..", "testdata", "artifacts")
 	Host = os.Getenv("ORAS_REGISTRY_HOST")
 	if Host == "" {
 		Host = "localhost:5000"
@@ -67,6 +69,6 @@ func init() {
 
 }
 
-func ImagePath(name string) string {
+func ImageBlob(name string) string {
 	return filepath.Join(imageDirPath, name)
 }

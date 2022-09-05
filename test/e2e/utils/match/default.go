@@ -37,9 +37,8 @@ func SuccessContent(content string) *Option {
 	return NewOption(nil, Content(content), nil, false)
 }
 
-func MatchableStatus(cmd string, verbose bool) (opts *statusOption) {
-
-	opts = &statusOption{
+func MatchableStatus(cmd string, verbose bool) (opts *StatusOption) {
+	opts = &StatusOption{
 		start: new(node),
 		end:   new(node),
 		edges: make(map[string]edge),
