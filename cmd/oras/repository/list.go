@@ -32,7 +32,7 @@ type repositoryOptions struct {
 func listCmd() *cobra.Command {
 	var opts repositoryOptions
 	cmd := &cobra.Command{
-		Use:   "list REGISTRY [flags]",
+		Use:   "list [flags] REGISTRY",
 		Short: "[Preview] List the repositories under the registry",
 		Long: `[Preview] List the repositories under the registry
 

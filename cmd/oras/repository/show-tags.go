@@ -32,7 +32,7 @@ type showTagsOptions struct {
 func showTagsCmd() *cobra.Command {
 	var opts showTagsOptions
 	cmd := &cobra.Command{
-		Use:   "show-tags REPO [flags]",
+		Use:   "show-tags [flags] REPO",
 		Short: "[Preview] Show tags of the target repository",
 		Long: `[Preview] Show tags of the target repository
 
