@@ -32,7 +32,11 @@ var _ = Context("ORAS user", Ordered, func() {
 
 	Describe("runs commands without login", Ordered, func() {
 		When("pushing an image", func() {
+			match.NewStatus([]match.StateKey{
+				{}
+			})
 
+			utils.Exec(match.NewOption(nil,
 			utils.Exec(match.NewOption(nil, match.Content("Login Succeeded\n"), nil, false),
 				"should succeed with username flag and password from stdin",
 				"login", utils.Host, "-u", USERNAME, "--password-stdin")

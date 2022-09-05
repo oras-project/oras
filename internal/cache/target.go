@@ -78,6 +78,9 @@ func (t *target) cacheReadCloser(ctx context.Context, rc io.ReadCloser, target o
 	go func() {
 		defer wg.Done()
 		pushErr = t.cache.Push(ctx, target, pr)
+		if pushErr != nil {
+			pr.CloseWithError(pushErr)
+		}
 	}()
 
 	return struct {
