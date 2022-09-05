@@ -64,13 +64,10 @@ func listRepository(opts repositoryOptions) error {
 	if err != nil {
 		return err
 	}
-	if listErr := reg.Repositories(ctx, opts.last, func(repos []string) error {
+	return reg.Repositories(ctx, opts.last, func(repos []string) error {
 		for _, repo := range repos {
 			fmt.Println(repo)
 		}
 		return nil
-	}); listErr != nil {
-		return listErr
-	}
-	return nil
+	})
 }
