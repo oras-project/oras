@@ -21,7 +21,7 @@ on:
 
 jobs:
   build-license-eye:
-  runs-on: ubuntu-latest
-  steps:
-    - name: Check License Header
-      uses: apache/skywalking-eyes/header@main
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check License Header
+        uses: apache/skywalking-eyes/header@main
