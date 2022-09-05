@@ -80,8 +80,7 @@ func deleteManifest(opts deleteOptions) error {
 		return ierrors.NewErrInvalidReference(repo.Reference)
 	}
 
-	ref := opts.targetRef
-	desc, err := repo.Resolve(ctx, ref)
+	desc, err := repo.Resolve(ctx, opts.targetRef)
 	if err != nil {
 		if errors.Is(err, errdef.ErrNotFound) {
 			return fmt.Errorf("%s: the specified manifest does not exist", opts.targetRef)
@@ -89,15 +88,13 @@ func deleteManifest(opts deleteOptions) error {
 		return err
 	}
 
-	if !opts.Confirmed {
-		message := fmt.Sprintf("Are you sure you want to delete the artifact '%v' and all manifests that refer to it? (y/n):", desc.Digest)
-		comfirmed, err := opts.AskForComfirmation(message)
-		if err != nil {
-			return err
-		}
-		if !comfirmed {
-			return nil
-		}
+	message := fmt.Sprintf("Are you sure you want to delete the artifact '%v' and all manifests that refer to it? (y/n):", desc.Digest)
+	confirmed, err := opts.AskForConfirmation(message)
+	if err != nil {
+		return err
+	}
+	if !confirmed {
+		return nil
 	}
 
 	if err = repo.Delete(ctx, desc); err != nil {

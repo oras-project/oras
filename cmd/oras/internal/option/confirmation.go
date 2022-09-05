@@ -32,7 +32,10 @@ func (opts *Confirmation) ApplyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.Confirmed, "yes", "y", false, "do not prompt for confirmation")
 }
 
-func (opts *Confirmation) AskForComfirmation(message string) (bool, error) {
+func (opts *Confirmation) AskForConfirmation(message string) (bool, error) {
+	if opts.Confirmed {
+		return true, nil
+	}
 	for {
 		fmt.Print(message)
 
