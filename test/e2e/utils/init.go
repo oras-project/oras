@@ -26,8 +26,14 @@ import (
 
 var OrasPath string
 var Host string
+var imageDirPath string
+var artifactDirPath string
 
 func init() {
+	pwd, err := os.Getwd()
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	imageDirPath = filepath.Join(pwd, "image")
+	artifactDirPath = filepath.Join(pwd, "artifact")
 	Host = os.Getenv("ORAS_REGISTRY_HOST")
 	if Host == "" {
 		Host = "localhost:5000"
@@ -45,7 +51,6 @@ func init() {
 		} else if workspacePath := os.Getenv("GITHUB_WORKSPACE"); filepath.IsAbs(OrasPath) && workspacePath != "" {
 			// Add workspacePath as prefix
 			OrasPath = filepath.Join(workspacePath, OrasPath)
-			var err error
 			OrasPath, err = filepath.Abs(OrasPath)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -60,4 +65,8 @@ func init() {
 		}
 	})
 
+}
+
+func ImagePath(name string) string {
+	return filepath.Join(imageDirPath, name)
 }

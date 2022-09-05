@@ -13,6 +13,10 @@ limitations under the License.
 
 package match
 
+import (
+	"github.com/onsi/gomega"
+)
+
 // Matching error execution.
 var Error = Option{nil, nil, nil, true}
 
@@ -35,4 +39,41 @@ func SuccessKeywords(keywords ...string) *Option {
 // execution.
 func SuccessContent(content string) *Option {
 	return NewOption(nil, Content(content), nil, false)
+}
+
+func MatchableStatus(cmd string, verbose bool) (starts []state, opts *StatusOption) {
+	// prepare states map
+	var sequence, directEnds []state
+	switch cmd {
+	case "push":
+		sequence = []state{"Uploading", "Uploaded"}
+		if verbose {
+			sequence = append([]state{"Preparing"}, sequence...)
+		}
+		directEnds = []state{"Skipped", "Exists"}
+		starts = append(starts, append(directEnds, sequence[0])...)
+	default:
+		panic("Unrecognized cmd name " + cmd)
+	}
+	edges := formStatusOption(sequence, directEnds)
+
+	return starts, opts
+}
+
+func formStatusOption(sequence []state, directEnds []state) (transitions map[state]*state) {
+	gomega.Expect(len(sequence) > 0).Should(gomega.BeTrue())
+
+	transitions = make(map[state]*state)
+	last = state(sequence[0])
+	for i := 1; i < len(sequence); i++ {
+		curr := state(sequence[i])
+		transitions[last] = &curr
+		last = curr
+	}
+	transitions[last] = &EndState
+
+	for _, d := range directEnds {
+		transitions[state(d)] = &EndState
+	}
+	return
 }
