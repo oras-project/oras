@@ -5,6 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/manifest"
+	"oras.land/oras/cmd/oras/repository"
+	"oras.land/oras/cmd/oras/tag"
 )
 
 func main() {
@@ -22,6 +24,8 @@ func main() {
 		copyCmd(),
 		attachCmd(),
 		manifest.Cmd(),
+		tag.TagCmd(),
+		repository.Cmd(),
 	)
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
