@@ -128,7 +128,7 @@ func (s *status) match(w *output) {
 		key := StateKey{fields[1], fields[2]}
 		if _, ok := s.states[key]; !ok {
 			// ignore other logs
-			return
+			continue
 		}
 
 		s.switchState(fields[0], key)
