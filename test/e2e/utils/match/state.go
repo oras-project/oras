@@ -71,18 +71,20 @@ func (opts *StatusOption) addPath(s ...string) {
 
 // status type helps matching status log of a oras command.
 type status struct {
-	states  map[StateKey]*node
-	Matched map[state][]StateKey
+	states       map[StateKey]*node
+	matchResult  map[state][]StateKey
+	successCount int
 
 	StatusOption
 }
 
 // NewStatus generates a instance for matchable status logs.
-func NewStatus(keys []StateKey, opts StatusOption) *status {
+func NewStatus(keys []StateKey, opts StatusOption, successCount int) *status {
 	s := status{
 		states:       make(map[StateKey]*node),
-		Matched:      make(map[string][]StateKey),
+		matchResult:  make(map[string][]StateKey),
 		StatusOption: opts,
+		successCount: successCount,
 	}
 	for _, k := range keys {
 		// optimize keys query
@@ -105,13 +107,13 @@ func (s *status) switchState(st state, key StateKey) {
 	s.states[key] = e.to
 	if e.to == s.end {
 		// collect last state for matching
-		s.Matched[st] = append(s.Matched[st], key)
+		s.matchResult[st] = append(s.matchResult[st], key)
 	}
 }
 
 func (s *status) match(w *output) {
-	// walk
-	for _, line := range strings.Split(string(w.readAll()), "\n") {
+	lines := strings.Split(string(w.readAll()), "\n")
+	for _, line := range lines {
 		// get state key
 		fields := strings.Fields(string(line))
 
@@ -131,4 +133,11 @@ func (s *status) match(w *output) {
 
 		s.switchState(fields[0], key)
 	}
+
+	successCnt := 0
+	for _, v := range s.matchResult {
+		successCnt += len(v)
+	}
+	gomega.Expect(successCnt).To(gomega.Equal(s.successCount))
+
 }
