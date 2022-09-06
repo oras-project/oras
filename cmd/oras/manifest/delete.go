@@ -46,7 +46,7 @@ func deleteCmd() *cobra.Command {
 Example - Delete a manifest tagged with 'latest' from repository 'locahost:5000/hello':
   oras manifest delete localhost:5000/hello:latest
 
-Example - Delete a manifest with digest '99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9' from repository 'locahost:5000/hello':
+Example - Delete a manifest by digest '99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9' from repository 'locahost:5000/hello':
   oras manifest delete localhost:5000/hello@sha:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
 
 Example - Delete a manifest without TLS:
@@ -55,7 +55,7 @@ Example - Delete a manifest without TLS:
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.OutputDescriptor && !opts.Confirmed {
-				return errors.New("must have --yes to confirm the deletion if output the descriptor")
+				return errors.New("must apply --yes to confirm the deletion if the descriptor is outputted")
 			}
 			return opts.ReadPassword()
 		},
@@ -94,6 +94,7 @@ func deleteManifest(opts deleteOptions) error {
 		return err
 	}
 	if !confirmed {
+		fmt.Println("Not deleted", opts.targetRef)
 		return nil
 	}
 

@@ -29,7 +29,7 @@ func TestConfirmation_ApplyFlags(t *testing.T) {
 	}
 }
 
-func TestConfirmation_AskForConfirmation_ForceConfirmed(t *testing.T) {
+func TestConfirmation_AskForConfirmation_ForciblyConfirmed(t *testing.T) {
 	opts := Confirmation{
 		Confirmed: true,
 	}
@@ -43,7 +43,7 @@ func TestConfirmation_AskForConfirmation_ForceConfirmed(t *testing.T) {
 	}
 }
 
-func TestConfirmation_AskForConfirmation_ManualConfirmed(t *testing.T) {
+func TestConfirmation_AskForConfirmation_ManuallyConfirmed(t *testing.T) {
 	reset := func(input string) {
 		scanln = func(a ...any) (n int, err error) {
 			*a[0].(*string) = input
@@ -73,7 +73,7 @@ func TestConfirmation_AskForConfirmation_ManualConfirmed(t *testing.T) {
 	}
 }
 
-func TestConfirmation_AskForConfirmation_scanlnErr(t *testing.T) {
+func TestConfirmation_AskForConfirmation_ScanlnErr(t *testing.T) {
 	scanln = func(a ...any) (n int, err error) {
 		return 0, errors.New("fake error")
 	}
