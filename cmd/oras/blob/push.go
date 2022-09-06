@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"os"
 
+	digest "github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -33,13 +35,15 @@ type pushBlobOptions struct {
 	option.Remote
 
 	fileRef   string
+	mediaType string
+	size      int64
 	targetRef string
 }
 
 func pushCmd() *cobra.Command {
 	var opts pushBlobOptions
 	cmd := &cobra.Command{
-		Use:   "push <name> file [flags]",
+		Use:   "push name[@digest] file [flags]",
 		Short: "[Preview] Push a blob to a remote registry",
 		Long: `[Preview] Push a blob to a remote registry
 
@@ -48,13 +52,19 @@ func pushCmd() *cobra.Command {
 Example - Push blob "hi.txt":
   oras blob push localhost:5000/hello hi.txt
 
-Example - Push blob from stdin:
-oras blob push localhost:5000/hello -
+Example - Push blob "hi.txt" with the specific digest:
+  oras blob push localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5 hi.txt
 
-Example - Push blob "hi.txt" and output the descriptor
+Example - Push blob from stdin with blob size:
+  oras blob push localhost:5000/hello - --size 12
+
+Example - Push blob "hi.txt" and output the descriptor:
   oras blob push localhost:5000/hello hi.txt --descriptor
 
-Example - Push blob "hi.txt" and output the prettified descriptor
+Example - Push blob "hi.txt" with the specific returned media type in the descriptor:
+  oras blob push localhost:5000/hello hi.txt --media-type application/vnd.oci.image.config.v1+json --descriptor
+
+Example - Push blob "hi.txt" and output the prettified descriptor:
   oras blob push localhost:5000/hello hi.txt --descriptor --pretty
 
 Example - Push blob without TLS:
@@ -62,15 +72,24 @@ Example - Push blob without TLS:
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			opts.targetRef = args[0]
+			opts.fileRef = args[1]
+			if opts.fileRef == "-" && opts.PasswordFromStdin {
+				return errors.New("`-` read file from input and `--password-stdin` read password from input cannot be both used")
+			}
+			if opts.fileRef == "-" && opts.size == 0 {
+				return errors.New("`--size` must be provided if the blob is read from stdin")
+			}
+
 			return opts.ReadPassword()
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
-			opts.fileRef = args[1]
 			return pushBlob(opts)
 		},
 	}
 
+	cmd.Flags().Int64VarP(&opts.size, "size", "", 0, "provide the blob size")
+	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", ocispec.MediaTypeImageLayer, "specify the returned media type in the descriptor if `--descriptor` is used")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
@@ -78,17 +97,14 @@ Example - Push blob without TLS:
 func pushBlob(opts pushBlobOptions) (err error) {
 	ctx, _ := opts.SetLoggerLevel()
 
-	if opts.fileRef == "-" && opts.PasswordFromStdin {
-		return errors.New("`-` read file from input and `--password-stdin` read password from input cannot be both used")
-	}
-
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
 	}
 
 	// prepare blob content
-	desc, rc, err := file.PrepareContent(opts.fileRef, "application/octet-stream")
+	refDigest := digest.Digest(repo.Reference.Reference)
+	desc, rc, err := file.PrepareContent(opts.fileRef, "application/octet-stream", refDigest, opts.size)
 	if err != nil {
 		return err
 	}
@@ -98,27 +114,33 @@ func pushBlob(opts pushBlobOptions) (err error) {
 	if err != nil {
 		return err
 	}
-	if !exists {
+	verbose := opts.Verbose && !opts.OutputDescriptor
+	if exists {
+		if err := display.PrintStatus(desc, "Exists", verbose); err != nil {
+			return err
+		}
+	} else {
+		if err := display.PrintStatus(desc, "Uploading", verbose); err != nil {
+			return err
+		}
 		if err = repo.Push(ctx, desc, rc); err != nil {
+			return err
+		}
+		if err := display.PrintStatus(desc, "Uploaded ", verbose); err != nil {
 			return err
 		}
 	}
 
 	// outputs blob's descriptor
 	if opts.OutputDescriptor {
+		desc.MediaType = opts.mediaType
 		bytes, err := opts.Marshal(desc)
 		if err != nil {
 			return err
 		}
-		err = opts.Output(os.Stdout, bytes)
-		return err
+		return opts.Output(os.Stdout, bytes)
 	}
 
-	if exists {
-		if err := display.PrintStatus(desc, "Exists", opts.Verbose); err != nil {
-			return err
-		}
-	}
 	fmt.Println("Pushed", opts.targetRef)
 	fmt.Println("Digest:", desc.Digest)
 
