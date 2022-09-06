@@ -40,7 +40,7 @@ var _ = Context("ORAS user", Ordered, func() {
 				{Digest: "7d865e959b24", Name: "bar"},
 				{Digest: "e3b0c44298fc", Name: "application/vnd.unknown.config.v1+json"},
 				// cannot track manifest since created time will be added and digest is unknown
-			}, *match.MatchableStatus("push", true), 5)
+			}, *match.MatchableStatus("push", true), 4)
 			utils.Exec(match.NewOption(nil, status, nil, false), "should succeed with username flag and password from stdin",
 				"push", utils.Reference(utils.Host, repo, tag), utils.ImageBlob("foobar/foo1"), utils.ImageBlob("foobar/foo2"), utils.ImageBlob("foobar/bar"), "-v")
 		})
