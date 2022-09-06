@@ -28,12 +28,13 @@ const (
 
 var _ = Context("ORAS user", Ordered, func() {
 	Describe("auth", func() {
+		info := "Login Succeeded\n"
 		When("should succeed with basic auth", func() {
-			utils.Exec(match.NewOption(nil, match.Content("Login Succeeded\n"), match.Keywords([]string{"WARNING", "Using --password via the CLI is insecure", "Use --password-stdin"}), false),
+			utils.Exec(match.NewOption(nil, match.NewContent(&info), match.Keywords([]string{"WARNING", "Using --password via the CLI is insecure", "Use --password-stdin"}), false),
 				"should succeed with username&password flags",
 				"login", utils.Host, "-u", USERNAME, "-p", PASSWORD)
 
-			utils.Exec(match.NewOption(strings.NewReader(PASSWORD), match.Content("Login Succeeded\n"), nil, false),
+			utils.Exec(match.NewOption(strings.NewReader(PASSWORD), match.NewContent(&info), nil, false),
 				"should succeed with username flag and password from stdin",
 				"login", utils.Host, "-u", USERNAME, "--password-stdin")
 		})

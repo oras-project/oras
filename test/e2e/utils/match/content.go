@@ -18,8 +18,12 @@ import (
 )
 
 // Content provides whole matching of the output.
-type Content string
+type Content struct{ s *string }
+
+func NewContent(s *string) Content {
+	return Content{s}
+}
 
 func (c Content) match(w *output) {
-	Expect(string(w.readAll())).To(Equal(string(c)))
+	Expect(string(w.readAll())).To(Equal(*c.s))
 }

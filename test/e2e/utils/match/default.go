@@ -33,8 +33,8 @@ func SuccessKeywords(keywords ...string) *Option {
 
 // SuccessContent returns an option for matching stdout content in success
 // execution.
-func SuccessContent(content string) *Option {
-	return NewOption(nil, Content(content), nil, false)
+func SuccessContent(s *string) *Option {
+	return NewOption(nil, Content{s}, nil, false)
 }
 
 func MatchableStatus(cmd string, verbose bool) (opts *StatusOption) {

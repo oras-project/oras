@@ -34,20 +34,27 @@ var (
 	emptyConfig = "application/vnd.unknown.config.v1+json"
 )
 
-var _ = Context("ORAS user", Ordered, func() {
+var _ = Context("ORAS user", Focus, Ordered, func() {
 	repo := "oras-artifact"
 	Describe("logs in", func() {
 		When("should succeed with basic auth", func() {
-			utils.Exec(match.NewOption(strings.NewReader(PASSWORD), match.Content("Login Succeeded\n"), nil, false),
+			info := "Login Succeeded\n"
+			utils.Exec(match.NewOption(strings.NewReader(PASSWORD), match.NewContent(&info), nil, false),
 				"should succeed with username flag and password from stdin",
 				"login", utils.Host, "-u", USERNAME, "--password-stdin")
 		})
 	})
 
-	Describe("pushes image and check", Focus, Ordered, func() {
+	Describe("pushes image and check", Ordered, func() {
 		tag := "image"
 		manifestPath := filepath.Join(temp_path, "packed.json")
-		When("pushing an image", func() {
+		When("pushing an image", Ordered, func() {
+			pr, pw := io.Pipe()
+			AfterAll(func() {
+				pr.Close()
+				pw.Close()
+			})
+
 			status := match.NewStatus([]match.StateKey{
 				{Digest: "2c26b46b68ff", Name: file1},
 				{Digest: "2c26b46b68ff", Name: file2},
@@ -59,18 +66,20 @@ var _ = Context("ORAS user", Ordered, func() {
 			utils.Exec(match.NewOption(nil, status, nil, false), "should push files with manifest exported",
 				"push", utils.Reference(utils.Host, repo, tag), file1, file2, file3, "-v", "--export-manifest", manifestPath)
 
-			var content []byte
+			tmp := ""
+			s := &tmp
 			ginkgo.It("should export the manifest", func() {
 				gomega.Expect(manifestPath).Should(gomega.BeAnExistingFile())
 				fp, err := os.OpenFile(manifestPath, os.O_RDONLY, 0666)
 				gomega.Expect(err).To(gomega.BeNil())
-				content, err = io.ReadAll(fp)
+				content, err := io.ReadAll(fp)
 				gomega.Expect(err).To(gomega.BeNil())
+				*s = string(content)
 			})
-
-			utils.Exec(match.SuccessContent(string(content)), "should fetch matching manifest content",
+			utils.Exec(match.SuccessContent(s), "should fetch matching manifest content",
 				"manifest", "fetch", utils.Reference(utils.Host, repo, tag))
 
 		})
+
 	})
 })
