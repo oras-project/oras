@@ -38,11 +38,7 @@ func SuccessContent(content string) *Option {
 }
 
 func MatchableStatus(cmd string, verbose bool) (opts *StatusOption) {
-	opts = &StatusOption{
-		start: new(node),
-		end:   new(node),
-		edges: make(map[string]edge),
-	}
+	opts = NewStatusOption(verbose)
 
 	// prepare edge
 	switch cmd {
@@ -52,16 +48,6 @@ func MatchableStatus(cmd string, verbose bool) (opts *StatusOption) {
 		opts.addPath("Skipped")
 	default:
 		panic("Unrecognized cmd name " + cmd)
-	}
-
-	if verbose {
-		switch cmd {
-		case "push", "attach":
-			old := opts.start
-			new := new(node)
-			opts.edges["Preparing"] = edge{new, old}
-			opts.start = new
-		}
 	}
 	return opts
 }

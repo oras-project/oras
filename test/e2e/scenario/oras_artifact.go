@@ -31,7 +31,7 @@ var _ = Context("ORAS user", Ordered, func() {
 		})
 	})
 
-	Describe("pushes image and check", Focus, Ordered, func() {
+	Describe("pushes image and check", Ordered, func() {
 		tag := "image"
 		When("pushing an image", func() {
 			status := match.NewStatus([]match.StateKey{
@@ -40,8 +40,7 @@ var _ = Context("ORAS user", Ordered, func() {
 				{Digest: "7d865e959b24", Name: "bar"},
 				{Digest: "e3b0c44298fc", Name: "application/vnd.unknown.config.v1+json"},
 				{Digest: "992db6dcc803", Name: "application/vnd.oci.image.manifest.v1+json"},
-			}, true, *match.MatchableStatus("push", true))
-
+			}, *match.MatchableStatus("push", true))
 			utils.Exec(match.NewOption(nil, status, nil, false), "should succeed with username flag and password from stdin",
 				"push", utils.Reference(utils.Host, repo, tag), utils.ImageBlob("foobar/foo1"), utils.ImageBlob("foobar/foo2"), utils.ImageBlob("foobar/bar"), "-v")
 		})

@@ -13,7 +13,9 @@ limitations under the License.
 
 package match
 
-import "io"
+import (
+	"io"
+)
 
 type entry struct {
 	w io.Writer

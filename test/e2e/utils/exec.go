@@ -43,7 +43,7 @@ func Exec(o *match.Option, text string, args ...string) {
 		if o.ShouldFail {
 			exitCode = 1
 		}
-		Eventually(session, "10s").Should(gexec.Exit(exitCode))
+		Eventually(session, "40s").Should(gexec.Exit(exitCode))
 		o.Match()
 	})
 }

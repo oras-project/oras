@@ -46,6 +46,15 @@ type StatusOption struct {
 	verbose bool
 }
 
+func NewStatusOption(verbose bool) *StatusOption {
+	return &StatusOption{
+		start:   new(node),
+		end:     new(node),
+		edges:   make(map[string]edge),
+		verbose: verbose,
+	}
+}
+
 func (opts *StatusOption) addPath(s ...string) {
 	last := opts.start
 	for i := 0; i < len(s)-1; i++ {
@@ -69,7 +78,7 @@ type status struct {
 }
 
 // NewStatus generates a instance for matchable status logs.
-func NewStatus(keys []StateKey, verbose bool, opts StatusOption) *status {
+func NewStatus(keys []StateKey, opts StatusOption) *status {
 	s := status{
 		states:       make(map[StateKey]*node),
 		Matched:      make(map[string][]StateKey),
@@ -79,7 +88,6 @@ func NewStatus(keys []StateKey, verbose bool, opts StatusOption) *status {
 		// optimize keys query
 		s.states[k] = opts.start
 	}
-	s.verbose = verbose
 	s.start = opts.start
 	s.end = opts.end
 	return &s

@@ -17,7 +17,7 @@ type output struct {
 	content []byte
 }
 
-func newOutput() *output {
+func NewOutput() *output {
 	return &output{}
 }
 
