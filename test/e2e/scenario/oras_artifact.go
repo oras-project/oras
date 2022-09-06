@@ -14,11 +14,24 @@ limitations under the License.
 package scenario
 
 import (
+	"io"
+	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	"oras.land/oras/test/e2e/utils"
 	"oras.land/oras/test/e2e/utils/match"
+)
+
+var (
+	file1       = utils.ImageBlob("foobar/foo1")
+	file2       = utils.ImageBlob("foobar/foo2")
+	file3       = utils.ImageBlob("foobar/bar")
+	config      = utils.ImageBlob("foobar/config")
+	emptyConfig = "application/vnd.unknown.config.v1+json"
 )
 
 var _ = Context("ORAS user", Ordered, func() {
@@ -31,18 +44,33 @@ var _ = Context("ORAS user", Ordered, func() {
 		})
 	})
 
-	Describe("pushes image and check", Ordered, func() {
+	Describe("pushes image and check", Focus, Ordered, func() {
 		tag := "image"
+		manifestPath := filepath.Join(temp_path, "packed.json")
 		When("pushing an image", func() {
 			status := match.NewStatus([]match.StateKey{
-				{Digest: "b5bb9d8014a0", Name: "foo1"},
-				{Digest: "b5bb9d8014a0", Name: "foo2"},
-				{Digest: "7d865e959b24", Name: "bar"},
+				{Digest: "2c26b46b68ff", Name: file1},
+				{Digest: "2c26b46b68ff", Name: file2},
+				{Digest: "fcde2b2edba5", Name: file3},
 				{Digest: "e3b0c44298fc", Name: "application/vnd.unknown.config.v1+json"},
 				// cannot track manifest since created time will be added and digest is unknown
 			}, *match.MatchableStatus("push", true), 4)
-			utils.Exec(match.NewOption(nil, status, nil, false), "should succeed with username flag and password from stdin",
-				"push", utils.Reference(utils.Host, repo, tag), utils.ImageBlob("foobar/foo1"), utils.ImageBlob("foobar/foo2"), utils.ImageBlob("foobar/bar"), "-v")
+
+			utils.Exec(match.NewOption(nil, status, nil, false), "should push files with manifest exported",
+				"push", utils.Reference(utils.Host, repo, tag), file1, file2, file3, "-v", "--export-manifest", manifestPath)
+
+			var content []byte
+			ginkgo.It("should export the manifest", func() {
+				gomega.Expect(manifestPath).Should(gomega.BeAnExistingFile())
+				fp, err := os.OpenFile(manifestPath, os.O_RDONLY, 0666)
+				gomega.Expect(err).To(gomega.BeNil())
+				content, err = io.ReadAll(fp)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			utils.Exec(match.SuccessContent(string(content)), "should fetch matching manifest content",
+				"manifest", "fetch", utils.Reference(utils.Host, repo, tag))
+
 		})
 	})
 })

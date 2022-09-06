@@ -21,7 +21,6 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// TestORAS bootstraps e2e test suite.
 func TestORASCommands(t *testing.T) {
 	RegisterFailHandler(Fail)
 

@@ -27,7 +27,7 @@ const (
 )
 
 var _ = Context("ORAS user", Ordered, func() {
-	Describe("logs in", func() {
+	Describe("auth", func() {
 		When("should succeed with basic auth", func() {
 			utils.Exec(match.NewOption(nil, match.Content("Login Succeeded\n"), match.Keywords([]string{"WARNING", "Using --password via the CLI is insecure", "Use --password-stdin"}), false),
 				"should succeed with username&password flags",
