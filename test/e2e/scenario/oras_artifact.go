@@ -34,7 +34,7 @@ var (
 	emptyConfig = "application/vnd.unknown.config.v1+json"
 )
 
-var _ = Context("ORAS user", Focus, Ordered, func() {
+var _ = Context("ORAS user", Ordered, func() {
 	repo := "oras-artifact"
 	Describe("logs in", func() {
 		When("should succeed with basic auth", func() {
