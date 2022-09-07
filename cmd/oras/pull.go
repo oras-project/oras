@@ -135,7 +135,7 @@ func runPull(opts pullOptions) error {
 				}
 				// Skip s if s is unnamed and has no successors.
 				if len(ss) == 0 {
-					if _, loaded := printed.LoadOrStore(desc.Digest.String()+desc.Annotations[ocispec.AnnotationTitle], true); !loaded {
+					if _, loaded := printed.LoadOrStore(s.Digest.String()+s.Annotations[ocispec.AnnotationTitle], true); !loaded {
 						if err = display.PrintStatus(s, "Skipped    ", opts.Verbose); err != nil {
 							return nil, err
 						}
@@ -156,15 +156,15 @@ func runPull(opts pullOptions) error {
 	pulledEmpty := true
 	copyOptions.PreCopy = display.StatusPrinter("Downloading", opts.Verbose)
 	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		// restore successors, if applicable
-		ss, err := content.Successors(ctx, dst, desc)
+		// restore named successors, if applicable
+		successors, err := content.Successors(ctx, dst, desc)
 		if err != nil {
 			return err
 		}
-		for _, s := range ss {
-			if _, ok := s.Annotations[ocispec.AnnotationTitle]; ok {
-				if _, loaded := printed.LoadOrStore(s.Digest.String()+s.Annotations[ocispec.AnnotationTitle], true); !loaded {
-					if err = display.PrintStatus(s, "Restored   ", opts.Verbose); err != nil {
+		for _, successor := range successors {
+			if _, ok := successor.Annotations[ocispec.AnnotationTitle]; ok {
+				if _, loaded := printed.LoadOrStore(successor.Digest.String()+successor.Annotations[ocispec.AnnotationTitle], true); !loaded {
+					if err = display.PrintStatus(successor, "Restored   ", opts.Verbose); err != nil {
 						return err
 					}
 				}
