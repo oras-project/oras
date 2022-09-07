@@ -135,7 +135,7 @@ func runPull(opts pullOptions) error {
 				}
 				// Skip s if s is unnamed and has no successors.
 				if len(ss) == 0 {
-					if _, loaded := printed.LoadOrStore(display.Name(s), true); !loaded {
+					if _, loaded := printed.LoadOrStore(desc.Digest.String()+desc.Annotations[ocispec.AnnotationTitle], true); !loaded {
 						if err = display.PrintStatus(s, "Skipped    ", opts.Verbose); err != nil {
 							return nil, err
 						}
@@ -162,9 +162,8 @@ func runPull(opts pullOptions) error {
 			return err
 		}
 		for _, s := range ss {
-			exists, _ := dst.Exists(ctx, s)
-			if exists {
-				if _, loaded := printed.LoadOrStore(display.Name(s), true); !loaded {
+			if desc.Annotations[ocispec.AnnotationTitle] != "" {
+				if _, loaded := printed.LoadOrStore(s.Digest.String()+s.Annotations[ocispec.AnnotationTitle], true); !loaded {
 					if err = display.PrintStatus(s, "Restored   ", opts.Verbose); err != nil {
 						return err
 					}
@@ -181,7 +180,7 @@ func runPull(opts pullOptions) error {
 			// named content downloaded
 			pulledEmpty = false
 		}
-		printed.LoadOrStore(display.Name(desc), true)
+		printed.Store(desc.Digest.String()+desc.Annotations[ocispec.AnnotationTitle], true)
 		return display.Print("Downloaded ", display.ShortDigest(desc), name)
 	}
 
