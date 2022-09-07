@@ -56,7 +56,7 @@ var _ = Describe("ORAS user", Ordered, func() {
 			manifestPath := filepath.Join(temp_path, "packed.json")
 			tmp := ""
 			s := &tmp
-			pushed := []string{
+			pathes := []string{
 				filepath.Join(temp_path, files[0]),
 				filepath.Join(temp_path, files[1]),
 				filepath.Join(temp_path, files[2]),
@@ -65,13 +65,13 @@ var _ = Describe("ORAS user", Ordered, func() {
 
 			pushStatus := match.NewStatus([]match.StateKey{
 				{Digest: "44136fa355b3", Name: "application/vnd.unknown.config.v1+json"},
-				{Digest: "2c26b46b68ff", Name: pushed[1]},
-				{Digest: "2c26b46b68ff", Name: pushed[2]},
-				{Digest: "fcde2b2edba5", Name: pushed[3]},
+				{Digest: "2c26b46b68ff", Name: pathes[1]},
+				{Digest: "2c26b46b68ff", Name: pathes[2]},
+				{Digest: "fcde2b2edba5", Name: pathes[3]},
 				// cannot track manifest since created time will be added and digest is unknown
 			}, *match.MatchableStatus("push", true), 4)
 			utils.Exec(match.NewOption(nil, pushStatus, nil, false), "should push files with manifest exported",
-				"push", utils.Reference(utils.Host, repo, tag), pushed[1], pushed[2], pushed[3], "--config", pushed[0], "-v", "--export-manifest", manifestPath)
+				"push", utils.Reference(utils.Host, repo, tag), pathes[1], pathes[2], pathes[3], "--config", pathes[0], "-v", "--export-manifest", manifestPath)
 
 			ginkgo.It("should export the manifest", func() {
 				content, err := utils.ReadFullFile(manifestPath)
@@ -83,26 +83,26 @@ var _ = Describe("ORAS user", Ordered, func() {
 				"manifest", "fetch", utils.Reference(utils.Host, repo, tag))
 
 			ginkgo.It("should move pushed", func() {
-				err := os.Rename(temp_path, temp_path+"bak")
+				err := os.Rename(temp_path, temp_path+"-pushed")
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
 			// configName := "config.json"
 			pullStatus := match.NewStatus([]match.StateKey{
 				{Digest: "44136fa355b3", Name: "application/vnd.unknown.config.v1+json"},
-				{Digest: "2c26b46b68ff", Name: pushed[1]},
-				{Digest: "2c26b46b68ff", Name: pushed[2]},
-				{Digest: "fcde2b2edba5", Name: pushed[3]},
+				{Digest: "2c26b46b68ff", Name: pathes[1]},
+				{Digest: "2c26b46b68ff", Name: pathes[2]},
+				{Digest: "fcde2b2edba5", Name: pathes[3]},
 				// cannot track manifest since created time will be added and digest is unknown
 			}, *match.MatchableStatus("pull", true), 2) // (foo1 or foo2) + bar
 			utils.Exec(match.NewOption(nil, pullStatus, nil, false), "should pull files with config",
-				"pull", utils.Reference(utils.Host, repo, tag), "-v", "--config", pushed[0], "-o", temp_path)
-			for i := range pushed {
-				ginkgo.It("should download file "+pushed[i], func() {
-					got, err := utils.ReadFullFile(pushed[i])
+				"pull", utils.Reference(utils.Host, repo, tag), "-v", "--config", pathes[0], "-o", temp_path)
+			for i := range pathes {
+				ginkgo.It("should download file "+pathes[i], func() {
+					got, err := utils.ReadFullFile(pathes[i])
 					gomega.Expect(err).To(gomega.BeNil())
 
-					want, err := utils.ReadFullFile(filepath.Join(temp_path+"bak", files[i]))
+					want, err := utils.ReadFullFile(filepath.Join(temp_path+"pushed", files[i]))
 					gomega.Expect(err).To(gomega.BeNil())
 					gomega.Expect(string(got)).To(gomega.Equal(string(want)))
 				})
