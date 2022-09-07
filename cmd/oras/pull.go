@@ -135,7 +135,7 @@ func runPull(opts pullOptions) error {
 				}
 				// Skip s if s is unnamed and has no successors.
 				if len(ss) == 0 {
-					if _, loaded := printed.LoadOrStore(s.Digest.String()+s.Annotations[ocispec.AnnotationTitle], true); !loaded {
+					if _, loaded := printed.LoadOrStore(generateKey(s), true); !loaded {
 						if err = display.PrintStatus(s, "Skipped    ", opts.Verbose); err != nil {
 							return nil, err
 						}
@@ -161,10 +161,10 @@ func runPull(opts pullOptions) error {
 		if err != nil {
 			return err
 		}
-		for _, successor := range successors {
-			if _, ok := successor.Annotations[ocispec.AnnotationTitle]; ok {
-				if _, loaded := printed.LoadOrStore(successor.Digest.String()+successor.Annotations[ocispec.AnnotationTitle], true); !loaded {
-					if err = display.PrintStatus(successor, "Restored   ", opts.Verbose); err != nil {
+		for _, s := range successors {
+			if _, ok := s.Annotations[ocispec.AnnotationTitle]; ok {
+				if _, ok := printed.Load(generateKey(s)); !ok {
+					if err = display.PrintStatus(s, "Restored   ", opts.Verbose); err != nil {
 						return err
 					}
 				}
@@ -180,7 +180,7 @@ func runPull(opts pullOptions) error {
 			// named content downloaded
 			pulledEmpty = false
 		}
-		printed.Store(desc.Digest.String()+desc.Annotations[ocispec.AnnotationTitle], true)
+		printed.Store(generateKey(desc), true)
 		return display.Print("Downloaded ", display.ShortDigest(desc), name)
 	}
 
@@ -199,4 +199,8 @@ func runPull(opts pullOptions) error {
 
 func isManifestMediaType(mediaType string) bool {
 	return mediaType == docker.MediaTypeManifest || mediaType == ocispec.MediaTypeImageManifest
+}
+
+func generateKey(desc ocispec.Descriptor) string {
+	return desc.Digest.String() + desc.Annotations[ocispec.AnnotationTitle]
 }
