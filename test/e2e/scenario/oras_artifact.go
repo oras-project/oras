@@ -94,12 +94,12 @@ var _ = Context("ORAS user", Ordered, func() {
 				{Digest: "fcde2b2edba5", Name: pushed[3]},
 				{Digest: "e3b0c44298fc", Name: "application/vnd.unknown.config.v1+json"},
 				// cannot track manifest since created time will be added and digest is unknown
-			}, *match.MatchableStatus("pull", true), 4)
+			}, *match.MatchableStatus("pull", true), 2) // (foo1 or foo2) + bar
 			utils.Exec(match.NewOption(nil, pullStatus, nil, false), "should pull files with config",
 				"pull", utils.Reference(utils.Host, repo, tag), "-v", "--config", pushed[0], "-o", temp_path)
 			for i := range pushed {
 				ginkgo.It("should downloaded file "+pushed[i], func() {
-					got, err := utils.ReadFullFile(pushed[i] + ".bak")
+					got, err := utils.ReadFullFile(pushed[i])
 					gomega.Expect(err).To(gomega.BeNil())
 
 					want, err := utils.ReadFullFile(filepath.Join(temp_path+"bak", files[0]))
