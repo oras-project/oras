@@ -26,6 +26,15 @@ import (
 
 var printLock sync.Mutex
 
+// Name returns the name for named artifact, the digest for unnamed artifact.
+func Name(desc ocispec.Descriptor) string {
+	name, ok := desc.Annotations[ocispec.AnnotationTitle]
+	if !ok {
+		name = desc.Digest.String()
+	}
+	return name
+}
+
 // Print objects to display concurrent-safely
 func Print(a ...any) error {
 	printLock.Lock()
