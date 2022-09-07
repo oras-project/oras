@@ -102,7 +102,7 @@ var _ = Describe("ORAS user", Ordered, func() {
 					got, err := utils.ReadFullFile(pathes[i])
 					gomega.Expect(err).To(gomega.BeNil())
 
-					want, err := utils.ReadFullFile(filepath.Join(temp_path+"pushed", files[i]))
+					want, err := utils.ReadFullFile(filepath.Join(temp_path+"-pushed", files[i]))
 					gomega.Expect(err).To(gomega.BeNil())
 					gomega.Expect(string(got)).To(gomega.Equal(string(want)))
 				})
