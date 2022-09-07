@@ -29,25 +29,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
       - name: setup go environment
         uses: actions/setup-go@v3
         with:
           go-version: '1.19.0'
-      - name: Fix License Header
+      - name: Check License Header
         uses: apache/skywalking-eyes/header@v0.4.0
         with:
-          mode: fix
+          mode: check
           config: .github/licenserc.yml
-      - name: Apply Changes
-        uses: EndBug/add-and-commit@v4
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          author_name: License Bot
-          author_email: license_bot@github.com
-          message: 'Automatic application of license header'
       - name: Check Dependencies License
         uses: apache/skywalking-eyes/dependency@v0.4.0
         with:
