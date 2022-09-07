@@ -14,7 +14,7 @@ limitations under the License.
 package scenario
 
 import (
-	"io"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -26,17 +26,23 @@ import (
 )
 
 var (
-	file1       = utils.ImageBlob("foobar/foo1")
-	file2       = utils.ImageBlob("foobar/foo2")
-	file3       = utils.ImageBlob("foobar/bar")
-	config      = utils.ImageBlob("foobar/config")
+	files = []string{
+		"foobar/config.json",
+		"foobar/foo1",
+		"foobar/foo2",
+		"foobar/bar",
+	}
 	emptyConfig = "application/vnd.unknown.config.v1+json"
 )
 
 var _ = Context("ORAS user", Ordered, func() {
+	if err := utils.CopyTestData(files, temp_path); err != nil {
+		panic(err)
+	}
+
 	repo := "oras-artifact"
 	Describe("logs in", func() {
-		When("should succeed with basic auth", func() {
+		When("using basic auth", func() {
 			info := "Login Succeeded\n"
 			utils.Exec(match.NewOption(strings.NewReader(PASSWORD), match.NewContent(&info), nil, false),
 				"should succeed with username flag and password from stdin",
@@ -48,24 +54,25 @@ var _ = Context("ORAS user", Ordered, func() {
 		tag := "image"
 		When("pushing an image", Ordered, func() {
 			manifestPath := filepath.Join(temp_path, "packed.json")
-			pr, pw := io.Pipe()
-			AfterAll(func() {
-				pr.Close()
-				pw.Close()
-			})
+			tmp := ""
+			s := &tmp
+			pushed := []string{
+				filepath.Join(temp_path, files[0]),
+				filepath.Join(temp_path, files[1]),
+				filepath.Join(temp_path, files[2]),
+				filepath.Join(temp_path, files[3]),
+			}
 
-			status := match.NewStatus([]match.StateKey{
-				{Digest: "2c26b46b68ff", Name: file1},
-				{Digest: "2c26b46b68ff", Name: file2},
-				{Digest: "fcde2b2edba5", Name: file3},
+			pushStatus := match.NewStatus([]match.StateKey{
+				{Digest: "2c26b46b68ff", Name: pushed[1]},
+				{Digest: "2c26b46b68ff", Name: pushed[2]},
+				{Digest: "fcde2b2edba5", Name: pushed[3]},
 				{Digest: "e3b0c44298fc", Name: "application/vnd.unknown.config.v1+json"},
 				// cannot track manifest since created time will be added and digest is unknown
 			}, *match.MatchableStatus("push", true), 4)
-			utils.Exec(match.NewOption(nil, status, nil, false), "should push files with manifest exported",
-				"push", utils.Reference(utils.Host, repo, tag), file1, file2, file3, "-v", "--export-manifest", manifestPath)
+			utils.Exec(match.NewOption(nil, pushStatus, nil, false), "should push files with manifest exported",
+				"push", utils.Reference(utils.Host, repo, tag), pushed[1], pushed[2], pushed[3], "-v", "--export-manifest", manifestPath)
 
-			tmp := ""
-			s := &tmp
 			ginkgo.It("should export the manifest", func() {
 				content, err := utils.ReadFullFile(manifestPath)
 				gomega.Expect(err).To(gomega.BeNil())
@@ -75,6 +82,31 @@ var _ = Context("ORAS user", Ordered, func() {
 			utils.Exec(match.SuccessContent(s), "should fetch pushed manifest content",
 				"manifest", "fetch", utils.Reference(utils.Host, repo, tag))
 
+			ginkgo.It("should move pushed", func() {
+				err := os.Rename(temp_path, temp_path+"bak")
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			// configName := "config.json"
+			pullStatus := match.NewStatus([]match.StateKey{
+				{Digest: "2c26b46b68ff", Name: pushed[1]},
+				{Digest: "2c26b46b68ff", Name: pushed[2]},
+				{Digest: "fcde2b2edba5", Name: pushed[3]},
+				{Digest: "e3b0c44298fc", Name: "application/vnd.unknown.config.v1+json"},
+				// cannot track manifest since created time will be added and digest is unknown
+			}, *match.MatchableStatus("pull", true), 4)
+			utils.Exec(match.NewOption(nil, pullStatus, nil, false), "should pull files with config",
+				"pull", utils.Reference(utils.Host, repo, tag), "-v", "--config", pushed[0], "-o", temp_path)
+			for i := range pushed {
+				ginkgo.It("should downloaded file "+pushed[i], func() {
+					got, err := utils.ReadFullFile(pushed[i] + ".bak")
+					gomega.Expect(err).To(gomega.BeNil())
+
+					want, err := utils.ReadFullFile(filepath.Join(temp_path+"bak", files[0]))
+					gomega.Expect(err).To(gomega.BeNil())
+					gomega.Expect(string(got)).To(gomega.Equal(string(want)))
+				})
+			}
 		})
 
 	})

@@ -16,6 +16,7 @@ package utils
 import (
 	"io"
 	"os"
+	"path/filepath"
 )
 
 func ReadFullFile(path string) ([]byte, error) {
@@ -23,5 +24,43 @@ func ReadFullFile(path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	defer fp.Close()
 	return io.ReadAll(fp)
+}
+
+func CopyTestData(fileNames []string, dstRoot string) error {
+	for _, name := range fileNames {
+		// make sure all parents are created
+		if err := os.MkdirAll(filepath.Join(dstRoot, filepath.Dir(name)), 0700); err != nil {
+			return err
+		}
+
+		if err := copyFile(filepath.Join(imageDir, name), filepath.Join(dstRoot, name)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func copyFile(srcFile, dstFile string) error {
+	to, err := os.Create(dstFile)
+	if err != nil {
+		return err
+	}
+
+	defer to.Close()
+
+	from, err := os.Open(srcFile)
+	if err != nil {
+		return err
+	}
+	defer from.Close()
+
+	_, err = io.Copy(to, from)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

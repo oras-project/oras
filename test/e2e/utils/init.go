@@ -26,7 +26,7 @@ import (
 
 var OrasPath string
 var Host string
-var imageDirPath string
+var imageDir string
 var artifactDirPath string
 
 func init() {
@@ -34,7 +34,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	imageDirPath = filepath.Join(pwd, "..", "testdata", "images")
+	imageDir = filepath.Join(pwd, "..", "testdata", "images")
 	artifactDirPath = filepath.Join(pwd, "..", "testdata", "artifacts")
 	Host = os.Getenv("ORAS_REGISTRY_HOST")
 	if Host == "" {
@@ -69,6 +69,10 @@ func init() {
 
 }
 
+func ImageDir() string {
+	return imageDir
+}
+
 func ImageBlob(name string) string {
-	return filepath.Join(imageDirPath, name)
+	return filepath.Join(imageDir, name)
 }
