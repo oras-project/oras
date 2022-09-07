@@ -15,7 +15,6 @@ package scenario
 
 import (
 	"io"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -45,10 +44,10 @@ var _ = Context("ORAS user", Ordered, func() {
 		})
 	})
 
-	Describe("pushes image and check", Ordered, func() {
+	Describe("pushes images and check", Ordered, func() {
 		tag := "image"
-		manifestPath := filepath.Join(temp_path, "packed.json")
 		When("pushing an image", Ordered, func() {
+			manifestPath := filepath.Join(temp_path, "packed.json")
 			pr, pw := io.Pipe()
 			AfterAll(func() {
 				pr.Close()
@@ -62,21 +61,18 @@ var _ = Context("ORAS user", Ordered, func() {
 				{Digest: "e3b0c44298fc", Name: "application/vnd.unknown.config.v1+json"},
 				// cannot track manifest since created time will be added and digest is unknown
 			}, *match.MatchableStatus("push", true), 4)
-
 			utils.Exec(match.NewOption(nil, status, nil, false), "should push files with manifest exported",
 				"push", utils.Reference(utils.Host, repo, tag), file1, file2, file3, "-v", "--export-manifest", manifestPath)
 
 			tmp := ""
 			s := &tmp
 			ginkgo.It("should export the manifest", func() {
-				gomega.Expect(manifestPath).Should(gomega.BeAnExistingFile())
-				fp, err := os.OpenFile(manifestPath, os.O_RDONLY, 0666)
-				gomega.Expect(err).To(gomega.BeNil())
-				content, err := io.ReadAll(fp)
+				content, err := utils.ReadFullFile(manifestPath)
 				gomega.Expect(err).To(gomega.BeNil())
 				*s = string(content)
 			})
-			utils.Exec(match.SuccessContent(s), "should fetch matching manifest content",
+
+			utils.Exec(match.SuccessContent(s), "should fetch pushed manifest content",
 				"manifest", "fetch", utils.Reference(utils.Host, repo, tag))
 
 		})

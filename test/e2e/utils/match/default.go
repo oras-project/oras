@@ -46,6 +46,9 @@ func MatchableStatus(cmd string, verbose bool) (opts *StatusOption) {
 		opts.addPath("Uploading", "Uploaded")
 		opts.addPath("Existed")
 		opts.addPath("Skipped")
+	case "pull":
+		opts.addPath("Downloading", "Downloaded")
+		opts.addPath("Skipped")
 	default:
 		panic("Unrecognized cmd name " + cmd)
 	}
