@@ -18,12 +18,10 @@ package manifest
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/v2/errdef"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/cas"
@@ -104,9 +102,6 @@ func fetchManifest(opts fetchOptions) error {
 		content, err = cas.FetchManifest(ctx, repo, opts.targetRef, targetPlatform)
 	}
 	if err != nil {
-		if targetPlatform != nil && errors.Is(err, errdef.ErrNotFound) {
-			return fmt.Errorf("no manifest with platform %s was found", opts.Platform.Platform)
-		}
 		return err
 	}
 	if opts.pretty {

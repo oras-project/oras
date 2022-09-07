@@ -29,7 +29,7 @@ import (
 
 // FetchDescriptor fetches a minimal descriptor of reference from target.
 // If platform flag not empty, will fetch the specified platform.
-func FetchDescriptor(ctx context.Context, target oras.Target, reference string, p *ocispec.Platform) ([]byte, error) {
+func FetchDescriptor(ctx context.Context, target oras.ReadOnlyTarget, reference string, p *ocispec.Platform) ([]byte, error) {
 	desc, err := oras.Resolve(ctx, target, reference, oras.ResolveOptions{TargetPlatform: p})
 	if err != nil {
 		return nil, err
@@ -43,7 +43,7 @@ func FetchDescriptor(ctx context.Context, target oras.Target, reference string, 
 
 // FetchManifest fetches the manifest content of reference from target.
 // If platform flag not empty, will fetch the specified platform.
-func FetchManifest(ctx context.Context, target oras.Target, reference string, p *ocispec.Platform) ([]byte, error) {
+func FetchManifest(ctx context.Context, target oras.ReadOnlyTarget, reference string, p *ocispec.Platform) ([]byte, error) {
 	// TODO: improve implementation once oras-go#102 is resolved
 	if p == nil {
 		if rf, ok := target.(registry.ReferenceFetcher); ok {
