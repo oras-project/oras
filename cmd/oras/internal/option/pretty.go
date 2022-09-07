@@ -31,7 +31,7 @@ type Pretty struct {
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Pretty) ApplyFlags(fs *pflag.FlagSet) {
-	fs.BoolVarP(&opts.pretty, "pretty", "", false, "output prettified content")
+	fs.BoolVarP(&opts.pretty, "pretty", "", false, "prettify JSON objects printed to stdout")
 }
 
 // Output outputs the prettified content if `--pretty` flag is used. Otherwise

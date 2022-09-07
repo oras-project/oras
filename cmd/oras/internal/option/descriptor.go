@@ -39,5 +39,5 @@ func (opts *Descriptor) Marshal(desc ocispec.Descriptor) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal descriptor: %w", err)
 	}
-	return b, err
+	return b, nil
 }
