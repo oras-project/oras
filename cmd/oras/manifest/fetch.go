@@ -16,26 +16,29 @@ limitations under the License.
 package manifest
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"os"
 
 	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content/oci"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/cas"
+	"oras.land/oras/internal/cache"
 )
 
 type fetchOptions struct {
 	option.Common
+	option.Descriptor
 	option.Remote
 	option.Platform
+	option.Pretty
 
-	targetRef       string
-	pretty          bool
-	mediaTypes      []string
-	fetchDescriptor bool
+	cacheRoot  string
+	mediaTypes []string
+	outputPath string
+	targetRef  string
 }
 
 func fetchCmd() *cobra.Command {
@@ -63,6 +66,10 @@ Example - Fetch manifest with prettified json result:
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if opts.outputPath == "-" && opts.OutputDescriptor {
+				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
+			}
+
 			return opts.ReadPassword()
 		},
 		Aliases: []string{"get"},
@@ -72,46 +79,88 @@ Example - Fetch manifest with prettified json result:
 		},
 	}
 
-	cmd.Flags().BoolVarP(&opts.pretty, "pretty", "", false, "output prettified manifest")
-	cmd.Flags().BoolVarP(&opts.fetchDescriptor, "descriptor", "", false, "fetch a descriptor of the manifest")
 	cmd.Flags().StringSliceVarP(&opts.mediaTypes, "media-type", "", nil, "accepted media types")
+	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "output file path")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
 
 func fetchManifest(opts fetchOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
-	targetPlatform, err := opts.Parse()
-	if err != nil {
-		return err
-	}
+
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
 	}
+
 	if repo.Reference.Reference == "" {
 		return oerrors.NewErrInvalidReference(repo.Reference)
 	}
 	repo.ManifestMediaTypes = opts.mediaTypes
 
-	// Fetch and output
-	var content []byte
-	if opts.fetchDescriptor {
-		content, err = cas.FetchDescriptor(ctx, repo, opts.targetRef, targetPlatform)
-	} else {
-		content, err = cas.FetchManifest(ctx, repo, opts.targetRef, targetPlatform)
-	}
+	targetPlatform, err := opts.Parse()
 	if err != nil {
 		return err
 	}
-	if opts.pretty {
-		buf := bytes.NewBuffer(nil)
-		if err = json.Indent(buf, content, "", "  "); err != nil {
-			return fmt.Errorf("failed to prettify: %w", err)
+
+	var src oras.ReadOnlyTarget = repo.Manifests()
+	if opts.cacheRoot != "" {
+		ociStore, err := oci.New(opts.cacheRoot)
+		if err != nil {
+			return err
 		}
-		buf.WriteByte('\n')
-		content = buf.Bytes()
+		src = cache.New(src, ociStore)
 	}
-	_, err = os.Stdout.Write(content)
-	return err
+
+	// fetch manifest
+	desc, content, err := oras.FetchBytes(ctx, src, opts.targetRef, oras.FetchBytesOptions{
+		FetchOptions: oras.FetchOptions{
+			ResolveOptions: oras.ResolveOptions{
+				TargetPlatform: targetPlatform,
+			},
+		},
+		MaxBytes: 0,
+	})
+	if err != nil {
+		return err
+	}
+
+	// output manifest's descriptor if `--descriptor` is used
+	if opts.OutputDescriptor {
+		descBytes, err := json.Marshal(desc)
+		if err != nil {
+			return err
+		}
+		err = opts.Output(os.Stdout, descBytes)
+		if err != nil {
+			return err
+		}
+	}
+
+	// save manifest content into the local file if the output path is provided
+	if opts.outputPath != "" {
+		file, err := os.OpenFile(opts.outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if closeErr := file.Close(); err == nil {
+				err = closeErr
+			}
+		}()
+
+		_, err = file.Write(content)
+		if err != nil {
+			return err
+		}
+	}
+
+	if opts.outputPath == "-" || (opts.outputPath == "" && !opts.OutputDescriptor) {
+		err = opts.Output(os.Stdout, content)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
