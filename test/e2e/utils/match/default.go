@@ -44,7 +44,7 @@ func MatchableStatus(cmd string, verbose bool) (opts *StatusOption) {
 	switch cmd {
 	case "push", "attach":
 		opts.addPath("Uploading", "Uploaded")
-		opts.addPath("Existed")
+		opts.addPath("Exists")
 		opts.addPath("Skipped")
 	case "pull":
 		opts.addPath("Downloading", "Downloaded")

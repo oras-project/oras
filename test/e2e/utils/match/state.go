@@ -101,7 +101,7 @@ func (s *status) switchState(st state, key StateKey) {
 	gomega.Expect(ok).To(gomega.BeTrue(), fmt.Sprintf("Should find state node for %v", key))
 
 	e, ok := s.edges[st]
-	gomega.Expect(ok).To(gomega.BeTrue(), fmt.Sprintf("Should find state node for %v", st))
+	gomega.Expect(ok).To(gomega.BeTrue(), fmt.Sprintf("Should find edge for %v", st))
 	gomega.Expect(e.from).To(gomega.Equal(curr), fmt.Sprintf("Should state node not matching for %v, %v", st, key))
 
 	s.states[key] = e.to

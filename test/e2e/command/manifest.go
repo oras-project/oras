@@ -27,8 +27,8 @@ const (
 	example_desc = "\nExample - "
 )
 
-var _ = Context("ORAS beginners", func() {
-	Describe("run manifest command", func() {
+var _ = Describe("ORAS beginners", func() {
+	Context("run manifest command", func() {
 		runAndShowPreviewInHelp([]string{"manifest"})
 		runAndShowPreviewInHelp([]string{"manifest", "fetch"}, preview_desc, example_desc)
 

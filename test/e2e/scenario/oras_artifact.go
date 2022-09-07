@@ -35,13 +35,13 @@ var (
 	emptyConfig = "application/vnd.unknown.config.v1+json"
 )
 
-var _ = Context("ORAS user", Ordered, func() {
+var _ = Describe("ORAS user", Ordered, func() {
 	if err := utils.CopyTestData(files, temp_path); err != nil {
 		panic(err)
 	}
 
 	repo := "oras-artifact"
-	Describe("logs in", func() {
+	Context("logs in", func() {
 		When("using basic auth", func() {
 			info := "Login Succeeded\n"
 			utils.Exec(match.NewOption(strings.NewReader(PASSWORD), match.NewContent(&info), nil, false),
@@ -50,9 +50,9 @@ var _ = Context("ORAS user", Ordered, func() {
 		})
 	})
 
-	Describe("pushes images and check", Ordered, func() {
+	Context("pushes images and check", Ordered, func() {
 		tag := "image"
-		When("pushing an image", Ordered, func() {
+		When("pushing and pulling an image", Ordered, func() {
 			manifestPath := filepath.Join(temp_path, "packed.json")
 			tmp := ""
 			s := &tmp
@@ -64,14 +64,14 @@ var _ = Context("ORAS user", Ordered, func() {
 			}
 
 			pushStatus := match.NewStatus([]match.StateKey{
+				{Digest: "44136fa355b3", Name: "application/vnd.unknown.config.v1+json"},
 				{Digest: "2c26b46b68ff", Name: pushed[1]},
 				{Digest: "2c26b46b68ff", Name: pushed[2]},
 				{Digest: "fcde2b2edba5", Name: pushed[3]},
-				{Digest: "e3b0c44298fc", Name: "application/vnd.unknown.config.v1+json"},
 				// cannot track manifest since created time will be added and digest is unknown
 			}, *match.MatchableStatus("push", true), 4)
 			utils.Exec(match.NewOption(nil, pushStatus, nil, false), "should push files with manifest exported",
-				"push", utils.Reference(utils.Host, repo, tag), pushed[1], pushed[2], pushed[3], "-v", "--export-manifest", manifestPath)
+				"push", utils.Reference(utils.Host, repo, tag), pushed[1], pushed[2], pushed[3], "--config", pushed[0], "-v", "--export-manifest", manifestPath)
 
 			ginkgo.It("should export the manifest", func() {
 				content, err := utils.ReadFullFile(manifestPath)
@@ -89,20 +89,20 @@ var _ = Context("ORAS user", Ordered, func() {
 
 			// configName := "config.json"
 			pullStatus := match.NewStatus([]match.StateKey{
+				{Digest: "44136fa355b3", Name: "application/vnd.unknown.config.v1+json"},
 				{Digest: "2c26b46b68ff", Name: pushed[1]},
 				{Digest: "2c26b46b68ff", Name: pushed[2]},
 				{Digest: "fcde2b2edba5", Name: pushed[3]},
-				{Digest: "e3b0c44298fc", Name: "application/vnd.unknown.config.v1+json"},
 				// cannot track manifest since created time will be added and digest is unknown
 			}, *match.MatchableStatus("pull", true), 2) // (foo1 or foo2) + bar
 			utils.Exec(match.NewOption(nil, pullStatus, nil, false), "should pull files with config",
 				"pull", utils.Reference(utils.Host, repo, tag), "-v", "--config", pushed[0], "-o", temp_path)
 			for i := range pushed {
-				ginkgo.It("should downloaded file "+pushed[i], func() {
+				ginkgo.It("should download file "+pushed[i], func() {
 					got, err := utils.ReadFullFile(pushed[i])
 					gomega.Expect(err).To(gomega.BeNil())
 
-					want, err := utils.ReadFullFile(filepath.Join(temp_path+"bak", files[0]))
+					want, err := utils.ReadFullFile(filepath.Join(temp_path+"bak", files[i]))
 					gomega.Expect(err).To(gomega.BeNil())
 					gomega.Expect(string(got)).To(gomega.Equal(string(want)))
 				})
