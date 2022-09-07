@@ -162,7 +162,7 @@ func runPull(opts pullOptions) error {
 			return err
 		}
 		for _, s := range ss {
-			if desc.Annotations[ocispec.AnnotationTitle] != "" {
+			if _, ok := s.Annotations[ocispec.AnnotationTitle]; ok {
 				if _, loaded := printed.LoadOrStore(s.Digest.String()+s.Annotations[ocispec.AnnotationTitle], true); !loaded {
 					if err = display.PrintStatus(s, "Restored   ", opts.Verbose); err != nil {
 						return err
