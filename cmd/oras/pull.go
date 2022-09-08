@@ -156,7 +156,7 @@ func runPull(opts pullOptions) error {
 	pulledEmpty := true
 	copyOptions.PreCopy = display.StatusPrinter("Downloading", opts.Verbose)
 	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		// restore named successors, if applicable
+		// restore named but deduplicated successor nodes
 		successors, err := content.Successors(ctx, dst, desc)
 		if err != nil {
 			return err
