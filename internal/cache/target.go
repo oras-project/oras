@@ -117,36 +117,37 @@ type referenceTarget struct {
 	registry.ReferenceFetcher
 }
 
-// FetchReference fetches the content identified by the reference from the cache
-// if exists, otherwise fetches the content from the remote and then cache the
-// fetched content.
+// FetchReference fetches the content identified by the reference from the
+// remote and cache the fetched content.
 // Cached content will only be read via Fetch, FetchReference will always fetch
 // From origin.
 func (t *referenceTarget) FetchReference(ctx context.Context, reference string) (ocispec.Descriptor, io.ReadCloser, error) {
-	desc, err := t.Resolve(ctx, reference)
+	target, rc, err := t.ReferenceFetcher.FetchReference(ctx, reference)
 	if err != nil {
 		return ocispec.Descriptor{}, nil, err
 	}
 
 	// skip caching if the content already exists in cache
-	exists, err := t.cache.Exists(ctx, desc)
+	exists, err := t.cache.Exists(ctx, target)
 	if err != nil {
 		return ocispec.Descriptor{}, nil, err
 	}
 	if exists {
-		// get rc from the cache
-		rc, err := t.cache.Fetch(ctx, desc)
+		err = rc.Close()
 		if err != nil {
 			return ocispec.Descriptor{}, nil, err
 		}
-		return desc, rc, nil
-	}
 
-	desc, rc, err := t.ReferenceFetcher.FetchReference(ctx, reference)
-	if err != nil {
-		return ocispec.Descriptor{}, nil, err
+		// get rc from the cache
+		rc, err = t.cache.Fetch(ctx, target)
+		if err != nil {
+			return ocispec.Descriptor{}, nil, err
+		}
+
+		// no need to do tee'd push
+		return target, rc, nil
 	}
 
 	// Fetch from origin with caching
-	return desc, t.cacheReadCloser(ctx, rc, desc), nil
+	return target, t.cacheReadCloser(ctx, rc, target), nil
 }

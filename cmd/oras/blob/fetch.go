@@ -44,26 +44,26 @@ type fetchBlobOptions struct {
 func fetchCmd() *cobra.Command {
 	var opts fetchBlobOptions
 	cmd := &cobra.Command{
-		Use:   "fetch <name@digest> [flags]",
+		Use:   "fetch [flags] <name@digest>",
 		Short: "[Preview] Fetch a blob from a remote registry",
 		Long: `[Preview] Fetch a blob from a remote registry
 
 ** This command is in preview and under development. **
 
 Example - Fetch the blob and save it to a local file:
-  oras blob fetch localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5 --output blob.tar.gz
+  oras blob fetch --output blob.tar.gz localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 
 Example - Fetch the blob and stdout the raw blob content:
-  oras blob fetch localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5 --output -
+  oras blob fetch --output - localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 
 Example - Fetch the blob and stdout the descriptor of a blob:
-  oras blob fetch localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5 --descriptor
+  oras blob fetch --descriptor localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 
-Example - Fetch the blob and save it to a local file and stdout the descriptor:
-  oras blob fetch localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5 --output blob.tar.gz --descriptor
+Example - Fetch the blob, save it to a local file and stdout the descriptor:
+  oras blob fetch --output blob.tar.gz --descriptor localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 
 Example - Fetch blob from the insecure registry:
-  oras blob fetch localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5 --insecure
+  oras blob fetch --insecure localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {

@@ -178,14 +178,6 @@ func TestProxy_fetchReference(t *testing.T) {
 			w.Write(blob)
 			atomic.AddInt64(&successCount, 1)
 			return
-		} else if r.Method == http.MethodHead &&
-			(r.URL.Path == fmt.Sprintf("/v2/%s/manifests/%s", repoName, tagName) ||
-				r.URL.Path == fmt.Sprintf("/v2/%s/manifests/%s", repoName, digest)) {
-			w.Header().Set("Content-Type", mediaType)
-			w.Header().Set("Docker-Content-Digest", digest.String())
-			w.Header().Set("Content-Length", strconv.Itoa(len([]byte(blob))))
-			atomic.AddInt64(&successCount, 1)
-			return
 		}
 		t.Errorf("unexpected access: %s %s", r.Method, r.URL)
 		w.WriteHeader(http.StatusBadRequest)
@@ -222,21 +214,6 @@ func TestProxy_fetchReference(t *testing.T) {
 
 	if !bytes.Equal(got, blob) {
 		t.Errorf("ReferenceTarget.Fetch() = %v, want %v", got, blob)
-	}
-	if wantRequestCount += 2; requestCount != wantRequestCount {
-		t.Errorf("unexpected number of requests: %d, want %d", requestCount, wantRequestCount)
-	}
-	if wantSuccessCount += 2; successCount != wantSuccessCount {
-		t.Errorf("unexpected number of successful requests: %d, want %d", successCount, wantSuccessCount)
-	}
-
-	// second fetch reference, should get the content from the cache
-	gotDesc, _, err = p.(registry.ReferenceFetcher).FetchReference(ctx, repo.Reference.Reference)
-	if err != nil {
-		t.Fatal("ReferenceTarget.FetchReference() error =", err)
-	}
-	if !reflect.DeepEqual(gotDesc, desc) {
-		t.Fatalf("ReferenceTarget.FetchReference() got %v, want %v", gotDesc, desc)
 	}
 	if wantRequestCount++; requestCount != wantRequestCount {
 		t.Errorf("unexpected number of requests: %d, want %d", requestCount, wantRequestCount)
