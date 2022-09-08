@@ -29,16 +29,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: setup go environment
-        uses: actions/setup-go@v3
-        with:
-          go-version: '1.19.0'
-      - name: Check License Header
+      - name: Check license header
         uses: apache/skywalking-eyes/header@v0.4.0
         with:
           mode: check
           config: .github/licenserc.yml
-      - name: Check Dependencies License
+      - name: Check dependencies license
         uses: apache/skywalking-eyes/dependency@v0.4.0
         with:
           config: .github/licenserc.yml
