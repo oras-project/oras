@@ -24,6 +24,7 @@ func Cmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(
+		listCmd(),
 		showTagsCmd(),
 	)
 	return cmd
