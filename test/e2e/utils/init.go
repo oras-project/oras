@@ -50,8 +50,8 @@ func init() {
 		if filepath.IsAbs(OrasPath) {
 			// test against OrasPath directly
 			fmt.Printf("Testing based on pre-built binary locates in %q\n", OrasPath)
-		} else if workspacePath := os.Getenv("GITHUB_WORKSPACE"); filepath.IsAbs(OrasPath) && workspacePath != "" {
-			// Add workspacePath as prefix
+		} else if workspacePath := os.Getenv("GITHUB_WORKSPACE"); OrasPath != "" && workspacePath != "" {
+			// add workspacePath as prefix, both path env should not be empty
 			OrasPath = filepath.Join(workspacePath, OrasPath)
 			OrasPath, err = filepath.Abs(OrasPath)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
