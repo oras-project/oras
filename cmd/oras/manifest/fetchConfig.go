@@ -26,10 +26,10 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras/cmd/oras/internal/descriptor"
 	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/cache"
-	"oras.land/oras/internal/docker"
 )
 
 type fetchConfigOptions struct {
@@ -52,10 +52,13 @@ func fetchConfigCmd() *cobra.Command {
 		Long: `[Preview] Fetch the config of a manifest from a remote registry
 
 ** This command is in preview and under development. **
+
 Example - Fetch the config:
   oras manifest fetch-config localhost:5000/hello:latest
+
 Example - Fetch the config and save it to a local file:
   oras manifest fetch-config localhost:5000/hello:latest --output config.json
+
 Example - Fetch the descriptor of the config:
 oras manifest fetch-config localhost:5000/hello:latest --descriptor
 `,
@@ -131,7 +134,7 @@ func fetchConfig(opts fetchConfigOptions) (err error) {
 			}
 		}()
 
-		err = opts.Output(file, contentBytes)
+		_, err = file.Write(contentBytes)
 		if err != nil {
 			return err
 		}
@@ -160,13 +163,9 @@ func fetchConfigDesc(ctx context.Context, src oras.ReadOnlyTarget, reference str
 		return ocispec.Descriptor{}, err
 	}
 	for i, s := range successors {
-		if s.MediaType == configMediaType || (configMediaType == "" && i == 0 && isImageManifest(manifestDesc.MediaType)) {
+		if s.MediaType == configMediaType || (configMediaType == "" && i == 0 && descriptor.IsImageManifest(manifestDesc.MediaType)) {
 			return s, nil
 		}
 	}
 	return ocispec.Descriptor{}, fmt.Errorf("%s does not have a config", reference)
-}
-
-func isImageManifest(mediaType string) bool {
-	return mediaType == docker.MediaTypeManifest || mediaType == ocispec.MediaTypeImageManifest
 }
