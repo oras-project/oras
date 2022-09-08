@@ -11,22 +11,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package command
+package utils
 
-import (
-	"fmt"
-	"testing"
-
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-)
-
-// TestORAS bootstraps e2e test suite.
-func TestORASCommands(t *testing.T) {
-	RegisterFailHandler(Fail)
-
-	suiteConf, _ := GinkgoConfiguration()
-	fmt.Printf("Starting e2e on Ginkgo node %d of total %d\n",
-		suiteConf.ParallelProcess, suiteConf.ParallelTotal)
-	RunSpecs(t, "ORAS Command Suite")
+func Reference(registry string, repo string, tag string) string {
+	ret := registry + "/" + repo
+	if tag != "" {
+		ret += ":" + tag
+	}
+	return ret
 }

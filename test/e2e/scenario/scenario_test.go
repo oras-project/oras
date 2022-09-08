@@ -21,8 +21,10 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// TestORASScenarios bootstraps e2e test suite.
+var temp_path string
+
 func TestORASScenarios(t *testing.T) {
+	temp_path = t.TempDir()
 	RegisterFailHandler(Fail)
 
 	suiteConf, _ := GinkgoConfiguration()

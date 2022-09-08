@@ -11,29 +11,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package match
+package command
 
 import (
-	"io"
+	"fmt"
+	"testing"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
-type entry struct {
-	w io.Writer
-	m Matchable
-}
+func TestORASCommands(t *testing.T) {
+	RegisterFailHandler(Fail)
 
-// Writer returns a writer for capturing or discarding stdout/stderr.
-func (e *entry) Writer() io.Writer {
-	if e == nil {
-		return nil
-	}
-	return e.w
-}
-
-func (e *entry) match() {
-	if e.w == io.Discard {
-		return
-	}
-
-	e.m.match(e.w.(*output))
+	suiteConf, _ := GinkgoConfiguration()
+	fmt.Printf("Starting e2e on Ginkgo node %d of total %d\n",
+		suiteConf.ParallelProcess, suiteConf.ParallelTotal)
+	RunSpecs(t, "ORAS Command Suite")
 }

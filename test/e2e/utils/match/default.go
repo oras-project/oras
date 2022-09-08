@@ -33,6 +33,24 @@ func SuccessKeywords(keywords ...string) *Option {
 
 // SuccessContent returns an option for matching stdout content in success
 // execution.
-func SuccessContent(content string) *Option {
-	return NewOption(nil, Content(content), nil, false)
+func SuccessContent(s *string) *Option {
+	return NewOption(nil, Content{s}, nil, false)
+}
+
+func MatchableStatus(cmd string, verbose bool) (opts *StatusOption) {
+	opts = NewStatusOption(verbose)
+
+	// prepare edge
+	switch cmd {
+	case "push", "attach":
+		opts.addPath("Uploading", "Uploaded")
+		opts.addPath("Exists")
+		opts.addPath("Skipped")
+	case "pull":
+		opts.addPath("Downloading", "Downloaded")
+		opts.addPath("Skipped")
+	default:
+		panic("Unrecognized cmd name " + cmd)
+	}
+	return opts
 }

@@ -94,7 +94,7 @@ func runPull(opts pullOptions) error {
 	if repo.Reference.Reference == "" {
 		return errors.NewErrInvalidReference(repo.Reference)
 	}
-	var src oras.Target = repo
+	var src oras.ReadOnlyTarget = repo
 	if opts.cacheRoot != "" {
 		ociStore, err := oci.New(opts.cacheRoot)
 		if err != nil {

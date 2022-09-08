@@ -13,7 +13,9 @@ limitations under the License.
 
 package match
 
-import "io"
+import (
+	"io"
+)
 
 type Option struct {
 	Stdout     *entry
@@ -36,7 +38,7 @@ func entryFromMatchable(m Matchable) *entry {
 	if m == nil {
 		return &entry{io.Discard, nil}
 	}
-	return &entry{newOutput(), m}
+	return &entry{NewOutput(), m}
 }
 
 // Match matches captured with wanted.

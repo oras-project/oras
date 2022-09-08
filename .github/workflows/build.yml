@@ -28,8 +28,8 @@ jobs:
         run: |
           docker stop oras-e2e || true
           docker run -d -p 5000:5000 --rm --name oras-e2e \
-            --mount type=bind,source=${{ GITHUB_WORKSPACE }}/test/e2e/testdata/config-example-with-extensions.yml,target=/etc/docker/registry/config.yml \
-            --mount type=bind,source=${{ GITHUB_WORKSPACE }}/test/e2e/testdata/passwd_bcrypt,target=/etc/docker/registry/passwd \
+            --mount type=bind,source=$GITHUB_WORKSPACE/test/e2e/testdata/config-example-with-extensions.yml,target=/etc/docker/registry/config.yml \
+            --mount type=bind,source=$GITHUB_WORKSPACE/test/e2e/testdata/passwd_bcrypt,target=/etc/docker/registry/passwd \
             ghcr.io/oras-project/registry:latest
       - name: Run Tests
         run: |
