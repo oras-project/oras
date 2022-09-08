@@ -128,36 +128,33 @@ func fetchBlob(opts fetchBlobOptions) (fetchErr error) {
 
 		// outputs blob content if "--output -" is used
 		if opts.outputPath == "-" {
-			if _, err := io.Copy(os.Stdout, rc); err != nil {
-				return err
-			}
-			return nil
-		} else {
-			// save blob content into the local file if the output path is provided
-			file, err := os.Create(opts.outputPath)
-			if err != nil {
-				return err
-			}
-			defer func() {
-				if closeErr := file.Close(); fetchErr == nil {
-					fetchErr = closeErr
-				}
-			}()
+			_, err := io.Copy(os.Stdout, rc)
+			return err
+		}
 
-			if _, err := io.Copy(file, rc); err != nil {
-				return err
+		// save blob content into the local file if the output path is provided
+		file, err := os.Create(opts.outputPath)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err := file.Close(); fetchErr == nil {
+				fetchErr = err
 			}
+		}()
+
+		if _, err := io.Copy(file, rc); err != nil {
+			return err
 		}
 	}
 
 	// outputs blob's descriptor if `--descriptor` is used
 	if opts.OutputDescriptor {
-		descBytes, err := json.Marshal(desc)
+		descJSON, err := json.Marshal(desc)
 		if err != nil {
 			return err
 		}
-		err = opts.Output(os.Stdout, descBytes)
-		if err != nil {
+		if err := opts.Output(os.Stdout, descJSON); err != nil {
 			return err
 		}
 	}
