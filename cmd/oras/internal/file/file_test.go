@@ -14,6 +14,7 @@ limitations under the License.
 package file_test
 
 import (
+	_ "embed"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -22,7 +23,8 @@ import (
 	"oras.land/oras/cmd/oras/internal/file"
 )
 
-const manifest = `{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"application/vnd.unknown.config.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2},"layers":[{"mediaType":"application/vnd.oci.image.layer.v1.tar","digest":"sha256:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03","size":6,"annotations":{"org.opencontainers.image.title":"hello.txt"}}]}`
+//go:embed sample.json
+var manifest string
 
 func TestFile_ParseMediaType(t *testing.T) {
 	// generate test content
@@ -42,6 +44,24 @@ func TestFile_ParseMediaType(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("ParseMediaType() = %v, want %v", got, want)
+	}
+}
+
+func TestFile_ParseMediaType_WrongPath(t *testing.T) {
+	// generate test content
+	tempDir := t.TempDir()
+	content := []byte(manifest)
+	fileName := "manifest.json"
+	path := filepath.Join(tempDir, fileName)
+	if err := os.WriteFile(path, content, 0444); err != nil {
+		t.Fatal("error calling WriteFile(), error =", err)
+	}
+
+	// test ParseMediaType
+	_, err := file.ParseMediaType(fileName)
+	expected := "open manifest.json: no such file or directory"
+	if err.Error() != expected {
+		t.Fatalf("ParseMediaType() error = %v, wantErr %v", err, expected)
 	}
 }
 
