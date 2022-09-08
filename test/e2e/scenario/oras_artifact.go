@@ -14,6 +14,7 @@ limitations under the License.
 package scenario
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -74,7 +75,7 @@ var _ = Describe("ORAS user", Ordered, func() {
 				"push", utils.Reference(utils.Host, repo, tag), pathes[1], pathes[2], pathes[3], "--config", pathes[0], "-v", "--export-manifest", manifestPath)
 
 			ginkgo.It("should export the manifest", func() {
-				content, err := utils.ReadFullFile(manifestPath)
+				content, err := io.ReadFile(manifestPath)
 				gomega.Expect(err).To(gomega.BeNil())
 				*s = string(content)
 			})
@@ -99,10 +100,10 @@ var _ = Describe("ORAS user", Ordered, func() {
 				"pull", utils.Reference(utils.Host, repo, tag), "-v", "--config", pathes[0], "-o", temp_path)
 			for i := range pathes {
 				ginkgo.It("should download file "+pathes[i], func() {
-					got, err := utils.ReadFullFile(pathes[i])
+					got, err := io.ReadFile(pathes[i])
 					gomega.Expect(err).To(gomega.BeNil())
 
-					want, err := utils.ReadFullFile(filepath.Join(temp_path+"-pushed", files[i]))
+					want, err := io.ReadFile(filepath.Join(temp_path+"-pushed", files[i]))
 					gomega.Expect(err).To(gomega.BeNil())
 					gomega.Expect(string(got)).To(gomega.Equal(string(want)))
 				})

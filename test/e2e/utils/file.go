@@ -19,16 +19,6 @@ import (
 	"path/filepath"
 )
 
-func ReadFullFile(path string) ([]byte, error) {
-	fp, err := os.OpenFile(path, os.O_RDONLY, 0666)
-	if err != nil {
-		return nil, err
-	}
-
-	defer fp.Close()
-	return io.ReadAll(fp)
-}
-
 func CopyTestData(fileNames []string, dstRoot string) error {
 	for _, name := range fileNames {
 		// make sure all parents are created
