@@ -22,10 +22,10 @@ import (
 	"io"
 	"os"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
-
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/cache"
 )
@@ -56,7 +56,7 @@ Example - Fetch the blob and save it to a local file:
 Example - Fetch the blob and stdout the raw blob content:
   oras blob fetch --output - localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 
-Example - Fetch the blob and stdout the descriptor of a blob:
+Example - Fetch and stdout the descriptor of a blob:
   oras blob fetch --descriptor localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 
 Example - Fetch the blob, save it to a local file and stdout the descriptor:
@@ -89,7 +89,7 @@ Example - Fetch blob from the insecure registry:
 	return cmd
 }
 
-func fetchBlob(opts fetchBlobOptions) (err error) {
+func fetchBlob(opts fetchBlobOptions) (fetchErr error) {
 	ctx, _ := opts.SetLoggerLevel()
 
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
@@ -110,35 +110,43 @@ func fetchBlob(opts fetchBlobOptions) (err error) {
 		src = cache.New(src, ociStore)
 	}
 
-	// fetch blob
-	desc, rc, err := oras.Fetch(ctx, src, opts.targetRef, oras.FetchOptions{})
-	if err != nil {
-		return err
-	}
-	defer rc.Close()
-
-	// outputs blob content if "--output -" is used
-	if opts.outputPath == "-" {
-		if _, err := io.Copy(os.Stdout, rc); err != nil {
-			return err
-		}
-		return nil
-	}
-
-	// save blob content into the local file if the output path is provided
-	if opts.outputPath != "" {
-		file, err := os.OpenFile(opts.outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	var desc ocispec.Descriptor
+	if opts.outputPath == "" {
+		// fetch blob descriptor only
+		desc, err = oras.Resolve(ctx, src, opts.targetRef, oras.DefaultResolveOptions)
 		if err != nil {
 			return err
 		}
-		defer func() {
-			if closeErr := file.Close(); err == nil {
-				err = closeErr
-			}
-		}()
-
-		if _, err := io.Copy(file, rc); err != nil {
+	} else {
+		// fetch blob content
+		var rc io.ReadCloser
+		desc, rc, err = oras.Fetch(ctx, src, opts.targetRef, oras.DefaultFetchOptions)
+		if err != nil {
 			return err
+		}
+		defer rc.Close()
+
+		// outputs blob content if "--output -" is used
+		if opts.outputPath == "-" {
+			if _, err := io.Copy(os.Stdout, rc); err != nil {
+				return err
+			}
+			return nil
+		} else {
+			// save blob content into the local file if the output path is provided
+			file, err := os.Create(opts.outputPath)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if closeErr := file.Close(); fetchErr == nil {
+					fetchErr = closeErr
+				}
+			}()
+
+			if _, err := io.Copy(file, rc); err != nil {
+				return err
+			}
 		}
 	}
 
