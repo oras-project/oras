@@ -14,15 +14,20 @@ limitations under the License.
 package manifest
 
 import (
+	"errors"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras/cmd/oras/internal/file"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
 type pushOptions struct {
 	option.Common
+	option.Descriptor
+	option.Pretty
 	option.Remote
 
 	targetRef string
@@ -36,16 +41,20 @@ func pushCmd() *cobra.Command {
 		Use:   "push name[:tag|@digest] file",
 		Short: "[Preview] Push a manifest to remote registry",
 		Long: `[Preview] Push a manifest to remote registry
+
 ** This command is in preview and under development. **
 
 Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'latest':
   oras manifest push localhost:5000/hello:latest manifest.json
 
-  Example - Push an ORAS artifact manifest to repository 'locahost:5000/hello' and tag with 'latest':
-  oras manifest push localhost:5000/hello:latest oras_manifest.json --media-type application/vnd.cncf.oras.artifact.manifest.v1+json
+Example - Push a manifest to repository 'locahost:5000/hello' and output the prettified descriptor:
+oras manifest push --descriptor --pretty localhost:5000/hello manifest.json
 
-  Example - Push a manifest to the insecure registry:
-  oras manifest push localhost:5000/hello:latest manifest.json
+Example - Push an ORAS artifact manifest to repository 'locahost:5000/hello' and tag with 'latest':
+  oras manifest push --media-type application/vnd.cncf.oras.artifact.manifest.v1+json localhost:5000/hello:latest oras_manifest.json
+
+Example - Push a manifest without TLS:
+  oras manifest push --insecure localhost:5000/hello:latest manifest.json
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -81,19 +90,36 @@ func pushManifest(opts pushOptions) error {
 	}
 
 	// prepare manifest content
-	desc, rc, err := file.PrepareContent(opts.fileRef, mediaType)
+	desc, rc, err := file.PrepareContent(opts.fileRef, mediaType, "", 0)
 	if err != nil {
 		return err
 	}
 	defer rc.Close()
 
+	var ref string
 	if tag := repo.Reference.Reference; tag != "" {
-		err = repo.PushReference(ctx, desc, rc, tag)
+		ref = tag
 	} else {
-		err = repo.Push(ctx, desc, rc)
+		ref = desc.Digest.String()
+	}
+
+	got, err := repo.Resolve(ctx, ref)
+	if errors.Is(err, errdef.ErrNotFound) ||
+		(err == nil && got.Digest != desc.Digest) {
+		err = repo.PushReference(ctx, desc, rc, ref)
 	}
 	if err != nil {
 		return err
+	}
+
+	// outputs manifest's descriptor
+	if opts.OutputDescriptor {
+		desc.MediaType = opts.mediaType
+		bytes, err := opts.Marshal(desc)
+		if err != nil {
+			return err
+		}
+		return opts.Output(os.Stdout, bytes)
 	}
 
 	fmt.Println("Pushed", opts.targetRef)
