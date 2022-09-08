@@ -97,12 +97,13 @@ func TestFile_PrepareContent(t *testing.T) {
 func TestFile_PrepareContent_fromStdin(t *testing.T) {
 	// generate test content
 	content := []byte("hello world!")
-	tmpfile, err := os.CreateTemp("", "test")
+	tempDir := t.TempDir()
+	fileName := "test.txt"
+	path := filepath.Join(tempDir, fileName)
+	tmpfile, err := os.Create(path)
 	if err != nil {
-		t.Fatal("error calling CreateTemp(), error =", err)
+		t.Fatal("error calling os.Create(), error =", err)
 	}
-
-	defer os.Remove(tmpfile.Name()) // clean up
 	defer tmpfile.Close()
 
 	if _, err := tmpfile.Write(content); err != nil {

@@ -16,7 +16,6 @@ limitations under the License.
 package blob
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -150,7 +149,7 @@ func fetchBlob(opts fetchBlobOptions) (fetchErr error) {
 
 	// outputs blob's descriptor if `--descriptor` is used
 	if opts.OutputDescriptor {
-		descJSON, err := json.Marshal(desc)
+		descJSON, err := opts.Marshal(desc)
 		if err != nil {
 			return err
 		}

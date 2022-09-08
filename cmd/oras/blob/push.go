@@ -43,7 +43,7 @@ type pushBlobOptions struct {
 func pushCmd() *cobra.Command {
 	var opts pushBlobOptions
 	cmd := &cobra.Command{
-		Use:   "push name[@digest] file [flags]",
+		Use:   "push [flags] name[@digest] file",
 		Short: "[Preview] Push a blob to a remote registry",
 		Long: `[Preview] Push a blob to a remote registry
 
@@ -56,19 +56,19 @@ Example - Push blob "hi.txt" with the specific digest:
   oras blob push localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5 hi.txt
 
 Example - Push blob from stdin with blob size:
-  oras blob push localhost:5000/hello - --size 12
+  oras blob push --size 12 localhost:5000/hello -
 
 Example - Push blob "hi.txt" and output the descriptor:
-  oras blob push localhost:5000/hello hi.txt --descriptor
+  oras blob push --descriptor localhost:5000/hello hi.txt
 
 Example - Push blob "hi.txt" with the specific returned media type in the descriptor:
-  oras blob push localhost:5000/hello hi.txt --media-type application/vnd.oci.image.config.v1+json --descriptor
+  oras blob push --media-type application/vnd.oci.image.config.v1+json --descriptor localhost:5000/hello hi.txt
 
 Example - Push blob "hi.txt" and output the prettified descriptor:
-  oras blob push localhost:5000/hello hi.txt --descriptor --pretty
+  oras blob push --descriptor --pretty localhost:5000/hello hi.txt
 
 Example - Push blob without TLS:
-  oras blob push localhost:5000/hello hi.txt --insecure
+  oras blob push --insecure localhost:5000/hello hi.txt
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -134,11 +134,11 @@ func pushBlob(opts pushBlobOptions) (err error) {
 	// outputs blob's descriptor
 	if opts.OutputDescriptor {
 		desc.MediaType = opts.mediaType
-		bytes, err := opts.Marshal(desc)
+		descJSON, err := opts.Marshal(desc)
 		if err != nil {
 			return err
 		}
-		return opts.Output(os.Stdout, bytes)
+		return opts.Output(os.Stdout, descJSON)
 	}
 
 	fmt.Println("Pushed", opts.targetRef)
