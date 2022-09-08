@@ -13,38 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package blob
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
-	"oras.land/oras/cmd/oras/blob"
-	"oras.land/oras/cmd/oras/manifest"
-	"oras.land/oras/cmd/oras/repository"
-	"oras.land/oras/cmd/oras/tag"
 )
 
-func main() {
+func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "oras [command]",
-		SilenceUsage: true,
+		Use:   "blob [command]",
+		Short: "[Preview] Blob operations",
 	}
+
 	cmd.AddCommand(
-		pullCmd(),
-		pushCmd(),
-		loginCmd(),
-		logoutCmd(),
-		versionCmd(),
-		discoverCmd(),
-		copyCmd(),
-		attachCmd(),
-		blob.Cmd(),
-		manifest.Cmd(),
-		tag.TagCmd(),
-		repository.Cmd(),
+		fetchCmd(),
 	)
-	if err := cmd.Execute(); err != nil {
-		os.Exit(1)
-	}
+	return cmd
 }
