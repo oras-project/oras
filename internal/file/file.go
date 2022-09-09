@@ -26,10 +26,21 @@ import (
 )
 
 // PrepareContent prepares the content descriptor from the file path or stdin.
-// Use the input digest and size if they are provided.
-func PrepareContent(path string, mediaType string, dgst digest.Digest, size int64) (ocispec.Descriptor, io.ReadCloser, error) {
+// Use the input digest and size if they are provided. Will return error if the
+// content is from stdin but the content digest and size are missing.
+func PrepareContent(path string, mediaType string, dgstStr string, size int64) (_ ocispec.Descriptor, _ io.ReadCloser, prepareErr error) {
 	if path == "" {
 		return ocispec.Descriptor{}, nil, errors.New("missing file name")
+	}
+
+	// validate digest
+	var dgst digest.Digest
+	if dgstStr != "" {
+		var err error
+		dgst, err = digest.Parse(dgstStr)
+		if err != nil {
+			return ocispec.Descriptor{}, nil, fmt.Errorf("invalid digest %s: %w", dgstStr, err)
+		}
 	}
 
 	// prepares the content descriptor from stdin
@@ -50,7 +61,7 @@ func PrepareContent(path string, mediaType string, dgst digest.Digest, size int6
 		return ocispec.Descriptor{}, nil, fmt.Errorf("failed to open %s: %w", path, err)
 	}
 	defer func() {
-		if err != nil {
+		if prepareErr != nil {
 			file.Close()
 		}
 	}()

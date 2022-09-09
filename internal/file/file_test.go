@@ -16,6 +16,7 @@ limitations under the License.
 package file_test
 
 import (
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -67,15 +68,15 @@ func TestFile_PrepareContent(t *testing.T) {
 	}
 
 	// test PrepareContent with provided digest and size
-	dgst := digest.Digest("sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5")
+	dgstStr := "sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5"
 	size := int64(12)
-	got, rc, err = file.PrepareContent(path, blobMediaType, dgst, size)
+	got, rc, err = file.PrepareContent(path, blobMediaType, dgstStr, size)
 	if err != nil {
 		t.Fatal("PrepareContent() error=", err)
 	}
 	want = ocispec.Descriptor{
 		MediaType: blobMediaType,
-		Digest:    digest.Digest(dgst),
+		Digest:    digest.Digest(dgstStr),
 		Size:      size,
 	}
 	if !reflect.DeepEqual(got, want) {
@@ -125,7 +126,7 @@ func TestFile_PrepareContent_fromStdin(t *testing.T) {
 	}
 
 	// test PrepareContent with provided digest and size
-	gotDesc, gotRc, err := file.PrepareContent("-", blobMediaType, dgst, size)
+	gotDesc, gotRc, err := file.PrepareContent("-", blobMediaType, string(dgst), size)
 	defer gotRc.Close()
 	if err != nil {
 		t.Fatal("PrepareContent() error=", err)
@@ -145,6 +146,15 @@ func TestFile_PrepareContent_fromStdin(t *testing.T) {
 	expected := "content size and digest must be provided if it is read from stdin"
 	if err.Error() != expected {
 		t.Fatalf("PrepareContent() error = %v, wantErr %v", err, expected)
+	}
+}
+
+func TestFile_PrepareContent_errDigestInvalidFormat(t *testing.T) {
+	// test PrepareContent from stdin with invalid digest
+	invalidDgst := "xyz"
+	_, _, err := file.PrepareContent("-", blobMediaType, invalidDgst, 12)
+	if !errors.Is(err, digest.ErrDigestInvalidFormat) {
+		t.Fatalf("PrepareContent() error = %v, wantErr %v", err, digest.ErrDigestInvalidFormat)
 	}
 }
 

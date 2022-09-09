@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 
-	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/display"
@@ -100,8 +99,7 @@ func pushBlob(opts pushBlobOptions) (err error) {
 	}
 
 	// prepare blob content
-	refDigest := digest.Digest(repo.Reference.Reference)
-	desc, rc, err := file.PrepareContent(opts.fileRef, opts.mediaType, refDigest, opts.size)
+	desc, rc, err := file.PrepareContent(opts.fileRef, opts.mediaType, repo.Reference.Reference, opts.size)
 	if err != nil {
 		return err
 	}
