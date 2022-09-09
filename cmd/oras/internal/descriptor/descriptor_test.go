@@ -16,10 +16,20 @@ limitations under the License.
 package descriptor
 
 import (
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras/internal/docker"
+	"reflect"
+	"testing"
 )
 
-func IsImageManifest(mediaType string) bool {
-	return mediaType == docker.MediaTypeManifest || mediaType == ocispec.MediaTypeImageManifest
+func TestIsImageManifest(t *testing.T) {
+	mediaType := "application/vnd.oci.image.manifest.v1+json"
+	got := IsImageManifest(mediaType)
+	if !reflect.DeepEqual(got, true) {
+		t.Fatalf("IsImageManifest() got %v, want %v", got, true)
+	}
+
+	mediaType = "application/vnd.cncf.oras.artifact.manifest.v1+json"
+	got = IsImageManifest(mediaType)
+	if !reflect.DeepEqual(got, false) {
+		t.Fatalf("IsImageManifest() got %v, want %v", got, false)
+	}
 }
