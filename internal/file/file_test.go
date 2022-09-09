@@ -17,6 +17,7 @@ package file_test
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -92,6 +93,14 @@ func TestFile_PrepareContent(t *testing.T) {
 	}
 	if !reflect.DeepEqual(actualContent, content) {
 		t.Errorf("PrepareContent() = %v, want %v", actualContent, content)
+	}
+
+	// test PrepareContent with provided size, but the size does not match the
+	// actual content size
+	_, _, err = file.PrepareContent(path, blobMediaType, "", 15)
+	expected := fmt.Sprintf("input size %d does not match the actual content size %d", 15, size)
+	if err.Error() != expected {
+		t.Fatalf("PrepareContent() error = %v, wantErr %v", err, expected)
 	}
 }
 

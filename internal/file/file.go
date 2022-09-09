@@ -28,7 +28,7 @@ import (
 // PrepareContent prepares the content descriptor from the file path or stdin.
 // Use the input digest and size if they are provided. Will return error if the
 // content is from stdin but the content digest and size are missing.
-func PrepareContent(path string, mediaType string, dgstStr string, size int64) (_ ocispec.Descriptor, _ io.ReadCloser, prepareErr error) {
+func PrepareContent(path string, mediaType string, dgstStr string, size int64) (desc ocispec.Descriptor, rc io.ReadCloser, prepareErr error) {
 	if path == "" {
 		return ocispec.Descriptor{}, nil, errors.New("missing file name")
 	}
@@ -66,6 +66,15 @@ func PrepareContent(path string, mediaType string, dgstStr string, size int64) (
 		}
 	}()
 
+	fi, err := file.Stat()
+	if err != nil {
+		return ocispec.Descriptor{}, nil, fmt.Errorf("failed to stat %s: %w", path, err)
+	}
+	actualSize := fi.Size()
+	if size >= 0 && size != actualSize {
+		return ocispec.Descriptor{}, nil, fmt.Errorf("input size %d does not match the actual content size %d", size, actualSize)
+	}
+
 	if dgst == "" {
 		dgst, err = digest.FromReader(file)
 		if err != nil {
@@ -76,17 +85,9 @@ func PrepareContent(path string, mediaType string, dgstStr string, size int64) (
 		}
 	}
 
-	if size < 0 {
-		fi, err := file.Stat()
-		if err != nil {
-			return ocispec.Descriptor{}, nil, fmt.Errorf("failed to stat %s: %w", path, err)
-		}
-		size = fi.Size()
-	}
-
 	return ocispec.Descriptor{
 		MediaType: mediaType,
 		Digest:    dgst,
-		Size:      size,
+		Size:      actualSize,
 	}, file, nil
 }
