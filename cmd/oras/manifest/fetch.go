@@ -72,6 +72,7 @@ Example - Fetch manifest with prettified json result:
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
 			}
 
+			opts.cacheRoot = os.Getenv("ORAS_CACHE")
 			return opts.ReadPassword()
 		},
 		Aliases: []string{"get"},
