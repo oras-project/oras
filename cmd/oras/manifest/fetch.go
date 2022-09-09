@@ -20,6 +20,7 @@ import (
 	"errors"
 	"os"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
@@ -47,6 +48,7 @@ func fetchCmd() *cobra.Command {
 		Use:   "fetch [flags] <name:tag|name@digest>",
 		Short: "[Preview] Fetch manifest of the target artifact",
 		Long: `[Preview] Fetch manifest of the target artifact
+
 ** This command is in preview and under development. **
 
 Example - Fetch raw manifest:
@@ -85,7 +87,7 @@ Example - Fetch manifest with prettified json result:
 	return cmd
 }
 
-func fetchManifest(opts fetchOptions) error {
+func fetchManifest(opts fetchOptions) (fetchErr error) {
 	ctx, _ := opts.SetLoggerLevel()
 
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
@@ -112,17 +114,27 @@ func fetchManifest(opts fetchOptions) error {
 		src = cache.New(src, ociStore)
 	}
 
-	// fetch manifest
-	desc, content, err := oras.FetchBytes(ctx, src, opts.targetRef, oras.FetchBytesOptions{
-		FetchOptions: oras.FetchOptions{
-			ResolveOptions: oras.ResolveOptions{
-				TargetPlatform: targetPlatform,
+	var desc ocispec.Descriptor
+	var content []byte
+	if opts.OutputDescriptor && opts.outputPath == "" {
+		// fetch manifest descriptor only
+		desc, err = oras.Resolve(ctx, src, opts.targetRef, oras.DefaultResolveOptions)
+		if err != nil {
+			return err
+		}
+	} else {
+		// fetch manifest content
+		desc, content, err = oras.FetchBytes(ctx, src, opts.targetRef, oras.FetchBytesOptions{
+			FetchOptions: oras.FetchOptions{
+				ResolveOptions: oras.ResolveOptions{
+					TargetPlatform: targetPlatform,
+				},
 			},
-		},
-		MaxBytes: 0,
-	})
-	if err != nil {
-		return err
+			MaxBytes: 0,
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	// output manifest's descriptor if `--descriptor` is used
@@ -138,24 +150,24 @@ func fetchManifest(opts fetchOptions) error {
 	}
 
 	// save manifest content into the local file if the output path is provided
-	if opts.outputPath != "" {
-		file, err := os.OpenFile(opts.outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	if opts.outputPath != "" && opts.outputPath != "-" {
+		file, err := os.Create(opts.outputPath)
 		if err != nil {
 			return err
 		}
 		defer func() {
-			if closeErr := file.Close(); err == nil {
-				err = closeErr
+			if err := file.Close(); fetchErr == nil {
+				fetchErr = err
 			}
 		}()
 
-		_, err = file.Write(content)
-		if err != nil {
+		if _, err = file.Write(content); err != nil {
 			return err
 		}
 	}
 
-	if opts.outputPath == "-" || (opts.outputPath == "" && !opts.OutputDescriptor) {
+	// outputs manifest content
+	if (opts.outputPath == "" && !opts.OutputDescriptor) || opts.outputPath == "-" {
 		err = opts.Output(os.Stdout, content)
 		if err != nil {
 			return err
