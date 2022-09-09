@@ -55,8 +55,8 @@ Example - Push blob "hi.txt":
 Example - Push blob "hi.txt" with the specific digest:
   oras blob push localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5 hi.txt
 
-Example - Push blob from stdin with blob size:
-  oras blob push --size 12 localhost:5000/hello -
+Example - Push blob from stdin with blob size and digest:
+  oras blob push --size 12 localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5 -
 
 Example - Push blob "hi.txt" and output the descriptor:
   oras blob push --descriptor localhost:5000/hello hi.txt
@@ -77,9 +77,6 @@ Example - Push blob without TLS:
 			if opts.fileRef == "-" && opts.PasswordFromStdin {
 				return errors.New("`-` read file from input and `--password-stdin` read password from input cannot be both used")
 			}
-			if opts.fileRef == "-" && opts.size == 0 {
-				return errors.New("`--size` must be provided if the blob is read from stdin")
-			}
 
 			return opts.ReadPassword()
 		},
@@ -88,7 +85,7 @@ Example - Push blob without TLS:
 		},
 	}
 
-	cmd.Flags().Int64VarP(&opts.size, "size", "", 0, "provide the blob size")
+	cmd.Flags().Int64VarP(&opts.size, "size", "", -1, "provide the blob size")
 	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", ocispec.MediaTypeImageLayer, "specify the returned media type in the descriptor if `--descriptor` is used")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
@@ -104,7 +101,7 @@ func pushBlob(opts pushBlobOptions) (err error) {
 
 	// prepare blob content
 	refDigest := digest.Digest(repo.Reference.Reference)
-	desc, rc, err := file.PrepareContent(opts.fileRef, "application/octet-stream", refDigest, opts.size)
+	desc, rc, err := file.PrepareContent(opts.fileRef, opts.mediaType, refDigest, opts.size)
 	if err != nil {
 		return err
 	}
@@ -133,7 +130,6 @@ func pushBlob(opts pushBlobOptions) (err error) {
 
 	// outputs blob's descriptor
 	if opts.OutputDescriptor {
-		desc.MediaType = opts.mediaType
 		descJSON, err := opts.Marshal(desc)
 		if err != nil {
 			return err

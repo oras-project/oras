@@ -47,7 +47,7 @@ func TestFile_PrepareContent(t *testing.T) {
 	}
 
 	// test PrepareContent
-	got, rc, err := file.PrepareContent(path, blobMediaType, "", 0)
+	got, rc, err := file.PrepareContent(path, blobMediaType, "", -1)
 	if err != nil {
 		t.Fatal("PrepareContent() error=", err)
 	}
@@ -75,7 +75,7 @@ func TestFile_PrepareContent(t *testing.T) {
 	}
 	want = ocispec.Descriptor{
 		MediaType: blobMediaType,
-		Digest:    dgst,
+		Digest:    digest.Digest(dgst),
 		Size:      size,
 	}
 	if !reflect.DeepEqual(got, want) {
@@ -116,14 +116,16 @@ func TestFile_PrepareContent_fromStdin(t *testing.T) {
 	defer func(stdin *os.File) { os.Stdin = stdin }(os.Stdin)
 
 	os.Stdin = tmpfile
+	dgst := digest.FromBytes(content)
+	size := int64(len(content))
 	wantDesc := ocispec.Descriptor{
 		MediaType: blobMediaType,
 		Digest:    digest.FromBytes(content),
 		Size:      int64(len(content)),
 	}
 
-	// test PrepareContent
-	gotDesc, gotRc, err := file.PrepareContent("-", blobMediaType, "", 0)
+	// test PrepareContent with provided digest and size
+	gotDesc, gotRc, err := file.PrepareContent("-", blobMediaType, dgst, size)
 	defer gotRc.Close()
 	if err != nil {
 		t.Fatal("PrepareContent() error=", err)
@@ -137,11 +139,18 @@ func TestFile_PrepareContent_fromStdin(t *testing.T) {
 	if !reflect.DeepEqual(gotRc, tmpfile) {
 		t.Errorf("PrepareContent() = %v, want %v", gotRc, tmpfile)
 	}
+
+	// test PrepareContent from stdin with missing digest and size
+	_, _, err = file.PrepareContent("-", blobMediaType, "", -1)
+	expected := "content size and digest must be provided if it is read from stdin"
+	if err.Error() != expected {
+		t.Fatalf("PrepareContent() error = %v, wantErr %v", err, expected)
+	}
 }
 
 func TestFile_PrepareContent_errMissingFileName(t *testing.T) {
 	// test PrepareContent with missing file name
-	_, _, err := file.PrepareContent("", blobMediaType, "", 0)
+	_, _, err := file.PrepareContent("", blobMediaType, "", -1)
 	expected := "missing file name"
 	if err.Error() != expected {
 		t.Fatalf("PrepareContent() error = %v, wantErr %v", err, expected)
@@ -150,7 +159,7 @@ func TestFile_PrepareContent_errMissingFileName(t *testing.T) {
 
 func TestFile_PrepareContent_errOpenFile(t *testing.T) {
 	// test PrepareContent with nonexistent file
-	_, _, err := file.PrepareContent("nonexistent.txt", blobMediaType, "", 0)
+	_, _, err := file.PrepareContent("nonexistent.txt", blobMediaType, "", -1)
 	expected := "failed to open nonexistent.txt"
 	if !strings.Contains(err.Error(), expected) {
 		t.Fatalf("PrepareContent() error = %v, wantErr %v", err, expected)

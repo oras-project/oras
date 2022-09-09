@@ -16,6 +16,7 @@ limitations under the License.
 package file
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -28,19 +29,31 @@ import (
 // Use the input digest and size if they are provided.
 func PrepareContent(path string, mediaType string, dgst digest.Digest, size int64) (ocispec.Descriptor, io.ReadCloser, error) {
 	if path == "" {
-		return ocispec.Descriptor{}, nil, fmt.Errorf("missing file name")
+		return ocispec.Descriptor{}, nil, errors.New("missing file name")
 	}
 
-	var file *os.File
-	var err error
+	// prepares the content descriptor from stdin
 	if path == "-" {
-		file = os.Stdin
-	} else {
-		file, err = os.Open(path)
-		if err != nil {
-			return ocispec.Descriptor{}, nil, fmt.Errorf("failed to open %s: %w", path, err)
+		// throw err if size or digest is not provided.
+		if size < 0 || dgst == "" {
+			return ocispec.Descriptor{}, nil, errors.New("content size and digest must be provided if it is read from stdin")
 		}
+		return ocispec.Descriptor{
+			MediaType: mediaType,
+			Digest:    dgst,
+			Size:      size,
+		}, os.Stdin, nil
 	}
+
+	file, err := os.Open(path)
+	if err != nil {
+		return ocispec.Descriptor{}, nil, fmt.Errorf("failed to open %s: %w", path, err)
+	}
+	defer func() {
+		if err != nil {
+			file.Close()
+		}
+	}()
 
 	if dgst == "" {
 		dgst, err = digest.FromReader(file)
@@ -52,7 +65,7 @@ func PrepareContent(path string, mediaType string, dgst digest.Digest, size int6
 		}
 	}
 
-	if size <= 0 {
+	if size < 0 {
 		fi, err := file.Stat()
 		if err != nil {
 			return ocispec.Descriptor{}, nil, fmt.Errorf("failed to stat %s: %w", path, err)
