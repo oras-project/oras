@@ -34,15 +34,15 @@ func (fn closer) Close() error {
 
 // Cache target struct.
 type target struct {
-	oras.Target
+	oras.ReadOnlyTarget
 	cache content.Storage
 }
 
 // New generates a new target storage with caching.
-func New(source oras.Target, cache content.Storage) oras.Target {
+func New(source oras.ReadOnlyTarget, cache content.Storage) oras.ReadOnlyTarget {
 	t := &target{
-		Target: source,
-		cache:  cache,
+		ReadOnlyTarget: source,
+		cache:          cache,
 	}
 	if refFetcher, ok := source.(registry.ReferenceFetcher); ok {
 		return &referenceTarget{
@@ -61,7 +61,7 @@ func (t *target) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadC
 		return rc, nil
 	}
 
-	if rc, err = t.Target.Fetch(ctx, target); err != nil {
+	if rc, err = t.ReadOnlyTarget.Fetch(ctx, target); err != nil {
 		return nil, err
 	}
 
@@ -78,6 +78,9 @@ func (t *target) cacheReadCloser(ctx context.Context, rc io.ReadCloser, target o
 	go func() {
 		defer wg.Done()
 		pushErr = t.cache.Push(ctx, target, pr)
+		if pushErr != nil {
+			pr.CloseWithError(pushErr)
+		}
 	}()
 
 	return struct {
@@ -105,7 +108,7 @@ func (t *target) Exists(ctx context.Context, desc ocispec.Descriptor) (bool, err
 	if err == nil && exists {
 		return true, nil
 	}
-	return t.Target.Exists(ctx, desc)
+	return t.ReadOnlyTarget.Exists(ctx, desc)
 }
 
 // Cache referenceTarget struct.
@@ -130,6 +133,17 @@ func (t *referenceTarget) FetchReference(ctx context.Context, reference string) 
 		return ocispec.Descriptor{}, nil, err
 	}
 	if exists {
+		err = rc.Close()
+		if err != nil {
+			return ocispec.Descriptor{}, nil, err
+		}
+
+		// get rc from the cache
+		rc, err = t.cache.Fetch(ctx, target)
+		if err != nil {
+			return ocispec.Descriptor{}, nil, err
+		}
+
 		// no need to do tee'd push
 		return target, rc, nil
 	}

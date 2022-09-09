@@ -31,6 +31,7 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/registry"
@@ -45,7 +46,17 @@ func TestProxy_fetchCache(t *testing.T) {
 		Size:      int64(len(blob)),
 	}
 
-	p := New(memory.New(), memory.New())
+	target := memory.New()
+	p := struct {
+		oras.Target
+		oras.ReadOnlyTarget
+		cache content.Storage
+	}{
+		target,
+		target,
+		memory.New(),
+	}
+
 	ctx := context.Background()
 
 	err := p.Push(ctx, desc, bytes.NewReader(blob))
@@ -54,14 +65,14 @@ func TestProxy_fetchCache(t *testing.T) {
 	}
 
 	// first fetch
-	exists, err := p.Exists(ctx, desc)
+	exists, err := p.Target.Exists(ctx, desc)
 	if err != nil {
 		t.Fatal("Proxy.Exists() error =", err)
 	}
 	if !exists {
 		t.Errorf("Proxy.Exists() = %v, want %v", exists, true)
 	}
-	got, err := content.FetchAll(ctx, p, desc)
+	got, err := content.FetchAll(ctx, p.Target, desc)
 	if err != nil {
 		t.Fatal("Proxy.Fetch() error =", err)
 	}
@@ -71,16 +82,16 @@ func TestProxy_fetchCache(t *testing.T) {
 
 	// repeated fetch should not touch base CAS
 	// nil base will generate panic if the base CAS is touched
-	p.(*target).Target = nil
+	p.Target = nil
 
-	exists, err = p.Exists(ctx, desc)
+	exists, err = p.ReadOnlyTarget.Exists(ctx, desc)
 	if err != nil {
 		t.Fatal("Proxy.Exists() error =", err)
 	}
 	if !exists {
 		t.Errorf("Proxy.Exists() = %v, want %v", exists, true)
 	}
-	got, err = content.FetchAll(ctx, p, desc)
+	got, err = content.FetchAll(ctx, p.ReadOnlyTarget, desc)
 	if err != nil {
 		t.Fatal("Proxy.Fetch() error =", err)
 	}
@@ -97,7 +108,13 @@ func TestProxy_pushPassThrough(t *testing.T) {
 		Size:      int64(len(blob)),
 	}
 
-	p := New(memory.New(), memory.New())
+	p := struct {
+		oras.Target
+		cache content.Storage
+	}{
+		memory.New(),
+		memory.New(),
+	}
 	ctx := context.Background()
 
 	// before push
@@ -158,7 +175,10 @@ func TestProxy_fetchReference(t *testing.T) {
 			w.Header().Set("Docker-Content-Digest", digest.String())
 			w.Header().Set("Content-Length", strconv.Itoa(len([]byte(blob))))
 			w.WriteHeader(http.StatusOK)
-			w.Write(blob)
+			// write data to the response if this is the first request
+			if requestCount == 1 {
+				w.Write(blob)
+			}
 			atomic.AddInt64(&successCount, 1)
 			return
 		}
@@ -205,8 +225,35 @@ func TestProxy_fetchReference(t *testing.T) {
 		t.Errorf("unexpected number of successful requests: %d, want %d", successCount, wantSuccessCount)
 	}
 
+	// second fetch reference, should get the rc from the cache
+	gotDesc, rc, err = p.(registry.ReferenceFetcher).FetchReference(ctx, repo.Reference.Reference)
+	if err != nil {
+		t.Fatal("ReferenceTarget.FetchReference() error =", err)
+	}
+	if !reflect.DeepEqual(gotDesc, desc) {
+		t.Fatalf("ReferenceTarget.FetchReference() got %v, want %v", gotDesc, desc)
+	}
+	got, err = io.ReadAll(rc)
+	if err != nil {
+		t.Fatal("io.ReadAll() error =", err)
+	}
+	err = rc.Close()
+	if err != nil {
+		t.Error("ReferenceTarget.FetchReference().Close() error =", err)
+	}
+
+	if !bytes.Equal(got, blob) {
+		t.Errorf("ReferenceTarget.Fetch() = %v, want %v", got, blob)
+	}
+	if wantRequestCount++; requestCount != wantRequestCount {
+		t.Errorf("unexpected number of requests: %d, want %d", requestCount, wantRequestCount)
+	}
+	if wantSuccessCount++; successCount != wantSuccessCount {
+		t.Errorf("unexpected number of successful requests: %d, want %d", successCount, wantSuccessCount)
+	}
+
 	// repeated fetch should not touch base CAS
-	p.(*referenceTarget).Target = nil
+	p.(*referenceTarget).ReadOnlyTarget = nil
 	got, err = content.FetchAll(ctx, p, desc)
 	if err != nil {
 		t.Fatal("ReferenceTarget.Fetch() error =", err)
