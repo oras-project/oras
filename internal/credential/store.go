@@ -132,6 +132,7 @@ func (s *Store) Credential(ctx context.Context, registry string) (auth.Credentia
 	return auth.EmptyCredential, nil
 }
 
+// convertHostname maps docker.io to registry-1.docker.io
 func convertHostname(registry string) string {
 	if registry == "docker.io" {
 		return "registry-1.docker.io"
