@@ -18,6 +18,7 @@ package manifest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
@@ -27,7 +28,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras/cmd/oras/internal/descriptor"
-	"oras.land/oras/cmd/oras/internal/errors"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/cache"
 )
@@ -47,7 +48,7 @@ type fetchConfigOptions struct {
 func fetchConfigCmd() *cobra.Command {
 	var opts fetchConfigOptions
 	cmd := &cobra.Command{
-		Use:   "fetch-config name{:tag|@digest}",
+		Use:   "fetch-config [flag] name<:tag|@digest>",
 		Short: "[Preview] Fetch the config of a manifest from a remote registry",
 		Long: `[Preview] Fetch the config of a manifest from a remote registry
 
@@ -57,13 +58,17 @@ Example - Fetch the config:
   oras manifest fetch-config localhost:5000/hello:latest
 
 Example - Fetch the config and save it to a local file:
-  oras manifest fetch-config localhost:5000/hello:latest --output config.json
+  oras manifest fetch-config --output config.json localhost:5000/hello:latest
 
 Example - Fetch the descriptor of the config:
-oras manifest fetch-config localhost:5000/hello:latest --descriptor
+oras manifest fetch-config --descriptor localhost:5000/hello:latest
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if opts.outputPath == "-" && opts.OutputDescriptor {
+				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
+			}
+
 			opts.cacheRoot = os.Getenv("ORAS_CACHE")
 			return opts.ReadPassword()
 		},
@@ -79,7 +84,7 @@ oras manifest fetch-config localhost:5000/hello:latest --descriptor
 	return cmd
 }
 
-func fetchConfig(opts fetchConfigOptions) (err error) {
+func fetchConfig(opts fetchConfigOptions) (fetchErr error) {
 	ctx, _ := opts.SetLoggerLevel()
 
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
@@ -88,7 +93,7 @@ func fetchConfig(opts fetchConfigOptions) (err error) {
 	}
 
 	if repo.Reference.Reference == "" {
-		return errors.NewErrInvalidReference(repo.Reference)
+		return oerrors.NewErrInvalidReference(repo.Reference)
 	}
 
 	var src oras.ReadOnlyTarget = repo
@@ -105,7 +110,7 @@ func fetchConfig(opts fetchConfigOptions) (err error) {
 		return err
 	}
 
-	// outputs config's descriptor if `--descriptor` is used
+	// output config's descriptor if `--descriptor` is used
 	if opts.OutputDescriptor {
 		descBytes, err := json.Marshal(configDesc)
 		if err != nil {
@@ -123,24 +128,24 @@ func fetchConfig(opts fetchConfigOptions) (err error) {
 	}
 
 	// save config into the local file if the output path is provided
-	if opts.outputPath != "" {
-		file, err := os.OpenFile(opts.outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	if opts.outputPath != "" && opts.outputPath != "-" {
+		file, err := os.Create(opts.outputPath)
 		if err != nil {
 			return err
 		}
 		defer func() {
-			if closeErr := file.Close(); err == nil {
-				err = closeErr
+			if err := file.Close(); fetchErr == nil {
+				fetchErr = err
 			}
 		}()
 
-		_, err = file.Write(contentBytes)
-		if err != nil {
+		if _, err = file.Write(contentBytes); err != nil {
 			return err
 		}
 	}
 
-	if !opts.OutputDescriptor && opts.outputPath == "" {
+	// output config
+	if (opts.outputPath == "" && !opts.OutputDescriptor) || opts.outputPath == "-" {
 		err = opts.Output(os.Stdout, contentBytes)
 		if err != nil {
 			return err
