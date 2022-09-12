@@ -18,7 +18,7 @@ package blob
 import (
 	"errors"
 	"fmt"
-	"strings"
+	"os"
 
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/errdef"
@@ -27,6 +27,9 @@ import (
 
 type deleteBlobOptions struct {
 	option.Common
+	option.Confirmation
+	option.Descriptor
+	option.Pretty
 	option.Remote
 
 	targetRef string
@@ -35,19 +38,26 @@ type deleteBlobOptions struct {
 func deleteCmd() *cobra.Command {
 	var opts deleteBlobOptions
 	cmd := &cobra.Command{
-		Use:   "delete <name@digest> [flags]",
+		Use:   "delete [flags] <name@digest>",
 		Short: "[Preview] Delete a blob from a remote registry",
 		Long: `[Preview] Delete a blob from a remote registry
+
 ** This command is in preview and under development. **
 
 Example - Delete blob:
   oras blob delete localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 
-Example - Delete blob from the insecure registry:
-  oras blob delete localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5 --insecure
-`,
+Example - Delete blob with confirmation:
+  oras blob delete --yes localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
+
+Example - Delete blob and stdout the descriptor of the blob:
+  oras blob delete --descriptor --yes localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
+  `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if opts.OutputDescriptor && !opts.Confirmed {
+				return errors.New("must apply --yes to confirm the deletion if the descriptor is outputted")
+			}
 			return opts.ReadPassword()
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -67,19 +77,39 @@ func deleteBlob(opts deleteBlobOptions) (err error) {
 		return err
 	}
 
-	if repo.Reference.Reference == "" || !strings.Contains(opts.targetRef, "@") {
-		return fmt.Errorf("%s: blob reference not support, expecting <name@digest>", opts.targetRef)
+	if _, err = repo.Reference.Digest(); err != nil {
+		return fmt.Errorf("%s: blob reference must be of the form <name@digest>", opts.targetRef)
 	}
 
-	desc, err := repo.Blobs().Resolve(ctx, opts.targetRef)
+	blobs := repo.Blobs()
+	desc, err := blobs.Resolve(ctx, opts.targetRef)
 	if err != nil {
 		if errors.Is(err, errdef.ErrNotFound) {
 			return fmt.Errorf("%s: the specified blob does not exist", opts.targetRef)
 		}
 		return err
 	}
-	if err = repo.Delete(ctx, desc); err != nil {
+
+	message := fmt.Sprintf("Are you sure you want to delete the blob '%v'? (y/n):", desc.Digest)
+	confirmed, err := opts.AskForConfirmation(message)
+	if err != nil {
+		return err
+	}
+	if !confirmed {
+		fmt.Println("Not deleted", opts.targetRef)
+		return nil
+	}
+
+	if err = blobs.Delete(ctx, desc); err != nil {
 		return fmt.Errorf("failed to delete %s: %w", opts.targetRef, err)
+	}
+
+	if opts.OutputDescriptor {
+		descJSON, err := opts.Marshal(desc)
+		if err != nil {
+			return err
+		}
+		return opts.Output(os.Stdout, descJSON)
 	}
 
 	fmt.Println("Deleted", opts.targetRef)
