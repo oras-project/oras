@@ -59,6 +59,12 @@ func runLogout(opts logoutOptions) error {
 	if err != nil {
 		return err
 	}
-
-	return store.Erase(opts.hostname)
+	// For a user case that logout from 'docker.io',
+	// According the the behavior of Docker CLI,
+	// credential under key "https://index.docker.io/v1/" should be removed
+	hostname := opts.hostname
+	if opts.hostname == "docker.io" {
+		hostname = "https://index.docker.io/v1/"
+	}
+	return store.Erase(hostname)
 }

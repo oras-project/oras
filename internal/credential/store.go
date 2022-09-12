@@ -92,7 +92,6 @@ func loadConfigFile(path string) (*configfile.ConfigFile, error) {
 
 // Store stores a credential for a given registry.
 func (s *Store) Store(registry string, cred auth.Credential) error {
-	registry = convertHostname(registry)
 	authConf := types.AuthConfig{
 		Username:      cred.Username,
 		Password:      cred.Password,
@@ -100,20 +99,17 @@ func (s *Store) Store(registry string, cred auth.Credential) error {
 		IdentityToken: cred.RefreshToken,
 		RegistryToken: cred.AccessToken,
 	}
-
 	return s.configs[0].GetCredentialsStore(registry).Store(authConf)
 }
 
 // Erase erases a credential for a given registry.
 func (s *Store) Erase(registry string) error {
-	registry = convertHostname(registry)
 	return s.configs[0].GetCredentialsStore(registry).Erase(registry)
 }
 
 // Credential iterates all the config files, returns the first non-empty
 // credential in a best-effort way.
 func (s *Store) Credential(ctx context.Context, registry string) (auth.Credential, error) {
-	registry = convertHostname(registry)
 	for _, c := range s.configs {
 		authConf, err := c.GetCredentialsStore(registry).Get(registry)
 		if err != nil {
@@ -130,12 +126,4 @@ func (s *Store) Credential(ctx context.Context, registry string) (auth.Credentia
 		}
 	}
 	return auth.EmptyCredential, nil
-}
-
-// convertHostname maps docker.io to registry-1.docker.io
-func convertHostname(registry string) string {
-	if registry == "docker.io" {
-		return "registry-1.docker.io"
-	}
-	return registry
 }
