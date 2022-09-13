@@ -37,7 +37,7 @@ func PrepareManifestContent(path string, mediaType string) (desc ocispec.Descrip
 	if path == "-" {
 		file = os.Stdin
 	} else {
-		file, err := os.Open(path)
+		file, err = os.Open(path)
 		if err != nil {
 			return ocispec.Descriptor{}, nil, fmt.Errorf("failed to open %s: %w", path, err)
 		}
