@@ -78,6 +78,7 @@ Example - Fetch blob from the insecure registry:
 			opts.cacheRoot = os.Getenv("ORAS_CACHE")
 			return opts.ReadPassword()
 		},
+		Aliases: []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
 			return fetchBlob(opts)
