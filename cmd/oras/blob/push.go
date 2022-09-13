@@ -73,10 +73,14 @@ Example - Push blob without TLS:
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
 			opts.fileRef = args[1]
-			if opts.fileRef == "-" && opts.PasswordFromStdin {
-				return errors.New("`-` read file from input and `--password-stdin` read password from input cannot be both used")
+			if opts.fileRef == "-" {
+				if opts.PasswordFromStdin {
+					return errors.New("`-` read file from input and `--password-stdin` read password from input cannot be both used")
+				}
+				if opts.size < 0 {
+					return errors.New("`--size` must be provided if the blob is read from stdin")
+				}
 			}
-
 			return opts.ReadPassword()
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {

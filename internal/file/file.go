@@ -46,8 +46,11 @@ func PrepareContent(path string, mediaType string, dgstStr string, size int64) (
 	// prepares the content descriptor from stdin
 	if path == "-" {
 		// throw err if size or digest is not provided.
-		if size < 0 || dgst == "" {
-			return ocispec.Descriptor{}, nil, errors.New("content size and digest must be provided if it is read from stdin")
+		if size < 0 {
+			return ocispec.Descriptor{}, nil, errors.New("content size must be provided if it is read from stdin")
+		}
+		if dgst == "" {
+			return ocispec.Descriptor{}, nil, errors.New("content digest must be provided if it is read from stdin")
 		}
 		return ocispec.Descriptor{
 			MediaType: mediaType,
