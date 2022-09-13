@@ -133,6 +133,17 @@ func (t *referenceTarget) FetchReference(ctx context.Context, reference string) 
 		return ocispec.Descriptor{}, nil, err
 	}
 	if exists {
+		err = rc.Close()
+		if err != nil {
+			return ocispec.Descriptor{}, nil, err
+		}
+
+		// get rc from the cache
+		rc, err = t.cache.Fetch(ctx, target)
+		if err != nil {
+			return ocispec.Descriptor{}, nil, err
+		}
+
 		// no need to do tee'd push
 		return target, rc, nil
 	}
