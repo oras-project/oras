@@ -110,7 +110,7 @@ func (opts *Remote) tlsConfig() (*tls.Config, error) {
 }
 
 // authClient assembles a oras auth client.
-func (opts *Remote) authClient(host string, debug bool) (client *auth.Client, err error) {
+func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client, err error) {
 	config, err := opts.tlsConfig()
 	if err != nil {
 		return nil, err
@@ -145,18 +145,22 @@ func (opts *Remote) authClient(host string, debug bool) (client *auth.Client, er
 			return cred, nil
 		}
 	} else {
+		store, err := credential.NewStore(opts.Configs...)
+		if err != nil {
+			return nil, err
+		}
 		// For a user case with a registry from 'docker.io', the hostname is "registry-1.docker.io"
 		// According to the the behavior of Docker CLI,
 		// credential under key "https://index.docker.io/v1/" should be provided
-		client.Credential = func(ctx context.Context, hostname string) (auth.Credential, error) {
-			if hostname == "registry-1.docker.io" {
-				hostname = "https://index.docker.io/v1/"
+		if registry == "docker.io" {
+			client.Credential = func(ctx context.Context, hostname string) (auth.Credential, error) {
+				if hostname == "registry-1.docker.io" {
+					hostname = "https://index.docker.io/v1/"
+				}
+				return store.Credential(ctx, hostname)
 			}
-			store, err := credential.NewStore(opts.Configs...)
-			if err != nil {
-				return auth.EmptyCredential, err
-			}
-			return store.Credential(ctx, hostname)
+		} else {
+			client.Credential = store.Credential
 		}
 	}
 	return
@@ -174,7 +178,7 @@ func (opts *Remote) NewRegistry(hostname string, common Common) (reg *remote.Reg
 		return nil, err
 	}
 	reg.PlainHTTP = opts.isPlainHttp(reg.Reference.Registry)
-	if reg.Client, err = opts.authClient(reg.Reference.Host(), common.Debug); err != nil {
+	if reg.Client, err = opts.authClient(hostname, common.Debug); err != nil {
 		return nil, err
 	}
 	return
@@ -187,7 +191,7 @@ func (opts *Remote) NewRepository(reference string, common Common) (repo *remote
 		return nil, err
 	}
 	repo.PlainHTTP = opts.isPlainHttp(repo.Reference.Registry)
-	if repo.Client, err = opts.authClient(repo.Reference.Host(), common.Debug); err != nil {
+	if repo.Client, err = opts.authClient(repo.Reference.Registry, common.Debug); err != nil {
 		return nil, err
 	}
 	return
