@@ -103,7 +103,7 @@ func pushBlob(opts pushBlobOptions) (err error) {
 	}
 
 	// prepare blob content
-	desc, rc, err := file.PrepareContent(opts.fileRef, opts.mediaType, repo.Reference.Reference, opts.size)
+	desc, rc, err := file.PrepareBlobContent(opts.fileRef, opts.mediaType, repo.Reference.Reference, opts.size)
 	if err != nil {
 		return err
 	}

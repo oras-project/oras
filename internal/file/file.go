@@ -16,6 +16,7 @@ limitations under the License.
 package file
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -25,10 +26,53 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// PrepareContent prepares the content descriptor from the file path or stdin.
+// PrepareManifestContent prepares the content descriptor from the file path or stdin.
+func PrepareManifestContent(path string, mediaType string) (desc ocispec.Descriptor, rc io.ReadCloser, prepareErr error) {
+	if path == "" {
+		return ocispec.Descriptor{}, nil, fmt.Errorf("missing file name")
+	}
+
+	var file *os.File
+	var err error
+	if path == "-" {
+		file = os.Stdin
+	} else {
+		file, err := os.Open(path)
+		if err != nil {
+			return ocispec.Descriptor{}, nil, fmt.Errorf("failed to open %s: %w", path, err)
+		}
+		defer func() {
+			if prepareErr != nil {
+				file.Close()
+			}
+		}()
+	}
+
+	fi, err := file.Stat()
+	if err != nil {
+		return ocispec.Descriptor{}, nil, fmt.Errorf("failed to stat %s: %w", path, err)
+	}
+
+	dgst, err := digest.FromReader(file)
+	if err != nil {
+		return ocispec.Descriptor{}, nil, err
+	}
+	if _, err = file.Seek(0, io.SeekStart); err != nil {
+		return ocispec.Descriptor{}, nil, err
+	}
+
+	desc = ocispec.Descriptor{
+		MediaType: mediaType,
+		Digest:    dgst,
+		Size:      fi.Size(),
+	}
+	return desc, file, nil
+}
+
+// PrepareBlobContent prepares the content descriptor from the file path or stdin.
 // Use the input digest and size if they are provided. Will return error if the
 // content is from stdin but the content digest and size are missing.
-func PrepareContent(path string, mediaType string, dgstStr string, size int64) (desc ocispec.Descriptor, rc io.ReadCloser, prepareErr error) {
+func PrepareBlobContent(path string, mediaType string, dgstStr string, size int64) (desc ocispec.Descriptor, rc io.ReadCloser, prepareErr error) {
 	if path == "" {
 		return ocispec.Descriptor{}, nil, errors.New("missing file name")
 	}
@@ -93,4 +137,19 @@ func PrepareContent(path string, mediaType string, dgstStr string, size int64) (
 		Digest:    dgst,
 		Size:      actualSize,
 	}, file, nil
+}
+
+func ParseMediaType(path string) (string, error) {
+	manifestByte, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	var manifest map[string]interface{}
+	if err := json.Unmarshal(manifestByte, &manifest); err != nil {
+		return "", errors.New("not a valid json file")
+	}
+	if manifest["mediaType"] == nil {
+		return "", errors.New("media type is not recognized")
+	}
+	return fmt.Sprint(manifest["mediaType"]), nil
 }

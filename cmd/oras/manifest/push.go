@@ -21,8 +21,8 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras/cmd/oras/internal/display"
-	"oras.land/oras/cmd/oras/internal/file"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/file"
 )
 
 type pushOptions struct {
