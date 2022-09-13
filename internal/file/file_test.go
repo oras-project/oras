@@ -150,9 +150,16 @@ func TestFile_PrepareContent_fromStdin(t *testing.T) {
 		t.Errorf("PrepareContent() = %v, want %v", gotRc, tmpfile)
 	}
 
-	// test PrepareContent from stdin with missing digest and size
+	// test PrepareContent from stdin with missing size
 	_, _, err = file.PrepareContent("-", blobMediaType, "", -1)
-	expected := "content size and digest must be provided if it is read from stdin"
+	expected := "content size must be provided if it is read from stdin"
+	if err.Error() != expected {
+		t.Fatalf("PrepareContent() error = %v, wantErr %v", err, expected)
+	}
+
+	// test PrepareContent from stdin with missing digest
+	_, _, err = file.PrepareContent("-", blobMediaType, "", 5)
+	expected = "content digest must be provided if it is read from stdin"
 	if err.Error() != expected {
 		t.Fatalf("PrepareContent() error = %v, wantErr %v", err, expected)
 	}
