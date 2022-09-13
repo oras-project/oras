@@ -61,3 +61,18 @@ Use [focused spec](https://onsi.github.io/ginkgo/#focused-specs)
 
 ### 3. Trouble-shooting CLI
 Executed command should be shown in the ginkgo logs after `[It]`,
+
+## Development
+### Adding New Tests Using Ginkgo DSL
+Two suites will be maintained for E2E testing:
+- command: contains test specs for single oras command execution
+- scenario: contains featured scenarios with several oras commands execution
+
+Inside a suite, please follow below model when building the hierarchical collections of specs:
+```
+Describe: <Role>
+  Context: Scenario or command specific description
+    When: <Action>
+      It: <Result> (per-command execution)
+       Expect: <Result> (detailed checks for execution results)
+```
