@@ -28,6 +28,7 @@ func Cmd() *cobra.Command {
 	cmd.AddCommand(
 		deleteCmd(),
 		fetchCmd(),
+		pushCmd(),
 	)
 	return cmd
 }

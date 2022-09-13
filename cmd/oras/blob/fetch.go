@@ -16,7 +16,6 @@ limitations under the License.
 package blob
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -78,6 +77,7 @@ Example - Fetch blob from the insecure registry:
 			opts.cacheRoot = os.Getenv("ORAS_CACHE")
 			return opts.ReadPassword()
 		},
+		Aliases: []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
 			return fetchBlob(opts)
@@ -150,7 +150,7 @@ func fetchBlob(opts fetchBlobOptions) (fetchErr error) {
 
 	// outputs blob's descriptor if `--descriptor` is used
 	if opts.OutputDescriptor {
-		descJSON, err := json.Marshal(desc)
+		descJSON, err := opts.Marshal(desc)
 		if err != nil {
 			return err
 		}
