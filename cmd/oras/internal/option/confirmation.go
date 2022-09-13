@@ -43,8 +43,7 @@ func (opts *Confirmation) AskForConfirmation(message string) (bool, error) {
 		fmt.Print(message)
 
 		var response string
-		_, err := scanln(&response)
-		if err != nil {
+		if _, err := scanln(&response); err != nil {
 			return false, err
 		}
 

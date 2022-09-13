@@ -20,7 +20,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/errdef"
-	ierrors "oras.land/oras/cmd/oras/internal/errors"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -37,7 +37,7 @@ type deleteOptions struct {
 func deleteCmd() *cobra.Command {
 	var opts deleteOptions
 	cmd := &cobra.Command{
-		Use:   "delete name[:tag|@digest]",
+		Use:   "delete [flags] name[:tag|@digest]",
 		Short: "[Preview] Delete a manifest from remote registry",
 		Long: `[Preview] Delete a manifest from remote registry
 
@@ -46,11 +46,14 @@ func deleteCmd() *cobra.Command {
 Example - Delete a manifest tagged with 'latest' from repository 'locahost:5000/hello':
   oras manifest delete localhost:5000/hello:latest
 
+Example - Delete a manifest with confirmation:
+  oras manifest delete --yes localhost:5000/hello:latest
+
+Example - Delete a manifest and stdout the descriptor of it:
+  oras manifest delete --descriptor localhost:5000/hello:latest
+
 Example - Delete a manifest by digest '99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9' from repository 'locahost:5000/hello':
   oras manifest delete localhost:5000/hello@sha:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
-
-Example - Delete a manifest without TLS:
-  oras manifest delete localhost:5000/hello:latest
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -77,10 +80,11 @@ func deleteManifest(opts deleteOptions) error {
 	}
 
 	if repo.Reference.Reference == "" {
-		return ierrors.NewErrInvalidReference(repo.Reference)
+		return oerrors.NewErrInvalidReference(repo.Reference)
 	}
 
-	desc, err := repo.Resolve(ctx, opts.targetRef)
+	manifests := repo.Manifests()
+	desc, err := manifests.Resolve(ctx, opts.targetRef)
 	if err != nil {
 		if errors.Is(err, errdef.ErrNotFound) {
 			return fmt.Errorf("%s: the specified manifest does not exist", opts.targetRef)
@@ -98,16 +102,16 @@ func deleteManifest(opts deleteOptions) error {
 		return nil
 	}
 
-	if err = repo.Delete(ctx, desc); err != nil {
-		return err
+	if err = manifests.Delete(ctx, desc); err != nil {
+		return fmt.Errorf("failed to delete %s: %w", opts.targetRef, err)
 	}
 
 	if opts.OutputDescriptor {
-		bytes, err := opts.Marshal(desc)
+		descJSON, err := opts.Marshal(desc)
 		if err != nil {
 			return err
 		}
-		return opts.Output(os.Stdout, bytes)
+		return opts.Output(os.Stdout, descJSON)
 	}
 
 	fmt.Println("Deleted", opts.targetRef)
