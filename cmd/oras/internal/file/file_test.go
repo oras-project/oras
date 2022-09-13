@@ -76,7 +76,7 @@ func TestFile_ParseMediaType_invalidContent_NotAJson(t *testing.T) {
 
 	// test ParseMediaType
 	_, err := file.ParseMediaType(path)
-	expected := "invalid character 'm' looking for beginning of value"
+	expected := "not a valid json file"
 	if err.Error() != expected {
 		t.Fatalf("ParseMediaType() error = %v, wantErr %v", err, expected)
 	}

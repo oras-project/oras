@@ -26,9 +26,47 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// PrepareContent prepares the content descriptor from the file path or stdin.
+// PrepareManifestContent prepares the content descriptor from the file path or stdin.
+func PrepareManifestContent(path string, mediaType string) (ocispec.Descriptor, io.ReadCloser, error) {
+	if path == "" {
+		return ocispec.Descriptor{}, nil, fmt.Errorf("missing file name")
+	}
+
+	var file *os.File
+	var err error
+	if path == "-" {
+		file = os.Stdin
+	} else {
+		file, err = os.Open(path)
+		if err != nil {
+			return ocispec.Descriptor{}, nil, fmt.Errorf("failed to open %s: %w", path, err)
+		}
+	}
+
+	fi, err := file.Stat()
+	if err != nil {
+		return ocispec.Descriptor{}, nil, fmt.Errorf("failed to stat %s: %w", path, err)
+	}
+
+	dgst, err := digest.FromReader(file)
+	if err != nil {
+		return ocispec.Descriptor{}, nil, err
+	}
+	if _, err = file.Seek(0, io.SeekStart); err != nil {
+		return ocispec.Descriptor{}, nil, err
+	}
+
+	desc := ocispec.Descriptor{
+		MediaType: mediaType,
+		Digest:    dgst,
+		Size:      fi.Size(),
+	}
+	return desc, file, nil
+}
+
+// PrepareBlobContent prepares the content descriptor from the file path or stdin.
 // Use the input digest and size if they are provided.
-func PrepareContent(path string, mediaType string, dgst digest.Digest, size int64) (ocispec.Descriptor, io.ReadCloser, error) {
+func PrepareBlobContent(path string, mediaType string, dgst digest.Digest, size int64) (ocispec.Descriptor, io.ReadCloser, error) {
 	if path == "" {
 		return ocispec.Descriptor{}, nil, fmt.Errorf("missing file name")
 	}
@@ -76,7 +114,7 @@ func ParseMediaType(path string) (string, error) {
 	}
 	var manifest map[string]interface{}
 	if err := json.Unmarshal(manifestByte, &manifest); err != nil {
-		return "", err
+		return "", errors.New("not a valid json file")
 	}
 	if manifest["mediaType"] == nil {
 		return "", errors.New("media type is not recognized")

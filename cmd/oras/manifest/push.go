@@ -20,6 +20,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/errdef"
+	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/file"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -38,7 +39,7 @@ type pushOptions struct {
 func pushCmd() *cobra.Command {
 	var opts pushOptions
 	cmd := &cobra.Command{
-		Use:   "push name[:tag|@digest] file",
+		Use:   "push [flags] name[:tag|@digest] file",
 		Short: "[Preview] Push a manifest to remote registry",
 		Long: `[Preview] Push a manifest to remote registry
 
@@ -46,6 +47,12 @@ func pushCmd() *cobra.Command {
 
 Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'latest':
   oras manifest push localhost:5000/hello:latest manifest.json
+
+Example - Push a manifest with content read from stdin:
+  oras manifest push localhost:5000/hello:latest -
+
+Example - Push a manifest and output the descriptor:
+  oras manifest push --descriptor localhost:5000/hello:latest manifest.json
 
 Example - Push a manifest to repository 'locahost:5000/hello' and output the prettified descriptor:
 oras manifest push --descriptor --pretty localhost:5000/hello manifest.json
@@ -58,6 +65,9 @@ Example - Push a manifest without TLS:
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if opts.fileRef == "-" && opts.PasswordFromStdin {
+				return errors.New("`-` read file from input and `--password-stdin` read password from input cannot be both used")
+			}
 			return opts.ReadPassword()
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
@@ -90,7 +100,7 @@ func pushManifest(opts pushOptions) error {
 	}
 
 	// prepare manifest content
-	desc, rc, err := file.PrepareContent(opts.fileRef, mediaType, "", 0)
+	desc, rc, err := file.PrepareManifestContent(opts.fileRef, mediaType)
 	if err != nil {
 		return err
 	}
@@ -103,23 +113,33 @@ func pushManifest(opts pushOptions) error {
 		ref = desc.Digest.String()
 	}
 
+	verbose := opts.Verbose && !opts.OutputDescriptor
 	got, err := repo.Resolve(ctx, ref)
-	if errors.Is(err, errdef.ErrNotFound) ||
-		(err == nil && got.Digest != desc.Digest) {
-		err = repo.PushReference(ctx, desc, rc, ref)
-	}
-	if err != nil {
-		return err
+
+	// push the manifest if the reference does not exist or their digests mismatch
+	if errors.Is(err, errdef.ErrNotFound) || (err == nil && got.Digest != desc.Digest) {
+		if err = display.PrintStatus(desc, "Uploading", verbose); err != nil {
+			return err
+		}
+		if err = repo.PushReference(ctx, desc, rc, ref); err != nil {
+			return err
+		}
+		if err = display.PrintStatus(desc, "Uploaded ", verbose); err != nil {
+			return err
+		}
+	} else {
+		if err := display.PrintStatus(desc, "Exists", verbose); err != nil {
+			return err
+		}
 	}
 
 	// outputs manifest's descriptor
 	if opts.OutputDescriptor {
-		desc.MediaType = opts.mediaType
-		bytes, err := opts.Marshal(desc)
+		descJSON, err := opts.Marshal(desc)
 		if err != nil {
 			return err
 		}
-		return opts.Output(os.Stdout, bytes)
+		return opts.Output(os.Stdout, descJSON)
 	}
 
 	fmt.Println("Pushed", opts.targetRef)
