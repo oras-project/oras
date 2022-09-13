@@ -136,22 +136,13 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 		if err != nil {
 			return err
 		}
-	}
 
-	// output manifest's descriptor if `--descriptor` is used
-	if opts.OutputDescriptor {
-		descBytes, err := json.Marshal(desc)
-		if err != nil {
-			return err
+		// outputs manifest content
+		if opts.outputPath == "" || opts.outputPath == "-" {
+			return opts.Output(os.Stdout, content)
 		}
-		err = opts.Output(os.Stdout, descBytes)
-		if err != nil {
-			return err
-		}
-	}
 
-	// save manifest content into the local file if the output path is provided
-	if opts.outputPath != "" && opts.outputPath != "-" {
+		// save manifest content into the local file if the output path is provided
 		file, err := os.Create(opts.outputPath)
 		if err != nil {
 			return err
@@ -167,9 +158,13 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 		}
 	}
 
-	// outputs manifest content
-	if (opts.outputPath == "" && !opts.OutputDescriptor) || opts.outputPath == "-" {
-		err = opts.Output(os.Stdout, content)
+	// output manifest's descriptor if `--descriptor` is used
+	if opts.OutputDescriptor {
+		descBytes, err := json.Marshal(desc)
+		if err != nil {
+			return err
+		}
+		err = opts.Output(os.Stdout, descBytes)
 		if err != nil {
 			return err
 		}
