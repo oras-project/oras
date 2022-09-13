@@ -81,7 +81,7 @@ func TestRemote_authClient_RawCredential(t *testing.T) {
 		Username: want.Username,
 		Password: want.Password,
 	}
-	client, err := opts.authClient(false)
+	client, err := opts.authClient("hostname", false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestRemote_authClient_skipTlsVerify(t *testing.T) {
 	opts := Remote{
 		Insecure: true,
 	}
-	client, err := opts.authClient(false)
+	client, err := opts.authClient("hostname", false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -125,7 +125,7 @@ func TestRemote_authClient_CARoots(t *testing.T) {
 	opts := Remote{
 		CACertFilePath: caPath,
 	}
-	client, err := opts.authClient(false)
+	client, err := opts.authClient("hostname", false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
