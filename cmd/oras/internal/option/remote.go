@@ -153,11 +153,11 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 		// According to the the behavior of Docker CLI,
 		// credential under key "https://index.docker.io/v1/" should be provided
 		if registry == "docker.io" {
-			client.Credential = func(ctx context.Context, reg string) (auth.Credential, error) {
-				if reg == "registry-1.docker.io" {
-					reg = "https://index.docker.io/v1/"
+			client.Credential = func(ctx context.Context, hostname string) (auth.Credential, error) {
+				if hostname == "registry-1.docker.io" {
+					hostname = "https://index.docker.io/v1/"
 				}
-				return store.Credential(ctx, reg)
+				return store.Credential(ctx, hostname)
 			}
 		} else {
 			client.Credential = store.Credential
@@ -177,7 +177,8 @@ func (opts *Remote) NewRegistry(hostname string, common Common) (reg *remote.Reg
 	if err != nil {
 		return nil, err
 	}
-	reg.PlainHTTP = opts.isPlainHttp(reg.Reference.Registry)
+	hostname = reg.Reference.Registry
+	reg.PlainHTTP = opts.isPlainHttp(hostname)
 	if reg.Client, err = opts.authClient(hostname, common.Debug); err != nil {
 		return nil, err
 	}
@@ -190,14 +191,15 @@ func (opts *Remote) NewRepository(reference string, common Common) (repo *remote
 	if err != nil {
 		return nil, err
 	}
-	repo.PlainHTTP = opts.isPlainHttp(repo.Reference.Registry)
-	if repo.Client, err = opts.authClient(repo.Reference.Registry, common.Debug); err != nil {
+	hostname := repo.Reference.Registry
+	repo.PlainHTTP = opts.isPlainHttp(hostname)
+	if repo.Client, err = opts.authClient(hostname, common.Debug); err != nil {
 		return nil, err
 	}
 	return
 }
 
-// isPlainHttp returns the plain http flag for a given regsitry.
+// isPlainHttp returns the plain http flag for a given registry.
 func (opts *Remote) isPlainHttp(registry string) bool {
 	host, _, _ := net.SplitHostPort(registry)
 	if host == "localhost" || registry == "localhost" {

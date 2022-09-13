@@ -120,7 +120,7 @@ func runLogin(opts loginOptions) (err error) {
 	// According the the behavior of Docker CLI,
 	// credential should be added under key "https://index.docker.io/v1/"
 	hostname := opts.Hostname
-	if opts.Hostname == "docker.io" {
+	if hostname == "docker.io" {
 		hostname = "https://index.docker.io/v1/"
 	}
 	if err := store.Store(hostname, opts.Credential()); err != nil {
