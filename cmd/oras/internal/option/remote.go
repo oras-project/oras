@@ -153,11 +153,11 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 		// According to the the behavior of Docker CLI,
 		// credential under key "https://index.docker.io/v1/" should be provided
 		if registry == "docker.io" {
-			client.Credential = func(ctx context.Context, hostname string) (auth.Credential, error) {
-				if hostname == "registry-1.docker.io" {
-					hostname = "https://index.docker.io/v1/"
+			client.Credential = func(ctx context.Context, reg string) (auth.Credential, error) {
+				if reg == "registry-1.docker.io" {
+					reg = "https://index.docker.io/v1/"
 				}
-				return store.Credential(ctx, hostname)
+				return store.Credential(ctx, reg)
 			}
 		} else {
 			client.Credential = store.Credential
