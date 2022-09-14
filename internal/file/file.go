@@ -26,7 +26,8 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// PrepareManifestContent prepares the content descriptor from the file path or stdin.
+// PrepareManifestContent prepares the content descriptor for manifest from the
+// file path or stdin.
 func PrepareManifestContent(path string, mediaType string) (desc ocispec.Descriptor, rc io.ReadCloser, prepareErr error) {
 	if path == "" {
 		return ocispec.Descriptor{}, nil, fmt.Errorf("missing file name")
@@ -69,9 +70,10 @@ func PrepareManifestContent(path string, mediaType string) (desc ocispec.Descrip
 	return desc, file, nil
 }
 
-// PrepareBlobContent prepares the content descriptor from the file path or stdin.
-// Use the input digest and size if they are provided. Will return error if the
-// content is from stdin but the content digest and size are missing.
+// PrepareBlobContent prepares the content descriptor for blob from the file
+// path or stdin. Use the input digest and size if they are provided. Will
+// return error if the content is from stdin but the content digest and size
+// are missing.
 func PrepareBlobContent(path string, mediaType string, dgstStr string, size int64) (desc ocispec.Descriptor, rc io.ReadCloser, prepareErr error) {
 	if path == "" {
 		return ocispec.Descriptor{}, nil, errors.New("missing file name")
@@ -139,6 +141,8 @@ func PrepareBlobContent(path string, mediaType string, dgstStr string, size int6
 	}, file, nil
 }
 
+// ParseMediaType parses the media type field of a json file from the given
+// file path.
 func ParseMediaType(path string) (string, error) {
 	manifestByte, err := os.ReadFile(path)
 	if err != nil {
