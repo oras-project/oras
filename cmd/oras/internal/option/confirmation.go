@@ -34,7 +34,7 @@ func (opts *Confirmation) ApplyFlags(fs *pflag.FlagSet) {
 }
 
 // AskForConfirmation prints a propmt to ask for confirmation before doing an
-// action and take user input as response.
+// action and takes user input as response.
 func (opts *Confirmation) AskForConfirmation(r io.Reader, prompt string) (bool, error) {
 	if opts.Confirmed {
 		return true, nil
