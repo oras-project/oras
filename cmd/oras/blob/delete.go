@@ -44,13 +44,13 @@ func deleteCmd() *cobra.Command {
 
 ** This command is in preview and under development. **
 
-Example - Delete blob:
+Example - Delete a blob:
   oras blob delete localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 
-Example - Delete blob with confirmation:
+Example - Delete a blob without prompting confirmation:
   oras blob delete --yes localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 
-Example - Delete blob and stdout the descriptor of the blob:
+Example - Delete a blob and print its descriptor:
   oras blob delete --descriptor --yes localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
   `,
 		Args: cobra.ExactArgs(1),
@@ -90,13 +90,12 @@ func deleteBlob(opts deleteBlobOptions) (err error) {
 		return err
 	}
 
-	message := fmt.Sprintf("Are you sure you want to delete the blob '%v'? (y/n):", desc.Digest)
-	confirmed, err := opts.AskForConfirmation(message)
+	prompt := fmt.Sprintf("Are you sure you want to delete the blob %q?", desc.Digest)
+	confirmed, err := opts.AskForConfirmation(os.Stdin, prompt)
 	if err != nil {
 		return err
 	}
 	if !confirmed {
-		fmt.Println("Not deleted", opts.targetRef)
 		return nil
 	}
 
