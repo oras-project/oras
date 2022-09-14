@@ -21,12 +21,13 @@ import (
 
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "manifest [fetch]",
+		Use:   "manifest [command]",
 		Short: "[Preview] Manifest operations",
 	}
 
 	cmd.AddCommand(
 		fetchCmd(),
+		deleteCmd(),
 	)
 	return cmd
 }
