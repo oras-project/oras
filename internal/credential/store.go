@@ -99,7 +99,6 @@ func (s *Store) Store(registry string, cred auth.Credential) error {
 		IdentityToken: cred.RefreshToken,
 		RegistryToken: cred.AccessToken,
 	}
-
 	return s.configs[0].GetCredentialsStore(registry).Store(authConf)
 }
 
