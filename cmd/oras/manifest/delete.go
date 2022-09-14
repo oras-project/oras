@@ -46,13 +46,13 @@ func deleteCmd() *cobra.Command {
 Example - Delete a manifest tagged with 'latest' from repository 'locahost:5000/hello':
   oras manifest delete localhost:5000/hello:latest
 
-Example - Delete a manifest with confirmation:
+Example - Delete a manifest without prompting confirmation:
   oras manifest delete --yes localhost:5000/hello:latest
 
-Example - Delete a manifest and stdout the descriptor of it:
+Example - Delete a manifest and print its descriptor:
   oras manifest delete --descriptor localhost:5000/hello:latest
 
-Example - Delete a manifest by digest '99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9' from repository 'locahost:5000/hello':
+Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9' from repository 'locahost:5000/hello':
   oras manifest delete localhost:5000/hello@sha:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
 `,
 		Args: cobra.ExactArgs(1),
@@ -92,13 +92,12 @@ func deleteManifest(opts deleteOptions) error {
 		return err
 	}
 
-	message := fmt.Sprintf("Are you sure you want to delete the artifact '%v' and all manifests that refer to it? (y/n):", desc.Digest)
-	confirmed, err := opts.AskForConfirmation(message)
+	prompt := fmt.Sprintf("Are you sure you want to delete the manifest %q and all tags associated with it?", desc.Digest)
+	confirmed, err := opts.AskForConfirmation(os.Stdin, prompt)
 	if err != nil {
 		return err
 	}
 	if !confirmed {
-		fmt.Println("Not deleted", opts.targetRef)
 		return nil
 	}
 

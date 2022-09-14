@@ -14,8 +14,8 @@ limitations under the License.
 package option
 
 import (
-	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/spf13/pflag"
@@ -33,8 +33,9 @@ func TestConfirmation_AskForConfirmation_ForciblyConfirmed(t *testing.T) {
 	opts := Confirmation{
 		Confirmed: true,
 	}
+	r := strings.NewReader("")
 
-	got, err := opts.AskForConfirmation("y/n")
+	got, err := opts.AskForConfirmation(r, "")
 	if err != nil {
 		t.Fatal("Confirmation.AskForConfirmation() error =", err)
 	}
@@ -44,18 +45,12 @@ func TestConfirmation_AskForConfirmation_ForciblyConfirmed(t *testing.T) {
 }
 
 func TestConfirmation_AskForConfirmation_ManuallyConfirmed(t *testing.T) {
-	reset := func(input string) {
-		scanln = func(a ...any) (n int, err error) {
-			*a[0].(*string) = input
-			return len([]byte(input)), nil
-		}
-	}
 	opts := Confirmation{
 		Confirmed: false,
 	}
 
-	reset("yes")
-	got, err := opts.AskForConfirmation("")
+	r := strings.NewReader("yes")
+	got, err := opts.AskForConfirmation(r, "")
 	if err != nil {
 		t.Fatal("Confirmation.AskForConfirmation() error =", err)
 	}
@@ -63,8 +58,8 @@ func TestConfirmation_AskForConfirmation_ManuallyConfirmed(t *testing.T) {
 		t.Fatalf("Confirmation.AskForConfirmation() got %v, want %v", got, true)
 	}
 
-	reset("no")
-	got, err = opts.AskForConfirmation("")
+	r = strings.NewReader("no")
+	got, err = opts.AskForConfirmation(r, "")
 	if err != nil {
 		t.Fatal("Confirmation.AskForConfirmation() error =", err)
 	}
@@ -74,15 +69,13 @@ func TestConfirmation_AskForConfirmation_ManuallyConfirmed(t *testing.T) {
 }
 
 func TestConfirmation_AskForConfirmation_ScanlnErr(t *testing.T) {
-	scanln = func(a ...any) (n int, err error) {
-		return 0, errors.New("fake error")
-	}
+	r := strings.NewReader("yes no")
 	opts := Confirmation{
 		Confirmed: false,
 	}
 
-	_, err := opts.AskForConfirmation("y/n")
-	expected := "fake error"
+	_, err := opts.AskForConfirmation(r, "")
+	expected := "expected newline"
 	if err.Error() != expected {
 		t.Fatalf("AskForConfirmation() error = %v, wantErr %v", err, expected)
 	}

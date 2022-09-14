@@ -17,6 +17,7 @@ package option
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/spf13/pflag"
@@ -27,31 +28,27 @@ type Confirmation struct {
 	Confirmed bool
 }
 
-var scanln func(a ...any) (n int, err error) = fmt.Scanln
-
 // ApplyFlags applies flags to a command flag set.
 func (opts *Confirmation) ApplyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.Confirmed, "yes", "y", false, "do not prompt for confirmation")
 }
 
-func (opts *Confirmation) AskForConfirmation(message string) (bool, error) {
+func (opts *Confirmation) AskForConfirmation(r io.Reader, prompt string) (bool, error) {
 	if opts.Confirmed {
 		return true, nil
 	}
 
-	for {
-		fmt.Print(message)
+	fmt.Print(prompt, "[y/N]")
 
-		var response string
-		if _, err := scanln(&response); err != nil {
-			return false, err
-		}
+	var response string
+	if _, err := fmt.Fscanln(r, &response); err != nil {
+		return false, err
+	}
 
-		switch strings.ToLower(response) {
-		case "y", "yes":
-			return true, nil
-		case "n", "no":
-			return false, nil
-		}
+	switch strings.ToLower(response) {
+	case "y", "yes":
+		return true, nil
+	default:
+		return false, nil
 	}
 }
