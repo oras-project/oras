@@ -29,7 +29,7 @@ func TestConfirmation_ApplyFlags(t *testing.T) {
 	}
 }
 
-func TestConfirmation_AskForConfirmation_ForciblyConfirmed(t *testing.T) {
+func TestConfirmation_AskForConfirmation_forciblyConfirmed(t *testing.T) {
 	opts := Confirmation{
 		Confirmed: true,
 	}
@@ -44,7 +44,7 @@ func TestConfirmation_AskForConfirmation_ForciblyConfirmed(t *testing.T) {
 	}
 }
 
-func TestConfirmation_AskForConfirmation_ManuallyConfirmed(t *testing.T) {
+func TestConfirmation_AskForConfirmation_manuallyConfirmed(t *testing.T) {
 	opts := Confirmation{
 		Confirmed: false,
 	}
@@ -68,11 +68,11 @@ func TestConfirmation_AskForConfirmation_ManuallyConfirmed(t *testing.T) {
 	}
 }
 
-func TestConfirmation_AskForConfirmation_ScanlnErr(t *testing.T) {
-	r := strings.NewReader("yes no")
+func TestConfirmation_AskForConfirmation_FscanlnErr(t *testing.T) {
 	opts := Confirmation{
 		Confirmed: false,
 	}
+	r := strings.NewReader("yes no")
 
 	_, err := opts.AskForConfirmation(r, "")
 	expected := "expected newline"
