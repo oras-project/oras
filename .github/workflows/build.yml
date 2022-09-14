@@ -48,7 +48,7 @@ jobs:
             --mount type=bind,source=$GITHUB_WORKSPACE/test/e2e/testdata/distribution/config-example-with-extensions.yml,target=/etc/docker/registry/config.yml \
             --mount type=bind,source=$GITHUB_WORKSPACE/test/e2e/testdata/distribution/passwd_bcrypt,target=/etc/docker/registry/passwd \
             ghcr.io/oras-project/registry:latest
-          ginkgo -r -p $GITHUB_WORKSPACE/test/e2e/suites
+          ginkgo -r -p $GITHUB_WORKSPACE/test/e2e/suite
           docker kill oras-e2e || true
         env:
           ORAS_PATH: bin/linux/amd64/oras
