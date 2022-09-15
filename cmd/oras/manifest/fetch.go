@@ -143,17 +143,7 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 		}
 
 		// save manifest content into the local file if the output path is provided
-		file, err := os.Create(opts.outputPath)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			if err := file.Close(); fetchErr == nil {
-				fetchErr = err
-			}
-		}()
-
-		if _, err = file.Write(content); err != nil {
+		if err = os.WriteFile(opts.outputPath, content, 0666); err != nil {
 			return err
 		}
 	}

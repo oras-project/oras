@@ -15,8 +15,48 @@ limitations under the License.
 
 package option
 
-import "testing"
+import (
+	"os"
+	"reflect"
+	"testing"
+
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras/internal/cache"
+)
+
+var mockTarget oras.ReadOnlyTarget = memory.New()
 
 func TestCache_CachedTarget(t *testing.T) {
+	tempDir := t.TempDir()
+	os.Setenv("ORAS_CACHE", tempDir)
+	opts := Cache{}
 
+	ociStore, err := oci.New(tempDir)
+	if err != nil {
+		t.Fatal("error calling oci.New(), error =", err)
+	}
+	want := cache.New(mockTarget, ociStore)
+
+	got, err := opts.CachedTarget(mockTarget)
+	if err != nil {
+		t.Fatal("Cache.CachedTarget() error=", err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Cache.CachedTarget() got %v, want %v", got, want)
+	}
+}
+
+func TestCache_CachedTarget_emptyRoot(t *testing.T) {
+	os.Setenv("ORAS_CACHE", "")
+	opts := Cache{}
+
+	got, err := opts.CachedTarget(mockTarget)
+	if err != nil {
+		t.Fatal("Cache.CachedTarget() error=", err)
+	}
+	if !reflect.DeepEqual(got, mockTarget) {
+		t.Fatalf("Cache.CachedTarget() got %v, want %v", got, mockTarget)
+	}
 }
