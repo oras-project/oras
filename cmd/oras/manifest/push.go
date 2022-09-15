@@ -109,10 +109,8 @@ func pushManifest(opts pushOptions) error {
 	// prepare manifest descriptor
 	desc := content.NewDescriptorFromBytes(mediaType, contentBytes)
 
-	var ref string
-	if tag := repo.Reference.Reference; tag != "" {
-		ref = tag
-	} else {
+	ref := repo.Reference.Reference
+	if ref == "" {
 		ref = desc.Digest.String()
 	}
 
