@@ -23,20 +23,18 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content/oci"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/cache"
 )
 
 type fetchOptions struct {
+	option.Cache
 	option.Common
 	option.Descriptor
 	option.Remote
 	option.Platform
 	option.Pretty
 
-	cacheRoot  string
 	mediaTypes []string
 	outputPath string
 	targetRef  string
@@ -72,7 +70,6 @@ Example - Fetch manifest with prettified json result:
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
 			}
 
-			opts.cacheRoot = os.Getenv("ORAS_CACHE")
 			return opts.ReadPassword()
 		},
 		Aliases: []string{"get"},
@@ -106,33 +103,24 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 		return err
 	}
 
-	var src oras.ReadOnlyTarget = repo.Manifests()
-	if opts.cacheRoot != "" {
-		ociStore, err := oci.New(opts.cacheRoot)
-		if err != nil {
-			return err
-		}
-		src = cache.New(src, ociStore)
+	manifests, err := opts.CachedTarget(repo.Manifests())
+	if err != nil {
+		return err
 	}
 
 	var desc ocispec.Descriptor
 	var content []byte
 	if opts.OutputDescriptor && opts.outputPath == "" {
 		// fetch manifest descriptor only
-		desc, err = oras.Resolve(ctx, src, opts.targetRef, oras.DefaultResolveOptions)
+		desc, err = oras.Resolve(ctx, manifests, opts.targetRef, oras.DefaultResolveOptions)
 		if err != nil {
 			return err
 		}
 	} else {
 		// fetch manifest content
-		desc, content, err = oras.FetchBytes(ctx, src, opts.targetRef, oras.FetchBytesOptions{
-			FetchOptions: oras.FetchOptions{
-				ResolveOptions: oras.ResolveOptions{
-					TargetPlatform: targetPlatform,
-				},
-			},
-			MaxBytes: 0,
-		})
+		fetchOpts := oras.DefaultFetchBytesOptions
+		fetchOpts.TargetPlatform = targetPlatform
+		desc, content, err = oras.FetchBytes(ctx, manifests, opts.targetRef, fetchOpts)
 		if err != nil {
 			return err
 		}
