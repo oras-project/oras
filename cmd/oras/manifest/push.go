@@ -21,6 +21,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -53,17 +55,14 @@ Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'late
 Example - Push a manifest with content read from stdin:
   oras manifest push localhost:5000/hello:latest -
 
-Example - Push a manifest and output the descriptor:
+Example - Push a manifest and output its descriptor:
   oras manifest push --descriptor localhost:5000/hello:latest manifest.json
 
 Example - Push a manifest to repository 'locahost:5000/hello' and output the prettified descriptor:
-oras manifest push --descriptor --pretty localhost:5000/hello manifest.json
+  oras manifest push --descriptor --pretty localhost:5000/hello manifest.json
 
-Example - Push an ORAS artifact manifest to repository 'locahost:5000/hello' and tag with 'latest':
+Example - Push a manifest with specified media type to repository 'locahost:5000/hello' and tag with 'latest':
   oras manifest push --media-type application/vnd.cncf.oras.artifact.manifest.v1+json localhost:5000/hello:latest oras_manifest.json
-
-Example - Push a manifest without TLS:
-  oras manifest push --insecure localhost:5000/hello:latest manifest.json
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -90,23 +89,25 @@ func pushManifest(opts pushOptions) error {
 	if err != nil {
 		return err
 	}
+	manifests := repo.Manifests()
 
-	var mediaType string
-	if opts.mediaType != "" {
-		mediaType = opts.mediaType
-	} else {
-		mediaType, err = file.ParseMediaType(opts.fileRef)
+	// prepare manifest content
+	contentBytes, err := file.PrepareManifestContent(opts.fileRef)
+	if err != nil {
+		return err
+	}
+
+	// get manifest media type
+	mediaType := opts.mediaType
+	if opts.mediaType == "" {
+		mediaType, err = file.ParseMediaType(contentBytes)
 		if err != nil {
 			return err
 		}
 	}
 
-	// prepare manifest content
-	desc, rc, err := file.PrepareManifestContent(opts.fileRef, mediaType)
-	if err != nil {
-		return err
-	}
-	defer rc.Close()
+	// prepare manifest descriptor
+	desc := content.NewDescriptorFromBytes(mediaType, contentBytes)
 
 	var ref string
 	if tag := repo.Reference.Reference; tag != "" {
@@ -116,14 +117,15 @@ func pushManifest(opts pushOptions) error {
 	}
 
 	verbose := opts.Verbose && !opts.OutputDescriptor
-	got, err := repo.Resolve(ctx, ref)
+	got, err := manifests.Resolve(ctx, ref)
 
-	// push the manifest if the reference does not exist or their digests mismatch
+	// push the manifest if the reference does not exist;
+	// if the reference exists, then push the manifest if digests mismatch
 	if errors.Is(err, errdef.ErrNotFound) || (err == nil && got.Digest != desc.Digest) {
 		if err = display.PrintStatus(desc, "Uploading", verbose); err != nil {
 			return err
 		}
-		if err = repo.PushReference(ctx, desc, rc, ref); err != nil {
+		if _, err = oras.TagBytes(ctx, manifests, mediaType, contentBytes, ref); err != nil {
 			return err
 		}
 		if err = display.PrintStatus(desc, "Uploaded ", verbose); err != nil {

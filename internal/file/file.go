@@ -26,48 +26,25 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// PrepareManifestContent prepares the content descriptor for manifest from the
-// file path or stdin.
-func PrepareManifestContent(path string, mediaType string) (desc ocispec.Descriptor, rc io.ReadCloser, prepareErr error) {
+// PrepareManifestContent prepares the content for manifest from the file path
+// or stdin.
+func PrepareManifestContent(path string) ([]byte, error) {
 	if path == "" {
-		return ocispec.Descriptor{}, nil, fmt.Errorf("missing file name")
+		return nil, fmt.Errorf("missing file name")
 	}
 
-	var file *os.File
+	var content []byte
 	var err error
 	if path == "-" {
-		file = os.Stdin
+		content, err = io.ReadAll(os.Stdin)
 	} else {
-		file, err = os.Open(path)
-		if err != nil {
-			return ocispec.Descriptor{}, nil, fmt.Errorf("failed to open %s: %w", path, err)
-		}
-		defer func() {
-			if prepareErr != nil {
-				file.Close()
-			}
-		}()
+		content, err = os.ReadFile(path)
 	}
-
-	fi, err := file.Stat()
 	if err != nil {
-		return ocispec.Descriptor{}, nil, fmt.Errorf("failed to stat %s: %w", path, err)
+		return nil, fmt.Errorf("failed to read %s: %w", path, err)
 	}
 
-	dgst, err := digest.FromReader(file)
-	if err != nil {
-		return ocispec.Descriptor{}, nil, err
-	}
-	if _, err = file.Seek(0, io.SeekStart); err != nil {
-		return ocispec.Descriptor{}, nil, err
-	}
-
-	desc = ocispec.Descriptor{
-		MediaType: mediaType,
-		Digest:    dgst,
-		Size:      fi.Size(),
-	}
-	return desc, file, nil
+	return content, nil
 }
 
 // PrepareBlobContent prepares the content descriptor for blob from the file
@@ -141,15 +118,10 @@ func PrepareBlobContent(path string, mediaType string, dgstStr string, size int6
 	}, file, nil
 }
 
-// ParseMediaType parses the media type field of a json file from the given
-// file path.
-func ParseMediaType(path string) (string, error) {
-	manifestByte, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
+// ParseMediaType parses the media type field of bytes content in json format.
+func ParseMediaType(content []byte) (string, error) {
 	var manifest map[string]interface{}
-	if err := json.Unmarshal(manifestByte, &manifest); err != nil {
+	if err := json.Unmarshal(content, &manifest); err != nil {
 		return "", errors.New("not a valid json file")
 	}
 	if manifest["mediaType"] == nil {

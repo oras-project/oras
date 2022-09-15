@@ -44,30 +44,15 @@ func TestFile_PrepareManifestContent(t *testing.T) {
 		t.Fatal("error calling WriteFile(), error =", err)
 	}
 
-	want := ocispec.Descriptor{
-		MediaType: manifestMediaType,
-		Digest:    digest.FromBytes(content),
-		Size:      int64(len(content)),
-	}
+	want := []byte(manifest)
 
 	// test PrepareManifestContent
-	got, rc, err := file.PrepareManifestContent(path, manifestMediaType)
+	got, err := file.PrepareManifestContent(path)
 	if err != nil {
 		t.Fatal("PrepareManifestContent() error=", err)
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("PrepareManifestContent() = %v, want %v", got, want)
-	}
-	actualContent, err := io.ReadAll(rc)
-	if err != nil {
-		t.Fatal("PrepareManifestContent(): not able to read content from rc, error=", err)
-	}
-	err = rc.Close()
-	if err != nil {
-		t.Fatal("error calling rc.Close(), error =", err)
-	}
-	if !reflect.DeepEqual(actualContent, content) {
-		t.Errorf("PrepareManifestContent() = %v, want %v", actualContent, content)
 	}
 }
 
@@ -90,45 +75,34 @@ func TestFile_PrepareManifestContent_fromStdin(t *testing.T) {
 		t.Fatal("error calling Seek(), error =", err)
 	}
 
+	os.Stdin = tmpfile
 	defer func(stdin *os.File) { os.Stdin = stdin }(os.Stdin)
 
-	os.Stdin = tmpfile
-	wantDesc := ocispec.Descriptor{
-		MediaType: manifestMediaType,
-		Digest:    digest.FromBytes(content),
-		Size:      int64(len(content)),
-	}
+	want := []byte(manifest)
 
-	// test PrepareManifestContent with provided digest and size
-	gotDesc, gotRc, err := file.PrepareManifestContent("-", manifestMediaType)
-	defer gotRc.Close()
+	// test PrepareManifestContent read from stdin
+	got, err := file.PrepareManifestContent("-")
 	if err != nil {
 		t.Fatal("PrepareManifestContent() error=", err)
 	}
-	if !reflect.DeepEqual(gotDesc, wantDesc) {
-		t.Errorf("PrepareManifestContent() = %v, want %v", gotDesc, wantDesc)
-	}
-	if _, err = tmpfile.Seek(0, io.SeekStart); err != nil {
-		t.Fatal("error calling Seek(), error =", err)
-	}
-	if !reflect.DeepEqual(gotRc, tmpfile) {
-		t.Errorf("PrepareManifestContent() = %v, want %v", gotRc, tmpfile)
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("PrepareManifestContent() = %v, want %v", got, want)
 	}
 }
 
 func TestFile_PrepareManifestContent_errMissingFileName(t *testing.T) {
 	// test PrepareManifestContent with missing file name
-	_, _, err := file.PrepareManifestContent("", manifestMediaType)
+	_, err := file.PrepareManifestContent("")
 	expected := "missing file name"
 	if err.Error() != expected {
 		t.Fatalf("PrepareManifestContent() error = %v, wantErr %v", err, expected)
 	}
 }
 
-func TestFile_PrepareManifestContent_errOpenFile(t *testing.T) {
+func TestFile_PrepareManifestContent_errReadFile(t *testing.T) {
 	// test PrepareManifestContent with nonexistent file
-	_, _, err := file.PrepareManifestContent("nonexistent.txt", manifestMediaType)
-	expected := "failed to open nonexistent.txt"
+	_, err := file.PrepareManifestContent("nonexistent.txt")
+	expected := "failed to read nonexistent.txt"
 	if !strings.Contains(err.Error(), expected) {
 		t.Fatalf("PrepareManifestContent() error = %v, wantErr %v", err, expected)
 	}
@@ -296,17 +270,11 @@ func TestFile_PrepareBlobContent_errOpenFile(t *testing.T) {
 
 func TestFile_ParseMediaType(t *testing.T) {
 	// generate test content
-	tempDir := t.TempDir()
 	content := []byte(manifest)
-	fileName := "manifest.json"
-	path := filepath.Join(tempDir, fileName)
-	if err := os.WriteFile(path, content, 0444); err != nil {
-		t.Fatal("error calling WriteFile(), error =", err)
-	}
 
 	// test ParseMediaType
-	want := "application/vnd.oci.image.manifest.v1+json"
-	got, err := file.ParseMediaType(path)
+	want := manifestMediaType
+	got, err := file.ParseMediaType(content)
 	if err != nil {
 		t.Fatal("ParseMediaType() error=", err)
 	}
@@ -317,16 +285,10 @@ func TestFile_ParseMediaType(t *testing.T) {
 
 func TestFile_ParseMediaType_wrongPath(t *testing.T) {
 	// generate test content
-	tempDir := t.TempDir()
 	content := []byte(manifest)
-	fileName := "manifest.json"
-	path := filepath.Join(tempDir, fileName)
-	if err := os.WriteFile(path, content, 0444); err != nil {
-		t.Fatal("error calling WriteFile(), error =", err)
-	}
 
 	// test ParseMediaType
-	_, err := file.ParseMediaType(fileName)
+	_, err := file.ParseMediaType(content)
 	expected := "open manifest.json: no such file or directory"
 	if err.Error() != expected {
 		t.Fatalf("ParseMediaType() error = %v, wantErr %v", err, expected)
@@ -335,16 +297,10 @@ func TestFile_ParseMediaType_wrongPath(t *testing.T) {
 
 func TestFile_ParseMediaType_invalidContent_notAJson(t *testing.T) {
 	// generate test content
-	tempDir := t.TempDir()
 	content := []byte("manifest")
-	fileName := "manifest.txt"
-	path := filepath.Join(tempDir, fileName)
-	if err := os.WriteFile(path, content, 0444); err != nil {
-		t.Fatal("error calling WriteFile(), error =", err)
-	}
 
 	// test ParseMediaType
-	_, err := file.ParseMediaType(path)
+	_, err := file.ParseMediaType(content)
 	expected := "not a valid json file"
 	if err.Error() != expected {
 		t.Fatalf("ParseMediaType() error = %v, wantErr %v", err, expected)
@@ -353,16 +309,10 @@ func TestFile_ParseMediaType_invalidContent_notAJson(t *testing.T) {
 
 func TestFile_ParseMediaType_invalidContent_missingMediaType(t *testing.T) {
 	// generate test content
-	tempDir := t.TempDir()
 	content := []byte(`{"schemaVersion":2}`)
-	fileName := "manifest.json"
-	path := filepath.Join(tempDir, fileName)
-	if err := os.WriteFile(path, content, 0444); err != nil {
-		t.Fatal("error calling WriteFile(), error =", err)
-	}
 
 	// test ParseMediaType
-	_, err := file.ParseMediaType(path)
+	_, err := file.ParseMediaType(content)
 	expected := "media type is not recognized"
 	if err.Error() != expected {
 		t.Fatalf("ParseMediaType() error = %v, wantErr %v", err, expected)
