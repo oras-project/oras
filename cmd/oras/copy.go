@@ -32,6 +32,7 @@ type copyOptions struct {
 	src option.Remote
 	dst option.Remote
 	option.Common
+	option.Platform
 	recursive bool
 
 	srcRef string
@@ -53,6 +54,9 @@ Example - Copy the artifact tagged 'v1' from repository 'localhost:5000/net-moni
 
 Example - Copy the artifact tagged 'v1' and its referrers from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy'
   oras cp -r localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
+
+Example - Copy the artifact tagged 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with certain platform
+  oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1 --platform linux/arm/v5
 `,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -72,6 +76,10 @@ Example - Copy the artifact tagged 'v1' and its referrers from repository 'local
 
 func runCopy(opts copyOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
+	targetPlatform, err := opts.Parse()
+	if err != nil {
+		return err
+	}
 
 	// Prepare source
 	src, err := opts.src.NewRepository(opts.srcRef, opts.Common)
@@ -124,6 +132,7 @@ func runCopy(opts copyOptions) error {
 			copyOptions := oras.CopyOptions{
 				CopyGraphOptions: extendedCopyOptions.CopyGraphOptions,
 			}
+			copyOptions.WithTargetPlatform(targetPlatform)
 			desc, err = oras.Copy(ctx, src, opts.srcRef, dst, opts.dstRef, copyOptions)
 		}
 	}

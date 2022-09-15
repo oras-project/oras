@@ -37,6 +37,7 @@ import (
 type pullOptions struct {
 	option.Common
 	option.Remote
+	option.Platform
 
 	targetRef         string
 	cacheRoot         string
@@ -65,6 +66,9 @@ Example - Pull files from the HTTP registry:
 Example - Pull files with local cache:
   export ORAS_CACHE=~/.oras/cache
   oras pull localhost:5000/hello:latest
+
+Example - Pull files with certain platform:
+  oras pull localhost:5000/hello:latest --platform linux/arm/v5
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -87,6 +91,10 @@ Example - Pull files with local cache:
 
 func runPull(opts pullOptions) error {
 	var printed sync.Map
+	targetPlatform, err := opts.Parse()
+	if err != nil {
+		return err
+	}
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
@@ -106,6 +114,9 @@ func runPull(opts pullOptions) error {
 	// Copy Options
 	copyOptions := oras.DefaultCopyOptions
 	configPath, configMediaType := parseFileReference(opts.ManifestConfigRef, "")
+	if targetPlatform != nil {
+		copyOptions.WithTargetPlatform(targetPlatform)
+	}
 	copyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		successors, err := content.Successors(ctx, fetcher, desc)
 		if err != nil {
