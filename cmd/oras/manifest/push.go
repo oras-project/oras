@@ -16,12 +16,12 @@ limitations under the License.
 package manifest
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras/cmd/oras/internal/display"
@@ -125,7 +125,7 @@ func pushManifest(opts pushOptions) error {
 		if err = display.PrintStatus(desc, "Uploading", verbose); err != nil {
 			return err
 		}
-		if _, err = oras.TagBytes(ctx, manifests, mediaType, contentBytes, ref); err != nil {
+		if err = manifests.PushReference(ctx, desc, bytes.NewReader(contentBytes), ref); err != nil {
 			return err
 		}
 		if err = display.PrintStatus(desc, "Uploaded ", verbose); err != nil {

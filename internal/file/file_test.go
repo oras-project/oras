@@ -283,18 +283,6 @@ func TestFile_ParseMediaType(t *testing.T) {
 	}
 }
 
-func TestFile_ParseMediaType_wrongPath(t *testing.T) {
-	// generate test content
-	content := []byte(manifest)
-
-	// test ParseMediaType
-	_, err := file.ParseMediaType(content)
-	expected := "open manifest.json: no such file or directory"
-	if err.Error() != expected {
-		t.Fatalf("ParseMediaType() error = %v, wantErr %v", err, expected)
-	}
-}
-
 func TestFile_ParseMediaType_invalidContent_notAJson(t *testing.T) {
 	// generate test content
 	content := []byte("manifest")
