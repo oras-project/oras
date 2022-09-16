@@ -24,14 +24,14 @@ import (
 )
 
 type Cache struct {
-	CacheRoot string
+	Root string
 }
 
 // CachedTarget gets the target storage with caching if cache root is specified.
 func (opts *Cache) CachedTarget(src oras.ReadOnlyTarget) (oras.ReadOnlyTarget, error) {
-	opts.CacheRoot = os.Getenv("ORAS_CACHE")
-	if opts.CacheRoot != "" {
-		ociStore, err := oci.New(opts.CacheRoot)
+	opts.Root = os.Getenv("ORAS_CACHE")
+	if opts.Root != "" {
+		ociStore, err := oci.New(opts.Root)
 		if err != nil {
 			return nil, err
 		}

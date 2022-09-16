@@ -31,6 +31,7 @@ var mockTarget oras.ReadOnlyTarget = memory.New()
 func TestCache_CachedTarget(t *testing.T) {
 	tempDir := t.TempDir()
 	os.Setenv("ORAS_CACHE", tempDir)
+	defer os.Unsetenv("ORAS_CACHE")
 	opts := Cache{}
 
 	ociStore, err := oci.New(tempDir)
