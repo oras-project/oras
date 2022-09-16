@@ -142,10 +142,7 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 		if err != nil {
 			return err
 		}
-		err = opts.Output(os.Stdout, descBytes)
-		if err != nil {
-			return err
-		}
+		return opts.Output(os.Stdout, descBytes)
 	}
 
 	return nil
