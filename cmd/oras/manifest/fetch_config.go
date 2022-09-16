@@ -122,16 +122,14 @@ func fetchConfig(opts fetchConfigOptions) (fetchErr error) {
 			return err
 		}
 
-		// output config content
 		if opts.outputPath == "" || opts.outputPath == "-" {
+			// output config content
 			return opts.Output(os.Stdout, contentBytes)
 		}
 
 		// save config into the local file if the output path is provided
-		if opts.outputPath != "" && opts.outputPath != "-" {
-			if err = os.WriteFile(opts.outputPath, contentBytes, 0666); err != nil {
-				return err
-			}
+		if err = os.WriteFile(opts.outputPath, contentBytes, 0666); err != nil {
+			return err
 		}
 	}
 
