@@ -24,18 +24,16 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/cache"
 )
 
 type fetchBlobOptions struct {
+	option.Cache
 	option.Common
 	option.Descriptor
 	option.Pretty
 	option.Remote
 
-	cacheRoot  string
 	outputPath string
 	targetRef  string
 }
@@ -74,7 +72,6 @@ Example - Fetch blob from the insecure registry:
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
 			}
 
-			opts.cacheRoot = os.Getenv("ORAS_CACHE")
 			return opts.ReadPassword()
 		},
 		Aliases: []string{"get"},
@@ -101,13 +98,9 @@ func fetchBlob(opts fetchBlobOptions) (fetchErr error) {
 		return fmt.Errorf("%s: blob reference must be of the form <name@digest>", opts.targetRef)
 	}
 
-	var src oras.ReadOnlyTarget = repo.Blobs()
-	if opts.cacheRoot != "" {
-		ociStore, err := oci.New(opts.cacheRoot)
-		if err != nil {
-			return err
-		}
-		src = cache.New(src, ociStore)
+	src, err := opts.CachedTarget(repo.Blobs())
+	if err != nil {
+		return err
 	}
 
 	var desc ocispec.Descriptor
