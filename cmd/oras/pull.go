@@ -135,7 +135,7 @@ func runPull(opts pullOptions) error {
 				}
 				// Skip s if s is unnamed and has no successors.
 				if len(ss) == 0 {
-					if _, loaded := printed.LoadOrStore(s.Digest.String(), true); !loaded {
+					if _, loaded := printed.LoadOrStore(generateContentKey(s), true); !loaded {
 						if err = display.PrintStatus(s, "Skipped    ", opts.Verbose); err != nil {
 							return nil, err
 						}
@@ -148,9 +148,28 @@ func runPull(opts pullOptions) error {
 		return ret, nil
 	}
 
+	ctx, _ := opts.SetLoggerLevel()
+	var dst = file.New(opts.Output)
+	dst.AllowPathTraversalOnWrite = opts.PathTraversal
+	dst.DisableOverwrite = opts.KeepOldFiles
+
 	pulledEmpty := true
 	copyOptions.PreCopy = display.StatusPrinter("Downloading", opts.Verbose)
 	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		// restore named but deduplicated successor nodes
+		successors, err := content.Successors(ctx, dst, desc)
+		if err != nil {
+			return err
+		}
+		for _, s := range successors {
+			if _, ok := s.Annotations[ocispec.AnnotationTitle]; ok {
+				if _, ok := printed.LoadOrStore(generateContentKey(s), true); !ok {
+					if err = display.PrintStatus(s, "Restored   ", opts.Verbose); err != nil {
+						return err
+					}
+				}
+			}
+		}
 		name, ok := desc.Annotations[ocispec.AnnotationTitle]
 		if !ok {
 			if !opts.Verbose {
@@ -161,13 +180,9 @@ func runPull(opts pullOptions) error {
 			// named content downloaded
 			pulledEmpty = false
 		}
+		printed.Store(generateContentKey(desc), true)
 		return display.Print("Downloaded ", display.ShortDigest(desc), name)
 	}
-
-	ctx, _ := opts.SetLoggerLevel()
-	var dst = file.New(opts.Output)
-	dst.AllowPathTraversalOnWrite = opts.PathTraversal
-	dst.DisableOverwrite = opts.KeepOldFiles
 
 	// Copy
 	desc, err := oras.Copy(ctx, src, repo.Reference.Reference, dst, repo.Reference.Reference, copyOptions)
@@ -184,4 +199,10 @@ func runPull(opts pullOptions) error {
 
 func isManifestMediaType(mediaType string) bool {
 	return mediaType == docker.MediaTypeManifest || mediaType == ocispec.MediaTypeImageManifest
+}
+
+// generateContentKey generates a unique key for each content descriptor, using
+// its digest and name if applicable.
+func generateContentKey(desc ocispec.Descriptor) string {
+	return desc.Digest.String() + desc.Annotations[ocispec.AnnotationTitle]
 }
