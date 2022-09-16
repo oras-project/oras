@@ -30,7 +30,7 @@ import (
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/cache"
-	"oras.land/oras/internal/file"
+	"oras.land/oras/internal/descriptor"
 )
 
 type fetchConfigOptions struct {
@@ -154,7 +154,7 @@ func fetchConfigDesc(ctx context.Context, src oras.ReadOnlyTarget, reference str
 		return ocispec.Descriptor{}, err
 	}
 
-	if !file.IsImageManifest(manifestDesc.MediaType) {
+	if !descriptor.IsImageManifest(manifestDesc) {
 		return ocispec.Descriptor{}, fmt.Errorf("%q is not an image manifest and does not have a config", manifestDesc.Digest)
 	}
 

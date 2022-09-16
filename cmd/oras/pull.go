@@ -31,7 +31,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/cache"
-	ifile "oras.land/oras/internal/file"
+	"oras.land/oras/internal/descriptor"
 )
 
 type pullOptions struct {
@@ -121,7 +121,7 @@ func runPull(opts pullOptions) error {
 			// 2) MediaType not specified and current node is config.
 			// Note: For a manifest, the 0th indexed element is always a
 			// manifest config.
-			if (s.MediaType == configMediaType || (configMediaType == "" && i == 0 && ifile.IsImageManifest(desc.MediaType))) && configPath != "" {
+			if (s.MediaType == configMediaType || (configMediaType == "" && i == 0 && descriptor.IsImageManifest(desc.MediaType))) && configPath != "" {
 				// Add annotation for manifest config
 				if s.Annotations == nil {
 					s.Annotations = make(map[string]string)

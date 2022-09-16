@@ -24,7 +24,6 @@ import (
 
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras/internal/docker"
 )
 
 // PrepareManifestContent prepares the content for manifest from the file path
@@ -131,9 +130,4 @@ func ParseMediaType(content []byte) (string, error) {
 		return "", errors.New("media type is not recognized")
 	}
 	return manifest.MediaType, nil
-}
-
-// IsImageManifest checks whether a manifest is an image manifest.
-func IsImageManifest(mediaType string) bool {
-	return mediaType == docker.MediaTypeManifest || mediaType == ocispec.MediaTypeImageManifest
 }
