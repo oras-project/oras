@@ -27,10 +27,10 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
-	"oras.land/oras/cmd/oras/internal/descriptor"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/cache"
+	"oras.land/oras/internal/file"
 )
 
 type fetchConfigOptions struct {
@@ -40,7 +40,6 @@ type fetchConfigOptions struct {
 	option.Remote
 
 	cacheRoot  string
-	mediaType  string
 	outputPath string
 	targetRef  string
 }
@@ -61,7 +60,7 @@ Example - Fetch the config and save it to a local file:
   oras manifest fetch-config --output config.json localhost:5000/hello:latest
 
 Example - Fetch the descriptor of the config:
-oras manifest fetch-config --descriptor localhost:5000/hello:latest
+  oras manifest fetch-config --descriptor localhost:5000/hello:latest
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -79,7 +78,6 @@ oras manifest fetch-config --descriptor localhost:5000/hello:latest
 	}
 
 	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "output file path")
-	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", "", "media type of the manifest config")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
@@ -105,9 +103,30 @@ func fetchConfig(opts fetchConfigOptions) (fetchErr error) {
 		src = cache.New(repo, ociStore)
 	}
 
-	configDesc, err := fetchConfigDesc(ctx, src, opts.targetRef, opts.mediaType)
+	// fetch config descriptor
+	configDesc, err := fetchConfigDesc(ctx, src, opts.targetRef)
 	if err != nil {
 		return err
+	}
+
+	if !opts.OutputDescriptor || opts.outputPath != "" {
+		// fetch config content
+		contentBytes, err := content.FetchAll(ctx, src, configDesc)
+		if err != nil {
+			return err
+		}
+
+		// output config content
+		if opts.outputPath == "" || opts.outputPath == "-" {
+			return opts.Output(os.Stdout, contentBytes)
+		}
+
+		// save config into the local file if the output path is provided
+		if opts.outputPath != "" && opts.outputPath != "-" {
+			if err = os.WriteFile(opts.outputPath, contentBytes, 0666); err != nil {
+				return err
+			}
+		}
 	}
 
 	// output config's descriptor if `--descriptor` is used
@@ -122,55 +141,24 @@ func fetchConfig(opts fetchConfigOptions) (fetchErr error) {
 		}
 	}
 
-	contentBytes, err := content.FetchAll(ctx, src, configDesc)
-	if err != nil {
-		return err
-	}
-
-	// save config into the local file if the output path is provided
-	if opts.outputPath != "" && opts.outputPath != "-" {
-		file, err := os.Create(opts.outputPath)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			if err := file.Close(); fetchErr == nil {
-				fetchErr = err
-			}
-		}()
-
-		if _, err = file.Write(contentBytes); err != nil {
-			return err
-		}
-	}
-
-	// output config
-	if (opts.outputPath == "" && !opts.OutputDescriptor) || opts.outputPath == "-" {
-		err = opts.Output(os.Stdout, contentBytes)
-		if err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
-func fetchConfigDesc(ctx context.Context, src oras.ReadOnlyTarget, reference string, configMediaType string) (ocispec.Descriptor, error) {
-	// fetch manifest descriptor
-	manifestDesc, err := oras.Resolve(ctx, src, reference, oras.ResolveOptions{})
+func fetchConfigDesc(ctx context.Context, src oras.ReadOnlyTarget, reference string) (ocispec.Descriptor, error) {
+	// fetch manifest descriptor and content
+	manifestDesc, manifestContent, err := oras.FetchBytes(ctx, src, reference, oras.DefaultFetchBytesOptions)
 	if err != nil {
 		return ocispec.Descriptor{}, err
 	}
 
-	// fetch config descriptor
-	successors, err := content.Successors(ctx, src, manifestDesc)
-	if err != nil {
+	if !file.IsImageManifest(manifestDesc.MediaType) {
+		return ocispec.Descriptor{}, fmt.Errorf("%q is not an image manifest and does not have a config", manifestDesc.Digest)
+	}
+
+	// unmarshal manifest content to extract config descriptor
+	var manifest ocispec.Manifest
+	if err := json.Unmarshal(manifestContent, &manifest); err != nil {
 		return ocispec.Descriptor{}, err
 	}
-	for i, s := range successors {
-		if s.MediaType == configMediaType || (configMediaType == "" && i == 0 && descriptor.IsImageManifest(manifestDesc.MediaType)) {
-			return s, nil
-		}
-	}
-	return ocispec.Descriptor{}, fmt.Errorf("%s does not have a config", reference)
+	return manifest.Config, nil
 }

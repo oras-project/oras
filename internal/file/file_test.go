@@ -306,3 +306,17 @@ func TestFile_ParseMediaType_invalidContent_missingMediaType(t *testing.T) {
 		t.Fatalf("ParseMediaType() error = %v, wantErr %v", err, expected)
 	}
 }
+
+func TestIsImageManifest(t *testing.T) {
+	mediaType := "application/vnd.oci.image.manifest.v1+json"
+	got := file.IsImageManifest(mediaType)
+	if !reflect.DeepEqual(got, true) {
+		t.Fatalf("IsImageManifest() got %v, want %v", got, true)
+	}
+
+	mediaType = "application/vnd.cncf.oras.artifact.manifest.v1+json"
+	got = file.IsImageManifest(mediaType)
+	if !reflect.DeepEqual(got, false) {
+		t.Fatalf("IsImageManifest() got %v, want %v", got, false)
+	}
+}
