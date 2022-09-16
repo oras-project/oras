@@ -28,11 +28,13 @@ func loadFiles(ctx context.Context, store *file.Store, annotations map[string]ma
 	var files []ocispec.Descriptor
 	for _, fileRef := range fileRefs {
 		filename, mediaType := parseFileReference(fileRef, "")
+
+		// get shortest absolute path as unique name
 		name := filepath.Clean(filename)
 		if !filepath.IsAbs(name) {
-			// convert to slash-separated path unless it is absolute path
 			name = filepath.ToSlash(name)
 		}
+
 		if verbose {
 			fmt.Println("Preparing", name)
 		}

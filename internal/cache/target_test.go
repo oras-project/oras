@@ -175,7 +175,10 @@ func TestProxy_fetchReference(t *testing.T) {
 			w.Header().Set("Docker-Content-Digest", digest.String())
 			w.Header().Set("Content-Length", strconv.Itoa(len([]byte(blob))))
 			w.WriteHeader(http.StatusOK)
-			w.Write(blob)
+			// write data to the response if this is the first request
+			if requestCount == 1 {
+				w.Write(blob)
+			}
 			atomic.AddInt64(&successCount, 1)
 			return
 		}
@@ -204,6 +207,33 @@ func TestProxy_fetchReference(t *testing.T) {
 		t.Fatalf("ReferenceTarget.FetchReference() got %v, want %v", gotDesc, desc)
 	}
 	got, err := io.ReadAll(rc)
+	if err != nil {
+		t.Fatal("io.ReadAll() error =", err)
+	}
+	err = rc.Close()
+	if err != nil {
+		t.Error("ReferenceTarget.FetchReference().Close() error =", err)
+	}
+
+	if !bytes.Equal(got, blob) {
+		t.Errorf("ReferenceTarget.Fetch() = %v, want %v", got, blob)
+	}
+	if wantRequestCount++; requestCount != wantRequestCount {
+		t.Errorf("unexpected number of requests: %d, want %d", requestCount, wantRequestCount)
+	}
+	if wantSuccessCount++; successCount != wantSuccessCount {
+		t.Errorf("unexpected number of successful requests: %d, want %d", successCount, wantSuccessCount)
+	}
+
+	// second fetch reference, should get the rc from the cache
+	gotDesc, rc, err = p.(registry.ReferenceFetcher).FetchReference(ctx, repo.Reference.Reference)
+	if err != nil {
+		t.Fatal("ReferenceTarget.FetchReference() error =", err)
+	}
+	if !reflect.DeepEqual(gotDesc, desc) {
+		t.Fatalf("ReferenceTarget.FetchReference() got %v, want %v", gotDesc, desc)
+	}
+	got, err = io.ReadAll(rc)
 	if err != nil {
 		t.Fatal("io.ReadAll() error =", err)
 	}

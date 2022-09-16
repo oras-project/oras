@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package manifest
+package blob
 
 import (
 	"github.com/spf13/cobra"
@@ -21,14 +21,13 @@ import (
 
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "manifest [command]",
-		Short: "[Preview] Manifest operations",
+		Use:   "blob [command]",
+		Short: "[Preview] Blob operations",
 	}
 
 	cmd.AddCommand(
 		deleteCmd(),
 		fetchCmd(),
-		fetchConfigCmd(),
 		pushCmd(),
 	)
 	return cmd
