@@ -135,7 +135,7 @@ func runPull(opts pullOptions) error {
 				}
 				// Skip s if s is unnamed and has no successors.
 				if len(ss) == 0 {
-					if _, loaded := printed.LoadOrStore(generateDeduplicatedMapKey(s), true); !loaded {
+					if _, loaded := printed.LoadOrStore(generateContentKey(s), true); !loaded {
 						if err = display.PrintStatus(s, "Skipped    ", opts.Verbose); err != nil {
 							return nil, err
 						}
@@ -163,7 +163,7 @@ func runPull(opts pullOptions) error {
 		}
 		for _, s := range successors {
 			if _, ok := s.Annotations[ocispec.AnnotationTitle]; ok {
-				if _, ok := printed.Load(generateDeduplicatedMapKey(s)); !ok {
+				if _, ok := printed.LoadOrStore(generateContentKey(s), true); !ok {
 					if err = display.PrintStatus(s, "Restored   ", opts.Verbose); err != nil {
 						return err
 					}
@@ -180,7 +180,7 @@ func runPull(opts pullOptions) error {
 			// named content downloaded
 			pulledEmpty = false
 		}
-		printed.Store(generateDeduplicatedMapKey(desc), true)
+		printed.Store(generateContentKey(desc), true)
 		return display.Print("Downloaded ", display.ShortDigest(desc), name)
 	}
 
@@ -201,9 +201,8 @@ func isManifestMediaType(mediaType string) bool {
 	return mediaType == docker.MediaTypeManifest || mediaType == ocispec.MediaTypeImageManifest
 }
 
-// generateDeduplicatedMapKey uses a name and a digest to generate keys for
-// the sync.Map printed. As contents may be unnamed and have identical digests,
-// this way of making keys promotes the uniqueness of keys.
-func generateDeduplicatedMapKey(desc ocispec.Descriptor) string {
+// generateContentKey generates a unique key for each content descriptor, using
+// its digest and name if applicable.
+func generateContentKey(desc ocispec.Descriptor) string {
 	return desc.Digest.String() + desc.Annotations[ocispec.AnnotationTitle]
 }
