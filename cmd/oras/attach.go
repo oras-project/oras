@@ -44,7 +44,7 @@ type attachOptions struct {
 func attachCmd() *cobra.Command {
 	var opts attachOptions
 	cmd := &cobra.Command{
-		Use:   "attach name<:tag|@digest> file[:type] [file...]",
+		Use:   "attach name<:tag|@digest> [file[:type]...]",
 		Short: "[Preview] Attach files to an existing artifact",
 		Long: `[Preview] Attach files to an existing artifact
 
