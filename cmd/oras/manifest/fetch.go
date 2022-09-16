@@ -109,7 +109,6 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 	}
 
 	var desc ocispec.Descriptor
-	var content []byte
 	if opts.OutputDescriptor && opts.outputPath == "" {
 		// fetch manifest descriptor only
 		desc, err = oras.Resolve(ctx, manifests, opts.targetRef, oras.DefaultResolveOptions)
@@ -118,6 +117,7 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 		}
 	} else {
 		// fetch manifest content
+		var content []byte
 		fetchOpts := oras.DefaultFetchBytesOptions
 		fetchOpts.TargetPlatform = targetPlatform
 		desc, content, err = oras.FetchBytes(ctx, manifests, opts.targetRef, fetchOpts)
@@ -125,8 +125,8 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 			return err
 		}
 
-		// outputs manifest content
 		if opts.outputPath == "" || opts.outputPath == "-" {
+			// output manifest content
 			return opts.Output(os.Stdout, content)
 		}
 
