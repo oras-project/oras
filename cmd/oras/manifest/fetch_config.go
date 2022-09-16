@@ -56,11 +56,17 @@ func fetchConfigCmd() *cobra.Command {
 Example - Fetch the config:
   oras manifest fetch-config localhost:5000/hello:latest
 
+Example - Fetch and print the prettified config:
+  oras manifest fetch-config --pretty localhost:5000/hello:latest
+
 Example - Fetch the config and save it to a local file:
   oras manifest fetch-config --output config.json localhost:5000/hello:latest
 
 Example - Fetch the descriptor of the config:
   oras manifest fetch-config --descriptor localhost:5000/hello:latest
+
+Example - Fetch and print the prettified descriptor of the config:
+  oras manifest fetch-config --descriptor --pretty localhost:5000/hello:latest
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -129,16 +135,13 @@ func fetchConfig(opts fetchConfigOptions) (fetchErr error) {
 		}
 	}
 
-	// output config's descriptor if `--descriptor` is used
 	if opts.OutputDescriptor {
+		// output config's descriptor
 		descBytes, err := json.Marshal(configDesc)
 		if err != nil {
 			return err
 		}
-		err = opts.Output(os.Stdout, descBytes)
-		if err != nil {
-			return err
-		}
+		return opts.Output(os.Stdout, descBytes)
 	}
 
 	return nil
