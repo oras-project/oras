@@ -18,7 +18,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -26,20 +25,18 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
-	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/cache"
 	"oras.land/oras/internal/descriptor"
 )
 
 type pullOptions struct {
+	option.Cache
 	option.Common
 	option.Remote
 
 	targetRef         string
-	cacheRoot         string
 	KeepOldFiles      bool
 	PathTraversal     bool
 	Output            string
@@ -68,7 +65,6 @@ Example - Pull files with local cache:
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			opts.cacheRoot = os.Getenv("ORAS_CACHE")
 			return opts.ReadPassword()
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -94,13 +90,9 @@ func runPull(opts pullOptions) error {
 	if repo.Reference.Reference == "" {
 		return errors.NewErrInvalidReference(repo.Reference)
 	}
-	var src oras.ReadOnlyTarget = repo
-	if opts.cacheRoot != "" {
-		ociStore, err := oci.New(opts.cacheRoot)
-		if err != nil {
-			return err
-		}
-		src = cache.New(repo, ociStore)
+	src, err := opts.CachedTarget(repo)
+	if err != nil {
+		return err
 	}
 
 	// Copy Options

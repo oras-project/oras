@@ -26,20 +26,19 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/content/oci"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/cache"
 	"oras.land/oras/internal/descriptor"
 )
 
 type fetchConfigOptions struct {
+	option.Cache
 	option.Common
 	option.Descriptor
+	option.Platform
 	option.Pretty
 	option.Remote
 
-	cacheRoot  string
 	outputPath string
 	targetRef  string
 }
@@ -55,6 +54,9 @@ func fetchConfigCmd() *cobra.Command {
 
 Example - Fetch the config:
   oras manifest fetch-config localhost:5000/hello:latest
+
+Example - Fetch the config of certain platform:
+  oras manifest fetch-config --platform 'linux/arm/v5' localhost:5000/hello:latest
 
 Example - Fetch and print the prettified config:
   oras manifest fetch-config --pretty localhost:5000/hello:latest
@@ -74,7 +76,6 @@ Example - Fetch and print the prettified descriptor of the config:
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
 			}
 
-			opts.cacheRoot = os.Getenv("ORAS_CACHE")
 			return opts.ReadPassword()
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -100,17 +101,18 @@ func fetchConfig(opts fetchConfigOptions) (fetchErr error) {
 		return oerrors.NewErrInvalidReference(repo.Reference)
 	}
 
-	var src oras.ReadOnlyTarget = repo
-	if opts.cacheRoot != "" {
-		ociStore, err := oci.New(opts.cacheRoot)
-		if err != nil {
-			return err
-		}
-		src = cache.New(repo, ociStore)
+	targetPlatform, err := opts.Parse()
+	if err != nil {
+		return err
+	}
+
+	src, err := opts.CachedTarget(repo)
+	if err != nil {
+		return err
 	}
 
 	// fetch config descriptor
-	configDesc, err := fetchConfigDesc(ctx, src, opts.targetRef)
+	configDesc, err := fetchConfigDesc(ctx, src, opts.targetRef, targetPlatform)
 	if err != nil {
 		return err
 	}
@@ -145,8 +147,10 @@ func fetchConfig(opts fetchConfigOptions) (fetchErr error) {
 	return nil
 }
 
-func fetchConfigDesc(ctx context.Context, src oras.ReadOnlyTarget, reference string) (ocispec.Descriptor, error) {
+func fetchConfigDesc(ctx context.Context, src oras.ReadOnlyTarget, reference string, targetPlatform *ocispec.Platform) (ocispec.Descriptor, error) {
 	// fetch manifest descriptor and content
+	fetchOpts := oras.DefaultFetchBytesOptions
+	fetchOpts.TargetPlatform = targetPlatform
 	manifestDesc, manifestContent, err := oras.FetchBytes(ctx, src, reference, oras.DefaultFetchBytesOptions)
 	if err != nil {
 		return ocispec.Descriptor{}, err
