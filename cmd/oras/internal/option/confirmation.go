@@ -40,7 +40,7 @@ func (opts *Confirmation) AskForConfirmation(r io.Reader, prompt string) (bool, 
 		return true, nil
 	}
 
-	fmt.Print(prompt, "[y/N]")
+	fmt.Print(prompt, " [y/N] ")
 
 	var response string
 	if _, err := fmt.Fscanln(r, &response); err != nil {

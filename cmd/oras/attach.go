@@ -51,13 +51,13 @@ func attachCmd() *cobra.Command {
 ** This command is in preview and under development. **
 
 Example - Attach file 'hi.txt' with type 'doc/example' to manifest 'hello:test' in registry 'localhost:5000'
-  oras attach localhost:5000/hello:test hi.txt --artifact-type doc/example
+  oras attach --artifact-type doc/example localhost:5000/hello:test hi.txt
 
 Example - Attach and update manifest annotations
-  oras attach localhost:5000/hello:latest hi.txt --artifact-type doc/example --annotation "key=val"
+  oras attach --artifact-type doc/example --annotation "key=val" localhost:5000/hello:latest hi.txt
 
 Example - Attach and update annotation from manifest annotation file
-  oras attach localhost:5000/hello:latest hi.txt --artifact-type doc/example --annotation-file annotation.json
+  oras attach --artifact-type doc/example --annotation-file annotation.json localhost:5000/hello:latest hi.txt
 `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
