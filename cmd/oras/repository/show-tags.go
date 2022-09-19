@@ -42,7 +42,7 @@ Example - Show tags of the target repository:
   oras repository show-tags localhost:5000/hello
 
 Example - Show tags of the target repository that include values lexically after last:
-  oras repository show-tags localhost:5000/hello --last "last_tag"
+  oras repository show-tags --last "last_tag" localhost:5000/hello
 `,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
