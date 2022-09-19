@@ -151,7 +151,7 @@ func fetchConfigDesc(ctx context.Context, src oras.ReadOnlyTarget, reference str
 	// fetch manifest descriptor and content
 	fetchOpts := oras.DefaultFetchBytesOptions
 	fetchOpts.TargetPlatform = targetPlatform
-	manifestDesc, manifestContent, err := oras.FetchBytes(ctx, src, reference, oras.DefaultFetchBytesOptions)
+	manifestDesc, manifestContent, err := oras.FetchBytes(ctx, src, reference, fetchOpts)
 	if err != nil {
 		return ocispec.Descriptor{}, err
 	}

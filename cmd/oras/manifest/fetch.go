@@ -113,7 +113,7 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 		// fetch manifest descriptor only
 		fetchOpts := oras.DefaultResolveOptions
 		fetchOpts.TargetPlatform = targetPlatform
-		desc, err = oras.Resolve(ctx, manifests, opts.targetRef, oras.DefaultResolveOptions)
+		desc, err = oras.Resolve(ctx, manifests, opts.targetRef, fetchOpts)
 		if err != nil {
 			return err
 		}
