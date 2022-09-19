@@ -55,10 +55,10 @@ Example - Pull all files:
   oras pull localhost:5000/hello:latest
 
 Example - Pull files from the insecure registry:
-  oras pull localhost:5000/hello:latest --insecure
+  oras pull --insecure localhost:5000/hello:latest
 
 Example - Pull files from the HTTP registry:
-  oras pull localhost:5000/hello:latest --plain-http
+  oras pull --plain-http localhost:5000/hello:latest
 
 Example - Pull files with local cache:
   export ORAS_CACHE=~/.oras/cache
