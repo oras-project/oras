@@ -50,13 +50,13 @@ func copyCmd() *cobra.Command {
 ** This command is in preview and under development. **
 
 Example - Copy the artifact tagged 'v1' from repository 'localhost:5000/net-monitor' to repository 'localhost:5000/net-monitor-copy' 
-  oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
+  oras copy localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
 
 Example - Copy the artifact tagged 'v1' and its referrers from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy'
-  oras cp -r localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
+  oras copy -r localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
 
 Example - Copy the artifact tagged 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with certain platform
-  oras cp --platform linux/arm/v5 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1 
+  oras copy --platform linux/arm/v5 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1 
 `,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -132,7 +132,9 @@ func runCopy(opts copyOptions) error {
 			copyOptions := oras.CopyOptions{
 				CopyGraphOptions: extendedCopyOptions.CopyGraphOptions,
 			}
-			copyOptions.WithTargetPlatform(targetPlatform)
+			if targetPlatform != nil {
+				copyOptions.WithTargetPlatform(targetPlatform)
+			}
 			desc, err = oras.Copy(ctx, src, opts.srcRef, dst, opts.dstRef, copyOptions)
 		}
 	}
