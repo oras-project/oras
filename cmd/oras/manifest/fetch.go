@@ -111,7 +111,9 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 	var desc ocispec.Descriptor
 	if opts.OutputDescriptor && opts.outputPath == "" {
 		// fetch manifest descriptor only
-		desc, err = oras.Resolve(ctx, manifests, opts.targetRef, oras.DefaultResolveOptions)
+		fetchOpts := oras.DefaultResolveOptions
+		fetchOpts.TargetPlatform = targetPlatform
+		desc, err = oras.Resolve(ctx, manifests, opts.targetRef, fetchOpts)
 		if err != nil {
 			return err
 		}
