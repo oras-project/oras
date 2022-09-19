@@ -13,23 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package manifest
+package descriptor
 
 import (
-	"github.com/spf13/cobra"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+
+	"oras.land/oras/internal/docker"
 )
 
-func Cmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "manifest [command]",
-		Short: "[Preview] Manifest operations",
-	}
-
-	cmd.AddCommand(
-		deleteCmd(),
-		fetchCmd(),
-		fetchConfigCmd(),
-		pushCmd(),
-	)
-	return cmd
+// IsImageManifest checks whether a manifest is an image manifest.
+func IsImageManifest(desc ocispec.Descriptor) bool {
+	return desc.MediaType == docker.MediaTypeManifest || desc.MediaType == ocispec.MediaTypeImageManifest
 }
