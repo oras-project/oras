@@ -41,6 +41,9 @@ func listCmd() *cobra.Command {
 Example - List the repositories under the registry:
   oras repository list localhost:5000
 
+Example - List the repositories under the registry by using command aliases:
+  oras repo ls localhost:5000
+
 Example - List the repositories under the registry that include values lexically after last:
   oras repository list localhost:5000 --last "last_repo"
 `,
