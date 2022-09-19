@@ -86,24 +86,24 @@ func tagManifest(opts tagOptions) error {
 		return errors.NewErrInvalidReference(repo.Reference)
 	}
 
-	rp := &repository{
+	listener := &tagManifestListener{
 		repo,
 	}
 
 	nOpts.Concurrency = opts.concurrency
 
-	return oras.TagN(ctx, rp, opts.srcRef, opts.targetRefs, nOpts)
+	return oras.TagN(ctx, listener, opts.srcRef, opts.targetRefs, nOpts)
 }
 
-type repository struct {
+type tagManifestListener struct {
 	*remote.Repository
 }
 
 // PushReference overrides Repository.PushReference method to print off which tag(s) were added successfully.
-func (r *repository) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
-	if err := r.Repository.PushReference(ctx, expected, content, reference); err != nil {
+func (l *tagManifestListener) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
+	if err := l.Repository.PushReference(ctx, expected, content, reference); err != nil {
 		return err
 	}
-	display.Print("tagged", reference)
+	display.Print("Tagged", reference)
 	return nil
 }
