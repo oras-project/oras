@@ -66,16 +66,16 @@ Example - Push file "hi.txt" with the custom manifest config "config.json" of th
   oras push --config config.json:application/vnd.me.config localhost:5000/hello:latest hi.txt
 
 Example - Push file to the insecure registry:
-  oras push localhost:5000/hello:latest hi.txt --insecure
+  oras push --insecure localhost:5000/hello:latest hi.txt
 
 Example - Push file to the HTTP registry:
-  oras push localhost:5000/hello:latest hi.txt --plain-http
+  oras push --plain-http localhost:5000/hello:latest hi.txt
 
 Example - Push repository with manifest annotations
-  oras push localhost:5000/hello:latest --annotation "key=val"
+  oras push --annotation "key=val" localhost:5000/hello:latest
 
 Example - Push repository with manifest annotation file
-  oras push localhost:5000/hello:latest --annotation-file annotation.json
+  oras push --annotation-file annotation.json localhost:5000/hello:latest
   `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
