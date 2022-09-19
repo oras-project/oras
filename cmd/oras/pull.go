@@ -68,7 +68,7 @@ Example - Pull files with local cache:
   oras pull localhost:5000/hello:latest
 
 Example - Pull files with certain platform:
-  oras pull localhost:5000/hello:latest --platform linux/arm/v5
+  oras pull --platform linux/arm/v5 localhost:5000/hello:latest
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {

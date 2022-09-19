@@ -56,7 +56,7 @@ Example - Copy the artifact tagged 'v1' and its referrers from repository 'local
   oras cp -r localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
 
 Example - Copy the artifact tagged 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with certain platform
-  oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1 --platform linux/arm/v5
+  oras cp --platform linux/arm/v5 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1 
 `,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
