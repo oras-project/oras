@@ -13,23 +13,29 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package manifest
+package option
 
 import (
-	"github.com/spf13/cobra"
+	"os"
+
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras/internal/cache"
 )
 
-func Cmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "manifest [command]",
-		Short: "[Preview] Manifest operations",
-	}
+type Cache struct {
+	Root string
+}
 
-	cmd.AddCommand(
-		deleteCmd(),
-		fetchCmd(),
-		fetchConfigCmd(),
-		pushCmd(),
-	)
-	return cmd
+// CachedTarget gets the target storage with caching if cache root is specified.
+func (opts *Cache) CachedTarget(src oras.ReadOnlyTarget) (oras.ReadOnlyTarget, error) {
+	opts.Root = os.Getenv("ORAS_CACHE")
+	if opts.Root != "" {
+		ociStore, err := oci.New(opts.Root)
+		if err != nil {
+			return nil, err
+		}
+		return cache.New(src, ociStore), nil
+	}
+	return src, nil
 }
