@@ -24,6 +24,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -118,11 +119,14 @@ func fetchBlob(opts fetchBlobOptions) (fetchErr error) {
 			return err
 		}
 		defer rc.Close()
+		vr := content.NewVerifyReader(rc, desc)
 
 		// outputs blob content if "--output -" is used
 		if opts.outputPath == "-" {
-			_, err := io.Copy(os.Stdout, rc)
-			return err
+			if _, err := io.Copy(os.Stdout, vr); err != nil {
+				return err
+			}
+			return vr.Verify()
 		}
 
 		// save blob content into the local file if the output path is provided
@@ -136,7 +140,10 @@ func fetchBlob(opts fetchBlobOptions) (fetchErr error) {
 			}
 		}()
 
-		if _, err := io.Copy(file, rc); err != nil {
+		if _, err := io.Copy(file, vr); err != nil {
+			return err
+		}
+		if err := vr.Verify(); err != nil {
 			return err
 		}
 	}
