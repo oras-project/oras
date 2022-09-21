@@ -16,6 +16,7 @@ limitations under the License.
 package blob
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -24,6 +25,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -114,6 +116,14 @@ func fetchBlob(opts fetchBlobOptions) (fetchErr error) {
 		// fetch blob content
 		var rc io.ReadCloser
 		desc, rc, err = oras.Fetch(ctx, src, opts.targetRef, oras.DefaultFetchOptions)
+		vr := content.NewVerifyReader(rc, desc)
+		buf := bytes.NewBuffer(nil)
+		if _, err := io.Copy(buf, vr); err != nil {
+			return err
+		}
+		if err := vr.Verify(); err != nil {
+			return err
+		}
 		if err != nil {
 			return err
 		}
