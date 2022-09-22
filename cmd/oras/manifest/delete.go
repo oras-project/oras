@@ -39,7 +39,7 @@ type deleteOptions struct {
 func deleteCmd() *cobra.Command {
 	var opts deleteOptions
 	cmd := &cobra.Command{
-		Use:   "delete [flags] <name>{:<tag>|@<digest>}",
+		Use:   "delete [flags] <name>{:<tag> | @<digest>}",
 		Short: "[Preview] Delete a manifest from remote registry",
 		Long: `[Preview] Delete a manifest from remote registry
 
