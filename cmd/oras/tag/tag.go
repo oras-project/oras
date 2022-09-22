@@ -18,9 +18,8 @@ package tag
 import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
+	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/errors"
-
-	"oras.land/oras/cmd/oras/internal/listener"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -51,7 +50,7 @@ Example - Tag the manifest with digest sha256:9463e0d192846bc994279417b501146067
 Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.2', 'latest'
   oras tag localhost:5000/hello:v1.0.1 v1.0.2 latest
 
-Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.2' 'latest' with the custom concurrency number of 1:
+Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.2' 'latest' with concurrency level tuned:
   oras tag --concurrency 1 localhost:5000/hello:v1.0.1 v1.0.2 latest
 `,
 		Args: cobra.MinimumNArgs(2),
@@ -66,7 +65,7 @@ Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.2' 'lates
 	}
 
 	option.ApplyFlags(&opts, cmd.Flags())
-	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 3, "provide concurrency number")
+	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	return cmd
 }
 
@@ -82,8 +81,8 @@ func tagManifest(opts tagOptions) error {
 		return errors.NewErrInvalidReference(repo.Reference)
 	}
 
-	var tagNOpts oras.TagNOptions
+	tagNOpts := oras.DefaultTagNOptions
 	tagNOpts.Concurrency = opts.concurrency
 
-	return oras.TagN(ctx, &listener.TagManifestListener{Repository: repo}, opts.srcRef, opts.targetRefs, tagNOpts)
+	return oras.TagN(ctx, &display.TagManifestStatusPrinter{Repository: repo}, opts.srcRef, opts.targetRefs, tagNOpts)
 }

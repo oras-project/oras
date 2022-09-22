@@ -27,7 +27,6 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras/cmd/oras/internal/display"
-	"oras.land/oras/cmd/oras/internal/listener"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/file"
 )
@@ -40,9 +39,9 @@ type pushOptions struct {
 
 	concurrency int64
 	targetRef   string
+	extraRefs   []string
 	fileRef     string
 	mediaType   string
-	extraRefs   []string
 }
 
 func pushCmd() *cobra.Command {
@@ -72,7 +71,7 @@ Example - Push a manifest with specified media type to repository 'localhost:500
 Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'tag1', 'tag2', 'tag3':
   oras manifest push localhost:5000/hello:tag1,tag2,tag3 manifest.json
 
-Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'tag1', 'tag2', 'tag3' and customized concurrency number:
+Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'tag1', 'tag2', 'tag3' and concurrency level tuned:
   oras manifest push --concurrency 6 localhost:5000/hello:tag1,tag2,tag3 manifest.json
 `,
 		Args: cobra.ExactArgs(2),
@@ -93,7 +92,7 @@ Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'tag1
 
 	option.ApplyFlags(&opts, cmd.Flags())
 	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", "", "media type of manifest")
-	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 3, "provide concurrency number")
+	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	return cmd
 }
 
@@ -149,22 +148,22 @@ func pushManifest(opts pushOptions) error {
 		}
 	}
 
-	display.Print("Pushed", opts.targetRef)
-
-	var tagBytesNOpts oras.TagBytesNOptions
+	tagBytesNOpts := oras.DefaultTagBytesNOptions
 	tagBytesNOpts.Concurrency = opts.concurrency
-
-	if len(opts.extraRefs) != 0 {
-		oras.TagBytesN(ctx, &listener.TagManifestListener{Repository: repo}, mediaType, contentBytes, opts.extraRefs, tagBytesNOpts)
-	}
 
 	// outputs manifest's descriptor
 	if opts.OutputDescriptor {
+		oras.TagBytesN(ctx, manifests, mediaType, contentBytes, opts.extraRefs, tagBytesNOpts)
 		descJSON, err := opts.Marshal(desc)
 		if err != nil {
 			return err
 		}
 		return opts.Output(os.Stdout, descJSON)
+	} else {
+		display.Print("Pushed", opts.targetRef)
+		if len(opts.extraRefs) != 0 {
+			oras.TagBytesN(ctx, &display.TagManifestStatusPrinter{Repository: repo}, mediaType, contentBytes, opts.extraRefs, tagBytesNOpts)
+		}
 	}
 
 	fmt.Println("Digest:", desc.Digest)

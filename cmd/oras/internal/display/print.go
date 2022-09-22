@@ -18,10 +18,12 @@ package display
 import (
 	"context"
 	"fmt"
+	"io"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/registry/remote"
 )
 
 var printLock sync.Mutex
@@ -69,5 +71,18 @@ func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, status s
 			}
 		}
 	}
+	return nil
+}
+
+type TagManifestStatusPrinter struct {
+	*remote.Repository
+}
+
+// PushReference overrides Repository.PushReference method to print off which tag(s) were added successfully.
+func (p *TagManifestStatusPrinter) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
+	if err := p.Repository.PushReference(ctx, expected, content, reference); err != nil {
+		return err
+	}
+	Print("Tagged", reference)
 	return nil
 }
