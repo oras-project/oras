@@ -153,7 +153,9 @@ func pushManifest(opts pushOptions) error {
 
 	// outputs manifest's descriptor
 	if opts.OutputDescriptor {
-		oras.TagBytesN(ctx, manifests, mediaType, contentBytes, opts.extraRefs, tagBytesNOpts)
+		if len(opts.extraRefs) != 0 {
+			oras.TagBytesN(ctx, manifests, mediaType, contentBytes, opts.extraRefs, tagBytesNOpts)
+		}
 		descJSON, err := opts.Marshal(desc)
 		if err != nil {
 			return err
