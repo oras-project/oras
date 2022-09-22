@@ -16,6 +16,7 @@ limitations under the License.
 package option
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"strings"
@@ -42,15 +43,17 @@ func (opts *Confirmation) AskForConfirmation(r io.Reader, prompt string) (bool, 
 
 	fmt.Print(prompt, " [y/N] ")
 
-	var response string
-	if _, err := fmt.Fscanln(r, &response); err != nil {
-		return false, err
+	scanner := bufio.NewScanner(r)
+	if ok := scanner.Scan(); !ok {
+		return false, scanner.Err()
 	}
+	response := scanner.Text()
 
 	switch strings.ToLower(response) {
 	case "y", "yes":
 		return true, nil
 	default:
+		fmt.Println("Operation cancelled.")
 		return false, nil
 	}
 }
