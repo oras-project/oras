@@ -54,7 +54,7 @@ func pushCmd() *cobra.Command {
 
 ** This command is in preview and under development. **
 
-Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'latest':
+Example - Push a manifest to repository 'localhost:5000/hello' and tag with 'latest':
   oras manifest push localhost:5000/hello:latest manifest.json
 
 Example - Push a manifest with content read from stdin:
@@ -63,10 +63,10 @@ Example - Push a manifest with content read from stdin:
 Example - Push a manifest and output its descriptor:
   oras manifest push --descriptor localhost:5000/hello:latest manifest.json
 
-Example - Push a manifest to repository 'locahost:5000/hello' and output the prettified descriptor:
+Example - Push a manifest to repository 'localhost:5000/hello' and output the prettified descriptor:
   oras manifest push --descriptor --pretty localhost:5000/hello manifest.json
 
-Example - Push a manifest with specified media type to repository 'locahost:5000/hello' and tag with 'latest':
+Example - Push a manifest with specified media type to repository 'localhost:5000/hello' and tag with 'latest':
   oras manifest push --media-type application/vnd.cncf.oras.artifact.manifest.v1+json localhost:5000/hello:latest oras_manifest.json
 
 Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'tag1', 'tag2', 'tag3':
