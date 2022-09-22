@@ -151,7 +151,7 @@ func pushManifest(opts pushOptions) error {
 	display.Print("Pushed", opts.targetRef)
 
 	if len(opts.extraRefs) != 0 {
-		oras.TagBytesN(ctx, &listener.TagManifestListener{Repository: repo}, mediaType, contentBytes, opts.extraRefs, opts.TagBytesNOption())
+		oras.TagBytesN(ctx, &listener.TagManifestListener{Repository: repo}, mediaType, contentBytes, opts.extraRefs, opts.TagBytesNOptions())
 	}
 
 	// outputs manifest's descriptor

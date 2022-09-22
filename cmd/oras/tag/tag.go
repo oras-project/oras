@@ -16,25 +16,21 @@ limitations under the License.
 package tag
 
 import (
-	"context"
-	"io"
-
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/registry/remote"
-	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/errors"
+
+	"oras.land/oras/cmd/oras/internal/listener"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
 type tagOptions struct {
 	option.Common
 	option.Remote
+	option.Concurrency
 
-	concurrency int64
-	srcRef      string
-	targetRefs  []string
+	srcRef     string
+	targetRefs []string
 }
 
 func TagCmd() *cobra.Command {
@@ -69,13 +65,11 @@ Example - Tag the manifest 'v1.0.1' in 'locahost:5000/hello' to 'v1.0.2' 'latest
 		},
 	}
 
-	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 5, "provide concurrency number, default is 5")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
 
 func tagManifest(opts tagOptions) error {
-	var nOpts oras.TagNOptions
 	ctx, _ := opts.SetLoggerLevel()
 	repo, err := opts.NewRepository(opts.srcRef, opts.Common)
 	if err != nil {
@@ -86,24 +80,5 @@ func tagManifest(opts tagOptions) error {
 		return errors.NewErrInvalidReference(repo.Reference)
 	}
 
-	listener := &tagManifestListener{
-		repo,
-	}
-
-	nOpts.Concurrency = opts.concurrency
-
-	return oras.TagN(ctx, listener, opts.srcRef, opts.targetRefs, nOpts)
-}
-
-type tagManifestListener struct {
-	*remote.Repository
-}
-
-// PushReference overrides Repository.PushReference method to print off which tag(s) were added successfully.
-func (l *tagManifestListener) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
-	if err := l.Repository.PushReference(ctx, expected, content, reference); err != nil {
-		return err
-	}
-	display.Print("Tagged", reference)
-	return nil
+	return oras.TagN(ctx, &listener.TagManifestListener{Repository: repo}, opts.srcRef, opts.targetRefs, opts.TagNOptions())
 }

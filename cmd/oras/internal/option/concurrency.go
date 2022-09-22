@@ -27,15 +27,19 @@ type Concurrency struct {
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Concurrency) ApplyFlags(fs *pflag.FlagSet) {
-	fs.Int64VarP(&opts.Concurrency, "concurrency", "", 5, "provide concurrency number, default is 5")
+	fs.Int64VarP(&opts.Concurrency, "concurrency", "", 3, "provide concurrency number")
 }
 
-// TagNOption changes the Concurrency number for oras.TagN method.
-func (opts *Concurrency) TagNOption() oras.TagNOptions {
-	return oras.TagNOptions{Concurrency: opts.Concurrency}
+// TagNOptions changes the Concurrency number for oras.TagN method.
+func (opts *Concurrency) TagNOptions() oras.TagNOptions {
+	tagNOpt := oras.DefaultTagNOptions
+	tagNOpt.Concurrency = opts.Concurrency
+	return tagNOpt
 }
 
 // TagBytesNOptions changes the Concurrency number for oras.TagBytesN method.
-func (opts *Concurrency) TagBytesNOption() oras.TagBytesNOptions {
-	return oras.TagBytesNOptions{Concurrency: opts.Concurrency}
+func (opts *Concurrency) TagBytesNOptions() oras.TagBytesNOptions {
+	tagNOpt := oras.DefaultTagBytesNOptions
+	tagNOpt.Concurrency = opts.Concurrency
+	return tagNOpt
 }
