@@ -37,12 +37,12 @@ type pushOptions struct {
 	option.Descriptor
 	option.Pretty
 	option.Remote
-	option.Concurrency
 
-	targetRef string
-	fileRef   string
-	mediaType string
-	extraRefs []string
+	concurrency int64
+	targetRef   string
+	fileRef     string
+	mediaType   string
+	extraRefs   []string
 }
 
 func pushCmd() *cobra.Command {
@@ -93,6 +93,7 @@ Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'tag1
 
 	option.ApplyFlags(&opts, cmd.Flags())
 	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", "", "media type of manifest")
+	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 3, "provide concurrency number")
 	return cmd
 }
 
@@ -150,8 +151,11 @@ func pushManifest(opts pushOptions) error {
 
 	display.Print("Pushed", opts.targetRef)
 
+	var tagBytesNOpts oras.TagBytesNOptions
+	tagBytesNOpts.Concurrency = opts.concurrency
+
 	if len(opts.extraRefs) != 0 {
-		oras.TagBytesN(ctx, &listener.TagManifestListener{Repository: repo}, mediaType, contentBytes, opts.extraRefs, opts.TagBytesNOptions())
+		oras.TagBytesN(ctx, &listener.TagManifestListener{Repository: repo}, mediaType, contentBytes, opts.extraRefs, tagBytesNOpts)
 	}
 
 	// outputs manifest's descriptor

@@ -27,10 +27,10 @@ import (
 type tagOptions struct {
 	option.Common
 	option.Remote
-	option.Concurrency
 
-	srcRef     string
-	targetRefs []string
+	concurrency int64
+	srcRef      string
+	targetRefs  []string
 }
 
 func TagCmd() *cobra.Command {
@@ -66,10 +66,12 @@ Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.2' 'lates
 	}
 
 	option.ApplyFlags(&opts, cmd.Flags())
+	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 3, "provide concurrency number")
 	return cmd
 }
 
 func tagManifest(opts tagOptions) error {
+
 	ctx, _ := opts.SetLoggerLevel()
 	repo, err := opts.NewRepository(opts.srcRef, opts.Common)
 	if err != nil {
@@ -80,5 +82,8 @@ func tagManifest(opts tagOptions) error {
 		return errors.NewErrInvalidReference(repo.Reference)
 	}
 
-	return oras.TagN(ctx, &listener.TagManifestListener{Repository: repo}, opts.srcRef, opts.targetRefs, opts.TagNOptions())
+	var tagNOpts oras.TagNOptions
+	tagNOpts.Concurrency = opts.concurrency
+
+	return oras.TagN(ctx, &listener.TagManifestListener{Repository: repo}, opts.srcRef, opts.targetRefs, tagNOpts)
 }
