@@ -69,16 +69,3 @@ func TestConfirmation_AskForConfirmation_manuallyConfirmed(t *testing.T) {
 		t.Fatalf("Confirmation.AskForConfirmation() got %v, want %v", got, false)
 	}
 }
-
-func TestConfirmation_AskForConfirmation_FscanlnErr(t *testing.T) {
-	opts := Confirmation{
-		Confirmed: false,
-	}
-	r := strings.NewReader("yes no")
-
-	_, err := opts.AskForConfirmation(r, "")
-	expected := "expected newline"
-	if err.Error() != expected {
-		t.Fatalf("AskForConfirmation() error = %v, wantErr %v", err, expected)
-	}
-}
