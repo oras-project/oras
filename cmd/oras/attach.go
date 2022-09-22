@@ -44,7 +44,7 @@ type attachOptions struct {
 func attachCmd() *cobra.Command {
 	var opts attachOptions
 	cmd := &cobra.Command{
-		Use:   "attach name<:tag|@digest> [file[:type]...]",
+		Use:   "attach [flags] --artifact-type=<type> <name>{:<tag> | @<digest>} [<file>[:<type>]...]",
 		Short: "[Preview] Attach files to an existing artifact",
 		Long: `[Preview] Attach files to an existing artifact
 
@@ -53,11 +53,15 @@ func attachCmd() *cobra.Command {
 Example - Attach file 'hi.txt' with type 'doc/example' to manifest 'hello:test' in registry 'localhost:5000'
   oras attach --artifact-type doc/example localhost:5000/hello:test hi.txt
 
-Example - Attach and update manifest annotations
+Example - Attach file 'hi.txt' and add annotations from file 'annotation.json'
+  oras attach --artifact-type doc/example --annotation-file annotation.json localhost:5000/hello:latest hi.txt
+
+Example - Attach an artifact with manifest annotation
+  oras attach --artifact-type doc/example --annotation "key=val" localhost:5000/hello:latest
+
+Example - Attach a file and add manifest annotations
   oras attach --artifact-type doc/example --annotation "key=val" localhost:5000/hello:latest hi.txt
 
-Example - Attach and update annotation from manifest annotation file
-  oras attach --artifact-type doc/example --annotation-file annotation.json localhost:5000/hello:latest hi.txt
 `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
