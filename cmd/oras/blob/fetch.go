@@ -42,7 +42,7 @@ type fetchBlobOptions struct {
 func fetchCmd() *cobra.Command {
 	var opts fetchBlobOptions
 	cmd := &cobra.Command{
-		Use:   "fetch [flags] <name@digest>",
+		Use:   "fetch [flags] {--output <path>|--descriptor} <name>@<digest>",
 		Short: "[Preview] Fetch a blob from a remote registry",
 		Long: `[Preview] Fetch a blob from a remote registry
 
