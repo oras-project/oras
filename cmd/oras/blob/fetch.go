@@ -59,9 +59,6 @@ Example - Fetch and stdout the descriptor of a blob:
 
 Example - Fetch the blob, save it to a local file and stdout the descriptor:
   oras blob fetch --output blob.tar.gz --descriptor localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
-
-Example - Fetch blob from the insecure registry:
-  oras blob fetch --insecure localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
