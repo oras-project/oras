@@ -68,6 +68,12 @@ Example - Push a manifest to repository 'locahost:5000/hello' and output the pre
 
 Example - Push a manifest with specified media type to repository 'locahost:5000/hello' and tag with 'latest':
   oras manifest push --media-type application/vnd.cncf.oras.artifact.manifest.v1+json localhost:5000/hello:latest oras_manifest.json
+
+Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'tag1', 'tag2', 'tag3':
+  oras manifest push localhost:5000/hello:tag1,tag2,tag3 manifest.json
+
+Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'tag1', 'tag2', 'tag3' and customized concurrency number:
+  oras manifest push --concurrency 6 localhost:5000/hello:tag1,tag2,tag3 manifest.json
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -133,7 +139,6 @@ func pushManifest(opts pushOptions) error {
 		if err = manifests.PushReference(ctx, desc, bytes.NewReader(contentBytes), ref); err != nil {
 			return err
 		}
-
 		if err = display.PrintStatus(desc, "Uploaded ", verbose); err != nil {
 			return err
 		}
