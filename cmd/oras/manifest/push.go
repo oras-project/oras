@@ -20,11 +20,14 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/listener"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/file"
 )
@@ -34,10 +37,12 @@ type pushOptions struct {
 	option.Descriptor
 	option.Pretty
 	option.Remote
+	option.Concurrency
 
 	targetRef string
 	fileRef   string
 	mediaType string
+	extraRefs []string
 }
 
 func pushCmd() *cobra.Command {
@@ -72,7 +77,9 @@ Example - Push a manifest with specified media type to repository 'locahost:5000
 			return opts.ReadPassword()
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
+			refs := strings.Split(args[0], ",")
+			opts.targetRef = refs[0]
+			opts.extraRefs = refs[1:]
 			opts.fileRef = args[1]
 			return pushManifest(opts)
 		},
@@ -126,6 +133,7 @@ func pushManifest(opts pushOptions) error {
 		if err = manifests.PushReference(ctx, desc, bytes.NewReader(contentBytes), ref); err != nil {
 			return err
 		}
+
 		if err = display.PrintStatus(desc, "Uploaded ", verbose); err != nil {
 			return err
 		}
@@ -133,6 +141,12 @@ func pushManifest(opts pushOptions) error {
 		if err := display.PrintStatus(desc, "Exists", verbose); err != nil {
 			return err
 		}
+	}
+
+	display.Print("Pushed", opts.targetRef)
+
+	if len(opts.extraRefs) != 0 {
+		oras.TagBytesN(ctx, &listener.TagManifestListener{Repository: repo}, mediaType, contentBytes, opts.extraRefs, opts.TagBytesNOption())
 	}
 
 	// outputs manifest's descriptor
@@ -144,7 +158,6 @@ func pushManifest(opts pushOptions) error {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	fmt.Println("Pushed", opts.targetRef)
 	fmt.Println("Digest:", desc.Digest)
 
 	return nil
