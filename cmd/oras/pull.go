@@ -115,6 +115,8 @@ func runPull(opts pullOptions) error {
 			if _, ok := printed.LoadOrStore(generateContentKey(target), true); ok {
 				return fetcher.Fetch(ctx, target)
 			}
+
+			// print status log for first-time fetching
 			if err := display.PrintStatus(target, "Downloading", opts.Verbose); err != nil {
 				return nil, err
 			}
@@ -122,8 +124,11 @@ func runPull(opts pullOptions) error {
 			if err != nil {
 				return nil, err
 			}
-			if err := display.PrintStatus(target, "Processing ", opts.Verbose); err != nil {
+			defer func() {
 				rc.Close()
+			}()
+
+			if err := display.PrintStatus(target, "Processing ", opts.Verbose); err != nil {
 				return nil, err
 			}
 			return rc, nil
