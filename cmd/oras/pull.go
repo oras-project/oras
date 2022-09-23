@@ -48,7 +48,7 @@ type pullOptions struct {
 func pullCmd() *cobra.Command {
 	var opts pullOptions
 	cmd := &cobra.Command{
-		Use:   "pull <name:tag|name@digest>",
+		Use:   "pull [flags] <name>{:<tag>|@<digest>}",
 		Short: "Pull files from remote registry",
 		Long: `Pull files from remote registry
 
