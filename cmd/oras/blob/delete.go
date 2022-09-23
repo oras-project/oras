@@ -38,7 +38,7 @@ type deleteBlobOptions struct {
 func deleteCmd() *cobra.Command {
 	var opts deleteBlobOptions
 	cmd := &cobra.Command{
-		Use:   "delete [flags] <name@digest>",
+		Use:   "delete [flags] <name>@<digest>",
 		Short: "[Preview] Delete a blob from a remote registry",
 		Long: `[Preview] Delete a blob from a remote registry
 

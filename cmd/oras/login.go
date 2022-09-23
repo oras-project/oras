@@ -37,7 +37,7 @@ type loginOptions struct {
 func loginCmd() *cobra.Command {
 	var opts loginOptions
 	cmd := &cobra.Command{
-		Use:   "login registry",
+		Use:   "login [flags] <registry>",
 		Short: "Log in to a remote registry",
 		Long: `Log in to a remote registry
 

@@ -31,7 +31,7 @@ type logoutOptions struct {
 func logoutCmd() *cobra.Command {
 	var opts logoutOptions
 	cmd := &cobra.Command{
-		Use:   "logout registry",
+		Use:   "logout [flags] <registry>",
 		Short: "Log out from a remote registry",
 		Long: `Log out from a remote registry
 

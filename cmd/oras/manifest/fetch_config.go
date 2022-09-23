@@ -46,7 +46,7 @@ type fetchConfigOptions struct {
 func fetchConfigCmd() *cobra.Command {
 	var opts fetchConfigOptions
 	cmd := &cobra.Command{
-		Use:   "fetch-config [flag] name<:tag|@digest>",
+		Use:   "fetch-config [flags] <name>{:<tag>|@<digest>}",
 		Short: "[Preview] Fetch the config of a manifest from a remote registry",
 		Long: `[Preview] Fetch the config of a manifest from a remote registry
 
