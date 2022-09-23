@@ -54,3 +54,19 @@ func TestFile_ParseFileReference_withMediaTypeInput(t *testing.T) {
 		t.Errorf("ParseFileReference() = %v, want %v", gotMediaType, wantMediaType)
 	}
 }
+
+func TestFile_ParseFileReference_includingWindowsDisk(t *testing.T) {
+	fileRef := `C:\demo\hi.txt:application/vnd.me.hi`
+
+	wantFilePath := `C:\demo\hi.txt`
+	wantMediaType := "application/vnd.me.hi"
+
+	// test ParseFileReference
+	gotFilePath, gotMediaType := file.ParseFileReference(fileRef, oras.MediaTypeUnknownConfig)
+	if !reflect.DeepEqual(gotFilePath, wantFilePath) {
+		t.Errorf("ParseFileReference() = %v, want %v", gotFilePath, wantFilePath)
+	}
+	if !reflect.DeepEqual(gotMediaType, wantMediaType) {
+		t.Errorf("ParseFileReference() = %v, want %v", gotMediaType, wantMediaType)
+	}
+}

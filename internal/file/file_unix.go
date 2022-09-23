@@ -26,5 +26,4 @@ func ParseFileReference(reference string, mediaType string) (filePath, mediatype
 		return reference, mediaType
 	}
 	return reference[:i], reference[i+1:]
-
 }

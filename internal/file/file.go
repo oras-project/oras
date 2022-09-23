@@ -29,6 +29,7 @@ import (
 	"oras.land/oras-go/v2/content/file"
 )
 
+// LoadFiles loads files and returns their descriptors.
 func LoadFiles(ctx context.Context, store *file.Store, annotations map[string]map[string]string, fileRefs []string, verbose bool) ([]ocispec.Descriptor, error) {
 	var files []ocispec.Descriptor
 	for _, fileRef := range fileRefs {

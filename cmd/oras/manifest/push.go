@@ -37,6 +37,7 @@ type pushOptions struct {
 
 	targetRef string
 	fileRef   string
+	mediaType string
 }
 
 func pushCmd() *cobra.Command {
@@ -61,11 +62,11 @@ Example - Push a manifest to repository 'localhost:5000/hello' and output the pr
   oras manifest push --descriptor --pretty localhost:5000/hello manifest.json
 
 Example - Push a manifest with specified media type to repository 'localhost:5000/hello' and tag with 'latest':
-  oras manifest push --media-type application/vnd.cncf.oras.artifact.manifest.v1+json localhost:5000/hello:latest oras_manifest.json
+  oras manifest push localhost:5000/hello:latest oras_manifest.json:application/vnd.cncf.oras.artifact.manifest.v1+json
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if (opts.fileRef == "-" || opts.fileRef[:2] == "-:") && opts.PasswordFromStdin {
+			if opts.fileRef == "-" && opts.PasswordFromStdin {
 				return errors.New("`-` read file from input and `--password-stdin` read password from input cannot be both used")
 			}
 			return opts.ReadPassword()
@@ -78,6 +79,8 @@ Example - Push a manifest with specified media type to repository 'localhost:500
 	}
 
 	option.ApplyFlags(&opts, cmd.Flags())
+	cmd.Flags()
+	cmd.Flags().MarkHidden(":")
 	return cmd
 }
 

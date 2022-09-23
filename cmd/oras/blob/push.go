@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -34,7 +33,6 @@ type pushBlobOptions struct {
 	option.Remote
 
 	fileRef   string
-	mediaType string
 	size      int64
 	targetRef string
 }
@@ -61,7 +59,7 @@ Example - Push blob "hi.txt" and output the descriptor:
   oras blob push --descriptor localhost:5000/hello hi.txt
 
 Example - Push blob "hi.txt" with the specific returned media type in the descriptor:
-  oras blob push --media-type application/vnd.oci.image.config.v1+json --descriptor localhost:5000/hello hi.txt
+  oras blob push --descriptor localhost:5000/hello hi.txt:application/vnd.oci.image.config.v1+json
 
 Example - Push blob "hi.txt" and output the prettified descriptor:
   oras blob push --descriptor --pretty localhost:5000/hello hi.txt
@@ -89,7 +87,6 @@ Example - Push blob without TLS:
 	}
 
 	cmd.Flags().Int64VarP(&opts.size, "size", "", -1, "provide the blob size")
-	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", ocispec.MediaTypeImageLayer, "specify the returned media type in the descriptor if `--descriptor` is used")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
@@ -102,8 +99,10 @@ func pushBlob(opts pushBlobOptions) (err error) {
 		return err
 	}
 
+	filename, mediaType := file.ParseFileReference(opts.fileRef, "")
+
 	// prepare blob content
-	desc, rc, err := file.PrepareBlobContent(opts.fileRef, opts.mediaType, repo.Reference.Reference, opts.size)
+	desc, rc, err := file.PrepareBlobContent(filename, mediaType, repo.Reference.Reference, opts.size)
 	if err != nil {
 		return err
 	}
