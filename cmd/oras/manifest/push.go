@@ -47,7 +47,7 @@ type pushOptions struct {
 func pushCmd() *cobra.Command {
 	var opts pushOptions
 	cmd := &cobra.Command{
-		Use:   "push [flags] name[:tag|@digest] file",
+		Use:   "push [flags] <name>[:<tag> | @<digest>] <file>[:<type>] [...]",
 		Short: "[Preview] Push a manifest to remote registry",
 		Long: `[Preview] Push a manifest to remote registry
 
@@ -161,11 +161,10 @@ func pushManifest(opts pushOptions) error {
 			return err
 		}
 		return opts.Output(os.Stdout, descJSON)
-	} else {
-		display.Print("Pushed", opts.targetRef)
-		if len(opts.extraRefs) != 0 {
-			oras.TagBytesN(ctx, &display.TagManifestStatusPrinter{Repository: repo}, mediaType, contentBytes, opts.extraRefs, tagBytesNOpts)
-		}
+	}
+	display.Print("Pushed", opts.targetRef)
+	if len(opts.extraRefs) != 0 {
+		oras.TagBytesN(ctx, &display.TagManifestStatusPrinter{Repository: repo}, mediaType, contentBytes, opts.extraRefs, tagBytesNOpts)
 	}
 
 	fmt.Println("Digest:", desc.Digest)

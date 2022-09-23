@@ -35,7 +35,7 @@ type tagOptions struct {
 func TagCmd() *cobra.Command {
 	var opts tagOptions
 	cmd := &cobra.Command{
-		Use:   "tag [flags] name<:tag|@digest> <new_tag...>",
+		Use:   "tag [flags] <name>{:<tag> | @<digest>} <new_tag> [...]",
 		Short: "[Preview] tag a manifest in the remote registry",
 		Long: `[Preview] tag a manifest in the remote registry
 
@@ -70,7 +70,6 @@ Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.2' 'lates
 }
 
 func tagManifest(opts tagOptions) error {
-
 	ctx, _ := opts.SetLoggerLevel()
 	repo, err := opts.NewRepository(opts.srcRef, opts.Common)
 	if err != nil {
@@ -83,6 +82,5 @@ func tagManifest(opts tagOptions) error {
 
 	tagNOpts := oras.DefaultTagNOptions
 	tagNOpts.Concurrency = opts.concurrency
-
 	return oras.TagN(ctx, &display.TagManifestStatusPrinter{Repository: repo}, opts.srcRef, opts.targetRefs, tagNOpts)
 }

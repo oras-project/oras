@@ -83,6 +83,5 @@ func (p *TagManifestStatusPrinter) PushReference(ctx context.Context, expected o
 	if err := p.Repository.PushReference(ctx, expected, content, reference); err != nil {
 		return err
 	}
-	Print("Tagged", reference)
-	return nil
+	return Print("Tagged", reference)
 }
