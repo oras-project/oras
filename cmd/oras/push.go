@@ -84,7 +84,7 @@ Example - Push repository with manifest annotation file
 Example - Push file "hi.txt" with multiple tags:
   oras push localhost:5000/hello:tag1,tag2,tag3 hi.txt
 
-Example - Push file "hi.txt" with multiple tags with concurrency level tuned:
+Example - Push file "hi.txt" with multiple tags and concurrency level tuned:
 	oras push --concurrency 6 localhost:5000/hello:tag1,tag2,tag3 hi.txt
   `,
 		Args: cobra.MinimumNArgs(1),
