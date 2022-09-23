@@ -105,7 +105,7 @@ Example - Push file "hi.txt" with multiple tags and concurrency level tuned:
 
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "manifest config file")
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "media type of the manifest config")
-	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 5, "provide concurrency number")
+	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
