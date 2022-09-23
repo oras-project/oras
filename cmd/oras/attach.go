@@ -75,6 +75,7 @@ Example - Attach a file and add manifest annotations
 	}
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
+	cmd.MarkFlagRequired("artifact-type")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
