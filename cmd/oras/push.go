@@ -50,7 +50,7 @@ type pushOptions struct {
 func pushCmd() *cobra.Command {
 	var opts pushOptions
 	cmd := &cobra.Command{
-		Use:   "push [flags] <name>[:<tag>[,<tag>] [...]] <file>[:<type>] [...]",
+		Use:   "push [flags] <name>[:<tag>[,<tag>][...]] <file>[:<type>] [...]",
 		Short: "Push files to remote registry",
 		Long: `Push files to remote registry
 
@@ -85,7 +85,7 @@ Example - Push file "hi.txt" with multiple tags:
   oras push localhost:5000/hello:tag1,tag2,tag3 hi.txt
 
 Example - Push file "hi.txt" with multiple tags and concurrency level tuned:
-	oras push --concurrency 6 localhost:5000/hello:tag1,tag2,tag3 hi.txt
+  oras push --concurrency 6 localhost:5000/hello:tag1,tag2,tag3 hi.txt
   `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -126,6 +126,7 @@ func runPush(opts pushOptions) error {
 	// Ready to push
 	committed := &sync.Map{}
 	copyOptions := oras.DefaultCopyOptions
+	copyOptions.Concurrency = opts.concurrency
 	copyOptions.PreCopy = display.StatusPrinter("Uploading", opts.Verbose)
 	copyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
@@ -159,12 +160,11 @@ func runPush(opts pushOptions) error {
 
 	fmt.Println("Pushed", opts.targetRef)
 
-	contentBytes, err := content.FetchAll(ctx, store, desc)
-	if err != nil {
-		return err
-	}
-
 	if len(opts.extraRefs) != 0 {
+		contentBytes, err := content.FetchAll(ctx, store, desc)
+		if err != nil {
+			return err
+		}
 		tagBytesNOpts := oras.DefaultTagBytesNOptions
 		tagBytesNOpts.Concurrency = opts.concurrency
 		oras.TagBytesN(ctx, &display.TagManifestStatusPrinter{Repository: dst}, desc.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts)
