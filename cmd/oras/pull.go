@@ -18,6 +18,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -110,7 +111,30 @@ func runPull(opts pullOptions) error {
 		copyOptions.WithTargetPlatform(targetPlatform)
 	}
 	copyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		successors, err := content.Successors(ctx, fetcher, desc)
+		statusFetcher := content.FetcherFunc(func(ctx context.Context, target ocispec.Descriptor) (fetched io.ReadCloser, fetchErr error) {
+			if _, ok := printed.LoadOrStore(generateContentKey(target), true); ok {
+				return fetcher.Fetch(ctx, target)
+			}
+
+			// print status log for first-time fetching
+			if err := display.PrintStatus(target, "Downloading", opts.Verbose); err != nil {
+				return nil, err
+			}
+			rc, err := fetcher.Fetch(ctx, target)
+			if err != nil {
+				return nil, err
+			}
+			defer func() {
+				if fetchErr != nil {
+					rc.Close()
+				}
+			}()
+			if err := display.PrintStatus(target, "Processing ", opts.Verbose); err != nil {
+				return nil, err
+			}
+			return rc, nil
+		})
+		successors, err := content.Successors(ctx, statusFetcher, desc)
 		if err != nil {
 			return nil, err
 		}
@@ -157,7 +181,12 @@ func runPull(opts pullOptions) error {
 	dst.DisableOverwrite = opts.KeepOldFiles
 
 	pulledEmpty := true
-	copyOptions.PreCopy = display.StatusPrinter("Downloading", opts.Verbose)
+	copyOptions.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		if _, ok := printed.LoadOrStore(generateContentKey(desc), true); ok {
+			return nil
+		}
+		return display.PrintStatus(desc, "Downloading", opts.Verbose)
+	}
 	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		// restore named but deduplicated successor nodes
 		successors, err := content.Successors(ctx, dst, desc)
