@@ -31,7 +31,7 @@ type Platform struct {
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Platform) ApplyFlags(fs *pflag.FlagSet) {
-	fs.StringVarP(&opts.Platform, "platform", "", "", "ensure fetching a manifest of a platform in the form of os[/arch][/variant][:os_version]")
+	fs.StringVarP(&opts.Platform, "platform", "", "", "request platform in the form of `os[/arch][/variant][:os_version]`")
 }
 
 // parse parses the input platform flag to an oci platform type.
