@@ -29,6 +29,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/descriptor"
+	ifile "oras.land/oras/internal/file"
 )
 
 type pullOptions struct {
@@ -105,7 +106,7 @@ func runPull(opts pullOptions) error {
 
 	// Copy Options
 	copyOptions := oras.DefaultCopyOptions
-	configPath, configMediaType := parseFileReference(opts.ManifestConfigRef, "")
+	configPath, configMediaType := ifile.ParseFileReference(opts.ManifestConfigRef, "")
 	if targetPlatform != nil {
 		copyOptions.WithTargetPlatform(targetPlatform)
 	}

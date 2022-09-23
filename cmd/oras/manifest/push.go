@@ -37,13 +37,12 @@ type pushOptions struct {
 
 	targetRef string
 	fileRef   string
-	mediaType string
 }
 
 func pushCmd() *cobra.Command {
 	var opts pushOptions
 	cmd := &cobra.Command{
-		Use:   "push [flags] name[:tag|@digest] file",
+		Use:   "push [flags] <name>[:<tag>|@<digest>] <file>[:<type>]",
 		Short: "[Preview] Push a manifest to remote registry",
 		Long: `[Preview] Push a manifest to remote registry
 
@@ -66,7 +65,7 @@ Example - Push a manifest with specified media type to repository 'localhost:500
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if opts.fileRef == "-" && opts.PasswordFromStdin {
+			if (opts.fileRef == "-" || opts.fileRef[:2] == "-:") && opts.PasswordFromStdin {
 				return errors.New("`-` read file from input and `--password-stdin` read password from input cannot be both used")
 			}
 			return opts.ReadPassword()
@@ -79,7 +78,6 @@ Example - Push a manifest with specified media type to repository 'localhost:500
 	}
 
 	option.ApplyFlags(&opts, cmd.Flags())
-	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", "", "media type of manifest")
 	return cmd
 }
 
@@ -91,15 +89,16 @@ func pushManifest(opts pushOptions) error {
 	}
 	manifests := repo.Manifests()
 
+	filename, mediaType := file.ParseFileReference(opts.fileRef, "")
+
 	// prepare manifest content
-	contentBytes, err := file.PrepareManifestContent(opts.fileRef)
+	contentBytes, err := file.PrepareManifestContent(filename)
 	if err != nil {
 		return err
 	}
 
 	// get manifest media type
-	mediaType := opts.mediaType
-	if opts.mediaType == "" {
+	if mediaType == "" {
 		mediaType, err = file.ParseMediaType(contentBytes)
 		if err != nil {
 			return err

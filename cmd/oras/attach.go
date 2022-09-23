@@ -30,6 +30,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	ifile "oras.land/oras/internal/file"
 )
 
 type attachOptions struct {
@@ -102,7 +103,7 @@ func runAttach(opts attachOptions) error {
 		return err
 	}
 	subject := ociToArtifact(ociSubject)
-	ociDescs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
+	ociDescs, err := ifile.LoadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
 	if err != nil {
 		return err
 	}
