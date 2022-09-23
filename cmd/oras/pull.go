@@ -111,7 +111,7 @@ func runPull(opts pullOptions) error {
 		copyOptions.WithTargetPlatform(targetPlatform)
 	}
 	copyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		statusFetcher := content.FetcherFunc(func(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
+		statusFetcher := content.FetcherFunc(func(ctx context.Context, target ocispec.Descriptor) (fetched io.ReadCloser, fetchErr error) {
 			if _, ok := printed.LoadOrStore(generateContentKey(target), true); ok {
 				return fetcher.Fetch(ctx, target)
 			}
@@ -125,9 +125,10 @@ func runPull(opts pullOptions) error {
 				return nil, err
 			}
 			defer func() {
-				rc.Close()
+				if fetchErr != nil {
+					rc.Close()
+				}
 			}()
-
 			if err := display.PrintStatus(target, "Processing ", opts.Verbose); err != nil {
 				return nil, err
 			}
