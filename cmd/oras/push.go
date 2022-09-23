@@ -46,7 +46,7 @@ type pushOptions struct {
 func pushCmd() *cobra.Command {
 	var opts pushOptions
 	cmd := &cobra.Command{
-		Use:   "push name[:tag|@digest] file[:type] [file...]",
+		Use:   "push [flags] <name>[:<tag>|@<digest>] <file>[:<type>] [...]",
 		Short: "Push files to remote registry",
 		Long: `Push files to remote registry
 
