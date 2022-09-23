@@ -45,7 +45,7 @@ type discoverOptions struct {
 func discoverCmd() *cobra.Command {
 	var opts discoverOptions
 	cmd := &cobra.Command{
-		Use:   "discover [options] <name:tag|name@digest>",
+		Use:   "discover [flags] <name>{:<tag>|@<digest>}",
 		Short: "[Preview] Discover referrers of a manifest in the remote registry",
 		Long: `[Preview] Discover referrers of a manifest in the remote registry
 

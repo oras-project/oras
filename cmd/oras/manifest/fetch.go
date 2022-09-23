@@ -43,7 +43,7 @@ type fetchOptions struct {
 func fetchCmd() *cobra.Command {
 	var opts fetchOptions
 	cmd := &cobra.Command{
-		Use:   "fetch [flags] <name:tag|name@digest>",
+		Use:   "fetch [flags] <name>{:<tag>|@<digest>}",
 		Short: "[Preview] Fetch manifest of the target artifact",
 		Long: `[Preview] Fetch manifest of the target artifact
 

@@ -42,7 +42,7 @@ type copyOptions struct {
 func copyCmd() *cobra.Command {
 	var opts copyOptions
 	cmd := &cobra.Command{
-		Use:     "copy <from-ref> <to-ref>",
+		Use:     "copy [flags] <from>{:<tag>|@<digest>} <to>[:<tag>|@<digest>]",
 		Aliases: []string{"cp"},
 		Short:   "[Preview] Copy artifacts from one target to another",
 		Long: `[Preview] Copy artifacts from one target to another
