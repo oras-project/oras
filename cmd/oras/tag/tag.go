@@ -16,13 +16,8 @@ limitations under the License.
 package tag
 
 import (
-	"context"
-	"io"
-
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -55,7 +50,7 @@ Example - Tag the manifest with digest sha256:9463e0d192846bc994279417b501146067
 Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.2', 'latest'
   oras tag localhost:5000/hello:v1.0.1 v1.0.2 latest
 
-Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.2' 'latest' with the custom concurrency number of 1:
+Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.2' 'latest' with concurrency level tuned:
   oras tag --concurrency 1 localhost:5000/hello:v1.0.1 v1.0.2 latest
 `,
 		Args: cobra.MinimumNArgs(2),
@@ -69,13 +64,12 @@ Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.2' 'lates
 		},
 	}
 
-	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 5, "provide concurrency number, default is 5")
 	option.ApplyFlags(&opts, cmd.Flags())
+	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	return cmd
 }
 
 func tagManifest(opts tagOptions) error {
-	var nOpts oras.TagNOptions
 	ctx, _ := opts.SetLoggerLevel()
 	repo, err := opts.NewRepository(opts.srcRef, opts.Common)
 	if err != nil {
@@ -86,24 +80,7 @@ func tagManifest(opts tagOptions) error {
 		return errors.NewErrInvalidReference(repo.Reference)
 	}
 
-	listener := &tagManifestListener{
-		repo,
-	}
-
-	nOpts.Concurrency = opts.concurrency
-
-	return oras.TagN(ctx, listener, opts.srcRef, opts.targetRefs, nOpts)
-}
-
-type tagManifestListener struct {
-	*remote.Repository
-}
-
-// PushReference overrides Repository.PushReference method to print off which tag(s) were added successfully.
-func (l *tagManifestListener) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
-	if err := l.Repository.PushReference(ctx, expected, content, reference); err != nil {
-		return err
-	}
-	display.Print("Tagged", reference)
-	return nil
+	tagNOpts := oras.DefaultTagNOptions
+	tagNOpts.Concurrency = opts.concurrency
+	return oras.TagN(ctx, &display.TagManifestStatusPrinter{Repository: repo}, opts.srcRef, opts.targetRefs, tagNOpts)
 }
