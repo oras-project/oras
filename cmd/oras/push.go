@@ -19,11 +19,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -39,14 +41,16 @@ type pushOptions struct {
 	option.Packer
 
 	targetRef         string
+	extraRefs         []string
 	manifestConfigRef string
 	artifactType      string
+	concurrency       int64
 }
 
 func pushCmd() *cobra.Command {
 	var opts pushOptions
 	cmd := &cobra.Command{
-		Use:   "push [flags] <name>[:<tag>|@<digest>] <file>[:<type>] [...]",
+		Use:   "push [flags] <name>[:<tag>[,<tag>] [...]] <file>[:<type>] [...]",
 		Short: "Push files to remote registry",
 		Long: `Push files to remote registry
 
@@ -76,6 +80,12 @@ Example - Push repository with manifest annotations
 
 Example - Push repository with manifest annotation file
   oras push --annotation-file annotation.json localhost:5000/hello:latest
+
+Example - Push file "hi.txt" with multiple tags:
+  oras push localhost:5000/hello:tag1,tag2,tag3 hi.txt
+
+Example - Push file "hi.txt" with multiple tags with concurrency level tuned:
+	oras push --concurrency 6 localhost:5000/hello:tag1,tag2,tag3 hi.txt
   `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -85,7 +95,9 @@ Example - Push repository with manifest annotation file
 			return opts.ReadPassword()
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
+			refs := strings.Split(args[0], ",")
+			opts.targetRef = refs[0]
+			opts.extraRefs = refs[1:]
 			opts.FileRefs = args[1:]
 			return runPush(opts)
 		},
@@ -93,6 +105,7 @@ Example - Push repository with manifest annotation file
 
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "manifest config file")
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "media type of the manifest config")
+	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 5, "provide concurrency number")
 
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
@@ -145,6 +158,18 @@ func runPush(opts pushOptions) error {
 	}
 
 	fmt.Println("Pushed", opts.targetRef)
+
+	contentBytes, err := content.FetchAll(ctx, store, desc)
+	if err != nil {
+		return err
+	}
+
+	if len(opts.extraRefs) != 0 {
+		tagBytesNOpts := oras.DefaultTagBytesNOptions
+		tagBytesNOpts.Concurrency = opts.concurrency
+		oras.TagBytesN(ctx, &display.TagManifestStatusPrinter{Repository: dst}, desc.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts)
+	}
+
 	fmt.Println("Digest:", desc.Digest)
 
 	// Export manifest
