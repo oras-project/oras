@@ -57,6 +57,9 @@ func pushCmd() *cobra.Command {
 Example - Push file "hi.txt" with media type "application/vnd.oci.image.layer.v1.tar" (default):
   oras push localhost:5000/hello:latest hi.txt
 
+Example - Push file "hi.txt" and export the pushed manifest to a specified path
+  oras push --export-manifest manifest.json localhost:5000/hello:latest hi.txt
+
 Example - Push file "hi.txt" with the custom media type "application/vnd.me.hi":
   oras push localhost:5000/hello:latest hi.txt:application/vnd.me.hi
 
