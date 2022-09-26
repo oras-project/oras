@@ -80,7 +80,7 @@ Example - Copy the artifact tagged 'v1' from repository 'localhost:5000/net-moni
 	cmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "recursively copy artifacts and its referrer artifacts")
 	opts.src.ApplyFlagsWithPrefix(cmd.Flags(), "from", "source")
 	opts.dst.ApplyFlagsWithPrefix(cmd.Flags(), "to", "destination")
-	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
+	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 	option.ApplyFlags(&opts, cmd.Flags())
 
 	return cmd

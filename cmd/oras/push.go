@@ -86,7 +86,7 @@ Example - Push file "hi.txt" with multiple tags:
 
 Example - Push file "hi.txt" with multiple tags and concurrency level tuned:
   oras push --concurrency 6 localhost:5000/hello:tag1,tag2,tag3 hi.txt
-  `,
+`,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.artifactType != "" && opts.manifestConfigRef != "" {
