@@ -79,7 +79,7 @@ Example - Fetch the blob, save it to a local file and print the descriptor:
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "write it to standard output")
+	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "output file `path`, use - for stdout")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }

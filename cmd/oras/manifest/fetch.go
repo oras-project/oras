@@ -80,7 +80,7 @@ Example - Fetch manifest with prettified json result:
 	}
 
 	cmd.Flags().StringSliceVarP(&opts.mediaTypes, "media-type", "", nil, "accepted media types")
-	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "write it to standard output")
+	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "file `path` to write the fetched manifest to, use - for stdout")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
