@@ -24,18 +24,17 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/cache"
 )
 
 type fetchBlobOptions struct {
+	option.Cache
 	option.Common
 	option.Descriptor
 	option.Pretty
 	option.Remote
 
-	cacheRoot  string
 	outputPath string
 	targetRef  string
 }
@@ -43,7 +42,7 @@ type fetchBlobOptions struct {
 func fetchCmd() *cobra.Command {
 	var opts fetchBlobOptions
 	cmd := &cobra.Command{
-		Use:   "fetch [flags] <name@digest>",
+		Use:   "fetch [flags] {--output <file> | --descriptor} <name>@<digest>",
 		Short: "[Preview] Fetch a blob from a remote registry",
 		Long: `[Preview] Fetch a blob from a remote registry
 
@@ -60,9 +59,6 @@ Example - Fetch and stdout the descriptor of a blob:
 
 Example - Fetch the blob, save it to a local file and stdout the descriptor:
   oras blob fetch --output blob.tar.gz --descriptor localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
-
-Example - Fetch blob from the insecure registry:
-  oras blob fetch --insecure localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -74,7 +70,6 @@ Example - Fetch blob from the insecure registry:
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
 			}
 
-			opts.cacheRoot = os.Getenv("ORAS_CACHE")
 			return opts.ReadPassword()
 		},
 		Aliases: []string{"get"},
@@ -101,13 +96,9 @@ func fetchBlob(opts fetchBlobOptions) (fetchErr error) {
 		return fmt.Errorf("%s: blob reference must be of the form <name@digest>", opts.targetRef)
 	}
 
-	var src oras.ReadOnlyTarget = repo.Blobs()
-	if opts.cacheRoot != "" {
-		ociStore, err := oci.New(opts.cacheRoot)
-		if err != nil {
-			return err
-		}
-		src = cache.New(src, ociStore)
+	src, err := opts.CachedTarget(repo.Blobs())
+	if err != nil {
+		return err
 	}
 
 	var desc ocispec.Descriptor
@@ -125,11 +116,14 @@ func fetchBlob(opts fetchBlobOptions) (fetchErr error) {
 			return err
 		}
 		defer rc.Close()
+		vr := content.NewVerifyReader(rc, desc)
 
 		// outputs blob content if "--output -" is used
 		if opts.outputPath == "-" {
-			_, err := io.Copy(os.Stdout, rc)
-			return err
+			if _, err := io.Copy(os.Stdout, vr); err != nil {
+				return err
+			}
+			return vr.Verify()
 		}
 
 		// save blob content into the local file if the output path is provided
@@ -143,7 +137,10 @@ func fetchBlob(opts fetchBlobOptions) (fetchErr error) {
 			}
 		}()
 
-		if _, err := io.Copy(file, rc); err != nil {
+		if _, err := io.Copy(file, vr); err != nil {
+			return err
+		}
+		if err := vr.Verify(); err != nil {
 			return err
 		}
 	}

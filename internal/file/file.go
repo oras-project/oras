@@ -16,6 +16,7 @@ limitations under the License.
 package file
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -25,10 +26,32 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// PrepareContent prepares the content descriptor from the file path or stdin.
-// Use the input digest and size if they are provided. Will return error if the
-// content is from stdin but the content digest and size are missing.
-func PrepareContent(path string, mediaType string, dgstStr string, size int64) (desc ocispec.Descriptor, rc io.ReadCloser, prepareErr error) {
+// PrepareManifestContent prepares the content for manifest from the file path
+// or stdin.
+func PrepareManifestContent(path string) ([]byte, error) {
+	if path == "" {
+		return nil, fmt.Errorf("missing file name")
+	}
+
+	var content []byte
+	var err error
+	if path == "-" {
+		content, err = io.ReadAll(os.Stdin)
+	} else {
+		content, err = os.ReadFile(path)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to read %s: %w", path, err)
+	}
+
+	return content, nil
+}
+
+// PrepareBlobContent prepares the content descriptor for blob from the file
+// path or stdin. Use the input digest and size if they are provided. Will
+// return error if the content is from stdin but the content digest and size
+// are missing.
+func PrepareBlobContent(path string, mediaType string, dgstStr string, size int64) (desc ocispec.Descriptor, rc io.ReadCloser, prepareErr error) {
 	if path == "" {
 		return ocispec.Descriptor{}, nil, errors.New("missing file name")
 	}
@@ -93,4 +116,18 @@ func PrepareContent(path string, mediaType string, dgstStr string, size int64) (
 		Digest:    dgst,
 		Size:      actualSize,
 	}, file, nil
+}
+
+// ParseMediaType parses the media type field of bytes content in json format.
+func ParseMediaType(content []byte) (string, error) {
+	var manifest struct {
+		MediaType string `json:"mediaType"`
+	}
+	if err := json.Unmarshal(content, &manifest); err != nil {
+		return "", errors.New("not a valid json file")
+	}
+	if manifest.MediaType == "" {
+		return "", errors.New("media type is not recognized")
+	}
+	return manifest.MediaType, nil
 }

@@ -3,7 +3,9 @@ Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
 http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -37,13 +39,13 @@ type deleteOptions struct {
 func deleteCmd() *cobra.Command {
 	var opts deleteOptions
 	cmd := &cobra.Command{
-		Use:   "delete [flags] name<:tag|@digest>",
+		Use:   "delete [flags] <name>{:<tag>|@<digest>}",
 		Short: "[Preview] Delete a manifest from remote registry",
 		Long: `[Preview] Delete a manifest from remote registry
 
 ** This command is in preview and under development. **
 
-Example - Delete a manifest tagged with 'latest' from repository 'locahost:5000/hello':
+Example - Delete a manifest tagged with 'latest' from repository 'localhost:5000/hello':
   oras manifest delete localhost:5000/hello:latest
 
 Example - Delete a manifest without prompting confirmation:
@@ -52,7 +54,7 @@ Example - Delete a manifest without prompting confirmation:
 Example - Delete a manifest and print its descriptor:
   oras manifest delete --descriptor localhost:5000/hello:latest
 
-Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9' from repository 'locahost:5000/hello':
+Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9' from repository 'localhost:5000/hello':
   oras manifest delete localhost:5000/hello@sha:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
 `,
 		Args: cobra.ExactArgs(1),

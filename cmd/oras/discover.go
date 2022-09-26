@@ -45,7 +45,7 @@ type discoverOptions struct {
 func discoverCmd() *cobra.Command {
 	var opts discoverOptions
 	cmd := &cobra.Command{
-		Use:   "discover [options] <name:tag|name@digest>",
+		Use:   "discover [flags] <name>{:<tag>|@<digest>}",
 		Short: "[Preview] Discover referrers of a manifest in the remote registry",
 		Long: `[Preview] Discover referrers of a manifest in the remote registry
 
@@ -55,7 +55,7 @@ Example - Discover direct referrers of manifest 'hello:latest' in registry 'loca
   oras discover localhost:5000/hello
 
 Example - Discover all the referrers of manifest 'hello:latest' in registry 'localhost:5000' in a tree view:
-  oras discover localhost:5000/hello -o tree
+  oras discover -o tree localhost:5000/hello
 
 Example - Discover referrers with type 'test-artifact' of manifest 'hello:latest' in registry 'localhost:5000':
   oras discover --artifact-type test-artifact localhost:5000/hello

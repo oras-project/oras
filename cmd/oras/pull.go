@@ -18,7 +18,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
+	"io"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -26,20 +26,19 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
-	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/cache"
-	"oras.land/oras/internal/docker"
+	"oras.land/oras/internal/descriptor"
 )
 
 type pullOptions struct {
+	option.Cache
 	option.Common
 	option.Remote
+	option.Platform
 
 	targetRef         string
-	cacheRoot         string
 	KeepOldFiles      bool
 	PathTraversal     bool
 	Output            string
@@ -49,7 +48,7 @@ type pullOptions struct {
 func pullCmd() *cobra.Command {
 	var opts pullOptions
 	cmd := &cobra.Command{
-		Use:   "pull <name:tag|name@digest>",
+		Use:   "pull [flags] <name>{:<tag>|@<digest>}",
 		Short: "Pull files from remote registry",
 		Long: `Pull files from remote registry
 
@@ -57,18 +56,20 @@ Example - Pull all files:
   oras pull localhost:5000/hello:latest
 
 Example - Pull files from the insecure registry:
-  oras pull localhost:5000/hello:latest --insecure
+  oras pull --insecure localhost:5000/hello:latest
 
 Example - Pull files from the HTTP registry:
-  oras pull localhost:5000/hello:latest --plain-http
+  oras pull --plain-http localhost:5000/hello:latest
 
 Example - Pull files with local cache:
   export ORAS_CACHE=~/.oras/cache
   oras pull localhost:5000/hello:latest
+
+Example - Pull files with certain platform:
+  oras pull --platform linux/arm/v5 localhost:5000/hello:latest
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			opts.cacheRoot = os.Getenv("ORAS_CACHE")
 			return opts.ReadPassword()
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -87,6 +88,10 @@ Example - Pull files with local cache:
 
 func runPull(opts pullOptions) error {
 	var printed sync.Map
+	targetPlatform, err := opts.Parse()
+	if err != nil {
+		return err
+	}
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
@@ -94,20 +99,42 @@ func runPull(opts pullOptions) error {
 	if repo.Reference.Reference == "" {
 		return errors.NewErrInvalidReference(repo.Reference)
 	}
-	var src oras.ReadOnlyTarget = repo
-	if opts.cacheRoot != "" {
-		ociStore, err := oci.New(opts.cacheRoot)
-		if err != nil {
-			return err
-		}
-		src = cache.New(repo, ociStore)
+	src, err := opts.CachedTarget(repo)
+	if err != nil {
+		return err
 	}
 
 	// Copy Options
 	copyOptions := oras.DefaultCopyOptions
 	configPath, configMediaType := parseFileReference(opts.ManifestConfigRef, "")
+	if targetPlatform != nil {
+		copyOptions.WithTargetPlatform(targetPlatform)
+	}
 	copyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		successors, err := content.Successors(ctx, fetcher, desc)
+		statusFetcher := content.FetcherFunc(func(ctx context.Context, target ocispec.Descriptor) (fetched io.ReadCloser, fetchErr error) {
+			if _, ok := printed.LoadOrStore(generateContentKey(target), true); ok {
+				return fetcher.Fetch(ctx, target)
+			}
+
+			// print status log for first-time fetching
+			if err := display.PrintStatus(target, "Downloading", opts.Verbose); err != nil {
+				return nil, err
+			}
+			rc, err := fetcher.Fetch(ctx, target)
+			if err != nil {
+				return nil, err
+			}
+			defer func() {
+				if fetchErr != nil {
+					rc.Close()
+				}
+			}()
+			if err := display.PrintStatus(target, "Processing ", opts.Verbose); err != nil {
+				return nil, err
+			}
+			return rc, nil
+		})
+		successors, err := content.Successors(ctx, statusFetcher, desc)
 		if err != nil {
 			return nil, err
 		}
@@ -121,7 +148,7 @@ func runPull(opts pullOptions) error {
 			// 2) MediaType not specified and current node is config.
 			// Note: For a manifest, the 0th indexed element is always a
 			// manifest config.
-			if (s.MediaType == configMediaType || (configMediaType == "" && i == 0 && isManifestMediaType(desc.MediaType))) && configPath != "" {
+			if (s.MediaType == configMediaType || (configMediaType == "" && i == 0 && descriptor.IsImageManifest(desc))) && configPath != "" {
 				// Add annotation for manifest config
 				if s.Annotations == nil {
 					s.Annotations = make(map[string]string)
@@ -135,7 +162,7 @@ func runPull(opts pullOptions) error {
 				}
 				// Skip s if s is unnamed and has no successors.
 				if len(ss) == 0 {
-					if _, loaded := printed.LoadOrStore(s.Digest.String(), true); !loaded {
+					if _, loaded := printed.LoadOrStore(generateContentKey(s), true); !loaded {
 						if err = display.PrintStatus(s, "Skipped    ", opts.Verbose); err != nil {
 							return nil, err
 						}
@@ -148,9 +175,33 @@ func runPull(opts pullOptions) error {
 		return ret, nil
 	}
 
+	ctx, _ := opts.SetLoggerLevel()
+	var dst = file.New(opts.Output)
+	dst.AllowPathTraversalOnWrite = opts.PathTraversal
+	dst.DisableOverwrite = opts.KeepOldFiles
+
 	pulledEmpty := true
-	copyOptions.PreCopy = display.StatusPrinter("Downloading", opts.Verbose)
+	copyOptions.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		if _, ok := printed.LoadOrStore(generateContentKey(desc), true); ok {
+			return nil
+		}
+		return display.PrintStatus(desc, "Downloading", opts.Verbose)
+	}
 	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		// restore named but deduplicated successor nodes
+		successors, err := content.Successors(ctx, dst, desc)
+		if err != nil {
+			return err
+		}
+		for _, s := range successors {
+			if _, ok := s.Annotations[ocispec.AnnotationTitle]; ok {
+				if _, ok := printed.LoadOrStore(generateContentKey(s), true); !ok {
+					if err = display.PrintStatus(s, "Restored   ", opts.Verbose); err != nil {
+						return err
+					}
+				}
+			}
+		}
 		name, ok := desc.Annotations[ocispec.AnnotationTitle]
 		if !ok {
 			if !opts.Verbose {
@@ -161,13 +212,9 @@ func runPull(opts pullOptions) error {
 			// named content downloaded
 			pulledEmpty = false
 		}
+		printed.Store(generateContentKey(desc), true)
 		return display.Print("Downloaded ", display.ShortDigest(desc), name)
 	}
-
-	ctx, _ := opts.SetLoggerLevel()
-	var dst = file.New(opts.Output)
-	dst.AllowPathTraversalOnWrite = opts.PathTraversal
-	dst.DisableOverwrite = opts.KeepOldFiles
 
 	// Copy
 	desc, err := oras.Copy(ctx, src, repo.Reference.Reference, dst, repo.Reference.Reference, copyOptions)
@@ -182,6 +229,8 @@ func runPull(opts pullOptions) error {
 	return nil
 }
 
-func isManifestMediaType(mediaType string) bool {
-	return mediaType == docker.MediaTypeManifest || mediaType == ocispec.MediaTypeImageManifest
+// generateContentKey generates a unique key for each content descriptor, using
+// its digest and name if applicable.
+func generateContentKey(desc ocispec.Descriptor) string {
+	return desc.Digest.String() + desc.Annotations[ocispec.AnnotationTitle]
 }

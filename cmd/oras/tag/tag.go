@@ -18,6 +18,7 @@ package tag
 import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
+	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -26,36 +27,45 @@ type tagOptions struct {
 	option.Common
 	option.Remote
 
-	srcRef    string
-	targetRef string
+	concurrency int64
+	srcRef      string
+	targetRefs  []string
 }
 
 func TagCmd() *cobra.Command {
 	var opts tagOptions
 	cmd := &cobra.Command{
-		Use:   "tag name<:tag|@digest> new_tag",
+		Use:   "tag [flags] <name>{:<tag>|@<digest>} <new_tag> [...]",
 		Short: "[Preview] tag a manifest in the remote registry",
 		Long: `[Preview] tag a manifest in the remote registry
 
 ** This command is in preview and under development. **
 
-Example - Tag the manifest 'v1.0.1' in 'locahost:5000/hello' to 'v1.0.2':
+Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.2':
   oras tag localhost:5000/hello:v1.0.1 v1.0.2
 
-Example - Tag the manifest with digest sha256:9463e0d192846bc994279417b50114606712d516aab45f4d8b31cbc6e46aad71 to 'v1.0.3'
-  oras tag localhost:5000/hello@sha256:9463e0d192846bc994279417b50114606712d516aab45f4d8b31cbc6e46aad71 v1.0.3
+Example - Tag the manifest with digest sha256:9463e0d192846bc994279417b50114606712d516aab45f4d8b31cbc6e46aad71 to 'v1.0.2'
+  oras tag localhost:5000/hello@sha256:9463e0d192846bc994279417b50114606712d516aab45f4d8b31cbc6e46aad71 v1.0.2
+
+Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.2', 'latest'
+  oras tag localhost:5000/hello:v1.0.1 v1.0.2 latest
+
+Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.2' 'latest' with concurrency level tuned:
+  oras tag --concurrency 1 localhost:5000/hello:v1.0.1 v1.0.2 latest
 `,
-		Args: cobra.ExactArgs(2),
+		Args: cobra.MinimumNArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return opts.ReadPassword()
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			opts.srcRef = args[0]
-			opts.targetRef = args[1]
+			opts.targetRefs = args[1:]
 			return tagManifest(opts)
 		},
 	}
+
 	option.ApplyFlags(&opts, cmd.Flags())
+	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	return cmd
 }
 
@@ -70,5 +80,7 @@ func tagManifest(opts tagOptions) error {
 		return errors.NewErrInvalidReference(repo.Reference)
 	}
 
-	return oras.Tag(ctx, repo, opts.srcRef, opts.targetRef)
+	tagNOpts := oras.DefaultTagNOptions
+	tagNOpts.Concurrency = opts.concurrency
+	return oras.TagN(ctx, &display.TagManifestStatusPrinter{Repository: repo}, opts.srcRef, opts.targetRefs, tagNOpts)
 }

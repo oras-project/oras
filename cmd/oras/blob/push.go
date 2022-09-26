@@ -42,7 +42,7 @@ type pushBlobOptions struct {
 func pushCmd() *cobra.Command {
 	var opts pushBlobOptions
 	cmd := &cobra.Command{
-		Use:   "push [flags] name[@digest] file",
+		Use:   "push [flags] <name>[@digest] <file>",
 		Short: "[Preview] Push a blob to a remote registry",
 		Long: `[Preview] Push a blob to a remote registry
 
@@ -89,7 +89,7 @@ Example - Push blob without TLS:
 	}
 
 	cmd.Flags().Int64VarP(&opts.size, "size", "", -1, "provide the blob size")
-	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", ocispec.MediaTypeImageLayer, "specify the returned media type in the descriptor if `--descriptor` is used")
+	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", ocispec.MediaTypeImageLayer, "specify the returned media type in the descriptor if --descriptor is used")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
@@ -103,7 +103,7 @@ func pushBlob(opts pushBlobOptions) (err error) {
 	}
 
 	// prepare blob content
-	desc, rc, err := file.PrepareContent(opts.fileRef, opts.mediaType, repo.Reference.Reference, opts.size)
+	desc, rc, err := file.PrepareBlobContent(opts.fileRef, opts.mediaType, repo.Reference.Reference, opts.size)
 	if err != nil {
 		return err
 	}
