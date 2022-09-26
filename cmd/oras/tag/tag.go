@@ -50,7 +50,7 @@ Example - Tag the manifest with digest sha256:9463e0d192846bc994279417b501146067
 Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.2', 'latest'
   oras tag localhost:5000/hello:v1.0.1 v1.0.2 latest
 
-Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.2' 'latest' with concurrency level tuned:
+Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.2', 'latest' with concurrency level tuned:
   oras tag --concurrency 1 localhost:5000/hello:v1.0.1 v1.0.2 latest
 `,
 		Args: cobra.MinimumNArgs(2),
