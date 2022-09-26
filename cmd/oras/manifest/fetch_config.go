@@ -84,7 +84,7 @@ Example - Fetch and print the prettified descriptor of the config:
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "write it to standard output")
+	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "file `path` to write the fetched config to, use - for stdout")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }

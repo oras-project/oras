@@ -56,7 +56,7 @@ Example - Log in with identity token from stdin:
 Example - Log in with username and password in an interactive terminal:
   oras login localhost:5000
 
-Example - Log in to an insecure registry from user input:
+Example - Log in with username and password in an interactive terminal and no TLS check:
   oras login --insecure localhost:5000
 `,
 		Args: cobra.ExactArgs(1),
