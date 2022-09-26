@@ -167,7 +167,9 @@ func runPush(opts pushOptions) error {
 		}
 		tagBytesNOpts := oras.DefaultTagBytesNOptions
 		tagBytesNOpts.Concurrency = opts.concurrency
-		oras.TagBytesN(ctx, &display.TagManifestStatusPrinter{Repository: dst}, desc.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts)
+		if _, err = oras.TagBytesN(ctx, &display.TagManifestStatusPrinter{Repository: dst}, desc.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
+			return err
+		}
 	}
 
 	fmt.Println("Digest:", desc.Digest)

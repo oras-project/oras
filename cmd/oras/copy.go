@@ -45,7 +45,7 @@ type copyOptions struct {
 func copyCmd() *cobra.Command {
 	var opts copyOptions
 	cmd := &cobra.Command{
-		Use:     "copy [flags] <from>{:<tag>|@<digest>} <to>[:<tag>|@<digest>]",
+		Use:     "copy [flags] <from>{:<tag>|@<digest>} <to>[:<tag>[,<tag>][...]]",
 		Aliases: []string{"cp"},
 		Short:   "[Preview] Copy artifacts from one target to another",
 		Long: `[Preview] Copy artifacts from one target to another
@@ -145,7 +145,6 @@ func runCopy(opts copyOptions) error {
 			copyOptions := oras.CopyOptions{
 				CopyGraphOptions: extendedCopyOptions.CopyGraphOptions,
 			}
-			copyOptions.Concurrency = opts.concurrency
 			if targetPlatform != nil {
 				copyOptions.WithTargetPlatform(targetPlatform)
 			}
@@ -159,16 +158,11 @@ func runCopy(opts copyOptions) error {
 	fmt.Println("Copied", opts.srcRef, "=>", opts.dstRef)
 
 	if len(opts.extraRefs) != 0 {
-		var contentBytes []byte
-		fetchOpts := oras.DefaultFetchBytesOptions
-		fetchOpts.TargetPlatform = targetPlatform
-		if _, contentBytes, err = oras.FetchBytes(ctx, src, opts.srcRef, fetchOpts); err != nil {
+		tagNOpts := oras.DefaultTagNOptions
+		tagNOpts.Concurrency = opts.concurrency
+		if err = oras.TagN(ctx, &display.TagManifestStatusPrinter{Repository: dst}, opts.dstRef, opts.extraRefs, tagNOpts); err != nil {
 			return err
 		}
-
-		tagBytesNOpts := oras.DefaultTagBytesNOptions
-		tagBytesNOpts.Concurrency = opts.concurrency
-		oras.TagBytesN(ctx, &display.TagManifestStatusPrinter{Repository: dst}, desc.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts)
 	}
 
 	fmt.Println("Digest:", desc.Digest)
