@@ -54,19 +54,22 @@ func pushCmd() *cobra.Command {
 		Short: "Push files to remote registry",
 		Long: `Push files to remote registry
 
-Example - Push file "hi.txt" with the "application/vnd.oci.image.layer.v1.tar" media type (default):
+Example - Push file "hi.txt" with media type "application/vnd.oci.image.layer.v1.tar" (default):
   oras push localhost:5000/hello:latest hi.txt
 
-Example - Push file "hi.txt" with the custom "application/vnd.me.hi" media type:
+Example - Push file "hi.txt" and export the pushed manifest to a specified path
+  oras push --export-manifest manifest.json localhost:5000/hello:latest hi.txt
+
+Example - Push file "hi.txt" with the custom media type "application/vnd.me.hi":
   oras push localhost:5000/hello:latest hi.txt:application/vnd.me.hi
 
 Example - Push multiple files with different media types:
   oras push localhost:5000/hello:latest hi.txt:application/vnd.me.hi bye.txt:application/vnd.me.bye
 
-Example - Push file "hi.txt" with "application/vnd.me.config" as config type:
+Example - Push file "hi.txt" with config type "application/vnd.me.config":
   oras push --artifact-type application/vnd.me.config localhost:5000/hello:latest hi.txt
 
-Example - Push file "hi.txt" with the custom manifest config "config.json" of the custom "application/vnd.me.config" media type:
+Example - Push file "hi.txt" with the custom manifest config "config.json" of the custom media type "application/vnd.me.config":
   oras push --config config.json:application/vnd.me.config localhost:5000/hello:latest hi.txt
 
 Example - Push file to the insecure registry:

@@ -52,19 +52,19 @@ func copyCmd() *cobra.Command {
 
 ** This command is in preview and under development. **
 
-Example - Copy the artifact tagged 'v1' from repository 'localhost:5000/net-monitor' to repository 'localhost:5000/net-monitor-copy' 
+Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net-monitor' to repository 'localhost:5000/net-monitor-copy' 
   oras copy localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
 
-Example - Copy the artifact tagged 'v1' and its referrers from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy'
+Example - Copy the artifact tagged with 'v1' and its referrers from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy'
   oras copy -r localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
 
-Example - Copy the artifact tagged 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with certain platform
+Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with certain platform
   oras copy --platform linux/arm/v5 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1 
 
-Example - Copy the artifact tagged 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with multiple tags
+Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with multiple tags
   oras copy localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1,tag2,tag3
 
-Example - Copy the artifact tagged 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with multiple tags and concurrency level tuned
+Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with multiple tags and concurrency level tuned
   oras copy --concurrency 6 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1,tag2,tag3
 `,
 		Args: cobra.ExactArgs(2),
@@ -77,7 +77,7 @@ Example - Copy the artifact tagged 'v1' from repository 'localhost:5000/net-moni
 		},
 	}
 
-	cmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "recursively copy artifacts and its referrer artifacts")
+	cmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "recursively copy the artifact and its referrer artifacts")
 	opts.src.ApplyFlagsWithPrefix(cmd.Flags(), "from", "source")
 	opts.dst.ApplyFlagsWithPrefix(cmd.Flags(), "to", "destination")
 	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")

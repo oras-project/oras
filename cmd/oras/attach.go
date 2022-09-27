@@ -59,9 +59,11 @@ Example - Attach file 'hi.txt' and add annotations from file 'annotation.json'
 Example - Attach an artifact with manifest annotations
   oras attach --artifact-type doc/example --annotation "key1=val1" --annotation "key2=val2" localhost:5000/hello:latest
 
-Example - Attach a file and add manifest annotations
+Example - Attach file 'hi.txt' and add manifest annotations
   oras attach --artifact-type doc/example --annotation "key=val" localhost:5000/hello:latest hi.txt
 
+Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json'
+  oras attach --artifact-type doc/example --export-manifest manifest.json localhost:5000/hello:latest hi.txt
 `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
