@@ -41,13 +41,13 @@ func loginCmd() *cobra.Command {
 		Short: "Log in to a remote registry",
 		Long: `Log in to a remote registry
 
-Example - Log in with username and password from user input:
+Example - Log in with username and password from command line flags:
   oras login -u username -p password localhost:5000
 
 Example - Log in with username and password from stdin:
   oras login -u username --password-stdin localhost:5000
 
-Example - Log in with identity token from user input:
+Example - Log in with identity token from command line flags:
   oras login -p token localhost:5000
 
 Example - Log in with identity token from stdin:

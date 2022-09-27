@@ -64,7 +64,6 @@ Example - Attach file 'hi.txt' and add manifest annotations
 
 Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json'
   oras attach --artifact-type doc/example --export-manifest manifest.json localhost:5000/hello:latest hi.txt
-
 `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
