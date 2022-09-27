@@ -36,8 +36,8 @@ func TagCmd() *cobra.Command {
 	var opts tagOptions
 	cmd := &cobra.Command{
 		Use:   "tag [flags] <name>{:<tag>|@<digest>} <new_tag> [...]",
-		Short: "[Preview] tag a manifest in the remote registry",
-		Long: `[Preview] tag a manifest in the remote registry
+		Short: "[Preview] Tag a manifest in the remote registry",
+		Long: `[Preview] Tag a manifest in the remote registry
 
 ** This command is in preview and under development. **
 
