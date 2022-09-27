@@ -78,7 +78,7 @@ Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json'
 	}
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
-	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
+	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	cmd.MarkFlagRequired("artifact-type")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
