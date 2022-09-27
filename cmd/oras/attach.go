@@ -37,9 +37,9 @@ type attachOptions struct {
 	option.Remote
 	option.Packer
 
-	concurrency  int64
 	targetRef    string
 	artifactType string
+	concurrency  int64
 }
 
 func attachCmd() *cobra.Command {
