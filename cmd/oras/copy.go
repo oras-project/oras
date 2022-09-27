@@ -18,6 +18,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -35,14 +36,16 @@ type copyOptions struct {
 	option.Platform
 	recursive bool
 
-	srcRef string
-	dstRef string
+	concurrency int64
+	srcRef      string
+	dstRef      string
+	extraRefs   []string
 }
 
 func copyCmd() *cobra.Command {
 	var opts copyOptions
 	cmd := &cobra.Command{
-		Use:     "copy [flags] <from>{:<tag>|@<digest>} <to>[:<tag>|@<digest>]",
+		Use:     "copy [flags] <from>{:<tag>|@<digest>} <to>[:<tag>[,<tag>][...]]",
 		Aliases: []string{"cp"},
 		Short:   "[Preview] Copy artifacts from one target to another",
 		Long: `[Preview] Copy artifacts from one target to another
@@ -57,11 +60,19 @@ Example - Copy the artifact tagged with 'v1' and its referrers from repository '
 
 Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with certain platform
   oras copy --platform linux/arm/v5 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1 
+
+Example - Copy the artifact tagged 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with multiple tags
+  oras copy localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1,tag2,tag3
+
+Example - Copy the artifact tagged 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with multiple tags and concurrency level tuned
+  oras copy --concurrency 6 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1,tag2,tag3
 `,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.srcRef = args[0]
-			opts.dstRef = args[1]
+			refs := strings.Split(args[1], ",")
+			opts.dstRef = refs[0]
+			opts.extraRefs = refs[1:]
 			return runCopy(opts)
 		},
 	}
@@ -69,6 +80,7 @@ Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net
 	cmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "recursively copy the artifact and its referrer artifacts")
 	opts.src.ApplyFlagsWithPrefix(cmd.Flags(), "from", "source")
 	opts.dst.ApplyFlagsWithPrefix(cmd.Flags(), "to", "destination")
+	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 	option.ApplyFlags(&opts, cmd.Flags())
 
 	return cmd
@@ -96,6 +108,7 @@ func runCopy(opts copyOptions) error {
 	// Prepare copy options
 	committed := &sync.Map{}
 	extendedCopyOptions := oras.DefaultExtendedCopyOptions
+	extendedCopyOptions.Concurrency = opts.concurrency
 	extendedCopyOptions.PreCopy = display.StatusPrinter("Copying", opts.Verbose)
 	extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
@@ -143,6 +156,15 @@ func runCopy(opts copyOptions) error {
 	}
 
 	fmt.Println("Copied", opts.srcRef, "=>", opts.dstRef)
+
+	if len(opts.extraRefs) != 0 {
+		tagNOpts := oras.DefaultTagNOptions
+		tagNOpts.Concurrency = opts.concurrency
+		if err = oras.TagN(ctx, &display.TagManifestStatusPrinter{Repository: dst}, opts.dstRef, opts.extraRefs, tagNOpts); err != nil {
+			return err
+		}
+	}
+
 	fmt.Println("Digest:", desc.Digest)
 
 	return nil

@@ -38,6 +38,7 @@ type pullOptions struct {
 	option.Remote
 	option.Platform
 
+	concurrency       int64
 	targetRef         string
 	KeepOldFiles      bool
 	PathTraversal     bool
@@ -67,6 +68,9 @@ Example - Pull files with local cache:
 
 Example - Pull files with certain platform:
   oras pull --platform linux/arm/v5 localhost:5000/hello:latest
+
+Example - Pull all files with concurrency level tuned:
+  oras pull --concurrency 6 localhost:5000/hello:latest
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -82,6 +86,7 @@ Example - Pull files with certain platform:
 	cmd.Flags().BoolVarP(&opts.PathTraversal, "allow-path-traversal", "T", false, "allow storing files out of the output directory")
 	cmd.Flags().StringVarP(&opts.Output, "output", "o", ".", "output directory")
 	cmd.Flags().StringVarP(&opts.ManifestConfigRef, "config", "", "", "output manifest config file")
+	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
@@ -106,6 +111,7 @@ func runPull(opts pullOptions) error {
 
 	// Copy Options
 	copyOptions := oras.DefaultCopyOptions
+	copyOptions.Concurrency = opts.concurrency
 	configPath, configMediaType := parseFileReference(opts.ManifestConfigRef, "")
 	if targetPlatform != nil {
 		copyOptions.WithTargetPlatform(targetPlatform)
