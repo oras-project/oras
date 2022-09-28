@@ -25,17 +25,16 @@ import (
 // output.
 type Keywords []string
 
-func (kw Keywords) match(w *output) {
+func (want Keywords) Match(raw []byte) {
 	visited := make(map[string]bool)
-	for _, w := range kw {
+	for _, w := range want {
 		visited[strings.ToLower(w)] = false
 	}
 
-	str := string(w.readAll())
-	for k := range visited {
-		str := strings.ToLower(str)
-		if strings.Contains(str, k) {
-			delete(visited, k)
+	got := strings.ToLower(string(raw))
+	for key := range visited {
+		if strings.Contains(got, key) {
+			delete(visited, key)
 		}
 	}
 
@@ -44,6 +43,6 @@ func (kw Keywords) match(w *output) {
 		for k := range visited {
 			missed = append(missed, fmt.Sprintf("%q", k))
 		}
-		Expect(fmt.Sprintf("Keywords missed: %v ===> ", missed) + fmt.Sprintf("Quoted output: %q", str)).To(Equal(""))
+		Expect(fmt.Sprintf("Keywords missed: %v ===> ", missed) + fmt.Sprintf("Quoted output: %q", got)).To(Equal(""))
 	}
 }

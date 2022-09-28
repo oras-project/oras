@@ -13,20 +13,16 @@ limitations under the License.
 
 package match
 
-type output struct {
-	content []byte
+type Output struct {
+	Content []byte
 }
 
-func NewOutput() *output {
-	return &output{}
+func NewOutput() *Output {
+	return &Output{}
 }
 
 // Write captures p into the content.
-func (w *output) Write(p []byte) (n int, err error) {
-	w.content = append(w.content, p...)
+func (w *Output) Write(p []byte) (n int, err error) {
+	w.Content = append(w.Content, p...)
 	return len(p), nil
-}
-
-func (w *output) readAll() []byte {
-	return w.content
 }

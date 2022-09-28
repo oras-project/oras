@@ -18,8 +18,7 @@ import (
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
-	"oras.land/oras/test/e2e/internal/utils"
-	"oras.land/oras/test/e2e/internal/utils/match"
+	. "oras.land/oras/test/e2e/internal/utils"
 )
 
 const (
@@ -33,22 +32,21 @@ var _ = Describe("ORAS beginners", func() {
 		runAndShowPreviewInHelp([]string{"manifest", "fetch"}, preview_desc, example_desc)
 
 		When("call sub-commands with aliases", func() {
-			utils.Exec(match.SuccessKeywords("[Preview] Fetch", preview_desc, example_desc),
+			Exec(Success().WithStdoutKeyWords("[Preview] Fetch", preview_desc, example_desc),
 				"should succeed",
 				"manifest", "get", "--help")
 		})
 		When("fetching manifest with no artifact reference provided", func() {
-			utils.Exec(match.ErrorKeywords("Error:"), "should fail",
-				"manifest", "fetch",
-			)
+			Exec(Error().WithStderrKeyWords("Error:"),
+				"should fail",
+				"manifest", "fetch")
 		})
 	})
 })
 
 func runAndShowPreviewInHelp(args []string, keywords ...string) {
 	When(fmt.Sprintf("running %q command", strings.Join(args, " ")), func() {
-		keywords = append(keywords, "[Preview] "+args[len(args)-1], "\nUsage:")
-		utils.Exec(match.SuccessKeywords(keywords...),
+		Exec(Success().WithStdoutKeyWords(append(keywords, "[Preview] "+args[len(args)-1], "\nUsage:")...),
 			"should succeed",
 			append(args, "--help")...)
 	})

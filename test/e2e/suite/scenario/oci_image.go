@@ -21,7 +21,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"oras.land/oras/test/e2e/internal/utils"
+	. "oras.land/oras/test/e2e/internal/utils"
 	"oras.land/oras/test/e2e/internal/utils/match"
 )
 
@@ -38,7 +38,7 @@ var (
 var _ = Describe("ORAS user", Focus, Ordered, func() {
 	BeforeAll(func() {
 		wd = GinkgoT().TempDir()
-		if err := utils.CopyTestData(files, wd); err != nil {
+		if err := CopyTestData(files, wd); err != nil {
 			panic(err)
 		}
 	})
@@ -47,9 +47,9 @@ var _ = Describe("ORAS user", Focus, Ordered, func() {
 	Context("logs in", func() {
 		When("using basic auth", func() {
 			info := "Login Succeeded\n"
-			utils.Exec(match.NewOption(strings.NewReader(PASSWORD), match.NewContent(&info), nil, false),
+			Exec(Success().WithInput(strings.NewReader(PASSWORD)).WithContent(&info),
 				"should succeed with username flag and password from stdin",
-				"login", utils.Host, "-u", USERNAME, "--password-stdin")
+				"login", HOST, "-u", USERNAME, "--password-stdin")
 		})
 	})
 
@@ -66,15 +66,14 @@ var _ = Describe("ORAS user", Focus, Ordered, func() {
 				filepath.Join(wd, files[3]),
 			}
 
-			pushStatus := match.NewStatus([]match.StateKey{
+			Exec(Success().WithStatus([]match.StateKey{
 				{Digest: "44136fa355b3", Name: "application/vnd.unknown.config.v1+json"},
 				{Digest: "2c26b46b68ff", Name: paths[1]},
 				{Digest: "2c26b46b68ff", Name: paths[2]},
 				{Digest: "fcde2b2edba5", Name: paths[3]},
 				// cannot track manifest since created time will be added and digest is unknown
-			}, *match.MatchableStatus("push", true), 4)
-			utils.Exec(match.NewOption(nil, pushStatus, nil, false), "should push files with manifest exported",
-				"push", utils.Reference(utils.Host, repo, tag), paths[1], paths[2], paths[3], "--config", paths[0], "-v", "--export-manifest", manifestPath)
+			}, "push", true, 4), "should push files with manifest exported",
+				"push", Reference(HOST, repo, tag), paths[1], paths[2], paths[3], "--config", paths[0], "-v", "--export-manifest", manifestPath)
 
 			ginkgo.It("should export the manifest", func() {
 				content, err := os.ReadFile(manifestPath)
@@ -82,8 +81,8 @@ var _ = Describe("ORAS user", Focus, Ordered, func() {
 				*s = string(content)
 			})
 
-			utils.Exec(match.SuccessContent(s), "should fetch pushed manifest content",
-				"manifest", "fetch", utils.Reference(utils.Host, repo, tag))
+			Exec(Success().WithContent(s), "should fetch pushed manifest content",
+				"manifest", "fetch", Reference(HOST, repo, tag))
 
 			ginkgo.It("should move pushed", func() {
 				err := os.Rename(wd, wd+"-pushed")
@@ -91,15 +90,14 @@ var _ = Describe("ORAS user", Focus, Ordered, func() {
 			})
 
 			// configName := "config.json"
-			pullStatus := match.NewStatus([]match.StateKey{
+			Exec(Success().WithStatus([]match.StateKey{
 				{Digest: "44136fa355b3", Name: "application/vnd.unknown.config.v1+json"},
 				{Digest: "2c26b46b68ff", Name: paths[1]},
 				{Digest: "2c26b46b68ff", Name: paths[2]},
 				{Digest: "fcde2b2edba5", Name: paths[3]},
 				// cannot track manifest since created time will be added and digest is unknown
-			}, *match.MatchableStatus("pull", true), 2) // (foo1 or foo2) + bar
-			utils.Exec(match.NewOption(nil, pullStatus, nil, false), "should pull files with config",
-				"pull", utils.Reference(utils.Host, repo, tag), "-v", "--config", paths[0], "-o", wd)
+			}, "pull", true, 2), "should pull files with config",
+				"pull", Reference(HOST, repo, tag), "-v", "--config", paths[0], "-o", wd)
 			for i := range paths {
 				ginkgo.It("should download file "+paths[i], func() {
 					got, err := os.ReadFile(paths[i])

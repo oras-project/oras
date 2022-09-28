@@ -15,5 +15,5 @@ package match
 
 // Matchable provides matching method towards an output.
 type Matchable interface {
-	Match(w *output)
+	Match(got []byte)
 }

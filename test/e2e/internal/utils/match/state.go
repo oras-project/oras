@@ -38,24 +38,38 @@ type edge = struct {
 	to   *node
 }
 
-// StatusOption specifies options for status log matching.
-type StatusOption struct {
-	edges   map[state]edge
-	start   *node
-	end     *node
-	verbose bool
+// stateMachine specifies options for status log matching.
+type stateMachine struct {
+	edges map[state]edge
+	start *node
+	end   *node
 }
 
-func NewStatusOption(verbose bool) *StatusOption {
-	return &StatusOption{
-		start:   new(node),
-		end:     new(node),
-		edges:   make(map[string]edge),
-		verbose: verbose,
+func newStateMachine(cmd string) (s *stateMachine) {
+	s = &stateMachine{
+		start: new(node),
+		end:   new(node),
+		edges: make(map[string]edge),
 	}
+
+	// prepare edges
+	switch cmd {
+	case "push", "attach":
+		s.addPath("Uploading", "Uploaded")
+		s.addPath("Exists")
+		s.addPath("Skipped")
+	case "pull":
+		s.addPath("Downloading", "Downloaded")
+		s.addPath("Downloading", "Processing", "Downloaded")
+		s.addPath("Skipped")
+		s.addPath("Restored")
+	default:
+		panic("Unrecognized cmd name " + cmd)
+	}
+	return s
 }
 
-func (opts *StatusOption) addPath(s ...string) {
+func (opts *stateMachine) addPath(s ...string) {
 	last := opts.start
 	for i := 0; i < len(s)-1; i++ {
 		e, ok := opts.edges[s[i]]
@@ -74,24 +88,23 @@ type status struct {
 	states       map[StateKey]*node
 	matchResult  map[state][]StateKey
 	successCount int
+	verbose      bool
 
-	StatusOption
+	*stateMachine
 }
 
 // NewStatus generates a instance for matchable status logs.
-func NewStatus(keys []StateKey, opts StatusOption, successCount int) *status {
+func NewStatus(keys []StateKey, cmd string, verbose bool, successCount int) *status {
 	s := status{
 		states:       make(map[StateKey]*node),
 		matchResult:  make(map[string][]StateKey),
-		StatusOption: opts,
+		stateMachine: newStateMachine(cmd),
 		successCount: successCount,
+		verbose:      verbose,
 	}
 	for _, k := range keys {
-		// optimize keys query
-		s.states[k] = opts.start
+		s.states[k] = s.start
 	}
-	s.start = opts.start
-	s.end = opts.end
 	return &s
 }
 
@@ -111,8 +124,8 @@ func (s *status) switchState(st state, key StateKey) {
 	}
 }
 
-func (s *status) match(w *output) {
-	lines := strings.Split(string(w.readAll()), "\n")
+func (s *status) Match(got []byte) {
+	lines := strings.Split(string(got), "\n")
 	for _, line := range lines {
 		// get state key
 		fields := strings.Fields(string(line))

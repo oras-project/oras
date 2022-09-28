@@ -25,17 +25,17 @@ import (
 )
 
 var OrasPath string
-var Host string
+var HOST string
 var imageDir string
 
 func init() {
 	// setup distribution
-	Host = os.Getenv("ORAS_REGISTRY_HOST")
-	if Host == "" {
-		Host = "localhost:5000"
-		os.Stderr.Write([]byte(fmt.Sprintln("cannot find host name in ORAS_REGISTRY_HOST, using " + Host + " instead")))
+	HOST = os.Getenv("ORAS_REGISTRY_HOST")
+	if HOST == "" {
+		HOST = "localhost:5000"
+		os.Stderr.Write([]byte(fmt.Sprintln("cannot find host name in ORAS_REGISTRY_HOST, using " + HOST + " instead")))
 	}
-	if err := (registry.Reference{Registry: Host}).ValidateRegistry(); Host == "" || err != nil {
+	if err := (registry.Reference{Registry: HOST}).ValidateRegistry(); HOST == "" || err != nil {
 		panic(err)
 	}
 	// setup test data

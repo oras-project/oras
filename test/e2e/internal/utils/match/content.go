@@ -24,6 +24,6 @@ func NewContent(s *string) Content {
 	return Content{s}
 }
 
-func (c Content) match(w *output) {
-	Expect(string(w.readAll())).To(Equal(*c.s))
+func (c Content) Match(got []byte) {
+	Expect(string(got)).To(Equal(*c.s))
 }
