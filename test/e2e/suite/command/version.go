@@ -17,7 +17,6 @@ package command
 
 import (
 	"os/exec"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -29,7 +28,6 @@ var _ = Describe("ORAS user", func() {
 	Context("checks oras version", func() {
 		When("running version command", func() {
 			It("should success", func() {
-				time.Sleep(25 * time.Second)
 				session, err := gexec.Start(exec.Command(utils.OrasPath, "version"), nil, nil)
 				Expect(err).ShouldNot(HaveOccurred())
 				Eventually(session, "10s").Should(gexec.Exit(0))
