@@ -39,6 +39,7 @@ type attachOptions struct {
 
 	targetRef    string
 	artifactType string
+	concurrency  int64
 }
 
 func attachCmd() *cobra.Command {
@@ -59,9 +60,11 @@ Example - Attach file 'hi.txt' and add annotations from file 'annotation.json'
 Example - Attach an artifact with manifest annotations
   oras attach --artifact-type doc/example --annotation "key1=val1" --annotation "key2=val2" localhost:5000/hello:latest
 
-Example - Attach a file and add manifest annotations
+Example - Attach file 'hi.txt' and add manifest annotations
   oras attach --artifact-type doc/example --annotation "key=val" localhost:5000/hello:latest hi.txt
 
+Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json'
+  oras attach --artifact-type doc/example --export-manifest manifest.json localhost:5000/hello:latest hi.txt
 `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -75,6 +78,7 @@ Example - Attach a file and add manifest annotations
 	}
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
+	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	cmd.MarkFlagRequired("artifact-type")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
@@ -127,6 +131,7 @@ func runAttach(opts attachOptions) error {
 	// Prepare Push
 	committed := &sync.Map{}
 	graphCopyOptions := oras.DefaultCopyGraphOptions
+	graphCopyOptions.Concurrency = opts.concurrency
 	graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		if isEqualOCIDescriptor(node, desc) {
 			// Skip subject
