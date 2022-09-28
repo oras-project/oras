@@ -22,7 +22,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
-	"oras.land/oras/test/e2e/utils"
+	"oras.land/oras/test/e2e/internal/utils"
 )
 
 var _ = Describe("ORAS user", func() {
