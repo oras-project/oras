@@ -22,7 +22,10 @@ func NewOutput() *Output {
 }
 
 // Write captures p into the content.
-func (w *Output) Write(p []byte) (n int, err error) {
-	w.Content = append(w.Content, p...)
+func (o *Output) Write(p []byte) (n int, err error) {
+	if o == nil {
+		return 0, nil
+	}
+	o.Content = append(o.Content, p...)
 	return len(p), nil
 }
