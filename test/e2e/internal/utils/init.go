@@ -26,8 +26,10 @@ import (
 
 var OrasPath string
 var Host string
+var imageDir string
 
 func init() {
+	// setup distribution
 	Host = os.Getenv("ORAS_REGISTRY_HOST")
 	if Host == "" {
 		Host = "localhost:5000"
@@ -36,7 +38,14 @@ func init() {
 	if err := (registry.Reference{Registry: Host}).ValidateRegistry(); Host == "" || err != nil {
 		panic(err)
 	}
+	// setup test data
+	pwd, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	imageDir = filepath.Join(pwd, "..", "..", "testdata", "images")
 	var _ = BeforeSuite(func() {
+		// setup oras binary
 		OrasPath = os.Getenv("ORAS_PATH")
 		if filepath.IsAbs(OrasPath) {
 			// test against OrasPath directly
