@@ -55,7 +55,7 @@ func runLogout(opts logoutOptions) error {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
-	store, err := credential.NewStore()
+	store, err := credential.NewStore(opts.configs...)
 	if err != nil {
 		return err
 	}
