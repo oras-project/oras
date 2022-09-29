@@ -19,21 +19,25 @@ import (
 )
 
 const (
-	USERNAME = "hello"
-	PASSWORD = "oras-test"
+	USERNAME         = "hello"
+	PASSWORD         = "oras-test"
+	AUTH_CONFIG_PATH = "test.config"
 )
 
 var _ = Describe("ORAS user", Ordered, func() {
 	Context("auth", func() {
 		info := "Login Succeeded\n"
 		When("using basic auth", func() {
-			Success("login", HOST, "-u", USERNAME, "-p", PASSWORD).MatchContent(&info).MatchContent(&info).WithStderrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").Exec("should succeed with username&password flags")
+			Success("login", HOST, "-u", USERNAME, "-p", PASSWORD, "--registry-config", AUTH_CONFIG_PATH).
+				MatchContent(&info).
+				WithStderrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").Exec("should succeed with username&password flags")
 		})
 	})
 
 	Context("logs out", func() {
 		When("using logout command", func() {
-			Success("logout", HOST).Exec("should log out")
+			Success("logout", HOST, "--registry-config", AUTH_CONFIG_PATH).
+				Exec("should log out")
 		})
 	})
 
@@ -50,6 +54,8 @@ var _ = Describe("ORAS user", Ordered, func() {
 
 func whenRunWithoutLogin(args ...string) {
 	When("running "+args[0]+" command", func() {
-		Error(args...).WithStderrKeyWords("Error:", "credential required").Exec("should failed")
+		Error(append(args, "--registry-config", AUTH_CONFIG_PATH)...).
+			WithStderrKeyWords("Error:", "credential required").
+			Exec("should failed")
 	})
 }
