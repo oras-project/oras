@@ -33,24 +33,39 @@ export ORAS_REGISTRY_HOST="localhost:$PORT" # replace with right os/arch
 If you skip step 4, E2E test will look for distribution ran in `localhost:5000`
 
 ### 5. [Optional] Setup ORAS binary for testing
-The ORAS CLI binary will be the frontend of E2E test.
 ```bash
-# Set REPO_ROOT as root folder of oras CLI
+# Set REPO_ROOT as root folder of oras CLI code
 cd $REPO_ROOT
 make build
 ```
-### 6. [Optional] Setup frontend
-You need to setup **both** environmental variables as below to debug a pre-build ORAS binary
+### 6. [Optional] Setup pre-built binary
+You need to setup below environmental variables to debug a pre-built ORAS binary:
 ```bash
 export ORAS_PATH="bin/linux/amd64/oras" # change target platform if needed
 export GITHUB_WORKSPACE=$REPO_ROOT
 ```
 If you skip step 5 or 6, Gomega will build a temp binary, which will include all the CLI code changes in the working directory.
 
+### 7. [Optional] Mount test data
+If you want to run command suite, you need to unzip the test file tarball and mount to the distribution
+```bash
+tar -xvf $REPO_ROOT/test/e2e/testdata/distribution/mount.tar -C $REPO_ROOT/test/e2e/testdata/distribution/
+
+REPO_ROOT=$(pwd)
+PORT=5000
+docker run -dp $PORT:5000 --rm --name oras-e2e \
+    --mount type=bind,source=$REPO_ROOT/test/e2e/testdata/distribution/config-example-with-extensions.yml,target=/etc/docker/registry/config.yml \
+    --mount type=bind,source=$REPO_ROOT/test/e2e/testdata/distribution/passwd_bcrypt,target=/etc/docker/registry/passwd \
+    --mount type=bind,source=$REPO_ROOT/test/e2e/testdata/distribution/docker,target=/opt/data/registry-root-dir/docker \ # mount test data
+    ghcr.io/oras-project/registry:latest
+```
+Skipping step 7 you will not be able to run Command suite.
+
+
 ## Debugging
 ### 1. Constant Build & Watch
 This is a good choice if you want to debug certain re-runnable specs
-```bash=
+```bash
 cd $REPO_ROOT/test/e2e
 ginkgo watch -r
 ```
