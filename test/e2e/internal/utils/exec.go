@@ -16,6 +16,7 @@ package utils
 import (
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -25,50 +26,69 @@ import (
 	"oras.land/oras/test/e2e/internal/utils/match"
 )
 
-func (opts *ExecOption) description(text string, args []string) string {
-	return fmt.Sprintf("%s: %s %s", text, opts.binary, strings.Join(args, " "))
-}
+const default_binary = "oras"
 
-// ExecOption provides option used to execute a command.
-type ExecOption struct {
+// execOption provides option used to execute a command.
+type execOption struct {
 	stdout   []match.Matchable
 	stderr   []match.Matchable
 	stdin    io.Reader
 	binary   string
-	workDir  string
+	args     []string
+	workDir  *string
 	exitCode int
 }
 
 // Error returns a default execution expecting error.
-func Error() *ExecOption {
-	return &ExecOption{exitCode: 1}
+func Error(args ...string) *execOption {
+	return &execOption{
+		binary:   default_binary,
+		args:     args,
+		exitCode: 1,
+	}
 }
 
 // Success returns a default execution expecting success.
-func Success() *ExecOption {
-	return &ExecOption{exitCode: 0}
+func Success(args ...string) *execOption {
+	return &execOption{
+		binary:   default_binary,
+		args:     args,
+		exitCode: 0,
+	}
+}
+
+// WithBinary sets binary for execution.
+func (opts *execOption) WithBinary(path string) *execOption {
+	opts.binary = path
+	return opts
+}
+
+// WithWorkDir sets working directory for the execution.
+func (opts *execOption) WithWorkDir(path *string) *execOption {
+	opts.workDir = path
+	return opts
 }
 
 // WithInput adds input to execution option.
-func (opts *ExecOption) WithInput(r io.Reader) *ExecOption {
+func (opts *execOption) WithInput(r io.Reader) *execOption {
 	opts.stdin = r
 	return opts
 }
 
-// WithStdoutKeyWords adds key word matching to stdout.
-func (opts *ExecOption) WithStdoutKeyWords(keywords ...string) *ExecOption {
+// MatchKeyWords adds key word matching to stdout.
+func (opts *execOption) MatchKeyWords(keywords ...string) *execOption {
 	opts.stdout = append(opts.stdout, match.Keywords(keywords))
 	return opts
 }
 
 // WithStderrKeyWords adds key word matching to Stdin.
-func (opts *ExecOption) WithStderrKeyWords(keywords ...string) *ExecOption {
+func (opts *execOption) WithStderrKeyWords(keywords ...string) *execOption {
 	opts.stderr = append(opts.stderr, match.Keywords(keywords))
 	return opts
 }
 
-// WithContent adds full content matching to the exection option.
-func (opts *ExecOption) WithContent(content *string) *ExecOption {
+// MatchContent adds full content matching to the execution option.
+func (opts *execOption) MatchContent(content *string) *execOption {
 	if opts.exitCode == 0 {
 		opts.stdout = append(opts.stdout, match.NewContent(content))
 	} else {
@@ -77,33 +97,41 @@ func (opts *ExecOption) WithContent(content *string) *ExecOption {
 	return opts
 }
 
-// WithStatus adds full content matching to the exection option.
-func (opts *ExecOption) WithStatus(keys []match.StateKey, cmd string, verbose bool, successCount int) *ExecOption {
-	opts.stdout = append(opts.stdout, match.NewStatus(keys, cmd, verbose, successCount))
+// MatchStatus adds full content matching to the execution option.
+func (opts *execOption) MatchStatus(keys []match.StateKey, verbose bool, successCount int) *execOption {
+	opts.stdout = append(opts.stdout, match.NewStatus(keys, opts.args[0], verbose, successCount))
 	return opts
 }
 
 // Exec helps execute `OrasPath args...` with text as description and o as
 // matching option.
-func Exec(opts *ExecOption, text string, args ...string) {
-	ginkgo.It(opts.description(text, args), func() {
+func (opts *execOption) Exec(text string) {
+	if opts == nil {
+		panic("Nil option for command execution")
+	}
+
+	description := fmt.Sprintf("%s: %s %s", text, opts.binary, strings.Join(opts.args, " "))
+	ginkgo.It(description, func() {
 		var cmd *exec.Cmd
-		if opts.binary == "" {
+		if opts.binary == default_binary {
 			opts.binary = OrasPath
 		}
 
-		cmd = exec.Command(opts.binary, args...)
+		cmd = exec.Command(opts.binary, opts.args...)
 		cmd.Stdin = opts.stdin
-		var stdout, stderr *match.Output
-		if len(opts.stdout) != 0 {
-			stdout = match.NewOutput()
+		stdout := match.NewOutput()
+		stderr := match.NewOutput()
+		if opts.workDir != nil {
+			wd, err := os.Getwd()
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(os.Chdir(*opts.workDir)).ShouldNot(HaveOccurred())
+			defer os.Chdir(wd)
 		}
-		if len(opts.stderr) != 0 {
-			stderr = match.NewOutput()
-		}
+
 		session, err := gexec.Start(cmd, stdout, stderr)
 		Expect(err).ShouldNot(HaveOccurred())
 		Eventually(session, "10s").Should(gexec.Exit(opts.exitCode))
+
 		for _, s := range opts.stdout {
 			s.Match(stdout.Content)
 		}

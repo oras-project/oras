@@ -14,8 +14,6 @@ limitations under the License.
 package scenario
 
 import (
-	"strings"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
@@ -29,19 +27,13 @@ var _ = Describe("ORAS user", Ordered, func() {
 	Context("auth", func() {
 		info := "Login Succeeded\n"
 		When("using basic auth", func() {
-			Exec(Success().WithContent(&info).WithStderrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin"),
-				"should succeed with username&password flags",
-				"login", HOST, "-u", USERNAME, "-p", PASSWORD)
-
-			Exec(Success().WithInput(strings.NewReader(PASSWORD)).WithContent(&info),
-				"should succeed with username flag and password from stdin",
-				"login", HOST, "-u", USERNAME, "--password-stdin")
+			Success("login", HOST, "-u", USERNAME, "-p", PASSWORD).MatchContent(&info).MatchContent(&info).WithStderrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").Exec("should succeed with username&password flags")
 		})
 	})
 
 	Context("logs out", func() {
 		When("using logout command", func() {
-			Exec(Success(), "should logout", "logout", HOST)
+			Success("logout", HOST).Exec("should log out")
 		})
 	})
 
@@ -58,8 +50,6 @@ var _ = Describe("ORAS user", Ordered, func() {
 
 func whenRunWithoutLogin(args ...string) {
 	When("running "+args[0]+" command", func() {
-		Exec(Error().WithStderrKeyWords("Error:", "credential required"),
-			"should failed",
-			args...)
+		Error(args...).WithStderrKeyWords("Error:", "credential required").Exec("should failed")
 	})
 }

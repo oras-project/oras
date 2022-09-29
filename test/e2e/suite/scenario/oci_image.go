@@ -32,80 +32,68 @@ var (
 		"foobar/foo2",
 		"foobar/bar",
 	}
-	wd string
 )
 
 var _ = Describe("ORAS user", Focus, Ordered, func() {
-	BeforeAll(func() {
-		wd = GinkgoT().TempDir()
-		if err := CopyTestData(files, wd); err != nil {
-			panic(err)
-		}
-	})
-
 	repo := "oci-image"
 	Context("logs in", func() {
 		When("using basic auth", func() {
 			info := "Login Succeeded\n"
-			Exec(Success().WithInput(strings.NewReader(PASSWORD)).WithContent(&info),
-				"should succeed with username flag and password from stdin",
-				"login", HOST, "-u", USERNAME, "--password-stdin")
+			Success("login", HOST, "-u", USERNAME, "--password-stdin").WithInput(strings.NewReader(PASSWORD)).MatchContent(&info).Exec("should succeed with username flag and password from stdin")
 		})
 	})
 
 	Context("pushes images and check", Ordered, func() {
 		tag := "image"
-		When("pushing and pulling an image", Ordered, func() {
-			manifestPath := filepath.Join(wd, "packed.json")
-			tmp := ""
-			s := &tmp
-			paths := []string{
-				filepath.Join(wd, files[0]),
-				filepath.Join(wd, files[1]),
-				filepath.Join(wd, files[2]),
-				filepath.Join(wd, files[3]),
+		workDir := new(string)
+		BeforeAll(func() {
+			dir := GinkgoT().TempDir()
+			if err := CopyTestData(files, dir); err != nil {
+				panic(err)
 			}
+			*workDir = dir
+		})
 
-			Exec(Success().WithStatus([]match.StateKey{
-				{Digest: "44136fa355b3", Name: "application/vnd.unknown.config.v1+json"},
-				{Digest: "2c26b46b68ff", Name: paths[1]},
-				{Digest: "2c26b46b68ff", Name: paths[2]},
-				{Digest: "fcde2b2edba5", Name: paths[3]},
-				// cannot track manifest since created time will be added and digest is unknown
-			}, "push", true, 4), "should push files with manifest exported",
-				"push", Reference(HOST, repo, tag), paths[1], paths[2], paths[3], "--config", paths[0], "-v", "--export-manifest", manifestPath)
+		When("pushing and pulling an image", Ordered, func() {
+			manifestName := "packed.json"
+			Success("push", Reference(HOST, repo, tag), "--config", files[0], files[1], files[2], files[3], "-v", "--export-manifest", manifestName).
+				MatchStatus([]match.StateKey{
+					{Digest: "46b68ac1696c", Name: "application/vnd.unknown.config.v1+json"},
+					{Digest: "2c26b46b68ff", Name: files[1]},
+					{Digest: "2c26b46b68ff", Name: files[2]},
+					{Digest: "fcde2b2edba5", Name: files[3]}}, true, 4).
+				WithWorkDir(workDir).
+				Exec("should push files with manifest exported")
 
+			exportedContent := new(string)
 			ginkgo.It("should export the manifest", func() {
-				content, err := os.ReadFile(manifestPath)
+				content, err := os.ReadFile(filepath.Join(*workDir, manifestName))
 				gomega.Expect(err).To(gomega.BeNil())
-				*s = string(content)
+				*exportedContent = string(content)
 			})
 
-			Exec(Success().WithContent(s), "should fetch pushed manifest content",
-				"manifest", "fetch", Reference(HOST, repo, tag))
+			Success("manifest", "fetch", Reference(HOST, repo, tag)).
+				MatchContent(exportedContent).
+				Exec("should fetch pushed manifest content")
 
-			ginkgo.It("should move pushed", func() {
-				err := os.Rename(wd, wd+"-pushed")
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+			pullRoot := "pulled"
+			Success("pull", Reference(HOST, repo, tag), "-v", "--config", files[0], "-o", pullRoot).
+				MatchStatus([]match.StateKey{
+					{Digest: "46b68ac1696c", Name: "application/vnd.unknown.config.v1+json"},
+					{Digest: "2c26b46b68ff", Name: files[1]},
+					{Digest: "2c26b46b68ff", Name: files[2]},
+					{Digest: "fcde2b2edba5", Name: files[3]}}, true, 3).
+				WithWorkDir(workDir).
+				Exec("should pull files with config")
 
-			// configName := "config.json"
-			Exec(Success().WithStatus([]match.StateKey{
-				{Digest: "44136fa355b3", Name: "application/vnd.unknown.config.v1+json"},
-				{Digest: "2c26b46b68ff", Name: paths[1]},
-				{Digest: "2c26b46b68ff", Name: paths[2]},
-				{Digest: "fcde2b2edba5", Name: paths[3]},
-				// cannot track manifest since created time will be added and digest is unknown
-			}, "pull", true, 2), "should pull files with config",
-				"pull", Reference(HOST, repo, tag), "-v", "--config", paths[0], "-o", wd)
-			for i := range paths {
-				ginkgo.It("should download file "+paths[i], func() {
-					got, err := os.ReadFile(paths[i])
+			for _, f := range files {
+				ginkgo.It("should download identical file "+f, func() {
+					pushed, err := os.ReadFile(filepath.Join(*workDir, f))
 					gomega.Expect(err).To(gomega.BeNil())
 
-					want, err := os.ReadFile(filepath.Join(wd+"-pushed", files[i]))
+					pulled, err := os.ReadFile(filepath.Join(*workDir, pullRoot, f))
 					gomega.Expect(err).To(gomega.BeNil())
-					gomega.Expect(string(got)).To(gomega.Equal(string(want)))
+					gomega.Expect(string(pushed)).To(gomega.Equal(string(pulled)))
 				})
 			}
 		})

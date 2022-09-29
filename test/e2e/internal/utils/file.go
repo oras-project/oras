@@ -38,7 +38,6 @@ func copyFile(srcFile, dstFile string) error {
 	if err != nil {
 		return err
 	}
-
 	defer to.Close()
 
 	from, err := os.Open(srcFile)

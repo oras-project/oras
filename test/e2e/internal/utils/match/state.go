@@ -152,5 +152,4 @@ func (s *status) Match(got []byte) {
 		successCnt += len(v)
 	}
 	gomega.Expect(successCnt).To(gomega.Equal(s.successCount))
-
 }
