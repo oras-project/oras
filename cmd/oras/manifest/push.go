@@ -178,7 +178,8 @@ func pushManifest(opts pushOptions) error {
 	return nil
 }
 
-// matchDigest checks whether the manifest's digest matches to it in the remote repository.
+// matchDigest checks whether the manifest's digest matches to it in the remote
+// repository.
 func matchDigest(ctx context.Context, resolver content.Resolver, reference string, digest digest.Digest) (bool, error) {
 	got, err := resolver.Resolve(ctx, reference)
 	if err != nil {
