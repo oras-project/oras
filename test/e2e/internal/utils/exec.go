@@ -99,7 +99,7 @@ func (opts *execOption) MatchContent(content *string) *execOption {
 
 // MatchStatus adds full content matching to the execution option.
 func (opts *execOption) MatchStatus(keys []match.StateKey, verbose bool, successCount int) *execOption {
-	opts.stdout = append(opts.stdout, match.NewStatus(keys, opts.args[0], verbose, successCount))
+	opts.stdout = append(opts.stdout, match.NewStatusMatcher(keys, opts.args[0], verbose, successCount))
 	return opts
 }
 
