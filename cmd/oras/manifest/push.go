@@ -143,6 +143,9 @@ func pushManifest(opts pushOptions) error {
 			return err
 		}
 	} else {
+		if err != nil {
+			return err
+		}
 		if err := display.PrintStatus(desc, "Exists", verbose); err != nil {
 			return err
 		}
