@@ -19,11 +19,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -39,30 +41,35 @@ type pushOptions struct {
 	option.Packer
 
 	targetRef         string
+	extraRefs         []string
 	manifestConfigRef string
 	artifactType      string
+	concurrency       int64
 }
 
 func pushCmd() *cobra.Command {
 	var opts pushOptions
 	cmd := &cobra.Command{
-		Use:   "push [flags] <name>[:<tag>|@<digest>] <file>[:<type>] [...]",
+		Use:   "push [flags] <name>[:<tag>[,<tag>][...]] <file>[:<type>] [...]",
 		Short: "Push files to remote registry",
 		Long: `Push files to remote registry
 
-Example - Push file "hi.txt" with the "application/vnd.oci.image.layer.v1.tar" media type (default):
+Example - Push file "hi.txt" with media type "application/vnd.oci.image.layer.v1.tar" (default):
   oras push localhost:5000/hello:latest hi.txt
 
-Example - Push file "hi.txt" with the custom "application/vnd.me.hi" media type:
+Example - Push file "hi.txt" and export the pushed manifest to a specified path
+  oras push --export-manifest manifest.json localhost:5000/hello:latest hi.txt
+
+Example - Push file "hi.txt" with the custom media type "application/vnd.me.hi":
   oras push localhost:5000/hello:latest hi.txt:application/vnd.me.hi
 
 Example - Push multiple files with different media types:
   oras push localhost:5000/hello:latest hi.txt:application/vnd.me.hi bye.txt:application/vnd.me.bye
 
-Example - Push file "hi.txt" with "application/vnd.me.config" as config type:
+Example - Push file "hi.txt" with config type "application/vnd.me.config":
   oras push --artifact-type application/vnd.me.config localhost:5000/hello:latest hi.txt
 
-Example - Push file "hi.txt" with the custom manifest config "config.json" of the custom "application/vnd.me.config" media type:
+Example - Push file "hi.txt" with the custom manifest config "config.json" of the custom media type "application/vnd.me.config":
   oras push --config config.json:application/vnd.me.config localhost:5000/hello:latest hi.txt
 
 Example - Push file to the insecure registry:
@@ -76,7 +83,13 @@ Example - Push repository with manifest annotations
 
 Example - Push repository with manifest annotation file
   oras push --annotation-file annotation.json localhost:5000/hello:latest
-  `,
+
+Example - Push file "hi.txt" with multiple tags:
+  oras push localhost:5000/hello:tag1,tag2,tag3 hi.txt
+
+Example - Push file "hi.txt" with multiple tags and concurrency level tuned:
+  oras push --concurrency 6 localhost:5000/hello:tag1,tag2,tag3 hi.txt
+`,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.artifactType != "" && opts.manifestConfigRef != "" {
@@ -85,7 +98,9 @@ Example - Push repository with manifest annotation file
 			return opts.ReadPassword()
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
+			refs := strings.Split(args[0], ",")
+			opts.targetRef = refs[0]
+			opts.extraRefs = refs[1:]
 			opts.FileRefs = args[1:]
 			return runPush(opts)
 		},
@@ -93,6 +108,7 @@ Example - Push repository with manifest annotation file
 
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "manifest config file")
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "media type of the manifest config")
+	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
@@ -113,6 +129,7 @@ func runPush(opts pushOptions) error {
 	// Ready to push
 	committed := &sync.Map{}
 	copyOptions := oras.DefaultCopyOptions
+	copyOptions.Concurrency = opts.concurrency
 	copyOptions.PreCopy = display.StatusPrinter("Uploading", opts.Verbose)
 	copyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
@@ -145,6 +162,19 @@ func runPush(opts pushOptions) error {
 	}
 
 	fmt.Println("Pushed", opts.targetRef)
+
+	if len(opts.extraRefs) != 0 {
+		contentBytes, err := content.FetchAll(ctx, store, desc)
+		if err != nil {
+			return err
+		}
+		tagBytesNOpts := oras.DefaultTagBytesNOptions
+		tagBytesNOpts.Concurrency = opts.concurrency
+		if _, err = oras.TagBytesN(ctx, &display.TagManifestStatusPrinter{Repository: dst}, desc.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
+			return err
+		}
+	}
+
 	fmt.Println("Digest:", desc.Digest)
 
 	// Export manifest

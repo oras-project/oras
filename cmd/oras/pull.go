@@ -18,6 +18,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -37,6 +38,7 @@ type pullOptions struct {
 	option.Remote
 	option.Platform
 
+	concurrency       int64
 	targetRef         string
 	KeepOldFiles      bool
 	PathTraversal     bool
@@ -66,6 +68,9 @@ Example - Pull files with local cache:
 
 Example - Pull files with certain platform:
   oras pull --platform linux/arm/v5 localhost:5000/hello:latest
+
+Example - Pull all files with concurrency level tuned:
+  oras pull --concurrency 6 localhost:5000/hello:latest
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -81,6 +86,7 @@ Example - Pull files with certain platform:
 	cmd.Flags().BoolVarP(&opts.PathTraversal, "allow-path-traversal", "T", false, "allow storing files out of the output directory")
 	cmd.Flags().StringVarP(&opts.Output, "output", "o", ".", "output directory")
 	cmd.Flags().StringVarP(&opts.ManifestConfigRef, "config", "", "", "output manifest config file")
+	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
@@ -105,12 +111,36 @@ func runPull(opts pullOptions) error {
 
 	// Copy Options
 	copyOptions := oras.DefaultCopyOptions
+	copyOptions.Concurrency = opts.concurrency
 	configPath, configMediaType := parseFileReference(opts.ManifestConfigRef, "")
 	if targetPlatform != nil {
 		copyOptions.WithTargetPlatform(targetPlatform)
 	}
 	copyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		successors, err := content.Successors(ctx, fetcher, desc)
+		statusFetcher := content.FetcherFunc(func(ctx context.Context, target ocispec.Descriptor) (fetched io.ReadCloser, fetchErr error) {
+			if _, ok := printed.LoadOrStore(generateContentKey(target), true); ok {
+				return fetcher.Fetch(ctx, target)
+			}
+
+			// print status log for first-time fetching
+			if err := display.PrintStatus(target, "Downloading", opts.Verbose); err != nil {
+				return nil, err
+			}
+			rc, err := fetcher.Fetch(ctx, target)
+			if err != nil {
+				return nil, err
+			}
+			defer func() {
+				if fetchErr != nil {
+					rc.Close()
+				}
+			}()
+			if err := display.PrintStatus(target, "Processing ", opts.Verbose); err != nil {
+				return nil, err
+			}
+			return rc, nil
+		})
+		successors, err := content.Successors(ctx, statusFetcher, desc)
 		if err != nil {
 			return nil, err
 		}
@@ -157,7 +187,12 @@ func runPull(opts pullOptions) error {
 	dst.DisableOverwrite = opts.KeepOldFiles
 
 	pulledEmpty := true
-	copyOptions.PreCopy = display.StatusPrinter("Downloading", opts.Verbose)
+	copyOptions.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		if _, ok := printed.LoadOrStore(generateContentKey(desc), true); ok {
+			return nil
+		}
+		return display.PrintStatus(desc, "Downloading", opts.Verbose)
+	}
 	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		// restore named but deduplicated successor nodes
 		successors, err := content.Successors(ctx, dst, desc)

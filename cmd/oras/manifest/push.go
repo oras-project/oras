@@ -20,8 +20,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras/cmd/oras/internal/display"
@@ -35,15 +37,17 @@ type pushOptions struct {
 	option.Pretty
 	option.Remote
 
-	targetRef string
-	fileRef   string
-	mediaType string
+	concurrency int64
+	targetRef   string
+	extraRefs   []string
+	fileRef     string
+	mediaType   string
 }
 
 func pushCmd() *cobra.Command {
 	var opts pushOptions
 	cmd := &cobra.Command{
-		Use:   "push [flags] <name>[:<tag>|@<digest>] <file>",
+		Use:   "push [flags] <name>[:<tag>[,<tag>][...]|@<digest>] <file>",
 		Short: "[Preview] Push a manifest to remote registry",
 		Long: `[Preview] Push a manifest to remote registry
 
@@ -63,6 +67,12 @@ Example - Push a manifest to repository 'localhost:5000/hello' and output the pr
 
 Example - Push a manifest with specified media type to repository 'localhost:5000/hello' and tag with 'latest':
   oras manifest push --media-type application/vnd.cncf.oras.artifact.manifest.v1+json localhost:5000/hello:latest oras_manifest.json
+
+Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'tag1', 'tag2', 'tag3':
+  oras manifest push localhost:5000/hello:tag1,tag2,tag3 manifest.json
+
+Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'tag1', 'tag2', 'tag3' and concurrency level tuned:
+  oras manifest push --concurrency 6 localhost:5000/hello:tag1,tag2,tag3 manifest.json
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -72,7 +82,9 @@ Example - Push a manifest with specified media type to repository 'localhost:500
 			return opts.ReadPassword()
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
+			refs := strings.Split(args[0], ",")
+			opts.targetRef = refs[0]
+			opts.extraRefs = refs[1:]
 			opts.fileRef = args[1]
 			return pushManifest(opts)
 		},
@@ -80,6 +92,7 @@ Example - Push a manifest with specified media type to repository 'localhost:500
 
 	option.ApplyFlags(&opts, cmd.Flags())
 	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", "", "media type of manifest")
+	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	return cmd
 }
 
@@ -135,16 +148,29 @@ func pushManifest(opts pushOptions) error {
 		}
 	}
 
+	tagBytesNOpts := oras.DefaultTagBytesNOptions
+	tagBytesNOpts.Concurrency = opts.concurrency
+
 	// outputs manifest's descriptor
 	if opts.OutputDescriptor {
+		if len(opts.extraRefs) != 0 {
+			if _, err = oras.TagBytesN(ctx, manifests, mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
+				return err
+			}
+		}
 		descJSON, err := opts.Marshal(desc)
 		if err != nil {
 			return err
 		}
 		return opts.Output(os.Stdout, descJSON)
 	}
+	display.Print("Pushed", opts.targetRef)
+	if len(opts.extraRefs) != 0 {
+		if _, err = oras.TagBytesN(ctx, &display.TagManifestStatusPrinter{Repository: repo}, mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
+			return err
+		}
+	}
 
-	fmt.Println("Pushed", opts.targetRef)
 	fmt.Println("Digest:", desc.Digest)
 
 	return nil

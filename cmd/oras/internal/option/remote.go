@@ -74,7 +74,7 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	fs.StringVarP(&opts.CACertFilePath, flagPrefix+"ca-file", "", "", "server certificate authority file for the remote "+notePrefix+"registry")
 
 	if fs.Lookup("registry-config") == nil {
-		fs.StringArrayVarP(&opts.Configs, "registry-config", "", nil, "auth config path")
+		fs.StringArrayVarP(&opts.Configs, "registry-config", "", nil, "`path` of the authentication file")
 	}
 }
 
