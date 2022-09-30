@@ -30,30 +30,30 @@ const default_binary = "oras"
 
 // execOption provides option used to execute a command.
 type execOption struct {
-	stdout   []match.Matchable
-	stderr   []match.Matchable
-	stdin    io.Reader
-	binary   string
-	args     []string
-	workDir  *string
-	exitCode int
+	stdout     []match.Matchable
+	stderr     []match.Matchable
+	stdin      io.Reader
+	binary     string
+	args       []string
+	workDir    *string
+	shouldFail bool
 }
 
 // Error returns a default execution expecting error.
 func Error(args ...string) *execOption {
 	return &execOption{
-		binary:   default_binary,
-		args:     args,
-		exitCode: 1,
+		binary:     default_binary,
+		args:       args,
+		shouldFail: true,
 	}
 }
 
 // Success returns a default execution expecting success.
 func Success(args ...string) *execOption {
 	return &execOption{
-		binary:   default_binary,
-		args:     args,
-		exitCode: 0,
+		binary:     default_binary,
+		args:       args,
+		shouldFail: false,
 	}
 }
 
@@ -81,15 +81,15 @@ func (opts *execOption) MatchKeyWords(keywords ...string) *execOption {
 	return opts
 }
 
-// MatchErrKeyWords adds key word matching to Stdin.
+// MatchErrKeyWords adds key word matching to stderr.
 func (opts *execOption) MatchErrKeyWords(keywords ...string) *execOption {
-	opts.stderr = append(opts.stderr, match.KeywordMatcher(keywords))
+	opts.stderr = append(opts.stderr, match.NewKeywordMatcher(keywords))
 	return opts
 }
 
 // MatchContent adds full content matching to the execution option.
 func (opts *execOption) MatchContent(content *string) *execOption {
-	if opts.exitCode == 0 {
+	if !opts.shouldFail {
 		opts.stdout = append(opts.stdout, match.NewContentMatcher(content))
 	} else {
 		opts.stderr = append(opts.stderr, match.NewContentMatcher(content))
@@ -119,8 +119,6 @@ func (opts *execOption) Exec(text string) {
 
 		cmd = exec.Command(opts.binary, opts.args...)
 		cmd.Stdin = opts.stdin
-		stdout := &output{}
-		stderr := &output{}
 		if opts.workDir != nil {
 			wd, err := os.Getwd()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -128,15 +126,20 @@ func (opts *execOption) Exec(text string) {
 			defer os.Chdir(wd)
 		}
 
-		session, err := gexec.Start(cmd, stdout, stderr)
+		session, err := gexec.Start(cmd, nil, nil)
 		Expect(err).ShouldNot(HaveOccurred())
-		Eventually(session, "10s").Should(gexec.Exit(opts.exitCode))
+
+		if opts.shouldFail {
+			Eventually(session, "10s").ShouldNot(gexec.Exit(0))
+		} else {
+			Eventually(session, "10s").Should(gexec.Exit(0))
+		}
 
 		for _, s := range opts.stdout {
-			s.Match(stdout.content)
+			s.Match(session.Out)
 		}
 		for _, s := range opts.stderr {
-			s.Match(stderr.content)
+			s.Match(session.Err)
 		}
 	})
 }

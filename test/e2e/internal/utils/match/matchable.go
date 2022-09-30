@@ -13,7 +13,11 @@ limitations under the License.
 
 package match
 
+import (
+	"github.com/onsi/gomega/gbytes"
+)
+
 // Matchable provides matching method towards an output.
 type Matchable interface {
-	Match(got []byte)
+	Match(got *gbytes.Buffer)
 }

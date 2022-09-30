@@ -15,6 +15,7 @@ package match
 
 import (
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 // contentMatcher provides whole matching of the output.
@@ -24,6 +25,6 @@ func NewContentMatcher(s *string) contentMatcher {
 	return contentMatcher{s}
 }
 
-func (c contentMatcher) Match(got []byte) {
-	Expect(string(got)).To(Equal(*c.s))
+func (c contentMatcher) Match(got *gbytes.Buffer) {
+	Expect(got).To(gbytes.Say(*c.s))
 }

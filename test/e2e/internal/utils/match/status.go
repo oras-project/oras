@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 // status represents the expected value of first field in the status log.
@@ -139,8 +140,8 @@ func (s *statusMatcher) switchState(st status, key StateKey) {
 	}
 }
 
-func (s *statusMatcher) Match(got []byte) {
-	lines := strings.Split(string(got), "\n")
+func (s *statusMatcher) Match(got *gbytes.Buffer) {
+	lines := strings.Split(string(got.Contents()), "\n")
 	for _, line := range lines {
 		// get state key
 		fields := strings.Fields(string(line))
