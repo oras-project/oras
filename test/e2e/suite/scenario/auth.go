@@ -30,7 +30,7 @@ var _ = Describe("ORAS user", Ordered, func() {
 		When("using basic auth", func() {
 			Success("login", HOST, "-u", USERNAME, "-p", PASSWORD, "--registry-config", AUTH_CONFIG_PATH).
 				MatchContent(&info).
-				WithStderrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").Exec("should succeed with username&password flags")
+				MatchErrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").Exec("should succeed with username&password flags")
 		})
 	})
 
@@ -55,7 +55,7 @@ var _ = Describe("ORAS user", Ordered, func() {
 func whenRunWithoutLogin(args ...string) {
 	When("running "+args[0]+" command", func() {
 		Error(append(args, "--registry-config", AUTH_CONFIG_PATH)...).
-			WithStderrKeyWords("Error:", "credential required").
+			MatchErrKeyWords("Error:", "credential required").
 			Exec("should failed")
 	})
 }

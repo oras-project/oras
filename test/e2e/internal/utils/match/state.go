@@ -40,7 +40,7 @@ type edge = struct {
 
 // stateMachine specifies options for status log matching.
 type stateMachine struct {
-	edges map[state]edge
+	edges map[state][]edge
 	start *node
 	end   *node
 }
@@ -49,7 +49,7 @@ func newStateMachine(cmd string) (s *stateMachine) {
 	s = &stateMachine{
 		start: new(node),
 		end:   new(node),
-		edges: make(map[string]edge),
+		edges: make(map[string][]edge),
 	}
 
 	// prepare edges
@@ -69,18 +69,28 @@ func newStateMachine(cmd string) (s *stateMachine) {
 	return s
 }
 
+func findState(from *node, edges []edge) *edge {
+	for _, e := range edges {
+		if e.from == from {
+			return &e
+		}
+	}
+	return nil
+}
+
 func (opts *stateMachine) addPath(s ...string) {
 	last := opts.start
-	for i := 0; i < len(s)-1; i++ {
-		e, ok := opts.edges[s[i]]
-		if !ok {
-			// add to graph
-			e = edge{last, new(node)}
-			opts.edges[s[i]] = e
+	len := len(s)
+	for i, name := range s {
+		//
+		e := edge{from: last}
+		if i == len-1 {
+			e.to = opts.end
+		} else {
+			e.to = new(node)
 		}
-		last = e.to
+		opts.edges[name] = append(opts.edges[name], e)
 	}
-	opts.edges[s[len(s)-1]] = edge{last, opts.end}
 }
 
 // status type helps matching status log of a oras command.
@@ -110,13 +120,15 @@ func NewStatus(keys []StateKey, cmd string, verbose bool, successCount int) *sta
 
 // switchState moves a node forward in the state machine graph.
 func (s *status) switchState(st state, key StateKey) {
-	curr, ok := s.states[key]
+	// load state
+	now, ok := s.states[key]
 	gomega.Expect(ok).To(gomega.BeTrue(), fmt.Sprintf("Should find state node for %v", key))
 
-	e, ok := s.edges[st]
-	gomega.Expect(ok).To(gomega.BeTrue(), fmt.Sprintf("Should find edge for %v", st))
-	gomega.Expect(e.from).To(gomega.Equal(curr), fmt.Sprintf("Should state node not matching for %v, %v", st, key))
+	// find next
+	e := findState(now, s.edges[st])
+	gomega.Expect(e).NotTo(gomega.BeNil(), fmt.Sprintf("Should state node not matching for %v, %v", st, key))
 
+	// switch
 	s.states[key] = e.to
 	if e.to == s.end {
 		// collect last state for matching

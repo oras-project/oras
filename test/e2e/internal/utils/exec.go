@@ -81,8 +81,8 @@ func (opts *execOption) MatchKeyWords(keywords ...string) *execOption {
 	return opts
 }
 
-// WithStderrKeyWords adds key word matching to Stdin.
-func (opts *execOption) WithStderrKeyWords(keywords ...string) *execOption {
+// MatchErrKeyWords adds key word matching to Stdin.
+func (opts *execOption) MatchErrKeyWords(keywords ...string) *execOption {
 	opts.stderr = append(opts.stderr, match.Keywords(keywords))
 	return opts
 }
