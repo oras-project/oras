@@ -34,7 +34,7 @@ var (
 	}
 )
 
-var _ = Describe("ORAS user", Focus, Ordered, func() {
+var _ = Describe("ORAS user", Ordered, func() {
 	repo := "oci-image"
 	Context("logs in", func() {
 		When("using basic auth", func() {

@@ -90,9 +90,9 @@ func (opts *execOption) MatchErrKeyWords(keywords ...string) *execOption {
 // MatchContent adds full content matching to the execution option.
 func (opts *execOption) MatchContent(content *string) *execOption {
 	if opts.exitCode == 0 {
-		opts.stdout = append(opts.stdout, match.NewContent(content))
+		opts.stdout = append(opts.stdout, match.NewContentMatcher(content))
 	} else {
-		opts.stderr = append(opts.stderr, match.NewContent(content))
+		opts.stderr = append(opts.stderr, match.NewContentMatcher(content))
 	}
 	return opts
 }

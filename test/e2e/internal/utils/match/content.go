@@ -17,13 +17,13 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// Content provides whole matching of the output.
-type Content struct{ s *string }
+// contentMatcher provides whole matching of the output.
+type contentMatcher struct{ s *string }
 
-func NewContent(s *string) Content {
-	return Content{s}
+func NewContentMatcher(s *string) contentMatcher {
+	return contentMatcher{s}
 }
 
-func (c Content) Match(got []byte) {
+func (c contentMatcher) Match(got []byte) {
 	Expect(string(got)).To(Equal(*c.s))
 }
