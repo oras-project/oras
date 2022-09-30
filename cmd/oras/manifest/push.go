@@ -129,14 +129,12 @@ func pushManifest(opts pushOptions) error {
 		ref = desc.Digest.String()
 	}
 
-	exists, err := exists(ctx, manifests, ref, desc.Digest)
+	match, err := matchDigest(ctx, manifests, ref, desc.Digest)
 	if err != nil {
 		return err
 	}
-
-	// push the manifest if the reference does not exist
 	verbose := opts.Verbose && !opts.OutputDescriptor
-	if exists {
+	if match {
 		if err := display.PrintStatus(desc, "Exists", verbose); err != nil {
 			return err
 		}
@@ -180,16 +178,14 @@ func pushManifest(opts pushOptions) error {
 	return nil
 }
 
-func exists(ctx context.Context, src oras.ReadOnlyTarget, reference string, digest digest.Digest) (bool, error) {
-	got, err := src.Resolve(ctx, reference)
-
-	// if the reference does not exists, the manifest does not exist
-	// if the reference exists, then if their digests match, the manifest exists, otherwise the manifest does not exist
-	if errors.Is(err, errdef.ErrNotFound) || (err == nil && got.Digest != digest) {
-		return false, nil
-	}
+// matchDigest checks whether the manifest's digest matches to it in the remote repository.
+func matchDigest(ctx context.Context, resolver content.Resolver, reference string, digest digest.Digest) (bool, error) {
+	got, err := resolver.Resolve(ctx, reference)
 	if err != nil {
+		if errors.Is(err, errdef.ErrNotFound) {
+			return false, nil
+		}
 		return false, err
 	}
-	return true, nil
+	return got.Digest == digest, nil
 }
