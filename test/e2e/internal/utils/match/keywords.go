@@ -31,24 +31,17 @@ func NewKeywordMatcher(kw []string) keywordMatcher {
 }
 
 func (want keywordMatcher) Match(got *gbytes.Buffer) {
-	visited := make(map[string]bool)
-	for _, w := range want {
-		visited[strings.ToLower(w)] = false
-	}
+	var missed []string
 
 	raw := string(got.Contents())
-	lower := strings.ToLower(raw)
-	for key := range visited {
-		if strings.Contains(lower, key) {
-			delete(visited, key)
+	lowered := strings.ToLower(raw)
+	for _, w := range want {
+		if !strings.Contains(lowered, strings.ToLower(w)) {
+			missed = append(missed, w)
 		}
 	}
 
-	if len(visited) != 0 {
-		var missed []string
-		for k := range visited {
-			missed = append(missed, fmt.Sprintf("%q", k))
-		}
+	if len(missed) != 0 {
 		Expect(fmt.Sprintf("Keywords missed: %v ===> ", missed) + fmt.Sprintf("Quoted output: %q", raw)).To(Equal(""))
 	}
 }
