@@ -67,5 +67,5 @@ gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c h1:dUUwHk2QECo/6vqA44rthZ8ie
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gotest.tools/v3 v3.0.2 h1:kG1BFyqVHuQoVQiR1bWGnfz/fmHvvuiSPIV7rvl360E=
 gotest.tools/v3 v3.0.2/go.mod h1:3SzNCllyD9/Y+b5r9JIKQ474KzkZyqLqEfYqMsX94Bk=
-oras.land/oras-go/v2 v2.0.0-rc.3.0.20220921022919-34e7e6f9ad16 h1:9442IolZX60SAyu1bL3OE7mETxvQW2i0U/NVC1RFj8Q=
-oras.land/oras-go/v2 v2.0.0-rc.3.0.20220921022919-34e7e6f9ad16/go.mod h1:PrY+cCglzK/DrQoJUtxbYVbL94ZHecVS3eJR01RglpE=
+oras.land/oras-go/v2 v2.0.0-rc.3.0.20220922092058-3f9653f7bf69 h1:HpwQf1GbCkpVTdmHSsBiJpfZMWxqPjPjcKbtX6VXtGI=
+oras.land/oras-go/v2 v2.0.0-rc.3.0.20220922092058-3f9653f7bf69/go.mod h1:PrY+cCglzK/DrQoJUtxbYVbL94ZHecVS3eJR01RglpE=
