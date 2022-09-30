@@ -17,11 +17,13 @@ package manifest
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
 
+	digest "github.com/opencontainers/go-digest"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
@@ -127,12 +129,18 @@ func pushManifest(opts pushOptions) error {
 		ref = desc.Digest.String()
 	}
 
-	verbose := opts.Verbose && !opts.OutputDescriptor
-	got, err := manifests.Resolve(ctx, ref)
+	exists, err := exists(ctx, manifests, ref, desc.Digest)
+	if err != nil {
+		return err
+	}
 
-	// push the manifest if the reference does not exist;
-	// if the reference exists, then push the manifest if digests mismatch
-	if errors.Is(err, errdef.ErrNotFound) || (err == nil && got.Digest != desc.Digest) {
+	// push the manifest if the reference does not exist
+	verbose := opts.Verbose && !opts.OutputDescriptor
+	if exists {
+		if err := display.PrintStatus(desc, "Exists", verbose); err != nil {
+			return err
+		}
+	} else {
 		if err = display.PrintStatus(desc, "Uploading", verbose); err != nil {
 			return err
 		}
@@ -140,13 +148,6 @@ func pushManifest(opts pushOptions) error {
 			return err
 		}
 		if err = display.PrintStatus(desc, "Uploaded ", verbose); err != nil {
-			return err
-		}
-	} else {
-		if err != nil {
-			return err
-		}
-		if err := display.PrintStatus(desc, "Exists", verbose); err != nil {
 			return err
 		}
 	}
@@ -177,4 +178,18 @@ func pushManifest(opts pushOptions) error {
 	fmt.Println("Digest:", desc.Digest)
 
 	return nil
+}
+
+func exists(ctx context.Context, src oras.ReadOnlyTarget, reference string, digest digest.Digest) (bool, error) {
+	got, err := src.Resolve(ctx, reference)
+
+	// if the reference does not exists, the manifest does not exist
+	// if the reference exists, then if their digests match, the manifest exists, otherwise the manifest does not exist
+	if errors.Is(err, errdef.ErrNotFound) || (err == nil && got.Digest != digest) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
