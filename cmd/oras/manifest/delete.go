@@ -104,9 +104,6 @@ func deleteManifest(opts deleteOptions) error {
 	}
 
 	if err = manifests.Delete(ctx, desc); err != nil {
-		if errors.Is(err, errdef.ErrUnsupported) {
-			return fmt.Errorf("%s: deletion is disabled in remote server", opts.targetRef)
-		}
 		return fmt.Errorf("failed to delete %s: %w", opts.targetRef, err)
 	}
 
