@@ -77,13 +77,13 @@ func (opts *execOption) WithInput(r io.Reader) *execOption {
 
 // MatchKeyWords adds key word matching to stdout.
 func (opts *execOption) MatchKeyWords(keywords ...string) *execOption {
-	opts.stdout = append(opts.stdout, match.Keywords(keywords))
+	opts.stdout = append(opts.stdout, match.NewKeywordMatcher(keywords))
 	return opts
 }
 
 // MatchErrKeyWords adds key word matching to Stdin.
 func (opts *execOption) MatchErrKeyWords(keywords ...string) *execOption {
-	opts.stderr = append(opts.stderr, match.Keywords(keywords))
+	opts.stderr = append(opts.stderr, match.KeywordMatcher(keywords))
 	return opts
 }
 
@@ -119,8 +119,8 @@ func (opts *execOption) Exec(text string) {
 
 		cmd = exec.Command(opts.binary, opts.args...)
 		cmd.Stdin = opts.stdin
-		stdout := match.NewOutput()
-		stderr := match.NewOutput()
+		stdout := &output{}
+		stderr := &output{}
 		if opts.workDir != nil {
 			wd, err := os.Getwd()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -133,10 +133,10 @@ func (opts *execOption) Exec(text string) {
 		Eventually(session, "10s").Should(gexec.Exit(opts.exitCode))
 
 		for _, s := range opts.stdout {
-			s.Match(stdout.Content)
+			s.Match(stdout.content)
 		}
 		for _, s := range opts.stderr {
-			s.Match(stderr.Content)
+			s.Match(stderr.content)
 		}
 	})
 }

@@ -30,7 +30,7 @@ type StateKey struct {
 }
 
 type state struct {
-	uint // just padding to make address unique
+	uint // padding to avoid zero-based pointer
 }
 
 type edge = struct {
@@ -99,7 +99,7 @@ func (opts *stateMachine) addPath(statuses ...string) {
 // statusMatcher type helps matching statusMatcher log of a oras command.
 type statusMatcher struct {
 	states       map[StateKey]*state
-	matchResult  map[status][]StateKey
+	endResult    map[status][]StateKey
 	successCount int
 	verbose      bool
 
@@ -107,12 +107,12 @@ type statusMatcher struct {
 }
 
 // NewStatusMatcher generates a instance for matchable status logs.
-func NewStatusMatcher(keys []StateKey, cmd string, verbose bool, successCount int) *statusMatcher {
+func NewStatusMatcher(keys []StateKey, cmd string, verbose bool, expectSuccessCount int) *statusMatcher {
 	s := statusMatcher{
 		states:       make(map[StateKey]*state),
-		matchResult:  make(map[string][]StateKey),
+		endResult:    make(map[string][]StateKey),
 		stateMachine: newGraph(cmd),
-		successCount: successCount,
+		successCount: expectSuccessCount,
 		verbose:      verbose,
 	}
 	for _, k := range keys {
@@ -135,7 +135,7 @@ func (s *statusMatcher) switchState(st status, key StateKey) {
 	s.states[key] = e.to
 	if e.to == s.end {
 		// collect last state for matching
-		s.matchResult[st] = append(s.matchResult[st], key)
+		s.endResult[st] = append(s.endResult[st], key)
 	}
 }
 
@@ -163,7 +163,7 @@ func (s *statusMatcher) Match(got []byte) {
 	}
 
 	successCnt := 0
-	for _, v := range s.matchResult {
+	for _, v := range s.endResult {
 		successCnt += len(v)
 	}
 	gomega.Expect(successCnt).To(gomega.Equal(s.successCount))

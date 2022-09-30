@@ -20,12 +20,16 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// Keywords provides selective matching of the output.
+// KeywordMatcher provides selective matching of the output.
 // The match will pass if all key words existed case-insensitively in the
 // output.
-type Keywords []string
+type KeywordMatcher []string
 
-func (want Keywords) Match(raw []byte) {
+func NewKeywordMatcher(kw []string) KeywordMatcher {
+	return KeywordMatcher(kw)
+}
+
+func (want KeywordMatcher) Match(raw []byte) {
 	visited := make(map[string]bool)
 	for _, w := range want {
 		visited[strings.ToLower(w)] = false
