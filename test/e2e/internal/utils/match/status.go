@@ -18,10 +18,11 @@ import (
 	"strings"
 
 	"github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
-// state represents the expected value of first field in the status log.
-type state = string
+// status represents the expected value of first field in the status log.
+type status = string
 
 // state represents the expected value of second and third fields next status log.
 type StateKey struct {
@@ -29,47 +30,47 @@ type StateKey struct {
 	Name   string
 }
 
-type node struct {
-	uint // padding to make address unique
+type state struct {
+	uint // padding to avoid zero-based pointer
 }
 
 type edge = struct {
-	from *node
-	to   *node
+	from *state
+	to   *state
 }
 
-// stateMachine specifies options for status log matching.
+// stateMachine with edges named after known status.
 type stateMachine struct {
-	edges map[state][]edge
-	start *node
-	end   *node
+	edges map[status][]edge
+	start *state
+	end   *state
 }
 
-func newStateMachine(cmd string) (s *stateMachine) {
-	s = &stateMachine{
-		start: new(node),
-		end:   new(node),
+func newGraph(cmd string) (sm *stateMachine) {
+	sm = &stateMachine{
+		start: new(state),
+		end:   new(state),
 		edges: make(map[string][]edge),
 	}
 
 	// prepare edges
 	switch cmd {
 	case "push", "attach":
-		s.addPath("Uploading", "Uploaded")
-		s.addPath("Exists")
-		s.addPath("Skipped")
+		sm.addPath("Uploading", "Uploaded")
+		sm.addPath("Exists")
+		sm.addPath("Skipped")
 	case "pull":
-		s.addPath("Downloading", "Downloaded")
-		s.addPath("Downloading", "Processing", "Downloaded")
-		s.addPath("Skipped")
-		s.addPath("Restored")
+		sm.addPath("Downloading", "Downloaded")
+		sm.addPath("Downloading", "Processing", "Downloaded")
+		sm.addPath("Skipped")
+		sm.addPath("Restored")
 	default:
 		panic("Unrecognized cmd name " + cmd)
 	}
-	return s
+	return sm
 }
 
-func findState(from *node, edges []edge) *edge {
+func findState(from *state, edges []edge) *edge {
 	for _, e := range edges {
 		if e.from == from {
 			return &e
@@ -78,38 +79,41 @@ func findState(from *node, edges []edge) *edge {
 	return nil
 }
 
-func (opts *stateMachine) addPath(s ...string) {
+func (opts *stateMachine) addPath(statuses ...string) {
 	last := opts.start
-	len := len(s)
-	for i, name := range s {
-		//
-		e := edge{from: last}
-		if i == len-1 {
-			e.to = opts.end
-		} else {
-			e.to = new(node)
+	len := len(statuses)
+	for i, status := range statuses {
+		e := findState(last, opts.edges[status])
+		if e == nil {
+			// new edge
+			if i == len-1 {
+				e = &edge{from: last, to: opts.end}
+			} else {
+				e = &edge{from: last, to: new(state)}
+			}
+			opts.edges[status] = append(opts.edges[status], *e)
 		}
-		opts.edges[name] = append(opts.edges[name], e)
+		last = e.to
 	}
 }
 
-// status type helps matching status log of a oras command.
-type status struct {
-	states       map[StateKey]*node
-	matchResult  map[state][]StateKey
+// statusMatcher type helps matching statusMatcher log of a oras command.
+type statusMatcher struct {
+	states       map[StateKey]*state
+	endResult    map[status][]StateKey
 	successCount int
 	verbose      bool
 
 	*stateMachine
 }
 
-// NewStatus generates a instance for matchable status logs.
-func NewStatus(keys []StateKey, cmd string, verbose bool, successCount int) *status {
-	s := status{
-		states:       make(map[StateKey]*node),
-		matchResult:  make(map[string][]StateKey),
-		stateMachine: newStateMachine(cmd),
-		successCount: successCount,
+// NewStatusMatcher generates a instance for matchable status logs.
+func NewStatusMatcher(keys []StateKey, cmd string, verbose bool, expectSuccessCount int) *statusMatcher {
+	s := statusMatcher{
+		states:       make(map[StateKey]*state),
+		endResult:    make(map[string][]StateKey),
+		stateMachine: newGraph(cmd),
+		successCount: expectSuccessCount,
 		verbose:      verbose,
 	}
 	for _, k := range keys {
@@ -119,7 +123,7 @@ func NewStatus(keys []StateKey, cmd string, verbose bool, successCount int) *sta
 }
 
 // switchState moves a node forward in the state machine graph.
-func (s *status) switchState(st state, key StateKey) {
+func (s *statusMatcher) switchState(st status, key StateKey) {
 	// load state
 	now, ok := s.states[key]
 	gomega.Expect(ok).To(gomega.BeTrue(), fmt.Sprintf("Should find state node for %v", key))
@@ -132,12 +136,12 @@ func (s *status) switchState(st state, key StateKey) {
 	s.states[key] = e.to
 	if e.to == s.end {
 		// collect last state for matching
-		s.matchResult[st] = append(s.matchResult[st], key)
+		s.endResult[st] = append(s.endResult[st], key)
 	}
 }
 
-func (s *status) Match(got []byte) {
-	lines := strings.Split(string(got), "\n")
+func (s *statusMatcher) Match(got *gbytes.Buffer) {
+	lines := strings.Split(string(got.Contents()), "\n")
 	for _, line := range lines {
 		// get state key
 		fields := strings.Fields(string(line))
@@ -160,7 +164,7 @@ func (s *status) Match(got []byte) {
 	}
 
 	successCnt := 0
-	for _, v := range s.matchResult {
+	for _, v := range s.endResult {
 		successCnt += len(v)
 	}
 	gomega.Expect(successCnt).To(gomega.Equal(s.successCount))

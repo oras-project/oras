@@ -87,14 +87,9 @@ var _ = Describe("ORAS user", Ordered, func() {
 				Exec("should pull files with config")
 
 			for _, f := range files {
-				ginkgo.It("should download identical file "+f, func() {
-					pushed, err := os.ReadFile(filepath.Join(*workDir, f))
-					gomega.Expect(err).To(gomega.BeNil())
-
-					pulled, err := os.ReadFile(filepath.Join(*workDir, pullRoot, f))
-					gomega.Expect(err).To(gomega.BeNil())
-					gomega.Expect(string(pushed)).To(gomega.Equal(string(pulled)))
-				})
+				Success(filepath.Join(f), filepath.Join(pullRoot, f)).
+					WithBinary("diff").
+					Exec("should download identical file " + f)
 			}
 		})
 

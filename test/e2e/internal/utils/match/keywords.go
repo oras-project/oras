@@ -18,31 +18,30 @@ import (
 	"strings"
 
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
-// Keywords provides selective matching of the output.
+// keywordMatcher provides selective matching of the output.
 // The match will pass if all key words existed case-insensitively in the
 // output.
-type Keywords []string
+type keywordMatcher []string
 
-func (want Keywords) Match(raw []byte) {
-	visited := make(map[string]bool)
+func NewKeywordMatcher(kw []string) keywordMatcher {
+	return keywordMatcher(kw)
+}
+
+func (want keywordMatcher) Match(got *gbytes.Buffer) {
+	var missed []string
+
+	raw := string(got.Contents())
+	lowered := strings.ToLower(raw)
 	for _, w := range want {
-		visited[strings.ToLower(w)] = false
-	}
-
-	got := strings.ToLower(string(raw))
-	for key := range visited {
-		if strings.Contains(got, key) {
-			delete(visited, key)
+		if !strings.Contains(lowered, strings.ToLower(w)) {
+			missed = append(missed, w)
 		}
 	}
 
-	if len(visited) != 0 {
-		var missed []string
-		for k := range visited {
-			missed = append(missed, fmt.Sprintf("%q", k))
-		}
-		Expect(fmt.Sprintf("Keywords missed: %v ===> ", missed) + fmt.Sprintf("Quoted output: %q", got)).To(Equal(""))
+	if len(missed) != 0 {
+		Expect(fmt.Sprintf("Keywords missed: %v ===> ", missed) + fmt.Sprintf("Quoted output: %q", raw)).To(Equal(""))
 	}
 }

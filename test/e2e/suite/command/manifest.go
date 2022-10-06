@@ -37,7 +37,9 @@ var _ = Describe("ORAS beginners", func() {
 				Exec("should succeed")
 		})
 		When("fetching manifest with no artifact reference provided", func() {
-			Error("manifest", "fetch").MatchErrKeyWords("Error:").Exec("should fail")
+			Error("manifest", "fetch").
+				MatchErrKeyWords("Error:").
+				Exec("should fail")
 		})
 	})
 })

@@ -15,15 +15,16 @@ package match
 
 import (
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
-// Content provides whole matching of the output.
-type Content struct{ s *string }
+// contentMatcher provides whole matching of the output.
+type contentMatcher struct{ s *string }
 
-func NewContent(s *string) Content {
-	return Content{s}
+func NewContentMatcher(s *string) contentMatcher {
+	return contentMatcher{s}
 }
 
-func (c Content) Match(got []byte) {
-	Expect(string(got)).To(Equal(*c.s))
+func (c contentMatcher) Match(got *gbytes.Buffer) {
+	Expect(got).To(gbytes.Say(*c.s))
 }

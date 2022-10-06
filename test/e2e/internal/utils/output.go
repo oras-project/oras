@@ -11,21 +11,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package match
+package utils
 
-type Output struct {
-	Content []byte
-}
-
-func NewOutput() *Output {
-	return &Output{}
+type output struct {
+	content []byte
 }
 
 // Write captures p into the content.
-func (o *Output) Write(p []byte) (n int, err error) {
+func (o *output) Write(p []byte) (n int, err error) {
 	if o == nil {
 		return 0, nil
 	}
-	o.Content = append(o.Content, p...)
+	o.content = append(o.content, p...)
 	return len(p), nil
 }
