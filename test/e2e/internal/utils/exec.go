@@ -130,9 +130,9 @@ func (opts *execOption) Exec(text string) {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		if opts.shouldFail {
-			Eventually(session, "10s").ShouldNot(gexec.Exit(0))
+			Expect(session.Wait("10s").ExitCode()).ShouldNot(Equal(0))
 		} else {
-			Eventually(session, "10s").Should(gexec.Exit(0))
+			Expect(session.Wait("10s").ExitCode()).Should(Equal(0))
 		}
 
 		for _, s := range opts.stdout {
