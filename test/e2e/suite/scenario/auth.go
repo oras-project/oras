@@ -56,6 +56,6 @@ func whenRunWithoutLogin(args ...string) {
 	When("running "+args[0]+" command", func() {
 		Error(append(args, "--registry-config", AUTH_CONFIG_PATH)...).
 			MatchErrKeyWords("Error:", "credential required").
-			Exec("should failed")
+			Exec("should fail without logging in")
 	})
 }
