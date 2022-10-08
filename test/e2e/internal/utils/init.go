@@ -34,12 +34,15 @@ func init() {
 	Host = os.Getenv("ORAS_REGISTRY_HOST")
 	if Host == "" {
 		Host = "localhost:5000"
-		os.Stderr.Write([]byte(fmt.Sprintln("cannot find host name in ORAS_REGISTRY_HOST, using " + Host + " instead")))
+		fmt.Fprintln(os.Stderr, "cannot find host name in ORAS_REGISTRY_HOST, using", Host, "instead")
 	}
-	if err := (registry.Reference{Registry: Host}).ValidateRegistry(); Host == "" || err != nil {
+	ref := registry.Reference{
+		Registry: Host,
+	}
+	if err := ref.ValidateRegistry(); err != nil {
 		panic(err)
 	}
-	var _ = BeforeSuite(func() {
+	BeforeSuite(func() {
 		ORASPath = os.Getenv("ORAS_PATH")
 		if filepath.IsAbs(ORASPath) {
 			// test against OrasPath directly
