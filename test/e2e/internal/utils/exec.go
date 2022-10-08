@@ -114,7 +114,7 @@ func (opts *execOption) Exec(text string) {
 	ginkgo.It(description, func() {
 		var cmd *exec.Cmd
 		if opts.binary == default_binary {
-			opts.binary = OrasPath
+			opts.binary = ORASPath
 		}
 
 		cmd = exec.Command(opts.binary, opts.args...)
