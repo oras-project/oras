@@ -3,12 +3,14 @@
 ## Setting up
 Minimal setup: Run the script in **step 3**
 
-### 1. Common dev setup for ORAS CLI
-https://hackmd.io/_nRHGW8WRfOOvngWc6u-sQ
+### 1. Clone Source Code of ORAS CLI
+```shell
+git clone https://github.com/oras-project/oras.git
+```
 
 ### 2. [Optional] Install Ginkgo
 This will enable you use `ginkgo` directly in CLI.
-```
+```shell
 go install github.com/onsi/ginkgo/v2/ginkgo@latest
 ```
 If you skip step 2, you can only run tests via `go test`. 
@@ -47,16 +49,15 @@ export GITHUB_WORKSPACE=$REPO_ROOT
 If you skip step 5 or 6, Gomega will build a temp binary, which will include all the CLI code changes in the working directory.
 
 ### 7. [Optional] Mount Test Data
-If you want to run command suite, you need to unzip the test file tarball and mount to the distribution
+If you want to run command suite, you need to unzip the zipped data files and mount to the distribution. `REPO_ROOT` points to the root folder of cloned oras CLI code.
 ```bash
 tar -xvf $REPO_ROOT/test/e2e/testdata/distribution/mount.tar -C $REPO_ROOT/test/e2e/testdata/distribution/
 
-REPO_ROOT=$(pwd)
 PORT=5000
 docker run -dp $PORT:5000 --rm --name oras-e2e \
     --mount type=bind,source=$REPO_ROOT/test/e2e/testdata/distribution/config-example-with-extensions.yml,target=/etc/docker/registry/config.yml \
     --mount type=bind,source=$REPO_ROOT/test/e2e/testdata/distribution/passwd_bcrypt,target=/etc/docker/registry/passwd \
-    --mount type=bind,source=$REPO_ROOT/test/e2e/testdata/distribution/docker,target=/opt/data/registry-root-dir/docker \ # mount test data
+    --mount type=bind,source=$REPO_ROOT/test/e2e/testdata/distribution/docker,target=/opt/data/registry-root-dir/docker \
     ghcr.io/oras-project/registry:latest
 ```
 Skipping step 7 you will not be able to run Command suite.
