@@ -24,18 +24,23 @@ import (
 	"oras.land/oras-go/v2/registry"
 )
 
-var OrasPath string
-var HOST string
+// ORASPath points to the to-be-tested oras binary.
+var ORASPath string
+
+// Host points to the registry service where E2E tests will be run against.
+var Host string
 var imageDir string
 
 func init() {
-	// setup distribution
-	HOST = os.Getenv("ORAS_REGISTRY_HOST")
-	if HOST == "" {
-		HOST = "localhost:5000"
-		os.Stderr.Write([]byte(fmt.Sprintln("cannot find host name in ORAS_REGISTRY_HOST, using " + HOST + " instead")))
+	Host = os.Getenv("ORAS_REGISTRY_HOST")
+	if Host == "" {
+		Host = "localhost:5000"
+		fmt.Fprintln(os.Stderr, "cannot find host name in ORAS_REGISTRY_HOST, using", Host, "instead")
 	}
-	if err := (registry.Reference{Registry: HOST}).ValidateRegistry(); HOST == "" || err != nil {
+	ref := registry.Reference{
+		Registry: Host,
+	}
+	if err := ref.ValidateRegistry(); err != nil {
 		panic(err)
 	}
 	// setup test data
@@ -44,27 +49,27 @@ func init() {
 		panic(err)
 	}
 	imageDir = filepath.Join(pwd, "..", "..", "testdata", "images")
-	var _ = BeforeSuite(func() {
-		// setup oras binary
-		OrasPath = os.Getenv("ORAS_PATH")
-		if filepath.IsAbs(OrasPath) {
-			// test against OrasPath directly
-			fmt.Printf("Testing based on pre-built binary locates in %q\n", OrasPath)
-		} else if workspacePath := os.Getenv("GITHUB_WORKSPACE"); OrasPath != "" && workspacePath != "" {
-			// add workspacePath as prefix, both path env should not be empty
-			OrasPath = filepath.Join(workspacePath, OrasPath)
-			var err error
-			OrasPath, err = filepath.Abs(OrasPath)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-			fmt.Printf("Testing based on pre-built binary locates in %q\n", OrasPath)
-		} else {
-			// fallback to native build to facilitate local debugging
-			var err error
-			OrasPath, err = gexec.Build("oras.land/oras/cmd/oras")
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			DeferCleanup(gexec.CleanupBuildArtifacts)
-			fmt.Printf("Testing based on temp binary locates in %q\n", OrasPath)
+	BeforeSuite(func() {
+		ORASPath = os.Getenv("ORAS_PATH")
+		if filepath.IsAbs(ORASPath) {
+			fmt.Printf("Testing based on pre-built binary locates in %q\n", ORASPath)
+			return
 		}
+
+		var err error
+		if workspacePath := os.Getenv("GITHUB_WORKSPACE"); ORASPath != "" && workspacePath != "" {
+			// add workspacePath as prefix, both path env should not be empty
+			ORASPath = filepath.Join(workspacePath, ORASPath)
+			ORASPath, err = filepath.Abs(ORASPath)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			fmt.Printf("Testing based on pre-built binary locates in %q\n", ORASPath)
+			return
+		}
+
+		// fallback to native build to facilitate local debugging
+		ORASPath, err = gexec.Build("oras.land/oras/cmd/oras")
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		DeferCleanup(gexec.CleanupBuildArtifacts)
+		fmt.Printf("Testing based on temp binary locates in %q\n", ORASPath)
 	})
 }
