@@ -34,6 +34,8 @@ header:
     - 'KEYS'
     - 'go.mod'
     - 'go.sum'
+    - 'go.work'
+    - 'go.work.sum'
     - '**/testdata/**'
 
   comment: on-failure

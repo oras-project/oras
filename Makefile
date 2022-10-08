@@ -32,7 +32,7 @@ LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitTreeState=${GIT_DIRTY}
 
 .PHONY: test
 test: vendor check-encoding
-	go test -race -v -coverprofile=coverage.txt -covermode=atomic $(shell go list ./... | grep -v test/e2e/)
+	go test -race -v -coverprofile=coverage.txt -covermode=atomic ./...
 
 .PHONY: covhtml
 covhtml:
