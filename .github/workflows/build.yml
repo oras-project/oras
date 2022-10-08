@@ -47,9 +47,9 @@ jobs:
           docker kill oras-e2e || true
           trap 'docker kill oras-e2e || true' ERR
           docker run -d -p 5000:5000 --rm --name oras-e2e \
-            --mount type=bind,source=testdata/distribution/config-example-with-extensions.yml,target=/etc/docker/registry/config.yml \
-            --mount type=bind,source=testdata/distribution/passwd_bcrypt,target=/etc/docker/registry/passwd \
-            --mount type=bind,source=testdata/distribution/docker,target=/opt/data/registry-root-dir/docker \
+            --mount type=bind,source=$GITHUB_WORKSPACE/test/e2e/testdata/distribution/config-example-with-extensions.yml,target=/etc/docker/registry/config.yml \
+            --mount type=bind,source=$GITHUB_WORKSPACE/test/e2e/testdata/distribution/passwd_bcrypt,target=/etc/docker/registry/passwd \
+            --mount type=bind,source=$GITHUB_WORKSPACE/test/e2e/testdata/distribution/docker,target=/opt/data/registry-root-dir/docker \
             ghcr.io/oras-project/registry:latest
           ginkgo -r -p suite
           docker kill oras-e2e || true
