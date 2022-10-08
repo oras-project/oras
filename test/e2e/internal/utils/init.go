@@ -45,23 +45,24 @@ func init() {
 	BeforeSuite(func() {
 		ORASPath = os.Getenv("ORAS_PATH")
 		if filepath.IsAbs(ORASPath) {
-			// test against OrasPath directly
 			fmt.Printf("Testing based on pre-built binary locates in %q\n", ORASPath)
-		} else if workspacePath := os.Getenv("GITHUB_WORKSPACE"); ORASPath != "" && workspacePath != "" {
+			return
+		}
+
+		var err error
+		if workspacePath := os.Getenv("GITHUB_WORKSPACE"); ORASPath != "" && workspacePath != "" {
 			// add workspacePath as prefix, both path env should not be empty
 			ORASPath = filepath.Join(workspacePath, ORASPath)
-			var err error
 			ORASPath, err = filepath.Abs(ORASPath)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
 			fmt.Printf("Testing based on pre-built binary locates in %q\n", ORASPath)
-		} else {
-			// fallback to native build to facilitate local debugging
-			var err error
-			ORASPath, err = gexec.Build("oras.land/oras/cmd/oras")
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			DeferCleanup(gexec.CleanupBuildArtifacts)
-			fmt.Printf("Testing based on temp binary locates in %q\n", ORASPath)
+			return
 		}
+
+		// fallback to native build to facilitate local debugging
+		ORASPath, err = gexec.Build("oras.land/oras/cmd/oras")
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		DeferCleanup(gexec.CleanupBuildArtifacts)
+		fmt.Printf("Testing based on temp binary locates in %q\n", ORASPath)
 	})
 }
