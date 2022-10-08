@@ -42,7 +42,7 @@ jobs:
       - name: Run E2E Tests
         run: |
           cd $GITHUB_WORKSPACE/test/e2e
-          go install github.com/onsi/ginkgo/v2/ginkgo
+          go install -mod=mod github.com/onsi/ginkgo/v2/ginkgo
           tar -xvf testdata/distribution/mount.tar -C testdata/distribution/ > /dev/null
           docker kill oras-e2e || true
           trap 'docker kill oras-e2e || true' ERR
