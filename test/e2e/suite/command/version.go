@@ -33,6 +33,5 @@ var _ = Describe("ORAS user", func() {
 				Eventually(session, "10s").Should(gexec.Exit(0))
 			})
 		})
-
 	})
 })
