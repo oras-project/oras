@@ -39,6 +39,7 @@ type attachOptions struct {
 
 	targetRef    string
 	artifactType string
+	concurrency  int64
 }
 
 func attachCmd() *cobra.Command {
@@ -77,6 +78,7 @@ Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json'
 	}
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
+	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	cmd.MarkFlagRequired("artifact-type")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
@@ -120,7 +122,8 @@ func runAttach(opts attachOptions) error {
 	desc, err := oras.PackArtifact(
 		ctx, store, opts.artifactType, orasDescs,
 		oras.PackArtifactOptions{
-			Subject: &subject,
+			Subject:             &subject,
+			ManifestAnnotations: annotations[option.AnnotationManifest],
 		})
 	if err != nil {
 		return err
@@ -129,6 +132,7 @@ func runAttach(opts attachOptions) error {
 	// Prepare Push
 	committed := &sync.Map{}
 	graphCopyOptions := oras.DefaultCopyGraphOptions
+	graphCopyOptions.Concurrency = opts.concurrency
 	graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		if isEqualOCIDescriptor(node, desc) {
 			// Skip subject
