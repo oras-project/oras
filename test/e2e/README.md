@@ -49,7 +49,7 @@ export GITHUB_WORKSPACE=$REPO_ROOT
 If you skip step 5 or 6, Gomega will build a temp binary, which will include all the CLI code changes in the working directory.
 
 ### 7. [Optional] Mount Test Data
-If you want to run command suite, you need to unzip the zipped data files and mount to the distribution. `REPO_ROOT` points to the root folder of cloned oras CLI code.
+If you want to run command suite, you need to decompress the compressed data files and mount to the distribution. `REPO_ROOT` points to the root folder of cloned oras CLI code.
 ```bash
 tar -xvf $REPO_ROOT/test/e2e/testdata/distribution/mount.tar -C $REPO_ROOT/test/e2e/testdata/distribution/
 
