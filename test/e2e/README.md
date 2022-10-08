@@ -7,7 +7,7 @@ Minimal setup: Run the script in **step 3**
 https://hackmd.io/_nRHGW8WRfOOvngWc6u-sQ
 
 ### 2. [Optional] Install Ginkgo
-This will enable you use`ginkgo` directly in CLI.
+This will enable you use `ginkgo` directly in CLI.
 ```
 go install github.com/onsi/ginkgo/v2/ginkgo@latest
 ```
