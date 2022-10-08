@@ -1,0 +1,68 @@
+# Copyright The ORAS Authors.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Bug Report
+description: File a bug report
+labels: [bug]
+body:
+  - type: markdown
+    id: preface
+    attributes:
+      value: |
+        Thank you for reporting bugs to ORAS!
+  - type: markdown
+    id: reproduce
+    attributes:
+      value: "## Describe the bug"
+  - type: textarea
+    id: environment
+    validations:
+      required: true
+    attributes:
+      label: What happened in your environment?
+  - type: textarea
+    id: expect
+    attributes:
+      label: "What did you expect to happen?"
+      render: shell
+  - type: textarea
+    id: logs
+    validations:
+      required: true
+    attributes:
+      label: "How can we reproduce it?"
+      description: "Please tell us your environment information as minimally and precisely as possible)"
+  - type: markdown
+    id: environment
+    attributes:
+      value: "## Describe your environment"
+  - type: input
+    id: version
+    validations:
+      required: true
+    attributes:
+      label: What is the version of your ORAS CLI?
+      description: "You can use the command `oras version` to get it"
+  - type: input
+    id: os
+    validations:
+      required: true
+    attributes:
+      label: What is your OS environment?
+      description: "e.g. Ubuntu 16.04"
+  - type: checkboxes
+    id: idea
+    attributes:
+      label: "Are you willing to submit PRs to fix it?"
+      description: "This is absolutely not required, but we are happy to guide you in the contribution process
+        especially when you already have a good proposal or understanding of how to implement it. Join us at https://slack.cncf.io/ and choose #oras channel."
