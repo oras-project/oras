@@ -66,3 +66,5 @@ body:
       label: "Are you willing to submit PRs to fix it?"
       description: "This is absolutely not required, but we are happy to guide you in the contribution process
         especially when you already have a good proposal or understanding of how to implement it. Join us at https://slack.cncf.io/ and choose #oras channel."
+      options:
+        - label: Yes, I am willing to fix it.
