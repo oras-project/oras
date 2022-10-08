@@ -41,16 +41,17 @@ jobs:
         run: make test
       - name: Run E2E Tests
         run: |
+          cd $GITHUB_WORKSPACE/test/e2e
           go install github.com/onsi/ginkgo/v2/ginkgo
-          tar -xvf $GITHUB_WORKSPACE/test/e2e/testdata/distribution/mount.tar -C $GITHUB_WORKSPACE/test/e2e/testdata/distribution/ > /dev/null
+          tar -xvf testdata/distribution/mount.tar -C testdata/distribution/ > /dev/null
           docker kill oras-e2e || true
           trap 'docker kill oras-e2e || true' ERR
           docker run -d -p 5000:5000 --rm --name oras-e2e \
-            --mount type=bind,source=$GITHUB_WORKSPACE/test/e2e/testdata/distribution/config-example-with-extensions.yml,target=/etc/docker/registry/config.yml \
-            --mount type=bind,source=$GITHUB_WORKSPACE/test/e2e/testdata/distribution/passwd_bcrypt,target=/etc/docker/registry/passwd \
-            --mount type=bind,source=$GITHUB_WORKSPACE/test/e2e/testdata/distribution/docker,target=/opt/data/registry-root-dir/docker \
+            --mount type=bind,source=testdata/distribution/config-example-with-extensions.yml,target=/etc/docker/registry/config.yml \
+            --mount type=bind,source=testdata/distribution/passwd_bcrypt,target=/etc/docker/registry/passwd \
+            --mount type=bind,source=testdata/distribution/docker,target=/opt/data/registry-root-dir/docker \
             ghcr.io/oras-project/registry:latest
-          ginkgo -r -p $GITHUB_WORKSPACE/test/e2e/suite
+          ginkgo -r -p suite
           docker kill oras-e2e || true
         env:
           ORAS_PATH: bin/linux/amd64/oras
