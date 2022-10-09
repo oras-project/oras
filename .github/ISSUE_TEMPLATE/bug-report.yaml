@@ -20,39 +20,32 @@ body:
     attributes:
       value: |
         Thank you for reporting bugs to ORAS!
-  - type: markdown
-    id: reproduce
-    attributes:
-      value: "## Describe the bug"
   - type: textarea
     id: environment
     validations:
       required: true
     attributes:
-      label: What happened in your environment?
+      label: What happened in your environment? 
+      description: "Please also attach logs here using `--debug` flag."
   - type: textarea
     id: expect
     attributes:
       label: "What did you expect to happen?"
       render: shell
   - type: textarea
-    id: logs
+    id: reproduce
     validations:
       required: true
     attributes:
       label: "How can we reproduce it?"
-      description: "Please tell us your environment information as minimally and precisely as possible)"
-  - type: markdown
-    id: environment
-    attributes:
-      value: "## Describe your environment"
+      description: "Please tell us your environment information as minimally and precisely as possible."
   - type: input
     id: version
     validations:
       required: true
     attributes:
       label: What is the version of your ORAS CLI?
-      description: "You can use the command `oras version` to get it"
+      description: "You can use the command `oras version` to get it."
   - type: input
     id: os
     validations:

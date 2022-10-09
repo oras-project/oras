@@ -13,6 +13,7 @@
 
 name: Feature Request
 description: File a feature request
+labels: [enhancement]
 body:
   - type: markdown
     id: preface
