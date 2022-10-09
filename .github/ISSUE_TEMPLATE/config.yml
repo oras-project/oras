@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-blank_issues_enabled: false
+blank_issues_enabled: true
 contact_links:
   - name: Ask a question or request support in the community
     url: https://github.com/oras/discussions/
