@@ -19,19 +19,11 @@ body:
     id: preface
     attributes:
       value: "Thank you for submitting new features for ORAS."
-  - type: markdown
-    id: environment
-    attributes:
-      value: "## Describe your environment"
   - type: input
     id: version
     attributes:
       label: "What is the version of your ORAS CLI"
       description: "You can use the command `oras version` to get it"
-  - type: markdown
-    id: feature
-    attributes:
-      value: "## Describe your request"
   - type: textarea
     id: description
     attributes:
