@@ -38,4 +38,6 @@ dist/
 *.tar.gz
 vendor/
 _dist/
-test/e2e/testdata/distribution/mount/docker
+
+# Distribution storage files for local E2E testing
+test/e2e/testdata/distribution/mount/docker/ 
