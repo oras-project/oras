@@ -52,7 +52,7 @@ jobs:
           docker run -d -p 5000:5000 --rm --name oras-e2e \
             --env STORAGE_DELETE_ENABLED=true \
             --mount type=bind,source=$mnt_root/docker,target=/opt/data/registry-root-dir/docker \
-            ghcr.io/oras-project/registry:latest
+            ghcr.io/oras-project/registry:v1.0.0-rc.2
           ginkgo -r -p suite
           docker kill oras-e2e || true
         env:

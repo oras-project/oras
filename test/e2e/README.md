@@ -21,9 +21,8 @@ The backend of E2E test is an [oras-distribution](https://github.com/oras-projec
 PORT=5000
 docker run -dp $PORT:5000 --rm --name oras-e2e \
     --env STORAGE_DELETE_ENABLED=true \
-    ghcr.io/oras-project/registry:latest
+    ghcr.io/oras-project/registry:v1.0.0-rc.2
 ```
-If the image cannot be pulled, try creating a Github PAT and docker/oras login.
 
 ### 4. [Optional] Customize Port for Distribution
 ```shell
@@ -57,7 +56,7 @@ PORT=5000
 docker run -dp $PORT:5000 --rm --name oras-e2e \
     --env STORAGE_DELETE_ENABLED=true \
     --mount type=bind,source=$REPO_ROOT/test/e2e/testdata/distribution/mount/docker,target=/opt/data/registry-root-dir/docker \
-    ghcr.io/oras-project/registry:latest
+    ghcr.io/oras-project/registry:v1.0.0-rc.2
 ```
 Skipping step 7 you will not be able to run specs in Command suite.
 
