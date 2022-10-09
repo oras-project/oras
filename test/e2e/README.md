@@ -27,7 +27,7 @@ If the image cannot be pulled, try creating a Github PAT and docker/oras login.
 
 ### 4. [Optional] Customize Port for Distribution
 ```shell
-export ORAS_REGISTRY_HOST="localhost:$PORT" # replace with right os/arch
+export ORAS_REGISTRY_HOST="localhost:$PORT"
 # for PowerShell, use $env:ORAS_REGISTRY_HOST = "localhost:$PORT"
 ```
 If you skipped step 4, E2E test will look for distribution ran in `localhost:5000`
