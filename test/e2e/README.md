@@ -50,7 +50,7 @@ If you want to run command suite, you need to decompress the registry storage fi
 ```shell
 mnt_root=${REPO_ROOT}/test/e2e/testdata/distribution/mount
 for layer in $(ls ${mnt_root}/*.tar.gz); do
-    tar -xvzf $layer -C {mnt_root}$
+    tar -xvzf $layer -C ${mnt_root}
 done
 
 PORT=5000
