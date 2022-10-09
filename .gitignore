@@ -38,4 +38,4 @@ dist/
 *.tar.gz
 vendor/
 _dist/
-test/e2e/testdata/distribution/mount/
+test/e2e/testdata/distribution/mount/docker
