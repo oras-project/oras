@@ -46,7 +46,7 @@ jobs:
           go install github.com/onsi/ginkgo/v2/ginkgo
           rm -rf $mnt_root/docker
           for layer in $(ls $mnt_root/*.tar.gz); do
-            tar -xvzf $layer -C mnt_root$
+            tar -xvzf $layer -C $mnt_root
           done
           trap 'docker kill oras-e2e || true' ERR
           docker run -d -p 5000:5000 --rm --name oras-e2e \
