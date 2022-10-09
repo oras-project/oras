@@ -31,7 +31,6 @@ body:
     id: expect
     attributes:
       label: "What did you expect to happen?"
-      render: shell
   - type: textarea
     id: reproduce
     validations:
