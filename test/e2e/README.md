@@ -94,7 +94,7 @@ Describe: <Role>
 #### 5.1 Command Suite
 Command suite uses pre-baked registry data for testing. The repository name should be `command/$repo_suffix`. To add a new layer, compress the `docker` folder from the root directory of your distribution storage and copy it to `$REPO_ROOT/test/e2e/testdata/distribution/mount` folder.
 ```shell
-tar -cvzf $repo_suffix.tar.gz --owner=0 --group=0 docker/
+tar -cvzf ${repo_suffix}.tar.gz --owner=0 --group=0 docker/
 ```
 Currently we have below OCI images:
 ```mermaid
