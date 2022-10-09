@@ -8,7 +8,7 @@ Minimal setup: Run the script in **step 3**
 git clone https://github.com/oras-project/oras.git
 ```
 
-### 2. [Optional] Install Ginkgo
+### 2. _[Optional]_ Install Ginkgo
 This will enable you use `ginkgo` directly in CLI.
 ```shell
 go install github.com/onsi/ginkgo/v2/ginkgo@latest
@@ -24,20 +24,20 @@ docker run -dp $PORT:5000 --rm --name oras-e2e \
     ghcr.io/oras-project/registry:v1.0.0-rc.2
 ```
 
-### 4. [Optional] Customize Port for Distribution
+### 4. _[Optional]_ Customize Port for Distribution
 ```shell
 export ORAS_REGISTRY_HOST="localhost:$PORT"
 # for PowerShell, use $env:ORAS_REGISTRY_HOST = "localhost:$PORT"
 ```
 If you skipped step 4, E2E test will look for distribution ran in `localhost:5000`
 
-### 5. [Optional] Setup ORAS Binary for Testing
+### 5. _[Optional]_ Setup ORAS Binary for Testing
 ```bash
 # Set REPO_ROOT as root folder of oras CLI code
 cd $REPO_ROOT
 make build
 ```
-### 6. [Optional] Setup Pre-Built Binary
+### 6. _[Optional]_ Setup Pre-Built Binary
 You need to setup below environmental variables to debug a pre-built ORAS binary:
 ```bash
 export ORAS_PATH="bin/linux/amd64/oras" # change target platform if needed
@@ -45,17 +45,18 @@ export GITHUB_WORKSPACE=$REPO_ROOT
 ```
 If you skipped step 5 or 6, Gomega will build a temp binary, which will include all the CLI code changes in the working directory.
 
-### 7. [Optional] Mount Test Data
+### 7. _[Optional]_ Mount Test Data
 If you want to run command suite, you need to decompress the registry storage files and mount to the distribution. `$REPO_ROOT` points to the root folder of cloned oras CLI code.
 ```shell
-for layer in $(ls $REPO_ROOT/test/e2e/testdata/distribution/mount/*.tar.gz); do
-    tar -xvzf $layer -C $REPO_ROOT/test/e2e/testdata/distribution/mount
+mnt_root=${REPO_ROOT}/test/e2e/testdata/distribution/mount
+for layer in $(ls ${mnt_root}/*.tar.gz); do
+    tar -xvzf $layer -C {mnt_root}$
 done
 
 PORT=5000
-docker run -dp $PORT:5000 --rm --name oras-e2e \
+docker run -dp ${PORT}:5000 --rm --name oras-e2e \
     --env STORAGE_DELETE_ENABLED=true \
-    --mount type=bind,source=$REPO_ROOT/test/e2e/testdata/distribution/mount/docker,target=/opt/data/registry-root-dir/docker \
+    --mount type=bind,source=${mnt_root}/docker,target=/opt/data/registry-root-dir/docker \
     ghcr.io/oras-project/registry:v1.0.0-rc.2
 ```
 Skipping step 7 you will not be able to run specs in Command suite.
@@ -93,7 +94,7 @@ Describe: <Role>
 #### 5.1 Command Suite
 Command suite uses pre-baked registry data for testing. The repository name should be `command/$repo_suffix`. To add a new layer, compress the `docker` folder from the root directory of your distribution storage and copy it to `$REPO_ROOT/test/e2e/testdata/distribution/mount` folder.
 ```shell
-tar -cvzf $repo_suffix.tar.gz  --owner=0 --group=0 docker/
+tar -cvzf $repo_suffix.tar.gz --owner=0 --group=0 docker/
 ```
 Currently we have below OCI images:
 ```mermaid
