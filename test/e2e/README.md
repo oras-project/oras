@@ -16,7 +16,7 @@ go install github.com/onsi/ginkgo/v2/ginkgo@latest
 If you skip step 2, you can only run tests via `go test`. 
 
 ### 3. Run Distribution
-The backend of E2E test is a [oras-distribution](https://github.com/oras-project/distribution).
+The backend of E2E test is an [oras-distribution](https://github.com/oras-project/distribution).
 ```shell
 PORT=5000
 docker run -dp $PORT:5000 --rm --name oras-e2e \
