@@ -38,7 +38,7 @@ body:
     attributes:
       label: "How can we reproduce it?"
       description: "Please tell us your environment information as minimally and precisely as possible."
-  - type: input
+  - type: textarea
     id: version
     validations:
       required: true
