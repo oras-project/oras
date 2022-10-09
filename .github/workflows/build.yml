@@ -42,16 +42,16 @@ jobs:
       - name: Run E2E Tests
         run: |
           cd $GITHUB_WORKSPACE/test/e2e
-          mntRoot="$GITHUB_WORKSPACE/test/e2e/testdata/distribution/mount"
+          mnt_root="$GITHUB_WORKSPACE/test/e2e/testdata/distribution/mount"
           go install github.com/onsi/ginkgo/v2/ginkgo
-          rm -rf $mntRoot/docker
-          for layer in $(ls $mntRoot/*.tar.gz); do
-            tar -xvzf $layer -C $mntRoot
+          rm -rf $mnt_root/docker
+          for layer in $(ls $mnt_root/*.tar.gz); do
+            tar -xvzf $layer -C mnt_root$
           done
           trap 'docker kill oras-e2e || true' ERR
           docker run -d -p 5000:5000 --rm --name oras-e2e \
             --env STORAGE_DELETE_ENABLED=true \
-            --mount type=bind,source=$mntRoot/docker,target=/opt/data/registry-root-dir/docker \
+            --mount type=bind,source=$mnt_root/docker,target=/opt/data/registry-root-dir/docker \
             ghcr.io/oras-project/registry:latest
           ginkgo -r -p suite
           docker kill oras-e2e || true
