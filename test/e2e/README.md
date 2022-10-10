@@ -83,9 +83,9 @@ Two suites will be maintained for E2E testing:
 Inside a suite, please follow below model when building the hierarchical collections of specs:
 ```
 Describe: <Role>
-  Context: Scenario or command specific description
-    When: <Action>
-      It: <Result> (per-command execution)
+  When: Scenario or command specific description
+    It: <Action>
+      By: <Result> (per-command execution)
        Expect: <Result> (detailed checks for execution results)
 ```
 

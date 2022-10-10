@@ -43,19 +43,19 @@ var _ = Describe("ORAS User", Ordered, func() {
 	})
 
 	When("running commands without login", func() {
-		RunWithoutLogin("attach", Host+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
-		RunWithoutLogin("copy", Host+"/repo:from", Host+"/repo:to")
-		RunWithoutLogin("discover", Host+"/repo:tag")
-		RunWithoutLogin("push", "-a", "key=value", Host+"/repo:tag")
-		RunWithoutLogin("pull", Host+"/repo:tag")
-		RunWithoutLogin("manifest", "fetch", Host+"/repo:tag")
+		It("runs commands without logging in", func() {
+			RunWithoutLogin("attach", Host+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
+			RunWithoutLogin("copy", Host+"/repo:from", Host+"/repo:to")
+			RunWithoutLogin("discover", Host+"/repo:tag")
+			RunWithoutLogin("push", "-a", "key=value", Host+"/repo:tag")
+			RunWithoutLogin("pull", Host+"/repo:tag")
+			RunWithoutLogin("manifest", "fetch", Host+"/repo:tag")
+		})
 	})
 })
 
 func RunWithoutLogin(args ...string) {
-	It("runs "+args[0]+" command", func() {
-		Error(append(args, "--registry-config", AUTH_CONFIG_PATH)...).
-			MatchErrKeyWords("Error:", "credential required").
-			Exec("should fail without logging in")
-	})
+	Error(append(args, "--registry-config", AUTH_CONFIG_PATH)...).
+		MatchErrKeyWords("Error:", "credential required").
+		Exec("should fail without logging in")
 }

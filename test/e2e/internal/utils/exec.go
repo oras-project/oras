@@ -121,35 +121,31 @@ func (opts *execOption) Exec(text string) {
 	}
 
 	description := fmt.Sprintf("%s: %s %s", text, opts.binary, strings.Join(opts.args, " "))
-	ginkgo.By(description, func() {
-		var cmd *exec.Cmd
-		if opts.binary == default_binary {
-			opts.binary = ORASPath
-		}
+	ginkgo.By(description)
+	var cmd *exec.Cmd
+	if opts.binary == default_binary {
+		opts.binary = ORASPath
+	}
 
-		cmd = exec.Command(opts.binary, opts.args...)
-		cmd.Stdin = opts.stdin
-		if opts.workDir != nil {
-			wd, err := os.Getwd()
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(os.Chdir(*opts.workDir)).ShouldNot(HaveOccurred())
-			defer os.Chdir(wd)
-		}
-
-		session, err := gexec.Start(cmd, nil, nil)
+	cmd = exec.Command(opts.binary, opts.args...)
+	cmd.Stdin = opts.stdin
+	if opts.workDir != nil {
+		wd, err := os.Getwd()
 		Expect(err).ShouldNot(HaveOccurred())
+		Expect(os.Chdir(*opts.workDir)).ShouldNot(HaveOccurred())
+		defer os.Chdir(wd)
+	}
 
-		if opts.shouldFail {
-			Expect(session.Wait(opts.timeout).ExitCode()).ShouldNot(Equal(0))
-		} else {
-			Expect(session.Wait(opts.timeout).ExitCode()).Should(Equal(0))
-		}
+	fmt.Println(opts.args)
+	session, err := gexec.Start(cmd, os.Stdout, os.Stderr)
+	Expect(err).ShouldNot(HaveOccurred())
 
-		for _, s := range opts.stdout {
-			s.Match(session.Out)
-		}
-		for _, s := range opts.stderr {
-			s.Match(session.Err)
-		}
-	})
+	Expect(session.Wait(opts.timeout).ExitCode() != 0).Should(Equal(opts.shouldFail))
+
+	for _, s := range opts.stdout {
+		s.Match(session.Wait().Out)
+	}
+	for _, s := range opts.stderr {
+		s.Match(session.Wait().Err)
+	}
 }

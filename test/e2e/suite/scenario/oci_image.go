@@ -37,7 +37,7 @@ var (
 
 var _ = Describe("ORAS user", Ordered, func() {
 	repo := "oci-image"
-	When("logs in", func() {
+	When("logging in", func() {
 		It("using basic auth", func() {
 			info := "Login Succeeded\n"
 			Success("login", Host, "-u", USERNAME, "--password-stdin").

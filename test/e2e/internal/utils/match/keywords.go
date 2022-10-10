@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"strings"
 
-	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 )
 
@@ -42,6 +41,7 @@ func (want keywordMatcher) Match(got *gbytes.Buffer) {
 	}
 
 	if len(missed) != 0 {
-		Expect(fmt.Sprintf("Keywords missed: %v ===> ", missed) + fmt.Sprintf("Quoted output: %q", raw)).To(Equal(""))
+		fmt.Printf("Keywords missed: %v ", missed)
+		panic("failed to match all keywords")
 	}
 }
