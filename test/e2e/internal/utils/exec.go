@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -35,6 +36,7 @@ type execOption struct {
 	stdin      io.Reader
 	binary     string
 	args       []string
+	timeout    time.Duration
 	workDir    *string
 	shouldFail bool
 }
@@ -44,6 +46,7 @@ func Error(args ...string) *execOption {
 	return &execOption{
 		binary:     default_binary,
 		args:       args,
+		timeout:    10 * time.Second,
 		shouldFail: true,
 	}
 }
@@ -53,8 +56,15 @@ func Success(args ...string) *execOption {
 	return &execOption{
 		binary:     default_binary,
 		args:       args,
+		timeout:    10 * time.Second,
 		shouldFail: false,
 	}
+}
+
+// WithTimeOut sets timeout for execution.
+func (opts *execOption) WithTimeOut(timeout time.Duration) *execOption {
+	opts.timeout = timeout
+	return opts
 }
 
 // WithBinary sets binary for execution.
@@ -130,9 +140,9 @@ func (opts *execOption) Exec(text string) {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		if opts.shouldFail {
-			Expect(session.Wait("10s").ExitCode()).ShouldNot(Equal(0))
+			Expect(session.Wait(opts.timeout).ExitCode()).ShouldNot(Equal(0))
 		} else {
-			Expect(session.Wait("10s").ExitCode()).Should(Equal(0))
+			Expect(session.Wait(opts.timeout).ExitCode()).Should(Equal(0))
 		}
 
 		for _, s := range opts.stdout {

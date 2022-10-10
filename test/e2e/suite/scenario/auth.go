@@ -19,6 +19,7 @@ import (
 )
 
 const (
+	// customerize your own basic auth file via `htpasswd -cBb <file_name> <user_name> <password>`
 	USERNAME         = "hello"
 	PASSWORD         = "oras-test"
 	AUTH_CONFIG_PATH = "test.config"

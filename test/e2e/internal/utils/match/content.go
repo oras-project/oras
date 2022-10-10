@@ -21,6 +21,7 @@ import (
 // contentMatcher provides whole matching of the output.
 type contentMatcher struct{ s *string }
 
+// NewContentMatcher returns a content matcher
 func NewContentMatcher(s *string) contentMatcher {
 	return contentMatcher{s}
 }
