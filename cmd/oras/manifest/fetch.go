@@ -103,7 +103,7 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 		return err
 	}
 
-	manifests, err := opts.CachedTarget(repo.Manifests())
+	src, err := opts.CachedTarget(repo)
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 		// fetch manifest descriptor only
 		fetchOpts := oras.DefaultResolveOptions
 		fetchOpts.TargetPlatform = targetPlatform
-		desc, err = oras.Resolve(ctx, manifests, opts.targetRef, fetchOpts)
+		desc, err = oras.Resolve(ctx, src, opts.targetRef, fetchOpts)
 		if err != nil {
 			return err
 		}
@@ -122,7 +122,7 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 		var content []byte
 		fetchOpts := oras.DefaultFetchBytesOptions
 		fetchOpts.TargetPlatform = targetPlatform
-		desc, content, err = oras.FetchBytes(ctx, manifests, opts.targetRef, fetchOpts)
+		desc, content, err = oras.FetchBytes(ctx, src, opts.targetRef, fetchOpts)
 		if err != nil {
 			return err
 		}
