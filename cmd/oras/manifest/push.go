@@ -17,11 +17,13 @@ package manifest
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
 
+	digest "github.com/opencontainers/go-digest"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
@@ -127,12 +129,16 @@ func pushManifest(opts pushOptions) error {
 		ref = desc.Digest.String()
 	}
 
+	match, err := matchDigest(ctx, manifests, ref, desc.Digest)
+	if err != nil {
+		return err
+	}
 	verbose := opts.Verbose && !opts.OutputDescriptor
-	got, err := manifests.Resolve(ctx, ref)
-
-	// push the manifest if the reference does not exist;
-	// if the reference exists, then push the manifest if digests mismatch
-	if errors.Is(err, errdef.ErrNotFound) || (err == nil && got.Digest != desc.Digest) {
+	if match {
+		if err := display.PrintStatus(desc, "Exists", verbose); err != nil {
+			return err
+		}
+	} else {
 		if err = display.PrintStatus(desc, "Uploading", verbose); err != nil {
 			return err
 		}
@@ -140,10 +146,6 @@ func pushManifest(opts pushOptions) error {
 			return err
 		}
 		if err = display.PrintStatus(desc, "Uploaded ", verbose); err != nil {
-			return err
-		}
-	} else {
-		if err := display.PrintStatus(desc, "Exists", verbose); err != nil {
 			return err
 		}
 	}
@@ -174,4 +176,17 @@ func pushManifest(opts pushOptions) error {
 	fmt.Println("Digest:", desc.Digest)
 
 	return nil
+}
+
+// matchDigest checks whether the manifest's digest matches to it in the remote
+// repository.
+func matchDigest(ctx context.Context, resolver content.Resolver, reference string, digest digest.Digest) (bool, error) {
+	got, err := resolver.Resolve(ctx, reference)
+	if err != nil {
+		if errors.Is(err, errdef.ErrNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	return got.Digest == digest, nil
 }

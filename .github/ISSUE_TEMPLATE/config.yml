@@ -11,33 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-
-# Test binary, build with `go test -c`
-*.test
-
-# Output of the go coverage tool, specifically when used with LiteIDE
-*.out
-
-# VS Code
-.vscode
-debug
-
-# Jetbrains
-.idea
-
-# Custom
-coverage.txt
-bin/
-dist/
-*.tar.gz
-vendor/
-_dist/
-
-# Distribution storage files for local E2E testing
-test/e2e/testdata/distribution/mount/docker/ 
+blank_issues_enabled: true
+contact_links:
+  - name: Ask a question or request support in the community
+    url: https://github.com/oras-project/oras/discussions/
+    about: Ask a question or request support for using ORAS

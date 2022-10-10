@@ -34,6 +34,7 @@ header:
     - 'KEYS'
     - 'go.mod'
     - 'go.sum'
+    - 'go.work'
     - '**/testdata/**'
 
   comment: on-failure
@@ -41,3 +42,8 @@ header:
 dependency:
   files:
     - go.mod
+  licenses:
+    # known issue: https://github.com/apache/skywalking-eyes/pull/107#issuecomment-1129761574
+    - name: github.com/chzyer/logex
+      version: v1.1.10
+      license: MIT
