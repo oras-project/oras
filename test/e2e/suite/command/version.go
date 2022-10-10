@@ -25,9 +25,9 @@ import (
 )
 
 var _ = Describe("ORAS user", func() {
-	Context("checks oras version", func() {
-		When("running version command", func() {
-			It("should success", func() {
+	When("checks oras version", func() {
+		It("running version command", func() {
+			By("should success", func() {
 				session, err := gexec.Start(exec.Command(utils.ORASPath, "version"), nil, nil)
 				Expect(err).ShouldNot(HaveOccurred())
 				Eventually(session, "10s").Should(gexec.Exit(0))

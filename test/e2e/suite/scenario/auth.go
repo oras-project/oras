@@ -25,36 +25,35 @@ const (
 	AUTH_CONFIG_PATH = "test.config"
 )
 
-var _ = Describe("ORAS user", Ordered, func() {
-	Context("", func() {
+var _ = Describe("ORAS User", Ordered, func() {
+	When("logging in", func() {
 		info := "Login Succeeded\n"
-		When("using basic auth", func() {
+		It("uses basic auth", func() {
 			Success("login", Host, "-u", USERNAME, "-p", PASSWORD, "--registry-config", AUTH_CONFIG_PATH).
 				MatchContent(&info).
 				MatchErrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").Exec("should succeed with username&password flags")
 		})
 	})
 
-	Context("logs out", func() {
-		When("using logout command", func() {
+	When("logging out", func() {
+		It("using logout command", func() {
 			Success("logout", Host, "--registry-config", AUTH_CONFIG_PATH).
 				Exec("should log out")
 		})
 	})
 
-	Context("runs commands without login", func() {
-		whenRunWithoutLogin("attach", Host+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
-		whenRunWithoutLogin("copy", Host+"/repo:from", Host+"/repo:to")
-		whenRunWithoutLogin("discover", Host+"/repo:tag")
-		whenRunWithoutLogin("push", "-a", "key=value", Host+"/repo:tag")
-		whenRunWithoutLogin("pull", Host+"/repo:tag")
-
-		whenRunWithoutLogin("manifest", "fetch", Host+"/repo:tag")
+	When("running commands without login", func() {
+		RunWithoutLogin("attach", Host+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
+		RunWithoutLogin("copy", Host+"/repo:from", Host+"/repo:to")
+		RunWithoutLogin("discover", Host+"/repo:tag")
+		RunWithoutLogin("push", "-a", "key=value", Host+"/repo:tag")
+		RunWithoutLogin("pull", Host+"/repo:tag")
+		RunWithoutLogin("manifest", "fetch", Host+"/repo:tag")
 	})
 })
 
-func whenRunWithoutLogin(args ...string) {
-	When("running "+args[0]+" command", func() {
+func RunWithoutLogin(args ...string) {
+	It("runs "+args[0]+" command", func() {
 		Error(append(args, "--registry-config", AUTH_CONFIG_PATH)...).
 			MatchErrKeyWords("Error:", "credential required").
 			Exec("should fail without logging in")

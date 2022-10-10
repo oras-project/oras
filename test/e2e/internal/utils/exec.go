@@ -121,7 +121,7 @@ func (opts *execOption) Exec(text string) {
 	}
 
 	description := fmt.Sprintf("%s: %s %s", text, opts.binary, strings.Join(opts.args, " "))
-	ginkgo.It(description, func() {
+	ginkgo.By(description, func() {
 		var cmd *exec.Cmd
 		if opts.binary == default_binary {
 			opts.binary = ORASPath

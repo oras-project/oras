@@ -37,8 +37,8 @@ var (
 
 var _ = Describe("ORAS user", Ordered, func() {
 	repo := "oci-image"
-	Context("logs in", func() {
-		When("using basic auth", func() {
+	When("logs in", func() {
+		It("using basic auth", func() {
 			info := "Login Succeeded\n"
 			Success("login", Host, "-u", USERNAME, "--password-stdin").
 				WithInput(strings.NewReader(PASSWORD)).
@@ -48,7 +48,7 @@ var _ = Describe("ORAS user", Ordered, func() {
 		})
 	})
 
-	Context("pushes images and check", Ordered, func() {
+	When("pushes images and check", func() {
 		tag := "image"
 		workDir := new(string)
 		BeforeAll(func() {
@@ -59,7 +59,7 @@ var _ = Describe("ORAS user", Ordered, func() {
 			*workDir = dir
 		})
 
-		When("pushing and pulling an image", Ordered, func() {
+		It("pushing and pulling an image", func() {
 			manifestName := "packed.json"
 			Success("push", Reference(Host, repo, tag), "--config", files[0], files[1], files[2], files[3], "-v", "--export-manifest", manifestName).
 				MatchStatus([]match.StateKey{
@@ -71,7 +71,7 @@ var _ = Describe("ORAS user", Ordered, func() {
 				Exec("should push files with manifest exported")
 
 			exportedContent := new(string)
-			ginkgo.It("should export the manifest", func() {
+			ginkgo.By("should export the manifest", func() {
 				content, err := os.ReadFile(filepath.Join(*workDir, manifestName))
 				gomega.Expect(err).To(gomega.BeNil())
 				*exportedContent = string(content)
