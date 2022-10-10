@@ -41,16 +41,29 @@ jobs:
         run: make test
       - name: Run E2E Tests
         run: |
+          cd $GITHUB_WORKSPACE/test/e2e
           go install -mod=mod github.com/onsi/ginkgo/v2/ginkgo
-          tar -xvf $GITHUB_WORKSPACE/test/e2e/testdata/distribution/mount.tar -C $GITHUB_WORKSPACE/test/e2e/testdata/distribution/ > /dev/null
-          docker kill oras-e2e || true
+          tar -xvzf testdata/distribution/docker.tar.gz -C $GITHUB_WORKSPACE/test/e2e/testdata/distribution/
           trap 'docker kill oras-e2e || true' ERR
           docker run -d -p 5000:5000 --rm --name oras-e2e \
+            --env LOG_FIELDS_SERVICE=registry \
+            --env STORAGE_DELETE_ENABLED=true \
+            --env STORAGE_CACHE_BLOBDESCRIPTOR=inmemory \
+            --env STORAGE_FILESYSTEM_ROOTDIRECTORY=/opt/data/registry-root-dir \
+            --env HTTP_ADDR_HEADERS_X-CONTENT-TYPE-OPTIONS=[nosniff] \
+            --env HEALTH_STORAGEDRIVER_ENABLED=true \
+            --env HEALTH_STORAGEDRIVER_INTERVAL=10s \
+            --env HEALTH_STORAGEDRIVER_THRESHOLD=3 \
+            --env AUTH_HTPASSWD_REALM=test-basic \
+            --env AUTH_HTPASSWD_PATH=/etc/docker/registry/passwd \
+            --env EXTENSIONS_OCI_EXT=[discover] \
+            --env EXTENSIONS_DISTRIBUTION_REGISTRY=[taghistory,manifests] \
+            --env EXTENSIONS_ORAS_ARTIFACTS=[referrers] \
             --mount type=bind,source=$GITHUB_WORKSPACE/test/e2e/testdata/distribution/config-example-with-extensions.yml,target=/etc/docker/registry/config.yml \
             --mount type=bind,source=$GITHUB_WORKSPACE/test/e2e/testdata/distribution/passwd_bcrypt,target=/etc/docker/registry/passwd \
             --mount type=bind,source=$GITHUB_WORKSPACE/test/e2e/testdata/distribution/docker,target=/opt/data/registry-root-dir/docker \
             ghcr.io/oras-project/registry:latest
-          ginkgo -r -p $GITHUB_WORKSPACE/test/e2e/suite
+          ginkgo -r -p suite
           docker kill oras-e2e || true
         env:
           ORAS_PATH: bin/linux/amd64/oras

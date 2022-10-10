@@ -122,7 +122,8 @@ func runAttach(opts attachOptions) error {
 	desc, err := oras.PackArtifact(
 		ctx, store, opts.artifactType, orasDescs,
 		oras.PackArtifactOptions{
-			Subject: &subject,
+			Subject:             &subject,
+			ManifestAnnotations: annotations[option.AnnotationManifest],
 		})
 	if err != nil {
 		return err

@@ -39,7 +39,7 @@ var _ = Describe("ORAS user", Ordered, func() {
 	Context("logs in", func() {
 		When("using basic auth", func() {
 			info := "Login Succeeded\n"
-			Success("login", HOST, "-u", USERNAME, "--password-stdin").WithInput(strings.NewReader(PASSWORD)).MatchContent(&info).Exec("should succeed with username flag and password from stdin")
+			Success("login", Host, "-u", USERNAME, "--password-stdin").WithInput(strings.NewReader(PASSWORD)).MatchContent(&info).Exec("should succeed with username flag and password from stdin")
 		})
 	})
 
@@ -56,7 +56,7 @@ var _ = Describe("ORAS user", Ordered, func() {
 
 		When("pushing and pulling an image", Ordered, func() {
 			manifestName := "packed.json"
-			Success("push", Reference(HOST, repo, tag), "--config", files[0], files[1], files[2], files[3], "-v", "--export-manifest", manifestName).
+			Success("push", Reference(Host, repo, tag), "--config", files[0], files[1], files[2], files[3], "-v", "--export-manifest", manifestName).
 				MatchStatus([]match.StateKey{
 					{Digest: "46b68ac1696c", Name: "application/vnd.unknown.config.v1+json"},
 					{Digest: "2c26b46b68ff", Name: files[1]},
@@ -72,12 +72,12 @@ var _ = Describe("ORAS user", Ordered, func() {
 				*exportedContent = string(content)
 			})
 
-			Success("manifest", "fetch", Reference(HOST, repo, tag)).
+			Success("manifest", "fetch", Reference(Host, repo, tag)).
 				MatchContent(exportedContent).
 				Exec("should fetch pushed manifest content")
 
 			pullRoot := "pulled"
-			Success("pull", Reference(HOST, repo, tag), "-v", "--config", files[0], "-o", pullRoot).
+			Success("pull", Reference(Host, repo, tag), "-v", "--config", files[0], "-o", pullRoot).
 				MatchStatus([]match.StateKey{
 					{Digest: "46b68ac1696c", Name: "application/vnd.unknown.config.v1+json"},
 					{Digest: "2c26b46b68ff", Name: files[1]},

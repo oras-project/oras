@@ -25,10 +25,10 @@ const (
 )
 
 var _ = Describe("ORAS user", Ordered, func() {
-	Context("auth", func() {
+	Context("", func() {
 		info := "Login Succeeded\n"
 		When("using basic auth", func() {
-			Success("login", HOST, "-u", USERNAME, "-p", PASSWORD, "--registry-config", AUTH_CONFIG_PATH).
+			Success("login", Host, "-u", USERNAME, "-p", PASSWORD, "--registry-config", AUTH_CONFIG_PATH).
 				MatchContent(&info).
 				MatchErrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").Exec("should succeed with username&password flags")
 		})
@@ -36,19 +36,19 @@ var _ = Describe("ORAS user", Ordered, func() {
 
 	Context("logs out", func() {
 		When("using logout command", func() {
-			Success("logout", HOST, "--registry-config", AUTH_CONFIG_PATH).
+			Success("logout", Host, "--registry-config", AUTH_CONFIG_PATH).
 				Exec("should log out")
 		})
 	})
 
 	Context("runs commands without login", func() {
-		whenRunWithoutLogin("attach", HOST+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
-		whenRunWithoutLogin("copy", HOST+"/repo:from", HOST+"/repo:to")
-		whenRunWithoutLogin("discover", HOST+"/repo:tag")
-		whenRunWithoutLogin("push", "-a", "key=value", HOST+"/repo:tag")
-		whenRunWithoutLogin("pull", HOST+"/repo:tag")
+		whenRunWithoutLogin("attach", Host+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
+		whenRunWithoutLogin("copy", Host+"/repo:from", Host+"/repo:to")
+		whenRunWithoutLogin("discover", Host+"/repo:tag")
+		whenRunWithoutLogin("push", "-a", "key=value", Host+"/repo:tag")
+		whenRunWithoutLogin("pull", Host+"/repo:tag")
 
-		whenRunWithoutLogin("manifest", "fetch", HOST+"/repo:tag")
+		whenRunWithoutLogin("manifest", "fetch", Host+"/repo:tag")
 	})
 })
 
