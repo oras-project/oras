@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/ginkgo/v2"
@@ -39,7 +40,11 @@ var _ = Describe("ORAS user", Ordered, func() {
 	Context("logs in", func() {
 		When("using basic auth", func() {
 			info := "Login Succeeded\n"
-			Success("login", Host, "-u", USERNAME, "--password-stdin").WithInput(strings.NewReader(PASSWORD)).MatchContent(&info).Exec("should succeed with username flag and password from stdin")
+			Success("login", Host, "-u", USERNAME, "--password-stdin").
+				WithInput(strings.NewReader(PASSWORD)).
+				WithTimeOut(30 * time.Second).
+				MatchContent(&info).
+				Exec("should succeed with username flag and password from stdin")
 		})
 	})
 
