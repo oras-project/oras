@@ -15,7 +15,9 @@ name: build
 
 on:
   push:
-    branches: main
+    branches:
+    - main
+    - e2e-utility
 
   pull_request:
     branches: main
