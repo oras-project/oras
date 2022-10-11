@@ -13,6 +13,7 @@ limitations under the License.
 
 package utils
 
+// Reference generates the reference string from given parameters.
 func Reference(registry string, repo string, tag string) string {
 	ret := registry + "/" + repo
 	if tag != "" {
