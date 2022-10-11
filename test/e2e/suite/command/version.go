@@ -21,8 +21,8 @@ import (
 )
 
 var _ = Describe("ORAS user", func() {
-	When("checks oras version", func() {
-		It("running version command", func() {
+	When("checking oras version", func() {
+		It("runs version command", func() {
 			ORAS("version").Exec()
 		})
 	})
