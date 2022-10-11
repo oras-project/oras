@@ -54,8 +54,8 @@ var _ = Describe("ORAS user", Ordered, func() {
 		tag := "image"
 		var tempDir string
 		BeforeAll(func() {
-			workDir := GinkgoT().TempDir()
-			if err := CopyTestData(files, workDir); err != nil {
+			tempDir = GinkgoT().TempDir()
+			if err := CopyTestData(files, tempDir); err != nil {
 				panic(err)
 			}
 		})
