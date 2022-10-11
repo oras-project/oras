@@ -59,19 +59,19 @@ func Binary(path string, args ...string) *execOption {
 	}
 }
 
-// WithFailureCheck sets failure exit code checking for an execution.
+// WithFailureCheck sets failure exit code checking for the execution.
 func (opts *execOption) WithFailureCheck() *execOption {
 	opts.shouldFail = true
 	return opts
 }
 
-// WithTimeOut sets timeout for execution.
+// WithTimeOut sets timeout for the execution.
 func (opts *execOption) WithTimeOut(timeout time.Duration) *execOption {
 	opts.timeout = timeout
 	return opts
 }
 
-// WithDescription sets timeout for execution.
+// WithDescription sets description text for the execution.
 func (opts *execOption) WithDescription(text string) *execOption {
 	opts.text = text
 	return opts
@@ -83,25 +83,25 @@ func (opts *execOption) WithWorkDir(path string) *execOption {
 	return opts
 }
 
-// WithInput adds input to execution option.
+// WithInput redirects stdin to r for the execution.
 func (opts *execOption) WithInput(r io.Reader) *execOption {
 	opts.stdin = r
 	return opts
 }
 
-// MatchKeyWords adds key word matching to stdout.
+// MatchKeyWords adds keywords matching to stdout.
 func (opts *execOption) MatchKeyWords(keywords ...string) *execOption {
 	opts.stdout = append(opts.stdout, match.NewKeywordMatcher(keywords))
 	return opts
 }
 
-// MatchErrKeyWords adds key word matching to stderr.
+// MatchErrKeyWords adds keywords matching to stderr.
 func (opts *execOption) MatchErrKeyWords(keywords ...string) *execOption {
 	opts.stderr = append(opts.stderr, match.NewKeywordMatcher(keywords))
 	return opts
 }
 
-// MatchContent adds full content matching to the execution option.
+// MatchContent adds full content matching to the execution.
 func (opts *execOption) MatchContent(content string) *execOption {
 	if !opts.shouldFail {
 		opts.stdout = append(opts.stdout, match.NewContentMatcher(content))
@@ -117,8 +117,7 @@ func (opts *execOption) MatchStatus(keys []match.StateKey, verbose bool, success
 	return opts
 }
 
-// Exec helps execute `OrasPath args...` with text as description and o as
-// matching option.
+// Exec run the execution based on opts.
 func (opts *execOption) Exec() *gexec.Session {
 	if opts == nil {
 		// this should be a code error but can only be caught during runtime
