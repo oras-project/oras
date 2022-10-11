@@ -119,7 +119,7 @@ func (opts *execOption) MatchStatus(keys []match.StateKey, verbose bool, success
 
 // Exec helps execute `OrasPath args...` with text as description and o as
 // matching option.
-func (opts *execOption) Exec() {
+func (opts *execOption) Exec() *gexec.Session {
 	if opts == nil {
 		// this should be a code error but can only be caught during runtime
 		panic("Nil option for command execution")
@@ -160,4 +160,6 @@ func (opts *execOption) Exec() {
 	for _, s := range opts.stderr {
 		s.Match(session.Err)
 	}
+
+	return session
 }

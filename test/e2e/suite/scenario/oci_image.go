@@ -14,14 +14,11 @@ limitations under the License.
 package scenario
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/ginkgo/v2"
-	"github.com/onsi/gomega"
 	. "oras.land/oras/test/e2e/internal/utils"
 	"oras.land/oras/test/e2e/internal/utils/match"
 )
@@ -71,15 +68,9 @@ var _ = Describe("ORAS user", Ordered, func() {
 				WithWorkDir(workDir).
 				WithDescription("push files with manifest exported").Exec()
 
-			var exportedContent string
-			ginkgo.By("should export the manifest", func() {
-				content, err := os.ReadFile(filepath.Join(*workDir, manifestName))
-				gomega.Expect(err).To(gomega.BeNil())
-				exportedContent = string(content)
-			})
-
+			session := Binary("cat", manifestName).WithWorkDir(workDir).Exec()
 			ORAS("manifest", "fetch", Reference(Host, repo, tag)).
-				MatchContent(exportedContent).
+				MatchContent(string(session.Out.Contents())).
 				WithDescription("fetch pushed manifest content").Exec()
 
 			pullRoot := "pulled"
