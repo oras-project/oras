@@ -39,11 +39,10 @@ var _ = Describe("ORAS user", Ordered, func() {
 	repo := "oci-image"
 	When("logging in", func() {
 		It("using basic auth", func() {
-			info := "Login Succeeded\n"
 			Success("login", Host, "-u", USERNAME, "--password-stdin").
 				WithInput(strings.NewReader(PASSWORD)).
 				WithTimeOut(30 * time.Second).
-				MatchContent(&info).
+				MatchContent("Login Succeeded\n").
 				Exec("should succeed with username flag and password from stdin")
 		})
 	})
@@ -70,11 +69,11 @@ var _ = Describe("ORAS user", Ordered, func() {
 				WithWorkDir(workDir).
 				Exec("should push files with manifest exported")
 
-			exportedContent := new(string)
+			var exportedContent string
 			ginkgo.By("should export the manifest", func() {
 				content, err := os.ReadFile(filepath.Join(*workDir, manifestName))
 				gomega.Expect(err).To(gomega.BeNil())
-				*exportedContent = string(content)
+				exportedContent = string(content)
 			})
 
 			Success("manifest", "fetch", Reference(Host, repo, tag)).

@@ -27,10 +27,9 @@ const (
 
 var _ = Describe("ORAS User", Ordered, func() {
 	When("logging in", func() {
-		info := "Login Succeeded\n"
 		It("uses basic auth", func() {
 			Success("login", Host, "-u", USERNAME, "-p", PASSWORD, "--registry-config", AUTH_CONFIG_PATH).
-				MatchContent(&info).
+				MatchContent("Login Succeeded\n").
 				MatchErrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").Exec("should succeed with username&password flags")
 		})
 	})

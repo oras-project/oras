@@ -98,7 +98,7 @@ func (opts *execOption) MatchErrKeyWords(keywords ...string) *execOption {
 }
 
 // MatchContent adds full content matching to the execution option.
-func (opts *execOption) MatchContent(content *string) *execOption {
+func (opts *execOption) MatchContent(content string) *execOption {
 	if !opts.shouldFail {
 		opts.stdout = append(opts.stdout, match.NewContentMatcher(content))
 	} else {

@@ -19,13 +19,13 @@ import (
 )
 
 // contentMatcher provides whole matching of the output.
-type contentMatcher struct{ s *string }
+type contentMatcher struct{ s string }
 
 // NewContentMatcher returns a content matcher
-func NewContentMatcher(s *string) contentMatcher {
+func NewContentMatcher(s string) contentMatcher {
 	return contentMatcher{s}
 }
 
 func (c contentMatcher) Match(got *gbytes.Buffer) {
-	Expect(got).Should(gbytes.Say(*c.s))
+	Expect(got).Should(gbytes.Say(c.s))
 }
