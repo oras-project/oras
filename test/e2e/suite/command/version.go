@@ -16,22 +16,14 @@ limitations under the License.
 package command
 
 import (
-	"os/exec"
-
 	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gexec"
-	"oras.land/oras/test/e2e/internal/utils"
+	. "oras.land/oras/test/e2e/internal/utils"
 )
 
 var _ = Describe("ORAS user", func() {
 	When("checks oras version", func() {
 		It("running version command", func() {
-			By("should success", func() {
-				session, err := gexec.Start(exec.Command(utils.ORASPath, "version"), nil, nil)
-				Expect(err).ShouldNot(HaveOccurred())
-				Eventually(session, "10s").Should(gexec.Exit(0))
-			})
+			ORAS("version").Exec()
 		})
 	})
 })

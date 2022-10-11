@@ -33,6 +33,12 @@ var (
 		"foobar/foo2",
 		"foobar/bar",
 	}
+	statusKeys = []match.StateKey{
+		{Digest: "46b68ac1696c", Name: "application/vnd.unknown.config.v1+json"},
+		{Digest: "2c26b46b68ff", Name: files[1]},
+		{Digest: "2c26b46b68ff", Name: files[2]},
+		{Digest: "fcde2b2edba5", Name: files[3]},
+	}
 )
 
 var _ = Describe("ORAS user", Ordered, func() {
@@ -61,13 +67,9 @@ var _ = Describe("ORAS user", Ordered, func() {
 		It("pushes and pulls an image", func() {
 			manifestName := "packed.json"
 			ORAS("push", Reference(Host, repo, tag), "--config", files[0], files[1], files[2], files[3], "-v", "--export-manifest", manifestName).
-				MatchStatus([]match.StateKey{
-					{Digest: "46b68ac1696c", Name: "application/vnd.unknown.config.v1+json"},
-					{Digest: "2c26b46b68ff", Name: files[1]},
-					{Digest: "2c26b46b68ff", Name: files[2]},
-					{Digest: "fcde2b2edba5", Name: files[3]}}, true, 4).
+				MatchStatus(statusKeys, true, 4).
 				WithWorkDir(workDir).
-				WithDescription("should push files with manifest exported").Exec()
+				WithDescription("push files with manifest exported").Exec()
 
 			var exportedContent string
 			ginkgo.By("should export the manifest", func() {
@@ -78,15 +80,11 @@ var _ = Describe("ORAS user", Ordered, func() {
 
 			ORAS("manifest", "fetch", Reference(Host, repo, tag)).
 				MatchContent(exportedContent).
-				WithDescription("should fetch pushed manifest content").Exec()
+				WithDescription("fetch pushed manifest content").Exec()
 
 			pullRoot := "pulled"
 			ORAS("pull", Reference(Host, repo, tag), "-v", "--config", files[0], "-o", pullRoot).
-				MatchStatus([]match.StateKey{
-					{Digest: "46b68ac1696c", Name: "application/vnd.unknown.config.v1+json"},
-					{Digest: "2c26b46b68ff", Name: files[1]},
-					{Digest: "2c26b46b68ff", Name: files[2]},
-					{Digest: "fcde2b2edba5", Name: files[3]}}, true, 3).
+				MatchStatus(statusKeys, true, 3).
 				WithWorkDir(workDir).
 				WithDescription("should pull files with config").Exec()
 

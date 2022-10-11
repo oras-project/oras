@@ -24,7 +24,7 @@ import (
 // status represents the expected value of first field in the status log.
 type status = string
 
-// state represents the expected value of second and third fields next status log.
+// StateKey represents the expected value of second and third fields in status log.
 type StateKey struct {
 	Digest string
 	Name   string
@@ -46,7 +46,7 @@ type stateMachine struct {
 	end   *state
 }
 
-func newGraph(cmd string) (sm *stateMachine) {
+func newStateMachine(cmd string) (sm *stateMachine) {
 	sm = &stateMachine{
 		start: new(state),
 		end:   new(state),
@@ -97,7 +97,6 @@ func (opts *stateMachine) addPath(statuses ...string) {
 	}
 }
 
-// statusMatcher type helps matching statusMatcher log of a oras command.
 type statusMatcher struct {
 	states       map[StateKey]*state
 	endResult    map[status][]StateKey
@@ -112,7 +111,7 @@ func NewStatusMatcher(keys []StateKey, cmd string, verbose bool, expectSuccessCo
 	s := statusMatcher{
 		states:       make(map[StateKey]*state),
 		endResult:    make(map[string][]StateKey),
-		stateMachine: newGraph(cmd),
+		stateMachine: newStateMachine(cmd),
 		successCount: expectSuccessCount,
 		verbose:      verbose,
 	}
@@ -126,11 +125,11 @@ func NewStatusMatcher(keys []StateKey, cmd string, verbose bool, expectSuccessCo
 func (s *statusMatcher) switchState(st status, key StateKey) {
 	// load state
 	now, ok := s.states[key]
-	gomega.Expect(ok).To(gomega.BeTrue(), fmt.Sprintf("Should find state node for %v", key))
+	gomega.Expect(ok).To(gomega.BeTrue(), fmt.Sprintf("should find state node for %v", key))
 
 	// find next
 	e := findState(now, s.edges[st])
-	gomega.Expect(e).NotTo(gomega.BeNil(), fmt.Sprintf("Should state node not matching for %v, %v", st, key))
+	gomega.Expect(e).NotTo(gomega.BeNil(), fmt.Sprintf("should state node not matching for %v, %v", st, key))
 
 	// switch
 	s.states[key] = e.to
