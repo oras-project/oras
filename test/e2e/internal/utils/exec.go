@@ -33,7 +33,7 @@ const oras_binary = "oras"
 type execOption struct {
 	binary  string
 	args    []string
-	workDir *string
+	workDir string
 	timeout time.Duration
 
 	stdin      io.Reader
@@ -78,7 +78,7 @@ func (opts *execOption) WithDescription(text string) *execOption {
 }
 
 // WithWorkDir sets working directory for the execution.
-func (opts *execOption) WithWorkDir(path *string) *execOption {
+func (opts *execOption) WithWorkDir(path string) *execOption {
 	opts.workDir = path
 	return opts
 }

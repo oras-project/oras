@@ -52,23 +52,22 @@ var _ = Describe("ORAS user", Ordered, func() {
 
 	When("pushing images and check", func() {
 		tag := "image"
-		workDir := new(string)
+		var tempDir string
 		BeforeAll(func() {
-			dir := GinkgoT().TempDir()
-			if err := CopyTestData(files, dir); err != nil {
+			workDir := GinkgoT().TempDir()
+			if err := CopyTestData(files, workDir); err != nil {
 				panic(err)
 			}
-			*workDir = dir
 		})
 
 		It("pushes and pulls an image", func() {
 			manifestName := "packed.json"
 			ORAS("push", Reference(Host, repo, tag), "--config", files[0], files[1], files[2], files[3], "-v", "--export-manifest", manifestName).
 				MatchStatus(statusKeys, true, 4).
-				WithWorkDir(workDir).
+				WithWorkDir(tempDir).
 				WithDescription("push files with manifest exported").Exec()
 
-			session := Binary("cat", manifestName).WithWorkDir(workDir).Exec()
+			session := Binary("cat", manifestName).WithWorkDir(tempDir).Exec()
 			ORAS("manifest", "fetch", Reference(Host, repo, tag)).
 				MatchContent(string(session.Out.Contents())).
 				WithDescription("fetch pushed manifest content").Exec()
@@ -76,12 +75,12 @@ var _ = Describe("ORAS user", Ordered, func() {
 			pullRoot := "pulled"
 			ORAS("pull", Reference(Host, repo, tag), "-v", "--config", files[0], "-o", pullRoot).
 				MatchStatus(statusKeys, true, 3).
-				WithWorkDir(workDir).
+				WithWorkDir(tempDir).
 				WithDescription("should pull files with config").Exec()
 
 			for _, f := range files {
 				Binary("diff", filepath.Join(f), filepath.Join(pullRoot, f)).
-					WithWorkDir(workDir).
+					WithWorkDir(tempDir).
 					WithDescription("should download identical file " + f).Exec()
 			}
 		})
