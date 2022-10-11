@@ -27,27 +27,29 @@ const (
 )
 
 var _ = Describe("ORAS beginners", func() {
-	When("run manifest command", func() {
+	When("running manifest command", func() {
 		runAndShowPreviewInHelp([]string{"manifest"})
 		runAndShowPreviewInHelp([]string{"manifest", "fetch"}, preview_desc, example_desc)
 
-		It("call sub-commands with aliases", func() {
-			Success("manifest", "get", "--help").
+		It("calls sub-commands with aliases", func() {
+			ORAS("manifest", "get", "--help").
 				MatchKeyWords("[Preview] Fetch", preview_desc, example_desc).
-				Exec("should succeed")
+				Exec()
 		})
-		It("fetching manifest with no artifact reference provided", func() {
-			Error("manifest", "fetch").
+		It("fetches manifest with no artifact reference provided", func() {
+			ORAS("manifest", "fetch").
+				WithFailureCheck().
 				MatchErrKeyWords("Error:").
-				Exec("should fail")
+				Exec()
 		})
 	})
 })
 
 func runAndShowPreviewInHelp(args []string, keywords ...string) {
-	It(fmt.Sprintf("running %q command", strings.Join(args, " ")), func() {
-		Success(append(args, "--help")...).
+	It(fmt.Sprintf("runs %q command", strings.Join(args, " ")), func() {
+		ORAS(append(args, "--help")...).
 			MatchKeyWords(append(keywords, "[Preview] "+args[len(args)-1], "\nUsage:")...).
-			Exec("should show preview and help doc")
+			WithDescription("show preview and help doc").
+			Exec()
 	})
 }

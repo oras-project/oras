@@ -27,38 +27,42 @@ import (
 	"oras.land/oras/test/e2e/internal/utils/match"
 )
 
-const default_binary = "oras"
+const oras_binary = "oras"
 
 // execOption provides option used to execute a command.
 type execOption struct {
+	binary  string
+	args    []string
+	workDir *string
+	timeout time.Duration
+
+	stdin      io.Reader
 	stdout     []match.Matchable
 	stderr     []match.Matchable
-	stdin      io.Reader
-	binary     string
-	args       []string
-	timeout    time.Duration
-	workDir    *string
 	shouldFail bool
+
+	text string
 }
 
-// Error returns a default execution expecting error.
-func Error(args ...string) *execOption {
-	return &execOption{
-		binary:     default_binary,
-		args:       args,
-		timeout:    10 * time.Second,
-		shouldFail: true,
-	}
+// ORAS returns default execution option for oras binary.
+func ORAS(args ...string) *execOption {
+	return Binary(oras_binary, args...)
 }
 
-// Success returns a default execution expecting success.
-func Success(args ...string) *execOption {
+// Binary returns default execution option for customized binary.
+func Binary(path string, args ...string) *execOption {
 	return &execOption{
-		binary:     default_binary,
+		binary:     path,
 		args:       args,
 		timeout:    10 * time.Second,
 		shouldFail: false,
 	}
+}
+
+// WithFailureCheck sets failure exit code checking for an execution.
+func (opts *execOption) WithFailureCheck() *execOption {
+	opts.shouldFail = true
+	return opts
 }
 
 // WithTimeOut sets timeout for execution.
@@ -67,9 +71,9 @@ func (opts *execOption) WithTimeOut(timeout time.Duration) *execOption {
 	return opts
 }
 
-// WithBinary sets binary for execution.
-func (opts *execOption) WithBinary(path string) *execOption {
-	opts.binary = path
+// WithDescription sets timeout for execution.
+func (opts *execOption) WithDescription(text string) *execOption {
+	opts.text = text
 	return opts
 }
 
@@ -115,33 +119,41 @@ func (opts *execOption) MatchStatus(keys []match.StateKey, verbose bool, success
 
 // Exec helps execute `OrasPath args...` with text as description and o as
 // matching option.
-func (opts *execOption) Exec(text string) {
+func (opts *execOption) Exec() {
 	if opts == nil {
+		// this should be a code error but can only be caught during runtime
 		panic("Nil option for command execution")
 	}
 
-	description := fmt.Sprintf(">> %s: %s %s >>", text, opts.binary, strings.Join(opts.args, " "))
+	if opts.text == "" {
+		if opts.shouldFail {
+			opts.text = "fail"
+		} else {
+			opts.text = "succeed"
+		}
+	}
+	description := fmt.Sprintf(">> should %s: %s %s >>", opts.text, opts.binary, strings.Join(opts.args, " "))
 	ginkgo.By(description)
+
 	var cmd *exec.Cmd
-	if opts.binary == default_binary {
+	if opts.binary == oras_binary {
 		opts.binary = ORASPath
 	}
-
 	cmd = exec.Command(opts.binary, opts.args...)
 	cmd.Stdin = opts.stdin
 	if opts.workDir != nil {
+		// switch working directory
 		wd, err := os.Getwd()
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(os.Chdir(*opts.workDir)).ShouldNot(HaveOccurred())
 		defer os.Chdir(wd)
 	}
-
 	fmt.Println(description)
 	session, err := gexec.Start(cmd, os.Stdout, os.Stderr)
 	Expect(err).ShouldNot(HaveOccurred())
-
 	Expect(session.Wait(opts.timeout).ExitCode() != 0).Should(Equal(opts.shouldFail))
 
+	// matching result
 	for _, s := range opts.stdout {
 		s.Match(session.Out)
 	}

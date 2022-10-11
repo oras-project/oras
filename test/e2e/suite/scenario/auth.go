@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	// customerize your own basic auth file via `htpasswd -cBb <file_name> <user_name> <password>`
+	// customize your own basic auth file via `htpasswd -cBb <file_name> <user_name> <password>`
 	USERNAME         = "hello"
 	PASSWORD         = "oras-test"
 	AUTH_CONFIG_PATH = "test.config"
@@ -28,20 +28,19 @@ const (
 var _ = Describe("ORAS User", Ordered, func() {
 	When("logging in", func() {
 		It("uses basic auth", func() {
-			Success("login", Host, "-u", USERNAME, "-p", PASSWORD, "--registry-config", AUTH_CONFIG_PATH).
+			ORAS("login", Host, "-u", USERNAME, "-p", PASSWORD, "--registry-config", AUTH_CONFIG_PATH).
 				MatchContent("Login Succeeded\n").
-				MatchErrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").Exec("should succeed with username&password flags")
+				MatchErrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").
+				WithDescription("login with username&password flags").Exec()
 		})
 	})
 
 	When("logging out", func() {
-		It("using logout command", func() {
-			Success("logout", Host, "--registry-config", AUTH_CONFIG_PATH).
-				Exec("should log out")
+		It("uses logout command", func() {
+			ORAS("logout", Host, "--registry-config", AUTH_CONFIG_PATH).
+				WithDescription("successfully log out").Exec()
 		})
-	})
 
-	When("running commands without login", func() {
 		It("runs commands without logging in", func() {
 			RunWithoutLogin("attach", Host+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
 			RunWithoutLogin("copy", Host+"/repo:from", Host+"/repo:to")
@@ -54,7 +53,8 @@ var _ = Describe("ORAS User", Ordered, func() {
 })
 
 func RunWithoutLogin(args ...string) {
-	Error(append(args, "--registry-config", AUTH_CONFIG_PATH)...).
+	ORAS(append(args, "--registry-config", AUTH_CONFIG_PATH)...).
+		WithFailureCheck().
 		MatchErrKeyWords("Error:", "credential required").
-		Exec("should fail without logging in")
+		WithDescription("fail without logging in").Exec()
 }

@@ -39,15 +39,15 @@ var _ = Describe("ORAS user", Ordered, func() {
 	repo := "oci-image"
 	When("logging in", func() {
 		It("using basic auth", func() {
-			Success("login", Host, "-u", USERNAME, "--password-stdin").
+			ORAS("login", Host, "-u", USERNAME, "--password-stdin").
 				WithInput(strings.NewReader(PASSWORD)).
-				WithTimeOut(30 * time.Second).
+				WithTimeOut(20 * time.Second).
 				MatchContent("Login Succeeded\n").
-				Exec("should succeed with username flag and password from stdin")
+				WithDescription("should succeed with username flag and password from stdin").Exec()
 		})
 	})
 
-	When("pushes images and check", func() {
+	When("pushing images and check", func() {
 		tag := "image"
 		workDir := new(string)
 		BeforeAll(func() {
@@ -58,16 +58,16 @@ var _ = Describe("ORAS user", Ordered, func() {
 			*workDir = dir
 		})
 
-		It("pushing and pulling an image", func() {
+		It("pushes and pulls an image", func() {
 			manifestName := "packed.json"
-			Success("push", Reference(Host, repo, tag), "--config", files[0], files[1], files[2], files[3], "-v", "--export-manifest", manifestName).
+			ORAS("push", Reference(Host, repo, tag), "--config", files[0], files[1], files[2], files[3], "-v", "--export-manifest", manifestName).
 				MatchStatus([]match.StateKey{
 					{Digest: "46b68ac1696c", Name: "application/vnd.unknown.config.v1+json"},
 					{Digest: "2c26b46b68ff", Name: files[1]},
 					{Digest: "2c26b46b68ff", Name: files[2]},
 					{Digest: "fcde2b2edba5", Name: files[3]}}, true, 4).
 				WithWorkDir(workDir).
-				Exec("should push files with manifest exported")
+				WithDescription("should push files with manifest exported").Exec()
 
 			var exportedContent string
 			ginkgo.By("should export the manifest", func() {
@@ -76,25 +76,24 @@ var _ = Describe("ORAS user", Ordered, func() {
 				exportedContent = string(content)
 			})
 
-			Success("manifest", "fetch", Reference(Host, repo, tag)).
+			ORAS("manifest", "fetch", Reference(Host, repo, tag)).
 				MatchContent(exportedContent).
-				Exec("should fetch pushed manifest content")
+				WithDescription("should fetch pushed manifest content").Exec()
 
 			pullRoot := "pulled"
-			Success("pull", Reference(Host, repo, tag), "-v", "--config", files[0], "-o", pullRoot).
+			ORAS("pull", Reference(Host, repo, tag), "-v", "--config", files[0], "-o", pullRoot).
 				MatchStatus([]match.StateKey{
 					{Digest: "46b68ac1696c", Name: "application/vnd.unknown.config.v1+json"},
 					{Digest: "2c26b46b68ff", Name: files[1]},
 					{Digest: "2c26b46b68ff", Name: files[2]},
 					{Digest: "fcde2b2edba5", Name: files[3]}}, true, 3).
 				WithWorkDir(workDir).
-				Exec("should pull files with config")
+				WithDescription("should pull files with config").Exec()
 
 			for _, f := range files {
-				Success(filepath.Join(f), filepath.Join(pullRoot, f)).
+				Binary("diff", filepath.Join(f), filepath.Join(pullRoot, f)).
 					WithWorkDir(workDir).
-					WithBinary("diff").
-					Exec("should download identical file " + f)
+					WithDescription("should download identical file " + f).Exec()
 			}
 		})
 
