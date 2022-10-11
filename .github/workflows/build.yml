@@ -58,7 +58,7 @@ jobs:
             --mount type=bind,source=$mnt_root/docker,target=/opt/data/registry-root-dir/docker \
             --mount type=bind,source=$mnt_root/passwd_bcrypt,target=/etc/docker/registry/passwd \
             ghcr.io/oras-project/registry:v1.0.0-rc.2
-          ginkgo -r -p suite
+          ginkgo -r -p -succinct suite
           docker kill oras-e2e || true
         env:
           ORAS_PATH: bin/linux/amd64/oras
