@@ -92,6 +92,7 @@ var _ = Describe("ORAS user", Ordered, func() {
 
 			for _, f := range files {
 				Success(filepath.Join(f), filepath.Join(pullRoot, f)).
+					WithWorkDir(workDir).
 					WithBinary("diff").
 					Exec("should download identical file " + f)
 			}

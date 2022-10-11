@@ -27,5 +27,6 @@ func NewContentMatcher(s string) contentMatcher {
 }
 
 func (c contentMatcher) Match(got *gbytes.Buffer) {
-	Expect(got).Should(gbytes.Say(c.s))
+	content := got.Contents()
+	Expect(string(content)).Should(Equal(c.s))
 }

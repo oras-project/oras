@@ -120,7 +120,7 @@ func (opts *execOption) Exec(text string) {
 		panic("Nil option for command execution")
 	}
 
-	description := fmt.Sprintf("%s: %s %s", text, opts.binary, strings.Join(opts.args, " "))
+	description := fmt.Sprintf(">> %s: %s %s >>", text, opts.binary, strings.Join(opts.args, " "))
 	ginkgo.By(description)
 	var cmd *exec.Cmd
 	if opts.binary == default_binary {
@@ -136,16 +136,16 @@ func (opts *execOption) Exec(text string) {
 		defer os.Chdir(wd)
 	}
 
-	fmt.Println(opts.args)
+	fmt.Println(description)
 	session, err := gexec.Start(cmd, os.Stdout, os.Stderr)
 	Expect(err).ShouldNot(HaveOccurred())
 
 	Expect(session.Wait(opts.timeout).ExitCode() != 0).Should(Equal(opts.shouldFail))
 
 	for _, s := range opts.stdout {
-		s.Match(session.Wait().Out)
+		s.Match(session.Out)
 	}
 	for _, s := range opts.stderr {
-		s.Match(session.Wait().Err)
+		s.Match(session.Err)
 	}
 }
