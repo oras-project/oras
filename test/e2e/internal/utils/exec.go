@@ -141,11 +141,11 @@ func (opts *execOption) Exec() *gexec.Session {
 	}
 	cmd = exec.Command(opts.binary, opts.args...)
 	cmd.Stdin = opts.stdin
-	if opts.workDir != nil {
+	if opts.workDir != "" {
 		// switch working directory
 		wd, err := os.Getwd()
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(os.Chdir(*opts.workDir)).ShouldNot(HaveOccurred())
+		Expect(os.Chdir(opts.workDir)).ShouldNot(HaveOccurred())
 		defer os.Chdir(wd)
 	}
 	fmt.Println(description)
