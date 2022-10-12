@@ -19,8 +19,8 @@ on:
 
   pull_request:
     branches:
-    - main
-    - release-*
+      - main
+      - release-*
 jobs:
   build:
     runs-on: ubuntu-latest
