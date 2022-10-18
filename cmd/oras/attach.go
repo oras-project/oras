@@ -79,7 +79,6 @@ Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json'
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
-	cmd.MarkFlagRequired("artifact-type")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
@@ -106,25 +105,20 @@ func runAttach(opts attachOptions) error {
 	if dst.Reference.Reference == "" {
 		return oerrors.NewErrInvalidReference(dst.Reference)
 	}
-	ociSubject, err := dst.Resolve(ctx, dst.Reference.Reference)
+	subject, err := dst.Resolve(ctx, dst.Reference.Reference)
 	if err != nil {
 		return err
 	}
-	subject := ociToArtifact(ociSubject)
 	ociDescs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
 	if err != nil {
 		return err
 	}
-	orasDescs := make([]artifactspec.Descriptor, len(ociDescs))
-	for i := range ociDescs {
-		orasDescs[i] = ociToArtifact(ociDescs[i])
+	po := oras.PackOptions{
+		PackImageManifest:   false,
+		Subject:             &subject,
+		ManifestAnnotations: annotations[option.AnnotationManifest],
 	}
-	desc, err := oras.PackArtifact(
-		ctx, store, opts.artifactType, orasDescs,
-		oras.PackArtifactOptions{
-			Subject:             &subject,
-			ManifestAnnotations: annotations[option.AnnotationManifest],
-		})
+	root, err := oras.Pack(ctx, store, opts.artifactType, ociDescs, po)
 	if err != nil {
 		return err
 	}
@@ -134,8 +128,8 @@ func runAttach(opts attachOptions) error {
 	graphCopyOptions := oras.DefaultCopyGraphOptions
 	graphCopyOptions.Concurrency = opts.concurrency
 	graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		if isEqualOCIDescriptor(node, desc) {
-			// Skip subject
+		if isEqualOCIDescriptor(node, root) {
+			// skip subject
 			return ociDescs, nil
 		}
 		return content.Successors(ctx, fetcher, node)
@@ -152,17 +146,18 @@ func runAttach(opts attachOptions) error {
 		}
 		return display.PrintStatus(desc, "Uploaded ", opts.Verbose)
 	}
-	// Push
-	err = oras.CopyGraph(ctx, store, dst, desc, graphCopyOptions)
+
+	// push
+	err = oras.CopyGraph(ctx, store, dst, root, graphCopyOptions)
 	if err != nil {
 		return err
 	}
 
 	fmt.Println("Attached to", opts.targetRef)
-	fmt.Println("Digest:", desc.Digest)
+	fmt.Println("Digest:", root.Digest)
 
 	// Export manifest
-	return opts.ExportManifest(ctx, store, desc)
+	return opts.ExportManifest(ctx, store, root)
 }
 
 func isEqualOCIDescriptor(a, b ocispec.Descriptor) bool {
