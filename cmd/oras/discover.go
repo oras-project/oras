@@ -27,6 +27,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/option"
 
 	"github.com/need-being/go-tree"
+	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 )
@@ -174,7 +175,15 @@ func printDiscoveredReferrersTable(refs []ocispec.Descriptor, verbose bool) {
 // printDiscoveredReferrersJSON prints referrer list in JSON equivalent to the
 // image index: https://github.com/opencontainers/image-spec/blob/main/image-index.md#image-index-property-descriptions
 func printDiscoveredReferrersJSON(desc ocispec.Descriptor, refs []ocispec.Descriptor) error {
-	return printJSON(ocispec.Index{Manifests: refs})
+	output := ocispec.Index{
+		Versioned: specs.Versioned{
+			SchemaVersion: 2, // historical value. does not pertain to OCI or docker version
+		},
+		MediaType: ocispec.MediaTypeImageIndex,
+		Manifests: refs,
+	}
+
+	return printJSON(output)
 }
 
 func printJSON(object interface{}) error {
