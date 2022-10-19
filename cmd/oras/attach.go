@@ -93,7 +93,7 @@ func runAttach(opts attachOptions) error {
 		return errors.New("no blob or manifest annotation are provided")
 	}
 
-	// Prepare manifest
+	// prepare manifest
 	store := file.New("")
 	defer store.Close()
 	store.AllowPathTraversalOnWrite = opts.PathValidationDisabled
@@ -109,28 +109,29 @@ func runAttach(opts attachOptions) error {
 	if err != nil {
 		return err
 	}
-	ociDescs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
+	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
 	if err != nil {
 		return err
 	}
-	po := oras.PackOptions{
-		PackImageManifest:   false,
-		Subject:             &subject,
-		ManifestAnnotations: annotations[option.AnnotationManifest],
-	}
-	root, err := oras.Pack(ctx, store, opts.artifactType, ociDescs, po)
+	root, err := oras.Pack(
+		ctx, store, opts.artifactType, descs,
+		oras.PackOptions{
+			PackImageManifest:   false,
+			Subject:             &subject,
+			ManifestAnnotations: annotations[option.AnnotationManifest],
+		})
 	if err != nil {
 		return err
 	}
 
-	// Prepare Push
+	// prepare push
 	committed := &sync.Map{}
 	graphCopyOptions := oras.DefaultCopyGraphOptions
 	graphCopyOptions.Concurrency = opts.concurrency
 	graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		if isEqualOCIDescriptor(node, root) {
 			// skip subject
-			return ociDescs, nil
+			return descs, nil
 		}
 		return content.Successors(ctx, fetcher, node)
 	}
