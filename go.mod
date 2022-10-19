@@ -8,7 +8,6 @@ require (
 	github.com/need-being/go-tree v0.1.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.0-rc2
-	github.com/oras-project/artifacts-spec v1.0.0-rc.2
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.0
 	github.com/spf13/pflag v1.0.5
