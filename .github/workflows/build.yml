@@ -51,7 +51,7 @@ jobs:
             tar -xvzf $layer -C $mnt_root
           done
           trap 'docker kill oras-e2e || true' ERR
-          docker run -d -p 5000:5000 --rm --name oras-e2e \
+          docker run --pull always -d -p 5000:5000 --rm --name oras-e2e \
             --env REGISTRY_STORAGE_DELETE_ENABLED=true \
             --env REGISTRY_AUTH_HTPASSWD_REALM=test-basic \
             --env REGISTRY_AUTH_HTPASSWD_PATH=/etc/docker/registry/passwd \
