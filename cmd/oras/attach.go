@@ -22,7 +22,6 @@ import (
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	artifactspec "github.com/oras-project/artifacts-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
@@ -79,6 +78,7 @@ Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json'
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
+	cmd.MarkFlagRequired("artifact-type")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
@@ -163,15 +163,4 @@ func runAttach(opts attachOptions) error {
 
 func isEqualOCIDescriptor(a, b ocispec.Descriptor) bool {
 	return a.Size == b.Size && a.Digest == b.Digest && a.MediaType == b.MediaType
-}
-
-// ociToArtifact converts OCI descriptor to artifact descriptor.
-func ociToArtifact(desc ocispec.Descriptor) artifactspec.Descriptor {
-	return artifactspec.Descriptor{
-		MediaType:   desc.MediaType,
-		Digest:      desc.Digest,
-		Size:        desc.Size,
-		URLs:        desc.URLs,
-		Annotations: desc.Annotations,
-	}
 }

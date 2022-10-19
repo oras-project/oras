@@ -27,7 +27,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/option"
 
 	"github.com/need-being/go-tree"
-	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 )
@@ -173,30 +172,9 @@ func printDiscoveredReferrersTable(refs []ocispec.Descriptor, verbose bool) {
 }
 
 // printDiscoveredReferrersJSON prints referrer list in JSON equivalent to the
-// API result: https://github.com/oras-project/artifacts-spec/blob/v1.0.0-rc.1/manifest-referrers-api.md#artifact-referrers-api-results
+// image index: https://github.com/opencontainers/image-spec/blob/main/image-index.md#image-index-property-descriptions
 func printDiscoveredReferrersJSON(desc ocispec.Descriptor, refs []ocispec.Descriptor) error {
-	type referrerDesc struct {
-		Digest    digest.Digest `json:"digest"`
-		MediaType string        `json:"mediaType"`
-		Artifact  string        `json:"artifactType"`
-		Size      int64         `json:"size"`
-	}
-	output := struct {
-		Referrers []referrerDesc `json:"referrers"`
-	}{
-		Referrers: make([]referrerDesc, len(refs)),
-	}
-
-	for i, ref := range refs {
-		output.Referrers[i] = referrerDesc{
-			Digest:    ref.Digest,
-			Artifact:  ref.ArtifactType,
-			Size:      ref.Size,
-			MediaType: ref.MediaType,
-		}
-	}
-
-	return printJSON(output)
+	return printJSON(ocispec.Index{Manifests: refs})
 }
 
 func printJSON(object interface{}) error {

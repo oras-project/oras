@@ -194,7 +194,6 @@ func packManifest(ctx context.Context, store *file.Store, annotations map[string
 		desc.Annotations = packOpts.ConfigAnnotations
 		packOpts.ConfigDescriptor = &desc
 		packOpts.PackImageManifest = true
-		opts.artifactType = mediatype
 	}
 	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
 	if err != nil {
