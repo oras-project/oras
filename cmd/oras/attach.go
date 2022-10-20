@@ -22,7 +22,6 @@ import (
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	artifactspec "github.com/oras-project/artifacts-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
@@ -94,7 +93,7 @@ func runAttach(opts attachOptions) error {
 		return errors.New("no blob or manifest annotation are provided")
 	}
 
-	// Prepare manifest
+	// prepare manifest
 	store := file.New("")
 	defer store.Close()
 	store.AllowPathTraversalOnWrite = opts.PathValidationDisabled
@@ -106,22 +105,17 @@ func runAttach(opts attachOptions) error {
 	if dst.Reference.Reference == "" {
 		return oerrors.NewErrInvalidReference(dst.Reference)
 	}
-	ociSubject, err := dst.Resolve(ctx, dst.Reference.Reference)
+	subject, err := dst.Resolve(ctx, dst.Reference.Reference)
 	if err != nil {
 		return err
 	}
-	subject := ociToArtifact(ociSubject)
-	ociDescs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
+	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
 	if err != nil {
 		return err
 	}
-	orasDescs := make([]artifactspec.Descriptor, len(ociDescs))
-	for i := range ociDescs {
-		orasDescs[i] = ociToArtifact(ociDescs[i])
-	}
-	desc, err := oras.PackArtifact(
-		ctx, store, opts.artifactType, orasDescs,
-		oras.PackArtifactOptions{
+	root, err := oras.Pack(
+		ctx, store, opts.artifactType, descs,
+		oras.PackOptions{
 			Subject:             &subject,
 			ManifestAnnotations: annotations[option.AnnotationManifest],
 		})
@@ -129,14 +123,14 @@ func runAttach(opts attachOptions) error {
 		return err
 	}
 
-	// Prepare Push
+	// prepare push
 	committed := &sync.Map{}
 	graphCopyOptions := oras.DefaultCopyGraphOptions
 	graphCopyOptions.Concurrency = opts.concurrency
 	graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		if isEqualOCIDescriptor(node, desc) {
-			// Skip subject
-			return ociDescs, nil
+		if isEqualOCIDescriptor(node, root) {
+			// skip subject
+			return descs, nil
 		}
 		return content.Successors(ctx, fetcher, node)
 	}
@@ -152,30 +146,20 @@ func runAttach(opts attachOptions) error {
 		}
 		return display.PrintStatus(desc, "Uploaded ", opts.Verbose)
 	}
-	// Push
-	err = oras.CopyGraph(ctx, store, dst, desc, graphCopyOptions)
+
+	// push
+	err = oras.CopyGraph(ctx, store, dst, root, graphCopyOptions)
 	if err != nil {
 		return err
 	}
 
 	fmt.Println("Attached to", opts.targetRef)
-	fmt.Println("Digest:", desc.Digest)
+	fmt.Println("Digest:", root.Digest)
 
 	// Export manifest
-	return opts.ExportManifest(ctx, store, desc)
+	return opts.ExportManifest(ctx, store, root)
 }
 
 func isEqualOCIDescriptor(a, b ocispec.Descriptor) bool {
 	return a.Size == b.Size && a.Digest == b.Digest && a.MediaType == b.MediaType
-}
-
-// ociToArtifact converts OCI descriptor to artifact descriptor.
-func ociToArtifact(desc ocispec.Descriptor) artifactspec.Descriptor {
-	return artifactspec.Descriptor{
-		MediaType:   desc.MediaType,
-		Digest:      desc.Digest,
-		Size:        desc.Size,
-		URLs:        desc.URLs,
-		Annotations: desc.Annotations,
-	}
 }

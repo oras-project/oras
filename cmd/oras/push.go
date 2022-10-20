@@ -105,9 +105,8 @@ Example - Push file "hi.txt" with multiple tags and concurrency level tuned:
 			return runPush(opts)
 		},
 	}
-
-	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "manifest config file")
-	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "media type of the manifest config")
+	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "`path` of image config file")
+	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 
 	option.ApplyFlags(&opts, cmd.Flags())
@@ -186,9 +185,6 @@ func packManifest(ctx context.Context, store *file.Store, annotations map[string
 	packOpts.ConfigAnnotations = annotations[option.AnnotationConfig]
 	packOpts.ManifestAnnotations = annotations[option.AnnotationManifest]
 
-	if opts.artifactType != "" {
-		packOpts.ConfigMediaType = opts.artifactType
-	}
 	if opts.manifestConfigRef != "" {
 		path, mediatype := parseFileReference(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
 		desc, err := store.Add(ctx, option.AnnotationConfig, mediatype, path)
@@ -197,16 +193,20 @@ func packManifest(ctx context.Context, store *file.Store, annotations map[string
 		}
 		desc.Annotations = packOpts.ConfigAnnotations
 		packOpts.ConfigDescriptor = &desc
+		packOpts.PackImageManifest = true
 	}
 	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
 	if err != nil {
 		return ocispec.Descriptor{}, err
 	}
-	manifestDesc, err := oras.Pack(ctx, store, descs, packOpts)
+
+	// pack artifact
+	manifestDesc, err := oras.Pack(ctx, store, opts.artifactType, descs, packOpts)
 	if err != nil {
 		return ocispec.Descriptor{}, err
 	}
-	if err := store.Tag(ctx, manifestDesc, tagStaged); err != nil {
+
+	if err = store.Tag(ctx, manifestDesc, tagStaged); err != nil {
 		return ocispec.Descriptor{}, err
 	}
 	return manifestDesc, nil
