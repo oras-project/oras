@@ -173,7 +173,7 @@ func printDiscoveredReferrersTable(refs []ocispec.Descriptor, verbose bool) {
 }
 
 // printDiscoveredReferrersJSON prints referrer list in JSON equivalent to the
-// image index: https://github.com/opencontainers/image-spec/blob/main/image-index.md#image-index-property-descriptions
+// image index: https://github.com/opencontainers/image-spec/blob/v1.1.0-rc2/image-index.md#image-index-property-descriptions
 func printDiscoveredReferrersJSON(desc ocispec.Descriptor, refs []ocispec.Descriptor) error {
 	output := ocispec.Index{
 		Versioned: specs.Versioned{
