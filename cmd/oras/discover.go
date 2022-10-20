@@ -105,10 +105,10 @@ func runDiscover(opts discoverOptions) error {
 		return printDiscoveredReferrersJSON(desc, refs)
 	}
 
-	if len(refs) > 1 {
-		fmt.Println("Discovered", len(refs), "artifacts referencing", repo.Reference)
+	if n := len(refs); n > 1 {
+		fmt.Println("Discovered", n, "artifacts referencing", repo.Reference)
 	} else {
-		fmt.Println("Discovered", len(refs), "artifact referencing", repo.Reference)
+		fmt.Println("Discovered", n, "artifact referencing", repo.Reference)
 	}
 	fmt.Println("Digest:", desc.Digest)
 	if len(refs) > 0 {
