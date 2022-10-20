@@ -116,7 +116,6 @@ func runAttach(opts attachOptions) error {
 	root, err := oras.Pack(
 		ctx, store, opts.artifactType, descs,
 		oras.PackOptions{
-			PackImageManifest:   false,
 			Subject:             &subject,
 			ManifestAnnotations: annotations[option.AnnotationManifest],
 		})
