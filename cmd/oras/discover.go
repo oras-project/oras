@@ -27,9 +27,8 @@ import (
 	"oras.land/oras/cmd/oras/internal/option"
 
 	"github.com/need-being/go-tree"
-	digest "github.com/opencontainers/go-digest"
+	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	artifactspec "github.com/oras-project/artifacts-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 )
 
@@ -115,9 +114,9 @@ func runDiscover(opts discoverOptions) error {
 	return nil
 }
 
-func fetchReferrers(ctx context.Context, repo *remote.Repository, desc ocispec.Descriptor, artifactType string) ([]artifactspec.Descriptor, error) {
-	var results []artifactspec.Descriptor
-	err := repo.Referrers(ctx, desc, artifactType, func(referrers []artifactspec.Descriptor) error {
+func fetchReferrers(ctx context.Context, repo *remote.Repository, desc ocispec.Descriptor, artifactType string) ([]ocispec.Descriptor, error) {
+	var results []ocispec.Descriptor
+	err := repo.Referrers(ctx, desc, artifactType, func(referrers []ocispec.Descriptor) error {
 		results = append(results, referrers...)
 		return nil
 	})
@@ -151,7 +150,7 @@ func fetchAllReferrers(ctx context.Context, repo *remote.Repository, desc ocispe
 	return nil
 }
 
-func printDiscoveredReferrersTable(refs []artifactspec.Descriptor, verbose bool) {
+func printDiscoveredReferrersTable(refs []ocispec.Descriptor, verbose bool) {
 	typeNameTitle := "Artifact Type"
 	typeNameLength := len(typeNameTitle)
 	for _, ref := range refs {
@@ -174,27 +173,14 @@ func printDiscoveredReferrersTable(refs []artifactspec.Descriptor, verbose bool)
 }
 
 // printDiscoveredReferrersJSON prints referrer list in JSON equivalent to the
-// API result: https://github.com/oras-project/artifacts-spec/blob/v1.0.0-rc.1/manifest-referrers-api.md#artifact-referrers-api-results
-func printDiscoveredReferrersJSON(desc ocispec.Descriptor, refs []artifactspec.Descriptor) error {
-	type referrerDesc struct {
-		Digest    digest.Digest `json:"digest"`
-		MediaType string        `json:"mediaType"`
-		Artifact  string        `json:"artifactType"`
-		Size      int64         `json:"size"`
-	}
-	output := struct {
-		Referrers []referrerDesc `json:"referrers"`
-	}{
-		Referrers: make([]referrerDesc, len(refs)),
-	}
-
-	for i, ref := range refs {
-		output.Referrers[i] = referrerDesc{
-			Digest:    ref.Digest,
-			Artifact:  ref.ArtifactType,
-			Size:      ref.Size,
-			MediaType: ref.MediaType,
-		}
+// image index: https://github.com/opencontainers/image-spec/blob/v1.1.0-rc2/image-index.md#image-index-property-descriptions
+func printDiscoveredReferrersJSON(desc ocispec.Descriptor, refs []ocispec.Descriptor) error {
+	output := ocispec.Index{
+		Versioned: specs.Versioned{
+			SchemaVersion: 2, // historical value. does not pertain to OCI or docker version
+		},
+		MediaType: ocispec.MediaTypeImageIndex,
+		Manifests: refs,
 	}
 
 	return printJSON(output)
