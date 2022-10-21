@@ -27,7 +27,14 @@ import (
 	"oras.land/oras/test/e2e/internal/utils/match"
 )
 
-const oras_binary = "oras"
+const (
+	oras_binary = "oras"
+
+	// customize your own basic auth file via `htpasswd -cBb <file_name> <user_name> <password>`
+	USERNAME         = "hello"
+	PASSWORD         = "oras-test"
+	AUTH_CONFIG_PATH = "test.config"
+)
 
 // execOption provides option used to execute a command.
 type execOption struct {

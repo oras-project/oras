@@ -14,21 +14,17 @@ limitations under the License.
 package scenario
 
 import (
+	"time"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "oras.land/oras/test/e2e/internal/utils"
-)
-
-const (
-	// customize your own basic auth file via `htpasswd -cBb <file_name> <user_name> <password>`
-	USERNAME         = "hello"
-	PASSWORD         = "oras-test"
-	AUTH_CONFIG_PATH = "test.config"
 )
 
 var _ = Describe("ORAS User", Ordered, func() {
 	When("logging in", func() {
 		It("uses basic auth", func() {
 			ORAS("login", Host, "-u", USERNAME, "-p", PASSWORD, "--registry-config", AUTH_CONFIG_PATH).
+				WithTimeOut(20*time.Second).
 				MatchContent("Login Succeeded\n").
 				MatchErrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").
 				WithDescription("login with username&password flags").Exec()
