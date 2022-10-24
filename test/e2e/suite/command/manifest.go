@@ -15,6 +15,7 @@ package command
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -73,6 +74,19 @@ var _ = Describe("Common registry users:", func() {
 
 		It("should fetch manifest list with tag", func() {
 			ORAS("manifest", "fetch", Reference(Host, repo, multiImage)).
+				MatchContent(manifest_multi).Exec()
+		})
+
+		It("should fetch manifest list to stdout", func() {
+			ORAS("manifest", "fetch", Reference(Host, repo, multiImage), "--output", "-").
+				MatchContent(manifest_multi).Exec()
+		})
+
+		It("should fetch manifest to file and output descriptor to stdout", func() {
+			fetchPath := filepath.Join(GinkgoT().TempDir(), "fetchedImage")
+			ORAS("manifest", "fetch", Reference(Host, repo, multiImage), "--output", fetchPath, "--descriptor").
+				MatchContent(descriptor_multi).Exec()
+			Binary("cat", fetchPath).
 				MatchContent(manifest_multi).Exec()
 		})
 
@@ -150,7 +164,7 @@ var _ = Describe("Common registry users:", func() {
 				MatchContent(descriptor_linuxAMD64).Exec()
 		})
 
-		It("should fail to fetch image if media type assertion fails", Focus, func() {
+		It("should fail to fetch image if media type assertion fails", func() {
 			ORAS("manifest", "fetch", Reference(Host, repo, digest_linuxAMD64), "--media-type", "this.will.not.be.found").
 				WithFailureCheck().
 				MatchErrKeyWords(digest_linuxAMD64, "error: ", "not found").Exec()
