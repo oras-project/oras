@@ -18,6 +18,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -75,17 +77,23 @@ func init() {
 	})
 }
 
-var authed = false
+var authDone atomic.Bool
+var authTry sync.Mutex
 
+// Auth does exactly one `oras login` and blocks return until it finishes or
+// fails.
 func Auth() {
 	JustBeforeEach(func() {
-		if authed {
+		if authDone.Load() {
+			return
+		}
+		authTry.Lock()
+		defer authTry.Unlock()
+		if authDone.Load() {
 			return
 		}
 		cmd := exec.Command(ORASPath, "login", Host, "-u", USERNAME, "-p", PASSWORD)
-		if err := cmd.Run(); err != nil {
-			panic(err)
-		}
-		authed = true
+		gomega.Expect(cmd.Run()).ShouldNot(gomega.HaveOccurred())
+		authDone.Store(true)
 	})
 }
