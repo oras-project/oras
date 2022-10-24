@@ -63,7 +63,7 @@ func runAndShowPreviewInHelp(args []string, keywords ...string) {
 	})
 }
 
-var _ = Describe("Common registry users:", Focus, func() {
+var _ = Describe("Common registry users:", func() {
 	Auth()
 	When("running manifest fetch command", func() {
 		It("should fetch manifest list with digest", func() {
