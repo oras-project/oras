@@ -65,7 +65,7 @@ func runAndShowPreviewInHelp(args []string, keywords ...string) {
 
 var _ = Describe("Common registry users:", func() {
 	Auth()
-	When("running manifest fetch command", func() {
+	When("running `manifest fetch`", func() {
 		It("should fetch manifest list with digest", func() {
 			ORAS("manifest", "fetch", Reference(Host, repo, multiImage)).
 				MatchContent(manifest_multi).Exec()
@@ -114,6 +114,40 @@ var _ = Describe("Common registry users:", func() {
 		It("should fetch descriptor via tag with platform selection", func() {
 			ORAS("manifest", "fetch", Reference(Host, repo, digest_multi), "--platform", "linux/amd64", "--descriptor").
 				MatchContent(descriptor_linuxAMD64_fromIndex).Exec()
+		})
+
+		It("should fetch index content with media type assertion", func() {
+			ORAS("manifest", "fetch", Reference(Host, repo, digest_multi), "--media-type", "application/vnd.oci.image.index.v1+json").
+				MatchContent(manifest_multi).Exec()
+		})
+
+		It("should fetch index descriptor with media type assertion", func() {
+			ORAS("manifest", "fetch", Reference(Host, repo, digest_multi), "--media-type", "application/vnd.oci.image.index.v1+json", "--descriptor").
+				MatchContent(descriptor_multi).Exec()
+		})
+
+		It("should fetch image content with media type assertion and platform selection", func() {
+			ORAS("manifest", "fetch", Reference(Host, repo, multiImage), "--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json").
+				MatchContent(manifest_linuxAMD64).Exec()
+			ORAS("manifest", "fetch", Reference(Host, repo, digest_multi), "--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json", "--descriptor").
+				MatchContent(descriptor_linuxAMD64_fromIndex).Exec()
+		})
+
+		It("should fetch image descriptor with media type assertion and platform selection", func() {
+			ORAS("manifest", "fetch", Reference(Host, repo, multiImage), "--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json", "--descriptor").
+				MatchContent(descriptor_linuxAMD64_fromIndex).Exec()
+			ORAS("manifest", "fetch", Reference(Host, repo, digest_multi), "--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json", "--descriptor").
+				MatchContent(descriptor_linuxAMD64_fromIndex).Exec()
+		})
+
+		It("should fetch image content with media type assertion and platform validation", func() {
+			ORAS("manifest", "fetch", Reference(Host, repo, digest_linuxAMD64), "--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.manifest.v1+json").
+				MatchContent(manifest_linuxAMD64).Exec()
+		})
+
+		It("should fetch image descriptor with media type assertion and platform validation", func() {
+			ORAS("manifest", "fetch", Reference(Host, repo, digest_linuxAMD64), "--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.manifest.v1+json", "--descriptor").
+				MatchContent(descriptor_linuxAMD64).Exec()
 		})
 	})
 })
