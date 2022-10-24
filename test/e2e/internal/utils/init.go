@@ -75,9 +75,17 @@ func init() {
 	})
 }
 
+var authed = false
+
 func Auth() {
-	cmd := exec.Command(ORASPath, "login", Host, "-u", USERNAME, "-p", PASSWORD)
-	if err := cmd.Run(); err != nil {
-		panic(err)
-	}
+	JustBeforeEach(func() {
+		if authed {
+			return
+		}
+		cmd := exec.Command(ORASPath, "login", Host, "-u", USERNAME, "-p", PASSWORD)
+		if err := cmd.Run(); err != nil {
+			panic(err)
+		}
+		authed = true
+	})
 }
