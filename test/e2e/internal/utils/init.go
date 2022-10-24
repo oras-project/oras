@@ -76,10 +76,8 @@ func init() {
 }
 
 func Auth() {
-	JustAfterEach(func() {
-		cmd := exec.Command(ORASPath, "login", Host, "-u", USERNAME, "-p", PASSWORD)
-		if err := cmd.Run(); err != nil {
-			panic(err)
-		}
-	})
+	cmd := exec.Command(ORASPath, "login", Host, "-u", USERNAME, "-p", PASSWORD)
+	if err := cmd.Run(); err != nil {
+		panic(err)
+	}
 }
