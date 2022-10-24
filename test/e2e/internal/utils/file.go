@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 )
 
+// CopyTestData copies test data into the temp test folder.
 func CopyTestData(fileNames []string, dstRoot string) error {
 	for _, name := range fileNames {
 		// make sure all parents are created
