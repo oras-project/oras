@@ -108,12 +108,12 @@ var _ = Describe("Common registry users:", func() {
 
 		It("should fetch descriptor via tag", func() {
 			ORAS("manifest", "fetch", Reference(Host, repo, digest_multi), "--descriptor").
-				MatchContent(descriptor_linuxAMD64_fromIndex).Exec()
+				MatchContent(descriptor_multi).Exec()
 		})
 
 		It("should fetch descriptor via tag with platform selection", func() {
 			ORAS("manifest", "fetch", Reference(Host, repo, digest_multi), "--platform", "linux/amd64", "--descriptor").
-				MatchContent(descriptor_linuxAMD64).Exec()
+				MatchContent(descriptor_linuxAMD64_fromIndex).Exec()
 		})
 	})
 })
