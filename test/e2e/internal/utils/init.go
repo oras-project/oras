@@ -16,6 +16,7 @@ package utils
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -71,5 +72,14 @@ func init() {
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		DeferCleanup(gexec.CleanupBuildArtifacts)
 		fmt.Printf("Testing based on temp binary locates in %q\n", ORASPath)
+	})
+}
+
+func Auth() {
+	JustAfterEach(func() {
+		cmd := exec.Command(ORASPath, "login", Host, "-u", USERNAME, "-p", PASSWORD)
+		if err := cmd.Run(); err != nil {
+			panic(err)
+		}
 	})
 }

@@ -15,8 +15,6 @@ package scenario
 
 import (
 	"path/filepath"
-	"strings"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "oras.land/oras/test/e2e/internal/utils"
@@ -38,18 +36,10 @@ var (
 	}
 )
 
-var _ = Describe("ORAS user", Ordered, func() {
-	repo := "oci-image"
-	When("logging in", func() {
-		It("using basic auth", func() {
-			ORAS("login", Host, "-u", USERNAME, "--password-stdin").
-				WithInput(strings.NewReader(PASSWORD)).
-				WithTimeOut(20 * time.Second).
-				MatchContent("Login Succeeded\n").
-				WithDescription("should succeed with username flag and password from stdin").Exec()
-		})
-	})
+var _ = Describe("OCI image user:", Ordered, func() {
+	Auth()
 
+	repo := "oci-image"
 	When("pushing images and check", func() {
 		tag := "image"
 		var tempDir string
@@ -60,7 +50,7 @@ var _ = Describe("ORAS user", Ordered, func() {
 			}
 		})
 
-		It("pushes and pulls an image", func() {
+		It("should push and pull an image", func() {
 			manifestName := "packed.json"
 			ORAS("push", Reference(Host, repo, tag), "--config", files[0], files[1], files[2], files[3], "-v", "--export-manifest", manifestName).
 				MatchStatus(statusKeys, true, 4).

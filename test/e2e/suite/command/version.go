@@ -20,9 +20,9 @@ import (
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
-var _ = Describe("ORAS user", func() {
+var _ = Describe("ORAS user:", func() {
 	When("checking oras version", func() {
-		It("runs version command", func() {
+		It("should run version command", func() {
 			ORAS("version").Exec()
 		})
 	})

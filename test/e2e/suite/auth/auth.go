@@ -20,9 +20,9 @@ import (
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
-var _ = Describe("ORAS User", Ordered, func() {
+var _ = Describe("Common registry user", Ordered, func() {
 	When("logging in", func() {
-		It("uses basic auth", func() {
+		It("should use basic auth", func() {
 			ORAS("login", Host, "-u", USERNAME, "-p", PASSWORD, "--registry-config", AUTH_CONFIG_PATH).
 				WithTimeOut(20*time.Second).
 				MatchContent("Login Succeeded\n").
@@ -32,12 +32,12 @@ var _ = Describe("ORAS User", Ordered, func() {
 	})
 
 	When("logging out", func() {
-		It("uses logout command", func() {
+		It("should use logout command", func() {
 			ORAS("logout", Host, "--registry-config", AUTH_CONFIG_PATH).
 				WithDescription("successfully log out").Exec()
 		})
 
-		It("runs commands without logging in", func() {
+		It("should run commands without logging in", func() {
 			RunWithoutLogin("attach", Host+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
 			RunWithoutLogin("copy", Host+"/repo:from", Host+"/repo:to")
 			RunWithoutLogin("discover", Host+"/repo:tag")
