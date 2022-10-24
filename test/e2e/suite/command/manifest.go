@@ -149,5 +149,11 @@ var _ = Describe("Common registry users:", func() {
 			ORAS("manifest", "fetch", Reference(Host, repo, digest_linuxAMD64), "--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.manifest.v1+json", "--descriptor").
 				MatchContent(descriptor_linuxAMD64).Exec()
 		})
+
+		It("should fail to fetch image if media type assertion fails", Focus, func() {
+			ORAS("manifest", "fetch", Reference(Host, repo, digest_linuxAMD64), "--media-type", "this.will.not.be.found").
+				WithFailureCheck().
+				MatchErrKeyWords(digest_linuxAMD64, "error: ", "not found").Exec()
+		})
 	})
 })
