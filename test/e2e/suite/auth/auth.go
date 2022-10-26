@@ -31,10 +31,9 @@ var _ = Describe("Common registry user", Ordered, func() {
 		})
 	})
 
-	When("logging out", func() {
-		It("should use logout command", func() {
-			ORAS("logout", Host, "--registry-config", AUTH_CONFIG_PATH).
-				WithDescription("successfully log out").Exec()
+	When("logging out", Ordered, func() {
+		It("should use logout command to logout", func() {
+			ORAS("logout", Host, "--registry-config", AUTH_CONFIG_PATH).Exec()
 		})
 
 		It("should run commands without logging in", func() {
