@@ -19,14 +19,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
-	"oras.land/oras/cmd/oras/internal/display"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -124,7 +122,6 @@ func runAttach(opts attachOptions) error {
 	}
 
 	// prepare push
-	committed := &sync.Map{}
 	graphCopyOptions := oras.DefaultCopyGraphOptions
 	graphCopyOptions.Concurrency = opts.concurrency
 	graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
@@ -134,18 +131,7 @@ func runAttach(opts attachOptions) error {
 		}
 		return content.Successors(ctx, fetcher, node)
 	}
-	graphCopyOptions.PreCopy = display.StatusPrinter("Uploading", opts.Verbose)
-	graphCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return display.PrintStatus(desc, "Exists   ", opts.Verbose)
-	}
-	graphCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		if err := display.PrintSuccessorStatus(ctx, desc, "Skipped  ", store, committed, opts.Verbose); err != nil {
-			return err
-		}
-		return display.PrintStatus(desc, "Uploaded ", opts.Verbose)
-	}
+	updateDisplayOption(&graphCopyOptions, store, opts.Verbose)
 
 	// push
 	err = oras.CopyGraph(ctx, store, dst, root, graphCopyOptions)

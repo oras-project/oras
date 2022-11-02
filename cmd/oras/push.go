@@ -126,21 +126,9 @@ func runPush(opts pushOptions) error {
 	store.AllowPathTraversalOnWrite = opts.PathValidationDisabled
 
 	// Ready to push
-	committed := &sync.Map{}
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
-	copyOptions.PreCopy = display.StatusPrinter("Uploading", opts.Verbose)
-	copyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return display.PrintStatus(desc, "Exists   ", opts.Verbose)
-	}
-	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		if err := display.PrintSuccessorStatus(ctx, desc, "Skipped  ", store, committed, opts.Verbose); err != nil {
-			return err
-		}
-		return display.PrintStatus(desc, "Uploaded ", opts.Verbose)
-	}
+	updateDisplayOption(&copyOptions.CopyGraphOptions, store, opts.Verbose)
 	desc, err := packManifest(ctx, store, annotations, &opts)
 	if err != nil {
 		return err
@@ -210,4 +198,20 @@ func packManifest(ctx context.Context, store *file.Store, annotations map[string
 		return ocispec.Descriptor{}, err
 	}
 	return manifestDesc, nil
+}
+
+func updateDisplayOption(opts *oras.CopyGraphOptions, store content.Fetcher, verbose bool) {
+	committed := &sync.Map{}
+	opts.PreCopy = display.StatusPrinter("Uploading", verbose)
+	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
+		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+		return display.PrintStatus(desc, "Exists   ", verbose)
+	}
+	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+		if err := display.PrintSuccessorStatus(ctx, desc, "Skipped  ", store, committed, verbose); err != nil {
+			return err
+		}
+		return display.PrintStatus(desc, "Uploaded ", verbose)
+	}
 }
