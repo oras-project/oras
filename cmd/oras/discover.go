@@ -83,15 +83,14 @@ func runDiscover(opts discoverOptions) error {
 	if repo.Reference.Reference == "" {
 		return errors.NewErrInvalidReference(repo.Reference)
 	}
-
 	targetPlatform, err := opts.Parse()
 	if err != nil {
 		return err
 	}
-	ro := oras.DefaultResolveOptions
-	ro.TargetPlatform = targetPlatform
 
 	// discover artifacts
+	ro := oras.DefaultResolveOptions
+	ro.TargetPlatform = targetPlatform
 	desc, err := oras.Resolve(ctx, repo, repo.Reference.Reference, ro)
 	if err != nil {
 		return err
