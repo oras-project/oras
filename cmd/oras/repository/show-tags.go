@@ -17,7 +17,9 @@ package repository
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/opencontainers/go-digest"
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -25,8 +27,9 @@ import (
 type showTagsOptions struct {
 	option.Remote
 	option.Common
-	targetRef string
-	last      string
+	targetRef        string
+	last             string
+	excludeDigestTag bool
 }
 
 func showTagsCmd() *cobra.Command {
@@ -52,6 +55,7 @@ Example - Show tags of the target repository that include values lexically after
 		},
 	}
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the tag specified by `last`")
+	cmd.Flags().BoolVar(&opts.excludeDigestTag, "exclude-digest-tag", false, "exclude all digest tags created by OCI artifact tag schema")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
@@ -64,8 +68,17 @@ func showTags(opts showTagsOptions) error {
 	}
 	return repo.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
+			if opts.excludeDigestTag && isDigestTag(tag) {
+				continue
+			}
 			fmt.Println(tag)
 		}
 		return nil
 	})
+}
+
+func isDigestTag(tag string) bool {
+	dgst := strings.Replace(tag, "-", ":", 1)
+	_, err := digest.Parse(dgst)
+	return err == nil
 }
