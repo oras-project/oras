@@ -89,9 +89,9 @@ func runDiscover(opts discoverOptions) error {
 	}
 
 	// discover artifacts
-	ro := oras.DefaultResolveOptions
-	ro.TargetPlatform = targetPlatform
-	desc, err := oras.Resolve(ctx, repo, repo.Reference.Reference, ro)
+	resolveOpts := oras.DefaultResolveOptions
+	resolveOpts.TargetPlatform = targetPlatform
+	desc, err := oras.Resolve(ctx, repo, repo.Reference.Reference, resolveOpts)
 	if err != nil {
 		return err
 	}
