@@ -224,9 +224,14 @@ func pushArtifact(dst *remote.Repository, pack packFunc, packOpts *oras.PackOpti
 	preCopy := copyOpts.PreCopy
 	copyOpts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		if content.Equal(root, desc) {
+			// copyRootAttempted helps track whether the returned error is
+			// generated from copying root.
 			copyRootAttempted = true
 		}
-		return preCopy(ctx, desc)
+		if preCopy != nil {
+			return preCopy(ctx, desc)
+		}
+		return nil
 	}
 
 	// push
@@ -265,8 +270,7 @@ func pushArtifact(dst *remote.Repository, pack packFunc, packOpts *oras.PackOpti
 		// config has no successors
 		return nil, nil
 	}
-	err = copy(root)
-	if err != nil {
+	if err = copy(root); err != nil {
 		return ocispec.Descriptor{}, err
 	}
 	return root, nil
