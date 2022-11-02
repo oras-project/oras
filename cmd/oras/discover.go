@@ -22,6 +22,7 @@ import (
 	"os"
 	"strings"
 
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -35,6 +36,7 @@ import (
 type discoverOptions struct {
 	option.Common
 	option.Remote
+	option.Platform
 
 	targetRef    string
 	artifactType string
@@ -82,8 +84,15 @@ func runDiscover(opts discoverOptions) error {
 		return errors.NewErrInvalidReference(repo.Reference)
 	}
 
+	targetPlatform, err := opts.Parse()
+	if err != nil {
+		return err
+	}
+	ro := oras.DefaultResolveOptions
+	ro.TargetPlatform = targetPlatform
+
 	// discover artifacts
-	desc, err := repo.Resolve(ctx, repo.Reference.Reference)
+	desc, err := oras.Resolve(ctx, repo, repo.Reference.Reference, ro)
 	if err != nil {
 		return err
 	}
