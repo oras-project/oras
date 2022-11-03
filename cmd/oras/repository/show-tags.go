@@ -44,6 +44,12 @@ func showTagsCmd() *cobra.Command {
 Example - Show tags of the target repository:
   oras repository show-tags localhost:5000/hello
 
+Example - Show tags in the target repository with digest-like tags hidden:
+oras repository show-tags localhost:5000/hello --exclude-digest-tag
+
+Example - Show tags of the target repository that include values lexically after last:
+oras repository show-tags --last "last_tag" localhost:5000/hello
+
 Example - Show tags of the target repository that include values lexically after last:
   oras repository show-tags --last "last_tag" localhost:5000/hello
 `,
@@ -55,7 +61,7 @@ Example - Show tags of the target repository that include values lexically after
 		},
 	}
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the tag specified by `last`")
-	cmd.Flags().BoolVar(&opts.excludeDigestTag, "exclude-digest-tags", false, "exclude all digest tags created by OCI artifact tag schema")
+	cmd.Flags().BoolVar(&opts.excludeDigestTag, "exclude-digest-tags", false, "exclude all digest-like tags")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
