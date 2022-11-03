@@ -55,7 +55,7 @@ Example - Show tags of the target repository that include values lexically after
 		},
 	}
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the tag specified by `last`")
-	cmd.Flags().BoolVar(&opts.excludeDigestTag, "exclude-digest-tag", false, "exclude all digest tags created by OCI artifact tag schema")
+	cmd.Flags().BoolVar(&opts.excludeDigestTag, "exclude-digest-tags", false, "exclude all digest tags created by OCI artifact tag schema")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
