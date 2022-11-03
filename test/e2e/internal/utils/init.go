@@ -32,7 +32,6 @@ var ORASPath string
 
 // Host points to the registry service where E2E tests will be run against.
 var Host string
-var imageDir string
 
 func init() {
 	Host = os.Getenv("ORAS_REGISTRY_HOST")
@@ -51,7 +50,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	imageDir = filepath.Join(pwd, "..", "..", "testdata", "images")
+	testFileRoot = filepath.Join(pwd, "..", "..", "testdata", "files")
 	BeforeSuite(func() {
 		ORASPath = os.Getenv("ORAS_PATH")
 		if filepath.IsAbs(ORASPath) {

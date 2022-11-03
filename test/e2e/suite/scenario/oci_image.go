@@ -38,14 +38,13 @@ var (
 
 var _ = Describe("OCI image user:", Ordered, func() {
 	Auth()
-
 	repo := "oci-image"
 	When("pushing images and check", func() {
 		tag := "image"
 		var tempDir string
 		BeforeAll(func() {
 			tempDir = GinkgoT().TempDir()
-			if err := CopyTestData(files, tempDir); err != nil {
+			if err := CopyTestData(tempDir); err != nil {
 				panic(err)
 			}
 		})

@@ -15,23 +15,33 @@ package utils
 
 import (
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 )
 
+var testFileRoot string
+
 // CopyTestData copies test data into the temp test folder.
-func CopyTestData(fileNames []string, dstRoot string) error {
-	for _, name := range fileNames {
+func CopyTestData(dstRoot string) error {
+	return filepath.WalkDir(testFileRoot, func(path string, d fs.DirEntry, err error) error {
+		if d.IsDir() {
+			// ignore folder
+			return nil
+		}
+
 		// make sure all parents are created
-		if err := os.MkdirAll(filepath.Join(dstRoot, filepath.Dir(name)), 0700); err != nil {
+		if err := os.MkdirAll(filepath.Join(dstRoot, filepath.Dir(path)), 0700); err != nil {
+			return err
+		}
+		relPath, err := filepath.Rel(testFileRoot, path)
+		if err != nil {
 			return err
 		}
 
-		if err := copyFile(filepath.Join(imageDir, name), filepath.Join(dstRoot, name)); err != nil {
-			return err
-		}
-	}
-	return nil
+		// copy with original folder structure
+		return copyFile(path, filepath.Join(dstRoot, relPath))
+	})
 }
 
 func copyFile(srcFile, dstFile string) error {
