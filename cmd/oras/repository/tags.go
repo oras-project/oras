@@ -45,7 +45,7 @@ Example - Show tags of the target repository:
   oras repo tags localhost:5000/hello
 
 Example - Show tags in the target repository with digest-like tags hidden:
-  oras repository show-tags --exclude-digest-tag localhost:5000/hello
+  oras repo tags --exclude-digest-tag localhost:5000/hello
 
 Example - Show tags of the target repository that include values lexically after last:
   oras repo tags --last "last_tag" localhost:5000/hello
