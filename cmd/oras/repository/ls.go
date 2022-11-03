@@ -32,20 +32,20 @@ type repositoryOptions struct {
 func listCmd() *cobra.Command {
 	var opts repositoryOptions
 	cmd := &cobra.Command{
-		Use:   "list [flags] <registry>",
+		Use:   "ls [flags] <registry>",
 		Short: "[Preview] List the repositories under the registry",
 		Long: `[Preview] List the repositories under the registry
 
 ** This command is in preview and under development. **
 
 Example - List the repositories under the registry:
-  oras repository list localhost:5000
+  oras repo ls localhost:5000
 
 Example - List the repositories under the registry that include values lexically after last:
-  oras repository list --last "last_repo" localhost:5000
+  oras repo ls --last "last_repo" localhost:5000
 `,
 		Args:    cobra.ExactArgs(1),
-		Aliases: []string{"ls"},
+		Aliases: []string{"list"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.hostname = args[0]
 			return listRepository(opts)

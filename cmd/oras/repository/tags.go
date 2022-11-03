@@ -17,7 +17,9 @@ package repository
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/opencontainers/go-digest"
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -25,33 +27,38 @@ import (
 type showTagsOptions struct {
 	option.Remote
 	option.Common
-	targetRef string
-	last      string
+	targetRef        string
+	last             string
+	excludeDigestTag bool
 }
 
 func showTagsCmd() *cobra.Command {
 	var opts showTagsOptions
 	cmd := &cobra.Command{
-		Use:   "show-tags [flags] <name>",
+		Use:   "tags [flags] <name>",
 		Short: "[Preview] Show tags of the target repository",
 		Long: `[Preview] Show tags of the target repository
 
 ** This command is in preview and under development. **
 
 Example - Show tags of the target repository:
-  oras repository show-tags localhost:5000/hello
+  oras repo tags localhost:5000/hello
+
+Example - Show tags in the target repository with digest-like tags hidden:
+  oras repo tags --exclude-digest-tag localhost:5000/hello
 
 Example - Show tags of the target repository that include values lexically after last:
-  oras repository show-tags --last "last_tag" localhost:5000/hello
+  oras repo tags --last "last_tag" localhost:5000/hello
 `,
 		Args:    cobra.ExactArgs(1),
-		Aliases: []string{"tags"},
+		Aliases: []string{"show-tags"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
 			return showTags(opts)
 		},
 	}
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the tag specified by `last`")
+	cmd.Flags().BoolVar(&opts.excludeDigestTag, "exclude-digest-tags", false, "exclude all digest-like tags such as 'sha256-aaaa...'")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
@@ -64,8 +71,17 @@ func showTags(opts showTagsOptions) error {
 	}
 	return repo.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
+			if opts.excludeDigestTag && isDigestTag(tag) {
+				continue
+			}
 			fmt.Println(tag)
 		}
 		return nil
 	})
+}
+
+func isDigestTag(tag string) bool {
+	dgst := strings.Replace(tag, "-", ":", 1)
+	_, err := digest.Parse(dgst)
+	return err == nil
 }

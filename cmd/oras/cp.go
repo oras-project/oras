@@ -45,27 +45,27 @@ type copyOptions struct {
 func copyCmd() *cobra.Command {
 	var opts copyOptions
 	cmd := &cobra.Command{
-		Use:     "copy [flags] <from>{:<tag>|@<digest>} <to>[:<tag>[,<tag>][...]]",
-		Aliases: []string{"cp"},
+		Use:     "cp [flags] <from>{:<tag>|@<digest>} <to>[:<tag>[,<tag>][...]]",
+		Aliases: []string{"copy"},
 		Short:   "[Preview] Copy artifacts from one target to another",
 		Long: `[Preview] Copy artifacts from one target to another
 
 ** This command is in preview and under development. **
 
 Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net-monitor' to repository 'localhost:5000/net-monitor-copy' 
-  oras copy localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
+  oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
 
 Example - Copy the artifact tagged with 'v1' and its referrers from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy'
-  oras copy -r localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
+  oras cp -r localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
 
 Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with certain platform
-  oras copy --platform linux/arm/v5 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1 
+  oras cp --platform linux/arm/v5 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1 
 
 Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with multiple tags
-  oras copy localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1,tag2,tag3
+  oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1,tag2,tag3
 
 Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with multiple tags and concurrency level tuned
-  oras copy --concurrency 6 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1,tag2,tag3
+  oras cp --concurrency 6 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1,tag2,tag3
 `,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {

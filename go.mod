@@ -3,15 +3,15 @@ module oras.land/oras
 go 1.19
 
 require (
-	github.com/docker/cli v20.10.20+incompatible
+	github.com/docker/cli v20.10.21+incompatible
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6
 	github.com/need-being/go-tree v0.1.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.0-rc2
 	github.com/sirupsen/logrus v1.9.0
-	github.com/spf13/cobra v1.6.0
+	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
-	oras.land/oras-go/v2 v2.0.0-rc.3.0.20221018111647-1969551cc3c7
+	oras.land/oras-go/v2 v2.0.0-rc.4
 )
 
 require (
