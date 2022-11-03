@@ -37,7 +37,6 @@ var (
 )
 
 var _ = Describe("OCI image user:", Ordered, func() {
-	Auth()
 	repo := "oci-image"
 	When("pushing images and check", func() {
 		tag := "image"

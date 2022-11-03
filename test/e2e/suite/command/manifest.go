@@ -65,7 +65,6 @@ func runAndShowPreviewInHelp(args []string, keywords ...string) {
 }
 
 var _ = Describe("Common registry users:", func() {
-	Auth()
 	When("running `manifest fetch`", func() {
 		It("should fetch manifest list with digest", func() {
 			ORAS("manifest", "fetch", Reference(Host, repo, multiImage)).
