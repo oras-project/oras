@@ -30,17 +30,18 @@ func CopyTestData(dstRoot string) error {
 			return nil
 		}
 
-		// make sure all parents are created
-		if err := os.MkdirAll(filepath.Join(dstRoot, filepath.Dir(path)), 0700); err != nil {
-			return err
-		}
 		relPath, err := filepath.Rel(testFileRoot, path)
 		if err != nil {
 			return err
 		}
+		dstPath := filepath.Join(dstRoot, relPath)
+		// make sure all parents are created
+		if err := os.MkdirAll(dstPath, 0700); err != nil {
+			return err
+		}
 
 		// copy with original folder structure
-		return copyFile(path, filepath.Join(dstRoot, relPath))
+		return copyFile(path, dstPath)
 	})
 }
 
