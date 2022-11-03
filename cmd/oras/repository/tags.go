@@ -22,50 +22,49 @@ import (
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
-type repositoryOptions struct {
+type showTagsOptions struct {
 	option.Remote
 	option.Common
-	hostname string
-	last     string
+	targetRef string
+	last      string
 }
 
-func listCmd() *cobra.Command {
-	var opts repositoryOptions
+func showTagsCmd() *cobra.Command {
+	var opts showTagsOptions
 	cmd := &cobra.Command{
-		Use:   "list [flags] <registry>",
-		Short: "[Preview] List the repositories under the registry",
-		Long: `[Preview] List the repositories under the registry
+		Use:   "tags [flags] <name>",
+		Short: "[Preview] Show tags of the target repository",
+		Long: `[Preview] Show tags of the target repository
 
 ** This command is in preview and under development. **
 
-Example - List the repositories under the registry:
-  oras repository list localhost:5000
+Example - Show tags of the target repository:
+  oras repo tags localhost:5000/hello
 
-Example - List the repositories under the registry that include values lexically after last:
-  oras repository list --last "last_repo" localhost:5000
+Example - Show tags of the target repository that include values lexically after last:
+  oras repo tags --last "last_tag" localhost:5000/hello
 `,
 		Args:    cobra.ExactArgs(1),
-		Aliases: []string{"ls"},
+		Aliases: []string{"show-tags"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.hostname = args[0]
-			return listRepository(opts)
+			opts.targetRef = args[0]
+			return showTags(opts)
 		},
 	}
-
-	cmd.Flags().StringVar(&opts.last, "last", "", "start after the repository specified by `last`")
+	cmd.Flags().StringVar(&opts.last, "last", "", "start after the tag specified by `last`")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
 
-func listRepository(opts repositoryOptions) error {
+func showTags(opts showTagsOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
-	reg, err := opts.Remote.NewRegistry(opts.hostname, opts.Common)
+	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
 	}
-	return reg.Repositories(ctx, opts.last, func(repos []string) error {
-		for _, repo := range repos {
-			fmt.Println(repo)
+	return repo.Tags(ctx, opts.last, func(tags []string) error {
+		for _, tag := range tags {
+			fmt.Println(tag)
 		}
 		return nil
 	})
