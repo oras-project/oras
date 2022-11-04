@@ -239,7 +239,7 @@ func pushArtifact(dst *remote.Repository, pack packFunc, packOpts *oras.PackOpti
 		return root, nil
 	}
 
-	if !copyRootAttempted || noFallbackToOciImage(root, err) {
+	if !copyRootAttempted || skipFallbackToImageManifest(root, err) {
 		return ocispec.Descriptor{}, err
 	}
 
