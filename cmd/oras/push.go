@@ -239,7 +239,8 @@ func pushArtifact(dst *remote.Repository, pack packFunc, packOpts *oras.PackOpti
 		return root, nil
 	}
 
-	if !copyRootAttempted || skipFallbackToImageManifest(root, err) {
+	if !copyRootAttempted || root.MediaType != ocispec.MediaTypeArtifactManifest ||
+		!isManifestUnsupported(err) {
 		return ocispec.Descriptor{}, err
 	}
 
@@ -274,14 +275,6 @@ func pushArtifact(dst *remote.Repository, pack packFunc, packOpts *oras.PackOpti
 		return ocispec.Descriptor{}, err
 	}
 	return root, nil
-}
-
-func skipFallbackToImageManifest(root ocispec.Descriptor, err error) bool {
-	if root.MediaType != ocispec.MediaTypeArtifactManifest {
-		return true
-	}
-
-	return !isManifestUnsupported(err)
 }
 
 func isManifestUnsupported(err error) bool {
