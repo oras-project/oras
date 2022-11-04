@@ -280,21 +280,26 @@ func skipFallbackToImageManifest(root ocispec.Descriptor, err error) bool {
 	if root.MediaType != ocispec.MediaTypeArtifactManifest {
 		return true
 	}
+
+	return !isManifestUnsupported(err)
+}
+
+func isManifestUnsupported(err error) bool {
 	var errResp *errcode.ErrorResponse
 	if !errors.As(err, &errResp) || errResp.StatusCode != http.StatusBadRequest {
-		return true
+		return false
 	}
 
 	var errCode errcode.Error
 	if !errors.As(errResp, &errCode) {
-		return true
+		return false
 	}
 
 	// As of November 2022, ECR is known to return UNSUPPORTED error when
 	// putting an OCI artifact manifest.
 	switch errCode.Code {
 	case errcode.ErrorCodeManifestInvalid, errcode.ErrorCodeUnsupported:
-		return false
+		return true
 	}
-	return true
+	return false
 }
