@@ -239,7 +239,8 @@ func pushArtifact(dst *remote.Repository, pack packFunc, packOpts *oras.PackOpti
 		return root, nil
 	}
 
-	if !copyRootAttempted || !isArtifactUnsupported(err) {
+	if !copyRootAttempted || root.MediaType != ocispec.MediaTypeArtifactManifest ||
+		!isManifestUnsupported(err) {
 		return ocispec.Descriptor{}, err
 	}
 
@@ -276,7 +277,7 @@ func pushArtifact(dst *remote.Repository, pack packFunc, packOpts *oras.PackOpti
 	return root, nil
 }
 
-func isArtifactUnsupported(err error) bool {
+func isManifestUnsupported(err error) bool {
 	var errResp *errcode.ErrorResponse
 	if !errors.As(err, &errResp) || errResp.StatusCode != http.StatusBadRequest {
 		return false
