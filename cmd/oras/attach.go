@@ -142,8 +142,10 @@ func runAttach(opts attachOptions) error {
 		return err
 	}
 
-	fmt.Println("Attached to", opts.targetRef)
-	fmt.Println("Subject:", fmt.Sprintf("%s/%s@%s", dst.Reference.Registry, dst.Reference.Repository, subject.Digest))
+	targetRef := dst.Reference
+	targetRef.Reference = subject.Digest.String()
+	fmt.Println("Attached to", targetRef)
+	fmt.Println("Subject:", targetRef)
 	fmt.Println("Digest:", root.Digest)
 
 	// Export manifest
