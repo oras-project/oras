@@ -239,7 +239,7 @@ func pushArtifact(dst *remote.Repository, pack packFunc, packOpts *oras.PackOpti
 		return root, nil
 	}
 
-	if !copyRootAttempted || !isArtifactUnsupported(err) {
+	if !copyRootAttempted || noFallbackToOciImage(root, err) {
 		return ocispec.Descriptor{}, err
 	}
 
@@ -276,22 +276,25 @@ func pushArtifact(dst *remote.Repository, pack packFunc, packOpts *oras.PackOpti
 	return root, nil
 }
 
-func isArtifactUnsupported(err error) bool {
+func noFallbackToOciImage(root ocispec.Descriptor, err error) bool {
+	if root.MediaType != ocispec.MediaTypeArtifactManifest {
+		return true
+	}
 	var errResp *errcode.ErrorResponse
 	if !errors.As(err, &errResp) || errResp.StatusCode != http.StatusBadRequest {
-		return false
+		return true
 	}
 
 	var errCode errcode.Error
 	if !errors.As(errResp, &errCode) {
-		return false
+		return true
 	}
 
 	// As of November 2022, ECR is known to return UNSUPPORTED error when
 	// putting an OCI artifact manifest.
 	switch errCode.Code {
 	case errcode.ErrorCodeManifestInvalid, errcode.ErrorCodeUnsupported:
-		return true
+		return false
 	}
-	return false
+	return true
 }
