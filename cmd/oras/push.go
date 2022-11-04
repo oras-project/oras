@@ -276,7 +276,7 @@ func pushArtifact(dst *remote.Repository, pack packFunc, packOpts *oras.PackOpti
 	return root, nil
 }
 
-func noFallbackToOciImage(root ocispec.Descriptor, err error) bool {
+func skipImageFallback(root ocispec.Descriptor, err error) bool {
 	if root.MediaType != ocispec.MediaTypeArtifactManifest {
 		return true
 	}
