@@ -38,8 +38,9 @@ type deleteBlobOptions struct {
 func deleteCmd() *cobra.Command {
 	var opts deleteBlobOptions
 	cmd := &cobra.Command{
-		Use:   "delete [flags] <name>@<digest>",
-		Short: "[Preview] Delete a blob from a remote registry",
+		Use:     "delete [flags] <name>@<digest>",
+		Aliases: []string{"remove", "rm"},
+		Short:   "[Preview] Delete a blob from a remote registry",
 		Long: `[Preview] Delete a blob from a remote registry
 
 ** This command is in preview and under development. **
@@ -48,15 +49,15 @@ Example - Delete a blob:
   oras blob delete localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 
 Example - Delete a blob without prompting confirmation:
-  oras blob delete --yes localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
+  oras blob delete --force localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 
 Example - Delete a blob and print its descriptor:
-  oras blob delete --descriptor --yes localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
+  oras blob delete --descriptor --force localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
   `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.OutputDescriptor && !opts.Confirmed {
-				return errors.New("must apply --yes to confirm the deletion if the descriptor is outputted")
+				return errors.New("must apply --force to confirm the deletion if the descriptor is outputted")
 			}
 			return opts.ReadPassword()
 		},
