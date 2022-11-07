@@ -39,8 +39,9 @@ type deleteOptions struct {
 func deleteCmd() *cobra.Command {
 	var opts deleteOptions
 	cmd := &cobra.Command{
-		Use:   "delete [flags] <name>{:<tag>|@<digest>}",
-		Short: "[Preview] Delete a manifest from remote registry",
+		Use:     "delete [flags] <name>{:<tag>|@<digest>}",
+		Aliases: []string{"remove", "rm"},
+		Short:   "[Preview] Delete a manifest from remote registry",
 		Long: `[Preview] Delete a manifest from remote registry
 
 ** This command is in preview and under development. **
@@ -49,7 +50,7 @@ Example - Delete a manifest tagged with 'latest' from repository 'localhost:5000
   oras manifest delete localhost:5000/hello:latest
 
 Example - Delete a manifest without prompting confirmation:
-  oras manifest delete --yes localhost:5000/hello:latest
+  oras manifest delete --force localhost:5000/hello:latest
 
 Example - Delete a manifest and print its descriptor:
   oras manifest delete --descriptor localhost:5000/hello:latest
@@ -60,7 +61,7 @@ Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.OutputDescriptor && !opts.Confirmed {
-				return errors.New("must apply --yes to confirm the deletion if the descriptor is outputted")
+				return errors.New("must apply --force to confirm the deletion if the descriptor is outputted")
 			}
 			return opts.ReadPassword()
 		},
