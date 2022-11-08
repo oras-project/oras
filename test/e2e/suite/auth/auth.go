@@ -21,16 +21,6 @@ import (
 )
 
 var _ = Describe("Common registry user", Ordered, func() {
-	When("logging in", func() {
-		It("should use basic auth", func() {
-			ORAS("login", Host, "-u", USERNAME, "-p", PASSWORD, "--registry-config", AUTH_CONFIG_PATH).
-				WithTimeOut(20*time.Second).
-				MatchContent("Login Succeeded\n").
-				MatchErrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").
-				WithDescription("login with username&password flags").Exec()
-		})
-	})
-
 	When("logging out", Ordered, func() {
 		It("should use logout command to logout", func() {
 			ORAS("logout", Host, "--registry-config", AUTH_CONFIG_PATH).Exec()
@@ -43,6 +33,16 @@ var _ = Describe("Common registry user", Ordered, func() {
 			RunWithoutLogin("push", "-a", "key=value", Host+"/repo:tag")
 			RunWithoutLogin("pull", Host+"/repo:tag")
 			RunWithoutLogin("manifest", "fetch", Host+"/repo:tag")
+		})
+	})
+
+	When("logging in", func() {
+		It("should use basic auth", func() {
+			ORAS("login", Host, "-u", USERNAME, "-p", PASSWORD, "--registry-config", AUTH_CONFIG_PATH).
+				WithTimeOut(20*time.Second).
+				MatchContent("Login Succeeded\n").
+				MatchErrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").
+				WithDescription("login with username&password flags").Exec()
 		})
 	})
 })
