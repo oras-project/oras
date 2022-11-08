@@ -139,6 +139,7 @@ func (s *statusMatcher) switchState(st status, key StateKey) {
 	}
 }
 
+// Match checks text status output.
 func (s *statusMatcher) Match(got *gbytes.Buffer) {
 	lines := strings.Split(string(got.Contents()), "\n")
 	for _, line := range lines {
