@@ -23,7 +23,7 @@ import (
 var _ = Describe("Common registry user", Ordered, func() {
 	When("logging out", Ordered, func() {
 		It("should use logout command to logout", func() {
-			ORAS("logout", Host, "--registry-config", AUTH_CONFIG_PATH).Exec()
+			ORAS("logout", Host, "--registry-config", AuthConfigPath).Exec()
 		})
 
 		It("should run commands without logging in", func() {
@@ -38,7 +38,7 @@ var _ = Describe("Common registry user", Ordered, func() {
 
 	When("logging in", func() {
 		It("should use basic auth", func() {
-			ORAS("login", Host, "-u", USERNAME, "-p", PASSWORD, "--registry-config", AUTH_CONFIG_PATH).
+			ORAS("login", Host, "-u", Username, "-p", Password, "--registry-config", AuthConfigPath).
 				WithTimeOut(20*time.Second).
 				MatchContent("Login Succeeded\n").
 				MatchErrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").
@@ -48,7 +48,7 @@ var _ = Describe("Common registry user", Ordered, func() {
 })
 
 func RunWithoutLogin(args ...string) {
-	ORAS(append(args, "--registry-config", AUTH_CONFIG_PATH)...).
+	ORAS(append(args, "--registry-config", AuthConfigPath)...).
 		WithFailureCheck().
 		MatchErrKeyWords("Error:", "credential required").
 		WithDescription("fail without logging in").Exec()

@@ -67,7 +67,7 @@ func init() {
 			fmt.Printf("Testing based on temp binary locates in %q\n", ORASPath)
 		}
 
-		cmd := exec.Command(ORASPath, "login", Host, "-u", USERNAME, "-p", PASSWORD)
+		cmd := exec.Command(ORASPath, "login", Host, "-u", Username, "-p", Password)
 		gomega.Expect(cmd.Run()).ShouldNot(gomega.HaveOccurred())
 	})
 }

@@ -25,6 +25,9 @@ var testFileRoot string
 // CopyTestData copies test data into the temp test folder.
 func CopyTestData(dstRoot string) error {
 	return filepath.WalkDir(testFileRoot, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 		if d.IsDir() {
 			// ignore folder
 			return nil
@@ -59,9 +62,5 @@ func copyFile(srcFile, dstFile string) error {
 	defer from.Close()
 
 	_, err = io.Copy(to, from)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }

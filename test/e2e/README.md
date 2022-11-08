@@ -119,4 +119,4 @@ graph TD;
 ```
 
 #### 5.2 Scenario Suite
-Test files used by scenario-based specs are placed in `$REPO_ROOT/test/e2e/testdata/files`
+Test files used by scenario-based specs are placed in `$REPO_ROOT/test/e2e/testdata/files`.

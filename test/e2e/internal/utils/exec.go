@@ -28,16 +28,16 @@ import (
 )
 
 const (
-	oras_binary = "oras"
+	orasBinary = "oras"
 
 	// customize your own basic auth file via `htpasswd -cBb <file_name> <user_name> <password>`
-	USERNAME         = "hello"
-	PASSWORD         = "oras-test"
-	AUTH_CONFIG_PATH = "test.config"
+	Username       = "hello"
+	Password       = "oras-test"
+	AuthConfigPath = "test.config"
 )
 
-// execOption provides option used to execute a command.
-type execOption struct {
+// ExecOption provides option used to execute a command.
+type ExecOption struct {
 	binary  string
 	args    []string
 	workDir string
@@ -52,13 +52,13 @@ type execOption struct {
 }
 
 // ORAS returns default execution option for oras binary.
-func ORAS(args ...string) *execOption {
-	return Binary(oras_binary, args...)
+func ORAS(args ...string) *ExecOption {
+	return Binary(orasBinary, args...)
 }
 
 // Binary returns default execution option for customized binary.
-func Binary(path string, args ...string) *execOption {
-	return &execOption{
+func Binary(path string, args ...string) *ExecOption {
+	return &ExecOption{
 		binary:     path,
 		args:       args,
 		timeout:    10 * time.Second,
@@ -67,49 +67,49 @@ func Binary(path string, args ...string) *execOption {
 }
 
 // WithFailureCheck sets failure exit code checking for the execution.
-func (opts *execOption) WithFailureCheck() *execOption {
+func (opts *ExecOption) WithFailureCheck() *ExecOption {
 	opts.shouldFail = true
 	return opts
 }
 
 // WithTimeOut sets timeout for the execution.
-func (opts *execOption) WithTimeOut(timeout time.Duration) *execOption {
+func (opts *ExecOption) WithTimeOut(timeout time.Duration) *ExecOption {
 	opts.timeout = timeout
 	return opts
 }
 
 // WithDescription sets description text for the execution.
-func (opts *execOption) WithDescription(text string) *execOption {
+func (opts *ExecOption) WithDescription(text string) *ExecOption {
 	opts.text = text
 	return opts
 }
 
 // WithWorkDir sets working directory for the execution.
-func (opts *execOption) WithWorkDir(path string) *execOption {
+func (opts *ExecOption) WithWorkDir(path string) *ExecOption {
 	opts.workDir = path
 	return opts
 }
 
 // WithInput redirects stdin to r for the execution.
-func (opts *execOption) WithInput(r io.Reader) *execOption {
+func (opts *ExecOption) WithInput(r io.Reader) *ExecOption {
 	opts.stdin = r
 	return opts
 }
 
 // MatchKeyWords adds keywords matching to stdout.
-func (opts *execOption) MatchKeyWords(keywords ...string) *execOption {
+func (opts *ExecOption) MatchKeyWords(keywords ...string) *ExecOption {
 	opts.stdout = append(opts.stdout, match.NewKeywordMatcher(keywords))
 	return opts
 }
 
 // MatchErrKeyWords adds keywords matching to stderr.
-func (opts *execOption) MatchErrKeyWords(keywords ...string) *execOption {
+func (opts *ExecOption) MatchErrKeyWords(keywords ...string) *ExecOption {
 	opts.stderr = append(opts.stderr, match.NewKeywordMatcher(keywords))
 	return opts
 }
 
 // MatchContent adds full content matching to the execution.
-func (opts *execOption) MatchContent(content string) *execOption {
+func (opts *ExecOption) MatchContent(content string) *ExecOption {
 	if !opts.shouldFail {
 		opts.stdout = append(opts.stdout, match.NewContentMatcher(content))
 	} else {
@@ -119,13 +119,13 @@ func (opts *execOption) MatchContent(content string) *execOption {
 }
 
 // MatchStatus adds full content matching to the execution option.
-func (opts *execOption) MatchStatus(keys []match.StateKey, verbose bool, successCount int) *execOption {
+func (opts *ExecOption) MatchStatus(keys []match.StateKey, verbose bool, successCount int) *ExecOption {
 	opts.stdout = append(opts.stdout, match.NewStatusMatcher(keys, opts.args[0], verbose, successCount))
 	return opts
 }
 
 // Exec run the execution based on opts.
-func (opts *execOption) Exec() *gexec.Session {
+func (opts *ExecOption) Exec() *gexec.Session {
 	if opts == nil {
 		// this should be a code error but can only be caught during runtime
 		panic("Nil option for command execution")
@@ -142,7 +142,7 @@ func (opts *execOption) Exec() *gexec.Session {
 	ginkgo.By(description)
 
 	var cmd *exec.Cmd
-	if opts.binary == oras_binary {
+	if opts.binary == orasBinary {
 		opts.binary = ORASPath
 	}
 	cmd = exec.Command(opts.binary, opts.args...)
