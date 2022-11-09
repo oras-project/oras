@@ -1,5 +1,5 @@
 # ORAS End-to-End Testing Dev Guide
-
+**KNOWN LIMITATION**: E2E tests are designed to run in the CI and currently only support running on linux platform.
 ## Setting up
 Minimal setup: Run the script in **step 3**
 
@@ -83,9 +83,9 @@ Two suites will be maintained for E2E testing:
 Inside a suite, please follow below model when building the hierarchical collections of specs:
 ```
 Describe: <Role>
-  Context: Scenario or command specific description
-    When: <Action>
-      It: <Result> (per-command execution)
+  When: Scenario or command specific description
+    It: <Action>
+      By: <Result> (per-command execution)
        Expect: <Result> (detailed checks for execution results)
 ```
 
@@ -117,3 +117,6 @@ graph TD;
     B1-- bar -->B3[blob2]
     end
 ```
+
+#### 5.2 Scenario Suite
+Test files used by scenario-based specs are placed in `$REPO_ROOT/test/e2e/testdata/files`.
