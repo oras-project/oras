@@ -1,5 +1,5 @@
 # ORAS End-to-End Testing Dev Guide
-
+**KNOWN LIMITATION**: E2E tests are designed to run in the CI and currently only support running on linux platform.
 ## Setting up
 Minimal setup: Run the script in **step 3**
 
