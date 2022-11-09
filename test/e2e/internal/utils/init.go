@@ -16,6 +16,7 @@ package utils
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -42,27 +43,31 @@ func init() {
 	if err := ref.ValidateRegistry(); err != nil {
 		panic(err)
 	}
+	// setup test data
+	pwd, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	testFileRoot = filepath.Join(pwd, "..", "..", "testdata", "files")
 	BeforeSuite(func() {
 		ORASPath = os.Getenv("ORAS_PATH")
 		if filepath.IsAbs(ORASPath) {
 			fmt.Printf("Testing based on pre-built binary locates in %q\n", ORASPath)
-			return
-		}
-
-		var err error
-		if workspacePath := os.Getenv("GITHUB_WORKSPACE"); ORASPath != "" && workspacePath != "" {
+		} else if workspacePath := os.Getenv("GITHUB_WORKSPACE"); ORASPath != "" && workspacePath != "" {
 			// add workspacePath as prefix, both path env should not be empty
 			ORASPath = filepath.Join(workspacePath, ORASPath)
 			ORASPath, err = filepath.Abs(ORASPath)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			fmt.Printf("Testing based on pre-built binary locates in %q\n", ORASPath)
-			return
+		} else {
+			// fallback to native build to facilitate local debugging
+			ORASPath, err = gexec.Build("oras.land/oras/cmd/oras")
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			DeferCleanup(gexec.CleanupBuildArtifacts)
+			fmt.Printf("Testing based on temp binary locates in %q\n", ORASPath)
 		}
 
-		// fallback to native build to facilitate local debugging
-		ORASPath, err = gexec.Build("oras.land/oras/cmd/oras")
-		gomega.Expect(err).NotTo(gomega.HaveOccurred())
-		DeferCleanup(gexec.CleanupBuildArtifacts)
-		fmt.Printf("Testing based on temp binary locates in %q\n", ORASPath)
+		cmd := exec.Command(ORASPath, "login", Host, "-u", Username, "-p", Password)
+		gomega.Expect(cmd.Run()).ShouldNot(gomega.HaveOccurred())
 	})
 }
