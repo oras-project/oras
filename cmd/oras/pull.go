@@ -116,7 +116,7 @@ func runPull(opts pullOptions) error {
 	if targetPlatform != nil {
 		copyOptions.WithTargetPlatform(targetPlatform)
 	}
-	var setConfig sync.Once
+	var attemptedConfig *ocispec.Descriptor
 	copyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		statusFetcher := content.FetcherFunc(func(ctx context.Context, target ocispec.Descriptor) (fetched io.ReadCloser, fetchErr error) {
 			if _, ok := printed.LoadOrStore(generateContentKey(target), true); ok {
@@ -156,13 +156,14 @@ func runPull(opts pullOptions) error {
 			// Note: For a manifest, the 0th indexed element is always a
 			// manifest config.
 			if (s.MediaType == configMediaType || (configMediaType == "" && content.Equal(s, config))) && configPath != "" {
-				setConfig.Do(func() {
+				if attemptedConfig == nil || attemptedConfig == &s {
 					// Add annotation for manifest config
 					if s.Annotations == nil {
 						s.Annotations = make(map[string]string)
 					}
 					s.Annotations[ocispec.AnnotationTitle] = configPath
-				})
+					attemptedConfig = &s
+				}
 			}
 			if s.Annotations[ocispec.AnnotationTitle] == "" {
 				ss, err := content.Successors(ctx, fetcher, s)
