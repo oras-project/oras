@@ -29,6 +29,7 @@ func NewKeywordMatcher(kw []string) keywordMatcher {
 	return keywordMatcher(kw)
 }
 
+// Match matches got with wanted keywords.
 func (want keywordMatcher) Match(got *gbytes.Buffer) {
 	var missed []string
 
@@ -41,7 +42,7 @@ func (want keywordMatcher) Match(got *gbytes.Buffer) {
 	}
 
 	if len(missed) != 0 {
-		fmt.Printf("Keywords missed: %v ", missed)
+		fmt.Printf("Keywords missed: %v\n", missed)
 		panic("failed to match all keywords")
 	}
 }
