@@ -29,7 +29,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	ocontent "oras.land/oras/internal/content"
+	"oras.land/oras/internal/graph"
 )
 
 type pullOptions struct {
@@ -141,7 +141,7 @@ func runPull(opts pullOptions) error {
 			}
 			return rc, nil
 		})
-		successors, _, config, err := ocontent.Successors(ctx, statusFetcher, desc)
+		successors, _, config, err := graph.Successors(ctx, statusFetcher, desc)
 		if err != nil {
 			return nil, err
 		}
