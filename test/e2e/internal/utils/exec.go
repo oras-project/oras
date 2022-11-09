@@ -135,7 +135,7 @@ func (opts *ExecOption) Exec() *gexec.Session {
 		if opts.shouldFail {
 			opts.text = "fail"
 		} else {
-			opts.text = "succeed"
+			opts.text = "pass"
 		}
 	}
 	description := fmt.Sprintf(">> should %s: %s %s >>", opts.text, opts.binary, strings.Join(opts.args, " "))
