@@ -64,7 +64,7 @@ var _ = Describe("OCI image user:", Ordered, func() {
 			ORAS("pull", Reference(Host, repo, tag), "-v", "--config", files[0], "-o", pullRoot).
 				MatchStatus(statusKeys, true, 3).
 				WithWorkDir(tempDir).
-				WithDescription("should pull files with config").Exec()
+				WithDescription("pull files with config").Exec()
 
 			for _, f := range files {
 				Binary("diff", filepath.Join(f), filepath.Join(pullRoot, f)).
