@@ -34,7 +34,7 @@ type state struct {
 	uint // padding to avoid zero-based pointer
 }
 
-type edge = struct {
+type edge struct {
 	from *state
 	to   *state
 }
@@ -46,8 +46,8 @@ type stateMachine struct {
 	end   *state
 }
 
-func newStateMachine(cmd string) (sm *stateMachine) {
-	sm = &stateMachine{
+func newStateMachine(cmd string) *stateMachine {
+	sm := &stateMachine{
 		start: new(state),
 		end:   new(state),
 		edges: make(map[string][]edge),
