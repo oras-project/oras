@@ -26,10 +26,10 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
+	ocontent "oras.land/oras/cmd/oras/internal/content"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/descriptor"
 )
 
 type pullOptions struct {
@@ -116,6 +116,7 @@ func runPull(opts pullOptions) error {
 	if targetPlatform != nil {
 		copyOptions.WithTargetPlatform(targetPlatform)
 	}
+	var setConfig sync.Once
 	copyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		statusFetcher := content.FetcherFunc(func(ctx context.Context, target ocispec.Descriptor) (fetched io.ReadCloser, fetchErr error) {
 			if _, ok := printed.LoadOrStore(generateContentKey(target), true); ok {
@@ -140,7 +141,7 @@ func runPull(opts pullOptions) error {
 			}
 			return rc, nil
 		})
-		successors, err := content.Successors(ctx, statusFetcher, desc)
+		successors, _, config, err := ocontent.Successors(ctx, statusFetcher, desc)
 		if err != nil {
 			return nil, err
 		}
@@ -154,12 +155,14 @@ func runPull(opts pullOptions) error {
 			// 2) MediaType not specified and current node is config.
 			// Note: For a manifest, the 0th indexed element is always a
 			// manifest config.
-			if (s.MediaType == configMediaType || (configMediaType == "" && i == 0 && descriptor.IsImageManifest(desc))) && configPath != "" {
-				// Add annotation for manifest config
-				if s.Annotations == nil {
-					s.Annotations = make(map[string]string)
-				}
-				s.Annotations[ocispec.AnnotationTitle] = configPath
+			if (s.MediaType == configMediaType || (configMediaType == "" && s == config)) && configPath != "" {
+				setConfig.Do(func() {
+					// Add annotation for manifest config
+					if s.Annotations == nil {
+						s.Annotations = make(map[string]string)
+					}
+					s.Annotations[ocispec.AnnotationTitle] = configPath
+				})
 			}
 			if s.Annotations[ocispec.AnnotationTitle] == "" {
 				ss, err := content.Successors(ctx, fetcher, s)
