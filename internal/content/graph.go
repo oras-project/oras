@@ -60,9 +60,6 @@ func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descr
 		nodes = append(nodes, manifest.Blobs...)
 	default:
 		nodes, err = content.Successors(ctx, fetcher, node)
-		if err != nil {
-			return
-		}
 	}
 	return
 }
