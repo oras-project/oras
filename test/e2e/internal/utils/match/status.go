@@ -16,6 +16,7 @@ package match
 import (
 	"fmt"
 	"strings"
+	"sync/atomic"
 
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -30,26 +31,30 @@ type StateKey struct {
 	Name   string
 }
 
-type state struct {
-	uint // padding to avoid zero-based pointer
+type state uint32
+
+var lastState uint32
+
+func newState() state {
+	return state(atomic.AddUint32(&lastState, 1))
 }
 
 type edge struct {
-	from *state
-	to   *state
+	from state
+	to   state
 }
 
 // stateMachine with edges named after known status.
 type stateMachine struct {
 	edges map[status][]edge
-	start *state
-	end   *state
+	start state
+	end   state
 }
 
 func newStateMachine(cmd string) *stateMachine {
 	sm := &stateMachine{
-		start: new(state),
-		end:   new(state),
+		start: newState(),
+		end:   newState(),
 		edges: make(map[string][]edge),
 	}
 
@@ -70,7 +75,7 @@ func newStateMachine(cmd string) *stateMachine {
 	return sm
 }
 
-func findState(from *state, edges []edge) *edge {
+func findState(from state, edges []edge) *edge {
 	for _, e := range edges {
 		if e.from == from {
 			return &e
@@ -89,7 +94,7 @@ func (opts *stateMachine) addPath(statuses ...string) {
 			if i == len-1 {
 				e = &edge{from: last, to: opts.end}
 			} else {
-				e = &edge{from: last, to: new(state)}
+				e = &edge{from: last, to: newState()}
 			}
 			opts.edges[status] = append(opts.edges[status], *e)
 		}
@@ -98,7 +103,7 @@ func (opts *stateMachine) addPath(statuses ...string) {
 }
 
 type statusMatcher struct {
-	states       map[StateKey]*state
+	states       map[StateKey]state
 	endResult    map[status][]StateKey
 	successCount int
 	verbose      bool
@@ -109,7 +114,7 @@ type statusMatcher struct {
 // NewStatusMatcher generates a instance for matchable status logs.
 func NewStatusMatcher(keys []StateKey, cmd string, verbose bool, expectSuccessCount int) *statusMatcher {
 	s := statusMatcher{
-		states:       make(map[StateKey]*state),
+		states:       make(map[StateKey]state),
 		endResult:    make(map[string][]StateKey),
 		stateMachine: newStateMachine(cmd),
 		successCount: expectSuccessCount,
