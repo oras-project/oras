@@ -17,7 +17,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 )
 
-// Matchable provides matching method towards an output buffer.
-type Matchable interface {
+// Matcher provides matching method towards an output buffer.
+type Matcher interface {
 	Match(got *gbytes.Buffer)
 }

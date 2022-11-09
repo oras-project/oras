@@ -44,8 +44,8 @@ type ExecOption struct {
 	timeout time.Duration
 
 	stdin      io.Reader
-	stdout     []match.Matchable
-	stderr     []match.Matchable
+	stdout     []match.Matcher
+	stderr     []match.Matcher
 	shouldFail bool
 
 	text string
