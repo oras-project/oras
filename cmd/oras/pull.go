@@ -26,10 +26,10 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
-	ocontent "oras.land/oras/cmd/oras/internal/content"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	ocontent "oras.land/oras/internal/content"
 )
 
 type pullOptions struct {
@@ -149,13 +149,13 @@ func runPull(opts pullOptions) error {
 		// Iterate all the successors to
 		// 1) Add name annotation to config if configPath is not empty
 		// 2) Skip fetching unnamed leaf nodes
-		for i, s := range successors {
+		for _, s := range successors {
 			// Save the config when:
 			// 1) MediaType matches, or
 			// 2) MediaType not specified and current node is config.
 			// Note: For a manifest, the 0th indexed element is always a
 			// manifest config.
-			if (s.MediaType == configMediaType || (configMediaType == "" && s == config)) && configPath != "" {
+			if (s.MediaType == configMediaType || (configMediaType == "" && content.Equal(s, config))) && configPath != "" {
 				setConfig.Do(func() {
 					// Add annotation for manifest config
 					if s.Annotations == nil {
