@@ -31,12 +31,12 @@ type StateKey struct {
 	Name   string
 }
 
-type state uint32
+type state uintptr
 
-var lastState uint32
+var lastState uintptr
 
 func newState() state {
-	return state(atomic.AddUint32(&lastState, 1))
+	return state(atomic.AddUintptr(&lastState, 1))
 }
 
 type edge struct {
