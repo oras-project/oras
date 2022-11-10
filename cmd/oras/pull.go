@@ -167,7 +167,7 @@ func runPull(opts pullOptions) error {
 			}
 			nodes = append(nodes, *config)
 		}
-		if targetConfig != nil {
+		if targetConfig == nil {
 			// stop downloading subject configuration
 			targetConfig = new(ocispec.Descriptor)
 		}
