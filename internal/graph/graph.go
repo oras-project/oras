@@ -24,8 +24,8 @@ import (
 	"oras.land/oras/internal/docker"
 )
 
-// Successors returns the nodes directly pointed by the current node, as well as
-// subject and config descriptor if applicable.
+// Successors returns the nodes directly pointed by the current node, picking
+// out subject and config descriptor if applicable.
 func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) (nodes []ocispec.Descriptor, subject ocispec.Descriptor, config ocispec.Descriptor, err error) {
 	var fetched []byte
 	switch node.MediaType {
@@ -39,7 +39,7 @@ func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descr
 			return
 		}
 		config = manifest.Config
-		nodes = append(append(manifest.Layers, config), nodes...)
+		nodes = manifest.Layers
 	case ocispec.MediaTypeImageManifest:
 		fetched, err = content.FetchAll(ctx, fetcher, node)
 		if err != nil {
@@ -51,10 +51,9 @@ func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descr
 		}
 		if manifest.Subject != nil {
 			subject = *manifest.Subject
-			nodes = append(nodes, subject)
 		}
 		config = manifest.Config
-		nodes = append(append(manifest.Layers, config), nodes...)
+		nodes = manifest.Layers
 	case ocispec.MediaTypeArtifactManifest:
 		fetched, err = content.FetchAll(ctx, fetcher, node)
 		if err != nil {
@@ -66,9 +65,8 @@ func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descr
 		}
 		if manifest.Subject != nil {
 			subject = *manifest.Subject
-			nodes = append(nodes, subject)
 		}
-		nodes = append(nodes, manifest.Blobs...)
+		nodes = manifest.Blobs
 	default:
 		nodes, err = content.Successors(ctx, fetcher, node)
 	}

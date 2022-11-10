@@ -38,6 +38,7 @@ type pullOptions struct {
 	option.Remote
 	option.Platform
 
+	skipSubject       bool
 	concurrency       int64
 	targetRef         string
 	KeepOldFiles      bool
@@ -84,6 +85,7 @@ Example - Pull all files with concurrency level tuned:
 
 	cmd.Flags().BoolVarP(&opts.KeepOldFiles, "keep-old-files", "k", false, "do not replace existing files when pulling, treat them as errors")
 	cmd.Flags().BoolVarP(&opts.PathTraversal, "allow-path-traversal", "T", false, "allow storing files out of the output directory")
+	cmd.Flags().BoolVarP(&opts.skipSubject, "skip-subject", "", false, "don't recursively pull subject manifest")
 	cmd.Flags().StringVarP(&opts.Output, "output", "o", ".", "output directory")
 	cmd.Flags().StringVarP(&opts.ManifestConfigRef, "config", "", "", "output manifest config file")
 	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
@@ -141,47 +143,44 @@ func runPull(opts pullOptions) error {
 			}
 			return rc, nil
 		})
-		successors, _, config, err := graph.Successors(ctx, statusFetcher, desc)
+
+		nodes, subject, config, err := graph.Successors(ctx, statusFetcher, desc)
 		if err != nil {
 			return nil, err
 		}
-		var ret []ocispec.Descriptor
-		// Iterate all the successors to
-		// 1) Add name annotation to config if configPath is not empty
-		// 2) Skip fetching unnamed leaf nodes
-		for _, s := range successors {
-			// Save the config when:
-			// 1) MediaType matches, or
-			// 2) MediaType not specified and current node is config.
-			// Note: For a manifest, the 0th indexed element is always a
-			// manifest config.
-			if (s.MediaType == configMediaType || (configMediaType == "" && content.Equal(s, config))) && configPath != "" {
-				if attemptedConfig == nil || content.Equal(*attemptedConfig, s) {
-					// Add annotation for manifest config
-					if s.Annotations == nil {
-						s.Annotations = make(map[string]string)
-					}
-					s.Annotations[ocispec.AnnotationTitle] = configPath
-					attemptedConfig = &s
+		if !opts.skipSubject {
+			nodes = append(nodes, subject)
+		}
+		if !content.Equal(config, ocispec.Descriptor{}) {
+			if configPath != "" && (configMediaType == "" || config.MediaType == configMediaType || attemptedConfig == nil || content.Equal(*attemptedConfig, config)) {
+				// Save the config when:
+				// 1) MediaType matches, or
+				// 2) MediaType not specified but current node is config.
+				if config.Annotations == nil {
+					config.Annotations = make(map[string]string)
 				}
+				config.Annotations[ocispec.AnnotationTitle] = configPath
+				attemptedConfig = &config
 			}
+			nodes = append(nodes, config)
+		}
+
+		var ret []ocispec.Descriptor
+		for _, s := range nodes {
 			if s.Annotations[ocispec.AnnotationTitle] == "" {
 				ss, err := content.Successors(ctx, fetcher, s)
 				if err != nil {
 					return nil, err
 				}
-				// Skip s if s is unnamed and has no successors.
 				if len(ss) == 0 {
-					if _, loaded := printed.LoadOrStore(generateContentKey(s), true); !loaded {
-						if err = display.PrintStatus(s, "Skipped    ", opts.Verbose); err != nil {
-							return nil, err
-						}
-					}
+					// optimize: skip s if it is unnamed AND has no successors.
+					printOnce(s, "Skipped    ", opts.Verbose, printed)
 					continue
 				}
 			}
 			ret = append(ret, s)
 		}
+
 		return ret, nil
 	}
 
@@ -205,11 +204,7 @@ func runPull(opts pullOptions) error {
 		}
 		for _, s := range successors {
 			if _, ok := s.Annotations[ocispec.AnnotationTitle]; ok {
-				if _, ok := printed.LoadOrStore(generateContentKey(s), true); !ok {
-					if err = display.PrintStatus(s, "Restored   ", opts.Verbose); err != nil {
-						return err
-					}
-				}
+				printOnce(s, "Restored   ", opts.Verbose, printed)
 			}
 		}
 		name, ok := desc.Annotations[ocispec.AnnotationTitle]
@@ -243,4 +238,13 @@ func runPull(opts pullOptions) error {
 // its digest and name if applicable.
 func generateContentKey(desc ocispec.Descriptor) string {
 	return desc.Digest.String() + desc.Annotations[ocispec.AnnotationTitle]
+}
+
+func printOnce(s ocispec.Descriptor, msg string, verbose bool, printed sync.Map) error {
+	if _, loaded := printed.LoadOrStore(generateContentKey(s), true); !loaded {
+		if err := display.PrintStatus(s, msg, verbose); err != nil {
+			return err
+		}
+	}
+	return nil
 }
