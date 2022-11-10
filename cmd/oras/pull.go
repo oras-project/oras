@@ -153,7 +153,7 @@ func runPull(opts pullOptions) error {
 		}
 		if config != nil {
 			if configPath != "" && (configMediaType == "" || config.MediaType == configMediaType || attemptedConfig == nil || content.Equal(*attemptedConfig, *config)) {
-				// Save the config when:
+				// Save the first met config when:
 				// 1) MediaType matches, or
 				// 2) MediaType not specified but current node is config.
 				if config.Annotations == nil {
