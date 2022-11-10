@@ -30,18 +30,7 @@ import (
 func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) (nodes []ocispec.Descriptor, subject *ocispec.Descriptor, config *ocispec.Descriptor, err error) {
 	var fetched []byte
 	switch node.MediaType {
-	case docker.MediaTypeManifest:
-		fetched, err = content.FetchAll(ctx, fetcher, node)
-		if err != nil {
-			return
-		}
-		var manifest ocispec.Manifest
-		if err = json.Unmarshal(fetched, &manifest); err != nil {
-			return
-		}
-		config = &manifest.Config
-		nodes = manifest.Layers
-	case ocispec.MediaTypeImageManifest:
+	case docker.MediaTypeManifest, ocispec.MediaTypeImageManifest:
 		fetched, err = content.FetchAll(ctx, fetcher, node)
 		if err != nil {
 			return
