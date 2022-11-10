@@ -155,7 +155,7 @@ func runPull(opts pullOptions) error {
 			if targetConfig == nil {
 				targetConfig = config
 			}
-			if configPath != "" && (configMediaType == "" || config.MediaType == configMediaType) && targetConfig == config {
+			if configPath != "" && (configMediaType == "" || config.MediaType == configMediaType) && content.Equal(*targetConfig, *config) {
 				// Save the target config when config provided and:
 				// 1) MediaType matches, or
 				// 2) MediaType not specified but current node is config
