@@ -26,7 +26,8 @@ import (
 
 // Successors returns the nodes directly pointed by the current node, picking
 // out subject and config descriptor if applicable.
-func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) (nodes []ocispec.Descriptor, subject ocispec.Descriptor, config ocispec.Descriptor, err error) {
+// Returning nil when no subject and config found.
+func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) (nodes []ocispec.Descriptor, subject *ocispec.Descriptor, config *ocispec.Descriptor, err error) {
 	var fetched []byte
 	switch node.MediaType {
 	case docker.MediaTypeManifest:
@@ -38,7 +39,7 @@ func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descr
 		if err = json.Unmarshal(fetched, &manifest); err != nil {
 			return
 		}
-		config = manifest.Config
+		config = &manifest.Config
 		nodes = manifest.Layers
 	case ocispec.MediaTypeImageManifest:
 		fetched, err = content.FetchAll(ctx, fetcher, node)
@@ -49,10 +50,8 @@ func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descr
 		if err = json.Unmarshal(fetched, &manifest); err != nil {
 			return
 		}
-		if manifest.Subject != nil {
-			subject = *manifest.Subject
-		}
-		config = manifest.Config
+		subject = manifest.Subject
+		config = &manifest.Config
 		nodes = manifest.Layers
 	case ocispec.MediaTypeArtifactManifest:
 		fetched, err = content.FetchAll(ctx, fetcher, node)
@@ -63,9 +62,7 @@ func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descr
 		if err = json.Unmarshal(fetched, &manifest); err != nil {
 			return
 		}
-		if manifest.Subject != nil {
-			subject = *manifest.Subject
-		}
+		subject = manifest.Subject
 		nodes = manifest.Blobs
 	default:
 		nodes, err = content.Successors(ctx, fetcher, node)

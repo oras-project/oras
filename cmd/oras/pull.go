@@ -148,10 +148,10 @@ func runPull(opts pullOptions) error {
 		if err != nil {
 			return nil, err
 		}
-		if !opts.skipSubject {
-			nodes = append(nodes, subject)
+		if !opts.skipSubject && subject != nil {
+			nodes = append(nodes, *subject)
 		}
-		if !content.Equal(config, ocispec.Descriptor{}) {
+		if config != nil {
 			if configPath != "" && (configMediaType == "" || config.MediaType == configMediaType || attemptedConfig == nil || content.Equal(*attemptedConfig, config)) {
 				// Save the config when:
 				// 1) MediaType matches, or
@@ -160,9 +160,9 @@ func runPull(opts pullOptions) error {
 					config.Annotations = make(map[string]string)
 				}
 				config.Annotations[ocispec.AnnotationTitle] = configPath
-				attemptedConfig = &config
+				attemptedConfig = config
 			}
-			nodes = append(nodes, config)
+			nodes = append(nodes, *config)
 		}
 
 		var ret []ocispec.Descriptor
