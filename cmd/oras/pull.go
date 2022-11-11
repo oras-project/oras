@@ -38,7 +38,7 @@ type pullOptions struct {
 	option.Remote
 	option.Platform
 
-	skipSubject       bool
+	includeSubject    bool
 	concurrency       int64
 	targetRef         string
 	KeepOldFiles      bool
@@ -85,7 +85,7 @@ Example - Pull all files with concurrency level tuned:
 
 	cmd.Flags().BoolVarP(&opts.KeepOldFiles, "keep-old-files", "k", false, "do not replace existing files when pulling, treat them as errors")
 	cmd.Flags().BoolVarP(&opts.PathTraversal, "allow-path-traversal", "T", false, "allow storing files out of the output directory")
-	cmd.Flags().BoolVarP(&opts.skipSubject, "skip-subject", "", false, "don't recursively pull subject manifest")
+	cmd.Flags().BoolVarP(&opts.includeSubject, "include-subject", "", false, "recursively pull subjects")
 	cmd.Flags().StringVarP(&opts.Output, "output", "o", ".", "output directory")
 	cmd.Flags().StringVarP(&opts.ManifestConfigRef, "config", "", "", "output manifest config file")
 	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
@@ -148,7 +148,7 @@ func runPull(opts pullOptions) error {
 		if err != nil {
 			return nil, err
 		}
-		if !opts.skipSubject && subject != nil {
+		if opts.includeSubject && subject != nil {
 			nodes = append(nodes, *subject)
 		}
 		if config != nil {
