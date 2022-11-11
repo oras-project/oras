@@ -181,7 +181,9 @@ func runPull(opts pullOptions) error {
 				}
 				if len(ss) == 0 {
 					// optimize: skip s if it is unnamed AND has no successors.
-					printOnce(s, "Skipped    ", opts.Verbose, printed)
+					if err := printOnce(s, "Skipped    ", opts.Verbose, &printed); err != nil {
+						return nil, err
+					}
 					continue
 				}
 			}
@@ -211,7 +213,9 @@ func runPull(opts pullOptions) error {
 		}
 		for _, s := range successors {
 			if _, ok := s.Annotations[ocispec.AnnotationTitle]; ok {
-				printOnce(s, "Restored   ", opts.Verbose, printed)
+				if err := printOnce(s, "Restored   ", opts.Verbose, &printed); err != nil {
+					return err
+				}
 			}
 		}
 		name, ok := desc.Annotations[ocispec.AnnotationTitle]
@@ -247,11 +251,9 @@ func generateContentKey(desc ocispec.Descriptor) string {
 	return desc.Digest.String() + desc.Annotations[ocispec.AnnotationTitle]
 }
 
-func printOnce(s ocispec.Descriptor, msg string, verbose bool, printed sync.Map) error {
-	if _, loaded := printed.LoadOrStore(generateContentKey(s), true); !loaded {
-		if err := display.PrintStatus(s, msg, verbose); err != nil {
-			return err
-		}
+func printOnce(s ocispec.Descriptor, msg string, verbose bool, printed *sync.Map) error {
+	if _, loaded := printed.LoadOrStore(generateContentKey(s), true); loaded {
+		return nil
 	}
-	return nil
+	return display.PrintStatus(s, msg, verbose)
 }
