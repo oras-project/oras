@@ -172,7 +172,7 @@ func runPull(opts pullOptions) error {
 					return nil, err
 				}
 				if len(ss) == 0 {
-					// optimize: skip s if it is unnamed AND has no successors.
+					// skip s if it is unnamed AND has no successors.
 					if err := printOnce(&printed, s, "Skipped    ", opts.Verbose); err != nil {
 						return nil, err
 					}
