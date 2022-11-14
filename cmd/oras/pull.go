@@ -152,9 +152,6 @@ func runPull(opts pullOptions) error {
 		if config != nil {
 			getConfigOnce.Do(func() {
 				if configPath != "" && (configMediaType == "" || config.MediaType == configMediaType) {
-					// Save the target config when
-					// 1) Config path provided, and
-					// 2) MediaType matches
 					if config.Annotations == nil {
 						config.Annotations = make(map[string]string)
 					}
