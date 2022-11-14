@@ -57,6 +57,10 @@ func pullCmd() *cobra.Command {
 Example - Pull all files:
   oras pull localhost:5000/hello:latest
 
+
+Example - Recursively pulling all files, including subjects of hello:latest:
+  oras pull localhost:5000/hello:latest --include-subject
+
 Example - Pull files from the insecure registry:
   oras pull --insecure localhost:5000/hello:latest
 
