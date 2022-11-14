@@ -29,7 +29,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/descriptor"
+	"oras.land/oras/internal/graph"
 )
 
 type pullOptions struct {
@@ -116,6 +116,7 @@ func runPull(opts pullOptions) error {
 	if targetPlatform != nil {
 		copyOptions.WithTargetPlatform(targetPlatform)
 	}
+	var getConfigOnce sync.Once
 	copyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		statusFetcher := content.FetcherFunc(func(ctx context.Context, target ocispec.Descriptor) (fetched io.ReadCloser, fetchErr error) {
 			if _, ok := printed.LoadOrStore(generateContentKey(target), true); ok {
@@ -140,44 +141,44 @@ func runPull(opts pullOptions) error {
 			}
 			return rc, nil
 		})
-		successors, err := content.Successors(ctx, statusFetcher, desc)
+
+		nodes, subject, config, err := graph.Successors(ctx, statusFetcher, desc)
 		if err != nil {
 			return nil, err
 		}
-		var ret []ocispec.Descriptor
-		// Iterate all the successors to
-		// 1) Add name annotation to config if configPath is not empty
-		// 2) Skip fetching unnamed leaf nodes
-		for i, s := range successors {
-			// Save the config when:
-			// 1) MediaType matches, or
-			// 2) MediaType not specified and current node is config.
-			// Note: For a manifest, the 0th indexed element is always a
-			// manifest config.
-			if (s.MediaType == configMediaType || (configMediaType == "" && i == 0 && descriptor.IsImageManifest(desc))) && configPath != "" {
-				// Add annotation for manifest config
-				if s.Annotations == nil {
-					s.Annotations = make(map[string]string)
+		if subject != nil {
+			nodes = append(nodes, *subject)
+		}
+		if config != nil {
+			getConfigOnce.Do(func() {
+				if configPath != "" && (configMediaType == "" || config.MediaType == configMediaType) {
+					if config.Annotations == nil {
+						config.Annotations = make(map[string]string)
+					}
+					config.Annotations[ocispec.AnnotationTitle] = configPath
 				}
-				s.Annotations[ocispec.AnnotationTitle] = configPath
-			}
+			})
+			nodes = append(nodes, *config)
+		}
+
+		var ret []ocispec.Descriptor
+		for _, s := range nodes {
 			if s.Annotations[ocispec.AnnotationTitle] == "" {
 				ss, err := content.Successors(ctx, fetcher, s)
 				if err != nil {
 					return nil, err
 				}
-				// Skip s if s is unnamed and has no successors.
 				if len(ss) == 0 {
-					if _, loaded := printed.LoadOrStore(generateContentKey(s), true); !loaded {
-						if err = display.PrintStatus(s, "Skipped    ", opts.Verbose); err != nil {
-							return nil, err
-						}
+					// skip s if it is unnamed AND has no successors.
+					if err := printOnce(&printed, s, "Skipped    ", opts.Verbose); err != nil {
+						return nil, err
 					}
 					continue
 				}
 			}
 			ret = append(ret, s)
 		}
+
 		return ret, nil
 	}
 
@@ -201,10 +202,8 @@ func runPull(opts pullOptions) error {
 		}
 		for _, s := range successors {
 			if _, ok := s.Annotations[ocispec.AnnotationTitle]; ok {
-				if _, ok := printed.LoadOrStore(generateContentKey(s), true); !ok {
-					if err = display.PrintStatus(s, "Restored   ", opts.Verbose); err != nil {
-						return err
-					}
+				if err := printOnce(&printed, s, "Restored   ", opts.Verbose); err != nil {
+					return err
 				}
 			}
 		}
@@ -239,4 +238,11 @@ func runPull(opts pullOptions) error {
 // its digest and name if applicable.
 func generateContentKey(desc ocispec.Descriptor) string {
 	return desc.Digest.String() + desc.Annotations[ocispec.AnnotationTitle]
+}
+
+func printOnce(printed *sync.Map, s ocispec.Descriptor, msg string, verbose bool) error {
+	if _, loaded := printed.LoadOrStore(generateContentKey(s), true); loaded {
+		return nil
+	}
+	return display.PrintStatus(s, msg, verbose)
 }
