@@ -116,7 +116,7 @@ func runPull(opts pullOptions) error {
 	if targetPlatform != nil {
 		copyOptions.WithTargetPlatform(targetPlatform)
 	}
-	var targetConfig *ocispec.Descriptor
+	var getConfigOnce sync.Once
 	copyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		statusFetcher := content.FetcherFunc(func(ctx context.Context, target ocispec.Descriptor) (fetched io.ReadCloser, fetchErr error) {
 			if _, ok := printed.LoadOrStore(generateContentKey(target), true); ok {
@@ -150,24 +150,18 @@ func runPull(opts pullOptions) error {
 			nodes = append(nodes, *subject)
 		}
 		if config != nil {
-			if targetConfig == nil {
-				targetConfig = config
-			}
-			if configPath != "" && (configMediaType == "" || config.MediaType == configMediaType) && content.Equal(*targetConfig, *config) {
-				// Save the target config when config provided and:
-				// 1) MediaType matches, or
-				// 2) MediaType not specified but current node is config
-				if config.Annotations == nil {
-					config.Annotations = make(map[string]string)
+			getConfigOnce.Do(func() {
+				if configPath != "" && (configMediaType == "" || config.MediaType == configMediaType) {
+					// Save the target config when config provided and:
+					// 1) MediaType matches, or
+					// 2) MediaType not specified but current node is config
+					if config.Annotations == nil {
+						config.Annotations = make(map[string]string)
+					}
+					config.Annotations[ocispec.AnnotationTitle] = configPath
 				}
-				config.Annotations[ocispec.AnnotationTitle] = configPath
-				targetConfig = config
-			}
+			})
 			nodes = append(nodes, *config)
-		}
-		if targetConfig == nil {
-			// stop downloading subject configuration
-			targetConfig = new(ocispec.Descriptor)
 		}
 
 		var ret []ocispec.Descriptor
