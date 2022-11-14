@@ -142,9 +142,12 @@ func runPull(opts pullOptions) error {
 			return rc, nil
 		})
 
-		nodes, _, config, err := graph.Successors(ctx, statusFetcher, desc)
+		nodes, subject, config, err := graph.Successors(ctx, statusFetcher, desc)
 		if err != nil {
 			return nil, err
+		}
+		if subject != nil {
+			nodes = append(nodes, *subject)
 		}
 		if config != nil {
 			if targetConfig == nil {
