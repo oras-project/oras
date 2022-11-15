@@ -14,7 +14,11 @@ limitations under the License.
 package command
 
 import (
+	"fmt"
+	"sync"
+
 	. "github.com/onsi/ginkgo/v2"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	. "oras.land/oras/test/e2e/internal/utils"
 	"oras.land/oras/test/e2e/internal/utils/match"
 )
@@ -29,10 +33,21 @@ var _ = Describe("Remote registry users:", func() {
 		{Digest: "fcde2b2edba5", Name: files[1]},
 	}
 
+	layerDescriptorTemplate := `{"mediaType":"%s","digest":"sha256:fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9","size":3,"annotations":{"org.opencontainers.image.title":"foobar/bar"}}`
 	repo := "command/push"
 	var tempDir string
-	BeforeAll(func() {
+	var lock sync.Mutex
+	BeforeEach(func() {
+		if tempDir != "" {
+			return
+		}
+		lock.Lock()
+		defer lock.Unlock()
+		if tempDir != "" {
+			return
+		}
 		tempDir = GinkgoT().TempDir()
+		fmt.Printf("Prepared temporary working directory in %s", tempDir)
 		if err := CopyTestData(tempDir); err != nil {
 			panic(err)
 		}
@@ -40,14 +55,39 @@ var _ = Describe("Remote registry users:", func() {
 
 	When("pushing OCI image", func() {
 		It("should push files without customized media types", func() {
-			tag := "basic"
-			ORAS("push", Reference(Host, repo, "basic"), files[1], "-v").
-				MatchStatus(statusKeys, true, 3).
+			tag := "no-mediatype"
+			ORAS("push", Reference(Host, repo, tag), files[1], "-v").
+				MatchStatus(statusKeys, true, 1).
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
-			Binary("jq").
-				MatchContent("test").
+			Binary("jq", ".layers[]", "--compact-output").
+				MatchContent(fmt.Sprintf(layerDescriptorTemplate, ocispec.MediaTypeImageLayer)).
 				WithInput(fetched).Exec()
+		})
+
+		It("should push files with customized media types", func() {
+			tag := "layer-mediatype"
+			layerType := "test.layer"
+			ORAS("push", Reference(Host, repo, tag), files[1]+":"+layerType, "-v").
+				MatchStatus(statusKeys, true, 1).
+				WithWorkDir(tempDir).Exec()
+			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
+			Binary("jq", ".layers[]", "--compact-output").
+				MatchContent(fmt.Sprintf(layerDescriptorTemplate, layerType)).
+				WithInput(fetched).Exec()
+		})
+
+		It("should push files with manifest exported", func() {
+			tag := "exported"
+			layerType := "test.layer"
+			exportPath := "packed.json"
+			ORAS("push", Reference(Host, repo, tag), files[1]+":"+layerType, "-v", "--export-manifest", exportPath).
+				MatchStatus(statusKeys, true, 1).
+				WithWorkDir(tempDir).Exec()
+			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
+			Binary("cat", exportPath).
+				WithWorkDir(tempDir).
+				MatchContent(string(fetched.Contents())).Exec()
 		})
 	})
 })

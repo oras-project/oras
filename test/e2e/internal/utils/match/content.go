@@ -14,6 +14,8 @@ limitations under the License.
 package match
 
 import (
+	"strings"
+
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 )
@@ -28,6 +30,7 @@ func NewContentMatcher(s string) contentMatcher {
 
 // Match matches got with s.
 func (c contentMatcher) Match(got *gbytes.Buffer) {
-	content := got.Contents()
+	// trim space by default
+	content := strings.TrimSpace(string(got.Contents()))
 	Expect(contentMatcher(content)).Should(Equal(c))
 }
