@@ -45,7 +45,7 @@ var _ = Describe("Remote registry users:", func() {
 				MatchStatus(statusKeys, true, 3).
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
-			Binary("jq", "").
+			Binary("jq").
 				MatchContent("test").
 				WithInput(fetched).Exec()
 		})
