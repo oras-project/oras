@@ -95,7 +95,10 @@ var _ = Describe("Remote registry users:", func() {
 		It("should push files with customized config file", func() {
 			tag := "config"
 			ORAS("push", Reference(Host, repo, tag), "--config", files[0], files[1], "-v").
-				MatchStatus(statusKeys, true, 2).
+				MatchStatus([]match.StateKey{
+					{Digest: "44136fa355b3", Name: oras.MediaTypeUnknownConfig},
+					{Digest: "fcde2b2edba5", Name: files[1]},
+				}, true, 2).
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 			Binary("jq", ".config", "--compact-output").
