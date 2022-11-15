@@ -59,7 +59,7 @@ Example - Pull all files:
 
 
 Example - Recursively pulling all files, including subjects of hello:latest:
-  oras pull localhost:5000/hello:latest --include-subject
+  oras pull --include-subject localhost:5000/hello:latest
 
 Example - Pull files from the insecure registry:
   oras pull --insecure localhost:5000/hello:latest
@@ -89,7 +89,7 @@ Example - Pull all files with concurrency level tuned:
 
 	cmd.Flags().BoolVarP(&opts.KeepOldFiles, "keep-old-files", "k", false, "do not replace existing files when pulling, treat them as errors")
 	cmd.Flags().BoolVarP(&opts.PathTraversal, "allow-path-traversal", "T", false, "allow storing files out of the output directory")
-	cmd.Flags().BoolVarP(&opts.IncludeSubject, "include-subject", "", false, "download files recursively from subject images/artifacts")
+	cmd.Flags().BoolVarP(&opts.IncludeSubject, "include-subject", "", false, "recursively pull the subject of artifacts")
 	cmd.Flags().StringVarP(&opts.Output, "output", "o", ".", "output directory")
 	cmd.Flags().StringVarP(&opts.ManifestConfigRef, "config", "", "", "output manifest config file")
 	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
