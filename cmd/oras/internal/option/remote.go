@@ -23,6 +23,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -35,8 +36,16 @@ import (
 	"oras.land/oras/internal/version"
 )
 
+type ResolveEntry struct {
+	from string
+	to   net.IP
+	port int
+}
+
 // Remote options struct.
 type Remote struct {
+	resolveFlag []string
+
 	CACertFilePath    string
 	PlainHTTP         bool
 	Insecure          bool
@@ -44,6 +53,7 @@ type Remote struct {
 	Username          string
 	PasswordFromStdin bool
 	Password          string
+	Resolves          []*ResolveEntry
 }
 
 // ApplyFlags applies flags to a command flag set.
@@ -76,6 +86,10 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	if fs.Lookup("registry-config") == nil {
 		fs.StringArrayVarP(&opts.Configs, "registry-config", "", nil, "`path` of the authentication file")
 	}
+
+	if fs.Lookup("resolve") == nil {
+		fs.StringArrayVarP(&opts.resolveFlag, "resolve", "", nil, "customized DNS formatted in `host:port:address`")
+	}
 }
 
 // ReadPassword tries to read password with optional cmd prompt.
@@ -90,6 +104,33 @@ func (opts *Remote) ReadPassword() (err error) {
 		}
 		opts.Password = strings.TrimSuffix(string(password), "\n")
 		opts.Password = strings.TrimSuffix(opts.Password, "\r")
+	}
+	return nil
+}
+
+// ParseResolve parses resolve flag.
+func (opts *Remote) ParseResolve() (err error) {
+	errorMsg := "failed to parse resolve flag %q: %s"
+	for _, r := range opts.resolveFlag {
+		parts := strings.SplitN(r, ":", 3)
+		if len(parts) < 3 {
+			return fmt.Errorf(errorMsg, r, "expecting host:port:address")
+		}
+
+		port, err := strconv.ParseInt(parts[1], 10, 64)
+		if err != nil {
+			return fmt.Errorf(errorMsg, r, "expecting uint64 port")
+		}
+
+		to := net.ParseIP(parts[2])
+		if to == nil {
+			return fmt.Errorf(errorMsg, r, "invalid IP address")
+		}
+		opts.Resolves = append(opts.Resolves, &ResolveEntry{
+			from: parts[0],
+			port: int(port),
+			to:   to,
+		})
 	}
 	return nil
 }
@@ -109,6 +150,28 @@ func (opts *Remote) tlsConfig() (*tls.Config, error) {
 	return config, nil
 }
 
+var defaultDialer = &net.Dialer{
+	Timeout:   30 * time.Second,
+	KeepAlive: 30 * time.Second,
+}
+
+// DialContext connects to the addr on the named network using
+// the provided context.
+func (opts *Remote) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+	var matched *ResolveEntry
+	for _, r := range opts.Resolves {
+		if addr == fmt.Sprintf("%s:%d", r.from, r.port) {
+			matched = r
+			break
+		}
+	}
+	if matched == nil {
+		return defaultDialer.DialContext(ctx, network, addr)
+	}
+
+	return net.DialTCP(network, nil, &net.TCPAddr{IP: matched.to, Port: matched.port})
+}
+
 // authClient assembles a oras auth client.
 func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client, err error) {
 	config, err := opts.tlsConfig()
@@ -119,11 +182,8 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 		Client: &http.Client{
 			// default value are derived from http.DefaultTransport
 			Transport: &http.Transport{
-				Proxy: http.ProxyFromEnvironment,
-				DialContext: (&net.Dialer{
-					Timeout:   30 * time.Second,
-					KeepAlive: 30 * time.Second,
-				}).DialContext,
+				Proxy:                 http.ProxyFromEnvironment,
+				DialContext:           opts.DialContext,
 				ForceAttemptHTTP2:     true,
 				MaxIdleConns:          100,
 				IdleConnTimeout:       90 * time.Second,
