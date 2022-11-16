@@ -35,9 +35,8 @@ import (
 type pullOptions struct {
 	option.Cache
 	option.Common
-	option.Remote
-	option.Platform
 	option.Target
+	option.Platform
 
 	concurrency       int64
 	targetRef         string

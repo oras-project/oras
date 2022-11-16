@@ -82,5 +82,5 @@ func tagManifest(opts tagOptions) error {
 
 	tagNOpts := oras.DefaultTagNOptions
 	tagNOpts.Concurrency = opts.concurrency
-	return oras.TagN(ctx, &display.TagManifestStatusPrinter{Repository: repo}, opts.srcRef, opts.targetRefs, tagNOpts)
+	return oras.TagN(ctx, &display.TagManifestStatusPrinter{GraphTarget: repo}, opts.srcRef, opts.targetRefs, tagNOpts)
 }

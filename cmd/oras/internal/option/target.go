@@ -39,12 +39,14 @@ type Target struct {
 
 // check value is cow. If not, use a NewFunction instead
 var defaultConfig = map[string]string{
-	"type": "remote",
-	"path": "",
+	"type":    "remote",
+	"path":    "",
+	"tarball": "true",
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Target) ApplyFlags(fs *pflag.FlagSet) {
+	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
 	opts.ApplyFlagsWithPrefix(fs, "", "")
 }
 
@@ -61,24 +63,28 @@ func (opts *Target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	}
 
 	fs.StringToStringVarP(&opts.config, flagPrefix+"target", "", defaultConfig, "configure target configuration"+noteSuffix)
-	opts.Type = opts.config["type"]
-	opts.Path = opts.config["path"]
 	if opts.Type == RemoteType {
 		opts.Remote.ApplyFlagsWithPrefix(fs, prefix, description)
 	}
 }
 
 func (opts *Target) ParseFlags() error {
-	var err error = nil
-	if opts.Tarball, err = strconv.ParseBool(opts.config["tarball"]); err != nil {
-		return err
+	opts.Type = opts.config["type"]
+	opts.Path = opts.config["path"]
+
+	isTarball := opts.config["tarball"]
+	if isTarball != "" {
+		var err error = nil
+		if opts.Tarball, err = strconv.ParseBool(isTarball); err != nil {
+			return err
+		}
 	}
 
 	switch opts.Type {
 	case OCILayoutType, RemoteType:
 		return nil
 	}
-	return fmt.Errorf("unknown target type: %s", opts.Type)
+	return fmt.Errorf("unknown target type: %q", opts.Type)
 }
 
 func (opts *Target) NewTarget(reference string, common Common, isSrc bool) (oras.GraphTarget, error) {
@@ -99,5 +105,5 @@ func (opts *Target) NewTarget(reference string, common Common, isSrc bool) (oras
 		}
 		return repo, nil
 	}
-	return nil, fmt.Errorf("unknown target type: %s", opts.Type)
+	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
 }
