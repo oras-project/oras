@@ -25,18 +25,7 @@ import (
 )
 
 var _ = Describe("Remote registry users:", func() {
-	files := []string{
-		"foobar/config.json",
-		"foobar/bar",
-	}
-	statusKeys := []match.StateKey{
-		{Digest: "44136fa355b3", Name: "application/vnd.unknown.config.v1+json"},
-		{Digest: "fcde2b2edba5", Name: files[1]},
-	}
-
 	layerDescriptorTemplate := `{"mediaType":"%s","digest":"sha256:fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9","size":3,"annotations":{"org.opencontainers.image.title":"foobar/bar"}}`
-	configDescriptorTemplate := `{"mediaType":"%s","digest":"sha256:46b68ac1696c3870d537f376868d9402400de28587e345264a77b65da09669be","size":13}`
-	repo := "command/push"
 	var tempDir string
 	var lock sync.Mutex
 	BeforeEach(func() {
@@ -56,6 +45,17 @@ var _ = Describe("Remote registry users:", func() {
 	})
 
 	When("pushing to registy without OCI artifact support", func() {
+		repo := "command/push-oci-image"
+		files := []string{
+			"foobar/config.json",
+			"foobar/bar",
+		}
+		statusKeys := []match.StateKey{
+			{Digest: "44136fa355b3", Name: "application/vnd.unknown.config.v1+json"},
+			{Digest: "fcde2b2edba5", Name: files[1]},
+		}
+		configDescriptorTemplate := `{"mediaType":"%s","digest":"sha256:46b68ac1696c3870d537f376868d9402400de28587e345264a77b65da09669be","size":13}`
+
 		It("should push files without customized media types", func() {
 			tag := "no-mediatype"
 			ORAS("push", Reference(Host, repo, tag), files[1], "-v").
@@ -96,7 +96,7 @@ var _ = Describe("Remote registry users:", func() {
 			tag := "config"
 			ORAS("push", Reference(Host, repo, tag), "--config", files[0], files[1], "-v").
 				MatchStatus([]match.StateKey{
-					{Digest: "44136fa355b3", Name: oras.MediaTypeUnknownConfig},
+					{Digest: "46b68ac1696c", Name: oras.MediaTypeUnknownConfig},
 					{Digest: "fcde2b2edba5", Name: files[1]},
 				}, true, 2).
 				WithWorkDir(tempDir).Exec()
@@ -118,6 +118,41 @@ var _ = Describe("Remote registry users:", func() {
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 			Binary("jq", ".config", "--compact-output").
 				MatchContent(fmt.Sprintf(configDescriptorTemplate, configType)).
+				WithInput(fetched).Exec()
+		})
+
+		It("should push files with customized manifest annotation", func() {
+			tag := "manifest-annotation"
+			key := "image-anno-key"
+			value := "image-anno-value"
+			ORAS("push", Reference(Host, repo, tag), files[1], "-v", "--annotation", fmt.Sprintf("%s=%s", key, value)).
+				MatchStatus(statusKeys, true, 2).
+				WithWorkDir(tempDir).Exec()
+			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
+
+			Binary("jq", `.annotations|del(.["org.opencontainers.image.created"])`, "--compact-output").
+				MatchContent(fmt.Sprintf(`{"%s":"%s"}`, key, value)).
+				WithInput(fetched).Exec()
+		})
+
+		It("should push files with customized file annotation", func() {
+			tag := "manifest-annotation"
+			ORAS("push", Reference(Host, repo, tag), files[1], "-v", "--annotation-file", "foobar/annotation.json").
+				MatchStatus(statusKeys, true, 2).
+				WithWorkDir(tempDir).Exec()
+			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
+
+			// see testdata\files\foobar\annotation.json
+			Binary("jq", `.config.annotations|del(.["org.opencontainers.image.created"])`, "--compact-output").
+				MatchContent(fmt.Sprintf(`{"%s":"%s"}`, "hello", "config")).
+				WithInput(fetched).Exec()
+
+			Binary("jq", `.annotations|del(.["org.opencontainers.image.created"])`, "--compact-output").
+				MatchContent(fmt.Sprintf(`{"%s":"%s"}`, "hi", "manifest")).
+				WithInput(fetched).Exec()
+
+			Binary("jq", `.layers[0].annotations|del(.["org.opencontainers.image.created"])`, "--compact-output").
+				MatchContent(fmt.Sprintf(`{"%s":"%s"}`, "foo", "bar")).
 				WithInput(fetched).Exec()
 		})
 	})
