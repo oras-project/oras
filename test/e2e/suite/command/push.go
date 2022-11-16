@@ -40,7 +40,7 @@ var _ = Describe("Remote registry users:", func() {
 		configDescriptorTemplate := `{"mediaType":"%s","digest":"sha256:46b68ac1696c3870d537f376868d9402400de28587e345264a77b65da09669be","size":13}`
 
 		It("should push files without customized media types", func() {
-			repo := fmt.Sprintf("%s/%s", repoPrefix, "no-mediatype")
+			repo := fmt.Sprintf("%s/%s", repoPrefix, "with-mediatype")
 			tempDir := GinkgoT().TempDir()
 			if err := CopyTestData(tempDir); err != nil {
 				panic(err)
@@ -73,7 +73,7 @@ var _ = Describe("Remote registry users:", func() {
 		})
 
 		It("should push files with manifest exported", func() {
-			repo := fmt.Sprintf("%s/%s", repoPrefix, "layer-mediatype")
+			repo := fmt.Sprintf("%s/%s", repoPrefix, "export-manifest")
 			layerType := "layer.type"
 			tempDir := GinkgoT().TempDir()
 			if err := CopyTestData(tempDir); err != nil {
