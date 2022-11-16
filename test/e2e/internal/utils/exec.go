@@ -138,7 +138,7 @@ func (opts *ExecOption) Exec() *gexec.Session {
 			opts.text = "pass"
 		}
 	}
-	description := fmt.Sprintf(">> should %s: %s %s >>", opts.text, opts.binary, strings.Join(opts.args, " "))
+	description := fmt.Sprintf("\n>> should %s: %s %s >>", opts.text, opts.binary, strings.Join(opts.args, " "))
 	ginkgo.By(description)
 
 	var cmd *exec.Cmd

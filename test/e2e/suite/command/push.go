@@ -136,7 +136,7 @@ var _ = Describe("Remote registry users:", func() {
 		})
 
 		It("should push files with customized file annotation", func() {
-			tag := "manifest-annotation"
+			tag := "file-annotation"
 			ORAS("push", Reference(Host, repo, tag), files[1], "-v", "--annotation-file", "foobar/annotation.json").
 				MatchStatus(statusKeys, true, 2).
 				WithWorkDir(tempDir).Exec()
