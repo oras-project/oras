@@ -146,15 +146,15 @@ var _ = Describe("Remote registry users:", func() {
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 
 			// see testdata\files\foobar\annotation.json
-			Binary("jq", ".config.annotations", "--compact-output").
-				MatchContent(fmt.Sprintf(`{"%s":"%s"}`, "hello", "config")).
-				WithInput(bytes.NewReader(fetched.Contents())).Exec()
-
 			Binary("jq", `.annotations|del(.["org.opencontainers.image.created"])`, "--compact-output").
 				MatchContent(fmt.Sprintf(`{"%s":"%s"}`, "hi", "manifest")).
 				WithInput(bytes.NewReader(fetched.Contents())).Exec()
 
-			Binary("jq", ".layers[0].annotations", "--compact-output").
+			Binary("jq", ".config.annotations", "--compact-output").
+				MatchContent(fmt.Sprintf(`{"%s":"%s"}`, "hello", "config")).
+				WithInput(bytes.NewReader(fetched.Contents())).Exec()
+
+			Binary("jq", `.layers[0].annotations|del(.["org.opencontainers.image.title"])`, "--compact-output").
 				MatchContent(fmt.Sprintf(`{"%s":"%s"}`, "foo", "bar")).
 				WithInput(bytes.NewReader(fetched.Contents())).Exec()
 		})
