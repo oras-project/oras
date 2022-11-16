@@ -14,6 +14,7 @@ limitations under the License.
 package command
 
 import (
+	"bytes"
 	"fmt"
 	"sync"
 
@@ -29,6 +30,8 @@ var _ = Describe("Remote registry users:", func() {
 	var tempDir string
 	var lock sync.Mutex
 	BeforeEach(func() {
+		// BeforeAll cannot be used in non-ordered specs
+		// do blocked initialization
 		if tempDir != "" {
 			return
 		}
@@ -143,17 +146,17 @@ var _ = Describe("Remote registry users:", func() {
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 
 			// see testdata\files\foobar\annotation.json
-			Binary("jq", `.config.annotations|del(.["org.opencontainers.image.created"])`, "--compact-output").
+			Binary("jq", ".config.annotations", "--compact-output").
 				MatchContent(fmt.Sprintf(`{"%s":"%s"}`, "hello", "config")).
-				WithInput(fetched).Exec()
+				WithInput(bytes.NewReader(fetched.Contents())).Exec()
 
 			Binary("jq", `.annotations|del(.["org.opencontainers.image.created"])`, "--compact-output").
 				MatchContent(fmt.Sprintf(`{"%s":"%s"}`, "hi", "manifest")).
-				WithInput(fetched).Exec()
+				WithInput(bytes.NewReader(fetched.Contents())).Exec()
 
-			Binary("jq", `.layers[0].annotations|del(.["org.opencontainers.image.created"])`, "--compact-output").
+			Binary("jq", ".layers[0].annotations", "--compact-output").
 				MatchContent(fmt.Sprintf(`{"%s":"%s"}`, "foo", "bar")).
-				WithInput(fetched).Exec()
+				WithInput(bytes.NewReader(fetched.Contents())).Exec()
 		})
 	})
 })
