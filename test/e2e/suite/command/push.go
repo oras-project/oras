@@ -41,7 +41,6 @@ var _ = Describe("Remote registry users:", func() {
 		It("should push files without customized media types", func() {
 			tag := "no-mediatype"
 			tempDir := GinkgoT().TempDir()
-			fmt.Printf("Prepared temporary working directory in %s", tempDir)
 			if err := CopyTestData(tempDir); err != nil {
 				panic(err)
 			}
@@ -59,7 +58,6 @@ var _ = Describe("Remote registry users:", func() {
 			tag := "layer-mediatype"
 			layerType := "layer.type"
 			tempDir := GinkgoT().TempDir()
-			fmt.Printf("Prepared temporary working directory in %s", tempDir)
 			if err := CopyTestData(tempDir); err != nil {
 				panic(err)
 			}
@@ -77,7 +75,6 @@ var _ = Describe("Remote registry users:", func() {
 			tag := "exported"
 			layerType := "layer.type"
 			tempDir := GinkgoT().TempDir()
-			fmt.Printf("Prepared temporary working directory in %s", tempDir)
 			if err := CopyTestData(tempDir); err != nil {
 				panic(err)
 			}
@@ -95,7 +92,6 @@ var _ = Describe("Remote registry users:", func() {
 		It("should push files with customized config file", func() {
 			tag := "config"
 			tempDir := GinkgoT().TempDir()
-			fmt.Printf("Prepared temporary working directory in %s", tempDir)
 			if err := CopyTestData(tempDir); err != nil {
 				panic(err)
 			}
@@ -116,7 +112,6 @@ var _ = Describe("Remote registry users:", func() {
 			tag := "config-mediatype"
 			configType := "config.type"
 			tempDir := GinkgoT().TempDir()
-			fmt.Printf("Prepared temporary working directory in %s", tempDir)
 			if err := CopyTestData(tempDir); err != nil {
 				panic(err)
 			}
@@ -138,7 +133,6 @@ var _ = Describe("Remote registry users:", func() {
 			key := "image-anno-key"
 			value := "image-anno-value"
 			tempDir := GinkgoT().TempDir()
-			fmt.Printf("Prepared temporary working directory in %s", tempDir)
 			if err := CopyTestData(tempDir); err != nil {
 				panic(err)
 			}
@@ -156,7 +150,6 @@ var _ = Describe("Remote registry users:", func() {
 		It("should push files with customized file annotation", func() {
 			tag := "file-annotation"
 			tempDir := GinkgoT().TempDir()
-			fmt.Printf("Prepared temporary working directory in %s", tempDir)
 			if err := CopyTestData(tempDir); err != nil {
 				panic(err)
 			}
