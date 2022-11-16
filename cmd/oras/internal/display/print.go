@@ -22,6 +22,7 @@ import (
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 )
@@ -75,13 +76,19 @@ func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, status s
 }
 
 type TagManifestStatusPrinter struct {
-	*remote.Repository
+	oras.GraphTarget
 }
 
 // PushReference overrides Repository.PushReference method to print off which tag(s) were added successfully.
 func (p *TagManifestStatusPrinter) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
-	if err := p.Repository.PushReference(ctx, expected, content, reference); err != nil {
-		return err
+	if repo, ok := p.GraphTarget.(*remote.Repository); ok {
+		if err := repo.PushReference(ctx, expected, content, reference); err != nil {
+			return err
+		}
+	} else {
+		if err := p.GraphTarget.Tag(ctx, expected, reference); err != nil {
+			return err
+		}
 	}
 	return Print("Tagged", reference)
 }

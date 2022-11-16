@@ -24,14 +24,14 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/display"
-	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
 type copyOptions struct {
-	src option.Remote
-	dst option.Remote
+	src option.Target
+	dst option.Target
 	option.Common
 	option.Platform
 	recursive bool
@@ -94,13 +94,18 @@ func runCopy(opts copyOptions) error {
 	}
 
 	// Prepare source
-	src, err := opts.src.NewRepository(opts.srcRef, opts.Common)
+	srcRef, err := registry.ParseReference(opts.srcRef)
+	if err != nil {
+		return err
+	}
+	src, err := opts.src.NewTarget(opts.srcRef, opts.Common, true)
 	if err != nil {
 		return err
 	}
 
 	// Prepare destination
-	dst, err := opts.dst.NewRepository(opts.dstRef, opts.Common)
+	dstRef, err := registry.ParseReference(opts.dstRef)
+	dst, err := opts.dst.NewTarget(opts.dstRef, opts.Common, false)
 	if err != nil {
 		return err
 	}
@@ -122,14 +127,10 @@ func runCopy(opts copyOptions) error {
 		return display.PrintStatus(desc, "Exists ", opts.Verbose)
 	}
 
-	if src.Reference.Reference == "" {
-		return errors.NewErrInvalidReference(src.Reference)
-	}
-
 	var desc ocispec.Descriptor
-	if ref := dst.Reference.Reference; ref == "" {
+	if ref := dstRef.Reference; ref == "" {
 		// push to the destination with digest only if no tag specified
-		desc, err = src.Resolve(ctx, src.Reference.Reference)
+		desc, err = src.Resolve(ctx, srcRef.Reference)
 		if err != nil {
 			return err
 		}
@@ -160,7 +161,7 @@ func runCopy(opts copyOptions) error {
 	if len(opts.extraRefs) != 0 {
 		tagNOpts := oras.DefaultTagNOptions
 		tagNOpts.Concurrency = opts.concurrency
-		if err = oras.TagN(ctx, &display.TagManifestStatusPrinter{Repository: dst}, opts.dstRef, opts.extraRefs, tagNOpts); err != nil {
+		if err = oras.TagN(ctx, &display.TagManifestStatusPrinter{GraphTarget: dst}, opts.dstRef, opts.extraRefs, tagNOpts); err != nil {
 			return err
 		}
 	}

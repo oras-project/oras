@@ -26,8 +26,8 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
+	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/display"
-	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
 )
@@ -37,6 +37,7 @@ type pullOptions struct {
 	option.Common
 	option.Remote
 	option.Platform
+	option.Target
 
 	concurrency       int64
 	targetRef         string
@@ -74,6 +75,9 @@ Example - Pull all files with concurrency level tuned:
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := option.ParseFlags(&opts); err != nil {
+				return err
+			}
 			return opts.ReadPassword()
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -97,14 +101,15 @@ func runPull(opts pullOptions) error {
 	if err != nil {
 		return err
 	}
-	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
+	srcRef, err := registry.ParseReference(opts.targetRef)
 	if err != nil {
 		return err
 	}
-	if repo.Reference.Reference == "" {
-		return errors.NewErrInvalidReference(repo.Reference)
+	target, err := opts.NewTarget(opts.targetRef, opts.Common, true)
+	if err != nil {
+		return err
 	}
-	src, err := opts.CachedTarget(repo)
+	src, err := opts.CachedTarget(target)
 	if err != nil {
 		return err
 	}
@@ -222,7 +227,7 @@ func runPull(opts pullOptions) error {
 	}
 
 	// Copy
-	desc, err := oras.Copy(ctx, src, repo.Reference.Reference, dst, repo.Reference.Reference, copyOptions)
+	desc, err := oras.Copy(ctx, src, srcRef.Reference, dst, srcRef.Reference, copyOptions)
 	if err != nil {
 		return err
 	}
