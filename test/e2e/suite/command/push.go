@@ -49,7 +49,7 @@ var _ = Describe("Remote registry users:", func() {
 			ORAS("push", Reference(Host, repo, tag), files[1], "-v").
 				MatchStatus(statusKeys, true, 2).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", Reference(Host, repoPrefix, tag)).Exec().Out
+			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 			Binary("jq", ".layers[]", "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, ocispec.MediaTypeImageLayer)).
 				WithInput(fetched).Exec()
@@ -66,7 +66,7 @@ var _ = Describe("Remote registry users:", func() {
 			ORAS("push", Reference(Host, repo, tag), files[1]+":"+layerType, "-v").
 				MatchStatus(statusKeys, true, 2).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", Reference(Host, repoPrefix, tag)).Exec().Out
+			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 			Binary("jq", ".layers[]", "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, layerType)).
 				WithInput(fetched).Exec()
@@ -84,7 +84,7 @@ var _ = Describe("Remote registry users:", func() {
 			ORAS("push", Reference(Host, repo, tag), files[1]+":"+layerType, "-v", "--export-manifest", exportPath).
 				MatchStatus(statusKeys, true, 2).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", Reference(Host, repoPrefix, tag)).Exec().Out
+			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 			Binary("cat", exportPath).
 				WithWorkDir(tempDir).
 				MatchTrimmedContent(string(fetched.Contents())).Exec()
