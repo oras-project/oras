@@ -26,8 +26,9 @@ import (
 
 var _ = Describe("Remote registry users:", func() {
 	layerDescriptorTemplate := `{"mediaType":"%s","digest":"sha256:fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9","size":3,"annotations":{"org.opencontainers.image.title":"foobar/bar"}}`
+	tag := "e2e"
 	When("pushing to registy without OCI artifact support", func() {
-		repo := "command/push-oci-image"
+		repoPrefix := fmt.Sprintf("command/push/%d", GinkgoRandomSeed())
 		files := []string{
 			"foobar/config.json",
 			"foobar/bar",
@@ -39,7 +40,7 @@ var _ = Describe("Remote registry users:", func() {
 		configDescriptorTemplate := `{"mediaType":"%s","digest":"sha256:46b68ac1696c3870d537f376868d9402400de28587e345264a77b65da09669be","size":13}`
 
 		It("should push files without customized media types", func() {
-			tag := "no-mediatype"
+			repo := fmt.Sprintf("%s/%s", repoPrefix, "no-mediatype")
 			tempDir := GinkgoT().TempDir()
 			if err := CopyTestData(tempDir); err != nil {
 				panic(err)
@@ -48,14 +49,14 @@ var _ = Describe("Remote registry users:", func() {
 			ORAS("push", Reference(Host, repo, tag), files[1], "-v").
 				MatchStatus(statusKeys, true, 2).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
+			fetched := ORAS("manifest", "fetch", Reference(Host, repoPrefix, tag)).Exec().Out
 			Binary("jq", ".layers[]", "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, ocispec.MediaTypeImageLayer)).
 				WithInput(fetched).Exec()
 		})
 
 		It("should push files with customized media types", func() {
-			tag := "layer-mediatype"
+			repo := fmt.Sprintf("%s/%s", repoPrefix, "layer-mediatype")
 			layerType := "layer.type"
 			tempDir := GinkgoT().TempDir()
 			if err := CopyTestData(tempDir); err != nil {
@@ -65,14 +66,14 @@ var _ = Describe("Remote registry users:", func() {
 			ORAS("push", Reference(Host, repo, tag), files[1]+":"+layerType, "-v").
 				MatchStatus(statusKeys, true, 2).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
+			fetched := ORAS("manifest", "fetch", Reference(Host, repoPrefix, tag)).Exec().Out
 			Binary("jq", ".layers[]", "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, layerType)).
 				WithInput(fetched).Exec()
 		})
 
 		It("should push files with manifest exported", func() {
-			tag := "exported"
+			repo := fmt.Sprintf("%s/%s", repoPrefix, "layer-mediatype")
 			layerType := "layer.type"
 			tempDir := GinkgoT().TempDir()
 			if err := CopyTestData(tempDir); err != nil {
@@ -83,14 +84,14 @@ var _ = Describe("Remote registry users:", func() {
 			ORAS("push", Reference(Host, repo, tag), files[1]+":"+layerType, "-v", "--export-manifest", exportPath).
 				MatchStatus(statusKeys, true, 2).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
+			fetched := ORAS("manifest", "fetch", Reference(Host, repoPrefix, tag)).Exec().Out
 			Binary("cat", exportPath).
 				WithWorkDir(tempDir).
 				MatchTrimmedContent(string(fetched.Contents())).Exec()
 		})
 
 		It("should push files with customized config file", func() {
-			tag := "config"
+			repo := fmt.Sprintf("%s/%s", repoPrefix, "config")
 			tempDir := GinkgoT().TempDir()
 			if err := CopyTestData(tempDir); err != nil {
 				panic(err)
@@ -109,7 +110,7 @@ var _ = Describe("Remote registry users:", func() {
 		})
 
 		It("should push files with customized config file and mediatype", func() {
-			tag := "config-mediatype"
+			repo := fmt.Sprintf("%s/%s", repoPrefix, "config-mediatype")
 			configType := "config.type"
 			tempDir := GinkgoT().TempDir()
 			if err := CopyTestData(tempDir); err != nil {
@@ -129,7 +130,7 @@ var _ = Describe("Remote registry users:", func() {
 		})
 
 		It("should push files with customized manifest annotation", func() {
-			tag := "manifest-annotation"
+			repo := fmt.Sprintf("%s/%s", repoPrefix, "manifest-annotation")
 			key := "image-anno-key"
 			value := "image-anno-value"
 			tempDir := GinkgoT().TempDir()
@@ -148,7 +149,7 @@ var _ = Describe("Remote registry users:", func() {
 		})
 
 		It("should push files with customized file annotation", func() {
-			tag := "file-annotation"
+			repo := fmt.Sprintf("%s/%s", repoPrefix, "file-annotation")
 			tempDir := GinkgoT().TempDir()
 			if err := CopyTestData(tempDir); err != nil {
 				panic(err)
