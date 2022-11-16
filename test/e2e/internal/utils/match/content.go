@@ -21,16 +21,27 @@ import (
 )
 
 // contentMatcher provides whole matching of the output.
-type contentMatcher string
+type contentMatcher struct {
+	s         string
+	trimSpace bool
+}
 
 // NewContentMatcher returns a content matcher.
-func NewContentMatcher(s string) contentMatcher {
-	return contentMatcher(s)
+func NewContentMatcher(s string, trimSpace bool) contentMatcher {
+	if trimSpace {
+		s = strings.TrimSpace(s)
+	}
+	return contentMatcher{
+		s:         s,
+		trimSpace: trimSpace,
+	}
 }
 
 // Match matches got with s.
 func (c contentMatcher) Match(got *gbytes.Buffer) {
-	// trim space by default
-	content := strings.TrimSpace(string(got.Contents()))
-	Expect(contentMatcher(content)).Should(Equal(c))
+	content := string(got.Contents())
+	if c.trimSpace {
+		content = strings.TrimSpace(content)
+	}
+	Expect(content).Should(Equal(c.s))
 }

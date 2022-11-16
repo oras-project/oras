@@ -111,9 +111,19 @@ func (opts *ExecOption) MatchErrKeyWords(keywords ...string) *ExecOption {
 // MatchContent adds full content matching to the execution.
 func (opts *ExecOption) MatchContent(content string) *ExecOption {
 	if !opts.shouldFail {
-		opts.stdout = append(opts.stdout, match.NewContentMatcher(content))
+		opts.stdout = append(opts.stdout, match.NewContentMatcher(content, false))
 	} else {
-		opts.stderr = append(opts.stderr, match.NewContentMatcher(content))
+		opts.stderr = append(opts.stderr, match.NewContentMatcher(content, false))
+	}
+	return opts
+}
+
+// MatchTrimedContent adds trimmed content matching to the execution.
+func (opts *ExecOption) MatchTrimmedContent(content string) *ExecOption {
+	if !opts.shouldFail {
+		opts.stdout = append(opts.stdout, match.NewContentMatcher(content, true))
+	} else {
+		opts.stderr = append(opts.stderr, match.NewContentMatcher(content, true))
 	}
 	return opts
 }

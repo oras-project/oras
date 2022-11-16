@@ -66,7 +66,7 @@ var _ = Describe("Remote registry users:", func() {
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 			Binary("jq", ".layers[]", "--compact-output").
-				MatchContent(fmt.Sprintf(layerDescriptorTemplate, ocispec.MediaTypeImageLayer)).
+				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, ocispec.MediaTypeImageLayer)).
 				WithInput(fetched).Exec()
 		})
 
@@ -78,7 +78,7 @@ var _ = Describe("Remote registry users:", func() {
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 			Binary("jq", ".layers[]", "--compact-output").
-				MatchContent(fmt.Sprintf(layerDescriptorTemplate, layerType)).
+				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, layerType)).
 				WithInput(fetched).Exec()
 		})
 
@@ -92,7 +92,7 @@ var _ = Describe("Remote registry users:", func() {
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 			Binary("cat", exportPath).
 				WithWorkDir(tempDir).
-				MatchContent(string(fetched.Contents())).Exec()
+				MatchTrimmedContent(string(fetched.Contents())).Exec()
 		})
 
 		It("should push files with customized config file", func() {
@@ -105,7 +105,7 @@ var _ = Describe("Remote registry users:", func() {
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 			Binary("jq", ".config", "--compact-output").
-				MatchContent(fmt.Sprintf(configDescriptorTemplate, oras.MediaTypeUnknownConfig)).
+				MatchTrimmedContent(fmt.Sprintf(configDescriptorTemplate, oras.MediaTypeUnknownConfig)).
 				WithInput(fetched).Exec()
 		})
 
@@ -120,7 +120,7 @@ var _ = Describe("Remote registry users:", func() {
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 			Binary("jq", ".config", "--compact-output").
-				MatchContent(fmt.Sprintf(configDescriptorTemplate, configType)).
+				MatchTrimmedContent(fmt.Sprintf(configDescriptorTemplate, configType)).
 				WithInput(fetched).Exec()
 		})
 
@@ -134,7 +134,7 @@ var _ = Describe("Remote registry users:", func() {
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 
 			Binary("jq", `.annotations|del(.["org.opencontainers.image.created"])`, "--compact-output").
-				MatchContent(fmt.Sprintf(`{"%s":"%s"}`, key, value)).
+				MatchTrimmedContent(fmt.Sprintf(`{"%s":"%s"}`, key, value)).
 				WithInput(fetched).Exec()
 		})
 
@@ -147,15 +147,15 @@ var _ = Describe("Remote registry users:", func() {
 
 			// see testdata\files\foobar\annotation.json
 			Binary("jq", `.annotations|del(.["org.opencontainers.image.created"])`, "--compact-output").
-				MatchContent(fmt.Sprintf(`{"%s":"%s"}`, "hi", "manifest")).
+				MatchTrimmedContent(fmt.Sprintf(`{"%s":"%s"}`, "hi", "manifest")).
 				WithInput(bytes.NewReader(fetched.Contents())).Exec()
 
 			Binary("jq", ".config.annotations", "--compact-output").
-				MatchContent(fmt.Sprintf(`{"%s":"%s"}`, "hello", "config")).
+				MatchTrimmedContent(fmt.Sprintf(`{"%s":"%s"}`, "hello", "config")).
 				WithInput(bytes.NewReader(fetched.Contents())).Exec()
 
 			Binary("jq", `.layers[0].annotations|del(.["org.opencontainers.image.title"])`, "--compact-output").
-				MatchContent(fmt.Sprintf(`{"%s":"%s"}`, "foo", "bar")).
+				MatchTrimmedContent(fmt.Sprintf(`{"%s":"%s"}`, "foo", "bar")).
 				WithInput(bytes.NewReader(fetched.Contents())).Exec()
 		})
 	})
