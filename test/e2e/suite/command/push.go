@@ -16,7 +16,6 @@ package command
 import (
 	"bytes"
 	"fmt"
-	"sync"
 
 	. "github.com/onsi/ginkgo/v2"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -27,26 +26,6 @@ import (
 
 var _ = Describe("Remote registry users:", func() {
 	layerDescriptorTemplate := `{"mediaType":"%s","digest":"sha256:fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9","size":3,"annotations":{"org.opencontainers.image.title":"foobar/bar"}}`
-	var tempDir string
-	var lock sync.Mutex
-	BeforeEach(func() {
-		// BeforeAll cannot be used in non-ordered specs
-		// do blocked initialization
-		if tempDir != "" {
-			return
-		}
-		lock.Lock()
-		defer lock.Unlock()
-		if tempDir != "" {
-			return
-		}
-		tempDir = GinkgoT().TempDir()
-		fmt.Printf("Prepared temporary working directory in %s", tempDir)
-		if err := CopyTestData(tempDir); err != nil {
-			panic(err)
-		}
-	})
-
 	When("pushing to registy without OCI artifact support", func() {
 		repo := "command/push-oci-image"
 		files := []string{
@@ -61,6 +40,12 @@ var _ = Describe("Remote registry users:", func() {
 
 		It("should push files without customized media types", func() {
 			tag := "no-mediatype"
+			tempDir := GinkgoT().TempDir()
+			fmt.Printf("Prepared temporary working directory in %s", tempDir)
+			if err := CopyTestData(tempDir); err != nil {
+				panic(err)
+			}
+
 			ORAS("push", Reference(Host, repo, tag), files[1], "-v").
 				MatchStatus(statusKeys, true, 2).
 				WithWorkDir(tempDir).Exec()
@@ -73,6 +58,12 @@ var _ = Describe("Remote registry users:", func() {
 		It("should push files with customized media types", func() {
 			tag := "layer-mediatype"
 			layerType := "layer.type"
+			tempDir := GinkgoT().TempDir()
+			fmt.Printf("Prepared temporary working directory in %s", tempDir)
+			if err := CopyTestData(tempDir); err != nil {
+				panic(err)
+			}
+
 			ORAS("push", Reference(Host, repo, tag), files[1]+":"+layerType, "-v").
 				MatchStatus(statusKeys, true, 2).
 				WithWorkDir(tempDir).Exec()
@@ -85,6 +76,12 @@ var _ = Describe("Remote registry users:", func() {
 		It("should push files with manifest exported", func() {
 			tag := "exported"
 			layerType := "layer.type"
+			tempDir := GinkgoT().TempDir()
+			fmt.Printf("Prepared temporary working directory in %s", tempDir)
+			if err := CopyTestData(tempDir); err != nil {
+				panic(err)
+			}
+
 			exportPath := "packed.json"
 			ORAS("push", Reference(Host, repo, tag), files[1]+":"+layerType, "-v", "--export-manifest", exportPath).
 				MatchStatus(statusKeys, true, 2).
@@ -97,6 +94,12 @@ var _ = Describe("Remote registry users:", func() {
 
 		It("should push files with customized config file", func() {
 			tag := "config"
+			tempDir := GinkgoT().TempDir()
+			fmt.Printf("Prepared temporary working directory in %s", tempDir)
+			if err := CopyTestData(tempDir); err != nil {
+				panic(err)
+			}
+
 			ORAS("push", Reference(Host, repo, tag), "--config", files[0], files[1], "-v").
 				MatchStatus([]match.StateKey{
 					{Digest: "46b68ac1696c", Name: oras.MediaTypeUnknownConfig},
@@ -112,6 +115,12 @@ var _ = Describe("Remote registry users:", func() {
 		It("should push files with customized config file and mediatype", func() {
 			tag := "config-mediatype"
 			configType := "config.type"
+			tempDir := GinkgoT().TempDir()
+			fmt.Printf("Prepared temporary working directory in %s", tempDir)
+			if err := CopyTestData(tempDir); err != nil {
+				panic(err)
+			}
+
 			ORAS("push", Reference(Host, repo, tag), "--config", fmt.Sprintf("%s:%s", files[0], configType), files[1], "-v").
 				MatchStatus([]match.StateKey{
 					{Digest: "46b68ac1696c", Name: configType},
@@ -128,6 +137,12 @@ var _ = Describe("Remote registry users:", func() {
 			tag := "manifest-annotation"
 			key := "image-anno-key"
 			value := "image-anno-value"
+			tempDir := GinkgoT().TempDir()
+			fmt.Printf("Prepared temporary working directory in %s", tempDir)
+			if err := CopyTestData(tempDir); err != nil {
+				panic(err)
+			}
+
 			ORAS("push", Reference(Host, repo, tag), files[1], "-v", "--annotation", fmt.Sprintf("%s=%s", key, value)).
 				MatchStatus(statusKeys, true, 2).
 				WithWorkDir(tempDir).Exec()
@@ -140,6 +155,12 @@ var _ = Describe("Remote registry users:", func() {
 
 		It("should push files with customized file annotation", func() {
 			tag := "file-annotation"
+			tempDir := GinkgoT().TempDir()
+			fmt.Printf("Prepared temporary working directory in %s", tempDir)
+			if err := CopyTestData(tempDir); err != nil {
+				panic(err)
+			}
+
 			ORAS("push", Reference(Host, repo, tag), files[1], "-v", "--annotation-file", "foobar/annotation.json").
 				MatchStatus(statusKeys, true, 2).
 				WithWorkDir(tempDir).Exec()
