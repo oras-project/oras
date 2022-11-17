@@ -66,6 +66,10 @@ var _ = Describe("Remote registry users:", func() {
 					WithWorkDir(tempDir).
 					WithDescription("should download identical file " + f).Exec()
 			}
+
+			ORAS("pull", Reference(Host, repo, tag), "-v", "-o", pullRoot, "--keep-old-files").
+				WithFailureCheck().
+				WithDescription("fail if overwrite old files are disabled")
 		})
 
 		It("should skip config if media type not matching", func() {
