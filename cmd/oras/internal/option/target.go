@@ -61,7 +61,7 @@ type Target struct {
 var defaultConfig = map[string]string{
 	"type":    "remote",
 	"path":    "",
-	"tarball": "true",
+	"tarball": "false",
 }
 
 // ApplyFlags applies flags to a command flag set.
@@ -83,9 +83,7 @@ func (opts *Target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	}
 
 	fs.StringToStringVarP(&opts.config, flagPrefix+"target", "", defaultConfig, "configure target configuration"+noteSuffix)
-	if opts.Type == RemoteType {
-		opts.Remote.ApplyFlagsWithPrefix(fs, prefix, description)
-	}
+	opts.Remote.ApplyFlagsWithPrefix(fs, prefix, description)
 }
 
 func (opts *Target) ParseFlags() error {
