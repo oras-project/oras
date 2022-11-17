@@ -86,7 +86,14 @@ var _ = Describe("Remote registry users:", func() {
 		})
 
 		It("should pull specific platform", func() {
-
+			tempDir := GinkgoT().TempDir()
+			ORAS("pull", Reference(Host, repo, "multi"), "--platform", "linux/amd64", "-v", "-o", tempDir).
+				MatchStatus([]match.StateKey{
+					{Digest: "9d84a5716c66", Name: "application/vnd.oci.image.manifest.v1+json"},
+					{Digest: "fe9dbc99451d", Name: "application/vnd.unknown.config.v1+json"},
+					{Digest: "2ef548696ac7", Name: "hello.tar"},
+				}, true, 3).
+				WithDescription("pull files with config").Exec()
 		})
 	})
 })
