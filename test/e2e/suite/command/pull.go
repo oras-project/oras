@@ -59,12 +59,12 @@ var _ = Describe("Remote registry users:", func() {
 			Expect(configPath).Should(BeAnExistingFile())
 			f, err := os.Open(configPath)
 			Expect(err).ShouldNot(HaveOccurred())
+			defer f.Close()
 			Eventually(gbytes.BufferReader(f)).Should(gbytes.Say("{}"))
 			for _, f := range files[1:] {
 				// check layers
 				Binary("diff", filepath.Join(tempDir, "foobar", f), filepath.Join(pullRoot, f)).
-					WithWorkDir(tempDir).
-					WithDescription("should download identical file " + f).Exec()
+					WithWorkDir(tempDir).Exec()
 			}
 
 			ORAS("pull", Reference(Host, repo, tag), "-v", "-o", pullRoot, "--keep-old-files").
