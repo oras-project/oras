@@ -30,8 +30,7 @@ import (
 )
 
 type copyOptions struct {
-	src option.Target
-	dst option.Target
+	option.BinaryTarget
 	option.Common
 	option.Platform
 	recursive bool
@@ -69,13 +68,7 @@ Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := opts.src.ParseFlags(); err != nil {
-				return err
-			}
-			if err := opts.dst.ParseFlags(); err != nil {
-				return err
-			}
-			return nil
+			return option.ParseFlags(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.srcRef = args[0]
@@ -87,8 +80,6 @@ Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net
 	}
 
 	cmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "recursively copy the artifact and its referrer artifacts")
-	opts.src.ApplyFlagsWithPrefix(cmd.Flags(), "from", "source")
-	opts.dst.ApplyFlagsWithPrefix(cmd.Flags(), "to", "destination")
 	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 	option.ApplyFlags(&opts, cmd.Flags())
 
@@ -107,7 +98,7 @@ func runCopy(opts copyOptions) error {
 	if err != nil {
 		return err
 	}
-	src, err := opts.src.NewTarget(opts.srcRef, opts.Common, true)
+	src, err := opts.From.NewTarget(opts.srcRef, opts.Common, true)
 	if err != nil {
 		return err
 	}
@@ -117,7 +108,7 @@ func runCopy(opts copyOptions) error {
 	if err != nil {
 		return err
 	}
-	dst, err := opts.dst.NewTarget(opts.dstRef, opts.Common, false)
+	dst, err := opts.To.NewTarget(opts.dstRef, opts.Common, false)
 	if err != nil {
 		return err
 	}

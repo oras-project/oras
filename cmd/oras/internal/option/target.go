@@ -29,6 +29,26 @@ const RemoteType = "remote"
 const OCILayoutType = "oci"
 
 // Target option struct.
+type BinaryTarget struct {
+	From Target
+	To   Target
+}
+
+// ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
+// Commonly used for non-unary remote targets.
+func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
+	opts.From.ApplyFlagsWithPrefix(fs, "from", "source")
+	opts.To.ApplyFlagsWithPrefix(fs, "to", "destination")
+}
+
+func (opts *BinaryTarget) ParseFlags() error {
+	if err := opts.From.ParseFlags(); err != nil {
+		return err
+	}
+	return opts.To.ParseFlags()
+}
+
+// Target option struct.
 type Target struct {
 	config  map[string]string
 	Type    string
