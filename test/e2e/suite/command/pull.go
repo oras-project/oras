@@ -22,7 +22,7 @@ import (
 	"oras.land/oras/test/e2e/internal/utils/match"
 )
 
-var _ = Describe("Remote registry users:", Focus, func() {
+var _ = Describe("Remote registry users:", func() {
 	When("pulling images from remote registry", func() {
 		var (
 			repo  = "command/images"
@@ -43,11 +43,12 @@ var _ = Describe("Remote registry users:", Focus, func() {
 			}
 			ORAS("pull", Reference(Host, repo, tag), "-v", "--config", files[0], "-o", pullRoot).
 				MatchStatus([]match.StateKey{
+					{Digest: "fd6ed2f36b54", Name: "application/vnd.oci.image.manifest.v1+json"},
 					{Digest: "44136fa355b3", Name: files[0]},
 					{Digest: "2c26b46b68ff", Name: files[1]},
 					{Digest: "2c26b46b68ff", Name: files[2]},
 					{Digest: "fcde2b2edba5", Name: files[3]},
-				}, true, 4).
+				}, true, 5).
 				WithWorkDir(tempDir).
 				WithDescription("pull files with config").Exec()
 			for _, f := range files {
@@ -65,11 +66,12 @@ var _ = Describe("Remote registry users:", Focus, func() {
 			}
 			ORAS("pull", Reference(Host, repo, tag), "-v", "--config", fmt.Sprintf("%s:%s", files[0], "???"), "-o", pullRoot).
 				MatchStatus([]match.StateKey{
+					{Digest: "fd6ed2f36b54", Name: "application/vnd.oci.image.manifest.v1+json"},
 					{Digest: "44136fa355b3", Name: "application/vnd.unknown.config.v1+json"},
 					{Digest: "2c26b46b68ff", Name: files[1]},
 					{Digest: "2c26b46b68ff", Name: files[2]},
 					{Digest: "fcde2b2edba5", Name: files[3]},
-				}, true, 4).
+				}, true, 5).
 				WithWorkDir(tempDir).
 				WithDescription("pull files with config").Exec()
 			Binary("stat", filepath.Join(pullRoot, files[0])).
@@ -81,6 +83,10 @@ var _ = Describe("Remote registry users:", Focus, func() {
 					WithWorkDir(tempDir).
 					WithDescription("should download identical file " + f).Exec()
 			}
+		})
+
+		It("should pull specific platform", func() {
+
 		})
 	})
 })
