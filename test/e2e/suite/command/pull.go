@@ -15,9 +15,13 @@ package command
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	. "oras.land/oras/test/e2e/internal/utils"
 	"oras.land/oras/test/e2e/internal/utils/match"
 )
@@ -28,7 +32,7 @@ var _ = Describe("Remote registry users:", func() {
 			repo  = "command/images"
 			tag   = "foobar"
 			files = []string{
-				"config.default.json",
+				"config.json",
 				"foo1",
 				"foo2",
 				"bar",
@@ -49,9 +53,15 @@ var _ = Describe("Remote registry users:", func() {
 					{Digest: "2c26b46b68ff", Name: files[2]},
 					{Digest: "fcde2b2edba5", Name: files[3]},
 				}, true, 5).
-				WithWorkDir(tempDir).
-				WithDescription("pull files with config").Exec()
-			for _, f := range files {
+				WithWorkDir(tempDir).Exec()
+			// check config
+			configPath := filepath.Join(tempDir, pullRoot, files[0])
+			Expect(configPath).Should(BeAnExistingFile())
+			f, err := os.Open(configPath)
+			Expect(err).ShouldNot(HaveOccurred())
+			Eventually(gbytes.BufferReader(f)).Should(gbytes.Say("{}"))
+			for _, f := range files[1:] {
+				// check layers
 				Binary("diff", filepath.Join(tempDir, "foobar", f), filepath.Join(pullRoot, f)).
 					WithWorkDir(tempDir).
 					WithDescription("should download identical file " + f).Exec()
@@ -72,13 +82,11 @@ var _ = Describe("Remote registry users:", func() {
 					{Digest: "2c26b46b68ff", Name: files[2]},
 					{Digest: "fcde2b2edba5", Name: files[3]},
 				}, true, 5).
-				WithWorkDir(tempDir).
-				WithDescription("pull files with config").Exec()
-			Binary("stat", filepath.Join(pullRoot, files[0])).
-				WithWorkDir(tempDir).
-				WithFailureCheck().
-				MatchErrKeyWords("no such file or directory").Exec()
+				WithWorkDir(tempDir).Exec()
+			// check config
+			Expect(filepath.Join(pullRoot, files[0])).ShouldNot(BeAnExistingFile())
 			for _, f := range files[1:] {
+				// check layers
 				Binary("diff", filepath.Join(tempDir, "foobar", f), filepath.Join(pullRoot, f)).
 					WithWorkDir(tempDir).
 					WithDescription("should download identical file " + f).Exec()
@@ -89,11 +97,10 @@ var _ = Describe("Remote registry users:", func() {
 			tempDir := GinkgoT().TempDir()
 			ORAS("pull", Reference(Host, repo, "multi"), "--platform", "linux/amd64", "-v", "-o", tempDir).
 				MatchStatus([]match.StateKey{
-					{Digest: "9d84a5716c66", Name: "application/vnd.oci.image.manifest.v1+json"},
-					{Digest: "fe9dbc99451d", Name: "application/vnd.unknown.config.v1+json"},
+					{Digest: "9d84a5716c66", Name: ocispec.MediaTypeImageManifest},
+					{Digest: "fe9dbc99451d", Name: ocispec.MediaTypeImageConfig},
 					{Digest: "2ef548696ac7", Name: "hello.tar"},
-				}, true, 3).
-				WithDescription("pull files with config").Exec()
+				}, true, 3).Exec()
 		})
 	})
 })
