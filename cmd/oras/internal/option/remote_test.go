@@ -300,7 +300,7 @@ func TestRemote_parseResolve_ipv4(t *testing.T) {
 	port := 12345
 	address := "192.168.1.1"
 	opts := &Remote{resolveFlag: []string{fmt.Sprintf("%s:%d:%s", host, port, address)}}
-	if err := opts.ParseResolve(); err != nil {
+	if err := opts.parseResolve(); err != nil {
 		t.Fatalf("should succeed parsing resolve flag but got %v", err)
 	}
 	if len(opts.Resolves) != 1 {
