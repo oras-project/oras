@@ -30,7 +30,8 @@ func TestParseFileReference(t *testing.T) {
 	}{
 		{"file name and media type in reference", args{"a:b", "c"}, "a", "b"},
 		{"media type in reference", args{":b", "c"}, "", "b"},
-		{"file name in reference", args{"a:", "c"}, "a", "c"},
+		{"file name and empty media type in reference", args{"a:", "c"}, "a", ""},
+		{"file name in reference", args{"a", "c"}, "a", "c"},
 		{"file name in reference, no default", args{"a:", ""}, "a", ""},
 		{"file name in reference with default media type", args{`a:\b`, "d"}, `a:\b`, "c"},
 		{"file name and media type in reference", args{"a:b:c", "d"}, "a:b", "c"},
