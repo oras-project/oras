@@ -138,6 +138,31 @@ func TestRemote_authClient_CARoots(t *testing.T) {
 	}
 }
 
+func TestRemote_authClient_resolve(t *testing.T) {
+	URL, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatalf("invalid url in test server: %s", ts.URL)
+	}
+
+	testHost := "test.unit.oras"
+	opts := Remote{
+		resolveFlag: []string{fmt.Sprintf("%s:%s:%s", testHost, URL.Port(), URL.Hostname())},
+		Insecure:    true,
+	}
+	client, err := opts.authClient(testHost, false)
+	if err != nil {
+		t.Fatalf("unexpected error when creating auth client: %v", err)
+	}
+	req, err := nhttp.NewRequestWithContext(context.Background(), nhttp.MethodGet, fmt.Sprintf("https://%s:%s", testHost, URL.Port()), nil)
+	if err != nil {
+		t.Fatalf("unexpected error when generating request: %v", err)
+	}
+	_, err = client.Do(req)
+	if err != nil {
+		t.Fatalf("unexpected error when sending request: %v", err)
+	}
+}
+
 func TestRemote_NewRegistry(t *testing.T) {
 	caPath := filepath.Join(t.TempDir(), "oras-test.pem")
 	if err := os.WriteFile(caPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ts.Certificate().Raw}), 0644); err != nil {
@@ -220,7 +245,7 @@ func TestRemote_isPlainHttp_localhost(t *testing.T) {
 	}
 }
 
-func TestRemote_ParseResolve_err(t *testing.T) {
+func TestRemote_parseResolve_err(t *testing.T) {
 	tests := []struct {
 		name    string
 		opts    *Remote
@@ -255,12 +280,12 @@ func TestRemote_ParseResolve_err(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := tt.opts.ParseResolve(); (err != nil) != tt.wantErr {
-				t.Errorf("Remote.ParseResolve() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("Remote.parseResolve() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
-func TestRemote_ParseResolve_defaultFlag(t *testing.T) {
+func TestRemote_parseResolve_defaultFlag(t *testing.T) {
 	opts := &Remote{resolveFlag: nil}
 	if err := opts.ParseResolve(); err != nil {
 		t.Fatalf("should succeed parsing empty resolve flag but got %v", err)
@@ -270,7 +295,7 @@ func TestRemote_ParseResolve_defaultFlag(t *testing.T) {
 	}
 }
 
-func TestRemote_ParseResolve_ipv4(t *testing.T) {
+func TestRemote_parseResolve_ipv4(t *testing.T) {
 	host := "mockedHost"
 	port := 12345
 	address := "192.168.1.1"

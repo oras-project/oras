@@ -108,8 +108,8 @@ func (opts *Remote) ReadPassword() (err error) {
 	return nil
 }
 
-// ParseResolve parses resolve flag.
-func (opts *Remote) ParseResolve() (err error) {
+// parseResolve parses resolve flag.
+func (opts *Remote) parseResolve() (err error) {
 	errorMsg := "failed to parse resolve flag %q: %s"
 	for _, r := range opts.resolveFlag {
 		parts := strings.SplitN(r, ":", 3)
@@ -176,6 +176,9 @@ func (opts *Remote) DialContext(ctx context.Context, network, addr string) (net.
 func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client, err error) {
 	config, err := opts.tlsConfig()
 	if err != nil {
+		return nil, err
+	}
+	if err := opts.parseResolve(); err != nil {
 		return nil, err
 	}
 	client = &auth.Client{
