@@ -117,7 +117,7 @@ func (opts *Remote) ParseResolve() (err error) {
 			return fmt.Errorf(errorMsg, r, "expecting host:port:address")
 		}
 
-		port, err := strconv.ParseInt(parts[1], 10, 64)
+		port, err := strconv.Atoi(parts[1])
 		if err != nil {
 			return fmt.Errorf(errorMsg, r, "expecting uint64 port")
 		}
@@ -129,7 +129,7 @@ func (opts *Remote) ParseResolve() (err error) {
 		}
 		opts.Resolves = append(opts.Resolves, &ResolveEntry{
 			from: parts[0],
-			port: int(port),
+			port: port,
 			to:   to,
 		})
 	}
