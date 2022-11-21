@@ -279,7 +279,7 @@ func TestRemote_parseResolve_err(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.opts.ParseResolve(); (err != nil) != tt.wantErr {
+			if err := tt.opts.parseResolve(); (err != nil) != tt.wantErr {
 				t.Errorf("Remote.parseResolve() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -287,7 +287,7 @@ func TestRemote_parseResolve_err(t *testing.T) {
 }
 func TestRemote_parseResolve_defaultFlag(t *testing.T) {
 	opts := &Remote{resolveFlag: nil}
-	if err := opts.ParseResolve(); err != nil {
+	if err := opts.parseResolve(); err != nil {
 		t.Fatalf("should succeed parsing empty resolve flag but got %v", err)
 	}
 	if len(opts.Resolves) != 0 {
