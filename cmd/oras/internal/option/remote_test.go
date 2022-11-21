@@ -23,14 +23,13 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	nhttp "net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
-
-	nhttp "net/http"
-	"net/http/httptest"
-	"net/url"
 
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2/registry/remote/auth"
@@ -218,5 +217,69 @@ func TestRemote_isPlainHttp_localhost(t *testing.T) {
 	if got != true {
 		t.Fatalf("tls should be disabled when domain is localhost")
 
+	}
+}
+
+func TestRemote_ParseResolve_err(t *testing.T) {
+	tests := []struct {
+		name    string
+		opts    *Remote
+		wantErr bool
+	}{
+		{
+			name:    "invalid host",
+			opts:    &Remote{resolveFlag: []string{":port:address"}},
+			wantErr: true,
+		},
+		{
+			name:    "invalid address",
+			opts:    &Remote{resolveFlag: []string{"host:port:"}},
+			wantErr: true,
+		},
+		{
+			name:    "invalid port",
+			opts:    &Remote{resolveFlag: []string{"host::address"}},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.opts.ParseResolve(); (err != nil) != tt.wantErr {
+				t.Errorf("Remote.ParseResolve() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+func TestRemote_ParseResolve_defaultFlag(t *testing.T) {
+	opts := &Remote{resolveFlag: nil}
+	if err := opts.ParseResolve(); err != nil {
+		t.Fatalf("should succeed parsing empty resolve flag but got %v", err)
+	}
+	if len(opts.Resolves) != 0 {
+		t.Fatalf("expect empty resolve entries but got %v", opts.Resolves)
+	}
+}
+
+func TestRemote_ParseResolve_ipv4(t *testing.T) {
+	host := "mockedHost"
+	port := 12345
+	address := "192.168.1.1"
+	opts := &Remote{resolveFlag: []string{fmt.Sprintf("%s:%d:%s", host, port, address)}}
+	if err := opts.ParseResolve(); err != nil {
+		t.Fatalf("should succeed parsing resolve flag but got %v", err)
+	}
+	if len(opts.Resolves) != 1 {
+		t.Fatalf("expect 1 resolve entries but got %v", opts.Resolves)
+	}
+
+	entry := opts.Resolves[0]
+	if entry.from != host {
+		t.Fatalf("expect resolved host %q but got %q", host, entry.from)
+	}
+	if entry.to.To4().String() != address {
+		t.Fatalf("expect resolved address %q but got %q", address, entry.to)
+	}
+	if entry.port != port {
+		t.Fatalf("expect resolved port %d but port %d", port, entry.port)
 	}
 }
