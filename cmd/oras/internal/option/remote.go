@@ -122,6 +122,7 @@ func (opts *Remote) ParseResolve() (err error) {
 			return fmt.Errorf(errorMsg, r, "expecting uint64 port")
 		}
 
+		// ipv6 zone is not parsed
 		to := net.ParseIP(parts[2])
 		if to == nil {
 			return fmt.Errorf(errorMsg, r, "invalid IP address")
@@ -168,7 +169,6 @@ func (opts *Remote) DialContext(ctx context.Context, network, addr string) (net.
 	if matched == nil {
 		return defaultDialer.DialContext(ctx, network, addr)
 	}
-
 	return net.DialTCP(network, nil, &net.TCPAddr{IP: matched.to, Port: matched.port})
 }
 
