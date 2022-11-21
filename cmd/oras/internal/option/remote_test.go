@@ -227,17 +227,27 @@ func TestRemote_ParseResolve_err(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "invalid host",
+			name:    "invalid flag",
+			opts:    &Remote{resolveFlag: []string{"this-shouldn't_work"}},
+			wantErr: true,
+		},
+		{
+			name:    "no host",
 			opts:    &Remote{resolveFlag: []string{":port:address"}},
 			wantErr: true,
 		},
 		{
-			name:    "invalid address",
+			name:    "no address",
 			opts:    &Remote{resolveFlag: []string{"host:port:"}},
 			wantErr: true,
 		},
 		{
-			name:    "invalid port",
+			name:    "invalid address",
+			opts:    &Remote{resolveFlag: []string{"host:port:invalid-ip"}},
+			wantErr: true,
+		},
+		{
+			name:    "no port",
 			opts:    &Remote{resolveFlag: []string{"host::address"}},
 			wantErr: true,
 		},
