@@ -52,13 +52,13 @@ func CopyTestData(dstRoot string) error {
 	})
 }
 
-// MatchFile reads content of filepath, matches it with want with timeout.
+// MatchFile reads content from filepath, matches it with want with timeout.
 func MatchFile(filepath string, want string, timeout time.Duration) {
 	Expect(filepath).Should(BeAnExistingFile())
 	f, err := os.Open(filepath)
 	Expect(err).ShouldNot(HaveOccurred())
 	defer f.Close()
-	Eventually(gbytes.BufferReader(f)).Should(gbytes.Say(want))
+	Eventually(gbytes.BufferReader(f)).WithTimeout(timeout).Should(gbytes.Say(want))
 }
 
 func copyFile(srcFile, dstFile string) error {
