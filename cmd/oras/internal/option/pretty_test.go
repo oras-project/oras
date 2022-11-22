@@ -16,15 +16,12 @@ limitations under the License.
 package option
 
 import (
-	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 
-	"github.com/opencontainers/go-digest"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/pflag"
 )
 
@@ -38,16 +35,8 @@ func TestPretty_ApplyFlags(t *testing.T) {
 
 func TestPretty_Output(t *testing.T) {
 	// generate test content
-	blob := []byte("hello world")
-	desc := ocispec.Descriptor{
-		MediaType: "test",
-		Digest:    digest.FromBytes(blob),
-		Size:      int64(len(blob)),
-	}
-	want, err := json.Marshal(desc)
-	if err != nil {
-		t.Fatal("error calling json.Marshal(), error =", err)
-	}
+	raw := []byte("{\"mediaType\":\"test\",\"digest\":\"sha256:b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9\",\"size\":11}")
+	prettified := []byte("{\n  \"mediaType\": \"test\",\n  \"digest\": \"sha256:b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9\",\n  \"size\": 11\n}\n")
 
 	tempDir := t.TempDir()
 	fileName := "test.txt"
@@ -58,11 +47,11 @@ func TestPretty_Output(t *testing.T) {
 	}
 	defer fp.Close()
 
-	// outputs unprettified content
+	// test unprettified content
 	opts := Pretty{
 		pretty: false,
 	}
-	err = opts.Output(fp, want)
+	err = opts.Output(fp, raw)
 	if err != nil {
 		t.Fatal("Pretty.Output() error =", err)
 	}
@@ -73,8 +62,8 @@ func TestPretty_Output(t *testing.T) {
 	if err != nil {
 		t.Fatal("error calling io.ReadAll(), error =", err)
 	}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("Pretty.Output() got %v, want %v", got, want)
+	if !reflect.DeepEqual(got, raw) {
+		t.Fatalf("Pretty.Output() got %v, want %v", got, raw)
 	}
 
 	// remove all content in the file
@@ -85,11 +74,11 @@ func TestPretty_Output(t *testing.T) {
 		t.Fatal("error calling File.Seek(), error =", err)
 	}
 
-	// outputs prettified content
+	// test prettified content
 	opts = Pretty{
 		pretty: true,
 	}
-	err = opts.Output(fp, want)
+	err = opts.Output(fp, prettified)
 	if err != nil {
 		t.Fatal("Pretty.Output() error =", err)
 	}
@@ -100,7 +89,8 @@ func TestPretty_Output(t *testing.T) {
 	if err != nil {
 		t.Fatal("error calling io.ReadAll(), error =", err)
 	}
-	if reflect.DeepEqual(got, want) {
+
+	if reflect.DeepEqual(got, prettified) {
 		t.Fatalf("Pretty.Output() failed to prettified the content: %v", got)
 	}
 }

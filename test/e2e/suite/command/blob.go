@@ -33,6 +33,11 @@ var _ = Describe("ORAS beginners:", func() {
 				MatchKeyWords("[Preview] Fetch", preview_desc, example_desc).
 				Exec()
 		})
+		It("should have flag for prettifying JSON output", func() {
+			ORAS("blob", "get", "--help").
+				MatchKeyWords("--pretty", "prettify JSON").
+				Exec()
+		})
 		It("should fetch manifest with no artifact reference provided", func() {
 			ORAS("blob", "fetch").
 				WithFailureCheck().
