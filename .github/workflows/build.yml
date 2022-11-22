@@ -17,7 +17,6 @@ on:
   push:
     branches:
       - main
-      - e2e-blob-fetch
       - release-*
   pull_request:
     branches:
