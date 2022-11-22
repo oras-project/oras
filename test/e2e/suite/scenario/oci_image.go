@@ -55,10 +55,9 @@ var _ = Describe("OCI image user:", Ordered, func() {
 				WithWorkDir(tempDir).
 				WithDescription("push files with manifest exported").Exec()
 
-			session := Binary("cat", manifestName).WithWorkDir(tempDir).Exec()
-			ORAS("manifest", "fetch", Reference(Host, repo, tag)).
-				MatchContent(string(session.Out.Contents())).
-				WithDescription("fetch pushed manifest content").Exec()
+			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).
+				WithDescription("fetch pushed manifest content").Exec().Out.Contents()
+			MatchFile(filepath.Join(tempDir, manifestName), string(fetched), DefaultTimeout)
 
 			pullRoot := "pulled"
 			ORAS("pull", Reference(Host, repo, tag), "-v", "--config", files[0], "-o", pullRoot).
