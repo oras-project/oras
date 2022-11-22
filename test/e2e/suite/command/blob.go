@@ -48,7 +48,6 @@ var _ = Describe("ORAS beginners:", func() {
 })
 
 var _ = Describe("Common registry users:", func() {
-	var repo = "command/images"
 	var blobDigest = "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
 	var blobContent = "foo"
 	var blobDescriptor = `{"mediaType":"application/octet-stream","digest":"sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae","size":3}`
