@@ -42,14 +42,11 @@ var _ = Describe("ORAS beginners:", func() {
 	})
 })
 
-var _ = Describe("Common registry users:", Focus, func() {
+var _ = Describe("Common registry users:", func() {
 	var repo = "command/images"
-	var blobDigest = "sha256:fe9dbc99451d0517d65e048c309f0b5afb2cc513b7a3d456b6cc29fe641386c5"
-	var blobContent = `{
-    "architecture": "amd64",
-    "os": "linux"
-}`
-	var blobDescriptor = `{"mediaType":"application/octet-stream","digest":"sha256:fe9dbc99451d0517d65e048c309f0b5afb2cc513b7a3d456b6cc29fe641386c5","size":53}`
+	var blobDigest = "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
+	var blobContent = "foo"
+	var blobDescriptor = `{"mediaType":"application/octet-stream","digest":"sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae","size":3}`
 
 	When("running `blob fetch`", func() {
 		It("should fetch blob descriptor ", func() {
@@ -82,6 +79,33 @@ var _ = Describe("Common registry users:", Focus, func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			defer f.Close()
 			Eventually(gbytes.BufferReader(f)).Should(gbytes.Say(blobContent))
+		})
+	})
+
+	When("running `blob fetch` with wrong input", func() {
+		It("should fail if neither output path nor descriptor flag are not provided", func() {
+			ORAS("blob", "fetch", Reference(Host, repo, blobDigest)).
+				WithFailureCheck().Exec()
+		})
+
+		It("should fail if no digest provided", func() {
+			ORAS("blob", "fetch", Reference(Host, repo, "")).
+				WithFailureCheck().Exec()
+		})
+
+		It("should fail if provided digest doesn't existed", func() {
+			ORAS("blob", "fetch", Reference(Host, repo, "sha256:2aaa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a")).
+				WithFailureCheck().Exec()
+		})
+
+		It("should fail if output path points to stdout and descriptor flag is provided", func() {
+			ORAS("blob", "fetch", Reference(Host, repo, blobDigest), "--descriptor", "--output", "-").
+				WithFailureCheck().Exec()
+		})
+
+		It("should fail if no reference is provided", func() {
+			ORAS("blob", "fetch").
+				WithFailureCheck().Exec()
 		})
 	})
 })
