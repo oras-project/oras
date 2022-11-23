@@ -43,12 +43,12 @@ func TestParseFileReference(t *testing.T) {
 		{"colon-prefix file name and media type", args{":a:b:c", "d"}, ":a:b", "c"},
 
 		{"pure colon file name and media type", args{"::a", "b"}, ":", "a"},
-		{"pure colon file name and empty media type", args{"::", ""}, ":", ""},
+		{"pure colon file name and empty media type", args{"::", "a"}, ":", ""},
 
 		{"windows file name and default type", args{`a:\b`, "c"}, `a:\b`, "c"},
-		{"windows file name and media type", args{`a:\b:c`, ""}, `a:\b`, "c"},
-		{"windows file name and empty media type", args{`a:\b:`, ""}, `a:\b`, ""},
-		{"numeric file name and media type", args{`1:\a`, ""}, `1`, `\a`},
+		{"windows file name and media type", args{`a:\b:c`, "d"}, `a:\b`, "c"},
+		{"windows file name and empty media type", args{`a:\b:`, "c"}, `a:\b`, ""},
+		{"numeric file name and media type", args{`1:\a`, "b"}, `1`, `\a`},
 		{"non-windows file name and media type", args{`ab:\c`, ""}, `ab`, `\c`},
 		{"non-windows file name and media type, default type ignored", args{`1:\a`, "b"}, `1`, `\a`},
 	}
