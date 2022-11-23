@@ -220,7 +220,7 @@ var _ = Describe("Common registry users:", func() {
 			ORAS("manifest", "push", Reference(Host, repo, ""), "-").
 				WithInput(strings.NewReader(manifest)).
 				WithFailureCheck().
-				WithDescription("failed if no media type flag provided").Exec()
+				WithDescription("fail if no media type flag provided").Exec()
 		})
 	})
 })
