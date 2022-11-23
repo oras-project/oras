@@ -28,14 +28,29 @@ func TestParseFileReference(t *testing.T) {
 		wantFilePath  string
 		wantMediatype string
 	}{
-		{"file name and media type in reference", args{"a:b", "c"}, "a", "b"},
-		{"media type in reference", args{":b", "c"}, "", "b"},
-		{"file name and empty media type in reference", args{"a:", "c"}, "a", ""},
-		{"file name in reference", args{"a", "c"}, "a", "c"},
-		{"file name in reference, no default", args{"a:", ""}, "a", ""},
-		{"windows file name in reference with default media type", args{`a:\b`, "c"}, `a:\b`, "c"},
-		{"windows file name and media type in reference", args{`a:\b:c`, "d"}, `a:\b`, "c"},
-		{"file name and media type in reference", args{"a:b:c", "d"}, "a:b", "c"},
+		{"file name and media type", args{"a:b", ""}, "a", "b"},
+		{"file name and empty media type", args{"a:", ""}, "a", ""},
+		{"file name and default media type", args{"a", "c"}, "a", "c"},
+		{"file name and media type, default type ignored", args{"a:b", "c"}, "a", "b"},
+		{"file name and empty media type, default type ignored", args{"a:", "c"}, "a", ""},
+
+		{"empty file name and media type", args{":a", "b"}, "", "a"},
+		{"empty file name and empty media type", args{":", ""}, "", ""},
+		{"empty name and default media type", args{"", "a"}, "", "a"},
+
+		{"colon file name and media type", args{"a:b:c", "d"}, "a:b", "c"},
+		{"colon file name and empty media type", args{"a:b:", "c"}, "a:b", ""},
+		{"colon file name and default media type", args{"::", "a"}, ":", ""},
+		{"colon-prefix file name and media type", args{":a:b:c", "d"}, ":a:b", "c"},
+
+		{"pure colon file name and media type", args{"::a", "b"}, ":", "a"},
+		{"pure colon file name and empty media type", args{"::", ""}, ":", ""},
+
+		{"windows file name and default type", args{`a:\b`, "c"}, `a:\b`, "c"},
+		{"windows file name and media type", args{`a:\b:c`, ""}, `a:\b`, "c"},
+		{"windows file name and empty media type", args{`a:\b:`, ""}, `a:\b`, ""},
+		{"non-windows file name and media type", args{`1:\a`, ""}, `1`, `\a`},
+		{"non-windows file name and media type, default type ignored", args{`1:\a`, "b"}, `1`, `\a`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
