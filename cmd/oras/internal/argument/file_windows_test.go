@@ -48,7 +48,8 @@ func TestParseFileReference(t *testing.T) {
 		{"windows file name and default type", args{`a:\b`, "c"}, `a:\b`, "c"},
 		{"windows file name and media type", args{`a:\b:c`, ""}, `a:\b`, "c"},
 		{"windows file name and empty media type", args{`a:\b:`, ""}, `a:\b`, ""},
-		{"non-windows file name and media type", args{`1:\a`, ""}, `1`, `\a`},
+		{"numeric file name and media type", args{`1:\a`, ""}, `1`, `\a`},
+		{"non-windows file name and media type", args{`ab:\c`, ""}, `ab`, `\c`},
 		{"non-windows file name and media type, default type ignored", args{`1:\a`, "b"}, `1`, `\a`},
 	}
 	for _, tt := range tests {
