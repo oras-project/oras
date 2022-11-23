@@ -15,10 +15,14 @@ package command
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
@@ -40,6 +44,7 @@ var _ = Describe("ORAS beginners:", func() {
 	When("running manifest command", func() {
 		runAndShowPreviewInHelp([]string{"manifest"})
 		runAndShowPreviewInHelp([]string{"manifest", "fetch"}, preview_desc, example_desc)
+		runAndShowPreviewInHelp([]string{"manifest", "push"}, preview_desc, example_desc)
 
 		It("should call sub-commands with aliases", func() {
 			ORAS("manifest", "get", "--help").
@@ -50,6 +55,11 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("manifest", "fetch").
 				WithFailureCheck().
 				MatchErrKeyWords("Error:").
+				Exec()
+		})
+		It("should have flag for prettifying JSON output", func() {
+			ORAS("manifest", "push", "--help").
+				MatchKeyWords("--pretty", "prettify JSON").
 				Exec()
 		})
 	})
@@ -166,6 +176,51 @@ var _ = Describe("Common registry users:", func() {
 			ORAS("manifest", "fetch", Reference(Host, repo, digest_linuxAMD64), "--media-type", "this.will.not.be.found").
 				WithFailureCheck().
 				MatchErrKeyWords(digest_linuxAMD64, "error: ", "not found").Exec()
+		})
+	})
+	When("running `manifest push`", Focus, func() {
+		manifest := `{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:fe9dbc99451d0517d65e048c309f0b5afb2cc513b7a3d456b6cc29fe641386c5","size":53},"layers":[]}`
+		digest := "sha256:bc1a59d49fc7c7b0a31f22ca0c743ecdabdb736777e3d9672fa9d97b4fe323f4"
+		descriptor := "{\"mediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"digest\":\"sha256:bc1a59d49fc7c7b0a31f22ca0c743ecdabdb736777e3d9672fa9d97b4fe323f4\",\"size\":247}"
+
+		It("should push a manifest from stdin without media type flag", func() {
+			tag := "from-stdin"
+			ORAS("manifest", "push", Reference(Host, repo, tag), "-").
+				MatchKeyWords("Pushed", Reference(Host, repo, tag), "Digest:", digest).
+				WithInput(strings.NewReader(manifest)).Exec()
+		})
+
+		It("should push a manifest and output descriptor", func() {
+			tag := "from-stdin"
+			ORAS("manifest", "push", Reference(Host, repo, tag), "-", "--descriptor").
+				MatchContent(descriptor).
+				WithInput(strings.NewReader(manifest)).Exec()
+		})
+
+		It("should push a manifest from file", func() {
+			tempDir := GinkgoT().TempDir()
+			manifestPath := filepath.Join(tempDir, "manifest.json")
+			err := os.WriteFile(manifestPath, []byte(manifest), 0777)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+			tag := "from-file"
+			ORAS("manifest", "push", Reference(Host, repo, tag), manifestPath, "--media-type", ocispec.MediaTypeImageManifest).
+				MatchKeyWords("Pushed", Reference(Host, repo, tag), "Digest:", digest).
+				WithInput(strings.NewReader(manifest)).Exec()
+		})
+
+		It("should push a manifest from stdin with media type flag", func() {
+			manifest := `{"schemaVersion":2,"config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:fe9dbc99451d0517d65e048c309f0b5afb2cc513b7a3d456b6cc29fe641386c5","size":53}}`
+			digest := "sha256:0c2ae2c73c5dde0a42582d328b2e2ea43f36ba20f604fa8706f441ac8b0a3445"
+			tag := "mediatype-flag"
+			ORAS("manifest", "push", Reference(Host, repo, tag), "-", "--media-type", ocispec.MediaTypeImageManifest).
+				MatchKeyWords("Pushed", Reference(Host, repo, tag), "Digest:", digest).
+				WithInput(strings.NewReader(manifest)).Exec()
+
+			ORAS("manifest", "push", Reference(Host, repo, ""), "-").
+				WithInput(strings.NewReader(manifest)).
+				WithFailureCheck().
+				WithDescription("failed if no media type flag provided").Exec()
 		})
 	})
 })
