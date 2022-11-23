@@ -57,7 +57,7 @@ func CopyTestData(dstRoot string) error {
 func MatchFile(filepath string, want string, timeout time.Duration) {
 	Expect(filepath).Should(BeAnExistingFile())
 	f, err := os.Open(filepath)
-	Expect(err).ShouldNot(HaveOccurred())
+	Expect(err).ToNot(HaveOccurred())
 	defer f.Close()
 	want = regexp.QuoteMeta(want)
 	Eventually(gbytes.BufferReader(f)).WithTimeout(timeout).Should(gbytes.Say(want))
