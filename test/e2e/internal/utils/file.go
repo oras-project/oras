@@ -21,7 +21,6 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 )
 
 var testFileRoot string
@@ -58,7 +57,9 @@ func MatchFile(filepath string, want string, timeout time.Duration) {
 	f, err := os.Open(filepath)
 	Expect(err).ShouldNot(HaveOccurred())
 	defer f.Close()
-	Eventually(gbytes.BufferReader(f)).WithTimeout(timeout).Should(gbytes.Say(want))
+	content, err := os.ReadFile(filepath)
+	Expect(err).ShouldNot(HaveOccurred())
+	Eventually(string(content)).WithTimeout(timeout).Should(Equal(want))
 }
 
 func copyFile(srcFile, dstFile string) error {
