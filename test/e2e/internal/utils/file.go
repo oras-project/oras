@@ -55,7 +55,7 @@ func CopyTestData(dstRoot string) error {
 
 // MatchFile reads content from filepath, matches it with want with timeout.
 func MatchFile(filepath string, want string, timeout time.Duration) {
-	Expect(filepath).Should(BeAnExistingFile())
+	Expect(filepath).To(BeAnExistingFile())
 	f, err := os.Open(filepath)
 	Expect(err).ToNot(HaveOccurred())
 	defer f.Close()
