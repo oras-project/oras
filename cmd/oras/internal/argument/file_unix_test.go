@@ -43,8 +43,9 @@ func Test_ParseFileReference(t *testing.T) {
 		{"colon file name and media type", args{"a:b:c", "d"}, "a:b", "c"},
 		{"colon file name and empty media type", args{"a:b:", "c"}, "a:b", ""},
 		{"colon-prefix file name and media type", args{":a:b:c", "d"}, ":a:b", "c"},
+
 		{"pure colon file name and media type", args{"::a", "b"}, ":", "a"},
-		{"pure colon file name and empty media type", args{"::", ""}, ":", ""},
+		{"pure colon file name and empty media type", args{"::", "a"}, ":", ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
