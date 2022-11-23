@@ -36,7 +36,7 @@ func TestPretty_ApplyFlags(t *testing.T) {
 func TestPretty_Output(t *testing.T) {
 	// generate test content
 	raw := []byte("{\"mediaType\":\"test\",\"digest\":\"sha256:b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9\",\"size\":11}")
-	prettified := []byte("{\n  \"mediaType\": \"test\",\n  \"digest\": \"sha256:b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9\",\n  \"size\": 11\n}\n")
+	prettified := []byte("{\n  \"mediaType\": \"test\",\n  \"digest\": \"sha256:b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9\",\n  \"size\": 11\n}\n\n")
 
 	tempDir := t.TempDir()
 	fileName := "test.txt"
@@ -78,7 +78,7 @@ func TestPretty_Output(t *testing.T) {
 	opts = Pretty{
 		pretty: true,
 	}
-	err = opts.Output(fp, prettified)
+	err = opts.Output(fp, raw)
 	if err != nil {
 		t.Fatal("Pretty.Output() error =", err)
 	}
@@ -90,7 +90,7 @@ func TestPretty_Output(t *testing.T) {
 		t.Fatal("error calling io.ReadAll(), error =", err)
 	}
 
-	if reflect.DeepEqual(got, prettified) {
+	if !reflect.DeepEqual(got, prettified) {
 		t.Fatalf("Pretty.Output() failed to prettified the content: %v", got)
 	}
 }
