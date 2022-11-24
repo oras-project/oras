@@ -44,10 +44,10 @@ type ExecOption struct {
 	workDir string
 	timeout time.Duration
 
-	stdin      io.Reader
-	stdout     []match.Matcher
-	stderr     []match.Matcher
-	shouldFail bool
+	stdin    io.Reader
+	stdout   []match.Matcher
+	stderr   []match.Matcher
+	exitCode int
 
 	text string
 }
@@ -60,16 +60,23 @@ func ORAS(args ...string) *ExecOption {
 // Binary returns default execution option for customized binary.
 func Binary(path string, args ...string) *ExecOption {
 	return &ExecOption{
-		binary:     path,
-		args:       args,
-		timeout:    DefaultTimeout,
-		shouldFail: false,
+		binary:   path,
+		args:     args,
+		timeout:  DefaultTimeout,
+		exitCode: 0,
 	}
 }
 
-// WithFailureCheck sets failure exit code checking for the execution.
-func (opts *ExecOption) WithFailureCheck() *ExecOption {
-	opts.shouldFail = true
+// ExpectFailure sets failure exit code checking for the execution.
+func (opts *ExecOption) ExpectFailure() *ExecOption {
+	// set to 1 but only check if it's positive
+	opts.exitCode = 1
+	return opts
+}
+
+// ExpectBlocking consistently check if the execution is blocked.
+func (opts *ExecOption) ExpectBlocking() *ExecOption {
+	opts.exitCode = -1
 	return opts
 }
 
@@ -111,7 +118,7 @@ func (opts *ExecOption) MatchErrKeyWords(keywords ...string) *ExecOption {
 
 // MatchContent adds full content matching to the execution.
 func (opts *ExecOption) MatchContent(content string) *ExecOption {
-	if !opts.shouldFail {
+	if opts.exitCode == 0 {
 		opts.stdout = append(opts.stdout, match.NewContentMatcher(content, false))
 	} else {
 		opts.stderr = append(opts.stderr, match.NewContentMatcher(content, false))
@@ -121,7 +128,7 @@ func (opts *ExecOption) MatchContent(content string) *ExecOption {
 
 // MatchTrimedContent adds trimmed content matching to the execution.
 func (opts *ExecOption) MatchTrimmedContent(content string) *ExecOption {
-	if !opts.shouldFail {
+	if opts.exitCode == 0 {
 		opts.stdout = append(opts.stdout, match.NewContentMatcher(content, true))
 	} else {
 		opts.stderr = append(opts.stderr, match.NewContentMatcher(content, true))
@@ -143,10 +150,14 @@ func (opts *ExecOption) Exec() *gexec.Session {
 	}
 
 	if opts.text == "" {
-		if opts.shouldFail {
-			opts.text = "fail"
-		} else {
+		// set default description text
+		switch opts.exitCode {
+		case -1:
+			opts.text = "block"
+		case 0:
 			opts.text = "pass"
+		default:
+			opts.text = "fail"
 		}
 	}
 	description := fmt.Sprintf("\n>> should %s: %s %s >>", opts.text, opts.binary, strings.Join(opts.args, " "))
@@ -168,7 +179,13 @@ func (opts *ExecOption) Exec() *gexec.Session {
 	fmt.Println(description)
 	session, err := gexec.Start(cmd, os.Stdout, os.Stderr)
 	Expect(err).ShouldNot(HaveOccurred())
-	Expect(session.Wait(opts.timeout).ExitCode() != 0).Should(Equal(opts.shouldFail))
+	if opts.exitCode == -1 {
+		Consistently(session.ExitCode).WithTimeout(opts.timeout).Should(Equal(-1))
+		session.Kill()
+	} else {
+		exitCode := session.Wait(opts.timeout).ExitCode()
+		Expect(opts.exitCode == 0).To(Equal(exitCode == 0))
+	}
 
 	// matching result
 	for _, s := range opts.stdout {
