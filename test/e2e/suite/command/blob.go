@@ -24,7 +24,7 @@ import (
 )
 
 var _ = Describe("ORAS beginners:", func() {
-	When("running blob command", Focus, func() {
+	When("running blob command", func() {
 		runAndShowPreviewInHelp([]string{"blob"})
 
 		When("running fetch command", func() {
