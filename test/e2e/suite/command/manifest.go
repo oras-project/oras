@@ -191,7 +191,7 @@ var _ = Describe("Common registry users:", func() {
 	srcTag := "foobar"
 	dstTag := "e2e"
 	var repoPrefix = fmt.Sprintf("%s/%d", repo, GinkgoRandomSeed())
-	When("running `manifest delete`", Focus, func() {
+	When("running `manifest delete`", func() {
 		It("should do confirmed deletion via input", func() {
 			dstRepo := fmt.Sprintf("%s/%s", repoPrefix, "confirm-input")
 			prepare(Reference(Host, repo, srcTag), Reference(Host, dstRepo, dstTag))
