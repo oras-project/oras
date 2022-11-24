@@ -24,25 +24,46 @@ import (
 )
 
 var _ = Describe("ORAS beginners:", func() {
-	When("running blob command", func() {
+	When("running blob command", Focus, func() {
 		runAndShowPreviewInHelp([]string{"blob"})
-		runAndShowPreviewInHelp([]string{"blob", "fetch"}, preview_desc, example_desc)
 
-		It("should call sub-commands with aliases", func() {
-			ORAS("blob", "get", "--help").
-				MatchKeyWords("[Preview] Fetch", preview_desc, example_desc).
-				Exec()
-		})
-		It("should have flag for prettifying JSON output", func() {
-			ORAS("blob", "get", "--help").
-				MatchKeyWords("--pretty", "prettify JSON").
-				Exec()
-		})
-		It("should fetch manifest with no artifact reference provided", func() {
-			ORAS("blob", "fetch").
-				WithFailureCheck().
-				MatchErrKeyWords("Error:").
-				Exec()
+		When("running fetch command", func() {
+			runAndShowPreviewInHelp([]string{"blob", "fetch"}, preview_desc, example_desc)
+
+			It("should call sub-commands with aliases", func() {
+				ORAS("blob", "get", "--help").
+					MatchKeyWords("[Preview] Fetch", preview_desc, example_desc).
+					Exec()
+			})
+			It("should have flag for prettifying JSON output", func() {
+				ORAS("blob", "get", "--help").
+					MatchKeyWords("--pretty", "prettify JSON").
+					Exec()
+			})
+
+			It("should fail if neither output path nor descriptor flag are not provided", func() {
+				ORAS("blob", "fetch", Reference(Host, repo, "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae")).
+					WithFailureCheck().Exec()
+			})
+
+			It("should fail if no digest provided", func() {
+				ORAS("blob", "fetch", Reference(Host, repo, "")).
+					WithFailureCheck().Exec()
+			})
+
+			It("should fail if provided digest doesn't existed", func() {
+				ORAS("blob", "fetch", Reference(Host, repo, "sha256:2aaa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a")).
+					WithFailureCheck().Exec()
+			})
+
+			It("should fail if output path points to stdout and descriptor flag is provided", func() {
+				ORAS("blob", "fetch", Reference(Host, repo, ""), "--descriptor", "--output", "-").
+					WithFailureCheck().Exec()
+			})
+
+			It("should fail if no reference is provided", func() {
+				ORAS("blob", "fetch").WithFailureCheck().Exec()
+			})
 		})
 	})
 })
@@ -83,33 +104,6 @@ var _ = Describe("Common registry users:", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			defer f.Close()
 			Eventually(gbytes.BufferReader(f)).Should(gbytes.Say(blobContent))
-		})
-	})
-
-	When("running `blob fetch` with wrong input", func() {
-		It("should fail if neither output path nor descriptor flag are not provided", func() {
-			ORAS("blob", "fetch", Reference(Host, repo, blobDigest)).
-				WithFailureCheck().Exec()
-		})
-
-		It("should fail if no digest provided", func() {
-			ORAS("blob", "fetch", Reference(Host, repo, "")).
-				WithFailureCheck().Exec()
-		})
-
-		It("should fail if provided digest doesn't existed", func() {
-			ORAS("blob", "fetch", Reference(Host, repo, "sha256:2aaa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a")).
-				WithFailureCheck().Exec()
-		})
-
-		It("should fail if output path points to stdout and descriptor flag is provided", func() {
-			ORAS("blob", "fetch", Reference(Host, repo, blobDigest), "--descriptor", "--output", "-").
-				WithFailureCheck().Exec()
-		})
-
-		It("should fail if no reference is provided", func() {
-			ORAS("blob", "fetch").
-				WithFailureCheck().Exec()
 		})
 	})
 })
