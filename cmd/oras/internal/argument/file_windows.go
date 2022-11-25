@@ -13,23 +13,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package argument
+package file
 
 import (
+	"path/filepath"
 	"strings"
 	"unicode"
 )
 
-// ParseFileReference parses file reference on windows.
+// Parse parses file reference on windows.
 // Windows systems does not allow ':' in the file path except for drive letter.
-func ParseFileReference(reference string, mediaType string) (filePath, mediatype string) {
+func Parse(reference string, mediaType string) (filePath, mediatype string) {
 	i := strings.LastIndex(reference, ":")
 	if i < 0 {
 		return reference, mediaType
 	}
-
 	// In case it is C:\
-	if i == 1 && len(reference) > 2 && reference[2] == '\\' && unicode.IsLetter(rune(reference[0])) {
+	if i == 1 && len(reference) > 2 && unicode.IsLetter(rune(reference[0])) {
+		if reference[2] != '\\' {
+			if abs, err := filepath.Abs(reference); err == nil {
+				return abs, mediaType
+			}
+		}
 		return reference, mediaType
 	}
 	return reference[:i], reference[i+1:]

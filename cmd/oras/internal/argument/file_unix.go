@@ -15,12 +15,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package argument
+package file
 
 import "strings"
 
-// ParseFileReference parses file reference on unix.
-func ParseFileReference(reference string, mediaType string) (filePath, mediatype string) {
+// Parse parses file reference on unix.
+func Parse(reference string, mediaType string) (filePath, mediatype string) {
 	i := strings.LastIndex(reference, ":")
 	if i < 0 {
 		return reference, mediaType

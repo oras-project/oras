@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package argument
+package file
 
 import "testing"
 
@@ -54,7 +54,7 @@ func TestParseFileReference(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotFilePath, gotMediatype := ParseFileReference(tt.args.reference, tt.args.mediaType)
+			gotFilePath, gotMediatype := Parse(tt.args.reference, tt.args.mediaType)
 			if gotFilePath != tt.wantFilePath {
 				t.Errorf("ParseFileReference() gotFilePath = %v, want %v", gotFilePath, tt.wantFilePath)
 			}

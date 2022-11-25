@@ -31,8 +31,8 @@ import (
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/errcode"
-	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/display"
+	fileref "oras.land/oras/cmd/oras/internal/file"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -130,7 +130,7 @@ func runPush(opts pushOptions) error {
 	defer store.Close()
 	store.AllowPathTraversalOnWrite = opts.PathValidationDisabled
 	if opts.manifestConfigRef != "" {
-		path, cfgMediaType := argument.ParseFileReference(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
+		path, cfgMediaType := fileref.ParseFileReference(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
 		desc, err := store.Add(ctx, option.AnnotationConfig, cfgMediaType, path)
 		if err != nil {
 			return err

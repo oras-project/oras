@@ -23,11 +23,12 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/argument"
+	"oras.land/oras/cmd/oras/internal/file"
 )
 
 func loadFiles(ctx context.Context, store *file.Store, annotations map[string]map[string]string, fileRefs []string, verbose bool) ([]ocispec.Descriptor, error) {
 	var files []ocispec.Descriptor
-	for _, fileRef := range fileRefs {
+	for _, fileRef := range file {
 		filename, mediaType := argument.ParseFileReference(fileRef, "")
 
 		// get shortest absolute path as unique name
