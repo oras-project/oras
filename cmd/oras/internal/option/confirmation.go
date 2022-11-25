@@ -45,7 +45,12 @@ func (opts *Confirmation) AskForConfirmation(r io.Reader, prompt string) (bool, 
 
 	scanner := bufio.NewScanner(r)
 	if ok := scanner.Scan(); !ok {
-		return false, scanner.Err()
+		err := scanner.Err()
+		if err == nil {
+			// EOF
+			fmt.Println("Operation cancelled.")
+		}
+		return false, err
 	}
 	response := scanner.Text()
 
