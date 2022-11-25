@@ -28,25 +28,27 @@ func TestParseFileReference(t *testing.T) {
 		wantFilePath  string
 		wantMediatype string
 	}{
-		{"file name and media type", args{"a:b", ""}, "a", "b"},
-		{"file name and empty media type", args{"a:", ""}, "a", ""},
-		{"file name and default media type", args{"a", "c"}, "a", "c"},
-		{"file name and media type, default type ignored", args{"a:b", "c"}, "a", "b"},
-		{"file name and empty media type, default type ignored", args{"a:", "c"}, "a", ""},
+		{"file name and media type", args{"az:b", ""}, "az", "b"},
+		{"file name and empty media type", args{"az:", ""}, "az", ""},
+		{"file name and default media type", args{"az", "c"}, "az", "c"},
+		{"file name and media type, default type ignored", args{"az:b", "c"}, "az", "b"},
+		{"file name and empty media type, default type ignored", args{"az:", "c"}, "az", ""},
 
 		{"empty file name and media type", args{":a", "b"}, "", "a"},
 		{"empty file name and empty media type", args{":", "a"}, "", ""},
 		{"empty name and default media type", args{"", "a"}, "", "a"},
 
-		{"colon file name and media type", args{"a:b:c", "d"}, "a:b", "c"},
-		{"colon file name and empty media type", args{"a:b:", "c"}, "a:b", ""},
-		{"colon-prefix file name and media type", args{":a:b:c", "d"}, ":a:b", "c"},
+		{"colon file name and media type", args{"az:b:c", "d"}, "az:b", "c"},
+		{"colon file name and empty media type", args{"az:b:", "c"}, "az:b", ""},
+		{"colon-prefix file name and media type", args{":az:b:c", "d"}, ":az:b", "c"},
 
 		{"pure colon file name and media type", args{"::a", "b"}, ":", "a"},
 		{"pure colon file name and empty media type", args{"::", "a"}, ":", ""},
 
-		{"windows file name and default type", args{`a:\b`, "c"}, `a:\b`, "c"},
+		{"windows file name1 and default type", args{`a:\b`, "c"}, `a:\b`, "c"},
+		{"windows file name2 and default type", args{`z:b`, "c"}, `Z:\b`, "c"},
 		{"windows file name and media type", args{`a:\b:c`, "d"}, `a:\b`, "c"},
+		{"windows file name and empty media type", args{`a:\b:`, "c"}, `a:\b`, ""},
 		{"windows file name and empty media type", args{`a:\b:`, "c"}, `a:\b`, ""},
 		{"numeric file name and media type", args{`1:\a`, "b"}, `1`, `\a`},
 		{"non-windows file name and media type", args{`ab:\c`, ""}, `ab`, `\c`},
