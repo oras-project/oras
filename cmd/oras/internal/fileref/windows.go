@@ -12,19 +12,29 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package file
+
+package fileref
 
 import (
-	"fmt"
-	"os"
+	"path/filepath"
+	"strings"
+	"unicode"
 )
 
-// Parse parses file reference on windows.
-// Windows systems does not allow ':' in the file path except for drive letter.
-func Parse(reference string, mediaType string) (filePath, mediatype string, err error) {
-	filePath, mediaType = doParse(reference, mediaType)
-	if _, err := os.Lstat(filePath); err != nil {
-		return filePath, mediaType, fmt.Errorf("Invalid file path %q:%w", filePath, err)
+// Parse parses file reference on unix.
+func Parse(reference string, mediaType string) (filePath, mediatype string) {
+	i := strings.LastIndex(reference, ":")
+	if i < 0 {
+		return reference, mediaType
 	}
-	return filePath, mediaType, nil
+	// In case it is C:\
+	if i == 1 && len(reference) > 2 && unicode.IsLetter(rune(reference[0])) {
+		if reference[2] != '\\' {
+			if abs, err := filepath.Abs(reference); err == nil {
+				return abs, mediaType
+			}
+		}
+		return reference, mediaType
+	}
+	return reference[:i], reference[i+1:]
 }

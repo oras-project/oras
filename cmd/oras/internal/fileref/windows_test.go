@@ -1,5 +1,3 @@
-//go:build !windows
-
 /*
 Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package file
+package fileref
 
 import "testing"
 
-func Test_ParseFileReference(t *testing.T) {
+func TestParseFileReference(t *testing.T) {
 	type args struct {
 		reference string
 		mediaType string
@@ -46,15 +44,24 @@ func Test_ParseFileReference(t *testing.T) {
 
 		{"pure colon file name and media type", args{"::a", "b"}, ":", "a"},
 		{"pure colon file name and empty media type", args{"::", "a"}, ":", ""},
+
+		{"windows file name1 and default type", args{`a:\b`, "c"}, `a:\b`, "c"},
+		{"windows file name2 and default type", args{`z:b`, "c"}, `Z:\b`, "c"},
+		{"windows file name and media type", args{`a:\b:c`, "d"}, `a:\b`, "c"},
+		{"windows file name and empty media type", args{`a:\b:`, "c"}, `a:\b`, ""},
+		{"windows file name and empty media type", args{`a:\b:`, "c"}, `a:\b`, ""},
+		{"numeric file name and media type", args{`1:\a`, "b"}, `1`, `\a`},
+		{"non-windows file name and media type", args{`ab:\c`, ""}, `ab`, `\c`},
+		{"non-windows file name and media type, default type ignored", args{`1:\a`, "b"}, `1`, `\a`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotFilePath, gotMediatype := doParse(tt.args.reference, tt.args.mediaType)
+			gotFilePath, gotMediatype := Parse(tt.args.reference, tt.args.mediaType)
 			if gotFilePath != tt.wantFilePath {
-				t.Errorf("doParse() gotFilePath = %v, want %v", gotFilePath, tt.wantFilePath)
+				t.Errorf("Parse() gotFilePath = %v, want %v", gotFilePath, tt.wantFilePath)
 			}
 			if gotMediatype != tt.wantMediatype {
-				t.Errorf("doParse() gotMediatype = %v, want %v", gotMediatype, tt.wantMediatype)
+				t.Errorf("Parse() gotMediatype = %v, want %v", gotMediatype, tt.wantMediatype)
 			}
 		})
 	}

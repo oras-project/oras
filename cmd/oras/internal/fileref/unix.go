@@ -1,3 +1,5 @@
+//go:build !windows
+
 /*
 Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,27 +15,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package file
+package fileref
 
-import (
-	"path/filepath"
-	"strings"
-	"unicode"
-)
+import "strings"
 
-func doParse(reference string, mediaType string) (filePath, mediatype string) {
+//Parse parses file reference on unix.
+func Parse(reference string, mediaType string) (filePath, mediatype string) {
 	i := strings.LastIndex(reference, ":")
 	if i < 0 {
 		return reference, mediaType
 	}
-	// In case it is C:\
-	if i == 1 && len(reference) > 2 && unicode.IsLetter(rune(reference[0])) {
-		if reference[2] != '\\' {
-			if abs, err := filepath.Abs(reference); err == nil {
-				return abs, mediaType
-			}
-		}
-		return reference, mediaType
-	}
 	return reference[:i], reference[i+1:]
+
 }
