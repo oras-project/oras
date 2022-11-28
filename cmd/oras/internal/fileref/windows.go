@@ -1,3 +1,5 @@
+//go:build windows
+
 /*
 Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +31,7 @@ func Parse(reference string, mediaType string) (filePath, mediatype string, err 
 		// https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions
 		return "", "", fmt.Errorf("Reserved characters found in the file path: %s", filePath)
 	}
-	return filePath, mediaType, nil
+	return filePath, mediatype, nil
 }
 
 func doParse(reference string, mediaType string) (filePath, mediatype string) {
