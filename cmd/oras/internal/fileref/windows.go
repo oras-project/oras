@@ -24,7 +24,7 @@ import (
 	"unicode"
 )
 
-// Parse parses file reference on unix.
+// Parse parses file reference on windows.
 func Parse(reference string, mediaType string) (filePath, mediatype string, err error) {
 	filePath, mediatype = doParse(reference, mediaType)
 	if strings.ContainsAny(filePath, `<>:"|?*`) {
