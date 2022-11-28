@@ -49,7 +49,7 @@ func Test_ParseFileReference(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotFilePath, gotMediatype := Parse(tt.args.reference, tt.args.mediaType)
+			gotFilePath, gotMediatype, _ := Parse(tt.args.reference, tt.args.mediaType)
 			if gotFilePath != tt.wantFilePath {
 				t.Errorf("Parse() gotFilePath = %v, want %v", gotFilePath, tt.wantFilePath)
 			}
