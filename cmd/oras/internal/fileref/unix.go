@@ -20,11 +20,10 @@ package fileref
 import "strings"
 
 //Parse parses file reference on unix.
-func Parse(reference string, mediaType string) (filePath, mediatype string) {
+func Parse(reference string, mediaType string) (filePath, mediatype string, err error) {
 	i := strings.LastIndex(reference, ":")
 	if i < 0 {
 		return reference, mediaType
 	}
 	return reference[:i], reference[i+1:]
-
 }

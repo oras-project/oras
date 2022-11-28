@@ -15,9 +15,11 @@ limitations under the License.
 
 package fileref
 
-import "testing"
+import (
+	"testing"
+)
 
-func TestParseFileReference(t *testing.T) {
+func TestdoParse(t *testing.T) {
 	type args struct {
 		reference string
 		mediaType string
@@ -56,7 +58,50 @@ func TestParseFileReference(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotFilePath, gotMediatype := Parse(tt.args.reference, tt.args.mediaType)
+			gotFilePath, gotMediatype := doParse(tt.args.reference, tt.args.mediaType)
+			if gotFilePath != tt.wantFilePath {
+				t.Errorf("doParse() gotFilePath = %v, want %v", gotFilePath, tt.wantFilePath)
+			}
+			if gotMediatype != tt.wantMediatype {
+				t.Errorf("doParse() gotMediatype = %v, want %v", gotMediatype, tt.wantMediatype)
+			}
+		})
+	}
+}
+
+func TestParse(t *testing.T) {
+	type args struct {
+		reference string
+		mediaType string
+	}
+	tests := []struct {
+		name          string
+		args          args
+		wantFilePath  string
+		wantMediatype string
+		wantErr       bool
+	}{
+		{"reserved character1 in file name", args{"<", "a"}, "", "", true},
+		{"reserved character2 in file name", args{">", "a"}, "", "", true},
+		{"reserved character3 in file name", args{"*", "a"}, "", "", true},
+		{"reserved character4 in file name", args{`"`, "a"}, "", "", true},
+		{"reserved character5 in file name", args{"|", "a"}, "", "", true},
+		{"reserved character6 in file name", args{"?", "a"}, "", "", true},
+		{"reserved character1 in file name, with media type", args{"<:", "a"}, "", "", true},
+		{"reserved character2 in file name, with media type", args{">:", "a"}, "", "", true},
+		{"reserved character3 in file name, with media type", args{"*:", "a"}, "", "", true},
+		{"reserved character4 in file name, with media type", args{`":`, "a"}, "", "", true},
+		{"reserved character5 in file name, with media type", args{"|:", "a"}, "", "", true},
+		{"reserved character6 in file name, with media type", args{"?:", "a"}, "", "", true},
+		{"reserved character7 in file name, with media type", args{"::", "a"}, "", "", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotFilePath, gotMediatype, err := Parse(tt.args.reference, tt.args.mediaType)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
 			if gotFilePath != tt.wantFilePath {
 				t.Errorf("Parse() gotFilePath = %v, want %v", gotFilePath, tt.wantFilePath)
 			}

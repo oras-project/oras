@@ -16,13 +16,23 @@ limitations under the License.
 package fileref
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 	"unicode"
 )
 
 // Parse parses file reference on unix.
-func Parse(reference string, mediaType string) (filePath, mediatype string) {
+func Parse(reference string, mediaType string) (filePath, mediatype string, err error) {
+	filePath, mediatype = doParse(reference, mediaType)
+	if strings.ContainsAny(filePath, `<>:"|?*`) {
+		// https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions
+		return "", "", fmt.Errorf("Reserved characters found in the file path: %s", filePath)
+	}
+	return filePath, mediaType, nil
+}
+
+func doParse(reference string, mediaType string) (filePath, mediatype string) {
 	i := strings.LastIndex(reference, ":")
 	if i < 0 {
 		return reference, mediaType

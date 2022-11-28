@@ -28,7 +28,10 @@ import (
 func loadFiles(ctx context.Context, store *file.Store, annotations map[string]map[string]string, fileRefs []string, verbose bool) ([]ocispec.Descriptor, error) {
 	var files []ocispec.Descriptor
 	for _, fileRef := range fileRefs {
-		filename, mediaType := fileref.Parse(fileRef, "")
+		filename, mediaType, err := fileref.Parse(fileRef, "")
+		if err != nil {
+			return nil, err
+		}
 
 		// get shortest absolute path as unique name
 		name := filepath.Clean(filename)

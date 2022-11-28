@@ -113,7 +113,10 @@ func runPull(opts pullOptions) error {
 	// Copy Options
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
-	configPath, configMediaType := fileref.Parse(opts.ManifestConfigRef, "")
+	configPath, configMediaType, err := fileref.Parse(opts.ManifestConfigRef, "")
+	if err != nil {
+		return err
+	}
 	if targetPlatform != nil {
 		copyOptions.WithTargetPlatform(targetPlatform)
 	}
