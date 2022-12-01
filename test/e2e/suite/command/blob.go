@@ -27,7 +27,7 @@ var _ = Describe("ORAS beginners:", func() {
 	When("running blob command", func() {
 		runAndShowPreviewInHelp([]string{"blob"})
 
-		When("running fetch command", func() {
+		When("running `blob fetch`", func() {
 			runAndShowPreviewInHelp([]string{"blob", "fetch"}, preview_desc, example_desc)
 
 			It("should call sub-commands with aliases", func() {
