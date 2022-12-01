@@ -71,7 +71,7 @@ var _ = Describe("Common registry users:", func() {
 			ORAS("blob", "delete", toDeleteRef).
 				WithInput(strings.NewReader("y")).
 				WithFailureCheck().
-				MatchKeyWords("Error:", toDeleteRef, "the specified blob does not exist").Exec()
+				MatchErrKeyWords("Error:", toDeleteRef, "the specified blob does not exist").Exec()
 		})
 
 		It("should delete a blob with confirmation flag and output descriptor", func() {
@@ -81,7 +81,7 @@ var _ = Describe("Common registry users:", func() {
 			ORAS("blob", "delete", toDeleteRef, "--force", "--descriptor").MatchContent(deleteDescriptor).Exec()
 			ORAS("blob", "delete", toDeleteRef, "--force", "--descriptor").
 				WithFailureCheck().
-				MatchKeyWords("Error:", toDeleteRef, "the specified blob does not exist").Exec()
+				MatchErrKeyWords("Error:", toDeleteRef, "the specified blob does not exist").Exec()
 		})
 	})
 })
