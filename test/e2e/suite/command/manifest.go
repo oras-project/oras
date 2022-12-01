@@ -42,37 +42,48 @@ const (
 
 var _ = Describe("ORAS beginners:", func() {
 	When("running manifest command", func() {
+		runAndShowPreviewInHelp := func(args []string, keywords ...string) {
+			It(fmt.Sprintf("should run %q command", strings.Join(args, " ")), func() {
+				ORAS(append(args, "--help")...).
+					MatchKeyWords(append(keywords, "[Preview] "+args[len(args)-1], "\nUsage:")...).
+					WithDescription("show preview and help doc").
+					Exec()
+			})
+		}
 		runAndShowPreviewInHelp([]string{"manifest"})
-		runAndShowPreviewInHelp([]string{"manifest", "fetch"}, preview_desc, example_desc)
-		runAndShowPreviewInHelp([]string{"manifest", "push"}, preview_desc, example_desc)
 
-		It("should call sub-commands with aliases", func() {
-			ORAS("manifest", "get", "--help").
-				MatchKeyWords("[Preview] Fetch", preview_desc, example_desc).
-				Exec()
+		When("running `manifest push`", func() {
+			runAndShowPreviewInHelp([]string{"manifest", "push"}, preview_desc, example_desc)
+			It("should have flag for prettifying JSON output", func() {
+				ORAS("manifest", "push", "--help").
+					MatchKeyWords("--pretty", "prettify JSON").
+					Exec()
+			})
+
+			It("should fail pushing without reference provided", func() {
+				ORAS("manifest", "push").
+					WithFailureCheck().
+					MatchErrKeyWords("Error:").
+					Exec()
+			})
 		})
-		It("should fetch manifest with no artifact reference provided", func() {
-			ORAS("manifest", "fetch").
-				WithFailureCheck().
-				MatchErrKeyWords("Error:").
-				Exec()
-		})
-		It("should have flag for prettifying JSON output", func() {
-			ORAS("manifest", "push", "--help").
-				MatchKeyWords("--pretty", "prettify JSON").
-				Exec()
+
+		When("running `manifest fetch`", func() {
+			runAndShowPreviewInHelp([]string{"manifest", "fetch"}, preview_desc, example_desc)
+			It("should call sub-commands with aliases", func() {
+				ORAS("manifest", "get", "--help").
+					MatchKeyWords("[Preview] Fetch", preview_desc, example_desc).
+					Exec()
+			})
+			It("should fail fetching manifest without reference provided", func() {
+				ORAS("manifest", "fetch").
+					WithFailureCheck().
+					MatchErrKeyWords("Error:").
+					Exec()
+			})
 		})
 	})
 })
-
-func runAndShowPreviewInHelp(args []string, keywords ...string) {
-	It(fmt.Sprintf("should run %q command", strings.Join(args, " ")), func() {
-		ORAS(append(args, "--help")...).
-			MatchKeyWords(append(keywords, "[Preview] "+args[len(args)-1], "\nUsage:")...).
-			WithDescription("show preview and help doc").
-			Exec()
-	})
-}
 
 var _ = Describe("Common registry users:", func() {
 	When("running `manifest fetch`", func() {
@@ -178,6 +189,7 @@ var _ = Describe("Common registry users:", func() {
 				MatchErrKeyWords(digest_linuxAMD64, "error: ", "not found").Exec()
 		})
 	})
+
 	When("running `manifest push`", func() {
 		manifest := `{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:fe9dbc99451d0517d65e048c309f0b5afb2cc513b7a3d456b6cc29fe641386c5","size":53},"layers":[]}`
 		digest := "sha256:bc1a59d49fc7c7b0a31f22ca0c743ecdabdb736777e3d9672fa9d97b4fe323f4"
