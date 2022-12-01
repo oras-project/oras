@@ -62,7 +62,7 @@ var _ = Describe("ORAS beginners:", func() {
 var _ = Describe("Common registry users:", func() {
 	When("running `blob delete`", func() {
 		It("should delete a blob with interactive confirmation", func() {
-			dstRepo := fmt.Sprintf(repoFmt, "delete", "prompt-delete")
+			dstRepo := fmt.Sprintf(repoFmt, "delete", "prompt-confirmation")
 			ORAS("cp", Reference(Host, repo, deleteTag), Reference(Host, dstRepo, deleteTag)).Exec()
 			toDeleteRef := Reference(Host, dstRepo, deleteDigest)
 			ORAS("blob", "delete", toDeleteRef).
@@ -75,7 +75,7 @@ var _ = Describe("Common registry users:", func() {
 		})
 
 		It("should delete a blob with confirmation flag and output descriptor", func() {
-			dstRepo := fmt.Sprintf(repoFmt, "delete", "prompt-delete")
+			dstRepo := fmt.Sprintf(repoFmt, "delete", "flag-confirmation")
 			ORAS("cp", Reference(Host, repo, deleteTag), Reference(Host, dstRepo, deleteTag)).Exec()
 			toDeleteRef := Reference(Host, dstRepo, deleteDigest)
 			ORAS("blob", "delete", toDeleteRef, "--force", "--descriptor").MatchContent(deleteDescriptor).Exec()
