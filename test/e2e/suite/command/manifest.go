@@ -28,7 +28,9 @@ const (
 	preview_desc                    = "** This command is in preview and under development. **"
 	example_desc                    = "\nExample - "
 	repo                            = "command/images"
+	foobarImage                     = "foobar"
 	multiImage                      = "multi"
+	e2eImage                        = "e2e"
 	digest_multi                    = "sha256:e2bfc9cc6a84ec2d7365b5a28c6bc5806b7fa581c9ad7883be955a64e3cc034f"
 	manifest_multi                  = `{"mediaType":"application/vnd.oci.image.index.v1+json","schemaVersion":2,"manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:9d84a5716c66a1d1b9c13f8ed157ba7d1edfe7f9b8766728b8a1f25c0d9c14c1","size":458,"platform":{"architecture":"amd64","os":"linux"}},{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:4f93460061882467e6fb3b772dc6ab72130d9ac1906aed2fc7589a5cd145433c","size":458,"platform":{"architecture":"arm64","os":"linux"}},{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:58efe73e78fe043ca31b89007a025c594ce12aa7e6da27d21c7b14b50112e255","size":458,"platform":{"architecture":"arm","os":"linux","variant":"v7"}}]}`
 	descriptor_multi                = `{"mediaType":"application/vnd.oci.image.index.v1+json","digest":"sha256:e2bfc9cc6a84ec2d7365b5a28c6bc5806b7fa581c9ad7883be955a64e3cc034f","size":706}`
@@ -38,11 +40,24 @@ const (
 	manifest_linuxAMD64             = `{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:fe9dbc99451d0517d65e048c309f0b5afb2cc513b7a3d456b6cc29fe641386c5","size":53},"layers":[{"mediaType":"application/vnd.oci.image.layer.v1.tar","digest":"sha256:2ef548696ac7dd66ef38aab5cc8fc5cc1fb637dfaedb3a9afc89bf16db9277e1","size":10240,"annotations":{"org.opencontainers.image.title":"hello.tar"}}]}`
 )
 
+var repoFmt = fmt.Sprintf("command/manifest/%%s/%d/%%s", GinkgoRandomSeed())
+
+func prepare(src string, dst string) {
+	ORAS("cp", src, dst).Exec()
+}
+func validate(repoRef string, tag string, gone bool) {
+	session := ORAS("repo", "tags", repoRef).Exec()
+	if gone {
+		Expect(session.Out).NotTo(gbytes.Say(tag))
+	} else {
+		Expect(session.Out).To(gbytes.Say(tag))
+	}
+}
+
 var _ = Describe("ORAS beginners:", func() {
 	When("running manifest command", func() {
 		runAndShowPreviewInHelp([]string{"manifest"})
 		runAndShowPreviewInHelp([]string{"manifest", "fetch"}, preview_desc, example_desc)
-		runAndShowPreviewInHelp([]string{"manifest", "push"}, preview_desc, example_desc)
 
 		It("should call sub-commands with aliases", func() {
 			ORAS("manifest", "get", "--help").
@@ -55,10 +70,32 @@ var _ = Describe("ORAS beginners:", func() {
 				MatchErrKeyWords("Error:").
 				Exec()
 		})
-		It("should have flag for prettifying JSON output", func() {
+		It("should have flag for prettified JSON output", func() {
 			ORAS("manifest", "push", "--help").
 				MatchKeyWords("--pretty", "prettify JSON").
 				Exec()
+		})
+
+		When("running `manifest delete`", func() {
+			It("should cancel deletion without confirmation", func() {
+				dstRepo := fmt.Sprintf(repoFmt, "no-confirm")
+				prepare(Reference(Host, repo, foobarImage), Reference(Host, dstRepo, e2eImage))
+				ORAS("manifest", "delete", Reference(Host, dstRepo, e2eImage)).
+					MatchKeyWords("Operation cancelled.", "Are you sure you want to delete the manifest ", " and all tags associated with it?").Exec()
+				validate(Reference(Host, dstRepo, ""), e2eImage, false)
+			})
+
+			It("should fail if descriptor flag is provided without confirmation flag", func() {
+				dstRepo := fmt.Sprintf(repoFmt, "descriptor-without-confirm")
+				prepare(Reference(Host, repo, foobarImage), Reference(Host, dstRepo, e2eImage))
+				ORAS("manifest", "delete", Reference(Host, dstRepo, e2eImage), "--descriptor").ExpectFailure().Exec()
+			})
+
+			It("should fail if no blob reference provided", func() {
+				dstRepo := fmt.Sprintf(repoFmt, "no-reference")
+				prepare(Reference(Host, repo, foobarImage), Reference(Host, dstRepo, e2eImage))
+				ORAS("manifest", "delete").ExpectFailure().Exec()
+			})
 		})
 	})
 })
@@ -177,65 +214,29 @@ var _ = Describe("Common registry users:", func() {
 		})
 	})
 
-	prepare := func(src string, dst string) {
-		ORAS("cp", src, dst).Exec()
-	}
-	validate := func(repoRef string, tag string, gone bool) {
-		session := ORAS("repo", "tags", repoRef).Exec()
-		if gone {
-			Expect(session.Out).NotTo(gbytes.Say(tag))
-		} else {
-			Expect(session.Out).To(gbytes.Say(tag))
-		}
-	}
-	srcTag := "foobar"
-	dstTag := "e2e"
-	var repoPrefix = fmt.Sprintf("%s/%d", repo, GinkgoRandomSeed())
 	When("running `manifest delete`", func() {
 		It("should do confirmed deletion via input", func() {
-			dstRepo := fmt.Sprintf("%s/%s", repoPrefix, "confirm-input")
-			prepare(Reference(Host, repo, srcTag), Reference(Host, dstRepo, dstTag))
-			ORAS("manifest", "delete", Reference(Host, dstRepo, dstTag)).
+			dstRepo := fmt.Sprintf(repoFmt, "confirm-input")
+			prepare(Reference(Host, repo, foobarImage), Reference(Host, dstRepo, e2eImage))
+			ORAS("manifest", "delete", Reference(Host, dstRepo, e2eImage)).
 				WithInput(strings.NewReader("y")).Exec()
-			validate(Reference(Host, dstRepo, ""), dstTag, true)
+			validate(Reference(Host, dstRepo, ""), e2eImage, true)
 		})
 
 		It("should do confirmed deletion via flag", func() {
-			dstRepo := fmt.Sprintf("%s/%s", repoPrefix, "confirm-flag")
-			prepare(Reference(Host, repo, srcTag), Reference(Host, dstRepo, dstTag))
-			ORAS("manifest", "delete", Reference(Host, dstRepo, dstTag), "-f").Exec()
-			validate(Reference(Host, dstRepo, ""), dstTag, true)
+			dstRepo := fmt.Sprintf(repoFmt, "confirm-flag")
+			prepare(Reference(Host, repo, foobarImage), Reference(Host, dstRepo, e2eImage))
+			ORAS("manifest", "delete", Reference(Host, dstRepo, e2eImage), "-f").Exec()
+			validate(Reference(Host, dstRepo, ""), e2eImage, true)
 		})
 
 		It("should do confirmed deletion and output descriptor", func() {
-			dstRepo := fmt.Sprintf("%s/%s", repoPrefix, "output-descriptor")
-			prepare(Reference(Host, repo, srcTag), Reference(Host, dstRepo, dstTag))
-			ORAS("manifest", "delete", Reference(Host, dstRepo, dstTag), "-f", "--descriptor").
+			dstRepo := fmt.Sprintf(repoFmt, "output-descriptor")
+			prepare(Reference(Host, repo, foobarImage), Reference(Host, dstRepo, e2eImage))
+			ORAS("manifest", "delete", Reference(Host, dstRepo, e2eImage), "-f", "--descriptor").
 				MatchContent("{\"mediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"digest\":\"sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb\",\"size\":851}").
 				WithDescription("cancel without confirmation").Exec()
-			validate(Reference(Host, dstRepo, ""), dstTag, true)
-		})
-	})
-
-	When("running `manifest delete` with wrong input", func() {
-		It("should cancel deletion without confirmation", func() {
-			dstRepo := fmt.Sprintf("%s/%s", repoPrefix, "no-confirm")
-			prepare(Reference(Host, repo, srcTag), Reference(Host, dstRepo, dstTag))
-			ORAS("manifest", "delete", Reference(Host, dstRepo, dstTag)).
-				MatchKeyWords("Operation cancelled.", "Are you sure you want to delete the manifest ", " and all tags associated with it?").Exec()
-			validate(Reference(Host, dstRepo, ""), dstTag, false)
-		})
-
-		It("should fail if descriptor flag is provided without confirmation flag", func() {
-			dstRepo := fmt.Sprintf("%s/%s", repoPrefix, "descriptor-without-confirm")
-			prepare(Reference(Host, repo, srcTag), Reference(Host, dstRepo, dstTag))
-			ORAS("manifest", "delete", Reference(Host, dstRepo, dstTag), "--descriptor").ExpectFailure().Exec()
-		})
-
-		It("should fail if no blob reference provided", func() {
-			dstRepo := fmt.Sprintf("%s/%s", repoPrefix, "no-reference")
-			prepare(Reference(Host, repo, srcTag), Reference(Host, dstRepo, dstTag))
-			ORAS("manifest", "delete").ExpectFailure().Exec()
+			validate(Reference(Host, dstRepo, ""), e2eImage, true)
 		})
 	})
 })
