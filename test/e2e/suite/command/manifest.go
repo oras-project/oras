@@ -78,7 +78,7 @@ var _ = Describe("ORAS beginners:", func() {
 
 		When("running `manifest delete`", func() {
 			It("should cancel deletion without confirmation", func() {
-				dstRepo := fmt.Sprintf(repoFmt, "no-confirm")
+				dstRepo := fmt.Sprintf(repoFmt, "delete", "no-confirm")
 				prepare(Reference(Host, repo, foobarImage), Reference(Host, dstRepo, e2eImage))
 				ORAS("manifest", "delete", Reference(Host, dstRepo, e2eImage)).
 					MatchKeyWords("Operation cancelled.", "Are you sure you want to delete the manifest ", " and all tags associated with it?").Exec()
@@ -86,13 +86,13 @@ var _ = Describe("ORAS beginners:", func() {
 			})
 
 			It("should fail if descriptor flag is provided without confirmation flag", func() {
-				dstRepo := fmt.Sprintf(repoFmt, "descriptor-without-confirm")
+				dstRepo := fmt.Sprintf(repoFmt, "delete", "descriptor-without-confirm")
 				prepare(Reference(Host, repo, foobarImage), Reference(Host, dstRepo, e2eImage))
 				ORAS("manifest", "delete", Reference(Host, dstRepo, e2eImage), "--descriptor").ExpectFailure().Exec()
 			})
 
 			It("should fail if no blob reference provided", func() {
-				dstRepo := fmt.Sprintf(repoFmt, "no-reference")
+				dstRepo := fmt.Sprintf(repoFmt, "delete", "no-reference")
 				prepare(Reference(Host, repo, foobarImage), Reference(Host, dstRepo, e2eImage))
 				ORAS("manifest", "delete").ExpectFailure().Exec()
 			})
@@ -216,7 +216,7 @@ var _ = Describe("Common registry users:", func() {
 
 	When("running `manifest delete`", func() {
 		It("should do confirmed deletion via input", func() {
-			dstRepo := fmt.Sprintf(repoFmt, "confirm-input")
+			dstRepo := fmt.Sprintf(repoFmt, "delete", "confirm-input")
 			prepare(Reference(Host, repo, foobarImage), Reference(Host, dstRepo, e2eImage))
 			ORAS("manifest", "delete", Reference(Host, dstRepo, e2eImage)).
 				WithInput(strings.NewReader("y")).Exec()
@@ -224,14 +224,14 @@ var _ = Describe("Common registry users:", func() {
 		})
 
 		It("should do confirmed deletion via flag", func() {
-			dstRepo := fmt.Sprintf(repoFmt, "confirm-flag")
+			dstRepo := fmt.Sprintf(repoFmt, "delete", "confirm-flag")
 			prepare(Reference(Host, repo, foobarImage), Reference(Host, dstRepo, e2eImage))
 			ORAS("manifest", "delete", Reference(Host, dstRepo, e2eImage), "-f").Exec()
 			validate(Reference(Host, dstRepo, ""), e2eImage, true)
 		})
 
 		It("should do confirmed deletion and output descriptor", func() {
-			dstRepo := fmt.Sprintf(repoFmt, "output-descriptor")
+			dstRepo := fmt.Sprintf(repoFmt, "delete", "output-descriptor")
 			prepare(Reference(Host, repo, foobarImage), Reference(Host, dstRepo, e2eImage))
 			ORAS("manifest", "delete", Reference(Host, dstRepo, e2eImage), "-f", "--descriptor").
 				MatchContent("{\"mediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"digest\":\"sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb\",\"size\":851}").
