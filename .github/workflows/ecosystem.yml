@@ -1,0 +1,72 @@
+# Copyright The ORAS Authors.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: ecosystem
+
+on:
+  push:
+    branches:
+      - main
+      - release-*
+  pull_request:
+    branches:
+      - main
+      - release-*
+jobs:
+  zot:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+    steps:
+      - name: Setup
+        run: |
+          # upload images, zot can serve OCI image layouts directly like so
+          mkdir /tmp/zot
+          skopeo copy --format=oci docker://busybox:latest oci:/tmp/zot/busybox:latest
+          # start zot
+          docker pull ghcr.io/project-zot/zot-minimal-linux-amd64:latest
+          docker run -d --name zot -v /tmp/zot:/var/lib/registry -p 8000:5000 ghcr.io/project-zot/zot-minimal-linux-amd64:latest
+          # wait until service is up
+          while true; do x=0; curl -f http://$ORAS_REGISTRY_HOST/v2/ || x=1; if [ $x -eq 0 ]; then break; fi; sleep 1; done
+        env:
+          ORAS_REGISTRY_HOST: localhost:8000
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go-version }}
+          check-latest: true
+      - name: Build CLI
+        run: make build-linux-amd64
+      - name: Check Version
+        run: bin/linux/amd64/oras version
+      - name: Run Compatibility Tests
+        run: |
+          cd $GITHUB_WORKSPACE/
+          echo "{\"name\":\"foo\",\"value\":\"bar\"}" > config.json
+          echo "hello world" > artifact.txt
+          $ORAS_PATH push --plain-http $ORAS_REGISTRY_HOST/hello-artifact:v2 --config config.json:application/vnd.acme.rocket.config.v1+json artifact.txt:text/plain -d -v
+          rm -f config.json artifact.txt
+          $ORAS_PATH pull --plain-http $ORAS_REGISTRY_HOST/hello-artifact:v2 -d -v
+          grep -q "hello world" artifact.txt
+          rm -f artifact.txt
+          echo "{\"artifact\": \"\", \"signature\": \"pat hancock\"}" > signature.json
+          $ORAS_PATH attach --plain-http $ORAS_REGISTRY_HOST/busybox:latest --artifact-type 'signature/example' ./signature.json:application/json
+          echo "{\"version\": \"0.0.0.0\", \"artifact\": \"'localhost:8000/busybox:latest'\", \"contents\": \"good\"}" > sbom.json
+          $ORAS_PATH attach --plain-http $ORAS_REGISTRY_HOST/busybox:latest --artifact-type 'sbom/example' ./sbom.json:application/json
+          $ORAS_PATH discover --plain-http -o json $ORAS_REGISTRY_HOST/busybox:latest
+          docker kill zot || true
+        env:
+          ORAS_PATH: bin/linux/amd64/oras
+          ORAS_REGISTRY_HOST: localhost:8000
