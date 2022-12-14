@@ -38,7 +38,7 @@ type pullOptions struct {
 	option.Remote
 	option.Platform
 
-	concurrency       int64
+	concurrency       int
 	targetRef         string
 	KeepOldFiles      bool
 	PathTraversal     bool
@@ -86,7 +86,7 @@ Example - Pull all files with concurrency level tuned:
 	cmd.Flags().BoolVarP(&opts.PathTraversal, "allow-path-traversal", "T", false, "allow storing files out of the output directory")
 	cmd.Flags().StringVarP(&opts.Output, "output", "o", ".", "output directory")
 	cmd.Flags().StringVarP(&opts.ManifestConfigRef, "config", "", "", "output manifest config file")
-	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
+	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }

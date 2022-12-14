@@ -18,6 +18,11 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
+	"time"
+
+	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 var testFileRoot string
@@ -46,6 +51,16 @@ func CopyTestData(dstRoot string) error {
 		// copy with original folder structure
 		return copyFile(path, dstPath)
 	})
+}
+
+// MatchFile reads content from filepath, matches it with want with timeout.
+func MatchFile(filepath string, want string, timeout time.Duration) {
+	Expect(filepath).To(BeAnExistingFile())
+	f, err := os.Open(filepath)
+	Expect(err).ToNot(HaveOccurred())
+	defer f.Close()
+	want = regexp.QuoteMeta(want)
+	Eventually(gbytes.BufferReader(f)).WithTimeout(timeout).Should(gbytes.Say(want))
 }
 
 func copyFile(srcFile, dstFile string) error {
