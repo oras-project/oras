@@ -57,7 +57,6 @@ func pullCmd() *cobra.Command {
 Example - Pull all files:
   oras pull localhost:5000/hello:latest
 
-
 Example - Recursively pulling all files, including subjects of hello:latest:
   oras pull --include-subject localhost:5000/hello:latest
 
