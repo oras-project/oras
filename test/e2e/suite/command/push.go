@@ -16,6 +16,7 @@ package command
 import (
 	"bytes"
 	"fmt"
+	"path/filepath"
 
 	. "github.com/onsi/ginkgo/v2"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -84,10 +85,8 @@ var _ = Describe("Remote registry users:", func() {
 			ORAS("push", Reference(Host, repo, tag), files[1]+":"+layerType, "-v", "--export-manifest", exportPath).
 				MatchStatus(statusKeys, true, 2).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
-			Binary("cat", exportPath).
-				WithWorkDir(tempDir).
-				MatchTrimmedContent(string(fetched.Contents())).Exec()
+			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out.Contents()
+			MatchFile(filepath.Join(tempDir, exportPath), string(fetched), DefaultTimeout)
 		})
 
 		It("should push files with customized config file", func() {

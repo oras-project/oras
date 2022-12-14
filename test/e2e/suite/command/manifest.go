@@ -85,8 +85,7 @@ var _ = Describe("Common registry users:", func() {
 			fetchPath := filepath.Join(GinkgoT().TempDir(), "fetchedImage")
 			ORAS("manifest", "fetch", Reference(Host, repo, multiImage), "--output", fetchPath, "--descriptor").
 				MatchContent(descriptor_multi).Exec()
-			Binary("cat", fetchPath).
-				MatchContent(manifest_multi).Exec()
+			MatchFile(fetchPath, manifest_multi, DefaultTimeout)
 		})
 
 		It("should fetch manifest via tag with platform selection", func() {
