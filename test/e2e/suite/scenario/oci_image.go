@@ -37,7 +37,7 @@ var (
 )
 
 var _ = Describe("OCI image user:", Ordered, func() {
-	repo := "oci-image"
+	repo := "scenario/oci-image"
 	When("pushing images and check", func() {
 		tag := "image"
 		var tempDir string
