@@ -36,7 +36,7 @@ type attachOptions struct {
 
 	targetRef    string
 	artifactType string
-	concurrency  int64
+	concurrency  int
 }
 
 func attachCmd() *cobra.Command {
@@ -75,7 +75,7 @@ Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json'
 	}
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
-	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
+	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	cmd.MarkFlagRequired("artifact-type")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
