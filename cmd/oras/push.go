@@ -44,7 +44,7 @@ type pushOptions struct {
 	extraRefs         []string
 	manifestConfigRef string
 	artifactType      string
-	concurrency       int64
+	concurrency       int
 }
 
 func pushCmd() *cobra.Command {
@@ -107,7 +107,7 @@ Example - Push file "hi.txt" with multiple tags and concurrency level tuned:
 	}
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "`path` of image config file")
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
-	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
+	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
