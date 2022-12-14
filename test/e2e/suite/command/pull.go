@@ -22,6 +22,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2"
 	. "oras.land/oras/test/e2e/internal/utils"
 	"oras.land/oras/test/e2e/internal/utils/match"
 )
@@ -47,7 +48,7 @@ var _ = Describe("Remote registry users:", func() {
 			}
 			ORAS("pull", Reference(Host, repo, tag), "-v", "--config", files[0], "-o", pullRoot).
 				MatchStatus([]match.StateKey{
-					{Digest: "fd6ed2f36b54", Name: "application/vnd.oci.image.manifest.v1+json"},
+					{Digest: "fd6ed2f36b54", Name: ocispec.MediaTypeImageManifest},
 					{Digest: "44136fa355b3", Name: files[0]},
 					{Digest: "2c26b46b68ff", Name: files[1]},
 					{Digest: "2c26b46b68ff", Name: files[2]},
@@ -80,8 +81,8 @@ var _ = Describe("Remote registry users:", func() {
 			}
 			ORAS("pull", Reference(Host, repo, tag), "-v", "--config", fmt.Sprintf("%s:%s", files[0], "???"), "-o", pullRoot).
 				MatchStatus([]match.StateKey{
-					{Digest: "fd6ed2f36b54", Name: "application/vnd.oci.image.manifest.v1+json"},
-					{Digest: "44136fa355b3", Name: "application/vnd.unknown.config.v1+json"},
+					{Digest: "fd6ed2f36b54", Name: ocispec.MediaTypeImageManifest},
+					{Digest: "44136fa355b3", Name: oras.MediaTypeUnknownConfig},
 					{Digest: "2c26b46b68ff", Name: files[1]},
 					{Digest: "2c26b46b68ff", Name: files[2]},
 					{Digest: "fcde2b2edba5", Name: files[3]},
