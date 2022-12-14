@@ -34,6 +34,7 @@ const (
 	Username       = "hello"
 	Password       = "oras-test"
 	AuthConfigPath = "test.config"
+	DefaultTimeout = 10 * time.Second
 )
 
 // ExecOption provides option used to execute a command.
@@ -61,7 +62,7 @@ func Binary(path string, args ...string) *ExecOption {
 	return &ExecOption{
 		binary:     path,
 		args:       args,
-		timeout:    10 * time.Second,
+		timeout:    DefaultTimeout,
 		shouldFail: false,
 	}
 }
