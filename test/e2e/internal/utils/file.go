@@ -22,7 +22,6 @@ import (
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
-	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 )
@@ -69,8 +68,8 @@ func MatchFile(filepath string, want string, timeout time.Duration) {
 func WriteTempFile(name string, content string) (path string) {
 	tempDir := GinkgoT().TempDir()
 	path = filepath.Join(tempDir, name)
-	err := os.WriteFile(path, []byte(content), 0777)
-	Expect(err).ToNot(gomega.HaveOccurred())
+	err := os.WriteFile(path, []byte(content), 0666)
+	Expect(err).ToNot(HaveOccurred())
 	return path
 }
 
