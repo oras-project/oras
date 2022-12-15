@@ -242,7 +242,7 @@ var _ = Describe("Common registry users:", func() {
 
 		It("should push a manifest from file", func() {
 			manifestPath := WriteTempFile("manifest.json", manifest)
-""			tag := "from-file"
+			tag := "from-file"
 			ORAS("manifest", "push", Reference(Host, Repo, tag), manifestPath, "--media-type", ocispec.MediaTypeImageManifest).
 				MatchKeyWords("Pushed", Reference(Host, Repo, tag), "Digest:", digest).
 				WithInput(strings.NewReader(manifest)).Exec()
