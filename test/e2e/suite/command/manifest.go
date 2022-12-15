@@ -14,18 +14,32 @@ limitations under the License.
 package command
 
 import (
-	"os"
+	"fmt"
 	"path/filepath"
 	"strings"
 
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-
 	. "github.com/onsi/ginkgo/v2"
-	"github.com/onsi/gomega"
+	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
+func prepare(src string, dst string) {
+	ORAS("cp", src, dst).Exec()
+}
+
+func validate(repoRef string, tag string, gone bool) {
+	session := ORAS("repo", "tags", repoRef).Exec()
+	if gone {
+		Expect(session.Out).NotTo(gbytes.Say(tag))
+	} else {
+		Expect(session.Out).To(gbytes.Say(tag))
+	}
+}
+
 var _ = Describe("ORAS beginners:", func() {
+	repoFmt := fmt.Sprintf("command/manifest/%%s/%d/%%s", GinkgoRandomSeed())
 	When("running manifest command", func() {
 		RunAndShowPreviewInHelp([]string{"manifest"})
 
@@ -39,7 +53,7 @@ var _ = Describe("ORAS beginners:", func() {
 
 			It("should fail pushing without reference provided", func() {
 				ORAS("manifest", "push").
-					WithFailureCheck().
+					ExpectFailure().
 					MatchErrKeyWords("Error:").
 					Exec()
 			})
@@ -54,12 +68,33 @@ var _ = Describe("ORAS beginners:", func() {
 			})
 			It("should fail fetching manifest without reference provided", func() {
 				ORAS("manifest", "fetch").
-					WithFailureCheck().
+					ExpectFailure().
 					MatchErrKeyWords("Error:").
 					Exec()
 			})
 		})
+		When("running `manifest delete`", func() {
+			tempTag := "to-delete"
+			It("should cancel deletion without confirmation", func() {
+				dstRepo := fmt.Sprintf(repoFmt, "delete", "no-confirm")
+				prepare(Reference(Host, Repo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
+				ORAS("manifest", "delete", Reference(Host, dstRepo, tempTag)).
+					MatchKeyWords("Operation cancelled.", "Are you sure you want to delete the manifest ", " and all tags associated with it?").Exec()
+				validate(Reference(Host, dstRepo, ""), tempTag, false)
+			})
 
+			It("should fail if descriptor flag is provided without confirmation flag", func() {
+				dstRepo := fmt.Sprintf(repoFmt, "delete", "descriptor-without-confirm")
+				prepare(Reference(Host, Repo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
+				ORAS("manifest", "delete", Reference(Host, dstRepo, tempTag), "--descriptor").ExpectFailure().Exec()
+			})
+
+			It("should fail if no blob reference provided", func() {
+				dstRepo := fmt.Sprintf(repoFmt, "delete", "no-reference")
+				prepare(Reference(Host, Repo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
+				ORAS("manifest", "delete").ExpectFailure().Exec()
+			})
+		})
 		When("running `manifest fetch-config`", func() {
 			It("should show preview hint in the doc", func() {
 				ORAS("manifest", "fetch-config", "--help").
@@ -67,20 +102,21 @@ var _ = Describe("ORAS beginners:", func() {
 			})
 
 			It("should fail if no manifest reference provided", func() {
-				ORAS("manifest", "fetch-config").WithFailureCheck().Exec()
+				ORAS("manifest", "fetch-config").ExpectFailure().Exec()
 			})
 
 			It("should fail if provided reference does not exist", func() {
-				ORAS("manifest", "fetch-config", Reference(Host, Repo, "this-tag-should-not-exist")).WithFailureCheck().Exec()
+				ORAS("manifest", "fetch-config", Reference(Host, Repo, "this-tag-should-not-exist")).ExpectFailure().Exec()
 			})
 			It("should fail fetching a config of non-image manifest type", func() {
-				ORAS("manifest", "fetch-config", Reference(Host, Repo, MultiImageTag)).WithFailureCheck().Exec()
+				ORAS("manifest", "fetch-config", Reference(Host, Repo, MultiImageTag)).ExpectFailure().Exec()
 			})
 		})
 	})
 })
 
 var _ = Describe("Common registry users:", func() {
+	repoFmt := fmt.Sprintf("command/manifest/%%s/%d/%%s", GinkgoRandomSeed())
 	When("running `manifest fetch`", func() {
 		It("should fetch manifest list with digest", func() {
 			ORAS("manifest", "fetch", Reference(Host, Repo, MultiImageTag)).
@@ -180,7 +216,7 @@ var _ = Describe("Common registry users:", func() {
 
 		It("should fail to fetch image if media type assertion fails", func() {
 			ORAS("manifest", "fetch", Reference(Host, Repo, LinuxAMD64ImageDigest), "--media-type", "this.will.not.be.found").
-				WithFailureCheck().
+				ExpectFailure().
 				MatchErrKeyWords(LinuxAMD64ImageDigest, "error: ", "not found").Exec()
 		})
 	})
@@ -205,11 +241,7 @@ var _ = Describe("Common registry users:", func() {
 		})
 
 		It("should push a manifest from file", func() {
-			tempDir := GinkgoT().TempDir()
-			manifestPath := filepath.Join(tempDir, "manifest.json")
-			err := os.WriteFile(manifestPath, []byte(manifest), 0777)
-			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-
+			manifestPath := WriteTempFile("manifest.json", manifest)
 			tag := "from-file"
 			ORAS("manifest", "push", Reference(Host, Repo, tag), manifestPath, "--media-type", ocispec.MediaTypeImageManifest).
 				MatchKeyWords("Pushed", Reference(Host, Repo, tag), "Digest:", digest).
@@ -226,7 +258,7 @@ var _ = Describe("Common registry users:", func() {
 
 			ORAS("manifest", "push", Reference(Host, Repo, ""), "-").
 				WithInput(strings.NewReader(manifest)).
-				WithFailureCheck().
+				ExpectFailure().
 				WithDescription("fail if no media type flag provided").Exec()
 		})
 	})
@@ -260,6 +292,33 @@ var _ = Describe("Common registry users:", func() {
 		It("should fetch a config descriptor of a specific platform", func() {
 			ORAS("manifest", "fetch-config", "--descriptor", "--platform", "linux/amd64", Reference(Host, Repo, MultiImageTag)).
 				MatchContent(LinuxAMD64ImageConfigDescriptor).Exec()
+		})
+	})
+
+	When("running `manifest delete`", func() {
+		tempTag := "to-delete"
+		It("should do confirmed deletion via input", func() {
+			dstRepo := fmt.Sprintf(repoFmt, "delete", "confirm-input")
+			prepare(Reference(Host, Repo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
+			ORAS("manifest", "delete", Reference(Host, dstRepo, tempTag)).
+				WithInput(strings.NewReader("y")).Exec()
+			validate(Reference(Host, dstRepo, ""), tempTag, true)
+		})
+
+		It("should do confirmed deletion via flag", func() {
+			dstRepo := fmt.Sprintf(repoFmt, "delete", "confirm-flag")
+			prepare(Reference(Host, Repo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
+			ORAS("manifest", "delete", Reference(Host, dstRepo, tempTag), "-f").Exec()
+			validate(Reference(Host, dstRepo, ""), tempTag, true)
+		})
+
+		It("should do confirmed deletion and output descriptor", func() {
+			dstRepo := fmt.Sprintf(repoFmt, "delete", "output-descriptor")
+			prepare(Reference(Host, Repo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
+			ORAS("manifest", "delete", Reference(Host, dstRepo, tempTag), "-f", "--descriptor").
+				MatchContent("{\"mediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"digest\":\"sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb\",\"size\":851}").
+				WithDescription("cancel without confirmation").Exec()
+			validate(Reference(Host, dstRepo, ""), tempTag, true)
 		})
 	})
 })

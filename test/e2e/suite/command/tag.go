@@ -22,11 +22,11 @@ var _ = Describe("ORAS beginners:", func() {
 	When("running repo command", func() {
 		RunAndShowPreviewInHelp([]string{"tag"})
 		It("should fail when no manifest reference provided", func() {
-			ORAS("tag").WithFailureCheck().MatchErrKeyWords("Error:").Exec()
+			ORAS("tag").ExpectFailure().MatchErrKeyWords("Error:").Exec()
 		})
 
 		It("should fail when provided manifest reference is not found", func() {
-			ORAS("tag", Reference(Host, Repo, "i-dont-think-this-tag-exists")).WithFailureCheck().MatchErrKeyWords("Error:").Exec()
+			ORAS("tag", Reference(Host, Repo, "i-dont-think-this-tag-exists")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
 		})
 	})
 })

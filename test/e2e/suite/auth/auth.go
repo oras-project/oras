@@ -54,7 +54,7 @@ var _ = Describe("Common registry user", Ordered, func() {
 
 func RunWithoutLogin(args ...string) {
 	ORAS(append(args, "--registry-config", AuthConfigPath)...).
-		WithFailureCheck().
+		ExpectFailure().
 		MatchErrKeyWords("Error:", "credential required").
 		WithDescription("fail without logging in").Exec()
 }
