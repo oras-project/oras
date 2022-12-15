@@ -20,18 +20,18 @@ import (
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
-
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
-var pushContent = "test-blob"
-var pushLength = strconv.Itoa(len(pushContent))
-var pushDigest = "sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d8"
-var wrongDigest = "sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d9"
-var pushDescFmt = `{"mediaType":"%s","digest":"sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d8","size":9}`
-var repoFmt = fmt.Sprintf("command/blob/push/%d/%%s", GinkgoRandomSeed())
+const (
+	pushContent = "test-blob"
+	pushDigest  = "sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d8"
+	wrongDigest = "sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d9"
+	pushDescFmt = `{"mediaType":"%s","digest":"sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d8","size":9}`
+)
 
 var _ = Describe("ORAS beginners:", func() {
+	repoFmt := fmt.Sprintf("command/blob/push/%d/%%s", GinkgoRandomSeed())
 	When("running blob command", func() {
 		RunAndShowPreviewInHelp([]string{"blob"})
 
@@ -60,7 +60,7 @@ var _ = Describe("ORAS beginners:", func() {
 
 			It("should fail to push a blob from stdin if invalid digest provided", func() {
 				repo := fmt.Sprintf(repoFmt, "invalid-stdin-digest")
-				ORAS("blob", "push", Reference(Host, repo, wrongDigest), "-", "--size", pushLength).
+				ORAS("blob", "push", Reference(Host, repo, wrongDigest), "-", "--size", strconv.Itoa(len(pushContent))).
 					WithInput(strings.NewReader(pushContent)).WithFailureCheck().
 					Exec()
 			})
@@ -76,7 +76,7 @@ var _ = Describe("ORAS beginners:", func() {
 			It("should fail to push a blob from file if invalid digest provided", func() {
 				repo := fmt.Sprintf(repoFmt, "invalid-stdin-size")
 				blobPath := WriteTempFile("blob", pushContent)
-				ORAS("blob", "push", Reference(Host, repo, wrongDigest), blobPath, "--size", string(rune(len(pushContent)))).
+				ORAS("blob", "push", Reference(Host, repo, wrongDigest), blobPath, "--size", strconv.Itoa(len(pushContent))).
 					WithInput(strings.NewReader(pushContent)).WithFailureCheck().
 					Exec()
 			})
@@ -128,6 +128,7 @@ var _ = Describe("ORAS beginners:", func() {
 })
 
 var _ = Describe("Common registry users:", func() {
+	repoFmt := fmt.Sprintf("command/blob/push/%d/%%s", GinkgoRandomSeed())
 	When("running `blob push`", func() {
 		It("should push a blob from a file and output the descriptor with specific media-type", func() {
 			mediaType := "test.media"
@@ -146,7 +147,7 @@ var _ = Describe("Common registry users:", func() {
 		It("should push a blob from a stdin and output the descriptor with specific media-type", func() {
 			mediaType := "test.media"
 			repo := fmt.Sprintf(repoFmt, "blob-file-media-type")
-			ORAS("blob", "push", Reference(Host, repo, pushDigest), "-", "--media-type", mediaType, "--descriptor", "--size", pushLength).
+			ORAS("blob", "push", Reference(Host, repo, pushDigest), "-", "--media-type", mediaType, "--descriptor", "--size", strconv.Itoa(len(pushContent))).
 				WithInput(strings.NewReader(pushContent)).
 				MatchContent(fmt.Sprintf(pushDescFmt, mediaType)).Exec()
 			ORAS("blob", "fetch", Reference(Host, repo, pushDigest), "--output", "-").MatchContent(pushContent).Exec()

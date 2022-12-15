@@ -34,6 +34,10 @@ var _ = Describe("Common registry user", Ordered, func() {
 			RunWithoutLogin("pull", Host+"/repo:tag")
 			RunWithoutLogin("manifest", "fetch", Host+"/repo:tag")
 			RunWithoutLogin("blob", "push", Host+"/repo", WriteTempFile("blob", "test"))
+			RunWithoutLogin("tag", Host+"/repo:tag", "tag1")
+			RunWithoutLogin("repo", "ls", Host)
+			RunWithoutLogin("repo", "tags", Reference(Host, "repo", ""))
+			RunWithoutLogin("manifest", "fetch-config", Host+"/repo:tag")
 		})
 	})
 
