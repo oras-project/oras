@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
-	"oras.land/oras/cmd/oras/blob"
 
 	. "oras.land/oras/test/e2e/internal/utils"
 )
@@ -54,7 +53,6 @@ var _ = Describe("ORAS beginners:", func() {
 
 			It("should fail to push a blob from stdin if invalid blob size provided", func() {
 				repo := fmt.Sprintf(repoFmt, "invalid-stdin-size")
-				blob.Cmd().ExecuteC()
 				ORAS("blob", "push", Reference(Host, repo, pushDigest), "-", "--size", "3").
 					WithInput(strings.NewReader(pushContent)).WithFailureCheck().
 					Exec()
