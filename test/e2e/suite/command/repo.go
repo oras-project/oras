@@ -25,32 +25,32 @@ var _ = Describe("ORAS beginners:", func() {
 		RunAndShowPreviewInHelp([]string{"repo"})
 		When("running `repo ls`", func() {
 			It("should show preview in help", func() {
-				ORAS("repo", "ls", "--help").MatchKeyWords("[Preview] List", preview_desc, example_desc).Exec()
+				ORAS("repo", "ls", "--help").MatchKeyWords("[Preview] List", PreviewDesc, ExampleDesc).Exec()
 			})
 
 			It("should call sub-commands with aliases", func() {
-				ORAS("repository", "list", "--help").MatchKeyWords("[Preview] List", preview_desc, example_desc).Exec()
+				ORAS("repository", "list", "--help").MatchKeyWords("[Preview] List", PreviewDesc, ExampleDesc).Exec()
 			})
 
 			It("should fail listing repositories if wrong registry provided", func() {
 				ORAS("repo", "ls").WithFailureCheck().MatchErrKeyWords("Error:").Exec()
-				ORAS("repo", "ls", Reference(Host, repo, "")).WithFailureCheck().MatchErrKeyWords("Error:").Exec()
-				ORAS("repo", "ls", Reference(Host, repo, "some-tag")).WithFailureCheck().MatchErrKeyWords("Error:").Exec()
+				ORAS("repo", "ls", Reference(Host, Repo, "")).WithFailureCheck().MatchErrKeyWords("Error:").Exec()
+				ORAS("repo", "ls", Reference(Host, Repo, "some-tag")).WithFailureCheck().MatchErrKeyWords("Error:").Exec()
 			})
 		})
 		When("running `repo tags`", func() {
 			It("should show preview in help", func() {
-				ORAS("repo", "tags", "--help").MatchKeyWords("[Preview] Show tags", preview_desc, example_desc).Exec()
+				ORAS("repo", "tags", "--help").MatchKeyWords("[Preview] Show tags", PreviewDesc, ExampleDesc).Exec()
 			})
 
 			It("should call sub-commands with aliases", func() {
-				ORAS("repository", "show-tags", "--help").MatchKeyWords("[Preview] Show tags", preview_desc, example_desc).Exec()
+				ORAS("repository", "show-tags", "--help").MatchKeyWords("[Preview] Show tags", PreviewDesc, ExampleDesc).Exec()
 			})
 
 			It("should fail listing repositories if wrong registry provided", func() {
 				ORAS("repo", "tags").WithFailureCheck().MatchErrKeyWords("Error:").Exec()
 				ORAS("repo", "tags", Host).WithFailureCheck().MatchErrKeyWords("Error:").Exec()
-				ORAS("repo", "tags", Reference(Host, repo, "some-tag")).WithFailureCheck().MatchErrKeyWords("Error:").Exec()
+				ORAS("repo", "tags", Reference(Host, Repo, "some-tag")).WithFailureCheck().MatchErrKeyWords("Error:").Exec()
 			})
 		})
 	})
@@ -59,28 +59,28 @@ var _ = Describe("ORAS beginners:", func() {
 var _ = Describe("Common registry users:", func() {
 	When("running `repo ls`", func() {
 		It("should list repositories", func() {
-			ORAS("repository", "list", Host).MatchKeyWords(repo).Exec()
+			ORAS("repository", "list", Host).MatchKeyWords(Repo).Exec()
 		})
 		It("should list repositories via short command", func() {
-			ORAS("repo", "ls", Host).MatchKeyWords(repo).Exec()
+			ORAS("repo", "ls", Host).MatchKeyWords(Repo).Exec()
 		})
 		It("should list partial repositories via `last` flag", func() {
-			session := ORAS("repo", "ls", Host, "--last", repo).Exec()
-			Expect(session.Out).ShouldNot(gbytes.Say(repo))
+			session := ORAS("repo", "ls", Host, "--last", Repo).Exec()
+			Expect(session.Out).ShouldNot(gbytes.Say(Repo))
 		})
 	})
 	When("running `repo tags`", func() {
-		repoRef := Reference(Host, repo, "")
+		repoRef := Reference(Host, Repo, "")
 		It("should list tags", func() {
-			ORAS("repository", "show-tags", repoRef).MatchKeyWords(multiImage, foobarImageTag).Exec()
+			ORAS("repository", "show-tags", repoRef).MatchKeyWords(MultiImageTag, FoobarImageTag).Exec()
 		})
 		It("should list tags via short command", func() {
-			ORAS("repo", "tags", repoRef).MatchKeyWords(multiImage, foobarImageTag).Exec()
+			ORAS("repo", "tags", repoRef).MatchKeyWords(MultiImageTag, FoobarImageTag).Exec()
 
 		})
 		It("should list partial tags via `last` flag", func() {
-			session := ORAS("repo", "tags", repoRef, "--last", foobarImageTag).MatchKeyWords(multiImage).Exec()
-			Expect(session.Out).ShouldNot(gbytes.Say(foobarImageTag))
+			session := ORAS("repo", "tags", repoRef, "--last", FoobarImageTag).MatchKeyWords(MultiImageTag).Exec()
+			Expect(session.Out).ShouldNot(gbytes.Say(FoobarImageTag))
 		})
 	})
 })

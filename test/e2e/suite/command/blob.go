@@ -36,7 +36,7 @@ var _ = Describe("ORAS beginners:", func() {
 		RunAndShowPreviewInHelp([]string{"blob"})
 
 		When("running `blob push`", func() {
-			RunAndShowPreviewInHelp([]string{"blob", "push"}, preview_desc, example_desc)
+			RunAndShowPreviewInHelp([]string{"blob", "push"}, PreviewDesc, ExampleDesc)
 			It("should fail to read blob content and password from stdin at the same time", func() {
 				repo := fmt.Sprintf(repoFmt, "password-stdin")
 				ORAS("blob", "push", Reference(Host, repo, ""), "--password-stdin", "-").
@@ -87,11 +87,11 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		When("running `blob fetch`", func() {
-			RunAndShowPreviewInHelp([]string{"blob", "fetch"}, preview_desc, example_desc)
+			RunAndShowPreviewInHelp([]string{"blob", "fetch"}, PreviewDesc, ExampleDesc)
 
 			It("should call sub-commands with aliases", func() {
 				ORAS("blob", "get", "--help").
-					MatchKeyWords("[Preview] Fetch", preview_desc, example_desc).
+					MatchKeyWords("[Preview] Fetch", PreviewDesc, ExampleDesc).
 					Exec()
 			})
 			It("should have flag for prettifying JSON output", func() {
@@ -101,22 +101,22 @@ var _ = Describe("ORAS beginners:", func() {
 			})
 
 			It("should fail if neither output path nor descriptor flag are not provided", func() {
-				ORAS("blob", "fetch", Reference(Host, repo, "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae")).
+				ORAS("blob", "fetch", Reference(Host, Repo, "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae")).
 					WithFailureCheck().Exec()
 			})
 
 			It("should fail if no digest provided", func() {
-				ORAS("blob", "fetch", Reference(Host, repo, "")).
+				ORAS("blob", "fetch", Reference(Host, Repo, "")).
 					WithFailureCheck().Exec()
 			})
 
 			It("should fail if provided digest doesn't existed", func() {
-				ORAS("blob", "fetch", Reference(Host, repo, "sha256:2aaa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a")).
+				ORAS("blob", "fetch", Reference(Host, Repo, "sha256:2aaa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a")).
 					WithFailureCheck().Exec()
 			})
 
 			It("should fail if output path points to stdout and descriptor flag is provided", func() {
-				ORAS("blob", "fetch", Reference(Host, repo, ""), "--descriptor", "--output", "-").
+				ORAS("blob", "fetch", Reference(Host, Repo, ""), "--descriptor", "--output", "-").
 					WithFailureCheck().Exec()
 			})
 
@@ -159,24 +159,24 @@ var _ = Describe("Common registry users:", func() {
 	var blobDescriptor = `{"mediaType":"application/octet-stream","digest":"sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae","size":3}`
 	When("running `blob fetch`", func() {
 		It("should fetch blob descriptor ", func() {
-			ORAS("blob", "fetch", Reference(Host, repo, blobDigest), "--descriptor").
+			ORAS("blob", "fetch", Reference(Host, Repo, blobDigest), "--descriptor").
 				MatchContent(blobDescriptor).Exec()
 		})
 		It("should fetch blob content and output to stdout", func() {
-			ORAS("blob", "fetch", Reference(Host, repo, blobDigest), "--output", "-").
+			ORAS("blob", "fetch", Reference(Host, Repo, blobDigest), "--output", "-").
 				MatchContent(blobContent).Exec()
 		})
 		It("should fetch blob content and output to a file", func() {
 			tempDir := GinkgoT().TempDir()
 			contentPath := filepath.Join(tempDir, "fetched")
-			ORAS("blob", "fetch", Reference(Host, repo, blobDigest), "--output", contentPath).
+			ORAS("blob", "fetch", Reference(Host, Repo, blobDigest), "--output", contentPath).
 				WithWorkDir(tempDir).Exec()
 			MatchFile(contentPath, blobContent, DefaultTimeout)
 		})
 		It("should fetch blob descriptor and output content to a file", func() {
 			tempDir := GinkgoT().TempDir()
 			contentPath := filepath.Join(tempDir, "fetched")
-			ORAS("blob", "fetch", Reference(Host, repo, blobDigest), "--output", contentPath, "--descriptor").
+			ORAS("blob", "fetch", Reference(Host, Repo, blobDigest), "--output", contentPath, "--descriptor").
 				MatchContent(blobDescriptor).
 				WithWorkDir(tempDir).Exec()
 			MatchFile(contentPath, blobContent, DefaultTimeout)

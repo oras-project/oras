@@ -26,7 +26,7 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		It("should fail when provided manifest reference is not found", func() {
-			ORAS("tag", Reference(Host, repo, "i-dont-think-this-tag-exists")).WithFailureCheck().MatchErrKeyWords("Error:").Exec()
+			ORAS("tag", Reference(Host, Repo, "i-dont-think-this-tag-exists")).WithFailureCheck().MatchErrKeyWords("Error:").Exec()
 		})
 	})
 })
@@ -38,16 +38,16 @@ var _ = Describe("Common registry users:", func() {
 	}
 	When("running `tag`", func() {
 		It("should add a tag to an existent manifest when providing tag reference", func() {
-			tagAndValidate(Host, repo, multiImage, "tag-via-tag")
+			tagAndValidate(Host, Repo, MultiImageTag, "tag-via-tag")
 		})
 		It("should add a tag to an existent manifest when providing digest reference", func() {
-			tagAndValidate(Host, repo, digest_multi, "tag-via-digest")
+			tagAndValidate(Host, Repo, MultiImageDigest, "tag-via-digest")
 		})
 		It("should add multiple tags to an existent manifest when providing digest reference", func() {
-			tagAndValidate(Host, repo, digest_multi, "tag1-via-digest", "tag2-via-digest", "tag3-via-digest")
+			tagAndValidate(Host, Repo, MultiImageDigest, "tag1-via-digest", "tag2-via-digest", "tag3-via-digest")
 		})
 		It("should add multiple tags to an existent manifest when providing tag reference", func() {
-			tagAndValidate(Host, repo, multiImage, "tag1-via-tag", "tag1-via-tag", "tag1-via-tag")
+			tagAndValidate(Host, Repo, MultiImageTag, "tag1-via-tag", "tag1-via-tag", "tag1-via-tag")
 		})
 	})
 })
