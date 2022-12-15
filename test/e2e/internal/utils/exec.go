@@ -35,6 +35,8 @@ const (
 	Password       = "oras-test"
 	AuthConfigPath = "test.config"
 	DefaultTimeout = 10 * time.Second
+	// If the command hasn't exited yet, ginkgo session ExitCode is -1
+	notExited = -1
 )
 
 // ExecOption provides option used to execute a command.
@@ -76,7 +78,8 @@ func (opts *ExecOption) ExpectFailure() *ExecOption {
 
 // ExpectBlocking consistently check if the execution is blocked.
 func (opts *ExecOption) ExpectBlocking() *ExecOption {
-	opts.exitCode = -1
+	// see
+	opts.exitCode = notExited
 	return opts
 }
 
@@ -152,7 +155,7 @@ func (opts *ExecOption) Exec() *gexec.Session {
 	if opts.text == "" {
 		// set default description text
 		switch opts.exitCode {
-		case -1:
+		case notExited:
 			opts.text = "block"
 		case 0:
 			opts.text = "pass"
@@ -179,8 +182,8 @@ func (opts *ExecOption) Exec() *gexec.Session {
 	fmt.Println(description)
 	session, err := gexec.Start(cmd, os.Stdout, os.Stderr)
 	Expect(err).ShouldNot(HaveOccurred())
-	if opts.exitCode == -1 {
-		Consistently(session.ExitCode).WithTimeout(opts.timeout).Should(Equal(-1))
+	if opts.exitCode == notExited {
+		Consistently(session.ExitCode).WithTimeout(opts.timeout).Should(Equal(notExited))
 		session.Kill()
 	} else {
 		exitCode := session.Wait(opts.timeout).ExitCode()
