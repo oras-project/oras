@@ -53,7 +53,22 @@ var _ = Describe("ORAS beginners:", func() {
 
 			It("should fail pushing without reference provided", func() {
 				ORAS("manifest", "push").
-					ExpectFailure().
+					WithFailureCheck().
+					MatchErrKeyWords("Error:").
+					Exec()
+			})
+		})
+
+		When("running `manifest fetch`", func() {
+			RunAndShowPreviewInHelp([]string{"manifest", "fetch"}, PreviewDesc, ExampleDesc)
+			It("should call sub-commands with aliases", func() {
+				ORAS("manifest", "get", "--help").
+					MatchKeyWords("[Preview] Fetch", PreviewDesc, ExampleDesc).
+					Exec()
+			})
+			It("should fail fetching manifest without reference provided", func() {
+				ORAS("manifest", "fetch").
+					WithFailureCheck().
 					MatchErrKeyWords("Error:").
 					Exec()
 			})
@@ -90,10 +105,10 @@ var _ = Describe("ORAS beginners:", func() {
 			})
 
 			It("should fail if provided reference does not exist", func() {
-				ORAS("manifest", "fetch-config", Reference(Host, Repo, "this-tag-should-not-exist")).ExpectFailure().Exec()
+				ORAS("manifest", "fetch-config", Reference(Host, Repo, "this-tag-should-not-exist")).WithFailureCheck().Exec()
 			})
 			It("should fail fetching a config of non-image manifest type", func() {
-				ORAS("manifest", "fetch-config", Reference(Host, Repo, MultiImageTag)).ExpectFailure().Exec()
+				ORAS("manifest", "fetch-config", Reference(Host, Repo, MultiImageTag)).WithFailureCheck().Exec()
 			})
 		})
 	})
@@ -199,7 +214,7 @@ var _ = Describe("Common registry users:", func() {
 
 		It("should fail to fetch image if media type assertion fails", func() {
 			ORAS("manifest", "fetch", Reference(Host, Repo, LinuxAMD64ImageDigest), "--media-type", "this.will.not.be.found").
-				ExpectFailure().
+				WithFailureCheck().
 				MatchErrKeyWords(LinuxAMD64ImageDigest, "error: ", "not found").Exec()
 		})
 	})
@@ -245,7 +260,7 @@ var _ = Describe("Common registry users:", func() {
 
 			ORAS("manifest", "push", Reference(Host, Repo, ""), "-").
 				WithInput(strings.NewReader(manifest)).
-				ExpectFailure().
+				WithFailureCheck().
 				WithDescription("fail if no media type flag provided").Exec()
 		})
 	})
