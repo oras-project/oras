@@ -26,14 +26,21 @@ const (
 	preview_desc                    = "** This command is in preview and under development. **"
 	example_desc                    = "\nExample - "
 	repo                            = "command/images"
+	foobarTag                       = "foobar"
+	foobarConfigDescriptor          = "{\"mediaType\":\"application/vnd.unknown.config.v1+json\",\"digest\":\"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a\",\"size\":2}"
 	multiImage                      = "multi"
+	foobarImageTag                  = "foobar"
 	digest_multi                    = "sha256:e2bfc9cc6a84ec2d7365b5a28c6bc5806b7fa581c9ad7883be955a64e3cc034f"
+	foobarDigest                    = "sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb"
 	manifest_multi                  = `{"mediaType":"application/vnd.oci.image.index.v1+json","schemaVersion":2,"manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:9d84a5716c66a1d1b9c13f8ed157ba7d1edfe7f9b8766728b8a1f25c0d9c14c1","size":458,"platform":{"architecture":"amd64","os":"linux"}},{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:4f93460061882467e6fb3b772dc6ab72130d9ac1906aed2fc7589a5cd145433c","size":458,"platform":{"architecture":"arm64","os":"linux"}},{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:58efe73e78fe043ca31b89007a025c594ce12aa7e6da27d21c7b14b50112e255","size":458,"platform":{"architecture":"arm","os":"linux","variant":"v7"}}]}`
 	descriptor_multi                = `{"mediaType":"application/vnd.oci.image.index.v1+json","digest":"sha256:e2bfc9cc6a84ec2d7365b5a28c6bc5806b7fa581c9ad7883be955a64e3cc034f","size":706}`
 	descriptor_linuxAMD64           = `{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:9d84a5716c66a1d1b9c13f8ed157ba7d1edfe7f9b8766728b8a1f25c0d9c14c1","size":458}`
 	descriptor_linuxAMD64_fromIndex = `{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:9d84a5716c66a1d1b9c13f8ed157ba7d1edfe7f9b8766728b8a1f25c0d9c14c1","size":458,"platform":{"architecture":"amd64","os":"linux"}}`
 	digest_linuxAMD64               = "sha256:9d84a5716c66a1d1b9c13f8ed157ba7d1edfe7f9b8766728b8a1f25c0d9c14c1"
-	manifest_linuxAMD64             = `{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:fe9dbc99451d0517d65e048c309f0b5afb2cc513b7a3d456b6cc29fe641386c5","size":53},"layers":[{"mediaType":"application/vnd.oci.image.layer.v1.tar","digest":"sha256:2ef548696ac7dd66ef38aab5cc8fc5cc1fb637dfaedb3a9afc89bf16db9277e1","size":10240,"annotations":{"org.opencontainers.image.title":"hello.tar"}}]}`
+	linuxAMD64Config                = "{\r\n    \"architecture\": \"amd64\",\r\n    \"os\": \"linux\"\r\n}"
+	linuxAMD64ConfigDescriptor      = `{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:fe9dbc99451d0517d65e048c309f0b5afb2cc513b7a3d456b6cc29fe641386c5","size":53}`
+
+	manifest_linuxAMD64 = `{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:fe9dbc99451d0517d65e048c309f0b5afb2cc513b7a3d456b6cc29fe641386c5","size":53},"layers":[{"mediaType":"application/vnd.oci.image.layer.v1.tar","digest":"sha256:2ef548696ac7dd66ef38aab5cc8fc5cc1fb637dfaedb3a9afc89bf16db9277e1","size":10240,"annotations":{"org.opencontainers.image.title":"hello.tar"}}]}`
 )
 
 var _ = Describe("ORAS beginners:", func() {
@@ -51,6 +58,24 @@ var _ = Describe("ORAS beginners:", func() {
 				WithFailureCheck().
 				MatchErrKeyWords("Error:").
 				Exec()
+		})
+
+		When("running `manifest fetch-config`", func() {
+			It("should show preview hint in the doc", func() {
+				ORAS("manifest", "fetch-config", "--help").
+					MatchKeyWords(preview_desc, example_desc, "[Preview]", "\nUsage:").Exec()
+			})
+
+			It("should fail if no manifest reference provided", func() {
+				ORAS("manifest", "fetch-config").WithFailureCheck().Exec()
+			})
+
+			It("should fail if provided reference does not exist", func() {
+				ORAS("manifest", "fetch-config", Reference(Host, repo, "this-tag-should-not-exist")).WithFailureCheck().Exec()
+			})
+			It("should fail fetching a config of non-image manifest type", func() {
+				ORAS("manifest", "fetch-config", Reference(Host, repo, multiImage)).WithFailureCheck().Exec()
+			})
 		})
 	})
 })
@@ -85,8 +110,7 @@ var _ = Describe("Common registry users:", func() {
 			fetchPath := filepath.Join(GinkgoT().TempDir(), "fetchedImage")
 			ORAS("manifest", "fetch", Reference(Host, repo, multiImage), "--output", fetchPath, "--descriptor").
 				MatchContent(descriptor_multi).Exec()
-			Binary("cat", fetchPath).
-				MatchContent(manifest_multi).Exec()
+			MatchFile(fetchPath, manifest_multi, DefaultTimeout)
 		})
 
 		It("should fetch manifest via tag with platform selection", func() {
@@ -167,6 +191,38 @@ var _ = Describe("Common registry users:", func() {
 			ORAS("manifest", "fetch", Reference(Host, repo, digest_linuxAMD64), "--media-type", "this.will.not.be.found").
 				WithFailureCheck().
 				MatchErrKeyWords(digest_linuxAMD64, "error: ", "not found").Exec()
+		})
+	})
+
+	When("running `manifest fetch-config`", func() {
+		It("should fetch a config via a tag", func() {
+			ORAS("manifest", "fetch-config", Reference(Host, repo, foobarTag)).
+				MatchContent("{}").Exec()
+		})
+
+		It("should fetch a config descriptor via a tag", func() {
+			ORAS("manifest", "fetch-config", "--descriptor", Reference(Host, repo, foobarTag)).
+				MatchContent(foobarConfigDescriptor).Exec()
+		})
+
+		It("should fetch a config via digest", func() {
+			ORAS("manifest", "fetch-config", Reference(Host, repo, foobarTag)).
+				MatchContent("{}").Exec()
+		})
+
+		It("should fetch a config descriptor via a digest", func() {
+			ORAS("manifest", "fetch-config", "--descriptor", Reference(Host, repo, foobarDigest)).
+				MatchContent(foobarConfigDescriptor).Exec()
+		})
+
+		It("should fetch a config of a specific platform", func() {
+			ORAS("manifest", "fetch-config", "--platform", "linux/amd64", Reference(Host, repo, multiImage)).
+				MatchContent(linuxAMD64Config).Exec()
+		})
+
+		It("should fetch a config descriptor of a specific platform", func() {
+			ORAS("manifest", "fetch-config", "--descriptor", "--platform", "linux/amd64", Reference(Host, repo, multiImage)).
+				MatchContent(linuxAMD64ConfigDescriptor).Exec()
 		})
 	})
 })
