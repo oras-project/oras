@@ -33,10 +33,10 @@ var repoFmt = fmt.Sprintf("command/blob/push/%d/%%s", GinkgoRandomSeed())
 
 var _ = Describe("ORAS beginners:", func() {
 	When("running blob command", func() {
-		runAndShowPreviewInHelp([]string{"blob"})
+		RunAndShowPreviewInHelp([]string{"blob"})
 
 		When("running `blob push`", func() {
-			runAndShowPreviewInHelp([]string{"blob", "push"}, preview_desc, example_desc)
+			RunAndShowPreviewInHelp([]string{"blob", "push"}, preview_desc, example_desc)
 			It("should fail to read blob content and password from stdin at the same time", func() {
 				repo := fmt.Sprintf(repoFmt, "password-stdin")
 				ORAS("blob", "push", Reference(Host, repo, ""), "--password-stdin", "-").
@@ -87,7 +87,7 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		When("running `blob fetch`", func() {
-			runAndShowPreviewInHelp([]string{"blob", "fetch"}, preview_desc, example_desc)
+			RunAndShowPreviewInHelp([]string{"blob", "fetch"}, preview_desc, example_desc)
 
 			It("should call sub-commands with aliases", func() {
 				ORAS("blob", "get", "--help").

@@ -24,7 +24,7 @@ var repoFmt = fmt.Sprintf("command/tag/%%s/%d/%%s", GinkgoRandomSeed())
 
 var _ = Describe("ORAS beginners:", func() {
 	When("running repo command", func() {
-		runAndShowPreviewInHelp([]string{"tag"})
+		RunAndShowPreviewInHelp([]string{"tag"})
 		It("should fail when no manifest reference provided", func() {
 			ORAS("tag").WithFailureCheck().MatchErrKeyWords("Error:").Exec()
 		})

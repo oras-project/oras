@@ -22,7 +22,7 @@ import (
 
 var _ = Describe("ORAS beginners:", func() {
 	When("running repo command", func() {
-		runAndShowPreviewInHelp([]string{"repo"})
+		RunAndShowPreviewInHelp([]string{"repo"})
 		When("running `repo ls`", func() {
 			It("should show preview in help", func() {
 				ORAS("repo", "ls", "--help").MatchKeyWords("[Preview] List", preview_desc, example_desc).Exec()
