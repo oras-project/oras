@@ -24,27 +24,30 @@ import (
 )
 
 const (
-	pushContent = "test-blob"
-	pushDigest  = "sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d8"
-	wrongDigest = "sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d9"
-	pushDescFmt = `{"mediaType":"%s","digest":"sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d8","size":9}`
+	pushContent      = "test-blob"
+	pushDigest       = "sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d8"
+	wrongDigest      = "sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d9"
+	pushDescFmt      = `{"mediaType":"%s","digest":"sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d8","size":9}`
+	deleteDigest     = "sha256:fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"
+	deleteDescriptor = `{"mediaType":"application/octet-stream","digest":"sha256:fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9","size":3}`
+	deleteContent    = "bar"
 )
 
 var _ = Describe("ORAS beginners:", func() {
-	repoFmt := fmt.Sprintf("command/blob/push/%d/%%s", GinkgoRandomSeed())
+	repoFmt := fmt.Sprintf("command/blob/%%s/%d/%%s", GinkgoRandomSeed())
 	When("running blob command", func() {
 		RunAndShowPreviewInHelp([]string{"blob"})
 
 		When("running `blob push`", func() {
 			RunAndShowPreviewInHelp([]string{"blob", "push"}, PreviewDesc, ExampleDesc)
 			It("should fail to read blob content and password from stdin at the same time", func() {
-				repo := fmt.Sprintf(repoFmt, "password-stdin")
+				repo := fmt.Sprintf(repoFmt, "push", "password-stdin")
 				ORAS("blob", "push", Reference(Host, repo, ""), "--password-stdin", "-").
 					ExpectFailure().
 					MatchTrimmedContent("Error: `-` read file from input and `--password-stdin` read password from input cannot be both used").Exec()
 			})
 			It("should fail to push a blob from stdin but no blob size provided", func() {
-				repo := fmt.Sprintf(repoFmt, "no-size")
+				repo := fmt.Sprintf(repoFmt, "push", "no-size")
 				ORAS("blob", "push", Reference(Host, repo, pushDigest), "-").
 					WithInput(strings.NewReader(pushContent)).
 					ExpectFailure().
@@ -52,21 +55,21 @@ var _ = Describe("ORAS beginners:", func() {
 			})
 
 			It("should fail to push a blob from stdin if invalid blob size provided", func() {
-				repo := fmt.Sprintf(repoFmt, "invalid-stdin-size")
+				repo := fmt.Sprintf(repoFmt, "push", "invalid-stdin-size")
 				ORAS("blob", "push", Reference(Host, repo, pushDigest), "-", "--size", "3").
 					WithInput(strings.NewReader(pushContent)).ExpectFailure().
 					Exec()
 			})
 
 			It("should fail to push a blob from stdin if invalid digest provided", func() {
-				repo := fmt.Sprintf(repoFmt, "invalid-stdin-digest")
+				repo := fmt.Sprintf(repoFmt, "push", "invalid-stdin-digest")
 				ORAS("blob", "push", Reference(Host, repo, wrongDigest), "-", "--size", strconv.Itoa(len(pushContent))).
 					WithInput(strings.NewReader(pushContent)).ExpectFailure().
 					Exec()
 			})
 
 			It("should fail to push a blob from file if invalid blob size provided", func() {
-				repo := fmt.Sprintf(repoFmt, "invalid-file-digest")
+				repo := fmt.Sprintf(repoFmt, "push", "invalid-file-digest")
 				blobPath := WriteTempFile("blob", pushContent)
 				ORAS("blob", "push", Reference(Host, repo, pushDigest), blobPath, "--size", "3").
 					ExpectFailure().
@@ -74,7 +77,7 @@ var _ = Describe("ORAS beginners:", func() {
 			})
 
 			It("should fail to push a blob from file if invalid digest provided", func() {
-				repo := fmt.Sprintf(repoFmt, "invalid-stdin-size")
+				repo := fmt.Sprintf(repoFmt, "push", "invalid-stdin-size")
 				blobPath := WriteTempFile("blob", pushContent)
 				ORAS("blob", "push", Reference(Host, repo, wrongDigest), blobPath, "--size", strconv.Itoa(len(pushContent))).
 					WithInput(strings.NewReader(pushContent)).ExpectFailure().
@@ -125,14 +128,63 @@ var _ = Describe("ORAS beginners:", func() {
 			})
 		})
 	})
+
+	When("running `blob delete`", func() {
+		RunAndShowPreviewInHelp([]string{"blob", "delete"}, PreviewDesc, ExampleDesc)
+
+		It("should fail if no blob reference is provided", func() {
+			dstRepo := fmt.Sprintf(repoFmt, "delete", "no-ref")
+			ORAS("cp", Reference(Host, Repo, FoobarImageDigest), Reference(Host, dstRepo, FoobarImageDigest)).Exec()
+			ORAS("blob", "delete").ExpectFailure().Exec()
+			ORAS("blob", "fetch", Reference(Host, dstRepo, deleteDigest), "--output", "-").MatchContent(deleteContent).Exec()
+		})
+
+		It("should fail if no confirmation flag and descriptor flag is provided", func() {
+			dstRepo := fmt.Sprintf(repoFmt, "delete", "no-confirm")
+			ORAS("cp", Reference(Host, Repo, FoobarImageDigest), Reference(Host, dstRepo, FoobarImageDigest)).Exec()
+			ORAS("blob", "delete", Reference(Host, dstRepo, deleteDigest), "--descriptor").ExpectFailure().Exec()
+			ORAS("blob", "fetch", Reference(Host, dstRepo, deleteDigest), "--output", "-").MatchContent(deleteContent).Exec()
+		})
+
+		It("should fail if the blob reference is not in the form of <name@digest>", func() {
+			dstRepo := fmt.Sprintf(repoFmt, "delete", "wrong-ref-form")
+			ORAS("blob", "delete", fmt.Sprintf("%s/%s:%s", Host, dstRepo, "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), "--descriptor", "--force").ExpectFailure().Exec()
+			ORAS("blob", "delete", fmt.Sprintf("%s/%s:%s", Host, dstRepo, "test"), "--descriptor", "--force").ExpectFailure().Exec()
+			ORAS("blob", "delete", fmt.Sprintf("%s/%s@%s", Host, dstRepo, "test"), "--descriptor", "--force").ExpectFailure().Exec()
+		})
+	})
 })
 
 var _ = Describe("Common registry users:", func() {
-	repoFmt := fmt.Sprintf("command/blob/push/%d/%%s", GinkgoRandomSeed())
+	repoFmt := fmt.Sprintf("command/blob/%%s/%d/%%s", GinkgoRandomSeed())
+	When("running `blob delete`", func() {
+		It("should delete a blob with interactive confirmation", func() {
+			dstRepo := fmt.Sprintf(repoFmt, "delete", "prompt-confirmation")
+			ORAS("cp", Reference(Host, Repo, FoobarImageDigest), Reference(Host, dstRepo, FoobarImageDigest)).Exec()
+			toDeleteRef := Reference(Host, dstRepo, deleteDigest)
+			ORAS("blob", "delete", toDeleteRef).
+				WithInput(strings.NewReader("y")).
+				MatchKeyWords("Deleted", toDeleteRef).Exec()
+			ORAS("blob", "delete", toDeleteRef).
+				WithInput(strings.NewReader("y")).
+				ExpectFailure().
+				MatchErrKeyWords("Error:", toDeleteRef, "the specified blob does not exist").Exec()
+		})
+
+		It("should delete a blob with confirmation flag and output descriptor", func() {
+			dstRepo := fmt.Sprintf(repoFmt, "delete", "flag-confirmation")
+			ORAS("cp", Reference(Host, Repo, FoobarImageDigest), Reference(Host, dstRepo, FoobarImageDigest)).Exec()
+			toDeleteRef := Reference(Host, dstRepo, deleteDigest)
+			ORAS("blob", "delete", toDeleteRef, "--force", "--descriptor").MatchContent(deleteDescriptor).Exec()
+			ORAS("blob", "delete", toDeleteRef, "--force", "--descriptor").
+				ExpectFailure().
+				MatchErrKeyWords("Error:", toDeleteRef, "the specified blob does not exist").Exec()
+		})
+	})
 	When("running `blob push`", func() {
 		It("should push a blob from a file and output the descriptor with specific media-type", func() {
 			mediaType := "test.media"
-			repo := fmt.Sprintf(repoFmt, "blob-file-media-type")
+			repo := fmt.Sprintf(repoFmt, "push", "blob-file-media-type")
 			blobPath := WriteTempFile("blob", pushContent)
 			ORAS("blob", "push", Reference(Host, repo, ""), blobPath, "--media-type", mediaType, "--descriptor").
 				MatchContent(fmt.Sprintf(pushDescFmt, mediaType)).Exec()
@@ -146,7 +198,7 @@ var _ = Describe("Common registry users:", func() {
 
 		It("should push a blob from a stdin and output the descriptor with specific media-type", func() {
 			mediaType := "test.media"
-			repo := fmt.Sprintf(repoFmt, "blob-file-media-type")
+			repo := fmt.Sprintf(repoFmt, "push", "blob-file-media-type")
 			ORAS("blob", "push", Reference(Host, repo, pushDigest), "-", "--media-type", mediaType, "--descriptor", "--size", strconv.Itoa(len(pushContent))).
 				WithInput(strings.NewReader(pushContent)).
 				MatchContent(fmt.Sprintf(pushDescFmt, mediaType)).Exec()
