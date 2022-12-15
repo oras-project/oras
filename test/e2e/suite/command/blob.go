@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
 	"oras.land/oras/cmd/oras/blob"
 
 	. "oras.land/oras/test/e2e/internal/utils"
