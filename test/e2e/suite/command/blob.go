@@ -15,14 +15,12 @@ package command
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 	"oras.land/oras/cmd/oras/blob"
 
 	. "oras.land/oras/test/e2e/internal/utils"
@@ -175,11 +173,7 @@ var _ = Describe("Common registry users:", func() {
 			contentPath := filepath.Join(tempDir, "fetched")
 			ORAS("blob", "fetch", Reference(Host, repo, blobDigest), "--output", contentPath).
 				WithWorkDir(tempDir).Exec()
-			Expect(contentPath).Should(BeAnExistingFile())
-			f, err := os.Open(contentPath)
-			Expect(err).ShouldNot(HaveOccurred())
-			defer f.Close()
-			Eventually(gbytes.BufferReader(f)).Should(gbytes.Say(blobContent))
+			MatchFile(contentPath, blobContent, DefaultTimeout)
 		})
 		It("should fetch blob descriptor and output content to a file", func() {
 			tempDir := GinkgoT().TempDir()
@@ -187,11 +181,7 @@ var _ = Describe("Common registry users:", func() {
 			ORAS("blob", "fetch", Reference(Host, repo, blobDigest), "--output", contentPath, "--descriptor").
 				MatchContent(blobDescriptor).
 				WithWorkDir(tempDir).Exec()
-			Expect(contentPath).Should(BeAnExistingFile())
-			f, err := os.Open(contentPath)
-			Expect(err).ShouldNot(HaveOccurred())
-			defer f.Close()
-			Eventually(gbytes.BufferReader(f)).Should(gbytes.Say(blobContent))
+			MatchFile(contentPath, blobContent, DefaultTimeout)
 		})
 	})
 })
