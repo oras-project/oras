@@ -45,8 +45,8 @@ const (
 
 var _ = Describe("ORAS beginners:", func() {
 	When("running manifest command", func() {
-		runAndShowPreviewInHelp([]string{"manifest"})
-		runAndShowPreviewInHelp([]string{"manifest", "fetch"}, preview_desc, example_desc)
+		RunAndShowPreviewInHelp([]string{"manifest"})
+		RunAndShowPreviewInHelp([]string{"manifest", "fetch"}, preview_desc, example_desc)
 
 		It("should call sub-commands with aliases", func() {
 			ORAS("manifest", "get", "--help").
@@ -80,7 +80,7 @@ var _ = Describe("ORAS beginners:", func() {
 	})
 })
 
-func runAndShowPreviewInHelp(args []string, keywords ...string) {
+func RunAndShowPreviewInHelp(args []string, keywords ...string) {
 	It(fmt.Sprintf("should run %q command", strings.Join(args, " ")), func() {
 		ORAS(append(args, "--help")...).
 			MatchKeyWords(append(keywords, "[Preview] "+args[len(args)-1], "\nUsage:")...).

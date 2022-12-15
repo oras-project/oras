@@ -14,21 +14,80 @@ limitations under the License.
 package command
 
 import (
-	"os"
+	"fmt"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
+const (
+	pushContent = "test-blob"
+	pushDigest  = "sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d8"
+	wrongDigest = "sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d9"
+	pushDescFmt = `{"mediaType":"%s","digest":"sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d8","size":9}`
+)
+
 var _ = Describe("ORAS beginners:", func() {
+	repoFmt := fmt.Sprintf("command/blob/push/%d/%%s", GinkgoRandomSeed())
 	When("running blob command", func() {
-		runAndShowPreviewInHelp([]string{"blob"})
+		RunAndShowPreviewInHelp([]string{"blob"})
+
+		When("running `blob push`", func() {
+			RunAndShowPreviewInHelp([]string{"blob", "push"}, preview_desc, example_desc)
+			It("should fail to read blob content and password from stdin at the same time", func() {
+				repo := fmt.Sprintf(repoFmt, "password-stdin")
+				ORAS("blob", "push", Reference(Host, repo, ""), "--password-stdin", "-").
+					WithFailureCheck().
+					MatchTrimmedContent("Error: `-` read file from input and `--password-stdin` read password from input cannot be both used").Exec()
+			})
+			It("should fail to push a blob from stdin but no blob size provided", func() {
+				repo := fmt.Sprintf(repoFmt, "no-size")
+				ORAS("blob", "push", Reference(Host, repo, pushDigest), "-").
+					WithInput(strings.NewReader(pushContent)).
+					WithFailureCheck().
+					MatchTrimmedContent("Error: `--size` must be provided if the blob is read from stdin").Exec()
+			})
+
+			It("should fail to push a blob from stdin if invalid blob size provided", func() {
+				repo := fmt.Sprintf(repoFmt, "invalid-stdin-size")
+				ORAS("blob", "push", Reference(Host, repo, pushDigest), "-", "--size", "3").
+					WithInput(strings.NewReader(pushContent)).WithFailureCheck().
+					Exec()
+			})
+
+			It("should fail to push a blob from stdin if invalid digest provided", func() {
+				repo := fmt.Sprintf(repoFmt, "invalid-stdin-digest")
+				ORAS("blob", "push", Reference(Host, repo, wrongDigest), "-", "--size", strconv.Itoa(len(pushContent))).
+					WithInput(strings.NewReader(pushContent)).WithFailureCheck().
+					Exec()
+			})
+
+			It("should fail to push a blob from file if invalid blob size provided", func() {
+				repo := fmt.Sprintf(repoFmt, "invalid-file-digest")
+				blobPath := WriteTempFile("blob", pushContent)
+				ORAS("blob", "push", Reference(Host, repo, pushDigest), blobPath, "--size", "3").
+					WithFailureCheck().
+					Exec()
+			})
+
+			It("should fail to push a blob from file if invalid digest provided", func() {
+				repo := fmt.Sprintf(repoFmt, "invalid-stdin-size")
+				blobPath := WriteTempFile("blob", pushContent)
+				ORAS("blob", "push", Reference(Host, repo, wrongDigest), blobPath, "--size", strconv.Itoa(len(pushContent))).
+					WithInput(strings.NewReader(pushContent)).WithFailureCheck().
+					Exec()
+			})
+
+			It("should fail if no reference is provided", func() {
+				ORAS("blob", "push").WithFailureCheck().Exec()
+			})
+		})
 
 		When("running `blob fetch`", func() {
-			runAndShowPreviewInHelp([]string{"blob", "fetch"}, preview_desc, example_desc)
+			RunAndShowPreviewInHelp([]string{"blob", "fetch"}, preview_desc, example_desc)
 
 			It("should call sub-commands with aliases", func() {
 				ORAS("blob", "get", "--help").
@@ -69,10 +128,35 @@ var _ = Describe("ORAS beginners:", func() {
 })
 
 var _ = Describe("Common registry users:", func() {
+	repoFmt := fmt.Sprintf("command/blob/push/%d/%%s", GinkgoRandomSeed())
+	When("running `blob push`", func() {
+		It("should push a blob from a file and output the descriptor with specific media-type", func() {
+			mediaType := "test.media"
+			repo := fmt.Sprintf(repoFmt, "blob-file-media-type")
+			blobPath := WriteTempFile("blob", pushContent)
+			ORAS("blob", "push", Reference(Host, repo, ""), blobPath, "--media-type", mediaType, "--descriptor").
+				MatchContent(fmt.Sprintf(pushDescFmt, mediaType)).Exec()
+			ORAS("blob", "fetch", Reference(Host, repo, pushDigest), "--output", "-").MatchContent(pushContent).Exec()
+
+			ORAS("blob", "push", Reference(Host, repo, ""), blobPath, "-v").
+				WithDescription("skip the pushing if the blob already exists in the target repo").
+				MatchKeyWords("Exists").Exec()
+
+		})
+
+		It("should push a blob from a stdin and output the descriptor with specific media-type", func() {
+			mediaType := "test.media"
+			repo := fmt.Sprintf(repoFmt, "blob-file-media-type")
+			ORAS("blob", "push", Reference(Host, repo, pushDigest), "-", "--media-type", mediaType, "--descriptor", "--size", strconv.Itoa(len(pushContent))).
+				WithInput(strings.NewReader(pushContent)).
+				MatchContent(fmt.Sprintf(pushDescFmt, mediaType)).Exec()
+			ORAS("blob", "fetch", Reference(Host, repo, pushDigest), "--output", "-").MatchContent(pushContent).Exec()
+		})
+	})
+
 	var blobDigest = "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
 	var blobContent = "foo"
 	var blobDescriptor = `{"mediaType":"application/octet-stream","digest":"sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae","size":3}`
-
 	When("running `blob fetch`", func() {
 		It("should fetch blob descriptor ", func() {
 			ORAS("blob", "fetch", Reference(Host, repo, blobDigest), "--descriptor").
@@ -87,11 +171,7 @@ var _ = Describe("Common registry users:", func() {
 			contentPath := filepath.Join(tempDir, "fetched")
 			ORAS("blob", "fetch", Reference(Host, repo, blobDigest), "--output", contentPath).
 				WithWorkDir(tempDir).Exec()
-			Expect(contentPath).Should(BeAnExistingFile())
-			f, err := os.Open(contentPath)
-			Expect(err).ShouldNot(HaveOccurred())
-			defer f.Close()
-			Eventually(gbytes.BufferReader(f)).Should(gbytes.Say(blobContent))
+			MatchFile(contentPath, blobContent, DefaultTimeout)
 		})
 		It("should fetch blob descriptor and output content to a file", func() {
 			tempDir := GinkgoT().TempDir()
@@ -99,11 +179,7 @@ var _ = Describe("Common registry users:", func() {
 			ORAS("blob", "fetch", Reference(Host, repo, blobDigest), "--output", contentPath, "--descriptor").
 				MatchContent(blobDescriptor).
 				WithWorkDir(tempDir).Exec()
-			Expect(contentPath).Should(BeAnExistingFile())
-			f, err := os.Open(contentPath)
-			Expect(err).ShouldNot(HaveOccurred())
-			defer f.Close()
-			Eventually(gbytes.BufferReader(f)).Should(gbytes.Say(blobContent))
+			MatchFile(contentPath, blobContent, DefaultTimeout)
 		})
 	})
 })

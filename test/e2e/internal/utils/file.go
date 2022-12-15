@@ -21,6 +21,7 @@ import (
 	"regexp"
 	"time"
 
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 )
@@ -61,6 +62,15 @@ func MatchFile(filepath string, want string, timeout time.Duration) {
 	defer f.Close()
 	want = regexp.QuoteMeta(want)
 	Eventually(gbytes.BufferReader(f)).WithTimeout(timeout).Should(gbytes.Say(want))
+}
+
+// WriteTempFile writes content into name under a temp folder.
+func WriteTempFile(name string, content string) (path string) {
+	tempDir := GinkgoT().TempDir()
+	path = filepath.Join(tempDir, name)
+	err := os.WriteFile(path, []byte(content), 0666)
+	Expect(err).ToNot(HaveOccurred())
+	return path
 }
 
 func copyFile(srcFile, dstFile string) error {
