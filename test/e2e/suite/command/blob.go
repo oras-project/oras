@@ -133,21 +133,21 @@ var _ = Describe("ORAS beginners:", func() {
 		RunAndShowPreviewInHelp([]string{"blob", "delete"}, PreviewDesc, ExampleDesc)
 
 		It("should fail if no blob reference is provided", func() {
-			dstRepo := fmt.Sprintf(repoFmt, "push", "delete", "no-ref")
+			dstRepo := fmt.Sprintf(repoFmt, "delete", "no-ref")
 			ORAS("cp", Reference(Host, Repo, FoobarImageDigest), Reference(Host, dstRepo, FoobarImageDigest)).Exec()
 			ORAS("blob", "delete").ExpectFailure().Exec()
 			ORAS("blob", "fetch", Reference(Host, dstRepo, deleteDigest), "--output", "-").MatchContent(deleteContent).Exec()
 		})
 
 		It("should fail if no confirmation flag and descriptor flag is provided", func() {
-			dstRepo := fmt.Sprintf(repoFmt, "push", "delete", "no-confirm")
+			dstRepo := fmt.Sprintf(repoFmt, "delete", "no-confirm")
 			ORAS("cp", Reference(Host, Repo, FoobarImageDigest), Reference(Host, dstRepo, FoobarImageDigest)).Exec()
 			ORAS("blob", "delete", Reference(Host, dstRepo, deleteDigest), "--descriptor").ExpectFailure().Exec()
 			ORAS("blob", "fetch", Reference(Host, dstRepo, deleteDigest), "--output", "-").MatchContent(deleteContent).Exec()
 		})
 
 		It("should fail if the blob reference is not in the form of <name@digest>", func() {
-			dstRepo := fmt.Sprintf(repoFmt, "push", "delete", "wrong-ref-form")
+			dstRepo := fmt.Sprintf(repoFmt, "delete", "wrong-ref-form")
 			ORAS("blob", "delete", fmt.Sprintf("%s/%s@%s", Host, dstRepo, "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), "--descriptor", "--force").ExpectFailure().Exec()
 			ORAS("blob", "delete", fmt.Sprintf("%s/%s:%s", Host, dstRepo, "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), "--descriptor", "--force").ExpectFailure().Exec()
 			ORAS("blob", "delete", fmt.Sprintf("%s/%s:%s", Host, dstRepo, "test"), "--descriptor", "--force").ExpectFailure().Exec()
