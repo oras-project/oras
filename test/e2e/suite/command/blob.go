@@ -30,9 +30,8 @@ const (
 	pushDescFmt = `{"mediaType":"%s","digest":"sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d8","size":9}`
 )
 
-var repoFmt = fmt.Sprintf("command/blob/push/%d/%%s", GinkgoRandomSeed())
-
 var _ = Describe("ORAS beginners:", func() {
+	repoFmt := fmt.Sprintf("command/blob/push/%d/%%s", GinkgoRandomSeed())
 	When("running blob command", func() {
 		RunAndShowPreviewInHelp([]string{"blob"})
 
@@ -129,6 +128,7 @@ var _ = Describe("ORAS beginners:", func() {
 })
 
 var _ = Describe("Common registry users:", func() {
+	repoFmt := fmt.Sprintf("command/blob/push/%d/%%s", GinkgoRandomSeed())
 	When("running `blob push`", func() {
 		It("should push a blob from a file and output the descriptor with specific media-type", func() {
 			mediaType := "test.media"
