@@ -69,7 +69,7 @@ var _ = Describe("Remote registry users:", func() {
 			}
 
 			ORAS("pull", Reference(Host, repo, tag), "-v", "-o", pullRoot, "--keep-old-files").
-				WithFailureCheck().
+				ExpectFailure().
 				WithDescription("fail if overwrite old files are disabled")
 		})
 
