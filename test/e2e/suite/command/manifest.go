@@ -28,7 +28,6 @@ import (
 var _ = Describe("ORAS beginners:", func() {
 	When("running manifest command", func() {
 		RunAndShowPreviewInHelp([]string{"manifest"})
-		RunAndShowPreviewInHelp([]string{"manifest", "fetch"}, PreviewDesc, ExampleDesc)
 
 		When("running `manifest push`", func() {
 			RunAndShowPreviewInHelp([]string{"manifest", "push"}, PreviewDesc, ExampleDesc)
