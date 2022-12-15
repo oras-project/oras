@@ -77,7 +77,7 @@ var _ = Describe("ORAS beginners:", func() {
 			It("should fail to push a blob from file if invalid digest provided", func() {
 				repo := fmt.Sprintf(repoFmt, "invalid-stdin-size")
 				blobPath := WriteTempFile("blob", pushContent)
-				ORAS("blob", "push", Reference(Host, repo, wrongDigest), blobPath, "--size", string(rune(len(pushContent)))).
+				ORAS("blob", "push", Reference(Host, repo, wrongDigest), blobPath, "--size", strconv.Itoa(len(pushContent))).
 					WithInput(strings.NewReader(pushContent)).WithFailureCheck().
 					Exec()
 			})
@@ -147,7 +147,7 @@ var _ = Describe("Common registry users:", func() {
 		It("should push a blob from a stdin and output the descriptor with specific media-type", func() {
 			mediaType := "test.media"
 			repo := fmt.Sprintf(repoFmt, "blob-file-media-type")
-			ORAS("blob", "push", Reference(Host, repo, pushDigest), "-", "--media-type", mediaType, "--descriptor", "--size", string(rune(len(pushContent)))).
+			ORAS("blob", "push", Reference(Host, repo, pushDigest), "-", "--media-type", mediaType, "--descriptor", "--size", strconv.Itoa(len(pushContent))).
 				WithInput(strings.NewReader(pushContent)).
 				MatchContent(fmt.Sprintf(pushDescFmt, mediaType)).Exec()
 			ORAS("blob", "fetch", Reference(Host, repo, pushDigest), "--output", "-").MatchContent(pushContent).Exec()
