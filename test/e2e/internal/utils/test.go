@@ -16,6 +16,8 @@ package utils
 import (
 	"fmt"
 	"strings"
+
+	. "github.com/onsi/ginkgo/v2"
 )
 
 func RunAndShowPreviewInHelp(args []string, keywords ...string) {
