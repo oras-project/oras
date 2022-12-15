@@ -14,7 +14,6 @@ limitations under the License.
 package command
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,18 +41,11 @@ const (
 
 var _ = Describe("ORAS beginners:", func() {
 	When("running manifest command", func() {
-		runAndShowPreviewInHelp := func(args []string, keywords ...string) {
-			It(fmt.Sprintf("should run %q command", strings.Join(args, " ")), func() {
-				ORAS(append(args, "--help")...).
-					MatchKeyWords(append(keywords, "[Preview] "+args[len(args)-1], "\nUsage:")...).
-					WithDescription("show preview and help doc").
-					Exec()
-			})
-		}
-		runAndShowPreviewInHelp([]string{"manifest"})
+
+		RunAndShowPreviewInHelp([]string{"manifest"})
 
 		When("running `manifest push`", func() {
-			runAndShowPreviewInHelp([]string{"manifest", "push"}, preview_desc, example_desc)
+			RunAndShowPreviewInHelp([]string{"manifest", "push"}, preview_desc, example_desc)
 			It("should have flag for prettifying JSON output", func() {
 				ORAS("manifest", "push", "--help").
 					MatchKeyWords("--pretty", "prettify JSON").
@@ -69,7 +61,7 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		When("running `manifest fetch`", func() {
-			runAndShowPreviewInHelp([]string{"manifest", "fetch"}, preview_desc, example_desc)
+			RunAndShowPreviewInHelp([]string{"manifest", "fetch"}, preview_desc, example_desc)
 			It("should call sub-commands with aliases", func() {
 				ORAS("manifest", "get", "--help").
 					MatchKeyWords("[Preview] Fetch", preview_desc, example_desc).
