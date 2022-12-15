@@ -14,15 +14,16 @@ limitations under the License.
 package command
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
-	"fmt"
 	"strconv"
 	"strings"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"oras.land/oras/cmd/oras/blob"
 	"github.com/onsi/gomega/gbytes"
+	"oras.land/oras/cmd/oras/blob"
 
 	. "oras.land/oras/test/e2e/internal/utils"
 )
@@ -87,6 +88,9 @@ var _ = Describe("ORAS beginners:", func() {
 
 			It("should fail if no reference is provided", func() {
 				ORAS("blob", "push").WithFailureCheck().Exec()
+			})
+		})
+
 		When("running `blob fetch`", func() {
 			runAndShowPreviewInHelp([]string{"blob", "fetch"}, preview_desc, example_desc)
 
@@ -152,10 +156,11 @@ var _ = Describe("Common registry users:", func() {
 				MatchContent(fmt.Sprintf(pushDescFmt, mediaType)).Exec()
 			ORAS("blob", "fetch", Reference(Host, repo, pushDigest), "--output", "-").MatchContent(pushContent).Exec()
 		})
+	})
+
 	var blobDigest = "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
 	var blobContent = "foo"
 	var blobDescriptor = `{"mediaType":"application/octet-stream","digest":"sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae","size":3}`
-
 	When("running `blob fetch`", func() {
 		It("should fetch blob descriptor ", func() {
 			ORAS("blob", "fetch", Reference(Host, repo, blobDigest), "--descriptor").
