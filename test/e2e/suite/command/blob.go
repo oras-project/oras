@@ -40,28 +40,28 @@ var _ = Describe("ORAS beginners:", func() {
 			It("should fail to read blob content and password from stdin at the same time", func() {
 				repo := fmt.Sprintf(repoFmt, "password-stdin")
 				ORAS("blob", "push", Reference(Host, repo, ""), "--password-stdin", "-").
-					WithFailureCheck().
+					ExpectFailure().
 					MatchTrimmedContent("Error: `-` read file from input and `--password-stdin` read password from input cannot be both used").Exec()
 			})
 			It("should fail to push a blob from stdin but no blob size provided", func() {
 				repo := fmt.Sprintf(repoFmt, "no-size")
 				ORAS("blob", "push", Reference(Host, repo, pushDigest), "-").
 					WithInput(strings.NewReader(pushContent)).
-					WithFailureCheck().
+					ExpectFailure().
 					MatchTrimmedContent("Error: `--size` must be provided if the blob is read from stdin").Exec()
 			})
 
 			It("should fail to push a blob from stdin if invalid blob size provided", func() {
 				repo := fmt.Sprintf(repoFmt, "invalid-stdin-size")
 				ORAS("blob", "push", Reference(Host, repo, pushDigest), "-", "--size", "3").
-					WithInput(strings.NewReader(pushContent)).WithFailureCheck().
+					WithInput(strings.NewReader(pushContent)).ExpectFailure().
 					Exec()
 			})
 
 			It("should fail to push a blob from stdin if invalid digest provided", func() {
 				repo := fmt.Sprintf(repoFmt, "invalid-stdin-digest")
 				ORAS("blob", "push", Reference(Host, repo, wrongDigest), "-", "--size", strconv.Itoa(len(pushContent))).
-					WithInput(strings.NewReader(pushContent)).WithFailureCheck().
+					WithInput(strings.NewReader(pushContent)).ExpectFailure().
 					Exec()
 			})
 
@@ -69,7 +69,7 @@ var _ = Describe("ORAS beginners:", func() {
 				repo := fmt.Sprintf(repoFmt, "invalid-file-digest")
 				blobPath := WriteTempFile("blob", pushContent)
 				ORAS("blob", "push", Reference(Host, repo, pushDigest), blobPath, "--size", "3").
-					WithFailureCheck().
+					ExpectFailure().
 					Exec()
 			})
 
@@ -77,12 +77,12 @@ var _ = Describe("ORAS beginners:", func() {
 				repo := fmt.Sprintf(repoFmt, "invalid-stdin-size")
 				blobPath := WriteTempFile("blob", pushContent)
 				ORAS("blob", "push", Reference(Host, repo, wrongDigest), blobPath, "--size", strconv.Itoa(len(pushContent))).
-					WithInput(strings.NewReader(pushContent)).WithFailureCheck().
+					WithInput(strings.NewReader(pushContent)).ExpectFailure().
 					Exec()
 			})
 
 			It("should fail if no reference is provided", func() {
-				ORAS("blob", "push").WithFailureCheck().Exec()
+				ORAS("blob", "push").ExpectFailure().Exec()
 			})
 		})
 
@@ -102,26 +102,26 @@ var _ = Describe("ORAS beginners:", func() {
 
 			It("should fail if neither output path nor descriptor flag are not provided", func() {
 				ORAS("blob", "fetch", Reference(Host, Repo, "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae")).
-					WithFailureCheck().Exec()
+					ExpectFailure().Exec()
 			})
 
 			It("should fail if no digest provided", func() {
 				ORAS("blob", "fetch", Reference(Host, Repo, "")).
-					WithFailureCheck().Exec()
+					ExpectFailure().Exec()
 			})
 
 			It("should fail if provided digest doesn't existed", func() {
 				ORAS("blob", "fetch", Reference(Host, Repo, "sha256:2aaa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a")).
-					WithFailureCheck().Exec()
+					ExpectFailure().Exec()
 			})
 
 			It("should fail if output path points to stdout and descriptor flag is provided", func() {
 				ORAS("blob", "fetch", Reference(Host, Repo, ""), "--descriptor", "--output", "-").
-					WithFailureCheck().Exec()
+					ExpectFailure().Exec()
 			})
 
 			It("should fail if no reference is provided", func() {
-				ORAS("blob", "fetch").WithFailureCheck().Exec()
+				ORAS("blob", "fetch").ExpectFailure().Exec()
 			})
 		})
 	})

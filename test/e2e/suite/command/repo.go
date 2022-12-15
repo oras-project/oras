@@ -33,9 +33,9 @@ var _ = Describe("ORAS beginners:", func() {
 			})
 
 			It("should fail listing repositories if wrong registry provided", func() {
-				ORAS("repo", "ls").WithFailureCheck().MatchErrKeyWords("Error:").Exec()
-				ORAS("repo", "ls", Reference(Host, Repo, "")).WithFailureCheck().MatchErrKeyWords("Error:").Exec()
-				ORAS("repo", "ls", Reference(Host, Repo, "some-tag")).WithFailureCheck().MatchErrKeyWords("Error:").Exec()
+				ORAS("repo", "ls").ExpectFailure().MatchErrKeyWords("Error:").Exec()
+				ORAS("repo", "ls", Reference(Host, Repo, "")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+				ORAS("repo", "ls", Reference(Host, Repo, "some-tag")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
 			})
 		})
 		When("running `repo tags`", func() {
@@ -48,9 +48,9 @@ var _ = Describe("ORAS beginners:", func() {
 			})
 
 			It("should fail listing repositories if wrong registry provided", func() {
-				ORAS("repo", "tags").WithFailureCheck().MatchErrKeyWords("Error:").Exec()
-				ORAS("repo", "tags", Host).WithFailureCheck().MatchErrKeyWords("Error:").Exec()
-				ORAS("repo", "tags", Reference(Host, Repo, "some-tag")).WithFailureCheck().MatchErrKeyWords("Error:").Exec()
+				ORAS("repo", "tags").ExpectFailure().MatchErrKeyWords("Error:").Exec()
+				ORAS("repo", "tags", Host).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+				ORAS("repo", "tags", Reference(Host, Repo, "some-tag")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
 			})
 		})
 	})
