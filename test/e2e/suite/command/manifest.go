@@ -39,7 +39,7 @@ func validate(repoRef string, tag string, gone bool) {
 }
 
 var _ = Describe("ORAS beginners:", func() {
-	repoFmt := fmt.Sprintf("command/manifest/%s/%d/%%s", GinkgoRandomSeed())
+	repoFmt := fmt.Sprintf("command/manifest/%%s/%d/%%s", GinkgoRandomSeed())
 	When("running manifest command", func() {
 		RunAndShowPreviewInHelp([]string{"manifest"})
 
@@ -116,7 +116,7 @@ var _ = Describe("ORAS beginners:", func() {
 })
 
 var _ = Describe("Common registry users:", func() {
-	repoFmt := fmt.Sprintf("command/manifest/%s/%d/%%s", GinkgoRandomSeed())
+	repoFmt := fmt.Sprintf("command/manifest/%%s/%d/%%s", GinkgoRandomSeed())
 	When("running `manifest fetch`", func() {
 		It("should fetch manifest list with digest", func() {
 			ORAS("manifest", "fetch", Reference(Host, Repo, MultiImageTag)).
