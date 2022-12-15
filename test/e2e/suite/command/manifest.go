@@ -30,7 +30,7 @@ func prepare(src string, dst string) {
 }
 
 func validate(repoRef string, tag string, gone bool) {
-	session := ORAS("Repo", "tags", repoRef).Exec()
+	session := ORAS("repo", "tags", repoRef).Exec()
 	if gone {
 		Expect(session.Out).NotTo(gbytes.Say(tag))
 	} else {
@@ -241,11 +241,8 @@ var _ = Describe("Common registry users:", func() {
 		})
 
 		It("should push a manifest from file", func() {
-			tempDir := GinkgoT().TempDir()
-			manifestPath := filepath.Join(tempDir, "manifest.json")
-			WriteTempFile(manifestPath, manifest)
-
-			tag := "from-file"
+			manifestPath := WriteTempFile("manifest.json", manifest)
+""			tag := "from-file"
 			ORAS("manifest", "push", Reference(Host, Repo, tag), manifestPath, "--media-type", ocispec.MediaTypeImageManifest).
 				MatchKeyWords("Pushed", Reference(Host, Repo, tag), "Digest:", digest).
 				WithInput(strings.NewReader(manifest)).Exec()
