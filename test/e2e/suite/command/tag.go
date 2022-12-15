@@ -14,13 +14,9 @@ limitations under the License.
 package command
 
 import (
-	"fmt"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
-
-var repoFmt = fmt.Sprintf("command/tag/%%s/%d/%%s", GinkgoRandomSeed())
 
 var _ = Describe("ORAS beginners:", func() {
 	When("running repo command", func() {
