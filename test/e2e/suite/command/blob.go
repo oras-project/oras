@@ -29,7 +29,7 @@ const (
 	wrongDigest      = "sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d9"
 	pushDescFmt      = `{"mediaType":"%s","digest":"sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d8","size":9}`
 	deleteDigest     = "sha256:fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"
-	deleteDescriptor = "{\"mediaType\":\"application/octet-stream\",\"digest\":\"sha256:fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9\",\"size\":3}"
+	deleteDescriptor = `{"mediaType":"application/octet-stream","digest":"sha256:fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9","size":3}`
 	deleteContent    = "bar"
 )
 
@@ -157,7 +157,6 @@ var _ = Describe("ORAS beginners:", func() {
 })
 
 var _ = Describe("Common registry users:", func() {
-
 	repoFmt := fmt.Sprintf("command/blob/%%s/%d/%%s", GinkgoRandomSeed())
 	When("running `blob delete`", func() {
 		It("should delete a blob with interactive confirmation", func() {
