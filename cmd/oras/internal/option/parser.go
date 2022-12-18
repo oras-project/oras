@@ -20,17 +20,17 @@ import (
 )
 
 type FlagParser interface {
-	ParseFlags() error
+	Parse() error
 }
 
-func ParseFlags(optsPtr interface{}) error {
+func Parse(optsPtr interface{}) error {
 	v := reflect.ValueOf(optsPtr).Elem()
 	for i := 0; i < v.NumField(); i++ {
 		f := v.Field(i)
 		if f.CanSet() {
 			iface := f.Addr().Interface()
 			if a, ok := iface.(FlagParser); ok {
-				if err := a.ParseFlags(); err != nil {
+				if err := a.Parse(); err != nil {
 					return err
 				}
 			}

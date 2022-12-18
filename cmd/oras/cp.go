@@ -68,7 +68,7 @@ Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return option.ParseFlags(&opts)
+			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.srcRef = args[0]
@@ -88,10 +88,6 @@ Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net
 
 func runCopy(opts copyOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
-	targetPlatform, err := opts.Parse()
-	if err != nil {
-		return err
-	}
 
 	// Prepare source
 	srcRef, err := registry.ParseReference(opts.srcRef)
@@ -149,8 +145,8 @@ func runCopy(opts copyOptions) error {
 			copyOptions := oras.CopyOptions{
 				CopyGraphOptions: extendedCopyOptions.CopyGraphOptions,
 			}
-			if targetPlatform != nil {
-				copyOptions.WithTargetPlatform(targetPlatform)
+			if opts.OCIPlatform != nil {
+				copyOptions.WithTargetPlatform(opts.OCIPlatform)
 			}
 			desc, err = oras.Copy(ctx, src, opts.srcRef, dst, opts.dstRef, copyOptions)
 		}

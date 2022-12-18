@@ -41,11 +41,11 @@ func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
 	opts.To.ApplyFlagsWithPrefix(fs, "to", "destination")
 }
 
-func (opts *BinaryTarget) ParseFlags() error {
-	if err := opts.From.ParseFlags(); err != nil {
+func (opts *BinaryTarget) Parse() error {
+	if err := opts.From.Parse(); err != nil {
 		return err
 	}
-	return opts.To.ParseFlags()
+	return opts.To.Parse()
 }
 
 // Target option struct.
@@ -86,7 +86,7 @@ func (opts *Target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	opts.Remote.ApplyFlagsWithPrefix(fs, prefix, description)
 }
 
-func (opts *Target) ParseFlags() error {
+func (opts *Target) Parse() error {
 	opts.Type = opts.config["type"]
 	opts.Path = opts.config["path"]
 

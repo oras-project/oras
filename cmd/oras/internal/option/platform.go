@@ -26,25 +26,26 @@ import (
 
 // Platform option struct.
 type Platform struct {
-	Platform string
+	platform    string
+	OCIPlatform *ocispec.Platform
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Platform) ApplyFlags(fs *pflag.FlagSet) {
-	fs.StringVarP(&opts.Platform, "platform", "", "", "request platform in the form of `os[/arch][/variant][:os_version]`")
+	fs.StringVarP(&opts.platform, "platform", "", "", "request platform in the form of `os[/arch][/variant][:os_version]`")
 }
 
 // parse parses the input platform flag to an oci platform type.
-func (opts *Platform) Parse() (*ocispec.Platform, error) {
-	if opts.Platform == "" {
-		return nil, nil
+func (opts *Platform) Parse() error {
+	if opts.platform == "" {
+		return nil
 	}
 
 	// OS[/Arch[/Variant]][:OSVersion]
 	// If Arch is not provided, will use GOARCH instead
 	var platformStr string
 	var p ocispec.Platform
-	platformStr, p.OSVersion, _ = strings.Cut(opts.Platform, ":")
+	platformStr, p.OSVersion, _ = strings.Cut(opts.platform, ":")
 	parts := strings.Split(platformStr, "/")
 	switch len(parts) {
 	case 3:
@@ -55,14 +56,15 @@ func (opts *Platform) Parse() (*ocispec.Platform, error) {
 	case 1:
 		p.Architecture = runtime.GOARCH
 	default:
-		return nil, fmt.Errorf("failed to parse platform %q: expected format os[/arch[/variant]]", opts.Platform)
+		return fmt.Errorf("failed to parse platform %q: expected format os[/arch[/variant]]", opts.platform)
 	}
 	p.OS = parts[0]
 	if p.OS == "" {
-		return nil, fmt.Errorf("invalid platform: OS cannot be empty")
+		return fmt.Errorf("invalid platform: OS cannot be empty")
 	}
 	if p.Architecture == "" {
-		return nil, fmt.Errorf("invalid platform: Architecture cannot be empty")
+		return fmt.Errorf("invalid platform: Architecture cannot be empty")
 	}
-	return &p, nil
+	opts.OCIPlatform = &p
+	return nil
 }

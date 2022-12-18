@@ -95,7 +95,7 @@ Example - Push file "hi.txt" with multiple tags and concurrency level tuned:
 			if opts.artifactType != "" && opts.manifestConfigRef != "" {
 				return errors.New("--artifact-type and --config cannot both be provided")
 			}
-			return opts.ReadPassword()
+			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			refs := strings.Split(args[0], ",")

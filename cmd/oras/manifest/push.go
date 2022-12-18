@@ -81,7 +81,7 @@ Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'tag1
 			if opts.fileRef == "-" && opts.PasswordFromStdin {
 				return errors.New("`-` read file from input and `--password-stdin` read password from input cannot be both used")
 			}
-			return opts.ReadPassword()
+			return option.Parse(&opts)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			refs := strings.Split(args[0], ",")

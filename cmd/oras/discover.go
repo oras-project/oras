@@ -62,6 +62,9 @@ Example - Discover referrers with type 'test-artifact' of manifest 'hello:latest
   oras discover --artifact-type test-artifact localhost:5000/hello
 `,
 		Args: cobra.ExactArgs(1),
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return option.Parse(&opts)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
 			return runDiscover(opts)
@@ -83,14 +86,10 @@ func runDiscover(opts discoverOptions) error {
 	if repo.Reference.Reference == "" {
 		return errors.NewErrInvalidReference(repo.Reference)
 	}
-	targetPlatform, err := opts.Parse()
-	if err != nil {
-		return err
-	}
 
 	// discover artifacts
 	resolveOpts := oras.DefaultResolveOptions
-	resolveOpts.TargetPlatform = targetPlatform
+	resolveOpts.TargetPlatform = opts.OCIPlatform
 	desc, err := oras.Resolve(ctx, repo, repo.Reference.Reference, resolveOpts)
 	if err != nil {
 		return err
