@@ -145,9 +145,7 @@ func runCopy(opts copyOptions) error {
 			copyOptions := oras.CopyOptions{
 				CopyGraphOptions: extendedCopyOptions.CopyGraphOptions,
 			}
-			if opts.OCIPlatform != nil {
-				copyOptions.WithTargetPlatform(opts.OCIPlatform)
-			}
+			copyOptions.WithTargetPlatform(opts.OCIPlatform)
 			desc, err = oras.Copy(ctx, src, opts.srcRef, dst, opts.dstRef, copyOptions)
 		}
 	}
