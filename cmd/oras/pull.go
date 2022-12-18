@@ -101,10 +101,6 @@ Example - Pull all files with concurrency level tuned:
 
 func runPull(opts pullOptions) error {
 	var printed sync.Map
-	targetPlatform, err := opts.Parse()
-	if err != nil {
-		return err
-	}
 	srcRef, err := registry.ParseReference(opts.targetRef)
 	if err != nil {
 		return err
@@ -122,9 +118,7 @@ func runPull(opts pullOptions) error {
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
 	configPath, configMediaType := parseFileReference(opts.ManifestConfigRef, "")
-	if targetPlatform != nil {
-		copyOptions.WithTargetPlatform(targetPlatform)
-	}
+	copyOptions.WithTargetPlatform(opts.OCIPlatform)
 	var getConfigOnce sync.Once
 	copyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		statusFetcher := content.FetcherFunc(func(ctx context.Context, target ocispec.Descriptor) (fetched io.ReadCloser, fetchErr error) {
