@@ -28,10 +28,10 @@ import (
 const RemoteType = "remote"
 const OCILayoutType = "oci"
 
-// Target option struct.
+// target option struct.
 type BinaryTarget struct {
-	From Target
-	To   Target
+	From target
+	To   target
 }
 
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
@@ -42,14 +42,32 @@ func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
 }
 
 func (opts *BinaryTarget) Parse() error {
-	if err := opts.From.Parse(); err != nil {
+	if err := opts.From.parse(); err != nil {
 		return err
 	}
-	return opts.To.Parse()
+	return opts.To.parse()
 }
 
-// Target option struct.
+// Unary target option struct.
 type Target struct {
+	target
+}
+
+// ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
+// Commonly used for non-unary remote targets.
+func (opts *Target) ApplyFlags(fs *pflag.FlagSet) {
+	opts.target.applyFlags(fs)
+}
+
+func (opts *Target) Parse() error {
+	if err := opts.target.parse(); err != nil {
+		return err
+	}
+	return opts.target.Remote.Parse()
+}
+
+// target option struct.
+type target struct {
 	config  map[string]string
 	Type    string
 	Path    string
@@ -64,15 +82,15 @@ var defaultConfig = map[string]string{
 	"tarball": "false",
 }
 
-// ApplyFlags applies flags to a command flag set.
-func (opts *Target) ApplyFlags(fs *pflag.FlagSet) {
+// applyFlags applies flags to a command flag set.
+func (opts *target) applyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
 	opts.ApplyFlagsWithPrefix(fs, "", "")
 }
 
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
 // Commonly used for non-unary remote targets.
-func (opts *Target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
+func (opts *target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
 	var (
 		flagPrefix string
 		noteSuffix string
@@ -86,7 +104,7 @@ func (opts *Target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	opts.Remote.ApplyFlagsWithPrefix(fs, prefix, description)
 }
 
-func (opts *Target) Parse() error {
+func (opts *target) parse() error {
 	opts.Type = opts.config["type"]
 	opts.Path = opts.config["path"]
 
@@ -105,7 +123,7 @@ func (opts *Target) Parse() error {
 	return fmt.Errorf("unknown target type: %q", opts.Type)
 }
 
-func (opts *Target) NewTarget(reference string, common Common, isSrc bool) (oras.GraphTarget, error) {
+func (opts *target) NewTarget(reference string, common Common, isSrc bool) (oras.GraphTarget, error) {
 	switch opts.Type {
 	case OCILayoutType:
 		graphTarget, err := oci.New(opts.Path)
