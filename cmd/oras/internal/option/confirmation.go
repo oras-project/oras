@@ -43,11 +43,14 @@ func (opts *Confirmation) AskForConfirmation(r io.Reader, prompt string) (bool, 
 
 	fmt.Print(prompt, " [y/N] ")
 
+	var response string
 	scanner := bufio.NewScanner(r)
-	if ok := scanner.Scan(); !ok {
-		return false, scanner.Err()
+	if ok := scanner.Scan(); ok {
+		response = scanner.Text()
 	}
-	response := scanner.Text()
+	if err := scanner.Err(); err != nil {
+		return false, err
+	}
 
 	switch strings.ToLower(response) {
 	case "y", "yes":

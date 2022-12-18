@@ -39,7 +39,7 @@ type pushOptions struct {
 	option.Pretty
 	option.Remote
 
-	concurrency int64
+	concurrency int
 	targetRef   string
 	extraRefs   []string
 	fileRef     string
@@ -94,7 +94,7 @@ Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'tag1
 
 	option.ApplyFlags(&opts, cmd.Flags())
 	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", "", "media type of manifest")
-	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
+	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	return cmd
 }
 

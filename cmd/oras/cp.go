@@ -35,7 +35,7 @@ type copyOptions struct {
 	option.Platform
 	recursive bool
 
-	concurrency int64
+	concurrency int
 	srcRef      string
 	dstRef      string
 	extraRefs   []string
@@ -80,7 +80,7 @@ Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net
 	}
 
 	cmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "recursively copy the artifact and its referrer artifacts")
-	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
+	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 	option.ApplyFlags(&opts, cmd.Flags())
 
 	return cmd

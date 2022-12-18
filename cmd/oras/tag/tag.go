@@ -27,7 +27,7 @@ type tagOptions struct {
 	option.Common
 	option.Remote
 
-	concurrency int64
+	concurrency int
 	srcRef      string
 	targetRefs  []string
 }
@@ -65,7 +65,7 @@ Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.1', 'v1.0
 	}
 
 	option.ApplyFlags(&opts, cmd.Flags())
-	cmd.Flags().Int64VarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
+	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	return cmd
 }
 

@@ -69,6 +69,9 @@ func showTags(opts showTagsOptions) error {
 	if err != nil {
 		return err
 	}
+	if repo.Reference.Reference != "" {
+		return fmt.Errorf("unexpected tag or digest %q found in repository reference %q", repo.Reference.Reference, opts.targetRef)
+	}
 	return repo.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
 			if opts.excludeDigestTag && isDigestTag(tag) {
