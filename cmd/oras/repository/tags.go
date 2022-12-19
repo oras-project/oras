@@ -52,6 +52,9 @@ Example - Show tags of the target repository that include values lexically after
 `,
 		Args:    cobra.ExactArgs(1),
 		Aliases: []string{"show-tags"},
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return opts.ReadPassword()
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
 			return showTags(opts)
