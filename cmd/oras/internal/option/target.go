@@ -138,31 +138,29 @@ func (opts *target) parse() error {
 	return fmt.Errorf("unknown target type: %q", opts.Type)
 }
 
-func (opts *target) NewTarget(common Common) (oras.GraphTarget, error) {
+func (opts *target) NewTarget(common Common) (graphTarget oras.GraphTarget, err error) {
 	switch opts.Type {
 	case OCILayoutType:
-		var path string
 		if idx := strings.Index(opts.Fqdn, "@"); idx != -1 {
 			// `digest` found
 			opts.isTag = false
-			path = opts.Fqdn[:idx]
-			opts.Reference = path[idx+1:]
-		} else if idx = strings.Index(path, ":"); idx != -1 {
+			graphTarget, err = oci.New(opts.Fqdn[:idx])
+			opts.Reference = opts.Fqdn[idx+1:]
+		} else if idx = strings.Index(opts.Fqdn, ":"); idx != -1 {
 			// `tag` found
 			opts.isTag = true
-			path = opts.Fqdn[:idx]
-			opts.Reference = path[idx+1:]
+			graphTarget, err = oci.New(opts.Fqdn[:idx])
+			opts.Reference = opts.Fqdn[idx+1:]
+		} else {
+			graphTarget, err = oci.New(opts.Fqdn)
 		}
-		graphTarget, err := oci.New(path)
-		if err != nil {
-			return nil, err
-		}
-		return graphTarget, nil
+		return
 	case RemoteType:
 		repo, err := opts.NewRepository(opts.Fqdn, common)
 		if err != nil {
 			return nil, err
 		}
+		opts.Reference = repo.Reference.Reference
 		return repo, nil
 	}
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
