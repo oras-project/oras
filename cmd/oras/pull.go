@@ -26,7 +26,6 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
-	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
@@ -97,21 +96,8 @@ Example - Pull all files with concurrency level tuned:
 }
 
 func runPull(opts pullOptions) error {
-	var printed sync.Map
-	srcRef, err := registry.ParseReference(opts.targetRef)
-	if err != nil {
-		return err
-	}
-	target, err := opts.NewTarget(opts.targetRef, opts.Common, true)
-	if err != nil {
-		return err
-	}
-	src, err := opts.CachedTarget(target)
-	if err != nil {
-		return err
-	}
-
 	// Copy Options
+	var printed sync.Map
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
 	configPath, configMediaType := parseFileReference(opts.ManifestConfigRef, "")
@@ -183,6 +169,14 @@ func runPull(opts pullOptions) error {
 	}
 
 	ctx, _ := opts.SetLoggerLevel()
+	target, err := opts.NewReadonlyTarget(ctx, opts.Common)
+	if err != nil {
+		return err
+	}
+	src, err := opts.CachedTarget(target)
+	if err != nil {
+		return err
+	}
 	var dst = file.New(opts.Output)
 	dst.AllowPathTraversalOnWrite = opts.PathTraversal
 	dst.DisableOverwrite = opts.KeepOldFiles
