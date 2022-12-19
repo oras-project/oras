@@ -96,14 +96,11 @@ var defaultConfig = map[string]string{
 	"tarball": "false",
 }
 
-// applyFlags applies flags to a command flag set.
 func (opts *target) applyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
 	opts.ApplyFlagsWithPrefix(fs, "", "")
 }
 
-// ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
-// Commonly used for non-unary remote targets.
 func (opts *target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
 	var (
 		flagPrefix string
