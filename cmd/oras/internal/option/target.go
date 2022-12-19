@@ -202,6 +202,7 @@ func (opts *target) NewReadonlyTarget(ctx context.Context, common Common) (oras.
 		if err != nil {
 			return nil, err
 		}
+		opts.Reference = repo.Reference.Reference
 		return repo, nil
 	}
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
