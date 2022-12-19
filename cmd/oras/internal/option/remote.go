@@ -79,7 +79,7 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 }
 
 // Parse tries to read password with optional cmd prompt.
-func (opts *Remote) Parse() (err error) {
+func (opts *Remote) Parse() error {
 	if opts.Password != "" {
 		fmt.Fprintln(os.Stderr, "WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
 	} else if opts.PasswordFromStdin {

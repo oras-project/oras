@@ -78,9 +78,6 @@ Example - Pull all files with concurrency level tuned:
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := option.Parse(&opts); err != nil {
-				return err
-			}
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {

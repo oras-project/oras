@@ -18,6 +18,7 @@ package option
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2"
@@ -41,6 +42,12 @@ func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
 	opts.To.ApplyFlagsWithPrefix(fs, "to", "destination")
 }
 
+func (opts *BinaryTarget) SetReferenceInput(from, to string) error {
+	opts.From.refInput = from
+	opts.To.refInput = to
+	return nil
+}
+
 func (opts *BinaryTarget) Parse() error {
 	if err := opts.From.parse(); err != nil {
 		return err
@@ -51,6 +58,11 @@ func (opts *BinaryTarget) Parse() error {
 // Unary target option struct.
 type Target struct {
 	target
+}
+
+func (opts *Target) SetReferenceInput(ref string) error {
+	opts.refInput = ref
+	return nil
 }
 
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
@@ -68,16 +80,18 @@ func (opts *Target) Parse() error {
 
 // target option struct.
 type target struct {
-	config  map[string]string
-	Type    string
-	Path    string
-	Tarball bool
+	config     map[string]string
+	refInput   string
+	Type       string
+	Path       string
+	Compressed bool
+	Reference  string
+	Tarball    bool
 	Remote
 }
 
 // check value is cow. If not, use a NewFunction instead
 var defaultConfig = map[string]string{
-	"type":    "remote",
 	"path":    "",
 	"tarball": "false",
 }
@@ -105,15 +119,19 @@ func (opts *target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 }
 
 func (opts *target) parse() error {
-	opts.Type = opts.config["type"]
-	opts.Path = opts.config["path"]
-
-	isTarball := opts.config["tarball"]
-	if isTarball != "" {
-		var err error = nil
-		if opts.Tarball, err = strconv.ParseBool(isTarball); err != nil {
-			return err
+	if l, r, found := strings.Cut(opts.refInput, ":"); found && l == OCILayoutType {
+		opts.Type = l
+		opts.refInput = r
+		opts.Path = opts.config["path"]
+		isTarball := opts.config["tarball"]
+		if isTarball != "" {
+			var err error = nil
+			if opts.Tarball, err = strconv.ParseBool(isTarball); err != nil {
+				return err
+			}
 		}
+	} else {
+		opts.Type = RemoteType
 	}
 
 	switch opts.Type {
