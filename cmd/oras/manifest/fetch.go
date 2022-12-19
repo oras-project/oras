@@ -31,13 +31,12 @@ type fetchOptions struct {
 	option.Cache
 	option.Common
 	option.Descriptor
-	option.Remote
 	option.Platform
 	option.Pretty
+	option.Target
 
 	mediaTypes []string
 	outputPath string
-	targetRef  string
 }
 
 func fetchCmd() *cobra.Command {
@@ -65,6 +64,9 @@ Example - Fetch manifest with prettified json result:
   oras manifest fetch --pretty localhost:5000/hello:latest
 `,
 		Args: cobra.ExactArgs(1),
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			return opts.SetReferenceInput(args[0])
+		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.outputPath == "-" && opts.OutputDescriptor {
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
@@ -73,7 +75,6 @@ Example - Fetch manifest with prettified json result:
 		},
 		Aliases: []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
 			return fetchManifest(opts)
 		},
 	}
@@ -86,18 +87,16 @@ Example - Fetch manifest with prettified json result:
 
 func fetchManifest(opts fetchOptions) (fetchErr error) {
 	ctx, _ := opts.SetLoggerLevel()
-
-	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
+	target, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err
 	}
-
-	if repo.Reference.Reference == "" {
-		return oerrors.NewErrInvalidReference(repo.Reference)
+	if opts.Reference == "" {
+		return oerrors.NewErrInvalidReferenceStr(opts.Fqdn)
 	}
-	repo.ManifestMediaTypes = opts.mediaTypes
 
-	src, err := opts.CachedTarget(repo)
+	// repo.ManifestMediaTypes = opts.mediaTypes // TODO redesign this
+	src, err := opts.CachedTarget(target)
 	if err != nil {
 		return err
 	}
@@ -107,7 +106,7 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 		// fetch manifest descriptor only
 		fetchOpts := oras.DefaultResolveOptions
 		fetchOpts.TargetPlatform = opts.OCIPlatform
-		desc, err = oras.Resolve(ctx, src, opts.targetRef, fetchOpts)
+		desc, err = oras.Resolve(ctx, src, opts.Reference, fetchOpts)
 		if err != nil {
 			return err
 		}
@@ -116,7 +115,7 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 		var content []byte
 		fetchOpts := oras.DefaultFetchBytesOptions
 		fetchOpts.TargetPlatform = opts.OCIPlatform
-		desc, content, err = oras.FetchBytes(ctx, src, opts.targetRef, fetchOpts)
+		desc, content, err = oras.FetchBytes(ctx, src, opts.Reference, fetchOpts)
 		if err != nil {
 			return err
 		}

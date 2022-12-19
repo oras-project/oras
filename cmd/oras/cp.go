@@ -68,8 +68,7 @@ Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			refs := strings.Split(args[1], ",")
 			opts.extraRefs = refs[1:]
-			opts.BinaryTarget.SetReferenceInput(args[0], refs[0])
-			return nil
+			return opts.BinaryTarget.SetReferenceInput(args[0], refs[0])
 		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return option.Parse(&opts)

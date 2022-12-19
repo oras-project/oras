@@ -174,12 +174,12 @@ func (opts *target) NewReadonlyTarget(ctx context.Context, common Common) (oras.
 			// `digest` found
 			opts.isTag = false
 			path = opts.Fqdn[:idx]
-			opts.Reference = path[idx+1:]
-		} else if idx = strings.Index(path, ":"); idx != -1 {
+			opts.Reference = opts.Fqdn[idx+1:]
+		} else if idx = strings.Index(opts.Fqdn, ":"); idx != -1 {
 			// `tag` found
 			opts.isTag = true
 			path = opts.Fqdn[:idx]
-			opts.Reference = path[idx+1:]
+			opts.Reference = opts.Fqdn[idx+1:]
 		}
 		var graphTarget *oci.ReadOnlyStore
 		var err error
