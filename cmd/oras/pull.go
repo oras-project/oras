@@ -27,6 +27,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
 )
@@ -173,6 +174,9 @@ func runPull(opts pullOptions) error {
 	if err != nil {
 		return err
 	}
+	if opts.Reference == "" {
+		return errors.NewErrInvalidReferenceStr(opts.Fqdn)
+	}
 	src, err := opts.CachedTarget(target)
 	if err != nil {
 		return err
@@ -216,7 +220,7 @@ func runPull(opts pullOptions) error {
 	}
 
 	// Copy
-	desc, err := oras.Copy(ctx, src, srcRef.Reference, dst, srcRef.Reference, copyOptions)
+	desc, err := oras.Copy(ctx, src, opts.Reference, dst, opts.Reference, copyOptions)
 	if err != nil {
 		return err
 	}
