@@ -25,16 +25,16 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
+	"oras.land/oras-go/v2/registry/remote"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
 type attachOptions struct {
 	option.Common
-	option.Remote
 	option.Packer
+	option.Target
 
-	targetRef    string
 	artifactType string
 	concurrency  int
 }
@@ -64,12 +64,14 @@ Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json'
   oras attach --artifact-type doc/example --export-manifest manifest.json localhost:5000/hello:latest hi.txt
 `,
 		Args: cobra.MinimumNArgs(1),
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			opts.FileRefs = args[1:]
+			return opts.SetReferenceInput(args[0])
+		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
-			opts.FileRefs = args[1:]
 			return runAttach(opts)
 		},
 	}
@@ -96,14 +98,14 @@ func runAttach(opts attachOptions) error {
 	defer store.Close()
 	store.AllowPathTraversalOnWrite = opts.PathValidationDisabled
 
-	dst, err := opts.NewRepository(opts.targetRef, opts.Common)
+	dst, err := opts.NewTarget(opts.Common)
 	if err != nil {
 		return err
 	}
-	if dst.Reference.Reference == "" {
-		return oerrors.NewErrInvalidReference(dst.Reference)
+	if opts.Reference == "" {
+		return oerrors.NewErrInvalidReferenceStr(opts.Fqdn)
 	}
-	subject, err := dst.Resolve(ctx, dst.Reference.Reference)
+	subject, err := dst.Resolve(ctx, opts.Reference)
 	if err != nil {
 		return err
 	}
@@ -142,8 +144,15 @@ func runAttach(opts attachOptions) error {
 		return err
 	}
 
-	targetRef := dst.Reference
-	targetRef.Reference = subject.Digest.String()
+	var targetRef string
+	switch opts.Type {
+	case option.OCILayoutType:
+		targetRef = opts.Fqdn
+	case option.RemoteType:
+		ref := dst.(*remote.Repository).Reference
+		ref.Reference = subject.Digest.String()
+		targetRef = ref.String()
+	}
 	fmt.Println("Attached to", targetRef)
 	fmt.Println("Digest:", root.Digest)
 
