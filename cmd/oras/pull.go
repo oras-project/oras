@@ -39,7 +39,6 @@ type pullOptions struct {
 	option.Platform
 
 	concurrency       int
-	targetRef         string
 	KeepOldFiles      bool
 	IncludeSubject    bool
 	PathTraversal     bool
@@ -77,11 +76,13 @@ Example - Pull all files with concurrency level tuned:
   oras pull --concurrency 6 localhost:5000/hello:latest
 `,
 		Args: cobra.ExactArgs(1),
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			return opts.SetReferenceInput(args[0])
+		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
 			return runPull(opts)
 		},
 	}
@@ -227,7 +228,7 @@ func runPull(opts pullOptions) error {
 	if pulledEmpty {
 		fmt.Println("Downloaded empty artifact")
 	}
-	fmt.Println("Pulled", opts.targetRef)
+	fmt.Println("Pulled", opts.Fqdn)
 	fmt.Println("Digest:", desc.Digest)
 	return nil
 }
