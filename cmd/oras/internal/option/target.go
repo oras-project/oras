@@ -16,14 +16,15 @@ limitations under the License.
 package option
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
-	"oras.land/oras/cmd/oras/internal/errors"
 )
 
 const RemoteType = "remote"
@@ -43,8 +44,8 @@ func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
 }
 
 func (opts *BinaryTarget) SetReferenceInput(from, to string) error {
-	opts.From.refInput = from
-	opts.To.refInput = to
+	opts.From.Fqdn = from
+	opts.To.Fqdn = to
 	return nil
 }
 
@@ -61,7 +62,7 @@ type Target struct {
 }
 
 func (opts *Target) SetReferenceInput(ref string) error {
-	opts.refInput = ref
+	opts.Fqdn = ref
 	return nil
 }
 
@@ -80,20 +81,15 @@ func (opts *Target) Parse() error {
 
 // target option struct.
 type target struct {
-	config     map[string]string
-	refInput   string
-	Type       string
-	Path       string
-	Compressed bool
-	Reference  string
-	Tarball    bool
+	config  map[string]string
+	Fqdn    string
+	Type    string
+	tarball bool
 	Remote
-}
 
-// check value is cow. If not, use a NewFunction instead
-var defaultConfig = map[string]string{
-	"path":    "",
-	"tarball": "false",
+	// need new reference in oras-go
+	isTag     bool
+	Reference string
 }
 
 func (opts *target) applyFlags(fs *pflag.FlagSet) {
@@ -115,15 +111,19 @@ func (opts *target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	opts.Remote.ApplyFlagsWithPrefix(fs, prefix, description)
 }
 
+// check value is cow. If not, use a NewFunction instead
+var defaultConfig = map[string]string{
+	"tarball": "false",
+}
+
 func (opts *target) parse() error {
-	if l, r, found := strings.Cut(opts.refInput, ":"); found && l == OCILayoutType {
+	if l, r, found := strings.Cut(opts.Fqdn, ":"); found && l == OCILayoutType {
 		opts.Type = l
-		opts.refInput = r
-		opts.Path = opts.config["path"]
+		opts.Fqdn = r
 		isTarball := opts.config["tarball"]
 		if isTarball != "" {
 			var err error = nil
-			if opts.Tarball, err = strconv.ParseBool(isTarball); err != nil {
+			if opts.tarball, err = strconv.ParseBool(isTarball); err != nil {
 				return err
 			}
 		}
@@ -138,21 +138,69 @@ func (opts *target) parse() error {
 	return fmt.Errorf("unknown target type: %q", opts.Type)
 }
 
-func (opts *target) NewTarget(reference string, common Common, isSrc bool) (oras.GraphTarget, error) {
+func (opts *target) NewTarget(common Common) (oras.GraphTarget, error) {
 	switch opts.Type {
 	case OCILayoutType:
-		graphTarget, err := oci.New(opts.Path)
+		var path string
+		if idx := strings.Index(opts.Fqdn, "@"); idx != -1 {
+			// `digest` found
+			opts.isTag = false
+			path = opts.Fqdn[:idx]
+			opts.Reference = path[idx+1:]
+		} else if idx = strings.Index(path, ":"); idx != -1 {
+			// `tag` found
+			opts.isTag = true
+			path = opts.Fqdn[:idx]
+			opts.Reference = path[idx+1:]
+		}
+		graphTarget, err := oci.New(path)
 		if err != nil {
 			return nil, err
 		}
 		return graphTarget, nil
 	case RemoteType:
-		repo, err := opts.NewRepository(reference, common)
+		repo, err := opts.NewRepository(opts.Fqdn, common)
 		if err != nil {
 			return nil, err
 		}
-		if isSrc && repo.Reference.Reference == "" {
-			return nil, errors.NewErrInvalidReference(repo.Reference)
+		return repo, nil
+	}
+	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
+}
+
+func (opts *target) NewReadonlyTarget(ctx context.Context, common Common) (oras.ReadOnlyGraphTarget, error) {
+	switch opts.Type {
+	case OCILayoutType:
+		var path string
+		if idx := strings.Index(opts.Fqdn, "@"); idx != -1 {
+			// `digest` found
+			opts.isTag = false
+			path = opts.Fqdn[:idx]
+			opts.Reference = path[idx+1:]
+		} else if idx = strings.Index(path, ":"); idx != -1 {
+			// `tag` found
+			opts.isTag = true
+			path = opts.Fqdn[:idx]
+			opts.Reference = path[idx+1:]
+		}
+		var graphTarget *oci.ReadOnlyStore
+		var err error
+		if opts.tarball {
+			graphTarget, err = oci.NewFromTar(ctx, path)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			graphTarget, err = oci.NewFromFS(ctx, os.DirFS(path))
+			if err != nil {
+				return nil, err
+			}
+		}
+		return graphTarget, nil
+	case RemoteType:
+		repo, err := opts.NewRepository(opts.Fqdn, common)
+		if err != nil {
+			return nil, err
 		}
 		return repo, nil
 	}

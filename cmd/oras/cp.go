@@ -26,6 +26,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -98,9 +99,12 @@ func runCopy(opts copyOptions) error {
 	if err != nil {
 		return err
 	}
-	src, err := opts.From.NewTarget(opts.srcRef, opts.Common, true)
+	src, err := opts.From.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err
+	}
+	if opts.From.Reference == "" {
+		return errors.NewErrInvalidReferenceStr(opts.From.Fqdn)
 	}
 
 	// Prepare destination
@@ -108,7 +112,7 @@ func runCopy(opts copyOptions) error {
 	if err != nil {
 		return err
 	}
-	dst, err := opts.To.NewTarget(opts.dstRef, opts.Common, false)
+	dst, err := opts.To.NewTarget(opts.Common)
 	if err != nil {
 		return err
 	}

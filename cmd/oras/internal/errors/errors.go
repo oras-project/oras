@@ -25,3 +25,8 @@ import (
 func NewErrInvalidReference(ref registry.Reference) error {
 	return fmt.Errorf("%s: invalid image reference, expecting <name:tag|name@digest>", ref)
 }
+
+// NewErrInvalidReferenceStr creates a new error based on the reference string.
+func NewErrInvalidReferenceStr(ref string) error {
+	return fmt.Errorf("%s: invalid image reference, expecting <name:tag|name@digest>", ref)
+}
