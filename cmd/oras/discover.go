@@ -62,6 +62,9 @@ Example - Discover referrers with type 'test-artifact' of manifest 'hello:latest
   oras discover --artifact-type test-artifact localhost:5000/hello
 `,
 		Args: cobra.ExactArgs(1),
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return opts.ReadPassword()
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
 			return runDiscover(opts)

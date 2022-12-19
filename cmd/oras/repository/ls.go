@@ -46,6 +46,9 @@ Example - List the repositories under the registry that include values lexically
 `,
 		Args:    cobra.ExactArgs(1),
 		Aliases: []string{"list"},
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return opts.ReadPassword()
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.hostname = args[0]
 			return listRepository(opts)
