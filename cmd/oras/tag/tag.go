@@ -25,10 +25,9 @@ import (
 
 type tagOptions struct {
 	option.Common
-	option.Remote
+	option.Target
 
 	concurrency int
-	srcRef      string
 	targetRefs  []string
 }
 
@@ -54,12 +53,14 @@ Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.1', 'v1.0
   oras tag --concurrency 1 localhost:5000/hello:v1.0.1 v1.0.2 latest
 `,
 		Args: cobra.MinimumNArgs(2),
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			opts.targetRefs = args[1:]
+			return opts.SetReferenceInput(args[0])
+		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return option.Parse(&opts)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
-			opts.srcRef = args[0]
-			opts.targetRefs = args[1:]
 			return tagManifest(opts)
 		},
 	}
@@ -71,16 +72,16 @@ Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.1', 'v1.0
 
 func tagManifest(opts tagOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
-	repo, err := opts.NewRepository(opts.srcRef, opts.Common)
+
+	target, err := opts.NewTarget(opts.Common)
 	if err != nil {
 		return err
 	}
-
-	if repo.Reference.Reference == "" {
-		return errors.NewErrInvalidReference(repo.Reference)
+	if opts.Reference == "" {
+		return errors.NewErrInvalidReferenceStr(opts.Fqdn)
 	}
 
 	tagNOpts := oras.DefaultTagNOptions
 	tagNOpts.Concurrency = opts.concurrency
-	return oras.TagN(ctx, &display.TagManifestStatusPrinter{GraphTarget: repo}, opts.srcRef, opts.targetRefs, tagNOpts)
+	return oras.TagN(ctx, &display.TagManifestStatusPrinter{GraphTarget: target}, opts.Reference, opts.targetRefs, tagNOpts)
 }
