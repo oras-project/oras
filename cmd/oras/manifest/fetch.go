@@ -23,6 +23,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/registry/remote"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -94,8 +95,10 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 	if opts.Reference == "" {
 		return oerrors.NewErrInvalidReferenceStr(opts.Fqdn)
 	}
+	if repo, ok := target.(*remote.Repository); ok {
+		repo.ManifestMediaTypes = opts.mediaTypes
+	}
 
-	// repo.ManifestMediaTypes = opts.mediaTypes // TODO redesign this
 	src, err := opts.CachedTarget(target)
 	if err != nil {
 		return err
