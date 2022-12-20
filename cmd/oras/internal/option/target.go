@@ -113,13 +113,14 @@ func (opts *target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 
 // check value is cow. If not, use a NewFunction instead
 var defaultConfig = map[string]string{
+	"type":    "remote",
 	"tarball": "false",
 }
 
 func (opts *target) parse() error {
-	if l, r, found := strings.Cut(opts.Fqdn, ":"); found && l == OCILayoutType {
-		opts.Type = l
-		opts.Fqdn = r
+	opts.Type = opts.config["type"]
+	switch opts.Type {
+	case OCILayoutType:
 		isTarball := opts.config["tarball"]
 		if isTarball != "" {
 			var err error = nil
@@ -127,14 +128,9 @@ func (opts *target) parse() error {
 				return err
 			}
 		}
-	} else {
-		opts.Type = RemoteType
+	case RemoteType:
 	}
 
-	switch opts.Type {
-	case OCILayoutType, RemoteType:
-		return nil
-	}
 	return fmt.Errorf("unknown target type: %q", opts.Type)
 }
 
