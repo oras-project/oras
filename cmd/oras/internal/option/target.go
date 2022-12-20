@@ -128,7 +128,9 @@ func (opts *target) parse() error {
 				return err
 			}
 		}
+		return nil
 	case RemoteType:
+		return nil
 	}
 
 	return fmt.Errorf("unknown target type: %q", opts.Type)
