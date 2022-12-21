@@ -31,12 +31,11 @@ type pushBlobOptions struct {
 	option.Common
 	option.Descriptor
 	option.Pretty
-	option.Remote
+	option.Target
 
-	fileRef   string
 	mediaType string
 	size      int64
-	targetRef string
+	fileRef   string
 }
 
 func pushCmd() *cobra.Command {
@@ -70,8 +69,10 @@ Example - Push blob without TLS:
   oras blob push --insecure localhost:5000/hello hi.txt
 `,
 		Args: cobra.ExactArgs(2),
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			return opts.SetReferenceInput(args[0])
+		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
 			opts.fileRef = args[1]
 			if opts.fileRef == "-" {
 				if opts.PasswordFromStdin {
@@ -97,19 +98,19 @@ Example - Push blob without TLS:
 func pushBlob(opts pushBlobOptions) (err error) {
 	ctx, _ := opts.SetLoggerLevel()
 
-	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
+	target, err := opts.NewTarget(opts.Common)
 	if err != nil {
 		return err
 	}
 
 	// prepare blob content
-	desc, rc, err := file.PrepareBlobContent(opts.fileRef, opts.mediaType, repo.Reference.Reference, opts.size)
+	desc, rc, err := file.PrepareBlobContent(opts.fileRef, opts.mediaType, opts.Reference, opts.size)
 	if err != nil {
 		return err
 	}
 	defer rc.Close()
 
-	exists, err := repo.Exists(ctx, desc)
+	exists, err := target.Exists(ctx, desc)
 	if err != nil {
 		return err
 	}
@@ -122,7 +123,7 @@ func pushBlob(opts pushBlobOptions) (err error) {
 		if err := display.PrintStatus(desc, "Uploading", verbose); err != nil {
 			return err
 		}
-		if err = repo.Push(ctx, desc, rc); err != nil {
+		if err = target.Push(ctx, desc, rc); err != nil {
 			return err
 		}
 		if err := display.PrintStatus(desc, "Uploaded ", verbose); err != nil {
@@ -139,7 +140,7 @@ func pushBlob(opts pushBlobOptions) (err error) {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	fmt.Println("Pushed", opts.targetRef)
+	fmt.Println("Pushed", opts.Fqdn)
 	fmt.Println("Digest:", desc.Digest)
 
 	return nil
