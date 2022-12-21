@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -88,6 +89,7 @@ Example - Fetch the blob, save it to a local file and print the descriptor:
 
 func fetchBlob(opts fetchBlobOptions) (fetchErr error) {
 	ctx, _ := opts.SetLoggerLevel()
+	var target oras.ReadOnlyTarget
 	target, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err
@@ -96,6 +98,9 @@ func fetchBlob(opts fetchBlobOptions) (fetchErr error) {
 		return fmt.Errorf("%s: blob reference must be of the form <name@digest>: %w", opts.Fqdn, err)
 	}
 
+	if repo, ok := target.(*remote.Repository); ok {
+		target = repo.Blobs()
+	}
 	src, err := opts.CachedTarget(target)
 	if err != nil {
 		return err
