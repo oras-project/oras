@@ -35,8 +35,8 @@ import (
 type pullOptions struct {
 	option.Cache
 	option.Common
-	option.Target
 	option.Platform
+	option.Target
 
 	concurrency       int
 	KeepOldFiles      bool
