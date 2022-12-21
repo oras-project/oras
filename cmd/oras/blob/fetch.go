@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
@@ -33,10 +34,9 @@ type fetchBlobOptions struct {
 	option.Common
 	option.Descriptor
 	option.Pretty
-	option.Remote
+	option.Target
 
 	outputPath string
-	targetRef  string
 }
 
 func fetchCmd() *cobra.Command {
@@ -61,6 +61,9 @@ Example - Fetch the blob, save it to a local file and print the descriptor:
   oras blob fetch --output blob.tar.gz --descriptor localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 `,
 		Args: cobra.ExactArgs(1),
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			return opts.SetReferenceInput(args[0])
+		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.outputPath == "" && !opts.OutputDescriptor {
 				return errors.New("either `--output` or `--descriptor` must be provided")
@@ -74,7 +77,6 @@ Example - Fetch the blob, save it to a local file and print the descriptor:
 		},
 		Aliases: []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
 			return fetchBlob(opts)
 		},
 	}
@@ -86,17 +88,15 @@ Example - Fetch the blob, save it to a local file and print the descriptor:
 
 func fetchBlob(opts fetchBlobOptions) (fetchErr error) {
 	ctx, _ := opts.SetLoggerLevel()
-
-	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
+	target, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err
 	}
-
-	if _, err = repo.Reference.Digest(); err != nil {
-		return fmt.Errorf("%s: blob reference must be of the form <name@digest>", opts.targetRef)
+	if err := digest.Digest(opts.Reference).Validate(); err != nil {
+		return fmt.Errorf("%s: blob reference must be of the form <name@digest>: %w", opts.Fqdn, err)
 	}
 
-	src, err := opts.CachedTarget(repo.Blobs())
+	src, err := opts.CachedTarget(target)
 	if err != nil {
 		return err
 	}
@@ -104,14 +104,14 @@ func fetchBlob(opts fetchBlobOptions) (fetchErr error) {
 	var desc ocispec.Descriptor
 	if opts.outputPath == "" {
 		// fetch blob descriptor only
-		desc, err = oras.Resolve(ctx, src, opts.targetRef, oras.DefaultResolveOptions)
+		desc, err = oras.Resolve(ctx, src, opts.Reference, oras.DefaultResolveOptions)
 		if err != nil {
 			return err
 		}
 	} else {
 		// fetch blob content
 		var rc io.ReadCloser
-		desc, rc, err = oras.Fetch(ctx, src, opts.targetRef, oras.DefaultFetchOptions)
+		desc, rc, err = oras.Fetch(ctx, src, opts.Reference, oras.DefaultFetchOptions)
 		if err != nil {
 			return err
 		}

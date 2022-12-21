@@ -102,6 +102,7 @@ func runAttach(opts attachOptions) error {
 	if err != nil {
 		return err
 	}
+	// sanctity check: should not be tarball
 	if opts.Reference == "" {
 		return oerrors.NewErrInvalidReferenceStr(opts.Fqdn)
 	}

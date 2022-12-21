@@ -139,12 +139,12 @@ func (opts *target) parse() error {
 func (opts *target) NewTarget(common Common) (graphTarget oras.GraphTarget, err error) {
 	switch opts.Type {
 	case OCILayoutType:
-		if idx := strings.Index(opts.Fqdn, "@"); idx != -1 {
+		if idx := strings.LastIndex(opts.Fqdn, "@"); idx != -1 {
 			// `digest` found
 			opts.isTag = false
 			graphTarget, err = oci.New(opts.Fqdn[:idx])
 			opts.Reference = opts.Fqdn[idx+1:]
-		} else if idx = strings.Index(opts.Fqdn, ":"); idx != -1 {
+		} else if idx = strings.LastIndex(opts.Fqdn, ":"); idx != -1 {
 			// `tag` found
 			opts.isTag = true
 			graphTarget, err = oci.New(opts.Fqdn[:idx])
@@ -168,12 +168,12 @@ func (opts *target) NewReadonlyTarget(ctx context.Context, common Common) (oras.
 	switch opts.Type {
 	case OCILayoutType:
 		var path string
-		if idx := strings.Index(opts.Fqdn, "@"); idx != -1 {
+		if idx := strings.LastIndex(opts.Fqdn, "@"); idx != -1 {
 			// `digest` found
 			opts.isTag = false
 			path = opts.Fqdn[:idx]
 			opts.Reference = opts.Fqdn[idx+1:]
-		} else if idx = strings.Index(opts.Fqdn, ":"); idx != -1 {
+		} else if idx = strings.LastIndex(opts.Fqdn, ":"); idx != -1 {
 			// `tag` found
 			opts.isTag = true
 			path = opts.Fqdn[:idx]
