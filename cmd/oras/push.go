@@ -37,10 +37,9 @@ import (
 
 type pushOptions struct {
 	option.Common
-	option.Remote
 	option.Packer
+	option.Target
 
-	targetRef         string
 	extraRefs         []string
 	manifestConfigRef string
 	artifactType      string
@@ -91,6 +90,12 @@ Example - Push file "hi.txt" with multiple tags and concurrency level tuned:
   oras push --concurrency 6 localhost:5000/hello:tag1,tag2,tag3 hi.txt
 `,
 		Args: cobra.MinimumNArgs(1),
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			refs := strings.Split(args[0], ",")
+			opts.extraRefs = refs[1:]
+			opts.FileRefs = args[1:]
+			return opts.SetReferenceInput(args[0])
+		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.artifactType != "" && opts.manifestConfigRef != "" {
 				return errors.New("--artifact-type and --config cannot both be provided")
@@ -98,10 +103,6 @@ Example - Push file "hi.txt" with multiple tags and concurrency level tuned:
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			refs := strings.Split(args[0], ",")
-			opts.targetRef = refs[0]
-			opts.extraRefs = refs[1:]
-			opts.FileRefs = args[1:]
 			return runPush(opts)
 		},
 	}
@@ -154,7 +155,7 @@ func runPush(opts pushOptions) error {
 	}
 
 	// prepare push
-	dst, err := opts.NewRepository(opts.targetRef, opts.Common)
+	dst, err := opts.NewTarget(opts.Common)
 	if err != nil {
 		return err
 	}
@@ -162,7 +163,7 @@ func runPush(opts pushOptions) error {
 	copyOptions.Concurrency = opts.concurrency
 	updateDisplayOption(&copyOptions.CopyGraphOptions, store, opts.Verbose)
 	copy := func(root ocispec.Descriptor) error {
-		if tag := dst.Reference.Reference; tag == "" {
+		if tag := opts.Reference; tag == "" {
 			err = oras.CopyGraph(ctx, store, dst, root, copyOptions.CopyGraphOptions)
 		} else {
 			_, err = oras.Copy(ctx, store, root.Digest.String(), dst, tag, copyOptions)
@@ -175,7 +176,7 @@ func runPush(opts pushOptions) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("Pushed", opts.targetRef)
+	fmt.Println("Pushed", opts.Fqdn)
 
 	if len(opts.extraRefs) != 0 {
 		contentBytes, err := content.FetchAll(ctx, store, root)
