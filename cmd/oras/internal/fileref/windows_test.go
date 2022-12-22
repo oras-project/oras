@@ -53,7 +53,6 @@ func TestdoParse(t *testing.T) {
 		{"windows file name2 and default type", args{`z:b`, "c"}, `Z:\b`, "c"},
 		{"windows file name and media type", args{`a:\b:c`, "d"}, `a:\b`, "c"},
 		{"windows file name and empty media type", args{`a:\b:`, "c"}, `a:\b`, ""},
-		{"windows file name and empty media type", args{`a:\b:`, "c"}, `a:\b`, ""},
 		{"numeric file name and media type", args{`1:\a`, "b"}, `1`, `\a`},
 		{"non-windows file name and media type", args{`ab:\c`, ""}, `ab`, `\c`},
 		{"non-windows file name and media type, default type ignored", args{`1:\a`, "b"}, `1`, `\a`},

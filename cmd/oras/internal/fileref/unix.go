@@ -19,7 +19,7 @@ package fileref
 
 import "strings"
 
-//Parse parses file reference on unix.
+// Parse parses file reference on unix.
 func Parse(reference string, mediaType string) (filePath, mediatype string, err error) {
 	i := strings.LastIndex(reference, ":")
 	if i < 0 {
