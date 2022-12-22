@@ -33,6 +33,12 @@ var _ = Describe("Common registry user", Ordered, func() {
 			RunWithoutLogin("push", "-a", "key=value", Host+"/repo:tag")
 			RunWithoutLogin("pull", Host+"/repo:tag")
 			RunWithoutLogin("manifest", "fetch", Host+"/repo:tag")
+			RunWithoutLogin("blob", "delete", Host+"/repo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+			RunWithoutLogin("blob", "push", Host+"/repo", WriteTempFile("blob", "test"))
+			RunWithoutLogin("tag", Host+"/repo:tag", "tag1")
+			RunWithoutLogin("repo", "ls", Host)
+			RunWithoutLogin("repo", "tags", Reference(Host, "repo", ""))
+			RunWithoutLogin("manifest", "fetch-config", Host+"/repo:tag")
 		})
 	})
 
@@ -49,7 +55,7 @@ var _ = Describe("Common registry user", Ordered, func() {
 
 func RunWithoutLogin(args ...string) {
 	ORAS(append(args, "--registry-config", AuthConfigPath)...).
-		WithFailureCheck().
+		ExpectFailure().
 		MatchErrKeyWords("Error:", "credential required").
 		WithDescription("fail without logging in").Exec()
 }

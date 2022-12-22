@@ -62,6 +62,9 @@ Example - Discover referrers with type 'test-artifact' of manifest 'hello:latest
   oras discover --artifact-type test-artifact localhost:5000/hello
 `,
 		Args: cobra.ExactArgs(1),
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return opts.ReadPassword()
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
 			return runDiscover(opts)
@@ -127,7 +130,7 @@ func runDiscover(opts discoverOptions) error {
 }
 
 func fetchReferrers(ctx context.Context, repo *remote.Repository, desc ocispec.Descriptor, artifactType string) ([]ocispec.Descriptor, error) {
-	var results []ocispec.Descriptor
+	results := []ocispec.Descriptor{}
 	err := repo.Referrers(ctx, desc, artifactType, func(referrers []ocispec.Descriptor) error {
 		results = append(results, referrers...)
 		return nil

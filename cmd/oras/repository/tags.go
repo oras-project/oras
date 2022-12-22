@@ -52,6 +52,9 @@ Example - Show tags of the target repository that include values lexically after
 `,
 		Args:    cobra.ExactArgs(1),
 		Aliases: []string{"show-tags"},
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return opts.ReadPassword()
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
 			return showTags(opts)
@@ -68,6 +71,9 @@ func showTags(opts showTagsOptions) error {
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
+	}
+	if repo.Reference.Reference != "" {
+		return fmt.Errorf("unexpected tag or digest %q found in repository reference %q", repo.Reference.Reference, opts.targetRef)
 	}
 	return repo.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
