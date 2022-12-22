@@ -39,6 +39,8 @@ type BinaryTarget struct {
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
 // Commonly used for non-unary remote targets.
 func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
+	opts.From.ApplyShortFlagsWithPrefix(fs, "from", "source")
+	opts.From.ApplyShortFlagsWithPrefix(fs, "to", "destination")
 	opts.From.ApplyFlagsWithPrefix(fs, "from", "source")
 	opts.To.ApplyFlagsWithPrefix(fs, "to", "destination")
 }
@@ -79,15 +81,35 @@ func (opts *Target) Parse() error {
 	return opts.target.Remote.Parse()
 }
 
-// target option struct.
-type target struct {
+type OCI struct {
 	config  map[string]string
 	Fqdn    string
 	Type    string
 	tarball bool
+
+	isOCIFolder  bool
+	isOCITarball bool
+}
+
+func (opts *OCI) ApplyShortFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
+	var (
+		flagPrefix string
+		notePrefix string
+	)
+	if prefix != "" {
+		flagPrefix = prefix + "-"
+		notePrefix = description + " "
+	}
+	fs.BoolVarP(&opts.isOCIFolder, flagPrefix+"oci", "", false, "Set "+notePrefix+"target as an OCI-layout folder")
+	fs.BoolVarP(&opts.isOCITarball, flagPrefix+"ocitar", "", false, "Set "+notePrefix+"target as an OCI-layout tarball")
+}
+
+// target option struct.
+type target struct {
+	OCI
 	Remote
 
-	// need new reference in oras-go
+	// might design need new reference in oras-go for oci-layout target
 	isTag     bool
 	Reference string
 }
@@ -95,6 +117,7 @@ type target struct {
 func (opts *target) applyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
 	opts.ApplyFlagsWithPrefix(fs, "", "")
+	opts.ApplyShortFlagsWithPrefix(fs, "", "")
 }
 
 func (opts *target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
@@ -118,6 +141,17 @@ var defaultConfig = map[string]string{
 }
 
 func (opts *target) parse() error {
+	// short flag
+	if opts.isOCIFolder {
+		opts.Type = OCILayoutType
+		opts.tarball = false
+		return nil
+	} else if opts.isOCITarball {
+		opts.Type = OCILayoutType
+		opts.tarball = true
+		return nil
+	}
+
 	opts.Type = opts.config["type"]
 	switch opts.Type {
 	case OCILayoutType:

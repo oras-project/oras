@@ -148,7 +148,7 @@ func runCopy(opts copyOptions) error {
 		return err
 	}
 
-	fmt.Printf("Copied [%s]%s => [%s]%s \n", opts.From.Type, opts.From.Fqdn, opts.To.Type, opts.To.Fqdn)
+	fmt.Printf("Copied [%s] %s => [%s] %s \n", opts.From.Type, opts.From.Fqdn, opts.To.Type, opts.To.Fqdn)
 
 	if len(opts.extraRefs) != 0 {
 		tagNOpts := oras.DefaultTagNOptions
