@@ -109,7 +109,7 @@ func (opts *Remote) ReadPassword() (err error) {
 }
 
 // parseResolve parses resolve flag.
-func (opts *Remote) parseResolve() (err error) {
+func (opts *Remote) parseResolve() error {
 	errorMsg := "failed to parse resolve flag %q: %s"
 	for _, r := range opts.resolveFlag {
 		parts := strings.SplitN(r, ":", 3)
