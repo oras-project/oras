@@ -36,7 +36,7 @@ import (
 	"oras.land/oras/internal/version"
 )
 
-type ResolveEntry struct {
+type resolveEntry struct {
 	from string
 	to   net.IP
 	port int
@@ -44,8 +44,6 @@ type ResolveEntry struct {
 
 // Remote options struct.
 type Remote struct {
-	resolveFlag []string
-
 	CACertFilePath    string
 	PlainHTTP         bool
 	Insecure          bool
@@ -53,7 +51,8 @@ type Remote struct {
 	Username          string
 	PasswordFromStdin bool
 	Password          string
-	Resolves          []*ResolveEntry
+	resolve           map[string]string
+	resolveFlag       []string
 }
 
 // ApplyFlags applies flags to a command flag set.
@@ -110,28 +109,27 @@ func (opts *Remote) ReadPassword() (err error) {
 
 // parseResolve parses resolve flag.
 func (opts *Remote) parseResolve() error {
-	errorMsg := "failed to parse resolve flag %q: %s"
+	formatError := func(param, message string) error {
+		return fmt.Errorf("failed to parse resolve flag %q: %s", param, message)
+	}
+	opts.resolve = make(map[string]string)
 	for _, r := range opts.resolveFlag {
 		parts := strings.SplitN(r, ":", 3)
 		if len(parts) < 3 {
-			return fmt.Errorf(errorMsg, r, "expecting host:port:address")
+			return formatError(r, "expecting host:port:address")
 		}
 
 		port, err := strconv.Atoi(parts[1])
 		if err != nil {
-			return fmt.Errorf(errorMsg, r, "expecting uint64 port")
+			return formatError(r, "expecting uint64 port")
 		}
 
 		// ipv6 zone is not parsed
 		to := net.ParseIP(parts[2])
 		if to == nil {
-			return fmt.Errorf(errorMsg, r, "invalid IP address")
+			return formatError(r, "invalid IP address")
 		}
-		opts.Resolves = append(opts.Resolves, &ResolveEntry{
-			from: parts[0],
-			port: port,
-			to:   to,
-		})
+		opts.resolve[fmt.Sprintf("%s:%d", parts[0], port)] = fmt.Sprintf("%s:%d", to, port)
 	}
 	return nil
 }
@@ -159,17 +157,12 @@ var defaultDialer = &net.Dialer{
 // DialContext connects to the addr on the named network using
 // the provided context.
 func (opts *Remote) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
-	var matched *ResolveEntry
-	for _, r := range opts.Resolves {
-		if addr == fmt.Sprintf("%s:%d", r.from, r.port) {
-			matched = r
-			break
+	for k := range opts.resolve {
+		if k == addr {
+			addr = opts.resolve[k]
 		}
 	}
-	if matched == nil {
-		return defaultDialer.DialContext(ctx, network, addr)
-	}
-	return net.DialTCP(network, nil, &net.TCPAddr{IP: matched.to, Port: matched.port})
+	return defaultDialer.DialContext(ctx, network, addr)
 }
 
 // authClient assembles a oras auth client.

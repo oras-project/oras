@@ -290,31 +290,25 @@ func TestRemote_parseResolve_defaultFlag(t *testing.T) {
 	if err := opts.parseResolve(); err != nil {
 		t.Fatalf("should succeed parsing empty resolve flag but got %v", err)
 	}
-	if len(opts.Resolves) != 0 {
-		t.Fatalf("expect empty resolve entries but got %v", opts.Resolves)
+	if len(opts.resolve) != 0 {
+		t.Fatalf("expect empty resolve entries but got %v", opts.resolve)
 	}
 }
 
 func TestRemote_parseResolve_ipv4(t *testing.T) {
 	host := "mockedHost"
-	port := 12345
+	port := "12345"
 	address := "192.168.1.1"
-	opts := &Remote{resolveFlag: []string{fmt.Sprintf("%s:%d:%s", host, port, address)}}
+	opts := &Remote{resolveFlag: []string{fmt.Sprintf("%s:%s:%s", host, port, address)}}
 	if err := opts.parseResolve(); err != nil {
 		t.Fatalf("should succeed parsing resolve flag but got %v", err)
 	}
-	if len(opts.Resolves) != 1 {
-		t.Fatalf("expect 1 resolve entries but got %v", opts.Resolves)
+	if len(opts.resolve) != 1 {
+		t.Fatalf("expect 1 resolve entries but got %v", opts.resolve)
 	}
-
-	entry := opts.Resolves[0]
-	if entry.from != host {
-		t.Fatalf("expect resolved host %q but got %q", host, entry.from)
-	}
-	if entry.to.To4().String() != address {
-		t.Fatalf("expect resolved address %q but got %q", address, entry.to)
-	}
-	if entry.port != port {
-		t.Fatalf("expect resolved port %d but port %d", port, entry.port)
+	want := make(map[string]string)
+	want[host+":"+port] = address + ":" + port
+	if !reflect.DeepEqual(want, opts.resolve) {
+		t.Fatalf("expecting %v  but got %v", want, opts.resolve)
 	}
 }
