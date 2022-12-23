@@ -35,11 +35,6 @@ func Test_ParseFileReference(t *testing.T) {
 		{"file name and default media type", args{"az", "c"}, "az", "c"},
 		{"file name and media type, default type ignored", args{"az:b", "c"}, "az", "b"},
 		{"file name and empty media type, default type ignored", args{"az:", "c"}, "az", ""},
-
-		{"empty file name and media type", args{":a", "b"}, "", "a"},
-		{"empty file name and empty media type", args{":", "a"}, "", ""},
-		{"empty name and default media type", args{"", "a"}, "", "a"},
-
 		{"colon file name and media type", args{"az:b:c", "d"}, "az:b", "c"},
 		{"colon file name and empty media type", args{"az:b:", "c"}, "az:b", ""},
 		{"colon-prefix file name and media type", args{":az:b:c", "d"}, ":az:b", "c"},
