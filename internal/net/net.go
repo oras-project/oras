@@ -19,18 +19,15 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"time"
 )
 
-var defaultDialer = &net.Dialer{
-	Timeout:   30 * time.Second,
-	KeepAlive: 30 * time.Second,
-}
-
+// Dialer struct provides dialing function with predefined DNS resolves.
 type Dialer struct {
+	*net.Dialer
 	resolve map[string]string
 }
 
+// Add adds an entry for DNS resolve.
 func (d *Dialer) Add(from string, port int, to net.IP) {
 	if d.resolve == nil {
 		d.resolve = make(map[string]string)
@@ -41,10 +38,8 @@ func (d *Dialer) Add(from string, port int, to net.IP) {
 // DialContext connects to the addr on the named network using
 // the provided context.
 func (d *Dialer) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
-	for k := range d.resolve {
-		if k == addr {
-			addr = d.resolve[k]
-		}
+	if resolve, ok := d.resolve[addr]; ok {
+		addr = resolve
 	}
-	return defaultDialer.DialContext(ctx, network, addr)
+	return d.Dialer.DialContext(ctx, network, addr)
 }

@@ -46,8 +46,9 @@ type Remote struct {
 	Username          string
 	PasswordFromStdin bool
 	Password          string
-	resolveFlag       []string
-	onet.Dialer
+
+	resolveFlag        []string
+	resolveDialContext func(dialer *net.Dialer) func(context.Context, string, string) (net.Conn, error)
 }
 
 // ApplyFlags applies flags to a command flag set.
@@ -104,9 +105,14 @@ func (opts *Remote) ReadPassword() (err error) {
 
 // parseResolve parses resolve flag.
 func (opts *Remote) parseResolve() error {
+	if len(opts.resolveFlag) == 0 {
+		return nil
+	}
+
 	formatError := func(param, message string) error {
 		return fmt.Errorf("failed to parse resolve flag %q: %s", param, message)
 	}
+	var dialer onet.Dialer
 	for _, r := range opts.resolveFlag {
 		parts := strings.SplitN(r, ":", 3)
 		if len(parts) < 3 {
@@ -123,7 +129,11 @@ func (opts *Remote) parseResolve() error {
 		if to == nil {
 			return formatError(r, "invalid IP address")
 		}
-		opts.Dialer.Add(parts[0], port, to)
+		dialer.Add(parts[0], port, to)
+	}
+	opts.resolveDialContext = func(base *net.Dialer) func(context.Context, string, string) (net.Conn, error) {
+		dialer.Dialer = base
+		return dialer.DialContext
 	}
 	return nil
 }
@@ -152,12 +162,21 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 	if err := opts.parseResolve(); err != nil {
 		return nil, err
 	}
+	resolveDialContext := opts.resolveDialContext
+	if resolveDialContext == nil {
+		resolveDialContext = func(dialer *net.Dialer) func(context.Context, string, string) (net.Conn, error) {
+			return dialer.DialContext
+		}
+	}
 	client = &auth.Client{
 		Client: &http.Client{
 			// default value are derived from http.DefaultTransport
 			Transport: &http.Transport{
-				Proxy:                 http.ProxyFromEnvironment,
-				DialContext:           opts.Dialer.DialContext,
+				Proxy: http.ProxyFromEnvironment,
+				DialContext: resolveDialContext(&net.Dialer{
+					Timeout:   30 * time.Second,
+					KeepAlive: 30 * time.Second,
+				}),
 				ForceAttemptHTTP2:     true,
 				MaxIdleConns:          100,
 				IdleConnTimeout:       90 * time.Second,
