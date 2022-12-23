@@ -23,14 +23,13 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	nhttp "net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
-
-	nhttp "net/http"
-	"net/http/httptest"
-	"net/url"
 
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2/registry/remote/auth"
@@ -139,6 +138,31 @@ func TestRemote_authClient_CARoots(t *testing.T) {
 	}
 }
 
+func TestRemote_authClient_resolve(t *testing.T) {
+	URL, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatalf("invalid url in test server: %s", ts.URL)
+	}
+
+	testHost := "test.unit.oras"
+	opts := Remote{
+		resolveFlag: []string{fmt.Sprintf("%s:%s:%s", testHost, URL.Port(), URL.Hostname())},
+		Insecure:    true,
+	}
+	client, err := opts.authClient(testHost, false)
+	if err != nil {
+		t.Fatalf("unexpected error when creating auth client: %v", err)
+	}
+	req, err := nhttp.NewRequestWithContext(context.Background(), nhttp.MethodGet, fmt.Sprintf("https://%s:%s", testHost, URL.Port()), nil)
+	if err != nil {
+		t.Fatalf("unexpected error when generating request: %v", err)
+	}
+	_, err = client.Do(req)
+	if err != nil {
+		t.Fatalf("unexpected error when sending request: %v", err)
+	}
+}
+
 func TestRemote_NewRegistry(t *testing.T) {
 	caPath := filepath.Join(t.TempDir(), "oras-test.pem")
 	if err := os.WriteFile(caPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ts.Certificate().Raw}), 0644); err != nil {
@@ -218,5 +242,46 @@ func TestRemote_isPlainHttp_localhost(t *testing.T) {
 	if got != true {
 		t.Fatalf("tls should be disabled when domain is localhost")
 
+	}
+}
+
+func TestRemote_parseResolve_err(t *testing.T) {
+	tests := []struct {
+		name    string
+		opts    *Remote
+		wantErr bool
+	}{
+		{
+			name:    "invalid flag",
+			opts:    &Remote{resolveFlag: []string{"this-shouldn't_work"}},
+			wantErr: true,
+		},
+		{
+			name:    "no host",
+			opts:    &Remote{resolveFlag: []string{":port:address"}},
+			wantErr: true,
+		},
+		{
+			name:    "no address",
+			opts:    &Remote{resolveFlag: []string{"host:port:"}},
+			wantErr: true,
+		},
+		{
+			name:    "invalid address",
+			opts:    &Remote{resolveFlag: []string{"host:port:invalid-ip"}},
+			wantErr: true,
+		},
+		{
+			name:    "no port",
+			opts:    &Remote{resolveFlag: []string{"host::address"}},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.opts.parseResolve(); (err != nil) != tt.wantErr {
+				t.Errorf("Remote.parseResolve() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
 }
