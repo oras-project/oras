@@ -35,8 +35,8 @@ func (d *Dialer) Add(from string, port int, to net.IP) {
 	d.resolve[fmt.Sprintf("%s:%d", from, port)] = fmt.Sprintf("%s:%d", to, port)
 }
 
-// DialContext connects to the addr on the named network using
-// the provided context.
+// DialContext connects to the addr on the named network using the provided
+// context.
 func (d *Dialer) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
 	if resolve, ok := d.resolve[addr]; ok {
 		addr = resolve
