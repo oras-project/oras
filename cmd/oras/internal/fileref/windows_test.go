@@ -21,7 +21,7 @@ import (
 	"testing"
 )
 
-func TestdoParse(t *testing.T) {
+func Test_doParse(t *testing.T) {
 	type args struct {
 		reference string
 		mediaType string
@@ -50,7 +50,7 @@ func TestdoParse(t *testing.T) {
 		{"pure colon file name and empty media type", args{"::", "a"}, ":", ""},
 
 		{"windows file name1 and default type", args{`a:\b`, "c"}, `a:\b`, "c"},
-		{"windows file name2 and default type", args{`z:b`, "c"}, `Z:\b`, "c"},
+		{"windows file name2 and default type", args{`z:b`, "c"}, `z`, "b"},
 		{"windows file name and media type", args{`a:\b:c`, "d"}, `a:\b`, "c"},
 		{"windows file name and empty media type", args{`a:\b:`, "c"}, `a:\b`, ""},
 		{"numeric file name and media type", args{`1:\a`, "b"}, `1`, `\a`},

@@ -39,12 +39,11 @@ func doParse(reference string, mediaType string) (filePath, mediatype string) {
 	if i < 0 {
 		return reference, mediaType
 	}
-	// In case it is C:\
-	if i == 1 && len(reference) > 2 && unicode.IsLetter(rune(reference[0])) {
-		if reference[2] != '\\' {
-			if abs, err := filepath.Abs(reference); err == nil {
-				return abs, mediaType
-			}
+	if i == 1 && len(reference) > 2 && unicode.IsLetter(rune(reference[0])) && reference[2] == '\\' {
+		// In case it is C:\
+		// Relative file path with disk prefix is NOT supported, e.g. `c:file1`
+		if abs, err := filepath.Abs(reference); err == nil {
+			return abs, mediaType
 		}
 		return reference, mediaType
 	}
