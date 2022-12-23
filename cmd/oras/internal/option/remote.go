@@ -36,12 +36,6 @@ import (
 	"oras.land/oras/internal/version"
 )
 
-type resolveEntry struct {
-	from string
-	to   net.IP
-	port int
-}
-
 // Remote options struct.
 type Remote struct {
 	CACertFilePath    string
