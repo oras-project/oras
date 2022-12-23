@@ -32,6 +32,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/internal/credential"
 	"oras.land/oras/internal/crypto"
+	onet "oras.land/oras/internal/net"
 	"oras.land/oras/internal/trace"
 	"oras.land/oras/internal/version"
 )
@@ -45,8 +46,8 @@ type Remote struct {
 	Username          string
 	PasswordFromStdin bool
 	Password          string
-	resolve           map[string]string
 	resolveFlag       []string
+	onet.Dialer
 }
 
 // ApplyFlags applies flags to a command flag set.
@@ -106,7 +107,6 @@ func (opts *Remote) parseResolve() error {
 	formatError := func(param, message string) error {
 		return fmt.Errorf("failed to parse resolve flag %q: %s", param, message)
 	}
-	opts.resolve = make(map[string]string)
 	for _, r := range opts.resolveFlag {
 		parts := strings.SplitN(r, ":", 3)
 		if len(parts) < 3 {
@@ -123,7 +123,7 @@ func (opts *Remote) parseResolve() error {
 		if to == nil {
 			return formatError(r, "invalid IP address")
 		}
-		opts.resolve[fmt.Sprintf("%s:%d", parts[0], port)] = fmt.Sprintf("%s:%d", to, port)
+		opts.Dialer.Add(parts[0], port, to)
 	}
 	return nil
 }
@@ -143,22 +143,6 @@ func (opts *Remote) tlsConfig() (*tls.Config, error) {
 	return config, nil
 }
 
-var defaultDialer = &net.Dialer{
-	Timeout:   30 * time.Second,
-	KeepAlive: 30 * time.Second,
-}
-
-// DialContext connects to the addr on the named network using
-// the provided context.
-func (opts *Remote) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
-	for k := range opts.resolve {
-		if k == addr {
-			addr = opts.resolve[k]
-		}
-	}
-	return defaultDialer.DialContext(ctx, network, addr)
-}
-
 // authClient assembles a oras auth client.
 func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client, err error) {
 	config, err := opts.tlsConfig()
@@ -173,7 +157,7 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 			// default value are derived from http.DefaultTransport
 			Transport: &http.Transport{
 				Proxy:                 http.ProxyFromEnvironment,
-				DialContext:           opts.DialContext,
+				DialContext:           opts.Dialer.DialContext,
 				ForceAttemptHTTP2:     true,
 				MaxIdleConns:          100,
 				IdleConnTimeout:       90 * time.Second,

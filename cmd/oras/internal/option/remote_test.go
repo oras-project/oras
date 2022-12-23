@@ -285,30 +285,3 @@ func TestRemote_parseResolve_err(t *testing.T) {
 		})
 	}
 }
-func TestRemote_parseResolve_defaultFlag(t *testing.T) {
-	opts := &Remote{resolveFlag: nil}
-	if err := opts.parseResolve(); err != nil {
-		t.Fatalf("should succeed parsing empty resolve flag but got %v", err)
-	}
-	if len(opts.resolve) != 0 {
-		t.Fatalf("expect empty resolve entries but got %v", opts.resolve)
-	}
-}
-
-func TestRemote_parseResolve_ipv4(t *testing.T) {
-	host := "mockedHost"
-	port := "12345"
-	address := "192.168.1.1"
-	opts := &Remote{resolveFlag: []string{fmt.Sprintf("%s:%s:%s", host, port, address)}}
-	if err := opts.parseResolve(); err != nil {
-		t.Fatalf("should succeed parsing resolve flag but got %v", err)
-	}
-	if len(opts.resolve) != 1 {
-		t.Fatalf("expect 1 resolve entries but got %v", opts.resolve)
-	}
-	want := make(map[string]string)
-	want[host+":"+port] = address + ":" + port
-	if !reflect.DeepEqual(want, opts.resolve) {
-		t.Fatalf("expecting %v  but got %v", want, opts.resolve)
-	}
-}
