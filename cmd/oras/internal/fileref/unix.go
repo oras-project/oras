@@ -23,16 +23,10 @@ import (
 )
 
 // Parse parses file reference on unix.
-func Parse(reference string, defaultMediaType string) (filePath, mediaType string, err error) {
-	filePath = reference
-	mediaType = defaultMediaType
-
+func Parse(reference string, mediaType string) (filePath, mediatype string) {
 	i := strings.LastIndex(reference, ":")
-	if i >= 0 {
-		filePath, mediaType = reference[:i], reference[i+1:]
+	if i < 0 {
+		return reference, mediaType
 	}
-	if filePath == "" {
-		return "", "", fmt.Errorf("found empty file path in %q", reference)
-	}
-	return filePath, mediaType, nil
+	return reference[:i], reference[i+1:]
 }
