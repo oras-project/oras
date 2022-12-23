@@ -59,3 +59,35 @@ func Test_ParseFileReference(t *testing.T) {
 		})
 	}
 }
+
+func TestParse(t *testing.T) {
+	type args struct {
+		reference string
+		mediaType string
+	}
+	tests := []struct {
+		name          string
+		args          args
+		wantFilePath  string
+		wantMediatype string
+		wantErr       bool
+	}{
+		{"empty file name", args{":", ""}, "", "", true},
+		{"empty file name, with media type", args{":a", ""}, "", "a", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotFilePath, gotMediatype, err := Parse(tt.args.reference, tt.args.mediaType)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if gotFilePath != tt.wantFilePath {
+				t.Errorf("Parse() gotFilePath = %v, want %v", gotFilePath, tt.wantFilePath)
+			}
+			if gotMediatype != tt.wantMediatype {
+				t.Errorf("Parse() gotMediatype = %v, want %v", gotMediatype, tt.wantMediatype)
+			}
+		})
+	}
+}

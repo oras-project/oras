@@ -25,5 +25,9 @@ func Parse(reference string, mediaType string) (filePath, mediatype string, err 
 	if i < 0 {
 		return reference, mediaType, nil
 	}
-	return reference[:i], reference[i+1:], nil
+	filePath, mediatype = reference[:i], reference[i+1:]
+	if filePath == "" {
+		return "", "", fmt.Errorf("found empty file path in %q", reference)
+	}
+	return filePath, mediatype, nil
 }
