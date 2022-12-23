@@ -67,8 +67,10 @@ func TestParse(t *testing.T) {
 		wantMediatype string
 		wantErr       bool
 	}{
-		{"empty file name", args{":", ""}, "", "", true},
-		{"empty file name, with media type", args{":a", "b"}, "", "", true},
+
+		{"empty file name", args{"", ""}, "", "", true},
+		{"empty file name and media type", args{":", ""}, "", "", true},
+		{"empty file name with media type", args{":a", "b"}, "", "", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
