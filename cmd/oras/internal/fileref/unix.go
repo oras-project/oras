@@ -17,8 +17,10 @@ limitations under the License.
 
 package fileref
 
-import "strings"
-
+import (
+	"strings"
+	"fmt"
+)
 // Parse parses file reference on unix.
 func Parse(reference string, mediaType string) (filePath, mediatype string, err error) {
 	i := strings.LastIndex(reference, ":")
