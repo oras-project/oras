@@ -28,6 +28,7 @@ import (
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/errors"
+	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
 )
@@ -117,7 +118,13 @@ func runPull(opts pullOptions) error {
 	// Copy Options
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
-	configPath, configMediaType := parseFileReference(opts.ManifestConfigRef, "")
+	var configPath, configMediaType string
+	if opts.ManifestConfigRef != "" {
+		configPath, configMediaType, err = fileref.Parse(opts.ManifestConfigRef, "")
+		if err != nil {
+			return err
+		}
+	}
 	if targetPlatform != nil {
 		copyOptions.WithTargetPlatform(targetPlatform)
 	}
