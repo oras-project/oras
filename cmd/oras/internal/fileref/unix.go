@@ -18,15 +18,24 @@ limitations under the License.
 package fileref
 
 import (
-	"fmt"
 	"strings"
+	"fmt"
 )
 
 // Parse parses file reference on unix.
-func Parse(reference string, mediaType string) (filePath, mediatype string) {
-	i := strings.LastIndex(reference, ":")
-	if i < 0 {
-		return reference, mediaType
+func Parse(reference string, defaultMediaType string) (filePath, mediaType string, err error) {
+	if reference == "" {
+		return "", "", nil
 	}
-	return reference[:i], reference[i+1:]
+
+	filePath = reference
+	mediaType = defaultMediaType
+	i := strings.LastIndex(reference, ":")
+	if i >= 0 {
+		filePath, mediaType = reference[:i], reference[i+1:]
+	}
+	if filePath == "" {
+		return "", "", fmt.Errorf("found empty file path in %q", reference)
+	}
+	return filePath, mediaType, nil
 }
