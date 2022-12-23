@@ -19,32 +19,27 @@ package fileref
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 	"unicode"
 )
 
 // Parse parses file reference on windows.
-func Parse(reference string, mediaType string) (filePath, mediatype string, err error) {
-	filePath, mediatype = doParse(reference, mediaType)
-	if strings.ContainsAny(filePath, `<>:"|?*`) {
-		// https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions
-		return "", "", fmt.Errorf("Reserved characters found in the file path: %s", filePath)
+func Parse(reference string, defaultMediaType string) (filePath, mediaType string, err error) {
+	filePath, mediaType = doParse(reference, defaultMediaType)
+	if filePath == "" {
+		return "", "", fmt.Errorf("found empty file path in %q", reference)
 	}
-	return filePath, mediatype, nil
+	if strings.ContainsAny(filePath, `<>:"|?*`) {
+		// Reference: https://learn.microsoft.com/windows/win32/fileio/naming-a-file#naming-conventions
+		return "", "", fmt.Errorf("reserved characters found in the file path: %s", filePath)
+	}
+	return filePath, mediaType, nil
 }
 
 func doParse(reference string, mediaType string) (filePath, mediatype string) {
 	i := strings.LastIndex(reference, ":")
-	if i < 0 {
-		return reference, mediaType
-	}
-	if i == 1 && len(reference) > 2 && unicode.IsLetter(rune(reference[0])) && reference[2] == '\\' {
-		// In case it is C:\
+	if i < 0 || (i == 1 && len(reference) > 2 && unicode.IsLetter(rune(reference[0])) && reference[2] == '\\') {
 		// Relative file path with disk prefix is NOT supported, e.g. `c:file1`
-		if abs, err := filepath.Abs(reference); err == nil {
-			return abs, mediaType
-		}
 		return reference, mediaType
 	}
 	return reference[:i], reference[i+1:]

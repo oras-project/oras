@@ -82,12 +82,14 @@ func TestParse(t *testing.T) {
 		wantMediatype string
 		wantErr       bool
 	}{
+		{"empty file name", args{":", ""}, "", "", true},
 		{"reserved character1 in file name", args{"<", "a"}, "", "", true},
 		{"reserved character2 in file name", args{">", "a"}, "", "", true},
 		{"reserved character3 in file name", args{"*", "a"}, "", "", true},
 		{"reserved character4 in file name", args{`"`, "a"}, "", "", true},
 		{"reserved character5 in file name", args{"|", "a"}, "", "", true},
 		{"reserved character6 in file name", args{"?", "a"}, "", "", true},
+		{"empty file name, with media type", args{":", "a"}, "", "", true},
 		{"reserved character1 in file name, with media type", args{"<:", "a"}, "", "", true},
 		{"reserved character2 in file name, with media type", args{">:", "a"}, "", "", true},
 		{"reserved character3 in file name, with media type", args{"*:", "a"}, "", "", true},
