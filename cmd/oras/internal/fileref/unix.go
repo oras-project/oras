@@ -24,10 +24,6 @@ import (
 
 // Parse parses file reference on unix.
 func Parse(reference string, defaultMediaType string) (filePath, mediaType string, err error) {
-	if reference == "" {
-		return "", "", nil
-	}
-
 	filePath = reference
 	mediaType = defaultMediaType
 	i := strings.LastIndex(reference, ":")

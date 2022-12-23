@@ -25,11 +25,6 @@ import (
 
 // Parse parses file reference on windows.
 func Parse(reference string, defaultMediaType string) (filePath, mediaType string, err error) {
-	if reference == "" {
-		// no input
-		return "", "", nil
-	}
-
 	filePath, mediaType = doParse(reference, defaultMediaType)
 	if filePath == "" {
 		return "", "", fmt.Errorf("found empty file path in %q", reference)

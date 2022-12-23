@@ -68,7 +68,7 @@ func TestParse(t *testing.T) {
 		wantErr       bool
 	}{
 
-		{"no input", args{"", ""}, "", "", false},
+		{"no input", args{"", ""}, "", "", true},
 		{"empty file name and media type", args{":", ""}, "", "", true},
 		{"empty file name with media type", args{":a", "b"}, "", "", true},
 	}
