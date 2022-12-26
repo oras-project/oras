@@ -21,7 +21,6 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	"github.com/spf13/cobra"
-	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -75,8 +74,9 @@ func showTags(opts showTagsOptions) error {
 		return err
 	}
 	if opts.Reference != "" {
-		return errors.NewErrInvalidReferenceStr(opts.Fqdn)
+		return fmt.Errorf("unexpected tag or digest %q found in repository reference %q", opts.Reference, opts.Fqdn)
 	}
+
 	return finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
 			if opts.excludeDigestTag && isDigestTag(tag) {

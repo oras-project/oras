@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/pflag"
@@ -81,13 +80,11 @@ func (opts *Target) Parse() error {
 }
 
 type OCI struct {
-	config  map[string]string
-	Fqdn    string
-	Type    string
-	tarball bool
+	config map[string]string
+	Fqdn   string
+	Type   string
 
-	isOCIFolder  bool
-	isOCITarball bool
+	isOCIFolder bool
 }
 
 func (opts *OCI) ApplyShortFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
@@ -100,7 +97,6 @@ func (opts *OCI) ApplyShortFlagsWithPrefix(fs *pflag.FlagSet, prefix, descriptio
 		notePrefix = description + " "
 	}
 	fs.BoolVarP(&opts.isOCIFolder, flagPrefix+"oci", "", false, "Set "+notePrefix+"target as an OCI-layout folder")
-	fs.BoolVarP(&opts.isOCITarball, flagPrefix+"ocitar", "", false, "Set "+notePrefix+"target as an OCI-layout tarball")
 }
 
 // target option struct.
@@ -135,34 +131,19 @@ func (opts *target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 
 // check value is cow. If not, use a NewFunction instead
 var defaultConfig = map[string]string{
-	"type":    "remote",
-	"tarball": "false",
+	"type": "remote",
 }
 
 func (opts *target) parse() error {
 	// short flag
 	if opts.isOCIFolder {
 		opts.Type = OCILayoutType
-		opts.tarball = false
-		return nil
-	} else if opts.isOCITarball {
-		opts.Type = OCILayoutType
-		opts.tarball = true
 		return nil
 	}
 
 	opts.Type = opts.config["type"]
 	switch opts.Type {
-	case OCILayoutType:
-		isTarball := opts.config["tarball"]
-		if isTarball != "" {
-			var err error = nil
-			if opts.tarball, err = strconv.ParseBool(isTarball); err != nil {
-				return err
-			}
-		}
-		return nil
-	case RemoteType:
+	case OCILayoutType, RemoteType:
 		return nil
 	}
 
@@ -218,14 +199,18 @@ func (opts *target) NewReadonlyTarget(ctx context.Context, common Common) (ReadO
 			opts.Reference = opts.Fqdn[idx+1:]
 		}
 		var store *oci.ReadOnlyStore
-		var err error
-		if opts.tarball {
-			store, err = oci.NewFromTar(ctx, path)
+		info, err := os.Stat(path)
+		if err != nil {
+			return nil, err
+		}
+
+		if info.IsDir() {
+			store, err = oci.NewFromFS(ctx, os.DirFS(path))
 			if err != nil {
 				return nil, err
 			}
 		} else {
-			store, err = oci.NewFromFS(ctx, os.DirFS(path))
+			store, err = oci.NewFromTar(ctx, path)
 			if err != nil {
 				return nil, err
 			}
