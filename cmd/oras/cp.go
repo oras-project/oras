@@ -65,12 +65,10 @@ Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net
   oras cp --concurrency 6 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1,tag2,tag3
 `,
 		Args: cobra.ExactArgs(2),
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		PreRunE: func(cmd *cobra.Command, args []string) error {
 			refs := strings.Split(args[1], ",")
 			opts.extraRefs = refs[1:]
-			return opts.BinaryTarget.SetReferenceInput(args[0], refs[0])
-		},
-		PreRunE: func(cmd *cobra.Command, args []string) error {
+			opts.BinaryTarget.SetReferenceInput(args[0], refs[0])
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {

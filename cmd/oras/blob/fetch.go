@@ -62,18 +62,14 @@ Example - Fetch the blob, save it to a local file and print the descriptor:
   oras blob fetch --output blob.tar.gz --descriptor localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 `,
 		Args: cobra.ExactArgs(1),
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return opts.SetReferenceInput(args[0])
-		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			opts.SetReferenceInput(args[0])
 			if opts.outputPath == "" && !opts.OutputDescriptor {
 				return errors.New("either `--output` or `--descriptor` must be provided")
 			}
-
 			if opts.outputPath == "-" && opts.OutputDescriptor {
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
 			}
-
 			return option.Parse(&opts)
 		},
 		Aliases: []string{"get"},

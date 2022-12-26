@@ -23,3 +23,5 @@ require (
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
 )
+
+replace oras.land/oras-go/v2 => github.com/shizhMSFT/oras-go/v2 v2.0.0-20221223085227-7566ecd0c1f1

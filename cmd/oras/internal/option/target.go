@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras-go/v2/registry"
 )
 
 const RemoteType = "remote"
@@ -45,10 +46,9 @@ func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
 	opts.To.ApplyFlagsWithPrefix(fs, "to", "destination")
 }
 
-func (opts *BinaryTarget) SetReferenceInput(from, to string) error {
+func (opts *BinaryTarget) SetReferenceInput(from, to string) {
 	opts.From.Fqdn = from
 	opts.To.Fqdn = to
-	return nil
 }
 
 func (opts *BinaryTarget) Parse() error {
@@ -63,9 +63,8 @@ type Target struct {
 	target
 }
 
-func (opts *Target) SetReferenceInput(ref string) error {
+func (opts *Target) SetReferenceInput(ref string) {
 	opts.Fqdn = ref
-	return nil
 }
 
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
@@ -198,7 +197,12 @@ func (opts *target) NewTarget(common Common) (graphTarget oras.GraphTarget, err 
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
 }
 
-func (opts *target) NewReadonlyTarget(ctx context.Context, common Common) (oras.ReadOnlyGraphTarget, error) {
+type ReadOnlyGraphTagFinderTarget interface {
+	oras.ReadOnlyGraphTarget
+	registry.TagFinder
+}
+
+func (opts *target) NewReadonlyTarget(ctx context.Context, common Common) (ReadOnlyGraphTagFinderTarget, error) {
 	switch opts.Type {
 	case OCILayoutType:
 		var path string

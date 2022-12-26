@@ -69,11 +69,9 @@ Example - Push blob without TLS:
   oras blob push --insecure localhost:5000/hello hi.txt
 `,
 		Args: cobra.ExactArgs(2),
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return opts.SetReferenceInput(args[0])
-		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.fileRef = args[1]
+			opts.SetReferenceInput(args[0])
 			if opts.fileRef == "-" {
 				if opts.PasswordFromStdin {
 					return errors.New("`-` read file from input and `--password-stdin` read password from input cannot be both used")

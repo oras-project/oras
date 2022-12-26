@@ -64,11 +64,9 @@ Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json'
   oras attach --artifact-type doc/example --export-manifest manifest.json localhost:5000/hello:latest hi.txt
 `,
 		Args: cobra.MinimumNArgs(1),
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			opts.FileRefs = args[1:]
-			return opts.SetReferenceInput(args[0])
-		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			opts.FileRefs = args[1:]
+			opts.SetReferenceInput(args[0])
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {

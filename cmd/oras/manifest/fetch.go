@@ -65,10 +65,8 @@ Example - Fetch manifest with prettified json result:
   oras manifest fetch --pretty localhost:5000/hello:latest
 `,
 		Args: cobra.ExactArgs(1),
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return opts.SetReferenceInput(args[0])
-		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			opts.SetReferenceInput(args[0])
 			if opts.outputPath == "-" && opts.OutputDescriptor {
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
 			}
