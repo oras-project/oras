@@ -84,7 +84,7 @@ type OCI struct {
 	Fqdn   string
 	Type   string
 
-	isOCIFolder bool
+	isOCI bool
 }
 
 func (opts *OCI) ApplyShortFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
@@ -96,7 +96,7 @@ func (opts *OCI) ApplyShortFlagsWithPrefix(fs *pflag.FlagSet, prefix, descriptio
 		flagPrefix = prefix + "-"
 		notePrefix = description + " "
 	}
-	fs.BoolVarP(&opts.isOCIFolder, flagPrefix+"oci", "", false, "Set "+notePrefix+"target as an OCI-layout folder")
+	fs.BoolVarP(&opts.isOCI, flagPrefix+"oci", "", false, "Set "+notePrefix+"target as an OCI-layout")
 }
 
 // target option struct.
@@ -136,7 +136,7 @@ var defaultConfig = map[string]string{
 
 func (opts *target) parse() error {
 	// short flag
-	if opts.isOCIFolder {
+	if opts.isOCI {
 		opts.Type = OCILayoutType
 		return nil
 	}
