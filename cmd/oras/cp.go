@@ -30,10 +30,10 @@ import (
 )
 
 type copyOptions struct {
-	option.BinaryTarget
 	option.Common
 	option.Platform
 	recursive bool
+	option.BinaryTarget
 
 	concurrency int
 	extraRefs   []string

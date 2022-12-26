@@ -39,8 +39,6 @@ type BinaryTarget struct {
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
 // Commonly used for non-unary remote targets.
 func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
-	opts.From.ApplyShortFlagsWithPrefix(fs, "from", "source")
-	opts.From.ApplyShortFlagsWithPrefix(fs, "to", "destination")
 	opts.From.ApplyFlagsWithPrefix(fs, "from", "source")
 	opts.To.ApplyFlagsWithPrefix(fs, "to", "destination")
 }
@@ -87,18 +85,6 @@ type OCI struct {
 	isOCI bool
 }
 
-func (opts *OCI) ApplyShortFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
-	var (
-		flagPrefix string
-		notePrefix string
-	)
-	if prefix != "" {
-		flagPrefix = prefix + "-"
-		notePrefix = description + " "
-	}
-	fs.BoolVarP(&opts.isOCI, flagPrefix+"oci", "", false, "Set "+notePrefix+"target as an OCI-layout")
-}
-
 // target option struct.
 type target struct {
 	OCI
@@ -112,7 +98,6 @@ type target struct {
 func (opts *target) applyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
 	opts.ApplyFlagsWithPrefix(fs, "", "")
-	opts.ApplyShortFlagsWithPrefix(fs, "", "")
 }
 
 func (opts *target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
@@ -125,6 +110,7 @@ func (opts *target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 		noteSuffix = "for " + description
 	}
 
+	fs.BoolVarP(&opts.isOCI, flagPrefix+"oci", "", false, "Set "+noteSuffix+"target as an OCI-layout")
 	fs.StringToStringVarP(&opts.config, flagPrefix+"target", "", defaultConfig, "configure target configuration"+noteSuffix)
 	opts.Remote.ApplyFlagsWithPrefix(fs, prefix, description)
 }
