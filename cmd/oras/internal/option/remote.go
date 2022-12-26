@@ -23,6 +23,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -31,6 +32,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/internal/credential"
 	"oras.land/oras/internal/crypto"
+	onet "oras.land/oras/internal/net"
 	"oras.land/oras/internal/trace"
 	"oras.land/oras/internal/version"
 )
@@ -44,6 +46,9 @@ type Remote struct {
 	Username          string
 	PasswordFromStdin bool
 	Password          string
+
+	resolveFlag        []string
+	resolveDialContext func(dialer *net.Dialer) func(context.Context, string, string) (net.Conn, error)
 }
 
 // ApplyFlags applies flags to a command flag set.
@@ -76,6 +81,10 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	if fs.Lookup("registry-config") == nil {
 		fs.StringArrayVarP(&opts.Configs, "registry-config", "", nil, "`path` of the authentication file")
 	}
+
+	if fs.Lookup("resolve") == nil {
+		fs.StringArrayVarP(&opts.resolveFlag, "resolve", "", nil, "customized DNS formatted in `host:port:address`")
+	}
 }
 
 // Parse tries to read password with optional cmd prompt.
@@ -90,6 +99,41 @@ func (opts *Remote) Parse() error {
 		}
 		opts.Password = strings.TrimSuffix(string(password), "\n")
 		opts.Password = strings.TrimSuffix(opts.Password, "\r")
+	}
+	return nil
+}
+
+// parseResolve parses resolve flag.
+func (opts *Remote) parseResolve() error {
+	if len(opts.resolveFlag) == 0 {
+		return nil
+	}
+
+	formatError := func(param, message string) error {
+		return fmt.Errorf("failed to parse resolve flag %q: %s", param, message)
+	}
+	var dialer onet.Dialer
+	for _, r := range opts.resolveFlag {
+		parts := strings.SplitN(r, ":", 3)
+		if len(parts) < 3 {
+			return formatError(r, "expecting host:port:address")
+		}
+
+		port, err := strconv.Atoi(parts[1])
+		if err != nil {
+			return formatError(r, "expecting uint64 port")
+		}
+
+		// ipv6 zone is not parsed
+		to := net.ParseIP(parts[2])
+		if to == nil {
+			return formatError(r, "invalid IP address")
+		}
+		dialer.Add(parts[0], port, to)
+	}
+	opts.resolveDialContext = func(base *net.Dialer) func(context.Context, string, string) (net.Conn, error) {
+		dialer.Dialer = base
+		return dialer.DialContext
 	}
 	return nil
 }
@@ -115,15 +159,24 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 	if err != nil {
 		return nil, err
 	}
+	if err := opts.parseResolve(); err != nil {
+		return nil, err
+	}
+	resolveDialContext := opts.resolveDialContext
+	if resolveDialContext == nil {
+		resolveDialContext = func(dialer *net.Dialer) func(context.Context, string, string) (net.Conn, error) {
+			return dialer.DialContext
+		}
+	}
 	client = &auth.Client{
 		Client: &http.Client{
 			// default value are derived from http.DefaultTransport
 			Transport: &http.Transport{
 				Proxy: http.ProxyFromEnvironment,
-				DialContext: (&net.Dialer{
+				DialContext: resolveDialContext(&net.Dialer{
 					Timeout:   30 * time.Second,
 					KeepAlive: 30 * time.Second,
-				}).DialContext,
+				}),
 				ForceAttemptHTTP2:     true,
 				MaxIdleConns:          100,
 				IdleConnTimeout:       90 * time.Second,
