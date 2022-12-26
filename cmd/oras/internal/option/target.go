@@ -205,7 +205,7 @@ type ReadOnlyGraphTagFinderTarget interface {
 func (opts *target) NewReadonlyTarget(ctx context.Context, common Common) (ReadOnlyGraphTagFinderTarget, error) {
 	switch opts.Type {
 	case OCILayoutType:
-		var path string
+		path := opts.Fqdn
 		if idx := strings.LastIndex(opts.Fqdn, "@"); idx != -1 {
 			// `digest` found
 			opts.isTag = false
@@ -217,20 +217,20 @@ func (opts *target) NewReadonlyTarget(ctx context.Context, common Common) (ReadO
 			path = opts.Fqdn[:idx]
 			opts.Reference = opts.Fqdn[idx+1:]
 		}
-		var graphTarget *oci.ReadOnlyStore
+		var store *oci.ReadOnlyStore
 		var err error
 		if opts.tarball {
-			graphTarget, err = oci.NewFromTar(ctx, path)
+			store, err = oci.NewFromTar(ctx, path)
 			if err != nil {
 				return nil, err
 			}
 		} else {
-			graphTarget, err = oci.NewFromFS(ctx, os.DirFS(path))
+			store, err = oci.NewFromFS(ctx, os.DirFS(path))
 			if err != nil {
 				return nil, err
 			}
 		}
-		return graphTarget, nil
+		return store, nil
 	case RemoteType:
 		repo, err := opts.NewRepository(opts.Fqdn, common)
 		if err != nil {
