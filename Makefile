@@ -18,7 +18,7 @@ GIT_COMMIT  = $(shell git rev-parse HEAD)
 GIT_TAG     = $(shell git describe --tags --abbrev=0 --exact-match 2>/dev/null)
 GIT_DIRTY   = $(shell test -n "`git status --porcelain`" && echo "dirty" || echo "clean")
 
-TARGET_OBJS ?= checksums.txt darwin_amd64.tar.gz darwin_arm64.tar.gz linux_amd64.tar.gz linux_arm64.tar.gz linux_armv7.tar.gz windows_amd64.zip
+TARGET_OBJS ?= checksums.txt darwin_amd64.tar.gz darwin_arm64.tar.gz linux_amd64.tar.gz linux_arm64.tar.gz linux_armv7.tar.gz linux_s390x.tar.gz windows_amd64.zip
 
 LDFLAGS = -w
 ifdef VERSION
@@ -46,7 +46,7 @@ clean:
 build: build-linux build-mac build-windows
 
 .PHONY: build-linux
-build-linux: build-linux-amd64 build-linux-arm64 build-linux-arm-v7
+build-linux: build-linux-amd64 build-linux-arm64 build-linux-arm-v7 build-linux-s390x
 
 .PHONY: build-linux-amd64
 build-linux-amd64:
@@ -62,6 +62,11 @@ build-linux-arm64:
 build-linux-arm-v7:
 	GOARCH=arm CGO_ENABLED=0 GOOS=linux go build -v --ldflags="$(LDFLAGS)" \
 		-o bin/linux/arm/v7/$(CLI_EXE) $(CLI_PKG)
+
+.PHONY: build-linux-s390x
+build-linux-s390x:
+	GOARCH=s390x CGO_ENABLED=0 GOOS=linux go build -v --ldflags="$(LDFLAGS)" \
+		-o bin/linux/s390x/$(CLI_EXE) $(CLI_PKG)
 
 .PHONY: build-mac
 build-mac: build-mac-arm64 build-mac-amd64
