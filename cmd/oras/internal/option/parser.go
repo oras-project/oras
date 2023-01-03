@@ -19,10 +19,13 @@ import (
 	"reflect"
 )
 
+// FlagParser parses flags in an option.
 type FlagParser interface {
 	Parse() error
 }
 
+// Parse parses applicable fields of the passed-in option pointer and returns
+// error during parsing.
 func Parse(optsPtr interface{}) error {
 	v := reflect.ValueOf(optsPtr).Elem()
 	for i := 0; i < v.NumField(); i++ {

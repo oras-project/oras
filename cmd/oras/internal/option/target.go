@@ -48,9 +48,8 @@ func (opts *targetFlag) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, descript
 		flagPrefix = prefix + "-"
 		noteSuffix = "for " + description
 	}
-
 	fs.BoolVarP(&opts.isOCI, flagPrefix+"oci", "", false, "Set "+noteSuffix+"target as an OCI-layout")
-	fs.StringToStringVarP(&opts.config, flagPrefix+"target", "", defaultConfig, "configure target configuration"+noteSuffix)
+	fs.StringToStringVarP(&opts.config, flagPrefix+"target", "", map[string]string{"type": "remote"}, "configure target configuration"+noteSuffix)
 }
 
 // Unary target option struct.
@@ -77,23 +76,22 @@ func (opts *Target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	opts.Remote.ApplyFlagsWithPrefix(fs, prefix, description)
 }
 
+// Parse gets target options from user input.
 func (opts *Target) Parse() error {
-	// short flag
 	if opts.isOCI {
+		// short flag
 		opts.Type = OCILayoutType
+		return nil
 	} else {
 		opts.Type = opts.config["type"]
 		switch opts.Type {
-		case OCILayoutType, RemoteType:
-		default:
-			return fmt.Errorf("unknown target type: %q", opts.Type)
+		case RemoteType:
+			return opts.Remote.Parse()
+		case OCILayoutType:
+			return nil
 		}
 	}
-	return opts.Remote.Parse()
-}
-
-var defaultConfig = map[string]string{
-	"type": "remote",
+	return fmt.Errorf("unknown target type: %q", opts.Type)
 }
 
 func (opts *Target) NewTarget(common Common) (graphTarget oras.GraphTarget, err error) {
