@@ -66,7 +66,7 @@ Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json'
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.FileRefs = args[1:]
-			opts.SetReferenceInput(args[0])
+			opts.Fqdn = args[0]
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {

@@ -95,7 +95,7 @@ Example - Push file "hi.txt" with multiple tags and concurrency level tuned:
 			refs := strings.Split(args[0], ",")
 			opts.extraRefs = refs[1:]
 			opts.FileRefs = args[1:]
-			opts.SetReferenceInput(args[0])
+			opts.Fqdn = args[0]
 			if opts.artifactType != "" && opts.manifestConfigRef != "" {
 				return errors.New("--artifact-type and --config cannot both be provided")
 			}

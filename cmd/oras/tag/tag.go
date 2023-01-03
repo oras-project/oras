@@ -55,7 +55,7 @@ Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.1', 'v1.0
 		Args: cobra.MinimumNArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRefs = args[1:]
-			opts.SetReferenceInput(args[0])
+			opts.Fqdn = args[0]
 			return option.Parse(&opts)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {

@@ -27,80 +27,19 @@ import (
 	"oras.land/oras-go/v2/registry"
 )
 
-const RemoteType = "remote"
-const OCILayoutType = "oci"
+const (
+	RemoteType    = "remote"
+	OCILayoutType = "oci"
+)
 
-// target option struct.
-type BinaryTarget struct {
-	From target
-	To   target
-}
-
-// ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
-// Commonly used for non-unary remote targets.
-func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
-	opts.From.ApplyFlagsWithPrefix(fs, "from", "source")
-	opts.To.ApplyFlagsWithPrefix(fs, "to", "destination")
-}
-
-func (opts *BinaryTarget) SetReferenceInput(from, to string) {
-	opts.From.Fqdn = from
-	opts.To.Fqdn = to
-}
-
-func (opts *BinaryTarget) Parse() error {
-	if err := opts.From.parse(); err != nil {
-		return err
-	}
-	return opts.To.parse()
-}
-
-// Unary target option struct.
-type Target struct {
-	target
-}
-
-func (opts *Target) SetReferenceInput(ref string) {
-	opts.Fqdn = ref
-}
-
-// ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
-// Commonly used for non-unary remote targets.
-func (opts *Target) ApplyFlags(fs *pflag.FlagSet) {
-	opts.target.applyFlags(fs)
-}
-
-func (opts *Target) Parse() error {
-	if err := opts.target.parse(); err != nil {
-		return err
-	}
-	return opts.target.Remote.Parse()
-}
-
-type OCI struct {
+type targetFlag struct {
 	config map[string]string
-	Fqdn   string
-	Type   string
-
-	isOCI bool
+	isOCI  bool
 }
 
-// target option struct.
-type target struct {
-	OCI
-	Remote
-
-	// might design need new reference in oras-go for oci-layout target
-	isTag     bool
-	Reference string
-}
-
-func (opts *target) applyFlags(fs *pflag.FlagSet) {
-	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
-	opts.ApplyFlagsWithPrefix(fs, "", "")
-}
-
-func (opts *target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
+// ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
+// Commonly used for non-unary remote targets.
+func (opts *targetFlag) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
 	var (
 		flagPrefix string
 		noteSuffix string
@@ -112,41 +51,62 @@ func (opts *target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 
 	fs.BoolVarP(&opts.isOCI, flagPrefix+"oci", "", false, "Set "+noteSuffix+"target as an OCI-layout")
 	fs.StringToStringVarP(&opts.config, flagPrefix+"target", "", defaultConfig, "configure target configuration"+noteSuffix)
+}
+
+// Unary target option struct.
+type Target struct {
+	Remote
+	Fqdn      string
+	Type      string
+	IsTag     bool
+	Reference string
+
+	targetFlag
+}
+
+// ApplyFlags applies flags to a command flag set for unary target
+func (opts *Target) ApplyFlags(fs *pflag.FlagSet) {
+	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
+	opts.ApplyFlagsWithPrefix(fs, "", "")
+}
+
+// ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
+// Commonly used for non-unary remote targets.
+func (opts *Target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
+	opts.targetFlag.ApplyFlagsWithPrefix(fs, prefix, description)
 	opts.Remote.ApplyFlagsWithPrefix(fs, prefix, description)
 }
 
-// check value is cow. If not, use a NewFunction instead
+func (opts *Target) Parse() error {
+	// short flag
+	if opts.isOCI {
+		opts.Type = OCILayoutType
+	} else {
+		opts.Type = opts.config["type"]
+		switch opts.Type {
+		case OCILayoutType, RemoteType:
+		default:
+			return fmt.Errorf("unknown target type: %q", opts.Type)
+		}
+	}
+	return opts.Remote.Parse()
+}
+
 var defaultConfig = map[string]string{
 	"type": "remote",
 }
 
-func (opts *target) parse() error {
-	// short flag
-	if opts.isOCI {
-		opts.Type = OCILayoutType
-		return nil
-	}
-
-	opts.Type = opts.config["type"]
-	switch opts.Type {
-	case OCILayoutType, RemoteType:
-		return nil
-	}
-
-	return fmt.Errorf("unknown target type: %q", opts.Type)
-}
-
-func (opts *target) NewTarget(common Common) (graphTarget oras.GraphTarget, err error) {
+func (opts *Target) NewTarget(common Common) (graphTarget oras.GraphTarget, err error) {
 	switch opts.Type {
 	case OCILayoutType:
 		if idx := strings.LastIndex(opts.Fqdn, "@"); idx != -1 {
 			// `digest` found
-			opts.isTag = false
+			opts.IsTag = false
 			graphTarget, err = oci.New(opts.Fqdn[:idx])
 			opts.Reference = opts.Fqdn[idx+1:]
 		} else if idx = strings.LastIndex(opts.Fqdn, ":"); idx != -1 {
 			// `tag` found
-			opts.isTag = true
+			opts.IsTag = true
 			graphTarget, err = oci.New(opts.Fqdn[:idx])
 			opts.Reference = opts.Fqdn[idx+1:]
 		} else {
@@ -169,18 +129,18 @@ type ReadOnlyGraphTagFinderTarget interface {
 	registry.TagFinder
 }
 
-func (opts *target) NewReadonlyTarget(ctx context.Context, common Common) (ReadOnlyGraphTagFinderTarget, error) {
+func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadOnlyGraphTagFinderTarget, error) {
 	switch opts.Type {
 	case OCILayoutType:
 		path := opts.Fqdn
 		if idx := strings.LastIndex(opts.Fqdn, "@"); idx != -1 {
 			// `digest` found
-			opts.isTag = false
+			opts.IsTag = false
 			path = opts.Fqdn[:idx]
 			opts.Reference = opts.Fqdn[idx+1:]
 		} else if idx = strings.LastIndex(opts.Fqdn, ":"); idx != -1 {
 			// `tag` found
-			opts.isTag = true
+			opts.IsTag = true
 			path = opts.Fqdn[:idx]
 			opts.Reference = opts.Fqdn[idx+1:]
 		}
@@ -211,4 +171,24 @@ func (opts *target) NewReadonlyTarget(ctx context.Context, common Common) (ReadO
 		return repo, nil
 	}
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
+}
+
+// target option struct.
+type BinaryTarget struct {
+	From Target
+	To   Target
+}
+
+// ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
+// Commonly used for non-unary remote targets.
+func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
+	opts.From.ApplyFlagsWithPrefix(fs, "from", "source")
+	opts.To.ApplyFlagsWithPrefix(fs, "to", "destination")
+}
+
+func (opts *BinaryTarget) Parse() error {
+	if err := opts.From.Parse(); err != nil {
+		return err
+	}
+	return opts.To.Parse()
 }

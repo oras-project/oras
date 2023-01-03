@@ -67,7 +67,7 @@ Example - Fetch manifest with prettified json result:
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			opts.SetReferenceInput(args[0])
+			opts.Fqdn = args[0]
 			if opts.outputPath == "-" && opts.OutputDescriptor {
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
 			}

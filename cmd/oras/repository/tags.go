@@ -53,7 +53,7 @@ Example - Show tags of the target repository that include values lexically after
 		Args:    cobra.ExactArgs(1),
 		Aliases: []string{"show-tags"},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			opts.SetReferenceInput(args[0])
+			opts.Fqdn = args[0]
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {

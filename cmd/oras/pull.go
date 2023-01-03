@@ -78,7 +78,7 @@ Example - Pull all files with concurrency level tuned:
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			opts.SetReferenceInput(args[0])
+			opts.Fqdn = args[0]
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
