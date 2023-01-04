@@ -94,6 +94,7 @@ func (opts *Target) Parse() error {
 	return fmt.Errorf("unknown target type: %q", opts.Type)
 }
 
+// NewTarget generates a new target based on opts.
 func (opts *Target) NewTarget(common Common) (graphTarget oras.GraphTarget, err error) {
 	switch opts.Type {
 	case OCILayoutType:
@@ -122,11 +123,13 @@ func (opts *Target) NewTarget(common Common) (graphTarget oras.GraphTarget, err 
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
 }
 
+// Read-only graph target with tag finder.
 type ReadOnlyGraphTagFinderTarget interface {
 	oras.ReadOnlyGraphTarget
 	registry.TagFinder
 }
 
+// NewReadonlyTargets generates a new read only target based on opts.
 func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadOnlyGraphTagFinderTarget, error) {
 	switch opts.Type {
 	case OCILayoutType:
@@ -171,7 +174,7 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadO
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
 }
 
-// target option struct.
+// Binary target option struct.
 type BinaryTarget struct {
 	From Target
 	To   Target
@@ -184,6 +187,7 @@ func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
 	opts.To.applyFlagsWithPrefix(fs, "to", "destination")
 }
 
+// Parse parses user-provided flags and arguments into option structs.
 func (opts *BinaryTarget) Parse() error {
 	if err := opts.From.Parse(); err != nil {
 		return err
