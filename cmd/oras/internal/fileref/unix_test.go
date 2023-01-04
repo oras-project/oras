@@ -36,6 +36,7 @@ func Test_Parse_fileReference(t *testing.T) {
 		{"file name and media type, default type ignored", args{"az:b", "c"}, "az", "b"},
 		{"file name and empty media type, default type ignored", args{"az:", "c"}, "az", ""},
 		{"colon file name and media type", args{`az\:b:c`, "d"}, "az:b", "c"},
+		{"colon file name and default media type", args{`az\:`, "b"}, "az:", ""},
 		{"colon file name with backslash and media type1", args{`az\\\:b:c`, "d"}, `az\:b`, `c`},
 		{"colon file name with backslash and media type2", args{`az\\\\:b`, "c"}, `az\\`, `b`},
 		{"colon file name and empty media type", args{"az:b:", "c"}, "az:b", ""},
@@ -108,7 +109,7 @@ func Test_unescape(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := unescape(tt.input)
 			if got != tt.want {
-				t.Errorf("Parse() gotFilePath = %v, want %v", got, tt.want)
+				t.Errorf("unescape() gotFilePath = %v, want %v", got, tt.want)
 			}
 		})
 	}
