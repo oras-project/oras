@@ -43,7 +43,6 @@ func Parse(reference string, defaultMediaType string) (filePath, mediaType strin
 	return filePath, mediaType, nil
 }
 
-// isEscaped returns if the character in path with offset is escaped by '\'.
 func isEscaped(path string, offset int) bool {
 	cnt := 0
 	for i := offset - 1; i >= 0; i-- {
