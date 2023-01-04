@@ -49,6 +49,7 @@ func isEscaped(path string, offset int) bool {
 		if path[i] != '\\' {
 			break
 		}
+		cnt++
 	}
 	return cnt%2 != 0
 }
