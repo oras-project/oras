@@ -19,7 +19,7 @@ package fileref
 
 import "testing"
 
-func Test_ParseFileReference(t *testing.T) {
+func Test_Parse_fileReference(t *testing.T) {
 	type args struct {
 		reference string
 		mediaType string
@@ -35,7 +35,8 @@ func Test_ParseFileReference(t *testing.T) {
 		{"file name and default media type", args{"az", "c"}, "az", "c"},
 		{"file name and media type, default type ignored", args{"az:b", "c"}, "az", "b"},
 		{"file name and empty media type, default type ignored", args{"az:", "c"}, "az", ""},
-		{"colon file name and media type", args{"az:b:c", "d"}, "az:b", "c"},
+		{"colon file name and media type", args{`az\:b:c`, "d"}, "az:b", "c"},
+		{"colon file name with escape char and media type", args{`az\\\:b:c`, "d"}, `az\:b`, "c"},
 		{"colon file name and empty media type", args{"az:b:", "c"}, "az:b", ""},
 		{"colon-prefix file name and media type", args{":az:b:c", "d"}, ":az:b", "c"},
 
@@ -55,7 +56,7 @@ func Test_ParseFileReference(t *testing.T) {
 	}
 }
 
-func TestParse(t *testing.T) {
+func Test_Parse_err(t *testing.T) {
 	type args struct {
 		reference string
 		mediaType string
@@ -88,3 +89,28 @@ func TestParse(t *testing.T) {
 		})
 	}
 }
+
+
+func Test_unescape(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"empty string", "", ""},
+		{"only escape char", "\\", ""},
+		{"double escape char", `\\`, `\`},
+		{"escaping t", `\t\t`, "tt"},
+		{"not escaping 1st t", `\\t\t`, `\tt`},
+		{"not escaping 2nd t", `\t\\t`, `t\t`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := unescape(tt.input)
+			if got != tt.want {
+				t.Errorf("Parse() gotFilePath = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
