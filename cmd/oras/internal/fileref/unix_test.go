@@ -36,7 +36,7 @@ func Test_Parse_fileReference(t *testing.T) {
 		{"file name and media type, default type ignored", args{"az:b", "c"}, "az", "b"},
 		{"file name and empty media type, default type ignored", args{"az:", "c"}, "az", ""},
 		{"colon file name and media type", args{`az\:b:c`, "d"}, "az:b", "c"},
-		{"colon file name with escape char and media type", args{`az\\\:b:c`, "d"}, `az\:b`, "c"},
+		{"colon file name with backslash and media type with backslash", args{`az\\\:b:c\\d`, "d"}, `az\:b`, "c\d"},
 		{"colon file name and empty media type", args{"az:b:", "c"}, "az:b", ""},
 		{"colon-prefix file name and media type", args{":az:b:c", "d"}, ":az:b", "c"},
 
@@ -98,8 +98,8 @@ func Test_unescape(t *testing.T) {
 		want  string
 	}{
 		{"empty string", "", ""},
-		{"only escape char", "\\", ""},
-		{"double escape char", `\\`, `\`},
+		{"only backslash", "\\", ""},
+		{"double backslash", `\\`, `\`},
 		{"escaping t", `\t\t`, "tt"},
 		{"not escaping 1st t", `\\t\t`, `\tt`},
 		{"not escaping 2nd t", `\t\\t`, `t\t`},
