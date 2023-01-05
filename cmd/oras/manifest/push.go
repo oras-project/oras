@@ -80,16 +80,15 @@ Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'tag1
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			refs := strings.Split(args[0], ",")
+			opts.FqdnRef = refs[0]
 			opts.extraRefs = refs[1:]
 			opts.fileRef = args[1]
-			opts.FqdnRef = args[0]
 			if opts.fileRef == "-" && opts.PasswordFromStdin {
 				return errors.New("`-` read file from input and `--password-stdin` read password from input cannot be both used")
 			}
 			return option.Parse(&opts)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
-
 			return pushManifest(opts)
 		},
 	}
@@ -160,7 +159,6 @@ func pushManifest(opts pushOptions) error {
 				return err
 			}
 		}
-
 		if err = display.PrintStatus(desc, "Uploaded ", verbose); err != nil {
 			return err
 		}
@@ -182,13 +180,12 @@ func pushManifest(opts pushOptions) error {
 		}
 		return opts.Output(os.Stdout, descJSON)
 	}
-	display.Print("Pushed", opts.FqdnRef)
+	display.Print("Pushed", opts.FullReference())
 	if len(opts.extraRefs) != 0 {
 		if _, err = oras.TagBytesN(ctx, &display.TagManifestStatusPrinter{Target: target}, mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}
 	}
-
 	fmt.Println("Digest:", desc.Digest)
 
 	return nil

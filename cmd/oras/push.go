@@ -93,9 +93,9 @@ Example - Push file "hi.txt" with multiple tags and concurrency level tuned:
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			refs := strings.Split(args[0], ",")
+			opts.FqdnRef = args[0]
 			opts.extraRefs = refs[1:]
 			opts.FileRefs = args[1:]
-			opts.FqdnRef = args[0]
 			if opts.artifactType != "" && opts.manifestConfigRef != "" {
 				return errors.New("--artifact-type and --config cannot both be provided")
 			}
@@ -178,7 +178,7 @@ func runPush(opts pushOptions) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("Pushed", opts.FqdnRef)
+	fmt.Println("Pushed", opts.FullReference())
 
 	if len(opts.extraRefs) != 0 {
 		contentBytes, err := content.FetchAll(ctx, store, root)

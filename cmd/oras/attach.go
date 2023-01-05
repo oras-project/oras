@@ -143,16 +143,13 @@ func runAttach(opts attachOptions) error {
 		return err
 	}
 
-	var targetRef string
-	switch opts.Type {
-	case option.OCILayoutType:
-		targetRef = opts.FqdnRef
-	case option.RemoteType:
+	if opts.Type == option.RemoteType {
+		// Reassemble a reference with subject digest
 		ref := dst.(*remote.Repository).Reference
 		ref.Reference = subject.Digest.String()
-		targetRef = ref.String()
+		opts.FqdnRef = ref.String()
 	}
-	fmt.Println("Attached to", targetRef)
+	fmt.Println("Attached to", opts.FullReference())
 	fmt.Println("Digest:", root.Digest)
 
 	// Export manifest

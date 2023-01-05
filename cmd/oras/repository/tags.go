@@ -27,7 +27,6 @@ import (
 type showTagsOptions struct {
 	option.Common
 	option.Target
-
 	last             string
 	excludeDigestTag bool
 }

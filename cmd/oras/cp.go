@@ -66,10 +66,10 @@ Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			refs := strings.Split(args[1], ",")
-			opts.extraRefs = refs[1:]
 			opts.From.FqdnRef = args[0]
+			refs := strings.Split(args[1], ",")
 			opts.To.FqdnRef = refs[0]
+			opts.extraRefs = refs[1:]
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -147,7 +147,7 @@ func runCopy(opts copyOptions) error {
 		return err
 	}
 
-	fmt.Printf("Copied [%s] %s => [%s] %s \n", opts.From.Type, opts.From.FqdnRef, opts.To.Type, opts.To.FqdnRef)
+	fmt.Printf("Copied %s => %s \n", opts.From.FullReference(), opts.To.FullReference())
 
 	if len(opts.extraRefs) != 0 {
 		tagNOpts := oras.DefaultTagNOptions

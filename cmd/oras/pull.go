@@ -234,7 +234,7 @@ func runPull(opts pullOptions) error {
 	if pulledEmpty {
 		fmt.Println("Downloaded empty artifact")
 	}
-	fmt.Println("Pulled", opts.FqdnRef)
+	fmt.Println("Pulled", opts.FullReference())
 	fmt.Println("Digest:", desc.Digest)
 	return nil
 }

@@ -110,7 +110,7 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 		fetchOpts.TargetPlatform = opts.OCIPlatform
 		desc, err = oras.Resolve(ctx, src, opts.Reference, fetchOpts)
 		if err != nil {
-			return fmt.Errorf("failed to resolve %q: %w", opts.FqdnRef, err)
+			return fmt.Errorf("failed to resolve %q: %w", opts.FullReference(), err)
 		}
 	} else {
 		// fetch manifest content
@@ -119,7 +119,7 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 		fetchOpts.TargetPlatform = opts.OCIPlatform
 		desc, content, err = oras.FetchBytes(ctx, src, opts.Reference, fetchOpts)
 		if err != nil {
-			return fmt.Errorf("failed to fetch %q: %w", opts.FqdnRef, err)
+			return fmt.Errorf("failed to fetch %q: %w", opts.FullReference(), err)
 		}
 
 		if opts.outputPath == "" || opts.outputPath == "-" {

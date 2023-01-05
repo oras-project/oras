@@ -70,8 +70,8 @@ Example - Push blob without TLS:
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			opts.fileRef = args[1]
 			opts.FqdnRef = args[0]
+			opts.fileRef = args[1]
 			if opts.fileRef == "-" {
 				if opts.PasswordFromStdin {
 					return errors.New("`-` read file from input and `--password-stdin` read password from input cannot be both used")
@@ -138,7 +138,7 @@ func pushBlob(opts pushBlobOptions) (err error) {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	fmt.Println("Pushed", opts.FqdnRef)
+	fmt.Println("Pushed", opts.FullReference())
 	fmt.Println("Digest:", desc.Digest)
 
 	return nil

@@ -54,8 +54,8 @@ Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.1', 'v1.0
 `,
 		Args: cobra.MinimumNArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			opts.targetRefs = args[1:]
 			opts.FqdnRef = args[0]
+			opts.targetRefs = args[1:]
 			return option.Parse(&opts)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
@@ -70,7 +70,6 @@ Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.1', 'v1.0
 
 func tagManifest(opts tagOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
-
 	target, err := opts.NewTarget(opts.Common)
 	if err != nil {
 		return err

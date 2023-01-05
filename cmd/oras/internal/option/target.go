@@ -69,6 +69,11 @@ func (opts *Target) ApplyFlags(fs *pflag.FlagSet) {
 	opts.applyFlagsWithPrefix(fs, "", "")
 }
 
+// FullReference returns full printable reference.
+func (opts *Target) FullReference() string {
+	return fmt.Sprintf("[%s] %s", opts.Type, opts.FqdnRef)
+}
+
 // applyFlagsWithPrefix applies flags to a command flag set with a prefix string.
 // Commonly used for non-unary remote targets.
 func (opts *Target) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
