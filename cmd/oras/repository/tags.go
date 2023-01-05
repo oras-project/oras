@@ -53,7 +53,7 @@ Example - Show tags of the target repository that include values lexically after
 		Args:    cobra.ExactArgs(1),
 		Aliases: []string{"show-tags"},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			opts.Fqdn = args[0]
+			opts.FqdnRef = args[0]
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -74,7 +74,7 @@ func showTags(opts showTagsOptions) error {
 		return err
 	}
 	if opts.Reference != "" {
-		return fmt.Errorf("unexpected tag or digest %q found in repository reference %q", opts.Reference, opts.Fqdn)
+		return fmt.Errorf("unexpected tag or digest %q found in repository reference %q", opts.Reference, opts.FqdnRef)
 	}
 
 	return finder.Tags(ctx, opts.last, func(tags []string) error {

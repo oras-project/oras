@@ -55,7 +55,7 @@ func (opts *targetFlag) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, descript
 // Unary target option struct.
 type Target struct {
 	Remote
-	Fqdn      string
+	FqdnRef   string
 	Type      string
 	IsTag     bool
 	Reference string
@@ -98,22 +98,22 @@ func (opts *Target) Parse() error {
 func (opts *Target) NewTarget(common Common) (graphTarget oras.GraphTarget, err error) {
 	switch opts.Type {
 	case OCILayoutType:
-		if idx := strings.LastIndex(opts.Fqdn, "@"); idx != -1 {
+		if idx := strings.LastIndex(opts.FqdnRef, "@"); idx != -1 {
 			// `digest` found
 			opts.IsTag = false
-			graphTarget, err = oci.New(opts.Fqdn[:idx])
-			opts.Reference = opts.Fqdn[idx+1:]
-		} else if idx = strings.LastIndex(opts.Fqdn, ":"); idx != -1 {
+			graphTarget, err = oci.New(opts.FqdnRef[:idx])
+			opts.Reference = opts.FqdnRef[idx+1:]
+		} else if idx = strings.LastIndex(opts.FqdnRef, ":"); idx != -1 {
 			// `tag` found
 			opts.IsTag = true
-			graphTarget, err = oci.New(opts.Fqdn[:idx])
-			opts.Reference = opts.Fqdn[idx+1:]
+			graphTarget, err = oci.New(opts.FqdnRef[:idx])
+			opts.Reference = opts.FqdnRef[idx+1:]
 		} else {
-			graphTarget, err = oci.New(opts.Fqdn)
+			graphTarget, err = oci.New(opts.FqdnRef)
 		}
 		return
 	case RemoteType:
-		repo, err := opts.NewRepository(opts.Fqdn, common)
+		repo, err := opts.NewRepository(opts.FqdnRef, common)
 		if err != nil {
 			return nil, err
 		}
@@ -133,17 +133,17 @@ type ReadOnlyGraphTagFinderTarget interface {
 func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadOnlyGraphTagFinderTarget, error) {
 	switch opts.Type {
 	case OCILayoutType:
-		path := opts.Fqdn
-		if idx := strings.LastIndex(opts.Fqdn, "@"); idx != -1 {
+		path := opts.FqdnRef
+		if idx := strings.LastIndex(opts.FqdnRef, "@"); idx != -1 {
 			// `digest` found
 			opts.IsTag = false
-			path = opts.Fqdn[:idx]
-			opts.Reference = opts.Fqdn[idx+1:]
-		} else if idx = strings.LastIndex(opts.Fqdn, ":"); idx != -1 {
+			path = opts.FqdnRef[:idx]
+			opts.Reference = opts.FqdnRef[idx+1:]
+		} else if idx = strings.LastIndex(opts.FqdnRef, ":"); idx != -1 {
 			// `tag` found
 			opts.IsTag = true
-			path = opts.Fqdn[:idx]
-			opts.Reference = opts.Fqdn[idx+1:]
+			path = opts.FqdnRef[:idx]
+			opts.Reference = opts.FqdnRef[idx+1:]
 		}
 		var store *oci.ReadOnlyStore
 		info, err := os.Stat(path)
@@ -164,7 +164,7 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadO
 		}
 		return store, nil
 	case RemoteType:
-		repo, err := opts.NewRepository(opts.Fqdn, common)
+		repo, err := opts.NewRepository(opts.FqdnRef, common)
 		if err != nil {
 			return nil, err
 		}

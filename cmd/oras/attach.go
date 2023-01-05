@@ -66,7 +66,7 @@ Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json'
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.FileRefs = args[1:]
-			opts.Fqdn = args[0]
+			opts.FqdnRef = args[0]
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -102,7 +102,7 @@ func runAttach(opts attachOptions) error {
 	}
 	// sanctity check: should not be tarball
 	if opts.Reference == "" {
-		return oerrors.NewErrInvalidReferenceStr(opts.Fqdn)
+		return oerrors.NewErrInvalidReferenceStr(opts.FqdnRef)
 	}
 	subject, err := dst.Resolve(ctx, opts.Reference)
 	if err != nil {
@@ -146,7 +146,7 @@ func runAttach(opts attachOptions) error {
 	var targetRef string
 	switch opts.Type {
 	case option.OCILayoutType:
-		targetRef = opts.Fqdn
+		targetRef = opts.FqdnRef
 	case option.RemoteType:
 		ref := dst.(*remote.Repository).Reference
 		ref.Reference = subject.Digest.String()

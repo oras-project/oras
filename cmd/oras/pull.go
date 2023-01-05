@@ -78,7 +78,7 @@ Example - Pull all files with concurrency level tuned:
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			opts.Fqdn = args[0]
+			opts.FqdnRef = args[0]
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -182,7 +182,7 @@ func runPull(opts pullOptions) error {
 		return err
 	}
 	if opts.Reference == "" {
-		return errors.NewErrInvalidReferenceStr(opts.Fqdn)
+		return errors.NewErrInvalidReferenceStr(opts.FqdnRef)
 	}
 	src, err := opts.CachedTarget(target)
 	if err != nil {
@@ -234,7 +234,7 @@ func runPull(opts pullOptions) error {
 	if pulledEmpty {
 		fmt.Println("Downloaded empty artifact")
 	}
-	fmt.Println("Pulled", opts.Fqdn)
+	fmt.Println("Pulled", opts.FqdnRef)
 	fmt.Println("Digest:", desc.Digest)
 	return nil
 }

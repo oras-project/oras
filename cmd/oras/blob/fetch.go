@@ -63,7 +63,7 @@ Example - Fetch the blob, save it to a local file and print the descriptor:
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			opts.Fqdn = args[0]
+			opts.FqdnRef = args[0]
 			if opts.outputPath == "" && !opts.OutputDescriptor {
 				return errors.New("either `--output` or `--descriptor` must be provided")
 			}
@@ -91,7 +91,7 @@ func fetchBlob(opts fetchBlobOptions) (fetchErr error) {
 		return err
 	}
 	if err := digest.Digest(opts.Reference).Validate(); err != nil {
-		return fmt.Errorf("%s: blob reference must be of the form <name@digest>: %w", opts.Fqdn, err)
+		return fmt.Errorf("%s: blob reference must be of the form <name@digest>: %w", opts.FqdnRef, err)
 	}
 
 	if repo, ok := target.(*remote.Repository); ok {

@@ -67,7 +67,7 @@ Example - Fetch manifest with prettified json result:
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			opts.Fqdn = args[0]
+			opts.FqdnRef = args[0]
 			if opts.outputPath == "-" && opts.OutputDescriptor {
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
 			}
@@ -92,7 +92,7 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 		return err
 	}
 	if opts.Reference == "" {
-		return oerrors.NewErrInvalidReferenceStr(opts.Fqdn)
+		return oerrors.NewErrInvalidReferenceStr(opts.FqdnRef)
 	}
 	if repo, ok := target.(*remote.Repository); ok {
 		repo.ManifestMediaTypes = opts.mediaTypes
@@ -110,7 +110,7 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 		fetchOpts.TargetPlatform = opts.OCIPlatform
 		desc, err = oras.Resolve(ctx, src, opts.Reference, fetchOpts)
 		if err != nil {
-			return fmt.Errorf("failed to resolve %q: %w", opts.Fqdn, err)
+			return fmt.Errorf("failed to resolve %q: %w", opts.FqdnRef, err)
 		}
 	} else {
 		// fetch manifest content
@@ -119,7 +119,7 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 		fetchOpts.TargetPlatform = opts.OCIPlatform
 		desc, content, err = oras.FetchBytes(ctx, src, opts.Reference, fetchOpts)
 		if err != nil {
-			return fmt.Errorf("failed to fetch %q: %w", opts.Fqdn, err)
+			return fmt.Errorf("failed to fetch %q: %w", opts.FqdnRef, err)
 		}
 
 		if opts.outputPath == "" || opts.outputPath == "-" {

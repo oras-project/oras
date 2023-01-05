@@ -55,7 +55,7 @@ Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.1', 'v1.0
 		Args: cobra.MinimumNArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRefs = args[1:]
-			opts.Fqdn = args[0]
+			opts.FqdnRef = args[0]
 			return option.Parse(&opts)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
@@ -76,7 +76,7 @@ func tagManifest(opts tagOptions) error {
 		return err
 	}
 	if opts.Reference == "" {
-		return errors.NewErrInvalidReferenceStr(opts.Fqdn)
+		return errors.NewErrInvalidReferenceStr(opts.FqdnRef)
 	}
 
 	tagNOpts := oras.DefaultTagNOptions

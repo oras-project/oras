@@ -68,8 +68,8 @@ Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			refs := strings.Split(args[1], ",")
 			opts.extraRefs = refs[1:]
-			opts.From.Fqdn = args[0]
-			opts.To.Fqdn = refs[0]
+			opts.From.FqdnRef = args[0]
+			opts.To.FqdnRef = refs[0]
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -93,7 +93,7 @@ func runCopy(opts copyOptions) error {
 		return err
 	}
 	if opts.From.Reference == "" {
-		return errors.NewErrInvalidReferenceStr(opts.From.Fqdn)
+		return errors.NewErrInvalidReferenceStr(opts.From.FqdnRef)
 	}
 
 	// Prepare destination
@@ -147,7 +147,7 @@ func runCopy(opts copyOptions) error {
 		return err
 	}
 
-	fmt.Printf("Copied [%s] %s => [%s] %s \n", opts.From.Type, opts.From.Fqdn, opts.To.Type, opts.To.Fqdn)
+	fmt.Printf("Copied [%s] %s => [%s] %s \n", opts.From.Type, opts.From.FqdnRef, opts.To.Type, opts.To.FqdnRef)
 
 	if len(opts.extraRefs) != 0 {
 		tagNOpts := oras.DefaultTagNOptions
