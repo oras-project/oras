@@ -24,7 +24,7 @@ type Test struct {
 }
 
 func (t *Test) Parse() {
-	t.Cnt++
+	t.Cnt += 1
 }
 
 func TestParse(t *testing.T) {
