@@ -59,7 +59,7 @@ Example - Delete a blob and print its descriptor:
 			if opts.OutputDescriptor && !opts.Confirmed {
 				return errors.New("must apply --force to confirm the deletion if the descriptor is outputted")
 			}
-			return opts.ReadPassword()
+			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]

@@ -79,7 +79,7 @@ Example - Pull all files with concurrency level tuned:
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return opts.ReadPassword()
+			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
@@ -99,10 +99,6 @@ Example - Pull all files with concurrency level tuned:
 
 func runPull(opts pullOptions) error {
 	var printed sync.Map
-	targetPlatform, err := opts.Parse()
-	if err != nil {
-		return err
-	}
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
@@ -125,9 +121,7 @@ func runPull(opts pullOptions) error {
 			return err
 		}
 	}
-	if targetPlatform != nil {
-		copyOptions.WithTargetPlatform(targetPlatform)
-	}
+	copyOptions.WithTargetPlatform(opts.OCIPlatform)
 	var getConfigOnce sync.Once
 	copyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		statusFetcher := content.FetcherFunc(func(ctx context.Context, target ocispec.Descriptor) (fetched io.ReadCloser, fetchErr error) {
