@@ -150,6 +150,9 @@ func fetchAllReferrers(ctx context.Context, repo *remote.Repository, desc ocispe
 	for _, r := range results {
 		// Find all indirect referrers
 		referrerNode := node.AddPath(r.ArtifactType, r.Digest)
+		for a := range r.Annotations {
+			referrerNode.AddPathString(fmt.Sprintf("%s = %s", a, r.Annotations[a]))
+		}
 		err := fetchAllReferrers(
 			ctx, repo,
 			ocispec.Descriptor{
