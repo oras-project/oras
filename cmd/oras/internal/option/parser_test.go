@@ -23,8 +23,9 @@ type Test struct {
 	Cnt int
 }
 
-func (t *Test) Parse() {
+func (t *Test) Parse() error {
 	t.Cnt += 1
+	return nil
 }
 
 func TestParse(t *testing.T) {
