@@ -81,7 +81,7 @@ Example - Push blob without TLS:
 					return errors.New("`--size` must be provided if the blob is read from stdin")
 				}
 			}
-			return opts.ReadPassword()
+			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return pushBlob(opts)
