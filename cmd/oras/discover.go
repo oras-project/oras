@@ -102,7 +102,7 @@ func runDiscover(opts discoverOptions) error {
 
 	if opts.outputType == "tree" {
 		root := tree.New(repo.Reference.String())
-		err = opts.fetchAllReferrers(ctx, repo, desc, opts.artifactType, root)
+		err = fetchAllReferrers(ctx, repo, desc, opts.artifactType, root, &opts)
 		if err != nil {
 			return err
 		}
@@ -142,7 +142,7 @@ func fetchReferrers(ctx context.Context, repo *remote.Repository, desc ocispec.D
 	return results, nil
 }
 
-func (opts *discoverOptions) fetchAllReferrers(ctx context.Context, repo *remote.Repository, desc ocispec.Descriptor, artifactType string, node *tree.Node) error {
+func fetchAllReferrers(ctx context.Context, repo *remote.Repository, desc ocispec.Descriptor, artifactType string, node *tree.Node, opts *discoverOptions) error {
 	results, err := fetchReferrers(ctx, repo, desc, artifactType)
 	if err != nil {
 		return err
@@ -152,23 +152,23 @@ func (opts *discoverOptions) fetchAllReferrers(ctx context.Context, repo *remote
 		// Find all indirect referrers
 		referrerNode := node.AddPath(r.ArtifactType, r.Digest)
 		if opts.Verbose {
-			bytes, err := yaml.Marshal(r.Annotations)
-			if err != nil {
-				return err
-			}
-			annotations := strings.Split(strings.TrimSpace(string(bytes)), "\n")
-			for _, a := range annotations {
-				referrerNode.AddPathString(a)
+			for k := range r.Annotations {
+				v := map[string]string{k: r.Annotations[k]}
+				bytes, err := yaml.Marshal(v)
+				if err != nil {
+					return err
+				}
+				referrerNode.AddPathString(string(bytes))
 			}
 		}
-		err := opts.fetchAllReferrers(
+		err := fetchAllReferrers(
 			ctx, repo,
 			ocispec.Descriptor{
 				Digest:    r.Digest,
 				Size:      r.Size,
 				MediaType: r.MediaType,
 			},
-			artifactType, referrerNode)
+			artifactType, referrerNode, opts)
 		if err != nil {
 			return err
 		}
