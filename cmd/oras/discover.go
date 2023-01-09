@@ -22,6 +22,7 @@ import (
 	"os"
 	"strings"
 
+	"gopkg.in/yaml.v3"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/errors"
@@ -101,7 +102,7 @@ func runDiscover(opts discoverOptions) error {
 
 	if opts.outputType == "tree" {
 		root := tree.New(repo.Reference.String())
-		err = fetchAllReferrers(ctx, repo, desc, opts.artifactType, root)
+		err = opts.fetchAllReferrers(ctx, repo, desc, opts.artifactType, root)
 		if err != nil {
 			return err
 		}
@@ -141,7 +142,7 @@ func fetchReferrers(ctx context.Context, repo *remote.Repository, desc ocispec.D
 	return results, nil
 }
 
-func fetchAllReferrers(ctx context.Context, repo *remote.Repository, desc ocispec.Descriptor, artifactType string, node *tree.Node) error {
+func (opts *discoverOptions) fetchAllReferrers(ctx context.Context, repo *remote.Repository, desc ocispec.Descriptor, artifactType string, node *tree.Node) error {
 	results, err := fetchReferrers(ctx, repo, desc, artifactType)
 	if err != nil {
 		return err
@@ -150,10 +151,17 @@ func fetchAllReferrers(ctx context.Context, repo *remote.Repository, desc ocispe
 	for _, r := range results {
 		// Find all indirect referrers
 		referrerNode := node.AddPath(r.ArtifactType, r.Digest)
-		for a := range r.Annotations {
-			referrerNode.AddPathString(fmt.Sprintf("%s = %s", a, r.Annotations[a]))
+		if opts.Verbose {
+			bytes, err := yaml.Marshal(r.Annotations)
+			if err != nil {
+				return err
+			}
+			annotations := strings.Split(strings.TrimSpace(string(bytes)), "\n")
+			for _, a := range annotations {
+				referrerNode.AddPathString(a)
+			}
 		}
-		err := fetchAllReferrers(
+		err := opts.fetchAllReferrers(
 			ctx, repo,
 			ocispec.Descriptor{
 				Digest:    r.Digest,
