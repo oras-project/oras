@@ -152,8 +152,8 @@ func fetchAllReferrers(ctx context.Context, repo *remote.Repository, desc ocispe
 		// Find all indirect referrers
 		referrerNode := node.AddPath(r.ArtifactType, r.Digest)
 		if opts.Verbose {
-			for k := range r.Annotations {
-				v := map[string]string{k: r.Annotations[k]}
+			for k, v := range r.Annotations {
+				v := map[string]string{k: v}
 				bytes, err := yaml.Marshal(v)
 				if err != nil {
 					return err
