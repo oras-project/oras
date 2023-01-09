@@ -158,7 +158,7 @@ func fetchAllReferrers(ctx context.Context, repo *remote.Repository, desc ocispe
 				if err != nil {
 					return err
 				}
-				referrerNode.AddPathString(string(bytes))
+				referrerNode.AddPathString(strings.TrimSpace(string(bytes)))
 			}
 		}
 		err := fetchAllReferrers(
