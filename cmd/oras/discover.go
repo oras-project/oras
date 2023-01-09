@@ -153,8 +153,7 @@ func fetchAllReferrers(ctx context.Context, repo *remote.Repository, desc ocispe
 		referrerNode := node.AddPath(r.ArtifactType, r.Digest)
 		if opts.Verbose {
 			for k, v := range r.Annotations {
-				v := map[string]string{k: v}
-				bytes, err := yaml.Marshal(v)
+				bytes, err := yaml.Marshal(map[string]string{k: v})
 				if err != nil {
 					return err
 				}
