@@ -42,7 +42,6 @@ func rangeFields[T any](ptr any, fn func(T) error) error {
 		if f.CanSet() {
 			iface := f.Addr().Interface()
 			if opts, ok := iface.(T); ok {
-				fn(opts)
 				if err := fn(opts); err != nil {
 					return err
 				}
