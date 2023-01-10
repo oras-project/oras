@@ -14,21 +14,26 @@ limitations under the License.
 package option_test
 
 import (
+	"errors"
 	"testing"
 
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
 type Test struct {
-	Cnt int
+	CntPtr *int
 }
 
 func (t *Test) Parse() error {
-	t.Cnt += 1
+	*t.CntPtr += 1
+	if *t.CntPtr == 2 {
+		return errors.New("should not be tried twice")
+	}
 	return nil
 }
 
-func TestParse(t *testing.T) {
+func TestParse_once(t *testing.T) {
+	cnt := 0
 	type args struct {
 		Test
 	}
@@ -37,7 +42,7 @@ func TestParse(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"parse should be called", args{Test{Cnt: 0}}, false},
+		{"parse should be called once", args{Test{CntPtr: &cnt}}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -45,8 +50,36 @@ func TestParse(t *testing.T) {
 				t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			if tt.args.Cnt != 1 {
-				t.Errorf("Expect Parse() to be called once but got %v", tt.args.Cnt)
+			if cnt != 1 {
+				t.Errorf("Expect Parse() to be called once but got %v", cnt)
+			}
+		})
+	}
+}
+
+func TestParse_err(t *testing.T) {
+	cnt := 0
+	type args struct {
+		Test1 Test
+		Test2 Test
+		Test3 Test
+		Test4 Test
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{"parse should be called twice and aborted with error", args{Test{CntPtr: &cnt}, Test{CntPtr: &cnt}, Test{CntPtr: &cnt}, Test{CntPtr: &cnt}}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := option.Parse(&tt.args); (err != nil) != tt.wantErr {
+				t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if cnt != 2 {
+				t.Errorf("Expect Parse() to be called twice but got %v", cnt)
 			}
 		})
 	}

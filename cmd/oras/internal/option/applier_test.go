@@ -23,10 +23,11 @@ import (
 )
 
 func (t *Test) ApplyFlags(fs *pflag.FlagSet) {
-	t.Cnt += 1
+	*t.CntPtr += 1
 }
 
 func TestApplyFlags(t *testing.T) {
+	cnt := 0
 	type args struct {
 		Test
 	}
@@ -35,14 +36,13 @@ func TestApplyFlags(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"flags should be applied once", args{Test{Cnt: 0}}, false},
+		{"flags should be applied once", args{Test{CntPtr: &cnt}}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			option.ApplyFlags(&tt.args, nil)
-
-			if tt.args.Cnt != 1 {
-				t.Errorf("Expect ApplyFlags() to be called once but got %v", tt.args.Cnt)
+			if cnt != 1 {
+				t.Errorf("Expect ApplyFlags() to be called once but got %v", cnt)
 			}
 		})
 	}
