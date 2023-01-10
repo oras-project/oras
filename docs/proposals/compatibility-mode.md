@@ -10,13 +10,10 @@ Since 0.16.0, ORAS supports pushing OCI artifact manifest to OCI v1.0 compliant 
 
 ## Challenge
 
-However, the ORAS fallback may fail as there is no deterministic way to confirm if a registry supporting OCI artifact manifest and no consistent error response. On the other hand, users may want to force-push a specific manifest type to a registry for some reason.
+However, the ORAS fallback may fail as there is no deterministic way to confirm if a registry supporting OCI artifact manifest and no consistent error response. 
+You can find the testing result of the implementation result for OCI Spec from this [blog](https://toddysm.com/2023/01/05/oci-artifct-manifests-oci-referrers-api-and-their-support-across-registries-part-1/). On the other hand, users may want to force-push a specific manifest type to a registry for some reason.
 
-![This table is captured from [https://toddysm.com/2023/01/05/oci-artifct-manifests-oci-referrers-api-and-their-support-across-registries-part-1/](https://toddysm.com/2023/01/05/oci-artifct-manifests-oci-referrers-api-and-their-support-across-registries-part-1/)](Proposal%20Provide%20Compatibility%20mode%20for%20ORAS%20a1e29245ea014b10a9711bae0d04db3c/Untitled.png)
-
-This table is captured from [https://toddysm.com/2023/01/05/oci-artifct-manifests-oci-referrers-api-and-their-support-across-registries-part-1/](https://toddysm.com/2023/01/05/oci-artifct-manifests-oci-referrers-api-and-their-support-across-registries-part-1/)
-
-The current workaround for enabling the compatibility mode is to specify a `--config` flag when using `oras push`. Since the OCI Artifact Manifest does not have a `config`, it will push an OCI image manifest instead. It is not user-friendly and is a bit hacky. It would be better if we can provide a compatibility mode for switching the manifest uploading behavior.
+The current workaround for enabling a kind of compatibility mode is to specify a `--config` flag when using `oras push`. Since the OCI Artifact Manifest does not have a `config`, it will push an OCI image manifest instead. It is not user-friendly and is a bit hacky. It would be better if we can provide a compatibility mode to easily customize and switch the manifest uploading behavior, and enable users to handle the incompatibility problem when using ORAS across different registries. 
 
 ## Goals
 
