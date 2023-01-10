@@ -27,6 +27,7 @@ import (
 	"oras.land/oras-go/v2/content/file"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/registry"
 )
 
 type attachOptions struct {
@@ -137,7 +138,7 @@ func runAttach(opts attachOptions) error {
 		return oras.CopyGraph(ctx, store, dst, root, graphCopyOptions)
 	}
 
-	root, err := pushArtifact(dst, pack, &packOpts, copy, &graphCopyOptions, opts.Verbose)
+	root, err := pushArtifact(dst, pack, &packOpts, copy, &graphCopyOptions, opts.ManifestSupportState == registry.ManifestSupportUnknown, opts.Verbose)
 	if err != nil {
 		return err
 	}
