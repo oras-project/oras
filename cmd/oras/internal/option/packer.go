@@ -70,6 +70,8 @@ func (opts *Packer) Parse(fs *pflag.FlagSet) error {
 	case "image":
 		opts.ManifestSupportState = registry.OCIImage
 		opts.ReferrersApiSupportState = registry.ReferrersApiSupportUnknown
+	default:
+		return fmt.Errorf("unknown compatibility mode: %q", opts.compatibility)
 	}
 	return nil
 }
@@ -80,7 +82,7 @@ func (opts *Packer) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringArrayVarP(&opts.ManifestAnnotations, "annotation", "a", nil, "manifest annotations")
 	fs.StringVarP(&opts.AnnotationFilePath, "annotation-file", "", "", "path of the annotation file")
 	fs.BoolVarP(&opts.PathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
-	fs.StringVar(&opts.compatibility, "compatibility", "", "set compatibility mode for pushing towards")
+	fs.StringVar(&opts.compatibility, "compatibility", "", "set compatibility mode for registry, `artifact, image, min max`")
 }
 
 // ExportManifest saves the pushed manifest to a local file.
