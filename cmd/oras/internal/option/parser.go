@@ -25,14 +25,24 @@ type FlagParser interface {
 // Parse parses applicable fields of the passed-in option pointer and returns
 // error during parsing.
 func Parse(optsPtr interface{}) error {
-	v := reflect.ValueOf(optsPtr).Elem()
+	return rangeFields(optsPtr, func(fp FlagParser, err *error) {
+		*err = fp.Parse()
+	})
+}
+
+// rangeFields goes through all fields of ptr, optionally run fn if a field is
+// public AND typed T.
+func rangeFields[T any](ptr any, fn func(T, *error)) error {
+	v := reflect.ValueOf(ptr).Elem()
 	for i := 0; i < v.NumField(); i++ {
 		f := v.Field(i)
 		if f.CanSet() {
 			iface := f.Addr().Interface()
-			if a, ok := iface.(FlagParser); ok {
-				if err := a.Parse(); err != nil {
-					return err
+			if opts, ok := iface.(T); ok {
+				var err *error
+				fn(opts, err)
+				if err != nil && *err != nil {
+					return *err
 				}
 			}
 		}

@@ -13,23 +13,37 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package option
+package option_test
 
 import (
+	"testing"
+
 	"github.com/spf13/pflag"
+	"oras.land/oras/cmd/oras/internal/option"
 )
 
-// FlagApplier applies flags to a command flag set.
-type FlagApplier interface {
-	ApplyFlags(*pflag.FlagSet)
+func (t *Test) ApplyFlags(fs *pflag.FlagSet) {
+	t.Cnt += 1
 }
 
-// ApplyFlags applies applicable fields of the passed-in option pointer to the
-// target flag set.
-// NOTE: The option argument need to be a pointer to the options, so its value
-// becomes addressable.
-func ApplyFlags(optsPtr interface{}, target *pflag.FlagSet) {
-	rangeFields(optsPtr, func(fa FlagApplier, err *error) {
-		fa.ApplyFlags(target)
-	})
+func TestApplyFlags(t *testing.T) {
+	type args struct {
+		Test
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{"flags should be applied once", args{Test{Cnt: 0}}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			option.ApplyFlags(&tt.args, nil)
+
+			if tt.args.Cnt != 1 {
+				t.Errorf("Expect ApplyFlags() to be called once but got %v", tt.args.Cnt)
+			}
+		})
+	}
 }

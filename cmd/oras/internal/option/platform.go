@@ -24,8 +24,8 @@ import (
 
 // Platform option struct.
 type Platform struct {
-	platform    string
-	OCIPlatform *ocispec.Platform
+	platform string
+	Platform *ocispec.Platform
 }
 
 // ApplyFlags applies flags to a command flag set.
@@ -63,6 +63,6 @@ func (opts *Platform) Parse() error {
 	if p.Architecture == "" {
 		return fmt.Errorf("invalid platform: Architecture cannot be empty")
 	}
-	opts.OCIPlatform = &p
+	opts.Platform = &p
 	return nil
 }

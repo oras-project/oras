@@ -107,7 +107,7 @@ func fetchConfig(opts fetchConfigOptions) (fetchErr error) {
 	}
 
 	// fetch config descriptor
-	configDesc, err := fetchConfigDesc(ctx, src, opts.targetRef, opts.OCIPlatform)
+	configDesc, err := fetchConfigDesc(ctx, src, opts.targetRef, opts.Platform.Platform)
 	if err != nil {
 		return err
 	}

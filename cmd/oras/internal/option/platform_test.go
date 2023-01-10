@@ -71,7 +71,7 @@ func TestPlatform_Parse(t *testing.T) {
 			if err := tt.opts.Parse(); err != nil {
 				t.Errorf("Platform.Parse() error = %v", err)
 			}
-			got := tt.opts.OCIPlatform
+			got := tt.opts.Platform
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Platform.Parse() = %v, want %v", got, tt.want)
 			}

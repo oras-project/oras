@@ -121,7 +121,9 @@ func runPull(opts pullOptions) error {
 			return err
 		}
 	}
-	copyOptions.WithTargetPlatform(opts.OCIPlatform)
+	if opts.Platform.Platform != nil {
+		copyOptions.WithTargetPlatform(opts.Platform.Platform)
+	}
 	var getConfigOnce sync.Once
 	copyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		statusFetcher := content.FetcherFunc(func(ctx context.Context, target ocispec.Descriptor) (fetched io.ReadCloser, fetchErr error) {
