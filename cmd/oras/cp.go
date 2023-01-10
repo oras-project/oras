@@ -68,6 +68,9 @@ Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net
   oras cp --concurrency 6 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1,tag2,tag3
 `,
 		Args: cobra.ExactArgs(2),
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return option.Parse(&opts)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.srcRef = args[0]
 			refs := strings.Split(args[1], ",")
@@ -88,10 +91,6 @@ Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net
 
 func runCopy(opts copyOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
-	targetPlatform, err := opts.Parse()
-	if err != nil {
-		return err
-	}
 
 	// Prepare source
 	src, err := opts.src.NewRepository(opts.srcRef, opts.Common)
@@ -145,8 +144,8 @@ func runCopy(opts copyOptions) error {
 			copyOptions := oras.CopyOptions{
 				CopyGraphOptions: extendedCopyOptions.CopyGraphOptions,
 			}
-			if targetPlatform != nil {
-				copyOptions.WithTargetPlatform(targetPlatform)
+			if opts.Platform.Platform != nil {
+				copyOptions.WithTargetPlatform(opts.Platform.Platform)
 			}
 			desc, err = oras.Copy(ctx, src, opts.srcRef, dst, opts.dstRef, copyOptions)
 		}

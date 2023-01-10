@@ -69,8 +69,7 @@ Example - Fetch manifest with prettified json result:
 			if opts.outputPath == "-" && opts.OutputDescriptor {
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
 			}
-
-			return opts.ReadPassword()
+			return option.Parse(&opts)
 		},
 		Aliases: []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -98,11 +97,6 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 	}
 	repo.ManifestMediaTypes = opts.mediaTypes
 
-	targetPlatform, err := opts.Parse()
-	if err != nil {
-		return err
-	}
-
 	src, err := opts.CachedTarget(repo)
 	if err != nil {
 		return err
@@ -112,7 +106,7 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 	if opts.OutputDescriptor && opts.outputPath == "" {
 		// fetch manifest descriptor only
 		fetchOpts := oras.DefaultResolveOptions
-		fetchOpts.TargetPlatform = targetPlatform
+		fetchOpts.TargetPlatform = opts.Platform.Platform
 		desc, err = oras.Resolve(ctx, src, opts.targetRef, fetchOpts)
 		if err != nil {
 			return err
@@ -121,7 +115,7 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 		// fetch manifest content
 		var content []byte
 		fetchOpts := oras.DefaultFetchBytesOptions
-		fetchOpts.TargetPlatform = targetPlatform
+		fetchOpts.TargetPlatform = opts.Platform.Platform
 		desc, content, err = oras.FetchBytes(ctx, src, opts.targetRef, fetchOpts)
 		if err != nil {
 			return err

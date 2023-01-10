@@ -70,7 +70,7 @@ Example - Fetch the blob, save it to a local file and print the descriptor:
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
 			}
 
-			return opts.ReadPassword()
+			return option.Parse(&opts)
 		},
 		Aliases: []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {
