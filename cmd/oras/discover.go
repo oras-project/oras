@@ -90,7 +90,7 @@ func runDiscover(opts discoverOptions) error {
 
 	// discover artifacts
 	resolveOpts := oras.DefaultResolveOptions
-	resolveOpts.TargetPlatform = opts.OCIPlatform
+	resolveOpts.TargetPlatform = opts.Platform.Platform
 	desc, err := oras.Resolve(ctx, repo, repo.Reference.Reference, resolveOpts)
 	if err != nil {
 		return err
