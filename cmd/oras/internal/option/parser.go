@@ -28,8 +28,7 @@ type FlagParser interface {
 // error during parsing.
 func Parse(optsPtr interface{}) error {
 	return rangeFields(optsPtr, func(fp FlagParser) error {
-		fp.Parse()
-		return nil
+		return fp.Parse()
 	})
 }
 
