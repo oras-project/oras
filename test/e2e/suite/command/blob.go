@@ -139,7 +139,7 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("blob", "fetch", Reference(Host, dstRepo, deleteDigest), "--output", "-").MatchContent(deleteContent).Exec()
 		})
 
-		It("should fail if no confirmation flag and descriptor flag is provided", func() {
+		It("should fail if no force flag and descriptor flag is provided", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "no-confirm")
 			ORAS("cp", Reference(Host, Repo, FoobarImageDigest), Reference(Host, dstRepo, FoobarImageDigest)).Exec()
 			ORAS("blob", "delete", Reference(Host, dstRepo, deleteDigest), "--descriptor").ExpectFailure().Exec()
@@ -153,7 +153,7 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("blob", "delete", fmt.Sprintf("%s/%s@%s", Host, dstRepo, "test"), "--descriptor", "--force").ExpectFailure().Exec()
 		})
 
-		It("should fail to delete a non-existent blob without confirmation flag set", func() {
+		It("should fail to delete a non-existent blob without force flag set", func() {
 			toDeleteRef := Reference(Host, Repo, invalidDigest)
 			ORAS("blob", "delete", toDeleteRef).
 				ExpectFailure().
@@ -174,20 +174,21 @@ var _ = Describe("Common registry users:", func() {
 				WithInput(strings.NewReader("y")).
 				MatchKeyWords("Deleted", toDeleteRef).Exec()
 			ORAS("blob", "delete", toDeleteRef).
+				WithDescription("validate").
 				WithInput(strings.NewReader("y")).
 				ExpectFailure().
 				MatchErrKeyWords("Error:", toDeleteRef, "the specified blob does not exist").Exec()
 		})
 
-		It("should delete a blob with confirmation flag and output descriptor", func() {
+		It("should delete a blob with force flag and output descriptor", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "flag-confirmation")
 			ORAS("cp", Reference(Host, Repo, FoobarImageDigest), Reference(Host, dstRepo, FoobarImageDigest)).Exec()
 			toDeleteRef := Reference(Host, dstRepo, deleteDigest)
 			ORAS("blob", "delete", toDeleteRef, "--force", "--descriptor").MatchContent(deleteDescriptor).Exec()
-			ORAS("blob", "delete", toDeleteRef).ExpectFailure().MatchErrKeyWords("Error:", toDeleteRef, "the specified blob does not exist").Exec()
+			ORAS("blob", "delete", toDeleteRef).WithDescription("validate").ExpectFailure().MatchErrKeyWords("Error:", toDeleteRef, "the specified blob does not exist").Exec()
 		})
 
-		It("should succeed to delete a non-existent blob with confirmation flag set", func() {
+		It("should return success when deleting a non-existent blob with force flag set", func() {
 			toDeleteRef := Reference(Host, Repo, invalidDigest)
 			ORAS("blob", "delete", toDeleteRef, "--force").
 				MatchErrKeyWords(toDeleteRef, "the specified blob does not exist").
