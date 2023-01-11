@@ -58,6 +58,9 @@ type Packer struct {
 // Parse parses flags into the option.
 func (opts *Packer) Parse(fs *pflag.FlagSet) error {
 	switch opts.compatibility {
+	case "auto":
+		opts.ManifestSupportState = registry.ManifestSupportUnknown
+		opts.ReferrersApiSupportState = registry.ReferrersApiSupportUnknown
 	case "artifact":
 		opts.ManifestSupportState = registry.OCIArtifact
 		opts.ReferrersApiSupportState = registry.ReferrersApiSupportUnknown
@@ -82,7 +85,7 @@ func (opts *Packer) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringArrayVarP(&opts.ManifestAnnotations, "annotation", "a", nil, "manifest annotations")
 	fs.StringVarP(&opts.AnnotationFilePath, "annotation-file", "", "", "path of the annotation file")
 	fs.BoolVarP(&opts.PathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
-	fs.StringVar(&opts.compatibility, "compatibility", "", "set compatibility mode for registry, `artifact,image,min,max`")
+	fs.StringVar(&opts.compatibility, "compatibility", "auto", "set compatibility mode for registry, `artifact,image,min,max,auto`")
 }
 
 // ExportManifest saves the pushed manifest to a local file.
