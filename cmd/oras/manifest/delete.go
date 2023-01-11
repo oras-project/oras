@@ -60,7 +60,7 @@ Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if opts.OutputDescriptor && !opts.Confirmed {
+			if opts.OutputDescriptor && !opts.Force {
 				return errors.New("must apply --force to confirm the deletion if the descriptor is outputted")
 			}
 			return option.Parse(&opts)
@@ -76,7 +76,7 @@ Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614
 }
 
 func deleteManifest(opts deleteOptions) error {
-	ctx, _ := opts.SetLoggerLevel()
+	ctx, logger := opts.SetLoggerLevel()
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
@@ -90,7 +90,11 @@ func deleteManifest(opts deleteOptions) error {
 	desc, err := manifests.Resolve(ctx, opts.targetRef)
 	if err != nil {
 		if errors.Is(err, errdef.ErrNotFound) {
-			return fmt.Errorf("%s: the specified manifest does not exist", opts.targetRef)
+			info := fmt.Sprintf("%s: the specified manifest does not exist", opts.targetRef)
+			if opts.Force {
+				logger.Warn(info)
+			}
+			return errors.New(info)
 		}
 		return err
 	}
