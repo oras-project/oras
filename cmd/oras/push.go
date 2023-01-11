@@ -41,6 +41,7 @@ type pushOptions struct {
 	option.Common
 	option.Remote
 	option.Packer
+	option.ImageSpec
 
 	targetRef         string
 	extraRefs         []string
@@ -168,11 +169,6 @@ func runPush(opts pushOptions) error {
 	dst, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
-	}
-	if opts.ReferrersApiSupportState != registry.ReferrersApiSupportUnknown {
-		if err := dst.SetReferrersCapability(opts.ReferrersApiSupportState == registry.ReferrersApiSupported); err != nil {
-			return err
-		}
 	}
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency

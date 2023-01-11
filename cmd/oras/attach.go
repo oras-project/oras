@@ -34,6 +34,8 @@ type attachOptions struct {
 	option.Common
 	option.Remote
 	option.Packer
+	option.ImageSpec
+	option.DistributionSpec
 
 	targetRef    string
 	artifactType string
@@ -104,6 +106,9 @@ func runAttach(opts attachOptions) error {
 	if dst.Reference.Reference == "" {
 		return oerrors.NewErrInvalidReference(dst.Reference)
 	}
+	if opts.ReferrersApiSupportState != registry.ReferrersApiSupportUnknown {
+		dst.SetReferrersCapability(opts.ReferrersApiSupportState == registry.ReferrersApiSupported)
+	}
 	subject, err := dst.Resolve(ctx, dst.Reference.Reference)
 	if err != nil {
 		return err
@@ -117,6 +122,7 @@ func runAttach(opts attachOptions) error {
 	packOpts := oras.PackOptions{
 		Subject:             &subject,
 		ManifestAnnotations: annotations[option.AnnotationManifest],
+		PackImageManifest:   opts.ManifestSupportState == registry.OCIImage,
 	}
 	pack := func() (ocispec.Descriptor, error) {
 		return oras.Pack(ctx, store, opts.artifactType, descs, packOpts)

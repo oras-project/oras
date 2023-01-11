@@ -26,7 +26,6 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2/content"
-	"oras.land/oras/internal/registry"
 )
 
 // Pre-defined annotation keys for annotation file
@@ -43,40 +42,12 @@ var (
 
 // Packer option struct.
 type Packer struct {
-	ManifestSupportState     registry.ManifestSupportState
-	ReferrersApiSupportState registry.ReferrersApiSupportState
-
 	ManifestExportPath     string
 	PathValidationDisabled bool
 	AnnotationFilePath     string
 	ManifestAnnotations    []string
 
-	FileRefs      []string
-	compatibility string
-}
-
-// Parse parses flags into the option.
-func (opts *Packer) Parse(fs *pflag.FlagSet) error {
-	switch opts.compatibility {
-	case "auto":
-		opts.ManifestSupportState = registry.ManifestSupportUnknown
-		opts.ReferrersApiSupportState = registry.ReferrersApiSupportUnknown
-	case "artifact":
-		opts.ManifestSupportState = registry.OCIArtifact
-		opts.ReferrersApiSupportState = registry.ReferrersApiSupportUnknown
-	case "min":
-		opts.ManifestSupportState = registry.OCIArtifact
-		opts.ReferrersApiSupportState = registry.ReferrersApiSupported
-	case "max":
-		opts.ManifestSupportState = registry.OCIImage
-		opts.ReferrersApiSupportState = registry.ReferrersApiUnsupported
-	case "image":
-		opts.ManifestSupportState = registry.OCIImage
-		opts.ReferrersApiSupportState = registry.ReferrersApiSupportUnknown
-	default:
-		return fmt.Errorf("unknown compatibility mode: %q", opts.compatibility)
-	}
-	return nil
+	FileRefs []string
 }
 
 // ApplyFlags applies flags to a command flag set.
@@ -85,7 +56,6 @@ func (opts *Packer) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringArrayVarP(&opts.ManifestAnnotations, "annotation", "a", nil, "manifest annotations")
 	fs.StringVarP(&opts.AnnotationFilePath, "annotation-file", "", "", "path of the annotation file")
 	fs.BoolVarP(&opts.PathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
-	fs.StringVar(&opts.compatibility, "compatibility", "auto", "set compatibility mode for registry, `artifact,image,min,max,auto`")
 }
 
 // ExportManifest saves the pushed manifest to a local file.
