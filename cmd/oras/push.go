@@ -183,7 +183,7 @@ func runPush(opts pushOptions) error {
 	}
 
 	// Push
-	root, err := pushArtifact(dst, pack, &packOpts, copy, &copyOptions.CopyGraphOptions, opts.ManifestSupportState == registry.ManifestSupportUnknown, opts.Verbose)
+	root, err := pushArtifact(dst, pack, &packOpts, copy, &copyOptions.CopyGraphOptions, opts.ManifestSupportState != registry.ManifestSupportUnknown, opts.Verbose)
 	if err != nil {
 		return err
 	}
@@ -226,7 +226,7 @@ func updateDisplayOption(opts *oras.CopyGraphOptions, store content.Fetcher, ver
 type packFunc func() (ocispec.Descriptor, error)
 type copyFunc func(desc ocispec.Descriptor) error
 
-func pushArtifact(dst *remote.Repository, pack packFunc, packOpts *oras.PackOptions, copy copyFunc, copyOpts *oras.CopyGraphOptions, fallback bool, verbose bool) (ocispec.Descriptor, error) {
+func pushArtifact(dst *remote.Repository, pack packFunc, packOpts *oras.PackOptions, copy copyFunc, copyOpts *oras.CopyGraphOptions, noFallback bool, verbose bool) (ocispec.Descriptor, error) {
 	root, err := pack()
 	if err != nil {
 		return ocispec.Descriptor{}, err
@@ -251,7 +251,7 @@ func pushArtifact(dst *remote.Repository, pack packFunc, packOpts *oras.PackOpti
 		return root, nil
 	}
 
-	if !fallback || !copyRootAttempted || root.MediaType != ocispec.MediaTypeArtifactManifest ||
+	if noFallback || !copyRootAttempted || root.MediaType != ocispec.MediaTypeArtifactManifest ||
 		!isManifestUnsupported(err) {
 		return ocispec.Descriptor{}, err
 	}

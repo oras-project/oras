@@ -144,7 +144,7 @@ func runAttach(opts attachOptions) error {
 		return oras.CopyGraph(ctx, store, dst, root, graphCopyOptions)
 	}
 
-	root, err := pushArtifact(dst, pack, &packOpts, copy, &graphCopyOptions, opts.ManifestSupportState == registry.ManifestSupportUnknown, opts.Verbose)
+	root, err := pushArtifact(dst, pack, &packOpts, copy, &graphCopyOptions, opts.ManifestSupportState != registry.ManifestSupportUnknown, opts.Verbose)
 	if err != nil {
 		return err
 	}
