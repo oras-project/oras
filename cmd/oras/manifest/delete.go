@@ -96,6 +96,7 @@ func deleteManifest(opts deleteOptions) error {
 				return nil
 			}
 			return fmt.Errorf("%s: the specified manifest does not exist", opts.targetRef)
+		}
 		return err
 	}
 
