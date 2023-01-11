@@ -92,7 +92,7 @@ func deleteManifest(opts deleteOptions) error {
 		if errors.Is(err, errdef.ErrNotFound) {
 			if opts.Force && !opts.OutputDescriptor {
 				// ignore nonexistent
-				fmt.Fprintf(os.Stderr, "Missing %s\n", opts.targetRef)
+				fmt.Println("Missing", opts.targetRef)
 				return nil
 			}
 			return fmt.Errorf("%s: the specified manifest does not exist", opts.targetRef)
