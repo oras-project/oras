@@ -160,6 +160,14 @@ var _ = Describe("ORAS beginners:", func() {
 				MatchErrKeyWords(toDeleteRef, "the specified blob does not exist").
 				Exec()
 		})
+
+		It("should fail to delete a non-existent blob and output descriptor, with force flag set", func() {
+			toDeleteRef := Reference(Host, Repo, invalidDigest)
+			ORAS("blob", "delete", toDeleteRef, "--force", "--descriptor").
+				ExpectFailure().
+				MatchErrKeyWords(toDeleteRef, "the specified blob does not exist").
+				Exec()
+		})
 	})
 })
 
@@ -191,7 +199,7 @@ var _ = Describe("Common registry users:", func() {
 		It("should return success when deleting a non-existent blob with force flag set", func() {
 			toDeleteRef := Reference(Host, Repo, invalidDigest)
 			ORAS("blob", "delete", toDeleteRef, "--force").
-				MatchErrKeyWords(toDeleteRef, "the specified blob does not exist").
+				MatchWords("Missing", toDeleteRef).
 				Exec()
 		})
 	})

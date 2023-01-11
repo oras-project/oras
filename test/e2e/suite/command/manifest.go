@@ -97,8 +97,16 @@ var _ = Describe("ORAS beginners:", func() {
 					Exec()
 			})
 
-			It("should fail to delete a non-existent manifest via tag without force flag set", func() {
-				toDeleteRef := Reference(Host, Repo, "this.tag.should-not.be-existed")
+			It("should fail to delete a non-existent manifest and output descriptor via digest, with force flag set", func() {
+				toDeleteRef := Reference(Host, Repo, invalidDigest)
+				ORAS("manifest", "delete", toDeleteRef, "--force", "--descriptor").
+					ExpectFailure().
+					MatchErrKeyWords(toDeleteRef, "the specified manifest does not exist").
+					Exec()
+			})
+
+			It("should fail to delete a non-existent manifest and output descriptor via tag, without force flag set", func() {
+				toDeleteRef := Reference(Host, Repo, "this.tag.should-not.be-existed", "--force", "--descriptor")
 				ORAS("manifest", "delete", toDeleteRef).
 					ExpectFailure().
 					MatchErrKeyWords(toDeleteRef, "the specified manifest does not exist").
@@ -340,7 +348,7 @@ var _ = Describe("Common registry users:", func() {
 		It("should succeed when deleting a non-existent manifest with force flag set", func() {
 			toDeleteRef := Reference(Host, Repo, invalidDigest)
 			ORAS("manifest", "delete", toDeleteRef, "--force").
-				MatchErrKeyWords(toDeleteRef, "the specified manifest does not exist").
+				MatchKeyWords("Missing", toDeleteRef).
 				Exec()
 		})
 	})

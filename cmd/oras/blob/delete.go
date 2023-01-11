@@ -72,7 +72,7 @@ Example - Delete a blob and print its descriptor:
 }
 
 func deleteBlob(opts deleteBlobOptions) (err error) {
-	ctx, logger := opts.SetLoggerLevel()
+	ctx, _ := opts.SetLoggerLevel()
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
@@ -86,12 +86,12 @@ func deleteBlob(opts deleteBlobOptions) (err error) {
 	desc, err := blobs.Resolve(ctx, opts.targetRef)
 	if err != nil {
 		if errors.Is(err, errdef.ErrNotFound) {
-			info := fmt.Sprintf("%s: the specified blob does not exist", opts.targetRef)
-			if opts.Force {
-				logger.Warn(info)
+			if opts.Force && !opts.OutputDescriptor {
+				// ignore nonexistent
+				fmt.Fprint(os.Stderr, "Missing", opts.targetRef)
 				return nil
 			}
-			return errors.New(info)
+			return fmt.Errorf("%s: the specified blob does not exist", opts.targetRef)
 		}
 		return err
 	}

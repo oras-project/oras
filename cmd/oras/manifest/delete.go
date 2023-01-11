@@ -76,7 +76,7 @@ Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614
 }
 
 func deleteManifest(opts deleteOptions) error {
-	ctx, logger := opts.SetLoggerLevel()
+	ctx, _ := opts.SetLoggerLevel()
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
@@ -90,13 +90,12 @@ func deleteManifest(opts deleteOptions) error {
 	desc, err := manifests.Resolve(ctx, opts.targetRef)
 	if err != nil {
 		if errors.Is(err, errdef.ErrNotFound) {
-			info := fmt.Sprintf("%s: the specified manifest does not exist", opts.targetRef)
-			if opts.Force {
-				logger.Warn(info)
+			if opts.Force && !opts.OutputDescriptor {
+				// ignore nonexistent
+				fmt.Fprint(os.Stderr, "Missing", opts.targetRef)
 				return nil
 			}
-			return errors.New(info)
-		}
+			return fmt.Errorf("%s: the specified manifest does not exist", opts.targetRef)
 		return err
 	}
 
