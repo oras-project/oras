@@ -93,6 +93,7 @@ func deleteManifest(opts deleteOptions) error {
 			info := fmt.Sprintf("%s: the specified manifest does not exist", opts.targetRef)
 			if opts.Force {
 				logger.Warn(info)
+				return nil
 			}
 			return errors.New(info)
 		}
