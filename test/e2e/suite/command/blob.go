@@ -199,7 +199,7 @@ var _ = Describe("Common registry users:", func() {
 		It("should return success when deleting a non-existent blob with force flag set", func() {
 			toDeleteRef := Reference(Host, Repo, invalidDigest)
 			ORAS("blob", "delete", toDeleteRef, "--force").
-				MatchWords("Missing", toDeleteRef).
+				MatchKeyWords("Missing", toDeleteRef).
 				Exec()
 		})
 	})
