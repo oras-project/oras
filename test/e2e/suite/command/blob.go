@@ -26,7 +26,7 @@ import (
 const (
 	pushContent      = "test-blob"
 	pushDigest       = "sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d8"
-	wrongDigest      = "sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d9"
+	invalidDigest    = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
 	pushDescFmt      = `{"mediaType":"%s","digest":"sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d8","size":9}`
 	deleteDigest     = "sha256:fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"
 	deleteDescriptor = `{"mediaType":"application/octet-stream","digest":"sha256:fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9","size":3}`
@@ -63,7 +63,7 @@ var _ = Describe("ORAS beginners:", func() {
 
 			It("should fail to push a blob from stdin if invalid digest provided", func() {
 				repo := fmt.Sprintf(repoFmt, "push", "invalid-stdin-digest")
-				ORAS("blob", "push", Reference(Host, repo, wrongDigest), "-", "--size", strconv.Itoa(len(pushContent))).
+				ORAS("blob", "push", Reference(Host, repo, invalidDigest), "-", "--size", strconv.Itoa(len(pushContent))).
 					WithInput(strings.NewReader(pushContent)).ExpectFailure().
 					Exec()
 			})
@@ -79,7 +79,7 @@ var _ = Describe("ORAS beginners:", func() {
 			It("should fail to push a blob from file if invalid digest provided", func() {
 				repo := fmt.Sprintf(repoFmt, "push", "invalid-stdin-size")
 				blobPath := WriteTempFile("blob", pushContent)
-				ORAS("blob", "push", Reference(Host, repo, wrongDigest), blobPath, "--size", strconv.Itoa(len(pushContent))).
+				ORAS("blob", "push", Reference(Host, repo, invalidDigest), blobPath, "--size", strconv.Itoa(len(pushContent))).
 					WithInput(strings.NewReader(pushContent)).ExpectFailure().
 					Exec()
 			})
@@ -139,7 +139,7 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("blob", "fetch", Reference(Host, dstRepo, deleteDigest), "--output", "-").MatchContent(deleteContent).Exec()
 		})
 
-		It("should fail if no confirmation flag and descriptor flag is provided", func() {
+		It("should fail if no force flag and descriptor flag is provided", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "no-confirm")
 			ORAS("cp", Reference(Host, Repo, FoobarImageDigest), Reference(Host, dstRepo, FoobarImageDigest)).Exec()
 			ORAS("blob", "delete", Reference(Host, dstRepo, deleteDigest), "--descriptor").ExpectFailure().Exec()
@@ -151,6 +151,22 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("blob", "delete", fmt.Sprintf("%s/%s:%s", Host, dstRepo, "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), "--descriptor", "--force").ExpectFailure().Exec()
 			ORAS("blob", "delete", fmt.Sprintf("%s/%s:%s", Host, dstRepo, "test"), "--descriptor", "--force").ExpectFailure().Exec()
 			ORAS("blob", "delete", fmt.Sprintf("%s/%s@%s", Host, dstRepo, "test"), "--descriptor", "--force").ExpectFailure().Exec()
+		})
+
+		It("should fail to delete a non-existent blob without force flag set", func() {
+			toDeleteRef := Reference(Host, Repo, invalidDigest)
+			ORAS("blob", "delete", toDeleteRef).
+				ExpectFailure().
+				MatchErrKeyWords(toDeleteRef, "the specified blob does not exist").
+				Exec()
+		})
+
+		It("should fail to delete a non-existent blob and output descriptor, with force flag set", func() {
+			toDeleteRef := Reference(Host, Repo, invalidDigest)
+			ORAS("blob", "delete", toDeleteRef, "--force", "--descriptor").
+				ExpectFailure().
+				MatchErrKeyWords(toDeleteRef, "the specified blob does not exist").
+				Exec()
 		})
 	})
 })
@@ -166,19 +182,25 @@ var _ = Describe("Common registry users:", func() {
 				WithInput(strings.NewReader("y")).
 				MatchKeyWords("Deleted", toDeleteRef).Exec()
 			ORAS("blob", "delete", toDeleteRef).
+				WithDescription("validate").
 				WithInput(strings.NewReader("y")).
 				ExpectFailure().
 				MatchErrKeyWords("Error:", toDeleteRef, "the specified blob does not exist").Exec()
 		})
 
-		It("should delete a blob with confirmation flag and output descriptor", func() {
+		It("should delete a blob with force flag and output descriptor", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "flag-confirmation")
 			ORAS("cp", Reference(Host, Repo, FoobarImageDigest), Reference(Host, dstRepo, FoobarImageDigest)).Exec()
 			toDeleteRef := Reference(Host, dstRepo, deleteDigest)
 			ORAS("blob", "delete", toDeleteRef, "--force", "--descriptor").MatchContent(deleteDescriptor).Exec()
-			ORAS("blob", "delete", toDeleteRef, "--force", "--descriptor").
-				ExpectFailure().
-				MatchErrKeyWords("Error:", toDeleteRef, "the specified blob does not exist").Exec()
+			ORAS("blob", "delete", toDeleteRef).WithDescription("validate").ExpectFailure().MatchErrKeyWords("Error:", toDeleteRef, "the specified blob does not exist").Exec()
+		})
+
+		It("should return success when deleting a non-existent blob with force flag set", func() {
+			toDeleteRef := Reference(Host, Repo, invalidDigest)
+			ORAS("blob", "delete", toDeleteRef, "--force").
+				MatchKeyWords("Missing", toDeleteRef).
+				Exec()
 		})
 	})
 	When("running `blob push`", func() {

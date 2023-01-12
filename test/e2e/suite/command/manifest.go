@@ -89,6 +89,30 @@ var _ = Describe("ORAS beginners:", func() {
 				ORAS("manifest", "delete", Reference(Host, dstRepo, tempTag), "--descriptor").ExpectFailure().Exec()
 			})
 
+			It("should fail to delete a non-existent manifest via digest without force flag set", func() {
+				toDeleteRef := Reference(Host, Repo, invalidDigest)
+				ORAS("manifest", "delete", toDeleteRef).
+					ExpectFailure().
+					MatchErrKeyWords(toDeleteRef, "the specified manifest does not exist").
+					Exec()
+			})
+
+			It("should fail to delete a non-existent manifest and output descriptor via digest, with force flag set", func() {
+				toDeleteRef := Reference(Host, Repo, invalidDigest)
+				ORAS("manifest", "delete", toDeleteRef, "--force", "--descriptor").
+					ExpectFailure().
+					MatchErrKeyWords(toDeleteRef, "the specified manifest does not exist").
+					Exec()
+			})
+
+			It("should fail to delete a non-existent manifest and output descriptor via tag, without force flag set", func() {
+				toDeleteRef := Reference(Host, Repo, "this.tag.should-not.be-existed")
+				ORAS("manifest", "delete", toDeleteRef, "--force", "--descriptor").
+					ExpectFailure().
+					MatchErrKeyWords(toDeleteRef, "the specified manifest does not exist").
+					Exec()
+			})
+
 			It("should fail if no blob reference provided", func() {
 				dstRepo := fmt.Sprintf(repoFmt, "delete", "no-reference")
 				prepare(Reference(Host, Repo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
@@ -319,6 +343,13 @@ var _ = Describe("Common registry users:", func() {
 				MatchContent("{\"mediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"digest\":\"sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb\",\"size\":851}").
 				WithDescription("cancel without confirmation").Exec()
 			validate(Reference(Host, dstRepo, ""), tempTag, true)
+		})
+
+		It("should succeed when deleting a non-existent manifest with force flag set", func() {
+			toDeleteRef := Reference(Host, Repo, invalidDigest)
+			ORAS("manifest", "delete", toDeleteRef, "--force").
+				MatchKeyWords("Missing", toDeleteRef).
+				Exec()
 		})
 	})
 })
