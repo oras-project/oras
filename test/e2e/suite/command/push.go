@@ -48,10 +48,10 @@ var _ = Describe("Remote registry users:", func() {
 			}
 
 			ORAS("push", Reference(Host, repo, tag), files[1], "-v").
-				MatchStatus(statusKeys, true, 2).
+				MatchStatus(statusKeys, true, 1).
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
-			Binary("jq", ".layers[]", "--compact-output").
+			Binary("jq", ".blobs[]", "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, ocispec.MediaTypeImageLayer)).
 				WithInput(fetched).Exec()
 		})
@@ -65,10 +65,10 @@ var _ = Describe("Remote registry users:", func() {
 			}
 
 			ORAS("push", Reference(Host, repo, tag), files[1]+":"+layerType, "-v").
-				MatchStatus(statusKeys, true, 2).
+				MatchStatus(statusKeys, true, 1).
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
-			Binary("jq", ".layers[]", "--compact-output").
+			Binary("jq", ".blobs[]", "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, layerType)).
 				WithInput(fetched).Exec()
 		})
@@ -83,7 +83,7 @@ var _ = Describe("Remote registry users:", func() {
 
 			exportPath := "packed.json"
 			ORAS("push", Reference(Host, repo, tag), files[1]+":"+layerType, "-v", "--export-manifest", exportPath).
-				MatchStatus(statusKeys, true, 2).
+				MatchStatus(statusKeys, true, 1).
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out.Contents()
 			MatchFile(filepath.Join(tempDir, exportPath), string(fetched), DefaultTimeout)
@@ -138,7 +138,7 @@ var _ = Describe("Remote registry users:", func() {
 			}
 
 			ORAS("push", Reference(Host, repo, tag), files[1], "-v", "--annotation", fmt.Sprintf("%s=%s", key, value)).
-				MatchStatus(statusKeys, true, 2).
+				MatchStatus(statusKeys, true, 1).
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 
@@ -155,7 +155,7 @@ var _ = Describe("Remote registry users:", func() {
 			}
 
 			ORAS("push", Reference(Host, repo, tag), files[1], "-v", "--annotation-file", "foobar/annotation.json").
-				MatchStatus(statusKeys, true, 2).
+				MatchStatus(statusKeys, true, 1).
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 
@@ -168,7 +168,7 @@ var _ = Describe("Remote registry users:", func() {
 				MatchTrimmedContent(fmt.Sprintf(`{"%s":"%s"}`, "hello", "config")).
 				WithInput(bytes.NewReader(fetched.Contents())).Exec()
 
-			Binary("jq", `.layers[0].annotations|del(.["org.opencontainers.image.title"])`, "--compact-output").
+			Binary("jq", `.blobs[0].annotations|del(.["org.opencontainers.image.title"])`, "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(`{"%s":"%s"}`, "foo", "bar")).
 				WithInput(bytes.NewReader(fetched.Contents())).Exec()
 		})
