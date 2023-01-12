@@ -54,6 +54,14 @@ func attachCmd() *cobra.Command {
 Example - Attach file 'hi.txt' with type 'doc/example' to manifest 'hello:test' in registry 'localhost:5000'
   oras attach --artifact-type doc/example localhost:5000/hello:test hi.txt
 
+Example - Attach file "hi.txt" and enforce packed manifest type:
+  oras attach --artifact-type doc/example --image-spec v1.1-image localhost:5000/hello:test hi.txt # OCI image
+  oras attach --artifact-type doc/example --image-spec v1.1-artifact localhost:5000/hello:test hi.txt # OCI artifact
+
+Example - Attach file "hi.txt" and specify referrers will be discovered:
+  oras attach --artifact-type doc/example --distribution-spec v1.1-referrers-api localhost:5000/hello:test hi.txt # via API
+  oras attach --artifact-type doc/example --distribution-spec v1.1-referrers-tag localhost:5000/hello:test hi.txt # via tag scheme
+
 Example - Attach file 'hi.txt' and add annotations from file 'annotation.json'
   oras attach --artifact-type doc/example --annotation-file annotation.json localhost:5000/hello:latest hi.txt
 
