@@ -31,7 +31,7 @@ type Confirmation struct {
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Confirmation) ApplyFlags(fs *pflag.FlagSet) {
-	fs.BoolVarP(&opts.Force, "force", "f", false, "do not prompt for confirmation")
+	fs.BoolVarP(&opts.Force, "force", "f", false, "ignore nonexistent references, never prompt")
 }
 
 // AskForConfirmation prints a propmt to ask for confirmation before doing an
