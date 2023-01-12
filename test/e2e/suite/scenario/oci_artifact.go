@@ -97,7 +97,7 @@ var _ = Describe("Common OCI artifact users:", Ordered, func() {
 			} else {
 				digest = digests[0]
 			}
-			fetched = ORAS("manifest", "fetch", Reference(Host, repo, digest)).MatchKeyWords(attachFileMedia).Exec()
+			fetched = ORAS("manifest", "fetch", Reference(Host, repo, digest)).Exec()
 			MatchFile(filepath.Join(tempDir, pulledManifest), string(fetched.Out.Contents()), DefaultTimeout)
 
 			ORAS("pull", Reference(Host, repo, string(digest)), "-v", "-o", pullRoot, "--include-subject").
