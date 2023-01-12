@@ -57,12 +57,13 @@ jobs:
             --env REGISTRY_AUTH_HTPASSWD_PATH=/etc/docker/registry/passwd \
             --mount type=bind,source=$mnt_root/docker,target=/opt/data/registry-root-dir/docker \
             --mount type=bind,source=$mnt_root/passwd_bcrypt,target=/etc/docker/registry/passwd \
-            ghcr.io/oras-project/registry:v1.0.0-rc.2
+            ghcr.io/oras-project/registry:v1.0.0-rc.3
           ginkgo -r -p --succinct suite
           docker kill oras-e2e || true
         env:
           ORAS_PATH: bin/linux/amd64/oras
           ORAS_REGISTRY_HOST: localhost:5000
+          ORAS_REGISTRY_FALLBACK_HOST: localhost:6000
       - name: Check Version
         run: bin/linux/amd64/oras version
       - name: Upload coverage to codecov.io
