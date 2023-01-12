@@ -92,7 +92,9 @@ var _ = Describe("Common OCI artifact users:", Ordered, func() {
 			digests := strings.Split(strings.TrimSpace(string(raw)), "\n")
 			gomega.Expect(len(digests)).To(gomega.Equal(2))
 			digest = strings.TrimSpace(digest)
-			if digests[0] != digest {
+			if digests[1] != digest {
+				digest = digests[1]
+			} else {
 				digest = digests[0]
 			}
 			fetched = ORAS("manifest", "fetch", Reference(Host, repo, digest)).MatchKeyWords(attachFileMedia).Exec()
