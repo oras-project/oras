@@ -60,7 +60,7 @@ Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if opts.OutputDescriptor && !opts.Confirmed {
+			if opts.OutputDescriptor && !opts.Force {
 				return errors.New("must apply --force to confirm the deletion if the descriptor is outputted")
 			}
 			return option.Parse(&opts)
@@ -90,6 +90,11 @@ func deleteManifest(opts deleteOptions) error {
 	desc, err := manifests.Resolve(ctx, opts.targetRef)
 	if err != nil {
 		if errors.Is(err, errdef.ErrNotFound) {
+			if opts.Force && !opts.OutputDescriptor {
+				// ignore nonexistent
+				fmt.Println("Missing", opts.targetRef)
+				return nil
+			}
 			return fmt.Errorf("%s: the specified manifest does not exist", opts.targetRef)
 		}
 		return err
