@@ -90,6 +90,7 @@ var _ = Describe("Common OCI artifact users:", Ordered, func() {
 			raw := Binary("jq", "-r", ".manifests[].digest").WithInput(session.Out).Exec().Out.Contents()
 			digests := strings.Split(strings.TrimSpace(string(raw)), "\n")
 			gomega.Expect(len(digests)).To(gomega.Equal(2))
+			digest = strings.TrimSpace(digest)
 			if digests[0] != digest {
 				digest = digests[0]
 			}
