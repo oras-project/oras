@@ -17,10 +17,8 @@ package option
 
 import (
 	"fmt"
-
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-
 	"github.com/spf13/pflag"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // ImageSpec option struct.
