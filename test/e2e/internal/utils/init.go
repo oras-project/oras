@@ -31,19 +31,11 @@ var ORASPath string
 // Host points to the registry service where E2E specs will be run against.
 var Host string
 
-// FallbackHost points to the registry service where fallback scenario E2E specs will be run against.
-var FallbackHost string
-
 func init() {
 	Host = os.Getenv("ORAS_REGISTRY_HOST")
 	if Host == "" {
 		Host = "localhost:5000"
 		fmt.Fprintln(os.Stderr, "cannot find host name in ORAS_REGISTRY_HOST, using", Host, "instead")
-	}
-	FallbackHost = os.Getenv("ORAS_FALLBACK_REGISTRY_HOST")
-	if FallbackHost == "" {
-		FallbackHost = "localhost:6000"
-		fmt.Fprintln(os.Stderr, "cannot find host name in ORAS_FALLBACK_REGISTRY_HOST, using", FallbackHost, "instead")
 	}
 
 	ref := registry.Reference{

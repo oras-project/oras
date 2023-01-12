@@ -142,7 +142,7 @@ var _ = Describe("Remote registry users:", func() {
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 
-			Binary("jq", `.annotations|del(.["org.opencontainers.image.created"])`, "--compact-output").
+			Binary("jq", `.annotations|del(.["org.opencontainers.artifact.created"])`, "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(`{"%s":"%s"}`, key, value)).
 				WithInput(fetched).Exec()
 		})
@@ -160,7 +160,7 @@ var _ = Describe("Remote registry users:", func() {
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 
 			// see testdata\files\foobar\annotation.json
-			Binary("jq", `.annotations|del(.["org.opencontainers.image.created"])`, "--compact-output").
+			Binary("jq", `.annotations|del(.["org.opencontainers.artifact.created"])`, "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(`{"%s":"%s"}`, "hi", "manifest")).
 				WithInput(bytes.NewReader(fetched.Contents())).Exec()
 
