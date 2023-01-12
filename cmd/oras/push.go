@@ -186,7 +186,7 @@ func runPush(opts pushOptions) error {
 	}
 
 	// Push
-	root, err := pushArtifact(dst, pack, &packOpts, copy, &copyOptions.CopyGraphOptions, opts.ManifestMediaType != option.MediaTypeAutoManifest, opts.Verbose)
+	root, err := pushArtifact(dst, pack, &packOpts, copy, &copyOptions.CopyGraphOptions, opts.ManifestMediaType == option.MediaTypeAutoManifest, opts.Verbose)
 	if err != nil {
 		return err
 	}
