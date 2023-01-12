@@ -151,7 +151,7 @@ func runAttach(opts attachOptions) error {
 		return oras.CopyGraph(ctx, store, dst, root, graphCopyOptions)
 	}
 
-	root, err := pushArtifact(dst, pack, &packOpts, copy, &graphCopyOptions, opts.ManifestMediaType == option.MediaTypeAutoManifest, opts.Verbose)
+	root, err := pushArtifact(dst, pack, &packOpts, copy, &graphCopyOptions, opts.ManifestMediaType == "", opts.Verbose)
 	if err != nil {
 		return err
 	}

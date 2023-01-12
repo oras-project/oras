@@ -75,7 +75,7 @@ Example - Push file "hi.txt" with the custom manifest config "config.json" of th
   oras push --config config.json:application/vnd.me.config localhost:5000/hello:latest hi.txt
 
 Example - Push file "hi.txt" and enforce packed manifest type:
-  oras push --image-spec v1.1-image localhost:5000/hello:latest hi.txt # OCI image
+  oras push --image-spec v1.1-image localhost:5000/hello:latest hi.txt    # OCI image
   oras push --image-spec v1.1-artifact localhost:5000/hello:latest hi.txt # OCI artifact
 
 Example - Push file to the insecure registry:
@@ -186,7 +186,7 @@ func runPush(opts pushOptions) error {
 	}
 
 	// Push
-	root, err := pushArtifact(dst, pack, &packOpts, copy, &copyOptions.CopyGraphOptions, opts.ManifestMediaType == option.MediaTypeAutoManifest, opts.Verbose)
+	root, err := pushArtifact(dst, pack, &packOpts, copy, &copyOptions.CopyGraphOptions, opts.ManifestMediaType == "", opts.Verbose)
 	if err != nil {
 		return err
 	}

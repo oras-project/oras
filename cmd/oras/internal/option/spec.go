@@ -23,12 +23,11 @@ import (
 	"github.com/spf13/pflag"
 )
 
-const MediaTypeAutoManifest = ""
-
 // ImageSpec option struct.
 type ImageSpec struct {
 	// Manifest type for building artifact
 	ManifestMediaType string
+
 	// specFlag should be provided in form of `<version>-<manifest type>`
 	specFlag string
 }
@@ -37,7 +36,7 @@ type ImageSpec struct {
 func (opts *ImageSpec) Parse() error {
 	switch opts.specFlag {
 	case "":
-		opts.ManifestMediaType = MediaTypeAutoManifest
+		opts.ManifestMediaType = ""
 	case "v1.1-image":
 		opts.ManifestMediaType = ocispec.MediaTypeImageManifest
 	case "v1.1-artifact":
@@ -58,6 +57,7 @@ type DistributionSpec struct {
 	// ReferrersAPI indicates the preference of the implementation of the Referrers API.
 	// Set to true for referrers API, false for referrers tag scheme, and nil for auto fallback.
 	ReferrersAPI *bool
+
 	// specFlag should be provided in form of`<version>-<api>-<option>`
 	specFlag string
 }
@@ -67,8 +67,11 @@ func (opts *DistributionSpec) Parse() error {
 	switch opts.specFlag {
 	case "":
 		opts.ReferrersAPI = nil
-	case "v1.1-referrers-api", "v1.1-referrers-tag":
-		isApi := opts.specFlag == "v1.1-referrers-api"
+	case "v1.1-referrers-tag":
+		isApi := false
+		opts.ReferrersAPI = &isApi
+	case "v1.1-referrers-api":
+		isApi := true
 		opts.ReferrersAPI = &isApi
 	default:
 		return fmt.Errorf("unknown image specification flag: %q", opts.specFlag)
