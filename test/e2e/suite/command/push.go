@@ -154,13 +154,13 @@ var _ = Describe("Remote registry users:", func() {
 				panic(err)
 			}
 
-			ORAS("push", Reference(Host, repo, tag), files[1], "-v", "--annotation-file", "foobar/annotation.json").
+			ORAS("push", Reference(Host, repo, tag), files[1], "-v", "--annotation-file", "foobar/annotation.json", "--config", files[0]).
 				MatchStatus(statusKeys, true, 1).
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 
 			// see testdata\files\foobar\annotation.json
-			Binary("jq", `.annotations|del(.["org.opencontainers.artifact.created"])`, "--compact-output").
+			Binary("jq", `.annotations|del(.["org.opencontainers.image.created"])`, "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(`{"%s":"%s"}`, "hi", "manifest")).
 				WithInput(bytes.NewReader(fetched.Contents())).Exec()
 
@@ -168,7 +168,7 @@ var _ = Describe("Remote registry users:", func() {
 				MatchTrimmedContent(fmt.Sprintf(`{"%s":"%s"}`, "hello", "config")).
 				WithInput(bytes.NewReader(fetched.Contents())).Exec()
 
-			Binary("jq", `.blobs[0].annotations|del(.["org.opencontainers.image.title"])`, "--compact-output").
+			Binary("jq", `.layers[0].annotations|del(.["org.opencontainers.image.title"])`, "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(`{"%s":"%s"}`, "foo", "bar")).
 				WithInput(bytes.NewReader(fetched.Contents())).Exec()
 		})
