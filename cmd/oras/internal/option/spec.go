@@ -18,15 +18,18 @@ package option
 import (
 	"fmt"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+
 	"github.com/spf13/pflag"
-	"oras.land/oras/internal/registry"
 )
+
+const MediaTypeAutoManifest = ""
 
 // ImageSpec option struct.
 type ImageSpec struct {
-	ManifestSupportState registry.ManifestSupportState
-
-	// should be provided in form of `<version>-<manifest type>`
+	// Manifest type for building artifact
+	ManifestMediaType string
+	// specFlag should be provided in form of `<version>-<manifest type>`
 	specFlag string
 }
 
@@ -34,11 +37,11 @@ type ImageSpec struct {
 func (opts *ImageSpec) Parse() error {
 	switch opts.specFlag {
 	case "":
-		opts.ManifestSupportState = registry.ManifestSupportUnknown
+		opts.ManifestMediaType = MediaTypeAutoManifest
 	case "v1.1-image":
-		opts.ManifestSupportState = registry.OCIImage
+		opts.ManifestMediaType = ocispec.MediaTypeImageManifest
 	case "v1.1-artifact":
-		opts.ManifestSupportState = registry.OCIArtifact
+		opts.ManifestMediaType = ocispec.MediaTypeArtifactManifest
 	default:
 		return fmt.Errorf("unknown image specification flag: %q", opts.specFlag)
 	}
@@ -47,14 +50,15 @@ func (opts *ImageSpec) Parse() error {
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *ImageSpec) ApplyFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&opts.specFlag, "image-spec", "", "set OCI image spec version and request manifest type. E.g. `v1.1-image,v1.1-artifact`")
+	fs.StringVar(&opts.specFlag, "image-spec", "", "specify manifest type for building artifact. options: v1.1-image, v1.1-artifact")
 }
 
 // DistributionSpec option struct.
 type DistributionSpec struct {
-	ReferrersApiSupportState registry.ReferrersApiSupportState
-
-	// should be provided in form of`<version>-<api>-<option>`
+	// ReferrersAPI indicates the preference of the implementation of the Referrers API.
+	// Set to true for referrers API, false for referrers tag scheme, and nil for auto fallback.
+	ReferrersAPI *bool
+	// specFlag should be provided in form of`<version>-<api>-<option>`
 	specFlag string
 }
 
@@ -62,11 +66,10 @@ type DistributionSpec struct {
 func (opts *DistributionSpec) Parse() error {
 	switch opts.specFlag {
 	case "":
-		opts.ReferrersApiSupportState = registry.ReferrersApiSupportUnknown
-	case "v1.1-referrers-api":
-		opts.ReferrersApiSupportState = registry.ReferrersApiUnsupported
-	case "v1.1-referrers-tag":
-		opts.ReferrersApiSupportState = registry.ReferrersApiSupported
+		opts.ReferrersAPI = nil
+	case "v1.1-referrers-api", "v1.1-referrers-tag":
+		isApi := opts.specFlag == "v1.1-referrers-api"
+		opts.ReferrersAPI = &isApi
 	default:
 		return fmt.Errorf("unknown image specification flag: %q", opts.specFlag)
 	}
@@ -75,5 +78,5 @@ func (opts *DistributionSpec) Parse() error {
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *DistributionSpec) ApplyFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&opts.specFlag, "distribution-spec", "", "set OCI distribution spec version and API option. E.g. `v1.1-referrers-api,v1.1-referrers-tag`")
+	fs.StringVar(&opts.specFlag, "distribution-spec", "", "set OCI distribution spec version and API option. options: v1.1-referrers-api, v1.1-referrers-tag")
 }

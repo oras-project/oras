@@ -27,7 +27,6 @@ import (
 	"oras.land/oras-go/v2/content/file"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/registry"
 )
 
 type attachOptions struct {
@@ -54,11 +53,11 @@ func attachCmd() *cobra.Command {
 Example - Attach file 'hi.txt' with type 'doc/example' to manifest 'hello:test' in registry 'localhost:5000'
   oras attach --artifact-type doc/example localhost:5000/hello:test hi.txt
 
-Example - Attach file "hi.txt" and enforce packed manifest type:
-  oras attach --artifact-type doc/example --image-spec v1.1-image localhost:5000/hello:test hi.txt # OCI image
+Example - Attach file "hi.txt" with specific manifest type for packing:
+  oras attach --artifact-type doc/example --image-spec v1.1-image localhost:5000/hello:test hi.txt    # OCI image
   oras attach --artifact-type doc/example --image-spec v1.1-artifact localhost:5000/hello:test hi.txt # OCI artifact
 
-Example - Attach file "hi.txt" and specify referrers will be discovered:
+Example - Attach file "hi.txt" using a specific method for the Referrers API
   oras attach --artifact-type doc/example --distribution-spec v1.1-referrers-api localhost:5000/hello:test hi.txt # via API
   oras attach --artifact-type doc/example --distribution-spec v1.1-referrers-tag localhost:5000/hello:test hi.txt # via tag scheme
 
@@ -114,8 +113,8 @@ func runAttach(opts attachOptions) error {
 	if dst.Reference.Reference == "" {
 		return oerrors.NewErrInvalidReference(dst.Reference)
 	}
-	if opts.ReferrersApiSupportState != registry.ReferrersApiSupportUnknown {
-		dst.SetReferrersCapability(opts.ReferrersApiSupportState == registry.ReferrersApiSupported)
+	if opts.ReferrersAPI != nil {
+		dst.SetReferrersCapability(*opts.ReferrersAPI)
 	}
 	subject, err := dst.Resolve(ctx, dst.Reference.Reference)
 	if err != nil {
@@ -130,7 +129,7 @@ func runAttach(opts attachOptions) error {
 	packOpts := oras.PackOptions{
 		Subject:             &subject,
 		ManifestAnnotations: annotations[option.AnnotationManifest],
-		PackImageManifest:   opts.ManifestSupportState == registry.OCIImage,
+		PackImageManifest:   opts.ManifestMediaType == ocispec.MediaTypeImageManifest,
 	}
 	pack := func() (ocispec.Descriptor, error) {
 		return oras.Pack(ctx, store, opts.artifactType, descs, packOpts)
@@ -152,7 +151,7 @@ func runAttach(opts attachOptions) error {
 		return oras.CopyGraph(ctx, store, dst, root, graphCopyOptions)
 	}
 
-	root, err := pushArtifact(dst, pack, &packOpts, copy, &graphCopyOptions, opts.ManifestSupportState != registry.ManifestSupportUnknown, opts.Verbose)
+	root, err := pushArtifact(dst, pack, &packOpts, copy, &graphCopyOptions, opts.ManifestMediaType != option.MediaTypeAutoManifest, opts.Verbose)
 	if err != nil {
 		return err
 	}
