@@ -154,8 +154,8 @@ var _ = Describe("Remote registry users:", func() {
 				panic(err)
 			}
 
-			ORAS("push", Reference(Host, repo, tag), files[1], "-v", "--annotation-file", "foobar/annotation.json").
-				MatchStatus(statusKeys, true, 2).
+			ORAS("push", Reference(Host, repo, tag), files[1], "-v", "--annotation-file", "foobar/annotation.json", "--config", files[0]).
+				MatchStatus(statusKeys, true, 1).
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 
