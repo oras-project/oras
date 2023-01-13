@@ -33,8 +33,7 @@ const (
 )
 
 type targetFlag struct {
-	config map[string]string
-	isOCI  bool
+	isOCI bool
 }
 
 // applyFlagsWithPrefix applies flags to a command flag set with a prefix string.
@@ -50,7 +49,6 @@ func (opts *targetFlag) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, descript
 	}
 	targetFlag := flagPrefix + "target"
 	fs.BoolVarP(&opts.isOCI, flagPrefix+"oci", "", false, "Set "+noteSuffix+"target as an OCI-layout. Equivalent to '--"+targetFlag+" type=oci'")
-	fs.StringToStringVarP(&opts.config, targetFlag, "", map[string]string{"type": "remote"}, "configure target configuration"+noteSuffix)
 }
 
 // Unary target option struct.
@@ -87,18 +85,11 @@ func (opts *Target) Parse() error {
 	if opts.isOCI {
 		// short flag
 		opts.Type = TargetTypeOCILayout
-		return nil
 	} else {
 		// long flag
-		opts.Type = opts.config["type"]
-		switch opts.Type {
-		case TargetTypeRemote:
-			return opts.Remote.Parse()
-		case TargetTypeOCILayout:
-			return nil
-		}
+		opts.Type = TargetTypeRemote
 	}
-	return fmt.Errorf("unknown target type: %q", opts.Type)
+	return nil
 }
 
 // NewTarget generates a new target based on opts.

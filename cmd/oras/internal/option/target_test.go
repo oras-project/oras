@@ -19,7 +19,7 @@ import (
 	"testing"
 )
 
-func TestTarget_Parse_shortOCI(t *testing.T) {
+func TestTarget_Parse_oci(t *testing.T) {
 	opts := Target{targetFlag: targetFlag{isOCI: true}}
 
 	if err := opts.Parse(); err != nil {
@@ -30,18 +30,8 @@ func TestTarget_Parse_shortOCI(t *testing.T) {
 	}
 }
 
-func TestTarget_Parse_oci(t *testing.T) {
-	opts := Target{targetFlag: targetFlag{config: map[string]string{"type": TargetTypeOCILayout}}}
-	if err := opts.Parse(); err != nil {
-		t.Errorf("Target.Parse() error = %v", err)
-	}
-	if opts.Type != TargetTypeOCILayout {
-		t.Errorf("Target.Parse() failed, got %q, want %q", opts.Type, TargetTypeOCILayout)
-	}
-}
-
 func TestTarget_Parse_remote(t *testing.T) {
-	opts := Target{targetFlag: targetFlag{config: map[string]string{"type": TargetTypeRemote}, isOCI: false}}
+	opts := Target{targetFlag: targetFlag{isOCI: false}}
 	if err := opts.Parse(); err != nil {
 		t.Errorf("Target.Parse() error = %v", err)
 	}
