@@ -45,10 +45,9 @@ func (opts *targetFlag) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, descript
 	)
 	if prefix != "" {
 		flagPrefix = prefix + "-"
-		noteSuffix = "for " + description
+		noteSuffix = description + " "
 	}
-	targetFlag := flagPrefix + "target"
-	fs.BoolVarP(&opts.isOCI, flagPrefix+"oci", "", false, "Set "+noteSuffix+"target as an OCI-layout. Equivalent to '--"+targetFlag+" type=oci'")
+	fs.BoolVarP(&opts.isOCI, flagPrefix+"oci", "", false, "Set "+noteSuffix+"target as an OCI-layout.")
 }
 
 // Unary target option struct.
