@@ -18,10 +18,8 @@ package scenario
 import (
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
-	"github.com/onsi/gomega"
 	. "oras.land/oras/test/e2e/internal/utils"
 	"oras.land/oras/test/e2e/internal/utils/match"
 )
@@ -63,7 +61,7 @@ var _ = Describe("Common OCI artifact users:", Ordered, func() {
 
 		It("should attach and pull an artifact", func() {
 			subject := Reference(Host, repo, tag)
-			ORAS("attach", subject, "--artifact-type", "test-artifact", fmt.Sprint(attachFileName, ":", attachFileMedia), "-v", "--export-manifest", pulledManifest).
+			ORAS("attach", subject, "--artifact-type", "test.artifact1", fmt.Sprint(attachFileName, ":", attachFileMedia), "-v", "--export-manifest", pulledManifest).
 				MatchStatus([]match.StateKey{attachFileStateKey}, true, 1).
 				WithWorkDir(tempDir).
 				WithDescription("attach with manifest exported").Exec()
@@ -82,22 +80,14 @@ var _ = Describe("Common OCI artifact users:", Ordered, func() {
 				WithDescription("download identical file " + attachFileName).Exec()
 
 			// don't specify blob type so the manifest is guaranteed to be different from previous
-			ORAS("attach", subject, "--artifact-type", "test-artifact", fmt.Sprint(attachFileName), "-v", "--export-manifest", pulledManifest).
+			ORAS("attach", subject, "--artifact-type", "test.artifact2", fmt.Sprint(attachFileName), "-v", "--export-manifest", pulledManifest).
 				MatchStatus([]match.StateKey{attachFileStateKey}, true, 1).
 				WithWorkDir(tempDir).
 				WithDescription("attach again with manifest exported").Exec()
 
-			session = ORAS("discover", subject, "-o", "json").Exec()
-			raw := Binary("jq", "-r", ".manifests[].digest").WithInput(session.Out).Exec().Out.Contents()
-			digests := strings.Split(strings.TrimSpace(string(raw)), "\n")
-			gomega.Expect(len(digests)).To(gomega.Equal(2))
-			digest = strings.TrimSpace(digest)
-			if digests[1] != digest {
-				digest = digests[1]
-			} else {
-				digest = digests[0]
-			}
-			fetched = ORAS("manifest", "fetch", Reference(Host, repo, digest)).Exec()
+			session = ORAS("discover", subject, "-o", "json", "--artifact-type", "test.artifact2").Exec()
+			digest = string(Binary("jq", "-r", ".manifests[].digest").WithInput(session.Out).Exec().Out.Contents())
+			fetched = ORAS("manifest", "fetch", Reference(Host, repo, digest)).MatchKeyWords(attachFileMedia).Exec()
 			MatchFile(filepath.Join(tempDir, pulledManifest), string(fetched.Out.Contents()), DefaultTimeout)
 
 			ORAS("pull", Reference(Host, repo, string(digest)), "-v", "-o", pullRoot, "--include-subject").
