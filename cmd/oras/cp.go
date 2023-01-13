@@ -77,12 +77,15 @@ Example - Download certain platform of an artifact from remote registry to a fol
 Example - Download an artifact from remote registry to a folder 'local' in OCI image layout with multiple tags:
   oras cp --to-oci localhost:5000/net-monitor:v1 local:tag1,tag2,tag3
 
-Example -  Download an artifact from remote registry to a folder 'local' in OCI image layout with multiple tags and concurrency level tuned:
+Example - Download an artifact from remote registry to a folder 'local' in OCI image layout with multiple tags and concurrency level tuned:
   oras cp --to-oci --concurrency 6 localhost:5000/net-monitor:v1 local:tag1,tag2,tag3
 
 Example - Upload an artifact a folder 'local' in OCI image layout to remote registry:
   oras cp --from-oci local:v1  localhost:5000/net-monitor:v1
   oras cp --from-target type=oci local:v1  localhost:5000/net-monitor:v1
+
+Example - Upload an artifact a tarball archive in OCI image layout to remote registry:
+  oras cp --from-oci local.tar  localhost:5000/net-monitor:v1
 
 Example - Upload an artifact and its referrers from a folder 'local' in OCI image layout to remote registry:
   oras cp --from-oci -r local:v1  localhost:5000/net-monitor:v1
