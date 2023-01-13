@@ -14,6 +14,8 @@ limitations under the License.
 package utils
 
 import (
+	"strings"
+
 	"github.com/onsi/gomega"
 	"oras.land/oras-go/v2/registry"
 )
@@ -23,7 +25,7 @@ func Reference(reg string, repo string, tagOrDigest string) string {
 	ref := registry.Reference{
 		Registry:   reg,
 		Repository: repo,
-		Reference:  tagOrDigest,
+		Reference:  strings.TrimSpace(tagOrDigest),
 	}
 	gomega.Expect(ref.Validate()).ShouldNot(gomega.HaveOccurred())
 	return ref.String()
