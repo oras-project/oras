@@ -48,8 +48,9 @@ func (opts *targetFlag) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, descript
 		flagPrefix = prefix + "-"
 		noteSuffix = "for " + description
 	}
-	fs.BoolVarP(&opts.isOCI, flagPrefix+"oci", "", false, "Set "+noteSuffix+"target as an OCI-layout")
-	fs.StringToStringVarP(&opts.config, flagPrefix+"target", "", map[string]string{"type": "remote"}, "configure target configuration"+noteSuffix)
+	targetFlag := flagPrefix + "target"
+	fs.BoolVarP(&opts.isOCI, flagPrefix+"oci", "", false, "Set "+noteSuffix+"target as an OCI-layout. Equivalent to '--"+targetFlag+" type=oci'")
+	fs.StringToStringVarP(&opts.config, targetFlag, "", map[string]string{"type": "remote"}, "configure target configuration"+noteSuffix)
 }
 
 // Unary target option struct.
