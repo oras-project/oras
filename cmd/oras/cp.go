@@ -49,55 +49,27 @@ func copyCmd() *cobra.Command {
 
 ** This command is in preview and under development. **
 
-Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net-monitor' to repository 'localhost:5000/net-monitor-copy':
-  oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
+Example - Copy the artifacts:
+  oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1  # copy between repositories
+  oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy     # copy without tagging in the destination
+  oras cp --to-oci localhost:5000/net-monitor:v1 test:v1                    # download into an OCI layout folder 'test'
+  oras cp --from-oci test:v1 localhost:5000/net-monitor:v1                  # upload from an OCI layout folder 'test'
 
-Example - Copy the artifact tagged with 'v1' and its referrers from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy':
-  oras cp -r localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
+Example - Copy the artifact and its referrers:
+  oras cp -r localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1  # copy between repositories
+  oras cp -r --to-oci localhost:5000/net-monitor:v1 test:v1                    # download into an OCI image layout folder 'test'
+  oras cp -r --from-oci test:v1 localhost:5000/net-monitor:v1                  # upload from an OCI image layout folder 'test'
 
-Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with certain platform:
-  oras cp --platform linux/arm/v5 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1 
+Example - Copy certain platform of an artifact:
+  oras cp --platform linux/arm/v5 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1  # copy between repositories
+  oras cp --platform linux/arm/v5 --to-oci localhost:5000/net-monitor:v1 test:v1                    # download into an OCI layout folder 'test'
+  oras cp --platform linux/arm/v5 --from-oci test:v1 localhost:5000/net-monitor:v1                  # upload from an OCI layout folder 'test'
 
-Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with multiple tags:
-  oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1,tag2,tag3
-
-Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with multiple tags and concurrency level tuned:
-  oras cp --concurrency 6 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1,tag2,tag3
-
-Example - Download an artifact from remote registry to a folder 'local' in OCI image layout:
-  oras cp --to-oci localhost:5000/net-monitor:v1 local:v1
-  oras cp --to-target type=oci localhost:5000/net-monitor:v1 local:v1
-
-Example - Download an artifact and its referrers from remote registry to a folder 'local' in OCI image layout:
-  oras cp --to-oci -r localhost:5000/net-monitor:v1 local:v1
-
-Example - Download certain platform of an artifact from remote registry to a folder 'local' in OCI image layout:
-  oras cp --to-oci --platform linux/arm/v5 localhost:5000/net-monitor:v1 local:v1 
-
-Example - Download an artifact from remote registry to a folder 'local' in OCI image layout with multiple tags:
-  oras cp --to-oci localhost:5000/net-monitor:v1 local:tag1,tag2,tag3
-
-Example - Download an artifact from remote registry to a folder 'local' in OCI image layout with multiple tags and concurrency level tuned:
-  oras cp --to-oci --concurrency 6 localhost:5000/net-monitor:v1 local:tag1,tag2,tag3
-
-Example - Upload an artifact a folder 'local' in OCI image layout to remote registry:
-  oras cp --from-oci local:v1  localhost:5000/net-monitor:v1
-  oras cp --from-target type=oci local:v1  localhost:5000/net-monitor:v1
-
-Example - Upload an artifact a tar archive in OCI image layout to remote registry:
-  oras cp --from-oci local.tar  localhost:5000/net-monitor:v1
-
-Example - Upload an artifact and its referrers from a folder 'local' in OCI image layout to remote registry:
-  oras cp --from-oci -r local:v1  localhost:5000/net-monitor:v1
-
-Example - Upload certain platform of an artifact from a folder 'local' in OCI image layout to remote registry:
-  oras cp --from-oci --platform linux/arm/v5 local:v1  localhost:5000/net-monitor:v1
-
-Example - Upload an artifact from a folder 'local' in OCI image layout to remote registry with multiple tags:
-  oras cp --from-oci local:v1 localhost:5000/net-monitor:tag1,tag2,tag3
-
-Example - Upload an artifact from a folder 'local' in OCI image layout to remote registry with multiple tags and concurrency level tuned:
-  oras cp --concurrency 6 --from-oci local:v1 localhost:5000/net-monitor:tag1,tag2,tag3
+Example - Copy the artifact with multiple tags:
+  oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:tag1,tag2,tag3  # copy between repositories
+  oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:tag1,tag2,tag3  # copy between repositories with concurrency level tuned
+  oras cp localhost:5000/net-monitor:v1 test:tag1,tag2,tag3 --to-oci                    # download into an OCI layout folder 'test'
+  oras cp test:v1 localhost:5000/net-monitor-copy:tag1,tag2,tag3 --from-oci             # upload from an OCI layout folder 'test'
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
