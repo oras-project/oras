@@ -77,6 +77,8 @@ func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, status s
 
 type TagManifestStatusPrinter struct {
 	oras.Target
+	registry.ReferenceFetcher
+	registry.ReferencePusher
 }
 
 // PushReference overrides Repository.PushReference method to print off which tag(s) were added successfully.
