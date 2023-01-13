@@ -49,25 +49,26 @@ func copyCmd() *cobra.Command {
 
 ** This command is in preview and under development. **
 
-Example - Copy the artifacts:
+Example - Copy the artifact tagged 'v1':
   oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1  # copy between repositories
   oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy     # copy without tagging in the destination
   oras cp --to-oci localhost:5000/net-monitor:v1 test:v1                    # download into an OCI layout folder 'test'
   oras cp --from-oci test:v1 localhost:5000/net-monitor:v1                  # upload from an OCI layout folder 'test'
+  oras cp --from-oci test.tar:v1 localhost:5000/net-monitor:v1              # upload from an OCI layout tar archive 'test.tar'
 
-Example - Copy the artifact and its referrers:
+Example - Copy the artifact tagged 'v1' and its referrers:
   oras cp -r localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1  # copy between repositories
   oras cp -r --to-oci localhost:5000/net-monitor:v1 test:v1                    # download into an OCI image layout folder 'test'
   oras cp -r --from-oci test:v1 localhost:5000/net-monitor:v1                  # upload from an OCI image layout folder 'test'
 
-Example - Copy certain platform of an artifact:
+Example - Copy certain platform of the artifact 'v1':
   oras cp --platform linux/arm/v5 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1  # copy between repositories
   oras cp --platform linux/arm/v5 --to-oci localhost:5000/net-monitor:v1 test:v1                    # download into an OCI layout folder 'test'
   oras cp --platform linux/arm/v5 --from-oci test:v1 localhost:5000/net-monitor:v1                  # upload from an OCI layout folder 'test'
 
-Example - Copy the artifact with multiple tags:
+Example - Copy the artifact 'v1' with multiple tags:
   oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:tag1,tag2,tag3  # copy between repositories
-  oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:tag1,tag2,tag3  # copy between repositories with concurrency level tuned
+  oras cp --concurrency 10 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:tag1,tag2,tag3  # copy between repositories with concurrency level tuned
   oras cp localhost:5000/net-monitor:v1 test:tag1,tag2,tag3 --to-oci                    # download into an OCI layout folder 'test'
   oras cp test:v1 localhost:5000/net-monitor-copy:tag1,tag2,tag3 --from-oci             # upload from an OCI layout folder 'test'
 `,
