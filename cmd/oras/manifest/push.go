@@ -168,7 +168,7 @@ func pushManifest(opts pushOptions) error {
 	}
 	display.Print("Pushed", opts.targetRef)
 	if len(opts.extraRefs) != 0 {
-		if _, err = oras.TagBytesN(ctx, &display.TagManifestStatusPrinter{Target: repo}, mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
+		if _, err = oras.TagBytesN(ctx, display.NewTagManifestStatusPrinter(repo), mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}
 	}

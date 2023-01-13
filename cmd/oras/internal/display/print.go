@@ -75,39 +75,38 @@ func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, status s
 	return nil
 }
 
-type TagManifestStatusPrinter struct {
-	oras.Target
-	registry.ReferenceFetcher
-	registry.ReferencePusher
+// NewTagManifestStatusPrinter creates a wrapper type for printing tag status.
+func NewTagManifestStatusPrinter(target oras.Target) oras.Target {
+	if repo, ok := target.(registry.Repository); ok {
+		return &tagManifestStatusForRepo{
+			Repository: repo,
+		}
+	}
+	return &tagManifestStatusForTarget{
+		Target: target,
+	}
+}
+
+type tagManifestStatusForRepo struct {
+	registry.Repository
 }
 
 // PushReference overrides Repository.PushReference method to print off which tag(s) were added successfully.
-func (p *TagManifestStatusPrinter) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
-	if repo, ok := p.Target.(registry.ReferencePusher); ok {
-		if err := repo.PushReference(ctx, expected, content, reference); err != nil {
-			return err
-		}
-	} else {
-		if err := p.Target.Tag(ctx, expected, reference); err != nil {
-			return err
-		}
+func (p *tagManifestStatusForRepo) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
+	if err := p.Repository.PushReference(ctx, expected, content, reference); err != nil {
+		return err
 	}
 	return Print("Tagged", reference)
 }
 
-// FetchReference implements registry.ReferenceFetcher.
-func (p *TagManifestStatusPrinter) FetchReference(ctx context.Context, reference string) (ocispec.Descriptor, io.ReadCloser, error) {
-	if repo, ok := p.Target.(registry.ReferenceFetcher); ok {
-		return repo.FetchReference(ctx, reference)
-	} else {
-		desc, err := p.Resolve(ctx, reference)
-		if err != nil {
-			return ocispec.Descriptor{}, nil, nil
-		}
-		rc, err := p.Fetch(ctx, desc)
-		if err != nil {
-			return ocispec.Descriptor{}, nil, nil
-		}
-		return desc, rc, err
+type tagManifestStatusForTarget struct {
+	oras.Target
+}
+
+// Tag tags a descriptor with a reference string.
+func (p *tagManifestStatusForTarget) Tag(ctx context.Context, desc ocispec.Descriptor, reference string) error {
+	if err := p.Target.Tag(ctx, desc, reference); err != nil {
+		return err
 	}
+	return Print("Tagged", reference)
 }
