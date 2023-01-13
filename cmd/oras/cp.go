@@ -67,10 +67,10 @@ Example - Copy certain platform of the artifact 'v1':
   oras cp --platform linux/arm/v5 --from-oci test:v1 localhost:5000/net-monitor:v1                  # upload from an OCI layout folder 'test'
 
 Example - Copy the artifact 'v1' with multiple tags:
-  oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:tag1,tag2,tag3  # copy between repositories
+  oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:tag1,tag2,tag3                   # copy between repositories
   oras cp --concurrency 10 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:tag1,tag2,tag3  # copy between repositories with concurrency level tuned
-  oras cp localhost:5000/net-monitor:v1 test:tag1,tag2,tag3 --to-oci                    # download into an OCI layout folder 'test'
-  oras cp test:v1 localhost:5000/net-monitor-copy:tag1,tag2,tag3 --from-oci             # upload from an OCI layout folder 'test'
+  oras cp localhost:5000/net-monitor:v1 test:tag1,tag2,tag3 --to-oci                                     # download into an OCI layout folder 'test'
+  oras cp test:v1 localhost:5000/net-monitor-copy:tag1,tag2,tag3 --from-oci                              # upload from an OCI layout folder 'test'
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
