@@ -30,15 +30,12 @@ import (
 )
 
 type copyOptions struct {
-	src option.Remote
-	dst option.Remote
 	option.Common
 	option.Platform
-	recursive bool
+	option.BinaryTarget
 
+	recursive   bool
 	concurrency int
-	srcRef      string
-	dstRef      string
 	extraRefs   []string
 }
 
@@ -52,40 +49,67 @@ func copyCmd() *cobra.Command {
 
 ** This command is in preview and under development. **
 
-Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net-monitor' to repository 'localhost:5000/net-monitor-copy' 
+Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net-monitor' to repository 'localhost:5000/net-monitor-copy':
   oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
 
-Example - Copy the artifact tagged with 'v1' and its referrers from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy'
+Example - Copy the artifact tagged with 'v1' and its referrers from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy':
   oras cp -r localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1
 
-Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with certain platform
+Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with certain platform:
   oras cp --platform linux/arm/v5 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1 
 
-Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with multiple tags
+Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with multiple tags:
   oras cp localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1,tag2,tag3
 
-Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with multiple tags and concurrency level tuned
+Example - Copy the artifact tagged with 'v1' from repository 'localhost:5000/net-monitor' to 'localhost:5000/net-monitor-copy' with multiple tags and concurrency level tuned:
   oras cp --concurrency 6 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:v1,tag2,tag3
+
+Example - Download an artifact from remote registry to a folder 'local' in OCI image layout:
+  oras cp --to-oci localhost:5000/net-monitor:v1 local:v1
+  oras cp --to-target type=oci localhost:5000/net-monitor:v1 local:v1
+
+Example - Download an artifact and its referrers from remote registry to a folder 'local' in OCI image layout:
+  oras cp --to-oci -r localhost:5000/net-monitor:v1 local:v1
+
+Example - Download certain platform of an artifact from remote registry to a folder 'local' in OCI image layout:
+  oras cp --to-oci --platform linux/arm/v5 localhost:5000/net-monitor:v1 local:v1 
+
+Example - Download an artifact from remote registry to a folder 'local' in OCI image layout with multiple tags:
+  oras cp --to-oci localhost:5000/net-monitor:v1 local:tag1,tag2,tag3
+
+Example -  Download an artifact from remote registry to a folder 'local' in OCI image layout with multiple tags and concurrency level tuned:
+  oras cp --to-oci --concurrency 6 localhost:5000/net-monitor:v1 local:tag1,tag2,tag3
+
+Example - Upload an artifact a folder 'local' in OCI image layout to remote registry:
+  oras cp --from-oci local:v1  localhost:5000/net-monitor:v1
+
+Example - Upload an artifact and its referrers from a folder 'local' in OCI image layout to remote registry:
+  oras cp --from-oci -r local:v1  localhost:5000/net-monitor:v1
+
+Example - Upload certain platform of an artifact from a folder 'local' in OCI image layout to remote registry:
+  oras cp --from-oci --platform linux/arm/v5 local:v1  localhost:5000/net-monitor:v1
+
+Example - Upload an artifact from a folder 'local' in OCI image layout to remote registry with multiple tags:
+  oras cp --from-oci local:v1 localhost:5000/net-monitor:tag1,tag2,tag3
+
+Example -  Upload an artifact from a folder 'local' in OCI image layout to remote registry with multiple tags and concurrency level tuned:
+  oras cp --concurrency 6 --from-oci local:v1 localhost:5000/net-monitor:tag1,tag2,tag3
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			opts.From.FqdnRef = args[0]
+			refs := strings.Split(args[1], ",")
+			opts.To.FqdnRef = refs[0]
+			opts.extraRefs = refs[1:]
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.srcRef = args[0]
-			refs := strings.Split(args[1], ",")
-			opts.dstRef = refs[0]
-			opts.extraRefs = refs[1:]
 			return runCopy(opts)
 		},
 	}
-
 	cmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "recursively copy the artifact and its referrer artifacts")
-	opts.src.ApplyFlagsWithPrefix(cmd.Flags(), "from", "source")
-	opts.dst.ApplyFlagsWithPrefix(cmd.Flags(), "to", "destination")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 	option.ApplyFlags(&opts, cmd.Flags())
-
 	return cmd
 }
 
@@ -93,13 +117,16 @@ func runCopy(opts copyOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
 
 	// Prepare source
-	src, err := opts.src.NewRepository(opts.srcRef, opts.Common)
+	src, err := opts.From.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err
 	}
+	if opts.From.Reference == "" {
+		return errors.NewErrInvalidReferenceStr(opts.From.FqdnRef)
+	}
 
 	// Prepare destination
-	dst, err := opts.dst.NewRepository(opts.dstRef, opts.Common)
+	dst, err := opts.To.NewTarget(opts.Common)
 	if err != nil {
 		return err
 	}
@@ -121,14 +148,10 @@ func runCopy(opts copyOptions) error {
 		return display.PrintStatus(desc, "Exists ", opts.Verbose)
 	}
 
-	if src.Reference.Reference == "" {
-		return errors.NewErrInvalidReference(src.Reference)
-	}
-
 	var desc ocispec.Descriptor
-	if ref := dst.Reference.Reference; ref == "" {
+	if ref := opts.To.Reference; ref == "" {
 		// push to the destination with digest only if no tag specified
-		desc, err = src.Resolve(ctx, src.Reference.Reference)
+		desc, err = src.Resolve(ctx, opts.From.Reference)
 		if err != nil {
 			return err
 		}
@@ -139,7 +162,7 @@ func runCopy(opts copyOptions) error {
 		}
 	} else {
 		if opts.recursive {
-			desc, err = oras.ExtendedCopy(ctx, src, opts.srcRef, dst, opts.dstRef, extendedCopyOptions)
+			desc, err = oras.ExtendedCopy(ctx, src, opts.From.Reference, dst, opts.To.Reference, extendedCopyOptions)
 		} else {
 			copyOptions := oras.CopyOptions{
 				CopyGraphOptions: extendedCopyOptions.CopyGraphOptions,
@@ -147,19 +170,19 @@ func runCopy(opts copyOptions) error {
 			if opts.Platform.Platform != nil {
 				copyOptions.WithTargetPlatform(opts.Platform.Platform)
 			}
-			desc, err = oras.Copy(ctx, src, opts.srcRef, dst, opts.dstRef, copyOptions)
+			desc, err = oras.Copy(ctx, src, opts.From.Reference, dst, opts.To.Reference, copyOptions)
 		}
 	}
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("Copied", opts.srcRef, "=>", opts.dstRef)
+	fmt.Printf("Copied %s => %s \n", opts.From.FullReference(), opts.To.FullReference())
 
 	if len(opts.extraRefs) != 0 {
 		tagNOpts := oras.DefaultTagNOptions
 		tagNOpts.Concurrency = opts.concurrency
-		if err = oras.TagN(ctx, &display.TagManifestStatusPrinter{Repository: dst}, opts.dstRef, opts.extraRefs, tagNOpts); err != nil {
+		if _, err = oras.TagN(ctx, &display.TagManifestStatusPrinter{Target: dst}, opts.To.Reference, opts.extraRefs, tagNOpts); err != nil {
 			return err
 		}
 	}
