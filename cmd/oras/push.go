@@ -105,7 +105,7 @@ Example - Push file "hi.txt" with multiple tags and concurrency level tuned:
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if opts.ManifestMediaType == ocispec.MediaTypeArtifactManifest && opts.manifestConfigRef != "" {
-				return errors.New("cannot pack an OCI artifact with manifest config at the same time")
+				return errors.New("cannot build an OCI artifact with manifest config")
 			}
 			refs := strings.Split(args[0], ",")
 			opts.targetRef = refs[0]
