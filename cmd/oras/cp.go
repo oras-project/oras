@@ -96,7 +96,7 @@ Example - Upload certain platform of an artifact from a folder 'local' in OCI im
 Example - Upload an artifact from a folder 'local' in OCI image layout to remote registry with multiple tags:
   oras cp --from-oci local:v1 localhost:5000/net-monitor:tag1,tag2,tag3
 
-Example -  Upload an artifact from a folder 'local' in OCI image layout to remote registry with multiple tags and concurrency level tuned:
+Example - Upload an artifact from a folder 'local' in OCI image layout to remote registry with multiple tags and concurrency level tuned:
   oras cp --concurrency 6 --from-oci local:v1 localhost:5000/net-monitor:tag1,tag2,tag3
 `,
 		Args: cobra.ExactArgs(2),
