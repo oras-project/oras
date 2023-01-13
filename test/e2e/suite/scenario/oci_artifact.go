@@ -80,7 +80,7 @@ var _ = Describe("Common OCI artifact users:", Ordered, func() {
 				WithDescription("download identical file " + attachFileName).Exec()
 
 			// don't specify blob type so the manifest is guaranteed to be different from previous
-			ORAS("attach", subject, "--artifact-type", "test.artifact2", fmt.Sprint(attachFileName), "-v", "--export-manifest", pulledManifest).
+			ORAS("attach", subject, "--artifact-type", "test.artifact2", fmt.Sprint(attachFileName, ":", attachFileMedia), "-v", "--export-manifest", pulledManifest).
 				MatchStatus([]match.StateKey{attachFileStateKey}, true, 1).
 				WithWorkDir(tempDir).
 				WithDescription("attach again with manifest exported").Exec()
