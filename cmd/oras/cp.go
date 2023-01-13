@@ -84,7 +84,7 @@ Example - Upload an artifact a folder 'local' in OCI image layout to remote regi
   oras cp --from-oci local:v1  localhost:5000/net-monitor:v1
   oras cp --from-target type=oci local:v1  localhost:5000/net-monitor:v1
 
-Example - Upload an artifact a tarball archive in OCI image layout to remote registry:
+Example - Upload an artifact a tar archive in OCI image layout to remote registry:
   oras cp --from-oci local.tar  localhost:5000/net-monitor:v1
 
 Example - Upload an artifact and its referrers from a folder 'local' in OCI image layout to remote registry:
