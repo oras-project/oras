@@ -127,7 +127,7 @@ func (opts *Target) NewTarget(common Common) (graphTarget oras.GraphTarget, err 
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
 }
 
-// Read-only graph target with tag finder.
+// Read-only graph target with tag lister.
 type ReadOnlyGraphTagFinderTarget interface {
 	oras.ReadOnlyGraphTarget
 	registry.TagLister
