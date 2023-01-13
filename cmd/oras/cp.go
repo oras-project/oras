@@ -82,6 +82,7 @@ Example -  Download an artifact from remote registry to a folder 'local' in OCI 
 
 Example - Upload an artifact a folder 'local' in OCI image layout to remote registry:
   oras cp --from-oci local:v1  localhost:5000/net-monitor:v1
+  oras cp --from-target type=oci local:v1  localhost:5000/net-monitor:v1
 
 Example - Upload an artifact and its referrers from a folder 'local' in OCI image layout to remote registry:
   oras cp --from-oci -r local:v1  localhost:5000/net-monitor:v1
