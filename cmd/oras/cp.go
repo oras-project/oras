@@ -101,9 +101,9 @@ Example - Upload an artifact from a folder 'local' in OCI image layout to remote
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			opts.From.FqdnRef = args[0]
+			opts.From.FQDNReference = args[0]
 			refs := strings.Split(args[1], ",")
-			opts.To.FqdnRef = refs[0]
+			opts.To.FQDNReference = refs[0]
 			opts.extraRefs = refs[1:]
 			return option.Parse(&opts)
 		},
@@ -126,7 +126,7 @@ func runCopy(opts copyOptions) error {
 		return err
 	}
 	if opts.From.Reference == "" {
-		return errors.NewErrInvalidReferenceStr(opts.From.FqdnRef)
+		return errors.NewErrInvalidReferenceStr(opts.From.FQDNReference)
 	}
 
 	// Prepare destination

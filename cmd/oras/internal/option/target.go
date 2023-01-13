@@ -28,8 +28,8 @@ import (
 )
 
 const (
-	RemoteType    = "remote"
-	OCILayoutType = "oci"
+	TargetTypeRemote    = "remote"
+	TargetTypeOCILayout = "oci"
 )
 
 type targetFlag struct {
@@ -55,10 +55,10 @@ func (opts *targetFlag) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, descript
 // Unary target option struct.
 type Target struct {
 	Remote
-	FqdnRef   string
-	Type      string
-	IsTag     bool
-	Reference string
+	FQDNReference string
+	Type          string
+	IsTag         bool
+	Reference     string
 
 	targetFlag
 }
@@ -71,7 +71,7 @@ func (opts *Target) ApplyFlags(fs *pflag.FlagSet) {
 
 // FullReference returns full printable reference.
 func (opts *Target) FullReference() string {
-	return fmt.Sprintf("[%s] %s", opts.Type, opts.FqdnRef)
+	return fmt.Sprintf("[%s] %s", opts.Type, opts.FQDNReference)
 }
 
 // applyFlagsWithPrefix applies flags to a command flag set with a prefix string.
@@ -85,15 +85,15 @@ func (opts *Target) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 func (opts *Target) Parse() error {
 	if opts.isOCI {
 		// short flag
-		opts.Type = OCILayoutType
+		opts.Type = TargetTypeOCILayout
 		return nil
 	} else {
 		// long flag
 		opts.Type = opts.config["type"]
 		switch opts.Type {
-		case RemoteType:
+		case TargetTypeRemote:
 			return opts.Remote.Parse()
-		case OCILayoutType:
+		case TargetTypeOCILayout:
 			return nil
 		}
 	}
@@ -103,23 +103,23 @@ func (opts *Target) Parse() error {
 // NewTarget generates a new target based on opts.
 func (opts *Target) NewTarget(common Common) (graphTarget oras.GraphTarget, err error) {
 	switch opts.Type {
-	case OCILayoutType:
-		if idx := strings.LastIndex(opts.FqdnRef, "@"); idx != -1 {
+	case TargetTypeOCILayout:
+		if idx := strings.LastIndex(opts.FQDNReference, "@"); idx != -1 {
 			// `digest` found
 			opts.IsTag = false
-			graphTarget, err = oci.New(opts.FqdnRef[:idx])
-			opts.Reference = opts.FqdnRef[idx+1:]
-		} else if idx = strings.LastIndex(opts.FqdnRef, ":"); idx != -1 {
+			graphTarget, err = oci.New(opts.FQDNReference[:idx])
+			opts.Reference = opts.FQDNReference[idx+1:]
+		} else if idx = strings.LastIndex(opts.FQDNReference, ":"); idx != -1 {
 			// `tag` found
 			opts.IsTag = true
-			graphTarget, err = oci.New(opts.FqdnRef[:idx])
-			opts.Reference = opts.FqdnRef[idx+1:]
+			graphTarget, err = oci.New(opts.FQDNReference[:idx])
+			opts.Reference = opts.FQDNReference[idx+1:]
 		} else {
-			graphTarget, err = oci.New(opts.FqdnRef)
+			graphTarget, err = oci.New(opts.FQDNReference)
 		}
 		return
-	case RemoteType:
-		repo, err := opts.NewRepository(opts.FqdnRef, common)
+	case TargetTypeRemote:
+		repo, err := opts.NewRepository(opts.FQDNReference, common)
 		if err != nil {
 			return nil, err
 		}
@@ -138,18 +138,18 @@ type ReadOnlyGraphTagFinderTarget interface {
 // NewReadonlyTargets generates a new read only target based on opts.
 func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadOnlyGraphTagFinderTarget, error) {
 	switch opts.Type {
-	case OCILayoutType:
-		path := opts.FqdnRef
-		if idx := strings.LastIndex(opts.FqdnRef, "@"); idx != -1 {
+	case TargetTypeOCILayout:
+		path := opts.FQDNReference
+		if idx := strings.LastIndex(opts.FQDNReference, "@"); idx != -1 {
 			// `digest` found
 			opts.IsTag = false
-			path = opts.FqdnRef[:idx]
-			opts.Reference = opts.FqdnRef[idx+1:]
-		} else if idx = strings.LastIndex(opts.FqdnRef, ":"); idx != -1 {
+			path = opts.FQDNReference[:idx]
+			opts.Reference = opts.FQDNReference[idx+1:]
+		} else if idx = strings.LastIndex(opts.FQDNReference, ":"); idx != -1 {
 			// `tag` found
 			opts.IsTag = true
-			path = opts.FqdnRef[:idx]
-			opts.Reference = opts.FqdnRef[idx+1:]
+			path = opts.FQDNReference[:idx]
+			opts.Reference = opts.FQDNReference[idx+1:]
 		}
 		var store *oci.ReadOnlyStore
 		info, err := os.Stat(path)
@@ -169,8 +169,8 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadO
 			}
 		}
 		return store, nil
-	case RemoteType:
-		repo, err := opts.NewRepository(opts.FqdnRef, common)
+	case TargetTypeRemote:
+		repo, err := opts.NewRepository(opts.FQDNReference, common)
 		if err != nil {
 			return nil, err
 		}

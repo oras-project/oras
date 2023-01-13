@@ -25,27 +25,27 @@ func TestTarget_Parse_shortOCI(t *testing.T) {
 	if err := opts.Parse(); err != nil {
 		t.Errorf("Target.Parse() error = %v", err)
 	}
-	if opts.Type != OCILayoutType {
-		t.Errorf("Target.Parse() failed, got %q, want %q", opts.Type, OCILayoutType)
+	if opts.Type != TargetTypeOCILayout {
+		t.Errorf("Target.Parse() failed, got %q, want %q", opts.Type, TargetTypeOCILayout)
 	}
 }
 
 func TestTarget_Parse_oci(t *testing.T) {
-	opts := Target{targetFlag: targetFlag{config: map[string]string{"type": OCILayoutType}}}
+	opts := Target{targetFlag: targetFlag{config: map[string]string{"type": TargetTypeOCILayout}}}
 	if err := opts.Parse(); err != nil {
 		t.Errorf("Target.Parse() error = %v", err)
 	}
-	if opts.Type != OCILayoutType {
-		t.Errorf("Target.Parse() failed, got %q, want %q", opts.Type, OCILayoutType)
+	if opts.Type != TargetTypeOCILayout {
+		t.Errorf("Target.Parse() failed, got %q, want %q", opts.Type, TargetTypeOCILayout)
 	}
 }
 
 func TestTarget_Parse_remote(t *testing.T) {
-	opts := Target{targetFlag: targetFlag{config: map[string]string{"type": RemoteType}, isOCI: false}}
+	opts := Target{targetFlag: targetFlag{config: map[string]string{"type": TargetTypeRemote}, isOCI: false}}
 	if err := opts.Parse(); err != nil {
 		t.Errorf("Target.Parse() error = %v", err)
 	}
-	if opts.Type != RemoteType {
-		t.Errorf("Target.Parse() failed, got %q, want %q", opts.Type, RemoteType)
+	if opts.Type != TargetTypeRemote {
+		t.Errorf("Target.Parse() failed, got %q, want %q", opts.Type, TargetTypeRemote)
 	}
 }
