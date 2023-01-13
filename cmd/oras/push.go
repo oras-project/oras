@@ -40,6 +40,7 @@ type pushOptions struct {
 	option.Common
 	option.Remote
 	option.Packer
+	option.ImageSpec
 
 	targetRef         string
 	extraRefs         []string
@@ -73,6 +74,10 @@ Example - Push file "hi.txt" with config type "application/vnd.me.config":
 Example - Push file "hi.txt" with the custom manifest config "config.json" of the custom media type "application/vnd.me.config":
   oras push --config config.json:application/vnd.me.config localhost:5000/hello:latest hi.txt
 
+Example - Push file "hi.txt" with specific media type when building the manifest:
+  oras push --image-spec v1.1-image localhost:5000/hello:latest hi.txt    # OCI image
+  oras push --image-spec v1.1-artifact localhost:5000/hello:latest hi.txt # OCI artifact
+
 Example - Push file to the insecure registry:
   oras push --insecure localhost:5000/hello:latest hi.txt
 
@@ -99,6 +104,9 @@ Example - Push file "hi.txt" with multiple tags and concurrency level tuned:
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if opts.ManifestMediaType == ocispec.MediaTypeArtifactManifest && opts.manifestConfigRef != "" {
+				return errors.New("cannot build an OCI artifact with manifest config")
+			}
 			refs := strings.Split(args[0], ",")
 			opts.targetRef = refs[0]
 			opts.extraRefs = refs[1:]
@@ -142,6 +150,9 @@ func runPush(opts pushOptions) error {
 		packOpts.ConfigDescriptor = &desc
 		packOpts.PackImageManifest = true
 	}
+	if opts.ManifestMediaType == ocispec.MediaTypeImageManifest {
+		packOpts.PackImageManifest = true
+	}
 	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
 	if err != nil {
 		return err
@@ -175,7 +186,7 @@ func runPush(opts pushOptions) error {
 	}
 
 	// Push
-	root, err := pushArtifact(dst, pack, &packOpts, copy, &copyOptions.CopyGraphOptions, opts.Verbose)
+	root, err := pushArtifact(dst, pack, &packOpts, copy, &copyOptions.CopyGraphOptions, opts.ManifestMediaType == "", opts.Verbose)
 	if err != nil {
 		return err
 	}
@@ -218,7 +229,7 @@ func updateDisplayOption(opts *oras.CopyGraphOptions, store content.Fetcher, ver
 type packFunc func() (ocispec.Descriptor, error)
 type copyFunc func(desc ocispec.Descriptor) error
 
-func pushArtifact(dst *remote.Repository, pack packFunc, packOpts *oras.PackOptions, copy copyFunc, copyOpts *oras.CopyGraphOptions, verbose bool) (ocispec.Descriptor, error) {
+func pushArtifact(dst *remote.Repository, pack packFunc, packOpts *oras.PackOptions, copy copyFunc, copyOpts *oras.CopyGraphOptions, allowFallback bool, verbose bool) (ocispec.Descriptor, error) {
 	root, err := pack()
 	if err != nil {
 		return ocispec.Descriptor{}, err
@@ -243,7 +254,7 @@ func pushArtifact(dst *remote.Repository, pack packFunc, packOpts *oras.PackOpti
 		return root, nil
 	}
 
-	if !copyRootAttempted || root.MediaType != ocispec.MediaTypeArtifactManifest ||
+	if !allowFallback || !copyRootAttempted || root.MediaType != ocispec.MediaTypeArtifactManifest ||
 		!isManifestUnsupported(err) {
 		return ocispec.Descriptor{}, err
 	}

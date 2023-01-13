@@ -33,6 +33,8 @@ type attachOptions struct {
 	option.Common
 	option.Remote
 	option.Packer
+	option.ImageSpec
+	option.DistributionSpec
 
 	targetRef    string
 	artifactType string
@@ -48,19 +50,27 @@ func attachCmd() *cobra.Command {
 
 ** This command is in preview and under development. **
 
-Example - Attach file 'hi.txt' with type 'doc/example' to manifest 'hello:test' in registry 'localhost:5000'
+Example - Attach file 'hi.txt' with type 'doc/example' to manifest 'hello:test' in registry 'localhost:5000':
   oras attach --artifact-type doc/example localhost:5000/hello:test hi.txt
 
-Example - Attach file 'hi.txt' and add annotations from file 'annotation.json'
+Example - Attach file "hi.txt" with specific media type when building the manifest:
+  oras attach --artifact-type doc/example --image-spec v1.1-image localhost:5000/hello:test hi.txt    # OCI image
+  oras attach --artifact-type doc/example --image-spec v1.1-artifact localhost:5000/hello:test hi.txt # OCI artifact
+
+Example - Attach file "hi.txt" using a specific method for the Referrers API:
+  oras attach --artifact-type doc/example --distribution-spec v1.1-referrers-api localhost:5000/hello:test hi.txt # via API
+  oras attach --artifact-type doc/example --distribution-spec v1.1-referrers-tag localhost:5000/hello:test hi.txt # via tag scheme
+
+Example - Attach file 'hi.txt' and add annotations from file 'annotation.json':
   oras attach --artifact-type doc/example --annotation-file annotation.json localhost:5000/hello:latest hi.txt
 
-Example - Attach an artifact with manifest annotations
+Example - Attach an artifact with manifest annotations:
   oras attach --artifact-type doc/example --annotation "key1=val1" --annotation "key2=val2" localhost:5000/hello:latest
 
-Example - Attach file 'hi.txt' and add manifest annotations
+Example - Attach file 'hi.txt' and add manifest annotations:
   oras attach --artifact-type doc/example --annotation "key=val" localhost:5000/hello:latest hi.txt
 
-Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json'
+Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json':
   oras attach --artifact-type doc/example --export-manifest manifest.json localhost:5000/hello:latest hi.txt
 `,
 		Args: cobra.MinimumNArgs(1),
@@ -103,6 +113,9 @@ func runAttach(opts attachOptions) error {
 	if dst.Reference.Reference == "" {
 		return oerrors.NewErrInvalidReference(dst.Reference)
 	}
+	if opts.ReferrersAPI != nil {
+		dst.SetReferrersCapability(*opts.ReferrersAPI)
+	}
 	subject, err := dst.Resolve(ctx, dst.Reference.Reference)
 	if err != nil {
 		return err
@@ -116,6 +129,7 @@ func runAttach(opts attachOptions) error {
 	packOpts := oras.PackOptions{
 		Subject:             &subject,
 		ManifestAnnotations: annotations[option.AnnotationManifest],
+		PackImageManifest:   opts.ManifestMediaType == ocispec.MediaTypeImageManifest,
 	}
 	pack := func() (ocispec.Descriptor, error) {
 		return oras.Pack(ctx, store, opts.artifactType, descs, packOpts)
@@ -137,7 +151,7 @@ func runAttach(opts attachOptions) error {
 		return oras.CopyGraph(ctx, store, dst, root, graphCopyOptions)
 	}
 
-	root, err := pushArtifact(dst, pack, &packOpts, copy, &graphCopyOptions, opts.Verbose)
+	root, err := pushArtifact(dst, pack, &packOpts, copy, &graphCopyOptions, opts.ManifestMediaType == "", opts.Verbose)
 	if err != nil {
 		return err
 	}
