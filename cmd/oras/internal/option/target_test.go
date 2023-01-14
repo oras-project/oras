@@ -20,7 +20,7 @@ import (
 )
 
 func TestTarget_Parse_oci(t *testing.T) {
-	opts := Target{targetFlag: targetFlag{isOCI: true}}
+	opts := Target{isOCI: true}
 
 	if err := opts.Parse(); err != nil {
 		t.Errorf("Target.Parse() error = %v", err)
@@ -31,7 +31,7 @@ func TestTarget_Parse_oci(t *testing.T) {
 }
 
 func TestTarget_Parse_remote(t *testing.T) {
-	opts := Target{targetFlag: targetFlag{isOCI: false}}
+	opts := Target{isOCI: false}
 	if err := opts.Parse(); err != nil {
 		t.Errorf("Target.Parse() error = %v", err)
 	}
