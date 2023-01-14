@@ -74,9 +74,9 @@ Example - Copy the artifact 'v1' with multiple tags:
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			opts.From.FQDNReference = args[0]
+			opts.From.RawReference = args[0]
 			refs := strings.Split(args[1], ",")
-			opts.To.FQDNReference = refs[0]
+			opts.To.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
 			return option.Parse(&opts)
 		},
@@ -98,8 +98,8 @@ func runCopy(opts copyOptions) error {
 	if err != nil {
 		return err
 	}
-	if opts.From.Reference == "" {
-		return errors.NewErrInvalidReferenceStr(opts.From.FQDNReference)
+	if opts.From.TagOrDigest == "" {
+		return errors.NewErrInvalidReferenceStr(opts.From.RawReference)
 	}
 
 	// Prepare destination
@@ -126,9 +126,9 @@ func runCopy(opts copyOptions) error {
 	}
 
 	var desc ocispec.Descriptor
-	if ref := opts.To.Reference; ref == "" {
+	if ref := opts.To.TagOrDigest; ref == "" {
 		// push to the destination with digest only if no tag specified
-		desc, err = src.Resolve(ctx, opts.From.Reference)
+		desc, err = src.Resolve(ctx, opts.From.TagOrDigest)
 		if err != nil {
 			return err
 		}
@@ -139,7 +139,7 @@ func runCopy(opts copyOptions) error {
 		}
 	} else {
 		if opts.recursive {
-			desc, err = oras.ExtendedCopy(ctx, src, opts.From.Reference, dst, opts.To.Reference, extendedCopyOptions)
+			desc, err = oras.ExtendedCopy(ctx, src, opts.From.TagOrDigest, dst, opts.To.TagOrDigest, extendedCopyOptions)
 		} else {
 			copyOptions := oras.CopyOptions{
 				CopyGraphOptions: extendedCopyOptions.CopyGraphOptions,
@@ -147,19 +147,19 @@ func runCopy(opts copyOptions) error {
 			if opts.Platform.Platform != nil {
 				copyOptions.WithTargetPlatform(opts.Platform.Platform)
 			}
-			desc, err = oras.Copy(ctx, src, opts.From.Reference, dst, opts.To.Reference, copyOptions)
+			desc, err = oras.Copy(ctx, src, opts.From.TagOrDigest, dst, opts.To.TagOrDigest, copyOptions)
 		}
 	}
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Copied %s => %s \n", opts.From.FullReference(), opts.To.FullReference())
+	fmt.Println("Copied", opts.From.AnnotatedReference(), "=>", opts.To.AnnotatedReference())
 
 	if len(opts.extraRefs) != 0 {
 		tagNOpts := oras.DefaultTagNOptions
 		tagNOpts.Concurrency = opts.concurrency
-		if _, err = oras.TagN(ctx, display.NewTagManifestStatusPrinter(dst), opts.To.Reference, opts.extraRefs, tagNOpts); err != nil {
+		if _, err = oras.TagN(ctx, display.NewTagManifestStatusPrinter(dst), opts.To.TagOrDigest, opts.extraRefs, tagNOpts); err != nil {
 			return err
 		}
 	}

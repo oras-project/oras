@@ -32,13 +32,30 @@ const (
 	TargetTypeOCILayout = "oci"
 )
 
-type targetFlag struct {
+// Unary target option struct.
+type Target struct {
+	Remote
+	RawReference string
+	Type         string
+	TagOrDigest  string
+
 	isOCI bool
+}
+
+// ApplyFlags applies flags to a command flag set for unary target
+func (opts *Target) ApplyFlags(fs *pflag.FlagSet) {
+	opts.applyFlagsWithPrefix(fs, "", "")
+	opts.Remote.ApplyFlags(fs)
+}
+
+// AnnotatedReference returns full printable reference.
+func (opts *Target) AnnotatedReference() string {
+	return fmt.Sprintf("[%s] %s", opts.Type, opts.RawReference)
 }
 
 // applyFlagsWithPrefix applies flags to a command flag set with a prefix string.
 // Commonly used for non-unary remote targets.
-func (opts *targetFlag) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
+func (opts *Target) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
 	var (
 		flagPrefix string
 		noteSuffix string
@@ -50,71 +67,52 @@ func (opts *targetFlag) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, descript
 	fs.BoolVarP(&opts.isOCI, flagPrefix+"oci", "", false, "Set "+noteSuffix+"target as an OCI-layout.")
 }
 
-// Unary target option struct.
-type Target struct {
-	Remote
-	FQDNReference string
-	Type          string
-	IsTag         bool
-	Reference     string
-
-	targetFlag
-}
-
-// ApplyFlags applies flags to a command flag set for unary target
-func (opts *Target) ApplyFlags(fs *pflag.FlagSet) {
-	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
-	opts.applyFlagsWithPrefix(fs, "", "")
-}
-
-// FullReference returns full printable reference.
-func (opts *Target) FullReference() string {
-	return fmt.Sprintf("[%s] %s", opts.Type, opts.FQDNReference)
-}
-
-// applyFlagsWithPrefix applies flags to a command flag set with a prefix string.
+// ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
 // Commonly used for non-unary remote targets.
-func (opts *Target) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
-	opts.targetFlag.applyFlagsWithPrefix(fs, prefix, description)
+func (opts *Target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
+	opts.applyFlagsWithPrefix(fs, prefix, description)
 	opts.Remote.ApplyFlagsWithPrefix(fs, prefix, description)
 }
 
 // Parse gets target options from user input.
 func (opts *Target) Parse() error {
-	if opts.isOCI {
-		// short flag
+	switch {
+	case opts.isOCI:
 		opts.Type = TargetTypeOCILayout
-	} else {
-		// long flag
+	default:
 		opts.Type = TargetTypeRemote
 	}
 	return nil
+}
+
+func parseOCILayoutReference(raw string) (string, string) {
+	var path, ref string
+	if idx := strings.LastIndex(raw, "@"); idx != -1 {
+		// `digest` found
+		path = raw[:idx]
+		ref = raw[idx+1:]
+	} else if idx = strings.LastIndex(raw, ":"); idx != -1 {
+		// `tag` found
+		path = raw[:idx]
+		ref = raw[idx+1:]
+	}
+	return path, ref
 }
 
 // NewTarget generates a new target based on opts.
 func (opts *Target) NewTarget(common Common) (graphTarget oras.GraphTarget, err error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
-		if idx := strings.LastIndex(opts.FQDNReference, "@"); idx != -1 {
-			// `digest` found
-			opts.IsTag = false
-			graphTarget, err = oci.New(opts.FQDNReference[:idx])
-			opts.Reference = opts.FQDNReference[idx+1:]
-		} else if idx = strings.LastIndex(opts.FQDNReference, ":"); idx != -1 {
-			// `tag` found
-			opts.IsTag = true
-			graphTarget, err = oci.New(opts.FQDNReference[:idx])
-			opts.Reference = opts.FQDNReference[idx+1:]
-		} else {
-			graphTarget, err = oci.New(opts.FQDNReference)
-		}
+		var path string
+		path, opts.TagOrDigest = parseOCILayoutReference(opts.RawReference)
+		graphTarget, err = oci.New(path)
 		return
 	case TargetTypeRemote:
-		repo, err := opts.NewRepository(opts.FQDNReference, common)
+		repo, err := opts.NewRepository(opts.RawReference, common)
 		if err != nil {
 			return nil, err
 		}
-		opts.Reference = repo.Reference.Reference
+		opts.TagOrDigest = repo.Reference.Reference
 		return repo, nil
 	}
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
@@ -130,42 +128,22 @@ type ReadOnlyGraphTagFinderTarget interface {
 func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadOnlyGraphTagFinderTarget, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
-		path := opts.FQDNReference
-		if idx := strings.LastIndex(opts.FQDNReference, "@"); idx != -1 {
-			// `digest` found
-			opts.IsTag = false
-			path = opts.FQDNReference[:idx]
-			opts.Reference = opts.FQDNReference[idx+1:]
-		} else if idx = strings.LastIndex(opts.FQDNReference, ":"); idx != -1 {
-			// `tag` found
-			opts.IsTag = true
-			path = opts.FQDNReference[:idx]
-			opts.Reference = opts.FQDNReference[idx+1:]
-		}
-		var store *oci.ReadOnlyStore
+		var path string
+		path, opts.TagOrDigest = parseOCILayoutReference(opts.RawReference)
 		info, err := os.Stat(path)
 		if err != nil {
 			return nil, err
 		}
-
 		if info.IsDir() {
-			store, err = oci.NewFromFS(ctx, os.DirFS(path))
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			store, err = oci.NewFromTar(ctx, path)
-			if err != nil {
-				return nil, err
-			}
+			return oci.NewFromFS(ctx, os.DirFS(path))
 		}
-		return store, nil
+		return oci.NewFromTar(ctx, path)
 	case TargetTypeRemote:
-		repo, err := opts.NewRepository(opts.FQDNReference, common)
+		repo, err := opts.NewRepository(opts.RawReference, common)
 		if err != nil {
 			return nil, err
 		}
-		opts.Reference = repo.Reference.Reference
+		opts.TagOrDigest = repo.Reference.Reference
 		return repo, nil
 	}
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
@@ -180,8 +158,8 @@ type BinaryTarget struct {
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
 // Commonly used for non-unary remote targets.
 func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
-	opts.From.applyFlagsWithPrefix(fs, "from", "source")
-	opts.To.applyFlagsWithPrefix(fs, "to", "destination")
+	opts.From.ApplyFlagsWithPrefix(fs, "from", "source")
+	opts.To.ApplyFlagsWithPrefix(fs, "to", "destination")
 }
 
 // Parse parses user-provided flags and arguments into option struct.
