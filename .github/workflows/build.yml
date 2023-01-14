@@ -55,9 +55,9 @@ jobs:
             --env REGISTRY_STORAGE_DELETE_ENABLED=true \
             --env REGISTRY_AUTH_HTPASSWD_REALM=test-basic \
             --env REGISTRY_AUTH_HTPASSWD_PATH=/etc/docker/registry/passwd \
-            --mount type=bind,source=$mnt_root/docker,target=/opt/data/registry-root-dir/docker \
+            --mount type=bind,source=$mnt_root/docker,target=/var/lib/registry/docker \
             --mount type=bind,source=$mnt_root/passwd_bcrypt,target=/etc/docker/registry/passwd \
-            ghcr.io/oras-project/registry:v1.0.0-rc.2
+            ghcr.io/oras-project/registry:v1.0.0-rc.3
           ginkgo -r -p --succinct suite
           docker kill oras-e2e || true
         env:
