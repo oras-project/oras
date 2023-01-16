@@ -54,15 +54,14 @@ func (opts *Target) AnnotatedReference() string {
 	return fmt.Sprintf("[%s] %s", opts.Type, opts.RawReference)
 }
 
-// applyFlagsWithPrefix applies flags to a command flag set with a prefix string.
-// The full target flag should be provided as:
+// The complete form of the `target` flag is designed to be
 //
-//	--target type={oci-layout|registry}.
+//	--target type=<type>[[,<key>=<value>][...]]
 //
-// Since only OCI image layout is supported, a short boolean flag
-// `--[{from|to}-oci-layout]` is used to simplify UX.
-//   - If the flag is set, it equals to `--target type=oci-layout`;
-//   - If not, it equals to `--target type=registry`
+// For better UX, the boolean flag `--oci-layout` is introduced as an alias of
+// `--target type=oci-layout`.
+// Since there is only one target type besides the default `registry` type,
+// the full form is not implemented until a new type comes in.
 func (opts *Target) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
 	var (
 		flagPrefix string
