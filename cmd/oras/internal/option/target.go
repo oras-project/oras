@@ -40,7 +40,7 @@ type Target struct {
 	Type         string
 	Reference    string //contains tag or digest
 
-	isOCI bool
+	isOCILayout bool
 }
 
 // ApplyFlags applies flags to a command flag set for unary target
@@ -71,7 +71,7 @@ func (opts *Target) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 		flagPrefix = prefix + "-"
 		noteSuffix = description + " "
 	}
-	fs.BoolVarP(&opts.isOCI, flagPrefix+"TargetTypeOCILayout", "", false, "Set "+noteSuffix+"target as an OCI image layout.")
+	fs.BoolVarP(&opts.isOCILayout, flagPrefix+"oci-layout", "", false, "Set "+noteSuffix+"target as an OCI image layout.")
 }
 
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
@@ -84,7 +84,7 @@ func (opts *Target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 // Parse gets target options from user input.
 func (opts *Target) Parse() error {
 	switch {
-	case opts.isOCI:
+	case opts.isOCILayout:
 		opts.Type = TargetTypeOCILayout
 	default:
 		opts.Type = TargetTypeRemote
@@ -93,9 +93,7 @@ func (opts *Target) Parse() error {
 }
 
 // parseOCILayoutReference parses the raw in format of <path>[:<tag>|@<digest>]
-func parseOCILayoutReference(raw string) (string, string, error) {
-	var path, ref string
-	var err error
+func parseOCILayoutReference(raw string) (path string, ref string, err error) {
 	if idx := strings.LastIndex(raw, "@"); idx != -1 {
 		// `digest` found
 		path = raw[:idx]
@@ -103,24 +101,21 @@ func parseOCILayoutReference(raw string) (string, string, error) {
 	} else {
 		// find `tag`
 		path, ref, err = fileref.Parse(raw, "")
-		if err != nil {
-			return "", "", err
-		}
 	}
-	return path, ref, nil
+	return
 }
 
 // NewTarget generates a new target based on opts.
-func (opts *Target) NewTarget(common Common) (graphTarget oras.GraphTarget, err error) {
+func (opts *Target) NewTarget(common Common) (oras.GraphTarget, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
 		var path string
+		var err error
 		path, opts.Reference, err = parseOCILayoutReference(opts.RawReference)
 		if err != nil {
 			return nil, err
 		}
-		graphTarget, err = oci.New(path)
-		return
+		return oci.New(path)
 	case TargetTypeRemote:
 		repo, err := opts.NewRepository(opts.RawReference, common)
 		if err != nil {
