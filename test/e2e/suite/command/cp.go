@@ -51,7 +51,7 @@ var _ = Describe("ORAS beginners:", func() {
 	})
 })
 
-var _ = Describe("Common registry users:", Focus, func() {
+var _ = Describe("Common registry users:", func() {
 	When("running `cp`", func() {
 		imageStateKeys := []match.StateKey{
 			{Digest: "44136fa355b3", Name: "application/vnd.unknown.config.v1+json"},
