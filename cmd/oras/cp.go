@@ -65,7 +65,7 @@ Example - Copy an artifact and its referrers:
   oras cp -r localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:v1
 
 Example - Copy certain platform of an artifact:
- oras cp --platform linux/arm/v5 localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:v1
+  oras cp --platform linux/arm/v5 localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:v1
 
 Example - Copy an artifact with multiple tags:
   oras cp localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:tag1,tag2,tag3
