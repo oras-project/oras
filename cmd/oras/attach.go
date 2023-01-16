@@ -81,7 +81,7 @@ Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json'
 			if err := option.Parse(&opts); err != nil {
 				return err
 			}
-			if opts.Type == option.TargetTypeOCILayout && opts.DistributionSpec.ReferrersAPI != nil && *opts.DistributionSpec.ReferrersAPI == true {
+			if opts.Type == option.TargetTypeOCILayout && opts.DistributionSpec.ReferrersAPI != nil && *opts.DistributionSpec.ReferrersAPI {
 				return errors.New("cannot enforce referrers API for image layout target")
 			}
 			return nil
