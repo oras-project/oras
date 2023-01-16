@@ -39,6 +39,7 @@ type Target struct {
 	RawReference string
 	Type         string
 	Reference    string //contains tag or digest
+	Path         string
 
 	isOCILayout bool
 }
@@ -109,13 +110,12 @@ func parseOCILayoutReference(raw string) (path string, ref string, err error) {
 func (opts *Target) NewTarget(common Common) (oras.GraphTarget, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
-		var path string
 		var err error
-		path, opts.Reference, err = parseOCILayoutReference(opts.RawReference)
+		opts.Path, opts.Reference, err = parseOCILayoutReference(opts.RawReference)
 		if err != nil {
 			return nil, err
 		}
-		return oci.New(path)
+		return oci.New(opts.Path)
 	case TargetTypeRemote:
 		repo, err := opts.NewRepository(opts.RawReference, common)
 		if err != nil {
@@ -137,20 +137,19 @@ type ReadOnlyGraphTagFinderTarget interface {
 func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadOnlyGraphTagFinderTarget, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
-		var path string
 		var err error
-		path, opts.Reference, err = parseOCILayoutReference(opts.RawReference)
+		opts.Path, opts.Reference, err = parseOCILayoutReference(opts.RawReference)
 		if err != nil {
 			return nil, err
 		}
-		info, err := os.Stat(path)
+		info, err := os.Stat(opts.Path)
 		if err != nil {
 			return nil, err
 		}
 		if info.IsDir() {
-			return oci.NewFromFS(ctx, os.DirFS(path))
+			return oci.NewFromFS(ctx, os.DirFS(opts.Path))
 		}
-		return oci.NewFromTar(ctx, path)
+		return oci.NewFromTar(ctx, opts.Path)
 	case TargetTypeRemote:
 		repo, err := opts.NewRepository(opts.RawReference, common)
 		if err != nil {
