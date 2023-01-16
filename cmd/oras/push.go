@@ -38,11 +38,10 @@ import (
 
 type pushOptions struct {
 	option.Common
-	option.Remote
 	option.Packer
 	option.ImageSpec
+	option.Target
 
-	targetRef         string
 	extraRefs         []string
 	manifestConfigRef string
 	artifactType      string
@@ -98,19 +97,16 @@ Example - Push file "hi.txt" with multiple tags and concurrency level tuned:
 `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			refs := strings.Split(args[0], ",")
+			opts.RawReference = args[0]
+			opts.extraRefs = refs[1:]
+			opts.FileRefs = args[1:]
 			if opts.artifactType != "" && opts.manifestConfigRef != "" {
 				return errors.New("--artifact-type and --config cannot both be provided")
 			}
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if opts.ManifestMediaType == ocispec.MediaTypeArtifactManifest && opts.manifestConfigRef != "" {
-				return errors.New("cannot build an OCI artifact with manifest config")
-			}
-			refs := strings.Split(args[0], ",")
-			opts.targetRef = refs[0]
-			opts.extraRefs = refs[1:]
-			opts.FileRefs = args[1:]
 			return runPush(opts)
 		},
 	}
@@ -169,7 +165,7 @@ func runPush(opts pushOptions) error {
 	}
 
 	// prepare push
-	dst, err := opts.NewRepository(opts.targetRef, opts.Common)
+	dst, err := opts.NewTarget(opts.Common)
 	if err != nil {
 		return err
 	}
@@ -177,7 +173,7 @@ func runPush(opts pushOptions) error {
 	copyOptions.Concurrency = opts.concurrency
 	updateDisplayOption(&copyOptions.CopyGraphOptions, store, opts.Verbose)
 	copy := func(root ocispec.Descriptor) error {
-		if tag := dst.Reference.Reference; tag == "" {
+		if tag := opts.Reference; tag == "" {
 			err = oras.CopyGraph(ctx, store, dst, root, copyOptions.CopyGraphOptions)
 		} else {
 			_, err = oras.Copy(ctx, store, root.Digest.String(), dst, tag, copyOptions)
@@ -190,7 +186,7 @@ func runPush(opts pushOptions) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("Pushed", opts.targetRef)
+	fmt.Println("Pushed", opts.AnnotatedReference())
 
 	if len(opts.extraRefs) != 0 {
 		contentBytes, err := content.FetchAll(ctx, store, root)
@@ -229,7 +225,7 @@ func updateDisplayOption(opts *oras.CopyGraphOptions, store content.Fetcher, ver
 type packFunc func() (ocispec.Descriptor, error)
 type copyFunc func(desc ocispec.Descriptor) error
 
-func pushArtifact(dst *remote.Repository, pack packFunc, packOpts *oras.PackOptions, copy copyFunc, copyOpts *oras.CopyGraphOptions, allowFallback bool, verbose bool) (ocispec.Descriptor, error) {
+func pushArtifact(dst oras.Target, pack packFunc, packOpts *oras.PackOptions, copy copyFunc, copyOpts *oras.CopyGraphOptions, allowFallback bool, verbose bool) (ocispec.Descriptor, error) {
 	root, err := pack()
 	if err != nil {
 		return ocispec.Descriptor{}, err
@@ -262,7 +258,9 @@ func pushArtifact(dst *remote.Repository, pack packFunc, packOpts *oras.PackOpti
 	if err := display.PrintStatus(root, "Fallback ", verbose); err != nil {
 		return ocispec.Descriptor{}, err
 	}
-	dst.SetReferrersCapability(false)
+	if repo, ok := dst.(*remote.Repository); ok {
+		repo.SetReferrersCapability(false)
+	}
 	packOpts.PackImageManifest = true
 	root, err = pack()
 	if err != nil {

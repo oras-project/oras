@@ -25,18 +25,18 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
+	"oras.land/oras-go/v2/registry/remote"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
 type attachOptions struct {
 	option.Common
-	option.Remote
 	option.Packer
 	option.ImageSpec
 	option.DistributionSpec
+	option.Target
 
-	targetRef    string
 	artifactType string
 	concurrency  int
 }
@@ -75,11 +75,17 @@ Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json'
 `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return option.Parse(&opts)
+			opts.RawReference = args[0]
+			opts.FileRefs = args[1:]
+			if err := option.Parse(&opts); err != nil {
+				return err
+			}
+			if opts.Type == option.TargetTypeOCILayout && opts.DistributionSpec.ReferrersAPI != nil && *opts.DistributionSpec.ReferrersAPI == true {
+				return errors.New("cannot enforce referrers API for image layout target")
+			}
+			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
-			opts.FileRefs = args[1:]
 			return runAttach(opts)
 		},
 	}
@@ -106,17 +112,17 @@ func runAttach(opts attachOptions) error {
 	defer store.Close()
 	store.AllowPathTraversalOnWrite = opts.PathValidationDisabled
 
-	dst, err := opts.NewRepository(opts.targetRef, opts.Common)
+	dst, err := opts.NewTarget(opts.Common)
 	if err != nil {
 		return err
 	}
-	if dst.Reference.Reference == "" {
-		return oerrors.NewErrInvalidReference(dst.Reference)
+	if opts.Reference == "" {
+		return oerrors.NewErrInvalidReferenceStr(opts.Reference)
 	}
 	if opts.ReferrersAPI != nil {
-		dst.SetReferrersCapability(*opts.ReferrersAPI)
+		dst.(*remote.Repository).SetReferrersCapability(*opts.ReferrersAPI)
 	}
-	subject, err := dst.Resolve(ctx, dst.Reference.Reference)
+	subject, err := dst.Resolve(ctx, opts.Reference)
 	if err != nil {
 		return err
 	}
@@ -155,10 +161,13 @@ func runAttach(opts attachOptions) error {
 	if err != nil {
 		return err
 	}
-
-	targetRef := dst.Reference
-	targetRef.Reference = subject.Digest.String()
-	fmt.Println("Attached to", targetRef)
+	if repo, ok := dst.(*remote.Repository); ok {
+		// Reassemble a reference with subject digest
+		ref := repo.Reference
+		ref.Reference = subject.Digest.String()
+		opts.RawReference = ref.String()
+	}
+	fmt.Println("Attached to", opts.AnnotatedReference())
 	fmt.Println("Digest:", root.Digest)
 
 	// Export manifest
