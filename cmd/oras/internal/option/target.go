@@ -30,7 +30,7 @@ import (
 
 const (
 	TargetTypeRemote    = "registry"
-	TargetTypeOCILayout = "oci"
+	TargetTypeOCILayout = "oci-layout"
 )
 
 // Unary target option struct.
@@ -55,7 +55,14 @@ func (opts *Target) AnnotatedReference() string {
 }
 
 // applyFlagsWithPrefix applies flags to a command flag set with a prefix string.
-// Commonly used for non-unary remote targets.
+// The full target flag should be provided as:
+//
+//	--target type={oci-layout|registry}.
+//
+// Since only OCI image layout is supported, a short boolean flag
+// `--[{from|to}-oci-layout]` is used to simplify UX.
+//   - If the flag is set, it equals to `--target type=oci-layout`;
+//   - If not, it equals to `--target type=registry`
 func (opts *Target) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
 	var (
 		flagPrefix string
@@ -65,7 +72,7 @@ func (opts *Target) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 		flagPrefix = prefix + "-"
 		noteSuffix = description + " "
 	}
-	fs.BoolVarP(&opts.isOCI, flagPrefix+"oci", "", false, "Set "+noteSuffix+"target as an OCI-layout.")
+	fs.BoolVarP(&opts.isOCI, flagPrefix+"TargetTypeOCILayout", "", false, "Set "+noteSuffix+"target as an OCI image layout.")
 }
 
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
@@ -86,6 +93,7 @@ func (opts *Target) Parse() error {
 	return nil
 }
 
+// parseOCILayoutReference parses the raw in format of <path>[:<tag>|@<digest>]
 func parseOCILayoutReference(raw string) (string, string, error) {
 	var path, ref string
 	var err error
