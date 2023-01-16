@@ -23,15 +23,15 @@ import (
 )
 
 // Parse parses file reference on unix.
-func Parse(reference string, defaultDelimited string) (filePath, delimited string, err error) {
+func Parse(reference string, defaultMetadata string) (filePath, metadata string, err error) {
 	i := strings.LastIndex(reference, ":")
 	if i < 0 {
-		filePath, delimited = reference, defaultDelimited
+		filePath, metadata = reference, defaultMetadata
 	} else {
-		filePath, delimited = reference[:i], reference[i+1:]
+		filePath, metadata = reference[:i], reference[i+1:]
 	}
 	if filePath == "" {
 		return "", "", fmt.Errorf("found empty file path in %q", reference)
 	}
-	return filePath, delimited, nil
+	return filePath, metadata, nil
 }

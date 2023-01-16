@@ -23,10 +23,9 @@ import (
 	"unicode"
 )
 
-// Parse parses file reference into path and right most part delimited by colon
-// on windows.
-func Parse(reference string, defaultDelimited string) (filePath, delimited string, err error) {
-	filePath, delimited = doParse(reference, defaultDelimited)
+// Parse parses file reference into filePath and metadata.
+func Parse(reference string, defaultMetadata string) (filePath, metadata string, err error) {
+	filePath, metadata = doParse(reference, defaultMetadata)
 	if filePath == "" {
 		return "", "", fmt.Errorf("found empty file path in %q", reference)
 	}
@@ -34,14 +33,14 @@ func Parse(reference string, defaultDelimited string) (filePath, delimited strin
 		// Reference: https://learn.microsoft.com/windows/win32/fileio/naming-a-file#naming-conventions
 		return "", "", fmt.Errorf("reserved characters found in the file path: %s", filePath)
 	}
-	return filePath, delimited, nil
+	return filePath, metadata, nil
 }
 
-func doParse(reference string, defaultDelimited string) (filePath, delimited string) {
+func doParse(reference string, defaultMetadata string) (filePath, metadata string) {
 	i := strings.LastIndex(reference, ":")
 	if i < 0 || (i == 1 && len(reference) > 2 && unicode.IsLetter(rune(reference[0])) && reference[2] == '\\') {
 		// Relative file path with disk prefix is NOT supported, e.g. `c:file1`
-		return reference, defaultDelimited
+		return reference, defaultMetadata
 	}
 	return reference[:i], reference[i+1:]
 }
