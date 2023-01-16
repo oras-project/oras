@@ -79,7 +79,7 @@ var _ = Describe("ORAS beginners:", func() {
 			tempTag := "to-delete"
 			It("should cancel deletion without confirmation", func() {
 				dstRepo := fmt.Sprintf(repoFmt, "delete", "no-confirm")
-				prepare(Reference(Host, Repo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
+				prepare(Reference(Host, ImageRepo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
 				ORAS("manifest", "delete", Reference(Host, dstRepo, tempTag)).
 					MatchKeyWords("Operation cancelled.", "Are you sure you want to delete the manifest ", " and all tags associated with it?").Exec()
 				validate(Reference(Host, dstRepo, ""), tempTag, false)
@@ -87,12 +87,12 @@ var _ = Describe("ORAS beginners:", func() {
 
 			It("should fail if descriptor flag is provided without confirmation flag", func() {
 				dstRepo := fmt.Sprintf(repoFmt, "delete", "descriptor-without-confirm")
-				prepare(Reference(Host, Repo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
+				prepare(Reference(Host, ImageRepo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
 				ORAS("manifest", "delete", Reference(Host, dstRepo, tempTag), "--descriptor").ExpectFailure().Exec()
 			})
 
 			It("should fail to delete a non-existent manifest via digest without force flag set", func() {
-				toDeleteRef := Reference(Host, Repo, invalidDigest)
+				toDeleteRef := Reference(Host, ImageRepo, invalidDigest)
 				ORAS("manifest", "delete", toDeleteRef).
 					ExpectFailure().
 					MatchErrKeyWords(toDeleteRef, "the specified manifest does not exist").
@@ -100,7 +100,7 @@ var _ = Describe("ORAS beginners:", func() {
 			})
 
 			It("should fail to delete a non-existent manifest and output descriptor via digest, with force flag set", func() {
-				toDeleteRef := Reference(Host, Repo, invalidDigest)
+				toDeleteRef := Reference(Host, ImageRepo, invalidDigest)
 				ORAS("manifest", "delete", toDeleteRef, "--force", "--descriptor").
 					ExpectFailure().
 					MatchErrKeyWords(toDeleteRef, "the specified manifest does not exist").
@@ -108,7 +108,7 @@ var _ = Describe("ORAS beginners:", func() {
 			})
 
 			It("should fail to delete a non-existent manifest and output descriptor via tag, without force flag set", func() {
-				toDeleteRef := Reference(Host, Repo, "this.tag.should-not.be-existed")
+				toDeleteRef := Reference(Host, ImageRepo, "this.tag.should-not.be-existed")
 				ORAS("manifest", "delete", toDeleteRef, "--force", "--descriptor").
 					ExpectFailure().
 					MatchErrKeyWords(toDeleteRef, "the specified manifest does not exist").
@@ -117,7 +117,7 @@ var _ = Describe("ORAS beginners:", func() {
 
 			It("should fail if no blob reference provided", func() {
 				dstRepo := fmt.Sprintf(repoFmt, "delete", "no-reference")
-				prepare(Reference(Host, Repo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
+				prepare(Reference(Host, ImageRepo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
 				ORAS("manifest", "delete").ExpectFailure().Exec()
 			})
 		})
@@ -132,10 +132,10 @@ var _ = Describe("ORAS beginners:", func() {
 			})
 
 			It("should fail if provided reference does not exist", func() {
-				ORAS("manifest", "fetch-config", Reference(Host, Repo, "this-tag-should-not-exist")).ExpectFailure().Exec()
+				ORAS("manifest", "fetch-config", Reference(Host, ImageRepo, "this-tag-should-not-exist")).ExpectFailure().Exec()
 			})
 			It("should fail fetching a config of non-image manifest type", func() {
-				ORAS("manifest", "fetch-config", Reference(Host, Repo, MultiImageTag)).ExpectFailure().Exec()
+				ORAS("manifest", "fetch-config", Reference(Host, ImageRepo, MultiImageTag)).ExpectFailure().Exec()
 			})
 		})
 	})
@@ -145,103 +145,103 @@ var _ = Describe("Common registry users:", func() {
 	repoFmt := fmt.Sprintf("command/manifest/%%s/%d/%%s", GinkgoRandomSeed())
 	When("running `manifest fetch`", func() {
 		It("should fetch manifest list with digest", func() {
-			ORAS("manifest", "fetch", Reference(Host, Repo, MultiImageTag)).
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, MultiImageTag)).
 				MatchContent(MultiImageManifest).Exec()
 		})
 
 		It("should fetch manifest list with tag", func() {
-			ORAS("manifest", "fetch", Reference(Host, Repo, MultiImageTag)).
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, MultiImageTag)).
 				MatchContent(MultiImageManifest).Exec()
 		})
 
 		It("should fetch manifest list to stdout", func() {
-			ORAS("manifest", "fetch", Reference(Host, Repo, MultiImageTag), "--output", "-").
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, MultiImageTag), "--output", "-").
 				MatchContent(MultiImageManifest).Exec()
 		})
 
 		It("should fetch manifest to file and output descriptor to stdout", func() {
 			fetchPath := filepath.Join(GinkgoT().TempDir(), "fetchedImage")
-			ORAS("manifest", "fetch", Reference(Host, Repo, MultiImageTag), "--output", fetchPath, "--descriptor").
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, MultiImageTag), "--output", fetchPath, "--descriptor").
 				MatchContent(MultiImageDescriptor).Exec()
 			MatchFile(fetchPath, MultiImageManifest, DefaultTimeout)
 		})
 
 		It("should fetch manifest via tag with platform selection", func() {
-			ORAS("manifest", "fetch", Reference(Host, Repo, MultiImageTag), "--platform", "linux/amd64").
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, MultiImageTag), "--platform", "linux/amd64").
 				MatchContent(LinuxAMD64ImageManifest).Exec()
 		})
 
 		It("should fetch manifest via digest with platform selection", func() {
-			ORAS("manifest", "fetch", Reference(Host, Repo, MultiImageDigest), "--platform", "linux/amd64").
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, MultiImageDigest), "--platform", "linux/amd64").
 				MatchContent(LinuxAMD64ImageManifest).Exec()
 		})
 
 		It("should fetch manifest with platform validation", func() {
-			ORAS("manifest", "fetch", Reference(Host, Repo, LinuxAMD64ImageDigest), "--platform", "linux/amd64").
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, LinuxAMD64ImageDigest), "--platform", "linux/amd64").
 				MatchContent(LinuxAMD64ImageManifest).Exec()
 		})
 
 		It("should fetch descriptor via digest", func() {
-			ORAS("manifest", "fetch", Reference(Host, Repo, MultiImageDigest), "--descriptor").
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, MultiImageDigest), "--descriptor").
 				MatchContent(MultiImageDescriptor).Exec()
 		})
 
 		It("should fetch descriptor via digest with platform selection", func() {
-			ORAS("manifest", "fetch", Reference(Host, Repo, MultiImageDigest), "--platform", "linux/amd64", "--descriptor").
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, MultiImageDigest), "--platform", "linux/amd64", "--descriptor").
 				MatchContent(LinuxAMD64ImageIndexDescriptor).Exec()
 		})
 
 		It("should fetch descriptor via digest with platform validation", func() {
-			ORAS("manifest", "fetch", Reference(Host, Repo, LinuxAMD64ImageDigest), "--platform", "linux/amd64", "--descriptor").
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, LinuxAMD64ImageDigest), "--platform", "linux/amd64", "--descriptor").
 				MatchContent(LinuxAMD64ImageDescriptor).Exec()
 		})
 
 		It("should fetch descriptor via tag", func() {
-			ORAS("manifest", "fetch", Reference(Host, Repo, MultiImageDigest), "--descriptor").
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, MultiImageDigest), "--descriptor").
 				MatchContent(MultiImageDescriptor).Exec()
 		})
 
 		It("should fetch descriptor via tag with platform selection", func() {
-			ORAS("manifest", "fetch", Reference(Host, Repo, MultiImageDigest), "--platform", "linux/amd64", "--descriptor").
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, MultiImageDigest), "--platform", "linux/amd64", "--descriptor").
 				MatchContent(LinuxAMD64ImageIndexDescriptor).Exec()
 		})
 
 		It("should fetch index content with media type assertion", func() {
-			ORAS("manifest", "fetch", Reference(Host, Repo, MultiImageDigest), "--media-type", "application/vnd.oci.image.index.v1+json").
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, MultiImageDigest), "--media-type", "application/vnd.oci.image.index.v1+json").
 				MatchContent(MultiImageManifest).Exec()
 		})
 
 		It("should fetch index descriptor with media type assertion", func() {
-			ORAS("manifest", "fetch", Reference(Host, Repo, MultiImageDigest), "--media-type", "application/vnd.oci.image.index.v1+json", "--descriptor").
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, MultiImageDigest), "--media-type", "application/vnd.oci.image.index.v1+json", "--descriptor").
 				MatchContent(MultiImageDescriptor).Exec()
 		})
 
 		It("should fetch image content with media type assertion and platform selection", func() {
-			ORAS("manifest", "fetch", Reference(Host, Repo, MultiImageTag), "--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json").
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, MultiImageTag), "--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json").
 				MatchContent(LinuxAMD64ImageManifest).Exec()
-			ORAS("manifest", "fetch", Reference(Host, Repo, MultiImageDigest), "--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json", "--descriptor").
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, MultiImageDigest), "--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json", "--descriptor").
 				MatchContent(LinuxAMD64ImageIndexDescriptor).Exec()
 		})
 
 		It("should fetch image descriptor with media type assertion and platform selection", func() {
-			ORAS("manifest", "fetch", Reference(Host, Repo, MultiImageTag), "--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json", "--descriptor").
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, MultiImageTag), "--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json", "--descriptor").
 				MatchContent(LinuxAMD64ImageIndexDescriptor).Exec()
-			ORAS("manifest", "fetch", Reference(Host, Repo, MultiImageDigest), "--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json", "--descriptor").
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, MultiImageDigest), "--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json", "--descriptor").
 				MatchContent(LinuxAMD64ImageIndexDescriptor).Exec()
 		})
 
 		It("should fetch image content with media type assertion and platform validation", func() {
-			ORAS("manifest", "fetch", Reference(Host, Repo, LinuxAMD64ImageDigest), "--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.manifest.v1+json").
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, LinuxAMD64ImageDigest), "--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.manifest.v1+json").
 				MatchContent(LinuxAMD64ImageManifest).Exec()
 		})
 
 		It("should fetch image descriptor with media type assertion and platform validation", func() {
-			ORAS("manifest", "fetch", Reference(Host, Repo, LinuxAMD64ImageDigest), "--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.manifest.v1+json", "--descriptor").
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, LinuxAMD64ImageDigest), "--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.manifest.v1+json", "--descriptor").
 				MatchContent(LinuxAMD64ImageDescriptor).Exec()
 		})
 
 		It("should fail to fetch image if media type assertion fails", func() {
-			ORAS("manifest", "fetch", Reference(Host, Repo, LinuxAMD64ImageDigest), "--media-type", "this.will.not.be.found").
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, LinuxAMD64ImageDigest), "--media-type", "this.will.not.be.found").
 				ExpectFailure().
 				MatchErrKeyWords(LinuxAMD64ImageDigest, "error: ", "not found").Exec()
 		})
@@ -254,14 +254,14 @@ var _ = Describe("Common registry users:", func() {
 
 		It("should push a manifest from stdin without media type flag", func() {
 			tag := "from-stdin"
-			ORAS("manifest", "push", Reference(Host, Repo, tag), "-").
-				MatchKeyWords("Pushed", Reference(Host, Repo, tag), "Digest:", digest).
+			ORAS("manifest", "push", Reference(Host, ImageRepo, tag), "-").
+				MatchKeyWords("Pushed", Reference(Host, ImageRepo, tag), "Digest:", digest).
 				WithInput(strings.NewReader(manifest)).Exec()
 		})
 
 		It("should push a manifest and output descriptor", func() {
 			tag := "from-stdin"
-			ORAS("manifest", "push", Reference(Host, Repo, tag), "-", "--descriptor").
+			ORAS("manifest", "push", Reference(Host, ImageRepo, tag), "-", "--descriptor").
 				MatchContent(descriptor).
 				WithInput(strings.NewReader(manifest)).Exec()
 		})
@@ -269,8 +269,8 @@ var _ = Describe("Common registry users:", func() {
 		It("should push a manifest from file", func() {
 			manifestPath := WriteTempFile("manifest.json", manifest)
 			tag := "from-file"
-			ORAS("manifest", "push", Reference(Host, Repo, tag), manifestPath, "--media-type", ocispec.MediaTypeImageManifest).
-				MatchKeyWords("Pushed", Reference(Host, Repo, tag), "Digest:", digest).
+			ORAS("manifest", "push", Reference(Host, ImageRepo, tag), manifestPath, "--media-type", ocispec.MediaTypeImageManifest).
+				MatchKeyWords("Pushed", Reference(Host, ImageRepo, tag), "Digest:", digest).
 				WithInput(strings.NewReader(manifest)).Exec()
 		})
 
@@ -278,11 +278,11 @@ var _ = Describe("Common registry users:", func() {
 			manifest := `{"schemaVersion":2,"config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:fe9dbc99451d0517d65e048c309f0b5afb2cc513b7a3d456b6cc29fe641386c5","size":53}}`
 			digest := "sha256:0c2ae2c73c5dde0a42582d328b2e2ea43f36ba20f604fa8706f441ac8b0a3445"
 			tag := "mediatype-flag"
-			ORAS("manifest", "push", Reference(Host, Repo, tag), "-", "--media-type", ocispec.MediaTypeImageManifest).
-				MatchKeyWords("Pushed", Reference(Host, Repo, tag), "Digest:", digest).
+			ORAS("manifest", "push", Reference(Host, ImageRepo, tag), "-", "--media-type", ocispec.MediaTypeImageManifest).
+				MatchKeyWords("Pushed", Reference(Host, ImageRepo, tag), "Digest:", digest).
 				WithInput(strings.NewReader(manifest)).Exec()
 
-			ORAS("manifest", "push", Reference(Host, Repo, ""), "-").
+			ORAS("manifest", "push", Reference(Host, ImageRepo, ""), "-").
 				WithInput(strings.NewReader(manifest)).
 				ExpectFailure().
 				WithDescription("fail if no media type flag provided").Exec()
@@ -291,32 +291,32 @@ var _ = Describe("Common registry users:", func() {
 
 	When("running `manifest fetch-config`", func() {
 		It("should fetch a config via a tag", func() {
-			ORAS("manifest", "fetch-config", Reference(Host, Repo, FoobarImageTag)).
+			ORAS("manifest", "fetch-config", Reference(Host, ImageRepo, FoobarImageTag)).
 				MatchContent("{}").Exec()
 		})
 
 		It("should fetch a config descriptor via a tag", func() {
-			ORAS("manifest", "fetch-config", "--descriptor", Reference(Host, Repo, FoobarImageTag)).
+			ORAS("manifest", "fetch-config", "--descriptor", Reference(Host, ImageRepo, FoobarImageTag)).
 				MatchContent(FoobarConfigDesc).Exec()
 		})
 
 		It("should fetch a config via digest", func() {
-			ORAS("manifest", "fetch-config", Reference(Host, Repo, FoobarImageTag)).
+			ORAS("manifest", "fetch-config", Reference(Host, ImageRepo, FoobarImageTag)).
 				MatchContent("{}").Exec()
 		})
 
 		It("should fetch a config descriptor via a digest", func() {
-			ORAS("manifest", "fetch-config", "--descriptor", Reference(Host, Repo, FoobarImageDigest)).
+			ORAS("manifest", "fetch-config", "--descriptor", Reference(Host, ImageRepo, FoobarImageDigest)).
 				MatchContent(FoobarConfigDesc).Exec()
 		})
 
 		It("should fetch a config of a specific platform", func() {
-			ORAS("manifest", "fetch-config", "--platform", "linux/amd64", Reference(Host, Repo, MultiImageTag)).
+			ORAS("manifest", "fetch-config", "--platform", "linux/amd64", Reference(Host, ImageRepo, MultiImageTag)).
 				MatchContent(LinuxAMD64ImageConfig).Exec()
 		})
 
 		It("should fetch a config descriptor of a specific platform", func() {
-			ORAS("manifest", "fetch-config", "--descriptor", "--platform", "linux/amd64", Reference(Host, Repo, MultiImageTag)).
+			ORAS("manifest", "fetch-config", "--descriptor", "--platform", "linux/amd64", Reference(Host, ImageRepo, MultiImageTag)).
 				MatchContent(LinuxAMD64ImageConfigDescriptor).Exec()
 		})
 	})
@@ -325,7 +325,7 @@ var _ = Describe("Common registry users:", func() {
 		tempTag := "to-delete"
 		It("should do confirmed deletion via input", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "confirm-input")
-			prepare(Reference(Host, Repo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
+			prepare(Reference(Host, ImageRepo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
 			ORAS("manifest", "delete", Reference(Host, dstRepo, tempTag)).
 				WithInput(strings.NewReader("y")).Exec()
 			validate(Reference(Host, dstRepo, ""), tempTag, true)
@@ -333,14 +333,14 @@ var _ = Describe("Common registry users:", func() {
 
 		It("should do confirmed deletion via flag", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "confirm-flag")
-			prepare(Reference(Host, Repo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
+			prepare(Reference(Host, ImageRepo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
 			ORAS("manifest", "delete", Reference(Host, dstRepo, tempTag), "-f").Exec()
 			validate(Reference(Host, dstRepo, ""), tempTag, true)
 		})
 
 		It("should do confirmed deletion and output descriptor", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "output-descriptor")
-			prepare(Reference(Host, Repo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
+			prepare(Reference(Host, ImageRepo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
 			ORAS("manifest", "delete", Reference(Host, dstRepo, tempTag), "-f", "--descriptor").
 				MatchContent("{\"mediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"digest\":\"sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb\",\"size\":851}").
 				WithDescription("cancel without confirmation").Exec()
@@ -348,7 +348,7 @@ var _ = Describe("Common registry users:", func() {
 		})
 
 		It("should succeed when deleting a non-existent manifest with force flag set", func() {
-			toDeleteRef := Reference(Host, Repo, invalidDigest)
+			toDeleteRef := Reference(Host, ImageRepo, invalidDigest)
 			ORAS("manifest", "delete", toDeleteRef, "--force").
 				MatchKeyWords("Missing", toDeleteRef).
 				Exec()

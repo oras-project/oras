@@ -36,8 +36,8 @@ var _ = Describe("ORAS beginners:", func() {
 
 			It("should fail listing repositories if wrong registry provided", func() {
 				ORAS("repo", "ls").ExpectFailure().MatchErrKeyWords("Error:").Exec()
-				ORAS("repo", "ls", Reference(Host, Repo, "")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
-				ORAS("repo", "ls", Reference(Host, Repo, "some-tag")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+				ORAS("repo", "ls", Reference(Host, ImageRepo, "")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+				ORAS("repo", "ls", Reference(Host, ImageRepo, "some-tag")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
 			})
 		})
 		When("running `repo tags`", func() {
@@ -52,7 +52,7 @@ var _ = Describe("ORAS beginners:", func() {
 			It("should fail listing repositories if wrong registry provided", func() {
 				ORAS("repo", "tags").ExpectFailure().MatchErrKeyWords("Error:").Exec()
 				ORAS("repo", "tags", Host).ExpectFailure().MatchErrKeyWords("Error:").Exec()
-				ORAS("repo", "tags", Reference(Host, Repo, "some-tag")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+				ORAS("repo", "tags", Reference(Host, ImageRepo, "some-tag")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
 			})
 		})
 	})
@@ -61,18 +61,18 @@ var _ = Describe("ORAS beginners:", func() {
 var _ = Describe("Common registry users:", func() {
 	When("running `repo ls`", func() {
 		It("should list repositories", func() {
-			ORAS("repository", "list", Host).MatchKeyWords(Repo).Exec()
+			ORAS("repository", "list", Host).MatchKeyWords(ImageRepo).Exec()
 		})
 		It("should list repositories via short command", func() {
-			ORAS("repo", "ls", Host).MatchKeyWords(Repo).Exec()
+			ORAS("repo", "ls", Host).MatchKeyWords(ImageRepo).Exec()
 		})
 		It("should list partial repositories via `last` flag", func() {
-			session := ORAS("repo", "ls", Host, "--last", Repo).Exec()
-			Expect(session.Out).ShouldNot(gbytes.Say(Repo))
+			session := ORAS("repo", "ls", Host, "--last", ImageRepo).Exec()
+			Expect(session.Out).ShouldNot(gbytes.Say(ImageRepo))
 		})
 	})
 	When("running `repo tags`", func() {
-		repoRef := Reference(Host, Repo, "")
+		repoRef := Reference(Host, ImageRepo, "")
 		It("should list tags", func() {
 			ORAS("repository", "show-tags", repoRef).MatchKeyWords(MultiImageTag, FoobarImageTag).Exec()
 		})
