@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	TargetTypeRemote    = "remote"
+	TargetTypeRemote    = "registry"
 	TargetTypeOCILayout = "oci"
 )
 
