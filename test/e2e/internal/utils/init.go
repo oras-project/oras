@@ -3,7 +3,9 @@ Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
 http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,19 +33,32 @@ var ORASPath string
 // Host points to the registry service where E2E specs will be run against.
 var Host string
 
+// Host points to the registry service where fallback E2E specs will be run against.
+var FallbackHost string
+
 func init() {
 	Host = os.Getenv("ORAS_REGISTRY_HOST")
 	if Host == "" {
 		Host = "localhost:5000"
 		fmt.Fprintln(os.Stderr, "cannot find host name in ORAS_REGISTRY_HOST, using", Host, "instead")
 	}
-
 	ref := registry.Reference{
 		Registry: Host,
 	}
 	if err := ref.ValidateRegistry(); err != nil {
 		panic(err)
 	}
+
+	FallbackHost = os.Getenv("ORAS_REGISTRY_HOST")
+	if FallbackHost == "" {
+		FallbackHost = "localhost:6000"
+		fmt.Fprintln(os.Stderr, "cannot find fallback host name in ORAS_REGISTRY_HOST_FALLBACK, using", FallbackHost, "instead")
+	}
+	ref.Registry = FallbackHost
+	if err := ref.ValidateRegistry(); err != nil {
+		panic(err)
+	}
+
 	// setup test data
 	pwd, err := os.Getwd()
 	if err != nil {

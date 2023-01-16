@@ -46,6 +46,8 @@ jobs:
           cd $GITHUB_WORKSPACE/test/e2e
           go install github.com/onsi/ginkgo/v2/ginkgo
           mnt_root="$GITHUB_WORKSPACE/test/e2e/testdata/distribution/mount"
+          
+          # Prepare Registry
           rm -rf $mnt_root/docker
           for layer in $(ls $mnt_root/*.tar.gz); do
             tar -xvzf $layer -C $mnt_root
@@ -58,11 +60,24 @@ jobs:
             --mount type=bind,source=$mnt_root/docker,target=/var/lib/registry/docker \
             --mount type=bind,source=$mnt_root/passwd_bcrypt,target=/etc/docker/registry/passwd \
             ghcr.io/oras-project/registry:v1.0.0-rc.3
+          
+          # Prepare Fallback Registry
+          trap 'docker kill oras-e2e-fallback || true' ERR
+          docker run --pull always -d -p 6000:5000 --rm --name oras-e2e-fallback \
+            --env REGISTRY_STORAGE_DELETE_ENABLED=true \
+            --env REGISTRY_AUTH_HTPASSWD_REALM=test-basic \
+            --env REGISTRY_AUTH_HTPASSWD_PATH=/etc/docker/registry/passwd \
+            --mount type=bind,source=$mnt_root/passwd_bcrypt,target=/etc/docker/registry/passwd \
+            registry
+
+          # Test and Cleanup
           ginkgo -r -p --succinct suite
           docker kill oras-e2e || true
+          docker kill oras-e2e-fallback || true
         env:
           ORAS_PATH: bin/linux/amd64/oras
           ORAS_REGISTRY_HOST: localhost:5000
+          ORAS_REGISTRY_HOST_FALLBACK: localhost:6000
       - name: Check Version
         run: bin/linux/amd64/oras version
       - name: Upload coverage to codecov.io
