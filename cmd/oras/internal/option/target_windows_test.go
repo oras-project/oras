@@ -1,3 +1,5 @@
+//go:build windows
+
 /*
 Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,28 +21,7 @@ import (
 	"testing"
 )
 
-func TestTarget_Parse_oci(t *testing.T) {
-	opts := Target{isOCI: true}
-
-	if err := opts.Parse(); err != nil {
-		t.Errorf("Target.Parse() error = %v", err)
-	}
-	if opts.Type != TargetTypeOCILayout {
-		t.Errorf("Target.Parse() failed, got %q, want %q", opts.Type, TargetTypeOCILayout)
-	}
-}
-
-func TestTarget_Parse_remote(t *testing.T) {
-	opts := Target{isOCI: false}
-	if err := opts.Parse(); err != nil {
-		t.Errorf("Target.Parse() error = %v", err)
-	}
-	if opts.Type != TargetTypeRemote {
-		t.Errorf("Target.Parse() failed, got %q, want %q", opts.Type, TargetTypeRemote)
-	}
-}
-
-func Test_parseOCILayoutReference(t *testing.T) {
+func Test_parseOCILayoutReference_windows(t *testing.T) {
 	type args struct {
 		raw string
 	}
@@ -51,13 +32,7 @@ func Test_parseOCILayoutReference(t *testing.T) {
 		want1   string
 		wantErr bool
 	}{
-		{"Empty input", args{raw: ""}, "", "", true},
-		{"Empty path and tag", args{raw: ":"}, "", "", true},
-		{"Empty path and digest", args{raw: "@"}, "", "", false},
-		{"Empty digest", args{raw: "test@"}, "test", "", false},
-		{"Empty tag", args{raw: "test:"}, "test", "", false},
-		{"path and digest", args{raw: "test@digest"}, "test", "digest", false},
-		{"path and tag", args{raw: "path:tag"}, "test", "tag", false},
+		{"path and tag", args{raw: `C:\some-folder:tag`}, `C:\some-folder`, "tag", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

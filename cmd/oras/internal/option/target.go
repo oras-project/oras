@@ -25,6 +25,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
+	"oras.land/oras/cmd/oras/internal/fileref"
 )
 
 const (
@@ -37,7 +38,7 @@ type Target struct {
 	Remote
 	RawReference string
 	Type         string
-	TagOrDigest  string
+	Reference    string //contains tag or digest
 
 	isOCI bool
 }
@@ -85,18 +86,21 @@ func (opts *Target) Parse() error {
 	return nil
 }
 
-func parseOCILayoutReference(raw string) (string, string) {
+func parseOCILayoutReference(raw string) (string, string, error) {
 	var path, ref string
+	var err error
 	if idx := strings.LastIndex(raw, "@"); idx != -1 {
 		// `digest` found
 		path = raw[:idx]
 		ref = raw[idx+1:]
-	} else if idx = strings.LastIndex(raw, ":"); idx != -1 {
-		// `tag` found
-		path = raw[:idx]
-		ref = raw[idx+1:]
+	} else {
+		// find `tag`
+		path, ref, err = fileref.Parse(raw, "")
+		if err != nil {
+			return "", "", err
+		}
 	}
-	return path, ref
+	return path, ref, nil
 }
 
 // NewTarget generates a new target based on opts.
@@ -104,7 +108,10 @@ func (opts *Target) NewTarget(common Common) (graphTarget oras.GraphTarget, err 
 	switch opts.Type {
 	case TargetTypeOCILayout:
 		var path string
-		path, opts.TagOrDigest = parseOCILayoutReference(opts.RawReference)
+		path, opts.Reference, err = parseOCILayoutReference(opts.RawReference)
+		if err != nil {
+			return nil, err
+		}
 		graphTarget, err = oci.New(path)
 		return
 	case TargetTypeRemote:
@@ -112,7 +119,7 @@ func (opts *Target) NewTarget(common Common) (graphTarget oras.GraphTarget, err 
 		if err != nil {
 			return nil, err
 		}
-		opts.TagOrDigest = repo.Reference.Reference
+		opts.Reference = repo.Reference.Reference
 		return repo, nil
 	}
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
@@ -129,7 +136,11 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadO
 	switch opts.Type {
 	case TargetTypeOCILayout:
 		var path string
-		path, opts.TagOrDigest = parseOCILayoutReference(opts.RawReference)
+		var err error
+		path, opts.Reference, err = parseOCILayoutReference(opts.RawReference)
+		if err != nil {
+			return nil, err
+		}
 		info, err := os.Stat(path)
 		if err != nil {
 			return nil, err
@@ -143,7 +154,7 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadO
 		if err != nil {
 			return nil, err
 		}
-		opts.TagOrDigest = repo.Reference.Reference
+		opts.Reference = repo.Reference.Reference
 		return repo, nil
 	}
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)

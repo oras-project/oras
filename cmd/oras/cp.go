@@ -99,7 +99,7 @@ func runCopy(opts copyOptions) error {
 	if err != nil {
 		return err
 	}
-	if opts.From.TagOrDigest == "" {
+	if opts.From.Reference == "" {
 		return errors.NewErrInvalidReferenceStr(opts.From.RawReference)
 	}
 
@@ -127,9 +127,9 @@ func runCopy(opts copyOptions) error {
 	}
 
 	var desc ocispec.Descriptor
-	if ref := opts.To.TagOrDigest; ref == "" {
+	if ref := opts.To.Reference; ref == "" {
 		// push to the destination with digest only if no tag specified
-		desc, err = src.Resolve(ctx, opts.From.TagOrDigest)
+		desc, err = src.Resolve(ctx, opts.From.Reference)
 		if err != nil {
 			return err
 		}
@@ -140,7 +140,7 @@ func runCopy(opts copyOptions) error {
 		}
 	} else {
 		if opts.recursive {
-			desc, err = oras.ExtendedCopy(ctx, src, opts.From.TagOrDigest, dst, opts.To.TagOrDigest, extendedCopyOptions)
+			desc, err = oras.ExtendedCopy(ctx, src, opts.From.Reference, dst, opts.To.Reference, extendedCopyOptions)
 		} else {
 			copyOptions := oras.CopyOptions{
 				CopyGraphOptions: extendedCopyOptions.CopyGraphOptions,
@@ -148,7 +148,7 @@ func runCopy(opts copyOptions) error {
 			if opts.Platform.Platform != nil {
 				copyOptions.WithTargetPlatform(opts.Platform.Platform)
 			}
-			desc, err = oras.Copy(ctx, src, opts.From.TagOrDigest, dst, opts.To.TagOrDigest, copyOptions)
+			desc, err = oras.Copy(ctx, src, opts.From.Reference, dst, opts.To.Reference, copyOptions)
 		}
 	}
 	if err != nil {
@@ -160,7 +160,7 @@ func runCopy(opts copyOptions) error {
 	if len(opts.extraRefs) != 0 {
 		tagNOpts := oras.DefaultTagNOptions
 		tagNOpts.Concurrency = opts.concurrency
-		if _, err = oras.TagN(ctx, display.NewTagManifestStatusPrinter(dst), opts.To.TagOrDigest, opts.extraRefs, tagNOpts); err != nil {
+		if _, err = oras.TagN(ctx, display.NewTagManifestStatusPrinter(dst), opts.To.Reference, opts.extraRefs, tagNOpts); err != nil {
 			return err
 		}
 	}
