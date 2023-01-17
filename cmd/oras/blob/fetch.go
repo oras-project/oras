@@ -96,7 +96,7 @@ func fetchBlob(opts fetchBlobOptions) (fetchErr error) {
 	}
 
 	if _, err = digest.Parse(opts.Reference); err != nil {
-		return fmt.Errorf("%s: blob reference must be of the form <name@digest>", opts.targetRef)
+		return fmt.Errorf("%s: blob reference must be of the form <name@digest>", opts.RawReference)
 	}
 
 	if repo, ok := target.(*remote.Repository); ok {
