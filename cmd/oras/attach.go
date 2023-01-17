@@ -76,7 +76,7 @@ Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json'
 
 Example - Attach file to the manifest tagged 'test' in an OCI layout folder 'layout-dir':
   oras attach --oci-layout --artifact-type doc/example layout-dir:test hi.txt
-  `,
+`,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
