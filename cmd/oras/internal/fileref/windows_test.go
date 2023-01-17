@@ -82,6 +82,8 @@ func TestParse(t *testing.T) {
 		wantMediatype string
 		wantErr       bool
 	}{
+		{"valid file name", args{`c:\some-folder\test`, ""}, `c:\some-folder\test`, "", false},
+		{"valid file name and media type", args{`c:\some-folder\test`, "type"}, `c:\some-folder\test`, "type", false},
 		{"no input", args{"", ""}, "", "", true},
 		{"empty file name", args{":", ""}, "", "", true},
 		{"reserved character1 in file name", args{"<", "a"}, "", "", true},
@@ -97,7 +99,6 @@ func TestParse(t *testing.T) {
 		{"reserved character4 in file name, with media type", args{`":`, "a"}, "", "", true},
 		{"reserved character5 in file name, with media type", args{"|:", "a"}, "", "", true},
 		{"reserved character6 in file name, with media type", args{"?:", "a"}, "", "", true},
-		{"reserved character7 in file name, with media type", args{"::", "a"}, "", "", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
