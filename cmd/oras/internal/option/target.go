@@ -33,7 +33,8 @@ const (
 	TargetTypeOCILayout = "oci-layout"
 )
 
-// Unary target option struct.
+// Target struct contains flags and arguments specifying one registry or image
+// layout.
 type Target struct {
 	Remote
 	RawReference string
@@ -55,6 +56,7 @@ func (opts *Target) AnnotatedReference() string {
 	return fmt.Sprintf("[%s] %s", opts.Type, opts.RawReference)
 }
 
+// applyFlagsWithPrefix applies flags to fs with prefix and description.
 // The complete form of the `target` flag is designed to be
 //
 //	--target type=<type>[[,<key>=<value>][...]]
@@ -127,7 +129,8 @@ func (opts *Target) NewTarget(common Common) (oras.GraphTarget, error) {
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
 }
 
-// Read-only graph target with tag lister.
+// ReadOnlyGraphTagFinderTarget represents a read-only graph target with tag
+// finder capability.
 type ReadOnlyGraphTagFinderTarget interface {
 	oras.ReadOnlyGraphTarget
 	registry.TagLister
@@ -161,14 +164,14 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadO
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
 }
 
-// Binary target option struct.
+// BinaryTarget struct contains flags and arguments specifying two registries or
+// image layouts.
 type BinaryTarget struct {
 	From Target
 	To   Target
 }
 
-// ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
-// Commonly used for non-unary remote targets.
+// ApplyFlags applies flags to a command flag set fs.
 func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
 	opts.From.ApplyFlagsWithPrefix(fs, "from", "source")
 	opts.To.ApplyFlagsWithPrefix(fs, "to", "destination")
