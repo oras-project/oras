@@ -25,9 +25,9 @@ import (
 )
 
 type showTagsOptions struct {
-	option.Remote
 	option.Common
-	targetRef        string
+	option.Target
+
 	last             string
 	excludeDigestTag bool
 }
@@ -49,14 +49,17 @@ Example - Show tags in the target repository with digest-like tags hidden:
 
 Example - Show tags of the target repository that include values lexically after last:
   oras repo tags --last "last_tag" localhost:5000/hello
+
+Example - Show tags of the target OCI layout folder '.\layout-root':
+  oras repo tags --oci-layout .\layout-root
 `,
 		Args:    cobra.ExactArgs(1),
 		Aliases: []string{"show-tags"},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			opts.RawReference = args[0]
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
 			return showTags(opts)
 		},
 	}
@@ -68,14 +71,14 @@ Example - Show tags of the target repository that include values lexically after
 
 func showTags(opts showTagsOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
-	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
+	finder, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err
 	}
-	if repo.Reference.Reference != "" {
-		return fmt.Errorf("unexpected tag or digest %q found in repository reference %q", repo.Reference.Reference, opts.targetRef)
+	if opts.Reference != "" {
+		return fmt.Errorf("unexpected tag or digest %q found in repository reference %q", opts.Reference, opts.RawReference)
 	}
-	return repo.Tags(ctx, opts.last, func(tags []string) error {
+	return finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
 			if opts.excludeDigestTag && isDigestTag(tag) {
 				continue
