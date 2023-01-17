@@ -52,6 +52,9 @@ Example - Show tags of the target repository that include values lexically after
 
 Example - Show tags of the target OCI layout folder '.\layout-root':
   oras repo tags --oci-layout .\layout-root
+
+Example - Show tags of the target OCI layout archive 'layout.tar':
+  oras repo tags --oci-layout layout.tar
 `,
 		Args:    cobra.ExactArgs(1),
 		Aliases: []string{"show-tags"},

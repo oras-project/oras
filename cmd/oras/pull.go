@@ -78,6 +78,9 @@ Example - Pull all files with concurrency level tuned:
 
 Example - Pull artifacts files from an OCI layout folder './layout-root':
   oras pull --oci-layout ./layout-root:latest
+
+Example - Pull artifacts files from an OCI layout archive 'layout.tar':
+  oras pull --oci-layout layout.tar:latest
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
