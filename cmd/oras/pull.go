@@ -76,10 +76,10 @@ Example - Pull files from a registry with certain platform:
 Example - Pull all files with concurrency level tuned:
   oras pull --concurrency 6 localhost:5000/hello:latest
 
-Example - Pull artifacts files from an OCI layout folder 'layout-dir':
+Example - Pull artifact files from an OCI layout folder 'layout-dir':
   oras pull --oci-layout layout-dir:latest
 
-Example - Pull artifacts files from an OCI layout archive 'layout.tar':
+Example - Pull artifact files from an OCI layout archive 'layout.tar':
   oras pull --oci-layout layout.tar:latest
 `,
 		Args: cobra.ExactArgs(1),
