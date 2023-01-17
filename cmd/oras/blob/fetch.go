@@ -21,10 +21,12 @@ import (
 	"io"
 	"os"
 
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -33,10 +35,9 @@ type fetchBlobOptions struct {
 	option.Common
 	option.Descriptor
 	option.Pretty
-	option.Remote
+	option.Target
 
 	outputPath string
-	targetRef  string
 }
 
 func fetchCmd() *cobra.Command {
@@ -48,17 +49,20 @@ func fetchCmd() *cobra.Command {
 
 ** This command is in preview and under development. **
 
-Example - Fetch the blob and save it to a local file:
+Example - Fetch a blob from registry and save it to a local file:
   oras blob fetch --output blob.tar.gz localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 
-Example - Fetch the blob and print the raw blob content:
+Example - Fetch a blob from registry and print the raw blob content:
   oras blob fetch --output - localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 
 Example - Fetch and print the descriptor of a blob:
   oras blob fetch --descriptor localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 
-Example - Fetch the blob, save it to a local file and print the descriptor:
+Example - Fetch a blob, save it to a local file and print the descriptor:
   oras blob fetch --output blob.tar.gz --descriptor localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
+
+Example - Fetch and print a blob from OCI image layout folder './layout-root':
+  oras blob fetch --oci-layout --output - ./layout-root@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -69,12 +73,11 @@ Example - Fetch the blob, save it to a local file and print the descriptor:
 			if opts.outputPath == "-" && opts.OutputDescriptor {
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
 			}
-
+			opts.RawReference = args[0]
 			return option.Parse(&opts)
 		},
 		Aliases: []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
 			return fetchBlob(opts)
 		},
 	}
@@ -86,17 +89,20 @@ Example - Fetch the blob, save it to a local file and print the descriptor:
 
 func fetchBlob(opts fetchBlobOptions) (fetchErr error) {
 	ctx, _ := opts.SetLoggerLevel()
-
-	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
+	var target oras.ReadOnlyTarget
+	target, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err
 	}
 
-	if _, err = repo.Reference.Digest(); err != nil {
+	if _, err = digest.Parse(opts.Reference); err != nil {
 		return fmt.Errorf("%s: blob reference must be of the form <name@digest>", opts.targetRef)
 	}
 
-	src, err := opts.CachedTarget(repo.Blobs())
+	if repo, ok := target.(*remote.Repository); ok {
+		target = repo.Blobs()
+	}
+	src, err := opts.CachedTarget(target)
 	if err != nil {
 		return err
 	}
@@ -104,14 +110,14 @@ func fetchBlob(opts fetchBlobOptions) (fetchErr error) {
 	var desc ocispec.Descriptor
 	if opts.outputPath == "" {
 		// fetch blob descriptor only
-		desc, err = oras.Resolve(ctx, src, opts.targetRef, oras.DefaultResolveOptions)
+		desc, err = oras.Resolve(ctx, src, opts.Reference, oras.DefaultResolveOptions)
 		if err != nil {
 			return err
 		}
 	} else {
 		// fetch blob content
 		var rc io.ReadCloser
-		desc, rc, err = oras.Fetch(ctx, src, opts.targetRef, oras.DefaultFetchOptions)
+		desc, rc, err = oras.Fetch(ctx, src, opts.Reference, oras.DefaultFetchOptions)
 		if err != nil {
 			return err
 		}
