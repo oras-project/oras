@@ -76,6 +76,9 @@ Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'tag1
 
 Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'tag1', 'tag2', 'tag3' and concurrency level tuned:
   oras manifest push --concurrency 6 localhost:5000/hello:tag1,tag2,tag3 manifest.json
+
+Example - Push a manifest to an OCI layout folder './oci-layout-root' and with tag 'latest':
+  oras manifest push ./oci-layout-root:latest manifest.json
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
