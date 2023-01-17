@@ -52,8 +52,8 @@ Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.2', 'late
 Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.1', 'v1.0.2', 'latest' with concurrency level tuned:
   oras tag --concurrency 1 localhost:5000/hello:v1.0.1 v1.0.2 latest
 
-Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI layout folder './layout-root':
-  oras tag ./layout-root:v1.0.1 v1.0.2
+Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI layout folder 'layout-dir':
+  oras tag layout-dir:v1.0.1 v1.0.2
 `,
 		Args: cobra.MinimumNArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {

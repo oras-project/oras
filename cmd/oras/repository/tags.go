@@ -50,8 +50,8 @@ Example - Show tags in the target repository with digest-like tags hidden:
 Example - Show tags of the target repository that include values lexically after last:
   oras repo tags --last "last_tag" localhost:5000/hello
 
-Example - Show tags of the target OCI layout folder '.\layout-root':
-  oras repo tags --oci-layout .\layout-root
+Example - Show tags of the target OCI layout folder 'layout-dir':
+  oras repo tags --oci-layout layout-dir
 
 Example - Show tags of the target OCI layout archive 'layout.tar':
   oras repo tags --oci-layout layout.tar
