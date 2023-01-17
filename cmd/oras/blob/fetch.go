@@ -63,6 +63,9 @@ Example - Fetch a blob, save it to a local file and print the descriptor:
 
 Example - Fetch and print a blob from OCI image layout folder './layout-root':
   oras blob fetch --oci-layout --output - ./layout-root@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
+
+Example - Fetch and print a blob from OCI image layout archive 'layout.tar':
+  oras blob fetch --oci-layout --output - layout.tar@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {

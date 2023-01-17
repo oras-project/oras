@@ -64,8 +64,11 @@ Example - Fetch manifest from a registry with certain platform:
 Example - Fetch manifest from a registry with prettified json result:
   oras manifest fetch --pretty localhost:5000/hello:latest
 
-Example - Fetch raw manifest from an OCI layout folder '.\layout-root':
-  oras manifest fetch --oci-layout .\layout-root:latest
+Example - Fetch raw manifest from an OCI layout folder 'layout-dir':
+  oras manifest fetch --oci-layout layout-dir:latest
+
+Example - Fetch raw manifest from an OCI layout archive 'layout.tar':
+    oras manifest fetch --oci-layout layout.tar:latest
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
