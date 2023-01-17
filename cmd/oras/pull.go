@@ -36,11 +36,10 @@ import (
 type pullOptions struct {
 	option.Cache
 	option.Common
-	option.Remote
 	option.Platform
+	option.Target
 
 	concurrency       int
-	targetRef         string
 	KeepOldFiles      bool
 	IncludeSubject    bool
 	PathTraversal     bool
@@ -55,34 +54,40 @@ func pullCmd() *cobra.Command {
 		Short: "Pull files from remote registry",
 		Long: `Pull files from remote registry
 
-Example - Pull all files:
+Example - Pull artifact files from a registry:
   oras pull localhost:5000/hello:latest
 
-Example - Recursively pulling all files, including subjects of hello:latest:
+Example - Recursively pulling all files from a registry, including subjects of hello:latest:
   oras pull --include-subject localhost:5000/hello:latest
 
-Example - Pull files from the insecure registry:
+Example - Pull files from an insecure registry:
   oras pull --insecure localhost:5000/hello:latest
 
 Example - Pull files from the HTTP registry:
   oras pull --plain-http localhost:5000/hello:latest
 
-Example - Pull files with local cache:
+Example - Pull files from a registry with local cache:
   export ORAS_CACHE=~/.oras/cache
   oras pull localhost:5000/hello:latest
 
-Example - Pull files with certain platform:
+Example - Pull files from a registry with certain platform:
   oras pull --platform linux/arm/v5 localhost:5000/hello:latest
 
 Example - Pull all files with concurrency level tuned:
   oras pull --concurrency 6 localhost:5000/hello:latest
+
+Example - Pull artifact files from an OCI layout folder 'layout-dir':
+  oras pull --oci-layout layout-dir:latest
+
+Example - Pull artifact files from an OCI layout archive 'layout.tar':
+  oras pull --oci-layout layout.tar:latest
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			opts.RawReference = args[0]
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
 			return runPull(opts)
 		},
 	}
@@ -98,23 +103,12 @@ Example - Pull all files with concurrency level tuned:
 }
 
 func runPull(opts pullOptions) error {
-	var printed sync.Map
-	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
-	if err != nil {
-		return err
-	}
-	if repo.Reference.Reference == "" {
-		return errors.NewErrInvalidReference(repo.Reference)
-	}
-	src, err := opts.CachedTarget(repo)
-	if err != nil {
-		return err
-	}
-
 	// Copy Options
+	var printed sync.Map
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
 	var configPath, configMediaType string
+	var err error
 	if opts.ManifestConfigRef != "" {
 		configPath, configMediaType, err = fileref.Parse(opts.ManifestConfigRef, "")
 		if err != nil {
@@ -191,6 +185,17 @@ func runPull(opts pullOptions) error {
 	}
 
 	ctx, _ := opts.SetLoggerLevel()
+	target, err := opts.NewReadonlyTarget(ctx, opts.Common)
+	if err != nil {
+		return err
+	}
+	if opts.Reference == "" {
+		return errors.NewErrInvalidReferenceStr(opts.RawReference)
+	}
+	src, err := opts.CachedTarget(target)
+	if err != nil {
+		return err
+	}
 	var dst = file.New(opts.Output)
 	dst.AllowPathTraversalOnWrite = opts.PathTraversal
 	dst.DisableOverwrite = opts.KeepOldFiles
@@ -230,14 +235,14 @@ func runPull(opts pullOptions) error {
 	}
 
 	// Copy
-	desc, err := oras.Copy(ctx, src, repo.Reference.Reference, dst, repo.Reference.Reference, copyOptions)
+	desc, err := oras.Copy(ctx, src, opts.Reference, dst, opts.Reference, copyOptions)
 	if err != nil {
 		return err
 	}
 	if pulledEmpty {
 		fmt.Println("Downloaded empty artifact")
 	}
-	fmt.Println("Pulled", opts.targetRef)
+	fmt.Println("Pulled", opts.AnnotatedReference())
 	fmt.Println("Digest:", desc.Digest)
 	return nil
 }
