@@ -68,8 +68,8 @@ Example - Push blob 'hi.txt' and output the prettified descriptor:
 Example - Push blob without TLS:
   oras blob push --insecure localhost:5000/hello hi.txt
 
-Example - Push blob 'hi.txt' into an OCI layout folder './layout-root':
-  oras blob push --oci-layout ./layout-root hi.txt
+Example - Push blob 'hi.txt' into an OCI layout folder 'layout-dir':
+  oras blob push --oci-layout layout-dir hi.txt
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {

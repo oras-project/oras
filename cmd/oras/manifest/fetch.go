@@ -67,7 +67,7 @@ Example - Fetch manifest from a registry with prettified json result:
 Example - Fetch raw manifest from an OCI layout folder 'layout-dir':
   oras manifest fetch --oci-layout layout-dir:latest
 
-Example - Fetch raw manifest from an OCI layout archive 'layout.tar':
+Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
     oras manifest fetch --oci-layout layout.tar:latest
 `,
 		Args: cobra.ExactArgs(1),
