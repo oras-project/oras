@@ -267,6 +267,8 @@ func pushArtifact(dst oras.Target, pack packFunc, packOpts *oras.PackOptions, co
 		return ocispec.Descriptor{}, err
 	}
 	if repo, ok := dst.(*remote.Repository); ok {
+		// assumes referrers API is not supported since OCI artifact
+		// media type is not supported
 		repo.SetReferrersCapability(false)
 	}
 	packOpts.PackImageManifest = true

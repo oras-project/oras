@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -124,7 +125,11 @@ func runAttach(opts attachOptions) error {
 		return oerrors.NewErrInvalidReferenceStr(opts.Reference)
 	}
 	if opts.ReferrersAPI != nil {
-		dst.(*remote.Repository).SetReferrersCapability(*opts.ReferrersAPI)
+		if repo, ok := dst.(*remote.Repository); ok {
+			repo.SetReferrersCapability(*opts.ReferrersAPI)
+		} else {
+			return fmt.Errorf("unexpected type %s with target type %s", reflect.TypeOf(dst), opts.Type)
+		}
 	}
 	subject, err := dst.Resolve(ctx, opts.Reference)
 	if err != nil {
