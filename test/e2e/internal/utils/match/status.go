@@ -140,7 +140,7 @@ func (s *statusMatcher) switchState(st status, key StateKey) {
 
 	// find next
 	e := findState(now, s.edges[st])
-	gomega.Expect(e).NotTo(gomega.BeNil(), fmt.Sprintf("should state node not matching for %v, %v", st, key))
+	gomega.Expect(e).NotTo(gomega.BeNil(), fmt.Sprintf("state node not matching for %v, %v", st, key))
 
 	// switch
 	s.states[key] = e.to
