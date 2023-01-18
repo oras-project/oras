@@ -85,7 +85,7 @@ Example - Attach file to the manifest tagged 'test' in an OCI layout folder 'lay
 			if err := option.Parse(&opts); err != nil {
 				return err
 			}
-			if opts.Type == option.TargetTypeOCILayout && opts.DistributionSpec.ReferrersAPI != nil && *opts.DistributionSpec.ReferrersAPI {
+			if opts.Type == option.TargetTypeOCILayout && opts.DistributionSpec.ReferrersAPI != nil {
 				return errors.New("cannot enforce referrers API for image layout target")
 			}
 			return nil
