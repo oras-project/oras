@@ -54,32 +54,32 @@ func pullCmd() *cobra.Command {
 		Long: `Pull files from remote registry
 
 Example - Pull artifact files from a registry:
-  oras pull localhost:5000/hello:latest
+  oras pull localhost:5000/hello:v1
 
-Example - Recursively pulling all files from a registry, including subjects of hello:latest:
-  oras pull --include-subject localhost:5000/hello:latest
+Example - Recursively pulling all files from a registry, including subjects of hello:v1:
+  oras pull --include-subject localhost:5000/hello:v1
 
 Example - Pull files from an insecure registry:
-  oras pull --insecure localhost:5000/hello:latest
+  oras pull --insecure localhost:5000/hello:v1
 
 Example - Pull files from the HTTP registry:
-  oras pull --plain-http localhost:5000/hello:latest
+  oras pull --plain-http localhost:5000/hello:v1
 
 Example - Pull files from a registry with local cache:
   export ORAS_CACHE=~/.oras/cache
-  oras pull localhost:5000/hello:latest
+  oras pull localhost:5000/hello:v1
 
 Example - Pull files from a registry with certain platform:
-  oras pull --platform linux/arm/v5 localhost:5000/hello:latest
+  oras pull --platform linux/arm/v5 localhost:5000/hello:v1
 
 Example - Pull all files with concurrency level tuned:
-  oras pull --concurrency 6 localhost:5000/hello:latest
+  oras pull --concurrency 6 localhost:5000/hello:v1
 
 Example - Pull artifact files from an OCI layout folder 'layout-dir':
-  oras pull --oci-layout layout-dir:latest
+  oras pull --oci-layout layout-dir:v1
 
 Example - Pull artifact files from an OCI layout archive 'layout.tar':
-  oras pull --oci-layout layout.tar:latest
+  oras pull --oci-layout layout.tar:v1
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {

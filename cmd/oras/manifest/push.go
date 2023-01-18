@@ -54,20 +54,20 @@ func pushCmd() *cobra.Command {
 
 ** This command is in preview and under development. **
 
-Example - Push a manifest to repository 'localhost:5000/hello' and tag with 'latest':
-  oras manifest push localhost:5000/hello:latest manifest.json
+Example - Push a manifest to repository 'localhost:5000/hello' and tag with 'v1':
+  oras manifest push localhost:5000/hello:v1 manifest.json
 
 Example - Push a manifest with content read from stdin:
-  oras manifest push localhost:5000/hello:latest -
+  oras manifest push localhost:5000/hello:v1 -
 
 Example - Push a manifest and output its descriptor:
-  oras manifest push --descriptor localhost:5000/hello:latest manifest.json
+  oras manifest push --descriptor localhost:5000/hello:v1 manifest.json
 
 Example - Push a manifest to repository 'localhost:5000/hello' and output the prettified descriptor:
   oras manifest push --descriptor --pretty localhost:5000/hello manifest.json
 
-Example - Push a manifest with specified media type to repository 'localhost:5000/hello' and tag with 'latest':
-  oras manifest push --media-type application/vnd.cncf.oras.artifact.manifest.v1+json localhost:5000/hello:latest oras_manifest.json
+Example - Push a manifest with specified media type to repository 'localhost:5000/hello' and tag with 'v1':
+  oras manifest push --media-type application/vnd.cncf.oras.artifact.manifest.v1+json localhost:5000/hello:v1 oras_manifest.json
 
 Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'tag1', 'tag2', 'tag3':
   oras manifest push localhost:5000/hello:tag1,tag2,tag3 manifest.json
@@ -75,8 +75,8 @@ Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'tag1
 Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'tag1', 'tag2', 'tag3' and concurrency level tuned:
   oras manifest push --concurrency 6 localhost:5000/hello:tag1,tag2,tag3 manifest.json
 
-Example - Push a manifest to an OCI layout folder 'layout-dir' and with tag 'latest':
-  oras manifest push --oci-layout layout-dir:latest manifest.json
+Example - Push a manifest to an OCI layout folder 'layout-dir' and tag with 'v1':
+  oras manifest push --oci-layout layout-dir:v1 manifest.json
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {

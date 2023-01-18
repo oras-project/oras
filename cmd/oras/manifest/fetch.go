@@ -49,25 +49,25 @@ func fetchCmd() *cobra.Command {
 ** This command is in preview and under development. **
 
 Example - Fetch raw manifest from a registry:
-  oras manifest fetch localhost:5000/hello:latest
+  oras manifest fetch localhost:5000/hello:v1
 
 Example - Fetch the descriptor of a manifest from a registry:
-  oras manifest fetch --descriptor localhost:5000/hello:latest
+  oras manifest fetch --descriptor localhost:5000/hello:v1
 
 Example - Fetch manifest from a registry with specified media type:
-  oras manifest fetch --media-type 'application/vnd.oci.image.manifest.v1+json' localhost:5000/hello:latest
+  oras manifest fetch --media-type 'application/vnd.oci.image.manifest.v1+json' localhost:5000/hello:v1
 
 Example - Fetch manifest from a registry with certain platform:
-  oras manifest fetch --platform 'linux/arm/v5' localhost:5000/hello:latest
+  oras manifest fetch --platform 'linux/arm/v5' localhost:5000/hello:v1
 
 Example - Fetch manifest from a registry with prettified json result:
-  oras manifest fetch --pretty localhost:5000/hello:latest
+  oras manifest fetch --pretty localhost:5000/hello:v1
 
 Example - Fetch raw manifest from an OCI layout folder 'layout-dir':
-  oras manifest fetch --oci-layout layout-dir:latest
+  oras manifest fetch --oci-layout layout-dir:v1
 
 Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
-  oras manifest fetch --oci-layout layout.tar:latest
+  oras manifest fetch --oci-layout layout.tar:v1
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
