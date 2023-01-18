@@ -16,7 +16,6 @@ limitations under the License.
 package manifest
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -28,7 +27,6 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/errdef"
-	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -149,17 +147,8 @@ func pushManifest(opts pushOptions) error {
 		if err = display.PrintStatus(desc, "Uploading", verbose); err != nil {
 			return err
 		}
-		if refPusher, ok := target.(registry.ReferencePusher); ok {
-			if err = refPusher.PushReference(ctx, desc, bytes.NewReader(contentBytes), ref); err != nil {
-				return err
-			}
-		} else {
-			if err = target.Push(ctx, desc, bytes.NewReader(contentBytes)); err == nil {
-				err = target.Tag(ctx, desc, ref)
-			}
-			if err != nil {
-				return err
-			}
+		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil {
+			return err
 		}
 		if err = display.PrintStatus(desc, "Uploaded ", verbose); err != nil {
 			return err
