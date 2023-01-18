@@ -6,7 +6,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.1.6
 	github.com/onsi/gomega v1.20.2
 	github.com/opencontainers/image-spec v1.1.0-rc2
-	oras.land/oras-go/v2 v2.0.0-rc.4
+	oras.land/oras-go/v2 v2.0.0-20230112153040-29509026fb7f
 )
 
 require (

@@ -69,7 +69,7 @@ var (
 	}
 )
 
-var _ = Describe("Common registry users:", func() {
+var _ = Describe("Common registry users:", Focus, func() {
 	When("running `cp`", func() {
 		validate := func(src, dst string) {
 			srcManifest := ORAS("manifest", "fetch", src).Exec().Out.Contents()
