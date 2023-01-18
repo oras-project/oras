@@ -49,7 +49,7 @@ func init() {
 		panic(err)
 	}
 
-	FallbackHost = os.Getenv("ORAS_REGISTRY_HOST")
+	FallbackHost = os.Getenv("ORAS_REGISTRY_HOST_FALLBACK")
 	if FallbackHost == "" {
 		FallbackHost = "localhost:6000"
 		fmt.Fprintln(os.Stderr, "cannot find fallback host name in ORAS_REGISTRY_HOST_FALLBACK, using", FallbackHost, "instead")
