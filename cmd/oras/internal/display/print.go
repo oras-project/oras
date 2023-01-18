@@ -22,8 +22,9 @@ import (
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry"
 )
 
 var printLock sync.Mutex
@@ -74,13 +75,37 @@ func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, status s
 	return nil
 }
 
-type TagManifestStatusPrinter struct {
-	*remote.Repository
+// NewTagManifestStatusPrinter creates a wrapper type for printing tag status.
+func NewTagManifestStatusPrinter(target oras.Target) oras.Target {
+	if repo, ok := target.(registry.Repository); ok {
+		return &tagManifestStatusForRepo{
+			Repository: repo,
+		}
+	}
+	return &tagManifestStatusForTarget{
+		Target: target,
+	}
+}
+
+type tagManifestStatusForRepo struct {
+	registry.Repository
 }
 
 // PushReference overrides Repository.PushReference method to print off which tag(s) were added successfully.
-func (p *TagManifestStatusPrinter) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
+func (p *tagManifestStatusForRepo) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
 	if err := p.Repository.PushReference(ctx, expected, content, reference); err != nil {
+		return err
+	}
+	return Print("Tagged", reference)
+}
+
+type tagManifestStatusForTarget struct {
+	oras.Target
+}
+
+// Tag tags a descriptor with a reference string.
+func (p *tagManifestStatusForTarget) Tag(ctx context.Context, desc ocispec.Descriptor, reference string) error {
+	if err := p.Target.Tag(ctx, desc, reference); err != nil {
 		return err
 	}
 	return Print("Tagged", reference)
