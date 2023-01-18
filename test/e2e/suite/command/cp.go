@@ -52,7 +52,7 @@ var _ = Describe("ORAS beginners:", func() {
 })
 
 var (
-	foobarImageStates = []match.StateKey{
+	foobarStates = []match.StateKey{
 		{Digest: "44136fa355b3", Name: "application/vnd.unknown.config.v1+json"},
 		{Digest: "fcde2b2edba5", Name: "bar"},
 		{Digest: "2c26b46b68ff", Name: "foo1"},
@@ -64,8 +64,8 @@ var (
 		{Digest: "2dbea575a349", Name: "application/vnd.oci.artifact.manifest.v1+json"},
 	}
 	foobarFallbackReferrersStates = []match.StateKey{
-		{Digest: "611c75845938", Name: "application/vnd.oci.image.manifest.v1+json"},
-		{Digest: "4079617a0647", Name: "application/vnd.oci.image.manifest.v1+json"},
+		{Digest: "0e007dcb9ded7", Name: "application/vnd.oci.image.manifest.v1+json"},
+		{Digest: "32b78bd00723ccd .", Name: "application/vnd.oci.image.manifest.v1+json"},
 	}
 )
 
@@ -79,43 +79,43 @@ var _ = Describe("Common registry users:", func() {
 		It("should copy an image to a new repository via tag", func() {
 			src := Reference(Host, ImageRepo, FoobarImageTag)
 			dst := Reference(Host, cpTestRepo("copy-tag"), "copiedTag")
-			ORAS("cp", src, dst, "-v").MatchStatus(foobarImageStates, true, len(foobarImageStates)).Exec()
-			validate(src, dst)
-		})
-
-		It("should copy an image to a new repository via tag without tagging", func() {
-			src := Reference(Host, ImageRepo, FoobarImageTag)
-			dst := Reference(Host, cpTestRepo("copy-no-tagging"), FoobarImageDigest)
-			ORAS("cp", src, dst, "-v").MatchStatus(foobarImageStates, true, len(foobarImageStates)).Exec()
-			validate(src, dst)
-		})
-
-		It("should copy an image and its referrers to a new repository", func() {
-			stateKeys := append(append(foobarImageStates, foobarReferrersStates...), foobarFallbackReferrersStates...)
-			src := Reference(Host, ArtifactRepo, FoobarImageTag)
-			dst := Reference(Host, cpTestRepo("copy-no-tagging"), FoobarImageDigest)
-			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
+			ORAS("cp", src, dst, "-v").MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			validate(src, dst)
 		})
 
 		It("should copy an image to a new repository via digest", func() {
 			src := Reference(Host, ImageRepo, FoobarImageDigest)
 			dst := Reference(Host, cpTestRepo("copy-digest"), "copiedTag")
-			ORAS("cp", src, dst, "-v").MatchStatus(foobarImageStates, true, len(foobarImageStates)).Exec()
+			ORAS("cp", src, dst, "-v").MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			validate(src, dst)
 		})
 
-		It("should copy an certain platform of image to a new repository via tag", func() {
+		It("should copy an image to a new repository via tag without tagging", func() {
+			src := Reference(Host, ImageRepo, FoobarImageTag)
+			dst := Reference(Host, cpTestRepo("copy-no-tagging"), FoobarImageDigest)
+			ORAS("cp", src, dst, "-v").MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			validate(src, dst)
+		})
+
+		It("should copy an image and its referrers to a new repository", func() {
+			stateKeys := append(append(foobarStates, foobarReferrersStates...), foobarFallbackReferrersStates...)
+			src := Reference(Host, ArtifactRepo, FoobarImageTag)
+			dst := Reference(Host, cpTestRepo("copy-referrers"), FoobarImageDigest)
+			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
+			validate(src, dst)
+		})
+
+		It("should copy a certain platform of image to a new repository via tag", func() {
 			src := Reference(Host, ImageRepo, MultiImageTag)
-			dst := Reference(Host, cpTestRepo("copy-digest"), "copiedTag")
-			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").MatchStatus(foobarImageStates, true, len(foobarImageStates)).Exec()
+			dst := Reference(Host, cpTestRepo("copy-platform-tag"), "copiedTag")
+			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			validate(Reference(Host, ImageRepo, LinuxAMD64ImageDigest), dst)
 		})
 
-		It("should copy an certain platform of image to a new repository via digest", func() {
+		It("should copy a certain platform of image to a new repository via digest", func() {
 			src := Reference(Host, ImageRepo, MultiImageDigest)
-			dst := Reference(Host, cpTestRepo("copy-digest"), "copiedTag")
-			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").MatchStatus(foobarImageStates, true, len(foobarImageStates)).Exec()
+			dst := Reference(Host, cpTestRepo("copy-platform-digest"), "copiedTag")
+			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			validate(Reference(Host, ImageRepo, LinuxAMD64ImageDigest), dst)
 		})
 
@@ -124,13 +124,12 @@ var _ = Describe("Common registry users:", func() {
 			tags := []string{"tag1", "tag2", "tag3"}
 			dstRepo := cpTestRepo("copy-multi-tagging")
 			dst := Reference(Host, dstRepo, "")
-			ORAS("cp", src, dst+":"+strings.Join(tags, ","), "-v").MatchStatus(foobarImageStates, true, len(foobarImageStates)).Exec()
+			ORAS("cp", src, dst+":"+strings.Join(tags, ","), "-v").MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			for _, tag := range tags {
 				dst := Reference(Host, dstRepo, tag)
 				validate(src, dst)
 			}
 		})
-
 	})
 })
 
@@ -142,7 +141,7 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 			gomega.Expect(srcManifest).To(gomega.Equal(dstManifest))
 		}
 		It("should copy an image artifact and its referrers to a fallback repository", func() {
-			stateKeys := append(foobarImageStates, foobarFallbackReferrersStates...)
+			stateKeys := append(foobarStates, foobarFallbackReferrersStates...)
 			src := Reference(Host, ArtifactRepo, FallbackSbomArtifactDigest)
 			dst := Reference(FallbackHost, cpTestRepo("copy-fallback"), "")
 			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
