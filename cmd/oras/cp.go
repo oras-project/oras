@@ -111,22 +111,23 @@ func runCopy(opts copyOptions) error {
 
 	// Prepare copy options
 	committed := &sync.Map{}
+	generateContentKey := func(desc ocispec.Descriptor) string {
+		return desc.Digest.String() + desc.MediaType
+	}
 	extendedCopyOptions := oras.DefaultExtendedCopyOptions
 	extendedCopyOptions.Concurrency = opts.concurrency
-	extendedCopyOptions.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		if _, loaded := committed.LoadOrStore(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle]); !loaded {
-			display.PrintStatus(desc, "Copying", opts.Verbose)
+	extendedCopyOptions.PreCopy = display.StatusPrinter("Copying", opts.Verbose)
+	extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		if _, loaded := committed.LoadOrStore(generateContentKey(desc), desc.Annotations[ocispec.AnnotationTitle]); !loaded {
+			if err := display.PrintSuccessorStatus(ctx, desc, "Skipped", dst, committed, opts.Verbose); err != nil {
+				return err
+			}
+			return display.PrintStatus(desc, "Copied ", opts.Verbose)
 		}
 		return nil
 	}
-	extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		if err := display.PrintSuccessorStatus(ctx, desc, "Skipped", dst, committed, opts.Verbose); err != nil {
-			return err
-		}
-		return display.PrintStatus(desc, "Copied ", opts.Verbose)
-	}
 	extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-		if _, loaded := committed.LoadOrStore(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle]); !loaded {
+		if _, loaded := committed.LoadOrStore(generateContentKey(desc), desc.Annotations[ocispec.AnnotationTitle]); !loaded {
 			return display.PrintStatus(desc, "Exists ", opts.Verbose)
 		}
 		return nil
