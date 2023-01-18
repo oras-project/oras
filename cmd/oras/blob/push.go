@@ -31,12 +31,11 @@ type pushBlobOptions struct {
 	option.Common
 	option.Descriptor
 	option.Pretty
-	option.Remote
+	option.Target
 
 	fileRef   string
 	mediaType string
 	size      int64
-	targetRef string
 }
 
 func pushCmd() *cobra.Command {
@@ -48,30 +47,33 @@ func pushCmd() *cobra.Command {
 
 ** This command is in preview and under development. **
 
-Example - Push blob "hi.txt":
+Example - Push blob 'hi.txt' to a registry:
   oras blob push localhost:5000/hello hi.txt
 
-Example - Push blob "hi.txt" with the specific digest:
+Example - Push blob 'hi.txt' with the specific digest:
   oras blob push localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5 hi.txt
 
 Example - Push blob from stdin with blob size and digest:
   oras blob push --size 12 localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5 -
 
-Example - Push blob "hi.txt" and output the descriptor:
+Example - Push blob 'hi.txt' and output the descriptor:
   oras blob push --descriptor localhost:5000/hello hi.txt
 
-Example - Push blob "hi.txt" with the specific returned media type in the descriptor:
+Example - Push blob 'hi.txt' with the specific returned media type in the descriptor:
   oras blob push --media-type application/vnd.oci.image.config.v1+json --descriptor localhost:5000/hello hi.txt
 
-Example - Push blob "hi.txt" and output the prettified descriptor:
+Example - Push blob 'hi.txt' and output the prettified descriptor:
   oras blob push --descriptor --pretty localhost:5000/hello hi.txt
 
 Example - Push blob without TLS:
   oras blob push --insecure localhost:5000/hello hi.txt
+
+Example - Push blob 'hi.txt' into an OCI layout folder 'layout-dir':
+  oras blob push --oci-layout layout-dir hi.txt
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
+			opts.RawReference = args[0]
 			opts.fileRef = args[1]
 			if opts.fileRef == "-" {
 				if opts.PasswordFromStdin {
@@ -97,13 +99,13 @@ Example - Push blob without TLS:
 func pushBlob(opts pushBlobOptions) (err error) {
 	ctx, _ := opts.SetLoggerLevel()
 
-	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
+	repo, err := opts.NewTarget(opts.Common)
 	if err != nil {
 		return err
 	}
 
 	// prepare blob content
-	desc, rc, err := file.PrepareBlobContent(opts.fileRef, opts.mediaType, repo.Reference.Reference, opts.size)
+	desc, rc, err := file.PrepareBlobContent(opts.fileRef, opts.mediaType, opts.Reference, opts.size)
 	if err != nil {
 		return err
 	}
@@ -139,7 +141,7 @@ func pushBlob(opts pushBlobOptions) (err error) {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	fmt.Println("Pushed", opts.targetRef)
+	fmt.Println("Pushed", opts.AnnotatedReference())
 	fmt.Println("Digest:", desc.Digest)
 
 	return nil

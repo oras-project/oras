@@ -25,7 +25,6 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/display"
-	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -99,8 +98,8 @@ func runCopy(opts copyOptions) error {
 	if err != nil {
 		return err
 	}
-	if opts.From.Reference == "" {
-		return errors.NewErrInvalidReferenceStr(opts.From.RawReference)
+	if err := opts.From.EnsureReferenceNotEmpty(); err != nil {
+		return err
 	}
 
 	// Prepare destination
