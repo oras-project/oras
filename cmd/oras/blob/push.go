@@ -47,7 +47,7 @@ func pushCmd() *cobra.Command {
 
 ** This command is in preview and under development. **
 
-Example - Push blob 'hi.txt' into a registry:
+Example - Push blob 'hi.txt' to a registry:
   oras blob push localhost:5000/hello hi.txt
 
 Example - Push blob 'hi.txt' with the specific digest:
