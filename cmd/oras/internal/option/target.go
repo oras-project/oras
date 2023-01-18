@@ -25,6 +25,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
+	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 )
 
@@ -162,6 +163,14 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadO
 		return repo, nil
 	}
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
+}
+
+// EnsureReferenceNotEmpty ensures whether the tag or digest is empty.
+func (opts *Target) EnsureReferenceNotEmpty() error {
+	if opts.Reference == "" {
+		return errors.NewErrInvalidReferenceStr(opts.RawReference)
+	}
+	return nil
 }
 
 // BinaryTarget struct contains flags and arguments specifying two registries or

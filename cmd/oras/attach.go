@@ -52,32 +52,32 @@ func attachCmd() *cobra.Command {
 
 ** This command is in preview and under development. **
 
-Example - Attach file 'hi.txt' with type 'doc/example' to manifest 'hello:test' in registry 'localhost:5000':
-  oras attach --artifact-type doc/example localhost:5000/hello:test hi.txt
+Example - Attach file 'hi.txt' with type 'doc/example' to manifest 'hello:v1' in registry 'localhost:5000':
+  oras attach --artifact-type doc/example localhost:5000/hello:v1 hi.txt
 
 Example - Attach file "hi.txt" with specific media type when building the manifest:
-  oras attach --artifact-type doc/example --image-spec v1.1-image localhost:5000/hello:test hi.txt    # OCI image
-  oras attach --artifact-type doc/example --image-spec v1.1-artifact localhost:5000/hello:test hi.txt # OCI artifact
+  oras attach --artifact-type doc/example --image-spec v1.1-image localhost:5000/hello:v1 hi.txt    # OCI image
+  oras attach --artifact-type doc/example --image-spec v1.1-artifact localhost:5000/hello:v1 hi.txt # OCI artifact
 
 Example - Attach file "hi.txt" using a specific method for the Referrers API:
-  oras attach --artifact-type doc/example --distribution-spec v1.1-referrers-api localhost:5000/hello:test hi.txt # via API
-  oras attach --artifact-type doc/example --distribution-spec v1.1-referrers-tag localhost:5000/hello:test hi.txt # via tag scheme
+  oras attach --artifact-type doc/example --distribution-spec v1.1-referrers-api localhost:5000/hello:v1 hi.txt # via API
+  oras attach --artifact-type doc/example --distribution-spec v1.1-referrers-tag localhost:5000/hello:v1 hi.txt # via tag scheme
 
 Example - Attach file 'hi.txt' and add annotations from file 'annotation.json':
-  oras attach --artifact-type doc/example --annotation-file annotation.json localhost:5000/hello:latest hi.txt
+  oras attach --artifact-type doc/example --annotation-file annotation.json localhost:5000/hello:v1 hi.txt
 
 Example - Attach an artifact with manifest annotations:
-  oras attach --artifact-type doc/example --annotation "key1=val1" --annotation "key2=val2" localhost:5000/hello:latest
+  oras attach --artifact-type doc/example --annotation "key1=val1" --annotation "key2=val2" localhost:5000/hello:v1
 
 Example - Attach file 'hi.txt' and add manifest annotations:
-  oras attach --artifact-type doc/example --annotation "key=val" localhost:5000/hello:latest hi.txt
+  oras attach --artifact-type doc/example --annotation "key=val" localhost:5000/hello:v1 hi.txt
 
 Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json':
-  oras attach --artifact-type doc/example --export-manifest manifest.json localhost:5000/hello:latest hi.txt
+  oras attach --artifact-type doc/example --export-manifest manifest.json localhost:5000/hello:v1 hi.txt
 
-Example - Attach file to the manifest tagged 'test' in an OCI layout folder 'layout-dir':
-  oras attach --oci-layout --artifact-type doc/example layout-dir:test hi.txt
-`,
+Example - Attach file to the manifest tagged 'v1' in an OCI layout folder 'layout-dir':
+  oras attach --oci-layout --artifact-type doc/example layout-dir:v1 hi.txt
+  `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]

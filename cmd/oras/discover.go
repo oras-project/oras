@@ -53,14 +53,17 @@ func discoverCmd() *cobra.Command {
 
 ** This command is in preview and under development. **
 
-Example - Discover direct referrers of manifest 'hello:latest' in registry 'localhost:5000':
-  oras discover localhost:5000/hello
+Example - Discover direct referrers of manifest 'hello:v1' in registry 'localhost:5000':
+  oras discover localhost:5000/hello:v1
 
-Example - Discover all the referrers of manifest 'hello:latest' in registry 'localhost:5000' and display in a tree view:
-  oras discover -o tree localhost:5000/hello
+Example - Discover all the referrers of manifest 'hello:v1' in registry 'localhost:5000', displayed in a tree view:
+  oras discover -o tree localhost:5000/hello:v1
 
-Example - Discover referrers with type 'test-artifact' of manifest 'hello:latest' in registry 'localhost:5000':
-  oras discover --artifact-type test-artifact localhost:5000/hello
+Example - Discover all the referrers of manifest with annotations, displayed in a tree view:
+  oras discover -v -o tree localhost:5000/hello:v1
+
+Example - Discover referrers with type 'test-artifact' of manifest 'hello:v1' in registry 'localhost:5000':
+  oras discover --artifact-type test-artifact localhost:5000/hello:v1
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
