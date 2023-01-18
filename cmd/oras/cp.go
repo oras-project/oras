@@ -115,19 +115,15 @@ func runCopy(opts copyOptions) error {
 	extendedCopyOptions.Concurrency = opts.concurrency
 	extendedCopyOptions.PreCopy = display.StatusPrinter("Copying", opts.Verbose)
 	extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		if _, loaded := committed.LoadOrStore(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle]); !loaded {
-			if err := display.PrintSuccessorStatus(ctx, desc, "Skipped", dst, committed, opts.Verbose); err != nil {
-				return err
-			}
-			return display.PrintStatus(desc, "Copied ", opts.Verbose)
+		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+		if err := display.PrintSuccessorStatus(ctx, desc, "Skipped", dst, committed, opts.Verbose); err != nil {
+			return err
 		}
-		return nil
+		return display.PrintStatus(desc, "Copied ", opts.Verbose)
 	}
 	extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-		if _, loaded := committed.LoadOrStore(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle]); !loaded {
-			return display.PrintStatus(desc, "Exists ", opts.Verbose)
-		}
-		return nil
+		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+		return display.PrintStatus(desc, "Exists ", opts.Verbose)
 	}
 
 	var desc ocispec.Descriptor
