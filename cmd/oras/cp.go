@@ -118,10 +118,10 @@ func runCopy(opts copyOptions) error {
 	extendedCopyOptions.Concurrency = opts.concurrency
 	extendedCopyOptions.PreCopy = display.StatusPrinter("Copying", opts.Verbose)
 	extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		if err := display.PrintSuccessorStatus(ctx, desc, "Skipped", dst, committed, opts.Verbose); err != nil {
-			return err
-		}
 		if _, loaded := committed.LoadOrStore(generateContentKey(desc), desc.Annotations[ocispec.AnnotationTitle]); !loaded {
+			if err := display.PrintSuccessorStatus(ctx, desc, "Skipped", dst, committed, opts.Verbose); err != nil {
+				return err
+			}
 			return display.PrintStatus(desc, "Copied ", opts.Verbose)
 		}
 		return nil
