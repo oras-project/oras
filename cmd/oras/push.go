@@ -104,8 +104,13 @@ Example - Push file "hi.txt" into an OCI layout folder 'layout-dir' with tag 'te
 			opts.RawReference = args[0]
 			opts.extraRefs = refs[1:]
 			opts.FileRefs = args[1:]
-			if opts.artifactType != "" && opts.manifestConfigRef != "" {
-				return errors.New("--artifact-type and --config cannot both be provided")
+			if opts.manifestConfigRef != "" {
+				if opts.artifactType != "" {
+					return errors.New("--artifact-type and --config cannot both be provided")
+				}
+				if opts.ManifestMediaType == ocispec.MediaTypeArtifactManifest {
+					return errors.New("cannot build an OCI artifact with manifest config")
+				}
 			}
 			return option.Parse(&opts)
 		},
