@@ -59,7 +59,7 @@ jobs:
             --env REGISTRY_AUTH_HTPASSWD_PATH=/etc/docker/registry/passwd \
             --mount type=bind,source=$mnt_root/docker,target=/var/lib/registry/docker \
             --mount type=bind,source=$mnt_root/passwd_bcrypt,target=/etc/docker/registry/passwd \
-            ghcr.io/oras-project/registry:v1.0.0-rc.3
+            ghcr.io/qweeah/registry:v1.0.0-rc.3
           
           # Prepare Fallback Registry
           trap 'docker kill oras-e2e-fallback || true' ERR
