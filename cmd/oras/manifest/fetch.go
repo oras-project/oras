@@ -24,7 +24,6 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
-	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -97,8 +96,8 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 	if err != nil {
 		return err
 	}
-	if opts.Reference == "" {
-		return oerrors.NewErrInvalidReferenceStr(opts.RawReference)
+	if err := opts.EnsureReferenceNotEmpty(); err != nil {
+		return err
 	}
 	if repo, ok := target.(*remote.Repository); ok {
 		repo.ManifestMediaTypes = opts.mediaTypes

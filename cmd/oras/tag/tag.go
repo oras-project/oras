@@ -19,7 +19,6 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/display"
-	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -77,9 +76,8 @@ func tagManifest(opts tagOptions) error {
 	if err != nil {
 		return err
 	}
-
-	if opts.Reference == "" {
-		return errors.NewErrInvalidReferenceStr(opts.RawReference)
+	if err := opts.EnsureReferenceNotEmpty(); err != nil {
+		return err
 	}
 
 	tagNOpts := oras.DefaultTagNOptions

@@ -26,7 +26,6 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
-	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/descriptor"
 )
@@ -37,10 +36,9 @@ type fetchConfigOptions struct {
 	option.Descriptor
 	option.Platform
 	option.Pretty
-	option.Remote
+	option.Target
 
 	outputPath string
-	targetRef  string
 }
 
 func fetchConfigCmd() *cobra.Command {
@@ -76,10 +74,10 @@ Example - Fetch and print the prettified descriptor of the config:
 			if opts.outputPath == "-" && opts.OutputDescriptor {
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
 			}
+			opts.RawReference = args[0]
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
 			return fetchConfig(opts)
 		},
 	}
@@ -92,22 +90,20 @@ Example - Fetch and print the prettified descriptor of the config:
 func fetchConfig(opts fetchConfigOptions) (fetchErr error) {
 	ctx, _ := opts.SetLoggerLevel()
 
-	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
+	repo, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err
 	}
-
-	if repo.Reference.Reference == "" {
-		return oerrors.NewErrInvalidReference(repo.Reference)
+	if err := opts.EnsureReferenceNotEmpty(); err != nil {
+		return err
 	}
-
 	src, err := opts.CachedTarget(repo)
 	if err != nil {
 		return err
 	}
 
 	// fetch config descriptor
-	configDesc, err := fetchConfigDesc(ctx, src, opts.targetRef, opts.Platform.Platform)
+	configDesc, err := fetchConfigDesc(ctx, src, opts.Reference, opts.Platform.Platform)
 	if err != nil {
 		return err
 	}
