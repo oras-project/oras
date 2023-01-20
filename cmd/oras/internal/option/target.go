@@ -17,6 +17,7 @@ package option
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -25,7 +26,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
-	"oras.land/oras/cmd/oras/internal/errors"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 )
 
@@ -46,8 +47,8 @@ type Target struct {
 	isOCILayout bool
 }
 
-// ApplyDistributionSpec set distribution specification flag as applicable.
-func (opts *Target) ApplyDistributionSpec() {
+// EnableDistributionSpecFlag set distribution specification flag as applicable.
+func (opts *Target) EnableDistributionSpecFlag() {
 	opts.applyDistributionSpec = true
 }
 
@@ -95,6 +96,9 @@ func (opts *Target) Parse() error {
 	switch {
 	case opts.isOCILayout:
 		opts.Type = TargetTypeOCILayout
+		if opts.Remote.distributionSpec.referrersAPI != nil {
+			return errors.New("cannot enforce referrers API for image layout target")
+		}
 	default:
 		opts.Type = TargetTypeRemote
 	}
@@ -173,7 +177,7 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadO
 // EnsureReferenceNotEmpty ensures whether the tag or digest is empty.
 func (opts *Target) EnsureReferenceNotEmpty() error {
 	if opts.Reference == "" {
-		return errors.NewErrInvalidReferenceStr(opts.RawReference)
+		return oerrors.NewErrInvalidReferenceStr(opts.RawReference)
 	}
 	return nil
 }
@@ -185,8 +189,8 @@ type BinaryTarget struct {
 	To   Target
 }
 
-// ApplyDistributionSpec set distribution specification flag as applicable.
-func (opts *BinaryTarget) ApplyDistributionSpec() {
+// EnableDistributionSpecFlag set distribution specification flag as applicable.
+func (opts *BinaryTarget) EnableDistributionSpecFlag() {
 	opts.From.applyDistributionSpec = true
 	opts.To.applyDistributionSpec = true
 }

@@ -50,11 +50,11 @@ type Remote struct {
 	resolveFlag           []string
 	resolveDialContext    func(dialer *net.Dialer) func(context.Context, string, string) (net.Conn, error)
 	applyDistributionSpec bool
-	distributionSpec      DistributionSpec
+	distributionSpec      distributionSpec
 }
 
-// ApplyDistributionSpec set distribution specification flag as applicable.
-func (opts *Remote) ApplyDistributionSpec() {
+// EnableDistributionSpecFlag set distribution specification flag as applicable.
+func (opts *Remote) EnableDistributionSpecFlag() {
 	opts.applyDistributionSpec = true
 }
 
@@ -264,8 +264,8 @@ func (opts *Remote) NewRepository(reference string, common Common) (repo *remote
 	if repo.Client, err = opts.authClient(hostname, common.Debug); err != nil {
 		return nil, err
 	}
-	if opts.distributionSpec.ReferrersAPI != nil {
-		repo.SetReferrersCapability(*opts.distributionSpec.ReferrersAPI)
+	if opts.distributionSpec.referrersAPI != nil {
+		repo.SetReferrersCapability(*opts.distributionSpec.referrersAPI)
 	}
 	return
 }

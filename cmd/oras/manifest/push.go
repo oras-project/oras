@@ -98,7 +98,7 @@ Example - Push a manifest to an OCI layout folder 'layout-dir' and tag with 'v1'
 		},
 	}
 
-	opts.ApplyDistributionSpec()
+	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
 	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", "", "media type of manifest")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")

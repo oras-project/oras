@@ -34,7 +34,6 @@ type attachOptions struct {
 	option.Common
 	option.Packer
 	option.ImageSpec
-	option.DistributionSpec
 	option.Target
 
 	artifactType string
@@ -82,9 +81,6 @@ Example - Attach file to the manifest tagged 'v1' in an OCI layout folder 'layou
 			opts.FileRefs = args[1:]
 			if err := option.Parse(&opts); err != nil {
 				return err
-			}
-			if opts.Type == option.TargetTypeOCILayout && opts.DistributionSpec.ReferrersAPI != nil {
-				return errors.New("cannot enforce referrers API for image layout target")
 			}
 			return nil
 		},
