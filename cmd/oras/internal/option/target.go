@@ -191,8 +191,8 @@ type BinaryTarget struct {
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
 func (opts *BinaryTarget) EnableDistributionSpecFlag() {
-	opts.From.applyDistributionSpec = true
-	opts.To.applyDistributionSpec = true
+	opts.From.EnableDistributionSpecFlag()
+	opts.To.EnableDistributionSpecFlag()
 }
 
 // ApplyFlags applies flags to a command flag set fs.
