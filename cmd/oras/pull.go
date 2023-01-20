@@ -195,7 +195,10 @@ func runPull(opts pullOptions) error {
 	if err != nil {
 		return err
 	}
-	var dst = file.New(opts.Output)
+	dst, err := file.New(opts.Output)
+	if err != nil {
+		return err
+	}
 	dst.AllowPathTraversalOnWrite = opts.PathTraversal
 	dst.DisableOverwrite = opts.KeepOldFiles
 
