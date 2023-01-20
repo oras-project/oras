@@ -107,7 +107,10 @@ func runAttach(opts attachOptions) error {
 	}
 
 	// prepare manifest
-	store := file.New("")
+	store, err := file.New("")
+	if err != nil {
+		return err
+	}
 	defer store.Close()
 	store.AllowPathTraversalOnWrite = opts.PathValidationDisabled
 

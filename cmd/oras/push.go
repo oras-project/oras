@@ -138,7 +138,10 @@ func runPush(opts pushOptions) error {
 		ConfigAnnotations:   annotations[option.AnnotationConfig],
 		ManifestAnnotations: annotations[option.AnnotationManifest],
 	}
-	store := file.New("")
+	store, err := file.New("")
+	if err != nil {
+		return err
+	}
 	defer store.Close()
 	store.AllowPathTraversalOnWrite = opts.PathValidationDisabled
 	if opts.manifestConfigRef != "" {
