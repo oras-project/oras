@@ -47,11 +47,6 @@ type Target struct {
 	isOCILayout bool
 }
 
-// EnableDistributionSpecFlag set distribution specification flag as applicable.
-func (opts *Target) EnableDistributionSpecFlag() {
-	opts.applyDistributionSpec = true
-}
-
 // ApplyFlags applies flags to a command flag set for unary target
 func (opts *Target) ApplyFlags(fs *pflag.FlagSet) {
 	opts.applyFlagsWithPrefix(fs, "", "")
@@ -73,15 +68,8 @@ func (opts *Target) AnnotatedReference() string {
 // Since there is only one target type besides the default `registry` type,
 // the full form is not implemented until a new type comes in.
 func (opts *Target) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
-	var (
-		flagPrefix string
-		noteSuffix string
-	)
-	if prefix != "" {
-		flagPrefix = prefix + "-"
-		noteSuffix = description + " "
-	}
-	fs.BoolVarP(&opts.isOCILayout, flagPrefix+"oci-layout", "", false, "Set "+noteSuffix+"target as an OCI image layout.")
+	flagPrefix, notePrefix := generatePrefix(prefix, description)
+	fs.BoolVarP(&opts.isOCILayout, flagPrefix+"oci-layout", "", false, "Set "+notePrefix+"target as an OCI image layout.")
 }
 
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.

@@ -64,7 +64,7 @@ Example - Copy an artifact and its referrers:
   oras cp -r localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:v1
 
 Example - Copy an artifact and referrers using specific methods for the Referrers API:
-  oras cp -r --from-distribution-spec v1.1-referrers-api --to-distribution-spec v1.1-referrers-tag\
+  oras cp -r --from-distribution-spec v1.1-referrers-api --to-distribution-spec v1.1-referrers-tag \
     localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:v1 
 
 Example - Copy certain platform of an artifact:

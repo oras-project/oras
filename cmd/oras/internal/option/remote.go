@@ -64,6 +64,10 @@ func (opts *Remote) ApplyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
 }
 
+func generatePrefix(prefix, description string) (flagPrefix, notePrefix string) {
+	return prefix + "-", description + " "
+}
+
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
 // Commonly used for non-unary remote targets.
 func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
@@ -76,8 +80,7 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	if prefix == "" {
 		shortUser, shortPassword = "u", "p"
 	} else {
-		flagPrefix = prefix + "-"
-		notePrefix = description + " "
+		flagPrefix, notePrefix = generatePrefix(prefix, description)
 	}
 	if opts.applyDistributionSpec {
 		opts.distributionSpec.ApplyFlagsWithPrefix(fs, prefix, description)
