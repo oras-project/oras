@@ -56,6 +56,12 @@ func discoverCmd() *cobra.Command {
 Example - Discover direct referrers of manifest 'hello:v1' in registry 'localhost:5000':
   oras discover localhost:5000/hello:v1
 
+Example - Discover direct referrers via referrers API:
+  oras discover --distribution-spec v1.1-referrers-api localhost:5000/hello:v1
+
+Example - Discover direct referrers via tag scheme:
+  oras discover --distribution-spec v1.1-referrers-tag localhost:5000/hello:v1
+
 Example - Discover all the referrers of manifest 'hello:v1' in registry 'localhost:5000', displayed in a tree view:
   oras discover -o tree localhost:5000/hello:v1
 
@@ -77,6 +83,7 @@ Example - Discover referrers with type 'test-artifact' of manifest 'hello:v1' in
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().StringVarP(&opts.outputType, "output", "o", "table", "format in which to display referrers (table, json, or tree). tree format will also show indirect referrers")
+	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }

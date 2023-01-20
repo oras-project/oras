@@ -17,6 +17,7 @@ package option
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -25,7 +26,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
-	"oras.land/oras/cmd/oras/internal/errors"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 )
 
@@ -67,15 +68,8 @@ func (opts *Target) AnnotatedReference() string {
 // Since there is only one target type besides the default `registry` type,
 // the full form is not implemented until a new type comes in.
 func (opts *Target) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
-	var (
-		flagPrefix string
-		noteSuffix string
-	)
-	if prefix != "" {
-		flagPrefix = prefix + "-"
-		noteSuffix = description + " "
-	}
-	fs.BoolVarP(&opts.isOCILayout, flagPrefix+"oci-layout", "", false, "Set "+noteSuffix+"target as an OCI image layout.")
+	flagPrefix, notePrefix := applyPrefix(prefix, description)
+	fs.BoolVarP(&opts.isOCILayout, flagPrefix+"oci-layout", "", false, "Set "+notePrefix+"target as an OCI image layout.")
 }
 
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
@@ -90,6 +84,9 @@ func (opts *Target) Parse() error {
 	switch {
 	case opts.isOCILayout:
 		opts.Type = TargetTypeOCILayout
+		if opts.Remote.distributionSpec.referrersAPI != nil {
+			return errors.New("cannot enforce referrers API for image layout target")
+		}
 	default:
 		opts.Type = TargetTypeRemote
 	}
@@ -168,7 +165,7 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadO
 // EnsureReferenceNotEmpty ensures whether the tag or digest is empty.
 func (opts *Target) EnsureReferenceNotEmpty() error {
 	if opts.Reference == "" {
-		return errors.NewErrInvalidReferenceStr(opts.RawReference)
+		return oerrors.NewErrInvalidReferenceStr(opts.RawReference)
 	}
 	return nil
 }
@@ -180,6 +177,12 @@ type BinaryTarget struct {
 	To   Target
 }
 
+// EnableDistributionSpecFlag set distribution specification flag as applicable.
+func (opts *BinaryTarget) EnableDistributionSpecFlag() {
+	opts.From.EnableDistributionSpecFlag()
+	opts.To.EnableDistributionSpecFlag()
+}
+
 // ApplyFlags applies flags to a command flag set fs.
 func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
 	opts.From.ApplyFlagsWithPrefix(fs, "from", "source")
@@ -188,8 +191,5 @@ func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
 
 // Parse parses user-provided flags and arguments into option struct.
 func (opts *BinaryTarget) Parse() error {
-	if err := opts.From.Parse(); err != nil {
-		return err
-	}
-	return opts.To.Parse()
+	return Parse(opts)
 }

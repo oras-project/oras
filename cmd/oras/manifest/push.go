@@ -57,6 +57,10 @@ func pushCmd() *cobra.Command {
 Example - Push a manifest to repository 'localhost:5000/hello' and tag with 'v1':
   oras manifest push localhost:5000/hello:v1 manifest.json
 
+Example - Push a manifest using a specific method for the Referrers API:
+  oras manifest push --distribution-spec v1.1-referrers-api localhost:5000/hello:v1 manifest.json
+  oras manifest push --distribution-spec v1.1-referrers-tag localhost:5000/hello:v1 manifest.json
+
 Example - Push a manifest with content read from stdin:
   oras manifest push localhost:5000/hello:v1 -
 
@@ -94,6 +98,7 @@ Example - Push a manifest to an OCI layout folder 'layout-dir' and tag with 'v1'
 		},
 	}
 
+	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
 	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", "", "media type of manifest")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")

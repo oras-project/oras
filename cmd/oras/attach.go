@@ -19,7 +19,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -28,7 +27,6 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/registry/remote"
-	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -36,7 +34,6 @@ type attachOptions struct {
 	option.Common
 	option.Packer
 	option.ImageSpec
-	option.DistributionSpec
 	option.Target
 
 	artifactType string
@@ -85,9 +82,6 @@ Example - Attach file to the manifest tagged 'v1' in an OCI layout folder 'layou
 			if err := option.Parse(&opts); err != nil {
 				return err
 			}
-			if opts.Type == option.TargetTypeOCILayout && opts.DistributionSpec.ReferrersAPI != nil {
-				return errors.New("cannot enforce referrers API for image layout target")
-			}
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -121,15 +115,8 @@ func runAttach(opts attachOptions) error {
 	if err != nil {
 		return err
 	}
-	if opts.Reference == "" {
-		return oerrors.NewErrInvalidReferenceStr(opts.Reference)
-	}
-	if opts.ReferrersAPI != nil {
-		if repo, ok := dst.(*remote.Repository); ok {
-			repo.SetReferrersCapability(*opts.ReferrersAPI)
-		} else {
-			return fmt.Errorf("unexpected type %s with target type %s", reflect.TypeOf(dst), opts.Type)
-		}
+	if err := opts.EnsureReferenceNotEmpty(); err != nil {
+		return err
 	}
 	subject, err := dst.Resolve(ctx, opts.Reference)
 	if err != nil {
