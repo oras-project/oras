@@ -19,7 +19,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -28,7 +27,6 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/registry/remote"
-	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -121,15 +119,8 @@ func runAttach(opts attachOptions) error {
 	if err != nil {
 		return err
 	}
-	if opts.Reference == "" {
-		return oerrors.NewErrInvalidReferenceStr(opts.Reference)
-	}
-	if opts.ReferrersAPI != nil {
-		if repo, ok := dst.(*remote.Repository); ok {
-			repo.SetReferrersCapability(*opts.ReferrersAPI)
-		} else {
-			return fmt.Errorf("unexpected type %s with target type %s", reflect.TypeOf(dst), opts.Type)
-		}
+	if err := opts.EnsureReferenceNotEmpty(); err != nil {
+		return err
 	}
 	subject, err := dst.Resolve(ctx, opts.Reference)
 	if err != nil {

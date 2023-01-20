@@ -46,6 +46,11 @@ type Target struct {
 	isOCILayout bool
 }
 
+// ApplyDistributionSpec set distribution specification flag as applicable.
+func (opts *Target) ApplyDistributionSpec() {
+	opts.applyDistributionSpec = true
+}
+
 // ApplyFlags applies flags to a command flag set for unary target
 func (opts *Target) ApplyFlags(fs *pflag.FlagSet) {
 	opts.applyFlagsWithPrefix(fs, "", "")
@@ -180,6 +185,12 @@ type BinaryTarget struct {
 	To   Target
 }
 
+// ApplyDistributionSpec set distribution specification flag as applicable.
+func (opts *BinaryTarget) ApplyDistributionSpec() {
+	opts.From.applyDistributionSpec = true
+	opts.To.applyDistributionSpec = true
+}
+
 // ApplyFlags applies flags to a command flag set fs.
 func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
 	opts.From.ApplyFlagsWithPrefix(fs, "from", "source")
@@ -188,8 +199,5 @@ func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
 
 // Parse parses user-provided flags and arguments into option struct.
 func (opts *BinaryTarget) Parse() error {
-	if err := opts.From.Parse(); err != nil {
-		return err
-	}
-	return opts.To.Parse()
+	return Parse(opts)
 }

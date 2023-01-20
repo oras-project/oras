@@ -47,8 +47,15 @@ type Remote struct {
 	PasswordFromStdin bool
 	Password          string
 
-	resolveFlag        []string
-	resolveDialContext func(dialer *net.Dialer) func(context.Context, string, string) (net.Conn, error)
+	resolveFlag           []string
+	resolveDialContext    func(dialer *net.Dialer) func(context.Context, string, string) (net.Conn, error)
+	applyDistributionSpec bool
+	distributionSpec      DistributionSpec
+}
+
+// ApplyDistributionSpec set distribution specification flag as applicable.
+func (opts *Remote) ApplyDistributionSpec() {
+	opts.applyDistributionSpec = true
 }
 
 // ApplyFlags applies flags to a command flag set.
@@ -71,6 +78,9 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	} else {
 		flagPrefix = prefix + "-"
 		notePrefix = description + " "
+	}
+	if opts.applyDistributionSpec {
+		opts.distributionSpec.ApplyFlagsWithPrefix(fs, prefix, description)
 	}
 	fs.StringVarP(&opts.Username, flagPrefix+"username", shortUser, "", notePrefix+"registry username")
 	fs.StringVarP(&opts.Password, flagPrefix+"password", shortPassword, "", notePrefix+"registry password or identity token")
@@ -253,6 +263,9 @@ func (opts *Remote) NewRepository(reference string, common Common) (repo *remote
 	repo.PlainHTTP = opts.isPlainHttp(hostname)
 	if repo.Client, err = opts.authClient(hostname, common.Debug); err != nil {
 		return nil, err
+	}
+	if opts.distributionSpec.ReferrersAPI != nil {
+		repo.SetReferrersCapability(*opts.distributionSpec.ReferrersAPI)
 	}
 	return
 }

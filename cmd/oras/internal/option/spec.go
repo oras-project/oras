@@ -17,8 +17,9 @@ package option
 
 import (
 	"fmt"
-	"github.com/spf13/pflag"
+
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/spf13/pflag"
 )
 
 // ImageSpec option struct.
@@ -79,5 +80,18 @@ func (opts *DistributionSpec) Parse() error {
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *DistributionSpec) ApplyFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&opts.specFlag, "distribution-spec", "", "set OCI distribution spec version and API option. options: v1.1-referrers-api, v1.1-referrers-tag")
+	opts.ApplyFlagsWithPrefix(fs, "", "")
+}
+
+// ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
+func (opts *DistributionSpec) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
+	var (
+		flagPrefix string
+		notePrefix string
+	)
+	if prefix != "" {
+		flagPrefix = prefix + "-"
+		notePrefix = description + " "
+	}
+	fs.StringVar(&opts.specFlag, flagPrefix+"distribution-spec", "", "set OCI distribution spec version and API option for "+notePrefix+"target. options: v1.1-referrers-api, v1.1-referrers-tag")
 }

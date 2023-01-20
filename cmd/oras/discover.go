@@ -77,6 +77,7 @@ Example - Discover referrers with type 'test-artifact' of manifest 'hello:v1' in
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().StringVarP(&opts.outputType, "output", "o", "table", "format in which to display referrers (table, json, or tree). tree format will also show indirect referrers")
+	opts.ApplyDistributionSpec()
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }

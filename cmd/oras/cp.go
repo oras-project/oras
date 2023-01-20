@@ -86,6 +86,7 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 	}
 	cmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "recursively copy the artifact and its referrer artifacts")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
+	opts.ApplyDistributionSpec()
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
