@@ -68,7 +68,7 @@ func (opts *Target) AnnotatedReference() string {
 // Since there is only one target type besides the default `registry` type,
 // the full form is not implemented until a new type comes in.
 func (opts *Target) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
-	flagPrefix, notePrefix := generatePrefix(prefix, description)
+	flagPrefix, notePrefix := applyPrefix(prefix, description)
 	fs.BoolVarP(&opts.isOCILayout, flagPrefix+"oci-layout", "", false, "Set "+notePrefix+"target as an OCI image layout.")
 }
 

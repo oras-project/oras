@@ -80,6 +80,6 @@ func (opts *distributionSpec) Parse() error {
 
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
 func (opts *distributionSpec) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
-	flagPrefix, notePrefix := generatePrefix(prefix, description)
+	flagPrefix, notePrefix := applyPrefix(prefix, description)
 	fs.StringVar(&opts.specFlag, flagPrefix+"distribution-spec", "", "set OCI distribution spec version and API option for "+notePrefix+"target. options: v1.1-referrers-api, v1.1-referrers-tag")
 }

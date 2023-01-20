@@ -64,7 +64,10 @@ func (opts *Remote) ApplyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
 }
 
-func generatePrefix(prefix, description string) (flagPrefix, notePrefix string) {
+func applyPrefix(prefix, description string) (flagPrefix, notePrefix string) {
+	if prefix == "" {
+		return "", ""
+	}
 	return prefix + "-", description + " "
 }
 
@@ -79,9 +82,9 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	)
 	if prefix == "" {
 		shortUser, shortPassword = "u", "p"
-	} else {
-		flagPrefix, notePrefix = generatePrefix(prefix, description)
 	}
+	flagPrefix, notePrefix = applyPrefix(prefix, description)
+
 	if opts.applyDistributionSpec {
 		opts.distributionSpec.ApplyFlagsWithPrefix(fs, prefix, description)
 	}
