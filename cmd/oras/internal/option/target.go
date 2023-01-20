@@ -47,11 +47,6 @@ type Target struct {
 	isOCILayout bool
 }
 
-// EnableDistributionSpecFlag set distribution specification flag as applicable.
-func (opts *Target) EnableDistributionSpecFlag() {
-	opts.applyDistributionSpec = true
-}
-
 // ApplyFlags applies flags to a command flag set for unary target
 func (opts *Target) ApplyFlags(fs *pflag.FlagSet) {
 	opts.applyFlagsWithPrefix(fs, "", "")
