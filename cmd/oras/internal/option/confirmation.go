@@ -26,18 +26,18 @@ import (
 
 // Confirmation option struct.
 type Confirmation struct {
-	Confirmed bool
+	Force bool
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Confirmation) ApplyFlags(fs *pflag.FlagSet) {
-	fs.BoolVarP(&opts.Confirmed, "force", "f", false, "do not prompt for confirmation")
+	fs.BoolVarP(&opts.Force, "force", "f", false, "ignore nonexistent references, never prompt")
 }
 
 // AskForConfirmation prints a propmt to ask for confirmation before doing an
 // action and takes user input as response.
 func (opts *Confirmation) AskForConfirmation(r io.Reader, prompt string) (bool, error) {
-	if opts.Confirmed {
+	if opts.Force {
 		return true, nil
 	}
 

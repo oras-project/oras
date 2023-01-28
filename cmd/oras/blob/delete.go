@@ -56,10 +56,10 @@ Example - Delete a blob and print its descriptor:
   `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if opts.OutputDescriptor && !opts.Confirmed {
+			if opts.OutputDescriptor && !opts.Force {
 				return errors.New("must apply --force to confirm the deletion if the descriptor is outputted")
 			}
-			return opts.ReadPassword()
+			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
@@ -86,6 +86,11 @@ func deleteBlob(opts deleteBlobOptions) (err error) {
 	desc, err := blobs.Resolve(ctx, opts.targetRef)
 	if err != nil {
 		if errors.Is(err, errdef.ErrNotFound) {
+			if opts.Force && !opts.OutputDescriptor {
+				// ignore nonexistent
+				fmt.Println("Missing", opts.targetRef)
+				return nil
+			}
 			return fmt.Errorf("%s: the specified blob does not exist", opts.targetRef)
 		}
 		return err

@@ -18,26 +18,12 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "oras.land/oras/test/e2e/internal/utils"
-	"oras.land/oras/test/e2e/internal/utils/match"
-)
-
-var (
-	files = []string{
-		"foobar/config.json",
-		"foobar/foo1",
-		"foobar/foo2",
-		"foobar/bar",
-	}
-	statusKeys = []match.StateKey{
-		{Digest: "46b68ac1696c", Name: "application/vnd.unknown.config.v1+json"},
-		{Digest: "2c26b46b68ff", Name: files[1]},
-		{Digest: "2c26b46b68ff", Name: files[2]},
-		{Digest: "fcde2b2edba5", Name: files[3]},
-	}
 )
 
 var _ = Describe("OCI image user:", Ordered, func() {
 	repo := "scenario/oci-image"
+	files := append([]string{configFileName}, blobFileNames...)
+	statusKeys := append(pushFileStateKeys, configFileStateKey)
 	When("pushing images and check", func() {
 		tag := "image"
 		var tempDir string

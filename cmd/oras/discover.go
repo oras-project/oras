@@ -53,18 +53,27 @@ func discoverCmd() *cobra.Command {
 
 ** This command is in preview and under development. **
 
-Example - Discover direct referrers of manifest 'hello:latest' in registry 'localhost:5000':
-  oras discover localhost:5000/hello
+Example - Discover direct referrers of manifest 'hello:v1' in registry 'localhost:5000':
+  oras discover localhost:5000/hello:v1
 
-Example - Discover all the referrers of manifest 'hello:latest' in registry 'localhost:5000' and display in a tree view:
-  oras discover -o tree localhost:5000/hello
+Example - Discover direct referrers via referrers API:
+  oras discover --distribution-spec v1.1-referrers-api localhost:5000/hello:v1
 
-Example - Discover referrers with type 'test-artifact' of manifest 'hello:latest' in registry 'localhost:5000':
-  oras discover --artifact-type test-artifact localhost:5000/hello
+Example - Discover direct referrers via tag scheme:
+  oras discover --distribution-spec v1.1-referrers-tag localhost:5000/hello:v1
+
+Example - Discover all the referrers of manifest 'hello:v1' in registry 'localhost:5000', displayed in a tree view:
+  oras discover -o tree localhost:5000/hello:v1
+
+Example - Discover all the referrers of manifest with annotations, displayed in a tree view:
+  oras discover -v -o tree localhost:5000/hello:v1
+
+Example - Discover referrers with type 'test-artifact' of manifest 'hello:v1' in registry 'localhost:5000':
+  oras discover --artifact-type test-artifact localhost:5000/hello:v1
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return opts.ReadPassword()
+			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
@@ -74,6 +83,7 @@ Example - Discover referrers with type 'test-artifact' of manifest 'hello:latest
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().StringVarP(&opts.outputType, "output", "o", "table", "format in which to display referrers (table, json, or tree). tree format will also show indirect referrers")
+	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
@@ -87,14 +97,10 @@ func runDiscover(opts discoverOptions) error {
 	if repo.Reference.Reference == "" {
 		return errors.NewErrInvalidReference(repo.Reference)
 	}
-	targetPlatform, err := opts.Parse()
-	if err != nil {
-		return err
-	}
 
 	// discover artifacts
 	resolveOpts := oras.DefaultResolveOptions
-	resolveOpts.TargetPlatform = targetPlatform
+	resolveOpts.TargetPlatform = opts.Platform.Platform
 	desc, err := oras.Resolve(ctx, repo, repo.Reference.Reference, resolveOpts)
 	if err != nil {
 		return err

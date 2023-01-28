@@ -19,16 +19,14 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/display"
-	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
 type tagOptions struct {
 	option.Common
-	option.Remote
+	option.Target
 
 	concurrency int
-	srcRef      string
 	targetRefs  []string
 }
 
@@ -52,14 +50,17 @@ Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.2', 'late
 
 Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.1', 'v1.0.2', 'latest' with concurrency level tuned:
   oras tag --concurrency 1 localhost:5000/hello:v1.0.1 v1.0.2 latest
+
+Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI layout folder 'layout-dir':
+  oras tag layout-dir:v1.0.1 v1.0.2
 `,
 		Args: cobra.MinimumNArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return opts.ReadPassword()
+			opts.RawReference = args[0]
+			opts.targetRefs = args[1:]
+			return option.Parse(&opts)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
-			opts.srcRef = args[0]
-			opts.targetRefs = args[1:]
 			return tagManifest(opts)
 		},
 	}
@@ -71,16 +72,16 @@ Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.1', 'v1.0
 
 func tagManifest(opts tagOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
-	repo, err := opts.NewRepository(opts.srcRef, opts.Common)
+	target, err := opts.NewTarget(opts.Common)
 	if err != nil {
 		return err
 	}
-
-	if repo.Reference.Reference == "" {
-		return errors.NewErrInvalidReference(repo.Reference)
+	if err := opts.EnsureReferenceNotEmpty(); err != nil {
+		return err
 	}
 
 	tagNOpts := oras.DefaultTagNOptions
 	tagNOpts.Concurrency = opts.concurrency
-	return oras.TagN(ctx, &display.TagManifestStatusPrinter{Repository: repo}, opts.srcRef, opts.targetRefs, tagNOpts)
+	_, err = oras.TagN(ctx, display.NewTagManifestStatusPrinter(target), opts.Reference, opts.targetRefs, tagNOpts)
+	return err
 }

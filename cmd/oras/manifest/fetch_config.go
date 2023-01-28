@@ -26,7 +26,6 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
-	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/descriptor"
 )
@@ -37,10 +36,9 @@ type fetchConfigOptions struct {
 	option.Descriptor
 	option.Platform
 	option.Pretty
-	option.Remote
+	option.Target
 
 	outputPath string
-	targetRef  string
 }
 
 func fetchConfigCmd() *cobra.Command {
@@ -54,33 +52,32 @@ func fetchConfigCmd() *cobra.Command {
 ** This command is in preview and under development. **
 
 Example - Fetch the config:
-  oras manifest fetch-config localhost:5000/hello:latest
+  oras manifest fetch-config localhost:5000/hello:v1
 
 Example - Fetch the config of certain platform:
-  oras manifest fetch-config --platform 'linux/arm/v5' localhost:5000/hello:latest
+  oras manifest fetch-config --platform 'linux/arm/v5' localhost:5000/hello:v1
 
 Example - Fetch and print the prettified config:
-  oras manifest fetch-config --pretty localhost:5000/hello:latest
+  oras manifest fetch-config --pretty localhost:5000/hello:v1
 
 Example - Fetch the config and save it to a local file:
-  oras manifest fetch-config --output config.json localhost:5000/hello:latest
+  oras manifest fetch-config --output config.json localhost:5000/hello:v1
 
 Example - Fetch the descriptor of the config:
-  oras manifest fetch-config --descriptor localhost:5000/hello:latest
+  oras manifest fetch-config --descriptor localhost:5000/hello:v1
 
 Example - Fetch and print the prettified descriptor of the config:
-  oras manifest fetch-config --descriptor --pretty localhost:5000/hello:latest
+  oras manifest fetch-config --descriptor --pretty localhost:5000/hello:v1
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.outputPath == "-" && opts.OutputDescriptor {
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
 			}
-
-			return opts.ReadPassword()
+			opts.RawReference = args[0]
+			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
 			return fetchConfig(opts)
 		},
 	}
@@ -93,27 +90,20 @@ Example - Fetch and print the prettified descriptor of the config:
 func fetchConfig(opts fetchConfigOptions) (fetchErr error) {
 	ctx, _ := opts.SetLoggerLevel()
 
-	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
+	repo, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err
 	}
-
-	if repo.Reference.Reference == "" {
-		return oerrors.NewErrInvalidReference(repo.Reference)
-	}
-
-	targetPlatform, err := opts.Parse()
-	if err != nil {
+	if err := opts.EnsureReferenceNotEmpty(); err != nil {
 		return err
 	}
-
 	src, err := opts.CachedTarget(repo)
 	if err != nil {
 		return err
 	}
 
 	// fetch config descriptor
-	configDesc, err := fetchConfigDesc(ctx, src, opts.targetRef, targetPlatform)
+	configDesc, err := fetchConfigDesc(ctx, src, opts.Reference, opts.Platform.Platform)
 	if err != nil {
 		return err
 	}
