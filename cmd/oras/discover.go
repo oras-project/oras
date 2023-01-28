@@ -69,6 +69,10 @@ Example - Discover all the referrers of manifest with annotations, displayed in 
 
 Example - Discover referrers with type 'test-artifact' of manifest 'hello:v1' in registry 'localhost:5000':
   oras discover --artifact-type test-artifact localhost:5000/hello:v1
+
+Example - Discover referrers of the manifest tagged 'v1' in an OCI layout folder 'layout-dir':
+  oras discover layout-dir:v1
+  oras discover -v -o tree layout-dir:v1
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
