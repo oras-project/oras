@@ -175,7 +175,7 @@ func fetchReferrers(ctx context.Context, target oras.ReadOnlyGraphTarget, desc o
 			case ocispec.MediaTypeImageManifest:
 				var image ocispec.Manifest
 				json.Unmarshal(fetched, &image)
-				matchSubject(image.Subject, desc, &node, image.Config.ArtifactType)
+				matchSubject(image.Subject, desc, &node, image.Config.MediaType)
 			}
 			if node.ArtifactType != "" && (artifactType == "" || artifactType == node.ArtifactType) {
 				results = append(results, node)
