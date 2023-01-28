@@ -46,11 +46,11 @@ type Remote struct {
 	Username          string
 	PasswordFromStdin bool
 	Password          string
+	DistributionSpec
 
 	resolveFlag           []string
 	resolveDialContext    func(dialer *net.Dialer) func(context.Context, string, string) (net.Conn, error)
 	applyDistributionSpec bool
-	distributionSpec      distributionSpec
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
