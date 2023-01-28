@@ -166,20 +166,22 @@ func fetchReferrers(ctx context.Context, target oras.ReadOnlyGraphTarget, desc o
 					return nil, err
 				}
 			}
-			var matchSubject = func(got *ocispec.Descriptor, want ocispec.Descriptor, node *ocispec.Descriptor, artifactType string) {
-				if got != nil && content.Equal(*got, want) {
-					node.ArtifactType = artifactType
-				}
+			var isMatch = func(got *ocispec.Descriptor, want ocispec.Descriptor) bool {
+				return got != nil && content.Equal(*got, want)
 			}
 			switch node.MediaType {
 			case ocispec.MediaTypeArtifactManifest:
 				var artifact ocispec.Artifact
 				json.Unmarshal(fetched, &artifact)
-				matchSubject(artifact.Subject, desc, &node, artifact.ArtifactType)
+				if isMatch(artifact.Subject, desc) {
+					node.ArtifactType = artifact.ArtifactType
+				}
 			case ocispec.MediaTypeImageManifest:
 				var image ocispec.Manifest
 				json.Unmarshal(fetched, &image)
-				matchSubject(image.Subject, desc, &node, image.Config.MediaType)
+				if isMatch(image.Subject, desc) {
+					node.ArtifactType = image.Config.MediaType
+				}
 			}
 			if node.ArtifactType != "" && (artifactType == "" || artifactType == node.ArtifactType) {
 				results = append(results, node)
