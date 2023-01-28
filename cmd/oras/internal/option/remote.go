@@ -86,7 +86,7 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	flagPrefix, notePrefix = applyPrefix(prefix, description)
 
 	if opts.applyDistributionSpec {
-		opts.DistributionSpec.ApplyFlagsWithPrefix(fs, prefix, description)
+		opts.distributionSpec.ApplyFlagsWithPrefix(fs, prefix, description)
 	}
 	fs.StringVarP(&opts.Username, flagPrefix+"username", shortUser, "", notePrefix+"registry username")
 	fs.StringVarP(&opts.Password, flagPrefix+"password", shortPassword, "", notePrefix+"registry password or identity token")
@@ -270,8 +270,8 @@ func (opts *Remote) NewRepository(reference string, common Common) (repo *remote
 	if repo.Client, err = opts.authClient(hostname, common.Debug); err != nil {
 		return nil, err
 	}
-	if opts.DistributionSpec.ReferrersAPI != nil {
-		repo.SetReferrersCapability(*opts.DistributionSpec.ReferrersAPI)
+	if opts.distributionSpec.referrersAPI != nil {
+		repo.SetReferrersCapability(*opts.distributionSpec.referrersAPI)
 	}
 	return
 }
