@@ -24,8 +24,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
-	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 
 	"github.com/need-being/go-tree"
@@ -36,10 +36,9 @@ import (
 
 type discoverOptions struct {
 	option.Common
-	option.Remote
 	option.Platform
+	option.Target
 
-	targetRef    string
 	artifactType string
 	outputType   string
 }
@@ -73,10 +72,10 @@ Example - Discover referrers with type 'test-artifact' of manifest 'hello:v1' in
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			opts.RawReference = args[0]
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
 			return runDiscover(opts)
 		},
 	}
@@ -90,24 +89,24 @@ Example - Discover referrers with type 'test-artifact' of manifest 'hello:v1' in
 
 func runDiscover(opts discoverOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
-	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
+	repo, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err
 	}
-	if repo.Reference.Reference == "" {
-		return errors.NewErrInvalidReference(repo.Reference)
+	if err := opts.EnsureReferenceNotEmpty(); err != nil {
+		return err
 	}
 
 	// discover artifacts
 	resolveOpts := oras.DefaultResolveOptions
 	resolveOpts.TargetPlatform = opts.Platform.Platform
-	desc, err := oras.Resolve(ctx, repo, repo.Reference.Reference, resolveOpts)
+	desc, err := oras.Resolve(ctx, repo, opts.Reference, resolveOpts)
 	if err != nil {
 		return err
 	}
 
 	if opts.outputType == "tree" {
-		root := tree.New(repo.Reference.String())
+		root := tree.New(opts.Reference)
 		err = fetchAllReferrers(ctx, repo, desc, opts.artifactType, root, &opts)
 		if err != nil {
 			return err
@@ -124,9 +123,9 @@ func runDiscover(opts discoverOptions) error {
 	}
 
 	if n := len(refs); n > 1 {
-		fmt.Println("Discovered", n, "artifacts referencing", repo.Reference)
+		fmt.Println("Discovered", n, "artifacts referencing", opts.Reference)
 	} else {
-		fmt.Println("Discovered", n, "artifact referencing", repo.Reference)
+		fmt.Println("Discovered", n, "artifact referencing", opts.Reference)
 	}
 	fmt.Println("Digest:", desc.Digest)
 	if len(refs) > 0 {
@@ -136,19 +135,51 @@ func runDiscover(opts discoverOptions) error {
 	return nil
 }
 
-func fetchReferrers(ctx context.Context, repo *remote.Repository, desc ocispec.Descriptor, artifactType string) ([]ocispec.Descriptor, error) {
-	results := []ocispec.Descriptor{}
-	err := repo.Referrers(ctx, desc, artifactType, func(referrers []ocispec.Descriptor) error {
-		results = append(results, referrers...)
-		return nil
-	})
-	if err != nil {
-		return nil, err
+func fetchReferrers(ctx context.Context, target oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string) ([]ocispec.Descriptor, error) {
+	var results []ocispec.Descriptor
+	if repo, ok := target.(*remote.Repository); ok {
+		err := repo.Referrers(ctx, desc, artifactType, func(referrers []ocispec.Descriptor) error {
+			results = append(results, referrers...)
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// fill in artifact type and filter
+		predecessors, err := target.Predecessors(ctx, desc)
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range predecessors {
+			var fetched []byte
+			if rc, err := target.Fetch(ctx, r); err != nil {
+				return nil, err
+			} else {
+				fetched, err = content.ReadAll(rc, r)
+				if err != nil {
+					return nil, err
+				}
+			}
+			switch r.MediaType {
+			case ocispec.MediaTypeArtifactManifest:
+				var artifact ocispec.Artifact
+				json.Unmarshal(fetched, &artifact)
+				r.ArtifactType = artifact.ArtifactType
+			case ocispec.MediaTypeImageManifest:
+				var image ocispec.Manifest
+				json.Unmarshal(fetched, &image)
+				r.ArtifactType = image.Config.MediaType
+			}
+			if artifactType == "" || artifactType == r.ArtifactType {
+				results = append(results, r)
+			}
+		}
 	}
 	return results, nil
 }
 
-func fetchAllReferrers(ctx context.Context, repo *remote.Repository, desc ocispec.Descriptor, artifactType string, node *tree.Node, opts *discoverOptions) error {
+func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, node *tree.Node, opts *discoverOptions) error {
 	results, err := fetchReferrers(ctx, repo, desc, artifactType)
 	if err != nil {
 		return err
