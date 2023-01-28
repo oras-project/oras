@@ -138,6 +138,7 @@ func runDiscover(opts discoverOptions) error {
 func fetchReferrers(ctx context.Context, target oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string) ([]ocispec.Descriptor, error) {
 	var results []ocispec.Descriptor
 	if repo, ok := target.(*remote.Repository); ok {
+		// get referrers directly
 		err := repo.Referrers(ctx, desc, artifactType, func(referrers []ocispec.Descriptor) error {
 			results = append(results, referrers...)
 			return nil
@@ -146,35 +147,38 @@ func fetchReferrers(ctx context.Context, target oras.ReadOnlyGraphTarget, desc o
 			return nil, err
 		}
 	} else {
-		// fill in artifact type and filter
+		// find matched referrers in all predecessors
 		predecessors, err := target.Predecessors(ctx, desc)
 		if err != nil {
 			return nil, err
 		}
-		for _, r := range predecessors {
+		for _, node := range predecessors {
 			var fetched []byte
-			if rc, err := target.Fetch(ctx, r); err != nil {
+			if rc, err := target.Fetch(ctx, node); err != nil {
 				return nil, err
 			} else {
-				fetched, err = content.ReadAll(rc, r)
+				fetched, err = content.ReadAll(rc, node)
 				if err != nil {
 					return nil, err
 				}
 			}
-			switch r.MediaType {
+			var setArtifactType = func(node *ocispec.Descriptor, subject *ocispec.Descriptor, artifactType string) {
+				if subject != nil && content.Equal(*subject, *node) {
+					node.ArtifactType = artifactType
+				}
+			}
+			switch node.MediaType {
 			case ocispec.MediaTypeArtifactManifest:
 				var artifact ocispec.Artifact
 				json.Unmarshal(fetched, &artifact)
-				r.ArtifactType = artifact.ArtifactType
+				setArtifactType(&node, artifact.Subject, artifact.ArtifactType)
 			case ocispec.MediaTypeImageManifest:
 				var image ocispec.Manifest
 				json.Unmarshal(fetched, &image)
-				r.ArtifactType = image.Config.MediaType
-			case ocispec.MediaTypeImageIndex:
-				r.ArtifactType = "index (manifest list)"
+				setArtifactType(&node, image.Subject, image.Config.ArtifactType)
 			}
-			if artifactType == "" || artifactType == r.ArtifactType {
-				results = append(results, r)
+			if node.ArtifactType != "" && (artifactType == "" || artifactType == node.ArtifactType) {
+				results = append(results, node)
 			}
 		}
 	}
