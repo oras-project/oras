@@ -170,6 +170,8 @@ func fetchReferrers(ctx context.Context, target oras.ReadOnlyGraphTarget, desc o
 				var image ocispec.Manifest
 				json.Unmarshal(fetched, &image)
 				r.ArtifactType = image.Config.MediaType
+			case ocispec.MediaTypeImageIndex:
+				r.ArtifactType = "index (manifest list)"
 			}
 			if artifactType == "" || artifactType == r.ArtifactType {
 				results = append(results, r)
