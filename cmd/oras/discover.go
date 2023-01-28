@@ -18,7 +18,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -77,9 +76,6 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI layout folder
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if opts.ReferrersAPI != nil && opts.Type == option.TargetTypeOCILayout {
-				return errors.New("cannot specify --distribution-spec flag on an image layout target")
-			}
 			opts.RawReference = args[0]
 			return option.Parse(&opts)
 		},

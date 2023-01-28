@@ -51,27 +51,27 @@ func (opts *ImageSpec) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&opts.specFlag, "image-spec", "", "specify manifest type for building artifact. options: v1.1-image, v1.1-artifact")
 }
 
-// DistributionSpec option struct.
-type DistributionSpec struct {
-	// ReferrersAPI indicates the preference of the implementation of the Referrers API.
+// distributionSpec option struct.
+type distributionSpec struct {
+	// referrersAPI indicates the preference of the implementation of the Referrers API.
 	// Set to true for referrers API, false for referrers tag scheme, and nil for auto fallback.
-	ReferrersAPI *bool
+	referrersAPI *bool
 
 	// specFlag should be provided in form of`<version>-<api>-<option>`
 	specFlag string
 }
 
 // Parse parses flags into the option.
-func (opts *DistributionSpec) Parse() error {
+func (opts *distributionSpec) Parse() error {
 	switch opts.specFlag {
 	case "":
-		opts.ReferrersAPI = nil
+		opts.referrersAPI = nil
 	case "v1.1-referrers-tag":
 		isApi := false
-		opts.ReferrersAPI = &isApi
+		opts.referrersAPI = &isApi
 	case "v1.1-referrers-api":
 		isApi := true
-		opts.ReferrersAPI = &isApi
+		opts.referrersAPI = &isApi
 	default:
 		return fmt.Errorf("unknown image specification flag: %q", opts.specFlag)
 	}
@@ -79,7 +79,7 @@ func (opts *DistributionSpec) Parse() error {
 }
 
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
-func (opts *DistributionSpec) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
+func (opts *distributionSpec) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
 	flagPrefix, notePrefix := applyPrefix(prefix, description)
 	fs.StringVar(&opts.specFlag, flagPrefix+"distribution-spec", "", "set OCI distribution spec version and API option for "+notePrefix+"target. options: v1.1-referrers-api, v1.1-referrers-tag")
 }
