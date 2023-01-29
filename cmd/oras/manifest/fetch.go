@@ -18,6 +18,7 @@ package manifest
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -113,18 +114,18 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 		// fetch manifest descriptor only
 		fetchOpts := oras.DefaultResolveOptions
 		fetchOpts.TargetPlatform = opts.Platform.Platform
-		desc, err = oras.Resolve(ctx, src, opts.RawReference, fetchOpts)
+		desc, err = oras.Resolve(ctx, src, opts.Reference, fetchOpts)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to find %q: %w", opts.RawReference, err)
 		}
 	} else {
 		// fetch manifest content
 		var content []byte
 		fetchOpts := oras.DefaultFetchBytesOptions
 		fetchOpts.TargetPlatform = opts.Platform.Platform
-		desc, content, err = oras.FetchBytes(ctx, src, opts.RawReference, fetchOpts)
+		desc, content, err = oras.FetchBytes(ctx, src, opts.Reference, fetchOpts)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to fetch the content of %q: %w", opts.RawReference, err)
 		}
 
 		if opts.outputPath == "" || opts.outputPath == "-" {
