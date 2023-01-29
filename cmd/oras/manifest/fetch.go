@@ -116,7 +116,7 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 		fetchOpts.TargetPlatform = opts.Platform.Platform
 		desc, err = oras.Resolve(ctx, src, opts.Reference, fetchOpts)
 		if err != nil {
-			return fmt.Errorf("failed to find %q in %q: %w", opts.Reference, opts.RawReference, err)
+			return fmt.Errorf("failed to find %q: %w", opts.RawReference, err)
 		}
 	} else {
 		// fetch manifest content
@@ -125,7 +125,7 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 		fetchOpts.TargetPlatform = opts.Platform.Platform
 		desc, content, err = oras.FetchBytes(ctx, src, opts.Reference, fetchOpts)
 		if err != nil {
-			return fmt.Errorf("failed to fetch the content of %q in %q: %w", opts.Reference, opts.RawReference, err)
+			return fmt.Errorf("failed to fetch the content of %q: %w", opts.RawReference, err)
 		}
 
 		if opts.outputPath == "" || opts.outputPath == "-" {
