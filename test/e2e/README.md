@@ -15,8 +15,9 @@ go install github.com/onsi/ginkgo/v2/ginkgo@latest
 ```
 If you skip step 2, you can only run tests via `go test`. 
 
-### 3. Run Distribution
-The backend of E2E test is an [oras-distribution](https://github.com/oras-project/distribution).
+### 3. Run Distribution Services
+The backend of E2E test depends on two registry services compliant to [OCI distribution spec v1.1-rc1](https://github.com/opencontainers/distribution-spec/blob/v1.1.0-rc1/spec.md): [oras-distribution](https://github.com/oras-project/distribution) and [upstream distribution](https://github.com/distribution/distribution). The former supports both image and artifact media types with referrer API. The latter only supports image media type with subject and provides referrers query via [tag schema](https://github.com/opencontainers/distribution-spec/blob/v1.1.0-rc1/spec.md#referrers-tag-schema).
+TODO: scriptize this
 ```shell
 PORT=5000
 docker run -dp $PORT:5000 --rm --name oras-e2e \
@@ -29,7 +30,7 @@ docker run -dp $PORT:5000 --rm --name oras-e2e \
 export ORAS_REGISTRY_HOST="localhost:$PORT"
 # for PowerShell, use $env:ORAS_REGISTRY_HOST = "localhost:$PORT"
 ```
-If you skipped step 4, E2E test will look for distribution ran in `localhost:5000`
+If you skipped step 4, E2E test will look for oras-distribution ran in `localhost:5000` and upstream distribution ran in `localhost:6000`
 
 ### 5. _[Optional]_ Setup ORAS Binary for Testing
 ```bash
@@ -92,31 +93,70 @@ Describe: <Role>
 ### 5. Adding New Test Data
 
 #### 5.1 Command Suite
-Command suite uses pre-baked registry data for testing. The repository name should be `command/$repo_suffix`. To add a new layer, compress the `docker` folder from the root directory of your distribution storage and copy it to `$REPO_ROOT/test/e2e/testdata/distribution/mount` folder.
+Command suite uses pre-baked test data, which is a bunch of layered archive files compressed from distribution storage. Test data are all stored in `$REPO_ROOT/test/e2e/testdata/distribution/` but separated in different sub-folders: oras distribution uses `mount` and upstream distribution uses `mount_fallback`.
+
+For both registries, the repository name should follow the convention of `command/$repo_suffix`. To add a new layer to the test data, compress the `docker` folder from the root directory of the distribution storage and copy it to `$REPO_ROOT/test/e2e/testdata/distribution/mount` folder.
 ```shell
 tar -cvzf ${repo_suffix}.tar.gz --owner=0 --group=0 docker/
 ```
-Currently we have below OCI images:
+
+
+##### Test Data for ORAS-Distribution
 ```mermaid
 graph TD;
-    subgraph images.tar.gz
-    A0>tag: multi]-..->A1[oci index]
-    A1--linux/amd64-->A2[oci image]
-    A1--linux/arm64-->A3[oci image]
-    A1--linux/arm/v7-->A4[oci image]
-    A2-->A5[config1]
-    A3-->A6[config2]
-    A4-->A7[config3]
-    A2-- hello.tar -->A8[blob]
-    A3-- hello.tar -->A8[blob]
-    A4-- hello.tar -->A8[blob]
+    subgraph "repository: command/images"
+        subgraph "file: images.tar.gz"
+            direction TB
+            A0>tag: multi]-..->A1[oci index]
+            A1--linux/amd64-->A2[oci image]
+            A1--linux/arm64-->A3[oci image]
+            A1--linux/arm/v7-->A4[oci image]
+            A2-->A5(config1)
+            A3-->A6(config2)
+            A4-->A7(config3)
+            A2-- hello.tar -->A8(blob)
+            A3-- hello.tar -->A8(blob)
+            A4-- hello.tar -->A8(blob)
 
-    B0>tag: foobar]-..->B1[oci image]
-    B1-- foo1 -->B2[blob1]
-    B1-- foo2 -->B2[blob1]
-    B1-- bar -->B3[blob2]
+            B0>tag: foobar]-..->B1[oci image]
+            B1-- foo1 -->B2(blob1)
+            B1-- foo2 -->B2(blob1)
+            B1-- bar -->B3(blob2)
+        end
+    end
+    
+    subgraph "repository: command/artifacts"
+        subgraph "file: artifacts.tar.gz"
+            direction TB
+            C0>tag: foobar]-..->C1[oci image]
+            
+            direction TB
+            E1["test.sbom.file(artifact)"] -- subject --> C1
+            E2["test.signature.file(artifact)"] -- subject --> E1
+        end
+        subgraph "file: artifacts_fallback.tar.gz"
+            direction TB
+            D1["test.sbom.file(image)"] -- subject --> C1
+            D2["test.signature.file(image)"] -- subject --> D1
+        end
     end
 ```
 
+##### Test Data for Upstream Distribution
+```mermaid
+graph TD;
+    subgraph "repository: command/artifacts"
+        subgraph "file: artifacts_fallback.tar.gz"
+            direction TB
+            A0>tag: foobar]-..->A1[oci image]
+            A1-- foo1 -->A2(blob1)
+            A1-- foo2 -->A2(blob1)
+            A1-- bar -->A3(blob2)
+
+            E1["test.sbom.file(image)"] -- subject --> C1
+            E2["test.signature.file(image)"] -- subject --> E1
+        end
+    end
+```
 #### 5.2 Scenario Suite
 Test files used by scenario-based specs are placed in `$REPO_ROOT/test/e2e/testdata/files`.
