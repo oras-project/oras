@@ -139,7 +139,6 @@ func TestReferrers(t *testing.T) {
 		want    []ocispec.Descriptor
 		wantErr bool
 	}{
-		// TODO: Add test cases.
 		{"should fail when a referrer lister failed to get referrers", args{ctx, &errLister{}, ocispec.Descriptor{}, ""}, nil, true},
 		{"should return referrers when target is a referrer lister", args{ctx, &refLister{referrers: referrers}, ocispec.Descriptor{}, ""}, referrers, false},
 		{"should return nil for index node", args{ctx, finder, descs[index], ""}, nil, false},
