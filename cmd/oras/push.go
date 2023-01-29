@@ -38,10 +38,10 @@ import (
 
 type pushOptions struct {
 	option.Common
-	option.Remote
 	option.Packer
+	option.ImageSpec
+	option.Target
 
-	targetRef         string
 	extraRefs         []string
 	manifestConfigRef string
 	artifactType      string
@@ -56,53 +56,65 @@ func pushCmd() *cobra.Command {
 		Long: `Push files to remote registry
 
 Example - Push file "hi.txt" with media type "application/vnd.oci.image.layer.v1.tar" (default):
-  oras push localhost:5000/hello:latest hi.txt
+  oras push localhost:5000/hello:v1 hi.txt
 
 Example - Push file "hi.txt" and export the pushed manifest to a specified path
-  oras push --export-manifest manifest.json localhost:5000/hello:latest hi.txt
+  oras push --export-manifest manifest.json localhost:5000/hello:v1 hi.txt
 
 Example - Push file "hi.txt" with the custom media type "application/vnd.me.hi":
-  oras push localhost:5000/hello:latest hi.txt:application/vnd.me.hi
+  oras push localhost:5000/hello:v1 hi.txt:application/vnd.me.hi
 
 Example - Push multiple files with different media types:
-  oras push localhost:5000/hello:latest hi.txt:application/vnd.me.hi bye.txt:application/vnd.me.bye
+  oras push localhost:5000/hello:v1 hi.txt:application/vnd.me.hi bye.txt:application/vnd.me.bye
 
 Example - Push file "hi.txt" with config type "application/vnd.me.config":
-  oras push --artifact-type application/vnd.me.config localhost:5000/hello:latest hi.txt
+  oras push --artifact-type application/vnd.me.config localhost:5000/hello:v1 hi.txt
 
 Example - Push file "hi.txt" with the custom manifest config "config.json" of the custom media type "application/vnd.me.config":
-  oras push --config config.json:application/vnd.me.config localhost:5000/hello:latest hi.txt
+  oras push --config config.json:application/vnd.me.config localhost:5000/hello:v1 hi.txt
+
+Example - Push file "hi.txt" with specific media type when building the manifest:
+  oras push --image-spec v1.1-image localhost:5000/hello:v1 hi.txt    # OCI image
+  oras push --image-spec v1.1-artifact localhost:5000/hello:v1 hi.txt # OCI artifact
 
 Example - Push file to the insecure registry:
-  oras push --insecure localhost:5000/hello:latest hi.txt
+  oras push --insecure localhost:5000/hello:v1 hi.txt
 
 Example - Push file to the HTTP registry:
-  oras push --plain-http localhost:5000/hello:latest hi.txt
+  oras push --plain-http localhost:5000/hello:v1 hi.txt
 
 Example - Push repository with manifest annotations
-  oras push --annotation "key=val" localhost:5000/hello:latest
+  oras push --annotation "key=val" localhost:5000/hello:v1
 
 Example - Push repository with manifest annotation file
-  oras push --annotation-file annotation.json localhost:5000/hello:latest
+  oras push --annotation-file annotation.json localhost:5000/hello:v1
 
 Example - Push file "hi.txt" with multiple tags:
   oras push localhost:5000/hello:tag1,tag2,tag3 hi.txt
 
 Example - Push file "hi.txt" with multiple tags and concurrency level tuned:
   oras push --concurrency 6 localhost:5000/hello:tag1,tag2,tag3 hi.txt
+
+Example - Push file "hi.txt" into an OCI layout folder 'layout-dir' with tag 'test':
+  oras push --oci-layout layout-dir:test hi.txt
 `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if opts.artifactType != "" && opts.manifestConfigRef != "" {
-				return errors.New("--artifact-type and --config cannot both be provided")
-			}
-			return opts.ReadPassword()
-		},
-		RunE: func(cmd *cobra.Command, args []string) error {
 			refs := strings.Split(args[0], ",")
-			opts.targetRef = refs[0]
+			opts.RawReference = args[0]
 			opts.extraRefs = refs[1:]
 			opts.FileRefs = args[1:]
+			if opts.manifestConfigRef != "" {
+				if opts.artifactType != "" {
+					return errors.New("--artifact-type and --config cannot both be provided")
+				}
+				if opts.ManifestMediaType == ocispec.MediaTypeArtifactManifest {
+					return errors.New("cannot build an OCI artifact with manifest config")
+				}
+			}
+			return option.Parse(&opts)
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
 			return runPush(opts)
 		},
 	}
@@ -126,7 +138,10 @@ func runPush(opts pushOptions) error {
 		ConfigAnnotations:   annotations[option.AnnotationConfig],
 		ManifestAnnotations: annotations[option.AnnotationManifest],
 	}
-	store := file.New("")
+	store, err := file.New("")
+	if err != nil {
+		return err
+	}
 	defer store.Close()
 	store.AllowPathTraversalOnWrite = opts.PathValidationDisabled
 	if opts.manifestConfigRef != "" {
@@ -140,6 +155,9 @@ func runPush(opts pushOptions) error {
 		}
 		desc.Annotations = packOpts.ConfigAnnotations
 		packOpts.ConfigDescriptor = &desc
+		packOpts.PackImageManifest = true
+	}
+	if opts.ManifestMediaType == ocispec.MediaTypeImageManifest {
 		packOpts.PackImageManifest = true
 	}
 	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
@@ -158,7 +176,7 @@ func runPush(opts pushOptions) error {
 	}
 
 	// prepare push
-	dst, err := opts.NewRepository(opts.targetRef, opts.Common)
+	dst, err := opts.NewTarget(opts.Common)
 	if err != nil {
 		return err
 	}
@@ -166,7 +184,7 @@ func runPush(opts pushOptions) error {
 	copyOptions.Concurrency = opts.concurrency
 	updateDisplayOption(&copyOptions.CopyGraphOptions, store, opts.Verbose)
 	copy := func(root ocispec.Descriptor) error {
-		if tag := dst.Reference.Reference; tag == "" {
+		if tag := opts.Reference; tag == "" {
 			err = oras.CopyGraph(ctx, store, dst, root, copyOptions.CopyGraphOptions)
 		} else {
 			_, err = oras.Copy(ctx, store, root.Digest.String(), dst, tag, copyOptions)
@@ -175,11 +193,11 @@ func runPush(opts pushOptions) error {
 	}
 
 	// Push
-	root, err := pushArtifact(dst, pack, &packOpts, copy, &copyOptions.CopyGraphOptions, opts.Verbose)
+	root, err := pushArtifact(dst, pack, &packOpts, copy, &copyOptions.CopyGraphOptions, opts.ManifestMediaType == "", opts.Verbose)
 	if err != nil {
 		return err
 	}
-	fmt.Println("Pushed", opts.targetRef)
+	fmt.Println("Pushed", opts.AnnotatedReference())
 
 	if len(opts.extraRefs) != 0 {
 		contentBytes, err := content.FetchAll(ctx, store, root)
@@ -188,7 +206,7 @@ func runPush(opts pushOptions) error {
 		}
 		tagBytesNOpts := oras.DefaultTagBytesNOptions
 		tagBytesNOpts.Concurrency = opts.concurrency
-		if _, err = oras.TagBytesN(ctx, &display.TagManifestStatusPrinter{Repository: dst}, root.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
+		if _, err = oras.TagBytesN(ctx, display.NewTagManifestStatusPrinter(dst), root.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}
 	}
@@ -218,7 +236,7 @@ func updateDisplayOption(opts *oras.CopyGraphOptions, store content.Fetcher, ver
 type packFunc func() (ocispec.Descriptor, error)
 type copyFunc func(desc ocispec.Descriptor) error
 
-func pushArtifact(dst *remote.Repository, pack packFunc, packOpts *oras.PackOptions, copy copyFunc, copyOpts *oras.CopyGraphOptions, verbose bool) (ocispec.Descriptor, error) {
+func pushArtifact(dst oras.Target, pack packFunc, packOpts *oras.PackOptions, copy copyFunc, copyOpts *oras.CopyGraphOptions, allowFallback bool, verbose bool) (ocispec.Descriptor, error) {
 	root, err := pack()
 	if err != nil {
 		return ocispec.Descriptor{}, err
@@ -243,7 +261,7 @@ func pushArtifact(dst *remote.Repository, pack packFunc, packOpts *oras.PackOpti
 		return root, nil
 	}
 
-	if !copyRootAttempted || root.MediaType != ocispec.MediaTypeArtifactManifest ||
+	if !allowFallback || !copyRootAttempted || root.MediaType != ocispec.MediaTypeArtifactManifest ||
 		!isManifestUnsupported(err) {
 		return ocispec.Descriptor{}, err
 	}
@@ -251,7 +269,11 @@ func pushArtifact(dst *remote.Repository, pack packFunc, packOpts *oras.PackOpti
 	if err := display.PrintStatus(root, "Fallback ", verbose); err != nil {
 		return ocispec.Descriptor{}, err
 	}
-	dst.SetReferrersCapability(false)
+	if repo, ok := dst.(*remote.Repository); ok {
+		// assumes referrers API is not supported since OCI artifact
+		// media type is not supported
+		repo.SetReferrersCapability(false)
+	}
 	packOpts.PackImageManifest = true
 	root, err = pack()
 	if err != nil {

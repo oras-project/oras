@@ -23,7 +23,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
-	oerrors "oras.land/oras/cmd/oras/internal/errors"
+	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -31,13 +31,12 @@ type fetchOptions struct {
 	option.Cache
 	option.Common
 	option.Descriptor
-	option.Remote
 	option.Platform
 	option.Pretty
+	option.Target
 
 	mediaTypes []string
 	outputPath string
-	targetRef  string
 }
 
 func fetchCmd() *cobra.Command {
@@ -49,32 +48,37 @@ func fetchCmd() *cobra.Command {
 
 ** This command is in preview and under development. **
 
-Example - Fetch raw manifest:
-  oras manifest fetch localhost:5000/hello:latest
+Example - Fetch raw manifest from a registry:
+  oras manifest fetch localhost:5000/hello:v1
 
-Example - Fetch the descriptor of a manifest:
-  oras manifest fetch --descriptor localhost:5000/hello:latest
+Example - Fetch the descriptor of a manifest from a registry:
+  oras manifest fetch --descriptor localhost:5000/hello:v1
 
-Example - Fetch manifest with specified media type:
-  oras manifest fetch --media-type 'application/vnd.oci.image.manifest.v1+json' localhost:5000/hello:latest
+Example - Fetch manifest from a registry with specified media type:
+  oras manifest fetch --media-type 'application/vnd.oci.image.manifest.v1+json' localhost:5000/hello:v1
 
-Example - Fetch manifest with certain platform:
-  oras manifest fetch --platform 'linux/arm/v5' localhost:5000/hello:latest
+Example - Fetch manifest from a registry with certain platform:
+  oras manifest fetch --platform 'linux/arm/v5' localhost:5000/hello:v1
 
-Example - Fetch manifest with prettified json result:
-  oras manifest fetch --pretty localhost:5000/hello:latest
+Example - Fetch manifest from a registry with prettified json result:
+  oras manifest fetch --pretty localhost:5000/hello:v1
+
+Example - Fetch raw manifest from an OCI layout folder 'layout-dir':
+  oras manifest fetch --oci-layout layout-dir:v1
+
+Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
+  oras manifest fetch --oci-layout layout.tar:v1
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.outputPath == "-" && opts.OutputDescriptor {
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
 			}
-
-			return opts.ReadPassword()
+			opts.RawReference = args[0]
+			return option.Parse(&opts)
 		},
 		Aliases: []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
 			return fetchManifest(opts)
 		},
 	}
@@ -88,22 +92,18 @@ Example - Fetch manifest with prettified json result:
 func fetchManifest(opts fetchOptions) (fetchErr error) {
 	ctx, _ := opts.SetLoggerLevel()
 
-	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
+	target, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err
 	}
-
-	if repo.Reference.Reference == "" {
-		return oerrors.NewErrInvalidReference(repo.Reference)
-	}
-	repo.ManifestMediaTypes = opts.mediaTypes
-
-	targetPlatform, err := opts.Parse()
-	if err != nil {
+	if err := opts.EnsureReferenceNotEmpty(); err != nil {
 		return err
 	}
+	if repo, ok := target.(*remote.Repository); ok {
+		repo.ManifestMediaTypes = opts.mediaTypes
+	}
 
-	src, err := opts.CachedTarget(repo)
+	src, err := opts.CachedTarget(target)
 	if err != nil {
 		return err
 	}
@@ -112,8 +112,8 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 	if opts.OutputDescriptor && opts.outputPath == "" {
 		// fetch manifest descriptor only
 		fetchOpts := oras.DefaultResolveOptions
-		fetchOpts.TargetPlatform = targetPlatform
-		desc, err = oras.Resolve(ctx, src, opts.targetRef, fetchOpts)
+		fetchOpts.TargetPlatform = opts.Platform.Platform
+		desc, err = oras.Resolve(ctx, src, opts.RawReference, fetchOpts)
 		if err != nil {
 			return err
 		}
@@ -121,8 +121,8 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 		// fetch manifest content
 		var content []byte
 		fetchOpts := oras.DefaultFetchBytesOptions
-		fetchOpts.TargetPlatform = targetPlatform
-		desc, content, err = oras.FetchBytes(ctx, src, opts.targetRef, fetchOpts)
+		fetchOpts.TargetPlatform = opts.Platform.Platform
+		desc, content, err = oras.FetchBytes(ctx, src, opts.RawReference, fetchOpts)
 		if err != nil {
 			return err
 		}

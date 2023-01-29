@@ -26,14 +26,14 @@ import (
 func TestConfirmation_ApplyFlags(t *testing.T) {
 	var test struct{ Confirmation }
 	ApplyFlags(&test, pflag.NewFlagSet("oras-test", pflag.ExitOnError))
-	if test.Confirmation.Confirmed != false {
-		t.Fatalf("expecting Confirmed to be false but got: %v", test.Confirmation.Confirmed)
+	if test.Confirmation.Force != false {
+		t.Fatalf("expecting Confirmed to be false but got: %v", test.Confirmation.Force)
 	}
 }
 
 func TestConfirmation_AskForConfirmation_forciblyConfirmed(t *testing.T) {
 	opts := Confirmation{
-		Confirmed: true,
+		Force: true,
 	}
 	r := strings.NewReader("")
 
@@ -48,7 +48,7 @@ func TestConfirmation_AskForConfirmation_forciblyConfirmed(t *testing.T) {
 
 func TestConfirmation_AskForConfirmation_manuallyConfirmed(t *testing.T) {
 	opts := Confirmation{
-		Confirmed: false,
+		Force: false,
 	}
 
 	r := strings.NewReader("yes")

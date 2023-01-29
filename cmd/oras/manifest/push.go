@@ -16,7 +16,6 @@ limitations under the License.
 package manifest
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -28,6 +27,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/errdef"
+	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/file"
@@ -37,10 +37,9 @@ type pushOptions struct {
 	option.Common
 	option.Descriptor
 	option.Pretty
-	option.Remote
+	option.Target
 
 	concurrency int
-	targetRef   string
 	extraRefs   []string
 	fileRef     string
 	mediaType   string
@@ -55,43 +54,51 @@ func pushCmd() *cobra.Command {
 
 ** This command is in preview and under development. **
 
-Example - Push a manifest to repository 'localhost:5000/hello' and tag with 'latest':
-  oras manifest push localhost:5000/hello:latest manifest.json
+Example - Push a manifest to repository 'localhost:5000/hello' and tag with 'v1':
+  oras manifest push localhost:5000/hello:v1 manifest.json
+
+Example - Push a manifest using a specific method for the Referrers API:
+  oras manifest push --distribution-spec v1.1-referrers-api localhost:5000/hello:v1 manifest.json
+  oras manifest push --distribution-spec v1.1-referrers-tag localhost:5000/hello:v1 manifest.json
 
 Example - Push a manifest with content read from stdin:
-  oras manifest push localhost:5000/hello:latest -
+  oras manifest push localhost:5000/hello:v1 -
 
 Example - Push a manifest and output its descriptor:
-  oras manifest push --descriptor localhost:5000/hello:latest manifest.json
+  oras manifest push --descriptor localhost:5000/hello:v1 manifest.json
 
 Example - Push a manifest to repository 'localhost:5000/hello' and output the prettified descriptor:
   oras manifest push --descriptor --pretty localhost:5000/hello manifest.json
 
-Example - Push a manifest with specified media type to repository 'localhost:5000/hello' and tag with 'latest':
-  oras manifest push --media-type application/vnd.cncf.oras.artifact.manifest.v1+json localhost:5000/hello:latest oras_manifest.json
+Example - Push a manifest with specified media type to repository 'localhost:5000/hello' and tag with 'v1':
+  oras manifest push --media-type application/vnd.cncf.oras.artifact.manifest.v1+json localhost:5000/hello:v1 oras_manifest.json
 
-Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'tag1', 'tag2', 'tag3':
+Example - Push a manifest to repository 'localhost:5000/hello' and tag with 'tag1', 'tag2', 'tag3':
   oras manifest push localhost:5000/hello:tag1,tag2,tag3 manifest.json
 
-Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'tag1', 'tag2', 'tag3' and concurrency level tuned:
+Example - Push a manifest to repository 'localhost:5000/hello' and tag with 'tag1', 'tag2', 'tag3' and concurrency level tuned:
   oras manifest push --concurrency 6 localhost:5000/hello:tag1,tag2,tag3 manifest.json
+
+Example - Push a manifest to an OCI layout folder 'layout-dir' and tag with 'v1':
+  oras manifest push --oci-layout layout-dir:v1 manifest.json
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.fileRef == "-" && opts.PasswordFromStdin {
 				return errors.New("`-` read file from input and `--password-stdin` read password from input cannot be both used")
 			}
-			return opts.ReadPassword()
-		},
-		RunE: func(_ *cobra.Command, args []string) error {
 			refs := strings.Split(args[0], ",")
-			opts.targetRef = refs[0]
+			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
 			opts.fileRef = args[1]
+			return option.Parse(&opts)
+		},
+		RunE: func(_ *cobra.Command, args []string) error {
 			return pushManifest(opts)
 		},
 	}
 
+	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
 	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", "", "media type of manifest")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
@@ -100,11 +107,15 @@ Example - Push a manifest to repository 'locahost:5000/hello' and tag with 'tag1
 
 func pushManifest(opts pushOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
-	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
+	var target oras.Target
+	var err error
+	target, err = opts.NewTarget(opts.Common)
 	if err != nil {
 		return err
 	}
-	manifests := repo.Manifests()
+	if repo, ok := target.(*remote.Repository); ok {
+		target = repo.Manifests()
+	}
 
 	// prepare manifest content
 	contentBytes, err := file.PrepareManifestContent(opts.fileRef)
@@ -124,12 +135,11 @@ func pushManifest(opts pushOptions) error {
 	// prepare manifest descriptor
 	desc := content.NewDescriptorFromBytes(mediaType, contentBytes)
 
-	ref := repo.Reference.Reference
+	ref := opts.Reference
 	if ref == "" {
 		ref = desc.Digest.String()
 	}
-
-	match, err := matchDigest(ctx, manifests, ref, desc.Digest)
+	match, err := matchDigest(ctx, target, ref, desc.Digest)
 	if err != nil {
 		return err
 	}
@@ -142,7 +152,7 @@ func pushManifest(opts pushOptions) error {
 		if err = display.PrintStatus(desc, "Uploading", verbose); err != nil {
 			return err
 		}
-		if err = manifests.PushReference(ctx, desc, bytes.NewReader(contentBytes), ref); err != nil {
+		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil {
 			return err
 		}
 		if err = display.PrintStatus(desc, "Uploaded ", verbose); err != nil {
@@ -156,7 +166,7 @@ func pushManifest(opts pushOptions) error {
 	// outputs manifest's descriptor
 	if opts.OutputDescriptor {
 		if len(opts.extraRefs) != 0 {
-			if _, err = oras.TagBytesN(ctx, manifests, mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
+			if _, err = oras.TagBytesN(ctx, target, mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 				return err
 			}
 		}
@@ -166,9 +176,9 @@ func pushManifest(opts pushOptions) error {
 		}
 		return opts.Output(os.Stdout, descJSON)
 	}
-	display.Print("Pushed", opts.targetRef)
+	display.Print("Pushed", opts.AnnotatedReference())
 	if len(opts.extraRefs) != 0 {
-		if _, err = oras.TagBytesN(ctx, &display.TagManifestStatusPrinter{Repository: repo}, mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
+		if _, err = oras.TagBytesN(ctx, display.NewTagManifestStatusPrinter(target), mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}
 	}

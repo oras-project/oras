@@ -28,7 +28,7 @@ import (
 // ORASPath points to the to-be-tested oras binary.
 var ORASPath string
 
-// Host points to the registry service where E2E tests will be run against.
+// Host points to the registry service where E2E specs will be run against.
 var Host string
 
 func init() {
@@ -37,6 +37,7 @@ func init() {
 		Host = "localhost:5000"
 		fmt.Fprintln(os.Stderr, "cannot find host name in ORAS_REGISTRY_HOST, using", Host, "instead")
 	}
+
 	ref := registry.Reference{
 		Registry: Host,
 	}

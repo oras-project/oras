@@ -61,7 +61,7 @@ Example - Log in with username and password in an interactive terminal and no TL
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return opts.ReadPassword()
+			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Hostname = args[0]
@@ -130,9 +130,9 @@ func runLogin(opts loginOptions) (err error) {
 	return nil
 }
 
-func readLine(prompt string, slient bool) (string, error) {
+func readLine(prompt string, silent bool) (string, error) {
 	fmt.Print(prompt)
-	if slient {
+	if silent {
 		fd := os.Stdin.Fd()
 		state, err := term.SaveState(fd)
 		if err != nil {
@@ -147,7 +147,7 @@ func readLine(prompt string, slient bool) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if slient {
+	if silent {
 		fmt.Println()
 	}
 
