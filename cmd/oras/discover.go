@@ -24,9 +24,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/graph"
 
 	"github.com/need-being/go-tree"
 	"github.com/opencontainers/image-spec/specs-go"
@@ -118,7 +117,7 @@ func runDiscover(opts discoverOptions) error {
 		return tree.Print(root)
 	}
 
-	refs, err := fetchReferrers(ctx, repo, desc, opts.artifactType)
+	refs, err := graph.Referrers(ctx, repo, desc, opts.artifactType)
 	if err != nil {
 		return err
 	}
@@ -139,62 +138,8 @@ func runDiscover(opts discoverOptions) error {
 	return nil
 }
 
-func fetchReferrers(ctx context.Context, target oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string) ([]ocispec.Descriptor, error) {
-	var results []ocispec.Descriptor
-	if repo, ok := target.(registry.ReferrerLister); ok {
-		// get referrers directly
-		err := repo.Referrers(ctx, desc, artifactType, func(referrers []ocispec.Descriptor) error {
-			results = append(results, referrers...)
-			return nil
-		})
-		if err != nil {
-			return nil, err
-		}
-		return results, nil
-	}
-	// find matched referrers in all predecessors
-	predecessors, err := target.Predecessors(ctx, desc)
-	if err != nil {
-		return nil, err
-	}
-	for _, node := range predecessors {
-		switch node.MediaType {
-		case ocispec.MediaTypeArtifactManifest:
-			_, fetched, err := oras.FetchBytes(ctx, target, node.Digest.String(), oras.DefaultFetchBytesOptions)
-			if err != nil {
-				return nil, err
-			}
-			var artifact ocispec.Artifact
-			if err := json.Unmarshal(fetched, &artifact); err != nil {
-				return nil, err
-			}
-			if artifact.Subject != nil && content.Equal(*artifact.Subject, desc) {
-				node.ArtifactType = artifact.ArtifactType
-				node.Annotations = artifact.Annotations
-			}
-		case ocispec.MediaTypeImageManifest:
-			_, fetched, err := oras.FetchBytes(ctx, target, node.Digest.String(), oras.DefaultFetchBytesOptions)
-			if err != nil {
-				return nil, err
-			}
-			var image ocispec.Manifest
-			if err := json.Unmarshal(fetched, &image); err != nil {
-				return nil, err
-			}
-			if image.Subject != nil && content.Equal(*image.Subject, desc) {
-				node.ArtifactType = image.Config.MediaType
-				node.Annotations = image.Annotations
-			}
-		}
-		if node.ArtifactType != "" && (artifactType == "" || artifactType == node.ArtifactType) {
-			results = append(results, node)
-		}
-	}
-	return results, nil
-}
-
 func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, node *tree.Node, opts *discoverOptions) error {
-	results, err := fetchReferrers(ctx, repo, desc, artifactType)
+	results, err := graph.Referrers(ctx, repo, desc, artifactType)
 	if err != nil {
 		return err
 	}
