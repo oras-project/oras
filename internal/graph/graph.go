@@ -88,12 +88,12 @@ func Referrers(ctx context.Context, target oras.ReadOnlyGraphTarget, desc ocispe
 		return nil, err
 	}
 	for _, node := range predecessors {
-		_, fetched, err := oras.FetchBytes(ctx, target, node.Digest.String(), oras.DefaultFetchBytesOptions)
-		if err != nil {
-			return nil, err
-		}
 		switch node.MediaType {
 		case ocispec.MediaTypeArtifactManifest:
+			_, fetched, err := oras.FetchBytes(ctx, target, node.Digest.String(), oras.DefaultFetchBytesOptions)
+			if err != nil {
+				return nil, err
+			}
 			var artifact ocispec.Artifact
 			if err := json.Unmarshal(fetched, &artifact); err != nil {
 				return nil, err
@@ -103,6 +103,10 @@ func Referrers(ctx context.Context, target oras.ReadOnlyGraphTarget, desc ocispe
 				node.Annotations = artifact.Annotations
 			}
 		case ocispec.MediaTypeImageManifest:
+			_, fetched, err := oras.FetchBytes(ctx, target, node.Digest.String(), oras.DefaultFetchBytesOptions)
+			if err != nil {
+				return nil, err
+			}
 			var image ocispec.Manifest
 			if err := json.Unmarshal(fetched, &image); err != nil {
 				return nil, err
