@@ -27,7 +27,7 @@ The current workaround for enabling a kind of compatibility mode is to specify a
 Adding new flags to `oras push` and `oras attach` respectively with different variables to configure the manifest uploading behaviors. 
 
 - Adding a flag `--image-spec` to `oras push` and `oras attach` to force uploading a specific manifest type to registry
-- Adding a flag  `--distribution-spec` to `oras attach` to configure compatibility with registry
+- Adding a flag `--distribution-spec` to `oras attach`, `oras attach`, `oras cp`, and `oras manifest push` to configure compatibility with registry when pushing or copying an image/artifact manifest. This flag is also applicable to `oras discover` for filtering the referrers.
 
 ### Force uploading a specific manifest type using a flag `--image-spec`
 
@@ -35,11 +35,9 @@ It follows `--image-spec <spec version>-<manifest type>` to enable configuration
 
 | registry support                        | v1.1-artifact | v1.1-image | 
 | :-------------------------------------- | ----------------- | -------------- | 
-| OCI spec 1.0                            | no                | yes[^footnote] |
+| OCI spec 1.0                            | no                | yes |
 | OCI spec 1.1 without referrers API      | yes               | yes            | 
 | OCI spec 1.1 with referrers API support | yes               | yes            | 
-
-> [^footnote]: It only works when the registry returns error code 404 for [referrers API](https://github.com/opencontainers/distribution-spec/blob/v1.1.0-rc1/spec.md#listing-referrers). 
 
 If users want to force pushing a specific version of OCI artifact manifest to a registry, they can use `--image-spec v1.1-artifact`. An OCI artifact manifest will be packed and uploaded. Users might choose it for security requirements, such as pushing a signature to a registry without changing its digest. For example:
 
@@ -61,13 +59,15 @@ sbom.json \
 
 ### Configure compatibility with OCI registry using a flag `--distribution-spec`
 
-Based on the Referrers API status in the registry, users can use flag `--distribution-spec <spec version>-<api>-<option>` to configure compatibility with registry. This flag is only applicable to `oras attach`.
+Based on the Referrers API status in the registry, users can use flag `--distribution-spec <spec version>-<api>-<option>` to configure compatibility with registry. 
 
 | registry support                        |  v1.1-referrers-api | v1.1-referrers-tag |
 | :-------------------------------------- | --- | --- | 
-| OCI spec 1.0                            | no  | yes |
+| OCI spec 1.0                            | no  | yes[^footnote] |
 | OCI spec 1.1 without referrers API      | no  | yes |
 | OCI spec 1.1 with referrers API support | yes | yes |
+
+> [^footnote]: It only works when the registry returns error code 404 for [referrers API](https://github.com/opencontainers/distribution-spec/blob/v1.1.0-rc1/spec.md#listing-referrers). 
 
 Using a flag `--distribution-spec v1.1-referrers-api` to disable backward compatibility. It only allows uploading OCI artifact manifest to OCI v1.1 compliant registry with Referrers API enabled. This is the most strict option for setting compatibility with the registry. Users might choose it for security requirements. 
 
@@ -88,3 +88,5 @@ oras attach localhost:5000/hello-artifact:v1 \
 --compatibility v1.1-referrers-tag \
 sbom.json 
 ```
+
+Similarly, users can use `oras cp`, and `oras manifest push` with the flag `--distribution-spec` to configure compatibility with registry when pushing or copying an image/artifact manifest, or use `oras discover` with the flag `--distribution-spec` for filtering the referrers in the view.
