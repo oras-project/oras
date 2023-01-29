@@ -25,7 +25,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/option"
 
 	"github.com/need-being/go-tree"
@@ -71,8 +71,8 @@ Example - Discover referrers with type 'test-artifact' of manifest 'hello:v1' in
   oras discover --artifact-type test-artifact localhost:5000/hello:v1
 
 Example - Discover referrers of the manifest tagged 'v1' in an OCI layout folder 'layout-dir':
-  oras discover layout-dir:v1
-  oras discover -v -o tree layout-dir:v1
+  oras discover --oci-layout layout-dir:v1
+  oras discover --oci-layout -v -o tree layout-dir:v1
 `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -141,7 +141,7 @@ func runDiscover(opts discoverOptions) error {
 
 func fetchReferrers(ctx context.Context, target oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string) ([]ocispec.Descriptor, error) {
 	var results []ocispec.Descriptor
-	if repo, ok := target.(*remote.Repository); ok {
+	if repo, ok := target.(registry.ReferrerLister); ok {
 		// get referrers directly
 		err := repo.Referrers(ctx, desc, artifactType, func(referrers []ocispec.Descriptor) error {
 			results = append(results, referrers...)
@@ -150,42 +150,44 @@ func fetchReferrers(ctx context.Context, target oras.ReadOnlyGraphTarget, desc o
 		if err != nil {
 			return nil, err
 		}
-	} else {
-		// find matched referrers in all predecessors
-		predecessors, err := target.Predecessors(ctx, desc)
-		if err != nil {
-			return nil, err
-		}
-		for _, node := range predecessors {
-			var fetched []byte
-			if rc, err := target.Fetch(ctx, node); err != nil {
+		return results, nil
+	}
+	// find matched referrers in all predecessors
+	predecessors, err := target.Predecessors(ctx, desc)
+	if err != nil {
+		return nil, err
+	}
+	for _, node := range predecessors {
+		switch node.MediaType {
+		case ocispec.MediaTypeArtifactManifest:
+			_, fetched, err := oras.FetchBytes(ctx, target, node.Digest.String(), oras.DefaultFetchBytesOptions)
+			if err != nil {
 				return nil, err
-			} else {
-				fetched, err = content.ReadAll(rc, node)
-				if err != nil {
-					return nil, err
-				}
 			}
-			var isMatch = func(got *ocispec.Descriptor, want ocispec.Descriptor) bool {
-				return got != nil && content.Equal(*got, want)
+			var artifact ocispec.Artifact
+			if err := json.Unmarshal(fetched, &artifact); err != nil {
+				return nil, err
 			}
-			switch node.MediaType {
-			case ocispec.MediaTypeArtifactManifest:
-				var artifact ocispec.Artifact
-				json.Unmarshal(fetched, &artifact)
-				if isMatch(artifact.Subject, desc) {
-					node.ArtifactType = artifact.ArtifactType
-				}
-			case ocispec.MediaTypeImageManifest:
-				var image ocispec.Manifest
-				json.Unmarshal(fetched, &image)
-				if isMatch(image.Subject, desc) {
-					node.ArtifactType = image.Config.MediaType
-				}
+			if artifact.Subject != nil && content.Equal(*artifact.Subject, desc) {
+				node.ArtifactType = artifact.ArtifactType
+				node.Annotations = artifact.Annotations
 			}
-			if node.ArtifactType != "" && (artifactType == "" || artifactType == node.ArtifactType) {
-				results = append(results, node)
+		case ocispec.MediaTypeImageManifest:
+			_, fetched, err := oras.FetchBytes(ctx, target, node.Digest.String(), oras.DefaultFetchBytesOptions)
+			if err != nil {
+				return nil, err
 			}
+			var image ocispec.Manifest
+			if err := json.Unmarshal(fetched, &image); err != nil {
+				return nil, err
+			}
+			if image.Subject != nil && content.Equal(*image.Subject, desc) {
+				node.ArtifactType = image.Config.MediaType
+				node.Annotations = image.Annotations
+			}
+		}
+		if node.ArtifactType != "" && (artifactType == "" || artifactType == node.ArtifactType) {
+			results = append(results, node)
 		}
 	}
 	return results, nil
