@@ -23,6 +23,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry"
+	"oras.land/oras/internal/descriptor"
 	"oras.land/oras/internal/docker"
 )
 
@@ -62,7 +63,7 @@ func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descr
 	return
 }
 
-// Referrers returns referrer nodes of desc.
+// Referrers returns referrer nodes of desc in target.
 func Referrers(ctx context.Context, target oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string) ([]ocispec.Descriptor, error) {
 	var results []ocispec.Descriptor
 	if repo, ok := target.(registry.ReferrerLister); ok {
@@ -76,18 +77,23 @@ func Referrers(ctx context.Context, target oras.ReadOnlyGraphTarget, desc ocispe
 		}
 		return results, nil
 	}
+
+	if !descriptor.IsImageManifest(desc) && desc.MediaType != ocispec.MediaTypeArtifactManifest {
+		return nil, nil
+	}
+
 	// find matched referrers in all predecessors
 	predecessors, err := target.Predecessors(ctx, desc)
 	if err != nil {
 		return nil, err
 	}
 	for _, node := range predecessors {
+		_, fetched, err := oras.FetchBytes(ctx, target, node.Digest.String(), oras.DefaultFetchBytesOptions)
+		if err != nil {
+			return nil, err
+		}
 		switch node.MediaType {
 		case ocispec.MediaTypeArtifactManifest:
-			_, fetched, err := oras.FetchBytes(ctx, target, node.Digest.String(), oras.DefaultFetchBytesOptions)
-			if err != nil {
-				return nil, err
-			}
 			var artifact ocispec.Artifact
 			if err := json.Unmarshal(fetched, &artifact); err != nil {
 				return nil, err
@@ -97,10 +103,6 @@ func Referrers(ctx context.Context, target oras.ReadOnlyGraphTarget, desc ocispe
 				node.Annotations = artifact.Annotations
 			}
 		case ocispec.MediaTypeImageManifest:
-			_, fetched, err := oras.FetchBytes(ctx, target, node.Digest.String(), oras.DefaultFetchBytesOptions)
-			if err != nil {
-				return nil, err
-			}
 			var image ocispec.Manifest
 			if err := json.Unmarshal(fetched, &image); err != nil {
 				return nil, err
