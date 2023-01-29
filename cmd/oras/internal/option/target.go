@@ -17,6 +17,7 @@ package option
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -25,7 +26,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
-	"oras.land/oras/cmd/oras/internal/errors"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 )
 
@@ -41,6 +42,7 @@ type Target struct {
 	RawReference string
 	Type         string
 	Reference    string //contains tag or digest
+	Path         string
 
 	isOCILayout bool
 }
@@ -66,15 +68,8 @@ func (opts *Target) AnnotatedReference() string {
 // Since there is only one target type besides the default `registry` type,
 // the full form is not implemented until a new type comes in.
 func (opts *Target) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
-	var (
-		flagPrefix string
-		noteSuffix string
-	)
-	if prefix != "" {
-		flagPrefix = prefix + "-"
-		noteSuffix = description + " "
-	}
-	fs.BoolVarP(&opts.isOCILayout, flagPrefix+"oci-layout", "", false, "Set "+noteSuffix+"target as an OCI image layout.")
+	flagPrefix, notePrefix := applyPrefix(prefix, description)
+	fs.BoolVarP(&opts.isOCILayout, flagPrefix+"oci-layout", "", false, "Set "+notePrefix+"target as an OCI image layout.")
 }
 
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
@@ -89,6 +84,9 @@ func (opts *Target) Parse() error {
 	switch {
 	case opts.isOCILayout:
 		opts.Type = TargetTypeOCILayout
+		if opts.Remote.distributionSpec.referrersAPI != nil {
+			return errors.New("cannot enforce referrers API for image layout target")
+		}
 	default:
 		opts.Type = TargetTypeRemote
 	}
@@ -112,13 +110,12 @@ func parseOCILayoutReference(raw string) (path string, ref string, err error) {
 func (opts *Target) NewTarget(common Common) (oras.GraphTarget, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
-		var path string
 		var err error
-		path, opts.Reference, err = parseOCILayoutReference(opts.RawReference)
+		opts.Path, opts.Reference, err = parseOCILayoutReference(opts.RawReference)
 		if err != nil {
 			return nil, err
 		}
-		return oci.New(path)
+		return oci.New(opts.Path)
 	case TargetTypeRemote:
 		repo, err := opts.NewRepository(opts.RawReference, common)
 		if err != nil {
@@ -141,20 +138,19 @@ type ReadOnlyGraphTagFinderTarget interface {
 func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadOnlyGraphTagFinderTarget, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
-		var path string
 		var err error
-		path, opts.Reference, err = parseOCILayoutReference(opts.RawReference)
+		opts.Path, opts.Reference, err = parseOCILayoutReference(opts.RawReference)
 		if err != nil {
 			return nil, err
 		}
-		info, err := os.Stat(path)
+		info, err := os.Stat(opts.Path)
 		if err != nil {
 			return nil, err
 		}
 		if info.IsDir() {
-			return oci.NewFromFS(ctx, os.DirFS(path))
+			return oci.NewFromFS(ctx, os.DirFS(opts.Path))
 		}
-		return oci.NewFromTar(ctx, path)
+		return oci.NewFromTar(ctx, opts.Path)
 	case TargetTypeRemote:
 		repo, err := opts.NewRepository(opts.RawReference, common)
 		if err != nil {
@@ -169,7 +165,7 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadO
 // EnsureReferenceNotEmpty ensures whether the tag or digest is empty.
 func (opts *Target) EnsureReferenceNotEmpty() error {
 	if opts.Reference == "" {
-		return errors.NewErrInvalidReferenceStr(opts.RawReference)
+		return oerrors.NewErrInvalidReferenceStr(opts.RawReference)
 	}
 	return nil
 }
@@ -181,6 +177,12 @@ type BinaryTarget struct {
 	To   Target
 }
 
+// EnableDistributionSpecFlag set distribution specification flag as applicable.
+func (opts *BinaryTarget) EnableDistributionSpecFlag() {
+	opts.From.EnableDistributionSpecFlag()
+	opts.To.EnableDistributionSpecFlag()
+}
+
 // ApplyFlags applies flags to a command flag set fs.
 func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
 	opts.From.ApplyFlagsWithPrefix(fs, "from", "source")
@@ -189,8 +191,5 @@ func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
 
 // Parse parses user-provided flags and arguments into option struct.
 func (opts *BinaryTarget) Parse() error {
-	if err := opts.From.Parse(); err != nil {
-		return err
-	}
-	return opts.To.Parse()
+	return Parse(opts)
 }

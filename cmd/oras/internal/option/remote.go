@@ -47,14 +47,28 @@ type Remote struct {
 	PasswordFromStdin bool
 	Password          string
 
-	resolveFlag        []string
-	resolveDialContext func(dialer *net.Dialer) func(context.Context, string, string) (net.Conn, error)
+	resolveFlag           []string
+	resolveDialContext    func(dialer *net.Dialer) func(context.Context, string, string) (net.Conn, error)
+	applyDistributionSpec bool
+	distributionSpec      distributionSpec
+}
+
+// EnableDistributionSpecFlag set distribution specification flag as applicable.
+func (opts *Remote) EnableDistributionSpecFlag() {
+	opts.applyDistributionSpec = true
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Remote) ApplyFlags(fs *pflag.FlagSet) {
 	opts.ApplyFlagsWithPrefix(fs, "", "")
 	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
+}
+
+func applyPrefix(prefix, description string) (flagPrefix, notePrefix string) {
+	if prefix == "" {
+		return "", ""
+	}
+	return prefix + "-", description + " "
 }
 
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
@@ -68,9 +82,11 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	)
 	if prefix == "" {
 		shortUser, shortPassword = "u", "p"
-	} else {
-		flagPrefix = prefix + "-"
-		notePrefix = description + " "
+	}
+	flagPrefix, notePrefix = applyPrefix(prefix, description)
+
+	if opts.applyDistributionSpec {
+		opts.distributionSpec.ApplyFlagsWithPrefix(fs, prefix, description)
 	}
 	fs.StringVarP(&opts.Username, flagPrefix+"username", shortUser, "", notePrefix+"registry username")
 	fs.StringVarP(&opts.Password, flagPrefix+"password", shortPassword, "", notePrefix+"registry password or identity token")
@@ -253,6 +269,9 @@ func (opts *Remote) NewRepository(reference string, common Common) (repo *remote
 	repo.PlainHTTP = opts.isPlainHttp(hostname)
 	if repo.Client, err = opts.authClient(hostname, common.Debug); err != nil {
 		return nil, err
+	}
+	if opts.distributionSpec.referrersAPI != nil {
+		repo.SetReferrersCapability(*opts.distributionSpec.referrersAPI)
 	}
 	return
 }

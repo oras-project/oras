@@ -19,24 +19,23 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
-	oerrors "oras.land/oras/cmd/oras/internal/errors"
+	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
 type attachOptions struct {
 	option.Common
-	option.Remote
 	option.Packer
 	option.ImageSpec
-	option.DistributionSpec
+	option.Target
 
-	targetRef    string
 	artifactType string
 	concurrency  int
 }
@@ -72,14 +71,20 @@ Example - Attach file 'hi.txt' and add manifest annotations:
 
 Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json':
   oras attach --artifact-type doc/example --export-manifest manifest.json localhost:5000/hello:v1 hi.txt
-`,
+
+Example - Attach file to the manifest tagged 'v1' in an OCI layout folder 'layout-dir':
+  oras attach --oci-layout --artifact-type doc/example layout-dir:v1 hi.txt
+  `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return option.Parse(&opts)
+			opts.RawReference = args[0]
+			opts.FileRefs = args[1:]
+			if err := option.Parse(&opts); err != nil {
+				return err
+			}
+			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
-			opts.FileRefs = args[1:]
 			return runAttach(opts)
 		},
 	}
@@ -102,21 +107,21 @@ func runAttach(opts attachOptions) error {
 	}
 
 	// prepare manifest
-	store := file.New("")
-	defer store.Close()
-	store.AllowPathTraversalOnWrite = opts.PathValidationDisabled
-
-	dst, err := opts.NewRepository(opts.targetRef, opts.Common)
+	store, err := file.New("")
 	if err != nil {
 		return err
 	}
-	if dst.Reference.Reference == "" {
-		return oerrors.NewErrInvalidReference(dst.Reference)
+	defer store.Close()
+	store.AllowPathTraversalOnWrite = opts.PathValidationDisabled
+
+	dst, err := opts.NewTarget(opts.Common)
+	if err != nil {
+		return err
 	}
-	if opts.ReferrersAPI != nil {
-		dst.SetReferrersCapability(*opts.ReferrersAPI)
+	if err := opts.EnsureReferenceNotEmpty(); err != nil {
+		return err
 	}
-	subject, err := dst.Resolve(ctx, dst.Reference.Reference)
+	subject, err := dst.Resolve(ctx, opts.Reference)
 	if err != nil {
 		return err
 	}
@@ -156,9 +161,18 @@ func runAttach(opts attachOptions) error {
 		return err
 	}
 
-	targetRef := dst.Reference
-	targetRef.Reference = subject.Digest.String()
-	fmt.Println("Attached to", targetRef)
+	digest := subject.Digest.String()
+	if !strings.HasSuffix(opts.RawReference, digest) {
+		// Reassemble a reference with subject digest
+		if repo, ok := dst.(*remote.Repository); ok {
+			ref := repo.Reference
+			ref.Reference = subject.Digest.String()
+			opts.RawReference = ref.String()
+		} else if opts.Type == option.TargetTypeOCILayout {
+			opts.RawReference = fmt.Sprintf("%s@%s", opts.Path, subject.Digest)
+		}
+	}
+	fmt.Println("Attached to", opts.AnnotatedReference())
 	fmt.Println("Digest:", root.Digest)
 
 	// Export manifest
