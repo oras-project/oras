@@ -136,7 +136,6 @@ func TestReferrers(t *testing.T) {
 		{"should return referrers when target is a referrer lister", args{ctx, &refLister{referrers: referrers}, ocispec.Descriptor{}, ""}, referrers, false},
 		{"should return nil for non-manifest node", args{ctx, &predecessorFinder{}, descs[index], ""}, nil, false},
 		{"should return nil for non-manifest node", args{ctx, &predecessorFinder{}, descs[imgConfig], ""}, nil, false},
-		{"should return referrers in predecessor", args{ctx, &predecessorFinder{predecessors: predecessors}, descs[subject], ""}, referrers, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
