@@ -87,10 +87,11 @@ func (opts *Target) Parse() error {
 		if opts.Remote.distributionSpec.referrersAPI != nil {
 			return errors.New("cannot enforce referrers API for image layout target")
 		}
+		return nil
 	default:
 		opts.Type = TargetTypeRemote
+		return opts.Remote.Parse()
 	}
-	return nil
 }
 
 // parseOCILayoutReference parses the raw in format of <path>[:<tag>|@<digest>]

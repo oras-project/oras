@@ -105,7 +105,10 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 
 // Parse tries to read password with optional cmd prompt.
 func (opts *Remote) Parse() error {
-	return opts.readPassword()
+	if err := opts.readPassword(); err != nil {
+		return err
+	}
+	return opts.distributionSpec.Parse()
 }
 
 // readPassword tries to read password with optional cmd prompt.
