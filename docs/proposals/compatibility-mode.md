@@ -35,16 +35,18 @@ It follows `--image-spec <spec version>-<manifest type>` to enable configuration
 
 | registry support                        | v1.1-artifact | v1.1-image | 
 | :-------------------------------------- | ----------------- | -------------- | 
-| OCI spec 1.0                            | no                | yes            |
+| OCI spec 1.0                            | no                | yes[^footnote] |
 | OCI spec 1.1 without referrers API      | yes               | yes            | 
 | OCI spec 1.1 with referrers API support | yes               | yes            | 
+
+> [^footnote]: It may fail when the OCI spec 1.0 compliant registry doesn't accept the `subject` field included in the image manifest.
 
 If users want to force pushing a specific version of OCI artifact manifest to a registry, they can use `--image-spec v1.1-artifact`. An OCI artifact manifest will be packed and uploaded. Users might choose it for security requirements, such as pushing a signature to a registry without changing its digest. For example:
 
 ```bash
 oras push localhost:5000/hello-artifact:v1 \
---image-spec v1.1-artifact \
---artifact-type sbom/example \
+  --image-spec v1.1-artifact \
+  --artifact-type sbom/example \
   sbom.json 
 ```
 
@@ -52,8 +54,8 @@ If users want to force pushing an OCI image manifest, no matter whether the regi
 
 ```bash
 oras push localhost:5000/hello-artifact:v1 \
---image-spec v1.1-image \
---artifact-type sbom/example \
+  --image-spec v1.1-image \
+  --artifact-type sbom/example \
   sbom.json
 ```
 
@@ -73,17 +75,17 @@ For example, using this flag, ORAS will attach OCI artifact manifest only to an 
 
 ```bash
 oras attach localhost:5000/hello-artifact:v1 \
---artifact-type sbom/example \
---distribution-spec v1.1-referrers-api \
+  --artifact-type sbom/example \
+  --distribution-spec v1.1-referrers-api \
   sbom.json 
 ```
 
-Using `--distribution-spec v1.1-referrers-tag` to enable maximum backward compatibility with the registry. It will upload OCI image manifest and [referrers tag schema](https://github.com/opencontainers/distribution-spec/blob/v1.1.0-rc1/spec.md#referrers-tag-schema) regardless of whether the registry complies with the OCI Spec v1.0 or v1.1 or support Referrers API. For example: 
+Using `--distribution-spec v1.1-referrers-tag` to enable maximum backward compatibility with the registry. It will first attempt to upload the OCI artifact manifest with the [referrers tag schema](https://github.com/opencontainers/distribution-spec/blob/v1.1.0-rc1/spec.md#referrers-tag-schema) regardless of whether the registry complies with the OCI Spec v1.0 or v1.1 or supports Referrers API. For example: 
 
 ```bash
 oras attach localhost:5000/hello-artifact:v1 \
---artifact-type sbom/example \
---distribution-spec v1.1-referrers-tag \
+  --artifact-type sbom/example \
+  --distribution-spec v1.1-referrers-tag \
   sbom.json 
 ```
 
