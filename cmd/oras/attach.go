@@ -92,6 +92,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI layout folder 'layou
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	cmd.MarkFlagRequired("artifact-type")
+	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
