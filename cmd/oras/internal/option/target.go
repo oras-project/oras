@@ -17,7 +17,6 @@ package option
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -84,9 +83,6 @@ func (opts *Target) Parse() error {
 	switch {
 	case opts.isOCILayout:
 		opts.Type = TargetTypeOCILayout
-		if opts.Remote.distributionSpec.referrersAPI != nil {
-			return errors.New("cannot enforce referrers API for image layout target")
-		}
 		return nil
 	default:
 		opts.Type = TargetTypeRemote
