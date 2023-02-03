@@ -72,11 +72,14 @@ func parseRepoPath(opts *repositoryOptions, arg string) error {
 	path := strings.TrimSuffix(arg, "/")
 	if strings.Contains(path, "/") {
 		reference, err := registry.ParseReference(path)
-		if err != nil || reference.Reference != "" {
+		if err != nil {
 			return err
 		}
+		if reference.Reference != "" {
+			return fmt.Errorf("tags or digests should not be provided")
+		}
 		opts.hostname = reference.Registry
-		opts.namespace = reference.Repository
+		opts.namespace = reference.Repository + "/"
 	} else {
 		opts.hostname = path
 	}
@@ -91,10 +94,8 @@ func listRepository(opts repositoryOptions) error {
 	}
 	return reg.Repositories(ctx, opts.last, func(repos []string) error {
 		for _, repopath := range repos {
-			if opts.namespace == "" {
-				fmt.Println(repopath)
-			} else if strings.HasPrefix(repopath, opts.namespace+"/") {
-				fmt.Println(repopath[len(opts.namespace)+1:])
+			if strings.HasPrefix(repopath, opts.namespace) {
+				fmt.Println(strings.TrimPrefix(repopath, opts.namespace))
 			}
 		}
 		return nil
