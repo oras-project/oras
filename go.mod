@@ -1,6 +1,6 @@
 module oras.land/oras
 
-go 1.19
+go 1.20
 
 require (
 	github.com/docker/cli v20.10.23+incompatible
