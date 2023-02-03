@@ -34,7 +34,6 @@ var _ = Describe("ORAS beginners:", func() {
 
 			It("should fail listing repositories if wrong registry provided", func() {
 				ORAS("repo", "ls").ExpectFailure().MatchErrKeyWords("Error:").Exec()
-				ORAS("repo", "ls", Reference(Host, Repo, "")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
 				ORAS("repo", "ls", Reference(Host, Repo, "some-tag")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
 			})
 		})
@@ -61,6 +60,20 @@ var _ = Describe("Common registry users:", func() {
 		It("should list repositories", func() {
 			ORAS("repository", "list", Host).MatchKeyWords(Repo).Exec()
 		})
+		It("should list repositories under provided namespace", func() {
+			ORAS("repo", "ls", Reference(Host, Namespace, "")).MatchKeyWords(Repo[len(Namespace)+1:]).Exec()
+		})
+
+		It("should not list repositories without a fully matched namespace", func() {
+			dstRepo := "command-draft/images"
+			ORAS("cp", Reference(Host, Repo, FoobarImageTag), Reference(Host, dstRepo, FoobarImageTag)).
+				WithDescription("prepare destination repo: " + dstRepo).
+				Exec()
+			ORAS("repo", "ls", Host).MatchKeyWords(Repo, dstRepo).Exec()
+			session := ORAS("repo", "ls", Reference(Host, Namespace, "")).MatchKeyWords(Repo[len(Namespace)+1:]).Exec()
+			Expect(session.Out).ShouldNot(gbytes.Say(dstRepo[len(Namespace)+1:]))
+		})
+
 		It("should list repositories via short command", func() {
 			ORAS("repo", "ls", Host).MatchKeyWords(Repo).Exec()
 		})
