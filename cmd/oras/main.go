@@ -38,6 +38,7 @@ func main() {
 		versionCmd(),
 		discoverCmd(),
 		copyCmd(),
+		downloadCmd(),
 		attachCmd(),
 		blob.Cmd(),
 		manifest.Cmd(),
