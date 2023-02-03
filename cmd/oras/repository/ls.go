@@ -93,9 +93,9 @@ func listRepository(opts repositoryOptions) error {
 		return err
 	}
 	return reg.Repositories(ctx, opts.last, func(repos []string) error {
-		for _, repopath := range repos {
-			if strings.HasPrefix(repopath, opts.namespace) {
-				fmt.Println(strings.TrimPrefix(repopath, opts.namespace))
+		for _, repo := range repos {
+			if subRepo, found := strings.CutPrefix(repo, opts.namespace); found {
+				fmt.Println(subRepo)
 			}
 		}
 		return nil
