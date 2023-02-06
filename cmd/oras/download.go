@@ -90,6 +90,8 @@ func runDownload(opts downloadOptions, args []string) error {
 		// Prepare source
 		from := opts.From
 		from.Type = option.TargetTypeRemote
+		ref, _ := registry.ParseReference(arg)
+		from.Reference = ref.Reference
 		from.RawReference = arg
 		src, err := from.NewReadonlyTarget(ctx, opts.Common)
 		if err != nil {
