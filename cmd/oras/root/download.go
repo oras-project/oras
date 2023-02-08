@@ -13,15 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package root
 
 import (
 	"context"
 	"fmt"
-	"oras.land/oras-go/v2/content/oci"
-	"oras.land/oras-go/v2/registry"
 	"path"
 	"sync"
+
+	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras-go/v2/registry"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -56,15 +57,15 @@ Example - Downlad artifacts
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runDownload(opts, args)
+			return download(cmd.Context(), opts, args)
 		},
 	}
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
 
-func runDownload(opts downloadOptions, args []string) error {
-	ctx, _ := opts.SetLoggerLevel()
+func download(ctx context.Context, opts downloadOptions, args []string) error {
+	ctx, _ = opts.WithContext(ctx)
 
 	var dst oras.GraphTarget
 
@@ -83,10 +84,6 @@ func runDownload(opts downloadOptions, args []string) error {
 	extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
 		return display.PrintStatus(desc, "Exists ", opts.Verbose)
-	}
-
-	downloadOptions := oras.CopyOptions{
-		CopyGraphOptions: extendedCopyOptions.CopyGraphOptions,
 	}
 
 	for _, arg := range args {
@@ -118,7 +115,12 @@ func runDownload(opts downloadOptions, args []string) error {
 			return err
 		}
 
-		_, err = oras.Copy(ctx, src, from.Reference, dst, to.Reference, downloadOptions)
+		desc, err := src.Resolve(ctx, from.Reference)
+		if err != nil {
+			return err
+		}
+
+		err = oras.CopyGraph(ctx, src, dst, desc, extendedCopyOptions.CopyGraphOptions)
 		if err != nil {
 			return err
 		}
