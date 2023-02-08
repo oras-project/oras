@@ -18,10 +18,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"oras.land/oras-go/v2/content/oci"
-	"oras.land/oras-go/v2/registry"
 	"path"
 	"sync"
+
+	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras-go/v2/registry"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -85,10 +86,6 @@ func runDownload(opts downloadOptions, args []string) error {
 		return display.PrintStatus(desc, "Exists ", opts.Verbose)
 	}
 
-	downloadOptions := oras.CopyOptions{
-		CopyGraphOptions: extendedCopyOptions.CopyGraphOptions,
-	}
-
 	for _, arg := range args {
 		// Prepare source
 		from := opts.From
@@ -118,7 +115,12 @@ func runDownload(opts downloadOptions, args []string) error {
 			return err
 		}
 
-		_, err = oras.Copy(ctx, src, from.Reference, dst, to.Reference, downloadOptions)
+		desc, err := src.Resolve(ctx, from.Reference)
+		if err != nil {
+			return err
+		}
+
+		err = oras.CopyGraph(ctx, src, dst, desc, extendedCopyOptions.CopyGraphOptions)
 		if err != nil {
 			return err
 		}
