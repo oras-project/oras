@@ -1,6 +1,6 @@
-#!/bin/sh
+#!/bin/sh -e
 
-function help {
+help () {
     echo "Usage"
     echo "  run-registry <mount-root> <image-name> <container-name> <container-port>"
     echo ""
@@ -12,7 +12,7 @@ function help {
 }
 
 # run registry service for testing
-function run-registry {
+run_registry () {
     # check arguments
     mnt_root=$1
     if [ -z "$mnt_root" ]; then
@@ -46,7 +46,7 @@ function run-registry {
         tar -xvzf $layer -C $mnt_root
     done
 
-    try-clean-up $ctr_name
+    try_clean_up $ctr_name
     docker run --pull always -d -p $ctr_port:5000 --rm --name $ctr_name \
     --env REGISTRY_STORAGE_DELETE_ENABLED=true \
     --env REGISTRY_AUTH_HTPASSWD_REALM=test-basic \
@@ -54,21 +54,15 @@ function run-registry {
     --mount type=bind,source=$mnt_root/docker,target=/var/lib/registry/docker \
     --mount type=bind,source=$mnt_root/passwd_bcrypt,target=/etc/docker/registry/passwd \
     $img_name
-    defer-clean-up $ctr_name
-}
-
-# deferred clean up
-function defer-clean-up {
-    trap "try-clean-up $1" EXIT
 }
 
 
 # clean up
-function try-clean-up {
-    ctr_name=$1
-    if [ -z "$ctr_name" ]; then
-        echo "container name for cleanning up is not provided."
-        exit 1
-    fi
-    docker kill ${ctr_name} || true
+try_clean_up () {
+    for ctr_name in "$@"
+    do
+        echo "----- try killing ${ctr_name} ------"
+        docker kill ${ctr_name} || true
+        echo "------------------------------------"
+    done
 }

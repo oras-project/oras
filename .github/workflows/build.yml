@@ -43,7 +43,7 @@ jobs:
         run: make test
       - name: Run E2E Tests
         run: |
-          $GITHUB_WORKSPACE/test/e2e/ci.sh $GITHUB_WORKSPACE
+          $GITHUB_WORKSPACE/test/e2e/scripts/ci.sh $GITHUB_WORKSPACE
         env:
           ORAS_PATH: bin/linux/amd64/oras
       - name: Check Version
