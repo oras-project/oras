@@ -47,8 +47,6 @@ function run-registry {
     done
 
     try-clean-up $ctr_name
-    echo $ORAS_REGISTRY_HOST_FALLBACK
-    echo $ORAS_REGISTRY_HOST
     docker run --pull always -d -p $ctr_port:5000 --rm --name $ctr_name \
     --env REGISTRY_STORAGE_DELETE_ENABLED=true \
     --env REGISTRY_AUTH_HTPASSWD_REALM=test-basic \
