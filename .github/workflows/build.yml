@@ -43,32 +43,9 @@ jobs:
         run: make test
       - name: Run E2E Tests
         run: |
-          # install deps
-          cd $GITHUB_WORKSPACE/test/e2e
-          go install github.com/onsi/ginkgo/v2/ginkgo
-
-          # start registries
-          source $GITHUB_WORKSPACE/test/e2e/scripts/test.sh
-          run-registry \
-            $GITHUB_WORKSPACE/test/e2e/testdata/distribution/mount \
-            ghcr.io/oras-project/registry:v1.0.0-rc.4 \
-            oras-e2e \
-            $ORAS_REGISTRY_PORT
-          ORAS_REGISTRY_HOST="localhost:${ORAS_REGISTRY_PORT}"
-
-          run-registry \
-            $GITHUB_WORKSPACE/test/e2e/testdata/distribution/mount_fallback \
-            registry:2.8.1 \
-            oras-e2e-fallback \
-            $ORAS_REGISTRY_FALLBACK_PORT
-          ORAS_REGISTRY_HOST="localhost:${ORAS_REGISTRY_PORT}"
-
-          # test
-          ginkgo -r -p --succinct suite
+          $GITHUB_WORKSPACE/test/e2e/ $GITHUB_WORKSPACE
         env:
           ORAS_PATH: bin/linux/amd64/oras
-          ORAS_REGISTRY_PORT: 5000
-          ORAS_REGISTRY_FALLBACK_PORT: 6000
       - name: Check Version
         run: bin/linux/amd64/oras version
       - name: Upload coverage to codecov.io
