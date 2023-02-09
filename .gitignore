@@ -31,6 +31,9 @@ debug
 # Jetbrains
 .idea
 
+# vi
+*.sw*
+
 # Custom
 coverage.txt
 bin/
@@ -38,6 +41,7 @@ dist/
 *.tar.gz
 vendor/
 _dist/
+.DS_Store
 
 # Distribution storage files for local E2E testing
 test/e2e/testdata/distribution/mount/docker/
