@@ -16,41 +16,36 @@ $REPO_ROOT/test/e2e/scripts/ci.sh $REPO_ROOT --clean # REPO_ROOT is root folder 
 If you want to preserve the registry data for further troubleshooting, please remove the `--clean` flag.
 
 ## Development
-### 1. Testing based on your ORAS Binary
-By default, Gomega builds a temp binary every time before running e2e tests, which makes sure that latest code changes in the working directory are covered. To opt-out, set `ORAS_PATH` towards an existing ORAS binary.
-```bash
-export ORAS_PATH="bin/linux/amd64/oras" # change target platform if needed
-```
-You can also customize the testing tool, binary and environments:
-### 2. Using `go test`
+### 1. Using IDEs
+Since E2E test suites are added as an nested module, it's go module and checksum files are separated from oras CLI and is stored in `$REPO_ROOT/test/e2e/`. To develop E2E tests, it's better to open the workspace from `$REPO_ROOT/test/e2e/`.
+### 2. Testing pre-built ORAS Binary
+By default, Gomega builds a temp binary every time before running e2e tests, which makes sure that latest code changes in the working directory are covered. To run tests more faster, set `ORAS_PATH` towards an pre-built ORAS binary.
+### 3. Debugging using `go test`
 
 E2E specs can be ran natively without `ginkgo`:
 ```bash
 # run below command in the target test suite folder
 go test oras.land/oras/test/e2e/suite/${suite_name}
 ```
-This is is super handy for step-by-step debugging when your IDE has a plugin for `go test` 
+This is is super handy for step-by-step debugging when your IDE has a plugin for `go test`  If you need to debug certain specs, use [focused spec](https://onsi.github.io/ginkgo/#focused-specs) but don't check it in.
 
 
-### 3. Testing Different Distribution Services
+### 4. Testing Different Distribution Services
 The backend of E2E tests are two registry services: [oras-distribution](https://github.com/oras-project/distribution) and [upstream distribution](https://github.com/distribution/distribution). The former supports both image and artifact media types with referrer API; The latter only supports image media type with subject and provides referrers query via [tag schema](https://github.com/opencontainers/distribution-spec/blob/v1.1.0-rc1/spec.md#referrers-tag-schema). 
 
 If you want to test against your own registry services, set `ORAS_REGISTRY_HOST` or `ORAS_REGISTRY_FALLBACK_HOST` environmental variables.
 
-### 1. Constant Build & Watch
+### 5. Constant Build & Watch
 This is a good choice if you want to debug certain re-runnable specs
 ```bash
 cd $REPO_ROOT/test/e2e
 ginkgo watch -r
 ```
 
-### 2. Debugging
-Since E2E test suites are added to a sub-module, you need to run `go test` from `$REPO_ROOT/test/e2e/`. If you need to debug a certain spec, use [focused spec](https://onsi.github.io/ginkgo/#focused-specs) but don't check it in.
+### 6. Trouble-shooting CLI
+The executed commands should be shown in the ginkgo logs after `[It]`, with 
 
-### 3. Trouble-shooting CLI
-Executed command should be shown in the ginkgo logs after `[It]`,
-
-### 4. Adding New Tests
+### 7. Adding New Tests
 Two suites will be maintained for E2E testing:
 - command: contains test specs for single oras command execution
 - scenario: contains featured scenarios with several oras commands execution
@@ -64,9 +59,9 @@ Describe: <Role>
        Expect: <Result> (detailed checks for execution results)
 ```
 
-### 5. Adding New Test Data
+### 8. Adding New Test Data
 
-#### 5.1 Command Suite
+#### 8.1 Command Suite
 Command suite uses pre-baked test data, which is a bunch of layered archive files compressed from distribution storage. Test data are all stored in `$REPO_ROOT/test/e2e/testdata/distribution/` but separated in different sub-folders: oras distribution uses `mount` and upstream distribution uses `mount_fallback`.
 
 For both registries, the repository name should follow the convention of `command/$repo_suffix`. To add a new layer to the test data, compress the `docker` folder from the root directory of the distribution storage and copy it to `$REPO_ROOT/test/e2e/testdata/distribution/mount` folder.
@@ -132,5 +127,5 @@ graph TD;
         end
     end
 ```
-#### 5.2 Scenario Suite
+#### 8.2 Scenario Suite
 Test files used by scenario-based specs are placed in `$REPO_ROOT/test/e2e/testdata/files`.
