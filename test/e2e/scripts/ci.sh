@@ -3,7 +3,7 @@
 export ORAS_REGISTRY_PORT="5000"
 export ORAS_REGISTRY_HOST="localhost:${ORAS_REGISTRY_PORT}"
 export ORAS_REGISTRY_PORT="6000"
-exportORAS_REGISTRY_FALLBACK_HOST="localhost:${ORAS_REGISTRY_FALLBACK_PORT}"
+export ORAS_REGISTRY_FALLBACK_HOST="localhost:${ORAS_REGISTRY_FALLBACK_PORT}"
 
 repo_root=$1
 if [ -z "$repo_root" ]; then
@@ -15,8 +15,7 @@ fi
 
   # install deps
 repo_root=$(realpath --canonicalize-existing ${repo_root})
-cd $repo_root/test/e2e
-go install github.com/onsi/ginkgo/v2/ginkgo
+cd $repo_root/test/e2e && go install github.com/onsi/ginkgo/v2/ginkgo
 
   # start registries
 source $repo_root/test/e2e/scripts/common.sh
