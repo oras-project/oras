@@ -22,7 +22,7 @@ repo_root=$1
 if [ -z "${repo_root}" ]; then
     echo "repository root path is not provided."
     echo "Usage"
-    echo "  ci.sh <repo_root> [clean_up]"
+    echo "  ci.sh <repo_root> [--clean]"
     exit 1
 fi
 clean_up=$2
@@ -34,7 +34,7 @@ cd ${repo_root}/test/e2e && go install github.com/onsi/ginkgo/v2/ginkgo@latest
 # start registries
 . ${repo_root}/test/e2e/scripts/common.sh
 
-if [ "$clean_up" = true ]; then
+if [ "$clean_up" = '--clean' ]; then
     trap "try_clean_up oras-e2e oras-e2e-fallback" EXIT
 fi
 
