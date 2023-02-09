@@ -47,7 +47,7 @@ function run-registry {
     done
 
     try-clean-up $ctr_name
-    echo "--------------------"
+    echo "--------tried----------"
     docker run --pull always -d -p $ctr_port:5000 --rm --name $ctr_name \
     --env REGISTRY_STORAGE_DELETE_ENABLED=true \
     --env REGISTRY_AUTH_HTPASSWD_REALM=test-basic \
@@ -67,9 +67,10 @@ function defer-clean-up {
 # clean up
 function try-clean-up {
     ctr_name=$1
+    echo "------trying-----------"
     if [ -z "$ctr_name" ]; then
         echo "container name for cleanning up is not provided."
         exit 1
     fi
-    trap "docker kill ${ctr_name} || true"
+    docker kill ${ctr_name} || true
 }
