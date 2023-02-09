@@ -285,3 +285,62 @@ func TestRemote_parseResolve_err(t *testing.T) {
 		})
 	}
 }
+
+func TestRemote_parseCustomHeaders(t *testing.T) {
+	tests := []struct {
+		name   string
+		fields []string
+		want   nhttp.Header
+	}{
+		{
+			name:   "valid input, one header, one value",
+			fields: []string{"value:key"},
+			want:   map[string][]string{"value": {"key"}},
+		},
+		{
+			name:   "valid input, multiple header, one value",
+			fields: []string{"value:key", "v:k"},
+			want:   map[string][]string{"value": {"key"}, "v": {"k"}},
+		},
+		{
+			name:   "valid input, multiple header, multiple values",
+			fields: []string{"value:key,key2,key3", "v:k,k2,k3"},
+			want:   map[string][]string{"value": {"key", "key2", "key3"}, "v": {"k", "k2", "k3"}},
+		},
+		{
+			name:   "one valid header and one invalid header(no pair)",
+			fields: []string{"value:key,key2,key3", "vk"},
+			want:   map[string][]string{"value": {"key", "key2", "key3"}},
+		},
+		{
+			name:   "one valid header and one invalid header(no value)",
+			fields: []string{"vk:", "value:key,key2,key3"},
+			want:   map[string][]string{"value": {"key", "key2", "key3"}},
+		},
+		{
+			name:   "empty string is a valid key",
+			fields: []string{":k,k2,k3", "value:key,key2,key3"},
+			want:   map[string][]string{"": {"k", "k2", "k3"}, "value": {"key", "key2", "key3"}},
+		},
+		{
+			name:   "multiple colons are allowed",
+			fields: []string{"::::k,k2,k3", "value:key,key2,key3"},
+			want:   map[string][]string{"": {":::k", "k2", "k3"}, "value": {"key", "key2", "key3"}},
+		},
+		{
+			name:   "invalid headers",
+			fields: []string{"foo", "bar:"},
+			want:   map[string][]string{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := &Remote{
+				headers: tt.fields,
+			}
+			if got := opts.parseCustomHeaders(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Remote.parseCustomHeaders() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

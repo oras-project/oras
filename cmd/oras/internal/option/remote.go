@@ -51,6 +51,8 @@ type Remote struct {
 	resolveDialContext    func(dialer *net.Dialer) func(context.Context, string, string) (net.Conn, error)
 	applyDistributionSpec bool
 	distributionSpec      distributionSpec
+
+	headers []string
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
@@ -62,6 +64,7 @@ func (opts *Remote) EnableDistributionSpecFlag() {
 func (opts *Remote) ApplyFlags(fs *pflag.FlagSet) {
 	opts.ApplyFlagsWithPrefix(fs, "", "")
 	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
+	fs.StringArrayVarP(&opts.headers, "header", "H", []string{}, "use custom headers with requests")
 }
 
 func applyPrefix(prefix, description string) (flagPrefix, notePrefix string) {
@@ -209,7 +212,8 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 				TLSClientConfig:       config,
 			},
 		},
-		Cache: auth.NewCache(),
+		Cache:  auth.NewCache(),
+		Header: opts.parseCustomHeaders(),
 	}
 	client.SetUserAgent("oras/" + version.GetVersion())
 	if debug {
@@ -241,6 +245,20 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 		}
 	}
 	return
+}
+
+func (opts *Remote) parseCustomHeaders() http.Header {
+	if len(opts.headers) != 0 {
+		headers := map[string][]string{}
+		for _, h := range opts.headers {
+			before, after, found := strings.Cut(h, ":")
+			if found && after != "" {
+				headers[before] = strings.Split(after, ",")
+			}
+		}
+		return headers
+	}
+	return nil
 }
 
 // Credential returns a credential based on the remote options.
