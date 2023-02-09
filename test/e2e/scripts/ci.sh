@@ -27,7 +27,7 @@ if [ -z "${repo_root}" ]; then
 fi
 clean_up=$2
 
-# install deps
+echo " === installing ginkgo  === "
 repo_root=$(realpath --canonicalize-existing ${repo_root})
 cd ${repo_root}/test/e2e && go install github.com/onsi/ginkgo/v2/ginkgo@latest
 
@@ -35,23 +35,23 @@ cd ${repo_root}/test/e2e && go install github.com/onsi/ginkgo/v2/ginkgo@latest
 . ${repo_root}/test/e2e/scripts/common.sh
 
 if [ "$clean_up" = '--clean' ]; then
+    echo " === setting deferred clean up jobs  === "
     trap "try_clean_up oras-e2e oras-e2e-fallback" EXIT
 fi
 
+echo " === preparing oras distribution === "
 run_registry \
   ${repo_root}/test/e2e/testdata/distribution/mount \
   ghcr.io/oras-project/registry:v1.0.0-rc.4 \
   oras-e2e \
   $ORAS_REGISTRY_PORT
 
+echo " === preparing upstream distribution === "
 run_registry \
   ${repo_root}/test/e2e/testdata/distribution/mount_fallback \
   registry:2.8.1 \
   oras-e2e-fallback \
   $ORAS_REGISTRY_FALLBACK_PORT
 
-# run tests
+echo " === run tests === "
 ginkgo -r -p --succinct suite
-
-# clean up
-try_clean_up oras-e2e oras-e2e-fallback

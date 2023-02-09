@@ -53,7 +53,6 @@ run_registry () {
         exit 1
     fi
 
-    # prepare test data
     rm -rf $mnt_root/docker
     for layer in $(ls -rt $mnt_root/*.tar.gz); do
         tar -xvzf $layer -C $mnt_root

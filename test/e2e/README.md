@@ -1,68 +1,42 @@
 # ORAS End-to-End Testing Dev Guide
 **KNOWN LIMITATION**: E2E tests are designed to run in the CI and currently only support running on linux platform.
-## Setting up
-Minimal setup: Run the script in **step 3**
+## Prerequisites
+[git](https://git-scm.com/downloads), [docker](https://docs.docker.com/desktop/install/linux-install/), [go](https://golang.google.cn/dl/)
 
+## Run E2E Tests via Ginkgo
 ### 1. Clone Source Code of ORAS CLI
 ```shell
 git clone https://github.com/oras-project/oras.git
 ```
-
-### 2. _[Optional]_ Install Ginkgo
-This will enable you use `ginkgo` directly in CLI.
-```shell
-go install github.com/onsi/ginkgo/v2/ginkgo@latest
-```
-If you skip step 2, you can only run tests via `go test`. 
-
-### 3. Run Distribution Services
-The backend of E2E test depends on two registry services compliant to [OCI distribution spec v1.1-rc1](https://github.com/opencontainers/distribution-spec/blob/v1.1.0-rc1/spec.md): [oras-distribution](https://github.com/oras-project/distribution) and [upstream distribution](https://github.com/distribution/distribution). The former supports both image and artifact media types with referrer API. The latter only supports image media type with subject and provides referrers query via [tag schema](https://github.com/opencontainers/distribution-spec/blob/v1.1.0-rc1/spec.md#referrers-tag-schema).
-TODO: scriptize this
-```shell
-PORT=5000
-docker run -dp $PORT:5000 --rm --name oras-e2e \
-    --env STORAGE_DELETE_ENABLED=true \
-    ghcr.io/oras-project/registry:v1.0.0-rc.2
-```
-
-### 4. _[Optional]_ Customize Port for Distribution
-```shell
-export ORAS_REGISTRY_HOST="localhost:$PORT"
-# for PowerShell, use $env:ORAS_REGISTRY_HOST = "localhost:$PORT"
-```
-If you skipped step 4, E2E test will look for oras-distribution ran in `localhost:5000` and upstream distribution ran in `localhost:6000`
-
-### 5. _[Optional]_ Setup ORAS Binary for Testing
+### 2. Run E2E Tests
+Use below command to prepare and run all test suites.
 ```bash
-# Set REPO_ROOT as root folder of oras CLI code
-cd $REPO_ROOT
-make build
-```
-### 6. _[Optional]_ Setup Pre-Built Binary
-You need to setup below environmental variables to debug a pre-built ORAS binary:
-```bash
-export ORAS_PATH="bin/linux/amd64/oras" # change target platform if needed
-export GITHUB_WORKSPACE=$REPO_ROOT
-```
-If you skipped step 5 or 6, Gomega will build a temp binary, which will include all the CLI code changes in the working directory.
-
-### 7. _[Optional]_ Mount Test Data
-If you want to run command suite, you need to decompress the registry storage files and mount to the distribution. `$REPO_ROOT` points to the root folder of cloned oras CLI code.
-```shell
-mnt_root=${REPO_ROOT}/test/e2e/testdata/distribution/mount
-for layer in $(ls ${mnt_root}/*.tar.gz); do
-    tar -xvzf $layer -C ${mnt_root}
-done
-
-PORT=5000
-docker run -dp ${PORT}:5000 --rm --name oras-e2e \
-    --env STORAGE_DELETE_ENABLED=true \
-    --mount type=bind,source=${mnt_root}/docker,target=/opt/data/registry-root-dir/docker \
-    ghcr.io/oras-project/registry:v1.0.0-rc.2
-```
-Skipping step 7 you will not be able to run specs in Command suite.
+$REPO_ROOT/test/e2e/scripts/ci.sh $REPO_ROOT --clean # REPO_ROOT is root folder of oras CLI code
+``` 
+If you want to preserve the registry data for further troubleshooting, please remove the `--clean` flag.
 
 ## Development
+### 1. Testing based on your ORAS Binary
+By default, Gomega builds a temp binary every time before running e2e tests, which makes sure that latest code changes in the working directory are covered. To opt-out, set `ORAS_PATH` towards an existing ORAS binary.
+```bash
+export ORAS_PATH="bin/linux/amd64/oras" # change target platform if needed
+```
+You can also customize the testing tool, binary and environments:
+### 2. Using `go test`
+
+E2E specs can be ran natively without `ginkgo`:
+```bash
+# run below command in the target test suite folder
+go test oras.land/oras/test/e2e/suite/${suite_name}
+```
+This is is super handy for step-by-step debugging when your IDE has a plugin for `go test` 
+
+
+### 3. Testing Different Distribution Services
+The backend of E2E tests are two registry services: [oras-distribution](https://github.com/oras-project/distribution) and [upstream distribution](https://github.com/distribution/distribution). The former supports both image and artifact media types with referrer API; The latter only supports image media type with subject and provides referrers query via [tag schema](https://github.com/opencontainers/distribution-spec/blob/v1.1.0-rc1/spec.md#referrers-tag-schema). 
+
+If you want to test against your own registry services, set `ORAS_REGISTRY_HOST` or `ORAS_REGISTRY_FALLBACK_HOST` environmental variables.
+
 ### 1. Constant Build & Watch
 This is a good choice if you want to debug certain re-runnable specs
 ```bash
