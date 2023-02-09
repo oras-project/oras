@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/sh
 
 function help {
     echo "Usage"

@@ -15,7 +15,7 @@ fi
 
   # install deps
 repo_root=$(realpath --canonicalize-existing ${repo_root})
-cd $repo_root/test/e2e && go install github.com/onsi/ginkgo/v2/ginkgo
+cd $repo_root/test/e2e && go install github.com/onsi/ginkgo/v2/ginkgo@v2.8.0
 
   # start registries
 source $repo_root/test/e2e/scripts/common.sh
