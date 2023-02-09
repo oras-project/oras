@@ -22,7 +22,7 @@ repo_root=$1
 if [ -z "${repo_root}" ]; then
     echo "repository root path is not provided."
     echo "Usage"
-    echo "  ci.sh <repo_root> [--clean]"
+    echo "  e2e.sh <repo_root> [--clean]"
     exit 1
 fi
 clean_up=$2
