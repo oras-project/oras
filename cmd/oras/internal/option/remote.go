@@ -253,7 +253,11 @@ func (opts *Remote) parseCustomHeaders() http.Header {
 		for _, h := range opts.headers {
 			before, after, found := strings.Cut(h, ":")
 			if found && after != "" {
-				headers[before] = strings.Split(after, ",")
+				if headers[before] == nil {
+					headers[before] = strings.Split(after, ",")
+				} else {
+					headers[before] = append(headers[before], strings.Split(after, ",")...)
+				}
 			}
 		}
 		return headers

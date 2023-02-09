@@ -332,6 +332,16 @@ func TestRemote_parseCustomHeaders(t *testing.T) {
 			fields: []string{"foo", "bar:"},
 			want:   map[string][]string{},
 		},
+		{
+			name:   "repeated headers",
+			fields: []string{"value:key", "value:key"},
+			want:   map[string][]string{"value": {"key", "key"}},
+		},
+		{
+			name:   "repeated key with different values",
+			fields: []string{"value:key", "value:key2"},
+			want:   map[string][]string{"value": {"key", "key2"}},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
