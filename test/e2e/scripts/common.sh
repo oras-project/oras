@@ -61,8 +61,6 @@ run_registry () {
 try_clean_up () {
     for ctr_name in "$@"
     do
-        echo "----- try killing ${ctr_name} ------"
         docker kill ${ctr_name} || true
-        echo "------------------------------------"
     done
 }
