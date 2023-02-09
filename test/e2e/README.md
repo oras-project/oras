@@ -1,7 +1,7 @@
 # ORAS End-to-End Testing Dev Guide
 **KNOWN LIMITATION**: E2E tests are designed to run in the CI and currently only support running on linux platform.
 ## Prerequisites
-[git](https://git-scm.com/downloads), [docker](https://docs.docker.com/desktop/install/linux-install/), [go](https://golang.google.cn/dl/)
+[git](https://git-scm.com/downloads), [docker](https://docs.docker.com/desktop/install/linux-install/), [go](https://golang.google.cn/dl/).
 
 ## Run E2E Tests via Ginkgo
 ### 1. Clone Source Code of ORAS CLI
