@@ -34,7 +34,7 @@ type ImageSpec struct {
 // Parse parses flags into the option.
 func (opts *ImageSpec) Parse() error {
 	switch opts.specFlag {
-	case "":
+	case "v1.1-auto":
 		opts.ManifestMediaType = ""
 	case "v1.1-image":
 		opts.ManifestMediaType = ocispec.MediaTypeImageManifest
@@ -48,7 +48,7 @@ func (opts *ImageSpec) Parse() error {
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *ImageSpec) ApplyFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&opts.specFlag, "image-spec", "", "specify manifest type for building artifact. options: v1.1-image, v1.1-artifact")
+	fs.StringVar(&opts.specFlag, "image-spec", "v1.1-artifact", "specify manifest type for building artifact. options: v1.1-image, v1.1-artifact, v1.1-auto")
 }
 
 // distributionSpec option struct.
