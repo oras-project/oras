@@ -41,7 +41,7 @@ type Target struct {
 	RawReference string
 	Type         string
 	Reference    string //contains tag or digest
-	// contains
+	// Path contains
 	//  - path to the OCI image layout target, or
 	//  - registry and repository for the remote target
 	Path string
