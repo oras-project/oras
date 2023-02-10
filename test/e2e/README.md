@@ -15,25 +15,26 @@ PATH+=:$(go env GOPATH)/bin
 
 ## Development
 ### 1. Using IDEs
-Since E2E test suites are added as an nested module, it's go module and checksum files are separated from oras CLI and is stored in `$REPO_ROOT/test/e2e/`. To develop E2E tests, it's better to open the workspace from `$REPO_ROOT/test/e2e/`.
-### 2. Testing pre-built ORAS Binary
-By default, Gomega builds a temp binary every time before running e2e tests, which makes sure that latest code changes in the working directory are covered. To run tests more faster, set `ORAS_PATH` towards an pre-built ORAS binary.
-### 3. Debugging using `go test`
+Since E2E test suites are added as an nested module, the module file and checksum file are separated from oras CLI. To develop E2E tests, it's better to open your IDE or set the working diretory in `$REPO_ROOT/test/e2e/`.
 
+### 2. Testing pre-built ORAS Binary
+By default, Gomega builds a temp binary every time before running e2e tests, which makes sure that latest code changes in the working directory are covered. If you are only making changes to E2E test code, you may set `ORAS_PATH` towards your pre-built ORAS binary to speed up the testing process
+
+### 3. Debugging via `go test`
 E2E specs can be ran natively without `ginkgo`:
 ```shell
 # run below command in the target test suite folder
 go test oras.land/oras/test/e2e/suite/${suite_name}
 ```
-This is is super handy for step-by-step debugging when your IDE has a plugin for `go test`. If you need to debug certain specs, use [focused spec](https://onsi.github.io/ginkgo/#focused-specs) but don't check it in.
+This is is super handy when you want to step-by-step debugging from command-line or via an IDE. If you need to debug certain specs, use [focused specs](https://onsi.github.io/ginkgo/#focused-specs) but don't check it in.
 
 ### 4. Testing Different Distribution Services
 The backend of E2E tests are two registry services: [oras-distribution](https://github.com/oras-project/distribution) and [upstream distribution](https://github.com/distribution/distribution). The former supports both image and artifact media types with referrer API; The latter only supports image media type with subject and provides referrers query via [tag schema](https://github.com/opencontainers/distribution-spec/blob/v1.1.0-rc1/spec.md#referrers-tag-schema). 
 
-If you want to test against your own registry services, set `ORAS_REGISTRY_HOST` or `ORAS_REGISTRY_FALLBACK_HOST` environmental variables.
+You can run scenario test suite against your own registry services via setting `ORAS_REGISTRY_HOST` or `ORAS_REGISTRY_FALLBACK_HOST` environmental variables.
 
 ### 5. Constant Build & Watch
-This is a good choice if you want to debug certain re-runnable specs
+This is a good choice if you want to debug certain re-runnable specs:
 ```shell
 cd $REPO_ROOT/test/e2e
 ginkgo watch -r
@@ -45,6 +46,7 @@ The executed commands should be shown in the ginkgo logs after `[It]`, with
 ### 7. Adding New Tests
 Two suites will be maintained for E2E testing:
 - command: contains test specs for single oras command execution
+- auth: contains test specs similar to command specs but specific to auth. It cannot be ran in parallel with command suite specs
 - scenario: contains featured scenarios with several oras commands execution
 
 Inside a suite, please follow below model when building the hierarchical collections of specs:
