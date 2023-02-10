@@ -29,7 +29,7 @@ clean_up=$2
 
 echo " === installing ginkgo  === "
 repo_root=$(realpath --canonicalize-existing ${repo_root})
-cd ${repo_root}/test/e2e && go install github.com/onsi/ginkgo/v2/ginkgo@latest
+pushd ${repo_root}/test/e2e && go install github.com/onsi/ginkgo/v2/ginkgo@latest && popd
 
 # start registries
 . ${repo_root}/test/e2e/scripts/common.sh
