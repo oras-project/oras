@@ -63,13 +63,17 @@ var (
 		{Digest: "8d7a27ff2662", Name: "application/vnd.oci.artifact.manifest.v1+json"},
 		{Digest: "2dbea575a349", Name: "application/vnd.oci.artifact.manifest.v1+json"},
 	}
-	foobarFallbackReferrersStates = []match.StateKey{
+	foobarImageReferrersStates = []match.StateKey{
 		{Digest: "0e007dcb9ded", Name: "application/vnd.oci.image.manifest.v1+json"},
 		{Digest: "32b78bd00723", Name: "application/vnd.oci.image.manifest.v1+json"},
 	}
-	foobarFallbackConfigStates = []match.StateKey{
+	foobarImageConfigStates = []match.StateKey{
 		{Digest: "44136fa355b3", Name: "test.signature.file"},
 		{Digest: "44136fa355b3", Name: "test.sbom.file"},
+	}
+	foobarFallbackImageReferrersStates = []match.StateKey{
+		{Digest: "316405db72cc", Name: "application/vnd.oci.image.manifest.v1+json"},
+		{Digest: "8b3f7e000c4a", Name: "application/vnd.oci.image.manifest.v1+json"},
 	}
 	multiImageStates = []match.StateKey{
 		{Digest: "2ef548696ac7", Name: "hello.tar"},
@@ -107,7 +111,7 @@ var _ = Describe("Common registry users:", func() {
 		})
 
 		It("should copy an image and its referrers to a new repository", func() {
-			stateKeys := append(append(foobarStates, foobarReferrersStates...), foobarFallbackConfigStates...)
+			stateKeys := append(append(foobarStates, foobarReferrersStates...), foobarImageConfigStates...)
 			src := Reference(Host, ArtifactRepo, FoobarImageTag)
 			dst := Reference(Host, cpTestRepo("referrers"), FoobarImageDigest)
 			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
@@ -149,24 +153,25 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 			dstManifest := ORAS("manifest", "fetch", dst).Exec().Out.Contents()
 			gomega.Expect(srcManifest).To(gomega.Equal(dstManifest))
 		}
-		It("should copy an image artifact and its referrers to a fallback registry, and back to registry", func() {
-			repo := cpTestRepo("fallback")
-			stateKeys := append(append(foobarStates, foobarFallbackReferrersStates...), foobarFallbackConfigStates...)
-			src := Reference(Host, ArtifactRepo, FallbackSignatureArtifactDigest)
+		It("should copy an image artifact and its referrers from a registry to a fallback registry", func() {
+			repo := cpTestRepo("to-fallback")
+			stateKeys := append(append(foobarStates, foobarImageReferrersStates...), foobarImageConfigStates...)
+			src := Reference(Host, ArtifactRepo, SignatureImageReferrerDigest)
 			dst := Reference(FallbackHost, repo, "")
-			dstWithDigest := Reference(FallbackHost, repo, FallbackSignatureArtifactDigest)
 			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
-			validate(src, dstWithDigest)
+			validate(src, Reference(FallbackHost, repo, SignatureImageReferrerDigest))
 			ORAS("discover", "-o", "tree", Reference(FallbackHost, repo, FoobarImageDigest)).
-				WithDescription("discover referrer via subject").MatchKeyWords(FallbackSignatureArtifactDigest).Exec()
-
-			src = dstWithDigest
-			dstWithDigest = Reference(Host, repo, FallbackSignatureArtifactDigest)
-			dst = Reference(Host, repo, "")
+				WithDescription("discover referrer via subject").MatchKeyWords(SignatureImageReferrerDigest, SBOMImageReferrerDigest).Exec()
+		})
+		It("should copy an image artifact and its referrers from a fallback registry to a registry", func() {
+			repo := cpTestRepo("from-fallback")
+			stateKeys := append(append(foobarStates, foobarFallbackImageReferrersStates...), foobarImageConfigStates...)
+			src := Reference(FallbackHost, ArtifactRepo, FallbackSBOMImageReferrerDigest)
+			dst := Reference(Host, repo, "")
 			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
-			validate(src, dstWithDigest)
+			validate(src, Reference(Host, repo, FallbackSBOMImageReferrerDigest))
 			ORAS("discover", "-o", "tree", Reference(Host, repo, FoobarImageDigest)).
-				WithDescription("discover referrer via subject").MatchKeyWords(FallbackSignatureArtifactDigest).Exec()
+				WithDescription("discover referrer via subject").MatchKeyWords(FallbackSignatureImageReferrerDigest, FallbackSBOMImageReferrerDigest).Exec()
 		})
 	})
 })
