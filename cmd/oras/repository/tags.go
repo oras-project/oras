@@ -29,6 +29,7 @@ type showTagsOptions struct {
 	option.Target
 
 	last             string
+	filter           string
 	excludeDigestTag bool
 }
 
@@ -68,6 +69,7 @@ Example - Show tags of the target OCI layout archive 'layout.tar':
 	}
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the tag specified by `last`")
 	cmd.Flags().BoolVar(&opts.excludeDigestTag, "exclude-digest-tags", false, "exclude all digest-like tags such as 'sha256-aaaa...'")
+	cmd.Flags().StringVar(&opts.filter, "filter", "", "get tags associated with specified tag or digest")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
@@ -85,6 +87,15 @@ func showTags(opts showTagsOptions) error {
 		for _, tag := range tags {
 			if opts.excludeDigestTag && isDigestTag(tag) {
 				continue
+			}
+			if opts.filter != "" {
+				desc, err := finder.Resolve(ctx, tag)
+				if err != nil {
+					return err
+				}
+				if desc.Digest.String() != opts.filter {
+					continue
+				}
 			}
 			fmt.Println(tag)
 		}
