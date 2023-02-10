@@ -314,7 +314,7 @@ func TestRemote_parseCustomHeaders(t *testing.T) {
 		{
 			name:        "valid input, multiple header, multiple values",
 			headerFlags: []string{"value:key,key2,key3", "v:k,k2,k3"},
-			want:        map[string][]string{"value": {"key", "key2", "key3"}, "v": {"k", "k2", "k3"}},
+			want:        map[string][]string{"value": {"key,key2,key3"}, "v": {"k,k2,k3"}},
 			wantErr:     false,
 		},
 		{
@@ -332,13 +332,13 @@ func TestRemote_parseCustomHeaders(t *testing.T) {
 		{
 			name:        "empty string is a valid key",
 			headerFlags: []string{":k,k2,k3", "value:key,key2,key3"},
-			want:        map[string][]string{"": {"k", "k2", "k3"}, "value": {"key", "key2", "key3"}},
+			want:        map[string][]string{"": {"k,k2,k3"}, "value": {"key,key2,key3"}},
 			wantErr:     false,
 		},
 		{
 			name:        "multiple colons are allowed",
 			headerFlags: []string{"::::k,k2,k3", "value:key,key2,key3"},
-			want:        map[string][]string{"": {":::k", "k2", "k3"}, "value": {"key", "key2", "key3"}},
+			want:        map[string][]string{"": {":::k,k2,k3"}, "value": {"key,key2,key3"}},
 			wantErr:     false,
 		},
 		{

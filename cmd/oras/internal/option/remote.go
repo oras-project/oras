@@ -51,9 +51,8 @@ type Remote struct {
 	resolveDialContext    func(dialer *net.Dialer) func(context.Context, string, string) (net.Conn, error)
 	applyDistributionSpec bool
 	distributionSpec      distributionSpec
-
-	headerFlags []string
-	headers     http.Header
+	headerFlags           []string
+	headers               http.Header
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
@@ -255,11 +254,11 @@ func (opts *Remote) parseCustomHeaders() error {
 	if len(opts.headerFlags) != 0 {
 		headers := map[string][]string{}
 		for _, h := range opts.headerFlags {
-			name, csv, found := strings.Cut(h, ":")
-			if !found || strings.TrimSpace(csv) == "" {
+			name, value, found := strings.Cut(h, ":")
+			if !found || strings.TrimSpace(value) == "" {
 				return fmt.Errorf("cannot parse headers: %q", h)
 			}
-			headers[name] = append(headers[name], strings.Split(csv, ",")...)
+			headers[name] = append(headers[name], value)
 		}
 		opts.headers = headers
 	}
