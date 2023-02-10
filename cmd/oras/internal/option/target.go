@@ -159,6 +159,9 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadO
 		if err != nil {
 			return nil, err
 		}
+		tmp := repo.Reference
+		tmp.Reference = ""
+		opts.Path = tmp.String()
 		opts.Reference = repo.Reference.Reference
 		return repo, nil
 	}
