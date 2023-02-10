@@ -60,6 +60,7 @@ run_registry () {
 
     try_clean_up $ctr_name
     docker run --pull always -d -p $ctr_port:5000 --rm --name $ctr_name \
+    -u $(id -u $(whoami)) \
     --env REGISTRY_STORAGE_DELETE_ENABLED=true \
     --env REGISTRY_AUTH_HTPASSWD_REALM=test-basic \
     --env REGISTRY_AUTH_HTPASSWD_PATH=/etc/docker/registry/passwd \
