@@ -52,7 +52,8 @@ type Remote struct {
 	applyDistributionSpec bool
 	distributionSpec      distributionSpec
 
-	headers []string
+	headerFlags []string
+	headers     http.Header
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
@@ -64,7 +65,7 @@ func (opts *Remote) EnableDistributionSpecFlag() {
 func (opts *Remote) ApplyFlags(fs *pflag.FlagSet) {
 	opts.ApplyFlagsWithPrefix(fs, "", "")
 	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
-	fs.StringArrayVarP(&opts.headers, "header", "H", []string{}, "use custom headers with requests")
+	fs.StringArrayVarP(&opts.headerFlags, "header", "H", []string{}, "add custom headers to requests")
 }
 
 func applyPrefix(prefix, description string) (flagPrefix, notePrefix string) {
@@ -108,6 +109,9 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 
 // Parse tries to read password with optional cmd prompt.
 func (opts *Remote) Parse() error {
+	if err := opts.parseCustomHeaders(); err != nil {
+		return err
+	}
 	if err := opts.readPassword(); err != nil {
 		return err
 	}
@@ -213,7 +217,7 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 			},
 		},
 		Cache:  auth.NewCache(),
-		Header: opts.parseCustomHeaders(),
+		Header: opts.headers,
 	}
 	client.SetUserAgent("oras/" + version.GetVersion())
 	if debug {
@@ -247,20 +251,17 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 	return
 }
 
-func (opts *Remote) parseCustomHeaders() http.Header {
-	if len(opts.headers) != 0 {
+func (opts *Remote) parseCustomHeaders() error {
+	if len(opts.headerFlags) != 0 {
 		headers := map[string][]string{}
-		for _, h := range opts.headers {
-			before, after, found := strings.Cut(h, ":")
-			if found && after != "" {
-				if headers[before] == nil {
-					headers[before] = strings.Split(after, ",")
-				} else {
-					headers[before] = append(headers[before], strings.Split(after, ",")...)
-				}
+		for _, h := range opts.headerFlags {
+			name, csv, found := strings.Cut(h, ":")
+			if !found || strings.TrimSpace(csv) == "" {
+				return fmt.Errorf("cannot parse headers: %q", h)
 			}
+			headers[name] = append(headers[name], strings.Split(csv, ",")...)
 		}
-		return headers
+		opts.headers = headers
 	}
 	return nil
 }

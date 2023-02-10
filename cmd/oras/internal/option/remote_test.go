@@ -288,68 +288,100 @@ func TestRemote_parseResolve_err(t *testing.T) {
 
 func TestRemote_parseCustomHeaders(t *testing.T) {
 	tests := []struct {
-		name   string
-		fields []string
-		want   nhttp.Header
+		name        string
+		headerFlags []string
+		want        nhttp.Header
+		wantErr     bool
 	}{
 		{
-			name:   "valid input, one header, one value",
-			fields: []string{"value:key"},
-			want:   map[string][]string{"value": {"key"}},
+			name:        "no custom header is provided",
+			headerFlags: []string{},
+			want:        nil,
+			wantErr:     false,
 		},
 		{
-			name:   "valid input, multiple header, one value",
-			fields: []string{"value:key", "v:k"},
-			want:   map[string][]string{"value": {"key"}, "v": {"k"}},
+			name:        "valid input, one header, one value",
+			headerFlags: []string{"value:key"},
+			want:        map[string][]string{"value": {"key"}},
+			wantErr:     false,
 		},
 		{
-			name:   "valid input, multiple header, multiple values",
-			fields: []string{"value:key,key2,key3", "v:k,k2,k3"},
-			want:   map[string][]string{"value": {"key", "key2", "key3"}, "v": {"k", "k2", "k3"}},
+			name:        "valid input, multiple header, one value",
+			headerFlags: []string{"value:key", "v:k"},
+			want:        map[string][]string{"value": {"key"}, "v": {"k"}},
+			wantErr:     false,
 		},
 		{
-			name:   "one valid header and one invalid header(no pair)",
-			fields: []string{"value:key,key2,key3", "vk"},
-			want:   map[string][]string{"value": {"key", "key2", "key3"}},
+			name:        "valid input, multiple header, multiple values",
+			headerFlags: []string{"value:key,key2,key3", "v:k,k2,k3"},
+			want:        map[string][]string{"value": {"key", "key2", "key3"}, "v": {"k", "k2", "k3"}},
+			wantErr:     false,
 		},
 		{
-			name:   "one valid header and one invalid header(no value)",
-			fields: []string{"vk:", "value:key,key2,key3"},
-			want:   map[string][]string{"value": {"key", "key2", "key3"}},
+			name:        "one valid header and one invalid header(no pair)",
+			headerFlags: []string{"value:key,key2,key3", "vk"},
+			want:        nil,
+			wantErr:     true,
 		},
 		{
-			name:   "empty string is a valid key",
-			fields: []string{":k,k2,k3", "value:key,key2,key3"},
-			want:   map[string][]string{"": {"k", "k2", "k3"}, "value": {"key", "key2", "key3"}},
+			name:        "one valid header and one invalid header(no value)",
+			headerFlags: []string{"vk:", "value:key,key2,key3"},
+			want:        nil,
+			wantErr:     true,
 		},
 		{
-			name:   "multiple colons are allowed",
-			fields: []string{"::::k,k2,k3", "value:key,key2,key3"},
-			want:   map[string][]string{"": {":::k", "k2", "k3"}, "value": {"key", "key2", "key3"}},
+			name:        "empty string is a valid key",
+			headerFlags: []string{":k,k2,k3", "value:key,key2,key3"},
+			want:        map[string][]string{"": {"k", "k2", "k3"}, "value": {"key", "key2", "key3"}},
+			wantErr:     false,
 		},
 		{
-			name:   "invalid headers",
-			fields: []string{"foo", "bar:"},
-			want:   map[string][]string{},
+			name:        "multiple colons are allowed",
+			headerFlags: []string{"::::k,k2,k3", "value:key,key2,key3"},
+			want:        map[string][]string{"": {":::k", "k2", "k3"}, "value": {"key", "key2", "key3"}},
+			wantErr:     false,
 		},
 		{
-			name:   "repeated headers",
-			fields: []string{"value:key", "value:key"},
-			want:   map[string][]string{"value": {"key", "key"}},
+			name:        "invalid headers",
+			headerFlags: []string{"foo", "bar:"},
+			want:        nil,
+			wantErr:     true,
 		},
 		{
-			name:   "repeated key with different values",
-			fields: []string{"value:key", "value:key2"},
-			want:   map[string][]string{"value": {"key", "key2"}},
+			name:        "valid headers with spaces",
+			headerFlags: []string{"foo:   a", "bar   :b"},
+			want:        map[string][]string{"foo": {"   a"}, "bar   ": {"b"}},
+			wantErr:     false,
+		},
+		{
+			name:        "invalid headers with spaces",
+			headerFlags: []string{" foo:   ", "bar: "},
+			want:        nil,
+			wantErr:     true,
+		},
+		{
+			name:        "repeated headers",
+			headerFlags: []string{"value:key", "value:key"},
+			want:        map[string][]string{"value": {"key", "key"}},
+			wantErr:     false,
+		},
+		{
+			name:        "repeated key with different values",
+			headerFlags: []string{"value:key", "value:key2"},
+			want:        map[string][]string{"value": {"key", "key2"}},
+			wantErr:     false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			opts := &Remote{
-				headers: tt.fields,
+				headerFlags: tt.headerFlags,
 			}
-			if got := opts.parseCustomHeaders(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Remote.parseCustomHeaders() = %v, want %v", got, tt.want)
+			if err := opts.parseCustomHeaders(); (err != nil) != tt.wantErr {
+				t.Errorf("Remote.parseCustomHeaders() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(tt.want, opts.headers) {
+				t.Errorf("Remote.parseCustomHeaders() = %v, want %v", opts.headers, tt.want)
 			}
 		})
 	}
