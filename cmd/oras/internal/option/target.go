@@ -41,7 +41,10 @@ type Target struct {
 	RawReference string
 	Type         string
 	Reference    string //contains tag or digest
-	Path         string
+	// contains
+	//  - path to the OCI image layout target, or
+	//  - registry and repository for the remote target
+	Path string
 
 	isOCILayout bool
 }
@@ -118,6 +121,9 @@ func (opts *Target) NewTarget(common Common) (oras.GraphTarget, error) {
 		if err != nil {
 			return nil, err
 		}
+		tmp := repo.Reference
+		tmp.Reference = ""
+		opts.Path = tmp.String()
 		opts.Reference = repo.Reference.Reference
 		return repo, nil
 	}
