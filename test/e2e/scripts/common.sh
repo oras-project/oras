@@ -71,6 +71,7 @@ run_registry () {
 
 # clean up
 try_clean_up () {
+    echo " === stopping below containers ==="
     for ctr_name in "$@"
     do
         docker kill ${ctr_name} || true
