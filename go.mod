@@ -3,7 +3,7 @@ module oras.land/oras
 go 1.20
 
 require (
-	github.com/docker/cli v23.0.0+incompatible
+	github.com/docker/cli v23.0.1+incompatible
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6
 	github.com/need-being/go-tree v0.1.0
 	github.com/opencontainers/go-digest v1.0.0
