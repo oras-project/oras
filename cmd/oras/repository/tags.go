@@ -29,7 +29,6 @@ type showTagsOptions struct {
 	option.Target
 
 	last             string
-	filter           string
 	excludeDigestTag bool
 }
 
@@ -69,7 +68,6 @@ Example - Show tags of the target OCI layout archive 'layout.tar':
 	}
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the tag specified by `last`")
 	cmd.Flags().BoolVar(&opts.excludeDigestTag, "exclude-digest-tags", false, "exclude all digest-like tags such as 'sha256-aaaa...'")
-	cmd.Flags().StringVar(&opts.filter, "filter", "", "get tags associated with specified tag or digest")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
@@ -80,20 +78,33 @@ func showTags(opts showTagsOptions) error {
 	if err != nil {
 		return err
 	}
+	filter := ""
 	if opts.Reference != "" {
-		return fmt.Errorf("unexpected tag or digest %q found in repository reference %q", opts.Reference, opts.RawReference)
+		if isDigestTag(opts.Reference) {
+			filter = opts.Reference
+		} else {
+			desc, err := finder.Resolve(ctx, opts.Reference)
+			if err != nil {
+				return err
+			}
+			filter = desc.Digest.String()
+			fmt.Println(filter)
+		}
 	}
 	return finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
 			if opts.excludeDigestTag && isDigestTag(tag) {
 				continue
 			}
-			if opts.filter != "" {
+			if filter != "" {
 				desc, err := finder.Resolve(ctx, tag)
 				if err != nil {
 					return err
 				}
-				if desc.Digest.String() != opts.filter {
+				if desc.Digest.String() != filter {
+					continue
+				}
+				if tag == opts.Reference {
 					continue
 				}
 			}
