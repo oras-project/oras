@@ -121,7 +121,7 @@ graph TD;
             A1-- foo2 -->A2(blob1)
             A1-- bar -->A3(blob2)
 
-            E1["test.sbom.file(image)"] -- subject --> C1
+            E1["test.sbom.file(image)"] -- subject --> A1
             E2["test.signature.file(image)"] -- subject --> E1
         end
     end
