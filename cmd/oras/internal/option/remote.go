@@ -99,7 +99,7 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	}
 
 	if fs.Lookup("resolve") == nil {
-		fs.StringArrayVarP(&opts.resolveFlag, "resolve", "", nil, "customized DNS formatted in `host:port:address`")
+		fs.StringArrayVarP(&opts.resolveFlag, "resolve", "", nil, "customized DNS formatted in `fromHost:fromPort:toIp[:toPort]`")
 	}
 }
 
@@ -142,18 +142,26 @@ func (opts *Remote) parseResolve() error {
 		if len(parts) < 3 {
 			return formatError(r, "expecting host:port:address")
 		}
-
-		port, err := strconv.Atoi(parts[1])
+		from := parts[0]
+		fromPort, err := strconv.Atoi(parts[1])
 		if err != nil {
-			return formatError(r, "expecting uint64 port")
+			return formatError(r, "expecting uint64 destination Port")
 		}
 
+		ip, toPort, found := strings.Cut(parts[2], ":")
+		if found {
+			_, err := strconv.Atoi(toPort)
+			if err != nil {
+				return formatError(r, "expecting uint64 source port")
+			}
+			from += fmt.Sprintf(":%s", toPort)
+		}
 		// ipv6 zone is not parsed
-		to := net.ParseIP(parts[2])
+		to := net.ParseIP(ip)
 		if to == nil {
 			return formatError(r, "invalid IP address")
 		}
-		dialer.Add(parts[0], port, to)
+		dialer.Add(from, fromPort, to)
 	}
 	opts.resolveDialContext = func(base *net.Dialer) func(context.Context, string, string) (net.Conn, error) {
 		dialer.Dialer = base
