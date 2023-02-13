@@ -80,7 +80,8 @@ func showTags(opts showTagsOptions) error {
 	}
 	filter := ""
 	if opts.Reference != "" {
-		if isDigestTag(opts.Reference) {
+		_, err := digest.Parse(opts.Reference)
+		if err == nil {
 			filter = opts.Reference
 		} else {
 			desc, err := finder.Resolve(ctx, opts.Reference)
@@ -88,7 +89,6 @@ func showTags(opts showTagsOptions) error {
 				return err
 			}
 			filter = desc.Digest.String()
-			fmt.Println(filter)
 		}
 	}
 	return finder.Tags(ctx, opts.last, func(tags []string) error {
