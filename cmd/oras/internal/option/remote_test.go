@@ -247,40 +247,69 @@ func TestRemote_isPlainHttp_localhost(t *testing.T) {
 
 func TestRemote_parseResolve_err(t *testing.T) {
 	tests := []struct {
-		name    string
-		opts    *Remote
-		wantErr bool
+		name string
+		opts *Remote
 	}{
 		{
-			name:    "invalid flag",
-			opts:    &Remote{resolveFlag: []string{"this-shouldn't_work"}},
-			wantErr: true,
+			name: "invalid flag",
+			opts: &Remote{resolveFlag: []string{"this-shouldn't_work"}},
 		},
 		{
-			name:    "no host",
-			opts:    &Remote{resolveFlag: []string{":port:address"}},
-			wantErr: true,
+			name: "no host",
+			opts: &Remote{resolveFlag: []string{":port:address"}},
 		},
 		{
-			name:    "no address",
-			opts:    &Remote{resolveFlag: []string{"host:port:"}},
-			wantErr: true,
+			name: "no address",
+			opts: &Remote{resolveFlag: []string{"host:port:"}},
 		},
 		{
-			name:    "invalid address",
-			opts:    &Remote{resolveFlag: []string{"host:port:invalid-ip"}},
-			wantErr: true,
+			name: "invalid address",
+			opts: &Remote{resolveFlag: []string{"host:port:invalid-ip"}},
 		},
 		{
-			name:    "no port",
-			opts:    &Remote{resolveFlag: []string{"host::address"}},
-			wantErr: true,
+			name: "no port",
+			opts: &Remote{resolveFlag: []string{"host::address"}},
+		},
+		{
+			name: "invalid source port",
+			opts: &Remote{resolveFlag: []string{"host:port:address"}},
+		},
+		{
+			name: "invalid destination port",
+			opts: &Remote{resolveFlag: []string{"host:443:address:port"}},
+		},
+		{
+			name: "no source port",
+			opts: &Remote{resolveFlag: []string{"host::address"}},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.opts.parseResolve(); (err != nil) != tt.wantErr {
-				t.Errorf("Remote.parseResolve() error = %v, wantErr %v", err, tt.wantErr)
+			if err := tt.opts.parseResolve(); err == nil {
+				t.Errorf("Expecting error in Remote.parseResolve()")
+			}
+		})
+	}
+}
+
+func TestRemote_parseResolve(t *testing.T) {
+	tests := []struct {
+		name string
+		opts *Remote
+	}{
+		{
+			name: "fromHost:fromPort:toIp",
+			opts: &Remote{resolveFlag: []string{"host:443:0.0.0.0"}},
+		},
+		{
+			name: "fromHost:fromPort:toIp:toPort",
+			opts: &Remote{resolveFlag: []string{"host:443:0.0.0.0:5000"}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.opts.parseResolve(); err != nil {
+				t.Errorf("Remote.parseResolve() error = %v", err)
 			}
 		})
 	}
