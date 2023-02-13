@@ -250,14 +250,14 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 	return
 }
 
-// In conformance to the RFC 2616 specification
-// Reference: https://www.rfc-editor.org/rfc/rfc2616#section-4.2
 func (opts *Remote) parseCustomHeaders() error {
 	if len(opts.headerFlags) != 0 {
 		headers := map[string][]string{}
 		for _, h := range opts.headerFlags {
 			name, value, found := strings.Cut(h, ":")
 			if !found || strings.TrimSpace(name) == "" {
+				// In conformance to the RFC 2616 specification
+				// Reference: https://www.rfc-editor.org/rfc/rfc2616#section-4.2
 				return fmt.Errorf("invalid header: %q", h)
 			}
 			headers[name] = append(headers[name], value)
