@@ -24,7 +24,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
-type showTagsOptions struct {
+type ShowTagsOptions struct {
 	option.Common
 	option.Target
 
@@ -33,7 +33,7 @@ type showTagsOptions struct {
 }
 
 func showTagsCmd() *cobra.Command {
-	var opts showTagsOptions
+	var opts ShowTagsOptions
 	cmd := &cobra.Command{
 		Use:   "tags [flags] <name>",
 		Short: "[Preview] Show tags of the target repository",
@@ -63,7 +63,7 @@ Example - Show tags of the target OCI layout archive 'layout.tar':
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return showTags(opts)
+			return ShowTags(opts)
 		},
 	}
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the tag specified by `last`")
@@ -72,7 +72,7 @@ Example - Show tags of the target OCI layout archive 'layout.tar':
 	return cmd
 }
 
-func showTags(opts showTagsOptions) error {
+func ShowTags(opts ShowTagsOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
 	finder, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
@@ -96,4 +96,18 @@ func isDigestTag(tag string) bool {
 	dgst := strings.Replace(tag, "-", ":", 1)
 	_, err := digest.Parse(dgst)
 	return err == nil
+}
+
+// NewRemoteTarget create a remote target from a string.
+func NewRemoteTarget(uri string, username, password, cafile string) option.Target {
+	target := option.Target{
+		RawReference: uri,
+		Type:         option.TargetTypeRemote,
+		Remote: option.Remote{
+			Username:       username,
+			Password:       password,
+			CACertFilePath: cafile,
+		},
+	}
+	return target
 }
