@@ -102,7 +102,7 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	}
 
 	if fs.Lookup("resolve") == nil {
-		fs.StringArrayVarP(&opts.resolveFlag, "resolve", "", nil, "customized DNS formatted in `fromHost:fromPort:toIp[:toPort]`")
+		fs.StringArrayVarP(&opts.resolveFlag, "resolve", "", nil, "customized DNS formatted in `host:port:toIp[:toPort]`")
 	}
 }
 
