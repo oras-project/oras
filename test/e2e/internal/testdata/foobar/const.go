@@ -13,30 +13,30 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package scenario
+package foobar
 
 import "oras.land/oras/test/e2e/internal/utils/match"
 
 var (
-	blobFileNames = []string{
+	BlobFileNames = []string{
 		"foobar/foo1",
 		"foobar/foo2",
 		"foobar/bar",
 	}
-	pushFileStateKeys = []match.StateKey{
-		{Digest: "2c26b46b68ff", Name: blobFileNames[0]},
-		{Digest: "2c26b46b68ff", Name: blobFileNames[1]},
-		{Digest: "fcde2b2edba5", Name: blobFileNames[2]},
+	PushFileStateKeys = []match.StateKey{
+		{Digest: "2c26b46b68ff", Name: BlobFileNames[0]},
+		{Digest: "2c26b46b68ff", Name: BlobFileNames[1]},
+		{Digest: "fcde2b2edba5", Name: BlobFileNames[2]},
 	}
 
-	configFileName     = "foobar/config.json"
-	configFileStateKey = match.StateKey{
+	ConfigFileName     = "foobar/config.json"
+	ConfigFileStateKey = match.StateKey{
 		Digest: "46b68ac1696c", Name: "application/vnd.unknown.config.v1+json",
 	}
 
-	attachFileName     = "foobar/to-be-attached"
-	attachFileMedia    = "test/oras.e2e"
-	attachFileStateKey = match.StateKey{
-		Digest: "d3b29f7d12d9", Name: attachFileName,
+	AttachFileName     = "foobar/to-be-attached"
+	AttachFileMedia    = "test/oras.e2e"
+	AttachFileStateKey = match.StateKey{
+		Digest: "d3b29f7d12d9", Name: AttachFileName,
 	}
 )

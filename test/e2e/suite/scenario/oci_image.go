@@ -19,13 +19,14 @@ import (
 	"path/filepath"
 
 	. "github.com/onsi/ginkgo/v2"
+	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
 var _ = Describe("OCI image user:", Ordered, func() {
 	repo := "scenario/oci-image"
-	files := append([]string{configFileName}, blobFileNames...)
-	statusKeys := append(pushFileStateKeys, configFileStateKey)
+	files := append([]string{foobar.ConfigFileName}, foobar.BlobFileNames...)
+	statusKeys := append(foobar.PushFileStateKeys, foobar.ConfigFileStateKey)
 	When("pushing images and check", func() {
 		tag := "image"
 		var tempDir string

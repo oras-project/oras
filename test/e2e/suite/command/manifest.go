@@ -28,7 +28,7 @@ import (
 )
 
 func prepare(src string, dst string) {
-	ORAS("cp", src, dst).Exec()
+	ORAS("cp", src, dst).WithDescription("prepare test env").Exec()
 }
 
 func validate(repoRef string, tag string, gone bool) {
