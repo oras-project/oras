@@ -255,8 +255,8 @@ func (opts *Remote) parseCustomHeaders() error {
 		headers := map[string][]string{}
 		for _, h := range opts.headerFlags {
 			name, value, found := strings.Cut(h, ":")
-			if !found || strings.TrimSpace(value) == "" {
-				return fmt.Errorf("cannot parse headers: %q", h)
+			if !found || strings.TrimSpace(name) == "" {
+				return fmt.Errorf("invalid header: %q", h)
 			}
 			headers[name] = append(headers[name], value)
 		}
