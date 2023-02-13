@@ -102,7 +102,7 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	}
 
 	if fs.Lookup("resolve") == nil {
-		fs.StringArrayVarP(&opts.resolveFlag, "resolve", "", nil, "customized DNS formatted in `host:port:address[:port]`")
+		fs.StringArrayVarP(&opts.resolveFlag, "resolve", "", nil, "customized DNS formatted in `host:port:toIp[:toPort]`")
 	}
 }
 
@@ -151,14 +151,14 @@ func (opts *Remote) parseResolve() error {
 		host := parts[0]
 		port, err := strconv.Atoi(parts[1])
 		if err != nil {
-			return formatError(r, "expecting uint64 destination Port")
+			return formatError(r, "expecting uint64 host port")
 		}
 
 		ip, hostPort, found := strings.Cut(parts[2], ":")
 		if found {
 			_, err := strconv.Atoi(hostPort)
 			if err != nil {
-				return formatError(r, "expecting uint64 source port")
+				return formatError(r, "expecting uint64 address port")
 			}
 			host += fmt.Sprintf(":%s", hostPort)
 		}
