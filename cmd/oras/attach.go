@@ -26,7 +26,6 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
-	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -164,14 +163,7 @@ func runAttach(opts attachOptions) error {
 
 	digest := subject.Digest.String()
 	if !strings.HasSuffix(opts.RawReference, digest) {
-		// Reassemble a reference with subject digest
-		if repo, ok := dst.(*remote.Repository); ok {
-			ref := repo.Reference
-			ref.Reference = subject.Digest.String()
-			opts.RawReference = ref.String()
-		} else if opts.Type == option.TargetTypeOCILayout {
-			opts.RawReference = fmt.Sprintf("%s@%s", opts.Path, subject.Digest)
-		}
+		opts.RawReference = fmt.Sprintf("%s@%s", opts.Path, subject.Digest)
 	}
 	fmt.Println("Attached to", opts.AnnotatedReference())
 	fmt.Println("Digest:", root.Digest)
