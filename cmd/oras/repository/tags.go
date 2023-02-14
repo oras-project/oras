@@ -63,7 +63,7 @@ Example - Show tags of the target OCI layout archive 'layout.tar':
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return showTags(opts)
+			return ShowTags(opts)
 		},
 	}
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the tag specified by `last`")
@@ -72,7 +72,7 @@ Example - Show tags of the target OCI layout archive 'layout.tar':
 	return cmd
 }
 
-func showTags(opts showTagsOptions) error {
+func ShowTags(opts showTagsOptions) error {
 	ctx, _ := opts.SetLoggerLevel()
 	finder, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
