@@ -64,7 +64,7 @@ func (opts *Remote) EnableDistributionSpecFlag() {
 func (opts *Remote) ApplyFlags(fs *pflag.FlagSet) {
 	opts.ApplyFlagsWithPrefix(fs, "", "")
 	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
-	fs.StringArrayVarP(&opts.headerFlags, "header", "H", []string{}, "add custom headers to requests")
+	fs.StringArrayVarP(&opts.headerFlags, "header", "H", nil, "add custom headers to requests")
 }
 
 func applyPrefix(prefix, description string) (flagPrefix, notePrefix string) {
