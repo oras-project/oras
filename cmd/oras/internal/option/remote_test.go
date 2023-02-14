@@ -285,3 +285,104 @@ func TestRemote_parseResolve_err(t *testing.T) {
 		})
 	}
 }
+
+func TestRemote_parseCustomHeaders(t *testing.T) {
+	tests := []struct {
+		name        string
+		headerFlags []string
+		want        nhttp.Header
+		wantErr     bool
+	}{
+		{
+			name:        "no custom header is provided",
+			headerFlags: []string{},
+			want:        nil,
+			wantErr:     false,
+		},
+		{
+			name:        "one name-value pair",
+			headerFlags: []string{"key:value"},
+			want:        map[string][]string{"key": {"value"}},
+			wantErr:     false,
+		},
+		{
+			name:        "multiple name-value pairs",
+			headerFlags: []string{"key:value", "k:v"},
+			want:        map[string][]string{"key": {"value"}, "k": {"v"}},
+			wantErr:     false,
+		},
+		{
+			name:        "multiple name-value pairs with commas",
+			headerFlags: []string{"key:value,value2,value3", "k:v,v2,v3"},
+			want:        map[string][]string{"key": {"value,value2,value3"}, "k": {"v,v2,v3"}},
+			wantErr:     false,
+		},
+		{
+			name:        "empty string is a valid value",
+			headerFlags: []string{"k:", "key:value,value2,value3"},
+			want:        map[string][]string{"k": {""}, "key": {"value,value2,value3"}},
+			wantErr:     false,
+		},
+		{
+			name:        "multiple colons are allowed",
+			headerFlags: []string{"k::::v,v2,v3", "key:value,value2,value3"},
+			want:        map[string][]string{"k": {":::v,v2,v3"}, "key": {"value,value2,value3"}},
+			wantErr:     false,
+		},
+		{
+			name:        "name with spaces",
+			headerFlags: []string{"bar   :b"},
+			want:        map[string][]string{"bar   ": {"b"}},
+			wantErr:     false,
+		},
+		{
+			name:        "value with spaces",
+			headerFlags: []string{"foo:   a"},
+			want:        map[string][]string{"foo": {"   a"}},
+			wantErr:     false,
+		},
+		{
+			name:        "repeated pairs",
+			headerFlags: []string{"key:value", "key:value"},
+			want:        map[string][]string{"key": {"value", "value"}},
+			wantErr:     false,
+		},
+		{
+			name:        "repeated name with different values",
+			headerFlags: []string{"key:value", "key:value2"},
+			want:        map[string][]string{"key": {"value", "value2"}},
+			wantErr:     false,
+		},
+		{
+			name:        "one valid header and one invalid header(no pair)",
+			headerFlags: []string{"key:value,value2,value3", "vk"},
+			want:        nil,
+			wantErr:     true,
+		},
+		{
+			name:        "one valid header and one invalid header(empty name)",
+			headerFlags: []string{":v", "key:value,value2,value3"},
+			want:        nil,
+			wantErr:     true,
+		},
+		{
+			name:        "pure-space name is invalid",
+			headerFlags: []string{" :  foo "},
+			want:        nil,
+			wantErr:     true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := &Remote{
+				headerFlags: tt.headerFlags,
+			}
+			if err := opts.parseCustomHeaders(); (err != nil) != tt.wantErr {
+				t.Errorf("Remote.parseCustomHeaders() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(tt.want, opts.headers) {
+				t.Errorf("Remote.parseCustomHeaders() = %v, want %v", opts.headers, tt.want)
+			}
+		})
+	}
+}
