@@ -28,7 +28,6 @@ func Test_ParseRepoPath(t *testing.T) {
 		wantNamespace string
 		wantErr       bool
 	}{
-		// TODO: Add test cases.
 		{
 			name:          "hostname only",
 			args:          args{"testregistry.example.io"},
