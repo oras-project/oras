@@ -1,7 +1,7 @@
 # ORAS End-to-End Testing Dev Guide
 **KNOWN LIMITATION**: E2E tests are designed to run in the CI and currently only support running on linux platform.
 ## Prerequisites
-Install [git](https://git-scm.com/downloads), [docker](https://docs.docker.com/desktop/install/linux-install/), [go](https://golang.google.cn/dl/).
+Install [git](https://git-scm.com/download/linux), [docker](https://docs.docker.com/desktop/install/linux-install), [go](https://go.dev/doc/install).
 
 ## Run E2E Script
 ```shell
@@ -67,7 +67,6 @@ For both registries, the repository name should follow the convention of `comman
 ```shell
 tar -cvzf ${repo_suffix}.tar.gz --owner=0 --group=0 docker/
 ```
-
 
 ##### Test Data for ORAS-Distribution
 ```mermaid
