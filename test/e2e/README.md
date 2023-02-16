@@ -1,83 +1,52 @@
 # ORAS End-to-End Testing Dev Guide
 **KNOWN LIMITATION**: E2E tests are designed to run in the CI and currently only support running on linux platform.
-## Setting up
-Minimal setup: Run the script in **step 3**
+## Prerequisites
+Install [git](https://git-scm.com/download/linux), [docker](https://docs.docker.com/desktop/install/linux-install), [go](https://go.dev/doc/install).
 
-### 1. Clone Source Code of ORAS CLI
+## Run E2E Script
 ```shell
-git clone https://github.com/oras-project/oras.git
+$REPO_ROOT/test/e2e/scripts/e2e.sh $REPO_ROOT --clean # REPO_ROOT is root folder of oras CLI code
 ```
 
-### 2. _[Optional]_ Install Ginkgo
-This will enable you use `ginkgo` directly in CLI.
+If the tests fails with errors like `ginkgo: not found`, use below command to add GOPATH into the PATH variable
 ```shell
-go install github.com/onsi/ginkgo/v2/ginkgo@latest
+PATH+=:$(go env GOPATH)/bin
 ```
-If you skip step 2, you can only run tests via `go test`. 
-
-### 3. Run Distribution
-The backend of E2E test is an [oras-distribution](https://github.com/oras-project/distribution).
-```shell
-PORT=5000
-docker run -dp $PORT:5000 --rm --name oras-e2e \
-    --env STORAGE_DELETE_ENABLED=true \
-    ghcr.io/oras-project/registry:v1.0.0-rc.2
-```
-
-### 4. _[Optional]_ Customize Port for Distribution
-```shell
-export ORAS_REGISTRY_HOST="localhost:$PORT"
-# for PowerShell, use $env:ORAS_REGISTRY_HOST = "localhost:$PORT"
-```
-If you skipped step 4, E2E test will look for distribution ran in `localhost:5000`
-
-### 5. _[Optional]_ Setup ORAS Binary for Testing
-```bash
-# Set REPO_ROOT as root folder of oras CLI code
-cd $REPO_ROOT
-make build
-```
-### 6. _[Optional]_ Setup Pre-Built Binary
-You need to setup below environmental variables to debug a pre-built ORAS binary:
-```bash
-export ORAS_PATH="bin/linux/amd64/oras" # change target platform if needed
-export GITHUB_WORKSPACE=$REPO_ROOT
-```
-If you skipped step 5 or 6, Gomega will build a temp binary, which will include all the CLI code changes in the working directory.
-
-### 7. _[Optional]_ Mount Test Data
-If you want to run command suite, you need to decompress the registry storage files and mount to the distribution. `$REPO_ROOT` points to the root folder of cloned oras CLI code.
-```shell
-mnt_root=${REPO_ROOT}/test/e2e/testdata/distribution/mount
-for layer in $(ls ${mnt_root}/*.tar.gz); do
-    tar -xvzf $layer -C ${mnt_root}
-done
-
-PORT=5000
-docker run -dp ${PORT}:5000 --rm --name oras-e2e \
-    --env STORAGE_DELETE_ENABLED=true \
-    --mount type=bind,source=${mnt_root}/docker,target=/opt/data/registry-root-dir/docker \
-    ghcr.io/oras-project/registry:v1.0.0-rc.2
-```
-Skipping step 7 you will not be able to run specs in Command suite.
 
 ## Development
-### 1. Constant Build & Watch
-This is a good choice if you want to debug certain re-runnable specs
-```bash
+### 1. Using IDE
+Since E2E test suites are added as an nested module, the module file and checksum file are separated from oras CLI. To develop E2E tests, it's better to set the working directory to `$REPO_ROOT/test/e2e/` or open your IDE at it.
+
+### 2. Testing pre-built ORAS Binary
+By default, Gomega builds a temp binary every time before running e2e tests, which makes sure that latest code changes in the working directory are covered. If you are making changes to E2E test code only, set `ORAS_PATH` towards your pre-built ORAS binary to skip building and speed up the test.
+
+### 3. Debugging via `go test`
+E2E specs can be ran natively without `ginkgo`:
+```shell
+# run below command in the target test suite folder
+go test oras.land/oras/test/e2e/suite/${suite_name}
+```
+This is super handy when you want to do step-by-step debugging from command-line or via an IDE. If you need to debug certain specs, use [focused specs](https://onsi.github.io/ginkgo/#focused-specs) but don't check it in.
+
+### 4. Testing Registry Services
+The backend of E2E tests are two registry services: [oras-distribution](https://github.com/oras-project/distribution) and [upstream distribution](https://github.com/distribution/distribution). The former is expected to support image and artifact media types and referrer API; The latter is expected to only support image media type with subject and provide referrers via [tag schema](https://github.com/opencontainers/distribution-spec/blob/v1.1.0-rc1/spec.md#referrers-tag-schema). 
+
+You can run scenario test suite against your own registry services via setting `ORAS_REGISTRY_HOST` or `ORAS_REGISTRY_FALLBACK_HOST` environmental variables.
+
+### 5. Constant Build & Watch
+This is a good choice if you want to debug certain re-runnable specs:
+```shell
 cd $REPO_ROOT/test/e2e
 ginkgo watch -r
 ```
 
-### 2. Debugging
-Since E2E test suites are added to a sub-module, you need to run `go test` from `$REPO_ROOT/test/e2e/`. If you need to debug a certain spec, use [focused spec](https://onsi.github.io/ginkgo/#focused-specs) but don't check it in.
+### 6. Trouble-shooting CLI
+The executed commands should be shown in the ginkgo logs after `[It]`, with full execution output in the E2E log.
 
-### 3. Trouble-shooting CLI
-Executed command should be shown in the ginkgo logs after `[It]`,
-
-### 4. Adding New Tests
-Two suites will be maintained for E2E testing:
+### 7. Adding New Tests
+Three suites will be maintained for E2E testing:
 - command: contains test specs for single oras command execution
+- auth: contains test specs similar to command specs but specific to auth. It cannot be ran in parallel with command suite specs
 - scenario: contains featured scenarios with several oras commands execution
 
 Inside a suite, please follow below model when building the hierarchical collections of specs:
@@ -89,34 +58,72 @@ Describe: <Role>
        Expect: <Result> (detailed checks for execution results)
 ```
 
-### 5. Adding New Test Data
+### 8. Adding New Test Data
 
-#### 5.1 Command Suite
-Command suite uses pre-baked registry data for testing. The repository name should be `command/$repo_suffix`. To add a new layer, compress the `docker` folder from the root directory of your distribution storage and copy it to `$REPO_ROOT/test/e2e/testdata/distribution/mount` folder.
+#### 8.1 Command Suite
+Command suite uses pre-baked test data, which is a bunch of layered archive files compressed from registry storage. Test data are all stored in `$REPO_ROOT/test/e2e/testdata/distribution/` but separated in different sub-folders: oras distribution uses `mount` and upstream distribution uses `mount_fallback`.
+
+For both registries, the repository name should follow the convention of `command/$repo_suffix`. To add a new layer to the test data, use the below command to compress the `docker` folder from the root directory of the registry storage and copy it to the corresponding subfolder in `$REPO_ROOT/test/e2e/testdata/distribution/mount`.
 ```shell
 tar -cvzf ${repo_suffix}.tar.gz --owner=0 --group=0 docker/
 ```
-Currently we have below OCI images:
+
+##### Test Data for ORAS-Distribution
 ```mermaid
 graph TD;
-    subgraph images.tar.gz
-    A0>tag: multi]-..->A1[oci index]
-    A1--linux/amd64-->A2[oci image]
-    A1--linux/arm64-->A3[oci image]
-    A1--linux/arm/v7-->A4[oci image]
-    A2-->A5[config1]
-    A3-->A6[config2]
-    A4-->A7[config3]
-    A2-- hello.tar -->A8[blob]
-    A3-- hello.tar -->A8[blob]
-    A4-- hello.tar -->A8[blob]
+    subgraph "repository: command/images"
+        subgraph "file: images.tar.gz"
+            direction TB
+            A0>tag: multi]-..->A1[oci index]
+            A1--linux/amd64-->A2[oci image]
+            A1--linux/arm64-->A3[oci image]
+            A1--linux/arm/v7-->A4[oci image]
+            A2-->A5(config1)
+            A3-->A6(config2)
+            A4-->A7(config3)
+            A2-- hello.tar -->A8(blob)
+            A3-- hello.tar -->A8(blob)
+            A4-- hello.tar -->A8(blob)
 
-    B0>tag: foobar]-..->B1[oci image]
-    B1-- foo1 -->B2[blob1]
-    B1-- foo2 -->B2[blob1]
-    B1-- bar -->B3[blob2]
+            B0>tag: foobar]-..->B1[oci image]
+            B1-- foo1 -->B2(blob1)
+            B1-- foo2 -->B2(blob1)
+            B1-- bar -->B3(blob2)
+        end
+    end
+    
+    subgraph "repository: command/artifacts"
+        subgraph "file: artifacts.tar.gz"
+            direction TB
+            C0>tag: foobar]-..->C1[oci image]
+            
+            direction TB
+            E1["test.sbom.file(artifact)"] -- subject --> C1
+            E2["test.signature.file(artifact)"] -- subject --> E1
+        end
+        subgraph "file: artifacts_fallback.tar.gz"
+            direction TB
+            D1["test.sbom.file(image)"] -- subject --> C1
+            D2["test.signature.file(image)"] -- subject --> D1
+        end
     end
 ```
 
-#### 5.2 Scenario Suite
+##### Test Data for Upstream Distribution
+```mermaid
+graph TD;
+    subgraph "repository: command/artifacts"
+        subgraph "file: artifacts_fallback.tar.gz"
+            direction TB
+            A0>tag: foobar]-..->A1[oci image]
+            A1-- foo1 -->A2(blob1)
+            A1-- foo2 -->A2(blob1)
+            A1-- bar -->A3(blob2)
+
+            E1["test.sbom.file(image)"] -- subject --> A1
+            E2["test.signature.file(image)"] -- subject --> E1
+        end
+    end
+```
+#### 8.2 Scenario Suite
 Test files used by scenario-based specs are placed in `$REPO_ROOT/test/e2e/testdata/files`.

@@ -51,6 +51,8 @@ type Remote struct {
 	resolveDialContext    func(dialer *net.Dialer) func(context.Context, string, string) (net.Conn, error)
 	applyDistributionSpec bool
 	distributionSpec      distributionSpec
+	headerFlags           []string
+	headers               http.Header
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
@@ -62,6 +64,7 @@ func (opts *Remote) EnableDistributionSpecFlag() {
 func (opts *Remote) ApplyFlags(fs *pflag.FlagSet) {
 	opts.ApplyFlagsWithPrefix(fs, "", "")
 	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
+	fs.StringArrayVarP(&opts.headerFlags, "header", "H", nil, "add custom headers to requests")
 }
 
 func applyPrefix(prefix, description string) (flagPrefix, notePrefix string) {
@@ -105,6 +108,9 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 
 // Parse tries to read password with optional cmd prompt.
 func (opts *Remote) Parse() error {
+	if err := opts.parseCustomHeaders(); err != nil {
+		return err
+	}
 	if err := opts.readPassword(); err != nil {
 		return err
 	}
@@ -217,7 +223,8 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 				TLSClientConfig:       config,
 			},
 		},
-		Cache: auth.NewCache(),
+		Cache:  auth.NewCache(),
+		Header: opts.headers,
 	}
 	client.SetUserAgent("oras/" + version.GetVersion())
 	if debug {
@@ -249,6 +256,23 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 		}
 	}
 	return
+}
+
+func (opts *Remote) parseCustomHeaders() error {
+	if len(opts.headerFlags) != 0 {
+		headers := map[string][]string{}
+		for _, h := range opts.headerFlags {
+			name, value, found := strings.Cut(h, ":")
+			if !found || strings.TrimSpace(name) == "" {
+				// In conformance to the RFC 2616 specification
+				// Reference: https://www.rfc-editor.org/rfc/rfc2616#section-4.2
+				return fmt.Errorf("invalid header: %q", h)
+			}
+			headers[name] = append(headers[name], value)
+		}
+		opts.headers = headers
+	}
+	return nil
 }
 
 // Credential returns a credential based on the remote options.

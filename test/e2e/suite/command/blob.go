@@ -3,7 +3,9 @@ Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
 http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -104,22 +106,22 @@ var _ = Describe("ORAS beginners:", func() {
 			})
 
 			It("should fail if neither output path nor descriptor flag are not provided", func() {
-				ORAS("blob", "fetch", Reference(Host, Repo, "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae")).
+				ORAS("blob", "fetch", Reference(Host, ImageRepo, "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae")).
 					ExpectFailure().Exec()
 			})
 
 			It("should fail if no digest provided", func() {
-				ORAS("blob", "fetch", Reference(Host, Repo, "")).
+				ORAS("blob", "fetch", Reference(Host, ImageRepo, "")).
 					ExpectFailure().Exec()
 			})
 
 			It("should fail if provided digest doesn't existed", func() {
-				ORAS("blob", "fetch", Reference(Host, Repo, "sha256:2aaa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a")).
+				ORAS("blob", "fetch", Reference(Host, ImageRepo, "sha256:2aaa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a")).
 					ExpectFailure().Exec()
 			})
 
 			It("should fail if output path points to stdout and descriptor flag is provided", func() {
-				ORAS("blob", "fetch", Reference(Host, Repo, ""), "--descriptor", "--output", "-").
+				ORAS("blob", "fetch", Reference(Host, ImageRepo, ""), "--descriptor", "--output", "-").
 					ExpectFailure().Exec()
 			})
 
@@ -134,14 +136,14 @@ var _ = Describe("ORAS beginners:", func() {
 
 		It("should fail if no blob reference is provided", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "no-ref")
-			ORAS("cp", Reference(Host, Repo, FoobarImageDigest), Reference(Host, dstRepo, FoobarImageDigest)).Exec()
+			ORAS("cp", Reference(Host, ImageRepo, FoobarImageDigest), Reference(Host, dstRepo, FoobarImageDigest)).Exec()
 			ORAS("blob", "delete").ExpectFailure().Exec()
 			ORAS("blob", "fetch", Reference(Host, dstRepo, deleteDigest), "--output", "-").MatchContent(deleteContent).Exec()
 		})
 
 		It("should fail if no force flag and descriptor flag is provided", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "no-confirm")
-			ORAS("cp", Reference(Host, Repo, FoobarImageDigest), Reference(Host, dstRepo, FoobarImageDigest)).Exec()
+			ORAS("cp", Reference(Host, ImageRepo, FoobarImageDigest), Reference(Host, dstRepo, FoobarImageDigest)).Exec()
 			ORAS("blob", "delete", Reference(Host, dstRepo, deleteDigest), "--descriptor").ExpectFailure().Exec()
 			ORAS("blob", "fetch", Reference(Host, dstRepo, deleteDigest), "--output", "-").MatchContent(deleteContent).Exec()
 		})
@@ -154,7 +156,7 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		It("should fail to delete a non-existent blob without force flag set", func() {
-			toDeleteRef := Reference(Host, Repo, invalidDigest)
+			toDeleteRef := Reference(Host, ImageRepo, invalidDigest)
 			ORAS("blob", "delete", toDeleteRef).
 				ExpectFailure().
 				MatchErrKeyWords(toDeleteRef, "the specified blob does not exist").
@@ -162,7 +164,7 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		It("should fail to delete a non-existent blob and output descriptor, with force flag set", func() {
-			toDeleteRef := Reference(Host, Repo, invalidDigest)
+			toDeleteRef := Reference(Host, ImageRepo, invalidDigest)
 			ORAS("blob", "delete", toDeleteRef, "--force", "--descriptor").
 				ExpectFailure().
 				MatchErrKeyWords(toDeleteRef, "the specified blob does not exist").
@@ -176,7 +178,7 @@ var _ = Describe("Common registry users:", func() {
 	When("running `blob delete`", func() {
 		It("should delete a blob with interactive confirmation", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "prompt-confirmation")
-			ORAS("cp", Reference(Host, Repo, FoobarImageDigest), Reference(Host, dstRepo, FoobarImageDigest)).Exec()
+			ORAS("cp", Reference(Host, ImageRepo, FoobarImageDigest), Reference(Host, dstRepo, FoobarImageDigest)).Exec()
 			toDeleteRef := Reference(Host, dstRepo, deleteDigest)
 			ORAS("blob", "delete", toDeleteRef).
 				WithInput(strings.NewReader("y")).
@@ -190,14 +192,14 @@ var _ = Describe("Common registry users:", func() {
 
 		It("should delete a blob with force flag and output descriptor", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "flag-confirmation")
-			ORAS("cp", Reference(Host, Repo, FoobarImageDigest), Reference(Host, dstRepo, FoobarImageDigest)).Exec()
+			ORAS("cp", Reference(Host, ImageRepo, FoobarImageDigest), Reference(Host, dstRepo, FoobarImageDigest)).Exec()
 			toDeleteRef := Reference(Host, dstRepo, deleteDigest)
 			ORAS("blob", "delete", toDeleteRef, "--force", "--descriptor").MatchContent(deleteDescriptor).Exec()
 			ORAS("blob", "delete", toDeleteRef).WithDescription("validate").ExpectFailure().MatchErrKeyWords("Error:", toDeleteRef, "the specified blob does not exist").Exec()
 		})
 
 		It("should return success when deleting a non-existent blob with force flag set", func() {
-			toDeleteRef := Reference(Host, Repo, invalidDigest)
+			toDeleteRef := Reference(Host, ImageRepo, invalidDigest)
 			ORAS("blob", "delete", toDeleteRef, "--force").
 				MatchKeyWords("Missing", toDeleteRef).
 				Exec()
@@ -233,24 +235,24 @@ var _ = Describe("Common registry users:", func() {
 	var blobDescriptor = `{"mediaType":"application/octet-stream","digest":"sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae","size":3}`
 	When("running `blob fetch`", func() {
 		It("should fetch blob descriptor ", func() {
-			ORAS("blob", "fetch", Reference(Host, Repo, blobDigest), "--descriptor").
+			ORAS("blob", "fetch", Reference(Host, ImageRepo, blobDigest), "--descriptor").
 				MatchContent(blobDescriptor).Exec()
 		})
 		It("should fetch blob content and output to stdout", func() {
-			ORAS("blob", "fetch", Reference(Host, Repo, blobDigest), "--output", "-").
+			ORAS("blob", "fetch", Reference(Host, ImageRepo, blobDigest), "--output", "-").
 				MatchContent(blobContent).Exec()
 		})
 		It("should fetch blob content and output to a file", func() {
 			tempDir := GinkgoT().TempDir()
 			contentPath := filepath.Join(tempDir, "fetched")
-			ORAS("blob", "fetch", Reference(Host, Repo, blobDigest), "--output", contentPath).
+			ORAS("blob", "fetch", Reference(Host, ImageRepo, blobDigest), "--output", contentPath).
 				WithWorkDir(tempDir).Exec()
 			MatchFile(contentPath, blobContent, DefaultTimeout)
 		})
 		It("should fetch blob descriptor and output content to a file", func() {
 			tempDir := GinkgoT().TempDir()
 			contentPath := filepath.Join(tempDir, "fetched")
-			ORAS("blob", "fetch", Reference(Host, Repo, blobDigest), "--output", contentPath, "--descriptor").
+			ORAS("blob", "fetch", Reference(Host, ImageRepo, blobDigest), "--output", contentPath, "--descriptor").
 				MatchContent(blobDescriptor).
 				WithWorkDir(tempDir).Exec()
 			MatchFile(contentPath, blobContent, DefaultTimeout)
