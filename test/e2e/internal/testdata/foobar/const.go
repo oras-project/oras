@@ -43,9 +43,9 @@ var (
 		"bar",
 	}
 	ImageLayerStateKeys = []match.StateKey{
-		{Digest: "2c26b46b68ff", Name: FileLayerNames[0]},
-		{Digest: "2c26b46b68ff", Name: FileLayerNames[1]},
-		{Digest: "fcde2b2edba5", Name: FileLayerNames[2]},
+		{Digest: "2c26b46b68ff", Name: ImageLayerNames[0]},
+		{Digest: "2c26b46b68ff", Name: ImageLayerNames[1]},
+		{Digest: "fcde2b2edba5", Name: ImageLayerNames[2]},
 	}
 	ImageConfigName = "config.json"
 

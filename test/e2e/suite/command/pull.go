@@ -67,7 +67,7 @@ var _ = Describe("Remote registry users:", func() {
 			tempDir := CopyTestDataToTemp()
 			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(oras.MediaTypeUnknownConfig))
 			ORAS("pull", Reference(Host, repo, tag), "-v", "--config", fmt.Sprintf("%s:%s", configName, "???"), "-o", pullRoot).
-				MatchStatus(stateKeys, true, 5).
+				MatchStatus(stateKeys, true, len(stateKeys)).
 				WithWorkDir(tempDir).Exec()
 			// check config
 			Expect(filepath.Join(pullRoot, configName)).ShouldNot(BeAnExistingFile())
