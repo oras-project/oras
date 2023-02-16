@@ -21,6 +21,7 @@ import (
 	"oras.land/oras-go/v2/registry"
 )
 
+// ParserRepoPath extracts hostname and namespace from rawReference.
 func ParseRepoPath(rawReference string) (hostname, namespace string, err error) {
 	rawReference = strings.TrimSuffix(rawReference, "/")
 	if strings.Contains(rawReference, "/") {
