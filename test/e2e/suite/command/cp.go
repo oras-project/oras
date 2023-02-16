@@ -21,6 +21,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	. "oras.land/oras/test/e2e/internal/utils"
 	"oras.land/oras/test/e2e/internal/utils/match"
 )
@@ -42,7 +43,7 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		It("should fail when no destination reference provided", func() {
-			ORAS("cp", Reference(Host, ImageRepo, FoobarImageTag)).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+			ORAS("cp", Reference(Host, ImageRepo, foobar.Tag)).ExpectFailure().MatchErrKeyWords("Error:").Exec()
 		})
 
 		It("should fail when source doesn't exist", func() {
@@ -90,7 +91,7 @@ var _ = Describe("Common registry users:", func() {
 			gomega.Expect(srcManifest).To(gomega.Equal(dstManifest))
 		}
 		It("should copy an image to a new repository via tag", func() {
-			src := Reference(Host, ImageRepo, FoobarImageTag)
+			src := Reference(Host, ImageRepo, foobar.Tag)
 			dst := Reference(Host, cpTestRepo("tag"), "copiedTag")
 			ORAS("cp", src, dst, "-v").MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			validate(src, dst)
@@ -104,7 +105,7 @@ var _ = Describe("Common registry users:", func() {
 		})
 
 		It("should copy an image to a new repository via tag without tagging", func() {
-			src := Reference(Host, ImageRepo, FoobarImageTag)
+			src := Reference(Host, ImageRepo, foobar.Tag)
 			dst := Reference(Host, cpTestRepo("no-tagging"), FoobarImageDigest)
 			ORAS("cp", src, dst, "-v").MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			validate(src, dst)
@@ -112,7 +113,7 @@ var _ = Describe("Common registry users:", func() {
 
 		It("should copy an image and its referrers to a new repository", func() {
 			stateKeys := append(append(foobarStates, foobarReferrersStates...), foobarImageConfigStates...)
-			src := Reference(Host, ArtifactRepo, FoobarImageTag)
+			src := Reference(Host, ArtifactRepo, foobar.Tag)
 			dst := Reference(Host, cpTestRepo("referrers"), FoobarImageDigest)
 			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
 			validate(src, dst)

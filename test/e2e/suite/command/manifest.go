@@ -24,6 +24,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
@@ -79,7 +80,7 @@ var _ = Describe("ORAS beginners:", func() {
 			tempTag := "to-delete"
 			It("should cancel deletion without confirmation", func() {
 				dstRepo := fmt.Sprintf(repoFmt, "delete", "no-confirm")
-				prepare(Reference(Host, ImageRepo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
+				prepare(Reference(Host, ImageRepo, foobar.Tag), Reference(Host, dstRepo, tempTag))
 				ORAS("manifest", "delete", Reference(Host, dstRepo, tempTag)).
 					MatchKeyWords("Operation cancelled.", "Are you sure you want to delete the manifest ", " and all tags associated with it?").Exec()
 				validate(Reference(Host, dstRepo, ""), tempTag, false)
@@ -87,7 +88,7 @@ var _ = Describe("ORAS beginners:", func() {
 
 			It("should fail if descriptor flag is provided without confirmation flag", func() {
 				dstRepo := fmt.Sprintf(repoFmt, "delete", "descriptor-without-confirm")
-				prepare(Reference(Host, ImageRepo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
+				prepare(Reference(Host, ImageRepo, foobar.Tag), Reference(Host, dstRepo, tempTag))
 				ORAS("manifest", "delete", Reference(Host, dstRepo, tempTag), "--descriptor").ExpectFailure().Exec()
 			})
 
@@ -117,7 +118,7 @@ var _ = Describe("ORAS beginners:", func() {
 
 			It("should fail if no blob reference provided", func() {
 				dstRepo := fmt.Sprintf(repoFmt, "delete", "no-reference")
-				prepare(Reference(Host, ImageRepo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
+				prepare(Reference(Host, ImageRepo, foobar.Tag), Reference(Host, dstRepo, tempTag))
 				ORAS("manifest", "delete").ExpectFailure().Exec()
 			})
 		})
@@ -291,23 +292,23 @@ var _ = Describe("Common registry users:", func() {
 
 	When("running `manifest fetch-config`", func() {
 		It("should fetch a config via a tag", func() {
-			ORAS("manifest", "fetch-config", Reference(Host, ImageRepo, FoobarImageTag)).
+			ORAS("manifest", "fetch-config", Reference(Host, ImageRepo, foobar.Tag)).
 				MatchContent("{}").Exec()
 		})
 
 		It("should fetch a config descriptor via a tag", func() {
-			ORAS("manifest", "fetch-config", "--descriptor", Reference(Host, ImageRepo, FoobarImageTag)).
-				MatchContent(FoobarConfigDesc).Exec()
+			ORAS("manifest", "fetch-config", "--descriptor", Reference(Host, ImageRepo, foobar.Tag)).
+				MatchContent(foobar.ConfigDesc).Exec()
 		})
 
 		It("should fetch a config via digest", func() {
-			ORAS("manifest", "fetch-config", Reference(Host, ImageRepo, FoobarImageTag)).
+			ORAS("manifest", "fetch-config", Reference(Host, ImageRepo, foobar.Tag)).
 				MatchContent("{}").Exec()
 		})
 
 		It("should fetch a config descriptor via a digest", func() {
 			ORAS("manifest", "fetch-config", "--descriptor", Reference(Host, ImageRepo, FoobarImageDigest)).
-				MatchContent(FoobarConfigDesc).Exec()
+				MatchContent(foobar.ConfigDesc).Exec()
 		})
 
 		It("should fetch a config of a specific platform", func() {
@@ -325,7 +326,7 @@ var _ = Describe("Common registry users:", func() {
 		tempTag := "to-delete"
 		It("should do confirmed deletion via input", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "confirm-input")
-			prepare(Reference(Host, ImageRepo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
+			prepare(Reference(Host, ImageRepo, foobar.Tag), Reference(Host, dstRepo, tempTag))
 			ORAS("manifest", "delete", Reference(Host, dstRepo, tempTag)).
 				WithInput(strings.NewReader("y")).Exec()
 			validate(Reference(Host, dstRepo, ""), tempTag, true)
@@ -333,14 +334,14 @@ var _ = Describe("Common registry users:", func() {
 
 		It("should do confirmed deletion via flag", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "confirm-flag")
-			prepare(Reference(Host, ImageRepo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
+			prepare(Reference(Host, ImageRepo, foobar.Tag), Reference(Host, dstRepo, tempTag))
 			ORAS("manifest", "delete", Reference(Host, dstRepo, tempTag), "-f").Exec()
 			validate(Reference(Host, dstRepo, ""), tempTag, true)
 		})
 
 		It("should do confirmed deletion and output descriptor", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "output-descriptor")
-			prepare(Reference(Host, ImageRepo, FoobarImageTag), Reference(Host, dstRepo, tempTag))
+			prepare(Reference(Host, ImageRepo, foobar.Tag), Reference(Host, dstRepo, tempTag))
 			ORAS("manifest", "delete", Reference(Host, dstRepo, tempTag), "-f", "--descriptor").
 				MatchContent("{\"mediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"digest\":\"sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb\",\"size\":851}").
 				WithDescription("cancel without confirmation").Exec()

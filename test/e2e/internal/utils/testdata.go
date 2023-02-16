@@ -22,8 +22,6 @@ const (
 	ArtifactRepo                         = "command/artifacts"
 	Repo                                 = "command/images"
 	Namespace                            = "command"
-	FoobarImageTag                       = "foobar"
-	FoobarConfigDesc                     = "{\"mediaType\":\"application/vnd.unknown.config.v1+json\",\"digest\":\"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a\",\"size\":2}"
 	MultiImageTag                        = "multi"
 	MultiImageDigest                     = "sha256:e2bfc9cc6a84ec2d7365b5a28c6bc5806b7fa581c9ad7883be955a64e3cc034f"
 	FoobarImageDigest                    = "sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb"

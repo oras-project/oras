@@ -18,6 +18,7 @@ package foobar
 import "oras.land/oras/test/e2e/internal/utils/match"
 
 var (
+	Tag           = "foobar"
 	BlobFileNames = []string{
 		"foobar/foo1",
 		"foobar/foo2",
@@ -33,6 +34,7 @@ var (
 	ConfigFileStateKey = match.StateKey{
 		Digest: "46b68ac1696c", Name: "application/vnd.unknown.config.v1+json",
 	}
+	ConfigDesc = "{\"mediaType\":\"application/vnd.unknown.config.v1+json\",\"digest\":\"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a\",\"size\":2}"
 
 	AttachFileName     = "foobar/to-be-attached"
 	AttachFileMedia    = "test/oras.e2e"

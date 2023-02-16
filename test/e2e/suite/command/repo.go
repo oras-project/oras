@@ -19,6 +19,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
@@ -68,7 +69,7 @@ var _ = Describe("Common registry users:", func() {
 
 		It("should not list repositories without a fully matched namespace", func() {
 			dstRepo := "command-draft/images"
-			ORAS("cp", Reference(Host, Repo, FoobarImageTag), Reference(Host, dstRepo, FoobarImageTag)).
+			ORAS("cp", Reference(Host, Repo, foobar.Tag), Reference(Host, dstRepo, foobar.Tag)).
 				WithDescription("prepare destination repo: " + dstRepo).
 				Exec()
 			ORAS("repo", "ls", Host).MatchKeyWords(Repo, dstRepo).Exec()
@@ -87,15 +88,15 @@ var _ = Describe("Common registry users:", func() {
 	When("running `repo tags`", func() {
 		repoRef := Reference(Host, ImageRepo, "")
 		It("should list tags", func() {
-			ORAS("repository", "show-tags", repoRef).MatchKeyWords(MultiImageTag, FoobarImageTag).Exec()
+			ORAS("repository", "show-tags", repoRef).MatchKeyWords(MultiImageTag, foobar.Tag).Exec()
 		})
 		It("should list tags via short command", func() {
-			ORAS("repo", "tags", repoRef).MatchKeyWords(MultiImageTag, FoobarImageTag).Exec()
+			ORAS("repo", "tags", repoRef).MatchKeyWords(MultiImageTag, foobar.Tag).Exec()
 
 		})
 		It("should list partial tags via `last` flag", func() {
-			session := ORAS("repo", "tags", repoRef, "--last", FoobarImageTag).MatchKeyWords(MultiImageTag).Exec()
-			Expect(session.Out).ShouldNot(gbytes.Say(FoobarImageTag))
+			session := ORAS("repo", "tags", repoRef, "--last", foobar.Tag).MatchKeyWords(MultiImageTag).Exec()
+			Expect(session.Out).ShouldNot(gbytes.Say(foobar.Tag))
 		})
 	})
 })
