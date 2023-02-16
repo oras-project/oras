@@ -15,7 +15,10 @@ limitations under the License.
 
 package multi_arch
 
-import "oras.land/oras/test/e2e/internal/utils/match"
+import (
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras/test/e2e/internal/utils/match"
+)
 
 var (
 	Tag                 = "multi"
