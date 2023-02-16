@@ -128,7 +128,7 @@ var _ = Describe("Common registry users:", func() {
 			dst := Reference(Host, cpTestRepo("platform-tag"), "copiedTag")
 			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").
 				MatchStatus(multiImageStates, true, len(multiImageStates)).
-				MatchErrKeyWords(multi_arch.LinuxAMD64Digest).
+				MatchKeyWords("Digest: " + multi_arch.LinuxAMD64Digest).
 				Exec()
 			validate(Reference(Host, ImageRepo, multi_arch.LinuxAMD64Digest), dst)
 		})
@@ -138,7 +138,7 @@ var _ = Describe("Common registry users:", func() {
 			dst := Reference(Host, cpTestRepo("platform-digest"), "copiedTag")
 			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").
 				MatchStatus(multiImageStates, true, len(multiImageStates)).
-				MatchErrKeyWords(multi_arch.LinuxAMD64Digest).
+				MatchKeyWords("Digest: " + multi_arch.LinuxAMD64Digest).
 				Exec()
 			validate(Reference(Host, ImageRepo, multi_arch.LinuxAMD64Digest), dst)
 		})
@@ -148,7 +148,7 @@ var _ = Describe("Common registry users:", func() {
 			dst := Reference(Host, cpTestRepo("platform-referrers-index"), "copiedTag")
 			ORAS("cp", src, dst, "-r", "--platform", "linux/amd64", "-v").
 				MatchStatus(multiImageStates, true, len(multiImageStates)).
-				MatchKeyWords(multi_arch.LinuxAMD64Digest).
+				MatchKeyWords("Digest: " + multi_arch.LinuxAMD64Digest).
 				Exec()
 			// validate
 			validate(Reference(Host, ImageRepo, multi_arch.LinuxAMD64Digest), dst)
