@@ -16,11 +16,14 @@ limitations under the License.
 package command
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	. "github.com/onsi/gomega"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
@@ -87,9 +90,9 @@ var (
 var _ = Describe("Common registry users:", func() {
 	When("running `cp`", func() {
 		validate := func(src, dst string) {
-			srcManifest := ORAS("manifest", "fetch", src).Exec().Out.Contents()
-			dstManifest := ORAS("manifest", "fetch", dst).Exec().Out.Contents()
-			gomega.Expect(srcManifest).To(gomega.Equal(dstManifest))
+			srcManifest := ORAS("manifest", "fetch", src).WithDescription("fetch from source for validation").Exec().Out.Contents()
+			dstManifest := ORAS("manifest", "fetch", dst).WithDescription("fetch from destination for validation").Exec().Out.Contents()
+			Expect(srcManifest).To(Equal(dstManifest))
 		}
 		It("should copy an image to a new repository via tag", func() {
 			src := Reference(Host, ImageRepo, foobar.Tag)
@@ -123,15 +126,44 @@ var _ = Describe("Common registry users:", func() {
 		It("should copy a certain platform of image to a new repository via tag", func() {
 			src := Reference(Host, ImageRepo, multi_arch.Tag)
 			dst := Reference(Host, cpTestRepo("platform-tag"), "copiedTag")
-			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").MatchStatus(multiImageStates, true, len(multiImageStates)).Exec()
+			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").
+				MatchStatus(multiImageStates, true, len(multiImageStates)).
+				MatchErrKeyWords(multi_arch.LinuxAMD64Digest).
+				Exec()
 			validate(Reference(Host, ImageRepo, multi_arch.LinuxAMD64Digest), dst)
 		})
 
 		It("should copy a certain platform of image to a new repository via digest", func() {
 			src := Reference(Host, ImageRepo, multi_arch.Digest)
 			dst := Reference(Host, cpTestRepo("platform-digest"), "copiedTag")
-			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").MatchStatus(multiImageStates, true, len(multiImageStates)).Exec()
+			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").
+				MatchStatus(multiImageStates, true, len(multiImageStates)).
+				MatchErrKeyWords(multi_arch.LinuxAMD64Digest).
+				Exec()
 			validate(Reference(Host, ImageRepo, multi_arch.LinuxAMD64Digest), dst)
+		})
+
+		It("should copy a certain platform of image and its referrers to a new repository via tag", func() {
+			src := Reference(Host, ArtifactRepo, multi_arch.Tag)
+			dst := Reference(Host, cpTestRepo("platform-referrers-index"), "copiedTag")
+			ORAS("cp", src, dst, "-r", "--platform", "linux/amd64", "-v").
+				MatchStatus(multiImageStates, true, len(multiImageStates)).
+				MatchKeyWords(multi_arch.LinuxAMD64Digest).
+				Exec()
+			// validate
+			validate(Reference(Host, ImageRepo, multi_arch.LinuxAMD64Digest), dst)
+			var index ocispec.Index
+			bytes := ORAS("discover", src, "-o", "json", "--platform", "linux/amd64").
+				MatchKeyWords(multi_arch.IndexReferrerDigest).Exec().Out.Contents()
+			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
+			Expect(len(index.Manifests)).To(Equal(1))
+			Expect(index.Manifests[0].Digest.String()).To(Equal(multi_arch.Digest))
+
+			bytes = ORAS("discover", src, "-o", "json").
+				MatchKeyWords(multi_arch.LinuxAMD64ReferrerDigest).Exec().Out.Contents()
+			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
+			Expect(len(index.Manifests)).To(Equal(1))
+			Expect(index.Manifests[0].Digest.String()).To(Equal(multi_arch.LinuxAMD64Digest))
 		})
 
 		It("should copy an image to a new repository with multiple tagging", func() {
