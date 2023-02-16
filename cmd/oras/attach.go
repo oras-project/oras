@@ -32,7 +32,6 @@ import (
 type attachOptions struct {
 	option.Common
 	option.Packer
-	option.Platform
 	option.ImageSpec
 	option.Target
 
@@ -122,9 +121,7 @@ func runAttach(opts attachOptions) error {
 	if err := opts.EnsureReferenceNotEmpty(); err != nil {
 		return err
 	}
-	rOpts := oras.DefaultResolveOptions
-	rOpts.TargetPlatform = opts.Platform.Platform
-	subject, err := oras.Resolve(ctx, dst, opts.Reference, rOpts)
+	subject, err := dst.Resolve(ctx, opts.Reference)
 	if err != nil {
 		return err
 	}
