@@ -97,10 +97,9 @@ var _ = Describe("Common registry users:", func() {
 		It("should copy a certain platform of image to a new repository via tag", func() {
 			src := Reference(Host, ImageRepo, ma.Tag)
 			dst := Reference(Host, cpTestRepo("platform-tag"), "copiedTag")
-			stateKeys := append(ma.ImageStates, ma.LinuxAMD64ReferrerState, ma.LinuxAMD64ReferrerConfigState)
 
 			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").
-				MatchStatus(stateKeys, true, len(stateKeys)).
+				MatchStatus(ma.IndexStateKeys, true, len(ma.IndexStateKeys)).
 				MatchKeyWords("Digest: " + ma.LinuxAMD64Digest).
 				Exec()
 			validate(Reference(Host, ImageRepo, ma.LinuxAMD64Digest), dst)
@@ -109,9 +108,8 @@ var _ = Describe("Common registry users:", func() {
 		It("should copy a certain platform of image to a new repository via digest", func() {
 			src := Reference(Host, ImageRepo, ma.Digest)
 			dst := Reference(Host, cpTestRepo("platform-digest"), "copiedTag")
-			stateKeys := append(ma.ImageStates, ma.LinuxAMD64ReferrerState, ma.LinuxAMD64ReferrerConfigState)
 			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").
-				MatchStatus(stateKeys, true, len(stateKeys)).
+				MatchStatus(ma.IndexStateKeys, true, len(ma.IndexStateKeys)).
 				MatchKeyWords("Digest: " + ma.LinuxAMD64Digest).
 				Exec()
 			validate(Reference(Host, ImageRepo, ma.LinuxAMD64Digest), dst)
@@ -122,7 +120,7 @@ var _ = Describe("Common registry users:", func() {
 			dstRepo := cpTestRepo("platform-referrers-index")
 			dst := Reference(Host, dstRepo, "copiedTag")
 			ORAS("cp", src, dst, "-r", "--platform", "linux/amd64", "-v").
-				MatchStatus(ma.ImageStates, true, len(ma.ImageStates)).
+				MatchStatus(ma.IndexStateKeys, true, len(ma.IndexStateKeys)).
 				MatchKeyWords("Digest: " + ma.LinuxAMD64Digest).
 				Exec()
 			// validate
