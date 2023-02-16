@@ -40,8 +40,8 @@ var _ = Describe("Common OCI artifact users:", Ordered, func() {
 		pulledManifest := "packed.json"
 		pullRoot := "pulled"
 		It("should push and pull an artifact", func() {
-			ORAS("push", Reference(Host, repo, tag), "--artifact-type", "test-artifact", foobar.BlobFileNames[0], foobar.BlobFileNames[1], foobar.BlobFileNames[2], "-v", "--export-manifest", pulledManifest).
-				MatchStatus(foobar.PushFileStateKeys, true, 3).
+			ORAS("push", Reference(Host, repo, tag), "--artifact-type", "test-artifact", foobar.FileLayerNames[0], foobar.FileLayerNames[1], foobar.FileLayerNames[2], "-v", "--export-manifest", pulledManifest).
+				MatchStatus(foobar.FileStateKeys, true, 3).
 				WithWorkDir(tempDir).
 				WithDescription("push with manifest exported").Exec()
 
@@ -49,11 +49,11 @@ var _ = Describe("Common OCI artifact users:", Ordered, func() {
 			MatchFile(filepath.Join(tempDir, pulledManifest), string(fetched.Out.Contents()), DefaultTimeout)
 
 			ORAS("pull", Reference(Host, repo, tag), "-v", "-o", pullRoot).
-				MatchStatus(foobar.PushFileStateKeys, true, 3).
+				MatchStatus(foobar.FileStateKeys, true, 3).
 				WithWorkDir(tempDir).
 				WithDescription("pull artFiles with config").Exec()
 
-			for _, f := range foobar.BlobFileNames {
+			for _, f := range foobar.FileLayerNames {
 				Binary("diff", filepath.Join(f), filepath.Join(pullRoot, f)).
 					WithWorkDir(tempDir).
 					WithDescription("download identical file " + f).Exec()
@@ -91,11 +91,11 @@ var _ = Describe("Common OCI artifact users:", Ordered, func() {
 			MatchFile(filepath.Join(tempDir, pulledManifest), string(fetched.Out.Contents()), DefaultTimeout)
 
 			ORAS("pull", Reference(Host, repo, string(digest)), "-v", "-o", pullRoot, "--include-subject").
-				MatchStatus(append(foobar.PushFileStateKeys, foobar.AttachFileStateKey), true, 4).
+				MatchStatus(append(foobar.FileStateKeys, foobar.AttachFileStateKey), true, 4).
 				WithWorkDir(tempDir).
 				WithDescription("pull attached artifact and subject").Exec()
 
-			for _, f := range append(foobar.BlobFileNames, foobar.AttachFileName) {
+			for _, f := range append(foobar.FileLayerNames, foobar.AttachFileName) {
 				Binary("diff", filepath.Join(f), filepath.Join(pullRoot, f)).
 					WithWorkDir(tempDir).
 					WithDescription("download identical file " + f).Exec()

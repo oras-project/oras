@@ -25,8 +25,8 @@ import (
 
 var _ = Describe("OCI image user:", Ordered, func() {
 	repo := "scenario/oci-image"
-	files := append([]string{foobar.ConfigFileName}, foobar.BlobFileNames...)
-	statusKeys := append(foobar.PushFileStateKeys, foobar.ConfigFileStateKey)
+	files := append([]string{foobar.FileConfigName}, foobar.FileLayerNames...)
+	statusKeys := append(foobar.FileStateKeys, foobar.FileConfigStateKey)
 	When("pushing images and check", func() {
 		tag := "image"
 		var tempDir string

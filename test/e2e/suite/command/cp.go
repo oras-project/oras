@@ -25,9 +25,8 @@ import (
 	. "github.com/onsi/gomega"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
-	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
+	ma "oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
-	"oras.land/oras/test/e2e/internal/utils/match"
 )
 
 func cpTestRepo(text string) string {
@@ -56,36 +55,7 @@ var _ = Describe("ORAS beginners:", func() {
 	})
 })
 
-var (
-	foobarStates = []match.StateKey{
-		{Digest: "44136fa355b3", Name: "application/vnd.unknown.config.v1+json"},
-		{Digest: "fcde2b2edba5", Name: "bar"},
-		{Digest: "2c26b46b68ff", Name: "foo1"},
-		{Digest: "2c26b46b68ff", Name: "foo2"},
-		{Digest: "fd6ed2f36b54", Name: "application/vnd.oci.image.manifest.v1+json"},
-	}
-	foobarReferrersStates = []match.StateKey{
-		{Digest: "8d7a27ff2662", Name: "application/vnd.oci.artifact.manifest.v1+json"},
-		{Digest: "2dbea575a349", Name: "application/vnd.oci.artifact.manifest.v1+json"},
-	}
-	foobarImageReferrersStates = []match.StateKey{
-		{Digest: "0e007dcb9ded", Name: "application/vnd.oci.image.manifest.v1+json"},
-		{Digest: "32b78bd00723", Name: "application/vnd.oci.image.manifest.v1+json"},
-	}
-	foobarImageConfigStates = []match.StateKey{
-		{Digest: "44136fa355b3", Name: "test.signature.file"},
-		{Digest: "44136fa355b3", Name: "test.sbom.file"},
-	}
-	foobarFallbackImageReferrersStates = []match.StateKey{
-		{Digest: "316405db72cc", Name: "application/vnd.oci.image.manifest.v1+json"},
-		{Digest: "8b3f7e000c4a", Name: "application/vnd.oci.image.manifest.v1+json"},
-	}
-	multiImageStates = []match.StateKey{
-		{Digest: "2ef548696ac7", Name: "hello.tar"},
-		{Digest: "fe9dbc99451d", Name: "application/vnd.oci.image.config.v1+json"},
-		{Digest: "9d84a5716c66", Name: "application/vnd.oci.image.manifest.v1+json"},
-	}
-)
+var foobarStates = append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.FileConfigStateKey)
 
 var _ = Describe("Common registry users:", func() {
 	When("running `cp`", func() {
@@ -116,7 +86,7 @@ var _ = Describe("Common registry users:", func() {
 		})
 
 		It("should copy an image and its referrers to a new repository", func() {
-			stateKeys := append(append(foobarStates, foobarReferrersStates...), foobarImageConfigStates...)
+			stateKeys := append(append(foobarStates, foobar.ArtifactReferrerStateKeys...), foobar.ImageReferrerConfigStateKeys...)
 			src := Reference(Host, ArtifactRepo, foobar.Tag)
 			dst := Reference(Host, cpTestRepo("referrers"), foobar.Digest)
 			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
@@ -124,46 +94,44 @@ var _ = Describe("Common registry users:", func() {
 		})
 
 		It("should copy a certain platform of image to a new repository via tag", func() {
-			src := Reference(Host, ImageRepo, multi_arch.Tag)
+			src := Reference(Host, ImageRepo, ma.Tag)
 			dst := Reference(Host, cpTestRepo("platform-tag"), "copiedTag")
+			stateKeys := append(ma.ImageStates, ma.LinuxAMD64ReferrerState, ma.LinuxAMD64ReferrerConfigState)
+
 			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").
-				MatchStatus(multiImageStates, true, len(multiImageStates)).
-				MatchKeyWords("Digest: " + multi_arch.LinuxAMD64Digest).
+				MatchStatus(stateKeys, true, len(stateKeys)).
+				MatchKeyWords("Digest: " + ma.LinuxAMD64Digest).
 				Exec()
-			validate(Reference(Host, ImageRepo, multi_arch.LinuxAMD64Digest), dst)
+			validate(Reference(Host, ImageRepo, ma.LinuxAMD64Digest), dst)
 		})
 
 		It("should copy a certain platform of image to a new repository via digest", func() {
-			src := Reference(Host, ImageRepo, multi_arch.Digest)
+			src := Reference(Host, ImageRepo, ma.Digest)
 			dst := Reference(Host, cpTestRepo("platform-digest"), "copiedTag")
+			stateKeys := append(ma.ImageStates, ma.LinuxAMD64ReferrerState, ma.LinuxAMD64ReferrerConfigState)
 			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").
-				MatchStatus(multiImageStates, true, len(multiImageStates)).
-				MatchKeyWords("Digest: " + multi_arch.LinuxAMD64Digest).
+				MatchStatus(stateKeys, true, len(stateKeys)).
+				MatchKeyWords("Digest: " + ma.LinuxAMD64Digest).
 				Exec()
-			validate(Reference(Host, ImageRepo, multi_arch.LinuxAMD64Digest), dst)
+			validate(Reference(Host, ImageRepo, ma.LinuxAMD64Digest), dst)
 		})
 
 		It("should copy a certain platform of image and its referrers to a new repository via tag", func() {
-			src := Reference(Host, ArtifactRepo, multi_arch.Tag)
-			dst := Reference(Host, cpTestRepo("platform-referrers-index"), "copiedTag")
+			src := Reference(Host, ArtifactRepo, ma.Tag)
+			dstRepo := cpTestRepo("platform-referrers-index")
+			dst := Reference(Host, dstRepo, "copiedTag")
 			ORAS("cp", src, dst, "-r", "--platform", "linux/amd64", "-v").
-				MatchStatus(multiImageStates, true, len(multiImageStates)).
-				MatchKeyWords("Digest: " + multi_arch.LinuxAMD64Digest).
+				MatchStatus(ma.ImageStates, true, len(ma.ImageStates)).
+				MatchKeyWords("Digest: " + ma.LinuxAMD64Digest).
 				Exec()
 			// validate
-			validate(Reference(Host, ImageRepo, multi_arch.LinuxAMD64Digest), dst)
+			validate(Reference(Host, ImageRepo, ma.LinuxAMD64Digest), dst)
 			var index ocispec.Index
-			bytes := ORAS("discover", src, "-o", "json", "--platform", "linux/amd64").
-				MatchKeyWords(multi_arch.IndexReferrerDigest).Exec().Out.Contents()
+			bytes := ORAS("discover", dst, "-o", "json", "--platform", "linux/amd64").
+				MatchKeyWords(ma.LinuxAMD64ReferrerDigest).Exec().Out.Contents()
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].Digest.String()).To(Equal(multi_arch.Digest))
-
-			bytes = ORAS("discover", src, "-o", "json").
-				MatchKeyWords(multi_arch.LinuxAMD64ReferrerDigest).Exec().Out.Contents()
-			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
-			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].Digest.String()).To(Equal(multi_arch.LinuxAMD64Digest))
+			Expect(index.Manifests[0].Digest.String()).To(Equal(ma.LinuxAMD64ReferrerDigest))
 		})
 
 		It("should copy an image to a new repository with multiple tagging", func() {
@@ -189,7 +157,7 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 		}
 		It("should copy an image artifact and its referrers from a registry to a fallback registry", func() {
 			repo := cpTestRepo("to-fallback")
-			stateKeys := append(append(foobarStates, foobarImageReferrersStates...), foobarImageConfigStates...)
+			stateKeys := append(append(foobarStates, foobar.ImageReferrersStateKeys...), foobar.ImageReferrerConfigStateKeys...)
 			src := Reference(Host, ArtifactRepo, foobar.SignatureImageReferrerDigest)
 			dst := Reference(FallbackHost, repo, "")
 			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
@@ -199,7 +167,7 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 		})
 		It("should copy an image artifact and its referrers from a fallback registry to a registry", func() {
 			repo := cpTestRepo("from-fallback")
-			stateKeys := append(append(foobarStates, foobarFallbackImageReferrersStates...), foobarImageConfigStates...)
+			stateKeys := append(append(foobarStates, foobar.FallbackImageReferrersStateKeys...), foobar.ImageReferrerConfigStateKeys...)
 			src := Reference(FallbackHost, ArtifactRepo, foobar.FallbackSBOMImageReferrerDigest)
 			dst := Reference(Host, repo, "")
 			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
