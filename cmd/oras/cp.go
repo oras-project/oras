@@ -21,6 +21,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
@@ -164,6 +165,10 @@ func runCopy(opts copyOptions) error {
 		return err
 	}
 
+	if from, err := digest.Parse(opts.From.Reference); err == nil && from != desc.Digest {
+		// show correct source digest
+		opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, desc.Digest.String())
+	}
 	fmt.Println("Copied", opts.From.AnnotatedReference(), "=>", opts.To.AnnotatedReference())
 
 	if len(opts.extraRefs) != 0 {
