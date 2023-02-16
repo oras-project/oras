@@ -46,8 +46,10 @@ var (
 
 // referrers
 var (
-	SignatureImageReferrerDigest = "sha256:0e007dcb9ded7f49c4dc8e3eed4a446712eb6fdf08a665a4f2352d6d2f8bdf17"
-	SBOMImageReferrerDigest      = "sha256:32b78bd00723cd7d5251d4586f84d252530b7b5fe1c4104532767e6da4e04e47"
+	SBOMImageReferrerDigest         = "sha256:32b78bd00723cd7d5251d4586f84d252530b7b5fe1c4104532767e6da4e04e47"
+	SignatureImageReferrerDigest    = "sha256:0e007dcb9ded7f49c4dc8e3eed4a446712eb6fdf08a665a4f2352d6d2f8bdf17"
+	SBOMArtifactReferrerDigest      = "sha256:8d7a27ff2662dae183f762d281f46d626ba7b6e56a72cc9959cdbcd91aad7fbc"
+	SignatureArtifactReferrerDigest = "sha256:0e007dcb9ded7f49c4dc8e3eed4a446712eb6fdf08a665a4f2352d6d2f8bdf17"
 )
 
 // fallback referrers
