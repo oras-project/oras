@@ -22,6 +22,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
+	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
 	"oras.land/oras/test/e2e/internal/utils/match"
 )
@@ -120,17 +121,17 @@ var _ = Describe("Common registry users:", func() {
 		})
 
 		It("should copy a certain platform of image to a new repository via tag", func() {
-			src := Reference(Host, ImageRepo, MultiImageTag)
+			src := Reference(Host, ImageRepo, multi_arch.Tag)
 			dst := Reference(Host, cpTestRepo("platform-tag"), "copiedTag")
 			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").MatchStatus(multiImageStates, true, len(multiImageStates)).Exec()
-			validate(Reference(Host, ImageRepo, LinuxAMD64ImageDigest), dst)
+			validate(Reference(Host, ImageRepo, multi_arch.LinuxAMD64Digest), dst)
 		})
 
 		It("should copy a certain platform of image to a new repository via digest", func() {
-			src := Reference(Host, ImageRepo, MultiImageDigest)
+			src := Reference(Host, ImageRepo, multi_arch.Digest)
 			dst := Reference(Host, cpTestRepo("platform-digest"), "copiedTag")
 			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").MatchStatus(multiImageStates, true, len(multiImageStates)).Exec()
-			validate(Reference(Host, ImageRepo, LinuxAMD64ImageDigest), dst)
+			validate(Reference(Host, ImageRepo, multi_arch.LinuxAMD64Digest), dst)
 		})
 
 		It("should copy an image to a new repository with multiple tagging", func() {
@@ -157,22 +158,22 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 		It("should copy an image artifact and its referrers from a registry to a fallback registry", func() {
 			repo := cpTestRepo("to-fallback")
 			stateKeys := append(append(foobarStates, foobarImageReferrersStates...), foobarImageConfigStates...)
-			src := Reference(Host, ArtifactRepo, SignatureImageReferrerDigest)
+			src := Reference(Host, ArtifactRepo, foobar.SignatureImageReferrerDigest)
 			dst := Reference(FallbackHost, repo, "")
 			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
-			validate(src, Reference(FallbackHost, repo, SignatureImageReferrerDigest))
+			validate(src, Reference(FallbackHost, repo, foobar.SignatureImageReferrerDigest))
 			ORAS("discover", "-o", "tree", Reference(FallbackHost, repo, foobar.Digest)).
-				WithDescription("discover referrer via subject").MatchKeyWords(SignatureImageReferrerDigest, SBOMImageReferrerDigest).Exec()
+				WithDescription("discover referrer via subject").MatchKeyWords(foobar.SignatureImageReferrerDigest, foobar.SBOMImageReferrerDigest).Exec()
 		})
 		It("should copy an image artifact and its referrers from a fallback registry to a registry", func() {
 			repo := cpTestRepo("from-fallback")
 			stateKeys := append(append(foobarStates, foobarFallbackImageReferrersStates...), foobarImageConfigStates...)
-			src := Reference(FallbackHost, ArtifactRepo, FallbackSBOMImageReferrerDigest)
+			src := Reference(FallbackHost, ArtifactRepo, foobar.FallbackSBOMImageReferrerDigest)
 			dst := Reference(Host, repo, "")
 			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
-			validate(src, Reference(Host, repo, FallbackSBOMImageReferrerDigest))
+			validate(src, Reference(Host, repo, foobar.FallbackSBOMImageReferrerDigest))
 			ORAS("discover", "-o", "tree", Reference(Host, repo, foobar.Digest)).
-				WithDescription("discover referrer via subject").MatchKeyWords(FallbackSignatureImageReferrerDigest, FallbackSBOMImageReferrerDigest).Exec()
+				WithDescription("discover referrer via subject").MatchKeyWords(foobar.FallbackSignatureImageReferrerDigest, foobar.FallbackSBOMImageReferrerDigest).Exec()
 		})
 	})
 })

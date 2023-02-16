@@ -20,6 +20,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
+	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
@@ -88,14 +89,14 @@ var _ = Describe("Common registry users:", func() {
 	When("running `repo tags`", func() {
 		repoRef := Reference(Host, ImageRepo, "")
 		It("should list tags", func() {
-			ORAS("repository", "show-tags", repoRef).MatchKeyWords(MultiImageTag, foobar.Tag).Exec()
+			ORAS("repository", "show-tags", repoRef).MatchKeyWords(multi_arch.Tag, foobar.Tag).Exec()
 		})
 		It("should list tags via short command", func() {
-			ORAS("repo", "tags", repoRef).MatchKeyWords(MultiImageTag, foobar.Tag).Exec()
+			ORAS("repo", "tags", repoRef).MatchKeyWords(multi_arch.Tag, foobar.Tag).Exec()
 
 		})
 		It("should list partial tags via `last` flag", func() {
-			session := ORAS("repo", "tags", repoRef, "--last", foobar.Tag).MatchKeyWords(MultiImageTag).Exec()
+			session := ORAS("repo", "tags", repoRef, "--last", foobar.Tag).MatchKeyWords(multi_arch.Tag).Exec()
 			Expect(session.Out).ShouldNot(gbytes.Say(foobar.Tag))
 		})
 	})
