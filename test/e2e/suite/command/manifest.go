@@ -307,7 +307,7 @@ var _ = Describe("Common registry users:", func() {
 		})
 
 		It("should fetch a config descriptor via a digest", func() {
-			ORAS("manifest", "fetch-config", "--descriptor", Reference(Host, ImageRepo, FoobarImageDigest)).
+			ORAS("manifest", "fetch-config", "--descriptor", Reference(Host, ImageRepo, foobar.Digest)).
 				MatchContent(foobar.ConfigDesc).Exec()
 		})
 

@@ -19,6 +19,7 @@ import "oras.land/oras/test/e2e/internal/utils/match"
 
 var (
 	Tag           = "foobar"
+	Digest        = "sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb"
 	BlobFileNames = []string{
 		"foobar/foo1",
 		"foobar/foo2",

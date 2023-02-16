@@ -24,7 +24,6 @@ const (
 	Namespace                            = "command"
 	MultiImageTag                        = "multi"
 	MultiImageDigest                     = "sha256:e2bfc9cc6a84ec2d7365b5a28c6bc5806b7fa581c9ad7883be955a64e3cc034f"
-	FoobarImageDigest                    = "sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb"
 	SignatureImageReferrerDigest         = "sha256:0e007dcb9ded7f49c4dc8e3eed4a446712eb6fdf08a665a4f2352d6d2f8bdf17"
 	SBOMImageReferrerDigest              = "sha256:32b78bd00723cd7d5251d4586f84d252530b7b5fe1c4104532767e6da4e04e47"
 	FallbackSignatureImageReferrerDigest = "sha256:8b3f7e000c4a6d32cd6bfcabfe874ed470d470501a09adc65afaf1c342f988ff"

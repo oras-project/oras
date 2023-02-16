@@ -98,7 +98,7 @@ var _ = Describe("Common registry users:", func() {
 		})
 
 		It("should copy an image to a new repository via digest", func() {
-			src := Reference(Host, ImageRepo, FoobarImageDigest)
+			src := Reference(Host, ImageRepo, foobar.Digest)
 			dst := Reference(Host, cpTestRepo("digest"), "copiedTag")
 			ORAS("cp", src, dst, "-v").MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			validate(src, dst)
@@ -106,7 +106,7 @@ var _ = Describe("Common registry users:", func() {
 
 		It("should copy an image to a new repository via tag without tagging", func() {
 			src := Reference(Host, ImageRepo, foobar.Tag)
-			dst := Reference(Host, cpTestRepo("no-tagging"), FoobarImageDigest)
+			dst := Reference(Host, cpTestRepo("no-tagging"), foobar.Digest)
 			ORAS("cp", src, dst, "-v").MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			validate(src, dst)
 		})
@@ -114,7 +114,7 @@ var _ = Describe("Common registry users:", func() {
 		It("should copy an image and its referrers to a new repository", func() {
 			stateKeys := append(append(foobarStates, foobarReferrersStates...), foobarImageConfigStates...)
 			src := Reference(Host, ArtifactRepo, foobar.Tag)
-			dst := Reference(Host, cpTestRepo("referrers"), FoobarImageDigest)
+			dst := Reference(Host, cpTestRepo("referrers"), foobar.Digest)
 			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
 			validate(src, dst)
 		})
@@ -134,7 +134,7 @@ var _ = Describe("Common registry users:", func() {
 		})
 
 		It("should copy an image to a new repository with multiple tagging", func() {
-			src := Reference(Host, ImageRepo, FoobarImageDigest)
+			src := Reference(Host, ImageRepo, foobar.Digest)
 			tags := []string{"tag1", "tag2", "tag3"}
 			dstRepo := cpTestRepo("multi-tagging")
 			dst := Reference(Host, dstRepo, "")
@@ -161,7 +161,7 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 			dst := Reference(FallbackHost, repo, "")
 			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
 			validate(src, Reference(FallbackHost, repo, SignatureImageReferrerDigest))
-			ORAS("discover", "-o", "tree", Reference(FallbackHost, repo, FoobarImageDigest)).
+			ORAS("discover", "-o", "tree", Reference(FallbackHost, repo, foobar.Digest)).
 				WithDescription("discover referrer via subject").MatchKeyWords(SignatureImageReferrerDigest, SBOMImageReferrerDigest).Exec()
 		})
 		It("should copy an image artifact and its referrers from a fallback registry to a registry", func() {
@@ -171,7 +171,7 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 			dst := Reference(Host, repo, "")
 			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
 			validate(src, Reference(Host, repo, FallbackSBOMImageReferrerDigest))
-			ORAS("discover", "-o", "tree", Reference(Host, repo, FoobarImageDigest)).
+			ORAS("discover", "-o", "tree", Reference(Host, repo, foobar.Digest)).
 				WithDescription("discover referrer via subject").MatchKeyWords(FallbackSignatureImageReferrerDigest, FallbackSBOMImageReferrerDigest).Exec()
 		})
 	})
