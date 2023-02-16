@@ -24,6 +24,7 @@ import (
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	ma "oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
@@ -55,7 +56,7 @@ var _ = Describe("ORAS beginners:", func() {
 	})
 })
 
-var foobarStates = append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.FileConfigStateKey)
+var foobarStates = append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(oras.MediaTypeUnknownConfig))
 
 var _ = Describe("Common registry users:", func() {
 	When("running `cp`", func() {
