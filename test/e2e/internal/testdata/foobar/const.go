@@ -18,11 +18,10 @@ package foobar
 import "oras.land/oras/test/e2e/internal/utils/match"
 
 var (
-	Tag                = "foobar"
-	Digest             = "sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb"
-	ManifestStateKey = match.StateKey{
-		{Digest: "fd6ed2f36b54", Name: "application/vnd.oci.image.manifest.v1+json"}
-	}
+	Tag              = "foobar"
+	Digest           = "sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb"
+	ManifestStateKey = match.StateKey{Digest: "fd6ed2f36b54", Name: "application/vnd.oci.image.manifest.v1+json"}
+
 	FileLayerNames = []string{
 		"foobar/foo1",
 		"foobar/foo2",
@@ -50,9 +49,7 @@ var (
 	}
 	ImageConfigName = "config.json"
 
-
-
-	ConfigDesc = "{\"mediaType\":\"application/vnd.unknown.config.v1+json\",\"digest\":\"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a\",\"size\":2}"
+	ConfigDesc         = "{\"mediaType\":\"application/vnd.unknown.config.v1+json\",\"digest\":\"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a\",\"size\":2}"
 	AttachFileName     = "foobar/to-be-attached"
 	AttachFileMedia    = "test/oras.e2e"
 	AttachFileStateKey = match.StateKey{
@@ -60,8 +57,8 @@ var (
 	}
 )
 
-func ImageConfigStateKey(configName string) match.StateKey{
-	return match.StateKey { Digest: "44136fa355b3", Name: configName}
+func ImageConfigStateKey(configName string) match.StateKey {
+	return match.StateKey{Digest: "44136fa355b3", Name: configName}
 }
 
 // referrers
@@ -70,7 +67,7 @@ var (
 	SignatureImageReferrerDigest    = "sha256:0e007dcb9ded7f49c4dc8e3eed4a446712eb6fdf08a665a4f2352d6d2f8bdf17"
 	SBOMArtifactReferrerDigest      = "sha256:8d7a27ff2662dae183f762d281f46d626ba7b6e56a72cc9959cdbcd91aad7fbc"
 	SignatureArtifactReferrerDigest = "sha256:0e007dcb9ded7f49c4dc8e3eed4a446712eb6fdf08a665a4f2352d6d2f8bdf17"
-	ArtifactReferrerStateKeys = []match.StateKey{
+	ArtifactReferrerStateKeys       = []match.StateKey{
 		{Digest: "8d7a27ff2662", Name: "application/vnd.oci.artifact.manifest.v1+json"},
 		{Digest: "2dbea575a349", Name: "application/vnd.oci.artifact.manifest.v1+json"},
 	}
