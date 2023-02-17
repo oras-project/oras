@@ -115,7 +115,7 @@ var _ = Describe("Common registry users:", func() {
 			validate(Reference(Host, ImageRepo, ma.LinuxAMD64.Digest.String()), dst)
 		})
 
-		It("should copy a certain platform of image and its referrers to a new repository via tag", Skip, func() {
+		It("should copy a certain platform of image and its referrers to a new repository via tag", Pending, func() {
 			src := Reference(Host, ArtifactRepo, ma.Tag)
 			dstRepo := cpTestRepo("platform-referrers-index")
 			dst := Reference(Host, dstRepo, "copiedTag")
