@@ -95,7 +95,7 @@ var _ = Describe("Common registry users:", func() {
 			var index ocispec.Index
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(index.Manifests).To(HaveLen(1))
-			Expect(index.Manifests).Should(ContainElement(foobar.SBOMArtifactReferrer))
+			Expect(index.Manifests).Should(ContainElement(multi_arch.LinuxAMD64))
 		})
 	})
 
