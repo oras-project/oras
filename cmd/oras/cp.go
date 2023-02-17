@@ -133,7 +133,7 @@ func runCopy(opts copyOptions) error {
 
 	var desc ocispec.Descriptor
 	if ref := opts.To.Reference; ref == "" || opts.recursive {
-		// resolve first
+		// need resolving first
 		rOpts := oras.DefaultResolveOptions
 		rOpts.TargetPlatform = opts.Platform.Platform
 		desc, err = oras.Resolve(ctx, src, opts.From.Reference, rOpts)
@@ -141,6 +141,7 @@ func runCopy(opts copyOptions) error {
 			return err
 		}
 		if opts.recursive {
+			// not ExtendCopy since we already have desc
 			err = oras.ExtendedCopyGraph(ctx, src, dst, desc, extendedCopyOptions.ExtendedCopyGraphOptions)
 		} else {
 			err = oras.CopyGraph(ctx, src, dst, desc, extendedCopyOptions.CopyGraphOptions)
@@ -149,7 +150,6 @@ func runCopy(opts copyOptions) error {
 			return err
 		}
 		if ref != "" {
-			// tagging
 			err = dst.Tag(ctx, desc, ref)
 		}
 	} else {
@@ -166,7 +166,7 @@ func runCopy(opts copyOptions) error {
 	}
 
 	if from, err := digest.Parse(opts.From.Reference); err == nil && from != desc.Digest {
-		// show correct source digest
+		// correct source digest
 		opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, desc.Digest.String())
 	}
 	fmt.Println("Copied", opts.From.AnnotatedReference(), "=>", opts.To.AnnotatedReference())
