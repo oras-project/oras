@@ -17,13 +17,30 @@ package command
 
 import (
 	"encoding/json"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"gopkg.in/yaml.v2"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
+
+func discoverKeyWords(verbose bool, descs ...ocispec.Descriptor) []string {
+	var ret []string
+	for _, d := range descs {
+		ret = append(ret, d.Digest.String(), d.ArtifactType)
+		if verbose {
+			for k, v := range d.Annotations {
+				bytes, err := yaml.Marshal(map[string]string{k: v})
+				Expect(err).ShouldNot(HaveOccurred())
+				ret = append(ret, strings.TrimSpace(string(bytes)))
+			}
+		}
+	}
+	return ret
+}
 
 var _ = Describe("ORAS beginners:", func() {
 	When("running discover command", func() {
@@ -44,10 +61,10 @@ var _ = Describe("ORAS beginners:", func() {
 })
 
 var _ = Describe("Common registry users:", func() {
+	subjectRef := Reference(Host, ArtifactRepo, foobar.Tag)
 	When("running discover command with json output", func() {
 		format := "json"
 		It("should discover direct referrers of a subject", func() {
-			subjectRef := Reference(Host, ArtifactRepo, foobar.Tag)
 			bytes := ORAS("discover", subjectRef, "-o", format).Exec().Out.Contents()
 			var index ocispec.Index
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
@@ -59,43 +76,36 @@ var _ = Describe("Common registry users:", func() {
 
 	When("running discover command with tree output", func() {
 		format := "tree"
+		referrers := []ocispec.Descriptor{foobar.SBOMImageReferrer, foobar.SBOMArtifactReferrer, foobar.SignatureImageReferrer, foobar.SignatureArtifactReferrer}
 		It("should discover all referrers of a subject", func() {
-			subjectRef := Reference(Host, ArtifactRepo, foobar.Tag)
 			ORAS("discover", subjectRef, "-o", format).
-				MatchKeyWords(
-					Reference(Host, ArtifactRepo, foobar.Digest),
-					foobar.SBOMImageReferrer.Digest.String(),
-					foobar.SBOMImageReferrer.ArtifactType,
-					foobar.SBOMArtifactReferrer.Digest.String(),
-					foobar.SBOMArtifactReferrer.ArtifactType,
-					foobar.SignatureImageReferrer.Digest.String(),
-					foobar.SignatureImageReferrer.ArtifactType,
-					foobar.SignatureArtifactReferrer.Digest.String(),
-					foobar.SignatureArtifactReferrer.ArtifactType,
-				).Exec()
+				MatchKeyWords(append(discoverKeyWords(false, referrers...), Reference(Host, ArtifactRepo, foobar.Digest))...).
+				Exec()
+		})
+
+		It("should discover all referrers of a subject with annotations", func() {
+			ORAS("discover", subjectRef, "-o", format, "-v").
+				MatchKeyWords(append(discoverKeyWords(true, referrers...), Reference(Host, ArtifactRepo, foobar.Digest))...).
+				Exec()
+
 		})
 	})
-
 	When("running discover command with table output", func() {
 		format := "table"
+		referrers := []ocispec.Descriptor{foobar.SBOMImageReferrer, foobar.SBOMArtifactReferrer}
 		It("should all referrers of a subject", func() {
-			subjectRef := Reference(Host, ArtifactRepo, foobar.Tag)
 			ORAS("discover", subjectRef, "-o", format).
-				MatchKeyWords(
-					foobar.Digest,
-					foobar.SBOMImageReferrer.Digest.String(),
-					foobar.SBOMImageReferrer.ArtifactType,
-					foobar.SBOMArtifactReferrer.Digest.String(),
-					foobar.SBOMArtifactReferrer.ArtifactType,
-				).Exec()
+				MatchKeyWords(append(discoverKeyWords(false, referrers...), foobar.Digest)...).
+				Exec()
 		})
 	})
 })
 
 var _ = Describe("Fallback registry users:", func() {
+	subjectRef := Reference(Host, ArtifactRepo, foobar.Tag)
+
 	When("running discover command", func() {
 		It("should discover direct referrers of a subject via json output", func() {
-			subjectRef := Reference(FallbackHost, ArtifactRepo, foobar.Tag)
 			bytes := ORAS("discover", subjectRef, "-o", "json").Exec().Out.Contents()
 			var index ocispec.Index
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
@@ -104,19 +114,10 @@ var _ = Describe("Fallback registry users:", func() {
 		})
 
 		It("should discover all referrers of a subject", func() {
-			subjectRef := Reference(Host, ArtifactRepo, foobar.Tag)
+			referrers := []ocispec.Descriptor{foobar.FallbackSBOMImageReferrer, foobar.FallbackSignatureImageReferrer}
 			ORAS("discover", subjectRef, "-o", "tree").
-				MatchKeyWords(
-					Reference(Host, ArtifactRepo, foobar.Digest),
-					foobar.SBOMImageReferrer.Digest.String(),
-					foobar.SBOMImageReferrer.ArtifactType,
-					foobar.SBOMArtifactReferrer.Digest.String(),
-					foobar.SBOMArtifactReferrer.ArtifactType,
-					foobar.SignatureImageReferrer.Digest.String(),
-					foobar.SignatureImageReferrer.ArtifactType,
-					foobar.SignatureArtifactReferrer.Digest.String(),
-					foobar.SignatureArtifactReferrer.ArtifactType,
-				).Exec()
+				MatchKeyWords(append(discoverKeyWords(false, referrers...), Reference(Host, ArtifactRepo, foobar.Digest))...).
+				Exec()
 		})
 	})
 })
