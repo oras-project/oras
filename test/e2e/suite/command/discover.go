@@ -24,6 +24,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"gopkg.in/yaml.v2"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
+	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
@@ -75,6 +76,14 @@ var _ = Describe("Common registry users:", func() {
 
 		It("should discover matched referrer when filtering", func() {
 			bytes := ORAS("discover", subjectRef, "-o", format, "--artifact-type", foobar.SBOMArtifactReferrer.ArtifactType).Exec().Out.Contents()
+			var index ocispec.Index
+			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
+			Expect(index.Manifests).To(HaveLen(1))
+			Expect(index.Manifests).Should(ContainElement(foobar.SBOMArtifactReferrer))
+		})
+
+		It("should discover one referrer with matched platform", func() {
+			bytes := ORAS("discover", Reference(Host, ArtifactRepo, multi_arch.Tag), "-o", format, "--platform", "linux/amd64").Exec().Out.Contents()
 			var index ocispec.Index
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(index.Manifests).To(HaveLen(1))

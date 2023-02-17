@@ -100,9 +100,9 @@ var _ = Describe("Common registry users:", func() {
 
 			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").
 				MatchStatus(ma.IndexStateKeys, true, len(ma.IndexStateKeys)).
-				MatchKeyWords("Digest: " + ma.LinuxAMD64Digest).
+				MatchKeyWords("Digest: " + ma.LinuxAMD64.Digest.String()).
 				Exec()
-			validate(Reference(Host, ImageRepo, ma.LinuxAMD64Digest), dst)
+			validate(Reference(Host, ImageRepo, ma.LinuxAMD64.Digest.String()), dst)
 		})
 
 		It("should copy a certain platform of image to a new repository via digest", func() {
@@ -110,9 +110,9 @@ var _ = Describe("Common registry users:", func() {
 			dst := Reference(Host, cpTestRepo("platform-digest"), "copiedTag")
 			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").
 				MatchStatus(ma.IndexStateKeys, true, len(ma.IndexStateKeys)).
-				MatchKeyWords("Digest: " + ma.LinuxAMD64Digest).
+				MatchKeyWords("Digest: " + ma.LinuxAMD64.Digest.String()).
 				Exec()
-			validate(Reference(Host, ImageRepo, ma.LinuxAMD64Digest), dst)
+			validate(Reference(Host, ImageRepo, ma.LinuxAMD64.Digest.String()), dst)
 		})
 
 		It("should copy a certain platform of image and its referrers to a new repository via tag", func() {
@@ -121,10 +121,10 @@ var _ = Describe("Common registry users:", func() {
 			dst := Reference(Host, dstRepo, "copiedTag")
 			ORAS("cp", src, dst, "-r", "--platform", "linux/amd64", "-v").
 				MatchStatus(ma.IndexStateKeys, true, len(ma.IndexStateKeys)).
-				MatchKeyWords("Digest: " + ma.LinuxAMD64Digest).
+				MatchKeyWords("Digest: " + ma.LinuxAMD64.Digest.String()).
 				Exec()
 			// validate
-			validate(Reference(Host, ImageRepo, ma.LinuxAMD64Digest), dst)
+			validate(Reference(Host, ImageRepo, ma.LinuxAMD64.Digest.String()), dst)
 			var index ocispec.Index
 			bytes := ORAS("discover", dst, "-o", "json", "--platform", "linux/amd64").
 				MatchKeyWords(ma.LinuxAMD64ReferrerDigest).Exec().Out.Contents()
