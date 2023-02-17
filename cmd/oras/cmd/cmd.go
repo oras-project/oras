@@ -12,17 +12,34 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
-package main
+package cmd
 
 import (
-	"os"
-
-	"oras.land/oras/cmd/oras/cmd"
+	"github.com/spf13/cobra"
+	"oras.land/oras/cmd/oras/blob"
+	"oras.land/oras/cmd/oras/manifest"
+	"oras.land/oras/cmd/oras/repository"
+	"oras.land/oras/cmd/oras/tag"
 )
 
-func main() {
-	if err := cmd.NewRoot().Execute(); err != nil {
-		os.Exit(1)
+func NewRoot() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:          "oras [command]",
+		SilenceUsage: true,
 	}
+	cmd.AddCommand(
+		pullCmd(),
+		pushCmd(),
+		loginCmd(),
+		logoutCmd(),
+		versionCmd(),
+		discoverCmd(),
+		copyCmd(),
+		attachCmd(),
+		blob.Cmd(),
+		manifest.Cmd(),
+		tag.TagCmd(),
+		repository.Cmd(),
+	)
+	return cmd
 }
