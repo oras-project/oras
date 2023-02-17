@@ -39,6 +39,15 @@ var (
 	LinuxAMD64Manifest = `{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:fe9dbc99451d0517d65e048c309f0b5afb2cc513b7a3d456b6cc29fe641386c5","size":53},"layers":[{"mediaType":"application/vnd.oci.image.layer.v1.tar","digest":"sha256:2ef548696ac7dd66ef38aab5cc8fc5cc1fb637dfaedb3a9afc89bf16db9277e1","size":10240,"annotations":{"org.opencontainers.image.title":"hello.tar"}}]}`
 	LinuxAMD64         = ocispec.Descriptor{
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Digest:    digest.Digest("sha256:9d84a5716c66a1d1b9c13f8ed157ba7d1edfe7f9b8766728b8a1f25c0d9c14c1"),
+		Size:      458,
+	}
+	LinuxAMD64DescStr    = `{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:9d84a5716c66a1d1b9c13f8ed157ba7d1edfe7f9b8766728b8a1f25c0d9c14c1","size":458}`
+	LinuxAMD64IndexDesc  = `{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:9d84a5716c66a1d1b9c13f8ed157ba7d1edfe7f9b8766728b8a1f25c0d9c14c1","size":458,"platform":{"architecture":"amd64","os":"linux"}}`
+	LinuxAMD64Config     = "{\r\n    \"architecture\": \"amd64\",\r\n    \"os\": \"linux\"\r\n}"
+	LinuxAMD64ConfigDesc = `{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:fe9dbc99451d0517d65e048c309f0b5afb2cc513b7a3d456b6cc29fe641386c5","size":53}`
+	LinuxAMD64Referrer   = ocispec.Descriptor{
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
 		Digest:    digest.Digest("sha256:57e6462826c85be15f22f824666f6b467d488fa7bc7e2975f43a2fae27a24ef0"),
 		Annotations: map[string]string{
 			"org.opencontainers.image.created": "2023-02-15T07:56:34Z",
@@ -47,11 +56,6 @@ var (
 		ArtifactType: "referrer.image",
 		Size:         481,
 	}
-	LinuxAMD64DescStr                = `{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:9d84a5716c66a1d1b9c13f8ed157ba7d1edfe7f9b8766728b8a1f25c0d9c14c1","size":458}`
-	LinuxAMD64IndexDesc              = `{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:9d84a5716c66a1d1b9c13f8ed157ba7d1edfe7f9b8766728b8a1f25c0d9c14c1","size":458,"platform":{"architecture":"amd64","os":"linux"}}`
-	LinuxAMD64Config                 = "{\r\n    \"architecture\": \"amd64\",\r\n    \"os\": \"linux\"\r\n}"
-	LinuxAMD64ConfigDesc             = `{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:fe9dbc99451d0517d65e048c309f0b5afb2cc513b7a3d456b6cc29fe641386c5","size":53}`
-	LinuxAMD64ReferrerDigest         = "sha256:57e6462826c85be15f22f824666f6b467d488fa7bc7e2975f43a2fae27a24ef0"
 	LayerName                        = "hello.tar"
 	LinuxAMD64ReferrerStateKey       = match.StateKey{Digest: "57e6462826c8", Name: "application/vnd.oci.image.manifest.v1+json"}
 	LinuxAMD64ReferrerConfigStateKey = match.StateKey{Digest: "44136fa355b3", Name: "referrer.image"}
