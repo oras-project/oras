@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
+	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
@@ -136,14 +137,14 @@ var _ = Describe("ORAS beginners:", func() {
 
 		It("should fail if no blob reference is provided", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "no-ref")
-			ORAS("cp", Reference(Host, ImageRepo, FoobarImageDigest), Reference(Host, dstRepo, FoobarImageDigest)).Exec()
+			ORAS("cp", Reference(Host, ImageRepo, foobar.Digest), Reference(Host, dstRepo, foobar.Digest)).Exec()
 			ORAS("blob", "delete").ExpectFailure().Exec()
 			ORAS("blob", "fetch", Reference(Host, dstRepo, deleteDigest), "--output", "-").MatchContent(deleteContent).Exec()
 		})
 
 		It("should fail if no force flag and descriptor flag is provided", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "no-confirm")
-			ORAS("cp", Reference(Host, ImageRepo, FoobarImageDigest), Reference(Host, dstRepo, FoobarImageDigest)).Exec()
+			ORAS("cp", Reference(Host, ImageRepo, foobar.Digest), Reference(Host, dstRepo, foobar.Digest)).Exec()
 			ORAS("blob", "delete", Reference(Host, dstRepo, deleteDigest), "--descriptor").ExpectFailure().Exec()
 			ORAS("blob", "fetch", Reference(Host, dstRepo, deleteDigest), "--output", "-").MatchContent(deleteContent).Exec()
 		})
@@ -178,7 +179,7 @@ var _ = Describe("Common registry users:", func() {
 	When("running `blob delete`", func() {
 		It("should delete a blob with interactive confirmation", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "prompt-confirmation")
-			ORAS("cp", Reference(Host, ImageRepo, FoobarImageDigest), Reference(Host, dstRepo, FoobarImageDigest)).Exec()
+			ORAS("cp", Reference(Host, ImageRepo, foobar.Digest), Reference(Host, dstRepo, foobar.Digest)).Exec()
 			toDeleteRef := Reference(Host, dstRepo, deleteDigest)
 			ORAS("blob", "delete", toDeleteRef).
 				WithInput(strings.NewReader("y")).
@@ -192,7 +193,7 @@ var _ = Describe("Common registry users:", func() {
 
 		It("should delete a blob with force flag and output descriptor", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "flag-confirmation")
-			ORAS("cp", Reference(Host, ImageRepo, FoobarImageDigest), Reference(Host, dstRepo, FoobarImageDigest)).Exec()
+			ORAS("cp", Reference(Host, ImageRepo, foobar.Digest), Reference(Host, dstRepo, foobar.Digest)).Exec()
 			toDeleteRef := Reference(Host, dstRepo, deleteDigest)
 			ORAS("blob", "delete", toDeleteRef, "--force", "--descriptor").MatchContent(deleteDescriptor).Exec()
 			ORAS("blob", "delete", toDeleteRef).WithDescription("validate").ExpectFailure().MatchErrKeyWords("Error:", toDeleteRef, "the specified blob does not exist").Exec()

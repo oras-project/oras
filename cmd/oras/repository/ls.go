@@ -20,8 +20,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/repository"
 )
 
 type repositoryOptions struct {
@@ -56,7 +56,8 @@ Example - List the repositories under the registry that include values lexically
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := parseRepoPath(&opts, args[0]); err != nil {
+			var err error
+			if opts.hostname, opts.namespace, err = repository.ParseRepoPath(args[0]); err != nil {
 				return fmt.Errorf("could not parse repository path: %w", err)
 			}
 			return listRepository(opts)
@@ -66,24 +67,6 @@ Example - List the repositories under the registry that include values lexically
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the repository specified by `last`")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
-}
-
-func parseRepoPath(opts *repositoryOptions, arg string) error {
-	path := strings.TrimSuffix(arg, "/")
-	if strings.Contains(path, "/") {
-		reference, err := registry.ParseReference(path)
-		if err != nil {
-			return err
-		}
-		if reference.Reference != "" {
-			return fmt.Errorf("tags or digests should not be provided")
-		}
-		opts.hostname = reference.Registry
-		opts.namespace = reference.Repository + "/"
-	} else {
-		opts.hostname = path
-	}
-	return nil
 }
 
 func listRepository(opts repositoryOptions) error {

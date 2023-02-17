@@ -3,7 +3,7 @@ module oras.land/oras/test/e2e
 go 1.20
 
 require (
-	github.com/onsi/ginkgo/v2 v2.8.0
+	github.com/onsi/ginkgo/v2 v2.8.1
 	github.com/onsi/gomega v1.26.0
 	github.com/opencontainers/image-spec v1.1.0-rc2
 	oras.land/oras-go/v2 v2.0.0

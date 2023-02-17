@@ -17,6 +17,7 @@ package command
 
 import (
 	. "github.com/onsi/ginkgo/v2"
+	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
@@ -40,16 +41,16 @@ var _ = Describe("Common registry users:", func() {
 	}
 	When("running `tag`", func() {
 		It("should add a tag to an existent manifest when providing tag reference", func() {
-			tagAndValidate(Host, ImageRepo, MultiImageTag, "tag-via-tag")
+			tagAndValidate(Host, ImageRepo, multi_arch.Tag, "tag-via-tag")
 		})
 		It("should add a tag to an existent manifest when providing digest reference", func() {
-			tagAndValidate(Host, ImageRepo, MultiImageDigest, "tag-via-digest")
+			tagAndValidate(Host, ImageRepo, multi_arch.Digest, "tag-via-digest")
 		})
 		It("should add multiple tags to an existent manifest when providing digest reference", func() {
-			tagAndValidate(Host, ImageRepo, MultiImageDigest, "tag1-via-digest", "tag2-via-digest", "tag3-via-digest")
+			tagAndValidate(Host, ImageRepo, multi_arch.Digest, "tag1-via-digest", "tag2-via-digest", "tag3-via-digest")
 		})
 		It("should add multiple tags to an existent manifest when providing tag reference", func() {
-			tagAndValidate(Host, ImageRepo, MultiImageTag, "tag1-via-tag", "tag1-via-tag", "tag1-via-tag")
+			tagAndValidate(Host, ImageRepo, multi_arch.Tag, "tag1-via-tag", "tag1-via-tag", "tag1-via-tag")
 		})
 	})
 })

@@ -21,6 +21,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
@@ -131,34 +132,43 @@ func runCopy(opts copyOptions) error {
 	}
 
 	var desc ocispec.Descriptor
-	if ref := opts.To.Reference; ref == "" {
-		// push to the destination with digest only if no tag specified
-		desc, err = src.Resolve(ctx, opts.From.Reference)
+	if ref := opts.To.Reference; ref == "" || opts.recursive {
+		// need resolving first
+		rOpts := oras.DefaultResolveOptions
+		rOpts.TargetPlatform = opts.Platform.Platform
+		desc, err = oras.Resolve(ctx, src, opts.From.Reference, rOpts)
 		if err != nil {
 			return err
 		}
 		if opts.recursive {
+			// not ExtendCopy since we already have desc
 			err = oras.ExtendedCopyGraph(ctx, src, dst, desc, extendedCopyOptions.ExtendedCopyGraphOptions)
 		} else {
 			err = oras.CopyGraph(ctx, src, dst, desc, extendedCopyOptions.CopyGraphOptions)
 		}
-	} else {
-		if opts.recursive {
-			desc, err = oras.ExtendedCopy(ctx, src, opts.From.Reference, dst, opts.To.Reference, extendedCopyOptions)
-		} else {
-			copyOptions := oras.CopyOptions{
-				CopyGraphOptions: extendedCopyOptions.CopyGraphOptions,
-			}
-			if opts.Platform.Platform != nil {
-				copyOptions.WithTargetPlatform(opts.Platform.Platform)
-			}
-			desc, err = oras.Copy(ctx, src, opts.From.Reference, dst, opts.To.Reference, copyOptions)
+		if err != nil {
+			return err
 		}
+		if ref != "" {
+			err = dst.Tag(ctx, desc, ref)
+		}
+	} else {
+		copyOptions := oras.CopyOptions{
+			CopyGraphOptions: extendedCopyOptions.CopyGraphOptions,
+		}
+		if opts.Platform.Platform != nil {
+			copyOptions.WithTargetPlatform(opts.Platform.Platform)
+		}
+		desc, err = oras.Copy(ctx, src, opts.From.Reference, dst, ref, copyOptions)
 	}
 	if err != nil {
 		return err
 	}
 
+	if from, err := digest.Parse(opts.From.Reference); err == nil && from != desc.Digest {
+		// correct source digest
+		opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, desc.Digest.String())
+	}
 	fmt.Println("Copied", opts.From.AnnotatedReference(), "=>", opts.To.AnnotatedReference())
 
 	if len(opts.extraRefs) != 0 {
