@@ -127,10 +127,10 @@ var _ = Describe("Common registry users:", func() {
 			validate(Reference(Host, ImageRepo, ma.LinuxAMD64.Digest.String()), dst)
 			var index ocispec.Index
 			bytes := ORAS("discover", dst, "-o", "json", "--platform", "linux/amd64").
-				MatchKeyWords(ma.LinuxAMD64ReferrerDigest).Exec().Out.Contents()
+				MatchKeyWords(ma.LinuxAMD64Referrer.Digest.String()).Exec().Out.Contents()
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].Digest.String()).To(Equal(ma.LinuxAMD64ReferrerDigest))
+			Expect(index.Manifests[0].Digest.String()).To(Equal(ma.LinuxAMD64Referrer.Digest.String()))
 		})
 
 		It("should copy an image to a new repository with multiple tagging", func() {
