@@ -157,22 +157,22 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 		It("should copy an image artifact and its referrers from a registry to a fallback registry", func() {
 			repo := cpTestRepo("to-fallback")
 			stateKeys := append(append(foobarStates, foobar.ImageReferrersStateKeys...), foobar.ImageReferrerConfigStateKeys...)
-			src := Reference(Host, ArtifactRepo, foobar.SignatureImageReferrerDigest)
+			src := Reference(Host, ArtifactRepo, foobar.SignatureImageReferrer.Digest.String())
 			dst := Reference(FallbackHost, repo, "")
 			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
-			validate(src, Reference(FallbackHost, repo, foobar.SignatureImageReferrerDigest))
+			validate(src, Reference(FallbackHost, repo, foobar.SignatureImageReferrer.Digest.String()))
 			ORAS("discover", "-o", "tree", Reference(FallbackHost, repo, foobar.Digest)).
-				WithDescription("discover referrer via subject").MatchKeyWords(foobar.SignatureImageReferrerDigest, foobar.SBOMImageReferrerDigest).Exec()
+				WithDescription("discover referrer via subject").MatchKeyWords(foobar.SignatureImageReferrer.Digest.String(), foobar.SBOMImageReferrer.Digest.String()).Exec()
 		})
 		It("should copy an image artifact and its referrers from a fallback registry to a registry", func() {
 			repo := cpTestRepo("from-fallback")
 			stateKeys := append(append(foobarStates, foobar.FallbackImageReferrersStateKeys...), foobar.ImageReferrerConfigStateKeys...)
-			src := Reference(FallbackHost, ArtifactRepo, foobar.FallbackSBOMImageReferrerDigest)
+			src := Reference(FallbackHost, ArtifactRepo, foobar.FallbackSBOMImageReferrer.Digest.String())
 			dst := Reference(Host, repo, "")
 			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
-			validate(src, Reference(Host, repo, foobar.FallbackSBOMImageReferrerDigest))
+			validate(src, Reference(Host, repo, foobar.FallbackSBOMImageReferrer.Digest.String()))
 			ORAS("discover", "-o", "tree", Reference(Host, repo, foobar.Digest)).
-				WithDescription("discover referrer via subject").MatchKeyWords(foobar.FallbackSignatureImageReferrerDigest, foobar.FallbackSBOMImageReferrerDigest).Exec()
+				WithDescription("discover referrer via subject").MatchKeyWords(foobar.FallbackSignatureImageReferrer.Digest.String(), foobar.FallbackSBOMImageReferrer.Digest.String()).Exec()
 		})
 	})
 })

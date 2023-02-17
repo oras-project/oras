@@ -17,14 +17,12 @@ package command
 
 import (
 	"encoding/json"
-	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	. "oras.land/oras/test/e2e/internal/utils"
-	"oras.land/oras/test/e2e/internal/utils/match"
 )
 
 var _ = Describe("ORAS beginners:", func() {
@@ -46,74 +44,79 @@ var _ = Describe("ORAS beginners:", func() {
 })
 
 var _ = Describe("Common registry users:", func() {
-	When("running discover command", Focus, func() {
-		It("should discover direct referrers of a subject in remote registry", func() {
-			subjectRef := Reference(Host, ArtifactRepo, FoobarImageTag)
-
-			bytes := ORAS("discover", subjectRef, "-o", "json").Exec().Out.Contents()
+	When("running discover command with json output", func() {
+		format := "json"
+		It("should discover direct referrers of a subject", func() {
+			subjectRef := Reference(Host, ArtifactRepo, foobar.Tag)
+			bytes := ORAS("discover", subjectRef, "-o", format).Exec().Out.Contents()
 			var index ocispec.Index
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
-			Expect(len(index.Manifests)).To(Equal(2))
-			Expect(index.Manifests[0].MediaType).To(Equal(ocispec.MediaTypeImageManifest))
-			Expect(index.Manifests[0].Digest.String()).To(Equal(SBOMImageReferrerDigest))
+			Expect(index.Manifests).To(HaveLen(2))
+			Expect(index.Manifests).Should(ContainElement(foobar.SBOMImageReferrer))
+			Expect(index.Manifests).Should(ContainElement(foobar.SBOMArtifactReferrer))
+		})
+	})
+
+	When("running discover command with tree output", func() {
+		format := "tree"
+		It("should discover all referrers of a subject", func() {
+			subjectRef := Reference(Host, ArtifactRepo, foobar.Tag)
+			ORAS("discover", subjectRef, "-o", format).
+				MatchKeyWords(
+					Reference(Host, ArtifactRepo, foobar.Digest),
+					foobar.SBOMImageReferrer.Digest.String(),
+					foobar.SBOMImageReferrer.ArtifactType,
+					foobar.SBOMArtifactReferrer.Digest.String(),
+					foobar.SBOMArtifactReferrer.ArtifactType,
+					foobar.SignatureImageReferrer.Digest.String(),
+					foobar.SignatureImageReferrer.ArtifactType,
+					foobar.SignatureArtifactReferrer.Digest.String(),
+					foobar.SignatureArtifactReferrer.ArtifactType,
+				).Exec()
+		})
+	})
+
+	When("running discover command with table output", func() {
+		format := "table"
+		It("should all referrers of a subject", func() {
+			subjectRef := Reference(Host, ArtifactRepo, foobar.Tag)
+			ORAS("discover", subjectRef, "-o", format).
+				MatchKeyWords(
+					foobar.Digest,
+					foobar.SBOMImageReferrer.Digest.String(),
+					foobar.SBOMImageReferrer.ArtifactType,
+					foobar.SBOMArtifactReferrer.Digest.String(),
+					foobar.SBOMArtifactReferrer.ArtifactType,
+				).Exec()
 		})
 	})
 })
 
 var _ = Describe("Fallback registry users:", func() {
-	When("running attach command", func() {
-		It("should attach a file via a OCI Image", func() {
-			testRepo := attachTestRepo("fallback/image")
-			tempDir := CopyTestDataToTemp()
-			subjectRef := Reference(FallbackHost, testRepo, FoobarImageTag)
-			prepare(Reference(FallbackHost, ArtifactRepo, FoobarImageTag), subjectRef)
-			// test
-			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--image-spec", "v1.1-image").
-				WithWorkDir(tempDir).
-				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
-
-			// validate
-			var index ocispec.Index
+	When("running discover command", func() {
+		It("should discover direct referrers of a subject via json output", func() {
+			subjectRef := Reference(FallbackHost, ArtifactRepo, foobar.Tag)
 			bytes := ORAS("discover", subjectRef, "-o", "json").Exec().Out.Contents()
+			var index ocispec.Index
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
-			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].MediaType).To(Equal(ocispec.MediaTypeImageManifest))
+			Expect(index.Manifests).To(HaveLen(1))
+			Expect(index.Manifests).Should(ContainElement(foobar.FallbackSBOMImageReferrer))
 		})
 
-		It("should attach a file via a OCI Image by default", func() {
-			testRepo := attachTestRepo("fallback/default")
-			tempDir := CopyTestDataToTemp()
-			subjectRef := Reference(FallbackHost, testRepo, FoobarImageTag)
-			prepare(Reference(FallbackHost, ArtifactRepo, FoobarImageTag), subjectRef)
-			// test
-			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--image-spec", "v1.1-image").
-				WithWorkDir(tempDir).
-				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
-
-			// validate
-			var index ocispec.Index
-			bytes := ORAS("discover", subjectRef, "-o", "json").Exec().Out.Contents()
-			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
-			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].MediaType).To(Equal(ocispec.MediaTypeImageManifest))
-		})
-
-		It("should attach a file via a OCI Image and generate referrer via tag schema", func() {
-			testRepo := attachTestRepo("fallback/tag_schema")
-			tempDir := CopyTestDataToTemp()
-			subjectRef := Reference(FallbackHost, testRepo, FoobarImageTag)
-			prepare(Reference(FallbackHost, ArtifactRepo, FoobarImageTag), subjectRef)
-			// test
-			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--image-spec", "v1.1-image", "--distribution-spec", "v1.1-referrers-tag").
-				WithWorkDir(tempDir).
-				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
-
-			// validate
-			var index ocispec.Index
-			bytes := ORAS("discover", subjectRef, "--distribution-spec", "v1.1-referrers-tag", "-o", "json").Exec().Out.Contents()
-			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
-			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].MediaType).To(Equal(ocispec.MediaTypeImageManifest))
+		It("should discover all referrers of a subject", func() {
+			subjectRef := Reference(Host, ArtifactRepo, foobar.Tag)
+			ORAS("discover", subjectRef, "-o", "tree").
+				MatchKeyWords(
+					Reference(Host, ArtifactRepo, foobar.Digest),
+					foobar.SBOMImageReferrer.Digest.String(),
+					foobar.SBOMImageReferrer.ArtifactType,
+					foobar.SBOMArtifactReferrer.Digest.String(),
+					foobar.SBOMArtifactReferrer.ArtifactType,
+					foobar.SignatureImageReferrer.Digest.String(),
+					foobar.SignatureImageReferrer.ArtifactType,
+					foobar.SignatureArtifactReferrer.Digest.String(),
+					foobar.SignatureArtifactReferrer.ArtifactType,
+				).Exec()
 		})
 	})
 })
