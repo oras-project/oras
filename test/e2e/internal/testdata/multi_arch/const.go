@@ -16,6 +16,7 @@ limitations under the License.
 package multi_arch
 
 import (
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/test/e2e/internal/utils/match"
 )
@@ -35,16 +36,16 @@ var (
 
 // child images
 var (
-	LinuxAMD64Manifest               = `{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:fe9dbc99451d0517d65e048c309f0b5afb2cc513b7a3d456b6cc29fe641386c5","size":53},"layers":[{"mediaType":"application/vnd.oci.image.layer.v1.tar","digest":"sha256:2ef548696ac7dd66ef38aab5cc8fc5cc1fb637dfaedb3a9afc89bf16db9277e1","size":10240,"annotations":{"org.opencontainers.image.title":"hello.tar"}}]}`
-	LinuxAMD64                      = ocispec.Descriptor{
+	LinuxAMD64Manifest = `{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:fe9dbc99451d0517d65e048c309f0b5afb2cc513b7a3d456b6cc29fe641386c5","size":53},"layers":[{"mediaType":"application/vnd.oci.image.layer.v1.tar","digest":"sha256:2ef548696ac7dd66ef38aab5cc8fc5cc1fb637dfaedb3a9afc89bf16db9277e1","size":10240,"annotations":{"org.opencontainers.image.title":"hello.tar"}}]}`
+	LinuxAMD64         = ocispec.Descriptor{
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
 		Digest:    digest.Digest("sha256:9d84a5716c66a1d1b9c13f8ed157ba7d1edfe7f9b8766728b8a1f25c0d9c14c1"),
-		Size:      660,
 		Annotations: map[string]string{
 			"org.opencontainers.image.created": "2023-01-29T02:32:18Z",
 		},
 		ArtifactType: "test.sbom.file",
-	},	
+		Size:         660,
+	}
 	LinuxAMD64DescStr                = `{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:9d84a5716c66a1d1b9c13f8ed157ba7d1edfe7f9b8766728b8a1f25c0d9c14c1","size":458}`
 	LinuxAMD64IndexDesc              = `{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:9d84a5716c66a1d1b9c13f8ed157ba7d1edfe7f9b8766728b8a1f25c0d9c14c1","size":458,"platform":{"architecture":"amd64","os":"linux"}}`
 	LinuxAMD64Config                 = "{\r\n    \"architecture\": \"amd64\",\r\n    \"os\": \"linux\"\r\n}"
