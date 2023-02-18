@@ -28,10 +28,10 @@ func Example() {
 	args := []string{"repo", "ls", "mcr.microsoft.com"}
 	cmd := cmd.NewRoot()
 	cmd.SetArgs(args)
-	fmt.Printf("Executing 'oras %s':")
+	fmt.Printf("Executing 'oras %s':", strings.Join(args, " "))
 	err := cmd.Execute()
 	if err != nil {
-		fmt.Errorf("Failed to execute : %w", strings.Join(args, " "), err)
+		fmt.Errorf("Failed to execute : %w", err)
 		os.Exit(-1)
 	}
 	os.Exit(0)
