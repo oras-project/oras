@@ -24,7 +24,8 @@ import (
 // Example gives playable snippets of using oras CLI in command-line scripting
 // via Golang.
 func Example() {
-	args := []string{"repo", "ls", "mcr.microsoft.com"} // set script input
+	// change below array to play with your own cmd args:
+	args := []string{"repo", "ls", "mcr.microsoft.com"}
 	cmd := cmd.NewRoot()
 	cmd.SetArgs(args)
 	fmt.Printf("Executing 'oras %s':")
