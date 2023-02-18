@@ -11,19 +11,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package cmd_test
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
-	"oras.land/oras/cmd/oras/repository"
+	"oras.land/oras/cmd/oras/cmd"
 )
 
-func main() {
-	cmd := repository.Cmd()
-	cmd.SetArgs([]string{"tags", "195.17.139.162:30003/curated-packages/prometheus/prometheus", "--ca-file", "/Users/tlhowe/Library/Application Support/mkcert/rootCA.pem"})
+// Example gives playable snippets of using oras CLI in command-line scripting
+// via Golang.
+func Example() {
+	args := []string{"repo", "ls", "mcr.microsoft.com"} // set script input
+	cmd := cmd.NewRoot()
+	cmd.SetArgs(args)
+	fmt.Printf("Executing 'oras %s':")
 	err := cmd.Execute()
 	if err != nil {
+		fmt.Errorf("Failed to execute : %w", strings.Join(args, " "), err)
 		os.Exit(-1)
 	}
 	os.Exit(0)
