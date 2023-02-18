@@ -3,7 +3,9 @@ Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
 http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -28,7 +30,14 @@ import (
 
 var testFileRoot string
 
-// CopyTestData copies test data into the temp test folder.
+// CopyTestDataToTemp copies test data into a temp folder and return it.
+func CopyTestDataToTemp() string {
+	tempDir := GinkgoT().TempDir()
+	Expect(CopyTestData(tempDir)).ShouldNot(HaveOccurred())
+	return tempDir
+}
+
+// CopyTestData copies test data into dstRoot.
 func CopyTestData(dstRoot string) error {
 	return filepath.WalkDir(testFileRoot, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {

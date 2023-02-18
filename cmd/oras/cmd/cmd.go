@@ -12,24 +12,34 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
-package scenario
+package cmd
 
 import (
-	"fmt"
-	"testing"
-
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	"github.com/spf13/cobra"
+	"oras.land/oras/cmd/oras/blob"
+	"oras.land/oras/cmd/oras/manifest"
+	"oras.land/oras/cmd/oras/repository"
+	"oras.land/oras/cmd/oras/tag"
 )
 
-// TestORASAuth runs auth tests.
-// This suite has to be separated from other tests.
-func TestORASAuth(t *testing.T) {
-	RegisterFailHandler(Fail)
-
-	suiteConf, _ := GinkgoConfiguration()
-	fmt.Printf("Starting e2e on Ginkgo node %d of total %d\n",
-		suiteConf.ParallelProcess, suiteConf.ParallelTotal)
-	RunSpecs(t, "ORAS Scenario Suite")
+func NewRoot() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:          "oras [command]",
+		SilenceUsage: true,
+	}
+	cmd.AddCommand(
+		pullCmd(),
+		pushCmd(),
+		loginCmd(),
+		logoutCmd(),
+		versionCmd(),
+		discoverCmd(),
+		copyCmd(),
+		attachCmd(),
+		blob.Cmd(),
+		manifest.Cmd(),
+		tag.TagCmd(),
+		repository.Cmd(),
+	)
+	return cmd
 }
