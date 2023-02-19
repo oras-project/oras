@@ -17,6 +17,7 @@ package repository
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/opencontainers/go-digest"
@@ -96,6 +97,7 @@ func showTags(opts showTagsOptions) error {
 			}
 			filter = desc.Digest.String()
 		}
+		fmt.Fprintln(os.Stderr, "Tag query by reference may take a while")
 	}
 	return finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
