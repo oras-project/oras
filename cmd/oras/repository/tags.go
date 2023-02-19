@@ -55,6 +55,12 @@ Example - Show tags of the target OCI layout folder 'layout-dir':
 
 Example - Show tags of the target OCI layout archive 'layout.tar':
   oras repo tags --oci-layout layout.tar
+
+Example - Show tags also associated with a particular tagged resource:
+  oras repo tags localhost:5000/hello:latest
+
+Example - Show tags associated with a digest:
+  oras repo tags localhost:5000/hello@sha256:c551125a624189
 `,
 		Args:    cobra.ExactArgs(1),
 		Aliases: []string{"show-tags"},
