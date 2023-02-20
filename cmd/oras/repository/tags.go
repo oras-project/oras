@@ -17,7 +17,6 @@ package repository
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/opencontainers/go-digest"
@@ -80,7 +79,7 @@ Example - Show tags associated with a digest:
 }
 
 func showTags(opts showTagsOptions) error {
-	ctx, _ := opts.SetLoggerLevel()
+	ctx, logger := opts.SetLoggerLevel()
 	finder, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err
@@ -97,7 +96,7 @@ func showTags(opts showTagsOptions) error {
 			}
 			filter = desc.Digest.String()
 		}
-		fmt.Fprintln(os.Stderr, "Tag query by reference may take a while")
+		logger.Infof("[Preview] Querying tags associated to %s, it may take a while.\n", filter)
 	}
 	return finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
