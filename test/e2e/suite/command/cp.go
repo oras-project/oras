@@ -94,6 +94,30 @@ var _ = Describe("Common registry users:", func() {
 			validate(src, dst)
 		})
 
+		It("should copy a multi-arch image and its referrers to a new repository via tag", func() {
+			src := Reference(Host, ArtifactRepo, ma.Tag)
+			dstRepo := cpTestRepo("referrers-index")
+			dst := Reference(Host, dstRepo, "copiedTag")
+			ORAS("cp", src, dst, "-r", "-v").
+				MatchStatus(ma.IndexStateKeys, true, len(ma.IndexStateKeys)).
+				MatchKeyWords("Digest: " + ma.Digest).
+				Exec()
+			// validate
+			validate(Reference(Host, ImageRepo, ma.Digest), dst)
+			var index ocispec.Index
+			bytes := ORAS("discover", dst, "-o", "json").
+				MatchKeyWords(ma.IndexReferrerDigest).
+				WithDescription("copy image referrer").
+				Exec().Out.Contents()
+			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
+			Expect(len(index.Manifests)).To(Equal(1))
+			Expect(index.Manifests[0].Digest.String()).To(Equal(ma.IndexReferrerDigest))
+			ORAS("manifest", "fetch", Reference(Host, dstRepo, ma.LinuxAMD64ReferrerDigest)).
+				WithDescription("not copy referrer of successor").
+				ExpectFailure().
+				Exec()
+		})
+
 		It("should copy a certain platform of image to a new repository via tag", func() {
 			src := Reference(Host, ImageRepo, ma.Tag)
 			dst := Reference(Host, cpTestRepo("platform-tag"), "copiedTag")
@@ -127,10 +151,20 @@ var _ = Describe("Common registry users:", func() {
 			validate(Reference(Host, ImageRepo, ma.LinuxAMD64Digest), dst)
 			var index ocispec.Index
 			bytes := ORAS("discover", dst, "-o", "json", "--platform", "linux/amd64").
-				MatchKeyWords(ma.LinuxAMD64ReferrerDigest).Exec().Out.Contents()
+				MatchKeyWords(ma.LinuxAMD64ReferrerDigest).
+				WithDescription("copy image referrer").
+				Exec().Out.Contents()
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(len(index.Manifests)).To(Equal(1))
 			Expect(index.Manifests[0].Digest.String()).To(Equal(ma.LinuxAMD64ReferrerDigest))
+			ORAS("manifest", "fetch", Reference(Host, dstRepo, ma.Digest)).
+				WithDescription("not copy index").
+				ExpectFailure().
+				Exec()
+			ORAS("manifest", "fetch", Reference(Host, dstRepo, ma.IndexReferrerDigest)).
+				WithDescription("not copy index referrer").
+				ExpectFailure().
+				Exec()
 		})
 
 		It("should copy an image to a new repository with multiple tagging", func() {
