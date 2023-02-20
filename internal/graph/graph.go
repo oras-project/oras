@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/internal/docker"
@@ -63,7 +62,7 @@ func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descr
 }
 
 // Referrers returns referrer nodes of desc in target.
-func Referrers(ctx context.Context, target oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string) ([]ocispec.Descriptor, error) {
+func Referrers(ctx context.Context, target content.ReadOnlyGraphStorage, desc ocispec.Descriptor, artifactType string) ([]ocispec.Descriptor, error) {
 	var results []ocispec.Descriptor
 	if repo, ok := target.(registry.ReferrerLister); ok {
 		// get referrers directly
