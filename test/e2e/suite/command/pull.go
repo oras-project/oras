@@ -39,7 +39,7 @@ var _ = Describe("Remote registry users:", func() {
 
 		It("should pull all files in an image to a target folder", func() {
 			pullRoot := "pulled"
-			tempDir := CopyTestDataToTemp()
+			tempDir := PrepareTempFiles()
 			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(configName))
 			ORAS("pull", Reference(Host, repo, tag), "-v", "--config", configName, "-o", pullRoot).
 				MatchStatus(stateKeys, true, len(stateKeys)).
@@ -64,7 +64,7 @@ var _ = Describe("Remote registry users:", func() {
 
 		It("should skip config if media type not matching", func() {
 			pullRoot := "pulled"
-			tempDir := CopyTestDataToTemp()
+			tempDir := PrepareTempFiles()
 			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(oras.MediaTypeUnknownConfig))
 			ORAS("pull", Reference(Host, repo, tag), "-v", "--config", fmt.Sprintf("%s:%s", configName, "???"), "-o", pullRoot).
 				MatchStatus(stateKeys, true, len(stateKeys)).

@@ -231,32 +231,98 @@ var _ = Describe("Common registry users:", func() {
 		})
 	})
 
-	var blobDigest = "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
-	var blobContent = "foo"
-	var blobDescriptor = `{"mediaType":"application/octet-stream","digest":"sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae","size":3}`
 	When("running `blob fetch`", func() {
 		It("should fetch blob descriptor ", func() {
-			ORAS("blob", "fetch", Reference(Host, ImageRepo, blobDigest), "--descriptor").
-				MatchContent(blobDescriptor).Exec()
+			ORAS("blob", "fetch", Reference(Host, ImageRepo, foobar.Foo1BlobDigest), "--descriptor").
+				MatchContent(foobar.Foo1BlobDescriptor).Exec()
 		})
 		It("should fetch blob content and output to stdout", func() {
-			ORAS("blob", "fetch", Reference(Host, ImageRepo, blobDigest), "--output", "-").
-				MatchContent(blobContent).Exec()
+			ORAS("blob", "fetch", Reference(Host, ImageRepo, foobar.Foo1BlobDigest), "--output", "-").
+				MatchContent(foobar.Foo1BlobContent).Exec()
 		})
 		It("should fetch blob content and output to a file", func() {
 			tempDir := GinkgoT().TempDir()
 			contentPath := filepath.Join(tempDir, "fetched")
-			ORAS("blob", "fetch", Reference(Host, ImageRepo, blobDigest), "--output", contentPath).
+			ORAS("blob", "fetch", Reference(Host, ImageRepo, foobar.Foo1BlobDigest), "--output", contentPath).
 				WithWorkDir(tempDir).Exec()
-			MatchFile(contentPath, blobContent, DefaultTimeout)
+			MatchFile(contentPath, foobar.Foo1BlobContent, DefaultTimeout)
 		})
 		It("should fetch blob descriptor and output content to a file", func() {
 			tempDir := GinkgoT().TempDir()
 			contentPath := filepath.Join(tempDir, "fetched")
-			ORAS("blob", "fetch", Reference(Host, ImageRepo, blobDigest), "--output", contentPath, "--descriptor").
-				MatchContent(blobDescriptor).
+			ORAS("blob", "fetch", Reference(Host, ImageRepo, foobar.Foo1BlobDigest), "--output", contentPath, "--descriptor").
+				MatchContent(foobar.Foo1BlobDescriptor).
 				WithWorkDir(tempDir).Exec()
-			MatchFile(contentPath, blobContent, DefaultTimeout)
+			MatchFile(contentPath, foobar.Foo1BlobContent, DefaultTimeout)
+		})
+	})
+})
+
+var _ = Describe("OCI image layout users:", Focus, func() {
+	When("running `blob delete`", func() {
+		It("should not support deleting a blob", func() {
+			toDeleteRef := LayoutRef(PrepareTempLayout(), deleteDigest)
+			ORAS("blob", "delete", LayoutFlag, toDeleteRef).
+				WithInput(strings.NewReader("y")).
+				MatchErrKeyWords("Error:", "unknown flag", LayoutFlag).
+				ExpectFailure().
+				Exec()
+		})
+	})
+
+	When("running `blob fetch`", func() {
+		root := filepath.Join(TestDataRoot, "image_layout", "oci")
+		It("should fetch blob descriptor ", func() {
+			ORAS("blob", "fetch", LayoutFlag, LayoutRef(root, foobar.Foo1BlobDigest), "--descriptor").
+				MatchContent(foobar.Foo1BlobDescriptor).Exec()
+		})
+		It("should fetch blob content and output to stdout", func() {
+			ORAS("blob", "fetch", LayoutFlag, LayoutRef(root, foobar.Foo1BlobDigest), "--output", "-").
+				MatchContent(foobar.Foo1BlobContent).Exec()
+		})
+		It("should fetch blob content and output to a file", func() {
+			tempDir := GinkgoT().TempDir()
+			contentPath := filepath.Join(tempDir, "fetched")
+			ORAS("blob", "fetch", LayoutFlag, LayoutRef(root, foobar.Foo1BlobDigest), "--output", contentPath).
+				WithWorkDir(tempDir).Exec()
+			MatchFile(contentPath, foobar.Foo1BlobContent, DefaultTimeout)
+		})
+		It("should fetch blob descriptor and output content to a file", func() {
+			tempDir := GinkgoT().TempDir()
+			contentPath := filepath.Join(tempDir, "fetched")
+			ORAS("blob", "fetch", LayoutFlag, LayoutRef(root, foobar.Foo1BlobDigest), "--output", contentPath, "--descriptor").
+				MatchContent(foobar.Foo1BlobDescriptor).
+				WithWorkDir(tempDir).Exec()
+			MatchFile(contentPath, foobar.Foo1BlobContent, DefaultTimeout)
+		})
+	})
+
+	When("running `blob push`", func() {
+		It("should push a blob from a file and output the descriptor with specific media-type", func() {
+			// prepare
+			tmpRoot := GinkgoT().TempDir()
+			mediaType := "test.media"
+			blobPath := WriteTempFile("blob", pushContent)
+			// test
+			ORAS("blob", "push", LayoutFlag, LayoutRef(tmpRoot, pushDigest), blobPath, "--media-type", mediaType, "--descriptor").
+				MatchContent(fmt.Sprintf(pushDescFmt, mediaType)).Exec()
+			ORAS("blob", "push", LayoutFlag, LayoutRef(tmpRoot, pushDigest), blobPath, "-v").
+				WithDescription("skip pushing if the blob already exists in the target repo").
+				MatchKeyWords("Exists").Exec()
+			// validate: oci-layout store will fail fetching blob if index.json doesn't exist
+			// ORAS("blob", "fetch", LayoutFlag, tmpRoot, "--output", "-").MatchContent(pushContent).Exec()
+		})
+
+		It("should push a blob from a stdin and output the descriptor with specific media-type", func() {
+			// prepare
+			tmpRoot := GinkgoT().TempDir()
+			// test
+			mediaType := "test.media"
+			ORAS("blob", "push", LayoutFlag, LayoutRef(tmpRoot, pushDigest), "-", "--media-type", mediaType, "--descriptor", "--size", strconv.Itoa(len(pushContent))).
+				WithInput(strings.NewReader(pushContent)).
+				MatchContent(fmt.Sprintf(pushDescFmt, mediaType)).Exec()
+			// validate: oci-layout store will fail fetching blob if index.json doesn't exist
+			// ORAS("blob", "fetch", LayoutFlag, tmpRoot, "--output", "-").MatchContent(pushContent).Exec()
 		})
 	})
 })

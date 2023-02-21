@@ -55,7 +55,7 @@ var _ = Describe("Common registry users:", func() {
 	When("running attach command", func() {
 		It("should attach a file to a subject", func() {
 			testRepo := attachTestRepo("simple")
-			tempDir := CopyTestDataToTemp()
+			tempDir := PrepareTempFiles()
 			subjectRef := Reference(Host, testRepo, foobar.Tag)
 			prepare(Reference(Host, ImageRepo, foobar.Tag), subjectRef)
 			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
@@ -66,7 +66,7 @@ var _ = Describe("Common registry users:", func() {
 		It("should attach a file to a subject and export the built manifest", func() {
 			// prepare
 			testRepo := attachTestRepo("export-manifest")
-			tempDir := CopyTestDataToTemp()
+			tempDir := PrepareTempFiles()
 			exportName := "manifest.json"
 			subjectRef := Reference(Host, testRepo, foobar.Tag)
 			prepare(Reference(Host, ImageRepo, foobar.Tag), subjectRef)
@@ -84,7 +84,7 @@ var _ = Describe("Common registry users:", func() {
 		})
 		It("should attach a file via a OCI Image", func() {
 			testRepo := attachTestRepo("image")
-			tempDir := CopyTestDataToTemp()
+			tempDir := PrepareTempFiles()
 			subjectRef := Reference(Host, testRepo, foobar.Tag)
 			prepare(Reference(Host, ImageRepo, foobar.Tag), subjectRef)
 			// test
@@ -101,7 +101,7 @@ var _ = Describe("Common registry users:", func() {
 		})
 		It("should attach a file via a OCI Artifact", func() {
 			testRepo := attachTestRepo("artifact")
-			tempDir := CopyTestDataToTemp()
+			tempDir := PrepareTempFiles()
 			subjectRef := Reference(Host, testRepo, foobar.Tag)
 			prepare(Reference(Host, ImageRepo, foobar.Tag), subjectRef)
 			// test
@@ -123,7 +123,7 @@ var _ = Describe("Fallback registry users:", func() {
 	When("running attach command", func() {
 		It("should attach a file via a OCI Image", func() {
 			testRepo := attachTestRepo("fallback/image")
-			tempDir := CopyTestDataToTemp()
+			tempDir := PrepareTempFiles()
 			subjectRef := Reference(FallbackHost, testRepo, foobar.Tag)
 			prepare(Reference(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef)
 			// test
@@ -141,7 +141,7 @@ var _ = Describe("Fallback registry users:", func() {
 
 		It("should attach a file via a OCI Image by default", func() {
 			testRepo := attachTestRepo("fallback/default")
-			tempDir := CopyTestDataToTemp()
+			tempDir := PrepareTempFiles()
 			subjectRef := Reference(FallbackHost, testRepo, foobar.Tag)
 			prepare(Reference(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef)
 			// test
@@ -159,7 +159,7 @@ var _ = Describe("Fallback registry users:", func() {
 
 		It("should attach a file via a OCI Image and generate referrer via tag schema", func() {
 			testRepo := attachTestRepo("fallback/tag_schema")
-			tempDir := CopyTestDataToTemp()
+			tempDir := PrepareTempFiles()
 			subjectRef := Reference(FallbackHost, testRepo, foobar.Tag)
 			prepare(Reference(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef)
 			// test

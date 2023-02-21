@@ -15,18 +15,21 @@ limitations under the License.
 
 package utils
 
-const (
-	PreviewDesc  = "** This command is in preview and under development. **"
-	ExampleDesc  = "\nExample - "
-	ImageRepo    = "command/images"
-	ArtifactRepo = "command/artifacts"
-	Repo         = "command/images"
-	Namespace    = "command"
-	// env
-	RegHostKey         = "ORAS_REGISTRY_HOST"
-	FallbackRegHostKey = "ORAS_REGISTRY_FALLBACK_HOST"
+import (
+	"fmt"
+
+	"github.com/opencontainers/go-digest"
 )
 
-var (
-	TestDataRoot string
-)
+// LayoutRef generates the reference string from given parameters.
+func LayoutRef(rootPath string, tagOrDigest string) string {
+	var delimiter string
+	if _, err := digest.Parse(tagOrDigest); err == nil {
+		// digest
+		delimiter = "@"
+	} else {
+		// tag
+		delimiter = ":"
+	}
+	return fmt.Sprintf("%s%s%s", rootPath, delimiter, tagOrDigest)
+}

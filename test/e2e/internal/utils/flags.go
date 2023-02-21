@@ -16,17 +16,7 @@ limitations under the License.
 package utils
 
 const (
-	PreviewDesc  = "** This command is in preview and under development. **"
-	ExampleDesc  = "\nExample - "
-	ImageRepo    = "command/images"
-	ArtifactRepo = "command/artifacts"
-	Repo         = "command/images"
-	Namespace    = "command"
-	// env
-	RegHostKey         = "ORAS_REGISTRY_HOST"
-	FallbackRegHostKey = "ORAS_REGISTRY_FALLBACK_HOST"
-)
-
-var (
-	TestDataRoot string
+	LayoutFlag = "--oci-layout"
+	FromLayout = "--from-oci-layout"
+	ToLayout   = "--to-oci-layout"
 )

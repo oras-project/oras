@@ -45,7 +45,7 @@ var _ = Describe("Remote registry users:", func() {
 		It("should push files without customized media types", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "with-mediatype")
 			tempDir := GinkgoT().TempDir()
-			if err := CopyTestData(tempDir); err != nil {
+			if err := CopyTestFiles(tempDir); err != nil {
 				panic(err)
 			}
 
@@ -81,7 +81,7 @@ var _ = Describe("Remote registry users:", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "layer-mediatype")
 			layerType := "layer.type"
 			tempDir := GinkgoT().TempDir()
-			if err := CopyTestData(tempDir); err != nil {
+			if err := CopyTestFiles(tempDir); err != nil {
 				panic(err)
 			}
 			ORAS("push", Reference(Host, repo, tag), files[1]+":"+layerType, "-v").
@@ -97,7 +97,7 @@ var _ = Describe("Remote registry users:", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "export-manifest")
 			layerType := "layer.type"
 			tempDir := GinkgoT().TempDir()
-			if err := CopyTestData(tempDir); err != nil {
+			if err := CopyTestFiles(tempDir); err != nil {
 				panic(err)
 			}
 
@@ -112,7 +112,7 @@ var _ = Describe("Remote registry users:", func() {
 		It("should push files with customized config file", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "config")
 			tempDir := GinkgoT().TempDir()
-			if err := CopyTestData(tempDir); err != nil {
+			if err := CopyTestFiles(tempDir); err != nil {
 				panic(err)
 			}
 
@@ -132,7 +132,7 @@ var _ = Describe("Remote registry users:", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "config-mediatype")
 			configType := "config.type"
 			tempDir := GinkgoT().TempDir()
-			if err := CopyTestData(tempDir); err != nil {
+			if err := CopyTestFiles(tempDir); err != nil {
 				panic(err)
 			}
 
@@ -153,7 +153,7 @@ var _ = Describe("Remote registry users:", func() {
 			key := "image-anno-key"
 			value := "image-anno-value"
 			tempDir := GinkgoT().TempDir()
-			if err := CopyTestData(tempDir); err != nil {
+			if err := CopyTestFiles(tempDir); err != nil {
 				panic(err)
 			}
 
@@ -170,7 +170,7 @@ var _ = Describe("Remote registry users:", func() {
 		It("should push files with customized file annotation", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "file-annotation")
 			tempDir := GinkgoT().TempDir()
-			if err := CopyTestData(tempDir); err != nil {
+			if err := CopyTestFiles(tempDir); err != nil {
 				panic(err)
 			}
 
