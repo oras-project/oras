@@ -58,10 +58,10 @@ run_registry \
   $ORAS_REGISTRY_FALLBACK_PORT
 
 echo " === run tests === "
-succeed=0
-trap " [ $succeed -eq 0 ] && echo '-------- oras distribution trace -------------' \
-  && docker logs -t --tail 200 $oras_container_name \
-  && echo '-------- upstream distribution trace -------------' \
-  && docker logs -t --tail 200 $upstream_container_name" EXIT
 ginkgo -r -p --succinct suite
-succeed=1
+if [ $? -ne 0 ]; then 
+  echo '-------- oras distribution trace -------------'
+  docker logs -t --tail 200 $oras_container_name
+  echo '-------- upstream distribution trace -------------'
+  docker logs -t --tail 200 $upstream_container_name;
+fi
