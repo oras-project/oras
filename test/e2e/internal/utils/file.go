@@ -30,7 +30,14 @@ import (
 
 var testFileRoot string
 
-// CopyTestData copies test data into the temp test folder.
+// CopyTestDataToTemp copies test data into a temp folder and return it.
+func CopyTestDataToTemp() string {
+	tempDir := GinkgoT().TempDir()
+	Expect(CopyTestData(tempDir)).ShouldNot(HaveOccurred())
+	return tempDir
+}
+
+// CopyTestData copies test data into dstRoot.
 func CopyTestData(dstRoot string) error {
 	return filepath.WalkDir(testFileRoot, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
