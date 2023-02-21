@@ -63,5 +63,5 @@ if ! ginkgo -r -p --succinct suite; then
   docker logs -t --tail 200 $oras_container_name
   echo '-------- upstream distribution trace -------------'
   docker logs -t --tail 200 $upstream_container_name
-  exit -1
+  exit 1
 fi
