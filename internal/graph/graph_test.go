@@ -26,7 +26,9 @@ import (
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras/internal/docker"
 )
 
 type errLister struct {
@@ -48,6 +50,10 @@ func (m *refLister) Referrers(ctx context.Context, desc ocispec.Descriptor, arti
 
 type predecessorFinder struct {
 	*memory.Store
+}
+
+type fetcher struct {
+	content.Fetcher
 }
 
 func TestReferrers(t *testing.T) {
@@ -171,4 +177,115 @@ func TestReferrers(t *testing.T) {
 			t.Errorf("Referrers() = %v, want %v", got, want1)
 		}
 	})
+}
+
+func TestSuccessors(t *testing.T) {
+	var blobs [][]byte
+	var descs []ocispec.Descriptor
+	appendBlob := func(mediaType string, blob []byte) {
+		blobs = append(blobs, blob)
+		descs = append(descs, ocispec.Descriptor{
+			MediaType: mediaType,
+			Digest:    digest.FromBytes(blob),
+			Size:      int64(len(blob)),
+		})
+	}
+	generateImage := func(subject *ocispec.Descriptor, mediaType string, config ocispec.Descriptor, layers ...ocispec.Descriptor) {
+		manifest := ocispec.Manifest{
+			MediaType: mediaType,
+			Subject:   subject,
+			Config:    config,
+			Layers:    layers,
+		}
+		manifestJSON, err := json.Marshal(manifest)
+		if err != nil {
+			t.Fatal(err)
+		}
+		appendBlob(mediaType, manifestJSON)
+	}
+	generateArtifact := func(artifactType string, subject *ocispec.Descriptor, blobs ...ocispec.Descriptor) {
+		manifest := ocispec.Artifact{
+			MediaType: ocispec.MediaTypeArtifactManifest,
+			Subject:   subject,
+			Blobs:     blobs,
+		}
+		manifestJSON, err := json.Marshal(manifest)
+		if err != nil {
+			t.Fatal(err)
+		}
+		appendBlob(ocispec.MediaTypeArtifactManifest, manifestJSON)
+	}
+	generateIndex := func(manifests ...ocispec.Descriptor) {
+		index := ocispec.Index{
+			Manifests: manifests,
+		}
+		manifestJSON, err := json.Marshal(index)
+		if err != nil {
+			t.Fatal(err)
+		}
+		appendBlob(ocispec.MediaTypeImageIndex, manifestJSON)
+	}
+	const (
+		subject = iota
+		config
+		ociImage
+		dockerImage
+		artifact
+		index
+	)
+	appendBlob(ocispec.MediaTypeArtifactManifest, []byte("subject content"))
+	imageType := "test.image"
+	appendBlob(imageType, []byte("config content"))
+	generateImage(&descs[subject], ocispec.MediaTypeImageManifest, descs[config])
+	generateImage(&descs[subject], docker.MediaTypeManifest, descs[config])
+	artifactType := "test.artifact"
+	generateArtifact(artifactType, &descs[subject])
+	generateIndex(descs[subject])
+	memory := memory.New()
+	ctx := context.Background()
+	for i := range descs {
+		memory.Push(ctx, descs[i], bytes.NewReader(blobs[i]))
+	}
+	fetcher := &fetcher{Fetcher: memory}
+
+	type args struct {
+		ctx     context.Context
+		fetcher content.Fetcher
+		node    ocispec.Descriptor
+	}
+	tests := []struct {
+		name        string
+		args        args
+		wantNodes   []ocispec.Descriptor
+		wantSubject *ocispec.Descriptor
+		wantConfig  *ocispec.Descriptor
+		wantErr     bool
+	}{
+		// TODO: Add test cases.
+		{"should failed to get non-existent artifact", args{ctx, fetcher, ocispec.Descriptor{MediaType: ocispec.MediaTypeArtifactManifest}}, nil, nil, nil, true},
+		{"should failed to get non-existent OCI image", args{ctx, fetcher, ocispec.Descriptor{MediaType: ocispec.MediaTypeImageManifest}}, nil, nil, nil, true},
+		{"should failed to get non-existent docker image", args{ctx, fetcher, ocispec.Descriptor{MediaType: docker.MediaTypeManifest}}, nil, nil, nil, true},
+		{"should get success of a docker image", args{ctx, fetcher, descs[dockerImage]}, nil, &descs[subject], &descs[config], false},
+		{"should get success of an OCI image", args{ctx, fetcher, descs[ociImage]}, nil, &descs[subject], &descs[config], false},
+		{"should get success of an artifact", args{ctx, fetcher, descs[artifact]}, nil, &descs[subject], nil, false},
+		{"should get success of an index", args{ctx, fetcher, descs[index]}, []ocispec.Descriptor{descs[subject]}, nil, nil, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotNodes, gotSubject, gotConfig, err := Successors(tt.args.ctx, tt.args.fetcher, tt.args.node)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Successors() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(gotNodes, tt.wantNodes) {
+				t.Errorf("Successors() gotNodes = %v, want %v", gotNodes, tt.wantNodes)
+			}
+			if !reflect.DeepEqual(gotSubject, tt.wantSubject) {
+				t.Errorf("Successors() gotSubject = %v, want %v", gotSubject, tt.wantSubject)
+			}
+			if !reflect.DeepEqual(gotConfig, tt.wantConfig) {
+				t.Errorf("Successors() gotConfig = %v, want %v", gotConfig, tt.wantConfig)
+			}
+		})
+	}
 }
