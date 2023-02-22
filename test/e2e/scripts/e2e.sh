@@ -41,19 +41,27 @@ if [ "$clean_up" = '--clean' ]; then
     trap "try_clean_up oras-e2e oras-e2e-fallback" EXIT
 fi
 
+oras_container_name="oras-e2e"
+upstream_container_name="oras-e2e-fallback"
 echo " === preparing oras distribution === "
 run_registry \
   ${repo_root}/test/e2e/testdata/distribution/mount \
   ghcr.io/oras-project/registry:v1.0.0-rc.4 \
-  oras-e2e \
+  $oras_container_name \
   $ORAS_REGISTRY_PORT
 
 echo " === preparing upstream distribution === "
 run_registry \
   ${repo_root}/test/e2e/testdata/distribution/mount_fallback \
   registry:2.8.1 \
-  oras-e2e-fallback \
+  $upstream_container_name \
   $ORAS_REGISTRY_FALLBACK_PORT
 
 echo " === run tests === "
-ginkgo -r -p --succinct suite
+if ! ginkgo -r -p --succinct suite; then 
+  echo '-------- oras distribution trace -------------'
+  docker logs -t --tail 200 $oras_container_name
+  echo '-------- upstream distribution trace -------------'
+  docker logs -t --tail 200 $upstream_container_name
+  exit 1
+fi
