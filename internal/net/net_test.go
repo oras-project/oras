@@ -16,53 +16,25 @@ limitations under the License.
 package net
 
 import (
-	"context"
+	"fmt"
 	"net"
 	"reflect"
 	"testing"
 )
 
-func TestDialer_DialContext(t *testing.T) {
-	type args struct {
-		ctx     context.Context
-		network string
-		addr    string
-	}
-	tests := []struct {
-		name    string
-		d       *Dialer
-		args    args
-		want    net.Conn
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.d.DialContext(tt.args.ctx, tt.args.network, tt.args.addr)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Dialer.DialContext() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Dialer.DialContext() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestRemote_parseResolve_ipv4(t *testing.T) {
 	host := "mockedHost"
-	port := "12345"
+	hostPort := 443
 	address := "192.168.1.1"
+	addressPort := 12345
 	var d Dialer
-	d.Add(host, 12345, net.ParseIP(address))
+	d.Add(host, hostPort, net.ParseIP(address), addressPort)
 
 	if len(d.resolve) != 1 {
 		t.Fatalf("expect 1 resolve entries but got %v", d.resolve)
 	}
 	want := make(map[string]string)
-	want[host+":"+port] = address + ":" + port
+	want[host+":"+fmt.Sprint(hostPort)] = address + ":" + fmt.Sprint(addressPort)
 	if !reflect.DeepEqual(want, d.resolve) {
 		t.Fatalf("expecting %v  but got %v", want, d.resolve)
 	}
