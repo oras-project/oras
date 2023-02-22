@@ -28,7 +28,6 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/graph"
 )
 
 type copyOptions struct {
@@ -121,7 +120,18 @@ func runCopy(opts copyOptions) error {
 	extendedCopyOptions := oras.DefaultExtendedCopyOptions
 	extendedCopyOptions.Concurrency = opts.concurrency
 	extendedCopyOptions.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		return graph.Referrers(ctx, src, desc, "")
+		var results []ocispec.Descriptor
+		predecessors, err := src.Predecessors(ctx, desc)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range predecessors {
+			switch node.MediaType {
+			case ocispec.MediaTypeArtifactManifest, ocispec.MediaTypeImageManifest:
+				results = append(results, node)
+			}
+		}
+		return results, nil
 	}
 	extendedCopyOptions.PreCopy = display.StatusPrinter("Copying", opts.Verbose)
 	extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
