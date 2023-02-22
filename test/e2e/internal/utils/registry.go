@@ -16,6 +16,7 @@ limitations under the License.
 package utils
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/onsi/gomega"
@@ -31,4 +32,11 @@ func Reference(reg string, repo string, tagOrDigest string) string {
 	}
 	gomega.Expect(ref.Validate()).ShouldNot(gomega.HaveOccurred())
 	return ref.String()
+}
+
+// ResolveFlags generates resolve flags for localhost mapping.
+func ResolveFlags(reg string, host string) string {
+	gomega.Expect(reg).To(gomega.HavePrefix("localhost:"), fmt.Sprintf("%q is not in format of localhost:<port>", reg))
+	_, port, _ := strings.Cut(reg, ":")
+	return fmt.Sprintf("--resolve %s:80:127.0.0.1:%s --plain-http -u %s -p %s", host, port, Username, Password)
 }
