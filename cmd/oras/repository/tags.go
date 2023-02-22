@@ -56,7 +56,7 @@ Example - Show tags of the target OCI layout folder 'layout-dir':
 Example - Show tags of the target OCI layout archive 'layout.tar':
   oras repo tags --oci-layout layout.tar
 
-Example - Show tags also associated with a particular tagged resource:
+Example - Show tags associated with a particular tagged resource:
   oras repo tags localhost:5000/hello:latest
 
 Example - Show tags associated with a digest:
@@ -104,14 +104,15 @@ func showTags(opts showTagsOptions) error {
 				continue
 			}
 			if filter != "" {
+				if tag == opts.Reference {
+					fmt.Println(tag)
+					continue
+				}
 				desc, err := finder.Resolve(ctx, tag)
 				if err != nil {
 					return err
 				}
 				if desc.Digest.String() != filter {
-					continue
-				}
-				if tag == opts.Reference {
 					continue
 				}
 			}
