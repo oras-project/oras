@@ -143,7 +143,6 @@ func runCopy(opts copyOptions) error {
 			return err
 		}
 		if opts.recursive {
-			// not ExtendCopy since we already have desc
 			err = oras.ExtendedCopyGraph(ctx, src, dst, desc, extendedCopyOptions.ExtendedCopyGraphOptions)
 		} else {
 			err = oras.CopyGraph(ctx, src, dst, desc, extendedCopyOptions.CopyGraphOptions)
@@ -156,7 +155,7 @@ func runCopy(opts copyOptions) error {
 		}
 	} else {
 		if opts.recursive {
-			desc, err = oras.ExtendedCopy(ctx, src, opts.From.Reference, dst, opts.To.Reference, extendedCopyOptions)
+			desc, err = oras.ExtendedCopy(ctx, src, opts.From.Reference, dst, ref, extendedCopyOptions)
 		} else {
 			copyOptions := oras.CopyOptions{
 				CopyGraphOptions: extendedCopyOptions.CopyGraphOptions,
