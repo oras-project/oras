@@ -137,7 +137,7 @@ func runCopy(opts copyOptions) error {
 	}
 
 	var desc ocispec.Descriptor
-	if ref := opts.To.Reference; ref == "" || opts.recursive {
+	if ref := opts.To.Reference; ref == "" || (opts.recursive && opts.Platform.Platform != nil) {
 		// need resolving first
 		rOpts := oras.DefaultResolveOptions
 		rOpts.TargetPlatform = opts.Platform.Platform
@@ -158,13 +158,17 @@ func runCopy(opts copyOptions) error {
 			err = dst.Tag(ctx, desc, ref)
 		}
 	} else {
-		copyOptions := oras.CopyOptions{
-			CopyGraphOptions: extendedCopyOptions.CopyGraphOptions,
+		if opts.recursive {
+			desc, err = oras.ExtendedCopy(ctx, src, opts.From.Reference, dst, opts.To.Reference, extendedCopyOptions)
+		} else {
+			copyOptions := oras.CopyOptions{
+				CopyGraphOptions: extendedCopyOptions.CopyGraphOptions,
+			}
+			if opts.Platform.Platform != nil {
+				copyOptions.WithTargetPlatform(opts.Platform.Platform)
+			}
+			desc, err = oras.Copy(ctx, src, opts.From.Reference, dst, ref, copyOptions)
 		}
-		if opts.Platform.Platform != nil {
-			copyOptions.WithTargetPlatform(opts.Platform.Platform)
-		}
-		desc, err = oras.Copy(ctx, src, opts.From.Reference, dst, ref, copyOptions)
 	}
 	if err != nil {
 		return err
