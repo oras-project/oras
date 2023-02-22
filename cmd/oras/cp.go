@@ -134,10 +134,9 @@ func runCopy(opts copyOptions) error {
 	}
 
 	var desc ocispec.Descriptor
-	if ref := opts.To.Reference; ref == "" || (opts.recursive && opts.Platform.Platform != nil) {
-		// resolve to 1) copy without tagging or 2) select platform
-		rOpts := oras.DefaultResolveOptions
-		rOpts.TargetPlatform = opts.Platform.Platform
+	rOpts := oras.DefaultResolveOptions
+	rOpts.TargetPlatform = opts.Platform.Platform
+	if dstRef := opts.To.Reference; dstRef == "" {
 		desc, err = oras.Resolve(ctx, src, opts.From.Reference, rOpts)
 		if err != nil {
 			return err
@@ -147,15 +146,18 @@ func runCopy(opts copyOptions) error {
 		} else {
 			err = oras.CopyGraph(ctx, src, dst, desc, extendedCopyOptions.CopyGraphOptions)
 		}
-		if err != nil {
-			return err
-		}
-		if ref != "" {
-			err = dst.Tag(ctx, desc, ref)
-		}
 	} else {
 		if opts.recursive {
-			desc, err = oras.ExtendedCopy(ctx, src, opts.From.Reference, dst, ref, extendedCopyOptions)
+			srcRef := opts.From.Reference
+			if rOpts.TargetPlatform != nil {
+				// resolve source reference to specified platform
+				desc, err := oras.Resolve(ctx, src, opts.From.Reference, rOpts)
+				if err != nil {
+					return err
+				}
+				srcRef = desc.Digest.String()
+			}
+			desc, err = oras.ExtendedCopy(ctx, src, srcRef, dst, dstRef, extendedCopyOptions)
 		} else {
 			copyOptions := oras.CopyOptions{
 				CopyGraphOptions: extendedCopyOptions.CopyGraphOptions,
@@ -163,7 +165,7 @@ func runCopy(opts copyOptions) error {
 			if opts.Platform.Platform != nil {
 				copyOptions.WithTargetPlatform(opts.Platform.Platform)
 			}
-			desc, err = oras.Copy(ctx, src, opts.From.Reference, dst, ref, copyOptions)
+			desc, err = oras.Copy(ctx, src, opts.From.Reference, dst, dstRef, copyOptions)
 		}
 	}
 	if err != nil {
