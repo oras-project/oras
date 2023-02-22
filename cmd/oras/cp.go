@@ -135,7 +135,7 @@ func runCopy(opts copyOptions) error {
 
 	var desc ocispec.Descriptor
 	if ref := opts.To.Reference; ref == "" || (opts.recursive && opts.Platform.Platform != nil) {
-		// need resolving first
+		// resolve to 1) copy without tagging or 2) select platform
 		rOpts := oras.DefaultResolveOptions
 		rOpts.TargetPlatform = opts.Platform.Platform
 		desc, err = oras.Resolve(ctx, src, opts.From.Reference, rOpts)
