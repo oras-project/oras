@@ -109,23 +109,23 @@ var _ = Describe("Common registry users:", func() {
 		It("Should list out tags associated to the provided reference", func() {
 			// prepare
 			repo := repoWithName("filter-tag")
-			tags := []string{foobar.Tag, "foo", "bar", "baz"}
+			tags := []string{foobar.Tag, "bax", "bay", "baz"}
 			refWithTags := fmt.Sprintf("%s:%s", Reference(Host, repo, ""), strings.Join(tags, ","))
 			ORAS("cp", Reference(Host, Repo, foobar.Tag), refWithTags).
 				WithDescription("prepare: copy and create multiple tags to " + refWithTags).
 				Exec()
-			ORAS("cp", Reference(Host, Repo, MultiImageTag), refWithTags).
+			ORAS("cp", Reference(Host, Repo, MultiImageTag), Reference(Host, Repo, "")).
 				WithDescription("prepare: copy tag with different digest").
 				Exec()
 			// test
-			viaTag := ORAS("repo", "tags", Reference(Host, repo, foobar.Tag)).
+			viaTag := ORAS("repo", "tags", "-v", Reference(Host, repo, foobar.Tag)).
 				MatchKeyWords(tags...).
-				MatchErrKeyWords("Preview").Exec().Out
+				MatchErrKeyWords("Preview", foobar.Digest).Exec().Out
 			Expect(viaTag).ShouldNot(gbytes.Say(MultiImageTag))
 
-			viaDigest := ORAS("repo", "tags", Reference(Host, repo, foobar.Digest)).
+			viaDigest := ORAS("repo", "tags", "-v", Reference(Host, repo, foobar.Digest)).
 				MatchKeyWords(tags...).
-				MatchErrKeyWords("Preview").Exec().Out
+				MatchErrKeyWords("Preview", foobar.Digest).Exec().Out
 			Expect(viaDigest).ShouldNot(gbytes.Say(MultiImageTag))
 		})
 	})
