@@ -3,9 +3,7 @@ Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
 http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,6 +25,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/graph"
 )
 
 type copyOptions struct {
@@ -46,34 +45,24 @@ func copyCmd() *cobra.Command {
 		Aliases: []string{"copy"},
 		Short:   "[Preview] Copy artifacts from one target to another",
 		Long: `[Preview] Copy artifacts from one target to another
-
 ** This command is in preview and under development. **
-
 Example - Copy an artifact between registries:
   oras cp localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:v1
-
 Example - Download an artifact into an OCI layout folder:
   oras cp --to-oci-layout localhost:5000/net-monitor:v1 ./downloaded:v1
-
 Example - Upload an artifact from an OCI layout folder:
   oras cp --from-oci-layout ./to-upload:v1 localhost:5000/net-monitor:v1
-
 Example - Upload an artifact from an OCI layout tar archive:
   oras cp --from-oci-layout ./to-upload.tar:v1 localhost:5000/net-monitor:v1
-
 Example - Copy an artifact and its referrers:
   oras cp -r localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:v1
-
 Example - Copy an artifact and referrers using specific methods for the Referrers API:
   oras cp -r --from-distribution-spec v1.1-referrers-api --to-distribution-spec v1.1-referrers-tag \
     localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:v1 
-
 Example - Copy certain platform of an artifact:
   oras cp --platform linux/arm/v5 localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:v1
-
 Example - Copy an artifact with multiple tags:
   oras cp localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:tag1,tag2,tag3
-
 Example - Copy an artifact with multiple tags with concurrency tuned:
   oras cp --concurrency 10 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:tag1,tag2,tag3
 `,
@@ -118,6 +107,7 @@ func runCopy(opts copyOptions) error {
 	committed := &sync.Map{}
 	extendedCopyOptions := oras.DefaultExtendedCopyOptions
 	extendedCopyOptions.Concurrency = opts.concurrency
+	extendedCopyOptions.FindPredecessors = graph.FindReferrerPredecessors
 	extendedCopyOptions.PreCopy = display.StatusPrinter("Copying", opts.Verbose)
 	extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
@@ -132,34 +122,39 @@ func runCopy(opts copyOptions) error {
 	}
 
 	var desc ocispec.Descriptor
-	if ref := opts.To.Reference; ref == "" || opts.recursive {
-		// need resolving first
-		rOpts := oras.DefaultResolveOptions
-		rOpts.TargetPlatform = opts.Platform.Platform
+	rOpts := oras.DefaultResolveOptions
+	rOpts.TargetPlatform = opts.Platform.Platform
+	if dstRef := opts.To.Reference; dstRef == "" {
 		desc, err = oras.Resolve(ctx, src, opts.From.Reference, rOpts)
 		if err != nil {
 			return err
 		}
 		if opts.recursive {
-			// not ExtendCopy since we already have desc
 			err = oras.ExtendedCopyGraph(ctx, src, dst, desc, extendedCopyOptions.ExtendedCopyGraphOptions)
 		} else {
 			err = oras.CopyGraph(ctx, src, dst, desc, extendedCopyOptions.CopyGraphOptions)
 		}
-		if err != nil {
-			return err
-		}
-		if ref != "" {
-			err = dst.Tag(ctx, desc, ref)
-		}
 	} else {
-		copyOptions := oras.CopyOptions{
-			CopyGraphOptions: extendedCopyOptions.CopyGraphOptions,
+		if opts.recursive {
+			srcRef := opts.From.Reference
+			if rOpts.TargetPlatform != nil {
+				// resolve source reference to specified platform
+				desc, err := oras.Resolve(ctx, src, opts.From.Reference, rOpts)
+				if err != nil {
+					return err
+				}
+				srcRef = desc.Digest.String()
+			}
+			desc, err = oras.ExtendedCopy(ctx, src, srcRef, dst, dstRef, extendedCopyOptions)
+		} else {
+			copyOptions := oras.CopyOptions{
+				CopyGraphOptions: extendedCopyOptions.CopyGraphOptions,
+			}
+			if opts.Platform.Platform != nil {
+				copyOptions.WithTargetPlatform(opts.Platform.Platform)
+			}
+			desc, err = oras.Copy(ctx, src, opts.From.Reference, dst, dstRef, copyOptions)
 		}
-		if opts.Platform.Platform != nil {
-			copyOptions.WithTargetPlatform(opts.Platform.Platform)
-		}
-		desc, err = oras.Copy(ctx, src, opts.From.Reference, dst, ref, copyOptions)
 	}
 	if err != nil {
 		return err

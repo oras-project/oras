@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/internal/docker"
@@ -63,7 +62,7 @@ func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descr
 }
 
 // Referrers returns referrer nodes of desc in target.
-func Referrers(ctx context.Context, target oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string) ([]ocispec.Descriptor, error) {
+func Referrers(ctx context.Context, target content.ReadOnlyGraphStorage, desc ocispec.Descriptor, artifactType string) ([]ocispec.Descriptor, error) {
 	var results []ocispec.Descriptor
 	if repo, ok := target.(registry.ReferrerLister); ok {
 		// get referrers directly
@@ -116,6 +115,33 @@ func Referrers(ctx context.Context, target oras.ReadOnlyGraphTarget, desc ocispe
 			continue
 		}
 		if node.ArtifactType != "" && (artifactType == "" || artifactType == node.ArtifactType) {
+			results = append(results, node)
+		}
+	}
+	return results, nil
+}
+
+// FindReferrerPredecessors returns referrer nodes of desc in target.
+func FindReferrerPredecessors(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+	var results []ocispec.Descriptor
+	if repo, ok := src.(registry.ReferrerLister); ok {
+		// get referrers directly
+		err := repo.Referrers(ctx, desc, "", func(referrers []ocispec.Descriptor) error {
+			results = append(results, referrers...)
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		return results, nil
+	}
+	predecessors, err := src.Predecessors(ctx, desc)
+	if err != nil {
+		return nil, err
+	}
+	for _, node := range predecessors {
+		switch node.MediaType {
+		case ocispec.MediaTypeArtifactManifest, ocispec.MediaTypeImageManifest:
 			results = append(results, node)
 		}
 	}
