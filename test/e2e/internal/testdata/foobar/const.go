@@ -39,4 +39,7 @@ var (
 	AttachFileStateKey = match.StateKey{
 		Digest: "d3b29f7d12d9", Name: AttachFileName,
 	}
+
+	Tag    = "foobar"
+	Digest = "sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb"
 )
