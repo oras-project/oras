@@ -55,6 +55,12 @@ Example - Show tags of the target OCI layout folder 'layout-dir':
 
 Example - Show tags of the target OCI layout archive 'layout.tar':
   oras repo tags --oci-layout layout.tar
+
+Example - Show tags associated with a particular tagged resource:
+  oras repo tags localhost:5000/hello:latest
+
+Example - Show tags associated with a digest:
+  oras repo tags localhost:5000/hello@sha256:c551125a624189cece9135981621f3f3144564ddabe14b523507bf74c2281d9b
 `,
 		Args:    cobra.ExactArgs(1),
 		Aliases: []string{"show-tags"},
@@ -73,18 +79,42 @@ Example - Show tags of the target OCI layout archive 'layout.tar':
 }
 
 func showTags(opts showTagsOptions) error {
-	ctx, _ := opts.SetLoggerLevel()
+	ctx, logger := opts.SetLoggerLevel()
 	finder, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err
 	}
+	filter := ""
 	if opts.Reference != "" {
-		return fmt.Errorf("unexpected tag or digest %q found in repository reference %q", opts.Reference, opts.RawReference)
+		_, err := digest.Parse(opts.Reference)
+		if err == nil {
+			filter = opts.Reference
+		} else {
+			desc, err := finder.Resolve(ctx, opts.Reference)
+			if err != nil {
+				return err
+			}
+			filter = desc.Digest.String()
+		}
+		logger.Infof("[Preview] Querying tags associated to %s, it may take a while.\n", filter)
 	}
 	return finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
 			if opts.excludeDigestTag && isDigestTag(tag) {
 				continue
+			}
+			if filter != "" {
+				if tag == opts.Reference {
+					fmt.Println(tag)
+					continue
+				}
+				desc, err := finder.Resolve(ctx, tag)
+				if err != nil {
+					return err
+				}
+				if desc.Digest.String() != filter {
+					continue
+				}
 			}
 			fmt.Println(tag)
 		}
