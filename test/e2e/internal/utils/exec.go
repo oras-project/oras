@@ -25,6 +25,7 @@ import (
 
 	ginkgo "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"oras.land/oras/test/e2e/internal/utils/match"
 )
@@ -192,11 +193,14 @@ func (opts *ExecOption) Exec() *gexec.Session {
 	}
 
 	// matching result
+	stdout := session.Out.Contents()
 	for _, s := range opts.stdout {
-		s.Match(session.Out)
+		s.Match(gbytes.BufferWithBytes(stdout))
 	}
+
+	stderr := session.Err.Contents()
 	for _, s := range opts.stderr {
-		s.Match(session.Err)
+		s.Match(gbytes.BufferWithBytes(stderr))
 	}
 
 	return session

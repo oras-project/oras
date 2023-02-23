@@ -23,6 +23,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
+	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
@@ -72,7 +73,7 @@ var _ = Describe("Common registry users:", func() {
 
 		It("should not list repositories without a fully matched namespace", func() {
 			repo := "command-draft/images"
-			ORAS("cp", Reference(Host, Repo, FoobarImageTag), Reference(Host, repo, FoobarImageTag)).
+			ORAS("cp", Reference(Host, Repo, foobar.Tag), Reference(Host, repo, foobar.Tag)).
 				WithDescription("prepare destination repo: " + repo).
 				Exec()
 			ORAS("repo", "ls", Host).MatchKeyWords(Repo, repo).Exec()
@@ -95,15 +96,15 @@ var _ = Describe("Common registry users:", func() {
 		}
 		repoRef := Reference(Host, ImageRepo, "")
 		It("should list tags", func() {
-			ORAS("repository", "show-tags", repoRef).MatchKeyWords(MultiImageTag, FoobarImageTag).Exec()
+			ORAS("repository", "show-tags", repoRef).MatchKeyWords(multi_arch.Tag, foobar.Tag).Exec()
 		})
 		It("should list tags via short command", func() {
-			ORAS("repo", "tags", repoRef).MatchKeyWords(MultiImageTag, FoobarImageTag).Exec()
+			ORAS("repo", "tags", repoRef).MatchKeyWords(multi_arch.Tag, foobar.Tag).Exec()
 
 		})
 		It("should list partial tags via `last` flag", func() {
-			session := ORAS("repo", "tags", repoRef, "--last", FoobarImageTag).MatchKeyWords(MultiImageTag).Exec()
-			Expect(session.Out).ShouldNot(gbytes.Say(FoobarImageTag))
+			session := ORAS("repo", "tags", repoRef, "--last", foobar.Tag).MatchKeyWords(multi_arch.Tag).Exec()
+			Expect(session.Out).ShouldNot(gbytes.Say(foobar.Tag))
 		})
 
 		It("Should list out tags associated to the provided reference", func() {
@@ -114,19 +115,19 @@ var _ = Describe("Common registry users:", func() {
 			ORAS("cp", Reference(Host, Repo, foobar.Tag), refWithTags).
 				WithDescription("prepare: copy and create multiple tags to " + refWithTags).
 				Exec()
-			ORAS("cp", Reference(Host, Repo, MultiImageTag), Reference(Host, Repo, "")).
+			ORAS("cp", Reference(Host, Repo, multi_arch.Tag), Reference(Host, Repo, "")).
 				WithDescription("prepare: copy tag with different digest").
 				Exec()
 			// test
 			viaTag := ORAS("repo", "tags", "-v", Reference(Host, repo, foobar.Tag)).
 				MatchKeyWords(tags...).
 				MatchErrKeyWords("Preview", foobar.Digest).Exec().Out
-			Expect(viaTag).ShouldNot(gbytes.Say(MultiImageTag))
+			Expect(viaTag).ShouldNot(gbytes.Say(multi_arch.Tag))
 
 			viaDigest := ORAS("repo", "tags", "-v", Reference(Host, repo, foobar.Digest)).
 				MatchKeyWords(tags...).
 				MatchErrKeyWords("Preview", foobar.Digest).Exec().Out
-			Expect(viaDigest).ShouldNot(gbytes.Say(MultiImageTag))
+			Expect(viaDigest).ShouldNot(gbytes.Say(multi_arch.Tag))
 		})
 	})
 })

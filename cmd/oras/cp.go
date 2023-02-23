@@ -21,11 +21,13 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/graph"
 )
 
 type copyOptions struct {
@@ -117,6 +119,7 @@ func runCopy(opts copyOptions) error {
 	committed := &sync.Map{}
 	extendedCopyOptions := oras.DefaultExtendedCopyOptions
 	extendedCopyOptions.Concurrency = opts.concurrency
+	extendedCopyOptions.FindPredecessors = graph.FindReferrerPredecessors
 	extendedCopyOptions.PreCopy = display.StatusPrinter("Copying", opts.Verbose)
 	extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
@@ -131,9 +134,10 @@ func runCopy(opts copyOptions) error {
 	}
 
 	var desc ocispec.Descriptor
-	if ref := opts.To.Reference; ref == "" {
-		// push to the destination with digest only if no tag specified
-		desc, err = src.Resolve(ctx, opts.From.Reference)
+	rOpts := oras.DefaultResolveOptions
+	rOpts.TargetPlatform = opts.Platform.Platform
+	if dstRef := opts.To.Reference; dstRef == "" {
+		desc, err = oras.Resolve(ctx, src, opts.From.Reference, rOpts)
 		if err != nil {
 			return err
 		}
@@ -144,7 +148,16 @@ func runCopy(opts copyOptions) error {
 		}
 	} else {
 		if opts.recursive {
-			desc, err = oras.ExtendedCopy(ctx, src, opts.From.Reference, dst, opts.To.Reference, extendedCopyOptions)
+			srcRef := opts.From.Reference
+			if rOpts.TargetPlatform != nil {
+				// resolve source reference to specified platform
+				desc, err := oras.Resolve(ctx, src, opts.From.Reference, rOpts)
+				if err != nil {
+					return err
+				}
+				srcRef = desc.Digest.String()
+			}
+			desc, err = oras.ExtendedCopy(ctx, src, srcRef, dst, dstRef, extendedCopyOptions)
 		} else {
 			copyOptions := oras.CopyOptions{
 				CopyGraphOptions: extendedCopyOptions.CopyGraphOptions,
@@ -152,13 +165,17 @@ func runCopy(opts copyOptions) error {
 			if opts.Platform.Platform != nil {
 				copyOptions.WithTargetPlatform(opts.Platform.Platform)
 			}
-			desc, err = oras.Copy(ctx, src, opts.From.Reference, dst, opts.To.Reference, copyOptions)
+			desc, err = oras.Copy(ctx, src, opts.From.Reference, dst, dstRef, copyOptions)
 		}
 	}
 	if err != nil {
 		return err
 	}
 
+	if from, err := digest.Parse(opts.From.Reference); err == nil && from != desc.Digest {
+		// correct source digest
+		opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, desc.Digest.String())
+	}
 	fmt.Println("Copied", opts.From.AnnotatedReference(), "=>", opts.To.AnnotatedReference())
 
 	if len(opts.extraRefs) != 0 {

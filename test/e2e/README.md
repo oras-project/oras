@@ -106,6 +106,15 @@ graph TD;
             D1["test.sbom.file(image)"] -- subject --> C1
             D2["test.signature.file(image)"] -- subject --> D1
         end
+        subgraph "file: artifacts_index.tar.gz"
+            direction TB
+            F0>tag: multi]-..->F1[oci index]
+            F1--linux/amd64-->F2[oci image]
+            F1--linux/arm64-->F3[oci image]
+            F1--linux/arm/v7-->F4[oci image]
+            G1["referrer.index(image)"] -- subject --> F1
+            G2["referrer.image(image)"] -- subject --> F2
+        end
     end
 ```
 
