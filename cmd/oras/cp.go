@@ -3,7 +3,9 @@ Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
 http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -45,24 +47,34 @@ func copyCmd() *cobra.Command {
 		Aliases: []string{"copy"},
 		Short:   "[Preview] Copy artifacts from one target to another",
 		Long: `[Preview] Copy artifacts from one target to another
+
 ** This command is in preview and under development. **
+
 Example - Copy an artifact between registries:
   oras cp localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:v1
+
 Example - Download an artifact into an OCI layout folder:
   oras cp --to-oci-layout localhost:5000/net-monitor:v1 ./downloaded:v1
+
 Example - Upload an artifact from an OCI layout folder:
   oras cp --from-oci-layout ./to-upload:v1 localhost:5000/net-monitor:v1
+
 Example - Upload an artifact from an OCI layout tar archive:
   oras cp --from-oci-layout ./to-upload.tar:v1 localhost:5000/net-monitor:v1
+
 Example - Copy an artifact and its referrers:
   oras cp -r localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:v1
+
 Example - Copy an artifact and referrers using specific methods for the Referrers API:
   oras cp -r --from-distribution-spec v1.1-referrers-api --to-distribution-spec v1.1-referrers-tag \
     localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:v1 
+
 Example - Copy certain platform of an artifact:
   oras cp --platform linux/arm/v5 localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:v1
+
 Example - Copy an artifact with multiple tags:
   oras cp localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:tag1,tag2,tag3
+
 Example - Copy an artifact with multiple tags with concurrency tuned:
   oras cp --concurrency 10 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:tag1,tag2,tag3
 `,
