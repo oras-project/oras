@@ -16,9 +16,13 @@ limitations under the License.
 package command
 
 import (
+	"fmt"
+	"strings"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
@@ -67,13 +71,13 @@ var _ = Describe("Common registry users:", func() {
 		})
 
 		It("should not list repositories without a fully matched namespace", func() {
-			dstRepo := "command-draft/images"
-			ORAS("cp", Reference(Host, Repo, FoobarImageTag), Reference(Host, dstRepo, FoobarImageTag)).
-				WithDescription("prepare destination repo: " + dstRepo).
+			repo := "command-draft/images"
+			ORAS("cp", Reference(Host, Repo, FoobarImageTag), Reference(Host, repo, FoobarImageTag)).
+				WithDescription("prepare destination repo: " + repo).
 				Exec()
-			ORAS("repo", "ls", Host).MatchKeyWords(Repo, dstRepo).Exec()
+			ORAS("repo", "ls", Host).MatchKeyWords(Repo, repo).Exec()
 			session := ORAS("repo", "ls", Reference(Host, Namespace, "")).MatchKeyWords(Repo[len(Namespace)+1:]).Exec()
-			Expect(session.Out).ShouldNot(gbytes.Say(dstRepo[len(Namespace)+1:]))
+			Expect(session.Out).ShouldNot(gbytes.Say(repo[len(Namespace)+1:]))
 		})
 
 		It("should list repositories via short command", func() {
@@ -83,8 +87,12 @@ var _ = Describe("Common registry users:", func() {
 			session := ORAS("repo", "ls", Host, "--last", ImageRepo).Exec()
 			Expect(session.Out).ShouldNot(gbytes.Say(ImageRepo))
 		})
+
 	})
 	When("running `repo tags`", func() {
+		repoWithName := func(name string) string {
+			return fmt.Sprintf("command/images/repo/tags/%d/%s", GinkgoRandomSeed(), name)
+		}
 		repoRef := Reference(Host, ImageRepo, "")
 		It("should list tags", func() {
 			ORAS("repository", "show-tags", repoRef).MatchKeyWords(MultiImageTag, FoobarImageTag).Exec()
@@ -96,6 +104,29 @@ var _ = Describe("Common registry users:", func() {
 		It("should list partial tags via `last` flag", func() {
 			session := ORAS("repo", "tags", repoRef, "--last", FoobarImageTag).MatchKeyWords(MultiImageTag).Exec()
 			Expect(session.Out).ShouldNot(gbytes.Say(FoobarImageTag))
+		})
+
+		It("Should list out tags associated to the provided reference", func() {
+			// prepare
+			repo := repoWithName("filter-tag")
+			tags := []string{foobar.Tag, "bax", "bay", "baz"}
+			refWithTags := fmt.Sprintf("%s:%s", Reference(Host, repo, ""), strings.Join(tags, ","))
+			ORAS("cp", Reference(Host, Repo, foobar.Tag), refWithTags).
+				WithDescription("prepare: copy and create multiple tags to " + refWithTags).
+				Exec()
+			ORAS("cp", Reference(Host, Repo, MultiImageTag), Reference(Host, Repo, "")).
+				WithDescription("prepare: copy tag with different digest").
+				Exec()
+			// test
+			viaTag := ORAS("repo", "tags", "-v", Reference(Host, repo, foobar.Tag)).
+				MatchKeyWords(tags...).
+				MatchErrKeyWords("Preview", foobar.Digest).Exec().Out
+			Expect(viaTag).ShouldNot(gbytes.Say(MultiImageTag))
+
+			viaDigest := ORAS("repo", "tags", "-v", Reference(Host, repo, foobar.Digest)).
+				MatchKeyWords(tags...).
+				MatchErrKeyWords("Preview", foobar.Digest).Exec().Out
+			Expect(viaDigest).ShouldNot(gbytes.Say(MultiImageTag))
 		})
 	})
 })
