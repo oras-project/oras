@@ -73,8 +73,8 @@ var _ = Describe("Common registry users:", func() {
 
 		It("should not list repositories without a fully matched namespace", func() {
 			repo := "command-draft/images"
-			ORAS("cp", Reference(Host, Repo, foobar.Tag), Reference(Host, dstRepo, foobar.Tag)).
-				WithDescription("prepare destination repo: " + dstRepo).
+			ORAS("cp", Reference(Host, Repo, foobar.Tag), Reference(Host, repo, foobar.Tag)).
+				WithDescription("prepare destination repo: " + repo).
 				Exec()
 			ORAS("repo", "ls", Host).MatchKeyWords(Repo, repo).Exec()
 			session := ORAS("repo", "ls", Reference(Host, Namespace, "")).MatchKeyWords(Repo[len(Namespace)+1:]).Exec()
@@ -115,19 +115,19 @@ var _ = Describe("Common registry users:", func() {
 			ORAS("cp", Reference(Host, Repo, foobar.Tag), refWithTags).
 				WithDescription("prepare: copy and create multiple tags to " + refWithTags).
 				Exec()
-			ORAS("cp", Reference(Host, Repo, MultiImageTag), Reference(Host, Repo, "")).
+			ORAS("cp", Reference(Host, Repo, multi_arch.Tag), Reference(Host, Repo, "")).
 				WithDescription("prepare: copy tag with different digest").
 				Exec()
 			// test
 			viaTag := ORAS("repo", "tags", "-v", Reference(Host, repo, foobar.Tag)).
 				MatchKeyWords(tags...).
 				MatchErrKeyWords("Preview", foobar.Digest).Exec().Out
-			Expect(viaTag).ShouldNot(gbytes.Say(MultiImageTag))
+			Expect(viaTag).ShouldNot(gbytes.Say(multi_arch.Tag))
 
 			viaDigest := ORAS("repo", "tags", "-v", Reference(Host, repo, foobar.Digest)).
 				MatchKeyWords(tags...).
 				MatchErrKeyWords("Preview", foobar.Digest).Exec().Out
-			Expect(viaDigest).ShouldNot(gbytes.Say(MultiImageTag))
+			Expect(viaDigest).ShouldNot(gbytes.Say(multi_arch.Tag))
 		})
 	})
 })
