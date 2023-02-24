@@ -51,6 +51,8 @@ type Remote struct {
 	resolveDialContext    func(dialer *net.Dialer) func(context.Context, string, string) (net.Conn, error)
 	applyDistributionSpec bool
 	distributionSpec      distributionSpec
+	headerFlags           []string
+	headers               http.Header
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
@@ -62,6 +64,7 @@ func (opts *Remote) EnableDistributionSpecFlag() {
 func (opts *Remote) ApplyFlags(fs *pflag.FlagSet) {
 	opts.ApplyFlagsWithPrefix(fs, "", "")
 	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
+	fs.StringArrayVarP(&opts.headerFlags, "header", "H", nil, "add custom headers to requests")
 }
 
 func applyPrefix(prefix, description string) (flagPrefix, notePrefix string) {
@@ -99,12 +102,15 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	}
 
 	if fs.Lookup("resolve") == nil {
-		fs.StringArrayVarP(&opts.resolveFlag, "resolve", "", nil, "customized DNS formatted in `host:port:address`")
+		fs.StringArrayVarP(&opts.resolveFlag, "resolve", "", nil, "customized DNS formatted in `host:port:address[:address_port]`")
 	}
 }
 
 // Parse tries to read password with optional cmd prompt.
 func (opts *Remote) Parse() error {
+	if err := opts.parseCustomHeaders(); err != nil {
+		return err
+	}
 	if err := opts.readPassword(); err != nil {
 		return err
 	}
@@ -138,22 +144,29 @@ func (opts *Remote) parseResolve() error {
 	}
 	var dialer onet.Dialer
 	for _, r := range opts.resolveFlag {
-		parts := strings.SplitN(r, ":", 3)
-		if len(parts) < 3 {
-			return formatError(r, "expecting host:port:address")
+		parts := strings.SplitN(r, ":", 4)
+		length := len(parts)
+		if length < 3 {
+			return formatError(r, "expecting host:port:address[:address_port]")
 		}
-
-		port, err := strconv.Atoi(parts[1])
+		host := parts[0]
+		hostPort, err := strconv.Atoi(parts[1])
 		if err != nil {
-			return formatError(r, "expecting uint64 port")
+			return formatError(r, "expecting uint64 host port")
 		}
-
 		// ipv6 zone is not parsed
-		to := net.ParseIP(parts[2])
-		if to == nil {
+		address := net.ParseIP(parts[2])
+		if address == nil {
 			return formatError(r, "invalid IP address")
 		}
-		dialer.Add(parts[0], port, to)
+		addressPort := hostPort
+		if length > 3 {
+			addressPort, err = strconv.Atoi(parts[3])
+			if err != nil {
+				return formatError(r, "expecting uint64 address port")
+			}
+		}
+		dialer.Add(host, hostPort, address, addressPort)
 	}
 	opts.resolveDialContext = func(base *net.Dialer) func(context.Context, string, string) (net.Conn, error) {
 		dialer.Dialer = base
@@ -209,7 +222,8 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 				TLSClientConfig:       config,
 			},
 		},
-		Cache: auth.NewCache(),
+		Cache:  auth.NewCache(),
+		Header: opts.headers,
 	}
 	client.SetUserAgent("oras/" + version.GetVersion())
 	if debug {
@@ -241,6 +255,23 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 		}
 	}
 	return
+}
+
+func (opts *Remote) parseCustomHeaders() error {
+	if len(opts.headerFlags) != 0 {
+		headers := map[string][]string{}
+		for _, h := range opts.headerFlags {
+			name, value, found := strings.Cut(h, ":")
+			if !found || strings.TrimSpace(name) == "" {
+				// In conformance to the RFC 2616 specification
+				// Reference: https://www.rfc-editor.org/rfc/rfc2616#section-4.2
+				return fmt.Errorf("invalid header: %q", h)
+			}
+			headers[name] = append(headers[name], value)
+		}
+		opts.headers = headers
+	}
+	return nil
 }
 
 // Credential returns a credential based on the remote options.

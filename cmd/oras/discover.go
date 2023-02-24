@@ -109,7 +109,7 @@ func runDiscover(opts discoverOptions) error {
 	}
 
 	if opts.outputType == "tree" {
-		root := tree.New(opts.Reference)
+		root := tree.New(fmt.Sprintf("%s@%s", opts.Path, desc.Digest))
 		err = fetchAllReferrers(ctx, repo, desc, opts.artifactType, root, &opts)
 		if err != nil {
 			return err

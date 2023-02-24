@@ -17,71 +17,69 @@ package repository
 
 import "testing"
 
-func Test_parseRepoPath(t *testing.T) {
+func Test_ParseRepoPath(t *testing.T) {
 	type args struct {
-		opts *repositoryOptions
-		arg  string
+		rawReference string
 	}
-	var testOpts repositoryOptions
 	tests := []struct {
 		name          string
 		args          args
-		wantErr       bool
 		wantHostname  string
 		wantNamespace string
+		wantErr       bool
 	}{
 		{
 			name:          "hostname only",
-			args:          args{&testOpts, "testregistry.example.io"},
+			args:          args{"testregistry.example.io"},
 			wantErr:       false,
 			wantHostname:  "testregistry.example.io",
 			wantNamespace: "",
 		},
 		{
 			name:          "hostname with trailing slash",
-			args:          args{&testOpts, "testregistry.example.io/"},
+			args:          args{"testregistry.example.io/"},
 			wantErr:       false,
 			wantHostname:  "testregistry.example.io",
 			wantNamespace: "",
 		},
 		{
 			name:          "hostname and repo",
-			args:          args{&testOpts, "testregistry.example.io/showcase"},
+			args:          args{"testregistry.example.io/showcase"},
 			wantErr:       false,
 			wantHostname:  "testregistry.example.io",
 			wantNamespace: "showcase/",
 		},
 		{
 			name:          "hostname and repo in a sub-namespace",
-			args:          args{&testOpts, "testregistry.example.io/showcase/beta"},
+			args:          args{"testregistry.example.io/showcase/beta"},
 			wantErr:       false,
 			wantHostname:  "testregistry.example.io",
 			wantNamespace: "showcase/beta/",
 		},
 		{
 			name:          "hostname and repo in a sub-namespace with trailing slash",
-			args:          args{&testOpts, "testregistry.example.io/showcase/beta/"},
+			args:          args{"testregistry.example.io/showcase/beta/"},
 			wantErr:       false,
 			wantHostname:  "testregistry.example.io",
 			wantNamespace: "showcase/beta/",
 		},
 		{
 			name:          "error when a tag is provided",
-			args:          args{&testOpts, "testregistry.example.io/showcase:latest"},
+			args:          args{"testregistry.example.io/showcase:latest"},
 			wantErr:       true,
 			wantHostname:  "",
 			wantNamespace: "",
 		},
 		{
 			name:          "error when a digest is provided",
-			args:          args{&testOpts, "testregistry.example.io/showcase:sha256:2e0e0fe1fb3edbcdddad941c90d2b51e25a6bcd593e82545441a216de7bfa834"},
+			args:          args{"testregistry.example.io/showcase:sha256:2e0e0fe1fb3edbcdddad941c90d2b51e25a6bcd593e82545441a216de7bfa834"},
 			wantErr:       true,
 			wantHostname:  "",
 			wantNamespace: "",
 		},
 		{
 			name:          "error when a malformed path is provided",
-			args:          args{&testOpts, "testregistry.example.io///showcase/"},
+			args:          args{"testregistry.example.io///showcase/"},
 			wantErr:       true,
 			wantHostname:  "",
 			wantNamespace: "",
@@ -89,16 +87,17 @@ func Test_parseRepoPath(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := parseRepoPath(tt.args.opts, tt.args.arg)
+			gotHostname, gotNamespace, err := ParseRepoPath(tt.args.rawReference)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseRepoPath() error = %v, wantErr %v", err, tt.wantErr)
-			} else if testOpts.hostname != tt.wantHostname {
-				t.Errorf("got incorrect hostname = %v, want %v", testOpts.hostname, tt.wantHostname)
-			} else if testOpts.namespace != tt.wantNamespace {
-				t.Errorf("got incorrect hostname = %v, want %v", testOpts.namespace, tt.wantNamespace)
+				return
 			}
-			testOpts.hostname = ""
-			testOpts.namespace = ""
+			if gotHostname != tt.wantHostname {
+				t.Errorf("parseRepoPath() gotHostname = %v, want %v", gotHostname, tt.wantHostname)
+			}
+			if gotNamespace != tt.wantNamespace {
+				t.Errorf("parseRepoPath() gotNamespace = %v, want %v", gotNamespace, tt.wantNamespace)
+			}
 		})
 	}
 }

@@ -3,7 +3,9 @@ Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
 http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,6 +17,7 @@ package command
 
 import (
 	. "github.com/onsi/ginkgo/v2"
+	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
@@ -26,7 +29,7 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		It("should fail when provided manifest reference is not found", func() {
-			ORAS("tag", Reference(Host, Repo, "i-dont-think-this-tag-exists")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+			ORAS("tag", Reference(Host, ImageRepo, "i-dont-think-this-tag-exists")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
 		})
 	})
 })
@@ -38,16 +41,16 @@ var _ = Describe("Common registry users:", func() {
 	}
 	When("running `tag`", func() {
 		It("should add a tag to an existent manifest when providing tag reference", func() {
-			tagAndValidate(Host, Repo, MultiImageTag, "tag-via-tag")
+			tagAndValidate(Host, ImageRepo, multi_arch.Tag, "tag-via-tag")
 		})
 		It("should add a tag to an existent manifest when providing digest reference", func() {
-			tagAndValidate(Host, Repo, MultiImageDigest, "tag-via-digest")
+			tagAndValidate(Host, ImageRepo, multi_arch.Digest, "tag-via-digest")
 		})
 		It("should add multiple tags to an existent manifest when providing digest reference", func() {
-			tagAndValidate(Host, Repo, MultiImageDigest, "tag1-via-digest", "tag2-via-digest", "tag3-via-digest")
+			tagAndValidate(Host, ImageRepo, multi_arch.Digest, "tag1-via-digest", "tag2-via-digest", "tag3-via-digest")
 		})
 		It("should add multiple tags to an existent manifest when providing tag reference", func() {
-			tagAndValidate(Host, Repo, MultiImageTag, "tag1-via-tag", "tag1-via-tag", "tag1-via-tag")
+			tagAndValidate(Host, ImageRepo, multi_arch.Tag, "tag1-via-tag", "tag1-via-tag", "tag1-via-tag")
 		})
 	})
 })

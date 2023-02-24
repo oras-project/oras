@@ -12,23 +12,32 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
-package utils
+package repository
 
 import (
+	"fmt"
 	"strings"
 
-	"github.com/onsi/gomega"
 	"oras.land/oras-go/v2/registry"
 )
 
-// Reference generates the reference string from given parameters.
-func Reference(reg string, repo string, tagOrDigest string) string {
-	ref := registry.Reference{
-		Registry:   reg,
-		Repository: repo,
-		Reference:  strings.TrimSpace(tagOrDigest),
+// ParserRepoPath extracts hostname and namespace from rawReference.
+func ParseRepoPath(rawReference string) (hostname, namespace string, err error) {
+	rawReference = strings.TrimSuffix(rawReference, "/")
+	if strings.Contains(rawReference, "/") {
+		var ref registry.Reference
+		ref, err = registry.ParseReference(rawReference)
+		if err != nil {
+			return
+		}
+		if ref.Reference != "" {
+			err = fmt.Errorf("tags or digests should not be provided")
+			return
+		}
+		hostname = ref.Registry
+		namespace = ref.Repository + "/"
+	} else {
+		hostname = rawReference
 	}
-	gomega.Expect(ref.Validate()).ShouldNot(gomega.HaveOccurred())
-	return ref.String()
+	return
 }
