@@ -322,19 +322,6 @@ func TestFindReferrerPredecessors(t *testing.T) {
 		}
 		appendBlob(ocispec.MediaTypeImageManifest, manifestJSON)
 	}
-	generateArtifact := func(artifactType string, subject *ocispec.Descriptor, annotations map[string]string, blobs ...ocispec.Descriptor) {
-		manifest := ocispec.Artifact{
-			Subject:      subject,
-			Blobs:        blobs,
-			Annotations:  annotations,
-			ArtifactType: artifactType,
-		}
-		manifestJSON, err := json.Marshal(manifest)
-		if err != nil {
-			t.Fatal(err)
-		}
-		appendBlob(ocispec.MediaTypeArtifactManifest, manifestJSON)
-	}
 	generateIndex := func(manifests ...ocispec.Descriptor) {
 		index := ocispec.Index{
 			Manifests: manifests,
@@ -349,7 +336,6 @@ func TestFindReferrerPredecessors(t *testing.T) {
 		subject = iota
 		imgConfig
 		image
-		artifact
 	)
 	var anno map[string]string
 	appendBlob(ocispec.MediaTypeArtifactManifest, []byte("subject content"))
@@ -359,12 +345,7 @@ func TestFindReferrerPredecessors(t *testing.T) {
 	imageDesc := descs[image]
 	imageDesc.Annotations = anno
 	imageDesc.ArtifactType = imageType
-	artifactType := "test.artifact"
-	generateArtifact(artifactType, &descs[subject], anno)
 	generateIndex(descs[subject])
-	artifactDesc := descs[artifact]
-	artifactDesc.Annotations = anno
-	artifactDesc.ArtifactType = artifactType
 
 	referrers := []ocispec.Descriptor{descs[image], descs[image]}
 	memory := memory.New()
@@ -388,7 +369,7 @@ func TestFindReferrerPredecessors(t *testing.T) {
 		{"should failed to get predecessor", args{ctx, &errFinder{}, ocispec.Descriptor{}}, nil, true},
 		{"should return referrers when target is a referrer lister", args{ctx, &refLister{referrers: referrers}, ocispec.Descriptor{}}, referrers, false},
 		{"should return image for config node", args{ctx, finder, descs[imgConfig]}, []ocispec.Descriptor{descs[image]}, false},
-		{"should return image and artifact for subject node", args{ctx, finder, descs[subject]}, []ocispec.Descriptor{descs[image], descs[artifact]}, false},
+		{"should return image for subject node", args{ctx, finder, descs[subject]}, []ocispec.Descriptor{descs[image]}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
