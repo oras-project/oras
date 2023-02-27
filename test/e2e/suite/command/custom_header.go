@@ -16,9 +16,77 @@ limitations under the License.
 package command
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo/v2"
+	"oras.land/oras/test/e2e/internal/testdata/foobar"
+	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
+
+var _ = Describe("Common registry users:", func() {
+	var (
+		FoobarHeaderInput = "Foo:bar"
+		FoobarHeader      = "\"Foo\": \"bar\"\n"
+		AbHeaderInput     = "A: b"
+		AbHeader          = "\"A\": \" b\"\n"
+	)
+	When("custom header is provided", func() {
+		It("attach", func() {
+			testRepo := attachTestRepo("simple")
+			tempDir := PrepareTempFiles()
+			subjectRef := RegistryRef(Host, testRepo, foobar.Tag)
+			prepare(RegistryRef(Host, ImageRepo, foobar.Tag), subjectRef)
+			ORAS("attach", "--artifact-type", "test.attach", subjectRef,
+				fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia),
+				"-d", "-H", FoobarHeaderInput, "-H", AbHeaderInput).
+				WithWorkDir(tempDir).MatchRequestHeaders(FoobarHeader, AbHeader).Exec()
+		})
+		It("blob", func() {
+			blobDigest := "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
+			ORAS("blob", "fetch", RegistryRef(Host, ImageRepo, blobDigest), "--descriptor",
+				"-d", "-H", FoobarHeaderInput, "-H", AbHeaderInput).
+				MatchRequestHeaders(FoobarHeader, AbHeader).Exec()
+		})
+		It("manifest", func() {
+			ORAS("manifest", "fetch", RegistryRef(Host, ImageRepo, multi_arch.Tag),
+				"-d", "-H", FoobarHeaderInput, "-H", AbHeaderInput).
+				MatchRequestHeaders(FoobarHeader, AbHeader).Exec()
+		})
+		It("pull", func() {
+			tempDir := GinkgoT().TempDir()
+			ORAS("pull", "-d", "-H", FoobarHeaderInput, "-H", AbHeaderInput,
+				RegistryRef(Host, ImageRepo, "foobar"), "--config", "config.json").
+				WithWorkDir(tempDir).MatchRequestHeaders(FoobarHeader, AbHeader).Exec()
+		})
+		It("push", func() {
+			repoPrefix := fmt.Sprintf("command/push/%d", GinkgoRandomSeed())
+			repo := fmt.Sprintf("%s/%s", repoPrefix, "with-mediatype")
+			tempDir := GinkgoT().TempDir()
+			if err := CopyTestFiles(tempDir); err != nil {
+				panic(err)
+			}
+			ORAS("push", "-d", "-H", FoobarHeaderInput, "-H", AbHeaderInput,
+				RegistryRef(Host, repo, "latest"), "foobar/bar").
+				WithWorkDir(tempDir).MatchRequestHeaders(FoobarHeader, AbHeader).Exec()
+		})
+		It("repo", func() {
+			ORAS("repository", "list", Host, "-d", "-H", FoobarHeaderInput, "-H", AbHeaderInput).
+				MatchRequestHeaders(FoobarHeader, AbHeader).Exec()
+		})
+		It("tag", func() {
+			digest := "sha256:e2bfc9cc6a84ec2d7365b5a28c6bc5806b7fa581c9ad7883be955a64e3cc034f"
+			ORAS("tag", RegistryRef(Host, ImageRepo, digest), "latest",
+				"-d", "-H", FoobarHeaderInput, "-H", AbHeaderInput).
+				MatchRequestHeaders(FoobarHeader, AbHeader).Exec()
+		})
+		It("login", func() {
+			ORAS("login", Host, "-u", Username, "-p", Password, "--registry-config", AuthConfigPath,
+				"-H", FoobarHeaderInput, "-H", AbHeaderInput).
+				MatchRequestHeaders(FoobarHeader, AbHeader).Exec()
+		})
+	})
+})
 
 var _ = Describe("OCI image layout users:", func() {
 	When("custom header is provided", func() {

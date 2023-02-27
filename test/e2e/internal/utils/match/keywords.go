@@ -23,8 +23,8 @@ import (
 )
 
 // keywordMatcher provides selective matching of the output.
-// The match will pass if all key words existed case-insensitively in the
-// output.
+// The match will pass if all the keywords exist case-insensitively
+// in the output.
 type keywordMatcher []string
 
 func NewKeywordMatcher(kw []string) keywordMatcher {

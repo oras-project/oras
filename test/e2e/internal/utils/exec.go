@@ -121,6 +121,12 @@ func (opts *ExecOption) MatchErrKeyWords(keywords ...string) *ExecOption {
 	return opts
 }
 
+// MatchRequestHeaders adds keywords matching to each sent request.
+func (opts *ExecOption) MatchRequestHeaders(headers ...string) *ExecOption {
+	opts.stderr = append(opts.stderr, match.NewRequestHeaderMatcher(headers))
+	return opts
+}
+
 // MatchContent adds full content matching to the execution.
 func (opts *ExecOption) MatchContent(content string) *ExecOption {
 	if opts.exitCode == 0 {
