@@ -179,7 +179,7 @@ var _ = Describe("Common registry users:", func() {
 		})
 
 		It("should fetch manifest with platform validation", func() {
-			ORAS("manifest", "fetch", Reference(Host, ImageRepo, multi_arch.LinuxAMD64Digest), "--platform", "linux/amd64").
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, multi_arch.LinuxAMD64.Digest.String()), "--platform", "linux/amd64").
 				MatchContent(multi_arch.LinuxAMD64Manifest).Exec()
 		})
 
@@ -194,8 +194,8 @@ var _ = Describe("Common registry users:", func() {
 		})
 
 		It("should fetch descriptor via digest with platform validation", func() {
-			ORAS("manifest", "fetch", Reference(Host, ImageRepo, multi_arch.LinuxAMD64Digest), "--platform", "linux/amd64", "--descriptor").
-				MatchContent(multi_arch.LinuxAMD64Desc).Exec()
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, multi_arch.LinuxAMD64.Digest.String()), "--platform", "linux/amd64", "--descriptor").
+				MatchContent(multi_arch.LinuxAMD64DescStr).Exec()
 		})
 
 		It("should fetch descriptor via tag", func() {
@@ -233,19 +233,19 @@ var _ = Describe("Common registry users:", func() {
 		})
 
 		It("should fetch image content with media type assertion and platform validation", func() {
-			ORAS("manifest", "fetch", Reference(Host, ImageRepo, multi_arch.LinuxAMD64Digest), "--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.manifest.v1+json").
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, multi_arch.LinuxAMD64.Digest.String()), "--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.manifest.v1+json").
 				MatchContent(multi_arch.LinuxAMD64Manifest).Exec()
 		})
 
 		It("should fetch image descriptor with media type assertion and platform validation", func() {
-			ORAS("manifest", "fetch", Reference(Host, ImageRepo, multi_arch.LinuxAMD64Digest), "--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.manifest.v1+json", "--descriptor").
-				MatchContent(multi_arch.LinuxAMD64Desc).Exec()
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, multi_arch.LinuxAMD64.Digest.String()), "--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.manifest.v1+json", "--descriptor").
+				MatchContent(multi_arch.LinuxAMD64DescStr).Exec()
 		})
 
 		It("should fail to fetch image if media type assertion fails", func() {
-			ORAS("manifest", "fetch", Reference(Host, ImageRepo, multi_arch.LinuxAMD64Digest), "--media-type", "this.will.not.be.found").
+			ORAS("manifest", "fetch", Reference(Host, ImageRepo, multi_arch.LinuxAMD64.Digest.String()), "--media-type", "this.will.not.be.found").
 				ExpectFailure().
-				MatchErrKeyWords(multi_arch.LinuxAMD64Digest, "error: ", "not found").Exec()
+				MatchErrKeyWords(multi_arch.LinuxAMD64.Digest.String(), "error: ", "not found").Exec()
 		})
 	})
 

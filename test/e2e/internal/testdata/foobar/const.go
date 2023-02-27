@@ -15,7 +15,11 @@ limitations under the License.
 
 package foobar
 
-import "oras.land/oras/test/e2e/internal/utils/match"
+import (
+	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras/test/e2e/internal/utils/match"
+)
 
 var (
 	Tag              = "foobar"
@@ -63,11 +67,35 @@ func ImageConfigStateKey(configName string) match.StateKey {
 
 // referrers
 var (
-	SBOMImageReferrerDigest         = "sha256:32b78bd00723cd7d5251d4586f84d252530b7b5fe1c4104532767e6da4e04e47"
-	SignatureImageReferrerDigest    = "sha256:0e007dcb9ded7f49c4dc8e3eed4a446712eb6fdf08a665a4f2352d6d2f8bdf17"
-	SBOMArtifactReferrerDigest      = "sha256:8d7a27ff2662dae183f762d281f46d626ba7b6e56a72cc9959cdbcd91aad7fbc"
-	SignatureArtifactReferrerDigest = "sha256:0e007dcb9ded7f49c4dc8e3eed4a446712eb6fdf08a665a4f2352d6d2f8bdf17"
-	ArtifactReferrerStateKeys       = []match.StateKey{
+	SBOMImageReferrer = ocispec.Descriptor{
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Digest:    digest.Digest("sha256:32b78bd00723cd7d5251d4586f84d252530b7b5fe1c4104532767e6da4e04e47"),
+		Size:      660,
+		Annotations: map[string]string{
+			"org.opencontainers.image.created": "2023-01-18T08:37:42Z",
+		},
+		ArtifactType: "test.sbom.file",
+	}
+	SignatureImageReferrer = ocispec.Descriptor{
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Digest:    digest.Digest("sha256:0e007dcb9ded7f49c4dc8e3eed4a446712eb6fdf08a665a4f2352d6d2f8bdf17"),
+		Size:      670,
+	}
+	SBOMArtifactReferrer = ocispec.Descriptor{
+		MediaType: "application/vnd.oci.artifact.manifest.v1+json",
+		Digest:    digest.Digest("sha256:8d7a27ff2662dae183f762d281f46d626ba7b6e56a72cc9959cdbcd91aad7fbc"),
+		Size:      547,
+		Annotations: map[string]string{
+			"org.opencontainers.artifact.created": "2023-01-16T05:49:46Z",
+		},
+		ArtifactType: "test.sbom.file",
+	}
+	SignatureArtifactReferrer = ocispec.Descriptor{
+		MediaType: "application/vnd.oci.artifact.manifest.v1+json",
+		Digest:    digest.Digest("sha256:2dbea575a3490375f5052fbeb380a2f498866d99eb809b4168e49e224a274a39"),
+		Size:      560,
+	}
+	ArtifactReferrerStateKeys = []match.StateKey{
 		{Digest: "8d7a27ff2662", Name: "application/vnd.oci.artifact.manifest.v1+json"},
 		{Digest: "2dbea575a349", Name: "application/vnd.oci.artifact.manifest.v1+json"},
 	}
@@ -87,6 +115,19 @@ var (
 
 // fallback referrers
 var (
-	FallbackSignatureImageReferrerDigest = "sha256:8b3f7e000c4a6d32cd6bfcabfe874ed470d470501a09adc65afaf1c342f988ff"
-	FallbackSBOMImageReferrerDigest      = "sha256:316405db72cc8f0212c19db23b498f9af8a456c9cd288f9e33acd1ba9e7cd534"
+	FallbackSignatureImageReferrer = ocispec.Descriptor{
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Digest:    digest.Digest("sha256:8b3f7e000c4a6d32cd6bfcabfe874ed470d470501a09adc65afaf1c342f988ff"),
+		Size:      670,
+	}
+
+	FallbackSBOMImageReferrer = ocispec.Descriptor{
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Digest:    digest.Digest("sha256:316405db72cc8f0212c19db23b498f9af8a456c9cd288f9e33acd1ba9e7cd534"),
+		Size:      660,
+		Annotations: map[string]string{
+			"org.opencontainers.image.created": "2023-01-29T02:32:18Z",
+		},
+		ArtifactType: "test.sbom.file",
+	}
 )
