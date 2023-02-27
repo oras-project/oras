@@ -30,6 +30,7 @@ import (
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/retry"
 	"oras.land/oras/internal/credential"
 	"oras.land/oras/internal/crypto"
 	onet "oras.land/oras/internal/net"
@@ -205,22 +206,25 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 			return dialer.DialContext
 		}
 	}
+	// default value are derived from http.DefaultTransport
+	baseTransport := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: resolveDialContext(&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}),
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		TLSClientConfig:       config,
+	}
 	client = &auth.Client{
 		Client: &http.Client{
-			// default value are derived from http.DefaultTransport
-			Transport: &http.Transport{
-				Proxy: http.ProxyFromEnvironment,
-				DialContext: resolveDialContext(&net.Dialer{
-					Timeout:   30 * time.Second,
-					KeepAlive: 30 * time.Second,
-				}),
-				ForceAttemptHTTP2:     true,
-				MaxIdleConns:          100,
-				IdleConnTimeout:       90 * time.Second,
-				TLSHandshakeTimeout:   10 * time.Second,
-				ExpectContinueTimeout: 1 * time.Second,
-				TLSClientConfig:       config,
-			},
+			// http.RoundTripper with a retry using the DefaultPolicy
+			// see: https://pkg.go.dev/oras.land/oras-go/v2/registry/remote/retry#Policy
+			Transport: retry.NewTransport(baseTransport),
 		},
 		Cache:  auth.NewCache(),
 		Header: opts.headers,
