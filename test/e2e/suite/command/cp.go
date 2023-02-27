@@ -112,7 +112,7 @@ var _ = Describe("Common registry users:", func() {
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(len(index.Manifests)).To(Equal(1))
 			Expect(index.Manifests[0].Digest.String()).To(Equal(ma.IndexReferrerDigest))
-			ORAS("manifest", "fetch", Reference(Host, dstRepo, ma.LinuxAMD64ReferrerDigest)).
+			ORAS("manifest", "fetch", Reference(Host, dstRepo, ma.LinuxAMD64Referrer.Digest.String())).
 				WithDescription("not copy referrer of successor").
 				ExpectFailure().
 				Exec()
@@ -136,7 +136,7 @@ var _ = Describe("Common registry users:", func() {
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(len(index.Manifests)).To(Equal(1))
 			Expect(index.Manifests[0].Digest.String()).To(Equal(ma.IndexReferrerDigest))
-			ORAS("manifest", "fetch", Reference(Host, dstRepo, ma.LinuxAMD64ReferrerDigest)).
+			ORAS("manifest", "fetch", Reference(Host, dstRepo, ma.LinuxAMD64Referrer.Digest.String())).
 				WithDescription("not copy referrer of successor").
 				ExpectFailure().
 				Exec()
@@ -148,9 +148,9 @@ var _ = Describe("Common registry users:", func() {
 
 			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").
 				MatchStatus(ma.IndexStateKeys, true, len(ma.IndexStateKeys)).
-				MatchKeyWords("Digest: " + ma.LinuxAMD64Digest).
+				MatchKeyWords("Digest: " + ma.LinuxAMD64.Digest.String()).
 				Exec()
-			validate(Reference(Host, ImageRepo, ma.LinuxAMD64Digest), dst)
+			validate(Reference(Host, ImageRepo, ma.LinuxAMD64.Digest.String()), dst)
 		})
 
 		It("should copy a certain platform of image to a new repository via digest", func() {
@@ -159,9 +159,9 @@ var _ = Describe("Common registry users:", func() {
 			dst := Reference(Host, dstRepo, "")
 			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").
 				MatchStatus(ma.IndexStateKeys, true, len(ma.IndexStateKeys)).
-				MatchKeyWords("Digest: " + ma.LinuxAMD64Digest).
+				MatchKeyWords("Digest: " + ma.LinuxAMD64.Digest.String()).
 				Exec()
-			validate(Reference(Host, ImageRepo, ma.LinuxAMD64Digest), Reference(Host, dstRepo, ma.LinuxAMD64Digest))
+			validate(Reference(Host, ImageRepo, ma.LinuxAMD64.Digest.String()), Reference(Host, dstRepo, ma.LinuxAMD64.Digest.String()))
 		})
 
 		It("should copy a certain platform of image and its referrers to a new repository with tag", func() {
@@ -170,18 +170,18 @@ var _ = Describe("Common registry users:", func() {
 			dst := Reference(Host, dstRepo, "copiedTag")
 			ORAS("cp", src, dst, "-r", "--platform", "linux/amd64", "-v").
 				MatchStatus(ma.IndexStateKeys, true, len(ma.IndexStateKeys)).
-				MatchKeyWords("Digest: " + ma.LinuxAMD64Digest).
+				MatchKeyWords("Digest: " + ma.LinuxAMD64.Digest.String()).
 				Exec()
 			// validate
-			validate(Reference(Host, ImageRepo, ma.LinuxAMD64Digest), dst)
+			validate(Reference(Host, ImageRepo, ma.LinuxAMD64.Digest.String()), dst)
 			var index ocispec.Index
 			bytes := ORAS("discover", dst, "-o", "json", "--platform", "linux/amd64").
-				MatchKeyWords(ma.LinuxAMD64ReferrerDigest).
+				MatchKeyWords(ma.LinuxAMD64Referrer.Digest.String()).
 				WithDescription("discover amd64 referrers").
 				Exec().Out.Contents()
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].Digest.String()).To(Equal(ma.LinuxAMD64ReferrerDigest))
+			Expect(index.Manifests[0].Digest.String()).To(Equal(ma.LinuxAMD64Referrer.Digest.String()))
 			ORAS("manifest", "fetch", Reference(Host, dstRepo, ma.Digest)).
 				WithDescription("not copy index").
 				ExpectFailure().
@@ -197,19 +197,19 @@ var _ = Describe("Common registry users:", func() {
 			dstRepo := cpTestRepo("platform-referrers-no-tag")
 			ORAS("cp", src, Reference(Host, dstRepo, ""), "-r", "--platform", "linux/amd64", "-v").
 				MatchStatus(ma.IndexStateKeys, true, len(ma.IndexStateKeys)).
-				MatchKeyWords("Digest: " + ma.LinuxAMD64Digest).
+				MatchKeyWords("Digest: " + ma.LinuxAMD64.Digest.String()).
 				Exec()
 			// validate
-			dstRef := Reference(Host, dstRepo, ma.LinuxAMD64Digest)
-			validate(Reference(Host, ImageRepo, ma.LinuxAMD64Digest), dstRef)
+			dstRef := Reference(Host, dstRepo, ma.LinuxAMD64.Digest.String())
+			validate(Reference(Host, ImageRepo, ma.LinuxAMD64.Digest.String()), dstRef)
 			var index ocispec.Index
 			bytes := ORAS("discover", dstRef, "-o", "json", "--platform", "linux/amd64").
-				MatchKeyWords(ma.LinuxAMD64ReferrerDigest).
+				MatchKeyWords(ma.LinuxAMD64Referrer.Digest.String()).
 				WithDescription("discover amd64 referrers").
 				Exec().Out.Contents()
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].Digest.String()).To(Equal(ma.LinuxAMD64ReferrerDigest))
+			Expect(index.Manifests[0].Digest.String()).To(Equal(ma.LinuxAMD64Referrer.Digest.String()))
 			ORAS("manifest", "fetch", Reference(Host, dstRepo, ma.Digest)).
 				WithDescription("not copy index").
 				ExpectFailure().
@@ -244,22 +244,22 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 		It("should copy an image artifact and its referrers from a registry to a fallback registry", func() {
 			repo := cpTestRepo("to-fallback")
 			stateKeys := append(append(foobarStates, foobar.ImageReferrersStateKeys...), foobar.ImageReferrerConfigStateKeys...)
-			src := Reference(Host, ArtifactRepo, foobar.SignatureImageReferrerDigest)
+			src := Reference(Host, ArtifactRepo, foobar.SignatureImageReferrer.Digest.String())
 			dst := Reference(FallbackHost, repo, "")
 			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
-			validate(src, Reference(FallbackHost, repo, foobar.SignatureImageReferrerDigest))
+			validate(src, Reference(FallbackHost, repo, foobar.SignatureImageReferrer.Digest.String()))
 			ORAS("discover", "-o", "tree", Reference(FallbackHost, repo, foobar.Digest)).
-				WithDescription("discover referrer via subject").MatchKeyWords(foobar.SignatureImageReferrerDigest, foobar.SBOMImageReferrerDigest).Exec()
+				WithDescription("discover referrer via subject").MatchKeyWords(foobar.SignatureImageReferrer.Digest.String(), foobar.SBOMImageReferrer.Digest.String()).Exec()
 		})
 		It("should copy an image artifact and its referrers from a fallback registry to a registry", func() {
 			repo := cpTestRepo("from-fallback")
 			stateKeys := append(append(foobarStates, foobar.FallbackImageReferrersStateKeys...), foobar.ImageReferrerConfigStateKeys...)
-			src := Reference(FallbackHost, ArtifactRepo, foobar.FallbackSBOMImageReferrerDigest)
+			src := Reference(FallbackHost, ArtifactRepo, foobar.FallbackSBOMImageReferrer.Digest.String())
 			dst := Reference(Host, repo, "")
 			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
-			validate(src, Reference(Host, repo, foobar.FallbackSBOMImageReferrerDigest))
+			validate(src, Reference(Host, repo, foobar.FallbackSBOMImageReferrer.Digest.String()))
 			ORAS("discover", "-o", "tree", Reference(Host, repo, foobar.Digest)).
-				WithDescription("discover referrer via subject").MatchKeyWords(foobar.FallbackSignatureImageReferrerDigest, foobar.FallbackSBOMImageReferrerDigest).Exec()
+				WithDescription("discover referrer via subject").MatchKeyWords(foobar.FallbackSignatureImageReferrer.Digest.String(), foobar.FallbackSBOMImageReferrer.Digest.String()).Exec()
 		})
 	})
 })
