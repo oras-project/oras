@@ -194,7 +194,7 @@ func (opts *BinaryTarget) EnableDistributionSpecFlag() {
 func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
 	opts.From.ApplyFlagsWithPrefix(fs, "from", "source")
 	opts.To.ApplyFlagsWithPrefix(fs, "to", "destination")
-	fs.StringArrayVarP(&opts.resolveFlag, "resolve", "", nil, "DNS rules formatted in `host:port:address[:address_port]`, can be overwritten by src or dest DNS rules")
+	fs.StringArrayVarP(&opts.resolveFlag, "resolve", "", nil, "base DNS rules formatted in `host:port:address[:address_port]` for --from-resolve and --to-resolve")
 }
 
 // Parse parses user-provided flags and arguments into option struct.
