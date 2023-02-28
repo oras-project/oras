@@ -194,12 +194,13 @@ func (opts *BinaryTarget) EnableDistributionSpecFlag() {
 func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
 	opts.From.ApplyFlagsWithPrefix(fs, "from", "source")
 	opts.To.ApplyFlagsWithPrefix(fs, "to", "destination")
-	fs.StringArrayVarP(&opts.resolveFlag, "resolve", "", nil, "customized DNS formatted in `host:port:address[:address_port]`")
+	fs.StringArrayVarP(&opts.resolveFlag, "resolve", "", nil, "DNS rules formatted in `host:port:address[:address_port]`, can be overwritten by src or dest DNS rules")
 }
 
 // Parse parses user-provided flags and arguments into option struct.
 func (opts *BinaryTarget) Parse() error {
-	opts.From.resolveFlag = opts.resolveFlag
-	opts.To.resolveFlag = opts.resolveFlag
+	// resolve are parsed in array order, latter will overwrite former
+	opts.From.resolveFlag = append(opts.resolveFlag, opts.From.resolveFlag...)
+	opts.To.resolveFlag = append(opts.resolveFlag, opts.To.resolveFlag...)
 	return Parse(opts)
 }
