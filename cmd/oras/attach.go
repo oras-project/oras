@@ -156,8 +156,8 @@ func runAttach(opts attachOptions) error {
 			graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 				if content.Equal(node, root) {
 					// skip subject
-					// scratch config blob with content of `{}` (size of 2)
 					return append(descs, ocispec.Descriptor{
+						// scratch config blob with content of `{}` (size of 2)
 						MediaType: "application/vnd.oci.example+json",
 						Digest:    `sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a`,
 						Size:      2,
