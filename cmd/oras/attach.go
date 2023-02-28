@@ -152,6 +152,19 @@ func runAttach(opts attachOptions) error {
 				}
 				return content.Successors(ctx, fetcher, node)
 			}
+		} else if root.MediaType == ocispec.MediaTypeImageManifest {
+			graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+				if content.Equal(node, root) {
+					// skip subject
+					// scratch config blob with content of `{}` (size of 2)
+					return append(descs, ocispec.Descriptor{
+						MediaType: "application/vnd.oci.example+json",
+						Digest:    `sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a`,
+						Size:      2,
+						Data:      []byte(`{}`)}), nil
+				}
+				return content.Successors(ctx, fetcher, node)
+			}
 		}
 		return oras.CopyGraph(ctx, store, dst, root, graphCopyOptions)
 	}
