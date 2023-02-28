@@ -81,7 +81,7 @@ func TestRemote_authClient_RawCredential(t *testing.T) {
 		Username: want.Username,
 		Password: want.Password,
 	}
-	if err := Parse(&opts); err != nil {
+	if err := opts.Parse(); err != nil {
 		t.Fatalf("unexpected error when Parsing: %v", err)
 	}
 	client, err := opts.authClient("hostname", false)
@@ -102,7 +102,7 @@ func TestRemote_authClient_skipTlsVerify(t *testing.T) {
 	opts := Remote{
 		Insecure: true,
 	}
-	if err := Parse(&opts); err != nil {
+	if err := opts.Parse(); err != nil {
 		t.Fatalf("unexpected error when Parsing: %v", err)
 	}
 	client, err := opts.authClient("hostname", false)
@@ -131,8 +131,8 @@ func TestRemote_authClient_CARoots(t *testing.T) {
 	opts := Remote{
 		CACertFilePath: caPath,
 	}
-	if err := Parse(&opts); err != nil {
-		t.Fatalf("unexpected error when parsing: %v", err)
+	if err := opts.Parse(); err != nil {
+		t.Fatalf("unexpected error when Parsing: %v", err)
 	}
 	client, err := opts.authClient("hostname", false)
 	if err != nil {
@@ -159,8 +159,8 @@ func TestRemote_authClient_resolve(t *testing.T) {
 		resolveFlag: []string{fmt.Sprintf("%s:%s:%s", testHost, URL.Port(), URL.Hostname())},
 		Insecure:    true,
 	}
-	if err = Parse(&opts); err != nil {
-		t.Fatalf("unexpected error when parsing: %v", err)
+	if err := opts.Parse(); err != nil {
+		t.Fatalf("unexpected error when Parsing: %v", err)
 	}
 	client, err := opts.authClient(testHost, false)
 	if err != nil {
