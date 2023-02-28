@@ -114,9 +114,6 @@ func (opts *Remote) Parse() error {
 	if err := opts.readPassword(); err != nil {
 		return err
 	}
-	if err := opts.parseResolve(); err != nil {
-		return err
-	}
 	return opts.distributionSpec.Parse()
 }
 
@@ -200,6 +197,9 @@ func (opts *Remote) tlsConfig() (*tls.Config, error) {
 func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client, err error) {
 	config, err := opts.tlsConfig()
 	if err != nil {
+		return nil, err
+	}
+	if err := opts.parseResolve(); err != nil {
 		return nil, err
 	}
 	baseTransport := http.DefaultTransport.(*http.Transport).Clone()
