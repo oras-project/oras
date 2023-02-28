@@ -21,7 +21,7 @@ import (
 var _ = Describe("OCI image layout users:", func() {
 	When("custom header is provided", func() {
 		It("should fail attach", func() {
-			ORAS("attach", "root:test", "-a", "test=true", "--artifact-type", "doc/example").
+			ORAS("attach", "root:test", "-a", "test=true", "--artifact-type", "doc/example", "--oci-layout").
 				WithWorkDir(GinkgoT().TempDir()).
 				ExpectFailure().
 				MatchErrKeyWords("customer header").
