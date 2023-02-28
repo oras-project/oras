@@ -81,9 +81,6 @@ func TestRemote_authClient_RawCredential(t *testing.T) {
 		Username: want.Username,
 		Password: want.Password,
 	}
-	if err := opts.Parse(); err != nil {
-		t.Fatalf("unexpected error when Parsing: %v", err)
-	}
 	client, err := opts.authClient("hostname", false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -101,9 +98,6 @@ func TestRemote_authClient_RawCredential(t *testing.T) {
 func TestRemote_authClient_skipTlsVerify(t *testing.T) {
 	opts := Remote{
 		Insecure: true,
-	}
-	if err := opts.Parse(); err != nil {
-		t.Fatalf("unexpected error when Parsing: %v", err)
 	}
 	client, err := opts.authClient("hostname", false)
 	if err != nil {
@@ -131,9 +125,6 @@ func TestRemote_authClient_CARoots(t *testing.T) {
 	opts := Remote{
 		CACertFilePath: caPath,
 	}
-	if err := opts.Parse(); err != nil {
-		t.Fatalf("unexpected error when Parsing: %v", err)
-	}
 	client, err := opts.authClient("hostname", false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -158,9 +149,6 @@ func TestRemote_authClient_resolve(t *testing.T) {
 	opts := Remote{
 		resolveFlag: []string{fmt.Sprintf("%s:%s:%s", testHost, URL.Port(), URL.Hostname())},
 		Insecure:    true,
-	}
-	if err := opts.Parse(); err != nil {
-		t.Fatalf("unexpected error when Parsing: %v", err)
 	}
 	client, err := opts.authClient(testHost, false)
 	if err != nil {
@@ -194,10 +182,6 @@ func TestRemote_NewRegistry(t *testing.T) {
 		},
 		Common{},
 	}
-	if err := Parse(&opts); err != nil {
-		t.Fatalf("unexpected error when parsing: %v", err)
-	}
-
 	uri, err := url.ParseRequestURI(ts.URL)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -226,9 +210,6 @@ func TestRemote_NewRepository(t *testing.T) {
 			CACertFilePath: caPath,
 		},
 		Common{},
-	}
-	if err := Parse(&opts); err != nil {
-		t.Fatalf("unexpected error when parsing: %v", err)
 	}
 
 	uri, err := url.ParseRequestURI(ts.URL)
@@ -273,9 +254,6 @@ func TestRemote_NewRepository_Retry(t *testing.T) {
 			CACertFilePath: caPath,
 		},
 		Common{},
-	}
-	if err := Parse(&opts); err != nil {
-		t.Fatalf("unexpected error when parsing: %v", err)
 	}
 
 	uri, err := url.ParseRequestURI(ts.URL)
