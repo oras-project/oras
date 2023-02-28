@@ -335,7 +335,7 @@ func TestRemote_parseResolve_err(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.opts.parseResolve(); err == nil {
+			if _, err := tt.opts.parseResolve(nil); err == nil {
 				t.Errorf("Expecting error in Remote.parseResolve()")
 			}
 		})
@@ -358,7 +358,7 @@ func TestRemote_parseResolve(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.opts.parseResolve(); err != nil {
+			if _, err := tt.opts.parseResolve(nil); err != nil {
 				t.Errorf("Remote.parseResolve() error = %v", err)
 			}
 		})
