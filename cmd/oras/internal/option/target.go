@@ -88,7 +88,7 @@ func (opts *Target) Parse() error {
 	case opts.isOCILayout:
 		opts.Type = TargetTypeOCILayout
 		if len(opts.headerFlags) != 0 {
-			return errors.New("customer headers([--{from|to}]-header/H cannot be used on OCI image layout target")
+			return errors.New("customer header([--{from|to}]-header/H) cannot be used on OCI image layout target")
 		}
 		return nil
 	default:
