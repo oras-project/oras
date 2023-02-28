@@ -17,6 +17,7 @@ package option
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -86,6 +87,9 @@ func (opts *Target) Parse() error {
 	switch {
 	case opts.isOCILayout:
 		opts.Type = TargetTypeOCILayout
+		if len(opts.headerFlags) != 0 {
+			return errors.New("customer headers([--{from|to}]-header/H cannot be used on OCI image layout target")
+		}
 		return nil
 	default:
 		opts.Type = TargetTypeRemote
