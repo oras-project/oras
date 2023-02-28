@@ -48,7 +48,6 @@ type Remote struct {
 	Password          string
 
 	resolveFlag           []string
-	resolveDialContext    func(onet.DialFunc) onet.DialFunc
 	applyDistributionSpec bool
 	distributionSpec      distributionSpec
 	headerFlags           []string
@@ -130,12 +129,9 @@ func (opts *Remote) readPassword() (err error) {
 }
 
 // parseResolve parses resolve flag.
-func (opts *Remote) parseResolve() error {
+func (opts *Remote) parseResolve(baseDial onet.DialFunc) (onet.DialFunc, error) {
 	if len(opts.resolveFlag) == 0 {
-		opts.resolveDialContext = func(dialContext onet.DialFunc) onet.DialFunc {
-			return dialContext
-		}
-		return nil
+		return baseDial, nil
 	}
 
 	formatError := func(param, message string) error {
@@ -146,32 +142,29 @@ func (opts *Remote) parseResolve() error {
 		parts := strings.SplitN(r, ":", 4)
 		length := len(parts)
 		if length < 3 {
-			return formatError(r, "expecting host:port:address[:address_port]")
+			return nil, formatError(r, "expecting host:port:address[:address_port]")
 		}
 		host := parts[0]
 		hostPort, err := strconv.Atoi(parts[1])
 		if err != nil {
-			return formatError(r, "expecting uint64 host port")
+			return nil, formatError(r, "expecting uint64 host port")
 		}
 		// ipv6 zone is not parsed
 		address := net.ParseIP(parts[2])
 		if address == nil {
-			return formatError(r, "invalid IP address")
+			return nil, formatError(r, "invalid IP address")
 		}
 		addressPort := hostPort
 		if length > 3 {
 			addressPort, err = strconv.Atoi(parts[3])
 			if err != nil {
-				return formatError(r, "expecting uint64 address port")
+				return nil, formatError(r, "expecting uint64 address port")
 			}
 		}
 		dialer.Add(host, hostPort, address, addressPort)
 	}
-	opts.resolveDialContext = func(dialContext onet.DialFunc) onet.DialFunc {
-		dialer.BaseDialContext = dialContext
-		return dialer.DialContext
-	}
-	return nil
+	dialer.BaseDialContext = baseDial
+	return dialer.DialContext, nil
 }
 
 // tlsConfig assembles the tls config.
@@ -195,12 +188,13 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 	if err != nil {
 		return nil, err
 	}
-	if err := opts.parseResolve(); err != nil {
-		return nil, err
-	}
 	baseTransport := http.DefaultTransport.(*http.Transport).Clone()
 	baseTransport.TLSClientConfig = config
-	baseTransport.DialContext = opts.resolveDialContext(baseTransport.DialContext)
+	if dialContext, err := opts.parseResolve(baseTransport.DialContext); err != nil {
+		return nil, err
+	} else {
+		baseTransport.DialContext = dialContext
+	}
 	client = &auth.Client{
 		Client: &http.Client{
 			// http.RoundTripper with a retry using the DefaultPolicy
