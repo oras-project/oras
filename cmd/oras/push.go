@@ -17,10 +17,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 	"sync"
 
@@ -29,8 +27,6 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
-	"oras.land/oras-go/v2/registry/remote"
-	"oras.land/oras-go/v2/registry/remote/errcode"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -193,7 +189,7 @@ func runPush(opts pushOptions) error {
 	}
 
 	// Push
-	root, err := pushArtifact(dst, pack, &packOpts, copy, &copyOptions.CopyGraphOptions, opts.ManifestMediaType == "", opts.Verbose)
+	root, err := pushArtifact(dst, pack, copy)
 	if err != nil {
 		return err
 	}
@@ -236,89 +232,15 @@ func updateDisplayOption(opts *oras.CopyGraphOptions, store content.Fetcher, ver
 type packFunc func() (ocispec.Descriptor, error)
 type copyFunc func(desc ocispec.Descriptor) error
 
-func pushArtifact(dst oras.Target, pack packFunc, packOpts *oras.PackOptions, copy copyFunc, copyOpts *oras.CopyGraphOptions, allowFallback bool, verbose bool) (ocispec.Descriptor, error) {
+func pushArtifact(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
 	root, err := pack()
 	if err != nil {
 		return ocispec.Descriptor{}, err
 	}
 
-	copyRootAttempted := false
-	preCopy := copyOpts.PreCopy
-	copyOpts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		if content.Equal(root, desc) {
-			// copyRootAttempted helps track whether the returned error is
-			// generated from copying root.
-			copyRootAttempted = true
-		}
-		if preCopy != nil {
-			return preCopy(ctx, desc)
-		}
-		return nil
-	}
-
 	// push
-	if err = copy(root); err == nil {
-		return root, nil
-	}
-
-	if !allowFallback || !copyRootAttempted || root.MediaType != ocispec.MediaTypeArtifactManifest ||
-		!isManifestUnsupported(err) {
-		return ocispec.Descriptor{}, err
-	}
-
-	if err := display.PrintStatus(root, "Fallback ", verbose); err != nil {
-		return ocispec.Descriptor{}, err
-	}
-	if repo, ok := dst.(*remote.Repository); ok {
-		// assumes referrers API is not supported since OCI artifact
-		// media type is not supported
-		repo.SetReferrersCapability(false)
-	}
-	packOpts.PackImageManifest = true
-	root, err = pack()
-	if err != nil {
-		return ocispec.Descriptor{}, err
-	}
-
-	copyOpts.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		if content.Equal(node, root) {
-			// skip non-config
-			content, err := content.FetchAll(ctx, fetcher, root)
-			if err != nil {
-				return nil, err
-			}
-			var manifest ocispec.Manifest
-			if err := json.Unmarshal(content, &manifest); err != nil {
-				return nil, err
-			}
-			return []ocispec.Descriptor{manifest.Config}, nil
-		}
-
-		// config has no successors
-		return nil, nil
-	}
 	if err = copy(root); err != nil {
 		return ocispec.Descriptor{}, err
 	}
 	return root, nil
-}
-
-func isManifestUnsupported(err error) bool {
-	var errResp *errcode.ErrorResponse
-	if !errors.As(err, &errResp) || errResp.StatusCode != http.StatusBadRequest {
-		return false
-	}
-
-	var errCode errcode.Error
-	if !errors.As(errResp, &errCode) {
-		return false
-	}
-
-	// As of November 2022, ECR is known to return UNSUPPORTED error when
-	// putting an OCI artifact manifest.
-	switch errCode.Code {
-	case errcode.ErrorCodeManifestInvalid, errcode.ErrorCodeUnsupported:
-		return true
-	}
-	return false
 }
