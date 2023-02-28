@@ -66,6 +66,7 @@ func (opts *Remote) ApplyFlags(fs *pflag.FlagSet) {
 	opts.ApplyFlagsWithPrefix(fs, "", "")
 	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
 	fs.StringArrayVarP(&opts.headerFlags, "header", "H", nil, "add custom headers to requests")
+	fs.StringArrayVarP(&opts.resolveFlag, "resolve", "", nil, "customized DNS formatted in `host:port:address[:address_port]`")
 }
 
 func applyPrefix(prefix, description string) (flagPrefix, notePrefix string) {
@@ -100,10 +101,6 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 
 	if fs.Lookup("registry-config") == nil {
 		fs.StringArrayVarP(&opts.Configs, "registry-config", "", nil, "`path` of the authentication file")
-	}
-
-	if fs.Lookup("resolve") == nil {
-		fs.StringArrayVarP(&opts.resolveFlag, "resolve", "", nil, "customized DNS formatted in `host:port:address[:address_port]`")
 	}
 }
 

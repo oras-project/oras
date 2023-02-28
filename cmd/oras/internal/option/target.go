@@ -179,8 +179,9 @@ func (opts *Target) EnsureReferenceNotEmpty() error {
 // BinaryTarget struct contains flags and arguments specifying two registries or
 // image layouts.
 type BinaryTarget struct {
-	From Target
-	To   Target
+	From        Target
+	To          Target
+	resolveFlag []string
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
@@ -193,9 +194,12 @@ func (opts *BinaryTarget) EnableDistributionSpecFlag() {
 func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
 	opts.From.ApplyFlagsWithPrefix(fs, "from", "source")
 	opts.To.ApplyFlagsWithPrefix(fs, "to", "destination")
+	fs.StringArrayVarP(&opts.resolveFlag, "resolve", "", nil, "customized DNS formatted in `host:port:address[:address_port]`")
 }
 
 // Parse parses user-provided flags and arguments into option struct.
 func (opts *BinaryTarget) Parse() error {
+	opts.From.resolveFlag = opts.resolveFlag
+	opts.To.resolveFlag = opts.resolveFlag
 	return Parse(opts)
 }
