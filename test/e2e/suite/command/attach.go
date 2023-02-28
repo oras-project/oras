@@ -68,8 +68,8 @@ var _ = Describe("Common registry users:", func() {
 			It("should attach a file to a subject via resolve flag", func() {
 				testRepo := attachTestRepo("simple-resolve")
 				tempDir := CopyTestDataToTemp()
-				subjectRefWithFlags := fmt.Sprint(Reference(MockedHost, testRepo, FoobarImageTag), ResolveFlags(Host, MockedHost))
-				prepare(Reference(Host, ImageRepo, FoobarImageTag), subjectRefWithFlags)
+				subjectRefWithFlags := fmt.Sprint(Reference(MockedHost, testRepo, foobar.Tag), ResolveFlags(Host, MockedHost))
+				prepare(Reference(Host, ImageRepo, foobar.Tag), subjectRefWithFlags)
 				ORAS("attach", "--artifact-type", "test.attach", subjectRefWithFlags, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 					WithWorkDir(tempDir).
 					MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
