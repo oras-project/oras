@@ -21,7 +21,6 @@ import (
 	"path/filepath"
 
 	. "github.com/onsi/ginkgo/v2"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	. "oras.land/oras/test/e2e/internal/utils"
 	"oras.land/oras/test/e2e/internal/utils/match"
@@ -54,7 +53,7 @@ var _ = Describe("Remote registry users:", func() {
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 			Binary("jq", ".blobs[]", "--compact-output").
-				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, ocispec.MediaTypeImageLayer)).
+				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, "application/vnd.oci.image.layer.v1.tar")).
 				WithInput(fetched).Exec()
 		})
 
@@ -85,7 +84,7 @@ var _ = Describe("Remote registry users:", func() {
 				panic(err)
 			}
 			ORAS("push", Reference(Host, repo, tag), files[1]+":"+layerType, "-v").
-				MatchStatus(statusKeys, true, 1).
+				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 			Binary("jq", ".blobs[]", "--compact-output").
@@ -162,7 +161,7 @@ var _ = Describe("Remote registry users:", func() {
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 
-			Binary("jq", `.annotations|del(.["org.opencontainers.artifact.created"])`, "--compact-output").
+			Binary("jq", `.annotations|del(.["org.opencontainers.image.created"])`, "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(`{"%s":"%s"}`, key, value)).
 				WithInput(fetched).Exec()
 		})
