@@ -25,7 +25,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2/registry/remote"
@@ -49,7 +48,7 @@ type Remote struct {
 	Password          string
 
 	resolveFlag           []string
-	resolveDialContext    func(dialer *net.Dialer) func(context.Context, string, string) (net.Conn, error)
+	resolveDialContext    func(onet.DialFunc) onet.DialFunc
 	applyDistributionSpec bool
 	distributionSpec      distributionSpec
 	headerFlags           []string
@@ -137,6 +136,9 @@ func (opts *Remote) readPassword() (err error) {
 // parseResolve parses resolve flag.
 func (opts *Remote) parseResolve() error {
 	if len(opts.resolveFlag) == 0 {
+		opts.resolveDialContext = func(dialContext onet.DialFunc) onet.DialFunc {
+			return dialContext
+		}
 		return nil
 	}
 
@@ -169,8 +171,8 @@ func (opts *Remote) parseResolve() error {
 		}
 		dialer.Add(host, hostPort, address, addressPort)
 	}
-	opts.resolveDialContext = func(base *net.Dialer) func(context.Context, string, string) (net.Conn, error) {
-		dialer.Dialer = base
+	opts.resolveDialContext = func(dialContext onet.DialFunc) onet.DialFunc {
+		dialer.BaseDialContext = dialContext
 		return dialer.DialContext
 	}
 	return nil
@@ -200,26 +202,9 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 	if err := opts.parseResolve(); err != nil {
 		return nil, err
 	}
-	resolveDialContext := opts.resolveDialContext
-	if resolveDialContext == nil {
-		resolveDialContext = func(dialer *net.Dialer) func(context.Context, string, string) (net.Conn, error) {
-			return dialer.DialContext
-		}
-	}
-	// default value are derived from http.DefaultTransport
-	baseTransport := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: resolveDialContext(&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}),
-		ForceAttemptHTTP2:     true,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-		TLSClientConfig:       config,
-	}
+	baseTransport := http.DefaultTransport.(*http.Transport).Clone()
+	baseTransport.TLSClientConfig = config
+	baseTransport.DialContext = opts.resolveDialContext(baseTransport.DialContext)
 	client = &auth.Client{
 		Client: &http.Client{
 			// http.RoundTripper with a retry using the DefaultPolicy
