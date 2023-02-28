@@ -109,6 +109,9 @@ func (opts *Remote) Parse() error {
 	if err := opts.readPassword(); err != nil {
 		return err
 	}
+	if err := opts.parseResolve(); err != nil {
+		return err
+	}
 	return opts.distributionSpec.Parse()
 }
 
