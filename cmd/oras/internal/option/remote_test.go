@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"net/http"
 	nhttp "net/http"
 	"net/http/httptest"
 	"net/url"
@@ -413,5 +414,55 @@ func TestRemote_parseCustomHeaders(t *testing.T) {
 				t.Errorf("Remote.parseCustomHeaders() = %v, want %v", opts.headers, tt.want)
 			}
 		})
+	}
+}
+
+func TestRemote_NewRepository_Retry(t *testing.T) {
+	caPath := filepath.Join(t.TempDir(), "oras-test.pem")
+	if err := os.WriteFile(caPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ts.Certificate().Raw}), 0644); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	retries, count := 3, 0
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		count++
+		if count < retries {
+			http.Error(w, "error", http.StatusTooManyRequests)
+			return
+		}
+		json.NewEncoder(w).Encode(testTagList)
+	}))
+	defer ts.Close()
+
+	opts := struct {
+		Remote
+		Common
+	}{
+		Remote{
+			CACertFilePath: caPath,
+		},
+		Common{},
+	}
+
+	uri, err := url.ParseRequestURI(ts.URL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	repo, err := opts.NewRepository(uri.Host+"/"+testRepo, opts.Common)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if err = repo.Tags(context.Background(), "", func(got []string) error {
+		want := []string{"tag"}
+		if len(got) != len(testTagList.Tags) || !reflect.DeepEqual(got, want) {
+			return fmt.Errorf("expect: %v, got: %v", testTagList.Tags, got)
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if count != retries {
+		t.Errorf("expected %d retries, got %d", retries, count)
 	}
 }
