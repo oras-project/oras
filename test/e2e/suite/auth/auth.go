@@ -30,7 +30,10 @@ var _ = Describe("Common registry user", Ordered, func() {
 
 		It("should run commands without logging in", func() {
 			RunWithoutLogin("attach", Host+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
-			RunWithoutLogin("copy", Host+"/repo:from", Host+"/repo:to")
+			ORAS("copy", Host+"/repo:from", Host+"/repo:to", "--from-registry-config", AuthConfigPath, "--to-registry-config", AuthConfigPath).
+				ExpectFailure().
+				MatchErrKeyWords("Error:", "credential required").
+				WithDescription("fail without logging in").Exec()
 			RunWithoutLogin("discover", Host+"/repo:tag")
 			RunWithoutLogin("push", "-a", "key=value", Host+"/repo:tag")
 			RunWithoutLogin("pull", Host+"/repo:tag")
