@@ -85,7 +85,8 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 		notePrefix    string
 	)
 	if prefix == "" {
-		shortUser, shortPassword, shortHeader = "u", "p", "H"
+		shortUser, shortPassword = "u", "p"
+		shortHeader = "H"
 	}
 	flagPrefix, notePrefix = applyPrefix(prefix, description)
 
