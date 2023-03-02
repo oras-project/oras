@@ -65,7 +65,6 @@ func (opts *Remote) EnableDistributionSpecFlag() {
 func (opts *Remote) ApplyFlags(fs *pflag.FlagSet) {
 	opts.ApplyFlagsWithPrefix(fs, "", "")
 	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
-	fs.StringArrayVarP(&opts.headerFlags, "header", "H", nil, "add custom headers to requests")
 }
 
 func applyPrefix(prefix, description string) (flagPrefix, notePrefix string) {
@@ -81,11 +80,12 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	var (
 		shortUser     string
 		shortPassword string
+		shortHeader   string
 		flagPrefix    string
 		notePrefix    string
 	)
 	if prefix == "" {
-		shortUser, shortPassword = "u", "p"
+		shortUser, shortPassword, shortHeader = "u", "p", "H"
 	}
 	flagPrefix, notePrefix = applyPrefix(prefix, description)
 
@@ -99,6 +99,7 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	fs.StringVarP(&opts.CACertFilePath, flagPrefix+"ca-file", "", "", "server certificate authority file for the remote "+notePrefix+"registry")
 	fs.StringArrayVarP(&opts.resolveFlag, flagPrefix+"resolve", "", nil, "customized DNS for "+notePrefix+"registry, formatted in `host:port:address[:address_port]`")
 	fs.StringArrayVarP(&opts.Configs, flagPrefix+"registry-config", "", nil, "`path` of the authentication file for "+notePrefix+"registry")
+	fs.StringArrayVarP(&opts.headerFlags, flagPrefix+"header", shortHeader, nil, "add custom headers to "+notePrefix+"requests")
 }
 
 // Parse tries to read password with optional cmd prompt.
