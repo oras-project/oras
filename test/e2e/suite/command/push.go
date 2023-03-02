@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 
 	. "github.com/onsi/ginkgo/v2"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	. "oras.land/oras/test/e2e/internal/utils"
 	"oras.land/oras/test/e2e/internal/utils/match"
