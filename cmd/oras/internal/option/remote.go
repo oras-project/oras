@@ -190,11 +190,11 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 	}
 	baseTransport := http.DefaultTransport.(*http.Transport).Clone()
 	baseTransport.TLSClientConfig = config
-	if dialContext, err := opts.parseResolve(baseTransport.DialContext); err != nil {
+	dialContext, err := opts.parseResolve(baseTransport.DialContext)
+	if err != nil {
 		return nil, err
-	} else {
-		baseTransport.DialContext = dialContext
 	}
+	baseTransport.DialContext = dialContext
 	client = &auth.Client{
 		Client: &http.Client{
 			// http.RoundTripper with a retry using the DefaultPolicy

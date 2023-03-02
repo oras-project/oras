@@ -21,7 +21,7 @@ import (
 	"net"
 )
 
-// Function type of DialContext.
+// DialFunc is the function type for http.DialContext.
 type DialFunc func(ctx context.Context, network, addr string) (net.Conn, error)
 
 // Dialer struct provides dialing function with predefined DNS resolves.
