@@ -24,7 +24,7 @@ var _ = Describe("OCI image layout users:", func() {
 			ORAS("attach", ".:test", "-a", "test=true", "--artifact-type", "doc/example", "--oci-layout", "-H=foo:bar").
 				WithWorkDir(GinkgoT().TempDir()).
 				ExpectFailure().
-				MatchErrKeyWords("customer header").
+				MatchErrKeyWords("custom header").
 				Exec()
 		})
 	})
