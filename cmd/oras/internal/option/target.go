@@ -17,6 +17,7 @@ package option
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -86,6 +87,9 @@ func (opts *Target) Parse() error {
 	switch {
 	case opts.isOCILayout:
 		opts.Type = TargetTypeOCILayout
+		if len(opts.headerFlags) != 0 {
+			return errors.New("custom header flags cannot be used on an OCI image layout target")
+		}
 		return nil
 	default:
 		opts.Type = TargetTypeRemote
@@ -179,8 +183,9 @@ func (opts *Target) EnsureReferenceNotEmpty() error {
 // BinaryTarget struct contains flags and arguments specifying two registries or
 // image layouts.
 type BinaryTarget struct {
-	From Target
-	To   Target
+	From        Target
+	To          Target
+	resolveFlag []string
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
@@ -193,9 +198,13 @@ func (opts *BinaryTarget) EnableDistributionSpecFlag() {
 func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
 	opts.From.ApplyFlagsWithPrefix(fs, "from", "source")
 	opts.To.ApplyFlagsWithPrefix(fs, "to", "destination")
+	fs.StringArrayVarP(&opts.resolveFlag, "resolve", "", nil, "base DNS rules formatted in `host:port:address[:address_port]` for --from-resolve and --to-resolve")
 }
 
 // Parse parses user-provided flags and arguments into option struct.
 func (opts *BinaryTarget) Parse() error {
+	// resolve are parsed in array order, latter will overwrite former
+	opts.From.resolveFlag = append(opts.resolveFlag, opts.From.resolveFlag...)
+	opts.To.resolveFlag = append(opts.resolveFlag, opts.To.resolveFlag...)
 	return Parse(opts)
 }
