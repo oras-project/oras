@@ -58,6 +58,25 @@ var _ = Describe("Remote registry users:", func() {
 				WithInput(fetched).Exec()
 		})
 
+		It("should push files and tag", func() {
+			repo := fmt.Sprintf("%s/%s", repoPrefix, "with-mediatype")
+			tempDir := CopyTestDataToTemp()
+			extraTag := "2e2"
+
+			ORAS("push", fmt.Sprintf("%s,%s", Reference(Host, repo, tag), extraTag), files[1], "-v").
+				MatchStatus(statusKeys, true, 1).
+				WithWorkDir(tempDir).Exec()
+			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
+			Binary("jq", ".blobs[]", "--compact-output").
+				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, ocispec.MediaTypeImageLayer)).
+				WithInput(fetched).Exec()
+
+			fetched = ORAS("manifest", "fetch", Reference(Host, repo, extraTag)).Exec().Out
+			Binary("jq", ".blobs[]", "--compact-output").
+				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, ocispec.MediaTypeImageLayer)).
+				WithInput(fetched).Exec()
+		})
+
 		It("should push files with customized media types", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "layer-mediatype")
 			layerType := "layer.type"
