@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"sync/atomic"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
@@ -75,8 +76,8 @@ func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, status s
 	return nil
 }
 
-// NewTagManifestStatusPrinter creates a wrapper type for printing tag status.
-func NewTagManifestStatusPrinter(target oras.Target) oras.Target {
+// NewTagStatusPrinter creates a wrapper type for printing tag status.
+func NewTagStatusPrinter(target oras.Target) oras.Target {
 	if repo, ok := target.(registry.Repository); ok {
 		return &tagManifestStatusForRepo{
 			Repository: repo,
@@ -87,8 +88,29 @@ func NewTagManifestStatusPrinter(target oras.Target) oras.Target {
 	}
 }
 
+// NewTagStatusHintPrinter creates a wrapper type for printing
+// tag status and hint.
+func NewTagStatusHintPrinter(target oras.Target, hintFunc func(ocispec.Descriptor) string) oras.Target {
+	var b atomic.Bool
+	b.Store(true)
+	if repo, ok := target.(registry.Repository); ok {
+		return &tagManifestStatusForRepo{
+			Repository: repo,
+			needHint:   &b,
+			hintFunc:   hintFunc,
+		}
+	}
+	return &tagManifestStatusForTarget{
+		Target:   target,
+		needHint: &b,
+		hintFunc: hintFunc,
+	}
+}
+
 type tagManifestStatusForRepo struct {
 	registry.Repository
+	needHint *atomic.Bool
+	hintFunc func(ocispec.Descriptor) string
 }
 
 // PushReference overrides Repository.PushReference method to print off which tag(s) were added successfully.
@@ -99,8 +121,22 @@ func (p *tagManifestStatusForRepo) PushReference(ctx context.Context, expected o
 	return Print("Tagged", reference)
 }
 
+// FetchReference fetches the content identified by the reference.
+func (p *tagManifestStatusForRepo) FetchReference(ctx context.Context, reference string) (ocispec.Descriptor, io.ReadCloser, error) {
+	desc, rc, err := p.Repository.FetchReference(ctx, reference)
+	if err == nil && p.hintFunc != nil && p.needHint != nil {
+		needHint := p.needHint.Swap(false)
+		if needHint {
+			Print(p.hintFunc(desc))
+		}
+	}
+	return desc, rc, err
+}
+
 type tagManifestStatusForTarget struct {
 	oras.Target
+	needHint *atomic.Bool
+	hintFunc func(ocispec.Descriptor) string
 }
 
 // Tag tags a descriptor with a reference string.
@@ -109,4 +145,16 @@ func (p *tagManifestStatusForTarget) Tag(ctx context.Context, desc ocispec.Descr
 		return err
 	}
 	return Print("Tagged", reference)
+}
+
+// Resolve resolves a reference to a descriptor.
+func (p *tagManifestStatusForTarget) Resolve(ctx context.Context, reference string) (ocispec.Descriptor, error) {
+	desc, err := p.Target.Resolve(ctx, reference)
+	if err == nil && p.hintFunc != nil && p.needHint != nil {
+		needHint := p.needHint.Swap(false)
+		if needHint {
+			Print(p.hintFunc(desc))
+		}
+	}
+	return desc, err
 }
