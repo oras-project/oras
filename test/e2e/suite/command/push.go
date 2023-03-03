@@ -67,12 +67,12 @@ var _ = Describe("Remote registry users:", func() {
 				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
-			Binary("jq", ".blobs[]", "--compact-output").
+			Binary("jq", ".layers[]", "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, ocispec.MediaTypeImageLayer)).
 				WithInput(fetched).Exec()
 
 			fetched = ORAS("manifest", "fetch", Reference(Host, repo, extraTag)).Exec().Out
-			Binary("jq", ".blobs[]", "--compact-output").
+			Binary("jq", ".layers[]", "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, ocispec.MediaTypeImageLayer)).
 				WithInput(fetched).Exec()
 		})
