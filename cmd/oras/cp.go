@@ -139,7 +139,7 @@ func runCopy(opts copyOptions) error {
 	if dstRef := opts.To.Reference; dstRef == "" {
 		desc, err = oras.Resolve(ctx, src, opts.From.Reference, rOpts)
 		if err != nil {
-			return fmt.Errorf("failed to resolve %s: %w", src, err)
+			return fmt.Errorf("failed to resolve %s: %w", opts.From.Reference, err)
 		}
 		if opts.recursive {
 			err = oras.ExtendedCopyGraph(ctx, src, dst, desc, extendedCopyOptions.ExtendedCopyGraphOptions)
@@ -153,7 +153,7 @@ func runCopy(opts copyOptions) error {
 				// resolve source reference to specified platform
 				desc, err := oras.Resolve(ctx, src, opts.From.Reference, rOpts)
 				if err != nil {
-					return err
+					return fmt.Errorf("failed to resolve %s: %w", opts.From.Reference, err)
 				}
 				srcRef = desc.Digest.String()
 			}
