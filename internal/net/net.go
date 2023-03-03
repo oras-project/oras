@@ -21,10 +21,13 @@ import (
 	"net"
 )
 
+// DialFunc is the function type for http.DialContext.
+type DialFunc func(ctx context.Context, network, addr string) (net.Conn, error)
+
 // Dialer struct provides dialing function with predefined DNS resolves.
 type Dialer struct {
-	*net.Dialer
-	resolve map[string]string
+	BaseDialContext DialFunc
+	resolve         map[string]string
 }
 
 // Add adds an entry for DNS resolve.
@@ -41,5 +44,5 @@ func (d *Dialer) DialContext(ctx context.Context, network, addr string) (net.Con
 	if resolved, ok := d.resolve[addr]; ok {
 		addr = resolved
 	}
-	return d.Dialer.DialContext(ctx, network, addr)
+	return d.BaseDialContext(ctx, network, addr)
 }
