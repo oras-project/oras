@@ -16,6 +16,8 @@ limitations under the License.
 package command
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo/v2"
 	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
@@ -35,22 +37,22 @@ var _ = Describe("ORAS beginners:", func() {
 })
 
 var _ = Describe("Common registry users:", func() {
-	var tagAndValidate = func(reg string, repo string, tagOrDigest string, tags ...string) {
-		ORAS(append([]string{"tag", Reference(reg, repo, tagOrDigest)}, tags...)...).MatchKeyWords(tags...).Exec()
+	var tagAndValidate = func(reg string, repo string, tagOrDigest string, digest string, tags ...string) {
+		ORAS(append([]string{"tag", Reference(reg, repo, tagOrDigest)}, tags...)...).MatchKeyWords(append(tags, fmt.Sprintf("Tagging [registry] %s", Reference(reg, repo, digest)))...).Exec()
 		ORAS("repo", "tags", Reference(reg, repo, "")).MatchKeyWords(tags...).Exec()
 	}
 	When("running `tag`", func() {
 		It("should add a tag to an existent manifest when providing tag reference", func() {
-			tagAndValidate(Host, ImageRepo, multi_arch.Tag, "tag-via-tag")
+			tagAndValidate(Host, ImageRepo, multi_arch.Tag, multi_arch.Digest, "tag-via-tag")
 		})
 		It("should add a tag to an existent manifest when providing digest reference", func() {
-			tagAndValidate(Host, ImageRepo, multi_arch.Digest, "tag-via-digest")
+			tagAndValidate(Host, ImageRepo, multi_arch.Digest, multi_arch.Digest, "tag-via-digest")
 		})
 		It("should add multiple tags to an existent manifest when providing digest reference", func() {
-			tagAndValidate(Host, ImageRepo, multi_arch.Digest, "tag1-via-digest", "tag2-via-digest", "tag3-via-digest")
+			tagAndValidate(Host, ImageRepo, multi_arch.Digest, multi_arch.Digest, "tag1-via-digest", "tag2-via-digest", "tag3-via-digest")
 		})
 		It("should add multiple tags to an existent manifest when providing tag reference", func() {
-			tagAndValidate(Host, ImageRepo, multi_arch.Tag, "tag1-via-tag", "tag1-via-tag", "tag1-via-tag")
+			tagAndValidate(Host, ImageRepo, multi_arch.Tag, multi_arch.Digest, "tag1-via-tag", "tag1-via-tag", "tag1-via-tag")
 		})
 	})
 })
