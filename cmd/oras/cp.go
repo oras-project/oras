@@ -139,7 +139,7 @@ func runCopy(opts copyOptions) error {
 	if dstRef := opts.To.Reference; dstRef == "" {
 		desc, err = oras.Resolve(ctx, src, opts.From.Reference, rOpts)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to resolve %s: %w", src, err)
 		}
 		if opts.recursive {
 			err = oras.ExtendedCopyGraph(ctx, src, dst, desc, extendedCopyOptions.ExtendedCopyGraphOptions)
