@@ -64,7 +64,7 @@ var _ = Describe("Remote registry users:", func() {
 			extraTag := "2e2"
 
 			ORAS("push", fmt.Sprintf("%s,%s", Reference(Host, repo, tag), extraTag), files[1], "-v").
-				MatchStatus(statusKeys, true, 1).
+				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 			Binary("jq", ".blobs[]", "--compact-output").
