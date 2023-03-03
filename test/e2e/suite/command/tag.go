@@ -17,8 +17,11 @@ package command
 
 import (
 	"fmt"
+	"regexp"
 
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
@@ -38,7 +41,10 @@ var _ = Describe("ORAS beginners:", func() {
 
 var _ = Describe("Common registry users:", func() {
 	var tagAndValidate = func(reg string, repo string, tagOrDigest string, digest string, tags ...string) {
-		ORAS(append([]string{"tag", Reference(reg, repo, tagOrDigest)}, tags...)...).MatchKeyWords(append(tags, fmt.Sprintf("Tagging [registry] %s", Reference(reg, repo, digest)))...).Exec()
+		out := ORAS(append([]string{"tag", Reference(reg, repo, tagOrDigest)}, tags...)...).MatchKeyWords(tags...).Exec().Out
+		hint := regexp.QuoteMeta(fmt.Sprintf("Tagging [registry] %s", Reference(reg, repo, digest)))
+		gomega.Expect(out).To(gbytes.Say(hint))
+		gomega.Expect(out).NotTo(gbytes.Say(hint)) // should only say hint once
 		ORAS("repo", "tags", Reference(reg, repo, "")).MatchKeyWords(tags...).Exec()
 	}
 	When("running `tag`", func() {
