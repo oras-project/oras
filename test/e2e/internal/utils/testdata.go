@@ -22,5 +22,4 @@ const (
 	ArtifactRepo = "command/artifacts"
 	Repo         = "command/images"
 	Namespace    = "command"
-	MockedHost   = "oras.e2e.test"
 )

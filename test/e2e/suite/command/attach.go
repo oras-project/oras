@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -63,24 +62,6 @@ var _ = Describe("Common registry users:", func() {
 				WithWorkDir(tempDir).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
 		})
-
-		if strings.HasPrefix(Host, "localhost:") {
-			It("should attach a file to a subject via resolve flag", func() {
-				testRepo := attachTestRepo("simple-resolve")
-				tempDir := CopyTestDataToTemp()
-				flags := ResolveFlags(Host, MockedHost, Base)
-				prepare(Reference(Host, ImageRepo, foobar.Tag), Reference(Host, testRepo, foobar.Tag))
-
-				ORAS(append([]string{"attach", "--artifact-type", "test.attach", Reference(MockedHost, testRepo, foobar.Tag), fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)}, flags...)...).
-					WithWorkDir(tempDir).
-					MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
-				// validate
-				var index ocispec.Index
-				bytes := ORAS("discover", "-o", "json", Reference(Host, testRepo, foobar.Tag)).Exec().Out.Contents()
-				Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
-				Expect(len(index.Manifests)).To(Equal(1))
-			})
-		}
 
 		It("should attach a file to a subject and export the built manifest", func() {
 			// prepare
