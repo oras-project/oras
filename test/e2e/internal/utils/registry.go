@@ -34,9 +34,36 @@ func Reference(reg string, repo string, tagOrDigest string) string {
 	return ref.String()
 }
 
+type resolveType uint8
+
+const (
+	Base resolveType = iota
+	From
+	To
+)
+
 // ResolveFlags generates resolve flags for localhost mapping.
-func ResolveFlags(reg string, host string) string {
+func ResolveFlags(reg string, host string, flagType resolveType) []string {
 	gomega.Expect(reg).To(gomega.HavePrefix("localhost:"), fmt.Sprintf("%q is not in format of localhost:<port>", reg))
 	_, port, _ := strings.Cut(reg, ":")
-	return fmt.Sprintf("--resolve %s:80:127.0.0.1:%s --plain-http -u %s -p %s", host, port, Username, Password)
+	resolveFlag := "resolve"
+	usernameFlag := "username"
+	passwordFlag := "password"
+	plainHttpFlag := "plain-http"
+	fp := "--"
+
+	switch flagType {
+	case From:
+		resolveFlag = "from-" + resolveFlag
+		usernameFlag = "from-" + usernameFlag
+		passwordFlag = "from-" + passwordFlag
+		plainHttpFlag = "from-" + plainHttpFlag
+	case To:
+		resolveFlag = "to-" + resolveFlag
+		usernameFlag = "to-" + usernameFlag
+		passwordFlag = "to-" + passwordFlag
+		plainHttpFlag = "to-" + plainHttpFlag
+	}
+
+	return []string{fp + resolveFlag, fmt.Sprintf("%s:80:127.0.0.1:%s", host, port), fp + usernameFlag, Username, fp + passwordFlag, Password, fp + plainHttpFlag}
 }
