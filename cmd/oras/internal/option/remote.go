@@ -188,9 +188,6 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 	if err != nil {
 		return nil, err
 	}
-	if err := opts.parseResolve(); err != nil {
-		return nil, err
-	}
 	baseTransport := http.DefaultTransport.(*http.Transport).Clone()
 	baseTransport.TLSClientConfig = config
 	dialContext, err := opts.parseResolve(baseTransport.DialContext)
