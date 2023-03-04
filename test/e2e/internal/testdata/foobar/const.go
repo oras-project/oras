@@ -59,6 +59,10 @@ var (
 	AttachFileStateKey = match.StateKey{
 		Digest: "d3b29f7d12d9", Name: AttachFileName,
 	}
+
+	FooBlobDigest     = "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
+	FooBlobContent    = "foo"
+	FooBlobDescriptor = `{"mediaType":"application/octet-stream","digest":"sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae","size":3}`
 )
 
 func ImageConfigStateKey(configName string) match.StateKey {

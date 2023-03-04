@@ -18,6 +18,7 @@ package command
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -33,12 +34,13 @@ func prepare(src string, dst string) {
 	ORAS("cp", src, dst).WithDescription("prepare test env").Exec()
 }
 
-func validate(repoRef string, tag string, gone bool) {
+func validateTag(repoRef string, tag string, gone bool) {
 	session := ORAS("repo", "tags", repoRef).Exec()
+	quoted := regexp.QuoteMeta(tag + "\n")
 	if gone {
-		Expect(session.Out).NotTo(gbytes.Say(tag))
+		Expect(session.Out).NotTo(gbytes.Say(quoted))
 	} else {
-		Expect(session.Out).To(gbytes.Say(tag))
+		Expect(session.Out).To(gbytes.Say(quoted))
 	}
 }
 
@@ -84,7 +86,7 @@ var _ = Describe("ORAS beginners:", func() {
 				prepare(Reference(Host, ImageRepo, foobar.Tag), Reference(Host, dstRepo, tempTag))
 				ORAS("manifest", "delete", Reference(Host, dstRepo, tempTag)).
 					MatchKeyWords("Operation cancelled.", "Are you sure you want to delete the manifest ", " and all tags associated with it?").Exec()
-				validate(Reference(Host, dstRepo, ""), tempTag, false)
+				validateTag(Reference(Host, dstRepo, ""), tempTag, false)
 			})
 
 			It("should fail if descriptor flag is provided without confirmation flag", func() {
@@ -330,23 +332,23 @@ var _ = Describe("Common registry users:", func() {
 			prepare(Reference(Host, ImageRepo, foobar.Tag), Reference(Host, dstRepo, tempTag))
 			ORAS("manifest", "delete", Reference(Host, dstRepo, tempTag)).
 				WithInput(strings.NewReader("y")).Exec()
-			validate(Reference(Host, dstRepo, ""), tempTag, true)
+			validateTag(Reference(Host, dstRepo, ""), tempTag, true)
 		})
 
 		It("should do confirmed deletion via flag", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "confirm-flag")
 			prepare(Reference(Host, ImageRepo, foobar.Tag), Reference(Host, dstRepo, tempTag))
 			ORAS("manifest", "delete", Reference(Host, dstRepo, tempTag), "-f").Exec()
-			validate(Reference(Host, dstRepo, ""), tempTag, true)
+			validateTag(Reference(Host, dstRepo, ""), tempTag, true)
 		})
 
-		It("should do confirmed deletion and output descriptor", func() {
+		It("should do forced deletion and output descriptor", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "output-descriptor")
 			prepare(Reference(Host, ImageRepo, foobar.Tag), Reference(Host, dstRepo, tempTag))
 			ORAS("manifest", "delete", Reference(Host, dstRepo, tempTag), "-f", "--descriptor").
 				MatchContent("{\"mediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"digest\":\"sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb\",\"size\":851}").
 				WithDescription("cancel without confirmation").Exec()
-			validate(Reference(Host, dstRepo, ""), tempTag, true)
+			validateTag(Reference(Host, dstRepo, ""), tempTag, true)
 		})
 
 		It("should succeed when deleting a non-existent manifest with force flag set", func() {
