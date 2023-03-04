@@ -160,26 +160,6 @@ func runAttach(opts attachOptions) error {
 			}
 			return content.Successors(ctx, fetcher, node)
 		}
-
-		if content.Equal(node, root) {
-			
-		}
-		if root.MediaType == ocispec.MediaTypeArtifactManifest {
-			graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-				if content.Equal(node, root) {
-					// skip subject
-					return descs, nil
-				}
-				return content.Successors(ctx, fetcher, node)
-			}
-		} else if root.MediaType == ocispec.MediaTypeImageManifest {
-			graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-				if content.Equal(node, root) {
-					// skip subject
-					return append(descs, 
-				return content.Successors(ctx, fetcher, node)
-			}
-		}
 		return oras.CopyGraph(ctx, store, dst, root, graphCopyOptions)
 	}
 
