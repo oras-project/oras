@@ -144,6 +144,26 @@ func runAttach(opts attachOptions) error {
 	graphCopyOptions.Concurrency = opts.concurrency
 	updateDisplayOption(&graphCopyOptions, store, opts.Verbose)
 	copy := func(root ocispec.Descriptor) error {
+		graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			if content.Equal(node, root) {
+				// skip duplicated Resolve on subject
+				successors := descs
+				if root.MediaType == ocispec.MediaTypeImageManifest {
+					successors = append(successors, ocispec.Descriptor{
+						// scratch config blob with content of `{}` (size of 2)
+						MediaType: "application/vnd.oci.example+json",
+						Digest:    `sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a`,
+						Size:      2,
+						Data:      []byte(`{}`)})
+				}
+				return successors, nil
+			}
+			return content.Successors(ctx, fetcher, node)
+		}
+
+		if content.Equal(node, root) {
+			
+		}
 		if root.MediaType == ocispec.MediaTypeArtifactManifest {
 			graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 				if content.Equal(node, root) {
@@ -156,13 +176,7 @@ func runAttach(opts attachOptions) error {
 			graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 				if content.Equal(node, root) {
 					// skip subject
-					return append(descs, ocispec.Descriptor{
-						// scratch config blob with content of `{}` (size of 2)
-						MediaType: "application/vnd.oci.example+json",
-						Digest:    `sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a`,
-						Size:      2,
-						Data:      []byte(`{}`)}), nil
-				}
+					return append(descs, 
 				return content.Successors(ctx, fetcher, node)
 			}
 		}
