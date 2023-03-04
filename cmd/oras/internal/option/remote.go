@@ -25,7 +25,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2/registry/remote"
@@ -49,7 +48,6 @@ type Remote struct {
 	Password          string
 
 	resolveFlag           []string
-	resolveDialContext    func(dialer *net.Dialer) func(context.Context, string, string) (net.Conn, error)
 	applyDistributionSpec bool
 	distributionSpec      distributionSpec
 	headerFlags           []string
@@ -131,9 +129,9 @@ func (opts *Remote) readPassword() (err error) {
 }
 
 // parseResolve parses resolve flag.
-func (opts *Remote) parseResolve() error {
+func (opts *Remote) parseResolve(baseDial onet.DialFunc) (onet.DialFunc, error) {
 	if len(opts.resolveFlag) == 0 {
-		return nil
+		return baseDial, nil
 	}
 
 	formatError := func(param, message string) error {
@@ -144,32 +142,29 @@ func (opts *Remote) parseResolve() error {
 		parts := strings.SplitN(r, ":", 4)
 		length := len(parts)
 		if length < 3 {
-			return formatError(r, "expecting host:port:address[:address_port]")
+			return nil, formatError(r, "expecting host:port:address[:address_port]")
 		}
 		host := parts[0]
 		hostPort, err := strconv.Atoi(parts[1])
 		if err != nil {
-			return formatError(r, "expecting uint64 host port")
+			return nil, formatError(r, "expecting uint64 host port")
 		}
 		// ipv6 zone is not parsed
 		address := net.ParseIP(parts[2])
 		if address == nil {
-			return formatError(r, "invalid IP address")
+			return nil, formatError(r, "invalid IP address")
 		}
 		addressPort := hostPort
 		if length > 3 {
 			addressPort, err = strconv.Atoi(parts[3])
 			if err != nil {
-				return formatError(r, "expecting uint64 address port")
+				return nil, formatError(r, "expecting uint64 address port")
 			}
 		}
 		dialer.Add(host, hostPort, address, addressPort)
 	}
-	opts.resolveDialContext = func(base *net.Dialer) func(context.Context, string, string) (net.Conn, error) {
-		dialer.Dialer = base
-		return dialer.DialContext
-	}
-	return nil
+	dialer.BaseDialContext = baseDial
+	return dialer.DialContext, nil
 }
 
 // tlsConfig assembles the tls config.
@@ -193,29 +188,13 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 	if err != nil {
 		return nil, err
 	}
-	if err := opts.parseResolve(); err != nil {
+	baseTransport := http.DefaultTransport.(*http.Transport).Clone()
+	baseTransport.TLSClientConfig = config
+	dialContext, err := opts.parseResolve(baseTransport.DialContext)
+	if err != nil {
 		return nil, err
 	}
-	resolveDialContext := opts.resolveDialContext
-	if resolveDialContext == nil {
-		resolveDialContext = func(dialer *net.Dialer) func(context.Context, string, string) (net.Conn, error) {
-			return dialer.DialContext
-		}
-	}
-	// default value are derived from http.DefaultTransport
-	baseTransport := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: resolveDialContext(&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}),
-		ForceAttemptHTTP2:     true,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-		TLSClientConfig:       config,
-	}
+	baseTransport.DialContext = dialContext
 	client = &auth.Client{
 		Client: &http.Client{
 			// http.RoundTripper with a retry using the DefaultPolicy
