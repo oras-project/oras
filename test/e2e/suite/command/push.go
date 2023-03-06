@@ -50,11 +50,11 @@ var _ = Describe("Remote registry users:", func() {
 			}
 
 			ORAS("push", Reference(Host, repo, tag), files[1], "-v").
-				MatchStatus(statusKeys, true, 1).
+				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
-			Binary("jq", ".blobs[]", "--compact-output").
-				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, ocispec.MediaTypeImageLayer)).
+			Binary("jq", ".layers[]", "--compact-output").
+				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, "application/vnd.oci.image.layer.v1.tar")).
 				WithInput(fetched).Exec()
 		})
 
@@ -64,15 +64,15 @@ var _ = Describe("Remote registry users:", func() {
 			extraTag := "2e2"
 
 			ORAS("push", fmt.Sprintf("%s,%s", Reference(Host, repo, tag), extraTag), files[1], "-v").
-				MatchStatus(statusKeys, true, 1).
+				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
-			Binary("jq", ".blobs[]", "--compact-output").
+			Binary("jq", ".layers[]", "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, ocispec.MediaTypeImageLayer)).
 				WithInput(fetched).Exec()
 
 			fetched = ORAS("manifest", "fetch", Reference(Host, repo, extraTag)).Exec().Out
-			Binary("jq", ".blobs[]", "--compact-output").
+			Binary("jq", ".layers[]", "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, ocispec.MediaTypeImageLayer)).
 				WithInput(fetched).Exec()
 		})
@@ -84,12 +84,11 @@ var _ = Describe("Remote registry users:", func() {
 			if err := CopyTestData(tempDir); err != nil {
 				panic(err)
 			}
-
 			ORAS("push", Reference(Host, repo, tag), files[1]+":"+layerType, "-v").
-				MatchStatus(statusKeys, true, 1).
+				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
-			Binary("jq", ".blobs[]", "--compact-output").
+			Binary("jq", ".layers[]", "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, layerType)).
 				WithInput(fetched).Exec()
 		})
@@ -104,7 +103,7 @@ var _ = Describe("Remote registry users:", func() {
 
 			exportPath := "packed.json"
 			ORAS("push", Reference(Host, repo, tag), files[1]+":"+layerType, "-v", "--export-manifest", exportPath).
-				MatchStatus(statusKeys, true, 1).
+				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out.Contents()
 			MatchFile(filepath.Join(tempDir, exportPath), string(fetched), DefaultTimeout)
@@ -159,11 +158,11 @@ var _ = Describe("Remote registry users:", func() {
 			}
 
 			ORAS("push", Reference(Host, repo, tag), files[1], "-v", "--annotation", fmt.Sprintf("%s=%s", key, value)).
-				MatchStatus(statusKeys, true, 1).
+				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
 			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
 
-			Binary("jq", `.annotations|del(.["org.opencontainers.artifact.created"])`, "--compact-output").
+			Binary("jq", `.annotations|del(.["org.opencontainers.image.created"])`, "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(`{"%s":"%s"}`, key, value)).
 				WithInput(fetched).Exec()
 		})

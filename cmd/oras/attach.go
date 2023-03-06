@@ -27,6 +27,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/graph"
 )
 
 type attachOptions struct {
@@ -144,19 +145,24 @@ func runAttach(opts attachOptions) error {
 	graphCopyOptions.Concurrency = opts.concurrency
 	updateDisplayOption(&graphCopyOptions, store, opts.Verbose)
 	copy := func(root ocispec.Descriptor) error {
-		if root.MediaType == ocispec.MediaTypeArtifactManifest {
-			graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-				if content.Equal(node, root) {
-					// skip subject
-					return descs, nil
+		graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			if content.Equal(node, root) {
+				// skip duplicated Resolve on subject
+				successors, _, config, err := graph.Successors(ctx, fetcher, node)
+				if err != nil {
+					return nil, err
 				}
-				return content.Successors(ctx, fetcher, node)
+				if config != nil {
+					successors = append(successors, *config)
+				}
+				return successors, nil
 			}
+			return content.Successors(ctx, fetcher, node)
 		}
 		return oras.CopyGraph(ctx, store, dst, root, graphCopyOptions)
 	}
 
-	root, err := pushArtifact(dst, pack, &packOpts, copy, &graphCopyOptions, opts.ManifestMediaType == "", opts.Verbose)
+	root, err := pushArtifact(dst, pack, copy)
 	if err != nil {
 		return err
 	}
