@@ -234,7 +234,7 @@ var _ = Describe("Common registry users:", func() {
 
 			It("should push files without customized media types", func() {
 				repo := testRepo("push")
-				tempDir := PrepareTempFiles(()
+				tempDir := PrepareTempFiles()
 				ORAS(append([]string{"push", RegistryRef(mockedHost, repo, foobar.Tag), "-v"}, append(foobar.FileLayerNames, unary...)...)...).
 					MatchStatus(foobar.FileStateKeys, true, len(foobar.FileStateKeys)).
 					WithWorkDir(tempDir).Exec()
