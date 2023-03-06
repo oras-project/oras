@@ -75,8 +75,8 @@ func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, status s
 	return nil
 }
 
-// NewTagManifestStatusPrinter creates a wrapper type for printing tag status.
-func NewTagManifestStatusPrinter(target oras.Target) oras.Target {
+// NewTagStatusPrinter creates a wrapper type for printing tag status.
+func NewTagStatusPrinter(target oras.Target) oras.Target {
 	if repo, ok := target.(registry.Repository); ok {
 		return &tagManifestStatusForRepo{
 			Repository: repo,
@@ -87,12 +87,38 @@ func NewTagManifestStatusPrinter(target oras.Target) oras.Target {
 	}
 }
 
+// NewTagStatusHintPrinter creates a wrapper type for printing
+// tag status and hint.
+func NewTagStatusHintPrinter(target oras.Target, refPrefix string) oras.Target {
+	var printHint sync.Once
+	if repo, ok := target.(registry.Repository); ok {
+		return &tagManifestStatusForRepo{
+			Repository: repo,
+			printHint:  &printHint,
+			refPrefix:  refPrefix,
+		}
+	}
+	return &tagManifestStatusForTarget{
+		Target:    target,
+		printHint: &printHint,
+		refPrefix: refPrefix,
+	}
+}
+
 type tagManifestStatusForRepo struct {
 	registry.Repository
+	printHint *sync.Once
+	refPrefix string
 }
 
 // PushReference overrides Repository.PushReference method to print off which tag(s) were added successfully.
 func (p *tagManifestStatusForRepo) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
+	if p.printHint != nil {
+		p.printHint.Do(func() {
+			ref := p.refPrefix + "@" + expected.Digest.String()
+			Print("Tagging", ref)
+		})
+	}
 	if err := p.Repository.PushReference(ctx, expected, content, reference); err != nil {
 		return err
 	}
@@ -101,10 +127,18 @@ func (p *tagManifestStatusForRepo) PushReference(ctx context.Context, expected o
 
 type tagManifestStatusForTarget struct {
 	oras.Target
+	printHint *sync.Once
+	refPrefix string
 }
 
 // Tag tags a descriptor with a reference string.
 func (p *tagManifestStatusForTarget) Tag(ctx context.Context, desc ocispec.Descriptor, reference string) error {
+	if p.printHint != nil {
+		p.printHint.Do(func() {
+			ref := p.refPrefix + "@" + desc.Digest.String()
+			Print("Tagging", ref)
+		})
+	}
 	if err := p.Target.Tag(ctx, desc, reference); err != nil {
 		return err
 	}

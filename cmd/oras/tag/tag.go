@@ -16,6 +16,8 @@ limitations under the License.
 package tag
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/display"
@@ -82,6 +84,12 @@ func tagManifest(opts tagOptions) error {
 
 	tagNOpts := oras.DefaultTagNOptions
 	tagNOpts.Concurrency = opts.concurrency
-	_, err = oras.TagN(ctx, display.NewTagManifestStatusPrinter(target), opts.Reference, opts.targetRefs, tagNOpts)
+	_, err = oras.TagN(
+		ctx,
+		display.NewTagStatusHintPrinter(target, fmt.Sprintf("[%s] %s", opts.Type, opts.Path)),
+		opts.Reference,
+		opts.targetRefs,
+		tagNOpts,
+	)
 	return err
 }
