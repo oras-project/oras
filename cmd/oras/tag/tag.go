@@ -18,7 +18,6 @@ package tag
 import (
 	"fmt"
 
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/display"
@@ -85,8 +84,12 @@ func tagManifest(opts tagOptions) error {
 
 	tagNOpts := oras.DefaultTagNOptions
 	tagNOpts.Concurrency = opts.concurrency
-	_, err = oras.TagN(ctx, display.NewTagStatusHintPrinter(target, func(d ocispec.Descriptor) string {
-		return fmt.Sprintf("Tagging [%s] %s@%s", opts.Type, opts.Path, d.Digest)
-	}), opts.Reference, opts.targetRefs, tagNOpts)
+	_, err = oras.TagN(
+		ctx,
+		display.NewTagStatusHintPrinter(target, fmt.Sprintf("[%s] %s", opts.Type, opts.Path)),
+		opts.Reference,
+		opts.targetRefs,
+		tagNOpts,
+	)
 	return err
 }
