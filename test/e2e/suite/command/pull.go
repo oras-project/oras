@@ -37,9 +37,9 @@ var _ = Describe("Remote registry users:", func() {
 
 		It("should pull all files in an image to a target folder", func() {
 			pullRoot := "pulled"
-			tempDir := CopyTestDataToTemp()
+			tempDir := PrepareTempFiles()
 			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(configName))
-			ORAS("pull", Reference(Host, ImageRepo, foobar.Tag), "-v", "--config", configName, "-o", pullRoot).
+			ORAS("pull", RegistryRef(Host, ImageRepo, foobar.Tag), "-v", "--config", configName, "-o", pullRoot).
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				WithWorkDir(tempDir).Exec()
 			// check config
@@ -55,16 +55,16 @@ var _ = Describe("Remote registry users:", func() {
 					WithWorkDir(tempDir).Exec()
 			}
 
-			ORAS("pull", Reference(Host, ImageRepo, foobar.Tag), "-v", "-o", pullRoot, "--keep-old-files").
+			ORAS("pull", RegistryRef(Host, ImageRepo, foobar.Tag), "-v", "-o", pullRoot, "--keep-old-files").
 				ExpectFailure().
 				WithDescription("fail if overwrite old files are disabled")
 		})
 
 		It("should skip config if media type not matching", func() {
 			pullRoot := "pulled"
-			tempDir := CopyTestDataToTemp()
+			tempDir := PrepareTempFiles()
 			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(oras.MediaTypeUnknownConfig))
-			ORAS("pull", Reference(Host, ImageRepo, foobar.Tag), "-v", "--config", fmt.Sprintf("%s:%s", configName, "???"), "-o", pullRoot).
+			ORAS("pull", RegistryRef(Host, ImageRepo, foobar.Tag), "-v", "--config", fmt.Sprintf("%s:%s", configName, "???"), "-o", pullRoot).
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				WithWorkDir(tempDir).Exec()
 			// check config
@@ -78,7 +78,7 @@ var _ = Describe("Remote registry users:", func() {
 		})
 
 		It("should pull specific platform", func() {
-			ORAS("pull", Reference(Host, ImageRepo, "multi"), "--platform", "linux/amd64", "-v", "-o", GinkgoT().TempDir()).
+			ORAS("pull", RegistryRef(Host, ImageRepo, "multi"), "--platform", "linux/amd64", "-v", "-o", GinkgoT().TempDir()).
 				MatchStatus(multi_arch.ImageStateKeys, true, len(multi_arch.ImageStateKeys)).Exec()
 		})
 	})

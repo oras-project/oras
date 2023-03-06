@@ -45,7 +45,7 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		It("should fail if no file reference or manifest annotation provided", func() {
-			ORAS("attach", "--artifact-type", "oras.test", Reference(Host, ImageRepo, foobar.Tag)).
+			ORAS("attach", "--artifact-type", "oras.test", RegistryRef(Host, ImageRepo, foobar.Tag)).
 				ExpectFailure().MatchErrKeyWords("Error: no blob or manifest annotation are provided").Exec()
 		})
 	})
@@ -55,9 +55,9 @@ var _ = Describe("Common registry users:", func() {
 	When("running attach command", func() {
 		It("should attach a file to a subject", func() {
 			testRepo := attachTestRepo("simple")
-			tempDir := CopyTestDataToTemp()
-			subjectRef := Reference(Host, testRepo, foobar.Tag)
-			prepare(Reference(Host, ImageRepo, foobar.Tag), subjectRef)
+			tempDir := PrepareTempFiles()
+			subjectRef := RegistryRef(Host, testRepo, foobar.Tag)
+			prepare(RegistryRef(Host, ImageRepo, foobar.Tag), subjectRef)
 			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				WithWorkDir(tempDir).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
@@ -66,10 +66,10 @@ var _ = Describe("Common registry users:", func() {
 		It("should attach a file to a subject and export the built manifest", func() {
 			// prepare
 			testRepo := attachTestRepo("export-manifest")
-			tempDir := CopyTestDataToTemp()
+			tempDir := PrepareTempFiles()
 			exportName := "manifest.json"
-			subjectRef := Reference(Host, testRepo, foobar.Tag)
-			prepare(Reference(Host, ImageRepo, foobar.Tag), subjectRef)
+			subjectRef := RegistryRef(Host, testRepo, foobar.Tag)
+			prepare(RegistryRef(Host, ImageRepo, foobar.Tag), subjectRef)
 			// test
 			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName).
 				WithWorkDir(tempDir).
@@ -79,14 +79,14 @@ var _ = Describe("Common registry users:", func() {
 			bytes := ORAS("discover", subjectRef, "-o", "json").Exec().Out.Contents()
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(len(index.Manifests)).To(Equal(1))
-			fetched := ORAS("manifest", "fetch", Reference(Host, testRepo, index.Manifests[0].Digest.String())).Exec().Out.Contents()
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, testRepo, index.Manifests[0].Digest.String())).Exec().Out.Contents()
 			MatchFile(filepath.Join(tempDir, exportName), string(fetched), DefaultTimeout)
 		})
 		It("should attach a file via a OCI Image", func() {
 			testRepo := attachTestRepo("image")
-			tempDir := CopyTestDataToTemp()
-			subjectRef := Reference(Host, testRepo, foobar.Tag)
-			prepare(Reference(Host, ImageRepo, foobar.Tag), subjectRef)
+			tempDir := PrepareTempFiles()
+			subjectRef := RegistryRef(Host, testRepo, foobar.Tag)
+			prepare(RegistryRef(Host, ImageRepo, foobar.Tag), subjectRef)
 			// test
 			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--image-spec", "v1.1-image").
 				WithWorkDir(tempDir).
@@ -101,9 +101,9 @@ var _ = Describe("Common registry users:", func() {
 		})
 		It("should attach a file via a OCI Artifact", func() {
 			testRepo := attachTestRepo("artifact")
-			tempDir := CopyTestDataToTemp()
-			subjectRef := Reference(Host, testRepo, foobar.Tag)
-			prepare(Reference(Host, ImageRepo, foobar.Tag), subjectRef)
+			tempDir := PrepareTempFiles()
+			subjectRef := RegistryRef(Host, testRepo, foobar.Tag)
+			prepare(RegistryRef(Host, ImageRepo, foobar.Tag), subjectRef)
 			// test
 			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--image-spec", "v1.1-artifact").
 				WithWorkDir(tempDir).
@@ -123,9 +123,9 @@ var _ = Describe("Fallback registry users:", func() {
 	When("running attach command", func() {
 		It("should attach a file via a OCI Image", func() {
 			testRepo := attachTestRepo("fallback/image")
-			tempDir := CopyTestDataToTemp()
-			subjectRef := Reference(FallbackHost, testRepo, foobar.Tag)
-			prepare(Reference(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef)
+			tempDir := PrepareTempFiles()
+			subjectRef := RegistryRef(FallbackHost, testRepo, foobar.Tag)
+			prepare(RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef)
 			// test
 			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--image-spec", "v1.1-image").
 				WithWorkDir(tempDir).
@@ -141,9 +141,9 @@ var _ = Describe("Fallback registry users:", func() {
 
 		It("should attach a file via a OCI Image by default", func() {
 			testRepo := attachTestRepo("fallback/default")
-			tempDir := CopyTestDataToTemp()
-			subjectRef := Reference(FallbackHost, testRepo, foobar.Tag)
-			prepare(Reference(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef)
+			tempDir := PrepareTempFiles()
+			subjectRef := RegistryRef(FallbackHost, testRepo, foobar.Tag)
+			prepare(RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef)
 			// test
 			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--image-spec", "v1.1-image").
 				WithWorkDir(tempDir).
@@ -159,9 +159,9 @@ var _ = Describe("Fallback registry users:", func() {
 
 		It("should attach a file via a OCI Image and generate referrer via tag schema", func() {
 			testRepo := attachTestRepo("fallback/tag_schema")
-			tempDir := CopyTestDataToTemp()
-			subjectRef := Reference(FallbackHost, testRepo, foobar.Tag)
-			prepare(Reference(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef)
+			tempDir := PrepareTempFiles()
+			subjectRef := RegistryRef(FallbackHost, testRepo, foobar.Tag)
+			prepare(RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef)
 			// test
 			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--image-spec", "v1.1-image", "--distribution-spec", "v1.1-referrers-tag").
 				WithWorkDir(tempDir).

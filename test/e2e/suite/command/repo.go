@@ -42,7 +42,7 @@ var _ = Describe("ORAS beginners:", func() {
 
 			It("should fail listing repositories if wrong registry provided", func() {
 				ORAS("repo", "ls").ExpectFailure().MatchErrKeyWords("Error:").Exec()
-				ORAS("repo", "ls", Reference(Host, Repo, "some-tag")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+				ORAS("repo", "ls", RegistryRef(Host, Repo, "some-tag")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
 			})
 		})
 		When("running `repo tags`", func() {
@@ -57,7 +57,7 @@ var _ = Describe("ORAS beginners:", func() {
 			It("should fail listing repositories if wrong registry provided", func() {
 				ORAS("repo", "tags").ExpectFailure().MatchErrKeyWords("Error:").Exec()
 				ORAS("repo", "tags", Host).ExpectFailure().MatchErrKeyWords("Error:").Exec()
-				ORAS("repo", "tags", Reference(Host, ImageRepo, "some-tag")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+				ORAS("repo", "tags", RegistryRef(Host, ImageRepo, "some-tag")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
 			})
 		})
 	})
@@ -69,16 +69,16 @@ var _ = Describe("Common registry users:", func() {
 			ORAS("repository", "list", Host).MatchKeyWords(ImageRepo).Exec()
 		})
 		It("should list repositories under provided namespace", func() {
-			ORAS("repo", "ls", Reference(Host, Namespace, "")).MatchKeyWords(Repo[len(Namespace)+1:]).Exec()
+			ORAS("repo", "ls", RegistryRef(Host, Namespace, "")).MatchKeyWords(Repo[len(Namespace)+1:]).Exec()
 		})
 
 		It("should not list repositories without a fully matched namespace", func() {
 			repo := "command-draft/images"
-			ORAS("cp", Reference(Host, Repo, foobar.Tag), Reference(Host, repo, foobar.Tag)).
+			ORAS("cp", RegistryRef(Host, Repo, foobar.Tag), RegistryRef(Host, repo, foobar.Tag)).
 				WithDescription("prepare destination repo: " + repo).
 				Exec()
 			ORAS("repo", "ls", Host).MatchKeyWords(Repo, repo).Exec()
-			session := ORAS("repo", "ls", Reference(Host, Namespace, "")).MatchKeyWords(Repo[len(Namespace)+1:]).Exec()
+			session := ORAS("repo", "ls", RegistryRef(Host, Namespace, "")).MatchKeyWords(Repo[len(Namespace)+1:]).Exec()
 			Expect(session.Out).ShouldNot(gbytes.Say(repo[len(Namespace)+1:]))
 		})
 
@@ -96,7 +96,7 @@ var _ = Describe("Common registry users:", func() {
 		repoWithName := func(name string) string {
 			return fmt.Sprintf("command/images/repo/tags/%d/%s", GinkgoRandomSeed(), name)
 		}
-		repoRef := Reference(Host, ImageRepo, "")
+		repoRef := RegistryRef(Host, ImageRepo, "")
 		It("should list tags", func() {
 			ORAS("repository", "show-tags", repoRef).MatchKeyWords(multi_arch.Tag, foobar.Tag).Exec()
 		})
@@ -113,20 +113,20 @@ var _ = Describe("Common registry users:", func() {
 			// prepare
 			repo := repoWithName("filter-tag")
 			tags := []string{foobar.Tag, "bax", "bay", "baz"}
-			refWithTags := fmt.Sprintf("%s:%s", Reference(Host, repo, ""), strings.Join(tags, ","))
-			ORAS("cp", Reference(Host, Repo, foobar.Tag), refWithTags).
+			refWithTags := fmt.Sprintf("%s:%s", RegistryRef(Host, repo, ""), strings.Join(tags, ","))
+			ORAS("cp", RegistryRef(Host, Repo, foobar.Tag), refWithTags).
 				WithDescription("prepare: copy and create multiple tags to " + refWithTags).
 				Exec()
-			ORAS("cp", Reference(Host, Repo, multi_arch.Tag), Reference(Host, Repo, "")).
+			ORAS("cp", RegistryRef(Host, Repo, multi_arch.Tag), RegistryRef(Host, Repo, "")).
 				WithDescription("prepare: copy tag with different digest").
 				Exec()
 			// test
-			viaTag := ORAS("repo", "tags", "-v", Reference(Host, repo, foobar.Tag)).
+			viaTag := ORAS("repo", "tags", "-v", RegistryRef(Host, repo, foobar.Tag)).
 				MatchKeyWords(tags...).
 				MatchErrKeyWords("Preview", foobar.Digest).Exec().Out
 			Expect(viaTag).ShouldNot(gbytes.Say(multi_arch.Tag))
 
-			viaDigest := ORAS("repo", "tags", "-v", Reference(Host, repo, foobar.Digest)).
+			viaDigest := ORAS("repo", "tags", "-v", RegistryRef(Host, repo, foobar.Digest)).
 				MatchKeyWords(tags...).
 				MatchErrKeyWords("Preview", foobar.Digest).Exec().Out
 			Expect(viaDigest).ShouldNot(gbytes.Say(multi_arch.Tag))

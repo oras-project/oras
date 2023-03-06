@@ -34,18 +34,18 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		It("should fail when provided manifest reference is not found", func() {
-			ORAS("tag", Reference(Host, ImageRepo, "i-dont-think-this-tag-exists")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+			ORAS("tag", RegistryRef(Host, ImageRepo, "i-dont-think-this-tag-exists")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
 		})
 	})
 })
 
 var _ = Describe("Common registry users:", func() {
 	var tagAndValidate = func(reg string, repo string, tagOrDigest string, digest string, tags ...string) {
-		out := ORAS(append([]string{"tag", Reference(reg, repo, tagOrDigest)}, tags...)...).MatchKeyWords(tags...).Exec().Out
-		hint := regexp.QuoteMeta(fmt.Sprintf("Tagging [registry] %s", Reference(reg, repo, digest)))
+		out := ORAS(append([]string{"tag", RegistryRef(reg, repo, tagOrDigest)}, tags...)...).MatchKeyWords(tags...).Exec().Out
+		hint := regexp.QuoteMeta(fmt.Sprintf("Tagging [registry] %s", RegistryRef(reg, repo, digest)))
 		gomega.Expect(out).To(gbytes.Say(hint))
 		gomega.Expect(out).NotTo(gbytes.Say(hint)) // should only say hint once
-		ORAS("repo", "tags", Reference(reg, repo, "")).MatchKeyWords(tags...).Exec()
+		ORAS("repo", "tags", RegistryRef(reg, repo, "")).MatchKeyWords(tags...).Exec()
 	}
 	When("running `tag`", func() {
 		It("should add a tag to an existent manifest when providing tag reference", func() {
