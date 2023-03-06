@@ -319,7 +319,7 @@ var _ = Describe("OCI image layout users:", func() {
 				WithDescription("skip pushing if the blob already exists in the target repo").
 				MatchKeyWords("Exists").Exec()
 			// validate
-			ORAS("blob", "fetch", LayoutRef(tmpRoot, pushDigest), LayoutFlag, tmpRoot, "--output", "-").MatchContent(pushContent).Exec()
+			ORAS("blob", "fetch", LayoutRef(tmpRoot, pushDigest), LayoutFlag, "--output", "-").MatchContent(pushContent).Exec()
 		})
 
 		It("should push a blob from a stdin and output the descriptor with specific media-type", func() {
@@ -331,7 +331,7 @@ var _ = Describe("OCI image layout users:", func() {
 				WithInput(strings.NewReader(pushContent)).
 				MatchContent(fmt.Sprintf(pushDescFmt, mediaType)).Exec()
 			// validate
-			ORAS("blob", "fetch", LayoutRef(tmpRoot, pushDigest), LayoutFlag, tmpRoot, "--output", "-").MatchContent(pushContent).Exec()
+			ORAS("blob", "fetch", LayoutRef(tmpRoot, pushDigest), LayoutFlag, "--output", "-").MatchContent(pushContent).Exec()
 		})
 	})
 })
