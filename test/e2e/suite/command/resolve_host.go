@@ -67,7 +67,7 @@ func ResolveFlags(reg string, host string, flagType resolveType) []string {
 	return []string{fp + resolveFlag, fmt.Sprintf("%s:80:127.0.0.1:%s", host, port), fp + usernameFlag, Username, fp + passwordFlag, Password, fp + plainHttpFlag}
 }
 
-var _ = Describe("OCI image layout users:", func() {
+var _ = Describe("Common registry users:", func() {
 	if strings.HasPrefix(Host, "localhost:") {
 		When("custom host is provided", func() {
 			// mockedHost represents a non-existent host name which
