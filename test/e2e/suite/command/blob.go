@@ -27,13 +27,10 @@ import (
 )
 
 const (
-	pushContent      = "test-blob"
-	pushDigest       = "sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d8"
-	invalidDigest    = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-	pushDescFmt      = `{"mediaType":"%s","digest":"sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d8","size":9}`
-	deleteDigest     = "sha256:fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"
-	deleteDescriptor = `{"mediaType":"application/octet-stream","digest":"sha256:fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9","size":3}`
-	deleteContent    = "bar"
+	pushContent   = "test-blob"
+	pushDigest    = "sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d8"
+	invalidDigest = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+	pushDescFmt   = `{"mediaType":"%s","digest":"sha256:e1ca41574914ba00e8ed5c8fc78ec8efdfd48941c7e48ad74dad8ada7f2066d8","size":9}`
 )
 
 var _ = Describe("ORAS beginners:", func() {
@@ -139,14 +136,14 @@ var _ = Describe("ORAS beginners:", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "no-ref")
 			ORAS("cp", RegistryRef(Host, ImageRepo, foobar.Digest), RegistryRef(Host, dstRepo, foobar.Digest)).Exec()
 			ORAS("blob", "delete").ExpectFailure().Exec()
-			ORAS("blob", "fetch", RegistryRef(Host, dstRepo, deleteDigest), "--output", "-").MatchContent(deleteContent).Exec()
+			ORAS("blob", "fetch", RegistryRef(Host, dstRepo, foobar.FooBlobDigest), "--output", "-").MatchContent(foobar.FooBlobContent).Exec()
 		})
 
 		It("should fail if no force flag and descriptor flag is provided", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "no-confirm")
 			ORAS("cp", RegistryRef(Host, ImageRepo, foobar.Digest), RegistryRef(Host, dstRepo, foobar.Digest)).Exec()
-			ORAS("blob", "delete", RegistryRef(Host, dstRepo, deleteDigest), "--descriptor").ExpectFailure().Exec()
-			ORAS("blob", "fetch", RegistryRef(Host, dstRepo, deleteDigest), "--output", "-").MatchContent(deleteContent).Exec()
+			ORAS("blob", "delete", RegistryRef(Host, dstRepo, foobar.FooBlobDigest), "--descriptor").ExpectFailure().Exec()
+			ORAS("blob", "fetch", RegistryRef(Host, dstRepo, foobar.FooBlobDigest), "--output", "-").MatchContent(foobar.FooBlobContent).Exec()
 		})
 
 		It("should fail if the blob reference is not in the form of <name@digest>", func() {
@@ -180,7 +177,7 @@ var _ = Describe("Common registry users:", func() {
 		It("should delete a blob with interactive confirmation", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "prompt-confirmation")
 			ORAS("cp", RegistryRef(Host, ImageRepo, foobar.Digest), RegistryRef(Host, dstRepo, foobar.Digest)).Exec()
-			toDeleteRef := RegistryRef(Host, dstRepo, deleteDigest)
+			toDeleteRef := RegistryRef(Host, dstRepo, foobar.FooBlobDigest)
 			ORAS("blob", "delete", toDeleteRef).
 				WithInput(strings.NewReader("y")).
 				MatchKeyWords("Deleted", toDeleteRef).Exec()
@@ -194,8 +191,8 @@ var _ = Describe("Common registry users:", func() {
 		It("should delete a blob with force flag and output descriptor", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "flag-confirmation")
 			ORAS("cp", RegistryRef(Host, ImageRepo, foobar.Digest), RegistryRef(Host, dstRepo, foobar.Digest)).Exec()
-			toDeleteRef := RegistryRef(Host, dstRepo, deleteDigest)
-			ORAS("blob", "delete", toDeleteRef, "--force", "--descriptor").MatchContent(deleteDescriptor).Exec()
+			toDeleteRef := RegistryRef(Host, dstRepo, foobar.FooBlobDigest)
+			ORAS("blob", "delete", toDeleteRef, "--force", "--descriptor").MatchContent(foobar.FooBlobDescriptor).Exec()
 			ORAS("blob", "delete", toDeleteRef).WithDescription("validate").ExpectFailure().MatchErrKeyWords("Error:", toDeleteRef, "the specified blob does not exist").Exec()
 		})
 
@@ -218,7 +215,6 @@ var _ = Describe("Common registry users:", func() {
 			ORAS("blob", "push", RegistryRef(Host, repo, ""), blobPath, "-v").
 				WithDescription("skip the pushing if the blob already exists in the target repo").
 				MatchKeyWords("Exists").Exec()
-
 		})
 
 		It("should push a blob from a stdin and output the descriptor with specific media-type", func() {
@@ -233,27 +229,27 @@ var _ = Describe("Common registry users:", func() {
 
 	When("running `blob fetch`", func() {
 		It("should fetch blob descriptor ", func() {
-			ORAS("blob", "fetch", RegistryRef(Host, ImageRepo, foobar.Foo1BlobDigest), "--descriptor").
-				MatchContent(foobar.Foo1BlobDescriptor).Exec()
+			ORAS("blob", "fetch", RegistryRef(Host, ImageRepo, foobar.FooBlobDigest), "--descriptor").
+				MatchContent(foobar.FooBlobDescriptor).Exec()
 		})
 		It("should fetch blob content and output to stdout", func() {
-			ORAS("blob", "fetch", RegistryRef(Host, ImageRepo, foobar.Foo1BlobDigest), "--output", "-").
-				MatchContent(foobar.Foo1BlobContent).Exec()
+			ORAS("blob", "fetch", RegistryRef(Host, ImageRepo, foobar.FooBlobDigest), "--output", "-").
+				MatchContent(foobar.FooBlobContent).Exec()
 		})
 		It("should fetch blob content and output to a file", func() {
 			tempDir := GinkgoT().TempDir()
 			contentPath := filepath.Join(tempDir, "fetched")
-			ORAS("blob", "fetch", RegistryRef(Host, ImageRepo, foobar.Foo1BlobDigest), "--output", contentPath).
+			ORAS("blob", "fetch", RegistryRef(Host, ImageRepo, foobar.FooBlobDigest), "--output", contentPath).
 				WithWorkDir(tempDir).Exec()
-			MatchFile(contentPath, foobar.Foo1BlobContent, DefaultTimeout)
+			MatchFile(contentPath, foobar.FooBlobContent, DefaultTimeout)
 		})
 		It("should fetch blob descriptor and output content to a file", func() {
 			tempDir := GinkgoT().TempDir()
 			contentPath := filepath.Join(tempDir, "fetched")
-			ORAS("blob", "fetch", RegistryRef(Host, ImageRepo, foobar.Foo1BlobDigest), "--output", contentPath, "--descriptor").
-				MatchContent(foobar.Foo1BlobDescriptor).
+			ORAS("blob", "fetch", RegistryRef(Host, ImageRepo, foobar.FooBlobDigest), "--output", contentPath, "--descriptor").
+				MatchContent(foobar.FooBlobDescriptor).
 				WithWorkDir(tempDir).Exec()
-			MatchFile(contentPath, foobar.Foo1BlobContent, DefaultTimeout)
+			MatchFile(contentPath, foobar.FooBlobContent, DefaultTimeout)
 		})
 	})
 })
@@ -266,7 +262,7 @@ var _ = Describe("OCI image layout users:", func() {
 	}
 	When("running `blob delete`", func() {
 		It("should not support deleting a blob", func() {
-			toDeleteRef := LayoutRef(prepare(RegistryRef(Host, ImageRepo, foobar.Tag)), deleteDigest)
+			toDeleteRef := LayoutRef(prepare(RegistryRef(Host, ImageRepo, foobar.Tag)), foobar.FooBlobDigest)
 			ORAS("blob", "delete", LayoutFlag, toDeleteRef).
 				WithInput(strings.NewReader("y")).
 				MatchErrKeyWords("Error:", "unknown flag", LayoutFlag).
@@ -278,30 +274,30 @@ var _ = Describe("OCI image layout users:", func() {
 	When("running `blob fetch`", func() {
 		It("should fetch blob descriptor", func() {
 			root := prepare(RegistryRef(Host, ImageRepo, foobar.Tag))
-			ORAS("blob", "fetch", LayoutFlag, LayoutRef(root, foobar.Foo1BlobDigest), "--descriptor").
-				MatchContent(foobar.Foo1BlobDescriptor).Exec()
+			ORAS("blob", "fetch", LayoutFlag, LayoutRef(root, foobar.FooBlobDigest), "--descriptor").
+				MatchContent(foobar.FooBlobDescriptor).Exec()
 		})
 		It("should fetch blob content and output to stdout", func() {
 			root := prepare(RegistryRef(Host, ImageRepo, foobar.Tag))
-			ORAS("blob", "fetch", LayoutFlag, LayoutRef(root, foobar.Foo1BlobDigest), "--output", "-").
-				MatchContent(foobar.Foo1BlobContent).Exec()
+			ORAS("blob", "fetch", LayoutFlag, LayoutRef(root, foobar.FooBlobDigest), "--output", "-").
+				MatchContent(foobar.FooBlobContent).Exec()
 		})
 		It("should fetch blob content and output to a file", func() {
 			root := prepare(RegistryRef(Host, ImageRepo, foobar.Tag))
 			tempDir := GinkgoT().TempDir()
 			contentPath := filepath.Join(tempDir, "fetched")
-			ORAS("blob", "fetch", LayoutFlag, LayoutRef(root, foobar.Foo1BlobDigest), "--output", contentPath).
+			ORAS("blob", "fetch", LayoutFlag, LayoutRef(root, foobar.FooBlobDigest), "--output", contentPath).
 				WithWorkDir(tempDir).Exec()
-			MatchFile(contentPath, foobar.Foo1BlobContent, DefaultTimeout)
+			MatchFile(contentPath, foobar.FooBlobContent, DefaultTimeout)
 		})
 		It("should fetch blob descriptor and output content to a file", func() {
 			root := prepare(RegistryRef(Host, ImageRepo, foobar.Tag))
 			tempDir := GinkgoT().TempDir()
 			contentPath := filepath.Join(tempDir, "fetched")
-			ORAS("blob", "fetch", LayoutFlag, LayoutRef(root, foobar.Foo1BlobDigest), "--output", contentPath, "--descriptor").
-				MatchContent(foobar.Foo1BlobDescriptor).
+			ORAS("blob", "fetch", LayoutFlag, LayoutRef(root, foobar.FooBlobDigest), "--output", contentPath, "--descriptor").
+				MatchContent(foobar.FooBlobDescriptor).
 				WithWorkDir(tempDir).Exec()
-			MatchFile(contentPath, foobar.Foo1BlobContent, DefaultTimeout)
+			MatchFile(contentPath, foobar.FooBlobContent, DefaultTimeout)
 		})
 	})
 

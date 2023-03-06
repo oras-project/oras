@@ -17,6 +17,7 @@ package command
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -86,7 +87,8 @@ var _ = Describe("Common registry users:", func() {
 		})
 		It("should list partial repositories via `last` flag", func() {
 			session := ORAS("repo", "ls", Host, "--last", ImageRepo).Exec()
-			Expect(session.Out).ShouldNot(gbytes.Say(ImageRepo))
+			repoRegex := regexp.QuoteMeta(ImageRepo + "\n")
+			Expect(session.Out).ShouldNot(gbytes.Say(repoRegex))
 		})
 
 	})
