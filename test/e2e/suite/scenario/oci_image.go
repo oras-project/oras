@@ -39,17 +39,17 @@ var _ = Describe("OCI image user:", Ordered, func() {
 
 		It("should push and pull an image", func() {
 			manifestName := "packed.json"
-			ORAS("push", Reference(Host, repo, tag), "--config", files[0], files[1], files[2], files[3], "-v", "--export-manifest", manifestName).
+			ORAS("push", RegistryRef(Host, repo, tag), "--config", files[0], files[1], files[2], files[3], "-v", "--export-manifest", manifestName).
 				MatchStatus(statusKeys, true, 4).
 				WithWorkDir(tempDir).
 				WithDescription("push files with manifest exported").Exec()
 
-			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).
 				WithDescription("fetch pushed manifest content").Exec().Out.Contents()
 			MatchFile(filepath.Join(tempDir, manifestName), string(fetched), DefaultTimeout)
 
 			pullRoot := "pulled"
-			ORAS("pull", Reference(Host, repo, tag), "-v", "--config", files[0], "-o", pullRoot).
+			ORAS("pull", RegistryRef(Host, repo, tag), "-v", "--config", files[0], "-o", pullRoot).
 				MatchStatus(statusKeys, true, 3).
 				WithWorkDir(tempDir).
 				WithDescription("pull files with config").Exec()

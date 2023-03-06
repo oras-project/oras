@@ -41,7 +41,7 @@ var _ = Describe("Remote registry users:", func() {
 			pullRoot := "pulled"
 			tempDir := PrepareTempFiles()
 			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(configName))
-			ORAS("pull", Reference(Host, repo, tag), "-v", "--config", configName, "-o", pullRoot).
+			ORAS("pull", RegistryRef(Host, repo, tag), "-v", "--config", configName, "-o", pullRoot).
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				WithWorkDir(tempDir).Exec()
 			// check config
@@ -57,7 +57,7 @@ var _ = Describe("Remote registry users:", func() {
 					WithWorkDir(tempDir).Exec()
 			}
 
-			ORAS("pull", Reference(Host, repo, tag), "-v", "-o", pullRoot, "--keep-old-files").
+			ORAS("pull", RegistryRef(Host, repo, tag), "-v", "-o", pullRoot, "--keep-old-files").
 				ExpectFailure().
 				WithDescription("fail if overwrite old files are disabled")
 		})
@@ -66,7 +66,7 @@ var _ = Describe("Remote registry users:", func() {
 			pullRoot := "pulled"
 			tempDir := PrepareTempFiles()
 			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(oras.MediaTypeUnknownConfig))
-			ORAS("pull", Reference(Host, repo, tag), "-v", "--config", fmt.Sprintf("%s:%s", configName, "???"), "-o", pullRoot).
+			ORAS("pull", RegistryRef(Host, repo, tag), "-v", "--config", fmt.Sprintf("%s:%s", configName, "???"), "-o", pullRoot).
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				WithWorkDir(tempDir).Exec()
 			// check config
@@ -80,7 +80,7 @@ var _ = Describe("Remote registry users:", func() {
 		})
 
 		It("should pull specific platform", func() {
-			ORAS("pull", Reference(Host, repo, "multi"), "--platform", "linux/amd64", "-v", "-o", GinkgoT().TempDir()).
+			ORAS("pull", RegistryRef(Host, repo, "multi"), "--platform", "linux/amd64", "-v", "-o", GinkgoT().TempDir()).
 				MatchStatus(multi_arch.ImageStateKeys, true, len(multi_arch.ImageStateKeys)).Exec()
 		})
 	})

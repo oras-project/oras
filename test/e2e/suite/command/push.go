@@ -49,10 +49,10 @@ var _ = Describe("Remote registry users:", func() {
 				panic(err)
 			}
 
-			ORAS("push", Reference(Host, repo, tag), files[1], "-v").
+			ORAS("push", RegistryRef(Host, repo, tag), files[1], "-v").
 				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out
 			Binary("jq", ".layers[]", "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, "application/vnd.oci.image.layer.v1.tar")).
 				WithInput(fetched).Exec()
@@ -63,15 +63,15 @@ var _ = Describe("Remote registry users:", func() {
 			tempDir := PrepareTempFiles()
 			extraTag := "2e2"
 
-			ORAS("push", fmt.Sprintf("%s,%s", Reference(Host, repo, tag), extraTag), files[1], "-v").
+			ORAS("push", fmt.Sprintf("%s,%s", RegistryRef(Host, repo, tag), extraTag), files[1], "-v").
 				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out
 			Binary("jq", ".layers[]", "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, ocispec.MediaTypeImageLayer)).
 				WithInput(fetched).Exec()
 
-			fetched = ORAS("manifest", "fetch", Reference(Host, repo, extraTag)).Exec().Out
+			fetched = ORAS("manifest", "fetch", RegistryRef(Host, repo, extraTag)).Exec().Out
 			Binary("jq", ".layers[]", "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, ocispec.MediaTypeImageLayer)).
 				WithInput(fetched).Exec()
@@ -84,10 +84,10 @@ var _ = Describe("Remote registry users:", func() {
 			if err := CopyTestFiles(tempDir); err != nil {
 				panic(err)
 			}
-			ORAS("push", Reference(Host, repo, tag), files[1]+":"+layerType, "-v").
+			ORAS("push", RegistryRef(Host, repo, tag), files[1]+":"+layerType, "-v").
 				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out
 			Binary("jq", ".layers[]", "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, layerType)).
 				WithInput(fetched).Exec()
@@ -102,10 +102,10 @@ var _ = Describe("Remote registry users:", func() {
 			}
 
 			exportPath := "packed.json"
-			ORAS("push", Reference(Host, repo, tag), files[1]+":"+layerType, "-v", "--export-manifest", exportPath).
+			ORAS("push", RegistryRef(Host, repo, tag), files[1]+":"+layerType, "-v", "--export-manifest", exportPath).
 				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out.Contents()
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out.Contents()
 			MatchFile(filepath.Join(tempDir, exportPath), string(fetched), DefaultTimeout)
 		})
 
@@ -116,13 +116,13 @@ var _ = Describe("Remote registry users:", func() {
 				panic(err)
 			}
 
-			ORAS("push", Reference(Host, repo, tag), "--config", files[0], files[1], "-v").
+			ORAS("push", RegistryRef(Host, repo, tag), "--config", files[0], files[1], "-v").
 				MatchStatus([]match.StateKey{
 					{Digest: "46b68ac1696c", Name: oras.MediaTypeUnknownConfig},
 					{Digest: "fcde2b2edba5", Name: files[1]},
 				}, true, 2).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out
 			Binary("jq", ".config", "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(configDescriptorTemplate, oras.MediaTypeUnknownConfig)).
 				WithInput(fetched).Exec()
@@ -136,13 +136,13 @@ var _ = Describe("Remote registry users:", func() {
 				panic(err)
 			}
 
-			ORAS("push", Reference(Host, repo, tag), "--config", fmt.Sprintf("%s:%s", files[0], configType), files[1], "-v").
+			ORAS("push", RegistryRef(Host, repo, tag), "--config", fmt.Sprintf("%s:%s", files[0], configType), files[1], "-v").
 				MatchStatus([]match.StateKey{
 					{Digest: "46b68ac1696c", Name: configType},
 					{Digest: "fcde2b2edba5", Name: files[1]},
 				}, true, 2).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out
 			Binary("jq", ".config", "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(configDescriptorTemplate, configType)).
 				WithInput(fetched).Exec()
@@ -157,10 +157,10 @@ var _ = Describe("Remote registry users:", func() {
 				panic(err)
 			}
 
-			ORAS("push", Reference(Host, repo, tag), files[1], "-v", "--annotation", fmt.Sprintf("%s=%s", key, value)).
+			ORAS("push", RegistryRef(Host, repo, tag), files[1], "-v", "--annotation", fmt.Sprintf("%s=%s", key, value)).
 				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out
 
 			Binary("jq", `.annotations|del(.["org.opencontainers.image.created"])`, "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(`{"%s":"%s"}`, key, value)).
@@ -174,10 +174,10 @@ var _ = Describe("Remote registry users:", func() {
 				panic(err)
 			}
 
-			ORAS("push", Reference(Host, repo, tag), files[1], "-v", "--annotation-file", "foobar/annotation.json", "--config", files[0]).
+			ORAS("push", RegistryRef(Host, repo, tag), files[1], "-v", "--annotation-file", "foobar/annotation.json", "--config", files[0]).
 				MatchStatus(statusKeys, true, 1).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out
 
 			// see testdata\files\foobar\annotation.json
 			Binary("jq", `.annotations|del(.["org.opencontainers.image.created"])`, "--compact-output").
