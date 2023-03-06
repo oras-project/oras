@@ -82,7 +82,7 @@ var _ = Describe("Common registry users:", func() {
 
 			It("should attach a file to a subject via resolve flag", func() {
 				repo := testRepo("attach")
-				tempDir := PrepareTempFiles(()
+				tempDir := PrepareTempFiles()
 				prepare(RegistryRef(Host, ImageRepo, foobar.Tag), RegistryRef(Host, repo, foobar.Tag))
 
 				ORAS(append([]string{"attach", "--artifact-type", "test.attach", RegistryRef(mockedHost, repo, foobar.Tag), fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)}, unary...)...).
