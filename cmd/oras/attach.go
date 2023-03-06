@@ -148,7 +148,7 @@ func runAttach(opts attachOptions) error {
 		graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 			if content.Equal(node, root) {
 				// skip duplicated Resolve on subject
-				successors, _, config, err := graph.Successors(ctx, fetcher, root)
+				successors, _, config, err := graph.Successors(ctx, fetcher, node)
 				if err != nil {
 					return nil, err
 				}
