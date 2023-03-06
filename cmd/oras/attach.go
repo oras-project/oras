@@ -27,6 +27,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/graph"
 )
 
 type attachOptions struct {
@@ -147,14 +148,12 @@ func runAttach(opts attachOptions) error {
 		graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 			if content.Equal(node, root) {
 				// skip duplicated Resolve on subject
-				successors := descs
-				if root.MediaType == ocispec.MediaTypeImageManifest {
-					successors = append(successors, ocispec.Descriptor{
-						// scratch config blob with content of `{}` (size of 2)
-						MediaType: "application/vnd.oci.example+json",
-						Digest:    `sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a`,
-						Size:      2,
-						Data:      []byte(`{}`)})
+				successors, _, config, err := graph.Successors(ctx, fetcher, root)
+				if err != nil {
+					return nil, err
+				}
+				if config != nil {
+					successors = append(successors, *config)
 				}
 				return successors, nil
 			}
