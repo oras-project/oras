@@ -40,13 +40,6 @@ func CopyTestFiles(dstRoot string) error {
 	return CopyFiles(filepath.Join(TestDataRoot, "files"), dstRoot)
 }
 
-// PrepareTempLayout prepare an OCI layout based on the test data.
-func PrepareTempLayout() string {
-	temp := GinkgoT().TempDir()
-	Expect(CopyFiles(filepath.Join(TestDataRoot, "image_layout", "oci"), temp)).ShouldNot(HaveOccurred())
-	return temp
-}
-
 // CopyFiles copies files from folder src to folder dest.
 func CopyFiles(src string, dest string) error {
 	return filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {

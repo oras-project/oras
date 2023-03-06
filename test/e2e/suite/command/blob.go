@@ -259,9 +259,14 @@ var _ = Describe("Common registry users:", func() {
 })
 
 var _ = Describe("OCI image layout users:", func() {
+	prepare := func(from string) string {
+		tmpRoot := GinkgoT().TempDir()
+		ORAS("cp", from, ToLayout, tmpRoot).WithDescription("prepare image from registry to OCI layout").Exec()
+		return tmpRoot
+	}
 	When("running `blob delete`", func() {
 		It("should not support deleting a blob", func() {
-			toDeleteRef := LayoutRef(PrepareTempLayout(), deleteDigest)
+			toDeleteRef := LayoutRef(prepare(RegistryRef(Host, ImageRepo, foobar.Tag)), deleteDigest)
 			ORAS("blob", "delete", LayoutFlag, toDeleteRef).
 				WithInput(strings.NewReader("y")).
 				MatchErrKeyWords("Error:", "unknown flag", LayoutFlag).
@@ -271,12 +276,6 @@ var _ = Describe("OCI image layout users:", func() {
 	})
 
 	When("running `blob fetch`", func() {
-
-		prepare := func(from string) string {
-			tmpRoot := GinkgoT().TempDir()
-			ORAS("cp", from, ToLayout, tmpRoot).WithDescription("prepare image from registry to OCI layout").Exec()
-			return tmpRoot
-		}
 		It("should fetch blob descriptor", func() {
 			root := prepare(RegistryRef(Host, ImageRepo, foobar.Tag))
 			ORAS("blob", "fetch", LayoutFlag, LayoutRef(root, foobar.Foo1BlobDigest), "--descriptor").
