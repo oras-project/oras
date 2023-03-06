@@ -125,17 +125,6 @@ func (p *tagManifestStatusForRepo) PushReference(ctx context.Context, expected o
 	return Print("Tagged", reference)
 }
 
-// FetchReference fetches the content identified by the reference.
-func (p *tagManifestStatusForRepo) FetchReference(ctx context.Context, reference string) (ocispec.Descriptor, io.ReadCloser, error) {
-	desc, rc, err := p.Repository.FetchReference(ctx, reference)
-	if err == nil && p.hintFunc != nil {
-		p.printHint.Do(func() {
-			Print(p.hintFunc(desc))
-		})
-	}
-	return desc, rc, err
-}
-
 type tagManifestStatusForTarget struct {
 	oras.Target
 	printHint *sync.Once
@@ -154,15 +143,4 @@ func (p *tagManifestStatusForTarget) Tag(ctx context.Context, desc ocispec.Descr
 		return err
 	}
 	return Print("Tagged", reference)
-}
-
-// Resolve resolves a reference to a descriptor.
-func (p *tagManifestStatusForTarget) Resolve(ctx context.Context, reference string) (ocispec.Descriptor, error) {
-	desc, err := p.Target.Resolve(ctx, reference)
-	if err == nil && p.hintFunc != nil {
-		p.printHint.Do(func() {
-			Print(p.hintFunc(desc))
-		})
-	}
-	return desc, err
 }
