@@ -3,7 +3,9 @@ Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
 http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -69,6 +71,10 @@ func newStateMachine(cmd string) *stateMachine {
 		sm.addPath("Downloading", "Processing", "Downloaded")
 		sm.addPath("Skipped")
 		sm.addPath("Restored")
+	case "copy", "cp":
+		sm.addPath("Copying", "Copied")
+		sm.addPath("Skipped")
+		sm.addPath("Exists")
 	default:
 		panic("Unrecognized cmd name " + cmd)
 	}
@@ -134,7 +140,7 @@ func (s *statusMatcher) switchState(st status, key StateKey) {
 
 	// find next
 	e := findState(now, s.edges[st])
-	gomega.Expect(e).NotTo(gomega.BeNil(), fmt.Sprintf("should state node not matching for %v, %v", st, key))
+	gomega.Expect(e).NotTo(gomega.BeNil(), fmt.Sprintf("state node not matching for %v, %v", st, key))
 
 	// switch
 	s.states[key] = e.to

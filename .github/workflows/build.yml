@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: [1.19]
+        go-version: ['1.20']
       fail-fast: true
     steps:
       - name: Checkout
@@ -43,26 +43,9 @@ jobs:
         run: make test
       - name: Run E2E Tests
         run: |
-          cd $GITHUB_WORKSPACE/test/e2e
-          go install github.com/onsi/ginkgo/v2/ginkgo
-          mnt_root="$GITHUB_WORKSPACE/test/e2e/testdata/distribution/mount"
-          rm -rf $mnt_root/docker
-          for layer in $(ls $mnt_root/*.tar.gz); do
-            tar -xvzf $layer -C $mnt_root
-          done
-          trap 'docker kill oras-e2e || true' ERR
-          docker run --pull always -d -p 5000:5000 --rm --name oras-e2e \
-            --env REGISTRY_STORAGE_DELETE_ENABLED=true \
-            --env REGISTRY_AUTH_HTPASSWD_REALM=test-basic \
-            --env REGISTRY_AUTH_HTPASSWD_PATH=/etc/docker/registry/passwd \
-            --mount type=bind,source=$mnt_root/docker,target=/var/lib/registry/docker \
-            --mount type=bind,source=$mnt_root/passwd_bcrypt,target=/etc/docker/registry/passwd \
-            ghcr.io/oras-project/registry:v1.0.0-rc.3
-          ginkgo -r -p --succinct suite
-          docker kill oras-e2e || true
+          sh $GITHUB_WORKSPACE/test/e2e/scripts/e2e.sh $GITHUB_WORKSPACE --clean
         env:
           ORAS_PATH: bin/linux/amd64/oras
-          ORAS_REGISTRY_HOST: localhost:5000
       - name: Check Version
         run: bin/linux/amd64/oras version
       - name: Upload coverage to codecov.io

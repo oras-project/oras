@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"net/http"
 	nhttp "net/http"
 	"net/http/httptest"
 	"net/url"
@@ -230,6 +231,55 @@ func TestRemote_NewRepository(t *testing.T) {
 	}
 }
 
+func TestRemote_NewRepository_Retry(t *testing.T) {
+	caPath := filepath.Join(t.TempDir(), "oras-test.pem")
+	if err := os.WriteFile(caPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ts.Certificate().Raw}), 0644); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	retries, count := 3, 0
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		count++
+		if count < retries {
+			http.Error(w, "error", http.StatusTooManyRequests)
+			return
+		}
+		json.NewEncoder(w).Encode(testTagList)
+	}))
+	defer ts.Close()
+	opts := struct {
+		Remote
+		Common
+	}{
+		Remote{
+			CACertFilePath: caPath,
+		},
+		Common{},
+	}
+
+	uri, err := url.ParseRequestURI(ts.URL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	repo, err := opts.NewRepository(uri.Host+"/"+testRepo, opts.Common)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if err = repo.Tags(context.Background(), "", func(got []string) error {
+		want := []string{"tag"}
+		if len(got) != len(testTagList.Tags) || !reflect.DeepEqual(got, want) {
+			return fmt.Errorf("expect: %v, got: %v", testTagList.Tags, got)
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if count != retries {
+		t.Errorf("expected %d retries, got %d", retries, count)
+	}
+}
+
 func TestRemote_isPlainHttp_localhost(t *testing.T) {
 	opts := Remote{PlainHTTP: false}
 	got := opts.isPlainHttp("localhost")
@@ -247,40 +297,170 @@ func TestRemote_isPlainHttp_localhost(t *testing.T) {
 
 func TestRemote_parseResolve_err(t *testing.T) {
 	tests := []struct {
-		name    string
-		opts    *Remote
-		wantErr bool
+		name string
+		opts *Remote
 	}{
 		{
-			name:    "invalid flag",
-			opts:    &Remote{resolveFlag: []string{"this-shouldn't_work"}},
-			wantErr: true,
+			name: "invalid flag",
+			opts: &Remote{resolveFlag: []string{"this-shouldn't_work"}},
 		},
 		{
-			name:    "no host",
-			opts:    &Remote{resolveFlag: []string{":port:address"}},
-			wantErr: true,
+			name: "no host",
+			opts: &Remote{resolveFlag: []string{":port:address"}},
 		},
 		{
-			name:    "no address",
-			opts:    &Remote{resolveFlag: []string{"host:port:"}},
-			wantErr: true,
+			name: "no address",
+			opts: &Remote{resolveFlag: []string{"host:port:"}},
 		},
 		{
-			name:    "invalid address",
-			opts:    &Remote{resolveFlag: []string{"host:port:invalid-ip"}},
-			wantErr: true,
+			name: "invalid address",
+			opts: &Remote{resolveFlag: []string{"host:port:invalid-ip"}},
 		},
 		{
-			name:    "no port",
-			opts:    &Remote{resolveFlag: []string{"host::address"}},
-			wantErr: true,
+			name: "no port",
+			opts: &Remote{resolveFlag: []string{"host::address"}},
+		},
+		{
+			name: "invalid source port",
+			opts: &Remote{resolveFlag: []string{"host:port:address"}},
+		},
+		{
+			name: "invalid destination port",
+			opts: &Remote{resolveFlag: []string{"host:443:address:port"}},
+		},
+		{
+			name: "no source port",
+			opts: &Remote{resolveFlag: []string{"host::address"}},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.opts.parseResolve(); (err != nil) != tt.wantErr {
-				t.Errorf("Remote.parseResolve() error = %v, wantErr %v", err, tt.wantErr)
+			if _, err := tt.opts.parseResolve(nil); err == nil {
+				t.Errorf("Expecting error in Remote.parseResolve()")
+			}
+		})
+	}
+}
+
+func TestRemote_parseResolve(t *testing.T) {
+	tests := []struct {
+		name string
+		opts *Remote
+	}{
+		{
+			name: "fromHost:fromPort:toIp",
+			opts: &Remote{resolveFlag: []string{"host:443:0.0.0.0"}},
+		},
+		{
+			name: "fromHost:fromPort:toIp:toPort",
+			opts: &Remote{resolveFlag: []string{"host:443:0.0.0.0:5000"}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := tt.opts.parseResolve(nil); err != nil {
+				t.Errorf("Remote.parseResolve() error = %v", err)
+			}
+		})
+	}
+}
+
+func TestRemote_parseCustomHeaders(t *testing.T) {
+	tests := []struct {
+		name        string
+		headerFlags []string
+		want        nhttp.Header
+		wantErr     bool
+	}{
+		{
+			name:        "no custom header is provided",
+			headerFlags: []string{},
+			want:        nil,
+			wantErr:     false,
+		},
+		{
+			name:        "one name-value pair",
+			headerFlags: []string{"key:value"},
+			want:        map[string][]string{"key": {"value"}},
+			wantErr:     false,
+		},
+		{
+			name:        "multiple name-value pairs",
+			headerFlags: []string{"key:value", "k:v"},
+			want:        map[string][]string{"key": {"value"}, "k": {"v"}},
+			wantErr:     false,
+		},
+		{
+			name:        "multiple name-value pairs with commas",
+			headerFlags: []string{"key:value,value2,value3", "k:v,v2,v3"},
+			want:        map[string][]string{"key": {"value,value2,value3"}, "k": {"v,v2,v3"}},
+			wantErr:     false,
+		},
+		{
+			name:        "empty string is a valid value",
+			headerFlags: []string{"k:", "key:value,value2,value3"},
+			want:        map[string][]string{"k": {""}, "key": {"value,value2,value3"}},
+			wantErr:     false,
+		},
+		{
+			name:        "multiple colons are allowed",
+			headerFlags: []string{"k::::v,v2,v3", "key:value,value2,value3"},
+			want:        map[string][]string{"k": {":::v,v2,v3"}, "key": {"value,value2,value3"}},
+			wantErr:     false,
+		},
+		{
+			name:        "name with spaces",
+			headerFlags: []string{"bar   :b"},
+			want:        map[string][]string{"bar   ": {"b"}},
+			wantErr:     false,
+		},
+		{
+			name:        "value with spaces",
+			headerFlags: []string{"foo:   a"},
+			want:        map[string][]string{"foo": {"   a"}},
+			wantErr:     false,
+		},
+		{
+			name:        "repeated pairs",
+			headerFlags: []string{"key:value", "key:value"},
+			want:        map[string][]string{"key": {"value", "value"}},
+			wantErr:     false,
+		},
+		{
+			name:        "repeated name with different values",
+			headerFlags: []string{"key:value", "key:value2"},
+			want:        map[string][]string{"key": {"value", "value2"}},
+			wantErr:     false,
+		},
+		{
+			name:        "one valid header and one invalid header(no pair)",
+			headerFlags: []string{"key:value,value2,value3", "vk"},
+			want:        nil,
+			wantErr:     true,
+		},
+		{
+			name:        "one valid header and one invalid header(empty name)",
+			headerFlags: []string{":v", "key:value,value2,value3"},
+			want:        nil,
+			wantErr:     true,
+		},
+		{
+			name:        "pure-space name is invalid",
+			headerFlags: []string{" :  foo "},
+			want:        nil,
+			wantErr:     true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := &Remote{
+				headerFlags: tt.headerFlags,
+			}
+			if err := opts.parseCustomHeaders(); (err != nil) != tt.wantErr {
+				t.Errorf("Remote.parseCustomHeaders() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(tt.want, opts.headers) {
+				t.Errorf("Remote.parseCustomHeaders() = %v, want %v", opts.headers, tt.want)
 			}
 		})
 	}

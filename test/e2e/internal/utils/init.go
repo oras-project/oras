@@ -3,7 +3,9 @@ Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
 http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,25 +33,43 @@ var ORASPath string
 // Host points to the registry service where E2E specs will be run against.
 var Host string
 
+// FallbackHost points to the registry service where fallback E2E specs will be run against.
+var FallbackHost string
+
 func init() {
-	Host = os.Getenv("ORAS_REGISTRY_HOST")
+	Host = os.Getenv(RegHostKey)
 	if Host == "" {
 		Host = "localhost:5000"
-		fmt.Fprintln(os.Stderr, "cannot find host name in ORAS_REGISTRY_HOST, using", Host, "instead")
+		fmt.Fprintf(os.Stderr, "cannot find host name in %s, using %s instead\n", RegHostKey, Host)
 	}
-
 	ref := registry.Reference{
 		Registry: Host,
 	}
 	if err := ref.ValidateRegistry(); err != nil {
 		panic(err)
 	}
+
+	FallbackHost = os.Getenv(FallbackRegHostKey)
+	if FallbackHost == "" {
+		FallbackHost = "localhost:6000"
+		fmt.Fprintf(os.Stderr, "cannot find fallback host name in %s, using %s instead\n", FallbackRegHostKey, FallbackHost)
+	}
+	ref.Registry = FallbackHost
+	if err := ref.ValidateRegistry(); err != nil {
+		panic(err)
+	}
+
 	// setup test data
 	pwd, err := os.Getwd()
 	if err != nil {
 		panic(err)
 	}
-	testFileRoot = filepath.Join(pwd, "..", "..", "testdata", "files")
+
+	// to simplify debugging via `go test`, TestDataRoot cannot be passed via ginkgo argument or env var
+	TestDataRoot = filepath.Join(pwd, "..", "..", "testdata")
+	if fi, err := os.Stat(TestDataRoot); err != nil || !fi.IsDir() {
+		panic(fmt.Errorf("filed to find test data in %q", TestDataRoot))
+	}
 	BeforeSuite(func() {
 		ORASPath = os.Getenv("ORAS_PATH")
 		if filepath.IsAbs(ORASPath) {
@@ -68,7 +88,10 @@ func init() {
 			fmt.Printf("Testing based on temp binary locates in %q\n", ORASPath)
 		}
 
+		// Login
 		cmd := exec.Command(ORASPath, "login", Host, "-u", Username, "-p", Password)
+		gomega.Expect(cmd.Run()).ShouldNot(gomega.HaveOccurred())
+		cmd = exec.Command(ORASPath, "login", FallbackHost, "-u", Username, "-p", Password)
 		gomega.Expect(cmd.Run()).ShouldNot(gomega.HaveOccurred())
 	})
 }

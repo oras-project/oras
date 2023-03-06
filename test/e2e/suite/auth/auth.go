@@ -3,7 +3,9 @@ Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
 http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -28,7 +30,10 @@ var _ = Describe("Common registry user", Ordered, func() {
 
 		It("should run commands without logging in", func() {
 			RunWithoutLogin("attach", Host+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
-			RunWithoutLogin("copy", Host+"/repo:from", Host+"/repo:to")
+			ORAS("copy", Host+"/repo:from", Host+"/repo:to", "--from-registry-config", AuthConfigPath, "--to-registry-config", AuthConfigPath).
+				ExpectFailure().
+				MatchErrKeyWords("Error:", "credential required").
+				WithDescription("fail without logging in").Exec()
 			RunWithoutLogin("discover", Host+"/repo:tag")
 			RunWithoutLogin("push", "-a", "key=value", Host+"/repo:tag")
 			RunWithoutLogin("pull", Host+"/repo:tag")
@@ -37,7 +42,7 @@ var _ = Describe("Common registry user", Ordered, func() {
 			RunWithoutLogin("blob", "push", Host+"/repo", WriteTempFile("blob", "test"))
 			RunWithoutLogin("tag", Host+"/repo:tag", "tag1")
 			RunWithoutLogin("repo", "ls", Host)
-			RunWithoutLogin("repo", "tags", Reference(Host, "repo", ""))
+			RunWithoutLogin("repo", "tags", RegistryRef(Host, "repo", ""))
 			RunWithoutLogin("manifest", "fetch-config", Host+"/repo:tag")
 		})
 	})

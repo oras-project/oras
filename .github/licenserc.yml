@@ -30,6 +30,7 @@ header:
 
   paths-ignore:
     - '**/*.md'
+    - 'CODEOWNERS'
     - 'LICENSE'
     - 'KEYS'
     - 'go.mod'

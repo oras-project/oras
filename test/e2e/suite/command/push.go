@@ -3,7 +3,9 @@ Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
 http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -43,15 +45,34 @@ var _ = Describe("Remote registry users:", func() {
 		It("should push files without customized media types", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "with-mediatype")
 			tempDir := GinkgoT().TempDir()
-			if err := CopyTestData(tempDir); err != nil {
+			if err := CopyTestFiles(tempDir); err != nil {
 				panic(err)
 			}
 
-			ORAS("push", Reference(Host, repo, tag), files[1], "-v").
-				MatchStatus(statusKeys, true, 1).
+			ORAS("push", RegistryRef(Host, repo, tag), files[1], "-v").
+				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
-			Binary("jq", ".blobs[]", "--compact-output").
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out
+			Binary("jq", ".layers[]", "--compact-output").
+				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, "application/vnd.oci.image.layer.v1.tar")).
+				WithInput(fetched).Exec()
+		})
+
+		It("should push files and tag", func() {
+			repo := fmt.Sprintf("%s/%s", repoPrefix, "multi-tag")
+			tempDir := PrepareTempFiles()
+			extraTag := "2e2"
+
+			ORAS("push", fmt.Sprintf("%s,%s", RegistryRef(Host, repo, tag), extraTag), files[1], "-v").
+				MatchStatus(statusKeys, true, len(statusKeys)).
+				WithWorkDir(tempDir).Exec()
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out
+			Binary("jq", ".layers[]", "--compact-output").
+				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, ocispec.MediaTypeImageLayer)).
+				WithInput(fetched).Exec()
+
+			fetched = ORAS("manifest", "fetch", RegistryRef(Host, repo, extraTag)).Exec().Out
+			Binary("jq", ".layers[]", "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, ocispec.MediaTypeImageLayer)).
 				WithInput(fetched).Exec()
 		})
@@ -60,15 +81,14 @@ var _ = Describe("Remote registry users:", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "layer-mediatype")
 			layerType := "layer.type"
 			tempDir := GinkgoT().TempDir()
-			if err := CopyTestData(tempDir); err != nil {
+			if err := CopyTestFiles(tempDir); err != nil {
 				panic(err)
 			}
-
-			ORAS("push", Reference(Host, repo, tag), files[1]+":"+layerType, "-v").
-				MatchStatus(statusKeys, true, 1).
+			ORAS("push", RegistryRef(Host, repo, tag), files[1]+":"+layerType, "-v").
+				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
-			Binary("jq", ".blobs[]", "--compact-output").
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out
+			Binary("jq", ".layers[]", "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, layerType)).
 				WithInput(fetched).Exec()
 		})
@@ -77,32 +97,32 @@ var _ = Describe("Remote registry users:", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "export-manifest")
 			layerType := "layer.type"
 			tempDir := GinkgoT().TempDir()
-			if err := CopyTestData(tempDir); err != nil {
+			if err := CopyTestFiles(tempDir); err != nil {
 				panic(err)
 			}
 
 			exportPath := "packed.json"
-			ORAS("push", Reference(Host, repo, tag), files[1]+":"+layerType, "-v", "--export-manifest", exportPath).
-				MatchStatus(statusKeys, true, 1).
+			ORAS("push", RegistryRef(Host, repo, tag), files[1]+":"+layerType, "-v", "--export-manifest", exportPath).
+				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out.Contents()
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out.Contents()
 			MatchFile(filepath.Join(tempDir, exportPath), string(fetched), DefaultTimeout)
 		})
 
 		It("should push files with customized config file", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "config")
 			tempDir := GinkgoT().TempDir()
-			if err := CopyTestData(tempDir); err != nil {
+			if err := CopyTestFiles(tempDir); err != nil {
 				panic(err)
 			}
 
-			ORAS("push", Reference(Host, repo, tag), "--config", files[0], files[1], "-v").
+			ORAS("push", RegistryRef(Host, repo, tag), "--config", files[0], files[1], "-v").
 				MatchStatus([]match.StateKey{
 					{Digest: "46b68ac1696c", Name: oras.MediaTypeUnknownConfig},
 					{Digest: "fcde2b2edba5", Name: files[1]},
 				}, true, 2).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out
 			Binary("jq", ".config", "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(configDescriptorTemplate, oras.MediaTypeUnknownConfig)).
 				WithInput(fetched).Exec()
@@ -112,17 +132,17 @@ var _ = Describe("Remote registry users:", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "config-mediatype")
 			configType := "config.type"
 			tempDir := GinkgoT().TempDir()
-			if err := CopyTestData(tempDir); err != nil {
+			if err := CopyTestFiles(tempDir); err != nil {
 				panic(err)
 			}
 
-			ORAS("push", Reference(Host, repo, tag), "--config", fmt.Sprintf("%s:%s", files[0], configType), files[1], "-v").
+			ORAS("push", RegistryRef(Host, repo, tag), "--config", fmt.Sprintf("%s:%s", files[0], configType), files[1], "-v").
 				MatchStatus([]match.StateKey{
 					{Digest: "46b68ac1696c", Name: configType},
 					{Digest: "fcde2b2edba5", Name: files[1]},
 				}, true, 2).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out
 			Binary("jq", ".config", "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(configDescriptorTemplate, configType)).
 				WithInput(fetched).Exec()
@@ -133,16 +153,16 @@ var _ = Describe("Remote registry users:", func() {
 			key := "image-anno-key"
 			value := "image-anno-value"
 			tempDir := GinkgoT().TempDir()
-			if err := CopyTestData(tempDir); err != nil {
+			if err := CopyTestFiles(tempDir); err != nil {
 				panic(err)
 			}
 
-			ORAS("push", Reference(Host, repo, tag), files[1], "-v", "--annotation", fmt.Sprintf("%s=%s", key, value)).
-				MatchStatus(statusKeys, true, 1).
+			ORAS("push", RegistryRef(Host, repo, tag), files[1], "-v", "--annotation", fmt.Sprintf("%s=%s", key, value)).
+				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out
 
-			Binary("jq", `.annotations|del(.["org.opencontainers.artifact.created"])`, "--compact-output").
+			Binary("jq", `.annotations|del(.["org.opencontainers.image.created"])`, "--compact-output").
 				MatchTrimmedContent(fmt.Sprintf(`{"%s":"%s"}`, key, value)).
 				WithInput(fetched).Exec()
 		})
@@ -150,14 +170,14 @@ var _ = Describe("Remote registry users:", func() {
 		It("should push files with customized file annotation", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "file-annotation")
 			tempDir := GinkgoT().TempDir()
-			if err := CopyTestData(tempDir); err != nil {
+			if err := CopyTestFiles(tempDir); err != nil {
 				panic(err)
 			}
 
-			ORAS("push", Reference(Host, repo, tag), files[1], "-v", "--annotation-file", "foobar/annotation.json", "--config", files[0]).
+			ORAS("push", RegistryRef(Host, repo, tag), files[1], "-v", "--annotation-file", "foobar/annotation.json", "--config", files[0]).
 				MatchStatus(statusKeys, true, 1).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", Reference(Host, repo, tag)).Exec().Out
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out
 
 			// see testdata\files\foobar\annotation.json
 			Binary("jq", `.annotations|del(.["org.opencontainers.image.created"])`, "--compact-output").

@@ -25,11 +25,11 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/retry"
 	"oras.land/oras/internal/credential"
 	"oras.land/oras/internal/crypto"
 	onet "oras.land/oras/internal/net"
@@ -48,9 +48,10 @@ type Remote struct {
 	Password          string
 
 	resolveFlag           []string
-	resolveDialContext    func(dialer *net.Dialer) func(context.Context, string, string) (net.Conn, error)
 	applyDistributionSpec bool
 	distributionSpec      distributionSpec
+	headerFlags           []string
+	headers               http.Header
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
@@ -77,11 +78,13 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	var (
 		shortUser     string
 		shortPassword string
+		shortHeader   string
 		flagPrefix    string
 		notePrefix    string
 	)
 	if prefix == "" {
 		shortUser, shortPassword = "u", "p"
+		shortHeader = "H"
 	}
 	flagPrefix, notePrefix = applyPrefix(prefix, description)
 
@@ -93,19 +96,20 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	fs.BoolVarP(&opts.Insecure, flagPrefix+"insecure", "", false, "allow connections to "+notePrefix+"SSL registry without certs")
 	fs.BoolVarP(&opts.PlainHTTP, flagPrefix+"plain-http", "", false, "allow insecure connections to "+notePrefix+"registry without SSL check")
 	fs.StringVarP(&opts.CACertFilePath, flagPrefix+"ca-file", "", "", "server certificate authority file for the remote "+notePrefix+"registry")
-
-	if fs.Lookup("registry-config") == nil {
-		fs.StringArrayVarP(&opts.Configs, "registry-config", "", nil, "`path` of the authentication file")
-	}
-
-	if fs.Lookup("resolve") == nil {
-		fs.StringArrayVarP(&opts.resolveFlag, "resolve", "", nil, "customized DNS formatted in `host:port:address`")
-	}
+	fs.StringArrayVarP(&opts.resolveFlag, flagPrefix+"resolve", "", nil, "customized DNS for "+notePrefix+"registry, formatted in `host:port:address[:address_port]`")
+	fs.StringArrayVarP(&opts.Configs, flagPrefix+"registry-config", "", nil, "`path` of the authentication file for "+notePrefix+"registry")
+	fs.StringArrayVarP(&opts.headerFlags, flagPrefix+"header", shortHeader, nil, "add custom headers to "+notePrefix+"requests")
 }
 
 // Parse tries to read password with optional cmd prompt.
 func (opts *Remote) Parse() error {
-	return opts.readPassword()
+	if err := opts.parseCustomHeaders(); err != nil {
+		return err
+	}
+	if err := opts.readPassword(); err != nil {
+		return err
+	}
+	return opts.distributionSpec.Parse()
 }
 
 // readPassword tries to read password with optional cmd prompt.
@@ -125,9 +129,9 @@ func (opts *Remote) readPassword() (err error) {
 }
 
 // parseResolve parses resolve flag.
-func (opts *Remote) parseResolve() error {
+func (opts *Remote) parseResolve(baseDial onet.DialFunc) (onet.DialFunc, error) {
 	if len(opts.resolveFlag) == 0 {
-		return nil
+		return baseDial, nil
 	}
 
 	formatError := func(param, message string) error {
@@ -135,28 +139,32 @@ func (opts *Remote) parseResolve() error {
 	}
 	var dialer onet.Dialer
 	for _, r := range opts.resolveFlag {
-		parts := strings.SplitN(r, ":", 3)
-		if len(parts) < 3 {
-			return formatError(r, "expecting host:port:address")
+		parts := strings.SplitN(r, ":", 4)
+		length := len(parts)
+		if length < 3 {
+			return nil, formatError(r, "expecting host:port:address[:address_port]")
 		}
-
-		port, err := strconv.Atoi(parts[1])
+		host := parts[0]
+		hostPort, err := strconv.Atoi(parts[1])
 		if err != nil {
-			return formatError(r, "expecting uint64 port")
+			return nil, formatError(r, "expecting uint64 host port")
 		}
-
 		// ipv6 zone is not parsed
-		to := net.ParseIP(parts[2])
-		if to == nil {
-			return formatError(r, "invalid IP address")
+		address := net.ParseIP(parts[2])
+		if address == nil {
+			return nil, formatError(r, "invalid IP address")
 		}
-		dialer.Add(parts[0], port, to)
+		addressPort := hostPort
+		if length > 3 {
+			addressPort, err = strconv.Atoi(parts[3])
+			if err != nil {
+				return nil, formatError(r, "expecting uint64 address port")
+			}
+		}
+		dialer.Add(host, hostPort, address, addressPort)
 	}
-	opts.resolveDialContext = func(base *net.Dialer) func(context.Context, string, string) (net.Conn, error) {
-		dialer.Dialer = base
-		return dialer.DialContext
-	}
-	return nil
+	dialer.BaseDialContext = baseDial
+	return dialer.DialContext, nil
 }
 
 // tlsConfig assembles the tls config.
@@ -180,33 +188,21 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 	if err != nil {
 		return nil, err
 	}
-	if err := opts.parseResolve(); err != nil {
+	baseTransport := http.DefaultTransport.(*http.Transport).Clone()
+	baseTransport.TLSClientConfig = config
+	dialContext, err := opts.parseResolve(baseTransport.DialContext)
+	if err != nil {
 		return nil, err
 	}
-	resolveDialContext := opts.resolveDialContext
-	if resolveDialContext == nil {
-		resolveDialContext = func(dialer *net.Dialer) func(context.Context, string, string) (net.Conn, error) {
-			return dialer.DialContext
-		}
-	}
+	baseTransport.DialContext = dialContext
 	client = &auth.Client{
 		Client: &http.Client{
-			// default value are derived from http.DefaultTransport
-			Transport: &http.Transport{
-				Proxy: http.ProxyFromEnvironment,
-				DialContext: resolveDialContext(&net.Dialer{
-					Timeout:   30 * time.Second,
-					KeepAlive: 30 * time.Second,
-				}),
-				ForceAttemptHTTP2:     true,
-				MaxIdleConns:          100,
-				IdleConnTimeout:       90 * time.Second,
-				TLSHandshakeTimeout:   10 * time.Second,
-				ExpectContinueTimeout: 1 * time.Second,
-				TLSClientConfig:       config,
-			},
+			// http.RoundTripper with a retry using the DefaultPolicy
+			// see: https://pkg.go.dev/oras.land/oras-go/v2/registry/remote/retry#Policy
+			Transport: retry.NewTransport(baseTransport),
 		},
-		Cache: auth.NewCache(),
+		Cache:  auth.NewCache(),
+		Header: opts.headers,
 	}
 	client.SetUserAgent("oras/" + version.GetVersion())
 	if debug {
@@ -238,6 +234,23 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 		}
 	}
 	return
+}
+
+func (opts *Remote) parseCustomHeaders() error {
+	if len(opts.headerFlags) != 0 {
+		headers := map[string][]string{}
+		for _, h := range opts.headerFlags {
+			name, value, found := strings.Cut(h, ":")
+			if !found || strings.TrimSpace(name) == "" {
+				// In conformance to the RFC 2616 specification
+				// Reference: https://www.rfc-editor.org/rfc/rfc2616#section-4.2
+				return fmt.Errorf("invalid header: %q", h)
+			}
+			headers[name] = append(headers[name], value)
+		}
+		opts.headers = headers
+	}
+	return nil
 }
 
 // Credential returns a credential based on the remote options.

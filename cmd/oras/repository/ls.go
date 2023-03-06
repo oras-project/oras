@@ -17,16 +17,19 @@ package repository
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/repository"
 )
 
 type repositoryOptions struct {
 	option.Remote
 	option.Common
-	hostname string
-	last     string
+	hostname  string
+	namespace string
+	last      string
 }
 
 func listCmd() *cobra.Command {
@@ -41,6 +44,9 @@ func listCmd() *cobra.Command {
 Example - List the repositories under the registry:
   oras repo ls localhost:5000
 
+Example - List the repositories under a namespace in the registry:
+  oras repo ls localhost:5000/example-namespace
+
 Example - List the repositories under the registry that include values lexically after last:
   oras repo ls --last "last_repo" localhost:5000
 `,
@@ -50,7 +56,10 @@ Example - List the repositories under the registry that include values lexically
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.hostname = args[0]
+			var err error
+			if opts.hostname, opts.namespace, err = repository.ParseRepoPath(args[0]); err != nil {
+				return fmt.Errorf("could not parse repository path: %w", err)
+			}
 			return listRepository(opts)
 		},
 	}
@@ -68,7 +77,9 @@ func listRepository(opts repositoryOptions) error {
 	}
 	return reg.Repositories(ctx, opts.last, func(repos []string) error {
 		for _, repo := range repos {
-			fmt.Println(repo)
+			if subRepo, found := strings.CutPrefix(repo, opts.namespace); found {
+				fmt.Println(subRepo)
+			}
 		}
 		return nil
 	})
