@@ -16,6 +16,8 @@ limitations under the License.
 package foobar
 
 import (
+	"fmt"
+
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/test/e2e/internal/utils/match"
@@ -41,6 +43,13 @@ var (
 		{Digest: "fcde2b2edba5", Name: FileLayerNames[2]},
 	}
 
+	ConfigDesc         = "{\"mediaType\":\"application/vnd.unknown.config.v1+json\",\"digest\":\"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a\",\"size\":2}"
+	AttachFileName     = "foobar/to-be-attached"
+	AttachFileMedia    = "test/oras.e2e"
+	AttachFileStateKey = match.StateKey{
+		Digest: "d3b29f7d12d9", Name: AttachFileName,
+	}
+
 	ImageLayerNames = []string{
 		"foo1",
 		"foo2",
@@ -51,14 +60,10 @@ var (
 		{Digest: "2c26b46b68ff", Name: ImageLayerNames[1]},
 		{Digest: "fcde2b2edba5", Name: ImageLayerNames[2]},
 	}
-	ImageConfigName = "config.json"
-
-	ConfigDesc         = "{\"mediaType\":\"application/vnd.unknown.config.v1+json\",\"digest\":\"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a\",\"size\":2}"
-	AttachFileName     = "foobar/to-be-attached"
-	AttachFileMedia    = "test/oras.e2e"
-	AttachFileStateKey = match.StateKey{
-		Digest: "d3b29f7d12d9", Name: AttachFileName,
-	}
+	ImageConfigName    = "config.json"
+	Foo1BlobDigest     = "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
+	Foo1BlobContent    = "foo"
+	Foo1BlobDescriptor = fmt.Sprintf(`{"mediaType":"application/octet-stream","digest":"%s","size":3}`, Foo1BlobDigest)
 )
 
 func ImageConfigStateKey(configName string) match.StateKey {

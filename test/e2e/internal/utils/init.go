@@ -33,14 +33,14 @@ var ORASPath string
 // Host points to the registry service where E2E specs will be run against.
 var Host string
 
-// Host points to the registry service where fallback E2E specs will be run against.
+// FallbackHost points to the registry service where fallback E2E specs will be run against.
 var FallbackHost string
 
 func init() {
-	Host = os.Getenv("ORAS_REGISTRY_HOST")
+	Host = os.Getenv(RegHostKey)
 	if Host == "" {
 		Host = "localhost:5000"
-		fmt.Fprintln(os.Stderr, "cannot find host name in ORAS_REGISTRY_HOST, using", Host, "instead")
+		fmt.Fprintf(os.Stderr, "cannot find host name in %s, using %s instead\n", RegHostKey, Host)
 	}
 	ref := registry.Reference{
 		Registry: Host,
@@ -49,10 +49,10 @@ func init() {
 		panic(err)
 	}
 
-	FallbackHost = os.Getenv("ORAS_REGISTRY_FALLBACK_HOST")
+	FallbackHost = os.Getenv(FallbackRegHostKey)
 	if FallbackHost == "" {
 		FallbackHost = "localhost:6000"
-		fmt.Fprintln(os.Stderr, "cannot find fallback host name in ORAS_REGISTRY_FALLBACK_HOST, using", FallbackHost, "instead")
+		fmt.Fprintf(os.Stderr, "cannot find fallback host name in %s, using %s instead\n", FallbackRegHostKey, FallbackHost)
 	}
 	ref.Registry = FallbackHost
 	if err := ref.ValidateRegistry(); err != nil {
@@ -64,7 +64,12 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	testFileRoot = filepath.Join(pwd, "..", "..", "testdata", "files")
+
+	// to simplify debugging via `go test`, TestDataRoot cannot be passed via ginkgo argument or env var
+	TestDataRoot = filepath.Join(pwd, "..", "..", "testdata")
+	if fi, err := os.Stat(TestDataRoot); err != nil || !fi.IsDir() {
+		panic(fmt.Errorf("filed to find test data in %q", TestDataRoot))
+	}
 	BeforeSuite(func() {
 		ORASPath = os.Getenv("ORAS_PATH")
 		if filepath.IsAbs(ORASPath) {

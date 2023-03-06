@@ -22,4 +22,11 @@ const (
 	ArtifactRepo = "command/artifacts"
 	Repo         = "command/images"
 	Namespace    = "command"
+	// env
+	RegHostKey         = "ORAS_REGISTRY_HOST"
+	FallbackRegHostKey = "ORAS_REGISTRY_FALLBACK_HOST"
+)
+
+var (
+	TestDataRoot string
 )

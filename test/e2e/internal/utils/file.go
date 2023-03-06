@@ -28,18 +28,21 @@ import (
 	"github.com/onsi/gomega/gbytes"
 )
 
-var testFileRoot string
-
-// CopyTestDataToTemp copies test data into a temp folder and return it.
-func CopyTestDataToTemp() string {
+// PrepareTempFiles copies test data into a temp folder and return it.
+func PrepareTempFiles() string {
 	tempDir := GinkgoT().TempDir()
-	Expect(CopyTestData(tempDir)).ShouldNot(HaveOccurred())
+	Expect(CopyTestFiles(tempDir)).ShouldNot(HaveOccurred())
 	return tempDir
 }
 
-// CopyTestData copies test data into dstRoot.
-func CopyTestData(dstRoot string) error {
-	return filepath.WalkDir(testFileRoot, func(path string, d fs.DirEntry, err error) error {
+// CopyTestFiles copies test data into dstRoot.
+func CopyTestFiles(dstRoot string) error {
+	return CopyFiles(filepath.Join(TestDataRoot, "files"), dstRoot)
+}
+
+// CopyFiles copies files from folder src to folder dest.
+func CopyFiles(src string, dest string) error {
+	return filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -48,11 +51,11 @@ func CopyTestData(dstRoot string) error {
 			return nil
 		}
 
-		relPath, err := filepath.Rel(testFileRoot, path)
+		relPath, err := filepath.Rel(src, path)
 		if err != nil {
 			return err
 		}
-		dstPath := filepath.Join(dstRoot, relPath)
+		dstPath := filepath.Join(dest, relPath)
 		// make sure all parents are created
 		if err := os.MkdirAll(filepath.Dir(dstPath), 0700); err != nil {
 			return err

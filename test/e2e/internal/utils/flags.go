@@ -15,20 +15,8 @@ limitations under the License.
 
 package utils
 
-import (
-	"strings"
-
-	"github.com/onsi/gomega"
-	"oras.land/oras-go/v2/registry"
+const (
+	LayoutFlag = "--oci-layout"
+	FromLayout = "--from-oci-layout"
+	ToLayout   = "--to-oci-layout"
 )
-
-// Reference generates the reference string from given parameters.
-func Reference(reg string, repo string, tagOrDigest string) string {
-	ref := registry.Reference{
-		Registry:   reg,
-		Repository: repo,
-		Reference:  strings.TrimSpace(tagOrDigest),
-	}
-	gomega.Expect(ref.Validate()).ShouldNot(gomega.HaveOccurred())
-	return ref.String()
-}
