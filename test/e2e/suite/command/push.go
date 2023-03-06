@@ -60,7 +60,7 @@ var _ = Describe("Remote registry users:", func() {
 
 		It("should push files and tag", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "multi-tag")
-			tempDir := CopyTestDataToTemp()
+			tempDir := PrepareTempFiles()
 			extraTag := "2e2"
 
 			ORAS("push", fmt.Sprintf("%s,%s", Reference(Host, repo, tag), extraTag), files[1], "-v").
