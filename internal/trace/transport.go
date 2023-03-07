@@ -18,6 +18,8 @@ package trace
 import (
 	"net/http"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/sirupsen/logrus"
 )
@@ -26,21 +28,30 @@ import (
 // request and add hooks to report HTTP tracing events.
 type Transport struct {
 	http.RoundTripper
+	mu    sync.Mutex
+	count uint64
 }
 
 func NewTransport(base http.RoundTripper) *Transport {
-	return &Transport{base}
+	return &Transport{base, sync.Mutex{}, 0}
 }
 
 // RoundTrip calls base roundtrip while keeping track of the current request.
 func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
+	atomic.AddUint64(&t.count, 1)
+
 	ctx := req.Context()
 	e := Logger(ctx)
 
-	e.Debugf("> Request URL: %q", req.URL)
-	e.Debugf("> Request method: %q", req.Method)
-	e.Debugf("> Request headers:")
-	logHeader(req.Header, e)
+	func() {
+		t.mu.Lock()
+		defer t.mu.Unlock()
+		e.Debugf("Request #%d", t.count)
+		e.Debugf("> Request URL: %q", req.URL)
+		e.Debugf("> Request method: %q", req.Method)
+		e.Debugf("> Request headers:")
+		logHeader(req.Header, e)
+	}()
 
 	resp, err = t.RoundTripper.RoundTrip(req)
 	if err != nil {
@@ -48,9 +59,14 @@ func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error
 	} else if resp == nil {
 		e.Errorf("No response obtained for request %s %q", req.Method, req.URL)
 	} else {
-		e.Debugf("< Response Status: %q", resp.Status)
-		e.Debugf("< Response headers:")
-		logHeader(resp.Header, e)
+		func() {
+			t.mu.Lock()
+			defer t.mu.Unlock()
+			e.Debugf("Response #%d", t.count)
+			e.Debugf("< Response Status: %q", resp.Status)
+			e.Debugf("< Response headers:")
+			logHeader(resp.Header, e)
+		}()
 	}
 	return resp, err
 }
