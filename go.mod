@@ -12,7 +12,7 @@ require (
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
 	gopkg.in/yaml.v3 v3.0.1
-	oras.land/oras-go/v2 v2.0.0-20230224055117-216f081e33ba
+	oras.land/oras-go/v2 v2.0.0
 )
 
 require (
