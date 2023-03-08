@@ -94,7 +94,7 @@ func showTags(opts showTagsOptions) error {
 			}
 			filter = desc.Digest.String()
 		}
-		logger.Infof("[Preview] Querying tags associated to %s, it may take a while.\n", filter)
+		logger.Infof("[Experimental] querying tags associated to %s, it may take a while...\n", filter)
 	}
 	return finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
