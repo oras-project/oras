@@ -89,7 +89,7 @@ var _ = Describe("ORAS beginners:", func() {
 		When("running `blob fetch`", func() {
 			It("should call sub-commands with aliases", func() {
 				ORAS("blob", "get", "--help").
-					MatchKeyWords("[Preview] Fetch", PreviewDesc, ExampleDesc).
+					MatchKeyWords(ExampleDesc).
 					Exec()
 			})
 			It("should have flag for prettifying JSON output", func() {

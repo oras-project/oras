@@ -23,6 +23,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras/test/e2e/internal/testdata/feature"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	. "oras.land/oras/test/e2e/internal/utils"
 	"oras.land/oras/test/e2e/internal/utils/match"
@@ -37,7 +38,7 @@ var _ = Describe("ORAS beginners:", func() {
 		RunAndShowPreviewInHelp([]string{"attach"})
 
 		It("should show preview and help doc", func() {
-			ORAS("attach", "--help").MatchKeyWords("[Preview] Attach", PreviewDesc, ExampleDesc).Exec()
+			ORAS("attach", "--help").MatchKeyWords(feature.Preview.Mark+" Attach", feature.Preview.Description, ExampleDesc).Exec()
 		})
 
 		It("should fail when no subject reference provided", func() {

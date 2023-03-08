@@ -65,7 +65,7 @@ var _ = Describe("ORAS beginners:", func() {
 		When("running `manifest fetch`", func() {
 			It("should call sub-commands with aliases", func() {
 				ORAS("manifest", "get", "--help").
-					MatchKeyWords("[Preview] Fetch", PreviewDesc, ExampleDesc).
+					MatchKeyWords(ExampleDesc).
 					Exec()
 			})
 			It("should fail fetching manifest without reference provided", func() {
@@ -124,7 +124,7 @@ var _ = Describe("ORAS beginners:", func() {
 		When("running `manifest fetch-config`", func() {
 			It("should show preview hint in the doc", func() {
 				ORAS("manifest", "fetch-config", "--help").
-					MatchKeyWords(PreviewDesc, ExampleDesc, "[Preview]", "\nUsage:").Exec()
+					MatchKeyWords(ExampleDesc, "\nUsage:").Exec()
 			})
 
 			It("should fail if no manifest reference provided", func() {
