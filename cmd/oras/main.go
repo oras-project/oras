@@ -21,7 +21,7 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/blob"
 	"oras.land/oras/cmd/oras/manifest"
-	"oras.land/oras/cmd/oras/repository"
+	repository "oras.land/oras/cmd/oras/repo"
 	"oras.land/oras/cmd/oras/tag"
 )
 
