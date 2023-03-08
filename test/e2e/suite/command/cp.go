@@ -35,8 +35,6 @@ func cpTestRepo(text string) string {
 
 var _ = Describe("ORAS beginners:", func() {
 	When("running cp command", func() {
-		RunAndShowPreviewInHelp([]string{"copy"})
-
 		It("should show preview and help doc", func() {
 			ORAS("cp", "--help").MatchKeyWords("[Preview] Copy", PreviewDesc, ExampleDesc).Exec()
 		})

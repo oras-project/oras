@@ -47,10 +47,7 @@ func validateTag(repoRef string, tag string, gone bool) {
 var _ = Describe("ORAS beginners:", func() {
 	repoFmt := fmt.Sprintf("command/manifest/%%s/%d/%%s", GinkgoRandomSeed())
 	When("running manifest command", func() {
-		RunAndShowPreviewInHelp([]string{"manifest"})
-
 		When("running `manifest push`", func() {
-			RunAndShowPreviewInHelp([]string{"manifest", "push"}, PreviewDesc, ExampleDesc)
 			It("should have flag for prettifying JSON output", func() {
 				ORAS("manifest", "push", "--help").
 					MatchKeyWords("--pretty", "prettify JSON").
@@ -66,7 +63,6 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		When("running `manifest fetch`", func() {
-			RunAndShowPreviewInHelp([]string{"manifest", "fetch"}, PreviewDesc, ExampleDesc)
 			It("should call sub-commands with aliases", func() {
 				ORAS("manifest", "get", "--help").
 					MatchKeyWords("[Preview] Fetch", PreviewDesc, ExampleDesc).
