@@ -40,10 +40,8 @@ func deleteCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "delete [flags] <name>@<digest>",
 		Aliases: []string{"remove", "rm"},
-		Short:   "[Preview] Delete a blob from a remote registry",
-		Long: `[Preview] Delete a blob from a remote registry
-
-** This command is in preview and under development. **
+		Short:   "Delete a blob from a remote registry",
+		Long: `Delete a blob from a remote registry
 
 Example - Delete a blob:
   oras blob delete localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5

@@ -36,10 +36,8 @@ func showTagsCmd() *cobra.Command {
 	var opts showTagsOptions
 	cmd := &cobra.Command{
 		Use:   "tags [flags] <name>",
-		Short: "[Preview] Show tags of the target repository",
-		Long: `[Preview] Show tags of the target repository
-
-** This command is in preview and under development. **
+		Short: "Show tags of the target repository",
+		Long: `Show tags of the target repository
 
 Example - Show tags of the target repository:
   oras repo tags localhost:5000/hello

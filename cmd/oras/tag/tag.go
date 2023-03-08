@@ -36,10 +36,8 @@ func TagCmd() *cobra.Command {
 	var opts tagOptions
 	cmd := &cobra.Command{
 		Use:   "tag [flags] <name>{:<tag>|@<digest>} <new_tag> [...]",
-		Short: "[Preview] Tag a manifest in the remote registry",
-		Long: `[Preview] Tag a manifest in the remote registry
-
-** This command is in preview and under development. **
+		Short: "Tag a manifest in the remote registry",
+		Long: `Tag a manifest in the remote registry
 
 Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.2':
   oras tag localhost:5000/hello:v1.0.1 v1.0.2

@@ -20,7 +20,7 @@ import (
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "repo [command]",
-		Short:   "[Preview] Repository operations",
+		Short:   "Repository operations",
 		Aliases: []string{"repository"},
 	}
 

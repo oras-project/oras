@@ -22,7 +22,7 @@ import (
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "blob [command]",
-		Short: "[Preview] Blob operations",
+		Short: "Blob operations",
 	}
 
 	cmd.AddCommand(

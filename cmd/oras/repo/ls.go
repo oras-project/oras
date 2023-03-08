@@ -36,10 +36,8 @@ func listCmd() *cobra.Command {
 	var opts repositoryOptions
 	cmd := &cobra.Command{
 		Use:   "ls [flags] <registry>",
-		Short: "[Preview] List the repositories under the registry",
-		Long: `[Preview] List the repositories under the registry
-
-** This command is in preview and under development. **
+		Short: "List the repositories under the registry",
+		Long: `List the repositories under the registry
 
 Example - List the repositories under the registry:
   oras repo ls localhost:5000

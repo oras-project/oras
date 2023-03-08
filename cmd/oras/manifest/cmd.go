@@ -22,7 +22,7 @@ import (
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "manifest [command]",
-		Short: "[Preview] Manifest operations",
+		Short: "Manifest operations",
 	}
 
 	cmd.AddCommand(
