@@ -22,9 +22,11 @@ import (
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras/test/e2e/internal/testdata/feature"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
@@ -48,6 +50,11 @@ var _ = Describe("ORAS beginners:", func() {
 	repoFmt := fmt.Sprintf("command/manifest/%%s/%d/%%s", GinkgoRandomSeed())
 	When("running manifest command", func() {
 		When("running `manifest push`", func() {
+			It("should show help doc with feature flags", func() {
+				out := ORAS("manifest", "push", "--help").MatchKeyWords(ExampleDesc).Exec()
+				gomega.Expect(out).Should(gbytes.Say("--distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+			})
+
 			It("should have flag for prettifying JSON output", func() {
 				ORAS("manifest", "push", "--help").
 					MatchKeyWords("--pretty", "prettify JSON").
@@ -76,6 +83,11 @@ var _ = Describe("ORAS beginners:", func() {
 			})
 		})
 		When("running `manifest delete`", func() {
+			It("should show help doc with feature flags", func() {
+				out := ORAS("manifest", "delete", "--help").MatchKeyWords(ExampleDesc).Exec()
+				gomega.Expect(out).Should(gbytes.Say("--distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+			})
+
 			tempTag := "to-delete"
 			It("should cancel deletion without confirmation", func() {
 				dstRepo := fmt.Sprintf(repoFmt, "delete", "no-confirm")
