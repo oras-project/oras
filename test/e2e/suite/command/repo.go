@@ -32,7 +32,7 @@ import (
 var _ = Describe("ORAS beginners:", func() {
 	When("running repo command", func() {
 		When("running `repo ls`", func() {
-			It("should show preview in help", func() {
+			It("should show help description", func() {
 				ORAS("repo", "ls", "--help").MatchKeyWords(ExampleDesc).Exec()
 			})
 
@@ -46,8 +46,9 @@ var _ = Describe("ORAS beginners:", func() {
 			})
 		})
 		When("running `repo tags`", func() {
-			It("should show preview in help", func() {
-				ORAS("repo", "tags", "--help").MatchKeyWords(ExampleDesc).Exec()
+			It("should show help description with feature flags", func() {
+				out := ORAS("repo", "tags", "--help").MatchKeyWords(ExampleDesc).Exec().Out
+				Expect(out).Should(gbytes.Say("--exclude-digest-tags\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 			})
 
 			It("should call sub-commands with aliases", func() {

@@ -19,13 +19,26 @@ import (
 	"bytes"
 	"fmt"
 	"path/filepath"
+	"regexp"
 
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
+	"oras.land/oras/test/e2e/internal/testdata/feature"
 	. "oras.land/oras/test/e2e/internal/utils"
 	"oras.land/oras/test/e2e/internal/utils/match"
 )
+
+var _ = Describe("ORAS beginners:", func() {
+	When("running push command", func() {
+		It("should show help description with feature flags", func() {
+			out := ORAS("push", "--help").MatchKeyWords(ExampleDesc).Exec().Out
+			gomega.Expect(out).Should(gbytes.Say("--image-spec string\\s+%s", regexp.QuoteMeta(feature.Experimental.Mark)))
+		})
+	})
+})
 
 var _ = Describe("Remote registry users:", func() {
 	layerDescriptorTemplate := `{"mediaType":"%s","digest":"sha256:fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9","size":3,"annotations":{"org.opencontainers.image.title":"foobar/bar"}}`
