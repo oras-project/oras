@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"sync"
 	"sync/atomic"
 )
 
@@ -27,12 +26,11 @@ import (
 // request and add hooks to report HTTP tracing events.
 type Transport struct {
 	http.RoundTripper
-	mu    sync.Mutex
 	count uint64
 }
 
 func NewTransport(base http.RoundTripper) *Transport {
-	return &Transport{base, sync.Mutex{}, 0}
+	return &Transport{base, 0}
 }
 
 // RoundTrip calls base roundtrip while keeping track of the current request.
