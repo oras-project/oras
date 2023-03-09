@@ -35,12 +35,12 @@ func NewTransport(base http.RoundTripper) *Transport {
 
 // RoundTrip calls base roundtrip while keeping track of the current request.
 func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
-	number := atomic.AddUint64(&t.count, 1)
+	number := atomic.AddUint64(&t.count, 1) - 1
 	ctx := req.Context()
 	e := Logger(ctx)
 
 	// log the request
-	e.Debugf("\nRequest #%d\n> Request URL: %q\n> Request method: %q\n> Request headers:\n%s",
+	e.Debugf("Request #%d\n> Request URL: %q\n> Request method: %q\n> Request headers:\n%s",
 		number, req.URL, req.Method, logHeader(req.Header))
 
 	// log the response
@@ -50,7 +50,7 @@ func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error
 	} else if resp == nil {
 		e.Errorf("No response obtained for request %s %q", req.Method, req.URL)
 	} else {
-		e.Debugf("\nResponse #%d\n< Response Status: %q\n< Response headers:\n%s",
+		e.Debugf("Response #%d\n< Response Status: %q\n< Response headers:\n%s",
 			number, resp.Status, logHeader(resp.Header))
 	}
 	return resp, err
@@ -60,14 +60,14 @@ func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error
 // scrubbed.
 func logHeader(header http.Header) string {
 	if len(header) > 0 {
-		headers := ""
+		headers := []string{}
 		for k, v := range header {
 			if strings.EqualFold(k, "Authorization") {
 				v = []string{"*****"}
 			}
-			headers += fmt.Sprintf("   %q: %q\n", k, strings.Join(v, ", "))
+			headers = append(headers, fmt.Sprintf("   %q: %q", k, strings.Join(v, ", ")))
 		}
-		return headers
+		return strings.Join(headers, "\n")
 	}
 	return "   Empty header"
 }
