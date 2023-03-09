@@ -29,8 +29,11 @@ type Transport struct {
 	count uint64
 }
 
+// NewTransport creates and returns a new instance of Transport
 func NewTransport(base http.RoundTripper) *Transport {
-	return &Transport{base, 0}
+	return &Transport{
+		RoundTripper: base,
+	}
 }
 
 // RoundTrip calls base roundtrip while keeping track of the current request.
