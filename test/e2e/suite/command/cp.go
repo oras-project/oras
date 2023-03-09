@@ -18,12 +18,16 @@ package command
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
+	"oras.land/oras/test/e2e/internal/testdata/feature"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	ma "oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
@@ -35,10 +39,11 @@ func cpTestRepo(text string) string {
 
 var _ = Describe("ORAS beginners:", func() {
 	When("running cp command", func() {
-		RunAndShowPreviewInHelp([]string{"copy"})
-
-		It("should show preview and help doc", func() {
-			ORAS("cp", "--help").MatchKeyWords("[Preview] Copy", PreviewDesc, ExampleDesc).Exec()
+		It("should show help doc with feature flags", func() {
+			out := ORAS("cp", "--help").MatchKeyWords("Copy", ExampleDesc).Exec()
+			gomega.Expect(out).Should(gbytes.Say("--from-distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+			gomega.Expect(out).Should(gbytes.Say("-r, --recursive\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+			gomega.Expect(out).Should(gbytes.Say("--to-distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 		})
 
 		It("should fail when no reference provided", func() {

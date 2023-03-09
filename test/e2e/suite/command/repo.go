@@ -23,6 +23,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"oras.land/oras/test/e2e/internal/testdata/feature"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
@@ -30,14 +31,13 @@ import (
 
 var _ = Describe("ORAS beginners:", func() {
 	When("running repo command", func() {
-		RunAndShowPreviewInHelp([]string{"repo"})
 		When("running `repo ls`", func() {
-			It("should show preview in help", func() {
-				ORAS("repo", "ls", "--help").MatchKeyWords("[Preview] List", PreviewDesc, ExampleDesc).Exec()
+			It("should show help description", func() {
+				ORAS("repo", "ls", "--help").MatchKeyWords(ExampleDesc).Exec()
 			})
 
 			It("should call sub-commands with aliases", func() {
-				ORAS("repository", "list", "--help").MatchKeyWords("[Preview] List", PreviewDesc, ExampleDesc).Exec()
+				ORAS("repository", "list", "--help").MatchKeyWords(ExampleDesc).Exec()
 			})
 
 			It("should fail listing repositories if wrong registry provided", func() {
@@ -46,12 +46,13 @@ var _ = Describe("ORAS beginners:", func() {
 			})
 		})
 		When("running `repo tags`", func() {
-			It("should show preview in help", func() {
-				ORAS("repo", "tags", "--help").MatchKeyWords("[Preview] Show tags", PreviewDesc, ExampleDesc).Exec()
+			It("should show help description with feature flags", func() {
+				out := ORAS("repo", "tags", "--help").MatchKeyWords(ExampleDesc).Exec().Out
+				Expect(out).Should(gbytes.Say("--exclude-digest-tags\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 			})
 
 			It("should call sub-commands with aliases", func() {
-				ORAS("repository", "show-tags", "--help").MatchKeyWords("[Preview] Show tags", PreviewDesc, ExampleDesc).Exec()
+				ORAS("repository", "show-tags", "--help").MatchKeyWords(ExampleDesc).Exec()
 			})
 
 			It("should fail listing repositories if wrong registry provided", func() {
@@ -123,12 +124,12 @@ var _ = Describe("Common registry users:", func() {
 			// test
 			viaTag := ORAS("repo", "tags", "-v", RegistryRef(Host, repo, foobar.Tag)).
 				MatchKeyWords(tags...).
-				MatchErrKeyWords("Preview", foobar.Digest).Exec().Out
+				MatchErrKeyWords(feature.Experimental.Mark, foobar.Digest).Exec().Out
 			Expect(viaTag).ShouldNot(gbytes.Say(multi_arch.Tag))
 
 			viaDigest := ORAS("repo", "tags", "-v", RegistryRef(Host, repo, foobar.Digest)).
 				MatchKeyWords(tags...).
-				MatchErrKeyWords("Preview", foobar.Digest).Exec().Out
+				MatchErrKeyWords(feature.Experimental.Mark, foobar.Digest).Exec().Out
 			Expect(viaDigest).ShouldNot(gbytes.Say(multi_arch.Tag))
 		})
 	})

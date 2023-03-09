@@ -28,7 +28,6 @@ import (
 
 var _ = Describe("ORAS beginners:", func() {
 	When("running repo command", func() {
-		RunAndShowPreviewInHelp([]string{"tag"})
 		It("should fail when no manifest reference provided", func() {
 			ORAS("tag").ExpectFailure().MatchErrKeyWords("Error:").Exec()
 		})

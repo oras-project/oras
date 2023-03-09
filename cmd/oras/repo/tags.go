@@ -36,10 +36,8 @@ func showTagsCmd() *cobra.Command {
 	var opts showTagsOptions
 	cmd := &cobra.Command{
 		Use:   "tags [flags] <name>",
-		Short: "[Preview] Show tags of the target repository",
-		Long: `[Preview] Show tags of the target repository
-
-** This command is in preview and under development. **
+		Short: "Show tags of the target repository",
+		Long: `Show tags of the target repository
 
 Example - Show tags of the target repository:
   oras repo tags localhost:5000/hello
@@ -73,7 +71,7 @@ Example - Show tags associated with a digest:
 		},
 	}
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the tag specified by `last`")
-	cmd.Flags().BoolVar(&opts.excludeDigestTag, "exclude-digest-tags", false, "exclude all digest-like tags such as 'sha256-aaaa...'")
+	cmd.Flags().BoolVar(&opts.excludeDigestTag, "exclude-digest-tags", false, "[Preview] exclude all digest-like tags such as 'sha256-aaaa...'")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
@@ -96,7 +94,7 @@ func showTags(opts showTagsOptions) error {
 			}
 			filter = desc.Digest.String()
 		}
-		logger.Infof("[Preview] Querying tags associated to %s, it may take a while.\n", filter)
+		logger.Infof("[Experimental] querying tags associated to %s, it may take a while...\n", filter)
 	}
 	return finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {

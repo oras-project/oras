@@ -45,10 +45,8 @@ func copyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "cp [flags] <from>{:<tag>|@<digest>} <to>[:<tag>[,<tag>][...]]",
 		Aliases: []string{"copy"},
-		Short:   "[Preview] Copy artifacts from one target to another",
-		Long: `[Preview] Copy artifacts from one target to another
-
-** This command is in preview and under development. **
+		Short:   "Copy artifacts from one target to another",
+		Long: `Copy artifacts from one target to another
 
 Example - Copy an artifact between registries:
   oras cp localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:v1
@@ -90,7 +88,7 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 			return runCopy(opts)
 		},
 	}
-	cmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "recursively copy the artifact and its referrer artifacts")
+	cmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "[Preview] recursively copy the artifact and its referrer artifacts")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())

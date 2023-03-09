@@ -36,10 +36,7 @@ const (
 var _ = Describe("ORAS beginners:", func() {
 	repoFmt := fmt.Sprintf("command/blob/%%s/%d/%%s", GinkgoRandomSeed())
 	When("running blob command", func() {
-		RunAndShowPreviewInHelp([]string{"blob"})
-
 		When("running `blob push`", func() {
-			RunAndShowPreviewInHelp([]string{"blob", "push"}, PreviewDesc, ExampleDesc)
 			It("should fail to read blob content and password from stdin at the same time", func() {
 				repo := fmt.Sprintf(repoFmt, "push", "password-stdin")
 				ORAS("blob", "push", RegistryRef(Host, repo, ""), "--password-stdin", "-").
@@ -90,11 +87,9 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		When("running `blob fetch`", func() {
-			RunAndShowPreviewInHelp([]string{"blob", "fetch"}, PreviewDesc, ExampleDesc)
-
 			It("should call sub-commands with aliases", func() {
 				ORAS("blob", "get", "--help").
-					MatchKeyWords("[Preview] Fetch", PreviewDesc, ExampleDesc).
+					MatchKeyWords(ExampleDesc).
 					Exec()
 			})
 			It("should have flag for prettifying JSON output", func() {
@@ -130,8 +125,6 @@ var _ = Describe("ORAS beginners:", func() {
 	})
 
 	When("running `blob delete`", func() {
-		RunAndShowPreviewInHelp([]string{"blob", "delete"}, PreviewDesc, ExampleDesc)
-
 		It("should fail if no blob reference is provided", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "no-ref")
 			ORAS("cp", RegistryRef(Host, ImageRepo, foobar.Digest), RegistryRef(Host, dstRepo, foobar.Digest)).Exec()

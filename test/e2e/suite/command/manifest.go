@@ -22,9 +22,11 @@ import (
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras/test/e2e/internal/testdata/feature"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
@@ -47,10 +49,12 @@ func validateTag(repoRef string, tag string, gone bool) {
 var _ = Describe("ORAS beginners:", func() {
 	repoFmt := fmt.Sprintf("command/manifest/%%s/%d/%%s", GinkgoRandomSeed())
 	When("running manifest command", func() {
-		RunAndShowPreviewInHelp([]string{"manifest"})
-
 		When("running `manifest push`", func() {
-			RunAndShowPreviewInHelp([]string{"manifest", "push"}, PreviewDesc, ExampleDesc)
+			It("should show help doc with feature flags", func() {
+				out := ORAS("manifest", "push", "--help").MatchKeyWords(ExampleDesc).Exec()
+				gomega.Expect(out).Should(gbytes.Say("--distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+			})
+
 			It("should have flag for prettifying JSON output", func() {
 				ORAS("manifest", "push", "--help").
 					MatchKeyWords("--pretty", "prettify JSON").
@@ -66,10 +70,9 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		When("running `manifest fetch`", func() {
-			RunAndShowPreviewInHelp([]string{"manifest", "fetch"}, PreviewDesc, ExampleDesc)
 			It("should call sub-commands with aliases", func() {
 				ORAS("manifest", "get", "--help").
-					MatchKeyWords("[Preview] Fetch", PreviewDesc, ExampleDesc).
+					MatchKeyWords(ExampleDesc).
 					Exec()
 			})
 			It("should fail fetching manifest without reference provided", func() {
@@ -80,6 +83,11 @@ var _ = Describe("ORAS beginners:", func() {
 			})
 		})
 		When("running `manifest delete`", func() {
+			It("should show help doc with feature flags", func() {
+				out := ORAS("manifest", "delete", "--help").MatchKeyWords(ExampleDesc).Exec()
+				gomega.Expect(out).Should(gbytes.Say("--distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+			})
+
 			tempTag := "to-delete"
 			It("should cancel deletion without confirmation", func() {
 				dstRepo := fmt.Sprintf(repoFmt, "delete", "no-confirm")
@@ -128,7 +136,7 @@ var _ = Describe("ORAS beginners:", func() {
 		When("running `manifest fetch-config`", func() {
 			It("should show preview hint in the doc", func() {
 				ORAS("manifest", "fetch-config", "--help").
-					MatchKeyWords(PreviewDesc, ExampleDesc, "[Preview]", "\nUsage:").Exec()
+					MatchKeyWords(ExampleDesc, "\nUsage:").Exec()
 			})
 
 			It("should fail if no manifest reference provided", func() {

@@ -19,15 +19,27 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"oras.land/oras-go/v2"
+	"oras.land/oras/test/e2e/internal/testdata/feature"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
+
+var _ = Describe("ORAS beginners:", func() {
+	When("running pull command", func() {
+		It("should show help description with feature flags", func() {
+			out := ORAS("pull", "--help").MatchKeyWords(ExampleDesc).Exec().Out
+			gomega.Expect(out).Should(gbytes.Say("--include-subject\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+		})
+	})
+})
 
 var _ = Describe("Remote registry users:", func() {
 	When("pulling images from remote registry", func() {

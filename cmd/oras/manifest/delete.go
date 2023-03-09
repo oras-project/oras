@@ -41,10 +41,8 @@ func deleteCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "delete [flags] <name>{:<tag>|@<digest>}",
 		Aliases: []string{"remove", "rm"},
-		Short:   "[Preview] Delete a manifest from remote registry",
-		Long: `[Preview] Delete a manifest from remote registry
-
-** This command is in preview and under development. **
+		Short:   "Delete a manifest from remote registry",
+		Long: `Delete a manifest from remote registry
 
 Example - Delete a manifest tagged with 'v1' from repository 'localhost:5000/hello':
   oras manifest delete localhost:5000/hello:v1

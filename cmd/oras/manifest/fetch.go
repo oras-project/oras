@@ -44,10 +44,8 @@ func fetchCmd() *cobra.Command {
 	var opts fetchOptions
 	cmd := &cobra.Command{
 		Use:   "fetch [flags] <name>{:<tag>|@<digest>}",
-		Short: "[Preview] Fetch manifest of the target artifact",
-		Long: `[Preview] Fetch manifest of the target artifact
-
-** This command is in preview and under development. **
+		Short: "Fetch manifest of the target artifact",
+		Long: `Fetch manifest of the target artifact
 
 Example - Fetch raw manifest from a registry:
   oras manifest fetch localhost:5000/hello:v1
