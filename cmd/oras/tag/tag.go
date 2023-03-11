@@ -22,6 +22,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/trace"
 )
 
 type tagOptions struct {
@@ -71,7 +72,7 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI layout folder 'layout-
 }
 
 func tagManifest(opts tagOptions) error {
-	ctx, _ := opts.SetLoggerLevel()
+	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
 	target, err := opts.NewTarget(opts.Common)
 	if err != nil {
 		return err

@@ -22,15 +22,16 @@ import (
 	"os"
 	"strings"
 
-	"gopkg.in/yaml.v3"
-	"oras.land/oras-go/v2"
-	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/graph"
-
 	"github.com/need-being/go-tree"
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
+
+	"oras.land/oras-go/v2"
+	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/graph"
+	"oras.land/oras/internal/trace"
 )
 
 type discoverOptions struct {
@@ -91,7 +92,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI layout folder
 }
 
 func runDiscover(opts discoverOptions) error {
-	ctx, _ := opts.SetLoggerLevel()
+	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
 	repo, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err

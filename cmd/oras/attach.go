@@ -28,6 +28,7 @@ import (
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
+	"oras.land/oras/internal/trace"
 )
 
 type attachOptions struct {
@@ -98,7 +99,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI layout folder 'layou
 }
 
 func runAttach(opts attachOptions) error {
-	ctx, _ := opts.SetLoggerLevel()
+	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err

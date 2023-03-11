@@ -30,6 +30,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
+	"oras.land/oras/internal/trace"
 )
 
 type pullOptions struct {
@@ -183,7 +184,7 @@ func runPull(opts pullOptions) error {
 		return ret, nil
 	}
 
-	ctx, _ := opts.SetLoggerLevel()
+	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
 	target, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err
