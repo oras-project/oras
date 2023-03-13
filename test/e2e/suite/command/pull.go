@@ -91,7 +91,7 @@ var _ = Describe("Remote registry users:", func() {
 
 		It("should pull specific platform", func() {
 			ORAS("pull", RegistryRef(Host, ImageRepo, "multi"), "--platform", "linux/amd64", "-v", "-o", GinkgoT().TempDir()).
-				MatchStatus(multi_arch.ImageStateKeys, true, len(multi_arch.ImageStateKeys)).Exec()
+				MatchStatus(multi_arch.LinuxAMD64StateKeys, true, len(multi_arch.LinuxAMD64StateKeys)).Exec()
 		})
 	})
 })
