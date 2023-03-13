@@ -28,7 +28,6 @@ const loggerKey contextKey = iota
 
 // NewLogger returns a logger.
 func NewLogger(debug bool, verbose bool) (context.Context, logrus.FieldLogger) {
-
 	var logLevel logrus.Level
 	if debug {
 		logLevel = logrus.DebugLevel
