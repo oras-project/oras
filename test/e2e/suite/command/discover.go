@@ -243,7 +243,6 @@ var _ = Describe("OCI image layout users:", func() {
 			ORAS("discover", subjectRef, "-o", format, "-v", Flags.Layout).
 				MatchKeyWords(append(discoverKeyWords(true, referrers...), LayoutRef(rootDir, foobar.Digest))...).
 				Exec()
-
 		})
 	})
 
