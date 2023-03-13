@@ -25,6 +25,9 @@ import (
 )
 
 var _ = Describe("Common registry users:", func() {
+	prepareHeaderTestRepo := func(text string) string {
+		return fmt.Sprintf("command/headertest/%d/%s", GinkgoRandomSeed(), text)
+	}
 	var (
 		FoobarHeaderInput = "Foo:bar"
 		FoobarHeader      = "\"Foo\": \"bar\"\n"
@@ -33,7 +36,7 @@ var _ = Describe("Common registry users:", func() {
 	)
 	When("custom header is provided", func() {
 		It("attach", func() {
-			testRepo := attachTestRepo("simple")
+			testRepo := prepareHeaderTestRepo("attach")
 			tempDir := PrepareTempFiles()
 			subjectRef := RegistryRef(Host, testRepo, foobar.Tag)
 			prepare(RegistryRef(Host, ImageRepo, foobar.Tag), subjectRef)
@@ -60,8 +63,7 @@ var _ = Describe("Common registry users:", func() {
 				WithWorkDir(tempDir).MatchRequestHeaders(FoobarHeader, AbHeader).Exec()
 		})
 		It("push", func() {
-			repoPrefix := fmt.Sprintf("command/push/%d", GinkgoRandomSeed())
-			repo := fmt.Sprintf("%s/%s", repoPrefix, "with-mediatype")
+			repo := prepareHeaderTestRepo("push")
 			tempDir := GinkgoT().TempDir()
 			if err := CopyTestFiles(tempDir); err != nil {
 				panic(err)
