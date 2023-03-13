@@ -121,9 +121,16 @@ func (opts *ExecOption) MatchErrKeyWords(keywords ...string) *ExecOption {
 	return opts
 }
 
-// MatchRequestHeaders adds keywords matching to each sent request.
+// MatchRequestHeaders adds header matching to each sent request.
 func (opts *ExecOption) MatchRequestHeaders(headers ...string) *ExecOption {
 	opts.stderr = append(opts.stderr, match.NewRequestHeaderMatcher(headers))
+	return opts
+}
+
+// MatchCpRequestHeaders adds header matching to requests sent
+// to the urls matched with the prefix.
+func (opts *ExecOption) MatchCpRequestHeaders(urlPrefix string, headers ...string) *ExecOption {
+	opts.stderr = append(opts.stderr, match.NewRequestHeaderMatcherWithPrefix(urlPrefix, headers))
 	return opts
 }
 
