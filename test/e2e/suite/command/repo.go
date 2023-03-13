@@ -134,3 +134,54 @@ var _ = Describe("Common registry users:", func() {
 		})
 	})
 })
+
+var _ = Describe("OCI image layout users:", func() {
+	When("running `repo tags`", func() {
+		prepare := func(srcRef, repoRoot string, tags ...string) {
+			ORAS("cp", srcRef, LayoutRef(repoRoot, strings.Join(tags, ",")), Flags.ToLayout).
+				WithDescription("prepare in OCI layout").
+				Exec()
+		}
+		foobarImageRef := RegistryRef(Host, ImageRepo, foobar.Tag)
+		multiImageRef := RegistryRef(Host, ImageRepo, multi_arch.Tag)
+		tagOutput := foobar.Tag + "\n"
+		It("should list tags", func() {
+			root := GinkgoT().TempDir()
+			prepare(foobarImageRef, root, foobar.Tag)
+			ORAS("repository", "show-tags", root, Flags.Layout).MatchKeyWords(tagOutput).Exec()
+		})
+		It("should list tags via short command", func() {
+			root := GinkgoT().TempDir()
+			prepare(foobarImageRef, root, foobar.Tag)
+			ORAS("repository", "tags", root, Flags.Layout).MatchKeyWords(tagOutput).Exec()
+		})
+		It("should list partial tags via `last` flag", func() {
+			// prepare
+			root := GinkgoT().TempDir()
+			extra := "zzz"
+			prepare(foobarImageRef, root, foobar.Tag, extra)
+			// test
+			session := ORAS("repository", "tags", root, "--last", foobar.Tag, Flags.Layout).MatchKeyWords(extra).Exec()
+			Expect(session.Out).ShouldNot(gbytes.Say(regexp.QuoteMeta(tagOutput)))
+		})
+
+		It("should list out tags associated to the provided reference", func() {
+			// prepare
+			root := GinkgoT().TempDir()
+			tags := []string{foobar.Tag, "bax", "bay", "baz"}
+			prepare(foobarImageRef, root, tags...)
+			prepare(multiImageRef, root, multi_arch.Tag)
+			// test
+			viaTag := ORAS("repo", "tags", "-v", LayoutRef(root, foobar.Tag), Flags.Layout).
+				WithDescription("via tag").
+				MatchKeyWords(tags...).
+				MatchErrKeyWords(feature.Experimental.Mark, foobar.Digest).Exec().Out
+			Expect(viaTag).ShouldNot(gbytes.Say(multi_arch.Tag))
+			viaDigest := ORAS("repo", "tags", "-v", LayoutRef(root, foobar.Digest), Flags.Layout).
+				WithDescription("via digest").
+				MatchKeyWords(tags...).
+				MatchErrKeyWords(feature.Experimental.Mark, foobar.Digest).Exec().Out
+			Expect(viaDigest).ShouldNot(gbytes.Say(multi_arch.Tag))
+		})
+	})
+})
