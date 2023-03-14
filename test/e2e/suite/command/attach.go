@@ -182,3 +182,71 @@ var _ = Describe("Fallback registry users:", func() {
 		})
 	})
 })
+
+var _ = Describe("OCI image layout users:", func() {
+	When("running attach command", func() {
+		prepare := func(root string) {
+			ORAS("cp", RegistryRef(Host, ImageRepo, foobar.Tag), Flags.ToLayout, LayoutRef(root, foobar.Tag)).Exec()
+		}
+		It("should attach a file to a subject", func() {
+			root := PrepareTempFiles()
+			subjectRef := LayoutRef(root, foobar.Tag)
+			prepare(root)
+			ORAS("attach", "--artifact-type", "test.attach", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+				WithWorkDir(root).
+				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
+		})
+
+		It("should attach a file to a subject and export the built manifest", func() {
+			// prepare
+			root := PrepareTempFiles()
+			exportName := "manifest.json"
+			subjectRef := LayoutRef(root, foobar.Tag)
+			prepare(root)
+			// test
+			ORAS("attach", "--artifact-type", "test.attach", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName).
+				WithWorkDir(root).
+				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
+			// validate
+			var index ocispec.Index
+			bytes := ORAS("discover", Flags.Layout, subjectRef, "-o", "json").Exec().Out.Contents()
+			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
+			Expect(len(index.Manifests)).To(Equal(1))
+			Expect(index.Manifests[0].MediaType).To(Equal(ocispec.MediaTypeImageManifest))
+			fetched := ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, index.Manifests[0].Digest.String())).Exec().Out.Contents()
+			MatchFile(filepath.Join(root, exportName), string(fetched), DefaultTimeout)
+		})
+		It("should attach a file via a OCI Image", func() {
+			root := PrepareTempFiles()
+			subjectRef := LayoutRef(root, foobar.Tag)
+			prepare(root)
+			// test
+			ORAS("attach", "--artifact-type", "test.attach", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--image-spec", "v1.1-image").
+				WithWorkDir(root).
+				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
+
+			// validate
+			var index ocispec.Index
+			bytes := ORAS("discover", subjectRef, Flags.Layout, "-o", "json").Exec().Out.Contents()
+			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
+			Expect(len(index.Manifests)).To(Equal(1))
+			Expect(index.Manifests[0].MediaType).To(Equal(ocispec.MediaTypeImageManifest))
+		})
+		It("should attach a file via a OCI Artifact", func() {
+			root := PrepareTempFiles()
+			subjectRef := LayoutRef(root, foobar.Tag)
+			prepare(root)
+			// test
+			ORAS("attach", "--artifact-type", "test.attach", subjectRef, Flags.Layout, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--image-spec", "v1.1-artifact").
+				WithWorkDir(root).
+				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
+
+			// validate
+			var index ocispec.Index
+			bytes := ORAS("discover", subjectRef, Flags.Layout, "-o", "json").Exec().Out.Contents()
+			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
+			Expect(len(index.Manifests)).To(Equal(1))
+			Expect(index.Manifests[0].MediaType).To(Equal(ocispec.MediaTypeArtifactManifest))
+		})
+	})
+})
