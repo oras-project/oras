@@ -582,14 +582,14 @@ var _ = Describe("OCI image layout users:", func() {
 
 		It("should push a manifest from stdin, only when media type flag is set", func() {
 			manifest := fmt.Sprintf(`{"schemaVersion":2,"config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"%s","size":%d}}`, scratchDigest, scratchSize)
-			digest := "sha256:8fc649142bbc0a2aa5015d5ef5a922df9d2d7f2dcf3095dbebfaf7c271eca444"
+			manifestDigest := "sha256:8fc649142bbc0a2aa5015d5ef5a922df9d2d7f2dcf3095dbebfaf7c271eca444"
 
 			root := GinkgoT().TempDir()
 			prepare(root)
 			tag := "mediatype-flag"
 			ref := LayoutRef(root, tag)
 			ORAS("manifest", "push", Flags.Layout, ref, "-", "--media-type", "application/vnd.oci.image.manifest.v1+json").
-				MatchKeyWords("Pushed", ref, "Digest:", digest).
+				MatchKeyWords("Pushed", ref, "Digest:", manifestDigest).
 				WithInput(strings.NewReader(manifest)).Exec()
 			validate(root, manifestDigest, tag)
 
