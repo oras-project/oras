@@ -537,7 +537,7 @@ var _ = Describe("OCI image layout users:", func() {
 					return
 				}
 			}
-			Fail(fmt.Sprintf("Failed to find manifest with digest %q and tag %q in %v", digest, tag, index.Manifests))
+			Fail(fmt.Sprintf("Failed to find manifest with digest %q and tag %q in index.json: \n%s", digest, tag, string(content)))
 		}
 		descriptor := "{\"mediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"digest\":\"sha256:f20c43161d73848408ef247f0ec7111b19fe58ffebc0cbcaa0d2c8bda4967268\",\"size\":246}"
 
