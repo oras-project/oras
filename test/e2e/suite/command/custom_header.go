@@ -25,7 +25,7 @@ import (
 )
 
 var _ = Describe("Common registry users:", func() {
-	prepareHeaderTestRepo := func(text string) string {
+	headerTestRepo := func(text string) string {
 		return fmt.Sprintf("command/headertest/%d/%s", GinkgoRandomSeed(), text)
 	}
 	var (
@@ -36,7 +36,7 @@ var _ = Describe("Common registry users:", func() {
 	)
 	When("custom header is provided", func() {
 		It("attach", func() {
-			testRepo := prepareHeaderTestRepo("attach")
+			testRepo := headerTestRepo("attach")
 			tempDir := PrepareTempFiles()
 			subjectRef := RegistryRef(Host, testRepo, foobar.Tag)
 			prepare(RegistryRef(Host, ImageRepo, foobar.Tag), subjectRef)
@@ -63,7 +63,7 @@ var _ = Describe("Common registry users:", func() {
 				WithWorkDir(tempDir).MatchRequestHeaders(FoobarHeader, AbHeader).Exec()
 		})
 		It("push", func() {
-			repo := prepareHeaderTestRepo("push")
+			repo := headerTestRepo("push")
 			tempDir := GinkgoT().TempDir()
 			if err := CopyTestFiles(tempDir); err != nil {
 				panic(err)
@@ -86,6 +86,20 @@ var _ = Describe("Common registry users:", func() {
 			ORAS("login", Host, "-u", Username, "-p", Password, "--registry-config", AuthConfigPath,
 				"-H", FoobarHeaderInput, "-H", AbHeaderInput).
 				MatchRequestHeaders(FoobarHeader, AbHeader).Exec()
+		})
+		It("copy and add custom headers in source registry requests", func() {
+			headerTestRepo := headerTestRepo("from-header")
+			src := RegistryRef(Host, ImageRepo, foobar.Tag)
+			dst := RegistryRef(Host, headerTestRepo, "fromHeader")
+			ORAS("cp", src, dst, "-d", "--from-header", FoobarHeaderInput, "--from-header", AbHeaderInput).
+				MatchCpRequestHeaders(Host, ImageRepo, FoobarHeader, AbHeader).Exec()
+		})
+		It("copy and add custom headers in destination registry requests", func() {
+			headerTestRepo := headerTestRepo("to-header")
+			src := RegistryRef(Host, ImageRepo, foobar.Tag)
+			dst := RegistryRef(Host, headerTestRepo, "toHeader")
+			ORAS("cp", src, dst, "-d", "--to-header", FoobarHeaderInput, "--to-header", AbHeaderInput).
+				MatchCpRequestHeaders(Host, headerTestRepo, FoobarHeader, AbHeader).Exec()
 		})
 	})
 })

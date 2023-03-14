@@ -23,14 +23,19 @@ import (
 	"github.com/onsi/gomega/gbytes"
 )
 
-// requestHeaderMatcher provides matching for request content.
-// It looks into the debug output of an operation and the match will pass
-// if all the headers exist in every sent request.
-type requestHeaderMatcher []string
+// requestHeaderMatcher provides matching for request headers.
+// Given a url prefix, it looks at the requests sent to the urls which
+// match the given prefix, and check if these requests all contain
+// the specified headers.
+type requestHeaderMatcher struct {
+	urlPrefix string
+	headers   []string
+}
 
-// NewRequestHeaderMatcher returns a request header matcher.
-func NewRequestHeaderMatcher(kw []string) requestHeaderMatcher {
-	return requestHeaderMatcher(kw)
+// MatchCpRequestHeaders returns a request header matcher
+// with the given url prefix.
+func NewRequestHeaderMatcher(urlPrefix string, headers []string) requestHeaderMatcher {
+	return requestHeaderMatcher{urlPrefix, headers}
 }
 
 // Match matches got with wanted headers.
@@ -38,11 +43,11 @@ func (r requestHeaderMatcher) Match(got *gbytes.Buffer) {
 	var missed []string
 
 	raw := string(got.Contents())
-	reqs := getRequestHeaders(getRequests(raw))
+	reqs := getRequestHeaders(getRequests(r.urlPrefix, raw))
 	for _, req := range reqs {
-		for _, w := range r {
-			if !strings.Contains(req, w) {
-				missed = append(missed, w)
+		for _, h := range r.headers {
+			if !strings.Contains(req, h) {
+				missed = append(missed, h)
 			}
 		}
 	}
@@ -54,17 +59,29 @@ func (r requestHeaderMatcher) Match(got *gbytes.Buffer) {
 }
 
 // getRequests parses raw debug output to a string slice
-// containing each request.
-func getRequests(debugOutput string) []string {
-	reqs := strings.Split(debugOutput, "> Request URL:")
+// containing each request that match the given prefix.
+func getRequests(urlPrefix string, debugOutput string) []string {
+	reqs := strings.Split(debugOutput, "Request #")
 	Expect(len(reqs) > 0).To(BeTrue(), "should output requests in debug logs")
 	reqs = reqs[1:]
 	// trim the response content
 	for i, req := range reqs {
-		req = strings.Split(req, "< Response Status:")[0]
+		req = strings.Split(req, "Response #")[0]
 		reqs[i] = req
 	}
-	return reqs
+	if urlPrefix == "" {
+		return reqs
+	}
+	// filter with the url prefix
+	filteredReqs := []string{}
+	for _, req := range reqs {
+		// extract request url to match the prefix
+		_, rest, ok := strings.Cut(req, urlPrefix)
+		if ok {
+			filteredReqs = append(filteredReqs, rest)
+		}
+	}
+	return filteredReqs
 }
 
 // getRequestHeaders takes a string slice containing requests
