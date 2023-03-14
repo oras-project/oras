@@ -32,15 +32,9 @@ type requestHeaderMatcher struct {
 	headers   []string
 }
 
-// NewRequestHeaderMatcher returns a request header matcher with
-// the url prefix "".
-func NewRequestHeaderMatcher(headers []string) requestHeaderMatcher {
-	return requestHeaderMatcher{"", headers}
-}
-
 // MatchCpRequestHeaders returns a request header matcher
 // with the given url prefix.
-func NewRequestHeaderMatcherWithPrefix(urlPrefix string, headers []string) requestHeaderMatcher {
+func NewRequestHeaderMatcher(urlPrefix string, headers []string) requestHeaderMatcher {
 	return requestHeaderMatcher{urlPrefix, headers}
 }
 
@@ -82,7 +76,7 @@ func getRequests(urlPrefix string, debugOutput string) []string {
 	filteredReqs := []string{}
 	for _, req := range reqs {
 		// extract request url to match the prefix
-		_, rest, ok := strings.Cut(req, fmt.Sprintf("Request URL: \"%s", urlPrefix))
+		_, rest, ok := strings.Cut(req, urlPrefix)
 		if ok {
 			filteredReqs = append(filteredReqs, rest)
 		}

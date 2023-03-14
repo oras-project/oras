@@ -121,16 +121,19 @@ func (opts *ExecOption) MatchErrKeyWords(keywords ...string) *ExecOption {
 	return opts
 }
 
-// MatchRequestHeaders adds header matching to each sent request.
+// MatchRequestHeaders adds a debug log matcher that checks for
+// the presence of provided headers in all outgoing HTTP requests.
 func (opts *ExecOption) MatchRequestHeaders(headers ...string) *ExecOption {
-	opts.stderr = append(opts.stderr, match.NewRequestHeaderMatcher(headers))
+	opts.stderr = append(opts.stderr, match.NewRequestHeaderMatcher("", headers))
 	return opts
 }
 
-// MatchCpRequestHeaders adds header matching to requests sent
-// to the urls matched with the prefix.
-func (opts *ExecOption) MatchCpRequestHeaders(urlPrefix string, headers ...string) *ExecOption {
-	opts.stderr = append(opts.stderr, match.NewRequestHeaderMatcherWithPrefix(urlPrefix, headers))
+// MatchCpRequestHeaders adds a debug log matcher that checks for
+// the presence of specific headers in outgoing copy requests towards
+// the provided host and repository.
+func (opts *ExecOption) MatchCpRequestHeaders(host string, repo string, headers ...string) *ExecOption {
+	urlPrefix := fmt.Sprintf("://%s/v2/%s/", host, repo)
+	opts.stderr = append(opts.stderr, match.NewRequestHeaderMatcher(urlPrefix, headers))
 	return opts
 }
 

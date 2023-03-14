@@ -89,19 +89,17 @@ var _ = Describe("Common registry users:", func() {
 		})
 		It("copy and add custom headers in source registry requests", func() {
 			headerTestRepo := headerTestRepo("from-header")
-			fromUrlPrefix := fmt.Sprintf("://%s/v2/%s/", Host, ImageRepo)
 			src := RegistryRef(Host, ImageRepo, foobar.Tag)
 			dst := RegistryRef(Host, headerTestRepo, "fromHeader")
 			ORAS("cp", src, dst, "-d", "--from-header", FoobarHeaderInput, "--from-header", AbHeaderInput).
-				MatchCpRequestHeaders(fromUrlPrefix, FoobarHeader, AbHeader).Exec()
+				MatchCpRequestHeaders(Host, ImageRepo, FoobarHeader, AbHeader).Exec()
 		})
 		It("copy and add custom headers in destination registry requests", func() {
 			headerTestRepo := headerTestRepo("to-header")
-			toUrlPrefix := fmt.Sprintf("://%s/v2/%s/", Host, headerTestRepo)
 			src := RegistryRef(Host, ImageRepo, foobar.Tag)
 			dst := RegistryRef(Host, headerTestRepo, "toHeader")
 			ORAS("cp", src, dst, "-d", "--to-header", FoobarHeaderInput, "--to-header", AbHeaderInput).
-				MatchCpRequestHeaders(toUrlPrefix, FoobarHeader, AbHeader).Exec()
+				MatchCpRequestHeaders(Host, headerTestRepo, FoobarHeader, AbHeader).Exec()
 		})
 	})
 })
