@@ -309,7 +309,7 @@ var _ = Describe("Common registry users:", func() {
 
 		It("should fetch a config descriptor via a tag", func() {
 			ORAS("manifest", "fetch-config", "--descriptor", RegistryRef(Host, ImageRepo, foobar.Tag)).
-				MatchContent(foobar.ConfigDesc).Exec()
+				MatchContent(foobar.ImageConfigDesc).Exec()
 		})
 
 		It("should fetch a config via digest", func() {
@@ -319,7 +319,7 @@ var _ = Describe("Common registry users:", func() {
 
 		It("should fetch a config descriptor via a digest", func() {
 			ORAS("manifest", "fetch-config", "--descriptor", RegistryRef(Host, ImageRepo, foobar.Digest)).
-				MatchContent(foobar.ConfigDesc).Exec()
+				MatchContent(foobar.ImageConfigDesc).Exec()
 		})
 
 		It("should fetch a config of a specific platform", func() {

@@ -16,17 +16,18 @@ limitations under the License.
 package command
 
 import (
-	"bytes"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"regexp"
 
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras-go/v2"
 	"oras.land/oras/test/e2e/internal/testdata/feature"
+	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	. "oras.land/oras/test/e2e/internal/utils"
 	"oras.land/oras/test/e2e/internal/utils/match"
 )
@@ -41,34 +42,30 @@ var _ = Describe("ORAS beginners:", func() {
 })
 
 var _ = Describe("Remote registry users:", func() {
-	layerDescriptorTemplate := `{"mediaType":"%s","digest":"sha256:fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9","size":3,"annotations":{"org.opencontainers.image.title":"foobar/bar"}}`
 	tag := "e2e"
 	When("pushing to registy without OCI artifact support", func() {
 		repoPrefix := fmt.Sprintf("command/push/%d", GinkgoRandomSeed())
-		files := []string{
-			"foobar/config.json",
-			"foobar/bar",
-		}
 		statusKeys := []match.StateKey{
-			{Digest: "44136fa355b3", Name: "application/vnd.unknown.config.v1+json"},
-			{Digest: "fcde2b2edba5", Name: files[1]},
+			foobar.ImageConfigStateKey("application/vnd.unknown.config.v1+json"),
+			foobar.FileBarStateKey,
 		}
-		configDescriptorTemplate := `{"mediaType":"%s","digest":"sha256:46b68ac1696c3870d537f376868d9402400de28587e345264a77b65da09669be","size":13}`
-
 		It("should push files without customized media types", func() {
-			repo := fmt.Sprintf("%s/%s", repoPrefix, "with-mediatype")
+			repo := fmt.Sprintf("%s/%s", repoPrefix, "no-mediatype")
 			tempDir := GinkgoT().TempDir()
+			ref := RegistryRef(Host, repo, tag)
 			if err := CopyTestFiles(tempDir); err != nil {
 				panic(err)
 			}
 
-			ORAS("push", RegistryRef(Host, repo, tag), files[1], "-v").
+			ORAS("push", ref, foobar.FileBarName, "-v").
 				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out
-			Binary("jq", ".layers[]", "--compact-output").
-				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, "application/vnd.oci.image.layer.v1.tar")).
-				WithInput(fetched).Exec()
+
+			// validate
+			fetched := ORAS("manifest", "fetch", ref).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Layers).Should(ContainElements(foobar.BlobBarDescriptor("application/vnd.oci.image.layer.v1.tar")))
 		})
 
 		It("should push files and tag", func() {
@@ -76,134 +73,271 @@ var _ = Describe("Remote registry users:", func() {
 			tempDir := PrepareTempFiles()
 			extraTag := "2e2"
 
-			ORAS("push", fmt.Sprintf("%s,%s", RegistryRef(Host, repo, tag), extraTag), files[1], "-v").
+			ORAS("push", fmt.Sprintf("%s,%s", RegistryRef(Host, repo, tag), extraTag), foobar.FileBarName, "-v").
 				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out
-			Binary("jq", ".layers[]", "--compact-output").
-				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, ocispec.MediaTypeImageLayer)).
-				WithInput(fetched).Exec()
 
-			fetched = ORAS("manifest", "fetch", RegistryRef(Host, repo, extraTag)).Exec().Out
-			Binary("jq", ".layers[]", "--compact-output").
-				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, ocispec.MediaTypeImageLayer)).
-				WithInput(fetched).Exec()
+			// validate
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Layers).Should(ContainElements(foobar.BlobBarDescriptor("application/vnd.oci.image.layer.v1.tar")))
+
+			fetched = ORAS("manifest", "fetch", RegistryRef(Host, repo, extraTag)).Exec().Out.Contents()
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Layers).Should(ContainElements(foobar.BlobBarDescriptor("application/vnd.oci.image.layer.v1.tar")))
 		})
 
 		It("should push files with customized media types", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "layer-mediatype")
 			layerType := "layer.type"
-			tempDir := GinkgoT().TempDir()
-			if err := CopyTestFiles(tempDir); err != nil {
-				panic(err)
-			}
-			ORAS("push", RegistryRef(Host, repo, tag), files[1]+":"+layerType, "-v").
+			tempDir := PrepareTempFiles()
+			ORAS("push", RegistryRef(Host, repo, tag), foobar.FileBarName+":"+layerType, "-v").
 				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out
-			Binary("jq", ".layers[]", "--compact-output").
-				MatchTrimmedContent(fmt.Sprintf(layerDescriptorTemplate, layerType)).
-				WithInput(fetched).Exec()
+			// validate
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Layers).Should(ContainElements(foobar.BlobBarDescriptor(layerType)))
 		})
 
 		It("should push files with manifest exported", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "export-manifest")
 			layerType := "layer.type"
-			tempDir := GinkgoT().TempDir()
-			if err := CopyTestFiles(tempDir); err != nil {
-				panic(err)
-			}
-
+			tempDir := PrepareTempFiles()
 			exportPath := "packed.json"
-			ORAS("push", RegistryRef(Host, repo, tag), files[1]+":"+layerType, "-v", "--export-manifest", exportPath).
+			ORAS("push", RegistryRef(Host, repo, tag), foobar.FileBarName+":"+layerType, "-v", "--export-manifest", exportPath).
 				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
+			// validate
 			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out.Contents()
 			MatchFile(filepath.Join(tempDir, exportPath), string(fetched), DefaultTimeout)
 		})
 
 		It("should push files with customized config file", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "config")
-			tempDir := GinkgoT().TempDir()
-			if err := CopyTestFiles(tempDir); err != nil {
-				panic(err)
-			}
+			tempDir := PrepareTempFiles()
 
-			ORAS("push", RegistryRef(Host, repo, tag), "--config", files[0], files[1], "-v").
+			ORAS("push", RegistryRef(Host, repo, tag), "--config", foobar.FileConfigName, foobar.FileBarName, "-v").
 				MatchStatus([]match.StateKey{
-					{Digest: "46b68ac1696c", Name: oras.MediaTypeUnknownConfig},
-					{Digest: "fcde2b2edba5", Name: files[1]},
+					foobar.FileConfigStateKey,
+					foobar.FileBarStateKey,
 				}, true, 2).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out
-			Binary("jq", ".config", "--compact-output").
-				MatchTrimmedContent(fmt.Sprintf(configDescriptorTemplate, oras.MediaTypeUnknownConfig)).
-				WithInput(fetched).Exec()
+			// validate
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Config).Should(Equal(ocispec.Descriptor{
+				MediaType: "application/vnd.unknown.config.v1+json",
+				Size:      int64(foobar.FileConfigSize),
+				Digest:    foobar.FileConfigDigest,
+			}))
 		})
 
 		It("should push files with customized config file and mediatype", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "config-mediatype")
 			configType := "config.type"
-			tempDir := GinkgoT().TempDir()
-			if err := CopyTestFiles(tempDir); err != nil {
-				panic(err)
-			}
+			tempDir := PrepareTempFiles()
 
-			ORAS("push", RegistryRef(Host, repo, tag), "--config", fmt.Sprintf("%s:%s", files[0], configType), files[1], "-v").
+			ORAS("push", RegistryRef(Host, repo, tag), "--config", fmt.Sprintf("%s:%s", foobar.FileConfigName, configType), foobar.FileBarName, "-v").
 				MatchStatus([]match.StateKey{
 					{Digest: "46b68ac1696c", Name: configType},
-					{Digest: "fcde2b2edba5", Name: files[1]},
+					foobar.FileBarStateKey,
 				}, true, 2).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out
-			Binary("jq", ".config", "--compact-output").
-				MatchTrimmedContent(fmt.Sprintf(configDescriptorTemplate, configType)).
-				WithInput(fetched).Exec()
+			// validate
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Config).Should(Equal(ocispec.Descriptor{
+				MediaType: configType,
+				Size:      int64(foobar.FileConfigSize),
+				Digest:    foobar.FileConfigDigest,
+			}))
 		})
 
 		It("should push files with customized manifest annotation", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "manifest-annotation")
 			key := "image-anno-key"
 			value := "image-anno-value"
-			tempDir := GinkgoT().TempDir()
-			if err := CopyTestFiles(tempDir); err != nil {
-				panic(err)
-			}
-
-			ORAS("push", RegistryRef(Host, repo, tag), files[1], "-v", "--annotation", fmt.Sprintf("%s=%s", key, value)).
+			tempDir := PrepareTempFiles()
+			// test
+			ORAS("push", RegistryRef(Host, repo, tag), foobar.FileBarName, "-v", "--annotation", fmt.Sprintf("%s=%s", key, value)).
 				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out
-
-			Binary("jq", `.annotations|del(.["org.opencontainers.image.created"])`, "--compact-output").
-				MatchTrimmedContent(fmt.Sprintf(`{"%s":"%s"}`, key, value)).
-				WithInput(fetched).Exec()
+			// validate
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Annotations[key]).To(Equal(value))
 		})
 
 		It("should push files with customized file annotation", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "file-annotation")
-			tempDir := GinkgoT().TempDir()
-			if err := CopyTestFiles(tempDir); err != nil {
-				panic(err)
-			}
+			tempDir := PrepareTempFiles()
 
-			ORAS("push", RegistryRef(Host, repo, tag), files[1], "-v", "--annotation-file", "foobar/annotation.json", "--config", files[0]).
+			ORAS("push", RegistryRef(Host, repo, tag), foobar.FileBarName, "-v", "--annotation-file", "foobar/annotation.json", "--config", foobar.FileConfigName).
 				MatchStatus(statusKeys, true, 1).
 				WithWorkDir(tempDir).Exec()
-			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out
 
+			// validate
 			// see testdata\files\foobar\annotation.json
-			Binary("jq", `.annotations|del(.["org.opencontainers.image.created"])`, "--compact-output").
-				MatchTrimmedContent(fmt.Sprintf(`{"%s":"%s"}`, "hi", "manifest")).
-				WithInput(bytes.NewReader(fetched.Contents())).Exec()
+			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Annotations["hi"]).To(Equal("manifest"))
+			Expect(manifest.Config.Annotations["hello"]).To(Equal("config"))
+			Expect(len(manifest.Layers)).To(Equal(1))
+			Expect(manifest.Layers[0].Annotations["foo"]).To(Equal("bar"))
+		})
+	})
+})
 
-			Binary("jq", ".config.annotations", "--compact-output").
-				MatchTrimmedContent(fmt.Sprintf(`{"%s":"%s"}`, "hello", "config")).
-				WithInput(bytes.NewReader(fetched.Contents())).Exec()
+var _ = Describe("OCI image layout users:", func() {
+	tag := "e2e"
+	When("pushing to registy without OCI artifact support", func() {
+		statusKeys := []match.StateKey{
+			foobar.ImageConfigStateKey("application/vnd.unknown.config.v1+json"),
+			foobar.FileBarStateKey,
+		}
 
-			Binary("jq", `.layers[0].annotations|del(.["org.opencontainers.image.title"])`, "--compact-output").
-				MatchTrimmedContent(fmt.Sprintf(`{"%s":"%s"}`, "foo", "bar")).
-				WithInput(bytes.NewReader(fetched.Contents())).Exec()
+		It("should push files without customized media types", func() {
+			tempDir := PrepareTempFiles()
+			ref := LayoutRef(tempDir, tag)
+			// test
+			ORAS("push", Flags.Layout, ref, foobar.FileBarName, "-v").
+				MatchStatus(statusKeys, true, len(statusKeys)).
+				WithWorkDir(tempDir).Exec()
+			// validate
+			fetched := ORAS("manifest", "fetch", Flags.Layout, ref).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Layers).Should(ContainElements(foobar.BlobBarDescriptor("application/vnd.oci.image.layer.v1.tar")))
+		})
+
+		It("should push files and tag", func() {
+			tempDir := PrepareTempFiles()
+			ref := LayoutRef(tempDir, tag)
+			extraTag := "2e2"
+
+			ORAS("push", Flags.Layout, fmt.Sprintf("%s,%s", ref, extraTag), foobar.FileBarName, "-v").
+				MatchStatus(statusKeys, true, len(statusKeys)).
+				WithWorkDir(tempDir).Exec()
+
+			// validate
+			fetched := ORAS("manifest", "fetch", Flags.Layout, ref).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Layers).Should(ContainElements(foobar.BlobBarDescriptor("application/vnd.oci.image.layer.v1.tar")))
+
+			fetched = ORAS("manifest", "fetch", Flags.Layout, LayoutRef(tempDir, extraTag)).Exec().Out.Contents()
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Layers).Should(ContainElements(foobar.BlobBarDescriptor("application/vnd.oci.image.layer.v1.tar")))
+		})
+
+		It("should push files with customized media types", func() {
+			layerType := "layer.type"
+			tempDir := PrepareTempFiles()
+			ref := LayoutRef(tempDir, tag)
+			ORAS("push", Flags.Layout, ref, foobar.FileBarName+":"+layerType, "-v").
+				MatchStatus(statusKeys, true, len(statusKeys)).
+				WithWorkDir(tempDir).Exec()
+			// validate
+			fetched := ORAS("manifest", "fetch", Flags.Layout, ref).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Layers).Should(ContainElements(foobar.BlobBarDescriptor(layerType)))
+		})
+
+		It("should push files with manifest exported", func() {
+			tempDir := PrepareTempFiles()
+			layerType := "layer.type"
+			exportPath := "packed.json"
+			ref := LayoutRef(tempDir, tag)
+			ORAS("push", ref, Flags.Layout, foobar.FileBarName+":"+layerType, "-v", "--export-manifest", exportPath).
+				MatchStatus(statusKeys, true, len(statusKeys)).
+				WithWorkDir(tempDir).Exec()
+			// validate
+			fetched := ORAS("manifest", "fetch", ref, Flags.Layout).Exec().Out.Contents()
+			MatchFile(filepath.Join(tempDir, exportPath), string(fetched), DefaultTimeout)
+		})
+
+		It("should push files with customized config file", func() {
+			tempDir := PrepareTempFiles()
+			ref := LayoutRef(tempDir, tag)
+			ORAS("push", Flags.Layout, ref, "--config", foobar.FileConfigName, foobar.FileBarName, "-v").
+				MatchStatus([]match.StateKey{
+					foobar.FileConfigStateKey,
+					foobar.FileBarStateKey,
+				}, true, 2).
+				WithWorkDir(tempDir).Exec()
+			// validate
+			fetched := ORAS("manifest", "fetch", Flags.Layout, ref).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Config).Should(Equal(ocispec.Descriptor{
+				MediaType: "application/vnd.unknown.config.v1+json",
+				Size:      int64(foobar.FileConfigSize),
+				Digest:    foobar.FileConfigDigest,
+			}))
+		})
+
+		It("should push files with customized config file and mediatype", func() {
+			configType := "config.type"
+			tempDir := PrepareTempFiles()
+			ref := LayoutRef(tempDir, tag)
+			ORAS("push", Flags.Layout, ref, "--config", fmt.Sprintf("%s:%s", foobar.FileConfigName, configType), foobar.FileBarName, "-v").
+				MatchStatus([]match.StateKey{
+					{Digest: "46b68ac1696c", Name: configType},
+					foobar.FileBarStateKey,
+				}, true, 2).
+				WithWorkDir(tempDir).Exec()
+			// validate
+			fetched := ORAS("manifest", "fetch", Flags.Layout, ref).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Config).Should(Equal(ocispec.Descriptor{
+				MediaType: configType,
+				Size:      int64(foobar.FileConfigSize),
+				Digest:    foobar.FileConfigDigest,
+			}))
+		})
+
+		It("should push files with customized manifest annotation", func() {
+			tempDir := PrepareTempFiles()
+			ref := LayoutRef(tempDir, tag)
+			key := "image-anno-key"
+			value := "image-anno-value"
+			// test
+			ORAS("push", Flags.Layout, ref, foobar.FileBarName, "-v", "--annotation", fmt.Sprintf("%s=%s", key, value)).
+				MatchStatus(statusKeys, true, len(statusKeys)).
+				WithWorkDir(tempDir).Exec()
+			// validate
+			fetched := ORAS("manifest", "fetch", ref, Flags.Layout).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Annotations[key]).To(Equal(value))
+		})
+
+		It("should push files with customized file annotation", func() {
+			tempDir := PrepareTempFiles()
+			ref := LayoutRef(tempDir, tag)
+			// test
+			ORAS("push", ref, Flags.Layout, foobar.FileBarName, "-v", "--annotation-file", "foobar/annotation.json", "--config", foobar.FileConfigName).
+				MatchStatus(statusKeys, true, 1).
+				WithWorkDir(tempDir).Exec()
+
+			// validate
+			// see testdata\files\foobar\annotation.json
+			fetched := ORAS("manifest", "fetch", ref, Flags.Layout).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Annotations["hi"]).To(Equal("manifest"))
+			Expect(manifest.Config.Annotations["hello"]).To(Equal("config"))
+			Expect(len(manifest.Layers)).To(Equal(1))
+			Expect(manifest.Layers[0].Annotations["foo"]).To(Equal("bar"))
 		})
 	})
 })
