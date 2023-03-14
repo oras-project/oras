@@ -16,7 +16,9 @@ limitations under the License.
 package command
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -522,6 +524,21 @@ var _ = Describe("OCI image layout users:", func() {
 			ORAS("blob", "push", Flags.Layout, LayoutRef(layoutRoot, scratchDigest), "--size", "2", "-").
 				WithInput(strings.NewReader("{}")).Exec()
 		}
+		validate := func(root string, digest string, tag string) {
+			path := filepath.Join(root, "index.json")
+			Expect(path).To(BeAnExistingFile())
+			content, err := os.ReadFile(path)
+			Expect(err).NotTo(HaveOccurred())
+			var index ocispec.Index
+			Expect(json.Unmarshal(content, &index)).ShouldNot(HaveOccurred())
+			for _, m := range index.Manifests {
+				if m.Digest.String() == digest &&
+					tag != "" && tag == m.Annotations["org.opencontainers.image.ref.name"] {
+					return
+				}
+			}
+			Fail(fmt.Sprintf("Failed to find manifest with digest %q and tag %q in %v", digest, tag, index.Manifests))
+		}
 		descriptor := "{\"mediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"digest\":\"sha256:f20c43161d73848408ef247f0ec7111b19fe58ffebc0cbcaa0d2c8bda4967268\",\"size\":246}"
 
 		It("should push a manifest from stdin", func() {
@@ -530,6 +547,7 @@ var _ = Describe("OCI image layout users:", func() {
 			ORAS("manifest", "push", Flags.Layout, root, "-").
 				MatchKeyWords("Pushed", root, "Digest:", manifestDigest).
 				WithInput(strings.NewReader(manifest)).Exec()
+			validate(root, manifestDigest, "")
 		})
 		It("should push a manifest from stdin and tag", func() {
 			tag := "from-stdin"
@@ -538,6 +556,7 @@ var _ = Describe("OCI image layout users:", func() {
 			ORAS("manifest", "push", Flags.Layout, ref, "-").
 				MatchKeyWords("Pushed", ref, "Digest:", manifestDigest).
 				WithInput(strings.NewReader(manifest)).Exec()
+			validate(root, manifestDigest, tag)
 		})
 
 		It("should push a manifest and output descriptor", func() {
@@ -546,6 +565,7 @@ var _ = Describe("OCI image layout users:", func() {
 			ORAS("manifest", "push", Flags.Layout, root, "-", "--descriptor").
 				MatchContent(descriptor).
 				WithInput(strings.NewReader(manifest)).Exec()
+			validate(root, manifestDigest, "")
 		})
 
 		It("should push a manifest from file", func() {
@@ -557,6 +577,7 @@ var _ = Describe("OCI image layout users:", func() {
 			ORAS("manifest", "push", Flags.Layout, ref, manifestPath).
 				MatchKeyWords("Pushed", ref, "Digest:", manifestDigest).
 				WithInput(strings.NewReader(manifest)).Exec()
+			validate(root, manifestDigest, tag)
 		})
 
 		It("should push a manifest from stdin, only when media type flag is set", func() {
@@ -570,6 +591,7 @@ var _ = Describe("OCI image layout users:", func() {
 			ORAS("manifest", "push", Flags.Layout, ref, "-", "--media-type", "application/vnd.oci.image.manifest.v1+json").
 				MatchKeyWords("Pushed", ref, "Digest:", digest).
 				WithInput(strings.NewReader(manifest)).Exec()
+			validate(root, manifestDigest, tag)
 
 			ORAS("manifest", "push", Flags.Layout, ref, "-").
 				WithInput(strings.NewReader(manifest)).
