@@ -64,10 +64,7 @@ var _ = Describe("Common registry users:", func() {
 		})
 		It("push", func() {
 			repo := headerTestRepo("push")
-			tempDir := GinkgoT().TempDir()
-			if err := CopyTestFiles(tempDir); err != nil {
-				panic(err)
-			}
+			tempDir := PrepareTempFiles()
 			ORAS("push", "-d", "-H", FoobarHeaderInput, "-H", AbHeaderInput,
 				RegistryRef(Host, repo, "latest"), "foobar/bar").
 				WithWorkDir(tempDir).MatchRequestHeaders(FoobarHeader, AbHeader).Exec()

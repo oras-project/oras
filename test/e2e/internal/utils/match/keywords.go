@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega/gbytes"
 )
 
@@ -45,6 +46,6 @@ func (want keywordMatcher) Match(got *gbytes.Buffer) {
 
 	if len(missed) != 0 {
 		fmt.Printf("Keywords missed: %v\n", missed)
-		panic("failed to match all keywords")
+		ginkgo.Fail("failed to match all keywords")
 	}
 }
