@@ -89,6 +89,18 @@ var _ = Describe("Remote registry users:", func() {
 			}
 		})
 
+		It("should pull subject", func() {
+			tempDir := GinkgoT().TempDir()
+			stateKeys := append(append(
+				foobar.ImageLayerStateKeys,
+				foobar.ManifestStateKey),
+				foobar.ImageReferrersStateKeys...,
+			)
+			ORAS("pull", RegistryRef(Host, ArtifactRepo, foobar.SignatureImageReferrer.Digest.String()), "-v", "--include-subject").
+				MatchStatus(stateKeys, true, len(stateKeys)).
+				WithWorkDir(tempDir).Exec()
+		})
+
 		It("should pull specific platform", func() {
 			ORAS("pull", RegistryRef(Host, ImageRepo, "multi"), "--platform", "linux/amd64", "-v", "-o", GinkgoT().TempDir()).
 				MatchStatus(multi_arch.LinuxAMD64StateKeys, true, len(multi_arch.LinuxAMD64StateKeys)).Exec()
