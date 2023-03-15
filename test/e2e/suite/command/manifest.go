@@ -488,3 +488,47 @@ var _ = Describe("OCI image layout users:", func() {
 		})
 	})
 })
+
+var _ = Describe("OCI image layout users:", func() {
+	prepare := func(from string, tag string) string {
+		tmpRoot := GinkgoT().TempDir()
+		cpPath := tmpRoot
+		if tag != "" {
+			cpPath = fmt.Sprintf("%s:%s", tmpRoot, tag)
+		}
+		ORAS("cp", from, Flags.ToLayout, cpPath).WithDescription("prepare image from registry to OCI layout").Exec()
+		return tmpRoot
+	}
+	When("running `manifest fetch-config`", func() {
+		It("should fetch a config via a tag", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, foobar.Digest), foobar.Tag)
+			ORAS("manifest", "fetch-config", Flags.Layout, LayoutRef(root, foobar.Tag)).
+				MatchContent("{}").Exec()
+		})
+		It("should fetch a config descriptor via a tag", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, foobar.Digest), foobar.Tag)
+			ORAS("manifest", "fetch-config", "--descriptor", Flags.Layout, LayoutRef(root, foobar.Tag)).
+				MatchContent(foobar.ImageConfigDesc).Exec()
+		})
+		It("should fetch a config via digest", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, foobar.Digest), foobar.Tag)
+			ORAS("manifest", "fetch-config", Flags.Layout, LayoutRef(root, foobar.Digest)).
+				MatchContent("{}").Exec()
+		})
+		It("should fetch a config descriptor via a digest", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, foobar.Digest), foobar.Tag)
+			ORAS("manifest", "fetch-config", "--descriptor", Flags.Layout, LayoutRef(root, foobar.Digest)).
+				MatchContent(foobar.ImageConfigDesc).Exec()
+		})
+		It("should fetch a config of a specific platform", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, multi_arch.Digest), multi_arch.Tag)
+			ORAS("manifest", "fetch-config", "--platform", "linux/amd64", Flags.Layout, LayoutRef(root, multi_arch.Tag)).
+				MatchContent(multi_arch.LinuxAMD64Config).Exec()
+		})
+		It("should fetch a config descriptor of a specific platform", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, multi_arch.Digest), multi_arch.Tag)
+			ORAS("manifest", "fetch-config", "--descriptor", "--platform", "linux/amd64", Flags.Layout, LayoutRef(root, multi_arch.Tag)).
+				MatchContent(multi_arch.LinuxAMD64ConfigDesc).Exec()
+		})
+	})
+})
