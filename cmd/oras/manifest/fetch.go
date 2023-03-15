@@ -100,6 +100,8 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 	}
 	if repo, ok := target.(*remote.Repository); ok {
 		repo.ManifestMediaTypes = opts.mediaTypes
+	} else if opts.mediaTypes != nil {
+		return fmt.Errorf("`--media-type` cannot be used with `--oci-layout` at the same time")
 	}
 
 	src, err := opts.CachedTarget(target)
