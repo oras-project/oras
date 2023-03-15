@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 )
@@ -54,7 +55,7 @@ func (r requestHeaderMatcher) Match(got *gbytes.Buffer) {
 
 	if len(missed) != 0 {
 		fmt.Printf("Headers missed: %v\n", missed)
-		panic("failed to match all headers")
+		ginkgo.Fail("failed to match all headers")
 	}
 }
 

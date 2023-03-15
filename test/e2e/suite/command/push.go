@@ -51,11 +51,8 @@ var _ = Describe("Remote registry users:", func() {
 		}
 		It("should push files without customized media types", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "no-mediatype")
-			tempDir := GinkgoT().TempDir()
+			tempDir := PrepareTempFiles()
 			ref := RegistryRef(Host, repo, tag)
-			if err := CopyTestFiles(tempDir); err != nil {
-				panic(err)
-			}
 
 			ORAS("push", ref, foobar.FileBarName, "-v").
 				MatchStatus(statusKeys, true, len(statusKeys)).
