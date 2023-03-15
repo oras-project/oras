@@ -178,5 +178,5 @@ func (s *statusMatcher) Match(got *gbytes.Buffer) {
 	for _, v := range s.endResult {
 		successCnt += len(v)
 	}
-	gomega.Expect(successCnt).To(gomega.Equal(s.successCount))
+	gomega.Expect(successCnt).To(gomega.Equal(s.successCount), "status output doesn't match")
 }
