@@ -157,7 +157,7 @@ var _ = Describe("Common registry users:", func() {
 	repoFmt := fmt.Sprintf("command/manifest/%%s/%d/%%s", GinkgoRandomSeed())
 	When("running `manifest fetch`", func() {
 		It("should fetch manifest list with digest", func() {
-			ORAS("manifest", "fetch", RegistryRef(Host, ImageRepo, multi_arch.Tag)).
+			ORAS("manifest", "fetch", RegistryRef(Host, ImageRepo, multi_arch.Digest)).
 				MatchContent(multi_arch.Manifest).Exec()
 		})
 
@@ -209,12 +209,12 @@ var _ = Describe("Common registry users:", func() {
 		})
 
 		It("should fetch descriptor via tag", func() {
-			ORAS("manifest", "fetch", RegistryRef(Host, ImageRepo, multi_arch.Digest), "--descriptor").
+			ORAS("manifest", "fetch", RegistryRef(Host, ImageRepo, multi_arch.Tag), "--descriptor").
 				MatchContent(multi_arch.Descriptor).Exec()
 		})
 
 		It("should fetch descriptor via tag with platform selection", func() {
-			ORAS("manifest", "fetch", RegistryRef(Host, ImageRepo, multi_arch.Digest), "--platform", "linux/amd64", "--descriptor").
+			ORAS("manifest", "fetch", RegistryRef(Host, ImageRepo, multi_arch.Tag), "--platform", "linux/amd64", "--descriptor").
 				MatchContent(multi_arch.LinuxAMD64IndexDesc).Exec()
 		})
 
@@ -364,6 +364,131 @@ var _ = Describe("Common registry users:", func() {
 			ORAS("manifest", "delete", toDeleteRef, "--force").
 				MatchKeyWords("Missing", toDeleteRef).
 				Exec()
+		})
+	})
+})
+
+var _ = Describe("OCI image layout users:", func() {
+	prepare := func(from string, tag string) string {
+		tmpRoot := GinkgoT().TempDir()
+		cpPath := tmpRoot
+		if tag != "" {
+			cpPath = fmt.Sprintf("%s:%s", tmpRoot, tag)
+		}
+		ORAS("cp", from, Flags.ToLayout, cpPath).WithDescription("prepare image from registry to OCI layout").Exec()
+		return tmpRoot
+	}
+
+	When("running `manifest fetch`", func() {
+		It("should fetch manifest list with digest", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, multi_arch.Digest), multi_arch.Tag)
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Digest)).
+				MatchContent(multi_arch.Manifest).Exec()
+		})
+		It("should fetch manifest list with tag", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, multi_arch.Digest), multi_arch.Tag)
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Tag)).
+				MatchContent(multi_arch.Manifest).Exec()
+		})
+		It("should fetch manifest list to stdout", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, multi_arch.Digest), multi_arch.Tag)
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Tag), "--output", "-").
+				MatchContent(multi_arch.Manifest).Exec()
+		})
+		It("should fetch manifest to file and output descriptor to stdout", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, multi_arch.Digest), multi_arch.Tag)
+			fetchPath := filepath.Join(GinkgoT().TempDir(), "fetchedImage")
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Tag), "--output", fetchPath, "--descriptor").
+				MatchContent(multi_arch.Descriptor).Exec()
+			MatchFile(fetchPath, multi_arch.Manifest, DefaultTimeout)
+		})
+		It("should fetch manifest via tag with platform selection", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, multi_arch.Digest), multi_arch.Tag)
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Tag), "--platform", "linux/amd64").
+				MatchContent(multi_arch.LinuxAMD64Manifest).Exec()
+		})
+		It("should fetch manifest via digest with platform selection", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, multi_arch.Digest), multi_arch.Tag)
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Digest), "--platform", "linux/amd64").
+				MatchContent(multi_arch.LinuxAMD64Manifest).Exec()
+		})
+		It("should fetch manifest with platform validation", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, multi_arch.Digest), multi_arch.Tag)
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Digest), "--platform", "linux/amd64").
+				MatchContent(multi_arch.LinuxAMD64Manifest).Exec()
+		})
+		It("should fetch descriptor via digest", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, multi_arch.Digest), multi_arch.Tag)
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Digest), "--descriptor").
+				MatchContent(multi_arch.Descriptor).Exec()
+		})
+		It("should fetch descriptor via digest with platform selection", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, multi_arch.Digest), multi_arch.Tag)
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Digest),
+				"--platform", "linux/amd64", "--descriptor").
+				MatchContent(multi_arch.LinuxAMD64IndexDesc).Exec()
+		})
+		It("should fetch descriptor via digest with platform validation", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, multi_arch.Digest), multi_arch.Tag)
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.LinuxAMD64.Digest.String()),
+				"--platform", "linux/amd64", "--descriptor").
+				MatchContent(multi_arch.LinuxAMD64DescStr).Exec()
+		})
+		It("should fetch descriptor via tag", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, multi_arch.Digest), multi_arch.Tag)
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Tag), "--descriptor").
+				MatchContent(multi_arch.Descriptor).Exec()
+		})
+		It("should fetch descriptor via tag with platform selection", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, multi_arch.Digest), multi_arch.Tag)
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Tag),
+				"--platform", "linux/amd64", "--descriptor").
+				MatchContent(multi_arch.LinuxAMD64IndexDesc).Exec()
+		})
+		It("should fetch index content with media type assertion", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, multi_arch.Digest), multi_arch.Tag)
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Tag),
+				"--media-type", "application/vnd.oci.image.index.v1+json").
+				MatchContent(multi_arch.Manifest).Exec()
+		})
+		It("should fetch index descriptor with media type assertion", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, multi_arch.Digest), multi_arch.Tag)
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Tag),
+				"--media-type", "application/vnd.oci.image.index.v1+json", "--descriptor").
+				MatchContent(multi_arch.Descriptor).Exec()
+		})
+		It("should fetch image content with media type assertion and platform selection", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, multi_arch.Digest), multi_arch.Tag)
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Tag),
+				"--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json").
+				MatchContent(multi_arch.LinuxAMD64Manifest).Exec()
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Digest),
+				"--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json", "--descriptor").
+				MatchContent(multi_arch.LinuxAMD64IndexDesc).Exec()
+		})
+
+		It("should fetch image descriptor with media type assertion and platform selection", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, multi_arch.Digest), multi_arch.Tag)
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Tag),
+				"--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json", "--descriptor").
+				MatchContent(multi_arch.LinuxAMD64IndexDesc).Exec()
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Digest),
+				"--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json", "--descriptor").
+				MatchContent(multi_arch.LinuxAMD64IndexDesc).Exec()
+		})
+
+		It("should fetch image content with media type assertion and platform validation", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, multi_arch.Digest), multi_arch.Tag)
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.LinuxAMD64.Digest.String()),
+				"--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.manifest.v1+json").
+				MatchContent(multi_arch.LinuxAMD64Manifest).Exec()
+		})
+
+		It("should fetch image descriptor with media type assertion and platform validation", func() {
+			root := prepare(RegistryRef(Host, ImageRepo, multi_arch.Digest), multi_arch.Tag)
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.LinuxAMD64.Digest.String()),
+				"--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.manifest.v1+json", "--descriptor").
+				MatchContent(multi_arch.LinuxAMD64DescStr).Exec()
 		})
 	})
 })
