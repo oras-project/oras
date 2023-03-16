@@ -257,6 +257,9 @@ var _ = Describe("Common registry users:", func() {
 				ExpectFailure().
 				MatchErrKeyWords(multi_arch.LinuxAMD64.Digest.String(), "error: ", "not found").Exec()
 		})
+		It("should fail if no manifest tag or digest is provided", func() {
+			ORAS("manifest", "fetch", RegistryRef(Host, ImageRepo, "")).ExpectFailure().MatchErrKeyWords("Error:", "invalid image reference").Exec()
+		})
 	})
 
 	When("running `manifest push`", func() {
@@ -330,6 +333,9 @@ var _ = Describe("Common registry users:", func() {
 		It("should fetch a config descriptor of a specific platform", func() {
 			ORAS("manifest", "fetch-config", "--descriptor", "--platform", "linux/amd64", RegistryRef(Host, ImageRepo, multi_arch.Tag)).
 				MatchContent(multi_arch.LinuxAMD64ConfigDesc).Exec()
+		})
+		It("should fail if no manifest tag or digest is provided", func() {
+			ORAS("manifest", "fetch-config", RegistryRef(Host, ImageRepo, "")).ExpectFailure().MatchErrKeyWords("Error:", "invalid image reference").Exec()
 		})
 	})
 
@@ -440,52 +446,16 @@ var _ = Describe("OCI image layout users:", func() {
 				"--platform", "linux/amd64", "--descriptor").
 				MatchContent(multi_arch.LinuxAMD64IndexDesc).Exec()
 		})
-		It("should fetch index content with media type assertion", func() {
+		It("should fail to fetch image if media type assertion is used", func() {
 			root := prepare()
-			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Tag),
-				"--media-type", "application/vnd.oci.image.index.v1+json").
-				MatchContent(multi_arch.Manifest).Exec()
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Digest), "--media-type", "application/vnd.oci.image.manifest.v1+json").
+				ExpectFailure().
+				MatchErrKeyWords("Error", "--media-type", "--oci-layout").Exec()
 		})
-		It("should fetch index descriptor with media type assertion", func() {
-			root := prepare()
-			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Tag),
-				"--media-type", "application/vnd.oci.image.index.v1+json", "--descriptor").
-				MatchContent(multi_arch.Descriptor).Exec()
-		})
-		It("should fetch image content with media type assertion and platform selection", func() {
-			root := prepare()
-			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Tag),
-				"--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json").
-				MatchContent(multi_arch.LinuxAMD64Manifest).Exec()
-			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Digest),
-				"--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json", "--descriptor").
-				MatchContent(multi_arch.LinuxAMD64IndexDesc).Exec()
-		})
-		It("should fetch image descriptor with media type assertion and platform selection", func() {
-			root := prepare()
-			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Tag),
-				"--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json", "--descriptor").
-				MatchContent(multi_arch.LinuxAMD64IndexDesc).Exec()
-			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Digest),
-				"--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json", "--descriptor").
-				MatchContent(multi_arch.LinuxAMD64IndexDesc).Exec()
-		})
-		It("should fetch image content with media type assertion and platform validation", func() {
-			root := prepare()
-			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.LinuxAMD64.Digest.String()),
-				"--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.manifest.v1+json").
-				MatchContent(multi_arch.LinuxAMD64Manifest).Exec()
-		})
-		It("should fetch image descriptor with media type assertion and platform validation", func() {
-			root := prepare()
-			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.LinuxAMD64.Digest.String()),
-				"--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.manifest.v1+json", "--descriptor").
-				MatchContent(multi_arch.LinuxAMD64DescStr).Exec()
-		})
-		It("should fail fetching manifest without reference provided", func() {
+		It("should fail if no manifest tag or digest is provided", func() {
 			root := prepare()
 			ORAS("manifest", "fetch", Flags.Layout, root).ExpectFailure().
-				MatchErrKeyWords("Error:").Exec()
+				MatchErrKeyWords("Error:", "invalid image reference").Exec()
 		})
 	})
 
@@ -528,9 +498,9 @@ var _ = Describe("OCI image layout users:", func() {
 			ORAS("manifest", "fetch-config", "--descriptor", "--platform", "linux/amd64", Flags.Layout, LayoutRef(root, multi_arch.Tag)).
 				MatchContent(multi_arch.LinuxAMD64ConfigDesc).Exec()
 		})
-		It("should fail if no manifest reference provided", func() {
+		It("should fail if no manifest tag or digest is provided", func() {
 			root := prepare(foobar.Tag)
-			ORAS("manifest", "fetch-config", Flags.Layout, root).ExpectFailure().Exec()
+			ORAS("manifest", "fetch-config", Flags.Layout, root).ExpectFailure().MatchErrKeyWords("Error:", "invalid image reference").Exec()
 		})
 	})
 })
