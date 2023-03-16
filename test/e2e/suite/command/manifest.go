@@ -257,6 +257,9 @@ var _ = Describe("Common registry users:", func() {
 				ExpectFailure().
 				MatchErrKeyWords(multi_arch.LinuxAMD64.Digest.String(), "error: ", "not found").Exec()
 		})
+		It("should fail if no manifest tag or digest is provided", func() {
+			ORAS("manifest", "fetch", RegistryRef(Host, ImageRepo, "")).ExpectFailure().MatchErrKeyWords("Error:", "invalid image reference").Exec()
+		})
 	})
 
 	When("running `manifest push`", func() {
@@ -330,6 +333,9 @@ var _ = Describe("Common registry users:", func() {
 		It("should fetch a config descriptor of a specific platform", func() {
 			ORAS("manifest", "fetch-config", "--descriptor", "--platform", "linux/amd64", RegistryRef(Host, ImageRepo, multi_arch.Tag)).
 				MatchContent(multi_arch.LinuxAMD64ConfigDesc).Exec()
+		})
+		It("should fail if no manifest tag or digest is provided", func() {
+			ORAS("manifest", "fetch-config", RegistryRef(Host, ImageRepo, "")).ExpectFailure().MatchErrKeyWords("Error:", "invalid image reference").Exec()
 		})
 	})
 
@@ -446,10 +452,10 @@ var _ = Describe("OCI image layout users:", func() {
 				ExpectFailure().
 				MatchErrKeyWords("Error", "--media-type", "--oci-layout").Exec()
 		})
-		It("should fail fetching manifest without reference provided", func() {
+		It("should fail if no manifest tag or digest is provided", func() {
 			root := prepare()
 			ORAS("manifest", "fetch", Flags.Layout, root).ExpectFailure().
-				MatchErrKeyWords("Error:").Exec()
+				MatchErrKeyWords("Error:", "invalid image reference").Exec()
 		})
 	})
 
@@ -492,9 +498,9 @@ var _ = Describe("OCI image layout users:", func() {
 			ORAS("manifest", "fetch-config", "--descriptor", "--platform", "linux/amd64", Flags.Layout, LayoutRef(root, multi_arch.Tag)).
 				MatchContent(multi_arch.LinuxAMD64ConfigDesc).Exec()
 		})
-		It("should fail if no manifest reference provided", func() {
+		It("should fail if no manifest tag or digest is provided", func() {
 			root := prepare(foobar.Tag)
-			ORAS("manifest", "fetch-config", Flags.Layout, root).ExpectFailure().Exec()
+			ORAS("manifest", "fetch-config", Flags.Layout, root).ExpectFailure().MatchErrKeyWords("Error:", "invalid image reference").Exec()
 		})
 	})
 })
