@@ -369,13 +369,12 @@ var _ = Describe("Common registry users:", func() {
 })
 
 var _ = Describe("OCI image layout users:", func() {
-	prepare := func() string {
-		tmp := GinkgoT().TempDir()
-		ORAS("cp", RegistryRef(Host, ImageRepo, multi_arch.Digest), Flags.ToLayout, LayoutRef(tmp, multi_arch.Tag)).WithDescription("prepare image from registry to OCI layout").Exec()
-		return tmp
-	}
-
 	When("running `manifest fetch`", func() {
+		prepare := func() string {
+			tmp := GinkgoT().TempDir()
+			ORAS("cp", RegistryRef(Host, ImageRepo, multi_arch.Digest), Flags.ToLayout, LayoutRef(tmp, multi_arch.Tag)).WithDescription("prepare image from registry to OCI layout").Exec()
+			return tmp
+		}
 		It("should fetch manifest list with digest", func() {
 			root := prepare()
 			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Digest)).
@@ -462,7 +461,6 @@ var _ = Describe("OCI image layout users:", func() {
 				"--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json", "--descriptor").
 				MatchContent(multi_arch.LinuxAMD64IndexDesc).Exec()
 		})
-
 		It("should fetch image descriptor with media type assertion and platform selection", func() {
 			root := prepare()
 			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Tag),
@@ -472,19 +470,67 @@ var _ = Describe("OCI image layout users:", func() {
 				"--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json", "--descriptor").
 				MatchContent(multi_arch.LinuxAMD64IndexDesc).Exec()
 		})
-
 		It("should fetch image content with media type assertion and platform validation", func() {
 			root := prepare()
 			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.LinuxAMD64.Digest.String()),
 				"--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.manifest.v1+json").
 				MatchContent(multi_arch.LinuxAMD64Manifest).Exec()
 		})
-
 		It("should fetch image descriptor with media type assertion and platform validation", func() {
 			root := prepare()
 			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.LinuxAMD64.Digest.String()),
 				"--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.manifest.v1+json", "--descriptor").
 				MatchContent(multi_arch.LinuxAMD64DescStr).Exec()
+		})
+		It("should fail fetching manifest without reference provided", func() {
+			root := prepare()
+			ORAS("manifest", "fetch", Flags.Layout, root).ExpectFailure().
+				MatchErrKeyWords("Error:").Exec()
+		})
+	})
+
+	When("running `manifest fetch-config`", func() {
+		prepare := func(tag string) string {
+			tmpRoot := GinkgoT().TempDir()
+			cpPath := tmpRoot
+			from := RegistryRef(Host, ImageRepo, tag)
+			cpPath = fmt.Sprintf("%s:%s", tmpRoot, tag)
+			ORAS("cp", from, Flags.ToLayout, cpPath).WithDescription("prepare image from registry to OCI layout").Exec()
+			return tmpRoot
+		}
+		It("should fetch a config via a tag", func() {
+			root := prepare(foobar.Tag)
+			ORAS("manifest", "fetch-config", Flags.Layout, LayoutRef(root, foobar.Tag)).
+				MatchContent("{}").Exec()
+		})
+		It("should fetch a config descriptor via a tag", func() {
+			root := prepare(foobar.Tag)
+			ORAS("manifest", "fetch-config", "--descriptor", Flags.Layout, LayoutRef(root, foobar.Tag)).
+				MatchContent(foobar.ImageConfigDesc).Exec()
+		})
+		It("should fetch a config via digest", func() {
+			root := prepare(foobar.Tag)
+			ORAS("manifest", "fetch-config", Flags.Layout, LayoutRef(root, foobar.Digest)).
+				MatchContent("{}").Exec()
+		})
+		It("should fetch a config descriptor via a digest", func() {
+			root := prepare(foobar.Tag)
+			ORAS("manifest", "fetch-config", "--descriptor", Flags.Layout, LayoutRef(root, foobar.Digest)).
+				MatchContent(foobar.ImageConfigDesc).Exec()
+		})
+		It("should fetch a config of a specific platform", func() {
+			root := prepare(multi_arch.Tag)
+			ORAS("manifest", "fetch-config", "--platform", "linux/amd64", Flags.Layout, LayoutRef(root, multi_arch.Tag)).
+				MatchContent(multi_arch.LinuxAMD64Config).Exec()
+		})
+		It("should fetch a config descriptor of a specific platform", func() {
+			root := prepare(multi_arch.Tag)
+			ORAS("manifest", "fetch-config", "--descriptor", "--platform", "linux/amd64", Flags.Layout, LayoutRef(root, multi_arch.Tag)).
+				MatchContent(multi_arch.LinuxAMD64ConfigDesc).Exec()
+		})
+		It("should fail if no manifest reference provided", func() {
+			root := prepare(foobar.Tag)
+			ORAS("manifest", "fetch-config", Flags.Layout, root).ExpectFailure().Exec()
 		})
 	})
 })
