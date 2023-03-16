@@ -440,47 +440,11 @@ var _ = Describe("OCI image layout users:", func() {
 				"--platform", "linux/amd64", "--descriptor").
 				MatchContent(multi_arch.LinuxAMD64IndexDesc).Exec()
 		})
-		It("should fetch index content with media type assertion", func() {
+		It("should fail to fetch image if media type assertion is used", func() {
 			root := prepare()
-			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Tag),
-				"--media-type", "application/vnd.oci.image.index.v1+json").
-				MatchContent(multi_arch.Manifest).Exec()
-		})
-		It("should fetch index descriptor with media type assertion", func() {
-			root := prepare()
-			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Tag),
-				"--media-type", "application/vnd.oci.image.index.v1+json", "--descriptor").
-				MatchContent(multi_arch.Descriptor).Exec()
-		})
-		It("should fetch image content with media type assertion and platform selection", func() {
-			root := prepare()
-			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Tag),
-				"--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json").
-				MatchContent(multi_arch.LinuxAMD64Manifest).Exec()
-			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Digest),
-				"--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json", "--descriptor").
-				MatchContent(multi_arch.LinuxAMD64IndexDesc).Exec()
-		})
-		It("should fetch image descriptor with media type assertion and platform selection", func() {
-			root := prepare()
-			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Tag),
-				"--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json", "--descriptor").
-				MatchContent(multi_arch.LinuxAMD64IndexDesc).Exec()
-			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Digest),
-				"--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json", "--descriptor").
-				MatchContent(multi_arch.LinuxAMD64IndexDesc).Exec()
-		})
-		It("should fetch image content with media type assertion and platform validation", func() {
-			root := prepare()
-			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.LinuxAMD64.Digest.String()),
-				"--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.manifest.v1+json").
-				MatchContent(multi_arch.LinuxAMD64Manifest).Exec()
-		})
-		It("should fetch image descriptor with media type assertion and platform validation", func() {
-			root := prepare()
-			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.LinuxAMD64.Digest.String()),
-				"--platform", "linux/amd64", "--media-type", "application/vnd.oci.image.manifest.v1+json", "--descriptor").
-				MatchContent(multi_arch.LinuxAMD64DescStr).Exec()
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Digest), "--media-type", "application/vnd.oci.image.manifest.v1+json").
+				ExpectFailure().
+				MatchErrKeyWords("Error", "--media-type", "--oci-layout").Exec()
 		})
 		It("should fail fetching manifest without reference provided", func() {
 			root := prepare()
