@@ -533,7 +533,7 @@ var _ = Describe("OCI image layout users:", func() {
 			Expect(json.Unmarshal(content, &index)).ShouldNot(HaveOccurred())
 			for _, m := range index.Manifests {
 				if m.Digest.String() == digest &&
-					tag != "" && tag == m.Annotations["org.opencontainers.image.ref.name"] {
+					(tag == "" || tag == m.Annotations["org.opencontainers.image.ref.name"]) {
 					return
 				}
 			}
