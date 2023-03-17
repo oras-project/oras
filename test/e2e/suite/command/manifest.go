@@ -16,7 +16,9 @@ limitations under the License.
 package command
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -508,6 +510,93 @@ var _ = Describe("OCI image layout users:", func() {
 		It("should fail if no manifest tag or digest is provided", func() {
 			root := prepare(foobar.Tag)
 			ORAS("manifest", "fetch-config", Flags.Layout, root).ExpectFailure().MatchErrKeyWords("Error:", "invalid image reference").Exec()
+		})
+	})
+})
+
+var _ = Describe("OCI image layout users:", func() {
+	When("running `manifest push`", func() {
+		scratchSize := 2
+		scratchDigest := "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+		manifest := fmt.Sprintf(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"%s","size":%d},"layers":[]}`, scratchDigest, scratchSize)
+		manifestDigest := "sha256:f20c43161d73848408ef247f0ec7111b19fe58ffebc0cbcaa0d2c8bda4967268"
+		prepare := func(layoutRoot string) {
+			ORAS("blob", "push", Flags.Layout, LayoutRef(layoutRoot, scratchDigest), "--size", "2", "-").
+				WithInput(strings.NewReader("{}")).Exec()
+		}
+		validate := func(root string, digest string, tag string) {
+			path := filepath.Join(root, "index.json")
+			Expect(path).To(BeAnExistingFile())
+			content, err := os.ReadFile(path)
+			Expect(err).NotTo(HaveOccurred())
+			var index ocispec.Index
+			Expect(json.Unmarshal(content, &index)).ShouldNot(HaveOccurred())
+			for _, m := range index.Manifests {
+				if m.Digest.String() == digest &&
+					(tag == "" || tag == m.Annotations["org.opencontainers.image.ref.name"]) {
+					return
+				}
+			}
+			Fail(fmt.Sprintf("Failed to find manifest with digest %q and tag %q in index.json: \n%s", digest, tag, string(content)))
+		}
+		descriptor := "{\"mediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"digest\":\"sha256:f20c43161d73848408ef247f0ec7111b19fe58ffebc0cbcaa0d2c8bda4967268\",\"size\":246}"
+
+		It("should push a manifest from stdin", func() {
+			root := GinkgoT().TempDir()
+			prepare(root)
+			ORAS("manifest", "push", Flags.Layout, root, "-").
+				MatchKeyWords("Pushed", root, "Digest:", manifestDigest).
+				WithInput(strings.NewReader(manifest)).Exec()
+			validate(root, manifestDigest, "")
+		})
+		It("should push a manifest from stdin and tag", func() {
+			tag := "from-stdin"
+			root := GinkgoT().TempDir()
+			ref := LayoutRef(root, tag)
+			ORAS("manifest", "push", Flags.Layout, ref, "-").
+				MatchKeyWords("Pushed", ref, "Digest:", manifestDigest).
+				WithInput(strings.NewReader(manifest)).Exec()
+			validate(root, manifestDigest, tag)
+		})
+
+		It("should push a manifest and output descriptor", func() {
+			root := GinkgoT().TempDir()
+			prepare(root)
+			ORAS("manifest", "push", Flags.Layout, root, "-", "--descriptor").
+				MatchContent(descriptor).
+				WithInput(strings.NewReader(manifest)).Exec()
+			validate(root, manifestDigest, "")
+		})
+
+		It("should push a manifest from file", func() {
+			manifestPath := WriteTempFile("manifest.json", manifest)
+			root := filepath.Dir(manifestPath)
+			prepare(root)
+			tag := "from-file"
+			ref := LayoutRef(root, tag)
+			ORAS("manifest", "push", Flags.Layout, ref, manifestPath).
+				MatchKeyWords("Pushed", ref, "Digest:", manifestDigest).
+				WithInput(strings.NewReader(manifest)).Exec()
+			validate(root, manifestDigest, tag)
+		})
+
+		It("should push a manifest from stdin, only when media type flag is set", func() {
+			manifest := fmt.Sprintf(`{"schemaVersion":2,"config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"%s","size":%d}}`, scratchDigest, scratchSize)
+			manifestDigest := "sha256:8fc649142bbc0a2aa5015d5ef5a922df9d2d7f2dcf3095dbebfaf7c271eca444"
+
+			root := GinkgoT().TempDir()
+			prepare(root)
+			tag := "mediatype-flag"
+			ref := LayoutRef(root, tag)
+			ORAS("manifest", "push", Flags.Layout, ref, "-", "--media-type", "application/vnd.oci.image.manifest.v1+json").
+				MatchKeyWords("Pushed", ref, "Digest:", manifestDigest).
+				WithInput(strings.NewReader(manifest)).Exec()
+			validate(root, manifestDigest, tag)
+
+			ORAS("manifest", "push", Flags.Layout, ref, "-").
+				WithInput(strings.NewReader(manifest)).
+				ExpectFailure().
+				WithDescription("fail if no media type flag provided").Exec()
 		})
 	})
 })
