@@ -67,6 +67,13 @@ var _ = Describe("ORAS beginners:", func() {
 					MatchErrKeyWords("Error:").
 					Exec()
 			})
+
+			It("should fail pushing with  a manifest from stdin without media type flag", func() {
+				tag := "from-stdin"
+				ORAS("manifest", "push", RegistryRef(Host, ImageRepo, tag), "-", "--password-stdin", "--media-type", "application/vnd.oci.image.manifest.v1+json").
+					ExpectFailure().
+					MatchErrKeyWords("`-`", "`--password-stdin`", " cannot be both used").Exec()
+			})
 		})
 
 		When("running `manifest fetch`", func() {
