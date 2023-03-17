@@ -82,13 +82,13 @@ Example - Push a manifest to an OCI layout folder 'layout-dir' and tag with 'v1'
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			opts.fileRef = args[1]
 			if opts.fileRef == "-" && opts.PasswordFromStdin {
 				return errors.New("`-` read file from input and `--password-stdin` read password from input cannot be both used")
 			}
 			refs := strings.Split(args[0], ",")
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
-			opts.fileRef = args[1]
 			return option.Parse(&opts)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
