@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/credential"
+	"oras.land/oras/internal/trace"
 )
 
 type loginOptions struct {
@@ -73,7 +74,7 @@ Example - Log in with username and password in an interactive terminal and no TL
 }
 
 func runLogin(opts loginOptions) (err error) {
-	ctx, _ := opts.SetLoggerLevel()
+	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
 
 	// prompt for credential
 	if opts.Password == "" {

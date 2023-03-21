@@ -28,6 +28,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/descriptor"
+	"oras.land/oras/internal/trace"
 )
 
 type fetchConfigOptions struct {
@@ -86,7 +87,7 @@ Example - Fetch and print the prettified descriptor of the config:
 }
 
 func fetchConfig(opts fetchConfigOptions) (fetchErr error) {
-	ctx, _ := opts.SetLoggerLevel()
+	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
 
 	repo, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {

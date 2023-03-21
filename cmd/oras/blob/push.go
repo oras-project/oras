@@ -25,6 +25,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/file"
+	"oras.land/oras/internal/trace"
 )
 
 type pushBlobOptions struct {
@@ -95,7 +96,7 @@ Example - Push blob 'hi.txt' into an OCI layout folder 'layout-dir':
 }
 
 func pushBlob(opts pushBlobOptions) (err error) {
-	ctx, _ := opts.SetLoggerLevel()
+	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
 
 	repo, err := opts.NewTarget(opts.Common)
 	if err != nil {

@@ -16,11 +16,7 @@ limitations under the License.
 package option
 
 import (
-	"context"
-
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
-	"oras.land/oras/internal/trace"
 )
 
 // Common option struct.
@@ -33,17 +29,4 @@ type Common struct {
 func (opts *Common) ApplyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.Debug, "debug", "d", false, "debug mode")
 	fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "verbose output")
-}
-
-// SetLoggerLevel sets up the logger based on common options.
-func (opts *Common) SetLoggerLevel() (context.Context, logrus.FieldLogger) {
-	var logLevel logrus.Level
-	if opts.Debug {
-		logLevel = logrus.DebugLevel
-	} else if opts.Verbose {
-		logLevel = logrus.InfoLevel
-	} else {
-		logLevel = logrus.WarnLevel
-	}
-	return trace.WithLoggerLevel(context.Background(), logLevel)
 }

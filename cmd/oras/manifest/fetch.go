@@ -26,6 +26,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/trace"
 )
 
 type fetchOptions struct {
@@ -89,7 +90,7 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 }
 
 func fetchManifest(opts fetchOptions) (fetchErr error) {
-	ctx, _ := opts.SetLoggerLevel()
+	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
 
 	target, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {

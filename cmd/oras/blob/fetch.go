@@ -28,6 +28,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/trace"
 )
 
 type fetchBlobOptions struct {
@@ -89,7 +90,7 @@ Example - Fetch and print a blob from OCI image layout archive file 'layout.tar'
 }
 
 func fetchBlob(opts fetchBlobOptions) (fetchErr error) {
-	ctx, _ := opts.SetLoggerLevel()
+	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
 	var target oras.ReadOnlyTarget
 	target, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
