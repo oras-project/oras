@@ -46,6 +46,7 @@ jobs:
           sh $GITHUB_WORKSPACE/test/e2e/scripts/e2e.sh $GITHUB_WORKSPACE --clean
         env:
           ORAS_PATH: bin/linux/amd64/oras
+          COVERAGE_DUMP_ROOT: .cover
       - name: Check Version
         run: bin/linux/amd64/oras version
       - name: Upload coverage to codecov.io
