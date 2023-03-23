@@ -63,7 +63,7 @@ if ! [ -z ${COVERAGE_DUMP_ROOT} ]; then
 fi
 
 echo " === setup coverage instrumenting == "
-if [[ ($GITHUB_REF_NAME == release-* && $GITHUB_REF_TYPE == branch) || ($GITHUB_REF_NAME == v* && $GITHUB_REF_TYPE == tag) ]]; then
+if [[ $GITHUB_REF_NAME == v* && $GITHUB_REF_TYPE == tag ]]; then
     unset COVERAGE_DUMP_ROOT
 fi
 
