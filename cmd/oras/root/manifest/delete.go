@@ -64,9 +64,9 @@ Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614
 			}
 			return option.Parse(&opts)
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
-			return deleteManifest(opts)
+			return deleteManifest(opts, cmd)
 		},
 	}
 
@@ -75,8 +75,8 @@ Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614
 	return cmd
 }
 
-func deleteManifest(opts deleteOptions) error {
-	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
+func deleteManifest(opts deleteOptions, cmd *cobra.Command) error {
+	ctx, _ := trace.WithLogger(cmd.Context(), opts.Debug, opts.Verbose)
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err

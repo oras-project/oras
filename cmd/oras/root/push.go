@@ -112,7 +112,7 @@ Example - Push file "hi.txt" into an OCI layout folder 'layout-dir' with tag 'te
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runPush(opts)
+			return runPush(opts, cmd)
 		},
 	}
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "`path` of image config file")
@@ -123,8 +123,8 @@ Example - Push file "hi.txt" into an OCI layout folder 'layout-dir' with tag 'te
 	return cmd
 }
 
-func runPush(opts pushOptions) error {
-	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
+func runPush(opts pushOptions, cmd *cobra.Command) error {
+	ctx, _ := trace.WithLogger(cmd.Context(), opts.Debug, opts.Verbose)
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err

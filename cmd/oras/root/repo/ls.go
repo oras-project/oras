@@ -59,7 +59,7 @@ Example - List the repositories under the registry that include values lexically
 			if opts.hostname, opts.namespace, err = repository.ParseRepoPath(args[0]); err != nil {
 				return fmt.Errorf("could not parse repository path: %w", err)
 			}
-			return listRepository(opts)
+			return listRepository(opts, cmd)
 		},
 	}
 
@@ -68,8 +68,8 @@ Example - List the repositories under the registry that include values lexically
 	return cmd
 }
 
-func listRepository(opts repositoryOptions) error {
-	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
+func listRepository(opts repositoryOptions, cmd *cobra.Command) error {
+	ctx, _ := trace.WithLogger(cmd.Context(), opts.Debug, opts.Verbose)
 	reg, err := opts.Remote.NewRegistry(opts.hostname, opts.Common)
 	if err != nil {
 		return err

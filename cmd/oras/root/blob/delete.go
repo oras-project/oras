@@ -62,7 +62,7 @@ Example - Delete a blob and print its descriptor:
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
-			return deleteBlob(opts)
+			return deleteBlob(opts, cmd)
 		},
 	}
 
@@ -70,8 +70,8 @@ Example - Delete a blob and print its descriptor:
 	return cmd
 }
 
-func deleteBlob(opts deleteBlobOptions) (err error) {
-	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
+func deleteBlob(opts deleteBlobOptions, cmd *cobra.Command) (err error) {
+	ctx, _ := trace.WithLogger(cmd.Context(), opts.Debug, opts.Verbose)
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err

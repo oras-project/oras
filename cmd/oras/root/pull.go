@@ -88,7 +88,7 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runPull(opts)
+			return runPull(opts, cmd)
 		},
 	}
 
@@ -102,7 +102,8 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 	return cmd
 }
 
-func runPull(opts pullOptions) error {
+func runPull(opts pullOptions, cmd *cobra.Command) error {
+	ctx, _ := trace.WithLogger(cmd.Context(), opts.Debug, opts.Verbose)
 	// Copy Options
 	var printed sync.Map
 	copyOptions := oras.DefaultCopyOptions
@@ -181,7 +182,6 @@ func runPull(opts pullOptions) error {
 		return ret, nil
 	}
 
-	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
 	target, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err

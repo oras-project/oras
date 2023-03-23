@@ -85,7 +85,7 @@ Example - Push blob 'hi.txt' into an OCI layout folder 'layout-dir':
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return pushBlob(opts)
+			return pushBlob(opts, cmd)
 		},
 	}
 
@@ -95,8 +95,8 @@ Example - Push blob 'hi.txt' into an OCI layout folder 'layout-dir':
 	return cmd
 }
 
-func pushBlob(opts pushBlobOptions) (err error) {
-	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
+func pushBlob(opts pushBlobOptions, cmd *cobra.Command) (err error) {
+	ctx, _ := trace.WithLogger(cmd.Context(), opts.Debug, opts.Verbose)
 
 	repo, err := opts.NewTarget(opts.Common)
 	if err != nil {
