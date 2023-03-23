@@ -41,14 +41,14 @@ var _ = Describe("ORAS beginners:", func() {
 				repo := fmt.Sprintf(repoFmt, "push", "password-stdin")
 				ORAS("blob", "push", RegistryRef(Host, repo, ""), "--password-stdin", "-").
 					ExpectFailure().
-					MatchTrimmedContent("Error: `-` read file from input and `--password-stdin` read password from input cannot be both used").Exec()
+					MatchErrKeyWords("Error: `-` read file from input and `--password-stdin` read password from input cannot be both used").Exec()
 			})
 			It("should fail to push a blob from stdin but no blob size provided", func() {
 				repo := fmt.Sprintf(repoFmt, "push", "no-size")
 				ORAS("blob", "push", RegistryRef(Host, repo, pushDigest), "-").
 					WithInput(strings.NewReader(pushContent)).
 					ExpectFailure().
-					MatchTrimmedContent("Error: `--size` must be provided if the blob is read from stdin").Exec()
+					MatchErrKeyWords("Error: `--size` must be provided if the blob is read from stdin").Exec()
 			})
 
 			It("should fail to push a blob from stdin if invalid blob size provided", func() {
