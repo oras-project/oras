@@ -58,13 +58,13 @@ run_registry \
   $upstream_container_name \
   $ORAS_REGISTRY_FALLBACK_PORT
 
-if ! [ -z ${COVERAGE_DUMP_ROOT} ]; then
-  rm ${e2e_root}/${COVERAGE_DUMP_ROOT} -rf
-fi
-
 echo " === setup coverage instrumenting == "
 if [[ $GITHUB_REF_NAME == v* && $GITHUB_REF_TYPE == tag ]]; then
     unset COVERAGE_DUMP_ROOT
+fi
+
+if ! [ -z ${COVERAGE_DUMP_ROOT} ]; then
+  rm ${e2e_root}/${COVERAGE_DUMP_ROOT} -rf
 fi
 
 echo " === run tests === "
@@ -82,4 +82,4 @@ if [ "${fail}" = 'true' ]; then
   echo '-------- upstream distribution trace -------------'
   docker logs -t --tail 200 $upstream_container_name
   exit 1
-if
+fi
