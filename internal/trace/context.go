@@ -26,8 +26,8 @@ type contextKey int
 // loggerKey is the associated key type for logger entry in context.
 const loggerKey contextKey = iota
 
-// WithLogger binds a logger to ctx.
-func WithLogger(ctx context.Context, debug bool, verbose bool) (context.Context, logrus.FieldLogger) {
+// NewLogger returns a logger.
+func NewLogger(ctx context.Context, debug bool, verbose bool) (context.Context, logrus.FieldLogger) {
 	var logLevel logrus.Level
 	if debug {
 		logLevel = logrus.DebugLevel

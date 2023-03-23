@@ -28,7 +28,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
-	"oras.land/oras/internal/trace"
 )
 
 type copyOptions struct {
@@ -97,7 +96,7 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 }
 
 func runCopy(opts copyOptions, cmd *cobra.Command) error {
-	ctx, _ := trace.WithLogger(cmd.Context(), opts.Debug, opts.Verbose)
+	ctx, _ := opts.WithLogger(cmd.Context())
 
 	// Prepare source
 	src, err := opts.From.NewReadonlyTarget(ctx, opts.Common)

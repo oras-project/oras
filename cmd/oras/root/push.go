@@ -30,7 +30,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/trace"
 )
 
 type pushOptions struct {
@@ -124,7 +123,7 @@ Example - Push file "hi.txt" into an OCI layout folder 'layout-dir' with tag 'te
 }
 
 func runPush(opts pushOptions, cmd *cobra.Command) error {
-	ctx, _ := trace.WithLogger(cmd.Context(), opts.Debug, opts.Verbose)
+	ctx, _ := opts.WithLogger(cmd.Context())
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err

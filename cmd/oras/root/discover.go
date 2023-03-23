@@ -31,7 +31,6 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
-	"oras.land/oras/internal/trace"
 )
 
 type discoverOptions struct {
@@ -92,7 +91,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI layout folder
 }
 
 func runDiscover(opts discoverOptions, cmd *cobra.Command) error {
-	ctx, _ := trace.WithLogger(cmd.Context(), opts.Debug, opts.Verbose)
+	ctx, _ := opts.WithLogger(cmd.Context())
 	repo, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err

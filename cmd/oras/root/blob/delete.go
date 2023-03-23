@@ -23,7 +23,6 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/trace"
 )
 
 type deleteBlobOptions struct {
@@ -71,7 +70,7 @@ Example - Delete a blob and print its descriptor:
 }
 
 func deleteBlob(opts deleteBlobOptions, cmd *cobra.Command) (err error) {
-	ctx, _ := trace.WithLogger(cmd.Context(), opts.Debug, opts.Verbose)
+	ctx, _ := opts.WithLogger(cmd.Context())
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err

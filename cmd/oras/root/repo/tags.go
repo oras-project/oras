@@ -22,7 +22,6 @@ import (
 	"github.com/opencontainers/go-digest"
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/trace"
 )
 
 type showTagsOptions struct {
@@ -78,7 +77,7 @@ Example - Show tags associated with a digest:
 }
 
 func showTags(opts showTagsOptions, cmd *cobra.Command) error {
-	ctx, logger := trace.WithLogger(cmd.Context(), opts.Debug, opts.Verbose)
+	ctx, logger := opts.WithLogger(cmd.Context())
 	finder, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err

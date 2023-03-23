@@ -22,7 +22,6 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/repository"
-	"oras.land/oras/internal/trace"
 )
 
 type repositoryOptions struct {
@@ -69,7 +68,7 @@ Example - List the repositories under the registry that include values lexically
 }
 
 func listRepository(opts repositoryOptions, cmd *cobra.Command) error {
-	ctx, _ := trace.WithLogger(cmd.Context(), opts.Debug, opts.Verbose)
+	ctx, _ := opts.WithLogger(cmd.Context())
 	reg, err := opts.Remote.NewRegistry(opts.hostname, opts.Common)
 	if err != nil {
 		return err

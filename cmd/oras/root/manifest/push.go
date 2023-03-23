@@ -31,7 +31,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/file"
-	"oras.land/oras/internal/trace"
 )
 
 type pushOptions struct {
@@ -105,7 +104,7 @@ Example - Push a manifest to an OCI layout folder 'layout-dir' and tag with 'v1'
 }
 
 func pushManifest(opts pushOptions, cmd *cobra.Command) error {
-	ctx, _ := trace.WithLogger(cmd.Context(), opts.Debug, opts.Verbose)
+	ctx, _ := opts.WithLogger(cmd.Context())
 	var target oras.Target
 	var err error
 	target, err = opts.NewTarget(opts.Common)
