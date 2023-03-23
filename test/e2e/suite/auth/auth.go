@@ -16,6 +16,8 @@ limitations under the License.
 package scenario
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -52,8 +54,15 @@ var _ = Describe("Common registry user", Ordered, func() {
 			ORAS("login", Host, "-u", Username, "-p", Password, "--registry-config", AuthConfigPath).
 				WithTimeOut(20*time.Second).
 				MatchContent("Login Succeeded\n").
-				MatchErrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").
-				WithDescription("login with username&password flags").Exec()
+				MatchErrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").Exec()
+		})
+
+		It("should use prompted input", Focus, func() {
+			ORAS("login", Host, "--registry-config", AuthConfigPath).
+				WithTimeOut(20*time.Second).
+				WithInput(strings.NewReader(fmt.Sprintf("%s\n%s\n", Username, Password))).
+				MatchContent("Login Succeeded\n").
+				MatchErrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").Exec()
 		})
 	})
 })
