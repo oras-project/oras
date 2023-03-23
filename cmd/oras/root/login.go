@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package root
 
 import (
 	"bufio"
@@ -86,16 +86,17 @@ func runLogin(opts loginOptions) (err error) {
 			}
 			opts.Username = strings.TrimSpace(username)
 		}
+		silent := term.IsTerminal(os.Stdin.Fd())
 		if opts.Username == "" {
 			// prompt for token
-			if opts.Password, err = readLine("Token: ", true); err != nil {
+			if opts.Password, err = readLine("Token: ", silent); err != nil {
 				return err
 			} else if opts.Password == "" {
 				return errors.New("token required")
 			}
 		} else {
 			// prompt for password
-			if opts.Password, err = readLine("Password: ", true); err != nil {
+			if opts.Password, err = readLine("Password: ", silent); err != nil {
 				return err
 			} else if opts.Password == "" {
 				return errors.New("password required")
