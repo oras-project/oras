@@ -77,7 +77,7 @@ func init() {
 		ORASPath = os.Getenv("ORAS_PATH")
 		if covDumpRoot := os.Getenv("COVERAGE_DUMP_ROOT"); covDumpRoot != "" {
 			if ORASPath != "" {
-				fmt.Printf("Pre-built oras ignored: %s", ORASPath)
+				fmt.Printf("Pre-built oras ignored: %s\n", ORASPath)
 				ORASPath = ""
 			}
 			if filepath.IsAbs(covDumpRoot) {
