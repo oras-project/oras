@@ -68,7 +68,7 @@ Example - List the repositories under the registry that include values lexically
 }
 
 func listRepository(opts repositoryOptions, cmd *cobra.Command) error {
-	ctx, _ := opts.WithLogger(cmd.Context())
+	ctx, _ := opts.WithContext(cmd.Context())
 	reg, err := opts.Remote.NewRegistry(opts.hostname, opts.Common)
 	if err != nil {
 		return err

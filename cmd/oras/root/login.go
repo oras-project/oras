@@ -73,7 +73,7 @@ Example - Log in with username and password in an interactive terminal and no TL
 }
 
 func runLogin(opts loginOptions, cmd *cobra.Command) (err error) {
-	ctx, _ := opts.WithLogger(cmd.Context())
+	ctx, _ := opts.WithContext(cmd.Context())
 
 	// prompt for credential
 	if opts.Password == "" {

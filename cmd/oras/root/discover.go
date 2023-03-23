@@ -91,7 +91,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI layout folder
 }
 
 func runDiscover(opts discoverOptions, cmd *cobra.Command) error {
-	ctx, _ := opts.WithLogger(cmd.Context())
+	ctx, _ := opts.WithContext(cmd.Context())
 	repo, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err

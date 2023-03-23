@@ -102,7 +102,7 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 }
 
 func runPull(opts pullOptions, cmd *cobra.Command) error {
-	ctx, _ := opts.WithLogger(cmd.Context())
+	ctx, _ := opts.WithContext(cmd.Context())
 	// Copy Options
 	var printed sync.Map
 	copyOptions := oras.DefaultCopyOptions

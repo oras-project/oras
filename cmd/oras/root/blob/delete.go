@@ -70,7 +70,7 @@ Example - Delete a blob and print its descriptor:
 }
 
 func deleteBlob(opts deleteBlobOptions, cmd *cobra.Command) (err error) {
-	ctx, _ := opts.WithLogger(cmd.Context())
+	ctx, _ := opts.WithContext(cmd.Context())
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err

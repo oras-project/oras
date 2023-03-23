@@ -98,7 +98,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI layout folder 'layou
 }
 
 func runAttach(opts attachOptions, cmd *cobra.Command) error {
-	ctx, _ := opts.WithLogger(cmd.Context())
+	ctx, _ := opts.WithContext(cmd.Context())
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err

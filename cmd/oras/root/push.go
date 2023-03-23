@@ -123,7 +123,7 @@ Example - Push file "hi.txt" into an OCI layout folder 'layout-dir' with tag 'te
 }
 
 func runPush(opts pushOptions, cmd *cobra.Command) error {
-	ctx, _ := opts.WithLogger(cmd.Context())
+	ctx, _ := opts.WithContext(cmd.Context())
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err

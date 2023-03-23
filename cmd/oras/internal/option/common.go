@@ -35,7 +35,7 @@ func (opts *Common) ApplyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "verbose output")
 }
 
-// WithLogger sets a logger to ctx with proper logging options tuned.
-func (opts *Common) WithLogger(ctx context.Context) (context.Context, logrus.FieldLogger) {
+// WithContext returns a new FieldLogger and an associated Context derived from ctx.
+func (opts *Common) WithContext(ctx context.Context) (context.Context, logrus.FieldLogger) {
 	return trace.NewLogger(ctx, opts.Debug, opts.Verbose)
 }

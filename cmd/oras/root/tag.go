@@ -71,7 +71,7 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI layout folder 'layout-
 }
 
 func tagManifest(opts tagOptions, cmd *cobra.Command) error {
-	ctx, _ := opts.WithLogger(cmd.Context())
+	ctx, _ := opts.WithContext(cmd.Context())
 	target, err := opts.NewTarget(opts.Common)
 	if err != nil {
 		return err
