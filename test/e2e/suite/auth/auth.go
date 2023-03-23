@@ -52,6 +52,8 @@ var _ = Describe("Common registry user", Ordered, func() {
 			ORAS("login", Host, "-u", Username, "-p", Password, "--registry-config", AuthConfigPath).
 				WithTimeOut(20*time.Second).
 				MatchContent("Login Succeeded\n").
+				MatchErrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").
+				WithDescription("login with username&password flags").Exec()
 		})
 	})
 })
