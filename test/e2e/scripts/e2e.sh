@@ -82,4 +82,4 @@ if [ "${fail}" = 'true' ]; then
   echo '-------- upstream distribution trace -------------'
   docker logs -t --tail 200 $upstream_container_name
   exit 1
-f
+if
