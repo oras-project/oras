@@ -138,10 +138,7 @@ func runPull(opts pullOptions) error {
 					rc.Close()
 				}
 			}()
-			if err := display.PrintStatus(target, "Processing ", opts.Verbose); err != nil {
-				return nil, err
-			}
-			return rc, nil
+			return rc, display.PrintStatus(target, "Processing ", opts.Verbose)
 		})
 
 		nodes, subject, config, err := graph.Successors(ctx, statusFetcher, desc)
