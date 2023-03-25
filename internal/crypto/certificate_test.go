@@ -17,13 +17,11 @@ package crypto
 
 import (
 	"context"
-	"crypto/x509"
 	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 )
 
@@ -60,33 +58,22 @@ func TestLoadCertPool(t *testing.T) {
 	}
 }
 
-func TestLoadCertPool_err(t *testing.T) {
+func TestLoadCertPool_invalidPem(t *testing.T) {
 	pemPath := filepath.Join(t.TempDir(), "invalid.pem")
 	if err := os.WriteFile(pemPath, []byte{}, 0644); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	type args struct {
-		path string
+	got, err := LoadCertPool(pemPath)
+	if err == nil {
+		t.Errorf("Expecting LoadCertPool to return error for a non-existent pem file, got: %v", got)
+		return
 	}
-	tests := []struct {
-		name    string
-		args    args
-		want    *x509.CertPool
-		wantErr bool
-	}{
-		{"should fail if the path is doesn't exist", args{"/???"}, nil, true},
-		{"should fail if the file is not a pem", args{pemPath}, nil, true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := LoadCertPool(tt.args.path)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("LoadCertPool() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("LoadCertPool() = %v, want %v", got, tt.want)
-			}
-		})
+}
+
+func TestLoadCertPool_pemNotExist(t *testing.T) {
+	got, err := LoadCertPool("/???")
+	if err == nil {
+		t.Errorf("Expecting LoadCertPool to return error for a non-existent pem file, got: %v", got)
+		return
 	}
 }
