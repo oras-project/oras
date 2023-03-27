@@ -78,24 +78,26 @@ func runLogin(opts loginOptions) (err error) {
 
 	// prompt for credential
 	if opts.Password == "" {
+		reader := bufio.NewReader(os.Stdin)
 		if opts.Username == "" {
 			// prompt for username
-			username, err := readLine("Username: ", false)
+			username, err := readLine("Username: ", reader, false)
 			if err != nil {
 				return err
 			}
 			opts.Username = strings.TrimSpace(username)
 		}
+		silent := term.IsTerminal(os.Stdin.Fd())
 		if opts.Username == "" {
 			// prompt for token
-			if opts.Password, err = readLine("Token: ", true); err != nil {
+			if opts.Password, err = readLine("Token: ", reader, silent); err != nil {
 				return err
 			} else if opts.Password == "" {
 				return errors.New("token required")
 			}
 		} else {
 			// prompt for password
-			if opts.Password, err = readLine("Password: ", true); err != nil {
+			if opts.Password, err = readLine("Password: ", reader, silent); err != nil {
 				return err
 			} else if opts.Password == "" {
 				return errors.New("password required")
@@ -131,7 +133,7 @@ func runLogin(opts loginOptions) (err error) {
 	return nil
 }
 
-func readLine(prompt string, silent bool) (string, error) {
+func readLine(prompt string, reader *bufio.Reader, silent bool) (string, error) {
 	fmt.Print(prompt)
 	if silent {
 		fd := os.Stdin.Fd()
@@ -143,7 +145,6 @@ func readLine(prompt string, silent bool) (string, error) {
 		defer term.RestoreTerminal(fd, state)
 	}
 
-	reader := bufio.NewReader(os.Stdin)
 	line, _, err := reader.ReadLine()
 	if err != nil {
 		return "", err
