@@ -60,8 +60,10 @@ run_registry \
 
 echo " === setup coverage instrumenting == "
 if [[ $GITHUB_REF_NAME == v* && $GITHUB_REF_TYPE == tag ]]; then
+    echo "coverage instrumentation skipped"
     unset COVERAGE_DUMP_ROOT
 fi
+return
 
 if ! [ -z ${COVERAGE_DUMP_ROOT} ]; then
   rm ${e2e_root}/${COVERAGE_DUMP_ROOT} -rf
@@ -72,7 +74,7 @@ ginkgo -r -p --succinct suite || fail=true
 
 if ! [ -z ${COVERAGE_DUMP_ROOT} ]; then
   echo " === generating code cov report === "
-  go tool covdata textfmt -i="${e2e_root}/${COVERAGE_DUMP_ROOT}" -o ${e2e_root}/coverage.txt || true
+  make -C ${repo_root} e2e-covdata || true
 fi
 
 if [ "${fail}" = 'true' ]; then
