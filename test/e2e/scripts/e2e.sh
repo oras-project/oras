@@ -63,6 +63,7 @@ if [[ $GITHUB_REF_NAME == v* && $GITHUB_REF_TYPE == tag ]]; then
     echo "coverage instrumentation skipped"
     unset COVERAGE_DUMP_ROOT
 fi
+return
 
 if ! [ -z ${COVERAGE_DUMP_ROOT} ]; then
   rm ${e2e_root}/${COVERAGE_DUMP_ROOT} -rf
