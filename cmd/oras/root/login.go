@@ -18,13 +18,12 @@ package root
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
 
-	"github.com/moby/term"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/credential"
 )
@@ -76,30 +75,36 @@ Example - Log in with username and password in an interactive terminal and no TL
 func runLogin(ctx context.Context, opts loginOptions) (err error) {
 	ctx, _ = opts.WithContext(ctx)
 
-	// prompt for credential
 	if opts.Password == "" {
+		// prompt for credential
+		reader := bufio.NewReader(os.Stdin)
 		if opts.Username == "" {
-			// prompt for username
-			username, err := readLine("Username: ", false)
+			fmt.Print("username: ")
+			username, err := readLine(reader)
 			if err != nil {
 				return err
 			}
-			opts.Username = strings.TrimSpace(username)
+			opts.Username = strings.TrimSpace(string(username))
 		}
+
+		fd := int(os.Stdin.Fd())
+		prompt := "password"
 		if opts.Username == "" {
-			// prompt for token
-			if opts.Password, err = readLine("Token: ", true); err != nil {
-				return err
-			} else if opts.Password == "" {
-				return errors.New("token required")
-			}
+			prompt = "token"
+		}
+		fmt.Printf("%s: ", prompt)
+		var bytes []byte
+		if term.IsTerminal(fd) {
+			bytes, err = term.ReadPassword(fd)
 		} else {
-			// prompt for password
-			if opts.Password, err = readLine("Password: ", true); err != nil {
-				return err
-			} else if opts.Password == "" {
-				return errors.New("password required")
-			}
+			bytes, err = readLine(reader)
+		}
+		if err != nil {
+			return
+		}
+		fmt.Println()
+		if opts.Password = string(bytes); opts.Password == "" {
+			return fmt.Errorf("%s required", prompt)
 		}
 	}
 
@@ -131,26 +136,15 @@ func runLogin(ctx context.Context, opts loginOptions) (err error) {
 	return nil
 }
 
-func readLine(prompt string, silent bool) (string, error) {
-	fmt.Print(prompt)
-	if silent {
-		fd := os.Stdin.Fd()
-		state, err := term.SaveState(fd)
+func readLine(reader *bufio.Reader) (content []byte, err error) {
+	var line []byte
+	for more := true; more; {
+		// read until no more
+		line, more, err = reader.ReadLine()
 		if err != nil {
-			return "", err
+			return nil, err
 		}
-		term.DisableEcho(fd, state)
-		defer term.RestoreTerminal(fd, state)
+		content = append(content, line...)
 	}
-
-	reader := bufio.NewReader(os.Stdin)
-	line, _, err := reader.ReadLine()
-	if err != nil {
-		return "", err
-	}
-	if silent {
-		fmt.Println()
-	}
-
-	return string(line), nil
+	return
 }
