@@ -18,6 +18,7 @@ package root
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -75,37 +76,30 @@ Example - Log in with username and password in an interactive terminal and no TL
 func runLogin(ctx context.Context, opts loginOptions) (err error) {
 	ctx, _ = opts.WithContext(ctx)
 
+	// prompt for credential
 	if opts.Password == "" {
-		// prompt for credential
-		reader := bufio.NewReader(os.Stdin)
 		if opts.Username == "" {
-			fmt.Print("username: ")
-			username, err := readLine(reader)
+			// prompt for username
+			username, err := readLine("Username: ", false)
 			if err != nil {
 				return err
 			}
-			opts.Username = strings.TrimSpace(string(username))
+			opts.Username = strings.TrimSpace(username)
 		}
-
-		prompt := "password"
 		if opts.Username == "" {
-			prompt = "token"
-		}
-		fmt.Printf("%s: ", prompt)
-
-		var bytes []byte
-		fd := int(os.Stdin.Fd())
-		if term.IsTerminal(fd) {
-			bytes, err = term.ReadPassword(fd)
+			// prompt for token
+			if opts.Password, err = readLine("Token: ", true); err != nil {
+				return err
+			} else if opts.Password == "" {
+				return errors.New("token required")
+			}
 		} else {
-			bytes, err = readLine(reader)
-		}
-		if err != nil {
-			return
-		}
-		fmt.Println()
-		if opts.Password = string(bytes); opts.Password == "" {
-			return fmt.Errorf("%s required", prompt)
+			// prompt for password
+			if opts.Password, err = readLine("Password: ", true); err != nil {
+				return err
+			} else if opts.Password == "" {
+				return errors.New("password required")
+			}
 		}
 	}
 
@@ -137,15 +131,23 @@ func runLogin(ctx context.Context, opts loginOptions) (err error) {
 	return nil
 }
 
-func readLine(reader *bufio.Reader) (content []byte, err error) {
+func readLine(prompt string, silent bool) (string, error) {
+	fmt.Print(prompt)
+	fd := int(os.Stdin.Fd())
 	var line []byte
-	for more := true; more; {
-		// read until no more
-		line, more, err = reader.ReadLine()
-		if err != nil {
-			return nil, err
-		}
-		content = append(content, line...)
+	var err error
+	if silent && term.IsTerminal(fd) {
+		line, err = term.ReadPassword(fd)
+	} else {
+		reader := bufio.NewReader(os.Stdin)
+		line, _, err = reader.ReadLine()
 	}
-	return
+	if err != nil {
+		return "", err
+	}
+	if silent {
+		fmt.Println()
+	}
+
+	return string(line), nil
 }
