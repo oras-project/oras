@@ -138,12 +138,19 @@ func readLine(prompt string, silent bool) (string, error) {
 	var err error
 	if silent && term.IsTerminal(fd) {
 		line, err = term.ReadPassword(fd)
+		if err != nil {
+			return "", err
+		}
 	} else {
 		reader := bufio.NewReader(os.Stdin)
-		line, _, err = reader.ReadLine()
-	}
-	if err != nil {
-		return "", err
+		for more := true; more; {
+			// read until no more
+			line, more, err = reader.ReadLine()
+			if err != nil {
+				return "", err
+			}
+			line = append(line, line...)
+		}
 	}
 	if silent {
 		fmt.Println()
