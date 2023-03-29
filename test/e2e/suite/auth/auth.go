@@ -69,14 +69,14 @@ var _ = Describe("Common registry user", Ordered, func() {
 		It("should fail if no password input", func() {
 			ORAS("login", Host, "--registry-config", AuthConfigPath).
 				WithTimeOut(20*time.Second).
-				MatchKeyWords("username: ", "password: ").
+				MatchKeyWords("Username: ", "Password: ").
 				WithInput(strings.NewReader(fmt.Sprintf("%s\n", Username))).ExpectFailure().Exec()
 		})
 
 		It("should fail if password is empty", func() {
 			ORAS("login", Host, "--registry-config", AuthConfigPath).
 				WithTimeOut(20*time.Second).
-				MatchKeyWords("username: ", "password: ").
+				MatchKeyWords("Username: ", "Password: ").
 				MatchErrKeyWords("Error: password required").
 				WithInput(strings.NewReader(fmt.Sprintf("%s\n\n", Username))).ExpectFailure().Exec()
 		})
@@ -84,17 +84,18 @@ var _ = Describe("Common registry user", Ordered, func() {
 		It("should fail if no token input", func() {
 			ORAS("login", Host, "--registry-config", AuthConfigPath).
 				WithTimeOut(20*time.Second).
-				MatchKeyWords("username: ", "token: ").
+				MatchKeyWords("Username: ", "Token: ").
 				WithInput(strings.NewReader("\n")).ExpectFailure().Exec()
 		})
 
 		It("should fail if token is empty", func() {
 			ORAS("login", Host, "--registry-config", AuthConfigPath).
 				WithTimeOut(20*time.Second).
-				MatchKeyWords("username: ", "token: ").
+				MatchKeyWords("Username: ", "Token: ").
 				MatchErrKeyWords("Error: token required").
 				WithInput(strings.NewReader("\n\n")).ExpectFailure().Exec()
 		})
+
 		It("should use prompted input", func() {
 			ORAS("login", Host, "--registry-config", AuthConfigPath).
 				WithTimeOut(20*time.Second).

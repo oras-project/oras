@@ -16,10 +16,10 @@ limitations under the License.
 package root
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -134,27 +134,34 @@ func runLogin(ctx context.Context, opts loginOptions) (err error) {
 func readLine(prompt string, silent bool) (string, error) {
 	fmt.Print(prompt)
 	fd := int(os.Stdin.Fd())
-	var line []byte
-	var err error
+	line := ""
 	if silent && term.IsTerminal(fd) {
-		line, err = term.ReadPassword(fd)
+		bytes, err := term.ReadPassword(fd)
 		if err != nil {
 			return "", err
 		}
+		line = string(bytes)
 	} else {
-		reader := bufio.NewReader(os.Stdin)
-		var part []byte
-		for more := true; more; {
-			// read until no more
-			part, more, err = reader.ReadLine()
+		// implement per-byte scanf here since fmt.Fscanln skips all the
+		// newline before scanning
+		for b := [1]byte{}; ; {
+			fmt.Print(len(b))
+			_, err := os.Stdin.Read(b[:])
 			if err != nil {
+				if err == io.EOF {
+					break
+				}
 				return "", err
 			}
-			line = append(line, part...)
+			s := string(b[:])
+			if s == "\n" {
+				break
+			}
+			line += s
 		}
 	}
 	if silent {
 		fmt.Println()
 	}
-	return string(line), nil
+	return line, nil
 }
