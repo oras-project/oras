@@ -143,18 +143,18 @@ func readLine(prompt string, silent bool) (string, error) {
 		}
 	} else {
 		reader := bufio.NewReader(os.Stdin)
+		var part []byte
 		for more := true; more; {
 			// read until no more
-			line, more, err = reader.ReadLine()
+			part, more, err = reader.ReadLine()
 			if err != nil {
 				return "", err
 			}
-			line = append(line, line...)
+			line = append(line, part...)
 		}
 	}
 	if silent {
 		fmt.Println()
 	}
-
 	return string(line), nil
 }
