@@ -87,13 +87,14 @@ func runLogin(ctx context.Context, opts loginOptions) (err error) {
 			opts.Username = strings.TrimSpace(string(username))
 		}
 
-		fd := int(os.Stdin.Fd())
 		prompt := "password"
 		if opts.Username == "" {
 			prompt = "token"
 		}
 		fmt.Printf("%s: ", prompt)
+
 		var bytes []byte
+		fd := int(os.Stdin.Fd())
 		if term.IsTerminal(fd) {
 			bytes, err = term.ReadPassword(fd)
 		} else {
