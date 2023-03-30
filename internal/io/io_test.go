@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package file_test
+package io_test
 
 import (
 	"errors"
@@ -27,7 +27,7 @@ import (
 
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras/internal/file"
+	iotest "oras.land/oras/internal/io"
 )
 
 const manifestMediaType = "application/vnd.oci.image.manifest.v1+json"
@@ -47,7 +47,7 @@ func TestFile_PrepareManifestContent(t *testing.T) {
 	want := []byte(manifest)
 
 	// test PrepareManifestContent
-	got, err := file.PrepareManifestContent(path)
+	got, err := iotest.PrepareManifestContent(path)
 	if err != nil {
 		t.Fatal("PrepareManifestContent() error=", err)
 	}
@@ -81,7 +81,7 @@ func TestFile_PrepareManifestContent_fromStdin(t *testing.T) {
 	want := []byte(manifest)
 
 	// test PrepareManifestContent read from stdin
-	got, err := file.PrepareManifestContent("-")
+	got, err := iotest.PrepareManifestContent("-")
 	if err != nil {
 		t.Fatal("PrepareManifestContent() error=", err)
 	}
@@ -92,7 +92,7 @@ func TestFile_PrepareManifestContent_fromStdin(t *testing.T) {
 
 func TestFile_PrepareManifestContent_errMissingFileName(t *testing.T) {
 	// test PrepareManifestContent with missing file name
-	_, err := file.PrepareManifestContent("")
+	_, err := iotest.PrepareManifestContent("")
 	expected := "missing file name"
 	if err.Error() != expected {
 		t.Fatalf("PrepareManifestContent() error = %v, wantErr %v", err, expected)
@@ -101,7 +101,7 @@ func TestFile_PrepareManifestContent_errMissingFileName(t *testing.T) {
 
 func TestFile_PrepareManifestContent_errReadFile(t *testing.T) {
 	// test PrepareManifestContent with nonexistent file
-	_, err := file.PrepareManifestContent("nonexistent.txt")
+	_, err := iotest.PrepareManifestContent("nonexistent.txt")
 	expected := "failed to read nonexistent.txt"
 	if !strings.Contains(err.Error(), expected) {
 		t.Fatalf("PrepareManifestContent() error = %v, wantErr %v", err, expected)
@@ -125,7 +125,7 @@ func TestFile_PrepareBlobContent(t *testing.T) {
 	}
 
 	// test PrepareBlobContent
-	got, rc, err := file.PrepareBlobContent(path, blobMediaType, "", -1)
+	got, rc, err := iotest.PrepareBlobContent(path, blobMediaType, "", -1)
 	if err != nil {
 		t.Fatal("PrepareBlobContent() error=", err)
 	}
@@ -147,7 +147,7 @@ func TestFile_PrepareBlobContent(t *testing.T) {
 	// test PrepareBlobContent with provided digest and size
 	dgstStr := "sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5"
 	size := int64(12)
-	got, rc, err = file.PrepareBlobContent(path, blobMediaType, dgstStr, size)
+	got, rc, err = iotest.PrepareBlobContent(path, blobMediaType, dgstStr, size)
 	if err != nil {
 		t.Fatal("PrepareBlobContent() error=", err)
 	}
@@ -173,7 +173,7 @@ func TestFile_PrepareBlobContent(t *testing.T) {
 
 	// test PrepareBlobContent with provided size, but the size does not match the
 	// actual content size
-	_, _, err = file.PrepareBlobContent(path, blobMediaType, "", 15)
+	_, _, err = iotest.PrepareBlobContent(path, blobMediaType, "", 15)
 	expected := fmt.Sprintf("input size %d does not match the actual content size %d", 15, size)
 	if err.Error() != expected {
 		t.Fatalf("PrepareBlobContent() error = %v, wantErr %v", err, expected)
@@ -211,7 +211,7 @@ func TestFile_PrepareBlobContent_fromStdin(t *testing.T) {
 	}
 
 	// test PrepareBlobContent with provided digest and size
-	gotDesc, gotRc, err := file.PrepareBlobContent("-", blobMediaType, string(dgst), size)
+	gotDesc, gotRc, err := iotest.PrepareBlobContent("-", blobMediaType, string(dgst), size)
 	defer gotRc.Close()
 	if err != nil {
 		t.Fatal("PrepareBlobContent() error=", err)
@@ -227,14 +227,14 @@ func TestFile_PrepareBlobContent_fromStdin(t *testing.T) {
 	}
 
 	// test PrepareBlobContent from stdin with missing size
-	_, _, err = file.PrepareBlobContent("-", blobMediaType, "", -1)
+	_, _, err = iotest.PrepareBlobContent("-", blobMediaType, "", -1)
 	expected := "content size must be provided if it is read from stdin"
 	if err.Error() != expected {
 		t.Fatalf("PrepareBlobContent() error = %v, wantErr %v", err, expected)
 	}
 
 	// test PrepareBlobContent from stdin with missing digest
-	_, _, err = file.PrepareBlobContent("-", blobMediaType, "", 5)
+	_, _, err = iotest.PrepareBlobContent("-", blobMediaType, "", 5)
 	expected = "content digest must be provided if it is read from stdin"
 	if err.Error() != expected {
 		t.Fatalf("PrepareBlobContent() error = %v, wantErr %v", err, expected)
@@ -244,7 +244,7 @@ func TestFile_PrepareBlobContent_fromStdin(t *testing.T) {
 func TestFile_PrepareBlobContent_errDigestInvalidFormat(t *testing.T) {
 	// test PrepareBlobContent from stdin with invalid digest
 	invalidDgst := "xyz"
-	_, _, err := file.PrepareBlobContent("-", blobMediaType, invalidDgst, 12)
+	_, _, err := iotest.PrepareBlobContent("-", blobMediaType, invalidDgst, 12)
 	if !errors.Is(err, digest.ErrDigestInvalidFormat) {
 		t.Fatalf("PrepareBlobContent() error = %v, wantErr %v", err, digest.ErrDigestInvalidFormat)
 	}
@@ -252,7 +252,7 @@ func TestFile_PrepareBlobContent_errDigestInvalidFormat(t *testing.T) {
 
 func TestFile_PrepareBlobContent_errMissingFileName(t *testing.T) {
 	// test PrepareBlobContent with missing file name
-	_, _, err := file.PrepareBlobContent("", blobMediaType, "", -1)
+	_, _, err := iotest.PrepareBlobContent("", blobMediaType, "", -1)
 	expected := "missing file name"
 	if err.Error() != expected {
 		t.Fatalf("PrepareBlobContent() error = %v, wantErr %v", err, expected)
@@ -261,7 +261,7 @@ func TestFile_PrepareBlobContent_errMissingFileName(t *testing.T) {
 
 func TestFile_PrepareBlobContent_errOpenFile(t *testing.T) {
 	// test PrepareBlobContent with nonexistent file
-	_, _, err := file.PrepareBlobContent("nonexistent.txt", blobMediaType, "", -1)
+	_, _, err := iotest.PrepareBlobContent("nonexistent.txt", blobMediaType, "", -1)
 	expected := "failed to open nonexistent.txt"
 	if !strings.Contains(err.Error(), expected) {
 		t.Fatalf("PrepareBlobContent() error = %v, wantErr %v", err, expected)
@@ -274,7 +274,7 @@ func TestFile_ParseMediaType(t *testing.T) {
 
 	// test ParseMediaType
 	want := manifestMediaType
-	got, err := file.ParseMediaType(content)
+	got, err := iotest.ParseMediaType(content)
 	if err != nil {
 		t.Fatal("ParseMediaType() error=", err)
 	}
@@ -288,7 +288,7 @@ func TestFile_ParseMediaType_invalidContent_notAJson(t *testing.T) {
 	content := []byte("manifest")
 
 	// test ParseMediaType
-	_, err := file.ParseMediaType(content)
+	_, err := iotest.ParseMediaType(content)
 	expected := "not a valid json file"
 	if err.Error() != expected {
 		t.Fatalf("ParseMediaType() error = %v, wantErr %v", err, expected)
@@ -300,9 +300,55 @@ func TestFile_ParseMediaType_invalidContent_missingMediaType(t *testing.T) {
 	content := []byte(`{"schemaVersion":2}`)
 
 	// test ParseMediaType
-	_, err := file.ParseMediaType(content)
+	_, err := iotest.ParseMediaType(content)
 	expected := "media type is not recognized"
 	if err.Error() != expected {
 		t.Fatalf("ParseMediaType() error = %v, wantErr %v", err, expected)
+	}
+}
+
+func TestReadLine(t *testing.T) {
+	type args struct {
+		reader io.Reader
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []byte
+		wantErr bool
+	}{
+		{"empty line", args{strings.NewReader("")}, []byte(""), false},
+		{"LF", args{strings.NewReader("\n")}, []byte(""), false},
+		{"CR", args{strings.NewReader("\r")}, []byte("\r"), false},
+		{"CRLF", args{strings.NewReader("\r\n")}, []byte(""), false},
+		{"input", args{strings.NewReader("foo")}, []byte("foo"), false},
+		{"input ended with LF", args{strings.NewReader("foo\n")}, []byte("foo"), false},
+		{"input ended with CR", args{strings.NewReader("foo\r")}, []byte("foo\r"), false},
+		{"input ended with CRLF", args{strings.NewReader("foo\r\n")}, []byte("foo"), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := iotest.ReadLine(tt.args.reader)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ReadLine() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ReadLine() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+type mockReader struct{}
+
+func (m *mockReader) Read(p []byte) (n int, err error) {
+	return 0, errors.New("mock error")
+}
+
+func TestReadLine_err(t *testing.T) {
+	got, err := iotest.ReadLine(&mockReader{})
+	if err == nil {
+		t.Errorf("ReadLine() = %v, want error", got)
 	}
 }

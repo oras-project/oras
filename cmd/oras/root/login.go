@@ -19,7 +19,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -27,6 +26,7 @@ import (
 	"golang.org/x/term"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/credential"
+	"oras.land/oras/internal/io"
 )
 
 type loginOptions struct {
@@ -134,33 +134,20 @@ func runLogin(ctx context.Context, opts loginOptions) (err error) {
 func readLine(prompt string, silent bool) (string, error) {
 	fmt.Print(prompt)
 	fd := int(os.Stdin.Fd())
-	line := ""
+	var bytes []byte
+	var err error
 	if silent && term.IsTerminal(fd) {
-		bytes, err := term.ReadPassword(fd)
-		if err != nil {
-			return "", err
-		}
-		line = string(bytes)
+		bytes, err = term.ReadPassword(fd)
+		fmt.Println(string(bytes))
 	} else {
-		// implement per-byte scanf here since fmt.Fscanln skips all the
-		// newline before scanning
-		for b := [1]byte{}; ; {
-			_, err := os.Stdin.Read(b[:])
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				return "", err
-			}
-			s := string(b[:])
-			if s == "\r" || s == "\n" {
-				break
-			}
-			line += s
-		}
+		bytes, err = io.ReadLine(os.Stdin)
+		fmt.Println(string(bytes))
+	}
+	if err != nil {
+		return "", err
 	}
 	if silent {
 		fmt.Println()
 	}
-	return line, nil
+	return string(bytes), nil
 }

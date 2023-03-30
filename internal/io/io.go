@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package file
+package io
 
 import (
 	"encoding/json"
@@ -130,4 +130,30 @@ func ParseMediaType(content []byte) (string, error) {
 		return "", errors.New("media type is not recognized")
 	}
 	return manifest.MediaType, nil
+}
+
+// ReadLine reads a line from the reader with trailing \r dropped.
+func ReadLine(reader io.Reader) ([]byte, error) {
+	line := make([]byte, 0)
+	drop := 0
+	for b := [1]byte{}; ; {
+		_, err := reader.Read(b[:])
+		if err != nil {
+			if err == io.EOF {
+				drop = 0
+				break
+			}
+			return nil, err
+		}
+		s := string(b[:])
+		if s == "\r" {
+			drop = 1
+		} else if s == "\n" {
+			break
+		} else {
+			drop = 0
+		}
+		line = append(line, b[0])
+	}
+	return line[:len(line)-drop], nil
 }
