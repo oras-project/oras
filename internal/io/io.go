@@ -141,7 +141,8 @@ func ReadLine(reader io.Reader) ([]byte, error) {
 		n, err := reader.Read(buffer[:])
 		if err != nil {
 			if err == io.EOF {
-				// a line ends with EOF or \r
+				// a line ends if reader is closed
+				// drop \r if it is the last character
 				return line[:len(line)-drop], nil
 			}
 			return nil, err
