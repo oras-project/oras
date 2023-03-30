@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package tag
+package root
 
 import (
 	"fmt"
@@ -33,7 +33,7 @@ type tagOptions struct {
 	targetRefs  []string
 }
 
-func TagCmd() *cobra.Command {
+func tagCmd() *cobra.Command {
 	var opts tagOptions
 	cmd := &cobra.Command{
 		Use:   "tag [flags] <name>{:<tag>|@<digest>} <new_tag> [...]",
