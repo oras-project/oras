@@ -312,26 +312,36 @@ func TestReadLine(t *testing.T) {
 		reader io.Reader
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    []byte
-		wantErr bool
+		name string
+		args args
+		want []byte
 	}{
-		{"empty line", args{strings.NewReader("")}, []byte(""), false},
-		{"LF", args{strings.NewReader("\n")}, []byte(""), false},
-		{"CR", args{strings.NewReader("\r")}, []byte("\r"), false},
-		{"CRLF", args{strings.NewReader("\r\n")}, []byte(""), false},
-		{"input", args{strings.NewReader("foo")}, []byte("foo"), false},
-		{"input ended with LF", args{strings.NewReader("foo\n")}, []byte("foo"), false},
-		{"input ended with CR", args{strings.NewReader("foo\r")}, []byte("foo\r"), false},
-		{"input ended with CRLF", args{strings.NewReader("foo\r\n")}, []byte("foo"), false},
+		{"empty line", args{strings.NewReader("")}, nil},
+		{"LF", args{strings.NewReader("\n")}, nil},
+		{"CR", args{strings.NewReader("\r")}, []byte("")},
+		{"CRLF", args{strings.NewReader("\r\n")}, []byte("")},
+		{"input", args{strings.NewReader("foo")}, []byte("foo")},
+		{"input ended with LF", args{strings.NewReader("foo\n")}, []byte("foo")},
+		{"input ended with CR", args{strings.NewReader("foo\r")}, []byte("foo")},
+		{"input ended with CRLF", args{strings.NewReader("foo\r\n")}, []byte("foo")},
+		{"input contains CR", args{strings.NewReader("foo\rbar")}, []byte("foo\rbar")},
+		{"input contains LF", args{strings.NewReader("foo\nbar")}, []byte("foo")},
+		{"input contains CRLF", args{strings.NewReader("foo\r\nbar")}, []byte("foo")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := iotest.ReadLine(tt.args.reader)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ReadLine() error = %v, wantErr %v", err, tt.wantErr)
+			if err != nil {
+				t.Errorf("ReadLine() error = %v", err)
 				return
+			}
+			if left, err := io.ReadAll(tt.args.reader); err != nil {
+				if err != io.EOF {
+					t.Errorf("Unexpected error in reading left: %v", err)
+				}
+				if len(left) != 0 || strings.ContainsAny(string(left), "\r\n") {
+					t.Errorf("Unexpected character left in the reader: %q", left)
+				}
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ReadLine() = %v, want %v", got, tt.want)

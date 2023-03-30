@@ -137,17 +137,14 @@ func readLine(prompt string, silent bool) (string, error) {
 	var bytes []byte
 	var err error
 	if silent && term.IsTerminal(fd) {
-		bytes, err = term.ReadPassword(fd)
-		fmt.Println(string(bytes))
+		if bytes, err = term.ReadPassword(fd); err == nil {
+			_, err = fmt.Println()
+		}
 	} else {
 		bytes, err = io.ReadLine(os.Stdin)
-		fmt.Println(string(bytes))
 	}
 	if err != nil {
 		return "", err
-	}
-	if silent {
-		fmt.Println()
 	}
 	return string(bytes), nil
 }

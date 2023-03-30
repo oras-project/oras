@@ -134,26 +134,31 @@ func ParseMediaType(content []byte) (string, error) {
 
 // ReadLine reads a line from the reader with trailing \r dropped.
 func ReadLine(reader io.Reader) ([]byte, error) {
-	line := make([]byte, 0)
+	var line []byte
+	var buffer [1]byte
 	drop := 0
-	for b := [1]byte{}; ; {
-		_, err := reader.Read(b[:])
+	for {
+		n, err := reader.Read(buffer[:])
 		if err != nil {
 			if err == io.EOF {
-				drop = 0
-				break
+				// a line ends with EOF or \r
+				return line[:len(line)-drop], nil
 			}
 			return nil, err
 		}
-		s := string(b[:])
-		if s == "\r" {
-			drop = 1
-		} else if s == "\n" {
-			break
-		} else {
-			drop = 0
+		if n != 1 {
+			return nil, errors.New("failed to read with 1-byte buffer")
 		}
-		line = append(line, b[0])
+		switch c := buffer[0]; c {
+		case '\r':
+			drop = 1
+			line = append(line, c)
+		case '\n':
+			// a line ends with \n
+			return line[:len(line)-drop], nil
+		default:
+			drop = 0
+			line = append(line, c)
+		}
 	}
-	return line[:len(line)-drop], nil
 }
