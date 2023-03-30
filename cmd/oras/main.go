@@ -27,7 +27,6 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 	if err := root.New().ExecuteContext(ctx); err != nil {
-		cancel()
 		os.Exit(1)
 	}
 }
