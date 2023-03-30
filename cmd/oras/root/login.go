@@ -145,7 +145,6 @@ func readLine(prompt string, silent bool) (string, error) {
 		// implement per-byte scanf here since fmt.Fscanln skips all the
 		// newline before scanning
 		for b := [1]byte{}; ; {
-			fmt.Print(len(b))
 			_, err := os.Stdin.Read(b[:])
 			if err != nil {
 				if err == io.EOF {
@@ -154,7 +153,7 @@ func readLine(prompt string, silent bool) (string, error) {
 				return "", err
 			}
 			s := string(b[:])
-			if s == "\n" {
+			if s == "\r" || s == "\n" {
 				break
 			}
 			line += s
