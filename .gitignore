@@ -36,6 +36,9 @@ debug
 
 # Custom
 coverage.txt
+test/e2e/coverage.txt
+**/covcounters.*
+**/covmeta.*
 bin/
 dist/
 *.tar.gz

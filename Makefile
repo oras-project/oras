@@ -124,3 +124,7 @@ sign:
 	for f in $$(ls _dist/*.{gz,txt} 2>/dev/null) ; do \
 		gpg --armor --detach-sign $${f} ; \
 	done
+
+.PHONY: e2e-covdata
+e2e-covdata:
+	$(GO_EXE) tool covdata textfmt -i="test/e2e/${COVERAGE_DUMP_ROOT}" -o test/e2e/coverage.txt
