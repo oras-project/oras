@@ -87,7 +87,7 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runPull(opts, cmd)
+			return runPull(cmd, opts)
 		},
 	}
 

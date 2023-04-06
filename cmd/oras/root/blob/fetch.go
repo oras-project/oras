@@ -79,7 +79,7 @@ Example - Fetch and print a blob from OCI image layout archive file 'layout.tar'
 		},
 		Aliases: []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fetchBlob(opts, cmd)
+			return fetchBlob(cmd, opts)
 		},
 	}
 

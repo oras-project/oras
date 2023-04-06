@@ -76,7 +76,7 @@ Example - Fetch and print the prettified descriptor of the config:
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fetchConfig(opts, cmd)
+			return fetchConfig(cmd, opts)
 		},
 	}
 

@@ -58,7 +58,7 @@ Example - List the repositories under the registry that include values lexically
 			if opts.hostname, opts.namespace, err = repository.ParseRepoPath(args[0]); err != nil {
 				return fmt.Errorf("could not parse repository path: %w", err)
 			}
-			return listRepository(opts, cmd)
+			return listRepository(cmd, opts)
 		},
 	}
 

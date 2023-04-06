@@ -78,7 +78,7 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 		},
 		Aliases: []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fetchManifest(opts, cmd)
+			return fetchManifest(cmd, opts)
 		},
 	}
 

@@ -92,7 +92,7 @@ Example - Push a manifest to an OCI layout folder 'layout-dir' and tag with 'v1'
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return pushManifest(opts, cmd)
+			return pushManifest(cmd, opts)
 		},
 	}
 

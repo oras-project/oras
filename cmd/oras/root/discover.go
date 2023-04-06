@@ -79,7 +79,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI layout folder
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runDiscover(opts, cmd)
+			return runDiscover(cmd, opts)
 		},
 	}
 

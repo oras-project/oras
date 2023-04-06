@@ -67,7 +67,7 @@ Example - Show tags associated with a digest:
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return showTags(opts, cmd)
+			return showTags(cmd, opts)
 		},
 	}
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the tag specified by `last`")

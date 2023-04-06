@@ -84,7 +84,7 @@ Example - Push blob 'hi.txt' into an OCI layout folder 'layout-dir':
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return pushBlob(opts, cmd)
+			return pushBlob(cmd, opts)
 		},
 	}
 

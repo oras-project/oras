@@ -65,7 +65,7 @@ Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
-			return deleteManifest(opts, cmd)
+			return deleteManifest(cmd, opts)
 		},
 	}
 
