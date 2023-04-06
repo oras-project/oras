@@ -48,7 +48,7 @@ func ResolveFlags(reg string, host string, flagType resolveType) []string {
 	resolveFlag := "resolve"
 	usernameFlag := "username"
 	passwordFlag := "password"
-	plainHttpFlag := "plain-http"
+	plainHttpFlag := "insecure"
 	fp := "--"
 
 	switch flagType {
