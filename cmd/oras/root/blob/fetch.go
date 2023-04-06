@@ -16,6 +16,7 @@ limitations under the License.
 package blob
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -28,7 +29,6 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/trace"
 )
 
 type fetchBlobOptions struct {
@@ -80,7 +80,7 @@ Example - Fetch and print a blob from OCI image layout archive file 'layout.tar'
 		},
 		Aliases: []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fetchBlob(opts)
+			return fetchBlob(cmd.Context(), opts)
 		},
 	}
 
@@ -89,8 +89,8 @@ Example - Fetch and print a blob from OCI image layout archive file 'layout.tar'
 	return cmd
 }
 
-func fetchBlob(opts fetchBlobOptions) (fetchErr error) {
-	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
+func fetchBlob(ctx context.Context, opts fetchBlobOptions) (fetchErr error) {
+	ctx, _ = opts.WithContext(ctx)
 	var target oras.ReadOnlyTarget
 	target, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {

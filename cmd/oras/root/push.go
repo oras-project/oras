@@ -30,7 +30,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/trace"
 )
 
 type pushOptions struct {
@@ -112,7 +111,7 @@ Example - Push file "hi.txt" into an OCI layout folder 'layout-dir' with tag 'te
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runPush(opts)
+			return runPush(cmd.Context(), opts)
 		},
 	}
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "`path` of image config file")
@@ -123,8 +122,8 @@ Example - Push file "hi.txt" into an OCI layout folder 'layout-dir' with tag 'te
 	return cmd
 }
 
-func runPush(opts pushOptions) error {
-	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
+func runPush(ctx context.Context, opts pushOptions) error {
+	ctx, _ = opts.WithContext(ctx)
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err

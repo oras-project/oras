@@ -16,13 +16,13 @@ limitations under the License.
 package root
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/trace"
 )
 
 type tagOptions struct {
@@ -61,8 +61,8 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI layout folder 'layout-
 			opts.targetRefs = args[1:]
 			return option.Parse(&opts)
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
-			return tagManifest(opts)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return tagManifest(cmd.Context(), opts)
 		},
 	}
 
@@ -71,8 +71,8 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI layout folder 'layout-
 	return cmd
 }
 
-func tagManifest(opts tagOptions) error {
-	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
+func tagManifest(ctx context.Context, opts tagOptions) error {
+	ctx, _ = opts.WithContext(ctx)
 	target, err := opts.NewTarget(opts.Common)
 	if err != nil {
 		return err

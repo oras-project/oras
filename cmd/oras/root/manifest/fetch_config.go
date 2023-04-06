@@ -28,7 +28,6 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/descriptor"
-	"oras.land/oras/internal/trace"
 )
 
 type fetchConfigOptions struct {
@@ -77,7 +76,7 @@ Example - Fetch and print the prettified descriptor of the config:
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fetchConfig(opts)
+			return fetchConfig(cmd.Context(), opts)
 		},
 	}
 
@@ -86,8 +85,8 @@ Example - Fetch and print the prettified descriptor of the config:
 	return cmd
 }
 
-func fetchConfig(opts fetchConfigOptions) (fetchErr error) {
-	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
+func fetchConfig(ctx context.Context, opts fetchConfigOptions) (fetchErr error) {
+	ctx, _ = opts.WithContext(ctx)
 
 	repo, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {

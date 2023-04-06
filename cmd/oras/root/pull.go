@@ -30,7 +30,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
-	"oras.land/oras/internal/trace"
 )
 
 type pullOptions struct {
@@ -88,7 +87,7 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runPull(opts)
+			return runPull(cmd.Context(), opts)
 		},
 	}
 
@@ -102,7 +101,8 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 	return cmd
 }
 
-func runPull(opts pullOptions) error {
+func runPull(ctx context.Context, opts pullOptions) error {
+	ctx, _ = opts.WithContext(ctx)
 	// Copy Options
 	var printed sync.Map
 	copyOptions := oras.DefaultCopyOptions
@@ -181,7 +181,6 @@ func runPull(opts pullOptions) error {
 		return ret, nil
 	}
 
-	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
 	target, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err

@@ -16,6 +16,7 @@ limitations under the License.
 package blob
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -25,7 +26,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/file"
-	"oras.land/oras/internal/trace"
 )
 
 type pushBlobOptions struct {
@@ -85,7 +85,7 @@ Example - Push blob 'hi.txt' into an OCI layout folder 'layout-dir':
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return pushBlob(opts)
+			return pushBlob(cmd.Context(), opts)
 		},
 	}
 
@@ -95,8 +95,8 @@ Example - Push blob 'hi.txt' into an OCI layout folder 'layout-dir':
 	return cmd
 }
 
-func pushBlob(opts pushBlobOptions) (err error) {
-	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
+func pushBlob(ctx context.Context, opts pushBlobOptions) (err error) {
+	ctx, _ = opts.WithContext(ctx)
 
 	repo, err := opts.NewTarget(opts.Common)
 	if err != nil {

@@ -16,7 +16,11 @@ limitations under the License.
 package option
 
 import (
+	"context"
+
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
+	"oras.land/oras/internal/trace"
 )
 
 // Common option struct.
@@ -29,4 +33,9 @@ type Common struct {
 func (opts *Common) ApplyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.Debug, "debug", "d", false, "debug mode")
 	fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "verbose output")
+}
+
+// WithContext returns a new FieldLogger and an associated Context derived from ctx.
+func (opts *Common) WithContext(ctx context.Context) (context.Context, logrus.FieldLogger) {
+	return trace.NewLogger(ctx, opts.Debug, opts.Verbose)
 }

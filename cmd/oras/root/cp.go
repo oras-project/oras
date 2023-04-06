@@ -28,7 +28,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
-	"oras.land/oras/internal/trace"
 )
 
 type copyOptions struct {
@@ -86,7 +85,7 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCopy(opts)
+			return runCopy(cmd.Context(), opts)
 		},
 	}
 	cmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "[Preview] recursively copy the artifact and its referrer artifacts")
@@ -96,8 +95,8 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 	return cmd
 }
 
-func runCopy(opts copyOptions) error {
-	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
+func runCopy(ctx context.Context, opts copyOptions) error {
+	ctx, _ = opts.WithContext(ctx)
 
 	// Prepare source
 	src, err := opts.From.NewReadonlyTarget(ctx, opts.Common)

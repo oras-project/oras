@@ -16,6 +16,7 @@ limitations under the License.
 package manifest
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -26,7 +27,6 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/trace"
 )
 
 type fetchOptions struct {
@@ -79,7 +79,7 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 		},
 		Aliases: []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fetchManifest(opts)
+			return fetchManifest(cmd.Context(), opts)
 		},
 	}
 
@@ -89,8 +89,8 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 	return cmd
 }
 
-func fetchManifest(opts fetchOptions) (fetchErr error) {
-	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
+func fetchManifest(ctx context.Context, opts fetchOptions) (fetchErr error) {
+	ctx, _ = opts.WithContext(ctx)
 
 	target, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {

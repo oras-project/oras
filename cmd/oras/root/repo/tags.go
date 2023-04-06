@@ -16,13 +16,13 @@ limitations under the License.
 package repo
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/opencontainers/go-digest"
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/trace"
 )
 
 type showTagsOptions struct {
@@ -68,7 +68,7 @@ Example - Show tags associated with a digest:
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return showTags(opts)
+			return showTags(cmd.Context(), opts)
 		},
 	}
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the tag specified by `last`")
@@ -77,8 +77,8 @@ Example - Show tags associated with a digest:
 	return cmd
 }
 
-func showTags(opts showTagsOptions) error {
-	ctx, logger := trace.NewLogger(opts.Debug, opts.Verbose)
+func showTags(ctx context.Context, opts showTagsOptions) error {
+	ctx, logger := opts.WithContext(ctx)
 	finder, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err

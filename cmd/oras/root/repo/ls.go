@@ -16,13 +16,13 @@ limitations under the License.
 package repo
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/repository"
-	"oras.land/oras/internal/trace"
 )
 
 type repositoryOptions struct {
@@ -59,7 +59,7 @@ Example - List the repositories under the registry that include values lexically
 			if opts.hostname, opts.namespace, err = repository.ParseRepoPath(args[0]); err != nil {
 				return fmt.Errorf("could not parse repository path: %w", err)
 			}
-			return listRepository(opts)
+			return listRepository(cmd.Context(), opts)
 		},
 	}
 
@@ -68,8 +68,8 @@ Example - List the repositories under the registry that include values lexically
 	return cmd
 }
 
-func listRepository(opts repositoryOptions) error {
-	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
+func listRepository(ctx context.Context, opts repositoryOptions) error {
+	ctx, _ = opts.WithContext(ctx)
 	reg, err := opts.Remote.NewRegistry(opts.hostname, opts.Common)
 	if err != nil {
 		return err

@@ -16,6 +16,7 @@ limitations under the License.
 package manifest
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -24,7 +25,6 @@ import (
 	"oras.land/oras-go/v2/errdef"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/trace"
 )
 
 type deleteOptions struct {
@@ -64,9 +64,9 @@ Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614
 			}
 			return option.Parse(&opts)
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
-			return deleteManifest(opts)
+			return deleteManifest(cmd.Context(), opts)
 		},
 	}
 
@@ -75,8 +75,8 @@ Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614
 	return cmd
 }
 
-func deleteManifest(opts deleteOptions) error {
-	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
+func deleteManifest(ctx context.Context, opts deleteOptions) error {
+	ctx, _ = opts.WithContext(ctx)
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err

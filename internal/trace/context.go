@@ -27,7 +27,7 @@ type contextKey int
 const loggerKey contextKey = iota
 
 // NewLogger returns a logger.
-func NewLogger(debug bool, verbose bool) (context.Context, logrus.FieldLogger) {
+func NewLogger(ctx context.Context, debug bool, verbose bool) (context.Context, logrus.FieldLogger) {
 	var logLevel logrus.Level
 	if debug {
 		logLevel = logrus.DebugLevel
@@ -40,7 +40,6 @@ func NewLogger(debug bool, verbose bool) (context.Context, logrus.FieldLogger) {
 	logger := logrus.New()
 	logger.SetFormatter(&logrus.TextFormatter{DisableQuote: true})
 	logger.SetLevel(logLevel)
-	ctx := context.Background()
 	entry := logger.WithContext(ctx)
 	return context.WithValue(ctx, loggerKey, entry), entry
 }

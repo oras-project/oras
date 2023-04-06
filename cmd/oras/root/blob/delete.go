@@ -16,6 +16,7 @@ limitations under the License.
 package blob
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -23,7 +24,6 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/trace"
 )
 
 type deleteBlobOptions struct {
@@ -62,7 +62,7 @@ Example - Delete a blob and print its descriptor:
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
-			return deleteBlob(opts)
+			return deleteBlob(cmd.Context(), opts)
 		},
 	}
 
@@ -70,8 +70,8 @@ Example - Delete a blob and print its descriptor:
 	return cmd
 }
 
-func deleteBlob(opts deleteBlobOptions) (err error) {
-	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
+func deleteBlob(ctx context.Context, opts deleteBlobOptions) (err error) {
+	ctx, _ = opts.WithContext(ctx)
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err

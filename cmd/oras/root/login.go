@@ -17,6 +17,7 @@ package root
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -26,7 +27,6 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/credential"
-	"oras.land/oras/internal/trace"
 )
 
 type loginOptions struct {
@@ -66,15 +66,15 @@ Example - Log in with username and password in an interactive terminal and no TL
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Hostname = args[0]
-			return runLogin(opts)
+			return runLogin(cmd.Context(), opts)
 		},
 	}
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
 
-func runLogin(opts loginOptions) (err error) {
-	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
+func runLogin(ctx context.Context, opts loginOptions) (err error) {
+	ctx, _ = opts.WithContext(ctx)
 
 	// prompt for credential
 	if opts.Password == "" {

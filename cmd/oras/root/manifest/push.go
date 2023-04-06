@@ -31,7 +31,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/file"
-	"oras.land/oras/internal/trace"
 )
 
 type pushOptions struct {
@@ -92,8 +91,8 @@ Example - Push a manifest to an OCI layout folder 'layout-dir' and tag with 'v1'
 			opts.extraRefs = refs[1:]
 			return option.Parse(&opts)
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
-			return pushManifest(opts)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return pushManifest(cmd.Context(), opts)
 		},
 	}
 
@@ -104,8 +103,8 @@ Example - Push a manifest to an OCI layout folder 'layout-dir' and tag with 'v1'
 	return cmd
 }
 
-func pushManifest(opts pushOptions) error {
-	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
+func pushManifest(ctx context.Context, opts pushOptions) error {
+	ctx, _ = opts.WithContext(ctx)
 	var target oras.Target
 	var err error
 	target, err = opts.NewTarget(opts.Common)

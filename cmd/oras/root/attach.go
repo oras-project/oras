@@ -28,7 +28,6 @@ import (
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
-	"oras.land/oras/internal/trace"
 )
 
 type attachOptions struct {
@@ -86,7 +85,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI layout folder 'layou
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runAttach(opts)
+			return runAttach(cmd.Context(), opts)
 		},
 	}
 
@@ -98,8 +97,8 @@ Example - Attach file to the manifest tagged 'v1' in an OCI layout folder 'layou
 	return cmd
 }
 
-func runAttach(opts attachOptions) error {
-	ctx, _ := trace.NewLogger(opts.Debug, opts.Verbose)
+func runAttach(ctx context.Context, opts attachOptions) error {
+	ctx, _ = opts.WithContext(ctx)
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err
