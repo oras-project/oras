@@ -122,7 +122,7 @@ Example - Push file "hi.txt" into an OCI layout folder 'layout-dir' with tag 'te
 	return cmd
 }
 
-func runPush(opts pushOptions, cmd *cobra.Command) error {
+func runPush(cmd *cobra.Command, opts pushOptions) error {
 	ctx, _ := opts.WithContext(cmd.Context())
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
@@ -213,7 +213,7 @@ func runPush(opts pushOptions, cmd *cobra.Command) error {
 	return opts.ExportManifest(ctx, store, root)
 }
 
-func updateDisplayOption(opts *oras.CopyGraphOptions, store content.Fetcher, verbose bool) {
+func updateDisplayOption(cmd *cobra.Command, *oras.CopyGraphOptions, store content.Fetcher, verbose bool) {
 	committed := &sync.Map{}
 	opts.PreCopy = display.StatusPrinter("Uploading", verbose)
 	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {

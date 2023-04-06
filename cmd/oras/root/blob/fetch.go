@@ -88,7 +88,7 @@ Example - Fetch and print a blob from OCI image layout archive file 'layout.tar'
 	return cmd
 }
 
-func fetchBlob(opts fetchBlobOptions, cmd *cobra.Command) (fetchErr error) {
+func fetchBlob(cmd *cobra.Command, opts fetchBlobOptions) (fetchErr error) {
 	ctx, _ := opts.WithContext(cmd.Context())
 	var target oras.ReadOnlyTarget
 	target, err := opts.NewReadonlyTarget(ctx, opts.Common)

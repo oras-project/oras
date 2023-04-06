@@ -101,7 +101,7 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 	return cmd
 }
 
-func runPull(opts pullOptions, cmd *cobra.Command) error {
+func runPull(cmd *cobra.Command, opts pullOptions) error {
 	ctx, _ := opts.WithContext(cmd.Context())
 	// Copy Options
 	var printed sync.Map

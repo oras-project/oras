@@ -72,7 +72,7 @@ Example - Log in with username and password in an interactive terminal and no TL
 	return cmd
 }
 
-func runLogin(opts loginOptions, cmd *cobra.Command) (err error) {
+func runLogin(cmd *cobra.Command, opts loginOptions) (err error) {
 	ctx, _ := opts.WithContext(cmd.Context())
 
 	// prompt for credential

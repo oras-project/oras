@@ -94,7 +94,7 @@ Example - Push blob 'hi.txt' into an OCI layout folder 'layout-dir':
 	return cmd
 }
 
-func pushBlob(opts pushBlobOptions, cmd *cobra.Command) (err error) {
+func pushBlob(cmd *cobra.Command, opts pushBlobOptions) (err error) {
 	ctx, _ := opts.WithContext(cmd.Context())
 
 	repo, err := opts.NewTarget(opts.Common)

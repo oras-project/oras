@@ -50,7 +50,7 @@ Example - Logout:
 	return cmd
 }
 
-func runLogout(opts logoutOptions, cmd *cobra.Command) error {
+func runLogout(cmd *cobra.Command, opts logoutOptions) error {
 	if opts.debug {
 		logrus.SetLevel(logrus.DebugLevel)
 	}

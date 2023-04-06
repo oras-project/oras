@@ -88,7 +88,7 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 	return cmd
 }
 
-func fetchManifest(opts fetchOptions, cmd *cobra.Command) (fetchErr error) {
+func fetchManifest(cmd *cobra.Command, opts fetchOptions) (fetchErr error) {
 	ctx, _ := opts.WithContext(cmd.Context())
 
 	target, err := opts.NewReadonlyTarget(ctx, opts.Common)

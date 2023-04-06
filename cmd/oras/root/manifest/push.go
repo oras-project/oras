@@ -103,7 +103,7 @@ Example - Push a manifest to an OCI layout folder 'layout-dir' and tag with 'v1'
 	return cmd
 }
 
-func pushManifest(opts pushOptions, cmd *cobra.Command) error {
+func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 	ctx, _ := opts.WithContext(cmd.Context())
 	var target oras.Target
 	var err error

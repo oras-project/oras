@@ -85,7 +85,7 @@ Example - Fetch and print the prettified descriptor of the config:
 	return cmd
 }
 
-func fetchConfig(opts fetchConfigOptions, cmd *cobra.Command) (fetchErr error) {
+func fetchConfig(cmd *cobra.Command, opts fetchConfigOptions) (fetchErr error) {
 	ctx, _ := opts.WithContext(cmd.Context())
 
 	repo, err := opts.NewReadonlyTarget(ctx, opts.Common)

@@ -76,7 +76,7 @@ Example - Show tags associated with a digest:
 	return cmd
 }
 
-func showTags(opts showTagsOptions, cmd *cobra.Command) error {
+func showTags(cmd *cobra.Command, opts showTagsOptions) error {
 	ctx, logger := opts.WithContext(cmd.Context())
 	finder, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
