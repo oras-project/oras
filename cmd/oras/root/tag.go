@@ -16,6 +16,7 @@ limitations under the License.
 package root
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -61,7 +62,7 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI layout folder 'layout-
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return tagManifest(cmd, opts)
+			return tagManifest(cmd.Context(), opts)
 		},
 	}
 
@@ -70,8 +71,8 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI layout folder 'layout-
 	return cmd
 }
 
-func tagManifest(cmd *cobra.Command, opts tagOptions) error {
-	ctx, _ := opts.WithContext(cmd.Context())
+func tagManifest(ctx context.Context, opts tagOptions) error {
+	ctx, _ = opts.WithContext(ctx)
 	target, err := opts.NewTarget(opts.Common)
 	if err != nil {
 		return err

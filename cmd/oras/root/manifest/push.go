@@ -92,7 +92,7 @@ Example - Push a manifest to an OCI layout folder 'layout-dir' and tag with 'v1'
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return pushManifest(cmd, opts)
+			return pushManifest(cmd.Context(), opts)
 		},
 	}
 
@@ -103,8 +103,8 @@ Example - Push a manifest to an OCI layout folder 'layout-dir' and tag with 'v1'
 	return cmd
 }
 
-func pushManifest(cmd *cobra.Command, opts pushOptions) error {
-	ctx, _ := opts.WithContext(cmd.Context())
+func pushManifest(ctx context.Context, opts pushOptions) error {
+	ctx, _ = opts.WithContext(ctx)
 	var target oras.Target
 	var err error
 	target, err = opts.NewTarget(opts.Common)

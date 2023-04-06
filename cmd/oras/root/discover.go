@@ -79,7 +79,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI layout folder
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runDiscover(cmd, opts)
+			return runDiscover(cmd.Context(), opts)
 		},
 	}
 
@@ -90,8 +90,8 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI layout folder
 	return cmd
 }
 
-func runDiscover(cmd *cobra.Command, opts discoverOptions) error {
-	ctx, _ := opts.WithContext(cmd.Context())
+func runDiscover(ctx context.Context, opts discoverOptions) error {
+	ctx, _ = opts.WithContext(ctx)
 	repo, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err

@@ -16,6 +16,7 @@ limitations under the License.
 package blob
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -84,7 +85,7 @@ Example - Push blob 'hi.txt' into an OCI layout folder 'layout-dir':
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return pushBlob(cmd, opts)
+			return pushBlob(cmd.Context(), opts)
 		},
 	}
 
@@ -94,8 +95,8 @@ Example - Push blob 'hi.txt' into an OCI layout folder 'layout-dir':
 	return cmd
 }
 
-func pushBlob(cmd *cobra.Command, opts pushBlobOptions) (err error) {
-	ctx, _ := opts.WithContext(cmd.Context())
+func pushBlob(ctx context.Context, opts pushBlobOptions) (err error) {
+	ctx, _ = opts.WithContext(ctx)
 
 	repo, err := opts.NewTarget(opts.Common)
 	if err != nil {

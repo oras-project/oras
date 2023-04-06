@@ -16,6 +16,7 @@ limitations under the License.
 package manifest
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -78,7 +79,7 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 		},
 		Aliases: []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fetchManifest(cmd, opts)
+			return fetchManifest(cmd.Context(), opts)
 		},
 	}
 
@@ -88,8 +89,8 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 	return cmd
 }
 
-func fetchManifest(cmd *cobra.Command, opts fetchOptions) (fetchErr error) {
-	ctx, _ := opts.WithContext(cmd.Context())
+func fetchManifest(ctx context.Context, opts fetchOptions) (fetchErr error) {
+	ctx, _ = opts.WithContext(ctx)
 
 	target, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {

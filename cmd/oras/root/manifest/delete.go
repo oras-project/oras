@@ -16,6 +16,7 @@ limitations under the License.
 package manifest
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -65,7 +66,7 @@ Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
-			return deleteManifest(cmd, opts)
+			return deleteManifest(cmd.Context(), opts)
 		},
 	}
 
@@ -74,8 +75,8 @@ Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614
 	return cmd
 }
 
-func deleteManifest(cmd *cobra.Command, opts deleteOptions) error {
-	ctx, _ := opts.WithContext(cmd.Context())
+func deleteManifest(ctx context.Context, opts deleteOptions) error {
+	ctx, _ = opts.WithContext(ctx)
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err

@@ -76,7 +76,7 @@ Example - Fetch and print the prettified descriptor of the config:
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fetchConfig(cmd, opts)
+			return fetchConfig(cmd.Context(), opts)
 		},
 	}
 
@@ -85,8 +85,8 @@ Example - Fetch and print the prettified descriptor of the config:
 	return cmd
 }
 
-func fetchConfig(cmd *cobra.Command, opts fetchConfigOptions) (fetchErr error) {
-	ctx, _ := opts.WithContext(cmd.Context())
+func fetchConfig(ctx context.Context, opts fetchConfigOptions) (fetchErr error) {
+	ctx, _ = opts.WithContext(ctx)
 
 	repo, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {

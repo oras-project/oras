@@ -17,6 +17,7 @@ package root
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -65,15 +66,15 @@ Example - Log in with username and password in an interactive terminal and no TL
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Hostname = args[0]
-			return runLogin(cmd, opts)
+			return runLogin(cmd.Context(), opts)
 		},
 	}
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
 
-func runLogin(cmd *cobra.Command, opts loginOptions) (err error) {
-	ctx, _ := opts.WithContext(cmd.Context())
+func runLogin(ctx context.Context, opts loginOptions) (err error) {
+	ctx, _ = opts.WithContext(ctx)
 
 	// prompt for credential
 	if opts.Password == "" {

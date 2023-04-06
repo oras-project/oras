@@ -111,7 +111,7 @@ Example - Push file "hi.txt" into an OCI layout folder 'layout-dir' with tag 'te
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runPush(cmd, opts)
+			return runPush(cmd.Context(), opts)
 		},
 	}
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "`path` of image config file")
@@ -122,8 +122,8 @@ Example - Push file "hi.txt" into an OCI layout folder 'layout-dir' with tag 'te
 	return cmd
 }
 
-func runPush(cmd *cobra.Command, opts pushOptions) error {
-	ctx, _ := opts.WithContext(cmd.Context())
+func runPush(ctx context.Context, opts pushOptions) error {
+	ctx, _ = opts.WithContext(ctx)
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err
@@ -213,7 +213,7 @@ func runPush(cmd *cobra.Command, opts pushOptions) error {
 	return opts.ExportManifest(ctx, store, root)
 }
 
-func updateDisplayOption(cmd *cobra.Command, *oras.CopyGraphOptions, store content.Fetcher, verbose bool) {
+func updateDisplayOption(opts *oras.CopyGraphOptions, store content.Fetcher, verbose bool) {
 	committed := &sync.Map{}
 	opts.PreCopy = display.StatusPrinter("Uploading", verbose)
 	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
