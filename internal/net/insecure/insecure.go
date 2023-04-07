@@ -18,6 +18,7 @@ package insecure
 import (
 	"net/http"
 	"strings"
+	"sync"
 )
 
 type transport struct {
@@ -26,9 +27,15 @@ type transport struct {
 }
 
 func NewTransport(base http.RoundTripper, setPlainHTTP func()) *transport {
+	var once sync.Once
 	return &transport{
 		RoundTripper: base,
-		setPlainHTTP: setPlainHTTP,
+		setPlainHTTP: func() {
+			if setPlainHTTP == nil {
+				return
+			}
+			once.Do(setPlainHTTP)
+		},
 	}
 }
 
@@ -39,9 +46,7 @@ func (t *transport) RoundTrip(req *http.Request) (resp *http.Response, err error
 		// failed because of requesting https and get http response
 		// retry with http
 		req.URL.Scheme = "http"
-		if t.setPlainHTTP != nil {
-			t.setPlainHTTP()
-		}
+		t.setPlainHTTP()
 		return t.RoundTripper.RoundTrip(req)
 	}
 	return resp, err
