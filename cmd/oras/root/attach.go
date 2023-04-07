@@ -98,7 +98,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI layout folder 'layou
 }
 
 func runAttach(ctx context.Context, opts attachOptions) error {
-	ctx, _ = opts.WithContext(ctx)
+	ctx, logger := opts.WithContext(ctx)
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err
@@ -164,7 +164,13 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 
 	root, err := pushArtifact(dst, pack, copy)
 	if err != nil {
-		return err
+		if strings.Contains(err.Error(), "failed to delete dangling referrers index") {
+			// attach is successful but failed to clean up obsolete referrer index
+			// TODO: more deterministic detection based on https://github.com/oras-project/oras-go/issues/479
+			logger.Warn("attach succeeds with minor cleanup issue: %s", err.Error())
+		} else {
+			return err
+		}
 	}
 
 	digest := subject.Digest.String()
