@@ -54,7 +54,7 @@ type Remote struct {
 	distributionSpec      distributionSpec
 	headerFlags           []string
 	headers               http.Header
-	setPlainHTTP          func()
+	setPlainHTTPCallback  func()
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
@@ -211,8 +211,8 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 	if debug {
 		client.Client.Transport = trace.NewTransport(client.Client.Transport)
 	}
-	if opts.Insecure {
-		client.Client.Transport = insecure.NewTransport(client.Client.Transport, opts.setPlainHTTP)
+	if opts.Insecure && !opts.PlainHTTP {
+		client.Client.Transport = insecure.NewTransport(client.Client.Transport, opts.setPlainHTTPCallback)
 	}
 
 	cred := opts.Credential()
@@ -261,7 +261,7 @@ func (opts *Remote) NewRegistry(hostname string, common Common) (reg *remote.Reg
 	hostname = reg.Reference.Registry
 	reg.PlainHTTP = opts.isPlainHttp(hostname)
 	if opts.Insecure && !reg.PlainHTTP {
-		opts.setPlainHTTP = func() {
+		opts.setPlainHTTPCallback = func() {
 			reg.PlainHTTP = true
 		}
 	}
@@ -280,7 +280,7 @@ func (opts *Remote) NewRepository(reference string, common Common) (repo *remote
 	hostname := repo.Reference.Registry
 	repo.PlainHTTP = opts.isPlainHttp(hostname)
 	if opts.Insecure && !repo.PlainHTTP {
-		opts.setPlainHTTP = func() {
+		opts.setPlainHTTPCallback = func() {
 			repo.PlainHTTP = true
 		}
 	}

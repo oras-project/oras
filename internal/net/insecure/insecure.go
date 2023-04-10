@@ -27,13 +27,13 @@ type transport struct {
 }
 
 func NewTransport(base http.RoundTripper, setPlainHTTP func()) *transport {
+	if setPlainHTTP == nil {
+		setPlainHTTP = func() {}
+	}
 	var once sync.Once
 	return &transport{
 		RoundTripper: base,
 		setPlainHTTP: func() {
-			if setPlainHTTP == nil {
-				return
-			}
 			once.Do(setPlainHTTP)
 		},
 	}
