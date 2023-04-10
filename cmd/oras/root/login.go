@@ -16,17 +16,17 @@ limitations under the License.
 package root
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
 
-	"github.com/moby/term"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/credential"
+	"oras.land/oras/internal/io"
 )
 
 type loginOptions struct {
@@ -133,24 +133,18 @@ func runLogin(ctx context.Context, opts loginOptions) (err error) {
 
 func readLine(prompt string, silent bool) (string, error) {
 	fmt.Print(prompt)
-	if silent {
-		fd := os.Stdin.Fd()
-		state, err := term.SaveState(fd)
-		if err != nil {
-			return "", err
+	fd := int(os.Stdin.Fd())
+	var bytes []byte
+	var err error
+	if silent && term.IsTerminal(fd) {
+		if bytes, err = term.ReadPassword(fd); err == nil {
+			_, err = fmt.Println()
 		}
-		term.DisableEcho(fd, state)
-		defer term.RestoreTerminal(fd, state)
+	} else {
+		bytes, err = io.ReadLine(os.Stdin)
 	}
-
-	reader := bufio.NewReader(os.Stdin)
-	line, _, err := reader.ReadLine()
 	if err != nil {
 		return "", err
 	}
-	if silent {
-		fmt.Println()
-	}
-
-	return string(line), nil
+	return string(bytes), nil
 }
