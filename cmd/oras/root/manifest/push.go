@@ -30,7 +30,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/io"
+	"oras.land/oras/internal/file"
 )
 
 type pushOptions struct {
@@ -116,7 +116,7 @@ func pushManifest(ctx context.Context, opts pushOptions) error {
 	}
 
 	// prepare manifest content
-	contentBytes, err := io.PrepareManifestContent(opts.fileRef)
+	contentBytes, err := file.PrepareManifestContent(opts.fileRef)
 	if err != nil {
 		return err
 	}
@@ -124,7 +124,7 @@ func pushManifest(ctx context.Context, opts pushOptions) error {
 	// get manifest media type
 	mediaType := opts.mediaType
 	if opts.mediaType == "" {
-		mediaType, err = io.ParseMediaType(contentBytes)
+		mediaType, err = file.ParseMediaType(contentBytes)
 		if err != nil {
 			return err
 		}

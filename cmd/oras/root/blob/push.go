@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/file"
 )
 
 type pushBlobOptions struct {
@@ -103,7 +104,7 @@ func pushBlob(ctx context.Context, opts pushBlobOptions) (err error) {
 	}
 
 	// prepare blob content
-	desc, rc, err := io.PrepareBlobContent(opts.fileRef, opts.mediaType, opts.Reference, opts.size)
+	desc, rc, err := file.PrepareBlobContent(opts.fileRef, opts.mediaType, opts.Reference, opts.size)
 	if err != nil {
 		return err
 	}
