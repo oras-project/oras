@@ -16,7 +16,7 @@ limitations under the License.
 package io
 
 import (
-	"errors"
+	"bytes"
 	"io"
 )
 
@@ -24,30 +24,22 @@ import (
 func ReadLine(reader io.Reader) ([]byte, error) {
 	var line []byte
 	var buffer [1]byte
-	drop := 0
 	for {
 		n, err := reader.Read(buffer[:])
 		if err != nil {
 			if err == io.EOF {
-				// a line ends if reader is closed
-				// drop \r if it is the last character
-				return line[:len(line)-drop], nil
+				break
 			}
 			return nil, err
 		}
-		if n != 1 {
-			return nil, errors.New("failed to read with 1-byte buffer")
+		if n == 0 {
+			continue
 		}
-		switch c := buffer[0]; c {
-		case '\r':
-			drop = 1
-			line = append(line, c)
-		case '\n':
-			// a line ends with \n
-			return line[:len(line)-drop], nil
-		default:
-			drop = 0
-			line = append(line, c)
+		c := buffer[0]
+		if c == '\n' {
+			break
 		}
+		line = append(line, c)
 	}
+	return bytes.TrimSuffix(line, []byte{'\r'}), nil
 }
