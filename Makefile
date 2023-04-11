@@ -35,6 +35,10 @@ LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitTreeState=${GIT_DIRTY}
 test: tidy vendor check-encoding
 	$(GO_EXE) test -race -v -coverprofile=coverage.txt -covermode=atomic ./...
 
+.PHONY: teste2e
+teste2e:
+	./test/e2e/scripts/e2e.sh $(shell git rev-parse --show-toplevel) --clean 
+
 .PHONY: covhtml
 covhtml:
 	open .cover/coverage.html
