@@ -5,7 +5,8 @@ Install [git](https://git-scm.com/download/linux), [docker](https://docs.docker.
 
 ## Run E2E Script
 ```shell
-$REPO_ROOT/test/e2e/scripts/e2e.sh $REPO_ROOT --clean # REPO_ROOT is root folder of oras CLI code
+REPO_ROOT=$(git rev-parse --show-toplevel) # REPO_ROOT is root folder of oras CLI code
+$REPO_ROOT/test/e2e/scripts/e2e.sh $REPO_ROOT --clean 
 ```
 
 If the tests fails with errors like `ginkgo: not found`, use below command to add GOPATH into the PATH variable
