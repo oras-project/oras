@@ -69,14 +69,7 @@ if ! [ -z ${COVERAGE_DUMP_ROOT} ]; then
 fi
 
 echo " === run tests === "
-ginkgo -r -p --succinct suite || fail=true
-
-if ! [ -z ${COVERAGE_DUMP_ROOT} ]; then
-  echo " === generating code cov report === "
-  make -C ${repo_root} e2e-covdata || true
-fi
-
-if [ "${fail}" = 'true' ]; then
+if ! ginkgo -r -p --succinct suite; then 
   echo " === retriving registry error logs === "
   echo '-------- oras distribution trace -------------'
   docker logs -t --tail 200 $oras_container_name

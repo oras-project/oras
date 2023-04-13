@@ -113,6 +113,12 @@ var _ = Describe("Common registry users:", func() {
 				Exec()
 		})
 
+		It("should discover all referrers of a subject via referrers API", func() {
+			ORAS("discover", subjectRef, "-o", format, "--distribution-spec", "v1.1-referrers-api").
+				MatchKeyWords(append(discoverKeyWords(false, referrers...), RegistryRef(Host, ArtifactRepo, foobar.Digest))...).
+				Exec()
+		})
+
 		It("should discover all referrers of a subject with annotations", func() {
 			ORAS("discover", subjectRef, "-o", format, "-v").
 				MatchKeyWords(append(discoverKeyWords(true, referrers...), RegistryRef(Host, ArtifactRepo, foobar.Digest))...).
@@ -170,9 +176,17 @@ var _ = Describe("Fallback registry users:", func() {
 				MatchKeyWords(append(discoverKeyWords(true, referrers...), RegistryRef(FallbackHost, ArtifactRepo, foobar.Digest))...).
 				Exec()
 		})
-		It("should all referrers of a subject via table output", func() {
+
+		It("should discover direct referrers of a subject via table output", func() {
 			referrers := []ocispec.Descriptor{foobar.FallbackSBOMImageReferrer}
 			ORAS("discover", subjectRef, "-o", "table").
+				MatchKeyWords(append(discoverKeyWords(false, referrers...), foobar.Digest)...).
+				Exec()
+		})
+
+		It("should discover direct referrers explicitly via tag scheme", func() {
+			referrers := []ocispec.Descriptor{foobar.FallbackSBOMImageReferrer}
+			ORAS("discover", subjectRef, "-o", "table", "--distribution-spec", "v1.1-referrers-tag").
 				MatchKeyWords(append(discoverKeyWords(false, referrers...), foobar.Digest)...).
 				Exec()
 		})
