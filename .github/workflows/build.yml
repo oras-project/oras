@@ -44,6 +44,7 @@ jobs:
       - name: Run E2E Tests
         run: |
           bash $GITHUB_WORKSPACE/test/e2e/scripts/e2e.sh $GITHUB_WORKSPACE --clean
+          make e2e-covdata
         env:
           ORAS_PATH: bin/linux/amd64/oras
           COVERAGE_DUMP_ROOT: .cover
