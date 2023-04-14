@@ -260,10 +260,8 @@ func (opts *Remote) NewRegistry(hostname string, common Common) (reg *remote.Reg
 	}
 	hostname = reg.Reference.Registry
 	reg.PlainHTTP = opts.isPlainHttp(hostname)
-	if opts.Insecure && !reg.PlainHTTP {
-		opts.setPlainHTTPCallback = func() {
-			reg.PlainHTTP = true
-		}
+	opts.setPlainHTTPCallback = func() {
+		reg.PlainHTTP = true
 	}
 	if reg.Client, err = opts.authClient(hostname, common.Debug); err != nil {
 		return nil, err
@@ -279,10 +277,8 @@ func (opts *Remote) NewRepository(reference string, common Common) (repo *remote
 	}
 	hostname := repo.Reference.Registry
 	repo.PlainHTTP = opts.isPlainHttp(hostname)
-	if opts.Insecure && !repo.PlainHTTP {
-		opts.setPlainHTTPCallback = func() {
-			repo.PlainHTTP = true
-		}
+	opts.setPlainHTTPCallback = func() {
+		repo.PlainHTTP = true
 	}
 	if repo.Client, err = opts.authClient(hostname, common.Debug); err != nil {
 		return nil, err
