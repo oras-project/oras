@@ -212,7 +212,7 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 		client.Client.Transport = trace.NewTransport(client.Client.Transport)
 	}
 	if opts.Insecure && !opts.PlainHTTP {
-		client.Client.Transport = insecure.NewTransport(client.Client.Transport, opts.setPlainHTTPCallback)
+		client.Client.Transport = insecure.NewTransport(client.Client.Transport, registry)
 	}
 
 	cred := opts.Credential()

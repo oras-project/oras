@@ -18,36 +18,37 @@ package insecure
 import (
 	"net/http"
 	"strings"
-	"sync"
+	"sync/atomic"
 )
 
 type transport struct {
-	http.RoundTripper
-	setPlainHTTP func()
+	base      http.RoundTripper
+	host      string
+	forceHTTP atomic.Bool
 }
 
-func NewTransport(base http.RoundTripper, setPlainHTTP func()) *transport {
-	if setPlainHTTP == nil {
-		setPlainHTTP = func() {}
-	}
-	var once sync.Once
+// NewTransport generates a new trasport with insecure retry on host.
+func NewTransport(base http.RoundTripper, host string) *transport {
 	return &transport{
-		RoundTripper: base,
-		setPlainHTTP: func() {
-			once.Do(setPlainHTTP)
-		},
+		base: base,
+		host: host,
 	}
 }
 
-// RoundTrip calls base roundtrip while keeping track of the current request.
-func (t *transport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
-	resp, err = t.RoundTripper.RoundTrip(req)
-	if err != nil && req.URL.Scheme == "https" && !strings.Contains(err.Error(), "server gave HTTP response to HTTPS client") {
-		// failed because of requesting https and get http response
-		// retry with http
+// RoundTrip wraps base roundtrip with conditional insecure retry.
+func (t *transport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.Host != t.host {
+		return t.base.RoundTrip(req)
+	}
+	if ok := t.forceHTTP.Load(); ok {
 		req.URL.Scheme = "http"
-		t.setPlainHTTP()
-		return t.RoundTripper.RoundTrip(req)
+		return t.base.RoundTrip(req)
+	}
+	resp, err := t.base.RoundTrip(req)
+	if err != nil && req.URL.Scheme == "https" && strings.Contains(err.Error(), "server gave HTTP response to HTTPS client") {
+		t.forceHTTP.Store(true)
+		req.URL.Scheme = "http"
+		return t.base.RoundTrip(req)
 	}
 	return resp, err
 }
