@@ -2,6 +2,8 @@ module oras.land/oras
 
 go 1.20
 
+replace oras.land/oras-go/v2 => github.com/qweeah/oras-go/v2 v2.0.0-20230414234922-c83cd27a25ff
+
 require (
 	github.com/need-being/go-tree v0.1.0
 	github.com/opencontainers/go-digest v1.0.0

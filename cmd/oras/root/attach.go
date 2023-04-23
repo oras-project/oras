@@ -26,6 +26,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
+	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
 )
@@ -38,6 +39,7 @@ type attachOptions struct {
 
 	artifactType string
 	concurrency  int
+	strict       bool
 }
 
 func attachCmd() *cobra.Command {
@@ -91,6 +93,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI layout folder 'layou
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
+	cmd.Flags().BoolVarP(&opts.strict, "strict", "", false, "strictly handles any ignorable errors as fatal")
 	cmd.MarkFlagRequired("artifact-type")
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
@@ -164,13 +167,15 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 
 	root, err := pushArtifact(dst, pack, copy)
 	if err != nil {
-		if strings.Contains(err.Error(), "failed to delete dangling referrers index") {
-			// attach is successful but failed to clean up obsolete referrer index
-			// TODO: more deterministic detection based on https://github.com/oras-project/oras-go/issues/479
-			logger.Warn("attach succeeds with minor cleanup issue: %s", err.Error())
-		} else {
+		if opts.strict {
 			return err
 		}
+		var re *remote.ReferrersError
+		if !errors.As(err, &re) || !re.IsReferrersIndexDelete() {
+			// not referrer index delete error
+			return err
+		}
+		logger.Info("Attach is successful but removal of outdated referrers index from remote registry failed. Garbage collection may be required.")
 	}
 
 	digest := subject.Digest.String()
