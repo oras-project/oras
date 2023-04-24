@@ -16,25 +16,23 @@ limitations under the License.
 package credential
 
 import (
-	"path/filepath"
-
-	"github.com/docker/cli/cli/config"
 	credentials "github.com/oras-project/oras-credentials-go"
 )
 
-func NewStore(configPaths ...string) (credentials.Store, error) {
-	if len(configPaths) == 0 {
-		// No config path passed, load default docker config file.
-		configPaths = []string{filepath.Join(config.Dir(), config.ConfigFileName)}
-	}
-	var stores []credentials.Store
+func NewStore(configPaths ...string) (store credentials.Store, err error) {
 	so := credentials.StoreOptions{AllowPlaintextPut: true}
-	for _, config := range configPaths {
-		store, err := credentials.NewStore(config, so)
-		if err != nil {
-			return nil, err
+	if len(configPaths) == 0 {
+		store, err = credentials.NewStoreFromDocker(so)
+	} else {
+		var stores []credentials.Store
+		for _, config := range configPaths {
+			store, err := credentials.NewStore(config, so)
+			if err != nil {
+				return nil, err
+			}
+			stores = append(stores, store)
 		}
-		stores = append(stores, store)
+		store, err = credentials.NewStoreWithFallbacks(stores[0], stores[1:]...), nil
 	}
-	return credentials.NewStoreWithFallbacks(stores[0], stores[1:]...), nil
+	return
 }
