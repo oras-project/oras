@@ -16,8 +16,8 @@ limitations under the License.
 package insecure
 
 import (
+	"crypto/tls"
 	"net/http"
-	"strings"
 	"sync/atomic"
 )
 
@@ -45,10 +45,17 @@ func (t *transport) RoundTrip(req *http.Request) (*http.Response, error) {
 		return t.base.RoundTrip(req)
 	}
 	resp, err := t.base.RoundTrip(req)
-	if err != nil && req.URL.Scheme == "https" && strings.Contains(err.Error(), "server gave HTTP response to HTTPS client") {
-		t.forceHTTP.Store(true)
-		req.URL.Scheme = "http"
-		return t.base.RoundTrip(req)
+	if err != nil && req.URL.Scheme == "https" {
+		if tlsErr, ok := err.(tls.RecordHeaderError); ok {
+			// If we get a bad TLS record header, check to see if the
+			// response looks like HTTP and give a more helpful error.
+			// See golang.org/issue/11111.
+			if string(tlsErr.RecordHeader[:]) == "HTTP/" {
+				t.forceHTTP.Store(true)
+				req.URL.Scheme = "http"
+				return t.base.RoundTrip(req)
+			}
+		}
 	}
 	return resp, err
 }
