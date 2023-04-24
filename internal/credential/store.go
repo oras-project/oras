@@ -23,6 +23,7 @@ import (
 func NewStore(configPaths ...string) (store credentials.Store, err error) {
 	so := credentials.StoreOptions{AllowPlaintextPut: true}
 	if len(configPaths) == 0 {
+		// use default docker config file path
 		store, err = credentials.NewStoreFromDocker(so)
 	} else {
 		var stores []credentials.Store
