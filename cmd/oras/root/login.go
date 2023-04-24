@@ -22,6 +22,7 @@ import (
 	"os"
 	"strings"
 
+	credentials "github.com/oras-project/oras-credentials-go"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -103,28 +104,16 @@ func runLogin(ctx context.Context, opts loginOptions) (err error) {
 		}
 	}
 
+	store, err := credential.NewStore(opts.Configs...)
+	if err != nil {
+		return err
+	}
 	// Ping to ensure credential is valid
 	remote, err := opts.Remote.NewRegistry(opts.Hostname, opts.Common)
 	if err != nil {
 		return err
 	}
-	if err = remote.Ping(ctx); err != nil {
-		return err
-	}
-
-	// Store the validated credential
-	store, err := credential.NewStore(opts.Configs...)
-	if err != nil {
-		return err
-	}
-	// For a user case that login 'docker.io',
-	// According the the behavior of Docker CLI,
-	// credential should be added under key "https://index.docker.io/v1/"
-	hostname := opts.Hostname
-	if hostname == "docker.io" {
-		hostname = "https://index.docker.io/v1/"
-	}
-	if err := store.Store(hostname, opts.Credential()); err != nil {
+	if err = credentials.Login(ctx, store, remote, opts.Credential()); err != nil {
 		return err
 	}
 	fmt.Println("Login Succeeded")
