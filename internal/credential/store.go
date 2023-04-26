@@ -22,21 +22,18 @@ import (
 // NewStore generates a store based on the passed-in config file paths.
 func NewStore(configPaths ...string) (credentials.Store, error) {
 	opts := credentials.StoreOptions{AllowPlaintextPut: true}
-	var store credentials.Store
-	var err error
 	if len(configPaths) == 0 {
 		// use default docker config file path
-		store, err = credentials.NewStoreFromDocker(opts)
-	} else {
-		var stores []credentials.Store
-		for _, config := range configPaths {
-			store, err := credentials.NewStore(config, opts)
-			if err != nil {
-				return nil, err
-			}
-			stores = append(stores, store)
-		}
-		store, err = credentials.NewStoreWithFallbacks(stores[0], stores[1:]...), nil
+		return credentials.NewStoreFromDocker(opts)
 	}
-	return store, err
+
+	var stores []credentials.Store
+	for _, config := range configPaths {
+		store, err := credentials.NewStore(config, opts)
+		if err != nil {
+			return nil, err
+		}
+		stores = append(stores, store)
+	}
+	return credentials.NewStoreWithFallbacks(stores[0], stores[1:]...), nil
 }
