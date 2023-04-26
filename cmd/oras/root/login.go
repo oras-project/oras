@@ -108,7 +108,6 @@ func runLogin(ctx context.Context, opts loginOptions) (err error) {
 	if err != nil {
 		return err
 	}
-	// Ping to ensure credential is valid
 	remote, err := opts.Remote.NewRegistry(opts.Hostname, opts.Common)
 	if err != nil {
 		return err
