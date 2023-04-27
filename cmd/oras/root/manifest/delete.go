@@ -13,19 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package blob
+package manifest
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/errdef"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
-type deleteBlobOptions struct {
+type deleteOptions struct {
 	option.Common
 	option.Confirmation
 	option.Descriptor
@@ -36,24 +38,25 @@ type deleteBlobOptions struct {
 }
 
 func deleteCmd() *cobra.Command {
-	var opts deleteBlobOptions
+	var opts deleteOptions
 	cmd := &cobra.Command{
-		Use:     "delete [flags] <name>@<digest>",
+		Use:     "delete [flags] <name>{:<tag>|@<digest>}",
 		Aliases: []string{"remove", "rm"},
-		Short:   "[Preview] Delete a blob from a remote registry",
-		Long: `[Preview] Delete a blob from a remote registry
+		Short:   "Delete a manifest from remote registry",
+		Long: `Delete a manifest from remote registry
 
-** This command is in preview and under development. **
+Example - Delete a manifest tagged with 'v1' from repository 'localhost:5000/hello':
+  oras manifest delete localhost:5000/hello:v1
 
-Example - Delete a blob:
-  oras blob delete localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
+Example - Delete a manifest without prompting confirmation:
+  oras manifest delete --force localhost:5000/hello:v1
 
-Example - Delete a blob without prompting confirmation:
-  oras blob delete --force localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
+Example - Delete a manifest and print its descriptor:
+  oras manifest delete --descriptor localhost:5000/hello:v1
 
-Example - Delete a blob and print its descriptor:
-  oras blob delete --descriptor --force localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
-  `,
+Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9' from repository 'localhost:5000/hello':
+  oras manifest delete localhost:5000/hello@sha:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
+`,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.OutputDescriptor && !opts.Force {
@@ -63,27 +66,28 @@ Example - Delete a blob and print its descriptor:
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.targetRef = args[0]
-			return deleteBlob(opts)
+			return deleteManifest(cmd.Context(), opts)
 		},
 	}
 
+	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
 
-func deleteBlob(opts deleteBlobOptions) (err error) {
-	ctx, _ := opts.SetLoggerLevel()
+func deleteManifest(ctx context.Context, opts deleteOptions) error {
+	ctx, _ = opts.WithContext(ctx)
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
 	}
 
-	if _, err = repo.Reference.Digest(); err != nil {
-		return fmt.Errorf("%s: blob reference must be of the form <name@digest>", opts.targetRef)
+	if repo.Reference.Reference == "" {
+		return oerrors.NewErrInvalidReference(repo.Reference)
 	}
 
-	blobs := repo.Blobs()
-	desc, err := blobs.Resolve(ctx, opts.targetRef)
+	manifests := repo.Manifests()
+	desc, err := manifests.Resolve(ctx, opts.targetRef)
 	if err != nil {
 		if errors.Is(err, errdef.ErrNotFound) {
 			if opts.Force && !opts.OutputDescriptor {
@@ -91,12 +95,12 @@ func deleteBlob(opts deleteBlobOptions) (err error) {
 				fmt.Println("Missing", opts.targetRef)
 				return nil
 			}
-			return fmt.Errorf("%s: the specified blob does not exist", opts.targetRef)
+			return fmt.Errorf("%s: the specified manifest does not exist", opts.targetRef)
 		}
 		return err
 	}
 
-	prompt := fmt.Sprintf("Are you sure you want to delete the blob %q?", desc.Digest)
+	prompt := fmt.Sprintf("Are you sure you want to delete the manifest %q and all tags associated with it?", desc.Digest)
 	confirmed, err := opts.AskForConfirmation(os.Stdin, prompt)
 	if err != nil {
 		return err
@@ -105,7 +109,7 @@ func deleteBlob(opts deleteBlobOptions) (err error) {
 		return nil
 	}
 
-	if err = blobs.Delete(ctx, desc); err != nil {
+	if err = manifests.Delete(ctx, desc); err != nil {
 		return fmt.Errorf("failed to delete %s: %w", opts.targetRef, err)
 	}
 

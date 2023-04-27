@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package root
 
 import (
 	"context"
@@ -87,13 +87,13 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runPull(opts)
+			return runPull(cmd.Context(), opts)
 		},
 	}
 
 	cmd.Flags().BoolVarP(&opts.KeepOldFiles, "keep-old-files", "k", false, "do not replace existing files when pulling, treat them as errors")
 	cmd.Flags().BoolVarP(&opts.PathTraversal, "allow-path-traversal", "T", false, "allow storing files out of the output directory")
-	cmd.Flags().BoolVarP(&opts.IncludeSubject, "include-subject", "", false, "recursively pull the subject of artifacts")
+	cmd.Flags().BoolVarP(&opts.IncludeSubject, "include-subject", "", false, "[Preview] recursively pull the subject of artifacts")
 	cmd.Flags().StringVarP(&opts.Output, "output", "o", ".", "output directory")
 	cmd.Flags().StringVarP(&opts.ManifestConfigRef, "config", "", "", "output manifest config file")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
@@ -101,7 +101,8 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 	return cmd
 }
 
-func runPull(opts pullOptions) error {
+func runPull(ctx context.Context, opts pullOptions) error {
+	ctx, _ = opts.WithContext(ctx)
 	// Copy Options
 	var printed sync.Map
 	copyOptions := oras.DefaultCopyOptions
@@ -137,10 +138,7 @@ func runPull(opts pullOptions) error {
 					rc.Close()
 				}
 			}()
-			if err := display.PrintStatus(target, "Processing ", opts.Verbose); err != nil {
-				return nil, err
-			}
-			return rc, nil
+			return rc, display.PrintStatus(target, "Processing ", opts.Verbose)
 		})
 
 		nodes, subject, config, err := graph.Successors(ctx, statusFetcher, desc)
@@ -183,7 +181,6 @@ func runPull(opts pullOptions) error {
 		return ret, nil
 	}
 
-	ctx, _ := opts.SetLoggerLevel()
 	target, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err

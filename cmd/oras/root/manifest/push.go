@@ -49,10 +49,8 @@ func pushCmd() *cobra.Command {
 	var opts pushOptions
 	cmd := &cobra.Command{
 		Use:   "push [flags] <name>[:<tag>[,<tag>][...]|@<digest>] <file>",
-		Short: "[Preview] Push a manifest to remote registry",
-		Long: `[Preview] Push a manifest to remote registry
-
-** This command is in preview and under development. **
+		Short: "Push a manifest to remote registry",
+		Long: `Push a manifest to remote registry
 
 Example - Push a manifest to repository 'localhost:5000/hello' and tag with 'v1':
   oras manifest push localhost:5000/hello:v1 manifest.json
@@ -84,17 +82,17 @@ Example - Push a manifest to an OCI layout folder 'layout-dir' and tag with 'v1'
 `,
 		Args: cobra.ExactArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			opts.fileRef = args[1]
 			if opts.fileRef == "-" && opts.PasswordFromStdin {
 				return errors.New("`-` read file from input and `--password-stdin` read password from input cannot be both used")
 			}
 			refs := strings.Split(args[0], ",")
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
-			opts.fileRef = args[1]
 			return option.Parse(&opts)
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
-			return pushManifest(opts)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return pushManifest(cmd.Context(), opts)
 		},
 	}
 
@@ -105,8 +103,8 @@ Example - Push a manifest to an OCI layout folder 'layout-dir' and tag with 'v1'
 	return cmd
 }
 
-func pushManifest(opts pushOptions) error {
-	ctx, _ := opts.SetLoggerLevel()
+func pushManifest(ctx context.Context, opts pushOptions) error {
+	ctx, _ = opts.WithContext(ctx)
 	var target oras.Target
 	var err error
 	target, err = opts.NewTarget(opts.Common)

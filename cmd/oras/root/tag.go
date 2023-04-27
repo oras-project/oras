@@ -13,9 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package tag
+package root
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -32,14 +33,12 @@ type tagOptions struct {
 	targetRefs  []string
 }
 
-func TagCmd() *cobra.Command {
+func tagCmd() *cobra.Command {
 	var opts tagOptions
 	cmd := &cobra.Command{
 		Use:   "tag [flags] <name>{:<tag>|@<digest>} <new_tag> [...]",
-		Short: "[Preview] Tag a manifest in the remote registry",
-		Long: `[Preview] Tag a manifest in the remote registry
-
-** This command is in preview and under development. **
+		Short: "Tag a manifest in the remote registry",
+		Long: `Tag a manifest in the remote registry
 
 Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.2':
   oras tag localhost:5000/hello:v1.0.1 v1.0.2
@@ -62,8 +61,8 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI layout folder 'layout-
 			opts.targetRefs = args[1:]
 			return option.Parse(&opts)
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
-			return tagManifest(opts)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return tagManifest(cmd.Context(), opts)
 		},
 	}
 
@@ -72,8 +71,8 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI layout folder 'layout-
 	return cmd
 }
 
-func tagManifest(opts tagOptions) error {
-	ctx, _ := opts.SetLoggerLevel()
+func tagManifest(ctx context.Context, opts tagOptions) error {
+	ctx, _ = opts.WithContext(ctx)
 	target, err := opts.NewTarget(opts.Common)
 	if err != nil {
 		return err

@@ -46,10 +46,8 @@ func fetchConfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "fetch-config [flags] <name>{:<tag>|@<digest>}",
 		Aliases: []string{"get-config"},
-		Short:   "[Preview] Fetch the config of a manifest from a remote registry",
-		Long: `[Preview] Fetch the config of a manifest from a remote registry
-
-** This command is in preview and under development. **
+		Short:   "Fetch the config of a manifest from a remote registry",
+		Long: `Fetch the config of a manifest from a remote registry
 
 Example - Fetch the config:
   oras manifest fetch-config localhost:5000/hello:v1
@@ -78,7 +76,7 @@ Example - Fetch and print the prettified descriptor of the config:
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fetchConfig(opts)
+			return fetchConfig(cmd.Context(), opts)
 		},
 	}
 
@@ -87,8 +85,8 @@ Example - Fetch and print the prettified descriptor of the config:
 	return cmd
 }
 
-func fetchConfig(opts fetchConfigOptions) (fetchErr error) {
-	ctx, _ := opts.SetLoggerLevel()
+func fetchConfig(ctx context.Context, opts fetchConfigOptions) (fetchErr error) {
+	ctx, _ = opts.WithContext(ctx)
 
 	repo, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {

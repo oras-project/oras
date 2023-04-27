@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package root
 
 import (
 	"context"
@@ -85,7 +85,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI layout folder 'layou
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runAttach(opts)
+			return runAttach(cmd.Context(), opts)
 		},
 	}
 
@@ -97,8 +97,8 @@ Example - Attach file to the manifest tagged 'v1' in an OCI layout folder 'layou
 	return cmd
 }
 
-func runAttach(opts attachOptions) error {
-	ctx, _ := opts.SetLoggerLevel()
+func runAttach(ctx context.Context, opts attachOptions) error {
+	ctx, _ = opts.WithContext(ctx)
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err

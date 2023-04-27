@@ -26,11 +26,20 @@ type contextKey int
 // loggerKey is the associated key type for logger entry in context.
 const loggerKey contextKey = iota
 
-// WithLoggerLevel returns a context with logrus log entry.
-func WithLoggerLevel(ctx context.Context, level logrus.Level) (context.Context, logrus.FieldLogger) {
+// NewLogger returns a logger.
+func NewLogger(ctx context.Context, debug bool, verbose bool) (context.Context, logrus.FieldLogger) {
+	var logLevel logrus.Level
+	if debug {
+		logLevel = logrus.DebugLevel
+	} else if verbose {
+		logLevel = logrus.InfoLevel
+	} else {
+		logLevel = logrus.WarnLevel
+	}
+
 	logger := logrus.New()
 	logger.SetFormatter(&logrus.TextFormatter{DisableQuote: true})
-	logger.SetLevel(level)
+	logger.SetLevel(logLevel)
 	entry := logger.WithContext(ctx)
 	return context.WithValue(ctx, loggerKey, entry), entry
 }

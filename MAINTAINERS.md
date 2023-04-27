@@ -4,4 +4,4 @@ Maintainers:
 - Billy Zha (@qweeah)
 - Terry Howe (@TerryHowe)
 
-[Owners](Owners.md) are also maintainers.
+[Owners](OWNERS.md) are also maintainers.

@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"strings"
 
+	credentials "github.com/oras-project/oras-credentials-go"
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
@@ -219,19 +220,7 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 		if err != nil {
 			return nil, err
 		}
-		// For a user case with a registry from 'docker.io', the hostname is "registry-1.docker.io"
-		// According to the the behavior of Docker CLI,
-		// credential under key "https://index.docker.io/v1/" should be provided
-		if registry == "docker.io" {
-			client.Credential = func(ctx context.Context, hostname string) (auth.Credential, error) {
-				if hostname == "registry-1.docker.io" {
-					hostname = "https://index.docker.io/v1/"
-				}
-				return store.Credential(ctx, hostname)
-			}
-		} else {
-			client.Credential = store.Credential
-		}
+		client.Credential = credentials.Credential(store)
 	}
 	return
 }

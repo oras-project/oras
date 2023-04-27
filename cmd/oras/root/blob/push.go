@@ -16,6 +16,7 @@ limitations under the License.
 package blob
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -42,10 +43,8 @@ func pushCmd() *cobra.Command {
 	var opts pushBlobOptions
 	cmd := &cobra.Command{
 		Use:   "push [flags] <name>[@digest] <file>",
-		Short: "[Preview] Push a blob to a remote registry",
-		Long: `[Preview] Push a blob to a remote registry
-
-** This command is in preview and under development. **
+		Short: "Push a blob to a remote registry",
+		Long: `Push a blob to a remote registry
 
 Example - Push blob 'hi.txt' to a registry:
   oras blob push localhost:5000/hello hi.txt
@@ -86,7 +85,7 @@ Example - Push blob 'hi.txt' into an OCI layout folder 'layout-dir':
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return pushBlob(opts)
+			return pushBlob(cmd.Context(), opts)
 		},
 	}
 
@@ -96,8 +95,8 @@ Example - Push blob 'hi.txt' into an OCI layout folder 'layout-dir':
 	return cmd
 }
 
-func pushBlob(opts pushBlobOptions) (err error) {
-	ctx, _ := opts.SetLoggerLevel()
+func pushBlob(ctx context.Context, opts pushBlobOptions) (err error) {
+	ctx, _ = opts.WithContext(ctx)
 
 	repo, err := opts.NewTarget(opts.Common)
 	if err != nil {

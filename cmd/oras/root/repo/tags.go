@@ -13,9 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package repository
+package repo
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -36,10 +37,8 @@ func showTagsCmd() *cobra.Command {
 	var opts showTagsOptions
 	cmd := &cobra.Command{
 		Use:   "tags [flags] <name>",
-		Short: "[Preview] Show tags of the target repository",
-		Long: `[Preview] Show tags of the target repository
-
-** This command is in preview and under development. **
+		Short: "Show tags of the target repository",
+		Long: `Show tags of the target repository
 
 Example - Show tags of the target repository:
   oras repo tags localhost:5000/hello
@@ -69,17 +68,17 @@ Example - Show tags associated with a digest:
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return showTags(opts)
+			return showTags(cmd.Context(), opts)
 		},
 	}
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the tag specified by `last`")
-	cmd.Flags().BoolVar(&opts.excludeDigestTag, "exclude-digest-tags", false, "exclude all digest-like tags such as 'sha256-aaaa...'")
+	cmd.Flags().BoolVar(&opts.excludeDigestTag, "exclude-digest-tags", false, "[Preview] exclude all digest-like tags such as 'sha256-aaaa...'")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
 
-func showTags(opts showTagsOptions) error {
-	ctx, logger := opts.SetLoggerLevel()
+func showTags(ctx context.Context, opts showTagsOptions) error {
+	ctx, logger := opts.WithContext(ctx)
 	finder, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err
@@ -96,7 +95,7 @@ func showTags(opts showTagsOptions) error {
 			}
 			filter = desc.Digest.String()
 		}
-		logger.Infof("[Preview] Querying tags associated to %s, it may take a while.\n", filter)
+		logger.Infof("[Experimental] querying tags associated to %s, it may take a while...\n", filter)
 	}
 	return finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {

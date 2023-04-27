@@ -19,12 +19,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega/gbytes"
 )
 
 // keywordMatcher provides selective matching of the output.
-// The match will pass if all key words existed case-insensitively in the
-// output.
+// The match will pass if all the keywords exist case-insensitively
+// in the output.
 type keywordMatcher []string
 
 func NewKeywordMatcher(kw []string) keywordMatcher {
@@ -45,6 +46,6 @@ func (want keywordMatcher) Match(got *gbytes.Buffer) {
 
 	if len(missed) != 0 {
 		fmt.Printf("Keywords missed: %v\n", missed)
-		panic("failed to match all keywords")
+		ginkgo.Fail("failed to match all keywords")
 	}
 }

@@ -46,7 +46,7 @@ func (opts *ImageSpec) Parse() error {
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *ImageSpec) ApplyFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&opts.specFlag, "image-spec", "v1.1-image", "specify manifest type for building artifact. options: v1.1-image, v1.1-artifact")
+	fs.StringVar(&opts.specFlag, "image-spec", "v1.1-image", "[Experimental] specify manifest type for building artifact. options: v1.1-image, v1.1-artifact")
 }
 
 // distributionSpec option struct.
@@ -79,5 +79,5 @@ func (opts *distributionSpec) Parse() error {
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
 func (opts *distributionSpec) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
 	flagPrefix, notePrefix := applyPrefix(prefix, description)
-	fs.StringVar(&opts.specFlag, flagPrefix+"distribution-spec", "", "set OCI distribution spec version and API option for "+notePrefix+"target. options: v1.1-referrers-api, v1.1-referrers-tag")
+	fs.StringVar(&opts.specFlag, flagPrefix+"distribution-spec", "", "[Preview] set OCI distribution spec version and API option for "+notePrefix+"target. options: v1.1-referrers-api, v1.1-referrers-tag")
 }

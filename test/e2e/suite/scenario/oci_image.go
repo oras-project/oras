@@ -31,10 +31,7 @@ var _ = Describe("OCI image user:", Ordered, func() {
 		tag := "image"
 		var tempDir string
 		BeforeAll(func() {
-			tempDir = GinkgoT().TempDir()
-			if err := CopyTestFiles(tempDir); err != nil {
-				panic(err)
-			}
+			tempDir = PrepareTempFiles()
 		})
 
 		It("should push and pull an image", func() {

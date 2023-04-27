@@ -16,6 +16,7 @@ limitations under the License.
 package manifest
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -44,10 +45,8 @@ func fetchCmd() *cobra.Command {
 	var opts fetchOptions
 	cmd := &cobra.Command{
 		Use:   "fetch [flags] <name>{:<tag>|@<digest>}",
-		Short: "[Preview] Fetch manifest of the target artifact",
-		Long: `[Preview] Fetch manifest of the target artifact
-
-** This command is in preview and under development. **
+		Short: "Fetch manifest of the target artifact",
+		Long: `Fetch manifest of the target artifact
 
 Example - Fetch raw manifest from a registry:
   oras manifest fetch localhost:5000/hello:v1
@@ -80,7 +79,7 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 		},
 		Aliases: []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fetchManifest(opts)
+			return fetchManifest(cmd.Context(), opts)
 		},
 	}
 
@@ -90,8 +89,8 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 	return cmd
 }
 
-func fetchManifest(opts fetchOptions) (fetchErr error) {
-	ctx, _ := opts.SetLoggerLevel()
+func fetchManifest(ctx context.Context, opts fetchOptions) (fetchErr error) {
+	ctx, _ = opts.WithContext(ctx)
 
 	target, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
@@ -102,6 +101,8 @@ func fetchManifest(opts fetchOptions) (fetchErr error) {
 	}
 	if repo, ok := target.(*remote.Repository); ok {
 		repo.ManifestMediaTypes = opts.mediaTypes
+	} else if opts.mediaTypes != nil {
+		return fmt.Errorf("`--media-type` cannot be used with `--oci-layout` at the same time")
 	}
 
 	src, err := opts.CachedTarget(target)

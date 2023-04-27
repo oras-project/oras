@@ -36,22 +36,19 @@ const (
 var _ = Describe("ORAS beginners:", func() {
 	repoFmt := fmt.Sprintf("command/blob/%%s/%d/%%s", GinkgoRandomSeed())
 	When("running blob command", func() {
-		RunAndShowPreviewInHelp([]string{"blob"})
-
 		When("running `blob push`", func() {
-			RunAndShowPreviewInHelp([]string{"blob", "push"}, PreviewDesc, ExampleDesc)
 			It("should fail to read blob content and password from stdin at the same time", func() {
 				repo := fmt.Sprintf(repoFmt, "push", "password-stdin")
 				ORAS("blob", "push", RegistryRef(Host, repo, ""), "--password-stdin", "-").
 					ExpectFailure().
-					MatchTrimmedContent("Error: `-` read file from input and `--password-stdin` read password from input cannot be both used").Exec()
+					MatchErrKeyWords("Error: `-` read file from input and `--password-stdin` read password from input cannot be both used").Exec()
 			})
 			It("should fail to push a blob from stdin but no blob size provided", func() {
 				repo := fmt.Sprintf(repoFmt, "push", "no-size")
 				ORAS("blob", "push", RegistryRef(Host, repo, pushDigest), "-").
 					WithInput(strings.NewReader(pushContent)).
 					ExpectFailure().
-					MatchTrimmedContent("Error: `--size` must be provided if the blob is read from stdin").Exec()
+					MatchErrKeyWords("Error: `--size` must be provided if the blob is read from stdin").Exec()
 			})
 
 			It("should fail to push a blob from stdin if invalid blob size provided", func() {
@@ -90,11 +87,9 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		When("running `blob fetch`", func() {
-			RunAndShowPreviewInHelp([]string{"blob", "fetch"}, PreviewDesc, ExampleDesc)
-
 			It("should call sub-commands with aliases", func() {
 				ORAS("blob", "get", "--help").
-					MatchKeyWords("[Preview] Fetch", PreviewDesc, ExampleDesc).
+					MatchKeyWords(ExampleDesc).
 					Exec()
 			})
 			It("should have flag for prettifying JSON output", func() {
@@ -130,8 +125,6 @@ var _ = Describe("ORAS beginners:", func() {
 	})
 
 	When("running `blob delete`", func() {
-		RunAndShowPreviewInHelp([]string{"blob", "delete"}, PreviewDesc, ExampleDesc)
-
 		It("should fail if no blob reference is provided", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "no-ref")
 			ORAS("cp", RegistryRef(Host, ImageRepo, foobar.Digest), RegistryRef(Host, dstRepo, foobar.Digest)).Exec()
@@ -257,15 +250,15 @@ var _ = Describe("Common registry users:", func() {
 var _ = Describe("OCI image layout users:", func() {
 	prepare := func(from string) string {
 		tmpRoot := GinkgoT().TempDir()
-		ORAS("cp", from, ToLayout, tmpRoot).WithDescription("prepare image from registry to OCI layout").Exec()
+		ORAS("cp", from, Flags.ToLayout, tmpRoot).WithDescription("prepare image from registry to OCI layout").Exec()
 		return tmpRoot
 	}
 	When("running `blob delete`", func() {
 		It("should not support deleting a blob", func() {
 			toDeleteRef := LayoutRef(prepare(RegistryRef(Host, ImageRepo, foobar.Tag)), foobar.FooBlobDigest)
-			ORAS("blob", "delete", LayoutFlag, toDeleteRef).
+			ORAS("blob", "delete", Flags.Layout, toDeleteRef).
 				WithInput(strings.NewReader("y")).
-				MatchErrKeyWords("Error:", "unknown flag", LayoutFlag).
+				MatchErrKeyWords("Error:", "unknown flag", Flags.Layout).
 				ExpectFailure().
 				Exec()
 		})
@@ -274,19 +267,19 @@ var _ = Describe("OCI image layout users:", func() {
 	When("running `blob fetch`", func() {
 		It("should fetch blob descriptor", func() {
 			root := prepare(RegistryRef(Host, ImageRepo, foobar.Tag))
-			ORAS("blob", "fetch", LayoutFlag, LayoutRef(root, foobar.FooBlobDigest), "--descriptor").
+			ORAS("blob", "fetch", Flags.Layout, LayoutRef(root, foobar.FooBlobDigest), "--descriptor").
 				MatchContent(foobar.FooBlobDescriptor).Exec()
 		})
 		It("should fetch blob content and output to stdout", func() {
 			root := prepare(RegistryRef(Host, ImageRepo, foobar.Tag))
-			ORAS("blob", "fetch", LayoutFlag, LayoutRef(root, foobar.FooBlobDigest), "--output", "-").
+			ORAS("blob", "fetch", Flags.Layout, LayoutRef(root, foobar.FooBlobDigest), "--output", "-").
 				MatchContent(foobar.FooBlobContent).Exec()
 		})
 		It("should fetch blob content and output to a file", func() {
 			root := prepare(RegistryRef(Host, ImageRepo, foobar.Tag))
 			tempDir := GinkgoT().TempDir()
 			contentPath := filepath.Join(tempDir, "fetched")
-			ORAS("blob", "fetch", LayoutFlag, LayoutRef(root, foobar.FooBlobDigest), "--output", contentPath).
+			ORAS("blob", "fetch", Flags.Layout, LayoutRef(root, foobar.FooBlobDigest), "--output", contentPath).
 				WithWorkDir(tempDir).Exec()
 			MatchFile(contentPath, foobar.FooBlobContent, DefaultTimeout)
 		})
@@ -294,7 +287,7 @@ var _ = Describe("OCI image layout users:", func() {
 			root := prepare(RegistryRef(Host, ImageRepo, foobar.Tag))
 			tempDir := GinkgoT().TempDir()
 			contentPath := filepath.Join(tempDir, "fetched")
-			ORAS("blob", "fetch", LayoutFlag, LayoutRef(root, foobar.FooBlobDigest), "--output", contentPath, "--descriptor").
+			ORAS("blob", "fetch", Flags.Layout, LayoutRef(root, foobar.FooBlobDigest), "--output", contentPath, "--descriptor").
 				MatchContent(foobar.FooBlobDescriptor).
 				WithWorkDir(tempDir).Exec()
 			MatchFile(contentPath, foobar.FooBlobContent, DefaultTimeout)
@@ -308,13 +301,13 @@ var _ = Describe("OCI image layout users:", func() {
 			mediaType := "test.media"
 			blobPath := WriteTempFile("blob", pushContent)
 			// test
-			ORAS("blob", "push", LayoutFlag, LayoutRef(tmpRoot, pushDigest), blobPath, "--media-type", mediaType, "--descriptor").
+			ORAS("blob", "push", Flags.Layout, LayoutRef(tmpRoot, pushDigest), blobPath, "--media-type", mediaType, "--descriptor").
 				MatchContent(fmt.Sprintf(pushDescFmt, mediaType)).Exec()
-			ORAS("blob", "push", LayoutFlag, LayoutRef(tmpRoot, pushDigest), blobPath, "-v").
+			ORAS("blob", "push", Flags.Layout, LayoutRef(tmpRoot, pushDigest), blobPath, "-v").
 				WithDescription("skip pushing if the blob already exists in the target repo").
 				MatchKeyWords("Exists").Exec()
 			// validate
-			ORAS("blob", "fetch", LayoutRef(tmpRoot, pushDigest), LayoutFlag, "--output", "-").MatchContent(pushContent).Exec()
+			ORAS("blob", "fetch", LayoutRef(tmpRoot, pushDigest), Flags.Layout, "--output", "-").MatchContent(pushContent).Exec()
 		})
 
 		It("should push a blob from a stdin and output the descriptor with specific media-type", func() {
@@ -322,11 +315,11 @@ var _ = Describe("OCI image layout users:", func() {
 			tmpRoot := GinkgoT().TempDir()
 			// test
 			mediaType := "test.media"
-			ORAS("blob", "push", LayoutFlag, LayoutRef(tmpRoot, pushDigest), "-", "--media-type", mediaType, "--descriptor", "--size", strconv.Itoa(len(pushContent))).
+			ORAS("blob", "push", Flags.Layout, LayoutRef(tmpRoot, pushDigest), "-", "--media-type", mediaType, "--descriptor", "--size", strconv.Itoa(len(pushContent))).
 				WithInput(strings.NewReader(pushContent)).
 				MatchContent(fmt.Sprintf(pushDescFmt, mediaType)).Exec()
 			// validate
-			ORAS("blob", "fetch", LayoutRef(tmpRoot, pushDigest), LayoutFlag, "--output", "-").MatchContent(pushContent).Exec()
+			ORAS("blob", "fetch", LayoutRef(tmpRoot, pushDigest), Flags.Layout, "--output", "-").MatchContent(pushContent).Exec()
 		})
 	})
 })

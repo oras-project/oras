@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM docker.io/library/golang:1.20.1-alpine as builder
+FROM docker.io/library/golang:1.20.2-alpine as builder
 ARG TARGETPLATFORM
 RUN apk add git make
 ENV ORASPKG /oras

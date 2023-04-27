@@ -31,10 +31,7 @@ var _ = Describe("Common OCI artifact users:", Ordered, func() {
 		tag := "artifact"
 		var tempDir string
 		BeforeAll(func() {
-			tempDir = GinkgoT().TempDir()
-			if err := CopyTestFiles(tempDir); err != nil {
-				panic(err)
-			}
+			tempDir = PrepareTempFiles()
 		})
 
 		pulledManifest := "packed.json"

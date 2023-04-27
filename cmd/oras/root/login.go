@@ -13,19 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package root
 
 import (
-	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
 
-	"github.com/moby/term"
+	credentials "github.com/oras-project/oras-credentials-go"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/credential"
+	"oras.land/oras/internal/io"
 )
 
 type loginOptions struct {
@@ -65,15 +67,15 @@ Example - Log in with username and password in an interactive terminal and no TL
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Hostname = args[0]
-			return runLogin(opts)
+			return runLogin(cmd.Context(), opts)
 		},
 	}
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
 
-func runLogin(opts loginOptions) (err error) {
-	ctx, _ := opts.SetLoggerLevel()
+func runLogin(ctx context.Context, opts loginOptions) (err error) {
+	ctx, _ = opts.WithContext(ctx)
 
 	// prompt for credential
 	if opts.Password == "" {
@@ -102,28 +104,15 @@ func runLogin(opts loginOptions) (err error) {
 		}
 	}
 
-	// Ping to ensure credential is valid
-	remote, err := opts.Remote.NewRegistry(opts.Hostname, opts.Common)
-	if err != nil {
-		return err
-	}
-	if err = remote.Ping(ctx); err != nil {
-		return err
-	}
-
-	// Store the validated credential
 	store, err := credential.NewStore(opts.Configs...)
 	if err != nil {
 		return err
 	}
-	// For a user case that login 'docker.io',
-	// According the the behavior of Docker CLI,
-	// credential should be added under key "https://index.docker.io/v1/"
-	hostname := opts.Hostname
-	if hostname == "docker.io" {
-		hostname = "https://index.docker.io/v1/"
+	remote, err := opts.Remote.NewRegistry(opts.Hostname, opts.Common)
+	if err != nil {
+		return err
 	}
-	if err := store.Store(hostname, opts.Credential()); err != nil {
+	if err = credentials.Login(ctx, store, remote, opts.Credential()); err != nil {
 		return err
 	}
 	fmt.Println("Login Succeeded")
@@ -132,24 +121,18 @@ func runLogin(opts loginOptions) (err error) {
 
 func readLine(prompt string, silent bool) (string, error) {
 	fmt.Print(prompt)
-	if silent {
-		fd := os.Stdin.Fd()
-		state, err := term.SaveState(fd)
-		if err != nil {
-			return "", err
+	fd := int(os.Stdin.Fd())
+	var bytes []byte
+	var err error
+	if silent && term.IsTerminal(fd) {
+		if bytes, err = term.ReadPassword(fd); err == nil {
+			_, err = fmt.Println()
 		}
-		term.DisableEcho(fd, state)
-		defer term.RestoreTerminal(fd, state)
+	} else {
+		bytes, err = io.ReadLine(os.Stdin)
 	}
-
-	reader := bufio.NewReader(os.Stdin)
-	line, _, err := reader.ReadLine()
 	if err != nil {
 		return "", err
 	}
-	if silent {
-		fmt.Println()
-	}
-
-	return string(line), nil
+	return string(bytes), nil
 }

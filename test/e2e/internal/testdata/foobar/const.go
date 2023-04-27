@@ -29,25 +29,30 @@ var (
 	FileLayerNames = []string{
 		"foobar/foo1",
 		"foobar/foo2",
-		"foobar/bar",
+		FileBarName,
 	}
 	FileConfigName     = "foobar/config.json"
+	FileConfigSize     = 13
+	FileConfigDigest   = digest.Digest("sha256:46b68ac1696c3870d537f376868d9402400de28587e345264a77b65da09669be")
 	FileConfigStateKey = match.StateKey{
 		Digest: "46b68ac1696c", Name: "application/vnd.unknown.config.v1+json",
 	}
-	FileStateKeys = []match.StateKey{
+
+	FileBarName     = "foobar/bar"
+	FileBarStateKey = match.StateKey{Digest: "fcde2b2edba5", Name: FileLayerNames[2]}
+	FileStateKeys   = []match.StateKey{
 		{Digest: "2c26b46b68ff", Name: FileLayerNames[0]},
 		{Digest: "2c26b46b68ff", Name: FileLayerNames[1]},
-		{Digest: "fcde2b2edba5", Name: FileLayerNames[2]},
+		FileBarStateKey,
 	}
 
-	ConfigDesc         = "{\"mediaType\":\"application/vnd.unknown.config.v1+json\",\"digest\":\"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a\",\"size\":2}"
 	AttachFileName     = "foobar/to-be-attached"
 	AttachFileMedia    = "test/oras.e2e"
 	AttachFileStateKey = match.StateKey{
 		Digest: "d3b29f7d12d9", Name: AttachFileName,
 	}
 
+	ImageConfigDesc = "{\"mediaType\":\"application/vnd.unknown.config.v1+json\",\"digest\":\"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a\",\"size\":2}"
 	ImageLayerNames = []string{
 		"foo1",
 		"foo2",
@@ -60,10 +65,23 @@ var (
 	}
 	ImageConfigName = "config.json"
 
-	FooBlobDigest     = "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
-	FooBlobContent    = "foo"
-	FooBlobDescriptor = `{"mediaType":"application/octet-stream","digest":"sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae","size":3}`
+	FooBlobDigest       = "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
+	FooBlobContent      = "foo"
+	FooBlobDescriptor   = `{"mediaType":"application/octet-stream","digest":"sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae","size":3}`
+	BarBlobDigest       = "sha256:fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"
+	BlobBarDescTemplate = `{"mediaType":"%s","digest":"sha256:fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9","size":3,"annotations":{"org.opencontainers.image.title":"foobar/bar"}}`
 )
+
+func BlobBarDescriptor(mediaType string) ocispec.Descriptor {
+	return ocispec.Descriptor{
+		MediaType: mediaType,
+		Digest:    digest.Digest(BarBlobDigest),
+		Size:      3,
+		Annotations: map[string]string{
+			"org.opencontainers.image.title": FileBarName,
+		},
+	}
+}
 
 func ImageConfigStateKey(configName string) match.StateKey {
 	return match.StateKey{Digest: "44136fa355b3", Name: configName}

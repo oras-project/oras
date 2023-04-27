@@ -113,8 +113,9 @@ func TestReferrers(t *testing.T) {
 		appendBlob(ocispec.MediaTypeImageIndex, manifestJSON)
 	}
 	const (
-		subject = iota
+		blob = iota
 		imgConfig
+		subject
 		image
 		artifact
 		index
@@ -123,12 +124,13 @@ func TestReferrers(t *testing.T) {
 	appendBlob(ocispec.MediaTypeArtifactManifest, []byte("subject content"))
 	imageType := "test.image"
 	appendBlob(imageType, []byte("config content"))
-	generateImage(&descs[subject], anno, descs[imgConfig])
+	generateImage(nil, nil, descs[imgConfig], descs[blob])
+	generateImage(&descs[subject], anno, descs[imgConfig], descs[blob])
 	imageDesc := descs[image]
 	imageDesc.Annotations = anno
 	imageDesc.ArtifactType = imageType
 	artifactType := "test.artifact"
-	generateArtifact(artifactType, &descs[subject], anno)
+	generateArtifact(artifactType, &descs[subject], anno, descs[blob])
 	generateIndex(descs[subject])
 	artifactDesc := descs[artifact]
 	artifactDesc.Annotations = anno
@@ -157,6 +159,7 @@ func TestReferrers(t *testing.T) {
 		{"should return referrers when target is a referrer lister", args{ctx, &refLister{referrers: referrers}, ocispec.Descriptor{}, ""}, referrers, false},
 		{"should return nil for index node", args{ctx, finder, descs[index], ""}, nil, false},
 		{"should return nil for config node", args{ctx, finder, descs[imgConfig], ""}, nil, false},
+		{"should return nil for blob/layer node", args{ctx, finder, descs[blob], ""}, nil, false},
 		{"should find filtered image referrer", args{ctx, finder, descs[subject], imageType}, []ocispec.Descriptor{imageDesc}, false},
 		{"should find filtered artifact referrer", args{ctx, finder, descs[subject], artifactType}, []ocispec.Descriptor{artifactDesc}, false},
 	}

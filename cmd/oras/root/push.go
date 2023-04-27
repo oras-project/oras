@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package root
 
 import (
 	"context"
@@ -111,7 +111,7 @@ Example - Push file "hi.txt" into an OCI layout folder 'layout-dir' with tag 'te
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runPush(opts)
+			return runPush(cmd.Context(), opts)
 		},
 	}
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "`path` of image config file")
@@ -122,8 +122,8 @@ Example - Push file "hi.txt" into an OCI layout folder 'layout-dir' with tag 'te
 	return cmd
 }
 
-func runPush(opts pushOptions) error {
-	ctx, _ := opts.SetLoggerLevel()
+func runPush(ctx context.Context, opts pushOptions) error {
+	ctx, _ = opts.WithContext(ctx)
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err

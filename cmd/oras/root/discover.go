@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package root
 
 import (
 	"context"
@@ -22,15 +22,15 @@ import (
 	"os"
 	"strings"
 
-	"gopkg.in/yaml.v3"
-	"oras.land/oras-go/v2"
-	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/graph"
-
 	"github.com/need-being/go-tree"
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
+
+	"oras.land/oras-go/v2"
+	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/graph"
 )
 
 type discoverOptions struct {
@@ -79,7 +79,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI layout folder
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runDiscover(opts)
+			return runDiscover(cmd.Context(), opts)
 		},
 	}
 
@@ -90,8 +90,8 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI layout folder
 	return cmd
 }
 
-func runDiscover(opts discoverOptions) error {
-	ctx, _ := opts.SetLoggerLevel()
+func runDiscover(ctx context.Context, opts discoverOptions) error {
+	ctx, _ = opts.WithContext(ctx)
 	repo, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err

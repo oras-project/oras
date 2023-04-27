@@ -35,6 +35,10 @@ LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitTreeState=${GIT_DIRTY}
 test: tidy vendor check-encoding
 	$(GO_EXE) test -race -v -coverprofile=coverage.txt -covermode=atomic ./...
 
+.PHONY: teste2e
+teste2e:
+	./test/e2e/scripts/e2e.sh $(shell git rev-parse --show-toplevel) --clean 
+
 .PHONY: covhtml
 covhtml:
 	open .cover/coverage.html
@@ -124,3 +128,7 @@ sign:
 	for f in $$(ls _dist/*.{gz,txt} 2>/dev/null) ; do \
 		gpg --armor --detach-sign $${f} ; \
 	done
+
+.PHONY: e2e-covdata
+e2e-covdata:
+	$(GO_EXE) tool covdata textfmt -i="test/e2e/${COVERAGE_DUMP_ROOT}" -o test/e2e/coverage.txt

@@ -13,20 +13,33 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package io
 
 import (
-	"context"
-	"os"
-	"os/signal"
-
-	"oras.land/oras/cmd/oras/root"
+	"bytes"
+	"io"
 )
 
-func main() {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer cancel()
-	if err := root.New().ExecuteContext(ctx); err != nil {
-		os.Exit(1)
+// ReadLine reads a line from the reader with trailing \r dropped.
+func ReadLine(reader io.Reader) ([]byte, error) {
+	var line []byte
+	var buffer [1]byte
+	for {
+		n, err := reader.Read(buffer[:])
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+		if n == 0 {
+			continue
+		}
+		c := buffer[0]
+		if c == '\n' {
+			break
+		}
+		line = append(line, c)
 	}
+	return bytes.TrimSuffix(line, []byte{'\r'}), nil
 }

@@ -13,20 +13,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package manifest
 
 import (
-	"context"
-	"os"
-	"os/signal"
-
-	"oras.land/oras/cmd/oras/root"
+	"github.com/spf13/cobra"
 )
 
-func main() {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer cancel()
-	if err := root.New().ExecuteContext(ctx); err != nil {
-		os.Exit(1)
+func Cmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "manifest [command]",
+		Short: "Manifest operations",
 	}
+
+	cmd.AddCommand(
+		deleteCmd(),
+		fetchCmd(),
+		fetchConfigCmd(),
+		pushCmd(),
+	)
+	return cmd
 }

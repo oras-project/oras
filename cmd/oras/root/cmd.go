@@ -13,23 +13,33 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package manifest
+package root
 
 import (
 	"github.com/spf13/cobra"
+	"oras.land/oras/cmd/oras/root/blob"
+	"oras.land/oras/cmd/oras/root/manifest"
+	"oras.land/oras/cmd/oras/root/repo"
 )
 
-func Cmd() *cobra.Command {
+func New() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "manifest [command]",
-		Short: "[Preview] Manifest operations",
+		Use:          "oras [command]",
+		SilenceUsage: true,
 	}
-
 	cmd.AddCommand(
-		deleteCmd(),
-		fetchCmd(),
-		fetchConfigCmd(),
+		pullCmd(),
 		pushCmd(),
+		loginCmd(),
+		logoutCmd(),
+		versionCmd(),
+		discoverCmd(),
+		copyCmd(),
+		tagCmd(),
+		attachCmd(),
+		blob.Cmd(),
+		manifest.Cmd(),
+		repo.Cmd(),
 	)
 	return cmd
 }
