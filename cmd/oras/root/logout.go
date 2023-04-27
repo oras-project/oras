@@ -18,6 +18,7 @@ package root
 import (
 	"context"
 
+	credentials "github.com/oras-project/oras-credentials-go"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"oras.land/oras/internal/credential"
@@ -61,12 +62,5 @@ func runLogout(ctx context.Context, opts logoutOptions) error {
 	if err != nil {
 		return err
 	}
-	// For a user case that logout from 'docker.io',
-	// According the the behavior of Docker CLI,
-	// credential under key "https://index.docker.io/v1/" should be removed
-	hostname := opts.hostname
-	if hostname == "docker.io" {
-		hostname = "https://index.docker.io/v1/"
-	}
-	return store.Erase(hostname)
+	return credentials.Logout(ctx, store, opts.hostname)
 }
