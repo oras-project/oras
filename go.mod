@@ -6,7 +6,7 @@ require (
 	github.com/need-being/go-tree v0.1.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.0-rc2
-	github.com/oras-project/oras-credentials-go v0.0.0-20230424070720-ba6b33c40845
+	github.com/oras-project/oras-credentials-go v0.0.0-20230427160203-2c9574a894b4
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
