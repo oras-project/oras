@@ -64,10 +64,10 @@ func ResolveFlags(reg string, host string, flagType resolveType) []string {
 		plainHttpFlag = "to-" + plainHttpFlag
 	}
 
-	return []string{fp + resolveFlag, fmt.Sprintf("%s:80:127.0.0.1:%s", host, port), fmt.Sprintf("%s:443:127.0.0.1:%s", host, port), fp + usernameFlag, Username, fp + passwordFlag, Password, fp + plainHttpFlag}
+	return []string{fp + resolveFlag, fmt.Sprintf("%s:80:127.0.0.1:%s", host, port), fp + resolveFlag, fmt.Sprintf("%s:443:127.0.0.1:%s", host, port), fp + usernameFlag, Username, fp + passwordFlag, Password, fp + plainHttpFlag}
 }
 
-var _ = Describe("Common registry users:", func() {
+var _ = Describe("Common registry users:", Focus, func() {
 	if strings.HasPrefix(Host, "localhost:") {
 		When("custom host is provided", func() {
 			// mockedHost represents a non-existent host name which
