@@ -414,7 +414,7 @@ var _ = Describe("OCI image layout users:", func() {
 		It("should fetch manifest to file and output descriptor to stdout", func() {
 			root := prepare()
 			fetchPath := filepath.Join(GinkgoT().TempDir(), "fetchedImage")
-			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Tag), "--output", fetchPath, "--descriptor").
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Digest), "--output", fetchPath, "--descriptor").
 				MatchContent(multi_arch.Descriptor).Exec()
 			MatchFile(fetchPath, multi_arch.Manifest, DefaultTimeout)
 		})
@@ -453,7 +453,7 @@ var _ = Describe("OCI image layout users:", func() {
 		It("should fetch descriptor via tag", func() {
 			root := prepare()
 			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Tag), "--descriptor").
-				MatchContent(multi_arch.Descriptor).Exec()
+				MatchContent(multi_arch.AnnotatedDescriptor).Exec()
 		})
 		It("should fetch descriptor via tag with platform selection", func() {
 			root := prepare()
