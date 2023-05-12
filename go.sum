@@ -16,8 +16,6 @@ github.com/oras-project/oras-credentials-go v0.1.0 h1:XaGxQD4qK8jxOGSNqrPlh/lKlV
 github.com/oras-project/oras-credentials-go v0.1.0/go.mod h1:wxHUtRSULM8DVTGgc8DFtIKXDZr2JLD/48WYPqvKoJs=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/qweeah/oras-go/v2 v2.0.0-20230414234922-c83cd27a25ff h1:mNl7e9CQJzwhFMiuuwOkyklKFWdrARyb+bdaEaWQjCA=
-github.com/qweeah/oras-go/v2 v2.0.0-20230414234922-c83cd27a25ff/go.mod h1:PWnWc/Kyyg7wUTUsDHshrsJkzuxXzreeMd6NrfdnFSo=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/sirupsen/logrus v1.9.0 h1:trlNQbNUG3OdDrDil03MCb1H2o9nJ1x4/5LYw7byDE0=
 github.com/sirupsen/logrus v1.9.0/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
