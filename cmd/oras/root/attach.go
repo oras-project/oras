@@ -167,14 +167,16 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 
 	root, err := pushArtifact(dst, pack, copy)
 	if err != nil {
+		if opts.strict {
+			return err
+		}
+
 		var re *remote.ReferrersError
 		if !errors.As(err, &re) || !re.IsReferrersIndexDelete() {
 			// not referrer index delete error
-			if opts.strict {
-				return err
-			}
+			return err
 		}
-		logger.Info(" Attached successfully but the removal of outdated referrers index from the remote registry failed. Garbage collection may be required.")
+		logger.Info("Attached successfully but the removal of outdated referrers index from the remote registry failed. Garbage collection may be required.")
 	}
 
 	digest := subject.Digest.String()
