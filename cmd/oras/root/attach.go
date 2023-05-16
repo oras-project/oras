@@ -174,7 +174,7 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 				return err
 			}
 		}
-		logger.Info("Attach is successful but removal of outdated referrers index from remote registry failed. Garbage collection may be required.")
+		logger.Info(" Attached successfully but the removal of outdated referrers index from the remote registry failed. Garbage collection may be required.")
 	}
 
 	digest := subject.Digest.String()
