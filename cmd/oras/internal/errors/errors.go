@@ -40,7 +40,6 @@ func IsReferrersIndexDelete(err error, logger logrus.FieldLogger, path string) b
 	if !errors.As(err, &re) || !re.IsReferrersIndexDelete() {
 		return false
 	}
-	logger.Info("Failed to delete the referrers index: %s@%s", path, re.Subject.Digest)
-	logger.Info("Attached successfully but the removal of outdated referrers index from the remote registry failed. Garbage collection may be required.")
+	logger.Info("Failed to remove the outdated referrers index: %s@%s. Garbage collection may be required.", path, re.Subject.Digest)
 	return true
 }
