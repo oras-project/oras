@@ -29,6 +29,7 @@ import (
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/display"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/file"
 )
@@ -104,7 +105,7 @@ Example - Push a manifest to an OCI layout folder 'layout-dir' and tag with 'v1'
 }
 
 func pushManifest(ctx context.Context, opts pushOptions) error {
-	ctx, _ = opts.WithContext(ctx)
+	ctx, logger := opts.WithContext(ctx)
 	var target oras.Target
 	var err error
 	target, err = opts.NewTarget(opts.Common)
@@ -150,7 +151,7 @@ func pushManifest(ctx context.Context, opts pushOptions) error {
 		if err = display.PrintStatus(desc, "Uploading", verbose); err != nil {
 			return err
 		}
-		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil {
+		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil && !oerrors.IsReferrersIndexDelete(err, logger, opts.Path) {
 			return err
 		}
 		if err = display.PrintStatus(desc, "Uploaded ", verbose); err != nil {

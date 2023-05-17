@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/display"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
 )
@@ -96,7 +97,7 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 }
 
 func runCopy(ctx context.Context, opts copyOptions) error {
-	ctx, _ = opts.WithContext(ctx)
+	ctx, logger := opts.WithContext(ctx)
 
 	// Prepare source
 	src, err := opts.From.NewReadonlyTarget(ctx, opts.Common)
@@ -166,7 +167,7 @@ func runCopy(ctx context.Context, opts copyOptions) error {
 			desc, err = oras.Copy(ctx, src, opts.From.Reference, dst, dstRef, copyOptions)
 		}
 	}
-	if err != nil {
+	if err != nil && !oerrors.IsReferrersIndexDelete(err, logger, opts.To.Path) {
 		return err
 	}
 

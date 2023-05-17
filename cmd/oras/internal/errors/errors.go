@@ -16,9 +16,12 @@ limitations under the License.
 package errors
 
 import (
+	"errors"
 	"fmt"
 
+	"github.com/sirupsen/logrus"
 	"oras.land/oras-go/v2/registry"
+	"oras.land/oras-go/v2/registry/remote"
 )
 
 // NewErrInvalidReference creates a new error based on the reference string.
@@ -29,4 +32,15 @@ func NewErrInvalidReference(ref registry.Reference) error {
 // NewErrInvalidReferenceStr creates a new error based on the reference string.
 func NewErrInvalidReferenceStr(ref string) error {
 	return fmt.Errorf("%s: invalid image reference, expecting <name:tag|name@digest>", ref)
+}
+
+// IsReferrersIndexDelete checks if err is a referrers index delete error.
+func IsReferrersIndexDelete(err error, logger logrus.FieldLogger, path string) bool {
+	var re *remote.ReferrersError
+	if !errors.As(err, &re) || !re.IsReferrersIndexDelete() {
+		return false
+	}
+	logger.Info("Failed to delete the referrers index: %s@%s", path, re.Subject.Digest)
+	logger.Info("Attached successfully but the removal of outdated referrers index from the remote registry failed. Garbage collection may be required.")
+	return true
 }

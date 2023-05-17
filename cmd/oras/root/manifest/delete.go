@@ -76,7 +76,7 @@ Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614
 }
 
 func deleteManifest(ctx context.Context, opts deleteOptions) error {
-	ctx, _ = opts.WithContext(ctx)
+	ctx, logger := opts.WithContext(ctx)
 	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
 	if err != nil {
 		return err
@@ -109,7 +109,7 @@ func deleteManifest(ctx context.Context, opts deleteOptions) error {
 		return nil
 	}
 
-	if err = manifests.Delete(ctx, desc); err != nil {
+	if err = manifests.Delete(ctx, desc); err != nil && !oerrors.IsReferrersIndexDelete(err, logger, fmt.Sprintf("%s/%s", repo.Reference.Registry, repo.Reference.Repository)) {
 		return fmt.Errorf("failed to delete %s: %w", opts.targetRef, err)
 	}
 
