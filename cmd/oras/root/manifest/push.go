@@ -151,7 +151,7 @@ func pushManifest(ctx context.Context, opts pushOptions) error {
 		if err = display.PrintStatus(desc, "Uploading", verbose); err != nil {
 			return err
 		}
-		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil && !oerrors.IsReferrersIndexDelete(err, logger, opts.Path) {
+		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil && !oerrors.IsReferrersIndexDelete(err, logger, "pushed", opts.Path) {
 			return err
 		}
 		if err = display.PrintStatus(desc, "Uploaded ", verbose); err != nil {

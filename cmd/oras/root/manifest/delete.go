@@ -109,7 +109,7 @@ func deleteManifest(ctx context.Context, opts deleteOptions) error {
 		return nil
 	}
 
-	if err = manifests.Delete(ctx, desc); err != nil && !oerrors.IsReferrersIndexDelete(err, logger, fmt.Sprintf("%s/%s", repo.Reference.Registry, repo.Reference.Repository)) {
+	if err = manifests.Delete(ctx, desc); err != nil && !oerrors.IsReferrersIndexDelete(err, logger, "deleted", fmt.Sprintf("%s/%s", repo.Reference.Registry, repo.Reference.Repository)) {
 		return fmt.Errorf("failed to delete %s: %w", opts.targetRef, err)
 	}
 

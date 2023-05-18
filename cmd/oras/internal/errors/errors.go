@@ -35,11 +35,11 @@ func NewErrInvalidReferenceStr(ref string) error {
 }
 
 // IsReferrersIndexDelete checks if err is a referrers index delete error.
-func IsReferrersIndexDelete(err error, logger logrus.FieldLogger, path string) bool {
+func IsReferrersIndexDelete(err error, logger logrus.FieldLogger, opDone string, path string) bool {
 	var re *remote.ReferrersError
 	if !errors.As(err, &re) || !re.IsReferrersIndexDelete() {
 		return false
 	}
-	logger.Info("Failed to remove the outdated referrers index: %s@%s. Garbage collection may be required.", path, re.Subject.Digest)
+	logger.Info("Successfully %s but failed to remove the outdated referrers index: %s@%s. Garbage collection may be required.", opDone, path, re.Subject.Digest)
 	return true
 }

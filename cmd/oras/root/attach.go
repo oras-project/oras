@@ -164,7 +164,7 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 	}
 
 	root, err := pushArtifact(dst, pack, copy)
-	if err != nil && !oerrors.IsReferrersIndexDelete(err, logger, opts.Path) {
+	if err != nil && !oerrors.IsReferrersIndexDelete(err, logger, "attached", opts.Path) {
 		return err
 	}
 
