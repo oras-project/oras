@@ -34,6 +34,7 @@ type copyOptions struct {
 	option.Common
 	option.Platform
 	option.BinaryTarget
+	option.Referrers
 
 	recursive   bool
 	concurrency int
@@ -110,6 +111,9 @@ func runCopy(ctx context.Context, opts copyOptions) error {
 	// Prepare destination
 	dst, err := opts.To.NewTarget(opts.Common)
 	if err != nil {
+		return err
+	}
+	if err = opts.SetReferrersGC(dst); err != nil {
 		return err
 	}
 

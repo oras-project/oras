@@ -35,6 +35,7 @@ type attachOptions struct {
 	option.Packer
 	option.ImageSpec
 	option.Target
+	option.Referrers
 
 	artifactType string
 	concurrency  int
@@ -122,6 +123,10 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 	if err := opts.EnsureReferenceNotEmpty(); err != nil {
 		return err
 	}
+	if err = opts.SetReferrersGC(dst); err != nil {
+		return err
+	}
+
 	subject, err := dst.Resolve(ctx, opts.Reference)
 	if err != nil {
 		return err

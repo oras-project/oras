@@ -38,6 +38,7 @@ type pushOptions struct {
 	option.Descriptor
 	option.Pretty
 	option.Target
+	option.Referrers
 
 	concurrency int
 	extraRefs   []string
@@ -109,6 +110,9 @@ func pushManifest(ctx context.Context, opts pushOptions) error {
 	var err error
 	target, err = opts.NewTarget(opts.Common)
 	if err != nil {
+		return err
+	}
+	if err = opts.SetReferrersGC(target); err != nil {
 		return err
 	}
 	if repo, ok := target.(*remote.Repository); ok {
