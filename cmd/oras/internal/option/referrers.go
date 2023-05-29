@@ -35,7 +35,7 @@ func (opts *Referrers) ApplyFlags(fs *pflag.FlagSet) {
 // SetReferrersGC sets the referrers GC option for the passed-in target.
 func (opts *Referrers) SetReferrersGC(target any) error {
 	if repo, ok := target.(*remote.Repository); ok {
-		repo.ReferrersGC = opts.GC
+		repo.SkipReferrersGC = !opts.GC
 	} else if opts.GC {
 		return errors.New("referrers GC can only be enforced to registry targets")
 	}
