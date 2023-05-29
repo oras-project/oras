@@ -33,6 +33,7 @@ type deleteOptions struct {
 	option.Descriptor
 	option.Pretty
 	option.Remote
+	option.Referrers
 
 	targetRef string
 }
@@ -81,6 +82,7 @@ func deleteManifest(ctx context.Context, opts deleteOptions) error {
 	if err != nil {
 		return err
 	}
+	repo.ReferrersGC = opts.GC
 
 	if repo.Reference.Reference == "" {
 		return oerrors.NewErrInvalidReference(repo.Reference)
