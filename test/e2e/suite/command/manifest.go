@@ -547,6 +547,15 @@ var _ = Describe("OCI image layout users:", func() {
 		}
 		descriptor := "{\"mediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"digest\":\"sha256:f20c43161d73848408ef247f0ec7111b19fe58ffebc0cbcaa0d2c8bda4967268\",\"size\":246}"
 
+		It("should fail to specify referrers garbage collection", func() {
+			manifestPath := WriteTempFile("manifest.json", manifest)
+			root := filepath.Dir(manifestPath)
+			ORAS("manifest", "push", Flags.Layout, manifestPath).
+				WithWorkDir(root).
+				MatchContent("Error: referrers GC can only be enforced to registry targets\n").
+				ExpectFailure().Exec()
+		})
+
 		It("should push a manifest from stdin", func() {
 			root := GinkgoT().TempDir()
 			prepare(root)
@@ -555,6 +564,7 @@ var _ = Describe("OCI image layout users:", func() {
 				WithInput(strings.NewReader(manifest)).Exec()
 			validate(root, manifestDigest, "")
 		})
+
 		It("should push a manifest from stdin and tag", func() {
 			tag := "from-stdin"
 			root := GinkgoT().TempDir()
