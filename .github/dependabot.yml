@@ -18,3 +18,8 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+
+  - package-ecosystem: "gomod"
+    directory: "/test/e2e/"
+    schedule:
+      interval: "daily"
