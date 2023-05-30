@@ -12,12 +12,12 @@ require (
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/term v0.8.0
 	gopkg.in/yaml.v3 v3.0.1
-	oras.land/oras-go/v2 v2.1.0
+	oras.land/oras-go/v2 v2.2.0
 )
 
 require (
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	golang.org/x/sync v0.1.0 // indirect
+	golang.org/x/sync v0.2.0 // indirect
 	golang.org/x/sys v0.8.0 // indirect
 )
