@@ -2,7 +2,7 @@ module oras.land/oras
 
 go 1.20
 
-replace oras.land/oras-go/v2 => github.com/qweeah/oras-go/v2 v2.0.0-20230529082502-699eb38212ed
+replace oras.land/oras-go/v2 => github.com/qweeah/oras-go/v2 v2.0.0-20230529101657-1ebc3f4464ab
 
 require (
 	github.com/need-being/go-tree v0.1.0
