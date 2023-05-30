@@ -24,8 +24,8 @@ github.com/opencontainers/image-spec v1.1.0-rc.3 h1:GT9Xon8YrLxz6N7sErbN81V8J4lO
 github.com/opencontainers/image-spec v1.1.0-rc.3/go.mod h1:X4pATf0uXsnn3g5aiGIsVnJBR4mxhKzfwmvK/B2NTm8=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/qweeah/oras-go/v2 v2.0.0-20230529101657-1ebc3f4464ab h1:31HbzcDB/huc5APa/EXqQYq1Wj08sAbTCAQTaZd8B+s=
-github.com/qweeah/oras-go/v2 v2.0.0-20230529101657-1ebc3f4464ab/go.mod h1:pXjn0+KfarspMHHNR3A56j3tgvr+mxArHuI8qVn59v8=
+github.com/qweeah/oras-go/v2 v2.0.0-20230529235543-a9c210426e75 h1:kMGjc8rYeWaipvK4SHawreg40cr5v67U8HDVi1rXbDs=
+github.com/qweeah/oras-go/v2 v2.0.0-20230529235543-a9c210426e75/go.mod h1:pXjn0+KfarspMHHNR3A56j3tgvr+mxArHuI8qVn59v8=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.7.0 h1:nwc3DEeHmmLAfoZucVR881uASk0Mfjw8xYJ99tb5CcY=
