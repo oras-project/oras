@@ -2,7 +2,7 @@ module oras.land/oras/test/e2e
 
 go 1.20
 
-replace oras.land/oras-go/v2 => github.com/qweeah/oras-go/v2 v2.0.0-20230526033205-9b4915420e0b
+replace oras.land/oras-go/v2 => github.com/qweeah/oras-go/v2 v2.0.0-20230529101657-1ebc3f4464ab
 
 require (
 	github.com/onsi/ginkgo/v2 v2.9.7
