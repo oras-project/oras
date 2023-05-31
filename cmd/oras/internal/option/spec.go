@@ -71,7 +71,7 @@ func (opts *distributionSpec) Parse() error {
 		isApi := true
 		opts.referrersAPI = &isApi
 	default:
-		return fmt.Errorf("unknown image specification flag: %q", opts.specFlag)
+		return fmt.Errorf("unknown distribution specification flag: %q", opts.specFlag)
 	}
 	return nil
 }

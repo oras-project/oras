@@ -60,6 +60,16 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("attach", "--artifact-type", "oras.test", LayoutRef(root, foobar.Tag)).
 				ExpectFailure().MatchErrKeyWords("Error: no blob or manifest annotation are provided").Exec()
 		})
+
+		It("should fail if distribution spec is unkown", func() {
+			ORAS("attach", "--artifact-type", "oras.test", RegistryRef(Host, ImageRepo, foobar.Tag), "--distribution-spec", "???").
+				ExpectFailure().MatchErrKeyWords("unknown distribution specification flag").Exec()
+		})
+
+		It("should fail if image spec is unkown", func() {
+			ORAS("attach", "--artifact-type", "oras.test", RegistryRef(Host, ImageRepo, foobar.Tag), "--image-spec", "???").
+				ExpectFailure().MatchErrKeyWords("unknown image specification flag").Exec()
+		})
 	})
 })
 
