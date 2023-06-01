@@ -16,8 +16,6 @@ github.com/oras-project/oras-credentials-go v0.1.1 h1:9EHrcJ1LcC7N9w2rfB9n8c1be+
 github.com/oras-project/oras-credentials-go v0.1.1/go.mod h1:188MBZBQQbrLlrOZY37hc8Z4Xjl+wP3PaIJkJuk94JM=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/qweeah/oras-go/v2 v2.0.0-20230529235543-a9c210426e75 h1:kMGjc8rYeWaipvK4SHawreg40cr5v67U8HDVi1rXbDs=
-github.com/qweeah/oras-go/v2 v2.0.0-20230529235543-a9c210426e75/go.mod h1:pXjn0+KfarspMHHNR3A56j3tgvr+mxArHuI8qVn59v8=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/sirupsen/logrus v1.9.3 h1:dueUQJ1C2q9oE3F7wvmSGAaVtTmUizReu6fjN8uqzbQ=
 github.com/sirupsen/logrus v1.9.3/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
@@ -40,3 +38,7 @@ gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
+oras.land/oras-go/v2 v2.2.0 h1:E1fqITD56Eg5neZbxBtAdZVgDHD6wBabJo6xESTcQyo=
+oras.land/oras-go/v2 v2.2.0/go.mod h1:pXjn0+KfarspMHHNR3A56j3tgvr+mxArHuI8qVn59v8=
+oras.land/oras-go/v2 v2.2.1-0.20230531090906-7dd0378382c6 h1:2P1fjq1znGLo7tjy9PJsZrFF5L+qywbv28IgzKEX62E=
+oras.land/oras-go/v2 v2.2.1-0.20230531090906-7dd0378382c6/go.mod h1:pXjn0+KfarspMHHNR3A56j3tgvr+mxArHuI8qVn59v8=

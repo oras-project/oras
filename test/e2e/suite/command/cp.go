@@ -324,7 +324,7 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 var _ = Describe("OCI layout users:", func() {
 	When("running `cp`", func() {
 		It("should fail to specify referrers garbage collection", func() {
-			ORAS("cp", RegistryRef(Host, ArtifactRepo, foobar.Tag), GinkgoT().TempDir(), Flags.ToLayout, "--referrers-gc").
+			ORAS("cp", RegistryRef(Host, ArtifactRepo, foobar.Tag), GinkgoT().TempDir(), Flags.ToLayout, "--skip-delete-referrers").
 				ExpectFailure().
 				MatchContent("Error: referrers GC can only be enforced to registry targets\n").
 				Exec()

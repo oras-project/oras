@@ -82,7 +82,7 @@ func deleteManifest(ctx context.Context, opts deleteOptions) error {
 	if err != nil {
 		return err
 	}
-	repo.SkipReferrersGC = !opts.GC
+	repo.SkipReferrersGC = opts.SkipDeleteReferrers
 
 	if repo.Reference.Reference == "" {
 		return oerrors.NewErrInvalidReference(repo.Reference)

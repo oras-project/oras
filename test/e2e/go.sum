@@ -24,8 +24,6 @@ github.com/opencontainers/image-spec v1.1.0-rc.3 h1:GT9Xon8YrLxz6N7sErbN81V8J4lO
 github.com/opencontainers/image-spec v1.1.0-rc.3/go.mod h1:X4pATf0uXsnn3g5aiGIsVnJBR4mxhKzfwmvK/B2NTm8=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/qweeah/oras-go/v2 v2.0.0-20230529235543-a9c210426e75 h1:kMGjc8rYeWaipvK4SHawreg40cr5v67U8HDVi1rXbDs=
-github.com/qweeah/oras-go/v2 v2.0.0-20230529235543-a9c210426e75/go.mod h1:pXjn0+KfarspMHHNR3A56j3tgvr+mxArHuI8qVn59v8=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.7.0 h1:nwc3DEeHmmLAfoZucVR881uASk0Mfjw8xYJ99tb5CcY=
@@ -49,3 +47,5 @@ gopkg.in/yaml.v2 v2.4.0/go.mod h1:RDklbk79AGWmwhnvt/jBztapEOGDOx6ZbXqjP6csGnQ=
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
+oras.land/oras-go/v2 v2.2.1-0.20230531090906-7dd0378382c6 h1:2P1fjq1znGLo7tjy9PJsZrFF5L+qywbv28IgzKEX62E=
+oras.land/oras-go/v2 v2.2.1-0.20230531090906-7dd0378382c6/go.mod h1:pXjn0+KfarspMHHNR3A56j3tgvr+mxArHuI8qVn59v8=
