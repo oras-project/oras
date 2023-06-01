@@ -550,7 +550,7 @@ var _ = Describe("OCI image layout users:", func() {
 		It("should fail to specify referrers garbage collection", func() {
 			manifestPath := WriteTempFile("manifest.json", manifest)
 			root := filepath.Dir(manifestPath)
-			ORAS("manifest", "push", root, Flags.Layout, manifestPath, "--referrers-gc").
+			ORAS("manifest", "push", root, Flags.Layout, manifestPath, "--skip-delete-referrers").
 				WithWorkDir(root).
 				ExpectFailure().
 				MatchContent("Error: referrers GC can only be enforced to registry targets\n").Exec()

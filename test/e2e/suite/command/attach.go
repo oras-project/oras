@@ -208,7 +208,7 @@ var _ = Describe("OCI image layout users:", func() {
 		It("should fail to specify referrers garbage collection", func() {
 			root := PrepareTempFiles()
 			subjectRef := LayoutRef(root, foobar.Tag)
-			ORAS("attach", "--artifact-type", "test.attach", "--referrers-gc", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+			ORAS("attach", "--artifact-type", "test.attach", "--skip-delete-referrers", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				ExpectFailure().
 				MatchContent("Error: referrers GC can only be enforced to registry targets\n").
 				Exec()

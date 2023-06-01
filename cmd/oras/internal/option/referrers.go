@@ -24,19 +24,19 @@ import (
 
 // Referrers option struct.
 type Referrers struct {
-	GC bool
+	SkipDeleteReferrers bool
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Referrers) ApplyFlags(fs *pflag.FlagSet) {
-	fs.BoolVarP(&opts.GC, "referrers-gc", "", false, "enforce garbage collection when referrers API is not supported")
+	fs.BoolVarP(&opts.SkipDeleteReferrers, "skip-delete-referrers", "", false, "skip deleting old referrers index, only work on registry when referrers API is not supported")
 }
 
 // SetReferrersGC sets the referrers GC option for the passed-in target.
 func (opts *Referrers) SetReferrersGC(target any) error {
 	if repo, ok := target.(*remote.Repository); ok {
-		repo.SkipReferrersGC = !opts.GC
-	} else if opts.GC {
+		repo.SkipReferrersGC = opts.SkipDeleteReferrers
+	} else if opts.SkipDeleteReferrers {
 		return errors.New("referrers GC can only be enforced to registry targets")
 	}
 	return nil
