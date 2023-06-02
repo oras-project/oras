@@ -36,8 +36,8 @@ func (opts *Referrers) ApplyFlags(fs *pflag.FlagSet) {
 func (opts *Referrers) SetReferrersGC(target any) error {
 	if repo, ok := target.(*remote.Repository); ok {
 		repo.SkipReferrersGC = opts.SkipDeleteReferrers
-	} else if opts.SkipDeleteReferrers {
-		return errors.New("referrers GC can only be enforced to registry targets")
+	} else if !opts.SkipDeleteReferrers {
+		return errors.New("referrers deletion can only be enforced upon registry targets")
 	}
 	return nil
 }
