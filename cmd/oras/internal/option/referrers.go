@@ -29,7 +29,7 @@ type Referrers struct {
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Referrers) ApplyFlags(fs *pflag.FlagSet) {
-	fs.BoolVarP(&opts.SkipDeleteReferrers, "skip-delete-referrers", "", false, "skip deleting old referrers index, only work on registry when referrers API is not supported")
+	fs.BoolVarP(&opts.SkipDeleteReferrers, "skip-delete-referrers", "", true, "skip deleting old referrers index, only work on registry when referrers API is not supported")
 }
 
 // SetReferrersGC sets the referrers GC option for the passed-in target.
