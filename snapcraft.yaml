@@ -1,0 +1,28 @@
+name: oras
+version: git
+summary: Package for the oras CLI tool
+description: |
+  A snap package for the oras CLI tool, which is used for managing OCI artifacts.
+base: core22
+confinement: strict
+grade: devel
+
+parts:
+  oras:
+    plugin: go
+    source: .
+    build-snaps:
+      - go/1.20/stable
+    build-packages:
+      - make
+      - ca-certificates
+    override-build: |
+      make "build-linux-$CRAFT_TARGET_ARCH"
+      install -D -m755 bin/linux/$CRAFT_TARGET_ARCH/oras $CRAFT_PART_INSTALL/bin/oras
+
+apps:
+  oras:
+    command: bin/oras
+    plugs:
+      - home
+      - network
