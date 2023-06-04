@@ -15,6 +15,7 @@ parts:
       - go/1.20/stable
     build-packages:
       - make
+    stage-packages:
       - ca-certificates
     override-build: |
       make "build-linux-$CRAFT_TARGET_ARCH"
