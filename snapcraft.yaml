@@ -20,12 +20,27 @@ base: core22
 confinement: strict
 grade: stable
 
+architectures:
+  - build-on: amd64
+    build-for: amd64
+  - build-on: amd64
+    build-for: arm64
+  - build-on: amd64
+    build-for: s390x
+
 parts:
   oras:
     plugin: go
     source: https://github.com/oras-project/oras.git
     source-type: git
     source-tag: $SNAPCRAFT_PROJECT_VERSION
+    build-environment:
+      - on amd64 to amd64:
+        - TARGET_ARCH: "amd64"
+      - on amd64 to arm64:
+        - TARGET_ARCH: "arm64"
+      - on amd64 to s390x:
+        - TARGET_ARCH: "s390x"
     build-snaps:
       - go/1.20/stable
     build-packages:
@@ -35,6 +50,7 @@ parts:
     override-build: |
       make "build-linux-$CRAFT_TARGET_ARCH"
       install -D -m755 bin/linux/$CRAFT_TARGET_ARCH/oras $CRAFT_PART_INSTALL/bin/oras
+  
 
 apps:
   oras:
