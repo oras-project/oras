@@ -12,18 +12,20 @@
 # limitations under the License.
 
 name: oras
-version: git
+version: 'v1.0.0'
 summary: Package for the ORAS CLI tool
 description: |
   A snap package for the ORAS CLI tool, which is used for managing OCI artifacts.
 base: core22
 confinement: strict
-grade: devel
+grade: stable
 
 parts:
   oras:
     plugin: go
-    source: .
+    source: https://github.com/oras-project/oras.git
+    source-type: git
+    source-tag: $SNAPCRAFT_PROJECT_VERSION
     build-snaps:
       - go/1.20/stable
     build-packages:
