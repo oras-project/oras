@@ -518,9 +518,7 @@ var _ = Describe("OCI image layout users:", func() {
 			ORAS("manifest", "fetch-config", Flags.Layout, root).ExpectFailure().MatchErrKeyWords("Error:", "invalid image reference").Exec()
 		})
 	})
-})
 
-var _ = Describe("OCI image layout users:", func() {
 	When("running `manifest push`", func() {
 		scratchSize := 2
 		scratchDigest := "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
@@ -613,6 +611,43 @@ var _ = Describe("OCI image layout users:", func() {
 				WithInput(strings.NewReader(manifest)).
 				ExpectFailure().
 				WithDescription("fail if no media type flag provided").Exec()
+		})
+	})
+})
+
+func pushTestRepo(text string) string {
+	return fmt.Sprintf("command/push/%d/%s", GinkgoRandomSeed(), text)
+}
+
+var _ = Describe("Fallback registry users:", func() {
+	When("running `manifest push`", func() {
+		manifest := fmt.Sprintf(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"oras.test","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2},"subject":%s,"layers":[]}`, foobar.DescriptorStr)
+		It("should fail to push manifest when cleaning referrers index", func() {
+			testRepo := pushTestRepo("fallback/fail-gc")
+			subjectRef := RegistryRef(FallbackHost, testRepo, foobar.Tag)
+			// prepare
+			ORAS("cp", RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef, "-r").Exec()
+			// test
+			ORAS("manifest", "push", RegistryRef(FallbackHost, testRepo, ""), "-").
+				WithInput(strings.NewReader(manifest)).
+				ExpectFailure().
+				MatchErrKeyWords("failed to delete dangling referrers index").
+				Exec()
+		})
+		It("should push manifest and skip cleaning referrers index", func() {
+			testRepo := pushTestRepo("fallback/skip-gc")
+			subjectRef := RegistryRef(FallbackHost, testRepo, foobar.Tag)
+			// prepare
+			ORAS("cp", RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef, "-r").Exec()
+			// test
+			ORAS("manifest", "push", RegistryRef(FallbackHost, testRepo, ""), "-", "--skip-delete-referrers").
+				WithInput(strings.NewReader(manifest)).
+				Exec()
+			// validate
+			var index ocispec.Index
+			bytes := ORAS("discover", subjectRef, "-o", "json").Exec().Out.Contents()
+			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
+			Expect(len(index.Manifests)).To(Equal(2))
 		})
 	})
 })

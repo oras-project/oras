@@ -30,7 +30,7 @@ go test oras.land/oras/test/e2e/suite/${suite_name}
 This is super handy when you want to do step-by-step debugging from command-line or via an IDE. If you need to debug certain specs, use [focused specs](https://onsi.github.io/ginkgo/#focused-specs) but don't check it in.
 
 ### 4. Testing Registry Services
-The backend of E2E tests are two registry services: [oras-distribution](https://github.com/oras-project/distribution) and [upstream distribution](https://github.com/distribution/distribution). The former is expected to support image and artifact media types and referrer API; The latter is expected to only support image media type with subject and provide referrers via [tag schema](https://github.com/opencontainers/distribution-spec/blob/v1.1.0-rc1/spec.md#referrers-tag-schema). 
+The backend of E2E tests are two registry services: [oras-distribution](https://github.com/oras-project/distribution) and [upstream distribution](https://github.com/distribution/distribution). The former is expected to support image and artifact media types and referrer API; The latter is expected to only support image media type with subject and provide referrers via [tag schema](https://github.com/opencontainers/distribution-spec/blob/v1.1.0-rc1/spec.md#referrers-tag-schema), with deletion disabled. 
 
 You can run scenario test suite against your own registry services via setting `ORAS_REGISTRY_HOST` or `ORAS_REGISTRY_FALLBACK_HOST` environmental variables.
 
