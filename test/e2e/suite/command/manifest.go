@@ -547,13 +547,13 @@ var _ = Describe("OCI image layout users:", func() {
 		}
 		descriptor := "{\"mediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"digest\":\"sha256:f20c43161d73848408ef247f0ec7111b19fe58ffebc0cbcaa0d2c8bda4967268\",\"size\":246}"
 
-		It("should fail to specify referrers garbage collection", func() {
+		It("should push and output verbosed warning for Feferrers deletion by default", func() {
 			manifestPath := WriteTempFile("manifest.json", manifest)
 			root := filepath.Dir(manifestPath)
+			prepare(root)
 			ORAS("manifest", "push", root, Flags.Layout, manifestPath, "--skip-delete-referrers=false").
 				WithWorkDir(root).
-				ExpectFailure().
-				MatchContent("Error: referrers deletion can only be enforced upon registry targets\n").Exec()
+				MatchErrKeyWords("referrers deletion can only be enforced upon registry\n").Exec()
 		})
 
 		It("should push a manifest from stdin", func() {

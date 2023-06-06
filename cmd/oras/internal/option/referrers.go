@@ -16,8 +16,7 @@ limitations under the License.
 package option
 
 import (
-	"errors"
-
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2/registry/remote"
 )
@@ -33,11 +32,10 @@ func (opts *Referrers) ApplyFlags(fs *pflag.FlagSet) {
 }
 
 // SetReferrersGC sets the referrers GC option for the passed-in target.
-func (opts *Referrers) SetReferrersGC(target any) error {
+func (opts *Referrers) SetReferrersGC(target any, logger logrus.FieldLogger) {
 	if repo, ok := target.(*remote.Repository); ok {
 		repo.SkipReferrersGC = opts.SkipDeleteReferrers
 	} else if !opts.SkipDeleteReferrers {
-		return errors.New("referrers deletion can only be enforced upon registry targets")
+		logger.Warnln("referrers deletion can only be enforced upon registry")
 	}
-	return nil
 }
