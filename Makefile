@@ -135,4 +135,4 @@ teste2e-covdata:
 	rm -rf $$GOCOVERDIR; \
 	mkdir -p $$GOCOVERDIR; \
 	$(MAKE) teste2e; \
-	$(GO_EXE) tool covdata textfmt -i=$$COVERAGE_DUMP_ROOT -o "$(CURDIR)/test/e2e/coverage.txt"
+	$(GO_EXE) tool covdata textfmt -i=$$GOCOVERDIR -o "$(CURDIR)/test/e2e/coverage.txt"
