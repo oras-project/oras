@@ -130,7 +130,7 @@ sign:
 	done
 
 .PHONY: teste2e-covdata
-teste2e-covdata
+teste2e-covdata:
 	export GOCOVERDIR=$(CURDIR)/test/e2e/.cover; \
 	rm -rf $$GOCOVERDIR; \
 	mkdir -p $$GOCOVERDIR; \
