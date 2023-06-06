@@ -323,12 +323,6 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 
 var _ = Describe("OCI layout users:", func() {
 	When("running `cp`", func() {
-		It("should fail to specify referrers garbage collection", func() {
-			ORAS("cp", RegistryRef(Host, ArtifactRepo, foobar.Tag), GinkgoT().TempDir(), Flags.ToLayout, "--skip-delete-referrers=false").
-				ExpectFailure().
-				MatchContent("Error: referrers deletion can only be enforced upon registry targets\n").
-				Exec()
-		})
 		It("should copy an image from a registry to an OCI image layout via tag", func() {
 			dst := LayoutRef(GinkgoT().TempDir(), "copied")
 			src := RegistryRef(Host, ImageRepo, foobar.Tag)
@@ -337,6 +331,12 @@ var _ = Describe("OCI layout users:", func() {
 			srcManifest := ORAS("manifest", "fetch", src).WithDescription("fetch from source to validate").Exec().Out.Contents()
 			dstManifest := ORAS("manifest", "fetch", dst, Flags.Layout).WithDescription("fetch from destination to validate").Exec().Out.Contents()
 			Expect(srcManifest).To(Equal(dstManifest))
+		})
+
+		It("should copy and output verbosed warning for Feferrers deletion by default", func() {
+			ORAS("cp", RegistryRef(Host, ArtifactRepo, foobar.Tag), GinkgoT().TempDir(), Flags.ToLayout, "-v").
+				MatchErrKeyWords("referrers deletion can only be enforced upon registry\n").
+				Exec()
 		})
 
 		It("should copy an image from an OCI image layout to a registry via tag", func() {

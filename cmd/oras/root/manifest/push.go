@@ -105,16 +105,14 @@ Example - Push a manifest to an OCI layout folder 'layout-dir' and tag with 'v1'
 }
 
 func pushManifest(ctx context.Context, opts pushOptions) error {
-	ctx, _ = opts.WithContext(ctx)
+	ctx, logger := opts.WithContext(ctx)
 	var target oras.Target
 	var err error
 	target, err = opts.NewTarget(opts.Common)
 	if err != nil {
 		return err
 	}
-	if err = opts.SetReferrersGC(target); err != nil {
-		return err
-	}
+	opts.SetReferrersGC(target, logger)
 	if repo, ok := target.(*remote.Repository); ok {
 		target = repo.Manifests()
 	}

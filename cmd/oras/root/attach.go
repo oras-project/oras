@@ -99,7 +99,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI layout folder 'layou
 }
 
 func runAttach(ctx context.Context, opts attachOptions) error {
-	ctx, _ = opts.WithContext(ctx)
+	ctx, logger := opts.WithContext(ctx)
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err
@@ -123,9 +123,7 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 	if err := opts.EnsureReferenceNotEmpty(); err != nil {
 		return err
 	}
-	if err = opts.SetReferrersGC(dst); err != nil {
-		return err
-	}
+	opts.SetReferrersGC(dst, logger)
 
 	subject, err := dst.Resolve(ctx, opts.Reference)
 	if err != nil {

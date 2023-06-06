@@ -205,15 +205,6 @@ var _ = Describe("OCI image layout users:", func() {
 			ORAS("cp", RegistryRef(Host, ImageRepo, foobar.Tag), Flags.ToLayout, LayoutRef(root, foobar.Tag)).Exec()
 		}
 
-		It("should fail to specify referrers garbage collection", func() {
-			root := PrepareTempFiles()
-			subjectRef := LayoutRef(root, foobar.Tag)
-			ORAS("attach", "--artifact-type", "test.attach", "--skip-delete-referrers=false", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
-				ExpectFailure().
-				MatchContent("Error: referrers deletion can only be enforced upon registry targets\n").
-				Exec()
-		})
-
 		It("should attach a file to a subject", func() {
 			root := PrepareTempFiles()
 			subjectRef := LayoutRef(root, foobar.Tag)
@@ -221,6 +212,15 @@ var _ = Describe("OCI image layout users:", func() {
 			ORAS("attach", "--artifact-type", "test.attach", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				WithWorkDir(root).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
+		})
+
+		It("should attach and output warning for referrers deletion by default", func() {
+			root := PrepareTempFiles()
+			subjectRef := LayoutRef(root, foobar.Tag)
+			prepare(root)
+			ORAS("attach", "--artifact-type", "test.attach", "-v", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+				MatchContent("Error: referrers deletion can only be enforced upon registry\n").
+				Exec()
 		})
 
 		It("should attach a file to a subject and export the built manifest", func() {
