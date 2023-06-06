@@ -75,24 +75,16 @@ func init() {
 	}
 	BeforeSuite(func() {
 		ORASPath = os.Getenv("ORAS_PATH")
-		if covDumpRoot := os.Getenv("COVERAGE_DUMP_ROOT"); covDumpRoot != "" {
+		if CovDumpPath := os.Getenv("GOCOVERDIR"); CovDumpPath != "" {
+			fmt.Printf("Coverage file dump path: %q\n", CovDumpPath)
 			if ORASPath != "" {
-				fmt.Printf("Pre-built oras ignored: %s\n", ORASPath)
+				fmt.Printf("Pre-built oras in %q will be ignored\n", ORASPath)
 				ORASPath = ""
-			}
-			if filepath.IsAbs(covDumpRoot) {
-				CovDumpPath = covDumpRoot
-			} else if workspacePath := os.Getenv("GITHUB_WORKSPACE"); workspacePath != "" {
-				CovDumpPath = filepath.Join(workspacePath, "test/e2e", covDumpRoot)
-			} else {
-				// local debugging
-				CovDumpPath = filepath.Join(pwd, "..", "..", covDumpRoot)
 			}
 
 			// confirm the existence of dump folder
 			err := os.MkdirAll(CovDumpPath, 0700)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			fmt.Printf("Coverage file dump path: %q\n", CovDumpPath)
 		}
 		if filepath.IsAbs(ORASPath) {
 			fmt.Printf("Testing based on pre-built binary locates in %q\n", ORASPath)

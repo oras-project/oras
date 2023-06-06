@@ -189,7 +189,6 @@ func (opts *ExecOption) Exec() *gexec.Session {
 		opts.binary = ORASPath
 	}
 	cmd = exec.Command(opts.binary, opts.args...)
-	cmd.Env = append(os.Environ(), fmt.Sprintf("GOCOVERDIR=%s", CovDumpPath))
 	cmd.Stdin = opts.stdin
 	if opts.workDir != "" {
 		// switch working directory
