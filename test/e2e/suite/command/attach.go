@@ -219,7 +219,8 @@ var _ = Describe("OCI image layout users:", func() {
 			subjectRef := LayoutRef(root, foobar.Tag)
 			prepare(root)
 			ORAS("attach", "--artifact-type", "test.attach", "-v", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
-				MatchContent("Error: referrers deletion can only be enforced upon registry\n").
+				MatchErrKeyWords("referrers deletion can only be enforced upon registry\n").
+				WithWorkDir(root).
 				Exec()
 		})
 
