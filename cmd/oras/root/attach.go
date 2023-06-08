@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -26,6 +27,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
+	oerr "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
 )
@@ -167,6 +169,9 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 
 	root, err := pushArtifact(dst, pack, copy)
 	if err != nil {
+		if oerr.IsReferrersIndexDelete(err) {
+			fmt.Fprintln(os.Stderr, "attached successfully but failed to remove the outdated referrers index, please use `--skip-delete-referrers` if you want to skip the deletion")
+		}
 		return err
 	}
 

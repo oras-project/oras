@@ -18,6 +18,7 @@ package root
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 
@@ -26,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/display"
+	oerr "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
 )
@@ -169,6 +171,9 @@ func runCopy(ctx context.Context, opts copyOptions) error {
 		}
 	}
 	if err != nil {
+		if oerr.IsReferrersIndexDelete(err) {
+			fmt.Fprintln(os.Stderr, "failed to remove the outdated referrers index, please use `--skip-delete-referrers` if you want to skip the deletion")
+		}
 		return err
 	}
 
