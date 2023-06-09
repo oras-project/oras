@@ -129,6 +129,10 @@ sign:
 		gpg --armor --detach-sign $${f} ; \
 	done
 
-.PHONY: e2e-covdata
-e2e-covdata:
-	$(GO_EXE) tool covdata textfmt -i="test/e2e/${COVERAGE_DUMP_ROOT}" -o test/e2e/coverage.txt
+.PHONY: teste2e-covdata
+teste2e-covdata:
+	export GOCOVERDIR=$(CURDIR)/test/e2e/.cover; \
+	rm -rf $$GOCOVERDIR; \
+	mkdir -p $$GOCOVERDIR; \
+	$(MAKE) teste2e; \
+	$(GO_EXE) tool covdata textfmt -i=$$GOCOVERDIR -o "$(CURDIR)/test/e2e/coverage.txt"
