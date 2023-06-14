@@ -32,91 +32,91 @@ LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitCommit=${GIT_COMMIT}
 LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitTreeState=${GIT_DIRTY}
 
 .PHONY: test
-test: tidy vendor check-encoding  ## build for linux amd64
+test: tidy vendor check-encoding
 	$(GO_EXE) test -race -v -coverprofile=coverage.txt -covermode=atomic ./...
 
 .PHONY: teste2e
-teste2e:  ## run end to end tests
+teste2e:
 	./test/e2e/scripts/e2e.sh $(shell git rev-parse --show-toplevel) --clean 
 
 .PHONY: covhtml
-covhtml:  ## look at code coverage
+covhtml:
 	open .cover/coverage.html
 
 .PHONY: clean
-clean:  ## clean up build
+clean:
 	git status --ignored --short | grep '^!! ' | sed 's/!! //' | xargs rm -rf
 
 .PHONY: build
-build: build-linux build-mac build-windows  ## build for all targets
+build: build-linux build-mac build-windows
 
 .PHONY: build-linux
-build-linux: build-linux-amd64 build-linux-arm64 build-linux-arm-v7 build-linux-s390x  ## build all linux architectures
+build-linux: build-linux-amd64 build-linux-arm64 build-linux-arm-v7 build-linux-s390x
 
 .PHONY: build-linux-amd64
-build-linux-amd64:  ## build for linux amd64
+build-linux-amd64:
 	GOARCH=amd64 CGO_ENABLED=0 GOOS=linux $(GO_EXE) build -v --ldflags="$(LDFLAGS)" \
 		-o bin/linux/amd64/$(CLI_EXE) $(CLI_PKG)
 
 .PHONY: build-linux-arm64
-build-linux-arm64:  ## build for linux arm64
+build-linux-arm64:
 	GOARCH=arm64 CGO_ENABLED=0 GOOS=linux $(GO_EXE) build -v --ldflags="$(LDFLAGS)" \
 		-o bin/linux/arm64/$(CLI_EXE) $(CLI_PKG)
 
 .PHONY: build-linux-arm-v7
-build-linux-arm-v7:  ## build for linux arm v7
+build-linux-arm-v7:
 	GOARCH=arm CGO_ENABLED=0 GOOS=linux $(GO_EXE) build -v --ldflags="$(LDFLAGS)" \
 		-o bin/linux/arm/v7/$(CLI_EXE) $(CLI_PKG)
 
 .PHONY: build-linux-s390x
-build-linux-s390x:  ## build for linux s390x
+build-linux-s390x:
 	GOARCH=s390x CGO_ENABLED=0 GOOS=linux $(GO_EXE) build -v --ldflags="$(LDFLAGS)" \
 		-o bin/linux/s390x/$(CLI_EXE) $(CLI_PKG)
 
 .PHONY: build-mac
-build-mac: build-mac-arm64 build-mac-amd64  ## build all mac architectures
+build-mac: build-mac-arm64 build-mac-amd64
 
 .PHONY: build-mac-amd64
-build-mac-amd64:  ## build for mac amd64
+build-mac-amd64:
 	GOARCH=amd64 CGO_ENABLED=0 GOOS=darwin $(GO_EXE) build -v --ldflags="$(LDFLAGS)" \
 		-o bin/darwin/amd64/$(CLI_EXE) $(CLI_PKG)
 
 .PHONY: build-mac-arm64
-build-mac-arm64:  ## build for mac arm64
+build-mac-arm64:
 	GOARCH=arm64 CGO_ENABLED=0 GOOS=darwin $(GO_EXE) build -v --ldflags="$(LDFLAGS)" \
 		-o bin/darwin/arm64/$(CLI_EXE) $(CLI_PKG)
 
 .PHONY: build-windows
-build-windows: build-windows-amd64 build-windows-arm64  ## build all windows architectures
+build-windows: build-windows-amd64 build-windows-arm64
 
 .PHONY: build-windows-amd64
-build-windows-amd64:  ## build for windows amd64
+build-windows-amd64:
 	GOARCH=amd64 CGO_ENABLED=0 GOOS=windows $(GO_EXE) build -v --ldflags="$(LDFLAGS)" \
 		-o bin/windows/amd64/$(CLI_EXE).exe $(CLI_PKG)
 
 .PHONY: build-windows-arm64
-build-windows-arm64:  ## build for windows arm64
+build-windows-arm64:
 	GOARCH=arm64 CGO_ENABLED=0 GOOS=windows $(GO_EXE) build -v --ldflags="$(LDFLAGS)" \
 		-o bin/windows/arm64/$(CLI_EXE).exe $(CLI_PKG)
 
 .PHONY: check-encoding
-check-encoding:  ## check file CR/LF encoding
+check-encoding:
 	! find cmd internal -name "*.go" -type f -exec file "{}" ";" | grep CRLF
 
 .PHONY: fix-encoding
-fix-encoding:  ## fix file CR/LF encoding
+fix-encoding:
 	find cmd internal -type f -name "*.go" -exec sed -i -e "s/\r//g" {} +
 
 .PHONY: tidy
-tidy:  ## go mod tidy
+tidy:
 	GO111MODULE=on $(GO_EXE) mod tidy
 
 .PHONY: vendor
-vendor:  ## go mod vendor
+vendor:
 	GO111MODULE=on $(GO_EXE) mod vendor
 
 .PHONY: fetch-dist
-fetch-dist:  ## fetch distribution
+fetch-dist:
 	mkdir -p _dist
 	cd _dist && \
 	for obj in ${TARGET_OBJS} ; do \
@@ -124,19 +124,15 @@ fetch-dist:  ## fetch distribution
 	done
 
 .PHONY: sign
-sign:  ## sign
+sign:
 	for f in $$(ls _dist/*.{gz,txt} 2>/dev/null) ; do \
 		gpg --armor --detach-sign $${f} ; \
 	done
 
 .PHONY: teste2e-covdata
-teste2e-covdata:  ## test e2e coverage
+teste2e-covdata:
 	export GOCOVERDIR=$(CURDIR)/test/e2e/.cover; \
 	rm -rf $$GOCOVERDIR; \
 	mkdir -p $$GOCOVERDIR; \
 	$(MAKE) teste2e; \
 	$(GO_EXE) tool covdata textfmt -i=$$GOCOVERDIR -o "$(CURDIR)/test/e2e/coverage.txt"
-
-.PHONY: help
-help:  ## Display this help
-	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[%\/0-9A-Za-z_-]+:.*?##/ { printf "  \033[36m%-45s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
