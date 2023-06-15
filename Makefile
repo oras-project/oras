@@ -32,7 +32,7 @@ LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitCommit=${GIT_COMMIT}
 LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitTreeState=${GIT_DIRTY}
 
 .PHONY: test
-test: tidy vendor check-encoding  ## build for linux amd64
+test: tidy vendor check-encoding  ## tidy and run tests
 	$(GO_EXE) test -race -v -coverprofile=coverage.txt -covermode=atomic ./...
 
 .PHONY: teste2e
