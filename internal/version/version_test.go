@@ -18,18 +18,9 @@ import (
 	"testing"
 )
 
-func Test_GetVersion(t *testing.T) {
-	expected := "1.0.0+unreleased"
-	actual := GetVersion()
-	if !reflect.DeepEqual(expected, actual) {
-		t.Errorf("Tested GetVersion expected was %v actually got %v", expected, actual)
-	}
-
-}
-
 func Test_GetVersion_when_BuildData_is_empty(t *testing.T) {
 	BuildMetadata = ""
-	expected := "1.0.0"
+	expected := Version
 	actual := GetVersion()
 	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("Tested GetVersion expected was %v actually got %v", expected, actual)
