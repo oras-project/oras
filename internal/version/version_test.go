@@ -14,15 +14,16 @@ limitations under the License.
 package version
 
 import (
+	"reflect"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func Test_GetVersion(t *testing.T) {
 	expected := "1.0.0+unreleased"
 	actual := GetVersion()
-	assert.Equal(t, expected, actual)
+	if !reflect.DeepEqual(expected, actual) {
+		t.Errorf("Tested GetVersion expected was %v actually got %v", expected, actual)
+	}
 
 }
 
@@ -30,6 +31,7 @@ func Test_GetVersion_when_BuildData_is_empty(t *testing.T) {
 	BuildMetadata = ""
 	expected := "1.0.0"
 	actual := GetVersion()
-	assert.Equal(t, expected, actual)
-
+	if !reflect.DeepEqual(expected, actual) {
+		t.Errorf("Tested GetVersion expected was %v actually got %v", expected, actual)
+	}
 }
