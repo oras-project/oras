@@ -26,7 +26,6 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
-	oerrors "oras.land/oras-go/v2/errors"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -238,7 +237,7 @@ func runPull(ctx context.Context, opts pullOptions) error {
 	// Copy
 	desc, err := oras.Copy(ctx, src, opts.Reference, dst, opts.Reference, copyOptions)
 	if err != nil {
-		if err == oerrors.ErrPathTraversalDisallowed {
+		if err == file.ErrPathTraversalDisallowed {
 			err = fmt.Errorf("%s: %w", "use option -T/allow-path-traversal to allow pulling outside of working directory", err)
 		}
 		return err
