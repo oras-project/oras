@@ -19,8 +19,6 @@ import (
 	credentials "github.com/oras-project/oras-credentials-go"
 )
 
-var CreateNewStore = credentials.NewStore
-
 // NewStore generates a store based on the passed-in config file paths.
 func NewStore(configPaths ...string) (credentials.Store, error) {
 	opts := credentials.StoreOptions{AllowPlaintextPut: true}
@@ -31,7 +29,7 @@ func NewStore(configPaths ...string) (credentials.Store, error) {
 
 	var stores []credentials.Store
 	for _, config := range configPaths {
-		store, err := CreateNewStore(config, opts)
+		store, err := credentials.NewStore(config, opts)
 		if err != nil {
 			return nil, err
 		}
