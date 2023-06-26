@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -38,6 +39,7 @@ var (
 	errAnnotationConflict    = errors.New("`--annotation` and `--annotation-file` cannot be both specified")
 	errAnnotationFormat      = errors.New("missing key in `--annotation` flag")
 	errAnnotationDuplication = errors.New("duplicate annotation key")
+	errPathValidation        = errors.New("one or more files are not in the current directory.If it's intentional use --disable-path-validation flag to skip this check")
 )
 
 // Packer option struct.
@@ -68,6 +70,35 @@ func (opts *Packer) ExportManifest(ctx context.Context, fetcher content.Fetcher,
 		return err
 	}
 	return os.WriteFile(opts.ManifestExportPath, manifestBytes, 0666)
+}
+func (opts *Packer) Parse() error {
+	currentDir, err := os.Getwd()
+	var failedPaths []string
+	if err != nil {
+		return err
+	}
+	if !opts.PathValidationDisabled && len(opts.FileRefs) != 0 {
+		for _, path := range opts.FileRefs {
+			//Remove the type if specified in the path <file>[:<type>] format
+			lastIndex := strings.LastIndex(path, ":")
+			if lastIndex != -1 {
+				path = path[:lastIndex]
+			}
+			absPath, err := filepath.Abs(path)
+			dirPath := filepath.Dir(absPath)
+			if err != nil {
+				return err
+			}
+			if dirPath != currentDir {
+				failedPaths = append(failedPaths, absPath)
+			}
+		}
+		if len(failedPaths) > 0 {
+			errorMsg := fmt.Sprintf("%v: %v currentDir :%v", errPathValidation, strings.Join(failedPaths, ", "), currentDir)
+			return errors.New(errorMsg)
+		}
+	}
+	return nil
 }
 
 // LoadManifestAnnotations loads the manifest annotation map.
