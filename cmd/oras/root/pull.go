@@ -17,8 +17,10 @@ package root
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -237,6 +239,10 @@ func runPull(ctx context.Context, opts pullOptions) error {
 	// Copy
 	desc, err := oras.Copy(ctx, src, opts.Reference, dst, opts.Reference, copyOptions)
 	if err != nil {
+		if strings.Contains(err.Error(), "path traversal disallowed") {
+			errorMsg := fmt.Sprintf("%v: %v ", err, "To enable path traversal use --allow-path-traversal flag")
+			return errors.New(errorMsg)
+		}
 		return err
 	}
 	if pulledEmpty {
