@@ -86,7 +86,7 @@ func (opts *Packer) Parse() error {
 			}
 		}
 		if len(failedPaths) > 0 {
-			return fmt.Errorf("%v: %v currentDir :%v", errPathValidation, strings.Join(failedPaths, ", "), currentDir)
+			return fmt.Errorf("%w: %v", errPathValidation, strings.Join(failedPaths, ", "))
 		}
 	}
 	return nil
