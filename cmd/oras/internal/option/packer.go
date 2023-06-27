@@ -27,6 +27,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras/cmd/oras/internal/fileref"
 )
 
 // Pre-defined annotation keys for annotation file
@@ -80,17 +81,12 @@ func (opts *Packer) Parse() error {
 	if !opts.PathValidationDisabled && len(opts.FileRefs) != 0 {
 		for _, path := range opts.FileRefs {
 			//Remove the type if specified in the path <file>[:<type>] format
-			lastIndex := strings.LastIndex(path, ":")
-			if lastIndex != -1 {
-				path = path[:lastIndex]
-			}
-			absPath, err := filepath.Abs(path)
-			dirPath := filepath.Dir(absPath)
+			path, _, err = fileref.Parse(path, "")
 			if err != nil {
 				return err
 			}
-			if dirPath != currentDir {
-				failedPaths = append(failedPaths, absPath)
+			if filepath.IsAbs(path) {
+				failedPaths = append(failedPaths, path)
 			}
 		}
 		if len(failedPaths) > 0 {
