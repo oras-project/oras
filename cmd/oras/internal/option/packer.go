@@ -94,8 +94,7 @@ func (opts *Packer) Parse() error {
 			}
 		}
 		if len(failedPaths) > 0 {
-			errorMsg := fmt.Sprintf("%v: %v currentDir :%v", errPathValidation, strings.Join(failedPaths, ", "), currentDir)
-			return errors.New(errorMsg)
+			return fmt.Errorf("%v: %v currentDir :%v", errPathValidation, strings.Join(failedPaths, ", "), currentDir)
 		}
 	}
 	return nil
