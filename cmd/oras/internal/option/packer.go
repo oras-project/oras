@@ -74,10 +74,6 @@ func (opts *Packer) ExportManifest(ctx context.Context, fetcher content.Fetcher,
 }
 func (opts *Packer) Parse() error {
 	var failedPaths []string
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return err
-	}
 	if !opts.PathValidationDisabled && len(opts.FileRefs) != 0 {
 		for _, path := range opts.FileRefs {
 			//Remove the type if specified in the path <file>[:<type>] format
