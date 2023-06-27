@@ -76,7 +76,7 @@ func (opts *Packer) Parse() error {
 	var failedPaths []string
 	if !opts.PathValidationDisabled {
 		for _, path := range opts.FileRefs {
-			//Remove the type if specified in the path <file>[:<type>] format
+			// Remove the type if specified in the path <file>[:<type>] format
 			path, _, err = fileref.Parse(path, "")
 			if err != nil {
 				return err
