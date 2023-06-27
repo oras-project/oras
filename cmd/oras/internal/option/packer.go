@@ -72,8 +72,8 @@ func (opts *Packer) ExportManifest(ctx context.Context, fetcher content.Fetcher,
 	return os.WriteFile(opts.ManifestExportPath, manifestBytes, 0666)
 }
 func (opts *Packer) Parse() error {
-	currentDir, err := os.Getwd()
 	var failedPaths []string
+	currentDir, err := os.Getwd()
 	if err != nil {
 		return err
 	}
