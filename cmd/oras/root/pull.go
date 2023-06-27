@@ -240,7 +240,7 @@ func runPull(ctx context.Context, opts pullOptions) error {
 	desc, err := oras.Copy(ctx, src, opts.Reference, dst, opts.Reference, copyOptions)
 	if err != nil {
 		if strings.Contains(err.Error(), "path traversal disallowed") {
-			errorMsg := fmt.Sprintf("%v: %v ", err, "To enable path traversal use --allow-path-traversal flag")
+			errorMsg := fmt.Sprintf("%v: %w ", "to enable path traversal use --allow-path-traversal flag", err)
 			return errors.New(errorMsg)
 		}
 		return err
