@@ -239,7 +239,7 @@ func runPull(ctx context.Context, opts pullOptions) error {
 	desc, err := oras.Copy(ctx, src, opts.Reference, dst, opts.Reference, copyOptions)
 	if err != nil {
 		if errors.Is(err, file.ErrPathTraversalDisallowed) {
-			err = fmt.Errorf("%s: %w", "use option -T/allow-path-traversal to allow pulling outside of working directory", err)
+			err = fmt.Errorf("%s: %w", "use flag -T/allow-path-traversal to allow pulling files outside of working directory", err)
 		}
 		return err
 	}
