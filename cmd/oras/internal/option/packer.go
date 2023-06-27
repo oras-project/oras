@@ -40,7 +40,7 @@ var (
 	errAnnotationConflict    = errors.New("`--annotation` and `--annotation-file` cannot be both specified")
 	errAnnotationFormat      = errors.New("missing key in `--annotation` flag")
 	errAnnotationDuplication = errors.New("duplicate annotation key")
-	errPathValidation        = errors.New("one or more files are not in the current directory.If it's intentional use --disable-path-validation flag to skip this check")
+	errPathValidation        = errors.New("absolute file path detected. If it's intentional use --disable-path-validation flag to skip this check")
 )
 
 // Packer option struct.
