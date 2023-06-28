@@ -73,8 +73,8 @@ func (opts *Packer) ExportManifest(ctx context.Context, fetcher content.Fetcher,
 	return os.WriteFile(opts.ManifestExportPath, manifestBytes, 0666)
 }
 func (opts *Packer) Parse() error {
-	var failedPaths []string
 	if !opts.PathValidationDisabled {
+		var failedPaths []string
 		for _, path := range opts.FileRefs {
 			// Remove the type if specified in the path <file>[:<type>] format
 			path, _, err := fileref.Parse(path, "")
