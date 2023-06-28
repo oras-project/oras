@@ -21,11 +21,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras/cmd/oras/internal/fileref"
 )
 
 // Pre-defined annotation keys for annotation file
@@ -38,6 +40,7 @@ var (
 	errAnnotationConflict    = errors.New("`--annotation` and `--annotation-file` cannot be both specified")
 	errAnnotationFormat      = errors.New("missing key in `--annotation` flag")
 	errAnnotationDuplication = errors.New("duplicate annotation key")
+	errPathValidation        = errors.New("absolute file path detected. If it's intentional, use --disable-path-validation flag to skip this check")
 )
 
 // Packer option struct.
@@ -68,6 +71,25 @@ func (opts *Packer) ExportManifest(ctx context.Context, fetcher content.Fetcher,
 		return err
 	}
 	return os.WriteFile(opts.ManifestExportPath, manifestBytes, 0666)
+}
+func (opts *Packer) Parse() error {
+	if !opts.PathValidationDisabled {
+		var failedPaths []string
+		for _, path := range opts.FileRefs {
+			// Remove the type if specified in the path <file>[:<type>] format
+			path, _, err := fileref.Parse(path, "")
+			if err != nil {
+				return err
+			}
+			if filepath.IsAbs(path) {
+				failedPaths = append(failedPaths, path)
+			}
+		}
+		if len(failedPaths) > 0 {
+			return fmt.Errorf("%w: %v", errPathValidation, strings.Join(failedPaths, ", "))
+		}
+	}
+	return nil
 }
 
 // LoadManifestAnnotations loads the manifest annotation map.
