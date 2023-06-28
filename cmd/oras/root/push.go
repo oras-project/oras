@@ -139,7 +139,6 @@ func runPush(ctx context.Context, opts pushOptions) error {
 		return err
 	}
 	defer store.Close()
-	store.AllowPathTraversalOnWrite = opts.PathValidationDisabled
 	if opts.manifestConfigRef != "" {
 		path, cfgMediaType, err := fileref.Parse(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
 		if err != nil {
