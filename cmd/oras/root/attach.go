@@ -113,7 +113,6 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 		return err
 	}
 	defer store.Close()
-	store.AllowPathTraversalOnWrite = opts.PathValidationDisabled
 
 	dst, err := opts.NewTarget(opts.Common)
 	if err != nil {
