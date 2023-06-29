@@ -18,6 +18,7 @@ package root
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -27,26 +28,24 @@ import (
 
 func loadFiles(ctx context.Context, store *file.Store, annotations map[string]map[string]string, fileRefs []string, verbose bool) ([]ocispec.Descriptor, error) {
 	var files []ocispec.Descriptor
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
 	for _, fileRef := range fileRefs {
-		filename, mediaType, err := fileref.Parse(fileRef, "")
+		path, mediaType, err := fileref.Parse(fileRef, "")
 		if err != nil {
 			return nil, err
 		}
-
-		// get shortest absolute path as unique name
-		name := filepath.Clean(filename)
-		if !filepath.IsAbs(name) {
-			name = filepath.ToSlash(name)
-		}
-
+		path, name := getPathName(path, wd)
 		if verbose {
 			fmt.Println("Preparing", name)
 		}
-		file, err := store.Add(ctx, name, mediaType, filename)
+		file, err := store.Add(ctx, name, mediaType, path)
 		if err != nil {
 			return nil, err
 		}
-		if value, ok := annotations[filename]; ok {
+		if value, ok := annotations[name]; ok {
 			if file.Annotations == nil {
 				file.Annotations = value
 			} else {
@@ -61,4 +60,14 @@ func loadFiles(ctx context.Context, store *file.Store, annotations map[string]ma
 		fmt.Println("Uploading empty artifact")
 	}
 	return files, nil
+}
+
+func getPathName(path string, root string) (string, string) {
+	// get shortest relative path as unique name
+	name := filepath.Clean(path)
+	if !filepath.IsAbs(name) {
+		name = filepath.ToSlash(name)
+		path = filepath.Join(root, path)
+	}
+	return path, name
 }
