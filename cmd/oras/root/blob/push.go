@@ -43,8 +43,8 @@ func pushCmd() *cobra.Command {
 	var opts pushBlobOptions
 	cmd := &cobra.Command{
 		Use:   "push [flags] <name>[@digest] <file>",
-		Short: "Push a blob to a remote registry",
-		Long: `Push a blob to a remote registry
+		Short: "Push a blob to a registry or an OCI layout folder",
+		Long: `Push a blob to a registry or an OCI layout folder
 
 Example - Push blob 'hi.txt' to a registry:
   oras blob push localhost:5000/hello hi.txt

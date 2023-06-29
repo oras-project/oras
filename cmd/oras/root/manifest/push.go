@@ -49,8 +49,8 @@ func pushCmd() *cobra.Command {
 	var opts pushOptions
 	cmd := &cobra.Command{
 		Use:   "push [flags] <name>[:<tag>[,<tag>][...]|@<digest>] <file>",
-		Short: "Push a manifest to remote registry",
-		Long: `Push a manifest to remote registry
+		Short: "Push a manifest to a registry or an OCI layout folder",
+		Long: `Push a manifest to a registry or an OCI layout folder
 
 Example - Push a manifest to repository 'localhost:5000/hello' and tag with 'v1':
   oras manifest push localhost:5000/hello:v1 manifest.json

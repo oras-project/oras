@@ -54,7 +54,7 @@ func pullCmd() *cobra.Command {
 		Short: "Pull files from remote registry",
 		Long: `Pull files from remote registry
 
-Example - Pull artifact files from a registry:
+Example - Pull artifact files from a registry or an OCI layout folder:
   oras pull localhost:5000/hello:v1
 
 Example - Recursively pulling all files from a registry, including subjects of hello:v1:
