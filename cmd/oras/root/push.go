@@ -136,7 +136,7 @@ func runPush(ctx context.Context, opts pushOptions) error {
 		ManifestAnnotations: annotations[option.AnnotationManifest],
 	}
 
-	tmp, err := os.MkdirTemp("", "oras-push")
+	tmp, err := os.MkdirTemp("", "oras_push_")
 	if err != nil {
 		return err
 	}
