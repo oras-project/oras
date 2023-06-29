@@ -91,7 +91,7 @@ Example - Push file "hi.txt" with multiple tags:
 Example - Push file "hi.txt" with multiple tags and concurrency level tuned:
   oras push --concurrency 6 localhost:5000/hello:tag1,tag2,tag3 hi.txt
 
-Example - Push file "hi.txt" into an OCI layout folder 'layout-dir' with tag 'test':
+Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with tag 'test':
   oras push --oci-layout layout-dir:test hi.txt
 `,
 		Args: cobra.MinimumNArgs(1),

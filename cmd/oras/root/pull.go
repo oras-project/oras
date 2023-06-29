@@ -76,7 +76,7 @@ Example - Pull files from a registry with certain platform:
 Example - Pull all files with concurrency level tuned:
   oras pull --concurrency 6 localhost:5000/hello:v1
 
-Example - Pull artifact files from an OCI layout folder 'layout-dir':
+Example - Pull artifact files from an OCI image layout folder 'layout-dir':
   oras pull --oci-layout layout-dir:v1
 
 Example - Pull artifact files from an OCI layout archive 'layout.tar':
