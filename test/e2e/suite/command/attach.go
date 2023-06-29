@@ -104,6 +104,7 @@ var _ = Describe("Common registry users:", func() {
 			fetched := ORAS("manifest", "fetch", RegistryRef(Host, testRepo, index.Manifests[0].Digest.String())).Exec().Out.Contents()
 			MatchFile(filepath.Join(tempDir, exportName), string(fetched), DefaultTimeout)
 		})
+
 		It("should attach a file via a OCI Image", func() {
 			testRepo := attachTestRepo("image")
 			tempDir := PrepareTempFiles()
@@ -121,6 +122,33 @@ var _ = Describe("Common registry users:", func() {
 			Expect(len(index.Manifests)).To(Equal(1))
 			Expect(index.Manifests[0].MediaType).To(Equal("application/vnd.oci.image.manifest.v1+json"))
 		})
+
+		It("should attach file with path validation disabled", func() {
+			testRepo := attachTestRepo("simple")
+			absAttachFileName := filepath.Join(PrepareTempFiles(), foobar.AttachFileName)
+
+			subjectRef := RegistryRef(Host, testRepo, foobar.Tag)
+			prepare(RegistryRef(Host, ImageRepo, foobar.Tag), subjectRef)
+			statusKey := foobar.AttachFileStateKey
+			statusKey.Name = absAttachFileName
+			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", absAttachFileName, foobar.AttachFileMedia), "--disable-path-validation").
+				MatchStatus([]match.StateKey{statusKey}, false, 1).
+				Exec()
+		})
+
+		It("should fail path validation when attaching file with absolute path", func() {
+			testRepo := attachTestRepo("simple")
+			absAttachFileName := filepath.Join(PrepareTempFiles(), foobar.AttachFileName)
+
+			subjectRef := RegistryRef(Host, testRepo, foobar.Tag)
+			prepare(RegistryRef(Host, ImageRepo, foobar.Tag), subjectRef)
+			statusKey := foobar.AttachFileStateKey
+			statusKey.Name = absAttachFileName
+			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", absAttachFileName, foobar.AttachFileMedia)).
+				ExpectFailure().
+				Exec()
+		})
+
 		It("should attach a file via a OCI Artifact", func() {
 			testRepo := attachTestRepo("artifact")
 			tempDir := PrepareTempFiles()
