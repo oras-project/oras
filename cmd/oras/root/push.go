@@ -48,8 +48,8 @@ func pushCmd() *cobra.Command {
 	var opts pushOptions
 	cmd := &cobra.Command{
 		Use:   "push [flags] <name>[:<tag>[,<tag>][...]] <file>[:<type>] [...]",
-		Short: "Push files to a registry or an OCI layout folder",
-		Long: `Push files to a registry or an OCI layout folder
+		Short: "Push files to a registry or an OCI image layout",
+		Long: `Push files to a registry or an OCI image layout
 
 Example - Push file "hi.txt" with media type "application/vnd.oci.image.layer.v1.tar" (default):
   oras push localhost:5000/hello:v1 hi.txt

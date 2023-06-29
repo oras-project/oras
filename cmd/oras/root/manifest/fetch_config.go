@@ -46,8 +46,8 @@ func fetchConfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "fetch-config [flags] <name>{:<tag>|@<digest>}",
 		Aliases: []string{"get-config"},
-		Short:   "Fetch the config of a manifest from a registry or an OCI layout folder",
-		Long: `Fetch the config of a manifest from a registry or an OCI layout folder
+		Short:   "Fetch the config of a manifest from a registry or an OCI image layout",
+		Long: `Fetch the config of a manifest from a registry or an OCI image layout
 
 Example - Fetch the config:
   oras manifest fetch-config localhost:5000/hello:v1

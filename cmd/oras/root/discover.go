@@ -46,8 +46,8 @@ func discoverCmd() *cobra.Command {
 	var opts discoverOptions
 	cmd := &cobra.Command{
 		Use:   "discover [flags] <name>{:<tag>|@<digest>}",
-		Short: "[Preview] Discover referrers of a manifest in a registry or an OCI layout folder",
-		Long: `[Preview] Discover referrers of a manifest in a registry or an OCI layout folder
+		Short: "[Preview] Discover referrers of a manifest in a registry or an OCI image layout",
+		Long: `[Preview] Discover referrers of a manifest in a registry or an OCI image layout
 
 ** This command is in preview and under development. **
 
