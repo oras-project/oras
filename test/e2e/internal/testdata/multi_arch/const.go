@@ -63,8 +63,8 @@ var (
 	LinuxAMD64ReferrerStateKey       = match.StateKey{Digest: "57e6462826c8", Name: "application/vnd.oci.image.manifest.v1+json"}
 	LinuxAMD64ReferrerConfigStateKey = match.StateKey{Digest: "44136fa355b3", Name: "referrer.image"}
 	LinuxAMD64StateKeys              = []match.StateKey{
-		{Digest: "9d84a5716c66", Name: ocispec.MediaTypeImageManifest},
-		{Digest: "fe9dbc99451d", Name: ocispec.MediaTypeImageConfig},
+		{Digest: "9d84a5716c66", Name: "application/vnd.oci.image.manifest.v1+json"},
+		{Digest: "fe9dbc99451d", Name: "application/vnd.oci.image.config.v1+json"},
 		{Digest: "2ef548696ac7", Name: "hello.tar"},
 	}
 )

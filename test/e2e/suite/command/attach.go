@@ -120,7 +120,7 @@ var _ = Describe("Common registry users:", func() {
 			bytes := ORAS("discover", subjectRef, "-o", "json").Exec().Out.Contents()
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].MediaType).To(Equal(ocispec.MediaTypeImageManifest))
+			Expect(index.Manifests[0].MediaType).To(Equal("application/vnd.oci.image.manifest.v1+json"))
 		})
 
 		It("should attach file with path validation disabled", func() {
@@ -164,7 +164,7 @@ var _ = Describe("Common registry users:", func() {
 			bytes := ORAS("discover", subjectRef, "-o", "json").Exec().Out.Contents()
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].MediaType).To(Equal(ocispec.MediaTypeArtifactManifest))
+			Expect(index.Manifests[0].MediaType).To(Equal("application/vnd.oci.artifact.manifest.v1+json"))
 		})
 	})
 })
@@ -186,7 +186,7 @@ var _ = Describe("Fallback registry users:", func() {
 			bytes := ORAS("discover", subjectRef, "-o", "json").Exec().Out.Contents()
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].MediaType).To(Equal(ocispec.MediaTypeImageManifest))
+			Expect(index.Manifests[0].MediaType).To(Equal("application/vnd.oci.image.manifest.v1+json"))
 		})
 
 		It("should attach a file via a OCI Image by default", func() {
@@ -204,7 +204,7 @@ var _ = Describe("Fallback registry users:", func() {
 			bytes := ORAS("discover", subjectRef, "-o", "json").Exec().Out.Contents()
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].MediaType).To(Equal(ocispec.MediaTypeImageManifest))
+			Expect(index.Manifests[0].MediaType).To(Equal("application/vnd.oci.image.manifest.v1+json"))
 		})
 
 		It("should attach a file via a OCI Image and generate referrer via tag schema", func() {
@@ -222,7 +222,7 @@ var _ = Describe("Fallback registry users:", func() {
 			bytes := ORAS("discover", subjectRef, "--distribution-spec", "v1.1-referrers-tag", "-o", "json").Exec().Out.Contents()
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].MediaType).To(Equal(ocispec.MediaTypeImageManifest))
+			Expect(index.Manifests[0].MediaType).To(Equal("application/vnd.oci.image.manifest.v1+json"))
 		})
 	})
 })
@@ -256,7 +256,7 @@ var _ = Describe("OCI image layout users:", func() {
 			bytes := ORAS("discover", Flags.Layout, subjectRef, "-o", "json").Exec().Out.Contents()
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].MediaType).To(Equal(ocispec.MediaTypeImageManifest))
+			Expect(index.Manifests[0].MediaType).To(Equal("application/vnd.oci.image.manifest.v1+json"))
 			fetched := ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, index.Manifests[0].Digest.String())).Exec().Out.Contents()
 			MatchFile(filepath.Join(root, exportName), string(fetched), DefaultTimeout)
 		})
@@ -274,7 +274,7 @@ var _ = Describe("OCI image layout users:", func() {
 			bytes := ORAS("discover", subjectRef, Flags.Layout, "-o", "json").Exec().Out.Contents()
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].MediaType).To(Equal(ocispec.MediaTypeImageManifest))
+			Expect(index.Manifests[0].MediaType).To(Equal("application/vnd.oci.image.manifest.v1+json"))
 		})
 		It("should attach a file via a OCI Artifact", func() {
 			root := PrepareTempFiles()
@@ -290,7 +290,7 @@ var _ = Describe("OCI image layout users:", func() {
 			bytes := ORAS("discover", subjectRef, Flags.Layout, "-o", "json").Exec().Out.Contents()
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].MediaType).To(Equal(ocispec.MediaTypeArtifactManifest))
+			Expect(index.Manifests[0].MediaType).To(Equal("application/vnd.oci.artifact.manifest.v1+json"))
 		})
 	})
 })
