@@ -19,7 +19,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 
@@ -135,13 +134,7 @@ func runPush(ctx context.Context, opts pushOptions) error {
 		ConfigAnnotations:   annotations[option.AnnotationConfig],
 		ManifestAnnotations: annotations[option.AnnotationManifest],
 	}
-
-	tmp, err := os.MkdirTemp("", "oras_push_")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(tmp)
-	store, err := file.New(tmp)
+	store, err := file.New("")
 	if err != nil {
 		return err
 	}
@@ -151,11 +144,6 @@ func runPush(ctx context.Context, opts pushOptions) error {
 		if err != nil {
 			return err
 		}
-		wd, err := os.Getwd()
-		if err != nil {
-			return err
-		}
-		path, _ = getPathName(path, wd)
 		desc, err := store.Add(ctx, option.AnnotationConfig, cfgMediaType, path)
 		if err != nil {
 			return err
