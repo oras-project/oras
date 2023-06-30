@@ -141,8 +141,8 @@ func runPush(ctx context.Context, opts pushOptions) error {
 		return err
 	}
 	defer store.Close()
-	manifestStore := memory.New()
-	hybrid := ostore.NewReadOnlyHybrid(store, manifestStore, manifestStore)
+	memStore := memory.New()
+	hybrid := ostore.NewReadOnlyHybrid(store, memStore, memStore)
 	if opts.manifestConfigRef != "" {
 		path, cfgMediaType, err := fileref.Parse(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
 		if err != nil {
@@ -164,11 +164,11 @@ func runPush(ctx context.Context, opts pushOptions) error {
 		return err
 	}
 	pack := func() (ocispec.Descriptor, error) {
-		root, err := oras.Pack(ctx, manifestStore, opts.artifactType, descs, packOpts)
+		root, err := oras.Pack(ctx, memStore, opts.artifactType, descs, packOpts)
 		if err != nil {
 			return ocispec.Descriptor{}, err
 		}
-		if err = manifestStore.Tag(ctx, root, root.Digest.String()); err != nil {
+		if err = memStore.Tag(ctx, root, root.Digest.String()); err != nil {
 			return ocispec.Descriptor{}, err
 		}
 		return root, nil
@@ -199,7 +199,7 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	fmt.Println("Pushed", opts.AnnotatedReference())
 
 	if len(opts.extraRefs) != 0 {
-		contentBytes, err := content.FetchAll(ctx, hybrid, root)
+		contentBytes, err := content.FetchAll(ctx, memStore, root)
 		if err != nil {
 			return err
 		}
@@ -213,7 +213,7 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	fmt.Println("Digest:", root.Digest)
 
 	// Export manifest
-	return opts.ExportManifest(ctx, manifestStore, root)
+	return opts.ExportManifest(ctx, memStore, root)
 }
 
 func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, verbose bool) {
