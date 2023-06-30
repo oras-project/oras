@@ -31,7 +31,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/cache"
+	ostore "oras.land/oras/internal/store"
 )
 
 type pushOptions struct {
@@ -141,8 +141,8 @@ func runPush(ctx context.Context, opts pushOptions) error {
 		return err
 	}
 	defer store.Close()
-	memStore := memory.New()
-	proxy := cache.New(store, memStore)
+	manifestStore := memory.New()
+	hybrid := ostore.NewReadOnlyHybrid(store, manifestStore, manifestStore)
 	if opts.manifestConfigRef != "" {
 		path, cfgMediaType, err := fileref.Parse(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
 		if err != nil {
@@ -164,11 +164,11 @@ func runPush(ctx context.Context, opts pushOptions) error {
 		return err
 	}
 	pack := func() (ocispec.Descriptor, error) {
-		root, err := oras.Pack(ctx, memStore, opts.artifactType, descs, packOpts)
+		root, err := oras.Pack(ctx, manifestStore, opts.artifactType, descs, packOpts)
 		if err != nil {
 			return ocispec.Descriptor{}, err
 		}
-		if err = memStore.Tag(ctx, root, root.Digest.String()); err != nil {
+		if err = manifestStore.Tag(ctx, root, root.Digest.String()); err != nil {
 			return ocispec.Descriptor{}, err
 		}
 		return root, nil
@@ -181,12 +181,12 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	}
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
-	updateDisplayOption(&copyOptions.CopyGraphOptions, proxy, opts.Verbose)
+	updateDisplayOption(&copyOptions.CopyGraphOptions, hybrid, opts.Verbose)
 	copy := func(root ocispec.Descriptor) error {
 		if tag := opts.Reference; tag == "" {
-			err = oras.CopyGraph(ctx, proxy, dst, root, copyOptions.CopyGraphOptions)
+			err = oras.CopyGraph(ctx, hybrid, dst, root, copyOptions.CopyGraphOptions)
 		} else {
-			_, err = oras.Copy(ctx, proxy, root.Digest.String(), dst, tag, copyOptions)
+			_, err = oras.Copy(ctx, hybrid, root.Digest.String(), dst, tag, copyOptions)
 		}
 		return err
 	}
@@ -199,7 +199,7 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	fmt.Println("Pushed", opts.AnnotatedReference())
 
 	if len(opts.extraRefs) != 0 {
-		contentBytes, err := content.FetchAll(ctx, proxy, root)
+		contentBytes, err := content.FetchAll(ctx, hybrid, root)
 		if err != nil {
 			return err
 		}
@@ -213,7 +213,7 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	fmt.Println("Digest:", root.Digest)
 
 	// Export manifest
-	return opts.ExportManifest(ctx, proxy, root)
+	return opts.ExportManifest(ctx, manifestStore, root)
 }
 
 func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, verbose bool) {
