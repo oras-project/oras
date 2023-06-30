@@ -25,6 +25,7 @@ import (
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/test/e2e/internal/testdata/feature"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
@@ -63,6 +64,39 @@ var _ = Describe("Remote registry users:", func() {
 			var manifest ocispec.Manifest
 			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
 			Expect(manifest.Layers).Should(ContainElements(foobar.BlobBarDescriptor("application/vnd.oci.image.layer.v1.tar")))
+		})
+
+		It("should push files with path validation disabled", func() {
+			repo := fmt.Sprintf("%s/%s", repoPrefix, "disable-path-validation")
+			ref := RegistryRef(Host, repo, tag)
+			absBarName := filepath.Join(PrepareTempFiles(), foobar.FileBarName)
+
+			ORAS("push", ref, absBarName, "-v", "--disable-path-validation").
+				Exec()
+
+			// validate
+			fetched := ORAS("manifest", "fetch", ref).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Layers).Should(ContainElements(ocispec.Descriptor{
+				MediaType: "application/vnd.oci.image.layer.v1.tar",
+				Digest:    digest.Digest(foobar.BarBlobDigest),
+				Size:      3,
+				Annotations: map[string]string{
+					"org.opencontainers.image.title": absBarName,
+				},
+			}))
+		})
+
+		It("should fail path validation when pushing file with absolute path", func() {
+			repo := fmt.Sprintf("%s/%s", repoPrefix, "path-validation")
+			ref := RegistryRef(Host, repo, tag)
+			absBarName := filepath.Join(PrepareTempFiles(), foobar.FileBarName)
+			// test
+			ORAS("push", ref, absBarName, "-v").
+				MatchErrKeyWords("--disable-path-validation").
+				ExpectFailure().
+				Exec()
 		})
 
 		It("should push files and tag", func() {
