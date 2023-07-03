@@ -8,8 +8,8 @@ github.com/need-being/go-tree v0.1.0 h1:blQrtD006cFm97UDeMUfixwPc9o06A6c+uLaUskd
 github.com/need-being/go-tree v0.1.0/go.mod h1:UOHUchuOm+lxM+EtvQ9h/IO88hK/ke7FHai4oGhhEoI=
 github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8Oi/yOhh5U=
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
-github.com/opencontainers/image-spec v1.1.0-rc2 h1:2zx/Stx4Wc5pIPDvIxHXvXtQFW/7XWJGmnM7r3wg034=
-github.com/opencontainers/image-spec v1.1.0-rc2/go.mod h1:3OVijpioIKYWTqjiG0zfF6wvoJ4fAXGbjdZuI2NgsRQ=
+github.com/opencontainers/image-spec v1.1.0-rc4 h1:oOxKUJWnFC4YGHCCMNql1x4YaDfYBTS5Y4x/Cgeo1E0=
+github.com/opencontainers/image-spec v1.1.0-rc4/go.mod h1:X4pATf0uXsnn3g5aiGIsVnJBR4mxhKzfwmvK/B2NTm8=
 github.com/oras-project/oras-credentials-go v0.2.0 h1:BvWAXo0e5unWR6Hfxyb0K04mHNHreQz/Zclw6IzCYJo=
 github.com/oras-project/oras-credentials-go v0.2.0/go.mod h1:JVdg7a5k7hzTrEeeouwag0aCv7OLrS77r7/6w3gVirU=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
