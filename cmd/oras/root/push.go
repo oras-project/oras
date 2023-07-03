@@ -48,8 +48,8 @@ func pushCmd() *cobra.Command {
 	var opts pushOptions
 	cmd := &cobra.Command{
 		Use:   "push [flags] <name>[:<tag>[,<tag>][...]] <file>[:<type>] [...]",
-		Short: "Push files to remote registry",
-		Long: `Push files to remote registry
+		Short: "Push files to a registry or an OCI image layout",
+		Long: `Push files to a registry or an OCI image layout
 
 Example - Push file "hi.txt" with media type "application/vnd.oci.image.layer.v1.tar" (default):
   oras push localhost:5000/hello:v1 hi.txt
@@ -91,7 +91,7 @@ Example - Push file "hi.txt" with multiple tags:
 Example - Push file "hi.txt" with multiple tags and concurrency level tuned:
   oras push --concurrency 6 localhost:5000/hello:tag1,tag2,tag3 hi.txt
 
-Example - Push file "hi.txt" into an OCI layout folder 'layout-dir' with tag 'test':
+Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with tag 'test':
   oras push --oci-layout layout-dir:test hi.txt
 `,
 		Args: cobra.MinimumNArgs(1),

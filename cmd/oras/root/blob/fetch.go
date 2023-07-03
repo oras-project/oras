@@ -45,8 +45,8 @@ func fetchCmd() *cobra.Command {
 	var opts fetchBlobOptions
 	cmd := &cobra.Command{
 		Use:   "fetch [flags] {--output <file> | --descriptor} <name>@<digest>",
-		Short: "Fetch a blob from a remote registry",
-		Long: `Fetch a blob from a remote registry
+		Short: "Fetch a blob from a registry or an OCI image layout",
+		Long: `Fetch a blob from a registry or an OCI image layout
 
 Example - Fetch a blob from registry and save it to a local file:
   oras blob fetch --output blob.tar.gz localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5

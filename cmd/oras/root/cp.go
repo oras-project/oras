@@ -54,10 +54,10 @@ func copyCmd() *cobra.Command {
 Example - Copy an artifact between registries:
   oras cp localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:v1
 
-Example - Download an artifact into an OCI layout folder:
+Example - Download an artifact into an OCI image layout folder:
   oras cp --to-oci-layout localhost:5000/net-monitor:v1 ./downloaded:v1
 
-Example - Upload an artifact from an OCI layout folder:
+Example - Upload an artifact from an OCI image layout folder:
   oras cp --from-oci-layout ./to-upload:v1 localhost:5000/net-monitor:v1
 
 Example - Upload an artifact from an OCI layout tar archive:

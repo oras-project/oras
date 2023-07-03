@@ -75,7 +75,7 @@ Example - Attach file 'hi.txt' and add manifest annotations:
 Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json':
   oras attach --artifact-type doc/example --export-manifest manifest.json localhost:5000/hello:v1 hi.txt
 
-Example - Attach file to the manifest tagged 'v1' in an OCI layout folder 'layout-dir':
+Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 'layout-dir':
   oras attach --oci-layout --artifact-type doc/example layout-dir:v1 hi.txt
   `,
 		Args: cobra.MinimumNArgs(1),
