@@ -16,9 +16,11 @@ limitations under the License.
 package errors
 
 import (
+	"errors"
 	"fmt"
 
 	"oras.land/oras-go/v2/registry"
+	"oras.land/oras-go/v2/registry/remote"
 )
 
 // NewErrInvalidReference creates a new error based on the reference string.
@@ -29,4 +31,10 @@ func NewErrInvalidReference(ref registry.Reference) error {
 // NewErrInvalidReferenceStr creates a new error based on the reference string.
 func NewErrInvalidReferenceStr(ref string) error {
 	return fmt.Errorf("%s: invalid image reference, expecting <name:tag|name@digest>", ref)
+}
+
+// IsReferrersIndexDelete checks if err is a referrers index delete error.
+func IsReferrersIndexDelete(err error) bool {
+	var re *remote.ReferrersError
+	return errors.As(err, &re) && re.IsReferrersIndexDelete()
 }

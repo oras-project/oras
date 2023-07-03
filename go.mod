@@ -12,7 +12,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/term v0.9.0
 	gopkg.in/yaml.v3 v3.0.1
-	oras.land/oras-go/v2 v2.2.0
+	oras.land/oras-go/v2 v2.2.1-0.20230531090906-7dd0378382c6
 )
 
 require (

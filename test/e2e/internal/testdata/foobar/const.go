@@ -16,6 +16,8 @@ limitations under the License.
 package foobar
 
 import (
+	"fmt"
+
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/test/e2e/internal/utils/match"
@@ -24,6 +26,8 @@ import (
 var (
 	Tag              = "foobar"
 	Digest           = "sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb"
+	Size             = 851
+	DescriptorStr    = fmt.Sprintf(`{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"%s","size":%d}`, Digest, Size)
 	ManifestStateKey = match.StateKey{Digest: "fd6ed2f36b54", Name: "application/vnd.oci.image.manifest.v1+json"}
 
 	FileLayerNames = []string{

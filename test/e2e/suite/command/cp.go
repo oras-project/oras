@@ -31,6 +31,7 @@ import (
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	ma "oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
+	"oras.land/oras/test/e2e/internal/utils/match"
 )
 
 func cpTestRepo(text string) string {
@@ -245,6 +246,34 @@ var _ = Describe("Common registry users:", func() {
 
 var _ = Describe("OCI spec 1.0 registry users:", func() {
 	When("running `cp`", func() {
+		It("should fail to copy when cleaning referrers index", func() {
+			testRepo := cpTestRepo("fallback/fail-gc")
+			tempDir := PrepareTempFiles()
+			subjectRef := RegistryRef(FallbackHost, testRepo, foobar.Tag)
+			// prepare
+			prepare(RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef)
+			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+				WithWorkDir(tempDir).
+				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
+			// test
+			ORAS("cp", "-r", RegistryRef(FallbackHost, ArtifactRepo, foobar.FallbackSBOMImageReferrer.Digest.String()), RegistryRef(FallbackHost, testRepo, ""), "-v").
+				MatchErrKeyWords("Error: failed to delete dangling referrers index").
+				ExpectFailure().Exec()
+		})
+
+		It("should copy and skip cleaning referrers index", func() {
+			testRepo := cpTestRepo("fallback/skip-gc")
+			tempDir := PrepareTempFiles()
+			subjectRef := RegistryRef(FallbackHost, testRepo, foobar.Tag)
+			// prepare
+			prepare(RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef)
+			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+				WithWorkDir(tempDir).
+				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
+			// test
+			ORAS("cp", "-r", RegistryRef(FallbackHost, ArtifactRepo, foobar.FallbackSBOMImageReferrer.Digest.String()), RegistryRef(FallbackHost, testRepo, ""), "--skip-delete-referrers").Exec()
+		})
+
 		It("should copy an image artifact and its referrers from a registry to a fallback registry", func() {
 			repo := cpTestRepo("to-fallback")
 			stateKeys := append(append(foobarStates, foobar.ImageReferrersStateKeys...), foobar.ImageReferrerConfigStateKeys...)
@@ -255,6 +284,7 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 			ORAS("discover", "-o", "tree", RegistryRef(FallbackHost, repo, foobar.Digest)).
 				WithDescription("discover referrer via subject").MatchKeyWords(foobar.SignatureImageReferrer.Digest.String(), foobar.SBOMImageReferrer.Digest.String()).Exec()
 		})
+
 		It("should copy an image artifact and its referrers from a fallback registry to a registry", func() {
 			repo := cpTestRepo("from-fallback")
 			stateKeys := append(append(foobarStates, foobar.FallbackImageReferrersStateKeys...), foobar.ImageReferrerConfigStateKeys...)
@@ -331,6 +361,12 @@ var _ = Describe("OCI layout users:", func() {
 			srcManifest := ORAS("manifest", "fetch", src).WithDescription("fetch from source to validate").Exec().Out.Contents()
 			dstManifest := ORAS("manifest", "fetch", dst, Flags.Layout).WithDescription("fetch from destination to validate").Exec().Out.Contents()
 			Expect(srcManifest).To(Equal(dstManifest))
+		})
+
+		It("should copy and output verbosed warning for Feferrers deletion by default", func() {
+			ORAS("cp", RegistryRef(Host, ArtifactRepo, foobar.Tag), GinkgoT().TempDir(), Flags.ToLayout, "-v").
+				MatchErrKeyWords("referrers deletion can only be enforced upon registry\n").
+				Exec()
 		})
 
 		It("should copy an image from an OCI image layout to a registry via tag", func() {
