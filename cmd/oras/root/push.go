@@ -31,7 +31,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
-	ostore "oras.land/oras/internal/store"
+	ostore "oras.land/oras/internal/contentutil"
 )
 
 type pushOptions struct {
