@@ -142,7 +142,7 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	}
 	defer store.Close()
 	memStore := memory.New()
-	hybrid := ostore.NewReadOnlyHybrid(store, memStore, memStore)
+	union := ostore.MultiReadOnlyTarget(store, memStore, memStore)
 	if opts.manifestConfigRef != "" {
 		path, cfgMediaType, err := fileref.Parse(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
 		if err != nil {
@@ -181,12 +181,12 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	}
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
-	updateDisplayOption(&copyOptions.CopyGraphOptions, hybrid, opts.Verbose)
+	updateDisplayOption(&copyOptions.CopyGraphOptions, union, opts.Verbose)
 	copy := func(root ocispec.Descriptor) error {
 		if tag := opts.Reference; tag == "" {
-			err = oras.CopyGraph(ctx, hybrid, dst, root, copyOptions.CopyGraphOptions)
+			err = oras.CopyGraph(ctx, union, dst, root, copyOptions.CopyGraphOptions)
 		} else {
-			_, err = oras.Copy(ctx, hybrid, root.Digest.String(), dst, tag, copyOptions)
+			_, err = oras.Copy(ctx, union, root.Digest.String(), dst, tag, copyOptions)
 		}
 		return err
 	}

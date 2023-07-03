@@ -25,20 +25,20 @@ import (
 
 type hybrid struct {
 	oras.ReadOnlyTarget
-	combined []oras.Target
+	toUnion []oras.Target
 }
 
-// NewReadOnlyHybrid generates a new hybrid storage.
-func NewReadOnlyHybrid(provider oras.ReadOnlyTarget, combined ...oras.Target) oras.ReadOnlyTarget {
+// MultiReadOnlyTarget generates a new hybrid storage.
+func MultiReadOnlyTarget(provider oras.ReadOnlyTarget, toUnion ...oras.Target) oras.ReadOnlyTarget {
 	return &hybrid{
 		ReadOnlyTarget: provider,
-		combined:       combined,
+		toUnion:        toUnion,
 	}
 }
 
 // Fetch fetches the content from combined targets first, then from the provider.
 func (h *hybrid) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
-	for _, c := range h.combined {
+	for _, c := range h.toUnion {
 		rc, err := c.Fetch(ctx, target)
 		if err == nil {
 			return rc, nil
@@ -49,7 +49,7 @@ func (h *hybrid) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadC
 
 // Resolve resolves the content from cache first, then from the provider.
 func (h *hybrid) Resolve(ctx context.Context, ref string) (ocispec.Descriptor, error) {
-	for _, c := range h.combined {
+	for _, c := range h.toUnion {
 		desc, err := c.Resolve(ctx, ref)
 		if err == nil {
 			return desc, nil
