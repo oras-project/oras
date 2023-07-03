@@ -37,7 +37,6 @@ func (opts *Referrers) SetReferrersGC(target any, logger logrus.FieldLogger) {
 		repo.SkipReferrersGC = opts.SkipDeleteReferrers
 	} else if opts.SkipDeleteReferrers {
 		// not a registry, can't skip referrers deletion
-		// TODO: change default value in 2.0
 		logger.Warnln("referrers deletion can only be enforced upon registry")
 	}
 }
