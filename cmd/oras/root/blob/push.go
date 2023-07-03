@@ -43,8 +43,8 @@ func pushCmd() *cobra.Command {
 	var opts pushBlobOptions
 	cmd := &cobra.Command{
 		Use:   "push [flags] <name>[@digest] <file>",
-		Short: "Push a blob to a remote registry",
-		Long: `Push a blob to a remote registry
+		Short: "Push a blob to a registry or an OCI image layout",
+		Long: `Push a blob to a registry or an OCI image layout
 
 Example - Push blob 'hi.txt' to a registry:
   oras blob push localhost:5000/hello hi.txt
@@ -67,7 +67,7 @@ Example - Push blob 'hi.txt' and output the prettified descriptor:
 Example - Push blob without TLS:
   oras blob push --insecure localhost:5000/hello hi.txt
 
-Example - Push blob 'hi.txt' into an OCI layout folder 'layout-dir':
+Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
   oras blob push --oci-layout layout-dir hi.txt
 `,
 		Args: cobra.ExactArgs(2),

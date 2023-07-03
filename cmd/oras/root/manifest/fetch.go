@@ -63,7 +63,7 @@ Example - Fetch manifest from a registry with certain platform:
 Example - Fetch manifest from a registry with prettified json result:
   oras manifest fetch --pretty localhost:5000/hello:v1
 
-Example - Fetch raw manifest from an OCI layout folder 'layout-dir':
+Example - Fetch raw manifest from an OCI image layout folder 'layout-dir':
   oras manifest fetch --oci-layout layout-dir:v1
 
 Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
