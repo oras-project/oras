@@ -29,14 +29,15 @@ type multiReadOnlyTarget struct {
 	targets []oras.ReadOnlyTarget
 }
 
-// MultiReadOnlyTarget generates a new hybrid storage.
+// MultiReadOnlyTarget returns a ReadOnlyTarget that combines multiple targets.
 func MultiReadOnlyTarget(targets ...oras.ReadOnlyTarget) oras.ReadOnlyTarget {
 	return &multiReadOnlyTarget{
 		targets: targets,
 	}
 }
 
-// Fetch fetches the content from combined targets first, then from the provider.
+// Fetch fetches the content from the targets in order and return first found
+// content. If no content is found, it returns ErrNotFound.
 func (m *multiReadOnlyTarget) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
 	lastErr := errdef.ErrNotFound
 	for _, c := range m.targets {
@@ -52,12 +53,15 @@ func (m *multiReadOnlyTarget) Fetch(ctx context.Context, target ocispec.Descript
 	return nil, lastErr
 }
 
-// Exists returns true if the described content exists.
+// Exists returns true if the content exists in any of the targets.
+// multiReadOnlyTarget does not implement Exists() because it's read-only.
 func (m *multiReadOnlyTarget) Exists(ctx context.Context, target ocispec.Descriptor) (bool, error) {
 	return false, errors.New("MultiReadOnlyTarget.Exists() is not implemented")
 }
 
-// Resolve resolves the content from cache first, then from the provider.
+// Resolve resolves the reference to a descriptor from the targets in order and
+// return first found descriptor. If no descriptor is found, it returns
+// ErrNotFound.
 func (m *multiReadOnlyTarget) Resolve(ctx context.Context, ref string) (ocispec.Descriptor, error) {
 	lastErr := errdef.ErrNotFound
 	for _, c := range m.targets {
