@@ -54,7 +54,7 @@ func (m *multiReadOnlyTarget) Fetch(ctx context.Context, target ocispec.Descript
 
 // Exists returns true if the described content exists.
 func (m *multiReadOnlyTarget) Exists(ctx context.Context, target ocispec.Descriptor) (bool, error) {
-	return false, errors.New("MultiReadOnlyTarget.Exists() not implemented")
+	return false, errors.New("MultiReadOnlyTarget.Exists() is not implemented")
 }
 
 // Resolve resolves the content from cache first, then from the provider.
