@@ -17,10 +17,12 @@ package contentutil
 
 import (
 	"context"
+	"errors"
 	"io"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/errdef"
 )
 
 type multiReadOnlyTarget struct {
@@ -36,42 +38,51 @@ func MultiReadOnlyTarget(targets ...oras.ReadOnlyTarget) oras.ReadOnlyTarget {
 
 // Fetch fetches the content from combined targets first, then from the provider.
 func (m *multiReadOnlyTarget) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
-	var rc io.ReadCloser
-	var err error
-
+	lastErr := errdef.ErrNotFound
 	for _, c := range m.targets {
-		rc, err = c.Fetch(ctx, target)
-		if err == nil {
-			break
+		rc, err := c.Fetch(ctx, target)
+		if err != nil {
+			if errors.Is(err, errdef.ErrNotFound) {
+				lastErr = err
+				continue
+			}
+			return nil, err
 		}
+		return rc, nil
 	}
-	return rc, err
+	return nil, lastErr
 }
 
 // Exists returns true if the described content exists.
 func (m *multiReadOnlyTarget) Exists(ctx context.Context, target ocispec.Descriptor) (bool, error) {
-	var exists bool
-	var err error
-
+	lastErr := errdef.ErrNotFound
 	for _, c := range m.targets {
-		exists, err = c.Exists(ctx, target)
-		if err == nil {
-			break
+		exists, err := c.Exists(ctx, target)
+		if err != nil {
+			if errors.Is(err, errdef.ErrNotFound) {
+				lastErr = err
+				continue
+			}
+			return false, err
 		}
+		return exists, nil
 	}
-	return exists, err
+	return false, lastErr
 }
 
 // Resolve resolves the content from cache first, then from the provider.
 func (m *multiReadOnlyTarget) Resolve(ctx context.Context, ref string) (ocispec.Descriptor, error) {
-	var desc ocispec.Descriptor
-	var err error
-
+	lastErr := errdef.ErrNotFound
 	for _, c := range m.targets {
-		desc, err = c.Resolve(ctx, ref)
-		if err == nil {
-			break
+		desc, err := c.Resolve(ctx, ref)
+		if err != nil {
+			if errors.Is(err, errdef.ErrNotFound) {
+				lastErr = err
+				continue
+			}
+			return ocispec.Descriptor{}, err
 		}
+		return desc, nil
 	}
-	return desc, err
+	return ocispec.Descriptor{}, lastErr
 }
