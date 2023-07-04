@@ -31,7 +31,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
-	ostore "oras.land/oras/internal/contentutil"
+	"oras.land/oras/internal/contentutil"
 )
 
 type pushOptions struct {
@@ -142,7 +142,7 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	}
 	defer store.Close()
 	memStore := memory.New()
-	union := ostore.MultiReadOnlyTarget(store, memStore, memStore)
+	union := contentutil.MultiReadOnlyTarget(memStore, store)
 	if opts.manifestConfigRef != "" {
 		path, cfgMediaType, err := fileref.Parse(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
 		if err != nil {
