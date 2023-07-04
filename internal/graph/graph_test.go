@@ -121,7 +121,7 @@ func TestReferrers(t *testing.T) {
 		index
 	)
 	anno := map[string]string{"test": "foo"}
-	appendBlob(ocispec.MediaTypeArtifactManifest, []byte("subject content"))
+	appendBlob(ocispec.MediaTypeArtifactManifest, []byte(`{"name":"subject content"}`))
 	imageType := "test.image"
 	appendBlob(imageType, []byte("config content"))
 	generateImage(nil, nil, descs[imgConfig], descs[blob])
@@ -139,7 +139,9 @@ func TestReferrers(t *testing.T) {
 	referrers := []ocispec.Descriptor{descs[image], descs[image]}
 	memory := memory.New()
 	for i := range descs {
-		memory.Push(ctx, descs[i], bytes.NewReader(blobs[i]))
+		if err := memory.Push(ctx, descs[i], bytes.NewReader(blobs[i])); err != nil {
+			t.Errorf("Error pushing %v\n", err)
+		}
 	}
 	finder := &predecessorFinder{Store: memory}
 
@@ -244,7 +246,7 @@ func TestSuccessors(t *testing.T) {
 		artifact
 		index
 	)
-	appendBlob(ocispec.MediaTypeArtifactManifest, []byte("subject content"))
+	appendBlob(ocispec.MediaTypeArtifactManifest, []byte(`{"name":"subject content"}`))
 	imageType := "test.image"
 	appendBlob(imageType, []byte("config content"))
 	generateImage(&descs[subject], ocispec.MediaTypeImageManifest, descs[config])
@@ -255,7 +257,9 @@ func TestSuccessors(t *testing.T) {
 	memory := memory.New()
 	ctx := context.Background()
 	for i := range descs {
-		memory.Push(ctx, descs[i], bytes.NewReader(blobs[i]))
+		if err := memory.Push(ctx, descs[i], bytes.NewReader(blobs[i])); err != nil {
+			t.Errorf("Error pushing %v\n", err)
+		}
 	}
 	fetcher := &fetcher{Fetcher: memory}
 
@@ -341,7 +345,7 @@ func TestFindReferrerPredecessors(t *testing.T) {
 		image
 	)
 	var anno map[string]string
-	appendBlob(ocispec.MediaTypeArtifactManifest, []byte("subject content"))
+	appendBlob(ocispec.MediaTypeArtifactManifest, []byte(`{"name":"subject content"}`))
 	imageType := "test.image"
 	appendBlob(imageType, []byte("config content"))
 	generateImage(&descs[subject], anno, descs[imgConfig])
@@ -353,7 +357,9 @@ func TestFindReferrerPredecessors(t *testing.T) {
 	referrers := []ocispec.Descriptor{descs[image], descs[image]}
 	memory := memory.New()
 	for i := range descs {
-		memory.Push(ctx, descs[i], bytes.NewReader(blobs[i]))
+		if err := memory.Push(ctx, descs[i], bytes.NewReader(blobs[i])); err != nil {
+			t.Errorf("Error pushing %v\n", err)
+		}
 	}
 	finder := &predecessorFinder{Store: memory}
 	type args struct {
@@ -367,7 +373,6 @@ func TestFindReferrerPredecessors(t *testing.T) {
 		want    []ocispec.Descriptor
 		wantErr bool
 	}{
-
 		{"should failed to get referrers", args{ctx, &errLister{}, ocispec.Descriptor{}}, nil, true},
 		{"should failed to get predecessor", args{ctx, &errFinder{}, ocispec.Descriptor{}}, nil, true},
 		{"should return referrers when target is a referrer lister", args{ctx, &refLister{referrers: referrers}, ocispec.Descriptor{}}, referrers, false},

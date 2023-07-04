@@ -133,7 +133,7 @@ func runDiscover(ctx context.Context, opts discoverOptions) error {
 	fmt.Println("Digest:", desc.Digest)
 	if len(refs) > 0 {
 		fmt.Println()
-		printDiscoveredReferrersTable(refs, opts.Verbose)
+		_ = printDiscoveredReferrersTable(refs, opts.Verbose)
 	}
 	return nil
 }
@@ -171,7 +171,7 @@ func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc 
 	return nil
 }
 
-func printDiscoveredReferrersTable(refs []ocispec.Descriptor, verbose bool) {
+func printDiscoveredReferrersTable(refs []ocispec.Descriptor, verbose bool) error {
 	typeNameTitle := "Artifact Type"
 	typeNameLength := len(typeNameTitle)
 	for _, ref := range refs {
@@ -188,9 +188,12 @@ func printDiscoveredReferrersTable(refs []ocispec.Descriptor, verbose bool) {
 	for _, ref := range refs {
 		print(ref.ArtifactType, ref.Digest)
 		if verbose {
-			printJSON(ref)
+			if err := printJSON(ref); err != nil {
+				return fmt.Errorf("Error printing JSON: %w", err)
+			}
 		}
 	}
+	return nil
 }
 
 // printDiscoveredReferrersJSON prints referrer list in JSON equivalent to the
