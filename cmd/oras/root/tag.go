@@ -37,8 +37,8 @@ func tagCmd() *cobra.Command {
 	var opts tagOptions
 	cmd := &cobra.Command{
 		Use:   "tag [flags] <name>{:<tag>|@<digest>} <new_tag> [...]",
-		Short: "Tag a manifest in the remote registry",
-		Long: `Tag a manifest in the remote registry
+		Short: "Tag a manifest in a registry or an OCI image layout",
+		Long: `Tag a manifest in a registry or an OCI image layout
 
 Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.2':
   oras tag localhost:5000/hello:v1.0.1 v1.0.2
@@ -52,7 +52,7 @@ Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.2', 'late
 Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.1', 'v1.0.2', 'latest' with concurrency level tuned:
   oras tag --concurrency 1 localhost:5000/hello:v1.0.1 v1.0.2 latest
 
-Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI layout folder 'layout-dir':
+Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'layout-dir':
   oras tag layout-dir:v1.0.1 v1.0.2
 `,
 		Args: cobra.MinimumNArgs(2),

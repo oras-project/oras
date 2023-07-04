@@ -18,6 +18,7 @@ package root
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 
@@ -26,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/display"
+	oerr "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
 )
@@ -34,6 +36,7 @@ type copyOptions struct {
 	option.Common
 	option.Platform
 	option.BinaryTarget
+	option.Referrers
 
 	recursive   bool
 	concurrency int
@@ -51,10 +54,10 @@ func copyCmd() *cobra.Command {
 Example - Copy an artifact between registries:
   oras cp localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:v1
 
-Example - Download an artifact into an OCI layout folder:
+Example - Download an artifact into an OCI image layout folder:
   oras cp --to-oci-layout localhost:5000/net-monitor:v1 ./downloaded:v1
 
-Example - Upload an artifact from an OCI layout folder:
+Example - Upload an artifact from an OCI image layout folder:
   oras cp --from-oci-layout ./to-upload:v1 localhost:5000/net-monitor:v1
 
 Example - Upload an artifact from an OCI layout tar archive:
@@ -96,7 +99,7 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 }
 
 func runCopy(ctx context.Context, opts copyOptions) error {
-	ctx, _ = opts.WithContext(ctx)
+	ctx, logger := opts.WithContext(ctx)
 
 	// Prepare source
 	src, err := opts.From.NewReadonlyTarget(ctx, opts.Common)
@@ -112,6 +115,7 @@ func runCopy(ctx context.Context, opts copyOptions) error {
 	if err != nil {
 		return err
 	}
+	opts.SetReferrersGC(dst, logger)
 
 	// Prepare copy options
 	committed := &sync.Map{}
@@ -167,6 +171,9 @@ func runCopy(ctx context.Context, opts copyOptions) error {
 		}
 	}
 	if err != nil {
+		if oerr.IsReferrersIndexDelete(err) {
+			fmt.Fprintln(os.Stderr, "failed to remove the outdated referrers index, please use `--skip-delete-referrers` if you want to skip the deletion")
+		}
 		return err
 	}
 

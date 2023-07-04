@@ -15,13 +15,14 @@
 
 help () {
     echo "Usage"
-    echo "  run-registry <mount-root> <image-name> <container-name> <container-port>"
+    echo "  run-registry <mount-root> <image-name> <container-name> <container-port> <deletion-enabled>"
     echo ""
     echo "Arguments"
     echo "  mount-root       root mounting directory for pre-baked registry storage files."
     echo "  image-name       image name of the registry."
     echo "  container-name   container name of the registry service."
     echo "  container-port   port to export the registry service."
+    echo "  delete-enabled   if set to true, the registry service will be configured to allow deletion."
 }
 
 # run registry service for testing
@@ -61,7 +62,7 @@ run_registry () {
     try_clean_up $ctr_name
     docker run --pull always -d -p $ctr_port:5000 --rm --name $ctr_name \
         -u $(id -u $(whoami)) \
-        --env REGISTRY_STORAGE_DELETE_ENABLED=true \
+        --env REGISTRY_STORAGE_DELETE_ENABLED=$5 \
         --env REGISTRY_AUTH_HTPASSWD_REALM=test-basic \
         --env REGISTRY_AUTH_HTPASSWD_PATH=/etc/docker/registry/passwd \
         --mount type=bind,source=$mnt_root/docker,target=/var/lib/registry/docker \

@@ -29,6 +29,7 @@ import (
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/display"
+	oerr "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/file"
 )
@@ -38,6 +39,7 @@ type pushOptions struct {
 	option.Descriptor
 	option.Pretty
 	option.Target
+	option.Referrers
 
 	concurrency int
 	extraRefs   []string
@@ -49,8 +51,8 @@ func pushCmd() *cobra.Command {
 	var opts pushOptions
 	cmd := &cobra.Command{
 		Use:   "push [flags] <name>[:<tag>[,<tag>][...]|@<digest>] <file>",
-		Short: "Push a manifest to remote registry",
-		Long: `Push a manifest to remote registry
+		Short: "Push a manifest to a registry or an OCI image layout",
+		Long: `Push a manifest to a registry or an OCI image layout
 
 Example - Push a manifest to repository 'localhost:5000/hello' and tag with 'v1':
   oras manifest push localhost:5000/hello:v1 manifest.json
@@ -77,7 +79,7 @@ Example - Push a manifest to repository 'localhost:5000/hello' and tag with 'tag
 Example - Push a manifest to repository 'localhost:5000/hello' and tag with 'tag1', 'tag2', 'tag3' and concurrency level tuned:
   oras manifest push --concurrency 6 localhost:5000/hello:tag1,tag2,tag3 manifest.json
 
-Example - Push a manifest to an OCI layout folder 'layout-dir' and tag with 'v1':
+Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag with 'v1':
   oras manifest push --oci-layout layout-dir:v1 manifest.json
 `,
 		Args: cobra.ExactArgs(2),
@@ -104,13 +106,14 @@ Example - Push a manifest to an OCI layout folder 'layout-dir' and tag with 'v1'
 }
 
 func pushManifest(ctx context.Context, opts pushOptions) error {
-	ctx, _ = opts.WithContext(ctx)
+	ctx, logger := opts.WithContext(ctx)
 	var target oras.Target
 	var err error
 	target, err = opts.NewTarget(opts.Common)
 	if err != nil {
 		return err
 	}
+	opts.SetReferrersGC(target, logger)
 	if repo, ok := target.(*remote.Repository); ok {
 		target = repo.Manifests()
 	}
@@ -151,6 +154,9 @@ func pushManifest(ctx context.Context, opts pushOptions) error {
 			return err
 		}
 		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil {
+			if oerr.IsReferrersIndexDelete(err) {
+				fmt.Fprintln(os.Stderr, "pushed successfully but failed to remove the outdated referrers index, please use `--skip-delete-referrers` if you want to skip the deletion")
+			}
 			return err
 		}
 		if err = display.PrintStatus(desc, "Uploaded ", verbose); err != nil {
