@@ -41,33 +41,20 @@ func (m *multiReadOnlyTarget) Fetch(ctx context.Context, target ocispec.Descript
 	lastErr := errdef.ErrNotFound
 	for _, c := range m.targets {
 		rc, err := c.Fetch(ctx, target)
-		if err != nil {
-			if errors.Is(err, errdef.ErrNotFound) {
-				lastErr = err
-				continue
-			}
+		if err == nil {
+			return rc, nil
+		}
+		if !errors.Is(err, errdef.ErrNotFound) {
 			return nil, err
 		}
-		return rc, nil
+		lastErr = err
 	}
 	return nil, lastErr
 }
 
 // Exists returns true if the described content exists.
 func (m *multiReadOnlyTarget) Exists(ctx context.Context, target ocispec.Descriptor) (bool, error) {
-	lastErr := errdef.ErrNotFound
-	for _, c := range m.targets {
-		exists, err := c.Exists(ctx, target)
-		if err != nil {
-			if errors.Is(err, errdef.ErrNotFound) {
-				lastErr = err
-				continue
-			}
-			return false, err
-		}
-		return exists, nil
-	}
-	return false, lastErr
+	return false, errors.New("MultiReadOnlyTarget.Exists() not implemented")
 }
 
 // Resolve resolves the content from cache first, then from the provider.
@@ -75,14 +62,13 @@ func (m *multiReadOnlyTarget) Resolve(ctx context.Context, ref string) (ocispec.
 	lastErr := errdef.ErrNotFound
 	for _, c := range m.targets {
 		desc, err := c.Resolve(ctx, ref)
-		if err != nil {
-			if errors.Is(err, errdef.ErrNotFound) {
-				lastErr = err
-				continue
-			}
+		if err == nil {
+			return desc, nil
+		}
+		if !errors.Is(err, errdef.ErrNotFound) {
 			return ocispec.Descriptor{}, err
 		}
-		return desc, nil
+		lastErr = err
 	}
 	return ocispec.Descriptor{}, lastErr
 }

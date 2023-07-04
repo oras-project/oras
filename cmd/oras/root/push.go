@@ -141,8 +141,6 @@ func runPush(ctx context.Context, opts pushOptions) error {
 		return err
 	}
 	defer store.Close()
-	memStore := memory.New()
-	union := contentutil.MultiReadOnlyTarget(memStore, store)
 	if opts.manifestConfigRef != "" {
 		path, cfgMediaType, err := fileref.Parse(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
 		if err != nil {
@@ -163,12 +161,13 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	if err != nil {
 		return err
 	}
+	memoryStore := memory.New()
 	pack := func() (ocispec.Descriptor, error) {
-		root, err := oras.Pack(ctx, memStore, opts.artifactType, descs, packOpts)
+		root, err := oras.Pack(ctx, memoryStore, opts.artifactType, descs, packOpts)
 		if err != nil {
 			return ocispec.Descriptor{}, err
 		}
-		if err = memStore.Tag(ctx, root, root.Digest.String()); err != nil {
+		if err = memoryStore.Tag(ctx, root, root.Digest.String()); err != nil {
 			return ocispec.Descriptor{}, err
 		}
 		return root, nil
@@ -181,6 +180,7 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	}
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
+	union := contentutil.MultiReadOnlyTarget(memoryStore, store)
 	updateDisplayOption(&copyOptions.CopyGraphOptions, union, opts.Verbose)
 	copy := func(root ocispec.Descriptor) error {
 		if tag := opts.Reference; tag == "" {
@@ -199,7 +199,7 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	fmt.Println("Pushed", opts.AnnotatedReference())
 
 	if len(opts.extraRefs) != 0 {
-		contentBytes, err := content.FetchAll(ctx, memStore, root)
+		contentBytes, err := content.FetchAll(ctx, memoryStore, root)
 		if err != nil {
 			return err
 		}
@@ -213,7 +213,7 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	fmt.Println("Digest:", root.Digest)
 
 	// Export manifest
-	return opts.ExportManifest(ctx, memStore, root)
+	return opts.ExportManifest(ctx, memoryStore, root)
 }
 
 func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, verbose bool) {
