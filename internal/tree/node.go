@@ -47,9 +47,7 @@ func (n *Node) AddPath(values ...any) *Node {
 	current := n
 	for _, value := range values {
 		if node := current.Find(value); node == nil {
-			previous := current
-			current = New(value)
-			previous.Nodes = append(previous.Nodes, current)
+			current = current.Add(value)
 		} else {
 			current = node
 		}
