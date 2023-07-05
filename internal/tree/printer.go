@@ -37,7 +37,7 @@ type Printer struct {
 	writer io.Writer
 }
 
-// NewPrinter create s a new printer
+// NewPrinter create s a new printer.
 func NewPrinter(writer io.Writer) *Printer {
 	return &Printer{
 		writer: writer,
