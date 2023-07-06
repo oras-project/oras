@@ -8,7 +8,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.0-rc.3
 	gopkg.in/yaml.v2 v2.4.0
-	oras.land/oras-go/v2 v2.2.1-0.20230531090906-7dd0378382c6
+	oras.land/oras-go/v2 v2.2.1-0.20230627113607-6b5bd4b4372b
 )
 
 require (
@@ -17,7 +17,7 @@ require (
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/pprof v0.0.0-20210407192527-94a9f03dee38 // indirect
 	golang.org/x/net v0.10.0 // indirect
-	golang.org/x/sync v0.2.0 // indirect
+	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.9.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/tools v0.9.3 // indirect
