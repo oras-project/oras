@@ -3,7 +3,6 @@ module oras.land/oras
 go 1.20
 
 require (
-	github.com/need-being/go-tree v0.1.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.0-rc4
 	github.com/oras-project/oras-credentials-go v0.2.0
