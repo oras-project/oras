@@ -22,7 +22,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/need-being/go-tree"
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -31,6 +30,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
+	"oras.land/oras/internal/tree"
 )
 
 type discoverOptions struct {
@@ -153,7 +153,7 @@ func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc 
 				if err != nil {
 					return err
 				}
-				referrerNode.AddPathString(strings.TrimSpace(string(bytes)))
+				referrerNode.AddPath(strings.TrimSpace(string(bytes)))
 			}
 		}
 		err := fetchAllReferrers(
