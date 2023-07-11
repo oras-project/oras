@@ -273,7 +273,9 @@ func (opts *Remote) NewRepository(reference string, common Common) (repo *remote
 		return nil, err
 	}
 	if opts.distributionSpec.referrersAPI != nil {
-		repo.SetReferrersCapability(*opts.distributionSpec.referrersAPI)
+		if err := repo.SetReferrersCapability(*opts.distributionSpec.referrersAPI); err != nil {
+			return nil, err
+		}
 	}
 	return
 }

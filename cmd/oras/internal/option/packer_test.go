@@ -70,7 +70,10 @@ func TestPacker_LoadManifestAnnotations_err(t *testing.T) {
 
 func TestPacker_LoadManifestAnnotations_annotationFile(t *testing.T) {
 	testFile := filepath.Join(t.TempDir(), "testAnnotationFile")
-	os.WriteFile(testFile, []byte(testContent), fs.ModePerm)
+	err := os.WriteFile(testFile, []byte(testContent), fs.ModePerm)
+	if err != nil {
+		t.Fatalf("Error writing %s: %v", testFile, err)
+	}
 	opts := Packer{AnnotationFilePath: testFile}
 
 	anno, err := opts.LoadManifestAnnotations()
@@ -120,11 +123,12 @@ func TestPacker_LoadManifestAnnotations_annotationFlag(t *testing.T) {
 		t.Fatalf("unexpected error: failed when looking for '$manifest' in annotations")
 	}
 	if !reflect.DeepEqual(annotations,
-		map[string]map[string]string{"$manifest": {
-			"Key0": "",
-			"Key1": "Val",
-			"Key2": "${env:USERNAME}",
-		},
+		map[string]map[string]string{
+			"$manifest": {
+				"Key0": "",
+				"Key1": "Val",
+				"Key2": "${env:USERNAME}",
+			},
 		}) {
 		t.Fatalf("unexpected error: %v", errors.New("content not match"))
 	}

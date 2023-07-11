@@ -51,7 +51,9 @@ func TestMain(m *testing.M) {
 		case p == "/v2/" && m == "GET":
 			w.WriteHeader(http.StatusOK)
 		case p == fmt.Sprintf("/v2/%s/tags/list", testRepo) && m == "GET":
-			json.NewEncoder(w).Encode(testTagList)
+			if err := json.NewEncoder(w).Encode(testTagList); err != nil {
+				http.Error(w, "error encoding", http.StatusBadRequest)
+			}
 		}
 	}))
 	defer ts.Close()
@@ -233,7 +235,10 @@ func TestRemote_NewRepository_Retry(t *testing.T) {
 			http.Error(w, "error", http.StatusTooManyRequests)
 			return
 		}
-		json.NewEncoder(w).Encode(testTagList)
+		err := json.NewEncoder(w).Encode(testTagList)
+		if err != nil {
+			http.Error(w, "error encoding", http.StatusBadRequest)
+		}
 	}))
 	defer ts.Close()
 	opts := struct {
