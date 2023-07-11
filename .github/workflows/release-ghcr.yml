@@ -17,8 +17,6 @@ on:
   push:
     tags:
       - v*
-    branches:
-      - releaser
 
 jobs:
   build:
