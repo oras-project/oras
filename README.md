@@ -11,11 +11,11 @@
 ## Docs
 
 Documentation for the ORAS CLI is located on
-the project website: [oras.land/cli](https://oras.land/docs/category/cli)
+the project website: [oras.land/cli](https://oras.land/docs/)
 
 ## Development Environment Setup
 
-Refer to the [development guide](https://oras.land/docs/CLI/developer_guide) to get started [contributing to ORAS](https://oras.land/docs/contributing).
+Refer to the [development guide](https://oras.land/docs/community/developer_guide) to get started [contributing to ORAS](https://oras.land/docs/community/contributing_guide).
 
 ## Code of Conduct
 
