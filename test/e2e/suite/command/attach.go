@@ -293,7 +293,7 @@ var _ = Describe("OCI image layout users:", func() {
 			root := PrepareTempFiles()
 			subjectRef := LayoutRef(root, foobar.Tag)
 			prepare(root)
-			ORAS("attach", "--artifact-type", "test.attach", "-v", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+			ORAS("attach", "--artifact-type", "test.attach", "-v", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--skip-delete-referrers").
 				MatchErrKeyWords("referrers deletion can only be enforced upon registry\n").
 				WithWorkDir(root).
 				Exec()

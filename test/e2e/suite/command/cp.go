@@ -364,7 +364,7 @@ var _ = Describe("OCI layout users:", func() {
 		})
 
 		It("should copy and output verbosed warning for Feferrers deletion by default", func() {
-			ORAS("cp", RegistryRef(Host, ArtifactRepo, foobar.Tag), GinkgoT().TempDir(), Flags.ToLayout, "-v").
+			ORAS("cp", RegistryRef(Host, ArtifactRepo, foobar.Tag), GinkgoT().TempDir(), Flags.ToLayout, "-v", "--skip-delete-referrers").
 				MatchErrKeyWords("referrers deletion can only be enforced upon registry\n").
 				Exec()
 		})
