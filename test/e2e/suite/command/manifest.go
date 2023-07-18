@@ -549,7 +549,7 @@ var _ = Describe("OCI image layout users:", func() {
 			manifestPath := WriteTempFile("manifest.json", manifest)
 			root := filepath.Dir(manifestPath)
 			prepare(root)
-			ORAS("manifest", "push", root, Flags.Layout, manifestPath, "--skip-delete-referrers=false").
+			ORAS("manifest", "push", root, Flags.Layout, manifestPath, "--skip-delete-referrers").
 				WithWorkDir(root).
 				MatchErrKeyWords("referrers deletion can only be enforced upon registry\n").Exec()
 		})

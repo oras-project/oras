@@ -134,8 +134,7 @@ teste2e-covdata:  ## test e2e coverage
 	export GOCOVERDIR=$(CURDIR)/test/e2e/.cover; \
 	rm -rf $$GOCOVERDIR; \
 	mkdir -p $$GOCOVERDIR; \
-	$(MAKE) teste2e; \
-	$(GO_EXE) tool covdata textfmt -i=$$GOCOVERDIR -o "$(CURDIR)/test/e2e/coverage.txt"
+	$(MAKE) teste2e && $(GO_EXE) tool covdata textfmt -i=$$GOCOVERDIR -o "$(CURDIR)/test/e2e/coverage.txt"
 
 .PHONY: help
 help:  ## Display this help
