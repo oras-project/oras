@@ -99,7 +99,8 @@ func (opts *Packer) LoadManifestAnnotations() (annotations map[string]map[string
 	}
 	if opts.AnnotationFilePath != "" {
 		if err = decodeJSON(opts.AnnotationFilePath, &annotations); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error loading manifest annotations from file %s: %w, 
+				Refer to the document at https://oras.land/docs/how_to_guides/manifest_annotations ", opts.AnnotationFilePath, err)
 		}
 	}
 	if len(opts.ManifestAnnotations) != 0 {
