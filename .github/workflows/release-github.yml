@@ -37,3 +37,12 @@ jobs:
           args: release --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  release-to-winget:
+    needs: [ build ]
+    runs-on: windows-latest
+    steps:
+      - name: Release to Winget
+        uses: vedantmgoyal2009/winget-releaser@v2
+        with:
+          identifier: ORASProject.ORAS
+          token: ${{ secrets.WINGET_GITHUB_TOKEN }}
