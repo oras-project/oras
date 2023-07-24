@@ -107,7 +107,6 @@ func (opts *Packer) LoadManifestAnnotations() (annotations map[string]map[string
 			return nil, fmt.Errorf("failed to load annotations from %s: %w" +
 				docLink, opts.AnnotationFilePath, err)
 		}
-
 	}
 	if len(opts.ManifestAnnotations) != 0 {
 		annotations = make(map[string]map[string]string)
