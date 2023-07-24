@@ -100,11 +100,12 @@ func (opts *Packer) LoadManifestAnnotations() (annotations map[string]map[string
 	if opts.AnnotationFilePath != "" {
 		if err = decodeJSON(opts.AnnotationFilePath, &annotations); err != nil {
 			errStr :=  err.Error()
-			docLink := "Please refer to the document at https://oras.land/docs/how_to_guides/manifest_annotations."
+			docLink := " Please refer to the document at https://oras.land/docs/how_to_guides/manifest_annotations."
 			if !strings.HasSuffix(errStr, ".") {
-				docLink = ". "+docLink
+				docLink = "."+docLink
 			}
-			return nil, fmt.Errorf("failed to load annotations from %s: %w%s", err, docLink)
+			return nil, fmt.Errorf("failed to load annotations from %s: %w" +
+				docLink, opts.AnnotationFilePath, err)
 		}
 
 	}
