@@ -72,7 +72,11 @@ func runResolve(ctx context.Context, opts resolveOptions) error {
 	}
 
 	if opts.FullRef {
-		fmt.Printf("%s@%s\n", opts.RawReference, desc.Digest.String())
+	      digest := desc.Digest.String()
+	      if !strings.HasSuffix(opts.RawReference, digest) {
+		      opts.RawReference = fmt.Sprintf("%s@%s", opts.Path, subject.Digest)
+	      }
+	      fmt.Printf("%s\n", opts.RawReference)
 	} else {
 		fmt.Println(desc.Digest.String())
 	}
