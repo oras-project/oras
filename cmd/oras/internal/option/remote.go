@@ -47,6 +47,7 @@ type Remote struct {
 	Username          string
 	PasswordFromStdin bool
 	Password          string
+	IdentityToken     string
 
 	resolveFlag           []string
 	applyDistributionSpec bool
@@ -77,14 +78,15 @@ func applyPrefix(prefix, description string) (flagPrefix, notePrefix string) {
 // Commonly used for non-unary remote targets.
 func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
 	var (
-		shortUser     string
-		shortPassword string
-		shortHeader   string
-		flagPrefix    string
-		notePrefix    string
+		shortUser          string
+		shortPassword      string
+		shortIdentityToken string
+		shortHeader        string
+		flagPrefix         string
+		notePrefix         string
 	)
 	if prefix == "" {
-		shortUser, shortPassword = "u", "p"
+		shortUser, shortPassword, shortIdentityToken = "u", "p", "i"
 		shortHeader = "H"
 	}
 	flagPrefix, notePrefix = applyPrefix(prefix, description)
@@ -94,6 +96,7 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	}
 	fs.StringVarP(&opts.Username, flagPrefix+"username", shortUser, "", notePrefix+"registry username")
 	fs.StringVarP(&opts.Password, flagPrefix+"password", shortPassword, "", notePrefix+"registry password or identity token")
+	fs.StringVarP(&opts.IdentityToken, flagPrefix+"identity-token", shortIdentityToken, "", notePrefix+"identity token for registry")
 	fs.BoolVarP(&opts.Insecure, flagPrefix+"insecure", "", false, "allow connections to "+notePrefix+"SSL registry without certs")
 	fs.BoolVarP(&opts.PlainHTTP, flagPrefix+"plain-http", "", false, "allow insecure connections to "+notePrefix+"registry without SSL check")
 	fs.StringVarP(&opts.CACertFilePath, flagPrefix+"ca-file", "", "", "server certificate authority file for the remote "+notePrefix+"registry")
@@ -113,10 +116,16 @@ func (opts *Remote) Parse() error {
 	return opts.distributionSpec.Parse()
 }
 
-// readPassword tries to read password with optional cmd prompt.
+// readPassword tries to read password and identity-token with optional cmd prompt.
 func (opts *Remote) readPassword() (err error) {
+	if opts.Password != "" && opts.IdentityToken != "" {
+		return fmt.Errorf("both --password and --identity-token cannot be used together")
+	}
+
 	if opts.Password != "" {
 		fmt.Fprintln(os.Stderr, "WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
+	} else if opts.IdentityToken != "" {
+		fmt.Fprintln(os.Stderr, "WARNING! Using --identity-token via the CLI is insecure.")
 	} else if opts.PasswordFromStdin {
 		// Prompt for credential
 		password, err := io.ReadAll(os.Stdin)
@@ -244,7 +253,19 @@ func (opts *Remote) parseCustomHeaders() error {
 
 // Credential returns a credential based on the remote options.
 func (opts *Remote) Credential() auth.Credential {
-	return credential.Credential(opts.Username, opts.Password)
+	if opts.IdentityToken != "" {
+		// If IdentityToken is provided, use it as the credential without a username
+		return auth.Credential{
+			Username: "",
+			Password: opts.IdentityToken,
+		}
+	} else {
+		// If IdentityToken is not provided, use the username and password as credentials
+		return auth.Credential{
+			Username: opts.Username,
+			Password: opts.Password,
+		}
+	}
 }
 
 // NewRegistry assembles a oras remote registry.
