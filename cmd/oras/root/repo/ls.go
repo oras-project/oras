@@ -13,9 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package repository
+package repo
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -58,7 +59,7 @@ Example - List the repositories under the registry that include values lexically
 			if opts.hostname, opts.namespace, err = repository.ParseRepoPath(args[0]); err != nil {
 				return fmt.Errorf("could not parse repository path: %w", err)
 			}
-			return listRepository(opts)
+			return listRepository(cmd.Context(), opts)
 		},
 	}
 
@@ -67,8 +68,8 @@ Example - List the repositories under the registry that include values lexically
 	return cmd
 }
 
-func listRepository(opts repositoryOptions) error {
-	ctx, _ := opts.SetLoggerLevel()
+func listRepository(ctx context.Context, opts repositoryOptions) error {
+	ctx, _ = opts.WithContext(ctx)
 	reg, err := opts.Remote.NewRegistry(opts.hostname, opts.Common)
 	if err != nil {
 		return err

@@ -35,15 +35,7 @@ func (opts *Common) ApplyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "verbose output")
 }
 
-// SetLoggerLevel sets up the logger based on common options.
-func (opts *Common) SetLoggerLevel() (context.Context, logrus.FieldLogger) {
-	var logLevel logrus.Level
-	if opts.Debug {
-		logLevel = logrus.DebugLevel
-	} else if opts.Verbose {
-		logLevel = logrus.InfoLevel
-	} else {
-		logLevel = logrus.WarnLevel
-	}
-	return trace.WithLoggerLevel(context.Background(), logLevel)
+// WithContext returns a new FieldLogger and an associated Context derived from ctx.
+func (opts *Common) WithContext(ctx context.Context) (context.Context, logrus.FieldLogger) {
+	return trace.NewLogger(ctx, opts.Debug, opts.Verbose)
 }

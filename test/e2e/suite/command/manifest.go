@@ -136,10 +136,16 @@ var _ = Describe("ORAS beginners:", func() {
 					Exec()
 			})
 
-			It("should fail if no blob reference provided", func() {
+			It("should fail if no manifest reference provided", func() {
 				dstRepo := fmt.Sprintf(repoFmt, "delete", "no-reference")
 				prepare(RegistryRef(Host, ImageRepo, foobar.Tag), RegistryRef(Host, dstRepo, tempTag))
 				ORAS("manifest", "delete").ExpectFailure().Exec()
+			})
+
+			It("should fail if no digest provided", func() {
+				dstRepo := fmt.Sprintf(repoFmt, "delete", "no-reference")
+				prepare(RegistryRef(Host, ImageRepo, foobar.Tag), RegistryRef(Host, dstRepo, ""))
+				ORAS("manifest", "delete", RegistryRef(Host, dstRepo, "")).ExpectFailure().MatchErrKeyWords("name@digest").Exec()
 			})
 		})
 		When("running `manifest fetch-config`", func() {
@@ -293,7 +299,7 @@ var _ = Describe("Common registry users:", func() {
 		It("should push a manifest from file", func() {
 			manifestPath := WriteTempFile("manifest.json", manifest)
 			tag := "from-file"
-			ORAS("manifest", "push", RegistryRef(Host, ImageRepo, tag), manifestPath, "--media-type", ocispec.MediaTypeImageManifest).
+			ORAS("manifest", "push", RegistryRef(Host, ImageRepo, tag), manifestPath, "--media-type", "application/vnd.oci.image.manifest.v1+json").
 				MatchKeyWords("Pushed", RegistryRef(Host, ImageRepo, tag), "Digest:", digest).
 				WithInput(strings.NewReader(manifest)).Exec()
 		})
@@ -302,7 +308,7 @@ var _ = Describe("Common registry users:", func() {
 			manifest := `{"schemaVersion":2,"config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:fe9dbc99451d0517d65e048c309f0b5afb2cc513b7a3d456b6cc29fe641386c5","size":53}}`
 			digest := "sha256:0c2ae2c73c5dde0a42582d328b2e2ea43f36ba20f604fa8706f441ac8b0a3445"
 			tag := "mediatype-flag"
-			ORAS("manifest", "push", RegistryRef(Host, ImageRepo, tag), "-", "--media-type", ocispec.MediaTypeImageManifest).
+			ORAS("manifest", "push", RegistryRef(Host, ImageRepo, tag), "-", "--media-type", "application/vnd.oci.image.manifest.v1+json").
 				MatchKeyWords("Pushed", RegistryRef(Host, ImageRepo, tag), "Digest:", digest).
 				WithInput(strings.NewReader(manifest)).Exec()
 
@@ -408,7 +414,7 @@ var _ = Describe("OCI image layout users:", func() {
 		It("should fetch manifest to file and output descriptor to stdout", func() {
 			root := prepare()
 			fetchPath := filepath.Join(GinkgoT().TempDir(), "fetchedImage")
-			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Tag), "--output", fetchPath, "--descriptor").
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Digest), "--output", fetchPath, "--descriptor").
 				MatchContent(multi_arch.Descriptor).Exec()
 			MatchFile(fetchPath, multi_arch.Manifest, DefaultTimeout)
 		})
@@ -447,7 +453,7 @@ var _ = Describe("OCI image layout users:", func() {
 		It("should fetch descriptor via tag", func() {
 			root := prepare()
 			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, multi_arch.Tag), "--descriptor").
-				MatchContent(multi_arch.Descriptor).Exec()
+				MatchContent(multi_arch.AnnotatedDescriptor).Exec()
 		})
 		It("should fetch descriptor via tag with platform selection", func() {
 			root := prepare()
@@ -512,9 +518,7 @@ var _ = Describe("OCI image layout users:", func() {
 			ORAS("manifest", "fetch-config", Flags.Layout, root).ExpectFailure().MatchErrKeyWords("Error:", "invalid image reference").Exec()
 		})
 	})
-})
 
-var _ = Describe("OCI image layout users:", func() {
 	When("running `manifest push`", func() {
 		scratchSize := 2
 		scratchDigest := "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
@@ -541,6 +545,15 @@ var _ = Describe("OCI image layout users:", func() {
 		}
 		descriptor := "{\"mediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"digest\":\"sha256:f20c43161d73848408ef247f0ec7111b19fe58ffebc0cbcaa0d2c8bda4967268\",\"size\":246}"
 
+		It("should push and output verbosed warning for Feferrers deletion by default", func() {
+			manifestPath := WriteTempFile("manifest.json", manifest)
+			root := filepath.Dir(manifestPath)
+			prepare(root)
+			ORAS("manifest", "push", root, Flags.Layout, manifestPath, "--skip-delete-referrers").
+				WithWorkDir(root).
+				MatchErrKeyWords("referrers deletion can only be enforced upon registry\n").Exec()
+		})
+
 		It("should push a manifest from stdin", func() {
 			root := GinkgoT().TempDir()
 			prepare(root)
@@ -549,6 +562,7 @@ var _ = Describe("OCI image layout users:", func() {
 				WithInput(strings.NewReader(manifest)).Exec()
 			validate(root, manifestDigest, "")
 		})
+
 		It("should push a manifest from stdin and tag", func() {
 			tag := "from-stdin"
 			root := GinkgoT().TempDir()
@@ -597,6 +611,43 @@ var _ = Describe("OCI image layout users:", func() {
 				WithInput(strings.NewReader(manifest)).
 				ExpectFailure().
 				WithDescription("fail if no media type flag provided").Exec()
+		})
+	})
+})
+
+func pushTestRepo(text string) string {
+	return fmt.Sprintf("command/push/%d/%s", GinkgoRandomSeed(), text)
+}
+
+var _ = Describe("Fallback registry users:", func() {
+	When("running `manifest push`", func() {
+		manifest := fmt.Sprintf(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"oras.test","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2},"subject":%s,"layers":[]}`, foobar.DescriptorStr)
+		It("should fail to push manifest when cleaning referrers index", func() {
+			testRepo := pushTestRepo("fallback/fail-gc")
+			subjectRef := RegistryRef(FallbackHost, testRepo, foobar.Tag)
+			// prepare
+			ORAS("cp", RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef, "-r").Exec()
+			// test
+			ORAS("manifest", "push", RegistryRef(FallbackHost, testRepo, ""), "-").
+				WithInput(strings.NewReader(manifest)).
+				ExpectFailure().
+				MatchErrKeyWords("failed to delete dangling referrers index").
+				Exec()
+		})
+		It("should push manifest and skip cleaning referrers index", func() {
+			testRepo := pushTestRepo("fallback/skip-gc")
+			subjectRef := RegistryRef(FallbackHost, testRepo, foobar.Tag)
+			// prepare
+			ORAS("cp", RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef, "-r").Exec()
+			// test
+			ORAS("manifest", "push", RegistryRef(FallbackHost, testRepo, ""), "-", "--skip-delete-referrers").
+				WithInput(strings.NewReader(manifest)).
+				Exec()
+			// validate
+			var index ocispec.Index
+			bytes := ORAS("discover", subjectRef, "-o", "json").Exec().Out.Contents()
+			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
+			Expect(len(index.Manifests)).To(Equal(2))
 		})
 	})
 })

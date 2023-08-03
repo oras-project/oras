@@ -113,22 +113,24 @@ func TestReferrers(t *testing.T) {
 		appendBlob(ocispec.MediaTypeImageIndex, manifestJSON)
 	}
 	const (
-		subject = iota
+		blob = iota
 		imgConfig
+		subject
 		image
 		artifact
 		index
 	)
 	anno := map[string]string{"test": "foo"}
-	appendBlob(ocispec.MediaTypeArtifactManifest, []byte("subject content"))
+	appendBlob(ocispec.MediaTypeArtifactManifest, []byte(`{"name":"subject content"}`))
 	imageType := "test.image"
 	appendBlob(imageType, []byte("config content"))
-	generateImage(&descs[subject], anno, descs[imgConfig])
+	generateImage(nil, nil, descs[imgConfig], descs[blob])
+	generateImage(&descs[subject], anno, descs[imgConfig], descs[blob])
 	imageDesc := descs[image]
 	imageDesc.Annotations = anno
 	imageDesc.ArtifactType = imageType
 	artifactType := "test.artifact"
-	generateArtifact(artifactType, &descs[subject], anno)
+	generateArtifact(artifactType, &descs[subject], anno, descs[blob])
 	generateIndex(descs[subject])
 	artifactDesc := descs[artifact]
 	artifactDesc.Annotations = anno
@@ -137,7 +139,9 @@ func TestReferrers(t *testing.T) {
 	referrers := []ocispec.Descriptor{descs[image], descs[image]}
 	memory := memory.New()
 	for i := range descs {
-		memory.Push(ctx, descs[i], bytes.NewReader(blobs[i]))
+		if err := memory.Push(ctx, descs[i], bytes.NewReader(blobs[i])); err != nil {
+			t.Errorf("Error pushing %v\n", err)
+		}
 	}
 	finder := &predecessorFinder{Store: memory}
 
@@ -157,6 +161,7 @@ func TestReferrers(t *testing.T) {
 		{"should return referrers when target is a referrer lister", args{ctx, &refLister{referrers: referrers}, ocispec.Descriptor{}, ""}, referrers, false},
 		{"should return nil for index node", args{ctx, finder, descs[index], ""}, nil, false},
 		{"should return nil for config node", args{ctx, finder, descs[imgConfig], ""}, nil, false},
+		{"should return nil for blob/layer node", args{ctx, finder, descs[blob], ""}, nil, false},
 		{"should find filtered image referrer", args{ctx, finder, descs[subject], imageType}, []ocispec.Descriptor{imageDesc}, false},
 		{"should find filtered artifact referrer", args{ctx, finder, descs[subject], artifactType}, []ocispec.Descriptor{artifactDesc}, false},
 	}
@@ -241,7 +246,7 @@ func TestSuccessors(t *testing.T) {
 		artifact
 		index
 	)
-	appendBlob(ocispec.MediaTypeArtifactManifest, []byte("subject content"))
+	appendBlob(ocispec.MediaTypeArtifactManifest, []byte(`{"name":"subject content"}`))
 	imageType := "test.image"
 	appendBlob(imageType, []byte("config content"))
 	generateImage(&descs[subject], ocispec.MediaTypeImageManifest, descs[config])
@@ -252,7 +257,9 @@ func TestSuccessors(t *testing.T) {
 	memory := memory.New()
 	ctx := context.Background()
 	for i := range descs {
-		memory.Push(ctx, descs[i], bytes.NewReader(blobs[i]))
+		if err := memory.Push(ctx, descs[i], bytes.NewReader(blobs[i])); err != nil {
+			t.Errorf("Error pushing %v\n", err)
+		}
 	}
 	fetcher := &fetcher{Fetcher: memory}
 
@@ -338,7 +345,7 @@ func TestFindReferrerPredecessors(t *testing.T) {
 		image
 	)
 	var anno map[string]string
-	appendBlob(ocispec.MediaTypeArtifactManifest, []byte("subject content"))
+	appendBlob(ocispec.MediaTypeArtifactManifest, []byte(`{"name":"subject content"}`))
 	imageType := "test.image"
 	appendBlob(imageType, []byte("config content"))
 	generateImage(&descs[subject], anno, descs[imgConfig])
@@ -350,7 +357,9 @@ func TestFindReferrerPredecessors(t *testing.T) {
 	referrers := []ocispec.Descriptor{descs[image], descs[image]}
 	memory := memory.New()
 	for i := range descs {
-		memory.Push(ctx, descs[i], bytes.NewReader(blobs[i]))
+		if err := memory.Push(ctx, descs[i], bytes.NewReader(blobs[i])); err != nil {
+			t.Errorf("Error pushing %v\n", err)
+		}
 	}
 	finder := &predecessorFinder{Store: memory}
 	type args struct {
@@ -364,7 +373,6 @@ func TestFindReferrerPredecessors(t *testing.T) {
 		want    []ocispec.Descriptor
 		wantErr bool
 	}{
-
 		{"should failed to get referrers", args{ctx, &errLister{}, ocispec.Descriptor{}}, nil, true},
 		{"should failed to get predecessor", args{ctx, &errFinder{}, ocispec.Descriptor{}}, nil, true},
 		{"should return referrers when target is a referrer lister", args{ctx, &refLister{referrers: referrers}, ocispec.Descriptor{}}, referrers, false},

@@ -72,6 +72,19 @@ func init() {
 	}
 	BeforeSuite(func() {
 		ORASPath = os.Getenv("ORAS_PATH")
+		var covDumpPath string
+		if covDumpPath = os.Getenv("GOCOVERDIR"); covDumpPath != "" {
+			fmt.Printf("Coverage file dump path: %q\n", covDumpPath)
+			if ORASPath != "" {
+				fmt.Printf("Pre-built oras in %q will be ignored\n", ORASPath)
+				ORASPath = ""
+			}
+
+			// confirm the existence of dump folder
+			err := os.MkdirAll(covDumpPath, 0700)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		}
+
 		if filepath.IsAbs(ORASPath) {
 			fmt.Printf("Testing based on pre-built binary locates in %q\n", ORASPath)
 		} else if workspacePath := os.Getenv("GITHUB_WORKSPACE"); ORASPath != "" && workspacePath != "" {
@@ -82,7 +95,12 @@ func init() {
 			fmt.Printf("Testing based on pre-built binary locates in %q\n", ORASPath)
 		} else {
 			// fallback to native build to facilitate local debugging
-			ORASPath, err = gexec.Build("oras.land/oras/cmd/oras")
+			buildArgs := []string{}
+			if covDumpPath != "" {
+				fmt.Printf("coverage instrumenting is enabled\n")
+				buildArgs = append(buildArgs, "-coverpkg", "oras.land/oras/cmd/oras/...,oras.land/oras/internal/...")
+			}
+			ORASPath, err = gexec.Build("oras.land/oras/cmd/oras", buildArgs...)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			DeferCleanup(gexec.CleanupBuildArtifacts)
 			fmt.Printf("Testing based on temp binary locates in %q\n", ORASPath)

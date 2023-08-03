@@ -13,10 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package root
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -50,8 +51,8 @@ func pullCmd() *cobra.Command {
 	var opts pullOptions
 	cmd := &cobra.Command{
 		Use:   "pull [flags] <name>{:<tag>|@<digest>}",
-		Short: "Pull files from remote registry",
-		Long: `Pull files from remote registry
+		Short: "Pull files from a registry or an OCI image layout",
+		Long: `Pull files from a registry or an OCI image layout
 
 Example - Pull artifact files from a registry:
   oras pull localhost:5000/hello:v1
@@ -75,7 +76,7 @@ Example - Pull files from a registry with certain platform:
 Example - Pull all files with concurrency level tuned:
   oras pull --concurrency 6 localhost:5000/hello:v1
 
-Example - Pull artifact files from an OCI layout folder 'layout-dir':
+Example - Pull artifact files from an OCI image layout folder 'layout-dir':
   oras pull --oci-layout layout-dir:v1
 
 Example - Pull artifact files from an OCI layout archive 'layout.tar':
@@ -87,7 +88,7 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runPull(opts)
+			return runPull(cmd.Context(), opts)
 		},
 	}
 
@@ -101,7 +102,8 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 	return cmd
 }
 
-func runPull(opts pullOptions) error {
+func runPull(ctx context.Context, opts pullOptions) error {
+	ctx, _ = opts.WithContext(ctx)
 	// Copy Options
 	var printed sync.Map
 	copyOptions := oras.DefaultCopyOptions
@@ -137,10 +139,7 @@ func runPull(opts pullOptions) error {
 					rc.Close()
 				}
 			}()
-			if err := display.PrintStatus(target, "Processing ", opts.Verbose); err != nil {
-				return nil, err
-			}
-			return rc, nil
+			return rc, display.PrintStatus(target, "Processing ", opts.Verbose)
 		})
 
 		nodes, subject, config, err := graph.Successors(ctx, statusFetcher, desc)
@@ -183,7 +182,6 @@ func runPull(opts pullOptions) error {
 		return ret, nil
 	}
 
-	ctx, _ := opts.SetLoggerLevel()
 	target, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
 		return err
@@ -240,6 +238,9 @@ func runPull(opts pullOptions) error {
 	// Copy
 	desc, err := oras.Copy(ctx, src, opts.Reference, dst, opts.Reference, copyOptions)
 	if err != nil {
+		if errors.Is(err, file.ErrPathTraversalDisallowed) {
+			err = fmt.Errorf("%s: %w", "use flag --allow-path-traversal to allow insecurely pulling files outside of working directory", err)
+		}
 		return err
 	}
 	if pulledEmpty {

@@ -116,7 +116,7 @@ func (p *tagManifestStatusForRepo) PushReference(ctx context.Context, expected o
 	if p.printHint != nil {
 		p.printHint.Do(func() {
 			ref := p.refPrefix + "@" + expected.Digest.String()
-			Print("Tagging", ref)
+			_ = Print("Tagging", ref)
 		})
 	}
 	if err := p.Repository.PushReference(ctx, expected, content, reference); err != nil {
@@ -136,9 +136,10 @@ func (p *tagManifestStatusForTarget) Tag(ctx context.Context, desc ocispec.Descr
 	if p.printHint != nil {
 		p.printHint.Do(func() {
 			ref := p.refPrefix + "@" + desc.Digest.String()
-			Print("Tagging", ref)
+			_ = Print("Tagging", ref)
 		})
 	}
+
 	if err := p.Target.Tag(ctx, desc, reference); err != nil {
 		return err
 	}

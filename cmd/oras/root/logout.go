@@ -13,9 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package root
 
 import (
+	"context"
+
+	credentials "github.com/oras-project/oras-credentials-go"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"oras.land/oras/internal/credential"
@@ -41,7 +44,7 @@ Example - Logout:
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.hostname = args[0]
-			return runLogout(opts)
+			return runLogout(cmd.Context(), opts)
 		},
 	}
 
@@ -50,7 +53,7 @@ Example - Logout:
 	return cmd
 }
 
-func runLogout(opts logoutOptions) error {
+func runLogout(ctx context.Context, opts logoutOptions) error {
 	if opts.debug {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
@@ -59,12 +62,5 @@ func runLogout(opts logoutOptions) error {
 	if err != nil {
 		return err
 	}
-	// For a user case that logout from 'docker.io',
-	// According the the behavior of Docker CLI,
-	// credential under key "https://index.docker.io/v1/" should be removed
-	hostname := opts.hostname
-	if hostname == "docker.io" {
-		hostname = "https://index.docker.io/v1/"
-	}
-	return store.Erase(hostname)
+	return credentials.Logout(ctx, store, opts.hostname)
 }

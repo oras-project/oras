@@ -11,41 +11,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
+name: golangci-lint
 
-# Test binary, build with `go test -c`
-*.test
+on:
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
 
-# Output of the go coverage tool, specifically when used with LiteIDE
-*.out
+permissions:
+  contents: read
 
-# VS Code
-.vscode
-debug
-
-# Jetbrains
-.idea
-
-# vi
-*.sw*
-
-# Custom
-coverage.txt
-test/e2e/coverage.txt
-**/covcounters.*
-**/covmeta.*
-bin/
-dist/
-*.tar.gz
-vendor/
-_dist/
-.DS_Store
-
-# Distribution storage files for local E2E testing
-test/e2e/testdata/distribution/mount/docker/
-test/e2e/testdata/distribution/mount_fallback/docker/
+jobs:
+  golangci:
+    name: lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ['1.20']
+      fail-fast: true
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Setup Go ${{ matrix.go-version }}
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ matrix.go-version }}
+        check-latest: true
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v3

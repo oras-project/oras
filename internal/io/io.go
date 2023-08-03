@@ -13,24 +13,33 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package option
+package io
 
 import (
-	"github.com/spf13/pflag"
+	"bytes"
+	"io"
 )
 
-// FlagApplier applies flags to a command flag set.
-type FlagApplier interface {
-	ApplyFlags(*pflag.FlagSet)
-}
-
-// ApplyFlags applies applicable fields of the passed-in option pointer to the
-// target flag set.
-// NOTE: The option argument need to be a pointer to the options, so its value
-// becomes addressable.
-func ApplyFlags(optsPtr interface{}, target *pflag.FlagSet) {
-	_ = rangeFields(optsPtr, func(fa FlagApplier) error {
-		fa.ApplyFlags(target)
-		return nil
-	})
+// ReadLine reads a line from the reader with trailing \r dropped.
+func ReadLine(reader io.Reader) ([]byte, error) {
+	var line []byte
+	var buffer [1]byte
+	for {
+		n, err := reader.Read(buffer[:])
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+		if n == 0 {
+			continue
+		}
+		c := buffer[0]
+		if c == '\n' {
+			break
+		}
+		line = append(line, c)
+	}
+	return bytes.TrimSuffix(line, []byte{'\r'}), nil
 }

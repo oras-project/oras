@@ -4,16 +4,18 @@
 [![codecov](https://codecov.io/gh/oras-project/oras/branch/main/graph/badge.svg)](https://codecov.io/gh/oras-project/oras)
 
 
-![ORAS](https://github.com/oras-project/oras-www/raw/main/docs/assets/images/oras.png)
+<p align="left">
+<a href="https://oras.land/"><img src="https://oras.land/img/oras.svg" alt="banner" width="100px"></a>
+</p>
 
 ## Docs
 
 Documentation for the ORAS CLI is located on
-the project website: [oras.land/cli](https://oras.land/cli/)
+the project website: [oras.land/cli](https://oras.land/docs/category/oras-commands)
 
 ## Development Environment Setup
 
-Refer to the [development guide](https://oras.land/cli/5_developer_guide/) to get started [contributing to ORAS](https://oras.land/contributing/).
+Refer to the [development guide](https://oras.land/docs/community/developer_guide) to get started [contributing to ORAS](https://oras.land/docs/community/contributing_guide).
 
 ## Code of Conduct
 

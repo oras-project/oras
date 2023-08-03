@@ -16,6 +16,7 @@ limitations under the License.
 package manifest
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -62,7 +63,7 @@ Example - Fetch manifest from a registry with certain platform:
 Example - Fetch manifest from a registry with prettified json result:
   oras manifest fetch --pretty localhost:5000/hello:v1
 
-Example - Fetch raw manifest from an OCI layout folder 'layout-dir':
+Example - Fetch raw manifest from an OCI image layout folder 'layout-dir':
   oras manifest fetch --oci-layout layout-dir:v1
 
 Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
@@ -78,7 +79,7 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 		},
 		Aliases: []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fetchManifest(opts)
+			return fetchManifest(cmd.Context(), opts)
 		},
 	}
 
@@ -88,8 +89,8 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 	return cmd
 }
 
-func fetchManifest(opts fetchOptions) (fetchErr error) {
-	ctx, _ := opts.SetLoggerLevel()
+func fetchManifest(ctx context.Context, opts fetchOptions) (fetchErr error) {
+	ctx, _ = opts.WithContext(ctx)
 
 	target, err := opts.NewReadonlyTarget(ctx, opts.Common)
 	if err != nil {
