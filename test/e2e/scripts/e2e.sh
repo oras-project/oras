@@ -49,16 +49,14 @@ run_registry \
   ${e2e_root}/testdata/distribution/mount \
   ghcr.io/oras-project/registry:v1.0.0-rc.4 \
   $oras_container_name \
-  $ORAS_REGISTRY_PORT \
-  true
+  $ORAS_REGISTRY_PORT
 
 echo " === preparing upstream distribution === "
 run_registry \
   ${e2e_root}/testdata/distribution/mount_fallback \
   registry:2.8.1 \
   $upstream_container_name \
-  $ORAS_REGISTRY_FALLBACK_PORT \
-  false
+  $ORAS_REGISTRY_FALLBACK_PORT
 
 echo " === run tests === "
 if ! ginkgo -r -p --succinct suite; then 

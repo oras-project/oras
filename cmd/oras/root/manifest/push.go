@@ -29,7 +29,6 @@ import (
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/display"
-	oerr "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/file"
 )
@@ -39,7 +38,6 @@ type pushOptions struct {
 	option.Descriptor
 	option.Pretty
 	option.Target
-	option.Referrers
 
 	concurrency int
 	extraRefs   []string
@@ -106,14 +104,13 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 }
 
 func pushManifest(ctx context.Context, opts pushOptions) error {
-	ctx, logger := opts.WithContext(ctx)
+	ctx, _ = opts.WithContext(ctx)
 	var target oras.Target
 	var err error
 	target, err = opts.NewTarget(opts.Common)
 	if err != nil {
 		return err
 	}
-	opts.SetReferrersGC(target, logger)
 	if repo, ok := target.(*remote.Repository); ok {
 		target = repo.Manifests()
 	}
@@ -154,9 +151,6 @@ func pushManifest(ctx context.Context, opts pushOptions) error {
 			return err
 		}
 		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil {
-			if oerr.IsReferrersIndexDelete(err) {
-				fmt.Fprintln(os.Stderr, "pushed successfully but failed to remove the outdated referrers index, please use `--skip-delete-referrers` if you want to skip the deletion")
-			}
 			return err
 		}
 		if err = display.PrintStatus(desc, "Uploaded ", verbose); err != nil {
