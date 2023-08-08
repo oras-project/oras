@@ -107,7 +107,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 				return err
 			}
 
-			if opts.ImageSpec.Flag == option.V1_0 && opts.manifestConfigRef != "" && opts.artifactType != "" {
+			if opts.ImageSpec.PackType == oras.PackManifestTypeImageV1_1_0_RC2 && opts.manifestConfigRef != "" && opts.artifactType != "" {
 				return errors.New("--artifact-type and --config cannot both be provided for 1.0 OCI image")
 			}
 			return nil
@@ -137,6 +137,7 @@ func runPush(ctx context.Context, opts pushOptions) error {
 		ConfigAnnotations:   annotations[option.AnnotationConfig],
 		ManifestAnnotations: annotations[option.AnnotationManifest],
 		PackImageManifest:   true,
+		PackManifestType:    opts.ImageSpec.PackType,
 	}
 	store, err := file.New("")
 	if err != nil {

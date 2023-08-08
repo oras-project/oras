@@ -19,30 +19,36 @@ import (
 	"fmt"
 
 	"github.com/spf13/pflag"
+	"oras.land/oras-go/v2"
 )
 
 const (
-	V1_1 = "1.1"
+	v1_1 = "1.1"
 	V1_0 = "1.0"
 )
 
 // ImageSpec option struct.
 type ImageSpec struct {
-	Flag string
+	flag     string
+	PackType oras.PackManifestType
 }
 
 // Parse parses flags into the option.
 func (opts *ImageSpec) Parse() error {
-	switch opts.Flag {
-	case V1_1, V1_0:
-		return nil
+	switch opts.flag {
+	case v1_1:
+		opts.PackType = oras.PackManifestTypeImageV1_1_0_RC4
+	case V1_0:
+		opts.PackType = oras.PackManifestTypeImageV1_1_0_RC2
+	default:
+		return fmt.Errorf("unknown image specification flag: %q", opts.flag)
 	}
-	return fmt.Errorf("unknown image specification flag: %q", opts.Flag)
+	return nil
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *ImageSpec) ApplyFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&opts.Flag, "image-spec", V1_1, fmt.Sprintf("[Experimental] specify manifest type for building artifact. options: %s, %s", V1_1, V1_0))
+	fs.StringVar(&opts.flag, "image-spec", v1_1, fmt.Sprintf("[Experimental] specify manifest type for building artifact. options: %s, %s", v1_1, V1_0))
 }
 
 // distributionSpec option struct.
