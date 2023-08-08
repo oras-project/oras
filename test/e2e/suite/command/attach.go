@@ -111,9 +111,7 @@ var _ = Describe("Common registry users:", func() {
 			subjectRef := RegistryRef(Host, testRepo, foobar.Tag)
 			prepare(RegistryRef(Host, ImageRepo, foobar.Tag), subjectRef)
 			// test
-			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--image-spec", "v1.1-image").
-				WithWorkDir(tempDir).
-				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
+			MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
 
 			// validate
 			var index ocispec.Index
@@ -148,24 +146,6 @@ var _ = Describe("Common registry users:", func() {
 				ExpectFailure().
 				Exec()
 		})
-
-		It("should attach a file via a OCI Artifact", func() {
-			testRepo := attachTestRepo("artifact")
-			tempDir := PrepareTempFiles()
-			subjectRef := RegistryRef(Host, testRepo, foobar.Tag)
-			prepare(RegistryRef(Host, ImageRepo, foobar.Tag), subjectRef)
-			// test
-			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--image-spec", "v1.1-artifact").
-				WithWorkDir(tempDir).
-				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
-
-			// validate
-			var index ocispec.Index
-			bytes := ORAS("discover", subjectRef, "-o", "json").Exec().Out.Contents()
-			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
-			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].MediaType).To(Equal("application/vnd.oci.artifact.manifest.v1+json"))
-		})
 	})
 })
 
@@ -177,7 +157,7 @@ var _ = Describe("Fallback registry users:", func() {
 			subjectRef := RegistryRef(FallbackHost, testRepo, foobar.Tag)
 			prepare(RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef)
 			// test
-			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--image-spec", "v1.1-image").
+			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				WithWorkDir(tempDir).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
 
@@ -260,7 +240,7 @@ var _ = Describe("Fallback registry users:", func() {
 			subjectRef := RegistryRef(FallbackHost, testRepo, foobar.Tag)
 			prepare(RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef)
 			// test
-			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--image-spec", "v1.1-image", "--distribution-spec", "v1.1-referrers-tag").
+			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--distribution-spec", "v1.1-referrers-tag").
 				WithWorkDir(tempDir).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
 
@@ -323,7 +303,7 @@ var _ = Describe("OCI image layout users:", func() {
 			subjectRef := LayoutRef(root, foobar.Tag)
 			prepare(root)
 			// test
-			ORAS("attach", "--artifact-type", "test.attach", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--image-spec", "v1.1-image").
+			ORAS("attach", "--artifact-type", "test.attach", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				WithWorkDir(root).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
 
@@ -333,22 +313,6 @@ var _ = Describe("OCI image layout users:", func() {
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(len(index.Manifests)).To(Equal(1))
 			Expect(index.Manifests[0].MediaType).To(Equal("application/vnd.oci.image.manifest.v1+json"))
-		})
-		It("should attach a file via a OCI Artifact", func() {
-			root := PrepareTempFiles()
-			subjectRef := LayoutRef(root, foobar.Tag)
-			prepare(root)
-			// test
-			ORAS("attach", "--artifact-type", "test.attach", subjectRef, Flags.Layout, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--image-spec", "v1.1-artifact").
-				WithWorkDir(root).
-				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
-
-			// validate
-			var index ocispec.Index
-			bytes := ORAS("discover", subjectRef, Flags.Layout, "-o", "json").Exec().Out.Contents()
-			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
-			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].MediaType).To(Equal("application/vnd.oci.artifact.manifest.v1+json"))
 		})
 	})
 })
