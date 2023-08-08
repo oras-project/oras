@@ -43,7 +43,6 @@ var _ = Describe("ORAS beginners:", func() {
 		It("should show preview and help doc", func() {
 			out := ORAS("attach", "--help").MatchKeyWords(feature.Preview.Mark+" Attach", feature.Preview.Description, ExampleDesc).Exec()
 			gomega.Expect(out).Should(gbytes.Say("--distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
-			gomega.Expect(out).Should(gbytes.Say("--image-spec string\\s+%s", regexp.QuoteMeta(feature.Experimental.Mark)))
 		})
 
 		It("should fail when no subject reference provided", func() {
@@ -64,11 +63,6 @@ var _ = Describe("ORAS beginners:", func() {
 		It("should fail if distribution spec is unkown", func() {
 			ORAS("attach", "--artifact-type", "oras.test", RegistryRef(Host, ImageRepo, foobar.Tag), "--distribution-spec", "???").
 				ExpectFailure().MatchErrKeyWords("unknown distribution specification flag").Exec()
-		})
-
-		It("should fail if image spec is unkown", func() {
-			ORAS("attach", "--artifact-type", "oras.test", RegistryRef(Host, ImageRepo, foobar.Tag), "--image-spec", "???").
-				ExpectFailure().MatchErrKeyWords("unknown image specification flag").Exec()
 		})
 	})
 })
@@ -111,8 +105,9 @@ var _ = Describe("Common registry users:", func() {
 			subjectRef := RegistryRef(Host, testRepo, foobar.Tag)
 			prepare(RegistryRef(Host, ImageRepo, foobar.Tag), subjectRef)
 			// test
-			MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
-
+			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+				WithWorkDir(tempDir).
+				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
 			// validate
 			var index ocispec.Index
 			bytes := ORAS("discover", subjectRef, "-o", "json").Exec().Out.Contents()
