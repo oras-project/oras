@@ -165,7 +165,7 @@ func TestReferrers(t *testing.T) {
 			t.Errorf("Referrers() error = %v", err)
 			return
 		}
-		if !reflect.DeepEqual(got, want) && !reflect.DeepEqual(got, want) {
+		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Referrers() = %v, want %v", got, want)
 		}
 	})
