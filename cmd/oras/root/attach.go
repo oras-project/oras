@@ -35,7 +35,6 @@ import (
 type attachOptions struct {
 	option.Common
 	option.Packer
-	option.ImageSpec
 	option.Target
 	option.Referrers
 
@@ -139,7 +138,7 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 	packOpts := oras.PackOptions{
 		Subject:             &subject,
 		ManifestAnnotations: annotations[option.AnnotationManifest],
-		PackImageManifest:   opts.ManifestMediaType == ocispec.MediaTypeImageManifest,
+		PackImageManifest:   true,
 	}
 	pack := func() (ocispec.Descriptor, error) {
 		return oras.Pack(ctx, store, opts.artifactType, descs, packOpts)

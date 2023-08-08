@@ -43,18 +43,6 @@ func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descr
 		nodes = manifest.Layers
 		subject = manifest.Subject
 		config = &manifest.Config
-	case ocispec.MediaTypeArtifactManifest:
-		var fetched []byte
-		fetched, err = content.FetchAll(ctx, fetcher, node)
-		if err != nil {
-			return
-		}
-		var manifest ocispec.Artifact
-		if err = json.Unmarshal(fetched, &manifest); err != nil {
-			return
-		}
-		nodes = manifest.Blobs
-		subject = manifest.Subject
 	default:
 		nodes, err = content.Successors(ctx, fetcher, node)
 	}
@@ -83,20 +71,6 @@ func Referrers(ctx context.Context, target content.ReadOnlyGraphStorage, desc oc
 	}
 	for _, node := range predecessors {
 		switch node.MediaType {
-		case ocispec.MediaTypeArtifactManifest:
-			fetched, err := fetchBytes(ctx, target, node)
-			if err != nil {
-				return nil, err
-			}
-			var artifact ocispec.Artifact
-			if err := json.Unmarshal(fetched, &artifact); err != nil {
-				return nil, err
-			}
-			if artifact.Subject == nil || !content.Equal(*artifact.Subject, desc) {
-				continue
-			}
-			node.ArtifactType = artifact.ArtifactType
-			node.Annotations = artifact.Annotations
 		case ocispec.MediaTypeImageManifest:
 			fetched, err := fetchBytes(ctx, target, node)
 			if err != nil {
@@ -141,7 +115,7 @@ func FindReferrerPredecessors(ctx context.Context, src content.ReadOnlyGraphStor
 	}
 	for _, node := range predecessors {
 		switch node.MediaType {
-		case ocispec.MediaTypeArtifactManifest, ocispec.MediaTypeImageManifest:
+		case ocispec.MediaTypeImageManifest:
 			results = append(results, node)
 		}
 	}

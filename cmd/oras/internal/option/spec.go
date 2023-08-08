@@ -18,35 +18,31 @@ package option
 import (
 	"fmt"
 
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/pflag"
+)
+
+const (
+	V1_1 = "1.1"
+	V1_0 = "1.0"
 )
 
 // ImageSpec option struct.
 type ImageSpec struct {
-	// Manifest type for building artifact
-	ManifestMediaType string
-
-	// specFlag should be provided in form of `<version>-<manifest type>`
-	specFlag string
+	Flag string
 }
 
 // Parse parses flags into the option.
 func (opts *ImageSpec) Parse() error {
-	switch opts.specFlag {
-	case "v1.1-image":
-		opts.ManifestMediaType = ocispec.MediaTypeImageManifest
-	case "v1.1-artifact":
-		opts.ManifestMediaType = ocispec.MediaTypeArtifactManifest
-	default:
-		return fmt.Errorf("unknown image specification flag: %q", opts.specFlag)
+	switch opts.Flag {
+	case V1_1, V1_0:
+		return nil
 	}
-	return nil
+	return fmt.Errorf("unknown image specification flag: %q", opts.Flag)
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *ImageSpec) ApplyFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&opts.specFlag, "image-spec", "v1.1-image", "[Experimental] specify manifest type for building artifact. options: v1.1-image, v1.1-artifact")
+	fs.StringVar(&opts.Flag, "image-spec", V1_1, fmt.Sprintf("[Experimental] specify manifest type for building artifact. options: %s, %s", V1_1, V1_0))
 }
 
 // distributionSpec option struct.

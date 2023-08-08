@@ -102,15 +102,16 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
 			opts.FileRefs = args[1:]
-			if opts.manifestConfigRef != "" {
-				if opts.artifactType != "" {
-					return errors.New("--artifact-type and --config cannot both be provided")
-				}
-				if opts.ManifestMediaType == ocispec.MediaTypeArtifactManifest {
-					return errors.New("cannot build an OCI artifact with manifest config")
-				}
+
+			if err := option.Parse(&opts); err != nil {
+				return err
 			}
-			return option.Parse(&opts)
+
+			if opts.ImageSpec.Flag == option.V1_0 && opts.manifestConfigRef != "" && opts.artifactType != "" {
+				return errors.New("--artifact-type and --config cannot both be provided for 1.0 OCI image")
+			}
+			return nil
+
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runPush(cmd.Context(), opts)
@@ -135,6 +136,7 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	packOpts := oras.PackOptions{
 		ConfigAnnotations:   annotations[option.AnnotationConfig],
 		ManifestAnnotations: annotations[option.AnnotationManifest],
+		PackImageManifest:   true,
 	}
 	store, err := file.New("")
 	if err != nil {
@@ -152,10 +154,6 @@ func runPush(ctx context.Context, opts pushOptions) error {
 		}
 		desc.Annotations = packOpts.ConfigAnnotations
 		packOpts.ConfigDescriptor = &desc
-		packOpts.PackImageManifest = true
-	}
-	if opts.ManifestMediaType == ocispec.MediaTypeImageManifest {
-		packOpts.PackImageManifest = true
 	}
 	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
 	if err != nil {

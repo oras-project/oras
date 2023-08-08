@@ -89,19 +89,6 @@ func TestReferrers(t *testing.T) {
 		}
 		appendBlob(ocispec.MediaTypeImageManifest, manifestJSON)
 	}
-	generateArtifact := func(artifactType string, subject *ocispec.Descriptor, annotations map[string]string, blobs ...ocispec.Descriptor) {
-		manifest := ocispec.Artifact{
-			Subject:      subject,
-			Blobs:        blobs,
-			Annotations:  annotations,
-			ArtifactType: artifactType,
-		}
-		manifestJSON, err := json.Marshal(manifest)
-		if err != nil {
-			t.Fatal(err)
-		}
-		appendBlob(ocispec.MediaTypeArtifactManifest, manifestJSON)
-	}
 	generateIndex := func(manifests ...ocispec.Descriptor) {
 		index := ocispec.Index{
 			Manifests: manifests,
@@ -117,11 +104,10 @@ func TestReferrers(t *testing.T) {
 		imgConfig
 		subject
 		image
-		artifact
 		index
 	)
 	anno := map[string]string{"test": "foo"}
-	appendBlob(ocispec.MediaTypeArtifactManifest, []byte(`{"name":"subject content"}`))
+	appendBlob(ocispec.MediaTypeImageLayer, []byte("blob"))
 	imageType := "test.image"
 	appendBlob(imageType, []byte("config content"))
 	generateImage(nil, nil, descs[imgConfig], descs[blob])
@@ -129,12 +115,7 @@ func TestReferrers(t *testing.T) {
 	imageDesc := descs[image]
 	imageDesc.Annotations = anno
 	imageDesc.ArtifactType = imageType
-	artifactType := "test.artifact"
-	generateArtifact(artifactType, &descs[subject], anno, descs[blob])
 	generateIndex(descs[subject])
-	artifactDesc := descs[artifact]
-	artifactDesc.Annotations = anno
-	artifactDesc.ArtifactType = artifactType
 
 	referrers := []ocispec.Descriptor{descs[image], descs[image]}
 	memory := memory.New()
@@ -163,7 +144,6 @@ func TestReferrers(t *testing.T) {
 		{"should return nil for config node", args{ctx, finder, descs[imgConfig], ""}, nil, false},
 		{"should return nil for blob/layer node", args{ctx, finder, descs[blob], ""}, nil, false},
 		{"should find filtered image referrer", args{ctx, finder, descs[subject], imageType}, []ocispec.Descriptor{imageDesc}, false},
-		{"should find filtered artifact referrer", args{ctx, finder, descs[subject], artifactType}, []ocispec.Descriptor{artifactDesc}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -179,15 +159,14 @@ func TestReferrers(t *testing.T) {
 	}
 
 	t.Run("should find referrers in predecessors", func(t *testing.T) {
-		want1 := []ocispec.Descriptor{artifactDesc, imageDesc}
-		want2 := []ocispec.Descriptor{imageDesc, artifactDesc}
+		want := []ocispec.Descriptor{imageDesc}
 		got, err := Referrers(ctx, finder, descs[subject], "")
 		if err != nil {
 			t.Errorf("Referrers() error = %v", err)
 			return
 		}
-		if !reflect.DeepEqual(got, want1) && !reflect.DeepEqual(got, want2) {
-			t.Errorf("Referrers() = %v, want %v", got, want1)
+		if !reflect.DeepEqual(got, want) && !reflect.DeepEqual(got, want) {
+			t.Errorf("Referrers() = %v, want %v", got, want)
 		}
 	})
 }
@@ -216,18 +195,6 @@ func TestSuccessors(t *testing.T) {
 		}
 		appendBlob(mediaType, manifestJSON)
 	}
-	generateArtifact := func(artifactType string, subject *ocispec.Descriptor, blobs ...ocispec.Descriptor) {
-		manifest := ocispec.Artifact{
-			MediaType: ocispec.MediaTypeArtifactManifest,
-			Subject:   subject,
-			Blobs:     blobs,
-		}
-		manifestJSON, err := json.Marshal(manifest)
-		if err != nil {
-			t.Fatal(err)
-		}
-		appendBlob(ocispec.MediaTypeArtifactManifest, manifestJSON)
-	}
 	generateIndex := func(manifests ...ocispec.Descriptor) {
 		index := ocispec.Index{
 			Manifests: manifests,
@@ -243,16 +210,13 @@ func TestSuccessors(t *testing.T) {
 		config
 		ociImage
 		dockerImage
-		artifact
 		index
 	)
-	appendBlob(ocispec.MediaTypeArtifactManifest, []byte(`{"name":"subject content"}`))
+	appendBlob(ocispec.MediaTypeImageLayer, []byte("blob"))
 	imageType := "test.image"
 	appendBlob(imageType, []byte("config content"))
 	generateImage(&descs[subject], ocispec.MediaTypeImageManifest, descs[config])
 	generateImage(&descs[subject], docker.MediaTypeManifest, descs[config])
-	artifactType := "test.artifact"
-	generateArtifact(artifactType, &descs[subject])
 	generateIndex(descs[subject])
 	memory := memory.New()
 	ctx := context.Background()
@@ -276,12 +240,10 @@ func TestSuccessors(t *testing.T) {
 		wantConfig  *ocispec.Descriptor
 		wantErr     bool
 	}{
-		{"should failed to get non-existent artifact", args{ctx, fetcher, ocispec.Descriptor{MediaType: ocispec.MediaTypeArtifactManifest}}, nil, nil, nil, true},
 		{"should failed to get non-existent OCI image", args{ctx, fetcher, ocispec.Descriptor{MediaType: ocispec.MediaTypeImageManifest}}, nil, nil, nil, true},
 		{"should failed to get non-existent docker image", args{ctx, fetcher, ocispec.Descriptor{MediaType: docker.MediaTypeManifest}}, nil, nil, nil, true},
 		{"should get success of a docker image", args{ctx, fetcher, descs[dockerImage]}, nil, &descs[subject], &descs[config], false},
 		{"should get success of an OCI image", args{ctx, fetcher, descs[ociImage]}, nil, &descs[subject], &descs[config], false},
-		{"should get success of an artifact", args{ctx, fetcher, descs[artifact]}, nil, &descs[subject], nil, false},
 		{"should get success of an index", args{ctx, fetcher, descs[index]}, []ocispec.Descriptor{descs[subject]}, nil, nil, false},
 	}
 	for _, tt := range tests {
@@ -345,7 +307,7 @@ func TestFindReferrerPredecessors(t *testing.T) {
 		image
 	)
 	var anno map[string]string
-	appendBlob(ocispec.MediaTypeArtifactManifest, []byte(`{"name":"subject content"}`))
+	appendBlob(ocispec.MediaTypeImageLayer, []byte("blob"))
 	imageType := "test.image"
 	appendBlob(imageType, []byte("config content"))
 	generateImage(&descs[subject], anno, descs[imgConfig])
