@@ -159,7 +159,9 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	} else if opts.ImageSpec.PackType == oras.PackManifestTypeImageV1_1_0_RC4 && opts.artifactType == "" {
 		configDesc := ocispec.DescriptorEmptyJSON
 		configDesc.MediaType = oras.MediaTypeUnknownConfig
-		store.Push(ctx, configDesc, bytes.NewReader(configDesc.Data))
+		if err = store.Push(ctx, configDesc, bytes.NewReader(configDesc.Data)); err != nil {
+			return err
+		}
 		configDesc.Annotations = packOpts.ConfigAnnotations
 		packOpts.ConfigDescriptor = &configDesc
 	}
