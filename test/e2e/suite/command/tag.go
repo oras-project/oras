@@ -33,7 +33,11 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		It("should fail when provided manifest reference is not found", func() {
-			ORAS("tag", RegistryRef(Host, ImageRepo, "i-dont-think-this-tag-exists")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+			ORAS("tag", RegistryRef(Host, ImageRepo, "i-dont-think-this-tag-exists"), "tagged").ExpectFailure().MatchErrKeyWords("Error:").Exec()
+		})
+
+		It("should fail when provided invalid reference", func() {
+			ORAS("tag", "list", "tagged").ExpectFailure().MatchErrKeyWords("Error:", "'list'").Exec()
 		})
 	})
 })
