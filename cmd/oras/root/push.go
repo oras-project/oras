@@ -155,6 +155,12 @@ func runPush(ctx context.Context, opts pushOptions) error {
 		}
 		desc.Annotations = packOpts.ConfigAnnotations
 		packOpts.ConfigDescriptor = &desc
+	} else if opts.ImageSpec.PackType == oras.PackManifestTypeImageV1_1_0_RC4 && opts.artifactType == "" {
+		configDesc := ocispec.DescriptorEmptyJSON
+		configDesc.MediaType = oras.MediaTypeUnknownConfig
+		//store.Push(ctx, configDesc, bytes.NewReader(configDesc.Data))
+		configDesc.Annotations = packOpts.ConfigAnnotations
+		packOpts.ConfigDescriptor = &configDesc
 	}
 	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
 	if err != nil {
