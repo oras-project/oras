@@ -126,7 +126,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 }
 
 func runPush(ctx context.Context, opts pushOptions) error {
-	ctx, _ = opts.WithContext(ctx)
+	ctx, logger := opts.WithContext(ctx)
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err
@@ -173,7 +173,7 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	}
 
 	// prepare push
-	dst, err := opts.NewTarget(opts.Common)
+	dst, err := opts.NewTarget(opts.Common, logger.Warn)
 	if err != nil {
 		return err
 	}

@@ -69,8 +69,8 @@ Example - List the repositories under the registry that include values lexically
 }
 
 func listRepository(ctx context.Context, opts repositoryOptions) error {
-	ctx, _ = opts.WithContext(ctx)
-	reg, err := opts.Remote.NewRegistry(opts.hostname, opts.Common)
+	ctx, logger := opts.WithContext(ctx)
+	reg, err := opts.Remote.NewRegistry(opts.hostname, logger.Warn, opts.Common)
 	if err != nil {
 		return err
 	}

@@ -111,7 +111,7 @@ func runCopy(ctx context.Context, opts copyOptions) error {
 	}
 
 	// Prepare destination
-	dst, err := opts.To.NewTarget(opts.Common)
+	dst, err := opts.To.NewTarget(opts.Common, logger.Warn)
 	if err != nil {
 		return err
 	}

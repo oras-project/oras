@@ -25,6 +25,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 
 	credentials "github.com/oras-project/oras-credentials-go"
 	"github.com/spf13/pflag"
@@ -248,13 +249,22 @@ func (opts *Remote) Credential() auth.Credential {
 }
 
 // NewRegistry assembles a oras remote registry.
-func (opts *Remote) NewRegistry(hostname string, common Common) (reg *remote.Registry, err error) {
+func (opts *Remote) NewRegistry(hostname string, log func(...interface{}), common Common) (reg *remote.Registry, err error) {
 	reg, err = remote.NewRegistry(hostname)
 	if err != nil {
 		return nil, err
 	}
 	hostname = reg.Reference.Registry
 	reg.PlainHTTP = opts.isPlainHttp(hostname)
+
+	if opts.distributionSpec.referrersAPI == nil || *opts.distributionSpec.referrersAPI != false {
+		once := sync.Once{}
+		reg.HandleWarning = func(warning remote.Warning) {
+			once.Do(func() {
+				log(warning.Text)
+			})
+		}
+	}
 	if reg.Client, err = opts.authClient(hostname, common.Debug); err != nil {
 		return nil, err
 	}
@@ -262,7 +272,7 @@ func (opts *Remote) NewRegistry(hostname string, common Common) (reg *remote.Reg
 }
 
 // NewRepository assembles a oras remote repository.
-func (opts *Remote) NewRepository(reference string, common Common) (repo *remote.Repository, err error) {
+func (opts *Remote) NewRepository(reference string, log func(...interface{}), common Common) (repo *remote.Repository, err error) {
 	repo, err = remote.NewRepository(reference)
 	if err != nil {
 		return nil, err
@@ -272,6 +282,16 @@ func (opts *Remote) NewRepository(reference string, common Common) (repo *remote
 	if repo.Client, err = opts.authClient(hostname, common.Debug); err != nil {
 		return nil, err
 	}
+
+	if opts.distributionSpec.referrersAPI == nil || *opts.distributionSpec.referrersAPI != false {
+		once := sync.Once{}
+		repo.HandleWarning = func(warning remote.Warning) {
+			once.Do(func() {
+				log(warning.Text)
+			})
+		}
+	}
+
 	if opts.distributionSpec.referrersAPI != nil {
 		if err := repo.SetReferrersCapability(*opts.distributionSpec.referrersAPI); err != nil {
 			return nil, err

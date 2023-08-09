@@ -111,7 +111,7 @@ func parseOCILayoutReference(raw string) (path string, ref string, err error) {
 }
 
 // NewTarget generates a new target based on opts.
-func (opts *Target) NewTarget(common Common) (oras.GraphTarget, error) {
+func (opts *Target) NewTarget(common Common, log func(...interface{})) (oras.GraphTarget, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
 		var err error
@@ -121,7 +121,7 @@ func (opts *Target) NewTarget(common Common) (oras.GraphTarget, error) {
 		}
 		return oci.New(opts.Path)
 	case TargetTypeRemote:
-		repo, err := opts.NewRepository(opts.RawReference, common)
+		repo, err := opts.NewRepository(opts.RawReference, nil, common)
 		if err != nil {
 			return nil, err
 		}
@@ -159,7 +159,7 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadO
 		}
 		return oci.NewFromTar(ctx, opts.Path)
 	case TargetTypeRemote:
-		repo, err := opts.NewRepository(opts.RawReference, common)
+		repo, err := opts.NewRepository(opts.RawReference, nil, common)
 		if err != nil {
 			return nil, err
 		}

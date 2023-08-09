@@ -180,7 +180,7 @@ func TestRemote_NewRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	reg, err := opts.NewRegistry(uri.Host, opts.Common)
+	reg, err := opts.NewRegistry(uri.Host, nil, opts.Common)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -208,7 +208,7 @@ func TestRemote_NewRepository(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	repo, err := opts.NewRepository(uri.Host+"/"+testRepo, opts.Common)
+	repo, err := opts.NewRepository(uri.Host+"/"+testRepo, nil, opts.Common)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -255,7 +255,7 @@ func TestRemote_NewRepository_Retry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	repo, err := opts.NewRepository(uri.Host+"/"+testRepo, opts.Common)
+	repo, err := opts.NewRepository(uri.Host+"/"+testRepo, nil, opts.Common)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

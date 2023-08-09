@@ -116,7 +116,7 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 	}
 	defer store.Close()
 
-	dst, err := opts.NewTarget(opts.Common)
+	dst, err := opts.NewTarget(opts.Common, logger.Warn)
 	if err != nil {
 		return err
 	}
