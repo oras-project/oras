@@ -23,8 +23,9 @@ import (
 )
 
 const (
-	v1_1 = "1.1"
-	V1_0 = "1.0"
+	v1_1                      = "1.1"
+	v1_0                      = "1.0"
+	PackManifestTypeImageV1_0 = 0
 )
 
 // ImageSpec option struct.
@@ -38,8 +39,8 @@ func (opts *ImageSpec) Parse() error {
 	switch opts.flag {
 	case v1_1:
 		opts.PackType = oras.PackManifestTypeImageV1_1_0_RC4
-	case V1_0:
-		opts.PackType = oras.PackManifestTypeImageV1_1_0_RC2
+	case v1_0:
+		opts.PackType = PackManifestTypeImageV1_0
 	default:
 		return fmt.Errorf("unknown image specification flag: %q", opts.flag)
 	}
@@ -48,7 +49,7 @@ func (opts *ImageSpec) Parse() error {
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *ImageSpec) ApplyFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&opts.flag, "image-spec", v1_1, fmt.Sprintf("[Experimental] specify manifest type for building artifact. options: %s, %s", v1_1, V1_0))
+	fs.StringVar(&opts.flag, "image-spec", v1_1, fmt.Sprintf("[Experimental] specify manifest type for building artifact. options: %s, %s", v1_1, v1_0))
 }
 
 // distributionSpec option struct.
