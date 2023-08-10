@@ -9,7 +9,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/term v0.10.0
+	golang.org/x/term v0.11.0
 	gopkg.in/yaml.v3 v3.0.1
 	oras.land/oras-go/v2 v2.2.1-0.20230627113607-6b5bd4b4372b
 )
@@ -17,5 +17,5 @@ require (
 require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
-	golang.org/x/sys v0.10.0 // indirect
+	golang.org/x/sys v0.11.0 // indirect
 )
