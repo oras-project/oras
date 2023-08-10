@@ -105,13 +105,11 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 			if err := option.Parse(&opts); err != nil {
 				return err
 			}
-			if opts.ImageSpec.PackType == option.PackManifestTypeImageV1_0 {
-				if opts.manifestConfigRef != "" && opts.artifactType != "" {
-					return errors.New("--artifact-type and --config cannot both be provided for 1.0 OCI image")
-				}
-				if opts.manifestConfigRef == "" && opts.artifactType == "" {
-					opts.artifactType = oras.MediaTypeUnknownArtifact
-				}
+			if opts.ImageSpec.PackType == option.PackManifestTypeImageV1_0 && opts.manifestConfigRef != "" && opts.artifactType != "" {
+				return errors.New("--artifact-type and --config cannot both be provided for 1.0 OCI image")
+			}
+			if opts.PackType == oras.PackManifestTypeImageV1_1_0_RC4 && opts.manifestConfigRef == "" && opts.artifactType == "" {
+				opts.artifactType = oras.MediaTypeUnknownArtifact
 			}
 			return nil
 		},
