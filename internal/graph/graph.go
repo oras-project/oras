@@ -179,46 +179,6 @@ func Referrers(ctx context.Context, target content.ReadOnlyGraphStorage, desc oc
 	return results, nil
 }
 
-// FindReferrerPredecessors returns referrer nodes of desc in target.
-func FindReferrerPredecessors(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-	var results []ocispec.Descriptor
-	if repo, ok := src.(registry.ReferrerLister); ok {
-		// get referrers directly
-		err := repo.Referrers(ctx, desc, "", func(referrers []ocispec.Descriptor) error {
-			results = append(results, referrers...)
-			return nil
-		})
-		if err != nil {
-			return nil, err
-		}
-		return results, nil
-	}
-	predecessors, err := src.Predecessors(ctx, desc)
-	if err != nil {
-		return nil, err
-	}
-	for _, node := range predecessors {
-		switch node.MediaType {
-		case MediaTypeArtifactManifest, ocispec.MediaTypeImageManifest:
-			results = append(results, node)
-		case ocispec.MediaTypeImageIndex:
-			fetched, err := fetchBytes(ctx, src, node)
-			if err != nil {
-				return nil, err
-			}
-			// convert to json
-			var index ocispec.Index
-			if err := json.Unmarshal(fetched, &index); err != nil {
-				return nil, err
-			}
-			if index.Subject != nil && content.Equal(*index.Subject, desc) {
-				results = append(results, node)
-			}
-		}
-	}
-	return results, nil
-}
-
 func fetchBytes(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]byte, error) {
 	rc, err := fetcher.Fetch(ctx, desc)
 	if err != nil {
