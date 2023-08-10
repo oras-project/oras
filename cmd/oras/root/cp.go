@@ -96,7 +96,7 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 }
 
 func runCopy(ctx context.Context, opts copyOptions) error {
-	ctx, _ = opts.WithContext(ctx)
+	ctx, logger := opts.WithContext(ctx)
 
 	// Prepare source
 	src, err := opts.From.NewReadonlyTarget(ctx, opts.Common)

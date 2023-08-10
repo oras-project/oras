@@ -104,7 +104,7 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 }
 
 func pushManifest(ctx context.Context, opts pushOptions) error {
-	ctx, _ = opts.WithContext(ctx)
+	ctx, logger := opts.WithContext(ctx)
 	var target oras.Target
 	var err error
 	target, err = opts.NewTarget(opts.Common, logger.Warn)

@@ -111,7 +111,7 @@ func parseOCILayoutReference(raw string) (path string, ref string, err error) {
 }
 
 // NewTarget generates a new target based on opts.
-func (opts *Target) NewTarget(common Common, log func(...interface{})) (oras.GraphTarget, error) {
+func (opts *Target) NewTarget(common Common, warn func(...interface{})) (oras.GraphTarget, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
 		var err error

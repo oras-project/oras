@@ -93,7 +93,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 }
 
 func runAttach(ctx context.Context, opts attachOptions) error {
-	ctx, _ = opts.WithContext(ctx)
+	ctx, logger := opts.WithContext(ctx)
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err
