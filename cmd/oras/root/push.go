@@ -16,7 +16,6 @@ limitations under the License.
 package root
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -72,10 +71,6 @@ Example - Push file "hi.txt" with config type "application/vnd.me.config":
 Example - Push file "hi.txt" with the custom manifest config "config.json" of the custom media type "application/vnd.me.config":
   oras push --config config.json:application/vnd.me.config localhost:5000/hello:v1 hi.txt
 
-Example - Push file "hi.txt" with specific media type when building the manifest:
-  oras push --image-spec v1.1-image localhost:5000/hello:v1 hi.txt    # OCI image
-  oras push --image-spec v1.1-artifact localhost:5000/hello:v1 hi.txt # OCI artifact
-
 Example - Push file to the insecure registry:
   oras push --insecure localhost:5000/hello:v1 hi.txt
 
@@ -103,16 +98,16 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
 			opts.FileRefs = args[1:]
-
 			if err := option.Parse(&opts); err != nil {
 				return err
 			}
-
 			if opts.ImageSpec.PackType == option.PackManifestTypeImageV1_0 && opts.manifestConfigRef != "" && opts.artifactType != "" {
 				return errors.New("--artifact-type and --config cannot both be provided for 1.0 OCI image")
 			}
+			if opts.PackType == oras.PackManifestTypeImageV1_1_0_RC4 && opts.manifestConfigRef == "" && opts.artifactType == "" {
+				opts.artifactType = oras.MediaTypeUnknownArtifact
+			}
 			return nil
-
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runPush(cmd.Context(), opts)
@@ -156,14 +151,6 @@ func runPush(ctx context.Context, opts pushOptions) error {
 		}
 		desc.Annotations = packOpts.ConfigAnnotations
 		packOpts.ConfigDescriptor = &desc
-	} else if opts.ImageSpec.PackType == oras.PackManifestTypeImageV1_1_0_RC4 && opts.artifactType == "" {
-		configDesc := ocispec.DescriptorEmptyJSON
-		configDesc.MediaType = oras.MediaTypeUnknownConfig
-		if err = store.Push(ctx, configDesc, bytes.NewReader(configDesc.Data)); err != nil {
-			return err
-		}
-		configDesc.Annotations = packOpts.ConfigAnnotations
-		packOpts.ConfigDescriptor = &configDesc
 	}
 	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
 	if err != nil {

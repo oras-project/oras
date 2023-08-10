@@ -23,8 +23,9 @@ import (
 )
 
 const (
-	v1_1                      = "1.1"
-	v1_0                      = "1.0"
+	v1_1 = "v1.1"
+	v1_0 = "v1.0"
+	// TODO: pending on https://github.com/oras-project/oras-go/issues/568
 	PackManifestTypeImageV1_0 = 0
 )
 
