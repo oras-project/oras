@@ -284,7 +284,7 @@ func (opts *Remote) NewRepository(reference string, warn func(...interface{}), c
 		return nil, err
 	}
 
-	if opts.distributionSpec.referrersAPI == nil || *opts.distributionSpec.referrersAPI != false {
+	if opts.distributionSpec.referrersAPI == nil || *opts.distributionSpec.referrersAPI {
 		once := sync.Once{}
 		repo.HandleWarning = func(warning remote.Warning) {
 			once.Do(func() {
