@@ -71,10 +71,6 @@ Example - Push file "hi.txt" with config type "application/vnd.me.config":
 Example - Push file "hi.txt" with the custom manifest config "config.json" of the custom media type "application/vnd.me.config":
   oras push --config config.json:application/vnd.me.config localhost:5000/hello:v1 hi.txt
 
-Example - Push file "hi.txt" with specific media type when building the manifest:
-  oras push --image-spec v1.1-image localhost:5000/hello:v1 hi.txt    # OCI image
-  oras push --image-spec v1.1-artifact localhost:5000/hello:v1 hi.txt # OCI artifact
-
 Example - Push file to the insecure registry:
   oras push --insecure localhost:5000/hello:v1 hi.txt
 
