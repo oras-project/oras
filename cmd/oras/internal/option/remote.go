@@ -269,6 +269,7 @@ func (opts *Remote) NewRepository(reference string, common Common) (repo *remote
 	}
 	hostname := repo.Reference.Registry
 	repo.PlainHTTP = opts.isPlainHttp(hostname)
+	repo.SkipReferrersGC = true
 	if repo.Client, err = opts.authClient(hostname, common.Debug); err != nil {
 		return nil, err
 	}

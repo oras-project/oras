@@ -170,7 +170,7 @@ var _ = Describe("Fallback registry users:", func() {
 			subjectRef := RegistryRef(FallbackHost, testRepo, foobar.Tag)
 			prepare(RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef)
 			// test
-			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--image-spec", "v1.1-image").
 				WithWorkDir(tempDir).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
 
@@ -180,53 +180,6 @@ var _ = Describe("Fallback registry users:", func() {
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(len(index.Manifests)).To(Equal(1))
 			Expect(index.Manifests[0].MediaType).To(Equal("application/vnd.oci.image.manifest.v1+json"))
-		})
-
-		It("should fail to attach again when cleaning referrers index", func() {
-			testRepo := attachTestRepo("fallback/fail-gc")
-			tempDir := PrepareTempFiles()
-			subjectRef := RegistryRef(FallbackHost, testRepo, foobar.Tag)
-			prepare(RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef)
-			// test
-			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
-				WithWorkDir(tempDir).
-				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
-
-			// validate
-			var index ocispec.Index
-			bytes := ORAS("discover", subjectRef, "-o", "json").Exec().Out.Contents()
-			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
-			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].MediaType).To(Equal(ocispec.MediaTypeImageManifest))
-			// test
-			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "-a", "test.type=another.image").
-				WithWorkDir(tempDir).
-				MatchErrKeyWords("Error: failed to delete dangling referrers index").
-				ExpectFailure().Exec()
-		})
-
-		It("should attach again and skip cleanning index", func() {
-			testRepo := attachTestRepo("fallback/skip-gc")
-			tempDir := PrepareTempFiles()
-			subjectRef := RegistryRef(FallbackHost, testRepo, foobar.Tag)
-			prepare(RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef)
-			// test
-			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
-				WithWorkDir(tempDir).
-				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
-			// validate
-			var index ocispec.Index
-			bytes := ORAS("discover", subjectRef, "-o", "json").Exec().Out.Contents()
-			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
-			Expect(len(index.Manifests)).To(Equal(1))
-			// test
-			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "-a", "test.type=another.image", "--skip-delete-referrers").
-				WithWorkDir(tempDir).
-				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
-			// validate
-			bytes = ORAS("discover", subjectRef, "-o", "json").Exec().Out.Contents()
-			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
-			Expect(len(index.Manifests)).To(Equal(2))
 		})
 
 		It("should attach a file via a OCI Image and generate referrer via tag schema", func() {
@@ -254,7 +207,6 @@ var _ = Describe("OCI image layout users:", func() {
 		prepare := func(root string) {
 			ORAS("cp", RegistryRef(Host, ImageRepo, foobar.Tag), Flags.ToLayout, LayoutRef(root, foobar.Tag)).Exec()
 		}
-
 		It("should attach a file to a subject", func() {
 			root := PrepareTempFiles()
 			subjectRef := LayoutRef(root, foobar.Tag)
@@ -262,16 +214,6 @@ var _ = Describe("OCI image layout users:", func() {
 			ORAS("attach", "--artifact-type", "test.attach", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				WithWorkDir(root).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
-		})
-
-		It("should attach and output warning for referrers deletion by default", func() {
-			root := PrepareTempFiles()
-			subjectRef := LayoutRef(root, foobar.Tag)
-			prepare(root)
-			ORAS("attach", "--artifact-type", "test.attach", "-v", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--skip-delete-referrers").
-				MatchErrKeyWords("referrers deletion can only be enforced upon registry\n").
-				WithWorkDir(root).
-				Exec()
 		})
 
 		It("should attach a file to a subject and export the built manifest", func() {
