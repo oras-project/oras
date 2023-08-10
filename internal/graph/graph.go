@@ -83,6 +83,19 @@ func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descr
 		}
 		nodes = manifest.Blobs
 		subject = manifest.Subject
+
+	case ocispec.MediaTypeImageIndex:
+		var fetched []byte
+		fetched, err = content.FetchAll(ctx, fetcher, node)
+		if err != nil {
+			return
+		}
+		var index ocispec.Index
+		if err = json.Unmarshal(fetched, &index); err != nil {
+			return
+		}
+		nodes = index.Manifests
+		subject = index.Subject
 	default:
 		nodes, err = content.Successors(ctx, fetcher, node)
 	}
@@ -137,8 +150,25 @@ func Referrers(ctx context.Context, target content.ReadOnlyGraphStorage, desc oc
 			if image.Subject == nil || !content.Equal(*image.Subject, desc) {
 				continue
 			}
-			node.ArtifactType = image.Config.MediaType
+			node.ArtifactType = image.ArtifactType
+			if node.ArtifactType == "" {
+				node.ArtifactType = image.Config.MediaType
+			}
 			node.Annotations = image.Annotations
+		case ocispec.MediaTypeImageIndex:
+			fetched, err := fetchBytes(ctx, target, node)
+			if err != nil {
+				return nil, err
+			}
+			var index ocispec.Index
+			if err := json.Unmarshal(fetched, &index); err != nil {
+				return nil, err
+			}
+			if index.Subject == nil || !content.Equal(*index.Subject, desc) {
+				continue
+			}
+			node.ArtifactType = index.ArtifactType
+			node.Annotations = index.Annotations
 		default:
 			continue
 		}
