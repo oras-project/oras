@@ -121,7 +121,7 @@ func (opts *Target) NewTarget(common Common, warn func(...interface{})) (oras.Gr
 		}
 		return oci.New(opts.Path)
 	case TargetTypeRemote:
-		repo, err := opts.NewRepository(opts.RawReference, nil, common)
+		repo, err := opts.NewRepository(opts.RawReference, warn, common)
 		if err != nil {
 			return nil, err
 		}
