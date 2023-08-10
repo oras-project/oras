@@ -257,7 +257,7 @@ func (opts *Remote) NewRegistry(hostname string, warn func(...interface{}), comm
 	hostname = reg.Reference.Registry
 	reg.PlainHTTP = opts.isPlainHttp(hostname)
 
-	if opts.distributionSpec.referrersAPI == nil || *opts.distributionSpec.referrersAPI != false {
+	if opts.distributionSpec.referrersAPI == nil || *opts.distributionSpec.referrersAPI {
 		once := sync.Once{}
 		reg.HandleWarning = func(warning remote.Warning) {
 			once.Do(func() {
