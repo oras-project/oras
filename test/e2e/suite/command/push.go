@@ -47,7 +47,7 @@ var _ = Describe("Remote registry users:", func() {
 	When("pushing to registy without OCI artifact support", func() {
 		repoPrefix := fmt.Sprintf("command/push/%d", GinkgoRandomSeed())
 		statusKeys := []match.StateKey{
-			foobar.ImageConfigStateKey("application/vnd.unknown.artifact.v1"),
+			foobar.ImageConfigStateKey("application/vnd.oci.empty.v1+json"),
 			foobar.FileBarStateKey,
 		}
 		It("should push files without customized media types", func() {
