@@ -83,6 +83,19 @@ func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descr
 		}
 		nodes = manifest.Blobs
 		subject = manifest.Subject
+
+	case ocispec.MediaTypeImageIndex:
+		var fetched []byte
+		fetched, err = content.FetchAll(ctx, fetcher, node)
+		if err != nil {
+			return
+		}
+		var index ocispec.Index
+		if err = json.Unmarshal(fetched, &index); err != nil {
+			return
+		}
+		nodes = index.Manifests
+		subject = index.Subject
 	default:
 		nodes, err = content.Successors(ctx, fetcher, node)
 	}
@@ -137,53 +150,30 @@ func Referrers(ctx context.Context, target content.ReadOnlyGraphStorage, desc oc
 			if image.Subject == nil || !content.Equal(*image.Subject, desc) {
 				continue
 			}
-			node.ArtifactType = image.Config.MediaType
+			node.ArtifactType = image.ArtifactType
+			if node.ArtifactType == "" {
+				node.ArtifactType = image.Config.MediaType
+			}
 			node.Annotations = image.Annotations
+		case ocispec.MediaTypeImageIndex:
+			fetched, err := fetchBytes(ctx, target, node)
+			if err != nil {
+				return nil, err
+			}
+			var index ocispec.Index
+			if err := json.Unmarshal(fetched, &index); err != nil {
+				return nil, err
+			}
+			if index.Subject == nil || !content.Equal(*index.Subject, desc) {
+				continue
+			}
+			node.ArtifactType = index.ArtifactType
+			node.Annotations = index.Annotations
 		default:
 			continue
 		}
 		if node.ArtifactType != "" && (artifactType == "" || artifactType == node.ArtifactType) {
 			results = append(results, node)
-		}
-	}
-	return results, nil
-}
-
-// FindReferrerPredecessors returns referrer nodes of desc in target.
-func FindReferrerPredecessors(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-	var results []ocispec.Descriptor
-	if repo, ok := src.(registry.ReferrerLister); ok {
-		// get referrers directly
-		err := repo.Referrers(ctx, desc, "", func(referrers []ocispec.Descriptor) error {
-			results = append(results, referrers...)
-			return nil
-		})
-		if err != nil {
-			return nil, err
-		}
-		return results, nil
-	}
-	predecessors, err := src.Predecessors(ctx, desc)
-	if err != nil {
-		return nil, err
-	}
-	for _, node := range predecessors {
-		switch node.MediaType {
-		case MediaTypeArtifactManifest, ocispec.MediaTypeImageManifest:
-			results = append(results, node)
-		case ocispec.MediaTypeImageIndex:
-			fetched, err := fetchBytes(ctx, src, node)
-			if err != nil {
-				return nil, err
-			}
-			// convert to json
-			var index ocispec.Index
-			if err := json.Unmarshal(fetched, &index); err != nil {
-				return nil, err
-			}
-			if index.Subject != nil && content.Equal(*index.Subject, desc) {
-				results = append(results, node)
-			}
 		}
 	}
 	return results, nil
