@@ -83,7 +83,6 @@ func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descr
 		}
 		nodes = manifest.Blobs
 		subject = manifest.Subject
-
 	case ocispec.MediaTypeImageIndex:
 		var fetched []byte
 		fetched, err = content.FetchAll(ctx, fetcher, node)
