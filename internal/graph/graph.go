@@ -172,7 +172,7 @@ func Referrers(ctx context.Context, target content.ReadOnlyGraphStorage, desc oc
 			continue
 		}
 		if artifactType == "" || artifactType == node.ArtifactType {
-			// artifactType is allowed to be empty & empty will pass the filtering by default
+			// the field artifactType in referrers descriptor is allowed to be empty
 			// https://github.com/opencontainers/distribution-spec/issues/458
 			results = append(results, node)
 		}
