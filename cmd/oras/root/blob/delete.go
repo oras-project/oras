@@ -71,8 +71,8 @@ Example - Delete a blob and print its descriptor:
 }
 
 func deleteBlob(ctx context.Context, opts deleteBlobOptions) (err error) {
-	ctx, _ = opts.WithContext(ctx)
-	repo, err := opts.NewRepository(opts.targetRef, nil, opts.Common)
+	ctx, logger := opts.WithContext(ctx)
+	repo, err := opts.NewRepository(opts.targetRef, logger.Warn, opts.Common)
 	if err != nil {
 		return err
 	}
