@@ -262,7 +262,7 @@ var _ = Describe("OCI image layout users:", func() {
 
 	When("running discover command with table output", func() {
 		format := "table"
-		It("should direct referrers of a subject", func() {
+		It("should get direct referrers of a subject", func() {
 			referrers := []ocispec.Descriptor{foobar.SBOMImageReferrer, foobar.SBOMArtifactReferrer}
 			// prepare
 			subjectRef := LayoutRef(GinkgoT().TempDir(), foobar.Tag)

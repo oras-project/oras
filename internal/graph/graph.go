@@ -25,6 +25,34 @@ import (
 	"oras.land/oras/internal/docker"
 )
 
+// MediaTypeArtifactManifest specifies the media type for a content descriptor.
+const MediaTypeArtifactManifest = "application/vnd.oci.artifact.manifest.v1+json"
+
+// Artifact describes an artifact manifest.
+// This structure provides `application/vnd.oci.artifact.manifest.v1+json` mediatype when marshalled to JSON.
+//
+// This manifest type was introduced in image-spec v1.1.0-rc1 and was removed in
+// image-spec v1.1.0-rc3. It is not part of the current image-spec and is kept
+// here for Go compatibility.
+//
+// Reference: https://github.com/opencontainers/image-spec/pull/999
+type Artifact struct {
+	// MediaType is the media type of the object this schema refers to.
+	MediaType string `json:"mediaType"`
+
+	// ArtifactType is the IANA media type of the artifact this schema refers to.
+	ArtifactType string `json:"artifactType"`
+
+	// Blobs is a collection of blobs referenced by this manifest.
+	Blobs []ocispec.Descriptor `json:"blobs,omitempty"`
+
+	// Subject (reference) is an optional link from the artifact to another manifest forming an association between the artifact and the other manifest.
+	Subject *ocispec.Descriptor `json:"subject,omitempty"`
+
+	// Annotations contains arbitrary metadata for the artifact manifest.
+	Annotations map[string]string `json:"annotations,omitempty"`
+}
+
 // Successors returns the nodes directly pointed by the current node, picking
 // out subject and config descriptor if applicable.
 // Returning nil when no subject and config found.
@@ -43,18 +71,30 @@ func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descr
 		nodes = manifest.Layers
 		subject = manifest.Subject
 		config = &manifest.Config
-	case ocispec.MediaTypeArtifactManifest:
+	case MediaTypeArtifactManifest:
 		var fetched []byte
 		fetched, err = content.FetchAll(ctx, fetcher, node)
 		if err != nil {
 			return
 		}
-		var manifest ocispec.Artifact
+		var manifest Artifact
 		if err = json.Unmarshal(fetched, &manifest); err != nil {
 			return
 		}
 		nodes = manifest.Blobs
 		subject = manifest.Subject
+	case ocispec.MediaTypeImageIndex:
+		var fetched []byte
+		fetched, err = content.FetchAll(ctx, fetcher, node)
+		if err != nil {
+			return
+		}
+		var index ocispec.Index
+		if err = json.Unmarshal(fetched, &index); err != nil {
+			return
+		}
+		nodes = index.Manifests
+		subject = index.Subject
 	default:
 		nodes, err = content.Successors(ctx, fetcher, node)
 	}
@@ -83,12 +123,12 @@ func Referrers(ctx context.Context, target content.ReadOnlyGraphStorage, desc oc
 	}
 	for _, node := range predecessors {
 		switch node.MediaType {
-		case ocispec.MediaTypeArtifactManifest:
+		case MediaTypeArtifactManifest:
 			fetched, err := fetchBytes(ctx, target, node)
 			if err != nil {
 				return nil, err
 			}
-			var artifact ocispec.Artifact
+			var artifact Artifact
 			if err := json.Unmarshal(fetched, &artifact); err != nil {
 				return nil, err
 			}
@@ -109,39 +149,31 @@ func Referrers(ctx context.Context, target content.ReadOnlyGraphStorage, desc oc
 			if image.Subject == nil || !content.Equal(*image.Subject, desc) {
 				continue
 			}
-			node.ArtifactType = image.Config.MediaType
+			node.ArtifactType = image.ArtifactType
+			if node.ArtifactType == "" {
+				node.ArtifactType = image.Config.MediaType
+			}
 			node.Annotations = image.Annotations
+		case ocispec.MediaTypeImageIndex:
+			fetched, err := fetchBytes(ctx, target, node)
+			if err != nil {
+				return nil, err
+			}
+			var index ocispec.Index
+			if err := json.Unmarshal(fetched, &index); err != nil {
+				return nil, err
+			}
+			if index.Subject == nil || !content.Equal(*index.Subject, desc) {
+				continue
+			}
+			node.ArtifactType = index.ArtifactType
+			node.Annotations = index.Annotations
 		default:
 			continue
 		}
-		if node.ArtifactType != "" && (artifactType == "" || artifactType == node.ArtifactType) {
-			results = append(results, node)
-		}
-	}
-	return results, nil
-}
-
-// FindReferrerPredecessors returns referrer nodes of desc in target.
-func FindReferrerPredecessors(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-	var results []ocispec.Descriptor
-	if repo, ok := src.(registry.ReferrerLister); ok {
-		// get referrers directly
-		err := repo.Referrers(ctx, desc, "", func(referrers []ocispec.Descriptor) error {
-			results = append(results, referrers...)
-			return nil
-		})
-		if err != nil {
-			return nil, err
-		}
-		return results, nil
-	}
-	predecessors, err := src.Predecessors(ctx, desc)
-	if err != nil {
-		return nil, err
-	}
-	for _, node := range predecessors {
-		switch node.MediaType {
-		case ocispec.MediaTypeArtifactManifest, ocispec.MediaTypeImageManifest:
+		if artifactType == "" || artifactType == node.ArtifactType {
+			// the field artifactType in referrers descriptor is allowed to be empty
+			// https://github.com/opencontainers/distribution-spec/issues/458
 			results = append(results, node)
 		}
 	}

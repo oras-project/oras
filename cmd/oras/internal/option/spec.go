@@ -18,35 +18,39 @@ package option
 import (
 	"fmt"
 
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/pflag"
+	"oras.land/oras-go/v2"
+)
+
+const (
+	ImageSpecV1_1 = "v1.1"
+	ImageSpecV1_0 = "v1.0"
+	// TODO: pending on https://github.com/oras-project/oras-go/issues/568
+	PackManifestTypeImageV1_0 = 0
 )
 
 // ImageSpec option struct.
 type ImageSpec struct {
-	// Manifest type for building artifact
-	ManifestMediaType string
-
-	// specFlag should be provided in form of `<version>-<manifest type>`
-	specFlag string
+	flag     string
+	PackType oras.PackManifestType
 }
 
 // Parse parses flags into the option.
 func (opts *ImageSpec) Parse() error {
-	switch opts.specFlag {
-	case "v1.1-image":
-		opts.ManifestMediaType = ocispec.MediaTypeImageManifest
-	case "v1.1-artifact":
-		opts.ManifestMediaType = ocispec.MediaTypeArtifactManifest
+	switch opts.flag {
+	case ImageSpecV1_1:
+		opts.PackType = oras.PackManifestTypeImageV1_1_0_RC4
+	case ImageSpecV1_0:
+		opts.PackType = PackManifestTypeImageV1_0
 	default:
-		return fmt.Errorf("unknown image specification flag: %q", opts.specFlag)
+		return fmt.Errorf("unknown image specification flag: %q", opts.flag)
 	}
 	return nil
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *ImageSpec) ApplyFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&opts.specFlag, "image-spec", "v1.1-image", "[Experimental] specify manifest type for building artifact. options: v1.1-image, v1.1-artifact")
+	fs.StringVar(&opts.flag, "image-spec", ImageSpecV1_1, fmt.Sprintf("[Experimental] specify manifest type for building artifact. options: %s, %s", ImageSpecV1_1, ImageSpecV1_0))
 }
 
 // distributionSpec option struct.
