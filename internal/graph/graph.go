@@ -83,7 +83,6 @@ func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descr
 		}
 		nodes = manifest.Blobs
 		subject = manifest.Subject
-
 	case ocispec.MediaTypeImageIndex:
 		var fetched []byte
 		fetched, err = content.FetchAll(ctx, fetcher, node)
@@ -172,7 +171,9 @@ func Referrers(ctx context.Context, target content.ReadOnlyGraphStorage, desc oc
 		default:
 			continue
 		}
-		if node.ArtifactType != "" && (artifactType == "" || artifactType == node.ArtifactType) {
+		if artifactType == "" || artifactType == node.ArtifactType {
+			// the field artifactType in referrers descriptor is allowed to be empty
+			// https://github.com/opencontainers/distribution-spec/issues/458
 			results = append(results, node)
 		}
 	}
