@@ -67,14 +67,14 @@ Example - Log in with username and password in an interactive terminal and no TL
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Hostname = args[0]
-			return runLogin(cmd.Context(), opts)
+			return runLogin(cmd.Context(), &opts)
 		},
 	}
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
 
-func runLogin(ctx context.Context, opts loginOptions) (err error) {
+func runLogin(ctx context.Context, opts *loginOptions) (err error) {
 	ctx, logger := opts.WithContext(ctx)
 
 	// prompt for credential

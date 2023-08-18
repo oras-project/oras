@@ -79,7 +79,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runDiscover(cmd.Context(), opts)
+			return runDiscover(cmd.Context(), &opts)
 		},
 	}
 
@@ -90,7 +90,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 	return cmd
 }
 
-func runDiscover(ctx context.Context, opts discoverOptions) error {
+func runDiscover(ctx context.Context, opts *discoverOptions) error {
 	ctx, logger := opts.WithContext(ctx)
 	repo, err := opts.NewReadonlyTarget(ctx, logger.Warn, opts.Common)
 	if err != nil {
@@ -110,7 +110,7 @@ func runDiscover(ctx context.Context, opts discoverOptions) error {
 
 	if opts.outputType == "tree" {
 		root := tree.New(fmt.Sprintf("%s@%s", opts.Path, desc.Digest))
-		err = fetchAllReferrers(ctx, repo, desc, opts.artifactType, root, &opts)
+		err = fetchAllReferrers(ctx, repo, desc, opts.artifactType, root, opts)
 		if err != nil {
 			return err
 		}
@@ -189,7 +189,7 @@ func printDiscoveredReferrersTable(refs []ocispec.Descriptor, verbose bool) erro
 		print(ref.ArtifactType, ref.Digest)
 		if verbose {
 			if err := printJSON(ref); err != nil {
-				return fmt.Errorf("Error printing JSON: %w", err)
+				return fmt.Errorf("Eirror printing JSON: %w", err)
 			}
 		}
 	}
