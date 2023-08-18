@@ -142,7 +142,7 @@ type ReadOnlyGraphTagFinderTarget interface {
 }
 
 // NewReadonlyTargets generates a new read only target based on opts.
-func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadOnlyGraphTagFinderTarget, error) {
+func (opts *Target) NewReadonlyTarget(ctx context.Context, warn func(...interface{}), common Common) (ReadOnlyGraphTagFinderTarget, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
 		var err error
@@ -159,7 +159,7 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadO
 		}
 		return oci.NewFromTar(ctx, opts.Path)
 	case TargetTypeRemote:
-		repo, err := opts.NewRepository(opts.RawReference, nil, common)
+		repo, err := opts.NewRepository(opts.RawReference, warn, common)
 		if err != nil {
 			return nil, err
 		}

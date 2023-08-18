@@ -91,8 +91,8 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 }
 
 func runDiscover(ctx context.Context, opts discoverOptions) error {
-	ctx, _ = opts.WithContext(ctx)
-	repo, err := opts.NewReadonlyTarget(ctx, opts.Common)
+	ctx, logger := opts.WithContext(ctx)
+	repo, err := opts.NewReadonlyTarget(ctx, logger.Warn, opts.Common)
 	if err != nil {
 		return err
 	}
