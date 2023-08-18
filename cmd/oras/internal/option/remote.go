@@ -54,6 +54,7 @@ type Remote struct {
 	distributionSpec      distributionSpec
 	headerFlags           []string
 	headers               http.Header
+	hasWarned             sync.Map
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
@@ -257,12 +258,9 @@ func (opts *Remote) NewRegistry(hostname string, warn func(...interface{}), comm
 	hostname = reg.Reference.Registry
 	reg.PlainHTTP = opts.isPlainHttp(hostname)
 
-	if opts.distributionSpec.referrersAPI == nil || *opts.distributionSpec.referrersAPI {
-		once := sync.Once{}
-		reg.HandleWarning = func(warning remote.Warning) {
-			once.Do(func() {
-				warn(warning.Text)
-			})
+	reg.HandleWarning = func(warning remote.Warning) {
+		if _, ok := opts.hasWarned.LoadOrStore(warning.WarningValue, true); ok {
+			warn(warning.Text)
 		}
 	}
 	if reg.Client, err = opts.authClient(hostname, common.Debug); err != nil {
@@ -283,16 +281,11 @@ func (opts *Remote) NewRepository(reference string, warn func(...interface{}), c
 	if repo.Client, err = opts.authClient(hostname, common.Debug); err != nil {
 		return nil, err
 	}
-
-	if opts.distributionSpec.referrersAPI == nil || *opts.distributionSpec.referrersAPI {
-		once := sync.Once{}
-		repo.HandleWarning = func(warning remote.Warning) {
-			once.Do(func() {
-				warn(warning.Text)
-			})
+	repo.HandleWarning = func(warning remote.Warning) {
+		if _, loaded := opts.hasWarned.LoadOrStore(warning.WarningValue, true); loaded {
+			warn(hostname, warning.Text)
 		}
 	}
-
 	if opts.distributionSpec.referrersAPI != nil {
 		if err := repo.SetReferrersCapability(*opts.distributionSpec.referrersAPI); err != nil {
 			return nil, err
