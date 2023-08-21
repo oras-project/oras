@@ -54,7 +54,7 @@ type Remote struct {
 	distributionSpec      distributionSpec
 	headerFlags           []string
 	headers               http.Header
-	hasWarned             sync.Map
+	warned                sync.Map
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
@@ -250,7 +250,7 @@ func (opts *Remote) Credential() auth.Credential {
 }
 
 // NewRegistry assembles a oras remote registry.
-func (opts *Remote) NewRegistry(hostname string, warn func(...interface{}), common Common) (reg *remote.Registry, err error) {
+func (opts *Remote) NewRegistry(hostname string, warn func(...any), common Common) (reg *remote.Registry, err error) {
 	reg, err = remote.NewRegistry(hostname)
 	if err != nil {
 		return nil, err
@@ -259,7 +259,7 @@ func (opts *Remote) NewRegistry(hostname string, warn func(...interface{}), comm
 	reg.PlainHTTP = opts.isPlainHttp(hostname)
 
 	reg.HandleWarning = func(warning remote.Warning) {
-		if _, ok := opts.hasWarned.LoadOrStore(warning.WarningValue, true); ok {
+		if _, loaded := opts.warned.LoadOrStore(warning.WarningValue, true); !loaded {
 			warn(warning.Text)
 		}
 	}
@@ -270,7 +270,7 @@ func (opts *Remote) NewRegistry(hostname string, warn func(...interface{}), comm
 }
 
 // NewRepository assembles a oras remote repository.
-func (opts *Remote) NewRepository(reference string, warn func(...interface{}), common Common) (repo *remote.Repository, err error) {
+func (opts *Remote) NewRepository(reference string, warn func(...any), common Common) (repo *remote.Repository, err error) {
 	repo, err = remote.NewRepository(reference)
 	if err != nil {
 		return nil, err
@@ -282,7 +282,7 @@ func (opts *Remote) NewRepository(reference string, warn func(...interface{}), c
 		return nil, err
 	}
 	repo.HandleWarning = func(warning remote.Warning) {
-		if _, loaded := opts.hasWarned.LoadOrStore(warning.WarningValue, true); loaded {
+		if _, loaded := opts.warned.LoadOrStore(warning.WarningValue, true); !loaded {
 			warn(hostname, warning.Text)
 		}
 	}
