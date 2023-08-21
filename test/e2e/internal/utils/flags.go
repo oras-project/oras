@@ -15,8 +15,12 @@ limitations under the License.
 
 package utils
 
-const (
-	LayoutFlag = "--oci-layout"
-	FromLayout = "--from-oci-layout"
-	ToLayout   = "--to-oci-layout"
-)
+var Flags = struct {
+	Layout     string
+	FromLayout string
+	ToLayout   string
+}{
+	"--oci-layout",
+	"--from-oci-layout",
+	"--to-oci-layout",
+}

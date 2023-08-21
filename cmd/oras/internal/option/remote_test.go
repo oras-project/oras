@@ -18,13 +18,11 @@ package option
 import (
 	"context"
 	"crypto/rand"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"net/http"
-	nhttp "net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
@@ -46,14 +44,16 @@ var testTagList = struct {
 
 func TestMain(m *testing.M) {
 	// Test server
-	ts = httptest.NewTLSServer(nhttp.HandlerFunc(func(w nhttp.ResponseWriter, r *nhttp.Request) {
+	ts = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p := r.URL.Path
 		m := r.Method
 		switch {
 		case p == "/v2/" && m == "GET":
-			w.WriteHeader(nhttp.StatusOK)
+			w.WriteHeader(http.StatusOK)
 		case p == fmt.Sprintf("/v2/%s/tags/list", testRepo) && m == "GET":
-			json.NewEncoder(w).Encode(testTagList)
+			if err := json.NewEncoder(w).Encode(testTagList); err != nil {
+				http.Error(w, "error encoding", http.StatusBadRequest)
+			}
 		}
 	}))
 	defer ts.Close()
@@ -103,7 +103,7 @@ func TestRemote_authClient_skipTlsVerify(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	req, err := nhttp.NewRequestWithContext(context.Background(), nhttp.MethodGet, ts.URL, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, ts.URL, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -119,9 +119,6 @@ func TestRemote_authClient_CARoots(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	pool := x509.NewCertPool()
-	pool.AddCert(ts.Certificate())
-
 	opts := Remote{
 		CACertFilePath: caPath,
 	}
@@ -129,7 +126,7 @@ func TestRemote_authClient_CARoots(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	req, err := nhttp.NewRequestWithContext(context.Background(), nhttp.MethodGet, ts.URL, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, ts.URL, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -154,7 +151,7 @@ func TestRemote_authClient_resolve(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error when creating auth client: %v", err)
 	}
-	req, err := nhttp.NewRequestWithContext(context.Background(), nhttp.MethodGet, fmt.Sprintf("https://%s:%s", testHost, URL.Port()), nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, fmt.Sprintf("https://%s:%s", testHost, URL.Port()), nil)
 	if err != nil {
 		t.Fatalf("unexpected error when generating request: %v", err)
 	}
@@ -169,9 +166,6 @@ func TestRemote_NewRegistry(t *testing.T) {
 	if err := os.WriteFile(caPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ts.Certificate().Raw}), 0644); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-
-	pool := x509.NewCertPool()
-	pool.AddCert(ts.Certificate())
 
 	opts := struct {
 		Remote
@@ -200,8 +194,6 @@ func TestRemote_NewRepository(t *testing.T) {
 	if err := os.WriteFile(caPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ts.Certificate().Raw}), 0644); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	pool := x509.NewCertPool()
-	pool.AddCert(ts.Certificate())
 	opts := struct {
 		Remote
 		Common
@@ -243,7 +235,10 @@ func TestRemote_NewRepository_Retry(t *testing.T) {
 			http.Error(w, "error", http.StatusTooManyRequests)
 			return
 		}
-		json.NewEncoder(w).Encode(testTagList)
+		err := json.NewEncoder(w).Encode(testTagList)
+		if err != nil {
+			http.Error(w, "error encoding", http.StatusBadRequest)
+		}
 	}))
 	defer ts.Close()
 	opts := struct {
@@ -369,7 +364,7 @@ func TestRemote_parseCustomHeaders(t *testing.T) {
 	tests := []struct {
 		name        string
 		headerFlags []string
-		want        nhttp.Header
+		want        http.Header
 		wantErr     bool
 	}{
 		{

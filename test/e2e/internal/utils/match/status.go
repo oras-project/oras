@@ -20,6 +20,7 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 )
@@ -76,7 +77,7 @@ func newStateMachine(cmd string) *stateMachine {
 		sm.addPath("Skipped")
 		sm.addPath("Exists")
 	default:
-		panic("Unrecognized cmd name " + cmd)
+		ginkgo.Fail("Unrecognized cmd name " + cmd)
 	}
 	return sm
 }
@@ -178,5 +179,5 @@ func (s *statusMatcher) Match(got *gbytes.Buffer) {
 	for _, v := range s.endResult {
 		successCnt += len(v)
 	}
-	gomega.Expect(successCnt).To(gomega.Equal(s.successCount))
+	gomega.Expect(successCnt).To(gomega.Equal(s.successCount), "status output doesn't match")
 }

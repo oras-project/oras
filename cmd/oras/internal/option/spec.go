@@ -18,35 +18,39 @@ package option
 import (
 	"fmt"
 
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/pflag"
+	"oras.land/oras-go/v2"
+)
+
+const (
+	ImageSpecV1_1 = "v1.1"
+	ImageSpecV1_0 = "v1.0"
+	// TODO: pending on https://github.com/oras-project/oras-go/issues/568
+	PackManifestTypeImageV1_0 = 0
 )
 
 // ImageSpec option struct.
 type ImageSpec struct {
-	// Manifest type for building artifact
-	ManifestMediaType string
-
-	// specFlag should be provided in form of `<version>-<manifest type>`
-	specFlag string
+	flag     string
+	PackType oras.PackManifestType
 }
 
 // Parse parses flags into the option.
 func (opts *ImageSpec) Parse() error {
-	switch opts.specFlag {
-	case "v1.1-image":
-		opts.ManifestMediaType = ocispec.MediaTypeImageManifest
-	case "v1.1-artifact":
-		opts.ManifestMediaType = ocispec.MediaTypeArtifactManifest
+	switch opts.flag {
+	case ImageSpecV1_1:
+		opts.PackType = oras.PackManifestTypeImageV1_1_0_RC4
+	case ImageSpecV1_0:
+		opts.PackType = PackManifestTypeImageV1_0
 	default:
-		return fmt.Errorf("unknown image specification flag: %q", opts.specFlag)
+		return fmt.Errorf("unknown image specification flag: %q", opts.flag)
 	}
 	return nil
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *ImageSpec) ApplyFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&opts.specFlag, "image-spec", "v1.1-image", "specify manifest type for building artifact. options: v1.1-image, v1.1-artifact")
+	fs.StringVar(&opts.flag, "image-spec", ImageSpecV1_1, fmt.Sprintf("[Experimental] specify manifest type for building artifact. options: %s, %s", ImageSpecV1_1, ImageSpecV1_0))
 }
 
 // distributionSpec option struct.
@@ -71,7 +75,7 @@ func (opts *distributionSpec) Parse() error {
 		isApi := true
 		opts.referrersAPI = &isApi
 	default:
-		return fmt.Errorf("unknown image specification flag: %q", opts.specFlag)
+		return fmt.Errorf("unknown distribution specification flag: %q", opts.specFlag)
 	}
 	return nil
 }
@@ -79,5 +83,5 @@ func (opts *distributionSpec) Parse() error {
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
 func (opts *distributionSpec) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
 	flagPrefix, notePrefix := applyPrefix(prefix, description)
-	fs.StringVar(&opts.specFlag, flagPrefix+"distribution-spec", "", "set OCI distribution spec version and API option for "+notePrefix+"target. options: v1.1-referrers-api, v1.1-referrers-tag")
+	fs.StringVar(&opts.specFlag, flagPrefix+"distribution-spec", "", "[Preview] set OCI distribution spec version and API option for "+notePrefix+"target. options: v1.1-referrers-api, v1.1-referrers-tag")
 }

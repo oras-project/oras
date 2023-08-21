@@ -43,22 +43,24 @@ fi
 
 oras_container_name="oras-e2e"
 upstream_container_name="oras-e2e-fallback"
+e2e_root="${repo_root}/test/e2e"
 echo " === preparing oras distribution === "
 run_registry \
-  ${repo_root}/test/e2e/testdata/distribution/mount \
+  ${e2e_root}/testdata/distribution/mount \
   ghcr.io/oras-project/registry:v1.0.0-rc.4 \
   $oras_container_name \
   $ORAS_REGISTRY_PORT
 
 echo " === preparing upstream distribution === "
 run_registry \
-  ${repo_root}/test/e2e/testdata/distribution/mount_fallback \
+  ${e2e_root}/testdata/distribution/mount_fallback \
   registry:2.8.1 \
   $upstream_container_name \
   $ORAS_REGISTRY_FALLBACK_PORT
 
 echo " === run tests === "
 if ! ginkgo -r -p --succinct suite; then 
+  echo " === retriving registry error logs === "
   echo '-------- oras distribution trace -------------'
   docker logs -t --tail 200 $oras_container_name
   echo '-------- upstream distribution trace -------------'

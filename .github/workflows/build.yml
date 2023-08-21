@@ -43,7 +43,11 @@ jobs:
         run: make test
       - name: Run E2E Tests
         run: |
-          sh $GITHUB_WORKSPACE/test/e2e/scripts/e2e.sh $GITHUB_WORKSPACE --clean
+          if [[ $GITHUB_REF_NAME == v* && $GITHUB_REF_TYPE == tag ]]; then
+            make teste2e
+          else
+            make teste2e-covdata
+          fi
         env:
           ORAS_PATH: bin/linux/amd64/oras
       - name: Check Version

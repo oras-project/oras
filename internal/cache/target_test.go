@@ -177,7 +177,9 @@ func TestProxy_fetchReference(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 			// write data to the response if this is the first request
 			if requestCount == 1 {
-				w.Write(blob)
+				if _, err := w.Write(blob); err != nil {
+					t.Errorf("Error writing blobs: %v", err)
+				}
 			}
 			atomic.AddInt64(&successCount, 1)
 			return

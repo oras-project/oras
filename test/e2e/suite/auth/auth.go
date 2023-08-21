@@ -16,6 +16,8 @@ limitations under the License.
 package scenario
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -52,8 +54,53 @@ var _ = Describe("Common registry user", Ordered, func() {
 			ORAS("login", Host, "-u", Username, "-p", Password, "--registry-config", AuthConfigPath).
 				WithTimeOut(20*time.Second).
 				MatchContent("Login Succeeded\n").
-				MatchErrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").
-				WithDescription("login with username&password flags").Exec()
+				MatchErrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").Exec()
+		})
+
+		It("should fail if no username input", func() {
+			ORAS("login", Host, "--registry-config", AuthConfigPath).
+				WithTimeOut(20 * time.Second).
+				WithInput(strings.NewReader("")).
+				MatchKeyWords("username:").
+				ExpectFailure().
+				Exec()
+		})
+
+		It("should fail if no password input", func() {
+			ORAS("login", Host, "--registry-config", AuthConfigPath).
+				WithTimeOut(20*time.Second).
+				MatchKeyWords("Username: ", "Password: ").
+				WithInput(strings.NewReader(fmt.Sprintf("%s\n", Username))).ExpectFailure().Exec()
+		})
+
+		It("should fail if password is empty", func() {
+			ORAS("login", Host, "--registry-config", AuthConfigPath).
+				WithTimeOut(20*time.Second).
+				MatchKeyWords("Username: ", "Password: ").
+				MatchErrKeyWords("Error: password required").
+				WithInput(strings.NewReader(fmt.Sprintf("%s\n\n", Username))).ExpectFailure().Exec()
+		})
+
+		It("should fail if no token input", func() {
+			ORAS("login", Host, "--registry-config", AuthConfigPath).
+				WithTimeOut(20*time.Second).
+				MatchKeyWords("Username: ", "Token: ").
+				WithInput(strings.NewReader("\n")).ExpectFailure().Exec()
+		})
+
+		It("should fail if token is empty", func() {
+			ORAS("login", Host, "--registry-config", AuthConfigPath).
+				WithTimeOut(20*time.Second).
+				MatchKeyWords("Username: ", "Token: ").
+				MatchErrKeyWords("Error: token required").
+				WithInput(strings.NewReader("\n\n")).ExpectFailure().Exec()
+		})
+
+		It("should use prompted input", func() {
+			ORAS("login", Host, "--registry-config", AuthConfigPath).
+				WithTimeOut(20*time.Second).
+				WithInput(strings.NewReader(fmt.Sprintf("%s\n%s\n", Username, Password))).
+				MatchKeyWords("Username: ", "Password: ", "Login Succeeded\n").Exec()
 		})
 	})
 })

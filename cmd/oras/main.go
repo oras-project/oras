@@ -16,35 +16,17 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"os"
+	"os/signal"
 
-	"github.com/spf13/cobra"
-	"oras.land/oras/cmd/oras/blob"
-	"oras.land/oras/cmd/oras/manifest"
-	"oras.land/oras/cmd/oras/repository"
-	"oras.land/oras/cmd/oras/tag"
+	"oras.land/oras/cmd/oras/root"
 )
 
 func main() {
-	cmd := &cobra.Command{
-		Use:          "oras [command]",
-		SilenceUsage: true,
-	}
-	cmd.AddCommand(
-		pullCmd(),
-		pushCmd(),
-		loginCmd(),
-		logoutCmd(),
-		versionCmd(),
-		discoverCmd(),
-		copyCmd(),
-		attachCmd(),
-		blob.Cmd(),
-		manifest.Cmd(),
-		tag.TagCmd(),
-		repository.Cmd(),
-	)
-	if err := cmd.Execute(); err != nil {
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+	if err := root.New().ExecuteContext(ctx); err != nil {
 		os.Exit(1)
 	}
 }
