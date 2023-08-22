@@ -2,8 +2,6 @@ module oras.land/oras
 
 go 1.20
 
-replace oras.land/oras-go/v2 => github.com/Wwwsylvia/oras-go/v2 v2.0.0-20230821122310-d774911dfd59
-
 require (
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.0-rc4
@@ -13,7 +11,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/term v0.11.0
 	gopkg.in/yaml.v3 v3.0.1
-	oras.land/oras-go/v2 v2.2.1-0.20230807082644-bbe92af00542
+	oras.land/oras-go/v2 v2.2.1-0.20230822062013-e6d40b6ff29f
 )
 
 require (
