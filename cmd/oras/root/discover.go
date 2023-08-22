@@ -189,7 +189,7 @@ func printDiscoveredReferrersTable(refs []ocispec.Descriptor, verbose bool) erro
 		print(ref.ArtifactType, ref.Digest)
 		if verbose {
 			if err := printJSON(ref); err != nil {
-				return fmt.Errorf("Eirror printing JSON: %w", err)
+				return fmt.Errorf("error printing JSON: %w", err)
 			}
 		}
 	}
