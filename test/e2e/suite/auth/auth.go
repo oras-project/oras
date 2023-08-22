@@ -27,38 +27,38 @@ import (
 var _ = Describe("Common registry user", Ordered, func() {
 	When("logging out", Ordered, func() {
 		It("should use logout command to logout", func() {
-			ORAS("logout", Host, "--registry-config", AuthConfigPath).Exec()
+			ORAS("logout", ZotHost, "--registry-config", AuthConfigPath).Exec()
 		})
 
 		It("should run commands without logging in", func() {
-			RunWithoutLogin("attach", Host+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
-			ORAS("copy", Host+"/repo:from", Host+"/repo:to", "--from-registry-config", AuthConfigPath, "--to-registry-config", AuthConfigPath).
+			RunWithoutLogin("attach", ZotHost+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
+			ORAS("copy", ZotHost+"/repo:from", ZotHost+"/repo:to", "--from-registry-config", AuthConfigPath, "--to-registry-config", AuthConfigPath).
 				ExpectFailure().
 				MatchErrKeyWords("Error:", "credential required").
 				WithDescription("fail without logging in").Exec()
-			RunWithoutLogin("discover", Host+"/repo:tag")
-			RunWithoutLogin("push", "-a", "key=value", Host+"/repo:tag")
-			RunWithoutLogin("pull", Host+"/repo:tag")
-			RunWithoutLogin("manifest", "fetch", Host+"/repo:tag")
-			RunWithoutLogin("blob", "delete", Host+"/repo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-			RunWithoutLogin("blob", "push", Host+"/repo", WriteTempFile("blob", "test"))
-			RunWithoutLogin("tag", Host+"/repo:tag", "tag1")
-			RunWithoutLogin("repo", "ls", Host)
-			RunWithoutLogin("repo", "tags", RegistryRef(Host, "repo", ""))
-			RunWithoutLogin("manifest", "fetch-config", Host+"/repo:tag")
+			RunWithoutLogin("discover", ZotHost+"/repo:tag")
+			RunWithoutLogin("push", "-a", "key=value", ZotHost+"/repo:tag")
+			RunWithoutLogin("pull", ZotHost+"/repo:tag")
+			RunWithoutLogin("manifest", "fetch", ZotHost+"/repo:tag")
+			RunWithoutLogin("blob", "delete", ZotHost+"/repo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+			RunWithoutLogin("blob", "push", ZotHost+"/repo", WriteTempFile("blob", "test"))
+			RunWithoutLogin("tag", ZotHost+"/repo:tag", "tag1")
+			RunWithoutLogin("repo", "ls", ZotHost)
+			RunWithoutLogin("repo", "tags", RegistryRef(ZotHost, "repo", ""))
+			RunWithoutLogin("manifest", "fetch-config", ZotHost+"/repo:tag")
 		})
 	})
 
 	When("logging in", func() {
 		It("should use basic auth", func() {
-			ORAS("login", Host, "-u", Username, "-p", Password, "--registry-config", AuthConfigPath).
+			ORAS("login", ZotHost, "-u", Username, "-p", Password, "--registry-config", AuthConfigPath).
 				WithTimeOut(20*time.Second).
 				MatchContent("Login Succeeded\n").
 				MatchErrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").Exec()
 		})
 
 		It("should fail if no username input", func() {
-			ORAS("login", Host, "--registry-config", AuthConfigPath).
+			ORAS("login", ZotHost, "--registry-config", AuthConfigPath).
 				WithTimeOut(20 * time.Second).
 				WithInput(strings.NewReader("")).
 				MatchKeyWords("username:").
@@ -67,14 +67,14 @@ var _ = Describe("Common registry user", Ordered, func() {
 		})
 
 		It("should fail if no password input", func() {
-			ORAS("login", Host, "--registry-config", AuthConfigPath).
+			ORAS("login", ZotHost, "--registry-config", AuthConfigPath).
 				WithTimeOut(20*time.Second).
 				MatchKeyWords("Username: ", "Password: ").
 				WithInput(strings.NewReader(fmt.Sprintf("%s\n", Username))).ExpectFailure().Exec()
 		})
 
 		It("should fail if password is empty", func() {
-			ORAS("login", Host, "--registry-config", AuthConfigPath).
+			ORAS("login", ZotHost, "--registry-config", AuthConfigPath).
 				WithTimeOut(20*time.Second).
 				MatchKeyWords("Username: ", "Password: ").
 				MatchErrKeyWords("Error: password required").
@@ -82,14 +82,14 @@ var _ = Describe("Common registry user", Ordered, func() {
 		})
 
 		It("should fail if no token input", func() {
-			ORAS("login", Host, "--registry-config", AuthConfigPath).
+			ORAS("login", ZotHost, "--registry-config", AuthConfigPath).
 				WithTimeOut(20*time.Second).
 				MatchKeyWords("Username: ", "Token: ").
 				WithInput(strings.NewReader("\n")).ExpectFailure().Exec()
 		})
 
 		It("should fail if token is empty", func() {
-			ORAS("login", Host, "--registry-config", AuthConfigPath).
+			ORAS("login", ZotHost, "--registry-config", AuthConfigPath).
 				WithTimeOut(20*time.Second).
 				MatchKeyWords("Username: ", "Token: ").
 				MatchErrKeyWords("Error: token required").
@@ -97,7 +97,7 @@ var _ = Describe("Common registry user", Ordered, func() {
 		})
 
 		It("should use prompted input", func() {
-			ORAS("login", Host, "--registry-config", AuthConfigPath).
+			ORAS("login", ZotHost, "--registry-config", AuthConfigPath).
 				WithTimeOut(20*time.Second).
 				WithInput(strings.NewReader(fmt.Sprintf("%s\n%s\n", Username, Password))).
 				MatchKeyWords("Username: ", "Password: ", "Login Succeeded\n").Exec()
