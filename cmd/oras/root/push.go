@@ -102,11 +102,11 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 				return err
 			}
 			switch opts.PackType {
-			case option.PackManifestTypeImageV1_0:
+			case oras.PackManifestVersion1_0:
 				if opts.manifestConfigRef != "" && opts.artifactType != "" {
 					return errors.New("--artifact-type and --config cannot both be provided for 1.0 OCI image")
 				}
-			case oras.PackManifestTypeImageV1_1_0_RC4:
+			case oras.PackManifestVersion1_1_RC4:
 				if opts.manifestConfigRef == "" && opts.artifactType == "" {
 					opts.artifactType = oras.MediaTypeUnknownArtifact
 				}
@@ -133,11 +133,9 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	}
 
 	// prepare pack
-	packOpts := oras.PackOptions{
+	packOpts := oras.PackManifestOptions{
 		ConfigAnnotations:   annotations[option.AnnotationConfig],
 		ManifestAnnotations: annotations[option.AnnotationManifest],
-		PackImageManifest:   true,
-		PackManifestType:    opts.ImageSpec.PackType,
 	}
 	store, err := file.New("")
 	if err != nil {
@@ -160,9 +158,10 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	if err != nil {
 		return err
 	}
+	packOpts.Layers = descs
 	memoryStore := memory.New()
 	pack := func() (ocispec.Descriptor, error) {
-		root, err := oras.Pack(ctx, memoryStore, opts.artifactType, descs, packOpts)
+		root, err := oras.PackManifest(ctx, memoryStore, opts.PackType, opts.artifactType, packOpts)
 		if err != nil {
 			return ocispec.Descriptor{}, err
 		}
