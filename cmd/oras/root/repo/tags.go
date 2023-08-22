@@ -68,7 +68,7 @@ Example - [Experimental] Show tags associated with a digest:
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return showTags(cmd.Context(), &opts)
+			return showTags(cmd.Context(), opts)
 		},
 	}
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the tag specified by `last`")
@@ -77,7 +77,7 @@ Example - [Experimental] Show tags associated with a digest:
 	return cmd
 }
 
-func showTags(ctx context.Context, opts *showTagsOptions) error {
+func showTags(ctx context.Context, opts showTagsOptions) error {
 	ctx, logger := opts.WithContext(ctx)
 	finder, err := opts.NewReadonlyTarget(ctx, logger, opts.Common)
 	if err != nil {

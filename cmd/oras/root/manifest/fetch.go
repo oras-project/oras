@@ -79,7 +79,7 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 		},
 		Aliases: []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fetchManifest(cmd.Context(), &opts)
+			return fetchManifest(cmd.Context(), opts)
 		},
 	}
 
@@ -89,7 +89,7 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 	return cmd
 }
 
-func fetchManifest(ctx context.Context, opts *fetchOptions) (fetchErr error) {
+func fetchManifest(ctx context.Context, opts fetchOptions) (fetchErr error) {
 	ctx, logger := opts.WithContext(ctx)
 
 	target, err := opts.NewReadonlyTarget(ctx, logger, opts.Common)

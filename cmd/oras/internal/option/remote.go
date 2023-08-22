@@ -55,7 +55,7 @@ type Remote struct {
 	distributionSpec      distributionSpec
 	headerFlags           []string
 	headers               http.Header
-	warned                sync.Map
+	warned                *sync.Map
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
@@ -107,6 +107,7 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 
 // Parse tries to read password with optional cmd prompt.
 func (opts *Remote) Parse() error {
+	opts.warned = &sync.Map{}
 	if err := opts.parseCustomHeaders(); err != nil {
 		return err
 	}

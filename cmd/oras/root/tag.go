@@ -66,7 +66,7 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return tagManifest(cmd.Context(), &opts)
+			return tagManifest(cmd.Context(), opts)
 		},
 	}
 
@@ -75,7 +75,7 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 	return cmd
 }
 
-func tagManifest(ctx context.Context, opts *tagOptions) error {
+func tagManifest(ctx context.Context, opts tagOptions) error {
 	ctx, logger := opts.WithContext(ctx)
 	target, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {

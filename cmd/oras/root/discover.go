@@ -79,7 +79,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runDiscover(cmd.Context(), &opts)
+			return runDiscover(cmd.Context(), opts)
 		},
 	}
 
@@ -90,7 +90,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 	return cmd
 }
 
-func runDiscover(ctx context.Context, opts *discoverOptions) error {
+func runDiscover(ctx context.Context, opts discoverOptions) error {
 	ctx, logger := opts.WithContext(ctx)
 	repo, err := opts.NewReadonlyTarget(ctx, logger, opts.Common)
 	if err != nil {
@@ -110,7 +110,7 @@ func runDiscover(ctx context.Context, opts *discoverOptions) error {
 
 	if opts.outputType == "tree" {
 		root := tree.New(fmt.Sprintf("%s@%s", opts.Path, desc.Digest))
-		err = fetchAllReferrers(ctx, repo, desc, opts.artifactType, root, opts)
+		err = opts.fetchAllReferrers(ctx, repo, desc, opts.artifactType, root)
 		if err != nil {
 			return err
 		}
@@ -138,7 +138,7 @@ func runDiscover(ctx context.Context, opts *discoverOptions) error {
 	return nil
 }
 
-func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, node *tree.Node, opts *discoverOptions) error {
+func (opts *discoverOptions) fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, node *tree.Node) error {
 	results, err := graph.Referrers(ctx, repo, desc, artifactType)
 	if err != nil {
 		return err
@@ -156,14 +156,14 @@ func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc 
 				referrerNode.AddPath(strings.TrimSpace(string(bytes)))
 			}
 		}
-		err := fetchAllReferrers(
+		err := opts.fetchAllReferrers(
 			ctx, repo,
 			ocispec.Descriptor{
 				Digest:    r.Digest,
 				Size:      r.Size,
 				MediaType: r.MediaType,
 			},
-			artifactType, referrerNode, opts)
+			artifactType, referrerNode)
 		if err != nil {
 			return err
 		}

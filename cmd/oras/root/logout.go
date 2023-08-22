@@ -44,7 +44,7 @@ Example - Logout:
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.hostname = args[0]
-			return runLogout(cmd.Context(), &opts)
+			return runLogout(cmd.Context(), opts)
 		},
 	}
 
@@ -53,7 +53,7 @@ Example - Logout:
 	return cmd
 }
 
-func runLogout(ctx context.Context, opts *logoutOptions) error {
+func runLogout(ctx context.Context, opts logoutOptions) error {
 	if opts.debug {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
