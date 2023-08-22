@@ -249,21 +249,28 @@ func (opts *Remote) parseCustomHeaders() error {
 func (opts *Remote) Credential() auth.Credential {
 	return credential.Credential(opts.Username, opts.Password)
 }
-
-// NewRegistry assembles a oras remote registry.
-func (opts *Remote) NewRegistry(hostname string, logger logrus.FieldLogger, common Common) (reg *remote.Registry, err error) {
-	reg, err = remote.NewRegistry(hostname)
-	if err != nil {
-		return nil, err
-	}
-	hostname = reg.Reference.Registry
-	reg.PlainHTTP = opts.isPlainHttp(hostname)
-	reg.HandleWarning = func(warning remote.Warning) {
-		if _, loaded := opts.warned.LoadOrStore(warning.WarningValue, true); !loaded {
+func (opts *Remote) handleWarning(registry string, logger logrus.FieldLogger) func(warning remote.Warning) {
+	logger = logger.WithField("registry", registry)
+	return func(warning remote.Warning) {
+		if _, loaded := opts.warned.LoadOrStore(struct {
+			string
+			remote.WarningValue
+		}{registry, warning.WarningValue}, true); !loaded {
 			logger.Warn(warning.Text)
 		}
 	}
-	if reg.Client, err = opts.authClient(hostname, common.Debug); err != nil {
+}
+
+// NewRegistry assembles a oras remote registry.
+func (opts *Remote) NewRegistry(registry string, logger logrus.FieldLogger, common Common) (reg *remote.Registry, err error) {
+	reg, err = remote.NewRegistry(registry)
+	if err != nil {
+		return nil, err
+	}
+	registry = reg.Reference.Registry
+	reg.PlainHTTP = opts.isPlainHttp(registry)
+	reg.HandleWarning = opts.handleWarning(registry, logger)
+	if reg.Client, err = opts.authClient(registry, common.Debug); err != nil {
 		return nil, err
 	}
 	return
@@ -275,18 +282,13 @@ func (opts *Remote) NewRepository(reference string, logger logrus.FieldLogger, c
 	if err != nil {
 		return nil, err
 	}
-	hostname := repo.Reference.Registry
-	repo.PlainHTTP = opts.isPlainHttp(hostname)
+	registry := repo.Reference.Registry
+	repo.PlainHTTP = opts.isPlainHttp(registry)
 	repo.SkipReferrersGC = true
-	if repo.Client, err = opts.authClient(hostname, common.Debug); err != nil {
+	if repo.Client, err = opts.authClient(registry, common.Debug); err != nil {
 		return nil, err
 	}
-	logger = logger.WithField("hostname", hostname)
-	repo.HandleWarning = func(warning remote.Warning) {
-		if _, loaded := opts.warned.LoadOrStore(warning.WarningValue, true); !loaded {
-			logger.Warn(warning.Text)
-		}
-	}
+	repo.HandleWarning = opts.handleWarning(registry, logger)
 	if opts.distributionSpec.referrersAPI != nil {
 		if err := repo.SetReferrersCapability(*opts.distributionSpec.referrersAPI); err != nil {
 			return nil, err
