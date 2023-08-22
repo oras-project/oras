@@ -111,7 +111,7 @@ func parseOCILayoutReference(raw string) (path string, ref string, err error) {
 }
 
 // NewTarget generates a new target based on opts.
-func (opts *Target) NewTarget(common Common, warn func(...interface{})) (oras.GraphTarget, error) {
+func (opts *Target) NewTarget(common Common, warn func(...any)) (oras.GraphTarget, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
 		var err error
@@ -142,7 +142,7 @@ type ReadOnlyGraphTagFinderTarget interface {
 }
 
 // NewReadonlyTargets generates a new read only target based on opts.
-func (opts *Target) NewReadonlyTarget(ctx context.Context, warn func(...interface{}), common Common) (ReadOnlyGraphTagFinderTarget, error) {
+func (opts *Target) NewReadonlyTarget(ctx context.Context, warn func(...any), common Common) (ReadOnlyGraphTagFinderTarget, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
 		var err error
