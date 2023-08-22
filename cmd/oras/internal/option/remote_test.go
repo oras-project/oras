@@ -30,6 +30,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2/registry/remote/auth"
 )
@@ -180,7 +181,7 @@ func TestRemote_NewRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	reg, err := opts.NewRegistry(uri.Host, nil, opts.Common)
+	reg, err := opts.NewRegistry(uri.Host, logrus.New(), opts.Common)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -208,7 +209,7 @@ func TestRemote_NewRepository(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	repo, err := opts.NewRepository(uri.Host+"/"+testRepo, nil, opts.Common)
+	repo, err := opts.NewRepository(uri.Host+"/"+testRepo, logrus.New(), opts.Common)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -255,7 +256,7 @@ func TestRemote_NewRepository_Retry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	repo, err := opts.NewRepository(uri.Host+"/"+testRepo, nil, opts.Common)
+	repo, err := opts.NewRepository(uri.Host+"/"+testRepo, logrus.New(), opts.Common)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
