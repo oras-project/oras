@@ -30,9 +30,12 @@ go test oras.land/oras/test/e2e/suite/${suite_name}
 This is super handy when you want to do step-by-step debugging from command-line or via an IDE. If you need to debug certain specs, use [focused specs](https://onsi.github.io/ginkgo/#focused-specs) but don't check it in.
 
 ### 4. Testing Registry Services
-The backend of E2E tests are two registry services: [oras-distribution](https://github.com/oras-project/distribution) and [upstream distribution](https://github.com/distribution/distribution). The former is expected to support image and artifact media types and referrer API; The latter is expected to only support image media type with subject and provide referrers via [tag schema](https://github.com/opencontainers/distribution-spec/blob/v1.1.0-rc1/spec.md#referrers-tag-schema). 
+The backend of E2E tests are three registry services: 
+- [oras-distribution](https://github.com/oras-project/distribution): registry service supports artifact and image types in [image-spec 1.1.0 rc2](https://github.com/opencontainers/image-spec/tree/v1.1.0-rc2) and referrer API
+- [upstream distribution](https://github.com/distribution/distribution): registry service supports image media type with subject and provide referrers via [tag schema](https://github.com/opencontainers/distribution-spec/blob/v1.1.0-rc1/spec.md#referrers-tag-schema). 
+- [zot](https://github.com/project-zot/zot): registry service supports artifact and image types in [image-spec 1.1.0 rc4](https://github.com/opencontainers/image-spec/tree/v1.1.0-rc4) and referrer API
 
-You can run scenario test suite against your own registry services via setting `ORAS_REGISTRY_HOST` or `ORAS_REGISTRY_FALLBACK_HOST` environmental variables.
+You can run scenario test suite against your own registry services via setting `ORAS_REGISTRY_HOST`, `ORAS_REGISTRY_FALLBACK_HOST` and `ZOT_REGISTRY_HOST` environmental variables.
 
 ### 5. Constant Build & Watch
 This is a good choice if you want to debug certain re-runnable specs:

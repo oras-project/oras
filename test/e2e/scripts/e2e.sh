@@ -17,6 +17,8 @@ export ORAS_REGISTRY_PORT="5000"
 export ORAS_REGISTRY_HOST="localhost:${ORAS_REGISTRY_PORT}"
 export ORAS_REGISTRY_FALLBACK_PORT="6000"
 export ORAS_REGISTRY_FALLBACK_HOST="localhost:${ORAS_REGISTRY_FALLBACK_PORT}"
+export ZOT_REGISTRY_PORT="7000"
+export ZOT_REGISTRY_HOST="localhost:${ZOT_REGISTRY_PORT}"
 
 repo_root=$1
 if [ -z "${repo_root}" ]; then
@@ -36,14 +38,16 @@ trap "cd $cwd" EXIT
 # start registries
 . ${repo_root}/test/e2e/scripts/common.sh
 
-if [ "$clean_up" = '--clean' ]; then
-    echo " === setting deferred clean up jobs  === "
-    trap "try_clean_up oras-e2e oras-e2e-fallback" EXIT
-fi
-
+e2e_root="${repo_root}/test/e2e"
 oras_container_name="oras-e2e"
 upstream_container_name="oras-e2e-fallback"
-e2e_root="${repo_root}/test/e2e"
+zot_container_name="oras-e2e-zot"
+
+if [ "$clean_up" = '--clean' ]; then
+    echo " === setting deferred clean up jobs  === "
+    trap "try_clean_up $oras_container_name $upstream_container_name $zot_container_name" EXIT
+fi
+
 echo " === preparing oras distribution === "
 run_registry \
   ${e2e_root}/testdata/distribution/mount \
@@ -58,6 +62,13 @@ run_registry \
   $upstream_container_name \
   $ORAS_REGISTRY_FALLBACK_PORT
 
+echo " === preparing zot === "
+try_clean_up $zot_container_name
+docker run -d -p $ZOT_REGISTRY_PORT:5000 -it \
+  --name $zot_container_name \
+  --mount type=bind,source="${e2e_root}/testdata/zot/",target=/etc/zot \
+  --rm ghcr.io/project-zot/zot-linux-amd64:v2.0.0-rc6
+
 echo " === run tests === "
 if ! ginkgo -r -p --succinct suite; then 
   echo " === retriving registry error logs === "
@@ -65,5 +76,7 @@ if ! ginkgo -r -p --succinct suite; then
   docker logs -t --tail 200 $oras_container_name
   echo '-------- upstream distribution trace -------------'
   docker logs -t --tail 200 $upstream_container_name
+  echo '-------- zot trace -------------'
+  docker logs -t --tail 200 $zot_container_name
   exit 1
 fi

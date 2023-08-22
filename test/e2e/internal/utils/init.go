@@ -36,6 +36,9 @@ var Host string
 // FallbackHost points to the registry service where fallback E2E specs will be run against.
 var FallbackHost string
 
+// ZotHost points to the zot service where E2E specs will be run against.
+var ZotHost string
+
 func init() {
 	Host = os.Getenv(RegHostKey)
 	if Host == "" {
@@ -55,6 +58,16 @@ func init() {
 		fmt.Fprintf(os.Stderr, "cannot find fallback host name in %s, using %s instead\n", FallbackRegHostKey, FallbackHost)
 	}
 	ref.Registry = FallbackHost
+	if err := ref.ValidateRegistry(); err != nil {
+		panic(err)
+	}
+
+	ZotHost = os.Getenv(ZotHostKey)
+	if ZotHost == "" {
+		ZotHost = "localhost:7000"
+		fmt.Fprintf(os.Stderr, "cannot find zot host name in %s, using %s instead\n", ZotHostKey, ZotHost)
+	}
+	ref.Registry = ZotHost
 	if err := ref.ValidateRegistry(); err != nil {
 		panic(err)
 	}
