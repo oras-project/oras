@@ -258,7 +258,6 @@ func (opts *Remote) NewRegistry(hostname string, logger logrus.FieldLogger, comm
 	}
 	hostname = reg.Reference.Registry
 	reg.PlainHTTP = opts.isPlainHttp(hostname)
-
 	reg.HandleWarning = func(warning remote.Warning) {
 		if _, loaded := opts.warned.LoadOrStore(warning.WarningValue, true); !loaded {
 			logger.Warn(warning.Text)
