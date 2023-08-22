@@ -67,6 +67,7 @@ func (opts *Remote) EnableDistributionSpecFlag() {
 func (opts *Remote) ApplyFlags(fs *pflag.FlagSet) {
 	opts.ApplyFlagsWithPrefix(fs, "", "")
 	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
+	opts.warned = &sync.Map{}
 }
 
 func applyPrefix(prefix, description string) (flagPrefix, notePrefix string) {
@@ -107,7 +108,6 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 
 // Parse tries to read password with optional cmd prompt.
 func (opts *Remote) Parse() error {
-	opts.warned = &sync.Map{}
 	if err := opts.parseCustomHeaders(); err != nil {
 		return err
 	}
