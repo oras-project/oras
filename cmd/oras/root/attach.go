@@ -126,13 +126,13 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 	}
 
 	// prepare push
-	packOpts := oras.PackOptions{
+	packOpts := oras.PackManifestOptions{
 		Subject:             &subject,
 		ManifestAnnotations: annotations[option.AnnotationManifest],
-		PackImageManifest:   true,
+		Layers:              descs,
 	}
 	pack := func() (ocispec.Descriptor, error) {
-		return oras.Pack(ctx, store, opts.artifactType, descs, packOpts)
+		return oras.PackManifest(ctx, store, oras.PackManifestVersion1_1_RC4, opts.artifactType, packOpts)
 	}
 
 	graphCopyOptions := oras.DefaultCopyGraphOptions
