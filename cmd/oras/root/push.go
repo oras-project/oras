@@ -173,7 +173,7 @@ func runPush(ctx context.Context, opts *pushOptions) error {
 	}
 
 	// prepare push
-	dst, err := opts.NewTarget(opts.Common, logger.Warn)
+	dst, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
 		return err
 	}

@@ -77,7 +77,7 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 
 func tagManifest(ctx context.Context, opts *tagOptions) error {
 	ctx, logger := opts.WithContext(ctx)
-	target, err := opts.NewTarget(opts.Common, logger.Warn)
+	target, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
 		return err
 	}

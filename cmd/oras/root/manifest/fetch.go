@@ -92,7 +92,7 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 func fetchManifest(ctx context.Context, opts *fetchOptions) (fetchErr error) {
 	ctx, logger := opts.WithContext(ctx)
 
-	target, err := opts.NewReadonlyTarget(ctx, logger.Warn, opts.Common)
+	target, err := opts.NewReadonlyTarget(ctx, logger, opts.Common)
 	if err != nil {
 		return err
 	}

@@ -100,7 +100,7 @@ func runCopy(ctx context.Context, opts *copyOptions) error {
 	ctx, logger := opts.WithContext(ctx)
 
 	// Prepare source
-	src, err := opts.From.NewReadonlyTarget(ctx, logger.Warn, opts.Common)
+	src, err := opts.From.NewReadonlyTarget(ctx, logger, opts.Common)
 	if err != nil {
 		return err
 	}
@@ -109,7 +109,7 @@ func runCopy(ctx context.Context, opts *copyOptions) error {
 	}
 
 	// Prepare destination
-	dst, err := opts.To.NewTarget(opts.Common, logger.Warn)
+	dst, err := opts.To.NewTarget(opts.Common, logger)
 	if err != nil {
 		return err
 	}

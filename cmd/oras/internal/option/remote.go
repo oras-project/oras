@@ -28,6 +28,7 @@ import (
 	"sync"
 
 	credentials "github.com/oras-project/oras-credentials-go"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
@@ -250,7 +251,7 @@ func (opts *Remote) Credential() auth.Credential {
 }
 
 // NewRegistry assembles a oras remote registry.
-func (opts *Remote) NewRegistry(hostname string, warn func(...any), common Common) (reg *remote.Registry, err error) {
+func (opts *Remote) NewRegistry(hostname string, logger logrus.FieldLogger, common Common) (reg *remote.Registry, err error) {
 	reg, err = remote.NewRegistry(hostname)
 	if err != nil {
 		return nil, err
@@ -260,7 +261,7 @@ func (opts *Remote) NewRegistry(hostname string, warn func(...any), common Commo
 
 	reg.HandleWarning = func(warning remote.Warning) {
 		if _, loaded := opts.warned.LoadOrStore(warning.WarningValue, true); !loaded {
-			warn(warning.Text)
+			logger.Warn(warning.Text)
 		}
 	}
 	if reg.Client, err = opts.authClient(hostname, common.Debug); err != nil {
@@ -270,7 +271,7 @@ func (opts *Remote) NewRegistry(hostname string, warn func(...any), common Commo
 }
 
 // NewRepository assembles a oras remote repository.
-func (opts *Remote) NewRepository(reference string, warn func(...any), common Common) (repo *remote.Repository, err error) {
+func (opts *Remote) NewRepository(reference string, logger logrus.FieldLogger, common Common) (repo *remote.Repository, err error) {
 	repo, err = remote.NewRepository(reference)
 	if err != nil {
 		return nil, err
@@ -281,9 +282,10 @@ func (opts *Remote) NewRepository(reference string, warn func(...any), common Co
 	if repo.Client, err = opts.authClient(hostname, common.Debug); err != nil {
 		return nil, err
 	}
+	logger = logger.WithField("hostname", hostname)
 	repo.HandleWarning = func(warning remote.Warning) {
 		if _, loaded := opts.warned.LoadOrStore(warning.WarningValue, true); !loaded {
-			warn(hostname, warning.Text)
+			logger.Warn(warning.Text)
 		}
 	}
 	if opts.distributionSpec.referrersAPI != nil {

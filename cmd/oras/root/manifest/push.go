@@ -107,7 +107,7 @@ func pushManifest(ctx context.Context, opts *pushOptions) error {
 	ctx, logger := opts.WithContext(ctx)
 	var target oras.Target
 	var err error
-	target, err = opts.NewTarget(opts.Common, logger.Warn)
+	target, err = opts.NewTarget(opts.Common, logger)
 	if err != nil {
 		return err
 	}

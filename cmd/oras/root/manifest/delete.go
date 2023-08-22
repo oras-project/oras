@@ -77,7 +77,7 @@ Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614
 
 func deleteManifest(ctx context.Context, opts *deleteOptions) error {
 	ctx, logger := opts.WithContext(ctx)
-	repo, err := opts.NewRepository(opts.targetRef, logger.Warn, opts.Common)
+	repo, err := opts.NewRepository(opts.targetRef, logger, opts.Common)
 	if err != nil {
 		return err
 	}

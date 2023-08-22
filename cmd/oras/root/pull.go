@@ -182,7 +182,7 @@ func runPull(ctx context.Context, opts *pullOptions) error {
 		return ret, nil
 	}
 
-	target, err := opts.NewReadonlyTarget(ctx, logger.Warn, opts.Common)
+	target, err := opts.NewReadonlyTarget(ctx, logger, opts.Common)
 	if err != nil {
 		return err
 	}

@@ -22,6 +22,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
@@ -111,7 +112,7 @@ func parseOCILayoutReference(raw string) (path string, ref string, err error) {
 }
 
 // NewTarget generates a new target based on opts.
-func (opts *Target) NewTarget(common Common, warn func(...any)) (oras.GraphTarget, error) {
+func (opts *Target) NewTarget(common Common, logger logrus.FieldLogger) (oras.GraphTarget, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
 		var err error
@@ -121,7 +122,7 @@ func (opts *Target) NewTarget(common Common, warn func(...any)) (oras.GraphTarge
 		}
 		return oci.New(opts.Path)
 	case TargetTypeRemote:
-		repo, err := opts.NewRepository(opts.RawReference, warn, common)
+		repo, err := opts.NewRepository(opts.RawReference, logger, common)
 		if err != nil {
 			return nil, err
 		}
@@ -142,7 +143,7 @@ type ReadOnlyGraphTagFinderTarget interface {
 }
 
 // NewReadonlyTargets generates a new read only target based on opts.
-func (opts *Target) NewReadonlyTarget(ctx context.Context, warn func(...any), common Common) (ReadOnlyGraphTagFinderTarget, error) {
+func (opts *Target) NewReadonlyTarget(ctx context.Context, logger logrus.FieldLogger, common Common) (ReadOnlyGraphTagFinderTarget, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
 		var err error
@@ -159,7 +160,7 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, warn func(...any), co
 		}
 		return oci.NewFromTar(ctx, opts.Path)
 	case TargetTypeRemote:
-		repo, err := opts.NewRepository(opts.RawReference, warn, common)
+		repo, err := opts.NewRepository(opts.RawReference, logger, common)
 		if err != nil {
 			return nil, err
 		}

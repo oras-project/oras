@@ -109,7 +109,7 @@ func runAttach(ctx context.Context, opts *attachOptions) error {
 	}
 	defer store.Close()
 
-	dst, err := opts.NewTarget(opts.Common, logger.Warn)
+	dst, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
 		return err
 	}
