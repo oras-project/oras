@@ -25,23 +25,21 @@ import (
 const (
 	ImageSpecV1_1 = "v1.1"
 	ImageSpecV1_0 = "v1.0"
-	// TODO: pending on https://github.com/oras-project/oras-go/issues/568
-	PackManifestTypeImageV1_0 = 0
 )
 
 // ImageSpec option struct.
 type ImageSpec struct {
 	flag     string
-	PackType oras.PackManifestType
+	PackType oras.PackManifestVersion
 }
 
 // Parse parses flags into the option.
 func (opts *ImageSpec) Parse() error {
 	switch opts.flag {
 	case ImageSpecV1_1:
-		opts.PackType = oras.PackManifestTypeImageV1_1_0_RC4
+		opts.PackType = oras.PackManifestVersion1_1_RC4
 	case ImageSpecV1_0:
-		opts.PackType = PackManifestTypeImageV1_0
+		opts.PackType = oras.PackManifestVersion1_0
 	default:
 		return fmt.Errorf("unknown image specification flag: %q", opts.flag)
 	}
