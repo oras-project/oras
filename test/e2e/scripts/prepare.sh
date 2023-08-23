@@ -30,7 +30,6 @@ if [ -z "${repo_root}" ]; then
     echo "  prepare.sh <repo_root>"
     exit 1
 fi
-e2e_root="${repo_root}/test/e2e"
 
 echo " === installing ginkgo  === "
 repo_root=$(realpath --canonicalize-existing ${repo_root})
@@ -40,25 +39,27 @@ trap "cd $cwd" EXIT
 
 # start registries
 . ${repo_root}/test/e2e/scripts/common.sh
-
-
-echo " === preparing oras distribution === "
+echo " >>> preparing: oras distribution >>> "
+e2e_root="${repo_root}/test/e2e"
 run_registry \
   ${e2e_root}/testdata/distribution/mount \
   ghcr.io/oras-project/registry:v1.0.0-rc.4 \
   $ORAS_CTR_NAME \
   $ORAS_REGISTRY_PORT
+echo " <<< prepared : oras distribution <<< "
 
-echo " === preparing upstream distribution === "
+echo " >>> preparing: upstream distribution >>> "
 run_registry \
   ${e2e_root}/testdata/distribution/mount_fallback \
   registry:2.8.1 \
   $UPSTREAM_CTR_NAME \
   $ORAS_REGISTRY_FALLBACK_PORT
+echo "  prepared : upstream distribution  "
 
-echo " === preparing zot === "
+echo " >>> preparing: zot >>> "
 try_clean_up $ZOT_CTR_NAME
 docker run -d -p $ZOT_REGISTRY_PORT:5000 -it \
   --name $ZOT_CTR_NAME \
   --mount type=bind,source="${e2e_root}/testdata/zot/",target=/etc/zot \
   --rm ghcr.io/project-zot/zot-linux-amd64:v2.0.0-rc6
+echo " <<< prepared : zot <<< "
