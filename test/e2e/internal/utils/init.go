@@ -124,5 +124,7 @@ func init() {
 		gomega.Expect(cmd.Run()).ShouldNot(gomega.HaveOccurred())
 		cmd = exec.Command(ORASPath, "login", FallbackHost, "-u", Username, "-p", Password)
 		gomega.Expect(cmd.Run()).ShouldNot(gomega.HaveOccurred())
+		cmd = exec.Command(ORASPath, "login", ZotHost, "-u", Username, "-p", Password)
+		gomega.Expect(cmd.Run()).ShouldNot(gomega.HaveOccurred())
 	})
 }
