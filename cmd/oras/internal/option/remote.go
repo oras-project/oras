@@ -290,11 +290,11 @@ func (opts *Remote) NewRepository(reference string, common Common, logger logrus
 	}
 	registry := repo.Reference.Registry
 	repo.PlainHTTP = opts.isPlainHttp(registry)
-	repo.SkipReferrersGC = true
+	repo.HandleWarning = opts.handleWarning(registry, logger)
 	if repo.Client, err = opts.authClient(registry, common.Debug); err != nil {
 		return nil, err
 	}
-	repo.HandleWarning = opts.handleWarning(registry, logger)
+	repo.SkipReferrersGC = true
 	if opts.distributionSpec.referrersAPI != nil {
 		if err := repo.SetReferrersCapability(*opts.distributionSpec.referrersAPI); err != nil {
 			return nil, err
