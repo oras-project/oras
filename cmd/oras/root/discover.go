@@ -110,7 +110,7 @@ func runDiscover(ctx context.Context, opts discoverOptions) error {
 
 	if opts.outputType == "tree" {
 		root := tree.New(fmt.Sprintf("%s@%s", opts.Path, desc.Digest))
-		err = opts.fetchAllReferrers(ctx, repo, desc, opts.artifactType, root)
+		err = fetchAllReferrers(ctx, repo, desc, opts.artifactType, root, &opts)
 		if err != nil {
 			return err
 		}
@@ -138,7 +138,7 @@ func runDiscover(ctx context.Context, opts discoverOptions) error {
 	return nil
 }
 
-func (opts *discoverOptions) fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, node *tree.Node) error {
+func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, node *tree.Node, opts *discoverOptions) error {
 	results, err := graph.Referrers(ctx, repo, desc, artifactType)
 	if err != nil {
 		return err
@@ -156,14 +156,14 @@ func (opts *discoverOptions) fetchAllReferrers(ctx context.Context, repo oras.Re
 				referrerNode.AddPath(strings.TrimSpace(string(bytes)))
 			}
 		}
-		err := opts.fetchAllReferrers(
+		err := fetchAllReferrers(
 			ctx, repo,
 			ocispec.Descriptor{
 				Digest:    r.Digest,
 				Size:      r.Size,
 				MediaType: r.MediaType,
 			},
-			artifactType, referrerNode)
+			artifactType, referrerNode, opts)
 		if err != nil {
 			return err
 		}
