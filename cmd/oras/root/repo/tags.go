@@ -79,7 +79,7 @@ Example - [Experimental] Show tags associated with a digest:
 
 func showTags(ctx context.Context, opts showTagsOptions) error {
 	ctx, logger := opts.WithContext(ctx)
-	finder, err := opts.NewReadonlyTarget(ctx, logger, opts.Common)
+	finder, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
 		return err
 	}

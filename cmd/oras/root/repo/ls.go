@@ -70,7 +70,7 @@ Example - List the repositories under the registry that include values lexically
 
 func listRepository(ctx context.Context, opts repositoryOptions) error {
 	ctx, logger := opts.WithContext(ctx)
-	reg, err := opts.Remote.NewRegistry(opts.hostname, logger, opts.Common)
+	reg, err := opts.Remote.NewRegistry(opts.hostname, opts.Common, logger)
 	if err != nil {
 		return err
 	}

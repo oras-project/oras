@@ -123,7 +123,7 @@ func (opts *Target) NewTarget(common Common, logger logrus.FieldLogger) (oras.Gr
 		}
 		return oci.New(opts.Path)
 	case TargetTypeRemote:
-		repo, err := opts.NewRepository(opts.RawReference, logger, common)
+		repo, err := opts.NewRepository(opts.RawReference, common, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -144,7 +144,7 @@ type ReadOnlyGraphTagFinderTarget interface {
 }
 
 // NewReadonlyTargets generates a new read only target based on opts.
-func (opts *Target) NewReadonlyTarget(ctx context.Context, logger logrus.FieldLogger, common Common) (ReadOnlyGraphTagFinderTarget, error) {
+func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common, logger logrus.FieldLogger) (ReadOnlyGraphTagFinderTarget, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
 		var err error
@@ -161,7 +161,7 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, logger logrus.FieldLo
 		}
 		return oci.NewFromTar(ctx, opts.Path)
 	case TargetTypeRemote:
-		repo, err := opts.NewRepository(opts.RawReference, logger, common)
+		repo, err := opts.NewRepository(opts.RawReference, common, logger)
 		if err != nil {
 			return nil, err
 		}

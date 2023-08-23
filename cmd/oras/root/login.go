@@ -108,7 +108,7 @@ func runLogin(ctx context.Context, opts loginOptions) (err error) {
 	if err != nil {
 		return err
 	}
-	remote, err := opts.Remote.NewRegistry(opts.Hostname, logger, opts.Common)
+	remote, err := opts.Remote.NewRegistry(opts.Hostname, opts.Common, logger)
 	if err != nil {
 		return err
 	}

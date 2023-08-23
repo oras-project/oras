@@ -88,7 +88,7 @@ Example - Fetch and print the prettified descriptor of the config:
 func fetchConfig(ctx context.Context, opts fetchConfigOptions) (fetchErr error) {
 	ctx, logger := opts.WithContext(ctx)
 
-	repo, err := opts.NewReadonlyTarget(ctx, logger, opts.Common)
+	repo, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
 		return err
 	}

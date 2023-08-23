@@ -263,7 +263,7 @@ func (opts *Remote) handleWarning(registry string, logger logrus.FieldLogger) fu
 }
 
 // NewRegistry assembles a oras remote registry.
-func (opts *Remote) NewRegistry(registry string, logger logrus.FieldLogger, common Common) (reg *remote.Registry, err error) {
+func (opts *Remote) NewRegistry(registry string, common Common, logger logrus.FieldLogger) (reg *remote.Registry, err error) {
 	reg, err = remote.NewRegistry(registry)
 	if err != nil {
 		return nil, err
@@ -278,7 +278,7 @@ func (opts *Remote) NewRegistry(registry string, logger logrus.FieldLogger, comm
 }
 
 // NewRepository assembles a oras remote repository.
-func (opts *Remote) NewRepository(reference string, logger logrus.FieldLogger, common Common) (repo *remote.Repository, err error) {
+func (opts *Remote) NewRepository(reference string, common Common, logger logrus.FieldLogger) (repo *remote.Repository, err error) {
 	repo, err = remote.NewRepository(reference)
 	if err != nil {
 		return nil, err
