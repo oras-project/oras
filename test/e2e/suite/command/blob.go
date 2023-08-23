@@ -164,7 +164,7 @@ var _ = Describe("ORAS beginners:", func() {
 	})
 })
 
-var _ = Describe("Common registry users:", func() {
+var _ = Describe("1.1 registry users:", func() {
 	repoFmt := fmt.Sprintf("command/blob/%%s/%d/%%s", GinkgoRandomSeed())
 	When("running `blob delete`", func() {
 		It("should delete a blob with interactive confirmation", func() {

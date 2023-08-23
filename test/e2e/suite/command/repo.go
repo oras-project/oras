@@ -64,7 +64,7 @@ var _ = Describe("ORAS beginners:", func() {
 	})
 })
 
-var _ = Describe("Common registry users:", func() {
+var _ = Describe("1.1 registry users:", func() {
 	When("running `repo ls`", func() {
 		It("should list repositories", func() {
 			ORAS("repository", "list", Host).MatchKeyWords(ImageRepo).Exec()

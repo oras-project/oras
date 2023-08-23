@@ -42,7 +42,7 @@ var _ = Describe("ORAS beginners:", func() {
 	})
 })
 
-var _ = Describe("Common registry users:", func() {
+var _ = Describe("1.1 registry users:", func() {
 	var tagAndValidate = func(reg string, repo string, tagOrDigest string, digest string, tags ...string) {
 		out := ORAS(append([]string{"tag", RegistryRef(reg, repo, tagOrDigest)}, tags...)...).MatchKeyWords(tags...).Exec().Out
 		hint := regexp.QuoteMeta(fmt.Sprintf("Tagging [registry] %s", RegistryRef(reg, repo, digest)))
