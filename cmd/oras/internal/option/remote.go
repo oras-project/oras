@@ -55,7 +55,7 @@ type Remote struct {
 	distributionSpec      distributionSpec
 	headerFlags           []string
 	headers               http.Header
-	warned                *sync.Map
+	warned                map[string]*sync.Map
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
@@ -67,7 +67,6 @@ func (opts *Remote) EnableDistributionSpecFlag() {
 func (opts *Remote) ApplyFlags(fs *pflag.FlagSet) {
 	opts.ApplyFlagsWithPrefix(fs, "", "")
 	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
-	opts.warned = &sync.Map{}
 }
 
 func applyPrefix(prefix, description string) (flagPrefix, notePrefix string) {
@@ -250,13 +249,19 @@ func (opts *Remote) parseCustomHeaders() error {
 func (opts *Remote) Credential() auth.Credential {
 	return credential.Credential(opts.Username, opts.Password)
 }
+
 func (opts *Remote) handleWarning(registry string, logger logrus.FieldLogger) func(warning remote.Warning) {
+	if opts.warned == nil {
+		opts.warned = make(map[string]*sync.Map)
+	}
+	warned := opts.warned[registry]
+	if warned == nil {
+		warned = &sync.Map{}
+		opts.warned[registry] = warned
+	}
 	logger = logger.WithField("registry", registry)
 	return func(warning remote.Warning) {
-		if _, loaded := opts.warned.LoadOrStore(struct {
-			string
-			remote.WarningValue
-		}{registry, warning.WarningValue}, true); !loaded {
+		if _, loaded := warned.LoadOrStore(warning.WarningValue, struct{}{}); !loaded {
 			logger.Warn(warning.Text)
 		}
 	}

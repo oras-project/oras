@@ -201,7 +201,7 @@ func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
 	opts.From.ApplyFlagsWithPrefix(fs, "from", "source")
 	opts.To.ApplyFlagsWithPrefix(fs, "to", "destination")
 	fs.StringArrayVarP(&opts.resolveFlag, "resolve", "", nil, "base DNS rules formatted in `host:port:address[:address_port]` for --from-resolve and --to-resolve")
-	opts.From.warned = &sync.Map{}
+	opts.From.warned = make(map[string]*sync.Map)
 	opts.To.warned = opts.From.warned
 }
 
