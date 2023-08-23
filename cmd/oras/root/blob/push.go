@@ -96,9 +96,9 @@ Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
 }
 
 func pushBlob(ctx context.Context, opts pushBlobOptions) (err error) {
-	ctx, _ = opts.WithContext(ctx)
+	ctx, logger := opts.WithContext(ctx)
 
-	repo, err := opts.NewTarget(opts.Common)
+	repo, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
 		return err
 	}

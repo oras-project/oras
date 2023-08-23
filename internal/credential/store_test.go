@@ -26,10 +26,12 @@ import (
 func TestNewStoreError(t *testing.T) {
 	tmpDir := t.TempDir()
 	filename := path.Join(tmpDir, "testfile.txt")
-	_, err := os.Create(filename)
+	file, err := os.Create(filename)
 	if err != nil {
 		t.Errorf("error: cannot create file : %v", err)
 	}
+	defer file.Close()
+
 	err = os.Chmod(filename, 000)
 	if err != nil {
 		t.Errorf("error: cannot change file permissions: %v", err)

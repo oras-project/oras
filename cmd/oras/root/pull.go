@@ -103,7 +103,7 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 }
 
 func runPull(ctx context.Context, opts pullOptions) error {
-	ctx, _ = opts.WithContext(ctx)
+	ctx, logger := opts.WithContext(ctx)
 	// Copy Options
 	var printed sync.Map
 	copyOptions := oras.DefaultCopyOptions
@@ -182,7 +182,7 @@ func runPull(ctx context.Context, opts pullOptions) error {
 		return ret, nil
 	}
 
-	target, err := opts.NewReadonlyTarget(ctx, opts.Common)
+	target, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
 		return err
 	}

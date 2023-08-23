@@ -91,8 +91,8 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 }
 
 func runDiscover(ctx context.Context, opts discoverOptions) error {
-	ctx, _ = opts.WithContext(ctx)
-	repo, err := opts.NewReadonlyTarget(ctx, opts.Common)
+	ctx, logger := opts.WithContext(ctx)
+	repo, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
 		return err
 	}
@@ -189,7 +189,7 @@ func printDiscoveredReferrersTable(refs []ocispec.Descriptor, verbose bool) erro
 		print(ref.ArtifactType, ref.Digest)
 		if verbose {
 			if err := printJSON(ref); err != nil {
-				return fmt.Errorf("Error printing JSON: %w", err)
+				return fmt.Errorf("error printing JSON: %w", err)
 			}
 		}
 	}
