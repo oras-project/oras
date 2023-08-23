@@ -84,10 +84,10 @@ var _ = Describe("Common OCI artifact users:", Ordered, func() {
 
 			// FIXME: oras distribution doesn't support OCI image with artifactType field
 			// Below test can be run after https://github.com/oras-project/oras/issues/1071 is done.
-			// session = ORAS("discover", subject, "-o", "json", "--artifact-type", "test.artifact2").Exec()
-			// digest = string(Binary("jq", "-r", ".manifests[].digest").WithInput(session.Out).Exec().Out.Contents())
-			// fetched = ORAS("manifest", "fetch", RegistryRef(Host, repo, digest)).MatchKeyWords(foobar.AttachFileMedia).Exec()
-			// MatchFile(filepath.Join(tempDir, pulledManifest), string(fetched.Out.Contents()), DefaultTimeout)
+			session = ORAS("discover", subject, "-o", "json", "--artifact-type", "test.artifact2").Exec()
+			digest = string(Binary("jq", "-r", ".manifests[].digest").WithInput(session.Out).Exec().Out.Contents())
+			fetched = ORAS("manifest", "fetch", RegistryRef(Host, repo, digest)).MatchKeyWords(foobar.AttachFileMedia).Exec()
+			MatchFile(filepath.Join(tempDir, pulledManifest), string(fetched.Out.Contents()), DefaultTimeout)
 
 			ORAS("pull", RegistryRef(Host, repo, string(digest)), "-v", "-o", pullRoot, "--include-subject").
 				MatchStatus(append(foobar.FileStateKeys, foobar.AttachFileStateKey), true, 4).
