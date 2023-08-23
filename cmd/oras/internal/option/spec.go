@@ -29,17 +29,17 @@ const (
 
 // ImageSpec option struct.
 type ImageSpec struct {
-	flag     string
-	PackType oras.PackManifestVersion
+	flag        string
+	PackVersion oras.PackManifestVersion
 }
 
 // Parse parses flags into the option.
 func (opts *ImageSpec) Parse() error {
 	switch opts.flag {
 	case ImageSpecV1_1:
-		opts.PackType = oras.PackManifestVersion1_1_RC4
+		opts.PackVersion = oras.PackManifestVersion1_1_RC4
 	case ImageSpecV1_0:
-		opts.PackType = oras.PackManifestVersion1_0
+		opts.PackVersion = oras.PackManifestVersion1_0
 	default:
 		return fmt.Errorf("unknown image specification flag: %q", opts.flag)
 	}
