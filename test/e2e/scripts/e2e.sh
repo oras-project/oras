@@ -13,62 +13,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-export ORAS_REGISTRY_PORT="5000"
-export ORAS_REGISTRY_HOST="localhost:${ORAS_REGISTRY_PORT}"
-export ORAS_REGISTRY_FALLBACK_PORT="6000"
-export ORAS_REGISTRY_FALLBACK_HOST="localhost:${ORAS_REGISTRY_FALLBACK_PORT}"
-export ZOT_REGISTRY_PORT="7000"
-export ZOT_REGISTRY_HOST="localhost:${ZOT_REGISTRY_PORT}"
-
-repo_root=$1
-if [ -z "${repo_root}" ]; then
-    echo "repository root path is not provided."
+# help
+help () {
     echo "Usage"
     echo "  e2e.sh <repo_root> [--clean]"
     exit 1
+}
+
+# 1. Prepare
+repo_root=$1
+if [ -z "${repo_root}" ]; then
+    echo "repository root path is not provided."
+    help
 fi
-clean_up=$2
 
-echo " === installing ginkgo  === "
-repo_root=$(realpath --canonicalize-existing ${repo_root})
-cwd=$(pwd)
-cd ${repo_root}/test/e2e && go install github.com/onsi/ginkgo/v2/ginkgo@latest
-trap "cd $cwd" EXIT
+clean=$2
+if [ "${clean}" != '--clean' ] && [ -n "${clean}" ]; then
+    echo "invalid flag found: ${clean}"
+    help
+fi
 
-# start registries
-. ${repo_root}/test/e2e/scripts/common.sh
+. ${repo_root}/test/e2e/scripts/prepare.sh $1 $2
 
-e2e_root="${repo_root}/test/e2e"
-oras_container_name="oras-e2e"
-upstream_container_name="oras-e2e-fallback"
-zot_container_name="oras-e2e-zot"
-
-if [ "$clean_up" = '--clean' ]; then
+if [ "${clean}" = '--clean' ]; then
     echo " === setting deferred clean up jobs  === "
-    trap "try_clean_up $oras_container_name $upstream_container_name $zot_container_name" EXIT
+    trap "try_clean_up $ORAS_CTR_NAME $UPSTREAM_CTR_NAME $ZOT_CTR_NAME" EXIT
 fi
 
-echo " === preparing oras distribution === "
-run_registry \
-  ${e2e_root}/testdata/distribution/mount \
-  ghcr.io/oras-project/registry:v1.0.0-rc.4 \
-  $oras_container_name \
-  $ORAS_REGISTRY_PORT
-
-echo " === preparing upstream distribution === "
-run_registry \
-  ${e2e_root}/testdata/distribution/mount_fallback \
-  registry:2.8.1 \
-  $upstream_container_name \
-  $ORAS_REGISTRY_FALLBACK_PORT
-
-echo " === preparing zot === "
-try_clean_up $zot_container_name
-docker run -d -p $ZOT_REGISTRY_PORT:5000 -it \
-  --name $zot_container_name \
-  --mount type=bind,source="${e2e_root}/testdata/zot/",target=/etc/zot \
-  --rm ghcr.io/project-zot/zot-linux-amd64:v2.0.0-rc6
-
+# 2. Test
 echo " === run tests === "
 if ! ginkgo -r -p --succinct suite; then 
   echo " === retriving registry error logs === "
