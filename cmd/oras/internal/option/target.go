@@ -201,12 +201,12 @@ func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
 	opts.From.ApplyFlagsWithPrefix(fs, "from", "source")
 	opts.To.ApplyFlagsWithPrefix(fs, "to", "destination")
 	fs.StringArrayVarP(&opts.resolveFlag, "resolve", "", nil, "base DNS rules formatted in `host:port:address[:address_port]` for --from-resolve and --to-resolve")
-	opts.From.warned = make(map[string]*sync.Map)
-	opts.To.warned = opts.From.warned
 }
 
 // Parse parses user-provided flags and arguments into option struct.
 func (opts *BinaryTarget) Parse() error {
+	opts.From.warned = make(map[string]*sync.Map)
+	opts.To.warned = opts.From.warned
 	// resolve are parsed in array order, latter will overwrite former
 	opts.From.resolveFlag = append(opts.resolveFlag, opts.From.resolveFlag...)
 	opts.To.resolveFlag = append(opts.resolveFlag, opts.To.resolveFlag...)
