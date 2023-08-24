@@ -1,6 +1,6 @@
 module oras.land/oras
 
-go 1.20
+go 1.21
 
 require (
 	github.com/opencontainers/go-digest v1.0.0
