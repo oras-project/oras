@@ -101,7 +101,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 			if err := option.Parse(&opts); err != nil {
 				return err
 			}
-			switch opts.PackType {
+			switch opts.PackVersion {
 			case oras.PackManifestVersion1_0:
 				if opts.manifestConfigRef != "" && opts.artifactType != "" {
 					return errors.New("--artifact-type and --config cannot both be provided for 1.0 OCI image")
@@ -161,7 +161,7 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	packOpts.Layers = descs
 	memoryStore := memory.New()
 	pack := func() (ocispec.Descriptor, error) {
-		root, err := oras.PackManifest(ctx, memoryStore, opts.PackType, opts.artifactType, packOpts)
+		root, err := oras.PackManifest(ctx, memoryStore, opts.PackVersion, opts.artifactType, packOpts)
 		if err != nil {
 			return ocispec.Descriptor{}, err
 		}
