@@ -42,7 +42,7 @@ parts:
       - on amd64 to s390x:
         - TARGET_ARCH: "s390x"
     build-snaps:
-      - go/1.20/stable
+      - go/1.21/stable
     build-packages:
       - make
     stage-packages:
