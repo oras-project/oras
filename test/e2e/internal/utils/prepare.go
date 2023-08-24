@@ -28,12 +28,6 @@ import (
 	"github.com/onsi/gomega/gbytes"
 )
 
-func PrepareRepository() string {
-	tempDir := GinkgoT().TempDir()
-	Expect(CopyTestFiles(tempDir)).ShouldNot(HaveOccurred())
-	return tempDir
-}
-
 // PrepareTempFiles copies test data into a temp folder and return it.
 func PrepareTempFiles() string {
 	tempDir := GinkgoT().TempDir()
