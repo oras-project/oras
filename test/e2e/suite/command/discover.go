@@ -66,7 +66,7 @@ var _ = Describe("ORAS beginners:", func() {
 	})
 })
 
-var _ = Describe("Common registry users:", func() {
+var _ = Describe("1.1 registry users:", func() {
 	subjectRef := RegistryRef(Host, ArtifactRepo, foobar.Tag)
 	When("running discover command with json output", func() {
 		format := "json"
@@ -137,7 +137,7 @@ var _ = Describe("Common registry users:", func() {
 	})
 })
 
-var _ = Describe("Fallback registry users:", func() {
+var _ = Describe("1.0 registry users:", func() {
 	subjectRef := RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag)
 	When("running discover command", func() {
 		It("should discover direct referrers of a subject via json output", func() {

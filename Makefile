@@ -37,7 +37,7 @@ test: tidy vendor check-encoding  ## tidy and run tests
 
 .PHONY: teste2e
 teste2e:  ## run end to end tests
-	./test/e2e/scripts/e2e.sh $(shell git rev-parse --show-toplevel) --clean 
+	./test/e2e/scripts/e2e.sh $(shell git rev-parse --show-toplevel) --clean
 
 .PHONY: covhtml
 covhtml:  ## look at code coverage

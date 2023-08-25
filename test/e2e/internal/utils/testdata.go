@@ -25,6 +25,7 @@ const (
 	// env
 	RegHostKey         = "ORAS_REGISTRY_HOST"
 	FallbackRegHostKey = "ORAS_REGISTRY_FALLBACK_HOST"
+	ZOTHostKey         = "ZOT_REGISTRY_HOST"
 )
 
 var (

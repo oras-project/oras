@@ -68,7 +68,7 @@ func CompareRef(src, dst string) {
 	Expect(srcManifest).To(Equal(dstManifest))
 }
 
-var _ = Describe("Common registry users:", func() {
+var _ = Describe("1.1 registry users:", func() {
 	When("running `cp`", func() {
 		It("should copy an image to a new repository via tag", func() {
 			src := RegistryRef(Host, ImageRepo, foobar.Tag)

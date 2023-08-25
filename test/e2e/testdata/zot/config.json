@@ -1,0 +1,17 @@
+{
+    "storage": {
+        "rootDirectory": "/etc/zot"
+    },
+    "http": {
+        "address": "0.0.0.0",
+        "port": "5000",
+        "auth": {
+            "htpasswd": {
+                "path": "/etc/zot/passwd_bcrypt"
+            }
+        }
+    },
+    "log": {
+        "level": "debug"
+    }
+}

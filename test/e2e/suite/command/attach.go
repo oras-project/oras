@@ -67,14 +67,14 @@ var _ = Describe("ORAS beginners:", func() {
 	})
 })
 
-var _ = Describe("Common registry users:", func() {
+var _ = Describe("1.1 registry users:", func() {
 	When("running attach command", func() {
 		It("should attach a file to a subject", func() {
 			testRepo := attachTestRepo("simple")
 			tempDir := PrepareTempFiles()
 			subjectRef := RegistryRef(Host, testRepo, foobar.Tag)
 			prepare(RegistryRef(Host, ImageRepo, foobar.Tag), subjectRef)
-			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				WithWorkDir(tempDir).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
 		})
@@ -87,7 +87,7 @@ var _ = Describe("Common registry users:", func() {
 			subjectRef := RegistryRef(Host, testRepo, foobar.Tag)
 			prepare(RegistryRef(Host, ImageRepo, foobar.Tag), subjectRef)
 			// test
-			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName).
+			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName).
 				WithWorkDir(tempDir).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
 			// validate
@@ -105,7 +105,7 @@ var _ = Describe("Common registry users:", func() {
 			subjectRef := RegistryRef(Host, testRepo, foobar.Tag)
 			prepare(RegistryRef(Host, ImageRepo, foobar.Tag), subjectRef)
 			// test
-			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				WithWorkDir(tempDir).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
 			// validate
@@ -124,7 +124,7 @@ var _ = Describe("Common registry users:", func() {
 			prepare(RegistryRef(Host, ImageRepo, foobar.Tag), subjectRef)
 			statusKey := foobar.AttachFileStateKey
 			statusKey.Name = absAttachFileName
-			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", absAttachFileName, foobar.AttachFileMedia), "--disable-path-validation").
+			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", absAttachFileName, foobar.AttachFileMedia), "--disable-path-validation").
 				MatchStatus([]match.StateKey{statusKey}, false, 1).
 				Exec()
 		})
@@ -137,14 +137,14 @@ var _ = Describe("Common registry users:", func() {
 			prepare(RegistryRef(Host, ImageRepo, foobar.Tag), subjectRef)
 			statusKey := foobar.AttachFileStateKey
 			statusKey.Name = absAttachFileName
-			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", absAttachFileName, foobar.AttachFileMedia)).
+			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", absAttachFileName, foobar.AttachFileMedia)).
 				ExpectFailure().
 				Exec()
 		})
 	})
 })
 
-var _ = Describe("Fallback registry users:", func() {
+var _ = Describe("1.0 registry users:", func() {
 	When("running attach command", func() {
 		It("should attach a file via a OCI Image", func() {
 			testRepo := attachTestRepo("fallback/image")
@@ -152,7 +152,7 @@ var _ = Describe("Fallback registry users:", func() {
 			subjectRef := RegistryRef(FallbackHost, testRepo, foobar.Tag)
 			prepare(RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef)
 			// test
-			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				WithWorkDir(tempDir).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
 
@@ -170,7 +170,7 @@ var _ = Describe("Fallback registry users:", func() {
 			subjectRef := RegistryRef(FallbackHost, testRepo, foobar.Tag)
 			prepare(RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef)
 			// test
-			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				WithWorkDir(tempDir).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
 
@@ -188,7 +188,7 @@ var _ = Describe("Fallback registry users:", func() {
 			subjectRef := RegistryRef(FallbackHost, testRepo, foobar.Tag)
 			prepare(RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef)
 			// test
-			ORAS("attach", "--artifact-type", "test.attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--distribution-spec", "v1.1-referrers-tag").
+			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--distribution-spec", "v1.1-referrers-tag").
 				WithWorkDir(tempDir).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
 
@@ -211,7 +211,7 @@ var _ = Describe("OCI image layout users:", func() {
 			root := PrepareTempFiles()
 			subjectRef := LayoutRef(root, foobar.Tag)
 			prepare(root)
-			ORAS("attach", "--artifact-type", "test.attach", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+			ORAS("attach", "--artifact-type", "test/attach", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				WithWorkDir(root).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
 		})
@@ -223,7 +223,7 @@ var _ = Describe("OCI image layout users:", func() {
 			subjectRef := LayoutRef(root, foobar.Tag)
 			prepare(root)
 			// test
-			ORAS("attach", "--artifact-type", "test.attach", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName).
+			ORAS("attach", "--artifact-type", "test/attach", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName).
 				WithWorkDir(root).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
 			// validate
@@ -240,7 +240,7 @@ var _ = Describe("OCI image layout users:", func() {
 			subjectRef := LayoutRef(root, foobar.Tag)
 			prepare(root)
 			// test
-			ORAS("attach", "--artifact-type", "test.attach", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+			ORAS("attach", "--artifact-type", "test/attach", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				WithWorkDir(root).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
 
