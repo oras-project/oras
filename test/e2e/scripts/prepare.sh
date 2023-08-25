@@ -58,8 +58,9 @@ echo "  prepared : upstream distribution  "
 
 echo " >>> preparing: zot >>> "
 try_clean_up $ZOT_CTR_NAME
-docker run -d -p $ZOT_REGISTRY_PORT:5000 -it \
+docker run --pull always -dp $ZOT_REGISTRY_PORT:5000 \
   --name $ZOT_CTR_NAME \
+  -u $(id -u $(whoami)) \
   --mount type=bind,source="${e2e_root}/testdata/zot/",target=/etc/zot \
   --rm ghcr.io/project-zot/zot-linux-amd64:v2.0.0-rc6
 echo " <<< prepared : zot <<< "

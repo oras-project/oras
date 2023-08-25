@@ -1,6 +1,6 @@
 {
     "storage": {
-        "rootDirectory": "/var/lib/registry"
+        "rootDirectory": "/etc/zot"
     },
     "http": {
         "address": "0.0.0.0",
