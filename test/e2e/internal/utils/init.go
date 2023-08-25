@@ -36,8 +36,8 @@ var Host string
 // FallbackHost points to the registry service where fallback E2E specs will be run against.
 var FallbackHost string
 
-// ZotHost points to the zot service where E2E specs will be run against.
-var ZotHost string
+// ZOTHost points to the zot service where E2E specs will be run against.
+var ZOTHost string
 
 func init() {
 	Host = os.Getenv(RegHostKey)
@@ -62,12 +62,12 @@ func init() {
 		panic(err)
 	}
 
-	ZotHost = os.Getenv(ZotHostKey)
-	if ZotHost == "" {
-		ZotHost = "localhost:7000"
-		fmt.Fprintf(os.Stderr, "cannot find zot host name in %s, using %s instead\n", ZotHostKey, ZotHost)
+	ZOTHost = os.Getenv(ZOTHostKey)
+	if ZOTHost == "" {
+		ZOTHost = "localhost:7000"
+		fmt.Fprintf(os.Stderr, "cannot find zot host name in %s, using %s instead\n", ZOTHostKey, ZOTHost)
 	}
-	ref.Registry = ZotHost
+	ref.Registry = ZOTHost
 	if err := ref.ValidateRegistry(); err != nil {
 		panic(err)
 	}
@@ -124,7 +124,7 @@ func init() {
 		gomega.Expect(cmd.Run()).ShouldNot(gomega.HaveOccurred())
 		cmd = exec.Command(ORASPath, "login", FallbackHost, "-u", Username, "-p", Password)
 		gomega.Expect(cmd.Run()).ShouldNot(gomega.HaveOccurred())
-		cmd = exec.Command(ORASPath, "login", ZotHost, "-u", Username, "-p", Password)
+		cmd = exec.Command(ORASPath, "login", ZOTHost, "-u", Username, "-p", Password)
 		gomega.Expect(cmd.Run()).ShouldNot(gomega.HaveOccurred())
 	})
 }
