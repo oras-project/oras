@@ -42,7 +42,7 @@ var _ = Describe("ORAS beginners:", func() {
 	})
 })
 
-var _ = Describe("Remote registry users:", func() {
+var _ = Describe("1.1 registry users:", func() {
 	tag := "e2e"
 	When("pushing to registy without OCI artifact support", func() {
 		repoPrefix := fmt.Sprintf("command/push/%d", GinkgoRandomSeed())
@@ -53,7 +53,7 @@ var _ = Describe("Remote registry users:", func() {
 		It("should push files without customized media types", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "no-mediatype")
 			tempDir := PrepareTempFiles()
-			ref := RegistryRef(Host, repo, tag)
+			ref := RegistryRef(ZOTHost, repo, tag)
 
 			ORAS("push", ref, foobar.FileBarName, "-v").
 				MatchStatus(statusKeys, true, len(statusKeys)).
@@ -68,7 +68,7 @@ var _ = Describe("Remote registry users:", func() {
 
 		It("should push files with path validation disabled", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "disable-path-validation")
-			ref := RegistryRef(Host, repo, tag)
+			ref := RegistryRef(ZOTHost, repo, tag)
 			absBarName := filepath.Join(PrepareTempFiles(), foobar.FileBarName)
 
 			ORAS("push", ref, absBarName, "-v", "--disable-path-validation").
@@ -90,7 +90,7 @@ var _ = Describe("Remote registry users:", func() {
 
 		It("should fail path validation when pushing file with absolute path", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "path-validation")
-			ref := RegistryRef(Host, repo, tag)
+			ref := RegistryRef(ZOTHost, repo, tag)
 			absBarName := filepath.Join(PrepareTempFiles(), foobar.FileBarName)
 			// test
 			ORAS("push", ref, absBarName, "-v").
@@ -104,30 +104,30 @@ var _ = Describe("Remote registry users:", func() {
 			tempDir := PrepareTempFiles()
 			extraTag := "2e2"
 
-			ORAS("push", fmt.Sprintf("%s,%s", RegistryRef(Host, repo, tag), extraTag), foobar.FileBarName, "-v").
+			ORAS("push", fmt.Sprintf("%s,%s", RegistryRef(ZOTHost, repo, tag), extraTag), foobar.FileBarName, "-v").
 				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
 
 			// validate
-			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out.Contents()
+			fetched := ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, tag)).Exec().Out.Contents()
 			var manifest ocispec.Manifest
 			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
 			Expect(manifest.Layers).Should(ContainElements(foobar.BlobBarDescriptor("application/vnd.oci.image.layer.v1.tar")))
 
-			fetched = ORAS("manifest", "fetch", RegistryRef(Host, repo, extraTag)).Exec().Out.Contents()
+			fetched = ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, extraTag)).Exec().Out.Contents()
 			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
 			Expect(manifest.Layers).Should(ContainElements(foobar.BlobBarDescriptor("application/vnd.oci.image.layer.v1.tar")))
 		})
 
 		It("should push files with customized media types", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "layer-mediatype")
-			layerType := "layer.type"
+			layerType := "layer/type"
 			tempDir := PrepareTempFiles()
-			ORAS("push", RegistryRef(Host, repo, tag), foobar.FileBarName+":"+layerType, "-v").
+			ORAS("push", RegistryRef(ZOTHost, repo, tag), foobar.FileBarName+":"+layerType, "-v").
 				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
 			// validate
-			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out.Contents()
+			fetched := ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, tag)).Exec().Out.Contents()
 			var manifest ocispec.Manifest
 			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
 			Expect(manifest.Layers).Should(ContainElements(foobar.BlobBarDescriptor(layerType)))
@@ -135,14 +135,14 @@ var _ = Describe("Remote registry users:", func() {
 
 		It("should push files with manifest exported", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "export-manifest")
-			layerType := "layer.type"
+			layerType := "layer/type"
 			tempDir := PrepareTempFiles()
 			exportPath := "packed.json"
-			ORAS("push", RegistryRef(Host, repo, tag), foobar.FileBarName+":"+layerType, "-v", "--export-manifest", exportPath).
+			ORAS("push", RegistryRef(ZOTHost, repo, tag), foobar.FileBarName+":"+layerType, "-v", "--export-manifest", exportPath).
 				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
 			// validate
-			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out.Contents()
+			fetched := ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, tag)).Exec().Out.Contents()
 			MatchFile(filepath.Join(tempDir, exportPath), string(fetched), DefaultTimeout)
 		})
 
@@ -150,14 +150,14 @@ var _ = Describe("Remote registry users:", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "config")
 			tempDir := PrepareTempFiles()
 
-			ORAS("push", RegistryRef(Host, repo, tag), "--config", foobar.FileConfigName, foobar.FileBarName, "-v").
+			ORAS("push", RegistryRef(ZOTHost, repo, tag), "--config", foobar.FileConfigName, foobar.FileBarName, "-v").
 				MatchStatus([]match.StateKey{
 					foobar.FileConfigStateKey,
 					foobar.FileBarStateKey,
 				}, true, 2).
 				WithWorkDir(tempDir).Exec()
 			// validate
-			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out.Contents()
+			fetched := ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, tag)).Exec().Out.Contents()
 			var manifest ocispec.Manifest
 			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
 			Expect(manifest.Config).Should(Equal(ocispec.Descriptor{
@@ -168,18 +168,18 @@ var _ = Describe("Remote registry users:", func() {
 		})
 
 		It("should push files with customized config file and mediatype", func() {
-			repo := fmt.Sprintf("%s/%s", repoPrefix, "config-mediatype")
+			repo := fmt.Sprintf("%s/%s", repoPrefix, "config/mediatype")
 			configType := "config.type"
 			tempDir := PrepareTempFiles()
 
-			ORAS("push", RegistryRef(Host, repo, tag), "--config", fmt.Sprintf("%s:%s", foobar.FileConfigName, configType), foobar.FileBarName, "-v").
+			ORAS("push", RegistryRef(ZOTHost, repo, tag), "--config", fmt.Sprintf("%s:%s", foobar.FileConfigName, configType), foobar.FileBarName, "-v").
 				MatchStatus([]match.StateKey{
 					{Digest: "46b68ac1696c", Name: configType},
 					foobar.FileBarStateKey,
 				}, true, 2).
 				WithWorkDir(tempDir).Exec()
 			// validate
-			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out.Contents()
+			fetched := ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, tag)).Exec().Out.Contents()
 			var manifest ocispec.Manifest
 			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
 			Expect(manifest.Config).Should(Equal(ocispec.Descriptor{
@@ -195,11 +195,11 @@ var _ = Describe("Remote registry users:", func() {
 			value := "image-anno-value"
 			tempDir := PrepareTempFiles()
 			// test
-			ORAS("push", RegistryRef(Host, repo, tag), foobar.FileBarName, "-v", "--annotation", fmt.Sprintf("%s=%s", key, value)).
+			ORAS("push", RegistryRef(ZOTHost, repo, tag), foobar.FileBarName, "-v", "--annotation", fmt.Sprintf("%s=%s", key, value)).
 				MatchStatus(statusKeys, true, len(statusKeys)).
 				WithWorkDir(tempDir).Exec()
 			// validate
-			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out.Contents()
+			fetched := ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, tag)).Exec().Out.Contents()
 			var manifest ocispec.Manifest
 			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
 			Expect(manifest.Annotations[key]).To(Equal(value))
@@ -209,13 +209,13 @@ var _ = Describe("Remote registry users:", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "file-annotation")
 			tempDir := PrepareTempFiles()
 
-			ORAS("push", RegistryRef(Host, repo, tag), foobar.FileBarName, "-v", "--annotation-file", "foobar/annotation.json", "--config", foobar.FileConfigName).
+			ORAS("push", RegistryRef(ZOTHost, repo, tag), foobar.FileBarName, "-v", "--annotation-file", "foobar/annotation.json", "--config", foobar.FileConfigName).
 				MatchStatus(statusKeys, true, 1).
 				WithWorkDir(tempDir).Exec()
 
 			// validate
 			// see testdata\files\foobar\annotation.json
-			fetched := ORAS("manifest", "fetch", RegistryRef(Host, repo, tag)).Exec().Out.Contents()
+			fetched := ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, tag)).Exec().Out.Contents()
 			var manifest ocispec.Manifest
 			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
 			Expect(manifest.Annotations["hi"]).To(Equal("manifest"))
