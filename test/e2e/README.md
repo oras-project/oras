@@ -73,11 +73,11 @@ Describe: <Role>
 
 #### 9.1 Command Suite
 Command suite uses two kinds of pre-baked test data:
-- Layered distribution archive files: those test data is compressed from registry runtime storage directly and is stored in `$REPO_ROOT/test/e2e/testdata/distribution/`. ORAS distribution uses sub-folder `mount` and upstream distribution uses sub-folder `mount_fallback`. For both registries, the repository name should follow the convention of `command/$repo_suffix`. To add a new layer to the test data, use the below command to compress the `docker` folder from the root directory of the registry storage and copy it to the corresponding subfolder in `$REPO_ROOT/test/e2e/testdata/distribution/mount`.
+- Layered distribution archive files: test data compressed from registry runtime storage directly and stored in `$REPO_ROOT/test/e2e/testdata/distribution/`. ORAS distribution uses sub-folder `mount` and upstream distribution uses sub-folder `mount_fallback`. For both registries, the repository name should follow the convention of `command/$repo_suffix`. To add a new layer to the test data, use the below command to compress the `docker` folder from the root directory of the registry storage and copy it to the corresponding subfolder in `$REPO_ROOT/test/e2e/testdata/distribution/mount`.
     ```shell
     tar -cvzf ${repo_suffix}.tar.gz --owner=0 --group=0 docker/
     ```
-- OCI layout files: those test data are stored in `$REPO_ROOT/test/e2e/testdata/zot/` and used by ZOT registry service. You may use stable release of ORAS CLI to build it. When adding new artifacts in, please make sure the repository folder is excluded in `$REPO_ROOT/.gitignore`.
+- OCI layout files: test data stored in `$REPO_ROOT/test/e2e/testdata/zot/` and used by ZOT registry service. You may use stable release of ORAS CLI to build it. When adding new artifacts in, please make sure the repository folder is excluded in `$REPO_ROOT/.gitignore`.
 
 
 ##### Test Data for ORAS-Distribution
