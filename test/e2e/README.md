@@ -38,7 +38,7 @@ This is super handy when you want to do step-by-step debugging from command-line
 
 ### 5. Testing Registry Services
 The backend of E2E tests are three registry services: 
-- [oras-distribution](https://github.com/oras-project/distribution): registry service supports artifact and image types in [image-spec 1.1.0 rc2](https://github.com/opencontainers/image-spec/tree/v1.1.0-rc2) and referrer API
+- [oras-distribution](https://github.com/oras-project/distribution): registry service supports artifact and image types in [image-spec 1.1.0 rc2](https://github.com/opencontainers/image-spec/tree/v1.1.0-rc2) and referrer API. Will be deprecated when [image-spec 1.1.0 rc2](https://github.com/opencontainers/image-spec/tree/v1.1.0-rc2) is not supported by oras CLI.
 - [upstream distribution](https://github.com/distribution/distribution): registry service supports image media type with subject and provide referrers via [tag schema](https://github.com/opencontainers/distribution-spec/blob/v1.1.0-rc1/spec.md#referrers-tag-schema). 
 - [zot](https://github.com/project-zot/zot): registry service supports artifact and image types in [image-spec 1.1.0 rc4](https://github.com/opencontainers/image-spec/tree/v1.1.0-rc4) and referrer API
 
@@ -72,12 +72,13 @@ Describe: <Role>
 ### 9. Adding New Test Data
 
 #### 9.1 Command Suite
-Command suite uses pre-baked test data, which is a bunch of layered archive files compressed from registry storage. Test data are all stored in `$REPO_ROOT/test/e2e/testdata/distribution/` but separated in different sub-folders: oras distribution uses `mount` and upstream distribution uses `mount_fallback`.
+Command suite uses two kinds of pre-baked test data:
+- Layered distribution archive files: those test data is compressed from registry runtime storage directly and is stored in `$REPO_ROOT/test/e2e/testdata/distribution/`. ORAS distribution uses sub-folder `mount` and upstream distribution uses sub-folder `mount_fallback`. For both registries, the repository name should follow the convention of `command/$repo_suffix`. To add a new layer to the test data, use the below command to compress the `docker` folder from the root directory of the registry storage and copy it to the corresponding subfolder in `$REPO_ROOT/test/e2e/testdata/distribution/mount`.
+    ```shell
+    tar -cvzf ${repo_suffix}.tar.gz --owner=0 --group=0 docker/
+    ```
+- OCI layout files: those test data are stored in `$REPO_ROOT/test/e2e/testdata/zot/` and used by ZOT registry service. You may use stable release of ORAS CLI to build it. When adding new artifacts in, please make sure the repository folder is excluded in `$REPO_ROOT/.gitignore`.
 
-For both registries, the repository name should follow the convention of `command/$repo_suffix`. To add a new layer to the test data, use the below command to compress the `docker` folder from the root directory of the registry storage and copy it to the corresponding subfolder in `$REPO_ROOT/test/e2e/testdata/distribution/mount`.
-```shell
-tar -cvzf ${repo_suffix}.tar.gz --owner=0 --group=0 docker/
-```
 
 ##### Test Data for ORAS-Distribution
 ```mermaid
@@ -145,5 +146,9 @@ graph TD;
         end
     end
 ```
+
+##### Test Data for ZOT
+Still WIP.
+
 #### 9.2 Scenario Suite
 Test files used by scenario-based specs are placed in `$REPO_ROOT/test/e2e/testdata/files`.
