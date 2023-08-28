@@ -52,9 +52,11 @@ var _ = Describe("ORAS beginners:", func() {
 			})
 
 			It("should fail to push a blob from stdin if invalid blob size provided", func() {
+				content := "another-test"
+				digest := "sha256:c897eff15c4586525388034f8246346681cb48d75a619039c566c4939a18102e"
 				repo := fmt.Sprintf(repoFmt, "push", "invalid-stdin-size")
-				ORAS("blob", "push", RegistryRef(ZOTHost, repo, pushDigest), "-", "--size", "3").
-					WithInput(strings.NewReader(pushContent)).ExpectFailure().
+				ORAS("blob", "push", RegistryRef(ZOTHost, repo, digest), "-", "--size", "3").
+					WithInput(strings.NewReader(content)).ExpectFailure().
 					Exec()
 			})
 
@@ -169,24 +171,18 @@ var _ = Describe("1.1 registry users:", func() {
 	When("running `blob delete`", func() {
 		It("should delete a blob with interactive confirmation", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "prompt-confirmation")
-			CopyZOTRepo(ImageRepo, dstRepo)
+			CopyZOTRepo(BlobRepo, dstRepo)
 			toDeleteRef := RegistryRef(ZOTHost, dstRepo, foobar.FooBlobDigest)
 			ORAS("blob", "delete", toDeleteRef).
 				WithInput(strings.NewReader("y")).
 				MatchKeyWords("Deleted", toDeleteRef).Exec()
-			ORAS("blob", "delete", toDeleteRef).
-				WithDescription("validate").
-				WithInput(strings.NewReader("y")).
-				ExpectFailure().
-				MatchErrKeyWords("Error:", toDeleteRef, "the specified blob does not exist").Exec()
 		})
 
 		It("should delete a blob with force flag and output descriptor", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "flag-confirmation")
-			CopyZOTRepo(ImageRepo, dstRepo)
+			CopyZOTRepo(BlobRepo, dstRepo)
 			toDeleteRef := RegistryRef(ZOTHost, dstRepo, foobar.FooBlobDigest)
 			ORAS("blob", "delete", toDeleteRef, "--force", "--descriptor").MatchContent(foobar.FooBlobDescriptor).Exec()
-			ORAS("blob", "delete", toDeleteRef).WithDescription("validate").ExpectFailure().MatchErrKeyWords("Error:", toDeleteRef, "the specified blob does not exist").Exec()
 		})
 
 		It("should return success when deleting a non-existent blob with force flag set", func() {

@@ -61,7 +61,7 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		It("should fail when no tag or digest found in provided subject reference", func() {
-			ORAS("discover", RegistryRef(Host, Repo, "")).ExpectFailure().MatchErrKeyWords("Error:", "invalid image reference").Exec()
+			ORAS("discover", RegistryRef(Host, ImageRepo, "")).ExpectFailure().MatchErrKeyWords("Error:", "invalid image reference").Exec()
 		})
 	})
 })
