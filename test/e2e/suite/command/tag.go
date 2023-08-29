@@ -66,7 +66,7 @@ var _ = Describe("1.1 registry users:", func() {
 	})
 })
 
-var _ = Describe("OCI image layout users:", func() {
+var _ = Describe("OCI image layout users:", Focus, func() {
 	var tagAndValidate = func(root string, tagOrDigest string, digest string, tags ...string) {
 		out := ORAS(append([]string{"tag", LayoutRef(root, tagOrDigest), Flags.Layout}, tags...)...).MatchKeyWords(tags...).Exec().Out
 		hint := regexp.QuoteMeta(fmt.Sprintf("Tagging [oci-layout] %s", LayoutRef(root, digest)))
