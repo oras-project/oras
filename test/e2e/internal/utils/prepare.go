@@ -28,8 +28,8 @@ import (
 	"github.com/onsi/gomega/gbytes"
 )
 
-// CopyZotRepo copies oci layout data between repostories.
-func CopyZotRepo(fromRepo string, toRepo string) {
+// CopyZOTRepo copies oci layout data between repostories.
+func CopyZOTRepo(fromRepo string, toRepo string) {
 	zotRoot := filepath.Join(TestDataRoot, "zot")
 	fromRepo = filepath.Join(zotRoot, fromRepo)
 	toRepo = filepath.Join(zotRoot, toRepo)
