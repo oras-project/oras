@@ -505,7 +505,7 @@ var _ = Describe("1.0 registry users:", func() {
 		})
 	})
 
-	When("running `manifest push`", Focus, func() {
+	When("running `manifest push`", func() {
 		repoFmt := fmt.Sprintf("command/manifest/%%s/%d/%%s", GinkgoRandomSeed())
 		It("should push a manifest from stdin with media type flag", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "push", "no-media-type")
