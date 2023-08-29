@@ -46,22 +46,22 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		It("should fail when no subject reference provided", func() {
-			ORAS("attach", "--artifact-type", "oras.test").ExpectFailure().MatchErrKeyWords("Error:").Exec()
+			ORAS("attach", "--artifact-type", "oras/test").ExpectFailure().MatchErrKeyWords("Error:").Exec()
 		})
 
 		It("should fail if no file reference or manifest annotation provided for registry", func() {
-			ORAS("attach", "--artifact-type", "oras.test", RegistryRef(Host, ImageRepo, foobar.Tag)).
+			ORAS("attach", "--artifact-type", "oras/test", RegistryRef(ZOTHost, ImageRepo, foobar.Tag)).
 				ExpectFailure().MatchErrKeyWords("Error: no blob or manifest annotation are provided").Exec()
 		})
 
 		It("should fail if no file reference or manifest annotation provided for OCI layout", func() {
 			root := GinkgoT().TempDir()
-			ORAS("attach", "--artifact-type", "oras.test", LayoutRef(root, foobar.Tag)).
+			ORAS("attach", "--artifact-type", "oras/test", LayoutRef(root, foobar.Tag)).
 				ExpectFailure().MatchErrKeyWords("Error: no blob or manifest annotation are provided").Exec()
 		})
 
 		It("should fail if distribution spec is unkown", func() {
-			ORAS("attach", "--artifact-type", "oras.test", RegistryRef(Host, ImageRepo, foobar.Tag), "--distribution-spec", "???").
+			ORAS("attach", "--artifact-type", "oras/test", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--distribution-spec", "???").
 				ExpectFailure().MatchErrKeyWords("unknown distribution specification flag").Exec()
 		})
 	})
@@ -71,11 +71,10 @@ var _ = Describe("1.1 registry users:", func() {
 	When("running attach command", func() {
 		It("should attach a file to a subject", func() {
 			testRepo := attachTestRepo("simple")
-			tempDir := PrepareTempFiles()
-			subjectRef := RegistryRef(Host, testRepo, foobar.Tag)
-			prepare(RegistryRef(Host, ImageRepo, foobar.Tag), subjectRef)
+			CopyZotRepo(ImageRepo, testRepo)
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
 			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
-				WithWorkDir(tempDir).
+				WithWorkDir(PrepareTempFiles()).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
 		})
 
@@ -84,8 +83,8 @@ var _ = Describe("1.1 registry users:", func() {
 			testRepo := attachTestRepo("export-manifest")
 			tempDir := PrepareTempFiles()
 			exportName := "manifest.json"
-			subjectRef := RegistryRef(Host, testRepo, foobar.Tag)
-			prepare(RegistryRef(Host, ImageRepo, foobar.Tag), subjectRef)
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			CopyZotRepo(ImageRepo, testRepo)
 			// test
 			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName).
 				WithWorkDir(tempDir).
@@ -95,15 +94,15 @@ var _ = Describe("1.1 registry users:", func() {
 			bytes := ORAS("discover", subjectRef, "-o", "json").Exec().Out.Contents()
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(len(index.Manifests)).To(Equal(1))
-			fetched := ORAS("manifest", "fetch", RegistryRef(Host, testRepo, index.Manifests[0].Digest.String())).Exec().Out.Contents()
+			fetched := ORAS("manifest", "fetch", RegistryRef(ZOTHost, testRepo, index.Manifests[0].Digest.String())).Exec().Out.Contents()
 			MatchFile(filepath.Join(tempDir, exportName), string(fetched), DefaultTimeout)
 		})
 
 		It("should attach a file via a OCI Image", func() {
 			testRepo := attachTestRepo("image")
 			tempDir := PrepareTempFiles()
-			subjectRef := RegistryRef(Host, testRepo, foobar.Tag)
-			prepare(RegistryRef(Host, ImageRepo, foobar.Tag), subjectRef)
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			CopyZotRepo(ImageRepo, testRepo)
 			// test
 			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				WithWorkDir(tempDir).
@@ -120,8 +119,8 @@ var _ = Describe("1.1 registry users:", func() {
 			testRepo := attachTestRepo("simple")
 			absAttachFileName := filepath.Join(PrepareTempFiles(), foobar.AttachFileName)
 
-			subjectRef := RegistryRef(Host, testRepo, foobar.Tag)
-			prepare(RegistryRef(Host, ImageRepo, foobar.Tag), subjectRef)
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			CopyZotRepo(ImageRepo, testRepo)
 			statusKey := foobar.AttachFileStateKey
 			statusKey.Name = absAttachFileName
 			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", absAttachFileName, foobar.AttachFileMedia), "--disable-path-validation").
@@ -133,8 +132,8 @@ var _ = Describe("1.1 registry users:", func() {
 			testRepo := attachTestRepo("simple")
 			absAttachFileName := filepath.Join(PrepareTempFiles(), foobar.AttachFileName)
 
-			subjectRef := RegistryRef(Host, testRepo, foobar.Tag)
-			prepare(RegistryRef(Host, ImageRepo, foobar.Tag), subjectRef)
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			CopyZotRepo(ImageRepo, testRepo)
 			statusKey := foobar.AttachFileStateKey
 			statusKey.Name = absAttachFileName
 			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", absAttachFileName, foobar.AttachFileMedia)).
@@ -204,13 +203,9 @@ var _ = Describe("1.0 registry users:", func() {
 
 var _ = Describe("OCI image layout users:", func() {
 	When("running attach command", func() {
-		prepare := func(root string) {
-			ORAS("cp", RegistryRef(Host, ImageRepo, foobar.Tag), Flags.ToLayout, LayoutRef(root, foobar.Tag)).Exec()
-		}
 		It("should attach a file to a subject", func() {
-			root := PrepareTempFiles()
+			root := PrepareTempOCI(ImageRepo)
 			subjectRef := LayoutRef(root, foobar.Tag)
-			prepare(root)
 			ORAS("attach", "--artifact-type", "test/attach", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				WithWorkDir(root).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
@@ -218,10 +213,9 @@ var _ = Describe("OCI image layout users:", func() {
 
 		It("should attach a file to a subject and export the built manifest", func() {
 			// prepare
-			root := PrepareTempFiles()
 			exportName := "manifest.json"
+			root := PrepareTempOCI(ImageRepo)
 			subjectRef := LayoutRef(root, foobar.Tag)
-			prepare(root)
 			// test
 			ORAS("attach", "--artifact-type", "test/attach", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName).
 				WithWorkDir(root).
@@ -236,9 +230,8 @@ var _ = Describe("OCI image layout users:", func() {
 			MatchFile(filepath.Join(root, exportName), string(fetched), DefaultTimeout)
 		})
 		It("should attach a file via a OCI Image", func() {
-			root := PrepareTempFiles()
+			root := PrepareTempOCI(ImageRepo)
 			subjectRef := LayoutRef(root, foobar.Tag)
-			prepare(root)
 			// test
 			ORAS("attach", "--artifact-type", "test/attach", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				WithWorkDir(root).
