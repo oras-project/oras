@@ -86,11 +86,6 @@ var _ = Describe("1.1 registry users:", func() {
 		It("should list repositories via short command", func() {
 			ORAS("repo", "ls", ZOTHost).MatchKeyWords(ImageRepo).Exec()
 		})
-		It("should list partial repositories via `last` flag", func() {
-			session := ORAS("repo", "ls", ZOTHost, "--last", ImageRepo).Exec()
-			repoRegex := regexp.QuoteMeta(ImageRepo + "\n")
-			Expect(session.Out).ShouldNot(gbytes.Say(repoRegex))
-		})
 
 	})
 	When("running `repo tags`", func() {
@@ -104,10 +99,6 @@ var _ = Describe("1.1 registry users:", func() {
 		It("should list tags via short command", func() {
 			ORAS("repo", "tags", repoRef).MatchKeyWords(multi_arch.Tag, foobar.Tag).Exec()
 
-		})
-		It("should list partial tags via `last` flag", func() {
-			session := ORAS("repo", "tags", repoRef, "--last", foobar.Tag).MatchKeyWords(multi_arch.Tag).Exec()
-			Expect(session.Out).ShouldNot(gbytes.Say(foobar.Tag))
 		})
 
 		It("Should list out tags associated to the provided reference", func() {
@@ -135,8 +126,25 @@ var _ = Describe("1.1 registry users:", func() {
 	})
 })
 
+var _ = Describe("1.0 registry users:", func() {
+	When("running `repo ls`", func() {
+		It("should list partial repositories via `last` flag", func() {
+			session := ORAS("repo", "ls", FallbackHost, "--last", ArtifactRepo).Exec()
+			repoRegex := regexp.QuoteMeta(ImageRepo + "\n")
+			Expect(session.Out).ShouldNot(gbytes.Say(repoRegex))
+		})
+	})
+})
+
 var _ = Describe("OCI image layout users:", func() {
 	When("running `repo tags`", func() {
+		prepare := func(repo string, fromTag string, toTags ...string) string {
+			root := PrepareTempOCI(repo)
+			ORAS("tag", LayoutRef(root, fromTag), strings.Join(toTags, " "), Flags.Layout).
+				WithDescription("prepare in OCI layout").
+				Exec()
+			return root
+		}
 		tagOutput := foobar.Tag + "\n"
 		It("should list tags", func() {
 			root := PrepareTempOCI(ImageRepo)
@@ -149,7 +157,7 @@ var _ = Describe("OCI image layout users:", func() {
 		It("should list partial tags via `last` flag", func() {
 			// prepare
 			extra := "zzz"
-			root := PrepareTempOCI(ImageRepo)
+			root := prepare(ImageRepo, foobar.Tag, extra)
 			// test
 			session := ORAS("repository", "tags", root, "--last", foobar.Tag, Flags.Layout).MatchKeyWords(extra).Exec()
 			Expect(session.Out).ShouldNot(gbytes.Say(regexp.QuoteMeta(tagOutput)))
@@ -158,7 +166,7 @@ var _ = Describe("OCI image layout users:", func() {
 		It("should list out tags associated to the provided reference", func() {
 			// prepare
 			tags := []string{foobar.Tag, "bax", "bay", "baz"}
-			root := PrepareTempOCI(ImageRepo)
+			root := prepare(ImageRepo, foobar.Tag, tags...)
 			// test
 			viaTag := ORAS("repo", "tags", "-v", LayoutRef(root, foobar.Tag), Flags.Layout).
 				WithDescription("via tag").
