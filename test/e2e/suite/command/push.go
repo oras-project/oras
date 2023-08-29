@@ -316,7 +316,7 @@ var _ = Describe("OCI image layout users:", func() {
 		})
 
 		It("should push files with customized config file and mediatype", func() {
-			configType := "config.type"
+			configType := "config/type"
 			tempDir := PrepareTempFiles()
 			ref := LayoutRef(tempDir, tag)
 			ORAS("push", Flags.Layout, ref, "--config", fmt.Sprintf("%s:%s", foobar.FileConfigName, configType), foobar.FileBarName, "-v").
