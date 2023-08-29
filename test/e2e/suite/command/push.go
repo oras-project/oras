@@ -169,7 +169,7 @@ var _ = Describe("1.1 registry users:", func() {
 
 		It("should push files with customized config file and mediatype", func() {
 			repo := fmt.Sprintf("%s/%s", repoPrefix, "config/mediatype")
-			configType := "config.type"
+			configType := "config/type"
 			tempDir := PrepareTempFiles()
 
 			ORAS("push", RegistryRef(ZOTHost, repo, tag), "--config", fmt.Sprintf("%s:%s", foobar.FileConfigName, configType), foobar.FileBarName, "-v").
