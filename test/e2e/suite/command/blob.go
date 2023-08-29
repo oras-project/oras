@@ -176,6 +176,8 @@ var _ = Describe("1.1 registry users:", func() {
 			ORAS("blob", "delete", toDeleteRef).
 				WithInput(strings.NewReader("y")).
 				MatchKeyWords("Deleted", toDeleteRef).Exec()
+			// cannot verify the whether blob is deleted since zot will cache the blob
+			// https://github.com/project-zot/zot/issues/1733
 		})
 
 		It("should delete a blob with force flag and output descriptor", func() {
