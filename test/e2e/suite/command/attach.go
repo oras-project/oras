@@ -71,7 +71,7 @@ var _ = Describe("1.1 registry users:", func() {
 	When("running attach command", func() {
 		It("should attach a file to a subject", func() {
 			testRepo := attachTestRepo("simple")
-			CopyZotRepo(ImageRepo, testRepo)
+			CopyZOTRepo(ImageRepo, testRepo)
 			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
 			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				WithWorkDir(PrepareTempFiles()).
@@ -84,7 +84,7 @@ var _ = Describe("1.1 registry users:", func() {
 			tempDir := PrepareTempFiles()
 			exportName := "manifest.json"
 			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
-			CopyZotRepo(ImageRepo, testRepo)
+			CopyZOTRepo(ImageRepo, testRepo)
 			// test
 			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName).
 				WithWorkDir(tempDir).
@@ -102,7 +102,7 @@ var _ = Describe("1.1 registry users:", func() {
 			testRepo := attachTestRepo("image")
 			tempDir := PrepareTempFiles()
 			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
-			CopyZotRepo(ImageRepo, testRepo)
+			CopyZOTRepo(ImageRepo, testRepo)
 			// test
 			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				WithWorkDir(tempDir).
@@ -120,7 +120,7 @@ var _ = Describe("1.1 registry users:", func() {
 			absAttachFileName := filepath.Join(PrepareTempFiles(), foobar.AttachFileName)
 
 			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
-			CopyZotRepo(ImageRepo, testRepo)
+			CopyZOTRepo(ImageRepo, testRepo)
 			statusKey := foobar.AttachFileStateKey
 			statusKey.Name = absAttachFileName
 			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", absAttachFileName, foobar.AttachFileMedia), "--disable-path-validation").
@@ -133,7 +133,7 @@ var _ = Describe("1.1 registry users:", func() {
 			absAttachFileName := filepath.Join(PrepareTempFiles(), foobar.AttachFileName)
 
 			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
-			CopyZotRepo(ImageRepo, testRepo)
+			CopyZOTRepo(ImageRepo, testRepo)
 			statusKey := foobar.AttachFileStateKey
 			statusKey.Name = absAttachFileName
 			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", absAttachFileName, foobar.AttachFileMedia)).

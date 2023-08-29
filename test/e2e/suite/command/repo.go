@@ -42,7 +42,7 @@ var _ = Describe("ORAS beginners:", func() {
 
 			It("should fail listing repositories if wrong registry provided", func() {
 				ORAS("repo", "ls").ExpectFailure().MatchErrKeyWords("Error:").Exec()
-				ORAS("repo", "ls", RegistryRef(Host, Repo, "some-tag")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+				ORAS("repo", "ls", RegistryRef(Host, ImageRepo, "some-tag")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
 			})
 		})
 		When("running `repo tags`", func() {
@@ -70,16 +70,16 @@ var _ = Describe("1.1 registry users:", func() {
 			ORAS("repository", "list", Host).MatchKeyWords(ImageRepo).Exec()
 		})
 		It("should list repositories under provided namespace", func() {
-			ORAS("repo", "ls", RegistryRef(Host, Namespace, "")).MatchKeyWords(Repo[len(Namespace)+1:]).Exec()
+			ORAS("repo", "ls", RegistryRef(Host, Namespace, "")).MatchKeyWords(ImageRepo[len(Namespace)+1:]).Exec()
 		})
 
 		It("should not list repositories without a fully matched namespace", func() {
 			repo := "command-draft/images"
-			ORAS("cp", RegistryRef(Host, Repo, foobar.Tag), RegistryRef(Host, repo, foobar.Tag)).
+			ORAS("cp", RegistryRef(Host, ImageRepo, foobar.Tag), RegistryRef(Host, repo, foobar.Tag)).
 				WithDescription("prepare destination repo: " + repo).
 				Exec()
-			ORAS("repo", "ls", Host).MatchKeyWords(Repo, repo).Exec()
-			session := ORAS("repo", "ls", RegistryRef(Host, Namespace, "")).MatchKeyWords(Repo[len(Namespace)+1:]).Exec()
+			ORAS("repo", "ls", Host).MatchKeyWords(ImageRepo, repo).Exec()
+			session := ORAS("repo", "ls", RegistryRef(Host, Namespace, "")).MatchKeyWords(ImageRepo[len(Namespace)+1:]).Exec()
 			Expect(session.Out).ShouldNot(gbytes.Say(repo[len(Namespace)+1:]))
 		})
 
@@ -115,10 +115,10 @@ var _ = Describe("1.1 registry users:", func() {
 			repo := repoWithName("filter-tag")
 			tags := []string{foobar.Tag, "bax", "bay", "baz"}
 			refWithTags := fmt.Sprintf("%s:%s", RegistryRef(Host, repo, ""), strings.Join(tags, ","))
-			ORAS("cp", RegistryRef(Host, Repo, foobar.Tag), refWithTags).
+			ORAS("cp", RegistryRef(Host, ImageRepo, foobar.Tag), refWithTags).
 				WithDescription("prepare: copy and create multiple tags to " + refWithTags).
 				Exec()
-			ORAS("cp", RegistryRef(Host, Repo, multi_arch.Tag), RegistryRef(Host, Repo, "")).
+			ORAS("cp", RegistryRef(Host, ImageRepo, multi_arch.Tag), RegistryRef(Host, ImageRepo, "")).
 				WithDescription("prepare: copy tag with different digest").
 				Exec()
 			// test
