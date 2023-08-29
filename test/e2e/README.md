@@ -148,7 +148,7 @@ graph TD;
 ```
 
 ##### Test Data for ZOT
-Still WIP.
+Still WIP. Currently test data is partial, will update this section after all the specs in command suite are migrated to ZOT.
 
 #### 9.2 Scenario Suite
 Test files used by scenario-based specs are placed in `$REPO_ROOT/test/e2e/testdata/files`.
