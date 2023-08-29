@@ -45,10 +45,10 @@ echo " === run tests === "
 if ! ginkgo -r -p --succinct suite; then 
   echo " === retriving registry error logs === "
   echo '-------- oras distribution trace -------------'
-  docker logs -t --tail 200 $oras_container_name
+  docker logs -t --tail 200 $ORAS_CTR_NAME
   echo '-------- upstream distribution trace -------------'
-  docker logs -t --tail 200 $upstream_container_name
+  docker logs -t --tail 200 $UPSTREAM_CTR_NAME
   echo '-------- zot trace -------------'
-  docker logs -t --tail 200 $zot_container_name
+  docker logs -t --tail 200 $ZOT_CTR_NAME
   exit 1
 fi
