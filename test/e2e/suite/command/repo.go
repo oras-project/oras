@@ -42,7 +42,7 @@ var _ = Describe("ORAS beginners:", func() {
 
 			It("should fail listing repositories if wrong registry provided", func() {
 				ORAS("repo", "ls").ExpectFailure().MatchErrKeyWords("Error:").Exec()
-				ORAS("repo", "ls", RegistryRef(Host, ImageRepo, "some-tag")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+				ORAS("repo", "ls", RegistryRef(ZOTHost, ImageRepo, "some-tag")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
 			})
 		})
 		When("running `repo tags`", func() {
@@ -57,8 +57,8 @@ var _ = Describe("ORAS beginners:", func() {
 
 			It("should fail listing repositories if wrong registry provided", func() {
 				ORAS("repo", "tags").ExpectFailure().MatchErrKeyWords("Error:").Exec()
-				ORAS("repo", "tags", Host).ExpectFailure().MatchErrKeyWords("Error:").Exec()
-				ORAS("repo", "tags", RegistryRef(Host, ImageRepo, "some-tag")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+				ORAS("repo", "tags", ZOTHost).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+				ORAS("repo", "tags", RegistryRef(ZOTHost, ImageRepo, "some-tag")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
 			})
 		})
 	})
@@ -67,27 +67,27 @@ var _ = Describe("ORAS beginners:", func() {
 var _ = Describe("1.1 registry users:", func() {
 	When("running `repo ls`", func() {
 		It("should list repositories", func() {
-			ORAS("repository", "list", Host).MatchKeyWords(ImageRepo).Exec()
+			ORAS("repository", "list", ZOTHost).MatchKeyWords(ImageRepo).Exec()
 		})
 		It("should list repositories under provided namespace", func() {
-			ORAS("repo", "ls", RegistryRef(Host, Namespace, "")).MatchKeyWords(ImageRepo[len(Namespace)+1:]).Exec()
+			ORAS("repo", "ls", RegistryRef(ZOTHost, Namespace, "")).MatchKeyWords(ImageRepo[len(Namespace)+1:]).Exec()
 		})
 
 		It("should not list repositories without a fully matched namespace", func() {
 			repo := "command-draft/images"
-			ORAS("cp", RegistryRef(Host, ImageRepo, foobar.Tag), RegistryRef(Host, repo, foobar.Tag)).
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), RegistryRef(ZOTHost, repo, foobar.Tag)).
 				WithDescription("prepare destination repo: " + repo).
 				Exec()
-			ORAS("repo", "ls", Host).MatchKeyWords(ImageRepo, repo).Exec()
-			session := ORAS("repo", "ls", RegistryRef(Host, Namespace, "")).MatchKeyWords(ImageRepo[len(Namespace)+1:]).Exec()
+			ORAS("repo", "ls", ZOTHost).MatchKeyWords(ImageRepo, repo).Exec()
+			session := ORAS("repo", "ls", RegistryRef(ZOTHost, Namespace, "")).MatchKeyWords(ImageRepo[len(Namespace)+1:]).Exec()
 			Expect(session.Out).ShouldNot(gbytes.Say(repo[len(Namespace)+1:]))
 		})
 
 		It("should list repositories via short command", func() {
-			ORAS("repo", "ls", Host).MatchKeyWords(ImageRepo).Exec()
+			ORAS("repo", "ls", ZOTHost).MatchKeyWords(ImageRepo).Exec()
 		})
 		It("should list partial repositories via `last` flag", func() {
-			session := ORAS("repo", "ls", Host, "--last", ImageRepo).Exec()
+			session := ORAS("repo", "ls", ZOTHost, "--last", ImageRepo).Exec()
 			repoRegex := regexp.QuoteMeta(ImageRepo + "\n")
 			Expect(session.Out).ShouldNot(gbytes.Say(repoRegex))
 		})
@@ -97,7 +97,7 @@ var _ = Describe("1.1 registry users:", func() {
 		repoWithName := func(name string) string {
 			return fmt.Sprintf("command/images/repo/tags/%d/%s", GinkgoRandomSeed(), name)
 		}
-		repoRef := RegistryRef(Host, ImageRepo, "")
+		repoRef := RegistryRef(ZOTHost, ImageRepo, "")
 		It("should list tags", func() {
 			ORAS("repository", "show-tags", repoRef).MatchKeyWords(multi_arch.Tag, foobar.Tag).Exec()
 		})
@@ -114,20 +114,20 @@ var _ = Describe("1.1 registry users:", func() {
 			// prepare
 			repo := repoWithName("filter-tag")
 			tags := []string{foobar.Tag, "bax", "bay", "baz"}
-			refWithTags := fmt.Sprintf("%s:%s", RegistryRef(Host, repo, ""), strings.Join(tags, ","))
-			ORAS("cp", RegistryRef(Host, ImageRepo, foobar.Tag), refWithTags).
+			refWithTags := fmt.Sprintf("%s:%s", RegistryRef(ZOTHost, repo, ""), strings.Join(tags, ","))
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), refWithTags).
 				WithDescription("prepare: copy and create multiple tags to " + refWithTags).
 				Exec()
-			ORAS("cp", RegistryRef(Host, ImageRepo, multi_arch.Tag), RegistryRef(Host, ImageRepo, "")).
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), RegistryRef(ZOTHost, ImageRepo, "")).
 				WithDescription("prepare: copy tag with different digest").
 				Exec()
 			// test
-			viaTag := ORAS("repo", "tags", "-v", RegistryRef(Host, repo, foobar.Tag)).
+			viaTag := ORAS("repo", "tags", "-v", RegistryRef(ZOTHost, repo, foobar.Tag)).
 				MatchKeyWords(tags...).
 				MatchErrKeyWords(feature.Experimental.Mark, foobar.Digest).Exec().Out
 			Expect(viaTag).ShouldNot(gbytes.Say(multi_arch.Tag))
 
-			viaDigest := ORAS("repo", "tags", "-v", RegistryRef(Host, repo, foobar.Digest)).
+			viaDigest := ORAS("repo", "tags", "-v", RegistryRef(ZOTHost, repo, foobar.Digest)).
 				MatchKeyWords(tags...).
 				MatchErrKeyWords(feature.Experimental.Mark, foobar.Digest).Exec().Out
 			Expect(viaDigest).ShouldNot(gbytes.Say(multi_arch.Tag))
@@ -137,29 +137,19 @@ var _ = Describe("1.1 registry users:", func() {
 
 var _ = Describe("OCI image layout users:", func() {
 	When("running `repo tags`", func() {
-		prepare := func(srcRef, repoRoot string, tags ...string) {
-			ORAS("cp", srcRef, LayoutRef(repoRoot, strings.Join(tags, ",")), Flags.ToLayout).
-				WithDescription("prepare in OCI layout").
-				Exec()
-		}
-		foobarImageRef := RegistryRef(Host, ImageRepo, foobar.Tag)
-		multiImageRef := RegistryRef(Host, ImageRepo, multi_arch.Tag)
 		tagOutput := foobar.Tag + "\n"
 		It("should list tags", func() {
-			root := GinkgoT().TempDir()
-			prepare(foobarImageRef, root, foobar.Tag)
+			root := PrepareTempOCI(ImageRepo)
 			ORAS("repository", "show-tags", root, Flags.Layout).MatchKeyWords(tagOutput).Exec()
 		})
 		It("should list tags via short command", func() {
-			root := GinkgoT().TempDir()
-			prepare(foobarImageRef, root, foobar.Tag)
+			root := PrepareTempOCI(ImageRepo)
 			ORAS("repository", "tags", root, Flags.Layout).MatchKeyWords(tagOutput).Exec()
 		})
 		It("should list partial tags via `last` flag", func() {
 			// prepare
-			root := GinkgoT().TempDir()
 			extra := "zzz"
-			prepare(foobarImageRef, root, foobar.Tag, extra)
+			root := PrepareTempOCI(ImageRepo)
 			// test
 			session := ORAS("repository", "tags", root, "--last", foobar.Tag, Flags.Layout).MatchKeyWords(extra).Exec()
 			Expect(session.Out).ShouldNot(gbytes.Say(regexp.QuoteMeta(tagOutput)))
@@ -167,10 +157,8 @@ var _ = Describe("OCI image layout users:", func() {
 
 		It("should list out tags associated to the provided reference", func() {
 			// prepare
-			root := GinkgoT().TempDir()
 			tags := []string{foobar.Tag, "bax", "bay", "baz"}
-			prepare(foobarImageRef, root, tags...)
-			prepare(multiImageRef, root, multi_arch.Tag)
+			root := PrepareTempOCI(ImageRepo)
 			// test
 			viaTag := ORAS("repo", "tags", "-v", LayoutRef(root, foobar.Tag), Flags.Layout).
 				WithDescription("via tag").
