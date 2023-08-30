@@ -130,8 +130,8 @@ var (
 		{Digest: "44136fa355b3", Name: "test/sbom/file"},
 	}
 	FallbackImageReferrersStateKeys = []match.StateKey{
-		{Digest: "316405db72cc", Name: "application/vnd.oci.image.manifest.v1+json"},
-		{Digest: "8b3f7e000c4a", Name: "application/vnd.oci.image.manifest.v1+json"},
+		{Digest: "b6d28d84b6ad", Name: "application/vnd.oci.image.manifest.v1+json"},
+		{Digest: "7cdd0383e3db", Name: "application/vnd.oci.image.manifest.v1+json"},
 	}
 )
 
@@ -148,8 +148,8 @@ var (
 		Digest:    digest.Digest("sha256:7cdd0383e3db8adcca166e59b431981b4407f9d30b17014ad42873107af6fbc4"),
 		Size:      660,
 		Annotations: map[string]string{
-			"org.opencontainers.image.created": "2023-01-29T02:32:18Z",
+			"org.opencontainers.image.created": "2023-01-18T08:37:42Z",
 		},
-		ArtifactType: "test.sbom.file",
+		ArtifactType: "test/sbom/file",
 	}
 )

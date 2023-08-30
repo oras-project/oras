@@ -83,8 +83,7 @@ var _ = Describe("1.1 registry users:", func() {
 			bytes := ORAS("discover", subjectRef, "-o", format, "--artifact-type", foobar.SBOMArtifactReferrer.ArtifactType).Exec().Out.Contents()
 			var index ocispec.Index
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
-			Expect(index.Manifests).To(HaveLen(2))
-			Expect(index.Manifests).Should(ContainElement(foobar.SBOMImageReferrer))
+			Expect(index.Manifests).To(HaveLen(1))
 			Expect(index.Manifests).Should(ContainElement(foobar.SBOMArtifactReferrer))
 		})
 
@@ -220,8 +219,7 @@ var _ = Describe("OCI image layout users:", func() {
 			bytes := ORAS("discover", subjectRef, "-o", format, "--artifact-type", foobar.SBOMArtifactReferrer.ArtifactType, Flags.Layout).Exec().Out.Contents()
 			var index ocispec.Index
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
-			Expect(index.Manifests).To(HaveLen(2))
-			Expect(index.Manifests).Should(ContainElement(foobar.SBOMImageReferrer))
+			Expect(index.Manifests).To(HaveLen(1))
 			Expect(index.Manifests).Should(ContainElement(foobar.SBOMArtifactReferrer))
 		})
 
