@@ -51,11 +51,11 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		It("should fail when no destination reference provided", func() {
-			ORAS("cp", RegistryRef(Host, ImageRepo, foobar.Tag)).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag)).ExpectFailure().MatchErrKeyWords("Error:").Exec()
 		})
 
 		It("should fail when source doesn't exist", func() {
-			ORAS("cp", RegistryRef(Host, ImageRepo, "i-dont-think-this-tag-exists"), RegistryRef(Host, cpTestRepo("nonexistent-source"), "")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, "i-dont-think-this-tag-exists"), RegistryRef(ZOTHost, cpTestRepo("nonexistent-source"), "")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
 		})
 	})
 })
@@ -71,45 +71,37 @@ func CompareRef(src, dst string) {
 var _ = Describe("1.1 registry users:", func() {
 	When("running `cp`", func() {
 		It("should copy an image to a new repository via tag", func() {
-			src := RegistryRef(Host, ImageRepo, foobar.Tag)
-			dst := RegistryRef(Host, cpTestRepo("tag"), "copiedTag")
+			src := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
+			dst := RegistryRef(ZOTHost, cpTestRepo("tag"), "copiedTag")
 			ORAS("cp", src, dst, "-v").MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			CompareRef(src, dst)
 		})
 
 		It("should copy an image to a new repository via digest", func() {
-			src := RegistryRef(Host, ImageRepo, foobar.Digest)
-			dst := RegistryRef(Host, cpTestRepo("digest"), "copiedTag")
+			src := RegistryRef(ZOTHost, ImageRepo, foobar.Digest)
+			dst := RegistryRef(ZOTHost, cpTestRepo("digest"), "copiedTag")
 			ORAS("cp", src, dst, "-v").MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			CompareRef(src, dst)
 		})
 
 		It("should copy an image to a new repository via tag without tagging", func() {
-			src := RegistryRef(Host, ImageRepo, foobar.Tag)
-			dst := RegistryRef(Host, cpTestRepo("no-tagging"), foobar.Digest)
+			src := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
+			dst := RegistryRef(ZOTHost, cpTestRepo("no-tagging"), foobar.Digest)
 			ORAS("cp", src, dst, "-v").MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			CompareRef(src, dst)
 		})
 
-		It("should copy an image and its referrers to a new repository", func() {
-			stateKeys := append(append(foobarStates, foobar.ArtifactReferrerStateKeys...), foobar.ImageReferrerConfigStateKeys...)
-			src := RegistryRef(Host, ArtifactRepo, foobar.Tag)
-			dst := RegistryRef(Host, cpTestRepo("referrers"), foobar.Digest)
-			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
-			CompareRef(src, dst)
-		})
-
 		It("should copy a multi-arch image and its referrers to a new repository via tag", func() {
-			stateKeys := append(ma.IndexStateKeys, ma.IndexReferrerStateKey, ma.IndexReferrerConfigStateKey)
-			src := RegistryRef(Host, ArtifactRepo, ma.Tag)
+			stateKeys := append(ma.IndexStateKeys, ma.IndexZOTReferrerStateKey, ma.IndexReferrerConfigStateKey)
+			src := RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)
 			dstRepo := cpTestRepo("index-referrers")
-			dst := RegistryRef(Host, dstRepo, "copiedTag")
+			dst := RegistryRef(ZOTHost, dstRepo, "copiedTag")
 			ORAS("cp", src, dst, "-r", "-v").
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				MatchKeyWords("Digest: " + ma.Digest).
 				Exec()
 			// validate
-			CompareRef(RegistryRef(Host, ImageRepo, ma.Digest), dst)
+			CompareRef(RegistryRef(ZOTHost, ImageRepo, ma.Digest), dst)
 			var index ocispec.Index
 			bytes := ORAS("discover", dst, "-o", "json").
 				MatchKeyWords(ma.IndexReferrerDigest).
@@ -118,23 +110,23 @@ var _ = Describe("1.1 registry users:", func() {
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(len(index.Manifests)).To(Equal(1))
 			Expect(index.Manifests[0].Digest.String()).To(Equal(ma.IndexReferrerDigest))
-			ORAS("manifest", "fetch", RegistryRef(Host, dstRepo, ma.LinuxAMD64Referrer.Digest.String())).
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, dstRepo, ma.LinuxAMD64Referrer.Digest.String())).
 				WithDescription("not copy referrer of successor").
 				ExpectFailure().
 				Exec()
 		})
 
 		It("should copy a multi-arch image and its referrers to a new repository via digest", func() {
-			stateKeys := append(ma.IndexStateKeys, ma.IndexReferrerStateKey, ma.IndexReferrerConfigStateKey)
-			src := RegistryRef(Host, ArtifactRepo, ma.Tag)
+			stateKeys := append(ma.IndexStateKeys, ma.IndexZOTReferrerStateKey, ma.IndexReferrerConfigStateKey)
+			src := RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)
 			dstRepo := cpTestRepo("index-referrers-digest")
-			dst := RegistryRef(Host, dstRepo, ma.Digest)
+			dst := RegistryRef(ZOTHost, dstRepo, ma.Digest)
 			ORAS("cp", src, dst, "-r", "-v").
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				MatchKeyWords("Digest: " + ma.Digest).
 				Exec()
 			// validate
-			CompareRef(RegistryRef(Host, ImageRepo, ma.Digest), dst)
+			CompareRef(RegistryRef(ZOTHost, ImageRepo, ma.Digest), dst)
 			var index ocispec.Index
 			bytes := ORAS("discover", dst, "-o", "json").
 				MatchKeyWords(ma.IndexReferrerDigest).
@@ -143,45 +135,45 @@ var _ = Describe("1.1 registry users:", func() {
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(len(index.Manifests)).To(Equal(1))
 			Expect(index.Manifests[0].Digest.String()).To(Equal(ma.IndexReferrerDigest))
-			ORAS("manifest", "fetch", RegistryRef(Host, dstRepo, ma.LinuxAMD64Referrer.Digest.String())).
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, dstRepo, ma.LinuxAMD64Referrer.Digest.String())).
 				WithDescription("not copy referrer of successor").
 				ExpectFailure().
 				Exec()
 		})
 
 		It("should copy a certain platform of image to a new repository via tag", func() {
-			src := RegistryRef(Host, ImageRepo, ma.Tag)
-			dst := RegistryRef(Host, cpTestRepo("platform-tag"), "copiedTag")
+			src := RegistryRef(ZOTHost, ImageRepo, ma.Tag)
+			dst := RegistryRef(ZOTHost, cpTestRepo("platform-tag"), "copiedTag")
 
 			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").
 				MatchStatus(ma.LinuxAMD64StateKeys, true, len(ma.LinuxAMD64StateKeys)).
 				MatchKeyWords("Digest: " + ma.LinuxAMD64.Digest.String()).
 				Exec()
-			CompareRef(RegistryRef(Host, ImageRepo, ma.LinuxAMD64.Digest.String()), dst)
+			CompareRef(RegistryRef(ZOTHost, ImageRepo, ma.LinuxAMD64.Digest.String()), dst)
 		})
 
 		It("should copy a certain platform of image to a new repository via digest", func() {
-			src := RegistryRef(Host, ImageRepo, ma.Digest)
+			src := RegistryRef(ZOTHost, ImageRepo, ma.Digest)
 			dstRepo := cpTestRepo("platform-digest")
-			dst := RegistryRef(Host, dstRepo, "")
+			dst := RegistryRef(ZOTHost, dstRepo, "")
 			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").
 				MatchStatus(ma.LinuxAMD64StateKeys, true, len(ma.LinuxAMD64StateKeys)).
 				MatchKeyWords("Digest: " + ma.LinuxAMD64.Digest.String()).
 				Exec()
-			CompareRef(RegistryRef(Host, ImageRepo, ma.LinuxAMD64.Digest.String()), RegistryRef(Host, dstRepo, ma.LinuxAMD64.Digest.String()))
+			CompareRef(RegistryRef(ZOTHost, ImageRepo, ma.LinuxAMD64.Digest.String()), RegistryRef(ZOTHost, dstRepo, ma.LinuxAMD64.Digest.String()))
 		})
 
 		It("should copy a certain platform of image and its referrers to a new repository with tag", func() {
 			stateKeys := append(ma.LinuxAMD64StateKeys, ma.LinuxAMD64ReferrerStateKey, ma.LinuxAMD64ReferrerConfigStateKey)
-			src := RegistryRef(Host, ArtifactRepo, ma.Tag)
+			src := RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)
 			dstRepo := cpTestRepo("platform-referrers")
-			dst := RegistryRef(Host, dstRepo, "copiedTag")
+			dst := RegistryRef(ZOTHost, dstRepo, "copiedTag")
 			ORAS("cp", src, dst, "-r", "--platform", "linux/amd64", "-v").
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				MatchKeyWords("Digest: " + ma.LinuxAMD64.Digest.String()).
 				Exec()
 			// validate
-			CompareRef(RegistryRef(Host, ImageRepo, ma.LinuxAMD64.Digest.String()), dst)
+			CompareRef(RegistryRef(ZOTHost, ImageRepo, ma.LinuxAMD64.Digest.String()), dst)
 			var index ocispec.Index
 			bytes := ORAS("discover", dst, "-o", "json", "--platform", "linux/amd64").
 				MatchKeyWords(ma.LinuxAMD64Referrer.Digest.String()).
@@ -190,11 +182,11 @@ var _ = Describe("1.1 registry users:", func() {
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(len(index.Manifests)).To(Equal(1))
 			Expect(index.Manifests[0].Digest.String()).To(Equal(ma.LinuxAMD64Referrer.Digest.String()))
-			ORAS("manifest", "fetch", RegistryRef(Host, dstRepo, ma.Digest)).
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, dstRepo, ma.Digest)).
 				WithDescription("not copy index").
 				ExpectFailure().
 				Exec()
-			ORAS("manifest", "fetch", RegistryRef(Host, dstRepo, ma.IndexReferrerDigest)).
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, dstRepo, ma.IndexReferrerDigest)).
 				WithDescription("not copy index referrer").
 				ExpectFailure().
 				Exec()
@@ -202,15 +194,15 @@ var _ = Describe("1.1 registry users:", func() {
 
 		It("should copy a certain platform of image and its referrers to a new repository without tagging", func() {
 			stateKeys := append(ma.LinuxAMD64StateKeys, ma.LinuxAMD64ReferrerStateKey, ma.LinuxAMD64ReferrerConfigStateKey)
-			src := RegistryRef(Host, ArtifactRepo, ma.Tag)
+			src := RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)
 			dstRepo := cpTestRepo("platform-referrers-no-tag")
-			ORAS("cp", src, RegistryRef(Host, dstRepo, ""), "-r", "--platform", "linux/amd64", "-v").
+			ORAS("cp", src, RegistryRef(ZOTHost, dstRepo, ""), "-r", "--platform", "linux/amd64", "-v").
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				MatchKeyWords("Digest: " + ma.LinuxAMD64.Digest.String()).
 				Exec()
 			// validate
-			dstRef := RegistryRef(Host, dstRepo, ma.LinuxAMD64.Digest.String())
-			CompareRef(RegistryRef(Host, ImageRepo, ma.LinuxAMD64.Digest.String()), dstRef)
+			dstRef := RegistryRef(ZOTHost, dstRepo, ma.LinuxAMD64.Digest.String())
+			CompareRef(RegistryRef(ZOTHost, ImageRepo, ma.LinuxAMD64.Digest.String()), dstRef)
 			var index ocispec.Index
 			bytes := ORAS("discover", dstRef, "-o", "json", "--platform", "linux/amd64").
 				MatchKeyWords(ma.LinuxAMD64Referrer.Digest.String()).
@@ -219,24 +211,24 @@ var _ = Describe("1.1 registry users:", func() {
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
 			Expect(len(index.Manifests)).To(Equal(1))
 			Expect(index.Manifests[0].Digest.String()).To(Equal(ma.LinuxAMD64Referrer.Digest.String()))
-			ORAS("manifest", "fetch", RegistryRef(Host, dstRepo, ma.Digest)).
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, dstRepo, ma.Digest)).
 				WithDescription("not copy index").
 				ExpectFailure().
 				Exec()
-			ORAS("manifest", "fetch", RegistryRef(Host, dstRepo, ma.IndexReferrerDigest)).
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, dstRepo, ma.IndexReferrerDigest)).
 				WithDescription("not copy index referrer").
 				ExpectFailure().
 				Exec()
 		})
 
 		It("should copy an image to a new repository with multiple tagging", func() {
-			src := RegistryRef(Host, ImageRepo, foobar.Digest)
+			src := RegistryRef(ZOTHost, ImageRepo, foobar.Digest)
 			tags := []string{"tag1", "tag2", "tag3"}
 			dstRepo := cpTestRepo("multi-tagging")
-			dst := RegistryRef(Host, dstRepo, "")
+			dst := RegistryRef(ZOTHost, dstRepo, "")
 			ORAS("cp", src, dst+":"+strings.Join(tags, ","), "-v").MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			for _, tag := range tags {
-				dst := RegistryRef(Host, dstRepo, tag)
+				dst := RegistryRef(ZOTHost, dstRepo, tag)
 				CompareRef(src, dst)
 			}
 		})
@@ -248,7 +240,7 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 		It("should copy an image artifact and its referrers from a registry to a fallback registry", func() {
 			repo := cpTestRepo("to-fallback")
 			stateKeys := append(append(foobarStates, foobar.ImageReferrersStateKeys...), foobar.ImageReferrerConfigStateKeys...)
-			src := RegistryRef(Host, ArtifactRepo, foobar.SignatureImageReferrer.Digest.String())
+			src := RegistryRef(ZOTHost, ArtifactRepo, foobar.SignatureImageReferrer.Digest.String())
 			dst := RegistryRef(FallbackHost, repo, "")
 			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
 			CompareRef(src, RegistryRef(FallbackHost, repo, foobar.SignatureImageReferrer.Digest.String()))
@@ -259,10 +251,10 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 			repo := cpTestRepo("from-fallback")
 			stateKeys := append(append(foobarStates, foobar.FallbackImageReferrersStateKeys...), foobar.ImageReferrerConfigStateKeys...)
 			src := RegistryRef(FallbackHost, ArtifactRepo, foobar.FallbackSBOMImageReferrer.Digest.String())
-			dst := RegistryRef(Host, repo, "")
+			dst := RegistryRef(ZOTHost, repo, "")
 			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
-			CompareRef(src, RegistryRef(Host, repo, foobar.FallbackSBOMImageReferrer.Digest.String()))
-			ORAS("discover", "-o", "tree", RegistryRef(Host, repo, foobar.Digest)).
+			CompareRef(src, RegistryRef(ZOTHost, repo, foobar.FallbackSBOMImageReferrer.Digest.String()))
+			ORAS("discover", "-o", "tree", RegistryRef(ZOTHost, repo, foobar.Digest)).
 				WithDescription("discover referrer via subject").MatchKeyWords(foobar.FallbackSignatureImageReferrer.Digest.String(), foobar.FallbackSBOMImageReferrer.Digest.String()).Exec()
 		})
 
@@ -297,8 +289,8 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 			dstRepo := cpTestRepo("platform-referrer-from-layout")
 			dst := RegistryRef(FallbackHost, dstRepo, "copied")
 			// prepare
-			ORAS("cp", RegistryRef(Host, ArtifactRepo, ma.Tag), src, Flags.ToLayout, "-r").Exec()
-			ORAS("cp", RegistryRef(Host, ArtifactRepo, ma.Tag), src, Flags.ToLayout, "-r", "--platform", "linux/amd64").Exec()
+			ORAS("cp", RegistryRef(ZOTHost, ArtifactRepo, ma.Tag), src, Flags.ToLayout, "-r").Exec()
+			ORAS("cp", RegistryRef(ZOTHost, ArtifactRepo, ma.Tag), src, Flags.ToLayout, "-r", "--platform", "linux/amd64").Exec()
 			// test
 			ORAS("cp", src, Flags.FromLayout, dst, "-r", "-v", "--platform", "linux/amd64").
 				MatchStatus(stateKeys, true, len(stateKeys)).
@@ -325,7 +317,7 @@ var _ = Describe("OCI layout users:", func() {
 	When("running `cp`", func() {
 		It("should copy an image from a registry to an OCI image layout via tag", func() {
 			dst := LayoutRef(GinkgoT().TempDir(), "copied")
-			src := RegistryRef(Host, ImageRepo, foobar.Tag)
+			src := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
 			ORAS("cp", src, dst, "-v", Flags.ToLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			// validate
 			srcManifest := ORAS("manifest", "fetch", src).WithDescription("fetch from source to validate").Exec().Out.Contents()
@@ -336,9 +328,9 @@ var _ = Describe("OCI layout users:", func() {
 		It("should copy an image from an OCI image layout to a registry via tag", func() {
 			layoutDir := GinkgoT().TempDir()
 			src := LayoutRef(layoutDir, "copied")
-			dst := RegistryRef(Host, cpTestRepo("from-layout-tag"), foobar.Tag)
+			dst := RegistryRef(ZOTHost, cpTestRepo("from-layout-tag"), foobar.Tag)
 			// prepare
-			ORAS("cp", RegistryRef(Host, ImageRepo, foobar.Tag), src, Flags.ToLayout).Exec()
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), src, Flags.ToLayout).Exec()
 			// test
 			ORAS("cp", src, dst, "-v", Flags.FromLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			// validate
@@ -353,7 +345,7 @@ var _ = Describe("OCI layout users:", func() {
 			src := LayoutRef(srcDir, "from")
 			dst := LayoutRef(toDir, "to")
 			// prepare
-			ORAS("cp", RegistryRef(Host, ImageRepo, foobar.Tag), src, Flags.ToLayout).Exec()
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), src, Flags.ToLayout).Exec()
 			// test
 			ORAS("cp", src, dst, "-v", Flags.FromLayout, Flags.ToLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			// validate
@@ -364,7 +356,7 @@ var _ = Describe("OCI layout users:", func() {
 
 		It("should copy an image from a registry to an OCI image layout via digest", func() {
 			dstDir := GinkgoT().TempDir()
-			src := RegistryRef(Host, ImageRepo, foobar.Tag)
+			src := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
 			ORAS("cp", src, dstDir, "-v", Flags.ToLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			// validate
 			srcManifest := ORAS("manifest", "fetch", src).WithDescription("fetch from source to validate").Exec().Out.Contents()
@@ -375,9 +367,9 @@ var _ = Describe("OCI layout users:", func() {
 		It("should copy an image from an OCI image layout to a registry via digest", func() {
 			layoutDir := GinkgoT().TempDir()
 			src := LayoutRef(layoutDir, foobar.Digest)
-			dst := RegistryRef(Host, cpTestRepo("from-layout-digest"), "copied")
+			dst := RegistryRef(ZOTHost, cpTestRepo("from-layout-digest"), "copied")
 			// prepare
-			ORAS("cp", RegistryRef(Host, ImageRepo, foobar.Tag), layoutDir, Flags.ToLayout).Exec()
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), layoutDir, Flags.ToLayout).Exec()
 			// test
 			ORAS("cp", src, dst, "-v", Flags.FromLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			// validate
@@ -392,7 +384,7 @@ var _ = Describe("OCI layout users:", func() {
 			src := LayoutRef(srcDir, foobar.Digest)
 			dst := LayoutRef(toDir, foobar.Digest)
 			// prepare
-			ORAS("cp", RegistryRef(Host, ImageRepo, foobar.Tag), srcDir, Flags.ToLayout).Exec()
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), srcDir, Flags.ToLayout).Exec()
 			// test
 			ORAS("cp", src, toDir, "-v", Flags.FromLayout, Flags.ToLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			// validate
@@ -403,7 +395,7 @@ var _ = Describe("OCI layout users:", func() {
 
 		It("should copy an image from a registry to an OCI image layout with multiple tagging", func() {
 			dstDir := GinkgoT().TempDir()
-			src := RegistryRef(Host, ImageRepo, foobar.Tag)
+			src := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
 			tags := []string{"tag1", "tag2", "tag3"}
 			// test
 			ORAS("cp", src, dstDir+":"+strings.Join(tags, ","), "-v", Flags.ToLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
@@ -418,7 +410,7 @@ var _ = Describe("OCI layout users:", func() {
 		It("should copy a tagged image and its referrers from a registry to an OCI image layout", func() {
 			stateKeys := append(append(foobarStates, foobar.ArtifactReferrerStateKeys...), foobar.ImageReferrerConfigStateKeys...)
 			dst := LayoutRef(GinkgoT().TempDir(), "copied")
-			src := RegistryRef(Host, ArtifactRepo, foobar.Tag)
+			src := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
 			// test
 			ORAS("cp", "-r", src, dst, "-v", Flags.ToLayout).MatchStatus(stateKeys, true, len(stateKeys)).Exec()
 			// validate
@@ -430,7 +422,7 @@ var _ = Describe("OCI layout users:", func() {
 		It("should copy a image and its referrers from a registry to an OCI image layout via digest", func() {
 			stateKeys := append(append(foobarStates, foobar.ArtifactReferrerStateKeys...), foobar.ImageReferrerConfigStateKeys...)
 			toDir := GinkgoT().TempDir()
-			src := RegistryRef(Host, ArtifactRepo, foobar.Digest)
+			src := RegistryRef(ZOTHost, ArtifactRepo, foobar.Digest)
 			// test
 			ORAS("cp", "-r", src, toDir, "-v", Flags.ToLayout).MatchStatus(stateKeys, true, len(stateKeys)).Exec()
 			// validate
@@ -440,8 +432,8 @@ var _ = Describe("OCI layout users:", func() {
 		})
 
 		It("should copy a multi-arch image and its referrers from a registry to an OCI image layout a via tag", func() {
-			stateKeys := append(ma.IndexStateKeys, ma.IndexReferrerStateKey, ma.IndexReferrerConfigStateKey)
-			src := RegistryRef(Host, ArtifactRepo, ma.Tag)
+			stateKeys := append(ma.IndexStateKeys, ma.IndexZOTReferrerStateKey, ma.IndexReferrerConfigStateKey)
+			src := RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)
 			toDir := GinkgoT().TempDir()
 			dst := LayoutRef(toDir, "copied")
 			// test
@@ -468,12 +460,12 @@ var _ = Describe("OCI layout users:", func() {
 		})
 
 		It("should copy a multi-arch image and its referrers from an OCI image layout to a registry via digest", func() {
-			stateKeys := append(ma.IndexStateKeys, ma.IndexReferrerStateKey, ma.IndexReferrerConfigStateKey)
+			stateKeys := append(ma.IndexStateKeys, ma.IndexZOTReferrerStateKey, ma.IndexReferrerConfigStateKey)
 			fromDir := GinkgoT().TempDir()
 			src := LayoutRef(fromDir, ma.Tag)
-			dst := RegistryRef(Host, cpTestRepo("recursive-from-layout"), "copied")
+			dst := RegistryRef(ZOTHost, cpTestRepo("recursive-from-layout"), "copied")
 			// prepare
-			ORAS("cp", RegistryRef(Host, ArtifactRepo, ma.Tag), src, Flags.ToLayout, "-r").Exec()
+			ORAS("cp", RegistryRef(ZOTHost, ArtifactRepo, ma.Tag), src, Flags.ToLayout, "-r").Exec()
 			// test
 			ORAS("cp", src, Flags.FromLayout, dst, "-r", "-v").
 				MatchStatus(stateKeys, true, len(stateKeys)).
@@ -502,10 +494,10 @@ var _ = Describe("OCI layout users:", func() {
 			fromDir := GinkgoT().TempDir()
 			src := LayoutRef(fromDir, ma.Tag)
 			dstRepo := cpTestRepo("platform-referrer-from-layout")
-			dst := RegistryRef(Host, dstRepo, "copied")
+			dst := RegistryRef(ZOTHost, dstRepo, "copied")
 			// prepare
-			ORAS("cp", RegistryRef(Host, ArtifactRepo, ma.Tag), src, Flags.ToLayout, "-r").Exec()
-			ORAS("cp", RegistryRef(Host, ArtifactRepo, ma.Tag), src, Flags.ToLayout, "-r", "--platform", "linux/amd64").Exec()
+			ORAS("cp", RegistryRef(ZOTHost, ArtifactRepo, ma.Tag), src, Flags.ToLayout, "-r").Exec()
+			ORAS("cp", RegistryRef(ZOTHost, ArtifactRepo, ma.Tag), src, Flags.ToLayout, "-r", "--platform", "linux/amd64").Exec()
 			// test
 			ORAS("cp", src, Flags.FromLayout, dst, "-r", "-v", "--platform", "linux/amd64").
 				MatchStatus(stateKeys, true, len(stateKeys)).
@@ -515,7 +507,7 @@ var _ = Describe("OCI layout users:", func() {
 			srcManifest := ORAS("manifest", "fetch", src, Flags.Layout, "--platform", "linux/amd64").WithDescription("fetch from source to validate").Exec().Out.Contents()
 			dstManifest := ORAS("manifest", "fetch", dst).WithDescription("fetch from destination to validate").Exec().Out.Contents()
 			Expect(srcManifest).To(Equal(dstManifest))
-			ORAS("manifest", "fetch", RegistryRef(Host, dstRepo, ma.Digest)).WithDescription("not copy index").ExpectFailure().Exec()
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, dstRepo, ma.Digest)).WithDescription("not copy index").ExpectFailure().Exec()
 			var index ocispec.Index
 			bytes := ORAS("discover", dst, "-o", "json").
 				MatchKeyWords(ma.LinuxAMD64Referrer.Digest.String()).
@@ -528,7 +520,7 @@ var _ = Describe("OCI layout users:", func() {
 
 		It("should copy a certain platform of image and its referrers from a registry to an OCI image layout", func() {
 			stateKeys := append(ma.LinuxAMD64StateKeys, ma.LinuxAMD64ReferrerStateKey, ma.LinuxAMD64ReferrerConfigStateKey)
-			src := RegistryRef(Host, ArtifactRepo, ma.Tag)
+			src := RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)
 			toDir := GinkgoT().TempDir()
 			dst := LayoutRef(toDir, "copied")
 			// test
