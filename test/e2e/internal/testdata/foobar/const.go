@@ -91,16 +91,16 @@ func ImageConfigStateKey(configName string) match.StateKey {
 var (
 	SBOMImageReferrer = ocispec.Descriptor{
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
-		Digest:    digest.Digest("sha256:32b78bd00723cd7d5251d4586f84d252530b7b5fe1c4104532767e6da4e04e47"),
+		Digest:    digest.Digest("sha256:7cdd0383e3db8adcca166e59b431981b4407f9d30b17014ad42873107af6fbc4"),
 		Size:      660,
 		Annotations: map[string]string{
 			"org.opencontainers.image.created": "2023-01-18T08:37:42Z",
 		},
-		ArtifactType: "test.sbom.file",
+		ArtifactType: "test/sbom/file",
 	}
 	SignatureImageReferrer = ocispec.Descriptor{
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
-		Digest:    digest.Digest("sha256:0e007dcb9ded7f49c4dc8e3eed4a446712eb6fdf08a665a4f2352d6d2f8bdf17"),
+		Digest:    digest.Digest("sha256:b6d28d84b6ad3f8d9d437db28248ab26270597fe55cde0aa29813341cd5430af"),
 		Size:      670,
 	}
 	SBOMArtifactReferrer = ocispec.Descriptor{
@@ -122,12 +122,12 @@ var (
 		{Digest: "2dbea575a349", Name: "application/vnd.oci.artifact.manifest.v1+json"},
 	}
 	ImageReferrersStateKeys = []match.StateKey{
-		{Digest: "0e007dcb9ded", Name: "application/vnd.oci.image.manifest.v1+json"},
-		{Digest: "32b78bd00723", Name: "application/vnd.oci.image.manifest.v1+json"},
+		{Digest: "b6d28d84b6ad", Name: "application/vnd.oci.image.manifest.v1+json"},
+		{Digest: "7cdd0383e3db", Name: "application/vnd.oci.image.manifest.v1+json"},
 	}
 	ImageReferrerConfigStateKeys = []match.StateKey{
-		{Digest: "44136fa355b3", Name: "test.signature.file"},
-		{Digest: "44136fa355b3", Name: "test.sbom.file"},
+		{Digest: "44136fa355b3", Name: "test/signature.file"},
+		{Digest: "44136fa355b3", Name: "test/sbom/file"},
 	}
 	FallbackImageReferrersStateKeys = []match.StateKey{
 		{Digest: "316405db72cc", Name: "application/vnd.oci.image.manifest.v1+json"},
@@ -139,13 +139,13 @@ var (
 var (
 	FallbackSignatureImageReferrer = ocispec.Descriptor{
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
-		Digest:    digest.Digest("sha256:8b3f7e000c4a6d32cd6bfcabfe874ed470d470501a09adc65afaf1c342f988ff"),
+		Digest:    digest.Digest("sha256:b6d28d84b6ad3f8d9d437db28248ab26270597fe55cde0aa29813341cd5430af"),
 		Size:      670,
 	}
 
 	FallbackSBOMImageReferrer = ocispec.Descriptor{
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
-		Digest:    digest.Digest("sha256:316405db72cc8f0212c19db23b498f9af8a456c9cd288f9e33acd1ba9e7cd534"),
+		Digest:    digest.Digest("sha256:7cdd0383e3db8adcca166e59b431981b4407f9d30b17014ad42873107af6fbc4"),
 		Size:      660,
 		Annotations: map[string]string{
 			"org.opencontainers.image.created": "2023-01-29T02:32:18Z",
