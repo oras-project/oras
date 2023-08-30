@@ -11,12 +11,12 @@
 		},
 		{
 			"mediaType": "application/vnd.oci.image.manifest.v1+json",
-			"digest": "sha256:32b78bd00723cd7d5251d4586f84d252530b7b5fe1c4104532767e6da4e04e47",
+			"digest": "sha256:7cdd0383e3db8adcca166e59b431981b4407f9d30b17014ad42873107af6fbc4",
 			"size": 660
 		},
 		{
 			"mediaType": "application/vnd.oci.image.manifest.v1+json",
-			"digest": "sha256:0e007dcb9ded7f49c4dc8e3eed4a446712eb6fdf08a665a4f2352d6d2f8bdf17",
+			"digest": "sha256:b6d28d84b6ad3f8d9d437db28248ab26270597fe55cde0aa29813341cd5430af",
 			"size": 670
 		}
 	]
