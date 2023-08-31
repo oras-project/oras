@@ -51,12 +51,12 @@ var (
 	LinuxAMD64ConfigDesc = `{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:fe9dbc99451d0517d65e048c309f0b5afb2cc513b7a3d456b6cc29fe641386c5","size":53}`
 	LinuxAMD64Referrer   = ocispec.Descriptor{
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
-		Digest:    digest.Digest("sha256:57e6462826c85be15f22f824666f6b467d488fa7bc7e2975f43a2fae27a24ef0"),
+		Digest:    digest.Digest("sha256:c5e00045954a70e3fd28307dd543d4cc158946117943700b8f520f72ddca031f"),
 		Annotations: map[string]string{
 			"org.opencontainers.image.created": "2023-02-15T07:56:34Z",
 			"subject":                          "linux/amd64",
 		},
-		ArtifactType: "referrer.image",
+		ArtifactType: "referrer/image",
 		Size:         481,
 	}
 	LayerName                        = "hello.tar"
