@@ -112,8 +112,6 @@ graph TD;
             direction TB
             E1["test.sbom.file(artifact)"] -- subject --> C1
             E2["test.signature.file(artifact)"] -- subject --> E1
-        end
-        subgraph "file: artifacts_fallback.tar.gz"
             direction TB
             D1["test.sbom.file(image)"] -- subject --> C1
             D2["test.signature.file(image)"] -- subject --> D1
