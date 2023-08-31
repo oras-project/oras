@@ -552,3 +552,14 @@ var _ = Describe("OCI layout users:", func() {
 		})
 	})
 })
+
+var _ = Describe("OCI image spec v1.1.0-rc2 artifact users:", func() {
+	It("should copy an image and its referrers to a new repository", func() {
+		stateKeys := append(foobarStates, foobar.ArtifactReferrerStateKeys...)
+		digest := foobar.SBOMArtifactReferrer.Digest.String()
+		src := RegistryRef(Host, ArtifactRepo, digest)
+		dst := RegistryRef(Host, cpTestRepo("referrers"), digest)
+		ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
+		CompareRef(src, dst)
+	})
+})
