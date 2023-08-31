@@ -91,6 +91,14 @@ var _ = Describe("1.1 registry users:", func() {
 			CompareRef(src, dst)
 		})
 
+		It("should copy an image and its referrers to a new repository", func() {
+			stateKeys := append(append(foobarStates, foobar.ImageReferrersStateKeys...), foobar.ImageReferrerConfigStateKeys...)
+			src := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
+			dst := RegistryRef(ZOTHost, cpTestRepo("referrers"), foobar.Digest)
+			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
+			CompareRef(src, dst)
+		})
+
 		It("should copy a multi-arch image and its referrers to a new repository via tag", func() {
 			stateKeys := append(ma.IndexStateKeys, ma.IndexZOTReferrerStateKey, ma.IndexReferrerConfigStateKey)
 			src := RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)
