@@ -408,7 +408,7 @@ var _ = Describe("OCI layout users:", func() {
 		})
 
 		It("should copy a tagged image and its referrers from a registry to an OCI image layout", func() {
-			stateKeys := append(append(foobarStates, foobar.ArtifactReferrerStateKeys...), foobar.ImageReferrerConfigStateKeys...)
+			stateKeys := append(append(foobarStates, foobar.ImageReferrersStateKeys...), foobar.ImageReferrerConfigStateKeys...)
 			dst := LayoutRef(GinkgoT().TempDir(), "copied")
 			src := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
 			// test
@@ -420,7 +420,7 @@ var _ = Describe("OCI layout users:", func() {
 		})
 
 		It("should copy a image and its referrers from a registry to an OCI image layout via digest", func() {
-			stateKeys := append(append(foobarStates, foobar.ArtifactReferrerStateKeys...), foobar.ImageReferrerConfigStateKeys...)
+			stateKeys := append(append(foobarStates, foobar.ImageReferrersStateKeys...), foobar.ImageReferrerConfigStateKeys...)
 			toDir := GinkgoT().TempDir()
 			src := RegistryRef(ZOTHost, ArtifactRepo, foobar.Digest)
 			// test
