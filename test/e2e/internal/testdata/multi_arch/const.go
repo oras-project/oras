@@ -59,7 +59,7 @@ var (
 			"subject":                          "linux/amd64",
 		},
 		ArtifactType: "referrer/image",
-		Size:         481,
+		Size:         482,
 	}
 	LayerName                        = "hello.tar"
 	LinuxAMD64ReferrerStateKey       = match.StateKey{Digest: "c5e00045954a", Name: "application/vnd.oci.image.manifest.v1+json"}
