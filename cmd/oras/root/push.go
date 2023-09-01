@@ -68,11 +68,12 @@ Example - Push file "hi.txt" with the custom media type "application/vnd.me.hi":
 Example - Push multiple files with different media types:
   oras push localhost:5000/hello:v1 hi.txt:application/vnd.me.hi bye.txt:application/vnd.me.bye
 
+Example - Push file "hi.txt" with artifact type "application/vnd.example+type":
+  oras push --artifact-type application/vnd.example+type localhost:5000/hello:v1 hi.txt
+
 Example - Push file "hi.txt" with config type "application/vnd.me.config":
   oras push --image-spec v1.0 --artifact-type application/vnd.me.config localhost:5000/hello:v1 hi.txt
 
-Example - Push file "hi.txt" with artifact type "application/vnd.example+type":
-  oras push --artifact-type application/vnd.example+type localhost:5000/hello:v1 hi.txt
 
 Example - Push file "hi.txt" with the custom manifest config "config.json" of the custom media type "application/vnd.me.config":
   oras push --config config.json:application/vnd.me.config localhost:5000/hello:v1 hi.txt
