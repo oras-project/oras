@@ -56,6 +56,22 @@
 			"mediaType": "application/vnd.oci.image.manifest.v1+json",
 			"digest": "sha256:c5e00045954a70e3fd28307dd543d4cc158946117943700b8f520f72ddca031f",
 			"size": 482
+		},
+		{
+			"mediaType": "application/vnd.oci.image.manifest.v1+json",
+			"digest": "sha256:ccd5f15fb7e0d27d47e2912b948eb846c968511ae02724672d608f3d05bc61a1",
+			"size": 571,
+			"annotations": {
+				"org.opencontainers.image.ref.name": "blob"
+			}
+		},
+		{
+			"mediaType": "application/vnd.oci.image.manifest.v1+json",
+			"digest": "sha256:0e7404d1cc4a2115fdd83449df19dbef6ad10c0e1c2882241e3fedfe20f012a3",
+			"size": 505,
+			"annotations": {
+				"org.opencontainers.image.ref.name": "config"
+			}
 		}
 	]
 }
