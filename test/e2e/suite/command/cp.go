@@ -257,13 +257,13 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 		})
 		It("should copy an image artifact and its referrers from a fallback registry to a registry", func() {
 			repo := cpTestRepo("from-fallback")
-			stateKeys := append(append(foobarStates, foobar.FallbackImageReferrersStateKeys...), foobar.ImageReferrerConfigStateKeys...)
-			src := RegistryRef(FallbackHost, ArtifactRepo, foobar.FallbackSBOMImageReferrer.Digest.String())
+			stateKeys := append(append(foobarStates, foobar.ImageReferrersStateKeys...), foobar.ImageReferrerConfigStateKeys...)
+			src := RegistryRef(FallbackHost, ArtifactRepo, foobar.SBOMImageReferrer.Digest.String())
 			dst := RegistryRef(ZOTHost, repo, "")
 			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
-			CompareRef(src, RegistryRef(ZOTHost, repo, foobar.FallbackSBOMImageReferrer.Digest.String()))
+			CompareRef(src, RegistryRef(ZOTHost, repo, foobar.SBOMImageReferrer.Digest.String()))
 			ORAS("discover", "-o", "tree", RegistryRef(ZOTHost, repo, foobar.Digest)).
-				WithDescription("discover referrer via subject").MatchKeyWords(foobar.FallbackSignatureImageReferrer.Digest.String(), foobar.FallbackSBOMImageReferrer.Digest.String()).Exec()
+				WithDescription("discover referrer via subject").MatchKeyWords(foobar.SignatureImageReferrer.Digest.String(), foobar.SBOMImageReferrer.Digest.String()).Exec()
 		})
 
 		It("should copy an image from a fallback registry to an OCI image layout via digest", func() {
