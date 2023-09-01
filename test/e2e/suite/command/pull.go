@@ -26,6 +26,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"oras.land/oras-go/v2"
+	"oras.land/oras/test/e2e/internal/testdata/artifact/blob"
+	"oras.land/oras/test/e2e/internal/testdata/artifact/config"
 	"oras.land/oras/test/e2e/internal/testdata/feature"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
@@ -41,7 +43,7 @@ var _ = Describe("ORAS beginners:", func() {
 	})
 })
 
-var _ = Describe("1.1 registry users:", func() {
+var _ = Describe("OCI spec 1.1 registry users:", func() {
 	When("pulling images from remote registry", func() {
 		var (
 			configName = "test.config"
@@ -105,10 +107,33 @@ var _ = Describe("1.1 registry users:", func() {
 			ORAS("pull", RegistryRef(ZOTHost, ImageRepo, "multi"), "--platform", "linux/amd64", "-v", "-o", GinkgoT().TempDir()).
 				MatchStatus(multi_arch.LinuxAMD64StateKeys, true, len(multi_arch.LinuxAMD64StateKeys)).Exec()
 		})
+
+		It("should pull an artifact with blob", func() {
+			pullRoot := GinkgoT().TempDir()
+			ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, blob.Tag), "-v", "-o", pullRoot).Exec()
+			Expect(filepath.Join(pullRoot, multi_arch.LayerName)).Should(BeAnExistingFile())
+		})
+
+		It("should pull an artifact with config", func() {
+			pullRoot := GinkgoT().TempDir()
+			ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, config.Tag), "-v", "-o", pullRoot).Exec()
+			Expect(filepath.Join(pullRoot, multi_arch.LayerName)).Should(BeAnExistingFile())
+		})
+
+		It("should copy an artifact with blob", func() {
+			repo := cpTestRepo("artifact-with-blob")
+			stateKeys := append(append(foobarStates, foobar.ImageReferrersStateKeys...), foobar.ImageReferrerConfigStateKeys...)
+			src := RegistryRef(ZOTHost, ArtifactRepo, foobar.SignatureImageReferrer.Digest.String())
+			dst := RegistryRef(FallbackHost, repo, "")
+			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
+			CompareRef(src, RegistryRef(FallbackHost, repo, foobar.SignatureImageReferrer.Digest.String()))
+			ORAS("discover", "-o", "tree", RegistryRef(FallbackHost, repo, foobar.Digest)).
+				WithDescription("discover referrer via subject").MatchKeyWords(foobar.SignatureImageReferrer.Digest.String(), foobar.SBOMImageReferrer.Digest.String()).Exec()
+		})
 	})
 })
 
-var _ = Describe("1.0 registry users:", Focus, func() {
+var _ = Describe("OCI spec 1.0 registry users:", func() {
 	It("should pull all files in an image to a target folder", func() {
 		pullRoot := "pulled"
 		configName := "test.config"
@@ -215,7 +240,7 @@ var _ = Describe("OCI image layout users:", func() {
 	})
 })
 
-var _ = Describe("OCI image spec v1.1.0-rc2 artifact users:", Focus, func() {
+var _ = Describe("OCI image spec v1.1.0-rc2 artifact users:", func() {
 	It("should pull all files in an image to a target folder", func() {
 		pullRoot := "pulled"
 		configName := "test.config"

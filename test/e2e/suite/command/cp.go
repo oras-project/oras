@@ -27,6 +27,8 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
+	"oras.land/oras/test/e2e/internal/testdata/artifact/blob"
+	"oras.land/oras/test/e2e/internal/testdata/artifact/config"
 	"oras.land/oras/test/e2e/internal/testdata/feature"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	ma "oras.land/oras/test/e2e/internal/testdata/multi_arch"
@@ -70,10 +72,17 @@ func CompareRef(src, dst string) {
 
 var _ = Describe("1.1 registry users:", func() {
 	When("running `cp`", func() {
-		It("should copy an image to a new repository via tag", func() {
-			src := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
-			dst := RegistryRef(ZOTHost, cpTestRepo("tag"), "copiedTag")
-			ORAS("cp", src, dst, "-v").MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+		It("should copy an artifact with blob", func() {
+			src := RegistryRef(ZOTHost, ArtifactRepo, blob.Tag)
+			dst := RegistryRef(ZOTHost, cpTestRepo("artifact-with-blob"), "copied")
+			ORAS("cp", src, dst, "-v").MatchStatus(blob.StateKeys, true, len(blob.StateKeys)).Exec()
+			CompareRef(src, dst)
+		})
+
+		It("should copy an artifact with config", func() {
+			src := RegistryRef(ZOTHost, ArtifactRepo, config.Tag)
+			dst := RegistryRef(ZOTHost, cpTestRepo("artifact-with-config"), "copied")
+			ORAS("cp", src, dst, "-v").MatchStatus(config.StateKeys, true, len(config.StateKeys)).Exec()
 			CompareRef(src, dst)
 		})
 
