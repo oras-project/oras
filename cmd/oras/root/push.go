@@ -59,7 +59,7 @@ func pushCmd() *cobra.Command {
 Example - Push file "hi.txt" with media type "application/vnd.oci.image.layer.v1.tar" (default):
   oras push localhost:5000/hello:v1 hi.txt
 
-Example - Push file "hi.txt" and export the pushed manifest to a specified path
+Example - Push file "hi.txt" and export the pushed manifest to a specified path:
   oras push --export-manifest manifest.json localhost:5000/hello:v1 hi.txt
 
 Example - Push file "hi.txt" with the custom media type "application/vnd.me.hi":
@@ -83,10 +83,10 @@ Example - Push file to the insecure registry:
 Example - Push file to the HTTP registry:
   oras push --plain-http localhost:5000/hello:v1 hi.txt
 
-Example - Push repository with manifest annotations
+Example - Push repository with manifest annotations:
   oras push --annotation "key=val" localhost:5000/hello:v1
 
-Example - Push repository with manifest annotation file
+Example - Push repository with manifest annotation file:
   oras push --annotation-file annotation.json localhost:5000/hello:v1
 
 Example - Push file "hi.txt" with multiple tags:
