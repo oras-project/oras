@@ -121,6 +121,7 @@ var (
 		{Digest: "8d7a27ff2662", Name: "application/vnd.oci.artifact.manifest.v1+json"},
 		{Digest: "2dbea575a349", Name: "application/vnd.oci.artifact.manifest.v1+json"},
 	}
+
 	ImageReferrersStateKeys = []match.StateKey{
 		{Digest: "0cb8c4da7e9f", Name: "application/vnd.oci.image.manifest.v1+json"},
 		{Digest: "e2c6633a7998", Name: "application/vnd.oci.image.manifest.v1+json"},
