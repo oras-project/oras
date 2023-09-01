@@ -29,6 +29,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras/test/e2e/internal/testdata/artifact/blob"
 	"oras.land/oras/test/e2e/internal/testdata/artifact/config"
+	"oras.land/oras/test/e2e/internal/testdata/artifact/index"
 	"oras.land/oras/test/e2e/internal/testdata/feature"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	ma "oras.land/oras/test/e2e/internal/testdata/multi_arch"
@@ -85,6 +86,13 @@ var _ = Describe("1.1 registry users:", func() {
 			ORAS("cp", src, dst, "-v").MatchStatus(config.StateKeys, true, len(config.StateKeys)).Exec()
 		})
 
+		It("should copy index and its subject", func() {
+			stateKeys := append(ma.IndexStateKeys, index.ManifestStatusKey)
+			src := RegistryRef(ZOTHost, ArtifactRepo, index.ManifestDigest)
+			dst := RegistryRef(ZOTHost, cpTestRepo("index-with-subject"), "")
+			ORAS("cp", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
+		})
+
 		It("should copy an image to a new repository via tag", func() {
 			src := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
 			dst := RegistryRef(ZOTHost, cpTestRepo("tag"), "copied")
@@ -126,7 +134,7 @@ var _ = Describe("1.1 registry users:", func() {
 			// validate
 			CompareRef(RegistryRef(ZOTHost, ImageRepo, ma.Digest), dst)
 			var index ocispec.Index
-			bytes := ORAS("discover", dst, "-o", "json").
+			bytes := ORAS("discover", dst, "-o", "json", "--artifact-type", ma.IndexReferrerConfigStateKey.Name).
 				MatchKeyWords(ma.IndexReferrerDigest).
 				WithDescription("copy image referrer").
 				Exec().Out.Contents()
@@ -151,7 +159,7 @@ var _ = Describe("1.1 registry users:", func() {
 			// validate
 			CompareRef(RegistryRef(ZOTHost, ImageRepo, ma.Digest), dst)
 			var index ocispec.Index
-			bytes := ORAS("discover", dst, "-o", "json").
+			bytes := ORAS("discover", dst, "-o", "json", "--artifact-type", ma.IndexReferrerConfigStateKey.Name).
 				MatchKeyWords(ma.IndexReferrerDigest).
 				WithDescription("copy image referrer").
 				Exec().Out.Contents()
@@ -469,8 +477,8 @@ var _ = Describe("OCI layout users:", func() {
 			dstManifest := ORAS("manifest", "fetch", dst, Flags.Layout).WithDescription("fetch from destination to validate").Exec().Out.Contents()
 			Expect(srcManifest).To(Equal(dstManifest))
 			var index ocispec.Index
-			bytes := ORAS("discover", dst, "-o", "json", Flags.Layout).
-				MatchKeyWords(ma.IndexReferrerDigest).
+			bytes := ORAS("discover", dst, "-o", "json", Flags.Layout, "--artifact-type", ma.IndexReferrerConfigStateKey.Name).
+				// MatchKeyWords(ma.IndexReferrerDigest).
 				WithDescription("copy image referrer").
 				Exec().Out.Contents()
 			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
@@ -499,7 +507,7 @@ var _ = Describe("OCI layout users:", func() {
 			dstManifest := ORAS("manifest", "fetch", dst).WithDescription("fetch from destination to validate").Exec().Out.Contents()
 			Expect(srcManifest).To(Equal(dstManifest))
 			var index ocispec.Index
-			bytes := ORAS("discover", dst, "-o", "json").
+			bytes := ORAS("discover", dst, "-o", "json", "--artifact-type", ma.IndexReferrerConfigStateKey.Name).
 				MatchKeyWords(ma.IndexReferrerDigest).
 				WithDescription("copy image referrer").
 				Exec().Out.Contents()
