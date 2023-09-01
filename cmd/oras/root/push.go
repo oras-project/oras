@@ -28,10 +28,13 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/contentutil"
+	"oras.land/oras/internal/registryutil"
 )
 
 type pushOptions struct {
@@ -181,6 +184,12 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	union := contentutil.MultiReadOnlyTarget(memoryStore, store)
 	updateDisplayOption(&copyOptions.CopyGraphOptions, union, opts.Verbose)
 	copy := func(root ocispec.Descriptor) error {
+		if repo, ok := dst.(*remote.Repository); ok {
+			// add both pull and push scope hints for dst repository
+			// to save potential push-scope token requests during copy
+			ctx = registryutil.WithScopeHint(ctx, repo.Reference, auth.ActionPull, auth.ActionPush)
+		}
+
 		if tag := opts.Reference; tag == "" {
 			err = oras.CopyGraph(ctx, union, dst, root, copyOptions.CopyGraphOptions)
 		} else {
