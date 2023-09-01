@@ -181,7 +181,7 @@ var _ = Describe("OCI image spec v1.1.0-rc2 artifact users:", func() {
 		configName := "test.config"
 		tempDir := PrepareTempFiles()
 		stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(configName))
-		ORAS("pull", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "-v", "--config", configName, "-o", pullRoot).
+		ORAS("pull", RegistryRef(Host, ImageRepo, foobar.Tag), "-v", "--config", configName, "-o", pullRoot).
 			MatchStatus(stateKeys, true, len(stateKeys)).
 			WithWorkDir(tempDir).Exec()
 		// check config
@@ -197,7 +197,7 @@ var _ = Describe("OCI image spec v1.1.0-rc2 artifact users:", func() {
 				WithWorkDir(tempDir).Exec()
 		}
 
-		ORAS("pull", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "-v", "-o", pullRoot, "--keep-old-files").
+		ORAS("pull", RegistryRef(Host, ImageRepo, foobar.Tag), "-v", "-o", pullRoot, "--keep-old-files").
 			ExpectFailure().
 			WithDescription("fail if overwrite old files are disabled")
 	})
