@@ -26,8 +26,11 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
+	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
+	"oras.land/oras/internal/registryutil"
 )
 
 type attachOptions struct {
@@ -93,7 +96,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 }
 
 func runAttach(ctx context.Context, opts attachOptions) error {
-	ctx, _ = opts.WithContext(ctx)
+	ctx, logger := opts.WithContext(ctx)
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err
@@ -109,12 +112,17 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 	}
 	defer store.Close()
 
-	dst, err := opts.NewTarget(opts.Common)
+	dst, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
 		return err
 	}
 	if err := opts.EnsureReferenceNotEmpty(); err != nil {
 		return err
+	}
+	if repo, ok := dst.(*remote.Repository); ok {
+		// add both pull and push scope hints for dst repository
+		// to save potential push-scope token requests during copy
+		ctx = registryutil.WithScopeHint(ctx, repo.Reference, auth.ActionPull, auth.ActionPush)
 	}
 	subject, err := dst.Resolve(ctx, opts.Reference)
 	if err != nil {
@@ -126,13 +134,13 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 	}
 
 	// prepare push
-	packOpts := oras.PackOptions{
+	packOpts := oras.PackManifestOptions{
 		Subject:             &subject,
 		ManifestAnnotations: annotations[option.AnnotationManifest],
-		PackImageManifest:   true,
+		Layers:              descs,
 	}
 	pack := func() (ocispec.Descriptor, error) {
-		return oras.Pack(ctx, store, opts.artifactType, descs, packOpts)
+		return oras.PackManifest(ctx, store, oras.PackManifestVersion1_1_RC4, opts.artifactType, packOpts)
 	}
 
 	graphCopyOptions := oras.DefaultCopyGraphOptions

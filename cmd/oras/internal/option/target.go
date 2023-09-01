@@ -21,7 +21,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
@@ -111,7 +113,7 @@ func parseOCILayoutReference(raw string) (path string, ref string, err error) {
 }
 
 // NewTarget generates a new target based on opts.
-func (opts *Target) NewTarget(common Common) (oras.GraphTarget, error) {
+func (opts *Target) NewTarget(common Common, logger logrus.FieldLogger) (oras.GraphTarget, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
 		var err error
@@ -121,7 +123,7 @@ func (opts *Target) NewTarget(common Common) (oras.GraphTarget, error) {
 		}
 		return oci.New(opts.Path)
 	case TargetTypeRemote:
-		repo, err := opts.NewRepository(opts.RawReference, common)
+		repo, err := opts.NewRepository(opts.RawReference, common, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -142,7 +144,7 @@ type ReadOnlyGraphTagFinderTarget interface {
 }
 
 // NewReadonlyTargets generates a new read only target based on opts.
-func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadOnlyGraphTagFinderTarget, error) {
+func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common, logger logrus.FieldLogger) (ReadOnlyGraphTagFinderTarget, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
 		var err error
@@ -159,7 +161,7 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadO
 		}
 		return oci.NewFromTar(ctx, opts.Path)
 	case TargetTypeRemote:
-		repo, err := opts.NewRepository(opts.RawReference, common)
+		repo, err := opts.NewRepository(opts.RawReference, common, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -203,6 +205,8 @@ func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
 
 // Parse parses user-provided flags and arguments into option struct.
 func (opts *BinaryTarget) Parse() error {
+	opts.From.warned = make(map[string]*sync.Map)
+	opts.To.warned = opts.From.warned
 	// resolve are parsed in array order, latter will overwrite former
 	opts.From.resolveFlag = append(opts.resolveFlag, opts.From.resolveFlag...)
 	opts.To.resolveFlag = append(opts.resolveFlag, opts.To.resolveFlag...)
