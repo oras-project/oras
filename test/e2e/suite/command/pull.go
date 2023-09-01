@@ -41,7 +41,7 @@ var _ = Describe("ORAS beginners:", func() {
 	})
 })
 
-var _ = Describe("Remote registry users:", func() {
+var _ = Describe("1.1 registry users:", func() {
 	When("pulling images from remote registry", func() {
 		var (
 			configName = "test.config"
@@ -105,6 +105,46 @@ var _ = Describe("Remote registry users:", func() {
 			ORAS("pull", RegistryRef(ZOTHost, ImageRepo, "multi"), "--platform", "linux/amd64", "-v", "-o", GinkgoT().TempDir()).
 				MatchStatus(multi_arch.LinuxAMD64StateKeys, true, len(multi_arch.LinuxAMD64StateKeys)).Exec()
 		})
+	})
+})
+
+var _ = Describe("1.0 registry users:", Focus, func() {
+	It("should pull all files in an image to a target folder", func() {
+		pullRoot := "pulled"
+		configName := "test.config"
+		tempDir := PrepareTempFiles()
+		stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(configName))
+		ORAS("pull", RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), "-v", "--config", configName, "-o", pullRoot).
+			MatchStatus(stateKeys, true, len(stateKeys)).
+			WithWorkDir(tempDir).Exec()
+		// check config
+		configPath := filepath.Join(tempDir, pullRoot, configName)
+		Expect(configPath).Should(BeAnExistingFile())
+		f, err := os.Open(configPath)
+		Expect(err).ShouldNot(HaveOccurred())
+		defer f.Close()
+		Eventually(gbytes.BufferReader(f)).Should(gbytes.Say("{}"))
+		for _, f := range foobar.ImageLayerNames {
+			// check layers
+			Binary("diff", filepath.Join(tempDir, "foobar", f), filepath.Join(pullRoot, f)).
+				WithWorkDir(tempDir).Exec()
+		}
+
+		ORAS("pull", RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), "-v", "-o", pullRoot, "--keep-old-files").
+			ExpectFailure().
+			WithDescription("fail if overwrite old files are disabled")
+	})
+
+	It("should pull subject", func() {
+		tempDir := GinkgoT().TempDir()
+		stateKeys := append(append(
+			foobar.ImageLayerStateKeys,
+			foobar.ManifestStateKey),
+			foobar.ImageReferrersStateKeys...,
+		)
+		ORAS("pull", RegistryRef(FallbackHost, ArtifactRepo, foobar.SignatureImageReferrer.Digest.String()), "-v", "--include-subject").
+			MatchStatus(stateKeys, true, len(stateKeys)).
+			WithWorkDir(tempDir).Exec()
 	})
 })
 
@@ -175,13 +215,13 @@ var _ = Describe("OCI image layout users:", func() {
 	})
 })
 
-var _ = Describe("OCI image spec v1.1.0-rc2 artifact users:", func() {
+var _ = Describe("OCI image spec v1.1.0-rc2 artifact users:", Focus, func() {
 	It("should pull all files in an image to a target folder", func() {
 		pullRoot := "pulled"
 		configName := "test.config"
 		tempDir := PrepareTempFiles()
 		stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(configName))
-		ORAS("pull", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "-v", "--config", configName, "-o", pullRoot).
+		ORAS("pull", RegistryRef(Host, ImageRepo, foobar.Tag), "-v", "--config", configName, "-o", pullRoot).
 			MatchStatus(stateKeys, true, len(stateKeys)).
 			WithWorkDir(tempDir).Exec()
 		// check config
@@ -197,7 +237,7 @@ var _ = Describe("OCI image spec v1.1.0-rc2 artifact users:", func() {
 				WithWorkDir(tempDir).Exec()
 		}
 
-		ORAS("pull", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "-v", "-o", pullRoot, "--keep-old-files").
+		ORAS("pull", RegistryRef(Host, ImageRepo, foobar.Tag), "-v", "-o", pullRoot, "--keep-old-files").
 			ExpectFailure().
 			WithDescription("fail if overwrite old files are disabled")
 	})
