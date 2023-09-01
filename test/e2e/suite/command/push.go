@@ -27,6 +27,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras/test/e2e/internal/testdata/artifact"
 	"oras.land/oras/test/e2e/internal/testdata/feature"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	. "oras.land/oras/test/e2e/internal/utils"
@@ -39,19 +40,30 @@ var _ = Describe("ORAS beginners:", func() {
 			out := ORAS("push", "--help").MatchKeyWords(ExampleDesc).Exec().Out
 			gomega.Expect(out).Should(gbytes.Say("--image-spec string\\s+%s", regexp.QuoteMeta(feature.Experimental.Mark)))
 		})
+
+		It("should fail to use --config and --artifact-type at the same time for OCI spec v1.0 registry", func() {
+			tempDir := PrepareTempFiles()
+			repo := pushTestRepo("no-mediatype")
+			ref := RegistryRef(ZOTHost, repo, "")
+
+			ORAS("push", ref, "--config", foobar.FileConfigName, "--artifact-type", "test/artifact+json", "--image-spec", "v1.0").ExpectFailure().WithWorkDir(tempDir).Exec()
+		})
 	})
 })
 
-var _ = Describe("1.1 registry users:", func() {
+func pushTestRepo(text string) string {
+	return fmt.Sprintf("command/push/%d/%s", GinkgoRandomSeed(), text)
+}
+
+var _ = Describe("Remote registry users:", func() {
 	tag := "e2e"
-	When("pushing to registy without OCI artifact support", func() {
-		repoPrefix := fmt.Sprintf("command/push/%d", GinkgoRandomSeed())
+	When("pushing to OCI spec v1.0 registries", func() {
 		statusKeys := []match.StateKey{
 			foobar.ImageConfigStateKey("application/vnd.oci.empty.v1+json"),
 			foobar.FileBarStateKey,
 		}
 		It("should push files without customized media types", func() {
-			repo := fmt.Sprintf("%s/%s", repoPrefix, "no-mediatype")
+			repo := pushTestRepo("no-mediatype")
 			tempDir := PrepareTempFiles()
 			ref := RegistryRef(ZOTHost, repo, tag)
 
@@ -67,7 +79,7 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 
 		It("should push files with path validation disabled", func() {
-			repo := fmt.Sprintf("%s/%s", repoPrefix, "disable-path-validation")
+			repo := pushTestRepo("disable-path-validation")
 			ref := RegistryRef(ZOTHost, repo, tag)
 			absBarName := filepath.Join(PrepareTempFiles(), foobar.FileBarName)
 
@@ -89,7 +101,7 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 
 		It("should fail path validation when pushing file with absolute path", func() {
-			repo := fmt.Sprintf("%s/%s", repoPrefix, "path-validation")
+			repo := pushTestRepo("path-validation")
 			ref := RegistryRef(ZOTHost, repo, tag)
 			absBarName := filepath.Join(PrepareTempFiles(), foobar.FileBarName)
 			// test
@@ -100,7 +112,7 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 
 		It("should push files and tag", func() {
-			repo := fmt.Sprintf("%s/%s", repoPrefix, "multi-tag")
+			repo := pushTestRepo("multi-tag")
 			tempDir := PrepareTempFiles()
 			extraTag := "2e2"
 
@@ -120,7 +132,7 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 
 		It("should push files with customized media types", func() {
-			repo := fmt.Sprintf("%s/%s", repoPrefix, "layer-mediatype")
+			repo := pushTestRepo("layer-mediatype")
 			layerType := "layer/type"
 			tempDir := PrepareTempFiles()
 			ORAS("push", RegistryRef(ZOTHost, repo, tag), foobar.FileBarName+":"+layerType, "-v").
@@ -134,7 +146,7 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 
 		It("should push files with manifest exported", func() {
-			repo := fmt.Sprintf("%s/%s", repoPrefix, "export-manifest")
+			repo := pushTestRepo("export-manifest")
 			layerType := "layer/type"
 			tempDir := PrepareTempFiles()
 			exportPath := "packed.json"
@@ -147,7 +159,7 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 
 		It("should push files with customized config file", func() {
-			repo := fmt.Sprintf("%s/%s", repoPrefix, "config")
+			repo := pushTestRepo("config")
 			tempDir := PrepareTempFiles()
 
 			ORAS("push", RegistryRef(ZOTHost, repo, tag), "--config", foobar.FileConfigName, foobar.FileBarName, "-v").
@@ -168,13 +180,13 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 
 		It("should push files with customized config file and mediatype", func() {
-			repo := fmt.Sprintf("%s/%s", repoPrefix, "config/mediatype")
+			repo := pushTestRepo("config/mediatype")
 			configType := "config/type"
 			tempDir := PrepareTempFiles()
 
 			ORAS("push", RegistryRef(ZOTHost, repo, tag), "--config", fmt.Sprintf("%s:%s", foobar.FileConfigName, configType), foobar.FileBarName, "-v").
 				MatchStatus([]match.StateKey{
-					{Digest: "46b68ac1696c", Name: configType},
+					{Digest: foobar.FileConfigStateKey.Digest, Name: configType},
 					foobar.FileBarStateKey,
 				}, true, 2).
 				WithWorkDir(tempDir).Exec()
@@ -190,7 +202,7 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 
 		It("should push files with customized manifest annotation", func() {
-			repo := fmt.Sprintf("%s/%s", repoPrefix, "manifest-annotation")
+			repo := pushTestRepo("manifest-annotation")
 			key := "image-anno-key"
 			value := "image-anno-value"
 			tempDir := PrepareTempFiles()
@@ -206,7 +218,7 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 
 		It("should push files with customized file annotation", func() {
-			repo := fmt.Sprintf("%s/%s", repoPrefix, "file-annotation")
+			repo := pushTestRepo("file-annotation")
 			tempDir := PrepareTempFiles()
 
 			ORAS("push", RegistryRef(ZOTHost, repo, tag), foobar.FileBarName, "-v", "--annotation-file", "foobar/annotation.json", "--config", foobar.FileConfigName).
@@ -222,6 +234,94 @@ var _ = Describe("1.1 registry users:", func() {
 			Expect(manifest.Config.Annotations["hello"]).To(Equal("config"))
 			Expect(len(manifest.Layers)).To(Equal(1))
 			Expect(manifest.Layers[0].Annotations["foo"]).To(Equal("bar"))
+		})
+	})
+
+	When("pushing to OCI spec v1.1 registries", func() {
+		It("should push artifact without layer", func() {
+			repo := pushTestRepo("artifact-no-layer")
+			tempDir := PrepareTempFiles()
+			artifactType := "test/artifact+json"
+			annotationKey := "key"
+			annotationValue := "value"
+
+			// test
+			ORAS("push", RegistryRef(ZOTHost, repo, tag), "-a", fmt.Sprintf("%s=%s", annotationKey, annotationValue), "-v", "--artifact-type", artifactType).
+				MatchStatus([]match.StateKey{artifact.DefaultConfigStateKey}, true, 1).
+				WithWorkDir(tempDir).Exec()
+
+			// validate
+			fetched := ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, tag)).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.ArtifactType).Should(Equal(artifactType))
+			Expect(manifest.Layers).Should(HaveLen(1))
+			Expect(manifest.Layers[0]).Should(Equal(artifact.EmptyLayerJSON))
+			Expect(manifest.Config).Should(Equal(artifact.EmptyLayerJSON))
+			Expect(manifest.Annotations).NotTo(BeNil())
+			Expect(manifest.Annotations[annotationKey]).Should(Equal(annotationValue))
+		})
+
+		It("should push artifact with blob", func() {
+			repo := pushTestRepo("artifact-with-blob")
+			tempDir := PrepareTempFiles()
+
+			ORAS("push", RegistryRef(ZOTHost, repo, tag), foobar.FileBarName, "-v").
+				MatchStatus([]match.StateKey{foobar.FileBarStateKey, artifact.DefaultConfigStateKey}, true, 2).
+				WithWorkDir(tempDir).Exec()
+
+			// validate
+			fetched := ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, tag)).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.ArtifactType).Should(Equal(artifact.DefaultArtifactType))
+			Expect(manifest.Layers).Should(ContainElements(foobar.BlobBarDescriptor("application/vnd.oci.image.layer.v1.tar")))
+			Expect(manifest.Config).Should(Equal(artifact.EmptyLayerJSON))
+		})
+
+		It("should push artifact with config", func() {
+			repo := pushTestRepo("artifact-with-config")
+			tempDir := PrepareTempFiles()
+			configType := "test/config+json"
+
+			ORAS("push", RegistryRef(ZOTHost, repo, tag), foobar.FileBarName, "--config", fmt.Sprintf("%s:%s", foobar.FileConfigName, configType), "-v").
+				MatchStatus([]match.StateKey{
+					foobar.FileBarStateKey,
+					{Digest: foobar.FileConfigStateKey.Digest, Name: configType},
+					artifact.DefaultConfigStateKey}, true, 2).
+				WithWorkDir(tempDir).Exec()
+
+			// validate
+			fetched := ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, tag)).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.ArtifactType).Should(Equal(""))
+			Expect(manifest.Layers).Should(ContainElements(foobar.BlobBarDescriptor("application/vnd.oci.image.layer.v1.tar")))
+			Expect(manifest.Config.MediaType).Should(Equal(configType))
+			Expect(manifest.Config.Digest).Should(Equal(foobar.FileConfigDigest))
+		})
+
+		It("should push artifact with artifact type and config data", func() {
+			repo := pushTestRepo("artifact-type-and-config")
+			tempDir := PrepareTempFiles()
+			artifactType := "test/artifact+json"
+			configType := "test/config+json"
+
+			ORAS("push", RegistryRef(ZOTHost, repo, tag), foobar.FileBarName, "--artifact-type", artifactType, "--config", fmt.Sprintf("%s:%s", foobar.FileConfigName, configType), "-v").
+				MatchStatus([]match.StateKey{
+					foobar.FileBarStateKey,
+					{Digest: foobar.FileConfigStateKey.Digest, Name: configType},
+					artifact.DefaultConfigStateKey}, true, 2).
+				WithWorkDir(tempDir).Exec()
+
+			// validate
+			fetched := ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, tag)).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.ArtifactType).Should(Equal(artifactType))
+			Expect(manifest.Layers).Should(ContainElements(foobar.BlobBarDescriptor("application/vnd.oci.image.layer.v1.tar")))
+			Expect(manifest.Config.MediaType).Should(Equal(configType))
+			Expect(manifest.Config.Digest).Should(Equal(foobar.FileConfigDigest))
 		})
 	})
 })
@@ -321,7 +421,7 @@ var _ = Describe("OCI image layout users:", func() {
 			ref := LayoutRef(tempDir, tag)
 			ORAS("push", Flags.Layout, ref, "--config", fmt.Sprintf("%s:%s", foobar.FileConfigName, configType), foobar.FileBarName, "-v").
 				MatchStatus([]match.StateKey{
-					{Digest: "46b68ac1696c", Name: configType},
+					{Digest: foobar.FileConfigStateKey.Digest, Name: configType},
 					foobar.FileBarStateKey,
 				}, true, 2).
 				WithWorkDir(tempDir).Exec()

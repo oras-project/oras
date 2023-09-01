@@ -34,6 +34,7 @@ var (
 		{Digest: "2ef548696ac7", Name: "hello.tar"},
 		{Digest: "fe9dbc99451d", Name: "application/vnd.oci.image.config.v1+json"},
 		{Digest: "9d84a5716c66", Name: "application/vnd.oci.image.manifest.v1+json"},
+		{Digest: "e2bfc9cc6a84", Name: "application/vnd.oci.image.index.v1+json"},
 	}
 	// below are newly baked artifacts for ZOT
 	IndexZOTReferrerStateKey = match.StateKey{Digest: "d37baf66300b", Name: "application/vnd.oci.image.manifest.v1+json"}
