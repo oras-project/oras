@@ -72,6 +72,11 @@
 			"annotations": {
 				"org.opencontainers.image.ref.name": "config"
 			}
+		},
+		{
+			"mediaType": "application/vnd.oci.image.index.v1+json",
+			"digest": "sha256:7679bc22c33b87aa345c6950a993db98a6df7a6cc77a35c388908a3a50be6bad",
+			"size": 867
 		}
 	]
 }
