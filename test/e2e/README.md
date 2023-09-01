@@ -83,49 +83,52 @@ Command suite uses two kinds of pre-baked test data:
 ##### Test Data for ORAS-Distribution
 ```mermaid
 graph TD;
-    subgraph "repository: command/images"
-        subgraph "file: images.tar.gz"
-            direction TB
-            A0>tag: multi]-..->A1[oci index]
-            A1--linux/amd64-->A2[oci image]
-            A1--linux/arm64-->A3[oci image]
-            A1--linux/arm/v7-->A4[oci image]
-            A2-->A5(config1)
-            A3-->A6(config2)
-            A4-->A7(config3)
-            A2-- hello.tar -->A8(blob)
-            A3-- hello.tar -->A8(blob)
-            A4-- hello.tar -->A8(blob)
+subgraph "repository: command/images"
+    subgraph "file: images.tar.gz"
+        direction TB
+        A0>tag: multi]-..->A1[oci index]
+        A1--linux/amd64-->A2[oci image]
+        A1--linux/arm64-->A3[oci image]
+        A1--linux/arm/v7-->A4[oci image]
+        A2-->A5(config1)
+        A3-->A6(config2)
+        A4-->A7(config3)
+        A2-- hello.tar -->A8(blob)
+        A3-- hello.tar -->A8(blob)
+        A4-- hello.tar -->A8(blob)
 
-            B0>tag: foobar]-..->B1[oci image]
-            B1-- foo1 -->B2(blob1)
-            B1-- foo2 -->B2(blob1)
-            B1-- bar -->B3(blob2)
-        end
+        B0>tag: foobar]-..->B1[oci image]
+        B1-- foo1 -->B2(blob1)
+        B1-- foo2 -->B2(blob1)
+        B1-- bar -->B3(blob2)
     end
-    
-    subgraph "repository: command/artifacts"
-        subgraph "file: artifacts.tar.gz"
-            direction TB
-            C0>tag: foobar]-..->C1[oci image]
-            
-            direction TB
-            E1["test.sbom.file(artifact)"] -- subject --> C1
-            E2["test.signature.file(artifact)"] -- subject --> E1
-            direction TB
-            D1["test.sbom.file(image)"] -- subject --> C1
-            D2["test.signature.file(image)"] -- subject --> D1
-        end
-        subgraph "file: artifacts_index.tar.gz"
-            direction TB
-            F0>tag: multi]-..->F1[oci index]
-            F1--linux/amd64-->F2[oci image]
-            F1--linux/arm64-->F3[oci image]
-            F1--linux/arm/v7-->F4[oci image]
-            G1["referrer.index(image)"] -- subject --> F1
-            G2["referrer.image(image)"] -- subject --> F2
-        end
+end
+```
+
+```mermaid
+graph TD;
+subgraph "repository: command/artifacts"
+    subgraph "file: artifacts.tar.gz"
+        direction TB
+        C0>tag: foobar]-..->C1[oci image]
+        
+        direction TB
+        E1["test.sbom.file(artifact)"] -- subject --> C1
+        E2["test.signature.file(artifact)"] -- subject --> E1
+        direction TB
+        D1["test/sbom.file(image)"] -- subject --> C1
+        D2["test/signature.file(image)"] -- subject --> D1
     end
+    subgraph "file: artifacts_index.tar.gz"
+        direction TB
+        F0>tag: multi]-..->F1[oci index]
+        F1--linux/amd64-->F2[oci image]
+        F1--linux/arm64-->F3[oci image]
+        F1--linux/arm/v7-->F4[oci image]
+        G1["referrer.index(image)"] -- subject --> F1
+        G2["referrer.image(image)"] -- subject --> F2
+    end
+end
 ```
 
 ##### Test Data for Upstream Distribution
@@ -139,14 +142,55 @@ graph TD;
             A1-- foo2 -->A2(blob1)
             A1-- bar -->A3(blob2)
 
-            E1["test.sbom.file(image)"] -- subject --> A1
-            E2["test.signature.file(image)"] -- subject --> E1
+            E1["test/sbom.file(image)"] -- subject --> A1
+            E2["test/signature.file(image)"] -- subject --> E1
         end
     end
 ```
 
 ##### Test Data for ZOT
-Still WIP. Currently test data is partial, will update this section after all the specs in command suite are migrated to ZOT.
+```mermaid
+graph TD;
+    subgraph "repository: command/images"
+        direction TB
+        A0>tag: multi]-..->A1[oci index]
+        A1--linux/amd64-->A2[oci image]
+        A1--linux/arm64-->A3[oci image]
+        A1--linux/arm/v7-->A4[oci image]
+        A2-->A5(config1)
+        A3-->A6(config2)
+        A4-->A7(config3)
+        A2-- hello.tar -->A8(blob)
+        A3-- hello.tar -->A8(blob)
+        A4-- hello.tar -->A8(blob)
+
+        B0>tag: foobar]-..->B1[oci image]
+        B1-- foo1 -->B2(blob1)
+        B1-- foo2 -->B2(blob1)
+        B1-- bar -->B3(blob2)
+    end
+```
+
+```mermaid
+graph TD;
+    subgraph "repository: command/artifacts"
+        direction TB
+        C0>tag: foobar]-..->C1[oci image]
+        
+        direction TB
+        direction TB
+        D1["test.sbom.file(image)"] -- subject --> C1
+        D2["test.signature.file(image)"] -- subject --> D1
+        direction TB
+        F0>tag: multi]-..->F1[oci index]
+        F1--linux/amd64-->F2[oci image]
+        F1--linux/arm64-->F3[oci image]
+        F1--linux/arm/v7-->F4[oci image]
+        G1["referrer.index(image)"] -- subject --> F1
+        G2["referrer.image(image)"] -- subject --> F2
+        G3["index"] -- subject --> F1
+    end
+```
 
 #### 9.2 Scenario Suite
 Test files used by scenario-based specs are placed in `$REPO_ROOT/test/e2e/testdata/files`.
