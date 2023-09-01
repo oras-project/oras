@@ -83,6 +83,12 @@ var _ = Describe("1.1 registry users:", func() {
 			src := RegistryRef(ZOTHost, ArtifactRepo, config.Tag)
 			dst := RegistryRef(ZOTHost, cpTestRepo("artifact-with-config"), "copied")
 			ORAS("cp", src, dst, "-v").MatchStatus(config.StateKeys, true, len(config.StateKeys)).Exec()
+		})
+
+		It("should copy an image to a new repository via tag", func() {
+			src := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
+			dst := RegistryRef(ZOTHost, cpTestRepo("tag"), "copied")
+			ORAS("cp", src, dst, "-v").MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			CompareRef(src, dst)
 		})
 
