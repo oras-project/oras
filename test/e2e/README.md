@@ -149,42 +149,40 @@ graph TD;
 ```mermaid
 graph TD;
     subgraph "repository: command/images"
-        subgraph "file: images.tar.gz"
-            direction TB
-            A0>tag: multi]-..->A1[oci index]
-            A1--linux/amd64-->A2[oci image]
-            A1--linux/arm64-->A3[oci image]
-            A1--linux/arm/v7-->A4[oci image]
-            A2-->A5(config1)
-            A3-->A6(config2)
-            A4-->A7(config3)
-            A2-- hello.tar -->A8(blob)
-            A3-- hello.tar -->A8(blob)
-            A4-- hello.tar -->A8(blob)
+        direction TB
+        A0>tag: multi]-..->A1[oci index]
+        A1--linux/amd64-->A2[oci image]
+        A1--linux/arm64-->A3[oci image]
+        A1--linux/arm/v7-->A4[oci image]
+        A2-->A5(config1)
+        A3-->A6(config2)
+        A4-->A7(config3)
+        A2-- hello.tar -->A8(blob)
+        A3-- hello.tar -->A8(blob)
+        A4-- hello.tar -->A8(blob)
 
-            B0>tag: foobar]-..->B1[oci image]
-            B1-- foo1 -->B2(blob1)
-            B1-- foo2 -->B2(blob1)
-            B1-- bar -->B3(blob2)
-        end
+        B0>tag: foobar]-..->B1[oci image]
+        B1-- foo1 -->B2(blob1)
+        B1-- foo2 -->B2(blob1)
+        B1-- bar -->B3(blob2)
     end
     
     subgraph "repository: command/artifacts"
-            direction TB
-            C0>tag: foobar]-..->C1[oci image]
-            
-            direction TB
-            direction TB
-            D1["test.sbom.file(image)"] -- subject --> C1
-            D2["test.signature.file(image)"] -- subject --> D1
-            direction TB
-            F0>tag: multi]-..->F1[oci index]
-            F1--linux/amd64-->F2[oci image]
-            F1--linux/arm64-->F3[oci image]
-            F1--linux/arm/v7-->F4[oci image]
-            G1["referrer.index(image)"] -- subject --> F1
-            G2["referrer.image(image)"] -- subject --> F2
-            G3["index"] -- subject --> F1
+        direction TB
+        C0>tag: foobar]-..->C1[oci image]
+        
+        direction TB
+        direction TB
+        D1["test.sbom.file(image)"] -- subject --> C1
+        D2["test.signature.file(image)"] -- subject --> D1
+        direction TB
+        F0>tag: multi]-..->F1[oci index]
+        F1--linux/amd64-->F2[oci image]
+        F1--linux/arm64-->F3[oci image]
+        F1--linux/arm/v7-->F4[oci image]
+        G1["referrer.index(image)"] -- subject --> F1
+        G2["referrer.image(image)"] -- subject --> F2
+        G3["index"] -- subject --> F1
     end
 ```
 
