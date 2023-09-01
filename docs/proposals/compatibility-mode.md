@@ -2,7 +2,7 @@
 
 OCI group announced the [Image-spec v1.1.0-rc4](https://github.com/opencontainers/image-spec/blob/v1.1.0-rc4/manifest.md) and [Distribution-spec v1.1.0-rc3](https://github.com/opencontainers/distribution-spec/releases/tag/v1.1.0-rc3) in July 2023. A notable breaking change is that the OCI Artifact Manifest no longer exists in the OCI Image-spec v1.1.0-rc4. 
 
-Two new experimental flag `--image-spec` and `--distribution-spec` were introduced to ORAS CLI v1.0.0 as explained in [this doc](https://github.com/oras-project/oras/blob/release-1.0/docs/proposals/compatibility-mode.md). To align with the OCI Image-spec v1.1.0-rc4, the flag `--image-spec` and its options are changed in ORAS v1.1.0 accordingly.
+Two new experimental flag `--image-spec` and `--distribution-spec` were introduced to commands `oras push` and `oras attach` in ORAS CLI v1.0.0 as explained in [this doc](https://github.com/oras-project/oras/blob/release-1.0/docs/proposals/compatibility-mode.md). To align with the OCI Image-spec v1.1.0-rc4, the flag `--image-spec` and its options are changed in ORAS v1.1.0 accordingly.
 
 This document elaborates on the major changes of ORAS CLI v1.1.0 proposed in [issue #1043](https://github.com/oras-project/oras/issues/1043).
 
