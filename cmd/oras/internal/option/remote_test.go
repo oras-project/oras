@@ -277,7 +277,7 @@ func TestRemote_NewRepository_Retry(t *testing.T) {
 }
 
 func TestRemote_isPlainHttp_localhost(t *testing.T) {
-	opts := Remote{GetPlainHTTP: func() *bool {
+	opts := Remote{getPlainHTTP: func() *bool {
 		return new(bool)
 	}}
 	got := opts.isPlainHttp("localhost")

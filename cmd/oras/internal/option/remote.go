@@ -43,7 +43,6 @@ import (
 // Remote options struct.
 type Remote struct {
 	CACertFilePath    string
-	GetPlainHTTP      func() *bool
 	Insecure          bool
 	Configs           []string
 	Username          string
@@ -56,6 +55,7 @@ type Remote struct {
 	headerFlags           []string
 	headers               http.Header
 	warned                map[string]*sync.Map
+	getPlainHTTP          func() *bool
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
@@ -101,7 +101,7 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	plainHTTPFlagName := flagPrefix + "plain-http"
 	plainHTTP := false
 	fs.BoolVar(&plainHTTP, plainHTTPFlagName, plainHTTP, "allow insecure connections to "+notePrefix+"registry without SSL check")
-	opts.GetPlainHTTP = func() *bool {
+	opts.getPlainHTTP = func() *bool {
 		if !fs.Changed(plainHTTPFlagName) {
 			return nil
 		}
@@ -313,7 +313,7 @@ func (opts *Remote) NewRepository(reference string, common Common, logger logrus
 
 // isPlainHttp returns the plain http flag for a given registry.
 func (opts *Remote) isPlainHttp(registry string) bool {
-	if plainHTTP := opts.GetPlainHTTP(); plainHTTP != nil {
+	if plainHTTP := opts.getPlainHTTP(); plainHTTP != nil {
 		return *plainHTTP
 	}
 	host, _, _ := net.SplitHostPort(registry)
