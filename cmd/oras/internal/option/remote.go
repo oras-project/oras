@@ -99,8 +99,8 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	fs.StringVarP(&opts.Password, flagPrefix+"password", shortPassword, "", notePrefix+"registry password or identity token")
 	fs.BoolVarP(&opts.Insecure, flagPrefix+"insecure", "", false, "allow connections to "+notePrefix+"SSL registry without certs")
 	plainHTTPFlagName := flagPrefix + "plain-http"
-	var plainHTTP bool
-	fs.BoolVarP(&plainHTTP, plainHTTPFlagName, "", false, "allow insecure connections to "+notePrefix+"registry without SSL check")
+	plainHTTP := false
+	fs.BoolVar(&plainHTTP, plainHTTPFlagName, plainHTTP, "allow insecure connections to "+notePrefix+"registry without SSL check")
 	opts.GetPlainHTTP = func() *bool {
 		if !fs.Changed(plainHTTPFlagName) {
 			return nil
