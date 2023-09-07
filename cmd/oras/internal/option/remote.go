@@ -43,7 +43,7 @@ import (
 // Remote options struct.
 type Remote struct {
 	CACertFilePath    string
-	PlainHTTP         bool
+	GetPlainHTTP      func() *bool
 	Insecure          bool
 	Configs           []string
 	Username          string
@@ -98,7 +98,15 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	fs.StringVarP(&opts.Username, flagPrefix+"username", shortUser, "", notePrefix+"registry username")
 	fs.StringVarP(&opts.Password, flagPrefix+"password", shortPassword, "", notePrefix+"registry password or identity token")
 	fs.BoolVarP(&opts.Insecure, flagPrefix+"insecure", "", false, "allow connections to "+notePrefix+"SSL registry without certs")
-	fs.BoolVarP(&opts.PlainHTTP, flagPrefix+"plain-http", "", false, "allow insecure connections to "+notePrefix+"registry without SSL check")
+	plainHTTPFlagName := flagPrefix + "plain-http"
+	var plainHTTP bool
+	fs.BoolVarP(&plainHTTP, plainHTTPFlagName, "", false, "allow insecure connections to "+notePrefix+"registry without SSL check")
+	opts.GetPlainHTTP = func() *bool {
+		if !fs.Changed(plainHTTPFlagName) {
+			return nil
+		}
+		return &plainHTTP
+	}
 	fs.StringVarP(&opts.CACertFilePath, flagPrefix+"ca-file", "", "", "server certificate authority file for the remote "+notePrefix+"registry")
 	fs.StringArrayVarP(&opts.resolveFlag, flagPrefix+"resolve", "", nil, "customized DNS for "+notePrefix+"registry, formatted in `host:port:address[:address_port]`")
 	fs.StringArrayVarP(&opts.Configs, flagPrefix+"registry-config", "", nil, "`path` of the authentication file for "+notePrefix+"registry")
@@ -305,9 +313,12 @@ func (opts *Remote) NewRepository(reference string, common Common, logger logrus
 
 // isPlainHttp returns the plain http flag for a given registry.
 func (opts *Remote) isPlainHttp(registry string) bool {
+	if plainHTTP := opts.GetPlainHTTP(); plainHTTP != nil {
+		return *plainHTTP
+	}
 	host, _, _ := net.SplitHostPort(registry)
 	if host == "localhost" || registry == "localhost" {
 		return true
 	}
-	return opts.PlainHTTP
+	return false
 }

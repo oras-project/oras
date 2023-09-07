@@ -277,7 +277,9 @@ func TestRemote_NewRepository_Retry(t *testing.T) {
 }
 
 func TestRemote_isPlainHttp_localhost(t *testing.T) {
-	opts := Remote{PlainHTTP: false}
+	opts := Remote{GetPlainHTTP: func() *bool {
+		return new(bool)
+	}}
 	got := opts.isPlainHttp("localhost")
 	if got != true {
 		t.Fatalf("tls should be disabled when domain is localhost")
