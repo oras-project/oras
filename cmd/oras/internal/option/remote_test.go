@@ -162,6 +162,17 @@ func TestRemote_authClient_resolve(t *testing.T) {
 	}
 }
 
+func plainHTTPEnabled() *bool {
+	t := true
+	return &t
+}
+func HTTPSEnabled() *bool {
+	return new(bool)
+}
+func plainHTTPNotSpecified() *bool {
+	return nil
+}
+
 func TestRemote_NewRegistry(t *testing.T) {
 	caPath := filepath.Join(t.TempDir(), "oras-test.pem")
 	if err := os.WriteFile(caPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ts.Certificate().Raw}), 0644); err != nil {
@@ -174,6 +185,7 @@ func TestRemote_NewRegistry(t *testing.T) {
 	}{
 		Remote{
 			CACertFilePath: caPath,
+			getPlainHTTP:   plainHTTPNotSpecified,
 		},
 		Common{},
 	}
@@ -201,6 +213,7 @@ func TestRemote_NewRepository(t *testing.T) {
 	}{
 		Remote{
 			CACertFilePath: caPath,
+			getPlainHTTP:   plainHTTPNotSpecified,
 		},
 		Common{},
 	}
@@ -248,6 +261,7 @@ func TestRemote_NewRepository_Retry(t *testing.T) {
 	}{
 		Remote{
 			CACertFilePath: caPath,
+			getPlainHTTP:   plainHTTPNotSpecified,
 		},
 		Common{},
 	}
@@ -276,10 +290,8 @@ func TestRemote_NewRepository_Retry(t *testing.T) {
 	}
 }
 
-func TestRemote_isPlainHttp_localhost(t *testing.T) {
-	opts := Remote{getPlainHTTP: func() *bool {
-		return new(bool)
-	}}
+func TestRemote_default_localhost(t *testing.T) {
+	opts := Remote{getPlainHTTP: plainHTTPNotSpecified}
 	got := opts.isPlainHttp("localhost")
 	if got != true {
 		t.Fatalf("tls should be disabled when domain is localhost")
@@ -289,6 +301,36 @@ func TestRemote_isPlainHttp_localhost(t *testing.T) {
 	got = opts.isPlainHttp("localhost:9090")
 	if got != true {
 		t.Fatalf("tls should be disabled when domain is localhost")
+
+	}
+}
+
+func TestRemote_isPlainHTTP_localhost(t *testing.T) {
+	opts := Remote{getPlainHTTP: plainHTTPEnabled}
+	isplainHTTP := opts.isPlainHttp("localhost")
+	if isplainHTTP != true {
+		t.Fatalf("tls should be disabled when domain is localhost and --plain-http is used")
+
+	}
+
+	isplainHTTP = opts.isPlainHttp("localhost:9090")
+	if isplainHTTP != true {
+		t.Fatalf("tls should be disabled when domain is localhost and --plain-http is used")
+
+	}
+}
+
+func TestRemote_isHTTPS_localhost(t *testing.T) {
+	opts := Remote{getPlainHTTP: HTTPSEnabled}
+	got := opts.isPlainHttp("localhost")
+	if got != false {
+		t.Fatalf("tls should be enabled when domain is localhost and --plain-http=false is used")
+
+	}
+
+	got = opts.isPlainHttp("localhost:9090")
+	if got != false {
+		t.Fatalf("tls should be enabled when domain is localhost and --plain-http=false is used")
 
 	}
 }
