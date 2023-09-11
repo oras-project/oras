@@ -42,6 +42,7 @@ import (
 
 // Remote options struct.
 type Remote struct {
+	DistributionSpec
 	CACertFilePath    string
 	Insecure          bool
 	Configs           []string
@@ -51,11 +52,10 @@ type Remote struct {
 
 	resolveFlag           []string
 	applyDistributionSpec bool
-	DistributionSpec
-	headerFlags []string
-	headers     http.Header
-	warned      map[string]*sync.Map
-	plainHTTP   func() (plainHTTP bool, enforced bool)
+	headerFlags           []string
+	headers               http.Header
+	warned                map[string]*sync.Map
+	plainHTTP             func() (plainHTTP bool, enforced bool)
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.

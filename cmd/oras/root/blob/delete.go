@@ -84,7 +84,7 @@ func deleteBlob(ctx context.Context, opts deleteBlobOptions) (err error) {
 	}
 
 	// add both pull and delete scope hints for dst repository to save potential delete-scope token requests during deleting
-	ctx = registryutil.WithScopeHint(repo, ctx, auth.ActionPull, auth.ActionDelete)
+	ctx = registryutil.WithScopeHint(ctx, repo, auth.ActionPull, auth.ActionDelete)
 	blobs := repo.Blobs()
 	desc, err := blobs.Resolve(ctx, opts.targetRef)
 	if err != nil {

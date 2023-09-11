@@ -24,11 +24,10 @@ import (
 )
 
 // WithScopeHint adds a hinted scope to the context.
-func WithScopeHint(target oras.Target, ctx context.Context, actions ...string) context.Context {
+func WithScopeHint(ctx context.Context, target oras.Target, actions ...string) context.Context {
 	if repo, ok := target.(*remote.Repository); ok {
 		scope := auth.ScopeRepository(repo.Reference.Repository, actions...)
 		return auth.AppendScopes(ctx, scope)
-	} else {
-		return ctx
 	}
+	return ctx
 }

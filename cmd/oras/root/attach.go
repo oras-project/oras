@@ -120,7 +120,7 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 	}
 	// add both pull and push scope hints for dst repository
 	// to save potential push-scope token requests during copy
-	ctx = registryutil.WithScopeHint(dst, ctx, auth.ActionPull, auth.ActionPush)
+	ctx = registryutil.WithScopeHint(ctx, dst, auth.ActionPull, auth.ActionPush)
 	subject, err := dst.Resolve(ctx, opts.Reference)
 	if err != nil {
 		return err
