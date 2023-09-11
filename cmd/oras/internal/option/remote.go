@@ -55,7 +55,7 @@ type Remote struct {
 	headerFlags           []string
 	headers               http.Header
 	warned                map[string]*sync.Map
-	plainHTTP             func() (plainHTTP bool, fromFlag bool)
+	plainHTTP             func() (plainHTTP bool, enforced bool)
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
@@ -309,7 +309,7 @@ func (opts *Remote) NewRepository(reference string, common Common, logger logrus
 
 // isPlainHttp returns the plain http flag for a given registry.
 func (opts *Remote) isPlainHttp(registry string) bool {
-	if plainHTTP, specified := opts.plainHTTP(); specified {
+	if plainHTTP, enforced := opts.plainHTTP(); enforced {
 		return plainHTTP
 	}
 
