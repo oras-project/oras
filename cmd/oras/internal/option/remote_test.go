@@ -162,15 +162,14 @@ func TestRemote_authClient_resolve(t *testing.T) {
 	}
 }
 
-func plainHTTPEnabled() *bool {
-	t := true
-	return &t
+func plainHTTPEnabled() (plainHTTP bool, fromFlag bool) {
+	return true, true
 }
-func HTTPSEnabled() *bool {
-	return new(bool)
+func HTTPSEnabled() (plainHTTP bool, fromFlag bool) {
+	return false, true
 }
-func plainHTTPNotSpecified() *bool {
-	return nil
+func plainHTTPNotSpecified() (plainHTTP bool, fromFlag bool) {
+	return false, false
 }
 
 func TestRemote_NewRegistry(t *testing.T) {
@@ -185,7 +184,7 @@ func TestRemote_NewRegistry(t *testing.T) {
 	}{
 		Remote{
 			CACertFilePath: caPath,
-			getPlainHTTP:   plainHTTPNotSpecified,
+			plainHTTP:      plainHTTPNotSpecified,
 		},
 		Common{},
 	}
@@ -213,7 +212,7 @@ func TestRemote_NewRepository(t *testing.T) {
 	}{
 		Remote{
 			CACertFilePath: caPath,
-			getPlainHTTP:   plainHTTPNotSpecified,
+			plainHTTP:      plainHTTPNotSpecified,
 		},
 		Common{},
 	}
@@ -261,7 +260,7 @@ func TestRemote_NewRepository_Retry(t *testing.T) {
 	}{
 		Remote{
 			CACertFilePath: caPath,
-			getPlainHTTP:   plainHTTPNotSpecified,
+			plainHTTP:      plainHTTPNotSpecified,
 		},
 		Common{},
 	}
@@ -291,7 +290,7 @@ func TestRemote_NewRepository_Retry(t *testing.T) {
 }
 
 func TestRemote_default_localhost(t *testing.T) {
-	opts := Remote{getPlainHTTP: plainHTTPNotSpecified}
+	opts := Remote{plainHTTP: plainHTTPNotSpecified}
 	got := opts.isPlainHttp("localhost")
 	if got != true {
 		t.Fatalf("tls should be disabled when domain is localhost")
@@ -306,7 +305,7 @@ func TestRemote_default_localhost(t *testing.T) {
 }
 
 func TestRemote_isPlainHTTP_localhost(t *testing.T) {
-	opts := Remote{getPlainHTTP: plainHTTPEnabled}
+	opts := Remote{plainHTTP: plainHTTPEnabled}
 	isplainHTTP := opts.isPlainHttp("localhost")
 	if isplainHTTP != true {
 		t.Fatalf("tls should be disabled when domain is localhost and --plain-http is used")
@@ -321,7 +320,7 @@ func TestRemote_isPlainHTTP_localhost(t *testing.T) {
 }
 
 func TestRemote_isHTTPS_localhost(t *testing.T) {
-	opts := Remote{getPlainHTTP: HTTPSEnabled}
+	opts := Remote{plainHTTP: HTTPSEnabled}
 	got := opts.isPlainHttp("localhost")
 	if got != false {
 		t.Fatalf("tls should be enabled when domain is localhost and --plain-http=false is used")

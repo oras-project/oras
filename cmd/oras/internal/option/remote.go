@@ -55,7 +55,7 @@ type Remote struct {
 	headerFlags           []string
 	headers               http.Header
 	warned                map[string]*sync.Map
-	getPlainHTTP          func() *bool
+	plainHTTP             func() (plainHTTP bool, fromFlag bool)
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
@@ -101,11 +101,11 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	plainHTTPFlagName := flagPrefix + "plain-http"
 	plainHTTP := false
 	fs.BoolVar(&plainHTTP, plainHTTPFlagName, plainHTTP, "allow insecure connections to "+notePrefix+"registry without SSL check")
-	opts.getPlainHTTP = func() *bool {
+	opts.plainHTTP = func() (bool, bool) {
 		if !fs.Changed(plainHTTPFlagName) {
-			return nil
+			return plainHTTP, false
 		}
-		return &plainHTTP
+		return plainHTTP, true
 	}
 	fs.StringVarP(&opts.CACertFilePath, flagPrefix+"ca-file", "", "", "server certificate authority file for the remote "+notePrefix+"registry")
 	fs.StringArrayVarP(&opts.resolveFlag, flagPrefix+"resolve", "", nil, "customized DNS for "+notePrefix+"registry, formatted in `host:port:address[:address_port]`")
@@ -313,12 +313,11 @@ func (opts *Remote) NewRepository(reference string, common Common, logger logrus
 
 // isPlainHttp returns the plain http flag for a given registry.
 func (opts *Remote) isPlainHttp(registry string) bool {
-	if plainHTTP := opts.getPlainHTTP(); plainHTTP != nil {
-		return *plainHTTP
+	if plainHTTP, specified := opts.plainHTTP(); specified {
+		return plainHTTP
 	}
+
+	// not specified, defaults to plain http for localhost
 	host, _, _ := net.SplitHostPort(registry)
-	if host == "localhost" || registry == "localhost" {
-		return true
-	}
-	return false
+	return host == "localhost" || registry == "localhost"
 }
