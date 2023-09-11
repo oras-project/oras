@@ -101,10 +101,7 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	plainHTTPFlagName := flagPrefix + "plain-http"
 	plainHTTP := *fs.Bool(plainHTTPFlagName, false, "allow insecure connections to "+notePrefix+"registry without SSL check")
 	opts.plainHTTP = func() (bool, bool) {
-		if !fs.Changed(plainHTTPFlagName) {
-			return plainHTTP, false
-		}
-		return plainHTTP, true
+		return plainHTTP, fs.Changed(plainHTTPFlagName)
 	}
 	fs.StringVarP(&opts.CACertFilePath, flagPrefix+"ca-file", "", "", "server certificate authority file for the remote "+notePrefix+"registry")
 	fs.StringArrayVarP(&opts.resolveFlag, flagPrefix+"resolve", "", nil, "customized DNS for "+notePrefix+"registry, formatted in `host:port:address[:address_port]`")
