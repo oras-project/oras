@@ -89,7 +89,12 @@ func deleteManifest(ctx context.Context, opts deleteOptions) error {
 	}
 
 	// add both pull, push and delete scope hints for dst repository to save potential delete-scope token requests during deleting
-	ctx = registryutil.WithScopeHint(repo, ctx, auth.ActionPull, auth.ActionPush, auth.ActionDelete)
+	hints := []string{auth.ActionPull, auth.ActionPush, auth.ActionDelete, auth.ActionPush}
+	if opts.ReferrersAPI != nil && *opts.ReferrersAPI == true {
+		// dont need pushing to add a new referrers index
+		hints = []string{auth.ActionPull, auth.ActionPush, auth.ActionDelete}
+	}
+	ctx = registryutil.WithScopeHint(repo, ctx, hints...)
 	manifests := repo.Manifests()
 	desc, err := manifests.Resolve(ctx, opts.targetRef)
 	if err != nil {
