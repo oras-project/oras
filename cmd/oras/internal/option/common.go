@@ -17,25 +17,40 @@ package option
 
 import (
 	"context"
+	"os"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
+	"golang.org/x/term"
 	"oras.land/oras/internal/trace"
 )
 
 // Common option struct.
 type Common struct {
-	Debug   bool
-	Verbose bool
+	Debug    bool
+	Verbose  bool
+	UseTTY   bool
+	avoidTTY bool
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Common) ApplyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.Debug, "debug", "d", false, "debug mode")
 	fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "verbose output")
+	fs.BoolVarP(&opts.avoidTTY, "noTTY", "", false, "[Preview] avoid using stdout as a terminal")
 }
 
 // WithContext returns a new FieldLogger and an associated Context derived from ctx.
 func (opts *Common) WithContext(ctx context.Context) (context.Context, logrus.FieldLogger) {
 	return trace.NewLogger(ctx, opts.Debug, opts.Verbose)
+}
+
+// Parse gets target options from user input.
+func (opts *Common) Parse() error {
+	if opts.avoidTTY {
+		opts.UseTTY = false
+	} else {
+		opts.UseTTY = term.IsTerminal(int(os.Stderr.Fd()))
+	}
+	return nil
 }
