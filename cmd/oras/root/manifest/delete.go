@@ -23,8 +23,10 @@ import (
 
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/errdef"
+	"oras.land/oras-go/v2/registry/remote/auth"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/registryutil"
 )
 
 type deleteOptions struct {
@@ -86,6 +88,13 @@ func deleteManifest(ctx context.Context, opts deleteOptions) error {
 		return oerrors.NewErrInvalidReference(repo.Reference)
 	}
 
+	// add both pull and delete scope hints for dst repository to save potential delete-scope token requests during deleting
+	hints := []string{auth.ActionPull, auth.ActionDelete}
+	if opts.ReferrersAPI == nil || !*opts.ReferrersAPI {
+		// possibly needed when adding a new referrers index
+		hints = append(hints, auth.ActionPush)
+	}
+	ctx = registryutil.WithScopeHint(ctx, repo, hints...)
 	manifests := repo.Manifests()
 	desc, err := manifests.Resolve(ctx, opts.targetRef)
 	if err != nil {
