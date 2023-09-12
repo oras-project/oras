@@ -42,7 +42,6 @@ import (
 
 // Remote options struct.
 type Remote struct {
-	DistributionSpec
 	CACertFilePath    string
 	Insecure          bool
 	Configs           []string
@@ -52,6 +51,7 @@ type Remote struct {
 
 	resolveFlag           []string
 	applyDistributionSpec bool
+	distributionSpec      distributionSpec
 	headerFlags           []string
 	headers               http.Header
 	warned                map[string]*sync.Map
@@ -93,7 +93,7 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	flagPrefix, notePrefix = applyPrefix(prefix, description)
 
 	if opts.applyDistributionSpec {
-		opts.DistributionSpec.ApplyFlagsWithPrefix(fs, prefix, description)
+		opts.distributionSpec.ApplyFlagsWithPrefix(fs, prefix, description)
 	}
 	fs.StringVarP(&opts.Username, flagPrefix+"username", shortUser, "", notePrefix+"registry username")
 	fs.StringVarP(&opts.Password, flagPrefix+"password", shortPassword, "", notePrefix+"registry password or identity token")
@@ -117,7 +117,7 @@ func (opts *Remote) Parse() error {
 	if err := opts.readPassword(); err != nil {
 		return err
 	}
-	return opts.DistributionSpec.Parse()
+	return opts.distributionSpec.Parse()
 }
 
 // readPassword tries to read password with optional cmd prompt.
@@ -299,8 +299,8 @@ func (opts *Remote) NewRepository(reference string, common Common, logger logrus
 		return nil, err
 	}
 	repo.SkipReferrersGC = true
-	if opts.ReferrersAPI != nil {
-		if err := repo.SetReferrersCapability(*opts.ReferrersAPI); err != nil {
+	if opts.distributionSpec.referrersAPI != nil {
+		if err := repo.SetReferrersCapability(*opts.distributionSpec.referrersAPI); err != nil {
 			return nil, err
 		}
 	}

@@ -26,6 +26,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
+	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
@@ -118,9 +119,11 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 	if err := opts.EnsureReferenceNotEmpty(); err != nil {
 		return err
 	}
-	// add both pull and push scope hints for dst repository
-	// to save potential push-scope token requests during copy
-	ctx = registryutil.WithScopeHint(ctx, dst, auth.ActionPull, auth.ActionPush)
+	if repo, ok := dst.(*remote.Repository); ok {
+		// add both pull and push scope hints for dst repository
+		// to save potential push-scope token requests during copy
+		ctx = registryutil.WithScopeHint(ctx, repo.Reference, auth.ActionPull, auth.ActionPush)
+	}
 	subject, err := dst.Resolve(ctx, opts.Reference)
 	if err != nil {
 		return err
