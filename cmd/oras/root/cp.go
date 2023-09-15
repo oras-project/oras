@@ -17,6 +17,7 @@ package root
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
@@ -28,6 +29,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/docker"
 	"oras.land/oras/internal/graph"
 )
 
@@ -137,28 +139,19 @@ func runCopy(ctx context.Context, opts copyOptions) error {
 	var desc ocispec.Descriptor
 	rOpts := oras.DefaultResolveOptions
 	rOpts.TargetPlatform = opts.Platform.Platform
-	if dstRef := opts.To.Reference; dstRef == "" {
+	if opts.recursive {
 		desc, err = oras.Resolve(ctx, src, opts.From.Reference, rOpts)
 		if err != nil {
 			return fmt.Errorf("failed to resolve %s: %w", opts.From.Reference, err)
 		}
-		if opts.recursive {
-			err = oras.ExtendedCopyGraph(ctx, src, dst, desc, extendedCopyOptions.ExtendedCopyGraphOptions)
-		} else {
-			err = oras.CopyGraph(ctx, src, dst, desc, extendedCopyOptions.CopyGraphOptions)
-		}
+		err = RecursiveCopy(ctx, src, dst, opts.To.Reference, desc, extendedCopyOptions)
 	} else {
-		if opts.recursive {
-			srcRef := opts.From.Reference
-			if rOpts.TargetPlatform != nil {
-				// resolve source reference to specified platform
-				desc, err := oras.Resolve(ctx, src, opts.From.Reference, rOpts)
-				if err != nil {
-					return fmt.Errorf("failed to resolve %s: %w", opts.From.Reference, err)
-				}
-				srcRef = desc.Digest.String()
+		if opts.To.Reference == "" {
+			desc, err = oras.Resolve(ctx, src, opts.From.Reference, rOpts)
+			if err != nil {
+				return fmt.Errorf("failed to resolve %s: %w", opts.From.Reference, err)
 			}
-			desc, err = oras.ExtendedCopy(ctx, src, srcRef, dst, dstRef, extendedCopyOptions)
+			err = oras.CopyGraph(ctx, src, dst, desc, extendedCopyOptions.CopyGraphOptions)
 		} else {
 			copyOptions := oras.CopyOptions{
 				CopyGraphOptions: extendedCopyOptions.CopyGraphOptions,
@@ -166,9 +159,10 @@ func runCopy(ctx context.Context, opts copyOptions) error {
 			if opts.Platform.Platform != nil {
 				copyOptions.WithTargetPlatform(opts.Platform.Platform)
 			}
-			desc, err = oras.Copy(ctx, src, opts.From.Reference, dst, dstRef, copyOptions)
+			desc, err = oras.Copy(ctx, src, opts.From.Reference, dst, opts.To.Reference, copyOptions)
 		}
 	}
+
 	if err != nil {
 		return err
 	}
@@ -190,4 +184,42 @@ func runCopy(ctx context.Context, opts copyOptions) error {
 	fmt.Println("Digest:", desc.Digest)
 
 	return nil
+}
+
+// RecursiveCopy copies an artifact and its referrers from one target to another.
+// If the artifact is a manifet list or index, its predecessor's referrers are copied as well.
+func RecursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, dstRef string, root ocispec.Descriptor, opts oras.ExtendedCopyOptions) error {
+	var err error
+	if root.MediaType == ocispec.MediaTypeImageIndex || root.MediaType == docker.MediaTypeManifestList {
+		var fetched []byte
+		fetched, err := content.FetchAll(ctx, src, root)
+		if err != nil {
+			return err
+		}
+		var index ocispec.Index
+		if err = json.Unmarshal(fetched, &index); err != nil {
+			return nil
+		}
+
+		var wg sync.WaitGroup
+		for _, desc := range index.Manifests {
+			wg.Add(1)
+			go func(desc ocispec.Descriptor) {
+				defer wg.Done()
+				err = oras.ExtendedCopyGraph(ctx, src, dst, desc, opts.ExtendedCopyGraphOptions)
+			}(desc)
+		}
+		wg.Wait()
+		if err != nil {
+			return err
+		}
+	}
+
+	if dstRef == "" || dstRef == root.Digest.String() {
+		err = oras.ExtendedCopyGraph(ctx, src, dst, root, opts.ExtendedCopyGraphOptions)
+	} else {
+		_, err = oras.ExtendedCopy(ctx, src, root.Digest.String(), dst, dstRef, opts)
+	}
+	return err
+
 }
