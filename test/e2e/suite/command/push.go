@@ -328,7 +328,7 @@ var _ = Describe("Remote registry users:", func() {
 
 var _ = Describe("OCI image layout users:", func() {
 	tag := "e2e"
-	When("pushing to registy without OCI artifact support", func() {
+	When("pushing to registry without OCI artifact support", func() {
 		statusKeys := []match.StateKey{
 			foobar.ImageConfigStateKey("application/vnd.oci.empty.v1+json"),
 			foobar.FileBarStateKey,
