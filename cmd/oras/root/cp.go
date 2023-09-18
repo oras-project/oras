@@ -173,7 +173,6 @@ func runCopy(ctx context.Context, opts copyOptions) error {
 			desc, err = oras.Copy(ctx, src, opts.From.Reference, dst, opts.To.Reference, copyOptions)
 		}
 	}
-
 	if err != nil {
 		return err
 	}
@@ -198,7 +197,7 @@ func runCopy(ctx context.Context, opts copyOptions) error {
 }
 
 // RecursiveCopy copies an artifact and its referrers from one target to another.
-// If the artifact is a manifet list or index, its predecessor's referrers are copied as well.
+// If the artifact is a manifest list or index, referrers of its manifests are copied as well.
 func RecursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, dstRef string, root ocispec.Descriptor, opts oras.ExtendedCopyOptions) error {
 	var err error
 	if root.MediaType == ocispec.MediaTypeImageIndex || root.MediaType == docker.MediaTypeManifestList {
@@ -232,5 +231,4 @@ func RecursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.T
 		_, err = oras.ExtendedCopy(ctx, src, root.Digest.String(), dst, dstRef, opts)
 	}
 	return err
-
 }
