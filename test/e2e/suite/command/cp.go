@@ -146,6 +146,31 @@ var _ = Describe("1.1 registry users:", func() {
 				Exec()
 		})
 
+		It("should copy a multi-arch image and its referrers without concurrency limitation", func() {
+			stateKeys := append(ma.IndexStateKeys, ma.IndexZOTReferrerStateKey, ma.LinuxAMD64ReferrerConfigStateKey)
+			src := RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)
+			dstRepo := cpTestRepo("index-referrers-concurrent")
+			dst := RegistryRef(ZOTHost, dstRepo, "copiedTag")
+			// test
+			ORAS("cp", src, dst, "-r", "-v", "--concurrency", "0").
+				MatchStatus(stateKeys, true, len(stateKeys)).
+				MatchKeyWords("Digest: " + ma.Digest).
+				Exec()
+			// validate
+			CompareRef(RegistryRef(ZOTHost, ImageRepo, ma.Digest), dst)
+			var index ocispec.Index
+			bytes := ORAS("discover", dst, "-o", "json", "--artifact-type", ma.IndexReferrerConfigStateKey.Name).
+				MatchKeyWords(ma.IndexReferrerDigest).
+				WithDescription("copy image referrer").
+				Exec().Out.Contents()
+			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
+			Expect(len(index.Manifests)).To(Equal(1))
+			Expect(index.Manifests[0].Digest.String()).To(Equal(ma.IndexReferrerDigest))
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, dstRepo, ma.LinuxAMD64Referrer.Digest.String())).
+				WithDescription("copy referrer of successor").
+				Exec()
+		})
+
 		It("should copy a multi-arch image and its referrers to a new repository via digest", func() {
 			stateKeys := append(ma.IndexStateKeys, ma.IndexZOTReferrerStateKey, ma.LinuxAMD64ReferrerConfigStateKey)
 			src := RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)
