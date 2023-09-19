@@ -155,7 +155,7 @@ func runCopy(ctx context.Context, opts copyOptions) error {
 		if err != nil {
 			return fmt.Errorf("failed to resolve %s: %w", opts.From.Reference, err)
 		}
-		err = RecursiveCopy(ctx, src, dst, opts.To.Reference, desc, extendedCopyOptions)
+		err = recursiveCopy(ctx, src, dst, opts.To.Reference, desc, extendedCopyOptions)
 	} else {
 		if opts.To.Reference == "" {
 			desc, err = oras.Resolve(ctx, src, opts.From.Reference, rOpts)
@@ -196,9 +196,9 @@ func runCopy(ctx context.Context, opts copyOptions) error {
 	return nil
 }
 
-// RecursiveCopy copies an artifact and its referrers from one target to another.
+// recursiveCopy copies an artifact and its referrers from one target to another.
 // If the artifact is a manifest list or index, referrers of its manifests are copied as well.
-func RecursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, dstRef string, root ocispec.Descriptor, opts oras.ExtendedCopyOptions) error {
+func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, dstRef string, root ocispec.Descriptor, opts oras.ExtendedCopyOptions) error {
 	var err error
 	if root.MediaType == ocispec.MediaTypeImageIndex || root.MediaType == docker.MediaTypeManifestList {
 		var fetched []byte
