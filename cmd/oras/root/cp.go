@@ -211,6 +211,7 @@ func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.T
 				return nil, err
 			}
 			if content.Equal(desc, root) {
+				// make sure referrers of child manifests are copied by pointing them to root
 				descs = append(descs, referrers...)
 			}
 			return descs, nil
