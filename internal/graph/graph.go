@@ -197,7 +197,9 @@ func FindPredecessors(ctx context.Context, src oras.ReadOnlyGraphTarget, descs [
 	var referrers []ocispec.Descriptor
 	g, ctx := errgroup.WithContext(ctx)
 	var m sync.Mutex
-	g.SetLimit(opts.Concurrency)
+	if opts.Concurrency != 0 {
+		g.SetLimit(opts.Concurrency)
+	}
 	for _, desc := range descs {
 		g.Go(func(node ocispec.Descriptor) func() error {
 			return func() error {
