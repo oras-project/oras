@@ -117,34 +117,23 @@ func runCopy(ctx context.Context, opts copyOptions) error {
 	}
 
 	// Prepare copy options
-	started := &sync.Map{}
 	committed := &sync.Map{}
 	extendedCopyOptions := oras.DefaultExtendedCopyOptions
 	extendedCopyOptions.Concurrency = opts.concurrency
 	extendedCopyOptions.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		return graph.Referrers(ctx, src, desc, "")
 	}
-	extendedCopyOptions.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		if _, loaded := started.LoadOrStore(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle]); !loaded {
-			return display.PrintStatus(desc, "Copying", opts.Verbose)
-		}
-		return nil
-	}
+	extendedCopyOptions.PreCopy = display.StatusPrinter("Copying", opts.Verbose)
 	extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		started.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		if _, loaded := committed.LoadOrStore(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle]); loaded {
-			return nil
-		}
-		if err := display.PrintSuccessorStatus(ctx, desc, "Skipped", dst, started, opts.Verbose); err != nil {
+		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+		if err := display.PrintSuccessorStatus(ctx, desc, "Skipped", dst, committed, opts.Verbose); err != nil {
 			return err
 		}
 		return display.PrintStatus(desc, "Copied ", opts.Verbose)
 	}
 	extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-		if _, loaded := started.LoadOrStore(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle]); !loaded {
-			return display.PrintStatus(desc, "Exists ", opts.Verbose)
-		}
-		return nil
+		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+		return display.PrintStatus(desc, "Exists ", opts.Verbose)
 	}
 
 	var desc ocispec.Descriptor
@@ -210,18 +199,25 @@ func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.T
 		if err = json.Unmarshal(fetched, &index); err != nil {
 			return nil
 		}
-
-		var wg sync.WaitGroup
+		// point referrers child manifests to root
+		var referrers []ocispec.Descriptor
 		for _, desc := range index.Manifests {
-			wg.Add(1)
-			go func(desc ocispec.Descriptor) {
-				defer wg.Done()
-				err = oras.ExtendedCopyGraph(ctx, src, dst, desc, opts.ExtendedCopyGraphOptions)
-			}(desc)
+			descs, err := graph.Referrers(ctx, src, desc, "")
+			if err != nil {
+				return err
+			}
+			referrers = append(referrers, descs...)
 		}
-		wg.Wait()
-		if err != nil {
-			return err
+		findPredecessor := opts.FindPredecessors
+		opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			descs, err := findPredecessor(ctx, src, desc)
+			if err != nil {
+				return nil, err
+			}
+			if content.Equal(desc, root) {
+				descs = append(descs, referrers...)
+			}
+			return descs, nil
 		}
 	}
 
