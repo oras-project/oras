@@ -171,6 +171,16 @@ var _ = Describe("1.1 registry users:", func() {
 				Exec()
 		})
 
+		It("should copy an empty index", func() {
+			src := RegistryRef(ZOTHost, ImageRepo, ma.EmptyTag)
+			dstRepo := cpTestRepo("empty-index")
+			dst := RegistryRef(ZOTHost, dstRepo, "copiedTag")
+			// test
+			ORAS("cp", src, dst, "-r", "-v", "--concurrency", "0").Exec()
+			// validate
+			CompareRef(RegistryRef(ZOTHost, ImageRepo, ma.EmptyTag), dst)
+		})
+
 		It("should copy a multi-arch image and its referrers to a new repository via digest", func() {
 			stateKeys := append(ma.IndexStateKeys, ma.IndexZOTReferrerStateKey, ma.LinuxAMD64ReferrerConfigStateKey)
 			src := RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)
