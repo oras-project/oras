@@ -18,8 +18,11 @@ package graph
 import (
 	"context"
 	"encoding/json"
+	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"golang.org/x/sync/errgroup"
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/internal/docker"
@@ -187,4 +190,31 @@ func fetchBytes(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descr
 	}
 	defer rc.Close()
 	return content.ReadAll(rc, desc)
+}
+
+// FindPredecessorsCurrently returns all predecessors of descs in src concurrently.
+func FindPredecessorsCurrently(ctx context.Context, src oras.ReadOnlyGraphTarget, descs []ocispec.Descriptor, opts oras.ExtendedCopyOptions) ([]ocispec.Descriptor, error) {
+	// point referrers of child manifests to root
+	var referrers []ocispec.Descriptor
+	g, ctx := errgroup.WithContext(ctx)
+	var m sync.Mutex
+	g.SetLimit(opts.Concurrency)
+	for _, desc := range descs {
+		g.Go(func(node ocispec.Descriptor) func() error {
+			return func() error {
+				descs, err := opts.FindPredecessors(ctx, src, node)
+				if err != nil {
+					return err
+				}
+				m.Lock()
+				defer m.Unlock()
+				referrers = append(referrers, descs...)
+				return nil
+			}
+		}(desc))
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	return referrers, nil
 }

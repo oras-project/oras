@@ -188,9 +188,7 @@ func runCopy(ctx context.Context, opts copyOptions) error {
 // recursiveCopy copies an artifact and its referrers from one target to another.
 // If the artifact is a manifest list or index, referrers of its manifests are copied as well.
 func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, dstRef string, root ocispec.Descriptor, opts oras.ExtendedCopyOptions) error {
-	var err error
 	if root.MediaType == ocispec.MediaTypeImageIndex || root.MediaType == docker.MediaTypeManifestList {
-		var fetched []byte
 		fetched, err := content.FetchAll(ctx, src, root)
 		if err != nil {
 			return err
@@ -202,14 +200,11 @@ func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.T
 
 		// point referrers of child manifests to root
 		findPredecessor := opts.FindPredecessors
-		var referrers []ocispec.Descriptor
-		for _, desc := range index.Manifests {
-			descs, err := findPredecessor(ctx, src, desc)
-			if err != nil {
-				return err
-			}
-			referrers = append(referrers, descs...)
+		referrers, err := graph.FindPredecessorsCurrently(ctx, src, index.Manifests, opts)
+		if err != nil {
+			return err
 		}
+
 		opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 			descs, err := findPredecessor(ctx, src, desc)
 			if err != nil {
@@ -222,6 +217,7 @@ func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.T
 		}
 	}
 
+	var err error
 	if dstRef == "" || dstRef == root.Digest.String() {
 		err = oras.ExtendedCopyGraph(ctx, src, dst, root, opts.ExtendedCopyGraphOptions)
 	} else {
