@@ -198,7 +198,6 @@ func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.T
 			return nil
 		}
 
-		// point referrers of child manifests to root
 		referrers, err := graph.FindPredecessorsCurrently(ctx, src, index.Manifests, opts)
 		if err != nil {
 			return err
