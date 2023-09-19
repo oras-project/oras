@@ -199,12 +199,12 @@ func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.T
 		}
 
 		// point referrers of child manifests to root
-		findPredecessor := opts.FindPredecessors
 		referrers, err := graph.FindPredecessorsCurrently(ctx, src, index.Manifests, opts)
 		if err != nil {
 			return err
 		}
 
+		findPredecessor := opts.FindPredecessors
 		opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 			descs, err := findPredecessor(ctx, src, desc)
 			if err != nil {
