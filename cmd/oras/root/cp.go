@@ -199,7 +199,7 @@ func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.T
 		if err = json.Unmarshal(fetched, &index); err != nil {
 			return nil
 		}
-		// point referrers child manifests to root
+		// point referrers of child manifests to root
 		var referrers []ocispec.Descriptor
 		for _, desc := range index.Manifests {
 			descs, err := graph.Referrers(ctx, src, desc, "")
