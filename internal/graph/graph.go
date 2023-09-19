@@ -192,8 +192,8 @@ func fetchBytes(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descr
 	return content.ReadAll(rc, desc)
 }
 
-// FindPredecessorsCurrently returns all predecessors of descs in src concurrently.
-func FindPredecessorsCurrently(ctx context.Context, src oras.ReadOnlyGraphTarget, descs []ocispec.Descriptor, opts oras.ExtendedCopyOptions) ([]ocispec.Descriptor, error) {
+// FindPredecessors returns all predecessors of descs in src concurrently.
+func FindPredecessors(ctx context.Context, src oras.ReadOnlyGraphTarget, descs []ocispec.Descriptor, opts oras.ExtendedCopyOptions) ([]ocispec.Descriptor, error) {
 	var referrers []ocispec.Descriptor
 	g, ctx := errgroup.WithContext(ctx)
 	var m sync.Mutex

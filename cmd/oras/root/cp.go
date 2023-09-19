@@ -198,7 +198,7 @@ func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.T
 			return nil
 		}
 
-		referrers, err := graph.FindPredecessorsCurrently(ctx, src, index.Manifests, opts)
+		referrers, err := graph.FindPredecessors(ctx, src, index.Manifests, opts)
 		if err != nil {
 			return err
 		}
