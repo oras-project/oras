@@ -51,10 +51,10 @@ func (opts *Common) Parse() error {
 	if opts.avoidTTY {
 		opts.UseTTY = false
 	} else {
-		if opts.Debug {
+		opts.UseTTY = term.IsTerminal(int(os.Stderr.Fd()))
+		if opts.UseTTY && opts.Debug {
 			return errors.New("cannot use --debug, add --noTTY to suppress terminal output")
 		}
-		opts.UseTTY = term.IsTerminal(int(os.Stderr.Fd()))
 	}
 	return nil
 }
