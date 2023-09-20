@@ -39,7 +39,7 @@ type Common struct {
 func (opts *Common) ApplyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.Debug, "debug", "d", false, "debug mode")
 	fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "verbose output")
-	fs.BoolVarP(&opts.avoidTTY, "noTTY", "", false, "[Preview] avoid using stdout as a terminal")
+	fs.BoolVarP(&opts.avoidTTY, "no-tty", "", false, "[Preview] avoid using stdout as a terminal")
 }
 
 // WithContext returns a new FieldLogger and an associated Context derived from ctx.
