@@ -157,8 +157,8 @@ func (opts *fetchBlobOptions) doFetch(ctx context.Context, src oras.ReadOnlyTarg
 			return desc, nil
 		}
 		var r io.Reader = vr
-		if opts.UseTTY {
-			trackedReader, err := track.NewReader(r, desc, "Downloading", "Downloaded  ")
+		if opts.TTY != nil {
+			trackedReader, err := track.NewReader(r, desc, "Downloading", "Downloaded  ", opts.TTY)
 			if err != nil {
 				return ocispec.Descriptor{}, err
 			}

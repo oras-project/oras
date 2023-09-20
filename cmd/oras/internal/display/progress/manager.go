@@ -45,17 +45,16 @@ type manager struct {
 	renderTick *time.Ticker
 	c          *console.Console
 	updating   sync.WaitGroup
-	sync.WaitGroup
-	mu    sync.Mutex
-	close sync.Once
+	mu         sync.Mutex
+	close      sync.Once
 }
 
 // NewManager initialized a new progress manager.
-func NewManager() (Manager, error) {
+func NewManager(f *os.File) (Manager, error) {
 	var m manager
 	var err error
 
-	m.c, err = console.GetConsole(os.Stderr)
+	m.c, err = console.GetConsole(f)
 	if err != nil {
 		return nil, err
 	}

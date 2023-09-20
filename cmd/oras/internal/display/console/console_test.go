@@ -45,17 +45,17 @@ func TestConsole_Size(t *testing.T) {
 	validateSize(t, gotWidth, gotHeight, MinialWidth, MinialHeight)
 
 	// zero width
-	pty.Resize(console.WinSize{Width: 0, Height: MinialHeight})
+	_ = pty.Resize(console.WinSize{Width: 0, Height: MinialHeight})
 	gotWidth, gotHeight = c.Size()
 	validateSize(t, gotWidth, gotHeight, MinialWidth, MinialHeight)
 
 	// zero height
-	pty.Resize(console.WinSize{Width: MinialWidth, Height: 0})
+	_ = pty.Resize(console.WinSize{Width: MinialWidth, Height: 0})
 	gotWidth, gotHeight = c.Size()
 	validateSize(t, gotWidth, gotHeight, MinialWidth, MinialHeight)
 
 	// valid zero and height
-	pty.Resize(console.WinSize{Width: 200, Height: 100})
+	_ = pty.Resize(console.WinSize{Width: 200, Height: 100})
 	gotWidth, gotHeight = c.Size()
 	validateSize(t, gotWidth, gotHeight, 200, 100)
 }

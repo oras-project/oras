@@ -17,6 +17,7 @@ package track
 
 import (
 	"io"
+	"os"
 	"sync"
 	"sync/atomic"
 
@@ -37,8 +38,8 @@ type reader struct {
 }
 
 // NewReader returns a new reader with tracked progress.
-func NewReader(r io.Reader, descriptor ocispec.Descriptor, actionPrompt string, donePrompt string) (*reader, error) {
-	manager, err := progress.NewManager()
+func NewReader(r io.Reader, descriptor ocispec.Descriptor, actionPrompt string, donePrompt string, tty *os.File) (*reader, error) {
+	manager, err := progress.NewManager(tty)
 	if err != nil {
 		return nil, err
 	}

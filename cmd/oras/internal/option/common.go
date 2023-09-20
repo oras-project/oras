@@ -28,9 +28,10 @@ import (
 
 // Common option struct.
 type Common struct {
-	Debug    bool
-	Verbose  bool
-	UseTTY   bool
+	Debug   bool
+	Verbose bool
+	TTY     *os.File
+
 	avoidTTY bool
 }
 
@@ -48,13 +49,12 @@ func (opts *Common) WithContext(ctx context.Context) (context.Context, logrus.Fi
 
 // Parse gets target options from user input.
 func (opts *Common) Parse() error {
-	if opts.avoidTTY {
-		opts.UseTTY = false
-	} else {
-		opts.UseTTY = term.IsTerminal(int(os.Stderr.Fd()))
-		if opts.UseTTY && opts.Debug {
+	f := os.Stderr
+	if !opts.avoidTTY && term.IsTerminal(int(f.Fd())) {
+		if opts.Debug {
 			return errors.New("cannot use --debug, add --noTTY to suppress terminal output")
 		}
+		opts.TTY = f
 	}
 	return nil
 }
