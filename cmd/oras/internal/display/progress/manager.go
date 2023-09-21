@@ -126,9 +126,8 @@ func (m *manager) newStatus(id int) Status {
 func (m *manager) update(ch chan *status, id int) {
 	defer m.updating.Done()
 	for s := range ch {
-		n := m.statuses[id].Update(s)
 		m.rwLock.Lock()
-		m.statuses[id] = n
+		m.statuses[id] = m.statuses[id].Update(s)
 		m.rwLock.Unlock()
 	}
 }
