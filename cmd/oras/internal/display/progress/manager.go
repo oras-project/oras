@@ -39,14 +39,17 @@ const (
 )
 
 type manager struct {
-	statuses []*status
-
-	done       chan struct{}
+	statuses   []*status
+	rwLock     sync.RWMutex
 	renderTick *time.Ticker
 	c          *console.Console
 	updating   sync.WaitGroup
 	mu         sync.Mutex
 	close      sync.Once
+	// done used to stop render routine
+	// doneDone used to mark render routine stopped
+	done     chan struct{}
+	doneDone chan struct{}
 }
 
 // NewManager initialized a new progress manager.
@@ -59,6 +62,7 @@ func NewManager(f *os.File) (Manager, error) {
 		return nil, err
 	}
 	m.done = make(chan struct{})
+	m.doneDone = make(chan struct{})
 	m.renderTick = time.NewTicker(bufFlushDuration)
 	m.start()
 	return &m, nil
@@ -72,6 +76,7 @@ func (m *manager) start() {
 			m.render()
 			select {
 			case <-m.done:
+				close(m.doneDone)
 				return
 			case <-m.renderTick.C:
 			}
@@ -92,7 +97,9 @@ func (m *manager) render() {
 	}
 
 	for ; offset < len; offset += 2 {
+		m.rwLock.RLock()
 		status, progress := m.statuses[offset/2].String(width)
+		m.rwLock.RUnlock()
 		m.c.OutputTo(uint(len-offset), status)
 		m.c.OutputTo(uint(len-offset-1), progress)
 	}
@@ -119,7 +126,10 @@ func (m *manager) newStatus(id int) Status {
 func (m *manager) update(ch chan *status, id int) {
 	defer m.updating.Done()
 	for s := range ch {
-		m.statuses[id] = m.statuses[id].Update(s)
+		n := m.statuses[id].Update(s)
+		m.rwLock.Lock()
+		m.statuses[id] = n
+		m.rwLock.Unlock()
 	}
 }
 
@@ -135,5 +145,6 @@ func (m *manager) StopAndWait() {
 	// 2. wait for all model update done
 	m.updating.Wait()
 	// 3. render last model
+	<-m.doneDone
 	m.render()
 }
