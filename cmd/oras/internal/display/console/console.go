@@ -16,18 +16,22 @@ limitations under the License.
 package console
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/containerd/console"
 	"github.com/morikuni/aec"
 )
 
-// MinWidth is the minimal width of supported console.
-const MinWidth = 80
-
-// MinHeight is the minimal height of supported console.
-const MinHeight = 10
+const (
+	// MinWidth is the minimal width of supported console.
+	MinWidth = 80
+	// MinHeight is the minimal height of supported console.
+	MinHeight = 10
+	// cannot use aec.Save since DEC has better compatilibity than SCO
+	Save = "\0337"
+	// cannot use aec.Restore since DEC has better compatilibity than SCO
+	Restore = "\0338"
+)
 
 // Console is a wrapper around containerd's console.Console and ANSI escape
 // codes.
@@ -63,33 +67,29 @@ func New(f *os.File) (*Console, error) {
 
 // Save saves the current cursor position.
 func (c *Console) Save() {
-	fmt.Fprint(c, aec.Hide)
-	// cannot use aec.Save since DEC has better compatilibity than SCO
-	fmt.Fprint(c, "\0337")
+	c.Write([]byte(aec.Hide.Apply(Save)))
 }
 
 // NewRow allocates a horizontal space to the output area with scroll if needed.
 func (c *Console) NewRow() {
-	// cannot use aec.Restore since DEC has better compatilibity than SCO
-	fmt.Fprint(c, "\0338")
-	fmt.Fprint(c, "\n")
-	fmt.Fprint(c, "\0337")
+	c.Write([]byte(Restore))
+	c.Write([]byte("\n"))
+	c.Write([]byte(Save))
 }
 
 // OutputTo outputs a string to a specific line.
 func (c *Console) OutputTo(upCnt uint, str string) {
-	fmt.Fprint(c, "\0338")
-	fmt.Fprint(c, aec.PreviousLine(upCnt))
-	fmt.Fprint(c, str)
-	fmt.Fprint(c, " ")
-	fmt.Fprint(c, aec.EraseLine(aec.EraseModes.Tail))
+	c.Write([]byte(Restore))
+	c.Write([]byte(aec.PreviousLine(upCnt).Apply(str)))
+	c.Write([]byte(" "))
+	c.Write([]byte(aec.EraseLine(aec.EraseModes.Tail).String()))
 }
 
 // Restore restores the saved cursor position.
 func (c *Console) Restore() {
 	// cannot use aec.Restore since DEC has better compatilibity than SCO
-	fmt.Fprint(c, "\0338")
-	fmt.Fprint(c, aec.Column(0))
-	fmt.Fprint(c, aec.EraseLine(aec.EraseModes.All))
-	fmt.Fprint(c, aec.Show)
+	c.Write([]byte(Restore))
+	c.Write([]byte(aec.Column(0).
+		With(aec.EraseLine(aec.EraseModes.All)).
+		With(aec.Show).String()))
 }
