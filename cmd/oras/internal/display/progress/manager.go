@@ -23,7 +23,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/console"
 )
 
-const BUFFER_SIZE = 20
+const BufferSize = 20
 
 // Status is print message channel
 type Status chan<- *status
@@ -42,7 +42,7 @@ type manager struct {
 	statuses   []*status
 	rwLock     sync.RWMutex
 	renderTick *time.Ticker
-	c          *console.Console
+	console    *console.Console
 	updating   sync.WaitGroup
 	mu         sync.Mutex
 	close      sync.Once
@@ -57,7 +57,7 @@ func NewManager(f *os.File) (Manager, error) {
 	var m manager
 	var err error
 
-	m.c, err = console.New(f)
+	m.console, err = console.New(f)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func NewManager(f *os.File) (Manager, error) {
 
 func (m *manager) start() {
 	m.renderTick.Reset(bufFlushDuration)
-	m.c.Save()
+	m.console.Save()
 	go func() {
 		for {
 			m.render()
@@ -88,7 +88,7 @@ func (m *manager) render() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	// todo: update size in another routine
-	width, height := m.c.Size()
+	width, height := m.console.Size()
 	len := len(m.statuses) * 2
 	offset := 0
 	if len > height {
@@ -100,8 +100,8 @@ func (m *manager) render() {
 		m.rwLock.RLock()
 		status, progress := m.statuses[offset/2].String(width)
 		m.rwLock.RUnlock()
-		m.c.OutputTo(uint(len-offset), status)
-		m.c.OutputTo(uint(len-offset-1), progress)
+		m.console.OutputTo(uint(len-offset), status)
+		m.console.OutputTo(uint(len-offset-1), progress)
 	}
 }
 
@@ -111,13 +111,13 @@ func (m *manager) Add() Status {
 	defer m.mu.Unlock()
 	id := len(m.statuses)
 	m.statuses = append(m.statuses, nil)
-	defer m.c.NewRow()
-	defer m.c.NewRow()
+	defer m.console.NewRow()
+	defer m.console.NewRow()
 	return m.newStatus(id)
 }
 
 func (m *manager) newStatus(id int) Status {
-	ch := make(chan *status, BUFFER_SIZE)
+	ch := make(chan *status, BufferSize)
 	m.updating.Add(1)
 	go m.update(ch, id)
 	return ch
@@ -139,7 +139,7 @@ func (m *manager) StopAndWait() {
 	close(m.done)
 	defer m.close.Do(func() {
 		// 4. restore cursor, mark done
-		m.c.Restore()
+		m.console.Restore()
 	})
 	// 2. wait for all model update done
 	m.updating.Wait()

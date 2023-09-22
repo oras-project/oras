@@ -91,7 +91,7 @@ func (r *reader) Read(p []byte) (int, error) {
 
 	if r.mu.TryLock() {
 		defer r.mu.Unlock()
-		if len(r.ch) < progress.BUFFER_SIZE {
+		if len(r.ch) < progress.BufferSize {
 			// intermediate progress might be ignored if buffer is full
 			r.ch <- progress.NewStatus(r.actionPrompt, r.descriptor, offset)
 		}
