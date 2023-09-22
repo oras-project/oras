@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 
@@ -202,6 +203,9 @@ func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.T
 		if err != nil {
 			return err
 		}
+		referrers = slices.DeleteFunc(referrers, func(desc ocispec.Descriptor) bool {
+			return content.Equal(desc, root)
+		})
 
 		findPredecessor := opts.FindPredecessors
 		opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
