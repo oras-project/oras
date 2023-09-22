@@ -23,11 +23,11 @@ import (
 	"github.com/morikuni/aec"
 )
 
-// MinialWidth is the minimal width of supported console.
-const MinialWidth = 80
+// MinWidth is the minimal width of supported console.
+const MinWidth = 80
 
-// MinialHeight is the minimal height of supported console.
-const MinialHeight = 10
+// MinHeight is the minimal height of supported console.
+const MinHeight = 10
 
 // Console is a wrapper around containerd's console.Console and ANSI escape
 // codes.
@@ -38,18 +38,22 @@ type Console struct {
 // Size returns the width and height of the console.
 // If the console size cannot be determined, returns a default value of 80x10.
 func (c *Console) Size() (width, height int) {
-	width = MinialWidth
-	height = MinialHeight
+	width = MinWidth
+	height = MinHeight
 	size, err := c.Console.Size()
-	if err == nil && size.Height > MinialHeight && size.Width > MinialWidth {
-		width = int(size.Width)
-		height = int(size.Height)
+	if err == nil {
+		if size.Height > MinHeight {
+			height = int(size.Height)
+		}
+		if size.Width > MinWidth {
+			width = int(size.Width)
+		}
 	}
 	return
 }
 
-// GetConsole returns a Console from a file.
-func GetConsole(f *os.File) (*Console, error) {
+// New generates a Console from a file.
+func New(f *os.File) (*Console, error) {
 	c, err := console.ConsoleFromFile(f)
 	if err != nil {
 		return nil, err

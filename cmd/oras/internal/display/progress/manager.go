@@ -57,7 +57,7 @@ func NewManager(f *os.File) (Manager, error) {
 	var m manager
 	var err error
 
-	m.c, err = console.GetConsole(f)
+	m.c, err = console.New(f)
 	if err != nil {
 		return nil, err
 	}
