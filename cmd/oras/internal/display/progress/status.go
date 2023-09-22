@@ -36,6 +36,7 @@ type status struct {
 	offset     int64
 	startTime  *time.Time
 	endTime    *time.Time
+	mark       mark
 }
 
 // NewStatus generates a status.
@@ -87,11 +88,12 @@ func (s *status) String(width int) (string, string) {
 	if !s.done {
 		lenBar := int(percent * BarMaxLength)
 		bar := fmt.Sprintf("[%s%s]", aec.Inverse.Apply(strings.Repeat(" ", lenBar)), strings.Repeat(".", BarMaxLength-lenBar))
-		left = fmt.Sprintf("%c %s %s %s", GetMark(s), bar, s.prompt, name)
+		mark := s.mark.GetMark()
+		left = fmt.Sprintf("%c %s %s %s", mark, bar, s.prompt, name)
 		// bar + wrapper(2) + space(1)
 		lenLeft = BarMaxLength + 2 + 1
 	} else {
-		left = fmt.Sprintf("%c %s %s", GetMark(s), s.prompt, name)
+		left = fmt.Sprintf("√ %s %s", s.prompt, name)
 	}
 	// mark(1) + space(1) + prompt+ space(1) + name
 	lenLeft += 1 + 1 + utf8.RuneCountInString(s.prompt) + 1 + utf8.RuneCountInString(name)

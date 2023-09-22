@@ -18,14 +18,13 @@ package progress
 var (
 	spinner    = []rune("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")
 	spinnerLen = len(spinner)
-	spinnerPos = 0
 )
 
+type mark int
+
 // GetMark returns the rune of status mark.
-func GetMark(s *status) rune {
-	if s.done {
-		return '√'
-	}
-	spinnerPos = (spinnerPos + 1) % spinnerLen
-	return spinner[spinnerPos/2]
+func (m *mark) GetMark() rune {
+	last := int(*m)
+	*m = mark((last + 1) % spinnerLen)
+	return spinner[last]
 }
