@@ -59,23 +59,20 @@ func managedReader(r io.Reader, descriptor ocispec.Descriptor, manager progress.
 	}, nil
 }
 
-// End closes the status channel.
-func (r *reader) End() {
-	defer close(r.status)
-	r.status <- progress.NewStatus(r.donePrompt, r.descriptor, uint64(r.descriptor.Size))
-	r.status <- progress.EndTiming()
-}
-
 // Stop stops the status channel and related manager.
 func (r *reader) Stop() error {
-	r.End()
+	r.status <- progress.NewStatus(r.donePrompt, r.descriptor, uint64(r.descriptor.Size))
+	r.status <- progress.EndTiming()
+	close(r.status)
 	return r.m.Close()
 }
 
+// Start sends the start timing to the status channel.
 func (r *reader) Start() {
 	r.status <- progress.StartTiming()
 }
 
+// Read reads from the underlying reader and updates the progress.
 func (r *reader) Read(p []byte) (int, error) {
 	n, err := r.base.Read(p)
 	if err != nil && err != io.EOF {
