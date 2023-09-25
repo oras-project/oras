@@ -33,7 +33,7 @@ type reader struct {
 	descriptor   ocispec.Descriptor
 	mu           sync.Mutex
 	m            progress.Manager
-	ch           progress.Status
+	status       progress.Status
 	once         sync.Once
 }
 
@@ -58,15 +58,15 @@ func managedReader(r io.Reader, descriptor ocispec.Descriptor, manager progress.
 		actionPrompt: actionPrompt,
 		donePrompt:   donePrompt,
 		m:            manager,
-		ch:           ch,
+		status:       ch,
 	}, nil
 }
 
 // End closes the status channel.
 func (r *reader) End() {
-	defer close(r.ch)
-	r.ch <- progress.NewStatus(r.donePrompt, r.descriptor, uint64(r.descriptor.Size))
-	r.ch <- progress.EndTiming()
+	defer close(r.status)
+	r.status <- progress.NewStatus(r.donePrompt, r.descriptor, uint64(r.descriptor.Size))
+	r.status <- progress.EndTiming()
 }
 
 // Stop stops the status channel and related manager.
@@ -77,7 +77,7 @@ func (r *reader) Stop() error {
 
 func (r *reader) Read(p []byte) (int, error) {
 	r.once.Do(func() {
-		r.ch <- progress.StartTiming()
+		r.status <- progress.StartTiming()
 	})
 	n, err := r.base.Read(p)
 	if err != nil && err != io.EOF {
@@ -89,12 +89,12 @@ func (r *reader) Read(p []byte) (int, error) {
 		if offset != uint64(r.descriptor.Size) {
 			return n, io.ErrUnexpectedEOF
 		}
-		r.ch <- progress.NewStatus(r.actionPrompt, r.descriptor, offset)
+		r.status <- progress.NewStatus(r.actionPrompt, r.descriptor, offset)
 	}
 
-	if len(r.ch) < progress.BufferSize {
+	if len(r.status) < progress.BufferSize {
 		// intermediate progress might be ignored if buffer is full
-		r.ch <- progress.NewStatus(r.actionPrompt, r.descriptor, offset)
+		r.status <- progress.NewStatus(r.actionPrompt, r.descriptor, offset)
 	}
 	return n, err
 }
