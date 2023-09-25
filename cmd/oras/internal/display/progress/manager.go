@@ -16,6 +16,7 @@ limitations under the License.
 package progress
 
 import (
+	"errors"
 	"os"
 	"sync"
 	"time"
@@ -25,13 +26,15 @@ import (
 
 const BufferSize = 20
 
+var errManagerStopped = errors.New("progress output manage has already been stopped")
+
 // Status is print message channel
 type Status chan<- *status
 
 // Manager is progress view master
 type Manager interface {
-	Add() Status
-	Close()
+	Add() (Status, error)
+	Close() error
 }
 
 const bufFlushDuration = 100 * time.Millisecond
@@ -99,9 +102,9 @@ func (m *manager) render() {
 }
 
 // Add appends a new status with 2-line space for rendering.
-func (m *manager) Add() Status {
+func (m *manager) Add() (Status, error) {
 	if m.closed() {
-		return nil
+		return nil, errManagerStopped
 	}
 
 	s := newStatus()
@@ -111,7 +114,7 @@ func (m *manager) Add() Status {
 
 	defer m.console.NewRow()
 	defer m.console.NewRow()
-	return m.statusChan(s)
+	return m.statusChan(s), nil
 }
 
 func (m *manager) statusChan(s *status) Status {
@@ -127,9 +130,9 @@ func (m *manager) statusChan(s *status) Status {
 }
 
 // Close stops all status and waits for updating and rendering.
-func (m *manager) Close() {
+func (m *manager) Close() error {
 	if m.closed() {
-		return
+		return errManagerStopped
 	}
 
 	// 1 wait for all model update done
@@ -138,6 +141,7 @@ func (m *manager) Close() {
 	close(m.renderDone)
 	// 3. wait for the render stop
 	<-m.renderClosed
+	return nil
 }
 
 func (m *manager) closed() bool {

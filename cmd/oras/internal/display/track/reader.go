@@ -47,13 +47,18 @@ func NewReader(r io.Reader, descriptor ocispec.Descriptor, actionPrompt string, 
 }
 
 func managedReader(r io.Reader, descriptor ocispec.Descriptor, manager progress.Manager, actionPrompt string, donePrompt string) (*reader, error) {
+	ch, err := manager.Add()
+	if err != nil {
+		return nil, err
+	}
+
 	return &reader{
 		base:         r,
 		descriptor:   descriptor,
 		actionPrompt: actionPrompt,
 		donePrompt:   donePrompt,
 		m:            manager,
-		ch:           manager.Add(),
+		ch:           ch,
 	}, nil
 }
 
@@ -65,9 +70,9 @@ func (r *reader) End() {
 }
 
 // Stop stops the status channel and related manager.
-func (r *reader) Stop() {
+func (r *reader) Stop() error {
 	r.End()
-	r.m.Close()
+	return r.m.Close()
 }
 
 func (r *reader) Read(p []byte) (int, error) {

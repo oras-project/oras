@@ -31,7 +31,7 @@ const BarMaxLength = 40
 
 // status is used as message to update progress view.
 type status struct {
-	done       bool
+	done       bool // done is true when the end time is set
 	prompt     string
 	descriptor ocispec.Descriptor
 	offset     int64
