@@ -31,65 +31,60 @@ type Status chan<- *status
 // Manager is progress view master
 type Manager interface {
 	Add() Status
-	StopAndWait()
+	Close()
 }
 
-const (
-	bufFlushDuration = 100 * time.Millisecond
-)
+const bufFlushDuration = 100 * time.Millisecond
 
 type manager struct {
-	statuses   []*status
-	rwLock     sync.RWMutex
-	renderTick *time.Ticker
-	console    *console.Console
-	updating   sync.WaitGroup
-	mu         sync.Mutex
-	close      sync.Once
-	// done used to stop render routine
-	// doneDone used to mark render routine stopped
-	done     chan struct{}
-	doneDone chan struct{}
+	status       []*status
+	statusLock   sync.RWMutex
+	console      *console.Console
+	updating     sync.WaitGroup
+	renderDone   chan struct{}
+	renderClosed chan struct{}
 }
 
 // NewManager initialized a new progress manager.
 func NewManager(f *os.File) (Manager, error) {
-	var m manager
-	var err error
-
-	m.console, err = console.New(f)
+	c, err := console.New(f)
 	if err != nil {
 		return nil, err
 	}
-	m.done = make(chan struct{})
-	m.doneDone = make(chan struct{})
-	m.renderTick = time.NewTicker(bufFlushDuration)
+	m := &manager{
+		console:      c,
+		renderDone:   make(chan struct{}),
+		renderClosed: make(chan struct{}),
+	}
 	m.start()
-	return &m, nil
+	return m, nil
 }
 
 func (m *manager) start() {
-	m.renderTick.Reset(bufFlushDuration)
 	m.console.Save()
+	renderTicker := time.NewTicker(bufFlushDuration)
 	go func() {
+		defer m.console.Restore()
+		defer renderTicker.Stop()
 		for {
 			m.render()
 			select {
-			case <-m.done:
-				close(m.doneDone)
+			case <-m.renderDone:
+				m.render()
+				close(m.renderClosed)
 				return
-			case <-m.renderTick.C:
+			case <-renderTicker.C:
 			}
 		}
 	}()
 }
 
 func (m *manager) render() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.statusLock.RLock()
+	defer m.statusLock.RUnlock()
 	// todo: update size in another routine
 	width, height := m.console.Size()
-	len := len(m.statuses) * 2
+	len := len(m.status) * 2
 	offset := 0
 	if len > height {
 		// skip statuses that cannot be rendered
@@ -97,9 +92,7 @@ func (m *manager) render() {
 	}
 
 	for ; offset < len; offset += 2 {
-		m.rwLock.RLock()
-		status, progress := m.statuses[offset/2].String(width)
-		m.rwLock.RUnlock()
+		status, progress := m.status[offset/2].String(width)
 		m.console.OutputTo(uint(len-offset), status)
 		m.console.OutputTo(uint(len-offset-1), progress)
 	}
@@ -107,43 +100,51 @@ func (m *manager) render() {
 
 // Add appends a new status with 2-line space for rendering.
 func (m *manager) Add() Status {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	id := len(m.statuses)
-	m.statuses = append(m.statuses, nil)
+	if m.closed() {
+		return nil
+	}
+
+	s := newStatus()
+	m.statusLock.Lock()
+	m.status = append(m.status, s)
+	m.statusLock.Unlock()
+
 	defer m.console.NewRow()
 	defer m.console.NewRow()
-	return m.newStatus(id)
+	return m.statusChan(s)
 }
 
-func (m *manager) newStatus(id int) Status {
+func (m *manager) statusChan(s *status) Status {
 	ch := make(chan *status, BufferSize)
 	m.updating.Add(1)
-	go m.update(ch, id)
+	go func() {
+		defer m.updating.Done()
+		for newStatus := range ch {
+			s.Update(newStatus)
+		}
+	}()
 	return ch
 }
 
-func (m *manager) update(ch chan *status, id int) {
-	defer m.updating.Done()
-	for s := range ch {
-		m.rwLock.Lock()
-		m.statuses[id] = m.statuses[id].Update(s)
-		m.rwLock.Unlock()
+// Close stops all status and waits for updating and rendering.
+func (m *manager) Close() {
+	if m.closed() {
+		return
 	}
+
+	// 1 wait for all model update done
+	m.updating.Wait()
+	// 2. stop periodic render
+	close(m.renderDone)
+	// 3. wait for the render stop
+	<-m.renderClosed
 }
 
-// StopAndWait stops all status and waits for updating and rendering.
-func (m *manager) StopAndWait() {
-	// 1. stop periodic render
-	m.renderTick.Stop()
-	close(m.done)
-	defer m.close.Do(func() {
-		// 4. restore cursor, mark done
-		m.console.Restore()
-	})
-	// 2. wait for all model update done
-	m.updating.Wait()
-	// 3. render last model
-	<-m.doneDone
-	m.render()
+func (m *manager) closed() bool {
+	select {
+	case <-m.renderClosed:
+		return true
+	default:
+		return false
+	}
 }

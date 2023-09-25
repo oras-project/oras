@@ -67,7 +67,7 @@ func (r *reader) End() {
 // Stop stops the status channel and related manager.
 func (r *reader) Stop() {
 	r.End()
-	r.m.StopAndWait()
+	r.m.Close()
 }
 
 func (r *reader) Read(p []byte) (int, error) {

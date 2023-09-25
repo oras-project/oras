@@ -15,16 +15,13 @@ limitations under the License.
 
 package progress
 
-var (
-	spinner    = []rune("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")
-	spinnerLen = len(spinner)
-)
+var spinnerSymbol = []rune("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")
 
-type mark int
+type spinner int
 
-// GetMark returns the rune of status mark.
-func (m *mark) GetMark() rune {
-	last := int(*m)
-	*m = mark((last + 1) % spinnerLen)
-	return spinner[last]
+// symbol returns the rune of status mark and shift to the next.
+func (s *spinner) symbol() rune {
+	last := int(*s)
+	*s = spinner((last + 1) % len(spinnerSymbol))
+	return spinnerSymbol[last]
 }
