@@ -89,17 +89,12 @@ func (r *reader) Read(p []byte) (int, error) {
 		if offset != uint64(r.descriptor.Size) {
 			return n, io.ErrUnexpectedEOF
 		}
-		r.mu.Lock()
-		defer r.mu.Unlock()
 		r.ch <- progress.NewStatus(r.actionPrompt, r.descriptor, offset)
 	}
 
-	if r.mu.TryLock() {
-		defer r.mu.Unlock()
-		if len(r.ch) < progress.BufferSize {
-			// intermediate progress might be ignored if buffer is full
-			r.ch <- progress.NewStatus(r.actionPrompt, r.descriptor, offset)
-		}
+	if len(r.ch) < progress.BufferSize {
+		// intermediate progress might be ignored if buffer is full
+		r.ch <- progress.NewStatus(r.actionPrompt, r.descriptor, offset)
 	}
 	return n, err
 }
