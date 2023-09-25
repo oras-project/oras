@@ -18,7 +18,6 @@ package track
 import (
 	"io"
 	"os"
-	"sync"
 	"sync/atomic"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -31,10 +30,8 @@ type reader struct {
 	actionPrompt string
 	donePrompt   string
 	descriptor   ocispec.Descriptor
-	mu           sync.Mutex
 	m            progress.Manager
 	status       progress.Status
-	once         sync.Once
 }
 
 // NewReader returns a new reader with tracked progress.
@@ -75,10 +72,11 @@ func (r *reader) Stop() error {
 	return r.m.Close()
 }
 
+func (r *reader) Start() {
+	r.status <- progress.StartTiming()
+}
+
 func (r *reader) Read(p []byte) (int, error) {
-	r.once.Do(func() {
-		r.status <- progress.StartTiming()
-	})
 	n, err := r.base.Read(p)
 	if err != nil && err != io.EOF {
 		return n, err

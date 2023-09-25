@@ -156,15 +156,6 @@ func (opts *fetchBlobOptions) doFetch(ctx context.Context, src oras.ReadOnlyTarg
 			}
 			return desc, nil
 		}
-		var r io.Reader = vr
-		if opts.TTY != nil {
-			trackedReader, err := track.NewReader(r, desc, "Downloading", "Downloaded  ", opts.TTY)
-			if err != nil {
-				return ocispec.Descriptor{}, err
-			}
-			defer trackedReader.Stop()
-			r = trackedReader
-		}
 
 		// save blob content into the local file if the output path is provided
 		file, err := os.Create(opts.outputPath)
@@ -176,6 +167,17 @@ func (opts *fetchBlobOptions) doFetch(ctx context.Context, src oras.ReadOnlyTarg
 				fetchErr = err
 			}
 		}()
+
+		var r io.Reader = vr
+		if opts.TTY != nil {
+			trackedReader, err := track.NewReader(r, desc, "Downloading", "Downloaded  ", opts.TTY)
+			if err != nil {
+				return ocispec.Descriptor{}, err
+			}
+			defer trackedReader.Stop()
+			trackedReader.Start()
+			r = trackedReader
+		}
 
 		if _, err := io.Copy(file, r); err != nil {
 			return ocispec.Descriptor{}, err
