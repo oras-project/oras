@@ -174,7 +174,9 @@ func (opts *fetchBlobOptions) doFetch(ctx context.Context, src oras.ReadOnlyTarg
 			if err != nil {
 				return ocispec.Descriptor{}, err
 			}
-			defer trackedReader.Stop()
+			defer func() {
+				_ = trackedReader.Stop()
+			}()
 			trackedReader.Start()
 			r = trackedReader
 		}
