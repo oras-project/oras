@@ -32,14 +32,14 @@ type Common struct {
 	Verbose bool
 	TTY     *os.File
 
-	avoidTTY bool
+	noTTY bool
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Common) ApplyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.Debug, "debug", "d", false, "debug mode")
 	fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "verbose output")
-	fs.BoolVarP(&opts.avoidTTY, "no-tty", "", false, "[Preview] avoid using stdout as a terminal")
+	fs.BoolVarP(&opts.noTTY, "no-tty", "", false, "[Preview] avoid using stdout as a terminal")
 }
 
 // WithContext returns a new FieldLogger and an associated Context derived from ctx.
@@ -50,9 +50,9 @@ func (opts *Common) WithContext(ctx context.Context) (context.Context, logrus.Fi
 // Parse gets target options from user input.
 func (opts *Common) Parse() error {
 	f := os.Stderr
-	if !opts.avoidTTY && term.IsTerminal(int(f.Fd())) {
+	if !opts.noTTY && term.IsTerminal(int(f.Fd())) {
 		if opts.Debug {
-			return errors.New("cannot use --debug, add --noTTY to suppress terminal output")
+			return errors.New("cannot use --debug, add --no-tty to suppress terminal output")
 		}
 		opts.TTY = f
 	}

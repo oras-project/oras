@@ -24,6 +24,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/console"
 )
 
+// BufferSize is the size of the status channel buffer.
 const BufferSize = 20
 
 var errManagerStopped = errors.New("progress output manage has already been stopped")
@@ -70,13 +71,14 @@ func (m *manager) start() {
 		defer m.console.Restore()
 		defer renderTicker.Stop()
 		for {
-			m.render()
 			select {
 			case <-m.renderDone:
+				m.updating.Wait()
 				m.render()
 				close(m.renderClosed)
 				return
 			case <-renderTicker.C:
+				m.render()
 			}
 		}
 	}()
@@ -134,12 +136,9 @@ func (m *manager) Close() error {
 	if m.closed() {
 		return errManagerStopped
 	}
-
-	// 1 wait for all model update done
-	m.updating.Wait()
-	// 2. stop periodic render
+	// 1. stop periodic rendering
 	close(m.renderDone)
-	// 3. wait for the render stop
+	// 2. wait for the render stop
 	<-m.renderClosed
 	return nil
 }

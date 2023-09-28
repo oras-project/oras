@@ -15,13 +15,13 @@ limitations under the License.
 
 package progress
 
-var spinnerSymbol = []rune("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")
+var spinnerSymbols = []rune("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")
 
 type spinner int
 
 // symbol returns the rune of status mark and shift to the next.
 func (s *spinner) symbol() rune {
 	last := int(*s)
-	*s = spinner((last + 1) % len(spinnerSymbol))
-	return spinnerSymbol[last]
+	*s = spinner((last + 1) % len(spinnerSymbols))
+	return spinnerSymbols[last]
 }
