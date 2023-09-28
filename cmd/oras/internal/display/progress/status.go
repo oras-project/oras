@@ -87,7 +87,10 @@ func (s *status) String(width int) (string, string) {
 	}
 	// todo: doesn't support multiline prompt
 	total := uint64(s.descriptor.Size)
-	percent := float64(s.offset) / float64(total)
+	var percent float64
+	if s.offset >= 0 {
+		percent = float64(s.offset) / float64(total)
+	}
 
 	name := s.descriptor.Annotations["org.opencontainers.image.title"]
 	if name == "" {

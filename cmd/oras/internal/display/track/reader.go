@@ -30,7 +30,7 @@ type reader struct {
 	actionPrompt string
 	donePrompt   string
 	descriptor   ocispec.Descriptor
-	m            progress.Manager
+	manager      progress.Manager
 	status       progress.Status
 }
 
@@ -54,17 +54,21 @@ func managedReader(r io.Reader, descriptor ocispec.Descriptor, manager progress.
 		descriptor:   descriptor,
 		actionPrompt: actionPrompt,
 		donePrompt:   donePrompt,
-		m:            manager,
+		manager:      manager,
 		status:       ch,
 	}, nil
 }
 
-// Stop stops the status channel and related manager.
-func (r *reader) Stop() error {
+// StopManager stops the status channel and related manager.
+func (r *reader) StopManager() error {
+	return r.manager.Close()
+}
+
+// Stop stops the status channel without closing the manager.
+func (r *reader) Stop() {
 	r.status <- progress.NewStatus(r.donePrompt, r.descriptor, uint64(r.descriptor.Size))
 	r.status <- progress.EndTiming()
 	close(r.status)
-	return r.m.Close()
 }
 
 // Start sends the start timing to the status channel.
