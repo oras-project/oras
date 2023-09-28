@@ -153,7 +153,8 @@ func (opts *pushBlobOptions) doPush(ctx context.Context, t oras.Target, desc oci
 			return err
 		}
 		defer func() {
-			_ = trackedReader.Stop()
+			trackedReader.Stop()
+			_ = trackedReader.StopManager()
 		}()
 		trackedReader.Start()
 		r = trackedReader
