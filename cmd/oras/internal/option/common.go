@@ -49,6 +49,7 @@ func (opts *Common) WithContext(ctx context.Context) (context.Context, logrus.Fi
 
 // Parse gets target options from user input.
 func (opts *Common) Parse() error {
+	// use STDERR as TTY output since STDOUT is reserved for pipeable output
 	return opts.parseTTY(os.Stderr)
 }
 
