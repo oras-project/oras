@@ -18,7 +18,6 @@ package track
 import (
 	"io"
 	"os"
-	"sync/atomic"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/progress"
@@ -26,7 +25,7 @@ import (
 
 type reader struct {
 	base         io.Reader
-	offset       atomic.Uint64
+	offset       int64
 	actionPrompt string
 	donePrompt   string
 	descriptor   ocispec.Descriptor
@@ -66,7 +65,7 @@ func (r *reader) StopManager() error {
 
 // Stop stops the status channel without closing the manager.
 func (r *reader) Stop() {
-	r.status <- progress.NewStatus(r.donePrompt, r.descriptor, uint64(r.descriptor.Size))
+	r.status <- progress.NewStatus(r.donePrompt, r.descriptor, r.descriptor.Size)
 	r.status <- progress.EndTiming()
 	close(r.status)
 }
@@ -83,17 +82,17 @@ func (r *reader) Read(p []byte) (int, error) {
 		return n, err
 	}
 
-	offset := r.offset.Add(uint64(n))
+	r.offset = r.offset + int64(n)
 	if err == io.EOF {
-		if offset != uint64(r.descriptor.Size) {
+		if r.offset != r.descriptor.Size {
 			return n, io.ErrUnexpectedEOF
 		}
-		r.status <- progress.NewStatus(r.actionPrompt, r.descriptor, offset)
+		r.status <- progress.NewStatus(r.actionPrompt, r.descriptor, r.offset)
 	}
 
 	if len(r.status) < progress.BufferSize {
 		// intermediate progress might be ignored if buffer is full
-		r.status <- progress.NewStatus(r.actionPrompt, r.descriptor, offset)
+		r.status <- progress.NewStatus(r.actionPrompt, r.descriptor, r.offset)
 	}
 	return n, err
 }

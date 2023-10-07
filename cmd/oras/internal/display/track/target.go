@@ -74,7 +74,7 @@ func (t *target) Push(ctx context.Context, expected ocispec.Descriptor, content 
 	}
 
 	r.status <- progress.EndTiming()
-	r.status <- progress.NewStatus(t.donePrompt, expected, uint64(expected.Size))
+	r.status <- progress.NewStatus(t.donePrompt, expected, expected.Size)
 	return nil
 }
 
@@ -99,7 +99,7 @@ func (t *target) PushReference(ctx context.Context, expected ocispec.Descriptor,
 	}
 
 	r.status <- progress.EndTiming()
-	r.status <- progress.NewStatus(t.donePrompt, expected, uint64(expected.Size))
+	r.status <- progress.NewStatus(t.donePrompt, expected, expected.Size)
 	return nil
 }
 
@@ -123,7 +123,7 @@ func (t *target) Prompt(desc ocispec.Descriptor, prompt string) error {
 		return err
 	}
 	defer close(status)
-	status <- progress.NewStatus(prompt, desc, uint64(desc.Size))
+	status <- progress.NewStatus(prompt, desc, desc.Size)
 	status <- progress.EndTiming()
 	return nil
 }
