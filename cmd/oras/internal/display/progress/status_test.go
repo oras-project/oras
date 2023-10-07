@@ -19,14 +19,45 @@ import (
 	"testing"
 	"time"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/console"
+	"oras.land/oras/cmd/oras/internal/display/console/testutils"
 )
 
 func Test_status_String(t *testing.T) {
 	// zero status and progress
 	s := newStatus()
-	if status, progress := s.String(console.MinWidth); status != zeroStatus || progress != zeroProgress {
-		t.Errorf("status.String() = %v, %v, want %v, %v", status, progress, zeroStatus, zeroProgress)
+	if status, digest := s.String(console.MinWidth); status != zeroStatus || digest != zeroDigest {
+		t.Errorf("status.String() = %v, %v, want %v, %v", status, digest, zeroStatus, zeroDigest)
+	}
+
+	// not done
+	s.startTime = time.Now().Add(-time.Minute)
+	s.prompt = "test"
+	s.descriptor = ocispec.Descriptor{
+		MediaType: "application/vnd.oci.empty.oras.test.v1+json",
+		Size:      2,
+		Digest:    "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+	}
+	s.offset = 0
+	// full name
+	status, digest := s.String(120)
+	if err := testutils.OrderedMatch(status+digest, " [\x1b[7m\x1b[0m........................................]", s.prompt, s.descriptor.MediaType, "0 B/2 B", "0.00%", s.descriptor.Digest.String()); err != nil {
+		t.Error(err)
+	}
+	// partial name
+	status, digest = s.String(console.MinWidth)
+	if err := testutils.OrderedMatch(status+digest, " [\x1b[7m\x1b[0m........................................]", s.prompt, "applicat.", "0 B/2 B", "0.00%", s.descriptor.Digest.String()); err != nil {
+		t.Error(err)
+	}
+
+	// done
+	s.done = true
+	s.endTime = s.startTime.Add(time.Minute)
+	s.offset = s.descriptor.Size
+	status, digest = s.String(120)
+	if err := testutils.OrderedMatch(status+digest, "√", s.prompt, s.descriptor.MediaType, "2 B/2 B", "100.00%", s.descriptor.Digest.String()); err != nil {
+		t.Error(err)
 	}
 }
 

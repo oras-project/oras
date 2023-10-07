@@ -51,7 +51,7 @@ func Test_pushBlobOptions_doPush(t *testing.T) {
 		t.Fatal(err)
 	}
 	// validate
-	if err = testutils.OrderedMatch(pty, slave, "Uploaded", desc.MediaType, "100.00%", desc.Digest.String()); err != nil {
+	if err = testutils.MatchPty(pty, slave, "Uploaded", desc.MediaType, "100.00%", desc.Digest.String()); err != nil {
 		t.Fatal(err)
 	}
 }
