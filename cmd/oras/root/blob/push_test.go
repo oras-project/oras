@@ -1,5 +1,4 @@
-//go:build linux || zos || freebsd
-// +build linux zos freebsd
+//go:build darwin || freebsd || linux || netbsd || openbsd || solaris
 
 /*
 Copyright The ORAS Authors.
@@ -21,26 +20,17 @@ package blob
 import (
 	"bytes"
 	"context"
-	"fmt"
-	"io"
-	"os"
-	"strings"
-	"sync"
 	"testing"
 
-	"github.com/containerd/console"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras/cmd/oras/internal/display/console/testutils"
 )
 
 func Test_pushBlobOptions_doPush(t *testing.T) {
 	// prepare
-	pty, slavePath, err := console.NewPty()
-	if err != nil {
-		t.Fatal(err)
-	}
-	slave, err := os.OpenFile(slavePath, os.O_RDWR, 0)
+	pty, slave, err := testutils.NewPty()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,27 +51,7 @@ func Test_pushBlobOptions_doPush(t *testing.T) {
 		t.Fatal(err)
 	}
 	// validate
-	var wg sync.WaitGroup
-	wg.Add(1)
-	var buffer bytes.Buffer
-	go func() {
-		defer wg.Done()
-		_, _ = io.Copy(&buffer, pty)
-	}()
-	slave.Close()
-	wg.Wait()
-	if err := orderedMatch(t, buffer.String(), "Uploaded", desc.MediaType, "100.00%", desc.Digest.String()); err != nil {
+	if err = testutils.OrderedMatch(pty, slave, "Uploaded", desc.MediaType, "100.00%", desc.Digest.String()); err != nil {
 		t.Fatal(err)
 	}
-}
-
-func orderedMatch(t *testing.T, actual string, expected ...string) error {
-	for _, e := range expected {
-		i := strings.Index(actual, e)
-		if i < 0 {
-			return fmt.Errorf("expected to find %q in %q", e, actual)
-		}
-		actual = actual[i+len(e):]
-	}
-	return nil
 }
