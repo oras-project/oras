@@ -27,7 +27,12 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-const BarMaxLength = 40
+const (
+	barMaxLength = 40
+	zeroDuration = "0s" // default zero value of time.Duration.String()
+	zeroStatus   = "loading status..."
+	zeroProgress = "loading progress..."
+)
 
 // status is used as message to update progress view.
 type status struct {
@@ -83,7 +88,7 @@ func (s *status) String(width int) (string, string) {
 	defer s.lock.RUnlock()
 
 	if s.isZero() {
-		return "loading status...", "loading progress..."
+		return zeroStatus, zeroProgress
 	}
 	// todo: doesn't support multiline prompt
 	total := uint64(s.descriptor.Size)
@@ -103,12 +108,12 @@ func (s *status) String(width int) (string, string) {
 	var left string
 	var lenLeft int
 	if !s.done {
-		lenBar := int(percent * BarMaxLength)
-		bar := fmt.Sprintf("[%s%s]", aec.Inverse.Apply(strings.Repeat(" ", lenBar)), strings.Repeat(".", BarMaxLength-lenBar))
+		lenBar := int(percent * barMaxLength)
+		bar := fmt.Sprintf("[%s%s]", aec.Inverse.Apply(strings.Repeat(" ", lenBar)), strings.Repeat(".", barMaxLength-lenBar))
 		mark := s.mark.symbol()
 		left = fmt.Sprintf("%c %s %s %s", mark, bar, s.prompt, name)
 		// bar + wrapper(2) + space(1) = len(bar) + 3
-		lenLeft = BarMaxLength + 3
+		lenLeft = barMaxLength + 3
 	} else {
 		left = fmt.Sprintf("√ %s %s", s.prompt, name)
 	}
@@ -129,7 +134,7 @@ func (s *status) String(width int) (string, string) {
 // durationString returns a viewable TTY string of the status with duration.
 func (s *status) durationString() string {
 	if s.startTime.IsZero() {
-		return "0ms"
+		return zeroDuration
 	}
 
 	var d time.Duration
@@ -140,14 +145,12 @@ func (s *status) durationString() string {
 	}
 
 	switch {
-	case d > time.Minute:
-		d = d.Round(time.Second)
 	case d > time.Second:
-		d = d.Round(100 * time.Millisecond)
+		d = d.Round(time.Second)
 	case d > time.Millisecond:
 		d = d.Round(time.Millisecond)
 	default:
-		d = d.Round(10 * time.Nanosecond)
+		d = d.Round(time.Microsecond)
 	}
 	return d.String()
 }
