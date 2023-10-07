@@ -46,21 +46,24 @@ func Test_status_durationString(t *testing.T) {
 	// ended: 61 seconds
 	s.startTime = time.Now()
 	s.endTime = s.startTime.Add(61 * time.Second)
-	if d := s.durationString(); d != "1m1s" {
-		t.Errorf("status.durationString() = %v, want %v", d, "1m1s")
+	want := "1m1s"
+	if d := s.durationString(); d != want {
+		t.Errorf("status.durationString() = %v, want %v", d, want)
 	}
 
 	// ended: 1001 Microsecond
 	s.startTime = time.Now()
 	s.endTime = s.startTime.Add(1001 * time.Microsecond)
-	if d := s.durationString(); d != "1ms" {
-		t.Errorf("status.durationString() = %v, want %v", d, "1ms")
+	want = "1ms"
+	if d := s.durationString(); d != want {
+		t.Errorf("status.durationString() = %v, want %v", d, want)
 	}
 
 	// ended: 1001 Nanosecond
 	s.startTime = time.Now()
 	s.endTime = s.startTime.Add(1001 * time.Nanosecond)
-	if d := s.durationString(); d != "1µs" {
-		t.Errorf("status.durationString() = %v, want %v", d, "1µs")
+	want = "1µs"
+	if d := s.durationString(); d != want {
+		t.Errorf("status.durationString() = %v, want %v", d, want)
 	}
 }
