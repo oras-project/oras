@@ -1,3 +1,5 @@
+//go:build darwin || freebsd || linux || netbsd || openbsd || solaris
+
 /*
 Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,24 +20,17 @@ package blob
 import (
 	"bytes"
 	"context"
-	"io"
-	"os"
-	"sync"
 	"testing"
 
-	"github.com/containerd/console"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras/cmd/oras/internal/display/console/testutils"
 )
 
 func Test_fetchBlobOptions_doFetch(t *testing.T) {
 	// prepare
-	pty, slavePath, err := console.NewPty()
-	if err != nil {
-		t.Fatal(err)
-	}
-	slave, err := os.OpenFile(slavePath, os.O_RDWR, 0)
+	pty, slave, err := testutils.NewPty()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +51,6 @@ func Test_fetchBlobOptions_doFetch(t *testing.T) {
 	if err := src.Tag(ctx, desc, tag); err != nil {
 		t.Fatal(err)
 	}
-
 	var opts fetchBlobOptions
 	opts.Reference = tag
 	opts.Common.TTY = slave
@@ -67,16 +61,7 @@ func Test_fetchBlobOptions_doFetch(t *testing.T) {
 		t.Fatal(err)
 	}
 	// validate
-	var wg sync.WaitGroup
-	wg.Add(1)
-	var buffer bytes.Buffer
-	go func() {
-		defer wg.Done()
-		_, _ = io.Copy(&buffer, pty)
-	}()
-	slave.Close()
-	wg.Wait()
-	if err := orderedMatch(t, buffer.String(), "Downloaded  ", desc.MediaType, "100.00%", desc.Digest.String()); err != nil {
+	if err = testutils.OrderedMatch(pty, slave, "Downloaded  ", desc.MediaType, "100.00%", desc.Digest.String()); err != nil {
 		t.Fatal(err)
 	}
 }
