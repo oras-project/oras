@@ -47,7 +47,7 @@ func Test_status_String(t *testing.T) {
 	}
 	// partial name
 	status, digest = s.String(console.MinWidth)
-	if err := testutils.OrderedMatch(status+digest, " [\x1b[7m\x1b[0m........................................]", s.prompt, "applicat.", "0 B/2 B", "0.00%", s.descriptor.Digest.String()); err != nil {
+	if err := testutils.OrderedMatch(status+digest, " [\x1b[7m\x1b[0m........................................]", s.prompt, "applic.", "0 B/2 B", "0.00%", s.descriptor.Digest.String()); err != nil {
 		t.Error(err)
 	}
 
