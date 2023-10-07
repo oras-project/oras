@@ -46,7 +46,7 @@ type status struct {
 	lock       sync.RWMutex
 }
 
-// newStatus generates a base empty status
+// newStatus generates a base empty status.
 func newStatus() *status {
 	return &status{
 		offset: -1,
