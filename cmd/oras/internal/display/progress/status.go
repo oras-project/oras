@@ -31,7 +31,7 @@ const (
 	barMaxLength = 40
 	zeroDuration = "0s" // default zero value of time.Duration.String()
 	zeroStatus   = "loading status..."
-	zeroProgress = "loading progress..."
+	zeroDigest   = "  └─ loading digest..."
 )
 
 // status is used as message to update progress view.
@@ -88,7 +88,7 @@ func (s *status) String(width int) (string, string) {
 	defer s.lock.RUnlock()
 
 	if s.isZero() {
-		return zeroStatus, zeroProgress
+		return zeroStatus, zeroDigest
 	}
 	// todo: doesn't support multiline prompt
 	total := uint64(s.descriptor.Size)

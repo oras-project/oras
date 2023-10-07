@@ -42,8 +42,9 @@ func NewPty() (console.Console, *os.File, error) {
 	return pty, slave, nil
 }
 
-// OrderedMatch checks that the output from the pty matches the expected strings
-func OrderedMatch(pty console.Console, slave *os.File, expected ...string) error {
+// MatchPty checks that the output matches the expected strings in specified
+// order.
+func MatchPty(pty console.Console, slave *os.File, expected ...string) error {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	var buffer bytes.Buffer
@@ -54,8 +55,12 @@ func OrderedMatch(pty console.Console, slave *os.File, expected ...string) error
 	slave.Close()
 	wg.Wait()
 
-	got := buffer.String()
-	for _, e := range expected {
+	return OrderedMatch(buffer.String())
+}
+
+// OrderedMatch matches the got with the expected strings in order.
+func OrderedMatch(got string, want ...string) error {
+	for _, e := range want {
 		i := strings.Index(got, e)
 		if i < 0 {
 			return fmt.Errorf("failed to find %q in %q", e, got)
