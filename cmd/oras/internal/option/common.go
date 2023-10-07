@@ -49,7 +49,11 @@ func (opts *Common) WithContext(ctx context.Context) (context.Context, logrus.Fi
 
 // Parse gets target options from user input.
 func (opts *Common) Parse() error {
-	f := os.Stderr
+	return opts.parseTTY(os.Stderr)
+}
+
+// parseTTY gets target options from user input.
+func (opts *Common) parseTTY(f *os.File) error {
 	if !opts.noTTY && term.IsTerminal(int(f.Fd())) {
 		if opts.Debug {
 			return errors.New("cannot use --debug, add --no-tty to suppress terminal output")
