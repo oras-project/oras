@@ -46,7 +46,7 @@ type status struct {
 	lock       sync.RWMutex
 }
 
-// newStatus generates a base empty status
+// newStatus generates a base empty status.
 func newStatus() *status {
 	return &status{
 		offset: -1,
@@ -120,7 +120,7 @@ func (s *status) String(width int) (string, string) {
 	// mark(1) + space(1) + prompt + space(1) + name = len(prompt) + len(name) + 3
 	lenLeft += 3 + utf8.RuneCountInString(s.prompt) + utf8.RuneCountInString(name)
 
-	right := fmt.Sprintf(" %s/%s %6.2f%% %s", humanize.Bytes(uint64(s.offset)), humanize.Bytes(total), percent*100, s.durationString())
+	right := fmt.Sprintf(" %s/%s %6.2f%% %6s", humanize.Bytes(uint64(s.offset)), humanize.Bytes(total), percent*100, s.durationString())
 	lenRight := utf8.RuneCountInString(right)
 	lenMargin := width - lenLeft - lenRight
 	if lenMargin < 0 {
