@@ -54,7 +54,7 @@ func newStatus() *status {
 }
 
 // NewStatus generates a status.
-func NewStatus(prompt string, descriptor ocispec.Descriptor, offset uint64) *status {
+func NewStatus(prompt string, descriptor ocispec.Descriptor, offset int64) *status {
 	return &status{
 		prompt:     prompt,
 		descriptor: descriptor,
