@@ -22,13 +22,12 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/dustin/go-humanize"
 	"github.com/morikuni/aec"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 const (
-	barMaxLength = 40
+	barLength    = 40
 	zeroDuration = "0s" // default zero value of time.Duration.String()
 	zeroStatus   = "loading status..."
 	zeroDigest   = "  └─ loading digest..."
@@ -40,10 +39,12 @@ type status struct {
 	prompt     string
 	descriptor ocispec.Descriptor
 	offset     int64
-	startTime  time.Time
-	endTime    time.Time
-	mark       spinner
-	lock       sync.RWMutex
+	total      bytes
+
+	startTime time.Time
+	endTime   time.Time
+	mark      spinner
+	lock      sync.RWMutex
 }
 
 // newStatus generates a base empty status.
@@ -58,7 +59,7 @@ func NewStatus(prompt string, descriptor ocispec.Descriptor, offset int64) *stat
 	return &status{
 		prompt:     prompt,
 		descriptor: descriptor,
-		offset:     int64(offset),
+		offset:     offset,
 	}
 }
 
@@ -102,25 +103,32 @@ func (s *status) String(width int) (string, string) {
 		name = s.descriptor.MediaType
 	}
 
-	// format:  [left-------------------------------][margin][right-----------------------------]
-	//          mark(1) bar(42) action(<10) name(126)        size_per_size(19) percent(8) time(8)
+	// format:  [left--------------------------------][margin][right---------------------------------]
+	//          mark(1) bar(42) action(<10) name(<126)        size_per_size(<=11) percent(8) time(>=6)
 	//           └─ digest(72)
 	var left string
-	var lenLeft int
+	lenLeft := 0
 	if !s.done {
-		lenBar := int(percent * barMaxLength)
-		bar := fmt.Sprintf("[%s%s]", aec.Inverse.Apply(strings.Repeat(" ", lenBar)), strings.Repeat(".", barMaxLength-lenBar))
+		lenBar := int(percent * barLength)
+		bar := fmt.Sprintf("[%s%s]", aec.Inverse.Apply(strings.Repeat(" ", lenBar)), strings.Repeat(".", barLength-lenBar))
 		mark := s.mark.symbol()
 		left = fmt.Sprintf("%c %s %s %s", mark, bar, s.prompt, name)
 		// bar + wrapper(2) + space(1) = len(bar) + 3
-		lenLeft = barMaxLength + 3
+		lenLeft = barLength + 3
 	} else {
 		left = fmt.Sprintf("√ %s %s", s.prompt, name)
 	}
 	// mark(1) + space(1) + prompt + space(1) + name = len(prompt) + len(name) + 3
-	lenLeft += 3 + utf8.RuneCountInString(s.prompt) + utf8.RuneCountInString(name)
+	lenLeft += utf8.RuneCountInString(s.prompt) + utf8.RuneCountInString(name) + 3
 
-	right := fmt.Sprintf(" %s/%s %6.2f%% %6s", humanize.Bytes(uint64(s.offset)), humanize.Bytes(total), percent*100, s.durationString())
+	var offset string
+	switch percent {
+	case 1: // 100%, show exact size
+		offset = fmt.Sprint(s.total.size)
+	default: // 0% ~ 99%, show 2-digit precision
+		offset = fmt.Sprintf("%.2f", RoundTo(s.total.size*percent))
+	}
+	right := fmt.Sprintf(" %s/%v %s %6.2f%% %6s", offset, s.total.size, s.total.unit, percent*100, s.durationString())
 	lenRight := utf8.RuneCountInString(right)
 	lenMargin := width - lenLeft - lenRight
 	if lenMargin < 0 {
@@ -162,6 +170,9 @@ func (s *status) Update(n *status) {
 
 	if n.offset >= 0 {
 		s.offset = n.offset
+		if n.descriptor.Size != s.descriptor.Size {
+			s.total = ToBytes(n.descriptor.Size)
+		}
 		s.descriptor = n.descriptor
 	}
 	if n.prompt != "" {

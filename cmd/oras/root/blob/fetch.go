@@ -168,33 +168,27 @@ func (opts *fetchBlobOptions) doFetch(ctx context.Context, src oras.ReadOnlyTarg
 			}
 		}()
 
-		var r io.Reader = vr
 		switch opts.TTY {
-		case nil:
-			if _, err := io.Copy(file, r); err != nil {
+		case nil: // none tty output
+			if _, err = io.Copy(file, vr); err != nil {
 				return ocispec.Descriptor{}, err
 			}
-			if err := vr.Verify(); err != nil {
-				return ocispec.Descriptor{}, err
-			}
-		default:
-			trackedReader, err := track.NewReader(r, desc, "Downloading", "Downloaded ", opts.TTY)
+		default: // tty output
+			trackedReader, err := track.NewReader(vr, desc, "Downloading", "Downloaded ", opts.TTY)
 			if err != nil {
 				return ocispec.Descriptor{}, err
 			}
 			defer trackedReader.StopManager()
 			defer trackedReader.Close()
 			trackedReader.Start()
-			r = trackedReader
-			if _, err := io.Copy(file, r); err != nil {
-				return ocispec.Descriptor{}, err
-			}
-			if err := vr.Verify(); err != nil {
+			if _, err = io.Copy(file, trackedReader); err != nil {
 				return ocispec.Descriptor{}, err
 			}
 			trackedReader.Done()
 		}
-
+		if err := vr.Verify(); err != nil {
+			return ocispec.Descriptor{}, err
+		}
 	}
 	return desc, nil
 }
