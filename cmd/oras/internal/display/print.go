@@ -25,7 +25,6 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry"
-	"oras.land/oras/cmd/oras/internal/display/track"
 )
 
 var printLock sync.Mutex
@@ -56,22 +55,6 @@ func PrintStatus(desc ocispec.Descriptor, status string, verbose bool) error {
 		name = desc.MediaType
 	}
 	return Print(status, ShortDigest(desc), name)
-}
-
-// PrintStatusWithoutTrackable prints transfer status if trackable is no set.
-func PrintStatusWithoutTrackable(desc ocispec.Descriptor, status string, verbose bool, trackable track.Trackable) error {
-	if trackable != nil {
-		return nil
-	}
-	return PrintStatus(desc, status, verbose)
-}
-
-// PrintStatusWithTrackable prints transfer status if trackable is set.
-func PrintStatusWithTrackable(desc ocispec.Descriptor, status string, verbose bool, trackable track.Trackable) error {
-	if trackable == nil {
-		return PrintStatus(desc, status, verbose)
-	}
-	return trackable.Prompt(desc, status)
 }
 
 // PrintSuccessorStatus prints transfer status of successors.

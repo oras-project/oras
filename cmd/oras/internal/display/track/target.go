@@ -26,35 +26,25 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry"
+	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/display/progress"
 )
 
 // Trackable can be tracked and supprots explicit prompting and stoping.
-type Trackable interface {
-	Prompt(desc ocispec.Descriptor, prompt string) error
-	Close() error
-}
-
-// Target is a wrapper for oras.Target with tracked pushing.
-type Target interface {
-	oras.GraphTarget
-	Trackable
-}
-
-type target struct {
+type Target struct {
 	oras.Target
 	manager      progress.Manager
 	actionPrompt string
 	donePrompt   string
 }
 
-func NewTarget(t oras.Target, actionPrompt, donePrompt string, tty *os.File) (Target, error) {
+func NewTarget(t oras.Target, actionPrompt, donePrompt string, tty *os.File) (*Target, error) {
 	manager, err := progress.NewManager(tty)
 	if err != nil {
 		return nil, err
 	}
 
-	return &target{
+	return &Target{
 		Target:       t,
 		manager:      manager,
 		actionPrompt: actionPrompt,
@@ -62,7 +52,7 @@ func NewTarget(t oras.Target, actionPrompt, donePrompt string, tty *os.File) (Ta
 	}, nil
 }
 
-func (t *target) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
+func (t *Target) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
 	r, err := managedReader(content, expected, t.manager, t.actionPrompt, t.donePrompt)
 	if err != nil {
 		return err
@@ -76,7 +66,7 @@ func (t *target) Push(ctx context.Context, expected ocispec.Descriptor, content 
 	return nil
 }
 
-func (t *target) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
+func (t *Target) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
 	r, err := managedReader(content, expected, t.manager, t.actionPrompt, t.donePrompt)
 	if err != nil {
 		return err
@@ -98,21 +88,25 @@ func (t *target) PushReference(ctx context.Context, expected ocispec.Descriptor,
 	return nil
 }
 
-func (t *target) Predecessors(ctx context.Context, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+func (t *Target) Predecessors(ctx context.Context, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 	if p, ok := t.Target.(content.PredecessorFinder); ok {
 		return p.Predecessors(ctx, node)
 	}
-	return nil, fmt.Errorf("target %v does not support Predecessors", reflect.TypeOf(t.Target))
+	return nil, fmt.Errorf("Target %v does not support Predecessors", reflect.TypeOf(t.Target))
 }
 
-func (t *target) Close() error {
-	if err := t.manager.Close(); err != nil {
-		return err
+// Close closes the Target to stop tracking.
+func (t *Target) Close() error {
+	return t.manager.Close()
+}
+
+// Prompt prompts the user with the provided prompt and descriptor.
+// If Target is not set, only prints status.
+func (t *Target) Prompt(desc ocispec.Descriptor, prompt string, verbose bool) error {
+	if t == nil {
+		display.PrintStatus(desc, prompt, verbose)
+		return nil
 	}
-	return nil
-}
-
-func (t *target) Prompt(desc ocispec.Descriptor, prompt string) error {
 	status, err := t.manager.Add()
 	if err != nil {
 		return err

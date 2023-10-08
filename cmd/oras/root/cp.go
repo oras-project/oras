@@ -143,17 +143,8 @@ func runCopy(ctx context.Context, opts copyOptions) error {
 }
 
 func doCopy(ctx context.Context, src option.ReadOnlyGraphTagFinderTarget, dst oras.GraphTarget, opts copyOptions) (ocispec.Descriptor, error) {
-	var trackable track.Trackable
-	if opts.TTY != nil {
-		target, err := track.NewTarget(dst, "Copying ", "Copied ", opts.TTY)
-		if err != nil {
-			return ocispec.Descriptor{}, err
-		}
-		defer target.Close()
-		trackable = target
-		dst = target
-	}
-
+	var tracked *track.Target
+	var err error
 	// Prepare copy options
 	committed := &sync.Map{}
 	extendedCopyOptions := oras.DefaultExtendedCopyOptions
@@ -161,24 +152,35 @@ func doCopy(ctx context.Context, src option.ReadOnlyGraphTagFinderTarget, dst or
 	extendedCopyOptions.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		return graph.Referrers(ctx, src, desc, "")
 	}
-	extendedCopyOptions.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		return display.PrintStatusWithoutTrackable(desc, "Copying", opts.Verbose, trackable)
-	}
 	extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		var err error
-		if err = display.PrintSuccessorStatus(ctx, desc, "Skipped", dst, committed, opts.Verbose); err != nil {
-			return err
-		}
-		return display.PrintStatusWithoutTrackable(desc, "Copied ", opts.Verbose, trackable)
+		return display.PrintSuccessorStatus(ctx, desc, "Skipped", dst, committed, opts.Verbose)
 	}
 	extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return display.PrintStatusWithTrackable(desc, "Exists ", opts.Verbose, trackable)
+		return tracked.Prompt(desc, "Exists ", opts.Verbose)
+	}
+	if opts.TTY != nil {
+		tracked, err = track.NewTarget(dst, "Copying ", "Copied ", opts.TTY)
+		if err != nil {
+			return ocispec.Descriptor{}, err
+		}
+		defer tracked.Close()
+		dst = tracked
+	} else {
+		extendedCopyOptions.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+			return display.PrintStatus(desc, "Copying", opts.Verbose)
+		}
+		postCopy := extendedCopyOptions.PostCopy
+		extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+			if err := postCopy(ctx, desc); err != nil {
+				return err
+			}
+			return display.PrintStatus(desc, "Copied ", opts.Verbose)
+		}
 	}
 
 	var desc ocispec.Descriptor
-	var err error
 	rOpts := oras.DefaultResolveOptions
 	rOpts.TargetPlatform = opts.Platform.Platform
 	if opts.recursive {
