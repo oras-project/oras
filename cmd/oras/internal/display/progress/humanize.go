@@ -33,7 +33,7 @@ type bytes struct {
 func ToBytes(sizeInBytes int64) bytes {
 	f := float64(sizeInBytes)
 	if f < base {
-		return bytes{f, "B"}
+		return bytes{f, units[0]}
 	}
 	e := math.Floor(math.Log(f) / math.Log(base))
 	p := f / math.Pow(base, e)
