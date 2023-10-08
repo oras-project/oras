@@ -67,14 +67,12 @@ func (t *target) Push(ctx context.Context, expected ocispec.Descriptor, content 
 	if err != nil {
 		return err
 	}
-	defer r.Stop()
+	defer r.Close()
 	r.Start()
 	if err := t.Target.Push(ctx, expected, r); err != nil {
 		return err
 	}
-
-	r.status <- progress.EndTiming()
-	r.status <- progress.NewStatus(t.donePrompt, expected, expected.Size)
+	r.Done()
 	return nil
 }
 
@@ -83,7 +81,7 @@ func (t *target) PushReference(ctx context.Context, expected ocispec.Descriptor,
 	if err != nil {
 		return err
 	}
-	defer r.Stop()
+	defer r.Close()
 	r.Start()
 	if rp, ok := t.Target.(registry.ReferencePusher); ok {
 		err = rp.PushReference(ctx, expected, r, reference)
@@ -93,13 +91,10 @@ func (t *target) PushReference(ctx context.Context, expected ocispec.Descriptor,
 		}
 		err = t.Target.Tag(ctx, expected, reference)
 	}
-
 	if err != nil {
 		return err
 	}
-
-	r.status <- progress.EndTiming()
-	r.status <- progress.NewStatus(t.donePrompt, expected, expected.Size)
+	r.Done()
 	return nil
 }
 
