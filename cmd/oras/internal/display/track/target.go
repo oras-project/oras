@@ -104,8 +104,7 @@ func (t *Target) Close() error {
 // If Target is not set, only prints status.
 func (t *Target) Prompt(desc ocispec.Descriptor, prompt string, verbose bool) error {
 	if t == nil {
-		display.PrintStatus(desc, prompt, verbose)
-		return nil
+		return display.PrintStatus(desc, prompt, verbose)
 	}
 	status, err := t.manager.Add()
 	if err != nil {
