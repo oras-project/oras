@@ -30,9 +30,15 @@ func TestCommon_parseTTY(t *testing.T) {
 	}
 	defer slave.Close()
 	var opts Common
-	// test
+
+	// TTY output
+	if err := opts.parseTTY(slave); err != nil {
+		t.Errorf("unexpected error with TTY output: %v", err)
+	}
+
+	// --debug
 	opts.Debug = true
 	if err := opts.parseTTY(slave); err == nil {
-		t.Fatal("expected error when debug is set to TTY output")
+		t.Error("expected error when debug is set with TTY output")
 	}
 }
