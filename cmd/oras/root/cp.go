@@ -160,14 +160,8 @@ func doCopy(ctx context.Context, src option.ReadOnlyGraphTagFinderTarget, dst or
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
 		return tracked.Prompt(desc, "Exists ", opts.Verbose)
 	}
-	if opts.TTY != nil {
-		tracked, err = track.NewTarget(dst, "Copying ", "Copied ", opts.TTY)
-		if err != nil {
-			return ocispec.Descriptor{}, err
-		}
-		defer tracked.Close()
-		dst = tracked
-	} else {
+	switch opts.TTY {
+	case nil: // none tty output
 		extendedCopyOptions.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 			return display.PrintStatus(desc, "Copying", opts.Verbose)
 		}
@@ -178,6 +172,13 @@ func doCopy(ctx context.Context, src option.ReadOnlyGraphTagFinderTarget, dst or
 			}
 			return display.PrintStatus(desc, "Copied ", opts.Verbose)
 		}
+	default: // tty output
+		tracked, err = track.NewTarget(dst, "Copying ", "Copied ", opts.TTY)
+		if err != nil {
+			return ocispec.Descriptor{}, err
+		}
+		defer tracked.Close()
+		dst = tracked
 	}
 
 	var desc ocispec.Descriptor
