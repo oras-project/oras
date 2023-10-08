@@ -141,7 +141,6 @@ func pushBlob(ctx context.Context, opts pushBlobOptions) (err error) {
 	return nil
 }
 
-// doPush pushes a blob to a registry or an OCI image layout
 func (opts *pushBlobOptions) doPush(ctx context.Context, t oras.Target, desc ocispec.Descriptor, r io.Reader) error {
 	switch opts.TTY {
 	case nil: // none tty output
