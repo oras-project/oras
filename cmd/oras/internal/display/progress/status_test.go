@@ -32,31 +32,36 @@ func Test_status_String(t *testing.T) {
 	}
 
 	// not done
-	s.startTime = time.Now().Add(-time.Minute)
-	s.prompt = "test"
-	s.descriptor = ocispec.Descriptor{
-		MediaType: "application/vnd.oci.empty.oras.test.v1+json",
-		Size:      2,
-		Digest:    "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
-	}
-	s.offset = 0
+	s.Update(&status{
+		prompt: "test",
+		descriptor: ocispec.Descriptor{
+			MediaType: "application/vnd.oci.empty.oras.test.v1+json",
+			Size:      2,
+			Digest:    "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+		},
+		startTime: time.Now().Add(-time.Minute),
+		offset:    0,
+		total:     ToBytes(2),
+	})
 	// full name
-	status, digest := s.String(120)
-	if err := testutils.OrderedMatch(status+digest, " [\x1b[7m\x1b[0m........................................]", s.prompt, s.descriptor.MediaType, "0 B/2 B", "0.00%", s.descriptor.Digest.String()); err != nil {
+	statusStr, digestStr := s.String(120)
+	if err := testutils.OrderedMatch(statusStr+digestStr, " [\x1b[7m\x1b[0m........................................]", s.prompt, s.descriptor.MediaType, "0.00/2 B", "0.00%", s.descriptor.Digest.String()); err != nil {
 		t.Error(err)
 	}
 	// partial name
-	status, digest = s.String(console.MinWidth)
-	if err := testutils.OrderedMatch(status+digest, " [\x1b[7m\x1b[0m........................................]", s.prompt, "applic.", "0 B/2 B", "0.00%", s.descriptor.Digest.String()); err != nil {
+	statusStr, digestStr = s.String(console.MinWidth)
+	if err := testutils.OrderedMatch(statusStr+digestStr, " [\x1b[7m\x1b[0m........................................]", s.prompt, "appli.", "0.00/2 B", "0.00%", s.descriptor.Digest.String()); err != nil {
 		t.Error(err)
 	}
 
 	// done
-	s.done = true
-	s.endTime = s.startTime.Add(time.Minute)
-	s.offset = s.descriptor.Size
-	status, digest = s.String(120)
-	if err := testutils.OrderedMatch(status+digest, "√", s.prompt, s.descriptor.MediaType, "2 B/2 B", "100.00%", s.descriptor.Digest.String()); err != nil {
+	s.Update(&status{
+		endTime:    time.Now(),
+		offset:     s.descriptor.Size,
+		descriptor: s.descriptor,
+	})
+	statusStr, digestStr = s.String(120)
+	if err := testutils.OrderedMatch(statusStr+digestStr, "√", s.prompt, s.descriptor.MediaType, "2/2 B", "100.00%", s.descriptor.Digest.String()); err != nil {
 		t.Error(err)
 	}
 }
