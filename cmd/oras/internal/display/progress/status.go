@@ -27,7 +27,8 @@ import (
 )
 
 const (
-	barLength    = 40
+	barLength    = 20
+	speedLength  = 8
 	zeroDuration = "0s" // default zero value of time.Duration.String()
 	zeroStatus   = "loading status..."
 	zeroDigest   = "  └─ loading digest..."
@@ -35,22 +36,25 @@ const (
 
 // status is used as message to update progress view.
 type status struct {
-	done       bool // done is true when the end time is set
-	prompt     string
-	descriptor ocispec.Descriptor
-	offset     int64
-	total      bytes
+	done           bool // done is true when the end time is set
+	prompt         string
+	descriptor     ocispec.Descriptor
+	offset         int64
+	total          bytes
+	lastOffset     int64
+	lastRenderTime time.Time
 
 	startTime time.Time
 	endTime   time.Time
 	mark      spinner
-	lock      sync.RWMutex
+	lock      sync.Mutex
 }
 
 // newStatus generates a base empty status.
 func newStatus() *status {
 	return &status{
-		offset: -1,
+		offset:         -1,
+		lastRenderTime: time.Now(),
 	}
 }
 
@@ -85,8 +89,8 @@ func (s *status) isZero() bool {
 
 // String returns human-readable TTY strings of the status.
 func (s *status) String(width int) (string, string) {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
+	s.lock.Lock()
+	defer s.lock.Unlock()
 
 	if s.isZero() {
 		return zeroStatus, zeroDigest
@@ -103,24 +107,9 @@ func (s *status) String(width int) (string, string) {
 		name = s.descriptor.MediaType
 	}
 
-	// format:  [left--------------------------------][margin][right---------------------------------]
-	//          mark(1) bar(42) action(<10) name(<126)        size_per_size(<=11) percent(8) time(>=6)
+	// format:  [left--------------------------------------------][margin][right---------------------------------]
+	//          mark(1) bar(22) speed(8) action(<=11)  name(<126)        size_per_size(<=13) percent(8) time(>=6)
 	//           └─ digest(72)
-	var left string
-	lenLeft := 0
-	if !s.done {
-		lenBar := int(percent * barLength)
-		bar := fmt.Sprintf("[%s%s]", aec.Inverse.Apply(strings.Repeat(" ", lenBar)), strings.Repeat(".", barLength-lenBar))
-		mark := s.mark.symbol()
-		left = fmt.Sprintf("%c %s %s %s", mark, bar, s.prompt, name)
-		// bar + wrapper(2) + space(1) = len(bar) + 3
-		lenLeft = barLength + 3
-	} else {
-		left = fmt.Sprintf("√ %s %s", s.prompt, name)
-	}
-	// mark(1) + space(1) + prompt + space(1) + name = len(prompt) + len(name) + 3
-	lenLeft += utf8.RuneCountInString(s.prompt) + utf8.RuneCountInString(name) + 3
-
 	var offset string
 	switch percent {
 	case 1: // 100%, show exact size
@@ -130,6 +119,23 @@ func (s *status) String(width int) (string, string) {
 	}
 	right := fmt.Sprintf(" %s/%v %s %6.2f%% %6s", offset, s.total.size, s.total.unit, percent*100, s.durationString())
 	lenRight := utf8.RuneCountInString(right)
+
+	var left string
+	lenLeft := 0
+	if !s.done {
+		lenBar := int(percent * barLength)
+		bar := fmt.Sprintf("[%s%s]", aec.Inverse.Apply(strings.Repeat(" ", lenBar)), strings.Repeat(".", barLength-lenBar))
+		speed := s.calculateSpeed()
+		speedStr := fmt.Sprintf("%v%s/s", speed.size, speed.unit)
+		left = fmt.Sprintf("%c %s(%*s) %s %s", s.mark.symbol(), bar, speedLength, speedStr, s.prompt, name)
+		// bar + wrapper(2) + space(1) + speed + wrapper(2) = len(bar) + len(speed) + 5
+		lenLeft = barLength + speedLength + 5
+	} else {
+		left = fmt.Sprintf("√ %s %s", s.prompt, name)
+	}
+	// mark(1) + space(1) + prompt + space(1) + name = len(prompt) + len(name) + 3
+	lenLeft += utf8.RuneCountInString(s.prompt) + utf8.RuneCountInString(name) + 3
+
 	lenMargin := width - lenLeft - lenRight
 	if lenMargin < 0 {
 		// hide partial name with one space left
@@ -137,6 +143,19 @@ func (s *status) String(width int) (string, string) {
 		lenMargin = 0
 	}
 	return fmt.Sprintf("%s%s%s", left, strings.Repeat(" ", lenMargin), right), fmt.Sprintf("  └─ %s", s.descriptor.Digest.String())
+}
+
+// calculateSpeed calculates the speed of the progress and update last status.
+// caller must hold the lock.
+func (s *status) calculateSpeed() bytes {
+	now := time.Now()
+	secondsTaken := now.Sub(s.lastRenderTime).Seconds()
+	bytes := float64(s.offset - s.lastOffset)
+
+	s.lastOffset = s.offset
+	s.lastRenderTime = now
+
+	return ToBytes(int64(bytes / secondsTaken))
 }
 
 // durationString returns a viewable TTY string of the status with duration.
