@@ -144,8 +144,7 @@ func pushBlob(ctx context.Context, opts pushBlobOptions) (err error) {
 // doPush pushes a blob to a registry or an OCI image layout
 func (opts *pushBlobOptions) doPush(ctx context.Context, t oras.Target, desc ocispec.Descriptor, r io.Reader) error {
 	switch opts.TTY {
-	case nil:
-		// none tty output
+	case nil: // none tty output
 		if err := display.PrintStatus(desc, "Uploading", opts.Verbose); err != nil {
 			return err
 		}
@@ -155,8 +154,7 @@ func (opts *pushBlobOptions) doPush(ctx context.Context, t oras.Target, desc oci
 		if err := display.PrintStatus(desc, "Uploaded ", opts.Verbose); err != nil {
 			return err
 		}
-	default:
-		// tty output
+	default: // tty output
 		trackedReader, err := track.NewReader(r, desc, "Uploading", "Uploaded ", opts.TTY)
 		if err != nil {
 			return err
