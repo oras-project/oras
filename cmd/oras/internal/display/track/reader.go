@@ -59,14 +59,18 @@ func managedReader(r io.Reader, descriptor ocispec.Descriptor, manager progress.
 }
 
 // StopManager stops the status channel and related manager.
-func (r *reader) StopManager() error {
-	return r.manager.Close()
+func (r *reader) StopManager() {
+	_ = r.manager.Close()
 }
 
-// Stop stops the status channel without closing the manager.
-func (r *reader) Stop() {
+// Done sends message to mark the tracked progress as complete.
+func (r *reader) Done() {
 	r.status <- progress.NewStatus(r.donePrompt, r.descriptor, r.descriptor.Size)
 	r.status <- progress.EndTiming()
+}
+
+// Close closes the update channel.
+func (r *reader) Close() {
 	close(r.status)
 }
 
