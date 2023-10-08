@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	barMaxLength = 40
+	barLength    = 40
 	zeroDuration = "0s" // default zero value of time.Duration.String()
 	zeroStatus   = "loading status..."
 	zeroDigest   = "  └─ loading digest..."
@@ -102,23 +102,23 @@ func (s *status) String(width int) (string, string) {
 		name = s.descriptor.MediaType
 	}
 
-	// format:  [left-------------------------------][margin][right-----------------------------]
-	//          mark(1) bar(42) action(<10) name(126)        size_per_size(19) percent(8) time(8)
+	// format:  [left--------------------------------][margin][right-------------------------------]
+	//          mark(1) bar(42) action(<10) name(<126)        size_per_size(19) percent(8) time(>=6)
 	//           └─ digest(72)
 	var left string
-	var lenLeft int
+	lenLeft := 0
 	if !s.done {
-		lenBar := int(percent * barMaxLength)
-		bar := fmt.Sprintf("[%s%s]", aec.Inverse.Apply(strings.Repeat(" ", lenBar)), strings.Repeat(".", barMaxLength-lenBar))
+		lenBar := int(percent * barLength)
+		bar := fmt.Sprintf("[%s%s]", aec.Inverse.Apply(strings.Repeat(" ", lenBar)), strings.Repeat(".", barLength-lenBar))
 		mark := s.mark.symbol()
 		left = fmt.Sprintf("%c %s %s %s", mark, bar, s.prompt, name)
 		// bar + wrapper(2) + space(1) = len(bar) + 3
-		lenLeft = barMaxLength + 3
+		lenLeft = barLength + 3
 	} else {
 		left = fmt.Sprintf("√ %s %s", s.prompt, name)
 	}
 	// mark(1) + space(1) + prompt + space(1) + name = len(prompt) + len(name) + 3
-	lenLeft += 3 + utf8.RuneCountInString(s.prompt) + utf8.RuneCountInString(name)
+	lenLeft += utf8.RuneCountInString(s.prompt) + utf8.RuneCountInString(name) + 3
 
 	right := fmt.Sprintf(" %s/%s %6.2f%% %6s", humanize.Bytes(uint64(s.offset)), humanize.Bytes(total), percent*100, s.durationString())
 	lenRight := utf8.RuneCountInString(right)
