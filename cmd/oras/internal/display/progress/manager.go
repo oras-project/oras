@@ -38,7 +38,7 @@ type Manager interface {
 	Close() error
 }
 
-const bufFlushDuration = 500 * time.Millisecond
+const bufFlushDuration = 200 * time.Millisecond
 
 type manager struct {
 	status       []*status
