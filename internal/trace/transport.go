@@ -22,11 +22,12 @@ import (
 	"sync/atomic"
 )
 
+var count uint64
+
 // Transport is an http.RoundTripper that keeps track of the in-flight
 // request and add hooks to report HTTP tracing events.
 type Transport struct {
 	http.RoundTripper
-	count uint64
 }
 
 // NewTransport creates and returns a new instance of Transport
@@ -38,7 +39,7 @@ func NewTransport(base http.RoundTripper) *Transport {
 
 // RoundTrip calls base roundtrip while keeping track of the current request.
 func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
-	number := atomic.AddUint64(&t.count, 1) - 1
+	number := atomic.AddUint64(&count, 1) - 1
 	ctx := req.Context()
 	e := Logger(ctx)
 
