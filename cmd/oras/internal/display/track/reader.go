@@ -60,6 +60,7 @@ func managedReader(r io.Reader, descriptor ocispec.Descriptor, manager progress.
 
 // StopManager stops the status channel and related manager.
 func (r *reader) StopManager() {
+	r.Close()
 	_ = r.manager.Close()
 }
 
