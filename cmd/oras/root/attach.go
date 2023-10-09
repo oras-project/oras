@@ -27,6 +27,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras/cmd/oras/internal/display/track"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
 	"oras.land/oras/internal/registryutil"
@@ -131,6 +132,14 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 	}
 
 	// prepare push
+	var tracked *track.Target
+	if opts.TTY != nil {
+		tracked, err = track.NewTarget(dst, "Uploading", "Uploaded ", opts.TTY)
+		if err != nil {
+			return err
+		}
+		dst = tracked
+	}
 	packOpts := oras.PackManifestOptions{
 		Subject:             &subject,
 		ManifestAnnotations: annotations[option.AnnotationManifest],
@@ -142,7 +151,7 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 
 	graphCopyOptions := oras.DefaultCopyGraphOptions
 	graphCopyOptions.Concurrency = opts.concurrency
-	updateDisplayOption(&graphCopyOptions, store, opts.Verbose)
+	updateDisplayOption(&graphCopyOptions, store, opts.Verbose, tracked)
 	copy := func(root ocispec.Descriptor) error {
 		graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 			if content.Equal(node, root) {
@@ -161,11 +170,11 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 		return oras.CopyGraph(ctx, store, dst, root, graphCopyOptions)
 	}
 
-	root, err := pushArtifact(dst, pack, copy)
+	// Attach
+	root, err := doPush(pack, copy, tracked)
 	if err != nil {
 		return err
 	}
-
 	digest := subject.Digest.String()
 	if !strings.HasSuffix(opts.RawReference, digest) {
 		opts.RawReference = fmt.Sprintf("%s@%s", opts.Path, subject.Digest)

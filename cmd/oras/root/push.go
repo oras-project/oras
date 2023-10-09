@@ -30,6 +30,7 @@ import (
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/track"
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/contentutil"
@@ -182,10 +183,18 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	if err != nil {
 		return err
 	}
+	var tracked *track.Target
+	if opts.TTY != nil {
+		tracked, err = track.NewTarget(dst, "Uploading", "Uploaded ", opts.TTY)
+		if err != nil {
+			return err
+		}
+		dst = tracked
+	}
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
 	union := contentutil.MultiReadOnlyTarget(memoryStore, store)
-	updateDisplayOption(&copyOptions.CopyGraphOptions, union, opts.Verbose)
+	updateDisplayOption(&copyOptions.CopyGraphOptions, union, opts.Verbose, tracked)
 	copy := func(root ocispec.Descriptor) error {
 		// add both pull and push scope hints for dst repository
 		// to save potential push-scope token requests during copy
@@ -200,7 +209,7 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	}
 
 	// Push
-	root, err := pushArtifact(dst, pack, copy)
+	root, err := doPush(pack, copy, tracked)
 	if err != nil {
 		return err
 	}
@@ -224,19 +233,33 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	return opts.ExportManifest(ctx, memoryStore, root)
 }
 
-func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, verbose bool) {
-	committed := &sync.Map{}
-	opts.PreCopy = display.StatusPrinter("Uploading", verbose)
-	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return display.PrintStatus(desc, "Exists   ", verbose)
+func doPush(pack packFunc, copy copyFunc, dst oras.Target) (ocispec.Descriptor, error) {
+	if tracked, ok := dst.(*track.Target); ok {
+		defer tracked.Close()
 	}
+	// Push
+	return pushArtifact(dst, pack, copy)
+}
+
+func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, verbose bool, tracked *track.Target) {
+	committed := &sync.Map{}
 	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		if err := display.PrintSuccessorStatus(ctx, desc, "Skipped  ", fetcher, committed, verbose); err != nil {
-			return err
+		return display.PrintSuccessorStatus(ctx, desc, "Skipped  ", fetcher, committed, verbose)
+	}
+	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
+		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+		return tracked.Prompt(desc, "Exists   ", verbose)
+	}
+	if tracked == nil {
+		opts.PreCopy = display.StatusPrinter("Uploading", verbose)
+		postCopy := opts.PostCopy
+		opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+			if err := postCopy(ctx, desc); err != nil {
+				return err
+			}
+			return display.PrintStatus(desc, "Uploaded ", verbose)
 		}
-		return display.PrintStatus(desc, "Uploaded ", verbose)
 	}
 }
 
