@@ -50,7 +50,7 @@ func Test_status_String(t *testing.T) {
 	}
 	// partial name
 	statusStr, digestStr = s.String(console.MinWidth)
-	if err := testutils.OrderedMatch(statusStr+digestStr, " [\x1b[7m\x1b[0m....................]", s.prompt, "application/vnd.", "0.00/2 B", "0.00%", s.descriptor.Digest.String()); err != nil {
+	if err := testutils.OrderedMatch(statusStr+digestStr, " [\x1b[7m\x1b[0m....................]", s.prompt, "application/vn.", "0.00/2 B", "0.00%", s.descriptor.Digest.String()); err != nil {
 		t.Error(err)
 	}
 

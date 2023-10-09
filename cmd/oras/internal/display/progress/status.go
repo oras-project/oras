@@ -28,7 +28,7 @@ import (
 
 const (
 	barLength    = 20
-	speedLength  = 8
+	speedLength  = 9    // speed_size(4) + space(1) + speed_unit(4)
 	zeroDuration = "0s" // default zero value of time.Duration.String()
 	zeroStatus   = "loading status..."
 	zeroDigest   = "  └─ loading digest..."
@@ -108,7 +108,7 @@ func (s *status) String(width int) (string, string) {
 	}
 
 	// format:  [left--------------------------------------------][margin][right---------------------------------]
-	//          mark(1) bar(22) speed(8) action(<=11)  name(<126)        size_per_size(<=13) percent(8) time(>=6)
+	//          mark(1) bar(22) speed(8) action(<=11) name(<=126)        size_per_size(<=13) percent(8) time(>=6)
 	//           └─ digest(72)
 	var offset string
 	switch percent {
@@ -126,7 +126,7 @@ func (s *status) String(width int) (string, string) {
 		lenBar := int(percent * barLength)
 		bar := fmt.Sprintf("[%s%s]", aec.Inverse.Apply(strings.Repeat(" ", lenBar)), strings.Repeat(".", barLength-lenBar))
 		speed := s.calculateSpeed()
-		speedStr := fmt.Sprintf("%v%s/s", speed.size, speed.unit)
+		speedStr := fmt.Sprintf("%v %2s/s", speed.size, speed.unit)
 		left = fmt.Sprintf("%c %s(%*s) %s %s", s.mark.symbol(), bar, speedLength, speedStr, s.prompt, name)
 		// bar + wrapper(2) + space(1) + speed + wrapper(2) = len(bar) + len(speed) + 5
 		lenLeft = barLength + speedLength + 5

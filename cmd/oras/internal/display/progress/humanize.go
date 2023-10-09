@@ -21,7 +21,7 @@ import (
 
 var (
 	units = []string{"B", "kB", "MB", "GB", "TB"}
-	base  = 1000.0
+	base  = 1024.0
 )
 
 type bytes struct {
