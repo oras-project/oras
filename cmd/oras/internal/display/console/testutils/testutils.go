@@ -55,7 +55,7 @@ func MatchPty(pty console.Console, slave *os.File, expected ...string) error {
 	slave.Close()
 	wg.Wait()
 
-	return OrderedMatch(buffer.String())
+	return OrderedMatch(buffer.String(), expected...)
 }
 
 // OrderedMatch matches the got with the expected strings in order.
