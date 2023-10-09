@@ -209,7 +209,7 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	}
 
 	// Push
-	root, err := doPush(pack, copy, tracked)
+	root, err := doPush(pack, copy, dst)
 	if err != nil {
 		return err
 	}
