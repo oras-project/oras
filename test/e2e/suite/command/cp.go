@@ -79,7 +79,7 @@ var _ = Describe("1.1 registry users:", func() {
 			CompareRef(src, dst)
 		})
 
-		It("should copy and show debug logs with duplication", func() {
+		It("should copy and show logs with deduplicated id", func() {
 			src := RegistryRef(ZOTHost, ArtifactRepo, blob.Tag)
 			dst := RegistryRef(ZOTHost, cpTestRepo("debug-log"), "copied")
 			session := ORAS("cp", src, dst, "-d").Exec()

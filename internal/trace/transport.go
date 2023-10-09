@@ -22,7 +22,9 @@ import (
 	"sync/atomic"
 )
 
-var count uint64
+// requestCount records the number of logged request-response pairs and will
+// be used as the unique id for the next pair.
+var requestCount uint64
 
 // Transport is an http.RoundTripper that keeps track of the in-flight
 // request and add hooks to report HTTP tracing events.
@@ -39,13 +41,13 @@ func NewTransport(base http.RoundTripper) *Transport {
 
 // RoundTrip calls base roundtrip while keeping track of the current request.
 func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
-	number := atomic.AddUint64(&count, 1) - 1
+	id := atomic.AddUint64(&requestCount, 1) - 1
 	ctx := req.Context()
 	e := Logger(ctx)
 
 	// log the request
 	e.Debugf("Request #%d\n> Request URL: %q\n> Request method: %q\n> Request headers:\n%s",
-		number, req.URL, req.Method, logHeader(req.Header))
+		id, req.URL, req.Method, logHeader(req.Header))
 
 	// log the response
 	resp, err = t.RoundTripper.RoundTrip(req)
@@ -55,7 +57,7 @@ func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error
 		e.Errorf("No response obtained for request %s %q", req.Method, req.URL)
 	} else {
 		e.Debugf("Response #%d\n< Response Status: %q\n< Response headers:\n%s",
-			number, resp.Status, logHeader(resp.Header))
+			id, resp.Status, logHeader(resp.Header))
 	}
 	return resp, err
 }
