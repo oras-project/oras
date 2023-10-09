@@ -30,7 +30,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/progress"
 )
 
-// Trackable can be tracked and supprots explicit prompting and stoping.
+// Target tracks the progress of pushing ot underlying oras.Target.
 type Target struct {
 	oras.Target
 	manager      progress.Manager
@@ -38,6 +38,7 @@ type Target struct {
 	donePrompt   string
 }
 
+// NewTarget creates a new tracked Target.
 func NewTarget(t oras.Target, actionPrompt, donePrompt string, tty *os.File) (*Target, error) {
 	manager, err := progress.NewManager(tty)
 	if err != nil {
@@ -52,6 +53,7 @@ func NewTarget(t oras.Target, actionPrompt, donePrompt string, tty *os.File) (*T
 	}, nil
 }
 
+// Push pushes the content to the Target with tracking.
 func (t *Target) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
 	r, err := managedReader(content, expected, t.manager, t.actionPrompt, t.donePrompt)
 	if err != nil {
@@ -66,6 +68,7 @@ func (t *Target) Push(ctx context.Context, expected ocispec.Descriptor, content 
 	return nil
 }
 
+// PushReference pushes the content to the Target with tracking.
 func (t *Target) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
 	r, err := managedReader(content, expected, t.manager, t.actionPrompt, t.donePrompt)
 	if err != nil {
@@ -88,6 +91,7 @@ func (t *Target) PushReference(ctx context.Context, expected ocispec.Descriptor,
 	return nil
 }
 
+// Predecessors returns the predecessors of the node if supported.
 func (t *Target) Predecessors(ctx context.Context, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 	if p, ok := t.Target.(content.PredecessorFinder); ok {
 		return p.Predecessors(ctx, node)
@@ -95,7 +99,7 @@ func (t *Target) Predecessors(ctx context.Context, node ocispec.Descriptor) ([]o
 	return nil, fmt.Errorf("Target %v does not support Predecessors", reflect.TypeOf(t.Target))
 }
 
-// Close closes the Target to stop tracking.
+// Close closes the tracking manager.
 func (t *Target) Close() error {
 	return t.manager.Close()
 }
