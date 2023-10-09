@@ -142,7 +142,7 @@ func runCopy(ctx context.Context, opts copyOptions) error {
 	return nil
 }
 
-func doCopy(ctx context.Context, src option.ReadOnlyGraphTagFinderTarget, dst oras.GraphTarget, opts copyOptions) (ocispec.Descriptor, error) {
+func doCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts copyOptions) (ocispec.Descriptor, error) {
 	var tracked *track.Target
 	var err error
 	// Prepare copy options
