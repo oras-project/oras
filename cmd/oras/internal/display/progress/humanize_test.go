@@ -15,7 +15,10 @@ limitations under the License.
 
 package progress
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestRoundTo(t *testing.T) {
 	type args struct {
@@ -35,6 +38,34 @@ func TestRoundTo(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := RoundTo(tt.args.quantity); got != tt.want {
 				t.Errorf("RoundTo() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestToBytes(t *testing.T) {
+	type args struct {
+		sizeInBytes int64
+	}
+	tests := []struct {
+		name string
+		args args
+		want bytes
+	}{
+		{"0 bytes", args{0}, bytes{0, "B"}},
+		{"1023 bytes", args{1023}, bytes{1023, "B"}},
+		{"1 kB", args{1024}, bytes{1, "kB"}},
+		{"1.5 kB", args{1024 + 512}, bytes{1.5, "kB"}},
+		{"12.5 kB", args{1024 * 12.5}, bytes{12.5, "kB"}},
+		{"512.5 kB", args{1024 * 512.5}, bytes{513, "kB"}},
+		{"1 MB", args{1024 * 1024}, bytes{1, "MB"}},
+		{"1 GB", args{1024 * 1024 * 1024}, bytes{1, "GB"}},
+		{"1 TB", args{1024 * 1024 * 1024 * 1024}, bytes{1, "TB"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ToBytes(tt.args.sizeInBytes); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ToBytes() = %v, want %v", got, tt.want)
 			}
 		})
 	}
