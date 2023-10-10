@@ -168,12 +168,13 @@ func (opts *fetchBlobOptions) doFetch(ctx context.Context, src oras.ReadOnlyTarg
 			}
 		}()
 
-		switch opts.TTY {
-		case nil: // none tty output
+		if opts.TTY == nil {
+			// none tty output
 			if _, err = io.Copy(file, vr); err != nil {
 				return ocispec.Descriptor{}, err
 			}
-		default: // tty output
+		} else {
+			// tty output
 			trackedReader, err := track.NewReader(vr, desc, "Downloading", "Downloaded ", opts.TTY)
 			if err != nil {
 				return ocispec.Descriptor{}, err

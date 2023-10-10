@@ -24,21 +24,22 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/console"
 )
 
-// BufferSize is the size of the status channel buffer.
-const BufferSize = 20
+const (
+	// BufferSize is the size of the status channel buffer.
+	BufferSize       = 2
+	bufFlushDuration = 200 * time.Millisecond
+)
 
 var errManagerStopped = errors.New("progress output manage has already been stopped")
 
 // Status is print message channel
-type Status chan<- *status
+type Status chan *status
 
 // Manager is progress view master
 type Manager interface {
 	Add() (Status, error)
 	Close() error
 }
-
-const bufFlushDuration = 500 * time.Millisecond
 
 type manager struct {
 	status       []*status
@@ -73,7 +74,6 @@ func (m *manager) start() {
 		for {
 			select {
 			case <-m.renderDone:
-				m.updating.Wait()
 				m.render()
 				close(m.renderClosed)
 				return
@@ -136,9 +136,11 @@ func (m *manager) Close() error {
 	if m.closed() {
 		return errManagerStopped
 	}
-	// 1. stop periodic rendering
+	// 1. wait for update to stop
+	m.updating.Wait()
+	// 2. stop periodic rendering
 	close(m.renderDone)
-	// 2. wait for the render stop
+	// 3. wait for the render stop
 	<-m.renderClosed
 	return nil
 }

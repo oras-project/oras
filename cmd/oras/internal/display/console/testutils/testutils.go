@@ -29,22 +29,22 @@ import (
 )
 
 // NewPty creates a new pty pair for testing, caller is responsible for closing
-// the returned slave if err is not nil.
+// the returned device file if err is not nil.
 func NewPty() (console.Console, *os.File, error) {
-	pty, slavePath, err := console.NewPty()
+	pty, devicePath, err := console.NewPty()
 	if err != nil {
 		return nil, nil, err
 	}
-	slave, err := os.OpenFile(slavePath, os.O_RDWR, 0)
+	device, err := os.OpenFile(devicePath, os.O_RDWR, 0)
 	if err != nil {
 		return nil, nil, err
 	}
-	return pty, slave, nil
+	return pty, device, nil
 }
 
 // MatchPty checks that the output matches the expected strings in specified
 // order.
-func MatchPty(pty console.Console, slave *os.File, expected ...string) error {
+func MatchPty(pty console.Console, device *os.File, expected ...string) error {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	var buffer bytes.Buffer
@@ -52,7 +52,7 @@ func MatchPty(pty console.Console, slave *os.File, expected ...string) error {
 		defer wg.Done()
 		_, _ = io.Copy(&buffer, pty)
 	}()
-	slave.Close()
+	device.Close()
 	wg.Wait()
 
 	return OrderedMatch(buffer.String(), expected...)

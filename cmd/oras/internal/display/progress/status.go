@@ -17,6 +17,7 @@ package progress
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 	"time"
@@ -24,11 +25,12 @@ import (
 
 	"github.com/morikuni/aec"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras/cmd/oras/internal/display/progress/humanize"
 )
 
 const (
 	barLength    = 20
-	speedLength  = 9    // speed_size(4) + space(1) + speed_unit(4)
+	speedLength  = 7    // speed_size(4) + space(1) + speed_unit(2)
 	zeroDuration = "0s" // default zero value of time.Duration.String()
 	zeroStatus   = "loading status..."
 	zeroDigest   = "  └─ loading digest..."
@@ -40,7 +42,7 @@ type status struct {
 	prompt         string
 	descriptor     ocispec.Descriptor
 	offset         int64
-	total          bytes
+	total          humanize.Bytes
 	lastOffset     int64
 	lastRenderTime time.Time
 
@@ -113,11 +115,11 @@ func (s *status) String(width int) (string, string) {
 	var offset string
 	switch percent {
 	case 1: // 100%, show exact size
-		offset = fmt.Sprint(s.total.size)
+		offset = fmt.Sprint(s.total.Size)
 	default: // 0% ~ 99%, show 2-digit precision
-		offset = fmt.Sprintf("%.2f", RoundTo(s.total.size*percent))
+		offset = fmt.Sprintf("%.2f", humanize.RoundTo(s.total.Size*percent))
 	}
-	right := fmt.Sprintf(" %s/%v %s %6.2f%% %6s", offset, s.total.size, s.total.unit, percent*100, s.durationString())
+	right := fmt.Sprintf(" %s/%s %6.2f%% %6s", offset, s.total, percent*100, s.durationString())
 	lenRight := utf8.RuneCountInString(right)
 
 	var left string
@@ -126,10 +128,9 @@ func (s *status) String(width int) (string, string) {
 		lenBar := int(percent * barLength)
 		bar := fmt.Sprintf("[%s%s]", aec.Inverse.Apply(strings.Repeat(" ", lenBar)), strings.Repeat(".", barLength-lenBar))
 		speed := s.calculateSpeed()
-		speedStr := fmt.Sprintf("%v %2s/s", speed.size, speed.unit)
-		left = fmt.Sprintf("%c %s(%*s) %s %s", s.mark.symbol(), bar, speedLength, speedStr, s.prompt, name)
-		// bar + wrapper(2) + space(1) + speed + wrapper(2) = len(bar) + len(speed) + 5
-		lenLeft = barLength + speedLength + 5
+		left = fmt.Sprintf("%c %s(%*s/s) %s %s", s.mark.symbol(), bar, speedLength, speed, s.prompt, name)
+		// bar + wrapper(2) + space(1) + speed + "/s"(2) + wrapper(2) = len(bar) + len(speed) + 7
+		lenLeft = barLength + speedLength + 7
 	} else {
 		left = fmt.Sprintf("√ %s %s", s.prompt, name)
 	}
@@ -147,15 +148,16 @@ func (s *status) String(width int) (string, string) {
 
 // calculateSpeed calculates the speed of the progress and update last status.
 // caller must hold the lock.
-func (s *status) calculateSpeed() bytes {
+func (s *status) calculateSpeed() humanize.Bytes {
 	now := time.Now()
 	secondsTaken := now.Sub(s.lastRenderTime).Seconds()
+	secondsTaken = math.Max(secondsTaken, float64(bufFlushDuration.Milliseconds())/1000)
 	bytes := float64(s.offset - s.lastOffset)
 
 	s.lastOffset = s.offset
 	s.lastRenderTime = now
 
-	return ToBytes(int64(bytes / secondsTaken))
+	return humanize.ToBytes(int64(bytes / secondsTaken))
 }
 
 // durationString returns a viewable TTY string of the status with duration.
@@ -190,7 +192,7 @@ func (s *status) Update(n *status) {
 	if n.offset >= 0 {
 		s.offset = n.offset
 		if n.descriptor.Size != s.descriptor.Size {
-			s.total = ToBytes(n.descriptor.Size)
+			s.total = humanize.ToBytes(n.descriptor.Size)
 		}
 		s.descriptor = n.descriptor
 	}
