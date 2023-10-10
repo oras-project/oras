@@ -22,6 +22,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/console"
 	"oras.land/oras/cmd/oras/internal/display/console/testutils"
+	"oras.land/oras/cmd/oras/internal/display/progress/humanize"
 )
 
 func Test_status_String(t *testing.T) {
@@ -41,7 +42,7 @@ func Test_status_String(t *testing.T) {
 		},
 		startTime: time.Now().Add(-time.Minute),
 		offset:    0,
-		total:     ToBytes(2),
+		total:     humanize.ToBytes(2),
 	})
 	// full name
 	statusStr, digestStr := s.String(120)
