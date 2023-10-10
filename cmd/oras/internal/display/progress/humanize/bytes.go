@@ -36,9 +36,9 @@ func ToBytes(sizeInBytes int64) Bytes {
 		return Bytes{f, units[0]}
 	}
 	e := int(math.Floor(math.Log(f) / math.Log(base)))
-	if e > len(units) {
+	if e >= len(units) {
 		// only support up to TB
-		e = len(units)
+		e = len(units) - 1
 	}
 	p := f / math.Pow(base, float64(e))
 	return Bytes{RoundTo(p), units[e]}
