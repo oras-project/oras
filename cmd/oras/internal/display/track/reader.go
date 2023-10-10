@@ -92,12 +92,12 @@ func (r *reader) Read(p []byte) (int, error) {
 		if r.offset != r.descriptor.Size {
 			return n, io.ErrUnexpectedEOF
 		}
-		r.status <- progress.NewStatus(r.actionPrompt, r.descriptor, r.offset)
 	}
-
-	if len(r.status) < progress.BufferSize {
-		// intermediate progress might be ignored if buffer is full
-		r.status <- progress.NewStatus(r.actionPrompt, r.descriptor, r.offset)
+	select {
+	case r.status <- progress.NewStatus(r.donePrompt, r.descriptor, r.offset):
+	default:
+		// dismiss the oldest unconsumed status
+		<-r.status
 	}
 	return n, err
 }
