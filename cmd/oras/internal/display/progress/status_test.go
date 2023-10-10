@@ -46,12 +46,12 @@ func Test_status_String(t *testing.T) {
 	})
 	// full name
 	statusStr, digestStr := s.String(120)
-	if err := testutils.OrderedMatch(statusStr+digestStr, " [\x1b[7m\x1b[0m....................]", s.prompt, s.descriptor.MediaType, "0.00/2 B", "0.00%", s.descriptor.Digest.String()); err != nil {
+	if err := testutils.OrderedMatch(statusStr+digestStr, " [\x1b[7m\x1b[0m....................]", s.prompt, s.descriptor.MediaType, "0.00/2  B", "0.00%", s.descriptor.Digest.String()); err != nil {
 		t.Error(err)
 	}
 	// partial name
 	statusStr, digestStr = s.String(console.MinWidth)
-	if err := testutils.OrderedMatch(statusStr+digestStr, " [\x1b[7m\x1b[0m....................]", s.prompt, "application/vn.", "0.00/2 B", "0.00%", s.descriptor.Digest.String()); err != nil {
+	if err := testutils.OrderedMatch(statusStr+digestStr, " [\x1b[7m\x1b[0m....................]", s.prompt, "application/v.", "0.00/2  B", "0.00%", s.descriptor.Digest.String()); err != nil {
 		t.Error(err)
 	}
 
@@ -62,7 +62,7 @@ func Test_status_String(t *testing.T) {
 		descriptor: s.descriptor,
 	})
 	statusStr, digestStr = s.String(120)
-	if err := testutils.OrderedMatch(statusStr+digestStr, "√", s.prompt, s.descriptor.MediaType, "2/2 B", "100.00%", s.descriptor.Digest.String()); err != nil {
+	if err := testutils.OrderedMatch(statusStr+digestStr, "√", s.prompt, s.descriptor.MediaType, "2/2  B", "100.00%", s.descriptor.Digest.String()); err != nil {
 		t.Error(err)
 	}
 }

@@ -30,11 +30,11 @@ import (
 
 func Test_fetchBlobOptions_doFetch(t *testing.T) {
 	// prepare
-	pty, slave, err := testutils.NewPty()
+	pty, device, err := testutils.NewPty()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer slave.Close()
+	defer device.Close()
 	src := memory.New()
 	content := []byte("test")
 	r := bytes.NewReader(content)
@@ -53,7 +53,7 @@ func Test_fetchBlobOptions_doFetch(t *testing.T) {
 	}
 	var opts fetchBlobOptions
 	opts.Reference = tag
-	opts.Common.TTY = slave
+	opts.Common.TTY = device
 	opts.outputPath = t.TempDir() + "/test"
 	// test
 	_, err = opts.doFetch(ctx, src)
@@ -61,7 +61,7 @@ func Test_fetchBlobOptions_doFetch(t *testing.T) {
 		t.Fatal(err)
 	}
 	// validate
-	if err = testutils.MatchPty(pty, slave, "Downloaded  ", desc.MediaType, "100.00%", desc.Digest.String()); err != nil {
+	if err = testutils.MatchPty(pty, device, "Downloaded  ", desc.MediaType, "100.00%", desc.Digest.String()); err != nil {
 		t.Fatal(err)
 	}
 }

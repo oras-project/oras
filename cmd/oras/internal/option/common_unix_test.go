@@ -24,21 +24,21 @@ import (
 )
 
 func TestCommon_parseTTY(t *testing.T) {
-	_, slave, err := testutils.NewPty()
+	_, device, err := testutils.NewPty()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer slave.Close()
+	defer device.Close()
 	var opts Common
 
 	// TTY output
-	if err := opts.parseTTY(slave); err != nil {
+	if err := opts.parseTTY(device); err != nil {
 		t.Errorf("unexpected error with TTY output: %v", err)
 	}
 
 	// --debug
 	opts.Debug = true
-	if err := opts.parseTTY(slave); err == nil {
+	if err := opts.parseTTY(device); err == nil {
 		t.Error("expected error when debug is set with TTY output")
 	}
 }
