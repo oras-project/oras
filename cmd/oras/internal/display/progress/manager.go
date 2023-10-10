@@ -26,7 +26,7 @@ import (
 
 const (
 	// BufferSize is the size of the status channel buffer.
-	BufferSize       = 2
+	BufferSize       = 1
 	bufFlushDuration = 200 * time.Millisecond
 )
 
