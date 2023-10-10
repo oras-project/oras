@@ -72,12 +72,13 @@ func (m *manager) start() {
 		defer m.console.Restore()
 		defer renderTicker.Stop()
 		for {
-			m.render()
 			select {
 			case <-m.renderDone:
+				m.render()
 				close(m.renderClosed)
 				return
 			case <-renderTicker.C:
+				m.render()
 			}
 		}
 	}()
@@ -141,7 +142,6 @@ func (m *manager) Close() error {
 	close(m.renderDone)
 	// 3. wait for the render stop
 	<-m.renderClosed
-	m.render()
 	return nil
 }
 

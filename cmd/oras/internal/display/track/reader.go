@@ -93,11 +93,12 @@ func (r *reader) Read(p []byte) (int, error) {
 			return n, io.ErrUnexpectedEOF
 		}
 	}
-	select {
-	case r.status <- progress.NewStatus(r.donePrompt, r.descriptor, r.offset):
-		// purge the channel until successfully pushed
-		break
-	case <-r.status:
+	for {
+		select {
+		case r.status <- progress.NewStatus(r.donePrompt, r.descriptor, r.offset):
+			// purge the channel until successfully pushed
+			return n, err
+		case <-r.status:
+		}
 	}
-	return n, err
 }
