@@ -95,9 +95,9 @@ func (r *reader) Read(p []byte) (int, error) {
 	}
 	select {
 	case r.status <- progress.NewStatus(r.donePrompt, r.descriptor, r.offset):
-	default:
-		// dismiss the oldest unconsumed status
-		<-r.status
+		// purge the channel until successfully pushed
+		break
+	case <-r.status:
 	}
 	return n, err
 }
