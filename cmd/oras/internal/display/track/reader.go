@@ -88,16 +88,14 @@ func (r *reader) Read(p []byte) (int, error) {
 	}
 
 	r.offset = r.offset + int64(n)
-	prompt := r.actionPrompt
 	if err == io.EOF {
 		if r.offset != r.descriptor.Size {
 			return n, io.ErrUnexpectedEOF
 		}
-		prompt = r.donePrompt
 	}
 	for {
 		select {
-		case r.status <- progress.NewStatus(prompt, r.descriptor, r.offset):
+		case r.status <- progress.NewStatus(r.actionPrompt, r.descriptor, r.offset):
 			// purge the channel until successfully pushed
 			return n, err
 		case <-r.status:
