@@ -147,30 +147,23 @@ func (opts *fetchBlobOptions) doFetch(ctx context.Context, src oras.ReadOnlyTarg
 		vr := content.NewVerifyReader(rc, desc)
 
 		// outputs blob content if "--output -" is used
-		if opts.outputPath == "-" {
-			if _, err := io.Copy(os.Stdout, vr); err != nil {
+		writer := os.Stdout
+		if opts.outputPath != "-" {
+			// save blob content into the local file if the output path is provided
+			file, err := os.Create(opts.outputPath)
+			if err != nil {
 				return ocispec.Descriptor{}, err
 			}
-			if err := vr.Verify(); err != nil {
-				return ocispec.Descriptor{}, err
-			}
-			return desc, nil
+			defer func() {
+				if err := file.Close(); fetchErr == nil {
+					fetchErr = err
+				}
+			}()
 		}
-
-		// save blob content into the local file if the output path is provided
-		file, err := os.Create(opts.outputPath)
-		if err != nil {
-			return ocispec.Descriptor{}, err
-		}
-		defer func() {
-			if err := file.Close(); fetchErr == nil {
-				fetchErr = err
-			}
-		}()
 
 		if opts.TTY == nil {
 			// none tty output
-			if _, err = io.Copy(file, vr); err != nil {
+			if _, err = io.Copy(writer, vr); err != nil {
 				return ocispec.Descriptor{}, err
 			}
 		} else {
@@ -181,7 +174,7 @@ func (opts *fetchBlobOptions) doFetch(ctx context.Context, src oras.ReadOnlyTarg
 			}
 			defer trackedReader.StopManager()
 			trackedReader.Start()
-			if _, err = io.Copy(file, trackedReader); err != nil {
+			if _, err = io.Copy(writer, trackedReader); err != nil {
 				return ocispec.Descriptor{}, err
 			}
 			trackedReader.Done()
