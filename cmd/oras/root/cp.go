@@ -28,10 +28,12 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/docker"
 	"oras.land/oras/internal/graph"
+	"oras.land/oras/internal/registryutil"
 )
 
 type copyOptions struct {
@@ -116,6 +118,7 @@ func runCopy(ctx context.Context, opts copyOptions) error {
 	if err != nil {
 		return err
 	}
+	ctx = registryutil.WithScopeHint(ctx, dst, auth.ActionPull, auth.ActionPush)
 
 	// Prepare copy options
 	committed := &sync.Map{}
