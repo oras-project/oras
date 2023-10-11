@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package progress
+package humanize
 
 import (
 	"reflect"
@@ -50,17 +50,17 @@ func TestToBytes(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want bytes
+		want Bytes
 	}{
-		{"0 bytes", args{0}, bytes{0, "B"}},
-		{"1023 bytes", args{1023}, bytes{1023, "B"}},
-		{"1 kB", args{1024}, bytes{1, "kB"}},
-		{"1.5 kB", args{1024 + 512}, bytes{1.5, "kB"}},
-		{"12.5 kB", args{1024 * 12.5}, bytes{12.5, "kB"}},
-		{"512.5 kB", args{1024 * 512.5}, bytes{513, "kB"}},
-		{"1 MB", args{1024 * 1024}, bytes{1, "MB"}},
-		{"1 GB", args{1024 * 1024 * 1024}, bytes{1, "GB"}},
-		{"1 TB", args{1024 * 1024 * 1024 * 1024}, bytes{1, "TB"}},
+		{"0 bytes", args{0}, Bytes{0, "B"}},
+		{"1023 bytes", args{1023}, Bytes{1023, "B"}},
+		{"1 kB", args{1024}, Bytes{1, "kB"}},
+		{"1.5 kB", args{1024 + 512}, Bytes{1.5, "kB"}},
+		{"12.5 kB", args{1024 * 12.5}, Bytes{12.5, "kB"}},
+		{"512.5 kB", args{1024 * 512.5}, Bytes{513, "kB"}},
+		{"1 MB", args{1024 * 1024}, Bytes{1, "MB"}},
+		{"1 GB", args{1024 * 1024 * 1024}, Bytes{1, "GB"}},
+		{"1 TB", args{1024 * 1024 * 1024 * 1024}, Bytes{1, "TB"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

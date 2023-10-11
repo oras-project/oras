@@ -30,11 +30,11 @@ import (
 
 func Test_pushBlobOptions_doPush(t *testing.T) {
 	// prepare
-	pty, slave, err := testutils.NewPty()
+	pty, device, err := testutils.NewPty()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer slave.Close()
+	defer device.Close()
 	src := memory.New()
 	content := []byte("test")
 	r := bytes.NewReader(content)
@@ -44,14 +44,14 @@ func Test_pushBlobOptions_doPush(t *testing.T) {
 		Size:      int64(len(content)),
 	}
 	var opts pushBlobOptions
-	opts.Common.TTY = slave
+	opts.Common.TTY = device
 	// test
 	err = opts.doPush(context.Background(), src, desc, r)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// validate
-	if err = testutils.MatchPty(pty, slave, "Uploaded", desc.MediaType, "100.00%", desc.Digest.String()); err != nil {
+	if err = testutils.MatchPty(pty, device, "Uploaded", desc.MediaType, "100.00%", desc.Digest.String()); err != nil {
 		t.Fatal(err)
 	}
 }
