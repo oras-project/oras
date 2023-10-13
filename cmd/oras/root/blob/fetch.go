@@ -154,12 +154,12 @@ func (opts *fetchBlobOptions) doFetch(ctx context.Context, src oras.ReadOnlyTarg
 			if err != nil {
 				return ocispec.Descriptor{}, err
 			}
-			writer = file
 			defer func() {
 				if err := file.Close(); fetchErr == nil {
 					fetchErr = err
 				}
 			}()
+			writer = file
 		}
 
 		if opts.TTY == nil {
