@@ -248,6 +248,7 @@ func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, v
 		return tracked.Prompt(desc, "Exists   ", verbose)
 	}
 	if tracked == nil {
+		// non TTY
 		opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 			return display.PrintStatus(desc, "Uploading", verbose)
 		}
@@ -258,14 +259,14 @@ func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, v
 			}
 			return display.PrintStatus(desc, "Uploaded ", verbose)
 		}
-	} else {
-		opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return display.PrintSuccessorStatus(ctx, desc, fetcher, committed, func(d ocispec.Descriptor) error {
-				return tracked.Prompt(desc, "Skipped  ", verbose)
-			})
-		}
-
+		return
+	}
+	// TTY
+	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+		return display.PrintSuccessorStatus(ctx, desc, fetcher, committed, func(d ocispec.Descriptor) error {
+			return tracked.Prompt(d, "Skipped  ", verbose)
+		})
 	}
 }
 
