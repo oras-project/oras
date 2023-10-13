@@ -149,6 +149,9 @@ func (s *status) String(width int) (string, string) {
 // caller must hold the lock.
 func (s *status) calculateSpeed() humanize.Bytes {
 	now := time.Now()
+	if s.lastRenderTime.IsZero() {
+		s.lastRenderTime = s.startTime
+	}
 	secondsTaken := now.Sub(s.lastRenderTime).Seconds()
 	if secondsTaken == 0 {
 		secondsTaken = float64(bufFlushDuration.Milliseconds()) / 1000
