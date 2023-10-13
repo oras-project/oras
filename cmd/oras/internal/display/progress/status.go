@@ -154,7 +154,7 @@ func (s *status) calculateSpeed() humanize.Bytes {
 	}
 	secondsTaken := now.Sub(s.lastRenderTime).Seconds()
 	if secondsTaken == 0 {
-		secondsTaken = float64(bufFlushDuration.Milliseconds()) / 1000
+		secondsTaken = bufFlushDuration.Seconds()
 	}
 	bytes := float64(s.offset - s.lastOffset)
 
