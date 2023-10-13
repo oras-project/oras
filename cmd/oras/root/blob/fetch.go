@@ -132,57 +132,53 @@ func (opts *fetchBlobOptions) doFetch(ctx context.Context, src oras.ReadOnlyTarg
 	var err error
 	if opts.outputPath == "" {
 		// fetch blob descriptor only
-		desc, err = oras.Resolve(ctx, src, opts.Reference, oras.DefaultResolveOptions)
+		return oras.Resolve(ctx, src, opts.Reference, oras.DefaultResolveOptions)
+	}
+	// fetch blob content
+	var rc io.ReadCloser
+	desc, rc, err = oras.Fetch(ctx, src, opts.Reference, oras.DefaultFetchOptions)
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	defer rc.Close()
+	vr := content.NewVerifyReader(rc, desc)
+
+	// outputs blob content if "--output -" is used
+	writer := os.Stdout
+	if opts.outputPath != "-" {
+		// save blob content into the local file if the output path is provided
+		file, err := os.Create(opts.outputPath)
 		if err != nil {
+			return ocispec.Descriptor{}, err
+		}
+		defer func() {
+			if err := file.Close(); fetchErr == nil {
+				fetchErr = err
+			}
+		}()
+		writer = file
+	}
+
+	if opts.TTY == nil {
+		// none tty output
+		if _, err = io.Copy(writer, vr); err != nil {
 			return ocispec.Descriptor{}, err
 		}
 	} else {
-		// fetch blob content
-		var rc io.ReadCloser
-		desc, rc, err = oras.Fetch(ctx, src, opts.Reference, oras.DefaultFetchOptions)
+		// tty output
+		trackedReader, err := track.NewReader(vr, desc, "Downloading", "Downloaded ", opts.TTY)
 		if err != nil {
 			return ocispec.Descriptor{}, err
 		}
-		defer rc.Close()
-		vr := content.NewVerifyReader(rc, desc)
-
-		// outputs blob content if "--output -" is used
-		writer := os.Stdout
-		if opts.outputPath != "-" {
-			// save blob content into the local file if the output path is provided
-			file, err := os.Create(opts.outputPath)
-			if err != nil {
-				return ocispec.Descriptor{}, err
-			}
-			defer func() {
-				if err := file.Close(); fetchErr == nil {
-					fetchErr = err
-				}
-			}()
-			writer = file
-		}
-
-		if opts.TTY == nil {
-			// none tty output
-			if _, err = io.Copy(writer, vr); err != nil {
-				return ocispec.Descriptor{}, err
-			}
-		} else {
-			// tty output
-			trackedReader, err := track.NewReader(vr, desc, "Downloading", "Downloaded ", opts.TTY)
-			if err != nil {
-				return ocispec.Descriptor{}, err
-			}
-			defer trackedReader.StopManager()
-			trackedReader.Start()
-			if _, err = io.Copy(writer, trackedReader); err != nil {
-				return ocispec.Descriptor{}, err
-			}
-			trackedReader.Done()
-		}
-		if err := vr.Verify(); err != nil {
+		defer trackedReader.StopManager()
+		trackedReader.Start()
+		if _, err = io.Copy(writer, trackedReader); err != nil {
 			return ocispec.Descriptor{}, err
 		}
+		trackedReader.Done()
+	}
+	if err := vr.Verify(); err != nil {
+		return ocispec.Descriptor{}, err
 	}
 	return desc, nil
 }
