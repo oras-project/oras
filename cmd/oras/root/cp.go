@@ -158,8 +158,8 @@ func doCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTar
 	successorPrinter := display.StatusPrinter("Skipped", opts.Verbose)
 	extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return display.PrintSuccessorStatus(ctx, desc, dst, committed, func(ocispec.Descriptor) error {
-			return successorPrinter(desc)
+		return display.PrintSuccessorStatus(ctx, desc, dst, committed, func(d ocispec.Descriptor) error {
+			return successorPrinter(d)
 		})
 	}
 	extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
@@ -167,7 +167,7 @@ func doCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTar
 		return tracked.Prompt(desc, "Exists ", opts.Verbose)
 	}
 	if opts.TTY == nil {
-		// none tty output
+		// none TTY output
 		extendedCopyOptions.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 			return display.PrintStatus(desc, "Copying", opts.Verbose)
 		}
@@ -179,7 +179,7 @@ func doCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTar
 			return display.PrintStatus(desc, "Copied ", opts.Verbose)
 		}
 	} else {
-		// tty output
+		// TTY output
 		successorPrinter = func(desc ocispec.Descriptor) error {
 			return tracked.Prompt(desc, "Skipped", opts.Verbose)
 		}
