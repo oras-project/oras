@@ -13,19 +13,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package registryutil
+package progress
 
-import (
-	"context"
+import "testing"
 
-	"oras.land/oras-go/v2/registry/remote"
-	"oras.land/oras-go/v2/registry/remote/auth"
-)
-
-// WithScopeHint adds a hinted scope to the context.
-func WithScopeHint(ctx context.Context, target any, actions ...string) context.Context {
-	if repo, ok := target.(*remote.Repository); ok {
-		return auth.AppendRepositoryScope(ctx, repo.Reference, actions...)
+func Test_spinner_symbol(t *testing.T) {
+	var s spinner
+	for i := 0; i < len(spinnerSymbols); i++ {
+		if s.symbol() != spinnerSymbols[i] {
+			t.Errorf("symbol() = %v, want %v", s.symbol(), spinnerSymbols[i])
+		}
 	}
-	return ctx
+	if s.symbol() != spinnerSymbols[0] {
+		t.Errorf("symbol() = %v, want %v", s.symbol(), spinnerSymbols[0])
+	}
 }

@@ -13,19 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package registryutil
+package progress
 
-import (
-	"context"
+var spinnerSymbols = []rune("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")
 
-	"oras.land/oras-go/v2/registry/remote"
-	"oras.land/oras-go/v2/registry/remote/auth"
-)
+type spinner int
 
-// WithScopeHint adds a hinted scope to the context.
-func WithScopeHint(ctx context.Context, target any, actions ...string) context.Context {
-	if repo, ok := target.(*remote.Repository); ok {
-		return auth.AppendRepositoryScope(ctx, repo.Reference, actions...)
-	}
-	return ctx
+// symbol returns the rune of status mark and shift to the next.
+func (s *spinner) symbol() rune {
+	last := int(*s)
+	*s = spinner((last + 1) % len(spinnerSymbols))
+	return spinnerSymbols[last]
 }
