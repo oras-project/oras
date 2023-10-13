@@ -243,23 +243,29 @@ func doPush(pack packFunc, copy copyFunc, dst oras.Target) (ocispec.Descriptor, 
 
 func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, verbose bool, tracked *track.Target) {
 	committed := &sync.Map{}
-	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return display.PrintSuccessorStatus(ctx, desc, "Skipped  ", fetcher, committed, verbose)
-	}
 	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
 		return tracked.Prompt(desc, "Exists   ", verbose)
 	}
 	if tracked == nil {
-		opts.PreCopy = display.StatusPrinter("Uploading", verbose)
-		postCopy := opts.PostCopy
+		opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+			return display.PrintStatus(desc, "Uploading", verbose)
+		}
 		opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-			if err := postCopy(ctx, desc); err != nil {
+			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+			if err := display.PrintSuccessorStatus(ctx, desc, fetcher, committed, display.StatusPrinter("Skipped  ", verbose)); err != nil {
 				return err
 			}
 			return display.PrintStatus(desc, "Uploaded ", verbose)
 		}
+	} else {
+		opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+			return display.PrintSuccessorStatus(ctx, desc, fetcher, committed, func(d ocispec.Descriptor) error {
+				return tracked.Prompt(desc, "Skipped  ", verbose)
+			})
+		}
+
 	}
 }
 
