@@ -17,7 +17,6 @@ package progress
 
 import (
 	"fmt"
-	"math"
 	"strings"
 	"sync"
 	"time"
@@ -151,7 +150,9 @@ func (s *status) String(width int) (string, string) {
 func (s *status) calculateSpeed() humanize.Bytes {
 	now := time.Now()
 	secondsTaken := now.Sub(s.lastRenderTime).Seconds()
-	secondsTaken = math.Max(secondsTaken, float64(bufFlushDuration.Milliseconds())/1000)
+	if secondsTaken == 0 {
+		secondsTaken = float64(bufFlushDuration.Milliseconds()) / 1000
+	}
 	bytes := float64(s.offset - s.lastOffset)
 
 	s.lastOffset = s.offset
