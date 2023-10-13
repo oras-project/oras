@@ -18,16 +18,14 @@ package registryutil
 import (
 	"context"
 
-	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
 )
 
 // WithScopeHint adds a hinted scope to the context.
-func WithScopeHint(ctx context.Context, target oras.Target, actions ...string) context.Context {
+func WithScopeHint(ctx context.Context, target any, actions ...string) context.Context {
 	if repo, ok := target.(*remote.Repository); ok {
-		scope := auth.ScopeRepository(repo.Reference.Repository, actions...)
-		return auth.AppendScopes(ctx, scope)
+		return auth.AppendRepositoryScope(ctx, repo.Reference, actions...)
 	}
 	return ctx
 }

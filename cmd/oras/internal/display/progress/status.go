@@ -17,7 +17,6 @@ package progress
 
 import (
 	"fmt"
-	"math"
 	"strings"
 	"sync"
 	"time"
@@ -150,8 +149,13 @@ func (s *status) String(width int) (string, string) {
 // caller must hold the lock.
 func (s *status) calculateSpeed() humanize.Bytes {
 	now := time.Now()
+	if s.lastRenderTime.IsZero() {
+		s.lastRenderTime = s.startTime
+	}
 	secondsTaken := now.Sub(s.lastRenderTime).Seconds()
-	secondsTaken = math.Max(secondsTaken, float64(bufFlushDuration.Milliseconds())/1000)
+	if secondsTaken == 0 {
+		secondsTaken = bufFlushDuration.Seconds()
+	}
 	bytes := float64(s.offset - s.lastOffset)
 
 	s.lastOffset = s.offset
