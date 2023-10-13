@@ -118,7 +118,7 @@ func fetchBlob(ctx context.Context, opts fetchBlobOptions) (fetchErr error) {
 	if opts.OutputDescriptor {
 		descJSON, err := opts.Marshal(desc)
 		if err != nil {
-			return ocispec.Descriptor{}, err
+			return err
 		}
 		if err := opts.Output(os.Stdout, descJSON); err != nil {
 			return err
