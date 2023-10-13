@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
-	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -44,9 +43,9 @@ var _ = Describe("ORAS beginners:", func() {
 	When("running cp command", func() {
 		It("should show help doc with feature flags", func() {
 			out := ORAS("cp", "--help").MatchKeyWords("Copy", ExampleDesc).Exec()
-			gomega.Expect(out).Should(gbytes.Say("--from-distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
-			gomega.Expect(out).Should(gbytes.Say("-r, --recursive\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
-			gomega.Expect(out).Should(gbytes.Say("--to-distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+			Expect(out).Should(gbytes.Say("--from-distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+			Expect(out).Should(gbytes.Say("-r, --recursive\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+			Expect(out).Should(gbytes.Say("--to-distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 		})
 
 		It("should fail when no reference provided", func() {
@@ -77,6 +76,15 @@ var _ = Describe("1.1 registry users:", func() {
 			src := RegistryRef(ZOTHost, ArtifactRepo, blob.Tag)
 			dst := RegistryRef(ZOTHost, cpTestRepo("artifact-with-blob"), "copied")
 			ORAS("cp", src, dst, "-v").MatchStatus(blob.StateKeys, true, len(blob.StateKeys)).Exec()
+			CompareRef(src, dst)
+		})
+
+		It("should copy and show logs with deduplicated id", func() {
+			src := RegistryRef(ZOTHost, ArtifactRepo, blob.Tag)
+			dst := RegistryRef(ZOTHost, cpTestRepo("debug-log"), "copied")
+			session := ORAS("cp", src, dst, "-d").Exec()
+			Expect(session.Err).To(gbytes.Say("Request #0"))
+			Expect(session.Err).NotTo(gbytes.Say("Request #0"))
 			CompareRef(src, dst)
 		})
 
