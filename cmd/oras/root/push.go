@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 
@@ -183,13 +184,10 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	if err != nil {
 		return err
 	}
-	var tracked track.Trackable
-	if opts.TTY != nil {
-		tracked, err = track.NewTarget(dst, "Uploading", "Uploaded ", opts.TTY)
-		if err != nil {
-			return err
-		}
-		dst = tracked
+	var tracked track.GraphTarget
+	dst, tracked, err = getTrackedTarget(dst, opts.TTY)
+	if err != nil {
+		return err
 	}
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
@@ -234,14 +232,14 @@ func runPush(ctx context.Context, opts pushOptions) error {
 }
 
 func doPush(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
-	if tracked, ok := dst.(track.Trackable); ok {
+	if tracked, ok := dst.(track.GraphTarget); ok {
 		defer tracked.Close()
 	}
 	// Push
 	return pushArtifact(dst, pack, copy)
 }
 
-func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, verbose bool, tracked track.Trackable) {
+func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, verbose bool, tracked track.GraphTarget) {
 	committed := &sync.Map{}
 	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
@@ -275,6 +273,19 @@ func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, v
 
 type packFunc func() (ocispec.Descriptor, error)
 type copyFunc func(desc ocispec.Descriptor) error
+
+func getTrackedTarget(gt oras.GraphTarget, tty *os.File) (oras.GraphTarget, track.GraphTarget, error) {
+	var tracked track.GraphTarget
+	var err error
+	if tty != nil {
+		tracked, err = track.NewTarget(gt, "Uploading", "Uploaded ", tty)
+		if err != nil {
+			return nil, nil, err
+		}
+		gt = tracked
+	}
+	return gt, tracked, nil
+}
 
 func pushArtifact(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
 	root, err := pack()

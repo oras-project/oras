@@ -132,14 +132,15 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 	}
 
 	// prepare push
-	var tracked track.Trackable
-	if opts.TTY != nil {
-		tracked, err = track.NewTarget(dst, "Uploading", "Uploaded ", opts.TTY)
-		if err != nil {
-			return err
-		}
-		dst = tracked
+	var tracked track.GraphTarget
+	dst, tracked, err = getTrackedTarget(dst, opts.TTY)
+	if err != nil {
+		return err
 	}
+	graphCopyOptions := oras.DefaultCopyGraphOptions
+	graphCopyOptions.Concurrency = opts.concurrency
+	updateDisplayOption(&graphCopyOptions, store, opts.Verbose, tracked)
+
 	packOpts := oras.PackManifestOptions{
 		Subject:             &subject,
 		ManifestAnnotations: annotations[option.AnnotationManifest],
@@ -149,9 +150,6 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 		return oras.PackManifest(ctx, store, oras.PackManifestVersion1_1_RC4, opts.artifactType, packOpts)
 	}
 
-	graphCopyOptions := oras.DefaultCopyGraphOptions
-	graphCopyOptions.Concurrency = opts.concurrency
-	updateDisplayOption(&graphCopyOptions, store, opts.Verbose, tracked)
 	copy := func(root ocispec.Descriptor) error {
 		graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 			if content.Equal(node, root) {
