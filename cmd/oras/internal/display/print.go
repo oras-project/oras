@@ -29,7 +29,7 @@ import (
 
 var printLock sync.Mutex
 
-type PrintFunc func(ocispec.Descriptor) error
+type printFunc func(ocispec.Descriptor) error
 
 // Print objects to display concurrent-safely
 func Print(a ...any) error {
@@ -40,7 +40,7 @@ func Print(a ...any) error {
 }
 
 // StatusPrinter returns a tracking function for transfer status.
-func StatusPrinter(status string, verbose bool) PrintFunc {
+func StatusPrinter(status string, verbose bool) printFunc {
 	return func(desc ocispec.Descriptor) error {
 		return PrintStatus(desc, status, verbose)
 	}
@@ -60,7 +60,7 @@ func PrintStatus(desc ocispec.Descriptor, status string, verbose bool) error {
 }
 
 // PrintSuccessorStatus prints transfer status of successors.
-func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, fetcher content.Fetcher, committed *sync.Map, print PrintFunc) error {
+func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, fetcher content.Fetcher, committed *sync.Map, print printFunc) error {
 	successors, err := content.Successors(ctx, fetcher, desc)
 	if err != nil {
 		return err
