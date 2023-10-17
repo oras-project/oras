@@ -245,6 +245,9 @@ func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, v
 	committed := &sync.Map{}
 	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+		if tracked == nil {
+			return display.PrintStatus(desc, "Exists  ", verbose)
+		}
 		return tracked.Prompt(desc, "Exists   ", verbose)
 	}
 	if tracked == nil {
