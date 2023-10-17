@@ -17,13 +17,13 @@ package track
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry"
-	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/display/progress"
 )
 
@@ -102,7 +102,8 @@ func (t *Target) Close() error {
 // If Target is not set, only prints status.
 func (t *Target) Prompt(desc ocispec.Descriptor, prompt string, verbose bool) error {
 	if t == nil {
-		return display.PrintStatus(desc, prompt, verbose)
+		// this should not happen
+		return errors.New("cannot output progress with nil tracked target")
 	}
 	status, err := t.manager.Add()
 	if err != nil {

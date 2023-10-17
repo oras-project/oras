@@ -164,6 +164,9 @@ func doCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTar
 	}
 	extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+		if tracked == nil {
+			return display.PrintStatus(desc, "Skipped", opts.Verbose)
+		}
 		return tracked.Prompt(desc, "Exists ", opts.Verbose)
 	}
 	if opts.TTY == nil {
