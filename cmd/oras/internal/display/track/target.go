@@ -17,14 +17,11 @@ package track
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
-	"reflect"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/display/progress"
@@ -32,21 +29,21 @@ import (
 
 // Target tracks the progress of pushing ot underlying oras.Target.
 type Target struct {
-	oras.Target
+	oras.GraphTarget
 	manager      progress.Manager
 	actionPrompt string
 	donePrompt   string
 }
 
 // NewTarget creates a new tracked Target.
-func NewTarget(t oras.Target, actionPrompt, donePrompt string, tty *os.File) (*Target, error) {
+func NewTarget(t oras.GraphTarget, actionPrompt, donePrompt string, tty *os.File) (*Target, error) {
 	manager, err := progress.NewManager(tty)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Target{
-		Target:       t,
+		GraphTarget:  t,
 		manager:      manager,
 		actionPrompt: actionPrompt,
 		donePrompt:   donePrompt,
@@ -61,7 +58,7 @@ func (t *Target) Push(ctx context.Context, expected ocispec.Descriptor, content 
 	}
 	defer r.Close()
 	r.Start()
-	if err := t.Target.Push(ctx, expected, r); err != nil {
+	if err := t.GraphTarget.Push(ctx, expected, r); err != nil {
 		return err
 	}
 	r.Done()
@@ -76,13 +73,13 @@ func (t *Target) PushReference(ctx context.Context, expected ocispec.Descriptor,
 	}
 	defer r.Close()
 	r.Start()
-	if rp, ok := t.Target.(registry.ReferencePusher); ok {
+	if rp, ok := t.GraphTarget.(registry.ReferencePusher); ok {
 		err = rp.PushReference(ctx, expected, r, reference)
 	} else {
-		if err := t.Target.Push(ctx, expected, r); err != nil {
+		if err := t.GraphTarget.Push(ctx, expected, r); err != nil {
 			return err
 		}
-		err = t.Target.Tag(ctx, expected, reference)
+		err = t.GraphTarget.Tag(ctx, expected, reference)
 	}
 	if err != nil {
 		return err
@@ -93,10 +90,7 @@ func (t *Target) PushReference(ctx context.Context, expected ocispec.Descriptor,
 
 // Predecessors returns the predecessors of the node if supported.
 func (t *Target) Predecessors(ctx context.Context, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-	if p, ok := t.Target.(content.PredecessorFinder); ok {
-		return p.Predecessors(ctx, node)
-	}
-	return nil, fmt.Errorf("Target %v does not support Predecessors", reflect.TypeOf(t.Target))
+	return t.GraphTarget.Predecessors(ctx, node)
 }
 
 // Close closes the tracking manager.
