@@ -27,31 +27,48 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/progress"
 )
 
-// Target tracks the progress of pushing ot underlying oras.Target.
-type Target struct {
+type Trackable interface {
+	oras.GraphTarget
+	Close() error
+	Prompt(ocispec.Descriptor, string, bool) error
+}
+
+type graphTarget struct {
 	oras.GraphTarget
 	manager      progress.Manager
 	actionPrompt string
 	donePrompt   string
 }
 
+type referenceGraphTarget struct {
+	*graphTarget
+	registry.ReferencePusher
+}
+
 // NewTarget creates a new tracked Target.
-func NewTarget(t oras.GraphTarget, actionPrompt, donePrompt string, tty *os.File) (*Target, error) {
+func NewTarget(t oras.GraphTarget, actionPrompt, donePrompt string, tty *os.File) (Trackable, error) {
 	manager, err := progress.NewManager(tty)
 	if err != nil {
 		return nil, err
 	}
-
-	return &Target{
+	gt := &graphTarget{
 		GraphTarget:  t,
 		manager:      manager,
 		actionPrompt: actionPrompt,
 		donePrompt:   donePrompt,
-	}, nil
+	}
+
+	if refPusher, ok := t.(registry.ReferencePusher); ok {
+		return &referenceGraphTarget{
+			graphTarget:     gt,
+			ReferencePusher: refPusher,
+		}, nil
+	}
+	return gt, nil
 }
 
 // Push pushes the content to the Target with tracking.
-func (t *Target) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
+func (t *graphTarget) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
 	r, err := managedReader(content, expected, t.manager, t.actionPrompt, t.donePrompt)
 	if err != nil {
 		return err
@@ -66,21 +83,14 @@ func (t *Target) Push(ctx context.Context, expected ocispec.Descriptor, content 
 }
 
 // PushReference pushes the content to the Target with tracking.
-func (t *Target) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
-	r, err := managedReader(content, expected, t.manager, t.actionPrompt, t.donePrompt)
+func (rgt *referenceGraphTarget) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
+	r, err := managedReader(content, expected, rgt.manager, rgt.actionPrompt, rgt.donePrompt)
 	if err != nil {
 		return err
 	}
 	defer r.Close()
 	r.Start()
-	if rp, ok := t.GraphTarget.(registry.ReferencePusher); ok {
-		err = rp.PushReference(ctx, expected, r, reference)
-	} else {
-		if err := t.GraphTarget.Push(ctx, expected, r); err != nil {
-			return err
-		}
-		err = t.GraphTarget.Tag(ctx, expected, reference)
-	}
+	err = rgt.ReferencePusher.PushReference(ctx, expected, r, reference)
 	if err != nil {
 		return err
 	}
@@ -89,18 +99,18 @@ func (t *Target) PushReference(ctx context.Context, expected ocispec.Descriptor,
 }
 
 // Predecessors returns the predecessors of the node if supported.
-func (t *Target) Predecessors(ctx context.Context, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+func (t *graphTarget) Predecessors(ctx context.Context, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 	return t.GraphTarget.Predecessors(ctx, node)
 }
 
 // Close closes the tracking manager.
-func (t *Target) Close() error {
+func (t *graphTarget) Close() error {
 	return t.manager.Close()
 }
 
 // Prompt prompts the user with the provided prompt and descriptor.
 // If Target is not set, only prints status.
-func (t *Target) Prompt(desc ocispec.Descriptor, prompt string, verbose bool) error {
+func (t *graphTarget) Prompt(desc ocispec.Descriptor, prompt string, verbose bool) error {
 	if t == nil {
 		// this should not happen
 		return errors.New("cannot output progress with nil tracked target")
