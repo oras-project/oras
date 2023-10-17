@@ -132,7 +132,7 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 	}
 
 	// prepare push
-	var tracked *track.Target
+	var tracked track.Trackable
 	if opts.TTY != nil {
 		tracked, err = track.NewTarget(dst, "Uploading", "Uploaded ", opts.TTY)
 		if err != nil {

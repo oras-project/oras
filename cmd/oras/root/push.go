@@ -183,7 +183,7 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	if err != nil {
 		return err
 	}
-	var tracked *track.Target
+	var tracked track.Trackable
 	if opts.TTY != nil {
 		tracked, err = track.NewTarget(dst, "Uploading", "Uploaded ", opts.TTY)
 		if err != nil {
@@ -234,14 +234,14 @@ func runPush(ctx context.Context, opts pushOptions) error {
 }
 
 func doPush(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
-	if tracked, ok := dst.(*track.Target); ok {
+	if tracked, ok := dst.(track.Trackable); ok {
 		defer tracked.Close()
 	}
 	// Push
 	return pushArtifact(dst, pack, copy)
 }
 
-func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, verbose bool, tracked *track.Target) {
+func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, verbose bool, tracked track.Trackable) {
 	committed := &sync.Map{}
 	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
