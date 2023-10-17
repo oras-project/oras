@@ -66,7 +66,7 @@ func NewTarget(t oras.GraphTarget, actionPrompt, donePrompt string, tty *os.File
 	return gt, nil
 }
 
-// Push pushes the content to the Target with tracking.
+// Push pushes the content to the base oras.GraphTarget with tracking.
 func (t *graphTarget) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
 	r, err := managedReader(content, expected, t.manager, t.actionPrompt, t.donePrompt)
 	if err != nil {
@@ -81,7 +81,7 @@ func (t *graphTarget) Push(ctx context.Context, expected ocispec.Descriptor, con
 	return nil
 }
 
-// PushReference pushes the content to the Target with tracking.
+// PushReference pushes the content to the base oras.GraphTarget with tracking.
 func (rgt *referenceGraphTarget) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
 	r, err := managedReader(content, expected, rgt.manager, rgt.actionPrompt, rgt.donePrompt)
 	if err != nil {
