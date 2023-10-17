@@ -171,7 +171,7 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 	}
 
 	// Attach
-	root, err := doPush(pack, copy, dst)
+	root, err := doPush(dst, pack, copy)
 	if err != nil {
 		return err
 	}

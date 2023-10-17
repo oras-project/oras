@@ -209,7 +209,7 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	}
 
 	// Push
-	root, err := doPush(pack, copy, dst)
+	root, err := doPush(dst, pack, copy)
 	if err != nil {
 		return err
 	}
@@ -233,7 +233,7 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	return opts.ExportManifest(ctx, memoryStore, root)
 }
 
-func doPush(pack packFunc, copy copyFunc, dst oras.Target) (ocispec.Descriptor, error) {
+func doPush(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
 	if tracked, ok := dst.(*track.Target); ok {
 		defer tracked.Close()
 	}
