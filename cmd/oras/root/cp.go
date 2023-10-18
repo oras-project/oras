@@ -146,7 +146,7 @@ func runCopy(ctx context.Context, opts copyOptions) error {
 }
 
 func doCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts copyOptions) (ocispec.Descriptor, error) {
-	var tracked track.Trackable
+	var tracked track.GraphTarget
 	var err error
 	// Prepare copy options
 	committed := &sync.Map{}

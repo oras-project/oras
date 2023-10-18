@@ -155,7 +155,7 @@ func (po *pullOptions) doPull(ctx context.Context, src oras.ReadOnlyTarget, dst 
 		}
 	}
 
-	var tracked track.Trackable
+	var tracked track.GraphTarget
 	if po.TTY != nil {
 		tracked, err = track.NewTarget(dst, "Downloading", "Downloaded ", po.TTY)
 		if err != nil {
@@ -284,7 +284,7 @@ func generateContentKey(desc ocispec.Descriptor) string {
 	return desc.Digest.String() + desc.Annotations[ocispec.AnnotationTitle]
 }
 
-func printOnce(printed *sync.Map, s ocispec.Descriptor, msg string, verbose bool, tracked track.Trackable) error {
+func printOnce(printed *sync.Map, s ocispec.Descriptor, msg string, verbose bool, tracked track.GraphTarget) error {
 	if _, loaded := printed.LoadOrStore(generateContentKey(s), true); loaded {
 		return nil
 	}
