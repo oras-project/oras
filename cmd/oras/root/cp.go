@@ -146,8 +146,6 @@ func runCopy(ctx context.Context, opts copyOptions) error {
 }
 
 func doCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts copyOptions) (ocispec.Descriptor, error) {
-	var tracked track.GraphTarget
-	var err error
 	// Prepare copy options
 	committed := &sync.Map{}
 	extendedCopyOptions := oras.DefaultExtendedCopyOptions
@@ -162,15 +160,13 @@ func doCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTar
 			return successorPrinter(d)
 		})
 	}
-	extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		if tracked == nil {
-			return display.PrintStatus(desc, "Skipped", opts.Verbose)
-		}
-		return tracked.Prompt(desc, "Exists ", opts.Verbose)
-	}
+
 	if opts.TTY == nil {
 		// none TTY output
+		extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
+			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+			return display.PrintStatus(desc, "Exists ", opts.Verbose)
+		}
 		extendedCopyOptions.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 			return display.PrintStatus(desc, "Copying", opts.Verbose)
 		}
@@ -183,18 +179,24 @@ func doCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTar
 		}
 	} else {
 		// TTY output
-		successorPrinter = func(desc ocispec.Descriptor) error {
-			return tracked.Prompt(desc, "Skipped", opts.Verbose)
-		}
-		tracked, err = track.NewTarget(dst, "Copying ", "Copied ", opts.TTY)
+
+		tracked, err := track.NewTarget(dst, "Copying ", "Copied ", opts.TTY)
 		if err != nil {
 			return ocispec.Descriptor{}, err
 		}
 		defer tracked.Close()
 		dst = tracked
+		successorPrinter = func(desc ocispec.Descriptor) error {
+			return tracked.Prompt(desc, "Skipped", opts.Verbose)
+		}
+		extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
+			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+			return tracked.Prompt(desc, "Exists ", opts.Verbose)
+		}
 	}
 
 	var desc ocispec.Descriptor
+	var err error
 	rOpts := oras.DefaultResolveOptions
 	rOpts.TargetPlatform = opts.Platform.Platform
 	if opts.recursive {
