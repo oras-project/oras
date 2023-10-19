@@ -17,7 +17,6 @@ package track
 
 import (
 	"context"
-	"errors"
 	"io"
 	"os"
 
@@ -104,10 +103,6 @@ func (t *graphTarget) Close() error {
 
 // Prompt prompts the user with the provided prompt and descriptor.
 func (t *graphTarget) Prompt(desc ocispec.Descriptor, prompt string, verbose bool) error {
-	if t == nil {
-		// this should not happen
-		return errors.New("cannot output progress with nil tracked target")
-	}
 	status, err := t.manager.Add()
 	if err != nil {
 		return err
