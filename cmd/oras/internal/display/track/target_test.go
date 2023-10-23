@@ -65,6 +65,9 @@ func Test_referenceGraphTarget_PushReference(t *testing.T) {
 	}
 	if rgt, ok := target.(*referenceGraphTarget); ok {
 		rgt.PushReference(context.Background(), desc, r, tag)
+		if err := rgt.manager.Close(); err != nil {
+			t.Fatal(err)
+		}
 	} else {
 		t.Fatal("not testing based on a referenceGraphTarget")
 	}
@@ -94,8 +97,10 @@ func Test_referenceGraphTarget_Prompt(t *testing.T) {
 		t.Fatal(err)
 	}
 	m := target.(*graphTarget).manager
+	if err := m.Close(); err != nil {
+		t.Fatal(err)
+	}
 	target.Prompt(desc, prompt)
-	m.Close()
 	// validate
 	if err = testutils.MatchPty(pty, device, prompt, desc.MediaType, "100.00%", desc.Digest.String()); err != nil {
 		t.Fatal(err)
