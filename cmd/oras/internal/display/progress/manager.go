@@ -30,7 +30,7 @@ const (
 	bufFlushDuration = 200 * time.Millisecond
 )
 
-var errManagerStopped = errors.New("progress output manage has already been stopped")
+var errManagerStopped = errors.New("progress output manager has already been stopped")
 
 // Status is print message channel
 type Status chan *status
