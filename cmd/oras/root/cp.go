@@ -184,10 +184,9 @@ func doCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTar
 		}
 		extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			successorPrinter := func(desc ocispec.Descriptor) error {
+			return display.PrintSuccessorStatus(ctx, desc, tracked, committed, func(desc ocispec.Descriptor) error {
 				return tracked.Prompt(desc, "Skipped", opts.Verbose)
-			}
-			return display.PrintSuccessorStatus(ctx, desc, tracked, committed, successorPrinter)
+			})
 		}
 	}
 
