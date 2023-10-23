@@ -29,9 +29,10 @@ import (
 
 var printLock sync.Mutex
 
-type printFunc func(ocispec.Descriptor) error
+// PrintFunc is the function type returned by StatusPrinter.
+type PrintFunc func(ocispec.Descriptor) error
 
-// Print objects to display concurrent-safely
+// Print objects to display concurrent-safely.
 func Print(a ...any) error {
 	printLock.Lock()
 	defer printLock.Unlock()
@@ -40,7 +41,7 @@ func Print(a ...any) error {
 }
 
 // StatusPrinter returns a tracking function for transfer status.
-func StatusPrinter(status string, verbose bool) printFunc {
+func StatusPrinter(status string, verbose bool) PrintFunc {
 	return func(desc ocispec.Descriptor) error {
 		return PrintStatus(desc, status, verbose)
 	}
@@ -60,7 +61,7 @@ func PrintStatus(desc ocispec.Descriptor, status string, verbose bool) error {
 }
 
 // PrintSuccessorStatus prints transfer status of successors.
-func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, fetcher content.Fetcher, committed *sync.Map, print printFunc) error {
+func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, fetcher content.Fetcher, committed *sync.Map, print PrintFunc) error {
 	successors, err := content.Successors(ctx, fetcher, desc)
 	if err != nil {
 		return err

@@ -241,15 +241,13 @@ func doPush(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, 
 
 func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, verbose bool, tracked track.GraphTarget) {
 	committed := &sync.Map{}
-	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		if tracked == nil {
-			return display.PrintStatus(desc, "Exists  ", verbose)
-		}
-		return tracked.Prompt(desc, "Exists   ", verbose)
-	}
+
 	if tracked == nil {
 		// non TTY
+		opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
+			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+			return display.PrintStatus(desc, "Exists   ", verbose)
+		}
 		opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 			return display.PrintStatus(desc, "Uploading", verbose)
 		}
@@ -261,6 +259,11 @@ func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, v
 			return display.PrintStatus(desc, "Uploaded ", verbose)
 		}
 		return
+	}
+	// TTY
+	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
+		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+		return tracked.Prompt(desc, "Exists   ", verbose)
 	}
 	// TTY
 	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
@@ -275,16 +278,14 @@ type packFunc func() (ocispec.Descriptor, error)
 type copyFunc func(desc ocispec.Descriptor) error
 
 func getTrackedTarget(gt oras.GraphTarget, tty *os.File) (oras.GraphTarget, track.GraphTarget, error) {
-	var tracked track.GraphTarget
-	var err error
-	if tty != nil {
-		tracked, err = track.NewTarget(gt, "Uploading", "Uploaded ", tty)
-		if err != nil {
-			return nil, nil, err
-		}
-		gt = tracked
+	if tty == nil {
+		return gt, nil, nil
 	}
-	return gt, tracked, nil
+	tracked, err := track.NewTarget(gt, "Uploading", "Uploaded ", tty)
+	if err != nil {
+		return nil, nil, err
+	}
+	return tracked, tracked, nil
 }
 
 func pushArtifact(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
