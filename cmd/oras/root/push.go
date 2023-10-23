@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 
@@ -30,6 +31,7 @@ import (
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/track"
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/contentutil"
@@ -182,10 +184,15 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	if err != nil {
 		return err
 	}
+	var tracked track.GraphTarget
+	dst, tracked, err = getTrackedTarget(dst, opts.TTY)
+	if err != nil {
+		return err
+	}
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
 	union := contentutil.MultiReadOnlyTarget(memoryStore, store)
-	updateDisplayOption(&copyOptions.CopyGraphOptions, union, opts.Verbose)
+	updateDisplayOption(&copyOptions.CopyGraphOptions, union, opts.Verbose, tracked)
 	copy := func(root ocispec.Descriptor) error {
 		// add both pull and push scope hints for dst repository
 		// to save potential push-scope token requests during copy
@@ -200,7 +207,7 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	}
 
 	// Push
-	root, err := pushArtifact(dst, pack, copy)
+	root, err := doPush(dst, pack, copy)
 	if err != nil {
 		return err
 	}
@@ -224,24 +231,61 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	return opts.ExportManifest(ctx, memoryStore, root)
 }
 
-func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, verbose bool) {
+func doPush(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
+	if tracked, ok := dst.(track.GraphTarget); ok {
+		defer tracked.Close()
+	}
+	// Push
+	return pushArtifact(dst, pack, copy)
+}
+
+func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, verbose bool, tracked track.GraphTarget) {
 	committed := &sync.Map{}
-	opts.PreCopy = display.StatusPrinter("Uploading", verbose)
+
+	if tracked == nil {
+		// non TTY
+		opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
+			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+			return display.PrintStatus(desc, "Exists   ", verbose)
+		}
+		opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+			return display.PrintStatus(desc, "Uploading", verbose)
+		}
+		opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+			if err := display.PrintSuccessorStatus(ctx, desc, fetcher, committed, display.StatusPrinter("Skipped  ", verbose)); err != nil {
+				return err
+			}
+			return display.PrintStatus(desc, "Uploaded ", verbose)
+		}
+		return
+	}
+	// TTY
 	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return display.PrintStatus(desc, "Exists   ", verbose)
+		return tracked.Prompt(desc, "Exists   ", verbose)
 	}
 	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		if err := display.PrintSuccessorStatus(ctx, desc, "Skipped  ", fetcher, committed, verbose); err != nil {
-			return err
-		}
-		return display.PrintStatus(desc, "Uploaded ", verbose)
+		return display.PrintSuccessorStatus(ctx, desc, fetcher, committed, func(d ocispec.Descriptor) error {
+			return tracked.Prompt(d, "Skipped  ", verbose)
+		})
 	}
 }
 
 type packFunc func() (ocispec.Descriptor, error)
 type copyFunc func(desc ocispec.Descriptor) error
+
+func getTrackedTarget(gt oras.GraphTarget, tty *os.File) (oras.GraphTarget, track.GraphTarget, error) {
+	if tty == nil {
+		return gt, nil, nil
+	}
+	tracked, err := track.NewTarget(gt, "Uploading", "Uploaded ", tty)
+	if err != nil {
+		return nil, nil, err
+	}
+	return tracked, tracked, nil
+}
 
 func pushArtifact(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
 	root, err := pack()
