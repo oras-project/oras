@@ -99,10 +99,10 @@ func Test_referenceGraphTarget_Prompt(t *testing.T) {
 		t.Fatal(err)
 	}
 	m := target.(*graphTarget).manager
-	if err := m.Close(); err != nil {
+	if err := target.Prompt(desc, prompt); err != nil {
 		t.Fatal(err)
 	}
-	if err := target.Prompt(desc, prompt); err != nil {
+	if err := m.Close(); err != nil {
 		t.Fatal(err)
 	}
 	// validate
