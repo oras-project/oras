@@ -246,10 +246,7 @@ func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, v
 		// non TTY
 		opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			if tracked == nil {
-				return display.PrintStatus(desc, "Exists  ", verbose)
-			}
-			return tracked.Prompt(desc, "Exists   ", verbose)
+			return display.PrintStatus(desc, "Exists   ", verbose)
 		}
 		opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 			return display.PrintStatus(desc, "Uploading", verbose)
