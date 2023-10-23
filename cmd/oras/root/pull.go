@@ -293,5 +293,5 @@ func printOnce(printed *sync.Map, s ocispec.Descriptor, msg string, verbose bool
 		return display.PrintStatus(s, msg, verbose)
 	}
 	// TTY
-	return tracked.Prompt(s, msg, verbose)
+	return tracked.Prompt(s, msg)
 }

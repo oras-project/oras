@@ -263,12 +263,12 @@ func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, v
 	// TTY
 	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return tracked.Prompt(desc, "Exists   ", verbose)
+		return tracked.Prompt(desc, "Exists   ")
 	}
 	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
 		return display.PrintSuccessorStatus(ctx, desc, fetcher, committed, func(d ocispec.Descriptor) error {
-			return tracked.Prompt(d, "Skipped  ", verbose)
+			return tracked.Prompt(d, "Skipped  ")
 		})
 	}
 }
