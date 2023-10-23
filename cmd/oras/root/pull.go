@@ -187,11 +187,11 @@ func (po *pullOptions) doPull(ctx context.Context, src oras.ReadOnlyTarget, dst 
 					rc.Close()
 				}
 			}()
-			if po.TTY != nil {
-				return rc, nil
+			if po.TTY == nil {
+				// no TTY, add logs for processing manifest
+				return rc, display.PrintStatus(target, "Processing ", po.Verbose)
 			}
-			// no TTY, add logs for processing manifest
-			return rc, display.PrintStatus(target, "Processing ", po.Verbose)
+			return rc, nil
 		})
 
 		nodes, subject, config, err := graph.Successors(ctx, statusFetcher, desc)
@@ -239,12 +239,12 @@ func (po *pullOptions) doPull(ctx context.Context, src oras.ReadOnlyTarget, dst 
 		if _, ok := printed.LoadOrStore(generateContentKey(desc), true); ok {
 			return nil
 		}
-		if po.TTY != nil {
-			// tty
-			return nil
+		if po.TTY == nil {
+			// no TTY, print status log for downloading
+			return display.PrintStatus(desc, "Downloading", po.Verbose)
 		}
-		// no tty, print status log for downloading
-		return display.PrintStatus(desc, "Downloading", po.Verbose)
+		// TTY
+		return nil
 	}
 	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		// restore named but deduplicated successor nodes
@@ -289,9 +289,9 @@ func printOnce(printed *sync.Map, s ocispec.Descriptor, msg string, verbose bool
 		return nil
 	}
 	if tracked == nil {
-		// no tty
+		// no TTY
 		return display.PrintStatus(s, msg, verbose)
 	}
-	// tty
+	// TTY
 	return tracked.Prompt(s, msg, verbose)
 }
