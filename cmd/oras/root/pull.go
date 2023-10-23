@@ -173,7 +173,7 @@ func (po *pullOptions) doPull(ctx context.Context, src oras.ReadOnlyTarget, dst 
 				return fetcher.Fetch(ctx, target)
 			}
 			if po.TTY == nil {
-				// no TTY, print status log for first-time fetching
+				// none TTY, print status log for first-time fetching
 				if err := display.PrintStatus(target, "Downloading", po.Verbose); err != nil {
 					return nil, err
 				}
@@ -188,7 +188,7 @@ func (po *pullOptions) doPull(ctx context.Context, src oras.ReadOnlyTarget, dst 
 				}
 			}()
 			if po.TTY == nil {
-				// no TTY, add logs for processing manifest
+				// none TTY, add logs for processing manifest
 				return rc, display.PrintStatus(target, "Processing ", po.Verbose)
 			}
 			return rc, nil
@@ -240,7 +240,7 @@ func (po *pullOptions) doPull(ctx context.Context, src oras.ReadOnlyTarget, dst 
 			return nil
 		}
 		if po.TTY == nil {
-			// no TTY, print status log for downloading
+			// none TTY, print status log for downloading
 			return display.PrintStatus(desc, "Downloading", po.Verbose)
 		}
 		// TTY
@@ -289,7 +289,7 @@ func printOnce(printed *sync.Map, s ocispec.Descriptor, msg string, verbose bool
 		return nil
 	}
 	if tracked == nil {
-		// no TTY
+		// none TTY
 		return display.PrintStatus(s, msg, verbose)
 	}
 	// TTY
