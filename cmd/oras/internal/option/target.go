@@ -177,7 +177,7 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common, logger
 // EnsureReferenceNotEmpty ensures whether the tag or digest is empty.
 func (opts *Target) EnsureReferenceNotEmpty() error {
 	if opts.Reference == "" {
-		return oerrors.NewErrInvalidReferenceStr(opts.RawReference)
+		return oerrors.NewErrEmptyTagOrDigestStr(opts.RawReference)
 	}
 	return nil
 }

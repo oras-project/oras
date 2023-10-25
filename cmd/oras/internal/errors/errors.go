@@ -21,12 +21,12 @@ import (
 	"oras.land/oras-go/v2/registry"
 )
 
-// NewErrInvalidReference creates a new error based on the reference string.
-func NewErrInvalidReference(ref registry.Reference) error {
-	return NewErrInvalidReferenceStr(ref.String())
+// NewErrEmptyTagOrDigest creates a new error based on the reference string.
+func NewErrEmptyTagOrDigest(ref registry.Reference) error {
+	return NewErrEmptyTagOrDigestStr(ref.String())
 }
 
-// NewErrInvalidReferenceStr creates a new error based on the reference string.
-func NewErrInvalidReferenceStr(ref string) error {
-	return fmt.Errorf("%s: invalid image reference, expecting <name:tag|name@digest>", ref)
+// NewErrEmptyTagOrDigestStr creates a new error based on the reference string.
+func NewErrEmptyTagOrDigestStr(ref string) error {
+	return fmt.Errorf("%q: no tag or digest when expecting <name:tag|name@digest>", ref)
 }

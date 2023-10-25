@@ -18,6 +18,7 @@ package option
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -30,6 +31,7 @@ import (
 	credentials "github.com/oras-project/oras-credentials-go"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/retry"
@@ -290,6 +292,9 @@ func (opts *Remote) NewRegistry(registry string, common Common, logger logrus.Fi
 func (opts *Remote) NewRepository(reference string, common Common, logger logrus.FieldLogger) (repo *remote.Repository, err error) {
 	repo, err = remote.NewRepository(reference)
 	if err != nil {
+		if errors.Unwrap(err) == errdef.ErrInvalidReference {
+			return nil, fmt.Errorf("%q: %v", reference, err)
+		}
 		return nil, err
 	}
 	registry := repo.Reference.Registry
