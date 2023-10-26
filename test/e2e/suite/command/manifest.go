@@ -268,7 +268,7 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 
 		It("should fail if no manifest tag or digest is provided", func() {
-			ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, "")).ExpectFailure().MatchErrKeyWords("Error:", "invalid image reference").Exec()
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, "")).ExpectFailure().MatchErrKeyWords("Error:", "no tag or digest").Exec()
 		})
 	})
 
@@ -331,7 +331,7 @@ var _ = Describe("1.1 registry users:", func() {
 				MatchContent(multi_arch.LinuxAMD64ConfigDesc).Exec()
 		})
 		It("should fail if no manifest tag or digest is provided", func() {
-			ORAS("manifest", "fetch-config", RegistryRef(ZOTHost, ImageRepo, "")).ExpectFailure().MatchErrKeyWords("Error:", "invalid image reference").Exec()
+			ORAS("manifest", "fetch-config", RegistryRef(ZOTHost, ImageRepo, "")).ExpectFailure().MatchErrKeyWords("Error:", "no tag or digest").Exec()
 		})
 	})
 
@@ -446,7 +446,7 @@ var _ = Describe("OCI image layout users:", func() {
 		It("should fail if no manifest tag or digest is provided", func() {
 			root := PrepareTempOCI(ImageRepo)
 			ORAS("manifest", "fetch", Flags.Layout, root).ExpectFailure().
-				MatchErrKeyWords("Error:", "invalid image reference").Exec()
+				MatchErrKeyWords("Error:", "no tag or digest").Exec()
 		})
 	})
 
@@ -491,7 +491,7 @@ var _ = Describe("OCI image layout users:", func() {
 		})
 		It("should fail if no manifest tag or digest is provided", func() {
 			root := prepare(foobar.Tag)
-			ORAS("manifest", "fetch-config", Flags.Layout, root).ExpectFailure().MatchErrKeyWords("Error:", "invalid image reference").Exec()
+			ORAS("manifest", "fetch-config", Flags.Layout, root).ExpectFailure().MatchErrKeyWords("Error:", "no tag or digest").Exec()
 		})
 	})
 })

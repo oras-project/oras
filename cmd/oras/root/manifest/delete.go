@@ -85,7 +85,7 @@ func deleteManifest(ctx context.Context, opts deleteOptions) error {
 	}
 
 	if repo.Reference.Reference == "" {
-		return oerrors.NewErrInvalidReference(repo.Reference)
+		return oerrors.NewErrEmptyTagOrDigest(repo.Reference)
 	}
 
 	// add both pull and delete scope hints for dst repository to save potential delete-scope token requests during deleting
