@@ -156,6 +156,10 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 	}
 
 	var tracked track.GraphTarget
+	dst, tracked, err = getTrackedTarget(dst, po.TTY, "Downloading", "Downloaded ")
+	if err != nil {
+		return ocispec.Descriptor{}, false, err
+	}
 	if po.TTY != nil {
 		tracked, err = track.NewTarget(dst, "Downloading", "Downloaded ", po.TTY)
 		if err != nil {

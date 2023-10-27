@@ -185,7 +185,7 @@ func runPush(ctx context.Context, opts pushOptions) error {
 		return err
 	}
 	var tracked track.GraphTarget
-	dst, tracked, err = getTrackedTarget(dst, opts.TTY)
+	dst, tracked, err = getTrackedTarget(dst, opts.TTY, "Uploading", "Uploaded ")
 	if err != nil {
 		return err
 	}
@@ -276,11 +276,11 @@ func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, v
 type packFunc func() (ocispec.Descriptor, error)
 type copyFunc func(desc ocispec.Descriptor) error
 
-func getTrackedTarget(gt oras.GraphTarget, tty *os.File) (oras.GraphTarget, track.GraphTarget, error) {
+func getTrackedTarget(gt oras.GraphTarget, tty *os.File, actionPrompt, doneprompt string) (oras.GraphTarget, track.GraphTarget, error) {
 	if tty == nil {
 		return gt, nil, nil
 	}
-	tracked, err := track.NewTarget(gt, "Uploading", "Uploaded ", tty)
+	tracked, err := track.NewTarget(gt, actionPrompt, doneprompt, tty)
 	if err != nil {
 		return nil, nil, err
 	}
