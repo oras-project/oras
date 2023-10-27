@@ -142,7 +142,7 @@ func pushBlob(ctx context.Context, opts pushBlobOptions) (err error) {
 }
 func (opts *pushBlobOptions) doPush(ctx context.Context, t oras.Target, desc ocispec.Descriptor, r io.Reader) error {
 	if opts.TTY == nil {
-		// none tty output
+		// none TTY output
 		if err := display.PrintStatus(desc, "Uploading", opts.Verbose); err != nil {
 			return err
 		}
@@ -152,7 +152,7 @@ func (opts *pushBlobOptions) doPush(ctx context.Context, t oras.Target, desc oci
 		return display.PrintStatus(desc, "Uploaded ", opts.Verbose)
 	}
 
-	// tty output
+	// TTY output
 	trackedReader, err := track.NewReader(r, desc, "Uploading", "Uploaded ", opts.TTY)
 	if err != nil {
 		return err

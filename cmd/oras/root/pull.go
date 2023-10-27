@@ -28,6 +28,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/track"
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
@@ -105,30 +106,76 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 func runPull(ctx context.Context, opts pullOptions) error {
 	ctx, logger := opts.WithContext(ctx)
 	// Copy Options
-	var printed sync.Map
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
-	var configPath, configMediaType string
-	var err error
-	if opts.ManifestConfigRef != "" {
-		configPath, configMediaType, err = fileref.Parse(opts.ManifestConfigRef, "")
-		if err != nil {
-			return err
-		}
-	}
 	if opts.Platform.Platform != nil {
 		copyOptions.WithTargetPlatform(opts.Platform.Platform)
 	}
+	target, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
+	if err != nil {
+		return err
+	}
+	if err := opts.EnsureReferenceNotEmpty(); err != nil {
+		return err
+	}
+	src, err := opts.CachedTarget(target)
+	if err != nil {
+		return err
+	}
+	dst, err := file.New(opts.Output)
+	if err != nil {
+		return err
+	}
+	defer dst.Close()
+	dst.AllowPathTraversalOnWrite = opts.PathTraversal
+	dst.DisableOverwrite = opts.KeepOldFiles
+
+	desc, pulledEmpty, err := doPull(ctx, src, dst, copyOptions, &opts)
+	if err != nil {
+		if errors.Is(err, file.ErrPathTraversalDisallowed) {
+			err = fmt.Errorf("%s: %w", "use flag --allow-path-traversal to allow insecurely pulling files outside of working directory", err)
+		}
+		return err
+	}
+	if pulledEmpty {
+		fmt.Println("Downloaded empty artifact")
+	}
+	fmt.Println("Pulled", opts.AnnotatedReference())
+	fmt.Println("Digest:", desc.Digest)
+	return nil
+}
+
+func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, opts oras.CopyOptions, po *pullOptions) (ocispec.Descriptor, bool, error) {
+	var configPath, configMediaType string
+	var err error
+	if po.ManifestConfigRef != "" {
+		configPath, configMediaType, err = fileref.Parse(po.ManifestConfigRef, "")
+		if err != nil {
+			return ocispec.Descriptor{}, false, err
+		}
+	}
+
+	var tracked track.GraphTarget
+	dst, tracked, err = getTrackedTarget(dst, po.TTY, "Downloading", "Downloaded ")
+	if err != nil {
+		return ocispec.Descriptor{}, false, err
+	}
+	if tracked != nil {
+		defer tracked.Close()
+	}
+
+	var printed sync.Map
 	var getConfigOnce sync.Once
-	copyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+	opts.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		statusFetcher := content.FetcherFunc(func(ctx context.Context, target ocispec.Descriptor) (fetched io.ReadCloser, fetchErr error) {
 			if _, ok := printed.LoadOrStore(generateContentKey(target), true); ok {
 				return fetcher.Fetch(ctx, target)
 			}
-
-			// print status log for first-time fetching
-			if err := display.PrintStatus(target, "Downloading", opts.Verbose); err != nil {
-				return nil, err
+			if po.TTY == nil {
+				// none TTY, print status log for first-time fetching
+				if err := display.PrintStatus(target, "Downloading", po.Verbose); err != nil {
+					return nil, err
+				}
 			}
 			rc, err := fetcher.Fetch(ctx, target)
 			if err != nil {
@@ -139,14 +186,18 @@ func runPull(ctx context.Context, opts pullOptions) error {
 					rc.Close()
 				}
 			}()
-			return rc, display.PrintStatus(target, "Processing ", opts.Verbose)
+			if po.TTY == nil {
+				// none TTY, add logs for processing manifest
+				return rc, display.PrintStatus(target, "Processing ", po.Verbose)
+			}
+			return rc, nil
 		})
 
 		nodes, subject, config, err := graph.Successors(ctx, statusFetcher, desc)
 		if err != nil {
 			return nil, err
 		}
-		if subject != nil && opts.IncludeSubject {
+		if subject != nil && po.IncludeSubject {
 			nodes = append(nodes, *subject)
 		}
 		if config != nil {
@@ -170,7 +221,7 @@ func runPull(ctx context.Context, opts pullOptions) error {
 				}
 				if len(ss) == 0 {
 					// skip s if it is unnamed AND has no successors.
-					if err := printOnce(&printed, s, "Skipped    ", opts.Verbose); err != nil {
+					if err := printOnce(&printed, s, "Skipped    ", po.Verbose, tracked); err != nil {
 						return nil, err
 					}
 					continue
@@ -182,33 +233,19 @@ func runPull(ctx context.Context, opts pullOptions) error {
 		return ret, nil
 	}
 
-	target, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
-	if err != nil {
-		return err
-	}
-	if err := opts.EnsureReferenceNotEmpty(); err != nil {
-		return err
-	}
-	src, err := opts.CachedTarget(target)
-	if err != nil {
-		return err
-	}
-	dst, err := file.New(opts.Output)
-	if err != nil {
-		return err
-	}
-	defer dst.Close()
-	dst.AllowPathTraversalOnWrite = opts.PathTraversal
-	dst.DisableOverwrite = opts.KeepOldFiles
-
 	pulledEmpty := true
-	copyOptions.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+	opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		if _, ok := printed.LoadOrStore(generateContentKey(desc), true); ok {
 			return nil
 		}
-		return display.PrintStatus(desc, "Downloading", opts.Verbose)
+		if po.TTY == nil {
+			// none TTY, print status log for downloading
+			return display.PrintStatus(desc, "Downloading", po.Verbose)
+		}
+		// TTY
+		return nil
 	}
-	copyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		// restore named but deduplicated successor nodes
 		successors, err := content.Successors(ctx, dst, desc)
 		if err != nil {
@@ -216,14 +253,14 @@ func runPull(ctx context.Context, opts pullOptions) error {
 		}
 		for _, s := range successors {
 			if _, ok := s.Annotations[ocispec.AnnotationTitle]; ok {
-				if err := printOnce(&printed, s, "Restored   ", opts.Verbose); err != nil {
+				if err := printOnce(&printed, s, "Restored   ", po.Verbose, tracked); err != nil {
 					return err
 				}
 			}
 		}
 		name, ok := desc.Annotations[ocispec.AnnotationTitle]
 		if !ok {
-			if !opts.Verbose {
+			if !po.Verbose {
 				return nil
 			}
 			name = desc.MediaType
@@ -236,19 +273,8 @@ func runPull(ctx context.Context, opts pullOptions) error {
 	}
 
 	// Copy
-	desc, err := oras.Copy(ctx, src, opts.Reference, dst, opts.Reference, copyOptions)
-	if err != nil {
-		if errors.Is(err, file.ErrPathTraversalDisallowed) {
-			err = fmt.Errorf("%s: %w", "use flag --allow-path-traversal to allow insecurely pulling files outside of working directory", err)
-		}
-		return err
-	}
-	if pulledEmpty {
-		fmt.Println("Downloaded empty artifact")
-	}
-	fmt.Println("Pulled", opts.AnnotatedReference())
-	fmt.Println("Digest:", desc.Digest)
-	return nil
+	desc, err := oras.Copy(ctx, src, po.Reference, dst, po.Reference, opts)
+	return desc, pulledEmpty, err
 }
 
 // generateContentKey generates a unique key for each content descriptor, using
@@ -257,9 +283,14 @@ func generateContentKey(desc ocispec.Descriptor) string {
 	return desc.Digest.String() + desc.Annotations[ocispec.AnnotationTitle]
 }
 
-func printOnce(printed *sync.Map, s ocispec.Descriptor, msg string, verbose bool) error {
+func printOnce(printed *sync.Map, s ocispec.Descriptor, msg string, verbose bool, tracked track.GraphTarget) error {
 	if _, loaded := printed.LoadOrStore(generateContentKey(s), true); loaded {
 		return nil
 	}
-	return display.PrintStatus(s, msg, verbose)
+	if tracked == nil {
+		// none TTY
+		return display.PrintStatus(s, msg, verbose)
+	}
+	// TTY
+	return tracked.Prompt(s, msg)
 }

@@ -30,7 +30,7 @@ import (
 type GraphTarget interface {
 	oras.GraphTarget
 	io.Closer
-	Prompt(desc ocispec.Descriptor, prompt string, verbose bool) error
+	Prompt(desc ocispec.Descriptor, prompt string) error
 }
 
 type graphTarget struct {
@@ -102,7 +102,7 @@ func (t *graphTarget) Close() error {
 }
 
 // Prompt prompts the user with the provided prompt and descriptor.
-func (t *graphTarget) Prompt(desc ocispec.Descriptor, prompt string, verbose bool) error {
+func (t *graphTarget) Prompt(desc ocispec.Descriptor, prompt string) error {
 	status, err := t.manager.Add()
 	if err != nil {
 		return err
