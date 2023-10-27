@@ -130,7 +130,7 @@ func runPull(ctx context.Context, opts pullOptions) error {
 	dst.AllowPathTraversalOnWrite = opts.PathTraversal
 	dst.DisableOverwrite = opts.KeepOldFiles
 
-	desc, pulledEmpty, err := opts.doPull(ctx, src, dst, copyOptions)
+	desc, pulledEmpty, err := doPull(ctx, src, dst, copyOptions, &opts)
 	if err != nil {
 		if errors.Is(err, file.ErrPathTraversalDisallowed) {
 			err = fmt.Errorf("%s: %w", "use flag --allow-path-traversal to allow insecurely pulling files outside of working directory", err)
@@ -145,7 +145,7 @@ func runPull(ctx context.Context, opts pullOptions) error {
 	return nil
 }
 
-func (po *pullOptions) doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, opts oras.CopyOptions) (ocispec.Descriptor, bool, error) {
+func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, opts oras.CopyOptions, po *pullOptions) (ocispec.Descriptor, bool, error) {
 	var configPath, configMediaType string
 	var err error
 	if po.ManifestConfigRef != "" {
