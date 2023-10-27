@@ -160,6 +160,9 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 	if err != nil {
 		return ocispec.Descriptor{}, false, err
 	}
+	if tracked != nil {
+		defer tracked.Close()
+	}
 
 	var printed sync.Map
 	var getConfigOnce sync.Once
