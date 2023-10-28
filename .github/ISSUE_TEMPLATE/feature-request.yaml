@@ -13,7 +13,7 @@
 
 name: Feature Request
 description: File a feature request
-labels: [enhancement]
+labels: [enhancement, triage]
 body:
   - type: markdown
     id: preface

@@ -19,7 +19,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -27,17 +26,17 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
-	oerr "oras.land/oras/cmd/oras/internal/errors"
+	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras/cmd/oras/internal/display/track"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
+	"oras.land/oras/internal/registryutil"
 )
 
 type attachOptions struct {
 	option.Common
 	option.Packer
-	option.ImageSpec
 	option.Target
-	option.Referrers
 
 	artifactType string
 	concurrency  int
@@ -54,10 +53,6 @@ func attachCmd() *cobra.Command {
 
 Example - Attach file 'hi.txt' with type 'doc/example' to manifest 'hello:v1' in registry 'localhost:5000':
   oras attach --artifact-type doc/example localhost:5000/hello:v1 hi.txt
-
-Example - Attach file "hi.txt" with specific media type when building the manifest:
-  oras attach --artifact-type doc/example --image-spec v1.1-image localhost:5000/hello:v1 hi.txt    # OCI image
-  oras attach --artifact-type doc/example --image-spec v1.1-artifact localhost:5000/hello:v1 hi.txt # OCI artifact
 
 Example - Attach file "hi.txt" using a specific method for the Referrers API:
   oras attach --artifact-type doc/example --distribution-spec v1.1-referrers-api localhost:5000/hello:v1 hi.txt # via API
@@ -117,15 +112,16 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 	}
 	defer store.Close()
 
-	dst, err := opts.NewTarget(opts.Common)
+	dst, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
 		return err
 	}
 	if err := opts.EnsureReferenceNotEmpty(); err != nil {
 		return err
 	}
-	opts.SetReferrersGC(dst, logger)
-
+	// add both pull and push scope hints for dst repository
+	// to save potential push-scope token requests during copy
+	ctx = registryutil.WithScopeHint(ctx, dst, auth.ActionPull, auth.ActionPush)
 	subject, err := dst.Resolve(ctx, opts.Reference)
 	if err != nil {
 		return err
@@ -136,18 +132,24 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 	}
 
 	// prepare push
-	packOpts := oras.PackOptions{
-		Subject:             &subject,
-		ManifestAnnotations: annotations[option.AnnotationManifest],
-		PackImageManifest:   opts.ManifestMediaType == ocispec.MediaTypeImageManifest,
+	var tracked track.GraphTarget
+	dst, tracked, err = getTrackedTarget(dst, opts.TTY, "Uploading", "Uploaded ")
+	if err != nil {
+		return err
 	}
-	pack := func() (ocispec.Descriptor, error) {
-		return oras.Pack(ctx, store, opts.artifactType, descs, packOpts)
-	}
-
 	graphCopyOptions := oras.DefaultCopyGraphOptions
 	graphCopyOptions.Concurrency = opts.concurrency
-	updateDisplayOption(&graphCopyOptions, store, opts.Verbose)
+	updateDisplayOption(&graphCopyOptions, store, opts.Verbose, tracked)
+
+	packOpts := oras.PackManifestOptions{
+		Subject:             &subject,
+		ManifestAnnotations: annotations[option.AnnotationManifest],
+		Layers:              descs,
+	}
+	pack := func() (ocispec.Descriptor, error) {
+		return oras.PackManifest(ctx, store, oras.PackManifestVersion1_1_RC4, opts.artifactType, packOpts)
+	}
+
 	copy := func(root ocispec.Descriptor) error {
 		graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 			if content.Equal(node, root) {
@@ -166,14 +168,11 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 		return oras.CopyGraph(ctx, store, dst, root, graphCopyOptions)
 	}
 
-	root, err := pushArtifact(dst, pack, copy)
+	// Attach
+	root, err := doPush(dst, pack, copy)
 	if err != nil {
-		if oerr.IsReferrersIndexDelete(err) {
-			fmt.Fprintln(os.Stderr, "attached successfully but failed to remove the outdated referrers index, please use `--skip-delete-referrers` if you want to skip the deletion")
-		}
 		return err
 	}
-
 	digest := subject.Digest.String()
 	if !strings.HasSuffix(opts.RawReference, digest) {
 		opts.RawReference = fmt.Sprintf("%s@%s", opts.Path, subject.Digest)

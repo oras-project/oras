@@ -78,7 +78,7 @@ Example - Log in with username and password in an interactive terminal and no TL
 }
 
 func runLogin(ctx context.Context, opts loginOptions) (err error) {
-	ctx, _ = opts.WithContext(ctx)
+	ctx, logger := opts.WithContext(ctx)
 
 	// Check if both '--username' and '--identity-token' are provided
 	if opts.Username != "" && opts.IdentityToken != "" {
@@ -120,7 +120,7 @@ func runLogin(ctx context.Context, opts loginOptions) (err error) {
 	if err != nil {
 		return err
 	}
-	remote, err := opts.Remote.NewRegistry(opts.Hostname, opts.Common)
+	remote, err := opts.Remote.NewRegistry(opts.Hostname, opts.Common, logger)
 	if err != nil {
 		return err
 	}

@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -58,6 +59,9 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 		Args: cobra.MinimumNArgs(2),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
+			if _, err := registry.ParseReference(opts.RawReference); err != nil {
+				return fmt.Errorf("unable to add tag for '%s': %w", opts.RawReference, err)
+			}
 			opts.targetRefs = args[1:]
 			return option.Parse(&opts)
 		},
@@ -72,8 +76,8 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 }
 
 func tagManifest(ctx context.Context, opts tagOptions) error {
-	ctx, _ = opts.WithContext(ctx)
-	target, err := opts.NewTarget(opts.Common)
+	ctx, logger := opts.WithContext(ctx)
+	target, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
 		return err
 	}

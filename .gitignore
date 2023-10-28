@@ -49,3 +49,12 @@ _dist/
 # Distribution storage files for local E2E testing
 test/e2e/testdata/distribution/mount/docker/
 test/e2e/testdata/distribution/mount_fallback/docker/
+
+
+# OCI Layout Files ZOT storage files for local E2E testing
+test/e2e/testdata/zot/
+!test/e2e/testdata/zot/command/images/**/*
+!test/e2e/testdata/zot/command/artifacts/**/*
+!test/e2e/testdata/zot/command/blobs/**/*
+!test/e2e/testdata/zot/config.json
+!test/e2e/testdata/zot/passwd_bcrypt
