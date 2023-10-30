@@ -16,25 +16,17 @@ limitations under the License.
 package errors
 
 import (
-	"errors"
 	"fmt"
 
 	"oras.land/oras-go/v2/registry"
-	"oras.land/oras-go/v2/registry/remote"
 )
 
-// NewErrInvalidReference creates a new error based on the reference string.
-func NewErrInvalidReference(ref registry.Reference) error {
-	return NewErrInvalidReferenceStr(ref.String())
+// NewErrEmptyTagOrDigest creates a new error based on the reference string.
+func NewErrEmptyTagOrDigest(ref registry.Reference) error {
+	return NewErrEmptyTagOrDigestStr(ref.String())
 }
 
-// NewErrInvalidReferenceStr creates a new error based on the reference string.
-func NewErrInvalidReferenceStr(ref string) error {
-	return fmt.Errorf("%s: invalid image reference, expecting <name:tag|name@digest>", ref)
-}
-
-// IsReferrersIndexDelete checks if err is a referrers index delete error.
-func IsReferrersIndexDelete(err error) bool {
-	var re *remote.ReferrersError
-	return errors.As(err, &re) && re.IsReferrersIndexDelete()
+// NewErrEmptyTagOrDigestStr creates a new error based on the reference string.
+func NewErrEmptyTagOrDigestStr(ref string) error {
+	return fmt.Errorf("%q: no tag or digest when expecting <name:tag|name@digest>", ref)
 }

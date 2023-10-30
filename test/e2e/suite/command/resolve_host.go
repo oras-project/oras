@@ -67,7 +67,7 @@ func ResolveFlags(reg string, host string, flagType resolveType) []string {
 	return []string{fp + resolveFlag, fmt.Sprintf("%s:80:127.0.0.1:%s", host, port), fp + usernameFlag, Username, fp + passwordFlag, Password, fp + plainHttpFlag}
 }
 
-var _ = Describe("Common registry users:", func() {
+var _ = Describe("1.1 registry users:", func() {
 	if strings.HasPrefix(Host, "localhost:") {
 		When("custom host is provided", func() {
 			// mockedHost represents a non-existent host name which
@@ -85,7 +85,7 @@ var _ = Describe("Common registry users:", func() {
 				tempDir := PrepareTempFiles()
 				prepare(RegistryRef(Host, ImageRepo, foobar.Tag), RegistryRef(Host, repo, foobar.Tag))
 
-				ORAS(append([]string{"attach", "--artifact-type", "test.attach", RegistryRef(mockedHost, repo, foobar.Tag), fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)}, unary...)...).
+				ORAS(append([]string{"attach", "--artifact-type", "test/attach", RegistryRef(mockedHost, repo, foobar.Tag), fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)}, unary...)...).
 					WithWorkDir(tempDir).
 					MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
 				// validate
