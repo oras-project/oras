@@ -130,40 +130,44 @@ func runPull(ctx context.Context, opts pullOptions) error {
 	dst.AllowPathTraversalOnWrite = opts.PathTraversal
 	dst.DisableOverwrite = opts.KeepOldFiles
 
-	desc, pulledEmpty, err := doPull(ctx, src, dst, copyOptions, &opts)
+	desc, skippedLayers, err := doPull(ctx, src, dst, copyOptions, &opts)
 	if err != nil {
 		if errors.Is(err, file.ErrPathTraversalDisallowed) {
 			err = fmt.Errorf("%s: %w", "use flag --allow-path-traversal to allow insecurely pulling files outside of working directory", err)
 		}
 		return err
 	}
-	if pulledEmpty {
-		fmt.Println("Downloaded empty artifact")
+
+	// suggest oras copy for pulling layers without annotation
+	if skippedLayers > 0 {
+		fmt.Printf("Skipped pulling layers without file name in %q\n", ocispec.AnnotationTitle)
+		fmt.Printf("Use 'oras copy %s --to-oci-layout <layout-dir>' to pull all layers.\n", opts.RawReference)
+	} else {
+		fmt.Println("Pulled", opts.AnnotatedReference())
+		fmt.Println("Digest:", desc.Digest)
 	}
-	fmt.Println("Pulled", opts.AnnotatedReference())
-	fmt.Println("Digest:", desc.Digest)
 	return nil
 }
 
-func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, opts oras.CopyOptions, po *pullOptions) (ocispec.Descriptor, bool, error) {
+func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, opts oras.CopyOptions, po *pullOptions) (ocispec.Descriptor, int, error) {
 	var configPath, configMediaType string
 	var err error
 	if po.ManifestConfigRef != "" {
 		configPath, configMediaType, err = fileref.Parse(po.ManifestConfigRef, "")
 		if err != nil {
-			return ocispec.Descriptor{}, false, err
+			return ocispec.Descriptor{}, 0, err
 		}
 	}
 
 	var tracked track.GraphTarget
-	dst, tracked, err = getTrackedTarget(dst, po.TTY, "Downloading", "Downloaded ")
+	dst, tracked, err = getTrackedTarget(dst, po.TTY, "Downloading", "Pulled     ")
 	if err != nil {
-		return ocispec.Descriptor{}, false, err
+		return ocispec.Descriptor{}, 0, err
 	}
 	if tracked != nil {
 		defer tracked.Close()
 	}
-
+	skippedLayers := 0
 	var printed sync.Map
 	var getConfigOnce sync.Once
 	opts.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
@@ -215,6 +219,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 		var ret []ocispec.Descriptor
 		for _, s := range nodes {
 			if s.Annotations[ocispec.AnnotationTitle] == "" {
+				skippedLayers++
 				ss, err := content.Successors(ctx, fetcher, s)
 				if err != nil {
 					return nil, err
@@ -233,7 +238,6 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 		return ret, nil
 	}
 
-	pulledEmpty := true
 	opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		if _, ok := printed.LoadOrStore(generateContentKey(desc), true); ok {
 			return nil
@@ -264,9 +268,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 				return nil
 			}
 			name = desc.MediaType
-		} else {
-			// named content downloaded
-			pulledEmpty = false
+			skippedLayers++
 		}
 		printed.Store(generateContentKey(desc), true)
 		return display.Print("Downloaded ", display.ShortDigest(desc), name)
@@ -274,7 +276,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 
 	// Copy
 	desc, err := oras.Copy(ctx, src, po.Reference, dst, po.Reference, opts)
-	return desc, pulledEmpty, err
+	return desc, skippedLayers, err
 }
 
 // generateContentKey generates a unique key for each content descriptor, using
