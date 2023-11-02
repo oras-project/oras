@@ -62,7 +62,7 @@ func Test_status_String(t *testing.T) {
 		descriptor: s.descriptor,
 	})
 	statusStr, digestStr = s.String(120)
-	if err := testutils.OrderedMatch(statusStr+digestStr, "√", s.prompt, s.descriptor.MediaType, "2/2  B", "100.00%", s.descriptor.Digest.String()); err != nil {
+	if err := testutils.OrderedMatch(statusStr+digestStr, "✓", s.prompt, s.descriptor.MediaType, "2/2  B", "100.00%", s.descriptor.Digest.String()); err != nil {
 		t.Error(err)
 	}
 }

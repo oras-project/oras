@@ -131,7 +131,7 @@ func (s *status) String(width int) (string, string) {
 		// bar + wrapper(2) + space(1) + speed + "/s"(2) + wrapper(2) = len(bar) + len(speed) + 7
 		lenLeft = barLength + speedLength + 7
 	} else {
-		left = fmt.Sprintf("√ %s %s", s.prompt, name)
+		left = fmt.Sprintf("✓ %s %s", s.prompt, name)
 	}
 	// mark(1) + space(1) + prompt + space(1) + name = len(prompt) + len(name) + 3
 	lenLeft += utf8.RuneCountInString(s.prompt) + utf8.RuneCountInString(name) + 3
