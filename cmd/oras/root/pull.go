@@ -159,6 +159,15 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 		}
 	}
 
+	const (
+		Downloading = "Downloading"
+		Pulled      = "Pulled     "
+		Processing  = "Processing "
+		Skipped     = "Skipped    "
+		Restored    = "Restored   "
+		Downloaded  = "Downloaded "
+	)
+
 	var tracked track.GraphTarget
 	dst, tracked, err = getTrackedTarget(dst, po.TTY, "Downloading", "Pulled     ")
 	if err != nil {
@@ -177,7 +186,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 			}
 			if po.TTY == nil {
 				// none TTY, print status log for first-time fetching
-				if err := display.PrintStatus(target, "Downloading", po.Verbose); err != nil {
+				if err := display.PrintStatus(target, Downloading, po.Verbose); err != nil {
 					return nil, err
 				}
 			}
@@ -192,7 +201,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 			}()
 			if po.TTY == nil {
 				// none TTY, add logs for processing manifest
-				return rc, display.PrintStatus(target, "Processing ", po.Verbose)
+				return rc, display.PrintStatus(target, Processing, po.Verbose)
 			}
 			return rc, nil
 		})
@@ -219,14 +228,16 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 		var ret []ocispec.Descriptor
 		for _, s := range nodes {
 			if s.Annotations[ocispec.AnnotationTitle] == "" {
-				skippedLayers++
+				if s.Digest != ocispec.DescriptorEmptyJSON.Digest {
+					skippedLayers++
+				}
 				ss, err := content.Successors(ctx, fetcher, s)
 				if err != nil {
 					return nil, err
 				}
 				if len(ss) == 0 {
 					// skip s if it is unnamed AND has no successors.
-					if err := printOnce(&printed, s, "Skipped    ", po.Verbose, tracked); err != nil {
+					if err := printOnce(&printed, s, Skipped, po.Verbose, tracked); err != nil {
 						return nil, err
 					}
 					continue
@@ -244,7 +255,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 		}
 		if po.TTY == nil {
 			// none TTY, print status log for downloading
-			return display.PrintStatus(desc, "Downloading", po.Verbose)
+			return display.PrintStatus(desc, Downloading, po.Verbose)
 		}
 		// TTY
 		return nil
@@ -257,7 +268,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 		}
 		for _, s := range successors {
 			if _, ok := s.Annotations[ocispec.AnnotationTitle]; ok {
-				if err := printOnce(&printed, s, "Restored   ", po.Verbose, tracked); err != nil {
+				if err := printOnce(&printed, s, Restored, po.Verbose, tracked); err != nil {
 					return err
 				}
 			}
@@ -271,7 +282,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 			skippedLayers++
 		}
 		printed.Store(generateContentKey(desc), true)
-		return display.Print("Downloaded ", display.ShortDigest(desc), name)
+		return display.Print(Downloaded, display.ShortDigest(desc), name)
 	}
 
 	// Copy
