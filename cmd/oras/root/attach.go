@@ -26,8 +26,11 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
+	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras/cmd/oras/internal/display/track"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
+	"oras.land/oras/internal/registryutil"
 )
 
 type attachOptions struct {
@@ -93,7 +96,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 }
 
 func runAttach(ctx context.Context, opts attachOptions) error {
-	ctx, _ = opts.WithContext(ctx)
+	ctx, logger := opts.WithContext(ctx)
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err
@@ -109,13 +112,16 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 	}
 	defer store.Close()
 
-	dst, err := opts.NewTarget(opts.Common)
+	dst, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
 		return err
 	}
 	if err := opts.EnsureReferenceNotEmpty(); err != nil {
 		return err
 	}
+	// add both pull and push scope hints for dst repository
+	// to save potential push-scope token requests during copy
+	ctx = registryutil.WithScopeHint(ctx, dst, auth.ActionPull, auth.ActionPush)
 	subject, err := dst.Resolve(ctx, opts.Reference)
 	if err != nil {
 		return err
@@ -126,18 +132,24 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 	}
 
 	// prepare push
-	packOpts := oras.PackOptions{
-		Subject:             &subject,
-		ManifestAnnotations: annotations[option.AnnotationManifest],
-		PackImageManifest:   true,
+	var tracked track.GraphTarget
+	dst, tracked, err = getTrackedTarget(dst, opts.TTY, "Uploading", "Uploaded ")
+	if err != nil {
+		return err
 	}
-	pack := func() (ocispec.Descriptor, error) {
-		return oras.Pack(ctx, store, opts.artifactType, descs, packOpts)
-	}
-
 	graphCopyOptions := oras.DefaultCopyGraphOptions
 	graphCopyOptions.Concurrency = opts.concurrency
-	updateDisplayOption(&graphCopyOptions, store, opts.Verbose)
+	updateDisplayOption(&graphCopyOptions, store, opts.Verbose, tracked)
+
+	packOpts := oras.PackManifestOptions{
+		Subject:             &subject,
+		ManifestAnnotations: annotations[option.AnnotationManifest],
+		Layers:              descs,
+	}
+	pack := func() (ocispec.Descriptor, error) {
+		return oras.PackManifest(ctx, store, oras.PackManifestVersion1_1_RC4, opts.artifactType, packOpts)
+	}
+
 	copy := func(root ocispec.Descriptor) error {
 		graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 			if content.Equal(node, root) {
@@ -156,11 +168,11 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 		return oras.CopyGraph(ctx, store, dst, root, graphCopyOptions)
 	}
 
-	root, err := pushArtifact(dst, pack, copy)
+	// Attach
+	root, err := doPush(dst, pack, copy)
 	if err != nil {
 		return err
 	}
-
 	digest := subject.Digest.String()
 	if !strings.HasSuffix(opts.RawReference, digest) {
 		opts.RawReference = fmt.Sprintf("%s@%s", opts.Path, subject.Digest)

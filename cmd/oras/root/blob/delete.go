@@ -23,7 +23,9 @@ import (
 
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/errdef"
+	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/registryutil"
 )
 
 type deleteBlobOptions struct {
@@ -71,8 +73,8 @@ Example - Delete a blob and print its descriptor:
 }
 
 func deleteBlob(ctx context.Context, opts deleteBlobOptions) (err error) {
-	ctx, _ = opts.WithContext(ctx)
-	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
+	ctx, logger := opts.WithContext(ctx)
+	repo, err := opts.NewRepository(opts.targetRef, opts.Common, logger)
 	if err != nil {
 		return err
 	}
@@ -81,6 +83,8 @@ func deleteBlob(ctx context.Context, opts deleteBlobOptions) (err error) {
 		return fmt.Errorf("%s: blob reference must be of the form <name@digest>", opts.targetRef)
 	}
 
+	// add both pull and delete scope hints for dst repository to save potential delete-scope token requests during deleting
+	ctx = registryutil.WithScopeHint(ctx, repo, auth.ActionPull, auth.ActionDelete)
 	blobs := repo.Blobs()
 	desc, err := blobs.Resolve(ctx, opts.targetRef)
 	if err != nil {

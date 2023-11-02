@@ -23,8 +23,10 @@ import (
 
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/errdef"
+	"oras.land/oras-go/v2/registry/remote/auth"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/registryutil"
 )
 
 type deleteOptions struct {
@@ -76,16 +78,23 @@ Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614
 }
 
 func deleteManifest(ctx context.Context, opts deleteOptions) error {
-	ctx, _ = opts.WithContext(ctx)
-	repo, err := opts.NewRepository(opts.targetRef, opts.Common)
+	ctx, logger := opts.WithContext(ctx)
+	repo, err := opts.NewRepository(opts.targetRef, opts.Common, logger)
 	if err != nil {
 		return err
 	}
 
 	if repo.Reference.Reference == "" {
-		return oerrors.NewErrInvalidReference(repo.Reference)
+		return oerrors.NewErrEmptyTagOrDigest(repo.Reference)
 	}
 
+	// add both pull and delete scope hints for dst repository to save potential delete-scope token requests during deleting
+	hints := []string{auth.ActionPull, auth.ActionDelete}
+	if opts.ReferrersAPI == nil || !*opts.ReferrersAPI {
+		// possibly needed when adding a new referrers index
+		hints = append(hints, auth.ActionPush)
+	}
+	ctx = registryutil.WithScopeHint(ctx, repo, hints...)
 	manifests := repo.Manifests()
 	desc, err := manifests.Resolve(ctx, opts.targetRef)
 	if err != nil {

@@ -45,7 +45,7 @@ jobs:
       - name: docker build
         run: |          
           docker buildx create --use
-          docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7,linux/s390x -t ${{ steps.prepare.outputs.ref }} --push .
+          docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7,linux/s390x,linux/ppc64le -t ${{ steps.prepare.outputs.ref }} --push .
       - name: clear
         if: always()
         run: |

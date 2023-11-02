@@ -25,23 +25,21 @@ import (
 const (
 	ImageSpecV1_1 = "v1.1"
 	ImageSpecV1_0 = "v1.0"
-	// TODO: pending on https://github.com/oras-project/oras-go/issues/568
-	PackManifestTypeImageV1_0 = 0
 )
 
 // ImageSpec option struct.
 type ImageSpec struct {
-	flag     string
-	PackType oras.PackManifestType
+	flag        string
+	PackVersion oras.PackManifestVersion
 }
 
 // Parse parses flags into the option.
 func (opts *ImageSpec) Parse() error {
 	switch opts.flag {
 	case ImageSpecV1_1:
-		opts.PackType = oras.PackManifestTypeImageV1_1_0_RC4
+		opts.PackVersion = oras.PackManifestVersion1_1_RC4
 	case ImageSpecV1_0:
-		opts.PackType = PackManifestTypeImageV1_0
+		opts.PackVersion = oras.PackManifestVersion1_0
 	default:
 		return fmt.Errorf("unknown image specification flag: %q", opts.flag)
 	}
@@ -53,27 +51,27 @@ func (opts *ImageSpec) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&opts.flag, "image-spec", ImageSpecV1_1, fmt.Sprintf("[Experimental] specify manifest type for building artifact. options: %s, %s", ImageSpecV1_1, ImageSpecV1_0))
 }
 
-// distributionSpec option struct.
-type distributionSpec struct {
-	// referrersAPI indicates the preference of the implementation of the Referrers API.
+// DistributionSpec option struct.
+type DistributionSpec struct {
+	// ReferrersAPI indicates the preference of the implementation of the Referrers API.
 	// Set to true for referrers API, false for referrers tag scheme, and nil for auto fallback.
-	referrersAPI *bool
+	ReferrersAPI *bool
 
 	// specFlag should be provided in form of`<version>-<api>-<option>`
 	specFlag string
 }
 
 // Parse parses flags into the option.
-func (opts *distributionSpec) Parse() error {
+func (opts *DistributionSpec) Parse() error {
 	switch opts.specFlag {
 	case "":
-		opts.referrersAPI = nil
+		opts.ReferrersAPI = nil
 	case "v1.1-referrers-tag":
 		isApi := false
-		opts.referrersAPI = &isApi
+		opts.ReferrersAPI = &isApi
 	case "v1.1-referrers-api":
 		isApi := true
-		opts.referrersAPI = &isApi
+		opts.ReferrersAPI = &isApi
 	default:
 		return fmt.Errorf("unknown distribution specification flag: %q", opts.specFlag)
 	}
@@ -81,7 +79,7 @@ func (opts *distributionSpec) Parse() error {
 }
 
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
-func (opts *distributionSpec) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
+func (opts *DistributionSpec) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
 	flagPrefix, notePrefix := applyPrefix(prefix, description)
 	fs.StringVar(&opts.specFlag, flagPrefix+"distribution-spec", "", "[Preview] set OCI distribution spec version and API option for "+notePrefix+"target. options: v1.1-referrers-api, v1.1-referrers-tag")
 }

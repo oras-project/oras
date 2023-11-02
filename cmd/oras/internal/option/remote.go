@@ -18,6 +18,7 @@ package option
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -25,9 +26,12 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 
 	credentials "github.com/oras-project/oras-credentials-go"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/retry"
@@ -40,8 +44,8 @@ import (
 
 // Remote options struct.
 type Remote struct {
+	DistributionSpec
 	CACertFilePath    string
-	PlainHTTP         bool
 	Insecure          bool
 	Configs           []string
 	Username          string
@@ -50,9 +54,10 @@ type Remote struct {
 
 	resolveFlag           []string
 	applyDistributionSpec bool
-	distributionSpec      distributionSpec
 	headerFlags           []string
 	headers               http.Header
+	warned                map[string]*sync.Map
+	plainHTTP             func() (plainHTTP bool, enforced bool)
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
@@ -90,12 +95,16 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	flagPrefix, notePrefix = applyPrefix(prefix, description)
 
 	if opts.applyDistributionSpec {
-		opts.distributionSpec.ApplyFlagsWithPrefix(fs, prefix, description)
+		opts.DistributionSpec.ApplyFlagsWithPrefix(fs, prefix, description)
 	}
 	fs.StringVarP(&opts.Username, flagPrefix+"username", shortUser, "", notePrefix+"registry username")
 	fs.StringVarP(&opts.Password, flagPrefix+"password", shortPassword, "", notePrefix+"registry password or identity token")
 	fs.BoolVarP(&opts.Insecure, flagPrefix+"insecure", "", false, "allow connections to "+notePrefix+"SSL registry without certs")
-	fs.BoolVarP(&opts.PlainHTTP, flagPrefix+"plain-http", "", false, "allow insecure connections to "+notePrefix+"registry without SSL check")
+	plainHTTPFlagName := flagPrefix + "plain-http"
+	plainHTTP := fs.Bool(plainHTTPFlagName, false, "allow insecure connections to "+notePrefix+"registry without SSL check")
+	opts.plainHTTP = func() (bool, bool) {
+		return *plainHTTP, fs.Changed(plainHTTPFlagName)
+	}
 	fs.StringVarP(&opts.CACertFilePath, flagPrefix+"ca-file", "", "", "server certificate authority file for the remote "+notePrefix+"registry")
 	fs.StringArrayVarP(&opts.resolveFlag, flagPrefix+"resolve", "", nil, "customized DNS for "+notePrefix+"registry, formatted in `host:port:address[:address_port]`")
 	fs.StringArrayVarP(&opts.Configs, flagPrefix+"registry-config", "", nil, "`path` of the authentication file for "+notePrefix+"registry")
@@ -110,7 +119,7 @@ func (opts *Remote) Parse() error {
 	if err := opts.readPassword(); err != nil {
 		return err
 	}
-	return opts.distributionSpec.Parse()
+	return opts.DistributionSpec.Parse()
 }
 
 // readPassword tries to read password with optional cmd prompt.
@@ -247,34 +256,56 @@ func (opts *Remote) Credential() auth.Credential {
 	return credential.Credential(opts.Username, opts.Password)
 }
 
+func (opts *Remote) handleWarning(registry string, logger logrus.FieldLogger) func(warning remote.Warning) {
+	if opts.warned == nil {
+		opts.warned = make(map[string]*sync.Map)
+	}
+	warned := opts.warned[registry]
+	if warned == nil {
+		warned = &sync.Map{}
+		opts.warned[registry] = warned
+	}
+	logger = logger.WithField("registry", registry)
+	return func(warning remote.Warning) {
+		if _, loaded := warned.LoadOrStore(warning.WarningValue, struct{}{}); !loaded {
+			logger.Warn(warning.Text)
+		}
+	}
+}
+
 // NewRegistry assembles a oras remote registry.
-func (opts *Remote) NewRegistry(hostname string, common Common) (reg *remote.Registry, err error) {
-	reg, err = remote.NewRegistry(hostname)
+func (opts *Remote) NewRegistry(registry string, common Common, logger logrus.FieldLogger) (reg *remote.Registry, err error) {
+	reg, err = remote.NewRegistry(registry)
 	if err != nil {
 		return nil, err
 	}
-	hostname = reg.Reference.Registry
-	reg.PlainHTTP = opts.isPlainHttp(hostname)
-	if reg.Client, err = opts.authClient(hostname, common.Debug); err != nil {
+	registry = reg.Reference.Registry
+	reg.PlainHTTP = opts.isPlainHttp(registry)
+	reg.HandleWarning = opts.handleWarning(registry, logger)
+	if reg.Client, err = opts.authClient(registry, common.Debug); err != nil {
 		return nil, err
 	}
 	return
 }
 
 // NewRepository assembles a oras remote repository.
-func (opts *Remote) NewRepository(reference string, common Common) (repo *remote.Repository, err error) {
+func (opts *Remote) NewRepository(reference string, common Common, logger logrus.FieldLogger) (repo *remote.Repository, err error) {
 	repo, err = remote.NewRepository(reference)
 	if err != nil {
+		if errors.Unwrap(err) == errdef.ErrInvalidReference {
+			return nil, fmt.Errorf("%q: %v", reference, err)
+		}
 		return nil, err
 	}
-	hostname := repo.Reference.Registry
-	repo.PlainHTTP = opts.isPlainHttp(hostname)
+	registry := repo.Reference.Registry
+	repo.PlainHTTP = opts.isPlainHttp(registry)
+	repo.HandleWarning = opts.handleWarning(registry, logger)
+	if repo.Client, err = opts.authClient(registry, common.Debug); err != nil {
+		return nil, err
+	}
 	repo.SkipReferrersGC = true
-	if repo.Client, err = opts.authClient(hostname, common.Debug); err != nil {
-		return nil, err
-	}
-	if opts.distributionSpec.referrersAPI != nil {
-		if err := repo.SetReferrersCapability(*opts.distributionSpec.referrersAPI); err != nil {
+	if opts.ReferrersAPI != nil {
+		if err := repo.SetReferrersCapability(*opts.ReferrersAPI); err != nil {
 			return nil, err
 		}
 	}
@@ -283,9 +314,14 @@ func (opts *Remote) NewRepository(reference string, common Common) (repo *remote
 
 // isPlainHttp returns the plain http flag for a given registry.
 func (opts *Remote) isPlainHttp(registry string) bool {
+	plainHTTP, enforced := opts.plainHTTP()
+	if enforced {
+		return plainHTTP
+	}
 	host, _, _ := net.SplitHostPort(registry)
 	if host == "localhost" || registry == "localhost" {
+		// not specified, defaults to plain http for localhost
 		return true
 	}
-	return opts.PlainHTTP
+	return plainHTTP
 }
