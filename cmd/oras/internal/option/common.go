@@ -17,7 +17,7 @@ package option
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"os"
 
 	"github.com/sirupsen/logrus"
@@ -55,11 +55,13 @@ func (opts *Common) Parse() error {
 
 // parseTTY gets target options from user input.
 func (opts *Common) parseTTY(f *os.File) error {
-	if !opts.noTTY && term.IsTerminal(int(f.Fd())) {
+	if !opts.noTTY {
 		if opts.Debug {
-			return errors.New("cannot use --debug, add --no-tty to suppress terminal output")
+			fmt.Println("overwiting --no-tty to true since --debug is set")
+			opts.noTTY = true
+		} else if term.IsTerminal(int(f.Fd())) {
+			opts.TTY = f
 		}
-		opts.TTY = f
 	}
 	return nil
 }
