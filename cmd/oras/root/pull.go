@@ -222,7 +222,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 					config.Annotations[ocispec.AnnotationTitle] = configPath
 				}
 			})
-			if config.Size != ocispec.DescriptorEmptyJSON.Size && config.Digest != ocispec.DescriptorEmptyJSON.Digest && config.Annotations[ocispec.AnnotationTitle] != "" {
+			if config.Size != ocispec.DescriptorEmptyJSON.Size || config.Digest != ocispec.DescriptorEmptyJSON.Digest || config.Annotations[ocispec.AnnotationTitle] != "" {
 				nodes = append(nodes, *config)
 			}
 		}
