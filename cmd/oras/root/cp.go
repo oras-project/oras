@@ -155,31 +155,31 @@ func doCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTar
 	}
 
 	const (
-		Exists  = "Exists "
-		Copying = "Copying"
-		Copied  = "Copied "
-		Skipped = "Skipped"
+		promptExists  = "Exists "
+		promptCopying = "Copying"
+		promptCopied  = "Copied "
+		promptSkipped = "Skipped"
 	)
 
 	if opts.TTY == nil {
 		// none TTY output
 		extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return display.PrintStatus(desc, Exists, opts.Verbose)
+			return display.PrintStatus(desc, promptExists, opts.Verbose)
 		}
 		extendedCopyOptions.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-			return display.PrintStatus(desc, Copying, opts.Verbose)
+			return display.PrintStatus(desc, promptCopying, opts.Verbose)
 		}
 		extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			if err := display.PrintSuccessorStatus(ctx, desc, dst, committed, display.StatusPrinter(Skipped, opts.Verbose)); err != nil {
+			if err := display.PrintSuccessorStatus(ctx, desc, dst, committed, display.StatusPrinter(promptSkipped, opts.Verbose)); err != nil {
 				return err
 			}
-			return display.PrintStatus(desc, Copied, opts.Verbose)
+			return display.PrintStatus(desc, promptCopied, opts.Verbose)
 		}
 	} else {
 		// TTY output
-		tracked, err := track.NewTarget(dst, Copying, Copied, opts.TTY)
+		tracked, err := track.NewTarget(dst, promptCopying, promptCopied, opts.TTY)
 		if err != nil {
 			return ocispec.Descriptor{}, err
 		}
@@ -187,12 +187,12 @@ func doCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTar
 		dst = tracked
 		extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return tracked.Prompt(desc, Exists)
+			return tracked.Prompt(desc, promptExists)
 		}
 		extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
 			return display.PrintSuccessorStatus(ctx, desc, tracked, committed, func(desc ocispec.Descriptor) error {
-				return tracked.Prompt(desc, Skipped)
+				return tracked.Prompt(desc, promptSkipped)
 			})
 		}
 	}

@@ -243,40 +243,39 @@ func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, v
 	committed := &sync.Map{}
 
 	const (
-		Skipped   = "Skipped  "
-		Uploaded  = "Uploaded "
-		Exists    = "Exists   "
-		Uploading = "Uploading"
-		Uploaded2 = "Uploaded "
+		promptSkipped   = "Skipped  "
+		promptUploaded  = "Uploaded "
+		promptExists    = "Exists   "
+		promptUploading = "Uploading"
 	)
 
 	if tracked == nil {
 		// non TTY
 		opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return display.PrintStatus(desc, Exists, verbose)
+			return display.PrintStatus(desc, promptExists, verbose)
 		}
 		opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-			return display.PrintStatus(desc, Uploading, verbose)
+			return display.PrintStatus(desc, promptUploading, verbose)
 		}
 		opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			if err := display.PrintSuccessorStatus(ctx, desc, fetcher, committed, display.StatusPrinter(Skipped, verbose)); err != nil {
+			if err := display.PrintSuccessorStatus(ctx, desc, fetcher, committed, display.StatusPrinter(promptSkipped, verbose)); err != nil {
 				return err
 			}
-			return display.PrintStatus(desc, Uploaded, verbose)
+			return display.PrintStatus(desc, promptUploaded, verbose)
 		}
 		return
 	}
 	// TTY
 	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return tracked.Prompt(desc, Exists)
+		return tracked.Prompt(desc, promptExists)
 	}
 	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
 		return display.PrintSuccessorStatus(ctx, desc, fetcher, committed, func(d ocispec.Descriptor) error {
-			return tracked.Prompt(d, Skipped)
+			return tracked.Prompt(d, promptSkipped)
 		})
 	}
 }

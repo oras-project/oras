@@ -160,12 +160,12 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 	}
 
 	const (
-		Downloading = "Downloading"
-		Pulled      = "Pulled     "
-		Processing  = "Processing "
-		Skipped     = "Skipped    "
-		Restored    = "Restored   "
-		Downloaded  = "Downloaded "
+		promptDownloading = "Downloading"
+		promptPulled      = "Pulled     "
+		promptProcessing  = "Processing "
+		promptSkipped     = "Skipped    "
+		promptRestored    = "Restored   "
+		promptDownloaded  = "Downloaded "
 	)
 
 	var tracked track.GraphTarget
@@ -186,7 +186,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 			}
 			if po.TTY == nil {
 				// none TTY, print status log for first-time fetching
-				if err := display.PrintStatus(target, Downloading, po.Verbose); err != nil {
+				if err := display.PrintStatus(target, promptDownloading, po.Verbose); err != nil {
 					return nil, err
 				}
 			}
@@ -201,7 +201,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 			}()
 			if po.TTY == nil {
 				// none TTY, add logs for processing manifest
-				return rc, display.PrintStatus(target, Processing, po.Verbose)
+				return rc, display.PrintStatus(target, promptProcessing, po.Verbose)
 			}
 			return rc, nil
 		})
@@ -230,7 +230,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 		var ret []ocispec.Descriptor
 		for _, s := range nodes {
 			if s.Annotations[ocispec.AnnotationTitle] == "" {
-				if s.Digest != ocispec.DescriptorEmptyJSON.Digest || s.MediaType != ocispec.DescriptorEmptyJSON.MediaType || s.Size != ocispec.DescriptorEmptyJSON.Size {
+				if content.Equal(s, ocispec.DescriptorEmptyJSON) {
 					skippedLayers++
 				}
 				ss, err := content.Successors(ctx, fetcher, s)
@@ -239,7 +239,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 				}
 				if len(ss) == 0 {
 					// skip s if it is unnamed AND has no successors.
-					if err := printOnce(&printed, s, Skipped, po.Verbose, tracked); err != nil {
+					if err := printOnce(&printed, s, promptSkipped, po.Verbose, tracked); err != nil {
 						return nil, err
 					}
 					continue
@@ -257,7 +257,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 		}
 		if po.TTY == nil {
 			// none TTY, print status log for downloading
-			return display.PrintStatus(desc, Downloading, po.Verbose)
+			return display.PrintStatus(desc, promptDownloading, po.Verbose)
 		}
 		// TTY
 		return nil
@@ -270,7 +270,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 		}
 		for _, s := range successors {
 			if _, ok := s.Annotations[ocispec.AnnotationTitle]; ok {
-				if err := printOnce(&printed, s, Restored, po.Verbose, tracked); err != nil {
+				if err := printOnce(&printed, s, promptRestored, po.Verbose, tracked); err != nil {
 					return err
 				}
 			}
@@ -283,7 +283,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 			name = desc.MediaType
 		}
 		printed.Store(generateContentKey(desc), true)
-		return display.Print(Downloaded, display.ShortDigest(desc), name)
+		return display.Print(promptDownloaded, display.ShortDigest(desc), name)
 	}
 
 	// Copy
