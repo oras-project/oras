@@ -17,7 +17,6 @@ package option
 
 import (
 	"context"
-	"errors"
 	"os"
 
 	"github.com/sirupsen/logrus"
@@ -37,7 +36,7 @@ type Common struct {
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Common) ApplyFlags(fs *pflag.FlagSet) {
-	fs.BoolVarP(&opts.Debug, "debug", "d", false, "debug mode")
+	fs.BoolVarP(&opts.Debug, "debug", "d", false, "output debug logs (implies --no-tty)")
 	fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "verbose output")
 	fs.BoolVarP(&opts.noTTY, "no-tty", "", false, "[Preview] do not show progress output")
 }
@@ -55,11 +54,12 @@ func (opts *Common) Parse() error {
 
 // parseTTY gets target options from user input.
 func (opts *Common) parseTTY(f *os.File) error {
-	if !opts.noTTY && term.IsTerminal(int(f.Fd())) {
+	if !opts.noTTY {
 		if opts.Debug {
-			return errors.New("cannot use --debug, add --no-tty to suppress terminal output")
+			opts.noTTY = true
+		} else if term.IsTerminal(int(f.Fd())) {
+			opts.TTY = f
 		}
-		opts.TTY = f
 	}
 	return nil
 }
