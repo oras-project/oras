@@ -25,7 +25,6 @@ import (
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
-	"oras.land/oras-go/v2"
 	"oras.land/oras/test/e2e/internal/testdata/artifact/blob"
 	"oras.land/oras/test/e2e/internal/testdata/artifact/config"
 	"oras.land/oras/test/e2e/internal/testdata/feature"
@@ -77,7 +76,7 @@ var _ = Describe("OCI spec 1.1 registry users:", func() {
 		It("should skip config if media type not matching", func() {
 			pullRoot := "pulled"
 			tempDir := PrepareTempFiles()
-			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(oras.MediaTypeUnknownConfig))
+			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey)
 			ORAS("pull", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "-v", "--config", fmt.Sprintf("%s:%s", configName, "???"), "-o", pullRoot).
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				WithWorkDir(tempDir).Exec()
@@ -206,7 +205,7 @@ var _ = Describe("OCI image layout users:", func() {
 		It("should skip config if media type does not match", func() {
 			pullRoot := "pulled"
 			root := PrepareTempOCI(ImageRepo)
-			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(oras.MediaTypeUnknownConfig))
+			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey)
 			ORAS("pull", Flags.Layout, LayoutRef(root, foobar.Tag), "-v", "--config", fmt.Sprintf("%s:%s", configName, "???"), "-o", pullRoot).
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				WithWorkDir(root).Exec()
