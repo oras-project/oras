@@ -17,6 +17,7 @@ package repo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -74,7 +75,7 @@ func listRepository(ctx context.Context, opts repositoryOptions) error {
 	if err != nil {
 		return err
 	}
-	return reg.Repositories(ctx, opts.last, func(repos []string) error {
+	err = reg.Repositories(ctx, opts.last, func(repos []string) error {
 		for _, repo := range repos {
 			if subRepo, found := strings.CutPrefix(repo, opts.namespace); found {
 				fmt.Println(subRepo)
@@ -82,4 +83,16 @@ func listRepository(ctx context.Context, opts repositoryOptions) error {
 		}
 		return nil
 	})
+
+	if err != nil {
+		var repoErr error
+		if opts.namespace != "" {
+			repoErr = fmt.Errorf("could not list repositories for %q with prefix %q", reg.Reference.Host(), opts.namespace)
+		} else {
+			repoErr = fmt.Errorf("could not list repositories for %q", reg.Reference.Host())
+		}
+		return errors.Join(repoErr, err)
+	}
+
+	return nil
 }
