@@ -281,7 +281,6 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 				return nil
 			}
 			name = desc.MediaType
-			skippedLayers++
 		}
 		printed.Store(generateContentKey(desc), true)
 		return display.Print(Downloaded, display.ShortDigest(desc), name)
