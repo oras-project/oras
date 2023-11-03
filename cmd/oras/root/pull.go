@@ -228,9 +228,9 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 		var ret []ocispec.Descriptor
 		for _, s := range nodes {
 			if s.Annotations[ocispec.AnnotationTitle] == "" {
-				if s.Digest != ocispec.DescriptorEmptyJSON.Digest {
-					skippedLayers++
-				}
+if s.Digest != ocispec.DescriptorEmptyJSON.Digest || s.MediaType != ocispec.DescriptorEmptyJSON.MediaType || s.Size != ocispec.DescriptorEmptyJSON.Size {
+    skippedLayers++
+}
 				ss, err := content.Successors(ctx, fetcher, s)
 				if err != nil {
 					return nil, err
