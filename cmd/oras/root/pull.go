@@ -231,6 +231,11 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 		for _, s := range nodes {
 			if s.Annotations[ocispec.AnnotationTitle] == "" {
 				if content.Equal(s, ocispec.DescriptorEmptyJSON) {
+					// empty layer
+					continue
+				}
+				if s.Annotations[ocispec.AnnotationTitle] == "" {
+					// unnamed layers are skipped
 					skippedLayers++
 				}
 				ss, err := content.Successors(ctx, fetcher, s)
