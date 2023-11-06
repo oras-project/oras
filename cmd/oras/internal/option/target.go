@@ -154,7 +154,7 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common, logger
 		}
 		info, err := os.Stat(opts.Path)
 		if err != nil {
-			return nil, fmt.Errorf("invalid OCI layout path %q: %w", opts.RawReference, err)
+			return nil, fmt.Errorf("invalid OCI layout path in %q: %w", opts.RawReference, err)
 		}
 		if info.IsDir() {
 			return oci.NewFromFS(ctx, os.DirFS(opts.Path))
