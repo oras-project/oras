@@ -55,6 +55,7 @@ type status struct {
 func newStatus() *status {
 	return &status{
 		offset:         -1,
+		total:          humanize.ToBytes(0),
 		lastRenderTime: time.Now(),
 	}
 }
@@ -114,7 +115,8 @@ func (s *status) String(width int) (string, string) {
 		offset = fmt.Sprint(s.total.Size)
 		percent = 1
 	default: // 0% ~ 99%, show 2-digit precision
-		if s.offset >= 0 {
+		if total != 0 && s.offset >= 0 {
+			// percentage calculatable
 			percent = float64(s.offset) / float64(total)
 		}
 		offset = fmt.Sprintf("%.2f", humanize.RoundTo(s.total.Size*percent))
