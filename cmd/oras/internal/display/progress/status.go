@@ -99,9 +99,6 @@ func (s *status) String(width int) (string, string) {
 	// todo: doesn't support multiline prompt
 	total := uint64(s.descriptor.Size)
 	var percent float64
-	if s.offset >= 0 {
-		percent = float64(s.offset) / float64(total)
-	}
 
 	name := s.descriptor.Annotations["org.opencontainers.image.title"]
 	if name == "" {
@@ -112,10 +109,14 @@ func (s *status) String(width int) (string, string) {
 	//          mark(1) bar(22) speed(8) action(<=11) name(<=126)        size_per_size(<=13) percent(8) time(>=6)
 	//           └─ digest(72)
 	var offset string
-	switch percent {
-	case 1: // 100%, show exact size
+	switch s.done {
+	case true: // 100%, show exact size
 		offset = fmt.Sprint(s.total.Size)
+		percent = 1
 	default: // 0% ~ 99%, show 2-digit precision
+		if s.offset >= 0 {
+			percent = float64(s.offset) / float64(total)
+		}
 		offset = fmt.Sprintf("%.2f", humanize.RoundTo(s.total.Size*percent))
 	}
 	right := fmt.Sprintf(" %s/%s %6.2f%% %6s", offset, s.total, percent*100, s.durationString())
