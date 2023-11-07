@@ -19,6 +19,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"strings"
 	"sync"
@@ -148,18 +150,27 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common, logger
 	switch opts.Type {
 	case TargetTypeOCILayout:
 		var err error
+
 		opts.Path, opts.Reference, err = parseOCILayoutReference(opts.RawReference)
 		if err != nil {
 			return nil, err
 		}
 		info, err := os.Stat(opts.Path)
 		if err != nil {
-			return nil, fmt.Errorf("invalid path in %q: %w", opts.RawReference, err)
+			if errors.Is(err, fs.ErrNotExist) {
+				err = fmt.Errorf("invalid path in %q: %w", opts.RawReference, err)
+			}
+			return nil, err
 		}
 		if info.IsDir() {
 			return oci.NewFromFS(ctx, os.DirFS(opts.Path))
 		}
-		return oci.NewFromTar(ctx, opts.Path)
+		store, err := oci.NewFromTar(ctx, opts.Path)
+		if err != nil && errors.Is(err, io.ErrUnexpectedEOF) {
+			err = fmt.Errorf("%q is not a valid tarball archive file: %w", opts.Path, err)
+		}
+		return store, err
+
 	case TargetTypeRemote:
 		repo, err := opts.NewRepository(opts.RawReference, common, logger)
 		if err != nil {
