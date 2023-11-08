@@ -12,12 +12,12 @@ require (
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/sync v0.5.0
-	golang.org/x/term v0.13.0
+	golang.org/x/term v0.14.0
 	gopkg.in/yaml.v3 v3.0.1
 	oras.land/oras-go/v2 v2.3.1-0.20231026053328-062ed0e058f8
 )
 
 require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
+	golang.org/x/sys v0.14.0 // indirect
 )
