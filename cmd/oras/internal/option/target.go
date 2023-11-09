@@ -150,7 +150,6 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common, logger
 	switch opts.Type {
 	case TargetTypeOCILayout:
 		var err error
-
 		opts.Path, opts.Reference, err = parseOCILayoutReference(opts.RawReference)
 		if err != nil {
 			return nil, err
@@ -158,7 +157,7 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common, logger
 		info, err := os.Stat(opts.Path)
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) {
-				err = fmt.Errorf("invalid path in %q: %w", opts.RawReference, err)
+				return nil, fmt.Errorf("invalid argument %q: failed to find path %q: %w", opts.RawReference, opts.Path, err)
 			}
 			return nil, err
 		}
@@ -166,11 +165,13 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common, logger
 			return oci.NewFromFS(ctx, os.DirFS(opts.Path))
 		}
 		store, err := oci.NewFromTar(ctx, opts.Path)
-		if err != nil && errors.Is(err, io.ErrUnexpectedEOF) {
-			err = fmt.Errorf("%q is not a valid tarball archive file: %w", opts.Path, err)
+		if err != nil {
+			if errors.Is(err, io.ErrUnexpectedEOF) {
+				return nil, fmt.Errorf("%q does not look like a tar archive: %w", opts.Path, err)
+			}
+			return nil, err
 		}
-		return store, err
-
+		return store, nil
 	case TargetTypeRemote:
 		repo, err := opts.NewRepository(opts.RawReference, common, logger)
 		if err != nil {
