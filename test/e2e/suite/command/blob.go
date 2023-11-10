@@ -110,8 +110,8 @@ var _ = Describe("ORAS beginners:", func() {
 					ExpectFailure().Exec()
 			})
 
-			It("should fail if provided digest doesn't existed", func() {
-				ORAS("blob", "fetch", RegistryRef(ZOTHost, ImageRepo, "sha256:2aaa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a")).
+			It("should fail if provided digest doesn't exist", func() {
+				ORAS("blob", "fetch", RegistryRef(ZOTHost, ImageRepo, "sha256:2aaa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a"), "-o", "/dev/null").
 					ExpectFailure().Exec()
 			})
 
