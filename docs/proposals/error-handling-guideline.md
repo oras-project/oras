@@ -218,6 +218,8 @@ Help: repository does not exist or namespace is missing, or may require 'oras lo
 
 ## Reference
 
+Parts of the content are borrowed from these guidelines.
+
 - [Azure CLI Error Handling Guidelines](https://github.com/Azure/azure-cli/blob/dev/doc/error_handling_guidelines.md)
 - [Command Line Interface Guidelines](https://clig.dev/#errors)
 - [12 Factor CLI Apps](https://medium.com/@jdxcode/12-factor-cli-apps-dd3c227a0e46)
