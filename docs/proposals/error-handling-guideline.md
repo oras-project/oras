@@ -56,7 +56,9 @@ Help: [Recommended solution], [TSG]
 
 Here are some examples of writing error message with helpful prompt actionable information:
 
-- Example 1: when no reference provided in `oras copy`
+#### Example 1: when no reference provided in `oras copy`
+
+Current behavior and output:
 
 ```
 $ oras cp
@@ -73,7 +75,9 @@ Usage: oras copy [flags] <from>{:<tag>|@<digest>} <to>[:<tag>[,<tag>][...]]
 Help: Copy artifacts from one target to another. Run "oras copy -h" for more options and examples
 ```
 
-- Example 2: when reference is not matched with the expected format
+#### Example 2: when reference does not match with the expected format
+
+Current behavior and output:
 
 ```
 $ oras tag list ghcr.io/oras-project/oras
@@ -90,7 +94,9 @@ Usage: oras tag [flags] <name>{:<tag>|@<digest>} <new_tag> [...]
 Help: Tag a manifest in a registry or an OCI image layout. Run "oras tag -h" for more options and examples
 ```
 
-- Example 3: When fetching a manifest if no manifest tag or digest is provided
+#### Example 3: When fetching a manifest if no manifest tag or digest is provided
+
+Current behavior and output:
 
 ```
 $ oras manifest fetch --oci-layout /tmp/ginkgo1163328512 >>
@@ -107,7 +113,9 @@ Usage: oras manifest fetch [flags] <name>{:<tag>|@<digest>}
 Help: Fetch manifest of the target artifact. Run "oras manifest fetch -h" for more options and examples 
 ```
 
-- Example 4: push a manifest if no media type flag provided
+#### Example 4: push a manifest if no media type flag provided
+
+Current behavior and output:
 
 ```
 $ oras manifest push --oci-layout /tmp/ginkgo2167255592:mediatype-flag
@@ -121,7 +129,9 @@ $ oras manifest push --oci-layout /tmp/ginkgo2167255592:mediatype-flag
 Error: media type is not recognized. Specify an valid media type with "--media-type"
 ```
 
-- Example 5: attach an artifact if the given option is unknown
+#### Example 5: attach an artifact if the given option is unknown
+
+Current behavior and output:
 
 ```
 $ oras attach --artifact-type oras/test localhost:7000/command/images:foobar --distribution-spec ???
@@ -135,7 +145,9 @@ $ oras attach --artifact-type oras/test localhost:7000/command/images:foobar --d
 Error: unknown distribution specification flag: "???". Available options: v1.1-referrers-api, v1.1-referrers-tag
 ```
 
-- Example 6: when attaching an file, if no file reference or manifest annotation provided
+#### Example 6: when attaching an file, if no file reference or manifest annotation provided
+
+Current behavior and output:
 
 ```
 $ oras attach --artifact-type oras/test /tmp/ginkgo2977244222:foobar >>
@@ -152,7 +164,9 @@ Usage: oras attach [flags] --artifact-type=<type> <name>{:<tag>|@<digest>} <file
 Help: Attach files to an existing artifact. Run "oras attach" for more options and examples
 ```
 
-- Example 7: When pushing files, if the annotation file doesn't match the required format
+#### Example 7: When pushing files, if the annotation file doesn't match the required format
+
+Current behavior and output:
 
 ```
 $ oras push --annotation-file sbom.json ghcr.io/library/alpine:3.9
@@ -168,7 +182,9 @@ Error: failed to load annotations from annotation.json: annotation file or synta
 Help: Please refer to the document at https://oras.land/docs/how_to_guides/manifest_annotations.
 ```
 
-- Example 8: When pushing files, if the annotation value doesn't match the required syntax
+#### Example 8: When pushing files, if the annotation value doesn't match the required syntax
+
+Current behavior and output:
 
 ```
 $ oras push --annotation "key:value" ghcr.io/library/alpine:3.9
@@ -184,7 +200,7 @@ Error: annotation value  doesn't match the required format.
 Help: Try oras push --annotation "key=value" ghcr.io/library/alpine:3.9  
 ```
 
-- Example 9: 
+#### Example 9: when failed to pull files from a public registry
 
 ```
 $ oras pull docker.io/nginx:latest
