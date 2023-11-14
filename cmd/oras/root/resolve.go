@@ -18,6 +18,7 @@ package root
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
@@ -36,8 +37,13 @@ func resolveCmd() *cobra.Command {
 	var opts resolveOptions
 
 	cmd := &cobra.Command{
-		Use:     "resolve [flags] <name>:<tag>",
-		Short:   "Resolves digest of the target artifact",
+		Use:   "resolve [flags] <name>:<tag>",
+		Short: "[Experimental] Resolves digest of the target artifact",
+		Long: `[Experimental] Resolves digest of the target artifact
+
+Example - Resolve digest of the target artifact:
+  oras resolve localhost:5000/hello-world:v1
+`,
 		Args:    cobra.ExactArgs(1),
 		Aliases: []string{"digest"},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -49,14 +55,14 @@ func resolveCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVar(&opts.FullRef, "full-ref", false, "print the full artifact reference with digest")
+	cmd.Flags().BoolVarP(&opts.FullRef, "full-reference", "l", false, "print the full artifact reference with digest")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
 
 func runResolve(ctx context.Context, opts resolveOptions) error {
-	ctx, _ = opts.WithContext(ctx)
-	repo, err := opts.NewReadonlyTarget(ctx, opts.Common)
+	ctx, logger := opts.WithContext(ctx)
+	repo, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
 		return err
 	}
@@ -68,15 +74,15 @@ func runResolve(ctx context.Context, opts resolveOptions) error {
 	desc, err := oras.Resolve(ctx, repo, opts.Reference, resolveOpts)
 
 	if err != nil {
-		return fmt.Errorf("failed to resolve the digest: %w", err)
+		return fmt.Errorf("failed to resolve digest: %w", err)
 	}
 
 	if opts.FullRef {
-	      digest := desc.Digest.String()
-	      if !strings.HasSuffix(opts.RawReference, digest) {
-		      opts.RawReference = fmt.Sprintf("%s@%s", opts.Path, subject.Digest)
-	      }
-	      fmt.Printf("%s\n", opts.RawReference)
+		digest := desc.Digest.String()
+		if !strings.HasSuffix(opts.RawReference, digest) {
+			opts.RawReference = fmt.Sprintf("%s@%s", opts.Path, desc.Digest)
+		}
+		fmt.Printf("%s\n", opts.RawReference)
 	} else {
 		fmt.Println(desc.Digest.String())
 	}
