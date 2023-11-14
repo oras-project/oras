@@ -19,6 +19,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"strings"
 	"sync"
@@ -154,12 +156,22 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common, logger
 		}
 		info, err := os.Stat(opts.Path)
 		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				return nil, fmt.Errorf("invalid argument %q: failed to find path %q: %w", opts.RawReference, opts.Path, err)
+			}
 			return nil, err
 		}
 		if info.IsDir() {
 			return oci.NewFromFS(ctx, os.DirFS(opts.Path))
 		}
-		return oci.NewFromTar(ctx, opts.Path)
+		store, err := oci.NewFromTar(ctx, opts.Path)
+		if err != nil {
+			if errors.Is(err, io.ErrUnexpectedEOF) {
+				return nil, fmt.Errorf("%q does not look like a tar archive: %w", opts.Path, err)
+			}
+			return nil, err
+		}
+		return store, nil
 	case TargetTypeRemote:
 		repo, err := opts.NewRepository(opts.RawReference, common, logger)
 		if err != nil {

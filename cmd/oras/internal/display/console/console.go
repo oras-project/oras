@@ -81,7 +81,7 @@ func (c *Console) NewRow() {
 func (c *Console) OutputTo(upCnt uint, str string) {
 	_, _ = c.Write([]byte(Restore))
 	_, _ = c.Write([]byte(aec.PreviousLine(upCnt).Apply(str)))
-	_, _ = c.Write([]byte(" "))
+	_, _ = c.Write([]byte("\n"))
 	_, _ = c.Write([]byte(aec.EraseLine(aec.EraseModes.Tail).String()))
 }
 

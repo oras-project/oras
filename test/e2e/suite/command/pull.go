@@ -25,9 +25,10 @@ import (
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
-	"oras.land/oras-go/v2"
 	"oras.land/oras/test/e2e/internal/testdata/artifact/blob"
 	"oras.land/oras/test/e2e/internal/testdata/artifact/config"
+	"oras.land/oras/test/e2e/internal/testdata/artifact/empty"
+	"oras.land/oras/test/e2e/internal/testdata/artifact/unnamed"
 	"oras.land/oras/test/e2e/internal/testdata/feature"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
@@ -39,6 +40,31 @@ var _ = Describe("ORAS beginners:", func() {
 		It("should show help description with feature flags", func() {
 			out := ORAS("pull", "--help").MatchKeyWords(ExampleDesc).Exec().Out
 			gomega.Expect(out).Should(gbytes.Say("--include-subject\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+		})
+
+		hintMsg := func(reference string) string {
+			return fmt.Sprintf("Skipped pulling layers without file name in \"org.opencontainers.image.title\"\nUse 'oras copy %s --to-oci-layout <layout-dir>' to pull all layers.\n", reference)
+		}
+		It("should show hint for unnamed layer", func() {
+			tempDir := PrepareTempFiles()
+			ref := RegistryRef(ZOTHost, ArtifactRepo, unnamed.Tag)
+			ORAS("pull", ref).
+				WithWorkDir(tempDir).
+				MatchContent(hintMsg(ref)).Exec()
+		})
+
+		It("should not show hint for unnamed config blob", func() {
+			tempDir := PrepareTempFiles()
+			ref := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
+			out := ORAS("pull", ref).WithWorkDir(tempDir).Exec().Out
+			gomega.Expect(out).ShouldNot(gbytes.Say(hintMsg(ref)))
+		})
+
+		It("should not show hint for empty layer", func() {
+			tempDir := PrepareTempFiles()
+			ref := RegistryRef(ZOTHost, ArtifactRepo, empty.Tag)
+			out := ORAS("pull", ref).WithWorkDir(tempDir).Exec().Out
+			gomega.Expect(out).ShouldNot(gbytes.Say(hintMsg(ref)))
 		})
 	})
 })
@@ -77,7 +103,7 @@ var _ = Describe("OCI spec 1.1 registry users:", func() {
 		It("should skip config if media type not matching", func() {
 			pullRoot := "pulled"
 			tempDir := PrepareTempFiles()
-			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(oras.MediaTypeUnknownConfig))
+			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey)
 			ORAS("pull", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "-v", "--config", fmt.Sprintf("%s:%s", configName, "???"), "-o", pullRoot).
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				WithWorkDir(tempDir).Exec()
@@ -206,7 +232,7 @@ var _ = Describe("OCI image layout users:", func() {
 		It("should skip config if media type does not match", func() {
 			pullRoot := "pulled"
 			root := PrepareTempOCI(ImageRepo)
-			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(oras.MediaTypeUnknownConfig))
+			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey)
 			ORAS("pull", Flags.Layout, LayoutRef(root, foobar.Tag), "-v", "--config", fmt.Sprintf("%s:%s", configName, "???"), "-o", pullRoot).
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				WithWorkDir(root).Exec()
