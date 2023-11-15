@@ -88,7 +88,6 @@ Suggested error message:
 ```
 $ oras tag list ghcr.io/oras-project/oras
 Error: unable to add tag for 'list': invalid reference: missing repository
-
 Usage: oras tag [flags] <name>{:<tag>|@<digest>} <new_tag> [...]
 Tag a manifest in a registry or an OCI image layout. Run "oras tag -h" for more options and examples
 ```
@@ -146,23 +145,22 @@ Error: unknown distribution specification flag: "v1.0".
 Available options: v1.1-referrers-api, v1.1-referrers-tag
 ```
 
-#### Example 6: when attaching an file, if no file reference or manifest annotation provided
+#### Example 6: when attaching an file, if no file reference is provided
 
 Current behavior and output:
 
 ```
 $ oras attach --artifact-type oras/test /tmp/ginkgo2977244222:foobar >>
-Error: no blob or manifest annotation are provided
+Error: no blob is provided
 ```
 
 Suggested error message:
 
 ```
 $ oras attach --artifact-type oras/test /tmp/ginkgo2977244222:foobar >>
-Error: no blob or manifest annotation are provided
-
+Error: no blob is provided
 Usage: oras attach [flags] --artifact-type=<type> <name>{:<tag>|@<digest>} <file>[:<type>] [...]
-Attach files to an existing artifact. Run "oras attach -h" for more options and examples
+To attach files to an existing artifact, try "oras attach --artifact-type sbom/example oras/test /tmp/ginkgo2977244222:foobar sample.txt". Run "oras attach -h" for more options and examples
 ```
 
 #### Example 7: When pushing files, if the annotation file doesn't match the required format
@@ -179,7 +177,6 @@ Suggested error message:
 ```
 $ oras push --annotation-file annotation.json ghcr.io/library/alpine:3.9
 Error: failed to load annotations from annotation.json: annotation file or syntax doesn't match the required format or syntax
-
 Please refer to the document at https://oras.land/docs/how_to_guides/manifest_annotations.
 ```
 
@@ -196,9 +193,8 @@ Suggested error message:
 
 ```
 $ oras push --annotation "key:value" ghcr.io/library/alpine:3.9
-Error: annotation value  doesn't match the required format.
-
-Try oras push --annotation "key=value" ghcr.io/library/alpine:3.9  
+Error: annotation value doesn't match the required format.
+Try `oras push --annotation "key=value" ghcr.io/library/alpine:3.9`  
 ```
 
 #### Example 9: when failed to pull files from a public registry
