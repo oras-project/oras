@@ -18,7 +18,6 @@ package root
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
@@ -37,7 +36,7 @@ func resolveCmd() *cobra.Command {
 	var opts resolveOptions
 
 	cmd := &cobra.Command{
-		Use:   "resolve [flags] <name>:<tag>",
+		Use:   "resolve [flags] <name>{:<tag>|@<digest>}",
 		Short: "[Experimental] Resolves digest of the target artifact",
 		Long: `[Experimental] Resolves digest of the target artifact
 
@@ -78,11 +77,7 @@ func runResolve(ctx context.Context, opts resolveOptions) error {
 	}
 
 	if opts.FullRef {
-		digest := desc.Digest.String()
-		if !strings.HasSuffix(opts.RawReference, digest) {
-			opts.RawReference = fmt.Sprintf("%s@%s", opts.Path, desc.Digest)
-		}
-		fmt.Printf("%s\n", opts.RawReference)
+		fmt.Printf("%s@%s\n", opts.Path, desc.Digest)
 	} else {
 		fmt.Println(desc.Digest.String())
 	}
