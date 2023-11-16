@@ -76,19 +76,19 @@ var _ = Describe("OCI image layout users", func() {
 	When("running resolve command", func() {
 		It("should resolve with just digest", func() {
 			tmpRoot := GinkgoT().TempDir()
-			out := ORAS("resolve", LayoutRef(tmpRoot, multi_arch.Digest)).Exec().Out
+			out := ORAS("resolve", Flags.Layout, LayoutRef(tmpRoot, multi_arch.Digest)).Exec().Out
 			outString := string(out.Contents())
 			outString = strings.TrimSpace(outString)
 			gomega.Expect(outString).To(gomega.Equal(multi_arch.Digest))
 		})
 		It("should resolve with a fully qualified reference", func() {
 			tmpRoot := GinkgoT().TempDir()
-			out := ORAS("resolve", "-l", LayoutRef(tmpRoot, multi_arch.Tag)).Exec().Out
+			out := ORAS("resolve", Flags.Layout, "-l", LayoutRef(tmpRoot, multi_arch.Tag)).Exec().Out
 			gomega.Expect(out).To(gbytes.Say(fmt.Sprintf("%s@%s", tmpRoot, multi_arch.Digest)))
 		})
 		It("should resolve with a fully qualified reference for a platform", func() {
 			tmpRoot := GinkgoT().TempDir()
-			out := ORAS("resolve", "--full-reference", "--platform", "linux/amd64", LayoutRef(tmpRoot, multi_arch.Tag)).Exec().Out
+			out := ORAS("resolve", Flags.Layout, "--full-reference", "--platform", "linux/amd64", LayoutRef(tmpRoot, multi_arch.Tag)).Exec().Out
 			gomega.Expect(out).To(gbytes.Say(fmt.Sprintf("%s/%s@%s", ZOTHost, ImageRepo, multi_arch.LinuxAMD64.Digest)))
 		})
 	})
