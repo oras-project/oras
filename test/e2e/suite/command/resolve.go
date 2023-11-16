@@ -22,12 +22,21 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"oras.land/oras/test/e2e/internal/testdata/feature"
 	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
 var _ = Describe("ORAS beginners:", func() {
 	When("running resolve command", func() {
+		It("should show help description with feature mark", func() {
+			out := ORAS("resolve", "--help").MatchKeyWords(ExampleDesc).Exec().Out
+			gomega.Expect(out.Contents()).Should(gomega.HavePrefix(feature.Experimental.Mark))
+		})
+		It("should show help description via alias", func() {
+			out := ORAS("digest", "--help").MatchKeyWords(ExampleDesc).Exec().Out
+			gomega.Expect(out.Contents()).Should(gomega.HavePrefix(feature.Experimental.Mark))
+		})
 		It("should fail when no manifest reference provided", func() {
 			ORAS("resolve").ExpectFailure().MatchErrKeyWords("Error:").Exec()
 		})
@@ -40,6 +49,12 @@ var _ = Describe("ORAS beginners:", func() {
 		It("should fail when provided manifest reference is not found", func() {
 			ORAS("resolve", RegistryRef(ZOTHost, ImageRepo, "i-dont-think-this-tag-exists")).ExpectFailure().MatchErrKeyWords("Error: failed to resolve digest:", "not found").Exec()
 		})
+
+	})
+})
+
+var _ = Describe("Common registry user", func() {
+	When("running resolve command", func() {
 		It("should resolve with just digest", func() {
 			out := ORAS("resolve", RegistryRef(ZOTHost, ImageRepo, multi_arch.Digest)).Exec().Out
 			outString := string(out.Contents())
@@ -47,11 +62,33 @@ var _ = Describe("ORAS beginners:", func() {
 			gomega.Expect(outString).To(gomega.Equal(multi_arch.Digest))
 		})
 		It("should resolve with a fully qualified reference", func() {
-			out := ORAS("digest", "-l", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag)).Exec().Out
+			out := ORAS("resolve", "-l", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag)).Exec().Out
 			gomega.Expect(out).To(gbytes.Say(fmt.Sprintf("%s/%s@%s", ZOTHost, ImageRepo, multi_arch.Digest)))
 		})
 		It("should resolve with a fully qualified reference for a platform", func() {
 			out := ORAS("resolve", "--full-reference", "--platform", "linux/amd64", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag)).Exec().Out
+			gomega.Expect(out).To(gbytes.Say(fmt.Sprintf("%s/%s@%s", ZOTHost, ImageRepo, multi_arch.LinuxAMD64.Digest)))
+		})
+	})
+})
+
+var _ = Describe("OCI image layout users", func() {
+	When("running resolve command", func() {
+		It("should resolve with just digest", func() {
+			tmpRoot := GinkgoT().TempDir()
+			out := ORAS("resolve", LayoutRef(tmpRoot, multi_arch.Digest)).Exec().Out
+			outString := string(out.Contents())
+			outString = strings.TrimSpace(outString)
+			gomega.Expect(outString).To(gomega.Equal(multi_arch.Digest))
+		})
+		It("should resolve with a fully qualified reference", func() {
+			tmpRoot := GinkgoT().TempDir()
+			out := ORAS("resolve", "-l", LayoutRef(tmpRoot, multi_arch.Tag)).Exec().Out
+			gomega.Expect(out).To(gbytes.Say(fmt.Sprintf("%s@%s", tmpRoot, multi_arch.Digest)))
+		})
+		It("should resolve with a fully qualified reference for a platform", func() {
+			tmpRoot := GinkgoT().TempDir()
+			out := ORAS("resolve", "--full-reference", "--platform", "linux/amd64", LayoutRef(tmpRoot, multi_arch.Tag)).Exec().Out
 			gomega.Expect(out).To(gbytes.Say(fmt.Sprintf("%s/%s@%s", ZOTHost, ImageRepo, multi_arch.LinuxAMD64.Digest)))
 		})
 	})
