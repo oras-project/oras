@@ -26,12 +26,12 @@ Last, error logs can also be useful for post-mortem debugging but make sure they
 
 ### Dos
 
+- Provide full description if the user input does not match what ORAS CLI expected. A full description should include the actual input received from the user and expected input
 - Use the capital letter ahead of each line of any error message
 - Print human readable error message. If the error message is mainly from the server and varies by different servers, tell users that the error response is from server. This implies that users may need to contact server side for troubleshooting.
 - Provide specific and actionable prompt message with argument suggestion or show the example usage for reference. (e.g, Instead of showing flag or argument options is missing, please provide available argument options and guide users to "--help" to view more examples)
 - If the actionable prompt message is too long to show in the CLI output, consider guide users to ORAS user guide or troubleshooting guide with the permanent link.
 - If the error message is not enough for troubleshooting, guide users to use "--verbose" to print much more detailed logs
-- Provide full description if the user input does not match what ORAS CLI expected. A full description should include the actual input received from the user and expected input.
 
 ### Don'Ts
 
@@ -87,7 +87,7 @@ Suggested error message:
 
 ```
 $ oras tag list ghcr.io/oras-project/oras
-Error: unable to add tag for 'list': invalid reference: missing repository
+Error: There is no "list" sub-command for "oras tag" command.
 Usage: oras tag [flags] <name>{:<tag>|@<digest>} <new_tag> [...]
 Tag a manifest in a registry or an OCI image layout. Run "oras tag -h" for more options and examples
 ```
@@ -97,14 +97,14 @@ Tag a manifest in a registry or an OCI image layout. Run "oras tag -h" for more 
 Current behavior and output:
 
 ```
-$ oras manifest fetch --oci-layout /tmp/ginkgo1163328512 >>
+$ oras manifest fetch --oci-layout /tmp/ginkgo1163328512
 Error: "/tmp/ginkgo1163328512": no tag or digest when expecting <name:tag|name@digest>
 ```
 
 Suggested error message:
 
 ```
-$ oras manifest fetch --oci-layout /tmp/ginkgo1163328512 >>
+$ oras manifest fetch --oci-layout /tmp/ginkgo1163328512
 Error: "/tmp/ginkgo1163328512": no tag or digest specified
 
 Usage: oras manifest fetch [flags] <name>{:<tag>|@<digest>}
@@ -150,15 +150,15 @@ Available options: v1.1-referrers-api, v1.1-referrers-tag
 Current behavior and output:
 
 ```
-$ oras attach --artifact-type oras/test /tmp/ginkgo2977244222:foobar >>
+$ oras attach --artifact-type oras/test /tmp/ginkgo2977244222:foobar
 Error: no blob is provided
 ```
 
 Suggested error message:
 
 ```
-$ oras attach --artifact-type oras/test /tmp/ginkgo2977244222:foobar >>
-Error: no blob is provided
+$ oras attach --artifact-type oras/test /tmp/ginkgo2977244222:foobar
+Error: failed to attach a file. No file provided in the command.
 Usage: oras attach [flags] --artifact-type=<type> <name>{:<tag>|@<digest>} <file>[:<type>] [...]
 To attach files to an existing artifact, try "oras attach --artifact-type sbom/example oras/test /tmp/ginkgo2977244222:foobar sample.txt". Run "oras attach -h" for more options and examples
 ```
