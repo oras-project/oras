@@ -29,7 +29,7 @@ type resolveOptions struct {
 	option.Platform
 	option.Target
 
-	FullRef bool
+	fullRef bool
 }
 
 func resolveCmd() *cobra.Command {
@@ -54,7 +54,7 @@ Example - Resolve digest of the target artifact:
 		},
 	}
 
-	cmd.Flags().BoolVarP(&opts.FullRef, "full-reference", "l", false, "print the full artifact reference with digest")
+	cmd.Flags().BoolVarP(&opts.fullRef, "full-reference", "l", false, "print the full artifact reference with digest")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return cmd
 }
@@ -76,7 +76,7 @@ func runResolve(ctx context.Context, opts resolveOptions) error {
 		return fmt.Errorf("failed to resolve digest: %w", err)
 	}
 
-	if opts.FullRef {
+	if opts.fullRef {
 		fmt.Printf("%s@%s\n", opts.Path, desc.Digest)
 	} else {
 		fmt.Println(desc.Digest.String())
