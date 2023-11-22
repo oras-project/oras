@@ -62,7 +62,7 @@ var _ = Describe("Common registry user", func() {
 			gomega.Expect(outString).To(gomega.Equal(multi_arch.Digest))
 		})
 		It("should resolve with a fully qualified reference", func() {
-			out := ORAS("resolve", "-l", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag)).Exec().Out
+			out := ORAS("digest", "-l", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag)).Exec().Out
 			gomega.Expect(out).To(gbytes.Say(fmt.Sprintf("%s/%s@%s", ZOTHost, ImageRepo, multi_arch.Digest)))
 		})
 		It("should resolve with a fully qualified reference for a platform", func() {
@@ -83,7 +83,7 @@ var _ = Describe("OCI image layout users", func() {
 		})
 		It("should resolve with a fully qualified reference", func() {
 			tmpRoot := PrepareTempOCI(ImageRepo)
-			out := ORAS("resolve", Flags.Layout, "-l", LayoutRef(tmpRoot, multi_arch.Tag)).Exec().Out
+			out := ORAS("digest", Flags.Layout, "-l", LayoutRef(tmpRoot, multi_arch.Tag)).Exec().Out
 			gomega.Expect(out).To(gbytes.Say(fmt.Sprintf("%s@%s", tmpRoot, multi_arch.Digest)))
 		})
 		It("should resolve with a fully qualified reference for a platform", func() {
