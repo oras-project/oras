@@ -23,7 +23,6 @@ import (
 )
 
 var (
-
 	// requestCount records the number of logged request-response pairs and will
 	// be used as the unique id for the next pair.
 	requestCount uint64
