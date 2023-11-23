@@ -27,10 +27,10 @@ var (
 	// be used as the unique id for the next pair.
 	requestCount uint64
 
-	// headerToScrub is a set of headers that should be scrubbed from the log.
-	headerToScrub = map[string]struct{}{
-		"Authorization": {},
-		"Set-Cookie":    {},
+	// toScrub is a set of headers that should be scrubbed from the log.
+	toScrub = []string{
+		"Authorization",
+		"Set-Cookie",
 	}
 )
 
@@ -76,8 +76,10 @@ func logHeader(header http.Header) string {
 	if len(header) > 0 {
 		headers := []string{}
 		for k, v := range header {
-			if _, ok := headerToScrub[k]; ok {
-				v = []string{"*****"}
+			for _, h := range toScrub {
+				if strings.EqualFold(k, h) {
+					v = []string{"*****"}
+				}
 			}
 			headers = append(headers, fmt.Sprintf("   %q: %q", k, strings.Join(v, ", ")))
 		}
