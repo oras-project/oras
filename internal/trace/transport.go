@@ -22,9 +22,18 @@ import (
 	"sync/atomic"
 )
 
-// requestCount records the number of logged request-response pairs and will
-// be used as the unique id for the next pair.
-var requestCount uint64
+var (
+
+	// requestCount records the number of logged request-response pairs and will
+	// be used as the unique id for the next pair.
+	requestCount uint64
+
+	// headerToScrub is a set of headers that should be scrubbed from the log.
+	headerToScrub = map[string]struct{}{
+		"Authorization": {},
+		"Set-Cookie":    {},
+	}
+)
 
 // Transport is an http.RoundTripper that keeps track of the in-flight
 // request and add hooks to report HTTP tracing events.
@@ -68,7 +77,7 @@ func logHeader(header http.Header) string {
 	if len(header) > 0 {
 		headers := []string{}
 		for k, v := range header {
-			if strings.EqualFold(k, "Authorization") || strings.EqualFold(k, "Set-Cookie") {
+			if _, ok := headerToScrub[k]; ok {
 				v = []string{"*****"}
 			}
 			headers = append(headers, fmt.Sprintf("   %q: %q", k, strings.Join(v, ", ")))
