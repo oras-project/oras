@@ -68,7 +68,7 @@ func logHeader(header http.Header) string {
 	if len(header) > 0 {
 		headers := []string{}
 		for k, v := range header {
-			if strings.EqualFold(k, "Authorization") {
+			if strings.EqualFold(k, "Authorization") || strings.EqualFold(k, "Set-Cookie") {
 				v = []string{"*****"}
 			}
 			headers = append(headers, fmt.Sprintf("   %q: %q", k, strings.Join(v, ", ")))
