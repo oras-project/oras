@@ -18,7 +18,7 @@ Third, for unhandled errors you didn’t expect the user to run into. For that, 
 
 Fourth, signal-to-noise ratio is crucial. The more irrelevant output you produce, the longer it’s going to take the user to figure out what they did wrong. If your program produces multiple errors of the same type, consider grouping them under a single explanatory header instead of printing many similar-looking lines.
 
-Fifth, CLI program termination should follow the standard [Exit Status conventions](https://www.gnu.org/software/libc/manual/html_node/Exit-Status.html) to report broad information about success or failure. 
+Fifth, CLI program termination should follow the standard [Exit Status conventions](https://www.gnu.org/software/libc/manual/html_node/Exit-Status.html) to report execution status information about success or failure. 
 
 Last, error logs can also be useful for post-mortem debugging but make sure they have timestamps, truncate them occasionally so they don’t eat up space on disk, and make sure they don’t contain ansi color codes. Thereby, error logs can be written to a file.
 
@@ -118,16 +118,17 @@ Fetch manifest of the target artifact. Run "oras manifest fetch -h" for more opt
 Current behavior and output:
 
 ```
-$ oras manifest push --oci-layout /tmp/ginkgo2167255592:mediatype-flag
+$ oras manifest push --oci-layout /sample/images:foobar:mediatype
 Error: media type is not recognized. 
 ```
 
 Suggested error message:
 
 ```
-$ oras manifest push --oci-layout /tmp/ginkgo2167255592:mediatype-flag
+$ oras manifest push --oci-layout /sample/images:foobar:mediatype
 Error: media type is not recognized. 
-Specify an valid media type with "--media-type"
+Usage: oras manifest push [flags] <name>[:<tag>[,<tag>][...]|@<digest>] <file>
+Specify an valid media type with the "--media-type" flag.
 ```
 
 #### Example 5: attach an artifact if the given option is unknown
@@ -135,14 +136,14 @@ Specify an valid media type with "--media-type"
 Current behavior and output:
 
 ```
-$ oras attach --artifact-type oras/test localhost:7000/command/images:foobar --distribution-spec v1.0
+$ oras attach --artifact-type oras/test localhost:5000/command/images:foobar --distribution-spec v1.0
 Error: unknown distribution specification flag: v1.0
 ```
 
 Suggested error message:
 
 ```
-$ oras attach --artifact-type oras/test localhost:7000/command/images:foobar --distribution-spec ???
+$ oras attach --artifact-type oras/test localhost:5000/sample/images:foobar --distribution-spec ???
 Error: unknown distribution specification flag: "v1.0". 
 Available options: v1.1-referrers-api, v1.1-referrers-tag
 ```
@@ -152,17 +153,17 @@ Available options: v1.1-referrers-api, v1.1-referrers-tag
 Current behavior and output:
 
 ```
-$ oras attach --artifact-type oras/test /tmp/ginkgo2977244222:foobar
+$ oras attach --artifact-type sbom/example localhost:5000/sample/images:foobar
 Error: no blob is provided
 ```
 
 Suggested error message:
 
 ```
-$ oras attach --artifact-type oras/test /tmp/ginkgo2977244222:foobar
+$ oras attach --artifact-type sbom/example localhost:5000/sample/images:foobar
 Error: failed to attach a file. No file provided in the command.
 Usage: oras attach [flags] --artifact-type=<type> <name>{:<tag>|@<digest>} <file>[:<type>] [...]
-To attach files to an existing artifact, try "oras attach --artifact-type sbom/example oras/test /tmp/ginkgo2977244222:foobar sample.txt". Run "oras attach -h" for more options and examples
+To attach files to an existing artifact, try "oras attach --artifact-type sbom/example localhost:5000/sample/images:foobar sample.json". Run "oras attach -h" for more options and examples
 ```
 
 #### Example 7: When pushing files, if the annotation file doesn't match the required format
