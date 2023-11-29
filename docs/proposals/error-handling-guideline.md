@@ -1,4 +1,4 @@
-# ORAS CLI Error Handling and Message Guidelines
+# ORAS CLI Error Handling and Message Guideline
 
 This document aims to provide the guidelines for ORAS contributors to improve existing error messages and error handling method as well as the new error output format. It will also provide recommendations and examples for ORAS CLI contributors for how to write friendly and standard error messages, avoid generating inconsistent and ambiguous error messages.
 
@@ -8,17 +8,17 @@ A clear and actionable error message is very important when raising an error, so
 
 First and foremost, make the error messages descriptive and informative. Error messages are expected to be helpful to troubleshoot where the user has done something wrong and the program is guiding them in the right direction. A great error message is recommended to contain the following elements:
 
-- Error code (When the logs are generated from the server side)
-- Error title
-- Error description 
-- How to fix the error
-- Versioned document link for more information (Optional, it can be a troubleshooting or FAQ document link)
+- Error code: optional, when the logs are generated from the server side
+- Error description: describe what the error is
+- Suggestion: How to fix the error. Versioned troubleshooting document link is nice to have.
 
 Second, when necessary, it is highly suggested for ORAS CLI contributors to provide recommendations for users how to resolve the problems based on the error messages they encountered. Showing descriptive words and straightforward prompt with executable commands as a potential solution is a good practice for error messages.
 
 Third, for unhandled errors you didn’t expect the user to run into. For that, have a way to view full traceback information as well as full debug or verbose logs output, and instructions on how to submit a bug.
 
 Fourth, signal-to-noise ratio is crucial. The more irrelevant output you produce, the longer it’s going to take the user to figure out what they did wrong. If your program produces multiple errors of the same type, consider grouping them under a single explanatory header instead of printing many similar-looking lines.
+
+Fifth, CLI program termination should follow the standard [Exit Status conventions](https://www.gnu.org/software/libc/manual/html_node/Exit-Status.html) to report broad information about success or failure. 
 
 Last, error logs can also be useful for post-mortem debugging but make sure they have timestamps, truncate them occasionally so they don’t eat up space on disk, and make sure they don’t contain ansi color codes. Thereby, error logs can be written to a file.
 
@@ -46,10 +46,14 @@ Last, error logs can also be useful for post-mortem debugging but make sure they
 Here is a sample structure of an error message:
 
 ```text
-Error: [Error code] : [Error title] : [Error description] 
+Error:[Status code]: [Error description] 
 Usage: [Command usage]
-[Recommended solution], [TSG]
+[Recommended solution]
 ```
+
+- Status code is an optional information. If the error message is generated from the server side, it may include error code or [warn code](https://www.rfc-editor.org/rfc/rfc7234#section-5.5). It could be printed out alongside the error description.
+- Command usage is also an optional information but it's recommended to be printed out when user input doesn't follow the standard usage or examples. 
+- Recommended solution is required and should follow the general guiding principles described above.
 
 ### Examples
 
@@ -69,7 +73,6 @@ Suggested error message:
 ```
 $ oras cp
 Error: "oras copy" requires exactly 2 arguments.
-
 Usage: oras copy [flags] <from>{:<tag>|@<digest>} <to>[:<tag>[,<tag>][...]]
 Copy artifacts from one target to another. Run "oras copy -h" for more options and examples
 ```
@@ -106,7 +109,6 @@ Suggested error message:
 ```
 $ oras manifest fetch --oci-layout /tmp/ginkgo1163328512
 Error: "/tmp/ginkgo1163328512": no tag or digest specified
-
 Usage: oras manifest fetch [flags] <name>{:<tag>|@<digest>}
 Fetch manifest of the target artifact. Run "oras manifest fetch -h" for more options and examples 
 ```
