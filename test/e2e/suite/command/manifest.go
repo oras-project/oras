@@ -520,8 +520,8 @@ var _ = Describe("OCI image layout users:", func() {
 			toDeleteRef := LayoutRef(PrepareTempOCI(ImageRepo), foobar.Tag)
 			// test
 			ORAS("manifest", "delete", Flags.Layout, toDeleteRef, "-f", "--descriptor").
-				MatchContent("{\"mediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"digest\":\"sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb\",\"size\":851}").
-				WithDescription("cancel without confirmation").Exec()
+				MatchContent("{\"mediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"digest\":\"sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb\",\"size\":851,\"annotations\":{\"org.opencontainers.image.ref.name\":\"foobar\"}}").
+				Exec()
 			// validate
 			ORAS("manifest", "fetch", Flags.Layout, toDeleteRef).MatchErrKeyWords(": not found").Exec()
 		})
