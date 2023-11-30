@@ -523,7 +523,7 @@ var _ = Describe("OCI image layout users:", func() {
 				MatchContent("{\"mediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"digest\":\"sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb\",\"size\":851,\"annotations\":{\"org.opencontainers.image.ref.name\":\"foobar\"}}").
 				Exec()
 			// validate
-			ORAS("manifest", "fetch", Flags.Layout, toDeleteRef).MatchErrKeyWords(": not found").Exec()
+			ORAS("manifest", "fetch", Flags.Layout, toDeleteRef).MatchErrKeyWords(": not found").ExpectFailure().Exec()
 		})
 
 		It("should succeed when deleting a non-existent manifest with force flag set", func() {
