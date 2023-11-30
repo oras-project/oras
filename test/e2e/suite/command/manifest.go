@@ -496,14 +496,14 @@ var _ = Describe("OCI image layout users:", func() {
 	})
 
 	When("running `manifest delete`", func() {
-		It("should do confirmed deletion via input", Focus, func() {
+		It("should do confirmed deletion via input", func() {
 			// prepare
 			toDeleteRef := LayoutRef(PrepareTempOCI(ImageRepo), foobar.Tag)
 			// test
 			ORAS("manifest", "delete", Flags.Layout, toDeleteRef).
 				WithInput(strings.NewReader("y")).Exec()
 			// validate
-			ORAS("manifest", "fetch", Flags.Layout, toDeleteRef).ExpectFailure().MatchErrKeyWords(":not found").Exec()
+			ORAS("manifest", "fetch", Flags.Layout, toDeleteRef).ExpectFailure().MatchErrKeyWords(": not found").Exec()
 		})
 
 		It("should do confirmed deletion via flag", func() {
@@ -512,7 +512,7 @@ var _ = Describe("OCI image layout users:", func() {
 			// test
 			ORAS("manifest", "delete", Flags.Layout, toDeleteRef, "-f").Exec()
 			// validate
-			ORAS("manifest", "fetch", Flags.Layout, toDeleteRef).ExpectFailure().MatchErrKeyWords(":not found").Exec()
+			ORAS("manifest", "fetch", Flags.Layout, toDeleteRef).ExpectFailure().MatchErrKeyWords(": not found").Exec()
 		})
 
 		It("should do forced deletion and output descriptor", func() {
@@ -523,7 +523,7 @@ var _ = Describe("OCI image layout users:", func() {
 				MatchContent("{\"mediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"digest\":\"sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb\",\"size\":851}").
 				WithDescription("cancel without confirmation").Exec()
 			// validate
-			ORAS("manifest", "fetch", Flags.Layout, toDeleteRef).MatchErrKeyWords(":not found").Exec()
+			ORAS("manifest", "fetch", Flags.Layout, toDeleteRef).MatchErrKeyWords(": not found").Exec()
 		})
 
 		It("should succeed when deleting a non-existent manifest with force flag set", func() {
