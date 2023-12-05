@@ -89,7 +89,7 @@ $ oras pull $REGISTRY/$REPO:$TAG --format json
 #### Example: pull multiple files
 
 ```shell
-$ oras pull $REGISTRY/$REPO:$TAG --format json {{ toPrettyJson }}
+$ oras pull $REGISTRY/$REPO:$TAG --format json {{ toPrettyJson }} 
 ```
 
 ```json
@@ -122,10 +122,10 @@ $ oras pull $REGISTRY/$REPO:$TAG --format json {{ toPrettyJson }}
 
 ### oras attach
 
-Attach an artifact to an image and show the metadata of the attached file.
+Attach an artifact to an image and show the manifest of the attached file in JSON format.
 
-```console
-$ oras attach --artifact-type example/sbom $REGISTRY/$REPO:$TAG sbom.spdx --format json
+```shell
+$ oras attach --artifact-type example/sbom $REGISTRY/$REPO:$TAG sbom.spdx --format json {{ toPrettyJson }}
 ```
 
 ```json
@@ -146,7 +146,7 @@ $ oras attach --artifact-type example/sbom $REGISTRY/$REPO:$TAG sbom.spdx --form
 Push an artifact to a repository and show the metadata of the pushed artifact.
 
 ```shell
-$ oras push $REGISTRY/$REPO:$TAG --format json
+$ oras push $REGISTRY/$REPO:$TAG --format json {{ toPrettyJson }}
 ```
 
 ```json
@@ -164,7 +164,7 @@ $ oras push $REGISTRY/$REPO:$TAG --format json
 
 ### oras discover
 
-Discover an artifact's referrers.
+Discover an artifact's referrers. The default output should be listed in a tree view.
 
 ```shell
 $ oras discover localhost:5000/hello:v1
@@ -176,6 +176,8 @@ localhost:5000/hello/demo@sha256:04beb34cd24389147b4642a828b47fabefa722dea794dc3
     ├── sha256:1b82e249d83eb4881b8bf4ff9cf13a28799907ddc624b4c3c9140fa77d54fa42
     ├── sha256:28653e2bb5b5a75393c3a8b58ed9998796299b41dc1ff1f55b9f0844ad7ba39c
 ```
+
+Discover an artifact's referrers manifest in JSON. Consider `oras discover` is more likely used by terminal (human) than machine, the default formatted output with `--format json` should be pretty JSON.
 
 ```
 $ oras discover localhost:5000/hello:v1 --format json
@@ -200,9 +202,9 @@ $ oras discover localhost:5000/hello:v1 --format json
     {
       "mediaType": "application/vnd.oci.image.manifest.v1+json",
       "digest": "sha256:28653e2bb5b5a75393c3a8b58ed9998796299b41dc1ff1f55b9f0844ad7ba39c",
-      "size": 731,
+      "size": 630,
       "annotations": {
-        "org.opencontainers.image.created": "2023-11-22T10:32:54Z"
+        "org.opencontainers.image.created": "2023-11-25T10:32:54Z"
       },
       "artifactType": "application/vnd.oci.empty.v1+json",
       "reference": "localhost:5000/hello@sha256:28653e2bb5b5a75393c3a8b58ed9998796299b41dc1ff1f55b9f0844ad7ba39c"
@@ -212,6 +214,8 @@ $ oras discover localhost:5000/hello:v1 --format json
 ```
 
 ### oras manifest fetch
+
+Fetch a specified layer and show the formatted JSON of the fetched manifest in formatted JSON.
 
 ```shell
 oras manifest fetch $REGISTRY/$REPO:$TAG --format {{.Layers[0].Reference}}
@@ -236,26 +240,38 @@ oras manifest fetch $REGISTRY/$REPO:$TAG --format {{.Layers[0].Reference}}
 
 ### Format the output using the given Go template
 
-Format the output using the given [Go template](https://golang.org/pkg/text/template/). The keys of the returned JSON can be used as the values for the `--format` flag.
+In order to custom the manifest fields in the output, format the output using the given [Go template](https://golang.org/pkg/text/template/). The keys of the returned JSON can be used as the values for the `--format` flag.
+
+For example, push an artifact to a repository and show the `reference` and `artifactType` of the pushed artifact in the standard output.
 
 ```shell
 $ oras push $REGISTRY/$REPO:$TAG --format "{{.Reference}}', '{{.ArtifactType}}"
+```
 
+```console
 "localhost:5000@sha256:85438e6598bf35057962fff34399a362d469ca30a317939427fca6b7a289e70d, "application/vnd.example+type"  
 ```
 
-Display the specified metadata in the standard output
+For example, pull a file and display the specified fields `mediaType`, `reference`, `size` of the pulled file in the standard output.
 
 ```shell
 $ oras pull $REGISTRY/$REPO:$TAG --format "{{.MediaType}}, {{.Reference}}, {{.Size}}"
+```
 
+
+```console
 "application/vnd.oci.image.layer.v1.tar","sha256:85438e6598bf35057962fff34399a362d469ca30a317939427fca6b7a289e70d", 12
 ```
 
-Get the specified annotation value of an artifact:
+For example, get the specified annotation value of an artifact by the key name `org.opencontainers.image.created`, with the [index function](https://pkg.go.dev/text/template#pkg-functions) defined in Go template.
 
 ```shell
 $ oras discover localhost:5000/hello:v1 --format '{{index .Manifest.Annotations "org.opencontainers.image.created"}}'
+
+```
+
+```console
+"2023-11-29T06:32:43Z"
 ```
 
 
