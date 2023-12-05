@@ -74,7 +74,7 @@ Suggested error message:
 $ oras cp
 Error: "oras copy" requires exactly 2 arguments.
 Usage: oras copy [flags] <from>{:<tag>|@<digest>} <to>[:<tag>[,<tag>][...]]
-Copy artifacts from one target to another. Run "oras copy -h" for more options and examples
+You need to specify two arguments as source and destination respectively. Run "oras copy -h" for more options and examples
 ```
 
 #### Example 2: when reference does not match with the expected format
@@ -92,7 +92,7 @@ Suggested error message:
 $ oras tag list ghcr.io/oras-project/oras
 Error: There is no "list" sub-command for "oras tag" command.
 Usage: oras tag [flags] <name>{:<tag>|@<digest>} <new_tag> [...]
-Tag a manifest in a registry or an OCI image layout. Run "oras tag -h" for more options and examples
+If you want to tag a manifest in a registry or an OCI image layout, use "oras tag". If you want to list available tags in a repository, use "oras repo show tags" 
 ```
 
 #### Example 3: When fetching a manifest if no manifest tag or digest is provided
@@ -110,7 +110,7 @@ Suggested error message:
 $ oras manifest fetch --oci-layout /tmp/ginkgo1163328512
 Error: "/tmp/ginkgo1163328512": no tag or digest specified
 Usage: oras manifest fetch [flags] <name>{:<tag>|@<digest>}
-Fetch manifest of the target artifact. Run "oras manifest fetch -h" for more options and examples 
+You need to specify an artifact reference in the form of "<name>:<tag>" or "<name>@<digest>". Run "oras manifest fetch -h" for more options and examples 
 ```
 
 #### Example 4: push a manifest if no media type flag provided
@@ -128,7 +128,7 @@ Suggested error message:
 $ oras manifest push --oci-layout /sample/images:foobar:mediatype
 Error: media type is not recognized. 
 Usage: oras manifest push [flags] <name>[:<tag>[,<tag>][...]|@<digest>] <file>
-Specify an valid media type with the "--media-type" flag.
+You need to specify a valid media type "mediaType" in the manifest JSON or via the "--media-type" flag.
 ```
 
 #### Example 5: attach an artifact if the given option is unknown
