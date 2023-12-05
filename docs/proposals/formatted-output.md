@@ -34,7 +34,7 @@ jobs:
 
 ## Proposal: format output into structured data
 
-- Use the `--format json` flag to change the default human-readable prettified output to machine-readable raw JSON. If  `--format json {{ toPrettyJson }}`
+- Use the `--format json` flag to change the default human-readable prettified output to machine-readable raw JSON. Users can still use `--format '{{jsonPretty .}}'` to get prettified output for some commands.
 - Use the `--format` with Go template to custom the output fields. 
 
 ## Use cases
@@ -52,7 +52,8 @@ Pull an artifact and display its metadata as formatted JSON in standard output. 
     -  path: the absolute file path of the pulled file (layer)
     -  reference: full reference by digest of the pulled file (layer)
 
-#### Example - pull a single file
+
+Pull a single file and show the manifest of the pulled file as pretty JSON in standard output:
 
 ```shell
 $ oras pull $REGISTRY/$REPO:$TAG --format json {{ toPrettyJson }}
@@ -76,7 +77,7 @@ $ oras pull $REGISTRY/$REPO:$TAG --format json {{ toPrettyJson }}
 }
 ```
 
-Pull an artifact and display its metadata as raw JSON in standard output.
+Pull an artifact and display its manifest as raw JSON in standard output.
 
 ```shell
 $ oras pull $REGISTRY/$REPO:$TAG --format json
@@ -86,10 +87,10 @@ $ oras pull $REGISTRY/$REPO:$TAG --format json
 {"mediaType":"application/vnd.oci.image.manifest.v1.tar","digest":"sha256:d2a84f4b8b650937ec8f73cd8be2c74add5a911ba64df27458ed8229da804a2","size":12,"annotations":{"org.opencontainers.image.created":"2023-11-29T06:32:43Z"},"path","path1/artifact1.json","reference":"$REGISTRY/$REPO:$digest"}
 ```
 
-#### Example: pull multiple files
+pull multiple files and show their manifests as pretty JSON in standard output.
 
 ```shell
-$ oras pull $REGISTRY/$REPO:$TAG --format json {{ toPrettyJson }} 
+$ oras pull $REGISTRY/$REPO:$TAG --format '{{jsonPretty .}}'
 ```
 
 ```json
@@ -146,7 +147,7 @@ $ oras attach --artifact-type example/sbom $REGISTRY/$REPO:$TAG sbom.spdx --form
 Push an artifact to a repository and show the metadata of the pushed artifact.
 
 ```shell
-$ oras push $REGISTRY/$REPO:$TAG --format json {{ toPrettyJson }}
+$ oras push $REGISTRY/$REPO:$TAG --format '{{jsonPretty .}}'
 ```
 
 ```json
