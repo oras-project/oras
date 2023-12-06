@@ -8,9 +8,11 @@ The formatted output is not intended to supersede the prettified human-readable 
 
 ### Scripting
 
-Alice is a developer who wants to batch operations with ORAS in her Shell script. In order to automate some routine workflow in containers secure supply chain scenario, she wants the machine to get the image digest from the JSON output objects that are emitted by `oras push`, then use utility like [xargs](https://en.wikipedia.org/wiki/Xargs) to enable an ORAS command to act on the output of another command and perform further steps. In this way, she can chain commands together. For example, she can use `oras attach` to attach an SBOM to the image using its image digest as a argument outputted from `oras push`.
+Alice is a developer who wants to batch operations with ORAS in her Shell script. In order to automate some routine workflow in containers secure supply chain scenario, she wants the machine to get the image digest from the JSON output objects that are emitted by `oras push`, then use utility like [xargs](https://en.wikipedia.org/wiki/Xargs) or use environmental variables to enable an ORAS command to act on the output of another command and perform further steps. In this way, she can chain commands together. For example, she can use `oras attach` to attach an SBOM to the image using its image digest as a argument outputted from `oras push`.
 
 For example, push an artifact to a registry and generate the artifact reference in the standard output, then attach an SBOM to the artifact using the artifact reference (`$REGISTRY/$REPO:$DIGEST`) outputted from the first command, finally sign the attached SBOM with another tool against the SBOM file's reference (`$REGISTRY/$REPO:$DIGEST`) outputted from the last step.
+
+- Use xargs utility on Unix
 
 ```shell
 oras push $REGISTRY/$REPO:$TAG hello.txt --format '{{.Reference}}' |\
@@ -18,9 +20,28 @@ xargs -I _ oras attach --artifact-type sbom/example _ sbom.spdx --format '{{.Ref
 xargs -I _ notation sign _ 
 ```
 
+- Use environmental variables on Unix
+
+```shell
+$REFERENCE_A=oras push $REGISTRY/$REPO:$TAG hello.txt --format '{{.Reference}}'
+$REFERENCE_B=oras attach --artifact-type sbom/example $REFERENCE_A sbom.spdx --format '{{.Reference}}' 
+notation sign $REFERENCE_B
+```
+
+- Use [ConverFrom-Json](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/convertfrom-json) on Windows PowerShell
+
+```
+$env:REFERENCE_A='oras push $REGISTRY/$REPO:$TAG hello.txt --format json' --no-tty | ConvertFrom-Json
+$env:REFERENCE_B='oras attach --artifact-type sbom/example $REFERENCE_A.Reference sbom.spdx --format json' --no-tty | ConvertFrom-Json
+notation sign $REFERENCE_B.Reference
+
+```
+
 ### CI/CD
 
 Bob is a DevOps engineer. He uses the ORAS GitHub Actions [Setup action](https://github.com/oras-project/setup-oras) to install ORAS in his CI/CD workflow. He wants to chain multiple ORAS commands in a Shell script to perform multiple operations.
+
+For example, pull multiple files (layers) from a repository and filter out the file path of its first layer in the standard output, then pass the pulled first layer to the second command `docker import` for further operation. 
 
 ```yaml
 jobs:
@@ -28,16 +49,18 @@ jobs:
     steps:
       - uses: oras-project/setup-oras@v1
       - run: |
-          oras pull $REGISTRY/$REPO:$TAG --format '{{.Files[0].Path}}' |\
+          oras pull $REGISTRY/$REPO:$TAG --format '{{.first .Files.Path}}' |\
           docker import _
 ```
 
 ## Proposal: format output into structured data
 
-- Use the `--format json` flag to change the default human-readable prettified output to machine-readable raw JSON. Users can still use `--format '{{jsonPretty .}}'` to get prettified output for some commands.
-- Use the `--format` with Go template to custom the output fields. 
+1. Use the `--format json` flag to change the default human-readable prettified output to machine-readable raw JSON. Users can still use `--format '{{toPrettyJson .}}'` to get prettified output for some commands.
+2. Use the `--format` with [Go template](https://pkg.go.dev/text/template) to custom the output fields. 
 
-## Use cases
+## Desired user experience for proposal 1
+
+For review convenience, this doc shows the output in most of the sample ORAS commands with prettified JSON format.
 
 ### oras pull 
 
@@ -56,7 +79,7 @@ Pull an artifact and display its metadata as formatted JSON in standard output. 
 Pull a single file and show the manifest of the pulled file as pretty JSON in standard output:
 
 ```shell
-$ oras pull $REGISTRY/$REPO:$TAG --format json {{ toPrettyJson }}
+oras pull $REGISTRY/$REPO:$TAG --format json {{ toPrettyJson }}
 ```
 
 ```json
@@ -80,7 +103,7 @@ $ oras pull $REGISTRY/$REPO:$TAG --format json {{ toPrettyJson }}
 Pull an artifact and display its manifest as raw JSON in standard output.
 
 ```shell
-$ oras pull $REGISTRY/$REPO:$TAG --format json
+oras pull $REGISTRY/$REPO:$TAG --format json
 ```
 
 ```
@@ -90,7 +113,7 @@ $ oras pull $REGISTRY/$REPO:$TAG --format json
 pull multiple files and show their manifests as pretty JSON in standard output.
 
 ```shell
-$ oras pull $REGISTRY/$REPO:$TAG --format '{{jsonPretty .}}'
+oras pull $REGISTRY/$REPO:$TAG --format '{{toPrettyJson .}}'
 ```
 
 ```json
@@ -126,7 +149,7 @@ $ oras pull $REGISTRY/$REPO:$TAG --format '{{jsonPretty .}}'
 Attach an artifact to an image and show the manifest of the attached file in JSON format.
 
 ```shell
-$ oras attach --artifact-type example/sbom $REGISTRY/$REPO:$TAG sbom.spdx --format json {{ toPrettyJson }}
+oras attach --artifact-type example/sbom $REGISTRY/$REPO:$TAG sbom.spdx --format json {{ toPrettyJson }}
 ```
 
 ```json
@@ -144,10 +167,10 @@ $ oras attach --artifact-type example/sbom $REGISTRY/$REPO:$TAG sbom.spdx --form
 
 ### oras push
 
-Push an artifact to a repository and show the metadata of the pushed artifact.
+Push an artifact to a repository and show the manifest of the pushed artifact in pretty JSON format.
 
 ```shell
-$ oras push $REGISTRY/$REPO:$TAG --format '{{jsonPretty .}}'
+oras push $REGISTRY/$REPO:$TAG --format '{{toPrettyJson .}}'
 ```
 
 ```json
@@ -168,10 +191,10 @@ $ oras push $REGISTRY/$REPO:$TAG --format '{{jsonPretty .}}'
 Discover an artifact's referrers. The default output should be listed in a tree view.
 
 ```shell
-$ oras discover localhost:5000/hello:v1
+oras discover localhost:5000/hello:v1
 ```
 
-```
+```console
 localhost:5000/hello/demo@sha256:04beb34cd24389147b4642a828b47fabefa722dea794dc3834567cf014ab0fe6
 └── application/vnd.oci.empty.v1+json
     ├── sha256:1b82e249d83eb4881b8bf4ff9cf13a28799907ddc624b4c3c9140fa77d54fa42
@@ -180,8 +203,8 @@ localhost:5000/hello/demo@sha256:04beb34cd24389147b4642a828b47fabefa722dea794dc3
 
 Discover an artifact's referrers manifest in JSON. Consider `oras discover` is more likely used by terminal (human) than machine, the default formatted output with `--format json` should be pretty JSON.
 
-```
-$ oras discover localhost:5000/hello:v1 --format json
+```shell
+oras discover localhost:5000/hello:v1 --format json
 ```
 
 ```json
@@ -219,7 +242,7 @@ $ oras discover localhost:5000/hello:v1 --format json
 Fetch a specified layer and show the formatted JSON of the fetched manifest in formatted JSON.
 
 ```shell
-oras manifest fetch $REGISTRY/$REPO:$TAG --format {{.Layers[0].Reference}}
+oras manifest fetch $REGISTRY/$REPO:$TAG --format '{{(first .Layers).Reference}}'
 ```
 
 ```json
@@ -233,46 +256,64 @@ oras manifest fetch $REGISTRY/$REPO:$TAG --format {{.Layers[0].Reference}}
             "annotations": {
                 "org.opencontainers.image.created":"2023-11-29T06:32:43Z"
             },
-            "reference": "$REGISTRY/$REPO:$layer0_digest",
+            "reference": "$REGISTRY/$REPO:$first_layer_digest",
+        },
+        {
+            "mediaType": "application/vnd.oci.image.layer.v1.tar",
+            "digest": "sha256:d2a84f4b8b650937ec8f73cd8be2c74add5a911ba64df27458ed8229da804a26",
+            "size": 12,
+            "annotations": {
+                "org.opencontainers.image.created":"2023-11-30T06:32:43Z"
+            },
+            "reference": "$REGISTRY/$REPO:$second_layer_digest",
         }
     ]
 }
 ```
 
+## Desired user experience for proposal 2
+
+In order to  the manifest fields in the output, format the output using the given [Go template](https://golang.org/pkg/text/template/). The keys of the returned JSON can be used as the values for the `--format` flag.
+
 ### Format the output using the given Go template
 
-In order to custom the manifest fields in the output, format the output using the given [Go template](https://golang.org/pkg/text/template/). The keys of the returned JSON can be used as the values for the `--format` flag.
-
-For example, push an artifact to a repository and show the `reference` and `artifactType` of the pushed artifact in the standard output.
+For example, push an artifact to a repository and filter out the value of `reference` and `artifactType` of the pushed artifact in the standard output.
 
 ```shell
-$ oras push $REGISTRY/$REPO:$TAG --format "{{.Reference}}', '{{.ArtifactType}}"
+oras push $REGISTRY/$REPO:$TAG --format "{{.Reference}}', '{{.ArtifactType}}"
 ```
 
 ```console
 "localhost:5000@sha256:85438e6598bf35057962fff34399a362d469ca30a317939427fca6b7a289e70d, "application/vnd.example+type"  
 ```
 
-For example, pull a file and display the specified fields `mediaType`, `reference`, `size` of the pulled file in the standard output.
+For example, pull a file and filter out the specified fields `mediaType`, `reference`, `size` of the pulled file in the standard output.
 
 ```shell
-$ oras pull $REGISTRY/$REPO:$TAG --format "{{.MediaType}}, {{.Reference}}, {{.Size}}"
+oras pull $REGISTRY/$REPO:$TAG --format "{{.MediaType}}, {{.Reference}}, {{.Size}}"
 ```
-
 
 ```console
 "application/vnd.oci.image.layer.v1.tar","sha256:85438e6598bf35057962fff34399a362d469ca30a317939427fca6b7a289e70d", 12
 ```
 
-For example, get the specified annotation value of an artifact by the key name `org.opencontainers.image.created`, with the [index function](https://pkg.go.dev/text/template#pkg-functions) defined in Go template.
+For example, filter out the specified annotation value of an artifact by the key name `org.opencontainers.image.created`, with the [index function](https://pkg.go.dev/text/template#pkg-functions) defined in Go template.
 
 ```shell
-$ oras discover localhost:5000/hello:v1 --format '{{index .Manifest.Annotations "org.opencontainers.image.created"}}'
-
+oras discover localhost:5000/hello:v1 --format '{{index .Manifest.Annotations "org.opencontainers.image.created"}}'
 ```
 
 ```console
 "2023-11-29T06:32:43Z"
 ```
 
+## FAQ
 
+- Why not consider extending the existing `--output` flag to enable JSON formatted output?
+
+`--output` has been used in other oras commands like `oras pull`, `oras manifest fetch` to output the file directory or file, it will be a breaking change if we extend the
+`--output` flag to enable JSON formatted output. 
+
+- Why choose [Go template](https://pkg.go.dev/text/template)?
+
+[Go template] is a powerful method to customize output you want It allows users to manipulate the output format of certain commands. It provides access to data objects and additional functions that are passed into the template engine programmatically. It also has some useful libraries that have strong functions for Go’s template language to manipulate the output data, such as [Sprig](https://masterminds.github.io/sprig/).
