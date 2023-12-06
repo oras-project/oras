@@ -21,6 +21,30 @@ import (
 	"oras.land/oras-go/v2/registry"
 )
 
+type output struct {
+	description, usage, suggestion string
+}
+
+func (o *output) Error() string {
+	ret := o.description
+	if o.usage != "" {
+		ret += fmt.Sprintf("\nUsage: %s", o.usage)
+	}
+	if o.suggestion != "" {
+		ret += fmt.Sprintf("\n%s", o.suggestion)
+	}
+	return ret
+}
+
+// NewOuput creates a new error for CLI output.
+func NewOuput(description, usage, suggestion string) error {
+	return &output{
+		description: description,
+		usage:       usage,
+		suggestion:  suggestion,
+	}
+}
+
 // NewErrEmptyTagOrDigest creates a new error based on the reference string.
 func NewErrEmptyTagOrDigest(ref registry.Reference) error {
 	return NewErrEmptyTagOrDigestStr(ref.String())

@@ -32,6 +32,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/display/track"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/contentutil"
@@ -100,7 +101,16 @@ Example - Push file "hi.txt" with multiple tags and concurrency level tuned:
 Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with tag 'test':
   oras push --oci-layout layout-dir:test hi.txt
 `,
-		Args: cobra.MinimumNArgs(1),
+		Args: func(cmd *cobra.Command, args []string) error {
+			if len(args) < 1 {
+				return oerrors.NewOuput(
+					fmt.Sprintf(`%q requires at least 1 argument`, cmd.CommandPath()),
+					cmd.Use,
+					fmt.Sprintf(`You need to at least specify one arguments as the destination for pushing. Run "%s -h" for more options and examples`, cmd.CommandPath()),
+				)
+			}
+			return nil
+		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			refs := strings.Split(args[0], ",")
 			opts.RawReference = refs[0]
