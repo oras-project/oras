@@ -42,7 +42,7 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		It("should show detailed error description if no argument provided", func() {
-			err := ORAS("push").Exec().Err
+			err := ORAS("push").ExpectFailure().Exec().Err
 			gomega.Expect(err).Should(gbytes.Say("Error"))
 			gomega.Expect(err).Should(gbytes.Say("\nUsage: push"))
 			gomega.Expect(err).Should(gbytes.Say("\n"))
