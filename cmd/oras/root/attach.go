@@ -28,6 +28,7 @@ import (
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/cmd/oras/internal/display/track"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
 	"oras.land/oras/internal/registryutil"
@@ -75,8 +76,11 @@ Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json'
 
 Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 'layout-dir':
   oras attach --oci-layout --artifact-type doc/example layout-dir:v1 hi.txt
-  `,
-		Args: cobra.MinimumNArgs(1),
+`,
+		Args: oerrors.ArgsChecker(
+			func(args []string) (bool, string) {
+				return len(args) >= 1, "at least 1 argument"
+			}, "the destination artifact for attaching."),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
 			opts.FileRefs = args[1:]

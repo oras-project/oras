@@ -101,16 +101,9 @@ Example - Push file "hi.txt" with multiple tags and concurrency level tuned:
 Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with tag 'test':
   oras push --oci-layout layout-dir:test hi.txt
 `,
-		Args: func(cmd *cobra.Command, args []string) error {
-			if len(args) < 1 {
-				return oerrors.NewOuput(
-					fmt.Sprintf(`%q requires at least 1 argument`, cmd.CommandPath()),
-					cmd.Use,
-					fmt.Sprintf(`You need to at least specify one arguments as the destination for pushing. Run "%s -h" for more options and examples`, cmd.CommandPath()),
-				)
-			}
-			return nil
-		},
+		Args: oerrors.ArgsChecker(func(args []string) (bool, string) {
+			return len(args) >= 1, "at least 1 argument"
+		}, "the destination for pushing"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			refs := strings.Split(args[0], ",")
 			opts.RawReference = refs[0]

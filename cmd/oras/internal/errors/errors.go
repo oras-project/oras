@@ -18,6 +18,7 @@ package errors
 import (
 	"fmt"
 
+	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/registry"
 )
 
@@ -42,6 +43,20 @@ func NewOuput(description, usage, suggestion string) error {
 		description: description,
 		usage:       usage,
 		suggestion:  suggestion,
+	}
+}
+
+// ArgsChecker checks the args with the checker function.
+func ArgsChecker(checker func(args []string) (bool, string), usage string) cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error {
+		if ok, text := checker(args); !ok {
+			return NewOuput(
+				fmt.Sprintf(`%q requires %s but got %d`, cmd.CommandPath(), text, len(args)),
+				cmd.Use,
+				fmt.Sprintf(`You need to specify %s as %s. Run "%s -h" for more options and examples`, text, usage, cmd.CommandPath()),
+			)
+		}
+		return nil
 	}
 }
 
