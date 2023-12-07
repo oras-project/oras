@@ -67,6 +67,14 @@ var _ = Describe("ORAS beginners:", func() {
 			Expect(err).Should(gbytes.Say("\n"))
 			Expect(err).Should(gbytes.Say(`Run "oras cp -h"`))
 		})
+
+		It("should show detailed error description if more than 2 arguments are provided", func() {
+			err := ORAS("cp", "foo", "bar", "buz").ExpectFailure().Exec().Err
+			Expect(err).Should(gbytes.Say("Error"))
+			Expect(err).Should(gbytes.Say("\nUsage: cp"))
+			Expect(err).Should(gbytes.Say("\n"))
+			Expect(err).Should(gbytes.Say(`Run "oras cp -h"`))
+		})
 	})
 })
 

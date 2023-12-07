@@ -28,6 +28,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"oras.land/oras-go/v2"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
 	"oras.land/oras/internal/tree"
@@ -73,7 +74,9 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
   oras discover --oci-layout layout-dir:v1
   oras discover --oci-layout -v -o tree layout-dir:v1
 `,
-		Args: cobra.ExactArgs(1),
+		Args: oerrors.ArgsChecker(func(args []string) (bool, string) {
+			return len(args) == 1, "exactly 1 arguments"
+		}, "the target artifact to discover referrers from"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
 			return option.Parse(&opts)
