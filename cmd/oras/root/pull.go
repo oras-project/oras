@@ -30,6 +30,7 @@ import (
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/display/track"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
@@ -84,7 +85,9 @@ Example - Pull artifact files from an OCI image layout folder 'layout-dir':
 Example - Pull artifact files from an OCI layout archive 'layout.tar':
   oras pull --oci-layout layout.tar:v1
 `,
-		Args: cobra.ExactArgs(1),
+		Args: oerrors.ArgsChecker(func(args []string) (bool, string) {
+			return len(args) == 1, "exactly 1 arguments"
+		}, "the artifact reference you want to pull"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
 			return option.Parse(&opts)
