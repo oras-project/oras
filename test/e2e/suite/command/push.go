@@ -41,7 +41,7 @@ var _ = Describe("ORAS beginners:", func() {
 			gomega.Expect(out).Should(gbytes.Say("--image-spec string\\s+%s", regexp.QuoteMeta(feature.Experimental.Mark)))
 		})
 
-		It("should show detailed error description if no argument provided", func() {
+		It("should fail and show detailed error description if no argument provided", func() {
 			err := ORAS("push").ExpectFailure().Exec().Err
 			gomega.Expect(err).Should(gbytes.Say("Error"))
 			gomega.Expect(err).Should(gbytes.Say("\nUsage: push"))
