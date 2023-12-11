@@ -17,6 +17,7 @@ package errors
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/registry"
@@ -51,9 +52,9 @@ func ArgsChecker(checker func(args []string) (bool, string), usage string) cobra
 	return func(cmd *cobra.Command, args []string) error {
 		if ok, text := checker(args); !ok {
 			return NewOuput(
-				fmt.Sprintf(`%q requires %s but got %d`, cmd.CommandPath(), text, len(args)),
+				fmt.Sprintf(`%q requires %s but got %q`, cmd.CommandPath(), text, strings.Join(args, ",")),
 				cmd.Use,
-				fmt.Sprintf(`You need to specify %s as %s. Run "%s -h" for more options and examples`, text, usage, cmd.CommandPath()),
+				fmt.Sprintf(`Please specify %s as %s. Run "%s -h" for more options and examples`, text, usage, cmd.CommandPath()),
 			)
 		}
 		return nil
