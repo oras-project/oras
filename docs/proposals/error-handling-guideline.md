@@ -163,7 +163,7 @@ Suggested error message:
 $ oras attach --artifact-type sbom/example localhost:5000/sample/images:foobar
 Error: no file or annotation provided in the command
 Usage: oras attach [flags] --artifact-type=<type> <name>{:<tag>|@<digest>} <file>[:<type>] [...]
-To attach to an existing artifact, please provide files via argument or annotations via flag. Run "oras attach -h" for more options and examples
+To attach to an existing artifact, please provide files via argument or annotations via flag "--annotation". Run "oras attach -h" for more options and examples
 ```
 
 #### Example 7: When pushing files, if the annotation file doesn't match the required format
