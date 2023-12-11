@@ -148,13 +148,13 @@ func (opts *Target) NewTarget(common Common, logger logrus.FieldLogger) (oras.Gr
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
 }
 
-type resolvableDeleter interface {
+type ResolvableDeleter interface {
 	content.Resolver
 	content.Deleter
 }
 
 // NewBlobDeleter generates a new blob deleter based on opts.
-func (opts *Target) NewBlobDeleter(common Common, logger logrus.FieldLogger) (resolvableDeleter, error) {
+func (opts *Target) NewBlobDeleter(common Common, logger logrus.FieldLogger) (ResolvableDeleter, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
 		return opts.newOCIStore()
@@ -169,7 +169,7 @@ func (opts *Target) NewBlobDeleter(common Common, logger logrus.FieldLogger) (re
 }
 
 // NewManifestDeleter generates a new blob deleter based on opts.
-func (opts *Target) NewManifestDeleter(common Common, logger logrus.FieldLogger) (resolvableDeleter, error) {
+func (opts *Target) NewManifestDeleter(common Common, logger logrus.FieldLogger) (ResolvableDeleter, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
 		return opts.newOCIStore()
