@@ -10,17 +10,17 @@ First and foremost, make the error messages descriptive and informative. Error m
 
 - Error code: optional, when the logs are generated from the server side
 - Error description: describe what the error is
-- Suggestion: How to fix the error. Versioned troubleshooting document link is nice to have.
+- Suggestion: for those errors that have potential solution, print out the recommended solution. Versioned troubleshooting document link is nice to have.
 
 Second, when necessary, it is highly suggested for ORAS CLI contributors to provide recommendations for users how to resolve the problems based on the error messages they encountered. Showing descriptive words and straightforward prompt with executable commands as a potential solution is a good practice for error messages.
 
-Third, for unhandled errors you didn’t expect the user to run into. For that, have a way to view full traceback information as well as full debug or verbose logs output, and instructions on how to submit a bug.
+Third, for unhandled errors you didn't expect the user to run into. For that, have a way to view full traceback information as well as full debug or verbose logs output, and instructions on how to submit a bug.
 
-Fourth, signal-to-noise ratio is crucial. The more irrelevant output you produce, the longer it’s going to take the user to figure out what they did wrong. If your program produces multiple errors of the same type, consider grouping them under a single explanatory header instead of printing many similar-looking lines.
+Fourth, signal-to-noise ratio is crucial. The more irrelevant output you produce, the longer it's going to take the user to figure out what they did wrong. If your program produces multiple errors of the same type, consider grouping them under a single explanatory header instead of printing many similar-looking lines.
 
 Fifth, CLI program termination should follow the standard [Exit Status conventions](https://www.gnu.org/software/libc/manual/html_node/Exit-Status.html) to report execution status information about success or failure. 
 
-Last, error logs can also be useful for post-mortem debugging but make sure they have timestamps, truncate them occasionally so they don’t eat up space on disk, and make sure they don’t contain ansi color codes. Thereby, error logs can be written to a file.
+Last, error logs can also be useful for post-mortem debugging, truncate them occasionally so they don't eat up space on disk, and make sure they don't contain ansi color codes. Thereby, error logs can be written to a file.
 
 ## Error output recommendation
 
@@ -37,7 +37,7 @@ Last, error logs can also be useful for post-mortem debugging but make sure they
 
 - Do not use a formula-like or a programming expression in the error message. (e.g, `json: cannot unmarshal string into Go value of type map[string]map[string]string.`, or `Parameter 'xyz' must conform to the following pattern: '^[-\\w\\._\\(\\)]+$'`)
 - Do not use ambiguous expressions which mean nothing to users. (e.g, `Something unexpected happens`, or `Error: accepts 2 arg(s), received 0`)
-- Do not print irrelevant error message to make the output noisy. The more irrelevant output you produce, the longer it’s going to take the user to figure out what they did wrong.
+- Do not print irrelevant error message to make the output noisy. The more irrelevant output you produce, the longer it's going to take the user to figure out what they did wrong.
 
 ## How to write friendly error message
 
@@ -46,14 +46,14 @@ Last, error logs can also be useful for post-mortem debugging but make sure they
 Here is a sample structure of an error message:
 
 ```text
-Error:[Status code]: [Error description] 
-Usage: [Command usage]
-[Recommended solution]
+Error: [{Status code}:] {Error description}
+[Usage: {Command usage}]
+[{Recommended solution}]
 ```
 
-- Status code is an optional information. If the error message is generated from the server side, it may include error code or [warn code](https://www.rfc-editor.org/rfc/rfc7234#section-5.5). It could be printed out alongside the error description.
-- Command usage is also an optional information but it's recommended to be printed out when user input doesn't follow the standard usage or examples. 
-- Recommended solution is required and should follow the general guiding principles described above.
+- Status code is an optional information. Printed out the status code if the error message is generated from the server side. 
+- Command usage is also an optional information but it's recommended to be printed out when user input doesn't follow the standard usage or examples.
+- Recommended solution (if any) should follow the general guiding principles described above.
 
 ### Examples
 
@@ -148,7 +148,7 @@ Error: unknown distribution specification flag: "v1.0".
 Available options: v1.1-referrers-api, v1.1-referrers-tag
 ```
 
-#### Example 6: when attaching an file, if no file reference is provided
+#### Example 6: when attaching an file, if no file reference or annotation is provided
 
 Current behavior and output:
 
@@ -161,9 +161,9 @@ Suggested error message:
 
 ```
 $ oras attach --artifact-type sbom/example localhost:5000/sample/images:foobar
-Error: failed to attach a file. No file provided in the command.
+Error: no file or annotation provided in the command
 Usage: oras attach [flags] --artifact-type=<type> <name>{:<tag>|@<digest>} <file>[:<type>] [...]
-To attach files to an existing artifact, try "oras attach --artifact-type sbom/example localhost:5000/sample/images:foobar sample.json". Run "oras attach -h" for more options and examples
+To attach to an existing artifact, please provide files via argument or annotations via flag. Run "oras attach -h" for more options and examples
 ```
 
 #### Example 7: When pushing files, if the annotation file doesn't match the required format
@@ -172,15 +172,15 @@ Current behavior and output:
 
 ```
 $ oras push --annotation-file sbom.json ghcr.io/library/alpine:3.9
-Error: failed to load annotations from sbom.json: json: cannot unmarshal string into Go value of type map[string]map[string]string. Please refer to the document at https://oras.land/docs/how_to_guides/manifest_annotations.
+Error: failed to load annotations from sbom.json: json: cannot unmarshal string into Go value of type map[string]map[string]string. Please refer to the document at https://oras.land/docs/how_to_guides/manifest_annotations
 ```
 
 Suggested error message:
 
 ```
 $ oras push --annotation-file annotation.json ghcr.io/library/alpine:3.9
-Error: failed to load annotations from annotation.json: annotation file or syntax doesn't match the required format or syntax
-Please refer to the document at https://oras.land/docs/how_to_guides/manifest_annotations.
+Error response from registry: failed to load annotations from sbom.json: json: cannot unmarshal string into Go value of type map[string]map[string]string. 
+Annotation file doesn't match the required format. Please refer to the document at https://oras.land/docs/how_to_guides/manifest_annotations
 ```
 
 #### Example 8: When pushing files, if the annotation value doesn't match the required syntax
@@ -211,7 +211,7 @@ Suggested error message:
 
 ```
 $ oras pull docker.io/nginx:latest
-Error: failed to resolve the resource from server: pull access denied for ghcr.io/nginx:latest : response status code 401: unauthorized: requested access to the resource is denied
+Error response from registry: pull access denied for docker.io/nginx:latest : response status code 401: unauthorized: requested access to the resource is denied
 Namespace is missing, do you mean `oras pull docker.io/library/nginx:latest`? 
 ```
 
