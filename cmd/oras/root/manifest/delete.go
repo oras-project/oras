@@ -24,7 +24,6 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote/auth"
-	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/registryutil"
 )
@@ -34,9 +33,7 @@ type deleteOptions struct {
 	option.Confirmation
 	option.Descriptor
 	option.Pretty
-	option.Remote
-
-	targetRef string
+	option.Target
 }
 
 func deleteCmd() *cobra.Command {
@@ -63,13 +60,13 @@ Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614
 			return len(args) == 1, "exactly 1 argument"
 		}, "the manifest to delete"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			opts.RawReference = args[0]
 			if opts.OutputDescriptor && !opts.Force {
 				return errors.New("must apply --force to confirm the deletion if the descriptor is outputted")
 			}
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
 			return deleteManifest(cmd.Context(), opts)
 		},
 	}
@@ -81,13 +78,12 @@ Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614
 
 func deleteManifest(ctx context.Context, opts deleteOptions) error {
 	ctx, logger := opts.WithContext(ctx)
-	repo, err := opts.NewRepository(opts.targetRef, opts.Common, logger)
+	manifests, err := opts.NewManifestDeleter(opts.Common, logger)
 	if err != nil {
 		return err
 	}
-
-	if repo.Reference.Reference == "" {
-		return oerrors.NewErrEmptyTagOrDigest(repo.Reference)
+	if err := opts.EnsureReferenceNotEmpty(); err != nil {
+		return err
 	}
 
 	// add both pull and delete scope hints for dst repository to save potential delete-scope token requests during deleting
@@ -96,17 +92,16 @@ func deleteManifest(ctx context.Context, opts deleteOptions) error {
 		// possibly needed when adding a new referrers index
 		hints = append(hints, auth.ActionPush)
 	}
-	ctx = registryutil.WithScopeHint(ctx, repo, hints...)
-	manifests := repo.Manifests()
-	desc, err := manifests.Resolve(ctx, opts.targetRef)
+	ctx = registryutil.WithScopeHint(ctx, manifests, hints...)
+	desc, err := manifests.Resolve(ctx, opts.Reference)
 	if err != nil {
 		if errors.Is(err, errdef.ErrNotFound) {
 			if opts.Force && !opts.OutputDescriptor {
 				// ignore nonexistent
-				fmt.Println("Missing", opts.targetRef)
+				fmt.Println("Missing", opts.RawReference)
 				return nil
 			}
-			return fmt.Errorf("%s: the specified manifest does not exist", opts.targetRef)
+			return fmt.Errorf("%s: the specified manifest does not exist", opts.RawReference)
 		}
 		return err
 	}
@@ -121,7 +116,7 @@ func deleteManifest(ctx context.Context, opts deleteOptions) error {
 	}
 
 	if err = manifests.Delete(ctx, desc); err != nil {
-		return fmt.Errorf("failed to delete %s: %w", opts.targetRef, err)
+		return fmt.Errorf("failed to delete %s: %w", opts.RawReference, err)
 	}
 
 	if opts.OutputDescriptor {
@@ -132,7 +127,7 @@ func deleteManifest(ctx context.Context, opts deleteOptions) error {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	fmt.Println("Deleted", opts.targetRef)
+	fmt.Println("Deleted", opts.AnnotatedReference())
 
 	return nil
 }
