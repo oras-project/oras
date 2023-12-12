@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/repository"
 )
@@ -50,7 +51,9 @@ Example - List the repositories under a namespace in the registry:
 Example - List the repositories under the registry that include values lexically after last:
   oras repo ls --last "last_repo" localhost:5000
 `,
-		Args:    cobra.ExactArgs(1),
+		Args: oerrors.ArgsChecker(func(args []string) (bool, string) {
+			return len(args) == 1, "exactly 1 argument"
+		}, "the target registry to list repositories from"),
 		Aliases: []string{"list"},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return option.Parse(&opts)
