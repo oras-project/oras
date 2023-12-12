@@ -63,7 +63,7 @@ var _ = Describe("Common registry user", Ordered, func() {
 		It("should show detailed error description if no argument provided", func() {
 			err := ORAS("login").ExpectFailure().Exec().Err
 			Expect(err).Should(gbytes.Say("Error"))
-			Expect(err).Should(gbytes.Say("\nUsage: login"))
+			Expect(err).Should(gbytes.Say("\nUsage: oras login"))
 			Expect(err).Should(gbytes.Say("\n"))
 			Expect(err).Should(gbytes.Say(`Run "oras login -h"`))
 		})

@@ -48,7 +48,7 @@ var _ = Describe("ORAS beginners:", func() {
 			It("should fail and show detailed error description if no argument provided", func() {
 				err := ORAS("repo", "ls").ExpectFailure().Exec().Err
 				gomega.Expect(err).Should(gbytes.Say("Error"))
-				gomega.Expect(err).Should(gbytes.Say("\nUsage: ls"))
+				gomega.Expect(err).Should(gbytes.Say("\nUsage: oras repo ls"))
 				gomega.Expect(err).Should(gbytes.Say("\n"))
 				gomega.Expect(err).Should(gbytes.Say(`Run "oras repo ls -h"`))
 			})
@@ -72,7 +72,7 @@ var _ = Describe("ORAS beginners:", func() {
 			It("should fail and show detailed error description if no argument provided", func() {
 				err := ORAS("repo", "tags").ExpectFailure().Exec().Err
 				gomega.Expect(err).Should(gbytes.Say("Error"))
-				gomega.Expect(err).Should(gbytes.Say("\nUsage: tags"))
+				gomega.Expect(err).Should(gbytes.Say("\nUsage: oras repo tags"))
 				gomega.Expect(err).Should(gbytes.Say("\n"))
 				gomega.Expect(err).Should(gbytes.Say(`Run "oras repo tags -h"`))
 			})

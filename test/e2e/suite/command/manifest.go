@@ -66,7 +66,7 @@ var _ = Describe("ORAS beginners:", func() {
 			It("should fail and show detailed error description if no argument provided", func() {
 				err := ORAS("manifest", "push").ExpectFailure().Exec().Err
 				gomega.Expect(err).Should(gbytes.Say("Error"))
-				gomega.Expect(err).Should(gbytes.Say("\nUsage: push"))
+				gomega.Expect(err).Should(gbytes.Say("\nUsage: oras manifest push"))
 				gomega.Expect(err).Should(gbytes.Say("\n"))
 				gomega.Expect(err).Should(gbytes.Say(`Run "oras manifest push -h"`))
 			})
@@ -89,7 +89,7 @@ var _ = Describe("ORAS beginners:", func() {
 			It("should fail and show detailed error description if no argument provided", func() {
 				err := ORAS("manifest", "fetch").ExpectFailure().Exec().Err
 				gomega.Expect(err).Should(gbytes.Say("Error"))
-				gomega.Expect(err).Should(gbytes.Say("\nUsage: fetch"))
+				gomega.Expect(err).Should(gbytes.Say("\nUsage: oras manifest fetch"))
 				gomega.Expect(err).Should(gbytes.Say("\n"))
 				gomega.Expect(err).Should(gbytes.Say(`Run "oras manifest fetch -h"`))
 			})
@@ -169,7 +169,7 @@ var _ = Describe("ORAS beginners:", func() {
 			It("should fail and show detailed error description if no argument provided", func() {
 				err := ORAS("manifest", "fetch-config").ExpectFailure().Exec().Err
 				gomega.Expect(err).Should(gbytes.Say("Error"))
-				gomega.Expect(err).Should(gbytes.Say("\nUsage: fetch-config"))
+				gomega.Expect(err).Should(gbytes.Say("\nUsage: oras manifest fetch-config"))
 				gomega.Expect(err).Should(gbytes.Say("\n"))
 				gomega.Expect(err).Should(gbytes.Say(`Run "oras manifest fetch-config -h"`))
 			})

@@ -68,7 +68,7 @@ var _ = Describe("ORAS beginners:", func() {
 		It("should fail and show detailed error description if no argument provided", func() {
 			err := ORAS("attach").ExpectFailure().Exec().Err
 			gomega.Expect(err).Should(gbytes.Say("Error"))
-			gomega.Expect(err).Should(gbytes.Say("\nUsage: attach"))
+			gomega.Expect(err).Should(gbytes.Say("\nUsage: oras attach"))
 			gomega.Expect(err).Should(gbytes.Say("\n"))
 			gomega.Expect(err).Should(gbytes.Say(`Run "oras attach -h"`))
 		})
