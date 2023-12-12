@@ -29,6 +29,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/display/track"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -67,7 +68,9 @@ Example - Fetch and print a blob from OCI image layout folder 'layout-dir':
 Example - Fetch and print a blob from OCI image layout archive file 'layout.tar':
   oras blob fetch --oci-layout --output - layout.tar@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 `,
-		Args: cobra.ExactArgs(1),
+		Args: oerrors.ArgsChecker(func(args []string) (bool, string) {
+			return len(args) == 1, "exactly 1 argument"
+		}, "the target blob to fetch"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.outputPath == "" && !opts.OutputDescriptor {
 				return errors.New("either `--output` or `--descriptor` must be provided")

@@ -22,6 +22,8 @@ import (
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
@@ -105,6 +107,14 @@ var _ = Describe("ORAS beginners:", func() {
 					ExpectFailure().Exec()
 			})
 
+			It("should fail and show detailed error description if no argument provided", func() {
+				err := ORAS("blob", "fetch").ExpectFailure().Exec().Err
+				gomega.Expect(err).Should(gbytes.Say("Error"))
+				gomega.Expect(err).Should(gbytes.Say("\nUsage: fetch"))
+				gomega.Expect(err).Should(gbytes.Say("\n"))
+				gomega.Expect(err).Should(gbytes.Say(`Run "oras blob fetch -h"`))
+			})
+
 			It("should fail if no digest provided", func() {
 				ORAS("blob", "fetch", RegistryRef(ZOTHost, ImageRepo, "")).
 					ExpectFailure().Exec()
@@ -122,6 +132,16 @@ var _ = Describe("ORAS beginners:", func() {
 
 			It("should fail if no reference is provided", func() {
 				ORAS("blob", "fetch").ExpectFailure().Exec()
+			})
+		})
+
+		When("running `blob delete`", func() {
+			It("should fail and show detailed error description if no argument provided", func() {
+				err := ORAS("blob", "delete").ExpectFailure().Exec().Err
+				gomega.Expect(err).Should(gbytes.Say("Error"))
+				gomega.Expect(err).Should(gbytes.Say("\nUsage: delete"))
+				gomega.Expect(err).Should(gbytes.Say("\n"))
+				gomega.Expect(err).Should(gbytes.Say(`Run "oras blob delete -h"`))
 			})
 		})
 	})
