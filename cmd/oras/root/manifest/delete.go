@@ -59,7 +59,9 @@ Example - Delete a manifest and print its descriptor:
 Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9' from repository 'localhost:5000/hello':
   oras manifest delete localhost:5000/hello@sha:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
 `,
-		Args: cobra.ExactArgs(1),
+		Args: oerrors.ArgsChecker(func(args []string) (bool, string) {
+			return len(args) == 1, "exactly 1 argument"
+		}, "the manifest to delete"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.OutputDescriptor && !opts.Force {
 				return errors.New("must apply --force to confirm the deletion if the descriptor is outputted")
