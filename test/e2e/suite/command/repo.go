@@ -45,7 +45,7 @@ var _ = Describe("ORAS beginners:", func() {
 				ORAS("repo", "ls", RegistryRef(ZOTHost, ImageRepo, "some-tag")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
 			})
 
-			It("should fail and show detailed error description if no argument provided", Focus, func() {
+			It("should fail and show detailed error description if no argument provided", func() {
 				err := ORAS("repo", "ls").ExpectFailure().Exec().Err
 				gomega.Expect(err).Should(gbytes.Say("Error"))
 				gomega.Expect(err).Should(gbytes.Say("\nUsage: ls"))
