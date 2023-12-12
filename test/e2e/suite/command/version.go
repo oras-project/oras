@@ -27,7 +27,7 @@ var _ = Describe("ORAS user:", func() {
 		})
 
 		It("should run version command and ignore extra arguments with warning", func() {
-			ORAS("version", "foo", "bar").MatchErrKeyWords("warning:").Exec()
+			ORAS("version", "foo", "bar").MatchErrKeyWords("foo", "bar", "warning:").Exec()
 		})
 	})
 })
