@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"oras.land/oras/test/e2e/internal/testdata/feature"
@@ -41,8 +42,15 @@ var _ = Describe("ORAS beginners:", func() {
 			})
 
 			It("should fail listing repositories if wrong registry provided", func() {
-				ORAS("repo", "ls").ExpectFailure().MatchErrKeyWords("Error:").Exec()
 				ORAS("repo", "ls", RegistryRef(ZOTHost, ImageRepo, "some-tag")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+			})
+
+			It("should fail and show detailed error description if no argument provided", func() {
+				err := ORAS("repo", "ls").ExpectFailure().Exec().Err
+				gomega.Expect(err).Should(gbytes.Say("Error"))
+				gomega.Expect(err).Should(gbytes.Say("\nUsage: ls"))
+				gomega.Expect(err).Should(gbytes.Say("\n"))
+				gomega.Expect(err).Should(gbytes.Say(`Run "oras repo ls -h"`))
 			})
 		})
 		When("running `repo tags`", func() {
