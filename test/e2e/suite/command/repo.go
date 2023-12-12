@@ -45,7 +45,7 @@ var _ = Describe("ORAS beginners:", func() {
 				ORAS("repo", "ls", RegistryRef(ZOTHost, ImageRepo, "some-tag")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
 			})
 
-			It("should fail and show detailed error description if no argument provided", func() {
+			It("should fail and show detailed error description if no argument provided", Focus, func() {
 				err := ORAS("repo", "ls").ExpectFailure().Exec().Err
 				gomega.Expect(err).Should(gbytes.Say("Error"))
 				gomega.Expect(err).Should(gbytes.Say("\nUsage: ls"))
@@ -67,6 +67,14 @@ var _ = Describe("ORAS beginners:", func() {
 				ORAS("repo", "tags").ExpectFailure().MatchErrKeyWords("Error:").Exec()
 				ORAS("repo", "tags", ZOTHost).ExpectFailure().MatchErrKeyWords("Error:").Exec()
 				ORAS("repo", "tags", RegistryRef(ZOTHost, ImageRepo, "some-tag")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+			})
+
+			It("should fail and show detailed error description if no argument provided", func() {
+				err := ORAS("repo", "tags").ExpectFailure().Exec().Err
+				gomega.Expect(err).Should(gbytes.Say("Error"))
+				gomega.Expect(err).Should(gbytes.Say("\nUsage: tags"))
+				gomega.Expect(err).Should(gbytes.Say("\n"))
+				gomega.Expect(err).Should(gbytes.Say(`Run "oras repo tags -h"`))
 			})
 		})
 	})
