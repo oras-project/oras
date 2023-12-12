@@ -52,7 +52,7 @@ func ArgsChecker(checker func(args []string) (bool, string), usage string) cobra
 	return func(cmd *cobra.Command, args []string) error {
 		if ok, text := checker(args); !ok {
 			return NewOuput(
-				fmt.Sprintf(`%q requires %s but got: %s`, cmd.CommandPath(), text, strings.Join(args, " ")),
+				fmt.Sprintf(`%q requires %s but got %d: %s`, cmd.CommandPath(), text, len(args), strings.Join(args, " ")),
 				fmt.Sprintf("%s %s", cmd.Parent().CommandPath(), cmd.Use),
 				fmt.Sprintf(`Please specify %s as %s. Run "%s -h" for more options and examples`, text, usage, cmd.CommandPath()),
 			)
