@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote/auth"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/registryutil"
 )
