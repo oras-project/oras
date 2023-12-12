@@ -72,7 +72,7 @@ var _ = Describe("ORAS beginners:", func() {
 			Expect(err).Should(gbytes.Say(`Run "oras discover -h"`))
 		})
 
-		It("should fail and show detailed error description if more than 1 arguments are provided", func() {
+		It("should fail and show detailed error description if more than 1 argument are provided", func() {
 			err := ORAS("discover", "foo", "bar").ExpectFailure().Exec().Err
 			Expect(err).Should(gbytes.Say("Error"))
 			Expect(err).Should(gbytes.Say("\nUsage: discover"))

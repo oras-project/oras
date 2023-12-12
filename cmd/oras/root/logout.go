@@ -43,7 +43,7 @@ Example - Logout:
   oras logout localhost:5000
 `,
 		Args: oerrors.ArgsChecker(func(args []string) (bool, string) {
-			return len(args) == 1, "exactly 1 arguments"
+			return len(args) == 1, "exactly 1 argument"
 		}, "the registry you want to log out"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.hostname = args[0]

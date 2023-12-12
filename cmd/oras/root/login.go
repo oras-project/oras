@@ -63,7 +63,7 @@ Example - Log in with username and password in an interactive terminal and no TL
   oras login --insecure localhost:5000
 `,
 		Args: oerrors.ArgsChecker(func(args []string) (bool, string) {
-			return len(args) == 1, "exactly 1 arguments"
+			return len(args) == 1, "exactly 1 argument"
 		}, "the registry to log in to"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return option.Parse(&opts)

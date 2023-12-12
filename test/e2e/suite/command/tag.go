@@ -39,6 +39,14 @@ var _ = Describe("ORAS beginners:", func() {
 		It("should fail when provided invalid reference", func() {
 			ORAS("tag", "list", "tagged").ExpectFailure().MatchErrKeyWords("Error:", "'list'").Exec()
 		})
+
+		It("should fail and show detailed error description if no argument provided", func() {
+			err := ORAS("tag").ExpectFailure().Exec().Err
+			gomega.Expect(err).Should(gbytes.Say("Error"))
+			gomega.Expect(err).Should(gbytes.Say("\nUsage: tag"))
+			gomega.Expect(err).Should(gbytes.Say("\n"))
+			gomega.Expect(err).Should(gbytes.Say(`Run "oras tag -h"`))
+		})
 	})
 })
 

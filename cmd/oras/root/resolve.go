@@ -45,7 +45,7 @@ Example - Resolve digest of the target artifact:
   oras resolve localhost:5000/hello-world:v1
 `,
 		Args: oerrors.ArgsChecker(func(args []string) (bool, string) {
-			return len(args) == 1, "exactly 1 arguments"
+			return len(args) == 1, "exactly 1 argument"
 		}, "the target artifact reference to resolve"),
 		Aliases: []string{"digest"},
 		PreRunE: func(cmd *cobra.Command, args []string) error {

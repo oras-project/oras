@@ -86,7 +86,7 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
   oras pull --oci-layout layout.tar:v1
 `,
 		Args: oerrors.ArgsChecker(func(args []string) (bool, string) {
-			return len(args) == 1, "exactly 1 arguments"
+			return len(args) == 1, "exactly 1 argument"
 		}, "the artifact reference you want to pull"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]

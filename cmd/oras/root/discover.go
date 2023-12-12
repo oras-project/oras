@@ -75,7 +75,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
   oras discover --oci-layout -v -o tree layout-dir:v1
 `,
 		Args: oerrors.ArgsChecker(func(args []string) (bool, string) {
-			return len(args) == 1, "exactly 1 arguments"
+			return len(args) == 1, "exactly 1 argument"
 		}, "the target artifact to discover referrers from"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]

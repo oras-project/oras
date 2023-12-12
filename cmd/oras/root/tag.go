@@ -23,6 +23,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/display"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -56,7 +57,9 @@ Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.1', 'v1.0
 Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'layout-dir':
   oras tag layout-dir:v1.0.1 v1.0.2
 `,
-		Args: cobra.MinimumNArgs(2),
+		Args: oerrors.ArgsChecker(func(args []string) (bool, string) {
+			return len(args) >= 2, "at least 2 argument"
+		}, "the to-be-retage artifact and the tags to be added"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
 			if _, err := registry.ParseReference(opts.RawReference); err != nil {
