@@ -110,7 +110,7 @@ var _ = Describe("ORAS beginners:", func() {
 			It("should fail and show detailed error description if no argument provided", func() {
 				err := ORAS("blob", "fetch").ExpectFailure().Exec().Err
 				gomega.Expect(err).Should(gbytes.Say("Error"))
-				gomega.Expect(err).Should(gbytes.Say("\nUsage: oras fetch"))
+				gomega.Expect(err).Should(gbytes.Say("\nUsage: oras blob fetch"))
 				gomega.Expect(err).Should(gbytes.Say("\n"))
 				gomega.Expect(err).Should(gbytes.Say(`Run "oras blob fetch -h"`))
 			})
@@ -139,7 +139,7 @@ var _ = Describe("ORAS beginners:", func() {
 			It("should fail and show detailed error description if no argument provided", func() {
 				err := ORAS("blob", "delete").ExpectFailure().Exec().Err
 				gomega.Expect(err).Should(gbytes.Say("Error"))
-				gomega.Expect(err).Should(gbytes.Say("\nUsage: oras delete"))
+				gomega.Expect(err).Should(gbytes.Say("\nUsage: oras blob delete"))
 				gomega.Expect(err).Should(gbytes.Say("\n"))
 				gomega.Expect(err).Should(gbytes.Say(`Run "oras blob delete -h"`))
 			})
