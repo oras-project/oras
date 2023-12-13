@@ -72,9 +72,9 @@ Suggested error message:
 
 ```
 $ oras cp
-Error: "oras copy" requires exactly 2 arguments.
+Error: "oras copy" requires exactly 2 arguments but received 0.
 Usage: oras copy [flags] <from>{:<tag>|@<digest>} <to>[:<tag>[,<tag>][...]]
-You need to specify two arguments as source and destination respectively. Run "oras copy -h" for more options and examples
+Please specify 2 arguments as source and destination respectively. Run "oras copy -h" for more options and examples
 ```
 
 #### Example 2: when reference does not match with the expected format
@@ -179,7 +179,7 @@ Suggested error message:
 
 ```
 $ oras push --annotation-file annotation.json ghcr.io/library/alpine:3.9
-Error response from registry: failed to load annotations from sbom.json: json: cannot unmarshal string into Go value of type map[string]map[string]string. 
+Error: invalid annotation json file: failed to load annotations from annotation.json.
 Annotation file doesn't match the required format. Please refer to the document at https://oras.land/docs/how_to_guides/manifest_annotations
 ```
 
