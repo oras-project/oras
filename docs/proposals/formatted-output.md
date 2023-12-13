@@ -48,8 +48,8 @@ jobs:
     steps:
       - uses: oras-project/setup-oras@v1
       - run: |
-          oras pull $REGISTRY/$REPO:$TAG --format '{{.first .Files.Path}}' |
-          docker import
+          PATH=`oras pull $REGISTRY/$REPO:$TAG --format '{{.first .Files.Path}}'`
+          docker import $PATH
 ```
 
 ## Proposal: format output into structured data
