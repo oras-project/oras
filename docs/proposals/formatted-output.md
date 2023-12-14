@@ -63,122 +63,89 @@ For review convenience, this doc shows the output in most of the sample ORAS com
 
 ### oras pull 
 
-Pull an artifact and display its metadata as formatted JSON in standard output. The following fields should be formatted in a JSON output:
+Pull a repository and display its metadata as formatted JSON in standard output. The following fields should be formatted in a JSON output:
 
 - `Ref`: full artifact reference by digest, e.g, `$REGISTRY/$REPO@$DIGEST`
 -  `Files`: a list of downloaded files
     -  `Path`: the absolute file path of the pulled file (layer)
     -  `Ref`: full reference by digest of the pulled file (layer)
-    -  `mediaType`: media type of the pulled file (layer) 
-    -  `digest`: digest of the pulled file (layer) 
-    -  `size`: file size in bytes
-    - `annotation`: contains arbitrary metadata 
+    -  `MediaType`: media type of the pulled file (layer) 
+    -  `Digest`: digest of the pulled file (layer) 
+    -  `Size`: file size in bytes
 
-Pull a single file and show the its descriptor data including `path` and `ref` as pretty JSON in standard output:
+Pull a repository that contains multiple layers (files) and show their descriptor metadata as pretty JSON in standard output.
 
 ```bash
-oras pull $REGISTRY/$REPO:$TAG --format json
+oras pull $REGISTRY/$REPO:$TAG --artifact-type example/sbom sbom.spdx  --artifact-type example/vul-scan vul-scan.json --format json
 ```
 
 ```json
 {
+  "Ref": "localhost:5000/oras@sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd186111",
+  "Files": [
     {
-    "Ref": "$REGISTRY/$REPO@$DIGEST",
-    "Files" : [
-            "Path":"/home/user/path1/",
-            "Ref": "$REGISTRY/$REPO@$layer0_digest",
-            {
-            "mediaType": "application/vnd.oci.image.layer.v1.tar",
-            "digest": "sha256:d2a84f4b8b650937ec8f73cd8be2c74add5a911ba64df27458ed8229da804a26",
-            "size": 12,
-            "annotations": {
-    "org.opencontainers.image.created": "2023-12-13T15:08:49Z"
-            }
-            }
-        }
-    ]
+      "Path": "/home/user/oras-install/sbom.spdx",
+      "Ref": "localhost:5000/oras@sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd186222",
+      "MediaType": "application/vnd.oci.image.manifest.v1+json",
+      "Digest": "sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd186222",
+      "Size": 820,
+      "Annotations": {
+        "org.opencontainers.image.title": "sbom.spdx"
+      }
+    },
+    {
+      "Path": "/home/user/oras-install/vul-scan.json",
+      "Ref": "localhost:5000/oras@sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd18669b",
+      "MediaType": "application/vnd.oci.image.manifest.v1+json",
+      "Digest": "sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd18669b",
+      "Size": 820,
+      "Annotations": {
+        "org.opencontainers.image.title": "vul-scan.json"
+      }
+    }
+  ]
 }
 ```
 
-Pull an artifact and display its descriptor as raw JSON in standard output.
+Pull a repository that contains multiple layers (files) and display its descriptor metadata as raw JSON in standard output.
 
 ```bash
 oras pull $REGISTRY/$REPO:$TAG --format '{{toRawJson .}}'
 ```
 
 ```
-{"ref":"$REGISTRY/$REPO@$DIGEST","files":[{"path":"/home/user/path1/","ref":"$REGISTRY/$REPO@$layer0_digest","mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:42e2c5e85dd5a21dd516dd6f5a043db9ae549b8f464b049d165fc5765ebb4cad","size":591}]}
-```
-
-Pull multiple files and show their descriptor data as pretty JSON in standard output.
-
-```bash
-oras pull $REGISTRY/$REPO:$TAG --format json
-```
-
-```json
-{
-    {
-    "Ref": "$REGISTRY/$REPO@$DIGEST",
-    "Files" : [
-        {
-            "Path":"path1/artifact1.json",
-            "Ref": "$REGISTRY/$REPO:$layer0_digest",
-            {
-            "mediaType": "application/vnd.oci.image.layer.v1.tar",
-            "digest": "sha256:d2a84f4b8b650937ec8f73cd8be2c74add5a911ba64df27458ed8229da804a26",
-            "size": 12
-            }
-        },
-        {
-            "Path":"path2/artifact2.json",
-            "Ref": "$REGISTRY/$REPO:$layer1_digest",
-            {
-            "mediaType": "application/vnd.oci.image.layer.v1.tar",
-            "digest": "sha256:4add5a911ba64df27458ed8229da804a26d2a84f4b8b650937ec8f73cd8be2c7",
-            "size": 12
-            }
-        }
-    ]
-    }
-}
+{"Ref":"localhost:5000/oras@sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd186111","Files":[{"Path":"/home/user/oras-install/sbom.spdx","Ref":"localhost:5000/oras@sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd186222","MediaType":"application/vnd.oci.image.manifest.v1+json","Digest":"sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd186222","Size":820},{"Path":"/home/user/oras-install/vul-scan.json","Ref":"localhost:5000/oras@sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd18669b","MediaType":"application/vnd.oci.image.manifest.v1+json","Digest":"sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd18669b","Size":820}]}
 ```
 
 ### oras attach
 
-Attach two files to an image and show the descriptor of the attached files in JSON format.
+Attach two files to an image and show the descriptor metadata of the attached files in JSON format.
 
 ```bash
-oras attach $REGISTRY/$REPO:$TAG --artifact-type example/sbom sbom.spdx --artifact-type example/vul-scan vul-report.json  --format json
+oras attach $REGISTRY/$REPO:$TAG --artifact-type example/vul-scan vul-report.json --artifact-type example/sbom sbom.spdx --format json
 ```
 
 ```json
 {
     "Files" : [
         {
-            "Ref": "$REGISTRY/$REPO@$DIGEST_1",
-            "artifactType" : "example/sbom",
-            {
-            "mediaType": "application/vnd.oci.image.manifest.v1+json",
-            "digest": "sha256:d2a84f4b8b650937ec8f73cd8be2c74add5a911ba64df27458ed8229da804a26",
-            "size": 12,
-            "annotations": {
-                "org.opencontainers.image.created":"2023-11-29T06:32:43Z"
-            }
-            }
+  "Ref": "localhost:5000/pipe/demo@sha256:5a23319624a3cea05aea5f9dfaf716fba1e7edf8c60d8389af35cebd6f605d30",
+  "MediaType": "application/vnd.oci.image.manifest.v1+json",
+  "Digest": "sha256:5a23319624a3cea05aea5f9dfaf716fba1e7edf8c60d8389af35cebd6f605d30",
+  "Size": 939,
+  "Annotations": {
+        "org.opencontainers.image.title": "vul-report.json"
+      }
         },
-        {
-            "Ref": "$REGISTRY/$REPO@$DIGEST_2",
-            "ArtifactType" : "example/vul-scan"
-            {
-            "mediaType": "application/vnd.oci.image.manifest.v1+json",
-            "digest": "sha256:d2a84f4b8b650937ec8f73cd8be2c74add5a911ba64df27458ed8229da804a27",
-            "size": 12,
-            "annotations": {
-                "org.opencontainers.image.created":"2023-11-29T06:32:43Z"
-            }
-            }
-        }
+  {
+  "Ref": "localhost:5000/pipe/demo@sha256:5a23319624a3cea05aea5f9dfaf716fba1e7edf8c60d8389af35cebd6f605333",
+  "MediaType": "application/vnd.oci.image.manifest.v1+json",
+  "Digest": "sha256:5a23319624a3cea05aea5f9dfaf716fba1e7edf8c60d8389af35cebd6f605333",
+  "Size": 929,
+  "Annotations": {
+        "org.opencontainers.image.title": "sbom.spdx"
+      }
+  }
     ]
 }
 ```
@@ -192,34 +159,39 @@ oras push $REGISTRY/$REPO:$TAG  --format json
 ```
 
 ```json
-{
-    "Files" : [
-        {
-            "Ref": "$REGISTRY/$REPO@$DIGEST",
-            "ArtifactType": "application/vnd.example+type",
-            {
-            "mediaType": "application/vnd.oci.image.layer.v1.tar",
-            "digest": "sha256:d2a84f4b8b650937ec8f73cd8be2c74add5a911ba64df27458ed8229da804a26",
-            "size": 12,
-            "annotations": {
-                "org.opencontainers.image.title": "hello.txt"
-            }
-        }
-        },
-        {
-            "ArtifactType": "application/vnd.example+type",
-            "Ref": "$REGISTRY/$REPO@$DIGEST",
-            {
-            "mediaType": "application/vnd.oci.image.layer.v1.tar",
-            "digest": "sha256:d2a84f4b8b650937ec8f73cd8be2c74add5a911ba64df27458ed8229da804a27",
-            "size": 12,
-            "annotations": {
-                "org.opencontainers.image.title": "hello.txt"
-            }
-            }
-        }
-    ]
-}
+"Ref": "localhost:5000/pipe/demo@sha256:80da7a36f42ab62eeac5382e99fd203149749cf2a861167ada620075e4e6edd4",
+"Files": [
+    {
+      "Ref": "localhost:5000/oras@sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd186222",
+      "MediaType": "application/vnd.oci.image.layer.v1.tar",
+      "Digest": "sha256:6cb759c4296e67e35b0367f3c0f51dfdb776a0c99a45f39d0476e43d82696d65",
+      "Size": 14477,
+      "Annotations": {
+        "org.opencontainers.image.title": "sbom.spdx"
+      }
+    },
+    {
+      "Ref": "localhost:5000/oras@sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd186222",
+      "MediaType": "application/vnd.oci.image.layer.v1.tar",
+      "Digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "Size": 0,
+      "Annotations": {
+        "org.opencontainers.image.title": "hello.txt"
+      }
+    }
+  ]
+```
+
+### oras manifest fetch
+
+Fetch a manifest and filter out its reference and media type in standard output:
+
+```bash
+oras-demo manifest fetch $REGISTRY/$REPO:$TAG --format '{{.Ref}}', '{{.Config.mediaType}}'
+```
+
+```json
+localhost:5000/oras@sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd18669b, application/vnd.oci.empty.v1+json
 ```
 
 ### oras discover
@@ -227,14 +199,15 @@ oras push $REGISTRY/$REPO:$TAG  --format json
 Discover an artifact's referrers. The default output should be listed in a tree view.
 
 ```bash
-oras discover localhost:5000/hello:v1
+oras discover $REGISTRY/$REPO:$TAG
 ```
 
 ```console
-localhost:5000/hello/demo@sha256:04beb34cd24389147b4642a828b47fabefa722dea794dc3834567cf014ab0fe6
-└── application/vnd.oci.empty.v1+json
-    ├── sha256:1b82e249d83eb4881b8bf4ff9cf13a28799907ddc624b4c3c9140fa77d54fa42
-    ├── sha256:28653e2bb5b5a75393c3a8b58ed9998796299b41dc1ff1f55b9f0844ad7ba39c
+localhost:localhost:5000/hello@sha256:5cb894d0c94c56894e160ad2eeb19a123b4d2155374e7709f43f8c0c2f249fe2
+├── application/vnd.oci.empty.v1+json
+│   └── sha256:0db683b656132cede5360f42bc52541f3386b30ce685e6e63ff93ced54423fb8
+└── application/vnd.cncf.notary.signature
+    └── sha256:476d43120d3799fa76d7706f741beca73f5ff4149c8b6db3bd516a73d4a82fc1
 ```
 
 Discover an artifact's referrers manifest in pretty JSON. 
@@ -245,29 +218,27 @@ oras discover localhost:5000/hello:v1 --format json
 
 ```json
 {
-  "Ref": "localhost:5000/hello@sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
   "schemaVersion": 2,
   "mediaType": "application/vnd.oci.image.index.v1+json",
   "manifests": [
     {
       "mediaType": "application/vnd.oci.image.manifest.v1+json",
-      "digest": "sha256:1b82e249d83eb4881b8bf4ff9cf13a28799907ddc624b4c3c9140fa77d54fa42",
-      "size": 731,
+      "digest": "sha256:0db683b656132cede5360f42bc52541f3386b30ce685e6e63ff93ced54423fb8",
+      "size": 964,
       "annotations": {
-        "org.opencontainers.image.created": "2023-11-22T07:27:41Z"
+        "org.opencontainers.image.created": "2023-12-14T13:48:32Z"
       },
-      "artifactType": "application/vnd.oci.empty.v1+json",
-      "Ref": "localhost:5000/hello@sha256:1b82e249d83eb4881b8bf4ff9cf13a28799907ddc624b4c3c9140fa77d54fa42"
+      "artifactType": "application/vnd.oci.empty.v1+json"
     },
     {
       "mediaType": "application/vnd.oci.image.manifest.v1+json",
-      "digest": "sha256:28653e2bb5b5a75393c3a8b58ed9998796299b41dc1ff1f55b9f0844ad7ba39c",
-      "size": 630,
+      "digest": "sha256:476d43120d3799fa76d7706f741beca73f5ff4149c8b6db3bd516a73d4a82fc1",
+      "size": 728,
       "annotations": {
-        "org.opencontainers.image.created": "2023-11-25T10:32:54Z"
+        "io.cncf.notary.x509chain.thumbprint#S256": "[\"792265ec6b22f0a87c7b3d980319d51a76a382de1b7a47bd877bb4e5a9beb637\"]",
+        "org.opencontainers.image.created": "2023-12-14T14:41:56Z"
       },
-      "artifactType": "application/vnd.oci.empty.v1+json",
-      "Ref": "localhost:5000/hello@sha256:28653e2bb5b5a75393c3a8b58ed9998796299b41dc1ff1f55b9f0844ad7ba39c"
+      "artifactType": "application/vnd.cncf.notary.signature"
     }
   ]
 }
