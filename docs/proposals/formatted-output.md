@@ -187,7 +187,7 @@ oras push $REGISTRY/$REPO:$TAG  --format json
 Fetch a manifest and filter out its reference and media type in standard output:
 
 ```bash
-oras-demo manifest fetch $REGISTRY/$REPO:$TAG --format '{{.Ref}}', '{{.Config.mediaType}}'
+oras manifest fetch $REGISTRY/$REPO:$TAG --format '{{.Ref}}', '{{.Config.mediaType}}'
 ```
 
 ```json
@@ -273,7 +273,7 @@ oras pull $REGISTRY/$REPO:$TAG --format "{{.MediaType}}, {{.Ref}}, {{.Size}}"
 For example, filter out the specified annotation value of an artifact by the key name `org.opencontainers.image.created`, with the [index function](https://pkg.go.dev/text/template#pkg-functions) defined in Go template.
 
 ```bash
-oras discover localhost:5000/hello:v1 --format '{{index .Manifest.Annotations "org.opencontainers.image.created"}}'
+oras discover $REGISTRY/$REPO:$TAG --format '{{index .Manifest.Annotations "org.opencontainers.image.created"}}'
 ```
 
 ```console
@@ -291,3 +291,58 @@ In addition, it will be a breaking change if we extend the `--output` flag to en
 - Why ORAS chooses [Go template](https://pkg.go.dev/text/template)?
 
 Go template is a powerful method to customize output you want It allows users to manipulate the output format of certain commands. It provides access to data objects and additional functions that are passed into the template engine programmatically. It also has some useful libraries that have strong functions for Go’s template language to manipulate the output data, such as [Sprig](https://masterminds.github.io/sprig/).
+
+- What's the difference of the output when use `--output` and `--format` in `oras manifest fetch`?
+
+`--output` can generate a file with raw JSON data of the image manifest. `format` can display prettified JSON in the standard out.
+
+```bash
+oras manifest fetch $REGISTRY/$REPO:$TAG --output manifest.json
+```
+
+See the content in the `manifest.json`. It should be raw JSON data of the fetched image manifest.
+
+```json
+{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","artifactType":"application/vnd.unknown.artifact.v1","config":{"mediaType":"application/vnd.oci.empty.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2,"data":"e30="},"layers":[{"mediaType":"application/vnd.oci.image.layer.v1.tar","digest":"sha256:6cb759c4296e67e35b0367f3c0f51dfdb776a0c99a45f39d0476e43d82696d65","size":14477,"annotations":{"org.opencontainers.image.title":"sbom.spdx"}},{"mediaType":"application/vnd.oci.image.layer.v1.tar","digest":"sha256:54c0e84503c8790e03afe34bfc05a5ce45c933430cfd9c5f8a99d2c89f1f1b69","size":6639,"annotations":{"org.opencontainers.image.title":"scan-test-verify-image.json"}}],"annotations":{"org.opencontainers.image.created":"2023-12-13T15:08:49Z"}}
+```
+
+See the prettified JSON output of an image manifest when use `--format json`:
+
+```bash
+oras manifest fetch $REGISTRY/$REPO:$TAG --format json
+```
+
+```json
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "artifactType": "application/vnd.unknown.artifact.v1",
+  "config": {
+    "mediaType": "application/vnd.oci.empty.v1+json",
+    "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "size": 2,
+    "data": "e30="
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar",
+      "digest": "sha256:6cb759c4296e67e35b0367f3c0f51dfdb776a0c99a45f39d0476e43d82696d65",
+      "size": 14477,
+      "annotations": {
+        "org.opencontainers.image.title": "sbom.spdx"
+      }
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar",
+      "digest": "sha256:54c0e84503c8790e03afe34bfc05a5ce45c933430cfd9c5f8a99d2c89f1f1b69",
+      "size": 6639,
+      "annotations": {
+        "org.opencontainers.image.title": "scan-test-verify-image.json"
+      }
+    }
+  ],
+  "annotations": {
+    "org.opencontainers.image.created": "2023-12-13T15:08:49Z"
+  }
+}
+```
