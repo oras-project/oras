@@ -1,6 +1,6 @@
 # Formatted ORAS CLI output 
 
-ORAS has prettified output designed for humans. However, for machine processing, especially in some automation scenarios like scripting and CI/CD pipelines, developers want to perform batch operations and chain different commands with ORAS, as well as filtering, modifying, and sorting objects based on the outputs that are emitted by the ORAS command. Developers expect the ORAS output can be generated as machine-readable text not only the prettified or tabular data, so that they can use the formatted outputs like JSON output to perform further advanced operations. 
+ORAS has prettified output designed for humans. However, for machine processing, especially in some automation scenarios like scripting and CI/CD pipelines, developers want to perform batch operations and chain different commands with ORAS, as well as filtering, modifying, and sorting objects based on the outputs that are emitted by the ORAS command. Developers expect the ORAS output can be generated as machine-readable text not only the prettified or tabular data, so that they can use the formatted outputs like JSON format to perform further advanced operations. 
 
 The formatted output is not intended to supersede the prettified human-readable and friendly output text of ORAS CLI. It aims to provide programming-friendly experience for developers who want to automate their workflows on machines especially on Unix and most Unix-like operating systems, without parsing unstructured text. It will increase the developer experience for ORAS in automation and scripting scenarios. 
 
@@ -54,8 +54,8 @@ jobs:
 
 ## Proposal: format output into structured data
 
-1. Use the `--format json` flag to change the default human-readable prettified output to machine-readable raw JSON. Users can still use `--format '{{toPrettyJson .}}'` or `--pretty` to get prettified output for some commands.
-2. Use the `--format` with [Go template](https://pkg.go.dev/text/template) to custom the output fields. 
+1. Use the `--format json` flag to output prettified JSON. 
+2. Use the `--format` with [Go template](https://pkg.go.dev/text/template) to custom the output fields. Users can still use `--format '{{toRawJson .}}'` to get raw JSON output.
 
 ## Desired user experience for proposal 1
 
@@ -65,30 +65,35 @@ For review convenience, this doc shows the output in most of the sample ORAS com
 
 Pull an artifact and display its metadata as formatted JSON in standard output. The following fields should be formatted in a JSON output:
 
-- `ref`: full artifact reference by digest, e.g, `$REGISTRY/$REPO@$DIGEST`
--  `files`: a list of downloaded files
-    -  `path`: the absolute file path of the pulled file (layer)
-    -  `ref`: full reference by digest of the pulled file (layer)
+- `Ref`: full artifact reference by digest, e.g, `$REGISTRY/$REPO@$DIGEST`
+-  `Files`: a list of downloaded files
+    -  `Path`: the absolute file path of the pulled file (layer)
+    -  `Ref`: full reference by digest of the pulled file (layer)
     -  `mediaType`: media type of the pulled file (layer) 
     -  `digest`: digest of the pulled file (layer) 
     -  `size`: file size in bytes
+    - `annotation`: contains arbitrary metadata 
 
 Pull a single file and show the its descriptor data including `path` and `ref` as pretty JSON in standard output:
 
 ```bash
-oras pull $REGISTRY/$REPO:$TAG --format '{{toPrettyJson .}}'
+oras pull $REGISTRY/$REPO:$TAG --format json
 ```
 
 ```json
 {
-    "ref": "$REGISTRY/$REPO@$DIGEST",
-    "files" : [
-            "path":"/home/user/path1/",
-            "ref": "$REGISTRY/$REPO@$layer0_digest",
+    {
+    "Ref": "$REGISTRY/$REPO@$DIGEST",
+    "Files" : [
+            "Path":"/home/user/path1/",
+            "Ref": "$REGISTRY/$REPO@$layer0_digest",
             {
             "mediaType": "application/vnd.oci.image.layer.v1.tar",
             "digest": "sha256:d2a84f4b8b650937ec8f73cd8be2c74add5a911ba64df27458ed8229da804a26",
-            "size": 12
+            "size": 12,
+            "annotations": {
+    "org.opencontainers.image.created": "2023-12-13T15:08:49Z"
+            }
             }
         }
     ]
@@ -98,39 +103,44 @@ oras pull $REGISTRY/$REPO:$TAG --format '{{toPrettyJson .}}'
 Pull an artifact and display its descriptor as raw JSON in standard output.
 
 ```bash
-oras pull $REGISTRY/$REPO:$TAG --format json
+oras pull $REGISTRY/$REPO:$TAG --format '{{toRawJson .}}'
 ```
 
 ```
 {"ref":"$REGISTRY/$REPO@$DIGEST","files":[{"path":"/home/user/path1/","ref":"$REGISTRY/$REPO@$layer0_digest","mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:42e2c5e85dd5a21dd516dd6f5a043db9ae549b8f464b049d165fc5765ebb4cad","size":591}]}
 ```
 
-Pull multiple files and show their descriptor data including `path` and `ref` as pretty JSON in standard output.
+Pull multiple files and show their descriptor data as pretty JSON in standard output.
 
 ```bash
-oras pull $REGISTRY/$REPO:$TAG --format '{{toPrettyJson .}}'
+oras pull $REGISTRY/$REPO:$TAG --format json
 ```
 
 ```json
 {
-    "ref": "$REGISTRY/$REPO@$DIGEST",
-    "files" : [
+    {
+    "Ref": "$REGISTRY/$REPO@$DIGEST",
+    "Files" : [
         {
-            "path":"path1/artifact1.json",
-            "ref": "$REGISTRY/$REPO:$layer0_digest",
+            "Path":"path1/artifact1.json",
+            "Ref": "$REGISTRY/$REPO:$layer0_digest",
+            {
             "mediaType": "application/vnd.oci.image.layer.v1.tar",
             "digest": "sha256:d2a84f4b8b650937ec8f73cd8be2c74add5a911ba64df27458ed8229da804a26",
-            "size": 12,
+            "size": 12
+            }
         },
         {
-            "path":"path2/artifact2.json",
-            "ref": "$REGISTRY/$REPO:$layer1_digest",
+            "Path":"path2/artifact2.json",
+            "Ref": "$REGISTRY/$REPO:$layer1_digest",
+            {
             "mediaType": "application/vnd.oci.image.layer.v1.tar",
             "digest": "sha256:4add5a911ba64df27458ed8229da804a26d2a84f4b8b650937ec8f73cd8be2c7",
-            "size": 12,
-        }
+            "size": 12
+            }
         }
     ]
+    }
 }
 ```
 
@@ -139,31 +149,35 @@ oras pull $REGISTRY/$REPO:$TAG --format '{{toPrettyJson .}}'
 Attach two files to an image and show the descriptor of the attached files in JSON format.
 
 ```bash
-oras attach $REGISTRY/$REPO:$TAG --artifact-type example/sbom sbom.spdx --artifact-type example/vul-scan vul-report.json  --format '{{toPrettyJson .}}'
+oras attach $REGISTRY/$REPO:$TAG --artifact-type example/sbom sbom.spdx --artifact-type example/vul-scan vul-report.json  --format json
 ```
 
 ```json
 {
-    "files" : [
+    "Files" : [
         {
+            "Ref": "$REGISTRY/$REPO@$DIGEST_1",
+            "artifactType" : "example/sbom",
+            {
             "mediaType": "application/vnd.oci.image.manifest.v1+json",
             "digest": "sha256:d2a84f4b8b650937ec8f73cd8be2c74add5a911ba64df27458ed8229da804a26",
             "size": 12,
             "annotations": {
                 "org.opencontainers.image.created":"2023-11-29T06:32:43Z"
-            },
-            "artifactType" : "example/sbom",
-            "ref": "$REGISTRY/$REPO@$DIGEST_1"
+            }
+            }
         },
         {
+            "Ref": "$REGISTRY/$REPO@$DIGEST_2",
+            "ArtifactType" : "example/vul-scan"
+            {
             "mediaType": "application/vnd.oci.image.manifest.v1+json",
             "digest": "sha256:d2a84f4b8b650937ec8f73cd8be2c74add5a911ba64df27458ed8229da804a27",
             "size": 12,
             "annotations": {
                 "org.opencontainers.image.created":"2023-11-29T06:32:43Z"
-            },
-            "artifactType" : "example/vul-scan",
-            "ref": "$REGISTRY/$REPO@$DIGEST_2"
+            }
+            }
         }
     ]
 }
@@ -174,31 +188,35 @@ oras attach $REGISTRY/$REPO:$TAG --artifact-type example/sbom sbom.spdx --artifa
 Push two files to a repository and show the descriptor of the pushed files in pretty JSON format.
 
 ```bash
-oras push $REGISTRY/$REPO:$TAG  --format '{{toPrettyJson .}}'
+oras push $REGISTRY/$REPO:$TAG  --format json
 ```
 
 ```json
 {
-    "files" : [
+    "Files" : [
         {
+            "Ref": "$REGISTRY/$REPO@$DIGEST",
+            "ArtifactType": "application/vnd.example+type",
+            {
             "mediaType": "application/vnd.oci.image.layer.v1.tar",
             "digest": "sha256:d2a84f4b8b650937ec8f73cd8be2c74add5a911ba64df27458ed8229da804a26",
             "size": 12,
             "annotations": {
                 "org.opencontainers.image.title": "hello.txt"
-            },
-            "artifactType": "application/vnd.example+type",
-            "ref": "$REGISTRY/$REPO@$DIGEST"
+            }
+        }
         },
         {
+            "ArtifactType": "application/vnd.example+type",
+            "Ref": "$REGISTRY/$REPO@$DIGEST",
+            {
             "mediaType": "application/vnd.oci.image.layer.v1.tar",
             "digest": "sha256:d2a84f4b8b650937ec8f73cd8be2c74add5a911ba64df27458ed8229da804a27",
             "size": 12,
             "annotations": {
                 "org.opencontainers.image.title": "hello.txt"
-            },
-            "artifactType": "application/vnd.example+type",
-            "ref": "$REGISTRY/$REPO@$DIGEST"
+            }
+            }
         }
     ]
 }
@@ -222,14 +240,14 @@ localhost:5000/hello/demo@sha256:04beb34cd24389147b4642a828b47fabefa722dea794dc3
 Discover an artifact's referrers manifest in pretty JSON. 
 
 ```bash
-oras discover localhost:5000/hello:v1 --format '{{toPrettyJson .}}'
+oras discover localhost:5000/hello:v1 --format json
 ```
 
 ```json
 {
+  "Ref": "localhost:5000/hello@sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
   "schemaVersion": 2,
   "mediaType": "application/vnd.oci.image.index.v1+json",
-  "artifactReference": "localhost:5000/hello@sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
   "manifests": [
     {
       "mediaType": "application/vnd.oci.image.manifest.v1+json",
@@ -239,7 +257,7 @@ oras discover localhost:5000/hello:v1 --format '{{toPrettyJson .}}'
         "org.opencontainers.image.created": "2023-11-22T07:27:41Z"
       },
       "artifactType": "application/vnd.oci.empty.v1+json",
-      "ref": "localhost:5000/hello@sha256:1b82e249d83eb4881b8bf4ff9cf13a28799907ddc624b4c3c9140fa77d54fa42"
+      "Ref": "localhost:5000/hello@sha256:1b82e249d83eb4881b8bf4ff9cf13a28799907ddc624b4c3c9140fa77d54fa42"
     },
     {
       "mediaType": "application/vnd.oci.image.manifest.v1+json",
@@ -249,7 +267,7 @@ oras discover localhost:5000/hello:v1 --format '{{toPrettyJson .}}'
         "org.opencontainers.image.created": "2023-11-25T10:32:54Z"
       },
       "artifactType": "application/vnd.oci.empty.v1+json",
-      "ref": "localhost:5000/hello@sha256:28653e2bb5b5a75393c3a8b58ed9998796299b41dc1ff1f55b9f0844ad7ba39c"
+      "Ref": "localhost:5000/hello@sha256:28653e2bb5b5a75393c3a8b58ed9998796299b41dc1ff1f55b9f0844ad7ba39c"
     }
   ]
 }
@@ -293,11 +311,12 @@ oras discover localhost:5000/hello:v1 --format '{{index .Manifest.Annotations "o
 
 ## FAQ
 
-- Why not consider extending the existing `--output` flag to enable JSON formatted output?
+- Why choose to use `--format` flag to enable JSON formatted output instead of extending the existing `--output` flag?
 
-`--output` has been used in other oras commands like `oras pull`, `oras manifest fetch` to output the file directory or file, it will be a breaking change if we extend the
-`--output` flag to enable JSON formatted output. 
+ORAS follows the [GNU](https://www.gnu.org/prep/standards/html_node/Option-Table.html#Option-Table) design principles. ORAS uses `--output` to output a file or directory and uses `--format` to format the output into JSON or using the given Go template. Popular tools like Docker, Podman, and Skopeo also follow this kind of design principles in the similar formatted output feature. 
+
+In addition, it will be a breaking change if we extend the `--output` flag to enable JSON formatted output. 
 
 - Why ORAS chooses [Go template](https://pkg.go.dev/text/template)?
 
-[Go template] is a powerful method to customize output you want It allows users to manipulate the output format of certain commands. It provides access to data objects and additional functions that are passed into the template engine programmatically. It also has some useful libraries that have strong functions for Go’s template language to manipulate the output data, such as [Sprig](https://masterminds.github.io/sprig/).
+Go template is a powerful method to customize output you want It allows users to manipulate the output format of certain commands. It provides access to data objects and additional functions that are passed into the template engine programmatically. It also has some useful libraries that have strong functions for Go’s template language to manipulate the output data, such as [Sprig](https://masterminds.github.io/sprig/).
