@@ -1,8 +1,102 @@
-# Formatted ORAS CLI output 
+# Formatted ORAS CLI output
+
+## Table of Contents
+
+- [Background](#background)
+- [Guidance](#guidance)
+- [Scenarios](#scenarios)
+  - [Scripting](#scripting)
+  - [CI/CD](#cicd)
+- [Proposal and desired user experience](#proposal-and-desired-user-experience)
+  - [oras pull](#oras-pull)
+  - [oras push](#oras-push)
+  - [oras attach](#oras-attach)
+  - [oras discover](#oras-discover)
+- [FAQ](#faq)
+
+## Background
 
 ORAS has prettified output designed for humans. However, for machine processing, especially in some automation scenarios like scripting and CI/CD pipelines, developers want to perform batch operations and chain different commands with ORAS, as well as filtering, modifying, and sorting objects based on the outputs that are emitted by the ORAS command. Developers expect the ORAS output can be generated as machine-readable text not only the prettified or tabular data, so that they can use the formatted outputs like JSON format to perform further advanced operations. 
 
 The formatted output is not intended to supersede the prettified human-readable and friendly output text of ORAS CLI. It aims to provide programming-friendly experience for developers who want to automate their workflows on machines especially on Unix and most Unix-like operating systems, without parsing unstructured text. It will increase the developer experience for ORAS in automation and scripting scenarios. 
+
+## Guidance
+
+Provide two major options to enable users to define the output format of ORAS commands:
+
+- Use `--output` to output a file or directory in the filesystem
+- Use `--format` to format the output of ORAS commands into different data formats or enable process output data using the given Go template.
+  - Use `--format json|tree|table` to print the output in prettified JSON, tree view, or table view
+  - Use `--format '{{ GO_TEMPLATE_FUNCTION }}'` to enable extract or compose the output data using Go template functions
+  - If user doesn't specify `--format` flag, the default output should be raw JSON data 
+
+See sample use cases of formatted output for `oras manifest fetch`:
+
+- Use `--output` to output a manifest file in the filesystem:
+
+```bash
+oras manifest fetch $REGISTRY/$REPO:$TAG --output sample-manifest.json
+```
+
+View the generated manifest file, it should be raw JSON data
+
+```
+$ cat sample-manifest.json
+{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","artifactType":"application/vnd.unknown.artifact.v1","config":{"mediaType":"application/vnd.oci.empty.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2,"data":"e30="},"layers":[{"mediaType":"application/vnd.oci.image.layer.v1.tar","digest":"sha256:6cb759c4296e67e35b0367f3c0f51dfdb776a0c99a45f39d0476e43d82696d65","size":14477,"annotations":{"org.opencontainers.image.title":"sbom.spdx"}},{"mediaType":"application/vnd.oci.image.layer.v1.tar","digest":"sha256:54c0e84503c8790e03afe34bfc05a5ce45c933430cfd9c5f8a99d2c89f1f1b69","size":6639,"annotations":{"org.opencontainers.image.title":"scan-test-verify-image.json"}}],"annotations":{"org.opencontainers.image.created":"2023-12-15T09:41:54Z"}}
+```
+
+- Use `--format json` to print the output in prettified JSON:
+
+```bash
+oras manifest fetch $REGISTRY/$REPO:$TAG --format json
+```
+
+```json
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "artifactType": "application/vnd.unknown.artifact.v1",
+  "config": {
+    "mediaType": "application/vnd.oci.empty.v1+json",
+    "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "size": 2,
+    "data": "e30="
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar",
+      "digest": "sha256:6cb759c4296e67e35b0367f3c0f51dfdb776a0c99a45f39d0476e43d82696d65",
+      "size": 14477,
+      "annotations": {
+        "org.opencontainers.image.title": "sbom.spdx"
+      }
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar",
+      "digest": "sha256:54c0e84503c8790e03afe34bfc05a5ce45c933430cfd9c5f8a99d2c89f1f1b69",
+      "size": 6639,
+      "annotations": {
+        "org.opencontainers.image.title": "scan-test-verify-image.json"
+      }
+    }
+  ],
+  "annotations": {
+    "org.opencontainers.image.created": "2023-12-15T09:41:54Z"
+  }
+}
+```
+
+- Use `--format '{{ GO_TEMPLATE_FUNCTION }}'` to enable extract or compose the output data using Go template functions
+
+```bash
+oras manifest fetch $REGISTRY/$REPO:$TAG --format '{{.Ref}}', '{{.Config.mediaType}}'
+```
+
+```json
+localhost:5000/oras@sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd18669b, application/vnd.oci.empty.v1+json
+```
+
+To see more details about the reason of using this design principle in the formatted output, see [FAQ](#faq) section.
 
 ## Scenarios
 
@@ -52,14 +146,9 @@ jobs:
           docker import $PATH
 ```
 
-## Proposal: format output into structured data
+## Proposal and desired user experience
 
-1. Use the `--format json` flag to output prettified JSON. 
-2. Use the `--format` with [Go template](https://pkg.go.dev/text/template) to custom the output fields. Users can still use `--format '{{toRawJson .}}'` to get raw JSON output.
-
-## Desired user experience for proposal 1
-
-For review convenience, this doc shows the output in most of the sample ORAS commands with prettified JSON format.
+Enable users to use the `--format <type>` flag to format output into structured data (e.g. JSON) and use the `--format` with [Go template](https://pkg.go.dev/text/template) to manipulate the output fields. Users can still use `--format '{{toRawJson .}}'` to get raw JSON output.
 
 ### oras pull 
 
@@ -117,89 +206,62 @@ oras pull $REGISTRY/$REPO:$TAG --format '{{toRawJson .}}'
 {"Ref":"localhost:5000/oras@sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd186111","Files":[{"Path":"/home/user/oras-install/sbom.spdx","Ref":"localhost:5000/oras@sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd186222","MediaType":"application/vnd.oci.image.manifest.v1+json","Digest":"sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd186222","Size":820},{"Path":"/home/user/oras-install/vul-scan.json","Ref":"localhost:5000/oras@sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd18669b","MediaType":"application/vnd.oci.image.manifest.v1+json","Digest":"sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd18669b","Size":820}]}
 ```
 
-### oras attach
+### oras push
 
-Attach two files to an image and show the descriptor metadata of the attached files in JSON format.
+Push two files to a repository and show the descriptor of the image manifest in pretty JSON format.
 
 ```bash
-oras attach $REGISTRY/$REPO:$TAG --artifact-type example/vul-scan vul-report.json --artifact-type example/sbom sbom.spdx --format json
+oras push $REGISTRY/$REPO:$TAG sbom.spdx vul-scan.json --format json 
 ```
 
 ```json
 {
-    "Files" : [
-        {
-  "Ref": "localhost:5000/pipe/demo@sha256:5a23319624a3cea05aea5f9dfaf716fba1e7edf8c60d8389af35cebd6f605d30",
+  "Ref": "localhost:5000/oras@sha256:4a5b8c83d153f52afdfcb422db56c2349aae3bd5ecf8338a58353b5eb6681c45",
   "MediaType": "application/vnd.oci.image.manifest.v1+json",
-  "Digest": "sha256:5a23319624a3cea05aea5f9dfaf716fba1e7edf8c60d8389af35cebd6f605d30",
-  "Size": 939,
+  "Digest": "sha256:4a5b8c83d153f52afdfcb422db56c2349aae3bd5ecf8338a58353b5eb6681c45",
+  "Size": 820,
   "Annotations": {
-        "org.opencontainers.image.title": "vul-report.json"
-      }
-        },
-  {
-  "Ref": "localhost:5000/pipe/demo@sha256:5a23319624a3cea05aea5f9dfaf716fba1e7edf8c60d8389af35cebd6f605333",
-  "MediaType": "application/vnd.oci.image.manifest.v1+json",
-  "Digest": "sha256:5a23319624a3cea05aea5f9dfaf716fba1e7edf8c60d8389af35cebd6f605333",
-  "Size": 929,
-  "Annotations": {
-        "org.opencontainers.image.title": "sbom.spdx"
-      }
+    "org.opencontainers.image.created": "2023-12-15T09:41:54Z"
   }
-    ]
 }
 ```
 
-### oras push
-
-Push two files to a repository and show the descriptor of the pushed files in pretty JSON format.
+Push an artifact to a repository and filter out the value of `reference` and `artifactType` of the pushed artifact in the standard output.
 
 ```bash
-oras push $REGISTRY/$REPO:$TAG  --format json
+oras push $REGISTRY/$REPO:$TAG --format "{{.Ref}},{{.MediaType}}"
+```
+
+```console
+localhost:5000@sha256:85438e6598bf35057962fff34399a362d469ca30a317939427fca6b7a289e70d, application/vnd.oci.image.manifest.v1+json
+```
+
+### oras attach
+
+Attach two files to an image and show the descriptor metadata of the referrer in JSON format.
+
+```bash
+oras attach $REGISTRY/$REPO:$TAG --artifact-type example/report-and-sbom vul-report.json:example/vul-scan sbom.spdx:example/sbom --format json
 ```
 
 ```json
-"Ref": "localhost:5000/pipe/demo@sha256:80da7a36f42ab62eeac5382e99fd203149749cf2a861167ada620075e4e6edd4",
-"Files": [
-    {
-      "Ref": "localhost:5000/oras@sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd186222",
-      "MediaType": "application/vnd.oci.image.layer.v1.tar",
-      "Digest": "sha256:6cb759c4296e67e35b0367f3c0f51dfdb776a0c99a45f39d0476e43d82696d65",
-      "Size": 14477,
-      "Annotations": {
-        "org.opencontainers.image.title": "sbom.spdx"
-      }
-    },
-    {
-      "Ref": "localhost:5000/oras@sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd186222",
-      "MediaType": "application/vnd.oci.image.layer.v1.tar",
-      "Digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "Size": 0,
-      "Annotations": {
-        "org.opencontainers.image.title": "hello.txt"
-      }
-    }
-  ]
-```
-
-### oras manifest fetch
-
-Fetch a manifest and filter out its reference and media type in standard output:
-
-```bash
-oras manifest fetch $REGISTRY/$REPO:$TAG --format '{{.Ref}}', '{{.Config.mediaType}}'
-```
-
-```json
-localhost:5000/oras@sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd18669b, application/vnd.oci.empty.v1+json
+{
+  "Ref": "localhost:5000/oras@sha256:0afd0f0c35f98dcb607de0051be7ebefd942eef1e3a6d26eefd1b2d80f2affbe",
+  "MediaType": "application/vnd.oci.image.manifest.v1+json",
+  "Digest": "sha256:0afd0f0c35f98dcb607de0051be7ebefd942eef1e3a6d26eefd1b2d80f2affbe",
+  "Size": 923,
+  "Annotations": {
+    "org.opencontainers.image.created": "2023-12-15T08:59:21Z"
+  }
+}
 ```
 
 ### oras discover
 
-Discover an artifact's referrers. The default output should be listed in a tree view.
+View an artifact's referrers. The default output should be listed in a tree view.
 
 ```bash
-oras discover $REGISTRY/$REPO:$TAG
+oras discover $REGISTRY/$REPO:$TAG --format tree
 ```
 
 ```console
@@ -210,7 +272,7 @@ localhost:localhost:5000/hello@sha256:5cb894d0c94c56894e160ad2eeb19a123b4d215537
     └── sha256:476d43120d3799fa76d7706f741beca73f5ff4149c8b6db3bd516a73d4a82fc1
 ```
 
-Discover an artifact's referrers manifest in pretty JSON. 
+View an artifact's referrers manifest in pretty JSON output. 
 
 ```bash
 oras discover localhost:5000/hello:v1 --format json
@@ -244,41 +306,8 @@ oras discover localhost:5000/hello:v1 --format json
 }
 ```
 
-## Desired user experience for proposal 2
-
-In order to filter out the specified fields of the descriptor in the output, format the output using the given [Go template](https://golang.org/pkg/text/template/). The keys of the returned JSON can be used as the values for the `--format` flag.
-
-### Format the output using the given Go template
-
-For example, push an artifact to a repository and filter out the value of `reference` and `artifactType` of the pushed artifact in the standard output.
-
-```bash
-oras push $REGISTRY/$REPO:$TAG --format "{{.Ref}}', '{{.ArtifactType}}"
-```
-
-```console
-"localhost:5000@sha256:85438e6598bf35057962fff34399a362d469ca30a317939427fca6b7a289e70d, "application/vnd.example+type"  
-```
-
-For example, pull a file and filter out the specified fields `mediaType`, `reference`, `size` of the pulled file in the standard output.
-
-```bash
-oras pull $REGISTRY/$REPO:$TAG --format "{{.MediaType}}, {{.Ref}}, {{.Size}}"
-```
-
-```console
-"application/vnd.oci.image.layer.v1.tar","sha256:85438e6598bf35057962fff34399a362d469ca30a317939427fca6b7a289e70d", 12
-```
-
-For example, filter out the specified annotation value of an artifact by the key name `org.opencontainers.image.created`, with the [index function](https://pkg.go.dev/text/template#pkg-functions) defined in Go template.
-
-```bash
-oras discover $REGISTRY/$REPO:$TAG --format '{{index .Manifest.Annotations "org.opencontainers.image.created"}}'
-```
-
-```console
-"2023-11-29T06:32:43Z"
-```
+> [!NOTE]
+> The `--format` flag will replace the existing `--output` flag. The `--output` will be marked as deprecated in ORAS v1.2.0. 
 
 ## FAQ
 
@@ -291,58 +320,3 @@ In addition, it will be a breaking change if we extend the `--output` flag to en
 - Why ORAS chooses [Go template](https://pkg.go.dev/text/template)?
 
 Go template is a powerful method to customize output you want It allows users to manipulate the output format of certain commands. It provides access to data objects and additional functions that are passed into the template engine programmatically. It also has some useful libraries that have strong functions for Go’s template language to manipulate the output data, such as [Sprig](https://masterminds.github.io/sprig/).
-
-- What's the difference of the output when use `--output` and `--format` in `oras manifest fetch`?
-
-`--output` can generate a file with raw JSON data of the image manifest. `format` can display prettified JSON in the standard out.
-
-```bash
-oras manifest fetch $REGISTRY/$REPO:$TAG --output manifest.json
-```
-
-See the content in the `manifest.json`. It should be raw JSON data of the fetched image manifest.
-
-```json
-{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","artifactType":"application/vnd.unknown.artifact.v1","config":{"mediaType":"application/vnd.oci.empty.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2,"data":"e30="},"layers":[{"mediaType":"application/vnd.oci.image.layer.v1.tar","digest":"sha256:6cb759c4296e67e35b0367f3c0f51dfdb776a0c99a45f39d0476e43d82696d65","size":14477,"annotations":{"org.opencontainers.image.title":"sbom.spdx"}},{"mediaType":"application/vnd.oci.image.layer.v1.tar","digest":"sha256:54c0e84503c8790e03afe34bfc05a5ce45c933430cfd9c5f8a99d2c89f1f1b69","size":6639,"annotations":{"org.opencontainers.image.title":"scan-test-verify-image.json"}}],"annotations":{"org.opencontainers.image.created":"2023-12-13T15:08:49Z"}}
-```
-
-See the prettified JSON output of an image manifest when use `--format json`:
-
-```bash
-oras manifest fetch $REGISTRY/$REPO:$TAG --format json
-```
-
-```json
-{
-  "schemaVersion": 2,
-  "mediaType": "application/vnd.oci.image.manifest.v1+json",
-  "artifactType": "application/vnd.unknown.artifact.v1",
-  "config": {
-    "mediaType": "application/vnd.oci.empty.v1+json",
-    "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
-    "size": 2,
-    "data": "e30="
-  },
-  "layers": [
-    {
-      "mediaType": "application/vnd.oci.image.layer.v1.tar",
-      "digest": "sha256:6cb759c4296e67e35b0367f3c0f51dfdb776a0c99a45f39d0476e43d82696d65",
-      "size": 14477,
-      "annotations": {
-        "org.opencontainers.image.title": "sbom.spdx"
-      }
-    },
-    {
-      "mediaType": "application/vnd.oci.image.layer.v1.tar",
-      "digest": "sha256:54c0e84503c8790e03afe34bfc05a5ce45c933430cfd9c5f8a99d2c89f1f1b69",
-      "size": 6639,
-      "annotations": {
-        "org.opencontainers.image.title": "scan-test-verify-image.json"
-      }
-    }
-  ],
-  "annotations": {
-    "org.opencontainers.image.created": "2023-12-13T15:08:49Z"
-  }
-}
-```
