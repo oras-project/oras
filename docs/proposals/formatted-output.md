@@ -309,6 +309,10 @@ oras discover localhost:5000/hello:v1 --format json
 > [!NOTE]
 > The `--format` flag will replace the existing `--output` flag. The `--output` will be marked as deprecated in ORAS v1.2.0. 
 
+### oras copy
+
+
+
 ## FAQ
 
 - Why choose to use `--format` flag to enable JSON formatted output instead of extending the existing `--output` flag?
