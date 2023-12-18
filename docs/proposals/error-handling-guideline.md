@@ -18,7 +18,7 @@ Third, for unhandled errors you didn't expect the user to run into. For that, ha
 
 Fourth, signal-to-noise ratio is crucial. The more irrelevant output you produce, the longer it's going to take the user to figure out what they did wrong. If your program produces multiple errors of the same type, consider grouping them under a single explanatory header instead of printing many similar-looking lines.
 
-Fifth, CLI program termination should follow the standard [Exit Status conventions](https://www.gnu.org/software/libc/manual/html_node/Exit-Status.html) to report execution status information about success or failure. 
+Fifth, CLI program termination should follow the standard [Exit Status conventions](https://www.gnu.org/software/libc/manual/html_node/Exit-Status.html) to report execution status information about success or failure. ORAS returns `EXIT_FAILURE` if and only if ORAS reports one or more errors.
 
 Last, error logs can also be useful for post-mortem debugging, truncate them occasionally so they don't eat up space on disk, and make sure they don't contain ansi color codes. Thereby, error logs can be written to a file.
 
