@@ -148,7 +148,7 @@ Error: unknown distribution specification flag: "v1.0".
 Available options: v1.1-referrers-api, v1.1-referrers-tag
 ```
 
-#### Example 6: when attaching an file, if no file reference or annotation is provided
+#### Example 6: when attaching, if neither file reference nor annotation is provided
 
 Current behavior and output:
 
@@ -161,7 +161,7 @@ Suggested error message:
 
 ```
 $ oras attach --artifact-type sbom/example localhost:5000/sample/images:foobar
-Error: no file or annotation provided in the command
+Error: neither file nor annotation provided in the command
 Usage: oras attach [flags] --artifact-type=<type> <name>{:<tag>|@<digest>} <file>[:<type>] [...]
 To attach to an existing artifact, please provide files via argument or annotations via flag "--annotation". Run "oras attach -h" for more options and examples
 ```
