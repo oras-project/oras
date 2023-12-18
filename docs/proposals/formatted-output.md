@@ -16,9 +16,9 @@
 
 ## Background
 
-ORAS has prettified output designed for humans. However, for machine processing, especially in some automation scenarios like scripting and CI/CD pipelines, developers want to perform batch operations and chain different commands with ORAS, as well as filtering, modifying, and sorting objects based on the outputs that are emitted by the ORAS command. Developers expect the ORAS output can be generated as machine-readable text not only the prettified or tabular data, so that they can use the formatted outputs like JSON format to perform further advanced operations. 
+ORAS has prettified output designed for humans. However, for machine processing, especially in automation scenarios, like scripting and CI/CD pipelines, developers want to perform batch operations and chain different commands with ORAS, as well as filtering, modifying, and sorting objects based on the outputs that are emitted by the ORAS command. Developers expect that ORAS output can be emitted as machine-readable text instead of only the prettified or tabular data, so that it can be used to perform other operations.
 
-The formatted output is not intended to supersede the prettified human-readable and friendly output text of ORAS CLI. It aims to provide programming-friendly experience for developers who want to automate their workflows on machines especially on Unix and most Unix-like operating systems, without parsing unstructured text. It will increase the developer experience for ORAS in automation and scripting scenarios. 
+The formatted output is not intended to supersede the prettified human-readable and friendly output text of ORAS CLI. It aims to provide a programming-friendly experience for developers who want to automate their workflows without needing to parse unstructured text.
 
 ## Guidance
 
@@ -38,7 +38,7 @@ See sample use cases of formatted output for `oras manifest fetch`:
 oras manifest fetch $REGISTRY/$REPO:$TAG --output sample-manifest.json
 ```
 
-View the generated manifest file, it should be raw JSON data
+View the contents of the generated manifest within specified `sample-manifest.json` file. The contents should be raw JSON data:
 
 ```
 $ cat sample-manifest.json
@@ -89,30 +89,22 @@ oras manifest fetch $REGISTRY/$REPO:$TAG --format json
 - Use `--format '{{ GO_TEMPLATE_FUNCTION }}'` to enable extract or compose the output data using Go template functions
 
 ```bash
-oras manifest fetch $REGISTRY/$REPO:$TAG --format '{{.Ref}}', '{{.Config.mediaType}}'
+oras manifest fetch $REGISTRY/$REPO:$TAG --format '{{.Ref}}, {{.Config.mediaType}}'
 ```
 
 ```json
 localhost:5000/oras@sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd18669b, application/vnd.oci.empty.v1+json
 ```
 
-To see more details about the reason of using this design principle in the formatted output, see [FAQ](#faq) section.
+To see more details about the reasoning of using this design principle in the formatted output, see the [FAQ](#faq) section.
 
 ## Scenarios
 
 ### Scripting
 
-Alice is a developer who wants to batch operations with ORAS in her Shell script. In order to automate some routine workflow in containers secure supply chain scenario, she wants the machine to get the image digest from the JSON output objects that are emitted by `oras push`, then use utility like [xargs](https://en.wikipedia.org/wiki/Xargs) or use environmental variables to enable an ORAS command to act on the output of another command and perform further steps. In this way, she can chain commands together. For example, she can use `oras attach` to attach an SBOM to the image using its image digest as a argument outputted from `oras push`.
+Alice is a developer who wants to batch operations with ORAS in her Shell script. In order to automate a portion of her workflow, she would like to obtain the image digest from the JSON output objects produced by the `oras push` command and then use environmental variables or utilities like [xargs](https://en.wikipedia.org/wiki/Xargs) or  to enable an ORAS command to act on the output of another command and perform further steps. In this way, she can chain commands together. For example, she can use `oras attach` to attach an SBOM to the image using its image digest as a argument outputted from `oras push`.
 
-For example, push an artifact to a registry and generate the artifact reference in the standard output, then attach an SBOM to the artifact using the artifact reference (`$REGISTRY/$REPO@$DIGEST`) outputted from the first command, finally sign the attached SBOM with another tool against the SBOM file's reference (`$REGISTRY/$REPO@$DIGEST`) outputted from the last step.
-
-- Use xargs utility on Unix
-
-```bash
-oras push $REGISTRY/$REPO:$TAG hello.txt --format '{{.Ref}}' |\
-xargs -I _ oras attach --artifact-type sbom/example _ sbom.spdx --format '{{.Ref}}' |\
-xargs -I _ notation sign _ 
-```
+For example, push an artifact to a registry and generate the artifact reference in the standard output. Then, attach an SBOM to the artifact using the artifact reference (`$REGISTRY/$REPO@$DIGEST`) outputted from the first command. Finally, sign the attached SBOM with another tool against the reference of the SBOM file (`$REGISTRY/$REPO@$DIGEST`) that was obtained in the proceeding step.
 
 - Use environmental variables on Unix
 
@@ -122,7 +114,7 @@ REFERENCE_B=$(oras attach --artifact-type sbom/example $REFERENCE_A sbom.spdx --
 notation sign $REFERENCE_B
 ```
 
-- Use [ConverFrom-Json](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/convertfrom-json) on Windows PowerShell
+- Use [ConvertFrom-Json](https://learn.microsoft.com/powershell/module/microsoft.powershell.utility/convertfrom-json) on Windows PowerShell
 
 ```powershell
 $REFERENCE_A=oras push $REGISTRY/$REPO:$TAG hello.txt --format json --no-tty | ConvertFrom-Json
@@ -132,9 +124,9 @@ notation sign $REFERENCE_B.Ref
 
 ### CI/CD
 
-Bob is a DevOps engineer. He uses the ORAS GitHub Actions [Setup action](https://github.com/oras-project/setup-oras) to install ORAS in his CI/CD workflow. He wants to chain multiple ORAS commands in a Shell script to perform multiple operations.
+Bob is a DevOps engineer. He uses the ORAS GitHub Actions [Setup action](https://github.com/oras-project/setup-oras) to install ORAS in his CI/CD workflow. He wants to chain several ORAS commands in a Shell script to perform multiple operations.
 
-For example, pull multiple files (layers) from a repository and filter out the file path of its first layer in the standard output, then pass the pulled first layer to the second command `docker import` for further operation. 
+For example, pull multiple files (layers) from a repository and filter out the file path of its first layer in the standard output. Then, pass the pulled first layer to the second command (`docker import`) to perform further operations. 
 
 ```yaml
 jobs:
@@ -148,7 +140,7 @@ jobs:
 
 ## Proposal and desired user experience
 
-Enable users to use the `--format <type>` flag to format output into structured data (e.g. JSON) and use the `--format` with [Go template](https://pkg.go.dev/text/template) to manipulate the output fields. Users can still use `--format '{{toRawJson .}}'` to get raw JSON output.
+Enable users to use the `--format <type>` flag to format output into structured data (e.g. JSON) and use the `--format` with the [Go template](https://pkg.go.dev/text/template) language to manipulate the output fields. Users can still use `--format '{{toRawJson .}}'` to get raw JSON output.
 
 ### oras pull 
 
@@ -196,7 +188,7 @@ oras pull $REGISTRY/$REPO:$TAG --artifact-type example/sbom sbom.spdx  --artifac
 }
 ```
 
-Pull a repository that contains multiple layers (files) and display its descriptor metadata as raw JSON in standard output.
+Pull a repository that contains multiple layers (files) and display its descriptor metadata as raw JSON as standard output.
 
 ```bash
 oras pull $REGISTRY/$REPO:$TAG --format '{{toRawJson .}}'
@@ -309,18 +301,10 @@ oras discover localhost:5000/hello:v1 --format json
 > [!NOTE]
 > The `--format` flag will replace the existing `--output` flag. The `--output` will be marked as deprecated in ORAS v1.2.0. 
 
-### oras copy
-
-
-
 ## FAQ
 
-- Why choose to use `--format` flag to enable JSON formatted output instead of extending the existing `--output` flag?
+**Q:** Why choose to use `--format` flag to enable JSON formatted output instead of extending the existing `--output` flag?
+**A:** ORAS follows [GNU](https://www.gnu.org/prep/standards/html_node/Option-Table.html#Option-Table) design principles. ORAS uses `--output` to specify a file or directory content should be created within and `--format` to format the output into JSON or using the given Go template. Popular tools, like Docker, Podman, and Skopeo also follow this design principle within their formatted output feature.
 
-ORAS follows the [GNU](https://www.gnu.org/prep/standards/html_node/Option-Table.html#Option-Table) design principles. ORAS uses `--output` to output a file or directory and uses `--format` to format the output into JSON or using the given Go template. Popular tools like Docker, Podman, and Skopeo also follow this kind of design principles in the similar formatted output feature. 
-
-In addition, it will be a breaking change if we extend the `--output` flag to enable JSON formatted output. 
-
-- Why ORAS chooses [Go template](https://pkg.go.dev/text/template)?
-
-Go template is a powerful method to customize output you want It allows users to manipulate the output format of certain commands. It provides access to data objects and additional functions that are passed into the template engine programmatically. It also has some useful libraries that have strong functions for Go’s template language to manipulate the output data, such as [Sprig](https://masterminds.github.io/sprig/).
+**Q:** Why ORAS chooses [Go template](https://pkg.go.dev/text/template)?
+**A:** Go template is a powerful method to customize output you want It allows users to manipulate the output format of certain commands. It provides access to data objects and additional functions that are passed into the template engine programmatically. It also has some useful libraries that have strong functions for Go’s template language to manipulate the output data, such as [Sprig](https://masterminds.github.io/sprig/).
