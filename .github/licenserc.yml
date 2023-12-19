@@ -36,6 +36,7 @@ header:
     - 'go.mod'
     - 'go.sum'
     - 'go.work'
+    - 'test/e2e/suite/auth/legacy.config'
     - '**/testdata/**'
 
   comment: on-failure
