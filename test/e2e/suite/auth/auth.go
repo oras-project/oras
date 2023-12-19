@@ -43,6 +43,7 @@ var _ = Describe("Common registry user", Ordered, func() {
 			RunWithoutLogin("blob", "delete", ZOTHost+"/repo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
 			RunWithoutLogin("blob", "push", ZOTHost+"/repo", WriteTempFile("blob", "test"))
 			RunWithoutLogin("tag", ZOTHost+"/repo:tag", "tag1")
+			RunWithoutLogin("resolve", ZOTHost+"/repo:tag")
 			RunWithoutLogin("repo", "ls", ZOTHost)
 			RunWithoutLogin("repo", "tags", RegistryRef(ZOTHost, "repo", ""))
 			RunWithoutLogin("manifest", "fetch-config", ZOTHost+"/repo:tag")

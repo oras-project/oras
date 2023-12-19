@@ -34,6 +34,7 @@ func New() *cobra.Command {
 		logoutCmd(),
 		versionCmd(),
 		discoverCmd(),
+		resolveCmd(),
 		copyCmd(),
 		tagCmd(),
 		attachCmd(),

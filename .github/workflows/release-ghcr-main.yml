@@ -1,0 +1,47 @@
+# Copyright The ORAS Authors.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: release-ghcr-main
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: prepare
+        id: prepare
+        run: |
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          echo "ref=ghcr.io/${{ github.repository }}:${BRANCH_NAME}" >> $GITHUB_OUTPUT
+      - name: docker login
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: docker build
+        run: |          
+          docker buildx create --use
+          docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7,linux/s390x,linux/ppc64le -t ${{ steps.prepare.outputs.ref }} --push .
+      - name: clear
+        if: always()
+        run: |
+          rm -f ${HOME}/.docker/config.json

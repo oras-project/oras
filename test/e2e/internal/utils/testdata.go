@@ -22,6 +22,7 @@ const (
 	BlobRepo     = "command/blobs"
 	ArtifactRepo = "command/artifacts"
 	Namespace    = "command"
+	InvalidRepo  = "INVALID"
 	// env
 	RegHostKey         = "ORAS_REGISTRY_HOST"
 	FallbackRegHostKey = "ORAS_REGISTRY_FALLBACK_HOST"

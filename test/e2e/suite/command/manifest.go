@@ -494,6 +494,46 @@ var _ = Describe("OCI image layout users:", func() {
 			ORAS("manifest", "fetch-config", Flags.Layout, root).ExpectFailure().MatchErrKeyWords("Error:", "no tag or digest").Exec()
 		})
 	})
+
+	When("running `manifest delete`", func() {
+		It("should do confirmed deletion via input", func() {
+			// prepare
+			toDeleteRef := LayoutRef(PrepareTempOCI(ImageRepo), foobar.Tag)
+			// test
+			ORAS("manifest", "delete", Flags.Layout, toDeleteRef).
+				WithInput(strings.NewReader("y")).Exec()
+			// validate
+			ORAS("manifest", "fetch", Flags.Layout, toDeleteRef).ExpectFailure().MatchErrKeyWords(": not found").Exec()
+		})
+
+		It("should do confirmed deletion via flag", func() {
+			// prepare
+			toDeleteRef := LayoutRef(PrepareTempOCI(ImageRepo), foobar.Tag)
+			// test
+			ORAS("manifest", "delete", Flags.Layout, toDeleteRef, "-f").Exec()
+			// validate
+			ORAS("manifest", "fetch", Flags.Layout, toDeleteRef).ExpectFailure().MatchErrKeyWords(": not found").Exec()
+		})
+
+		It("should do forced deletion and output descriptor", func() {
+			// prepare
+			toDeleteRef := LayoutRef(PrepareTempOCI(ImageRepo), foobar.Tag)
+			// test
+			ORAS("manifest", "delete", Flags.Layout, toDeleteRef, "-f", "--descriptor").
+				MatchContent("{\"mediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"digest\":\"sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb\",\"size\":851,\"annotations\":{\"org.opencontainers.image.ref.name\":\"foobar\"}}").
+				Exec()
+			// validate
+			ORAS("manifest", "fetch", Flags.Layout, toDeleteRef).MatchErrKeyWords(": not found").ExpectFailure().Exec()
+		})
+
+		It("should succeed when deleting a non-existent manifest with force flag set", func() {
+			// prepare
+			toDeleteRef := LayoutRef(PrepareTempOCI(ImageRepo), invalidDigest)
+			ORAS("manifest", "delete", Flags.Layout, toDeleteRef, "--force").
+				MatchKeyWords("Missing", toDeleteRef).
+				Exec()
+		})
+	})
 })
 
 var _ = Describe("1.0 registry users:", func() {

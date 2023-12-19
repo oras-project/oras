@@ -110,8 +110,8 @@ var _ = Describe("ORAS beginners:", func() {
 					ExpectFailure().Exec()
 			})
 
-			It("should fail if provided digest doesn't existed", func() {
-				ORAS("blob", "fetch", RegistryRef(ZOTHost, ImageRepo, "sha256:2aaa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a")).
+			It("should fail if provided digest doesn't exist", func() {
+				ORAS("blob", "fetch", RegistryRef(ZOTHost, ImageRepo, "sha256:2aaa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a"), "-o", "/dev/null").
 					ExpectFailure().Exec()
 			})
 
@@ -245,12 +245,32 @@ var _ = Describe("1.1 registry users:", func() {
 
 var _ = Describe("OCI image layout users:", func() {
 	When("running `blob delete`", func() {
-		It("should not support deleting a blob", func() {
+		It("should delete a blob with interactive confirmation", func() {
+			// prepare
 			toDeleteRef := LayoutRef(PrepareTempOCI(ImageRepo), foobar.FooBlobDigest)
+			// test
 			ORAS("blob", "delete", Flags.Layout, toDeleteRef).
 				WithInput(strings.NewReader("y")).
-				MatchErrKeyWords("Error:", "unknown flag", Flags.Layout).
-				ExpectFailure().
+				MatchKeyWords("Deleted", toDeleteRef).Exec()
+			// validate
+			ORAS("blob", "fetch", toDeleteRef, Flags.Layout, "--output", "-").ExpectFailure().Exec()
+		})
+
+		It("should delete a blob with force flag and output descriptor", func() {
+			// prepare
+			toDeleteRef := LayoutRef(PrepareTempOCI(ImageRepo), foobar.FooBlobDigest)
+			// test
+			ORAS("blob", "delete", Flags.Layout, toDeleteRef, "--force", "--descriptor").MatchContent(foobar.FooBlobDescriptor).Exec()
+			// validate
+			ORAS("blob", "fetch", Flags.Layout, toDeleteRef, "--output", "-").ExpectFailure().Exec()
+		})
+
+		It("should return success when deleting a non-existent blob with force flag set", func() {
+			// prepare
+			toDeleteRef := RegistryRef(ZOTHost, ImageRepo, invalidDigest)
+			// test
+			ORAS("blob", "delete", Flags.Layout, toDeleteRef, "--force").
+				MatchKeyWords("Missing", toDeleteRef).
 				Exec()
 		})
 	})
