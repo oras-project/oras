@@ -33,9 +33,7 @@ type deleteBlobOptions struct {
 	option.Confirmation
 	option.Descriptor
 	option.Pretty
-	option.Remote
-
-	targetRef string
+	option.Target
 }
 
 func deleteCmd() *cobra.Command {
@@ -57,13 +55,13 @@ Example - Delete a blob and print its descriptor:
   `,
 		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			opts.RawReference = args[0]
 			if opts.OutputDescriptor && !opts.Force {
 				return errors.New("must apply --force to confirm the deletion if the descriptor is outputted")
 			}
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.targetRef = args[0]
 			return deleteBlob(cmd.Context(), opts)
 		},
 	}
@@ -74,27 +72,25 @@ Example - Delete a blob and print its descriptor:
 
 func deleteBlob(ctx context.Context, opts deleteBlobOptions) (err error) {
 	ctx, logger := opts.WithContext(ctx)
-	repo, err := opts.NewRepository(opts.targetRef, opts.Common, logger)
+	blobs, err := opts.NewBlobDeleter(opts.Common, logger)
 	if err != nil {
 		return err
 	}
-
-	if _, err = repo.Reference.Digest(); err != nil {
-		return fmt.Errorf("%s: blob reference must be of the form <name@digest>", opts.targetRef)
+	if err := opts.EnsureReferenceNotEmpty(); err != nil {
+		return err
 	}
 
 	// add both pull and delete scope hints for dst repository to save potential delete-scope token requests during deleting
-	ctx = registryutil.WithScopeHint(ctx, repo, auth.ActionPull, auth.ActionDelete)
-	blobs := repo.Blobs()
-	desc, err := blobs.Resolve(ctx, opts.targetRef)
+	ctx = registryutil.WithScopeHint(ctx, blobs, auth.ActionPull, auth.ActionDelete)
+	desc, err := blobs.Resolve(ctx, opts.Reference)
 	if err != nil {
 		if errors.Is(err, errdef.ErrNotFound) {
 			if opts.Force && !opts.OutputDescriptor {
 				// ignore nonexistent
-				fmt.Println("Missing", opts.targetRef)
+				fmt.Println("Missing", opts.RawReference)
 				return nil
 			}
-			return fmt.Errorf("%s: the specified blob does not exist", opts.targetRef)
+			return fmt.Errorf("%s: the specified blob does not exist", opts.RawReference)
 		}
 		return err
 	}
@@ -109,7 +105,7 @@ func deleteBlob(ctx context.Context, opts deleteBlobOptions) (err error) {
 	}
 
 	if err = blobs.Delete(ctx, desc); err != nil {
-		return fmt.Errorf("failed to delete %s: %w", opts.targetRef, err)
+		return fmt.Errorf("failed to delete %s: %w", opts.RawReference, err)
 	}
 
 	if opts.OutputDescriptor {
@@ -120,7 +116,7 @@ func deleteBlob(ctx context.Context, opts deleteBlobOptions) (err error) {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	fmt.Println("Deleted", opts.targetRef)
+	fmt.Println("Deleted", opts.AnnotatedReference())
 
 	return nil
 }
