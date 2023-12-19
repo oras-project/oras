@@ -27,9 +27,7 @@ import (
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
-var (
-	LegacyConfigPath = "legacy.config"
-)
+var LegacyConfigPath = "legacy.config"
 
 var _ = Describe("Common registry user", func() {
 	When("not logged in", func() {
