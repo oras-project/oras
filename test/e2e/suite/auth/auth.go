@@ -27,8 +27,6 @@ import (
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
-var LegacyConfigPath = "legacy.config"
-
 var _ = Describe("Common registry user", func() {
 	When("not logged in", func() {
 		It("should run commands without logging in", func() {
@@ -50,16 +48,16 @@ var _ = Describe("Common registry user", func() {
 	})
 
 	When("logging in", func() {
-		authConfigName := "auth.config"
+		tmpConfigName := "test.config"
 		It("should succeed to use basic auth", func() {
-			ORAS("login", ZOTHost, "-u", Username, "-p", Password, "--registry-config", filepath.Join(GinkgoT().TempDir(), authConfigName)).
+			ORAS("login", ZOTHost, "-u", Username, "-p", Password, "--registry-config", filepath.Join(GinkgoT().TempDir(), tmpConfigName)).
 				WithTimeOut(20*time.Second).
 				MatchContent("Login Succeeded\n").
 				MatchErrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").Exec()
 		})
 
 		It("should fail if no username input", func() {
-			ORAS("login", ZOTHost, "--registry-config", filepath.Join(GinkgoT().TempDir(), authConfigName)).
+			ORAS("login", ZOTHost, "--registry-config", filepath.Join(GinkgoT().TempDir(), tmpConfigName)).
 				WithTimeOut(20 * time.Second).
 				WithInput(strings.NewReader("")).
 				MatchKeyWords("username:").
@@ -68,14 +66,14 @@ var _ = Describe("Common registry user", func() {
 		})
 
 		It("should fail if no password input", func() {
-			ORAS("login", ZOTHost, "--registry-config", filepath.Join(GinkgoT().TempDir(), authConfigName)).
+			ORAS("login", ZOTHost, "--registry-config", filepath.Join(GinkgoT().TempDir(), tmpConfigName)).
 				WithTimeOut(20*time.Second).
 				MatchKeyWords("Username: ", "Password: ").
 				WithInput(strings.NewReader(fmt.Sprintf("%s\n", Username))).ExpectFailure().Exec()
 		})
 
 		It("should fail if password is empty", func() {
-			ORAS("login", ZOTHost, "--registry-config", filepath.Join(GinkgoT().TempDir(), authConfigName)).
+			ORAS("login", ZOTHost, "--registry-config", filepath.Join(GinkgoT().TempDir(), tmpConfigName)).
 				WithTimeOut(20*time.Second).
 				MatchKeyWords("Username: ", "Password: ").
 				MatchErrKeyWords("Error: password required").
@@ -83,14 +81,14 @@ var _ = Describe("Common registry user", func() {
 		})
 
 		It("should fail if no token input", func() {
-			ORAS("login", ZOTHost, "--registry-config", filepath.Join(GinkgoT().TempDir(), authConfigName)).
+			ORAS("login", ZOTHost, "--registry-config", filepath.Join(GinkgoT().TempDir(), tmpConfigName)).
 				WithTimeOut(20*time.Second).
 				MatchKeyWords("Username: ", "Token: ").
 				WithInput(strings.NewReader("\n")).ExpectFailure().Exec()
 		})
 
 		It("should fail if token is empty", func() {
-			ORAS("login", ZOTHost, "--registry-config", filepath.Join(GinkgoT().TempDir(), authConfigName)).
+			ORAS("login", ZOTHost, "--registry-config", filepath.Join(GinkgoT().TempDir(), tmpConfigName)).
 				WithTimeOut(20*time.Second).
 				MatchKeyWords("Username: ", "Token: ").
 				MatchErrKeyWords("Error: token required").
@@ -98,7 +96,7 @@ var _ = Describe("Common registry user", func() {
 		})
 
 		It("should succeed to use prompted input", func() {
-			ORAS("login", ZOTHost, "--registry-config", filepath.Join(GinkgoT().TempDir(), authConfigName)).
+			ORAS("login", ZOTHost, "--registry-config", filepath.Join(GinkgoT().TempDir(), tmpConfigName)).
 				WithTimeOut(20*time.Second).
 				WithInput(strings.NewReader(fmt.Sprintf("%s\n%s\n", Username, Password))).
 				MatchKeyWords("Username: ", "Password: ", "Login Succeeded\n").Exec()
@@ -106,6 +104,7 @@ var _ = Describe("Common registry user", func() {
 	})
 
 	When("using legacy config", func() {
+		var LegacyConfigPath = filepath.Join(TestDataRoot, LegacyConfigName)
 		It("should succeed to copy", func() {
 			src := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
 			dst := RegistryRef(ZOTHost, fmt.Sprintf("command/auth/%d/copy", GinkgoRandomSeed()), foobar.Tag)
