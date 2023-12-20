@@ -215,6 +215,24 @@ Error response from registry: pull access denied for docker.io/nginx:latest : re
 Namespace is missing, do you mean `oras pull docker.io/library/nginx:latest`? 
 ```
 
+#### Example 10: 
+
+Current behavior and output:
+
+```
+$ oras push /oras --format json
+Error: Head "https:///v2/oras/manifests/sha256:ffa50b27cd0096150c0338779c5090db41ba50d01179d851d68afa50b393c3a3": http: no Host in request URL
+```
+
+Suggested error message:
+
+```
+$ oras push /oras --format json
+Error: 
+Usage: 
+please specify a registry or OCI image layout folder to push
+```
+
 ## Reference
 
 Parts of the content are borrowed from these guidelines.
