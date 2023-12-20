@@ -35,20 +35,20 @@ See sample use cases of formatted output for `oras manifest fetch`:
 
 - Use `--output <file>` and `--format` at the same time, a manifest file should be produced in the filesystem and the `mediaType` value should be outputted on the console:
 
-```bash
+```console
 $ oras manifest fetch $REGISTRY/$REPO:$TAG --output sample-manifest.json --format {{.config.MediaType}}
 application/vnd.oci.empty.v1+json
 ```
 
 View the contents of the generated manifest within specified `sample-manifest.json` file. The contents should be raw JSON data:
 
-```
+```console
 $ cat sample-manifest.json
 {"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","artifactType":"application/vnd.unknown.artifact.v1","config":{"mediaType":"application/vnd.oci.empty.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2,"data":"e30="},"layers":[{"mediaType":"application/vnd.oci.image.layer.v1.tar","digest":"sha256:6cb759c4296e67e35b0367f3c0f51dfdb776a0c99a45f39d0476e43d82696d65","size":14477,"annotations":{"org.opencontainers.image.title":"sbom.spdx"}},{"mediaType":"application/vnd.oci.image.layer.v1.tar","digest":"sha256:54c0e84503c8790e03afe34bfc05a5ce45c933430cfd9c5f8a99d2c89f1f1b69","size":6639,"annotations":{"org.opencontainers.image.title":"scan-test-verify-image.json"}}],"annotations":{"org.opencontainers.image.created":"2023-12-15T09:41:54Z"}}
 ```
 
 > [!NOTE]
-> `--output -` and `--format json` can not be used at the same time due to conflicts.
+> `--output -` and `--format` can not be used at the same time due to conflicts.
 
 - Use `--format json` to print the output in prettified JSON:
 
@@ -95,11 +95,11 @@ oras manifest fetch $REGISTRY/$REPO:$TAG --format json
 
 ### Scripting
 
-Alice is a developer who wants to batch operations with ORAS in her Shell script. In order to automate a portion of her workflow, she would like to obtain the image digest from the JSON output objects produced by the `oras push` command and then use environmental variables or utilities like [xargs](https://en.wikipedia.org/wiki/Xargs) or  to enable an ORAS command to act on the output of another command and perform further steps. In this way, she can chain commands together. For example, she can use `oras attach` to attach an SBOM to the image using its image digest as a argument outputted from `oras push`.
+Alice is a developer who wants to batch operations with ORAS in her Shell script. In order to automate a portion of her workflow, she would like to obtain the image digest from the JSON output objects produced by the `oras push` command and then use shell variables or utilities like [xargs](https://en.wikipedia.org/wiki/Xargs) or  to enable an ORAS command to act on the output of another command and perform further steps. In this way, she can chain commands together. For example, she can use `oras attach` to attach an SBOM to the image using its image digest as a argument outputted from `oras push`.
 
 For example, push an artifact to a registry and generate the artifact reference in the standard output. Then, attach an SBOM to the artifact using the artifact reference (`$REGISTRY/$REPO@$DIGEST`) outputted from the first command. Finally, sign the attached SBOM with another tool against the reference of the SBOM file (`$REGISTRY/$REPO@$DIGEST`) that was obtained in the proceeding step.
 
-- Use environmental variables on Unix
+- Use shell variables on Unix
 
 ```bash
 REFERENCE_A=$(oras push $REGISTRY/$REPO:$TAG hello.txt --format '{{.Ref}}')
@@ -137,7 +137,7 @@ Enable users to use the `--format <type>` flag to format output into structured 
 
 ### oras pull 
 
-Pull a repository and display its metadata as formatted JSON in standard output. The following fields should be formatted in a JSON output:
+When using `oras pull` with the flag `--format`, the following fields should be formatted into JSON output:
 
 - `Ref`: full artifact reference by digest, e.g, `$REGISTRY/$REPO@$DIGEST`
 -  `Files`: a list of downloaded files
@@ -147,7 +147,7 @@ Pull a repository and display its metadata as formatted JSON in standard output.
     -  `Digest`: digest of the pulled file (layer) 
     -  `Size`: file size in bytes
 
-Pull a repository that contains multiple layers (files) and show their descriptor metadata as pretty JSON in standard output.
+For example, pull an artifact that contains multiple layers (files) and show their descriptor metadata as pretty JSON in standard output:
 
 ```bash
 oras pull $REGISTRY/$REPO:$TAG --artifact-type example/sbom sbom.spdx  --artifact-type example/vul-scan vul-scan.json --format json
@@ -181,7 +181,10 @@ oras pull $REGISTRY/$REPO:$TAG --artifact-type example/sbom sbom.spdx  --artifac
 }
 ```
 
-Pull a repository that contains multiple layers (files) and display its descriptor metadata as raw JSON as standard output.
+> [!NOTE]
+> When pulling a folder to filesystem, the value of `Path` should be an absolute path of the folder. Other fields are the same as the example of pulling files as above.
+
+For example, pull an artifact that contains multiple layers (files) and show their descriptor metadata as raw JSON as standard output.
 
 ```bash
 oras pull $REGISTRY/$REPO:$TAG --format '{{toRawJson .}}'
@@ -193,7 +196,7 @@ oras pull $REGISTRY/$REPO:$TAG --format '{{toRawJson .}}'
 
 ### oras push
 
-Push two files to a repository and show the descriptor of the image manifest in pretty JSON format.
+Push two files to a repository and show the descriptor of the image manifest in pretty JSON format. 
 
 ```bash
 oras push $REGISTRY/$REPO:$TAG sbom.spdx vul-scan.json --format json 
@@ -211,10 +214,13 @@ oras push $REGISTRY/$REPO:$TAG sbom.spdx vul-scan.json --format json
 }
 ```
 
-Push an artifact to a repository and filter out the value of `reference` and `artifactType` of the pushed artifact in the standard output.
+> [!NOTE]
+> When pushing a folder to filesystem, the output fields are the same as the example of pushing files as above.
+
+Push a folder to a repository and filter out the value of `reference` and `artifactType` of the pushed artifact in the standard output.
 
 ```bash
-oras push $REGISTRY/$REPO:$TAG --format "{{.Ref}},{{.MediaType}}"
+oras push $REGISTRY/$REPO:$TAG /sample-folder --format '{{.Ref}},{{.MediaType}}'
 ```
 
 ```console
@@ -257,7 +263,7 @@ localhost:localhost:5000/hello@sha256:5cb894d0c94c56894e160ad2eeb19a123b4d215537
     └── sha256:476d43120d3799fa76d7706f741beca73f5ff4149c8b6db3bd516a73d4a82fc1
 ```
 
-View an artifact's referrers manifest in pretty JSON output. 
+View an artifact's referrers manifest in pretty JSON output.
 
 ```bash
 oras discover localhost:5000/hello:v1 --format json
@@ -292,7 +298,7 @@ oras discover localhost:5000/hello:v1 --format json
 ```
 
 > [!NOTE]
-> The `--format` flag will replace the existing `--output` flag. The `--output` will be marked as deprecated in ORAS v1.2.0. 
+> The `--format` flag will replace the existing `--output` flag. The `--output` will be marked as "deprecated" in ORAS v1.2.0 and will be removed in the next release. 
 
 ## FAQ
 
