@@ -91,6 +91,9 @@ oras manifest fetch $REGISTRY/$REPO:$TAG --format json
 }
 ```
 
+> [!NOTE]
+> The formatted output of `oras manifest fetch` only supports OCI/Docker Image Manifest in this release. [OCI image index](https://github.com/opencontainers/image-spec/blob/v1.1.0-rc5/image-index.md) and other media types of artifact will be supported in future releases.
+
 ## Scenarios
 
 ### Scripting
