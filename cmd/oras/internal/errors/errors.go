@@ -22,12 +22,14 @@ import (
 	"oras.land/oras-go/v2/registry"
 )
 
+// Error is the error type for CLI error messaging.
 type Error struct {
 	Err            error
 	Usage          string
 	Recommendation string
 }
 
+// Error implements the error interface.
 func (o *Error) Error() string {
 	ret := o.Err.Error()
 	if o.Usage != "" {
