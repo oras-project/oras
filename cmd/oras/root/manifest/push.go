@@ -82,7 +82,7 @@ Example - Push a manifest to repository 'localhost:5000/hello' and tag with 'tag
 Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag with 'v1':
   oras manifest push --oci-layout layout-dir:v1 manifest.json
 `,
-		Args: oerrors.CheckArgs(argument.Exactly(1), "the destination to push to and the file to read manifest content from"),
+		Args: oerrors.CheckArgs(argument.Exactly(2), "the destination to push to and the file to read manifest content from"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.fileRef = args[1]
 			if opts.fileRef == "-" && opts.PasswordFromStdin {
