@@ -22,39 +22,32 @@ import (
 	"oras.land/oras-go/v2/registry"
 )
 
-type output struct {
-	description, usage, suggestion string
+type Error struct {
+	Err            error
+	Usage          string
+	Recommendation string
 }
 
-func (o *output) Error() string {
-	ret := o.description
-	if o.usage != "" {
-		ret += fmt.Sprintf("\nUsage: %s", o.usage)
+func (o *Error) Error() string {
+	ret := o.Err.Error()
+	if o.Usage != "" {
+		ret += fmt.Sprintf("\nUsage: %s", o.Usage)
 	}
-	if o.suggestion != "" {
-		ret += fmt.Sprintf("\n%s", o.suggestion)
+	if o.Recommendation != "" {
+		ret += fmt.Sprintf("\n%s", o.Recommendation)
 	}
 	return ret
 }
 
-// NewOuput creates a new error for CLI output.
-func NewOuput(description, usage, suggestion string) error {
-	return &output{
-		description: description,
-		usage:       usage,
-		suggestion:  suggestion,
-	}
-}
-
-// ArgsChecker checks the args with the checker function.
-func ArgsChecker(checker func(args []string) (bool, string), usage string) cobra.PositionalArgs {
+// CheckArgs checks the args with the checker function.
+func CheckArgs(checker func(args []string) (bool, string), Usage string) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		if ok, text := checker(args); !ok {
-			return NewOuput(
-				fmt.Sprintf(`%q requires %s but got %d`, cmd.CommandPath(), text, len(args)),
-				fmt.Sprintf("%s %s", cmd.Parent().CommandPath(), cmd.Use),
-				fmt.Sprintf(`Please specify %s as %s. Run "%s -h" for more options and examples`, text, usage, cmd.CommandPath()),
-			)
+			return &Error{
+				Err:            fmt.Errorf(`%q requires %s but got %d`, cmd.CommandPath(), text, len(args)),
+				Usage:          fmt.Sprintf("%s %s", cmd.Parent().CommandPath(), cmd.Use),
+				Recommendation: fmt.Sprintf(`Please specify %s as %s. Run "%s -h" for more options and examples`, text, Usage, cmd.CommandPath()),
+			}
 		}
 		return nil
 	}

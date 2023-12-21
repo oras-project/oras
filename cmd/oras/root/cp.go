@@ -29,6 +29,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/display/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
@@ -84,9 +85,7 @@ Example - Copy an artifact with multiple tags:
 Example - Copy an artifact with multiple tags with concurrency tuned:
   oras cp --concurrency 10 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:tag1,tag2,tag3
 `,
-		Args: oerrors.ArgsChecker(func(args []string) (bool, string) {
-			return len(args) == 2, "exactly 2 arguments"
-		}, "the source and destination for copying"),
+		Args: oerrors.CheckArgs(argument.Exactly(2), "the source and destination for copying"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.From.RawReference = args[0]
 			refs := strings.Split(args[1], ",")

@@ -25,6 +25,7 @@ import (
 	credentials "github.com/oras-project/oras-credentials-go"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
+	"oras.land/oras/cmd/oras/internal/argument"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/credential"
@@ -62,9 +63,7 @@ Example - Log in with username and password in an interactive terminal:
 Example - Log in with username and password in an interactive terminal and no TLS check:
   oras login --insecure localhost:5000
 `,
-		Args: oerrors.ArgsChecker(func(args []string) (bool, string) {
-			return len(args) == 1, "exactly 1 argument"
-		}, "the registry to log in to"),
+		Args: oerrors.CheckArgs(argument.Exactly(1), "the registry to log in to"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return option.Parse(&opts)
 		},

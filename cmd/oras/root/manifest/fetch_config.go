@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras/cmd/oras/internal/argument"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/descriptor"
@@ -68,9 +69,7 @@ Example - Fetch the descriptor of the config:
 Example - Fetch and print the prettified descriptor of the config:
   oras manifest fetch-config --descriptor --pretty localhost:5000/hello:v1
 `,
-		Args: oerrors.ArgsChecker(func(args []string) (bool, string) {
-			return len(args) == 1, "exactly 1 argument"
-		}, "the manifest config to fetch"),
+		Args: oerrors.CheckArgs(argument.Exactly(1), "the manifest config to fetch"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.outputPath == "-" && opts.OutputDescriptor {
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")

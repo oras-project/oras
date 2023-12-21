@@ -25,6 +25,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
+	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/display/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
@@ -74,9 +75,7 @@ Example - Push blob without TLS:
 Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
   oras blob push --oci-layout layout-dir hi.txt
 `,
-		Args: oerrors.ArgsChecker(func(args []string) (bool, string) {
-			return len(args) == 2, "exactly 2 arguments"
-		}, "the destination to push to and the file to read blob content from"),
+		Args: oerrors.CheckArgs(argument.Exactly(2), "the destination to push to and the file to read blob content from"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
 			opts.fileRef = args[1]

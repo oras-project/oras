@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
+	"oras.land/oras/cmd/oras/internal/argument"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -44,9 +45,7 @@ func resolveCmd() *cobra.Command {
 Example - Resolve digest of the target artifact:
   oras resolve localhost:5000/hello-world:v1
 `,
-		Args: oerrors.ArgsChecker(func(args []string) (bool, string) {
-			return len(args) == 1, "exactly 1 argument"
-		}, "the target artifact reference to resolve"),
+		Args:    oerrors.CheckArgs(argument.Exactly(1), "the target artifact reference to resolve"),
 		Aliases: []string{"digest"},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
