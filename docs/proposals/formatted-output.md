@@ -113,9 +113,9 @@ notation sign $REFERENCE_B
 - Use [ConvertFrom-Json](https://learn.microsoft.com/powershell/module/microsoft.powershell.utility/convertfrom-json) on Windows PowerShell
 
 ```powershell
-$REFERENCE_A=oras push $REGISTRY/$REPO:$TAG hello.txt --format json --no-tty | ConvertFrom-Json
-$REFERENCE_B=oras attach --artifact-type sbom/example $REFERENCE_A.Ref sbom.spdx --format json --no-tty | ConvertFrom-Json
-notation sign $REFERENCE_B.Ref
+$A=oras push $REGISTRY/$REPO:$TAG hello.txt --format json --no-tty | ConvertFrom-Json
+$B=oras attach --artifact-type sbom/example $A.Ref sbom.spdx --format json --no-tty | ConvertFrom-Json
+notation sign $B.Ref
 ```
 
 ### CI/CD
@@ -144,11 +144,12 @@ When using `oras pull` with the flag `--format`, the following fields should be 
 
 - `Ref`: full artifact reference by digest, e.g, `$REGISTRY/$REPO@$DIGEST`
 -  `Files`: a list of downloaded files
-    -  `Path`: the absolute file path of the pulled file (layer)
-    -  `Ref`: full reference by digest of the pulled file (layer)
-    -  `MediaType`: media type of the pulled file (layer) 
-    -  `Digest`: digest of the pulled file (layer) 
-    -  `Size`: file size in bytes
+    - `Path`: the absolute file path of the pulled file (layer)
+    - `Ref`: full reference by digest of the pulled file (layer)
+    - `MediaType`: media type of the pulled file (layer) 
+    - `Digest`: digest of the pulled file (layer) 
+    - `Size`: file size in bytes
+    - `Annotations`: contains arbitrary metadata for the image manifest
 
 For example, pull an artifact that contains multiple layers (files) and show their descriptor metadata as pretty JSON in standard output:
 
@@ -185,7 +186,7 @@ oras pull $REGISTRY/$REPO:$TAG --artifact-type example/sbom sbom.spdx  --artifac
 ```
 
 > [!NOTE]
-> When pulling a folder to filesystem, the value of `Path` should be an absolute path of the folder. Other fields are the same as the example of pulling files as above.
+> When pulling a folder to filesystem, the value of `Path` should be an absolute path of the folder and should be end with slash `/` or backslash `\`, for example, `/home/Bob/sample-folder/` on Unix or `C:\Users\Bob\sample-folder\` on Windows. Other fields are the same as the example of pulling files as above.
 
 For example, pull an artifact that contains multiple layers (files) and show their descriptor metadata as raw JSON as standard output.
 
@@ -266,35 +267,45 @@ localhost:localhost:5000/hello@sha256:5cb894d0c94c56894e160ad2eeb19a123b4d215537
     └── sha256:476d43120d3799fa76d7706f741beca73f5ff4149c8b6db3bd516a73d4a82fc1
 ```
 
-View an artifact's referrers manifest in pretty JSON output.
+View an artifact's referrers manifest in pretty JSON output. The following fields should be outputted:
+
+- `OCI-Filters-Applied`: when the registry supports filtering on `artifactType`, this filed could be displayed
+- `Manifests`: the list of referrers
+  - `Ref`: full reference by digest of the referrer
+  - `MediaType`: media type of the referrer
+  - `Size`: referrer file size in bytes
+  - `Digest`: digest of the referrer
+  - `ArtifactType`: the type of a referrer
+  - `Annotations`: contains arbitrary metadata for the image manifest
+
+See an example:
 
 ```bash
 oras discover localhost:5000/hello:v1 --format json
 ```
 
 ```json
+"OCI-Filters-Applied: artifactType": application/vnd.example.sbom.v1
 {
-  "schemaVersion": 2,
-  "mediaType": "application/vnd.oci.image.index.v1+json",
-  "manifests": [
+  "Manifests": [
     {
-      "mediaType": "application/vnd.oci.image.manifest.v1+json",
-      "digest": "sha256:0db683b656132cede5360f42bc52541f3386b30ce685e6e63ff93ced54423fb8",
-      "size": 964,
-      "annotations": {
+      "MediaType": "application/vnd.oci.image.manifest.v1+json",
+      "Digest": "sha256:0db683b656132cede5360f42bc52541f3386b30ce685e6e63ff93ced54423fb8",
+      "Size": 964,
+      "Annotations": {
         "org.opencontainers.image.created": "2023-12-14T13:48:32Z"
       },
-      "artifactType": "application/vnd.oci.empty.v1+json"
+      "ArtifactType": "application/vnd.oci.empty.v1+json"
     },
     {
-      "mediaType": "application/vnd.oci.image.manifest.v1+json",
-      "digest": "sha256:476d43120d3799fa76d7706f741beca73f5ff4149c8b6db3bd516a73d4a82fc1",
-      "size": 728,
-      "annotations": {
+      "MediaType": "application/vnd.oci.image.manifest.v1+json",
+      "Digest": "sha256:476d43120d3799fa76d7706f741beca73f5ff4149c8b6db3bd516a73d4a82fc1",
+      "Size": 728,
+      "Annotations": {
         "io.cncf.notary.x509chain.thumbprint#S256": "[\"792265ec6b22f0a87c7b3d980319d51a76a382de1b7a47bd877bb4e5a9beb637\"]",
         "org.opencontainers.image.created": "2023-12-14T14:41:56Z"
       },
-      "artifactType": "application/vnd.cncf.notary.signature"
+      "ArtifactType": "application/vnd.cncf.notary.signature"
     }
   ]
 }
