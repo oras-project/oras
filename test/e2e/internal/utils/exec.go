@@ -34,10 +34,9 @@ const (
 	orasBinary = "oras"
 
 	// customize your own basic auth file via `htpasswd -cBb <file_name> <user_name> <password>`
-	Username       = "hello"
-	Password       = "oras-test"
-	AuthConfigPath = "test.config"
-	DefaultTimeout = 10 * time.Second
+	Username         = "hello"
+	Password         = "oras-test"
+	DefaultTimeout   = 10 * time.Second
 	// If the command hasn't exited yet, ginkgo session ExitCode is -1
 	notResponding = -1
 )
