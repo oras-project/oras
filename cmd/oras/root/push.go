@@ -252,7 +252,7 @@ func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, v
 		promptUploading = "Uploading"
 	)
 	tracked, ok := dst.(track.GraphTarget)
-	if ok {
+	if !ok {
 		// non TTY
 		opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
