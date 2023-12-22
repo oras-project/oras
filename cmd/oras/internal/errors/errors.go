@@ -29,6 +29,11 @@ type Error struct {
 	Recommendation string
 }
 
+// Unwrap implements the errors.Wrapper interface.
+func (o *Error) Unwrap() error {
+	return o.Err
+}
+
 // Error implements the error interface.
 func (o *Error) Error() string {
 	ret := o.Err.Error()
