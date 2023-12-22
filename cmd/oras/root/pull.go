@@ -173,7 +173,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 	if err != nil {
 		return ocispec.Descriptor{}, false, err
 	}
-	if tracked := dst.(track.GraphTarget); tracked != nil {
+	if tracked, ok := dst.(track.GraphTarget); ok {
 		defer tracked.Close()
 	}
 	var layerSkipped atomic.Bool
