@@ -98,7 +98,7 @@ oras manifest fetch $REGISTRY/$REPO:$TAG --format json
 
 ### Scripting
 
-Alice is a developer who wants to batch operations with ORAS in her Shell script. In order to automate a portion of her workflow, she would like to obtain the image digest from the JSON output objects produced by the `oras push` command and then use shell variables or utilities like [xargs](https://en.wikipedia.org/wiki/Xargs) or  to enable an ORAS command to act on the output of another command and perform further steps. In this way, she can chain commands together. For example, she can use `oras attach` to attach an SBOM to the image using its image digest as a argument outputted from `oras push`.
+Alice is a developer who wants to batch operations with ORAS in her Shell script. In order to automate a portion of her workflow, she would like to obtain the image digest from the JSON output objects produced by the `oras push` command and then use shell variables or utilities like [xargs](https://en.wikipedia.org/wiki/Xargs) to enable an ORAS command to act on the output of another command and perform further steps. In this way, she can chain commands together. For example, she can use `oras attach` to attach an SBOM to the image using its image digest as a argument outputted from `oras push`.
 
 For example, push an artifact to a registry and generate the artifact reference in the standard output. Then, attach an SBOM to the artifact using the artifact reference (`$REGISTRY/$REPO@$DIGEST`) outputted from the first command. Finally, sign the attached SBOM with another tool against the reference of the SBOM file (`$REGISTRY/$REPO@$DIGEST`) that was obtained in the proceeding step.
 
@@ -224,7 +224,7 @@ oras push $REGISTRY/$REPO:$TAG sbom.spdx vul-scan.json --format json
 Push a folder to a repository and filter out the value of `reference` and `artifactType` of the pushed artifact in the standard output.
 
 ```bash
-oras push $REGISTRY/$REPO:$TAG /sample-folder --format '{{.Ref}},{{.MediaType}}'
+oras push $REGISTRY/$REPO:$TAG sample-folder --format '{{.Ref}}, {{.MediaType}}'
 ```
 
 ```console
@@ -276,7 +276,7 @@ View an artifact's referrers manifest in pretty JSON output. The following field
   - `Size`: referrer file size in bytes
   - `Digest`: digest of the referrer
   - `ArtifactType`: the type of a referrer
-  - `Annotations`: contains arbitrary metadata for the image manifest
+  - `Annotations`: contains arbitrary metadata of a referrer
 
 See an example:
 
@@ -312,7 +312,7 @@ oras discover localhost:5000/hello:v1 --format json
 ```
 
 > [!NOTE]
-> The `--format` flag will replace the existing `--output` flag. The `--output` will be marked as "deprecated" in ORAS v1.2.0 and will be removed in the next release. 
+> The `--format` flag will replace the existing `--output` flag. The `--output` will be marked as "deprecated" in ORAS v1.2.0 and will be removed in the future releases. 
 
 ## FAQ
 
