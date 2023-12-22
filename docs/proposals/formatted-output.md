@@ -275,7 +275,7 @@ View an artifact's referrers manifest in pretty JSON output. The following field
   - `MediaType`: media type of the referrer
   - `Size`: referrer file size in bytes
   - `Digest`: digest of the referrer
-  - `ArtifactType`: the type of a referrer
+  - `ArtifactType`: artifact type of a referrer
   - `Annotations`: contains arbitrary metadata of a referrer
 
 See an example:
