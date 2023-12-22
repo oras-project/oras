@@ -59,7 +59,7 @@ Error: {Error|Error response from registry}: {Error description}
 
 Here are some examples of writing error message with helpful prompt actionable information:
 
-#### Example 1: when no reference provided in `oras copy`
+#### Example 1: When no reference provided in `oras copy`
 
 Current behavior and output:
 
@@ -77,7 +77,7 @@ Usage: oras copy [flags] <from>{:<tag>|@<digest>} <to>[:<tag>[,<tag>][...]]
 Please specify 2 arguments as source and destination respectively. Run "oras copy -h" for more options and examples
 ```
 
-#### Example 2: when reference does not match with the expected format
+#### Example 2: When reference does not match with the expected format
 
 Current behavior and output:
 
@@ -113,7 +113,7 @@ Usage: oras manifest fetch [flags] <name>{:<tag>|@<digest>}
 You need to specify an artifact reference in the form of "<name>:<tag>" or "<name>@<digest>". Run "oras manifest fetch -h" for more options and examples 
 ```
 
-#### Example 4: push a manifest if no media type flag provided
+#### Example 4: Push a manifest if no media type flag provided
 
 Current behavior and output:
 
@@ -131,7 +131,7 @@ Usage: oras manifest push [flags] <name>[:<tag>[,<tag>][...]|@<digest>] <file>
 You need to specify a valid media type "mediaType" in the manifest JSON or via the "--media-type" flag.
 ```
 
-#### Example 5: attach an artifact if the given option is unknown
+#### Example 5: Attach an artifact if the given option is unknown
 
 Current behavior and output:
 
@@ -148,7 +148,7 @@ Error: unknown distribution specification flag: "v1.0".
 Available options: v1.1-referrers-api, v1.1-referrers-tag
 ```
 
-#### Example 6: when attaching, if neither file reference nor annotation is provided
+#### Example 6: When attaching, if neither file reference nor annotation is provided
 
 Current behavior and output:
 
