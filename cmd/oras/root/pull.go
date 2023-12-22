@@ -307,7 +307,7 @@ func printOnce(printed *sync.Map, s ocispec.Descriptor, msg string, verbose bool
 		return nil
 	}
 	tracked, ok := dst.(track.GraphTarget)
-	if ok {
+	if !ok {
 		// none TTY
 		return display.PrintStatus(s, msg, verbose)
 	}
