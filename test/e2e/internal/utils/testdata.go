@@ -16,12 +16,14 @@ limitations under the License.
 package utils
 
 const (
-	PreviewDesc  = "** This command is in preview and under development. **"
-	ExampleDesc  = "\nExample - "
-	ImageRepo    = "command/images"
-	BlobRepo     = "command/blobs"
-	ArtifactRepo = "command/artifacts"
-	Namespace    = "command"
+	PreviewDesc      = "** This command is in preview and under development. **"
+	ExampleDesc      = "\nExample - "
+	ImageRepo        = "command/images"
+	BlobRepo         = "command/blobs"
+	ArtifactRepo     = "command/artifacts"
+	Namespace        = "command"
+	InvalidRepo      = "INVALID"
+	LegacyConfigName = "legacy.config"
 	// env
 	RegHostKey         = "ORAS_REGISTRY_HOST"
 	FallbackRegHostKey = "ORAS_REGISTRY_FALLBACK_HOST"

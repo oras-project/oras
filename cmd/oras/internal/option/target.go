@@ -19,6 +19,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"strings"
 	"sync"
@@ -26,8 +28,10 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
+	"oras.land/oras-go/v2/registry/remote"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 )
@@ -112,26 +116,69 @@ func parseOCILayoutReference(raw string) (path string, ref string, err error) {
 	return
 }
 
+func (opts *Target) newOCIStore() (*oci.Store, error) {
+	var err error
+	opts.Path, opts.Reference, err = parseOCILayoutReference(opts.RawReference)
+	if err != nil {
+		return nil, err
+	}
+	return oci.New(opts.Path)
+}
+
+func (opts *Target) newRepository(common Common, logger logrus.FieldLogger) (*remote.Repository, error) {
+	repo, err := opts.NewRepository(opts.RawReference, common, logger)
+	if err != nil {
+		return nil, err
+	}
+	tmp := repo.Reference
+	tmp.Reference = ""
+	opts.Path = tmp.String()
+	opts.Reference = repo.Reference.Reference
+	return repo, nil
+}
+
 // NewTarget generates a new target based on opts.
 func (opts *Target) NewTarget(common Common, logger logrus.FieldLogger) (oras.GraphTarget, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
-		var err error
-		opts.Path, opts.Reference, err = parseOCILayoutReference(opts.RawReference)
-		if err != nil {
-			return nil, err
-		}
-		return oci.New(opts.Path)
+		return opts.newOCIStore()
 	case TargetTypeRemote:
-		repo, err := opts.NewRepository(opts.RawReference, common, logger)
+		return opts.newRepository(common, logger)
+	}
+	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
+}
+
+type ResolvableDeleter interface {
+	content.Resolver
+	content.Deleter
+}
+
+// NewBlobDeleter generates a new blob deleter based on opts.
+func (opts *Target) NewBlobDeleter(common Common, logger logrus.FieldLogger) (ResolvableDeleter, error) {
+	switch opts.Type {
+	case TargetTypeOCILayout:
+		return opts.newOCIStore()
+	case TargetTypeRemote:
+		repo, err := opts.newRepository(common, logger)
 		if err != nil {
 			return nil, err
 		}
-		tmp := repo.Reference
-		tmp.Reference = ""
-		opts.Path = tmp.String()
-		opts.Reference = repo.Reference.Reference
-		return repo, nil
+		return repo.Blobs(), nil
+	}
+	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
+}
+
+// NewManifestDeleter generates a new blob deleter based on opts.
+func (opts *Target) NewManifestDeleter(common Common, logger logrus.FieldLogger) (ResolvableDeleter, error) {
+	switch opts.Type {
+	case TargetTypeOCILayout:
+		return opts.newOCIStore()
+	case TargetTypeRemote:
+		repo, err := opts.newRepository(common, logger)
+		if err != nil {
+			return nil, err
+		}
+		return repo.Manifests(), nil
 	}
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
 }
@@ -154,12 +201,22 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common, logger
 		}
 		info, err := os.Stat(opts.Path)
 		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				return nil, fmt.Errorf("invalid argument %q: failed to find path %q: %w", opts.RawReference, opts.Path, err)
+			}
 			return nil, err
 		}
 		if info.IsDir() {
 			return oci.NewFromFS(ctx, os.DirFS(opts.Path))
 		}
-		return oci.NewFromTar(ctx, opts.Path)
+		store, err := oci.NewFromTar(ctx, opts.Path)
+		if err != nil {
+			if errors.Is(err, io.ErrUnexpectedEOF) {
+				return nil, fmt.Errorf("%q does not look like a tar archive: %w", opts.Path, err)
+			}
+			return nil, err
+		}
+		return store, nil
 	case TargetTypeRemote:
 		repo, err := opts.NewRepository(opts.RawReference, common, logger)
 		if err != nil {
