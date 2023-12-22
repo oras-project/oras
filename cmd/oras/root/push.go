@@ -184,15 +184,14 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	if err != nil {
 		return err
 	}
-	var tracked track.GraphTarget
-	dst, tracked, err = getTrackedTarget(dst, opts.TTY, "Uploading", "Uploaded ")
+	dst, err = getTrackedTarget(dst, opts.TTY, "Uploading", "Uploaded ")
 	if err != nil {
 		return err
 	}
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
 	union := contentutil.MultiReadOnlyTarget(memoryStore, store)
-	updateDisplayOption(&copyOptions.CopyGraphOptions, union, opts.Verbose, tracked)
+	updateDisplayOption(&copyOptions.CopyGraphOptions, union, opts.Verbose, dst)
 	copy := func(root ocispec.Descriptor) error {
 		// add both pull and push scope hints for dst repository
 		// to save potential push-scope token requests during copy
@@ -214,13 +213,17 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	fmt.Println("Pushed", opts.AnnotatedReference())
 
 	if len(opts.extraRefs) != 0 {
+		taggable := dst
+		if tracked, ok := dst.(track.GraphTarget); ok {
+			taggable = tracked.Inner()
+		}
 		contentBytes, err := content.FetchAll(ctx, memoryStore, root)
 		if err != nil {
 			return err
 		}
 		tagBytesNOpts := oras.DefaultTagBytesNOptions
 		tagBytesNOpts.Concurrency = opts.concurrency
-		if _, err = oras.TagBytesN(ctx, display.NewTagStatusPrinter(dst), root.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
+		if _, err = oras.TagBytesN(ctx, display.NewTagStatusPrinter(taggable), root.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}
 	}
@@ -239,7 +242,7 @@ func doPush(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, 
 	return pushArtifact(dst, pack, copy)
 }
 
-func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, verbose bool, tracked track.GraphTarget) {
+func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, verbose bool, dst any) {
 	committed := &sync.Map{}
 
 	const (
@@ -248,8 +251,8 @@ func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, v
 		promptExists    = "Exists   "
 		promptUploading = "Uploading"
 	)
-
-	if tracked == nil {
+	tracked, ok := dst.(track.GraphTarget)
+	if ok {
 		// non TTY
 		opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
@@ -283,15 +286,15 @@ func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, v
 type packFunc func() (ocispec.Descriptor, error)
 type copyFunc func(desc ocispec.Descriptor) error
 
-func getTrackedTarget(gt oras.GraphTarget, tty *os.File, actionPrompt, doneprompt string) (oras.GraphTarget, track.GraphTarget, error) {
+func getTrackedTarget(gt oras.GraphTarget, tty *os.File, actionPrompt, doneprompt string) (oras.GraphTarget, error) {
 	if tty == nil {
-		return gt, nil, nil
+		return gt, nil
 	}
 	tracked, err := track.NewTarget(gt, actionPrompt, doneprompt, tty)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return tracked, tracked, nil
+	return tracked, nil
 }
 
 func pushArtifact(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
