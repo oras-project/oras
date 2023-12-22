@@ -46,7 +46,7 @@ Last, error logs can also be useful for post-mortem debugging, truncate them occ
 Here is a sample structure of an error message:
 
 ```text
-Error: [{Status code}:] {Error description}
+Error: {Error|Error response from registry}: {Error description}
 [Usage: {Command usage}]
 [{Recommended solution}]
 ```
@@ -200,7 +200,7 @@ Error: annotation value doesn't match the required format.
 Try `oras push --annotation "key=value" ghcr.io/library/alpine:3.9`  
 ```
 
-#### Example 9: when failed to pull files from a public registry
+#### Example 9: When failed to pull files from a public registry
 
 ```
 $ oras pull docker.io/nginx:latest
@@ -215,7 +215,7 @@ Error response from registry: pull access denied for docker.io/nginx:latest : re
 Namespace is missing, do you mean `oras pull docker.io/library/nginx:latest`? 
 ```
 
-#### Example 10: 
+#### Example 10: Neither registry nor OCI image layout provided when pushing a folder 
 
 Current behavior and output:
 
@@ -228,9 +228,46 @@ Suggested error message:
 
 ```
 $ oras push /oras --format json
-Error: 
-Usage: 
-please specify a registry or OCI image layout folder to push
+Error: neither registry nor OCI image layout provided in the command 
+Usage: oras push [flags] <name>[:<tag>[,<tag>][...]] <file>[:<type>] [...]
+please specify a registry or an OCI image layout folder to push. Run "oras push -h" for more options and examples 
+```
+
+#### Example 11: Push a file or folder that doesn't exist
+
+Current behavior and output:
+
+```
+$ oras push localhost:5000/oras:v1 hello.txt
+Error: failed to stat /home/user/hello.txt: stat /home/user/hello.txt: no such file or directory
+```
+
+Suggested error message:
+
+```
+$ oras push localhost:5000/oras:v1 hello.txt
+Error: /home/user/hello.txt: no such file or directory
+```
+
+#### Example 12: Attach a file to an incompatible registry
+
+Current behavior and output:
+
+```
+$ oras attach docker.io/user/demo:v1 --artifact-type example/sbom sbom.spdx
+Uploading 6cb759c4296e sbom.spdx
+Uploaded  6cb759c4296e sbom.spdx
+Error: PUT "https://registry-1.docker.io/v2/user/demo/manifests/sha256:d2e409ed5674c9cf4fb5c13615288b130610ed893f97c78668ad233dc403976d": response status code 404: notfound: not found
+```
+
+Suggested error message:
+
+```
+$ oras attach docker.io/user/demo:v1 --artifact-type example/sbom sbom.spdx
+Uploading 6cb759c4296e sbom.spdx
+Uploaded  6cb759c4296e sbom.spdx
+Error response from registry: PUT "https://registry-1.docker.io/v2/user/demo/manifests/sha256:d2e409ed5674c9cf4fb5c13615288b130610ed893f97c78668ad233dc403976d": response status code 404: notfound:
+This registry doesn't support storing referrers
 ```
 
 ## Reference
