@@ -66,6 +66,14 @@ var _ = Describe("ORAS beginners:", func() {
 			out := ORAS("pull", ref).WithWorkDir(tempDir).Exec().Out
 			gomega.Expect(out).ShouldNot(gbytes.Say(hintMsg(ref)))
 		})
+
+		It("should fail and show detailed error description if no argument provided", func() {
+			err := ORAS("pull").ExpectFailure().Exec().Err
+			gomega.Expect(err).Should(gbytes.Say("Error"))
+			gomega.Expect(err).Should(gbytes.Say("\nUsage: oras pull"))
+			gomega.Expect(err).Should(gbytes.Say("\n"))
+			gomega.Expect(err).Should(gbytes.Say(`Run "oras pull -h"`))
+		})
 	})
 })
 
