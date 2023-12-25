@@ -26,6 +26,8 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras/cmd/oras/internal/argument"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -69,7 +71,7 @@ Example - Fetch raw manifest from an OCI image layout folder 'layout-dir':
 Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
   oras manifest fetch --oci-layout layout.tar:v1
 `,
-		Args: cobra.ExactArgs(1),
+		Args: oerrors.CheckArgs(argument.Exactly(1), "the manifest to fetch"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.outputPath == "-" && opts.OutputDescriptor {
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
