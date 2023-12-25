@@ -22,6 +22,8 @@ import (
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"oras.land/oras-go/v2"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	. "oras.land/oras/test/e2e/internal/utils"
@@ -54,6 +56,14 @@ var _ = Describe("Common registry user", func() {
 				WithTimeOut(20*time.Second).
 				MatchContent("Login Succeeded\n").
 				MatchErrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").Exec()
+		})
+
+		It("should show detailed error description if no argument provided", func() {
+			err := ORAS("login").ExpectFailure().Exec().Err
+			Expect(err).Should(gbytes.Say("Error"))
+			Expect(err).Should(gbytes.Say("\nUsage: oras login"))
+			Expect(err).Should(gbytes.Say("\n"))
+			Expect(err).Should(gbytes.Say(`Run "oras login -h"`))
 		})
 
 		It("should fail if no username input", func() {
