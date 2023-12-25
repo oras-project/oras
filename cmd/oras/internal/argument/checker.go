@@ -13,21 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package command
+package argument
 
-import (
-	. "github.com/onsi/ginkgo/v2"
-	. "oras.land/oras/test/e2e/internal/utils"
-)
+import "fmt"
 
-var _ = Describe("ORAS user:", func() {
-	When("checking oras version", func() {
-		It("should run version command", func() {
-			ORAS("version").Exec()
-		})
+// Exactly checks if the number of arguments is exactly cnt.
+func Exactly(cnt int) func(args []string) (bool, string) {
+	return func(args []string) (bool, string) {
+		return len(args) == cnt, fmt.Sprintf("exactly %d argument", cnt)
+	}
+}
 
-		It("should run version command and ignore extra arguments with warning", func() {
-			ORAS("version", "foo", "bar").MatchErrKeyWords("foo", "bar", "warning:").Exec()
-		})
-	})
-})
+// AtLeast checks if the number of arguments is larger or equal to cnt.
+func AtLeast(cnt int) func(args []string) (bool, string) {
+	return func(args []string) (bool, string) {
+		return len(args) >= cnt, fmt.Sprintf("at least %d argument", cnt)
+	}
+}

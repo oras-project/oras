@@ -63,11 +63,12 @@ var _ = Describe("ORAS beginners:", func() {
 					Exec()
 			})
 
-			It("should fail pushing without reference provided", func() {
-				ORAS("manifest", "push").
-					ExpectFailure().
-					MatchErrKeyWords("Error:").
-					Exec()
+			It("should fail and show detailed error description if no argument provided", func() {
+				err := ORAS("manifest", "push").ExpectFailure().Exec().Err
+				gomega.Expect(err).Should(gbytes.Say("Error"))
+				gomega.Expect(err).Should(gbytes.Say("\nUsage: oras manifest push"))
+				gomega.Expect(err).Should(gbytes.Say("\n"))
+				gomega.Expect(err).Should(gbytes.Say(`Run "oras manifest push -h"`))
 			})
 
 			It("should fail pushing with  a manifest from stdin without media type flag", func() {
@@ -84,17 +85,28 @@ var _ = Describe("ORAS beginners:", func() {
 					MatchKeyWords(ExampleDesc).
 					Exec()
 			})
-			It("should fail fetching manifest without reference provided", func() {
-				ORAS("manifest", "fetch").
-					ExpectFailure().
-					MatchErrKeyWords("Error:").
-					Exec()
+
+			It("should fail and show detailed error description if no argument provided", func() {
+				err := ORAS("manifest", "fetch").ExpectFailure().Exec().Err
+				gomega.Expect(err).Should(gbytes.Say("Error"))
+				gomega.Expect(err).Should(gbytes.Say("\nUsage: oras manifest fetch"))
+				gomega.Expect(err).Should(gbytes.Say("\n"))
+				gomega.Expect(err).Should(gbytes.Say(`Run "oras manifest fetch -h"`))
 			})
 		})
+
 		When("running `manifest delete`", func() {
 			It("should show help doc with feature flags", func() {
 				out := ORAS("manifest", "delete", "--help").MatchKeyWords(ExampleDesc).Exec()
 				gomega.Expect(out).Should(gbytes.Say("--distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+			})
+
+			It("should fail and show detailed error description if no argument provided", func() {
+				err := ORAS("manifest", "delete").ExpectFailure().Exec().Err
+				gomega.Expect(err).Should(gbytes.Say("Error"))
+				gomega.Expect(err).Should(gbytes.Say("\nUsage: oras manifest delete"))
+				gomega.Expect(err).Should(gbytes.Say("\n"))
+				gomega.Expect(err).Should(gbytes.Say(`Run "oras manifest delete -h"`))
 			})
 
 			tempTag := "to-delete"
@@ -154,8 +166,12 @@ var _ = Describe("ORAS beginners:", func() {
 					MatchKeyWords(ExampleDesc, "\nUsage:").Exec()
 			})
 
-			It("should fail if no manifest reference provided", func() {
-				ORAS("manifest", "fetch-config").ExpectFailure().Exec()
+			It("should fail and show detailed error description if no argument provided", func() {
+				err := ORAS("manifest", "fetch-config").ExpectFailure().Exec().Err
+				gomega.Expect(err).Should(gbytes.Say("Error"))
+				gomega.Expect(err).Should(gbytes.Say("\nUsage: oras manifest fetch-config"))
+				gomega.Expect(err).Should(gbytes.Say("\n"))
+				gomega.Expect(err).Should(gbytes.Say(`Run "oras manifest fetch-config -h"`))
 			})
 
 			It("should fail if provided reference does not exist", func() {

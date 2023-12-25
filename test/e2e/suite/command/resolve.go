@@ -50,6 +50,13 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("resolve", RegistryRef(ZOTHost, ImageRepo, "i-dont-think-this-tag-exists")).ExpectFailure().MatchErrKeyWords("Error: failed to resolve digest:", "not found").Exec()
 		})
 
+		It("should fail and show detailed error description if no argument provided", func() {
+			err := ORAS("resolve").ExpectFailure().Exec().Err
+			gomega.Expect(err).Should(gbytes.Say("Error"))
+			gomega.Expect(err).Should(gbytes.Say("\nUsage: oras resolve"))
+			gomega.Expect(err).Should(gbytes.Say("\n"))
+			gomega.Expect(err).Should(gbytes.Say(`Run "oras resolve -h"`))
+		})
 	})
 })
 
