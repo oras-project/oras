@@ -27,7 +27,8 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/registry/remote/auth"
-	"oras.land/oras/cmd/oras/internal/display/track"
+	"oras.land/oras/cmd/oras/internal/argument"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
 	"oras.land/oras/internal/registryutil"
@@ -45,14 +46,17 @@ type attachOptions struct {
 func attachCmd() *cobra.Command {
 	var opts attachOptions
 	cmd := &cobra.Command{
-		Use:   "attach [flags] --artifact-type=<type> <name>{:<tag>|@<digest>} <file>[:<type>] [...]",
+		Use:   "attach [flags] --artifact-type=<type> <name>{:<tag>|@<digest>} <file>[:<layer_media_type>] [...]",
 		Short: "[Preview] Attach files to an existing artifact",
 		Long: `[Preview] Attach files to an existing artifact
 
 ** This command is in preview and under development. **
 
-Example - Attach file 'hi.txt' with type 'doc/example' to manifest 'hello:v1' in registry 'localhost:5000':
+Example - Attach file 'hi.txt' with aritifact type 'doc/example' to manifest 'hello:v1' in registry 'localhost:5000':
   oras attach --artifact-type doc/example localhost:5000/hello:v1 hi.txt
+
+Example - Push file "hi.txt" with the custom layer media type 'application/vnd.me.hi':
+  oras attach --artifact-type doc/example localhost:5000/hello:v1 hi.txt:application/vnd.me.hi
 
 Example - Attach file "hi.txt" using a specific method for the Referrers API:
   oras attach --artifact-type doc/example --distribution-spec v1.1-referrers-api localhost:5000/hello:v1 hi.txt # via API
@@ -72,8 +76,8 @@ Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json'
 
 Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 'layout-dir':
   oras attach --oci-layout --artifact-type doc/example layout-dir:v1 hi.txt
-  `,
-		Args: cobra.MinimumNArgs(1),
+`,
+		Args: oerrors.CheckArgs(argument.AtLeast(1), "the destination artifact for attaching."),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
 			opts.FileRefs = args[1:]
@@ -132,14 +136,13 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 	}
 
 	// prepare push
-	var tracked track.GraphTarget
-	dst, tracked, err = getTrackedTarget(dst, opts.TTY, "Uploading", "Uploaded ")
+	dst, err = getTrackedTarget(dst, opts.TTY, "Uploading", "Uploaded ")
 	if err != nil {
 		return err
 	}
 	graphCopyOptions := oras.DefaultCopyGraphOptions
 	graphCopyOptions.Concurrency = opts.concurrency
-	updateDisplayOption(&graphCopyOptions, store, opts.Verbose, tracked)
+	updateDisplayOption(&graphCopyOptions, store, opts.Verbose, dst)
 
 	packOpts := oras.PackManifestOptions{
 		Subject:             &subject,

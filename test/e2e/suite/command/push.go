@@ -41,6 +41,14 @@ var _ = Describe("ORAS beginners:", func() {
 			gomega.Expect(out).Should(gbytes.Say("--image-spec string\\s+%s", regexp.QuoteMeta(feature.Experimental.Mark)))
 		})
 
+		It("should fail and show detailed error description if no argument provided", func() {
+			err := ORAS("push").ExpectFailure().Exec().Err
+			gomega.Expect(err).Should(gbytes.Say("Error"))
+			gomega.Expect(err).Should(gbytes.Say("\nUsage: oras push"))
+			gomega.Expect(err).Should(gbytes.Say("\n"))
+			gomega.Expect(err).Should(gbytes.Say(`Run "oras push -h"`))
+		})
+
 		It("should fail to use --config and --artifact-type at the same time for OCI spec v1.0 registry", func() {
 			tempDir := PrepareTempFiles()
 			repo := pushTestRepo("no-mediatype")

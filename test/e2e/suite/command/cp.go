@@ -59,6 +59,22 @@ var _ = Describe("ORAS beginners:", func() {
 		It("should fail when source doesn't exist", func() {
 			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, "i-dont-think-this-tag-exists"), RegistryRef(ZOTHost, cpTestRepo("nonexistent-source"), "")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
 		})
+
+		It("should fail and show detailed error description if no argument provided", func() {
+			err := ORAS("cp").ExpectFailure().Exec().Err
+			Expect(err).Should(gbytes.Say("Error"))
+			Expect(err).Should(gbytes.Say("\nUsage: oras cp"))
+			Expect(err).Should(gbytes.Say("\n"))
+			Expect(err).Should(gbytes.Say(`Run "oras cp -h"`))
+		})
+
+		It("should fail and show detailed error description if more than 2 arguments are provided", func() {
+			err := ORAS("cp", "foo", "bar", "buz").ExpectFailure().Exec().Err
+			Expect(err).Should(gbytes.Say("Error"))
+			Expect(err).Should(gbytes.Say("\nUsage: oras cp"))
+			Expect(err).Should(gbytes.Say("\n"))
+			Expect(err).Should(gbytes.Say(`Run "oras cp -h"`))
+		})
 	})
 })
 
