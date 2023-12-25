@@ -46,7 +46,7 @@ Last, error logs can also be useful for post-mortem debugging, truncate them occ
 Here is a sample structure of an error message:
 
 ```text
-{Error|Error response from registry}: {Error description}
+{Error|Error response from registry}: {Error description (status code can be printed out if any)}
 [Usage: {Command usage}]
 [{Recommended solution}]
 ```
