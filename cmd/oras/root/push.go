@@ -253,35 +253,34 @@ func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, v
 		promptExists    = "Exists   "
 		promptUploading = "Uploading"
 	)
-	tracked, ok := dst.(track.GraphTarget)
-	if !ok {
-		// non TTY
+	if tracked, ok := dst.(track.GraphTarget); ok {
+		// TTY
 		opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return display.PrintStatus(desc, promptExists, verbose)
-		}
-		opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-			return display.PrintStatus(desc, promptUploading, verbose)
+			return tracked.Prompt(desc, promptExists)
 		}
 		opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			if err := display.PrintSuccessorStatus(ctx, desc, fetcher, committed, display.StatusPrinter(promptSkipped, verbose)); err != nil {
-				return err
-			}
-			return display.PrintStatus(desc, promptUploaded, verbose)
+			return display.PrintSuccessorStatus(ctx, desc, fetcher, committed, func(d ocispec.Descriptor) error {
+				return tracked.Prompt(d, promptSkipped)
+			})
 		}
 		return
 	}
-	// TTY
+	// non TTY
 	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return tracked.Prompt(desc, promptExists)
+		return display.PrintStatus(desc, promptExists, verbose)
+	}
+	opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		return display.PrintStatus(desc, promptUploading, verbose)
 	}
 	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return display.PrintSuccessorStatus(ctx, desc, fetcher, committed, func(d ocispec.Descriptor) error {
-			return tracked.Prompt(d, promptSkipped)
-		})
+		if err := display.PrintSuccessorStatus(ctx, desc, fetcher, committed, display.StatusPrinter(promptSkipped, verbose)); err != nil {
+			return err
+		}
+		return display.PrintStatus(desc, promptUploaded, verbose)
 	}
 }
 

@@ -308,11 +308,11 @@ func printOnce(printed *sync.Map, s ocispec.Descriptor, msg string, verbose bool
 	if _, loaded := printed.LoadOrStore(generateContentKey(s), true); loaded {
 		return nil
 	}
-	tracked, ok := dst.(track.GraphTarget)
-	if !ok {
-		// none TTY
-		return display.PrintStatus(s, msg, verbose)
+	if tracked, ok := dst.(track.GraphTarget); ok {
+		// TTY
+		return tracked.Prompt(s, msg)
+
 	}
-	// TTY
-	return tracked.Prompt(s, msg)
+	// none TTY
+	return display.PrintStatus(s, msg, verbose)
 }
