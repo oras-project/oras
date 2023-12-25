@@ -8,9 +8,9 @@ A clear and actionable error message is very important when raising an error, so
 
 First and foremost, make the error messages descriptive and informative. Error messages are expected to be helpful to troubleshoot where the user has done something wrong and the program is guiding them in the right direction. A great error message is recommended to contain the following elements:
 
-- Error code: optional, when the logs are generated from the server side
+- Status code: optional, when the logs are generated from the server side, it's recommended to print the status code in the error description
 - Error description: describe what the error is
-- Suggestion: for those errors that have potential solution, print out the recommended solution. Versioned troubleshooting document link is nice to have.
+- Suggestion: for those errors that have potential solution, print out the recommended solution. Versioned troubleshooting document link is nice to have
 
 Second, when necessary, it is highly suggested for ORAS CLI contributors to provide recommendations for users how to resolve the problems based on the error messages they encountered. Showing descriptive words and straightforward prompt with executable commands as a potential solution is a good practice for error messages.
 
@@ -46,7 +46,7 @@ Last, error logs can also be useful for post-mortem debugging, truncate them occ
 Here is a sample structure of an error message:
 
 ```text
-Error: {Error|Error response from registry}: {Error description}
+{Error|Error response from registry}: {Error description}
 [Usage: {Command usage}]
 [{Recommended solution}]
 ```
@@ -63,50 +63,50 @@ Here are some examples of writing error message with helpful prompt actionable i
 
 Current behavior and output:
 
-```
+```console
 $ oras cp
 Error: accepts 2 arg(s), received 0
 ```
 
 Suggested error message:
 
-```
+```console
 $ oras cp
 Error: "oras copy" requires exactly 2 arguments but received 0.
 Usage: oras copy [flags] <from>{:<tag>|@<digest>} <to>[:<tag>[,<tag>][...]]
 Please specify 2 arguments as source and destination respectively. Run "oras copy -h" for more options and examples
 ```
 
-#### Example 2: When reference does not match with the expected format
+#### Example 2: When user mistakenly uses `tag list` command
 
 Current behavior and output:
 
-```
+```console
 $ oras tag list ghcr.io/oras-project/oras
 Error: unable to add tag for 'list': invalid reference: missing repository
 ```
 
 Suggested error message:
 
-```
+```console
 $ oras tag list ghcr.io/oras-project/oras
 Error: There is no "list" sub-command for "oras tag" command.
 Usage: oras tag [flags] <name>{:<tag>|@<digest>} <new_tag> [...]
-If you want to tag a manifest in a registry or an OCI image layout, use "oras tag". If you want to list available tags in a repository, use "oras repo show tags" 
+If you want to list available tags in a repository, use "oras repo tags" 
 ```
 
-#### Example 3: When fetching a manifest if no manifest tag or digest is provided
+#### Example 3: No tag or digest provided when fetching a manifest
 
 Current behavior and output:
 
-```
+```console
 $ oras manifest fetch --oci-layout /tmp/ginkgo1163328512
 Error: "/tmp/ginkgo1163328512": no tag or digest when expecting <name:tag|name@digest>
 ```
 
 Suggested error message:
 
-```
+```console
 $ oras manifest fetch --oci-layout /tmp/ginkgo1163328512
 Error: "/tmp/ginkgo1163328512": no tag or digest specified
 Usage: oras manifest fetch [flags] <name>{:<tag>|@<digest>}
@@ -117,32 +117,32 @@ You need to specify an artifact reference in the form of "<name>:<tag>" or "<nam
 
 Current behavior and output:
 
-```
+```console
 $ oras manifest push --oci-layout /sample/images:foobar:mediatype
 Error: media type is not recognized. 
 ```
 
 Suggested error message:
 
-```
+```console
 $ oras manifest push --oci-layout /sample/images:foobar:mediatype
 Error: media type is not recognized. 
 Usage: oras manifest push [flags] <name>[:<tag>[,<tag>][...]|@<digest>] <file>
-You need to specify a valid media type "mediaType" in the manifest JSON or via the "--media-type" flag.
+You need to specify a valid media type in the manifest JSON or via the "--media-type" flag.
 ```
 
 #### Example 5: Attach an artifact if the given option is unknown
 
 Current behavior and output:
 
-```
+```console
 $ oras attach --artifact-type oras/test localhost:5000/command/images:foobar --distribution-spec v1.0
 Error: unknown distribution specification flag: v1.0
 ```
 
 Suggested error message:
 
-```
+```console
 $ oras attach --artifact-type oras/test localhost:5000/sample/images:foobar --distribution-spec ???
 Error: unknown distribution specification flag: "v1.0". 
 Available options: v1.1-referrers-api, v1.1-referrers-tag
@@ -152,14 +152,14 @@ Available options: v1.1-referrers-api, v1.1-referrers-tag
 
 Current behavior and output:
 
-```
+```console
 $ oras attach --artifact-type sbom/example localhost:5000/sample/images:foobar
 Error: no blob is provided
 ```
 
 Suggested error message:
 
-```
+```console
 $ oras attach --artifact-type sbom/example localhost:5000/sample/images:foobar
 Error: neither file nor annotation provided in the command
 Usage: oras attach [flags] --artifact-type=<type> <name>{:<tag>|@<digest>} <file>[:<type>] [...]
@@ -170,14 +170,14 @@ To attach to an existing artifact, please provide files via argument or annotati
 
 Current behavior and output:
 
-```
+```console
 $ oras push --annotation-file sbom.json ghcr.io/library/alpine:3.9
 Error: failed to load annotations from sbom.json: json: cannot unmarshal string into Go value of type map[string]map[string]string. Please refer to the document at https://oras.land/docs/how_to_guides/manifest_annotations
 ```
 
 Suggested error message:
 
-```
+```console
 $ oras push --annotation-file annotation.json ghcr.io/library/alpine:3.9
 Error: invalid annotation json file: failed to load annotations from annotation.json.
 Annotation file doesn't match the required format. Please refer to the document at https://oras.land/docs/how_to_guides/manifest_annotations
@@ -187,29 +187,29 @@ Annotation file doesn't match the required format. Please refer to the document 
 
 Current behavior and output:
 
-```
+```console
 $ oras push --annotation "key:value" ghcr.io/library/alpine:3.9
 Error: missing key in `--annotation` flag: key:value
 ```
 
 Suggested error message:
 
-```
+```console
 $ oras push --annotation "key:value" ghcr.io/library/alpine:3.9
 Error: annotation value doesn't match the required format.
-Try `oras push --annotation "key=value" ghcr.io/library/alpine:3.9`  
+Try --annotation "key=value"  
 ```
 
 #### Example 9: When failed to pull files from a public registry
 
-```
+```console
 $ oras pull docker.io/nginx:latest
 Error: failed to resolve latest: GET "https://registry-1.docker.io/v2/nginx/manifests/latest": response status code 401: unauthorized: authentication required: [map[Action:pull Class: Name:nginx Type:repository]]
 ```
 
 Suggested error message:
 
-```
+```console
 $ oras pull docker.io/nginx:latest
 Error response from registry: pull access denied for docker.io/nginx:latest : response status code 401: unauthorized: requested access to the resource is denied
 Namespace is missing, do you mean `oras pull docker.io/library/nginx:latest`? 
@@ -219,32 +219,32 @@ Namespace is missing, do you mean `oras pull docker.io/library/nginx:latest`?
 
 Current behavior and output:
 
-```
+```console
 $ oras push /oras --format json
 Error: Head "https:///v2/oras/manifests/sha256:ffa50b27cd0096150c0338779c5090db41ba50d01179d851d68afa50b393c3a3": http: no Host in request URL
 ```
 
 Suggested error message:
 
-```
+```console
 $ oras push /oras --format json
-Error: neither registry nor OCI image layout provided in the command 
+Error: "/oras" is an invalid reference
 Usage: oras push [flags] <name>[:<tag>[,<tag>][...]] <file>[:<type>] [...]
-please specify a registry or an OCI image layout folder to push. Run "oras push -h" for more options and examples 
+Please specify a valid reference in the form of <registry>/<repo>[:tag|@digest]
 ```
 
 #### Example 11: Push a file or folder that doesn't exist
 
 Current behavior and output:
 
-```
+```console
 $ oras push localhost:5000/oras:v1 hello.txt
 Error: failed to stat /home/user/hello.txt: stat /home/user/hello.txt: no such file or directory
 ```
 
 Suggested error message:
 
-```
+```console
 $ oras push localhost:5000/oras:v1 hello.txt
 Error: /home/user/hello.txt: no such file or directory
 ```
@@ -253,7 +253,7 @@ Error: /home/user/hello.txt: no such file or directory
 
 Current behavior and output:
 
-```
+```console
 $ oras attach docker.io/user/demo:v1 --artifact-type example/sbom sbom.spdx
 Uploading 6cb759c4296e sbom.spdx
 Uploaded  6cb759c4296e sbom.spdx
@@ -262,12 +262,11 @@ Error: PUT "https://registry-1.docker.io/v2/user/demo/manifests/sha256:d2e409ed5
 
 Suggested error message:
 
-```
+```console
 $ oras attach docker.io/user/demo:v1 --artifact-type example/sbom sbom.spdx
 Uploading 6cb759c4296e sbom.spdx
 Uploaded  6cb759c4296e sbom.spdx
-Error response from registry: PUT "https://registry-1.docker.io/v2/user/demo/manifests/sha256:d2e409ed5674c9cf4fb5c13615288b130610ed893f97c78668ad233dc403976d": response status code 404: notfound:
-This registry doesn't support storing referrers
+Error response from registry: This registry doesn't support storing referrers
 ```
 
 ## Reference
