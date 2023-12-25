@@ -118,8 +118,3 @@ func (t *graphTarget) Prompt(desc ocispec.Descriptor, prompt string) error {
 func (t *graphTarget) Inner() oras.GraphTarget {
 	return t.GraphTarget
 }
-
-// Inner returns the inner oras.GraphTarget.
-func (t *referenceGraphTarget) Inner() oras.GraphTarget {
-	return t.GraphTarget
-}
