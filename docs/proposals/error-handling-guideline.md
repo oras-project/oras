@@ -249,26 +249,6 @@ $ oras push localhost:5000/oras:v1 hello.txt
 Error: /home/user/hello.txt: no such file or directory
 ```
 
-#### Example 12: Attach a file to an incompatible registry
-
-Current behavior and output:
-
-```console
-$ oras attach docker.io/user/demo:v1 --artifact-type example/sbom sbom.spdx
-Uploading 6cb759c4296e sbom.spdx
-Uploaded  6cb759c4296e sbom.spdx
-Error: PUT "https://registry-1.docker.io/v2/user/demo/manifests/sha256:d2e409ed5674c9cf4fb5c13615288b130610ed893f97c78668ad233dc403976d": response status code 404: notfound: not found
-```
-
-Suggested error message:
-
-```console
-$ oras attach docker.io/user/demo:v1 --artifact-type example/sbom sbom.spdx
-Uploading 6cb759c4296e sbom.spdx
-Uploaded  6cb759c4296e sbom.spdx
-Error response from registry: This registry doesn't support storing referrers
-```
-
 ## Reference
 
 Parts of the content are borrowed from these guidelines.
