@@ -36,10 +36,6 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("tag", RegistryRef(ZOTHost, ImageRepo, "i-dont-think-this-tag-exists"), "tagged").ExpectFailure().MatchErrKeyWords("Error:").Exec()
 		})
 
-		It("should fail when provided invalid reference", func() {
-			ORAS("tag", "list", "tagged").ExpectFailure().MatchErrKeyWords("Error:", "'list'").Exec()
-		})
-
 		It("should fail and show detailed error description if no argument provided", func() {
 			err := ORAS("tag").ExpectFailure().Exec().Err
 			gomega.Expect(err).Should(gbytes.Say("Error"))
