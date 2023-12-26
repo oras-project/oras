@@ -11,8 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# See docs in https://docs.codecov.com/docs/commit-status
 coverage:
   status:
     project:
       default:
-        target: 60%
+        target: 75%
+    patch:
+      default:
+        target: 80%
