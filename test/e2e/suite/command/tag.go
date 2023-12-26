@@ -47,6 +47,11 @@ var _ = Describe("ORAS beginners:", func() {
 			gomega.Expect(err).Should(gbytes.Say("\n"))
 			gomega.Expect(err).Should(gbytes.Say(`Run "oras tag -h"`))
 		})
+
+		It("should fail with suggestion if calling with `tag list`", func() {
+			ORAS("tag", "list").ExpectFailure().MatchErrKeyWords("Error:", `there is no "list" sub-command for "oras tag" command`, "repository", "oras repo tags").Exec()
+			ORAS("tag", "list", Flags.Layout).ExpectFailure().MatchErrKeyWords("Error:", `there is no "list" sub-command for "oras tag" command`, "OCI Image Layout", "oras repo tags").Exec()
+		})
 	})
 })
 

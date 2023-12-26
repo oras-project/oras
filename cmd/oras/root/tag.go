@@ -62,7 +62,7 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 && (args[0] == "list" || args[0] == "ls") {
 				container := "a repository"
-				if opts.Target.Type == option.TargetTypeOCILayout {
+				if opts.IsOCILayout {
 					container = "an OCI image layout"
 				}
 				return &oerrors.Error{
