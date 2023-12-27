@@ -71,7 +71,7 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 					Recommendation: fmt.Sprintf(`If you want to list available tags in %s, use "oras repo tags"`, container),
 				}
 			}
-			return oerrors.CheckArgs(argument.AtLeast(1), "the to-be-retage artifact and the tags to be added")(cmd, args)
+			return oerrors.CheckArgs(argument.AtLeast(1), "the artifact to be retagged and the tags to be added")(cmd, args)
 		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
