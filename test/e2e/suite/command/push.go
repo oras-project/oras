@@ -38,7 +38,7 @@ var _ = Describe("ORAS beginners:", func() {
 	When("running push command", func() {
 		It("should show help description with feature flags", func() {
 			out := ORAS("push", "--help").MatchKeyWords(ExampleDesc).Exec().Out
-			gomega.Expect(out).Should(gbytes.Say("--image-spec \\s+%s", regexp.QuoteMeta(feature.Experimental.Mark)))
+			gomega.Expect(out).Should(gbytes.Say("--image-spec v1.1, v1.0\\s+%s", regexp.QuoteMeta(feature.Experimental.Mark)))
 		})
 
 		It("should fail and show detailed error description if no argument provided", func() {
