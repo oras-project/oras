@@ -40,8 +40,7 @@ type ImageSpec struct {
 func (i *ImageSpec) Set(value string) error {
 	i.flag = value
 	switch value {
-	case ImageSpecV1_1, "":
-		// default to v1.1
+	case ImageSpecV1_1:
 		i.PackVersion = oras.PackManifestVersion1_1_RC4
 	case ImageSpecV1_0:
 		i.PackVersion = oras.PackManifestVersion1_0
@@ -66,6 +65,8 @@ func (i *ImageSpec) String() string {
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *ImageSpec) ApplyFlags(fs *pflag.FlagSet) {
+	// default to v1.1-rc.4
+	opts.PackVersion = oras.PackManifestVersion1_1_RC4
 	fs.Var(opts, "image-spec", "[Experimental] specify manifest type for building artifact")
 }
 
@@ -83,9 +84,6 @@ type DistributionSpec struct {
 func (d *DistributionSpec) Set(value string) error {
 	d.flag = value
 	switch d.flag {
-	case "":
-		// default to unknown
-		d.ReferrersAPI = nil
 	case ReferrersTagV1_1:
 		isApi := false
 		d.ReferrersAPI = &isApi
