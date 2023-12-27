@@ -67,7 +67,7 @@ func (i *ImageSpec) String() string {
 func (opts *ImageSpec) ApplyFlags(fs *pflag.FlagSet) {
 	// default to v1.1-rc.4
 	opts.PackVersion = oras.PackManifestVersion1_1_RC4
-	fs.Var(opts, "image-spec", "[Experimental] specify manifest type for building artifact")
+	fs.Var(opts, "image-spec", `[Experimental] specify manifest type for building artifact (default "v1.1")`)
 }
 
 // DistributionSpec option struct.
@@ -112,5 +112,5 @@ func (d *DistributionSpec) String() string {
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
 func (opts *DistributionSpec) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
 	flagPrefix, notePrefix := applyPrefix(prefix, description)
-	fs.Var(opts, flagPrefix+"distribution-spec", "[Preview] set OCI distribution spec version and API option for "+notePrefix+"target. options: v1.1-referrers-api, v1.1-referrers-tag")
+	fs.Var(opts, flagPrefix+"distribution-spec", "[Preview] set OCI distribution spec version and API option for "+notePrefix+"target.")
 }

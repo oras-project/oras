@@ -56,6 +56,16 @@ var _ = Describe("ORAS beginners:", func() {
 
 			ORAS("push", ref, "--config", foobar.FileConfigName, "--artifact-type", "test/artifact+json", "--image-spec", "v1.0").ExpectFailure().WithWorkDir(tempDir).Exec()
 		})
+
+		It("should fail if image spec is not valid", Focus, func() {
+			testRepo := attachTestRepo("invalid-image-spec")
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			invalidFlag := "???"
+			ORAS("push", subjectRef, Flags.ImageSpec, invalidFlag).
+				ExpectFailure().
+				MatchErrKeyWords("Error:", invalidFlag, "Available options: v1.1, v1.0").
+				Exec()
+		})
 	})
 })
 
