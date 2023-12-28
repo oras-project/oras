@@ -25,9 +25,9 @@ The formatted output is not intended to supersede the prettified human-readable 
 Provide two major options to enable users to define the output format of ORAS commands:
 
 - Use `--output` to output a file or directory in the filesystem
-- Use `--format` to format the output of ORAS commands into different data formats or enable process output data using the given Go template.
+- Use `--format` to format the output of ORAS commands into different data formats or enable process output data using the given Go template
   - Use `--format json|tree|table` to print the output in prettified JSON, tree view, or table view
-  - Use `--format '{{ GO_TEMPLATE_FUNCTION }}'` to enable extract or compose the output data using Go template functions
+  - Use `--format '{{ GO_TEMPLATE_FUNCTION }}'` to enable extract or compose the output data using Go template functions 
 
 > [!NOTE]
 > - `--output -` and `--format` can not be used at the same time due to conflicts.
@@ -92,7 +92,8 @@ oras manifest fetch $REGISTRY/$REPO:$TAG --format json
 ```
 
 > [!NOTE]
-> The formatted output of `oras manifest fetch` only supports OCI/Docker Image Manifest in this release. [OCI image index](https://github.com/opencontainers/image-spec/blob/v1.1.0-rc5/image-index.md) and other media types of artifact will be supported in future releases.
+> - The formatted output of `oras manifest fetch` only supports OCI/Docker Image Manifest in this release. [OCI image index](https://github.com/opencontainers/image-spec/blob/v1.1.0-rc5/image-index.md) and other media types of artifact will be supported in future releases.
+> - In general, in the prettified JSON format, the first letter of all output fields are supposed to be upper case except for `oras manifest fetch`. It's appropriate to pretty print the raw JSON only when using the flag `--format json` with `oras manifest fetch` because the default output is raw JSON format.
 
 ## Scenarios
 
@@ -269,7 +270,6 @@ localhost:localhost:5000/hello@sha256:5cb894d0c94c56894e160ad2eeb19a123b4d215537
 
 View an artifact's referrers manifest in pretty JSON output. The following fields should be outputted:
 
-- `OCI-Filters-Applied`: when the registry supports filtering on `artifactType`, this filed could be displayed
 - `Manifests`: the list of referrers
   - `Ref`: full reference by digest of the referrer
   - `MediaType`: media type of the referrer
@@ -285,7 +285,6 @@ oras discover localhost:5000/hello:v1 --format json
 ```
 
 ```json
-"OCI-Filters-Applied: artifactType": application/vnd.example.sbom.v1
 {
   "Manifests": [
     {
@@ -321,3 +320,7 @@ oras discover localhost:5000/hello:v1 --format json
 
 **Q:** Why ORAS chooses [Go template](https://pkg.go.dev/text/template)?
 **A:** Go template is a powerful method to customize output you want It allows users to manipulate the output format of certain commands. It provides access to data objects and additional functions that are passed into the template engine programmatically. It also has some useful libraries that have strong functions for Go’s template language to manipulate the output data, such as [Sprig](https://masterminds.github.io/sprig/).
+
+**Q:** What is the difference of prettified JSON and raw JSON?
+
+In the context of ORAS output, raw JSON means display the output of ORAS command in the string format, while prettified JSON means display the output of ORAS command in a pretty format.
