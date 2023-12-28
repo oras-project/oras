@@ -98,7 +98,7 @@ var _ = Describe("ORAS beginners:", func() {
 		When("running `manifest delete`", func() {
 			It("should show help doc with feature flags", func() {
 				out := ORAS("manifest", "delete", "--help").MatchKeyWords(ExampleDesc).Exec()
-				gomega.Expect(out).Should(gbytes.Say("--distribution-spec v1.1-referrers-tag,v1.1-referrers-api\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+				gomega.Expect(out).Should(gbytes.Say("--distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 			})
 
 			It("should fail and show detailed error description if no argument provided", func() {
