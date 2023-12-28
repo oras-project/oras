@@ -28,7 +28,7 @@ const (
 	ImageSpecV1_1                    = "v1.1"
 	ImageSpecV1_0                    = "v1.0"
 	DistributionSpecReferrersTagV1_1 = "v1.1-referrers-tag"
-	ReferrersAPIV1_1                 = "v1.1-referrers-api"
+	DistributionSpecReferrersAPIV1_1 = "v1.1-referrers-api"
 )
 
 // ImageSpec option struct which implements pflag.Value interface.
@@ -88,7 +88,7 @@ func (ds *DistributionSpec) Set(value string) error {
 	case DistributionSpecReferrersTagV1_1:
 		isApi := false
 		ds.ReferrersAPI = &isApi
-	case ReferrersAPIV1_1:
+	case DistributionSpecReferrersAPIV1_1:
 		isApi := true
 		ds.ReferrersAPI = &isApi
 	default:
@@ -102,7 +102,7 @@ func (ds *DistributionSpec) Set(value string) error {
 
 // Type returns the string value of the inner flag.
 func (ds *DistributionSpec) Type() string {
-	return strings.Join([]string{DistributionSpecReferrersTagV1_1, ReferrersAPIV1_1}, ",")
+	return strings.Join([]string{DistributionSpecReferrersTagV1_1, DistributionSpecReferrersAPIV1_1}, ",")
 }
 
 // String returns the string representation of the flag.
