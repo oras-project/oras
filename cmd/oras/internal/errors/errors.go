@@ -79,12 +79,13 @@ func Handle(cmd *cobra.Command, recommend func(err error, callPath string) strin
 			return nil
 		}
 
+		// 1. try extract registry error
 		errResp := handleRegistryErr(err, cmd)
 		if errResp == nil {
 			return nil
 		}
 
-		// 2. return scrubbed error
+		// 2.recommend & return scrubbed error
 		return &Error{
 			Err:            errResp.Errors,
 			Recommendation: recommend(errResp, cmd.CommandPath()),
