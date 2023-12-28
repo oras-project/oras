@@ -32,6 +32,7 @@ import (
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/errcode"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 )
@@ -239,6 +240,30 @@ func (opts *Target) EnsureReferenceNotEmpty() error {
 	return nil
 }
 
+// Recommend returns a recommendation for known errors.
+func (opts *Target) Recommend(err error, callPath string) string {
+	if opts.IsOCILayout {
+		return ""
+	}
+	ref, parseErr := registry.ParseReference(opts.Path)
+	if parseErr != nil {
+		// this should not happen
+		return ""
+	}
+
+	// docker.io/xxx -> docker.io/library/xxx
+	if respErr, ok := err.(*errcode.ErrorResponse); ok {
+		if ref.Registry == "docker.io" && respErr.URL.Host == ref.Host() {
+			if !strings.Contains(ref.Repository, "/") {
+				ref.Repository = "library/" + ref.Repository
+				return fmt.Sprintf("Namespace is missing, do you mean `%s %s`?", callPath, ref)
+			}
+		}
+	}
+
+	return ""
+}
+
 // BinaryTarget struct contains flags and arguments specifying two registries or
 // image layouts.
 type BinaryTarget struct {
@@ -268,4 +293,12 @@ func (opts *BinaryTarget) Parse() error {
 	opts.From.resolveFlag = append(opts.resolveFlag, opts.From.resolveFlag...)
 	opts.To.resolveFlag = append(opts.resolveFlag, opts.To.resolveFlag...)
 	return Parse(opts)
+}
+
+// Recommend returns a recommendation for known errors.
+func (opts *BinaryTarget) Recommend(err error, callPath string) string {
+	if recommendation := opts.From.Recommend(err, callPath); recommendation != "" {
+		return recommendation
+	}
+	return opts.To.Recommend(err, callPath)
 }

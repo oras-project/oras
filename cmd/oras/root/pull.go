@@ -92,7 +92,7 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runPull(cmd.Context(), opts)
+			return runPull(cmd.Context(), &opts)
 		},
 	}
 
@@ -103,10 +103,10 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 	cmd.Flags().StringVarP(&opts.ManifestConfigRef, "config", "", "", "output manifest config file")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Handle(cmd, opts.Target.Recommend)
 }
 
-func runPull(ctx context.Context, opts pullOptions) error {
+func runPull(ctx context.Context, opts *pullOptions) error {
 	ctx, logger := opts.WithContext(ctx)
 	// Copy Options
 	copyOptions := oras.DefaultCopyOptions
@@ -133,7 +133,7 @@ func runPull(ctx context.Context, opts pullOptions) error {
 	dst.AllowPathTraversalOnWrite = opts.PathTraversal
 	dst.DisableOverwrite = opts.KeepOldFiles
 
-	desc, layerSkipped, err := doPull(ctx, src, dst, copyOptions, &opts)
+	desc, layerSkipped, err := doPull(ctx, src, dst, copyOptions, opts)
 	if err != nil {
 		if errors.Is(err, file.ErrPathTraversalDisallowed) {
 			err = fmt.Errorf("%s: %w", "use flag --allow-path-traversal to allow insecurely pulling files outside of working directory", err)

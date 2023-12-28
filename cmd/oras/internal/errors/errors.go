@@ -16,10 +16,12 @@ limitations under the License.
 package errors
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/registry"
+	"oras.land/oras-go/v2/registry/remote/errcode"
 )
 
 // Error is the error type for CLI error messaging.
@@ -58,6 +60,38 @@ func CheckArgs(checker func(args []string) (bool, string), Usage string) cobra.P
 		}
 		return nil
 	}
+}
+
+func handleRegistryErr(err error, cmd *cobra.Command) *errcode.ErrorResponse {
+	var errResp *errcode.ErrorResponse
+	if errors.As(err, &errResp) {
+		cmd.SetErrPrefix("Error response from registry:")
+	}
+	return errResp
+}
+
+// Handle handles error during cmd execution.
+func Handle(cmd *cobra.Command, recommend func(err error, callPath string) string) *cobra.Command {
+	runE := cmd.RunE
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		err := runE(cmd, args)
+		if err == nil {
+			return nil
+		}
+
+		errResp := handleRegistryErr(err, cmd)
+		if errResp == nil {
+			return nil
+		}
+
+		// 2. return scrubbed error
+		return &Error{
+			Err:            errResp.Errors,
+			Recommendation: recommend(errResp, cmd.CommandPath()),
+		}
+	}
+
+	return cmd
 }
 
 // NewErrEmptyTagOrDigest creates a new error based on the reference string.
