@@ -38,7 +38,7 @@ var _ = Describe("ORAS beginners:", func() {
 	When("running push command", func() {
 		It("should show help description with feature flags", func() {
 			out := ORAS("push", "--help").MatchKeyWords(ExampleDesc).Exec().Out
-			gomega.Expect(out).Should(gbytes.Say("--image-spec v1.1,v1.0\\s+%s", regexp.QuoteMeta(feature.Experimental.Mark)))
+			gomega.Expect(out).Should(gbytes.Say("--image-spec string\\s+%s", regexp.QuoteMeta(feature.Experimental.Mark)))
 		})
 
 		It("should fail and show detailed error description if no argument provided", func() {
@@ -55,6 +55,26 @@ var _ = Describe("ORAS beginners:", func() {
 			ref := RegistryRef(ZOTHost, repo, "")
 
 			ORAS("push", ref, "--config", foobar.FileConfigName, "--artifact-type", "test/artifact+json", "--image-spec", "v1.0").ExpectFailure().WithWorkDir(tempDir).Exec()
+		})
+
+		It("should fail if image spec is not valid", func() {
+			testRepo := attachTestRepo("invalid-image-spec")
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			invalidFlag := "???"
+			ORAS("push", subjectRef, Flags.ImageSpec, invalidFlag).
+				ExpectFailure().
+				MatchErrKeyWords("Error:", invalidFlag, "Available options: v1.1,v1.0").
+				Exec()
+		})
+
+		It("should fail if image spec is not valid", func() {
+			testRepo := attachTestRepo("invalid-image-spec")
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			invalidFlag := "???"
+			ORAS("push", subjectRef, Flags.ImageSpec, invalidFlag).
+				ExpectFailure().
+				MatchErrKeyWords("Error:", invalidFlag, "Available options: v1.1,v1.0").
+				Exec()
 		})
 
 		It("should fail if image spec is not valid", func() {

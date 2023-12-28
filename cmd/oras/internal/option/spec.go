@@ -48,7 +48,7 @@ func (is *ImageSpec) Set(value string) error {
 	default:
 		return &oerrors.Error{
 			Err:            fmt.Errorf("unknown image specification flag: %s", value),
-			Recommendation: fmt.Sprintf("Available options: %s", is.Type()),
+			Recommendation: fmt.Sprintf("Available options: %s", strings.Join(is.Options(), ",")),
 		}
 	}
 	return nil
@@ -56,7 +56,15 @@ func (is *ImageSpec) Set(value string) error {
 
 // Type returns the string value of the inner flag.
 func (is *ImageSpec) Type() string {
-	return strings.Join([]string{ImageSpecV1_1, ImageSpecV1_0}, ",")
+	return "string"
+}
+
+// Options returns the usable options for the flag.
+func (is *ImageSpec) Options() []string {
+	return []string{
+		ImageSpecV1_1,
+		ImageSpecV1_0,
+	}
 }
 
 // String returns the string representation of the flag.
@@ -68,7 +76,7 @@ func (is *ImageSpec) String() string {
 func (is *ImageSpec) ApplyFlags(fs *pflag.FlagSet) {
 	// default to v1.1-rc.4
 	is.PackVersion = oras.PackManifestVersion1_1_RC4
-	fs.Var(is, "image-spec", `[Experimental] specify manifest type for building artifact (default "v1.1")`)
+	fs.Var(is, "image-spec", fmt.Sprintf(`[Experimental] specify manifest type for building artifact. Options: %s (default "v1.1")`, strings.Join(is.Options(), ",")))
 }
 
 // DistributionSpec option struct which implements pflag.Value interface.
@@ -94,7 +102,7 @@ func (ds *DistributionSpec) Set(value string) error {
 	default:
 		return &oerrors.Error{
 			Err:            fmt.Errorf("unknown distribution specification flag: %s", value),
-			Recommendation: fmt.Sprintf("Available options: %s", ds.Type()),
+			Recommendation: fmt.Sprintf("Available options: %s", strings.Join(ds.Options(), ",")),
 		}
 	}
 	return nil
@@ -102,7 +110,15 @@ func (ds *DistributionSpec) Set(value string) error {
 
 // Type returns the string value of the inner flag.
 func (ds *DistributionSpec) Type() string {
-	return strings.Join([]string{DistributionSpecReferrersTagV1_1, DistributionSpecReferrersAPIV1_1}, ",")
+	return "string"
+}
+
+// Options returns the usable options for the flag.
+func (ds *DistributionSpec) Options() []string {
+	return []string{
+		DistributionSpecReferrersTagV1_1,
+		DistributionSpecReferrersAPIV1_1,
+	}
 }
 
 // String returns the string representation of the flag.
@@ -113,5 +129,5 @@ func (ds *DistributionSpec) String() string {
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
 func (ds *DistributionSpec) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
 	flagPrefix, notePrefix := applyPrefix(prefix, description)
-	fs.Var(ds, flagPrefix+"distribution-spec", "[Preview] set OCI distribution spec version and API option for "+notePrefix+"target.")
+	fs.Var(ds, flagPrefix+"distribution-spec", fmt.Sprintf("[Preview] set OCI distribution spec version and API option for "+notePrefix+"target. Options: ", strings.Join(ds.Options(), ",")))
 }

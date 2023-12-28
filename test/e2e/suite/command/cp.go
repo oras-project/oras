@@ -43,9 +43,9 @@ var _ = Describe("ORAS beginners:", func() {
 	When("running cp command", func() {
 		It("should show help doc with feature flags", func() {
 			out := ORAS("cp", "--help").MatchKeyWords("Copy", ExampleDesc).Exec()
-			Expect(out).Should(gbytes.Say("--from-distribution-spec v1.1-referrers-tag,v1.1-referrers-api\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+			Expect(out).Should(gbytes.Say("--from-distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 			Expect(out).Should(gbytes.Say("-r, --recursive\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
-			Expect(out).Should(gbytes.Say("--to-distribution-spec v1.1-referrers-tag,v1.1-referrers-api\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+			Expect(out).Should(gbytes.Say("--to-distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 		})
 
 		It("should fail when no reference provided", func() {
