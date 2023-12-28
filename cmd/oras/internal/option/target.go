@@ -53,7 +53,7 @@ type Target struct {
 	//  - registry and repository for the remote target
 	Path string
 
-	isOCILayout bool
+	IsOCILayout bool
 }
 
 // ApplyFlags applies flags to a command flag set for unary target
@@ -78,7 +78,7 @@ func (opts *Target) AnnotatedReference() string {
 // the full form is not implemented until a new type comes in.
 func (opts *Target) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
 	flagPrefix, notePrefix := applyPrefix(prefix, description)
-	fs.BoolVarP(&opts.isOCILayout, flagPrefix+"oci-layout", "", false, "set "+notePrefix+"target as an OCI image layout")
+	fs.BoolVarP(&opts.IsOCILayout, flagPrefix+"oci-layout", "", false, "set "+notePrefix+"target as an OCI image layout")
 }
 
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
@@ -91,7 +91,7 @@ func (opts *Target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 // Parse gets target options from user input.
 func (opts *Target) Parse() error {
 	switch {
-	case opts.isOCILayout:
+	case opts.IsOCILayout:
 		opts.Type = TargetTypeOCILayout
 		if len(opts.headerFlags) != 0 {
 			return errors.New("custom header flags cannot be used on an OCI image layout target")
