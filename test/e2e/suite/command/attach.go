@@ -42,7 +42,7 @@ var _ = Describe("ORAS beginners:", func() {
 
 		It("should show preview and help doc", func() {
 			out := ORAS("attach", "--help").MatchKeyWords(feature.Preview.Mark+" Attach", feature.Preview.Description, ExampleDesc).Exec()
-			gomega.Expect(out).Should(gbytes.Say("--distribution-spec v1.1-referrers-tag, v1.1-referrers-api\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+			gomega.Expect(out).Should(gbytes.Say("--distribution-spec v1.1-referrers-tag,v1.1-referrers-api\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 		})
 
 		It("should fail when no subject reference provided", func() {
@@ -81,7 +81,7 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), Flags.DistributionSpec, invalidFlag).
 				ExpectFailure().
 				WithWorkDir(PrepareTempFiles()).
-				MatchErrKeyWords("Error:", invalidFlag, "Available options: v1.1-referrers-tag, v1.1-referrers-api").
+				MatchErrKeyWords("Error:", invalidFlag, "Available options: v1.1-referrers-tag,v1.1-referrers-api").
 				Exec()
 		})
 	})

@@ -53,7 +53,7 @@ var _ = Describe("ORAS beginners:", func() {
 
 		It("should show preview and help doc", func() {
 			out := ORAS("discover", "--help").MatchKeyWords(feature.Preview.Mark+" Discover", feature.Preview.Description, ExampleDesc).Exec()
-			gomega.Expect(out).Should(gbytes.Say("--distribution-spec v1.1-referrers-tag, v1.1-referrers-api\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+			gomega.Expect(out).Should(gbytes.Say("--distribution-spec v1.1-referrers-tag,v1.1-referrers-api\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 		})
 
 		It("should fail when no subject reference provided", func() {
