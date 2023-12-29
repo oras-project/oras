@@ -103,7 +103,7 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 	cmd.Flags().StringVarP(&opts.ManifestConfigRef, "config", "", "", "output manifest config file")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 	option.ApplyFlags(&opts, cmd.Flags())
-	return oerrors.Handle(cmd, opts.Target.Recommend)
+	return oerrors.Command(cmd, &opts.Target)
 }
 
 func runPull(ctx context.Context, opts *pullOptions) error {

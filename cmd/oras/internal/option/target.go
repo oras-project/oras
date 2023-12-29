@@ -21,15 +21,18 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
 
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/errcode"
@@ -44,6 +47,7 @@ const (
 
 // Target struct contains flags and arguments specifying one registry or image
 // layout.
+// Target implements errors.Handler and errors.Processor interface.
 type Target struct {
 	Remote
 	RawReference string
@@ -240,32 +244,61 @@ func (opts *Target) EnsureReferenceNotEmpty() error {
 	return nil
 }
 
+// Handle handles error during cmd execution.
+func (opts *Target) Handle(err error, cmd *cobra.Command) (oerrors.Processor, error) {
+	// handle registry error
+	if opts.IsOCILayout {
+		return nil, err
+	}
+
+	// handle not found error from registry
+	if errors.Is(err, errdef.ErrNotFound) {
+		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
+		return opts, err
+	}
+
+	// handle error response
+	var errResp *errcode.ErrorResponse
+	if errors.As(err, &errResp) {
+		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
+		return opts, errResp
+	}
+	return opts, err
+}
+
+// Process returns a scrubbed error.
+func (opts *Target) Process(err error) error {
+	if errResp, ok := err.(*errcode.ErrorResponse); ok {
+		// remove HTTP related info
+		return errResp.Errors
+	}
+	return err
+}
+
 // Recommend returns a recommendation for known errors.
 func (opts *Target) Recommend(err error, callPath string) string {
 	if opts.IsOCILayout {
 		return ""
 	}
-	ref, parseErr := registry.ParseReference(opts.Path)
+	ref, parseErr := registry.ParseReference(opts.RawReference)
 	if parseErr != nil {
 		// this should not happen
 		return ""
 	}
 
-	// docker.io/xxx -> docker.io/library/xxx
-	if respErr, ok := err.(*errcode.ErrorResponse); ok {
-		if ref.Registry == "docker.io" && respErr.URL.Host == ref.Host() {
-			if !strings.Contains(ref.Repository, "/") {
-				ref.Repository = "library/" + ref.Repository
-				return fmt.Sprintf("Namespace is missing, do you mean `%s %s`?", callPath, ref)
-			}
+	if respErr, ok := err.(*errcode.ErrorResponse); ok && ref.Registry == "docker.io" && respErr.URL.Host == ref.Host() && respErr.StatusCode == http.StatusUnauthorized {
+		if !strings.Contains(ref.Repository, "/") {
+			// docker.io/xxx -> docker.io/library/xxx
+			ref.Repository = "library/" + ref.Repository
+			return fmt.Sprintf("Namespace is missing, do you mean `%s %s`?", callPath, ref)
 		}
 	}
-
 	return ""
 }
 
 // BinaryTarget struct contains flags and arguments specifying two registries or
 // image layouts.
+// BinaryTarget implements errors.Handler interface.
 type BinaryTarget struct {
 	From        Target
 	To          Target
@@ -295,10 +328,10 @@ func (opts *BinaryTarget) Parse() error {
 	return Parse(opts)
 }
 
-// Recommend returns a recommendation for known errors.
-func (opts *BinaryTarget) Recommend(err error, callPath string) string {
-	if recommendation := opts.From.Recommend(err, callPath); recommendation != "" {
-		return recommendation
+// Handle handles error during cmd execution.
+func (opts *BinaryTarget) Handle(err error, cmd *cobra.Command) (oerrors.Processor, error) {
+	if processor, err := opts.From.Handle(err, cmd); processor != nil {
+		return processor, err
 	}
-	return opts.To.Recommend(err, callPath)
+	return opts.To.Handle(err, cmd)
 }

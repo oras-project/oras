@@ -16,13 +16,14 @@ limitations under the License.
 package errors
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/registry"
-	"oras.land/oras-go/v2/registry/remote/errcode"
 )
+
+// RegistryErrorPrefix is the commandline prefix for errors from registry.
+const RegistryErrorPrefix = "Error response from registry:"
 
 // Error is the error type for CLI error messaging.
 type Error struct {
@@ -62,36 +63,36 @@ func CheckArgs(checker func(args []string) (bool, string), Usage string) cobra.P
 	}
 }
 
-func handleRegistryErr(err error, cmd *cobra.Command) *errcode.ErrorResponse {
-	var errResp *errcode.ErrorResponse
-	if errors.As(err, &errResp) {
-		cmd.SetErrPrefix("Error response from registry:")
-	}
-	return errResp
+// Handler handles error during cmd execution.
+type Handler interface {
+	// Handle handles error during cmd execution.
+	// If returned processor is nil, error requires no further processing.
+	Handle(err error, cmd *cobra.Command) (Processor, error)
 }
 
-// Handle handles error during cmd execution.
-func Handle(cmd *cobra.Command, recommend func(err error, callPath string) string) *cobra.Command {
+// Processor processes error.
+type Processor interface {
+	Process(error) error
+	Recommend(err error, callPath string) string
+}
+
+// Command returns an error-handled for cobra command.
+func Command(cmd *cobra.Command, handler Handler) *cobra.Command {
 	runE := cmd.RunE
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		err := runE(cmd, args)
 		if err == nil {
 			return nil
 		}
-
-		// 1. try extract registry error
-		errResp := handleRegistryErr(err, cmd)
-		if errResp == nil {
-			return nil
+		processor, err := handler.Handle(err, cmd)
+		if processor == nil {
+			return err
 		}
-
-		// 2.recommend & return scrubbed error
 		return &Error{
-			Err:            errResp.Errors,
-			Recommendation: recommend(errResp, cmd.CommandPath()),
+			Err:            processor.Process(err),
+			Recommendation: processor.Recommend(err, cmd.CommandPath()),
 		}
 	}
-
 	return cmd
 }
 
