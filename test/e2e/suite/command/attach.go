@@ -81,7 +81,7 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), Flags.DistributionSpec, invalidFlag).
 				ExpectFailure().
 				WithWorkDir(PrepareTempFiles()).
-				MatchErrKeyWords("Error:", invalidFlag, "Available options: v1.1-referrers-tag,v1.1-referrers-api").
+				MatchErrKeyWords("Error:", invalidFlag, "Available options: v1.1-referrers-tag, v1.1-referrers-api").
 				Exec()
 		})
 	})

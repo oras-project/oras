@@ -63,7 +63,7 @@ var _ = Describe("ORAS beginners:", func() {
 			invalidFlag := "???"
 			ORAS("push", subjectRef, Flags.ImageSpec, invalidFlag).
 				ExpectFailure().
-				MatchErrKeyWords("Error:", invalidFlag, "Available options: v1.1,v1.0").
+				MatchErrKeyWords("Error:", invalidFlag, "Available options: v1.1, v1.0").
 				Exec()
 		})
 
@@ -73,7 +73,7 @@ var _ = Describe("ORAS beginners:", func() {
 			invalidFlag := "???"
 			ORAS("push", subjectRef, Flags.ImageSpec, invalidFlag).
 				ExpectFailure().
-				MatchErrKeyWords("Error:", invalidFlag, "Available options: v1.1,v1.0").
+				MatchErrKeyWords("Error:", invalidFlag, "Available options: v1.1, v1.0").
 				Exec()
 		})
 
@@ -83,7 +83,7 @@ var _ = Describe("ORAS beginners:", func() {
 			invalidFlag := "???"
 			ORAS("push", subjectRef, Flags.ImageSpec, invalidFlag).
 				ExpectFailure().
-				MatchErrKeyWords("Error:", invalidFlag, "Available options: v1.1,v1.0").
+				MatchErrKeyWords("Error:", invalidFlag, "Available options: v1.1, v1.0").
 				Exec()
 		})
 	})
