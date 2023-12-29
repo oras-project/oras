@@ -318,7 +318,7 @@ var _ = Describe("Remote registry users:", func() {
 		})
 
 		It("should push v1.1-rc.4 artifact", func() {
-			repo := pushTestRepo("artifact-with-blob")
+			repo := pushTestRepo("v1.1-artifact")
 			tempDir := PrepareTempFiles()
 
 			ORAS("push", RegistryRef(ZOTHost, repo, tag), foobar.FileBarName, "-v", "--image-spec", "v1.1").
