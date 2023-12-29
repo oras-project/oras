@@ -15,4 +15,5 @@ coverage:
   status:
     project:
       default:
-        target: 60%
+        target: 75%
+        if_ci_failed: error
