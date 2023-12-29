@@ -17,9 +17,11 @@ package option
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 )
 
 const (
@@ -27,59 +29,109 @@ const (
 	ImageSpecV1_0 = "v1.0"
 )
 
-// ImageSpec option struct.
+const (
+	DistributionSpecReferrersTagV1_1 = "v1.1-referrers-tag"
+	DistributionSpecReferrersAPIV1_1 = "v1.1-referrers-api"
+)
+
+// ImageSpec option struct which implements pflag.Value interface.
 type ImageSpec struct {
 	flag        string
 	PackVersion oras.PackManifestVersion
 }
 
-// Parse parses flags into the option.
-func (opts *ImageSpec) Parse() error {
-	switch opts.flag {
+// Set validates and sets the flag value from a string argument.
+func (is *ImageSpec) Set(value string) error {
+	is.flag = value
+	switch value {
 	case ImageSpecV1_1:
-		opts.PackVersion = oras.PackManifestVersion1_1_RC4
+		is.PackVersion = oras.PackManifestVersion1_1_RC4
 	case ImageSpecV1_0:
-		opts.PackVersion = oras.PackManifestVersion1_0
+		is.PackVersion = oras.PackManifestVersion1_0
 	default:
-		return fmt.Errorf("unknown image specification flag: %q", opts.flag)
+		return &oerrors.Error{
+			Err:            fmt.Errorf("unknown image specification flag: %s", value),
+			Recommendation: fmt.Sprintf("Available options: %s", is.Options()),
+		}
 	}
 	return nil
 }
 
-// ApplyFlags applies flags to a command flag set.
-func (opts *ImageSpec) ApplyFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&opts.flag, "image-spec", ImageSpecV1_1, fmt.Sprintf("[Experimental] specify manifest type for building artifact. options: %s, %s", ImageSpecV1_1, ImageSpecV1_0))
+// Type returns the string value of the inner flag.
+func (is *ImageSpec) Type() string {
+	return "string"
 }
 
-// DistributionSpec option struct.
+// Options returns the string of usable options for the flag.
+func (is *ImageSpec) Options() string {
+	return strings.Join([]string{
+		ImageSpecV1_1,
+		ImageSpecV1_0,
+	}, ", ")
+}
+
+// String returns the string representation of the flag.
+func (is *ImageSpec) String() string {
+	return is.flag
+}
+
+// ApplyFlags applies flags to a command flag set.
+func (is *ImageSpec) ApplyFlags(fs *pflag.FlagSet) {
+	// default to v1.1-rc.4
+	is.PackVersion = oras.PackManifestVersion1_1_RC4
+	defaultFlag := ImageSpecV1_1
+	fs.Var(is, "image-spec", fmt.Sprintf(`[Experimental] specify manifest type for building artifact. Options: %s (default %q)`, is.Options(), defaultFlag))
+}
+
+// DistributionSpec option struct which implements pflag.Value interface.
 type DistributionSpec struct {
 	// ReferrersAPI indicates the preference of the implementation of the Referrers API.
 	// Set to true for referrers API, false for referrers tag scheme, and nil for auto fallback.
 	ReferrersAPI *bool
 
 	// specFlag should be provided in form of`<version>-<api>-<option>`
-	specFlag string
+	flag string
 }
 
-// Parse parses flags into the option.
-func (opts *DistributionSpec) Parse() error {
-	switch opts.specFlag {
-	case "":
-		opts.ReferrersAPI = nil
-	case "v1.1-referrers-tag":
+// Set validates and sets the flag value from a string argument.
+func (ds *DistributionSpec) Set(value string) error {
+	ds.flag = value
+	switch ds.flag {
+	case DistributionSpecReferrersTagV1_1:
 		isApi := false
-		opts.ReferrersAPI = &isApi
-	case "v1.1-referrers-api":
+		ds.ReferrersAPI = &isApi
+	case DistributionSpecReferrersAPIV1_1:
 		isApi := true
-		opts.ReferrersAPI = &isApi
+		ds.ReferrersAPI = &isApi
 	default:
-		return fmt.Errorf("unknown distribution specification flag: %q", opts.specFlag)
+		return &oerrors.Error{
+			Err:            fmt.Errorf("unknown distribution specification flag: %s", value),
+			Recommendation: fmt.Sprintf("Available options: %s", ds.Options()),
+		}
 	}
 	return nil
 }
 
+// Type returns the string value of the inner flag.
+func (ds *DistributionSpec) Type() string {
+	return "string"
+}
+
+// Options returns the string of usable options for the flag.
+func (ds *DistributionSpec) Options() string {
+	return strings.Join([]string{
+		DistributionSpecReferrersTagV1_1,
+		DistributionSpecReferrersAPIV1_1,
+	}, ", ")
+}
+
+// String returns the string representation of the flag.
+func (ds *DistributionSpec) String() string {
+	return ds.flag
+}
+
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
-func (opts *DistributionSpec) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
+func (ds *DistributionSpec) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
 	flagPrefix, notePrefix := applyPrefix(prefix, description)
-	fs.StringVar(&opts.specFlag, flagPrefix+"distribution-spec", "", "[Preview] set OCI distribution spec version and API option for "+notePrefix+"target. options: v1.1-referrers-api, v1.1-referrers-tag")
+	fs.Var(ds, flagPrefix+"distribution-spec", fmt.Sprintf("[Preview] set OCI distribution spec version and API option for "+notePrefix+"target. Options: ", ds.Options()))
 }
