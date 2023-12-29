@@ -75,7 +75,7 @@ type Processor interface {
 	Process(err error, callPath string) *Error
 }
 
-// Command returns an error-handled for cobra command.
+// Command returns an error-handled cobra command.
 func Command(cmd *cobra.Command, handler Handler) *cobra.Command {
 	runE := cmd.RunE
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
