@@ -24,7 +24,6 @@ import (
 	"golang.org/x/sync/errgroup"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/internal/docker"
 )
 
@@ -102,94 +101,6 @@ func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descr
 		nodes, err = content.Successors(ctx, fetcher, node)
 	}
 	return
-}
-
-// Referrers returns referrer nodes of desc in target.
-func Referrers(ctx context.Context, target content.ReadOnlyGraphStorage, desc ocispec.Descriptor, artifactType string) ([]ocispec.Descriptor, error) {
-	var results []ocispec.Descriptor
-	if repo, ok := target.(registry.ReferrerLister); ok {
-		// get referrers directly
-		err := repo.Referrers(ctx, desc, artifactType, func(referrers []ocispec.Descriptor) error {
-			results = append(results, referrers...)
-			return nil
-		})
-		if err != nil {
-			return nil, err
-		}
-		return results, nil
-	}
-
-	// find matched referrers in all predecessors
-	predecessors, err := target.Predecessors(ctx, desc)
-	if err != nil {
-		return nil, err
-	}
-	for _, node := range predecessors {
-		switch node.MediaType {
-		case MediaTypeArtifactManifest:
-			fetched, err := fetchBytes(ctx, target, node)
-			if err != nil {
-				return nil, err
-			}
-			var artifact Artifact
-			if err := json.Unmarshal(fetched, &artifact); err != nil {
-				return nil, err
-			}
-			if artifact.Subject == nil || !content.Equal(*artifact.Subject, desc) {
-				continue
-			}
-			node.ArtifactType = artifact.ArtifactType
-			node.Annotations = artifact.Annotations
-		case ocispec.MediaTypeImageManifest:
-			fetched, err := fetchBytes(ctx, target, node)
-			if err != nil {
-				return nil, err
-			}
-			var image ocispec.Manifest
-			if err := json.Unmarshal(fetched, &image); err != nil {
-				return nil, err
-			}
-			if image.Subject == nil || !content.Equal(*image.Subject, desc) {
-				continue
-			}
-			node.ArtifactType = image.ArtifactType
-			if node.ArtifactType == "" {
-				node.ArtifactType = image.Config.MediaType
-			}
-			node.Annotations = image.Annotations
-		case ocispec.MediaTypeImageIndex:
-			fetched, err := fetchBytes(ctx, target, node)
-			if err != nil {
-				return nil, err
-			}
-			var index ocispec.Index
-			if err := json.Unmarshal(fetched, &index); err != nil {
-				return nil, err
-			}
-			if index.Subject == nil || !content.Equal(*index.Subject, desc) {
-				continue
-			}
-			node.ArtifactType = index.ArtifactType
-			node.Annotations = index.Annotations
-		default:
-			continue
-		}
-		if artifactType == "" || artifactType == node.ArtifactType {
-			// the field artifactType in referrers descriptor is allowed to be empty
-			// https://github.com/opencontainers/distribution-spec/issues/458
-			results = append(results, node)
-		}
-	}
-	return results, nil
-}
-
-func fetchBytes(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]byte, error) {
-	rc, err := fetcher.Fetch(ctx, desc)
-	if err != nil {
-		return nil, err
-	}
-	defer rc.Close()
-	return content.ReadAll(rc, desc)
 }
 
 // FindPredecessors returns all predecessors of descs in src concurrently.
