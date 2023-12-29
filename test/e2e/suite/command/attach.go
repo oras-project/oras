@@ -72,6 +72,18 @@ var _ = Describe("ORAS beginners:", func() {
 			gomega.Expect(err).Should(gbytes.Say("\n"))
 			gomega.Expect(err).Should(gbytes.Say(`Run "oras attach -h"`))
 		})
+
+		It("should fail if distribution spec is not valid", func() {
+			testRepo := attachTestRepo("invalid-image-spec")
+			CopyZOTRepo(ImageRepo, testRepo)
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			invalidFlag := "???"
+			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), Flags.DistributionSpec, invalidFlag).
+				ExpectFailure().
+				WithWorkDir(PrepareTempFiles()).
+				MatchErrKeyWords("Error:", invalidFlag, "Available options: v1.1-referrers-tag, v1.1-referrers-api").
+				Exec()
+		})
 	})
 })
 

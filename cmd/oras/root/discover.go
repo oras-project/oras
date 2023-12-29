@@ -28,10 +28,10 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/argument"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/graph"
 	"oras.land/oras/internal/tree"
 )
 
@@ -119,7 +119,7 @@ func runDiscover(ctx context.Context, opts discoverOptions) error {
 		return tree.Print(root)
 	}
 
-	refs, err := graph.Referrers(ctx, repo, desc, opts.artifactType)
+	refs, err := registry.Referrers(ctx, repo, desc, opts.artifactType)
 	if err != nil {
 		return err
 	}
@@ -141,7 +141,7 @@ func runDiscover(ctx context.Context, opts discoverOptions) error {
 }
 
 func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, node *tree.Node, opts *discoverOptions) error {
-	results, err := graph.Referrers(ctx, repo, desc, artifactType)
+	results, err := registry.Referrers(ctx, repo, desc, artifactType)
 	if err != nil {
 		return err
 	}
