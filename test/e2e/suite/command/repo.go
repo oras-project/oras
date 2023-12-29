@@ -52,6 +52,11 @@ var _ = Describe("ORAS beginners:", func() {
 				gomega.Expect(err).Should(gbytes.Say("\n"))
 				gomega.Expect(err).Should(gbytes.Say(`Run "oras repo ls -h"`))
 			})
+
+			It("should fail if password is wrong with registry error prefix", func() {
+				ORAS("repo", "ls", ZOTHost, "-u", Username, "-p", "???").
+					MatchErrKeyWords("Error response from registry: ").ExpectFailure().Exec()
+			})
 		})
 		When("running `repo tags`", func() {
 			It("should show help description with feature flags", func() {

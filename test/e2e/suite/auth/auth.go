@@ -90,6 +90,14 @@ var _ = Describe("Common registry user", func() {
 				WithInput(strings.NewReader(fmt.Sprintf("%s\n\n", Username))).ExpectFailure().Exec()
 		})
 
+		It("should fail if password is wrong with registry error prefix", func() {
+			ORAS("login", ZOTHost, "--registry-config", filepath.Join(GinkgoT().TempDir(), tmpConfigName)).
+				WithTimeOut(20*time.Second).
+				MatchKeyWords("Username: ", "Password: ").
+				MatchErrKeyWords("Error response from registry: ").
+				WithInput(strings.NewReader(fmt.Sprintf("%s\n???\n", Username))).ExpectFailure().Exec()
+		})
+
 		It("should fail if no token input", func() {
 			ORAS("login", ZOTHost, "--registry-config", filepath.Join(GinkgoT().TempDir(), tmpConfigName)).
 				WithTimeOut(20*time.Second).
