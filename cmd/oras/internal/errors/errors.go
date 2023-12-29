@@ -72,8 +72,7 @@ type Handler interface {
 
 // Processor processes error.
 type Processor interface {
-	Process(error) error
-	Recommend(err error, callPath string) string
+	Process(err error, callPath string) *Error
 }
 
 // Command returns an error-handled for cobra command.
@@ -88,10 +87,7 @@ func Command(cmd *cobra.Command, handler Handler) *cobra.Command {
 		if processor == nil {
 			return err
 		}
-		return &Error{
-			Err:            processor.Process(err),
-			Recommendation: processor.Recommend(err, cmd.CommandPath()),
-		}
+		return processor.Process(err, cmd.CommandPath())
 	}
 	return cmd
 }

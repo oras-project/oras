@@ -30,11 +30,14 @@ import (
 
 	credentials "github.com/oras-project/oras-credentials-go"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/errcode"
 	"oras.land/oras-go/v2/registry/remote/retry"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/internal/credential"
 	"oras.land/oras/internal/crypto"
 	onet "oras.land/oras/internal/net"
@@ -42,7 +45,8 @@ import (
 	"oras.land/oras/internal/version"
 )
 
-// Remote options struct.
+// Remote options struct contains flags and arguments specifying one registry.
+// Remote implements oerrors.Handler and oerrors.Processor interface.
 type Remote struct {
 	DistributionSpec
 	CACertFilePath    string
@@ -321,4 +325,33 @@ func (opts *Remote) isPlainHttp(registry string) bool {
 		return true
 	}
 	return plainHTTP
+}
+
+// Handle handles error during cmd execution.
+func (opts *Remote) Handle(err error, cmd *cobra.Command) (oerrors.Processor, error) {
+	// handle not found error from registry
+	if errors.Is(err, errdef.ErrNotFound) {
+		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
+		return opts, err
+	}
+
+	// handle error response
+	var errResp *errcode.ErrorResponse
+	if errors.As(err, &errResp) {
+		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
+		return opts, errResp
+	}
+	return nil, err
+}
+
+// Process processes error into oerrors.Error.
+func (opts *Remote) Process(err error, _ string) *oerrors.Error {
+	ret := oerrors.Error{
+		Err: err,
+	}
+	if errResp, ok := err.(*errcode.ErrorResponse); ok {
+		// remove HTTP related info
+		ret.Err = errResp.Errors
+	}
+	return &ret
 }

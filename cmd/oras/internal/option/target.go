@@ -32,7 +32,6 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
-	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/errcode"
@@ -47,7 +46,7 @@ const (
 
 // Target struct contains flags and arguments specifying one registry or image
 // layout.
-// Target implements errors.Handler and errors.Processor interface.
+// Target implements oerrors.Handler and oerrors.Processor interface.
 type Target struct {
 	Remote
 	RawReference string
@@ -251,49 +250,40 @@ func (opts *Target) Handle(err error, cmd *cobra.Command) (oerrors.Processor, er
 		return nil, err
 	}
 
-	// handle not found error from registry
-	if errors.Is(err, errdef.ErrNotFound) {
-		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
-		return opts, err
+	processor, err := opts.Remote.Handle(err, cmd)
+	if processor != nil {
+		processor = opts
 	}
-
-	// handle error response
-	var errResp *errcode.ErrorResponse
-	if errors.As(err, &errResp) {
-		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
-		return opts, errResp
-	}
-	return opts, err
+	return processor, err
 }
 
-// Process returns a scrubbed error.
-func (opts *Target) Process(err error) error {
+// Process processes error into oerrors.Error.
+func (opts *Target) Process(err error, callPath string) *oerrors.Error {
+	ret := oerrors.Error{
+		Err: err,
+	}
+	if opts.IsOCILayout {
+		return &ret
+	}
 	if errResp, ok := err.(*errcode.ErrorResponse); ok {
 		// remove HTTP related info
-		return errResp.Errors
-	}
-	return err
-}
+		ret.Err = errResp.Errors
 
-// Recommend returns a recommendation for known errors.
-func (opts *Target) Recommend(err error, callPath string) string {
-	if opts.IsOCILayout {
-		return ""
-	}
-	ref, parseErr := registry.ParseReference(opts.RawReference)
-	if parseErr != nil {
-		// this should not happen
-		return ""
-	}
+		ref, parseErr := registry.ParseReference(opts.RawReference)
+		if parseErr != nil {
+			// this should not happen
+			return &ret
+		}
 
-	if respErr, ok := err.(*errcode.ErrorResponse); ok && ref.Registry == "docker.io" && respErr.URL.Host == ref.Host() && respErr.StatusCode == http.StatusUnauthorized {
-		if !strings.Contains(ref.Repository, "/") {
-			// docker.io/xxx -> docker.io/library/xxx
-			ref.Repository = "library/" + ref.Repository
-			return fmt.Sprintf("Namespace is missing, do you mean `%s %s`?", callPath, ref)
+		if ref.Registry == "docker.io" && errResp.URL.Host == ref.Host() && errResp.StatusCode == http.StatusUnauthorized {
+			if !strings.Contains(ref.Repository, "/") {
+				// docker.io/xxx -> docker.io/library/xxx
+				ref.Repository = "library/" + ref.Repository
+				ret.Recommendation = fmt.Sprintf("Namespace is missing, do you mean `%s %s`?", callPath, ref)
+			}
 		}
 	}
-	return ""
+	return &ret
 }
 
 // BinaryTarget struct contains flags and arguments specifying two registries or
