@@ -77,17 +77,17 @@ var _ = Describe("ORAS beginners:", func() {
 
 		It("should fail if password is wrong with registry error prefix", func() {
 			ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, empty.Tag), "-u", Username, "-p", "???").
-				MatchErrKeyWords("Error response from registry: ").ExpectFailure().Exec()
+				MatchErrKeyWords(RegistryErrorPrefix).ExpectFailure().Exec()
 		})
 
 		It("should fail if artifact is not found with registry error prefix", func() {
-			ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, "i-dont-think-this-tag-exists")).
-				MatchErrKeyWords("Error response from registry: ").ExpectFailure().Exec()
+			ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, InvalidTag)).
+				MatchErrKeyWords(RegistryErrorPrefix).ExpectFailure().Exec()
 		})
 
 		It("should fail if artifact is not found from OCI layout", func() {
 			root := PrepareTempOCI(ArtifactRepo)
-			ORAS("pull", Flags.Layout, LayoutRef(root, "i-dont-think-this-tag-exists")).
+			ORAS("pull", Flags.Layout, LayoutRef(root, InvalidTag)).
 				MatchErrKeyWords("Error: ").ExpectFailure().Exec()
 		})
 	})

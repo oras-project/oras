@@ -15,16 +15,20 @@ limitations under the License.
 
 package utils
 
-var Flags = struct {
-	Layout           string
-	FromLayout       string
-	ToLayout         string
-	DistributionSpec string
-	ImageSpec        string
-}{
-	"--oci-layout",
-	"--from-oci-layout",
-	"--to-oci-layout",
-	"--distribution-spec",
-	"--image-spec",
-}
+var (
+	Flags = struct {
+		Layout           string
+		FromLayout       string
+		ToLayout         string
+		DistributionSpec string
+		ImageSpec        string
+	}{
+		"--oci-layout",
+		"--from-oci-layout",
+		"--to-oci-layout",
+		"--distribution-spec",
+		"--image-spec",
+	}
+	RegistryErrorPrefix = "Error response from registry: "
+	InvalidTag          = "i-dont-think-this-tag-exists"
+)

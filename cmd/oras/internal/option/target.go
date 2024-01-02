@@ -321,7 +321,11 @@ func (opts *BinaryTarget) Parse() error {
 // Handle handles error during cmd execution.
 func (opts *BinaryTarget) Handle(err error, cmd *cobra.Command) (oerrors.Processor, error) {
 	if processor, err := opts.From.Handle(err, cmd); processor != nil {
-		return processor, err
+		if errResp, ok := err.(*errcode.ErrorResponse); ok {
+			if ref, _ := registry.ParseReference(opts.From.RawReference); errResp.URL.Host == ref.Host() {
+				return processor, err
+			}
+		}
 	}
 	return opts.To.Handle(err, cmd)
 }

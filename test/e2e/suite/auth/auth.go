@@ -94,7 +94,7 @@ var _ = Describe("Common registry user", func() {
 			ORAS("login", ZOTHost, "--registry-config", filepath.Join(GinkgoT().TempDir(), tmpConfigName)).
 				WithTimeOut(20*time.Second).
 				MatchKeyWords("Username: ", "Password: ").
-				MatchErrKeyWords("Error response from registry: ").
+				MatchErrKeyWords(RegistryErrorPrefix).
 				WithInput(strings.NewReader(fmt.Sprintf("%s\n???\n", Username))).ExpectFailure().Exec()
 		})
 
