@@ -24,6 +24,8 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras/cmd/oras/internal/argument"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/registryutil"
 )
@@ -56,7 +58,7 @@ Example - Delete a manifest and print its descriptor:
 Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9' from repository 'localhost:5000/hello':
   oras manifest delete localhost:5000/hello@sha:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
 `,
-		Args: cobra.ExactArgs(1),
+		Args: oerrors.CheckArgs(argument.Exactly(1), "the manifest to delete"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
 			if opts.OutputDescriptor && !opts.Force {

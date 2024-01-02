@@ -116,10 +116,7 @@ func (opts *Remote) Parse() error {
 	if err := opts.parseCustomHeaders(); err != nil {
 		return err
 	}
-	if err := opts.readPassword(); err != nil {
-		return err
-	}
-	return opts.DistributionSpec.Parse()
+	return opts.readPassword()
 }
 
 // readPassword tries to read password with optional cmd prompt.

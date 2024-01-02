@@ -19,148 +19,18 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"reflect"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras/internal/docker"
 )
 
-type errLister struct {
-	oras.ReadOnlyGraphTarget
-}
-
-func (e *errLister) Referrers(ctx context.Context, desc ocispec.Descriptor, artifactType string, fn func(referrers []ocispec.Descriptor) error) error {
-	return errors.New("")
-}
-
-type refLister struct {
-	referrers []ocispec.Descriptor
-	oras.ReadOnlyGraphTarget
-}
-
-func (m *refLister) Referrers(ctx context.Context, desc ocispec.Descriptor, artifactType string, fn func(referrers []ocispec.Descriptor) error) error {
-	return fn(m.referrers)
-}
-
-type predecessorFinder struct {
-	*memory.Store
-}
-
 type fetcher struct {
 	content.Fetcher
-}
-
-func TestReferrers(t *testing.T) {
-	ctx := context.Background()
-	var blobs [][]byte
-	var descs []ocispec.Descriptor
-	appendBlob := func(mediaType string, blob []byte) {
-		blobs = append(blobs, blob)
-		descs = append(descs, ocispec.Descriptor{
-			MediaType: mediaType,
-			Digest:    digest.FromBytes(blob),
-			Size:      int64(len(blob)),
-		})
-	}
-	generateImage := func(subject *ocispec.Descriptor, annotations map[string]string, config ocispec.Descriptor, layers ...ocispec.Descriptor) {
-		manifest := ocispec.Manifest{
-			Subject:     subject,
-			Config:      config,
-			Layers:      layers,
-			Annotations: annotations,
-		}
-		manifestJSON, err := json.Marshal(manifest)
-		if err != nil {
-			t.Fatal(err)
-		}
-		appendBlob(ocispec.MediaTypeImageManifest, manifestJSON)
-	}
-	generateIndex := func(manifests ...ocispec.Descriptor) {
-		index := ocispec.Index{
-			Manifests: manifests,
-		}
-		manifestJSON, err := json.Marshal(index)
-		if err != nil {
-			t.Fatal(err)
-		}
-		appendBlob(ocispec.MediaTypeImageIndex, manifestJSON)
-	}
-	const (
-		blob = iota
-		imgConfig
-		subject
-		image
-		index
-	)
-	anno := map[string]string{"test": "foo"}
-	appendBlob(ocispec.MediaTypeImageLayer, []byte("blob"))
-	imageType := "test.image"
-	appendBlob(imageType, []byte("config content"))
-	generateImage(nil, nil, descs[imgConfig], descs[blob])
-	generateImage(&descs[subject], anno, descs[imgConfig], descs[blob])
-	imageDesc := descs[image]
-	imageDesc.Annotations = anno
-	imageDesc.ArtifactType = imageType
-	generateIndex(descs[subject])
-
-	referrers := []ocispec.Descriptor{descs[image], descs[image]}
-	memory := memory.New()
-	for i := range descs {
-		if err := memory.Push(ctx, descs[i], bytes.NewReader(blobs[i])); err != nil {
-			t.Errorf("Error pushing %v\n", err)
-		}
-	}
-	finder := &predecessorFinder{Store: memory}
-
-	type args struct {
-		ctx          context.Context
-		target       oras.ReadOnlyGraphTarget
-		desc         ocispec.Descriptor
-		artifactType string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    []ocispec.Descriptor
-		wantErr bool
-	}{
-		{"should fail when a referrer lister failed to get referrers", args{ctx, &errLister{}, ocispec.Descriptor{}, ""}, nil, true},
-		{"should return referrers when target is a referrer lister", args{ctx, &refLister{referrers: referrers}, ocispec.Descriptor{}, ""}, referrers, false},
-		{"should return nil for index node", args{ctx, finder, descs[index], ""}, nil, false},
-		{"should return nil for config node", args{ctx, finder, descs[imgConfig], ""}, nil, false},
-		{"should return nil for blob/layer node", args{ctx, finder, descs[blob], ""}, nil, false},
-		{"should find filtered image referrer", args{ctx, finder, descs[subject], imageType}, []ocispec.Descriptor{imageDesc}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := Referrers(tt.args.ctx, tt.args.target, tt.args.desc, tt.args.artifactType)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Referrers() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Referrers() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-
-	t.Run("should find referrers in predecessors", func(t *testing.T) {
-		want := []ocispec.Descriptor{imageDesc}
-		got, err := Referrers(ctx, finder, descs[subject], "")
-		if err != nil {
-			t.Errorf("Referrers() error = %v", err)
-			return
-		}
-		if !reflect.DeepEqual(got, want) {
-			t.Errorf("Referrers() = %v, want %v", got, want)
-		}
-	})
 }
 
 func TestSuccessors(t *testing.T) {
