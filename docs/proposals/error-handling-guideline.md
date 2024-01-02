@@ -32,7 +32,7 @@ Last, error logs can also be useful for post-mortem debugging and can also be wr
 - Provide specific and actionable prompt message with argument suggestion or show the example usage for reference. (e.g, Instead of showing flag or argument options is missing, please provide available argument options and guide users to "--help" to view more examples)
 - If the actionable prompt message is too long to show in the CLI output, consider guide users to ORAS user manual or troubleshooting guide with the versioned permanent link
 - If the error message is not enough for troubleshooting, guide users to use "--verbose" to print much more detailed logs
-- If the error message from the server side is too generic or has no value, especially in a few edge cases like example 12 and 13 below, consider providing customized and trimmed error logs to make it clearer. The original server logs can be displayed in debug mode. 
+- If the error message from the server side is too generic or has no value, especially in a few edge cases like example 12 and 13 below, consider providing customized and trimmed error logs to make it clearer. The original server logs can be displayed in debug mode
 
 ### Don'Ts
 
