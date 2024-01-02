@@ -252,6 +252,8 @@ Error: /home/user/hello.txt: no such file or directory
 
 #### Example 12: failed to authenticate with registry using an error credential from credential store
 
+Current behavior and output:
+
 ```console
 $ oras pull localhost:7000/repo:tag --registry-config auth.config
 Error: failed to resolve tag: GET "http://localhost:7000/v2/repo/manifests/tag": credential required for basic auth
@@ -266,6 +268,8 @@ Please check whether the registry credential stored in the authentication file i
 ```
 
 #### Example 13: failed to resolve the digest with incorrect username or password
+
+Current behavior and output:
 
 ```console
 oras resolve localhost:7000/command/artifacts:foobar -u t -p 2
