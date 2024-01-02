@@ -20,7 +20,7 @@ Fourth, signal-to-noise ratio is crucial. The more irrelevant output you produce
 
 Fifth, CLI program termination should follow the standard [Exit Status conventions](https://www.gnu.org/software/libc/manual/html_node/Exit-Status.html) to report execution status information about success or failure. ORAS returns `EXIT_FAILURE` if and only if ORAS reports one or more errors.
 
-Last, error logs can also be useful for post-mortem debugging, truncate them occasionally so they don't eat up space on disk, and make sure they don't contain ansi color codes. Thereby, error logs can be written to a file.
+Last, error logs can also be useful for post-mortem debugging and can also be written to a file, truncate them occasionally and make sure they don't contain ansi color codes.
 
 ## Error output recommendation
 
@@ -128,7 +128,7 @@ Suggested error message:
 $ oras manifest push --oci-layout /sample/images:foobar:mediatype
 Error: media type is not recognized. 
 Usage: oras manifest push [flags] <name>[:<tag>[,<tag>][...]|@<digest>] <file>
-You need to specify a valid media type in the manifest JSON or via the "--media-type" flag.
+You need to specify a valid media type in the manifest JSON or via the "--media-type" flag
 ```
 
 #### Example 5: Attach an artifact if the given option is unknown
@@ -197,7 +197,7 @@ Suggested error message:
 ```console
 $ oras push --annotation "key:value" ghcr.io/library/alpine:3.9
 Error: annotation value doesn't match the required format.
-Try --annotation "key=value"  
+Please use the correct format in the flag: --annotation "key=value"  
 ```
 
 #### Example 9: When failed to pull files from a public registry
