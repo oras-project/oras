@@ -16,7 +16,14 @@ limitations under the License.
 package option
 
 import (
+	"errors"
+	"net/http"
+	"net/url"
+	"reflect"
 	"testing"
+
+	"oras.land/oras-go/v2/registry/remote/errcode"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 )
 
 func TestTarget_Parse_oci(t *testing.T) {
@@ -71,6 +78,116 @@ func Test_parseOCILayoutReference(t *testing.T) {
 			}
 			if got1 != tt.want1 {
 				t.Errorf("parseOCILayoutReference() got1 = %v, want %v", got1, tt.want1)
+			}
+		})
+	}
+}
+
+func TestTarget_Process_ociLayout(t *testing.T) {
+	errClient := errors.New("client error")
+	opts := &Target{
+		IsOCILayout: true,
+	}
+	if got := opts.Process(errClient, ""); got.Err != errClient || got.Recommendation != "" {
+		t.Errorf("unexpected output from Target.Process() = %v", got)
+	}
+}
+
+func TestTarget_Process_hint(t *testing.T) {
+	type fields struct {
+		Remote       Remote
+		RawReference string
+		Type         string
+		Reference    string
+		Path         string
+		IsOCILayout  bool
+	}
+	type args struct {
+		err      error
+		callPath string
+	}
+	errs := errcode.Errors{
+		errcode.Error{
+			Code:    "000",
+			Message: "mocked message",
+			Detail:  map[string]string{"mocked key": "mocked value"},
+		},
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   *oerrors.Error
+	}{
+		{
+			"namespace already exists",
+			fields{RawReference: "docker.io/library/alpine:latest"},
+			args{
+				err: &errcode.ErrorResponse{
+					URL:        &url.URL{Host: "registry-1.docker.io"},
+					StatusCode: http.StatusUnauthorized,
+					Errors:     errs,
+				},
+			},
+			&oerrors.Error{Err: errs},
+		},
+		{
+			"no namespace",
+			fields{RawReference: "docker.io"},
+			args{
+				err: &errcode.ErrorResponse{
+					URL:        &url.URL{Host: "registry-1.docker.io"},
+					StatusCode: http.StatusUnauthorized,
+					Errors:     errs,
+				},
+			},
+			&oerrors.Error{Err: errs},
+		},
+		{
+			"not 401",
+			fields{RawReference: "docker.io"},
+			args{
+				err: &errcode.ErrorResponse{
+					URL:        &url.URL{Host: "registry-1.docker.io"},
+					StatusCode: http.StatusConflict,
+					Errors:     errs,
+				},
+			},
+			&oerrors.Error{Err: errs},
+		},
+		{
+			"should hint",
+			fields{
+				RawReference: "docker.io/alpine",
+				Path:         "oras test",
+			},
+			args{
+				err: &errcode.ErrorResponse{
+					URL:        &url.URL{Host: "registry-1.docker.io"},
+					StatusCode: http.StatusUnauthorized,
+					Errors:     errs,
+				},
+				callPath: "oras test",
+			},
+			&oerrors.Error{
+				Err:            errs,
+				Recommendation: "Namespace is missing, do you mean `oras test docker.io/library/alpine`?",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := &Target{
+				Remote:       tt.fields.Remote,
+				RawReference: tt.fields.RawReference,
+				Type:         tt.fields.Type,
+				Reference:    tt.fields.Reference,
+				Path:         tt.fields.Path,
+				IsOCILayout:  tt.fields.IsOCILayout,
+			}
+			got := opts.Process(tt.args.err, tt.args.callPath)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Target.Process() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -276,7 +276,7 @@ func (opts *Target) Process(err error, callPath string) *oerrors.Error {
 		}
 
 		if ref.Registry == "docker.io" && errResp.URL.Host == ref.Host() && errResp.StatusCode == http.StatusUnauthorized {
-			if !strings.Contains(ref.Repository, "/") {
+			if ref.Repository != "" && !strings.Contains(ref.Repository, "/") {
 				// docker.io/xxx -> docker.io/library/xxx
 				ref.Repository = "library/" + ref.Repository
 				ret.Recommendation = fmt.Sprintf("Namespace is missing, do you mean `%s %s`?", callPath, ref)
