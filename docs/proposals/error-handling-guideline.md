@@ -28,10 +28,11 @@ Last, error logs can also be useful for post-mortem debugging and can also be wr
 
 - Provide full description if the user input does not match what ORAS CLI expected. A full description should include the actual input received from the user and expected input
 - Use the capital letter ahead of each line of any error message
-- Print human readable error message. If the error message is mainly from the server and varies by different servers, tell users that the error response is from server. This implies that users may need to contact server side for troubleshooting.
+- Print human readable error message. If the error message is mainly from the server and varies by different servers, tell users that the error response is from server. This implies that users may need to contact server side for troubleshooting
 - Provide specific and actionable prompt message with argument suggestion or show the example usage for reference. (e.g, Instead of showing flag or argument options is missing, please provide available argument options and guide users to "--help" to view more examples)
-- If the actionable prompt message is too long to show in the CLI output, consider guide users to ORAS user guide or troubleshooting guide with the permanent link.
+- If the actionable prompt message is too long to show in the CLI output, consider guide users to ORAS user manual or troubleshooting guide with the versioned permanent link
 - If the error message is not enough for troubleshooting, guide users to use "--verbose" to print much more detailed logs
+- If the error message from the server side is too generic or has no value, especially in a few edge cases like example 12 and 13 below, consider providing customized and trimmed error logs to make it clearer. The original server logs can be displayed in debug mode. 
 
 ### Don'Ts
 
@@ -247,6 +248,38 @@ Suggested error message:
 ```console
 $ oras push localhost:5000/oras:v1 hello.txt
 Error: /home/user/hello.txt: no such file or directory
+```
+
+#### Example 12: failed to authenticate with registry using an error credential from credential store
+
+```console
+$ oras pull localhost:7000/repo:tag --registry-config auth.config
+Error: failed to resolve tag: GET "http://localhost:7000/v2/repo/manifests/tag": credential required for basic auth
+```
+
+Suggested error message:
+
+```console
+$ oras pull localhost:7000/repo:tag --registry-config auth.config
+Error: pulling content from localhost:7000/repo:tag failed with status: 401 Unauthorized
+Please check whether the registry credential stored in the authentication file is correct
+```
+
+#### Example 13: failed to resolve the digest with incorrect username or password
+
+```console
+oras resolve localhost:7000/command/artifacts:foobar -u t -p 2
+WARNING! Using --password via the CLI is insecure. Use --password-stdin.
+Error response from registry: <nil>
+```
+
+Suggested error message:
+
+```console
+oras resolve localhost:7000/command/artifacts:foobar -u t -p 2
+WARNING! Using --password via the CLI is insecure. Use --password-stdin.
+Error: resolving the digest of artifact localhost:7000/command/artifacts:foobar failed with status: 401 Unauthorized
+Please use correct username or password
 ```
 
 ## Reference
