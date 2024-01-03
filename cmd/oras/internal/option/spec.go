@@ -27,6 +27,10 @@ import (
 const (
 	ImageSpecV1_1 = "v1.1"
 	ImageSpecV1_0 = "v1.0"
+
+	// Explicit RC versions for expanded compatibility testing during spec development
+	ImageSpecV1_1_RC2 = "v1.1.0-rc2"
+	ImageSpecV1_1_RC4 = "v1.1.0-rc4"
 )
 
 const (
@@ -44,8 +48,10 @@ type ImageSpec struct {
 func (is *ImageSpec) Set(value string) error {
 	is.flag = value
 	switch value {
-	case ImageSpecV1_1:
+	case ImageSpecV1_1, ImageSpecV1_1_RC4:
 		is.PackVersion = oras.PackManifestVersion1_1_RC4
+	case ImageSpecV1_1_RC2:
+		is.PackVersion = oras.PackManifestVersion1_1_RC2
 	case ImageSpecV1_0:
 		is.PackVersion = oras.PackManifestVersion1_0
 	default:
@@ -67,6 +73,9 @@ func (is *ImageSpec) Options() string {
 	return strings.Join([]string{
 		ImageSpecV1_1,
 		ImageSpecV1_0,
+		// release candidates, to be removed when minor version is GA
+		ImageSpecV1_1_RC2,
+		ImageSpecV1_1_RC4,
 	}, ", ")
 }
 

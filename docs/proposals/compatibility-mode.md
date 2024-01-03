@@ -16,12 +16,17 @@ This document elaborates on the major changes of ORAS CLI v1.1.0 proposed in [is
 
 Using the following flags in `oras push` and `oras attach` respectively with different variables to configure the manifest build and distribution behaviors. 
 
-- Using a flag `--image-spec` with `oras push`
+- Using a flag `--image-spec` with `oras push` and `oras attach` to configure image specification compatibility.
 - Using a flag `--distribution-spec` with `oras attach`, `oras cp`, and `oras manifest push` to configure compatibility with registry when pushing or copying an OCI image manifest. This flag is also applicable to `oras discover` for viewing and filtering the referrers.
 
 ### Build and push OCI image manifest using a flag `--image-spec`
 
-Use the flag `--image-spec <spec version>` in `oras push` to specify which version of the OCI Image-spec when building and pushing an OCI image manifest. It supports specifying the option `v1.0` or `v1.1` as the spec version. The option `v1.1` is the default behavior in `oras push` since ORAS CLI v1.1.0 so users don't need to manually specify this option.
+Use the flag `--image-spec <spec version>` in `oras push` and `oras attach` to specify which version of the OCI Image specification to use when building and pushing an OCI image manifest. Supported minor versions are `v1.1` (default) and `v1.0`. The v1.1 release candidate versions `v1.1.0-rc4` and `v1.1.0-rc2` are also supported.
+
+For `oras push`, `v1.0` or `v1.1` are supported spec version options. The `v1.0` option is not supported for `oras attach`. With ORAS CLI v1.1.0, `v1.1` is the default version for both commands so users don't need to manually specify this option.
+
+
+During OCI specification development, release candidate versions (e.g. `v1.1.0-rc4`) may also be included in the supported values for `--image-spec`. These are not stable, and likely to be removed when the version of the specification under test is GA. Note supported values may include deprecated RC versions to expand testing compatibility. 1.1.0 release candidate versions `v1.1.0-rc4` and `v1.1.0-rc2` are currently supported.
 
 If users want to build an OCI image manifest to a registry that compliant with OCI Spec v1.0, they can specify `--image-spec v1.0`. An OCI image manifest that conforms the OCI Image-spec v1.0.2 will be packed and uploaded. For example
 

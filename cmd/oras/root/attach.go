@@ -37,6 +37,7 @@ import (
 type attachOptions struct {
 	option.Common
 	option.Packer
+	option.ImageSpec
 	option.Target
 
 	artifactType string
@@ -57,6 +58,9 @@ Example - Attach file 'hi.txt' with aritifact type 'doc/example' to manifest 'he
 
 Example - Push file "hi.txt" with the custom layer media type 'application/vnd.me.hi':
   oras attach --artifact-type doc/example localhost:5000/hello:v1 hi.txt:application/vnd.me.hi
+
+Example - Attach file "hi.txt" with specific image spec release candidate for testing during spec development (default v1.1):
+  oras attach --artifact-type doc/example --image-spec v1.1.0-rc2 localhost:5000/hello:v1 hi.txt 
 
 Example - Attach file "hi.txt" using a specific method for the Referrers API:
   oras attach --artifact-type doc/example --distribution-spec v1.1-referrers-api localhost:5000/hello:v1 hi.txt # via API
@@ -149,8 +153,21 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 		ManifestAnnotations: annotations[option.AnnotationManifest],
 		Layers:              descs,
 	}
+
 	pack := func() (ocispec.Descriptor, error) {
-		return oras.PackManifest(ctx, store, oras.PackManifestVersion1_1_RC4, opts.artifactType, packOpts)
+		switch opts.PackVersion {
+		case oras.PackManifestVersion1_0:
+			return ocispec.Descriptor{}, errors.New("image-spec v1.0 is not supported")
+		case oras.PackManifestVersion1_1_RC2:
+			return oras.Pack(ctx, store, opts.artifactType, packOpts.Layers, oras.PackOptions{
+				Subject:             packOpts.Subject,
+				ManifestAnnotations: packOpts.ManifestAnnotations,
+				PackImageManifest:   true,
+			})
+		default:
+			// default oras.PackManifestVersion1_1_RC4
+			return oras.PackManifest(ctx, store, opts.PackVersion, opts.artifactType, packOpts)
+		}
 	}
 
 	copy := func(root ocispec.Descriptor) error {
