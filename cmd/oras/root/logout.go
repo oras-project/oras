@@ -21,6 +21,8 @@ import (
 	credentials "github.com/oras-project/oras-credentials-go"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"oras.land/oras/cmd/oras/internal/argument"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/internal/credential"
 )
 
@@ -41,7 +43,7 @@ func logoutCmd() *cobra.Command {
 Example - Logout:
   oras logout localhost:5000
 `,
-		Args: cobra.ExactArgs(1),
+		Args: oerrors.CheckArgs(argument.Exactly(1), "the registry you want to log out"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.hostname = args[0]
 			return runLogout(cmd.Context(), opts)

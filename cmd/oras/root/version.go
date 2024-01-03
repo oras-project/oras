@@ -17,6 +17,7 @@ package root
 
 import (
 	"fmt"
+	"os"
 	"runtime"
 	"strings"
 
@@ -34,7 +35,15 @@ func versionCmd() *cobra.Command {
 Example - print version:
   oras version
 `,
-		Args: cobra.NoArgs,
+		Args: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 0 {
+				_, err := fmt.Fprintf(os.Stderr, "warning: `oras version` requires no argument, %q will be ignored\n", strings.Join(args, ","))
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runVersion()
 		},

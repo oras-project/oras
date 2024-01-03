@@ -64,6 +64,26 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("attach", "--artifact-type", "oras/test", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--distribution-spec", "???").
 				ExpectFailure().MatchErrKeyWords("unknown distribution specification flag").Exec()
 		})
+
+		It("should fail and show detailed error description if no argument provided", func() {
+			err := ORAS("attach").ExpectFailure().Exec().Err
+			gomega.Expect(err).Should(gbytes.Say("Error"))
+			gomega.Expect(err).Should(gbytes.Say("\nUsage: oras attach"))
+			gomega.Expect(err).Should(gbytes.Say("\n"))
+			gomega.Expect(err).Should(gbytes.Say(`Run "oras attach -h"`))
+		})
+
+		It("should fail if distribution spec is not valid", func() {
+			testRepo := attachTestRepo("invalid-image-spec")
+			CopyZOTRepo(ImageRepo, testRepo)
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			invalidFlag := "???"
+			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), Flags.DistributionSpec, invalidFlag).
+				ExpectFailure().
+				WithWorkDir(PrepareTempFiles()).
+				MatchErrKeyWords("Error:", invalidFlag, "Available options: v1.1-referrers-tag, v1.1-referrers-api").
+				Exec()
+		})
 	})
 })
 

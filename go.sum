@@ -39,7 +39,5 @@ gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
-oras.land/oras-go/v2 v2.3.1-0.20231026053328-062ed0e058f8 h1:MOs3GufGAl0KY0e19iZ0aYjFQFSFqY9+a/Elt8ThzdI=
-oras.land/oras-go/v2 v2.3.1-0.20231026053328-062ed0e058f8/go.mod h1:5AQXVEu1X/FKp1F9DMOb5ZItZBOa0y5dha0yCm4NR9c=
-oras.land/oras-go/v2 v2.3.1-0.20231121114731-79a08b452e76 h1:U3oxpjdj2zkw35OjhBaa7xLloGXPPGjwpC8Czp5+zTk=
-oras.land/oras-go/v2 v2.3.1-0.20231121114731-79a08b452e76/go.mod h1:W2rj9/rGtsTh9lmU3S0uq3iwvR6wNvUuD8nmOFmWBUY=
+oras.land/oras-go/v2 v2.3.1-0.20231227022511-1d9ad6c409b3 h1:cF1ErV93cAw4i5/MNF4pW6ULHa27ig3oYGlxouzymY8=
+oras.land/oras-go/v2 v2.3.1-0.20231227022511-1d9ad6c409b3/go.mod h1:W2rj9/rGtsTh9lmU3S0uq3iwvR6wNvUuD8nmOFmWBUY=
