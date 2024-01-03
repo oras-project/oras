@@ -93,7 +93,7 @@ oras manifest fetch $REGISTRY/$REPO:$TAG --format json
 
 > [!NOTE]
 > - The formatted output of `oras manifest fetch` only supports OCI/Docker Image Manifest in this release. [OCI image index](https://github.com/opencontainers/image-spec/blob/v1.1.0-rc5/image-index.md) and other media types of artifact will be supported in future releases.
-> - In general, in the prettified JSON format, the first letter of all output fields are supposed to be upper case except for `oras manifest fetch`. It's appropriate to pretty print the raw JSON only when using the flag `--format json` with `oras manifest fetch` because the default output is raw JSON format.
+> - In general, when use the flag `--format json` to print the prettified JSON format, the first letter of all output fields are supposed to be upper case except for `oras manifest fetch`, because the default output of this command is raw JSON format. Pretty print the raw JSON makes the output readable and doesn't break the default output.
 
 ## Scenarios
 
@@ -323,4 +323,6 @@ oras discover localhost:5000/hello:v1 --format json
 
 **Q:** What is the difference of prettified JSON and raw JSON?
 
-In the context of ORAS output, raw JSON means display the output of ORAS command in the string format, while prettified JSON means display the output of ORAS command in a pretty format.
+In the context of ORAS output, raw JSON means display the output of ORAS command in the JSON string format, while prettified JSON means display the output of ORAS command in a pretty format. Only necessary fields will be displayed in the formatted JSON output. See examples in the [oras pull](#oras-pull) section.
+
+In general, when use the flag `--format` to print the prettified JSON format, the first letter of all output fields are supposed to be upper case except for `oras manifest fetch`.
