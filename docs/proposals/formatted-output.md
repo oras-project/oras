@@ -32,7 +32,7 @@ Provide two major options to enable users to define the output format of ORAS co
 > [!NOTE]
 > - `--output -` and `--format` can not be used at the same time due to conflicts.
 
-See sample use cases of formatted output for `oras manifest fetch`:
+See example use cases of formatted output for `oras manifest fetch`:
 
 - If user doesn't specify `--format` flag, the default output should be raw JSON data. This is the current behavior of `oras manifest fetch`.
 
@@ -187,9 +187,9 @@ oras pull $REGISTRY/$REPO:$TAG --artifact-type example/sbom sbom.spdx  --artifac
 ```
 
 > [!NOTE]
-> When pulling a folder to filesystem, the value of `Path` should be an absolute path of the folder and should be end with slash `/` or backslash `\`, for example, `/home/Bob/sample-folder/` on Unix or `C:\Users\Bob\sample-folder\` on Windows. Other fields are the same as the example of pulling files as above.
+> When pulling a folder to filesystem, the value of `Path` should be an absolute path of the folder and should be ended with slash `/` or backslash `\`, for example, `/home/Bob/sample-folder/` on Unix or `C:\Users\Bob\sample-folder\` on Windows. Other fields are the same as the example of pulling files as above.
 
-For example, pull an artifact that contains multiple layers (files) and show their descriptor metadata as raw JSON as standard output.
+For example, pull an artifact that contains multiple layers (files) and show their descriptor metadata as raw JSON in the standard output.
 
 ```bash
 oras pull $REGISTRY/$REPO:$TAG --format '{{toRawJson .}}'
