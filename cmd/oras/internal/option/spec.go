@@ -133,5 +133,5 @@ func (ds *DistributionSpec) String() string {
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
 func (ds *DistributionSpec) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
 	flagPrefix, notePrefix := applyPrefix(prefix, description)
-	fs.Var(ds, flagPrefix+"distribution-spec", fmt.Sprintf("[Preview] set OCI distribution spec version and API option for "+notePrefix+"target. Options: ", ds.Options()))
+	fs.Var(ds, flagPrefix+"distribution-spec", fmt.Sprintf("[Preview] set OCI distribution spec version and API option for %starget. Options: %s", notePrefix, ds.Options()))
 }
