@@ -8,7 +8,7 @@ A clear and actionable error message is very important when raising an error, so
 
 First and foremost, make the error messages descriptive and informative. Error messages are expected to be helpful to troubleshoot where the user has done something wrong and the program is guiding them in the right direction. A great error message is recommended to contain the following elements:
 
-- Status code: optional, when the logs are generated from the server side, it's recommended to print the status code in the error description
+- HTTP status code: optional, when the logs are generated from the server side, it's recommended to print the HTTP status code in the error description
 - Error description: describe what the error is
 - Suggestion: for those errors that have potential solution, print out the recommended solution. Versioned troubleshooting document link is nice to have
 
@@ -47,12 +47,12 @@ Last, error logs can also be useful for post-mortem debugging and can also be wr
 Here is a sample structure of an error message:
 
 ```text
-{Error|Error response from registry}: {Error description (status code can be printed out if any)}
+{Error|Error response from registry}: {Error description (HTTP status code can be printed out if any)}
 [Usage: {Command usage}]
 [{Recommended solution}]
 ```
 
-- Status code is an optional information. Printed out the status code if the error message is generated from the server side. 
+- HTTP status code is an optional information. Printed out the HTTP status code if the error message is generated from the server side. 
 - Command usage is also an optional information but it's recommended to be printed out when user input doesn't follow the standard usage or examples.
 - Recommended solution (if any) should follow the general guiding principles described above.
 
@@ -283,7 +283,7 @@ Suggested error message:
 oras resolve localhost:7000/command/artifacts:foobar -u t -p 2
 WARNING! Using --password via the CLI is insecure. Use --password-stdin.
 Error: resolving the digest of artifact localhost:7000/command/artifacts:foobar failed with status: 401 Unauthorized
-Please use correct username or password
+Authentication failed. Please verify your login credentials and try again.
 ```
 
 ## Reference
