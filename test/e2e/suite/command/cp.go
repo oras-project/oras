@@ -82,7 +82,7 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("cp", src, Flags.ToLayout, dst).MatchErrKeyWords(RegistryErrorPrefix).ExpectFailure().Exec()
 		})
 
-		It("should fail and show registry error prefix if target registry is not logged in", Focus, func() {
+		It("should fail and show registry error prefix if target registry is not logged in", func() {
 			src := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
 			dst := RegistryRef(ZOTHost, cpTestRepo("dest-not-logged-in"), "")
 			ORAS("cp", src, dst, "--to-username", Username, "--to-password", Password+"?").
