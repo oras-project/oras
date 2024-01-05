@@ -17,9 +17,11 @@ package errors
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/registry"
+	"oras.land/oras-go/v2/registry/remote/errcode"
 )
 
 // RegistryErrorPrefix is the commandline prefix for errors from registry.
@@ -90,6 +92,23 @@ func Command(cmd *cobra.Command, handler Handler) *cobra.Command {
 		return processor.Process(err, cmd.CommandPath())
 	}
 	return cmd
+}
+
+// GetInnerError gets the inner error from the error response.
+// nil is returned if no valid inner error is found.
+func GetInnerError(err error, errResp *errcode.ErrorResponse) error {
+	inner := errResp.Errors
+	if len(inner) == 0 {
+		return fmt.Errorf("empty response body: %w", errResp)
+	} else {
+		errContent := err.Error()
+		errRespContent := errResp.Error()
+		if idx := strings.Index(errContent, errRespContent); idx > 0 {
+			// remove HTTP related info
+			return fmt.Errorf("%s: %w", errContent[:idx], errResp)
+		}
+	}
+	return nil
 }
 
 // NewErrEmptyTagOrDigest creates a new error based on the reference string.

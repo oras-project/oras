@@ -339,7 +339,7 @@ func (opts *Remote) Handle(err error, cmd *cobra.Command) (oerrors.Processor, er
 	var errResp *errcode.ErrorResponse
 	if errors.As(err, &errResp) {
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
-		return opts, errResp
+		return opts, err
 	}
 	return nil, err
 }
@@ -349,9 +349,11 @@ func (opts *Remote) Process(err error, _ string) *oerrors.Error {
 	ret := oerrors.Error{
 		Err: err,
 	}
-	if errResp, ok := err.(*errcode.ErrorResponse); ok {
-		// remove HTTP related info
-		ret.Err = errResp.Errors
+	var errResp *errcode.ErrorResponse
+	if errors.As(err, &errResp) {
+		if innerErr := oerrors.GetInnerError(err, errResp); innerErr != nil {
+			ret.Err = innerErr
+		}
 	}
 	return &ret
 }
