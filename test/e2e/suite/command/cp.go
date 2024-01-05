@@ -57,7 +57,7 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		It("should fail when source doesn't exist", func() {
-			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, InvalidTag), RegistryRef(ZOTHost, cpTestRepo("nonexistent-source"), "")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, InvalidTag), RegistryRef(ZOTHost, cpTestRepo("nonexistent-source"), "")).ExpectFailure().MatchErrKeyWords(InvalidTag).Exec()
 		})
 
 		It("should fail and show detailed error description if no argument provided", func() {
