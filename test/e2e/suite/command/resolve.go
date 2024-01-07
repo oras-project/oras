@@ -47,7 +47,13 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("resolve", RegistryRef(ZOTHost, ImageRepo, "")).ExpectFailure().MatchErrKeyWords("Error:", "no tag or digest when expecting <name:tag|name@digest>").Exec()
 		})
 		It("should fail when provided manifest reference is not found", func() {
-			ORAS("resolve", RegistryRef(ZOTHost, ImageRepo, InvalidTag)).ExpectFailure().MatchErrKeyWords(RegistryErrorPrefix, "failed to resolve digest:", "not found").Exec()
+			ORAS("resolve", RegistryRef(ZOTHost, ImageRepo, "i-dont-think-this-tag-exists")).ExpectFailure().MatchErrKeyWords("Error: failed to resolve digest:", "not found").Exec()
+		})
+		It("should fail with empty response when returned response doesn't have body", func() {
+			ORAS("resolve", RegistryRef(ZOTHost, ImageRepo, InvalidTag), "-u", Username, "-p", Password+"1").
+				ExpectFailure().
+				MatchErrKeyWords(RegistryErrorPrefix, EmptyBodyPrefix, "response status code 401: Unauthorized").
+				Exec()
 		})
 
 		It("should fail and show detailed error description if no argument provided", func() {

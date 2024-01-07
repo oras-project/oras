@@ -265,7 +265,9 @@ func (opts *Target) Process(err error, callPath string) *oerrors.Error {
 	if opts.IsOCILayout {
 		return &ret
 	}
-	if errResp, ok := err.(*errcode.ErrorResponse); ok {
+
+	var errResp *errcode.ErrorResponse
+	if errors.As(err, &errResp) {
 		// remove HTTP related info
 		if innerErr := oerrors.GetInnerError(err, errResp); innerErr != nil {
 			ret.Err = innerErr
