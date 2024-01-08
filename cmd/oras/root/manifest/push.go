@@ -102,7 +102,7 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 	option.ApplyFlags(&opts, cmd.Flags())
 	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", "", "media type of manifest")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
 func pushManifest(ctx context.Context, opts pushOptions) error {

@@ -49,6 +49,23 @@ var _ = Describe("Common registry user", func() {
 		})
 	})
 
+	When("credential is invalid", func() {
+		It("should fail with registry error", func() {
+			RunWithInvalidCreds("attach", ZOTHost+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
+			RunWithInvalidCreds("discover", ZOTHost+"/repo:tag")
+			RunWithInvalidCreds("push", "-a", "key=value", ZOTHost+"/repo:tag")
+			RunWithInvalidCreds("pull", ZOTHost+"/repo:tag")
+			RunWithInvalidCreds("manifest", "fetch", ZOTHost+"/repo:tag")
+			RunWithInvalidCreds("blob", "delete", ZOTHost+"/repo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+			RunWithInvalidCreds("blob", "push", ZOTHost+"/repo", WriteTempFile("blob", "test"))
+			RunWithInvalidCreds("tag", ZOTHost+"/repo:tag", "tag1")
+			RunWithInvalidCreds("resolve", ZOTHost+"/repo:tag")
+			RunWithInvalidCreds("repo", "ls", ZOTHost)
+			RunWithInvalidCreds("repo", "tags", RegistryRef(ZOTHost, "repo", ""))
+			RunWithInvalidCreds("manifest", "fetch-config", ZOTHost+"/repo:tag")
+		})
+	})
+
 	When("logging in", func() {
 		tmpConfigName := "test.config"
 		It("should succeed to use basic auth", func() {
@@ -136,4 +153,10 @@ func RunWithoutLogin(args ...string) {
 	ORAS(args...).ExpectFailure().
 		MatchErrKeyWords("Error:", "credential required").
 		WithDescription("fail without logging in").Exec()
+}
+
+func RunWithInvalidCreds(args ...string) {
+	ORAS(append(args, "-u", Username, "-p", Password+"1")...).ExpectFailure().
+		MatchErrKeyWords(RegistryErrorPrefix).
+		WithDescription("fail with invalid credentials").Exec()
 }

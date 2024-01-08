@@ -89,7 +89,7 @@ Example - Fetch and print a blob from OCI image layout archive file 'layout.tar'
 
 	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "output file `path`, use - for stdout")
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
 func fetchBlob(ctx context.Context, opts fetchBlobOptions) (fetchErr error) {

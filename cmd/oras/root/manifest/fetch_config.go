@@ -84,7 +84,7 @@ Example - Fetch and print the prettified descriptor of the config:
 
 	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "file `path` to write the fetched config to, use - for stdout")
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
 func fetchConfig(ctx context.Context, opts fetchConfigOptions) (fetchErr error) {

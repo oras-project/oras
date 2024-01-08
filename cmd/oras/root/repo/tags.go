@@ -76,7 +76,7 @@ Example - [Experimental] Show tags associated with a digest:
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the tag specified by `last`")
 	cmd.Flags().BoolVar(&opts.excludeDigestTag, "exclude-digest-tags", false, "[Preview] exclude all digest-like tags such as 'sha256-aaaa...'")
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
 func showTags(ctx context.Context, opts showTagsOptions) error {

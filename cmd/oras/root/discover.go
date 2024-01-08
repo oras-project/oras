@@ -89,7 +89,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 	cmd.Flags().StringVarP(&opts.outputType, "output", "o", "table", "format in which to display referrers (table, json, or tree). tree format will also show indirect referrers")
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
 func runDiscover(ctx context.Context, opts discoverOptions) error {
