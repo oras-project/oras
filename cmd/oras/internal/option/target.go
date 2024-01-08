@@ -245,7 +245,6 @@ func (opts *Target) EnsureReferenceNotEmpty() error {
 
 // Handle handles error during cmd execution.
 func (opts *Target) Handle(err error, cmd *cobra.Command) (oerrors.Processor, error) {
-	// handle registry error
 	if opts.IsOCILayout {
 		return nil, err
 	}
@@ -268,9 +267,7 @@ func (opts *Target) Process(err error, callPath string) *oerrors.Error {
 
 	var errResp *errcode.ErrorResponse
 	if errors.As(err, &errResp) {
-		// remove HTTP related info
 		ret.Err = oerrors.GetInner(err, errResp)
-
 		ref, parseErr := registry.ParseReference(opts.RawReference)
 		if parseErr != nil {
 			// this should not happen
