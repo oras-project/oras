@@ -68,10 +68,10 @@ var _ = Describe("ORAS beginners:", func() {
 				ORAS("repository", "show-tags", "--help").MatchKeyWords(ExampleDesc).Exec()
 			})
 
-			It("should fail listing repositories if wrong registry provided", func() {
+			It("should fail listing repositories if wrong reference provided", func() {
 				ORAS("repo", "tags").ExpectFailure().MatchErrKeyWords("Error:").Exec()
-				ORAS("repo", "tags", ZOTHost).ExpectFailure().MatchErrKeyWords(RegistryErrorPrefix).Exec()
-				ORAS("repo", "tags", RegistryRef(ZOTHost, ImageRepo, "some-tag")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+				ORAS("repo", "tags", ZOTHost).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+				ORAS("repo", "tags", RegistryRef(ZOTHost, ImageRepo, "some-tag")).ExpectFailure().MatchErrKeyWords(RegistryErrorPrefix).Exec()
 			})
 
 			It("should fail and show detailed error description if no argument provided", func() {
