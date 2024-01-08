@@ -105,10 +105,10 @@ func GetInnerError(err error, errResp *errcode.ErrorResponse) error {
 		errRespContent := errResp.Error()
 		if idx := strings.Index(errContent, errRespContent); idx > 0 {
 			// remove HTTP related info
-			return fmt.Errorf("%s: %w", errContent[:idx], errResp)
+			return fmt.Errorf("%s: %w", errContent[:idx], inner)
 		}
 	}
-	return nil
+	return inner
 }
 
 // NewErrEmptyTagOrDigest creates a new error based on the reference string.
