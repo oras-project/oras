@@ -557,7 +557,7 @@ var _ = Describe("1.0 registry users:", func() {
 		It("should fail to fetch image if media type assertion fails", func() {
 			ORAS("manifest", "fetch", RegistryRef(FallbackHost, ImageRepo, multi_arch.LinuxAMD64.Digest.String()), "--media-type", "this.will.not.be.found").
 				ExpectFailure().
-				MatchErrKeyWords(multi_arch.LinuxAMD64.Digest.String(), "error: ", "not found").Exec()
+				MatchErrKeyWords(multi_arch.LinuxAMD64.Digest.String(), RegistryErrorPrefix, "not found").Exec()
 		})
 	})
 
