@@ -95,7 +95,7 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCopy(cmd.Context(), opts)
+			return runCopy(cmd, opts)
 		},
 	}
 	cmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "[Preview] recursively copy the artifact and its referrer artifacts")
@@ -105,15 +105,15 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 	return oerrors.Command(cmd, &opts.BinaryTarget)
 }
 
-func runCopy(ctx context.Context, opts copyOptions) error {
-	ctx, logger := opts.WithContext(ctx)
+func runCopy(cmd *cobra.Command, opts copyOptions) error {
+	ctx, logger := opts.WithContext(cmd.Context())
 
 	// Prepare source
 	src, err := opts.From.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
 		return err
 	}
-	if err := opts.From.EnsureReferenceNotEmpty(); err != nil {
+	if err := opts.EnsureSourceTargetReferenceNotEmpty(cmd); err != nil {
 		return err
 	}
 
