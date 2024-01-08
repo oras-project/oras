@@ -269,9 +269,7 @@ func (opts *Target) Process(err error, callPath string) *oerrors.Error {
 	var errResp *errcode.ErrorResponse
 	if errors.As(err, &errResp) {
 		// remove HTTP related info
-		if innerErr := oerrors.GetInnerError(err, errResp); innerErr != nil {
-			ret.Err = innerErr
-		}
+		ret.Err = oerrors.GetInner(err, errResp)
 
 		ref, parseErr := registry.ParseReference(opts.RawReference)
 		if parseErr != nil {

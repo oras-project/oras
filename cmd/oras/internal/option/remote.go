@@ -351,9 +351,7 @@ func (opts *Remote) Process(err error, _ string) *oerrors.Error {
 	}
 	var errResp *errcode.ErrorResponse
 	if errors.As(err, &errResp) {
-		if innerErr := oerrors.GetInnerError(err, errResp); innerErr != nil {
-			ret.Err = innerErr
-		}
+		ret.Err = oerrors.GetInner(err, errResp)
 	}
 	return &ret
 }

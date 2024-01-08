@@ -94,9 +94,9 @@ func Command(cmd *cobra.Command, handler Handler) *cobra.Command {
 	return cmd
 }
 
-// GetInnerError gets the inner error from the error response.
+// GetInner gets the inner error from the error response.
 // nil is returned if no valid inner error is found.
-func GetInnerError(err error, errResp *errcode.ErrorResponse) error {
+func GetInner(err error, errResp *errcode.ErrorResponse) error {
 	inner := errResp.Errors
 	if len(inner) == 0 {
 		return fmt.Errorf("empty response body: %w", errResp)
