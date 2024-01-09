@@ -47,7 +47,7 @@ const (
 
 // Target struct contains flags and arguments specifying one registry or image
 // layout.
-// Target implements oerrors.Handler and oerrors.Processor interface.
+// Target implements oerrors.Handler interface.
 type Target struct {
 	Remote
 	RawReference string

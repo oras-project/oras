@@ -46,7 +46,7 @@ import (
 )
 
 // Remote options struct contains flags and arguments specifying one registry.
-// Remote implements oerrors.Handler and oerrors.Processor interface.
+// Remote implements oerrors.Handler and interface.
 type Remote struct {
 	DistributionSpec
 	CACertFilePath    string
