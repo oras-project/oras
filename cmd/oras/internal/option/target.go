@@ -32,6 +32,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/errcode"
@@ -244,45 +245,35 @@ func (opts *Target) EnsureReferenceNotEmpty() error {
 }
 
 // Handle handles error during cmd execution.
-func (opts *Target) Handle(err error, cmd *cobra.Command) (oerrors.Processor, error) {
+func (opts *Target) Handle(err error, cmd *cobra.Command) error {
 	if opts.IsOCILayout {
-		return nil, err
+		return nil
 	}
-
-	processor, err := opts.Remote.Handle(err, cmd)
-	if processor != nil {
-		processor = opts
-	}
-	return processor, err
-}
-
-// Process processes error into oerrors.Error.
-func (opts *Target) Process(err error, callPath string) *oerrors.Error {
-	ret := oerrors.Error{
+	ret := &oerrors.Error{
 		Err: err,
-	}
-	if opts.IsOCILayout {
-		return &ret
 	}
 
 	var errResp *errcode.ErrorResponse
-	if errors.As(err, &errResp) {
+	if errors.Is(err, errdef.ErrNotFound) {
+		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
+	} else if errors.As(err, &errResp) {
+		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
 		ret.Err = oerrors.GetInner(err, errResp)
 		ref, parseErr := registry.ParseReference(opts.RawReference)
 		if parseErr != nil {
 			// this should not happen
-			return &ret
+			return ret
 		}
 
 		if ref.Registry == "docker.io" && errResp.URL.Host == ref.Host() && errResp.StatusCode == http.StatusUnauthorized {
 			if ref.Repository != "" && !strings.Contains(ref.Repository, "/") {
 				// docker.io/xxx -> docker.io/library/xxx
 				ref.Repository = "library/" + ref.Repository
-				ret.Recommendation = fmt.Sprintf("Namespace is missing, do you mean `%s %s`?", callPath, ref)
+				ret.Recommendation = fmt.Sprintf("Namespace is missing, do you mean `%s %s`?", cmd.CommandPath(), ref)
 			}
 		}
 	}
-	return &ret
+	return ret
 }
 
 // BinaryTarget struct contains flags and arguments specifying two registries or
@@ -318,13 +309,9 @@ func (opts *BinaryTarget) Parse() error {
 }
 
 // Handle handles error during cmd execution.
-func (opts *BinaryTarget) Handle(err error, cmd *cobra.Command) (oerrors.Processor, error) {
-	if processor, err := opts.From.Handle(err, cmd); processor != nil {
-		if errResp, ok := err.(*errcode.ErrorResponse); ok {
-			if ref, _ := registry.ParseReference(opts.From.RawReference); errResp.URL.Host == ref.Host() {
-				return processor, err
-			}
-		}
+func (opts *BinaryTarget) Handle(err error, cmd *cobra.Command) error {
+	if err := opts.From.Handle(err, cmd); err != nil {
+		return err
 	}
 	return opts.To.Handle(err, cmd)
 }

@@ -68,13 +68,8 @@ func CheckArgs(checker func(args []string) (bool, string), Usage string) cobra.P
 // Handler handles error during cmd execution.
 type Handler interface {
 	// Handle handles error during cmd execution.
-	// If returned processor is nil, error requires no further processing.
-	Handle(err error, cmd *cobra.Command) (Processor, error)
-}
-
-// Processor processes error.
-type Processor interface {
-	Process(err error, callPath string) *Error
+	// if nil is returned, then err cannot be handled.
+	Handle(err error, cmd *cobra.Command) error
 }
 
 // Command returns an error-handled cobra command.
@@ -85,11 +80,10 @@ func Command(cmd *cobra.Command, handler Handler) *cobra.Command {
 		if err == nil {
 			return nil
 		}
-		processor, err := handler.Handle(err, cmd)
-		if processor == nil {
-			return err
+		if handled := handler.Handle(err, cmd); handled != nil {
+			return handled
 		}
-		return processor.Process(err, cmd.CommandPath())
+		return err
 	}
 	return cmd
 }

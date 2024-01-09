@@ -328,30 +328,16 @@ func (opts *Remote) isPlainHttp(registry string) bool {
 }
 
 // Handle handles error during cmd execution.
-func (opts *Remote) Handle(err error, cmd *cobra.Command) (oerrors.Processor, error) {
-	// handle not found error from registry
+func (opts *Remote) Handle(err error, cmd *cobra.Command) error {
+	var errResp *errcode.ErrorResponse
 	if errors.Is(err, errdef.ErrNotFound) {
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
-		return opts, err
-	}
-
-	// handle error response
-	var errResp *errcode.ErrorResponse
-	if errors.As(err, &errResp) {
+		return err
+	} else if errors.As(err, &errResp) {
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
-		return opts, err
+		return &oerrors.Error{
+			Err: oerrors.GetInner(err, errResp),
+		}
 	}
-	return nil, err
-}
-
-// Process processes error into oerrors.Error.
-func (opts *Remote) Process(err error, _ string) *oerrors.Error {
-	ret := oerrors.Error{
-		Err: err,
-	}
-	var errResp *errcode.ErrorResponse
-	if errors.As(err, &errResp) {
-		ret.Err = oerrors.GetInner(err, errResp)
-	}
-	return &ret
+	return nil
 }
