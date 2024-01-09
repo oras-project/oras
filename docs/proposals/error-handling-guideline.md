@@ -32,7 +32,7 @@ Last, error logs can also be useful for post-mortem debugging and can also be wr
 - Provide specific and actionable prompt message with argument suggestion or show the example usage for reference. (e.g, Instead of showing flag or argument options is missing, please provide available argument options and guide users to "--help" to view more examples)
 - If the actionable prompt message is too long to show in the CLI output, consider guide users to ORAS user manual or troubleshooting guide with the versioned permanent link
 - If the error message is not enough for troubleshooting, guide users to use "--verbose" to print much more detailed logs
-- If the error message from the server side is too generic or has no value, especially in a few edge cases like example 12 and 13 below, consider providing customized and trimmed error logs to make it clearer. The original server logs can be displayed in debug mode
+- If server returns an error without any [message or detail](https://github.com/opencontainers/distribution-spec/blob/v1.1.0-rc.3/spec.md#error-codes), such as the example 13 below, consider providing customized and trimmed error logs to make it clearer. The original server logs can be displayed in debug mode
 
 ### Don'Ts
 
@@ -114,20 +114,20 @@ Usage: oras manifest fetch [flags] <name>{:<tag>|@<digest>}
 You need to specify an artifact reference in the form of "<name>:<tag>" or "<name>@<digest>". Run "oras manifest fetch -h" for more options and examples 
 ```
 
-#### Example 4: Push a manifest if no media type flag provided
+#### Example 4: Push a manifest if no media type provided
 
 Current behavior and output:
 
 ```console
-$ oras manifest push --oci-layout /sample/images:foobar:mediatype
+$ oras manifest push --oci-layout /sample/images:foobar:mediatype manifest.json
 Error: media type is not recognized. 
 ```
 
 Suggested error message:
 
 ```console
-$ oras manifest push --oci-layout /sample/images:foobar:mediatype
-Error: media type is not recognized. 
+$ oras manifest push --oci-layout /sample/images:foobar:mediatype manifest.json
+Error: media type is not specified via the flag "--media-type" nor in the manifest.json 
 Usage: oras manifest push [flags] <name>[:<tag>[,<tag>][...]|@<digest>] <file>
 You need to specify a valid media type in the manifest JSON or via the "--media-type" flag
 ```
@@ -212,7 +212,7 @@ Suggested error message:
 
 ```console
 $ oras pull docker.io/nginx:latest
-Error response from registry: pull access denied for docker.io/nginx:latest : response status code 401: unauthorized: requested access to the resource is denied
+Error response from registry: pull access denied for docker.io/nginx:latest : unauthorized: requested access to the resource is denied
 Namespace is missing, do you mean `oras pull docker.io/library/nginx:latest`? 
 ```
 
@@ -263,11 +263,11 @@ Suggested error message:
 
 ```console
 $ oras pull localhost:7000/repo:tag --registry-config auth.config
-Error: pulling content from localhost:7000/repo:tag failed with status: 401 Unauthorized
+Error: failed to authenticate when attempting to pull: no valid credential found in auth.config
 Please check whether the registry credential stored in the authentication file is correct
 ```
 
-#### Example 13: failed to resolve the digest with incorrect username or password
+#### Example 13: failed to resolve the digest with empty error response from registry
 
 Current behavior and output:
 
@@ -282,7 +282,7 @@ Suggested error message:
 ```console
 oras resolve localhost:7000/command/artifacts:foobar -u t -p 2
 WARNING! Using --password via the CLI is insecure. Use --password-stdin.
-Error: resolving the digest of artifact localhost:7000/command/artifacts:foobar failed with status: 401 Unauthorized
+Error response from registry: empty response body: failed to resolve digest: HEAD "http://localhost:7000/v2/test/manifests/bar": response status code 401: Unauthorized
 Authentication failed. Please verify your login credentials and try again.
 ```
 
