@@ -250,7 +250,7 @@ $ oras push localhost:5000/oras:v1 hello.txt
 Error: /home/user/hello.txt: no such file or directory
 ```
 
-#### Example 12: failed to authenticate with registry using an error credential from credential store
+#### Example 12: Failed to authenticate with registry using an error credential from credential store
 
 Current behavior and output:
 
@@ -267,7 +267,7 @@ Error: failed to authenticate when attempting to pull: no valid credential found
 Please check whether the registry credential stored in the authentication file is correct
 ```
 
-#### Example 13: failed to resolve the digest with empty error response from registry
+#### Example 13: Failed to resolve the digest with empty error response from registry
 
 Current behavior and output:
 
