@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -27,7 +28,23 @@ import (
 	"oras.land/oras-go/v2/registry"
 )
 
-var printLock sync.Mutex
+var (
+	printLock sync.Mutex
+	to        *os.File
+)
+
+func init() {
+	to = os.Stdout
+}
+
+// Set sets the output writer for printing.
+func Set(template string, tty *os.File) {
+	printLock.Lock()
+	defer printLock.Unlock()
+	if template != "" || tty != nil {
+		to = nil
+	}
+}
 
 // PrintFunc is the function type returned by StatusPrinter.
 type PrintFunc func(ocispec.Descriptor) error
@@ -36,7 +53,11 @@ type PrintFunc func(ocispec.Descriptor) error
 func Print(a ...any) error {
 	printLock.Lock()
 	defer printLock.Unlock()
-	_, err := fmt.Println(a...)
+
+	if to == nil {
+		return nil
+	}
+	_, err := fmt.Fprintln(to, a...)
 	return err
 }
 

@@ -18,7 +18,6 @@ package root
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"strings"
 	"sync"
@@ -35,6 +34,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
+	"oras.land/oras/cmd/oras/internal/meta"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/contentutil"
 	"oras.land/oras/internal/registryutil"
@@ -45,6 +45,7 @@ type pushOptions struct {
 	option.Packer
 	option.ImageSpec
 	option.Target
+	option.Format
 
 	extraRefs         []string
 	manifestConfigRef string
@@ -124,6 +125,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			display.Set(opts.Template, opts.TTY)
 			return runPush(cmd.Context(), opts)
 		},
 	}
@@ -212,7 +214,7 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("Pushed", opts.AnnotatedReference())
+	display.Print("Pushed", opts.AnnotatedReference())
 
 	if len(opts.extraRefs) != 0 {
 		taggable := dst
@@ -230,10 +232,13 @@ func runPush(ctx context.Context, opts pushOptions) error {
 		}
 	}
 
-	fmt.Println("Digest:", root.Digest)
+	display.Print("Digest:", root.Digest)
 
 	// Export manifest
-	return opts.ExportManifest(ctx, memoryStore, root)
+	if err := opts.ExportManifest(ctx, memoryStore, root); err != nil {
+		return err
+	}
+	return opts.WriteTo(os.Stdout, meta.NewPush(root, opts.Path))
 }
 
 func doPush(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
