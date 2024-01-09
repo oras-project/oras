@@ -257,15 +257,19 @@ func (opts *Target) Handle(err error, cmd *cobra.Command) error {
 	if errors.Is(err, errdef.ErrNotFound) {
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
 	} else if errors.As(err, &errResp) {
-		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
-		ret.Err = oerrors.GetInner(err, errResp)
 		ref, parseErr := registry.ParseReference(opts.RawReference)
 		if parseErr != nil {
 			// this should not happen
 			return ret
 		}
+		if errResp.URL.Host != ref.Host() {
+			// not handle if the error is not from the target
+			return nil
+		}
+		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
+		ret.Err = oerrors.GetInner(err, errResp)
 
-		if ref.Registry == "docker.io" && errResp.URL.Host == ref.Host() && errResp.StatusCode == http.StatusUnauthorized {
+		if ref.Registry == "docker.io" && errResp.StatusCode == http.StatusUnauthorized {
 			if ref.Repository != "" && !strings.Contains(ref.Repository, "/") {
 				// docker.io/xxx -> docker.io/library/xxx
 				ref.Repository = "library/" + ref.Repository
