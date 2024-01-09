@@ -335,6 +335,21 @@ func (opts *Remote) Handle(err error, cmd *cobra.Command) (oerrors.Processor, er
 		return opts, err
 	}
 
+	// handle empty basic auth credential
+	if errors.Is(err, errdef.ErrBasicCredNotFound) {
+		var registryConfigPath string
+		if len(opts.Configs) != 0 {
+			registryConfigPath = opts.Configs[len(opts.Configs)-1]
+		} else if registryConfigPath, err = credentials.GetDockerConfigPath(); err != nil {
+			// this should not happen
+			return nil, err
+		}
+		return nil, &oerrors.Error{
+			Err:            err,
+			Recommendation: fmt.Sprintf("Please check whether the registry credential stored in the authentication file %q is correct", registryConfigPath),
+		}
+	}
+
 	// handle error response
 	var errResp *errcode.ErrorResponse
 	if errors.As(err, &errResp) {
