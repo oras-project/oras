@@ -244,8 +244,8 @@ func (opts *Target) EnsureReferenceNotEmpty() error {
 	return nil
 }
 
-// Handle handles error during cmd execution.
-func (opts *Target) Handle(err error, cmd *cobra.Command) error {
+// Modify handles error during cmd execution.
+func (opts *Target) Modify(cmd *cobra.Command, err error) error {
 	if opts.IsOCILayout {
 		return nil
 	}
@@ -267,7 +267,7 @@ func (opts *Target) Handle(err error, cmd *cobra.Command) error {
 			return nil
 		}
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
-		ret.Err = oerrors.GetInner(err, errResp)
+		ret.Err = oerrors.Trim(err, errResp)
 
 		if ref.Registry == "docker.io" && errResp.StatusCode == http.StatusUnauthorized {
 			if ref.Repository != "" && !strings.Contains(ref.Repository, "/") {
@@ -312,10 +312,10 @@ func (opts *BinaryTarget) Parse() error {
 	return Parse(opts)
 }
 
-// Handle handles error during cmd execution.
-func (opts *BinaryTarget) Handle(err error, cmd *cobra.Command) error {
-	if err := opts.From.Handle(err, cmd); err != nil {
+// Modify handles error during cmd execution.
+func (opts *BinaryTarget) Modify(cmd *cobra.Command, err error) error {
+	if err := opts.From.Modify(cmd, err); err != nil {
 		return err
 	}
-	return opts.To.Handle(err, cmd)
+	return opts.To.Modify(cmd, err)
 }

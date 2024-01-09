@@ -65,22 +65,21 @@ func CheckArgs(checker func(args []string) (bool, string), Usage string) cobra.P
 	}
 }
 
-// Handler handles error during cmd execution.
-type Handler interface {
-	// Handle handles error during cmd execution.
-	// if nil is returned, then err cannot be handled.
-	Handle(err error, cmd *cobra.Command) error
+// Modifier modifies the error during cmd execution.
+// If nil is returned, err should be used by caller.
+type Modifier interface {
+	Modify(cmd *cobra.Command, err error) error
 }
 
 // Command returns an error-handled cobra command.
-func Command(cmd *cobra.Command, handler Handler) *cobra.Command {
+func Command(cmd *cobra.Command, handler Modifier) *cobra.Command {
 	runE := cmd.RunE
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		err := runE(cmd, args)
 		if err == nil {
 			return nil
 		}
-		if handled := handler.Handle(err, cmd); handled != nil {
+		if handled := handler.Modify(cmd, err); handled != nil {
 			return handled
 		}
 		return err
@@ -88,8 +87,8 @@ func Command(cmd *cobra.Command, handler Handler) *cobra.Command {
 	return cmd
 }
 
-// GetInner gets the inner error from the error response.
-func GetInner(err error, errResp *errcode.ErrorResponse) error {
+// Trim trims the error response detail from error message.
+func Trim(err error, errResp *errcode.ErrorResponse) error {
 	inner := errResp.Errors
 	if len(inner) == 0 {
 		return fmt.Errorf("empty response body: %w", errResp)
