@@ -322,6 +322,4 @@ oras discover localhost:5000/hello:v1 --format json
 **A:** Go template is a powerful method to customize output you want It allows users to manipulate the output format of certain commands. It provides access to data objects and additional functions that are passed into the template engine programmatically. It also has some useful libraries that have strong functions for Go’s template language to manipulate the output data, such as [Sprig](https://masterminds.github.io/sprig/).
 
 **Q:** What is the difference of prettified JSON and raw JSON?
-**A:** In the context of ORAS output, raw JSON means display the output of ORAS command in the JSON string format, while prettified JSON means display the output of ORAS command in a pretty format. Only necessary fields will be displayed in the formatted JSON output. See examples in the [oras pull](#oras-pull) section.
-
-In general, when use the flag `--format` to print the prettified JSON format, the first letter of all output fields are supposed to be upper case except for `oras manifest fetch`.
+**A:** In the context of ORAS output, raw JSON means that `oras` outputs the JSON object as it is returned by the server, while prettified JSON means oras outputs the modified JSON objects with whitespace adjusted, such as formatted with human-friendly indentations and newlines. In general, when use the flag `--format` to print the prettified JSON format, the first letter of all output fields are supposed to be upper case except for `oras manifest fetch`.
