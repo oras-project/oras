@@ -98,16 +98,26 @@ func TestTarget_Modify_ociLayout(t *testing.T) {
 }
 
 func TestTarget_Modify_errInvalidReference(t *testing.T) {
-	errClient := errors.New("client error")
+	errResp := &errcode.ErrorResponse{
+		URL:        &url.URL{Host: "registry-1.docker.io"},
+		StatusCode: http.StatusUnauthorized,
+		Errors: errcode.Errors{
+			errcode.Error{
+				Code:    "000",
+				Message: "mocked message",
+				Detail:  map[string]string{"mocked key": "mocked value"},
+			},
+		},
+	}
 	opts := &Target{
 		RawReference: "invalid-reference",
 	}
-	got, modified := opts.Modify(&cobra.Command{}, errClient)
+	got, modified := opts.Modify(&cobra.Command{}, errResp)
 
 	if modified {
 		t.Errorf("expect error not to be modified but received true")
 	}
-	if got != errClient {
+	if got != errResp {
 		t.Errorf("unexpected output from Target.Process() = %v", got)
 	}
 }
@@ -126,7 +136,6 @@ func TestTarget_Modify_errHostNotMatching(t *testing.T) {
 	}
 
 	opts := &Target{
-		IsOCILayout:  true,
 		RawReference: "registry-2.docker.io/test:tag",
 	}
 	_, modified := opts.Modify(&cobra.Command{}, errResp)
