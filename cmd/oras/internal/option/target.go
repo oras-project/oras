@@ -245,29 +245,29 @@ func (opts *Target) EnsureReferenceNotEmpty() error {
 }
 
 // Modify handles error during cmd execution.
-func (opts *Target) Modify(cmd *cobra.Command, err error) error {
+func (opts *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 	if opts.IsOCILayout {
-		return nil
-	}
-	ret := &oerrors.Error{
-		Err: err,
+		return err, false
 	}
 
 	var errResp *errcode.ErrorResponse
 	if errors.Is(err, errdef.ErrNotFound) {
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
+		return err, true
 	} else if errors.As(err, &errResp) {
 		ref, parseErr := registry.ParseReference(opts.RawReference)
 		if parseErr != nil {
 			// this should not happen
-			return ret
+			return err, false
 		}
 		if errResp.URL.Host != ref.Host() {
 			// not handle if the error is not from the target
-			return nil
+			return err, false
 		}
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
-		ret.Err = oerrors.Trim(err, errResp)
+		ret := &oerrors.Error{
+			Err: oerrors.Trim(err, errResp),
+		}
 
 		if ref.Registry == "docker.io" && errResp.StatusCode == http.StatusUnauthorized {
 			if ref.Repository != "" && !strings.Contains(ref.Repository, "/") {
@@ -277,7 +277,7 @@ func (opts *Target) Modify(cmd *cobra.Command, err error) error {
 			}
 		}
 	}
-	return ret
+	return err, false
 }
 
 // BinaryTarget struct contains flags and arguments specifying two registries or
@@ -313,9 +313,9 @@ func (opts *BinaryTarget) Parse() error {
 }
 
 // Modify handles error during cmd execution.
-func (opts *BinaryTarget) Modify(cmd *cobra.Command, err error) error {
-	if err := opts.From.Modify(cmd, err); err != nil {
-		return err
+func (opts *BinaryTarget) Modify(cmd *cobra.Command, err error) (error, bool) {
+	if modifiedErr, modified := opts.From.Modify(cmd, err); modified {
+		return modifiedErr, modified
 	}
 	return opts.To.Modify(cmd, err)
 }

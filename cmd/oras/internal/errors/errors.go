@@ -66,9 +66,8 @@ func CheckArgs(checker func(args []string) (bool, string), Usage string) cobra.P
 }
 
 // Modifier modifies the error during cmd execution.
-// If nil is returned, err should be used by caller.
 type Modifier interface {
-	Modify(cmd *cobra.Command, err error) error
+	Modify(cmd *cobra.Command, err error) (modifiedErr error, modified bool)
 }
 
 // Command returns an error-handled cobra command.
@@ -76,13 +75,11 @@ func Command(cmd *cobra.Command, handler Modifier) *cobra.Command {
 	runE := cmd.RunE
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		err := runE(cmd, args)
-		if err == nil {
-			return nil
+		if err != nil {
+			err, _ = handler.Modify(cmd, err)
+			return err
 		}
-		if handled := handler.Modify(cmd, err); handled != nil {
-			return handled
-		}
-		return err
+		return nil
 	}
 	return cmd
 }
