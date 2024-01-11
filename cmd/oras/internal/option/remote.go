@@ -329,10 +329,6 @@ func (opts *Remote) isPlainHttp(registry string) bool {
 
 // Modify modifies error during cmd execution.
 func (opts *Remote) Modify(cmd *cobra.Command, err error) (error, bool) {
-	if errors.Is(err, errdef.ErrNotFound) {
-		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
-		return err, true
-	}
 	var errResp *errcode.ErrorResponse
 	if errors.As(err, &errResp) {
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
