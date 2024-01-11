@@ -46,7 +46,7 @@ import (
 )
 
 // Remote options struct contains flags and arguments specifying one registry.
-// Remote implements oerrors.Handler and oerrors.Processor interface.
+// Remote implements oerrors.Handler and interface.
 type Remote struct {
 	DistributionSpec
 	CACertFilePath    string
@@ -327,46 +327,14 @@ func (opts *Remote) isPlainHttp(registry string) bool {
 	return plainHTTP
 }
 
-// Handle handles error during cmd execution.
-func (opts *Remote) Handle(err error, cmd *cobra.Command) (oerrors.Processor, error) {
-	// handle not found error from registry
-	if errors.Is(err, errdef.ErrNotFound) {
-		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
-		return opts, err
-	}
-
-	// handle empty basic auth credential
-	if errors.Is(err, errdef.ErrBasicCredNotFound) {
-		var registryConfigPath string
-		if len(opts.Configs) != 0 {
-			registryConfigPath = opts.Configs[len(opts.Configs)-1]
-		} else if registryConfigPath, err = credentials.GetDockerConfigPath(); err != nil {
-			// this should not happen
-			return nil, err
-		}
-		return nil, &oerrors.Error{
-			Err:            err,
-			Recommendation: fmt.Sprintf("Please check whether the registry credential stored in the authentication file %q is correct", registryConfigPath),
-		}
-	}
-
-	// handle error response
+// Modify modifies error during cmd execution.
+func (opts *Remote) Modify(cmd *cobra.Command, err error) (error, bool) {
 	var errResp *errcode.ErrorResponse
 	if errors.As(err, &errResp) {
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
-		return opts, err
+		return &oerrors.Error{
+			Err: oerrors.Trim(err, errResp),
+		}, true
 	}
-	return nil, err
-}
-
-// Process processes error into oerrors.Error.
-func (opts *Remote) Process(err error, _ string) *oerrors.Error {
-	ret := oerrors.Error{
-		Err: err,
-	}
-	var errResp *errcode.ErrorResponse
-	if errors.As(err, &errResp) {
-		ret.Err = oerrors.GetInner(err, errResp)
-	}
-	return &ret
+	return err, false
 }

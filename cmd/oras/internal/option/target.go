@@ -32,6 +32,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/errcode"
@@ -46,7 +47,7 @@ const (
 
 // Target struct contains flags and arguments specifying one registry or image
 // layout.
-// Target implements oerrors.Handler and oerrors.Processor interface.
+// Target implements oerrors.Handler interface.
 type Target struct {
 	Remote
 	RawReference string
@@ -243,46 +244,49 @@ func (opts *Target) EnsureReferenceNotEmpty() error {
 	return nil
 }
 
-// Handle handles error during cmd execution.
-func (opts *Target) Handle(err error, cmd *cobra.Command) (oerrors.Processor, error) {
+// Modify handles error during cmd execution.
+func (opts *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 	if opts.IsOCILayout {
-		return nil, err
+		return err, false
 	}
 
-	processor, err := opts.Remote.Handle(err, cmd)
-	if processor != nil {
-		processor = opts
-	}
-	return processor, err
-}
-
-// Process processes error into oerrors.Error.
-func (opts *Target) Process(err error, callPath string) *oerrors.Error {
-	ret := oerrors.Error{
-		Err: err,
-	}
-	if opts.IsOCILayout {
-		return &ret
+	if errors.Is(err, errdef.ErrNotFound) {
+		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
+		return err, true
 	}
 
 	var errResp *errcode.ErrorResponse
 	if errors.As(err, &errResp) {
-		ret.Err = oerrors.GetInner(err, errResp)
-		ref, parseErr := registry.ParseReference(opts.RawReference)
-		if parseErr != nil {
-			// this should not happen
-			return &ret
+		ref := registry.Reference{Registry: opts.RawReference}
+		if errResp.URL.Host != ref.Host() {
+			// raw reference is not registry host
+			var parseErr error
+			ref, parseErr = registry.ParseReference(opts.RawReference)
+			if parseErr != nil {
+				// this should not happen
+				return err, false
+			}
+			if errResp.URL.Host != ref.Host() {
+				// not handle if the error is not from the target
+				return err, false
+			}
 		}
 
-		if ref.Registry == "docker.io" && errResp.URL.Host == ref.Host() && errResp.StatusCode == http.StatusUnauthorized {
+		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
+		ret := &oerrors.Error{
+			Err: oerrors.Trim(err, errResp),
+		}
+
+		if ref.Registry == "docker.io" && errResp.StatusCode == http.StatusUnauthorized {
 			if ref.Repository != "" && !strings.Contains(ref.Repository, "/") {
 				// docker.io/xxx -> docker.io/library/xxx
 				ref.Repository = "library/" + ref.Repository
-				ret.Recommendation = fmt.Sprintf("Namespace is missing, do you mean `%s %s`?", callPath, ref)
+				ret.Recommendation = fmt.Sprintf("Namespace is missing, do you mean `%s %s`?", cmd.CommandPath(), ref)
 			}
 		}
+		return ret, true
 	}
-	return &ret
+	return err, false
 }
 
 // BinaryTarget struct contains flags and arguments specifying two registries or
@@ -317,14 +321,10 @@ func (opts *BinaryTarget) Parse() error {
 	return Parse(opts)
 }
 
-// Handle handles error during cmd execution.
-func (opts *BinaryTarget) Handle(err error, cmd *cobra.Command) (oerrors.Processor, error) {
-	if processor, err := opts.From.Handle(err, cmd); processor != nil {
-		if errResp, ok := err.(*errcode.ErrorResponse); ok {
-			if ref, _ := registry.ParseReference(opts.From.RawReference); errResp.URL.Host == ref.Host() {
-				return processor, err
-			}
-		}
+// Modify handles error during cmd execution.
+func (opts *BinaryTarget) Modify(cmd *cobra.Command, err error) (error, bool) {
+	if modifiedErr, modified := opts.From.Modify(cmd, err); modified {
+		return modifiedErr, modified
 	}
-	return opts.To.Handle(err, cmd)
+	return opts.To.Modify(cmd, err)
 }

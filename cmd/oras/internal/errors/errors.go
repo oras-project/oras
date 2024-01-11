@@ -65,41 +65,33 @@ func CheckArgs(checker func(args []string) (bool, string), Usage string) cobra.P
 	}
 }
 
-// Handler handles error during cmd execution.
-type Handler interface {
-	// Handle handles error during cmd execution.
-	// If returned processor is nil, error requires no further processing.
-	Handle(err error, cmd *cobra.Command) (Processor, error)
-}
-
-// Processor processes error.
-type Processor interface {
-	Process(err error, callPath string) *Error
+// Modifier modifies the error during cmd execution.
+type Modifier interface {
+	Modify(cmd *cobra.Command, err error) (modifiedErr error, modified bool)
 }
 
 // Command returns an error-handled cobra command.
-func Command(cmd *cobra.Command, handler Handler) *cobra.Command {
+func Command(cmd *cobra.Command, handler Modifier) *cobra.Command {
 	runE := cmd.RunE
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		err := runE(cmd, args)
-		if err == nil {
-			return nil
-		}
-		processor, err := handler.Handle(err, cmd)
-		if processor == nil {
+		if err != nil {
+			err, _ = handler.Modify(cmd, err)
 			return err
 		}
-		return processor.Process(err, cmd.CommandPath())
+		return nil
 	}
 	return cmd
 }
 
-// GetInner gets the inner error from the error response.
-func GetInner(err error, errResp *errcode.ErrorResponse) error {
+// Trim trims the error response detail from error message.
+func Trim(err error, errResp *errcode.ErrorResponse) error {
 	inner := errResp.Errors
 	if len(inner) == 0 {
-		return fmt.Errorf("empty response body: %w", errResp)
+		return fmt.Errorf("recognizable error message not found: %w", errResp)
 	} else {
+		// TODO: trim dedicated error type when
+		// https://github.com/oras-project/oras-go/issues/677 is done
 		errContent := err.Error()
 		errRespContent := errResp.Error()
 		if idx := strings.Index(errContent, errRespContent); idx > 0 {

@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/registry/remote/errcode"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 )
@@ -83,17 +84,67 @@ func Test_parseOCILayoutReference(t *testing.T) {
 	}
 }
 
-func TestTarget_Process_ociLayout(t *testing.T) {
+func TestTarget_Modify_ociLayout(t *testing.T) {
 	errClient := errors.New("client error")
-	opts := &Target{
-		IsOCILayout: true,
+	opts := &Target{}
+	got, modified := opts.Modify(&cobra.Command{}, errClient)
+
+	if modified {
+		t.Errorf("expect error not to be modified but received true")
 	}
-	if got := opts.Process(errClient, ""); got.Err != errClient || got.Recommendation != "" {
+	if got != errClient {
 		t.Errorf("unexpected output from Target.Process() = %v", got)
 	}
 }
 
-func TestTarget_Process_hint(t *testing.T) {
+func TestTarget_Modify_errInvalidReference(t *testing.T) {
+	errResp := &errcode.ErrorResponse{
+		URL:        &url.URL{Host: "registry-1.docker.io"},
+		StatusCode: http.StatusUnauthorized,
+		Errors: errcode.Errors{
+			errcode.Error{
+				Code:    "000",
+				Message: "mocked message",
+				Detail:  map[string]string{"mocked key": "mocked value"},
+			},
+		},
+	}
+	opts := &Target{
+		RawReference: "invalid-reference",
+	}
+	got, modified := opts.Modify(&cobra.Command{}, errResp)
+
+	if modified {
+		t.Errorf("expect error not to be modified but received true")
+	}
+	if got != errResp {
+		t.Errorf("unexpected output from Target.Process() = %v", got)
+	}
+}
+
+func TestTarget_Modify_errHostNotMatching(t *testing.T) {
+	errResp := &errcode.ErrorResponse{
+		URL:        &url.URL{Host: "registry-1.docker.io"},
+		StatusCode: http.StatusUnauthorized,
+		Errors: errcode.Errors{
+			errcode.Error{
+				Code:    "000",
+				Message: "mocked message",
+				Detail:  map[string]string{"mocked key": "mocked value"},
+			},
+		},
+	}
+
+	opts := &Target{
+		RawReference: "registry-2.docker.io/test:tag",
+	}
+	_, modified := opts.Modify(&cobra.Command{}, errResp)
+	if modified {
+		t.Errorf("expect error not to be modified but received true")
+	}
+}
+
+func TestTarget_Modify_dockerHint(t *testing.T) {
 	type fields struct {
 		Remote       Remote
 		RawReference string
@@ -101,10 +152,6 @@ func TestTarget_Process_hint(t *testing.T) {
 		Reference    string
 		Path         string
 		IsOCILayout  bool
-	}
-	type args struct {
-		err      error
-		callPath string
 	}
 	errs := errcode.Errors{
 		errcode.Error{
@@ -114,44 +161,38 @@ func TestTarget_Process_hint(t *testing.T) {
 		},
 	}
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   *oerrors.Error
+		name        string
+		fields      fields
+		err         error
+		modifiedErr *oerrors.Error
 	}{
 		{
 			"namespace already exists",
 			fields{RawReference: "docker.io/library/alpine:latest"},
-			args{
-				err: &errcode.ErrorResponse{
-					URL:        &url.URL{Host: "registry-1.docker.io"},
-					StatusCode: http.StatusUnauthorized,
-					Errors:     errs,
-				},
+			&errcode.ErrorResponse{
+				URL:        &url.URL{Host: "registry-1.docker.io"},
+				StatusCode: http.StatusUnauthorized,
+				Errors:     errs,
 			},
 			&oerrors.Error{Err: errs},
 		},
 		{
 			"no namespace",
 			fields{RawReference: "docker.io"},
-			args{
-				err: &errcode.ErrorResponse{
-					URL:        &url.URL{Host: "registry-1.docker.io"},
-					StatusCode: http.StatusUnauthorized,
-					Errors:     errs,
-				},
+			&errcode.ErrorResponse{
+				URL:        &url.URL{Host: "registry-1.docker.io"},
+				StatusCode: http.StatusUnauthorized,
+				Errors:     errs,
 			},
 			&oerrors.Error{Err: errs},
 		},
 		{
 			"not 401",
 			fields{RawReference: "docker.io"},
-			args{
-				err: &errcode.ErrorResponse{
-					URL:        &url.URL{Host: "registry-1.docker.io"},
-					StatusCode: http.StatusConflict,
-					Errors:     errs,
-				},
+			&errcode.ErrorResponse{
+				URL:        &url.URL{Host: "registry-1.docker.io"},
+				StatusCode: http.StatusConflict,
+				Errors:     errs,
 			},
 			&oerrors.Error{Err: errs},
 		},
@@ -161,20 +202,19 @@ func TestTarget_Process_hint(t *testing.T) {
 				RawReference: "docker.io/alpine",
 				Path:         "oras test",
 			},
-			args{
-				err: &errcode.ErrorResponse{
-					URL:        &url.URL{Host: "registry-1.docker.io"},
-					StatusCode: http.StatusUnauthorized,
-					Errors:     errs,
-				},
-				callPath: "oras test",
+			&errcode.ErrorResponse{
+				URL:        &url.URL{Host: "registry-1.docker.io"},
+				StatusCode: http.StatusUnauthorized,
+				Errors:     errs,
 			},
 			&oerrors.Error{
 				Err:            errs,
-				Recommendation: "Namespace is missing, do you mean `oras test docker.io/library/alpine`?",
+				Recommendation: "Namespace is missing, do you mean ` docker.io/library/alpine`?",
 			},
 		},
 	}
+
+	cmd := &cobra.Command{}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			opts := &Target{
@@ -185,9 +225,16 @@ func TestTarget_Process_hint(t *testing.T) {
 				Path:         tt.fields.Path,
 				IsOCILayout:  tt.fields.IsOCILayout,
 			}
-			got := opts.Process(tt.args.err, tt.args.callPath)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Target.Process() = %v, want %v", got, tt.want)
+			got, modified := opts.Modify(cmd, tt.err)
+			gotErr, ok := got.(*oerrors.Error)
+			if !ok {
+				t.Errorf("expecting error to be *oerrors.Error but received %T", got)
+			}
+			if !reflect.DeepEqual(gotErr.Err, tt.modifiedErr.Err) || gotErr.Usage != tt.modifiedErr.Usage || gotErr.Recommendation != tt.modifiedErr.Recommendation {
+				t.Errorf("Target.Modify() error = %v, wantErr %v", gotErr, tt.modifiedErr)
+			}
+			if !modified {
+				t.Errorf("Failed to modify %v", tt.err)
 			}
 		})
 	}
