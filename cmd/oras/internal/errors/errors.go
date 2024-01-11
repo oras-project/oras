@@ -88,7 +88,7 @@ func Command(cmd *cobra.Command, handler Modifier) *cobra.Command {
 func Trim(err error, errResp *errcode.ErrorResponse) error {
 	inner := errResp.Errors
 	if len(inner) == 0 {
-		return fmt.Errorf("empty response body: %w", errResp)
+		return fmt.Errorf("recognizable error message not found: %w", errResp)
 	} else {
 		errContent := err.Error()
 		errRespContent := errResp.Error()

@@ -276,6 +276,7 @@ func (opts *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 				ret.Recommendation = fmt.Sprintf("Namespace is missing, do you mean `%s %s`?", cmd.CommandPath(), ref)
 			}
 		}
+		return ret, true
 	}
 	return err, false
 }
