@@ -90,6 +90,8 @@ func Trim(err error, errResp *errcode.ErrorResponse) error {
 	if len(inner) == 0 {
 		return fmt.Errorf("recognizable error message not found: %w", errResp)
 	} else {
+		// TODO: trim dedicated error type when
+		// https://github.com/oras-project/oras-go/issues/677 is done
 		errContent := err.Error()
 		errRespContent := errResp.Error()
 		if idx := strings.Index(errContent, errRespContent); idx > 0 {
