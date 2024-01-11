@@ -99,7 +99,46 @@ func TestTarget_Modify_ociLayout(t *testing.T) {
 	}
 }
 
-func TestTarget_Modify(t *testing.T) {
+func TestTarget_Modify_errInvalidReference(t *testing.T) {
+	errClient := errors.New("client error")
+	opts := &Target{
+		IsOCILayout:  true,
+		RawReference: "invalid-reference",
+	}
+	got, modified := opts.Modify(&cobra.Command{}, errClient)
+
+	if modified {
+		t.Errorf("expect error not to be modified but received true")
+	}
+	if got != errClient {
+		t.Errorf("unexpected output from Target.Process() = %v", got)
+	}
+}
+
+func TestTarget_Modify_errHostNotMatching(t *testing.T) {
+	errResp := &errcode.ErrorResponse{
+		URL:        &url.URL{Host: "registry-1.docker.io"},
+		StatusCode: http.StatusUnauthorized,
+		Errors: errcode.Errors{
+			errcode.Error{
+				Code:    "000",
+				Message: "mocked message",
+				Detail:  map[string]string{"mocked key": "mocked value"},
+			},
+		},
+	}
+
+	opts := &Target{
+		IsOCILayout:  true,
+		RawReference: "registry-2.docker.io/test:tag",
+	}
+	_, modified := opts.Modify(&cobra.Command{}, errResp)
+	if modified {
+		t.Errorf("expect error not to be modified but received true")
+	}
+}
+
+func TestTarget_Modify_dockerHint(t *testing.T) {
 	type fields struct {
 		Remote       Remote
 		RawReference string
