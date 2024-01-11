@@ -86,9 +86,7 @@ func Test_parseOCILayoutReference(t *testing.T) {
 
 func TestTarget_Modify_ociLayout(t *testing.T) {
 	errClient := errors.New("client error")
-	opts := &Target{
-		IsOCILayout: true,
-	}
+	opts := &Target{}
 	got, modified := opts.Modify(&cobra.Command{}, errClient)
 
 	if modified {
@@ -102,7 +100,6 @@ func TestTarget_Modify_ociLayout(t *testing.T) {
 func TestTarget_Modify_errInvalidReference(t *testing.T) {
 	errClient := errors.New("client error")
 	opts := &Target{
-		IsOCILayout:  true,
 		RawReference: "invalid-reference",
 	}
 	got, modified := opts.Modify(&cobra.Command{}, errClient)
