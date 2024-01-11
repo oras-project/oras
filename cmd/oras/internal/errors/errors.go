@@ -16,11 +16,13 @@ limitations under the License.
 package errors
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/registry"
+	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/errcode"
 )
 
@@ -84,22 +86,41 @@ func Command(cmd *cobra.Command, handler Modifier) *cobra.Command {
 	return cmd
 }
 
-// Trim trims the error response detail from error message.
-func Trim(err error, errResp *errcode.ErrorResponse) error {
-	inner := errResp.Errors
-	if len(inner) == 0 {
-		return fmt.Errorf("recognizable error message not found: %w", errResp)
-	} else {
-		// TODO: trim dedicated error type when
-		// https://github.com/oras-project/oras-go/issues/677 is done
-		errContent := err.Error()
-		errRespContent := errResp.Error()
-		if idx := strings.Index(errContent, errRespContent); idx > 0 {
-			// remove HTTP related info
-			return fmt.Errorf("%s%w", errContent[:idx], inner)
+// Trim tries to trim toTrim from err.
+func Trim(err error, toTrim error) error {
+	var inner error
+	if errResp, ok := toTrim.(*errcode.ErrorResponse); ok {
+		if len(errResp.Errors) == 0 {
+			return fmt.Errorf("recognizable error message not found: %w", toTrim)
 		}
+		inner = errResp.Errors
+	} else if errors.Unwrap(toTrim) == auth.ErrBasicCredentialNotFound {
+		inner = auth.ErrBasicCredentialNotFound
+	} else {
+		return err
+	}
+
+	if rewrapped := reWrap(err, toTrim, inner); rewrapped != nil {
+		return rewrapped
 	}
 	return inner
+}
+
+// reWrap re-wraps errA to errC and trims out errB, returns nil if scrub fails.
+// +---------- errA ----------+
+// |         +---- errB ----+ |      +---- errA ----+
+// |         |    errC      | |  =>  |     errC     |
+// |         +--------------+ |      +--------------+
+// +--------------------------+
+func reWrap(errA error, errB error, errC error) error {
+	// TODO: trim dedicated error type when
+	// https://github.com/oras-project/oras-go/issues/677 is done
+	contentA := errA.Error()
+	contentB := errB.Error()
+	if idx := strings.Index(contentA, contentB); idx > 0 {
+		return fmt.Errorf("%s%w", contentA[:idx], errC)
+	}
+	return nil
 }
 
 // NewErrEmptyTagOrDigest creates a new error based on the reference string.

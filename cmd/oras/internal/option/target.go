@@ -35,6 +35,7 @@ import (
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/errcode"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
@@ -248,6 +249,14 @@ func (opts *Target) EnsureReferenceNotEmpty() error {
 func (opts *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 	if opts.IsOCILayout {
 		return err, false
+	}
+
+	if errors.Is(err, auth.ErrBasicCredentialNotFound) {
+		toTrim := err
+		for inner := err; inner != auth.ErrBasicCredentialNotFound; inner = errors.Unwrap(inner) {
+			toTrim = inner
+		}
+		return oerrors.Trim(err, toTrim), true
 	}
 
 	if errors.Is(err, errdef.ErrNotFound) {

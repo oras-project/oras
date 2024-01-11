@@ -21,4 +21,4 @@ require (
 	golang.org/x/sys v0.16.0 // indirect
 )
 
-replace oras.land/oras-go/v2 => github.com/qweeah/oras-go/v2 v2.3.5
+replace oras.land/oras-go/v2 => github.com/qweeah/oras-go/v2 v2.3.6
