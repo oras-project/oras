@@ -250,20 +250,28 @@ func (opts *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 		return err, false
 	}
 
-	var errResp *errcode.ErrorResponse
 	if errors.Is(err, errdef.ErrNotFound) {
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
 		return err, true
-	} else if errors.As(err, &errResp) {
-		ref, parseErr := registry.ParseReference(opts.RawReference)
-		if parseErr != nil {
-			// this should not happen
-			return err, false
-		}
+	}
+
+	var errResp *errcode.ErrorResponse
+	if errors.As(err, &errResp) {
+		ref := registry.Reference{Registry: opts.RawReference}
 		if errResp.URL.Host != ref.Host() {
-			// not handle if the error is not from the target
-			return err, false
+			// raw reference is not registry host
+			var parseErr error
+			ref, parseErr = registry.ParseReference(opts.RawReference)
+			if parseErr != nil {
+				// this should not happen
+				return err, false
+			}
+			if errResp.URL.Host != ref.Host() {
+				// not handle if the error is not from the target
+				return err, false
+			}
 		}
+
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
 		ret := &oerrors.Error{
 			Err: oerrors.Trim(err, errResp),
