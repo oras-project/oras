@@ -16,7 +16,10 @@ limitations under the License.
 package option
 
 import (
+	"errors"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
 func TestTarget_Parse_oci(t *testing.T) {
@@ -76,15 +79,20 @@ func Test_parseOCILayoutReference(t *testing.T) {
 	}
 }
 
-// func TestTarget_Process_ociLayout(t *testing.T) {
-// 	errClient := errors.New("client error")
-// 	opts := &Target{
-// 		IsOCILayout: true,
-// 	}
-// 	if got := opts.Process(errClient, ""); got.Err != errClient || got.Recommendation != "" {
-// 		t.Errorf("unexpected output from Target.Process() = %v", got)
-// 	}
-// }
+func TestTarget_Modify_ociLayout(t *testing.T) {
+	errClient := errors.New("client error")
+	opts := &Target{
+		IsOCILayout: true,
+	}
+	got, modified := opts.Modify(&cobra.Command{}, errClient)
+
+	if modified {
+		t.Errorf("expect error not to be modified but received true")
+	}
+	if got != errClient {
+		t.Errorf("unexpected output from Target.Process() = %v", got)
+	}
+}
 
 // func TestTarget_Process_hint(t *testing.T) {
 // 	type fields struct {
