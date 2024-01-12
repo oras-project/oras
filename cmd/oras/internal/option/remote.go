@@ -62,6 +62,7 @@ type Remote struct {
 	headers               http.Header
 	warned                map[string]*sync.Map
 	plainHTTP             func() (plainHTTP bool, enforced bool)
+	store                 credentials.Store
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
@@ -226,13 +227,25 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 			return cred, nil
 		}
 	} else {
-		store, err := credential.NewStore(opts.Configs...)
+		var err error
+		opts.store, err = credential.NewStore(opts.Configs...)
 		if err != nil {
 			return nil, err
 		}
-		client.Credential = credentials.Credential(store)
+		client.Credential = credentials.Credential(opts.store)
 	}
 	return
+}
+
+// ConfigPath returns the config path of the credential store.
+func (opts *Remote) ConfigPath() (string, error) {
+	if opts.store == nil {
+		return "", errors.New("no credential store initialized")
+	}
+	if ds, ok := opts.store.(*credentials.DynamicStore); ok {
+		return ds.GetConfigPath()
+	}
+	return "", errors.New("store doesn't support getting config path")
 }
 
 func (opts *Remote) parseCustomHeaders() error {

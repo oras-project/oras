@@ -256,7 +256,14 @@ func (opts *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 		for inner := err; inner != auth.ErrBasicCredentialNotFound; inner = errors.Unwrap(inner) {
 			toTrim = inner
 		}
-		return oerrors.Trim(err, toTrim), true
+		configPath := " "
+		if path, err := opts.ConfigPath(); err == nil {
+			configPath += fmt.Sprintf("at %q", path)
+		}
+		return &oerrors.Error{
+			Err:            oerrors.Trim(err, toTrim),
+			Recommendation: fmt.Sprintf(`Please check whether the registry credential stored in the authentication file%s is correct`, configPath),
+		}, true
 	}
 
 	if errors.Is(err, errdef.ErrNotFound) {
@@ -295,6 +302,7 @@ func (opts *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 		}
 		return ret, true
 	}
+
 	return err, false
 }
 
