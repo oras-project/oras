@@ -209,7 +209,7 @@ func TestTarget_Modify_dockerHint(t *testing.T) {
 			},
 			&oerrors.Error{
 				Err:            errs,
-				Recommendation: "Namespace is missing, do you mean ` docker.io/library/alpine`?",
+				Recommendation: "Namespace seems missing. Do you mean ` docker.io/library/alpine`?",
 			},
 		},
 	}
