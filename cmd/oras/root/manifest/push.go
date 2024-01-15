@@ -32,6 +32,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/internal/parse"
 	"oras.land/oras/internal/file"
 )
 
@@ -94,7 +95,7 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return pushManifest(cmd.Context(), opts)
+			return pushManifest(cmd, opts)
 		},
 	}
 
@@ -105,8 +106,8 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 	return oerrors.Command(cmd, &opts.Target)
 }
 
-func pushManifest(ctx context.Context, opts pushOptions) error {
-	ctx, logger := opts.WithContext(ctx)
+func pushManifest(cmd *cobra.Command, opts pushOptions) error {
+	ctx, logger := opts.WithContext(cmd.Context())
 	var target oras.Target
 	var err error
 	target, err = opts.NewTarget(opts.Common, logger)
@@ -126,7 +127,7 @@ func pushManifest(ctx context.Context, opts pushOptions) error {
 	// get manifest media type
 	mediaType := opts.mediaType
 	if opts.mediaType == "" {
-		mediaType, err = file.ParseMediaType(contentBytes)
+		mediaType, err = parse.MediaTypeFromJson(cmd, contentBytes)
 		if err != nil {
 			return err
 		}
