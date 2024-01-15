@@ -17,10 +17,13 @@ package repo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
+	"oras.land/oras/cmd/oras/internal/argument"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/repository"
 )
@@ -49,7 +52,7 @@ Example - List the repositories under a namespace in the registry:
 Example - List the repositories under the registry that include values lexically after last:
   oras repo ls --last "last_repo" localhost:5000
 `,
-		Args:    cobra.ExactArgs(1),
+		Args:    oerrors.CheckArgs(argument.Exactly(1), "the target registry to list repositories from"),
 		Aliases: []string{"list"},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return option.Parse(&opts)
@@ -69,12 +72,12 @@ Example - List the repositories under the registry that include values lexically
 }
 
 func listRepository(ctx context.Context, opts repositoryOptions) error {
-	ctx, _ = opts.WithContext(ctx)
-	reg, err := opts.Remote.NewRegistry(opts.hostname, opts.Common)
+	ctx, logger := opts.WithContext(ctx)
+	reg, err := opts.Remote.NewRegistry(opts.hostname, opts.Common, logger)
 	if err != nil {
 		return err
 	}
-	return reg.Repositories(ctx, opts.last, func(repos []string) error {
+	err = reg.Repositories(ctx, opts.last, func(repos []string) error {
 		for _, repo := range repos {
 			if subRepo, found := strings.CutPrefix(repo, opts.namespace); found {
 				fmt.Println(subRepo)
@@ -82,4 +85,16 @@ func listRepository(ctx context.Context, opts repositoryOptions) error {
 		}
 		return nil
 	})
+
+	if err != nil {
+		var repoErr error
+		if opts.namespace != "" {
+			repoErr = fmt.Errorf("could not list repositories for %q with prefix %q", reg.Reference.Host(), opts.namespace)
+		} else {
+			repoErr = fmt.Errorf("could not list repositories for %q", reg.Reference.Host())
+		}
+		return errors.Join(repoErr, err)
+	}
+
+	return nil
 }

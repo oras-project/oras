@@ -25,7 +25,10 @@ import (
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
-	"oras.land/oras-go/v2"
+	"oras.land/oras/test/e2e/internal/testdata/artifact/blob"
+	"oras.land/oras/test/e2e/internal/testdata/artifact/config"
+	"oras.land/oras/test/e2e/internal/testdata/artifact/empty"
+	"oras.land/oras/test/e2e/internal/testdata/artifact/unnamed"
 	"oras.land/oras/test/e2e/internal/testdata/feature"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
@@ -38,10 +41,43 @@ var _ = Describe("ORAS beginners:", func() {
 			out := ORAS("pull", "--help").MatchKeyWords(ExampleDesc).Exec().Out
 			gomega.Expect(out).Should(gbytes.Say("--include-subject\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 		})
+
+		hintMsg := func(reference string) string {
+			return fmt.Sprintf("Skipped pulling layers without file name in \"org.opencontainers.image.title\"\nUse 'oras copy %s --to-oci-layout <layout-dir>' to pull all layers.\n", reference)
+		}
+		It("should show hint for unnamed layer", func() {
+			tempDir := PrepareTempFiles()
+			ref := RegistryRef(ZOTHost, ArtifactRepo, unnamed.Tag)
+			ORAS("pull", ref).
+				WithWorkDir(tempDir).
+				MatchContent(hintMsg(ref)).Exec()
+		})
+
+		It("should not show hint for unnamed config blob", func() {
+			tempDir := PrepareTempFiles()
+			ref := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
+			out := ORAS("pull", ref).WithWorkDir(tempDir).Exec().Out
+			gomega.Expect(out).ShouldNot(gbytes.Say(hintMsg(ref)))
+		})
+
+		It("should not show hint for empty layer", func() {
+			tempDir := PrepareTempFiles()
+			ref := RegistryRef(ZOTHost, ArtifactRepo, empty.Tag)
+			out := ORAS("pull", ref).WithWorkDir(tempDir).Exec().Out
+			gomega.Expect(out).ShouldNot(gbytes.Say(hintMsg(ref)))
+		})
+
+		It("should fail and show detailed error description if no argument provided", func() {
+			err := ORAS("pull").ExpectFailure().Exec().Err
+			gomega.Expect(err).Should(gbytes.Say("Error"))
+			gomega.Expect(err).Should(gbytes.Say("\nUsage: oras pull"))
+			gomega.Expect(err).Should(gbytes.Say("\n"))
+			gomega.Expect(err).Should(gbytes.Say(`Run "oras pull -h"`))
+		})
 	})
 })
 
-var _ = Describe("Remote registry users:", func() {
+var _ = Describe("OCI spec 1.1 registry users:", func() {
 	When("pulling images from remote registry", func() {
 		var (
 			configName = "test.config"
@@ -51,7 +87,7 @@ var _ = Describe("Remote registry users:", func() {
 			pullRoot := "pulled"
 			tempDir := PrepareTempFiles()
 			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(configName))
-			ORAS("pull", RegistryRef(Host, ImageRepo, foobar.Tag), "-v", "--config", configName, "-o", pullRoot).
+			ORAS("pull", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "-v", "--config", configName, "-o", pullRoot).
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				WithWorkDir(tempDir).Exec()
 			// check config
@@ -67,7 +103,7 @@ var _ = Describe("Remote registry users:", func() {
 					WithWorkDir(tempDir).Exec()
 			}
 
-			ORAS("pull", RegistryRef(Host, ImageRepo, foobar.Tag), "-v", "-o", pullRoot, "--keep-old-files").
+			ORAS("pull", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "-v", "-o", pullRoot, "--keep-old-files").
 				ExpectFailure().
 				WithDescription("fail if overwrite old files are disabled")
 		})
@@ -75,8 +111,8 @@ var _ = Describe("Remote registry users:", func() {
 		It("should skip config if media type not matching", func() {
 			pullRoot := "pulled"
 			tempDir := PrepareTempFiles()
-			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(oras.MediaTypeUnknownConfig))
-			ORAS("pull", RegistryRef(Host, ImageRepo, foobar.Tag), "-v", "--config", fmt.Sprintf("%s:%s", configName, "???"), "-o", pullRoot).
+			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey)
+			ORAS("pull", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "-v", "--config", fmt.Sprintf("%s:%s", configName, "???"), "-o", pullRoot).
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				WithWorkDir(tempDir).Exec()
 			// check config
@@ -96,15 +132,78 @@ var _ = Describe("Remote registry users:", func() {
 				foobar.ManifestStateKey),
 				foobar.ImageReferrersStateKeys...,
 			)
-			ORAS("pull", RegistryRef(Host, ArtifactRepo, foobar.SignatureImageReferrer.Digest.String()), "-v", "--include-subject").
+			ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, foobar.SignatureImageReferrer.Digest.String()), "-v", "--include-subject").
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				WithWorkDir(tempDir).Exec()
 		})
 
 		It("should pull specific platform", func() {
-			ORAS("pull", RegistryRef(Host, ImageRepo, "multi"), "--platform", "linux/amd64", "-v", "-o", GinkgoT().TempDir()).
+			ORAS("pull", RegistryRef(ZOTHost, ImageRepo, "multi"), "--platform", "linux/amd64", "-v", "-o", GinkgoT().TempDir()).
 				MatchStatus(multi_arch.LinuxAMD64StateKeys, true, len(multi_arch.LinuxAMD64StateKeys)).Exec()
 		})
+
+		It("should pull an artifact with blob", func() {
+			pullRoot := GinkgoT().TempDir()
+			ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, blob.Tag), "-v", "-o", pullRoot).Exec()
+			Expect(filepath.Join(pullRoot, multi_arch.LayerName)).Should(BeAnExistingFile())
+		})
+
+		It("should pull an artifact with config", func() {
+			pullRoot := GinkgoT().TempDir()
+			ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, config.Tag), "-v", "-o", pullRoot).Exec()
+			Expect(filepath.Join(pullRoot, multi_arch.LayerName)).Should(BeAnExistingFile())
+		})
+
+		It("should copy an artifact with blob", func() {
+			repo := cpTestRepo("artifact-with-blob")
+			stateKeys := append(append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageReferrerConfigStateKeys[0]), foobar.ImageReferrersStateKeys...)
+			src := RegistryRef(ZOTHost, ArtifactRepo, foobar.SignatureImageReferrer.Digest.String())
+			dst := RegistryRef(FallbackHost, repo, "")
+			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
+			CompareRef(src, RegistryRef(FallbackHost, repo, foobar.SignatureImageReferrer.Digest.String()))
+			ORAS("discover", "-o", "tree", RegistryRef(FallbackHost, repo, foobar.Digest)).
+				WithDescription("discover referrer via subject").MatchKeyWords(foobar.SignatureImageReferrer.Digest.String(), foobar.SBOMImageReferrer.Digest.String()).Exec()
+		})
+	})
+})
+
+var _ = Describe("OCI spec 1.0 registry users:", func() {
+	It("should pull all files in an image to a target folder", func() {
+		pullRoot := "pulled"
+		configName := "test.config"
+		tempDir := PrepareTempFiles()
+		stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(configName))
+		ORAS("pull", RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), "-v", "--config", configName, "-o", pullRoot).
+			MatchStatus(stateKeys, true, len(stateKeys)).
+			WithWorkDir(tempDir).Exec()
+		// check config
+		configPath := filepath.Join(tempDir, pullRoot, configName)
+		Expect(configPath).Should(BeAnExistingFile())
+		f, err := os.Open(configPath)
+		Expect(err).ShouldNot(HaveOccurred())
+		defer f.Close()
+		Eventually(gbytes.BufferReader(f)).Should(gbytes.Say("{}"))
+		for _, f := range foobar.ImageLayerNames {
+			// check layers
+			Binary("diff", filepath.Join(tempDir, "foobar", f), filepath.Join(pullRoot, f)).
+				WithWorkDir(tempDir).Exec()
+		}
+
+		ORAS("pull", RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), "-v", "-o", pullRoot, "--keep-old-files").
+			ExpectFailure().
+			WithDescription("fail if overwrite old files are disabled")
+	})
+
+	It("should pull subject", func() {
+		tempDir := GinkgoT().TempDir()
+		stateKeys := append(append(
+			foobar.ImageLayerStateKeys,
+			foobar.ManifestStateKey),
+			foobar.ImageReferrersStateKeys...,
+		)
+		ORAS("pull", RegistryRef(FallbackHost, ArtifactRepo, foobar.SignatureImageReferrer.Digest.String()), "-v", "--include-subject").
+			MatchStatus(stateKeys, true, len(stateKeys)).
+			WithWorkDir(tempDir).Exec()
 	})
 })
 
@@ -113,19 +212,15 @@ var _ = Describe("OCI image layout users:", func() {
 		var (
 			configName = "test.config"
 		)
-		prepare := func(root string, repo string, tagOrDigest string) {
-			ORAS("cp", RegistryRef(Host, repo, tagOrDigest), Flags.ToLayout, LayoutRef(root, tagOrDigest), "-r").WithDescription("prepare oci layout test env").Exec()
-		}
 		It("should pull all files in an image to a target folder", func() {
 			pullRoot := "pulled"
-			tempDir := PrepareTempFiles()
-			prepare(tempDir, ArtifactRepo, foobar.Tag)
+			root := PrepareTempOCI(ImageRepo)
 			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(configName))
-			ORAS("pull", Flags.Layout, LayoutRef(tempDir, foobar.Tag), "-v", "--config", configName, "-o", pullRoot).
+			ORAS("pull", Flags.Layout, LayoutRef(root, foobar.Tag), "-v", "--config", configName, "-o", pullRoot).
 				MatchStatus(stateKeys, true, len(stateKeys)).
-				WithWorkDir(tempDir).Exec()
+				WithWorkDir(root).Exec()
 			// check config
-			configPath := filepath.Join(tempDir, pullRoot, configName)
+			configPath := filepath.Join(root, pullRoot, configName)
 			Expect(configPath).Should(BeAnExistingFile())
 			f, err := os.Open(configPath)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -133,51 +228,88 @@ var _ = Describe("OCI image layout users:", func() {
 			Eventually(gbytes.BufferReader(f)).Should(gbytes.Say("{}"))
 			for _, f := range foobar.ImageLayerNames {
 				// check layers
-				Binary("diff", filepath.Join(tempDir, "foobar", f), filepath.Join(pullRoot, f)).
-					WithWorkDir(tempDir).Exec()
+				Binary("diff", filepath.Join(root, "foobar", f), filepath.Join(pullRoot, f)).
+					WithWorkDir(root).Exec()
 			}
 
-			ORAS("pull", Flags.Layout, LayoutRef(tempDir, foobar.Tag), "-v", "-o", pullRoot, "--keep-old-files").
+			ORAS("pull", Flags.Layout, LayoutRef(root, foobar.Tag), "-v", "-o", pullRoot, "--keep-old-files").
 				ExpectFailure().
 				WithDescription("fail if overwrite old files are disabled")
 		})
 
 		It("should skip config if media type does not match", func() {
 			pullRoot := "pulled"
-			tempDir := PrepareTempFiles()
-			prepare(tempDir, ArtifactRepo, foobar.Tag)
-			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(oras.MediaTypeUnknownConfig))
-			ORAS("pull", Flags.Layout, LayoutRef(tempDir, foobar.Tag), "-v", "--config", fmt.Sprintf("%s:%s", configName, "???"), "-o", pullRoot).
+			root := PrepareTempOCI(ImageRepo)
+			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey)
+			ORAS("pull", Flags.Layout, LayoutRef(root, foobar.Tag), "-v", "--config", fmt.Sprintf("%s:%s", configName, "???"), "-o", pullRoot).
 				MatchStatus(stateKeys, true, len(stateKeys)).
-				WithWorkDir(tempDir).Exec()
+				WithWorkDir(root).Exec()
 			// check config
 			Expect(filepath.Join(pullRoot, configName)).ShouldNot(BeAnExistingFile())
 			for _, f := range foobar.ImageLayerNames {
 				// check layers
-				Binary("diff", filepath.Join(tempDir, "foobar", f), filepath.Join(pullRoot, f)).
-					WithWorkDir(tempDir).
+				Binary("diff", filepath.Join(root, "foobar", f), filepath.Join(pullRoot, f)).
+					WithWorkDir(root).
 					WithDescription("should download identical file " + f).Exec()
 			}
 		})
 
 		It("should pull subject", func() {
-			tempDir := GinkgoT().TempDir()
-			prepare(tempDir, ArtifactRepo, foobar.Tag)
+			root := PrepareTempOCI(ArtifactRepo)
 			stateKeys := append(append(
 				foobar.ImageLayerStateKeys,
 				foobar.ManifestStateKey),
 				foobar.ImageReferrersStateKeys...,
 			)
-			ORAS("pull", Flags.Layout, LayoutRef(tempDir, foobar.SignatureImageReferrer.Digest.String()), "-v", "--include-subject").
+			ORAS("pull", Flags.Layout, LayoutRef(root, foobar.SignatureImageReferrer.Digest.String()), "-v", "--include-subject").
 				MatchStatus(stateKeys, true, len(stateKeys)).
-				WithWorkDir(tempDir).Exec()
+				WithWorkDir(root).Exec()
 		})
 
 		It("should pull specific platform", func() {
-			tempDir := GinkgoT().TempDir()
-			prepare(tempDir, ImageRepo, multi_arch.Tag)
-			ORAS("pull", Flags.Layout, LayoutRef(tempDir, multi_arch.Tag), "--platform", "linux/amd64", "-v", "-o", tempDir).
+			root := PrepareTempOCI(ImageRepo)
+			ORAS("pull", Flags.Layout, LayoutRef(root, multi_arch.Tag), "--platform", "linux/amd64", "-v", "-o", root).
 				MatchStatus(multi_arch.LinuxAMD64StateKeys, true, len(multi_arch.LinuxAMD64StateKeys)).Exec()
 		})
+	})
+})
+
+var _ = Describe("OCI image spec v1.1.0-rc2 artifact users:", func() {
+	It("should pull all files in an image to a target folder", func() {
+		pullRoot := "pulled"
+		configName := "test.config"
+		tempDir := PrepareTempFiles()
+		stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(configName))
+		ORAS("pull", RegistryRef(Host, ImageRepo, foobar.Tag), "-v", "--config", configName, "-o", pullRoot).
+			MatchStatus(stateKeys, true, len(stateKeys)).
+			WithWorkDir(tempDir).Exec()
+		// check config
+		configPath := filepath.Join(tempDir, pullRoot, configName)
+		Expect(configPath).Should(BeAnExistingFile())
+		f, err := os.Open(configPath)
+		Expect(err).ShouldNot(HaveOccurred())
+		defer f.Close()
+		Eventually(gbytes.BufferReader(f)).Should(gbytes.Say("{}"))
+		for _, f := range foobar.ImageLayerNames {
+			// check layers
+			Binary("diff", filepath.Join(tempDir, "foobar", f), filepath.Join(pullRoot, f)).
+				WithWorkDir(tempDir).Exec()
+		}
+
+		ORAS("pull", RegistryRef(Host, ImageRepo, foobar.Tag), "-v", "-o", pullRoot, "--keep-old-files").
+			ExpectFailure().
+			WithDescription("fail if overwrite old files are disabled")
+	})
+
+	It("should pull subject", func() {
+		tempDir := GinkgoT().TempDir()
+		stateKeys := append(append(
+			foobar.ImageLayerStateKeys,
+			foobar.ManifestStateKey),
+			foobar.ArtifactReferrerStateKeys...,
+		)
+		ORAS("pull", RegistryRef(Host, ArtifactRepo, foobar.SignatureArtifactReferrer.Digest.String()), "-v", "--include-subject").
+			MatchStatus(stateKeys, true, len(stateKeys)).
+			WithWorkDir(tempDir).Exec()
 	})
 })

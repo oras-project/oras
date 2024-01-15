@@ -29,7 +29,10 @@ import (
 
 var printLock sync.Mutex
 
-// Print objects to display concurrent-safely
+// PrintFunc is the function type returned by StatusPrinter.
+type PrintFunc func(ocispec.Descriptor) error
+
+// Print objects to display concurrent-safely.
 func Print(a ...any) error {
 	printLock.Lock()
 	defer printLock.Unlock()
@@ -38,8 +41,8 @@ func Print(a ...any) error {
 }
 
 // StatusPrinter returns a tracking function for transfer status.
-func StatusPrinter(status string, verbose bool) func(context.Context, ocispec.Descriptor) error {
-	return func(ctx context.Context, desc ocispec.Descriptor) error {
+func StatusPrinter(status string, verbose bool) PrintFunc {
+	return func(desc ocispec.Descriptor) error {
 		return PrintStatus(desc, status, verbose)
 	}
 }
@@ -58,7 +61,7 @@ func PrintStatus(desc ocispec.Descriptor, status string, verbose bool) error {
 }
 
 // PrintSuccessorStatus prints transfer status of successors.
-func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, status string, fetcher content.Fetcher, committed *sync.Map, verbose bool) error {
+func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, fetcher content.Fetcher, committed *sync.Map, print PrintFunc) error {
 	successors, err := content.Successors(ctx, fetcher, desc)
 	if err != nil {
 		return err
@@ -67,7 +70,7 @@ func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, status s
 		name := s.Annotations[ocispec.AnnotationTitle]
 		if v, ok := committed.Load(s.Digest.String()); ok && v != name {
 			// Reprint status for deduplicated content
-			if err := PrintStatus(s, status, verbose); err != nil {
+			if err := print(s); err != nil {
 				return err
 			}
 		}
@@ -116,7 +119,7 @@ func (p *tagManifestStatusForRepo) PushReference(ctx context.Context, expected o
 	if p.printHint != nil {
 		p.printHint.Do(func() {
 			ref := p.refPrefix + "@" + expected.Digest.String()
-			Print("Tagging", ref)
+			_ = Print("Tagging", ref)
 		})
 	}
 	if err := p.Repository.PushReference(ctx, expected, content, reference); err != nil {
@@ -136,9 +139,10 @@ func (p *tagManifestStatusForTarget) Tag(ctx context.Context, desc ocispec.Descr
 	if p.printHint != nil {
 		p.printHint.Do(func() {
 			ref := p.refPrefix + "@" + desc.Digest.String()
-			Print("Tagging", ref)
+			_ = Print("Tagging", ref)
 		})
 	}
+
 	if err := p.Target.Tag(ctx, desc, reference); err != nil {
 		return err
 	}

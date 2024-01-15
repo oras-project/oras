@@ -1,61 +1,34 @@
 # Compatibility mode for ORAS
 
-This document is for adding a document to elaborate the compatibility mode for ORAS CLI which was proposed in [issue #720](https://github.com/oras-project/oras/issues/720).
+OCI group announced the [Image-spec v1.1.0-rc4](https://github.com/opencontainers/image-spec/blob/v1.1.0-rc4/manifest.md) and [Distribution-spec v1.1.0-rc3](https://github.com/opencontainers/distribution-spec/releases/tag/v1.1.0-rc3) in July 2023. A notable breaking change is that the OCI Artifact Manifest no longer exists in the OCI Image-spec v1.1.0-rc4. 
 
-## Background
+Two experimental flags `--image-spec` and `--distribution-spec` were introduced to commands `oras push` and `oras attach` in ORAS CLI v1.0.0 as explained in [this doc](https://github.com/oras-project/oras/blob/v1.0.1/docs/proposals/compatibility-mode.md). To align with the OCI Image-spec v1.1.0-rc4, the flag `--image-spec` and its options are changed in ORAS v1.1.0 accordingly.
 
-OCI group announced the release of v1.1 for [Image-spec](https://github.com/opencontainers/image-spec/blob/v1.1.0-rc1/artifact.md) and [Distribution-spec](https://github.com/opencontainers/distribution-spec) in Sep 2022. It supports the OCI artifact manifest and provides a new referrers discovery API that allows artifact references.
-
-Since 0.16.0, ORAS supports pushing OCI artifact manifest to OCI v1.0 compliant registries. However, the new manifest type may not be supported on the consumer side (e.g. self-crafted scripts) or in those OCI v1.0 compliant registries. To enable ORAS to work with popular registries, it provides backward compatibility which supports two types of manifest and allows fallback to upload the OCI image manifest to OCI v1.0 compliant registries or those which enabled OCI image manifest storage. 
-
-## Challenge
-
-The fallback attempted by ORAS may fail since there is no deterministic way to confirm if a registry supporting OCI artifact manifest due to no consistent error response. 
-
-You can find the testing result of the implementation result for OCI Spec from this [blog](https://toddysm.com/2023/01/05/oci-artifct-manifests-oci-referrers-api-and-their-support-across-registries-part-1/). On the other hand, users may want to force-push a specific manifest type to a registry for some reason.
-
-The current workaround for enabling a kind of compatibility mode is to specify a `--config` flag when using `oras push`. Since the OCI artifact manifest does not have a `config`, it will push an OCI image manifest instead. It is not user-friendly and is a bit hacky. It would be better if we can provide a compatibility mode to easily customize and switch the manifest uploading behavior, and enable users to handle the incompatibility problem when using ORAS across different registries. 
+This document elaborates on the major changes of ORAS CLI v1.1.0 proposed in [issue #1043](https://github.com/oras-project/oras/issues/1043).
 
 ## Goals
 
-- Provide different options to allow users to customize the manifest uploading behavior to the registry
-- Provide an easy-to-use and secure user experience when switching the behaviors
-- Enable ORAS to work with more registries flexibly 
+- Provide different options to allow users to customize the manifest build and distribution behavior
+- Provide an easy-to-use and secure user experience when push content to OCI registries
+- Enable ORAS to work with more OCI registries
 
 ## Solution
 
-Adding new flags to `oras push` and `oras attach` respectively with different variables to configure the manifest uploading behaviors. 
+Using the following flags in `oras push` and `oras attach` respectively with different variables to configure the manifest build and distribution behaviors. 
 
-- Adding a flag `--image-spec` to `oras push` and `oras attach` to force uploading a specific manifest type to registry
-- Adding a flag `--distribution-spec` to `oras attach`, `oras attach`, `oras cp`, and `oras manifest push` to configure compatibility with registry when pushing or copying an image/artifact manifest. This flag is also applicable to `oras discover` for filtering the referrers.
+- Using a flag `--image-spec` with `oras push`
+- Using a flag `--distribution-spec` with `oras attach`, `oras cp`, and `oras manifest push` to configure compatibility with registry when pushing or copying an OCI image manifest. This flag is also applicable to `oras discover` for viewing and filtering the referrers.
 
-### Force uploading a specific manifest type using a flag `--image-spec`
+### Build and push OCI image manifest using a flag `--image-spec`
 
-It follows `--image-spec <spec version>-<manifest type>` to enable configuration of using which spec version and manifest type. Currently, it only supports specifying v1.1 as the spec version. 
+Use the flag `--image-spec <spec version>` in `oras push` to specify which version of the OCI Image-spec when building and pushing an OCI image manifest. It supports specifying the option `v1.0` or `v1.1` as the spec version. The option `v1.1` is the default behavior in `oras push` since ORAS CLI v1.1.0 so users don't need to manually specify this option.
 
-| registry support                        | v1.1-artifact | v1.1-image | 
-| :-------------------------------------- | ----------------- | -------------- | 
-| OCI spec 1.0                            | no                | yes[^footnote] |
-| OCI spec 1.1 without referrers API      | yes               | yes            | 
-| OCI spec 1.1 with referrers API support | yes               | yes            | 
-
-> [^footnote]: It may fail when the OCI spec 1.0 compliant registry doesn't accept the `subject` field included in the image manifest.
-
-If users want to force pushing a specific version of OCI artifact manifest to a registry, they can use `--image-spec v1.1-artifact`. An OCI artifact manifest will be packed and uploaded. Users might choose it for security requirements, such as pushing a signature to a registry without changing its digest. For example:
+If users want to build an OCI image manifest to a registry that compliant with OCI Spec v1.0, they can specify `--image-spec v1.0`. An OCI image manifest that conforms the OCI Image-spec v1.0.2 will be packed and uploaded. For example
 
 ```bash
-oras push localhost:5000/hello-artifact:v1 \
-  --image-spec v1.1-artifact \
-  --artifact-type sbom/example \
-  sbom.json 
-```
-
-If users want to force pushing an OCI image manifest, no matter whether the registry is compliant with the OCI Spec v1.0 or v1.1, using `--image-spec v1.1-image` will only upload the OCI image manifest to a registry. This option is useful when users have concerns to use OCI artifact manifest or need to migrate content to OCI v1.0 compliant registry. For example:
-
-```bash
-oras push localhost:5000/hello-artifact:v1 \
-  --image-spec v1.1-image \
-  --artifact-type sbom/example \
+oras push localhost:5000/hello-world:v1 \
+  --image-spec v1.0 \
+  --artifact-type application/vnd.me.config \
   sbom.json
 ```
 
@@ -69,24 +42,24 @@ Based on the Referrers API status in the registry, users can use flag `--distrib
 | OCI spec 1.1 without referrers API      | no  | yes |
 | OCI spec 1.1 with referrers API support | yes | yes |
 
-Using a flag `--distribution-spec v1.1-referrers-api` to disable backward compatibility. It only allows uploading OCI artifact manifest to OCI v1.1 compliant registry with Referrers API enabled. This is the most strict option for setting compatibility with the registry. Users might choose it for security requirements. 
+Using a flag `--distribution-spec v1.1-referrers-api` to disable backward compatibility. It only allows uploading OCI image manifest to OCI v1.1 compliant registry with Referrers API enabled. This is the most strict option for setting compatibility with the registry. Users might choose it for security requirements. 
 
-For example, using this flag, ORAS will attach OCI artifact manifest only to an OCI v1.1 compliant registry with Referrers API enabled and no further actions for maintaining artifact references in registries.  
+For example, using this flag, ORAS will attach OCI image manifest only to an OCI v1.1 compliant registry with Referrers API enabled and no further actions for maintaining references in OCI registries.  
 
 ```bash
-oras attach localhost:5000/hello-artifact:v1 \
+oras attach localhost:5000/hello-world:v1 \
   --artifact-type sbom/example \
   --distribution-spec v1.1-referrers-api \
   sbom.json 
 ```
 
-Using `--distribution-spec v1.1-referrers-tag` to enable maximum backward compatibility with the registry. It will first attempt to upload the OCI artifact manifest with the [referrers tag schema](https://github.com/opencontainers/distribution-spec/blob/v1.1.0-rc1/spec.md#referrers-tag-schema) regardless of whether the registry complies with the OCI Spec v1.0 or v1.1 or supports Referrers API. For example: 
+Using `--distribution-spec v1.1-referrers-tag` to enable maximum backward compatibility with the registry. It will first attempt to upload the OCI image manifest with the [referrers tag schema](https://github.com/opencontainers/distribution-spec/blob/v1.1.0-rc3/spec.md#referrers-tag-schema) regardless of whether the registry complies with the OCI Spec v1.0 or v1.1 or supports Referrers API. For example: 
 
 ```bash
-oras attach localhost:5000/hello-artifact:v1 \
+oras attach localhost:5000/hello-world:v1 \
   --artifact-type sbom/example \
   --distribution-spec v1.1-referrers-tag \
   sbom.json 
 ```
 
-Similarly, users can use `oras cp`, and `oras manifest push` with the flag `--distribution-spec` to configure compatibility with registry when pushing or copying an image/artifact manifest, or use `oras discover` with the flag `--distribution-spec` for filtering the referrers in the view.
+Similarly, users can use `oras cp`, and `oras manifest push` with the flag `--distribution-spec` to configure compatibility with registry when pushing or copying an OCI image manifest, or use `oras discover` with the flag `--distribution-spec` for filtering the referrers in the view.

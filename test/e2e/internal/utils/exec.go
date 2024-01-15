@@ -34,10 +34,9 @@ const (
 	orasBinary = "oras"
 
 	// customize your own basic auth file via `htpasswd -cBb <file_name> <user_name> <password>`
-	Username       = "hello"
-	Password       = "oras-test"
-	AuthConfigPath = "test.config"
-	DefaultTimeout = 10 * time.Second
+	Username         = "hello"
+	Password         = "oras-test"
+	DefaultTimeout   = 10 * time.Second
 	// If the command hasn't exited yet, ginkgo session ExitCode is -1
 	notResponding = -1
 )
@@ -189,7 +188,6 @@ func (opts *ExecOption) Exec() *gexec.Session {
 		opts.binary = ORASPath
 	}
 	cmd = exec.Command(opts.binary, opts.args...)
-	cmd.Env = append(os.Environ(), fmt.Sprintf("GOCOVERDIR=%s", CovDumpPath))
 	cmd.Stdin = opts.stdin
 	if opts.workDir != "" {
 		// switch working directory

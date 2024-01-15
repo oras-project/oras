@@ -19,13 +19,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"strings"
+	"sync"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
+	"oras.land/oras-go/v2/registry/remote"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 )
@@ -47,7 +53,7 @@ type Target struct {
 	//  - registry and repository for the remote target
 	Path string
 
-	isOCILayout bool
+	IsOCILayout bool
 }
 
 // ApplyFlags applies flags to a command flag set for unary target
@@ -72,7 +78,7 @@ func (opts *Target) AnnotatedReference() string {
 // the full form is not implemented until a new type comes in.
 func (opts *Target) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
 	flagPrefix, notePrefix := applyPrefix(prefix, description)
-	fs.BoolVarP(&opts.isOCILayout, flagPrefix+"oci-layout", "", false, "set "+notePrefix+"target as an OCI image layout")
+	fs.BoolVarP(&opts.IsOCILayout, flagPrefix+"oci-layout", "", false, "set "+notePrefix+"target as an OCI image layout")
 }
 
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
@@ -85,7 +91,7 @@ func (opts *Target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 // Parse gets target options from user input.
 func (opts *Target) Parse() error {
 	switch {
-	case opts.isOCILayout:
+	case opts.IsOCILayout:
 		opts.Type = TargetTypeOCILayout
 		if len(opts.headerFlags) != 0 {
 			return errors.New("custom header flags cannot be used on an OCI image layout target")
@@ -110,26 +116,69 @@ func parseOCILayoutReference(raw string) (path string, ref string, err error) {
 	return
 }
 
+func (opts *Target) newOCIStore() (*oci.Store, error) {
+	var err error
+	opts.Path, opts.Reference, err = parseOCILayoutReference(opts.RawReference)
+	if err != nil {
+		return nil, err
+	}
+	return oci.New(opts.Path)
+}
+
+func (opts *Target) newRepository(common Common, logger logrus.FieldLogger) (*remote.Repository, error) {
+	repo, err := opts.NewRepository(opts.RawReference, common, logger)
+	if err != nil {
+		return nil, err
+	}
+	tmp := repo.Reference
+	tmp.Reference = ""
+	opts.Path = tmp.String()
+	opts.Reference = repo.Reference.Reference
+	return repo, nil
+}
+
 // NewTarget generates a new target based on opts.
-func (opts *Target) NewTarget(common Common) (oras.GraphTarget, error) {
+func (opts *Target) NewTarget(common Common, logger logrus.FieldLogger) (oras.GraphTarget, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
-		var err error
-		opts.Path, opts.Reference, err = parseOCILayoutReference(opts.RawReference)
-		if err != nil {
-			return nil, err
-		}
-		return oci.New(opts.Path)
+		return opts.newOCIStore()
 	case TargetTypeRemote:
-		repo, err := opts.NewRepository(opts.RawReference, common)
+		return opts.newRepository(common, logger)
+	}
+	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
+}
+
+type ResolvableDeleter interface {
+	content.Resolver
+	content.Deleter
+}
+
+// NewBlobDeleter generates a new blob deleter based on opts.
+func (opts *Target) NewBlobDeleter(common Common, logger logrus.FieldLogger) (ResolvableDeleter, error) {
+	switch opts.Type {
+	case TargetTypeOCILayout:
+		return opts.newOCIStore()
+	case TargetTypeRemote:
+		repo, err := opts.newRepository(common, logger)
 		if err != nil {
 			return nil, err
 		}
-		tmp := repo.Reference
-		tmp.Reference = ""
-		opts.Path = tmp.String()
-		opts.Reference = repo.Reference.Reference
-		return repo, nil
+		return repo.Blobs(), nil
+	}
+	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
+}
+
+// NewManifestDeleter generates a new blob deleter based on opts.
+func (opts *Target) NewManifestDeleter(common Common, logger logrus.FieldLogger) (ResolvableDeleter, error) {
+	switch opts.Type {
+	case TargetTypeOCILayout:
+		return opts.newOCIStore()
+	case TargetTypeRemote:
+		repo, err := opts.newRepository(common, logger)
+		if err != nil {
+			return nil, err
+		}
+		return repo.Manifests(), nil
 	}
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
 }
@@ -142,7 +191,7 @@ type ReadOnlyGraphTagFinderTarget interface {
 }
 
 // NewReadonlyTargets generates a new read only target based on opts.
-func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadOnlyGraphTagFinderTarget, error) {
+func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common, logger logrus.FieldLogger) (ReadOnlyGraphTagFinderTarget, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
 		var err error
@@ -152,14 +201,24 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadO
 		}
 		info, err := os.Stat(opts.Path)
 		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				return nil, fmt.Errorf("invalid argument %q: failed to find path %q: %w", opts.RawReference, opts.Path, err)
+			}
 			return nil, err
 		}
 		if info.IsDir() {
 			return oci.NewFromFS(ctx, os.DirFS(opts.Path))
 		}
-		return oci.NewFromTar(ctx, opts.Path)
+		store, err := oci.NewFromTar(ctx, opts.Path)
+		if err != nil {
+			if errors.Is(err, io.ErrUnexpectedEOF) {
+				return nil, fmt.Errorf("%q does not look like a tar archive: %w", opts.Path, err)
+			}
+			return nil, err
+		}
+		return store, nil
 	case TargetTypeRemote:
-		repo, err := opts.NewRepository(opts.RawReference, common)
+		repo, err := opts.NewRepository(opts.RawReference, common, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -175,7 +234,7 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common) (ReadO
 // EnsureReferenceNotEmpty ensures whether the tag or digest is empty.
 func (opts *Target) EnsureReferenceNotEmpty() error {
 	if opts.Reference == "" {
-		return oerrors.NewErrInvalidReferenceStr(opts.RawReference)
+		return oerrors.NewErrEmptyTagOrDigestStr(opts.RawReference)
 	}
 	return nil
 }
@@ -203,6 +262,8 @@ func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
 
 // Parse parses user-provided flags and arguments into option struct.
 func (opts *BinaryTarget) Parse() error {
+	opts.From.warned = make(map[string]*sync.Map)
+	opts.To.warned = opts.From.warned
 	// resolve are parsed in array order, latter will overwrite former
 	opts.From.resolveFlag = append(opts.resolveFlag, opts.From.resolveFlag...)
 	opts.To.resolveFlag = append(opts.resolveFlag, opts.To.resolveFlag...)

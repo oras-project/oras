@@ -19,6 +19,8 @@ builds:
   binary: ./oras
   env:
   - CGO_ENABLED=0
+  flags:
+  - -trimpath
   goos:
   - darwin
   - linux
@@ -28,6 +30,8 @@ builds:
   - arm64
   - arm
   - s390x
+  - ppc64le
+  - riscv64
   goarm:
   - '7'
   ignore:
@@ -40,7 +44,8 @@ builds:
   ldflags:
   # one-line ldflags to bypass the goreleaser bugs
   # the git tree state is guaranteed to be clean by goreleaser
-  - -w -X oras.land/oras/internal/version.Version={{.Version}} -X oras.land/oras/internal/version.GitCommit={{.FullCommit}} -X oras.land/oras/internal/version.BuildMetadata= -X oras.land/oras/internal/version.GitTreeState=clean
+  - -w -s -buildid= -X oras.land/oras/internal/version.Version={{.Version}} -X oras.land/oras/internal/version.GitCommit={{.FullCommit}} -X oras.land/oras/internal/version.BuildMetadata= -X oras.land/oras/internal/version.GitTreeState=clean
+  mod_timestamp: "{{ .CommitTimestamp }}"
 
 archives:
   - format: tar.gz

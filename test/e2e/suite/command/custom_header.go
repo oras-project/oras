@@ -17,6 +17,7 @@ package command
 
 import (
 	"fmt"
+	"path/filepath"
 
 	. "github.com/onsi/ginkgo/v2"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
@@ -24,7 +25,7 @@ import (
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
-var _ = Describe("Common registry users:", func() {
+var _ = Describe("1.1 registry users:", func() {
 	headerTestRepo := func(text string) string {
 		return fmt.Sprintf("command/headertest/%d/%s", GinkgoRandomSeed(), text)
 	}
@@ -40,7 +41,7 @@ var _ = Describe("Common registry users:", func() {
 			tempDir := PrepareTempFiles()
 			subjectRef := RegistryRef(Host, testRepo, foobar.Tag)
 			prepare(RegistryRef(Host, ImageRepo, foobar.Tag), subjectRef)
-			ORAS("attach", "--artifact-type", "test.attach", subjectRef,
+			ORAS("attach", "--artifact-type", "test/attach", subjectRef,
 				fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia),
 				"-d", "-H", FoobarHeaderInput, "-H", AbHeaderInput).
 				WithWorkDir(tempDir).MatchRequestHeaders(FoobarHeader, AbHeader).Exec()
@@ -80,7 +81,7 @@ var _ = Describe("Common registry users:", func() {
 				MatchRequestHeaders(FoobarHeader, AbHeader).Exec()
 		})
 		It("login", func() {
-			ORAS("login", Host, "-u", Username, "-p", Password, "--registry-config", AuthConfigPath,
+			ORAS("login", Host, "-u", Username, "-p", Password, "--registry-config", filepath.Join(GinkgoT().TempDir(), "test.config"),
 				"-H", FoobarHeaderInput, "-H", AbHeaderInput).
 				MatchRequestHeaders(FoobarHeader, AbHeader).Exec()
 		})

@@ -28,6 +28,22 @@ import (
 	"github.com/onsi/gomega/gbytes"
 )
 
+// CopyZOTRepo copies oci layout data between repostories.
+func CopyZOTRepo(fromRepo string, toRepo string) {
+	zotRoot := filepath.Join(TestDataRoot, "zot")
+	fromRepo = filepath.Join(zotRoot, fromRepo)
+	toRepo = filepath.Join(zotRoot, toRepo)
+	Expect(CopyFiles(fromRepo, toRepo)).ShouldNot(HaveOccurred())
+}
+
+// PrepareTempOCI prepares an OCI layout root via copying from an ZOT repo and
+// return the path.
+func PrepareTempOCI(fromZotRepo string) string {
+	root := PrepareTempFiles()
+	Expect(CopyFiles(filepath.Join(TestDataRoot, "zot", fromZotRepo), root)).ShouldNot(HaveOccurred())
+	return root
+}
+
 // PrepareTempFiles copies test data into a temp folder and return it.
 func PrepareTempFiles() string {
 	tempDir := GinkgoT().TempDir()

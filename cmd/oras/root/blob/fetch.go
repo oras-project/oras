@@ -28,6 +28,9 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras/cmd/oras/internal/argument"
+	"oras.land/oras/cmd/oras/internal/display/track"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -45,8 +48,8 @@ func fetchCmd() *cobra.Command {
 	var opts fetchBlobOptions
 	cmd := &cobra.Command{
 		Use:   "fetch [flags] {--output <file> | --descriptor} <name>@<digest>",
-		Short: "Fetch a blob from a remote registry",
-		Long: `Fetch a blob from a remote registry
+		Short: "Fetch a blob from a registry or an OCI image layout",
+		Long: `Fetch a blob from a registry or an OCI image layout
 
 Example - Fetch a blob from registry and save it to a local file:
   oras blob fetch --output blob.tar.gz localhost:5000/hello@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
@@ -66,7 +69,7 @@ Example - Fetch and print a blob from OCI image layout folder 'layout-dir':
 Example - Fetch and print a blob from OCI image layout archive file 'layout.tar':
   oras blob fetch --oci-layout --output - layout.tar@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
 `,
-		Args: cobra.ExactArgs(1),
+		Args: oerrors.CheckArgs(argument.Exactly(1), "the target blob to fetch"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.outputPath == "" && !opts.OutputDescriptor {
 				return errors.New("either `--output` or `--descriptor` must be provided")
@@ -90,9 +93,9 @@ Example - Fetch and print a blob from OCI image layout archive file 'layout.tar'
 }
 
 func fetchBlob(ctx context.Context, opts fetchBlobOptions) (fetchErr error) {
-	ctx, _ = opts.WithContext(ctx)
+	ctx, logger := opts.WithContext(ctx)
 	var target oras.ReadOnlyTarget
-	target, err := opts.NewReadonlyTarget(ctx, opts.Common)
+	target, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
 		return err
 	}
@@ -108,49 +111,9 @@ func fetchBlob(ctx context.Context, opts fetchBlobOptions) (fetchErr error) {
 	if err != nil {
 		return err
 	}
-
-	var desc ocispec.Descriptor
-	if opts.outputPath == "" {
-		// fetch blob descriptor only
-		desc, err = oras.Resolve(ctx, src, opts.Reference, oras.DefaultResolveOptions)
-		if err != nil {
-			return err
-		}
-	} else {
-		// fetch blob content
-		var rc io.ReadCloser
-		desc, rc, err = oras.Fetch(ctx, src, opts.Reference, oras.DefaultFetchOptions)
-		if err != nil {
-			return err
-		}
-		defer rc.Close()
-		vr := content.NewVerifyReader(rc, desc)
-
-		// outputs blob content if "--output -" is used
-		if opts.outputPath == "-" {
-			if _, err := io.Copy(os.Stdout, vr); err != nil {
-				return err
-			}
-			return vr.Verify()
-		}
-
-		// save blob content into the local file if the output path is provided
-		file, err := os.Create(opts.outputPath)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			if err := file.Close(); fetchErr == nil {
-				fetchErr = err
-			}
-		}()
-
-		if _, err := io.Copy(file, vr); err != nil {
-			return err
-		}
-		if err := vr.Verify(); err != nil {
-			return err
-		}
+	desc, err := opts.doFetch(ctx, src)
+	if err != nil {
+		return err
 	}
 
 	// outputs blob's descriptor if `--descriptor` is used
@@ -165,4 +128,59 @@ func fetchBlob(ctx context.Context, opts fetchBlobOptions) (fetchErr error) {
 	}
 
 	return nil
+}
+
+func (opts *fetchBlobOptions) doFetch(ctx context.Context, src oras.ReadOnlyTarget) (desc ocispec.Descriptor, fetchErr error) {
+	var err error
+	if opts.outputPath == "" {
+		// fetch blob descriptor only
+		return oras.Resolve(ctx, src, opts.Reference, oras.DefaultResolveOptions)
+	}
+	// fetch blob content
+	var rc io.ReadCloser
+	desc, rc, err = oras.Fetch(ctx, src, opts.Reference, oras.DefaultFetchOptions)
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	defer rc.Close()
+	vr := content.NewVerifyReader(rc, desc)
+
+	// outputs blob content if "--output -" is used
+	writer := os.Stdout
+	if opts.outputPath != "-" {
+		// save blob content into the local file if the output path is provided
+		file, err := os.Create(opts.outputPath)
+		if err != nil {
+			return ocispec.Descriptor{}, err
+		}
+		defer func() {
+			if err := file.Close(); fetchErr == nil {
+				fetchErr = err
+			}
+		}()
+		writer = file
+	}
+
+	if opts.TTY == nil {
+		// none TTY output
+		if _, err = io.Copy(writer, vr); err != nil {
+			return ocispec.Descriptor{}, err
+		}
+	} else {
+		// TTY output
+		trackedReader, err := track.NewReader(vr, desc, "Downloading", "Downloaded ", opts.TTY)
+		if err != nil {
+			return ocispec.Descriptor{}, err
+		}
+		defer trackedReader.StopManager()
+		trackedReader.Start()
+		if _, err = io.Copy(writer, trackedReader); err != nil {
+			return ocispec.Descriptor{}, err
+		}
+		trackedReader.Done()
+	}
+	if err := vr.Verify(); err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	return desc, nil
 }

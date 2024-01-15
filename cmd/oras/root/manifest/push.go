@@ -28,7 +28,9 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/display"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/file"
 )
@@ -49,8 +51,8 @@ func pushCmd() *cobra.Command {
 	var opts pushOptions
 	cmd := &cobra.Command{
 		Use:   "push [flags] <name>[:<tag>[,<tag>][...]|@<digest>] <file>",
-		Short: "Push a manifest to remote registry",
-		Long: `Push a manifest to remote registry
+		Short: "Push a manifest to a registry or an OCI image layout",
+		Long: `Push a manifest to a registry or an OCI image layout
 
 Example - Push a manifest to repository 'localhost:5000/hello' and tag with 'v1':
   oras manifest push localhost:5000/hello:v1 manifest.json
@@ -77,10 +79,10 @@ Example - Push a manifest to repository 'localhost:5000/hello' and tag with 'tag
 Example - Push a manifest to repository 'localhost:5000/hello' and tag with 'tag1', 'tag2', 'tag3' and concurrency level tuned:
   oras manifest push --concurrency 6 localhost:5000/hello:tag1,tag2,tag3 manifest.json
 
-Example - Push a manifest to an OCI layout folder 'layout-dir' and tag with 'v1':
+Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag with 'v1':
   oras manifest push --oci-layout layout-dir:v1 manifest.json
 `,
-		Args: cobra.ExactArgs(2),
+		Args: oerrors.CheckArgs(argument.Exactly(2), "the destination to push to and the file to read manifest content from"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.fileRef = args[1]
 			if opts.fileRef == "-" && opts.PasswordFromStdin {
@@ -104,10 +106,10 @@ Example - Push a manifest to an OCI layout folder 'layout-dir' and tag with 'v1'
 }
 
 func pushManifest(ctx context.Context, opts pushOptions) error {
-	ctx, _ = opts.WithContext(ctx)
+	ctx, logger := opts.WithContext(ctx)
 	var target oras.Target
 	var err error
-	target, err = opts.NewTarget(opts.Common)
+	target, err = opts.NewTarget(opts.Common, logger)
 	if err != nil {
 		return err
 	}

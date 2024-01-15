@@ -36,8 +36,8 @@ var Host string
 // FallbackHost points to the registry service where fallback E2E specs will be run against.
 var FallbackHost string
 
-// Path to generate the coverage report.
-var CovDumpPath string
+// ZOTHost points to the zot service where E2E specs will be run against.
+var ZOTHost string
 
 func init() {
 	Host = os.Getenv(RegHostKey)
@@ -62,6 +62,16 @@ func init() {
 		panic(err)
 	}
 
+	ZOTHost = os.Getenv(ZOTHostKey)
+	if ZOTHost == "" {
+		ZOTHost = "localhost:7000"
+		fmt.Fprintf(os.Stderr, "cannot find zot host name in %s, using %s instead\n", ZOTHostKey, ZOTHost)
+	}
+	ref.Registry = ZOTHost
+	if err := ref.ValidateRegistry(); err != nil {
+		panic(err)
+	}
+
 	// setup test data
 	pwd, err := os.Getwd()
 	if err != nil {
@@ -75,25 +85,19 @@ func init() {
 	}
 	BeforeSuite(func() {
 		ORASPath = os.Getenv("ORAS_PATH")
-		if covDumpRoot := os.Getenv("COVERAGE_DUMP_ROOT"); covDumpRoot != "" {
+		var covDumpPath string
+		if covDumpPath = os.Getenv("GOCOVERDIR"); covDumpPath != "" {
+			fmt.Printf("Coverage file dump path: %q\n", covDumpPath)
 			if ORASPath != "" {
-				fmt.Printf("Pre-built oras ignored: %s\n", ORASPath)
+				fmt.Printf("Pre-built oras in %q will be ignored\n", ORASPath)
 				ORASPath = ""
-			}
-			if filepath.IsAbs(covDumpRoot) {
-				CovDumpPath = covDumpRoot
-			} else if workspacePath := os.Getenv("GITHUB_WORKSPACE"); workspacePath != "" {
-				CovDumpPath = filepath.Join(workspacePath, "test/e2e", covDumpRoot)
-			} else {
-				// local debugging
-				CovDumpPath = filepath.Join(pwd, "..", "..", covDumpRoot)
 			}
 
 			// confirm the existence of dump folder
-			err := os.MkdirAll(CovDumpPath, 0700)
+			err := os.MkdirAll(covDumpPath, 0700)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			fmt.Printf("Coverage file dump path: %q\n", CovDumpPath)
 		}
+
 		if filepath.IsAbs(ORASPath) {
 			fmt.Printf("Testing based on pre-built binary locates in %q\n", ORASPath)
 		} else if workspacePath := os.Getenv("GITHUB_WORKSPACE"); ORASPath != "" && workspacePath != "" {
@@ -105,7 +109,8 @@ func init() {
 		} else {
 			// fallback to native build to facilitate local debugging
 			buildArgs := []string{}
-			if CovDumpPath != "" {
+			if covDumpPath != "" {
+				fmt.Printf("coverage instrumenting is enabled\n")
 				buildArgs = append(buildArgs, "-coverpkg", "oras.land/oras/cmd/oras/...,oras.land/oras/internal/...")
 			}
 			ORASPath, err = gexec.Build("oras.land/oras/cmd/oras", buildArgs...)
@@ -118,6 +123,8 @@ func init() {
 		cmd := exec.Command(ORASPath, "login", Host, "-u", Username, "-p", Password)
 		gomega.Expect(cmd.Run()).ShouldNot(gomega.HaveOccurred())
 		cmd = exec.Command(ORASPath, "login", FallbackHost, "-u", Username, "-p", Password)
+		gomega.Expect(cmd.Run()).ShouldNot(gomega.HaveOccurred())
+		cmd = exec.Command(ORASPath, "login", ZOTHost, "-u", Username, "-p", Password)
 		gomega.Expect(cmd.Run()).ShouldNot(gomega.HaveOccurred())
 	})
 }

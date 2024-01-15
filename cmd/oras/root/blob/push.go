@@ -19,11 +19,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2"
+	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/track"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/file"
 )
@@ -43,8 +48,8 @@ func pushCmd() *cobra.Command {
 	var opts pushBlobOptions
 	cmd := &cobra.Command{
 		Use:   "push [flags] <name>[@digest] <file>",
-		Short: "Push a blob to a remote registry",
-		Long: `Push a blob to a remote registry
+		Short: "Push a blob to a registry or an OCI image layout",
+		Long: `Push a blob to a registry or an OCI image layout
 
 Example - Push blob 'hi.txt' to a registry:
   oras blob push localhost:5000/hello hi.txt
@@ -67,10 +72,10 @@ Example - Push blob 'hi.txt' and output the prettified descriptor:
 Example - Push blob without TLS:
   oras blob push --insecure localhost:5000/hello hi.txt
 
-Example - Push blob 'hi.txt' into an OCI layout folder 'layout-dir':
+Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
   oras blob push --oci-layout layout-dir hi.txt
 `,
-		Args: cobra.ExactArgs(2),
+		Args: oerrors.CheckArgs(argument.Exactly(2), "the destination to push to and the file to read blob content from"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
 			opts.fileRef = args[1]
@@ -96,9 +101,9 @@ Example - Push blob 'hi.txt' into an OCI layout folder 'layout-dir':
 }
 
 func pushBlob(ctx context.Context, opts pushBlobOptions) (err error) {
-	ctx, _ = opts.WithContext(ctx)
+	ctx, logger := opts.WithContext(ctx)
 
-	repo, err := opts.NewTarget(opts.Common)
+	target, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
 		return err
 	}
@@ -110,27 +115,19 @@ func pushBlob(ctx context.Context, opts pushBlobOptions) (err error) {
 	}
 	defer rc.Close()
 
-	exists, err := repo.Exists(ctx, desc)
+	exists, err := target.Exists(ctx, desc)
 	if err != nil {
 		return err
 	}
 	verbose := opts.Verbose && !opts.OutputDescriptor
 	if exists {
-		if err := display.PrintStatus(desc, "Exists", verbose); err != nil {
-			return err
-		}
+		err = display.PrintStatus(desc, "Exists", verbose)
 	} else {
-		if err := display.PrintStatus(desc, "Uploading", verbose); err != nil {
-			return err
-		}
-		if err = repo.Push(ctx, desc, rc); err != nil {
-			return err
-		}
-		if err := display.PrintStatus(desc, "Uploaded ", verbose); err != nil {
-			return err
-		}
+		err = opts.doPush(ctx, target, desc, rc)
 	}
-
+	if err != nil {
+		return err
+	}
 	// outputs blob's descriptor
 	if opts.OutputDescriptor {
 		descJSON, err := opts.Marshal(desc)
@@ -143,5 +140,31 @@ func pushBlob(ctx context.Context, opts pushBlobOptions) (err error) {
 	fmt.Println("Pushed", opts.AnnotatedReference())
 	fmt.Println("Digest:", desc.Digest)
 
+	return nil
+}
+func (opts *pushBlobOptions) doPush(ctx context.Context, t oras.Target, desc ocispec.Descriptor, r io.Reader) error {
+	if opts.TTY == nil {
+		// none TTY output
+		if err := display.PrintStatus(desc, "Uploading", opts.Verbose); err != nil {
+			return err
+		}
+		if err := t.Push(ctx, desc, r); err != nil {
+			return err
+		}
+		return display.PrintStatus(desc, "Uploaded ", opts.Verbose)
+	}
+
+	// TTY output
+	trackedReader, err := track.NewReader(r, desc, "Uploading", "Uploaded ", opts.TTY)
+	if err != nil {
+		return err
+	}
+	defer trackedReader.StopManager()
+	trackedReader.Start()
+	r = trackedReader
+	if err := t.Push(ctx, desc, r); err != nil {
+		return err
+	}
+	trackedReader.Done()
 	return nil
 }

@@ -22,11 +22,22 @@ import (
 	"sync/atomic"
 )
 
+var (
+	// requestCount records the number of logged request-response pairs and will
+	// be used as the unique id for the next pair.
+	requestCount uint64
+
+	// toScrub is a set of headers that should be scrubbed from the log.
+	toScrub = []string{
+		"Authorization",
+		"Set-Cookie",
+	}
+)
+
 // Transport is an http.RoundTripper that keeps track of the in-flight
 // request and add hooks to report HTTP tracing events.
 type Transport struct {
 	http.RoundTripper
-	count uint64
 }
 
 // NewTransport creates and returns a new instance of Transport
@@ -38,13 +49,13 @@ func NewTransport(base http.RoundTripper) *Transport {
 
 // RoundTrip calls base roundtrip while keeping track of the current request.
 func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
-	number := atomic.AddUint64(&t.count, 1) - 1
+	id := atomic.AddUint64(&requestCount, 1) - 1
 	ctx := req.Context()
 	e := Logger(ctx)
 
 	// log the request
 	e.Debugf("Request #%d\n> Request URL: %q\n> Request method: %q\n> Request headers:\n%s",
-		number, req.URL, req.Method, logHeader(req.Header))
+		id, req.URL, req.Method, logHeader(req.Header))
 
 	// log the response
 	resp, err = t.RoundTripper.RoundTrip(req)
@@ -54,7 +65,7 @@ func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error
 		e.Errorf("No response obtained for request %s %q", req.Method, req.URL)
 	} else {
 		e.Debugf("Response #%d\n< Response Status: %q\n< Response headers:\n%s",
-			number, resp.Status, logHeader(resp.Header))
+			id, resp.Status, logHeader(resp.Header))
 	}
 	return resp, err
 }
@@ -65,8 +76,10 @@ func logHeader(header http.Header) string {
 	if len(header) > 0 {
 		headers := []string{}
 		for k, v := range header {
-			if strings.EqualFold(k, "Authorization") {
-				v = []string{"*****"}
+			for _, h := range toScrub {
+				if strings.EqualFold(k, h) {
+					v = []string{"*****"}
+				}
 			}
 			headers = append(headers, fmt.Sprintf("   %q: %q", k, strings.Join(v, ", ")))
 		}

@@ -26,6 +26,8 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras/cmd/oras/internal/argument"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/descriptor"
 )
@@ -46,8 +48,8 @@ func fetchConfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "fetch-config [flags] <name>{:<tag>|@<digest>}",
 		Aliases: []string{"get-config"},
-		Short:   "Fetch the config of a manifest from a remote registry",
-		Long: `Fetch the config of a manifest from a remote registry
+		Short:   "Fetch the config of a manifest from a registry or an OCI image layout",
+		Long: `Fetch the config of a manifest from a registry or an OCI image layout
 
 Example - Fetch the config:
   oras manifest fetch-config localhost:5000/hello:v1
@@ -67,7 +69,7 @@ Example - Fetch the descriptor of the config:
 Example - Fetch and print the prettified descriptor of the config:
   oras manifest fetch-config --descriptor --pretty localhost:5000/hello:v1
 `,
-		Args: cobra.ExactArgs(1),
+		Args: oerrors.CheckArgs(argument.Exactly(1), "the manifest config to fetch"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.outputPath == "-" && opts.OutputDescriptor {
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
@@ -86,9 +88,9 @@ Example - Fetch and print the prettified descriptor of the config:
 }
 
 func fetchConfig(ctx context.Context, opts fetchConfigOptions) (fetchErr error) {
-	ctx, _ = opts.WithContext(ctx)
+	ctx, logger := opts.WithContext(ctx)
 
-	repo, err := opts.NewReadonlyTarget(ctx, opts.Common)
+	repo, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
 		return err
 	}
