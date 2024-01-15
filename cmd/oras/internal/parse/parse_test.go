@@ -30,7 +30,7 @@ func Test_MediaTypeFromJson(t *testing.T) {
 	// generate test content
 	content := []byte(manifest)
 
-	// test ParseMediaType
+	// test MediaTypeFromJson
 	want := manifestMediaType
 	got, err := MediaTypeFromJson(nil, content)
 	if err != nil {
@@ -45,7 +45,7 @@ func Test_MediaTypeFromJson_invalidContent_notAJson(t *testing.T) {
 	// generate test content
 	content := []byte("manifest")
 
-	// test ParseMediaType
+	// test MediaTypeFromJson
 	_, err := MediaTypeFromJson(nil, content)
 	expected := "not a valid json file"
 	if err.Error() != expected {
