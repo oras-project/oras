@@ -281,7 +281,7 @@ func (opts *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 			if ref.Repository != "" && !strings.Contains(ref.Repository, "/") {
 				// docker.io/xxx -> docker.io/library/xxx
 				ref.Repository = "library/" + ref.Repository
-				ret.Recommendation = fmt.Sprintf("Namespace is missing, do you mean `%s %s`?", cmd.CommandPath(), ref)
+				ret.Recommendation = fmt.Sprintf("Namespace seems missing. Do you mean `%s %s`?", cmd.CommandPath(), ref)
 			}
 		}
 		return ret, true

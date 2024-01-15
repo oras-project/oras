@@ -108,7 +108,7 @@ func Trim(err error, toTrim error) error {
 // |         |    errC      | |  =>  |     errC     |
 // |         +--------------+ |      +--------------+
 // +--------------------------+
-func reWrap(errA error, errB error, errC error) error {
+func reWrap(errA, errB, errC error) error {
 	// TODO: trim dedicated error type when
 	// https://github.com/oras-project/oras-go/issues/677 is done
 	contentA := errA.Error()
