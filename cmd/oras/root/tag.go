@@ -16,7 +16,6 @@ limitations under the License.
 package root
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -67,7 +66,7 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 				}
 				return &oerrors.Error{
 					Err:            errors.New(`there is no "list" sub-command for "oras tag" command`),
-					Usage:          fmt.Sprintf("%s %s", cmd.CommandPath(), cmd.Use),
+					Usage:          fmt.Sprintf("%s %s", cmd.Parent().CommandPath(), cmd.Use),
 					Recommendation: fmt.Sprintf(`If you want to list available tags in %s, use "oras repo tags"`, container),
 				}
 			}
@@ -82,7 +81,7 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return tagManifest(cmd.Context(), opts)
+			return tagManifest(cmd, opts)
 		},
 	}
 
@@ -91,13 +90,13 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 	return oerrors.Command(cmd, &opts.Target)
 }
 
-func tagManifest(ctx context.Context, opts tagOptions) error {
-	ctx, logger := opts.WithContext(ctx)
+func tagManifest(cmd *cobra.Command, opts tagOptions) error {
+	ctx, logger := opts.WithContext(cmd.Context())
 	target, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
 		return err
 	}
-	if err := opts.EnsureReferenceNotEmpty(); err != nil {
+	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
 		return err
 	}
 

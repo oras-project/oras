@@ -236,10 +236,10 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common, logger
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
 }
 
-// EnsureReferenceNotEmpty ensures whether the tag or digest is empty.
-func (opts *Target) EnsureReferenceNotEmpty() error {
+// EnsureReferenceNotEmpty returns formalized error when the reference is empty.
+func (opts *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, needsTag bool) error {
 	if opts.Reference == "" {
-		return oerrors.NewErrEmptyTagOrDigestStr(opts.RawReference)
+		return oerrors.NewErrEmptyTagOrDigest(opts.RawReference, cmd, needsTag)
 	}
 	return nil
 }
@@ -296,6 +296,14 @@ type BinaryTarget struct {
 	From        Target
 	To          Target
 	resolveFlag []string
+}
+
+// EnsureSourceTargetReferenceNotEmpty ensures that the from target reference is not empty.
+func (opts *BinaryTarget) EnsureSourceTargetReferenceNotEmpty(cmd *cobra.Command) error {
+	if opts.From.Reference == "" {
+		return oerrors.NewErrEmptyTagOrDigest(opts.From.RawReference, cmd, true)
+	}
+	return nil
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
