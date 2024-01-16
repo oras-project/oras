@@ -16,6 +16,7 @@ limitations under the License.
 package parse
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 
@@ -32,7 +33,7 @@ func Test_MediaTypeFromJson(t *testing.T) {
 
 	// test MediaTypeFromJson
 	want := manifestMediaType
-	got, err := MediaTypeFromJson(nil, content)
+	got, err := MediaTypeFromJson(nil, content, "example filename")
 	if err != nil {
 		t.Fatal("ParseMediaType() error=", err)
 	}
@@ -46,7 +47,7 @@ func Test_MediaTypeFromJson_invalidContent_notAJson(t *testing.T) {
 	content := []byte("manifest")
 
 	// test MediaTypeFromJson
-	_, err := MediaTypeFromJson(nil, content)
+	_, err := MediaTypeFromJson(nil, content, "example filename")
 	expected := "not a valid json file"
 	if err.Error() != expected {
 		t.Fatalf("ParseMediaType() error = %v, wantErr %v", err, expected)
@@ -67,13 +68,12 @@ func Test_MediaTypeFromJson_invalidContent_missingMediaType(t *testing.T) {
 	content := []byte(`{"schemaVersion":2}`)
 
 	// test MediaTypeFromJson
-	_, err := MediaTypeFromJson(testCmd, content)
-	expected := ErrMediaTypeNotFound
+	_, err := MediaTypeFromJson(testCmd, content, "example filename")
 	gotError, isOrasError := err.(*oerrors.Error)
 	if !isOrasError {
 		t.Fatal("incorrect error type, expect *oerrors.Error")
 	}
-	if gotError.Unwrap() != expected {
-		t.Fatalf("ParseMediaType() error = %v, wantErr %v", err, expected)
+	if !errors.Is(gotError.Unwrap(), ErrMediaTypeNotFound) {
+		t.Fatalf("ParseMediaType() error = %v, wantErr %v", err, ErrMediaTypeNotFound)
 	}
 }

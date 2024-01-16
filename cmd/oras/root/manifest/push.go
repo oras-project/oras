@@ -127,7 +127,7 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 	// get manifest media type
 	mediaType := opts.mediaType
 	if opts.mediaType == "" {
-		mediaType, err = parse.MediaTypeFromJson(cmd, contentBytes)
+		mediaType, err = parse.MediaTypeFromJson(cmd, contentBytes, opts.fileRef)
 		if err != nil {
 			return err
 		}
