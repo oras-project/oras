@@ -88,7 +88,7 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 	cmd.Flags().StringSliceVarP(&opts.mediaTypes, "media-type", "", nil, "accepted media types")
 	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "file `path` to write the fetched manifest to, use - for stdout")
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
 func fetchManifest(ctx context.Context, opts fetchOptions) (fetchErr error) {

@@ -21,17 +21,21 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
 
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/errcode"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 )
@@ -43,6 +47,7 @@ const (
 
 // Target struct contains flags and arguments specifying one registry or image
 // layout.
+// Target implements oerrors.Handler interface.
 type Target struct {
 	Remote
 	RawReference string
@@ -239,8 +244,54 @@ func (opts *Target) EnsureReferenceNotEmpty() error {
 	return nil
 }
 
+// Modify handles error during cmd execution.
+func (opts *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
+	if opts.IsOCILayout {
+		return err, false
+	}
+
+	if errors.Is(err, errdef.ErrNotFound) {
+		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
+		return err, true
+	}
+
+	var errResp *errcode.ErrorResponse
+	if errors.As(err, &errResp) {
+		ref := registry.Reference{Registry: opts.RawReference}
+		if errResp.URL.Host != ref.Host() {
+			// raw reference is not registry host
+			var parseErr error
+			ref, parseErr = registry.ParseReference(opts.RawReference)
+			if parseErr != nil {
+				// this should not happen
+				return err, false
+			}
+			if errResp.URL.Host != ref.Host() {
+				// not handle if the error is not from the target
+				return err, false
+			}
+		}
+
+		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
+		ret := &oerrors.Error{
+			Err: oerrors.Trim(err, errResp),
+		}
+
+		if ref.Registry == "docker.io" && errResp.StatusCode == http.StatusUnauthorized {
+			if ref.Repository != "" && !strings.Contains(ref.Repository, "/") {
+				// docker.io/xxx -> docker.io/library/xxx
+				ref.Repository = "library/" + ref.Repository
+				ret.Recommendation = fmt.Sprintf("Namespace seems missing. Do you mean `%s %s`?", cmd.CommandPath(), ref)
+			}
+		}
+		return ret, true
+	}
+	return err, false
+}
+
 // BinaryTarget struct contains flags and arguments specifying two registries or
 // image layouts.
+// BinaryTarget implements errors.Handler interface.
 type BinaryTarget struct {
 	From        Target
 	To          Target
@@ -268,4 +319,12 @@ func (opts *BinaryTarget) Parse() error {
 	opts.From.resolveFlag = append(opts.resolveFlag, opts.From.resolveFlag...)
 	opts.To.resolveFlag = append(opts.resolveFlag, opts.To.resolveFlag...)
 	return Parse(opts)
+}
+
+// Modify handles error during cmd execution.
+func (opts *BinaryTarget) Modify(cmd *cobra.Command, err error) (error, bool) {
+	if modifiedErr, modified := opts.From.Modify(cmd, err); modified {
+		return modifiedErr, modified
+	}
+	return opts.To.Modify(cmd, err)
 }

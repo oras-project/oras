@@ -52,6 +52,11 @@ var _ = Describe("ORAS beginners:", func() {
 				gomega.Expect(err).Should(gbytes.Say("\n"))
 				gomega.Expect(err).Should(gbytes.Say(`Run "oras repo ls -h"`))
 			})
+
+			It("should fail if password is wrong with registry error prefix", func() {
+				ORAS("repo", "ls", ZOTHost, "-u", Username, "-p", "???").
+					MatchErrKeyWords(RegistryErrorPrefix).ExpectFailure().Exec()
+			})
 		})
 		When("running `repo tags`", func() {
 			It("should show help description with feature flags", func() {
@@ -63,10 +68,10 @@ var _ = Describe("ORAS beginners:", func() {
 				ORAS("repository", "show-tags", "--help").MatchKeyWords(ExampleDesc).Exec()
 			})
 
-			It("should fail listing repositories if wrong registry provided", func() {
+			It("should fail listing repositories if wrong reference provided", func() {
 				ORAS("repo", "tags").ExpectFailure().MatchErrKeyWords("Error:").Exec()
 				ORAS("repo", "tags", ZOTHost).ExpectFailure().MatchErrKeyWords("Error:").Exec()
-				ORAS("repo", "tags", RegistryRef(ZOTHost, ImageRepo, "some-tag")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+				ORAS("repo", "tags", RegistryRef(ZOTHost, ImageRepo, "some-tag")).ExpectFailure().MatchErrKeyWords(RegistryErrorPrefix).Exec()
 			})
 
 			It("should fail and show detailed error description if no argument provided", func() {

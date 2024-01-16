@@ -69,7 +69,7 @@ Example - Delete a blob and print its descriptor:
 	}
 
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
 func deleteBlob(ctx context.Context, opts deleteBlobOptions) (err error) {

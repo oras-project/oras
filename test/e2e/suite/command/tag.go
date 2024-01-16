@@ -33,7 +33,7 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		It("should fail when provided manifest reference is not found", func() {
-			ORAS("tag", RegistryRef(ZOTHost, ImageRepo, "i-dont-think-this-tag-exists"), "tagged").ExpectFailure().MatchErrKeyWords("Error:").Exec()
+			ORAS("tag", RegistryRef(ZOTHost, ImageRepo, InvalidTag), "tagged").ExpectFailure().MatchErrKeyWords(RegistryErrorPrefix).Exec()
 		})
 
 		It("should fail and show detailed error description if no argument provided", func() {

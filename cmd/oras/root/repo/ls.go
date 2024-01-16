@@ -68,7 +68,7 @@ Example - List the repositories under the registry that include values lexically
 
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the repository specified by `last`")
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Remote)
 }
 
 func listRepository(ctx context.Context, opts repositoryOptions) error {

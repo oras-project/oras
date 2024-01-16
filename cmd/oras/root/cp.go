@@ -102,7 +102,7 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.BinaryTarget)
 }
 
 func runCopy(ctx context.Context, opts copyOptions) error {

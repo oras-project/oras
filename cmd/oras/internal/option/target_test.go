@@ -16,7 +16,15 @@ limitations under the License.
 package option
 
 import (
+	"errors"
+	"net/http"
+	"net/url"
+	"reflect"
 	"testing"
+
+	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2/registry/remote/errcode"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 )
 
 func TestTarget_Parse_oci(t *testing.T) {
@@ -71,6 +79,162 @@ func Test_parseOCILayoutReference(t *testing.T) {
 			}
 			if got1 != tt.want1 {
 				t.Errorf("parseOCILayoutReference() got1 = %v, want %v", got1, tt.want1)
+			}
+		})
+	}
+}
+
+func TestTarget_Modify_ociLayout(t *testing.T) {
+	errClient := errors.New("client error")
+	opts := &Target{}
+	got, modified := opts.Modify(&cobra.Command{}, errClient)
+
+	if modified {
+		t.Errorf("expect error not to be modified but received true")
+	}
+	if got != errClient {
+		t.Errorf("unexpected output from Target.Process() = %v", got)
+	}
+}
+
+func TestTarget_Modify_errInvalidReference(t *testing.T) {
+	errResp := &errcode.ErrorResponse{
+		URL:        &url.URL{Host: "registry-1.docker.io"},
+		StatusCode: http.StatusUnauthorized,
+		Errors: errcode.Errors{
+			errcode.Error{
+				Code:    "000",
+				Message: "mocked message",
+				Detail:  map[string]string{"mocked key": "mocked value"},
+			},
+		},
+	}
+	opts := &Target{
+		RawReference: "invalid-reference",
+	}
+	got, modified := opts.Modify(&cobra.Command{}, errResp)
+
+	if modified {
+		t.Errorf("expect error not to be modified but received true")
+	}
+	if got != errResp {
+		t.Errorf("unexpected output from Target.Process() = %v", got)
+	}
+}
+
+func TestTarget_Modify_errHostNotMatching(t *testing.T) {
+	errResp := &errcode.ErrorResponse{
+		URL:        &url.URL{Host: "registry-1.docker.io"},
+		StatusCode: http.StatusUnauthorized,
+		Errors: errcode.Errors{
+			errcode.Error{
+				Code:    "000",
+				Message: "mocked message",
+				Detail:  map[string]string{"mocked key": "mocked value"},
+			},
+		},
+	}
+
+	opts := &Target{
+		RawReference: "registry-2.docker.io/test:tag",
+	}
+	_, modified := opts.Modify(&cobra.Command{}, errResp)
+	if modified {
+		t.Errorf("expect error not to be modified but received true")
+	}
+}
+
+func TestTarget_Modify_dockerHint(t *testing.T) {
+	type fields struct {
+		Remote       Remote
+		RawReference string
+		Type         string
+		Reference    string
+		Path         string
+		IsOCILayout  bool
+	}
+	errs := errcode.Errors{
+		errcode.Error{
+			Code:    "000",
+			Message: "mocked message",
+			Detail:  map[string]string{"mocked key": "mocked value"},
+		},
+	}
+	tests := []struct {
+		name        string
+		fields      fields
+		err         error
+		modifiedErr *oerrors.Error
+	}{
+		{
+			"namespace already exists",
+			fields{RawReference: "docker.io/library/alpine:latest"},
+			&errcode.ErrorResponse{
+				URL:        &url.URL{Host: "registry-1.docker.io"},
+				StatusCode: http.StatusUnauthorized,
+				Errors:     errs,
+			},
+			&oerrors.Error{Err: errs},
+		},
+		{
+			"no namespace",
+			fields{RawReference: "docker.io"},
+			&errcode.ErrorResponse{
+				URL:        &url.URL{Host: "registry-1.docker.io"},
+				StatusCode: http.StatusUnauthorized,
+				Errors:     errs,
+			},
+			&oerrors.Error{Err: errs},
+		},
+		{
+			"not 401",
+			fields{RawReference: "docker.io"},
+			&errcode.ErrorResponse{
+				URL:        &url.URL{Host: "registry-1.docker.io"},
+				StatusCode: http.StatusConflict,
+				Errors:     errs,
+			},
+			&oerrors.Error{Err: errs},
+		},
+		{
+			"should hint",
+			fields{
+				RawReference: "docker.io/alpine",
+				Path:         "oras test",
+			},
+			&errcode.ErrorResponse{
+				URL:        &url.URL{Host: "registry-1.docker.io"},
+				StatusCode: http.StatusUnauthorized,
+				Errors:     errs,
+			},
+			&oerrors.Error{
+				Err:            errs,
+				Recommendation: "Namespace seems missing. Do you mean ` docker.io/library/alpine`?",
+			},
+		},
+	}
+
+	cmd := &cobra.Command{}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := &Target{
+				Remote:       tt.fields.Remote,
+				RawReference: tt.fields.RawReference,
+				Type:         tt.fields.Type,
+				Reference:    tt.fields.Reference,
+				Path:         tt.fields.Path,
+				IsOCILayout:  tt.fields.IsOCILayout,
+			}
+			got, modified := opts.Modify(cmd, tt.err)
+			gotErr, ok := got.(*oerrors.Error)
+			if !ok {
+				t.Errorf("expecting error to be *oerrors.Error but received %T", got)
+			}
+			if !reflect.DeepEqual(gotErr.Err, tt.modifiedErr.Err) || gotErr.Usage != tt.modifiedErr.Usage || gotErr.Recommendation != tt.modifiedErr.Recommendation {
+				t.Errorf("Target.Modify() error = %v, wantErr %v", gotErr, tt.modifiedErr)
+			}
+			if !modified {
+				t.Errorf("Failed to modify %v", tt.err)
 			}
 		})
 	}

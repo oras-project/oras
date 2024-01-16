@@ -73,7 +73,7 @@ Example - Log in with username and password in an interactive terminal and no TL
 		},
 	}
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Remote)
 }
 
 func runLogin(ctx context.Context, opts loginOptions) (err error) {

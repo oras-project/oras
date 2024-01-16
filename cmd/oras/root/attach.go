@@ -96,7 +96,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 	_ = cmd.MarkFlagRequired("artifact-type")
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
 func runAttach(ctx context.Context, opts attachOptions) error {

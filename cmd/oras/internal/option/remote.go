@@ -30,11 +30,14 @@ import (
 
 	credentials "github.com/oras-project/oras-credentials-go"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/errcode"
 	"oras.land/oras-go/v2/registry/remote/retry"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/internal/credential"
 	"oras.land/oras/internal/crypto"
 	onet "oras.land/oras/internal/net"
@@ -42,7 +45,8 @@ import (
 	"oras.land/oras/internal/version"
 )
 
-// Remote options struct.
+// Remote options struct contains flags and arguments specifying one registry.
+// Remote implements oerrors.Handler and interface.
 type Remote struct {
 	DistributionSpec
 	CACertFilePath    string
@@ -321,4 +325,16 @@ func (opts *Remote) isPlainHttp(registry string) bool {
 		return true
 	}
 	return plainHTTP
+}
+
+// Modify modifies error during cmd execution.
+func (opts *Remote) Modify(cmd *cobra.Command, err error) (error, bool) {
+	var errResp *errcode.ErrorResponse
+	if errors.As(err, &errResp) {
+		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
+		return &oerrors.Error{
+			Err: oerrors.Trim(err, errResp),
+		}, true
+	}
+	return err, false
 }
