@@ -237,10 +237,10 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common, logger
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
 }
 
-// EnsureReferenceNotEmpty ensures whether the tag or digest is empty.
-func (opts *Target) EnsureReferenceNotEmpty() error {
+// EnsureReferenceNotEmpty returns formalized error when the reference is empty.
+func (opts *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, needsTag bool) error {
 	if opts.Reference == "" {
-		return oerrors.NewErrEmptyTagOrDigestStr(opts.RawReference)
+		return oerrors.NewErrEmptyTagOrDigest(opts.RawReference, cmd, needsTag)
 	}
 	return nil
 }
@@ -286,12 +286,11 @@ func (opts *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 			if ref.Repository != "" && !strings.Contains(ref.Repository, "/") {
 				// docker.io/xxx -> docker.io/library/xxx
 				ref.Repository = "library/" + ref.Repository
-				ret.Recommendation = fmt.Sprintf("Namespace is missing, do you mean `%s %s`?", cmd.CommandPath(), ref)
+				ret.Recommendation = fmt.Sprintf("Namespace seems missing. Do you mean `%s %s`?", cmd.CommandPath(), ref)
 			}
 		}
 		return ret, true
 	}
-
 	return err, false
 }
 
@@ -302,6 +301,14 @@ type BinaryTarget struct {
 	From        Target
 	To          Target
 	resolveFlag []string
+}
+
+// EnsureSourceTargetReferenceNotEmpty ensures that the from target reference is not empty.
+func (opts *BinaryTarget) EnsureSourceTargetReferenceNotEmpty(cmd *cobra.Command) error {
+	if opts.From.Reference == "" {
+		return oerrors.NewErrEmptyTagOrDigest(opts.From.RawReference, cmd, true)
+	}
+	return nil
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.

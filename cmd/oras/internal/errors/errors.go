@@ -16,13 +16,10 @@ limitations under the License.
 package errors
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/v2/registry"
-	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/errcode"
 )
 
@@ -94,8 +91,6 @@ func Trim(err error, toTrim error) error {
 			return fmt.Errorf("recognizable error message not found: %w", toTrim)
 		}
 		inner = errResp.Errors
-	} else if errors.Unwrap(toTrim) == auth.ErrBasicCredentialNotFound {
-		inner = auth.ErrBasicCredentialNotFound
 	} else {
 		return err
 	}
@@ -112,7 +107,7 @@ func Trim(err error, toTrim error) error {
 // |         |    errC      | |  =>  |     errC     |
 // |         +--------------+ |      +--------------+
 // +--------------------------+
-func reWrap(errA error, errB error, errC error) error {
+func reWrap(errA, errB, errC error) error {
 	// TODO: trim dedicated error type when
 	// https://github.com/oras-project/oras-go/issues/677 is done
 	contentA := errA.Error()
@@ -124,11 +119,16 @@ func reWrap(errA error, errB error, errC error) error {
 }
 
 // NewErrEmptyTagOrDigest creates a new error based on the reference string.
-func NewErrEmptyTagOrDigest(ref registry.Reference) error {
-	return NewErrEmptyTagOrDigestStr(ref.String())
-}
-
-// NewErrEmptyTagOrDigestStr creates a new error based on the reference string.
-func NewErrEmptyTagOrDigestStr(ref string) error {
-	return fmt.Errorf("%q: no tag or digest when expecting <name:tag|name@digest>", ref)
+func NewErrEmptyTagOrDigest(ref string, cmd *cobra.Command, needsTag bool) error {
+	form := `"<name>@<digest>"`
+	errMsg := `no digest specified`
+	if needsTag {
+		form = fmt.Sprintf(`"<name>:<tag>" or %s`, form)
+		errMsg = "no tag or digest specified"
+	}
+	return &Error{
+		Err:            fmt.Errorf(`"%s": %s`, ref, errMsg),
+		Usage:          fmt.Sprintf("%s %s", cmd.Parent().CommandPath(), cmd.Use),
+		Recommendation: fmt.Sprintf(`Please specify a reference in the form of %s. Run "%s -h" for more options and examples`, form, cmd.CommandPath()),
+	}
 }

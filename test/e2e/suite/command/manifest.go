@@ -93,6 +93,10 @@ var _ = Describe("ORAS beginners:", func() {
 				gomega.Expect(err).Should(gbytes.Say("\n"))
 				gomega.Expect(err).Should(gbytes.Say(`Run "oras manifest fetch -h"`))
 			})
+
+			It("should fail with suggestion if no tag or digest is provided", func() {
+				ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, "")).ExpectFailure().MatchErrKeyWords("Error:", "no tag or digest specified", "oras manifest fetch [flags] <name>{:<tag>|@<digest>}", "Please specify a reference").Exec()
+			})
 		})
 
 		When("running `manifest delete`", func() {
@@ -157,7 +161,8 @@ var _ = Describe("ORAS beginners:", func() {
 			It("should fail if no digest provided", func() {
 				dstRepo := fmt.Sprintf(repoFmt, "delete", "no-reference")
 				prepare(RegistryRef(ZOTHost, ImageRepo, foobar.Tag), RegistryRef(ZOTHost, dstRepo, ""))
-				ORAS("manifest", "delete", RegistryRef(ZOTHost, dstRepo, "")).ExpectFailure().MatchErrKeyWords("name@digest").Exec()
+				ORAS("manifest", "delete", RegistryRef(ZOTHost, dstRepo, "")).ExpectFailure().MatchErrKeyWords("Error:", "no tag or digest specified", "oras manifest delete [flags] <name>{:<tag>|@<digest>}", "Please specify a reference").Exec()
+
 			})
 		})
 		When("running `manifest fetch-config`", func() {
@@ -284,7 +289,7 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 
 		It("should fail if no manifest tag or digest is provided", func() {
-			ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, "")).ExpectFailure().MatchErrKeyWords("Error:", "no tag or digest").Exec()
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, "")).ExpectFailure().MatchErrKeyWords("Error:", "no tag or digest specified", "oras manifest fetch [flags] <name>{:<tag>|@<digest>}", "Please specify a reference").Exec()
 		})
 	})
 
@@ -347,7 +352,7 @@ var _ = Describe("1.1 registry users:", func() {
 				MatchContent(multi_arch.LinuxAMD64ConfigDesc).Exec()
 		})
 		It("should fail if no manifest tag or digest is provided", func() {
-			ORAS("manifest", "fetch-config", RegistryRef(ZOTHost, ImageRepo, "")).ExpectFailure().MatchErrKeyWords("Error:", "no tag or digest").Exec()
+			ORAS("manifest", "fetch-config", RegistryRef(ZOTHost, ImageRepo, "")).ExpectFailure().MatchErrKeyWords("Error:", "no tag or digest specified", "oras manifest fetch-config").Exec()
 		})
 	})
 
@@ -459,10 +464,10 @@ var _ = Describe("OCI image layout users:", func() {
 				ExpectFailure().
 				MatchErrKeyWords("Error", "--media-type", "--oci-layout").Exec()
 		})
-		It("should fail if no manifest tag or digest is provided", func() {
+		It("should fail with suggestion if no tag or digest is provided", func() {
 			root := PrepareTempOCI(ImageRepo)
 			ORAS("manifest", "fetch", Flags.Layout, root).ExpectFailure().
-				MatchErrKeyWords("Error:", "no tag or digest").Exec()
+				MatchErrKeyWords("Error:", "no tag or digest specified", "oras manifest fetch [flags] <name>{:<tag>|@<digest>}", "Please specify a reference").Exec()
 		})
 	})
 
@@ -507,7 +512,7 @@ var _ = Describe("OCI image layout users:", func() {
 		})
 		It("should fail if no manifest tag or digest is provided", func() {
 			root := prepare(foobar.Tag)
-			ORAS("manifest", "fetch-config", Flags.Layout, root).ExpectFailure().MatchErrKeyWords("Error:", "no tag or digest").Exec()
+			ORAS("manifest", "fetch-config", Flags.Layout, root).ExpectFailure().MatchErrKeyWords("Error:", "no tag or digest specified", "oras manifest fetch-config").Exec()
 		})
 	})
 
