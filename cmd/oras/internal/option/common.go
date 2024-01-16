@@ -21,6 +21,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
+	"golang.org/x/term"
 	"oras.land/oras/internal/trace"
 )
 
@@ -53,18 +54,12 @@ func (opts *Common) Parse() error {
 
 // parseTTY gets target options from user input.
 func (opts *Common) parseTTY(f *os.File) error {
-	// open /dev/pts/2 and set to it
-	f, err := os.OpenFile("/dev/pts/2", os.O_RDWR, 0)
-	if err != nil {
-		return err
+	if !opts.noTTY {
+		if opts.Debug {
+			opts.noTTY = true
+		} else if term.IsTerminal(int(f.Fd())) {
+			opts.TTY = f
+		}
 	}
-	opts.TTY = f
-	// if !opts.noTTY {
-	// 	if opts.Debug {
-	// 		opts.noTTY = true
-	// 	} else if term.IsTerminal(int(f.Fd())) {
-	// 		opts.TTY = f
-	// 	}
-	// }
 	return nil
 }
