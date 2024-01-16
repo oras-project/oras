@@ -18,28 +18,23 @@ package parse
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/spf13/cobra"
-	oerrors "oras.land/oras/cmd/oras/internal/errors"
 )
 
 var ErrMediaTypeNotFound = errors.New(`media type is not specified`)
+var ErrInvalidJSON = errors.New("not a valid json file")
 
 // MediaTypeFromJson parses the media type field of bytes content in json format.
-func MediaTypeFromJson(cmd *cobra.Command, content []byte, filename string) (string, error) {
+func MediaTypeFromJson(cmd *cobra.Command, content []byte) (string, error) {
 	var manifest struct {
 		MediaType string `json:"mediaType"`
 	}
 	if err := json.Unmarshal(content, &manifest); err != nil {
-		return "", errors.New("not a valid json file")
+		return "", ErrInvalidJSON
 	}
 	if manifest.MediaType == "" {
-		return "", &oerrors.Error{
-			Err:            fmt.Errorf(`%w via the flag "--media-type" nor in %s`, ErrMediaTypeNotFound, filename),
-			Usage:          fmt.Sprintf("%s %s", cmd.Parent().CommandPath(), cmd.Use),
-			Recommendation: `Please specify a valid media type in the manifest JSON or via the "--media-type" flag`,
-		}
+		return "", ErrMediaTypeNotFound
 	}
 	return manifest.MediaType, nil
 }
