@@ -41,3 +41,5 @@ gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 oras.land/oras-go/v2 v2.3.1-0.20231227022511-1d9ad6c409b3 h1:cF1ErV93cAw4i5/MNF4pW6ULHa27ig3oYGlxouzymY8=
 oras.land/oras-go/v2 v2.3.1-0.20231227022511-1d9ad6c409b3/go.mod h1:W2rj9/rGtsTh9lmU3S0uq3iwvR6wNvUuD8nmOFmWBUY=
+oras.land/oras-go/v2 v2.3.1-0.20240111050452-3b1dd0e97000 h1:tCh6spxJeREZx+phlJMk76/gcK3V02g56siet4NP180=
+oras.land/oras-go/v2 v2.3.1-0.20240111050452-3b1dd0e97000/go.mod h1:JE7nRv2IHCiuu7kbH3UmDCp7bYD38yfnt1sl0lkLrwk=
