@@ -282,7 +282,7 @@ Suggested error message:
 ```console
 oras resolve localhost:7000/command/artifacts:foobar -u t -p 2
 WARNING! Using --password via the CLI is insecure. Use --password-stdin.
-Error response from registry: empty response body: failed to resolve digest: HEAD "http://localhost:7000/v2/test/manifests/bar": response status code 401: Unauthorized
+Error response from registry: recognizable error message not found: failed to resolve digest: HEAD "http://localhost:7000/v2/test/manifests/bar": response status code 401: Unauthorized
 Authentication failed. Please verify your login credentials and try again.
 ```
 
