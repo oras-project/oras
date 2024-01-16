@@ -56,6 +56,10 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag)).ExpectFailure().MatchErrKeyWords("Error:").Exec()
 		})
 
+		It("should fail when no tag or digest is provided for source target", func() {
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, ""), RegistryRef(ZOTHost, ImageRepo, "dst")).ExpectFailure().MatchErrKeyWords("Error:", "no tag or digest specified", "oras cp").Exec()
+		})
+
 		It("should fail when source doesn't exist", func() {
 			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, InvalidTag), RegistryRef(ZOTHost, cpTestRepo("nonexistent-source"), "")).ExpectFailure().MatchErrKeyWords(InvalidTag).Exec()
 		})
