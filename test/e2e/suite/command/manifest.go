@@ -295,6 +295,7 @@ var _ = Describe("1.1 registry users:", func() {
 
 	When("running `manifest push`", func() {
 		manifest := `{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:fe9dbc99451d0517d65e048c309f0b5afb2cc513b7a3d456b6cc29fe641386c5","size":53},"layers":[]}`
+		manifestWithoutMediaType := `{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:fe9dbc99451d0517d65e048c309f0b5afb2cc513b7a3d456b6cc29fe641386c5","size":53},"layers":[]}`
 		digest := "sha256:bc1a59d49fc7c7b0a31f22ca0c743ecdabdb736777e3d9672fa9d97b4fe323f4"
 		descriptor := "{\"mediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"digest\":\"sha256:bc1a59d49fc7c7b0a31f22ca0c743ecdabdb736777e3d9672fa9d97b4fe323f4\",\"size\":247}"
 
@@ -318,6 +319,13 @@ var _ = Describe("1.1 registry users:", func() {
 			ORAS("manifest", "push", RegistryRef(ZOTHost, ImageRepo, tag), manifestPath, "--media-type", "application/vnd.oci.image.manifest.v1+json").
 				MatchKeyWords("Pushed", RegistryRef(ZOTHost, ImageRepo, tag), "Digest:", digest).
 				WithInput(strings.NewReader(manifest)).Exec()
+		})
+
+		It("should fail to push manifest without media type with suggestion", func() {
+			manifestPath := WriteTempFile("manifest.json", manifestWithoutMediaType)
+			tag := "from-file"
+			ORAS("manifest", "push", RegistryRef(ZOTHost, ImageRepo, tag), manifestPath).
+				WithInput(strings.NewReader(manifest)).ExpectFailure().MatchErrKeyWords("Error:", " media type is not specified", "oras manifest push").Exec()
 		})
 	})
 
