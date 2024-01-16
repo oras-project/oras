@@ -18,15 +18,13 @@ package parse
 import (
 	"encoding/json"
 	"errors"
-
-	"github.com/spf13/cobra"
 )
 
 var ErrMediaTypeNotFound = errors.New(`media type is not specified`)
 var ErrInvalidJSON = errors.New("not a valid json file")
 
 // MediaTypeFromJson parses the media type field of bytes content in json format.
-func MediaTypeFromJson(cmd *cobra.Command, content []byte) (string, error) {
+func MediaTypeFromJson(content []byte) (string, error) {
 	var manifest struct {
 		MediaType string `json:"mediaType"`
 	}
