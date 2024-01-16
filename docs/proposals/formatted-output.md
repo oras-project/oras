@@ -131,7 +131,7 @@ jobs:
     steps:
       - uses: oras-project/setup-oras@v1
       - run: |
-          PATH=`oras pull $REGISTRY/$REPO:$TAG --format '{{.first .Files.Path}}'`
+          PATH=`oras pull $REGISTRY/$REPO:$TAG --format '{{(first .Files).Path}}'`
           docker import $PATH
 ```
 
