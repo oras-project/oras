@@ -57,7 +57,7 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		It("should fail when source doesn't exist", func() {
-			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, "i-dont-think-this-tag-exists"), RegistryRef(ZOTHost, cpTestRepo("nonexistent-source"), "")).ExpectFailure().MatchErrKeyWords("Error:").Exec()
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, InvalidTag), RegistryRef(ZOTHost, cpTestRepo("nonexistent-source"), "")).ExpectFailure().MatchErrKeyWords(InvalidTag).Exec()
 		})
 
 		It("should fail and show detailed error description if no argument provided", func() {
@@ -74,6 +74,26 @@ var _ = Describe("ORAS beginners:", func() {
 			Expect(err).Should(gbytes.Say("\nUsage: oras cp"))
 			Expect(err).Should(gbytes.Say("\n"))
 			Expect(err).Should(gbytes.Say(`Run "oras cp -h"`))
+		})
+
+		It("should fail and show registry error prefix if source not found", func() {
+			src := RegistryRef(ZOTHost, ArtifactRepo, InvalidTag)
+			dst := GinkgoT().TempDir()
+			ORAS("cp", src, Flags.ToLayout, dst).MatchErrKeyWords(RegistryErrorPrefix).ExpectFailure().Exec()
+		})
+
+		It("should fail and show registry error prefix if destination registry is not logged in", func() {
+			src := PrepareTempOCI(ArtifactRepo)
+			dst := RegistryRef(ZOTHost, cpTestRepo("dest-not-logged-in"), "")
+			ORAS("cp", Flags.FromLayout, LayoutRef(src, foobar.Tag), dst, "--to-username", Username, "--to-password", Password+"?").
+				MatchErrKeyWords(RegistryErrorPrefix).ExpectFailure().Exec()
+		})
+
+		It("should fail and show registry error prefix if source registry is not logged in", func() {
+			src := RegistryRef(ZOTHost, cpTestRepo("src-not-logged-in"), foobar.Tag)
+			dst := RegistryRef(ZOTHost, ArtifactRepo, "")
+			ORAS("cp", src, dst, "--from-username", Username, "--from-password", Password+"?").
+				MatchErrKeyWords(RegistryErrorPrefix).ExpectFailure().Exec()
 		})
 	})
 })

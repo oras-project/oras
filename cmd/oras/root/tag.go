@@ -88,7 +88,7 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 
 	option.ApplyFlags(&opts, cmd.Flags())
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
 func tagManifest(ctx context.Context, opts tagOptions) error {

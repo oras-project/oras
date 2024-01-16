@@ -58,7 +58,7 @@ Example - Resolve digest of the target artifact:
 
 	cmd.Flags().BoolVarP(&opts.fullRef, "full-reference", "l", false, "print the full artifact reference with digest")
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
 func runResolve(ctx context.Context, opts resolveOptions) error {

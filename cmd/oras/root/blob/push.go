@@ -97,7 +97,7 @@ Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
 	cmd.Flags().Int64VarP(&opts.size, "size", "", -1, "provide the blob size")
 	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", ocispec.MediaTypeImageLayer, "specify the returned media type in the descriptor if --descriptor is used")
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
 func pushBlob(ctx context.Context, opts pushBlobOptions) (err error) {
