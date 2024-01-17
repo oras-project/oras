@@ -131,7 +131,7 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		if err != nil {
 			if errors.Is(err, parse.ErrMediaTypeNotFound) {
 				return &oerrors.Error{
-					Err:            fmt.Errorf(`%w via the flag "--media-type" nor in %s`, err, opts.fileRef),
+					Err:            fmt.Errorf(`%w via the flag "--media-type" nor in %q`, err, opts.fileRef),
 					Usage:          fmt.Sprintf("%s %s", cmd.Parent().CommandPath(), cmd.Use),
 					Recommendation: `Please specify a valid media type in the manifest JSON or via the "--media-type" flag`,
 				}

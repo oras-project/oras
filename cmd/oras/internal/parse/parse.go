@@ -20,8 +20,12 @@ import (
 	"errors"
 )
 
-var ErrMediaTypeNotFound = errors.New(`media type is not specified`)
-var ErrInvalidJSON = errors.New("not a valid json file")
+var (
+	// ErrMediaTypeNotFound is returned when the media type is not specified.
+	ErrMediaTypeNotFound = errors.New(`media type is not specified`)
+	// ErrInvalidJSON is returned when the json file is malformed.
+	ErrInvalidJSON = errors.New("not a valid json file")
+)
 
 // MediaTypeFromJson parses the media type field of bytes content in json format.
 func MediaTypeFromJson(content []byte) (string, error) {
