@@ -66,7 +66,7 @@ var _ = Describe("Common registry user", func() {
 		})
 	})
 
-	When("credential for basic auth not found in the config file", Focus, func() {
+	When("credential for basic auth not found in the config file", func() {
 		It("should fail with registry error", func() {
 			RunWithEmptyRegistryConfig("attach", ZOTHost+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
 			RunWithEmptyRegistryConfig("discover", ZOTHost+"/repo:tag")
