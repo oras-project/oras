@@ -365,10 +365,10 @@ func (opts *Remote) ModifyCredsError(err error) *oerrors.Error {
 	}
 	configPath := " "
 	if path, err := opts.ConfigPath(); err == nil {
-		configPath += fmt.Sprintf("at %q", path)
+		configPath += fmt.Sprintf("at %q ", path)
 	}
 	return &oerrors.Error{
 		Err:            oerrors.Trim(err, toTrim),
-		Recommendation: fmt.Sprintf(`Please check whether the registry credential stored in the authentication file%s is correct`, configPath),
+		Recommendation: fmt.Sprintf(`Please check whether the registry credential stored in the authentication file%sis correct`, configPath),
 	}
 }
