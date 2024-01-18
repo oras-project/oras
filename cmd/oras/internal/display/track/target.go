@@ -17,7 +17,6 @@ package track
 
 import (
 	"context"
-	"errors"
 	"io"
 	"os"
 
@@ -69,10 +68,9 @@ func NewTarget(t oras.GraphTarget, actionPrompt, donePrompt string, tty *os.File
 
 // Mount makes graphTarget implement oras.Mounter.
 func (t *graphTarget) Mount(ctx context.Context, desc ocispec.Descriptor, fromRepo string, getContent func() (io.ReadCloser, error)) error {
-	if mounter, ok := t.GraphTarget.(registry.Mounter); ok {
-		return mounter.Mount(ctx, desc, fromRepo, getContent)
-	}
-	return errors.New("not implemented")
+	// should not be called if the underlying GraphTarget is not a mounter
+	mounter := t.GraphTarget.(registry.Mounter)
+	return mounter.Mount(ctx, desc, fromRepo, getContent)
 }
 
 // Push pushes the content to the base oras.GraphTarget with tracking.
