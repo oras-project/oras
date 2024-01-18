@@ -85,8 +85,8 @@ func Command(cmd *cobra.Command, handler Modifier) *cobra.Command {
 	return cmd
 }
 
-// TrimErrorResponse tries to trim toTrim from err.
-func TrimErrorResponse(err error, toTrim error) error {
+// TrimErrResp tries to trim toTrim from err.
+func TrimErrResp(err error, toTrim error) error {
 	var inner error
 	if errResp, ok := toTrim.(*errcode.ErrorResponse); ok {
 		if len(errResp.Errors) == 0 {
@@ -99,17 +99,14 @@ func TrimErrorResponse(err error, toTrim error) error {
 	return reWrap(err, toTrim, inner)
 }
 
-// TrimErrCredentials trims the credentials from err.
+// TrimErrBasicCredentialNotFound trims the credentials from err.
 // Caller should make sure the err is auth.ErrBasicCredentialNotFound.
-func TrimErrCredentials(err error) error {
+func TrimErrBasicCredentialNotFound(err error) error {
 	toTrim := err
 	inner := err
 	for {
 		switch x := inner.(type) {
 		case interface{ Unwrap() error }:
-			if inner == auth.ErrBasicCredentialNotFound {
-				break
-			}
 			toTrim = inner
 			inner = x.Unwrap()
 			continue

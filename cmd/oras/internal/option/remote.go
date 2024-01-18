@@ -351,7 +351,7 @@ func (opts *Remote) Modify(cmd *cobra.Command, err error) (error, bool) {
 	if errors.As(err, &errResp) {
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
 		return &oerrors.Error{
-			Err: oerrors.TrimErrorResponse(err, errResp),
+			Err: oerrors.TrimErrResp(err, errResp),
 		}, true
 	}
 	return err, false
@@ -364,7 +364,7 @@ func (opts *Remote) ModifyCredsError(err error) *oerrors.Error {
 		configPath += fmt.Sprintf("at %q ", path)
 	}
 	return &oerrors.Error{
-		Err:            oerrors.TrimErrCredentials(err),
+		Err:            oerrors.TrimErrBasicCredentialNotFound(err),
 		Recommendation: fmt.Sprintf(`Please check whether the registry credential stored in the authentication file%sis correct`, configPath),
 	}
 }

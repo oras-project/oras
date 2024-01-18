@@ -279,7 +279,7 @@ func (opts *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
 		ret := &oerrors.Error{
-			Err: oerrors.TrimErrorResponse(err, errResp),
+			Err: oerrors.TrimErrResp(err, errResp),
 		}
 
 		if ref.Registry == "docker.io" && errResp.StatusCode == http.StatusUnauthorized {
