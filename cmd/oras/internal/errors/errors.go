@@ -116,7 +116,6 @@ func TrimErrCredentials(err error) error {
 		case interface{ Unwrap() []error }:
 			for _, errItem := range x.Unwrap() {
 				if errors.Is(errItem, auth.ErrBasicCredentialNotFound) {
-					// branch into the
 					toTrim = errItem
 					inner = errItem
 					break
