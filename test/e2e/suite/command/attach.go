@@ -118,6 +118,35 @@ var _ = Describe("1.1 registry users:", func() {
 			MatchFile(filepath.Join(tempDir, exportName), string(fetched), DefaultTimeout)
 		})
 
+		It("should attach a file to a subject and format the digest reference", func() {
+			// prepare
+			testRepo := attachTestRepo("format-ref")
+			tempDir := PrepareTempFiles()
+			exportName := "manifest.json"
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			CopyZOTRepo(ImageRepo, testRepo)
+			// test
+			ref := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName, "--format", "{{.Ref}}").
+				WithWorkDir(tempDir).Exec().Out.Contents()
+			// validate
+			fetched := ORAS("manifest", "fetch", string(ref)).Exec().Out.Contents()
+			MatchFile(filepath.Join(tempDir, exportName), string(fetched), DefaultTimeout)
+		})
+
+		It("should attach a file to a subject and format json", func() {
+			// prepare
+			testRepo := attachTestRepo("format-json")
+			tempDir := PrepareTempFiles()
+			exportName := "manifest.json"
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			CopyZOTRepo(ImageRepo, testRepo)
+			// test
+			out := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName, "--format", "json").
+				WithWorkDir(tempDir).Exec().Out
+			// validate
+			Expect(out).To(gbytes.Say(RegistryRef(ZOTHost, testRepo, "")))
+		})
+
 		It("should attach a file via a OCI Image", func() {
 			testRepo := attachTestRepo("image")
 			tempDir := PrepareTempFiles()
