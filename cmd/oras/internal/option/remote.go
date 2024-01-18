@@ -345,13 +345,13 @@ func (opts *Remote) Modify(cmd *cobra.Command, err error) (error, bool) {
 	var errResp *errcode.ErrorResponse
 
 	if errors.Is(err, auth.ErrBasicCredentialNotFound) {
-		return opts.ModifyCredsError(auth.ErrBasicCredentialNotFound), true
+		return opts.ModifyCredsError(err), true
 	}
 
 	if errors.As(err, &errResp) {
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
 		return &oerrors.Error{
-			Err: oerrors.Trim(err, errResp),
+			Err: oerrors.TrimErrorResponse(err, errResp),
 		}, true
 	}
 	return err, false
@@ -359,16 +359,12 @@ func (opts *Remote) Modify(cmd *cobra.Command, err error) (error, bool) {
 
 // ModifyCredsError modifies credentials-related error during cmd execution.
 func (opts *Remote) ModifyCredsError(err error) *oerrors.Error {
-	toTrim := err
-	for inner := err; inner != err; inner = errors.Unwrap(inner) {
-		toTrim = inner
-	}
 	configPath := " "
-	if path, err := opts.ConfigPath(); err == nil {
+	if path, pathErr := opts.ConfigPath(); pathErr == nil {
 		configPath += fmt.Sprintf("at %q ", path)
 	}
 	return &oerrors.Error{
-		Err:            oerrors.Trim(err, toTrim),
+		Err:            oerrors.TrimErrCredentials(err),
 		Recommendation: fmt.Sprintf(`Please check whether the registry credential stored in the authentication file%sis correct`, configPath),
 	}
 }

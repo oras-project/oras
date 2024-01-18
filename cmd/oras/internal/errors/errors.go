@@ -16,10 +16,12 @@ limitations under the License.
 package errors
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/errcode"
 )
 
@@ -83,8 +85,8 @@ func Command(cmd *cobra.Command, handler Modifier) *cobra.Command {
 	return cmd
 }
 
-// Trim tries to trim toTrim from err.
-func Trim(err error, toTrim error) error {
+// TrimErrorResponse tries to trim toTrim from err.
+func TrimErrorResponse(err error, toTrim error) error {
 	var inner error
 	if errResp, ok := toTrim.(*errcode.ErrorResponse); ok {
 		if len(errResp.Errors) == 0 {
@@ -94,14 +96,19 @@ func Trim(err error, toTrim error) error {
 	} else {
 		return err
 	}
-
-	if rewrapped := reWrap(err, toTrim, inner); rewrapped != nil {
-		return rewrapped
-	}
-	return inner
+	return reWrap(err, toTrim, inner)
 }
 
-// reWrap re-wraps errA to errC and trims out errB, returns nil if scrub fails.
+// TrimErrCredentials trims the credentials from err.
+func TrimErrCredentials(err error) error {
+	toTrim := err
+	for inner := err; inner != auth.ErrBasicCredentialNotFound; inner = errors.Unwrap(inner) {
+		toTrim = inner
+	}
+	return reWrap(err, toTrim, auth.ErrBasicCredentialNotFound)
+}
+
+// reWrap re-wraps errA to errC and trims out errB, returns errC if scrub fails.
 // +---------- errA ----------+
 // |         +---- errB ----+ |      +---- errA ----+
 // |         |    errC      | |  =>  |     errC     |
@@ -115,7 +122,7 @@ func reWrap(errA, errB, errC error) error {
 	if idx := strings.Index(contentA, contentB); idx > 0 {
 		return fmt.Errorf("%s%w", contentA[:idx], errC)
 	}
-	return nil
+	return errC
 }
 
 // NewErrEmptyTagOrDigest creates a new error based on the reference string.

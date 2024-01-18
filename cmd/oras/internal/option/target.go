@@ -252,7 +252,7 @@ func (opts *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 	}
 
 	if errors.Is(err, auth.ErrBasicCredentialNotFound) {
-		return opts.ModifyCredsError(auth.ErrBasicCredentialNotFound), true
+		return opts.ModifyCredsError(err), true
 	}
 
 	if errors.Is(err, errdef.ErrNotFound) {
@@ -279,7 +279,7 @@ func (opts *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
 		ret := &oerrors.Error{
-			Err: oerrors.Trim(err, errResp),
+			Err: oerrors.TrimErrorResponse(err, errResp),
 		}
 
 		if ref.Registry == "docker.io" && errResp.StatusCode == http.StatusUnauthorized {
