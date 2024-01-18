@@ -65,6 +65,17 @@ var _ = Describe("ORAS beginners:", func() {
 				ExpectFailure().MatchErrKeyWords("unknown distribution specification flag").Exec()
 		})
 
+		It("should fail to attach a file to a subject with invalid format template", func() {
+			// prepare
+			testRepo := attachTestRepo("invalid-format")
+			tempDir := PrepareTempFiles()
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			CopyZOTRepo(ImageRepo, testRepo)
+			// test
+			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.Reff}}").
+				WithWorkDir(tempDir).ExpectFailure().Exec()
+		})
+
 		It("should fail and show detailed error description if no argument provided", func() {
 			err := ORAS("attach").ExpectFailure().Exec().Err
 			gomega.Expect(err).Should(gbytes.Say("Error"))
