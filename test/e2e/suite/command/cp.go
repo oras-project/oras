@@ -354,7 +354,7 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 			src := RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag)
 			dst := RegistryRef(FallbackHost, repo, "")
 			out := ORAS("cp", src, dst, "-v").Exec()
-			Expect(out).Should(gbytes.Say("\nMounted fcde2b2edba5 bar"))
+			Expect(out).Should(gbytes.Say("Mounted fcde2b2edba5 bar"))
 			CompareRef(src, RegistryRef(FallbackHost, repo, foobar.Digest))
 		})
 
