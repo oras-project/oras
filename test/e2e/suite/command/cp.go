@@ -349,7 +349,7 @@ var _ = Describe("1.1 registry users:", func() {
 
 var _ = Describe("OCI spec 1.0 registry users:", func() {
 	When("running `cp`", func() {
-		It("should copy an image artifact with mounting", Focus, func() {
+		It("should copy an image artifact with mounting", func() {
 			repo := cpTestRepo("1.0-mount")
 			src := RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag)
 			dst := RegistryRef(FallbackHost, repo, "")
