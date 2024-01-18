@@ -31,8 +31,8 @@ import (
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/display"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
+	"oras.land/oras/cmd/oras/internal/manifest"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/cmd/oras/internal/parse"
 	"oras.land/oras/internal/file"
 )
 
@@ -127,9 +127,9 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 	// get manifest media type
 	mediaType := opts.mediaType
 	if opts.mediaType == "" {
-		mediaType, err = parse.MediaTypeFromJson(contentBytes)
+		mediaType, err = manifest.ExtractMediaType(contentBytes)
 		if err != nil {
-			if errors.Is(err, parse.ErrMediaTypeNotFound) {
+			if errors.Is(err, manifest.ErrMediaTypeNotFound) {
 				return &oerrors.Error{
 					Err:            fmt.Errorf(`%w via the flag "--media-type" nor in %q`, err, opts.fileRef),
 					Usage:          fmt.Sprintf("%s %s", cmd.Parent().CommandPath(), cmd.Use),

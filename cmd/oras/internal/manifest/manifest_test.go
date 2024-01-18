@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package parse
+package manifest
 
 import (
 	"errors"
@@ -26,40 +26,40 @@ const (
 	manifestMediaType = "application/vnd.oci.image.manifest.v1+json"
 )
 
-func Test_MediaTypeFromJson(t *testing.T) {
+func Test_ExtractMediaType(t *testing.T) {
 	// generate test content
 	content := []byte(manifest)
 
-	// test MediaTypeFromJson
+	// test ExtractMediaType
 	want := manifestMediaType
-	got, err := MediaTypeFromJson(content)
+	got, err := ExtractMediaType(content)
 	if err != nil {
-		t.Fatal("ParseMediaType() error=", err)
+		t.Fatal("ExtractMediaType() error=", err)
 	}
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("ParseMediaType() = %v, want %v", got, want)
+		t.Errorf("ExtractMediaType() = %v, want %v", got, want)
 	}
 }
 
-func Test_MediaTypeFromJson_invalidContent_notAJson(t *testing.T) {
+func Test_ExtractMediaType_invalidContent_notAJson(t *testing.T) {
 	// generate test content
 	content := []byte("manifest")
 
-	// test MediaTypeFromJson
-	_, err := MediaTypeFromJson(content)
+	// test ExtractMediaType
+	_, err := ExtractMediaType(content)
 	expected := "not a valid json file"
 	if err.Error() != expected {
-		t.Fatalf("ParseMediaType() error = %v, wantErr %v", err, expected)
+		t.Fatalf("ExtractMediaType() error = %v, wantErr %v", err, expected)
 	}
 }
 
-func Test_MediaTypeFromJson_invalidContent_missingMediaType(t *testing.T) {
+func Test_ExtractMediaType_invalidContent_missingMediaType(t *testing.T) {
 	// generate test content
 	content := []byte(`{"schemaVersion":2}`)
 
-	// test MediaTypeFromJson
-	_, err := MediaTypeFromJson(content)
+	// test ExtractMediaType
+	_, err := ExtractMediaType(content)
 	if !errors.Is(err, ErrMediaTypeNotFound) {
-		t.Fatalf("ParseMediaType() error = %v, wantErr %v", err, ErrMediaTypeNotFound)
+		t.Fatalf("ExtractMediaType() error = %v, wantErr %v", err, ErrMediaTypeNotFound)
 	}
 }

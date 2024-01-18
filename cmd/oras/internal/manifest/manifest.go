@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package parse
+package manifest
 
 import (
 	"encoding/json"
@@ -27,8 +27,8 @@ var (
 	ErrInvalidJSON = errors.New("not a valid json file")
 )
 
-// MediaTypeFromJson parses the media type field of bytes content in json format.
-func MediaTypeFromJson(content []byte) (string, error) {
+// ExtractMediaType parses the media type field of bytes content in json format.
+func ExtractMediaType(content []byte) (string, error) {
 	var manifest struct {
 		MediaType string `json:"mediaType"`
 	}
