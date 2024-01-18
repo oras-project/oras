@@ -100,10 +100,31 @@ func TrimErrorResponse(err error, toTrim error) error {
 }
 
 // TrimErrCredentials trims the credentials from err.
+// Caller should make sure the err is auth.ErrBasicCredentialNotFound.
 func TrimErrCredentials(err error) error {
 	toTrim := err
-	for inner := err; inner != auth.ErrBasicCredentialNotFound; inner = errors.Unwrap(inner) {
-		toTrim = inner
+	inner := err
+	for {
+		switch x := inner.(type) {
+		case interface{ Unwrap() error }:
+			if inner == auth.ErrBasicCredentialNotFound {
+				break
+			}
+			toTrim = inner
+			inner = x.Unwrap()
+			continue
+		case interface{ Unwrap() []error }:
+			for _, errItem := range x.Unwrap() {
+				if errors.Is(errItem, auth.ErrBasicCredentialNotFound) {
+					// branch into the
+					toTrim = errItem
+					inner = errItem
+					break
+				}
+			}
+			continue
+		}
+		break
 	}
 	return reWrap(err, toTrim, auth.ErrBasicCredentialNotFound)
 }
