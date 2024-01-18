@@ -16,7 +16,6 @@ limitations under the License.
 package root
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -52,22 +51,22 @@ Example - Resolve digest of the target artifact:
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runResolve(cmd.Context(), opts)
+			return runResolve(cmd, opts)
 		},
 	}
 
 	cmd.Flags().BoolVarP(&opts.fullRef, "full-reference", "l", false, "print the full artifact reference with digest")
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
-func runResolve(ctx context.Context, opts resolveOptions) error {
-	ctx, logger := opts.WithContext(ctx)
+func runResolve(cmd *cobra.Command, opts resolveOptions) error {
+	ctx, logger := opts.WithContext(cmd.Context())
 	repo, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
 		return err
 	}
-	if err := opts.EnsureReferenceNotEmpty(); err != nil {
+	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
 		return err
 	}
 	resolveOpts := oras.DefaultResolveOptions

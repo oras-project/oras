@@ -134,7 +134,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
 func runPush(ctx context.Context, opts pushOptions) error {
