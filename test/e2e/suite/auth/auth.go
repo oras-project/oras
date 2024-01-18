@@ -168,7 +168,7 @@ var _ = Describe("Common registry user", func() {
 
 func RunWithoutLogin(args ...string) {
 	ORAS(args...).ExpectFailure().
-		MatchErrKeyWords("Error:", "credential required").
+		MatchErrKeyWords("Error:", "basic credential not found").
 		WithDescription("fail without logging in").Exec()
 }
 
