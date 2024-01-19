@@ -18,42 +18,18 @@ limitations under the License.
 package root
 
 import (
-	"bytes"
 	"context"
-	"fmt"
-	"os"
 	"testing"
 
-	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras/cmd/oras/internal/display/console/testutils"
 )
 
 var (
-	src  *memory.Store
-	desc ocispec.Descriptor
+	memStore *memory.Store
+	desc     ocispec.Descriptor
 )
-
-func TestMain(m *testing.M) {
-	src = memory.New()
-	content := []byte("test")
-	r := bytes.NewReader(content)
-	desc = ocispec.Descriptor{
-		MediaType: "application/octet-stream",
-		Digest:    digest.FromBytes(content),
-		Size:      int64(len(content)),
-	}
-	if err := src.Push(context.Background(), desc, r); err != nil {
-		fmt.Println("Setup failed:", err)
-		os.Exit(1)
-	}
-	if err := src.Tag(context.Background(), desc, desc.Digest.String()); err != nil {
-		fmt.Println("Setup failed:", err)
-		os.Exit(1)
-	}
-	m.Run()
-}
 
 func Test_doCopy(t *testing.T) {
 	// prepare
@@ -68,12 +44,34 @@ func Test_doCopy(t *testing.T) {
 	opts.From.Reference = desc.Digest.String()
 	dst := memory.New()
 	// test
-	_, err = doCopy(context.Background(), src, dst, opts)
+	_, err = doCopy(context.Background(), memStore, dst, opts)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// validate
 	if err = testutils.MatchPty(pty, slave, "Copied", desc.MediaType, "100.00%", desc.Digest.String()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func Test_doCopy_skipped(t *testing.T) {
+	// prepare
+	pty, slave, err := testutils.NewPty()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer slave.Close()
+	var opts copyOptions
+	opts.TTY = slave
+	opts.Verbose = true
+	opts.From.Reference = desc.Digest.String()
+	// test
+	_, err = doCopy(context.Background(), memStore, memStore, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// validate
+	if err = testutils.MatchPty(pty, slave, "Exists", desc.MediaType, "100.00%", desc.Digest.String()); err != nil {
 		t.Fatal(err)
 	}
 }
