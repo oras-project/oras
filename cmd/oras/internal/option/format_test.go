@@ -17,6 +17,7 @@ package option
 
 import (
 	"errors"
+	"io"
 	"testing"
 )
 
@@ -33,10 +34,19 @@ type invalidWriter struct{}
 func (w *invalidWriter) Write(p []byte) (n int, err error) {
 	return 0, errors.New("failed")
 }
+
 func TestFormat_WriteTo_writeFailure(t *testing.T) {
 	opts := Format{Template: "json"}
 	err := opts.WriteTo(&invalidWriter{}, nil)
 	if err == nil {
 		t.Errorf("expected json marshal error")
+	}
+}
+
+func TestFormat_WriteTo_invalidTemplate(t *testing.T) {
+	opts := Format{Template: "{{}"}
+	err := opts.WriteTo(io.Discard, nil)
+	if err == nil {
+		t.Errorf("expected template parsing error")
 	}
 }
