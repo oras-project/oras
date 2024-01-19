@@ -68,7 +68,7 @@ func Test_doCopy(t *testing.T) {
 	opts.From.Reference = desc.Digest.String()
 	dst := memory.New()
 	// test
-	_, err = doCopy(context.Background(), src, dst, opts)
+	_, err = doCopy(context.Background(), src, dst, &opts)
 	if err != nil {
 		t.Fatal(err)
 	}

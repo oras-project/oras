@@ -92,7 +92,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			display.Set(opts.Template, opts.TTY)
-			return runAttach(cmd, opts)
+			return runAttach(cmd, &opts)
 		},
 	}
 
@@ -104,7 +104,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 	return oerrors.Command(cmd, &opts.Target)
 }
 
-func runAttach(cmd *cobra.Command, opts attachOptions) error {
+func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	ctx, logger := opts.WithContext(cmd.Context())
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {

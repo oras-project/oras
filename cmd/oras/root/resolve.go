@@ -51,7 +51,7 @@ Example - Resolve digest of the target artifact:
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runResolve(cmd, opts)
+			return runResolve(cmd, &opts)
 		},
 	}
 
@@ -60,7 +60,7 @@ Example - Resolve digest of the target artifact:
 	return oerrors.Command(cmd, &opts.Target)
 }
 
-func runResolve(cmd *cobra.Command, opts resolveOptions) error {
+func runResolve(cmd *cobra.Command, opts *resolveOptions) error {
 	ctx, logger := opts.WithContext(cmd.Context())
 	repo, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {

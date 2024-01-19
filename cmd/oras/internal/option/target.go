@@ -35,6 +35,7 @@ import (
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/errcode"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
@@ -250,6 +251,10 @@ func (opts *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 		return err, false
 	}
 
+	if errors.Is(err, auth.ErrBasicCredentialNotFound) {
+		return opts.DecorateCredentialError(err), true
+	}
+
 	if errors.Is(err, errdef.ErrNotFound) {
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
 		return err, true
@@ -274,7 +279,7 @@ func (opts *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
 		ret := &oerrors.Error{
-			Err: oerrors.Trim(err, errResp),
+			Err: oerrors.TrimErrResp(err, errResp),
 		}
 
 		if ref.Registry == "docker.io" && errResp.StatusCode == http.StatusUnauthorized {
