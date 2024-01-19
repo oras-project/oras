@@ -98,12 +98,6 @@ func TestMain(m *testing.M) {
 			r.Method == http.MethodPost:
 			w.Header().Set("Location", fmt.Sprintf("/v2/%s/blobs/%s", repoTo, configDigest))
 			w.WriteHeader(http.StatusCreated)
-		// case r.URL.Path == fmt.Sprintf("/v2/%s/blobs/%s", repoTo, configDigest) &&
-		// 	r.Method == http.MethodPut:
-		// 	// _, _ = io.ReadAll(r.Body)
-		// 	w.Header().Set("Docker-Content-Digest", configDigest)
-		// 	w.WriteHeader(http.StatusCreated)
-
 		case r.URL.Path == fmt.Sprintf("/v2/%s/manifests/%s", repoTo, manifestDigest) &&
 			r.Method == http.MethodPut:
 			w.WriteHeader(http.StatusCreated)
