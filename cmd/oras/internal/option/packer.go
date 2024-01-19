@@ -27,6 +27,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2/content"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 )
 
@@ -38,7 +39,7 @@ const (
 
 var (
 	errAnnotationConflict    = errors.New("`--annotation` and `--annotation-file` cannot be both specified")
-	errAnnotationFormat      = errors.New("missing key in `--annotation` flag")
+	errAnnotationFormat      = errors.New("annotation value doesn't match the required format")
 	errAnnotationDuplication = errors.New("duplicate annotation key")
 	errPathValidation        = errors.New("absolute file path detected. If it's intentional, use --disable-path-validation flag to skip this check")
 )
@@ -99,12 +100,12 @@ func (opts *Packer) LoadManifestAnnotations() (annotations map[string]map[string
 	}
 	if opts.AnnotationFilePath != "" {
 		if err = decodeJSON(opts.AnnotationFilePath, &annotations); err != nil {
-			errStr :=  err.Error()
+			errStr := err.Error()
 			docLink := " Please refer to the document at https://oras.land/docs/how_to_guides/manifest_annotations."
 			if !strings.HasSuffix(errStr, ".") {
-				docLink = "."+docLink
+				docLink = "." + docLink
 			}
-			return nil, fmt.Errorf("failed to load annotations from %s: %w" +
+			return nil, fmt.Errorf("failed to load annotations from %s: %w"+
 				docLink, opts.AnnotationFilePath, err)
 		}
 	}
@@ -133,7 +134,10 @@ func parseAnnotationFlags(flags []string, annotations map[string]map[string]stri
 	for _, anno := range flags {
 		key, val, success := strings.Cut(anno, "=")
 		if !success {
-			return fmt.Errorf("%w: %s", errAnnotationFormat, anno)
+			return &oerrors.Error{
+				Err:            errAnnotationFormat,
+				Recommendation: `Please use the correct format in the flag: --annotation "key=value"`,
+			}
 		}
 		if _, ok := manifestAnnotations[key]; ok {
 			return fmt.Errorf("%w: %v, ", errAnnotationDuplication, key)
