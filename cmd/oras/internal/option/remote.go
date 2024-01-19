@@ -345,7 +345,7 @@ func (opts *Remote) Modify(cmd *cobra.Command, err error) (error, bool) {
 	var errResp *errcode.ErrorResponse
 
 	if errors.Is(err, auth.ErrBasicCredentialNotFound) {
-		return opts.ModifyCredsError(err), true
+		return opts.DecorateCredentialError(err), true
 	}
 
 	if errors.As(err, &errResp) {
@@ -357,8 +357,8 @@ func (opts *Remote) Modify(cmd *cobra.Command, err error) (error, bool) {
 	return err, false
 }
 
-// ModifyCredsError modifies credentials-related error during cmd execution.
-func (opts *Remote) ModifyCredsError(err error) *oerrors.Error {
+// DecorateCredentialError decorate error with recommendation.
+func (opts *Remote) DecorateCredentialError(err error) *oerrors.Error {
 	configPath := " "
 	if path, pathErr := opts.ConfigPath(); pathErr == nil {
 		configPath += fmt.Sprintf("at %q ", path)

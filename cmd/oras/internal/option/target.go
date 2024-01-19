@@ -252,7 +252,7 @@ func (opts *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 	}
 
 	if errors.Is(err, auth.ErrBasicCredentialNotFound) {
-		return opts.ModifyCredsError(err), true
+		return opts.DecorateCredentialError(err), true
 	}
 
 	if errors.Is(err, errdef.ErrNotFound) {
