@@ -130,7 +130,7 @@ func Test_doCopy(t *testing.T) {
 	opts.From.Reference = memDesc.Digest.String()
 	dst := memory.New()
 	// test
-	_, err = doCopy(context.Background(), memStore, dst, opts)
+	_, err = doCopy(context.Background(), memStore, dst, &opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func Test_doCopy_skipped(t *testing.T) {
 	opts.Verbose = true
 	opts.From.Reference = memDesc.Digest.String()
 	// test
-	_, err = doCopy(context.Background(), memStore, memStore, opts)
+	_, err = doCopy(context.Background(), memStore, memStore, &opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +185,7 @@ func Test_doCopy_mounted(t *testing.T) {
 	}
 	to.PlainHTTP = true
 	// test
-	_, err = doCopy(context.Background(), from, to, opts)
+	_, err = doCopy(context.Background(), from, to, &opts)
 	if err != nil {
 		t.Fatal(err)
 	}

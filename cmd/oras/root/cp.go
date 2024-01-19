@@ -96,7 +96,7 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCopy(cmd, opts)
+			return runCopy(cmd, &opts)
 		},
 	}
 	cmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "[Preview] recursively copy the artifact and its referrer artifacts")
@@ -106,7 +106,7 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 	return oerrors.Command(cmd, &opts.BinaryTarget)
 }
 
-func runCopy(cmd *cobra.Command, opts copyOptions) error {
+func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	ctx, logger := opts.WithContext(cmd.Context())
 
 	// Prepare source
@@ -149,7 +149,7 @@ func runCopy(cmd *cobra.Command, opts copyOptions) error {
 	return nil
 }
 
-func doCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts copyOptions) (ocispec.Descriptor, error) {
+func doCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) (ocispec.Descriptor, error) {
 	// Prepare copy options
 	committed := &sync.Map{}
 	extendedCopyOptions := oras.DefaultExtendedCopyOptions

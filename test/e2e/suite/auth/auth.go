@@ -66,6 +66,23 @@ var _ = Describe("Common registry user", func() {
 		})
 	})
 
+	When("credential for basic auth not found in the config file", func() {
+		It("should fail with registry error", func() {
+			RunWithEmptyRegistryConfig("attach", ZOTHost+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
+			RunWithEmptyRegistryConfig("discover", ZOTHost+"/repo:tag")
+			RunWithEmptyRegistryConfig("push", "-a", "key=value", ZOTHost+"/repo:tag")
+			RunWithEmptyRegistryConfig("pull", ZOTHost+"/repo:tag")
+			RunWithEmptyRegistryConfig("manifest", "fetch", ZOTHost+"/repo:tag")
+			RunWithEmptyRegistryConfig("blob", "delete", ZOTHost+"/repo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+			RunWithEmptyRegistryConfig("blob", "push", ZOTHost+"/repo", WriteTempFile("blob", "test"))
+			RunWithEmptyRegistryConfig("tag", ZOTHost+"/repo:tag", "tag1")
+			RunWithEmptyRegistryConfig("resolve", ZOTHost+"/repo:tag")
+			RunWithEmptyRegistryConfig("repo", "ls", ZOTHost)
+			RunWithEmptyRegistryConfig("repo", "tags", RegistryRef(ZOTHost, "repo", ""))
+			RunWithEmptyRegistryConfig("manifest", "fetch-config", ZOTHost+"/repo:tag")
+		})
+	})
+
 	When("logging in", func() {
 		tmpConfigName := "test.config"
 		It("should succeed to use basic auth", func() {
@@ -151,7 +168,7 @@ var _ = Describe("Common registry user", func() {
 
 func RunWithoutLogin(args ...string) {
 	ORAS(args...).ExpectFailure().
-		MatchErrKeyWords("Error:", "credential required").
+		MatchErrKeyWords("Error:", "basic credential not found").
 		WithDescription("fail without logging in").Exec()
 }
 
@@ -159,4 +176,11 @@ func RunWithInvalidCreds(args ...string) {
 	ORAS(append(args, "-u", Username, "-p", Password+"1")...).ExpectFailure().
 		MatchErrKeyWords(RegistryErrorPrefix).
 		WithDescription("fail with invalid credentials").Exec()
+}
+
+func RunWithEmptyRegistryConfig(args ...string) {
+	ORAS(append(args, "--registry-config", EmptyConfigName)...).ExpectFailure().
+		MatchErrKeyWords("Error: ", fmt.Sprintf(`Please check whether the registry credential stored in the authentication file at %q is correct`, EmptyConfigName)).
+		WithDescription("fail with empty registry config").
+		Exec()
 }
