@@ -45,20 +45,20 @@ type Descriptor struct {
 	Size int64
 
 	// URLs specifies a list of URLs from which this object MAY be downloaded
-	URLs []string
+	URLs []string `json:",omitempty"`
 
 	// Annotations contains arbitrary metadata relating to the targeted content.
-	Annotations map[string]string
+	Annotations map[string]string `json:",omitempty"`
 
 	// Data is an embedding of the targeted content. This is encoded as a base64
 	// string when marshalled to JSON (automatically, by encoding/json). If
 	// present, Data can be used directly to avoid fetching the targeted content.
-	Data []byte
+	Data []byte `json:",omitempty"`
 
 	// Platform describes the platform which the image in the manifest runs on.
 	//
 	// This should only be used when referring to a manifest.
-	Platform *Platform
+	Platform *Platform `json:",omitempty"`
 
 	// ArtifactType is the IANA media type of this artifact.
 	ArtifactType string
