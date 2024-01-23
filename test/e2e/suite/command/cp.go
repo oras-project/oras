@@ -349,6 +349,15 @@ var _ = Describe("1.1 registry users:", func() {
 
 var _ = Describe("OCI spec 1.0 registry users:", func() {
 	When("running `cp`", func() {
+		It("should copy an image artifact with mounting", func() {
+			repo := cpTestRepo("1.0-mount")
+			src := RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag)
+			dst := RegistryRef(FallbackHost, repo, "")
+			out := ORAS("cp", src, dst, "-v").Exec()
+			Expect(out).Should(gbytes.Say("Mounted fcde2b2edba5 bar"))
+			CompareRef(src, RegistryRef(FallbackHost, repo, foobar.Digest))
+		})
+
 		It("should copy an image artifact and its referrers from a registry to a fallback registry", func() {
 			repo := cpTestRepo("to-fallback")
 			stateKeys := append(append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageReferrerConfigStateKeys[0]), foobar.ImageReferrersStateKeys...)
