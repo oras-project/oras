@@ -29,6 +29,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry"
+	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/display"
@@ -162,8 +163,15 @@ func doCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTar
 		promptCopying = "Copying"
 		promptCopied  = "Copied "
 		promptSkipped = "Skipped"
+		promptMounted = "Mounted"
 	)
-
+	srcRepo, srcIsRemote := src.(*remote.Repository)
+	dstRepo, dstIsRemote := dst.(*remote.Repository)
+	if srcIsRemote && dstIsRemote && srcRepo.Reference.Registry == dstRepo.Reference.Registry {
+		extendedCopyOptions.MountFrom = func(ctx context.Context, desc ocispec.Descriptor) ([]string, error) {
+			return []string{srcRepo.Reference.Repository}, nil
+		}
+	}
 	if opts.TTY == nil {
 		// none TTY output
 		extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
@@ -179,6 +187,10 @@ func doCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTar
 				return err
 			}
 			return display.PrintStatus(desc, promptCopied, opts.Verbose)
+		}
+		extendedCopyOptions.OnMounted = func(ctx context.Context, desc ocispec.Descriptor) error {
+			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+			return display.PrintStatus(desc, promptMounted, opts.Verbose)
 		}
 	} else {
 		// TTY output
@@ -197,6 +209,10 @@ func doCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTar
 			return display.PrintSuccessorStatus(ctx, desc, tracked, committed, func(desc ocispec.Descriptor) error {
 				return tracked.Prompt(desc, promptSkipped)
 			})
+		}
+		extendedCopyOptions.OnMounted = func(ctx context.Context, desc ocispec.Descriptor) error {
+			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+			return tracked.Prompt(desc, promptMounted)
 		}
 	}
 

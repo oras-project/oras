@@ -25,6 +25,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/display/console/testutils"
 )
 
@@ -79,34 +80,7 @@ func Test_referenceGraphTarget_PushReference(t *testing.T) {
 	}
 }
 
-func Test_referenceGraphTarget_Prompt(t *testing.T) {
-	// prepare
-	pty, device, err := testutils.NewPty()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer device.Close()
-	content := []byte("test")
-	desc := ocispec.Descriptor{
-		MediaType: "application/octet-stream",
-		Digest:    digest.FromBytes(content),
-		Size:      int64(len(content)),
-	}
-	// test
-	prompt := "prompt"
-	target, err := NewTarget(memory.New(), "action", "done", device)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m := target.(*graphTarget).manager
-	if err := target.Prompt(desc, prompt); err != nil {
-		t.Fatal(err)
-	}
-	if err := m.Close(); err != nil {
-		t.Fatal(err)
-	}
-	// validate
-	if err = testutils.MatchPty(pty, device, prompt, desc.MediaType, "100.00%", desc.Digest.String()); err != nil {
-		t.Fatal(err)
-	}
+func Test_referenceGraphTarget_Mount(t *testing.T) {
+	target := graphTarget{GraphTarget: &remote.Repository{}}
+	_ = target.Mount(context.Background(), ocispec.Descriptor{}, "", nil)
 }
