@@ -17,6 +17,7 @@ package metadata
 
 import ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
+// push contains metadata formatted by oras push
 type push struct {
 	Descriptor
 }

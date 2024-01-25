@@ -25,8 +25,8 @@ type DigestReference struct {
 	Ref string
 }
 
-// ToDigestReference converts a name and digest to a digest reference.
-func ToDigestReference(name string, digest string) DigestReference {
+// NewDigestReference creates a new digest reference.
+func NewDigestReference(name string, digest string) DigestReference {
 	return DigestReference{
 		Ref: name + "@" + digest,
 	}
@@ -82,7 +82,7 @@ type Platform struct {
 // ToDescriptor converts a descriptor to a descriptor with digest reference.
 func ToDescriptor(name string, desc ocispec.Descriptor) Descriptor {
 	ret := Descriptor{
-		DigestReference: ToDigestReference(name, desc.Digest.String()),
+		DigestReference: NewDigestReference(name, desc.Digest.String()),
 		MediaType:       desc.MediaType,
 		Digest:          desc.Digest,
 		Size:            desc.Size,
