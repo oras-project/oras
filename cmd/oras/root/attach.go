@@ -87,7 +87,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runAttach(cmd.Context(), opts)
+			return runAttach(cmd, &opts)
 		},
 	}
 
@@ -96,11 +96,11 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 	_ = cmd.MarkFlagRequired("artifact-type")
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
-func runAttach(ctx context.Context, opts attachOptions) error {
-	ctx, logger := opts.WithContext(ctx)
+func runAttach(cmd *cobra.Command, opts *attachOptions) error {
+	ctx, logger := opts.WithContext(cmd.Context())
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err
@@ -120,7 +120,7 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 	if err != nil {
 		return err
 	}
-	if err := opts.EnsureReferenceNotEmpty(); err != nil {
+	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
 		return err
 	}
 	// add both pull and push scope hints for dst repository

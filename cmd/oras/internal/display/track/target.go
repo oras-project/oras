@@ -66,6 +66,13 @@ func NewTarget(t oras.GraphTarget, actionPrompt, donePrompt string, tty *os.File
 	return gt, nil
 }
 
+// Mount mounts a blob from a specified repository. This method is invoked only
+// by the `*remote.Repository` target.
+func (t *graphTarget) Mount(ctx context.Context, desc ocispec.Descriptor, fromRepo string, getContent func() (io.ReadCloser, error)) error {
+	mounter := t.GraphTarget.(registry.Mounter)
+	return mounter.Mount(ctx, desc, fromRepo, getContent)
+}
+
 // Push pushes the content to the base oras.GraphTarget with tracking.
 func (t *graphTarget) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
 	r, err := managedReader(content, expected, t.manager, t.actionPrompt, t.donePrompt)

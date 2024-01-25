@@ -81,7 +81,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runDiscover(cmd.Context(), opts)
+			return runDiscover(cmd, &opts)
 		},
 	}
 
@@ -89,16 +89,16 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 	cmd.Flags().StringVarP(&opts.outputType, "output", "o", "table", "format in which to display referrers (table, json, or tree). tree format will also show indirect referrers")
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
-func runDiscover(ctx context.Context, opts discoverOptions) error {
-	ctx, logger := opts.WithContext(ctx)
+func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
+	ctx, logger := opts.WithContext(cmd.Context())
 	repo, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
 		return err
 	}
-	if err := opts.EnsureReferenceNotEmpty(); err != nil {
+	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
 		return err
 	}
 
@@ -112,7 +112,7 @@ func runDiscover(ctx context.Context, opts discoverOptions) error {
 
 	if opts.outputType == "tree" {
 		root := tree.New(fmt.Sprintf("%s@%s", opts.Path, desc.Digest))
-		err = fetchAllReferrers(ctx, repo, desc, opts.artifactType, root, &opts)
+		err = fetchAllReferrers(ctx, repo, desc, opts.artifactType, root, opts)
 		if err != nil {
 			return err
 		}

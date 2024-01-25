@@ -18,9 +18,9 @@ package root
 import (
 	"context"
 
-	credentials "github.com/oras-project/oras-credentials-go"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2/registry/remote/credentials"
 	"oras.land/oras/cmd/oras/internal/argument"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/internal/credential"

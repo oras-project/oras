@@ -16,11 +16,17 @@ limitations under the License.
 package errors
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/v2/registry"
+	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/errcode"
 )
+
+// RegistryErrorPrefix is the commandline prefix for errors from registry.
+const RegistryErrorPrefix = "Error response from registry:"
 
 // Error is the error type for CLI error messaging.
 type Error struct {
@@ -60,12 +66,93 @@ func CheckArgs(checker func(args []string) (bool, string), Usage string) cobra.P
 	}
 }
 
-// NewErrEmptyTagOrDigest creates a new error based on the reference string.
-func NewErrEmptyTagOrDigest(ref registry.Reference) error {
-	return NewErrEmptyTagOrDigestStr(ref.String())
+// Modifier modifies the error during cmd execution.
+type Modifier interface {
+	Modify(cmd *cobra.Command, err error) (modifiedErr error, modified bool)
 }
 
-// NewErrEmptyTagOrDigestStr creates a new error based on the reference string.
-func NewErrEmptyTagOrDigestStr(ref string) error {
-	return fmt.Errorf("%q: no tag or digest when expecting <name:tag|name@digest>", ref)
+// Command returns an error-handled cobra command.
+func Command(cmd *cobra.Command, handler Modifier) *cobra.Command {
+	runE := cmd.RunE
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		err := runE(cmd, args)
+		if err != nil {
+			err, _ = handler.Modify(cmd, err)
+			return err
+		}
+		return nil
+	}
+	return cmd
+}
+
+// TrimErrResp tries to trim toTrim from err.
+func TrimErrResp(err error, toTrim error) error {
+	var inner error
+	if errResp, ok := toTrim.(*errcode.ErrorResponse); ok {
+		if len(errResp.Errors) == 0 {
+			return fmt.Errorf("recognizable error message not found: %w", toTrim)
+		}
+		inner = errResp.Errors
+	} else {
+		return err
+	}
+	return reWrap(err, toTrim, inner)
+}
+
+// TrimErrBasicCredentialNotFound trims the credentials from err.
+// Caller should make sure the err is auth.ErrBasicCredentialNotFound.
+func TrimErrBasicCredentialNotFound(err error) error {
+	toTrim := err
+	inner := err
+	for {
+		switch x := inner.(type) {
+		case interface{ Unwrap() error }:
+			toTrim = inner
+			inner = x.Unwrap()
+			continue
+		case interface{ Unwrap() []error }:
+			for _, errItem := range x.Unwrap() {
+				if errors.Is(errItem, auth.ErrBasicCredentialNotFound) {
+					toTrim = errItem
+					inner = errItem
+					break
+				}
+			}
+			continue
+		}
+		break
+	}
+	return reWrap(err, toTrim, auth.ErrBasicCredentialNotFound)
+}
+
+// reWrap re-wraps errA to errC and trims out errB, returns errC if scrub fails.
+// +---------- errA ----------+
+// |         +---- errB ----+ |      +---- errA ----+
+// |         |    errC      | |  =>  |     errC     |
+// |         +--------------+ |      +--------------+
+// +--------------------------+
+func reWrap(errA, errB, errC error) error {
+	// TODO: trim dedicated error type when
+	// https://github.com/oras-project/oras-go/issues/677 is done
+	contentA := errA.Error()
+	contentB := errB.Error()
+	if idx := strings.Index(contentA, contentB); idx > 0 {
+		return fmt.Errorf("%s%w", contentA[:idx], errC)
+	}
+	return errC
+}
+
+// NewErrEmptyTagOrDigest creates a new error based on the reference string.
+func NewErrEmptyTagOrDigest(ref string, cmd *cobra.Command, needsTag bool) error {
+	form := `"<name>@<digest>"`
+	errMsg := `no digest specified`
+	if needsTag {
+		form = fmt.Sprintf(`"<name>:<tag>" or %s`, form)
+		errMsg = "no tag or digest specified"
+	}
+	return &Error{
+		Err:            fmt.Errorf(`"%s": %s`, ref, errMsg),
+		Usage:          fmt.Sprintf("%s %s", cmd.Parent().CommandPath(), cmd.Use),
+		Recommendation: fmt.Sprintf(`Please specify a reference in the form of %s. Run "%s -h" for more options and examples`, form, cmd.CommandPath()),
+	}
 }

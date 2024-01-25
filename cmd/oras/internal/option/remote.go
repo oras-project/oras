@@ -28,13 +28,16 @@ import (
 	"strings"
 	"sync"
 
-	credentials "github.com/oras-project/oras-credentials-go"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/credentials"
+	"oras.land/oras-go/v2/registry/remote/errcode"
 	"oras.land/oras-go/v2/registry/remote/retry"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/internal/credential"
 	"oras.land/oras/internal/crypto"
 	onet "oras.land/oras/internal/net"
@@ -42,7 +45,8 @@ import (
 	"oras.land/oras/internal/version"
 )
 
-// Remote options struct.
+// Remote options struct contains flags and arguments specifying one registry.
+// Remote implements oerrors.Handler and interface.
 type Remote struct {
 	DistributionSpec
 	CACertFilePath    string
@@ -58,6 +62,7 @@ type Remote struct {
 	headers               http.Header
 	warned                map[string]*sync.Map
 	plainHTTP             func() (plainHTTP bool, enforced bool)
+	store                 credentials.Store
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
@@ -222,13 +227,25 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 			return cred, nil
 		}
 	} else {
-		store, err := credential.NewStore(opts.Configs...)
+		var err error
+		opts.store, err = credential.NewStore(opts.Configs...)
 		if err != nil {
 			return nil, err
 		}
-		client.Credential = credentials.Credential(store)
+		client.Credential = credentials.Credential(opts.store)
 	}
 	return
+}
+
+// ConfigPath returns the config path of the credential store.
+func (opts *Remote) ConfigPath() (string, error) {
+	if opts.store == nil {
+		return "", errors.New("no credential store initialized")
+	}
+	if ds, ok := opts.store.(*credentials.DynamicStore); ok {
+		return ds.ConfigPath(), nil
+	}
+	return "", errors.New("store doesn't support getting config path")
 }
 
 func (opts *Remote) parseCustomHeaders() error {
@@ -321,4 +338,33 @@ func (opts *Remote) isPlainHttp(registry string) bool {
 		return true
 	}
 	return plainHTTP
+}
+
+// Modify modifies error during cmd execution.
+func (opts *Remote) Modify(cmd *cobra.Command, err error) (error, bool) {
+	var errResp *errcode.ErrorResponse
+
+	if errors.Is(err, auth.ErrBasicCredentialNotFound) {
+		return opts.DecorateCredentialError(err), true
+	}
+
+	if errors.As(err, &errResp) {
+		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
+		return &oerrors.Error{
+			Err: oerrors.TrimErrResp(err, errResp),
+		}, true
+	}
+	return err, false
+}
+
+// DecorateCredentialError decorate error with recommendation.
+func (opts *Remote) DecorateCredentialError(err error) *oerrors.Error {
+	configPath := " "
+	if path, pathErr := opts.ConfigPath(); pathErr == nil {
+		configPath += fmt.Sprintf("at %q ", path)
+	}
+	return &oerrors.Error{
+		Err:            oerrors.TrimErrBasicCredentialNotFound(err),
+		Recommendation: fmt.Sprintf(`Please check whether the registry credential stored in the authentication file%sis correct`, configPath),
+	}
 }

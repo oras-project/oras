@@ -18,11 +18,9 @@ package blob
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 
-	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
@@ -83,25 +81,25 @@ Example - Fetch and print a blob from OCI image layout archive file 'layout.tar'
 		},
 		Aliases: []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fetchBlob(cmd.Context(), opts)
+			return fetchBlob(cmd, &opts)
 		},
 	}
 
 	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "output file `path`, use - for stdout")
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
-func fetchBlob(ctx context.Context, opts fetchBlobOptions) (fetchErr error) {
-	ctx, logger := opts.WithContext(ctx)
+func fetchBlob(cmd *cobra.Command, opts *fetchBlobOptions) (fetchErr error) {
+	ctx, logger := opts.WithContext(cmd.Context())
 	var target oras.ReadOnlyTarget
 	target, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
 		return err
 	}
 
-	if _, err = digest.Parse(opts.Reference); err != nil {
-		return fmt.Errorf("%s: blob reference must be of the form <name@digest>", opts.RawReference)
+	if err := opts.EnsureReferenceNotEmpty(cmd, false); err != nil {
+		return err
 	}
 
 	if repo, ok := target.(*remote.Repository); ok {
