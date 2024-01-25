@@ -24,5 +24,5 @@ type push struct {
 
 // NewPush creates a new push metadata
 func NewPush(desc ocispec.Descriptor, path string) push {
-	return push{ToDescriptor(path, desc)}
+	return push{FromDescriptor(path, desc)}
 }

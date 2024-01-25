@@ -79,8 +79,8 @@ type Platform struct {
 	Variant string
 }
 
-// ToDescriptor converts a descriptor to a descriptor with digest reference.
-func ToDescriptor(name string, desc ocispec.Descriptor) Descriptor {
+// FromDescriptor converts a OCI descriptor to a descriptor with digest reference.
+func FromDescriptor(name string, desc ocispec.Descriptor) Descriptor {
 	ret := Descriptor{
 		DigestReference: NewDigestReference(name, desc.Digest.String()),
 		MediaType:       desc.MediaType,

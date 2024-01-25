@@ -16,7 +16,6 @@ limitations under the License.
 package option
 
 import (
-	"bytes"
 	"encoding/json"
 	"io"
 	"text/template"
@@ -25,11 +24,12 @@ import (
 	"github.com/spf13/pflag"
 )
 
+// Format is a flag to format metadata into output.
 type Format struct {
 	Template string
 }
 
-// ApplyFlag implements FlagProvider.ApplyFlag
+// ApplyFlag implements FlagProvider.ApplyFlag.
 func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 	name := "format"
 	if fs.Lookup(name) != nil {
@@ -47,26 +47,15 @@ func (opts *Format) WriteTo(w io.Writer, data interface{}) error {
 		return nil
 	case "json":
 		// output json
-		// write marshalled data
-		b, err := json.Marshal(data)
-		if err != nil {
-			return err
-		}
-		buf := bytes.NewBuffer(nil)
-		_ = json.Indent(buf, b, "", "  ")
-		_, err = w.Write(buf.Bytes())
-		if err != nil {
-			return err
-		}
+		encoder := json.NewEncoder(w)
+		encoder.SetIndent("", "  ")
+		return encoder.Encode(data)
 	default:
 		// go templating
-		var err error
-		t := template.New("out").Funcs(sprig.FuncMap())
-		t, err = t.Parse(opts.Template)
+		t, err := template.New("out").Funcs(sprig.FuncMap()).Parse(opts.Template)
 		if err != nil {
 			return err
 		}
 		return t.Execute(w, data)
 	}
-	return nil
 }
