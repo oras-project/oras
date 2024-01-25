@@ -35,6 +35,7 @@ func ToDigestReference(name string, digest string) DigestReference {
 // Descriptor is a descriptor with digest reference.
 type Descriptor struct {
 	DigestReference
+
 	// MediaType is the media type of the object this schema refers to.
 	MediaType string
 
@@ -88,6 +89,7 @@ func ToDescriptor(name string, desc ocispec.Descriptor) Descriptor {
 		URLs:            desc.URLs,
 		Annotations:     desc.Annotations,
 		Data:            desc.Data,
+		ArtifactType:    desc.ArtifactType,
 	}
 	return ret
 }

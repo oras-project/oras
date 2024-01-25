@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -126,10 +127,13 @@ var _ = Describe("1.1 registry users:", func() {
 			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
 			CopyZOTRepo(ImageRepo, testRepo)
 			// test
-			ref := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName, "--format", "{{.Ref}}").
+			delimitter := "|"
+			output := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName, fmt.Sprintf("--format", "{{.Ref%s.ArtifactType}}"), delimitter).
 				WithWorkDir(tempDir).Exec().Out.Contents()
+			ref, artifactType, _ := strings.Cut(string(output), delimitter)
 			// validate
-			fetched := ORAS("manifest", "fetch", string(ref)).Exec().Out.Contents()
+			Expect(artifactType).To(Equal("test/attach"))
+			fetched := ORAS("manifest", "fetch", ref).Exec().Out.Contents()
 			MatchFile(filepath.Join(tempDir, exportName), string(fetched), DefaultTimeout)
 		})
 
