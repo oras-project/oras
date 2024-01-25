@@ -30,19 +30,15 @@ import (
 
 var (
 	printLock sync.Mutex
-	to        *os.File
+	noStdout  bool = false
 )
-
-func init() {
-	to = os.Stdout
-}
 
 // Set sets the output writer for printing.
 func Set(template string, tty *os.File) {
 	printLock.Lock()
 	defer printLock.Unlock()
 	if template != "" || tty != nil {
-		to = nil
+		noStdout = true
 	}
 }
 
@@ -54,10 +50,10 @@ func Print(a ...any) error {
 	printLock.Lock()
 	defer printLock.Unlock()
 
-	if to == nil {
+	if noStdout {
 		return nil
 	}
-	_, err := fmt.Fprintln(to, a...)
+	_, err := fmt.Fprintln(os.Stdout, a...)
 	return err
 }
 
