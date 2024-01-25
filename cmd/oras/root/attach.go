@@ -31,7 +31,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/display"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
-	"oras.land/oras/cmd/oras/internal/meta"
+	"oras.land/oras/cmd/oras/internal/metadata"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
 	"oras.land/oras/internal/registryutil"
@@ -192,5 +192,5 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	if err = opts.ExportManifest(ctx, store, root); err != nil {
 		return err
 	}
-	return opts.WriteTo(os.Stdout, meta.NewPush(root, opts.Path))
+	return opts.WriteTo(os.Stdout, metadata.NewPush(root, opts.Path))
 }

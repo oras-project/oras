@@ -34,7 +34,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
-	"oras.land/oras/cmd/oras/internal/meta"
+	"oras.land/oras/cmd/oras/internal/metadata"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/contentutil"
 	"oras.land/oras/internal/registryutil"
@@ -238,7 +238,7 @@ func runPush(ctx context.Context, opts *pushOptions) error {
 	if err := opts.ExportManifest(ctx, memoryStore, root); err != nil {
 		return err
 	}
-	return opts.WriteTo(os.Stdout, meta.NewPush(root, opts.Path))
+	return opts.WriteTo(os.Stdout, metadata.NewPush(root, opts.Path))
 }
 
 func doPush(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
