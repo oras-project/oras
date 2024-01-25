@@ -128,7 +128,7 @@ var _ = Describe("1.1 registry users:", func() {
 			CopyZOTRepo(ImageRepo, testRepo)
 			// test
 			delimitter := "---"
-			output := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName, "--format", fmt.Sprintf("{{.Ref%s.ArtifactType}}", delimitter)).
+			output := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName, "--format", fmt.Sprintf("{{.Ref}}%s{{.ArtifactType}}", delimitter)).
 				WithWorkDir(tempDir).Exec().Out.Contents()
 			ref, artifactType, _ := strings.Cut(string(output), delimitter)
 			// validate
