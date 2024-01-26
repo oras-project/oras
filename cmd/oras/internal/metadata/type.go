@@ -20,6 +20,9 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
+// Getter is a function to get metadata.
+type Getter func() any
+
 // DigestReference is a reference to an artifact with digest.
 type DigestReference struct {
 	Ref string

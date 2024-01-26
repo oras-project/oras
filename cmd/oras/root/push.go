@@ -238,7 +238,7 @@ func runPush(ctx context.Context, opts *pushOptions) error {
 	if err := opts.ExportManifest(ctx, memoryStore, root); err != nil {
 		return err
 	}
-	return opts.WriteTo(os.Stdout, metadata.NewPush(root, opts.Path))
+	return opts.WriteMetadata(os.Stdout, metadata.PushGetter(root, opts.Path))
 }
 
 func doPush(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {

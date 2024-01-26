@@ -17,12 +17,12 @@ package metadata
 
 import ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-// push contains metadata formatted by oras push
+// push contains metadata formatted by oras push.
 type push struct {
 	Descriptor
 }
 
-// NewPush creates a new push metadata
-func NewPush(desc ocispec.Descriptor, path string) push {
-	return push{FromDescriptor(path, desc)}
+// PushGetter returns a metadata getter for push command.
+func PushGetter(desc ocispec.Descriptor, path string) Getter {
+	return func() any { return push{FromDescriptor(path, desc)} }
 }

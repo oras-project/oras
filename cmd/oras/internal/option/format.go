@@ -22,6 +22,7 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/spf13/pflag"
+	"oras.land/oras/cmd/oras/internal/metadata"
 )
 
 // Format is a flag to format metadata into output.
@@ -41,21 +42,24 @@ func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 '$TEMPLATE':  Print output using the given Go template.`)
 }
 
-func (opts *Format) WriteTo(w io.Writer, data interface{}) error {
-	switch opts.Template {
-	case "":
+// WriteMetadata writes metadata to an io.Writer.
+func (opts *Format) WriteMetadata(w io.Writer, getMetadata metadata.Getter) error {
+	if opts.Template == "" || getMetadata == nil {
 		return nil
+	}
+	metadata := getMetadata()
+	switch opts.Template {
 	case "json":
 		// output json
 		encoder := json.NewEncoder(w)
 		encoder.SetIndent("", "  ")
-		return encoder.Encode(data)
+		return encoder.Encode(metadata)
 	default:
 		// go templating
-		t, err := template.New("out").Funcs(sprig.FuncMap()).Parse(opts.Template)
+		t, err := template.New("--format").Funcs(sprig.FuncMap()).Parse(opts.Template)
 		if err != nil {
 			return err
 		}
-		return t.Execute(w, data)
+		return t.Execute(w, metadata)
 	}
 }
