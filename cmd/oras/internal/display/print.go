@@ -28,9 +28,7 @@ import (
 	"oras.land/oras-go/v2/registry"
 )
 
-var (
-	printLock sync.Mutex
-)
+var printLock sync.Mutex
 
 // NeedTextOutput check if text status should be printed based on template
 // and tty.
@@ -45,8 +43,7 @@ type PrintFunc func(ocispec.Descriptor) error
 func Print(a ...any) error {
 	printLock.Lock()
 	defer printLock.Unlock()
-
-	_, err := fmt.Fprintln(os.Stdout, a...)
+	_, err := fmt.Println(a...)
 	return err
 }
 
