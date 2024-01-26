@@ -52,13 +52,13 @@ var _ = Describe("ORAS beginners:", func() {
 
 		It("should fail if no file reference or manifest annotation provided for registry", func() {
 			ORAS("attach", "--artifact-type", "oras/test", RegistryRef(ZOTHost, ImageRepo, foobar.Tag)).
-				ExpectFailure().MatchErrKeyWords("Error: no blob or manifest annotation are provided").Exec()
+				ExpectFailure().MatchErrKeyWords("Error: neither file nor annotation", "Usage:").Exec()
 		})
 
 		It("should fail if no file reference or manifest annotation provided for OCI layout", func() {
 			root := GinkgoT().TempDir()
 			ORAS("attach", "--artifact-type", "oras/test", LayoutRef(root, foobar.Tag)).
-				ExpectFailure().MatchErrKeyWords("Error: no blob or manifest annotation are provided").Exec()
+				ExpectFailure().MatchErrKeyWords("Error: neither file nor annotation", "Usage:").Exec()
 		})
 
 		It("should fail if distribution spec is unknown", func() {
