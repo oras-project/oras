@@ -72,11 +72,24 @@ func (ph *PackHandler) OnCopySkipped(ctx context.Context, desc ocispec.Descripto
 	if ph.trackedGraphTarget != nil {
 		// TTY
 		return ph.trackedGraphTarget.Prompt(desc, ph.promptExists)
+	} else if ph.needTextOutput {
+		return PrintStatus(desc, ph.promptExists, ph.verbose)
 	}
-	return PrintStatus(desc, ph.promptExists, ph.verbose)
+	return nil
 }
 
-// PostCopy
+// PreCopy provides display handler before copying a blob/manifest.
+func (ph *PackHandler) PreCopy(ctx context.Context, desc ocispec.Descriptor) error {
+	if ph.trackedGraphTarget != nil {
+		// TTY
+		return nil
+	} else if ph.needTextOutput {
+		return PrintStatus(desc, ph.promptUploading, ph.verbose)
+	}
+	return nil
+}
+
+// PostCopy provides display handler after copying a blob/manifest.
 func (ph *PackHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor) error {
 	ph.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
 	if ph.trackedGraphTarget != nil {
@@ -84,22 +97,16 @@ func (ph *PackHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor) er
 		return PrintSuccessorStatus(ctx, desc, ph.fetcher, ph.committed, func(d ocispec.Descriptor) error {
 			return ph.trackedGraphTarget.Prompt(d, ph.promptSkipped)
 		})
+	} else if ph.needTextOutput {
+		if err := PrintSuccessorStatus(ctx, desc, ph.fetcher, ph.committed, StatusPrinter(ph.promptSkipped, ph.verbose)); err != nil {
+			return err
+		}
+		return PrintStatus(desc, ph.promptUploaded, ph.verbose)
 	}
-	if err := PrintSuccessorStatus(ctx, desc, ph.fetcher, ph.committed, StatusPrinter(ph.promptSkipped, ph.verbose)); err != nil {
-		return err
-	}
-	return PrintStatus(desc, ph.promptUploaded, ph.verbose)
-
+	return nil
 }
 
-func (ph *PackHandler) PreCopy(ctx context.Context, desc ocispec.Descriptor) error {
-	if ph.trackedGraphTarget != nil {
-		// TTY
-		return nil
-	}
-	return PrintStatus(desc, ph.promptUploading, ph.verbose)
-}
-
+// PostManifest provides display handler after pushing.
 func (ph *PackHandler) PostPush(root ocispec.Descriptor, opts *option.Target, w io.Writer) error {
 	if ph.needTextOutput {
 		return Print("Pushed", opts.AnnotatedReference())
@@ -107,6 +114,7 @@ func (ph *PackHandler) PostPush(root ocispec.Descriptor, opts *option.Target, w 
 	return option.WriteMetadata(ph.template, w, metadata.NewPush(root, opts.Path))
 }
 
+// PostAttach provides display handler after attaching.
 func (ph *PackHandler) PostAttach(root, subject ocispec.Descriptor, opts *option.Target, w io.Writer) error {
 	if ph.needTextOutput {
 		digest := subject.Digest.String()
@@ -119,6 +127,7 @@ func (ph *PackHandler) PostAttach(root, subject ocispec.Descriptor, opts *option
 	return option.WriteMetadata(ph.template, w, metadata.NewPush(root, opts.Path))
 }
 
+// Taggable returns a taggable with status printing.
 func (ph *PackHandler) Taggable(t oras.Target) oras.Target {
 	if ph.trackedGraphTarget != nil {
 		// TTY
