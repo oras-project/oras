@@ -13,16 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package metadata
+package option
 
-import ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-
-// push contains metadata formatted by oras push.
-type push struct {
-	Descriptor
-}
-
-// NewPush returns a metadata getter for push command.
-func NewPush(desc ocispec.Descriptor, path string) any {
-	return push{FromDescriptor(path, desc)}
+type Done interface {
+	HandleDone() error
 }

@@ -22,7 +22,6 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/spf13/pflag"
-	"oras.land/oras/cmd/oras/internal/metadata"
 )
 
 // Format is a flag to format metadata into output.
@@ -43,11 +42,7 @@ func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 }
 
 // WriteMetadata writes metadata to an io.Writer.
-func (opts *Format) WriteMetadata(w io.Writer, getMetadata metadata.Getter) error {
-	if opts.Template == "" || getMetadata == nil {
-		return nil
-	}
-	metadata := getMetadata()
+func (opts *Format) WriteMetadata(w io.Writer, metadata any) error {
 	switch opts.Template {
 	case "json":
 		// output json

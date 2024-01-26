@@ -125,7 +125,6 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			display.Set(opts.Template, opts.TTY)
 			return runPush(cmd.Context(), &opts)
 		},
 	}
@@ -143,7 +142,6 @@ func runPush(ctx context.Context, opts *pushOptions) error {
 	if err != nil {
 		return err
 	}
-
 	// prepare pack
 	packOpts := oras.PackManifestOptions{
 		ConfigAnnotations:   annotations[option.AnnotationConfig],
@@ -166,7 +164,8 @@ func runPush(ctx context.Context, opts *pushOptions) error {
 		desc.Annotations = packOpts.ConfigAnnotations
 		packOpts.ConfigDescriptor = &desc
 	}
-	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
+	needTextOutput := display.NeedTextOutput(opts.Template, opts.TTY)
+	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose, needTextOutput)
 	if err != nil {
 		return err
 	}
@@ -195,7 +194,7 @@ func runPush(ctx context.Context, opts *pushOptions) error {
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
 	union := contentutil.MultiReadOnlyTarget(memoryStore, store)
-	updateDisplayOption(&copyOptions.CopyGraphOptions, union, opts.Verbose, dst)
+	updateDisplayOption(&copyOptions.CopyGraphOptions, union, opts.Verbose, dst, needTextOutput)
 	copy := func(root ocispec.Descriptor) error {
 		// add both pull and push scope hints for dst repository
 		// to save potential push-scope token requests during copy
@@ -216,6 +215,12 @@ func runPush(ctx context.Context, opts *pushOptions) error {
 	}
 	display.Print("Pushed", opts.AnnotatedReference())
 
+	if needTextOutput {
+		display.Print("Pushed", opts.AnnotatedReference())
+	} else if err := opts.WriteMetadata(os.Stdout, metadata.NewPush(root, opts.Path)); err != nil {
+		return err
+	}
+
 	if len(opts.extraRefs) != 0 {
 		taggable := dst
 		if tracked, ok := dst.(track.GraphTarget); ok {
@@ -227,7 +232,11 @@ func runPush(ctx context.Context, opts *pushOptions) error {
 		}
 		tagBytesNOpts := oras.DefaultTagBytesNOptions
 		tagBytesNOpts.Concurrency = opts.concurrency
-		if _, err = oras.TagBytesN(ctx, display.NewTagStatusPrinter(taggable), root.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
+		var target oras.Target = taggable
+		if needTextOutput {
+			target = display.NewTagStatusPrinter(taggable)
+		}
+		if _, err = oras.TagBytesN(ctx, target, root.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}
 	}
@@ -235,10 +244,7 @@ func runPush(ctx context.Context, opts *pushOptions) error {
 	display.Print("Digest:", root.Digest)
 
 	// Export manifest
-	if err := opts.ExportManifest(ctx, memoryStore, root); err != nil {
-		return err
-	}
-	return opts.WriteMetadata(os.Stdout, metadata.PushGetter(root, opts.Path))
+	return opts.ExportManifest(ctx, memoryStore, root)
 }
 
 func doPush(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
@@ -249,7 +255,7 @@ func doPush(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, 
 	return pushArtifact(dst, pack, copy)
 }
 
-func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, verbose bool, dst any) {
+func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, verbose bool, dst any, needTextOutput bool) {
 	committed := &sync.Map{}
 
 	const (
@@ -273,19 +279,22 @@ func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, v
 		return
 	}
 	// non TTY
-	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return display.PrintStatus(desc, promptExists, verbose)
-	}
-	opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		return display.PrintStatus(desc, promptUploading, verbose)
-	}
-	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		if err := display.PrintSuccessorStatus(ctx, desc, fetcher, committed, display.StatusPrinter(promptSkipped, verbose)); err != nil {
-			return err
+	if needTextOutput {
+		opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
+
+			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+			return display.PrintStatus(desc, promptExists, verbose)
 		}
-		return display.PrintStatus(desc, promptUploaded, verbose)
+		opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+			return display.PrintStatus(desc, promptUploading, verbose)
+		}
+		opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+			if err := display.PrintSuccessorStatus(ctx, desc, fetcher, committed, display.StatusPrinter(promptSkipped, verbose)); err != nil {
+				return err
+			}
+			return display.PrintStatus(desc, promptUploaded, verbose)
+		}
 	}
 }
 

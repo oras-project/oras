@@ -26,7 +26,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/fileref"
 )
 
-func loadFiles(ctx context.Context, store *file.Store, annotations map[string]map[string]string, fileRefs []string, verbose bool) ([]ocispec.Descriptor, error) {
+func loadFiles(ctx context.Context, store *file.Store, annotations map[string]map[string]string, fileRefs []string, verbose bool, needTextOutput bool) ([]ocispec.Descriptor, error) {
 	var files []ocispec.Descriptor
 	for _, fileRef := range fileRefs {
 		filename, mediaType, err := fileref.Parse(fileRef, "")
@@ -40,7 +40,7 @@ func loadFiles(ctx context.Context, store *file.Store, annotations map[string]ma
 			name = filepath.ToSlash(name)
 		}
 
-		if verbose {
+		if needTextOutput && verbose {
 			fmt.Println("Preparing", name)
 		}
 		file, err := store.Add(ctx, name, mediaType, filename)
@@ -58,7 +58,7 @@ func loadFiles(ctx context.Context, store *file.Store, annotations map[string]ma
 		}
 		files = append(files, file)
 	}
-	if len(files) == 0 {
+	if needTextOutput && len(files) == 0 {
 		display.Print("Uploading empty artifact")
 	}
 	return files, nil

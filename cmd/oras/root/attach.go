@@ -91,7 +91,6 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			display.Set(opts.Template, opts.TTY)
 			return runAttach(cmd, &opts)
 		},
 	}
@@ -135,7 +134,8 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	if err != nil {
 		return err
 	}
-	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
+	needTextOutput := display.NeedTextOutput(opts.Template, opts.TTY)
+	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose, needTextOutput)
 	if err != nil {
 		return err
 	}
@@ -147,7 +147,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	}
 	graphCopyOptions := oras.DefaultCopyGraphOptions
 	graphCopyOptions.Concurrency = opts.concurrency
-	updateDisplayOption(&graphCopyOptions, store, opts.Verbose, dst)
+	updateDisplayOption(&graphCopyOptions, store, opts.Verbose, dst, needTextOutput)
 
 	packOpts := oras.PackManifestOptions{
 		Subject:             &subject,
@@ -181,16 +181,18 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	if err != nil {
 		return err
 	}
-	digest := subject.Digest.String()
-	if !strings.HasSuffix(opts.RawReference, digest) {
-		opts.RawReference = fmt.Sprintf("%s@%s", opts.Path, subject.Digest)
-	}
-	display.Print("Attached to", opts.AnnotatedReference())
-	display.Print("Digest:", root.Digest)
 
-	// Export manifest
-	if err = opts.ExportManifest(ctx, store, root); err != nil {
+	if needTextOutput {
+		digest := subject.Digest.String()
+		if !strings.HasSuffix(opts.RawReference, digest) {
+			opts.RawReference = fmt.Sprintf("%s@%s", opts.Path, subject.Digest)
+		}
+		display.Print("Attached to", opts.AnnotatedReference())
+		display.Print("Digest:", root.Digest)
+	} else if err := opts.WriteMetadata(os.Stdout, metadata.NewPush(root, opts.Path)); err != nil {
 		return err
 	}
-	return opts.WriteMetadata(os.Stdout, metadata.PushGetter(root, opts.Path))
+
+	// Export manifest
+	return opts.ExportManifest(ctx, store, root)
 }
