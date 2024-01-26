@@ -121,8 +121,7 @@ func (ph *PackHandler) PostAttach(root, subject ocispec.Descriptor, opts *option
 		if !strings.HasSuffix(opts.RawReference, digest) {
 			opts.RawReference = fmt.Sprintf("%s@%s", opts.Path, subject.Digest)
 		}
-		Print("Attached to", opts.AnnotatedReference())
-		Print("Digest:", root.Digest)
+		return Print("Attached to", opts.AnnotatedReference(), "\nDigest:", root.Digest)
 	}
 	return option.WriteMetadata(ph.template, w, metadata.NewPush(root, opts.Path))
 }
