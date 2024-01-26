@@ -51,32 +51,8 @@ type Descriptor struct {
 	// Annotations contains arbitrary metadata relating to the targeted content.
 	Annotations map[string]string `json:",omitempty"`
 
-	// Data is an embedding of the targeted content. This is encoded as a base64
-	// string when marshalled to JSON (automatically, by encoding/json). If
-	// present, Data can be used directly to avoid fetching the targeted content.
-	Data []byte `json:",omitempty"`
-
-	// Platform describes the platform which the image in the manifest runs on.
-	//
-	// This should only be used when referring to a manifest.
-	Platform *Platform `json:",omitempty"`
-
 	// ArtifactType is the IANA media type of this artifact.
 	ArtifactType string
-}
-
-// Platform describes the platform which the image in the manifest runs on.
-type Platform struct {
-	// Architecture field specifies the CPU architecture, for example
-	// `amd64` or `ppc64le`.
-	Architecture string
-
-	// OS specifies the operating system, for example `linux` or `windows`.
-	OS string
-
-	// Variant is an optional field specifying a variant of the CPU, for
-	// example `v7` to specify ARMv7 when architecture is `arm`.
-	Variant string
 }
 
 // FromDescriptor converts a OCI descriptor to a descriptor with digest reference.
@@ -88,7 +64,6 @@ func FromDescriptor(name string, desc ocispec.Descriptor) Descriptor {
 		Size:            desc.Size,
 		URLs:            desc.URLs,
 		Annotations:     desc.Annotations,
-		Data:            desc.Data,
 		ArtifactType:    desc.ArtifactType,
 	}
 	return ret

@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -31,7 +30,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/display"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
-	"oras.land/oras/cmd/oras/internal/metadata"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
 	"oras.land/oras/internal/registryutil"
@@ -140,8 +138,8 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	if err != nil {
 		return err
 	}
-	needTextOutput := display.NeedTextOutput(opts.Template, opts.TTY)
-	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose, needTextOutput)
+	fh := display.NewFileHandler(opts.Template, opts.TTY, opts.Verbose)
+	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, fh)
 	if err != nil {
 		return err
 	}
@@ -153,7 +151,8 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	}
 	graphCopyOptions := oras.DefaultCopyGraphOptions
 	graphCopyOptions.Concurrency = opts.concurrency
-	updateDisplayOption(&graphCopyOptions, store, opts.Verbose, dst, needTextOutput)
+	ph := display.NewPackHandler(opts.Template, opts.TTY, store, dst, opts.Verbose)
+	updateDisplayOption(&graphCopyOptions, ph)
 
 	packOpts := oras.PackManifestOptions{
 		Subject:             &subject,
@@ -187,15 +186,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	if err != nil {
 		return err
 	}
-
-	if needTextOutput {
-		digest := subject.Digest.String()
-		if !strings.HasSuffix(opts.RawReference, digest) {
-			opts.RawReference = fmt.Sprintf("%s@%s", opts.Path, subject.Digest)
-		}
-		display.Print("Attached to", opts.AnnotatedReference())
-		display.Print("Digest:", root.Digest)
-	} else if err := opts.WriteMetadata(os.Stdout, metadata.NewPush(root, opts.Path)); err != nil {
+	if err := ph.PostAttach(root, subject, &opts.Target, os.Stdout); err != nil {
 		return err
 	}
 

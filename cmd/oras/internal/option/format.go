@@ -42,8 +42,8 @@ func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 }
 
 // WriteMetadata writes metadata to an io.Writer.
-func (opts *Format) WriteMetadata(w io.Writer, metadata any) error {
-	switch opts.Template {
+func WriteMetadata(formatFlag string, w io.Writer, metadata any) error {
+	switch formatFlag {
 	case "json":
 		// output json
 		encoder := json.NewEncoder(w)
@@ -51,7 +51,7 @@ func (opts *Format) WriteMetadata(w io.Writer, metadata any) error {
 		return encoder.Encode(metadata)
 	default:
 		// go templating
-		t, err := template.New("--format").Funcs(sprig.FuncMap()).Parse(opts.Template)
+		t, err := template.New("format output").Funcs(sprig.FuncMap()).Parse(formatFlag)
 		if err != nil {
 			return err
 		}
