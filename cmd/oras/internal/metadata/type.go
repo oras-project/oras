@@ -33,6 +33,8 @@ func NewDigestReference(name string, digest string) DigestReference {
 }
 
 // Descriptor is a descriptor with digest reference.
+// We cannot use ocispec.Descriptor here since the first letter of the json
+// annotation key is not uppercase.
 type Descriptor struct {
 	DigestReference
 
