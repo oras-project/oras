@@ -24,6 +24,7 @@ import (
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras/cmd/oras/internal/display/console/testutils"
 	"oras.land/oras/cmd/oras/internal/display/track"
+	"oras.land/oras/cmd/oras/internal/option"
 )
 
 func TestPackHandler_OnCopySkipped(t *testing.T) {
@@ -52,6 +53,34 @@ func TestPackHandler_OnCopySkipped(t *testing.T) {
 	tty.Close()
 	// validate
 	if err = testutils.MatchPty(pty, device, mockedDesc.MediaType, "100.00%", mockedDesc.Digest.String()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPackHandler_PostPush(t *testing.T) {
+	// prepare
+	pty, device, err := testutils.NewPty()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer device.Close()
+	store := memory.New()
+	tty, err := track.NewTarget(store, "", "", device)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mockedPath := "mockedPath"
+	// test
+	ph := PackHandler{
+		needTextOutput: false,
+		template:       "mockedTemplate",
+	}
+	if err = ph.PostPush(ocispec.Descriptor{}, &option.Target{Path: mockedPath}, device); err != nil {
+		t.Fatal(err)
+	}
+	tty.Close()
+	// validate
+	if err = testutils.MatchPty(pty, device, ph.template); err != nil {
 		t.Fatal(err)
 	}
 }

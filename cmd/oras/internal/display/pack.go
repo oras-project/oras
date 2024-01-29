@@ -80,10 +80,7 @@ func (ph *PackHandler) OnCopySkipped(ctx context.Context, desc ocispec.Descripto
 
 // PreCopy provides display handler before copying a blob/manifest.
 func (ph *PackHandler) PreCopy(ctx context.Context, desc ocispec.Descriptor) error {
-	if ph.trackedGraphTarget != nil {
-		// TTY
-		return nil
-	} else if ph.needTextOutput {
+	if ph.trackedGraphTarget == nil && ph.needTextOutput {
 		return PrintStatus(desc, ph.promptUploading, ph.verbose)
 	}
 	return nil
