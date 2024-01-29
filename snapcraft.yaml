@@ -12,12 +12,12 @@
 # limitations under the License.
 
 name: oras
-version: 'v1.0.0'
+version: '{VERSION}'
 summary: Package for the ORAS CLI tool
 description: |
   A snap package for the ORAS CLI tool, which is used for managing OCI artifacts.
 base: core22
-confinement: strict
+confinement: classic
 grade: stable
 
 architectures:
