@@ -40,13 +40,13 @@ func NewFileHandler(template string, tty *os.File, verbose bool) *FileHandler {
 // PreAdd is called before adding a new file to file store.
 func (fh *FileHandler) PreAdd(name string) {
 	if fh.needTextOutput && fh.verbose {
-		fmt.Println("Preparing", name)
+		_, _ = fmt.Println("Preparing", name)
 	}
 }
 
 // PostAdd is called after adding all files to file store.
 func (fh *FileHandler) PostAdd(files []ocispec.Descriptor) {
 	if fh.needTextOutput && len(files) == 0 {
-		fmt.Println("Uploading empty artifact")
+		_, _ = fmt.Println("Uploading empty artifact")
 	}
 }
