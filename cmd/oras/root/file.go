@@ -17,7 +17,9 @@ package root
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"path/filepath"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -42,7 +44,7 @@ func loadFiles(ctx context.Context, store *file.Store, annotations map[string]ma
 		if verbose {
 			fmt.Println("Preparing", name)
 		}
-		file, err := store.Add(ctx, name, mediaType, filename)
+		file, err := addFile(ctx, store, name, mediaType, filename)
 		if err != nil {
 			return nil, err
 		}
@@ -61,4 +63,16 @@ func loadFiles(ctx context.Context, store *file.Store, annotations map[string]ma
 		fmt.Println("Uploading empty artifact")
 	}
 	return files, nil
+}
+
+func addFile(ctx context.Context, store *file.Store, name string, mediaType string, filename string) (ocispec.Descriptor, error) {
+	file, err := store.Add(ctx, name, mediaType, filename)
+	if err != nil {
+		var pathErr *fs.PathError
+		if errors.As(err, &pathErr) {
+			err = fmt.Errorf("%s: no such file or directory", pathErr.Path)
+		}
+		return ocispec.Descriptor{}, err
+	}
+	return file, nil
 }

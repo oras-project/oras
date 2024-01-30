@@ -55,6 +55,16 @@ var _ = Describe("ORAS beginners:", func() {
 			gomega.Expect(err).Should(gbytes.Say(regexp.QuoteMeta("Please make sure the provided reference is in the form of <registry>/<repo>[:tag|@digest]")))
 		})
 
+		It("should fail if the to-be-pushed file is not found", func() {
+			tempDir := GinkgoT().TempDir()
+			notFoundFilePath := "file/not/found"
+			err := ORAS("push", RegistryRef(ZOTHost, pushTestRepo("file-not-found"), ""), notFoundFilePath).
+				WithWorkDir(tempDir).
+				ExpectFailure().Exec().Err
+			gomega.Expect(err).Should(gbytes.Say(filepath.Join(tempDir, notFoundFilePath)))
+			gomega.Expect(err).Should(gbytes.Say("no such file or directory"))
+		})
+
 		It("should fail to use --config and --artifact-type at the same time for OCI spec v1.0 registry", func() {
 			tempDir := PrepareTempFiles()
 			repo := pushTestRepo("no-mediatype")
