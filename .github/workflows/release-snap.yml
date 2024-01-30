@@ -20,6 +20,9 @@ on:
 
 jobs:
   release-snap:
+    strategy:
+      matrix:
+        arch: [amd64,arm64,s390x]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -44,6 +47,7 @@ jobs:
       - name: make snapcraft
         run: |
           sed -i 's/{VERSION}/${{ steps.version.outputs.version }}/g' snapcraft.yaml
+          sed -i 's/{ARCH}/${{ matrix.arch }}/g' snapcraft.yaml
           cat snapcraft.yaml
       - uses: snapcore/action-build@v1
         id: build
@@ -52,20 +56,6 @@ jobs:
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.STORE_LOGIN }}
         with:
-          snap: 'oras_${{ steps.version.outputs.version }}_amd64.snap'
-          release: ${{ steps.version.outputs.release }}
-      - uses: snapcore/action-publish@v1
-        name: publish arm64
-        env:
-          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.STORE_LOGIN }}
-        with:
-          snap: 'oras_${{ steps.version.outputs.version }}_arm64.snap'
-          release: ${{ steps.version.outputs.release }}
-      - uses: snapcore/action-publish@v1
-        name: publish s390x
-        env:
-          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.STORE_LOGIN }}
-        with:
-          snap: 'oras_${{ steps.version.outputs.version }}_s390x.snap'
+          snap: ${{ steps.build.outputs.snap }}
           release: ${{ steps.version.outputs.release }}
 
