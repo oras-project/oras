@@ -105,6 +105,12 @@ func (opts *Target) Parse() error {
 		return nil
 	default:
 		opts.Type = TargetTypeRemote
+		if _, err := registry.ParseReference(opts.RawReference); err != nil {
+			return &oerrors.Error{
+				Err:            fmt.Errorf("%s is an invalid reference", opts.RawReference),
+				Recommendation: "Please specify a valid reference in the form of <registry>/<repo>[:tag|@digest]",
+			}
+		}
 		return opts.Remote.Parse()
 	}
 }
