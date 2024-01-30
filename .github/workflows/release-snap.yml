@@ -34,6 +34,12 @@ jobs:
           if [[ "${VERSION}" == "${BRANCH_NAME}" ]]; then
             VERSION=$(git rev-parse --short HEAD)
           fi
+          PRERELEASE=${VERSION#*-rc}
+          if [[ -z "$PRERELEASE" || "$PRERELEASE" == "$VERSION" ]]; then
+            echo "release=stable" >> $GITHUB_OUTPUT
+          else
+            echo "release=candidate" >> $GITHUB_OUTPUT
+          fi
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
       - name: make snapcraft
         run: |
@@ -42,8 +48,24 @@ jobs:
       - uses: snapcore/action-build@v1
         id: build
       - uses: snapcore/action-publish@v1
+        name: publish amd64
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.STORE_LOGIN }}
         with:
-          snap: ${{ steps.build.outputs.snap }}
+          snap: 'oras_${{ steps.version.outputs.version }}_amd64.snap'
+          release: ${{ steps.version.outputs.release }}
+      - uses: snapcore/action-publish@v1
+        name: publish arm64
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.STORE_LOGIN }}
+        with:
+          snap: 'oras_${{ steps.version.outputs.version }}_arm64.snap'
+          release: ${{ steps.version.outputs.release }}
+      - uses: snapcore/action-publish@v1
+        name: publish s390x
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.STORE_LOGIN }}
+        with:
+          snap: 'oras_${{ steps.version.outputs.version }}_s390x.snap'
+          release: ${{ steps.version.outputs.release }}
 
