@@ -14,7 +14,7 @@ require (
 	golang.org/x/sync v0.6.0
 	golang.org/x/term v0.16.0
 	gopkg.in/yaml.v3 v3.0.1
-	oras.land/oras-go/v2 v2.3.1-0.20240117093352-d8783fe25d71
+	oras.land/oras-go/v2 v2.4.0
 )
 
 require (
