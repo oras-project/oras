@@ -56,7 +56,7 @@ var _ = Describe("ORAS beginners:", func() {
 
 		It("should fail if no file reference or manifest annotation provided for OCI layout", func() {
 			root := GinkgoT().TempDir()
-			ORAS("attach", "--artifact-type", "oras/test", LayoutRef(root, foobar.Tag)).
+			ORAS("attach", "--artifact-type", "oras/test", LayoutRef(root, foobar.Tag), Flags.Layout).
 				ExpectFailure().MatchErrKeyWords("Error: neither file nor annotation", "Usage:").Exec()
 		})
 
