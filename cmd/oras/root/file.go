@@ -17,6 +17,8 @@ package root
 
 import (
 	"context"
+	"errors"
+	"io/fs"
 	"path/filepath"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -40,7 +42,7 @@ func loadFiles(ctx context.Context, store *file.Store, annotations map[string]ma
 		}
 
 		fh.PreAdd(name)
-		file, err := store.Add(ctx, name, mediaType, filename)
+		file, err := addFile(ctx, store, name, mediaType, filename)
 		if err != nil {
 			return nil, err
 		}
@@ -57,4 +59,16 @@ func loadFiles(ctx context.Context, store *file.Store, annotations map[string]ma
 	}
 	fh.PostAdd(files)
 	return files, nil
+}
+
+func addFile(ctx context.Context, store *file.Store, name string, mediaType string, filename string) (ocispec.Descriptor, error) {
+	file, err := store.Add(ctx, name, mediaType, filename)
+	if err != nil {
+		var pathErr *fs.PathError
+		if errors.As(err, &pathErr) {
+			err = pathErr
+		}
+		return ocispec.Descriptor{}, err
+	}
+	return file, nil
 }

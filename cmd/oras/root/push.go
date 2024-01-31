@@ -155,7 +155,7 @@ func runPush(ctx context.Context, opts *pushOptions) error {
 		if err != nil {
 			return err
 		}
-		desc, err := store.Add(ctx, option.AnnotationConfig, cfgMediaType, path)
+		desc, err := addFile(ctx, store, option.AnnotationConfig, cfgMediaType, path)
 		if err != nil {
 			return err
 		}
