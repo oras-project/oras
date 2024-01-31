@@ -70,7 +70,7 @@ func addFile(ctx context.Context, store *file.Store, name string, mediaType stri
 	if err != nil {
 		var pathErr *fs.PathError
 		if errors.As(err, &pathErr) {
-			err = fmt.Errorf("%s: no such file or directory", pathErr.Path)
+			err = fmt.Errorf("%s: %w", pathErr.Path, pathErr.Err)
 		}
 		return ocispec.Descriptor{}, err
 	}
