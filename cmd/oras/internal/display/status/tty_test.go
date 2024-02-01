@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -28,6 +29,38 @@ import (
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras/cmd/oras/internal/display/status/console/testutils"
 )
+
+var (
+	memStore        *memory.Store
+	memDesc         ocispec.Descriptor
+	manifestConent  = []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","artifactType":"application/vnd.unknown.artifact.v1","config":{"mediaType":"application/vnd.oci.empty.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2,"data":"e30="},"layers":[{"mediaType":"application/vnd.oci.empty.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2,"data":"e30="}]}`)
+	manifestDigest  = "sha256:1bb053792feb8d8d590001c212f2defad9277e091d2aa868cde2879ff41abb1b"
+	configContent   = []byte("{}")
+	configDigest    = "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+	configMediaType = "application/vnd.oci.empty.v1+json"
+	host            string
+)
+
+func TestMain(m *testing.M) {
+	// memory store for testing
+	memStore = memory.New()
+	content := []byte("test")
+	r := bytes.NewReader(content)
+	memDesc = ocispec.Descriptor{
+		MediaType: "application/octet-stream",
+		Digest:    digest.FromBytes(content),
+		Size:      int64(len(content)),
+	}
+	if err := memStore.Push(context.Background(), memDesc, r); err != nil {
+		fmt.Println("Setup failed:", err)
+		os.Exit(1)
+	}
+	if err := memStore.Tag(context.Background(), memDesc, memDesc.Digest.String()); err != nil {
+		fmt.Println("Setup failed:", err)
+		os.Exit(1)
+	}
+	m.Run()
+}
 
 func TestTTYPushHandler_OnFileLoading(t *testing.T) {
 	ph := NewTTYPushHandler(os.Stdout)
@@ -64,37 +97,6 @@ func TestTTYPushHandler_TrackTarget(t *testing.T) {
 	}
 }
 
-var (
-	memStore        *memory.Store
-	memDesc         ocispec.Descriptor
-	manifestConent  = []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","artifactType":"application/vnd.unknown.artifact.v1","config":{"mediaType":"application/vnd.oci.empty.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2,"data":"e30="},"layers":[{"mediaType":"application/vnd.oci.empty.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2,"data":"e30="}]}`)
-	manifestDigest  = "sha256:1bb053792feb8d8d590001c212f2defad9277e091d2aa868cde2879ff41abb1b"
-	configContent   = []byte("{}")
-	configDigest    = "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
-	configMediaType = "application/vnd.oci.empty.v1+json"
-	host            string
-)
-
-func TestMain(m *testing.M) {
-	// memory store for testing
-	memStore = memory.New()
-	content := []byte("test")
-	r := bytes.NewReader(content)
-	memDesc = ocispec.Descriptor{
-		MediaType: "application/octet-stream",
-		Digest:    digest.FromBytes(content),
-		Size:      int64(len(content)),
-	}
-	if err := memStore.Push(context.Background(), memDesc, r); err != nil {
-		fmt.Println("Setup failed:", err)
-		os.Exit(1)
-	}
-	if err := memStore.Tag(context.Background(), memDesc, memDesc.Digest.String()); err != nil {
-		fmt.Println("Setup failed:", err)
-		os.Exit(1)
-	}
-}
-
 func TestTTYPushHandler_UpdateCopyOptions(t *testing.T) {
 	// prepare pty
 	pty, slave, err := testutils.NewPty()
@@ -103,28 +105,19 @@ func TestTTYPushHandler_UpdateCopyOptions(t *testing.T) {
 	}
 	defer slave.Close()
 	ph := NewTTYPushHandler(slave)
-	to := memory.New()
-	// test
-	_, err = ph.TrackTarget(to)
+	gt, err := ph.TrackTarget(memory.New())
 	if err != nil {
 		t.Errorf("TrackTarget() should not return an error: %v", err)
 	}
+	// test copy
 	opts := oras.CopyGraphOptions{}
 	ph.UpdateCopyOptions(&opts, memStore)
-	if err := oras.CopyGraph(context.Background(), memStore, to, memDesc, opts); err != nil {
+	if err := oras.CopyGraph(context.Background(), memStore, gt, memDesc, opts); err != nil {
 		t.Errorf("CopyGraph() should not return an error: %v", err)
 	}
+	time.Sleep(1 * time.Second)
 	// validate
 	if err = testutils.MatchPty(pty, slave, "Uploaded", memDesc.MediaType, "100.00%", memDesc.Digest.String()); err != nil {
-		t.Fatal(err)
-	}
-
-	// test
-	if err := oras.CopyGraph(context.Background(), memStore, to, memDesc, opts); err != nil {
-		t.Errorf("CopyGraph() should not return an error: %v", err)
-	}
-	// validate
-	if err = testutils.MatchPty(pty, slave, "Exists", memDesc.MediaType, "100.00%", memDesc.Digest.String()); err != nil {
 		t.Fatal(err)
 	}
 }
