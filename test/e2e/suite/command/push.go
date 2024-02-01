@@ -316,6 +316,44 @@ var _ = Describe("Remote registry users:", func() {
 			Expect(manifest.Annotations[annotationKey]).Should(Equal(annotationValue))
 		})
 
+		It("should push artifact and format reference", func() {
+			repo := pushTestRepo("format-go-template")
+			tempDir := PrepareTempFiles()
+			annotationKey := "key"
+			annotationValue := "value"
+
+			// test
+			out := ORAS("push", RegistryRef(ZOTHost, repo, tag), "-a", fmt.Sprintf("%s=%s", annotationKey, annotationValue), "--format", "{{.Ref}}").
+				WithWorkDir(tempDir).Exec().Out
+
+			// validate
+			ref := string(out.Contents())
+			fetched := ORAS("manifest", "fetch", ref).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Layers).Should(HaveLen(1))
+			Expect(manifest.Layers[0]).Should(Equal(artifact.EmptyLayerJSON))
+			Expect(manifest.Config).Should(Equal(artifact.EmptyLayerJSON))
+			Expect(manifest.Annotations).NotTo(BeNil())
+			Expect(manifest.Annotations[annotationKey]).Should(Equal(annotationValue))
+		})
+
+		It("should push artifact and format reference", func() {
+			repo := pushTestRepo("format-go-template")
+			tempDir := PrepareTempFiles()
+			artifactType := "test/artifact+json"
+			annotationKey := "key"
+			annotationValue := "value"
+
+			// test
+			out := ORAS("push", RegistryRef(ZOTHost, repo, tag), "-a", fmt.Sprintf("%s=%s", annotationKey, annotationValue), "--format", "json", "--artifact-type", artifactType).
+				WithWorkDir(tempDir).Exec().Out
+
+			// validate
+			Expect(out).To(gbytes.Say(RegistryRef(ZOTHost, repo, "")))
+			Expect(out).To(gbytes.Say(regexp.QuoteMeta(fmt.Sprintf(`"ArtifactType": "%s"`, artifactType))))
+		})
+
 		It("should push files", func() {
 			repo := pushTestRepo("artifact-with-blob")
 			tempDir := PrepareTempFiles()
