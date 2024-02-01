@@ -18,6 +18,9 @@ package status
 import (
 	"os"
 	"testing"
+
+	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras/cmd/oras/internal/display/status/console/testutils"
 )
 
 func TestTTYPushHandler_OnFileLoading(t *testing.T) {
@@ -31,5 +34,26 @@ func TestTTYPushHandler_OnEmptyArtifact(t *testing.T) {
 	ph := NewTTYAttachHandler(os.Stdout)
 	if ph.OnEmptyArtifact() != nil {
 		t.Error("OnEmptyArtifact() should not return an error")
+	}
+}
+
+func TestTTYPushHandler_TrackTarget(t *testing.T) {
+	// prepare pty
+	_, slave, err := testutils.NewPty()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer slave.Close()
+	ph := NewTTYPushHandler(slave)
+	store := memory.New()
+	// test
+	_, err = ph.TrackTarget(store)
+	if err != nil {
+		t.Error("TrackTarget() should not return an error")
+	}
+	if ttyPushHandler, ok := ph.(*TTYPushHandler); !ok {
+		t.Errorf("TrackTarget() should return a *TTYPushHandler, got %T", ttyPushHandler)
+	} else if ttyPushHandler.tracked.Inner() != store {
+		t.Errorf("TrackTarget() tracks unexpected tracked target: %T", ttyPushHandler.tracked)
 	}
 }
