@@ -109,9 +109,12 @@ func TestTTYPushHandler_UpdateCopyOptions(t *testing.T) {
 	if err != nil {
 		t.Errorf("TrackTarget() should not return an error: %v", err)
 	}
-	// test copy
+	// test
 	opts := oras.CopyGraphOptions{}
 	ph.UpdateCopyOptions(&opts, memStore)
+	if err := oras.CopyGraph(context.Background(), memStore, gt, memDesc, opts); err != nil {
+		t.Errorf("CopyGraph() should not return an error: %v", err)
+	}
 	if err := oras.CopyGraph(context.Background(), memStore, gt, memDesc, opts); err != nil {
 		t.Errorf("CopyGraph() should not return an error: %v", err)
 	}
@@ -121,7 +124,7 @@ func TestTTYPushHandler_UpdateCopyOptions(t *testing.T) {
 		tracked.Close()
 	}
 	// validate
-	if err = testutils.MatchPty(pty, slave, "Uploaded", memDesc.MediaType, "100.00%", memDesc.Digest.String()); err != nil {
+	if err = testutils.MatchPty(pty, slave, "Exists", memDesc.MediaType, "100.00%", memDesc.Digest.String()); err != nil {
 		t.Fatal(err)
 	}
 }
