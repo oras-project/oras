@@ -29,7 +29,7 @@ func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 		// allow command to overwrite the flag
 		return
 	}
-	fs.StringVar(&opts.Template, name, "", `Format output using a custom template:
+	fs.StringVar(&opts.Template, name, "", `[Experimental] Format output using a custom template:
 'json':       Print in JSON format
 '$TEMPLATE':  Print output using the given Go template.`)
 }
