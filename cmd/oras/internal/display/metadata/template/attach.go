@@ -23,7 +23,6 @@ import (
 )
 
 // AttachHandler handles go-template metadata output for attach events.
-
 type AttachHandler struct {
 	template string
 }

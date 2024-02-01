@@ -23,7 +23,6 @@ import (
 )
 
 // PushHandler handles go-template metadata output for push events.
-
 type PushHandler struct {
 	template string
 	path     string
