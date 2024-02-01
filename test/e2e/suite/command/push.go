@@ -338,8 +338,8 @@ var _ = Describe("Remote registry users:", func() {
 			Expect(manifest.Annotations[annotationKey]).Should(Equal(annotationValue))
 		})
 
-		It("should push artifact and format reference", func() {
-			repo := pushTestRepo("format-go-template")
+		It("should push artifact and format json", func() {
+			repo := pushTestRepo("format-json")
 			tempDir := PrepareTempFiles()
 			artifactType := "test/artifact+json"
 			annotationKey := "key"
