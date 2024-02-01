@@ -107,11 +107,9 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	}
 	if len(opts.FileRefs) == 0 && len(annotations[option.AnnotationManifest]) == 0 {
 		return &oerrors.Error{
-			Err:   errors.New(`neither file nor annotation provided in the command`),
-			Usage: fmt.Sprintf("%s %s", cmd.Parent().CommandPath(), cmd.Use),
-			Recommendation: `To attach to an existing artifact, please provide files 
-			via argument or annotations via flag "--annotation". Run "oras attach -h" 
-			for more options and examples`,
+			Err:            errors.New(`neither file nor annotation provided in the command`),
+			Usage:          fmt.Sprintf("%s %s", cmd.Parent().CommandPath(), cmd.Use),
+			Recommendation: `To attach to an existing artifact, please provide files via argument or annotations via flag "--annotation". Run "oras attach -h" for more options and examples`,
 		}
 	}
 
