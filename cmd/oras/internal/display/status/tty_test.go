@@ -31,14 +31,8 @@ import (
 )
 
 var (
-	memStore        *memory.Store
-	memDesc         ocispec.Descriptor
-	manifestConent  = []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","artifactType":"application/vnd.unknown.artifact.v1","config":{"mediaType":"application/vnd.oci.empty.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2,"data":"e30="},"layers":[{"mediaType":"application/vnd.oci.empty.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2,"data":"e30="}]}`)
-	manifestDigest  = "sha256:1bb053792feb8d8d590001c212f2defad9277e091d2aa868cde2879ff41abb1b"
-	configContent   = []byte("{}")
-	configDigest    = "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
-	configMediaType = "application/vnd.oci.empty.v1+json"
-	host            string
+	memStore *memory.Store
+	memDesc  ocispec.Descriptor
 )
 
 func TestMain(m *testing.M) {
