@@ -16,11 +16,6 @@ limitations under the License.
 package option
 
 import (
-	"encoding/json"
-	"io"
-	"text/template"
-
-	"github.com/Masterminds/sprig/v3"
 	"github.com/spf13/pflag"
 )
 
@@ -39,22 +34,4 @@ func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&opts.Template, name, "", `Format output using a custom template:
 'json':       Print in JSON format
 '$TEMPLATE':  Print output using the given Go template.`)
-}
-
-// WriteMetadata writes metadata to an io.Writer.
-func WriteMetadata(formatFlag string, w io.Writer, metadata any) error {
-	switch formatFlag {
-	case "json":
-		// output json
-		encoder := json.NewEncoder(w)
-		encoder.SetIndent("", "  ")
-		return encoder.Encode(metadata)
-	default:
-		// go templating
-		t, err := template.New("format output").Funcs(sprig.FuncMap()).Parse(formatFlag)
-		if err != nil {
-			return err
-		}
-		return t.Execute(w, metadata)
-	}
 }

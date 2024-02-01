@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -29,12 +28,6 @@ import (
 )
 
 var printLock sync.Mutex
-
-// NeedTextOutput check if text status should be printed based on template
-// and tty.
-func NeedTextOutput(template string, tty *os.File) bool {
-	return template == "" && tty == nil
-}
 
 // PrintFunc is the function type returned by StatusPrinter.
 type PrintFunc func(ocispec.Descriptor) error
