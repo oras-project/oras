@@ -20,6 +20,7 @@ import (
 	"oras.land/oras-go/v2/content"
 )
 
+// PushHandler is a handler for status updates for push command.
 type PushHandler interface {
 	OnFileLoading(name string) error
 	OnEmptyArtifact() error
@@ -27,4 +28,5 @@ type PushHandler interface {
 	UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher)
 }
 
+// AttachHandler is a handler for status updates for attach command.
 type AttachHandler PushHandler

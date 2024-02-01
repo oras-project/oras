@@ -25,16 +25,19 @@ import (
 	"oras.land/oras-go/v2/content"
 )
 
+// TextPushHandler handles text status update for push command.
 type TextPushHandler struct {
 	verbose bool
 }
 
+// NewTextPushHandler returns a new handler for push command.
 func NewTextPushHandler(verbose bool) PushHandler {
 	return &TextPushHandler{
 		verbose: verbose,
 	}
 }
 
+// OnFileLoading is called when a file is being prepared for upload.
 func (ph *TextPushHandler) OnFileLoading(name string) error {
 	if !ph.verbose {
 		return nil
@@ -43,15 +46,18 @@ func (ph *TextPushHandler) OnFileLoading(name string) error {
 	return err
 }
 
+// OnEmptyArtifact is called when an empty artifact is being uploaded.
 func (ph *TextPushHandler) OnEmptyArtifact() error {
 	_, err := fmt.Println("Uploading empty artifact")
 	return err
 }
 
+// TrackTarget returns a tracked target.
 func (ph *TextPushHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error) {
 	return gt, nil
 }
 
+// UpdateCopyOptions adds status update to the copy options.
 func (ph *TextPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher) {
 	const (
 		promptSkipped   = "Skipped  "
@@ -76,6 +82,7 @@ func (ph *TextPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetche
 	}
 }
 
+// NewTextAttachHandler returns a new handler for attach command.
 func NewTextAttachHandler(verbose bool) AttachHandler {
 	return NewTextPushHandler(verbose)
 }

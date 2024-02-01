@@ -22,15 +22,15 @@ import (
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
-// AttachHandler handles metadata events for attach command.
+// AttachHandler handles json output for attach metadata events.
 type AttachHandler struct{}
 
-// NewAttachHandler returns a new hander for attach metadata events.
+// NewAttachHandler returns a new handler for attach metadata events.
 func NewAttachHandler() metadata.AttachHandler {
 	return AttachHandler{}
 }
 
-// OnCompleted is called when the attach operation is completed.
+// OnCompleted is called when the attach command is completed.
 func (AttachHandler) OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error {
 	return printJSON(model.NewPush(root, opts.Path))
 }

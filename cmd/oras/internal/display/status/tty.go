@@ -26,25 +26,30 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/status/track"
 )
 
+// TTYPushHandler handles tty output for push status events.
 type TTYPushHandler struct {
 	tty     *os.File
 	tracked track.GraphTarget
 }
 
+// NewTTYPushHandler returns a new handler for push status events.
 func NewTTYPushHandler(tty *os.File) PushHandler {
 	return &TTYPushHandler{
 		tty: tty,
 	}
 }
 
+// OnFileLoading is called before loading a file.
 func (ph *TTYPushHandler) OnFileLoading(name string) error {
 	return nil
 }
 
+// OnEmptyArtifact is called when no file is loaded for an artifact push.
 func (ph *TTYPushHandler) OnEmptyArtifact() error {
 	return nil
 }
 
+// TrackTarget returns a tracked target.
 func (ph *TTYPushHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error) {
 	const (
 		promptUploaded  = "Uploaded "
@@ -58,6 +63,7 @@ func (ph *TTYPushHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, er
 	return tracked, nil
 }
 
+// UpdateCopyOptions adds TTY status output to the copy options.
 func (ph *TTYPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher) {
 	const (
 		promptSkipped = "Skipped  "
@@ -76,6 +82,7 @@ func (ph *TTYPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher
 	}
 }
 
+// NewTTYAttachHandler returns a new handler for attach status events.
 func NewTTYAttachHandler(tty *os.File) AttachHandler {
 	return NewTTYPushHandler(tty)
 }

@@ -24,12 +24,15 @@ import (
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
+// AttachHandler handles text output for attach metadata events.
 type AttachHandler struct{}
 
+// NewAttachHandler returns a new handler for attach metadata events.
 func NewAttachHandler() metadata.AttachHandler {
 	return AttachHandler{}
 }
 
+// OnCompleted is called when the attach command is completed.
 func (AttachHandler) OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error {
 	digest := subject.Digest.String()
 	if !strings.HasSuffix(opts.RawReference, digest) {

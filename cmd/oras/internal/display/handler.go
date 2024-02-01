@@ -25,6 +25,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/status"
 )
 
+// NewPushHandler returns status and metadata handlers for push command.
 func NewPushHandler(format string, tty *os.File, verbose bool) (status.PushHandler, metadata.PushHandler) {
 	var statusHandler status.PushHandler
 	if tty != nil {
@@ -48,6 +49,7 @@ func NewPushHandler(format string, tty *os.File, verbose bool) (status.PushHandl
 	return statusHandler, metadataHandler
 }
 
+// NewAttachHandler returns status and metadata handlers for attach command.
 func NewAttachHandler(format string, tty *os.File, verbose bool) (status.AttachHandler, metadata.AttachHandler) {
 	var statusHandler status.AttachHandler
 	if tty != nil {
