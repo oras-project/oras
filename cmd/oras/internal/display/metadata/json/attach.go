@@ -7,19 +7,12 @@ import (
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
-type AttachHandler struct {
-	path string
-}
+type AttachHandler struct{}
 
 func NewAttachHandler() metadata.AttachHandler {
-	return &AttachHandler{}
+	return AttachHandler{}
 }
 
-func (ah *AttachHandler) OnCopied(opts *option.Target) error {
-	ah.path = opts.Path
-	return nil
-}
-
-func (ah *AttachHandler) OnCompleted(root ocispec.Descriptor) error {
-	return printJSON(model.NewPush(root, ah.path))
+func (AttachHandler) OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error {
+	return printJSON(model.NewPush(root, opts.Path))
 }

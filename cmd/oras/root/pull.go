@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"sync"
 	"sync/atomic"
 
@@ -29,7 +30,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/argument"
-	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/cmd/oras/internal/display/status/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
@@ -188,7 +189,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 			}
 			if po.TTY == nil {
 				// none TTY, print status log for first-time fetching
-				if err := display.PrintStatus(target, promptDownloading, po.Verbose); err != nil {
+				if err := status.PrintStatus(target, promptDownloading, po.Verbose); err != nil {
 					return nil, err
 				}
 			}
@@ -203,7 +204,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 			}()
 			if po.TTY == nil {
 				// none TTY, add logs for processing manifest
-				return rc, display.PrintStatus(target, promptProcessing, po.Verbose)
+				return rc, status.PrintStatus(target, promptProcessing, po.Verbose)
 			}
 			return rc, nil
 		})
@@ -264,7 +265,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 		}
 		if po.TTY == nil {
 			// none TTY, print status log for downloading
-			return display.PrintStatus(desc, promptDownloading, po.Verbose)
+			return status.PrintStatus(desc, promptDownloading, po.Verbose)
 		}
 		// TTY
 		return nil
@@ -290,7 +291,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 			name = desc.MediaType
 		}
 		printed.Store(generateContentKey(desc), true)
-		return display.Print(promptDownloaded, display.ShortDigest(desc), name)
+		return status.Print(promptDownloaded, status.ShortDigest(desc), name)
 	}
 
 	// Copy
@@ -314,5 +315,16 @@ func printOnce(printed *sync.Map, s ocispec.Descriptor, msg string, verbose bool
 
 	}
 	// none TTY
-	return display.PrintStatus(s, msg, verbose)
+	return status.PrintStatus(s, msg, verbose)
+}
+
+func getTrackedTarget(gt oras.GraphTarget, tty *os.File, actionPrompt, doneprompt string) (oras.GraphTarget, error) {
+	if tty == nil {
+		return gt, nil
+	}
+	tracked, err := track.NewTarget(gt, actionPrompt, doneprompt, tty)
+	if err != nil {
+		return nil, err
+	}
+	return tracked, nil
 }

@@ -12,6 +12,5 @@ type PushHandler interface {
 }
 
 type AttachHandler interface {
-	OnCopied(opts *option.Target) error
-	OnCompleted(root ocispec.Descriptor) error
+	OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error
 }

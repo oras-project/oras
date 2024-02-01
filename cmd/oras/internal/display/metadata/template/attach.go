@@ -9,18 +9,12 @@ import (
 
 type AttachHandler struct {
 	template string
-	path     string
 }
 
 func NewAttachHandler(template string) metadata.AttachHandler {
 	return &AttachHandler{template: template}
 }
 
-func (ah *AttachHandler) OnCopied(opts *option.Target) error {
-	ah.path = opts.Path
-	return nil
-}
-
-func (ah *AttachHandler) OnCompleted(root ocispec.Descriptor) error {
-	return parseAndWrite(model.NewPush(root, ah.path), ah.template)
+func (ah *AttachHandler) OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error {
+	return parseAndWrite(model.NewPush(root, opts.Path), ah.template)
 }

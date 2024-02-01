@@ -23,7 +23,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/argument"
-	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -104,7 +104,7 @@ func tagManifest(cmd *cobra.Command, opts *tagOptions) error {
 	tagNOpts.Concurrency = opts.concurrency
 	_, err = oras.TagN(
 		ctx,
-		display.NewTagStatusHintPrinter(target, fmt.Sprintf("[%s] %s", opts.Type, opts.Path)),
+		status.NewTagStatusHintPrinter(target, fmt.Sprintf("[%s] %s", opts.Type, opts.Path)),
 		opts.Reference,
 		opts.targetRefs,
 		tagNOpts,
