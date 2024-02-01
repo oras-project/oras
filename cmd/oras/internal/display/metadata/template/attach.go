@@ -22,7 +22,8 @@ import (
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
-// AttachHandler handles go-template output for attach metadata events.
+// AttachHandler handles go-template metadata output for attach events.
+
 type AttachHandler struct {
 	template string
 }

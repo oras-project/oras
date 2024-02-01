@@ -20,14 +20,14 @@ import (
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
-// PushHandler handles metadata events for push command.
+// PushHandler handles metadata output for push events.
 type PushHandler interface {
 	OnCopied(opts *option.Target) error
 	OnTagged(reference string) error
 	OnCompleted(root ocispec.Descriptor) error
 }
 
-// AttachHandler handles metadata events for attach command.
+// AttachHandler handles metadata output  for attach events.
 type AttachHandler interface {
 	OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error
 }

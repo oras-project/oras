@@ -23,10 +23,10 @@ import (
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
-// PushHandler handles text output for push metadata events.
+// PushHandler handles text metadata output for push events.
 type PushHandler struct{}
 
-// NewPushHandler returns a new handler for push metadata events.
+// NewPushHandler returns a new handler for push events.
 func NewPushHandler() metadata.PushHandler {
 	return PushHandler{}
 }

@@ -26,7 +26,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/status/track"
 )
 
-// TTYPushHandler handles tty output for push status events.
+// TTYPushHandler handles TTY status output for push command.
 type TTYPushHandler struct {
 	tty     *os.File
 	tracked track.GraphTarget

@@ -25,7 +25,7 @@ import (
 	"oras.land/oras-go/v2/content"
 )
 
-// TextPushHandler handles text status update for push command.
+// TextPushHandler handles text status output for push events.
 type TextPushHandler struct {
 	verbose bool
 }

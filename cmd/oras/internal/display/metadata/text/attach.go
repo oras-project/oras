@@ -24,10 +24,10 @@ import (
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
-// AttachHandler handles text output for attach metadata events.
+// AttachHandler handles text metadata output for attach events.
 type AttachHandler struct{}
 
-// NewAttachHandler returns a new handler for attach metadata events.
+// NewAttachHandler returns a new handler for attach events.
 func NewAttachHandler() metadata.AttachHandler {
 	return AttachHandler{}
 }
