@@ -54,7 +54,7 @@ func Test_getTrackedTarget(t *testing.T) {
 	})
 
 	t.Run("invalid TTY", func(t *testing.T) {
-		if _, err := getTrackedTarget(nil, os.Stdin, "", ""); err == nil {
+		if _, err := getTrackedTarget(src, os.Stdin, actionPrompt, donePrompt); err == nil {
 			t.Fatal("expected error for no tty but got nil")
 		}
 	})
