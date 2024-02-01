@@ -18,16 +18,16 @@ package root
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io/fs"
 	"path/filepath"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content/file"
+	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/cmd/oras/internal/fileref"
 )
 
-func loadFiles(ctx context.Context, store *file.Store, annotations map[string]map[string]string, fileRefs []string, verbose bool) ([]ocispec.Descriptor, error) {
+func loadFiles(ctx context.Context, store *file.Store, annotations map[string]map[string]string, fileRefs []string, displayStatus status.PushHandler) ([]ocispec.Descriptor, error) {
 	var files []ocispec.Descriptor
 	for _, fileRef := range fileRefs {
 		filename, mediaType, err := fileref.Parse(fileRef, "")
@@ -41,8 +41,9 @@ func loadFiles(ctx context.Context, store *file.Store, annotations map[string]ma
 			name = filepath.ToSlash(name)
 		}
 
-		if verbose {
-			fmt.Println("Preparing", name)
+		err = displayStatus.OnFileLoading(name)
+		if err != nil {
+			return nil, err
 		}
 		file, err := addFile(ctx, store, name, mediaType, filename)
 		if err != nil {
@@ -60,7 +61,9 @@ func loadFiles(ctx context.Context, store *file.Store, annotations map[string]ma
 		files = append(files, file)
 	}
 	if len(files) == 0 {
-		fmt.Println("Uploading empty artifact")
+		if err := displayStatus.OnEmptyArtifact(); err != nil {
+			return nil, err
+		}
 	}
 	return files, nil
 }

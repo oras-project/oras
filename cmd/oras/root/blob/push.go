@@ -26,8 +26,8 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/argument"
-	"oras.land/oras/cmd/oras/internal/display"
-	"oras.land/oras/cmd/oras/internal/display/track"
+	"oras.land/oras/cmd/oras/internal/display/status"
+	"oras.land/oras/cmd/oras/internal/display/status/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/file"
@@ -121,7 +121,7 @@ func pushBlob(ctx context.Context, opts *pushBlobOptions) (err error) {
 	}
 	verbose := opts.Verbose && !opts.OutputDescriptor
 	if exists {
-		err = display.PrintStatus(desc, "Exists", verbose)
+		err = status.PrintStatus(desc, "Exists", verbose)
 	} else {
 		err = opts.doPush(ctx, target, desc, rc)
 	}
@@ -145,13 +145,13 @@ func pushBlob(ctx context.Context, opts *pushBlobOptions) (err error) {
 func (opts *pushBlobOptions) doPush(ctx context.Context, t oras.Target, desc ocispec.Descriptor, r io.Reader) error {
 	if opts.TTY == nil {
 		// none TTY output
-		if err := display.PrintStatus(desc, "Uploading", opts.Verbose); err != nil {
+		if err := status.PrintStatus(desc, "Uploading", opts.Verbose); err != nil {
 			return err
 		}
 		if err := t.Push(ctx, desc, r); err != nil {
 			return err
 		}
-		return display.PrintStatus(desc, "Uploaded ", opts.Verbose)
+		return status.PrintStatus(desc, "Uploaded ", opts.Verbose)
 	}
 
 	// TTY output

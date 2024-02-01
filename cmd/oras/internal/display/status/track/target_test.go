@@ -1,3 +1,5 @@
+//go:build darwin || freebsd || linux || netbsd || openbsd || solaris
+
 /*
 Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +28,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/registry/remote"
-	"oras.land/oras/cmd/oras/internal/display/console/testutils"
+	"oras.land/oras/cmd/oras/internal/display/status/console/testutils"
 )
 
 type testReferenceGraphTarget struct {
