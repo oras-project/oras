@@ -15,9 +15,7 @@ limitations under the License.
 
 package option
 
-import (
-	"github.com/spf13/pflag"
-)
+import "github.com/spf13/pflag"
 
 // Format is a flag to format metadata into output.
 type Format struct {
@@ -26,7 +24,7 @@ type Format struct {
 
 // ApplyFlag implements FlagProvider.ApplyFlag.
 func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
-	name := "format"
+	const name = "format"
 	if fs.Lookup(name) != nil {
 		// allow command to overwrite the flag
 		return

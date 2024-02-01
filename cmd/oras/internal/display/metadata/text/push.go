@@ -37,11 +37,6 @@ func (PushHandler) OnCopied(opts *option.Target) error {
 	return err
 }
 
-// OnTagged is called after each tagging.
-func (PushHandler) OnTagged(reference string) error {
-	panic("not implemented")
-}
-
 // OnCompleted is called after the push is completed.
 func (PushHandler) OnCompleted(root ocispec.Descriptor) error {
 	_, err := fmt.Println("Digest:", root.Digest)

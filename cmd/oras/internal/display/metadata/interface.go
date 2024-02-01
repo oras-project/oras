@@ -23,11 +23,10 @@ import (
 // PushHandler handles metadata output for push events.
 type PushHandler interface {
 	OnCopied(opts *option.Target) error
-	OnTagged(reference string) error
 	OnCompleted(root ocispec.Descriptor) error
 }
 
-// AttachHandler handles metadata output  for attach events.
+// AttachHandler handles metadata output for attach events.
 type AttachHandler interface {
 	OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error
 }

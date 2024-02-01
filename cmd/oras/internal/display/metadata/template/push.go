@@ -39,11 +39,6 @@ func (ph *PushHandler) OnCopied(opts *option.Target) error {
 	return nil
 }
 
-// OnTagged is called after each tagging.
-func (ph *PushHandler) OnTagged(reference string) error {
-	return nil
-}
-
 // OnCompleted is called after the push is completed.
 func (ph *PushHandler) OnCompleted(root ocispec.Descriptor) error {
 	return parseAndWrite(model.NewPush(root, ph.path), ph.template)

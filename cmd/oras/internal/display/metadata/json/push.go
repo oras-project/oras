@@ -22,7 +22,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
-// PushHandler handles json metadata output for push events.
+// PushHandler handles JSON metadata output for push events.
 type PushHandler struct {
 	path string
 }
@@ -35,11 +35,6 @@ func NewPushHandler() metadata.PushHandler {
 // OnCopied is called after files are copied.
 func (ph *PushHandler) OnCopied(opts *option.Target) error {
 	ph.path = opts.Path
-	return nil
-}
-
-// OnTagged is called after each tagging.
-func (ph *PushHandler) OnTagged(reference string) error {
 	return nil
 }
 
