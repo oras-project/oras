@@ -21,13 +21,13 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras/cmd/oras/internal/display/status/console/testutils"
+	"oras.land/oras/cmd/oras/internal/display/status/track"
 )
 
 var (
@@ -115,7 +115,11 @@ func TestTTYPushHandler_UpdateCopyOptions(t *testing.T) {
 	if err := oras.CopyGraph(context.Background(), memStore, gt, memDesc, opts); err != nil {
 		t.Errorf("CopyGraph() should not return an error: %v", err)
 	}
-	time.Sleep(1 * time.Second)
+	if tracked, ok := gt.(track.GraphTarget); !ok {
+		t.Errorf("TrackTarget() should return a *track.GraphTarget, got %T", tracked)
+	} else {
+		tracked.Close()
+	}
 	// validate
 	if err = testutils.MatchPty(pty, slave, "Uploaded", memDesc.MediaType, "100.00%", memDesc.Digest.String()); err != nil {
 		t.Fatal(err)
