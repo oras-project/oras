@@ -16,7 +16,6 @@ limitations under the License.
 package blob
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -64,21 +63,21 @@ Example - Delete a blob and print its descriptor:
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return deleteBlob(cmd.Context(), opts)
+			return deleteBlob(cmd, &opts)
 		},
 	}
 
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
-func deleteBlob(ctx context.Context, opts deleteBlobOptions) (err error) {
-	ctx, logger := opts.WithContext(ctx)
+func deleteBlob(cmd *cobra.Command, opts *deleteBlobOptions) (err error) {
+	ctx, logger := opts.WithContext(cmd.Context())
 	blobs, err := opts.NewBlobDeleter(opts.Common, logger)
 	if err != nil {
 		return err
 	}
-	if err := opts.EnsureReferenceNotEmpty(); err != nil {
+	if err := opts.EnsureReferenceNotEmpty(cmd, false); err != nil {
 		return err
 	}
 

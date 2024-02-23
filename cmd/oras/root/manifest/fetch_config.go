@@ -78,23 +78,23 @@ Example - Fetch and print the prettified descriptor of the config:
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fetchConfig(cmd.Context(), opts)
+			return fetchConfig(cmd, &opts)
 		},
 	}
 
 	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "file `path` to write the fetched config to, use - for stdout")
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
-func fetchConfig(ctx context.Context, opts fetchConfigOptions) (fetchErr error) {
-	ctx, logger := opts.WithContext(ctx)
+func fetchConfig(cmd *cobra.Command, opts *fetchConfigOptions) (fetchErr error) {
+	ctx, logger := opts.WithContext(cmd.Context())
 
 	repo, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
 		return err
 	}
-	if err := opts.EnsureReferenceNotEmpty(); err != nil {
+	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
 		return err
 	}
 	src, err := opts.CachedTarget(repo)

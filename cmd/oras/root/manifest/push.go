@@ -29,8 +29,9 @@ import (
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/argument"
-	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
+	"oras.land/oras/cmd/oras/internal/manifest"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/file"
 )
@@ -94,7 +95,7 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return pushManifest(cmd.Context(), opts)
+			return pushManifest(cmd, opts)
 		},
 	}
 
@@ -102,11 +103,11 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 	option.ApplyFlags(&opts, cmd.Flags())
 	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", "", "media type of manifest")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
-func pushManifest(ctx context.Context, opts pushOptions) error {
-	ctx, logger := opts.WithContext(ctx)
+func pushManifest(cmd *cobra.Command, opts pushOptions) error {
+	ctx, logger := opts.WithContext(cmd.Context())
 	var target oras.Target
 	var err error
 	target, err = opts.NewTarget(opts.Common, logger)
@@ -126,8 +127,15 @@ func pushManifest(ctx context.Context, opts pushOptions) error {
 	// get manifest media type
 	mediaType := opts.mediaType
 	if opts.mediaType == "" {
-		mediaType, err = file.ParseMediaType(contentBytes)
+		mediaType, err = manifest.ExtractMediaType(contentBytes)
 		if err != nil {
+			if errors.Is(err, manifest.ErrMediaTypeNotFound) {
+				return &oerrors.Error{
+					Err:            fmt.Errorf(`%w via the flag "--media-type" nor in %q`, err, opts.fileRef),
+					Usage:          fmt.Sprintf("%s %s", cmd.Parent().CommandPath(), cmd.Use),
+					Recommendation: `Please specify a valid media type in the manifest JSON or via the "--media-type" flag`,
+				}
+			}
 			return err
 		}
 	}
@@ -145,17 +153,17 @@ func pushManifest(ctx context.Context, opts pushOptions) error {
 	}
 	verbose := opts.Verbose && !opts.OutputDescriptor
 	if match {
-		if err := display.PrintStatus(desc, "Exists", verbose); err != nil {
+		if err := status.PrintStatus(desc, "Exists", verbose); err != nil {
 			return err
 		}
 	} else {
-		if err = display.PrintStatus(desc, "Uploading", verbose); err != nil {
+		if err = status.PrintStatus(desc, "Uploading", verbose); err != nil {
 			return err
 		}
 		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil {
 			return err
 		}
-		if err = display.PrintStatus(desc, "Uploaded ", verbose); err != nil {
+		if err = status.PrintStatus(desc, "Uploaded ", verbose); err != nil {
 			return err
 		}
 	}
@@ -176,9 +184,9 @@ func pushManifest(ctx context.Context, opts pushOptions) error {
 		}
 		return opts.Output(os.Stdout, descJSON)
 	}
-	display.Print("Pushed", opts.AnnotatedReference())
+	status.Print("Pushed", opts.AnnotatedReference())
 	if len(opts.extraRefs) != 0 {
-		if _, err = oras.TagBytesN(ctx, display.NewTagStatusPrinter(target), mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
+		if _, err = oras.TagBytesN(ctx, status.NewTagStatusPrinter(target), mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}
 	}

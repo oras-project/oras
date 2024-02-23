@@ -13,18 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package utils
+package template
 
-var Flags = struct {
-	Layout           string
-	FromLayout       string
-	ToLayout         string
-	DistributionSpec string
-	ImageSpec        string
-}{
-	"--oci-layout",
-	"--from-oci-layout",
-	"--to-oci-layout",
-	"--distribution-spec",
-	"--image-spec",
+import (
+	"os"
+	"text/template"
+
+	"github.com/Masterminds/sprig/v3"
+)
+
+func parseAndWrite(object any, templateStr string) error {
+	t, err := template.New("format output").Funcs(sprig.FuncMap()).Parse(templateStr)
+	if err != nil {
+		return err
+	}
+	return t.Execute(os.Stdout, object)
 }
