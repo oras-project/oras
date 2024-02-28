@@ -17,48 +17,91 @@ package scenario
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
+	"oras.land/oras-go/v2"
+	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
-var _ = Describe("Common registry user", Ordered, func() {
-	When("logging out", Ordered, func() {
-		It("should use logout command to logout", func() {
-			ORAS("logout", ZOTHost, "--registry-config", AuthConfigPath).Exec()
-		})
-
+var _ = Describe("Common registry user", func() {
+	When("not logged in", func() {
 		It("should run commands without logging in", func() {
-			RunWithoutLogin("attach", ZOTHost+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
-			ORAS("copy", ZOTHost+"/repo:from", ZOTHost+"/repo:to", "--from-registry-config", AuthConfigPath, "--to-registry-config", AuthConfigPath).
-				ExpectFailure().
-				MatchErrKeyWords("Error:", "credential required").
-				WithDescription("fail without logging in").Exec()
-			RunWithoutLogin("discover", ZOTHost+"/repo:tag")
-			RunWithoutLogin("push", "-a", "key=value", ZOTHost+"/repo:tag")
-			RunWithoutLogin("pull", ZOTHost+"/repo:tag")
-			RunWithoutLogin("manifest", "fetch", ZOTHost+"/repo:tag")
-			RunWithoutLogin("blob", "delete", ZOTHost+"/repo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-			RunWithoutLogin("blob", "push", ZOTHost+"/repo", WriteTempFile("blob", "test"))
-			RunWithoutLogin("tag", ZOTHost+"/repo:tag", "tag1")
-			RunWithoutLogin("repo", "ls", ZOTHost)
-			RunWithoutLogin("repo", "tags", RegistryRef(ZOTHost, "repo", ""))
-			RunWithoutLogin("manifest", "fetch-config", ZOTHost+"/repo:tag")
+			authConfigPath := filepath.Join(GinkgoT().TempDir(), "auth.config")
+			RunWithoutLogin("attach", ZOTHost+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example", "--registry-config", authConfigPath)
+			RunWithoutLogin("copy", ZOTHost+"/repo:from", ZOTHost+"/repo:to", "--from-registry-config", authConfigPath, "--to-registry-config", authConfigPath)
+			RunWithoutLogin("discover", ZOTHost+"/repo:tag", "--registry-config", authConfigPath)
+			RunWithoutLogin("push", "-a", "key=value", ZOTHost+"/repo:tag", "--registry-config", authConfigPath)
+			RunWithoutLogin("pull", ZOTHost+"/repo:tag", "--registry-config", authConfigPath)
+			RunWithoutLogin("manifest", "fetch", ZOTHost+"/repo:tag", "--registry-config", authConfigPath)
+			RunWithoutLogin("blob", "delete", ZOTHost+"/repo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "--registry-config", authConfigPath)
+			RunWithoutLogin("blob", "push", ZOTHost+"/repo", WriteTempFile("blob", "test"), "--registry-config", authConfigPath)
+			RunWithoutLogin("tag", ZOTHost+"/repo:tag", "tag1", "--registry-config", authConfigPath)
+			RunWithoutLogin("resolve", ZOTHost+"/repo:tag", "--registry-config", authConfigPath)
+			RunWithoutLogin("repo", "ls", ZOTHost, "--registry-config", authConfigPath)
+			RunWithoutLogin("repo", "tags", RegistryRef(ZOTHost, "repo", ""), "--registry-config", authConfigPath)
+			RunWithoutLogin("manifest", "fetch-config", ZOTHost+"/repo:tag", "--registry-config", authConfigPath)
+		})
+	})
+
+	When("credential is invalid", func() {
+		It("should fail with registry error", func() {
+			RunWithInvalidCreds("attach", ZOTHost+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
+			RunWithInvalidCreds("discover", ZOTHost+"/repo:tag")
+			RunWithInvalidCreds("push", "-a", "key=value", ZOTHost+"/repo:tag")
+			RunWithInvalidCreds("pull", ZOTHost+"/repo:tag")
+			RunWithInvalidCreds("manifest", "fetch", ZOTHost+"/repo:tag")
+			RunWithInvalidCreds("blob", "delete", ZOTHost+"/repo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+			RunWithInvalidCreds("blob", "push", ZOTHost+"/repo", WriteTempFile("blob", "test"))
+			RunWithInvalidCreds("tag", ZOTHost+"/repo:tag", "tag1")
+			RunWithInvalidCreds("resolve", ZOTHost+"/repo:tag")
+			RunWithInvalidCreds("repo", "ls", ZOTHost)
+			RunWithInvalidCreds("repo", "tags", RegistryRef(ZOTHost, "repo", ""))
+			RunWithInvalidCreds("manifest", "fetch-config", ZOTHost+"/repo:tag")
+		})
+	})
+
+	When("credential for basic auth not found in the config file", func() {
+		It("should fail with registry error", func() {
+			RunWithEmptyRegistryConfig("attach", ZOTHost+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
+			RunWithEmptyRegistryConfig("discover", ZOTHost+"/repo:tag")
+			RunWithEmptyRegistryConfig("push", "-a", "key=value", ZOTHost+"/repo:tag")
+			RunWithEmptyRegistryConfig("pull", ZOTHost+"/repo:tag")
+			RunWithEmptyRegistryConfig("manifest", "fetch", ZOTHost+"/repo:tag")
+			RunWithEmptyRegistryConfig("blob", "delete", ZOTHost+"/repo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+			RunWithEmptyRegistryConfig("blob", "push", ZOTHost+"/repo", WriteTempFile("blob", "test"))
+			RunWithEmptyRegistryConfig("tag", ZOTHost+"/repo:tag", "tag1")
+			RunWithEmptyRegistryConfig("resolve", ZOTHost+"/repo:tag")
+			RunWithEmptyRegistryConfig("repo", "ls", ZOTHost)
+			RunWithEmptyRegistryConfig("repo", "tags", RegistryRef(ZOTHost, "repo", ""))
+			RunWithEmptyRegistryConfig("manifest", "fetch-config", ZOTHost+"/repo:tag")
 		})
 	})
 
 	When("logging in", func() {
-		It("should use basic auth", func() {
-			ORAS("login", ZOTHost, "-u", Username, "-p", Password, "--registry-config", AuthConfigPath).
+		tmpConfigName := "test.config"
+		It("should succeed to use basic auth", func() {
+			ORAS("login", ZOTHost, "-u", Username, "-p", Password, "--registry-config", filepath.Join(GinkgoT().TempDir(), tmpConfigName)).
 				WithTimeOut(20*time.Second).
 				MatchContent("Login Succeeded\n").
 				MatchErrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").Exec()
 		})
 
+		It("should show detailed error description if no argument provided", func() {
+			err := ORAS("login").ExpectFailure().Exec().Err
+			Expect(err).Should(gbytes.Say("Error"))
+			Expect(err).Should(gbytes.Say("\nUsage: oras login"))
+			Expect(err).Should(gbytes.Say("\n"))
+			Expect(err).Should(gbytes.Say(`Run "oras login -h"`))
+		})
+
 		It("should fail if no username input", func() {
-			ORAS("login", ZOTHost, "--registry-config", AuthConfigPath).
+			ORAS("login", ZOTHost, "--registry-config", filepath.Join(GinkgoT().TempDir(), tmpConfigName)).
 				WithTimeOut(20 * time.Second).
 				WithInput(strings.NewReader("")).
 				MatchKeyWords("username:").
@@ -67,47 +110,77 @@ var _ = Describe("Common registry user", Ordered, func() {
 		})
 
 		It("should fail if no password input", func() {
-			ORAS("login", ZOTHost, "--registry-config", AuthConfigPath).
+			ORAS("login", ZOTHost, "--registry-config", filepath.Join(GinkgoT().TempDir(), tmpConfigName)).
 				WithTimeOut(20*time.Second).
 				MatchKeyWords("Username: ", "Password: ").
 				WithInput(strings.NewReader(fmt.Sprintf("%s\n", Username))).ExpectFailure().Exec()
 		})
 
 		It("should fail if password is empty", func() {
-			ORAS("login", ZOTHost, "--registry-config", AuthConfigPath).
+			ORAS("login", ZOTHost, "--registry-config", filepath.Join(GinkgoT().TempDir(), tmpConfigName)).
 				WithTimeOut(20*time.Second).
 				MatchKeyWords("Username: ", "Password: ").
 				MatchErrKeyWords("Error: password required").
 				WithInput(strings.NewReader(fmt.Sprintf("%s\n\n", Username))).ExpectFailure().Exec()
 		})
 
+		It("should fail if password is wrong with registry error prefix", func() {
+			ORAS("login", ZOTHost, "--registry-config", filepath.Join(GinkgoT().TempDir(), tmpConfigName)).
+				WithTimeOut(20*time.Second).
+				MatchKeyWords("Username: ", "Password: ").
+				MatchErrKeyWords(RegistryErrorPrefix).
+				WithInput(strings.NewReader(fmt.Sprintf("%s\n???\n", Username))).ExpectFailure().Exec()
+		})
+
 		It("should fail if no token input", func() {
-			ORAS("login", ZOTHost, "--registry-config", AuthConfigPath).
+			ORAS("login", ZOTHost, "--registry-config", filepath.Join(GinkgoT().TempDir(), tmpConfigName)).
 				WithTimeOut(20*time.Second).
 				MatchKeyWords("Username: ", "Token: ").
 				WithInput(strings.NewReader("\n")).ExpectFailure().Exec()
 		})
 
 		It("should fail if token is empty", func() {
-			ORAS("login", ZOTHost, "--registry-config", AuthConfigPath).
+			ORAS("login", ZOTHost, "--registry-config", filepath.Join(GinkgoT().TempDir(), tmpConfigName)).
 				WithTimeOut(20*time.Second).
 				MatchKeyWords("Username: ", "Token: ").
 				MatchErrKeyWords("Error: token required").
 				WithInput(strings.NewReader("\n\n")).ExpectFailure().Exec()
 		})
 
-		It("should use prompted input", func() {
-			ORAS("login", ZOTHost, "--registry-config", AuthConfigPath).
+		It("should succeed to use prompted input", func() {
+			ORAS("login", ZOTHost, "--registry-config", filepath.Join(GinkgoT().TempDir(), tmpConfigName)).
 				WithTimeOut(20*time.Second).
 				WithInput(strings.NewReader(fmt.Sprintf("%s\n%s\n", Username, Password))).
 				MatchKeyWords("Username: ", "Password: ", "Login Succeeded\n").Exec()
 		})
 	})
+
+	When("using legacy config", func() {
+		var LegacyConfigPath = filepath.Join(TestDataRoot, LegacyConfigName)
+		It("should succeed to copy", func() {
+			src := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
+			dst := RegistryRef(ZOTHost, fmt.Sprintf("command/auth/%d/copy", GinkgoRandomSeed()), foobar.Tag)
+			foobarStates := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(oras.MediaTypeUnknownConfig))
+			ORAS("cp", src, dst, "-v", "--from-registry-config", LegacyConfigPath, "--to-registry-config", LegacyConfigPath).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+		})
+	})
 })
 
 func RunWithoutLogin(args ...string) {
-	ORAS(append(args, "--registry-config", AuthConfigPath)...).
-		ExpectFailure().
-		MatchErrKeyWords("Error:", "credential required").
+	ORAS(args...).ExpectFailure().
+		MatchErrKeyWords("Error:", "basic credential not found").
 		WithDescription("fail without logging in").Exec()
+}
+
+func RunWithInvalidCreds(args ...string) {
+	ORAS(append(args, "-u", Username, "-p", Password+"1")...).ExpectFailure().
+		MatchErrKeyWords(RegistryErrorPrefix).
+		WithDescription("fail with invalid credentials").Exec()
+}
+
+func RunWithEmptyRegistryConfig(args ...string) {
+	ORAS(append(args, "--registry-config", EmptyConfigName)...).ExpectFailure().
+		MatchErrKeyWords("Error: ", fmt.Sprintf(`Please check whether the registry credential stored in the authentication file at %q is correct`, EmptyConfigName)).
+		WithDescription("fail with empty registry config").
+		Exec()
 }

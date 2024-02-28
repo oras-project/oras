@@ -16,7 +16,6 @@ limitations under the License.
 package manifest
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -26,6 +25,8 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras/cmd/oras/internal/argument"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -69,7 +70,7 @@ Example - Fetch raw manifest from an OCI image layout folder 'layout-dir':
 Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
   oras manifest fetch --oci-layout layout.tar:v1
 `,
-		Args: cobra.ExactArgs(1),
+		Args: oerrors.CheckArgs(argument.Exactly(1), "the manifest to fetch"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.outputPath == "-" && opts.OutputDescriptor {
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
@@ -79,24 +80,24 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 		},
 		Aliases: []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fetchManifest(cmd.Context(), opts)
+			return fetchManifest(cmd, &opts)
 		},
 	}
 
 	cmd.Flags().StringSliceVarP(&opts.mediaTypes, "media-type", "", nil, "accepted media types")
 	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "file `path` to write the fetched manifest to, use - for stdout")
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
-func fetchManifest(ctx context.Context, opts fetchOptions) (fetchErr error) {
-	ctx, logger := opts.WithContext(ctx)
+func fetchManifest(cmd *cobra.Command, opts *fetchOptions) (fetchErr error) {
+	ctx, logger := opts.WithContext(cmd.Context())
 
 	target, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
 		return err
 	}
-	if err := opts.EnsureReferenceNotEmpty(); err != nil {
+	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
 		return err
 	}
 	if repo, ok := target.(*remote.Repository); ok {

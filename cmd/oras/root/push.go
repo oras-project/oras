@@ -18,10 +18,7 @@ package root
 import (
 	"context"
 	"errors"
-	"fmt"
-	"os"
 	"strings"
-	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -30,8 +27,11 @@ import (
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/display"
-	"oras.land/oras/cmd/oras/internal/display/track"
+	"oras.land/oras/cmd/oras/internal/display/status"
+	"oras.land/oras/cmd/oras/internal/display/status/track"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/contentutil"
@@ -43,6 +43,7 @@ type pushOptions struct {
 	option.Packer
 	option.ImageSpec
 	option.Target
+	option.Format
 
 	extraRefs         []string
 	manifestConfigRef string
@@ -75,7 +76,6 @@ Example - Push file "hi.txt" with artifact type "application/vnd.example+type":
 Example - Push file "hi.txt" with config type "application/vnd.me.config":
   oras push --image-spec v1.0 --artifact-type application/vnd.me.config localhost:5000/hello:v1 hi.txt
 
-
 Example - Push file "hi.txt" with the custom manifest config "config.json" of the custom media type "application/vnd.me.config":
   oras push --config config.json:application/vnd.me.config localhost:5000/hello:v1 hi.txt
 
@@ -100,7 +100,7 @@ Example - Push file "hi.txt" with multiple tags and concurrency level tuned:
 Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with tag 'test':
   oras push --oci-layout layout-dir:test hi.txt
 `,
-		Args: cobra.MinimumNArgs(1),
+		Args: oerrors.CheckArgs(argument.AtLeast(1), "the destination for pushing"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			refs := strings.Split(args[0], ",")
 			opts.RawReference = refs[0]
@@ -122,7 +122,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runPush(cmd.Context(), opts)
+			return runPush(cmd.Context(), &opts)
 		},
 	}
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "`path` of image config file")
@@ -130,15 +130,16 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
-func runPush(ctx context.Context, opts pushOptions) error {
+func runPush(ctx context.Context, opts *pushOptions) error {
 	ctx, logger := opts.WithContext(ctx)
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err
 	}
+	displayStatus, displayMetadata := display.NewPushHandler(opts.Template, opts.TTY, opts.Verbose)
 
 	// prepare pack
 	packOpts := oras.PackManifestOptions{
@@ -155,14 +156,14 @@ func runPush(ctx context.Context, opts pushOptions) error {
 		if err != nil {
 			return err
 		}
-		desc, err := store.Add(ctx, option.AnnotationConfig, cfgMediaType, path)
+		desc, err := addFile(ctx, store, option.AnnotationConfig, cfgMediaType, path)
 		if err != nil {
 			return err
 		}
 		desc.Annotations = packOpts.ConfigAnnotations
 		packOpts.ConfigDescriptor = &desc
 	}
-	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
+	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, displayStatus)
 	if err != nil {
 		return err
 	}
@@ -184,15 +185,14 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	if err != nil {
 		return err
 	}
-	var tracked track.GraphTarget
-	dst, tracked, err = getTrackedTarget(dst, opts.TTY, "Uploading", "Uploaded ")
+	dst, err = displayStatus.TrackTarget(dst)
 	if err != nil {
 		return err
 	}
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
 	union := contentutil.MultiReadOnlyTarget(memoryStore, store)
-	updateDisplayOption(&copyOptions.CopyGraphOptions, union, opts.Verbose, tracked)
+	displayStatus.UpdateCopyOptions(&copyOptions.CopyGraphOptions, union)
 	copy := func(root ocispec.Descriptor) error {
 		// add both pull and push scope hints for dst repository
 		// to save potential push-scope token requests during copy
@@ -211,21 +211,31 @@ func runPush(ctx context.Context, opts pushOptions) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("Pushed", opts.AnnotatedReference())
+	err = displayMetadata.OnCopied(&opts.Target)
+	if err != nil {
+		return err
+	}
 
 	if len(opts.extraRefs) != 0 {
+		taggable := dst
+		if tracked, ok := dst.(track.GraphTarget); ok {
+			taggable = tracked.Inner()
+		}
 		contentBytes, err := content.FetchAll(ctx, memoryStore, root)
 		if err != nil {
 			return err
 		}
 		tagBytesNOpts := oras.DefaultTagBytesNOptions
 		tagBytesNOpts.Concurrency = opts.concurrency
-		if _, err = oras.TagBytesN(ctx, display.NewTagStatusPrinter(dst), root.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
+		if _, err = oras.TagBytesN(ctx, status.NewTagStatusPrinter(taggable), root.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}
 	}
 
-	fmt.Println("Digest:", root.Digest)
+	err = displayMetadata.OnCompleted(root)
+	if err != nil {
+		return err
+	}
 
 	// Export manifest
 	return opts.ExportManifest(ctx, memoryStore, root)
@@ -239,53 +249,8 @@ func doPush(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, 
 	return pushArtifact(dst, pack, copy)
 }
 
-func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, verbose bool, tracked track.GraphTarget) {
-	committed := &sync.Map{}
-
-	if tracked == nil {
-		// non TTY
-		opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return display.PrintStatus(desc, "Exists   ", verbose)
-		}
-		opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-			return display.PrintStatus(desc, "Uploading", verbose)
-		}
-		opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			if err := display.PrintSuccessorStatus(ctx, desc, fetcher, committed, display.StatusPrinter("Skipped  ", verbose)); err != nil {
-				return err
-			}
-			return display.PrintStatus(desc, "Uploaded ", verbose)
-		}
-		return
-	}
-	// TTY
-	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return tracked.Prompt(desc, "Exists   ")
-	}
-	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return display.PrintSuccessorStatus(ctx, desc, fetcher, committed, func(d ocispec.Descriptor) error {
-			return tracked.Prompt(d, "Skipped  ")
-		})
-	}
-}
-
 type packFunc func() (ocispec.Descriptor, error)
 type copyFunc func(desc ocispec.Descriptor) error
-
-func getTrackedTarget(gt oras.GraphTarget, tty *os.File, actionPrompt, doneprompt string) (oras.GraphTarget, track.GraphTarget, error) {
-	if tty == nil {
-		return gt, nil, nil
-	}
-	tracked, err := track.NewTarget(gt, actionPrompt, doneprompt, tty)
-	if err != nil {
-		return nil, nil, err
-	}
-	return tracked, tracked, nil
-}
 
 func pushArtifact(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
 	root, err := pack()

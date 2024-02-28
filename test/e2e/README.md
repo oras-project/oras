@@ -189,6 +189,9 @@ graph TD;
         G1["referrer.index(image)"] -- subject --> F1
         G2["referrer.image(image)"] -- subject --> F2
         G3["index"] -- subject --> F1
+        
+        H0>tag: unnamed]-..->H1["artifact contains unnamed layer"]
+        I0>tag: empty]-..->I1["artifact contains only one empty layer"]
     end
 ```
 

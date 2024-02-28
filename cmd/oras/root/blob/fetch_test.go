@@ -25,7 +25,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content/memory"
-	"oras.land/oras/cmd/oras/internal/display/console/testutils"
+	"oras.land/oras/cmd/oras/internal/display/status/console/testutils"
 )
 
 func Test_fetchBlobOptions_doFetch(t *testing.T) {

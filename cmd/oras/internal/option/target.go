@@ -19,15 +19,24 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"io/fs"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
 
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
+	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/errcode"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 )
@@ -39,6 +48,7 @@ const (
 
 // Target struct contains flags and arguments specifying one registry or image
 // layout.
+// Target implements oerrors.Handler interface.
 type Target struct {
 	Remote
 	RawReference string
@@ -49,7 +59,7 @@ type Target struct {
 	//  - registry and repository for the remote target
 	Path string
 
-	isOCILayout bool
+	IsOCILayout bool
 }
 
 // ApplyFlags applies flags to a command flag set for unary target
@@ -74,7 +84,7 @@ func (opts *Target) AnnotatedReference() string {
 // the full form is not implemented until a new type comes in.
 func (opts *Target) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
 	flagPrefix, notePrefix := applyPrefix(prefix, description)
-	fs.BoolVarP(&opts.isOCILayout, flagPrefix+"oci-layout", "", false, "set "+notePrefix+"target as an OCI image layout")
+	fs.BoolVarP(&opts.IsOCILayout, flagPrefix+"oci-layout", "", false, "set "+notePrefix+"target as an OCI image layout")
 }
 
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
@@ -87,7 +97,7 @@ func (opts *Target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 // Parse gets target options from user input.
 func (opts *Target) Parse() error {
 	switch {
-	case opts.isOCILayout:
+	case opts.IsOCILayout:
 		opts.Type = TargetTypeOCILayout
 		if len(opts.headerFlags) != 0 {
 			return errors.New("custom header flags cannot be used on an OCI image layout target")
@@ -95,6 +105,14 @@ func (opts *Target) Parse() error {
 		return nil
 	default:
 		opts.Type = TargetTypeRemote
+		if ref, err := registry.ParseReference(opts.RawReference); err != nil {
+			return err
+		} else if ref.Registry == "" || ref.Repository == "" {
+			return &oerrors.Error{
+				Err:            fmt.Errorf("%q is an invalid reference", opts.RawReference),
+				Recommendation: "Please make sure the provided reference is in the form of <registry>/<repo>[:tag|@digest]",
+			}
+		}
 		return opts.Remote.Parse()
 	}
 }
@@ -112,26 +130,69 @@ func parseOCILayoutReference(raw string) (path string, ref string, err error) {
 	return
 }
 
+func (opts *Target) newOCIStore() (*oci.Store, error) {
+	var err error
+	opts.Path, opts.Reference, err = parseOCILayoutReference(opts.RawReference)
+	if err != nil {
+		return nil, err
+	}
+	return oci.New(opts.Path)
+}
+
+func (opts *Target) newRepository(common Common, logger logrus.FieldLogger) (*remote.Repository, error) {
+	repo, err := opts.NewRepository(opts.RawReference, common, logger)
+	if err != nil {
+		return nil, err
+	}
+	tmp := repo.Reference
+	tmp.Reference = ""
+	opts.Path = tmp.String()
+	opts.Reference = repo.Reference.Reference
+	return repo, nil
+}
+
 // NewTarget generates a new target based on opts.
 func (opts *Target) NewTarget(common Common, logger logrus.FieldLogger) (oras.GraphTarget, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
-		var err error
-		opts.Path, opts.Reference, err = parseOCILayoutReference(opts.RawReference)
-		if err != nil {
-			return nil, err
-		}
-		return oci.New(opts.Path)
+		return opts.newOCIStore()
 	case TargetTypeRemote:
-		repo, err := opts.NewRepository(opts.RawReference, common, logger)
+		return opts.newRepository(common, logger)
+	}
+	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
+}
+
+type ResolvableDeleter interface {
+	content.Resolver
+	content.Deleter
+}
+
+// NewBlobDeleter generates a new blob deleter based on opts.
+func (opts *Target) NewBlobDeleter(common Common, logger logrus.FieldLogger) (ResolvableDeleter, error) {
+	switch opts.Type {
+	case TargetTypeOCILayout:
+		return opts.newOCIStore()
+	case TargetTypeRemote:
+		repo, err := opts.newRepository(common, logger)
 		if err != nil {
 			return nil, err
 		}
-		tmp := repo.Reference
-		tmp.Reference = ""
-		opts.Path = tmp.String()
-		opts.Reference = repo.Reference.Reference
-		return repo, nil
+		return repo.Blobs(), nil
+	}
+	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
+}
+
+// NewManifestDeleter generates a new blob deleter based on opts.
+func (opts *Target) NewManifestDeleter(common Common, logger logrus.FieldLogger) (ResolvableDeleter, error) {
+	switch opts.Type {
+	case TargetTypeOCILayout:
+		return opts.newOCIStore()
+	case TargetTypeRemote:
+		repo, err := opts.newRepository(common, logger)
+		if err != nil {
+			return nil, err
+		}
+		return repo.Manifests(), nil
 	}
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
 }
@@ -154,12 +215,22 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common, logger
 		}
 		info, err := os.Stat(opts.Path)
 		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				return nil, fmt.Errorf("invalid argument %q: failed to find path %q: %w", opts.RawReference, opts.Path, err)
+			}
 			return nil, err
 		}
 		if info.IsDir() {
 			return oci.NewFromFS(ctx, os.DirFS(opts.Path))
 		}
-		return oci.NewFromTar(ctx, opts.Path)
+		store, err := oci.NewFromTar(ctx, opts.Path)
+		if err != nil {
+			if errors.Is(err, io.ErrUnexpectedEOF) {
+				return nil, fmt.Errorf("%q does not look like a tar archive: %w", opts.Path, err)
+			}
+			return nil, err
+		}
+		return store, nil
 	case TargetTypeRemote:
 		repo, err := opts.NewRepository(opts.RawReference, common, logger)
 		if err != nil {
@@ -174,20 +245,78 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common, logger
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
 }
 
-// EnsureReferenceNotEmpty ensures whether the tag or digest is empty.
-func (opts *Target) EnsureReferenceNotEmpty() error {
+// EnsureReferenceNotEmpty returns formalized error when the reference is empty.
+func (opts *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, needsTag bool) error {
 	if opts.Reference == "" {
-		return oerrors.NewErrEmptyTagOrDigestStr(opts.RawReference)
+		return oerrors.NewErrEmptyTagOrDigest(opts.RawReference, cmd, needsTag)
 	}
 	return nil
 }
 
+// Modify handles error during cmd execution.
+func (opts *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
+	if opts.IsOCILayout {
+		return err, false
+	}
+
+	if errors.Is(err, auth.ErrBasicCredentialNotFound) {
+		return opts.DecorateCredentialError(err), true
+	}
+
+	if errors.Is(err, errdef.ErrNotFound) {
+		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
+		return err, true
+	}
+
+	var errResp *errcode.ErrorResponse
+	if errors.As(err, &errResp) {
+		ref := registry.Reference{Registry: opts.RawReference}
+		if errResp.URL.Host != ref.Host() {
+			// raw reference is not registry host
+			var parseErr error
+			ref, parseErr = registry.ParseReference(opts.RawReference)
+			if parseErr != nil {
+				// this should not happen
+				return err, false
+			}
+			if errResp.URL.Host != ref.Host() {
+				// not handle if the error is not from the target
+				return err, false
+			}
+		}
+
+		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
+		ret := &oerrors.Error{
+			Err: oerrors.TrimErrResp(err, errResp),
+		}
+
+		if ref.Registry == "docker.io" && errResp.StatusCode == http.StatusUnauthorized {
+			if ref.Repository != "" && !strings.Contains(ref.Repository, "/") {
+				// docker.io/xxx -> docker.io/library/xxx
+				ref.Repository = "library/" + ref.Repository
+				ret.Recommendation = fmt.Sprintf("Namespace seems missing. Do you mean `%s %s`?", cmd.CommandPath(), ref)
+			}
+		}
+		return ret, true
+	}
+	return err, false
+}
+
 // BinaryTarget struct contains flags and arguments specifying two registries or
 // image layouts.
+// BinaryTarget implements errors.Handler interface.
 type BinaryTarget struct {
 	From        Target
 	To          Target
 	resolveFlag []string
+}
+
+// EnsureSourceTargetReferenceNotEmpty ensures that the from target reference is not empty.
+func (opts *BinaryTarget) EnsureSourceTargetReferenceNotEmpty(cmd *cobra.Command) error {
+	if opts.From.Reference == "" {
+		return oerrors.NewErrEmptyTagOrDigest(opts.From.RawReference, cmd, true)
+	}
+	return nil
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
@@ -211,4 +340,12 @@ func (opts *BinaryTarget) Parse() error {
 	opts.From.resolveFlag = append(opts.resolveFlag, opts.From.resolveFlag...)
 	opts.To.resolveFlag = append(opts.resolveFlag, opts.To.resolveFlag...)
 	return Parse(opts)
+}
+
+// Modify handles error during cmd execution.
+func (opts *BinaryTarget) Modify(cmd *cobra.Command, err error) (error, bool) {
+	if modifiedErr, modified := opts.From.Modify(cmd, err); modified {
+		return modifiedErr, modified
+	}
+	return opts.To.Modify(cmd, err)
 }

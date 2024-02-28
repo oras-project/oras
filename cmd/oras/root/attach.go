@@ -19,7 +19,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -27,7 +26,9 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/registry/remote/auth"
-	"oras.land/oras/cmd/oras/internal/display/track"
+	"oras.land/oras/cmd/oras/internal/argument"
+	"oras.land/oras/cmd/oras/internal/display"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
 	"oras.land/oras/internal/registryutil"
@@ -37,6 +38,7 @@ type attachOptions struct {
 	option.Common
 	option.Packer
 	option.Target
+	option.Format
 
 	artifactType string
 	concurrency  int
@@ -45,14 +47,17 @@ type attachOptions struct {
 func attachCmd() *cobra.Command {
 	var opts attachOptions
 	cmd := &cobra.Command{
-		Use:   "attach [flags] --artifact-type=<type> <name>{:<tag>|@<digest>} <file>[:<type>] [...]",
+		Use:   "attach [flags] --artifact-type=<type> <name>{:<tag>|@<digest>} <file>[:<layer_media_type>] [...]",
 		Short: "[Preview] Attach files to an existing artifact",
 		Long: `[Preview] Attach files to an existing artifact
 
 ** This command is in preview and under development. **
 
-Example - Attach file 'hi.txt' with type 'doc/example' to manifest 'hello:v1' in registry 'localhost:5000':
+Example - Attach file 'hi.txt' with aritifact type 'doc/example' to manifest 'hello:v1' in registry 'localhost:5000':
   oras attach --artifact-type doc/example localhost:5000/hello:v1 hi.txt
+
+Example - Push file "hi.txt" with the custom layer media type 'application/vnd.me.hi':
+  oras attach --artifact-type doc/example localhost:5000/hello:v1 hi.txt:application/vnd.me.hi
 
 Example - Attach file "hi.txt" using a specific method for the Referrers API:
   oras attach --artifact-type doc/example --distribution-spec v1.1-referrers-api localhost:5000/hello:v1 hi.txt # via API
@@ -72,8 +77,8 @@ Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json'
 
 Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 'layout-dir':
   oras attach --oci-layout --artifact-type doc/example layout-dir:v1 hi.txt
-  `,
-		Args: cobra.MinimumNArgs(1),
+`,
+		Args: oerrors.CheckArgs(argument.AtLeast(1), "the destination artifact for attaching."),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
 			opts.FileRefs = args[1:]
@@ -83,7 +88,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runAttach(cmd.Context(), opts)
+			return runAttach(cmd, &opts)
 		},
 	}
 
@@ -92,18 +97,23 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 	_ = cmd.MarkFlagRequired("artifact-type")
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
-func runAttach(ctx context.Context, opts attachOptions) error {
-	ctx, logger := opts.WithContext(ctx)
+func runAttach(cmd *cobra.Command, opts *attachOptions) error {
+	ctx, logger := opts.WithContext(cmd.Context())
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err
 	}
 	if len(opts.FileRefs) == 0 && len(annotations[option.AnnotationManifest]) == 0 {
-		return errors.New("no blob or manifest annotation are provided")
+		return &oerrors.Error{
+			Err:            errors.New(`neither file nor annotation provided in the command`),
+			Usage:          fmt.Sprintf("%s %s", cmd.Parent().CommandPath(), cmd.Use),
+			Recommendation: `To attach to an existing artifact, please provide files via argument or annotations via flag "--annotation". Run "oras attach -h" for more options and examples`,
+		}
 	}
+	displayStatus, displayMetadata := display.NewAttachHandler(opts.Template, opts.TTY, opts.Verbose)
 
 	// prepare manifest
 	store, err := file.New("")
@@ -116,7 +126,7 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 	if err != nil {
 		return err
 	}
-	if err := opts.EnsureReferenceNotEmpty(); err != nil {
+	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
 		return err
 	}
 	// add both pull and push scope hints for dst repository
@@ -126,20 +136,19 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 	if err != nil {
 		return err
 	}
-	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
+	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, displayStatus)
 	if err != nil {
 		return err
 	}
 
 	// prepare push
-	var tracked track.GraphTarget
-	dst, tracked, err = getTrackedTarget(dst, opts.TTY, "Uploading", "Uploaded ")
+	dst, err = displayStatus.TrackTarget(dst)
 	if err != nil {
 		return err
 	}
 	graphCopyOptions := oras.DefaultCopyGraphOptions
 	graphCopyOptions.Concurrency = opts.concurrency
-	updateDisplayOption(&graphCopyOptions, store, opts.Verbose, tracked)
+	displayStatus.UpdateCopyOptions(&graphCopyOptions, store)
 
 	packOpts := oras.PackManifestOptions{
 		Subject:             &subject,
@@ -173,12 +182,10 @@ func runAttach(ctx context.Context, opts attachOptions) error {
 	if err != nil {
 		return err
 	}
-	digest := subject.Digest.String()
-	if !strings.HasSuffix(opts.RawReference, digest) {
-		opts.RawReference = fmt.Sprintf("%s@%s", opts.Path, subject.Digest)
+	err = displayMetadata.OnCompleted(&opts.Target, root, subject)
+	if err != nil {
+		return err
 	}
-	fmt.Println("Attached to", opts.AnnotatedReference())
-	fmt.Println("Digest:", root.Digest)
 
 	// Export manifest
 	return opts.ExportManifest(ctx, store, root)

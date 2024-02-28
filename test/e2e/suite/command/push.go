@@ -41,12 +41,66 @@ var _ = Describe("ORAS beginners:", func() {
 			gomega.Expect(out).Should(gbytes.Say("--image-spec string\\s+%s", regexp.QuoteMeta(feature.Experimental.Mark)))
 		})
 
+		It("should fail and show detailed error description if no argument provided", func() {
+			err := ORAS("push").ExpectFailure().Exec().Err
+			gomega.Expect(err).Should(gbytes.Say("Error"))
+			gomega.Expect(err).Should(gbytes.Say("\nUsage: oras push"))
+			gomega.Expect(err).Should(gbytes.Say("\n"))
+			gomega.Expect(err).Should(gbytes.Say(`Run "oras push -h"`))
+		})
+
+		It("should fail if the provided reference is not valid", func() {
+			err := ORAS("push", "/oras").ExpectFailure().Exec().Err
+			gomega.Expect(err).Should(gbytes.Say(`Error: "/oras" is an invalid reference`))
+			gomega.Expect(err).Should(gbytes.Say(regexp.QuoteMeta("Please make sure the provided reference is in the form of <registry>/<repo>[:tag|@digest]")))
+		})
+
+		It("should fail if the to-be-pushed file is not found", func() {
+			tempDir := GinkgoT().TempDir()
+			notFoundFilePath := "file/not/found"
+			err := ORAS("push", RegistryRef(ZOTHost, pushTestRepo("file-not-found"), ""), notFoundFilePath).
+				WithWorkDir(tempDir).
+				ExpectFailure().Exec().Err
+			gomega.Expect(err).Should(gbytes.Say(filepath.Join(tempDir, notFoundFilePath)))
+			gomega.Expect(err).Should(gbytes.Say("no such file or directory"))
+		})
+
 		It("should fail to use --config and --artifact-type at the same time for OCI spec v1.0 registry", func() {
 			tempDir := PrepareTempFiles()
 			repo := pushTestRepo("no-mediatype")
 			ref := RegistryRef(ZOTHost, repo, "")
 
 			ORAS("push", ref, "--config", foobar.FileConfigName, "--artifact-type", "test/artifact+json", "--image-spec", "v1.0").ExpectFailure().WithWorkDir(tempDir).Exec()
+		})
+
+		It("should fail if image spec is not valid", func() {
+			testRepo := attachTestRepo("invalid-image-spec")
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			invalidFlag := "???"
+			ORAS("push", subjectRef, Flags.ImageSpec, invalidFlag).
+				ExpectFailure().
+				MatchErrKeyWords("Error:", invalidFlag, "Available options: v1.1, v1.0").
+				Exec()
+		})
+
+		It("should fail if image spec is not valid", func() {
+			testRepo := attachTestRepo("invalid-image-spec")
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			invalidFlag := "???"
+			ORAS("push", subjectRef, Flags.ImageSpec, invalidFlag).
+				ExpectFailure().
+				MatchErrKeyWords("Error:", invalidFlag, "Available options: v1.1, v1.0").
+				Exec()
+		})
+
+		It("should fail if image spec is not valid", func() {
+			testRepo := attachTestRepo("invalid-image-spec")
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			invalidFlag := "???"
+			ORAS("push", subjectRef, Flags.ImageSpec, invalidFlag).
+				ExpectFailure().
+				MatchErrKeyWords("Error:", invalidFlag, "Available options: v1.1, v1.0").
+				Exec()
 		})
 	})
 })
@@ -262,7 +316,45 @@ var _ = Describe("Remote registry users:", func() {
 			Expect(manifest.Annotations[annotationKey]).Should(Equal(annotationValue))
 		})
 
-		It("should push artifact with blob", func() {
+		It("should push artifact and format reference", func() {
+			repo := pushTestRepo("format-go-template")
+			tempDir := PrepareTempFiles()
+			annotationKey := "key"
+			annotationValue := "value"
+
+			// test
+			out := ORAS("push", RegistryRef(ZOTHost, repo, tag), "-a", fmt.Sprintf("%s=%s", annotationKey, annotationValue), "--format", "{{.Ref}}").
+				WithWorkDir(tempDir).Exec().Out
+
+			// validate
+			ref := string(out.Contents())
+			fetched := ORAS("manifest", "fetch", ref).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Layers).Should(HaveLen(1))
+			Expect(manifest.Layers[0]).Should(Equal(artifact.EmptyLayerJSON))
+			Expect(manifest.Config).Should(Equal(artifact.EmptyLayerJSON))
+			Expect(manifest.Annotations).NotTo(BeNil())
+			Expect(manifest.Annotations[annotationKey]).Should(Equal(annotationValue))
+		})
+
+		It("should push artifact and format json", func() {
+			repo := pushTestRepo("format-json")
+			tempDir := PrepareTempFiles()
+			artifactType := "test/artifact+json"
+			annotationKey := "key"
+			annotationValue := "value"
+
+			// test
+			out := ORAS("push", RegistryRef(ZOTHost, repo, tag), "-a", fmt.Sprintf("%s=%s", annotationKey, annotationValue), "--format", "json", "--artifact-type", artifactType).
+				WithWorkDir(tempDir).Exec().Out
+
+			// validate
+			Expect(out).To(gbytes.Say(RegistryRef(ZOTHost, repo, "")))
+			Expect(out).To(gbytes.Say(regexp.QuoteMeta(fmt.Sprintf(`"ArtifactType": "%s"`, artifactType))))
+		})
+
+		It("should push files", func() {
 			repo := pushTestRepo("artifact-with-blob")
 			tempDir := PrepareTempFiles()
 
@@ -274,7 +366,24 @@ var _ = Describe("Remote registry users:", func() {
 			fetched := ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, tag)).Exec().Out.Contents()
 			var manifest ocispec.Manifest
 			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
-			Expect(manifest.ArtifactType).Should(Equal(artifact.DefaultArtifactType))
+			Expect(manifest.ArtifactType).Should(Equal("application/vnd.unknown.artifact.v1"))
+			Expect(manifest.Layers).Should(ContainElements(foobar.BlobBarDescriptor("application/vnd.oci.image.layer.v1.tar")))
+			Expect(manifest.Config).Should(Equal(artifact.EmptyLayerJSON))
+		})
+
+		It("should push v1.1-rc.4 artifact", func() {
+			repo := pushTestRepo("v1.1-artifact")
+			tempDir := PrepareTempFiles()
+
+			ORAS("push", RegistryRef(ZOTHost, repo, tag), foobar.FileBarName, "-v", "--image-spec", "v1.1").
+				MatchStatus([]match.StateKey{foobar.FileBarStateKey, artifact.DefaultConfigStateKey}, true, 2).
+				WithWorkDir(tempDir).Exec()
+
+			// validate
+			fetched := ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, tag)).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.ArtifactType).Should(Equal("application/vnd.unknown.artifact.v1"))
 			Expect(manifest.Layers).Should(ContainElements(foobar.BlobBarDescriptor("application/vnd.oci.image.layer.v1.tar")))
 			Expect(manifest.Config).Should(Equal(artifact.EmptyLayerJSON))
 		})

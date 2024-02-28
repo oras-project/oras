@@ -28,8 +28,10 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/registry"
+	"oras.land/oras/cmd/oras/internal/argument"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/graph"
 	"oras.land/oras/internal/tree"
 )
 
@@ -73,13 +75,13 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
   oras discover --oci-layout layout-dir:v1
   oras discover --oci-layout -v -o tree layout-dir:v1
 `,
-		Args: cobra.ExactArgs(1),
+		Args: oerrors.CheckArgs(argument.Exactly(1), "the target artifact to discover referrers from"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runDiscover(cmd.Context(), opts)
+			return runDiscover(cmd, &opts)
 		},
 	}
 
@@ -87,16 +89,16 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 	cmd.Flags().StringVarP(&opts.outputType, "output", "o", "table", "format in which to display referrers (table, json, or tree). tree format will also show indirect referrers")
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
-func runDiscover(ctx context.Context, opts discoverOptions) error {
-	ctx, logger := opts.WithContext(ctx)
+func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
+	ctx, logger := opts.WithContext(cmd.Context())
 	repo, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
 		return err
 	}
-	if err := opts.EnsureReferenceNotEmpty(); err != nil {
+	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
 		return err
 	}
 
@@ -110,14 +112,14 @@ func runDiscover(ctx context.Context, opts discoverOptions) error {
 
 	if opts.outputType == "tree" {
 		root := tree.New(fmt.Sprintf("%s@%s", opts.Path, desc.Digest))
-		err = fetchAllReferrers(ctx, repo, desc, opts.artifactType, root, &opts)
+		err = fetchAllReferrers(ctx, repo, desc, opts.artifactType, root, opts)
 		if err != nil {
 			return err
 		}
 		return tree.Print(root)
 	}
 
-	refs, err := graph.Referrers(ctx, repo, desc, opts.artifactType)
+	refs, err := registry.Referrers(ctx, repo, desc, opts.artifactType)
 	if err != nil {
 		return err
 	}
@@ -139,7 +141,7 @@ func runDiscover(ctx context.Context, opts discoverOptions) error {
 }
 
 func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, node *tree.Node, opts *discoverOptions) error {
-	results, err := graph.Referrers(ctx, repo, desc, artifactType)
+	results, err := registry.Referrers(ctx, repo, desc, artifactType)
 	if err != nil {
 		return err
 	}

@@ -25,8 +25,10 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
-	"oras.land/oras/cmd/oras/internal/display"
-	"oras.land/oras/cmd/oras/internal/display/track"
+	"oras.land/oras/cmd/oras/internal/argument"
+	"oras.land/oras/cmd/oras/internal/display/status"
+	"oras.land/oras/cmd/oras/internal/display/status/track"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/file"
 )
@@ -73,7 +75,7 @@ Example - Push blob without TLS:
 Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
   oras blob push --oci-layout layout-dir hi.txt
 `,
-		Args: cobra.ExactArgs(2),
+		Args: oerrors.CheckArgs(argument.Exactly(2), "the destination to push to and the file to read blob content from"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
 			opts.fileRef = args[1]
@@ -88,17 +90,17 @@ Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return pushBlob(cmd.Context(), opts)
+			return pushBlob(cmd.Context(), &opts)
 		},
 	}
 
 	cmd.Flags().Int64VarP(&opts.size, "size", "", -1, "provide the blob size")
 	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", ocispec.MediaTypeImageLayer, "specify the returned media type in the descriptor if --descriptor is used")
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
-func pushBlob(ctx context.Context, opts pushBlobOptions) (err error) {
+func pushBlob(ctx context.Context, opts *pushBlobOptions) (err error) {
 	ctx, logger := opts.WithContext(ctx)
 
 	target, err := opts.NewTarget(opts.Common, logger)
@@ -119,7 +121,7 @@ func pushBlob(ctx context.Context, opts pushBlobOptions) (err error) {
 	}
 	verbose := opts.Verbose && !opts.OutputDescriptor
 	if exists {
-		err = display.PrintStatus(desc, "Exists", verbose)
+		err = status.PrintStatus(desc, "Exists", verbose)
 	} else {
 		err = opts.doPush(ctx, target, desc, rc)
 	}
@@ -143,13 +145,13 @@ func pushBlob(ctx context.Context, opts pushBlobOptions) (err error) {
 func (opts *pushBlobOptions) doPush(ctx context.Context, t oras.Target, desc ocispec.Descriptor, r io.Reader) error {
 	if opts.TTY == nil {
 		// none TTY output
-		if err := display.PrintStatus(desc, "Uploading", opts.Verbose); err != nil {
+		if err := status.PrintStatus(desc, "Uploading", opts.Verbose); err != nil {
 			return err
 		}
 		if err := t.Push(ctx, desc, r); err != nil {
 			return err
 		}
-		return display.PrintStatus(desc, "Uploaded ", opts.Verbose)
+		return status.PrintStatus(desc, "Uploaded ", opts.Verbose)
 	}
 
 	// TTY output

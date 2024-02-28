@@ -28,9 +28,13 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/registry"
+	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
-	"oras.land/oras/cmd/oras/internal/display"
-	"oras.land/oras/cmd/oras/internal/display/track"
+	"oras.land/oras/cmd/oras/internal/argument"
+	"oras.land/oras/cmd/oras/internal/display/status"
+	"oras.land/oras/cmd/oras/internal/display/status/track"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/docker"
 	"oras.land/oras/internal/graph"
@@ -83,7 +87,7 @@ Example - Copy an artifact with multiple tags:
 Example - Copy an artifact with multiple tags with concurrency tuned:
   oras cp --concurrency 10 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:tag1,tag2,tag3
 `,
-		Args: cobra.ExactArgs(2),
+		Args: oerrors.CheckArgs(argument.Exactly(2), "the source and destination for copying"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.From.RawReference = args[0]
 			refs := strings.Split(args[1], ",")
@@ -92,25 +96,25 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCopy(cmd.Context(), opts)
+			return runCopy(cmd, &opts)
 		},
 	}
 	cmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "[Preview] recursively copy the artifact and its referrer artifacts")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.BinaryTarget)
 }
 
-func runCopy(ctx context.Context, opts copyOptions) error {
-	ctx, logger := opts.WithContext(ctx)
+func runCopy(cmd *cobra.Command, opts *copyOptions) error {
+	ctx, logger := opts.WithContext(cmd.Context())
 
 	// Prepare source
 	src, err := opts.From.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
 		return err
 	}
-	if err := opts.From.EnsureReferenceNotEmpty(); err != nil {
+	if err := opts.EnsureSourceTargetReferenceNotEmpty(cmd); err != nil {
 		return err
 	}
 
@@ -135,7 +139,7 @@ func runCopy(ctx context.Context, opts copyOptions) error {
 	if len(opts.extraRefs) != 0 {
 		tagNOpts := oras.DefaultTagNOptions
 		tagNOpts.Concurrency = opts.concurrency
-		if _, err = oras.TagN(ctx, display.NewTagStatusPrinter(dst), opts.To.Reference, opts.extraRefs, tagNOpts); err != nil {
+		if _, err = oras.TagN(ctx, status.NewTagStatusPrinter(dst), opts.To.Reference, opts.extraRefs, tagNOpts); err != nil {
 			return err
 		}
 	}
@@ -145,34 +149,52 @@ func runCopy(ctx context.Context, opts copyOptions) error {
 	return nil
 }
 
-func doCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts copyOptions) (ocispec.Descriptor, error) {
+func doCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) (ocispec.Descriptor, error) {
 	// Prepare copy options
 	committed := &sync.Map{}
 	extendedCopyOptions := oras.DefaultExtendedCopyOptions
 	extendedCopyOptions.Concurrency = opts.concurrency
 	extendedCopyOptions.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		return graph.Referrers(ctx, src, desc, "")
+		return registry.Referrers(ctx, src, desc, "")
 	}
 
+	const (
+		promptExists  = "Exists "
+		promptCopying = "Copying"
+		promptCopied  = "Copied "
+		promptSkipped = "Skipped"
+		promptMounted = "Mounted"
+	)
+	srcRepo, srcIsRemote := src.(*remote.Repository)
+	dstRepo, dstIsRemote := dst.(*remote.Repository)
+	if srcIsRemote && dstIsRemote && srcRepo.Reference.Registry == dstRepo.Reference.Registry {
+		extendedCopyOptions.MountFrom = func(ctx context.Context, desc ocispec.Descriptor) ([]string, error) {
+			return []string{srcRepo.Reference.Repository}, nil
+		}
+	}
 	if opts.TTY == nil {
 		// none TTY output
 		extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return display.PrintStatus(desc, "Exists ", opts.Verbose)
+			return status.PrintStatus(desc, promptExists, opts.Verbose)
 		}
 		extendedCopyOptions.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-			return display.PrintStatus(desc, "Copying", opts.Verbose)
+			return status.PrintStatus(desc, promptCopying, opts.Verbose)
 		}
 		extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			if err := display.PrintSuccessorStatus(ctx, desc, dst, committed, display.StatusPrinter("Skipped", opts.Verbose)); err != nil {
+			if err := status.PrintSuccessorStatus(ctx, desc, dst, committed, status.StatusPrinter(promptSkipped, opts.Verbose)); err != nil {
 				return err
 			}
-			return display.PrintStatus(desc, "Copied ", opts.Verbose)
+			return status.PrintStatus(desc, promptCopied, opts.Verbose)
+		}
+		extendedCopyOptions.OnMounted = func(ctx context.Context, desc ocispec.Descriptor) error {
+			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+			return status.PrintStatus(desc, promptMounted, opts.Verbose)
 		}
 	} else {
 		// TTY output
-		tracked, err := track.NewTarget(dst, "Copying ", "Copied ", opts.TTY)
+		tracked, err := track.NewTarget(dst, promptCopying, promptCopied, opts.TTY)
 		if err != nil {
 			return ocispec.Descriptor{}, err
 		}
@@ -180,13 +202,17 @@ func doCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTar
 		dst = tracked
 		extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return tracked.Prompt(desc, "Exists ")
+			return tracked.Prompt(desc, promptExists)
 		}
 		extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return display.PrintSuccessorStatus(ctx, desc, tracked, committed, func(desc ocispec.Descriptor) error {
-				return tracked.Prompt(desc, "Skipped")
+			return status.PrintSuccessorStatus(ctx, desc, tracked, committed, func(desc ocispec.Descriptor) error {
+				return tracked.Prompt(desc, promptSkipped)
 			})
+		}
+		extendedCopyOptions.OnMounted = func(ctx context.Context, desc ocispec.Descriptor) error {
+			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+			return tracked.Prompt(desc, promptMounted)
 		}
 	}
 

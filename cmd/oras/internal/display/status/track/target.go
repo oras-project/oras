@@ -23,7 +23,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry"
-	"oras.land/oras/cmd/oras/internal/display/progress"
+	"oras.land/oras/cmd/oras/internal/display/status/progress"
 )
 
 // GraphTarget is a tracked oras.GraphTarget.
@@ -31,6 +31,7 @@ type GraphTarget interface {
 	oras.GraphTarget
 	io.Closer
 	Prompt(desc ocispec.Descriptor, prompt string) error
+	Inner() oras.GraphTarget
 }
 
 type graphTarget struct {
@@ -63,6 +64,13 @@ func NewTarget(t oras.GraphTarget, actionPrompt, donePrompt string, tty *os.File
 		}, nil
 	}
 	return gt, nil
+}
+
+// Mount mounts a blob from a specified repository. This method is invoked only
+// by the `*remote.Repository` target.
+func (t *graphTarget) Mount(ctx context.Context, desc ocispec.Descriptor, fromRepo string, getContent func() (io.ReadCloser, error)) error {
+	mounter := t.GraphTarget.(registry.Mounter)
+	return mounter.Mount(ctx, desc, fromRepo, getContent)
 }
 
 // Push pushes the content to the base oras.GraphTarget with tracking.
@@ -111,4 +119,9 @@ func (t *graphTarget) Prompt(desc ocispec.Descriptor, prompt string) error {
 	status <- progress.NewStatus(prompt, desc, desc.Size)
 	status <- progress.EndTiming()
 	return nil
+}
+
+// Inner returns the inner oras.GraphTarget.
+func (t *graphTarget) Inner() oras.GraphTarget {
+	return t.GraphTarget
 }

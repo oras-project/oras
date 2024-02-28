@@ -22,6 +22,8 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	"github.com/spf13/cobra"
+	"oras.land/oras/cmd/oras/internal/argument"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -61,23 +63,23 @@ Example - [Experimental] Show tags associated with a particular tagged resource:
 Example - [Experimental] Show tags associated with a digest:
   oras repo tags localhost:5000/hello@sha256:c551125a624189cece9135981621f3f3144564ddabe14b523507bf74c2281d9b
 `,
-		Args:    cobra.ExactArgs(1),
+		Args:    oerrors.CheckArgs(argument.Exactly(1), "the target repository to list tags from"),
 		Aliases: []string{"show-tags"},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return showTags(cmd.Context(), opts)
+			return showTags(cmd.Context(), &opts)
 		},
 	}
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the tag specified by `last`")
 	cmd.Flags().BoolVar(&opts.excludeDigestTag, "exclude-digest-tags", false, "[Preview] exclude all digest-like tags such as 'sha256-aaaa...'")
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
-func showTags(ctx context.Context, opts showTagsOptions) error {
+func showTags(ctx context.Context, opts *showTagsOptions) error {
 	ctx, logger := opts.WithContext(ctx)
 	finder, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {

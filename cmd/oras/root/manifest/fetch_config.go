@@ -26,6 +26,8 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras/cmd/oras/internal/argument"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/descriptor"
 )
@@ -67,7 +69,7 @@ Example - Fetch the descriptor of the config:
 Example - Fetch and print the prettified descriptor of the config:
   oras manifest fetch-config --descriptor --pretty localhost:5000/hello:v1
 `,
-		Args: cobra.ExactArgs(1),
+		Args: oerrors.CheckArgs(argument.Exactly(1), "the manifest config to fetch"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.outputPath == "-" && opts.OutputDescriptor {
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
@@ -76,23 +78,23 @@ Example - Fetch and print the prettified descriptor of the config:
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fetchConfig(cmd.Context(), opts)
+			return fetchConfig(cmd, &opts)
 		},
 	}
 
 	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "file `path` to write the fetched config to, use - for stdout")
 	option.ApplyFlags(&opts, cmd.Flags())
-	return cmd
+	return oerrors.Command(cmd, &opts.Target)
 }
 
-func fetchConfig(ctx context.Context, opts fetchConfigOptions) (fetchErr error) {
-	ctx, logger := opts.WithContext(ctx)
+func fetchConfig(cmd *cobra.Command, opts *fetchConfigOptions) (fetchErr error) {
+	ctx, logger := opts.WithContext(cmd.Context())
 
 	repo, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
 		return err
 	}
-	if err := opts.EnsureReferenceNotEmpty(); err != nil {
+	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
 		return err
 	}
 	src, err := opts.CachedTarget(repo)

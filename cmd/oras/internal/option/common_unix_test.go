@@ -20,7 +20,7 @@ package option
 import (
 	"testing"
 
-	"oras.land/oras/cmd/oras/internal/display/console/testutils"
+	"oras.land/oras/cmd/oras/internal/display/status/console/testutils"
 )
 
 func TestCommon_parseTTY(t *testing.T) {
@@ -38,7 +38,10 @@ func TestCommon_parseTTY(t *testing.T) {
 
 	// --debug
 	opts.Debug = true
-	if err := opts.parseTTY(device); err == nil {
-		t.Error("expected error when debug is set with TTY output")
+	if err := opts.parseTTY(device); err != nil {
+		t.Errorf("unexpected error with --debug: %v", err)
+	}
+	if !opts.noTTY {
+		t.Errorf("expected --no-tty to be true with --debug")
 	}
 }
