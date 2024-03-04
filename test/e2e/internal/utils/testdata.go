@@ -23,7 +23,8 @@ const (
 	ArtifactRepo     = "command/artifacts"
 	Namespace        = "command"
 	InvalidRepo      = "INVALID"
-	LegacyConfigName = "legacy.config"
+	LegacyConfigName = "legacy.registry.config"
+	EmptyConfigName  = "empty.registry.config"
 	// env
 	RegHostKey         = "ORAS_REGISTRY_HOST"
 	FallbackRegHostKey = "ORAS_REGISTRY_FALLBACK_HOST"

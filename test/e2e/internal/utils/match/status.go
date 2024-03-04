@@ -76,6 +76,7 @@ func newStateMachine(cmd string) *stateMachine {
 		sm.addPath("Copying", "Copied")
 		sm.addPath("Skipped")
 		sm.addPath("Exists")
+		sm.addPath("Mounted")
 	default:
 		ginkgo.Fail("Unrecognized cmd name " + cmd)
 	}

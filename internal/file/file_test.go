@@ -30,7 +30,6 @@ import (
 	"oras.land/oras/internal/file"
 )
 
-const manifestMediaType = "application/vnd.oci.image.manifest.v1+json"
 const blobMediaType = "application/mock-octet-stream"
 const manifest = `{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"application/vnd.unknown.config.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2},"layers":[{"mediaType":"application/vnd.oci.image.layer.v1.tar","digest":"sha256:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03","size":6,"annotations":{"org.opencontainers.image.title":"hello.txt"}}]}`
 
@@ -265,44 +264,5 @@ func TestFile_PrepareBlobContent_errOpenFile(t *testing.T) {
 	expected := "failed to open nonexistent.txt"
 	if !strings.Contains(err.Error(), expected) {
 		t.Fatalf("PrepareBlobContent() error = %v, wantErr %v", err, expected)
-	}
-}
-
-func TestFile_ParseMediaType(t *testing.T) {
-	// generate test content
-	content := []byte(manifest)
-
-	// test ParseMediaType
-	want := manifestMediaType
-	got, err := file.ParseMediaType(content)
-	if err != nil {
-		t.Fatal("ParseMediaType() error=", err)
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("ParseMediaType() = %v, want %v", got, want)
-	}
-}
-
-func TestFile_ParseMediaType_invalidContent_notAJson(t *testing.T) {
-	// generate test content
-	content := []byte("manifest")
-
-	// test ParseMediaType
-	_, err := file.ParseMediaType(content)
-	expected := "not a valid json file"
-	if err.Error() != expected {
-		t.Fatalf("ParseMediaType() error = %v, wantErr %v", err, expected)
-	}
-}
-
-func TestFile_ParseMediaType_invalidContent_missingMediaType(t *testing.T) {
-	// generate test content
-	content := []byte(`{"schemaVersion":2}`)
-
-	// test ParseMediaType
-	_, err := file.ParseMediaType(content)
-	expected := "media type is not recognized"
-	if err.Error() != expected {
-		t.Fatalf("ParseMediaType() error = %v, wantErr %v", err, expected)
 	}
 }

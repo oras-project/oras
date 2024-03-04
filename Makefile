@@ -19,7 +19,7 @@ GIT_TAG     = $(shell git describe --tags --abbrev=0 --exact-match 2>/dev/null)
 GIT_DIRTY   = $(shell test -n "`git status --porcelain`" && echo "dirty" || echo "clean")
 GO_EXE      = go
 
-TARGET_OBJS ?= checksums.txt darwin_amd64.tar.gz darwin_arm64.tar.gz linux_amd64.tar.gz linux_arm64.tar.gz linux_armv7.tar.gz linux_s390x.tar.gz linux_ppc64le.tar.gz linux_riscv64.tar.gz windows_amd64.zip
+TARGET_OBJS ?= checksums.txt darwin_amd64.tar.gz darwin_arm64.tar.gz linux_amd64.tar.gz linux_arm64.tar.gz linux_armv7.tar.gz linux_s390x.tar.gz linux_ppc64le.tar.gz linux_riscv64.tar.gz windows_amd64.zip freebsd_amd64.tar.gz
 
 LDFLAGS = -w
 ifdef VERSION
@@ -111,6 +111,14 @@ build-windows-amd64:  ## build for windows amd64
 build-windows-arm64:  ## build for windows arm64
 	GOARCH=arm64 CGO_ENABLED=0 GOOS=windows $(GO_EXE) build -v --ldflags="$(LDFLAGS)" \
 		-o bin/windows/arm64/$(CLI_EXE).exe $(CLI_PKG)
+
+.PHONY: build-freebsd
+build-freebsd: build-freebsd-amd64  ## build all freebsd architectures
+
+.PHONY: build-freebsd-amd64
+build-freebsd-amd64:  ## build for freebsd amd64
+	GOARCH=amd64 CGO_ENABLED=0 GOOS=freebsd $(GO_EXE) build -v --ldflags="$(LDFLAGS)" \
+		-o bin/freebsd/amd64/$(CLI_EXE) $(CLI_PKG)
 
 .PHONY: check-encoding
 check-encoding:  ## check file CR/LF encoding

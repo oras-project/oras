@@ -115,9 +115,9 @@ var _ = Describe("ORAS beginners:", func() {
 				gomega.Expect(err).Should(gbytes.Say(`Run "oras blob fetch -h"`))
 			})
 
-			It("should fail if no digest provided", func() {
-				ORAS("blob", "fetch", RegistryRef(ZOTHost, ImageRepo, "")).
-					ExpectFailure().Exec()
+			It("should fail if no digest is provided", func() {
+				ORAS("blob", "fetch", "--descriptor", RegistryRef(ZOTHost, ImageRepo, "")).
+					ExpectFailure().MatchErrKeyWords("Error", "no digest specified", "oras blob fetch").Exec()
 			})
 
 			It("should fail if provided digest doesn't exist", func() {
@@ -166,6 +166,11 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("blob", "delete", fmt.Sprintf("%s/%s:%s", ZOTHost, dstRepo, "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), "--descriptor", "--force").ExpectFailure().Exec()
 			ORAS("blob", "delete", fmt.Sprintf("%s/%s:%s", ZOTHost, dstRepo, "test"), "--descriptor", "--force").ExpectFailure().Exec()
 			ORAS("blob", "delete", fmt.Sprintf("%s/%s@%s", ZOTHost, dstRepo, "test"), "--descriptor", "--force").ExpectFailure().Exec()
+		})
+
+		It("should fail if no digest is provided", func() {
+			ORAS("blob", "delete", RegistryRef(ZOTHost, ImageRepo, "")).
+				ExpectFailure().MatchErrKeyWords("Error", "no digest specified", "oras blob delete").Exec()
 		})
 
 		It("should fail to delete a non-existent blob without force flag set", func() {

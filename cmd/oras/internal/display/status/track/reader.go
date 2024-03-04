@@ -20,7 +20,7 @@ import (
 	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras/cmd/oras/internal/display/progress"
+	"oras.land/oras/cmd/oras/internal/display/status/progress"
 )
 
 type reader struct {

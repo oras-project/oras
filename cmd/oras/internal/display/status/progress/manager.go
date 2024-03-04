@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"oras.land/oras/cmd/oras/internal/display/console"
+	"oras.land/oras/cmd/oras/internal/display/status/console"
 )
 
 const (

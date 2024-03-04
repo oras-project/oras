@@ -24,7 +24,7 @@ import (
 
 	"github.com/morikuni/aec"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras/cmd/oras/internal/display/progress/humanize"
+	"oras.land/oras/cmd/oras/internal/display/status/progress/humanize"
 )
 
 const (

@@ -44,7 +44,7 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("resolve", fmt.Sprintf("%s/%s", ZOTHost, InvalidRepo)).ExpectFailure().MatchErrKeyWords("Error:", fmt.Sprintf("invalid reference: invalid repository %q", InvalidRepo)).Exec()
 		})
 		It("should fail when no tag or digest provided", func() {
-			ORAS("resolve", RegistryRef(ZOTHost, ImageRepo, "")).ExpectFailure().MatchErrKeyWords("Error:", "no tag or digest when expecting <name:tag|name@digest>").Exec()
+			ORAS("resolve", RegistryRef(ZOTHost, ImageRepo, "")).ExpectFailure().MatchErrKeyWords("Error:", `no tag or digest specified`, "oras resolve [flags] <name>{:<tag>|@<digest>}", "Please specify a reference").Exec()
 		})
 		It("should fail when provided manifest reference is not found", func() {
 			ORAS("resolve", RegistryRef(ZOTHost, ImageRepo, "i-dont-think-this-tag-exists")).ExpectFailure().MatchErrKeyWords(RegistryErrorPrefix, "failed to resolve digest:", "not found").Exec()

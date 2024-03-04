@@ -35,6 +35,7 @@ import (
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/errcode"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
@@ -104,6 +105,14 @@ func (opts *Target) Parse() error {
 		return nil
 	default:
 		opts.Type = TargetTypeRemote
+		if ref, err := registry.ParseReference(opts.RawReference); err != nil {
+			return err
+		} else if ref.Registry == "" || ref.Repository == "" {
+			return &oerrors.Error{
+				Err:            fmt.Errorf("%q is an invalid reference", opts.RawReference),
+				Recommendation: "Please make sure the provided reference is in the form of <registry>/<repo>[:tag|@digest]",
+			}
+		}
 		return opts.Remote.Parse()
 	}
 }
@@ -236,10 +245,10 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common, logger
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
 }
 
-// EnsureReferenceNotEmpty ensures whether the tag or digest is empty.
-func (opts *Target) EnsureReferenceNotEmpty() error {
+// EnsureReferenceNotEmpty returns formalized error when the reference is empty.
+func (opts *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, needsTag bool) error {
 	if opts.Reference == "" {
-		return oerrors.NewErrEmptyTagOrDigestStr(opts.RawReference)
+		return oerrors.NewErrEmptyTagOrDigest(opts.RawReference, cmd, needsTag)
 	}
 	return nil
 }
@@ -248,6 +257,10 @@ func (opts *Target) EnsureReferenceNotEmpty() error {
 func (opts *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 	if opts.IsOCILayout {
 		return err, false
+	}
+
+	if errors.Is(err, auth.ErrBasicCredentialNotFound) {
+		return opts.DecorateCredentialError(err), true
 	}
 
 	if errors.Is(err, errdef.ErrNotFound) {
@@ -274,7 +287,7 @@ func (opts *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
 		ret := &oerrors.Error{
-			Err: oerrors.Trim(err, errResp),
+			Err: oerrors.TrimErrResp(err, errResp),
 		}
 
 		if ref.Registry == "docker.io" && errResp.StatusCode == http.StatusUnauthorized {
@@ -296,6 +309,14 @@ type BinaryTarget struct {
 	From        Target
 	To          Target
 	resolveFlag []string
+}
+
+// EnsureSourceTargetReferenceNotEmpty ensures that the from target reference is not empty.
+func (opts *BinaryTarget) EnsureSourceTargetReferenceNotEmpty(cmd *cobra.Command) error {
+	if opts.From.Reference == "" {
+		return oerrors.NewErrEmptyTagOrDigest(opts.From.RawReference, cmd, true)
+	}
+	return nil
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.

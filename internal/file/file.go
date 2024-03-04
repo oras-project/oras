@@ -16,7 +16,6 @@ limitations under the License.
 package file
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -116,18 +115,4 @@ func PrepareBlobContent(path string, mediaType string, dgstStr string, size int6
 		Digest:    dgst,
 		Size:      actualSize,
 	}, file, nil
-}
-
-// ParseMediaType parses the media type field of bytes content in json format.
-func ParseMediaType(content []byte) (string, error) {
-	var manifest struct {
-		MediaType string `json:"mediaType"`
-	}
-	if err := json.Unmarshal(content, &manifest); err != nil {
-		return "", errors.New("not a valid json file")
-	}
-	if manifest.MediaType == "" {
-		return "", errors.New("media type is not recognized")
-	}
-	return manifest.MediaType, nil
 }

@@ -39,12 +39,25 @@ func TestTarget_Parse_oci(t *testing.T) {
 }
 
 func TestTarget_Parse_remote(t *testing.T) {
-	opts := Target{IsOCILayout: false}
+	opts := Target{
+		RawReference: "mocked/test",
+		IsOCILayout:  false,
+	}
 	if err := opts.Parse(); err != nil {
 		t.Errorf("Target.Parse() error = %v", err)
 	}
 	if opts.Type != TargetTypeRemote {
 		t.Errorf("Target.Parse() failed, got %q, want %q", opts.Type, TargetTypeRemote)
+	}
+}
+
+func TestTarget_Parse_remote_err(t *testing.T) {
+	opts := Target{
+		RawReference: "/test",
+		IsOCILayout:  false,
+	}
+	if err := opts.Parse(); err == nil {
+		t.Errorf("expect Target.Parse() to fail but not")
 	}
 }
 
