@@ -39,7 +39,7 @@ See example use cases of formatted output for `oras manifest fetch`:
 - Use `--output <file>` and `--format` at the same time, a manifest file should be produced in the filesystem and the `mediaType` value should be outputted on the console:
 
 ```console
-$ oras manifest fetch $REGISTRY/$REPO:$TAG --output sample-manifest.json --format {{.config.MediaType}}
+$ oras manifest fetch $REGISTRY/$REPO:$TAG --output sample-manifest --format {{.config.mediaType}}
 application/vnd.oci.empty.v1+json
 ```
 
