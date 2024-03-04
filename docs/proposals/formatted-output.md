@@ -43,7 +43,7 @@ $ oras manifest fetch $REGISTRY/$REPO:$TAG --output sample-manifest --format {{.
 application/vnd.oci.empty.v1+json
 ```
 
-View the contents of the generated manifest within specified `sample-manifest.json` file. The contents should be raw JSON data:
+View the contents of the generated manifest within specified `sample-manifest` file. The contents should be raw JSON data:
 
 ```console
 $ cat sample-manifest.json
