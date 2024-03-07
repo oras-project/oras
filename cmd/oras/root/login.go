@@ -48,6 +48,9 @@ func loginCmd() *cobra.Command {
 Example - Log in with username and password from command line flags:
   oras login -u username -p password localhost:5000
 
+Example - Log in with identity token from the command line flags:
+  oras login -i token localhost:5000
+
 Example - Log in with username and password from stdin:
   oras login -u username --password-stdin localhost:5000
 
@@ -79,10 +82,19 @@ Example - Log in with username and password in an interactive terminal and no TL
 func runLogin(ctx context.Context, opts loginOptions) (err error) {
 	ctx, logger := opts.WithContext(ctx)
 
-	// prompt for credential
-	if opts.Password == "" {
+	// Check if both '--username' and '--identity-token' are provided
+	if opts.Username != "" && opts.IdentityToken != "" {
+		return fmt.Errorf("both --username and --identity-token cannot be used together")
+	}
+
+	// If IdentityToken is provided, use it as the credential without a username
+	if opts.IdentityToken != "" {
+		opts.Username = ""                 // Set the username to empty since it's not required when using identity token
+		opts.Password = opts.IdentityToken // Use the identity token as the password
+	} else if opts.Password == "" {
+		// If both '--password' and '--username' are not provided, prompt for credentials
 		if opts.Username == "" {
-			// prompt for username
+			// Prompt for username
 			username, err := readLine("Username: ", false)
 			if err != nil {
 				return err
@@ -90,14 +102,14 @@ func runLogin(ctx context.Context, opts loginOptions) (err error) {
 			opts.Username = strings.TrimSpace(username)
 		}
 		if opts.Username == "" {
-			// prompt for token
+			// Prompt for token
 			if opts.Password, err = readLine("Token: ", true); err != nil {
 				return err
 			} else if opts.Password == "" {
 				return errors.New("token required")
 			}
 		} else {
-			// prompt for password
+			// Prompt for password
 			if opts.Password, err = readLine("Password: ", true); err != nil {
 				return err
 			} else if opts.Password == "" {
