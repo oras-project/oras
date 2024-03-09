@@ -16,7 +16,6 @@ limitations under the License.
 package root
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -69,15 +68,15 @@ Example - Log in with username and password in an interactive terminal and no TL
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Hostname = args[0]
-			return runLogin(cmd.Context(), opts)
+			return runLogin(cmd, opts)
 		},
 	}
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Remote)
 }
 
-func runLogin(ctx context.Context, opts loginOptions) (err error) {
-	ctx, logger := opts.WithContext(ctx)
+func runLogin(cmd *cobra.Command, opts loginOptions) (err error) {
+	ctx, logger := opts.WithContext(cmd.Context())
 
 	// prompt for credential
 	if opts.Password == "" {

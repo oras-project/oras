@@ -16,7 +16,6 @@ limitations under the License.
 package root
 
 import (
-	"context"
 	"errors"
 	"strings"
 
@@ -122,7 +121,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runPush(cmd.Context(), &opts)
+			return runPush(cmd, &opts)
 		},
 	}
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "`path` of image config file")
@@ -133,8 +132,8 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 	return oerrors.Command(cmd, &opts.Target)
 }
 
-func runPush(ctx context.Context, opts *pushOptions) error {
-	ctx, logger := opts.WithContext(ctx)
+func runPush(cmd *cobra.Command, opts *pushOptions) error {
+	ctx, logger := opts.WithContext(cmd.Context())
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err
