@@ -16,14 +16,11 @@ limitations under the License.
 package option
 
 import (
-	"context"
 	"os"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/term"
-	"oras.land/oras/internal/trace"
 )
 
 const NoTTYFlag = "no-tty"
@@ -42,11 +39,6 @@ func (opts *Common) ApplyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.Debug, "debug", "d", false, "output debug logs (implies --no-tty)")
 	fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "verbose output")
 	fs.BoolVarP(&opts.noTTY, NoTTYFlag, "", false, "[Preview] do not show progress output")
-}
-
-// WithContext returns a new FieldLogger and an associated Context derived from ctx.
-func (opts *Common) WithContext(ctx context.Context) (context.Context, logrus.FieldLogger) {
-	return trace.NewLogger(ctx, opts.Debug, opts.Verbose)
 }
 
 // Parse gets target options from user input.

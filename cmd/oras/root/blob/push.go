@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/argument"
+	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/cmd/oras/internal/display/status/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
@@ -101,7 +102,7 @@ Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
 }
 
 func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
-	ctx, logger := opts.WithContext(cmd.Context())
+	ctx, logger := command.GetLogger(cmd, &opts.Common)
 
 	target, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {

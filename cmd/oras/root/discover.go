@@ -26,6 +26,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/argument"
+	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
@@ -104,7 +105,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 }
 
 func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
-	ctx, logger := opts.WithContext(cmd.Context())
+	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	repo, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
 		return err
