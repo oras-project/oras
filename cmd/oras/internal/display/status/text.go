@@ -23,6 +23,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras/cmd/oras/internal/display/utils"
 )
 
 // TextPushHandler handles text status output for push events.
@@ -57,8 +58,8 @@ func (ph *TextPushHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, e
 	return gt, nil
 }
 
-// UpdateCopyOptions adds status update to the copy options.
-func (ph *TextPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher) {
+// UpdatePushCopyOptions adds status update to the copy options.
+func (ph *TextPushHandler) UpdatePushCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher) {
 	const (
 		promptSkipped   = "Skipped  "
 		promptUploaded  = "Uploaded "
@@ -85,4 +86,87 @@ func (ph *TextPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetche
 // NewTextAttachHandler returns a new handler for attach command.
 func NewTextAttachHandler(verbose bool) AttachHandler {
 	return NewTextPushHandler(verbose)
+}
+
+// TextPullHandler handles text status output for pull events.
+type TextPullHandler struct {
+	fetcher content.Fetcher
+	verbose bool
+}
+
+func (ph *TextPullHandler) printOnce(printed *sync.Map, s ocispec.Descriptor, msg string) error {
+	if _, loaded := printed.LoadOrStore(utils.GenerateContentKey(s), true); loaded {
+		return nil
+	}
+	return PrintStatus(s, msg, ph.verbose)
+}
+
+func (ph *TextPullHandler) UpdatePullCopyOptions(opts *oras.CopyGraphOptions, printed *sync.Map, includeSubject bool, configPath string, configMediaType string) {
+	const (
+		promptDownloading = "Downloading"
+		promptSkipped     = "Skipped    "
+		promptRestored    = "Restored   "
+		promptDownloaded  = "Downloaded "
+	)
+
+	opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		if _, ok := printed.LoadOrStore(utils.GenerateContentKey(desc), true); ok {
+			return nil
+		}
+		return PrintStatus(desc, promptDownloading, ph.verbose)
+	}
+	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		// restore named but deduplicated successor nodes
+		successors, err := content.Successors(ctx, ph.fetcher, desc)
+		if err != nil {
+			return err
+		}
+		for _, s := range successors {
+			if _, ok := s.Annotations[ocispec.AnnotationTitle]; ok {
+				if err := ph.printOnce(printed, s, promptRestored); err != nil {
+					return err
+				}
+			}
+		}
+		name, ok := desc.Annotations[ocispec.AnnotationTitle]
+		if !ok {
+			if !ph.verbose {
+				return nil
+			}
+			name = desc.MediaType
+		}
+		printed.Store(utils.GenerateContentKey(desc), true)
+		return Print(promptDownloaded, ShortDigest(desc), name)
+	}
+}
+
+// TrackTarget returns a tracked target.
+func (ph *TextPullHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error) {
+	ph.fetcher = gt
+	return gt, nil
+}
+
+// StopTracking stop tracked target.
+func (ph *TextPullHandler) StopTracking() {}
+
+// OnNodeDownloading implements PullHandler.
+func (ph *TextPullHandler) OnNodeDownloading(desc ocispec.Descriptor) error {
+	return PrintStatus(desc, "Downloading", ph.verbose)
+}
+
+// OnNodeProcessing implements PullHandler.
+func (ph *TextPullHandler) OnNodeProcessing(desc ocispec.Descriptor) error {
+	return PrintStatus(desc, "Processing ", ph.verbose)
+}
+
+// OnNodeProcessing implements PullHandler.
+func (ph *TextPullHandler) OnNodeSkipped(printed *sync.Map, desc ocispec.Descriptor) error {
+	return ph.printOnce(printed, desc, "Skipped    ")
+}
+
+// NewTextPullHandler returns a new handler for pull command.
+func NewTextPullHandler(verbose bool) PullHandler {
+	return &TextPullHandler{
+		verbose: verbose,
+	}
 }

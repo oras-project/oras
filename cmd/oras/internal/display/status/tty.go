@@ -24,6 +24,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras/cmd/oras/internal/display/status/track"
+	"oras.land/oras/cmd/oras/internal/display/utils"
 )
 
 // TTYPushHandler handles TTY status output for push command.
@@ -63,8 +64,8 @@ func (ph *TTYPushHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, er
 	return tracked, nil
 }
 
-// UpdateCopyOptions adds TTY status output to the copy options.
-func (ph *TTYPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher) {
+// UpdatePushCopyOptions adds TTY status output to the copy options.
+func (ph *TTYPushHandler) UpdatePushCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher) {
 	const (
 		promptSkipped = "Skipped  "
 		promptExists  = "Exists   "
@@ -85,4 +86,87 @@ func (ph *TTYPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher
 // NewTTYAttachHandler returns a new handler for attach status events.
 func NewTTYAttachHandler(tty *os.File) AttachHandler {
 	return NewTTYPushHandler(tty)
+}
+
+// TTYPullHandler handles TTY status output for pull events.
+type TTYPullHandler struct {
+	fetcher content.Fetcher
+	tty     *os.File
+	tracked track.GraphTarget
+}
+
+// NewTTYPullHandler returns a new handler for Pull status events.
+func NewTTYPullHandler(tty *os.File) PullHandler {
+	return &TTYPullHandler{
+		tty: tty,
+	}
+}
+
+func (ph *TTYPullHandler) printOnce(printed *sync.Map, s ocispec.Descriptor, msg string) error {
+	if _, loaded := printed.LoadOrStore(utils.GenerateContentKey(s), true); loaded {
+		return nil
+	}
+	return ph.tracked.Prompt(s, msg)
+}
+
+// UpdatePullCopyOptions implements PullHandler.
+func (ph *TTYPullHandler) UpdatePullCopyOptions(opts *oras.CopyGraphOptions, printed *sync.Map, includeSubject bool, configPath string, configMediaType string) {
+	const (
+		promptRestored = "Restored   "
+	)
+
+	opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		printed.LoadOrStore(utils.GenerateContentKey(desc), true)
+		return nil
+	}
+	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		// restore named but deduplicated successor nodes
+		successors, err := content.Successors(ctx, ph.fetcher, desc)
+		if err != nil {
+			return err
+		}
+		for _, s := range successors {
+			if _, ok := s.Annotations[ocispec.AnnotationTitle]; ok {
+				if err := ph.printOnce(printed, s, promptRestored); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+}
+
+// OnNodeDownloading implements PullHandler.
+func (ph *TTYPullHandler) OnNodeDownloading(desc ocispec.Descriptor) error {
+	return nil
+}
+
+// OnNodeProcessing implements PullHandler.
+func (ph *TTYPullHandler) OnNodeProcessing(desc ocispec.Descriptor) error {
+	return nil
+}
+
+// OnNodeProcessing implements PullHandler.
+func (ph *TTYPullHandler) OnNodeSkipped(printed *sync.Map, desc ocispec.Descriptor) error {
+	return ph.printOnce(printed, desc, "Skipped    ")
+}
+
+// StopTracking stop tracked target.
+func (ph *TTYPullHandler) StopTracking() {
+	ph.tracked.Close()
+}
+
+// TrackTarget returns a tracked target.
+func (ph *TTYPullHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error) {
+	const (
+		promptDownloading = "Downloading "
+		promptPulled      = "Pulled     "
+	)
+	tracked, err := track.NewTarget(gt, promptPulled, promptDownloading, ph.tty)
+	if err != nil {
+		return nil, err
+	}
+	ph.tracked = tracked
+	ph.fetcher = gt
+	return tracked, nil
 }

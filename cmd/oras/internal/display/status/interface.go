@@ -16,6 +16,9 @@ limitations under the License.
 package status
 
 import (
+	"sync"
+
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 )
@@ -25,8 +28,18 @@ type PushHandler interface {
 	OnFileLoading(name string) error
 	OnEmptyArtifact() error
 	TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error)
-	UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher)
+	UpdatePushCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher)
 }
 
 // AttachHandler handles text status output for attach command.
 type AttachHandler PushHandler
+
+// PullHandler handles status output for pull command.
+type PullHandler interface {
+	TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error)
+	StopTracking()
+	OnNodeProcessing(desc ocispec.Descriptor) error
+	OnNodeDownloading(desc ocispec.Descriptor) error
+	OnNodeSkipped(printed *sync.Map, desc ocispec.Descriptor) error
+	UpdatePullCopyOptions(opts *oras.CopyGraphOptions, printed *sync.Map, includeSubject bool, configPath string, configMediaType string)
+}

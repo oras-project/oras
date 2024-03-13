@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"sync"
 	"sync/atomic"
 
@@ -30,8 +29,8 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/argument"
-	"oras.land/oras/cmd/oras/internal/display/status"
-	"oras.land/oras/cmd/oras/internal/display/status/track"
+	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/utils"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -162,36 +161,27 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 			return ocispec.Descriptor{}, false, err
 		}
 	}
+	statusHanlder := display.NewPullHandler("", po.TTY, po.Verbose)
 
-	const (
-		promptDownloading = "Downloading"
-		promptPulled      = "Pulled     "
-		promptProcessing  = "Processing "
-		promptSkipped     = "Skipped    "
-		promptRestored    = "Restored   "
-		promptDownloaded  = "Downloaded "
-	)
-
-	dst, err = getTrackedTarget(dst, po.TTY, "Downloading", "Pulled     ")
+	dst, err = statusHanlder.TrackTarget(dst)
 	if err != nil {
 		return ocispec.Descriptor{}, false, err
 	}
-	if tracked, ok := dst.(track.GraphTarget); ok {
-		defer tracked.Close()
-	}
-	var layerSkipped atomic.Bool
+	defer statusHanlder.StopTracking()
 	var printed sync.Map
 	var getConfigOnce sync.Once
+	var layerSkipped atomic.Bool
+	const (
+		promptSkipped = "Skipped    "
+	)
+	statusHanlder.UpdatePullCopyOptions(&opts.CopyGraphOptions, &printed, po.IncludeSubject, configPath, configMediaType)
 	opts.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		statusFetcher := content.FetcherFunc(func(ctx context.Context, target ocispec.Descriptor) (fetched io.ReadCloser, fetchErr error) {
-			if _, ok := printed.LoadOrStore(generateContentKey(target), true); ok {
+			if _, ok := printed.LoadOrStore(utils.GenerateContentKey(target), true); ok {
 				return fetcher.Fetch(ctx, target)
 			}
-			if po.TTY == nil {
-				// none TTY, print status log for first-time fetching
-				if err := status.PrintStatus(target, promptDownloading, po.Verbose); err != nil {
-					return nil, err
-				}
+			if err = statusHanlder.OnNodeDownloading(target); err != nil {
+				return nil, err
 			}
 			rc, err := fetcher.Fetch(ctx, target)
 			if err != nil {
@@ -202,11 +192,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 					rc.Close()
 				}
 			}()
-			if po.TTY == nil {
-				// none TTY, add logs for processing manifest
-				return rc, status.PrintStatus(target, promptProcessing, po.Verbose)
-			}
-			return rc, nil
+			return rc, statusHanlder.OnNodeProcessing(target)
 		})
 
 		nodes, subject, config, err := graph.Successors(ctx, statusFetcher, desc)
@@ -247,7 +233,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 				}
 				if len(ss) == 0 {
 					// skip s if it is unnamed AND has no successors.
-					if err := printOnce(&printed, s, promptSkipped, po.Verbose, dst); err != nil {
+					if err := statusHanlder.OnNodeSkipped(&printed, s); err != nil {
 						return nil, err
 					}
 					continue
@@ -255,76 +241,10 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 			}
 			ret = append(ret, s)
 		}
-
 		return ret, nil
-	}
-
-	opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		if _, ok := printed.LoadOrStore(generateContentKey(desc), true); ok {
-			return nil
-		}
-		if po.TTY == nil {
-			// none TTY, print status log for downloading
-			return status.PrintStatus(desc, promptDownloading, po.Verbose)
-		}
-		// TTY
-		return nil
-	}
-	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		// restore named but deduplicated successor nodes
-		successors, err := content.Successors(ctx, dst, desc)
-		if err != nil {
-			return err
-		}
-		for _, s := range successors {
-			if _, ok := s.Annotations[ocispec.AnnotationTitle]; ok {
-				if err := printOnce(&printed, s, promptRestored, po.Verbose, dst); err != nil {
-					return err
-				}
-			}
-		}
-		name, ok := desc.Annotations[ocispec.AnnotationTitle]
-		if !ok {
-			if !po.Verbose {
-				return nil
-			}
-			name = desc.MediaType
-		}
-		printed.Store(generateContentKey(desc), true)
-		return status.Print(promptDownloaded, status.ShortDigest(desc), name)
 	}
 
 	// Copy
 	desc, err := oras.Copy(ctx, src, po.Reference, dst, po.Reference, opts)
 	return desc, layerSkipped.Load(), err
-}
-
-// generateContentKey generates a unique key for each content descriptor, using
-// its digest and name if applicable.
-func generateContentKey(desc ocispec.Descriptor) string {
-	return desc.Digest.String() + desc.Annotations[ocispec.AnnotationTitle]
-}
-
-func printOnce(printed *sync.Map, s ocispec.Descriptor, msg string, verbose bool, dst any) error {
-	if _, loaded := printed.LoadOrStore(generateContentKey(s), true); loaded {
-		return nil
-	}
-	if tracked, ok := dst.(track.GraphTarget); ok {
-		// TTY
-		return tracked.Prompt(s, msg)
-
-	}
-	// none TTY
-	return status.PrintStatus(s, msg, verbose)
-}
-
-func getTrackedTarget(gt oras.GraphTarget, tty *os.File, actionPrompt, doneprompt string) (oras.GraphTarget, error) {
-	if tty == nil {
-		return gt, nil
-	}
-	tracked, err := track.NewTarget(gt, actionPrompt, doneprompt, tty)
-	if err != nil {
-		return nil, err
-	}
-	return tracked, nil
 }
