@@ -143,12 +143,13 @@ func runPull(cmd *cobra.Command, opts *pullOptions) error {
 	}
 
 	// suggest oras copy for pulling layers without annotation
+	outWriter := cmd.OutOrStdout()
 	if layerSkipped {
-		fmt.Printf("Skipped pulling layers without file name in %q\n", ocispec.AnnotationTitle)
-		fmt.Printf("Use 'oras copy %s --to-oci-layout <layout-dir>' to pull all layers.\n", opts.RawReference)
+		fmt.Fprintf(outWriter, "Skipped pulling layers without file name in %q\n", ocispec.AnnotationTitle)
+		fmt.Fprintf(outWriter, "Use 'oras copy %s --to-oci-layout <layout-dir>' to pull all layers.\n", opts.RawReference)
 	} else {
-		fmt.Println("Pulled", opts.AnnotatedReference())
-		fmt.Println("Digest:", desc.Digest)
+		fmt.Fprintln(outWriter, "Pulled", opts.AnnotatedReference())
+		fmt.Fprintln(outWriter, "Digest:", desc.Digest)
 	}
 	return nil
 }
