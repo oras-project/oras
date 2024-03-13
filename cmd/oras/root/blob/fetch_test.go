@@ -56,7 +56,7 @@ func Test_fetchBlobOptions_doFetch(t *testing.T) {
 	opts.Common.TTY = device
 	opts.outputPath = t.TempDir() + "/test"
 	// test
-	_, err = opts.doFetch(ctx, src)
+	_, err = opts.doFetch(ctx, src, false)
 	if err != nil {
 		t.Fatal(err)
 	}

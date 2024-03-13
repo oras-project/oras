@@ -41,7 +41,7 @@ func TestCommon_parseTTY(t *testing.T) {
 	if err := opts.parseTTY(device); err != nil {
 		t.Errorf("unexpected error with --debug: %v", err)
 	}
-	if !opts.noTTY {
+	if !opts.NoTTY {
 		t.Errorf("expected --no-tty to be true with --debug")
 	}
 }

@@ -31,14 +31,14 @@ type Common struct {
 	Verbose bool
 	TTY     *os.File
 
-	noTTY bool
+	NoTTY bool
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Common) ApplyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.Debug, "debug", "d", false, "output debug logs (implies --no-tty)")
 	fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "verbose output")
-	fs.BoolVarP(&opts.noTTY, "no-tty", "", false, "[Preview] do not show progress output")
+	fs.BoolVarP(&opts.NoTTY, "no-tty", "", false, "[Preview] do not show progress output")
 }
 
 // WithContext returns a new FieldLogger and an associated Context derived from ctx.
@@ -54,9 +54,9 @@ func (opts *Common) Parse() error {
 
 // parseTTY gets target options from user input.
 func (opts *Common) parseTTY(f *os.File) error {
-	if !opts.noTTY {
+	if !opts.NoTTY {
 		if opts.Debug {
-			opts.noTTY = true
+			opts.NoTTY = true
 		} else if term.IsTerminal(int(f.Fd())) {
 			opts.TTY = f
 		}

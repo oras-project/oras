@@ -109,7 +109,11 @@ func fetchBlob(cmd *cobra.Command, opts *fetchBlobOptions) (fetchErr error) {
 	if err != nil {
 		return err
 	}
-	desc, err := opts.doFetch(ctx, src)
+
+	// check if `--no-tty` is explicitly set false. explicitTTY = true if the
+	// user puts `--no-tty=false`
+	explicitTTY := cmd.Flags().Changed("no-tty") && !opts.NoTTY
+	desc, err := opts.doFetch(ctx, src, explicitTTY)
 	if err != nil {
 		return err
 	}
@@ -128,7 +132,7 @@ func fetchBlob(cmd *cobra.Command, opts *fetchBlobOptions) (fetchErr error) {
 	return nil
 }
 
-func (opts *fetchBlobOptions) doFetch(ctx context.Context, src oras.ReadOnlyTarget) (desc ocispec.Descriptor, fetchErr error) {
+func (opts *fetchBlobOptions) doFetch(ctx context.Context, src oras.ReadOnlyTarget, explicitTTY bool) (desc ocispec.Descriptor, fetchErr error) {
 	var err error
 	if opts.outputPath == "" {
 		// fetch blob descriptor only
@@ -157,6 +161,11 @@ func (opts *fetchBlobOptions) doFetch(ctx context.Context, src oras.ReadOnlyTarg
 			}
 		}()
 		writer = file
+	} else {
+		// "--output -" implies "--no-tty", unless the user explicitly put "--no-tty=false"
+		if !explicitTTY {
+			opts.TTY = nil
+		}
 	}
 
 	if opts.TTY == nil {
