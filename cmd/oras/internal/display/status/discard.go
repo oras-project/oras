@@ -49,15 +49,21 @@ func (DiscardHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error)
 // StopTracking stops tracking the status of the target.
 func (DiscardHandler) StopTracking() {}
 
-// UpdatePushCopyOptions updates the copy options for the artifact push.
-func (DiscardHandler) UpdatePushCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher) {}
-
-// UpdatePushCopyOptions updates the copy options for the artifact pull.
-func (DiscardHandler) UpdatePullCopyOptions(opts *oras.CopyGraphOptions, printed *sync.Map, includeSubject bool, configPath string, configMediaType string) {
-}
+// UpdateCopyOptions updates the copy options for the artifact push.
+func (DiscardHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher) {}
 
 // OnNodeDownloading implements PullHandler.
 func (DiscardHandler) OnNodeDownloading(desc ocispec.Descriptor) error {
+	return nil
+}
+
+// OnNodeDownloaded implements PullHandler.
+func (DiscardHandler) OnNodeDownloaded(desc ocispec.Descriptor) error {
+	return nil
+}
+
+// OnNodeRestored implements PullHandler.
+func (DiscardHandler) OnNodeRestored(_ *sync.Map, _ ocispec.Descriptor) error {
 	return nil
 }
 

@@ -148,7 +148,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	}
 	graphCopyOptions := oras.DefaultCopyGraphOptions
 	graphCopyOptions.Concurrency = opts.concurrency
-	displayStatus.UpdatePushCopyOptions(&graphCopyOptions, store)
+	displayStatus.UpdateCopyOptions(&graphCopyOptions, store)
 
 	packOpts := oras.PackManifestOptions{
 		Subject:             &subject,

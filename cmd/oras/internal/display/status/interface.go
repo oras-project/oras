@@ -28,7 +28,7 @@ type PushHandler interface {
 	OnFileLoading(name string) error
 	OnEmptyArtifact() error
 	TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error)
-	UpdatePushCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher)
+	UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher)
 }
 
 // AttachHandler handles text status output for attach command.
@@ -40,6 +40,7 @@ type PullHandler interface {
 	StopTracking()
 	OnNodeProcessing(desc ocispec.Descriptor) error
 	OnNodeDownloading(desc ocispec.Descriptor) error
+	OnNodeDownloaded(desc ocispec.Descriptor) error
+	OnNodeRestored(printed *sync.Map, desc ocispec.Descriptor) error
 	OnNodeSkipped(printed *sync.Map, desc ocispec.Descriptor) error
-	UpdatePullCopyOptions(opts *oras.CopyGraphOptions, printed *sync.Map, includeSubject bool, configPath string, configMediaType string)
 }

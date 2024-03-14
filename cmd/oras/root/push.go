@@ -192,7 +192,7 @@ func runPush(ctx context.Context, opts *pushOptions) error {
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
 	union := contentutil.MultiReadOnlyTarget(memoryStore, store)
-	displayStatus.UpdatePushCopyOptions(&copyOptions.CopyGraphOptions, union)
+	displayStatus.UpdateCopyOptions(&copyOptions.CopyGraphOptions, union)
 	copy := func(root ocispec.Descriptor) error {
 		// add both pull and push scope hints for dst repository
 		// to save potential push-scope token requests during copy

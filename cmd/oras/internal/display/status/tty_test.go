@@ -91,7 +91,7 @@ func TestTTYPushHandler_TrackTarget(t *testing.T) {
 	}
 }
 
-func TestTTYPushHandler_UpdatePushCopyOptions(t *testing.T) {
+func TestTTYPushHandler_UpdateCopyOptions(t *testing.T) {
 	// prepare pty
 	pty, slave, err := testutils.NewPty()
 	if err != nil {
@@ -105,7 +105,7 @@ func TestTTYPushHandler_UpdatePushCopyOptions(t *testing.T) {
 	}
 	// test
 	opts := oras.CopyGraphOptions{}
-	ph.UpdatePushCopyOptions(&opts, memStore)
+	ph.UpdateCopyOptions(&opts, memStore)
 	if err := oras.CopyGraph(context.Background(), memStore, gt, memDesc, opts); err != nil {
 		t.Errorf("CopyGraph() should not return an error: %v", err)
 	}

@@ -161,26 +161,25 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 			return ocispec.Descriptor{}, false, err
 		}
 	}
-	statusHanlder := display.NewPullHandler("", po.TTY, po.Verbose)
+	statusHandler := display.NewPullHandler("", po.TTY, po.Verbose)
 
-	dst, err = statusHanlder.TrackTarget(dst)
+	dst, err = statusHandler.TrackTarget(dst)
 	if err != nil {
 		return ocispec.Descriptor{}, false, err
 	}
-	defer statusHanlder.StopTracking()
+	defer statusHandler.StopTracking()
 	var printed sync.Map
 	var getConfigOnce sync.Once
 	var layerSkipped atomic.Bool
 	const (
 		promptSkipped = "Skipped    "
 	)
-	statusHanlder.UpdatePullCopyOptions(&opts.CopyGraphOptions, &printed, po.IncludeSubject, configPath, configMediaType)
 	opts.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		statusFetcher := content.FetcherFunc(func(ctx context.Context, target ocispec.Descriptor) (fetched io.ReadCloser, fetchErr error) {
 			if _, ok := printed.LoadOrStore(utils.GenerateContentKey(target), true); ok {
 				return fetcher.Fetch(ctx, target)
 			}
-			if err = statusHanlder.OnNodeDownloading(target); err != nil {
+			if err = statusHandler.OnNodeDownloading(target); err != nil {
 				return nil, err
 			}
 			rc, err := fetcher.Fetch(ctx, target)
@@ -192,7 +191,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 					rc.Close()
 				}
 			}()
-			return rc, statusHanlder.OnNodeProcessing(target)
+			return rc, statusHandler.OnNodeProcessing(target)
 		})
 
 		nodes, subject, config, err := graph.Successors(ctx, statusFetcher, desc)
@@ -233,7 +232,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 				}
 				if len(ss) == 0 {
 					// skip s if it is unnamed AND has no successors.
-					if err := statusHanlder.OnNodeSkipped(&printed, s); err != nil {
+					if err := statusHandler.OnNodeSkipped(&printed, s); err != nil {
 						return nil, err
 					}
 					continue
@@ -242,6 +241,29 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 			ret = append(ret, s)
 		}
 		return ret, nil
+	}
+
+	opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		if _, ok := printed.LoadOrStore(utils.GenerateContentKey(desc), true); ok {
+			return nil
+		}
+		return statusHandler.OnNodeDownloading(desc)
+	}
+	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+		// restore named but deduplicated successor nodes
+		successors, err := content.Successors(ctx, dst, desc)
+		if err != nil {
+			return err
+		}
+		for _, s := range successors {
+			if _, ok := s.Annotations[ocispec.AnnotationTitle]; ok {
+				if err := statusHandler.OnNodeRestored(&printed, s); err != nil {
+					return err
+				}
+			}
+		}
+		printed.Store(utils.GenerateContentKey(desc), true)
+		return statusHandler.OnNodeDownloaded(desc)
 	}
 
 	// Copy

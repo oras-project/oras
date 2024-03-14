@@ -64,8 +64,8 @@ func (ph *TTYPushHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, er
 	return tracked, nil
 }
 
-// UpdatePushCopyOptions adds TTY status output to the copy options.
-func (ph *TTYPushHandler) UpdatePushCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher) {
+// UpdateCopyOptions adds TTY status output to the copy options.
+func (ph *TTYPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher) {
 	const (
 		promptSkipped = "Skipped  "
 		promptExists  = "Exists   "
@@ -109,41 +109,24 @@ func (ph *TTYPullHandler) printOnce(printed *sync.Map, s ocispec.Descriptor, msg
 	return ph.tracked.Prompt(s, msg)
 }
 
-// UpdatePullCopyOptions implements PullHandler.
-func (ph *TTYPullHandler) UpdatePullCopyOptions(opts *oras.CopyGraphOptions, printed *sync.Map, includeSubject bool, configPath string, configMediaType string) {
-	const (
-		promptRestored = "Restored   "
-	)
-
-	opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		printed.LoadOrStore(utils.GenerateContentKey(desc), true)
-		return nil
-	}
-	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		// restore named but deduplicated successor nodes
-		successors, err := content.Successors(ctx, ph.fetcher, desc)
-		if err != nil {
-			return err
-		}
-		for _, s := range successors {
-			if _, ok := s.Annotations[ocispec.AnnotationTitle]; ok {
-				if err := ph.printOnce(printed, s, promptRestored); err != nil {
-					return err
-				}
-			}
-		}
-		return nil
-	}
-}
-
 // OnNodeDownloading implements PullHandler.
 func (ph *TTYPullHandler) OnNodeDownloading(desc ocispec.Descriptor) error {
+	return nil
+}
+
+// OnNodeDownloaded implements PullHandler.
+func (ph *TTYPullHandler) OnNodeDownloaded(desc ocispec.Descriptor) error {
 	return nil
 }
 
 // OnNodeProcessing implements PullHandler.
 func (ph *TTYPullHandler) OnNodeProcessing(desc ocispec.Descriptor) error {
 	return nil
+}
+
+// OnNodeRestored implements PullHandler.
+func (ph *TTYPullHandler) OnNodeRestored(printed *sync.Map, desc ocispec.Descriptor) error {
+	return ph.printOnce(printed, desc, "Restored   ")
 }
 
 // OnNodeProcessing implements PullHandler.

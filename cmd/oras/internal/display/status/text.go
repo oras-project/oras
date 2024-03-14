@@ -58,8 +58,8 @@ func (ph *TextPushHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, e
 	return gt, nil
 }
 
-// UpdatePushCopyOptions adds status update to the copy options.
-func (ph *TextPushHandler) UpdatePushCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher) {
+// UpdateCopyOptions adds status update to the copy options.
+func (ph *TextPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher) {
 	const (
 		promptSkipped   = "Skipped  "
 		promptUploaded  = "Uploaded "
@@ -152,6 +152,16 @@ func (ph *TextPullHandler) StopTracking() {}
 // OnNodeDownloading implements PullHandler.
 func (ph *TextPullHandler) OnNodeDownloading(desc ocispec.Descriptor) error {
 	return PrintStatus(desc, "Downloading", ph.verbose)
+}
+
+// OnNodeDownloaded implements PullHandler.
+func (ph *TextPullHandler) OnNodeDownloaded(desc ocispec.Descriptor) error {
+	return PrintStatus(desc, "Downloaded ", ph.verbose)
+}
+
+// OnNodeRestored implements PullHandler.
+func (ph *TextPullHandler) OnNodeRestored(printed *sync.Map, desc ocispec.Descriptor) error {
+	return ph.printOnce(printed, desc, "Restored   ")
 }
 
 // OnNodeProcessing implements PullHandler.
