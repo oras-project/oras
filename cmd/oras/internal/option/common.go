@@ -25,6 +25,8 @@ import (
 	"oras.land/oras/internal/trace"
 )
 
+const NoTTYFlag = "no-tty"
+
 // Common option struct.
 type Common struct {
 	Debug   bool

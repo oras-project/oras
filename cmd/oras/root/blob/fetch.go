@@ -77,7 +77,16 @@ Example - Fetch and print a blob from OCI image layout archive file 'layout.tar'
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
 			}
 			opts.RawReference = args[0]
-			return option.Parse(&opts)
+			err := option.Parse(&opts)
+			if err == nil {
+				// check if `--no-tty` is explicitly set false. ttyEnforced = true if the
+				// user puts `--no-tty=false`
+				ttyEnforced := cmd.Flags().Changed(option.NoTTYFlag) && !opts.NoTTY
+				if opts.outputPath == "-" && !ttyEnforced {
+					opts.TTY = nil
+				}
+			}
+			return err
 		},
 		Aliases: []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -110,10 +119,7 @@ func fetchBlob(cmd *cobra.Command, opts *fetchBlobOptions) (fetchErr error) {
 		return err
 	}
 
-	// check if `--no-tty` is explicitly set false. explicitTTY = true if the
-	// user puts `--no-tty=false`
-	explicitTTY := cmd.Flags().Changed("no-tty") && !opts.NoTTY
-	desc, err := opts.doFetch(ctx, src, explicitTTY)
+	desc, err := opts.doFetch(ctx, src)
 	if err != nil {
 		return err
 	}
@@ -132,7 +138,7 @@ func fetchBlob(cmd *cobra.Command, opts *fetchBlobOptions) (fetchErr error) {
 	return nil
 }
 
-func (opts *fetchBlobOptions) doFetch(ctx context.Context, src oras.ReadOnlyTarget, explicitTTY bool) (desc ocispec.Descriptor, fetchErr error) {
+func (opts *fetchBlobOptions) doFetch(ctx context.Context, src oras.ReadOnlyTarget) (desc ocispec.Descriptor, fetchErr error) {
 	var err error
 	if opts.outputPath == "" {
 		// fetch blob descriptor only
@@ -161,11 +167,6 @@ func (opts *fetchBlobOptions) doFetch(ctx context.Context, src oras.ReadOnlyTarg
 			}
 		}()
 		writer = file
-	} else {
-		// "--output -" implies "--no-tty", unless the user explicitly put "--no-tty=false"
-		if !explicitTTY {
-			opts.TTY = nil
-		}
 	}
 
 	if opts.TTY == nil {
