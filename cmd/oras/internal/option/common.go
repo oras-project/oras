@@ -70,7 +70,7 @@ func (opts *Common) parseTTY(f *os.File) error {
 // path value.
 func (opts *Common) UpdateTTY(flagPresent bool, toSTDOUT bool) {
 	ttyEnforced := flagPresent && !opts.noTTY
-	if toSTDOUT && !ttyEnforced {
+	if opts.noTTY || (toSTDOUT && !ttyEnforced) {
 		opts.TTY = nil
 	}
 }
