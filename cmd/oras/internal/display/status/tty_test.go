@@ -1,3 +1,5 @@
+//go:build freebsd || linux || netbsd || openbsd || solaris
+
 /*
 Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
