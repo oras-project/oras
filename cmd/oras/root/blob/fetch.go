@@ -118,7 +118,6 @@ func fetchBlob(cmd *cobra.Command, opts *fetchBlobOptions) (fetchErr error) {
 	if err != nil {
 		return err
 	}
-
 	desc, err := opts.doFetch(ctx, src)
 	if err != nil {
 		return err
