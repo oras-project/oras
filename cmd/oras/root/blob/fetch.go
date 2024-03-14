@@ -79,12 +79,7 @@ Example - Fetch and print a blob from OCI image layout archive file 'layout.tar'
 			opts.RawReference = args[0]
 			err := option.Parse(&opts)
 			if err == nil {
-				// check if `--no-tty` is explicitly set false. ttyEnforced = true if the
-				// user puts `--no-tty=false`
-				ttyEnforced := cmd.Flags().Changed(option.NoTTYFlag) && !opts.NoTTY
-				if opts.outputPath == "-" && !ttyEnforced {
-					opts.TTY = nil
-				}
+				opts.UpdateTTY(cmd.Flags().Changed(option.NoTTYFlag), opts.outputPath == "-")
 			}
 			return err
 		},
