@@ -1,4 +1,4 @@
-//go:build darwin || freebsd || linux || netbsd || openbsd || solaris
+//go:build freebsd || linux || netbsd || openbsd || solaris
 
 /*
 Copyright The ORAS Authors.
