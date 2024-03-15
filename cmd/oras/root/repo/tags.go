@@ -16,7 +16,6 @@ limitations under the License.
 package repo
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -70,7 +69,7 @@ Example - [Experimental] Show tags associated with a digest:
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return showTags(cmd.Context(), &opts)
+			return showTags(cmd, &opts)
 		},
 	}
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the tag specified by `last`")
@@ -79,8 +78,8 @@ Example - [Experimental] Show tags associated with a digest:
 	return oerrors.Command(cmd, &opts.Target)
 }
 
-func showTags(ctx context.Context, opts *showTagsOptions) error {
-	ctx, logger := opts.WithContext(ctx)
+func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
+	ctx, logger := opts.WithContext(cmd.Context())
 	finder, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
 		return err
