@@ -22,3 +22,12 @@ import v1 "github.com/opencontainers/image-spec/specs-go/v1"
 func GenerateContentKey(desc v1.Descriptor) string {
 	return desc.Digest.String() + desc.Annotations[v1.AnnotationTitle]
 }
+
+const (
+	PullPromptDownloading = "Downloading"
+	PullPromptPulled      = "Pulled     "
+	PullPromptProcessing  = "Processing "
+	PullPromptSkipped     = "Skipped    "
+	PullPromptRestored    = "Restored   "
+	PullPromptDownloaded  = "Downloaded "
+)

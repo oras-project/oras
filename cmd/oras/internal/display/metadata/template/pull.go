@@ -13,26 +13,30 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package metadata
+package template
 
 import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
-// PushHandler handles metadata output for push events.
-type PushHandler interface {
-	OnCopied(opts *option.Target) error
-	OnCompleted(root ocispec.Descriptor) error
+// PullHandler handles text metadata output for pull events.
+type PullHandler struct {
+	template string
+	path     string
 }
 
-// AttachHandler handles metadata output for attach events.
-type AttachHandler interface {
-	OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error
+// OnCompleted implements metadata.PullHandler.
+func (ph *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor, _ bool, files []model.File) error {
+	return parseAndWrite(model.NewPull(ph.path+"@"+desc.Digest.String(), files), ph.template)
 }
 
-// PullHandler handles metadata output for attach events.
-type PullHandler interface {
-	OnCompleted(opts *option.Target, desc ocispec.Descriptor, layerSkipped bool, _ []model.File) error
+// NewPullHandler returns a new handler for Pull events.
+func NewPullHandler(path string, template string) metadata.PullHandler {
+	return &PullHandler{
+		path:     path,
+		template: template,
+	}
 }

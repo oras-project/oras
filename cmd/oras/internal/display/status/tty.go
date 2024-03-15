@@ -141,11 +141,7 @@ func (ph *TTYPullHandler) StopTracking() {
 
 // TrackTarget returns a tracked target.
 func (ph *TTYPullHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error) {
-	const (
-		promptDownloading = "Downloading "
-		promptPulled      = "Pulled     "
-	)
-	tracked, err := track.NewTarget(gt, promptPulled, promptDownloading, ph.tty)
+	tracked, err := track.NewTarget(gt, utils.PullPromptDownloading, utils.PullPromptPulled, ph.tty)
 	if err != nil {
 		return nil, err
 	}

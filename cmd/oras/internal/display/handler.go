@@ -74,7 +74,7 @@ func NewAttachHandler(format string, tty *os.File, verbose bool) (status.AttachH
 }
 
 // NewPullHandler returns status and metadata handlers for pull command.
-func NewPullHandler(format string, tty *os.File, verbose bool) status.PullHandler {
+func NewPullHandler(format string, path string, tty *os.File, verbose bool) (status.PullHandler, metadata.PullHandler) {
 	var statusHandler status.PullHandler
 	if tty != nil {
 		statusHandler = status.NewTTYPullHandler(tty)
@@ -83,5 +83,15 @@ func NewPullHandler(format string, tty *os.File, verbose bool) status.PullHandle
 	} else {
 		statusHandler = status.NewDiscardHandler()
 	}
-	return statusHandler
+
+	var metadataHandler metadata.PullHandler
+	switch format {
+	case "":
+		metadataHandler = text.NewPullHandler()
+	case "json":
+		metadataHandler = json.NewPullHandler(path)
+	default:
+		metadataHandler = template.NewPullHandler(path, format)
+	}
+	return statusHandler, metadataHandler
 }
