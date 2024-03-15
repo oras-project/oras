@@ -25,6 +25,8 @@ import (
 	"oras.land/oras/internal/trace"
 )
 
+const NoTTYFlag = "no-tty"
+
 // Common option struct.
 type Common struct {
 	Debug   bool
@@ -38,7 +40,7 @@ type Common struct {
 func (opts *Common) ApplyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.Debug, "debug", "d", false, "output debug logs (implies --no-tty)")
 	fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "verbose output")
-	fs.BoolVarP(&opts.noTTY, "no-tty", "", false, "[Preview] do not show progress output")
+	fs.BoolVarP(&opts.noTTY, NoTTYFlag, "", false, "[Preview] do not show progress output")
 }
 
 // WithContext returns a new FieldLogger and an associated Context derived from ctx.
@@ -62,4 +64,13 @@ func (opts *Common) parseTTY(f *os.File) error {
 		}
 	}
 	return nil
+}
+
+// UpdateTTY updates the TTY value, given the status of --no-tty flag and output
+// path value.
+func (opts *Common) UpdateTTY(flagPresent bool, toSTDOUT bool) {
+	ttyEnforced := flagPresent && !opts.noTTY
+	if opts.noTTY || (toSTDOUT && !ttyEnforced) {
+		opts.TTY = nil
+	}
 }
