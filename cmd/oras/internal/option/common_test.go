@@ -41,22 +41,22 @@ func TestCommon_UpdateTTY(t *testing.T) {
 		expectedTTY *os.File
 	}{
 		{
-			"output path == -, --no-tty flag not used", false, true, false, nil,
+			"output to STDOUT, --no-tty flag not used, reset TTY", false, true, false, nil,
 		},
 		{
-			"output path == -, --no-tty", true, true, true, nil,
+			"output to STDOUT, --no-tty set to true, reset TTY", true, true, true, nil,
 		},
 		{
-			"output path == -, --no-tty=false", true, true, false, testTTY,
+			"output to STDOUT, --no-tty set to false", true, true, false, testTTY,
 		},
 		{
-			"output path != -, --no-tty flag not used", false, false, false, testTTY,
+			"not output to STDOUT, --no-tty flag not used", false, false, false, testTTY,
 		},
 		{
-			"output path != -, --no-tty", true, false, true, nil,
+			"not output to STDOUT, --no-tty set to true, reset TTY", true, false, true, nil,
 		},
 		{
-			"output path != -, --no-tty=false", true, false, false, testTTY,
+			"not output to STDOUT, --no-tty set to false", true, false, false, testTTY,
 		},
 	}
 	for _, tt := range tests {
