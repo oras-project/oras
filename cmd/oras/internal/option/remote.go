@@ -49,12 +49,14 @@ import (
 // Remote implements oerrors.Handler and interface.
 type Remote struct {
 	DistributionSpec
-	CACertFilePath    string
-	Insecure          bool
-	Configs           []string
-	Username          string
-	PasswordFromStdin bool
-	Password          string
+	CACertFilePath         string
+	Insecure               bool
+	Configs                []string
+	Username               string
+	PasswordFromStdin      bool
+	Password               string
+	IdentityTokenFromStdin bool
+	IdentityToken          string
 
 	resolveFlag           []string
 	applyDistributionSpec bool
@@ -73,7 +75,8 @@ func (opts *Remote) EnableDistributionSpecFlag() {
 // ApplyFlags applies flags to a command flag set.
 func (opts *Remote) ApplyFlags(fs *pflag.FlagSet) {
 	opts.ApplyFlagsWithPrefix(fs, "", "")
-	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
+	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password from stdin")
+	fs.BoolVarP(&opts.IdentityTokenFromStdin, "identity-token-stdin", "", false, "read identity token from stdin")
 }
 
 func applyPrefix(prefix, description string) (flagPrefix, notePrefix string) {
@@ -103,7 +106,8 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 		opts.DistributionSpec.ApplyFlagsWithPrefix(fs, prefix, description)
 	}
 	fs.StringVarP(&opts.Username, flagPrefix+"username", shortUser, "", notePrefix+"registry username")
-	fs.StringVarP(&opts.Password, flagPrefix+"password", shortPassword, "", notePrefix+"registry password or identity token")
+	fs.StringVarP(&opts.Password, flagPrefix+"password", shortPassword, "", notePrefix+"registry password")
+	fs.StringVarP(&opts.IdentityToken, flagPrefix+"identity-token", "", "", notePrefix+"registry identity token")
 	fs.BoolVarP(&opts.Insecure, flagPrefix+"insecure", "", false, "allow connections to "+notePrefix+"SSL registry without certs")
 	plainHTTPFlagName := flagPrefix + "plain-http"
 	plainHTTP := fs.Bool(plainHTTPFlagName, false, "allow insecure connections to "+notePrefix+"registry without SSL check")
@@ -121,13 +125,13 @@ func (opts *Remote) Parse() error {
 	if err := opts.parseCustomHeaders(); err != nil {
 		return err
 	}
-	return opts.readPassword()
+	return opts.readPasswordOrIdentityToken()
 }
 
-// readPassword tries to read password with optional cmd prompt.
-func (opts *Remote) readPassword() (err error) {
+// readPasswordOrIdentityToken tries to read password and identity token with optional cmd prompt.
+func (opts *Remote) readPasswordOrIdentityToken() (err error) {
 	if opts.Password != "" {
-		fmt.Fprintln(os.Stderr, "WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
+		fmt.Fprintln(os.Stderr, "WARNING! Using --password or --identity-token via the CLI is insecure. Use --password-stdin and --identity-token-stdin.")
 	} else if opts.PasswordFromStdin {
 		// Prompt for credential
 		password, err := io.ReadAll(os.Stdin)
@@ -136,6 +140,14 @@ func (opts *Remote) readPassword() (err error) {
 		}
 		opts.Password = strings.TrimSuffix(string(password), "\n")
 		opts.Password = strings.TrimSuffix(opts.Password, "\r")
+	} else if opts.IdentityTokenFromStdin {
+		// Prompt for credential
+		idToken, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return err
+		}
+		opts.IdentityToken = strings.TrimSuffix(string(idToken), "\n")
+		opts.IdentityToken = strings.TrimSuffix(opts.IdentityToken, "\r")
 	}
 	return nil
 }

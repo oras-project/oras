@@ -52,10 +52,10 @@ Example - Log in with username and password from stdin:
   oras login -u username --password-stdin localhost:5000
 
 Example - Log in with identity token from command line flags:
-  oras login -p token localhost:5000
+  oras login --identity-token token localhost:5000
 
 Example - Log in with identity token from stdin:
-  oras login --password-stdin localhost:5000
+  oras login --identity-token-stdin localhost:5000
 
 Example - Log in with username and password in an interactive terminal:
   oras login localhost:5000
@@ -65,7 +65,21 @@ Example - Log in with username and password in an interactive terminal and no TL
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the registry to log in to"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return option.Parse(&opts)
+			if opts.IdentityToken != "" || opts.IdentityTokenFromStdin {
+				if opts.Username != "" {
+					return errors.New("--username cannot be used with --identity-token or --identity-token-stdin")
+				}
+				if opts.Password != "" {
+					return errors.New("--password cannot be used with --identity-token or --identity-token-stdin")
+				}
+			}
+			err := option.Parse(&opts)
+			if err == nil {
+				if opts.IdentityToken != "" {
+					opts.Password = opts.IdentityToken
+				}
+			}
+			return err
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Hostname = args[0]
