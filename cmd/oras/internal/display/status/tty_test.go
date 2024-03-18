@@ -151,3 +151,24 @@ func Test_TTYPullHandler_TrackTarget(t *testing.T) {
 		}
 	})
 }
+
+func TestTTYPullHandler_OnNodeDownloading(t *testing.T) {
+	ph := NewTTYPullHandler(nil)
+	if err := ph.OnNodeDownloading(ocispec.Descriptor{}); err != nil {
+		t.Error("OnNodeDownloading() should not return an error")
+	}
+}
+
+func TestTTYPullHandler_OnNodeDownloaded(t *testing.T) {
+	ph := NewTTYPullHandler(nil)
+	if err := ph.OnNodeDownloaded(ocispec.Descriptor{}); err != nil {
+		t.Error("OnNodeDownloaded() should not return an error")
+	}
+}
+
+func TestTTYPullHandler_OnNodeProcessing(t *testing.T) {
+	ph := NewTTYPullHandler(nil)
+	if err := ph.OnNodeProcessing(ocispec.Descriptor{}); err != nil {
+		t.Error("OnNodeProcessing() should not return an error")
+	}
+}
