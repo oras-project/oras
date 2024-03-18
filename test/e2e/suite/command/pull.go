@@ -153,6 +153,16 @@ var _ = Describe("OCI spec 1.1 registry users:", func() {
 				WithWorkDir(tempDir).Exec()
 		})
 
+		It("should pull and output downloaded file paths", func() {
+			tempDir := GinkgoT().TempDir()
+			var paths []string
+			for _, p := range foobar.ImageLayerNames {
+				paths = append(paths, filepath.Join(tempDir, p))
+			}
+			ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag), "--format", "{{range .Files}}{{println .Path}}{{end}}").
+				WithWorkDir(tempDir).MatchKeyWords(paths...).Exec()
+		})
+
 		It("should pull specific platform", func() {
 			ORAS("pull", RegistryRef(ZOTHost, ImageRepo, "multi"), "--platform", "linux/amd64", "-v", "-o", GinkgoT().TempDir()).
 				MatchStatus(multi_arch.LinuxAMD64StateKeys, true, len(multi_arch.LinuxAMD64StateKeys)).Exec()
