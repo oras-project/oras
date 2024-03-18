@@ -82,13 +82,14 @@ func deleteBlob(cmd *cobra.Command, opts *deleteBlobOptions) (err error) {
 	}
 
 	// add both pull and delete scope hints for dst repository to save potential delete-scope token requests during deleting
+	outWriter := cmd.OutOrStdout()
 	ctx = registryutil.WithScopeHint(ctx, blobs, auth.ActionPull, auth.ActionDelete)
 	desc, err := blobs.Resolve(ctx, opts.Reference)
 	if err != nil {
 		if errors.Is(err, errdef.ErrNotFound) {
 			if opts.Force && !opts.OutputDescriptor {
 				// ignore nonexistent
-				fmt.Println("Missing", opts.RawReference)
+				fmt.Fprintln(outWriter, "Missing", opts.RawReference)
 				return nil
 			}
 			return fmt.Errorf("%s: the specified blob does not exist", opts.RawReference)
@@ -117,7 +118,7 @@ func deleteBlob(cmd *cobra.Command, opts *deleteBlobOptions) (err error) {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	fmt.Println("Deleted", opts.AnnotatedReference())
+	fmt.Fprintln(outWriter, "Deleted", opts.AnnotatedReference())
 
 	return nil
 }

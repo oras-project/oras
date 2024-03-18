@@ -191,7 +191,7 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		}
 	}
 
-	fmt.Println("Digest:", desc.Digest)
+	fmt.Fprintln(cmd.OutOrStdout(), "Digest:", desc.Digest)
 
 	return nil
 }

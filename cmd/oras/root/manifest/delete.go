@@ -91,13 +91,14 @@ func deleteManifest(cmd *cobra.Command, opts *deleteOptions) error {
 		// possibly needed when adding a new referrers index
 		hints = append(hints, auth.ActionPush)
 	}
+	outWriter := cmd.OutOrStdout()
 	ctx = registryutil.WithScopeHint(ctx, manifests, hints...)
 	desc, err := manifests.Resolve(ctx, opts.Reference)
 	if err != nil {
 		if errors.Is(err, errdef.ErrNotFound) {
 			if opts.Force && !opts.OutputDescriptor {
 				// ignore nonexistent
-				fmt.Println("Missing", opts.RawReference)
+				fmt.Fprintln(outWriter, "Missing", opts.RawReference)
 				return nil
 			}
 			return fmt.Errorf("%s: the specified manifest does not exist", opts.RawReference)
@@ -126,7 +127,7 @@ func deleteManifest(cmd *cobra.Command, opts *deleteOptions) error {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	fmt.Println("Deleted", opts.AnnotatedReference())
+	fmt.Fprintln(outWriter, "Deleted", opts.AnnotatedReference())
 
 	return nil
 }
