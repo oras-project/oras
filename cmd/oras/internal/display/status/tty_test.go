@@ -126,14 +126,13 @@ func TestTTYPushHandler_UpdateCopyOptions(t *testing.T) {
 }
 
 func Test_TTYPullHandler_TrackTarget(t *testing.T) {
-	_, device, err := testutils.NewPty()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer device.Close()
 	src := memory.New()
-
 	t.Run("has TTY", func(t *testing.T) {
+		_, device, err := testutils.NewPty()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer device.Close()
 		ph := NewTTYPullHandler(device)
 		got, err := ph.TrackTarget(src)
 		if err != nil {
