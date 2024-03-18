@@ -16,6 +16,7 @@ limitations under the License.
 package command
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -161,6 +162,19 @@ var _ = Describe("OCI spec 1.1 registry users:", func() {
 			}
 			ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag), "--format", "{{range .Files}}{{println .Path}}{{end}}").
 				WithWorkDir(tempDir).MatchKeyWords(paths...).Exec()
+		})
+
+		It("should pull and output path in json", func() {
+			tempDir := GinkgoT().TempDir()
+			var paths []string
+			for _, p := range foobar.ImageLayerNames {
+				paths = append(paths, filepath.Join(tempDir, p))
+			}
+			out := ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag), "--format", "json").
+				WithWorkDir(tempDir).MatchKeyWords(paths...).Exec().Out.Contents()
+			var parsed struct{}
+			err := json.Unmarshal(out, &parsed)
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		It("should pull specific platform", func() {
