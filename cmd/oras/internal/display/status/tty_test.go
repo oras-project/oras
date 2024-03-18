@@ -124,3 +124,31 @@ func TestTTYPushHandler_UpdateCopyOptions(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func Test_TTYPullHandler_TrackTarget(t *testing.T) {
+	_, device, err := testutils.NewPty()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer device.Close()
+	src := memory.New()
+
+	t.Run("has TTY", func(t *testing.T) {
+		ph := NewTTYPullHandler(device)
+		got, err := ph.TrackTarget(src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got == src {
+			t.Fatal("GraphTarget not be modified on TTY")
+		}
+	})
+
+	t.Run("invalid TTY", func(t *testing.T) {
+		ph := NewTTYPullHandler(nil)
+
+		if _, err := ph.TrackTarget(src); err == nil {
+			t.Fatal("expected error for no tty but got nil")
+		}
+	})
+}
