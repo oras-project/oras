@@ -16,7 +16,6 @@ limitations under the License.
 package repo
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -70,7 +69,7 @@ Example - [Experimental] Show tags associated with a digest:
 			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return showTags(cmd.Context(), &opts)
+			return showTags(cmd, &opts)
 		},
 	}
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the tag specified by `last`")
@@ -79,8 +78,8 @@ Example - [Experimental] Show tags associated with a digest:
 	return oerrors.Command(cmd, &opts.Target)
 }
 
-func showTags(ctx context.Context, opts *showTagsOptions) error {
-	ctx, logger := opts.WithContext(ctx)
+func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
+	ctx, logger := opts.WithContext(cmd.Context())
 	finder, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
 		return err
@@ -99,6 +98,7 @@ func showTags(ctx context.Context, opts *showTagsOptions) error {
 		}
 		logger.Warnf("[Experimental] querying tags associated to %s, it may take a while...\n", filter)
 	}
+	outWriter := cmd.OutOrStdout()
 	return finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
 			if opts.excludeDigestTag && isDigestTag(tag) {
@@ -106,7 +106,7 @@ func showTags(ctx context.Context, opts *showTagsOptions) error {
 			}
 			if filter != "" {
 				if tag == opts.Reference {
-					fmt.Println(tag)
+					fmt.Fprintln(outWriter, tag)
 					continue
 				}
 				desc, err := finder.Resolve(ctx, tag)
@@ -117,7 +117,7 @@ func showTags(ctx context.Context, opts *showTagsOptions) error {
 					continue
 				}
 			}
-			fmt.Println(tag)
+			fmt.Fprintln(outWriter, tag)
 		}
 		return nil
 	})
