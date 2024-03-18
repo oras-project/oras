@@ -36,11 +36,19 @@ type AttachHandler PushHandler
 
 // PullHandler handles status output for pull command.
 type PullHandler interface {
+	// TrackTarget returns a tracked target.
+	// If no TTY is available, it returns the original target.
 	TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error)
+	// StopTracking stops tracking the target if available.
 	StopTracking()
+	// OnNodeProcessing is called when processing a manifest.
 	OnNodeProcessing(desc ocispec.Descriptor) error
+	// OnNodeDownloading is called before downloading a node.
 	OnNodeDownloading(desc ocispec.Descriptor) error
+	// OnNodeDownloaded is called after a node is downloaded.
 	OnNodeDownloaded(desc ocispec.Descriptor) error
+	// OnNodeRestored is called after a deduplicated node is restored.
 	OnNodeRestored(printed *sync.Map, desc ocispec.Descriptor) error
+	// OnNodeSkipped is called when a node is skipped.
 	OnNodeSkipped(printed *sync.Map, desc ocispec.Descriptor) error
 }
