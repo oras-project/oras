@@ -73,6 +73,7 @@ func NewAttachHandler(format string, tty *os.File, verbose bool) (status.AttachH
 	return statusHandler, metadataHandler
 }
 
+// NewManifestFetchHandler returns a manifest fetch handler.
 func NewManifestFetchHandler(format string) metadata.ManifestFetchHandler {
 	return template.NewManifestFetchHandler(format)
 }
