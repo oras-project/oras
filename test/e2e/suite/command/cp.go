@@ -99,6 +99,13 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("cp", src, dst, "--from-username", Username, "--from-password", Password+"?").
 				MatchErrKeyWords(RegistryErrorPrefix).ExpectFailure().Exec()
 		})
+
+		It("should fail if basic auth flag is used with identity token flag", func() {
+			src := RegistryRef(ZOTHost, cpTestRepo("conflicted-flags"), foobar.Tag)
+			dst := RegistryRef(ZOTHost, ArtifactRepo, "")
+			ORAS("cp", src, dst, "--from-username", Username, "--from-identity-token", "test-token").
+				MatchErrKeyWords("--from-username cannot be used with --from-identity-token").ExpectFailure().Exec()
+		})
 	})
 })
 

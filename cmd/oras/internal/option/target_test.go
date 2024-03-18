@@ -44,7 +44,7 @@ func TestTarget_Parse_remote(t *testing.T) {
 		RawReference: "mocked/test",
 		IsOCILayout:  false,
 	}
-	if err := opts.Parse(nil); err != nil {
+	if err := opts.Parse(&cobra.Command{}); err != nil {
 		t.Errorf("Target.Parse() error = %v", err)
 	}
 	if opts.Type != TargetTypeRemote {

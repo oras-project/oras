@@ -100,6 +100,20 @@ var _ = Describe("Common registry user", func() {
 			Expect(err).Should(gbytes.Say(`Run "oras login -h"`))
 		})
 
+		It("should fail if username is used with identity token", func() {
+			ORAS("login", ZOTHost, "-u", Username, "--identity-token", Password).
+				MatchErrKeyWords("Error", "--username", "cannot be used with", "--identity-token").
+				ExpectFailure().
+				Exec()
+		})
+
+		It("should fail if password is used with identity token", func() {
+			ORAS("login", ZOTHost, "-p", Password, "--identity-token", Password).
+				MatchErrKeyWords("Error", "--password", "cannot be used with", "--identity-token").
+				ExpectFailure().
+				Exec()
+		})
+
 		It("should fail if no username input", func() {
 			ORAS("login", ZOTHost, "--registry-config", filepath.Join(GinkgoT().TempDir(), tmpConfigName)).
 				WithTimeOut(20 * time.Second).
@@ -152,6 +166,11 @@ var _ = Describe("Common registry user", func() {
 				WithTimeOut(20*time.Second).
 				WithInput(strings.NewReader(fmt.Sprintf("%s\n%s\n", Username, Password))).
 				MatchKeyWords("Username: ", "Password: ", "Login Succeeded\n").Exec()
+		})
+
+		It("should fail as the test server doesn't support token service", func() {
+			ORAS("login", ZOTHost, "--identity-token", Password).
+				MatchErrKeyWords("WARNING", "Using --identity-token via the CLI is insecure", "Use --identity-token-stdin").ExpectFailure().Exec()
 		})
 	})
 

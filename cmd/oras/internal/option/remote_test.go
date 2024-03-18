@@ -80,7 +80,7 @@ func TestRemote_authClient_RawCredential(t *testing.T) {
 	}
 	opts := Remote{
 		Username: want.Username,
-		Password: want.Password,
+		Secret:   want.Password,
 	}
 	client, err := opts.authClient("hostname", false)
 	if err != nil {
