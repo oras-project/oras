@@ -17,6 +17,7 @@ package root
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"runtime"
 	"strings"
@@ -45,14 +46,15 @@ Example - print version:
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runVersion()
+			outWriter := cmd.OutOrStdout()
+			return runVersion(outWriter)
 		},
 	}
 
 	return cmd
 }
 
-func runVersion() error {
+func runVersion(outWriter io.Writer) error {
 	items := [][]string{
 		{"Version", version.GetVersion()},
 		{"Go version", runtime.Version()},
@@ -71,7 +73,7 @@ func runVersion() error {
 		}
 	}
 	for _, item := range items {
-		fmt.Println(item[0] + ": " + strings.Repeat(" ", size-len(item[0])) + item[1])
+		fmt.Fprintln(outWriter, item[0]+": "+strings.Repeat(" ", size-len(item[0]))+item[1])
 	}
 
 	return nil

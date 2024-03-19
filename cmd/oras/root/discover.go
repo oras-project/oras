@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -127,15 +128,16 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 		return printDiscoveredReferrersJSON(desc, refs)
 	}
 
+	outWriter := cmd.OutOrStdout()
 	if n := len(refs); n > 1 {
-		fmt.Println("Discovered", n, "artifacts referencing", opts.Reference)
+		fmt.Fprintln(outWriter, "Discovered", n, "artifacts referencing", opts.Reference)
 	} else {
-		fmt.Println("Discovered", n, "artifact referencing", opts.Reference)
+		fmt.Fprintln(outWriter, "Discovered", n, "artifact referencing", opts.Reference)
 	}
-	fmt.Println("Digest:", desc.Digest)
+	fmt.Fprintln(outWriter, "Digest:", desc.Digest)
 	if len(refs) > 0 {
-		fmt.Println()
-		_ = printDiscoveredReferrersTable(refs, opts.Verbose)
+		fmt.Fprintln(outWriter)
+		_ = printDiscoveredReferrersTable(outWriter, refs, opts.Verbose)
 	}
 	return nil
 }
@@ -173,7 +175,7 @@ func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc 
 	return nil
 }
 
-func printDiscoveredReferrersTable(refs []ocispec.Descriptor, verbose bool) error {
+func printDiscoveredReferrersTable(outWriter io.Writer, refs []ocispec.Descriptor, verbose bool) error {
 	typeNameTitle := "Artifact Type"
 	typeNameLength := len(typeNameTitle)
 	for _, ref := range refs {
@@ -183,7 +185,7 @@ func printDiscoveredReferrersTable(refs []ocispec.Descriptor, verbose bool) erro
 	}
 
 	print := func(key string, value interface{}) {
-		fmt.Println(key, strings.Repeat(" ", typeNameLength-len(key)+1), value)
+		fmt.Fprintln(outWriter, key, strings.Repeat(" ", typeNameLength-len(key)+1), value)
 	}
 
 	print(typeNameTitle, "Digest")

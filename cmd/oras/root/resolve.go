@@ -77,10 +77,11 @@ func runResolve(cmd *cobra.Command, opts *resolveOptions) error {
 		return fmt.Errorf("failed to resolve digest: %w", err)
 	}
 
+	outWriter := cmd.OutOrStdout()
 	if opts.fullRef {
-		fmt.Printf("%s@%s\n", opts.Path, desc.Digest)
+		fmt.Fprintf(outWriter, "%s@%s\n", opts.Path, desc.Digest)
 	} else {
-		fmt.Println(desc.Digest.String())
+		fmt.Fprintln(outWriter, desc.Digest.String())
 	}
 
 	return nil

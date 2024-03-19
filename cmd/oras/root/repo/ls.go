@@ -77,9 +77,10 @@ func listRepository(cmd *cobra.Command, opts *repositoryOptions) error {
 		return err
 	}
 	err = reg.Repositories(ctx, opts.last, func(repos []string) error {
+		outWriter := cmd.OutOrStdout()
 		for _, repo := range repos {
 			if subRepo, found := strings.CutPrefix(repo, opts.namespace); found {
-				fmt.Println(subRepo)
+				fmt.Fprintln(outWriter, subRepo)
 			}
 		}
 		return nil

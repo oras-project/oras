@@ -98,6 +98,7 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 		}
 		logger.Warnf("[Experimental] querying tags associated to %s, it may take a while...\n", filter)
 	}
+	outWriter := cmd.OutOrStdout()
 	return finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
 			if opts.excludeDigestTag && isDigestTag(tag) {
@@ -105,7 +106,7 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 			}
 			if filter != "" {
 				if tag == opts.Reference {
-					fmt.Println(tag)
+					fmt.Fprintln(outWriter, tag)
 					continue
 				}
 				desc, err := finder.Resolve(ctx, tag)
@@ -116,7 +117,7 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 					continue
 				}
 			}
-			fmt.Println(tag)
+			fmt.Fprintln(outWriter, tag)
 		}
 		return nil
 	})

@@ -137,8 +137,9 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	fmt.Println("Pushed", opts.AnnotatedReference())
-	fmt.Println("Digest:", desc.Digest)
+	outWriter := cmd.OutOrStdout()
+	fmt.Fprintln(outWriter, "Pushed", opts.AnnotatedReference())
+	fmt.Fprintln(outWriter, "Digest:", desc.Digest)
 
 	return nil
 }
