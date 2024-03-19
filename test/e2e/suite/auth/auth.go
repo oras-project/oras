@@ -101,14 +101,14 @@ var _ = Describe("Common registry user", func() {
 		})
 
 		It("should fail if username is used with identity token", func() {
-			ORAS("login", ZOTHost, "-u", Username, "--identity-token", Password, filepath.Join(GinkgoT().TempDir(), tmpConfigName)).
+			ORAS("login", ZOTHost, "-u", Username, "--identity-token", Password).
 				MatchKeyWords("--username cannot be used with --identity-token or --identity-token-stdin").
 				ExpectFailure().
 				Exec()
 		})
 
 		It("should fail if password is used with identity token", func() {
-			ORAS("login", ZOTHost, "-p", Password, "--identity-token", Password, filepath.Join(GinkgoT().TempDir(), tmpConfigName)).
+			ORAS("login", ZOTHost, "-p", Password, "--identity-token", Password).
 				MatchKeyWords("--password and --password-stdin cannot be used with --identity-token or --identity-token-stdin").
 				ExpectFailure().
 				Exec()
@@ -169,7 +169,7 @@ var _ = Describe("Common registry user", func() {
 		})
 
 		It("should fail as the test server doesn't support token service", func() {
-			ORAS("login", ZOTHost, "--identity-token", Password, filepath.Join(GinkgoT().TempDir(), tmpConfigName)).
+			ORAS("login", ZOTHost, "--identity-token", Password).
 				MatchErrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").ExpectFailure().Exec()
 		})
 	})
