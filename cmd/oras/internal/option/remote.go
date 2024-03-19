@@ -125,13 +125,19 @@ func (opts *Remote) Parse() error {
 	if err := opts.parseCustomHeaders(); err != nil {
 		return err
 	}
-	return opts.readPasswordOrIdentityToken()
+	if err := opts.readIdentityToken(); err != nil {
+		return err
+	}
+	if opts.IdentityToken == "" {
+		return opts.readPassword()
+	}
+	return nil
 }
 
-// readPasswordOrIdentityToken tries to read password and identity token with optional cmd prompt.
-func (opts *Remote) readPasswordOrIdentityToken() (err error) {
+// readPassword tries to read password with optional cmd prompt.
+func (opts *Remote) readPassword() (err error) {
 	if opts.Password != "" {
-		fmt.Fprintln(os.Stderr, "WARNING! Using --password or --identity-token via the CLI is insecure. Use --password-stdin and --identity-token-stdin.")
+		fmt.Fprintln(os.Stderr, "WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
 	} else if opts.PasswordFromStdin {
 		// Prompt for credential
 		password, err := io.ReadAll(os.Stdin)
@@ -140,6 +146,14 @@ func (opts *Remote) readPasswordOrIdentityToken() (err error) {
 		}
 		opts.Password = strings.TrimSuffix(string(password), "\n")
 		opts.Password = strings.TrimSuffix(opts.Password, "\r")
+	}
+	return nil
+}
+
+// readIdentityToken tries to read identity token with optional cmd prompt.
+func (opts *Remote) readIdentityToken() (err error) {
+	if opts.IdentityToken != "" {
+		fmt.Fprintln(os.Stderr, "WARNING! Using --identity-token via the CLI is insecure. Use --identity-token-stdin.")
 	} else if opts.IdentityTokenFromStdin {
 		// Prompt for credential
 		idToken, err := io.ReadAll(os.Stdin)
