@@ -89,7 +89,7 @@ var _ = Describe("Common registry user", func() {
 			ORAS("login", ZOTHost, "-u", Username, "-p", Password, "--registry-config", filepath.Join(GinkgoT().TempDir(), tmpConfigName)).
 				WithTimeOut(20*time.Second).
 				MatchContent("Login Succeeded\n").
-				MatchErrKeyWords("WARNING", "Using --password or --identity-token via the CLI is insecure.", "Use --password-stdin").Exec()
+				MatchErrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").Exec()
 		})
 
 		It("should show detailed error description if no argument provided", func() {
