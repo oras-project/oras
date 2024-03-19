@@ -122,23 +122,28 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 
 // Parse tries to read password with optional cmd prompt.
 func (opts *Remote) Parse() error {
+	if opts.IdentityToken != "" || opts.IdentityTokenFromStdin {
+		if opts.Username != "" {
+			return errors.New("--username cannot be used with --identity-token or --identity-token-stdin")
+		}
+		if opts.Password != "" || opts.PasswordFromStdin {
+			return errors.New("--password and --password-stdin cannot be used with --identity-token or --identity-token-stdin")
+		}
+	}
 	if err := opts.parseCustomHeaders(); err != nil {
 		return err
 	}
-	if err := opts.readIdentityToken(); err != nil {
-		return err
-	}
-	if opts.IdentityToken == "" {
-		return opts.readPassword()
-	}
-	return nil
+	return opts.readPasswordOrIdentityToken()
 }
 
-// readPassword tries to read password with optional cmd prompt.
-func (opts *Remote) readPassword() (err error) {
-	if opts.Password != "" {
+// readPasswordOrIdentityToken tries to read password or identity token with
+// optional cmd prompt.
+func (opts *Remote) readPasswordOrIdentityToken() (err error) {
+	if opts.IdentityToken != "" {
+		fmt.Fprintln(os.Stderr, "WARNING! Using --identity-token via the CLI is insecure. Use --identity-token-stdin.")
+	} else if opts.Password != "" {
 		fmt.Fprintln(os.Stderr, "WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
-	} else if opts.PasswordFromStdin {
+	} else if opts.PasswordFromStdin || opts.IdentityTokenFromStdin {
 		// Prompt for credential
 		password, err := io.ReadAll(os.Stdin)
 		if err != nil {
@@ -146,22 +151,6 @@ func (opts *Remote) readPassword() (err error) {
 		}
 		opts.Password = strings.TrimSuffix(string(password), "\n")
 		opts.Password = strings.TrimSuffix(opts.Password, "\r")
-	}
-	return nil
-}
-
-// readIdentityToken tries to read identity token with optional cmd prompt.
-func (opts *Remote) readIdentityToken() (err error) {
-	if opts.IdentityToken != "" {
-		fmt.Fprintln(os.Stderr, "WARNING! Using --identity-token via the CLI is insecure. Use --identity-token-stdin.")
-	} else if opts.IdentityTokenFromStdin {
-		// Prompt for credential
-		idToken, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			return err
-		}
-		opts.IdentityToken = strings.TrimSuffix(string(idToken), "\n")
-		opts.IdentityToken = strings.TrimSuffix(opts.IdentityToken, "\r")
 	}
 	return nil
 }

@@ -65,21 +65,7 @@ Example - Log in with username and password in an interactive terminal and no TL
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the registry to log in to"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if opts.IdentityToken != "" || opts.IdentityTokenFromStdin {
-				if opts.Username != "" {
-					return errors.New("--username cannot be used with --identity-token or --identity-token-stdin")
-				}
-				if opts.Password != "" {
-					return errors.New("--password cannot be used with --identity-token or --identity-token-stdin")
-				}
-			}
-			err := option.Parse(&opts)
-			if err == nil {
-				if opts.IdentityToken != "" {
-					opts.Password = opts.IdentityToken
-				}
-			}
-			return err
+			return option.Parse(&opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Hostname = args[0]
