@@ -102,14 +102,14 @@ var _ = Describe("Common registry user", func() {
 
 		It("should fail if username is used with identity token", func() {
 			ORAS("login", ZOTHost, "-u", Username, "--identity-token", Password).
-				MatchKeyWords("Error", "--username", "cannot be used with", "--identity-token").
+				MatchErrKeyWords("Error", "--username", "cannot be used with", "--identity-token").
 				ExpectFailure().
 				Exec()
 		})
 
 		It("should fail if password is used with identity token", func() {
 			ORAS("login", ZOTHost, "-p", Password, "--identity-token", Password).
-				MatchKeyWords("Error", "--password", "cannot be used with", "--identity-token").
+				MatchErrKeyWords("Error", "--password", "cannot be used with", "--identity-token").
 				ExpectFailure().
 				Exec()
 		})
