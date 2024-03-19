@@ -141,6 +141,7 @@ func (opts *Remote) Parse() error {
 func (opts *Remote) readPasswordOrIdentityToken() (err error) {
 	if opts.IdentityToken != "" {
 		fmt.Fprintln(os.Stderr, "WARNING! Using --identity-token via the CLI is insecure. Use --identity-token-stdin.")
+		opts.Password = opts.IdentityToken
 	} else if opts.Password != "" {
 		fmt.Fprintln(os.Stderr, "WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
 	} else if opts.PasswordFromStdin || opts.IdentityTokenFromStdin {
