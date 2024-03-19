@@ -16,13 +16,17 @@ limitations under the License.
 package display
 
 import (
+	"context"
 	"os"
+
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/json"
 	"oras.land/oras/cmd/oras/internal/display/metadata/template"
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
 	"oras.land/oras/cmd/oras/internal/display/status"
+	"oras.land/oras/cmd/oras/internal/option"
 )
 
 // NewPushHandler returns status and metadata handlers for push command.
@@ -71,4 +75,19 @@ func NewAttachHandler(format string, tty *os.File, verbose bool) (status.AttachH
 	}
 
 	return statusHandler, metadataHandler
+}
+
+// NewDiscoverHandler returns status and metadata handlers for discover command.
+func NewDiscoverHandler(ctx context.Context, outputType string, path string, artifactType string, fullReference string, desc ocispec.Descriptor, repo option.ReadOnlyGraphTagFinderTarget) metadata.DiscoverHandler {
+	var metadataHandler metadata.AttachHandler
+	switch format {
+	case "":
+		metadataHandler = text.NewAttachHandler()
+	case "json":
+		metadataHandler = json.NewAttachHandler()
+	default:
+		metadataHandler = template.NewAttachHandler(format)
+	}
+
+	return metadataHandler
 }

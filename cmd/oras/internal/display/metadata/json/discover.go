@@ -16,21 +16,24 @@ limitations under the License.
 package json
 
 import (
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
-	"oras.land/oras/cmd/oras/internal/option"
 )
 
-// AttachHandler handles json metadata output for attach events.
-type AttachHandler struct{}
-
-// NewAttachHandler creates a new handler for attach events.
-func NewAttachHandler() metadata.AttachHandler {
-	return AttachHandler{}
+// DiscoverHandler handles json metadata output for discover events.
+type DiscoverHandler struct {
+	path string
 }
 
-// OnCompleted is called when the attach command is completed.
-func (AttachHandler) OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error {
-	return PrintJSON(model.NewPush(root, opts.Path))
+// OnDiscovered implements metadata.DiscoverHandler.
+func (d DiscoverHandler) OnDiscovered(refs []v1.Descriptor) error {
+	return PrintJSON(model.NewDiscover(d.path, refs))
+}
+
+// NewDiscoverHandler creates a new handler for discover events.
+func NewDiscoverHandler(path string) metadata.DiscoverHandler {
+	return DiscoverHandler{
+		path: path,
+	}
 }

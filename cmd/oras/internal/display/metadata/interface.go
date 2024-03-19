@@ -30,3 +30,8 @@ type PushHandler interface {
 type AttachHandler interface {
 	OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error
 }
+
+// DiscoverHandler handles metadata output for discover events.
+type DiscoverHandler interface {
+	OnDiscovered(refs []ocispec.Descriptor) error
+}
