@@ -70,6 +70,13 @@ var _ = Describe("ORAS beginners:", func() {
 				Exec()
 		})
 
+		It("should fail if invalid output type is used", func() {
+			ORAS("discover", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--output", "ukpkmkk").
+				ExpectFailure().
+				MatchErrKeyWords("Error:", "output type can only be tree, table or json").
+				Exec()
+		})
+
 		It("should fail and show detailed error description if no argument provided", func() {
 			err := ORAS("discover").ExpectFailure().Exec().Err
 			Expect(err).Should(gbytes.Say("Error"))
