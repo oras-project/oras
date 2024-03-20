@@ -45,6 +45,11 @@ import (
 	"oras.land/oras/internal/version"
 )
 
+const (
+	passwordFromStdinFlag      = "password-stdin"
+	identityTokenFromStdinFlag = "identity-token-stdin"
+)
+
 // Remote options struct contains flags and arguments specifying one registry.
 // Remote implements oerrors.Handler and interface.
 type Remote struct {
@@ -56,7 +61,7 @@ type Remote struct {
 	PasswordFromStdin      bool
 	Password               string
 	IdentityTokenFromStdin bool
-	IdentityToken          string
+	identityToken          string
 
 	resolveFlag           []string
 	applyDistributionSpec bool
@@ -75,8 +80,8 @@ func (opts *Remote) EnableDistributionSpecFlag() {
 // ApplyFlags applies flags to a command flag set.
 func (opts *Remote) ApplyFlags(fs *pflag.FlagSet) {
 	opts.ApplyFlagsWithPrefix(fs, "", "")
-	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password from stdin")
-	fs.BoolVarP(&opts.IdentityTokenFromStdin, "identity-token-stdin", "", false, "read identity token from stdin")
+	fs.BoolVarP(&opts.PasswordFromStdin, passwordFromStdinFlag, "", false, "read password from stdin")
+	fs.BoolVarP(&opts.IdentityTokenFromStdin, identityTokenFromStdinFlag, "", false, "read identity token from stdin")
 }
 
 func applyPrefix(prefix, description string) (flagPrefix, notePrefix string) {
@@ -107,7 +112,7 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	}
 	fs.StringVarP(&opts.Username, flagPrefix+"username", shortUser, "", notePrefix+"registry username")
 	fs.StringVarP(&opts.Password, flagPrefix+"password", shortPassword, "", notePrefix+"registry password")
-	fs.StringVarP(&opts.IdentityToken, flagPrefix+"identity-token", "", "", notePrefix+"registry identity token")
+	fs.StringVarP(&opts.identityToken, flagPrefix+"identity-token", "", "", notePrefix+"registry identity token")
 	fs.BoolVarP(&opts.Insecure, flagPrefix+"insecure", "", false, "allow connections to "+notePrefix+"SSL registry without certs")
 	plainHTTPFlagName := flagPrefix + "plain-http"
 	plainHTTP := fs.Bool(plainHTTPFlagName, false, "allow insecure connections to "+notePrefix+"registry without SSL check")
@@ -120,9 +125,20 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	fs.StringArrayVarP(&opts.headerFlags, flagPrefix+"header", shortHeader, nil, "add custom headers to "+notePrefix+"requests")
 }
 
+// CheckStdinConflict checks if opts.PasswordFromStdin or opts.IdentityTokenFromStdin
+// conflicts with read file from input.
+func (opts *Remote) CheckStdinConflict(passwordFromStdin bool, identityTokenFromStdin bool) error {
+	if passwordFromStdin {
+		return fmt.Errorf("`-` read file from input and `%s` read password from input cannot be both used", passwordFromStdinFlag)
+	} else if identityTokenFromStdin {
+		return fmt.Errorf("`-` read file from input and `%s` read identity token from input cannot be both used", identityTokenFromStdinFlag)
+	}
+	return nil
+}
+
 // Parse tries to read password with optional cmd prompt.
 func (opts *Remote) Parse() error {
-	if opts.IdentityToken != "" || opts.IdentityTokenFromStdin {
+	if opts.identityToken != "" || opts.IdentityTokenFromStdin {
 		if opts.Username != "" {
 			return errors.New("--username cannot be used with --identity-token or --identity-token-stdin")
 		}
@@ -139,9 +155,9 @@ func (opts *Remote) Parse() error {
 // readPasswordOrIdentityToken tries to read password or identity token with
 // optional cmd prompt.
 func (opts *Remote) readPasswordOrIdentityToken() (err error) {
-	if opts.IdentityToken != "" {
+	if opts.identityToken != "" {
 		fmt.Fprintln(os.Stderr, "WARNING! Using --identity-token via the CLI is insecure. Use --identity-token-stdin.")
-		opts.Password = opts.IdentityToken
+		opts.Password = opts.identityToken
 	} else if opts.Password != "" {
 		fmt.Fprintln(os.Stderr, "WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
 	} else if opts.PasswordFromStdin || opts.IdentityTokenFromStdin {
