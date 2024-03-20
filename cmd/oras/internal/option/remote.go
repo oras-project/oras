@@ -46,7 +46,10 @@ import (
 )
 
 const (
+	usernameFlag               = "username"
+	passwordFlag               = "password"
 	passwordFromStdinFlag      = "password-stdin"
+	identityTokenFlag          = "identity-token"
 	identityTokenFromStdinFlag = "identity-token-stdin"
 )
 
@@ -62,6 +65,8 @@ type Remote struct {
 	Password               string
 	IdentityTokenFromStdin bool
 	identityToken          string
+	flagPrefix             string
+	notePrefix             string
 
 	resolveFlag           []string
 	applyDistributionSpec bool
@@ -98,31 +103,29 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 		shortUser     string
 		shortPassword string
 		shortHeader   string
-		flagPrefix    string
-		notePrefix    string
 	)
 	if prefix == "" {
 		shortUser, shortPassword = "u", "p"
 		shortHeader = "H"
 	}
-	flagPrefix, notePrefix = applyPrefix(prefix, description)
+	opts.flagPrefix, opts.notePrefix = applyPrefix(prefix, description)
 
 	if opts.applyDistributionSpec {
 		opts.DistributionSpec.ApplyFlagsWithPrefix(fs, prefix, description)
 	}
-	fs.StringVarP(&opts.Username, flagPrefix+"username", shortUser, "", notePrefix+"registry username")
-	fs.StringVarP(&opts.Password, flagPrefix+"password", shortPassword, "", notePrefix+"registry password")
-	fs.StringVarP(&opts.identityToken, flagPrefix+"identity-token", "", "", notePrefix+"registry identity token")
-	fs.BoolVarP(&opts.Insecure, flagPrefix+"insecure", "", false, "allow connections to "+notePrefix+"SSL registry without certs")
-	plainHTTPFlagName := flagPrefix + "plain-http"
-	plainHTTP := fs.Bool(plainHTTPFlagName, false, "allow insecure connections to "+notePrefix+"registry without SSL check")
+	fs.StringVarP(&opts.Username, opts.flagPrefix+"username", shortUser, "", opts.notePrefix+"registry username")
+	fs.StringVarP(&opts.Password, opts.flagPrefix+"password", shortPassword, "", opts.notePrefix+"registry password")
+	fs.StringVarP(&opts.identityToken, opts.flagPrefix+"identity-token", "", "", opts.notePrefix+"registry identity token")
+	fs.BoolVarP(&opts.Insecure, opts.flagPrefix+"insecure", "", false, "allow connections to "+opts.notePrefix+"SSL registry without certs")
+	plainHTTPFlagName := opts.flagPrefix + "plain-http"
+	plainHTTP := fs.Bool(plainHTTPFlagName, false, "allow insecure connections to "+opts.notePrefix+"registry without SSL check")
 	opts.plainHTTP = func() (bool, bool) {
 		return *plainHTTP, fs.Changed(plainHTTPFlagName)
 	}
-	fs.StringVarP(&opts.CACertFilePath, flagPrefix+"ca-file", "", "", "server certificate authority file for the remote "+notePrefix+"registry")
-	fs.StringArrayVarP(&opts.resolveFlag, flagPrefix+"resolve", "", nil, "customized DNS for "+notePrefix+"registry, formatted in `host:port:address[:address_port]`")
-	fs.StringArrayVarP(&opts.Configs, flagPrefix+"registry-config", "", nil, "`path` of the authentication file for "+notePrefix+"registry")
-	fs.StringArrayVarP(&opts.headerFlags, flagPrefix+"header", shortHeader, nil, "add custom headers to "+notePrefix+"requests")
+	fs.StringVarP(&opts.CACertFilePath, opts.flagPrefix+"ca-file", "", "", "server certificate authority file for the remote "+opts.notePrefix+"registry")
+	fs.StringArrayVarP(&opts.resolveFlag, opts.flagPrefix+"resolve", "", nil, "customized DNS for "+opts.notePrefix+"registry, formatted in `host:port:address[:address_port]`")
+	fs.StringArrayVarP(&opts.Configs, opts.flagPrefix+"registry-config", "", nil, "`path` of the authentication file for "+opts.notePrefix+"registry")
+	fs.StringArrayVarP(&opts.headerFlags, opts.flagPrefix+"header", shortHeader, nil, "add custom headers to "+opts.notePrefix+"requests")
 }
 
 // CheckStdinConflict checks if opts.PasswordFromStdin or opts.IdentityTokenFromStdin
@@ -138,14 +141,24 @@ func (opts *Remote) CheckStdinConflict(passwordFromStdin bool, identityTokenFrom
 
 // Parse tries to read password with optional cmd prompt.
 func (opts *Remote) Parse() error {
-	if opts.identityToken != "" || opts.IdentityTokenFromStdin {
-		if opts.Username != "" {
-			return errors.New("--username cannot be used with --identity-token or --identity-token-stdin")
+	// if basic auth flags and id token flags are both used, return an error
+	var flagChecker = func(values []bool, flags []string) string {
+		for i, v := range values {
+			if v {
+				return flags[i]
+			}
 		}
-		if opts.Password != "" || opts.PasswordFromStdin {
-			return errors.New("--password and --password-stdin cannot be used with --identity-token or --identity-token-stdin")
-		}
+		return ""
 	}
+	identityTokenFlag := flagChecker([]bool{opts.identityToken != "", opts.IdentityTokenFromStdin},
+		[]string{opts.flagPrefix + identityTokenFlag, identityTokenFromStdinFlag})
+	basicAuthFlag := flagChecker([]bool{opts.Username != "", opts.Password != "", opts.PasswordFromStdin},
+		[]string{opts.flagPrefix + usernameFlag, opts.flagPrefix + passwordFlag, passwordFromStdinFlag})
+
+	if identityTokenFlag != "" && basicAuthFlag != "" {
+		return fmt.Errorf("%s cannot be used with %s", basicAuthFlag, identityTokenFlag)
+	}
+
 	if err := opts.parseCustomHeaders(); err != nil {
 		return err
 	}
