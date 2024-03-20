@@ -33,5 +33,5 @@ type AttachHandler interface {
 
 // DiscoverHandler handles metadata output for discover events.
 type DiscoverHandler interface {
-	OnDiscovered(refs []ocispec.Descriptor) error
+	OnDiscovered() error
 }

@@ -16,24 +16,42 @@ limitations under the License.
 package json
 
 import (
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
+	"context"
+
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
 )
 
 // DiscoverHandler handles json metadata output for discover events.
 type DiscoverHandler struct {
-	path string
+	ctx          context.Context
+	repo         oras.ReadOnlyGraphTarget
+	template     string
+	path         string
+	desc         ocispec.Descriptor
+	artifactType string
 }
 
 // OnDiscovered implements metadata.DiscoverHandler.
-func (d DiscoverHandler) OnDiscovered(refs []v1.Descriptor) error {
+func (d DiscoverHandler) OnDiscovered() error {
+	refs, err := registry.Referrers(d.ctx, d.repo, d.desc, d.artifactType)
+	if err != nil {
+		return err
+	}
 	return PrintJSON(model.NewDiscover(d.path, refs))
 }
 
 // NewDiscoverHandler creates a new handler for discover events.
-func NewDiscoverHandler(path string) metadata.DiscoverHandler {
+func NewDiscoverHandler(ctx context.Context, template string, path string, artifactType string, desc ocispec.Descriptor, repo oras.ReadOnlyGraphTarget) metadata.DiscoverHandler {
 	return DiscoverHandler{
-		path: path,
+		template:     template,
+		path:         path,
+		ctx:          ctx,
+		repo:         repo,
+		desc:         desc,
+		artifactType: artifactType,
 	}
 }

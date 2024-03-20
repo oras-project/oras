@@ -16,27 +16,19 @@ limitations under the License.
 package root
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/argument"
+	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/metadata/template"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/tree"
 )
-
-// ErrInvalidOutputType denotes the error for invalid output type.
-var ErrInvalidOutputType = errors.New("output type can only be tree, table or json")
 
 type discoverOptions struct {
 	option.Common
@@ -126,125 +118,15 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 	}
 
 	if opts.Template != "" {
-		if err := output(ctx, opts.Template, opts, desc, repo); err != ErrInvalidOutputType {
-			// done or unexpected error
-			return err
-		}
-		// formatting as index
-		refs, err := registry.Referrers(ctx, repo, desc, opts.artifactType)
-		if err != nil {
-			return err
-		}
-		return option.WriteMetadata(opts.Template, os.Stdout, metadata.NewDiscover(opts.Path, refs))
+		handler := display.NewDiscoverHandler(ctx, opts.Template, opts.Path, opts.artifactType, opts.RawReference, desc, repo, opts.Verbose)
+		return handler.OnDiscovered()
 	}
+
+	// deprecated --output
 	fmt.Fprintf(os.Stderr, "[DEPRECATED] --output is deprecated, try `--format %s` instead\n", opts.outputType)
-	return output(ctx, opts.outputType, opts, desc, repo)
-}
-
-func output(ctx context.Context, outputType string, opts *discoverOptions, desc ocispec.Descriptor, repo option.ReadOnlyGraphTagFinderTarget) error {
-	if outputType == "tree" || outputType == "" {
-		// default to tree output
-		root := tree.New(fmt.Sprintf("%s@%s", opts.Path, desc.Digest))
-		err := fetchAllReferrers(ctx, repo, desc, opts.artifactType, root, opts)
-		if err != nil {
-			return err
-		}
-		return tree.Print(root)
+	handler := display.NewDiscoverHandler(ctx, opts.outputType, opts.Path, opts.artifactType, opts.RawReference, desc, repo, opts.Verbose)
+	if _, ok := handler.(*template.DiscoverHandler); ok {
+		return errors.New("output type can only be tree, table or json")
 	}
-
-	switch outputType {
-	case "table", "json":
-		refs, err := registry.Referrers(ctx, repo, desc, opts.artifactType)
-		if err != nil {
-			return err
-		}
-		if outputType == "json" {
-			return printDiscoveredReferrersJSON(opts.Path, refs)
-		}
-		if outputType == "table" {
-			if n := len(refs); n > 1 {
-				fmt.Println("Discovered", n, "artifacts referencing", opts.Reference)
-			} else {
-				fmt.Println("Discovered", n, "artifact referencing", opts.Reference)
-			}
-			fmt.Println("Digest:", desc.Digest)
-			if len(refs) > 0 {
-				fmt.Println()
-				return printDiscoveredReferrersTable(refs, opts.Verbose)
-			}
-			return nil
-		}
-	}
-	return ErrInvalidOutputType
-}
-
-func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, node *tree.Node, opts *discoverOptions) error {
-	results, err := registry.Referrers(ctx, repo, desc, artifactType)
-	if err != nil {
-		return err
-	}
-
-	for _, r := range results {
-		// Find all indirect referrers
-		referrerNode := node.AddPath(r.ArtifactType, r.Digest)
-		if opts.Verbose {
-			for k, v := range r.Annotations {
-				bytes, err := yaml.Marshal(map[string]string{k: v})
-				if err != nil {
-					return err
-				}
-				referrerNode.AddPath(strings.TrimSpace(string(bytes)))
-			}
-		}
-		err := fetchAllReferrers(
-			ctx, repo,
-			ocispec.Descriptor{
-				Digest:    r.Digest,
-				Size:      r.Size,
-				MediaType: r.MediaType,
-			},
-			artifactType, referrerNode, opts)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func printDiscoveredReferrersTable(refs []ocispec.Descriptor, verbose bool) error {
-	typeNameTitle := "Artifact Type"
-	typeNameLength := len(typeNameTitle)
-	for _, ref := range refs {
-		if length := len(ref.ArtifactType); length > typeNameLength {
-			typeNameLength = length
-		}
-	}
-
-	print := func(key string, value interface{}) {
-		fmt.Println(key, strings.Repeat(" ", typeNameLength-len(key)+1), value)
-	}
-
-	print(typeNameTitle, "Digest")
-	for _, ref := range refs {
-		print(ref.ArtifactType, ref.Digest)
-		if verbose {
-			if err := printJSON(ref); err != nil {
-				return fmt.Errorf("error printing JSON: %w", err)
-			}
-		}
-	}
-	return nil
-}
-
-// printDiscoveredReferrersJSON prints referrer list in JSON equivalent to the
-// image index: https://github.com/opencontainers/image-spec/blob/v1.1.0-rc2/image-index.md#image-index-property-descriptions
-func printDiscoveredReferrersJSON(path string, refs []ocispec.Descriptor) error {
-	return option.WriteMetadata("json", os.Stdout, metadata.NewDiscover(path, refs))
-}
-
-func printJSON(object interface{}) error {
-	encoder := json.NewEncoder(os.Stdout)
-	encoder.SetEscapeHTML(false)
-	encoder.SetIndent("", "  ")
-	return encoder.Encode(object)
+	return handler.OnDiscovered()
 }

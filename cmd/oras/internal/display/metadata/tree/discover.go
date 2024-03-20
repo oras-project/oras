@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"gopkg.in/yaml.v3"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry"
@@ -40,8 +39,7 @@ type discoverHandler struct {
 }
 
 // OnDiscovered implements metadata.DiscoverHandler.
-func (d *discoverHandler) OnDiscovered(refs []v1.Descriptor) error {
-	// default to tree output
+func (d *discoverHandler) OnDiscovered() error {
 	root := tree.New(fmt.Sprintf("%s@%s", d.path, d.desc.Digest))
 	err := d.fetchAllReferrers(d.ctx, d.target, d.desc, root)
 	if err != nil {
