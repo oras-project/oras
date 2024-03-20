@@ -66,7 +66,6 @@ type Remote struct {
 	IdentityTokenFromStdin bool
 	identityToken          string
 	flagPrefix             string
-	notePrefix             string
 
 	resolveFlag           []string
 	applyDistributionSpec bool
@@ -103,29 +102,30 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 		shortUser     string
 		shortPassword string
 		shortHeader   string
+		notePrefix    string
 	)
 	if prefix == "" {
 		shortUser, shortPassword = "u", "p"
 		shortHeader = "H"
 	}
-	opts.flagPrefix, opts.notePrefix = applyPrefix(prefix, description)
+	opts.flagPrefix, notePrefix = applyPrefix(prefix, description)
 
 	if opts.applyDistributionSpec {
 		opts.DistributionSpec.ApplyFlagsWithPrefix(fs, prefix, description)
 	}
-	fs.StringVarP(&opts.Username, opts.flagPrefix+usernameFlag, shortUser, "", opts.notePrefix+"registry username")
-	fs.StringVarP(&opts.Password, opts.flagPrefix+passwordFlag, shortPassword, "", opts.notePrefix+"registry password")
-	fs.StringVarP(&opts.identityToken, opts.flagPrefix+identityTokenFlag, "", "", opts.notePrefix+"registry identity token")
-	fs.BoolVarP(&opts.Insecure, opts.flagPrefix+"insecure", "", false, "allow connections to "+opts.notePrefix+"SSL registry without certs")
+	fs.StringVarP(&opts.Username, opts.flagPrefix+usernameFlag, shortUser, "", notePrefix+"registry username")
+	fs.StringVarP(&opts.Password, opts.flagPrefix+passwordFlag, shortPassword, "", notePrefix+"registry password")
+	fs.StringVarP(&opts.identityToken, opts.flagPrefix+identityTokenFlag, "", "", notePrefix+"registry identity token")
+	fs.BoolVarP(&opts.Insecure, opts.flagPrefix+"insecure", "", false, "allow connections to "+notePrefix+"SSL registry without certs")
 	plainHTTPFlagName := opts.flagPrefix + "plain-http"
-	plainHTTP := fs.Bool(plainHTTPFlagName, false, "allow insecure connections to "+opts.notePrefix+"registry without SSL check")
+	plainHTTP := fs.Bool(plainHTTPFlagName, false, "allow insecure connections to "+notePrefix+"registry without SSL check")
 	opts.plainHTTP = func() (bool, bool) {
 		return *plainHTTP, fs.Changed(plainHTTPFlagName)
 	}
-	fs.StringVarP(&opts.CACertFilePath, opts.flagPrefix+"ca-file", "", "", "server certificate authority file for the remote "+opts.notePrefix+"registry")
-	fs.StringArrayVarP(&opts.resolveFlag, opts.flagPrefix+"resolve", "", nil, "customized DNS for "+opts.notePrefix+"registry, formatted in `host:port:address[:address_port]`")
-	fs.StringArrayVarP(&opts.Configs, opts.flagPrefix+"registry-config", "", nil, "`path` of the authentication file for "+opts.notePrefix+"registry")
-	fs.StringArrayVarP(&opts.headerFlags, opts.flagPrefix+"header", shortHeader, nil, "add custom headers to "+opts.notePrefix+"requests")
+	fs.StringVarP(&opts.CACertFilePath, opts.flagPrefix+"ca-file", "", "", "server certificate authority file for the remote "+notePrefix+"registry")
+	fs.StringArrayVarP(&opts.resolveFlag, opts.flagPrefix+"resolve", "", nil, "customized DNS for "+notePrefix+"registry, formatted in `host:port:address[:address_port]`")
+	fs.StringArrayVarP(&opts.Configs, opts.flagPrefix+"registry-config", "", nil, "`path` of the authentication file for "+notePrefix+"registry")
+	fs.StringArrayVarP(&opts.headerFlags, opts.flagPrefix+"header", shortHeader, nil, "add custom headers to "+notePrefix+"requests")
 }
 
 // CheckStdinConflict checks if opts.PasswordFromStdin or opts.IdentityTokenFromStdin
