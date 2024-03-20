@@ -113,9 +113,9 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	if opts.applyDistributionSpec {
 		opts.DistributionSpec.ApplyFlagsWithPrefix(fs, prefix, description)
 	}
-	fs.StringVarP(&opts.Username, opts.flagPrefix+"username", shortUser, "", opts.notePrefix+"registry username")
-	fs.StringVarP(&opts.Password, opts.flagPrefix+"password", shortPassword, "", opts.notePrefix+"registry password")
-	fs.StringVarP(&opts.identityToken, opts.flagPrefix+"identity-token", "", "", opts.notePrefix+"registry identity token")
+	fs.StringVarP(&opts.Username, opts.flagPrefix+usernameFlag, shortUser, "", opts.notePrefix+"registry username")
+	fs.StringVarP(&opts.Password, opts.flagPrefix+passwordFlag, shortPassword, "", opts.notePrefix+"registry password")
+	fs.StringVarP(&opts.identityToken, opts.flagPrefix+identityTokenFlag, "", "", opts.notePrefix+"registry identity token")
 	fs.BoolVarP(&opts.Insecure, opts.flagPrefix+"insecure", "", false, "allow connections to "+opts.notePrefix+"SSL registry without certs")
 	plainHTTPFlagName := opts.flagPrefix + "plain-http"
 	plainHTTP := fs.Bool(plainHTTPFlagName, false, "allow insecure connections to "+opts.notePrefix+"registry without SSL check")
@@ -132,9 +132,9 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 // conflicts with read file from input.
 func (opts *Remote) CheckStdinConflict() error {
 	if opts.PasswordFromStdin {
-		return fmt.Errorf("`-` read file from input and `%s` read password from input cannot be both used", passwordFromStdinFlag)
+		return fmt.Errorf("`-` read file from input and `--%s` read password from input cannot be both used", passwordFromStdinFlag)
 	} else if opts.IdentityTokenFromStdin {
-		return fmt.Errorf("`-` read file from input and `%s` read identity token from input cannot be both used", identityTokenFromStdinFlag)
+		return fmt.Errorf("`-` read file from input and `--%s` read identity token from input cannot be both used", identityTokenFromStdinFlag)
 	}
 	return nil
 }
@@ -156,7 +156,7 @@ func (opts *Remote) Parse() error {
 		[]string{opts.flagPrefix + usernameFlag, opts.flagPrefix + passwordFlag, passwordFromStdinFlag})
 
 	if identityTokenFlag != "" && basicAuthFlag != "" {
-		return fmt.Errorf("%s cannot be used with %s", basicAuthFlag, identityTokenFlag)
+		return fmt.Errorf("--%s cannot be used with --%s", basicAuthFlag, identityTokenFlag)
 	}
 
 	if err := opts.parseCustomHeaders(); err != nil {
