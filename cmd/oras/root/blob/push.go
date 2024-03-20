@@ -80,7 +80,7 @@ Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
 			opts.RawReference = args[0]
 			opts.fileRef = args[1]
 			if opts.fileRef == "-" {
-				if err := opts.CheckStdinConflict(opts.PasswordFromStdin, opts.IdentityTokenFromStdin); err != nil {
+				if err := opts.CheckStdinConflict(); err != nil {
 					return err
 				}
 				if opts.size < 0 {
