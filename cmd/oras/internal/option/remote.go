@@ -130,18 +130,18 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 
 // CheckStdinConflict checks if opts.PasswordFromStdin or opts.IdentityTokenFromStdin
 // conflicts with read file from input.
-func (opts *Remote) CheckStdinConflict() error {
+func (opts *Remote) CheckStdinConflict(usage string) error {
 	if opts.PasswordFromStdin {
-		return fmt.Errorf("`-` read file from input and `--%s` read password from input cannot be both used", passwordFromStdinFlag)
+		return fmt.Errorf("%s and `--%s` read password from input cannot be both used", usage, passwordFromStdinFlag)
 	} else if opts.IdentityTokenFromStdin {
-		return fmt.Errorf("`-` read file from input and `--%s` read identity token from input cannot be both used", identityTokenFromStdinFlag)
+		return fmt.Errorf("%s and `--%s` read identity token from input cannot be both used", usage, identityTokenFromStdinFlag)
 	}
 	return nil
 }
 
 // Parse tries to read password with optional cmd prompt.
 func (opts *Remote) Parse() error {
-	// if basic auth flags and id token flags are both used, return an error
+	// check that basic auth flags and identity token flags are not both used.
 	var flagChecker = func(values []bool, flags []string) string {
 		for i, v := range values {
 			if v {
