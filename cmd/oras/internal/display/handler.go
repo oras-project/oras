@@ -45,7 +45,6 @@ func NewPushHandler(format string, tty *os.File, verbose bool) (status.PushHandl
 	default:
 		metadataHandler = template.NewPushHandler(format)
 	}
-
 	return statusHandler, metadataHandler
 }
 
@@ -69,6 +68,13 @@ func NewAttachHandler(format string, tty *os.File, verbose bool) (status.AttachH
 	default:
 		metadataHandler = template.NewAttachHandler(format)
 	}
-
 	return statusHandler, metadataHandler
+}
+
+// NewTagHandler returns a tag handler.
+func NewTagHandler(discard bool) status.TagHandler {
+	if discard {
+		return status.NewDiscardHandler()
+	}
+	return status.NewTextTagHandler()
 }

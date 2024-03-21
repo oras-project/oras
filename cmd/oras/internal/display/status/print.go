@@ -79,14 +79,16 @@ func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, fetcher 
 }
 
 // NewTagStatusPrinter creates a wrapper type for printing tag status.
-func NewTagStatusPrinter(target oras.Target) oras.Target {
+func NewTagStatusPrinter(target oras.Target, tagHandler TagHandler) oras.Target {
 	if repo, ok := target.(registry.Repository); ok {
 		return &tagManifestStatusForRepo{
 			Repository: repo,
+			tagHandler: tagHandler,
 		}
 	}
 	return &tagManifestStatusForTarget{
-		Target: target,
+		Target:     target,
+		tagHandler: tagHandler,
 	}
 }
 
@@ -110,41 +112,40 @@ func NewTagStatusHintPrinter(target oras.Target, refPrefix string) oras.Target {
 
 type tagManifestStatusForRepo struct {
 	registry.Repository
-	printHint *sync.Once
-	refPrefix string
+	tagHandler TagHandler
+	printHint  *sync.Once
+	refPrefix  string
 }
 
 // PushReference overrides Repository.PushReference method to print off which tag(s) were added successfully.
 func (p *tagManifestStatusForRepo) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
 	if p.printHint != nil {
 		p.printHint.Do(func() {
-			ref := p.refPrefix + "@" + expected.Digest.String()
-			_ = Print("Tagging", ref)
+			p.tagHandler.PreTagging(p.refPrefix + "@" + expected.Digest.String())
 		})
 	}
 	if err := p.Repository.PushReference(ctx, expected, content, reference); err != nil {
 		return err
 	}
-	return Print("Tagged", reference)
+	return p.tagHandler.OnTagged(reference)
 }
 
 type tagManifestStatusForTarget struct {
 	oras.Target
-	printHint *sync.Once
-	refPrefix string
+	tagHandler TagHandler
+	printHint  *sync.Once
+	refPrefix  string
 }
 
 // Tag tags a descriptor with a reference string.
 func (p *tagManifestStatusForTarget) Tag(ctx context.Context, desc ocispec.Descriptor, reference string) error {
 	if p.printHint != nil {
 		p.printHint.Do(func() {
-			ref := p.refPrefix + "@" + desc.Digest.String()
-			_ = Print("Tagging", ref)
+			p.tagHandler.PreTagging(p.refPrefix + "@" + desc.Digest.String())
 		})
 	}
-
 	if err := p.Target.Tag(ctx, desc, reference); err != nil {
 		return err
 	}
-	return Print("Tagged", reference)
+	return p.tagHandler.OnTagged(reference)
 }

@@ -45,3 +45,11 @@ func (DiscardHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error)
 
 // UpdateCopyOptions updates the copy options for the artifact push.
 func (DiscardHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher) {}
+
+// OnTagged implements TagHandler interface.
+func (DiscardHandler) OnTagged(tag string) error {
+	return nil
+}
+
+// PreTagging implements TagHandler interface.
+func (DiscardHandler) PreTagging(reference string) {}
