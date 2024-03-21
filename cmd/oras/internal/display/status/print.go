@@ -94,19 +94,21 @@ func NewTagStatusPrinter(target oras.Target, tagHandler TagHandler) oras.Target 
 
 // NewTagStatusHintPrinter creates a wrapper type for printing
 // tag status and hint.
-func NewTagStatusHintPrinter(target oras.Target, refPrefix string) oras.Target {
+func NewTagStatusHintPrinter(target oras.Target, refPrefix string, tagHandler TagHandler) oras.Target {
 	var printHint sync.Once
 	if repo, ok := target.(registry.Repository); ok {
 		return &tagManifestStatusForRepo{
 			Repository: repo,
 			printHint:  &printHint,
 			refPrefix:  refPrefix,
+			tagHandler: tagHandler,
 		}
 	}
 	return &tagManifestStatusForTarget{
-		Target:    target,
-		printHint: &printHint,
-		refPrefix: refPrefix,
+		Target:     target,
+		printHint:  &printHint,
+		refPrefix:  refPrefix,
+		tagHandler: tagHandler,
 	}
 }
 
