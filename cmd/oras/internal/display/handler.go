@@ -16,14 +16,24 @@ limitations under the License.
 package display
 
 import (
+	"context"
+	"errors"
 	"os"
+
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/json"
+	"oras.land/oras/cmd/oras/internal/display/metadata/table"
 	"oras.land/oras/cmd/oras/internal/display/metadata/template"
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
+	"oras.land/oras/cmd/oras/internal/display/metadata/tree"
 	"oras.land/oras/cmd/oras/internal/display/status"
+	"oras.land/oras/cmd/oras/internal/option"
 )
+
+// ErrInvalidOutputType denotes the error for invalid output type.
+var ErrInvalidOutputType = errors.New("output type can only be tree, table or json")
 
 // NewPushHandler returns status and metadata handlers for push command.
 func NewPushHandler(format string, tty *os.File, verbose bool) (status.PushHandler, metadata.PushHandler) {
@@ -71,4 +81,18 @@ func NewAttachHandler(format string, tty *os.File, verbose bool) (status.AttachH
 	}
 
 	return statusHandler, metadataHandler
+}
+
+// NewDiscoverHandler returns status and metadata handlers for discover command.
+func NewDiscoverHandler(ctx context.Context, outputType string, path string, artifactType string, rawReference string, desc ocispec.Descriptor, repo option.ReadOnlyGraphTagFinderTarget, verbose bool) metadata.DiscoverHandler {
+	if outputType == "tree" || outputType == "" {
+		return tree.NewDiscoverHandler(ctx, path, repo, desc, artifactType, verbose)
+	}
+	switch outputType {
+	case "table":
+		return table.NewDiscoverHandler(ctx, outputType, path, artifactType, desc, repo, rawReference, verbose)
+	case "json":
+		return json.NewDiscoverHandler(ctx, outputType, path, artifactType, desc, repo)
+	}
+	return template.NewDiscoverHandler(ctx, outputType, path, artifactType, desc, repo)
 }
