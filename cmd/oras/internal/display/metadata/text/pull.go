@@ -42,6 +42,9 @@ func (p *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor, 
 	return nil
 }
 
+func (p *PullHandler) OnFilePulled(name string, outputDir string, desc ocispec.Descriptor, descPath string) {
+}
+
 // NewPullHandler returns a new handler for Pull events.
 func NewPullHandler(out io.Writer) metadata.PullHandler {
 	return &PullHandler{out: out}

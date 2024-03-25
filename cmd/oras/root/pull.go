@@ -30,6 +30,7 @@ import (
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
 	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/cmd/oras/internal/display/utils"
@@ -137,7 +138,7 @@ func runPull(cmd *cobra.Command, opts *pullOptions) error {
 	dst.DisableOverwrite = opts.KeepOldFiles
 
 	statusHandler, metadataHandler := display.NewPullHandler(opts.Template, opts.Path, opts.TTY, cmd.OutOrStdout(), opts.Verbose)
-	desc, layerSkipped, files, err := doPull(ctx, src, dst, copyOptions, statusHandler, opts)
+	desc, layerSkipped, files, err := doPull(ctx, src, dst, copyOptions, metadataHandler, statusHandler, opts)
 	if err != nil {
 		if errors.Is(err, file.ErrPathTraversalDisallowed) {
 			err = fmt.Errorf("%s: %w", "use flag --allow-path-traversal to allow insecurely pulling files outside of working directory", err)
@@ -148,7 +149,7 @@ func runPull(cmd *cobra.Command, opts *pullOptions) error {
 	return metadataHandler.OnCompleted(&opts.Target, desc, layerSkipped, files)
 }
 
-func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, opts oras.CopyOptions, statusHandler status.PullHandler, po *pullOptions) (ocispec.Descriptor, bool, []model.File, error) {
+func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, opts oras.CopyOptions, metadataHandler metadata.PullHandler, statusHandler status.PullHandler, po *pullOptions) (ocispec.Descriptor, bool, []model.File, error) {
 	var configPath, configMediaType string
 	var err error
 
@@ -166,7 +167,6 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 	var printed sync.Map
 	var getConfigOnce sync.Once
 	var layerSkipped atomic.Bool
-	var filesLock sync.Mutex
 	var files []model.File
 	opts.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		statusFetcher := content.FetcherFunc(func(ctx context.Context, target ocispec.Descriptor) (fetched io.ReadCloser, fetchErr error) {
@@ -253,9 +253,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 		}
 		for _, s := range successors {
 			if name, ok := s.Annotations[ocispec.AnnotationTitle]; ok {
-				filesLock.Lock()
-				files = append(files, model.NewFile(name, po.Output, s, po.Path))
-				filesLock.Unlock()
+				metadataHandler.OnFilePulled(name, po.Output, s, po.Path)
 				if _, loaded := printed.LoadOrStore(utils.GenerateContentKey(s), true); !loaded {
 					if err := statusHandler.OnNodeRestored(s); err != nil {
 						return err

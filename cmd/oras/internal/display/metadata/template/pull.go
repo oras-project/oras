@@ -29,11 +29,17 @@ type PullHandler struct {
 	template string
 	path     string
 	out      io.Writer
+	pulled   model.Pulled
 }
 
 // OnCompleted implements metadata.PullHandler.
 func (ph *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor, _ bool, files []model.File) error {
 	return parseAndWrite(model.NewPull(ph.path+"@"+desc.Digest.String(), files), ph.template)
+}
+
+// OnFilePulled implements metadata.PullHandler.
+func (ph *PullHandler) OnFilePulled(name string, outputDir string, desc ocispec.Descriptor, descPath string) {
+	ph.pulled.Add(name, outputDir, desc, descPath)
 }
 
 // NewPullHandler returns a new handler for Pull events.

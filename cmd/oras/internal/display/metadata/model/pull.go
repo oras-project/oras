@@ -17,6 +17,7 @@ package model
 
 import (
 	"path/filepath"
+	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content/file"
@@ -29,8 +30,8 @@ type File struct {
 	Descriptor
 }
 
-// NewFile creates a new file metadata.
-func NewFile(name string, outputDir string, desc ocispec.Descriptor, descPath string) File {
+// newFile creates a new file metadata.
+func newFile(name string, outputDir string, desc ocispec.Descriptor, descPath string) File {
 	path := name
 	if !filepath.IsAbs(name) {
 		// ignore error since it's successfully written to file store
@@ -58,4 +59,17 @@ func NewPull(digestReference string, files []File) any {
 		},
 		Files: files,
 	}
+}
+
+// Pulled records all pulled files.
+type Pulled struct {
+	lock  sync.Mutex
+	files []File
+}
+
+// Add adds a pulled file.
+func (f *Pulled) Add(name string, outputDir string, desc ocispec.Descriptor, descPath string) {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+	f.files = append(f.files, newFile(name, outputDir, desc, descPath))
 }
