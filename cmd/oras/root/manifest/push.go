@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"oras.land/oras/cmd/oras/internal/display/metadata/model"
 	"os"
 	"strings"
 
@@ -154,19 +155,13 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 	verbose := opts.Verbose && !opts.OutputDescriptor
 	printer := status.NewPrinter(verbose)
 	if match {
-		if err := status.PrintStatus(desc, "Exists", verbose); err != nil {
-			return err
-		}
+		model.PrintDescriptor(printer, desc, "Exists")
 	} else {
-		if err = status.PrintStatus(desc, "Uploading", verbose); err != nil {
-			return err
-		}
+		model.PrintDescriptor(printer, desc, "Uploading")
 		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil {
 			return err
 		}
-		if err = status.PrintStatus(desc, "Uploaded ", verbose); err != nil {
-			return err
-		}
+		model.PrintDescriptor(printer, desc, "Uploaded ")
 	}
 
 	tagBytesNOpts := oras.DefaultTagBytesNOptions

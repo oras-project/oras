@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"oras.land/oras/cmd/oras/internal/display/metadata/model"
 	"slices"
 	"strings"
 	"sync"
@@ -173,24 +174,29 @@ func doCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTar
 		}
 	}
 	if opts.TTY == nil {
+		printer := status.NewPrinter(opts.Verbose)
 		// none TTY output
 		extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return status.PrintStatus(desc, promptExists, opts.Verbose)
+			model.PrintDescriptor(printer, desc, promptExists)
+			return nil
 		}
 		extendedCopyOptions.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-			return status.PrintStatus(desc, promptCopying, opts.Verbose)
+			model.PrintDescriptor(printer, desc, promptCopying)
+			return nil
 		}
 		extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
 			if err := status.PrintSuccessorStatus(ctx, desc, dst, committed, status.StatusPrinter(promptSkipped, opts.Verbose)); err != nil {
 				return err
 			}
-			return status.PrintStatus(desc, promptCopied, opts.Verbose)
+			model.PrintDescriptor(printer, desc, promptCopied)
+			return nil
 		}
 		extendedCopyOptions.OnMounted = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return status.PrintStatus(desc, promptMounted, opts.Verbose)
+			model.PrintDescriptor(printer, desc, promptMounted)
+			return nil
 		}
 	} else {
 		// TTY output

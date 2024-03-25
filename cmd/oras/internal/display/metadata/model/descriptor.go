@@ -18,6 +18,7 @@ package model
 import (
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras/cmd/oras/internal/display/status"
 )
 
 // DigestReference is a reference to an artifact with digest.
@@ -69,4 +70,27 @@ func FromDescriptor(name string, desc ocispec.Descriptor) Descriptor {
 		ArtifactType:    desc.ArtifactType,
 	}
 	return ret
+}
+
+// ShortDigest converts the digest of the descriptor to a short form for displaying.
+func ShortDigest(desc ocispec.Descriptor) (digestString string) {
+	digestString = desc.Digest.String()
+	if err := desc.Digest.Validate(); err == nil {
+		if algo := desc.Digest.Algorithm(); algo == digest.SHA256 {
+			digestString = desc.Digest.Encoded()[:12]
+		}
+	}
+	return digestString
+}
+
+// PrintDescriptor prints descriptor status and name.
+func PrintDescriptor(printer *status.Printer, desc ocispec.Descriptor, status string) {
+	name, ok := desc.Annotations[ocispec.AnnotationTitle]
+	if !ok {
+		name = desc.MediaType
+		printer.PrintVerbose(status, ShortDigest(desc), name)
+		return
+	}
+	printer.Print(status, ShortDigest(desc), name)
+	return
 }

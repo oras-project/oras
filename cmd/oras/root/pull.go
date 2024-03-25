@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"oras.land/oras/cmd/oras/internal/display/metadata/model"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -172,6 +173,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 		promptDownloaded  = "Downloaded "
 	)
 
+	printer := status.NewPrinter(po.Verbose)
 	dst, err = getTrackedTarget(dst, po.TTY, "Downloading", "Pulled     ")
 	if err != nil {
 		return ocispec.Descriptor{}, false, err
@@ -189,9 +191,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 			}
 			if po.TTY == nil {
 				// none TTY, print status log for first-time fetching
-				if err := status.PrintStatus(target, promptDownloading, po.Verbose); err != nil {
-					return nil, err
-				}
+				model.PrintDescriptor(printer, target, promptDownloading)
 			}
 			rc, err := fetcher.Fetch(ctx, target)
 			if err != nil {
@@ -204,7 +204,8 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 			}()
 			if po.TTY == nil {
 				// none TTY, add logs for processing manifest
-				return rc, status.PrintStatus(target, promptProcessing, po.Verbose)
+				model.PrintDescriptor(printer, target, promptProcessing)
+				return rc, nil
 			}
 			return rc, nil
 		})
@@ -247,7 +248,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 				}
 				if len(ss) == 0 {
 					// skip s if it is unnamed AND has no successors.
-					if err := printOnce(&printed, s, promptSkipped, po.Verbose, dst); err != nil {
+					if err := printOnce(&printed, s, promptSkipped, printer, dst); err != nil {
 						return nil, err
 					}
 					continue
@@ -265,7 +266,8 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 		}
 		if po.TTY == nil {
 			// none TTY, print status log for downloading
-			return status.PrintStatus(desc, promptDownloading, po.Verbose)
+			model.PrintDescriptor(printer, desc, promptDownloading)
+			return nil
 		}
 		// TTY
 		return nil
@@ -278,7 +280,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 		}
 		for _, s := range successors {
 			if _, ok := s.Annotations[ocispec.AnnotationTitle]; ok {
-				if err := printOnce(&printed, s, promptRestored, po.Verbose, dst); err != nil {
+				if err := printOnce(&printed, s, promptRestored, printer, dst); err != nil {
 					return err
 				}
 			}
@@ -291,7 +293,8 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 			name = desc.MediaType
 		}
 		printed.Store(generateContentKey(desc), true)
-		return status.Print(promptDownloaded, status.ShortDigest(desc), name)
+		printer.Print(promptDownloaded, model.ShortDigest(desc), name)
+		return nil
 	}
 
 	// Copy
@@ -305,7 +308,7 @@ func generateContentKey(desc ocispec.Descriptor) string {
 	return desc.Digest.String() + desc.Annotations[ocispec.AnnotationTitle]
 }
 
-func printOnce(printed *sync.Map, s ocispec.Descriptor, msg string, verbose bool, dst any) error {
+func printOnce(printed *sync.Map, s ocispec.Descriptor, msg string, printer *status.Printer, dst any) error {
 	if _, loaded := printed.LoadOrStore(generateContentKey(s), true); loaded {
 		return nil
 	}
@@ -315,7 +318,8 @@ func printOnce(printed *sync.Map, s ocispec.Descriptor, msg string, verbose bool
 
 	}
 	// none TTY
-	return status.PrintStatus(s, msg, verbose)
+	printer.PrintVerbose(s, msg)
+	return nil
 }
 
 func getTrackedTarget(gt oras.GraphTarget, tty *os.File, actionPrompt, doneprompt string) (oras.GraphTarget, error) {

@@ -18,6 +18,7 @@ package status
 import (
 	"context"
 	"fmt"
+	"oras.land/oras/cmd/oras/internal/display/metadata/model"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -27,23 +28,20 @@ import (
 
 // TextPushHandler handles text status output for push events.
 type TextPushHandler struct {
-	verbose bool
+	printer *Printer
 }
 
 // NewTextPushHandler returns a new handler for push command.
-func NewTextPushHandler(verbose bool) PushHandler {
+func NewTextPushHandler(printer *Printer) PushHandler {
 	return &TextPushHandler{
-		verbose: verbose,
+		printer: printer,
 	}
 }
 
 // OnFileLoading is called when a file is being prepared for upload.
 func (ph *TextPushHandler) OnFileLoading(name string) error {
-	if !ph.verbose {
-		return nil
-	}
-	_, err := fmt.Println("Preparing", name)
-	return err
+	printer.PrintVerbose("Preparing", name)
+	return nil
 }
 
 // OnEmptyArtifact is called when an empty artifact is being uploaded.
@@ -68,21 +66,22 @@ func (ph *TextPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetche
 	committed := &sync.Map{}
 	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return PrintStatus(desc, promptExists, ph.verbose)
+		model.PrintDescriptor(ph.printer, desc, promptExists)
+		return nil
 	}
 	opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		return PrintStatus(desc, promptUploading, ph.verbose)
+		model.PrintDescriptor(ph.printer, desc, promptUploading)
+		return nil
 	}
 	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		if err := PrintSuccessorStatus(ctx, desc, fetcher, committed, StatusPrinter(promptSkipped, ph.verbose)); err != nil {
-			return err
-		}
-		return PrintStatus(desc, promptUploaded, ph.verbose)
+		PrintSuccessorStatus(ctx, desc, fetcher, committed, promptSkipped, ph.printer)
+		model.PrintDescriptor(ph.printer, desc, promptUploaded)
+		return nil
 	}
 }
 
 // NewTextAttachHandler returns a new handler for attach command.
-func NewTextAttachHandler(verbose bool) AttachHandler {
-	return NewTextPushHandler(verbose)
+func NewTextAttachHandler(printer *Printer) AttachHandler {
+	return NewTextPushHandler(printer)
 }

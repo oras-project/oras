@@ -26,12 +26,12 @@ import (
 )
 
 // NewPushHandler returns status and metadata handlers for push command.
-func NewPushHandler(format string, tty *os.File, verbose bool) (status.PushHandler, metadata.PushHandler) {
+func NewPushHandler(format string, tty *os.File, printer *status.Printer) (status.PushHandler, metadata.PushHandler) {
 	var statusHandler status.PushHandler
 	if tty != nil {
 		statusHandler = status.NewTTYPushHandler(tty)
 	} else if format == "" {
-		statusHandler = status.NewTextPushHandler(verbose)
+		statusHandler = status.NewTextPushHandler(printer)
 	} else {
 		statusHandler = status.NewDiscardHandler()
 	}
@@ -50,12 +50,12 @@ func NewPushHandler(format string, tty *os.File, verbose bool) (status.PushHandl
 }
 
 // NewAttachHandler returns status and metadata handlers for attach command.
-func NewAttachHandler(format string, tty *os.File, verbose bool) (status.AttachHandler, metadata.AttachHandler) {
+func NewAttachHandler(format string, tty *os.File, printer *status.Printer) (status.AttachHandler, metadata.AttachHandler) {
 	var statusHandler status.AttachHandler
 	if tty != nil {
 		statusHandler = status.NewTTYAttachHandler(tty)
 	} else if format == "" {
-		statusHandler = status.NewTextAttachHandler(verbose)
+		statusHandler = status.NewTextAttachHandler(printer)
 	} else {
 		statusHandler = status.NewDiscardHandler()
 	}

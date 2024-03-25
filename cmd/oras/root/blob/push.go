@@ -18,8 +18,8 @@ package blob
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
+	"oras.land/oras/cmd/oras/internal/display/metadata/model"
 	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -119,11 +119,11 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 	if err != nil {
 		return err
 	}
-	verbose := opts.Verbose && !opts.OutputDescriptor
+	printer := status.NewPrinter(opts.Verbose && !opts.OutputDescriptor)
 	if exists {
-		err = status.PrintStatus(desc, "Exists", verbose)
+		printer.PrintVerbose(desc, "Exists")
 	} else {
-		err = opts.doPush(ctx, target, desc, rc)
+		err = opts.doPush(ctx, target, desc, rc, printer)
 	}
 	if err != nil {
 		return err
@@ -137,21 +137,20 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	fmt.Println("Pushed", opts.AnnotatedReference())
-	fmt.Println("Digest:", desc.Digest)
+	printer.Print("Pushed", opts.AnnotatedReference())
+	printer.Print("Digest:", desc.Digest)
 
 	return nil
 }
-func (opts *pushBlobOptions) doPush(ctx context.Context, t oras.Target, desc ocispec.Descriptor, r io.Reader) error {
+func (opts *pushBlobOptions) doPush(ctx context.Context, t oras.Target, desc ocispec.Descriptor, r io.Reader, printer *status.Printer) error {
 	if opts.TTY == nil {
 		// none TTY output
-		if err := status.PrintStatus(desc, "Uploading", opts.Verbose); err != nil {
-			return err
-		}
+		model.PrintDescriptor(printer, desc, "Uploading")
 		if err := t.Push(ctx, desc, r); err != nil {
 			return err
 		}
-		return status.PrintStatus(desc, "Uploaded ", opts.Verbose)
+		model.PrintDescriptor(printer, desc, "Uploaded ")
+		return nil
 	}
 
 	// TTY output
