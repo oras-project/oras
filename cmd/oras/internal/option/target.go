@@ -125,7 +125,6 @@ func (opts *Target) parseOCILayoutReference() (path string, ref string, err erro
 		ref = raw[idx+1:]
 	} else {
 		// find `tag`
-		// // use Errors.Join with invalidReference, only when error != nil
 		path, ref, err = fileref.Parse(raw, "")
 		if err != nil {
 			err = errors.Join(err, errdef.ErrInvalidReference)
