@@ -62,27 +62,29 @@ func TestTarget_Parse_remote_err(t *testing.T) {
 }
 
 func Test_parseOCILayoutReference(t *testing.T) {
-	type args struct {
-		raw string
+	opts := Target{
+		RawReference: "/test",
+		IsOCILayout:  false,
 	}
 	tests := []struct {
 		name    string
-		args    args
+		raw     string
 		want    string
 		want1   string
 		wantErr bool
 	}{
-		{"Empty input", args{raw: ""}, "", "", true},
-		{"Empty path and tag", args{raw: ":"}, "", "", true},
-		{"Empty path and digest", args{raw: "@"}, "", "", false},
-		{"Empty digest", args{raw: "path@"}, "path", "", false},
-		{"Empty tag", args{raw: "path:"}, "path", "", false},
-		{"path and digest", args{raw: "path@digest"}, "path", "digest", false},
-		{"path and tag", args{raw: "path:tag"}, "path", "tag", false},
+		{"Empty input", "", "", "", true},
+		{"Empty path and tag", ":", "", "", true},
+		{"Empty path and digest", "@", "", "", false},
+		{"Empty digest", "path@", "path", "", false},
+		{"Empty tag", "path:", "path", "", false},
+		{"path and digest", "path@digest", "path", "digest", false},
+		{"path and tag", "path:tag", "path", "tag", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1, err := parseOCILayoutReference(tt.args.raw)
+			opts.RawReference = tt.raw
+			got, got1, err := opts.parseOCILayoutReference()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseOCILayoutReference() error = %v, wantErr %v", err, tt.wantErr)
 				return

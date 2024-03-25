@@ -94,7 +94,6 @@ func (opts *Target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	opts.Remote.ApplyFlagsWithPrefix(fs, prefix, description)
 }
 
-// use parseOCILayoutReference in the 1st branch
 // Parse gets target options from user input.
 func (opts *Target) Parse() error {
 	switch {
@@ -103,7 +102,8 @@ func (opts *Target) Parse() error {
 		if len(opts.headerFlags) != 0 {
 			return errors.New("custom header flags cannot be used on an OCI image layout target")
 		}
-		return nil
+		_, _, err := opts.parseOCILayoutReference()
+		return err
 	default:
 		opts.Type = TargetTypeRemote
 		if _, err := registry.ParseReference(opts.RawReference); err != nil {
@@ -116,25 +116,27 @@ func (opts *Target) Parse() error {
 	}
 }
 
-// make this function return invalidReference
-// make this a receiver function
 // parseOCILayoutReference parses the raw in format of <path>[:<tag>|@<digest>]
-func parseOCILayoutReference(raw string) (path string, ref string, err error) {
+func (opts *Target) parseOCILayoutReference() (path string, ref string, err error) {
+	raw := opts.RawReference
 	if idx := strings.LastIndex(raw, "@"); idx != -1 {
 		// `digest` found
 		path = raw[:idx]
 		ref = raw[idx+1:]
 	} else {
 		// find `tag`
-		// use Errors.Join with invalidReference, only when error != nil
+		// // use Errors.Join with invalidReference, only when error != nil
 		path, ref, err = fileref.Parse(raw, "")
+		if err != nil {
+			err = errors.Join(err, errdef.ErrInvalidReference)
+		}
 	}
 	return
 }
 
 func (opts *Target) newOCIStore() (*oci.Store, error) {
 	var err error
-	opts.Path, opts.Reference, err = parseOCILayoutReference(opts.RawReference)
+	opts.Path, opts.Reference, err = opts.parseOCILayoutReference()
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +213,7 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common, logger
 	switch opts.Type {
 	case TargetTypeOCILayout:
 		var err error
-		opts.Path, opts.Reference, err = parseOCILayoutReference(opts.RawReference)
+		opts.Path, opts.Reference, err = opts.parseOCILayoutReference()
 		if err != nil {
 			return nil, err
 		}
