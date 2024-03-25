@@ -23,15 +23,16 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote/errcode"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 )
 
 func TestTarget_Parse_oci(t *testing.T) {
 	opts := Target{IsOCILayout: true}
-
-	if err := opts.Parse(); err != nil {
-		t.Errorf("Target.Parse() error = %v", err)
+	err := opts.Parse()
+	if !errors.Is(err, errdef.ErrInvalidReference) {
+		t.Errorf("Target.Parse() error = %v, expect %v", err, errdef.ErrInvalidReference)
 	}
 	if opts.Type != TargetTypeOCILayout {
 		t.Errorf("Target.Parse() failed, got %q, want %q", opts.Type, TargetTypeOCILayout)
