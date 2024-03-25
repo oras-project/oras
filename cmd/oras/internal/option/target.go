@@ -94,6 +94,7 @@ func (opts *Target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	opts.Remote.ApplyFlagsWithPrefix(fs, prefix, description)
 }
 
+// use parseOCILayoutReference in the 1st branch
 // Parse gets target options from user input.
 func (opts *Target) Parse() error {
 	switch {
@@ -106,12 +107,17 @@ func (opts *Target) Parse() error {
 	default:
 		opts.Type = TargetTypeRemote
 		if _, err := registry.ParseReference(opts.RawReference); err != nil {
-			return err
+			return &oerrors.Error{
+				Err:            fmt.Errorf("%q is an invalid reference", opts.RawReference),
+				Recommendation: "Please make sure the provided reference is in the form of <registry>/<repo>[:tag|@digest]",
+			}
 		}
 		return opts.Remote.Parse()
 	}
 }
 
+// make this function return invalidReference
+// make this a receiver function
 // parseOCILayoutReference parses the raw in format of <path>[:<tag>|@<digest>]
 func parseOCILayoutReference(raw string) (path string, ref string, err error) {
 	if idx := strings.LastIndex(raw, "@"); idx != -1 {
@@ -120,6 +126,7 @@ func parseOCILayoutReference(raw string) (path string, ref string, err error) {
 		ref = raw[idx+1:]
 	} else {
 		// find `tag`
+		// use Errors.Join with invalidReference, only when error != nil
 		path, ref, err = fileref.Parse(raw, "")
 	}
 	return
