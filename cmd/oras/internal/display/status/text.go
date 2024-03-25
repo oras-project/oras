@@ -107,8 +107,10 @@ func (ph *TextPullHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, e
 	return gt, nil
 }
 
-// StopTracking stop tracked target.
-func (ph *TextPullHandler) StopTracking() {}
+// Close implements io.Closer.
+func (ph *TextPullHandler) Close() error {
+	return nil
+}
 
 // OnNodeDownloading implements PullHandler.
 func (ph *TextPullHandler) OnNodeDownloading(desc ocispec.Descriptor) error {

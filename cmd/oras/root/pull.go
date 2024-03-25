@@ -162,7 +162,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 	if err != nil {
 		return ocispec.Descriptor{}, false, nil, err
 	}
-	defer statusHandler.StopTracking()
+	defer statusHandler.Close()
 	var printed sync.Map
 	var getConfigOnce sync.Once
 	var layerSkipped atomic.Bool

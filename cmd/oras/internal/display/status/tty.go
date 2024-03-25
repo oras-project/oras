@@ -134,9 +134,9 @@ func (ph *TTYPullHandler) OnNodeSkipped(printed *sync.Map, desc ocispec.Descript
 	return ph.printOnce(printed, desc, "Skipped    ")
 }
 
-// StopTracking stop tracked target.
-func (ph *TTYPullHandler) StopTracking() {
-	ph.tracked.Close()
+// Close implements io.Closer.
+func (ph *TTYPullHandler) Close() error {
+	return ph.tracked.Close()
 }
 
 // TrackTarget returns a tracked target.

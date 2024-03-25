@@ -46,8 +46,10 @@ func (DiscardHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error)
 	return gt, nil
 }
 
-// StopTracking stops tracking the status of the target.
-func (DiscardHandler) StopTracking() {}
+// Close implements io.Closer.
+func (DiscardHandler) Close() error {
+	return nil
+}
 
 // UpdateCopyOptions updates the copy options for the artifact push.
 func (DiscardHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher) {}

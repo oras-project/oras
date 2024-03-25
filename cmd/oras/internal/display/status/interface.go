@@ -16,6 +16,7 @@ limitations under the License.
 package status
 
 import (
+	"io"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -39,8 +40,7 @@ type PullHandler interface {
 	// TrackTarget returns a tracked target.
 	// If no TTY is available, it returns the original target.
 	TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error)
-	// StopTracking stops tracking the target if available.
-	StopTracking()
+	io.Closer
 	// OnNodeProcessing is called when processing a manifest.
 	OnNodeProcessing(desc ocispec.Descriptor) error
 	// OnNodeDownloading is called before downloading a node.
