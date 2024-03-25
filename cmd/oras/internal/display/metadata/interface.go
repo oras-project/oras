@@ -23,7 +23,7 @@ import (
 )
 
 type Outputable interface {
-	// WithOutput resets output of the handler
+	// WithOutput resets output of the handler.
 	WithOutput(out io.Writer)
 }
 
