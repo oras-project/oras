@@ -102,13 +102,6 @@ func NewTTYPullHandler(tty *os.File) PullHandler {
 	}
 }
 
-func (ph *TTYPullHandler) printOnce(printed *sync.Map, s ocispec.Descriptor, msg string) error {
-	if _, loaded := printed.LoadOrStore(utils.GenerateContentKey(s), true); loaded {
-		return nil
-	}
-	return ph.tracked.Prompt(s, msg)
-}
-
 // OnNodeDownloading implements PullHandler.
 func (ph *TTYPullHandler) OnNodeDownloading(desc ocispec.Descriptor) error {
 	return nil
@@ -125,13 +118,13 @@ func (ph *TTYPullHandler) OnNodeProcessing(desc ocispec.Descriptor) error {
 }
 
 // OnNodeRestored implements PullHandler.
-func (ph *TTYPullHandler) OnNodeRestored(printed *sync.Map, desc ocispec.Descriptor) error {
-	return ph.printOnce(printed, desc, "Restored   ")
+func (ph *TTYPullHandler) OnNodeRestored(desc ocispec.Descriptor) error {
+	return ph.tracked.Prompt(desc, utils.PullPromptRestored)
 }
 
 // OnNodeProcessing implements PullHandler.
-func (ph *TTYPullHandler) OnNodeSkipped(printed *sync.Map, desc ocispec.Descriptor) error {
-	return ph.printOnce(printed, desc, "Skipped    ")
+func (ph *TTYPullHandler) OnNodeSkipped(desc ocispec.Descriptor) error {
+	return ph.tracked.Prompt(desc, utils.PullPromptSkipped)
 }
 
 // Close implements io.Closer.

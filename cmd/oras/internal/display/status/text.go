@@ -94,13 +94,6 @@ type TextPullHandler struct {
 	verbose bool
 }
 
-func (ph *TextPullHandler) printOnce(printed *sync.Map, s ocispec.Descriptor, msg string) error {
-	if _, loaded := printed.LoadOrStore(utils.GenerateContentKey(s), true); loaded {
-		return nil
-	}
-	return PrintStatus(s, msg, ph.verbose)
-}
-
 // TrackTarget returns a tracked target.
 func (ph *TextPullHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error) {
 	ph.fetcher = gt
@@ -123,8 +116,8 @@ func (ph *TextPullHandler) OnNodeDownloaded(desc ocispec.Descriptor) error {
 }
 
 // OnNodeRestored implements PullHandler.
-func (ph *TextPullHandler) OnNodeRestored(printed *sync.Map, desc ocispec.Descriptor) error {
-	return ph.printOnce(printed, desc, utils.PullPromptRestored)
+func (ph *TextPullHandler) OnNodeRestored(desc ocispec.Descriptor) error {
+	return PrintStatus(desc, utils.PullPromptRestored, ph.verbose)
 }
 
 // OnNodeProcessing implements PullHandler.
@@ -133,8 +126,8 @@ func (ph *TextPullHandler) OnNodeProcessing(desc ocispec.Descriptor) error {
 }
 
 // OnNodeProcessing implements PullHandler.
-func (ph *TextPullHandler) OnNodeSkipped(printed *sync.Map, desc ocispec.Descriptor) error {
-	return ph.printOnce(printed, desc, utils.PullPromptSkipped)
+func (ph *TextPullHandler) OnNodeSkipped(desc ocispec.Descriptor) error {
+	return PrintStatus(desc, utils.PullPromptSkipped, ph.verbose)
 }
 
 // NewTextPullHandler returns a new handler for pull command.

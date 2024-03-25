@@ -17,7 +17,6 @@ package status
 
 import (
 	"io"
-	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
@@ -48,7 +47,7 @@ type PullHandler interface {
 	// OnNodeDownloaded is called after a node is downloaded.
 	OnNodeDownloaded(desc ocispec.Descriptor) error
 	// OnNodeRestored is called after a deduplicated node is restored.
-	OnNodeRestored(printed *sync.Map, desc ocispec.Descriptor) error
+	OnNodeRestored(desc ocispec.Descriptor) error
 	// OnNodeSkipped is called when a node is skipped.
-	OnNodeSkipped(printed *sync.Map, desc ocispec.Descriptor) error
+	OnNodeSkipped(desc ocispec.Descriptor) error
 }

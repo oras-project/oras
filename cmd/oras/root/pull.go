@@ -226,8 +226,10 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 				}
 				if len(ss) == 0 {
 					// skip s if it is unnamed AND has no successors.
-					if err := statusHandler.OnNodeSkipped(&printed, s); err != nil {
-						return nil, err
+					if _, loaded := printed.LoadOrStore(utils.GenerateContentKey(s), true); !loaded {
+						if err := statusHandler.OnNodeSkipped(s); err != nil {
+							return nil, err
+						}
 					}
 					continue
 				}
@@ -254,8 +256,10 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 				filesLock.Lock()
 				files = append(files, model.NewFile(name, po.Output, s, po.Path))
 				filesLock.Unlock()
-				if err := statusHandler.OnNodeRestored(&printed, s); err != nil {
-					return err
+				if _, loaded := printed.LoadOrStore(utils.GenerateContentKey(s), true); !loaded {
+					if err := statusHandler.OnNodeRestored(s); err != nil {
+						return err
+					}
 				}
 			}
 		}

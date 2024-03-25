@@ -16,8 +16,6 @@ limitations under the License.
 package status
 
 import (
-	"sync"
-
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
@@ -65,7 +63,7 @@ func (DiscardHandler) OnNodeDownloaded(desc ocispec.Descriptor) error {
 }
 
 // OnNodeRestored implements PullHandler.
-func (DiscardHandler) OnNodeRestored(_ *sync.Map, _ ocispec.Descriptor) error {
+func (DiscardHandler) OnNodeRestored(_ ocispec.Descriptor) error {
 	return nil
 }
 
@@ -75,6 +73,6 @@ func (DiscardHandler) OnNodeProcessing(desc ocispec.Descriptor) error {
 }
 
 // OnNodeProcessing implements PullHandler.
-func (DiscardHandler) OnNodeSkipped(printed *sync.Map, desc ocispec.Descriptor) error {
+func (DiscardHandler) OnNodeSkipped(desc ocispec.Descriptor) error {
 	return nil
 }
