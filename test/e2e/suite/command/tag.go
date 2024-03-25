@@ -119,6 +119,7 @@ var _ = Describe("OCI image layout users:", func() {
 			ref := filepath.Base(root)
 			ORAS("tag", LayoutRef(ref, multi_arch.Tag), Flags.Layout, "latest").WithWorkDir(dir).MatchKeyWords("Tagging [oci-layout]", "Tagged latest").Exec()
 			ORAS("tag", LayoutRef(ref, multi_arch.Tag), Flags.Layout, "tag2").WithWorkDir(dir).MatchKeyWords("Tagging [oci-layout]", "Tagged tag2").Exec()
+			ORAS("repo", "tags", Flags.Layout, LayoutRef(ref, multi_arch.Tag)).WithWorkDir(dir).MatchKeyWords(multi_arch.Tag, "latest", "tag2").Exec()
 		})
 	})
 })
