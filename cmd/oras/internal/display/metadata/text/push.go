@@ -16,8 +16,6 @@ limitations under the License.
 package text
 
 import (
-	"io"
-
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/view"
@@ -26,27 +24,24 @@ import (
 
 // PushHandler handles text metadata output for push events.
 type PushHandler struct {
-	printer view.Printer
+	view.Printer
 }
 
 // NewPushHandler returns a new handler for push events.
 func NewPushHandler() metadata.PushHandler {
-	return &PushHandler{}
-}
-
-// WithOutput implements metadata.Outputer.
-func (ph *PushHandler) WithOutput(out io.Writer) {
-	ph.printer = view.NewPrinter(out)
+	return &PushHandler{
+		Printer: view.NewPrinter(),
+	}
 }
 
 // OnCopied is called after files are copied.
 func (ph *PushHandler) OnCopied(opts *option.Target) error {
-	_, err := ph.printer.Println("Pushed", opts.AnnotatedReference())
+	_, err := ph.Println("Pushed", opts.AnnotatedReference())
 	return err
 }
 
 // OnCompleted is called after the push is completed.
 func (ph *PushHandler) OnCompleted(root ocispec.Descriptor) error {
-	_, err := ph.printer.Println("Digest:", root.Digest)
+	_, err := ph.Println("Digest:", root.Digest)
 	return err
 }

@@ -17,7 +17,6 @@ package text
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -28,17 +27,14 @@ import (
 
 // AttachHandler handles text metadata output for attach events.
 type AttachHandler struct {
-	printer view.Printer
-}
-
-// WithOutput implements metadata.Outputer.
-func (ah *AttachHandler) WithOutput(out io.Writer) {
-	ah.printer = view.NewPrinter(out)
+	view.Printer
 }
 
 // NewAttachHandler returns a new handler for attach events.
 func NewAttachHandler() metadata.AttachHandler {
-	return &AttachHandler{}
+	return &AttachHandler{
+		Printer: view.NewPrinter(),
+	}
 }
 
 // OnCompleted is called when the attach command is completed.
@@ -47,10 +43,10 @@ func (ah *AttachHandler) OnCompleted(opts *option.Target, root, subject ocispec.
 	if !strings.HasSuffix(opts.RawReference, digest) {
 		opts.RawReference = fmt.Sprintf("%s@%s", opts.Path, subject.Digest)
 	}
-	_, err := ah.printer.Println("Attached to", opts.AnnotatedReference())
+	_, err := ah.Println("Attached to", opts.AnnotatedReference())
 	if err != nil {
 		return err
 	}
-	_, err = ah.printer.Println("Digest:", root.Digest)
+	_, err = ah.Println("Digest:", root.Digest)
 	return err
 }

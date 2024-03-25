@@ -16,8 +16,6 @@ limitations under the License.
 package template
 
 import (
-	"io"
-
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
@@ -28,20 +26,18 @@ import (
 // AttachHandler handles go-template metadata output for attach events.
 type AttachHandler struct {
 	template string
-	printer  view.Printer
-}
-
-// WithOutput implements metadata.AttachHandler.
-func (a *AttachHandler) WithOutput(out io.Writer) {
-	a.printer = view.NewPrinter(out)
+	view.Printer
 }
 
 // NewAttachHandler returns a new handler for attach metadata events.
 func NewAttachHandler(template string) metadata.AttachHandler {
-	return &AttachHandler{template: template}
+	return &AttachHandler{
+		template: template,
+		Printer:  view.NewPrinter(),
+	}
 }
 
 // OnCompleted formats the metadata of attach command.
 func (ah *AttachHandler) OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error {
-	return ah.printer.ParseAndWrite(model.NewPush(root, opts.Path), ah.template)
+	return ah.ParseAndWrite(model.NewPush(root, opts.Path), ah.template)
 }

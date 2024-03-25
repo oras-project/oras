@@ -16,8 +16,6 @@ limitations under the License.
 package json
 
 import (
-	"io"
-
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
@@ -27,18 +25,15 @@ import (
 
 // PushHandler handles JSON metadata output for push events.
 type PushHandler struct {
-	path    string
-	printer view.Printer
+	path string
+	view.Printer
 }
 
 // NewPushHandler creates a new handler for push events.
 func NewPushHandler() metadata.PushHandler {
-	return &PushHandler{}
-}
-
-// WithOutput implements metadata.Outputer.
-func (ph *PushHandler) WithOutput(out io.Writer) {
-	ph.printer = view.NewPrinter(out)
+	return &PushHandler{
+		Printer: view.NewPrinter(),
+	}
 }
 
 // OnCopied is called after files are copied.
@@ -49,5 +44,5 @@ func (ph *PushHandler) OnCopied(opts *option.Target) error {
 
 // OnCompleted is called after the push is completed.
 func (ph *PushHandler) OnCompleted(root ocispec.Descriptor) error {
-	return ph.printer.PrintJSON(model.NewPush(root, ph.path))
+	return ph.PrintJSON(model.NewPush(root, ph.path))
 }

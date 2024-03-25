@@ -22,6 +22,7 @@ import (
 	"io"
 
 	"github.com/Masterminds/sprig/v3"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
 )
 
 // Printer prints.
@@ -30,6 +31,7 @@ type Printer interface {
 	Println(a ...any) (n int, err error)
 	PrintJSON(object any) error
 	ParseAndWrite(object any, templateStr string) error
+	metadata.Outputable
 }
 
 type printer struct {
@@ -37,8 +39,8 @@ type printer struct {
 }
 
 // NewPrinter creates a new printer based on out.
-func NewPrinter(out io.Writer) Printer {
-	return &printer{out: out}
+func NewPrinter() Printer {
+	return &printer{}
 }
 
 // Printf writes the formatted string to the out.
@@ -65,4 +67,9 @@ func (p *printer) ParseAndWrite(object any, templateStr string) error {
 		return err
 	}
 	return t.Execute(p.out, object)
+}
+
+// WithOutput implements metadata.Outputer.
+func (p *printer) WithOutput(out io.Writer) {
+	p.out = out
 }

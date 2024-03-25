@@ -16,8 +16,6 @@ limitations under the License.
 package text
 
 import (
-	"io"
-
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/view"
@@ -26,22 +24,17 @@ import (
 
 // PullHandler handles text metadata output for pull events.
 type PullHandler struct {
-	printer view.Printer
-}
-
-// WithOutput implements metadata.Outputer.
-func (ph *PullHandler) WithOutput(out io.Writer) {
-	ph.printer = view.NewPrinter(out)
+	view.Printer
 }
 
 // OnCompleted implements metadata.PullHandler.
 func (p *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor, layerSkipped bool) error {
 	if layerSkipped {
-		_, _ = p.printer.Printf("Skipped pulling layers without file name in %q\n", ocispec.AnnotationTitle)
-		_, _ = p.printer.Printf("Use 'oras copy %s --to-oci-layout <layout-dir>' to pull all layers.\n", opts.RawReference)
+		_, _ = p.Printf("Skipped pulling layers without file name in %q\n", ocispec.AnnotationTitle)
+		_, _ = p.Printf("Use 'oras copy %s --to-oci-layout <layout-dir>' to pull all layers.\n", opts.RawReference)
 	} else {
-		_, _ = p.printer.Println("Pulled", opts.AnnotatedReference())
-		_, _ = p.printer.Println("Digest:", desc.Digest)
+		_, _ = p.Println("Pulled", opts.AnnotatedReference())
+		_, _ = p.Println("Digest:", desc.Digest)
 	}
 	return nil
 }
@@ -50,6 +43,8 @@ func (p *PullHandler) OnFilePulled(name string, outputDir string, desc ocispec.D
 }
 
 // NewPullHandler returns a new handler for Pull events.
-func NewPullHandler(out io.Writer) metadata.PullHandler {
-	return &PullHandler{}
+func NewPullHandler() metadata.PullHandler {
+	return &PullHandler{
+		Printer: view.NewPrinter(),
+	}
 }
