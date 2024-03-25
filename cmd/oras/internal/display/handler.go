@@ -16,6 +16,7 @@ limitations under the License.
 package display
 
 import (
+	"io"
 	"os"
 
 	"oras.land/oras/cmd/oras/internal/display/metadata"
@@ -74,7 +75,7 @@ func NewAttachHandler(format string, tty *os.File, verbose bool) (status.AttachH
 }
 
 // NewPullHandler returns status and metadata handlers for pull command.
-func NewPullHandler(format string, path string, tty *os.File, verbose bool) (status.PullHandler, metadata.PullHandler) {
+func NewPullHandler(format string, path string, tty *os.File, out io.Writer, verbose bool) (status.PullHandler, metadata.PullHandler) {
 	var statusHandler status.PullHandler
 	if tty != nil {
 		statusHandler = status.NewTTYPullHandler(tty)
@@ -87,11 +88,11 @@ func NewPullHandler(format string, path string, tty *os.File, verbose bool) (sta
 	var metadataHandler metadata.PullHandler
 	switch format {
 	case "":
-		metadataHandler = text.NewPullHandler()
+		metadataHandler = text.NewPullHandler(out)
 	case "json":
-		metadataHandler = json.NewPullHandler(path)
+		metadataHandler = json.NewPullHandler(path, out)
 	default:
-		metadataHandler = template.NewPullHandler(path, format)
+		metadataHandler = template.NewPullHandler(path, format, out)
 	}
 	return statusHandler, metadataHandler
 }

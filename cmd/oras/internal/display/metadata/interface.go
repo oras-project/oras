@@ -35,5 +35,5 @@ type AttachHandler interface {
 // PullHandler handles metadata output for attach events.
 type PullHandler interface {
 	// OnCompleted is called when the pull cmd execution is completed.
-	OnCompleted(opts *option.Target, desc ocispec.Descriptor, layerSkipped bool, _ []model.File) error
+	OnCompleted(opts *option.Target, desc ocispec.Descriptor, layerSkipped bool, files []model.File) error
 }

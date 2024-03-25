@@ -136,7 +136,7 @@ func runPull(cmd *cobra.Command, opts *pullOptions) error {
 	dst.AllowPathTraversalOnWrite = opts.PathTraversal
 	dst.DisableOverwrite = opts.KeepOldFiles
 
-	statusHandler, metadataHandler := display.NewPullHandler(opts.Template, opts.Path, opts.TTY, opts.Verbose)
+	statusHandler, metadataHandler := display.NewPullHandler(opts.Template, opts.Path, opts.TTY, cmd.OutOrStdout(), opts.Verbose)
 	desc, layerSkipped, files, err := doPull(ctx, src, dst, copyOptions, statusHandler, opts)
 	if err != nil {
 		if errors.Is(err, file.ErrPathTraversalDisallowed) {

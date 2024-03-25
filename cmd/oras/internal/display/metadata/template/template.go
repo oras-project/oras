@@ -16,6 +16,7 @@ limitations under the License.
 package template
 
 import (
+	"io"
 	"os"
 	"text/template"
 
@@ -23,9 +24,13 @@ import (
 )
 
 func parseAndWrite(object any, templateStr string) error {
+	return parseAndWriteTo(object, templateStr, os.Stdout)
+}
+
+func parseAndWriteTo(object any, templateStr string, to io.Writer) error {
 	t, err := template.New("format output").Funcs(sprig.FuncMap()).Parse(templateStr)
 	if err != nil {
 		return err
 	}
-	return t.Execute(os.Stdout, object)
+	return t.Execute(to, object)
 }

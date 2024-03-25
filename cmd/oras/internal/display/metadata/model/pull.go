@@ -16,7 +16,6 @@ limitations under the License.
 package model
 
 import (
-	"fmt"
 	"path/filepath"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -25,7 +24,7 @@ import (
 
 // File records pulled files.
 type File struct {
-	// Absolute path of the pulled file.
+	// Path is the absolute path of the pulled file.
 	Path string
 	Descriptor
 }
@@ -38,7 +37,7 @@ func NewFile(name string, outputDir string, desc ocispec.Descriptor, descPath st
 		path, _ = filepath.Abs(filepath.Join(outputDir, name))
 	}
 	if desc.Annotations[file.AnnotationUnpack] == "true" {
-		path = fmt.Sprintf("%s%c", path, filepath.Separator)
+		path += string(filepath.Separator)
 	}
 	return File{
 		Path:       path,
@@ -52,7 +51,7 @@ type pull struct {
 }
 
 // NewPull creates a new metadata struct for pull command.
-func NewPull(digestReference string, files []File) pull {
+func NewPull(digestReference string, files []File) any {
 	return pull{
 		DigestReference: DigestReference{
 			Ref: digestReference,

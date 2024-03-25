@@ -16,6 +16,8 @@ limitations under the License.
 package json
 
 import (
+	"io"
+
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
@@ -25,12 +27,14 @@ import (
 // PullHandler handles JSON metadata output for pull events.
 type PullHandler struct {
 	path string
+	out  io.Writer
 }
 
 // NewPullHandler returns a new handler for Pull events.
-func NewPullHandler(path string) metadata.PullHandler {
+func NewPullHandler(path string, out io.Writer) metadata.PullHandler {
 	return &PullHandler{
 		path: path,
+		out:  out,
 	}
 }
 

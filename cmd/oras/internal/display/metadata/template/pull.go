@@ -16,6 +16,8 @@ limitations under the License.
 package template
 
 import (
+	"io"
+
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
@@ -26,6 +28,7 @@ import (
 type PullHandler struct {
 	template string
 	path     string
+	out      io.Writer
 }
 
 // OnCompleted implements metadata.PullHandler.
@@ -34,9 +37,10 @@ func (ph *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor,
 }
 
 // NewPullHandler returns a new handler for Pull events.
-func NewPullHandler(path string, template string) metadata.PullHandler {
+func NewPullHandler(path string, template string, out io.Writer) metadata.PullHandler {
 	return &PullHandler{
 		path:     path,
 		template: template,
+		out:      out,
 	}
 }
