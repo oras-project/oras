@@ -98,11 +98,12 @@ func (opts *Target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 func (opts *Target) Parse() error {
 	switch {
 	case opts.IsOCILayout:
+		var err error
 		opts.Type = TargetTypeOCILayout
 		if len(opts.headerFlags) != 0 {
 			return errors.New("custom header flags cannot be used on an OCI image layout target")
 		}
-		_, _, err := opts.parseOCILayoutReference()
+		opts.Path, opts.Reference, err = opts.parseOCILayoutReference()
 		return err
 	default:
 		opts.Type = TargetTypeRemote
@@ -134,11 +135,6 @@ func (opts *Target) parseOCILayoutReference() (path string, ref string, err erro
 }
 
 func (opts *Target) newOCIStore() (*oci.Store, error) {
-	var err error
-	opts.Path, opts.Reference, err = opts.parseOCILayoutReference()
-	if err != nil {
-		return nil, err
-	}
 	return oci.New(opts.Path)
 }
 
@@ -211,11 +207,6 @@ type ReadOnlyGraphTagFinderTarget interface {
 func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common, logger logrus.FieldLogger) (ReadOnlyGraphTagFinderTarget, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
-		var err error
-		opts.Path, opts.Reference, err = opts.parseOCILayoutReference()
-		if err != nil {
-			return nil, err
-		}
 		info, err := os.Stat(opts.Path)
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) {
