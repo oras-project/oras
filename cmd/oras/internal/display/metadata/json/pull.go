@@ -21,21 +21,26 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
+	"oras.land/oras/cmd/oras/internal/display/metadata/view"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
 // PullHandler handles JSON metadata output for pull events.
 type PullHandler struct {
-	path   string
-	out    io.Writer
-	pulled model.Pulled
+	path    string
+	printer view.Printer
+	pulled  model.Pulled
+}
+
+// WithOutput implements metadata.Outputer.
+func (ph *PullHandler) WithOutput(out io.Writer) {
+	ph.printer = view.NewPrinter(out)
 }
 
 // NewPullHandler returns a new handler for Pull events.
-func NewPullHandler(path string, out io.Writer) metadata.PullHandler {
+func NewPullHandler(path string) metadata.PullHandler {
 	return &PullHandler{
 		path: path,
-		out:  out,
 	}
 }
 
@@ -46,5 +51,5 @@ func (ph *PullHandler) OnFilePulled(name string, outputDir string, desc ocispec.
 
 // OnCompleted implements metadata.PullHandler.
 func (ph *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor, _ bool) error {
-	return printJSON(model.NewPull(ph.path+"@"+desc.Digest.String(), ph.pulled.Files))
+	return ph.printer.PrintJSON(model.NewPull(ph.path+"@"+desc.Digest.String(), ph.pulled.Files))
 }
