@@ -17,7 +17,6 @@ package metadata
 
 import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras/cmd/oras/internal/display/metadata/model"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -37,5 +36,5 @@ type PullHandler interface {
 	// OnStarted is called when a file is pulled.
 	OnFilePulled(name string, outputDir string, desc ocispec.Descriptor, descPath string)
 	// OnCompleted is called when the pull cmd execution is completed.
-	OnCompleted(opts *option.Target, desc ocispec.Descriptor, layerSkipped bool, files []model.File) error
+	OnCompleted(opts *option.Target, desc ocispec.Descriptor, layerSkipped bool) error
 }

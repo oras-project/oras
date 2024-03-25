@@ -33,8 +33,8 @@ type PullHandler struct {
 }
 
 // OnCompleted implements metadata.PullHandler.
-func (ph *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor, _ bool, files []model.File) error {
-	return parseAndWrite(model.NewPull(ph.path+"@"+desc.Digest.String(), files), ph.template)
+func (ph *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor, _ bool) error {
+	return parseAndWrite(model.NewPull(ph.path+"@"+desc.Digest.String(), ph.pulled.Files), ph.template)
 }
 
 // OnFilePulled implements metadata.PullHandler.

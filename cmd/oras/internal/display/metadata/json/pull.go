@@ -26,9 +26,9 @@ import (
 
 // PullHandler handles JSON metadata output for pull events.
 type PullHandler struct {
-	path        string
-	out         io.Writer
-	pulledFiles model.Pulled
+	path   string
+	out    io.Writer
+	pulled model.Pulled
 }
 
 // NewPullHandler returns a new handler for Pull events.
@@ -41,10 +41,10 @@ func NewPullHandler(path string, out io.Writer) metadata.PullHandler {
 
 // OnFilePulled implements metadata.PullHandler.
 func (ph *PullHandler) OnFilePulled(name string, outputDir string, desc ocispec.Descriptor, descPath string) {
-	ph.pulledFiles.Add(name, outputDir, desc, descPath)
+	ph.pulled.Add(name, outputDir, desc, descPath)
 }
 
 // OnCompleted implements metadata.PullHandler.
-func (ph *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor, _ bool, files []model.File) error {
-	return printJSON(model.NewPull(ph.path+"@"+desc.Digest.String(), files))
+func (ph *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor, _ bool) error {
+	return printJSON(model.NewPull(ph.path+"@"+desc.Digest.String(), ph.pulled.Files))
 }

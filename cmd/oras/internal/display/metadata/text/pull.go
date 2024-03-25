@@ -21,7 +21,6 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
-	"oras.land/oras/cmd/oras/internal/display/metadata/model"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -31,7 +30,7 @@ type PullHandler struct {
 }
 
 // OnCompleted implements metadata.PullHandler.
-func (p *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor, layerSkipped bool, _ []model.File) error {
+func (p *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor, layerSkipped bool) error {
 	if layerSkipped {
 		_, _ = fmt.Fprintf(p.out, "Skipped pulling layers without file name in %q\n", ocispec.AnnotationTitle)
 		_, _ = fmt.Fprintf(p.out, "Use 'oras copy %s --to-oci-layout <layout-dir>' to pull all layers.\n", opts.RawReference)
