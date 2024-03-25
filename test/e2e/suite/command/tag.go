@@ -112,5 +112,10 @@ var _ = Describe("OCI image layout users:", func() {
 		It("should add multiple tags to an existent manifest when providing tag reference", func() {
 			tagAndValidate(PrepareTempOCI(ImageRepo), multi_arch.Tag, multi_arch.Digest, "tag1-via-tag", "tag1-via-tag", "tag1-via-tag")
 		})
+		It("should be able to retag a manifest at the current directory", func() {
+			root := PrepareTempOCI(ImageRepo)
+			ORAS("tag", LayoutRef(root, multi_arch.Tag), Flags.Layout, "latest").WithWorkDir(root).Exec()
+			ORAS("tag", LayoutRef(root, multi_arch.Tag), Flags.Layout, "tag2").WithWorkDir(root).MatchKeyWords("Pushed").Exec()
+		})
 	})
 })
