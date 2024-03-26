@@ -29,6 +29,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/test/e2e/internal/testdata/feature"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
+	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
 	"oras.land/oras/test/e2e/internal/utils/match"
 )
@@ -97,6 +98,18 @@ var _ = Describe("1.1 registry users:", func() {
 			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				WithWorkDir(PrepareTempFiles()).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
+		})
+
+		It("should attach a file to an arch-specific subject", func() {
+			testRepo := attachTestRepo("arch-specific")
+			CopyZOTRepo(ImageRepo, testRepo)
+			subjectRef := RegistryRef(ZOTHost, testRepo, multi_arch.Tag)
+			artifactType := "test/attach"
+			// test
+			out := ORAS("attach", "--artifact-type", artifactType, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.Digest}}", "--platform", "linux/amd64").
+				WithWorkDir(PrepareTempFiles()).Exec().Out.Contents()
+			// validate
+			ORAS("discover", "--artifact-type", artifactType, RegistryRef(ZOTHost, testRepo, multi_arch.LinuxAMD64.Digest.String())).MatchKeyWords(string(out)).Exec()
 		})
 
 		It("should attach a file to a subject and export the built manifest", func() {

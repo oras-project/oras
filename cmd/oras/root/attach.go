@@ -39,6 +39,7 @@ type attachOptions struct {
 	option.Packer
 	option.Target
 	option.Format
+	option.Platform
 
 	artifactType string
 	concurrency  int
@@ -55,6 +56,9 @@ func attachCmd() *cobra.Command {
 
 Example - Attach file 'hi.txt' with aritifact type 'doc/example' to manifest 'hello:v1' in registry 'localhost:5000':
   oras attach --artifact-type doc/example localhost:5000/hello:v1 hi.txt
+
+Example - Attach file 'hi.txt' to a specific artifact with platform 'linux/amd64' in multi-arch index 'hello:v1'
+  oras attach --artifact-type doc/example --platform linux/amd64 localhost:5000/hello:v1 hi.txt
 
 Example - Push file "hi.txt" with the custom layer media type 'application/vnd.me.hi':
   oras attach --artifact-type doc/example localhost:5000/hello:v1 hi.txt:application/vnd.me.hi
@@ -94,6 +98,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
+	cmd.Flags().StringVarP(&opts.PlatformFlag, option.PlatformFlagName, "", "", "attach to an arch specific subject, in the form of `os[/arch][/variant][:os_version]`")
 	_ = cmd.MarkFlagRequired("artifact-type")
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
@@ -132,7 +137,9 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	// add both pull and push scope hints for dst repository
 	// to save potential push-scope token requests during copy
 	ctx = registryutil.WithScopeHint(ctx, dst, auth.ActionPull, auth.ActionPush)
-	subject, err := dst.Resolve(ctx, opts.Reference)
+	fetchOpts := oras.DefaultResolveOptions
+	fetchOpts.TargetPlatform = opts.Platform.Platform
+	subject, err := oras.Resolve(ctx, dst, opts.Reference, fetchOpts)
 	if err != nil {
 		return err
 	}

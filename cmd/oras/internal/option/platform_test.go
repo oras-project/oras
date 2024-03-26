@@ -25,8 +25,8 @@ import (
 func TestPlatform_ApplyFlags(t *testing.T) {
 	var test struct{ Platform }
 	ApplyFlags(&test, pflag.NewFlagSet("oras-test", pflag.ExitOnError))
-	if test.Platform.platform != "" {
-		t.Fatalf("expecting platform to be empty but got: %v", test.Platform.platform)
+	if test.Platform.PlatformFlag != "" {
+		t.Fatalf("expecting platform to be empty but got: %v", test.Platform.PlatformFlag)
 	}
 }
 
@@ -58,13 +58,13 @@ func TestPlatform_Parse(t *testing.T) {
 		opts *Platform
 		want *ocispec.Platform
 	}{
-		{name: "empty", opts: &Platform{platform: ""}, want: nil},
-		{name: "default arch", opts: &Platform{platform: "os"}, want: &ocispec.Platform{OS: "os", Architecture: runtime.GOARCH}},
-		{name: "os&arch", opts: &Platform{platform: "os/aRcH"}, want: &ocispec.Platform{OS: "os", Architecture: "aRcH"}},
-		{name: "empty variant", opts: &Platform{platform: "os/aRcH/"}, want: &ocispec.Platform{OS: "os", Architecture: "aRcH", Variant: ""}},
-		{name: "os&arch&variant", opts: &Platform{platform: "os/aRcH/vAriAnt"}, want: &ocispec.Platform{OS: "os", Architecture: "aRcH", Variant: "vAriAnt"}},
-		{name: "os version", opts: &Platform{platform: "os/aRcH/vAriAnt:osversion"}, want: &ocispec.Platform{OS: "os", Architecture: "aRcH", Variant: "vAriAnt", OSVersion: "osversion"}},
-		{name: "long os version", opts: &Platform{platform: "os/aRcH"}, want: &ocispec.Platform{OS: "os", Architecture: "aRcH"}},
+		{name: "empty", opts: &Platform{PlatformFlag: ""}, want: nil},
+		{name: "default arch", opts: &Platform{PlatformFlag: "os"}, want: &ocispec.Platform{OS: "os", Architecture: runtime.GOARCH}},
+		{name: "os&arch", opts: &Platform{PlatformFlag: "os/aRcH"}, want: &ocispec.Platform{OS: "os", Architecture: "aRcH"}},
+		{name: "empty variant", opts: &Platform{PlatformFlag: "os/aRcH/"}, want: &ocispec.Platform{OS: "os", Architecture: "aRcH", Variant: ""}},
+		{name: "os&arch&variant", opts: &Platform{PlatformFlag: "os/aRcH/vAriAnt"}, want: &ocispec.Platform{OS: "os", Architecture: "aRcH", Variant: "vAriAnt"}},
+		{name: "os version", opts: &Platform{PlatformFlag: "os/aRcH/vAriAnt:osversion"}, want: &ocispec.Platform{OS: "os", Architecture: "aRcH", Variant: "vAriAnt", OSVersion: "osversion"}},
+		{name: "long os version", opts: &Platform{PlatformFlag: "os/aRcH"}, want: &ocispec.Platform{OS: "os", Architecture: "aRcH"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
