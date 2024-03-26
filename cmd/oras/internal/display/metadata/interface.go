@@ -16,28 +16,22 @@ limitations under the License.
 package metadata
 
 import (
-	"io"
-
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras/cmd/oras/internal/display/metadata/view"
 	"oras.land/oras/cmd/oras/internal/option"
 )
-
-type Outputable interface {
-	// WithOutput resets output of the handler.
-	WithOutput(out io.Writer)
-}
 
 // PushHandler handles metadata output for push events.
 type PushHandler interface {
 	OnCopied(opts *option.Target) error
 	OnCompleted(root ocispec.Descriptor) error
-	Outputable
+	view.Outputable
 }
 
 // AttachHandler handles metadata output for attach events.
 type AttachHandler interface {
 	OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error
-	Outputable
+	view.Outputable
 }
 
 // PullHandler handles metadata output for attach events.
@@ -46,5 +40,5 @@ type PullHandler interface {
 	OnFilePulled(name string, outputDir string, desc ocispec.Descriptor, descPath string)
 	// OnCompleted is called when the pull cmd execution is completed.
 	OnCompleted(opts *option.Target, desc ocispec.Descriptor, layerSkipped bool) error
-	Outputable
+	view.Outputable
 }

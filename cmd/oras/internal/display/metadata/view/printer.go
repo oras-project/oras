@@ -22,8 +22,13 @@ import (
 	"io"
 
 	"github.com/Masterminds/sprig/v3"
-	"oras.land/oras/cmd/oras/internal/display/metadata"
 )
+
+// Outputable interface is used to reset output of the handler.
+type Outputable interface {
+	// WithOutput resets output of the handler.
+	WithOutput(out io.Writer)
+}
 
 // Printer prints.
 type Printer interface {
@@ -31,7 +36,7 @@ type Printer interface {
 	Println(a ...any) (n int, err error)
 	PrintJSON(object any) error
 	ParseAndWrite(object any, templateStr string) error
-	metadata.Outputable
+	Outputable
 }
 
 type printer struct {
