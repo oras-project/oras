@@ -98,13 +98,11 @@ func (opts *Target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 func (opts *Target) Parse() error {
 	switch {
 	case opts.IsOCILayout:
-		var err error
 		opts.Type = TargetTypeOCILayout
 		if len(opts.headerFlags) != 0 {
 			return errors.New("custom header flags cannot be used on an OCI image layout target")
 		}
-		opts.Path, opts.Reference, err = opts.parseOCILayoutReference()
-		return err
+		return opts.parseOCILayoutReference()
 	default:
 		opts.Type = TargetTypeRemote
 		if _, err := registry.ParseReference(opts.RawReference); err != nil {
@@ -118,8 +116,12 @@ func (opts *Target) Parse() error {
 }
 
 // parseOCILayoutReference parses the raw in format of <path>[:<tag>|@<digest>]
-func (opts *Target) parseOCILayoutReference() (path string, ref string, err error) {
+func (opts *Target) parseOCILayoutReference() error {
 	raw := opts.RawReference
+	var path string
+	var ref string
+	var err error
+
 	if idx := strings.LastIndex(raw, "@"); idx != -1 {
 		// `digest` found
 		path = raw[:idx]
@@ -129,9 +131,12 @@ func (opts *Target) parseOCILayoutReference() (path string, ref string, err erro
 		path, ref, err = fileref.Parse(raw, "")
 		if err != nil {
 			err = errors.Join(err, errdef.ErrInvalidReference)
+			return err
 		}
 	}
-	return
+	opts.Path = path
+	opts.Reference = ref
+	return nil
 }
 
 func (opts *Target) newOCIStore() (*oci.Store, error) {

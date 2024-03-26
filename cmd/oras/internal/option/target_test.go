@@ -85,16 +85,16 @@ func Test_parseOCILayoutReference(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			opts.RawReference = tt.raw
-			got, got1, err := opts.parseOCILayoutReference()
+			err := opts.parseOCILayoutReference()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseOCILayoutReference() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if got != tt.want {
-				t.Errorf("parseOCILayoutReference() got = %v, want %v", got, tt.want)
+			if opts.Path != tt.want {
+				t.Errorf("parseOCILayoutReference() got = %v, want %v", opts.Path, tt.want)
 			}
-			if got1 != tt.want1 {
-				t.Errorf("parseOCILayoutReference() got1 = %v, want %v", got1, tt.want1)
+			if opts.Reference != tt.want1 {
+				t.Errorf("parseOCILayoutReference() got1 = %v, want %v", opts.Reference, tt.want1)
 			}
 		})
 	}
