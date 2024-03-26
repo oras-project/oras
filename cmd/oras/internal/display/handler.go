@@ -16,6 +16,7 @@ limitations under the License.
 package display
 
 import (
+	"io"
 	"os"
 
 	"oras.land/oras/cmd/oras/internal/display/metadata"
@@ -26,7 +27,7 @@ import (
 )
 
 // NewPushHandler returns status and metadata handlers for push command.
-func NewPushHandler(format string, tty *os.File, verbose bool) (status.PushHandler, metadata.PushHandler) {
+func NewPushHandler(format string, tty *os.File, out io.Writer, verbose bool) (status.PushHandler, metadata.PushHandler) {
 	var statusHandler status.PushHandler
 	if tty != nil {
 		statusHandler = status.NewTTYPushHandler(tty)
@@ -45,12 +46,12 @@ func NewPushHandler(format string, tty *os.File, verbose bool) (status.PushHandl
 	default:
 		metadataHandler = template.NewPushHandler(format)
 	}
-
+	metadataHandler.WithOutput(out)
 	return statusHandler, metadataHandler
 }
 
 // NewAttachHandler returns status and metadata handlers for attach command.
-func NewAttachHandler(format string, tty *os.File, verbose bool) (status.AttachHandler, metadata.AttachHandler) {
+func NewAttachHandler(format string, tty *os.File, out io.Writer, verbose bool) (status.AttachHandler, metadata.AttachHandler) {
 	var statusHandler status.AttachHandler
 	if tty != nil {
 		statusHandler = status.NewTTYAttachHandler(tty)
@@ -69,6 +70,6 @@ func NewAttachHandler(format string, tty *os.File, verbose bool) (status.AttachH
 	default:
 		metadataHandler = template.NewAttachHandler(format)
 	}
-
+	metadataHandler.WithOutput(out)
 	return statusHandler, metadataHandler
 }

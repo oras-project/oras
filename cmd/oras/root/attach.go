@@ -113,7 +113,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 			Recommendation: `To attach to an existing artifact, please provide files via argument or annotations via flag "--annotation". Run "oras attach -h" for more options and examples`,
 		}
 	}
-	displayStatus, displayMetadata := display.NewAttachHandler(opts.Template, opts.TTY, opts.Verbose)
+	displayStatus, displayMetadata := display.NewAttachHandler(opts.Template, opts.TTY, cmd.OutOrStdout(), opts.Verbose)
 
 	// prepare manifest
 	store, err := file.New("")

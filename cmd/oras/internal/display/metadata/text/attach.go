@@ -21,27 +21,32 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
+	"oras.land/oras/cmd/oras/internal/display/metadata/view"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
 // AttachHandler handles text metadata output for attach events.
-type AttachHandler struct{}
+type AttachHandler struct {
+	view.Printer
+}
 
 // NewAttachHandler returns a new handler for attach events.
 func NewAttachHandler() metadata.AttachHandler {
-	return AttachHandler{}
+	return &AttachHandler{
+		Printer: view.NewPrinter(),
+	}
 }
 
 // OnCompleted is called when the attach command is completed.
-func (AttachHandler) OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error {
+func (a *AttachHandler) OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error {
 	digest := subject.Digest.String()
 	if !strings.HasSuffix(opts.RawReference, digest) {
 		opts.RawReference = fmt.Sprintf("%s@%s", opts.Path, subject.Digest)
 	}
-	_, err := fmt.Println("Attached to", opts.AnnotatedReference())
+	_, err := a.Println("Attached to", opts.AnnotatedReference())
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Println("Digest:", root.Digest)
+	_, err = a.Println("Digest:", root.Digest)
 	return err
 }
