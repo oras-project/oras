@@ -152,6 +152,7 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		return err
 	}
 	verbose := opts.Verbose && !opts.OutputDescriptor
+	printer := status.NewPrinter(verbose)
 	if match {
 		if err := status.PrintStatus(desc, "Exists", verbose); err != nil {
 			return err
@@ -184,7 +185,7 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		}
 		return opts.Output(os.Stdout, descJSON)
 	}
-	status.Print("Pushed", opts.AnnotatedReference())
+	printer.Print("Pushed", opts.AnnotatedReference())
 	if len(opts.extraRefs) != 0 {
 		if _, err = oras.TagBytesN(ctx, status.NewTagStatusPrinter(target), mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err

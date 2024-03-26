@@ -27,17 +27,33 @@ import (
 	"oras.land/oras-go/v2/registry"
 )
 
-var printLock sync.Mutex
+type Printer struct {
+	printLock sync.Mutex
+	verbose   bool
+}
+
+var printer Printer
+
+// NewPrinter creates a printer object
+func NewPrinter(verbose bool) *Printer {
+	printer = Printer{verbose: verbose}
+	return &printer
+}
+
+// Print objects to display concurrent-safely.
+func (p *Printer) Print(a ...any) error {
+	p.printLock.Lock()
+	defer p.printLock.Unlock()
+	_, err := fmt.Println(a...)
+	return err
+}
 
 // PrintFunc is the function type returned by StatusPrinter.
 type PrintFunc func(ocispec.Descriptor) error
 
 // Print objects to display concurrent-safely.
 func Print(a ...any) error {
-	printLock.Lock()
-	defer printLock.Unlock()
-	_, err := fmt.Println(a...)
-	return err
+	return printer.Print(a...)
 }
 
 // StatusPrinter returns a tracking function for transfer status.
