@@ -102,7 +102,8 @@ var _ = Describe("1.1 registry users:", func() {
 
 		It("should attach a file to an arch-specific subject", func() {
 			testRepo := attachTestRepo("arch-specific")
-			CopyZOTRepo(ImageRepo, testRepo)
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), RegistryRef(ZOTHost, testRepo, multi_arch.Tag)).Exec()
+			// CopyZOTRepo(ImageRepo, testRepo) will cause unexpected 500
 			subjectRef := RegistryRef(ZOTHost, testRepo, multi_arch.Tag)
 			artifactType := "test/attach"
 			// test
@@ -295,6 +296,18 @@ var _ = Describe("OCI image layout users:", func() {
 			fetched := ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, index.Manifests[0].Digest.String())).Exec().Out.Contents()
 			MatchFile(filepath.Join(root, exportName), string(fetched), DefaultTimeout)
 		})
+
+		It("should attach a file to an arch-specific subject", func() {
+			root := PrepareTempOCI(ImageRepo)
+			subjectRef := LayoutRef(root, multi_arch.Tag)
+			artifactType := "test/attach"
+			// test
+			out := ORAS("attach", Flags.Layout, "--artifact-type", artifactType, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.Digest}}", "--platform", "linux/amd64").
+				WithWorkDir(PrepareTempFiles()).Exec().Out.Contents()
+			// validate
+			ORAS("discover", Flags.Layout, "--artifact-type", artifactType, LayoutRef(root, multi_arch.LinuxAMD64.Digest.String())).MatchKeyWords(string(out)).Exec()
+		})
+
 		It("should attach a file via a OCI Image", func() {
 			root := PrepareTempOCI(ImageRepo)
 			subjectRef := LayoutRef(root, foobar.Tag)
