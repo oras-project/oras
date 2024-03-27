@@ -31,7 +31,7 @@ type AttachHandler struct {
 }
 
 // NewAttachHandler returns a new handler for attach metadata events.
-func NewAttachHandler(template string, out io.Writer) metadata.AttachHandler {
+func NewAttachHandler(out io.Writer, template string) metadata.AttachHandler {
 	return &AttachHandler{
 		out:      out,
 		template: template,

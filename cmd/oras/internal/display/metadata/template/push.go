@@ -32,7 +32,7 @@ type PushHandler struct {
 }
 
 // NewPushHandler returns a new handler for push events.
-func NewPushHandler(template string, out io.Writer) metadata.PushHandler {
+func NewPushHandler(out io.Writer, template string) metadata.PushHandler {
 	return &PushHandler{
 		out:      out,
 		template: template,

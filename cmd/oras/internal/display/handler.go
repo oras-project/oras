@@ -44,7 +44,7 @@ func NewPushHandler(format string, tty *os.File, out io.Writer, verbose bool) (s
 	case "json":
 		metadataHandler = json.NewPushHandler(out)
 	default:
-		metadataHandler = template.NewPushHandler(format, out)
+		metadataHandler = template.NewPushHandler(out, format)
 	}
 
 	return statusHandler, metadataHandler
@@ -68,7 +68,7 @@ func NewAttachHandler(format string, tty *os.File, out io.Writer, verbose bool) 
 	case "json":
 		metadataHandler = json.NewAttachHandler(out)
 	default:
-		metadataHandler = template.NewAttachHandler(format, out)
+		metadataHandler = template.NewAttachHandler(out, format)
 	}
 
 	return statusHandler, metadataHandler
