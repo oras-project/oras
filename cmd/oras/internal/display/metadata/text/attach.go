@@ -38,15 +38,15 @@ func NewAttachHandler(out io.Writer) metadata.AttachHandler {
 }
 
 // OnCompleted is called when the attach command is completed.
-func (a *AttachHandler) OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error {
+func (ah *AttachHandler) OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error {
 	digest := subject.Digest.String()
 	if !strings.HasSuffix(opts.RawReference, digest) {
 		opts.RawReference = fmt.Sprintf("%s@%s", opts.Path, subject.Digest)
 	}
-	_, err := fmt.Fprintln(a.out, "Attached to", opts.AnnotatedReference())
+	_, err := fmt.Fprintln(ah.out, "Attached to", opts.AnnotatedReference())
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintln(a.out, "Digest:", root.Digest)
+	_, err = fmt.Fprintln(ah.out, "Digest:", root.Digest)
 	return err
 }
