@@ -102,9 +102,11 @@ var _ = Describe("1.1 registry users:", func() {
 
 		It("should attach a file to an arch-specific subject", func() {
 			testRepo := attachTestRepo("arch-specific")
-			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), RegistryRef(ZOTHost, testRepo, multi_arch.Tag)).Exec()
-			// CopyZOTRepo(ImageRepo, testRepo) will cause unexpected 500
+			// Below line will cause unexpected 500
+			// pending for https://github.com/project-zot/zot/pull/2351 to be released
+			// CopyZOTRepo(ImageRepo, testRepo)
 			subjectRef := RegistryRef(ZOTHost, testRepo, multi_arch.Tag)
+			ORAS("cp", subjectRef, RegistryRef(ZOTHost, testRepo, multi_arch.Tag)).Exec()
 			artifactType := "test/attach"
 			// test
 			out := ORAS("attach", "--artifact-type", artifactType, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.Digest}}", "--platform", "linux/amd64").
