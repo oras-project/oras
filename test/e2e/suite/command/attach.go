@@ -106,7 +106,7 @@ var _ = Describe("1.1 registry users:", func() {
 			// pending for https://github.com/project-zot/zot/pull/2351 to be released
 			// CopyZOTRepo(ImageRepo, testRepo)
 			subjectRef := RegistryRef(ZOTHost, testRepo, multi_arch.Tag)
-			ORAS("cp", subjectRef, RegistryRef(ZOTHost, testRepo, multi_arch.Tag)).Exec()
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), subjectRef).Exec()
 			artifactType := "test/attach"
 			// test
 			out := ORAS("attach", "--artifact-type", artifactType, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.Digest}}", "--platform", "linux/amd64").
