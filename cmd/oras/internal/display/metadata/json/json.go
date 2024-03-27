@@ -13,20 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package metadata
+package json
 
 import (
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras/cmd/oras/internal/option"
+	"encoding/json"
+	"io"
 )
 
-// PushHandler handles metadata output for push events.
-type PushHandler interface {
-	OnCopied(opts *option.Target) error
-	OnCompleted(root ocispec.Descriptor) error
-}
-
-// AttachHandler handles metadata output for attach events.
-type AttachHandler interface {
-	OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error
+func printJSON(out io.Writer, object any) error {
+	encoder := json.NewEncoder(out)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(object)
 }
