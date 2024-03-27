@@ -130,11 +130,11 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 
 // CheckStdinConflict checks if opts.PasswordFromStdin or opts.IdentityTokenFromStdin
 // conflicts with read file from input.
-func (opts *Remote) CheckStdinConflict(usage string) error {
+func (opts *Remote) CheckStdinConflict() error {
 	if opts.PasswordFromStdin {
-		return fmt.Errorf("%s and `--%s` read password from input cannot be both used", usage, passwordFromStdinFlag)
+		return fmt.Errorf("`-` read file from input and `--%s` read password from input cannot be both used", passwordFromStdinFlag)
 	} else if opts.IdentityTokenFromStdin {
-		return fmt.Errorf("%s and `--%s` read identity token from input cannot be both used", usage, identityTokenFromStdinFlag)
+		return fmt.Errorf("`-` read file from input and `--%s` read identity token from input cannot be both used", identityTokenFromStdinFlag)
 	}
 	return nil
 }

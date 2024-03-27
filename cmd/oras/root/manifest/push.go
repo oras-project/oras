@@ -87,7 +87,7 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.fileRef = args[1]
 			if opts.fileRef == "-" {
-				if err := opts.CheckStdinConflict("`-` read file from input"); err != nil {
+				if err := opts.CheckStdinConflict(); err != nil {
 					return err
 				}
 			}
