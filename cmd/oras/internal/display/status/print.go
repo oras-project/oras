@@ -154,7 +154,7 @@ func NewTagStatusPrinter(target oras.Target) oras.Target {
 
 // printer is used by the code being deprecated. Related functions should be
 // removed when no-longer referenced.
-var printer = Printer{out: os.Stdout}
+var printer = NewPrinter(os.Stdout)
 
 // Print objects to display concurrent-safely.
 func Print(a ...any) error {
