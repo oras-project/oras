@@ -97,6 +97,15 @@ var _ = Describe("ORAS beginners:", func() {
 			It("should fail with suggestion if no tag or digest is provided", func() {
 				ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, "")).ExpectFailure().MatchErrKeyWords("Error:", "no tag or digest specified", "oras manifest fetch [flags] <name>{:<tag>|@<digest>}", "Please specify a reference").Exec()
 			})
+
+			It("should fail if stdout is used inpropriately", func() {
+				ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--output", "-", "--format", "test").
+					ExpectFailure().Exec()
+				ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--descriptor", "--format", "test").
+					ExpectFailure().Exec()
+				ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--output", "-", "--descriptor").
+					ExpectFailure().Exec()
+			})
 		})
 
 		When("running `manifest delete`", func() {
@@ -227,6 +236,18 @@ var _ = Describe("1.1 registry users:", func() {
 		It("should fetch manifest with platform validation", func() {
 			ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, multi_arch.LinuxAMD64.Digest.String()), "--platform", "linux/amd64").
 				MatchContent(multi_arch.LinuxAMD64Manifest).Exec()
+		})
+
+		It("should fetch manifest with platform validation and output json", func() {
+			out := ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), "--platform", "linux/amd64", "--format", "json").
+				Exec().Out.Contents()
+			Expect(out).To(MatchJSON(multi_arch.LinuxAMD64Manifest))
+		})
+
+		It("should fetch manifest and format output", func() {
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, multi_arch.LinuxAMD64.Digest.String()), "--format", "{{(first .layers).digest}}").
+				MatchContent(multi_arch.LayerDigest).
+				Exec()
 		})
 
 		It("should fetch descriptor via digest", func() {

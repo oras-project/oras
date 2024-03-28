@@ -64,6 +64,7 @@ var (
 		Size:         482,
 	}
 	LayerName                        = "hello.tar"
+	LayerDigest                      = "sha256:2ef548696ac7dd66ef38aab5cc8fc5cc1fb637dfaedb3a9afc89bf16db9277e1"
 	LinuxAMD64ReferrerStateKey       = match.StateKey{Digest: "c5e00045954a", Name: "application/vnd.oci.image.manifest.v1+json"}
 	LinuxAMD64ReferrerConfigStateKey = match.StateKey{Digest: "44136fa355b3", Name: "referrer/image"}
 	LinuxAMD64StateKeys              = []match.StateKey{

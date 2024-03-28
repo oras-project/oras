@@ -30,3 +30,8 @@ type PushHandler interface {
 type AttachHandler interface {
 	OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error
 }
+
+// ManifestFetchHandler handles metadata output for manifest fetch events.
+type ManifestFetchHandler interface {
+	OnFetched(manifest ocispec.Manifest) error
+}

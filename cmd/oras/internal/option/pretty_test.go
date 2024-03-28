@@ -28,8 +28,8 @@ import (
 func TestPretty_ApplyFlags(t *testing.T) {
 	var test struct{ Pretty }
 	ApplyFlags(&test, pflag.NewFlagSet("oras-test", pflag.ExitOnError))
-	if test.Pretty.pretty != false {
-		t.Fatalf("expecting pretty to be false but got: %v", test.Pretty.pretty)
+	if test.Pretty.Pretty != false {
+		t.Fatalf("expecting pretty to be false but got: %v", test.Pretty.Pretty)
 	}
 }
 
@@ -49,7 +49,7 @@ func TestPretty_Output(t *testing.T) {
 
 	// test unprettified content
 	opts := Pretty{
-		pretty: false,
+		Pretty: false,
 	}
 	err = opts.Output(fp, raw)
 	if err != nil {
@@ -76,7 +76,7 @@ func TestPretty_Output(t *testing.T) {
 
 	// test prettified content
 	opts = Pretty{
-		pretty: true,
+		Pretty: true,
 	}
 	err = opts.Output(fp, raw)
 	if err != nil {

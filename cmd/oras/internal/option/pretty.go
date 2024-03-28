@@ -26,18 +26,18 @@ import (
 
 // Pretty option struct.
 type Pretty struct {
-	pretty bool
+	Pretty bool
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Pretty) ApplyFlags(fs *pflag.FlagSet) {
-	fs.BoolVarP(&opts.pretty, "pretty", "", false, "prettify JSON objects printed to stdout")
+	fs.BoolVarP(&opts.Pretty, "pretty", "", false, "prettify JSON objects printed to stdout")
 }
 
 // Output outputs the prettified content if `--pretty` flag is used. Otherwise
 // outputs the original content.
 func (opts *Pretty) Output(w io.Writer, content []byte) error {
-	if opts.pretty {
+	if opts.Pretty {
 		buf := bytes.NewBuffer(nil)
 		if err := json.Indent(buf, content, "", "  "); err != nil {
 			return fmt.Errorf("failed to prettify: %w", err)
