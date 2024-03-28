@@ -17,7 +17,7 @@ package status
 
 import (
 	"context"
-	"fmt"
+	"io"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -28,12 +28,14 @@ import (
 // TextPushHandler handles text status output for push events.
 type TextPushHandler struct {
 	verbose bool
+	printer *Printer
 }
 
 // NewTextPushHandler returns a new handler for push command.
-func NewTextPushHandler(verbose bool) PushHandler {
+func NewTextPushHandler(verbose bool, out io.Writer) PushHandler {
 	return &TextPushHandler{
 		verbose: verbose,
+		printer: NewPrinter(out),
 	}
 }
 
@@ -42,14 +44,12 @@ func (ph *TextPushHandler) OnFileLoading(name string) error {
 	if !ph.verbose {
 		return nil
 	}
-	_, err := fmt.Println("Preparing", name)
-	return err
+	return ph.printer.Println("Preparing", name)
 }
 
 // OnEmptyArtifact is called when an empty artifact is being uploaded.
 func (ph *TextPushHandler) OnEmptyArtifact() error {
-	_, err := fmt.Println("Uploading empty artifact")
-	return err
+	return ph.printer.Println("Uploading empty artifact")
 }
 
 // TrackTarget returns a tracked target.
@@ -68,21 +68,21 @@ func (ph *TextPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetche
 	committed := &sync.Map{}
 	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return PrintStatus(desc, promptExists, ph.verbose)
+		return ph.printer.PrintStatus(desc, promptExists, ph.verbose)
 	}
 	opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		return PrintStatus(desc, promptUploading, ph.verbose)
+		return ph.printer.PrintStatus(desc, promptUploading, ph.verbose)
 	}
 	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		if err := PrintSuccessorStatus(ctx, desc, fetcher, committed, StatusPrinter(promptSkipped, ph.verbose)); err != nil {
+		if err := ph.printer.PrintSuccessorStatus(ctx, desc, fetcher, committed, StatusPrinter(promptSkipped, ph.verbose)); err != nil {
 			return err
 		}
-		return PrintStatus(desc, promptUploaded, ph.verbose)
+		return ph.printer.PrintStatus(desc, promptUploaded, ph.verbose)
 	}
 }
 
 // NewTextAttachHandler returns a new handler for attach command.
-func NewTextAttachHandler(verbose bool) AttachHandler {
-	return NewTextPushHandler(verbose)
+func NewTextAttachHandler(verbose bool, out io.Writer) AttachHandler {
+	return NewTextPushHandler(verbose, out)
 }
