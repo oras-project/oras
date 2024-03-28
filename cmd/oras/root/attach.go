@@ -156,7 +156,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 		Layers:              descs,
 	}
 	pack := func() (ocispec.Descriptor, error) {
-		return oras.PackManifest(ctx, store, oras.PackManifestVersion1_1_RC4, opts.artifactType, packOpts)
+		return oras.PackManifest(ctx, store, oras.PackManifestVersion1_1, opts.artifactType, packOpts)
 	}
 
 	copy := func(root ocispec.Descriptor) error {
