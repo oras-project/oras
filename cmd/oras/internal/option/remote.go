@@ -117,7 +117,7 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 }
 
 // Parse tries to read password with optional cmd prompt.
-func (opts *Remote) Parse(cmd *cobra.Command) error {
+func (opts *Remote) Parse(_ *cobra.Command) error {
 	if err := opts.parseCustomHeaders(); err != nil {
 		return err
 	}

@@ -74,7 +74,7 @@ func (opts *Packer) ExportManifest(ctx context.Context, fetcher content.Fetcher,
 	}
 	return os.WriteFile(opts.ManifestExportPath, manifestBytes, 0666)
 }
-func (opts *Packer) Parse(cmd *cobra.Command) error {
+func (opts *Packer) Parse(_ *cobra.Command) error {
 	if !opts.PathValidationDisabled {
 		var failedPaths []string
 		for _, path := range opts.FileRefs {

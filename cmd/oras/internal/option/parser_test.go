@@ -19,6 +19,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -26,7 +27,7 @@ type Test struct {
 	CntPtr *int
 }
 
-func (t *Test) Parse() error {
+func (t *Test) Parse(cmd *cobra.Command) error {
 	*t.CntPtr += 1
 	if *t.CntPtr == 2 {
 		return errors.New("should not be tried twice")
