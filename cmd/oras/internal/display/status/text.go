@@ -86,3 +86,21 @@ func (ph *TextPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetche
 func NewTextAttachHandler(verbose bool) AttachHandler {
 	return NewTextPushHandler(verbose)
 }
+
+// TextTagHandler handles text metadata output for tag events.
+type TextTagHandler struct{}
+
+// OnTagged implements metadata.TextTagHandler.
+func (t TextTagHandler) OnTagged(tag string) error {
+	return Print("Tagged", tag)
+}
+
+// PreTagging implements metadata.TextTagHandler.
+func (t TextTagHandler) PreTagging(reference string) {
+	_ = Print("Tagging", reference)
+}
+
+// NewTextTagHandler returns a new handler for tag events.
+func NewTextTagHandler() TagHandler {
+	return TextTagHandler{}
+}

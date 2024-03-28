@@ -30,3 +30,10 @@ type PushHandler interface {
 
 // AttachHandler handles text status output for attach command.
 type AttachHandler PushHandler
+
+type TagHandler interface {
+	// OnTagged is called when each tagging operation is done.
+	OnTagged(tag string) error
+	// PreTagging is called before tagging.
+	PreTagging(reference string)
+}
