@@ -45,6 +45,14 @@ var _ = Describe("ORAS beginners:", func() {
 					ExpectFailure().
 					MatchErrKeyWords("Error: `-` read file from input and `--password-stdin` read password from input cannot be both used").Exec()
 			})
+
+			It("should fail to read blob content and identity token from stdin at the same time", func() {
+				repo := fmt.Sprintf(repoFmt, "push", "password-stdin")
+				ORAS("blob", "push", RegistryRef(ZOTHost, repo, ""), "--identity-token-stdin", "-").
+					ExpectFailure().
+					MatchErrKeyWords("Error: `-` read file from input and `--identity-token-stdin` read identity token from input cannot be both used").Exec()
+			})
+
 			It("should fail to push a blob from stdin but no blob size provided", func() {
 				repo := fmt.Sprintf(repoFmt, "push", "no-size")
 				ORAS("blob", "push", RegistryRef(ZOTHost, repo, pushDigest), "-").
