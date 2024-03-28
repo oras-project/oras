@@ -32,7 +32,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/status"
-	"oras.land/oras/cmd/oras/internal/display/utils"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -168,7 +167,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 	var layerSkipped atomic.Bool
 	opts.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		statusFetcher := content.FetcherFunc(func(ctx context.Context, target ocispec.Descriptor) (fetched io.ReadCloser, fetchErr error) {
-			if _, ok := printed.LoadOrStore(utils.GenerateContentKey(target), true); ok {
+			if _, ok := printed.LoadOrStore(status.GenerateContentKey(target), true); ok {
 				return fetcher.Fetch(ctx, target)
 			}
 			if err := statusHandler.OnNodeDownloading(target); err != nil {
@@ -224,7 +223,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 				}
 				if len(ss) == 0 {
 					// skip s if it is unnamed AND has no successors.
-					if _, loaded := printed.LoadOrStore(utils.GenerateContentKey(s), true); !loaded {
+					if _, loaded := printed.LoadOrStore(status.GenerateContentKey(s), true); !loaded {
 						if err := statusHandler.OnNodeSkipped(s); err != nil {
 							return nil, err
 						}
@@ -238,7 +237,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 	}
 
 	opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		if _, ok := printed.LoadOrStore(utils.GenerateContentKey(desc), true); ok {
+		if _, ok := printed.LoadOrStore(status.GenerateContentKey(desc), true); ok {
 			return nil
 		}
 		return statusHandler.OnNodeDownloading(desc)
@@ -252,14 +251,14 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 		for _, s := range successors {
 			if name, ok := s.Annotations[ocispec.AnnotationTitle]; ok {
 				metadataHandler.OnFilePulled(name, po.Output, s, po.Path)
-				if _, loaded := printed.LoadOrStore(utils.GenerateContentKey(s), true); !loaded {
+				if _, loaded := printed.LoadOrStore(status.GenerateContentKey(s), true); !loaded {
 					if err := statusHandler.OnNodeRestored(s); err != nil {
 						return err
 					}
 				}
 			}
 		}
-		printed.Store(utils.GenerateContentKey(desc), true)
+		printed.Store(status.GenerateContentKey(desc), true)
 		return statusHandler.OnNodeDownloaded(desc)
 	}
 

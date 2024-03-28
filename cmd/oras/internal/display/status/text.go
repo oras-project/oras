@@ -23,7 +23,6 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
-	utils "oras.land/oras/cmd/oras/internal/display/utils"
 )
 
 // TextPushHandler handles text status output for push events.
@@ -107,27 +106,27 @@ func (ph *TextPullHandler) Close() error {
 
 // OnNodeDownloading implements PullHandler.
 func (ph *TextPullHandler) OnNodeDownloading(desc ocispec.Descriptor) error {
-	return PrintStatus(desc, utils.PullPromptDownloading, ph.verbose)
+	return PrintStatus(desc, PullPromptDownloading, ph.verbose)
 }
 
 // OnNodeDownloaded implements PullHandler.
 func (ph *TextPullHandler) OnNodeDownloaded(desc ocispec.Descriptor) error {
-	return PrintStatus(desc, utils.PullPromptDownloaded, ph.verbose)
+	return PrintStatus(desc, PullPromptDownloaded, ph.verbose)
 }
 
 // OnNodeRestored implements PullHandler.
 func (ph *TextPullHandler) OnNodeRestored(desc ocispec.Descriptor) error {
-	return PrintStatus(desc, utils.PullPromptRestored, ph.verbose)
+	return PrintStatus(desc, PullPromptRestored, ph.verbose)
 }
 
 // OnNodeProcessing implements PullHandler.
 func (ph *TextPullHandler) OnNodeProcessing(desc ocispec.Descriptor) error {
-	return PrintStatus(desc, utils.PullPromptProcessing, ph.verbose)
+	return PrintStatus(desc, PullPromptProcessing, ph.verbose)
 }
 
 // OnNodeProcessing implements PullHandler.
 func (ph *TextPullHandler) OnNodeSkipped(desc ocispec.Descriptor) error {
-	return PrintStatus(desc, utils.PullPromptSkipped, ph.verbose)
+	return PrintStatus(desc, PullPromptSkipped, ph.verbose)
 }
 
 // NewTextPullHandler returns a new handler for pull command.

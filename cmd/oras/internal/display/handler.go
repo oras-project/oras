@@ -40,13 +40,12 @@ func NewPushHandler(format string, tty *os.File, out io.Writer, verbose bool) (s
 	var metadataHandler metadata.PushHandler
 	switch format {
 	case "":
-		metadataHandler = text.NewPushHandler()
+		metadataHandler = text.NewPushHandler(out)
 	case "json":
-		metadataHandler = json.NewPushHandler()
+		metadataHandler = json.NewPushHandler(out)
 	default:
-		metadataHandler = template.NewPushHandler(format)
+		metadataHandler = template.NewPushHandler(out, format)
 	}
-	metadataHandler.WithOutput(out)
 	return statusHandler, metadataHandler
 }
 
@@ -64,13 +63,12 @@ func NewAttachHandler(format string, tty *os.File, out io.Writer, verbose bool) 
 	var metadataHandler metadata.AttachHandler
 	switch format {
 	case "":
-		metadataHandler = text.NewAttachHandler()
+		metadataHandler = text.NewAttachHandler(out)
 	case "json":
-		metadataHandler = json.NewAttachHandler()
+		metadataHandler = json.NewAttachHandler(out)
 	default:
-		metadataHandler = template.NewAttachHandler(format)
+		metadataHandler = template.NewAttachHandler(out, format)
 	}
-	metadataHandler.WithOutput(out)
 	return statusHandler, metadataHandler
 }
 
@@ -94,6 +92,5 @@ func NewPullHandler(format string, path string, tty *os.File, out io.Writer, ver
 	default:
 		metadataHandler = template.NewPullHandler(path, format)
 	}
-	metadataHandler.WithOutput(out)
 	return statusHandler, metadataHandler
 }

@@ -24,7 +24,6 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras/cmd/oras/internal/display/status/track"
-	"oras.land/oras/cmd/oras/internal/display/utils"
 )
 
 // TTYPushHandler handles TTY status output for push command.
@@ -119,12 +118,12 @@ func (ph *TTYPullHandler) OnNodeProcessing(desc ocispec.Descriptor) error {
 
 // OnNodeRestored implements PullHandler.
 func (ph *TTYPullHandler) OnNodeRestored(desc ocispec.Descriptor) error {
-	return ph.tracked.Prompt(desc, utils.PullPromptRestored)
+	return ph.tracked.Prompt(desc, PullPromptRestored)
 }
 
 // OnNodeProcessing implements PullHandler.
 func (ph *TTYPullHandler) OnNodeSkipped(desc ocispec.Descriptor) error {
-	return ph.tracked.Prompt(desc, utils.PullPromptSkipped)
+	return ph.tracked.Prompt(desc, PullPromptSkipped)
 }
 
 // Close implements io.Closer.
@@ -134,7 +133,7 @@ func (ph *TTYPullHandler) Close() error {
 
 // TrackTarget returns a tracked target.
 func (ph *TTYPullHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error) {
-	tracked, err := track.NewTarget(gt, utils.PullPromptDownloading, utils.PullPromptPulled, ph.tty)
+	tracked, err := track.NewTarget(gt, PullPromptDownloading, PullPromptPulled, ph.tty)
 	if err != nil {
 		return nil, err
 	}
