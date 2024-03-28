@@ -41,6 +41,7 @@ import (
 	"oras.land/oras/internal/credential"
 	"oras.land/oras/internal/crypto"
 	onet "oras.land/oras/internal/net"
+	"oras.land/oras/internal/net/insecure"
 	"oras.land/oras/internal/trace"
 	"oras.land/oras/internal/version"
 )
@@ -219,6 +220,9 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 	client.SetUserAgent("oras/" + version.GetVersion())
 	if debug {
 		client.Client.Transport = trace.NewTransport(client.Client.Transport)
+	}
+	if opts.Insecure && !opts.PlainHTTP {
+		client.Client.Transport = insecure.NewTransport(client.Client.Transport, registry)
 	}
 
 	cred := opts.Credential()
