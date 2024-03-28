@@ -152,8 +152,8 @@ func NewTagStatusPrinter(target oras.Target) oras.Target {
 	}
 }
 
-// Used by unrefactored status code, should be removed when below functions
-// are no-longer referenced.
+// printer is used by the code being deprecated. Related functions should be
+// removed when no-longer referenced.
 var printer = Printer{out: os.Stdout}
 
 // Print objects to display concurrent-safely.
