@@ -140,6 +140,18 @@ func (p *tagManifestStatusForTarget) Tag(ctx context.Context, desc ocispec.Descr
 	return Print("Tagged", reference)
 }
 
+// NewTagStatusPrinter creates a wrapper type for printing tag status.
+func NewTagStatusPrinter(target oras.Target) oras.Target {
+	if repo, ok := target.(registry.Repository); ok {
+		return &tagManifestStatusForRepo{
+			Repository: repo,
+		}
+	}
+	return &tagManifestStatusForTarget{
+		Target: target,
+	}
+}
+
 // Used by unrefactored status code, should be removed when below functions
 // are no-longer referenced.
 var printer = Printer{out: os.Stdout}
@@ -163,17 +175,5 @@ func PrintStatus(desc ocispec.Descriptor, status string, verbose bool) error {
 
 // PrintSuccessorStatus prints transfer status of successors.
 func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, fetcher content.Fetcher, committed *sync.Map, print PrintFunc) error {
-	return printer.Println(ctx, desc, fetcher, committed, print)
-}
-
-// NewTagStatusPrinter creates a wrapper type for printing tag status.
-func NewTagStatusPrinter(target oras.Target) oras.Target {
-	if repo, ok := target.(registry.Repository); ok {
-		return &tagManifestStatusForRepo{
-			Repository: repo,
-		}
-	}
-	return &tagManifestStatusForTarget{
-		Target: target,
-	}
+	return printer.PrintSuccessorStatus(ctx, desc, fetcher, committed, print)
 }
