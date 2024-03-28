@@ -16,16 +16,16 @@ limitations under the License.
 package template
 
 import (
-	"os"
+	"io"
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
 )
 
-func parseAndWrite(object any, templateStr string) error {
+func parseAndWrite(out io.Writer, object any, templateStr string) error {
 	t, err := template.New("format output").Funcs(sprig.FuncMap()).Parse(templateStr)
 	if err != nil {
 		return err
 	}
-	return t.Execute(os.Stdout, object)
+	return t.Execute(out, object)
 }

@@ -17,6 +17,7 @@ package text
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -25,23 +26,27 @@ import (
 )
 
 // AttachHandler handles text metadata output for attach events.
-type AttachHandler struct{}
+type AttachHandler struct {
+	out io.Writer
+}
 
 // NewAttachHandler returns a new handler for attach events.
-func NewAttachHandler() metadata.AttachHandler {
-	return AttachHandler{}
+func NewAttachHandler(out io.Writer) metadata.AttachHandler {
+	return &AttachHandler{
+		out: out,
+	}
 }
 
 // OnCompleted is called when the attach command is completed.
-func (AttachHandler) OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error {
+func (ah *AttachHandler) OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error {
 	digest := subject.Digest.String()
 	if !strings.HasSuffix(opts.RawReference, digest) {
 		opts.RawReference = fmt.Sprintf("%s@%s", opts.Path, subject.Digest)
 	}
-	_, err := fmt.Println("Attached to", opts.AnnotatedReference())
+	_, err := fmt.Fprintln(ah.out, "Attached to", opts.AnnotatedReference())
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Println("Digest:", root.Digest)
+	_, err = fmt.Fprintln(ah.out, "Digest:", root.Digest)
 	return err
 }
