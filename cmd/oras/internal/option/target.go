@@ -102,14 +102,12 @@ func (opts *Target) Parse() error {
 		if len(opts.headerFlags) != 0 {
 			return errors.New("custom header flags cannot be used on an OCI image layout target")
 		}
-		return nil
+		return opts.parseOCILayoutReference()
 	default:
 		opts.Type = TargetTypeRemote
-		if ref, err := registry.ParseReference(opts.RawReference); err != nil {
-			return err
-		} else if ref.Registry == "" || ref.Repository == "" {
+		if _, err := registry.ParseReference(opts.RawReference); err != nil {
 			return &oerrors.Error{
-				Err:            fmt.Errorf("%q is an invalid reference", opts.RawReference),
+				Err:            fmt.Errorf("%q: %w", opts.RawReference, err),
 				Recommendation: "Please make sure the provided reference is in the form of <registry>/<repo>[:tag|@digest]",
 			}
 		}
@@ -118,24 +116,28 @@ func (opts *Target) Parse() error {
 }
 
 // parseOCILayoutReference parses the raw in format of <path>[:<tag>|@<digest>]
-func parseOCILayoutReference(raw string) (path string, ref string, err error) {
+func (opts *Target) parseOCILayoutReference() error {
+	raw := opts.RawReference
+	var path string
+	var ref string
 	if idx := strings.LastIndex(raw, "@"); idx != -1 {
 		// `digest` found
 		path = raw[:idx]
 		ref = raw[idx+1:]
 	} else {
 		// find `tag`
+		var err error
 		path, ref, err = fileref.Parse(raw, "")
+		if err != nil {
+			return errors.Join(err, errdef.ErrInvalidReference)
+		}
 	}
-	return
+	opts.Path = path
+	opts.Reference = ref
+	return nil
 }
 
 func (opts *Target) newOCIStore() (*oci.Store, error) {
-	var err error
-	opts.Path, opts.Reference, err = parseOCILayoutReference(opts.RawReference)
-	if err != nil {
-		return nil, err
-	}
 	return oci.New(opts.Path)
 }
 
@@ -208,11 +210,6 @@ type ReadOnlyGraphTagFinderTarget interface {
 func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common, logger logrus.FieldLogger) (ReadOnlyGraphTagFinderTarget, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:
-		var err error
-		opts.Path, opts.Reference, err = parseOCILayoutReference(opts.RawReference)
-		if err != nil {
-			return nil, err
-		}
 		info, err := os.Stat(opts.Path)
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) {
