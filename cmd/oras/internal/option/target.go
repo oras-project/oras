@@ -107,7 +107,7 @@ func (opts *Target) Parse() error {
 		opts.Type = TargetTypeRemote
 		if _, err := registry.ParseReference(opts.RawReference); err != nil {
 			return &oerrors.Error{
-				Err:            fmt.Errorf("%w: %q", err, opts.RawReference),
+				Err:            fmt.Errorf("%q: %w", opts.RawReference, err),
 				Recommendation: "Please make sure the provided reference is in the form of <registry>/<repo>[:tag|@digest]",
 			}
 		}
@@ -120,7 +120,6 @@ func (opts *Target) parseOCILayoutReference() error {
 	raw := opts.RawReference
 	var path string
 	var ref string
-	var err error
 
 	if idx := strings.LastIndex(raw, "@"); idx != -1 {
 		// `digest` found
@@ -128,6 +127,7 @@ func (opts *Target) parseOCILayoutReference() error {
 		ref = raw[idx+1:]
 	} else {
 		// find `tag`
+		var err error
 		path, ref, err = fileref.Parse(raw, "")
 		if err != nil {
 			err = errors.Join(err, errdef.ErrInvalidReference)
