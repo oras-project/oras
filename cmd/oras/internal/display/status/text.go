@@ -32,7 +32,7 @@ type TextPushHandler struct {
 }
 
 // NewTextPushHandler returns a new handler for push command.
-func NewTextPushHandler(verbose bool, out io.Writer) PushHandler {
+func NewTextPushHandler(out io.Writer, verbose bool) PushHandler {
 	return &TextPushHandler{
 		verbose: verbose,
 		printer: NewPrinter(out),
@@ -83,6 +83,6 @@ func (ph *TextPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetche
 }
 
 // NewTextAttachHandler returns a new handler for attach command.
-func NewTextAttachHandler(verbose bool, out io.Writer) AttachHandler {
-	return NewTextPushHandler(verbose, out)
+func NewTextAttachHandler(out io.Writer, verbose bool) AttachHandler {
+	return NewTextPushHandler(out, verbose)
 }
