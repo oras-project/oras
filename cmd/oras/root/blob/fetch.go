@@ -77,7 +77,7 @@ Example - Fetch and print a blob from OCI image layout archive file 'layout.tar'
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
 			}
 			opts.RawReference = args[0]
-			err := option.Parse(&opts)
+			err := option.Parse(&opts, cmd)
 			if err == nil {
 				opts.UpdateTTY(cmd.Flags().Changed(option.NoTTYFlag), opts.outputPath == "-")
 			}

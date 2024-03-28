@@ -48,7 +48,7 @@ func TestParse_once(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := option.Parse(&tt.args); (err != nil) != tt.wantErr {
+			if err := option.Parse(&tt.args, nil); (err != nil) != tt.wantErr {
 				t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
@@ -76,7 +76,7 @@ func TestParse_err(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := option.Parse(&tt.args); (err != nil) != tt.wantErr {
+			if err := option.Parse(&tt.args, nil); (err != nil) != tt.wantErr {
 				t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
