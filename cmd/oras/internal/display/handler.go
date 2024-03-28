@@ -32,7 +32,7 @@ func NewPushHandler(format string, tty *os.File, out io.Writer, verbose bool) (s
 	if tty != nil {
 		statusHandler = status.NewTTYPushHandler(tty)
 	} else if format == "" {
-		statusHandler = status.NewTextPushHandler(verbose)
+		statusHandler = status.NewTextPushHandler(out, verbose)
 	} else {
 		statusHandler = status.NewDiscardHandler()
 	}
@@ -56,7 +56,7 @@ func NewAttachHandler(format string, tty *os.File, out io.Writer, verbose bool) 
 	if tty != nil {
 		statusHandler = status.NewTTYAttachHandler(tty)
 	} else if format == "" {
-		statusHandler = status.NewTextAttachHandler(verbose)
+		statusHandler = status.NewTextAttachHandler(out, verbose)
 	} else {
 		statusHandler = status.NewDiscardHandler()
 	}
