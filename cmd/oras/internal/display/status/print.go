@@ -70,7 +70,7 @@ func (p *Printer) PrintSuccessorStatus(ctx context.Context, desc ocispec.Descrip
 		name := s.Annotations[ocispec.AnnotationTitle]
 		if v, ok := committed.Load(s.Digest.String()); ok && v != name {
 			// Reprint status for deduplicated content
-			if err := p.Println(s); err != nil {
+			if err := print(s); err != nil {
 				return err
 			}
 		}
