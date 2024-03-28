@@ -120,7 +120,6 @@ func (opts *Target) parseOCILayoutReference() error {
 	raw := opts.RawReference
 	var path string
 	var ref string
-
 	if idx := strings.LastIndex(raw, "@"); idx != -1 {
 		// `digest` found
 		path = raw[:idx]
@@ -130,8 +129,7 @@ func (opts *Target) parseOCILayoutReference() error {
 		var err error
 		path, ref, err = fileref.Parse(raw, "")
 		if err != nil {
-			err = errors.Join(err, errdef.ErrInvalidReference)
-			return err
+			return errors.Join(err, errdef.ErrInvalidReference)
 		}
 	}
 	opts.Path = path
