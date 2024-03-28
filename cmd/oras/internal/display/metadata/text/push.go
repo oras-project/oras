@@ -37,13 +37,13 @@ func NewPushHandler(out io.Writer) metadata.PushHandler {
 }
 
 // OnCopied is called after files are copied.
-func (p *PushHandler) OnCopied(opts *option.Target) error {
-	_, err := fmt.Fprintln(p.out, "Pushed", opts.AnnotatedReference())
+func (ph *PushHandler) OnCopied(opts *option.Target) error {
+	_, err := fmt.Fprintln(ph.out, "Pushed", opts.AnnotatedReference())
 	return err
 }
 
 // OnCompleted is called after the push is completed.
-func (p *PushHandler) OnCompleted(root ocispec.Descriptor) error {
-	_, err := fmt.Fprintln(p.out, "Digest:", root.Digest)
+func (ph *PushHandler) OnCompleted(root ocispec.Descriptor) error {
+	_, err := fmt.Fprintln(ph.out, "Digest:", root.Digest)
 	return err
 }

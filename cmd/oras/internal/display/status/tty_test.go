@@ -124,3 +124,51 @@ func TestTTYPushHandler_UpdateCopyOptions(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func Test_TTYPullHandler_TrackTarget(t *testing.T) {
+	src := memory.New()
+	t.Run("has TTY", func(t *testing.T) {
+		_, device, err := testutils.NewPty()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer device.Close()
+		ph := NewTTYPullHandler(device)
+		got, err := ph.TrackTarget(src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got == src {
+			t.Fatal("GraphTarget not be modified on TTY")
+		}
+	})
+
+	t.Run("invalid TTY", func(t *testing.T) {
+		ph := NewTTYPullHandler(nil)
+
+		if _, err := ph.TrackTarget(src); err == nil {
+			t.Fatal("expected error for no tty but got nil")
+		}
+	})
+}
+
+func TestTTYPullHandler_OnNodeDownloading(t *testing.T) {
+	ph := NewTTYPullHandler(nil)
+	if err := ph.OnNodeDownloading(ocispec.Descriptor{}); err != nil {
+		t.Error("OnNodeDownloading() should not return an error")
+	}
+}
+
+func TestTTYPullHandler_OnNodeDownloaded(t *testing.T) {
+	ph := NewTTYPullHandler(nil)
+	if err := ph.OnNodeDownloaded(ocispec.Descriptor{}); err != nil {
+		t.Error("OnNodeDownloaded() should not return an error")
+	}
+}
+
+func TestTTYPullHandler_OnNodeProcessing(t *testing.T) {
+	ph := NewTTYPullHandler(nil)
+	if err := ph.OnNodeProcessing(ocispec.Descriptor{}); err != nil {
+		t.Error("OnNodeProcessing() should not return an error")
+	}
+}

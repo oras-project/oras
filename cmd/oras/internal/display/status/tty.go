@@ -86,3 +86,58 @@ func (ph *TTYPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher
 func NewTTYAttachHandler(tty *os.File) AttachHandler {
 	return NewTTYPushHandler(tty)
 }
+
+// TTYPullHandler handles TTY status output for pull events.
+type TTYPullHandler struct {
+	fetcher content.Fetcher
+	tty     *os.File
+	tracked track.GraphTarget
+}
+
+// NewTTYPullHandler returns a new handler for Pull status events.
+func NewTTYPullHandler(tty *os.File) PullHandler {
+	return &TTYPullHandler{
+		tty: tty,
+	}
+}
+
+// OnNodeDownloading implements PullHandler.
+func (ph *TTYPullHandler) OnNodeDownloading(desc ocispec.Descriptor) error {
+	return nil
+}
+
+// OnNodeDownloaded implements PullHandler.
+func (ph *TTYPullHandler) OnNodeDownloaded(desc ocispec.Descriptor) error {
+	return nil
+}
+
+// OnNodeProcessing implements PullHandler.
+func (ph *TTYPullHandler) OnNodeProcessing(desc ocispec.Descriptor) error {
+	return nil
+}
+
+// OnNodeRestored implements PullHandler.
+func (ph *TTYPullHandler) OnNodeRestored(desc ocispec.Descriptor) error {
+	return ph.tracked.Prompt(desc, PullPromptRestored)
+}
+
+// OnNodeProcessing implements PullHandler.
+func (ph *TTYPullHandler) OnNodeSkipped(desc ocispec.Descriptor) error {
+	return ph.tracked.Prompt(desc, PullPromptSkipped)
+}
+
+// Close implements io.Closer.
+func (ph *TTYPullHandler) Close() error {
+	return ph.tracked.Close()
+}
+
+// TrackTarget returns a tracked target.
+func (ph *TTYPullHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error) {
+	tracked, err := track.NewTarget(gt, PullPromptDownloading, PullPromptPulled, ph.tty)
+	if err != nil {
+		return nil, err
+	}
+	ph.tracked = tracked
+	ph.fetcher = gt
+	return tracked, nil
+}

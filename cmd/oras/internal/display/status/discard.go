@@ -16,6 +16,7 @@ limitations under the License.
 package status
 
 import (
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 )
@@ -43,5 +44,35 @@ func (DiscardHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error)
 	return gt, nil
 }
 
+// Close implements io.Closer.
+func (DiscardHandler) Close() error {
+	return nil
+}
+
 // UpdateCopyOptions updates the copy options for the artifact push.
 func (DiscardHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher) {}
+
+// OnNodeDownloading implements PullHandler.
+func (DiscardHandler) OnNodeDownloading(desc ocispec.Descriptor) error {
+	return nil
+}
+
+// OnNodeDownloaded implements PullHandler.
+func (DiscardHandler) OnNodeDownloaded(desc ocispec.Descriptor) error {
+	return nil
+}
+
+// OnNodeRestored implements PullHandler.
+func (DiscardHandler) OnNodeRestored(_ ocispec.Descriptor) error {
+	return nil
+}
+
+// OnNodeProcessing implements PullHandler.
+func (DiscardHandler) OnNodeProcessing(desc ocispec.Descriptor) error {
+	return nil
+}
+
+// OnNodeProcessing implements PullHandler.
+func (DiscardHandler) OnNodeSkipped(desc ocispec.Descriptor) error {
+	return nil
+}
