@@ -60,8 +60,11 @@ func (p *Printer) PrintStatus(desc ocispec.Descriptor, status string, verbose bo
 	return p.Println(status, ShortDigest(desc), name)
 }
 
+// PrintFunc is the function type returned by StatusPrinter.
+type PrintFunc func(ocispec.Descriptor) error
+
 // PrintSuccessorStatus prints transfer status of successors.
-func (p *Printer) PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, fetcher content.Fetcher, committed *sync.Map, print PrintFunc) error {
+func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, fetcher content.Fetcher, committed *sync.Map, print PrintFunc) error {
 	successors, err := content.Successors(ctx, fetcher, desc)
 	if err != nil {
 		return err
@@ -77,9 +80,6 @@ func (p *Printer) PrintSuccessorStatus(ctx context.Context, desc ocispec.Descrip
 	}
 	return nil
 }
-
-// PrintFunc is the function type returned by StatusPrinter.
-type PrintFunc func(ocispec.Descriptor) error
 
 // NewTagStatusHintPrinter creates a wrapper type for printing
 // tag status and hint.
@@ -171,9 +171,4 @@ func StatusPrinter(status string, verbose bool) PrintFunc {
 // PrintStatus prints transfer status.
 func PrintStatus(desc ocispec.Descriptor, status string, verbose bool) error {
 	return printer.PrintStatus(desc, status, verbose)
-}
-
-// PrintSuccessorStatus prints transfer status of successors.
-func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, fetcher content.Fetcher, committed *sync.Map, print PrintFunc) error {
-	return printer.PrintSuccessorStatus(ctx, desc, fetcher, committed, print)
 }
