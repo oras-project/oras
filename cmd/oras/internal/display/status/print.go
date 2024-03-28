@@ -40,7 +40,7 @@ func NewPrinter(out io.Writer) *Printer {
 }
 
 // Println prints objects concurrent-safely with newline.
-func (p *Printer) Println(a ...interface{}) error {
+func (p *Printer) Println(a ...any) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	_, err := fmt.Fprintln(p.out, a...)
