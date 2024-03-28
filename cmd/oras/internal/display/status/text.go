@@ -75,7 +75,7 @@ func (ph *TextPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetche
 	}
 	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		if err := PrintSuccessorStatus(ctx, desc, fetcher, committed, StatusPrinter(promptSkipped, ph.verbose)); err != nil {
+		if err := PrintSuccessorStatus(ctx, desc, fetcher, committed, ph.printer.StatusPrinter(promptSkipped, ph.verbose)); err != nil {
 			return err
 		}
 		return ph.printer.PrintStatus(desc, promptUploaded, ph.verbose)

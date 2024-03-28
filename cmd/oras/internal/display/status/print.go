@@ -28,6 +28,9 @@ import (
 	"oras.land/oras-go/v2/registry"
 )
 
+// PrintFunc is the function type returned by StatusPrinter.
+type PrintFunc func(ocispec.Descriptor) error
+
 // Printer prints for status handlers.
 type Printer struct {
 	out  io.Writer
@@ -60,8 +63,12 @@ func (p *Printer) PrintStatus(desc ocispec.Descriptor, status string, verbose bo
 	return p.Println(status, ShortDigest(desc), name)
 }
 
-// PrintFunc is the function type returned by StatusPrinter.
-type PrintFunc func(ocispec.Descriptor) error
+// StatusPrinter returns a tracking function for transfer status.
+func (p *Printer) StatusPrinter(status string, verbose bool) PrintFunc {
+	return func(desc ocispec.Descriptor) error {
+		return p.PrintStatus(desc, status, verbose)
+	}
+}
 
 // PrintSuccessorStatus prints transfer status of successors.
 func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, fetcher content.Fetcher, committed *sync.Map, print PrintFunc) error {
