@@ -43,7 +43,7 @@ func TestPlatform_Parse_err(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.opts.Parse()
+			err := tt.opts.Parse(nil)
 			if err == nil {
 				t.Errorf("Platform.Parse() error = %v, wantErr %v", err, true)
 				return
@@ -68,7 +68,7 @@ func TestPlatform_Parse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.opts.Parse(); err != nil {
+			if err := tt.opts.Parse(nil); err != nil {
 				t.Errorf("Platform.Parse() error = %v", err)
 			}
 			got := tt.opts.Platform
