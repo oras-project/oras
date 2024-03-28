@@ -29,6 +29,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/test/e2e/internal/testdata/feature"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
+	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
 	"oras.land/oras/test/e2e/internal/utils/match"
 )
@@ -97,6 +98,21 @@ var _ = Describe("1.1 registry users:", func() {
 			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				WithWorkDir(PrepareTempFiles()).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
+		})
+
+		It("should attach a file to an arch-specific subject", func() {
+			testRepo := attachTestRepo("arch-specific")
+			// Below line will cause unexpected 500
+			// pending for https://github.com/project-zot/zot/pull/2351 to be released
+			// CopyZOTRepo(ImageRepo, testRepo)
+			subjectRef := RegistryRef(ZOTHost, testRepo, multi_arch.Tag)
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), subjectRef).Exec()
+			artifactType := "test/attach"
+			// test
+			out := ORAS("attach", "--artifact-type", artifactType, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.Digest}}", "--platform", "linux/amd64").
+				WithWorkDir(PrepareTempFiles()).Exec().Out.Contents()
+			// validate
+			ORAS("discover", "--artifact-type", artifactType, RegistryRef(ZOTHost, testRepo, multi_arch.LinuxAMD64.Digest.String())).MatchKeyWords(string(out)).Exec()
 		})
 
 		It("should attach a file to a subject and export the built manifest", func() {
@@ -282,6 +298,18 @@ var _ = Describe("OCI image layout users:", func() {
 			fetched := ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, index.Manifests[0].Digest.String())).Exec().Out.Contents()
 			MatchFile(filepath.Join(root, exportName), string(fetched), DefaultTimeout)
 		})
+
+		It("should attach a file to an arch-specific subject", func() {
+			root := PrepareTempOCI(ImageRepo)
+			subjectRef := LayoutRef(root, multi_arch.Tag)
+			artifactType := "test/attach"
+			// test
+			out := ORAS("attach", Flags.Layout, "--artifact-type", artifactType, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.Digest}}", "--platform", "linux/amd64").
+				WithWorkDir(PrepareTempFiles()).Exec().Out.Contents()
+			// validate
+			ORAS("discover", Flags.Layout, "--artifact-type", artifactType, LayoutRef(root, multi_arch.LinuxAMD64.Digest.String())).MatchKeyWords(string(out)).Exec()
+		})
+
 		It("should attach a file via a OCI Image", func() {
 			root := PrepareTempOCI(ImageRepo)
 			subjectRef := LayoutRef(root, foobar.Tag)

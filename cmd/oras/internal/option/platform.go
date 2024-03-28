@@ -24,20 +24,27 @@ import (
 	"github.com/spf13/pflag"
 )
 
+const (
+	PlatformFlagName = "platform"
+)
+
 // Platform option struct.
 type Platform struct {
-	platform string
-	Platform *ocispec.Platform
+	PlatformFlag string
+	Platform     *ocispec.Platform
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Platform) ApplyFlags(fs *pflag.FlagSet) {
-	fs.StringVarP(&opts.platform, "platform", "", "", "request platform in the form of `os[/arch][/variant][:os_version]`")
+	if fs.Lookup(PlatformFlagName) != nil {
+		return
+	}
+	fs.StringVarP(&opts.PlatformFlag, PlatformFlagName, "", "", "request platform in the form of `os[/arch][/variant][:os_version]`")
 }
 
 // parse parses the input platform flag to an oci platform type.
 func (opts *Platform) Parse() error {
-	if opts.platform == "" {
+	if opts.PlatformFlag == "" {
 		return nil
 	}
 
@@ -45,7 +52,7 @@ func (opts *Platform) Parse() error {
 	// If Arch is not provided, will use GOARCH instead
 	var platformStr string
 	var p ocispec.Platform
-	platformStr, p.OSVersion, _ = strings.Cut(opts.platform, ":")
+	platformStr, p.OSVersion, _ = strings.Cut(opts.PlatformFlag, ":")
 	parts := strings.Split(platformStr, "/")
 	switch len(parts) {
 	case 3:
@@ -56,7 +63,7 @@ func (opts *Platform) Parse() error {
 	case 1:
 		p.Architecture = runtime.GOARCH
 	default:
-		return fmt.Errorf("failed to parse platform %q: expected format os[/arch[/variant]]", opts.platform)
+		return fmt.Errorf("failed to parse platform %q: expected format os[/arch[/variant]]", opts.PlatformFlag)
 	}
 	p.OS = parts[0]
 	if p.OS == "" {
