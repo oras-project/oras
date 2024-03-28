@@ -54,7 +54,7 @@ Example - List the repositories under the registry that include values lexically
 		Args:    oerrors.CheckArgs(argument.Exactly(1), "the target registry to list repositories from"),
 		Aliases: []string{"list"},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return option.Parse(&opts)
+			return option.Parse(&opts, cmd)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error

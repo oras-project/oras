@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2/content"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
@@ -73,7 +74,7 @@ func (opts *Packer) ExportManifest(ctx context.Context, fetcher content.Fetcher,
 	}
 	return os.WriteFile(opts.ManifestExportPath, manifestBytes, 0666)
 }
-func (opts *Packer) Parse() error {
+func (opts *Packer) Parse(cmd *cobra.Command) error {
 	if !opts.PathValidationDisabled {
 		var failedPaths []string
 		for _, path := range opts.FileRefs {

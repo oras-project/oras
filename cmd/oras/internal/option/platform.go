@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
@@ -36,7 +37,7 @@ func (opts *Platform) ApplyFlags(fs *pflag.FlagSet) {
 }
 
 // parse parses the input platform flag to an oci platform type.
-func (opts *Platform) Parse() error {
+func (opts *Platform) Parse(cmd *cobra.Command) error {
 	if opts.platform == "" {
 		return nil
 	}

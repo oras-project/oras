@@ -95,7 +95,7 @@ func (opts *Target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 }
 
 // Parse gets target options from user input.
-func (opts *Target) Parse() error {
+func (opts *Target) Parse(cmd *cobra.Command) error {
 	switch {
 	case opts.IsOCILayout:
 		opts.Type = TargetTypeOCILayout
@@ -111,7 +111,7 @@ func (opts *Target) Parse() error {
 				Recommendation: "Please make sure the provided reference is in the form of <registry>/<repo>[:tag|@digest]",
 			}
 		}
-		return opts.Remote.Parse()
+		return opts.Remote.Parse(cmd)
 	}
 }
 
@@ -330,13 +330,13 @@ func (opts *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
 }
 
 // Parse parses user-provided flags and arguments into option struct.
-func (opts *BinaryTarget) Parse() error {
+func (opts *BinaryTarget) Parse(cmd *cobra.Command) error {
 	opts.From.warned = make(map[string]*sync.Map)
 	opts.To.warned = opts.From.warned
 	// resolve are parsed in array order, latter will overwrite former
 	opts.From.resolveFlag = append(opts.resolveFlag, opts.From.resolveFlag...)
 	opts.To.resolveFlag = append(opts.resolveFlag, opts.To.resolveFlag...)
-	return Parse(opts)
+	return Parse(opts, cmd)
 }
 
 // Modify handles error during cmd execution.
