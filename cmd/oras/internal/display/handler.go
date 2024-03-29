@@ -86,11 +86,11 @@ func NewPullHandler(format string, path string, tty *os.File, out io.Writer, ver
 	var metadataHandler metadata.PullHandler
 	switch format {
 	case "":
-		metadataHandler = text.NewPullHandler()
+		metadataHandler = text.NewPullHandler(out)
 	case "json":
-		metadataHandler = json.NewPullHandler(path)
+		metadataHandler = json.NewPullHandler(out, path)
 	default:
-		metadataHandler = template.NewPullHandler(path, format)
+		metadataHandler = template.NewPullHandler(out, path, format)
 	}
 	return statusHandler, metadataHandler
 }

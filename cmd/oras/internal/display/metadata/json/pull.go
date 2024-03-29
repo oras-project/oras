@@ -16,10 +16,11 @@ limitations under the License.
 package json
 
 import (
+	"io"
+
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
-	"oras.land/oras/cmd/oras/internal/display/metadata/view"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -27,14 +28,14 @@ import (
 type PullHandler struct {
 	path   string
 	pulled model.Pulled
-	view.Printer
+	out    io.Writer
 }
 
 // NewPullHandler returns a new handler for Pull events.
-func NewPullHandler(path string) metadata.PullHandler {
+func NewPullHandler(out io.Writer, path string) metadata.PullHandler {
 	return &PullHandler{
-		Printer: view.NewPrinter(),
-		path:    path,
+		out:  out,
+		path: path,
 	}
 }
 
@@ -45,5 +46,5 @@ func (ph *PullHandler) OnFilePulled(name string, outputDir string, desc ocispec.
 
 // OnCompleted implements metadata.PullHandler.
 func (ph *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor, _ bool) error {
-	return ph.PrintJSON(model.NewPull(ph.path+"@"+desc.Digest.String(), ph.pulled.Files))
+	return printJSON(ph.out, model.NewPull(ph.path+"@"+desc.Digest.String(), ph.pulled.Files))
 }
