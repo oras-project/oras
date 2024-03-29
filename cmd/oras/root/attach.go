@@ -82,7 +82,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
 			opts.FileRefs = args[1:]
-			if err := option.Parse(&opts, cmd); err != nil {
+			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
 			return nil

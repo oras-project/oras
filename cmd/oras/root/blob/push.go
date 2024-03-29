@@ -87,7 +87,7 @@ Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
 					return errors.New("`--size` must be provided if the blob is read from stdin")
 				}
 			}
-			return option.Parse(&opts, cmd)
+			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return pushBlob(cmd, &opts)

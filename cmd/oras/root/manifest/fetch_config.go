@@ -75,7 +75,7 @@ Example - Fetch and print the prettified descriptor of the config:
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
 			}
 			opts.RawReference = args[0]
-			return option.Parse(&opts, cmd)
+			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return fetchConfig(cmd, &opts)

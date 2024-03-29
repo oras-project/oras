@@ -336,7 +336,7 @@ func (opts *BinaryTarget) Parse(cmd *cobra.Command) error {
 	// resolve are parsed in array order, latter will overwrite former
 	opts.From.resolveFlag = append(opts.resolveFlag, opts.From.resolveFlag...)
 	opts.To.resolveFlag = append(opts.resolveFlag, opts.To.resolveFlag...)
-	return Parse(opts, cmd)
+	return Parse(cmd, opts)
 }
 
 // Modify handles error during cmd execution.

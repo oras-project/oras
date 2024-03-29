@@ -79,7 +79,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the target artifact to discover referrers from"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
-			return option.Parse(&opts, cmd)
+			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runDiscover(cmd, &opts)

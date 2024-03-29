@@ -66,7 +66,7 @@ Example - [Experimental] Show tags associated with a digest:
 		Aliases: []string{"show-tags"},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
-			return option.Parse(&opts, cmd)
+			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return showTags(cmd, &opts)
