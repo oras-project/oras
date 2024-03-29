@@ -33,7 +33,7 @@ type AttachHandler interface {
 
 // PullHandler handles metadata output for attach events.
 type PullHandler interface {
-	// OnStarted is called when a file is pulled.
+	// OnFilePulled is called after a file is pulled.
 	OnFilePulled(name string, outputDir string, desc ocispec.Descriptor, descPath string)
 	// OnCompleted is called when the pull cmd execution is completed.
 	OnCompleted(opts *option.Target, desc ocispec.Descriptor, layerSkipped bool) error

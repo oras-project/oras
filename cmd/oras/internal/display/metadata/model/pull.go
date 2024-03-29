@@ -23,7 +23,7 @@ import (
 	"oras.land/oras-go/v2/content/file"
 )
 
-// File records pulled files.
+// File records metadata of a pulled file.
 type File struct {
 	// Path is the absolute path of the pulled file.
 	Path string
