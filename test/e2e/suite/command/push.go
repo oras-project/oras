@@ -102,6 +102,16 @@ var _ = Describe("ORAS beginners:", func() {
 				MatchErrKeyWords("Error:", invalidFlag, "Available options: v1.1, v1.0").
 				Exec()
 		})
+
+		It("should fail if image spec v1.1 is used, with --config and without --artifactType", func() {
+			testRepo := pushTestRepo("v1-1/no-artifact-type")
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			imageSpecFlag := "v1.1"
+			ORAS("push", subjectRef, "--config", foobar.FileConfigName, Flags.ImageSpec, imageSpecFlag).
+				ExpectFailure().
+				MatchErrKeyWords("artifact type missing for OCI v1.1 artifacts").
+				Exec()
+		})
 	})
 })
 
@@ -231,6 +241,29 @@ var _ = Describe("Remote registry users:", func() {
 				Size:      int64(foobar.FileConfigSize),
 				Digest:    foobar.FileConfigDigest,
 			}))
+		})
+
+		It("should pack with image spec v1.0 when --config is used, --artifact-type is not used, and --image-spec set to auto", func() {
+			repo := pushTestRepo("config/without/artifact/type")
+			configType := "my/config/type"
+			tempDir := PrepareTempFiles()
+
+			ORAS("push", RegistryRef(ZOTHost, repo, tag), "--config", fmt.Sprintf("%s:%s", foobar.FileConfigName, configType), foobar.FileBarName, "-v").
+				MatchStatus([]match.StateKey{
+					{Digest: foobar.FileConfigStateKey.Digest, Name: configType},
+					foobar.FileBarStateKey,
+				}, true, 2).
+				WithWorkDir(tempDir).Exec()
+			// validate
+			fetched := ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, tag)).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Config).Should(Equal(ocispec.Descriptor{
+				MediaType: configType,
+				Size:      int64(foobar.FileConfigSize),
+				Digest:    foobar.FileConfigDigest,
+			}))
+			Expect(manifest.ArtifactType).Should(Equal(""))
 		})
 
 		It("should push files with customized config file and mediatype", func() {
