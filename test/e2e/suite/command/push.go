@@ -51,7 +51,7 @@ var _ = Describe("ORAS beginners:", func() {
 
 		It("should fail if the provided reference is not valid", func() {
 			err := ORAS("push", "/oras").ExpectFailure().Exec().Err
-			gomega.Expect(err).Should(gbytes.Say(`Error: "/oras" is an invalid reference`))
+			gomega.Expect(err).Should(gbytes.Say(`Error: "/oras": invalid reference: invalid registry ""`))
 			gomega.Expect(err).Should(gbytes.Say(regexp.QuoteMeta("Please make sure the provided reference is in the form of <registry>/<repo>[:tag|@digest]")))
 		})
 

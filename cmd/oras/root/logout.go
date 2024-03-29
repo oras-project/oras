@@ -16,8 +16,6 @@ limitations under the License.
 package root
 
 import (
-	"context"
-
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/registry/remote/credentials"
@@ -46,7 +44,7 @@ Example - Logout:
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the registry you want to log out"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.hostname = args[0]
-			return runLogout(cmd.Context(), opts)
+			return runLogout(cmd, opts)
 		},
 	}
 
@@ -55,7 +53,8 @@ Example - Logout:
 	return cmd
 }
 
-func runLogout(ctx context.Context, opts logoutOptions) error {
+func runLogout(cmd *cobra.Command, opts logoutOptions) error {
+	ctx := cmd.Context()
 	if opts.debug {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
