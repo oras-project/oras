@@ -89,14 +89,12 @@ func NewTextAttachHandler(out io.Writer, verbose bool) AttachHandler {
 
 // TextPullHandler handles text status output for pull events.
 type TextPullHandler struct {
-	fetcher content.Fetcher
 	verbose bool
 	printer *Printer
 }
 
-// TrackTarget returns a tracked target.
+// TrackTarget implements PullHander.
 func (ph *TextPullHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error) {
-	ph.fetcher = gt
 	return gt, nil
 }
 

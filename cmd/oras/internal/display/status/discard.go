@@ -39,7 +39,7 @@ func (DiscardHandler) OnEmptyArtifact() error {
 	return nil
 }
 
-// TrackTarget returns a target with status tracking
+// TrackTarget returns a target with status tracking.
 func (DiscardHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error) {
 	return gt, nil
 }
