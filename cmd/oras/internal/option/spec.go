@@ -45,7 +45,7 @@ func (is *ImageSpec) Set(value string) error {
 	is.flag = value
 	switch value {
 	case ImageSpecV1_1:
-		is.PackVersion = oras.PackManifestVersion1_1_RC4
+		is.PackVersion = oras.PackManifestVersion1_1
 	case ImageSpecV1_0:
 		is.PackVersion = oras.PackManifestVersion1_0
 	default:
@@ -78,7 +78,7 @@ func (is *ImageSpec) String() string {
 // ApplyFlags applies flags to a command flag set.
 func (is *ImageSpec) ApplyFlags(fs *pflag.FlagSet) {
 	// default to v1.1-rc.4
-	is.PackVersion = oras.PackManifestVersion1_1_RC4
+	is.PackVersion = oras.PackManifestVersion1_1
 	defaultFlag := ImageSpecV1_1
 	fs.Var(is, "image-spec", fmt.Sprintf(`[Experimental] specify manifest type for building artifact. Options: %s (default %q)`, is.Options(), defaultFlag))
 }
