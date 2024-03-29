@@ -37,7 +37,7 @@ func (opts *Platform) ApplyFlags(fs *pflag.FlagSet) {
 }
 
 // parse parses the input platform flag to an oci platform type.
-func (opts *Platform) Parse(_ *cobra.Command) error {
+func (opts *Platform) Parse(*cobra.Command) error {
 	if opts.platform == "" {
 		return nil
 	}
