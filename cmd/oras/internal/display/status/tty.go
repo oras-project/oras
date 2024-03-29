@@ -89,7 +89,6 @@ func NewTTYAttachHandler(tty *os.File) AttachHandler {
 
 // TTYPullHandler handles TTY status output for pull events.
 type TTYPullHandler struct {
-	fetcher content.Fetcher
 	tty     *os.File
 	tracked track.GraphTarget
 }
@@ -138,6 +137,5 @@ func (ph *TTYPullHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, er
 		return nil, err
 	}
 	ph.tracked = tracked
-	ph.fetcher = gt
 	return tracked, nil
 }
