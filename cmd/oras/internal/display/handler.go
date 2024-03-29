@@ -78,7 +78,7 @@ func NewPullHandler(format string, path string, tty *os.File, out io.Writer, ver
 	if tty != nil {
 		statusHandler = status.NewTTYPullHandler(tty)
 	} else if format == "" {
-		statusHandler = status.NewTextPullHandler(verbose)
+		statusHandler = status.NewTextPullHandler(out, verbose)
 	} else {
 		statusHandler = status.NewDiscardHandler()
 	}

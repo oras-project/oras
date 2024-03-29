@@ -91,6 +91,7 @@ func NewTextAttachHandler(out io.Writer, verbose bool) AttachHandler {
 type TextPullHandler struct {
 	fetcher content.Fetcher
 	verbose bool
+	printer *Printer
 }
 
 // TrackTarget returns a tracked target.
@@ -130,8 +131,9 @@ func (ph *TextPullHandler) OnNodeSkipped(desc ocispec.Descriptor) error {
 }
 
 // NewTextPullHandler returns a new handler for pull command.
-func NewTextPullHandler(verbose bool) PullHandler {
+func NewTextPullHandler(out io.Writer, verbose bool) PullHandler {
 	return &TextPullHandler{
 		verbose: verbose,
+		printer: NewPrinter(out),
 	}
 }
