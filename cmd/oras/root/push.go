@@ -105,7 +105,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
 			opts.FileRefs = args[1:]
-			if err := option.Parse(&opts); err != nil {
+			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
 			switch opts.PackVersion {

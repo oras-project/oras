@@ -19,6 +19,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -26,7 +27,7 @@ type Test struct {
 	CntPtr *int
 }
 
-func (t *Test) Parse() error {
+func (t *Test) Parse(cmd *cobra.Command) error {
 	*t.CntPtr += 1
 	if *t.CntPtr == 2 {
 		return errors.New("should not be tried twice")
@@ -48,7 +49,7 @@ func TestParse_once(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := option.Parse(&tt.args); (err != nil) != tt.wantErr {
+			if err := option.Parse(nil, &tt.args); (err != nil) != tt.wantErr {
 				t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
@@ -76,7 +77,7 @@ func TestParse_err(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := option.Parse(&tt.args); (err != nil) != tt.wantErr {
+			if err := option.Parse(nil, &tt.args); (err != nil) != tt.wantErr {
 				t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
