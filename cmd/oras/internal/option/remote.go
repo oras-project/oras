@@ -46,6 +46,9 @@ import (
 )
 
 const (
+	caFileFlag                 = "ca-file"
+	certFileFlag               = "cert-file"
+	keyFileFlag                = "key-file"
 	usernameFlag               = "username"
 	passwordFlag               = "password"
 	passwordFromStdinFlag      = "password-stdin"
@@ -58,6 +61,8 @@ const (
 type Remote struct {
 	DistributionSpec
 	CACertFilePath  string
+	CertFilePath    string
+	KeyFilePath     string
 	Insecure        bool
 	Configs         []string
 	Username        string
@@ -120,7 +125,9 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	opts.plainHTTP = func() (bool, bool) {
 		return *plainHTTP, fs.Changed(plainHTTPFlagName)
 	}
-	fs.StringVar(&opts.CACertFilePath, opts.flagPrefix+"ca-file", "", "server certificate authority file for the remote "+notePrefix+"registry")
+	fs.StringVar(&opts.CACertFilePath, opts.flagPrefix+caFileFlag, "", "server certificate authority file for the remote "+notePrefix+"registry")
+	fs.StringVarP(&opts.CertFilePath, opts.flagPrefix+certFileFlag, "", "", "client certificate file for the remote "+notePrefix+"registry")
+	fs.StringVarP(&opts.KeyFilePath, opts.flagPrefix+keyFileFlag, "", "", "client private key file for the remote "+notePrefix+"registry")
 	fs.StringArrayVar(&opts.resolveFlag, opts.flagPrefix+"resolve", nil, "customized DNS for "+notePrefix+"registry, formatted in `host:port:address[:address_port]`")
 	fs.StringArrayVar(&opts.Configs, opts.flagPrefix+"registry-config", nil, "`path` of the authentication file for "+notePrefix+"registry")
 	fs.StringArrayVarP(&opts.headerFlags, opts.flagPrefix+"header", shortHeader, nil, "add custom headers to "+notePrefix+"requests")
@@ -142,6 +149,7 @@ func CheckStdinConflict(flags *pflag.FlagSet) error {
 func (opts *Remote) Parse(cmd *cobra.Command) error {
 	usernameAndIdTokenFlags := []string{opts.flagPrefix + usernameFlag, opts.flagPrefix + identityTokenFlag}
 	passwordAndIdTokenFlags := []string{opts.flagPrefix + passwordFlag, opts.flagPrefix + identityTokenFlag}
+	certFileAndKeyFileFlags := []string{opts.flagPrefix + certFileFlag, opts.flagPrefix + keyFileFlag}
 	if cmd.Flags().Lookup(identityTokenFromStdinFlag) != nil {
 		usernameAndIdTokenFlags = append(usernameAndIdTokenFlags, identityTokenFromStdinFlag)
 		passwordAndIdTokenFlags = append(passwordAndIdTokenFlags, identityTokenFromStdinFlag)
@@ -155,6 +163,9 @@ func (opts *Remote) Parse(cmd *cobra.Command) error {
 	if err := opts.parseCustomHeaders(); err != nil {
 		return err
 	}
+
+	cmd.MarkFlagsRequiredTogether(certFileAndKeyFileFlags...)
+
 	return opts.readSecret(cmd)
 }
 
@@ -227,6 +238,13 @@ func (opts *Remote) tlsConfig() (*tls.Config, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+	if opts.CertFilePath != "" && opts.KeyFilePath != "" {
+		cert, err := tls.LoadX509KeyPair(opts.CertFilePath, opts.KeyFilePath)
+		if err != nil {
+			return nil, err
+		}
+		config.Certificates = []tls.Certificate{cert}
 	}
 	return config, nil
 }
