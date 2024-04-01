@@ -31,6 +31,9 @@ type PullHandler struct {
 	out    io.Writer
 }
 
+// OnLayerSkipped implements metadata.PullHandler.
+func (ph *PullHandler) OnLayerSkipped() {}
+
 // NewPullHandler returns a new handler for Pull events.
 func NewPullHandler(out io.Writer, path string) metadata.PullHandler {
 	return &PullHandler{
@@ -45,6 +48,6 @@ func (ph *PullHandler) OnFilePulled(name string, outputDir string, desc ocispec.
 }
 
 // OnCompleted implements metadata.PullHandler.
-func (ph *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor, _ bool) error {
+func (ph *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor) error {
 	return printJSON(ph.out, model.NewPull(ph.path+"@"+desc.Digest.String(), ph.pulled.Files))
 }

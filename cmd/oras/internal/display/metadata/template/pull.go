@@ -33,7 +33,7 @@ type PullHandler struct {
 }
 
 // OnCompleted implements metadata.PullHandler.
-func (ph *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor, _ bool) error {
+func (ph *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor) error {
 	return parseAndWrite(ph.out, model.NewPull(ph.path+"@"+desc.Digest.String(), ph.pulled.Files), ph.template)
 }
 
@@ -41,6 +41,9 @@ func (ph *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor,
 func (ph *PullHandler) OnFilePulled(name string, outputDir string, desc ocispec.Descriptor, descPath string) {
 	ph.pulled.Add(name, outputDir, desc, descPath)
 }
+
+// OnLayerSkipped implements metadata.PullHandler.
+func (ph *PullHandler) OnLayerSkipped() {}
 
 // NewPullHandler returns a new handler for pull events.
 func NewPullHandler(out io.Writer, path string, template string) metadata.PullHandler {

@@ -18,6 +18,7 @@ package text
 import (
 	"fmt"
 	"io"
+	"sync/atomic"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
@@ -26,12 +27,13 @@ import (
 
 // PullHandler handles text metadata output for pull events.
 type PullHandler struct {
-	out io.Writer
+	out          io.Writer
+	layerSkipped atomic.Bool
 }
 
 // OnCompleted implements metadata.PullHandler.
-func (p *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor, layerSkipped bool) error {
-	if layerSkipped {
+func (p *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor) error {
+	if p.layerSkipped.Load() {
 		_, _ = fmt.Fprintf(p.out, "Skipped pulling layers without file name in %q\n", ocispec.AnnotationTitle)
 		_, _ = fmt.Fprintf(p.out, "Use 'oras copy %s --to-oci-layout <layout-dir>' to pull all layers.\n", opts.RawReference)
 	} else {
@@ -42,6 +44,11 @@ func (p *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor, 
 }
 
 func (p *PullHandler) OnFilePulled(name string, outputDir string, desc ocispec.Descriptor, descPath string) {
+}
+
+// OnLayerSkipped implements metadata.PullHandler.
+func (ph *PullHandler) OnLayerSkipped() {
+	ph.layerSkipped.Store(true)
 }
 
 // NewPullHandler returns a new handler for Pull events.
