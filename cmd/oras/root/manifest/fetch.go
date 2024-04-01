@@ -83,7 +83,7 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 				return fmt.Errorf("`--descriptor` cannot be used with `--output` at the same time")
 			}
 			opts.RawReference = args[0]
-			return option.Parse(&opts)
+			return option.Parse(cmd, &opts)
 		},
 		Aliases: []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {

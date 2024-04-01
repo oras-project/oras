@@ -17,18 +17,20 @@ package option
 
 import (
 	"reflect"
+
+	"github.com/spf13/cobra"
 )
 
 // FlagParser parses flags in an option.
 type FlagParser interface {
-	Parse() error
+	Parse(cmd *cobra.Command) error
 }
 
 // Parse parses applicable fields of the passed-in option pointer and returns
 // error during parsing.
-func Parse(optsPtr interface{}) error {
+func Parse(cmd *cobra.Command, optsPtr interface{}) error {
 	return rangeFields(optsPtr, func(fp FlagParser) error {
-		return fp.Parse()
+		return fp.Parse(cmd)
 	})
 }
 
