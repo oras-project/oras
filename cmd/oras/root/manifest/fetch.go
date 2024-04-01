@@ -79,8 +79,8 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 				return fmt.Errorf("`--output -` cannot be used with `--format` at the same time")
 			case opts.OutputDescriptor && opts.Template != "":
 				return fmt.Errorf("`--descriptor` cannot be used with `--format` at the same time")
-			case opts.OutputDescriptor && opts.outputPath != "":
-				return fmt.Errorf("`--descriptor` cannot be used with `--output` at the same time")
+			case opts.OutputDescriptor && opts.outputPath == "-":
+				return fmt.Errorf("`--descriptor` cannot be used with `--output -` at the same time")
 			}
 			opts.RawReference = args[0]
 			return option.Parse(cmd, &opts)
