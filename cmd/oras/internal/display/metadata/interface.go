@@ -31,7 +31,7 @@ type AttachHandler interface {
 	OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error
 }
 
-// PullHandler handles metadata output for attach events.
+// PullHandler handles metadata output for pull events.
 type PullHandler interface {
 	// OnFilePulled is called after a file is pulled.
 	OnFilePulled(name string, outputDir string, desc ocispec.Descriptor, descPath string)
