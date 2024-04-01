@@ -113,7 +113,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 				if opts.manifestConfigRef != "" && opts.artifactType != "" {
 					return errors.New("--artifact-type and --config cannot both be provided for 1.0 OCI image")
 				}
-			case oras.PackManifestVersion1_1_RC4:
+			case oras.PackManifestVersion1_1:
 				if opts.manifestConfigRef == "" && opts.artifactType == "" {
 					opts.artifactType = oras.MediaTypeUnknownArtifact
 				}
@@ -138,7 +138,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	if err != nil {
 		return err
 	}
-	displayStatus, displayMetadata := display.NewPushHandler(opts.Template, opts.TTY, opts.Verbose)
+	displayStatus, displayMetadata := display.NewPushHandler(opts.Template, opts.TTY, cmd.OutOrStdout(), opts.Verbose)
 
 	// prepare pack
 	packOpts := oras.PackManifestOptions{
