@@ -42,7 +42,7 @@ func (ph *PullHandler) OnFilePulled(name string, outputDir string, desc ocispec.
 	ph.pulled.Add(name, outputDir, desc, descPath)
 }
 
-// NewPullHandler returns a new handler for Pull events.
+// NewPullHandler returns a new handler for pull events.
 func NewPullHandler(out io.Writer, path string, template string) metadata.PullHandler {
 	return &PullHandler{
 		path:     path,
