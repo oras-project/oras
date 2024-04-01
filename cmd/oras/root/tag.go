@@ -75,7 +75,7 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
 			opts.targetRefs = args[1:]
-			if err := option.Parse(&opts); err != nil {
+			if err := option.Parse(cmd, &opts); err != nil {
 				if inner, ok := err.(*oerrors.Error); ok {
 					if errors.Is(inner, errdef.ErrInvalidReference) {
 						inner.Err = fmt.Errorf("unable to add tag for '%s': %w", opts.RawReference, inner.Err)

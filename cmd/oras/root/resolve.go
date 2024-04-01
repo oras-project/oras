@@ -48,7 +48,7 @@ Example - Resolve digest of the target artifact:
 		Aliases: []string{"digest"},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
-			return option.Parse(&opts)
+			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runResolve(cmd, &opts)

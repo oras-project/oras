@@ -30,7 +30,7 @@ import (
 
 func TestTarget_Parse_oci(t *testing.T) {
 	opts := Target{IsOCILayout: true}
-	err := opts.Parse()
+	err := opts.Parse(nil)
 	if !errors.Is(err, errdef.ErrInvalidReference) {
 		t.Errorf("Target.Parse() error = %v, expect %v", err, errdef.ErrInvalidReference)
 	}
@@ -44,7 +44,7 @@ func TestTarget_Parse_remote(t *testing.T) {
 		RawReference: "mocked/test",
 		IsOCILayout:  false,
 	}
-	if err := opts.Parse(); err != nil {
+	if err := opts.Parse(nil); err != nil {
 		t.Errorf("Target.Parse() error = %v", err)
 	}
 	if opts.Type != TargetTypeRemote {
@@ -57,7 +57,7 @@ func TestTarget_Parse_remote_err(t *testing.T) {
 		RawReference: "/test",
 		IsOCILayout:  false,
 	}
-	if err := opts.Parse(); err == nil {
+	if err := opts.Parse(nil); err == nil {
 		t.Errorf("expect Target.Parse() to fail but not")
 	}
 }
