@@ -120,7 +120,7 @@ func fetchManifest(cmd *cobra.Command, opts *fetchOptions) (fetchErr error) {
 	if err != nil {
 		return err
 	}
-	handler := display.NewManifestFetchHandler(opts.Template)
+	handler := display.NewManifestFetchHandler(cmd.OutOrStdout(), opts.Template)
 
 	var desc ocispec.Descriptor
 	if opts.OutputDescriptor && opts.outputPath == "" {

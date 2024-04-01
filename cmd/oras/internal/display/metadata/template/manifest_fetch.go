@@ -16,6 +16,7 @@ limitations under the License.
 package template
 
 import (
+	"io"
 	"reflect"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -26,16 +27,18 @@ import (
 // ManifestFetchHandler handles JSON metadata output for manifest fetch events.
 type ManifestFetchHandler struct {
 	template string
+	out      io.Writer
 }
 
 // NewManifestFetchHandler creates a new handler for manifest fetch events.
-func NewManifestFetchHandler(template string) metadata.ManifestFetchHandler {
+func NewManifestFetchHandler(out io.Writer, template string) metadata.ManifestFetchHandler {
 	return &ManifestFetchHandler{
 		template: template,
+		out:      out,
 	}
 }
 
 // OnFetched is called after the manifest fetch is completed.
-func (ph *ManifestFetchHandler) OnFetched(manifest ocispec.Manifest) error {
-	return parseAndWrite(model.ToMappable(reflect.ValueOf(manifest)), ph.template)
+func (h *ManifestFetchHandler) OnFetched(manifest ocispec.Manifest) error {
+	return parseAndWrite(h.out, model.ToMappable(reflect.ValueOf(manifest)), h.template)
 }
