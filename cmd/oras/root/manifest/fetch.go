@@ -74,22 +74,14 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the manifest to fetch"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			toCheck := []struct {
-				name      string
-				isPresent func() bool
-			}{
-				{"--output -", func() bool { return opts.outputPath == "-" }},
-				{"--format", func() bool { return opts.Template != "" }},
-				{"--descriptor", func() bool { return opts.OutputDescriptor }},
+			switch {
+			case opts.outputPath == "-" && opts.Template != "":
+				return fmt.Errorf("`--output -` cannot be used with `--format` at the same time")
+			case opts.OutputDescriptor && opts.Template != "":
+				return fmt.Errorf("`--descriptor` cannot be used with `--format` at the same time")
+			case opts.OutputDescriptor && opts.outputPath != "":
+				return fmt.Errorf("`--descriptor` cannot be used with `--output` at the same time")
 			}
-			for i := range toCheck {
-				for j := i + 1; j < len(toCheck); j++ {
-					if toCheck[i].isPresent() && toCheck[j].isPresent() {
-						return fmt.Errorf("`%s` cannot be used with `%s` at the same time", toCheck[i].name, toCheck[j].name)
-					}
-				}
-			}
-
 			opts.RawReference = args[0]
 			return option.Parse(&opts)
 		},
