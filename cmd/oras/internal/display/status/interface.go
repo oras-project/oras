@@ -36,6 +36,7 @@ type AttachHandler PushHandler
 
 // PullHandler handles status output for pull command.
 type PullHandler interface {
+	io.Closer
 	// TrackTarget returns a tracked target.
 	// If no TTY is available, it returns the original target.
 	TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error)
@@ -49,5 +50,4 @@ type PullHandler interface {
 	OnNodeRestored(desc ocispec.Descriptor) error
 	// OnNodeSkipped is called when a node is skipped.
 	OnNodeSkipped(desc ocispec.Descriptor) error
-	io.Closer
 }
