@@ -13,26 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package metadata
+package raw
 
 import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras/cmd/oras/internal/option"
 )
 
-// PushHandler handles metadata output for push events.
-type PushHandler interface {
-	OnCopied(opts *option.Target) error
-	OnCompleted(root ocispec.Descriptor) error
-}
-
-// AttachHandler handles metadata output for attach events.
-type AttachHandler interface {
-	OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error
-}
-
-// ManifestFetchHandler handles metadata output for manifest fetch events.
+// ManifestFetchHandler handles raw output for manifest fetch events.
 type ManifestFetchHandler interface {
 	// OnFetched is called after the manifest content is fetched.
-	OnFetched([]byte, ocispec.Descriptor) error
+	OnContentFetched(outputPath string, content []byte) error
+	// OnDescriptorFetched is called after the manifest descriptor is
+	// fetched.
+	OnDescriptorFetched(desc ocispec.Descriptor) error
 }

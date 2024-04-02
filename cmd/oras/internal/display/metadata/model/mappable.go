@@ -25,18 +25,8 @@ import (
 func ToMappable(v reflect.Value) any {
 	switch v.Kind() {
 	case reflect.Struct:
-		t := v.Type()
-		numField := t.NumField()
 		ret := make(map[string]any)
-		for i := 0; i < numField; i++ {
-			fv := v.Field(i)
-			tag := t.Field(i).Tag.Get("json")
-			if tag == "" {
-				continue
-			}
-			key, _, _ := strings.Cut(tag, ",")
-			ret[key] = ToMappable(fv)
-		}
+		addToMap(ret, v)
 		return ret
 	case reflect.Slice, reflect.Array:
 		ret := make([]any, v.Len())
@@ -52,4 +42,20 @@ func ToMappable(v reflect.Value) any {
 		return &elem
 	}
 	return v.Interface()
+}
+
+func addToMap(ret map[string]any, v reflect.Value) {
+	t := v.Type()
+	numField := t.NumField()
+	for i := 0; i < numField; i++ {
+		fv := v.Field(i)
+		ft := t.Field(i)
+		tag := ft.Tag.Get("json")
+		if tag == "" {
+			addToMap(ret, fv)
+		} else {
+			key, _, _ := strings.Cut(tag, ",")
+			ret[key] = ToMappable(fv)
+		}
+	}
 }

@@ -23,6 +23,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/metadata/json"
 	"oras.land/oras/cmd/oras/internal/display/metadata/template"
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
+	"oras.land/oras/cmd/oras/internal/display/raw"
 	"oras.land/oras/cmd/oras/internal/display/status"
 )
 
@@ -75,6 +76,19 @@ func NewAttachHandler(format string, tty *os.File, out io.Writer, verbose bool) 
 }
 
 // NewManifestFetchHandler returns a manifest fetch handler.
-func NewManifestFetchHandler(out io.Writer, format string) metadata.ManifestFetchHandler {
-	return template.NewManifestFetchHandler(out, format)
+func NewManifestFetchHandler(out io.Writer, outputPath string, format string, pretty bool) (metadata.ManifestFetchHandler, raw.ManifestFetchHandler) {
+	var metadataHandler metadata.ManifestFetchHandler
+	var rawContentHandler raw.ManifestFetchHandler
+	switch format {
+	case "raw":
+		metadataHandler = metadata.NewDiscardHandler()
+		rawContentHandler = raw.NewManifestFetchHandler(out, pretty)
+	case "json":
+		metadataHandler = json.NewManifestFetchHandler(out)
+		rawContentHandler = raw.NewDiscardHandler()
+	default:
+		metadataHandler = template.NewManifestFetchHandler(out, format)
+		rawContentHandler = raw.NewDiscardHandler()
+	}
+	return metadataHandler, rawContentHandler
 }

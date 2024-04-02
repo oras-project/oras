@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package template
+package json
 
 import (
 	"encoding/json"
@@ -29,15 +29,13 @@ import (
 
 // ManifestFetchHandler handles JSON metadata output for manifest fetch events.
 type ManifestFetchHandler struct {
-	template string
-	out      io.Writer
+	out io.Writer
 }
 
 // NewManifestFetchHandler creates a new handler for manifest fetch events.
-func NewManifestFetchHandler(out io.Writer, template string) metadata.ManifestFetchHandler {
+func NewManifestFetchHandler(out io.Writer) metadata.ManifestFetchHandler {
 	return &ManifestFetchHandler{
-		template: template,
-		out:      out,
+		out: out,
 	}
 }
 
@@ -49,7 +47,7 @@ func (h *ManifestFetchHandler) OnFetched(content []byte, desc ocispec.Descriptor
 		if err := json.Unmarshal(content, &manifest); err != nil {
 			return err
 		}
-		return parseAndWrite(h.out, model.ToMappable(reflect.ValueOf(manifest)), h.template)
+		return printJSON(h.out, model.ToMappable(reflect.ValueOf(manifest)))
 	default:
 		return fmt.Errorf("cannot apply template: unsupported media type %s", desc.MediaType)
 	}
