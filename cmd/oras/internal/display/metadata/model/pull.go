@@ -68,8 +68,8 @@ type Pulled struct {
 }
 
 // Add adds a pulled file.
-func (f *Pulled) Add(name string, outputDir string, desc ocispec.Descriptor, descPath string) {
-	f.lock.Lock()
-	defer f.lock.Unlock()
-	f.Files = append(f.Files, newFile(name, outputDir, desc, descPath))
+func (p *Pulled) Add(name string, outputDir string, desc ocispec.Descriptor, descPath string) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+	p.Files = append(p.Files, newFile(name, outputDir, desc, descPath))
 }
