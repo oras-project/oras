@@ -243,7 +243,9 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 		}
 		for _, s := range successors {
 			if name, ok := s.Annotations[ocispec.AnnotationTitle]; ok {
-				metadataHandler.OnFilePulled(name, po.Output, s, po.Path)
+				if err = metadataHandler.OnFilePulled(name, po.Output, s, po.Path); err != nil {
+					return err
+				}
 				if err = notifyOnce(&printed, s, statusHandler.OnNodeRestored); err != nil {
 					return err
 				}

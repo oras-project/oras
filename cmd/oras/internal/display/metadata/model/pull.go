@@ -16,6 +16,7 @@ limitations under the License.
 package model
 
 import (
+	"fmt"
 	"path/filepath"
 	"sync"
 
@@ -31,11 +32,15 @@ type File struct {
 }
 
 // newFile creates a new file metadata.
-func newFile(name string, outputDir string, desc ocispec.Descriptor, descPath string) File {
+func newFile(name string, outputDir string, desc ocispec.Descriptor, descPath string) (File, error) {
 	path := name
 	if !filepath.IsAbs(name) {
-		// ignore error since it's successfully written to file store
-		path, _ = filepath.Abs(filepath.Join(outputDir, name))
+		var err error
+		path, err = filepath.Abs(filepath.Join(outputDir, name))
+		if err != nil {
+			// not likely to happen since the file has already be written to file store
+			return File{}, fmt.Errorf("failed to get absolute path of pulled file %s: %w", name, err)
+		}
 	}
 	if desc.Annotations[file.AnnotationUnpack] == "true" {
 		path += string(filepath.Separator)
@@ -43,7 +48,7 @@ func newFile(name string, outputDir string, desc ocispec.Descriptor, descPath st
 	return File{
 		Path:       path,
 		Descriptor: FromDescriptor(descPath, desc),
-	}
+	}, nil
 }
 
 type pull struct {
@@ -68,8 +73,13 @@ type Pulled struct {
 }
 
 // Add adds a pulled file.
-func (p *Pulled) Add(name string, outputDir string, desc ocispec.Descriptor, descPath string) {
+func (p *Pulled) Add(name string, outputDir string, desc ocispec.Descriptor, descPath string) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
-	p.Files = append(p.Files, newFile(name, outputDir, desc, descPath))
+	file, err := newFile(name, outputDir, desc, descPath)
+	if err != nil {
+		return err
+	}
+	p.Files = append(p.Files, file)
+	return nil
 }

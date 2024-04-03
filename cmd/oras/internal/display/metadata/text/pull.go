@@ -43,7 +43,8 @@ func (p *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor) 
 	return nil
 }
 
-func (p *PullHandler) OnFilePulled(name string, outputDir string, desc ocispec.Descriptor, descPath string) {
+func (p *PullHandler) OnFilePulled(name string, outputDir string, desc ocispec.Descriptor, descPath string) error {
+	return nil
 }
 
 // OnLayerSkipped implements metadata.PullHandler.

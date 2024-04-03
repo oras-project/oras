@@ -38,8 +38,8 @@ func (ph *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor)
 }
 
 // OnFilePulled implements metadata.PullHandler.
-func (ph *PullHandler) OnFilePulled(name string, outputDir string, desc ocispec.Descriptor, descPath string) {
-	ph.pulled.Add(name, outputDir, desc, descPath)
+func (ph *PullHandler) OnFilePulled(name string, outputDir string, desc ocispec.Descriptor, descPath string) error {
+	return ph.pulled.Add(name, outputDir, desc, descPath)
 }
 
 // OnLayerSkipped implements metadata.PullHandler.

@@ -36,7 +36,7 @@ type PullHandler interface {
 	// OnLayerSkipped is called when a layer is skipped.
 	OnLayerSkipped(ocispec.Descriptor)
 	// OnFilePulled is called after a file is pulled.
-	OnFilePulled(name string, outputDir string, desc ocispec.Descriptor, descPath string)
+	OnFilePulled(name string, outputDir string, desc ocispec.Descriptor, descPath string) error
 	// OnCompleted is called when the pull cmd execution is completed.
 	OnCompleted(opts *option.Target, desc ocispec.Descriptor) error
 }
