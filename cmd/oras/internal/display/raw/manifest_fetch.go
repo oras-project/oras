@@ -40,6 +40,7 @@ func (h *RawManifestFetch) OnContentFetched(outputPath string, manifest []byte) 
 			return fmt.Errorf("failed to open %q: %w", outputPath, err)
 		}
 		defer f.Close()
+		out = f
 	}
 	return h.output(out, manifest)
 }
