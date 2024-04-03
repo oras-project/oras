@@ -221,10 +221,8 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 				}
 				if len(ss) == 0 {
 					// skip s if it is unnamed AND has no successors.
-					if _, loaded := printed.LoadOrStore(status.GenerateContentKey(s), true); !loaded {
-						if err := statusHandler.OnNodeSkipped(s); err != nil {
-							return nil, err
-						}
+					if err := notifyOnce(&printed, s, statusHandler.OnNodeSkipped); err != nil {
+						return nil, err
 					}
 					continue
 				}
@@ -235,10 +233,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 	}
 
 	opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		if _, ok := printed.LoadOrStore(status.GenerateContentKey(desc), true); ok {
-			return nil
-		}
-		return statusHandler.OnNodeDownloading(desc)
+		return notifyOnce(&printed, desc, statusHandler.OnNodeDownloading)
 	}
 	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		// restore named but deduplicated successor nodes
@@ -249,11 +244,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 		for _, s := range successors {
 			if name, ok := s.Annotations[ocispec.AnnotationTitle]; ok {
 				metadataHandler.OnFilePulled(name, po.Output, s, po.Path)
-				if _, loaded := printed.LoadOrStore(status.GenerateContentKey(s), true); !loaded {
-					if err := statusHandler.OnNodeRestored(s); err != nil {
-						return err
-					}
-				}
+				return notifyOnce(&printed, s, statusHandler.OnNodeRestored)
 			}
 		}
 		printed.Store(status.GenerateContentKey(desc), true)
@@ -263,4 +254,11 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 	// Copy
 	desc, err := oras.Copy(ctx, src, po.Reference, dst, po.Reference, opts)
 	return desc, err
+}
+
+func notifyOnce(notified *sync.Map, s ocispec.Descriptor, notify func(ocispec.Descriptor) error) error {
+	if _, loaded := notified.LoadOrStore(status.GenerateContentKey(s), true); !loaded {
+		return notify(s)
+	}
+	return nil
 }
