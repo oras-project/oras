@@ -119,7 +119,7 @@ func fetchManifest(cmd *cobra.Command, opts *fetchOptions) (fetchErr error) {
 	}
 	metadataHandler, contentHandler := display.NewManifestFetchHandler(cmd.OutOrStdout(), opts.Template, opts.Pretty.Pretty)
 
-	if opts.OutputDescriptor {
+	if opts.OutputDescriptor && opts.outputPath == "" {
 		// fetch manifest descriptor only
 		fetchOpts := oras.DefaultResolveOptions
 		fetchOpts.TargetPlatform = opts.Platform.Platform
@@ -136,8 +136,11 @@ func fetchManifest(cmd *cobra.Command, opts *fetchOptions) (fetchErr error) {
 	if err != nil {
 		return fmt.Errorf("failed to fetch the content of %q: %w", opts.RawReference, err)
 	}
-	if err = metadataHandler.OnFetched(content, desc); err != nil {
+	if err = contentHandler.OnDescriptorFetched(desc); err != nil {
 		return err
 	}
-	return contentHandler.OnContentFetched(opts.outputPath, content)
+	if err = contentHandler.OnContentFetched(opts.outputPath, content); err != nil {
+		return err
+	}
+	return metadataHandler.OnFetched(content, desc)
 }
