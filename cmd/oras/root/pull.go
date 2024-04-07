@@ -160,7 +160,9 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 	if err != nil {
 		return ocispec.Descriptor{}, err
 	}
-	defer stopTrack()
+	defer func() {
+		_ = stopTrack()
+	}()
 	var printed sync.Map
 	var getConfigOnce sync.Once
 	opts.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
