@@ -39,7 +39,6 @@ type attachOptions struct {
 	option.Packer
 	option.Target
 	option.Format
-	option.Platform
 
 	artifactType string
 	concurrency  int
@@ -133,9 +132,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	// add both pull and push scope hints for dst repository
 	// to save potential push-scope token requests during copy
 	ctx = registryutil.WithScopeHint(ctx, dst, auth.ActionPull, auth.ActionPush)
-	fetchOpts := oras.DefaultResolveOptions
-	fetchOpts.TargetPlatform = opts.Platform.Platform
-	subject, err := oras.Resolve(ctx, dst, opts.Reference, fetchOpts)
+	subject, err := dst.Resolve(ctx, opts.Reference)
 	if err != nil {
 		return err
 	}
