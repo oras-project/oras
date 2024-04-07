@@ -86,7 +86,11 @@ func TestTTYPushHandler_TrackTarget(t *testing.T) {
 	if err != nil {
 		t.Error("TrackTarget() should not return an error")
 	}
-	defer fn()
+	defer func() {
+		if err := fn(); err != nil {
+			t.Fatal(err)
+		}
+	}()
 	if ttyPushHandler, ok := ph.(*TTYPushHandler); !ok {
 		t.Errorf("TrackTarget() should return a *TTYPushHandler, got %T", ttyPushHandler)
 	} else if ttyPushHandler.tracked.Inner() != store {
@@ -139,7 +143,11 @@ func Test_TTYPullHandler_TrackTarget(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer fn()
+		defer func() {
+			if err := fn(); err != nil {
+				t.Fatal(err)
+			}
+		}()
 		if got == src {
 			t.Fatal("GraphTarget not be modified on TTY")
 		}
