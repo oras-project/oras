@@ -38,8 +38,8 @@ func newFile(name string, outputDir string, desc ocispec.Descriptor, descPath st
 	if !filepath.IsAbs(name) {
 		var err error
 		path, err = filepath.Abs(filepath.Join(outputDir, name))
+		// not likely to go wrong since the file has already be written to file store
 		if err != nil {
-			// not likely to happen since the file has already be written to file store
 			return File{}, fmt.Errorf("failed to get absolute path of pulled file %s: %w", name, err)
 		}
 	}
