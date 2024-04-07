@@ -16,6 +16,7 @@ limitations under the License.
 package command
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -67,12 +68,26 @@ var _ = Describe("ORAS beginners:", func() {
 			gomega.Expect(out).ShouldNot(gbytes.Say(hintMsg(ref)))
 		})
 
+		It("should not show hint for json output", func() {
+			tempDir := PrepareTempFiles()
+			ref := RegistryRef(ZOTHost, ArtifactRepo, unnamed.Tag)
+			out := ORAS("pull", ref, "--format", "json").WithWorkDir(tempDir).Exec().Out
+			gomega.Expect(out).ShouldNot(gbytes.Say(hintMsg(ref)))
+		})
+
+		It("should not show hint for go template output", func() {
+			tempDir := PrepareTempFiles()
+			ref := RegistryRef(ZOTHost, ArtifactRepo, unnamed.Tag)
+			out := ORAS("pull", ref, "--format", "{{.}}").WithWorkDir(tempDir).Exec().Out
+			gomega.Expect(out).ShouldNot(gbytes.Say(hintMsg(ref)))
+		})
+
 		It("should fail and show detailed error description if no argument provided", func() {
 			err := ORAS("pull").ExpectFailure().Exec().Err
-			gomega.Expect(err).Should(gbytes.Say("Error"))
-			gomega.Expect(err).Should(gbytes.Say("\nUsage: oras pull"))
-			gomega.Expect(err).Should(gbytes.Say("\n"))
-			gomega.Expect(err).Should(gbytes.Say(`Run "oras pull -h"`))
+			Expect(err).Should(gbytes.Say("Error"))
+			Expect(err).Should(gbytes.Say("\nUsage: oras pull"))
+			Expect(err).Should(gbytes.Say("\n"))
+			Expect(err).Should(gbytes.Say(`Run "oras pull -h"`))
 		})
 
 		It("should fail if password is wrong with registry error prefix", func() {
@@ -89,6 +104,26 @@ var _ = Describe("ORAS beginners:", func() {
 			root := PrepareTempOCI(ArtifactRepo)
 			ORAS("pull", Flags.Layout, LayoutRef(root, InvalidTag)).
 				MatchErrKeyWords("Error: ").ExpectFailure().Exec()
+		})
+
+		It("should fail if manifest config reference is invalid", func() {
+			root := PrepareTempOCI(ImageRepo)
+			ORAS("pull", Flags.Layout, LayoutRef(root, foobar.Tag), "--config", ":").
+				MatchErrKeyWords("Error: ").ExpectFailure().Exec()
+		})
+
+		It("should fail to pull layers outside of working directory", func() {
+			// prepare
+			pushRoot := GinkgoT().TempDir()
+			Expect(CopyTestFiles(pushRoot)).ShouldNot(HaveOccurred())
+			tag := "pushed"
+			ORAS("push", Flags.Layout, LayoutRef(pushRoot, tag), filepath.Join(pushRoot, foobar.FileConfigName), "--disable-path-validation").WithWorkDir(pushRoot).Exec()
+			// test
+			pullRoot := GinkgoT().TempDir()
+			ORAS("pull", Flags.Layout, LayoutRef(pushRoot, tag), "-o", "pulled").
+				WithDescription(pullRoot).
+				ExpectFailure().
+				MatchErrKeyWords("Error: ", "--allow-path-traversal").Exec()
 		})
 	})
 })
@@ -151,6 +186,29 @@ var _ = Describe("OCI spec 1.1 registry users:", func() {
 			ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, foobar.SignatureImageReferrer.Digest.String()), "-v", "--include-subject").
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				WithWorkDir(tempDir).Exec()
+		})
+
+		It("should pull and output downloaded file paths", func() {
+			tempDir := GinkgoT().TempDir()
+			var paths []string
+			for _, p := range foobar.ImageLayerNames {
+				paths = append(paths, filepath.Join(tempDir, p))
+			}
+			ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag), "--format", "{{range .Files}}{{println .Path}}{{end}}").
+				WithWorkDir(tempDir).MatchKeyWords(paths...).Exec()
+		})
+
+		It("should pull and output path in json", func() {
+			tempDir := GinkgoT().TempDir()
+			var paths []string
+			for _, p := range foobar.ImageLayerNames {
+				paths = append(paths, filepath.Join(tempDir, p))
+			}
+			out := ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag), "--format", "json").
+				WithWorkDir(tempDir).MatchKeyWords(paths...).Exec().Out.Contents()
+			var parsed struct{}
+			err := json.Unmarshal(out, &parsed)
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		It("should pull specific platform", func() {

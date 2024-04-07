@@ -82,10 +82,15 @@ func TestTTYPushHandler_TrackTarget(t *testing.T) {
 	ph := NewTTYPushHandler(slave)
 	store := memory.New()
 	// test
-	_, err = ph.TrackTarget(store)
+	_, fn, err := ph.TrackTarget(store)
 	if err != nil {
 		t.Error("TrackTarget() should not return an error")
 	}
+	defer func() {
+		if err := fn(); err != nil {
+			t.Fatal(err)
+		}
+	}()
 	if ttyPushHandler, ok := ph.(*TTYPushHandler); !ok {
 		t.Errorf("TrackTarget() should return a *TTYPushHandler, got %T", ttyPushHandler)
 	} else if ttyPushHandler.tracked.Inner() != store {
@@ -101,7 +106,7 @@ func TestTTYPushHandler_UpdateCopyOptions(t *testing.T) {
 	}
 	defer slave.Close()
 	ph := NewTTYPushHandler(slave)
-	gt, err := ph.TrackTarget(memory.New())
+	gt, _, err := ph.TrackTarget(memory.New())
 	if err != nil {
 		t.Errorf("TrackTarget() should not return an error: %v", err)
 	}
@@ -122,5 +127,58 @@ func TestTTYPushHandler_UpdateCopyOptions(t *testing.T) {
 	// validate
 	if err = testutils.MatchPty(pty, slave, "Exists", memDesc.MediaType, "100.00%", memDesc.Digest.String()); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func Test_TTYPullHandler_TrackTarget(t *testing.T) {
+	src := memory.New()
+	t.Run("has TTY", func(t *testing.T) {
+		_, device, err := testutils.NewPty()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer device.Close()
+		ph := NewTTYPullHandler(device)
+		got, fn, err := ph.TrackTarget(src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() {
+			if err := fn(); err != nil {
+				t.Fatal(err)
+			}
+		}()
+		if got == src {
+			t.Fatal("GraphTarget not be modified on TTY")
+		}
+	})
+
+	t.Run("invalid TTY", func(t *testing.T) {
+		ph := NewTTYPullHandler(nil)
+
+		if _, _, err := ph.TrackTarget(src); err == nil {
+			t.Fatal("expected error for no tty but got nil")
+		}
+	})
+}
+
+func TestTTYPullHandler_OnNodeDownloading(t *testing.T) {
+	ph := NewTTYPullHandler(nil)
+	if err := ph.OnNodeDownloading(ocispec.Descriptor{}); err != nil {
+		t.Error("OnNodeDownloading() should not return an error")
+	}
+}
+
+func TestTTYPullHandler_OnNodeDownloaded(t *testing.T) {
+	ph := NewTTYPullHandler(nil)
+	if err := ph.OnNodeDownloaded(ocispec.Descriptor{}); err != nil {
+		t.Error("OnNodeDownloaded() should not return an error")
+	}
+}
+
+func TestTTYPullHandler_OnNodeProcessing(t *testing.T) {
+	ph := NewTTYPullHandler(nil)
+	if err := ph.OnNodeProcessing(ocispec.Descriptor{}); err != nil {
+		t.Error("OnNodeProcessing() should not return an error")
 	}
 }
