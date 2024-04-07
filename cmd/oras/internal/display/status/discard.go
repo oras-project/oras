@@ -40,13 +40,8 @@ func (DiscardHandler) OnEmptyArtifact() error {
 }
 
 // TrackTarget returns a target with status tracking.
-func (DiscardHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error) {
-	return gt, nil
-}
-
-// Close implements io.Closer.
-func (DiscardHandler) Close() error {
-	return nil
+func (DiscardHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, func(), error) {
+	return gt, func() {}, nil
 }
 
 // UpdateCopyOptions updates the copy options for the artifact push.

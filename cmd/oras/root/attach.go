@@ -142,7 +142,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	}
 
 	// prepare push
-	dst, err = displayStatus.TrackTarget(dst)
+	dst, stopTrack, err := displayStatus.TrackTarget(dst)
 	if err != nil {
 		return err
 	}
@@ -178,7 +178,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	}
 
 	// Attach
-	root, err := doPush(dst, pack, copy)
+	root, err := doPush(dst, stopTrack, pack, copy)
 	if err != nil {
 		return err
 	}

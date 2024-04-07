@@ -156,11 +156,11 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 			return ocispec.Descriptor{}, err
 		}
 	}
-	dst, err = statusHandler.TrackTarget(dst)
+	dst, stopTrack, err := statusHandler.TrackTarget(dst)
 	if err != nil {
 		return ocispec.Descriptor{}, err
 	}
-	defer statusHandler.Close()
+	defer stopTrack()
 	var printed sync.Map
 	var getConfigOnce sync.Once
 	opts.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {

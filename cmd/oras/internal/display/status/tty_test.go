@@ -134,7 +134,8 @@ func Test_TTYPullHandler_TrackTarget(t *testing.T) {
 		}
 		defer device.Close()
 		ph := NewTTYPullHandler(device)
-		got, err := ph.TrackTarget(src)
+		got, func, err := ph.TrackTarget(src)
+		defer func()
 		if err != nil {
 			t.Fatal(err)
 		}

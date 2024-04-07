@@ -184,7 +184,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	if err != nil {
 		return err
 	}
-	dst, err = displayStatus.TrackTarget(dst)
+	dst, stopTrack, err := displayStatus.TrackTarget(dst)
 	if err != nil {
 		return err
 	}
@@ -206,7 +206,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	}
 
 	// Push
-	root, err := doPush(dst, pack, copy)
+	root, err := doPush(dst, stopTrack, pack, copy)
 	if err != nil {
 		return err
 	}
@@ -240,10 +240,8 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	return opts.ExportManifest(ctx, memoryStore, root)
 }
 
-func doPush(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
-	if tracked, ok := dst.(track.GraphTarget); ok {
-		defer tracked.Close()
-	}
+func doPush(dst oras.Target, stopTrack func(), pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
+	defer stopTrack()
 	// Push
 	return pushArtifact(dst, pack, copy)
 }

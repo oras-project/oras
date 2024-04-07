@@ -16,8 +16,6 @@ limitations under the License.
 package status
 
 import (
-	"io"
-
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
@@ -27,7 +25,7 @@ import (
 type PushHandler interface {
 	OnFileLoading(name string) error
 	OnEmptyArtifact() error
-	TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error)
+	TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, func(), error)
 	UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher)
 }
 
@@ -36,10 +34,9 @@ type AttachHandler PushHandler
 
 // PullHandler handles status output for pull command.
 type PullHandler interface {
-	io.Closer
 	// TrackTarget returns a tracked target.
 	// If no TTY is available, it returns the original target.
-	TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error)
+	TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, func(), error)
 	// OnNodeProcessing is called when processing a manifest.
 	OnNodeProcessing(desc ocispec.Descriptor) error
 	// OnNodeDownloading is called before downloading a node.
