@@ -136,8 +136,10 @@ func fetchManifest(cmd *cobra.Command, opts *fetchOptions) (fetchErr error) {
 	if err != nil {
 		return fmt.Errorf("failed to fetch the content of %q: %w", opts.RawReference, err)
 	}
-	if err = contentHandler.OnDescriptorFetched(desc); err != nil {
-		return err
+	if opts.OutputDescriptor {
+		if err = contentHandler.OnDescriptorFetched(desc); err != nil {
+			return err
+		}
 	}
 	if err = contentHandler.OnContentFetched(opts.outputPath, content); err != nil {
 		return err
