@@ -198,7 +198,7 @@ var _ = Describe("ORAS beginners:", func() {
 	})
 })
 
-var _ = Describe("1.1 registry users:", Focus, func() {
+var _ = Describe("1.1 registry users:", func() {
 	repoFmt := fmt.Sprintf("command/manifest/%%s/%d/%%s", GinkgoRandomSeed())
 	When("running `manifest fetch`", func() {
 		It("should fetch manifest list with digest", func() {
