@@ -241,7 +241,9 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 }
 
 func doPush(dst oras.Target, stopTrack status.StopTrackTargetFunc, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
-	defer stopTrack()
+	defer func() {
+		_ = stopTrack()
+	}()
 	// Push
 	return pushArtifact(dst, pack, copy)
 }
