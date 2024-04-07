@@ -25,6 +25,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Required for codecov.io
     strategy:
       matrix:
         go-version: ['1.22']
