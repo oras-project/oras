@@ -57,19 +57,19 @@ type pull struct {
 }
 
 // NewPull creates a new metadata struct for pull command.
-func NewPull(digestReference string, pulled []File) any {
+func NewPull(digestReference string, pulled Pulled) any {
 	return pull{
 		DigestReference: DigestReference{
 			Ref: digestReference,
 		},
-		Files: pulled,
+		Files: pulled.files,
 	}
 }
 
 // Pulled records all pulled files.
 type Pulled struct {
 	lock  sync.Mutex
-	Files []File
+	files []File
 }
 
 // Add adds a pulled file.
@@ -80,6 +80,6 @@ func (p *Pulled) Add(name string, outputDir string, desc ocispec.Descriptor, des
 	if err != nil {
 		return err
 	}
-	p.Files = append(p.Files, file)
+	p.files = append(p.files, file)
 	return nil
 }
