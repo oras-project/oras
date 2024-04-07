@@ -98,7 +98,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
-	cmd.Flags().StringVarP(&opts.PlatformFlag, option.PlatformFlagName, "", "", "attach to an arch specific subject, in the form of `os[/arch][/variant][:os_version]`")
+	opts.FlagDescription = "attach to an arch-specific subject"
 	_ = cmd.MarkFlagRequired("artifact-type")
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
