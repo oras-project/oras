@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: ['1.21']
+        go-version: ['1.22']
       fail-fast: true
     steps:
     - name: Checkout
@@ -38,4 +38,4 @@ jobs:
         go-version: ${{ matrix.go-version }}
         check-latest: true
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v3
+      uses: golangci/golangci-lint-action@v4

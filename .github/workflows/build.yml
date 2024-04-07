@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: ['1.21']
+        go-version: ['1.22']
       fail-fast: true
     steps:
       - name: Checkout
@@ -53,6 +53,8 @@ jobs:
       - name: Check Version
         run: bin/linux/amd64/oras version
       - name: Upload coverage to codecov.io
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
           fail_ci_if_error: true

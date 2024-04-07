@@ -105,7 +105,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
 			opts.FileRefs = args[1:]
-			if err := option.Parse(&opts); err != nil {
+			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
 			switch opts.PackVersion {
@@ -113,7 +113,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 				if opts.manifestConfigRef != "" && opts.artifactType != "" {
 					return errors.New("--artifact-type and --config cannot both be provided for 1.0 OCI image")
 				}
-			case oras.PackManifestVersion1_1_RC4:
+			case oras.PackManifestVersion1_1:
 				if opts.manifestConfigRef == "" && opts.artifactType == "" {
 					opts.artifactType = oras.MediaTypeUnknownArtifact
 				}
@@ -138,7 +138,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	if err != nil {
 		return err
 	}
-	displayStatus, displayMetadata := display.NewPushHandler(opts.Template, opts.TTY, opts.Verbose)
+	displayStatus, displayMetadata := display.NewPushHandler(opts.Template, opts.TTY, cmd.OutOrStdout(), opts.Verbose)
 
 	// prepare pack
 	packOpts := oras.PackManifestOptions{
@@ -184,7 +184,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	if err != nil {
 		return err
 	}
-	dst, err = displayStatus.TrackTarget(dst)
+	dst, stopTrack, err := displayStatus.TrackTarget(dst)
 	if err != nil {
 		return err
 	}
@@ -206,7 +206,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	}
 
 	// Push
-	root, err := doPush(dst, pack, copy)
+	root, err := doPush(dst, stopTrack, pack, copy)
 	if err != nil {
 		return err
 	}
@@ -240,10 +240,10 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	return opts.ExportManifest(ctx, memoryStore, root)
 }
 
-func doPush(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
-	if tracked, ok := dst.(track.GraphTarget); ok {
-		defer tracked.Close()
-	}
+func doPush(dst oras.Target, stopTrack status.StopTrackTargetFunc, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
+	defer func() {
+		_ = stopTrack()
+	}()
 	// Push
 	return pushArtifact(dst, pack, copy)
 }

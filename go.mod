@@ -1,6 +1,6 @@
 module oras.land/oras
 
-go 1.21
+go 1.22
 
 require (
 	github.com/Masterminds/sprig/v3 v3.2.3
@@ -11,10 +11,10 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/sync v0.6.0
-	golang.org/x/term v0.18.0
+	golang.org/x/sync v0.7.0
+	golang.org/x/term v0.19.0
 	gopkg.in/yaml.v3 v3.0.1
-	oras.land/oras-go/v2 v2.4.0
+	oras.land/oras-go/v2 v2.5.0
 )
 
 require (
@@ -29,5 +29,5 @@ require (
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
 	golang.org/x/crypto v0.18.0 // indirect
-	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/sys v0.19.0 // indirect
 )

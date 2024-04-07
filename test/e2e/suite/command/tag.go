@@ -17,6 +17,7 @@ package command
 
 import (
 	"fmt"
+	"path/filepath"
 	"regexp"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -34,6 +35,10 @@ var _ = Describe("ORAS beginners:", func() {
 
 		It("should fail when provided manifest reference is not found", func() {
 			ORAS("tag", RegistryRef(ZOTHost, ImageRepo, InvalidTag), "tagged").ExpectFailure().MatchErrKeyWords(RegistryErrorPrefix).Exec()
+		})
+
+		It("should fail when the given reference is invalid", func() {
+			ORAS("tag", fmt.Sprintf("%s/%s:%s", ZOTHost, InvalidRepo, "test"), "latest").ExpectFailure().MatchErrKeyWords("Error:", "unable to add tag", "invalid reference").Exec()
 		})
 
 		It("should fail and show detailed error description if no argument provided", func() {
@@ -107,6 +112,14 @@ var _ = Describe("OCI image layout users:", func() {
 		})
 		It("should add multiple tags to an existent manifest when providing tag reference", func() {
 			tagAndValidate(PrepareTempOCI(ImageRepo), multi_arch.Tag, multi_arch.Digest, "tag1-via-tag", "tag1-via-tag", "tag1-via-tag")
+		})
+		It("should be able to retag a manifest at the current directory", func() {
+			root := PrepareTempOCI(ImageRepo)
+			dir := filepath.Dir(root)
+			ref := filepath.Base(root)
+			ORAS("tag", LayoutRef(ref, multi_arch.Tag), Flags.Layout, "latest").WithWorkDir(dir).MatchKeyWords("Tagging [oci-layout]", "Tagged latest").Exec()
+			ORAS("tag", LayoutRef(ref, multi_arch.Tag), Flags.Layout, "tag2").WithWorkDir(dir).MatchKeyWords("Tagging [oci-layout]", "Tagged tag2").Exec()
+			ORAS("repo", "tags", Flags.Layout, LayoutRef(ref, multi_arch.Tag)).WithWorkDir(dir).MatchKeyWords(multi_arch.Tag, "latest", "tag2").Exec()
 		})
 	})
 })
