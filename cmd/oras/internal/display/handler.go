@@ -99,17 +99,22 @@ func NewPullHandler(format string, path string, tty *os.File, out io.Writer, ver
 // NewManifestFetchHandler returns a manifest fetch handler.
 func NewManifestFetchHandler(out io.Writer, format string, outputDescriptor bool, pretty bool, outputPath string) (metadata.ManifestFetchHandler, content.ManifestFetchHandler) {
 	var metadataHandler metadata.ManifestFetchHandler
-	var contentHandler content.ManifestFetchHandler = content.NewDiscardHandler()
-	if outputPath != "" {
-		contentHandler = content.NewManifestFetchHandler(out, outputDescriptor, pretty, outputPath)
-	}
+	var contentHandler content.ManifestFetchHandler = content.NewManifestFetchHandler(out, outputDescriptor, pretty, outputPath)
+	var discardHandler = content.NewDiscardHandler()
+
 	switch format {
 	case "raw":
 		metadataHandler = metadata.NewDiscardHandler()
 	case "json":
 		metadataHandler = json.NewManifestFetchHandler(out)
+		if outputPath == "" {
+			contentHandler = discardHandler
+		}
 	default:
 		metadataHandler = template.NewManifestFetchHandler(out, format)
+		if outputPath == "" {
+			contentHandler = discardHandler
+		}
 	}
 	return metadataHandler, contentHandler
 }
