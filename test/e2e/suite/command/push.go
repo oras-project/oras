@@ -389,23 +389,23 @@ var _ = Describe("Remote registry users:", func() {
 			Expect(manifest.Config).Should(Equal(artifact.EmptyLayerJSON))
 		})
 
-		// It("should output artifact type when push is complete for image-spec v1.0", func() {
-		// 	repo := pushTestRepo("print-artifact-type")
-		// 	tempDir := PrepareTempFiles()
+		It("should output artifact type when push is complete for image-spec v1.0", func() {
+			repo := pushTestRepo("print-artifact-type")
+			tempDir := PrepareTempFiles()
 
-		// 	ORAS("push", RegistryRef(ZOTHost, repo, tag), foobar.FileBarName, "-v", "--image-spec", "v1.0").
-		// 		MatchStatus([]match.StateKey{foobar.FileBarStateKey, artifact.DefaultConfigStateKey}, true, 2).
-		// 		MatchKeyWords("ArtifactType: ", "application/vnd.unknown.config.v1+json").
-		// 		WithWorkDir(tempDir).Exec()
+			ORAS("push", RegistryRef(ZOTHost, repo, tag), foobar.FileBarName, "-v", "--image-spec", "v1.0").
+				MatchStatus([]match.StateKey{foobar.FileBarStateKey, artifact.DefaultConfigStateKey}, true, 2).
+				MatchKeyWords("ArtifactType: ", "application/vnd.unknown.config.v1+json").
+				WithWorkDir(tempDir).Exec()
 
-		// 	// validate
-		// 	fetched := ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, tag)).Exec().Out.Contents()
-		// 	var manifest ocispec.Manifest
-		// 	Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
-		// 	Expect(manifest.ArtifactType).Should(Equal("application/vnd.unknown.config.v1+json"))
-		// 	Expect(manifest.Layers).Should(ContainElements(foobar.BlobBarDescriptor("application/vnd.oci.image.layer.v1.tar")))
-		// 	Expect(manifest.Config).Should(Equal(artifact.EmptyLayerJSON))
-		// })
+			// validate
+			fetched := ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, tag)).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.ArtifactType).Should(Equal("application/vnd.unknown.config.v1+json"))
+			Expect(manifest.Layers).Should(ContainElements(foobar.BlobBarDescriptor("application/vnd.oci.image.layer.v1.tar")))
+			Expect(manifest.Config).Should(Equal(artifact.EmptyLayerJSON))
+		})
 
 		It("should push v1.1-rc.4 artifact", func() {
 			repo := pushTestRepo("v1.1-artifact")
