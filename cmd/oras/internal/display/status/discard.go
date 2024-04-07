@@ -21,6 +21,10 @@ import (
 	"oras.land/oras-go/v2/content"
 )
 
+func discardStopTrack() error {
+	return nil
+}
+
 // DiscardHandler is a no-op handler that discards all status updates.
 type DiscardHandler struct{}
 
@@ -40,8 +44,8 @@ func (DiscardHandler) OnEmptyArtifact() error {
 }
 
 // TrackTarget returns a target with status tracking.
-func (DiscardHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, func(), error) {
-	return gt, func() {}, nil
+func (DiscardHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, StopTrackTargetFunc, error) {
+	return gt, discardStopTrack, nil
 }
 
 // UpdateCopyOptions updates the copy options for the artifact push.

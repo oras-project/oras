@@ -53,8 +53,8 @@ func (ph *TextPushHandler) OnEmptyArtifact() error {
 }
 
 // TrackTarget returns a tracked target.
-func (ph *TextPushHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, func(), error) {
-	return gt, func() {}, nil
+func (ph *TextPushHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, StopTrackTargetFunc, error) {
+	return gt, discardStopTrack, nil
 }
 
 // UpdateCopyOptions adds status update to the copy options.
@@ -94,8 +94,8 @@ type TextPullHandler struct {
 }
 
 // TrackTarget implements PullHander.
-func (ph *TextPullHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, func(), error) {
-	return gt, func() {}, nil
+func (ph *TextPullHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, StopTrackTargetFunc, error) {
+	return gt, discardStopTrack, nil
 }
 
 // OnNodeDownloading implements PullHandler.

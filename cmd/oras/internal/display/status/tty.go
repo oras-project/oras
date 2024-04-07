@@ -50,7 +50,7 @@ func (ph *TTYPushHandler) OnEmptyArtifact() error {
 }
 
 // TrackTarget returns a tracked target.
-func (ph *TTYPushHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, func(), error) {
+func (ph *TTYPushHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, StopTrackTargetFunc, error) {
 	const (
 		promptUploaded  = "Uploaded "
 		promptUploading = "Uploading"
@@ -60,7 +60,7 @@ func (ph *TTYPushHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, fu
 		return nil, nil, err
 	}
 	ph.tracked = tracked
-	return tracked, func() { _ = tracked.Close() }, nil
+	return tracked, tracked.Close, nil
 }
 
 // UpdateCopyOptions adds TTY status output to the copy options.
@@ -126,11 +126,11 @@ func (ph *TTYPullHandler) OnNodeSkipped(desc ocispec.Descriptor) error {
 }
 
 // TrackTarget returns a tracked target.
-func (ph *TTYPullHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, func(), error) {
+func (ph *TTYPullHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, StopTrackTargetFunc, error) {
 	tracked, err := track.NewTarget(gt, PullPromptDownloading, PullPromptPulled, ph.tty)
 	if err != nil {
 		return nil, nil, err
 	}
 	ph.tracked = tracked
-	return tracked, func() { _ = tracked.Close() }, nil
+	return tracked, tracked.Close, nil
 }

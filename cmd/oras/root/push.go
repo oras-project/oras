@@ -240,7 +240,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	return opts.ExportManifest(ctx, memoryStore, root)
 }
 
-func doPush(dst oras.Target, stopTrack func(), pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
+func doPush(dst oras.Target, stopTrack status.StopTrackTargetFunc, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
 	defer stopTrack()
 	// Push
 	return pushArtifact(dst, pack, copy)

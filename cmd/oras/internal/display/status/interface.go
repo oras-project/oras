@@ -21,11 +21,14 @@ import (
 	"oras.land/oras-go/v2/content"
 )
 
+// StopTrackTargetFunc is the function type to stop tracking a target.
+type StopTrackTargetFunc func() error
+
 // PushHandler handles status output for push command.
 type PushHandler interface {
 	OnFileLoading(name string) error
 	OnEmptyArtifact() error
-	TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, func(), error)
+	TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, StopTrackTargetFunc, error)
 	UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher)
 }
 
@@ -36,7 +39,7 @@ type AttachHandler PushHandler
 type PullHandler interface {
 	// TrackTarget returns a tracked target.
 	// If no TTY is available, it returns the original target.
-	TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, func(), error)
+	TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, StopTrackTargetFunc, error)
 	// OnNodeProcessing is called when processing a manifest.
 	OnNodeProcessing(desc ocispec.Descriptor) error
 	// OnNodeDownloading is called before downloading a node.
