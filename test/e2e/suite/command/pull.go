@@ -70,10 +70,10 @@ var _ = Describe("ORAS beginners:", func() {
 
 		It("should fail and show detailed error description if no argument provided", func() {
 			err := ORAS("pull").ExpectFailure().Exec().Err
-			gomega.Expect(err).Should(gbytes.Say("Error"))
-			gomega.Expect(err).Should(gbytes.Say("\nUsage: oras pull"))
-			gomega.Expect(err).Should(gbytes.Say("\n"))
-			gomega.Expect(err).Should(gbytes.Say(`Run "oras pull -h"`))
+			Expect(err).Should(gbytes.Say("Error"))
+			Expect(err).Should(gbytes.Say("\nUsage: oras pull"))
+			Expect(err).Should(gbytes.Say("\n"))
+			Expect(err).Should(gbytes.Say(`Run "oras pull -h"`))
 		})
 
 		It("should fail if password is wrong with registry error prefix", func() {
@@ -90,6 +90,20 @@ var _ = Describe("ORAS beginners:", func() {
 			root := PrepareTempOCI(ArtifactRepo)
 			ORAS("pull", Flags.Layout, LayoutRef(root, InvalidTag)).
 				MatchErrKeyWords("Error: ").ExpectFailure().Exec()
+		})
+
+		It("should fail to pull layers outside of working directory", func() {
+			// prepare
+			pushRoot := GinkgoT().TempDir()
+			Expect(CopyTestFiles(pushRoot)).ShouldNot(HaveOccurred())
+			tag := "pushed"
+			ORAS("push", Flags.Layout, LayoutRef(pushRoot, tag), filepath.Join(pushRoot, foobar.FileConfigName), "--disable-path-validation").WithWorkDir(pushRoot).Exec()
+			// test
+			pullRoot := GinkgoT().TempDir()
+			ORAS("pull", Flags.Layout, LayoutRef(pushRoot, tag), "-o", "pulled").
+				WithDescription(pullRoot).
+				ExpectFailure().
+				MatchErrKeyWords("Error: ", "--allow-path-traversal").Exec()
 		})
 	})
 })
