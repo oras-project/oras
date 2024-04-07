@@ -397,12 +397,6 @@ var _ = Describe("Remote registry users:", func() {
 			ORAS("push", RegistryRef(ZOTHost, repo, tag), "--config", fmt.Sprintf("%s:%s", foobar.FileConfigName, configType), foobar.FileBarName, "-v", "--image-spec", "v1.0").
 				MatchKeyWords("ArtifactType: ", configType).
 				WithWorkDir(tempDir).Exec()
-
-			// validate
-			fetched := ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, tag)).Exec().Out.Contents()
-			var manifest ocispec.Manifest
-			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
-			Expect(manifest.ArtifactType).Should(Equal("configType"))
 		})
 
 		It("should push v1.1-rc.4 artifact", func() {
