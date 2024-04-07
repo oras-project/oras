@@ -68,6 +68,13 @@ var _ = Describe("ORAS beginners:", func() {
 			gomega.Expect(out).ShouldNot(gbytes.Say(hintMsg(ref)))
 		})
 
+		It("should not show hint for formatted output", func() {
+			tempDir := PrepareTempFiles()
+			ref := RegistryRef(ZOTHost, ArtifactRepo, unnamed.Tag)
+			out := ORAS("pull", ref, "--format", "json").WithWorkDir(tempDir).Exec().Out
+			gomega.Expect(out).ShouldNot(gbytes.Say(hintMsg(ref)))
+		})
+
 		It("should fail and show detailed error description if no argument provided", func() {
 			err := ORAS("pull").ExpectFailure().Exec().Err
 			Expect(err).Should(gbytes.Say("Error"))
