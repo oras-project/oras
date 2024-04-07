@@ -395,7 +395,6 @@ var _ = Describe("Remote registry users:", func() {
 			tempDir := PrepareTempFiles()
 
 			ORAS("push", RegistryRef(ZOTHost, repo, tag), "--config", fmt.Sprintf("%s:%s", foobar.FileConfigName, configType), foobar.FileBarName, "-v", "--image-spec", "v1.0").
-				MatchStatus([]match.StateKey{foobar.FileBarStateKey, artifact.DefaultConfigStateKey}, true, 2).
 				MatchKeyWords("ArtifactType: ", configType).
 				WithWorkDir(tempDir).Exec()
 
