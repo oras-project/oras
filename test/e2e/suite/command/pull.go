@@ -92,6 +92,12 @@ var _ = Describe("ORAS beginners:", func() {
 				MatchErrKeyWords("Error: ").ExpectFailure().Exec()
 		})
 
+		It("should fail if manifest config reference is invalid", func() {
+			root := PrepareTempOCI(ImageRepo)
+			ORAS("pull", Flags.Layout, LayoutRef(root, foobar.Tag), "--config", ":").
+				MatchErrKeyWords("Error: ").ExpectFailure().Exec()
+		})
+
 		It("should fail to pull layers outside of working directory", func() {
 			// prepare
 			pushRoot := GinkgoT().TempDir()
