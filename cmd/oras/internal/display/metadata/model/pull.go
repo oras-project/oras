@@ -18,6 +18,7 @@ package model
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -57,12 +58,12 @@ type pull struct {
 }
 
 // NewPull creates a new metadata struct for pull command.
-func NewPull(digestReference string, pulled Pulled) any {
+func NewPull(digestReference string, files []File) any {
 	return pull{
 		DigestReference: DigestReference{
 			Ref: digestReference,
 		},
-		Files: pulled.files,
+		Files: files,
 	}
 }
 
@@ -70,6 +71,13 @@ func NewPull(digestReference string, pulled Pulled) any {
 type Pulled struct {
 	lock  sync.Mutex
 	files []File
+}
+
+// Files returns all pulled files.
+func (p *Pulled) Files() []File {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+	return slices.Clone(p.files)
 }
 
 // Add adds a pulled file.

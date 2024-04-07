@@ -213,7 +213,9 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 				}
 				if s.Annotations[ocispec.AnnotationTitle] == "" {
 					// unnamed layers are skipped
-					metadataHandler.OnLayerSkipped(s)
+					if err = metadataHandler.OnLayerSkipped(s); err != nil {
+						return nil, err
+					}
 				}
 				ss, err := content.Successors(ctx, fetcher, s)
 				if err != nil {

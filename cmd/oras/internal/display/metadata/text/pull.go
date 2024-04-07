@@ -48,8 +48,9 @@ func (p *PullHandler) OnFilePulled(name string, outputDir string, desc ocispec.D
 }
 
 // OnLayerSkipped implements metadata.PullHandler.
-func (ph *PullHandler) OnLayerSkipped(ocispec.Descriptor) {
+func (ph *PullHandler) OnLayerSkipped(ocispec.Descriptor) error {
 	ph.layerSkipped.Store(true)
+	return nil
 }
 
 // NewPullHandler returns a new handler for Pull events.
