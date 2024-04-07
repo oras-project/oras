@@ -82,10 +82,11 @@ func TestTTYPushHandler_TrackTarget(t *testing.T) {
 	ph := NewTTYPushHandler(slave)
 	store := memory.New()
 	// test
-	_, err = ph.TrackTarget(store)
+	_, fn, err := ph.TrackTarget(store)
 	if err != nil {
 		t.Error("TrackTarget() should not return an error")
 	}
+	defer fn()
 	if ttyPushHandler, ok := ph.(*TTYPushHandler); !ok {
 		t.Errorf("TrackTarget() should return a *TTYPushHandler, got %T", ttyPushHandler)
 	} else if ttyPushHandler.tracked.Inner() != store {
@@ -101,7 +102,7 @@ func TestTTYPushHandler_UpdateCopyOptions(t *testing.T) {
 	}
 	defer slave.Close()
 	ph := NewTTYPushHandler(slave)
-	gt, err := ph.TrackTarget(memory.New())
+	gt, _, err := ph.TrackTarget(memory.New())
 	if err != nil {
 		t.Errorf("TrackTarget() should not return an error: %v", err)
 	}
@@ -134,11 +135,11 @@ func Test_TTYPullHandler_TrackTarget(t *testing.T) {
 		}
 		defer device.Close()
 		ph := NewTTYPullHandler(device)
-		got, func, err := ph.TrackTarget(src)
-		defer func()
+		got, fn, err := ph.TrackTarget(src)
 		if err != nil {
 			t.Fatal(err)
 		}
+		defer fn()
 		if got == src {
 			t.Fatal("GraphTarget not be modified on TTY")
 		}
@@ -147,7 +148,7 @@ func Test_TTYPullHandler_TrackTarget(t *testing.T) {
 	t.Run("invalid TTY", func(t *testing.T) {
 		ph := NewTTYPullHandler(nil)
 
-		if _, err := ph.TrackTarget(src); err == nil {
+		if _, _, err := ph.TrackTarget(src); err == nil {
 			t.Fatal("expected error for no tty but got nil")
 		}
 	})
