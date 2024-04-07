@@ -68,10 +68,17 @@ var _ = Describe("ORAS beginners:", func() {
 			gomega.Expect(out).ShouldNot(gbytes.Say(hintMsg(ref)))
 		})
 
-		It("should not show hint for formatted output", func() {
+		It("should not show hint for json output", func() {
 			tempDir := PrepareTempFiles()
 			ref := RegistryRef(ZOTHost, ArtifactRepo, unnamed.Tag)
 			out := ORAS("pull", ref, "--format", "json").WithWorkDir(tempDir).Exec().Out
+			gomega.Expect(out).ShouldNot(gbytes.Say(hintMsg(ref)))
+		})
+
+		It("should not show hint for go template output", func() {
+			tempDir := PrepareTempFiles()
+			ref := RegistryRef(ZOTHost, ArtifactRepo, unnamed.Tag)
+			out := ORAS("pull", ref, "--format", "{{.}}").WithWorkDir(tempDir).Exec().Out
 			gomega.Expect(out).ShouldNot(gbytes.Say(hintMsg(ref)))
 		})
 
