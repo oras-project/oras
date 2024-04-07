@@ -223,6 +223,15 @@ var _ = Describe("1.1 registry users:", func() {
 			MatchFile(fetchPath, multi_arch.Manifest, DefaultTimeout)
 		})
 
+		It("should fetch manifest to file and output full ref", func() {
+			fetchPath := filepath.Join(GinkgoT().TempDir(), "fetchedImage")
+			digest := multi_arch.LinuxAMD64.Digest.String()
+			ref := RegistryRef(ZOTHost, ImageRepo, digest)
+			ORAS("manifest", "fetch", ref, "--output", fetchPath, "--format", "{{.digest}}").
+				MatchContent(digest).Exec()
+			MatchFile(fetchPath, multi_arch.LinuxAMD64Manifest, DefaultTimeout)
+		})
+
 		It("should fetch manifest via tag with platform selection", func() {
 			ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), "--platform", "linux/amd64").
 				MatchContent(multi_arch.LinuxAMD64Manifest).Exec()
