@@ -227,8 +227,8 @@ var _ = Describe("1.1 registry users:", func() {
 			fetchPath := filepath.Join(GinkgoT().TempDir(), "fetchedImage")
 			digest := multi_arch.LinuxAMD64.Digest.String()
 			ref := RegistryRef(ZOTHost, ImageRepo, digest)
-			ORAS("manifest", "fetch", ref, "--output", fetchPath, "--format", "{{.digest}}").
-				MatchContent(digest).Exec()
+			ORAS("manifest", "fetch", ref, "--output", fetchPath, "--format", "{{.mediaType}}").
+				MatchContent("application/vnd.oci.image.manifest.v1+json").Exec()
 			MatchFile(fetchPath, multi_arch.LinuxAMD64Manifest, DefaultTimeout)
 		})
 
