@@ -141,7 +141,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	fetchOpts.TargetPlatform = opts.Platform.Platform
 	subject, err := oras.Resolve(ctx, dst, opts.Reference, fetchOpts)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to resolve %s: %w", opts.Reference, err)
 	}
 	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, displayStatus)
 	if err != nil {
