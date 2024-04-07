@@ -35,11 +35,11 @@ func TestPlatform_Parse_err(t *testing.T) {
 		name string
 		opts *Platform
 	}{
-		{name: "empty arch 1", opts: &Platform{"os/", nil}},
-		{name: "empty arch 2", opts: &Platform{"os//variant", nil}},
-		{name: "empty os", opts: &Platform{"/arch", nil}},
-		{name: "empty os with variant", opts: &Platform{"/arch/variant", nil}},
-		{name: "trailing slash", opts: &Platform{"os/arch/variant/llama", nil}},
+		{name: "empty arch 1", opts: &Platform{"os/", nil, ""}},
+		{name: "empty arch 2", opts: &Platform{"os//variant", nil, ""}},
+		{name: "empty os", opts: &Platform{"/arch", nil, ""}},
+		{name: "empty os with variant", opts: &Platform{"/arch/variant", nil, ""}},
+		{name: "trailing slash", opts: &Platform{"os/arch/variant/llama", nil, ""}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
