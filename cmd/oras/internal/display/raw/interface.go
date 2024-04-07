@@ -21,9 +21,9 @@ import (
 
 // ManifestFetchHandler handles raw output for manifest fetch events.
 type ManifestFetchHandler interface {
-	// OnFetched is called after the manifest content is fetched.
-	OnContentFetched(outputPath string, content []byte) error
 	// OnDescriptorFetched is called after the manifest descriptor is
 	// fetched.
 	OnDescriptorFetched(desc ocispec.Descriptor) error
+	// OnContentFetched is called after the manifest content is fetched.
+	OnContentFetched(desc ocispec.Descriptor, content []byte) error
 }

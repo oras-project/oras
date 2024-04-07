@@ -76,7 +76,7 @@ func NewAttachHandler(format string, tty *os.File, out io.Writer, verbose bool) 
 }
 
 // NewManifestFetchHandler returns a manifest fetch handler.
-func NewManifestFetchHandler(out io.Writer, format string, pretty bool) (metadata.ManifestFetchHandler, raw.ManifestFetchHandler) {
+func NewManifestFetchHandler(out io.Writer, format string, outputDescriptor bool, pretty bool, outputPath string) (metadata.ManifestFetchHandler, raw.ManifestFetchHandler) {
 	var metadataHandler metadata.ManifestFetchHandler
 	switch format {
 	case "raw":
@@ -86,5 +86,5 @@ func NewManifestFetchHandler(out io.Writer, format string, pretty bool) (metadat
 	default:
 		metadataHandler = template.NewManifestFetchHandler(out, format)
 	}
-	return metadataHandler, raw.NewManifestFetchHandler(out, pretty)
+	return metadataHandler, raw.NewManifestFetchHandler(out, outputDescriptor, pretty, outputPath)
 }

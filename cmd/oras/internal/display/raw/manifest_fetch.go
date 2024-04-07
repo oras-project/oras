@@ -27,12 +27,22 @@ import (
 
 // RawManifestFetch handles raw content output.
 type RawManifestFetch struct {
-	pretty bool
-	stdout io.Writer
+	pretty           bool
+	stdout           io.Writer
+	outputDescriptor bool
+	outputPath       string
 }
 
-// OnContentFetched implements ManifestFetchHandler.
-func (h *RawManifestFetch) OnContentFetched(outputPath string, manifest []byte) error {
+func (h *RawManifestFetch) OnContentFetched(desc ocispec.Descriptor, manifest []byte) error {
+	if h.outputDescriptor {
+		if err := h.OnDescriptorFetched(desc); err != nil {
+			return err
+		}
+	}
+	return h.onContentFetched(h.outputPath, manifest)
+}
+
+func (h *RawManifestFetch) onContentFetched(outputPath string, manifest []byte) error {
 	out := h.stdout
 	if outputPath != "-" && outputPath != "" {
 		f, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
@@ -45,7 +55,6 @@ func (h *RawManifestFetch) OnContentFetched(outputPath string, manifest []byte) 
 	return h.output(out, manifest)
 }
 
-// OnDescriptorFetched implements ManifestFetchHandler.
 func (h *RawManifestFetch) OnDescriptorFetched(desc ocispec.Descriptor) error {
 	descBytes, err := json.Marshal(desc)
 	if err != nil {
@@ -55,10 +64,12 @@ func (h *RawManifestFetch) OnDescriptorFetched(desc ocispec.Descriptor) error {
 }
 
 // NewManifestFetchHandler creates a new handler.
-func NewManifestFetchHandler(out io.Writer, pretty bool) ManifestFetchHandler {
+func NewManifestFetchHandler(out io.Writer, outputDescriptor bool, pretty bool, outputPath string) ManifestFetchHandler {
 	return &RawManifestFetch{
-		pretty: pretty,
-		stdout: out,
+		pretty:           pretty,
+		stdout:           out,
+		outputDescriptor: outputDescriptor,
+		outputPath:       outputPath,
 	}
 }
 

@@ -117,7 +117,7 @@ func fetchManifest(cmd *cobra.Command, opts *fetchOptions) (fetchErr error) {
 	if err != nil {
 		return err
 	}
-	metadataHandler, contentHandler := display.NewManifestFetchHandler(cmd.OutOrStdout(), opts.Template, opts.Pretty.Pretty)
+	metadataHandler, contentHandler := display.NewManifestFetchHandler(cmd.OutOrStdout(), opts.Template, opts.OutputDescriptor, opts.Pretty.Pretty, opts.outputPath)
 
 	if opts.OutputDescriptor && opts.outputPath == "" {
 		// fetch manifest descriptor only
@@ -136,12 +136,7 @@ func fetchManifest(cmd *cobra.Command, opts *fetchOptions) (fetchErr error) {
 	if err != nil {
 		return fmt.Errorf("failed to fetch the content of %q: %w", opts.RawReference, err)
 	}
-	if opts.OutputDescriptor {
-		if err = contentHandler.OnDescriptorFetched(desc); err != nil {
-			return err
-		}
-	}
-	if err = contentHandler.OnContentFetched(opts.outputPath, content); err != nil {
+	if err = contentHandler.OnContentFetched(desc, content); err != nil {
 		return err
 	}
 	return metadataHandler.OnFetched(content, desc)
