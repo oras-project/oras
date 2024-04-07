@@ -23,6 +23,7 @@ func GenerateContentKey(desc ocispec.Descriptor) string {
 	return desc.Digest.String() + desc.Annotations[ocispec.AnnotationTitle]
 }
 
+// Prompts for pull events.
 const (
 	PullPromptDownloading = "Downloading"
 	PullPromptPulled      = "Pulled     "

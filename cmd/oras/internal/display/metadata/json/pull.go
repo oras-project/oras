@@ -32,7 +32,9 @@ type PullHandler struct {
 }
 
 // OnLayerSkipped implements metadata.PullHandler.
-func (ph *PullHandler) OnLayerSkipped(ocispec.Descriptor) error { return nil }
+func (ph *PullHandler) OnLayerSkipped(ocispec.Descriptor) error {
+	return nil
+}
 
 // NewPullHandler returns a new handler for Pull events.
 func NewPullHandler(out io.Writer, path string) metadata.PullHandler {
