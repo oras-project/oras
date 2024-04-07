@@ -42,6 +42,8 @@ func newFile(name string, outputDir string, desc ocispec.Descriptor, descPath st
 		if err != nil {
 			return File{}, fmt.Errorf("failed to get absolute path of pulled file %s: %w", name, err)
 		}
+	} else {
+		path = filepath.Clean(path)
 	}
 	if desc.Annotations[file.AnnotationUnpack] == "true" {
 		path += string(filepath.Separator)
