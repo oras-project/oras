@@ -109,7 +109,7 @@ var _ = Describe("ORAS beginners:", func() {
 			imageSpecFlag := "v1.1"
 			ORAS("push", subjectRef, "--config", foobar.FileConfigName, Flags.ImageSpec, imageSpecFlag).
 				ExpectFailure().
-				MatchErrKeyWords("artifact type missing for OCI image-spec v1.1 artifacts").
+				MatchErrKeyWords("missing artifact type for OCI image-spec v1.1 artifacts").
 				Exec()
 		})
 	})

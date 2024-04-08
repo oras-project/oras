@@ -118,7 +118,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 					opts.PackVersion = oras.PackManifestVersion1_0
 				case option.ImageSpecV1_1:
 					return &oerrors.Error{
-						Err:            errors.New(`artifact type missing for OCI image-spec v1.1 artifacts`),
+						Err:            errors.New(`missing artifact type for OCI image-spec v1.1 artifacts`),
 						Recommendation: "set an artifact type via `--artifact-type` or consider image spec v1.0",
 					}
 				}
