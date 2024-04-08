@@ -27,13 +27,17 @@ import (
 
 // Platform option struct.
 type Platform struct {
-	platform string
-	Platform *ocispec.Platform
+	platform        string
+	Platform        *ocispec.Platform
+	FlagDescription string
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Platform) ApplyFlags(fs *pflag.FlagSet) {
-	fs.StringVarP(&opts.platform, "platform", "", "", "request platform in the form of `os[/arch][/variant][:os_version]`")
+	if opts.FlagDescription == "" {
+		opts.FlagDescription = "request platform"
+	}
+	fs.StringVarP(&opts.platform, "platform", "", "", opts.FlagDescription+" in the form of `os[/arch][/variant][:os_version]`")
 }
 
 // parse parses the input platform flag to an oci platform type.

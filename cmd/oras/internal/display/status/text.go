@@ -53,8 +53,8 @@ func (ph *TextPushHandler) OnEmptyArtifact() error {
 }
 
 // TrackTarget returns a tracked target.
-func (ph *TextPushHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, error) {
-	return gt, nil
+func (ph *TextPushHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, StopTrackTargetFunc, error) {
+	return gt, discardStopTrack, nil
 }
 
 // UpdateCopyOptions adds status update to the copy options.
@@ -85,4 +85,48 @@ func (ph *TextPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetche
 // NewTextAttachHandler returns a new handler for attach command.
 func NewTextAttachHandler(out io.Writer, verbose bool) AttachHandler {
 	return NewTextPushHandler(out, verbose)
+}
+
+// TextPullHandler handles text status output for pull events.
+type TextPullHandler struct {
+	verbose bool
+	printer *Printer
+}
+
+// TrackTarget implements PullHander.
+func (ph *TextPullHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, StopTrackTargetFunc, error) {
+	return gt, discardStopTrack, nil
+}
+
+// OnNodeDownloading implements PullHandler.
+func (ph *TextPullHandler) OnNodeDownloading(desc ocispec.Descriptor) error {
+	return PrintStatus(desc, PullPromptDownloading, ph.verbose)
+}
+
+// OnNodeDownloaded implements PullHandler.
+func (ph *TextPullHandler) OnNodeDownloaded(desc ocispec.Descriptor) error {
+	return PrintStatus(desc, PullPromptDownloaded, ph.verbose)
+}
+
+// OnNodeRestored implements PullHandler.
+func (ph *TextPullHandler) OnNodeRestored(desc ocispec.Descriptor) error {
+	return PrintStatus(desc, PullPromptRestored, ph.verbose)
+}
+
+// OnNodeProcessing implements PullHandler.
+func (ph *TextPullHandler) OnNodeProcessing(desc ocispec.Descriptor) error {
+	return PrintStatus(desc, PullPromptProcessing, ph.verbose)
+}
+
+// OnNodeProcessing implements PullHandler.
+func (ph *TextPullHandler) OnNodeSkipped(desc ocispec.Descriptor) error {
+	return PrintStatus(desc, PullPromptSkipped, ph.verbose)
+}
+
+// NewTextPullHandler returns a new handler for pull command.
+func NewTextPullHandler(out io.Writer, verbose bool) PullHandler {
+	return &TextPullHandler{
+		verbose: verbose,
+		printer: NewPrinter(out),
+	}
 }
