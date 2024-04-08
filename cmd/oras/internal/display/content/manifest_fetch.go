@@ -24,14 +24,14 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/utils"
 )
 
-// RawManifestFetch handles raw content output.
-type RawManifestFetch struct {
+// manifestFetch handles raw content output.
+type manifestFetch struct {
 	pretty     bool
 	stdout     io.Writer
 	outputPath string
 }
 
-func (h *RawManifestFetch) OnContentFetched(desc ocispec.Descriptor, manifest []byte) error {
+func (h *manifestFetch) OnContentFetched(desc ocispec.Descriptor, manifest []byte) error {
 	out := h.stdout
 	if h.outputPath != "-" && h.outputPath != "" {
 		f, err := os.OpenFile(h.outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
@@ -46,7 +46,7 @@ func (h *RawManifestFetch) OnContentFetched(desc ocispec.Descriptor, manifest []
 
 // NewManifestFetchHandler creates a new handler.
 func NewManifestFetchHandler(out io.Writer, pretty bool, outputPath string) ManifestFetchHandler {
-	return &RawManifestFetch{
+	return &manifestFetch{
 		pretty:     pretty,
 		stdout:     out,
 		outputPath: outputPath,
