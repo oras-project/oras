@@ -73,7 +73,6 @@ func NewManifestFetchHandler(out io.Writer, outputDescriptor bool, pretty bool, 
 	}
 }
 
-// OnFetched is called after the content is fetched.
 func (h *RawManifestFetch) output(out io.Writer, data []byte) error {
 	if h.pretty {
 		buf := bytes.NewBuffer(nil)
