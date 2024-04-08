@@ -21,6 +21,7 @@ import (
 
 	"oras.land/oras/cmd/oras/internal/display/content"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
+	"oras.land/oras/cmd/oras/internal/display/metadata/descriptor"
 	"oras.land/oras/cmd/oras/internal/display/metadata/json"
 	"oras.land/oras/cmd/oras/internal/display/metadata/template"
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
@@ -99,21 +100,27 @@ func NewPullHandler(format string, path string, tty *os.File, out io.Writer, ver
 // NewManifestFetchHandler returns a manifest fetch handler.
 func NewManifestFetchHandler(out io.Writer, format string, outputDescriptor bool, pretty bool, outputPath string) (metadata.ManifestFetchHandler, content.ManifestFetchHandler) {
 	var metadataHandler metadata.ManifestFetchHandler
-	var contentHandler content.ManifestFetchHandler = content.NewManifestFetchHandler(out, outputDescriptor, pretty, outputPath)
-	var discardHandler = content.NewDiscardHandler()
+	var contentHandler content.ManifestFetchHandler = content.NewManifestFetchHandler(out, pretty, outputPath)
 
 	switch format {
-	case "raw":
-		metadataHandler = metadata.NewDiscardHandler()
+	case "":
+		// raw
+		if outputDescriptor {
+			metadataHandler = descriptor.NewManifestFetchHandler(out, pretty)
+		} else {
+			metadataHandler = metadata.NewDiscardHandler()
+		}
 	case "json":
+		// json
 		metadataHandler = json.NewManifestFetchHandler(out)
 		if outputPath == "" {
-			contentHandler = discardHandler
+			contentHandler = content.NewDiscardHandler()
 		}
 	default:
+		// go template
 		metadataHandler = template.NewManifestFetchHandler(out, format)
 		if outputPath == "" {
-			contentHandler = discardHandler
+			contentHandler = content.NewDiscardHandler()
 		}
 	}
 	return metadataHandler, contentHandler

@@ -13,14 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package content
+package descriptor
 
-import (
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-)
+import ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-// ManifestFetchHandler handles raw output for manifest fetch events.
+// ManifestFetchHandler handles metadata output for manifest fetch events.
 type ManifestFetchHandler interface {
-	// OnContentFetched is called after the manifest content is fetched.
-	OnContentFetched(desc ocispec.Descriptor, content []byte) error
+	// OnFetched is called after the manifest content is fetched.
+	OnFetched(ocispec.Descriptor) error
 }

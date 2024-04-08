@@ -15,17 +15,17 @@ limitations under the License.
 
 package content
 
-import v1 "github.com/opencontainers/image-spec/specs-go/v1"
+import ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 type discardHandler struct{}
 
 // OnContentFetched implements ManifestFetchHandler.
-func (discardHandler) OnContentFetched(v1.Descriptor, []byte) error {
+func (discardHandler) OnContentFetched(ocispec.Descriptor, []byte) error {
 	return nil
 }
 
 // OnDescriptorFetched implements ManifestFetchHandler.
-func (discardHandler) OnDescriptorFetched(v1.Descriptor) error {
+func (discardHandler) OnDescriptorFetched(ocispec.Descriptor) error {
 	return nil
 }
 

@@ -16,72 +16,39 @@ limitations under the License.
 package content
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras/cmd/oras/internal/display/utils"
 )
 
 // RawManifestFetch handles raw content output.
 type RawManifestFetch struct {
-	pretty           bool
-	stdout           io.Writer
-	outputDescriptor bool
-	outputPath       string
+	pretty     bool
+	stdout     io.Writer
+	outputPath string
 }
 
 func (h *RawManifestFetch) OnContentFetched(desc ocispec.Descriptor, manifest []byte) error {
-	if h.outputDescriptor {
-		if err := h.OnDescriptorFetched(desc); err != nil {
-			return err
-		}
-	}
-	return h.onContentFetched(h.outputPath, manifest)
-}
-
-func (h *RawManifestFetch) onContentFetched(outputPath string, manifest []byte) error {
 	out := h.stdout
-	if outputPath != "-" && outputPath != "" {
-		f, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	if h.outputPath != "-" && h.outputPath != "" {
+		f, err := os.OpenFile(h.outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 		if err != nil {
-			return fmt.Errorf("failed to open %q: %w", outputPath, err)
+			return fmt.Errorf("failed to open %q: %w", h.outputPath, err)
 		}
 		defer f.Close()
 		out = f
 	}
-	return h.output(out, manifest)
-}
-
-func (h *RawManifestFetch) OnDescriptorFetched(desc ocispec.Descriptor) error {
-	descBytes, err := json.Marshal(desc)
-	if err != nil {
-		return fmt.Errorf("invalid descriptor: %w", err)
-	}
-	return h.output(h.stdout, descBytes)
+	return utils.Output(out, manifest, h.pretty)
 }
 
 // NewManifestFetchHandler creates a new handler.
-func NewManifestFetchHandler(out io.Writer, outputDescriptor bool, pretty bool, outputPath string) ManifestFetchHandler {
+func NewManifestFetchHandler(out io.Writer, pretty bool, outputPath string) ManifestFetchHandler {
 	return &RawManifestFetch{
-		pretty:           pretty,
-		stdout:           out,
-		outputDescriptor: outputDescriptor,
-		outputPath:       outputPath,
+		pretty:     pretty,
+		stdout:     out,
+		outputPath: outputPath,
 	}
-}
-
-func (h *RawManifestFetch) output(out io.Writer, data []byte) error {
-	if h.pretty {
-		buf := bytes.NewBuffer(nil)
-		if err := json.Indent(buf, data, "", "  "); err != nil {
-			return fmt.Errorf("failed to prettify: %w", err)
-		}
-		buf.WriteByte('\n')
-		data = buf.Bytes()
-	}
-	_, err := out.Write(data)
-	return err
 }

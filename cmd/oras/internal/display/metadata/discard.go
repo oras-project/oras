@@ -25,4 +25,4 @@ func NewDiscardHandler() ManifestFetchHandler {
 }
 
 // OnFetched implements ManifestFetchHandler.
-func (discard) OnFetched([]byte, ocispec.Descriptor) error { return nil }
+func (discard) OnFetched(ocispec.Descriptor, []byte) error { return nil }

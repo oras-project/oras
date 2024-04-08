@@ -13,33 +13,37 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package json
+package descriptor
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
+	"oras.land/oras/cmd/oras/internal/display/utils"
 )
 
-// ManifestFetchHandler handles JSON metadata output for manifest fetch events.
-type ManifestFetchHandler struct {
-	out io.Writer
+// ManifestFetchHandler handles metadata descriptor output.
+type ManifestFetch struct {
+	pretty bool
+	out    io.Writer
 }
 
-// NewManifestFetchHandler creates a new handler for manifest fetch events.
-func NewManifestFetchHandler(out io.Writer) metadata.ManifestFetchHandler {
-	return &ManifestFetchHandler{
-		out: out,
+// OnFetched implements ManifestFetchHandler.
+func (h *ManifestFetch) OnFetched(desc ocispec.Descriptor, _ []byte) error {
+	descBytes, err := json.Marshal(desc)
+	if err != nil {
+		return fmt.Errorf("invalid descriptor: %w", err)
 	}
+	return utils.Output(h.out, descBytes, h.pretty)
 }
 
-// OnFetched is called after the manifest fetch is completed.
-func (h *ManifestFetchHandler) OnFetched(desc ocispec.Descriptor, content []byte) error {
-	var manifest map[string]any
-	if err := json.Unmarshal(content, &manifest); err != nil {
-		return err
+// NewManifestFetchHandler creates a new handler.
+func NewManifestFetchHandler(out io.Writer, pretty bool) metadata.ManifestFetchHandler {
+	return &ManifestFetch{
+		pretty: pretty,
+		out:    out,
 	}
-	return printJSON(h.out, manifest)
 }

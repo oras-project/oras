@@ -18,6 +18,7 @@ package manifest
 import (
 	"fmt"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
@@ -89,8 +90,7 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 
 	cmd.Flags().StringSliceVarP(&opts.mediaTypes, "media-type", "", nil, "accepted media types")
 	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "file `path` to write the fetched manifest to, use - for stdout")
-	cmd.Flags().StringVar(&opts.Template, "format", "raw", `Format output using a custom template:
-'raw':       Print raw manifest content
+	cmd.Flags().StringVar(&opts.Template, "format", "", `Format output using a custom template:
 'json':       Print manifest in prettified JSON format
 '$TEMPLATE':  Print output using the given Go template.`)
 	option.ApplyFlags(&opts, cmd.Flags())
@@ -119,25 +119,27 @@ func fetchManifest(cmd *cobra.Command, opts *fetchOptions) (fetchErr error) {
 	}
 	metadataHandler, contentHandler := display.NewManifestFetchHandler(cmd.OutOrStdout(), opts.Template, opts.OutputDescriptor, opts.Pretty.Pretty, opts.outputPath)
 
+	var desc ocispec.Descriptor
+	var content []byte
 	if opts.OutputDescriptor && opts.outputPath == "" {
 		// fetch manifest descriptor only
 		fetchOpts := oras.DefaultResolveOptions
 		fetchOpts.TargetPlatform = opts.Platform.Platform
-		desc, err := oras.Resolve(ctx, src, opts.Reference, fetchOpts)
+		desc, err = oras.Resolve(ctx, src, opts.Reference, fetchOpts)
 		if err != nil {
 			return fmt.Errorf("failed to find %q: %w", opts.RawReference, err)
 		}
-		return contentHandler.OnDescriptorFetched(desc)
+	} else {
+		// fetch manifest descriptor and content
+		fetchOpts := oras.DefaultFetchBytesOptions
+		fetchOpts.TargetPlatform = opts.Platform.Platform
+		desc, content, err = oras.FetchBytes(ctx, src, opts.Reference, fetchOpts)
+		if err != nil {
+			return fmt.Errorf("failed to fetch the content of %q: %w", opts.RawReference, err)
+		}
+		if err = contentHandler.OnContentFetched(desc, content); err != nil {
+			return err
+		}
 	}
-	// fetch manifest content
-	fetchOpts := oras.DefaultFetchBytesOptions
-	fetchOpts.TargetPlatform = opts.Platform.Platform
-	desc, content, err := oras.FetchBytes(ctx, src, opts.Reference, fetchOpts)
-	if err != nil {
-		return fmt.Errorf("failed to fetch the content of %q: %w", opts.RawReference, err)
-	}
-	if err = contentHandler.OnContentFetched(desc, content); err != nil {
-		return err
-	}
-	return metadataHandler.OnFetched(content, desc)
+	return metadataHandler.OnFetched(desc, content)
 }

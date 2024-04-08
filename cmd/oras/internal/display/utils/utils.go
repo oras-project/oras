@@ -15,7 +15,14 @@ limitations under the License.
 
 package utils
 
-import v1 "github.com/opencontainers/image-spec/specs-go/v1"
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
+)
 
 // GenerateContentKey generates a unique key for each content descriptor, using
 // its digest and name if applicable.
@@ -31,3 +38,17 @@ const (
 	PullPromptRestored    = "Restored   "
 	PullPromptDownloaded  = "Downloaded "
 )
+
+// Output writes the data to the output stream, optionally prettifying it.
+func Output(out io.Writer, data []byte, pretty bool) error {
+	if pretty {
+		buf := bytes.NewBuffer(nil)
+		if err := json.Indent(buf, data, "", "  "); err != nil {
+			return fmt.Errorf("failed to prettify: %w", err)
+		}
+		buf.WriteByte('\n')
+		data = buf.Bytes()
+	}
+	_, err := out.Write(data)
+	return err
+}
