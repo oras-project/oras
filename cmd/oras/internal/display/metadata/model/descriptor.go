@@ -16,9 +16,12 @@ limitations under the License.
 package model
 
 import (
+	"context"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras/cmd/oras/internal/display/status"
+	"sync"
 )
 
 // DigestReference is a reference to an artifact with digest.
@@ -93,4 +96,20 @@ func PrintDescriptor(printer *status.Printer, desc ocispec.Descriptor, status st
 	}
 	printer.Print(status, ShortDigest(desc), name)
 	return
+}
+
+// PrintSuccessorStatus prints transfer status of successors.
+func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, fetcher content.Fetcher, committed *sync.Map, prompt string, printer *status.Printer) error {
+	successors, err := content.Successors(ctx, fetcher, desc)
+	if err != nil {
+		return err
+	}
+	for _, s := range successors {
+		name := s.Annotations[ocispec.AnnotationTitle]
+		if v, ok := committed.Load(s.Digest.String()); ok && v != name {
+			// Reprint status for deduplicated content
+			PrintDescriptor(printer, desc, prompt)
+		}
+	}
+	return nil
 }

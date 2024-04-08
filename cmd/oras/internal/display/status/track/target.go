@@ -30,7 +30,7 @@ import (
 type GraphTarget interface {
 	oras.GraphTarget
 	io.Closer
-	Prompt(desc ocispec.Descriptor, prompt string) error
+	Prompt(desc ocispec.Descriptor) error
 	Inner() oras.GraphTarget
 }
 

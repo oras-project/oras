@@ -19,17 +19,18 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry"
 )
 
 type Printer struct {
 	printLock sync.Mutex
 	verbose   bool
+	errors    bool
 }
 
 var printer Printer
@@ -41,57 +42,31 @@ func NewPrinter(verbose bool) *Printer {
 }
 
 // Print objects to display concurrent-safely.
-func (p *Printer) Print(a ...any) error {
+func (p *Printer) Print(a ...any) {
 	p.printLock.Lock()
 	defer p.printLock.Unlock()
 	_, err := fmt.Println(a...)
-	return err
+	if err != nil {
+		if !p.errors {
+			p.errors = true
+			_, _ = fmt.Fprintf(os.Stderr, "Display output error: %w\n", err)
+			return
+		}
+	}
+	return
 }
 
-// PrintFunc is the function type returned by StatusPrinter.
-type PrintFunc func(ocispec.Descriptor) error
+// PrintVerbose display in verbose mode.
+func (p *Printer) PrintVerbose(a ...any) {
+	if p.verbose {
+		p.Print(a...)
+	}
+	return
+}
 
 // Print objects to display concurrent-safely.
-func Print(a ...any) error {
-	return printer.Print(a...)
-}
-
-// StatusPrinter returns a tracking function for transfer status.
-func StatusPrinter(status string, verbose bool) PrintFunc {
-	return func(desc ocispec.Descriptor) error {
-		return PrintStatus(desc, status, verbose)
-	}
-}
-
-// PrintStatus prints transfer status.
-func PrintStatus(desc ocispec.Descriptor, status string, verbose bool) error {
-	name, ok := desc.Annotations[ocispec.AnnotationTitle]
-	if !ok {
-		// no status for unnamed content
-		if !verbose {
-			return nil
-		}
-		name = desc.MediaType
-	}
-	return Print(status, ShortDigest(desc), name)
-}
-
-// PrintSuccessorStatus prints transfer status of successors.
-func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, fetcher content.Fetcher, committed *sync.Map, print PrintFunc) error {
-	successors, err := content.Successors(ctx, fetcher, desc)
-	if err != nil {
-		return err
-	}
-	for _, s := range successors {
-		name := s.Annotations[ocispec.AnnotationTitle]
-		if v, ok := committed.Load(s.Digest.String()); ok && v != name {
-			// Reprint status for deduplicated content
-			if err := print(s); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+func Print(a ...any) {
+	printer.Print(a...)
 }
 
 // NewTagStatusPrinter creates a wrapper type for printing tag status.
@@ -135,13 +110,14 @@ func (p *tagManifestStatusForRepo) PushReference(ctx context.Context, expected o
 	if p.printHint != nil {
 		p.printHint.Do(func() {
 			ref := p.refPrefix + "@" + expected.Digest.String()
-			_ = Print("Tagging", ref)
+			Print("Tagging", ref)
 		})
 	}
 	if err := p.Repository.PushReference(ctx, expected, content, reference); err != nil {
 		return err
 	}
-	return Print("Tagged", reference)
+	Print("Tagged", reference)
+	return nil
 }
 
 type tagManifestStatusForTarget struct {
@@ -155,12 +131,13 @@ func (p *tagManifestStatusForTarget) Tag(ctx context.Context, desc ocispec.Descr
 	if p.printHint != nil {
 		p.printHint.Do(func() {
 			ref := p.refPrefix + "@" + desc.Digest.String()
-			_ = Print("Tagging", ref)
+			Print("Tagging", ref)
 		})
 	}
 
 	if err := p.Target.Tag(ctx, desc, reference); err != nil {
 		return err
 	}
-	return Print("Tagged", reference)
+	Print("Tagged", reference)
+	return nil
 }
