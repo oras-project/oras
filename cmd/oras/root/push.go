@@ -16,12 +16,8 @@ limitations under the License.
 package root
 
 import (
-	"context"
 	"errors"
-	"fmt"
-	"os"
 	"strings"
-	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -32,7 +28,8 @@ import (
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/display"
-	"oras.land/oras/cmd/oras/internal/display/track"
+	"oras.land/oras/cmd/oras/internal/display/status"
+	"oras.land/oras/cmd/oras/internal/display/status/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -45,6 +42,7 @@ type pushOptions struct {
 	option.Packer
 	option.ImageSpec
 	option.Target
+	option.Format
 
 	extraRefs         []string
 	manifestConfigRef string
@@ -77,7 +75,6 @@ Example - Push file "hi.txt" with artifact type "application/vnd.example+type":
 Example - Push file "hi.txt" with config type "application/vnd.me.config":
   oras push --image-spec v1.0 --artifact-type application/vnd.me.config localhost:5000/hello:v1 hi.txt
 
-
 Example - Push file "hi.txt" with the custom manifest config "config.json" of the custom media type "application/vnd.me.config":
   oras push --config config.json:application/vnd.me.config localhost:5000/hello:v1 hi.txt
 
@@ -108,7 +105,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
 			opts.FileRefs = args[1:]
-			if err := option.Parse(&opts); err != nil {
+			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
 			switch opts.PackVersion {
@@ -116,7 +113,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 				if opts.manifestConfigRef != "" && opts.artifactType != "" {
 					return errors.New("--artifact-type and --config cannot both be provided for 1.0 OCI image")
 				}
-			case oras.PackManifestVersion1_1_RC4:
+			case oras.PackManifestVersion1_1:
 				if opts.manifestConfigRef == "" && opts.artifactType == "" {
 					opts.artifactType = oras.MediaTypeUnknownArtifact
 				}
@@ -124,7 +121,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runPush(cmd.Context(), &opts)
+			return runPush(cmd, &opts)
 		},
 	}
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "`path` of image config file")
@@ -135,12 +132,13 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 	return oerrors.Command(cmd, &opts.Target)
 }
 
-func runPush(ctx context.Context, opts *pushOptions) error {
-	ctx, logger := opts.WithContext(ctx)
+func runPush(cmd *cobra.Command, opts *pushOptions) error {
+	ctx, logger := opts.WithContext(cmd.Context())
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err
 	}
+	displayStatus, displayMetadata := display.NewPushHandler(opts.Template, opts.TTY, cmd.OutOrStdout(), opts.Verbose)
 
 	// prepare pack
 	packOpts := oras.PackManifestOptions{
@@ -157,14 +155,14 @@ func runPush(ctx context.Context, opts *pushOptions) error {
 		if err != nil {
 			return err
 		}
-		desc, err := store.Add(ctx, option.AnnotationConfig, cfgMediaType, path)
+		desc, err := addFile(ctx, store, option.AnnotationConfig, cfgMediaType, path)
 		if err != nil {
 			return err
 		}
 		desc.Annotations = packOpts.ConfigAnnotations
 		packOpts.ConfigDescriptor = &desc
 	}
-	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, opts.Verbose)
+	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, displayStatus)
 	if err != nil {
 		return err
 	}
@@ -186,14 +184,14 @@ func runPush(ctx context.Context, opts *pushOptions) error {
 	if err != nil {
 		return err
 	}
-	dst, err = getTrackedTarget(dst, opts.TTY, "Uploading", "Uploaded ")
+	dst, stopTrack, err := displayStatus.TrackTarget(dst)
 	if err != nil {
 		return err
 	}
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
 	union := contentutil.MultiReadOnlyTarget(memoryStore, store)
-	updateDisplayOption(&copyOptions.CopyGraphOptions, union, opts.Verbose, dst)
+	displayStatus.UpdateCopyOptions(&copyOptions.CopyGraphOptions, union)
 	copy := func(root ocispec.Descriptor) error {
 		// add both pull and push scope hints for dst repository
 		// to save potential push-scope token requests during copy
@@ -208,11 +206,14 @@ func runPush(ctx context.Context, opts *pushOptions) error {
 	}
 
 	// Push
-	root, err := doPush(dst, pack, copy)
+	root, err := doPush(dst, stopTrack, pack, copy)
 	if err != nil {
 		return err
 	}
-	fmt.Println("Pushed", opts.AnnotatedReference())
+	err = displayMetadata.OnCopied(&opts.Target)
+	if err != nil {
+		return err
+	}
 
 	if len(opts.extraRefs) != 0 {
 		taggable := dst
@@ -225,78 +226,30 @@ func runPush(ctx context.Context, opts *pushOptions) error {
 		}
 		tagBytesNOpts := oras.DefaultTagBytesNOptions
 		tagBytesNOpts.Concurrency = opts.concurrency
-		if _, err = oras.TagBytesN(ctx, display.NewTagStatusPrinter(taggable), root.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
+		if _, err = oras.TagBytesN(ctx, status.NewTagStatusPrinter(taggable), root.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}
 	}
 
-	fmt.Println("Digest:", root.Digest)
+	err = displayMetadata.OnCompleted(root)
+	if err != nil {
+		return err
+	}
 
 	// Export manifest
 	return opts.ExportManifest(ctx, memoryStore, root)
 }
 
-func doPush(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
-	if tracked, ok := dst.(track.GraphTarget); ok {
-		defer tracked.Close()
-	}
+func doPush(dst oras.Target, stopTrack status.StopTrackTargetFunc, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
+	defer func() {
+		_ = stopTrack()
+	}()
 	// Push
 	return pushArtifact(dst, pack, copy)
 }
 
-func updateDisplayOption(opts *oras.CopyGraphOptions, fetcher content.Fetcher, verbose bool, dst any) {
-	committed := &sync.Map{}
-
-	const (
-		promptSkipped   = "Skipped  "
-		promptUploaded  = "Uploaded "
-		promptExists    = "Exists   "
-		promptUploading = "Uploading"
-	)
-	if tracked, ok := dst.(track.GraphTarget); ok {
-		// TTY
-		opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return tracked.Prompt(desc, promptExists)
-		}
-		opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return display.PrintSuccessorStatus(ctx, desc, fetcher, committed, func(d ocispec.Descriptor) error {
-				return tracked.Prompt(d, promptSkipped)
-			})
-		}
-		return
-	}
-	// non TTY
-	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return display.PrintStatus(desc, promptExists, verbose)
-	}
-	opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		return display.PrintStatus(desc, promptUploading, verbose)
-	}
-	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		if err := display.PrintSuccessorStatus(ctx, desc, fetcher, committed, display.StatusPrinter(promptSkipped, verbose)); err != nil {
-			return err
-		}
-		return display.PrintStatus(desc, promptUploaded, verbose)
-	}
-}
-
 type packFunc func() (ocispec.Descriptor, error)
 type copyFunc func(desc ocispec.Descriptor) error
-
-func getTrackedTarget(gt oras.GraphTarget, tty *os.File, actionPrompt, doneprompt string) (oras.GraphTarget, error) {
-	if tty == nil {
-		return gt, nil
-	}
-	tracked, err := track.NewTarget(gt, actionPrompt, doneprompt, tty)
-	if err != nil {
-		return nil, err
-	}
-	return tracked, nil
-}
 
 func pushArtifact(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
 	root, err := pack()

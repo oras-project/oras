@@ -1,3 +1,5 @@
+//go:build freebsd || linux || netbsd || openbsd || solaris
+
 /*
 Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,9 +22,9 @@ import (
 	"time"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras/cmd/oras/internal/display/console"
-	"oras.land/oras/cmd/oras/internal/display/console/testutils"
-	"oras.land/oras/cmd/oras/internal/display/progress/humanize"
+	"oras.land/oras/cmd/oras/internal/display/status/console"
+	"oras.land/oras/cmd/oras/internal/display/status/console/testutils"
+	"oras.land/oras/cmd/oras/internal/display/status/progress/humanize"
 )
 
 func Test_status_String(t *testing.T) {

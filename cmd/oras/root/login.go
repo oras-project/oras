@@ -16,9 +16,9 @@ limitations under the License.
 package root
 
 import (
-	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -29,7 +29,7 @@ import (
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/credential"
-	"oras.land/oras/internal/io"
+	orasio "oras.land/oras/internal/io"
 )
 
 type loginOptions struct {
@@ -65,25 +65,26 @@ Example - Log in with username and password in an interactive terminal and no TL
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the registry to log in to"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return option.Parse(&opts)
+			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Hostname = args[0]
-			return runLogin(cmd.Context(), opts)
+			return runLogin(cmd, opts)
 		},
 	}
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Remote)
 }
 
-func runLogin(ctx context.Context, opts loginOptions) (err error) {
-	ctx, logger := opts.WithContext(ctx)
+func runLogin(cmd *cobra.Command, opts loginOptions) (err error) {
+	ctx, logger := opts.WithContext(cmd.Context())
+	outWriter := cmd.OutOrStdout()
 
 	// prompt for credential
 	if opts.Password == "" {
 		if opts.Username == "" {
 			// prompt for username
-			username, err := readLine("Username: ", false)
+			username, err := readLine(outWriter, "Username: ", false)
 			if err != nil {
 				return err
 			}
@@ -91,14 +92,14 @@ func runLogin(ctx context.Context, opts loginOptions) (err error) {
 		}
 		if opts.Username == "" {
 			// prompt for token
-			if opts.Password, err = readLine("Token: ", true); err != nil {
+			if opts.Password, err = readLine(outWriter, "Token: ", true); err != nil {
 				return err
 			} else if opts.Password == "" {
 				return errors.New("token required")
 			}
 		} else {
 			// prompt for password
-			if opts.Password, err = readLine("Password: ", true); err != nil {
+			if opts.Password, err = readLine(outWriter, "Password: ", true); err != nil {
 				return err
 			} else if opts.Password == "" {
 				return errors.New("password required")
@@ -117,21 +118,21 @@ func runLogin(ctx context.Context, opts loginOptions) (err error) {
 	if err = credentials.Login(ctx, store, remote, opts.Credential()); err != nil {
 		return err
 	}
-	fmt.Println("Login Succeeded")
+	fmt.Fprintln(outWriter, "Login Succeeded")
 	return nil
 }
 
-func readLine(prompt string, silent bool) (string, error) {
-	fmt.Print(prompt)
+func readLine(outWriter io.Writer, prompt string, silent bool) (string, error) {
+	fmt.Fprint(outWriter, prompt)
 	fd := int(os.Stdin.Fd())
 	var bytes []byte
 	var err error
 	if silent && term.IsTerminal(fd) {
 		if bytes, err = term.ReadPassword(fd); err == nil {
-			_, err = fmt.Println()
+			_, err = fmt.Fprintln(outWriter)
 		}
 	} else {
-		bytes, err = io.ReadLine(os.Stdin)
+		bytes, err = orasio.ReadLine(os.Stdin)
 	}
 	if err != nil {
 		return "", err

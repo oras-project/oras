@@ -27,7 +27,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/argument"
-	"oras.land/oras/cmd/oras/internal/display/track"
+	"oras.land/oras/cmd/oras/internal/display/status/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -77,7 +77,11 @@ Example - Fetch and print a blob from OCI image layout archive file 'layout.tar'
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
 			}
 			opts.RawReference = args[0]
-			return option.Parse(&opts)
+			err := option.Parse(cmd, &opts)
+			if err == nil {
+				opts.UpdateTTY(cmd.Flags().Changed(option.NoTTYFlag), opts.outputPath == "-")
+			}
+			return err
 		},
 		Aliases: []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {

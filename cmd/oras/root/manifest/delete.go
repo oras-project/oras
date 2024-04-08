@@ -63,7 +63,7 @@ Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614
 			if opts.OutputDescriptor && !opts.Force {
 				return errors.New("must apply --force to confirm the deletion if the descriptor is outputted")
 			}
-			return option.Parse(&opts)
+			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return deleteManifest(cmd, &opts)
@@ -91,13 +91,14 @@ func deleteManifest(cmd *cobra.Command, opts *deleteOptions) error {
 		// possibly needed when adding a new referrers index
 		hints = append(hints, auth.ActionPush)
 	}
+	outWriter := cmd.OutOrStdout()
 	ctx = registryutil.WithScopeHint(ctx, manifests, hints...)
 	desc, err := manifests.Resolve(ctx, opts.Reference)
 	if err != nil {
 		if errors.Is(err, errdef.ErrNotFound) {
 			if opts.Force && !opts.OutputDescriptor {
 				// ignore nonexistent
-				fmt.Println("Missing", opts.RawReference)
+				fmt.Fprintln(outWriter, "Missing", opts.RawReference)
 				return nil
 			}
 			return fmt.Errorf("%s: the specified manifest does not exist", opts.RawReference)
@@ -126,7 +127,7 @@ func deleteManifest(cmd *cobra.Command, opts *deleteOptions) error {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	fmt.Println("Deleted", opts.AnnotatedReference())
+	fmt.Fprintln(outWriter, "Deleted", opts.AnnotatedReference())
 
 	return nil
 }

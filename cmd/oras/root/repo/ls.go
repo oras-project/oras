@@ -16,7 +16,6 @@ limitations under the License.
 package repo
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -55,14 +54,14 @@ Example - List the repositories under the registry that include values lexically
 		Args:    oerrors.CheckArgs(argument.Exactly(1), "the target registry to list repositories from"),
 		Aliases: []string{"list"},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return option.Parse(&opts)
+			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			if opts.hostname, opts.namespace, err = repository.ParseRepoPath(args[0]); err != nil {
 				return fmt.Errorf("could not parse repository path: %w", err)
 			}
-			return listRepository(cmd.Context(), &opts)
+			return listRepository(cmd, &opts)
 		},
 	}
 
@@ -71,16 +70,17 @@ Example - List the repositories under the registry that include values lexically
 	return oerrors.Command(cmd, &opts.Remote)
 }
 
-func listRepository(ctx context.Context, opts *repositoryOptions) error {
-	ctx, logger := opts.WithContext(ctx)
+func listRepository(cmd *cobra.Command, opts *repositoryOptions) error {
+	ctx, logger := opts.WithContext(cmd.Context())
 	reg, err := opts.Remote.NewRegistry(opts.hostname, opts.Common, logger)
 	if err != nil {
 		return err
 	}
 	err = reg.Repositories(ctx, opts.last, func(repos []string) error {
+		outWriter := cmd.OutOrStdout()
 		for _, repo := range repos {
 			if subRepo, found := strings.CutPrefix(repo, opts.namespace); found {
-				fmt.Println(subRepo)
+				fmt.Fprintln(outWriter, subRepo)
 			}
 		}
 		return nil

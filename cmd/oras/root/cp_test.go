@@ -1,4 +1,4 @@
-//go:build darwin || freebsd || linux || netbsd || openbsd || solaris
+//go:build freebsd || linux || netbsd || openbsd || solaris
 
 /*
 Copyright The ORAS Authors.
@@ -31,7 +31,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/registry/remote"
-	"oras.land/oras/cmd/oras/internal/display/console/testutils"
+	"oras.land/oras/cmd/oras/internal/display/status/console/testutils"
 )
 
 var (

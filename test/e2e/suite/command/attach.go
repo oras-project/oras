@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -28,6 +29,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/test/e2e/internal/testdata/feature"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
+	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
 	"oras.land/oras/test/e2e/internal/utils/match"
 )
@@ -56,7 +58,7 @@ var _ = Describe("ORAS beginners:", func() {
 
 		It("should fail if no file reference or manifest annotation provided for OCI layout", func() {
 			root := GinkgoT().TempDir()
-			ORAS("attach", "--artifact-type", "oras/test", LayoutRef(root, foobar.Tag)).
+			ORAS("attach", "--artifact-type", "oras/test", LayoutRef(root, foobar.Tag), Flags.Layout).
 				ExpectFailure().MatchErrKeyWords("Error: neither file nor annotation", "Usage:").Exec()
 		})
 
@@ -98,6 +100,21 @@ var _ = Describe("1.1 registry users:", func() {
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
 		})
 
+		It("should attach a file to an arch-specific subject", func() {
+			testRepo := attachTestRepo("arch-specific")
+			// Below line will cause unexpected 500
+			// pending for https://github.com/project-zot/zot/pull/2351 to be released
+			// CopyZOTRepo(ImageRepo, testRepo)
+			subjectRef := RegistryRef(ZOTHost, testRepo, multi_arch.Tag)
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), subjectRef).Exec()
+			artifactType := "test/attach"
+			// test
+			out := ORAS("attach", "--artifact-type", artifactType, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.Digest}}", "--platform", "linux/amd64").
+				WithWorkDir(PrepareTempFiles()).Exec().Out.Contents()
+			// validate
+			ORAS("discover", "--artifact-type", artifactType, RegistryRef(ZOTHost, testRepo, multi_arch.LinuxAMD64.Digest.String())).MatchKeyWords(string(out)).Exec()
+		})
+
 		It("should attach a file to a subject and export the built manifest", func() {
 			// prepare
 			testRepo := attachTestRepo("export-manifest")
@@ -116,6 +133,38 @@ var _ = Describe("1.1 registry users:", func() {
 			Expect(len(index.Manifests)).To(Equal(1))
 			fetched := ORAS("manifest", "fetch", RegistryRef(ZOTHost, testRepo, index.Manifests[0].Digest.String())).Exec().Out.Contents()
 			MatchFile(filepath.Join(tempDir, exportName), string(fetched), DefaultTimeout)
+		})
+
+		It("should attach a file to a subject and format the digest reference", func() {
+			// prepare
+			testRepo := attachTestRepo("format-ref")
+			tempDir := PrepareTempFiles()
+			exportName := "manifest.json"
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			CopyZOTRepo(ImageRepo, testRepo)
+			// test
+			delimitter := "---"
+			output := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName, "--format", fmt.Sprintf("{{.Ref}}%s{{.ArtifactType}}", delimitter)).
+				WithWorkDir(tempDir).Exec().Out.Contents()
+			ref, artifactType, _ := strings.Cut(string(output), delimitter)
+			// validate
+			Expect(artifactType).To(Equal("test/attach"))
+			fetched := ORAS("manifest", "fetch", ref).Exec().Out.Contents()
+			MatchFile(filepath.Join(tempDir, exportName), string(fetched), DefaultTimeout)
+		})
+
+		It("should attach a file to a subject and format json", func() {
+			// prepare
+			testRepo := attachTestRepo("format-json")
+			tempDir := PrepareTempFiles()
+			exportName := "manifest.json"
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			CopyZOTRepo(ImageRepo, testRepo)
+			// test
+			out := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName, "--format", "json").
+				WithWorkDir(tempDir).Exec().Out
+			// validate
+			Expect(out).To(gbytes.Say(RegistryRef(ZOTHost, testRepo, "")))
 		})
 
 		It("should attach a file via a OCI Image", func() {
@@ -249,6 +298,18 @@ var _ = Describe("OCI image layout users:", func() {
 			fetched := ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, index.Manifests[0].Digest.String())).Exec().Out.Contents()
 			MatchFile(filepath.Join(root, exportName), string(fetched), DefaultTimeout)
 		})
+
+		It("should attach a file to an arch-specific subject", func() {
+			root := PrepareTempOCI(ImageRepo)
+			subjectRef := LayoutRef(root, multi_arch.Tag)
+			artifactType := "test/attach"
+			// test
+			out := ORAS("attach", Flags.Layout, "--artifact-type", artifactType, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.Digest}}", "--platform", "linux/amd64").
+				WithWorkDir(PrepareTempFiles()).Exec().Out.Contents()
+			// validate
+			ORAS("discover", Flags.Layout, "--artifact-type", artifactType, LayoutRef(root, multi_arch.LinuxAMD64.Digest.String())).MatchKeyWords(string(out)).Exec()
+		})
+
 		It("should attach a file via a OCI Image", func() {
 			root := PrepareTempOCI(ImageRepo)
 			subjectRef := LayoutRef(root, foobar.Tag)

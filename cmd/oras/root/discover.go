@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -78,7 +79,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the target artifact to discover referrers from"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
-			return option.Parse(&opts)
+			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runDiscover(cmd, &opts)
@@ -127,15 +128,16 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 		return printDiscoveredReferrersJSON(desc, refs)
 	}
 
+	outWriter := cmd.OutOrStdout()
 	if n := len(refs); n > 1 {
-		fmt.Println("Discovered", n, "artifacts referencing", opts.Reference)
+		fmt.Fprintln(outWriter, "Discovered", n, "artifacts referencing", opts.Reference)
 	} else {
-		fmt.Println("Discovered", n, "artifact referencing", opts.Reference)
+		fmt.Fprintln(outWriter, "Discovered", n, "artifact referencing", opts.Reference)
 	}
-	fmt.Println("Digest:", desc.Digest)
+	fmt.Fprintln(outWriter, "Digest:", desc.Digest)
 	if len(refs) > 0 {
-		fmt.Println()
-		_ = printDiscoveredReferrersTable(refs, opts.Verbose)
+		fmt.Fprintln(outWriter)
+		_ = printDiscoveredReferrersTable(outWriter, refs, opts.Verbose)
 	}
 	return nil
 }
@@ -173,7 +175,7 @@ func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc 
 	return nil
 }
 
-func printDiscoveredReferrersTable(refs []ocispec.Descriptor, verbose bool) error {
+func printDiscoveredReferrersTable(outWriter io.Writer, refs []ocispec.Descriptor, verbose bool) error {
 	typeNameTitle := "Artifact Type"
 	typeNameLength := len(typeNameTitle)
 	for _, ref := range refs {
@@ -183,7 +185,7 @@ func printDiscoveredReferrersTable(refs []ocispec.Descriptor, verbose bool) erro
 	}
 
 	print := func(key string, value interface{}) {
-		fmt.Println(key, strings.Repeat(" ", typeNameLength-len(key)+1), value)
+		fmt.Fprintln(outWriter, key, strings.Repeat(" ", typeNameLength-len(key)+1), value)
 	}
 
 	print(typeNameTitle, "Digest")

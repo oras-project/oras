@@ -23,7 +23,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry"
-	"oras.land/oras/cmd/oras/internal/display/progress"
+	"oras.land/oras/cmd/oras/internal/display/status/progress"
 )
 
 // GraphTarget is a tracked oras.GraphTarget.

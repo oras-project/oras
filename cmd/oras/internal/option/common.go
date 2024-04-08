@@ -20,10 +20,13 @@ import (
 	"os"
 
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/term"
 	"oras.land/oras/internal/trace"
 )
+
+const NoTTYFlag = "no-tty"
 
 // Common option struct.
 type Common struct {
@@ -38,7 +41,7 @@ type Common struct {
 func (opts *Common) ApplyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.Debug, "debug", "d", false, "output debug logs (implies --no-tty)")
 	fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "verbose output")
-	fs.BoolVarP(&opts.noTTY, "no-tty", "", false, "[Preview] do not show progress output")
+	fs.BoolVarP(&opts.noTTY, NoTTYFlag, "", false, "[Preview] do not show progress output")
 }
 
 // WithContext returns a new FieldLogger and an associated Context derived from ctx.
@@ -47,7 +50,7 @@ func (opts *Common) WithContext(ctx context.Context) (context.Context, logrus.Fi
 }
 
 // Parse gets target options from user input.
-func (opts *Common) Parse() error {
+func (opts *Common) Parse(*cobra.Command) error {
 	// use STDERR as TTY output since STDOUT is reserved for pipeable output
 	return opts.parseTTY(os.Stderr)
 }
@@ -62,4 +65,13 @@ func (opts *Common) parseTTY(f *os.File) error {
 		}
 	}
 	return nil
+}
+
+// UpdateTTY updates the TTY value, given the status of --no-tty flag and output
+// path value.
+func (opts *Common) UpdateTTY(flagPresent bool, toSTDOUT bool) {
+	ttyEnforced := flagPresent && !opts.noTTY
+	if opts.noTTY || (toSTDOUT && !ttyEnforced) {
+		opts.TTY = nil
+	}
 }

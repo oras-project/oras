@@ -29,7 +29,7 @@ import (
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/argument"
-	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/manifest"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -92,7 +92,7 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 			refs := strings.Split(args[0], ",")
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
-			return option.Parse(&opts)
+			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return pushManifest(cmd, opts)
@@ -153,17 +153,17 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 	}
 	verbose := opts.Verbose && !opts.OutputDescriptor
 	if match {
-		if err := display.PrintStatus(desc, "Exists", verbose); err != nil {
+		if err := status.PrintStatus(desc, "Exists", verbose); err != nil {
 			return err
 		}
 	} else {
-		if err = display.PrintStatus(desc, "Uploading", verbose); err != nil {
+		if err = status.PrintStatus(desc, "Uploading", verbose); err != nil {
 			return err
 		}
 		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil {
 			return err
 		}
-		if err = display.PrintStatus(desc, "Uploaded ", verbose); err != nil {
+		if err = status.PrintStatus(desc, "Uploaded ", verbose); err != nil {
 			return err
 		}
 	}
@@ -184,14 +184,14 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		}
 		return opts.Output(os.Stdout, descJSON)
 	}
-	display.Print("Pushed", opts.AnnotatedReference())
+	status.Print("Pushed", opts.AnnotatedReference())
 	if len(opts.extraRefs) != 0 {
-		if _, err = oras.TagBytesN(ctx, display.NewTagStatusPrinter(target), mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
+		if _, err = oras.TagBytesN(ctx, status.NewTagStatusPrinter(target), mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}
 	}
 
-	fmt.Println("Digest:", desc.Digest)
+	fmt.Fprintln(cmd.OutOrStdout(), "Digest:", desc.Digest)
 
 	return nil
 }
