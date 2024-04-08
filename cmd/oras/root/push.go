@@ -108,6 +108,22 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
+
+			if opts.manifestConfigRef != "" && opts.artifactType == "" {
+				switch opts.Flag {
+				case option.ImageSpecAuto:
+					// switch to v1.0 manifest since artifact type is suggested by OCI v1.1
+					// artifact guidance but is not presented
+					// see https://github.com/opencontainers/image-spec/blob/e7f7c0ca69b21688c3cea7c87a04e4503e6099e2/manifest.md?plain=1#L170
+					opts.PackVersion = oras.PackManifestVersion1_0
+				case option.ImageSpecV1_1:
+					return &oerrors.Error{
+						Err:            errors.New(`missing artifact type for OCI image-spec v1.1 artifacts`),
+						Recommendation: "set an artifact type via `--artifact-type` or consider image spec v1.0",
+					}
+				}
+			}
+
 			switch opts.PackVersion {
 			case oras.PackManifestVersion1_0:
 				if opts.manifestConfigRef != "" && opts.artifactType != "" {
