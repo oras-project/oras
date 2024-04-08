@@ -24,11 +24,6 @@ func (discardHandler) OnContentFetched(ocispec.Descriptor, []byte) error {
 	return nil
 }
 
-// OnDescriptorFetched implements ManifestFetchHandler.
-func (discardHandler) OnDescriptorFetched(ocispec.Descriptor) error {
-	return nil
-}
-
 // NewDiscardHandler returns a new discard handler.
 func NewDiscardHandler() ManifestFetchHandler {
 	return discardHandler{}
