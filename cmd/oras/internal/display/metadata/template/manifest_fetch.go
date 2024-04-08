@@ -23,22 +23,22 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 )
 
-// ManifestFetchHandler handles JSON metadata output for manifest fetch events.
-type ManifestFetchHandler struct {
+// manifestFetchHandler handles JSON metadata output for manifest fetch events.
+type manifestFetchHandler struct {
 	template string
 	out      io.Writer
 }
 
 // NewManifestFetchHandler creates a new handler for manifest fetch events.
 func NewManifestFetchHandler(out io.Writer, template string) metadata.ManifestFetchHandler {
-	return &ManifestFetchHandler{
+	return &manifestFetchHandler{
 		template: template,
 		out:      out,
 	}
 }
 
 // OnFetched is called after the manifest fetch is completed.
-func (h *ManifestFetchHandler) OnFetched(desc ocispec.Descriptor, content []byte) error {
+func (h *manifestFetchHandler) OnFetched(desc ocispec.Descriptor, content []byte) error {
 	var manifest map[string]any
 	if err := json.Unmarshal(content, &manifest); err != nil {
 		return err

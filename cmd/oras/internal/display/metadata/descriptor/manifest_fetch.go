@@ -25,14 +25,14 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/utils"
 )
 
-// ManifestFetchHandler handles metadata descriptor output.
-type ManifestFetch struct {
+// manifestFetchHandler handles metadata descriptor output.
+type manifestFetchHandler struct {
 	pretty bool
 	out    io.Writer
 }
 
 // OnFetched implements ManifestFetchHandler.
-func (h *ManifestFetch) OnFetched(desc ocispec.Descriptor, _ []byte) error {
+func (h *manifestFetchHandler) OnFetched(desc ocispec.Descriptor, _ []byte) error {
 	descBytes, err := json.Marshal(desc)
 	if err != nil {
 		return fmt.Errorf("invalid descriptor: %w", err)
@@ -42,7 +42,7 @@ func (h *ManifestFetch) OnFetched(desc ocispec.Descriptor, _ []byte) error {
 
 // NewManifestFetchHandler creates a new handler.
 func NewManifestFetchHandler(out io.Writer, pretty bool) metadata.ManifestFetchHandler {
-	return &ManifestFetch{
+	return &manifestFetchHandler{
 		pretty: pretty,
 		out:    out,
 	}
