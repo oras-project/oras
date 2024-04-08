@@ -44,6 +44,10 @@ func (p *PushHandler) OnCopied(opts *option.Target) error {
 
 // OnCompleted is called after the push is completed.
 func (p *PushHandler) OnCompleted(root ocispec.Descriptor) error {
-	_, err := fmt.Fprintln(p.out, "Digest:", root.Digest)
+	_, err := fmt.Fprintln(p.out, "ArtifactType:", root.ArtifactType)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintln(p.out, "Digest:", root.Digest)
 	return err
 }
