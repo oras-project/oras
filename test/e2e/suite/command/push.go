@@ -371,6 +371,25 @@ var _ = Describe("Remote registry users:", func() {
 			Expect(manifest.Config).Should(Equal(artifact.EmptyLayerJSON))
 		})
 
+		It("should output artifact type when push is complete for image-spec v1.1", func() {
+			repo := pushTestRepo("print-artifact-type-v1-1")
+			tempDir := PrepareTempFiles()
+
+			ORAS("push", RegistryRef(ZOTHost, repo, tag), foobar.FileBarName, "-v", "--image-spec", "v1.1").
+				MatchKeyWords("ArtifactType: ", "application/vnd.unknown.artifact.v1").
+				WithWorkDir(tempDir).Exec()
+		})
+
+		It("should output artifact type when push is complete for image-spec v1.0 when --config is used", func() {
+			repo := pushTestRepo("print-artifact-type-v1-0-config")
+			configType := "config/type"
+			tempDir := PrepareTempFiles()
+
+			ORAS("push", RegistryRef(ZOTHost, repo, tag), "--config", fmt.Sprintf("%s:%s", foobar.FileConfigName, configType), foobar.FileBarName, "-v", "--image-spec", "v1.0").
+				MatchKeyWords("ArtifactType: ", configType).
+				WithWorkDir(tempDir).Exec()
+		})
+
 		It("should push v1.1-rc.4 artifact", func() {
 			repo := pushTestRepo("v1.1-artifact")
 			tempDir := PrepareTempFiles()
