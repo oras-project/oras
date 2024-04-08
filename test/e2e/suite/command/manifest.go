@@ -223,12 +223,12 @@ var _ = Describe("1.1 registry users:", func() {
 			MatchFile(fetchPath, multi_arch.Manifest, DefaultTimeout)
 		})
 
-		It("should fetch manifest to file and output full ref", func() {
+		It("should fetch manifest to file and output json", func() {
 			fetchPath := filepath.Join(GinkgoT().TempDir(), "fetchedImage")
 			digest := multi_arch.LinuxAMD64.Digest.String()
 			ref := RegistryRef(ZOTHost, ImageRepo, digest)
-			ORAS("manifest", "fetch", ref, "--output", fetchPath, "--format", "{{.mediaType}}").
-				MatchContent("application/vnd.oci.image.manifest.v1+json").Exec()
+			out := ORAS("manifest", "fetch", ref, "--output", fetchPath, "--format", "json").Exec().Out.Contents()
+			Expect(out).To(MatchJSON(multi_arch.LinuxAMD64Manifest))
 			MatchFile(fetchPath, multi_arch.LinuxAMD64Manifest, DefaultTimeout)
 		})
 
@@ -250,9 +250,7 @@ var _ = Describe("1.1 registry users:", func() {
 		It("should fetch manifest with platform validation and output json", func() {
 			out := ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), "--platform", "linux/amd64", "--format", "json").
 				Exec().Out.Contents()
-			var manifest ocispec.Manifest
-			Expect(json.Unmarshal(out, &manifest)).ShouldNot(HaveOccurred())
-			Expect(manifest.MediaType).To(Equal(multi_arch.LinuxAMD64.MediaType))
+			Expect(out).To(MatchJSON(multi_arch.LinuxAMD64Manifest))
 		})
 
 		It("should fetch manifest and format output", func() {

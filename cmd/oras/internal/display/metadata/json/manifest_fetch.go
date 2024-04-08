@@ -17,14 +17,10 @@ package json
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
-	"reflect"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
-	"oras.land/oras/cmd/oras/internal/display/metadata/model"
-	"oras.land/oras/internal/docker"
 )
 
 // ManifestFetchHandler handles JSON metadata output for manifest fetch events.
@@ -41,14 +37,9 @@ func NewManifestFetchHandler(out io.Writer) metadata.ManifestFetchHandler {
 
 // OnFetched is called after the manifest fetch is completed.
 func (h *ManifestFetchHandler) OnFetched(content []byte, desc ocispec.Descriptor) error {
-	switch desc.MediaType {
-	case ocispec.MediaTypeImageManifest, docker.MediaTypeManifest:
-		var manifest ocispec.Manifest
-		if err := json.Unmarshal(content, &manifest); err != nil {
-			return err
-		}
-		return printJSON(h.out, model.ToMappable(reflect.ValueOf(manifest)))
-	default:
-		return fmt.Errorf("cannot apply template: unsupported media type %s", desc.MediaType)
+	var manifest map[string]any
+	if err := json.Unmarshal(content, &manifest); err != nil {
+		return err
 	}
+	return printJSON(h.out, manifest)
 }
