@@ -25,9 +25,9 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// errorWriter implements the io.Writer interface returns an error in Write.
 type errorWriter struct{}
 
+// Write implements the io.Writer interface returns an error in Write.
 func (w *errorWriter) Write(p []byte) (n int, err error) {
 	return 0, fmt.Errorf("got an error")
 }
