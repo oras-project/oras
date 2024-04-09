@@ -13,19 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package template
+package utils
 
-import (
-	"io"
-	"text/template"
+import v1 "github.com/opencontainers/image-spec/specs-go/v1"
 
-	"github.com/Masterminds/sprig/v3"
-)
-
-func parseAndWrite(out io.Writer, object any, templateStr string) error {
-	t, err := template.New("format output").Funcs(sprig.FuncMap()).Parse(templateStr)
-	if err != nil {
-		return err
-	}
-	return t.Execute(out, object)
+// GenerateContentKey generates a unique key for each content descriptor, using
+// its digest and name if applicable.
+func GenerateContentKey(desc v1.Descriptor) string {
+	return desc.Digest.String() + desc.Annotations[v1.AnnotationTitle]
 }
+
+const (
+	PullPromptDownloading = "Downloading"
+	PullPromptPulled      = "Pulled     "
+	PullPromptProcessing  = "Processing "
+	PullPromptSkipped     = "Skipped    "
+	PullPromptRestored    = "Restored   "
+	PullPromptDownloaded  = "Downloaded "
+)

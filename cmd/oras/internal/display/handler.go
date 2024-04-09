@@ -18,6 +18,7 @@ package display
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -36,12 +37,12 @@ import (
 var ErrInvalidOutputType = errors.New("output type can only be tree, table or json")
 
 // NewPushHandler returns status and metadata handlers for push command.
-func NewPushHandler(format string, tty *os.File, verbose bool) (status.PushHandler, metadata.PushHandler) {
+func NewPushHandler(format string, tty *os.File, out io.Writer, verbose bool) (status.PushHandler, metadata.PushHandler) {
 	var statusHandler status.PushHandler
 	if tty != nil {
 		statusHandler = status.NewTTYPushHandler(tty)
 	} else if format == "" {
-		statusHandler = status.NewTextPushHandler(verbose)
+		statusHandler = status.NewTextPushHandler(out, verbose)
 	} else {
 		statusHandler = status.NewDiscardHandler()
 	}
@@ -49,23 +50,22 @@ func NewPushHandler(format string, tty *os.File, verbose bool) (status.PushHandl
 	var metadataHandler metadata.PushHandler
 	switch format {
 	case "":
-		metadataHandler = text.NewPushHandler()
+		metadataHandler = text.NewPushHandler(out)
 	case "json":
-		metadataHandler = json.NewPushHandler()
+		metadataHandler = json.NewPushHandler(out)
 	default:
-		metadataHandler = template.NewPushHandler(format)
+		metadataHandler = template.NewPushHandler(out, format)
 	}
-
 	return statusHandler, metadataHandler
 }
 
 // NewAttachHandler returns status and metadata handlers for attach command.
-func NewAttachHandler(format string, tty *os.File, verbose bool) (status.AttachHandler, metadata.AttachHandler) {
+func NewAttachHandler(format string, tty *os.File, out io.Writer, verbose bool) (status.AttachHandler, metadata.AttachHandler) {
 	var statusHandler status.AttachHandler
 	if tty != nil {
 		statusHandler = status.NewTTYAttachHandler(tty)
 	} else if format == "" {
-		statusHandler = status.NewTextAttachHandler(verbose)
+		statusHandler = status.NewTextAttachHandler(out, verbose)
 	} else {
 		statusHandler = status.NewDiscardHandler()
 	}
@@ -73,13 +73,35 @@ func NewAttachHandler(format string, tty *os.File, verbose bool) (status.AttachH
 	var metadataHandler metadata.AttachHandler
 	switch format {
 	case "":
-		metadataHandler = text.NewAttachHandler()
+		metadataHandler = text.NewAttachHandler(out)
 	case "json":
-		metadataHandler = json.NewAttachHandler()
+		metadataHandler = json.NewAttachHandler(out)
 	default:
-		metadataHandler = template.NewAttachHandler(format)
+		metadataHandler = template.NewAttachHandler(out, format)
+	}
+	return statusHandler, metadataHandler
+}
+
+// NewPullHandler returns status and metadata handlers for pull command.
+func NewPullHandler(format string, path string, tty *os.File, out io.Writer, verbose bool) (status.PullHandler, metadata.PullHandler) {
+	var statusHandler status.PullHandler
+	if tty != nil {
+		statusHandler = status.NewTTYPullHandler(tty)
+	} else if format == "" {
+		statusHandler = status.NewTextPullHandler(out, verbose)
+	} else {
+		statusHandler = status.NewDiscardHandler()
 	}
 
+	var metadataHandler metadata.PullHandler
+	switch format {
+	case "":
+		metadataHandler = text.NewPullHandler(out)
+	case "json":
+		metadataHandler = json.NewPullHandler(out, path)
+	default:
+		metadataHandler = template.NewPullHandler(out, path, format)
+	}
 	return statusHandler, metadataHandler
 }
 

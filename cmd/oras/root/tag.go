@@ -21,7 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/registry"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
@@ -74,11 +74,16 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
-			if _, err := registry.ParseReference(opts.RawReference); err != nil {
-				return fmt.Errorf("unable to add tag for '%s': %w", opts.RawReference, err)
-			}
 			opts.targetRefs = args[1:]
-			return option.Parse(&opts)
+			if err := option.Parse(cmd, &opts); err != nil {
+				if inner, ok := err.(*oerrors.Error); ok {
+					if errors.Is(inner, errdef.ErrInvalidReference) {
+						inner.Err = fmt.Errorf("unable to add tag for '%s': %w", opts.RawReference, inner.Err)
+					}
+				}
+				return err
+			}
+			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return tagManifest(cmd, &opts)

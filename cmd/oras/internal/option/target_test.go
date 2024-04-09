@@ -23,15 +23,16 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote/errcode"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 )
 
 func TestTarget_Parse_oci(t *testing.T) {
 	opts := Target{IsOCILayout: true}
-
-	if err := opts.Parse(); err != nil {
-		t.Errorf("Target.Parse() error = %v", err)
+	err := opts.Parse(nil)
+	if !errors.Is(err, errdef.ErrInvalidReference) {
+		t.Errorf("Target.Parse() error = %v, expect %v", err, errdef.ErrInvalidReference)
 	}
 	if opts.Type != TargetTypeOCILayout {
 		t.Errorf("Target.Parse() failed, got %q, want %q", opts.Type, TargetTypeOCILayout)
@@ -43,7 +44,7 @@ func TestTarget_Parse_remote(t *testing.T) {
 		RawReference: "mocked/test",
 		IsOCILayout:  false,
 	}
-	if err := opts.Parse(); err != nil {
+	if err := opts.Parse(nil); err != nil {
 		t.Errorf("Target.Parse() error = %v", err)
 	}
 	if opts.Type != TargetTypeRemote {
@@ -56,42 +57,44 @@ func TestTarget_Parse_remote_err(t *testing.T) {
 		RawReference: "/test",
 		IsOCILayout:  false,
 	}
-	if err := opts.Parse(); err == nil {
+	if err := opts.Parse(nil); err == nil {
 		t.Errorf("expect Target.Parse() to fail but not")
 	}
 }
 
 func Test_parseOCILayoutReference(t *testing.T) {
-	type args struct {
-		raw string
+	opts := Target{
+		RawReference: "/test",
+		IsOCILayout:  false,
 	}
 	tests := []struct {
 		name    string
-		args    args
+		raw     string
 		want    string
 		want1   string
 		wantErr bool
 	}{
-		{"Empty input", args{raw: ""}, "", "", true},
-		{"Empty path and tag", args{raw: ":"}, "", "", true},
-		{"Empty path and digest", args{raw: "@"}, "", "", false},
-		{"Empty digest", args{raw: "path@"}, "path", "", false},
-		{"Empty tag", args{raw: "path:"}, "path", "", false},
-		{"path and digest", args{raw: "path@digest"}, "path", "digest", false},
-		{"path and tag", args{raw: "path:tag"}, "path", "tag", false},
+		{"Empty input", "", "", "", true},
+		{"Empty path and tag", ":", "", "", true},
+		{"Empty path and digest", "@", "", "", false},
+		{"Empty digest", "path@", "path", "", false},
+		{"Empty tag", "path:", "path", "", false},
+		{"path and digest", "path@digest", "path", "digest", false},
+		{"path and tag", "path:tag", "path", "tag", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1, err := parseOCILayoutReference(tt.args.raw)
+			opts.RawReference = tt.raw
+			err := opts.parseOCILayoutReference()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseOCILayoutReference() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if got != tt.want {
-				t.Errorf("parseOCILayoutReference() got = %v, want %v", got, tt.want)
+			if opts.Path != tt.want {
+				t.Errorf("parseOCILayoutReference() got = %v, want %v", opts.Path, tt.want)
 			}
-			if got1 != tt.want1 {
-				t.Errorf("parseOCILayoutReference() got1 = %v, want %v", got1, tt.want1)
+			if opts.Reference != tt.want1 {
+				t.Errorf("parseOCILayoutReference() got1 = %v, want %v", opts.Reference, tt.want1)
 			}
 		})
 	}

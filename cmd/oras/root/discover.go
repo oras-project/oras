@@ -80,7 +80,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 				opts.Template = "tree"
 			}
 			opts.RawReference = args[0]
-			return option.Parse(&opts)
+			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runDiscover(cmd, &opts)

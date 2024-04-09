@@ -105,15 +105,31 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
 			opts.FileRefs = args[1:]
-			if err := option.Parse(&opts); err != nil {
+			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
+
+			if opts.manifestConfigRef != "" && opts.artifactType == "" {
+				switch opts.Flag {
+				case option.ImageSpecAuto:
+					// switch to v1.0 manifest since artifact type is suggested by OCI v1.1
+					// artifact guidance but is not presented
+					// see https://github.com/opencontainers/image-spec/blob/e7f7c0ca69b21688c3cea7c87a04e4503e6099e2/manifest.md?plain=1#L170
+					opts.PackVersion = oras.PackManifestVersion1_0
+				case option.ImageSpecV1_1:
+					return &oerrors.Error{
+						Err:            errors.New(`missing artifact type for OCI image-spec v1.1 artifacts`),
+						Recommendation: "set an artifact type via `--artifact-type` or consider image spec v1.0",
+					}
+				}
+			}
+
 			switch opts.PackVersion {
 			case oras.PackManifestVersion1_0:
 				if opts.manifestConfigRef != "" && opts.artifactType != "" {
 					return errors.New("--artifact-type and --config cannot both be provided for 1.0 OCI image")
 				}
-			case oras.PackManifestVersion1_1_RC4:
+			case oras.PackManifestVersion1_1:
 				if opts.manifestConfigRef == "" && opts.artifactType == "" {
 					opts.artifactType = oras.MediaTypeUnknownArtifact
 				}
@@ -138,7 +154,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	if err != nil {
 		return err
 	}
-	displayStatus, displayMetadata := display.NewPushHandler(opts.Template, opts.TTY, opts.Verbose)
+	displayStatus, displayMetadata := display.NewPushHandler(opts.Template, opts.TTY, cmd.OutOrStdout(), opts.Verbose)
 
 	// prepare pack
 	packOpts := oras.PackManifestOptions{
@@ -184,7 +200,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	if err != nil {
 		return err
 	}
-	dst, err = displayStatus.TrackTarget(dst)
+	dst, stopTrack, err := displayStatus.TrackTarget(dst)
 	if err != nil {
 		return err
 	}
@@ -206,7 +222,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	}
 
 	// Push
-	root, err := doPush(dst, pack, copy)
+	root, err := doPush(dst, stopTrack, pack, copy)
 	if err != nil {
 		return err
 	}
@@ -240,10 +256,10 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	return opts.ExportManifest(ctx, memoryStore, root)
 }
 
-func doPush(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
-	if tracked, ok := dst.(track.GraphTarget); ok {
-		defer tracked.Close()
-	}
+func doPush(dst oras.Target, stopTrack status.StopTrackTargetFunc, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
+	defer func() {
+		_ = stopTrack()
+	}()
 	// Push
 	return pushArtifact(dst, pack, copy)
 }

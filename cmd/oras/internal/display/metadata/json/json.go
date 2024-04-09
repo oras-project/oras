@@ -17,11 +17,11 @@ package json
 
 import (
 	"encoding/json"
-	"os"
+	"io"
 )
 
-func PrintJSON(object any) error {
-	encoder := json.NewEncoder(os.Stdout)
+func printJSON(out io.Writer, object any) error {
+	encoder := json.NewEncoder(out)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(object)
 }
