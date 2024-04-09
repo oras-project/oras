@@ -18,6 +18,7 @@ package tree
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -36,6 +37,7 @@ type discoverHandler struct {
 	desc         ocispec.Descriptor
 	artifactType string
 	verbose      bool
+	out          io.Writer
 }
 
 // OnDiscovered implements metadata.DiscoverHandler.
@@ -82,7 +84,7 @@ func (d *discoverHandler) fetchAllReferrers(ctx context.Context, repo oras.ReadO
 }
 
 // NewDiscoverHandler creates a new handler for discover events.
-func NewDiscoverHandler(ctx context.Context, path string, target oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, verbose bool) metadata.DiscoverHandler {
+func NewDiscoverHandler(ctx context.Context, out io.Writer, path string, target oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, verbose bool) metadata.DiscoverHandler {
 	return &discoverHandler{
 		ctx:          ctx,
 		path:         path,
@@ -90,5 +92,6 @@ func NewDiscoverHandler(ctx context.Context, path string, target oras.ReadOnlyGr
 		desc:         desc,
 		artifactType: artifactType,
 		verbose:      verbose,
+		out:          out,
 	}
 }

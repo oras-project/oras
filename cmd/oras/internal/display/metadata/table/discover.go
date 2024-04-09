@@ -18,6 +18,7 @@ package table
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -37,28 +38,29 @@ type discoverHandler struct {
 	artifactType string
 	rawReference string
 	verbose      bool
+	out          io.Writer
 }
 
 // OnDiscovered implements metadata.DiscoverHandler.
-func (d discoverHandler) OnDiscovered() error {
-	refs, err := registry.Referrers(d.ctx, d.repo, d.desc, d.artifactType)
+func (h *discoverHandler) OnDiscovered() error {
+	refs, err := registry.Referrers(h.ctx, h.repo, h.desc, h.artifactType)
 	if err != nil {
 		return err
 	}
 	if n := len(refs); n > 1 {
-		fmt.Println("Discovered", n, "artifacts referencing", d.rawReference)
+		fmt.Println("Discovered", n, "artifacts referencing", h.rawReference)
 	} else {
-		fmt.Println("Discovered", n, "artifact referencing", d.rawReference)
+		fmt.Println("Discovered", n, "artifact referencing", h.rawReference)
 	}
-	fmt.Println("Digest:", d.desc.Digest)
+	fmt.Println("Digest:", h.desc.Digest)
 	if len(refs) > 0 {
 		fmt.Println()
-		return printDiscoveredReferrersTable(refs, d.verbose)
+		return h.printDiscoveredReferrersTable(refs, h.verbose)
 	}
 	return nil
 }
 
-func printDiscoveredReferrersTable(refs []ocispec.Descriptor, verbose bool) error {
+func (h *discoverHandler) printDiscoveredReferrersTable(refs []ocispec.Descriptor, verbose bool) error {
 	typeNameTitle := "Artifact Type"
 	typeNameLength := len(typeNameTitle)
 	for _, ref := range refs {
@@ -75,7 +77,7 @@ func printDiscoveredReferrersTable(refs []ocispec.Descriptor, verbose bool) erro
 	for _, ref := range refs {
 		print(ref.ArtifactType, ref.Digest)
 		if verbose {
-			if err := json.PrintJSON(ref); err != nil {
+			if err := json.PrintJSON(h.out, ref); err != nil {
 				return fmt.Errorf("error printing JSON: %w", err)
 			}
 		}
@@ -84,8 +86,8 @@ func printDiscoveredReferrersTable(refs []ocispec.Descriptor, verbose bool) erro
 }
 
 // NewDiscoverHandler creates a new handler for discover events.
-func NewDiscoverHandler(ctx context.Context, template string, path string, artifactType string, desc ocispec.Descriptor, repo oras.ReadOnlyGraphTarget, rawReference string, verbose bool) metadata.DiscoverHandler {
-	return discoverHandler{
+func NewDiscoverHandler(ctx context.Context, out io.Writer, template string, path string, artifactType string, desc ocispec.Descriptor, repo oras.ReadOnlyGraphTarget, rawReference string, verbose bool) metadata.DiscoverHandler {
+	return &discoverHandler{
 		template:     template,
 		path:         path,
 		ctx:          ctx,
@@ -94,5 +96,6 @@ func NewDiscoverHandler(ctx context.Context, template string, path string, artif
 		artifactType: artifactType,
 		rawReference: rawReference,
 		verbose:      verbose,
+		out:          out,
 	}
 }

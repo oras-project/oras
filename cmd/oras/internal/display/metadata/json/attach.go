@@ -38,5 +38,5 @@ func NewAttachHandler(out io.Writer) metadata.AttachHandler {
 
 // OnCompleted is called when the attach command is completed.
 func (ah *AttachHandler) OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error {
-	return printJSON(ah.out, model.NewPush(root, opts.Path))
+	return PrintJSON(ah.out, model.NewPush(root, opts.Path))
 }

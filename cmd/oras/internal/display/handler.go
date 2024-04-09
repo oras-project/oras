@@ -106,15 +106,15 @@ func NewPullHandler(format string, path string, tty *os.File, out io.Writer, ver
 }
 
 // NewDiscoverHandler returns status and metadata handlers for discover command.
-func NewDiscoverHandler(ctx context.Context, outputType string, path string, artifactType string, rawReference string, desc ocispec.Descriptor, repo option.ReadOnlyGraphTagFinderTarget, verbose bool) metadata.DiscoverHandler {
+func NewDiscoverHandler(ctx context.Context, out io.Writer, outputType string, path string, artifactType string, rawReference string, desc ocispec.Descriptor, repo option.ReadOnlyGraphTagFinderTarget, verbose bool) metadata.DiscoverHandler {
 	if outputType == "tree" || outputType == "" {
-		return tree.NewDiscoverHandler(ctx, path, repo, desc, artifactType, verbose)
+		return tree.NewDiscoverHandler(ctx, out, path, repo, desc, artifactType, verbose)
 	}
 	switch outputType {
 	case "table":
-		return table.NewDiscoverHandler(ctx, outputType, path, artifactType, desc, repo, rawReference, verbose)
+		return table.NewDiscoverHandler(ctx, out, outputType, path, artifactType, desc, repo, rawReference, verbose)
 	case "json":
-		return json.NewDiscoverHandler(ctx, outputType, path, artifactType, desc, repo)
+		return json.NewDiscoverHandler(ctx, out, outputType, path, artifactType, desc, repo)
 	}
-	return template.NewDiscoverHandler(ctx, outputType, path, artifactType, desc, repo)
+	return template.NewDiscoverHandler(ctx, out, outputType, path, artifactType, desc, repo)
 }

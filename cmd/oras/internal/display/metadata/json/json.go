@@ -20,7 +20,7 @@ import (
 	"io"
 )
 
-func printJSON(out io.Writer, object any) error {
+func PrintJSON(out io.Writer, object any) error {
 	encoder := json.NewEncoder(out)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(object)

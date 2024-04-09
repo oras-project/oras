@@ -17,6 +17,7 @@ package template
 
 import (
 	"context"
+	"io"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
@@ -33,19 +34,20 @@ type DiscoverHandler struct {
 	path         string
 	desc         ocispec.Descriptor
 	artifactType string
+	out          io.Writer
 }
 
 // OnDiscovered implements metadata.DiscoverHandler.
-func (d *DiscoverHandler) OnDiscovered() error {
-	refs, err := registry.Referrers(d.ctx, d.repo, d.desc, d.artifactType)
+func (h *DiscoverHandler) OnDiscovered() error {
+	refs, err := registry.Referrers(h.ctx, h.repo, h.desc, h.artifactType)
 	if err != nil {
 		return err
 	}
-	return parseAndWrite(model.NewDiscover(d.path, refs), d.template)
+	return parseAndWrite(h.out, model.NewDiscover(h.path, refs), h.template)
 }
 
 // NewDiscoverHandler creates a new handler for discover events.
-func NewDiscoverHandler(ctx context.Context, template string, path string, artifactType string, desc ocispec.Descriptor, repo oras.ReadOnlyGraphTarget) metadata.DiscoverHandler {
+func NewDiscoverHandler(ctx context.Context, out io.Writer, template string, path string, artifactType string, desc ocispec.Descriptor, repo oras.ReadOnlyGraphTarget) metadata.DiscoverHandler {
 	return &DiscoverHandler{
 		template:     template,
 		path:         path,
@@ -53,5 +55,6 @@ func NewDiscoverHandler(ctx context.Context, template string, path string, artif
 		repo:         repo,
 		desc:         desc,
 		artifactType: artifactType,
+		out:          out,
 	}
 }

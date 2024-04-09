@@ -45,5 +45,5 @@ func (ph *PushHandler) OnCopied(opts *option.Target) error {
 
 // OnCompleted is called after the push is completed.
 func (ph *PushHandler) OnCompleted(root ocispec.Descriptor) error {
-	return printJSON(ph.out, model.NewPush(root, ph.path))
+	return PrintJSON(ph.out, model.NewPush(root, ph.path))
 }

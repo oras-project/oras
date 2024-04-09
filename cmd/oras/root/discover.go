@@ -118,13 +118,13 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 	}
 
 	if opts.Template != "" {
-		handler := display.NewDiscoverHandler(ctx, opts.Template, opts.Path, opts.artifactType, opts.RawReference, desc, repo, opts.Verbose)
+		handler := display.NewDiscoverHandler(ctx, cmd.OutOrStdout(), opts.Template, opts.Path, opts.artifactType, opts.RawReference, desc, repo, opts.Verbose)
 		return handler.OnDiscovered()
 	}
 
 	// deprecated --output
 	fmt.Fprintf(os.Stderr, "[DEPRECATED] --output is deprecated, try `--format %s` instead\n", opts.outputType)
-	handler := display.NewDiscoverHandler(ctx, opts.outputType, opts.Path, opts.artifactType, opts.RawReference, desc, repo, opts.Verbose)
+	handler := display.NewDiscoverHandler(ctx, cmd.OutOrStdout(), opts.outputType, opts.Path, opts.artifactType, opts.RawReference, desc, repo, opts.Verbose)
 	if _, ok := handler.(*template.DiscoverHandler); ok {
 		return errors.New("output type can only be tree, table or json")
 	}
