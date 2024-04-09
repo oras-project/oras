@@ -23,3 +23,10 @@ updates:
     directory: "/test/e2e/"
     schedule:
       interval: "daily"
+    
+  - package-ecosystem: "github-actions"
+    # Workflow files stored in the
+    # default location of `.github/workflows`
+    directory: "/"
+    schedule:
+      interval: "weekly"
