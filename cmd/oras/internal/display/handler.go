@@ -16,7 +16,6 @@ limitations under the License.
 package display
 
 import (
-	"errors"
 	"io"
 	"os"
 
@@ -33,9 +32,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/internal/registryutil"
 )
-
-// ErrInvalidOutputType denotes the error for invalid output type.
-var ErrInvalidOutputType = errors.New("output type can only be tree, table or json")
 
 // NewPushHandler returns status and metadata handlers for push command.
 func NewPushHandler(format string, tty *os.File, out io.Writer, verbose bool) (status.PushHandler, metadata.PushHandler) {
