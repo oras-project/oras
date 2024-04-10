@@ -15,7 +15,12 @@ limitations under the License.
 
 package utils
 
-import v1 "github.com/opencontainers/image-spec/specs-go/v1"
+import (
+	"encoding/json"
+	"io"
+
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
+)
 
 // GenerateContentKey generates a unique key for each content descriptor, using
 // its digest and name if applicable.
@@ -31,3 +36,10 @@ const (
 	PullPromptRestored    = "Restored   "
 	PullPromptDownloaded  = "Downloaded "
 )
+
+// PrintObjectToJSON prints the object to the writer in JSON format.
+func PrintObjectToJSON(out io.Writer, object any) error {
+	encoder := json.NewEncoder(out)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(object)
+}

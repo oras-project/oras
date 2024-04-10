@@ -22,7 +22,7 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
-	"oras.land/oras/cmd/oras/internal/display/metadata/json"
+	"oras.land/oras/cmd/oras/internal/display/utils"
 	"oras.land/oras/internal/registryutil"
 )
 
@@ -73,7 +73,7 @@ func (h *discoverHandler) printDiscoveredReferrersTable(refs []ocispec.Descripto
 	for _, ref := range refs {
 		print(ref.ArtifactType, ref.Digest)
 		if verbose {
-			if err := json.PrintJSON(h.out, ref); err != nil {
+			if err := utils.PrintObjectToJSON(h.out, ref); err != nil {
 				return fmt.Errorf("error printing JSON: %w", err)
 			}
 		}

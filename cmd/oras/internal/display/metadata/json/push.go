@@ -21,6 +21,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
+	"oras.land/oras/cmd/oras/internal/display/utils"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -45,5 +46,5 @@ func (ph *PushHandler) OnCopied(opts *option.Target) error {
 
 // OnCompleted is called after the push is completed.
 func (ph *PushHandler) OnCompleted(root ocispec.Descriptor) error {
-	return PrintJSON(ph.out, model.NewPush(root, ph.path))
+	return utils.PrintObjectToJSON(ph.out, model.NewPush(root, ph.path))
 }

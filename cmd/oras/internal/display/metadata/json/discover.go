@@ -21,6 +21,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
+	"oras.land/oras/cmd/oras/internal/display/utils"
 	"oras.land/oras/internal/registryutil"
 )
 
@@ -38,7 +39,7 @@ func (h DiscoverHandler) OnDiscovered() error {
 	if err != nil {
 		return err
 	}
-	return PrintJSON(h.out, model.NewDiscover(h.path, refs))
+	return utils.PrintObjectToJSON(h.out, model.NewDiscover(h.path, refs))
 }
 
 // NewDiscoverHandler creates a new handler for discover events.
