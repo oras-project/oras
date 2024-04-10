@@ -16,26 +16,22 @@ limitations under the License.
 package table
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/json"
+	"oras.land/oras/internal/registryutil"
 )
 
 // discoverHandler handles json metadata output for discover events.
 type discoverHandler struct {
-	ctx          context.Context
-	repo         oras.ReadOnlyGraphTarget
+	referrers    registryutil.ReferrersFunc
 	template     string
 	path         string
 	desc         ocispec.Descriptor
-	artifactType string
 	rawReference string
 	verbose      bool
 	out          io.Writer
@@ -43,7 +39,7 @@ type discoverHandler struct {
 
 // OnDiscovered implements metadata.DiscoverHandler.
 func (h *discoverHandler) OnDiscovered() error {
-	refs, err := registry.Referrers(h.ctx, h.repo, h.desc, h.artifactType)
+	refs, err := h.referrers(h.desc)
 	if err != nil {
 		return err
 	}
@@ -86,16 +82,14 @@ func (h *discoverHandler) printDiscoveredReferrersTable(refs []ocispec.Descripto
 }
 
 // NewDiscoverHandler creates a new handler for discover events.
-func NewDiscoverHandler(ctx context.Context, out io.Writer, template string, path string, artifactType string, desc ocispec.Descriptor, repo oras.ReadOnlyGraphTarget, rawReference string, verbose bool) metadata.DiscoverHandler {
+func NewDiscoverHandler(out io.Writer, template string, path string, desc ocispec.Descriptor, referrers registryutil.ReferrersFunc, rawReference string, verbose bool) metadata.DiscoverHandler {
 	return &discoverHandler{
 		template:     template,
 		path:         path,
-		ctx:          ctx,
-		repo:         repo,
 		desc:         desc,
-		artifactType: artifactType,
 		rawReference: rawReference,
 		verbose:      verbose,
 		out:          out,
+		referrers:    referrers,
 	}
 }

@@ -20,9 +20,11 @@ import (
 	"fmt"
 	"os"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/display/metadata/template"
@@ -117,14 +119,17 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 		return err
 	}
 
+	var referrers = func(d ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		return registry.Referrers(ctx, repo, d, opts.artifactType)
+	}
 	if opts.Template != "" {
-		handler := display.NewDiscoverHandler(ctx, cmd.OutOrStdout(), opts.Template, opts.Path, opts.artifactType, opts.RawReference, desc, repo, opts.Verbose)
+		handler := display.NewDiscoverHandler(cmd.OutOrStdout(), opts.Template, opts.Path, opts.RawReference, desc, referrers, opts.Verbose)
 		return handler.OnDiscovered()
 	}
 
 	// deprecated --output
 	fmt.Fprintf(os.Stderr, "[DEPRECATED] --output is deprecated, try `--format %s` instead\n", opts.outputType)
-	handler := display.NewDiscoverHandler(ctx, cmd.OutOrStdout(), opts.outputType, opts.Path, opts.artifactType, opts.RawReference, desc, repo, opts.Verbose)
+	handler := display.NewDiscoverHandler(cmd.OutOrStdout(), opts.outputType, opts.Path, opts.RawReference, desc, referrers, opts.Verbose)
 	if _, ok := handler.(*template.DiscoverHandler); ok {
 		return errors.New("output type can only be tree, table or json")
 	}

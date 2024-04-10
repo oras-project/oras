@@ -16,42 +16,38 @@ limitations under the License.
 package tree
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"gopkg.in/yaml.v3"
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
+	"oras.land/oras/internal/registryutil"
 	"oras.land/oras/internal/tree"
 )
 
 // discoverHandler handles json metadata output for discover events.
 type discoverHandler struct {
-	ctx          context.Context
-	path         string
-	target       oras.ReadOnlyGraphTarget
-	desc         ocispec.Descriptor
-	artifactType string
-	verbose      bool
-	out          io.Writer
+	referrers registryutil.ReferrersFunc
+	path      string
+	desc      ocispec.Descriptor
+	verbose   bool
+	out       io.Writer
 }
 
 // OnDiscovered implements metadata.DiscoverHandler.
 func (d *discoverHandler) OnDiscovered() error {
 	root := tree.New(fmt.Sprintf("%s@%s", d.path, d.desc.Digest))
-	err := d.fetchAllReferrers(d.ctx, d.target, d.desc, root)
+	err := d.fetchAllReferrers(d.desc, root)
 	if err != nil {
 		return err
 	}
 	return tree.Print(root)
 }
 
-func (d *discoverHandler) fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, node *tree.Node) error {
-	results, err := registry.Referrers(ctx, repo, desc, d.artifactType)
+func (d *discoverHandler) fetchAllReferrers(desc ocispec.Descriptor, node *tree.Node) error {
+	results, err := d.referrers(desc)
 	if err != nil {
 		return err
 	}
@@ -69,7 +65,6 @@ func (d *discoverHandler) fetchAllReferrers(ctx context.Context, repo oras.ReadO
 			}
 		}
 		err := d.fetchAllReferrers(
-			ctx, repo,
 			ocispec.Descriptor{
 				Digest:    r.Digest,
 				Size:      r.Size,
@@ -84,14 +79,12 @@ func (d *discoverHandler) fetchAllReferrers(ctx context.Context, repo oras.ReadO
 }
 
 // NewDiscoverHandler creates a new handler for discover events.
-func NewDiscoverHandler(ctx context.Context, out io.Writer, path string, target oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, verbose bool) metadata.DiscoverHandler {
+func NewDiscoverHandler(out io.Writer, path string, referrersFunc registryutil.ReferrersFunc, desc ocispec.Descriptor, verbose bool) metadata.DiscoverHandler {
 	return &discoverHandler{
-		ctx:          ctx,
-		path:         path,
-		target:       target,
-		desc:         desc,
-		artifactType: artifactType,
-		verbose:      verbose,
-		out:          out,
+		path:      path,
+		referrers: referrersFunc,
+		desc:      desc,
+		verbose:   verbose,
+		out:       out,
 	}
 }

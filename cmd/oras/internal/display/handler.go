@@ -16,7 +16,6 @@ limitations under the License.
 package display
 
 import (
-	"context"
 	"errors"
 	"io"
 	"os"
@@ -30,7 +29,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
 	"oras.land/oras/cmd/oras/internal/display/metadata/tree"
 	"oras.land/oras/cmd/oras/internal/display/status"
-	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/registryutil"
 )
 
 // ErrInvalidOutputType denotes the error for invalid output type.
@@ -106,15 +105,15 @@ func NewPullHandler(format string, path string, tty *os.File, out io.Writer, ver
 }
 
 // NewDiscoverHandler returns status and metadata handlers for discover command.
-func NewDiscoverHandler(ctx context.Context, out io.Writer, outputType string, path string, artifactType string, rawReference string, desc ocispec.Descriptor, repo option.ReadOnlyGraphTagFinderTarget, verbose bool) metadata.DiscoverHandler {
+func NewDiscoverHandler(out io.Writer, outputType string, path string, rawReference string, desc ocispec.Descriptor, referrers registryutil.ReferrersFunc, verbose bool) metadata.DiscoverHandler {
 	if outputType == "tree" || outputType == "" {
-		return tree.NewDiscoverHandler(ctx, out, path, repo, desc, artifactType, verbose)
+		return tree.NewDiscoverHandler(out, path, referrers, desc, verbose)
 	}
 	switch outputType {
 	case "table":
-		return table.NewDiscoverHandler(ctx, out, outputType, path, artifactType, desc, repo, rawReference, verbose)
+		return table.NewDiscoverHandler(out, outputType, path, desc, referrers, rawReference, verbose)
 	case "json":
-		return json.NewDiscoverHandler(ctx, out, path, artifactType, desc, repo)
+		return json.NewDiscoverHandler(out, path, desc, referrers)
 	}
-	return template.NewDiscoverHandler(ctx, out, outputType, path, artifactType, desc, repo)
+	return template.NewDiscoverHandler(out, outputType, path, desc, referrers)
 }
