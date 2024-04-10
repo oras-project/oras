@@ -30,7 +30,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
 	"oras.land/oras/cmd/oras/internal/display/metadata/tree"
 	"oras.land/oras/cmd/oras/internal/display/status"
-	"oras.land/oras/internal/registryutil"
 )
 
 // NewPushHandler returns status and metadata handlers for push command.
@@ -103,17 +102,17 @@ func NewPullHandler(format string, path string, tty *os.File, out io.Writer, ver
 }
 
 // NewDiscoverHandler returns status and metadata handlers for discover command.
-func NewDiscoverHandler(out io.Writer, outputType string, path string, rawReference string, desc ocispec.Descriptor, referrers registryutil.ReferrersFunc, verbose bool) metadata.DiscoverHandler {
-	if outputType == "tree" || outputType == "" {
-		return tree.NewDiscoverHandler(out, path, referrers, desc, verbose)
-	}
+func NewDiscoverHandler(out io.Writer, outputType string, path string, rawReference string, desc ocispec.Descriptor, verbose bool) metadata.DiscoverHandler {
 	switch outputType {
+	case "tree", "":
+		return tree.NewDiscoverHandler(out, path, desc, verbose)
 	case "table":
-		return table.NewDiscoverHandler(out, outputType, path, desc, referrers, rawReference, verbose)
+		return table.NewDiscoverHandler(out, rawReference, desc, verbose)
 	case "json":
-		return json.NewDiscoverHandler(out, path, desc, referrers)
+		return json.NewDiscoverHandler(out, desc, path)
+	default:
+		return template.NewDiscoverHandler(out, desc, path, outputType)
 	}
-	return template.NewDiscoverHandler(out, outputType, path, desc, referrers)
 }
 
 // NewManifestFetchHandler returns a manifest fetch handler.

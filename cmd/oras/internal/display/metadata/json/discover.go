@@ -16,38 +16,45 @@ limitations under the License.
 package json
 
 import (
+	"fmt"
 	"io"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
 	"oras.land/oras/cmd/oras/internal/display/utils"
-	"oras.land/oras/internal/registryutil"
 )
 
 // DiscoverHandler handles json metadata output for discover events.
 type DiscoverHandler struct {
-	path      string
-	desc      ocispec.Descriptor
 	out       io.Writer
-	referrers registryutil.ReferrersFunc
-}
-
-// OnDiscovered implements metadata.DiscoverHandler.
-func (h DiscoverHandler) OnDiscovered() error {
-	refs, err := h.referrers(h.desc)
-	if err != nil {
-		return err
-	}
-	return utils.PrintPrettyJSON(h.out, model.NewDiscover(h.path, refs))
+	root      ocispec.Descriptor
+	path      string
+	referrers []ocispec.Descriptor
 }
 
 // NewDiscoverHandler creates a new handler for discover events.
-func NewDiscoverHandler(out io.Writer, path string, desc ocispec.Descriptor, referrers registryutil.ReferrersFunc) metadata.DiscoverHandler {
-	return DiscoverHandler{
-		path:      path,
-		desc:      desc,
-		referrers: referrers,
-		out:       out,
+func NewDiscoverHandler(out io.Writer, root ocispec.Descriptor, path string) metadata.DiscoverHandler {
+	return &DiscoverHandler{
+		out:  out,
+		root: root,
+		path: path,
 	}
+}
+
+func (h *DiscoverHandler) MultiLevelSupport() bool {
+	return false
+}
+
+func (h *DiscoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) error {
+	if !content.Equal(subject, h.root) {
+		return fmt.Errorf("unexpected subject descriptor: %v", subject)
+	}
+	h.referrers = append(h.referrers, referrer)
+	return nil
+}
+
+func (h *DiscoverHandler) OnCompleted() error {
+	return utils.PrintPrettyJSON(h.out, model.NewDiscover(h.path, h.referrers))
 }

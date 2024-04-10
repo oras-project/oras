@@ -20,71 +20,60 @@ import (
 	"io"
 	"strings"
 
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"gopkg.in/yaml.v3"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
-	"oras.land/oras/internal/registryutil"
 	"oras.land/oras/internal/tree"
 )
 
 // discoverHandler handles json metadata output for discover events.
 type discoverHandler struct {
-	referrers registryutil.ReferrersFunc
-	path      string
-	desc      ocispec.Descriptor
-	verbose   bool
-	out       io.Writer
-}
-
-// OnDiscovered implements metadata.DiscoverHandler.
-func (d *discoverHandler) OnDiscovered() error {
-	root := tree.New(fmt.Sprintf("%s@%s", d.path, d.desc.Digest))
-	err := d.fetchAllReferrers(d.desc, root)
-	if err != nil {
-		return err
-	}
-	return tree.Print(root)
-}
-
-func (d *discoverHandler) fetchAllReferrers(desc ocispec.Descriptor, node *tree.Node) error {
-	results, err := d.referrers(desc)
-	if err != nil {
-		return err
-	}
-
-	for _, r := range results {
-		// Find all indirect referrers
-		referrerNode := node.AddPath(r.ArtifactType, r.Digest)
-		if d.verbose {
-			for k, v := range r.Annotations {
-				bytes, err := yaml.Marshal(map[string]string{k: v})
-				if err != nil {
-					return err
-				}
-				referrerNode.AddPath(strings.TrimSpace(string(bytes)))
-			}
-		}
-		err := d.fetchAllReferrers(
-			ocispec.Descriptor{
-				Digest:    r.Digest,
-				Size:      r.Size,
-				MediaType: r.MediaType,
-			},
-			referrerNode)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	out     io.Writer
+	path    string
+	root    *tree.Node
+	nodes   map[digest.Digest]*tree.Node
+	verbose bool
 }
 
 // NewDiscoverHandler creates a new handler for discover events.
-func NewDiscoverHandler(out io.Writer, path string, referrersFunc registryutil.ReferrersFunc, desc ocispec.Descriptor, verbose bool) metadata.DiscoverHandler {
+func NewDiscoverHandler(out io.Writer, path string, root ocispec.Descriptor, verbose bool) metadata.DiscoverHandler {
+	treeRoot := tree.New(fmt.Sprintf("%s@%s", path, root.Digest))
 	return &discoverHandler{
-		path:      path,
-		referrers: referrersFunc,
-		desc:      desc,
-		verbose:   verbose,
-		out:       out,
+		out:  out,
+		path: path,
+		root: treeRoot,
+		nodes: map[digest.Digest]*tree.Node{
+			root.Digest: treeRoot,
+		},
+		verbose: verbose,
 	}
+}
+
+// MultiLevelSupport implements metadata.DiscoverHandler.
+func (h *discoverHandler) MultiLevelSupport() bool {
+	return true
+}
+
+func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) error {
+	node, ok := h.nodes[subject.Digest]
+	if !ok {
+		return fmt.Errorf("unexpected subject descriptor: %v", subject)
+	}
+	referrerNode := node.AddPath(referrer.ArtifactType, referrer.Digest)
+	if h.verbose {
+		for k, v := range referrer.Annotations {
+			bytes, err := yaml.Marshal(map[string]string{k: v})
+			if err != nil {
+				return err
+			}
+			referrerNode.AddPath(strings.TrimSpace(string(bytes)))
+		}
+	}
+	h.nodes[referrer.Digest] = referrerNode
+	return nil
+}
+
+func (h *discoverHandler) OnCompleted() error {
+	return tree.Print(h.root)
 }

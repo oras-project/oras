@@ -21,45 +21,60 @@ import (
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/utils"
-	"oras.land/oras/internal/registryutil"
 )
 
 // discoverHandler handles json metadata output for discover events.
 type discoverHandler struct {
-	referrers    registryutil.ReferrersFunc
-	template     string
-	path         string
-	desc         ocispec.Descriptor
-	rawReference string
-	verbose      bool
 	out          io.Writer
+	rawReference string
+	root         ocispec.Descriptor
+	verbose      bool
+	referrers    []ocispec.Descriptor
 }
 
-// OnDiscovered implements metadata.DiscoverHandler.
-func (h *discoverHandler) OnDiscovered() error {
-	refs, err := h.referrers(h.desc)
-	if err != nil {
-		return err
+// NewDiscoverHandler creates a new handler for discover events.
+func NewDiscoverHandler(out io.Writer, rawReference string, root ocispec.Descriptor, verbose bool) metadata.DiscoverHandler {
+	return &discoverHandler{
+		out:          out,
+		rawReference: rawReference,
+		root:         root,
+		verbose:      verbose,
 	}
-	if n := len(refs); n > 1 {
+}
+
+func (h *discoverHandler) MultiLevelSupport() bool {
+	return false
+}
+
+func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) error {
+	if !content.Equal(subject, h.root) {
+		return fmt.Errorf("unexpected subject descriptor: %v", subject)
+	}
+	h.referrers = append(h.referrers, referrer)
+	return nil
+}
+
+func (h *discoverHandler) OnCompleted() error {
+	if n := len(h.referrers); n > 1 {
 		fmt.Println("Discovered", n, "artifacts referencing", h.rawReference)
 	} else {
 		fmt.Println("Discovered", n, "artifact referencing", h.rawReference)
 	}
-	fmt.Println("Digest:", h.desc.Digest)
-	if len(refs) > 0 {
-		fmt.Println()
-		return h.printDiscoveredReferrersTable(refs, h.verbose)
+	fmt.Println("Digest:", h.root.Digest)
+	if len(h.referrers) == 0 {
+		return nil
 	}
-	return nil
+	fmt.Println()
+	return h.printDiscoveredReferrersTable()
 }
 
-func (h *discoverHandler) printDiscoveredReferrersTable(refs []ocispec.Descriptor, verbose bool) error {
+func (h *discoverHandler) printDiscoveredReferrersTable() error {
 	typeNameTitle := "Artifact Type"
 	typeNameLength := len(typeNameTitle)
-	for _, ref := range refs {
+	for _, ref := range h.referrers {
 		if length := len(ref.ArtifactType); length > typeNameLength {
 			typeNameLength = length
 		}
@@ -70,26 +85,13 @@ func (h *discoverHandler) printDiscoveredReferrersTable(refs []ocispec.Descripto
 	}
 
 	print(typeNameTitle, "Digest")
-	for _, ref := range refs {
+	for _, ref := range h.referrers {
 		print(ref.ArtifactType, ref.Digest)
-		if verbose {
+		if h.verbose {
 			if err := utils.PrintPrettyJSON(h.out, ref); err != nil {
 				return fmt.Errorf("error printing JSON: %w", err)
 			}
 		}
 	}
 	return nil
-}
-
-// NewDiscoverHandler creates a new handler for discover events.
-func NewDiscoverHandler(out io.Writer, template string, path string, desc ocispec.Descriptor, referrers registryutil.ReferrersFunc, rawReference string, verbose bool) metadata.DiscoverHandler {
-	return &discoverHandler{
-		template:     template,
-		path:         path,
-		desc:         desc,
-		rawReference: rawReference,
-		verbose:      verbose,
-		out:          out,
-		referrers:    referrers,
-	}
 }

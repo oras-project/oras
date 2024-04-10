@@ -16,9 +16,9 @@ limitations under the License.
 package root
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -27,7 +27,7 @@ import (
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/display"
-	"oras.land/oras/cmd/oras/internal/display/metadata/template"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -39,7 +39,6 @@ type discoverOptions struct {
 	option.Format
 
 	artifactType string
-	outputType   string
 }
 
 func discoverCmd() *cobra.Command {
@@ -75,11 +74,13 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the target artifact to discover referrers from"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if opts.outputType != "" && opts.Template != "" {
-				return fmt.Errorf("cannot use both --output and --format")
-			}
-			if opts.outputType == "" && opts.Template == "" {
-				opts.Template = "tree"
+			if cmd.Flags().Changed("output") {
+				switch opts.Template {
+				case "tree", "json", "table":
+					fmt.Fprintf(cmd.ErrOrStderr(), "[DEPRECATED] --output is deprecated, try `--format %s` instead\n", opts.Template)
+				default:
+					return errors.New("output type can only be tree, table or json")
+				}
 			}
 			opts.RawReference = args[0]
 			return option.Parse(cmd, &opts)
@@ -90,12 +91,13 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 	}
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
-	cmd.Flags().StringVarP(&opts.outputType, "output", "o", "", "[Deprecated] format in which to display referrers (table, json, or tree). tree format will also show indirect referrers")
-	cmd.Flags().StringVar(&opts.Template, "format", "", `Format output using a custom template:
+	cmd.Flags().StringVarP(&opts.Template, "output", "o", "tree", "[Deprecated] format in which to display referrers (table, json, or tree). tree format will also show indirect referrers")
+	cmd.Flags().StringVarP(&opts.Template, "format", "", "tree", `Format output using a custom template:
 'tree':       Get referrers recursively and print in tree format (default)
 'table':      Get direct referrers and output in table format
 'json':       Get direct referrers and output in JSON format
 '$TEMPLATE':  Print output using the given Go template.`)
+	cmd.MarkFlagsMutuallyExclusive("output", "format")
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
@@ -119,19 +121,42 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 		return err
 	}
 
-	var referrers = func(d ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		return registry.Referrers(ctx, repo, d, opts.artifactType)
+	handler := display.NewDiscoverHandler(cmd.OutOrStdout(), opts.Template, opts.Path, opts.RawReference, desc, opts.Verbose)
+	if handler.MultiLevelSupport() {
+		if err := fetchAllReferrers(ctx, repo, desc, opts.artifactType, handler); err != nil {
+			return err
+		}
+	} else {
+		refs, err := registry.Referrers(ctx, repo, desc, opts.artifactType)
+		if err != nil {
+			return err
+		}
+		for _, ref := range refs {
+			if err := handler.OnDiscovered(ref, desc); err != nil {
+				return err
+			}
+		}
 	}
-	if opts.Template != "" {
-		handler := display.NewDiscoverHandler(cmd.OutOrStdout(), opts.Template, opts.Path, opts.RawReference, desc, referrers, opts.Verbose)
-		return handler.OnDiscovered()
+	return handler.OnCompleted()
+}
+
+func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, handler metadata.DiscoverHandler) error {
+	results, err := registry.Referrers(ctx, repo, desc, artifactType)
+	if err != nil {
+		return err
 	}
 
-	// deprecated --output
-	fmt.Fprintf(os.Stderr, "[DEPRECATED] --output is deprecated, try `--format %s` instead\n", opts.outputType)
-	handler := display.NewDiscoverHandler(cmd.OutOrStdout(), opts.outputType, opts.Path, opts.RawReference, desc, referrers, opts.Verbose)
-	if _, ok := handler.(*template.DiscoverHandler); ok {
-		return errors.New("output type can only be tree, table or json")
+	for _, r := range results {
+		if err := handler.OnDiscovered(r, desc); err != nil {
+			return err
+		}
+		if err := fetchAllReferrers(ctx, repo, ocispec.Descriptor{
+			Digest:    r.Digest,
+			Size:      r.Size,
+			MediaType: r.MediaType,
+		}, artifactType, handler); err != nil {
+			return err
+		}
 	}
-	return handler.OnDiscovered()
+	return nil
 }
