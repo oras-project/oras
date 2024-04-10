@@ -20,15 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
-
-// GenerateContentKey generates a unique key for each content descriptor, using
-// its digest and name if applicable.
-func GenerateContentKey(desc v1.Descriptor) string {
-	return desc.Digest.String() + desc.Annotations[v1.AnnotationTitle]
-}
 
 // Prompt constants for pull.
 const (
