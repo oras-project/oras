@@ -45,10 +45,12 @@ func NewDiscoverHandler(out io.Writer, rawReference string, root ocispec.Descrip
 	}
 }
 
-func (h *discoverHandler) MultiLevelSupport() bool {
+// Recursive implements metadata.DiscoverHandler.
+func (h *discoverHandler) Recursive() bool {
 	return false
 }
 
+// OnDiscovered implements metadata.DiscoverHandler.
 func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) error {
 	if !content.Equal(subject, h.root) {
 		return fmt.Errorf("unexpected subject descriptor: %v", subject)
@@ -57,6 +59,7 @@ func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) err
 	return nil
 }
 
+// OnCompleted implements metadata.DiscoverHandler.
 func (h *discoverHandler) OnCompleted() error {
 	if n := len(h.referrers); n > 1 {
 		fmt.Println("Discovered", n, "artifacts referencing", h.rawReference)

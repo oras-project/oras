@@ -50,11 +50,12 @@ func NewDiscoverHandler(out io.Writer, path string, root ocispec.Descriptor, ver
 	}
 }
 
-// MultiLevelSupport implements metadata.DiscoverHandler.
-func (h *discoverHandler) MultiLevelSupport() bool {
+// Recursive implements metadata.DiscoverHandler.
+func (h *discoverHandler) Recursive() bool {
 	return true
 }
 
+// OnDiscovered implements metadata.DiscoverHandler.
 func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) error {
 	node, ok := h.nodes[subject.Digest]
 	if !ok {
@@ -74,6 +75,7 @@ func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) err
 	return nil
 }
 
+// OnCompleted implements metadata.DiscoverHandler.
 func (h *discoverHandler) OnCompleted() error {
 	return tree.Print(h.root)
 }

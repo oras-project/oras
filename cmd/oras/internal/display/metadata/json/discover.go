@@ -43,10 +43,12 @@ func NewDiscoverHandler(out io.Writer, root ocispec.Descriptor, path string) met
 	}
 }
 
-func (h *DiscoverHandler) MultiLevelSupport() bool {
+// Recursive implements metadata.DiscoverHandler.
+func (h *DiscoverHandler) Recursive() bool {
 	return false
 }
 
+// OnDiscovered implements metadata.DiscoverHandler.
 func (h *DiscoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) error {
 	if !content.Equal(subject, h.root) {
 		return fmt.Errorf("unexpected subject descriptor: %v", subject)
@@ -55,6 +57,7 @@ func (h *DiscoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) err
 	return nil
 }
 
+// OnCompleted implements metadata.DiscoverHandler.
 func (h *DiscoverHandler) OnCompleted() error {
 	return utils.PrintPrettyJSON(h.out, model.NewDiscover(h.path, h.referrers))
 }
