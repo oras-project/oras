@@ -21,7 +21,7 @@ type discover struct {
 	Manifests []Descriptor
 }
 
-// NewPull creates a new metadata struct for pull command.
+// NewDiscover creates a new discover model.
 func NewDiscover(name string, descs []ocispec.Descriptor) discover {
 	discover := discover{
 		Manifests: make([]Descriptor, 0),
