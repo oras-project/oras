@@ -16,12 +16,10 @@ limitations under the License.
 package option
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
 	"io"
 
 	"github.com/spf13/pflag"
+	"oras.land/oras/cmd/oras/internal/display/utils"
 )
 
 // Pretty option struct.
@@ -37,15 +35,5 @@ func (opts *Pretty) ApplyFlags(fs *pflag.FlagSet) {
 // Output outputs the prettified content if `--pretty` flag is used. Otherwise
 // outputs the original content.
 func (opts *Pretty) Output(w io.Writer, content []byte) error {
-	if opts.Pretty {
-		buf := bytes.NewBuffer(nil)
-		if err := json.Indent(buf, content, "", "  "); err != nil {
-			return fmt.Errorf("failed to prettify: %w", err)
-		}
-		buf.WriteByte('\n')
-		content = buf.Bytes()
-	}
-
-	_, err := w.Write(content)
-	return err
+	return utils.PrintJSON(w, content, opts.Pretty)
 }

@@ -39,8 +39,8 @@ const (
 	PullPromptDownloaded  = "Downloaded "
 )
 
-// Output writes the data to the output stream, optionally prettifying it.
-func Output(out io.Writer, data []byte, pretty bool) error {
+// PrintJSON writes the data to the output stream, optionally prettifying it.
+func PrintJSON(out io.Writer, data []byte, pretty bool) error {
 	if pretty {
 		buf := bytes.NewBuffer(nil)
 		if err := json.Indent(buf, data, "", "  "); err != nil {

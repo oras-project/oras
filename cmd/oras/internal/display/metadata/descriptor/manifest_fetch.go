@@ -37,7 +37,7 @@ func (h *manifestFetchHandler) OnFetched(_ string, desc ocispec.Descriptor, _ []
 	if err != nil {
 		return fmt.Errorf("invalid descriptor: %w", err)
 	}
-	return utils.Output(h.out, descBytes, h.pretty)
+	return utils.PrintJSON(h.out, descBytes, h.pretty)
 }
 
 // NewManifestFetchHandler creates a new handler.

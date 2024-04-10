@@ -41,7 +41,7 @@ func (h *manifestFetch) OnContentFetched(desc ocispec.Descriptor, manifest []byt
 		defer f.Close()
 		out = f
 	}
-	return utils.Output(out, manifest, h.pretty)
+	return utils.PrintJSON(out, manifest, h.pretty)
 }
 
 // NewManifestFetchHandler creates a new handler.

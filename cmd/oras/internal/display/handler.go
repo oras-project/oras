@@ -98,9 +98,9 @@ func NewPullHandler(format string, path string, tty *os.File, out io.Writer, ver
 }
 
 // NewManifestFetchHandler returns a manifest fetch handler.
-func NewManifestFetchHandler(out io.Writer, format string, outputDescriptor bool, pretty bool, outputPath string) (metadata.ManifestFetchHandler, content.ManifestFetchHandler) {
+func NewManifestFetchHandler(out io.Writer, format string, outputDescriptor, pretty bool, outputPath string) (metadata.ManifestFetchHandler, content.ManifestFetchHandler) {
 	var metadataHandler metadata.ManifestFetchHandler
-	var contentHandler content.ManifestFetchHandler = content.NewManifestFetchHandler(out, pretty, outputPath)
+	var contentHandler content.ManifestFetchHandler
 
 	switch format {
 	case "":
@@ -122,6 +122,10 @@ func NewManifestFetchHandler(out io.Writer, format string, outputDescriptor bool
 		if outputPath == "" {
 			contentHandler = content.NewDiscardHandler()
 		}
+	}
+
+	if contentHandler == nil {
+		contentHandler = content.NewManifestFetchHandler(out, pretty, outputPath)
 	}
 	return metadataHandler, contentHandler
 }
