@@ -32,7 +32,7 @@ type manifestFetchHandler struct {
 }
 
 // OnFetched implements ManifestFetchHandler.
-func (h *manifestFetchHandler) OnFetched(desc ocispec.Descriptor, _ []byte) error {
+func (h *manifestFetchHandler) OnFetched(_ string, desc ocispec.Descriptor, _ []byte) error {
 	descBytes, err := json.Marshal(desc)
 	if err != nil {
 		return fmt.Errorf("invalid descriptor: %w", err)

@@ -13,16 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package metadata
+package model
 
 import ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-type discard struct{}
-
-// NewDiscardHandler creates a new handler that discards output for all events.
-func NewDiscardHandler() ManifestFetchHandler {
-	return discard{}
+type fetched struct {
+	Descriptor
+	Content any
 }
 
-// OnFetched implements ManifestFetchHandler.
-func (discard) OnFetched(string, ocispec.Descriptor, []byte) error { return nil }
+// NewFetched creates a new fetched metadata.
+func NewFetched(path string, desc ocispec.Descriptor, content any) any {
+	return &fetched{
+		Descriptor: FromDescriptor(path, desc),
+		Content:    content,
+	}
+}

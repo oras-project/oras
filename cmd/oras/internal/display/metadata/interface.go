@@ -34,7 +34,7 @@ type AttachHandler interface {
 // ManifestFetchHandler handles metadata output for manifest fetch events.
 type ManifestFetchHandler interface {
 	// OnFetched is called after the manifest content is fetched.
-	OnFetched(ocispec.Descriptor, []byte) error
+	OnFetched(path string, desc ocispec.Descriptor, content []byte) error
 }
 
 // PullHandler handles metadata output for pull events.

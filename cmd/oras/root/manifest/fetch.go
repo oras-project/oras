@@ -141,5 +141,5 @@ func fetchManifest(cmd *cobra.Command, opts *fetchOptions) (fetchErr error) {
 			return err
 		}
 	}
-	return metadataHandler.OnFetched(desc, content)
+	return metadataHandler.OnFetched(opts.Path, desc, content)
 }
