@@ -228,7 +228,7 @@ var _ = Describe("1.1 registry users:", func() {
 			digest := multi_arch.LinuxAMD64.Digest.String()
 			ref := RegistryRef(ZOTHost, ImageRepo, digest)
 			// test
-			out := ORAS("manifest", "fetch", ref, "--output", fetchPath, "--format", "{{json}}").Exec().Out.Contents()
+			out := ORAS("manifest", "fetch", ref, "--output", fetchPath, "--format", "json").Exec().Out.Contents()
 			// validate
 			var content = struct{ Content any }{}
 			Expect(json.Unmarshal(out, &content)).ShouldNot(HaveOccurred())
