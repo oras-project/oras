@@ -30,7 +30,6 @@ import (
 type DiscoverHandler struct {
 	ctx          context.Context
 	repo         oras.ReadOnlyGraphTarget
-	template     string
 	path         string
 	desc         ocispec.Descriptor
 	artifactType string
@@ -47,9 +46,8 @@ func (h DiscoverHandler) OnDiscovered() error {
 }
 
 // NewDiscoverHandler creates a new handler for discover events.
-func NewDiscoverHandler(ctx context.Context, out io.Writer, template string, path string, artifactType string, desc ocispec.Descriptor, repo oras.ReadOnlyGraphTarget) metadata.DiscoverHandler {
+func NewDiscoverHandler(ctx context.Context, out io.Writer, path string, artifactType string, desc ocispec.Descriptor, repo oras.ReadOnlyGraphTarget) metadata.DiscoverHandler {
 	return DiscoverHandler{
-		template:     template,
 		path:         path,
 		ctx:          ctx,
 		repo:         repo,
