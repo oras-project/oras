@@ -20,6 +20,7 @@ import (
 	"os"
 
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/term"
 	"oras.land/oras/internal/trace"
@@ -49,7 +50,7 @@ func (opts *Common) WithContext(ctx context.Context) (context.Context, logrus.Fi
 }
 
 // Parse gets target options from user input.
-func (opts *Common) Parse() error {
+func (opts *Common) Parse(*cobra.Command) error {
 	// use STDERR as TTY output since STDOUT is reserved for pipeable output
 	return opts.parseTTY(os.Stderr)
 }

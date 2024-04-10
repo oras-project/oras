@@ -41,7 +41,7 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("resolve").ExpectFailure().MatchErrKeyWords("Error:").Exec()
 		})
 		It("should fail when repo is invalid", func() {
-			ORAS("resolve", fmt.Sprintf("%s/%s", ZOTHost, InvalidRepo)).ExpectFailure().MatchErrKeyWords("Error:", fmt.Sprintf("invalid reference: invalid repository %q", InvalidRepo)).Exec()
+			ORAS("resolve", fmt.Sprintf("%s/%s", ZOTHost, InvalidRepo)).ExpectFailure().MatchErrKeyWords("Error:", "localhost:7000/INVALID", "invalid reference", "<registry>/<repo>[:tag|@digest]").Exec()
 		})
 		It("should fail when no tag or digest provided", func() {
 			ORAS("resolve", RegistryRef(ZOTHost, ImageRepo, "")).ExpectFailure().MatchErrKeyWords("Error:", `no tag or digest specified`, "oras resolve [flags] <name>{:<tag>|@<digest>}", "Please specify a reference").Exec()

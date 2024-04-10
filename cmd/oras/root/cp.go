@@ -94,7 +94,7 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 			refs := strings.Split(args[1], ",")
 			opts.To.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
-			return option.Parse(&opts)
+			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runCopy(cmd, &opts)

@@ -17,6 +17,7 @@ package text
 
 import (
 	"fmt"
+	"io"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
@@ -24,21 +25,29 @@ import (
 )
 
 // PushHandler handles text metadata output for push events.
-type PushHandler struct{}
+type PushHandler struct {
+	out io.Writer
+}
 
 // NewPushHandler returns a new handler for push events.
-func NewPushHandler() metadata.PushHandler {
-	return PushHandler{}
+func NewPushHandler(out io.Writer) metadata.PushHandler {
+	return &PushHandler{
+		out: out,
+	}
 }
 
 // OnCopied is called after files are copied.
-func (PushHandler) OnCopied(opts *option.Target) error {
-	_, err := fmt.Println("Pushed", opts.AnnotatedReference())
+func (p *PushHandler) OnCopied(opts *option.Target) error {
+	_, err := fmt.Fprintln(p.out, "Pushed", opts.AnnotatedReference())
 	return err
 }
 
 // OnCompleted is called after the push is completed.
-func (PushHandler) OnCompleted(root ocispec.Descriptor) error {
-	_, err := fmt.Println("Digest:", root.Digest)
+func (p *PushHandler) OnCompleted(root ocispec.Descriptor) error {
+	_, err := fmt.Fprintln(p.out, "ArtifactType:", root.ArtifactType)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintln(p.out, "Digest:", root.Digest)
 	return err
 }

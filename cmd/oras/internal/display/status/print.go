@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -27,28 +28,30 @@ import (
 	"oras.land/oras-go/v2/registry"
 )
 
-var printLock sync.Mutex
-
 // PrintFunc is the function type returned by StatusPrinter.
 type PrintFunc func(ocispec.Descriptor) error
 
-// Print objects to display concurrent-safely.
-func Print(a ...any) error {
-	printLock.Lock()
-	defer printLock.Unlock()
-	_, err := fmt.Println(a...)
+// Printer prints for status handlers.
+type Printer struct {
+	out  io.Writer
+	lock sync.Mutex
+}
+
+// NewPrinter creates a new Printer.
+func NewPrinter(out io.Writer) *Printer {
+	return &Printer{out: out}
+}
+
+// Println prints objects concurrent-safely with newline.
+func (p *Printer) Println(a ...any) error {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+	_, err := fmt.Fprintln(p.out, a...)
 	return err
 }
 
-// StatusPrinter returns a tracking function for transfer status.
-func StatusPrinter(status string, verbose bool) PrintFunc {
-	return func(desc ocispec.Descriptor) error {
-		return PrintStatus(desc, status, verbose)
-	}
-}
-
 // PrintStatus prints transfer status.
-func PrintStatus(desc ocispec.Descriptor, status string, verbose bool) error {
+func (p *Printer) PrintStatus(desc ocispec.Descriptor, status string, verbose bool) error {
 	name, ok := desc.Annotations[ocispec.AnnotationTitle]
 	if !ok {
 		// no status for unnamed content
@@ -57,7 +60,14 @@ func PrintStatus(desc ocispec.Descriptor, status string, verbose bool) error {
 		}
 		name = desc.MediaType
 	}
-	return Print(status, ShortDigest(desc), name)
+	return p.Println(status, ShortDigest(desc), name)
+}
+
+// StatusPrinter returns a tracking function for transfer status.
+func (p *Printer) StatusPrinter(status string, verbose bool) PrintFunc {
+	return func(desc ocispec.Descriptor) error {
+		return p.PrintStatus(desc, status, verbose)
+	}
 }
 
 // PrintSuccessorStatus prints transfer status of successors.
@@ -76,20 +86,6 @@ func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, fetcher 
 		}
 	}
 	return nil
-}
-
-// NewTagStatusPrinter creates a wrapper type for printing tag status.
-func NewTagStatusPrinter(target oras.Target, tagHandler TagHandler) oras.Target {
-	if repo, ok := target.(registry.Repository); ok {
-		return &tagManifestStatusForRepo{
-			Repository: repo,
-			tagHandler: tagHandler,
-		}
-	}
-	return &tagManifestStatusForTarget{
-		Target:     target,
-		tagHandler: tagHandler,
-	}
 }
 
 // NewTagStatusHintPrinter creates a wrapper type for printing
@@ -150,4 +146,37 @@ func (p *tagManifestStatusForTarget) Tag(ctx context.Context, desc ocispec.Descr
 		return err
 	}
 	return p.tagHandler.OnTagged(reference)
+}
+
+// NewTagStatusPrinter creates a wrapper type for printing tag status.
+func NewTagStatusPrinter(target oras.Target, tagHandler TagHandler) oras.Target {
+	if repo, ok := target.(registry.Repository); ok {
+		return &tagManifestStatusForRepo{
+			Repository: repo,
+			tagHandler: tagHandler,
+		}
+	}
+	return &tagManifestStatusForTarget{
+		Target:     target,
+		tagHandler: tagHandler,
+	}
+}
+
+// printer is used by the code being deprecated. Related functions should be
+// removed when no-longer referenced.
+var printer = NewPrinter(os.Stdout)
+
+// Print objects to display concurrent-safely.
+func Print(a ...any) error {
+	return printer.Println(a...)
+}
+
+// StatusPrinter returns a tracking function for transfer status.
+func StatusPrinter(status string, verbose bool) PrintFunc {
+	return printer.StatusPrinter(status, verbose)
+}
+
+// PrintStatus prints transfer status.
+func PrintStatus(desc ocispec.Descriptor, status string, verbose bool) error {
+	return printer.PrintStatus(desc, status, verbose)
 }
