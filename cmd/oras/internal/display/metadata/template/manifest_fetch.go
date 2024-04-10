@@ -41,6 +41,8 @@ func NewManifestFetchHandler(out io.Writer, template string) metadata.ManifestFe
 // OnFetched is called after the manifest fetch is completed.
 func (h *manifestFetchHandler) OnFetched(path string, desc ocispec.Descriptor, content []byte) error {
 	var manifest map[string]any
-	_ = json.Unmarshal(content, &manifest)
+	if err := json.Unmarshal(content, &manifest); err != nil {
+		manifest = nil
+	}
 	return parseAndWrite(h.out, model.NewFetched(path, desc, manifest), h.template)
 }
