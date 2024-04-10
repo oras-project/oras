@@ -16,13 +16,11 @@ limitations under the License.
 package utils
 
 import (
-	"encoding/json"
-	"io"
-
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
@@ -31,7 +29,6 @@ import (
 func GenerateContentKey(desc v1.Descriptor) string {
 	return desc.Digest.String() + desc.Annotations[v1.AnnotationTitle]
 }
-)
 
 // Prompt constants for pull.
 const (

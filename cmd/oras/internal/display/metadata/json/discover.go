@@ -39,7 +39,7 @@ func (h DiscoverHandler) OnDiscovered() error {
 	if err != nil {
 		return err
 	}
-	return utils.PrintObjectToJSON(h.out, model.NewDiscover(h.path, refs))
+	return utils.PrintPrettyJSON(h.out, model.NewDiscover(h.path, refs))
 }
 
 // NewDiscoverHandler creates a new handler for discover events.

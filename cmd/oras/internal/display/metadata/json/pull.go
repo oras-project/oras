@@ -52,5 +52,5 @@ func (ph *PullHandler) OnFilePulled(name string, outputDir string, desc ocispec.
 
 // OnCompleted implements metadata.PullHandler.
 func (ph *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor) error {
-	return utils.PrintObjectToJSON(ph.out, model.NewPull(ph.path+"@"+desc.Digest.String(), ph.pulled.Files()))
+	return utils.PrintPrettyJSON(ph.out, model.NewPull(ph.path+"@"+desc.Digest.String(), ph.pulled.Files()))
 }

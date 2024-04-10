@@ -73,7 +73,7 @@ func (h *discoverHandler) printDiscoveredReferrersTable(refs []ocispec.Descripto
 	for _, ref := range refs {
 		print(ref.ArtifactType, ref.Digest)
 		if verbose {
-			if err := utils.PrintObjectToJSON(h.out, ref); err != nil {
+			if err := utils.PrintPrettyJSON(h.out, ref); err != nil {
 				return fmt.Errorf("error printing JSON: %w", err)
 			}
 		}
