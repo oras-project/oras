@@ -114,7 +114,7 @@ func NewDiscoverHandler(ctx context.Context, out io.Writer, outputType string, p
 	case "table":
 		return table.NewDiscoverHandler(ctx, out, outputType, path, artifactType, desc, repo, rawReference, verbose)
 	case "json":
-		return json.NewDiscoverHandler(ctx, out, outputType, path, artifactType, desc, repo)
+		return json.NewDiscoverHandler(ctx, out, path, artifactType, desc, repo)
 	}
 	return template.NewDiscoverHandler(ctx, out, outputType, path, artifactType, desc, repo)
 }
