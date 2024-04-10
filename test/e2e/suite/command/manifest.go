@@ -235,6 +235,15 @@ var _ = Describe("1.1 registry users:", func() {
 			MatchFile(fetchPath, multi_arch.LinuxAMD64Manifest, DefaultTimeout)
 		})
 
+		It("should fetch manifest and output json", func() {
+			ref := RegistryRef(ZOTHost, ImageRepo, multi_arch.LinuxAMD64.Digest.String())
+			// test
+			out := ORAS("manifest", "fetch", ref, "--format", "json").Exec().Out.Contents()
+			// validate
+			var content = struct{ Content any }{}
+			Expect(json.Unmarshal(out, &content)).ShouldNot(HaveOccurred())
+		})
+
 		It("should fetch manifest via tag with platform selection", func() {
 			ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), "--platform", "linux/amd64").
 				MatchContent(multi_arch.LinuxAMD64Manifest).Exec()
