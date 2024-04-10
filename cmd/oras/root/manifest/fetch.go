@@ -90,9 +90,9 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 
 	cmd.Flags().StringSliceVarP(&opts.mediaTypes, "media-type", "", nil, "accepted media types")
 	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "file `path` to write the fetched manifest to, use - for stdout")
-	cmd.Flags().StringVar(&opts.Template, "format", "", `[Experimental] Format fetched manifest using a custom template:
-'json':       Print manifest in prettified JSON format
-'$TEMPLATE':  Print output using the given Go template.`)
+	cmd.Flags().StringVar(&opts.Template, "format", "", `[Experimental] Format operation metadata using a custom template:
+'json':       Print in prettified JSON format
+'$TEMPLATE':  Print using the given Go template.`)
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
