@@ -26,8 +26,8 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/utils"
 )
 
-// DiscoverHandler handles json metadata output for discover events.
-type DiscoverHandler struct {
+// discoverHandler handles json metadata output for discover events.
+type discoverHandler struct {
 	out       io.Writer
 	root      ocispec.Descriptor
 	path      string
@@ -36,7 +36,7 @@ type DiscoverHandler struct {
 
 // NewDiscoverHandler creates a new handler for discover events.
 func NewDiscoverHandler(out io.Writer, root ocispec.Descriptor, path string) metadata.DiscoverHandler {
-	return &DiscoverHandler{
+	return &discoverHandler{
 		out:  out,
 		root: root,
 		path: path,
@@ -44,12 +44,12 @@ func NewDiscoverHandler(out io.Writer, root ocispec.Descriptor, path string) met
 }
 
 // Recursive implements metadata.DiscoverHandler.
-func (h *DiscoverHandler) Recursive() bool {
+func (h *discoverHandler) Recursive() bool {
 	return false
 }
 
 // OnDiscovered implements metadata.DiscoverHandler.
-func (h *DiscoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) error {
+func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) error {
 	if !content.Equal(subject, h.root) {
 		return fmt.Errorf("unexpected subject descriptor: %v", subject)
 	}
@@ -58,6 +58,6 @@ func (h *DiscoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) err
 }
 
 // OnCompleted implements metadata.DiscoverHandler.
-func (h *DiscoverHandler) OnCompleted() error {
+func (h *discoverHandler) OnCompleted() error {
 	return utils.PrintPrettyJSON(h.out, model.NewDiscover(h.path, h.referrers))
 }
