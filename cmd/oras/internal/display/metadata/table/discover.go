@@ -62,15 +62,15 @@ func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) err
 // OnCompleted implements metadata.DiscoverHandler.
 func (h *discoverHandler) OnCompleted() error {
 	if n := len(h.referrers); n > 1 {
-		fmt.Println("Discovered", n, "artifacts referencing", h.rawReference)
+		fmt.Fprintln(h.out, "Discovered", n, "artifacts referencing", h.rawReference)
 	} else {
-		fmt.Println("Discovered", n, "artifact referencing", h.rawReference)
+		fmt.Fprintln(h.out, "Discovered", n, "artifact referencing", h.rawReference)
 	}
-	fmt.Println("Digest:", h.root.Digest)
+	fmt.Fprintln(h.out, "Digest:", h.root.Digest)
 	if len(h.referrers) == 0 {
 		return nil
 	}
-	fmt.Println()
+	fmt.Fprintln(h.out)
 	return h.printDiscoveredReferrersTable()
 }
 
@@ -84,7 +84,7 @@ func (h *discoverHandler) printDiscoveredReferrersTable() error {
 	}
 
 	print := func(key string, value interface{}) {
-		fmt.Println(key, strings.Repeat(" ", typeNameLength-len(key)+1), value)
+		fmt.Fprintln(h.out, key, strings.Repeat(" ", typeNameLength-len(key)+1), value)
 	}
 
 	print(typeNameTitle, "Digest")
