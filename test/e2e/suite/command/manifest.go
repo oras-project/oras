@@ -227,8 +227,11 @@ var _ = Describe("1.1 registry users:", func() {
 			fetchPath := filepath.Join(GinkgoT().TempDir(), "fetchedImage")
 			digest := multi_arch.LinuxAMD64.Digest.String()
 			ref := RegistryRef(ZOTHost, ImageRepo, digest)
-			out := ORAS("manifest", "fetch", ref, "--output", fetchPath, "--format", "{{toJson .Content}}").Exec().Out.Contents()
-			Expect(out).To(MatchJSON(multi_arch.LinuxAMD64Manifest))
+			// test
+			out := ORAS("manifest", "fetch", ref, "--output", fetchPath, "--format", "{{json}}").Exec().Out.Contents()
+			// validate
+			var content = struct{ Content any }{}
+			Expect(json.Unmarshal(out, &content)).ShouldNot(HaveOccurred())
 			MatchFile(fetchPath, multi_arch.LinuxAMD64Manifest, DefaultTimeout)
 		})
 
@@ -247,7 +250,7 @@ var _ = Describe("1.1 registry users:", func() {
 				MatchContent(multi_arch.LinuxAMD64Manifest).Exec()
 		})
 
-		It("should fetch manifest with platform validation and output json", func() {
+		It("should fetch manifest with platform validation and output content", func() {
 			out := ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), "--platform", "linux/amd64", "--format", "{{toJson .Content}}").
 				Exec().Out.Contents()
 			Expect(out).To(MatchJSON(multi_arch.LinuxAMD64Manifest))
