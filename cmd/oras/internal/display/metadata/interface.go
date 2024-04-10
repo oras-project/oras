@@ -36,6 +36,12 @@ type DiscoverHandler interface {
 	OnDiscovered() error
 }
 
+// ManifestFetchHandler handles metadata output for manifest fetch events.
+type ManifestFetchHandler interface {
+	// OnFetched is called after the manifest content is fetched.
+	OnFetched(path string, desc ocispec.Descriptor, content []byte) error
+}
+
 // PullHandler handles metadata output for pull events.
 type PullHandler interface {
 	// OnLayerSkipped is called when a layer is skipped.

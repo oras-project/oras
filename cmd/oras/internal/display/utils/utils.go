@@ -19,6 +19,10 @@ import (
 	"encoding/json"
 	"io"
 
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
@@ -27,7 +31,9 @@ import (
 func GenerateContentKey(desc v1.Descriptor) string {
 	return desc.Digest.String() + desc.Annotations[v1.AnnotationTitle]
 }
+)
 
+// Prompt constants for pull.
 const (
 	PullPromptDownloading = "Downloading"
 	PullPromptPulled      = "Pulled     "
@@ -37,9 +43,23 @@ const (
 	PullPromptDownloaded  = "Downloaded "
 )
 
-// PrintObjectToJSON prints the object to the writer in JSON format.
-func PrintObjectToJSON(out io.Writer, object any) error {
+// PrintPrettyJSON prints the object to the writer in JSON format.
+func PrintPrettyJSON(out io.Writer, object any) error {
 	encoder := json.NewEncoder(out)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(object)
+}
+
+// PrintJSON writes the data to the output stream, optionally prettifying it.
+func PrintJSON(out io.Writer, data []byte, pretty bool) error {
+	if pretty {
+		buf := bytes.NewBuffer(nil)
+		if err := json.Indent(buf, data, "", "  "); err != nil {
+			return fmt.Errorf("failed to prettify: %w", err)
+		}
+		buf.WriteByte('\n')
+		data = buf.Bytes()
+	}
+	_, err := out.Write(data)
+	return err
 }
