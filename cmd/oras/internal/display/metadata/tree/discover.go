@@ -50,7 +50,7 @@ func NewDiscoverHandler(out io.Writer, path string, root ocispec.Descriptor, ver
 	}
 }
 
-// Recursive implements metadata.DiscoverHandler.
+// MultiLevelSupported implements metadata.DiscoverHandler.
 func (h *discoverHandler) MultiLevelSupported() bool {
 	return true
 }
