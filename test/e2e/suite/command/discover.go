@@ -173,9 +173,9 @@ var _ = Describe("1.1 registry users:", func() {
 				Exec()
 		})
 
-		It("should display <unknown> for empty artifact type", func() {
+		It("should display <unknown> if a referrer has an empty artifact type", func() {
 			ORAS("discover", RegistryRef(ZOTHost, ArtifactRepo, "multi"), "--format", format).
-				MatchKeyWords("unknown").
+				MatchKeyWords("<unknown>").
 				Exec()
 		})
 	})
