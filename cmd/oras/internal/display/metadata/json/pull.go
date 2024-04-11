@@ -21,6 +21,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
+	"oras.land/oras/cmd/oras/internal/display/utils"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -51,5 +52,5 @@ func (ph *PullHandler) OnFilePulled(name string, outputDir string, desc ocispec.
 
 // OnCompleted implements metadata.PullHandler.
 func (ph *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor) error {
-	return printJSON(ph.out, model.NewPull(ph.path+"@"+desc.Digest.String(), ph.pulled.Files()))
+	return utils.PrintPrettyJSON(ph.out, model.NewPull(ph.path+"@"+desc.Digest.String(), ph.pulled.Files()))
 }
