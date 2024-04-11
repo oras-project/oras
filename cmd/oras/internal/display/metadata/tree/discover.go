@@ -61,6 +61,9 @@ func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) err
 	if !ok {
 		return fmt.Errorf("unexpected subject descriptor: %v", subject)
 	}
+	if referrer.ArtifactType == "" {
+		referrer.ArtifactType = "<unknown>"
+	}
 	referrerNode := node.AddPath(referrer.ArtifactType, referrer.Digest)
 	if h.verbose {
 		for k, v := range referrer.Annotations {
