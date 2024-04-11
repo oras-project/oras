@@ -34,7 +34,7 @@ type AttachHandler interface {
 // DiscoverHandler handles metadata output for discover events.
 type DiscoverHandler interface {
 	// Recursive returns true if the handler supports multi-level discovery.
-	Recursive() bool
+	MultiLevelSupported() bool
 	// OnDiscovered is called after a referrer is discovered.
 	OnDiscovered(referrer, subject ocispec.Descriptor) error
 	// OnCompleted is called when referrer discovery is completed.

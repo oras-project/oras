@@ -122,7 +122,7 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 	}
 
 	handler := display.NewDiscoverHandler(cmd.OutOrStdout(), opts.Template, opts.Path, opts.RawReference, desc, opts.Verbose)
-	if handler.Recursive() {
+	if handler.MultiLevelSupported() {
 		if err := fetchAllReferrers(ctx, repo, desc, opts.artifactType, handler); err != nil {
 			return err
 		}
