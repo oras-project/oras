@@ -172,6 +172,12 @@ var _ = Describe("1.1 registry users:", func() {
 				MatchKeyWords(append(discoverKeyWords(true, referrers...), RegistryRef(ZOTHost, ArtifactRepo, foobar.Digest))...).
 				Exec()
 		})
+
+		It("should display <unknown> for empty artifact type", func() {
+			ORAS("discover", RegistryRef(ZOTHost, ArtifactRepo, "multi"), "--format", format).
+				MatchKeyWords("unknown").
+				Exec()
+		})
 	})
 	When("running discover command with table output", func() {
 		format := "table"
