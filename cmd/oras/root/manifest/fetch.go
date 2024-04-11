@@ -16,16 +16,14 @@ limitations under the License.
 package manifest
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
-	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/argument"
+	"oras.land/oras/cmd/oras/internal/display"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -37,6 +35,7 @@ type fetchOptions struct {
 	option.Platform
 	option.Pretty
 	option.Target
+	option.Format
 
 	mediaTypes []string
 	outputPath string
@@ -72,8 +71,13 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the manifest to fetch"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if opts.outputPath == "-" && opts.OutputDescriptor {
-				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
+			switch {
+			case opts.outputPath == "-" && opts.Template != "":
+				return fmt.Errorf("`--output -` cannot be used with `--format %s` at the same time", opts.Template)
+			case opts.OutputDescriptor && opts.Template != "":
+				return fmt.Errorf("`--descriptor` cannot be used with `--format %s` at the same time", opts.Template)
+			case opts.OutputDescriptor && opts.outputPath == "-":
+				return fmt.Errorf("`--descriptor` cannot be used with `--output -` at the same time")
 			}
 			opts.RawReference = args[0]
 			return option.Parse(cmd, &opts)
@@ -86,6 +90,9 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 
 	cmd.Flags().StringSliceVarP(&opts.mediaTypes, "media-type", "", nil, "accepted media types")
 	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "file `path` to write the fetched manifest to, use - for stdout")
+	cmd.Flags().StringVar(&opts.Template, "format", "", `[Experimental] Format metadata using a custom template:
+'json':       Print in prettified JSON format
+'$TEMPLATE':  Print using the given Go template.`)
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
@@ -110,8 +117,10 @@ func fetchManifest(cmd *cobra.Command, opts *fetchOptions) (fetchErr error) {
 	if err != nil {
 		return err
 	}
+	metadataHandler, contentHandler := display.NewManifestFetchHandler(cmd.OutOrStdout(), opts.Template, opts.OutputDescriptor, opts.Pretty.Pretty, opts.outputPath)
 
 	var desc ocispec.Descriptor
+	var content []byte
 	if opts.OutputDescriptor && opts.outputPath == "" {
 		// fetch manifest descriptor only
 		fetchOpts := oras.DefaultResolveOptions
@@ -121,34 +130,16 @@ func fetchManifest(cmd *cobra.Command, opts *fetchOptions) (fetchErr error) {
 			return fmt.Errorf("failed to find %q: %w", opts.RawReference, err)
 		}
 	} else {
-		// fetch manifest content
-		var content []byte
+		// fetch manifest descriptor and content
 		fetchOpts := oras.DefaultFetchBytesOptions
 		fetchOpts.TargetPlatform = opts.Platform.Platform
 		desc, content, err = oras.FetchBytes(ctx, src, opts.Reference, fetchOpts)
 		if err != nil {
 			return fmt.Errorf("failed to fetch the content of %q: %w", opts.RawReference, err)
 		}
-
-		if opts.outputPath == "" || opts.outputPath == "-" {
-			// output manifest content
-			return opts.Output(os.Stdout, content)
-		}
-
-		// save manifest content into the local file if the output path is provided
-		if err = os.WriteFile(opts.outputPath, content, 0666); err != nil {
+		if err = contentHandler.OnContentFetched(desc, content); err != nil {
 			return err
 		}
 	}
-
-	// output manifest's descriptor if `--descriptor` is used
-	if opts.OutputDescriptor {
-		descBytes, err := json.Marshal(desc)
-		if err != nil {
-			return err
-		}
-		return opts.Output(os.Stdout, descBytes)
-	}
-
-	return nil
+	return metadataHandler.OnFetched(opts.Path, desc, content)
 }
