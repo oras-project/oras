@@ -27,4 +27,8 @@ var (
 	Experimental = struct{ Mark string }{
 		Mark: "[Experimental]",
 	}
+
+	Deprecated = struct{ Mark string }{
+		Mark: "[Deprecated]",
+	}
 )

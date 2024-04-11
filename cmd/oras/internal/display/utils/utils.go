@@ -32,6 +32,13 @@ const (
 	PullPromptDownloaded  = "Downloaded "
 )
 
+// PrintPrettyJSON prints the object to the writer in JSON format.
+func PrintPrettyJSON(out io.Writer, object any) error {
+	encoder := json.NewEncoder(out)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(object)
+}
+
 // PrintJSON writes the data to the output stream, optionally prettifying it.
 func PrintJSON(out io.Writer, data []byte, pretty bool) error {
 	if pretty {

@@ -13,15 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package json
+package model
 
-import (
-	"encoding/json"
-	"io"
-)
+import ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-func printJSON(out io.Writer, object any) error {
-	encoder := json.NewEncoder(out)
-	encoder.SetIndent("", "  ")
-	return encoder.Encode(object)
+type discover struct {
+	Manifests []Descriptor
+}
+
+// NewDiscover creates a new discover model.
+func NewDiscover(name string, descs []ocispec.Descriptor) discover {
+	discover := discover{
+		Manifests: make([]Descriptor, 0, len(descs)),
+	}
+	for _, desc := range descs {
+		discover.Manifests = append(discover.Manifests, FromDescriptor(name, desc))
+	}
+	return discover
 }

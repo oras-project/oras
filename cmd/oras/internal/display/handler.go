@@ -19,12 +19,16 @@ import (
 	"io"
 	"os"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+
 	"oras.land/oras/cmd/oras/internal/display/content"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/descriptor"
 	"oras.land/oras/cmd/oras/internal/display/metadata/json"
+	"oras.land/oras/cmd/oras/internal/display/metadata/table"
 	"oras.land/oras/cmd/oras/internal/display/metadata/template"
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
+	"oras.land/oras/cmd/oras/internal/display/metadata/tree"
 	"oras.land/oras/cmd/oras/internal/display/status"
 )
 
@@ -103,6 +107,20 @@ func NewTagHandler(discard bool) status.TagHandler {
 		return status.NewDiscardHandler()
 	}
 	return status.NewTextTagHandler()
+}
+
+// NewDiscoverHandler returns status and metadata handlers for discover command.
+func NewDiscoverHandler(out io.Writer, outputType string, path string, rawReference string, desc ocispec.Descriptor, verbose bool) metadata.DiscoverHandler {
+	switch outputType {
+	case "tree", "":
+		return tree.NewDiscoverHandler(out, path, desc, verbose)
+	case "table":
+		return table.NewDiscoverHandler(out, rawReference, desc, verbose)
+	case "json":
+		return json.NewDiscoverHandler(out, desc, path)
+	default:
+		return template.NewDiscoverHandler(out, desc, path, outputType)
+	}
 }
 
 // NewManifestFetchHandler returns a manifest fetch handler.
