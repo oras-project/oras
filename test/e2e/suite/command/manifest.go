@@ -71,11 +71,18 @@ var _ = Describe("ORAS beginners:", func() {
 				gomega.Expect(err).Should(gbytes.Say(`Run "oras manifest push -h"`))
 			})
 
-			It("should fail pushing with  a manifest from stdin without media type flag", func() {
+			It("should fail pushing with a manifest from stdin with password read from stdin", func() {
 				tag := "from-stdin"
 				ORAS("manifest", "push", RegistryRef(ZOTHost, ImageRepo, tag), "-", "--password-stdin", "--media-type", "application/vnd.oci.image.manifest.v1+json").
 					ExpectFailure().
 					MatchErrKeyWords("`-`", "`--password-stdin`", " cannot be both used").Exec()
+			})
+
+			It("should fail pushing with a manifest from stdin with identity token read from stdin", func() {
+				tag := "from-stdin"
+				ORAS("manifest", "push", RegistryRef(ZOTHost, ImageRepo, tag), "-", "--identity-token-stdin", "--media-type", "application/vnd.oci.image.manifest.v1+json").
+					ExpectFailure().
+					MatchErrKeyWords("`-`", "`--identity-token-stdin`", " cannot be both used").Exec()
 			})
 		})
 

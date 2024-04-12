@@ -45,16 +45,25 @@ import (
 	"oras.land/oras/internal/version"
 )
 
+const (
+	usernameFlag               = "username"
+	passwordFlag               = "password"
+	passwordFromStdinFlag      = "password-stdin"
+	identityTokenFlag          = "identity-token"
+	identityTokenFromStdinFlag = "identity-token-stdin"
+)
+
 // Remote options struct contains flags and arguments specifying one registry.
 // Remote implements oerrors.Handler and interface.
 type Remote struct {
 	DistributionSpec
-	CACertFilePath    string
-	Insecure          bool
-	Configs           []string
-	Username          string
-	PasswordFromStdin bool
-	Password          string
+	CACertFilePath  string
+	Insecure        bool
+	Configs         []string
+	Username        string
+	secretFromStdin bool
+	Secret          string
+	flagPrefix      string
 
 	resolveFlag           []string
 	applyDistributionSpec bool
@@ -73,7 +82,8 @@ func (opts *Remote) EnableDistributionSpecFlag() {
 // ApplyFlags applies flags to a command flag set.
 func (opts *Remote) ApplyFlags(fs *pflag.FlagSet) {
 	opts.ApplyFlagsWithPrefix(fs, "", "")
-	fs.BoolVarP(&opts.PasswordFromStdin, "password-stdin", "", false, "read password or identity token from stdin")
+	fs.BoolVar(&opts.secretFromStdin, passwordFromStdinFlag, false, "read password from stdin")
+	fs.BoolVar(&opts.secretFromStdin, identityTokenFromStdinFlag, false, "read identity token from stdin")
 }
 
 func applyPrefix(prefix, description string) (flagPrefix, notePrefix string) {
@@ -90,52 +100,78 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 		shortUser     string
 		shortPassword string
 		shortHeader   string
-		flagPrefix    string
 		notePrefix    string
 	)
 	if prefix == "" {
 		shortUser, shortPassword = "u", "p"
 		shortHeader = "H"
 	}
-	flagPrefix, notePrefix = applyPrefix(prefix, description)
+	opts.flagPrefix, notePrefix = applyPrefix(prefix, description)
 
 	if opts.applyDistributionSpec {
 		opts.DistributionSpec.ApplyFlagsWithPrefix(fs, prefix, description)
 	}
-	fs.StringVarP(&opts.Username, flagPrefix+"username", shortUser, "", notePrefix+"registry username")
-	fs.StringVarP(&opts.Password, flagPrefix+"password", shortPassword, "", notePrefix+"registry password or identity token")
-	fs.BoolVarP(&opts.Insecure, flagPrefix+"insecure", "", false, "allow connections to "+notePrefix+"SSL registry without certs")
-	plainHTTPFlagName := flagPrefix + "plain-http"
+	fs.StringVarP(&opts.Username, opts.flagPrefix+usernameFlag, shortUser, "", notePrefix+"registry username")
+	fs.StringVarP(&opts.Secret, opts.flagPrefix+passwordFlag, shortPassword, "", notePrefix+"registry password or identity token")
+	fs.StringVar(&opts.Secret, opts.flagPrefix+identityTokenFlag, "", notePrefix+"registry identity token")
+	fs.BoolVar(&opts.Insecure, opts.flagPrefix+"insecure", false, "allow connections to "+notePrefix+"SSL registry without certs")
+	plainHTTPFlagName := opts.flagPrefix + "plain-http"
 	plainHTTP := fs.Bool(plainHTTPFlagName, false, "allow insecure connections to "+notePrefix+"registry without SSL check")
 	opts.plainHTTP = func() (bool, bool) {
 		return *plainHTTP, fs.Changed(plainHTTPFlagName)
 	}
-	fs.StringVarP(&opts.CACertFilePath, flagPrefix+"ca-file", "", "", "server certificate authority file for the remote "+notePrefix+"registry")
-	fs.StringArrayVarP(&opts.resolveFlag, flagPrefix+"resolve", "", nil, "customized DNS for "+notePrefix+"registry, formatted in `host:port:address[:address_port]`")
-	fs.StringArrayVarP(&opts.Configs, flagPrefix+"registry-config", "", nil, "`path` of the authentication file for "+notePrefix+"registry")
-	fs.StringArrayVarP(&opts.headerFlags, flagPrefix+"header", shortHeader, nil, "add custom headers to "+notePrefix+"requests")
+	fs.StringVar(&opts.CACertFilePath, opts.flagPrefix+"ca-file", "", "server certificate authority file for the remote "+notePrefix+"registry")
+	fs.StringArrayVar(&opts.resolveFlag, opts.flagPrefix+"resolve", nil, "customized DNS for "+notePrefix+"registry, formatted in `host:port:address[:address_port]`")
+	fs.StringArrayVar(&opts.Configs, opts.flagPrefix+"registry-config", nil, "`path` of the authentication file for "+notePrefix+"registry")
+	fs.StringArrayVarP(&opts.headerFlags, opts.flagPrefix+"header", shortHeader, nil, "add custom headers to "+notePrefix+"requests")
+}
+
+// CheckStdinConflict checks if PasswordFromStdin or IdentityTokenFromStdin of a
+// *pflag.FlagSet conflicts with read file from input.
+func CheckStdinConflict(flags *pflag.FlagSet) error {
+	switch {
+	case flags.Changed(passwordFromStdinFlag):
+		return fmt.Errorf("`-` read file from input and `--%s` read password from input cannot be both used", passwordFromStdinFlag)
+	case flags.Changed(identityTokenFromStdinFlag):
+		return fmt.Errorf("`-` read file from input and `--%s` read identity token from input cannot be both used", identityTokenFromStdinFlag)
+	}
+	return nil
 }
 
 // Parse tries to read password with optional cmd prompt.
-func (opts *Remote) Parse(*cobra.Command) error {
+func (opts *Remote) Parse(cmd *cobra.Command) error {
+	usernameAndIdTokenFlags := []string{opts.flagPrefix + usernameFlag, opts.flagPrefix + identityTokenFlag}
+	passwordAndIdTokenFlags := []string{opts.flagPrefix + passwordFlag, opts.flagPrefix + identityTokenFlag}
+	if cmd.Flags().Lookup(identityTokenFromStdinFlag) != nil {
+		usernameAndIdTokenFlags = append(usernameAndIdTokenFlags, identityTokenFromStdinFlag)
+		passwordAndIdTokenFlags = append(passwordAndIdTokenFlags, identityTokenFromStdinFlag)
+	}
+	if cmd.Flags().Lookup(passwordFromStdinFlag) != nil {
+		passwordAndIdTokenFlags = append(passwordAndIdTokenFlags, passwordFromStdinFlag)
+	}
+	cmd.MarkFlagsMutuallyExclusive(usernameAndIdTokenFlags...)
+	cmd.MarkFlagsMutuallyExclusive(passwordAndIdTokenFlags...)
 	if err := opts.parseCustomHeaders(); err != nil {
 		return err
 	}
-	return opts.readPassword()
+	return opts.readSecret(cmd)
 }
 
-// readPassword tries to read password with optional cmd prompt.
-func (opts *Remote) readPassword() (err error) {
-	if opts.Password != "" {
+// readSecret tries to read password or identity token with
+// optional cmd prompt.
+func (opts *Remote) readSecret(cmd *cobra.Command) (err error) {
+	if cmd.Flags().Changed(identityTokenFlag) {
+		fmt.Fprintln(os.Stderr, "WARNING! Using --identity-token via the CLI is insecure. Use --identity-token-stdin.")
+	} else if cmd.Flags().Changed(passwordFlag) {
 		fmt.Fprintln(os.Stderr, "WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
-	} else if opts.PasswordFromStdin {
+	} else if opts.secretFromStdin {
 		// Prompt for credential
-		password, err := io.ReadAll(os.Stdin)
+		secret, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			return err
 		}
-		opts.Password = strings.TrimSuffix(string(password), "\n")
-		opts.Password = strings.TrimSuffix(opts.Password, "\r")
+		opts.Secret = strings.TrimSuffix(string(secret), "\n")
+		opts.Secret = strings.TrimSuffix(opts.Secret, "\r")
 	}
 	return nil
 }
@@ -267,7 +303,7 @@ func (opts *Remote) parseCustomHeaders() error {
 
 // Credential returns a credential based on the remote options.
 func (opts *Remote) Credential() auth.Credential {
-	return credential.Credential(opts.Username, opts.Password)
+	return credential.Credential(opts.Username, opts.Secret)
 }
 
 func (opts *Remote) handleWarning(registry string, logger logrus.FieldLogger) func(warning remote.Warning) {
