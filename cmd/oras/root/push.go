@@ -242,7 +242,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 		}
 		tagBytesNOpts := oras.DefaultTagBytesNOptions
 		tagBytesNOpts.Concurrency = opts.concurrency
-		statusHandler, metadataHandler := display.NewTagHandler(opts.Template != "")
+		statusHandler, metadataHandler := display.NewTagHandler(cmd.OutOrStdout(), opts.Template != "")
 		if _, err = oras.TagBytesN(ctx, display.NewTagStatusHintPrinter(taggable, statusHandler.PreTagging, statusHandler.OnTagged, metadataHandler.OnTagged), root.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}

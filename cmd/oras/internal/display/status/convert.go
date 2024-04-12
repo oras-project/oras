@@ -13,29 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package text
+package status
 
 import (
-	"fmt"
-	"io"
-
-	"oras.land/oras/cmd/oras/internal/display/metadata"
+	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// TagHandler handles text metadata output for tag events.
-type TagHandler struct {
-	out io.Writer
-}
-
-// OnTagged implements metadata.TextTagHandler.
-func (h *TagHandler) OnTagged(tag string) error {
-	_, err := fmt.Fprintln(h.out, "Tagged", tag)
-	return err
-}
-
-// NewTagHandler returns a new handler for tag events.
-func NewTagHandler(out io.Writer) metadata.TagHandler {
-	return &TagHandler{
-		out: out,
+// ShortDigest converts the digest of the descriptor to a short form for displaying.
+func ShortDigest(desc ocispec.Descriptor) (digestString string) {
+	digestString = desc.Digest.String()
+	if err := desc.Digest.Validate(); err == nil {
+		if algo := desc.Digest.Algorithm(); algo == digest.SHA256 {
+			digestString = desc.Digest.Encoded()[:12]
+		}
 	}
+	return digestString
 }

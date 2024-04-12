@@ -30,7 +30,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/display"
-	"oras.land/oras/cmd/oras/internal/display/utils"
+	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/manifest"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -156,17 +156,17 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 	}
 	verbose := opts.Verbose && !opts.OutputDescriptor
 	if match {
-		if err := utils.PrintStatus(desc, "Exists", verbose); err != nil {
+		if err := status.PrintStatus(desc, "Exists", verbose); err != nil {
 			return err
 		}
 	} else {
-		if err = utils.PrintStatus(desc, "Uploading", verbose); err != nil {
+		if err = status.PrintStatus(desc, "Uploading", verbose); err != nil {
 			return err
 		}
 		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil {
 			return err
 		}
-		if err = utils.PrintStatus(desc, "Uploaded ", verbose); err != nil {
+		if err = status.PrintStatus(desc, "Uploaded ", verbose); err != nil {
 			return err
 		}
 	}
@@ -187,9 +187,9 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		}
 		return opts.Output(os.Stdout, descJSON)
 	}
-	utils.Print("Pushed", opts.AnnotatedReference())
+	status.Print("Pushed", opts.AnnotatedReference())
 	if len(opts.extraRefs) != 0 {
-		statusHandler, metadataHandler := display.NewTagHandler(true)
+		statusHandler, metadataHandler := display.NewTagHandler(cmd.OutOrStdout(), true)
 		if _, err = oras.TagBytesN(ctx, display.NewTagStatusHintPrinter(target, statusHandler.PreTagging, statusHandler.OnTagged, metadataHandler.OnTagged), mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}

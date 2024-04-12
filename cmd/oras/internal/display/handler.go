@@ -102,25 +102,25 @@ func NewPullHandler(format string, path string, tty *os.File, out io.Writer, ver
 }
 
 // NewTagHandler returns a tag handler.
-func NewTagHandler(discard bool) (status.TagHandler, metadata.TagHandler) {
+func NewTagHandler(out io.Writer, discard bool) (status.TagHandler, metadata.TagHandler) {
 	var statusHandler = status.NewDiscardHandler()
 	var metadataHandler metadata.TagHandler
 	if discard {
 		metadataHandler = metadata.NewDiscardHandler()
 	} else {
-		metadataHandler = text.NewTagHandler()
+		metadataHandler = text.NewTagHandler(out)
 	}
 	return statusHandler, metadataHandler
 }
 
 // NewTagHintHandler returns a tag and hint handler.
-func NewTagHintHandler(hintPrefix string, discard bool) (status.TagHandler, metadata.TagHandler) {
+func NewTagHintHandler(out io.Writer, hintPrefix string, discard bool) (status.TagHandler, metadata.TagHandler) {
 	var statusHandler status.TagHandler
 	var metadataHandler = metadata.NewDiscardHandler()
 	if discard {
 		statusHandler = status.NewDiscardHandler()
 	} else {
-		statusHandler = status.NewTagHandler(hintPrefix)
+		statusHandler = status.NewTagHandler(out, hintPrefix)
 	}
 	return statusHandler, metadataHandler
 }

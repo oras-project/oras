@@ -24,20 +24,19 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
-	"oras.land/oras/cmd/oras/internal/display/utils"
 )
 
 // TextPushHandler handles text status output for push events.
 type TextPushHandler struct {
 	verbose bool
-	printer *utils.Printer
+	printer *Printer
 }
 
 // NewTextPushHandler returns a new handler for push command.
 func NewTextPushHandler(out io.Writer, verbose bool) PushHandler {
 	return &TextPushHandler{
 		verbose: verbose,
-		printer: utils.NewPrinter(out),
+		printer: NewPrinter(out),
 	}
 }
 
@@ -77,7 +76,7 @@ func (ph *TextPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetche
 	}
 	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		if err := utils.PrintSuccessorStatus(ctx, desc, fetcher, committed, ph.printer.StatusPrinter(promptSkipped, ph.verbose)); err != nil {
+		if err := PrintSuccessorStatus(ctx, desc, fetcher, committed, ph.printer.StatusPrinter(promptSkipped, ph.verbose)); err != nil {
 			return err
 		}
 		return ph.printer.PrintStatus(desc, promptUploaded, ph.verbose)
@@ -92,7 +91,7 @@ func NewTextAttachHandler(out io.Writer, verbose bool) AttachHandler {
 // TextPullHandler handles text status output for pull events.
 type TextPullHandler struct {
 	verbose bool
-	printer *utils.Printer
+	printer *Printer
 }
 
 // TrackTarget implements PullHander.
@@ -102,55 +101,57 @@ func (ph *TextPullHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, S
 
 // OnNodeDownloading implements PullHandler.
 func (ph *TextPullHandler) OnNodeDownloading(desc ocispec.Descriptor) error {
-	return utils.PrintStatus(desc, PullPromptDownloading, ph.verbose)
+	return PrintStatus(desc, PullPromptDownloading, ph.verbose)
 }
 
 // OnNodeDownloaded implements PullHandler.
 func (ph *TextPullHandler) OnNodeDownloaded(desc ocispec.Descriptor) error {
-	return utils.PrintStatus(desc, PullPromptDownloaded, ph.verbose)
+	return PrintStatus(desc, PullPromptDownloaded, ph.verbose)
 }
 
 // OnNodeRestored implements PullHandler.
 func (ph *TextPullHandler) OnNodeRestored(desc ocispec.Descriptor) error {
-	return utils.PrintStatus(desc, PullPromptRestored, ph.verbose)
+	return PrintStatus(desc, PullPromptRestored, ph.verbose)
 }
 
 // OnNodeProcessing implements PullHandler.
 func (ph *TextPullHandler) OnNodeProcessing(desc ocispec.Descriptor) error {
-	return utils.PrintStatus(desc, PullPromptProcessing, ph.verbose)
+	return PrintStatus(desc, PullPromptProcessing, ph.verbose)
 }
 
 // OnNodeProcessing implements PullHandler.
 func (ph *TextPullHandler) OnNodeSkipped(desc ocispec.Descriptor) error {
-	return utils.PrintStatus(desc, PullPromptSkipped, ph.verbose)
+	return PrintStatus(desc, PullPromptSkipped, ph.verbose)
 }
 
 // NewTextPullHandler returns a new handler for pull command.
 func NewTextPullHandler(out io.Writer, verbose bool) PullHandler {
 	return &TextPullHandler{
 		verbose: verbose,
-		printer: utils.NewPrinter(out),
+		printer: NewPrinter(out),
 	}
 }
 
 // TagTextHandler handles text metadata output for tag events.
 type TagTextHandler struct {
 	reference string
+	out       io.Writer
 }
 
 // OnTagged implements metadata.TextTagHandler.
 func (TagTextHandler) OnTagged(tag string) error {
-	return utils.Print("Tagged", tag)
+	return Print("Tagged", tag)
 }
 
 // PreTagging implements metadata.TextTagHandler.
 func (t *TagTextHandler) PreTagging(desc ocispec.Descriptor) error {
-	return utils.Print(fmt.Sprintf("Tagging %s@%s", t.reference, desc.Digest))
+	return Print(fmt.Sprintf("Tagging %s@%s", t.reference, desc.Digest))
 }
 
 // NewTagHandler returns a new handler for tag events.
-func NewTagHandler(reference string) TagHandler {
+func NewTagHandler(out io.Writer, reference string) TagHandler {
 	return &TagTextHandler{
 		reference: reference,
+		out:       out,
 	}
 }
