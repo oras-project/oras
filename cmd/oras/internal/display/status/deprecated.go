@@ -16,14 +16,12 @@ limitations under the License.
 package status
 
 import (
-	"context"
-	"io"
 	"os"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/registry"
+	"oras.land/oras/internal/listener"
 )
 
 // Types and functions in this file are deprecated and should be removed when
@@ -33,71 +31,25 @@ import (
 // tag status and hint.
 func NewTagStatusHintPrinter(target oras.Target, refPrefix string) oras.Target {
 	var printHint sync.Once
-	if repo, ok := target.(registry.Repository); ok {
-		return &tagManifestStatusForRepo{
-			Repository: repo,
-			printHint:  &printHint,
-			refPrefix:  refPrefix,
-		}
-	}
-	return &tagManifestStatusForTarget{
-		Target:    target,
-		printHint: &printHint,
-		refPrefix: refPrefix,
-	}
-}
-
-type tagManifestStatusForRepo struct {
-	registry.Repository
-	printHint *sync.Once
-	refPrefix string
-}
-
-// PushReference overrides Repository.PushReference method to print off which tag(s) were added successfully.
-func (p *tagManifestStatusForRepo) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
-	if p.printHint != nil {
-		p.printHint.Do(func() {
-			ref := p.refPrefix + "@" + expected.Digest.String()
-			_ = Print("Tagging", ref)
+	var printHintErr error
+	onTagging := func(desc ocispec.Descriptor, tag string) error {
+		printHint.Do(func() {
+			ref := refPrefix + "@" + desc.Digest.String()
+			printHintErr = Print("Tagging", ref)
 		})
+		return printHintErr
 	}
-	if err := p.Repository.PushReference(ctx, expected, content, reference); err != nil {
-		return err
+	onTagged := func(desc ocispec.Descriptor, tag string) error {
+		return Print("Tagged", tag)
 	}
-	return Print("Tagged", reference)
-}
-
-type tagManifestStatusForTarget struct {
-	oras.Target
-	printHint *sync.Once
-	refPrefix string
-}
-
-// Tag tags a descriptor with a reference string.
-func (p *tagManifestStatusForTarget) Tag(ctx context.Context, desc ocispec.Descriptor, reference string) error {
-	if p.printHint != nil {
-		p.printHint.Do(func() {
-			ref := p.refPrefix + "@" + desc.Digest.String()
-			_ = Print("Tagging", ref)
-		})
-	}
-
-	if err := p.Target.Tag(ctx, desc, reference); err != nil {
-		return err
-	}
-	return Print("Tagged", reference)
+	return listener.NewTagListener(target, onTagging, onTagged)
 }
 
 // NewTagStatusPrinter creates a wrapper type for printing tag status.
 func NewTagStatusPrinter(target oras.Target) oras.Target {
-	if repo, ok := target.(registry.Repository); ok {
-		return &tagManifestStatusForRepo{
-			Repository: repo,
-		}
-	}
-	return &tagManifestStatusForTarget{
-		Target: target,
-	}
+	return listener.NewTagListener(target, nil, func(desc ocispec.Descriptor, tag string) error {
+		return Print("Tagged", tag)
+	})
 }
 
 // printer is used by the code being deprecated. Related functions should be
