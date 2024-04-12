@@ -129,9 +129,10 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 // CheckStdinConflict checks if PasswordFromStdin or IdentityTokenFromStdin of a
 // *pflag.FlagSet conflicts with read file from input.
 func CheckStdinConflict(flags *pflag.FlagSet) error {
-	if flags.Changed(passwordFromStdinFlag) {
+	switch {
+	case flags.Changed(passwordFromStdinFlag):
 		return fmt.Errorf("`-` read file from input and `--%s` read password from input cannot be both used", passwordFromStdinFlag)
-	} else if flags.Changed(identityTokenFromStdinFlag) {
+	case flags.Changed(identityTokenFromStdinFlag):
 		return fmt.Errorf("`-` read file from input and `--%s` read identity token from input cannot be both used", identityTokenFromStdinFlag)
 	}
 	return nil
