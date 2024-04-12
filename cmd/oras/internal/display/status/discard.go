@@ -57,7 +57,9 @@ func (DiscardHandler) OnTagged(tag string) error {
 }
 
 // PreTagging implements TagHandler interface.
-func (DiscardHandler) PreTagging(reference string) {}
+func (DiscardHandler) PreTagging(ocispec.Descriptor) error {
+	return nil
+}
 
 // OnNodeDownloading implements PullHandler.
 func (DiscardHandler) OnNodeDownloading(desc ocispec.Descriptor) error {

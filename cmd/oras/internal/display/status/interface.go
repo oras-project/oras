@@ -35,14 +35,6 @@ type PushHandler interface {
 // AttachHandler handles text status output for attach command.
 type AttachHandler PushHandler
 
-// TagHandler handles status output for tag command.
-type TagHandler interface {
-	// OnTagged is called when each tagging operation is done.
-	OnTagged(tag string) error
-	// PreTagging is called before tagging.
-	PreTagging(reference string)
-}
-
 // PullHandler handles status output for pull command.
 type PullHandler interface {
 	// TrackTarget returns a tracked target.
@@ -58,4 +50,12 @@ type PullHandler interface {
 	OnNodeRestored(desc ocispec.Descriptor) error
 	// OnNodeSkipped is called when a node is skipped.
 	OnNodeSkipped(desc ocispec.Descriptor) error
+}
+
+// TagHandler handles status output for tag command.
+type TagHandler interface {
+	// OnTagged is called when each tagging operation is done.
+	OnTagged(tag string) error
+	// PreTagging is called before tagging.
+	PreTagging(desc ocispec.Descriptor) error
 }

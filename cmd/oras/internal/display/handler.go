@@ -102,11 +102,27 @@ func NewPullHandler(format string, path string, tty *os.File, out io.Writer, ver
 }
 
 // NewTagHandler returns a tag handler.
-func NewTagHandler(discard bool) status.TagHandler {
+func NewTagHandler(discard bool) (status.TagHandler, metadata.TagHandler) {
+	var statusHandler = status.NewDiscardHandler()
+	var metadataHandler metadata.TagHandler
 	if discard {
-		return status.NewDiscardHandler()
+		metadataHandler = metadata.NewDiscardHandler()
+	} else {
+		metadataHandler = text.NewTagHandler()
 	}
-	return status.NewTextTagHandler()
+	return statusHandler, metadataHandler
+}
+
+// NewTagHintHandler returns a tag and hint handler.
+func NewTagHintHandler(hintPrefix string, discard bool) (status.TagHandler, metadata.TagHandler) {
+	var statusHandler status.TagHandler
+	var metadataHandler = metadata.NewDiscardHandler()
+	if discard {
+		statusHandler = status.NewDiscardHandler()
+	} else {
+		statusHandler = status.NewTagHandler(hintPrefix)
+	}
+	return statusHandler, metadataHandler
 }
 
 // NewDiscoverHandler returns status and metadata handlers for discover command.

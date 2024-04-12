@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package status
+package utils
 
 import (
 	"context"
@@ -22,11 +22,21 @@ import (
 	"os"
 	"sync"
 
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/registry"
 )
+
+// ShortDigest converts the digest of the descriptor to a short form for displaying.
+func ShortDigest(desc ocispec.Descriptor) (digestString string) {
+	digestString = desc.Digest.String()
+	if err := desc.Digest.Validate(); err == nil {
+		if algo := desc.Digest.Algorithm(); algo == digest.SHA256 {
+			digestString = desc.Digest.Encoded()[:12]
+		}
+	}
+	return digestString
+}
 
 // PrintFunc is the function type returned by StatusPrinter.
 type PrintFunc func(ocispec.Descriptor) error
@@ -86,80 +96,6 @@ func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, fetcher 
 		}
 	}
 	return nil
-}
-
-// NewTagStatusHintPrinter creates a wrapper type for printing
-// tag status and hint.
-func NewTagStatusHintPrinter(target oras.Target, refPrefix string, tagHandler TagHandler) oras.Target {
-	var printHint sync.Once
-	if repo, ok := target.(registry.Repository); ok {
-		return &tagManifestStatusForRepo{
-			Repository: repo,
-			printHint:  &printHint,
-			refPrefix:  refPrefix,
-			tagHandler: tagHandler,
-		}
-	}
-	return &tagManifestStatusForTarget{
-		Target:     target,
-		printHint:  &printHint,
-		refPrefix:  refPrefix,
-		tagHandler: tagHandler,
-	}
-}
-
-type tagManifestStatusForRepo struct {
-	registry.Repository
-	tagHandler TagHandler
-	printHint  *sync.Once
-	refPrefix  string
-}
-
-// PushReference overrides Repository.PushReference method to print off which tag(s) were added successfully.
-func (p *tagManifestStatusForRepo) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
-	if p.printHint != nil {
-		p.printHint.Do(func() {
-			p.tagHandler.PreTagging(p.refPrefix + "@" + expected.Digest.String())
-		})
-	}
-	if err := p.Repository.PushReference(ctx, expected, content, reference); err != nil {
-		return err
-	}
-	return p.tagHandler.OnTagged(reference)
-}
-
-type tagManifestStatusForTarget struct {
-	oras.Target
-	tagHandler TagHandler
-	printHint  *sync.Once
-	refPrefix  string
-}
-
-// Tag tags a descriptor with a reference string.
-func (p *tagManifestStatusForTarget) Tag(ctx context.Context, desc ocispec.Descriptor, reference string) error {
-	if p.printHint != nil {
-		p.printHint.Do(func() {
-			p.tagHandler.PreTagging(p.refPrefix + "@" + desc.Digest.String())
-		})
-	}
-	if err := p.Target.Tag(ctx, desc, reference); err != nil {
-		return err
-	}
-	return p.tagHandler.OnTagged(reference)
-}
-
-// NewTagStatusPrinter creates a wrapper type for printing tag status.
-func NewTagStatusPrinter(target oras.Target, tagHandler TagHandler) oras.Target {
-	if repo, ok := target.(registry.Repository); ok {
-		return &tagManifestStatusForRepo{
-			Repository: repo,
-			tagHandler: tagHandler,
-		}
-	}
-	return &tagManifestStatusForTarget{
-		Target:     target,
-		tagHandler: tagHandler,
-	}
 }
 
 // printer is used by the code being deprecated. Related functions should be

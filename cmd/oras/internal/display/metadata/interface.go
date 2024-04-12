@@ -57,3 +57,9 @@ type PullHandler interface {
 	// OnCompleted is called when the pull cmd execution is completed.
 	OnCompleted(opts *option.Target, desc ocispec.Descriptor) error
 }
+
+// TagHandler handles status output for tag command.
+type TagHandler interface {
+	// OnTagged is called when each tagging operation is done.
+	OnTagged(tag string) error
+}

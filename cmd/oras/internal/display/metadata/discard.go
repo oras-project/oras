@@ -20,11 +20,21 @@ import ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 type discard struct{}
 
 // NewDiscardHandler creates a new handler that discards output for all events.
-func NewDiscardHandler() ManifestFetchHandler {
+func NewDiscardHandler() discard {
 	return discard{}
 }
 
 // OnFetched implements ManifestFetchHandler.
 func (discard) OnFetched(string, ocispec.Descriptor, []byte) error {
+	return nil
+}
+
+// PreTagging implements TagHandler.
+func (discard) PreTagging(string) error {
+	return nil
+}
+
+// OnTagged implements TagHandler.
+func (discard) OnTagged(string) error {
 	return nil
 }
