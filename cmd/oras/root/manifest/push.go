@@ -87,8 +87,10 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 		Args: oerrors.CheckArgs(argument.Exactly(2), "the destination to push to and the file to read manifest content from"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.fileRef = args[1]
-			if opts.fileRef == "-" && opts.PasswordFromStdin {
-				return errors.New("`-` read file from input and `--password-stdin` read password from input cannot be both used")
+			if opts.fileRef == "-" {
+				if err := option.CheckStdinConflict(cmd.Flags()); err != nil {
+					return err
+				}
 			}
 			refs := strings.Split(args[0], ",")
 			opts.RawReference = refs[0]
