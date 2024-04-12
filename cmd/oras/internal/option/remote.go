@@ -139,9 +139,14 @@ func CheckStdinConflict(flags *pflag.FlagSet) error {
 
 // Parse tries to read password with optional cmd prompt.
 func (opts *Remote) Parse(cmd *cobra.Command) error {
-	cmd.MarkFlagsMutuallyExclusive(opts.flagPrefix+usernameFlag, opts.flagPrefix+identityTokenFlag, identityTokenFromStdinFlag)
-	cmd.MarkFlagsMutuallyExclusive(opts.flagPrefix+passwordFlag, opts.flagPrefix+passwordFromStdinFlag, identityTokenFlag, identityTokenFromStdinFlag)
-
+	array := []string{opts.flagPrefix + usernameFlag, opts.flagPrefix + identityTokenFlag}
+	array2 := []string{opts.flagPrefix + passwordFlag, opts.flagPrefix + passwordFromStdinFlag, opts.flagPrefix + identityTokenFlag}
+	if cmd.Flags().Lookup(identityTokenFromStdinFlag) != nil {
+		array = append(array, identityTokenFromStdinFlag)
+		array2 = append(array2, identityTokenFromStdinFlag)
+	}
+	cmd.MarkFlagsMutuallyExclusive(array...)
+	cmd.MarkFlagsMutuallyExclusive(array2...)
 	if err := opts.parseCustomHeaders(); err != nil {
 		return err
 	}
