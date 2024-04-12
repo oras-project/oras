@@ -13,18 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package metadata
+package utils
 
-import ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-
-type discard struct{}
-
-// NewDiscardHandler creates a new handler that discards output for all events.
-func NewDiscardHandler() discard {
-	return discard{}
-}
-
-// OnFetched implements ManifestFetchHandler.
-func (discard) OnFetched(string, ocispec.Descriptor, []byte) error {
-	return nil
-}
+// Prompt constants for pull.
+const (
+	PullPromptDownloading = "Downloading"
+	PullPromptPulled      = "Pulled     "
+	PullPromptProcessing  = "Processing "
+	PullPromptSkipped     = "Skipped    "
+	PullPromptRestored    = "Restored   "
+	PullPromptDownloaded  = "Downloaded "
+)

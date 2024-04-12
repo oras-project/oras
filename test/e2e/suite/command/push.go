@@ -195,6 +195,17 @@ var _ = Describe("Remote registry users:", func() {
 			Expect(manifest.Layers).Should(ContainElements(foobar.BlobBarDescriptor("application/vnd.oci.image.layer.v1.tar")))
 		})
 
+		It("should push and tag and hide tag logs", func() {
+			repo := pushTestRepo("no-tag-log")
+			tempDir := PrepareTempFiles()
+			extraTag := "2e2"
+
+			ORAS("push", fmt.Sprintf("%s,%s", RegistryRef(ZOTHost, repo, tag), extraTag), foobar.FileBarName, "-v", "--format", "{{.MediaType}}").
+				WithWorkDir(tempDir).
+				MatchContent("application/vnd.oci.image.manifest.v1+json").
+				Exec()
+		})
+
 		It("should push files with customized media types", func() {
 			repo := pushTestRepo("layer-mediatype")
 			layerType := "layer/type"

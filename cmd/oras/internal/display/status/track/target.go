@@ -31,7 +31,6 @@ type GraphTarget interface {
 	oras.GraphTarget
 	io.Closer
 	Prompt(desc ocispec.Descriptor, prompt string) error
-	Inner() oras.GraphTarget
 }
 
 type graphTarget struct {
@@ -119,9 +118,4 @@ func (t *graphTarget) Prompt(desc ocispec.Descriptor, prompt string) error {
 	status <- progress.NewStatus(prompt, desc, desc.Size)
 	status <- progress.EndTiming()
 	return nil
-}
-
-// Inner returns the inner oras.GraphTarget.
-func (t *graphTarget) Inner() oras.GraphTarget {
-	return t.GraphTarget
 }
