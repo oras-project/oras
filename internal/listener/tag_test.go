@@ -47,7 +47,7 @@ func TestNewTagListener(t *testing.T) {
 	target = NewTagListener(repo, failOnTagging, failOnTagged)
 	if listened, ok := target.(*tagListenerForRepository); !ok {
 		t.Error("expected tagListenerForTarget")
-	} else if err := listened.Tag(context.Background(), ocispec.Descriptor{}, "tag"); err == nil {
+	} else if err := listened.PushReference(context.Background(), ocispec.Descriptor{}, nil, "tag"); err == nil {
 		t.Error("expecting tagging error but got nil")
 	}
 }
