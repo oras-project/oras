@@ -111,8 +111,8 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	if opts.applyDistributionSpec {
 		opts.DistributionSpec.ApplyFlagsWithPrefix(fs, prefix, description)
 	}
-	fs.StringVarP(&opts.Username, opts.flagPrefix+"username", shortUser, "", notePrefix+"registry username")
-	fs.StringVarP(&opts.Secret, opts.flagPrefix+"password", shortPassword, "", notePrefix+"registry password or identity token")
+	fs.StringVarP(&opts.Username, opts.flagPrefix+usernameFlag, shortUser, "", notePrefix+"registry username")
+	fs.StringVarP(&opts.Secret, opts.flagPrefix+passwordFlag, shortPassword, "", notePrefix+"registry password or identity token")
 	fs.StringVar(&opts.Secret, opts.flagPrefix+identityTokenFlag, "", notePrefix+"registry identity token")
 	fs.BoolVar(&opts.Insecure, opts.flagPrefix+"insecure", false, "allow connections to "+notePrefix+"SSL registry without certs")
 	plainHTTPFlagName := opts.flagPrefix + "plain-http"
@@ -139,31 +139,18 @@ func CheckStdinConflict(flags *pflag.FlagSet) error {
 
 // Parse tries to read password with optional cmd prompt.
 func (opts *Remote) Parse(cmd *cobra.Command) error {
-	// check that basic auth flags and identity token flags are not both used.
-	var flagChecker = func(flagNames []string) string {
-		for _, name := range flagNames {
-			if cmd.Flags().Changed(name) {
-				return name
-			}
-		}
-		return ""
-	}
-	identityTokenFlag := flagChecker([]string{opts.flagPrefix + identityTokenFlag, identityTokenFromStdinFlag})
-	basicAuthFlag := flagChecker([]string{opts.flagPrefix + usernameFlag, opts.flagPrefix + passwordFlag, passwordFromStdinFlag})
-
-	if identityTokenFlag != "" && basicAuthFlag != "" {
-		return fmt.Errorf("--%s cannot be used with --%s", basicAuthFlag, identityTokenFlag)
-	}
+	cmd.MarkFlagsMutuallyExclusive(opts.flagPrefix+usernameFlag, opts.flagPrefix+identityTokenFlag, identityTokenFromStdinFlag)
+	cmd.MarkFlagsMutuallyExclusive(opts.flagPrefix+passwordFlag, opts.flagPrefix+passwordFromStdinFlag, identityTokenFlag, identityTokenFromStdinFlag)
 
 	if err := opts.parseCustomHeaders(); err != nil {
 		return err
 	}
-	return opts.readPasswordOrIdentityToken(cmd)
+	return opts.readSecret(cmd)
 }
 
-// readPasswordOrIdentityToken tries to read password or identity token with
+// readSecret tries to read password or identity token with
 // optional cmd prompt.
-func (opts *Remote) readPasswordOrIdentityToken(cmd *cobra.Command) (err error) {
+func (opts *Remote) readSecret(cmd *cobra.Command) (err error) {
 	if cmd.Flags().Changed(identityTokenFlag) {
 		fmt.Fprintln(os.Stderr, "WARNING! Using --identity-token via the CLI is insecure. Use --identity-token-stdin.")
 	} else if cmd.Flags().Changed(passwordFlag) {
