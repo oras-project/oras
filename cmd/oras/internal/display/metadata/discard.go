@@ -28,13 +28,3 @@ func NewDiscardHandler() discard {
 func (discard) OnFetched(string, ocispec.Descriptor, []byte) error {
 	return nil
 }
-
-// PreTagging implements TagHandler.
-func (discard) PreTagging(string) error {
-	return nil
-}
-
-// OnTagged implements TagHandler.
-func (discard) OnTagged(string) error {
-	return nil
-}
