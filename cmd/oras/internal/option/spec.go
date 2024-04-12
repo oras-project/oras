@@ -81,7 +81,7 @@ func (is *ImageSpec) ApplyFlags(fs *pflag.FlagSet) {
 	// default to v1.1, unless --config is used and --artifact-type is not used
 	is.PackVersion = oras.PackManifestVersion1_1
 	is.Flag = ImageSpecV1_1
-	fs.Var(is, "image-spec", `[Experimental] specify manifest type for building artifact. Options: v1.1, v1.0 (default v1.1, overridden to v1.0 if --config is used without --artifact-type)`)
+	fs.Var(is, "image-spec", `[Preview] specify manifest type for building artifact. Options: v1.1, v1.0 (default v1.1, overridden to v1.0 if --config is used without --artifact-type)`)
 }
 
 // DistributionSpec option struct which implements pflag.Value interface.
