@@ -107,7 +107,7 @@ func tagManifest(cmd *cobra.Command, opts *tagOptions) error {
 
 	tagNOpts := oras.DefaultTagNOptions
 	tagNOpts.Concurrency = opts.concurrency
-	statusHandler, metadataHandler := display.NewTagHintHandler(fmt.Sprintf("[%s] %s@%s", opts.Type, opts.Path), false)
+	statusHandler, metadataHandler := display.NewTagHintHandler(fmt.Sprintf("[%s] %s", opts.Type, opts.Path), false)
 	_, err = oras.TagN(
 		ctx,
 		display.NewTagStatusHintPrinter(target, statusHandler.PreTagging, statusHandler.OnTagged, metadataHandler.OnTagged),
