@@ -29,11 +29,11 @@ import (
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/display/status"
-	"oras.land/oras/cmd/oras/internal/display/status/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/contentutil"
+	"oras.land/oras/internal/listener"
 	"oras.land/oras/internal/registryutil"
 )
 
@@ -196,11 +196,11 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	}
 
 	// prepare push
-	dst, err := opts.NewTarget(opts.Common, logger)
+	originalDst, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
 		return err
 	}
-	dst, stopTrack, err := displayStatus.TrackTarget(dst)
+	dst, stopTrack, err := displayStatus.TrackTarget(originalDst)
 	if err != nil {
 		return err
 	}
@@ -232,18 +232,14 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	}
 
 	if len(opts.extraRefs) != 0 {
-		taggable := dst
-		if tracked, ok := dst.(track.GraphTarget); ok {
-			taggable = tracked.Inner()
-		}
 		contentBytes, err := content.FetchAll(ctx, memoryStore, root)
 		if err != nil {
 			return err
 		}
 		tagBytesNOpts := oras.DefaultTagBytesNOptions
 		tagBytesNOpts.Concurrency = opts.concurrency
-		statusHandler, metadataHandler := display.NewTagHandler(cmd.OutOrStdout(), opts.Template != "")
-		if _, err = oras.TagBytesN(ctx, display.NewTagStatusHintPrinter(taggable, statusHandler.PreTagging, statusHandler.OnTagged, metadataHandler.OnTagged), root.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
+		dst := listener.NewTagListener(originalDst, nil, displayMetadata.OnTagged)
+		if _, err = oras.TagBytesN(ctx, dst, root.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}
 	}

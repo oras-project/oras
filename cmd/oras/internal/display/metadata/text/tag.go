@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 )
 
@@ -28,7 +29,7 @@ type TagHandler struct {
 }
 
 // OnTagged implements metadata.TextTagHandler.
-func (h *TagHandler) OnTagged(tag string) error {
+func (h *TagHandler) OnTagged(_ ocispec.Descriptor, tag string) error {
 	_, err := fmt.Fprintln(h.out, "Tagged", tag)
 	return err
 }

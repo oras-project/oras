@@ -17,7 +17,6 @@ package status
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"sync"
 
@@ -129,29 +128,5 @@ func NewTextPullHandler(out io.Writer, verbose bool) PullHandler {
 	return &TextPullHandler{
 		verbose: verbose,
 		printer: NewPrinter(out),
-	}
-}
-
-// TagTextHandler handles text metadata output for tag events.
-type TagTextHandler struct {
-	reference string
-	out       io.Writer
-}
-
-// OnTagged implements metadata.TextTagHandler.
-func (TagTextHandler) OnTagged(tag string) error {
-	return Print("Tagged", tag)
-}
-
-// PreTagging implements metadata.TextTagHandler.
-func (t *TagTextHandler) PreTagging(desc ocispec.Descriptor) error {
-	return Print(fmt.Sprintf("Tagging %s@%s", t.reference, desc.Digest))
-}
-
-// NewTagHandler returns a new handler for tag events.
-func NewTagHandler(out io.Writer, reference string) TagHandler {
-	return &TagTextHandler{
-		reference: reference,
-		out:       out,
 	}
 }

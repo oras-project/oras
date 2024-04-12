@@ -38,6 +38,11 @@ func NewPushHandler(out io.Writer) metadata.PushHandler {
 	}
 }
 
+// OnTagged implements metadata.TagHandler.
+func (ph *PushHandler) OnTagged(desc ocispec.Descriptor, tag string) error {
+	return nil
+}
+
 // OnCopied is called after files are copied.
 func (ph *PushHandler) OnCopied(opts *option.Target) error {
 	ph.path = opts.Path

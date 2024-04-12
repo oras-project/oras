@@ -51,11 +51,3 @@ type PullHandler interface {
 	// OnNodeSkipped is called when a node is skipped.
 	OnNodeSkipped(desc ocispec.Descriptor) error
 }
-
-// TagHandler handles status output for tag command.
-type TagHandler interface {
-	// OnTagged is called when each tagging operation is done.
-	OnTagged(tag string) error
-	// PreTagging is called before tagging.
-	PreTagging(desc ocispec.Descriptor) error
-}

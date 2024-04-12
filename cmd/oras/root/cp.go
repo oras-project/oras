@@ -32,7 +32,6 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/cmd/oras/internal/argument"
-	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/cmd/oras/internal/display/status/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
@@ -141,8 +140,7 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	if len(opts.extraRefs) != 0 {
 		tagNOpts := oras.DefaultTagNOptions
 		tagNOpts.Concurrency = opts.concurrency
-		statusHandler, metadataHandler := display.NewTagHandler(cmd.OutOrStdout(), false)
-		if _, err = oras.TagN(ctx, display.NewTagStatusHintPrinter(dst, statusHandler.PreTagging, statusHandler.OnTagged, metadataHandler.OnTagged), opts.To.Reference, opts.extraRefs, tagNOpts); err != nil {
+		if _, err = oras.TagN(ctx, status.NewTagStatusPrinter(dst), opts.To.Reference, opts.extraRefs, tagNOpts); err != nil {
 			return err
 		}
 	}

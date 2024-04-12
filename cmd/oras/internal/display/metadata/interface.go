@@ -22,6 +22,8 @@ import (
 
 // PushHandler handles metadata output for push events.
 type PushHandler interface {
+	TagHandler
+
 	OnCopied(opts *option.Target) error
 	OnCompleted(root ocispec.Descriptor) error
 }
@@ -61,5 +63,5 @@ type PullHandler interface {
 // TagHandler handles status output for tag command.
 type TagHandler interface {
 	// OnTagged is called when each tagging operation is done.
-	OnTagged(tag string) error
+	OnTagged(desc ocispec.Descriptor, tag string) error
 }

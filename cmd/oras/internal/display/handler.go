@@ -101,30 +101,6 @@ func NewPullHandler(format string, path string, tty *os.File, out io.Writer, ver
 	return statusHandler, metadataHandler
 }
 
-// NewTagHandler returns a tag handler.
-func NewTagHandler(out io.Writer, discard bool) (status.TagHandler, metadata.TagHandler) {
-	var statusHandler = status.NewDiscardHandler()
-	var metadataHandler metadata.TagHandler
-	if discard {
-		metadataHandler = metadata.NewDiscardHandler()
-	} else {
-		metadataHandler = text.NewTagHandler(out)
-	}
-	return statusHandler, metadataHandler
-}
-
-// NewTagHintHandler returns a tag and hint handler.
-func NewTagHintHandler(out io.Writer, hintPrefix string, discard bool) (status.TagHandler, metadata.TagHandler) {
-	var statusHandler status.TagHandler
-	var metadataHandler = metadata.NewDiscardHandler()
-	if discard {
-		statusHandler = status.NewDiscardHandler()
-	} else {
-		statusHandler = status.NewTagHandler(out, hintPrefix)
-	}
-	return statusHandler, metadataHandler
-}
-
 // NewDiscoverHandler returns status and metadata handlers for discover command.
 func NewDiscoverHandler(out io.Writer, outputType string, path string, rawReference string, desc ocispec.Descriptor, verbose bool) metadata.DiscoverHandler {
 	switch outputType {
