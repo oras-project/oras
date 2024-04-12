@@ -22,13 +22,30 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras-go/v2/registry/remote"
 )
 
 func TestNewTagListener(t *testing.T) {
-	target := NewTagListener(memory.New(), func(desc ocispec.Descriptor, tag string) error {
+	failOnTagging := func(desc ocispec.Descriptor, tag string) error {
 		return errors.New("tagging error")
-	}, func(ocispec.Descriptor, string) error { return nil })
+	}
+	failOnTagged := func(ocispec.Descriptor, string) error {
+		return nil
+	}
+
+	target := NewTagListener(memory.New(), failOnTagging, failOnTagged)
 	if listened, ok := target.(*tagListenerForTarget); !ok {
+		t.Error("expected tagListenerForTarget")
+	} else if err := listened.Tag(context.Background(), ocispec.Descriptor{}, "tag"); err == nil {
+		t.Error("expecting tagging error but got nil")
+	}
+
+	repo, err := remote.NewRepository("oras.land/test:unit-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	target = NewTagListener(repo, failOnTagging, failOnTagged)
+	if listened, ok := target.(*tagListenerForRepository); !ok {
 		t.Error("expected tagListenerForTarget")
 	} else if err := listened.Tag(context.Background(), ocispec.Descriptor{}, "tag"); err == nil {
 		t.Error("expecting tagging error but got nil")
