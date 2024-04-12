@@ -22,16 +22,6 @@ import (
 	"io"
 )
 
-// Prompt constants for pull.
-const (
-	PullPromptDownloading = "Downloading"
-	PullPromptPulled      = "Pulled     "
-	PullPromptProcessing  = "Processing "
-	PullPromptSkipped     = "Skipped    "
-	PullPromptRestored    = "Restored   "
-	PullPromptDownloaded  = "Downloaded "
-)
-
 // PrintPrettyJSON prints the object to the writer in JSON format.
 func PrintPrettyJSON(out io.Writer, object any) error {
 	encoder := json.NewEncoder(out)
