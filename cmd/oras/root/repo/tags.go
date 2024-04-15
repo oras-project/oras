@@ -88,13 +88,14 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 	filter := ""
 	if opts.Reference != "" {
 		if contentutil.IsDigest(opts.Reference) {
+			filter = opts.Reference
+
+		} else {
 			desc, err := finder.Resolve(ctx, opts.Reference)
 			if err != nil {
 				return err
 			}
 			filter = desc.Digest.String()
-		} else {
-			filter = opts.Reference
 		}
 		logger.Warnf("[Experimental] querying tags associated to %s, it may take a while...\n", filter)
 	}
