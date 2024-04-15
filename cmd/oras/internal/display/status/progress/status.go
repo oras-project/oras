@@ -137,7 +137,7 @@ func (s *status) String(width int) (string, string) {
 		bar := fmt.Sprintf("[%s%s]", progressColor.Apply(strings.Repeat(" ", lenBar)), strings.Repeat(".", barLength-lenBar))
 		speed := s.calculateSpeed()
 		left = fmt.Sprintf("%s %s(%*s/s) %s %s",
-			spinnerColor.Apply(fmt.Sprintf("%c", s.mark.symbol())),
+			spinnerColor.Apply(string(s.mark.symbol())),
 			bar, speedLength, speed, s.prompt, name)
 		// bar + wrapper(2) + space(1) + speed + "/s"(2) + wrapper(2) = len(bar) + len(speed) + 7
 		lenLeft = barLength + speedLength + 7
