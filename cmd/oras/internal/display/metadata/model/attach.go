@@ -15,20 +15,14 @@ limitations under the License.
 
 package model
 
-import (
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-)
+import ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-// push contains metadata formatted by oras push.
-type push struct {
+// attach contains metadata formatted by oras attach.
+type attach struct {
 	Descriptor
-	Tags []string `json:"tags"`
 }
 
-// NewPush returns a metadata getter for push command.
-func NewPush(desc ocispec.Descriptor, path string, tags []string) any {
-	return push{
-		Descriptor: FromDescriptor(path, desc),
-		Tags:       tags,
-	}
+// NewAttach returns a metadata getter for attach command.
+func NewAttach(desc ocispec.Descriptor, path string) any {
+	return attach{FromDescriptor(path, desc)}
 }

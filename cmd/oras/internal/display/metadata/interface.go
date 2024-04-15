@@ -23,7 +23,6 @@ import (
 // PushHandler handles metadata output for push events.
 type PushHandler interface {
 	TagHandler
-
 	OnCopied(opts *option.Target) error
 	OnCompleted(root ocispec.Descriptor) error
 }

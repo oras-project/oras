@@ -24,6 +24,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/argument"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/contentutil"
 )
 
 type showTagsOptions struct {
@@ -86,15 +87,14 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 	}
 	filter := ""
 	if opts.Reference != "" {
-		_, err := digest.Parse(opts.Reference)
-		if err == nil {
-			filter = opts.Reference
-		} else {
+		if contentutil.IsDigest(opts.Reference) {
 			desc, err := finder.Resolve(ctx, opts.Reference)
 			if err != nil {
 				return err
 			}
 			filter = desc.Digest.String()
+		} else {
+			filter = opts.Reference
 		}
 		logger.Warnf("[Experimental] querying tags associated to %s, it may take a while...\n", filter)
 	}

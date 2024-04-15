@@ -16,19 +16,25 @@ limitations under the License.
 package model
 
 import (
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"sync"
 )
 
-// push contains metadata formatted by oras push.
-type push struct {
-	Descriptor
-	Tags []string `json:"tags"`
+// Tagged contains metadata formatted by oras Tagged.
+type Tagged struct {
+	tags []string
+	lock sync.Mutex
 }
 
-// NewPush returns a metadata getter for push command.
-func NewPush(desc ocispec.Descriptor, path string, tags []string) any {
-	return push{
-		Descriptor: FromDescriptor(path, desc),
-		Tags:       tags,
-	}
+// AddTag adds a tag to the metadata.
+func (tag *Tagged) AddTag(t string) {
+	tag.lock.Lock()
+	defer tag.lock.Unlock()
+	tag.tags = append(tag.tags, t)
+}
+
+// Tags returns the tags.
+func (tag *Tagged) Tags() []string {
+	tag.lock.Lock()
+	defer tag.lock.Unlock()
+	return tag.tags
 }

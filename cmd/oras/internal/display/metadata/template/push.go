@@ -22,12 +22,14 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/contentutil"
 )
 
 // PushHandler handles go-template metadata output for push events.
 type PushHandler struct {
 	template string
 	path     string
+	tagged   model.Tagged
 	out      io.Writer
 }
 
@@ -41,16 +43,22 @@ func NewPushHandler(out io.Writer, template string) metadata.PushHandler {
 
 // OnTagged implements metadata.TagHandler.
 func (ph *PushHandler) OnTagged(desc ocispec.Descriptor, tag string) error {
+	ph.tagged.AddTag(tag)
 	return nil
 }
 
 // OnStarted is called after files are copied.
 func (ph *PushHandler) OnCopied(opts *option.Target) error {
+	if opts.RawReference != "" {
+		if !contentutil.IsDigest(opts.Reference) {
+			ph.tagged.AddTag(opts.Reference)
+		}
+	}
 	ph.path = opts.Path
 	return nil
 }
 
 // OnCompleted is called after the push is completed.
 func (ph *PushHandler) OnCompleted(root ocispec.Descriptor) error {
-	return parseAndWrite(ph.out, model.NewPush(root, ph.path), ph.template)
+	return parseAndWrite(ph.out, model.NewPush(root, ph.path, ph.tagged.Tags()), ph.template)
 }

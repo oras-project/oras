@@ -13,22 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package model
+package contentutil
 
-import (
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-)
+import "github.com/opencontainers/go-digest"
 
-// push contains metadata formatted by oras push.
-type push struct {
-	Descriptor
-	Tags []string `json:"tags"`
-}
-
-// NewPush returns a metadata getter for push command.
-func NewPush(desc ocispec.Descriptor, path string, tags []string) any {
-	return push{
-		Descriptor: FromDescriptor(path, desc),
-		Tags:       tags,
+// IsDigest checks if the given string is a valid digest.
+func IsDigest(tagOrDigest string) bool {
+	if _, err := digest.Parse(tagOrDigest); err == nil {
+		// is digest
+		return true
 	}
+	return false
 }
