@@ -28,7 +28,7 @@ import (
 // File records metadata of a pulled file.
 type File struct {
 	// Path is the absolute path of the pulled file.
-	Path string
+	Path string `json:"path"`
 	Descriptor
 }
 
@@ -56,7 +56,7 @@ func newFile(name string, outputDir string, desc ocispec.Descriptor, descPath st
 
 type pull struct {
 	DigestReference
-	Files []File `json:"Files"`
+	Files []File `json:"files"`
 }
 
 // NewPull creates a new metadata struct for pull command.

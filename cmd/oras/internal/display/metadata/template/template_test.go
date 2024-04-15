@@ -16,23 +16,12 @@ limitations under the License.
 package template
 
 import (
-	"io"
-	"text/template"
-
-	"github.com/Masterminds/sprig/v3"
-	"oras.land/oras/cmd/oras/internal/display/utils"
+	"os"
+	"testing"
 )
 
-func parseAndWrite(out io.Writer, object any, templateStr string) error {
-	// parse template
-	t, err := template.New("format output").Funcs(sprig.FuncMap()).Parse(templateStr)
-	if err != nil {
-		return err
+func Test_parseAndWrite_err(t *testing.T) {
+	if err := parseAndWrite(os.Stdout, func() {}, ""); err == nil {
+		t.Errorf("should return error")
 	}
-	// convert object to map[string]any
-	converted, err := utils.ToMap(object)
-	if err != nil {
-		return err
-	}
-	return t.Execute(out, converted)
 }

@@ -194,7 +194,7 @@ var _ = Describe("OCI spec 1.1 registry users:", func() {
 			for _, p := range foobar.ImageLayerNames {
 				paths = append(paths, filepath.Join(tempDir, p))
 			}
-			ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag), "--format", "{{range .Files}}{{println .Path}}{{end}}").
+			ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag), "--format", "{{range .files}}{{println .path}}{{end}}").
 				WithWorkDir(tempDir).MatchKeyWords(paths...).Exec()
 		})
 
