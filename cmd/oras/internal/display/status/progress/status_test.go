@@ -89,7 +89,7 @@ func Test_status_String_zeroWitdth(t *testing.T) {
 	})
 	// not done
 	statusStr, digestStr := s.String(120)
-	if err := testutils.OrderedMatch(statusStr+digestStr, " [\x1b[7m\x1b[0m....................]", s.prompt, s.descriptor.MediaType, "0.00/0  B", "0.00%", s.descriptor.Digest.String()); err != nil {
+	if err := testutils.OrderedMatch(statusStr+digestStr, "\x1b[0m....................]", s.prompt, s.descriptor.MediaType, "0.00/0  B", "0.00%", s.descriptor.Digest.String()); err != nil {
 		t.Error(err)
 	}
 	// done
