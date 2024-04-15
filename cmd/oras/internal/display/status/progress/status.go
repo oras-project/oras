@@ -35,6 +35,12 @@ const (
 	zeroDigest   = "  └─ loading digest..."
 )
 
+var (
+	spinnerColor  = aec.LightYellowF
+	doneMarkColor = aec.LightGreenF
+	progressColor = aec.LightBlueB
+)
+
 // status is used as message to update progress view.
 type status struct {
 	done           bool // done is true when the end time is set
@@ -128,13 +134,15 @@ func (s *status) String(width int) (string, string) {
 	lenLeft := 0
 	if !s.done {
 		lenBar := int(percent * barLength)
-		bar := fmt.Sprintf("[%s%s]", aec.Inverse.Apply(strings.Repeat(" ", lenBar)), strings.Repeat(".", barLength-lenBar))
+		bar := fmt.Sprintf("[%s%s]", progressColor.Apply(strings.Repeat(" ", lenBar)), strings.Repeat(".", barLength-lenBar))
 		speed := s.calculateSpeed()
-		left = fmt.Sprintf("%c %s(%*s/s) %s %s", s.mark.symbol(), bar, speedLength, speed, s.prompt, name)
+		left = fmt.Sprintf("%s %s(%*s/s) %s %s",
+			spinnerColor.Apply(string(s.mark.symbol())),
+			bar, speedLength, speed, s.prompt, name)
 		// bar + wrapper(2) + space(1) + speed + "/s"(2) + wrapper(2) = len(bar) + len(speed) + 7
 		lenLeft = barLength + speedLength + 7
 	} else {
-		left = fmt.Sprintf("✓ %s %s", s.prompt, name)
+		left = fmt.Sprintf("%s %s %s", doneMarkColor.Apply("✓"), s.prompt, name)
 	}
 	// mark(1) + space(1) + prompt + space(1) + name = len(prompt) + len(name) + 3
 	lenLeft += utf8.RuneCountInString(s.prompt) + utf8.RuneCountInString(name) + 3
