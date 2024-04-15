@@ -18,7 +18,7 @@ package model
 import ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 type discover struct {
-	Manifests []Descriptor
+	Manifests []Descriptor `json:"manifests"`
 }
 
 // NewDiscover creates a new discover model.

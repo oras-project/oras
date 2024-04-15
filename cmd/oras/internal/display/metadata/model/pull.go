@@ -28,7 +28,7 @@ import (
 // File records metadata of a pulled file.
 type File struct {
 	// Path is the absolute path of the pulled file.
-	Path string
+	Path string `json:"path"`
 	Descriptor
 }
 

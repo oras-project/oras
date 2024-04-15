@@ -19,7 +19,7 @@ import ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 type fetched struct {
 	Descriptor
-	Content any
+	Content any `json:"content"`
 }
 
 // NewFetched creates a new fetched metadata.
