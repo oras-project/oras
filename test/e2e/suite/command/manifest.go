@@ -273,7 +273,7 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 
 		It("should fetch manifest and format output", func() {
-			ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, multi_arch.LinuxAMD64.Digest.String()), "--format", "{{(first .Content.layers).digest}}").
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, multi_arch.LinuxAMD64.Digest.String()), "--format", "{{(first .content.layers).digest}}").
 				MatchContent(multi_arch.LayerDigest).
 				Exec()
 		})

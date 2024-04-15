@@ -56,7 +56,7 @@ func newFile(name string, outputDir string, desc ocispec.Descriptor, descPath st
 
 type pull struct {
 	DigestReference
-	Files []File `json:"Files"`
+	Files []File `json:"files"`
 }
 
 // NewPull creates a new metadata struct for pull command.
