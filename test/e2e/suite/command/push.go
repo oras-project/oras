@@ -200,7 +200,7 @@ var _ = Describe("Remote registry users:", func() {
 			tempDir := PrepareTempFiles()
 			extraTag := "2e2"
 
-			ORAS("push", fmt.Sprintf("%s,%s", RegistryRef(ZOTHost, repo, tag), extraTag), foobar.FileBarName, "-v", "--format", "{{.MediaType}}").
+			ORAS("push", fmt.Sprintf("%s,%s", RegistryRef(ZOTHost, repo, tag), extraTag), foobar.FileBarName, "-v", "--format", "{{.mediaType}}").
 				WithWorkDir(tempDir).
 				MatchContent("application/vnd.oci.image.manifest.v1+json").
 				Exec()
@@ -367,7 +367,7 @@ var _ = Describe("Remote registry users:", func() {
 			annotationValue := "value"
 
 			// test
-			out := ORAS("push", RegistryRef(ZOTHost, repo, tag), "-a", fmt.Sprintf("%s=%s", annotationKey, annotationValue), "--format", "{{.Ref}}").
+			out := ORAS("push", RegistryRef(ZOTHost, repo, tag), "-a", fmt.Sprintf("%s=%s", annotationKey, annotationValue), "--format", "{{.ref}}").
 				WithWorkDir(tempDir).Exec().Out
 
 			// validate

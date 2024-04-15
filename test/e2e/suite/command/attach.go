@@ -107,7 +107,7 @@ var _ = Describe("1.1 registry users:", func() {
 			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), subjectRef).Exec()
 			artifactType := "test/attach"
 			// test
-			out := ORAS("attach", "--artifact-type", artifactType, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.Digest}}", "--platform", "linux/amd64").
+			out := ORAS("attach", "--artifact-type", artifactType, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.digest}}", "--platform", "linux/amd64").
 				WithWorkDir(PrepareTempFiles()).Exec().Out.Contents()
 			// validate
 			ORAS("discover", "--artifact-type", artifactType, RegistryRef(ZOTHost, testRepo, multi_arch.LinuxAMD64.Digest.String())).MatchKeyWords(string(out)).Exec()
@@ -121,7 +121,7 @@ var _ = Describe("1.1 registry users:", func() {
 			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
 			CopyZOTRepo(ImageRepo, testRepo)
 			// test
-			ref := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName, "--format", "{{.Ref}}").
+			ref := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName, "--format", "{{.ref}}").
 				WithWorkDir(tempDir).Exec().Out.Contents()
 			// validate
 			fetched := ORAS("manifest", "fetch", string(ref)).Exec().Out.Contents()
@@ -167,9 +167,9 @@ var _ = Describe("1.1 registry users:", func() {
 			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
 			CopyZOTRepo(ImageRepo, testRepo)
 			// test
-			ref1 := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.Ref}}").
+			ref1 := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.ref}}").
 				WithWorkDir(tempDir).Exec().Out.Contents()
-			ref2 := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.Ref}}").
+			ref2 := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.ref}}").
 				WithWorkDir(tempDir).Exec().Out.Contents()
 			// validate
 			ORAS("discover", subjectRef, "--format", "{{range .Manifests}}{{println .Ref}}{{end}}").MatchKeyWords(string(ref1), string(ref2)).Exec()
@@ -181,7 +181,7 @@ var _ = Describe("1.1 registry users:", func() {
 			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
 			CopyZOTRepo(ImageRepo, testRepo)
 			// test
-			ref := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.Ref}}").
+			ref := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.ref}}").
 				WithWorkDir(tempDir).Exec().Out.Contents()
 			// validate
 			out := ORAS("discover", subjectRef, "--format", "{{range .Manifests}}{{println .Ref}}{{end}}").Exec().Out
@@ -222,7 +222,7 @@ var _ = Describe("1.0 registry users:", func() {
 			subjectRef := RegistryRef(FallbackHost, testRepo, foobar.Tag)
 			prepare(RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef)
 			// test
-			ref := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.Ref}}").
+			ref := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.ref}}").
 				WithWorkDir(tempDir).Exec().Out.Contents()
 			// validate
 			out := ORAS("discover", subjectRef, "--format", "{{range .Manifests}}{{println .Ref}}{{end}}").Exec().Out
@@ -235,7 +235,7 @@ var _ = Describe("1.0 registry users:", func() {
 			subjectRef := RegistryRef(FallbackHost, testRepo, foobar.Tag)
 			prepare(RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef)
 			// test
-			ref := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.Ref}}").
+			ref := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.ref}}").
 				WithWorkDir(tempDir).Exec().Out.Contents()
 
 			// validate
@@ -249,7 +249,7 @@ var _ = Describe("1.0 registry users:", func() {
 			subjectRef := RegistryRef(FallbackHost, testRepo, foobar.Tag)
 			prepare(RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), subjectRef)
 			// test
-			ref := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--distribution-spec", "v1.1-referrers-tag", "--format", "{{.Ref}}").
+			ref := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--distribution-spec", "v1.1-referrers-tag", "--format", "{{.ref}}").
 				WithWorkDir(tempDir).Exec().Out.Contents()
 
 			// validate
@@ -275,7 +275,7 @@ var _ = Describe("OCI image layout users:", func() {
 			root := PrepareTempOCI(ImageRepo)
 			subjectRef := LayoutRef(root, foobar.Tag)
 			// test
-			ref := ORAS("attach", "--artifact-type", "test/attach", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName, "--format", "{{.Ref}}").
+			ref := ORAS("attach", "--artifact-type", "test/attach", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName, "--format", "{{.ref}}").
 				WithWorkDir(root).Exec().Out.Contents()
 			// validate
 			fetched := ORAS("manifest", "fetch", Flags.Layout, string(ref)).Exec().Out.Contents()
@@ -287,7 +287,7 @@ var _ = Describe("OCI image layout users:", func() {
 			subjectRef := LayoutRef(root, multi_arch.Tag)
 			artifactType := "test/attach"
 			// test
-			out := ORAS("attach", Flags.Layout, "--artifact-type", artifactType, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.Digest}}", "--platform", "linux/amd64").
+			out := ORAS("attach", Flags.Layout, "--artifact-type", artifactType, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.digest}}", "--platform", "linux/amd64").
 				WithWorkDir(PrepareTempFiles()).Exec().Out.Contents()
 			// validate
 			ORAS("discover", Flags.Layout, "--artifact-type", artifactType, LayoutRef(root, multi_arch.LinuxAMD64.Digest.String())).MatchKeyWords(string(out)).Exec()
@@ -297,7 +297,7 @@ var _ = Describe("OCI image layout users:", func() {
 			root := PrepareTempOCI(ImageRepo)
 			subjectRef := LayoutRef(root, foobar.Tag)
 			// test
-			ref := ORAS("attach", "--artifact-type", "test/attach", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.Ref}}").
+			ref := ORAS("attach", "--artifact-type", "test/attach", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.ref}}").
 				WithWorkDir(root).Exec().Out.Contents()
 			// validate
 			out := ORAS("discover", Flags.Layout, subjectRef, "--format", "{{range .Manifests}}{{println .Ref}}{{end}}").Exec().Out
