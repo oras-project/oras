@@ -52,7 +52,7 @@ func ToMap(data any) (map[string]any, error) {
 	}
 	var ret map[string]any
 	if err = json.Unmarshal(content, &ret); err != nil {
-		ret = nil
+		return nil, err
 	}
 	return ret, err
 }
