@@ -149,12 +149,34 @@ func (opts *Remote) Parse(cmd *cobra.Command) error {
 	if cmd.Flags().Lookup(passwordFromStdinFlag) != nil {
 		passwordAndIdTokenFlags = append(passwordAndIdTokenFlags, passwordFromStdinFlag)
 	}
-	cmd.MarkFlagsMutuallyExclusive(usernameAndIdTokenFlags...)
-	cmd.MarkFlagsMutuallyExclusive(passwordAndIdTokenFlags...)
+	if err := CheckMutuallyExclusiveFlags(cmd, usernameAndIdTokenFlags, passwordAndIdTokenFlags); err != nil {
+		return err
+	}
 	if err := opts.parseCustomHeaders(); err != nil {
 		return err
 	}
 	return opts.readSecret(cmd)
+}
+
+// CheckMutuallyExclusiveFlags checks if any mutually exclusive flags are both
+// set, returns an error when detecting set exclusive flags.
+func CheckMutuallyExclusiveFlags(cmd *cobra.Command, exclusiveFlagSets ...[]string) error {
+	var checkConflict = func(exclusiveFlagSet []string) []string {
+		changedFlags := []string{}
+		for _, flagName := range exclusiveFlagSet {
+			if cmd.Flags().Changed(flagName) {
+				changedFlags = append(changedFlags, flagName)
+			}
+		}
+		return changedFlags
+	}
+	for _, set := range exclusiveFlagSets {
+		changedFlags := checkConflict(set)
+		if len(changedFlags) >= 2 {
+			return fmt.Errorf("--%s cannot be used with --%s", changedFlags[0], changedFlags[1])
+		}
+	}
+	return nil
 }
 
 // readSecret tries to read password or identity token with
