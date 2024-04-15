@@ -64,7 +64,7 @@ var _ = Describe("OCI artifact users:", Ordered, func() {
 				WithWorkDir(tempDir).
 				WithDescription("attach with manifest exported").Exec()
 
-			ref := string(ORAS("discover", subject, "--format", "{{(first .Manifests).ref}}").Exec().Out.Contents())
+			ref := string(ORAS("discover", subject, "--format", "{{(first .manifests).ref}}").Exec().Out.Contents())
 			fetched := ORAS("manifest", "fetch", ref).MatchKeyWords(foobar.AttachFileMedia).Exec()
 			MatchFile(filepath.Join(tempDir, pulledManifest), string(fetched.Out.Contents()), DefaultTimeout)
 
@@ -81,7 +81,7 @@ var _ = Describe("OCI artifact users:", Ordered, func() {
 				WithWorkDir(tempDir).
 				WithDescription("attach again with manifest exported").Exec()
 
-			ref = string(ORAS("discover", subject, "--format", "{{(first .Manifests).ref}}", "--artifact-type", "test/artifact2").Exec().Out.Contents())
+			ref = string(ORAS("discover", subject, "--format", "{{(first .manifests).ref}}", "--artifact-type", "test/artifact2").Exec().Out.Contents())
 			fetched = ORAS("manifest", "fetch", ref).MatchKeyWords(foobar.AttachFileMedia).Exec()
 			MatchFile(filepath.Join(tempDir, pulledManifest), string(fetched.Out.Contents()), DefaultTimeout)
 
