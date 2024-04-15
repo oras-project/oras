@@ -137,7 +137,7 @@ var _ = Describe("1.1 registry users:", func() {
 			CopyZOTRepo(ImageRepo, testRepo)
 			// test
 			delimitter := "---"
-			output := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName, "--format", fmt.Sprintf("{{.Ref}}%s{{.ArtifactType}}", delimitter)).
+			output := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName, "--format", fmt.Sprintf("{{.ref}}%s{{.ArtifactType}}", delimitter)).
 				WithWorkDir(tempDir).Exec().Out.Contents()
 			ref, artifactType, _ := strings.Cut(string(output), delimitter)
 			// validate
@@ -172,7 +172,7 @@ var _ = Describe("1.1 registry users:", func() {
 			ref2 := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.ref}}").
 				WithWorkDir(tempDir).Exec().Out.Contents()
 			// validate
-			ORAS("discover", subjectRef, "--format", "{{range .Manifests}}{{println .Ref}}{{end}}").MatchKeyWords(string(ref1), string(ref2)).Exec()
+			ORAS("discover", subjectRef, "--format", "{{range .manifests}}{{println .ref}}{{end}}").MatchKeyWords(string(ref1), string(ref2)).Exec()
 		})
 
 		It("should attach a file via a OCI Image", func() {
@@ -184,7 +184,7 @@ var _ = Describe("1.1 registry users:", func() {
 			ref := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.ref}}").
 				WithWorkDir(tempDir).Exec().Out.Contents()
 			// validate
-			out := ORAS("discover", subjectRef, "--format", "{{range .Manifests}}{{println .Ref}}{{end}}").Exec().Out
+			out := ORAS("discover", subjectRef, "--format", "{{range .manifests}}{{println .ref}}{{end}}").Exec().Out
 			Expect(out).To(gbytes.Say(string(ref)))
 		})
 
@@ -225,7 +225,7 @@ var _ = Describe("1.0 registry users:", func() {
 			ref := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.ref}}").
 				WithWorkDir(tempDir).Exec().Out.Contents()
 			// validate
-			out := ORAS("discover", subjectRef, "--format", "{{range .Manifests}}{{println .Ref}}{{end}}").Exec().Out
+			out := ORAS("discover", subjectRef, "--format", "{{range .manifests}}{{println .ref}}{{end}}").Exec().Out
 			Expect(out).To(gbytes.Say(string(ref)))
 		})
 
@@ -239,7 +239,7 @@ var _ = Describe("1.0 registry users:", func() {
 				WithWorkDir(tempDir).Exec().Out.Contents()
 
 			// validate
-			out := ORAS("discover", subjectRef, "--format", "{{range .Manifests}}{{println .Ref}}{{end}}").Exec().Out
+			out := ORAS("discover", subjectRef, "--format", "{{range .manifests}}{{println .ref}}{{end}}").Exec().Out
 			Expect(out).To(gbytes.Say(string(ref)))
 		})
 
@@ -253,7 +253,7 @@ var _ = Describe("1.0 registry users:", func() {
 				WithWorkDir(tempDir).Exec().Out.Contents()
 
 			// validate
-			out := ORAS("discover", subjectRef, "--format", "{{range .Manifests}}{{println .Ref}}{{end}}").Exec().Out
+			out := ORAS("discover", subjectRef, "--format", "{{range .manifests}}{{println .ref}}{{end}}").Exec().Out
 			Expect(out).To(gbytes.Say(string(ref)))
 		})
 	})
@@ -300,7 +300,7 @@ var _ = Describe("OCI image layout users:", func() {
 			ref := ORAS("attach", "--artifact-type", "test/attach", Flags.Layout, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "{{.ref}}").
 				WithWorkDir(root).Exec().Out.Contents()
 			// validate
-			out := ORAS("discover", Flags.Layout, subjectRef, "--format", "{{range .Manifests}}{{println .Ref}}{{end}}").Exec().Out
+			out := ORAS("discover", Flags.Layout, subjectRef, "--format", "{{range .manifests}}{{println .ref}}{{end}}").Exec().Out
 			Expect(out).To(gbytes.Say(string(ref)))
 		})
 	})

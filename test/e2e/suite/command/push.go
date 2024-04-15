@@ -395,7 +395,7 @@ var _ = Describe("Remote registry users:", func() {
 
 			// validate
 			Expect(out).To(gbytes.Say(RegistryRef(ZOTHost, repo, "")))
-			Expect(out).To(gbytes.Say(regexp.QuoteMeta(fmt.Sprintf(`"ArtifactType": "%s"`, artifactType))))
+			Expect(out).To(gbytes.Say(regexp.QuoteMeta(fmt.Sprintf(`"artifactType": "%s"`, artifactType))))
 		})
 
 		It("should push files", func() {
