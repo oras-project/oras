@@ -267,7 +267,7 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 
 		It("should fetch manifest with platform validation and output content", func() {
-			out := ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), "--platform", "linux/amd64", "--format", "{{toJson .Content}}").
+			out := ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), "--platform", "linux/amd64", "--format", "{{toJson .content}}").
 				Exec().Out.Contents()
 			Expect(out).To(MatchJSON(multi_arch.LinuxAMD64Manifest))
 		})
