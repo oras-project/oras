@@ -50,6 +50,7 @@ type status struct {
 	total          humanize.Bytes
 	lastOffset     int64
 	lastRenderTime time.Time
+	speedWindow    *speedWindow
 
 	startTime time.Time
 	endTime   time.Time
@@ -63,11 +64,12 @@ func newStatus() *status {
 		offset:         -1,
 		total:          humanize.ToBytes(0),
 		lastRenderTime: time.Now(),
+		speedWindow:    newSpeedWindow(5),
 	}
 }
 
-// NewStatus generates a status.
-func NewStatus(prompt string, descriptor ocispec.Descriptor, offset int64) *status {
+// NewStatusMessage generates a status for messaging.
+func NewStatusMessage(prompt string, descriptor ocispec.Descriptor, offset int64) *status {
 	return &status{
 		prompt:     prompt,
 		descriptor: descriptor,
@@ -171,12 +173,11 @@ func (s *status) calculateSpeed() humanize.Bytes {
 	if secondsTaken == 0 {
 		secondsTaken = bufFlushDuration.Seconds()
 	}
-	bytes := float64(s.offset - s.lastOffset)
 
+	s.speedWindow.Add(s.offset - s.lastOffset)
 	s.lastOffset = s.offset
 	s.lastRenderTime = now
-
-	return humanize.ToBytes(int64(bytes / secondsTaken))
+	return humanize.ToBytes(int64(s.speedWindow.Mean() / secondsTaken))
 }
 
 // durationString returns a viewable TTY string of the status with duration.
