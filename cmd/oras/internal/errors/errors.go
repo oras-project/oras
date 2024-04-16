@@ -176,7 +176,7 @@ func CheckMutuallyExclusiveFlags(fs *pflag.FlagSet, exclusiveFlagSets ...[]strin
 		changedFlags := checkConflict(set)
 		if len(changedFlags) >= 2 {
 			flags := strings.Join(changedFlags, ", ")
-			return fmt.Errorf("--%s cannot be used at the same time", flags)
+			return fmt.Errorf("%s cannot be used at the same time", flags)
 		}
 	}
 	return nil
