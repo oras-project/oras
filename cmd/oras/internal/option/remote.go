@@ -149,8 +149,9 @@ func (opts *Remote) Parse(cmd *cobra.Command) error {
 	if cmd.Flags().Lookup(passwordFromStdinFlag) != nil {
 		passwordAndIdTokenFlags = append(passwordAndIdTokenFlags, passwordFromStdinFlag)
 	}
-	cmd.MarkFlagsMutuallyExclusive(usernameAndIdTokenFlags...)
-	cmd.MarkFlagsMutuallyExclusive(passwordAndIdTokenFlags...)
+	if err := oerrors.CheckMutuallyExclusiveFlags(cmd.Flags(), usernameAndIdTokenFlags, passwordAndIdTokenFlags); err != nil {
+		return err
+	}
 	if err := opts.parseCustomHeaders(); err != nil {
 		return err
 	}
