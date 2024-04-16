@@ -89,7 +89,6 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 	if opts.Reference != "" {
 		if contentutil.IsDigest(opts.Reference) {
 			filter = opts.Reference
-
 		} else {
 			desc, err := finder.Resolve(ctx, opts.Reference)
 			if err != nil {

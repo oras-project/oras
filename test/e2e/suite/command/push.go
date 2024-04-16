@@ -180,7 +180,7 @@ var _ = Describe("Remote registry users:", func() {
 			tempDir := PrepareTempFiles()
 			extraTag := "2e2"
 
-			ORAS("push", fmt.Sprintf("%s,%s", RegistryRef(ZOTHost, repo, tag), extraTag), foobar.FileBarName, "-v", "--format", "{{range .tags}}{{println .}}{{end}}").
+			ORAS("push", fmt.Sprintf("%s,%s", RegistryRef(ZOTHost, repo, tag), extraTag), foobar.FileBarName, "-v", "--format", "{{range .refAsTags}}{{println .}}{{end}}").
 				MatchContent(fmt.Sprintf("%s\n%s\n", tag, extraTag)).
 				WithWorkDir(tempDir).Exec()
 
