@@ -159,6 +159,11 @@ func (s *status) String(width int) (string, string) {
 // calculateSpeed calculates the speed of the progress and update last status.
 // caller must hold the lock.
 func (s *status) calculateSpeed() humanize.Bytes {
+	if s.offset < 0 {
+		// not started
+		return humanize.ToBytes(0)
+	}
+
 	now := time.Now()
 	if s.lastRenderTime.IsZero() {
 		s.lastRenderTime = s.startTime
