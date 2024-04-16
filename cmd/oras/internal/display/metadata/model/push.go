@@ -22,13 +22,18 @@ import (
 // push contains metadata formatted by oras push.
 type push struct {
 	Descriptor
-	Tags []string `json:"tags"`
+	RefAsTags []string `json:"refAsTags"`
 }
 
 // NewPush returns a metadata getter for push command.
 func NewPush(desc ocispec.Descriptor, path string, tags []string) any {
+	var refAsTags []string
+	for _, tag := range tags {
+		refAsTags = append(refAsTags, path+":"+tag)
+
+	}
 	return push{
 		Descriptor: FromDescriptor(path, desc),
-		Tags:       tags,
+		RefAsTags:  refAsTags,
 	}
 }
