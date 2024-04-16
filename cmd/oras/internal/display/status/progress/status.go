@@ -163,7 +163,6 @@ func (s *status) calculateSpeed() humanize.Bytes {
 		// not started
 		return humanize.ToBytes(0)
 	}
-
 	now := time.Now()
 	if s.lastRenderTime.IsZero() {
 		s.lastRenderTime = s.startTime

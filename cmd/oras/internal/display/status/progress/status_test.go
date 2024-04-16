@@ -140,3 +140,12 @@ func Test_status_durationString(t *testing.T) {
 		t.Errorf("status.durationString() = %v, want %v", d, want)
 	}
 }
+
+func Test_status_calculateSpeed_negative(t *testing.T) {
+	s := &status{
+		offset: -1,
+	}
+	if s.calculateSpeed() != humanize.ToBytes(0) {
+		t.Errorf("status.calculateSpeed() = %v, want 0", s.calculateSpeed())
+	}
+}
