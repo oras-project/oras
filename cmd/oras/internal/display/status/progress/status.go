@@ -64,7 +64,7 @@ func newStatus() *status {
 		offset:         -1,
 		total:          humanize.ToBytes(0),
 		lastRenderTime: time.Now(),
-		speedWindow:    newSpeedWindow(5),
+		speedWindow:    newSpeedWindow(framePerSecond),
 	}
 }
 
