@@ -43,14 +43,12 @@ var (
 
 // status is used as message to update progress view.
 type status struct {
-	done           bool // done is true when the end time is set
-	prompt         string
-	descriptor     ocispec.Descriptor
-	offset         int64
-	total          humanize.Bytes
-	lastOffset     int64
-	lastRenderTime time.Time
-	speedWindow    *speedWindow
+	done        bool // done is true when the end time is set
+	prompt      string
+	descriptor  ocispec.Descriptor
+	offset      int64
+	total       humanize.Bytes
+	speedWindow *speedWindow
 
 	startTime time.Time
 	endTime   time.Time
@@ -61,10 +59,9 @@ type status struct {
 // newStatus generates a base empty status.
 func newStatus() *status {
 	return &status{
-		offset:         -1,
-		total:          humanize.ToBytes(0),
-		lastRenderTime: time.Now(),
-		speedWindow:    newSpeedWindow(framePerSecond),
+		offset:      -1,
+		total:       humanize.ToBytes(0),
+		speedWindow: newSpeedWindow(framePerSecond),
 	}
 }
 
@@ -165,19 +162,8 @@ func (s *status) calculateSpeed() humanize.Bytes {
 		// not started
 		return humanize.ToBytes(0)
 	}
-	now := time.Now()
-	if s.lastRenderTime.IsZero() {
-		s.lastRenderTime = s.startTime
-	}
-	secondsTaken := now.Sub(s.lastRenderTime).Seconds()
-	if secondsTaken == 0 {
-		secondsTaken = bufFlushDuration.Seconds()
-	}
-
-	s.speedWindow.Add(s.offset - s.lastOffset)
-	s.lastOffset = s.offset
-	s.lastRenderTime = now
-	return humanize.ToBytes(int64(s.speedWindow.Mean() / secondsTaken))
+	s.speedWindow.Add(time.Now(), s.offset)
+	return humanize.ToBytes(int64(s.speedWindow.Mean()))
 }
 
 // durationString returns a viewable TTY string of the status with duration.

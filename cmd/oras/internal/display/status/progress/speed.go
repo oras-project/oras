@@ -15,36 +15,47 @@ limitations under the License.
 
 package progress
 
+import "time"
+
+type speedPoint struct {
+	time   time.Time
+	offset int64
+}
+
 type speedWindow struct {
-	point []int64
-	head  int
+	point []speedPoint
+	next  int
 	size  int
-	sum   int64
 }
 
 // newSpeedWindow creates a new speed window with a given capacity.
 func newSpeedWindow(capacity int) *speedWindow {
 	return &speedWindow{
-		point: make([]int64, capacity),
+		point: make([]speedPoint, capacity),
 	}
 }
 
 // Add adds a done workload to the window.
-func (w *speedWindow) Add(value int64) {
-	if w.size == len(w.point) {
-		w.sum -= w.point[w.head]
-	} else {
+func (w *speedWindow) Add(time time.Time, offset int64) {
+	if w.size != len(w.point) {
 		w.size++
 	}
-	w.point[w.head] = value
-	w.sum += value
-	w.head = (w.head + 1) % len(w.point)
+	w.point[w.next] = speedPoint{
+		time:   time,
+		offset: offset,
+	}
+	w.next = (w.next + 1) % len(w.point)
 }
 
-// Mean returns the average workload done in the window.
+// Mean returns the mean speed of the window with unit of byte per second.
 func (w *speedWindow) Mean() float64 {
-	if w.size == 0 {
+	if w.size < 2 {
+		// no speed diplayed for first read
 		return 0
 	}
-	return float64(w.sum) / float64(w.size)
+
+	begin := (w.next - w.size + len(w.point)) % len(w.point)
+	end := (begin - 1 + w.size) % w.size
+
+	return float64(w.point[end].offset-w.point[begin].offset) / w.point[end].time.Sub(w.point[begin].time).Seconds()
 }

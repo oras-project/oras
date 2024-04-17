@@ -15,14 +15,35 @@ limitations under the License.
 
 package progress
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func Test_speedWindow(t *testing.T) {
-	w := newSpeedWindow(5)
-	for i := range 20 {
-		w.Add(int64(i))
+	w := newSpeedWindow(3)
+	if s := w.Mean(); s != 0 {
+		t.Errorf("expected 0, got %f", s)
 	}
-	if w.Mean() != 17 {
-		t.Errorf("expected mean to be 17, got %f", w.Mean())
+
+	now := time.Now()
+	w.Add(now, 100)
+	if s := w.Mean(); s != 0 {
+		t.Errorf("expected 0, got %f", s)
+	}
+
+	w.Add(now.Add(1*time.Second), 200)
+	if s := w.Mean(); s != 100 {
+		t.Errorf("expected 100, got %f", s)
+	}
+
+	w.Add(now.Add(4*time.Second), 900)
+	if s := w.Mean(); s != 200 {
+		t.Errorf("expected 200, got %f", s)
+	}
+
+	w.Add(now.Add(5*time.Second), 1400)
+	if s := w.Mean(); s != 300 {
+		t.Errorf("expected 300, got %f", s)
 	}
 }
