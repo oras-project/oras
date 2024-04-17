@@ -159,25 +159,17 @@ func NewErrEmptyTagOrDigest(ref string, cmd *cobra.Command, needsTag bool) error
 }
 
 // CheckMutuallyExclusiveFlags checks if any mutually exclusive flags are used
-// at the same time, returns an error when detecting used exclusive flags. It
-// detects the first set of conflict and returns the error without checking
-// the rest of the flag sets.
-func CheckMutuallyExclusiveFlags(fs *pflag.FlagSet, exclusiveFlagSets ...[]string) error {
-	var checkConflict = func(exclusiveFlagSet []string) []string {
-		changedFlags := []string{}
-		for _, flagName := range exclusiveFlagSet {
-			if fs.Changed(flagName) {
-				changedFlags = append(changedFlags, fmt.Sprintf("--%s", flagName))
-			}
+// at the same time, returns an error when detecting used exclusive flags.
+func CheckMutuallyExclusiveFlags(fs *pflag.FlagSet, exclusiveFlagSet []string) error {
+	var changedFlags []string
+	for _, flagName := range exclusiveFlagSet {
+		if fs.Changed(flagName) {
+			changedFlags = append(changedFlags, fmt.Sprintf("--%s", flagName))
 		}
-		return changedFlags
 	}
-	for _, set := range exclusiveFlagSets {
-		changedFlags := checkConflict(set)
-		if len(changedFlags) >= 2 {
-			flags := strings.Join(changedFlags, ", ")
-			return fmt.Errorf("%s cannot be used at the same time", flags)
-		}
+	if len(changedFlags) >= 2 {
+		flags := strings.Join(changedFlags, ", ")
+		return fmt.Errorf("%s cannot be used at the same time", flags)
 	}
 	return nil
 }
