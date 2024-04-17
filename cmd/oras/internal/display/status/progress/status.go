@@ -207,6 +207,7 @@ func (s *status) Update(n *status) {
 	}
 	if !n.startTime.IsZero() {
 		s.startTime = n.startTime
+		s.speedWindow.Add(s.startTime, 0)
 	}
 	if !n.endTime.IsZero() {
 		s.endTime = n.endTime
