@@ -115,7 +115,7 @@ func (t *graphTarget) Prompt(desc ocispec.Descriptor, prompt string) error {
 		return err
 	}
 	defer close(status)
-	status <- progress.NewStatus(prompt, desc, desc.Size)
+	status <- progress.NewStatusMessage(prompt, desc, desc.Size)
 	status <- progress.EndTiming()
 	return nil
 }

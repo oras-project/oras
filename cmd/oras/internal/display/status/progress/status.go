@@ -43,13 +43,12 @@ var (
 
 // status is used as message to update progress view.
 type status struct {
-	done           bool // done is true when the end time is set
-	prompt         string
-	descriptor     ocispec.Descriptor
-	offset         int64
-	total          humanize.Bytes
-	lastOffset     int64
-	lastRenderTime time.Time
+	done        bool // done is true when the end time is set
+	prompt      string
+	descriptor  ocispec.Descriptor
+	offset      int64
+	total       humanize.Bytes
+	speedWindow *speedWindow
 
 	startTime time.Time
 	endTime   time.Time
@@ -60,14 +59,14 @@ type status struct {
 // newStatus generates a base empty status.
 func newStatus() *status {
 	return &status{
-		offset:         -1,
-		total:          humanize.ToBytes(0),
-		lastRenderTime: time.Now(),
+		offset:      -1,
+		total:       humanize.ToBytes(0),
+		speedWindow: newSpeedWindow(framePerSecond),
 	}
 }
 
-// NewStatus generates a status.
-func NewStatus(prompt string, descriptor ocispec.Descriptor, offset int64) *status {
+// NewStatusMessage generates a status for messaging.
+func NewStatusMessage(prompt string, descriptor ocispec.Descriptor, offset int64) *status {
 	return &status{
 		prompt:     prompt,
 		descriptor: descriptor,
@@ -159,20 +158,12 @@ func (s *status) String(width int) (string, string) {
 // calculateSpeed calculates the speed of the progress and update last status.
 // caller must hold the lock.
 func (s *status) calculateSpeed() humanize.Bytes {
-	now := time.Now()
-	if s.lastRenderTime.IsZero() {
-		s.lastRenderTime = s.startTime
+	if s.offset < 0 {
+		// not started
+		return humanize.ToBytes(0)
 	}
-	secondsTaken := now.Sub(s.lastRenderTime).Seconds()
-	if secondsTaken == 0 {
-		secondsTaken = bufFlushDuration.Seconds()
-	}
-	bytes := float64(s.offset - s.lastOffset)
-
-	s.lastOffset = s.offset
-	s.lastRenderTime = now
-
-	return humanize.ToBytes(int64(bytes / secondsTaken))
+	s.speedWindow.Add(time.Now(), s.offset)
+	return humanize.ToBytes(int64(s.speedWindow.Mean()))
 }
 
 // durationString returns a viewable TTY string of the status with duration.
@@ -216,6 +207,7 @@ func (s *status) Update(n *status) {
 	}
 	if !n.startTime.IsZero() {
 		s.startTime = n.startTime
+		s.speedWindow.Add(s.startTime, 0)
 	}
 	if !n.endTime.IsZero() {
 		s.endTime = n.endTime
