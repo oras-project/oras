@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/errcode"
 )
@@ -155,4 +156,28 @@ func NewErrEmptyTagOrDigest(ref string, cmd *cobra.Command, needsTag bool) error
 		Usage:          fmt.Sprintf("%s %s", cmd.Parent().CommandPath(), cmd.Use),
 		Recommendation: fmt.Sprintf(`Please specify a reference in the form of %s. Run "%s -h" for more options and examples`, form, cmd.CommandPath()),
 	}
+}
+
+// CheckMutuallyExclusiveFlags checks if any mutually exclusive flags are used
+// at the same time, returns an error when detecting used exclusive flags. It
+// detects the first set of conflict and returns the error without checking
+// the rest of the flag sets.
+func CheckMutuallyExclusiveFlags(fs *pflag.FlagSet, exclusiveFlagSets ...[]string) error {
+	var checkConflict = func(exclusiveFlagSet []string) []string {
+		changedFlags := []string{}
+		for _, flagName := range exclusiveFlagSet {
+			if fs.Changed(flagName) {
+				changedFlags = append(changedFlags, fmt.Sprintf("--%s", flagName))
+			}
+		}
+		return changedFlags
+	}
+	for _, set := range exclusiveFlagSets {
+		changedFlags := checkConflict(set)
+		if len(changedFlags) >= 2 {
+			flags := strings.Join(changedFlags, ", ")
+			return fmt.Errorf("%s cannot be used at the same time", flags)
+		}
+	}
+	return nil
 }
