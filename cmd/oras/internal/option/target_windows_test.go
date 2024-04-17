@@ -22,30 +22,30 @@ import (
 )
 
 func Test_parseOCILayoutReference_windows(t *testing.T) {
-	type args struct {
-		raw string
+	opts := Target{
+		RawReference: `C:\some-folder:tag`,
+		IsOCILayout:  true,
 	}
 	tests := []struct {
 		name    string
-		args    args
 		want    string
 		want1   string
 		wantErr bool
 	}{
-		{"path and tag", args{raw: `C:\some-folder:tag`}, `C:\some-folder`, "tag", false},
+		{"path and tag", `C:\some-folder`, "tag", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1, err := parseOCILayoutReference(tt.args.raw)
+			err := opts.parseOCILayoutReference()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseOCILayoutReference() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if got != tt.want {
-				t.Errorf("parseOCILayoutReference() got = %v, want %v", got, tt.want)
+			if opts.Path != tt.want {
+				t.Errorf("parseOCILayoutReference() opts.Path = %v, want %v", opts.Path, tt.want)
 			}
-			if got1 != tt.want1 {
-				t.Errorf("parseOCILayoutReference() got1 = %v, want %v", got1, tt.want1)
+			if opts.Reference != tt.want1 {
+				t.Errorf("parseOCILayoutReference() opts.Reference = %v, want %v", opts.Reference, tt.want1)
 			}
 		})
 	}
