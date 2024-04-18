@@ -112,7 +112,7 @@ var _ = Describe("ORAS beginners:", func() {
 					ExpectFailure().Exec()
 				ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--output", "-", "--descriptor").
 					ExpectFailure().Exec()
-				ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--format", "--pretty", "test").
+				ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--format", "test", "--pretty").
 					ExpectFailure().Exec()
 			})
 		})
