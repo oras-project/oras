@@ -160,7 +160,7 @@ func NewErrEmptyTagOrDigest(ref string, cmd *cobra.Command, needsTag bool) error
 
 // CheckMutuallyExclusiveFlags checks if any mutually exclusive flags are used
 // at the same time, returns an error when detecting used exclusive flags.
-func CheckMutuallyExclusiveFlags(fs *pflag.FlagSet, exclusiveFlagSet []string) error {
+func CheckMutuallyExclusiveFlags(fs *pflag.FlagSet, exclusiveFlagSet ...string) error {
 	var changedFlags []string
 	for _, flagName := range exclusiveFlagSet {
 		if fs.Changed(flagName) {
