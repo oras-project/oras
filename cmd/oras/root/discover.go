@@ -74,6 +74,9 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the target artifact to discover referrers from"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := oerrors.CheckMutuallyExclusiveFlags(cmd.Flags(), "format", "output"); err != nil {
+				return err
+			}
 			if cmd.Flags().Changed("output") {
 				switch opts.Template {
 				case "tree", "json", "table":
@@ -97,7 +100,6 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 'table':      Get direct referrers and output in table format
 'json':       Get direct referrers and output in JSON format
 '$TEMPLATE':  Print direct referrers using the given Go template.`)
-	cmd.MarkFlagsMutuallyExclusive("output", "format")
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
