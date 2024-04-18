@@ -174,8 +174,8 @@ func CheckMutuallyExclusiveFlags(fs *pflag.FlagSet, exclusiveFlagSet ...string) 
 	return nil
 }
 
-// CheckRequiredTogetherFlags checks if any flags required together are all set,
-// returns an error when detecting any of the required flags not set.
+// CheckRequiredTogetherFlags checks if any flags required together are all used,
+// returns an error when detecting any flags not used while other flags have been used.
 func CheckRequiredTogetherFlags(fs *pflag.FlagSet, requiredTogetherFlags ...string) error {
 	var unchangedFlags []string
 	for _, flagName := range requiredTogetherFlags {
@@ -183,7 +183,8 @@ func CheckRequiredTogetherFlags(fs *pflag.FlagSet, requiredTogetherFlags ...stri
 			unchangedFlags = append(unchangedFlags, fmt.Sprintf("--%s", flagName))
 		}
 	}
-	if len(unchangedFlags) > 0 {
+	nUnchangedFlags := len(unchangedFlags)
+	if nUnchangedFlags > 0 && nUnchangedFlags != len(requiredTogetherFlags) {
 		flags := strings.Join(unchangedFlags, ", ")
 		return fmt.Errorf("%s required but not provided", flags)
 	}
