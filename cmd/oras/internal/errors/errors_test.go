@@ -47,7 +47,7 @@ func TestCheckMutuallyExclusiveFlags(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := CheckMutuallyExclusiveFlags(fs, tt.exclusiveFlagSet); (err != nil) != tt.wantErr {
+			if err := CheckMutuallyExclusiveFlags(fs, tt.exclusiveFlagSet...); (err != nil) != tt.wantErr {
 				t.Errorf("CheckMutuallyExclusiveFlags() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
