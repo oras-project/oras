@@ -166,6 +166,11 @@ var _ = Describe("Common registry user", func() {
 			ORAS("login", ZOTHost, "--identity-token", Password).
 				MatchErrKeyWords("WARNING", "Using --identity-token via the CLI is insecure", "Use --identity-token-stdin").ExpectFailure().Exec()
 		})
+
+		It("should fail if --cert-file is not used with --key-file with correct error message", func() {
+			ORAS("login", ZOTHost, "--cert-file", "test").
+				MatchErrKeyWords("--key-file", "required", "not provided").ExpectFailure().Exec()
+		})
 	})
 
 	When("using legacy config", func() {
