@@ -76,7 +76,8 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 				return fmt.Errorf("`--output -` cannot be used with `--format %s` at the same time", opts.Template)
 			case opts.outputPath == "-" && opts.OutputDescriptor:
 				return fmt.Errorf("`--descriptor` cannot be used with `--output -` at the same time")
-			case opts.outputPath != "" && opts.Pretty.Pretty:
+			// ignore --pretty when output to a file
+			case opts.outputPath != "" && opts.outputPath != "-":
 				opts.Pretty.Pretty = false
 			}
 			if err := oerrors.CheckMutuallyExclusiveFlags(cmd.Flags(), "format", "pretty"); err != nil {
