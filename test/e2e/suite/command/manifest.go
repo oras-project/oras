@@ -232,6 +232,13 @@ var _ = Describe("1.1 registry users:", func() {
 			MatchFile(fetchPath, multi_arch.Manifest, DefaultTimeout)
 		})
 
+		It("should ignore --pretty when fetching manifest to a file", func() {
+			fetchPath := filepath.Join(GinkgoT().TempDir(), "fetchedImage")
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), "--output", fetchPath, "--pretty").
+				Exec()
+			MatchFile(fetchPath, multi_arch.Manifest, DefaultTimeout)
+		})
+
 		It("should fetch manifest to file and output json", func() {
 			fetchPath := filepath.Join(GinkgoT().TempDir(), "fetchedImage")
 			digest := multi_arch.LinuxAMD64.Digest.String()
