@@ -75,10 +75,17 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 			switch {
 			case opts.outputPath == "-" && opts.Template != "":
 				return fmt.Errorf("`--output -` cannot be used with `--format %s` at the same time", opts.Template)
-			case opts.OutputDescriptor && opts.Template != "":
-				return fmt.Errorf("`--descriptor` cannot be used with `--format %s` at the same time", opts.Template)
-			case opts.OutputDescriptor && opts.outputPath == "-":
+			case opts.outputPath == "-" && opts.OutputDescriptor:
 				return fmt.Errorf("`--descriptor` cannot be used with `--output -` at the same time")
+			// ignore --pretty when output to a file
+			case opts.outputPath != "" && opts.outputPath != "-":
+				opts.Pretty.Pretty = false
+			}
+			if err := oerrors.CheckMutuallyExclusiveFlags(cmd.Flags(), "format", "pretty"); err != nil {
+				return err
+			}
+			if err := oerrors.CheckMutuallyExclusiveFlags(cmd.Flags(), "format", "descriptor"); err != nil {
+				return err
 			}
 			opts.RawReference = args[0]
 			return option.Parse(cmd, &opts)
