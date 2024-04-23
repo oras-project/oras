@@ -184,7 +184,7 @@ func CheckRequiredTogetherFlags(fs *pflag.FlagSet, requiredTogetherFlags ...stri
 		}
 	}
 	nUnchangedFlags := len(unchangedFlags)
-	if nUnchangedFlags > 0 && nUnchangedFlags != len(requiredTogetherFlags) {
+	if nUnchangedFlags != 0 && nUnchangedFlags != len(requiredTogetherFlags) {
 		flags := strings.Join(unchangedFlags, ", ")
 		return fmt.Errorf("%s required but not provided", flags)
 	}
