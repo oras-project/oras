@@ -161,12 +161,7 @@ func NewErrEmptyTagOrDigest(ref string, cmd *cobra.Command, needsTag bool) error
 // CheckMutuallyExclusiveFlags checks if any mutually exclusive flags are used
 // at the same time, returns an error when detecting used exclusive flags.
 func CheckMutuallyExclusiveFlags(fs *pflag.FlagSet, exclusiveFlagSet ...string) error {
-	var changedFlags []string
-	for _, flagName := range exclusiveFlagSet {
-		if fs.Changed(flagName) {
-			changedFlags = append(changedFlags, fmt.Sprintf("--%s", flagName))
-		}
-	}
+	changedFlags, _ := checkChangedFlags(fs, exclusiveFlagSet...)
 	if len(changedFlags) >= 2 {
 		flags := strings.Join(changedFlags, ", ")
 		return fmt.Errorf("%s cannot be used at the same time", flags)
@@ -177,16 +172,23 @@ func CheckMutuallyExclusiveFlags(fs *pflag.FlagSet, exclusiveFlagSet ...string) 
 // CheckRequiredTogetherFlags checks if any flags required together are all used,
 // returns an error when detecting any flags not used while other flags have been used.
 func CheckRequiredTogetherFlags(fs *pflag.FlagSet, requiredTogetherFlags ...string) error {
-	var unchangedFlags []string
-	for _, flagName := range requiredTogetherFlags {
-		if !fs.Changed(flagName) {
+	changed, unchanged := checkChangedFlags(fs, requiredTogetherFlags...)
+	nUnchangedFlags := len(unchanged)
+	if nUnchangedFlags != 0 && nUnchangedFlags != len(requiredTogetherFlags) {
+		changed := strings.Join(changed, ", ")
+		unchanged := strings.Join(unchanged, ", ")
+		return fmt.Errorf("%s set, %s required but missing", changed, unchanged)
+	}
+	return nil
+}
+
+func checkChangedFlags(fs *pflag.FlagSet, flagSet ...string) (changedFlags []string, unchangedFlags []string) {
+	for _, flagName := range flagSet {
+		if fs.Changed(flagName) {
+			changedFlags = append(changedFlags, fmt.Sprintf("--%s", flagName))
+		} else {
 			unchangedFlags = append(unchangedFlags, fmt.Sprintf("--%s", flagName))
 		}
 	}
-	nUnchangedFlags := len(unchangedFlags)
-	if nUnchangedFlags != 0 && nUnchangedFlags != len(requiredTogetherFlags) {
-		flags := strings.Join(unchangedFlags, ", ")
-		return fmt.Errorf("%s required but not provided", flags)
-	}
-	return nil
+	return
 }
