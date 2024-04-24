@@ -169,7 +169,7 @@ var _ = Describe("Common registry user", func() {
 
 		It("should fail if --cert-file is not used with --key-file with correct error message", func() {
 			ORAS("login", ZOTHost, "--cert-file", "test").
-				MatchErrKeyWords("--key-file", "required", "not provided").ExpectFailure().Exec()
+				MatchErrKeyWords("--cert-file", "in conjunction with", "--key-file").ExpectFailure().Exec()
 		})
 	})
 
