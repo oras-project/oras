@@ -173,8 +173,8 @@ func CheckMutuallyExclusiveFlags(fs *pflag.FlagSet, exclusiveFlagSet ...string) 
 // returns an error when detecting any flags not used while other flags have been used.
 func CheckRequiredTogetherFlags(fs *pflag.FlagSet, requiredTogetherFlags ...string) error {
 	changed, unchanged := checkChangedFlags(fs, requiredTogetherFlags...)
-	unchangedCnt := len(unchanged)
-	if unchangedCnt != 0 && unchangedCnt != len(requiredTogetherFlags) {
+	unchangedCount := len(unchanged)
+	if unchangedCount != 0 && unchangedCount != len(requiredTogetherFlags) {
 		changed := strings.Join(changed, ", ")
 		unchanged := strings.Join(unchanged, ", ")
 		return fmt.Errorf("%s must be used in conjunction with %s", changed, unchanged)
