@@ -161,15 +161,34 @@ func NewErrEmptyTagOrDigest(ref string, cmd *cobra.Command, needsTag bool) error
 // CheckMutuallyExclusiveFlags checks if any mutually exclusive flags are used
 // at the same time, returns an error when detecting used exclusive flags.
 func CheckMutuallyExclusiveFlags(fs *pflag.FlagSet, exclusiveFlagSet ...string) error {
-	var changedFlags []string
-	for _, flagName := range exclusiveFlagSet {
-		if fs.Changed(flagName) {
-			changedFlags = append(changedFlags, fmt.Sprintf("--%s", flagName))
-		}
-	}
+	changedFlags, _ := checkChangedFlags(fs, exclusiveFlagSet...)
 	if len(changedFlags) >= 2 {
 		flags := strings.Join(changedFlags, ", ")
 		return fmt.Errorf("%s cannot be used at the same time", flags)
 	}
 	return nil
+}
+
+// CheckRequiredTogetherFlags checks if any flags required together are all used,
+// returns an error when detecting any flags not used while other flags have been used.
+func CheckRequiredTogetherFlags(fs *pflag.FlagSet, requiredTogetherFlags ...string) error {
+	changed, unchanged := checkChangedFlags(fs, requiredTogetherFlags...)
+	unchangedCount := len(unchanged)
+	if unchangedCount != 0 && unchangedCount != len(requiredTogetherFlags) {
+		changed := strings.Join(changed, ", ")
+		unchanged := strings.Join(unchanged, ", ")
+		return fmt.Errorf("%s must be used in conjunction with %s", changed, unchanged)
+	}
+	return nil
+}
+
+func checkChangedFlags(fs *pflag.FlagSet, flagSet ...string) (changedFlags []string, unchangedFlags []string) {
+	for _, flagName := range flagSet {
+		if fs.Changed(flagName) {
+			changedFlags = append(changedFlags, fmt.Sprintf("--%s", flagName))
+		} else {
+			unchangedFlags = append(unchangedFlags, fmt.Sprintf("--%s", flagName))
+		}
+	}
+	return
 }

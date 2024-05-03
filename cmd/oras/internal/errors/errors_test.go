@@ -53,3 +53,42 @@ func TestCheckMutuallyExclusiveFlags(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckRequiredTogetherFlags(t *testing.T) {
+	fs := &pflag.FlagSet{}
+	var foo, bar, hello, world bool
+	fs.BoolVar(&foo, "foo", false, "foo test")
+	fs.BoolVar(&bar, "bar", false, "bar test")
+	fs.BoolVar(&hello, "hello", false, "hello test")
+	fs.BoolVar(&world, "world", false, "world test")
+	fs.Lookup("foo").Changed = true
+	fs.Lookup("bar").Changed = true
+	tests := []struct {
+		name                  string
+		requiredTogetherFlags []string
+		wantErr               bool
+	}{
+		{
+			"--foo and --bar are both used, no error is returned",
+			[]string{"foo", "bar"},
+			false,
+		},
+		{
+			"--foo and --hello are not both used, an error is returned",
+			[]string{"foo", "hello"},
+			true,
+		},
+		{
+			"none of --hello and --world is used, no error is returned",
+			[]string{"hello", "world"},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := CheckRequiredTogetherFlags(fs, tt.requiredTogetherFlags...); (err != nil) != tt.wantErr {
+				t.Errorf("CheckRequiredTogetherFlags() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
