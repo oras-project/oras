@@ -22,6 +22,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/argument"
+	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -79,7 +80,7 @@ Example - [Experimental] Show tags associated with a digest:
 }
 
 func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
-	ctx, logger := opts.WithContext(cmd.Context())
+	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	finder, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
 		return err

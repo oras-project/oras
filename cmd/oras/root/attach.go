@@ -27,6 +27,7 @@ import (
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/cmd/oras/internal/argument"
+	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -106,7 +107,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 }
 
 func runAttach(cmd *cobra.Command, opts *attachOptions) error {
-	ctx, logger := opts.WithContext(cmd.Context())
+	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err

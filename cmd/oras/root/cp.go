@@ -32,6 +32,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/cmd/oras/internal/argument"
+	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/cmd/oras/internal/display/status/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
@@ -107,7 +108,7 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 }
 
 func runCopy(cmd *cobra.Command, opts *copyOptions) error {
-	ctx, logger := opts.WithContext(cmd.Context())
+	ctx, logger := command.GetLogger(cmd, &opts.Common)
 
 	// Prepare source
 	src, err := opts.From.NewReadonlyTarget(ctx, opts.Common, logger)
