@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"oras.land/oras/internal/descriptor"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -57,7 +58,7 @@ func (p *Printer) PrintStatus(desc ocispec.Descriptor, status string, verbose bo
 		}
 		name = desc.MediaType
 	}
-	return p.Println(status, ShortDigest(desc), name)
+	return p.Println(status, descriptor.ShortDigest(desc), name)
 }
 
 // StatusPrinter returns a tracking function for transfer status.
