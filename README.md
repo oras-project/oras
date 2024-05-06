@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/oras-project/oras/branch/main/graph/badge.svg)](https://codecov.io/gh/oras-project/oras)
 
 
-<p align="left">
+<p style="text-align: left;">
 <a href="https://oras.land/"><img src="https://oras.land/img/oras.svg" alt="banner" width="100px"></a>
 </p>
 
