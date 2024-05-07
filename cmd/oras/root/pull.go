@@ -135,7 +135,10 @@ func runPull(cmd *cobra.Command, opts *pullOptions) error {
 	dst.AllowPathTraversalOnWrite = opts.PathTraversal
 	dst.DisableOverwrite = opts.KeepOldFiles
 
-	statusHandler, metadataHandler := display.NewPullHandler(opts.Template, opts.Path, opts.TTY, cmd.OutOrStdout(), opts.Verbose)
+	statusHandler, metadataHandler, err := display.NewPullHandler(opts.Format, opts.Path, opts.TTY, cmd.OutOrStdout(), opts.Verbose)
+	if err != nil {
+		return err
+	}
 	desc, err := doPull(ctx, src, dst, copyOptions, metadataHandler, statusHandler, opts)
 	if err != nil {
 		if errors.Is(err, file.ErrPathTraversalDisallowed) {

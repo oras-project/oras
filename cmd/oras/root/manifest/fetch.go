@@ -98,9 +98,10 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 
 	cmd.Flags().StringSliceVarP(&opts.mediaTypes, "media-type", "", nil, "accepted media types")
 	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "file `path` to write the fetched manifest to, use - for stdout")
-	cmd.Flags().StringVar(&opts.Template, "format", "", `[Experimental] Format metadata using a custom template:
-'json':       Print in prettified JSON format
-'$TEMPLATE':  Print using the given Go template.`)
+	opts.SetFormatOptions([]option.FormatOption{
+		{Name: option.TypeJSON, Usage: "Print in prettified JSON format"},
+		{Name: option.TypeGoTemplate, Usage: "Print using the given Go template"},
+	})
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
@@ -125,7 +126,10 @@ func fetchManifest(cmd *cobra.Command, opts *fetchOptions) (fetchErr error) {
 	if err != nil {
 		return err
 	}
-	metadataHandler, contentHandler := display.NewManifestFetchHandler(cmd.OutOrStdout(), opts.Template, opts.OutputDescriptor, opts.Pretty.Pretty, opts.outputPath)
+	metadataHandler, contentHandler, err := display.NewManifestFetchHandler(cmd.OutOrStdout(), opts.Format, opts.OutputDescriptor, opts.Pretty.Pretty, opts.outputPath)
+	if err != nil {
+		return err
+	}
 
 	var desc ocispec.Descriptor
 	var content []byte

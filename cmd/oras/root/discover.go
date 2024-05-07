@@ -96,11 +96,12 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().StringVarP(&opts.Template, "output", "o", "tree", "[Deprecated] format in which to display referrers (table, json, or tree). tree format will also show indirect referrers")
-	cmd.Flags().StringVarP(&opts.Template, "format", "", "tree", `[Experimental] Format output using a custom template:
-'tree':       Get referrers recursively and print in tree format (default)
-'table':      Get direct referrers and output in table format
-'json':       Get direct referrers and output in JSON format
-'$TEMPLATE':  Print direct referrers using the given Go template.`)
+	opts.SetFormatOptions([]option.FormatOption{
+		{Name: option.TypeTree, Usage: "Get referrers recursively and print in tree format (default)"},
+		{Name: option.TypeTable, Usage: "Get direct referrers and output in table format"},
+		{Name: option.TypeJSON, Usage: "Get direct referrers and output in JSON format"},
+		{Name: option.TypeGoTemplate, Usage: "Print direct referrers using the given Go template"},
+	})
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
@@ -124,7 +125,10 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 		return err
 	}
 
-	handler := display.NewDiscoverHandler(cmd.OutOrStdout(), opts.Template, opts.Path, opts.RawReference, desc, opts.Verbose)
+	handler, err := display.NewDiscoverHandler(cmd.OutOrStdout(), opts.Format, opts.Path, opts.RawReference, desc, opts.Verbose)
+	if err != nil {
+		return err
+	}
 	if handler.MultiLevelSupported() {
 		if err := fetchAllReferrers(ctx, repo, desc, opts.artifactType, handler); err != nil {
 			return err
