@@ -48,10 +48,8 @@ func (ph *PushHandler) OnTagged(desc ocispec.Descriptor, tag string) error {
 
 // OnCopied is called after files are copied.
 func (ph *PushHandler) OnCopied(opts *option.Target) error {
-	if opts.RawReference != "" {
-		if !contentutil.IsDigest(opts.Reference) {
-			ph.tagged.AddTag(opts.Reference)
-		}
+	if opts.RawReference != "" && !contentutil.IsDigest(opts.Reference) {
+		ph.tagged.AddTag(opts.Reference)
 	}
 	ph.path = opts.Path
 	return nil
