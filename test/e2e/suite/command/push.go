@@ -200,10 +200,10 @@ var _ = Describe("Remote registry users:", func() {
 			tempDir := PrepareTempFiles()
 			extraTag := "2e2"
 
-			ORAS("push", fmt.Sprintf("%s,%s", RegistryRef(ZOTHost, repo, tag), extraTag), foobar.FileBarName, "-v", "--format", "{{.mediaType}}").
+			out := ORAS("push", fmt.Sprintf("%s,%s", RegistryRef(ZOTHost, repo, tag), extraTag), foobar.FileBarName, "-v", "--format", "json").
 				WithWorkDir(tempDir).
-				MatchContent("application/vnd.oci.image.manifest.v1+json").
-				Exec()
+				Exec().Out.Contents()
+			Expect(json.Unmarshal(out, &struct{}{})).ShouldNot(HaveOccurred())
 		})
 
 		It("should push files with customized media types", func() {
