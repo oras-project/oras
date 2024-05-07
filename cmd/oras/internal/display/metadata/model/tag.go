@@ -29,7 +29,19 @@ type Tagged struct {
 func (tag *Tagged) AddTag(t string) {
 	tag.lock.Lock()
 	defer tag.lock.Unlock()
-	tag.tags = append(tag.tags, t)
+
+	// insert sort
+	tags := make([]string, len(tag.tags)+1)
+	tags[len(tag.tags)] = t
+	for i, v := range tag.tags {
+		if v > t {
+			tags[i] = t
+			copy(tags[i+1:], tag.tags[i:])
+			break
+		}
+		tags[i] = v
+	}
+	tag.tags = tags
 }
 
 // Tags returns the tags.
