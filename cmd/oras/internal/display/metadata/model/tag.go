@@ -30,18 +30,14 @@ func (tag *Tagged) AddTag(t string) {
 	tag.lock.Lock()
 	defer tag.lock.Unlock()
 
-	// insert sort
-	tags := make([]string, len(tag.tags)+1)
-	tags[len(tag.tags)] = t
-	for i, v := range tag.tags {
-		if v > t {
-			tags[i] = t
-			copy(tags[i+1:], tag.tags[i:])
+	tag.tags = append(tag.tags, t)
+	// sorted insert
+	for i := len(tag.tags) - 1; i > 0; i-- {
+		if tag.tags[i] >= tag.tags[i-1] {
 			break
 		}
-		tags[i] = v
+		tag.tags[i], tag.tags[i-1] = tag.tags[i-1], tag.tags[i]
 	}
-	tag.tags = tags
 }
 
 // Tags returns the tags.
