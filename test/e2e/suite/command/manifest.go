@@ -112,6 +112,8 @@ var _ = Describe("ORAS beginners:", func() {
 					ExpectFailure().Exec()
 				ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--output", "-", "--descriptor").
 					ExpectFailure().Exec()
+				ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--format", "test", "--pretty").
+					ExpectFailure().Exec()
 			})
 		})
 
@@ -227,6 +229,13 @@ var _ = Describe("1.1 registry users:", func() {
 			fetchPath := filepath.Join(GinkgoT().TempDir(), "fetchedImage")
 			ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), "--output", fetchPath, "--descriptor").
 				MatchContent(multi_arch.Descriptor).Exec()
+			MatchFile(fetchPath, multi_arch.Manifest, DefaultTimeout)
+		})
+
+		It("should ignore --pretty when fetching manifest to a file", func() {
+			fetchPath := filepath.Join(GinkgoT().TempDir(), "fetchedImage")
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), "--output", fetchPath, "--pretty").
+				Exec()
 			MatchFile(fetchPath, multi_arch.Manifest, DefaultTimeout)
 		})
 

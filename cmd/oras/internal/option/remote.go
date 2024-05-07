@@ -166,9 +166,9 @@ func (opts *Remote) Parse(cmd *cobra.Command) error {
 	if err := opts.parseCustomHeaders(); err != nil {
 		return err
 	}
-
-	cmd.MarkFlagsRequiredTogether(certFileAndKeyFileFlags...)
-
+	if err := oerrors.CheckRequiredTogetherFlags(cmd.Flags(), certFileAndKeyFileFlags...); err != nil {
+		return err
+	}
 	return opts.readSecret(cmd)
 }
 
