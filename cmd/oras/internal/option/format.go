@@ -63,6 +63,9 @@ func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 	}
 	for _, option := range opts.types {
 		usage += fmt.Sprintf("\n'%s':%s%s", option.Name, strings.Repeat(" ", maxLength-len(option.Name)+2), option.Usage)
+		if option.Name == opts.Type {
+			usage += " (default)"
+		}
 	}
 
 	// apply flags
