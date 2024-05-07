@@ -22,7 +22,7 @@ import (
 // Tagged contains metadata formatted by oras Tagged.
 type Tagged struct {
 	tags []string
-	lock sync.Mutex
+	lock sync.RWMutex
 }
 
 // AddTag adds a tag to the metadata.
@@ -34,7 +34,7 @@ func (tag *Tagged) AddTag(t string) {
 
 // Tags returns the tags.
 func (tag *Tagged) Tags() []string {
-	tag.lock.Lock()
-	defer tag.lock.Unlock()
+	tag.lock.RLock()
+	defer tag.lock.RUnlock()
 	return tag.tags
 }
