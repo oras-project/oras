@@ -30,7 +30,6 @@ func NewPush(desc ocispec.Descriptor, path string, tags []string) any {
 	var refAsTags []string
 	for _, tag := range tags {
 		refAsTags = append(refAsTags, path+":"+tag)
-
 	}
 	return push{
 		Descriptor:      FromDescriptor(path, desc),
