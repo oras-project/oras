@@ -19,9 +19,6 @@ import "github.com/opencontainers/go-digest"
 
 // IsDigest checks if the given string is a valid digest.
 func IsDigest(tagOrDigest string) bool {
-	if _, err := digest.Parse(tagOrDigest); err == nil {
-		// is digest
-		return true
-	}
-	return false
+	_, err := digest.Parse(tagOrDigest)
+	return err == nil
 }
