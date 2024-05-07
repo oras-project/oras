@@ -31,7 +31,7 @@ const (
 	TypeGoTemplate = "go-template"
 )
 
-type FormatOption struct {
+type FormatType struct {
 	Name  string
 	Usage string
 }
@@ -41,14 +41,14 @@ type Format struct {
 	Type     string
 	Template string
 	input    string
-	options  []FormatOption
+	types    []FormatType
 }
 
 // ApplyFlag implements FlagProvider.ApplyFlag.
 func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 	usage := "[Experimental] Format output using a custom template:"
-	if len(opts.options) == 0 {
-		opts.options = []FormatOption{
+	if len(opts.types) == 0 {
+		opts.types = []FormatType{
 			{Name: TypeJSON, Usage: "Print in JSON format"},
 			{Name: TypeGoTemplate, Usage: "Print output using the given Go template"},
 		}
@@ -56,15 +56,14 @@ func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 
 	// generate usage string
 	maxLength := 0
-	for _, option := range opts.options {
+	for _, option := range opts.types {
 		if len(option.Name) > maxLength {
 			maxLength = len(option.Name)
 		}
 	}
-	for _, option := range opts.options {
+	for _, option := range opts.types {
 		usage += fmt.Sprintf("\n'%s':%s%s", option.Name, strings.Repeat(" ", maxLength-len(option.Name)+2), option.Usage)
 	}
-	usage += "."
 
 	// apply flags
 	fs.StringVar(&opts.input, "format", "", usage)
@@ -82,7 +81,7 @@ func (opts *Format) Parse() error {
 	}
 
 	var optionalTypes []string
-	for _, option := range opts.options {
+	for _, option := range opts.types {
 		if opts.Type == option.Name {
 			return nil
 		}
@@ -113,9 +112,15 @@ func (opts *Format) parseFlag() error {
 	return nil
 }
 
-// SetFormatOptions sets the format options.
-func (opts *Format) SetFormatOptions(options []FormatOption) {
-	opts.options = options
+// SetTypes resets the format options and default value.
+func (opts *Format) SetTypes(types []FormatType) {
+	opts.types = types
+}
+
+// SetTypesAndDefault resets the format options and default value.
+func (opts *Format) SetTypesAndDefault(defaultType string, types []FormatType) {
+	opts.Type = defaultType
+	opts.types = types
 }
 
 // FormatError generate the error message for an invalid type.

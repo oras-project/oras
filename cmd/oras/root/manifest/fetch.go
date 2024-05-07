@@ -98,7 +98,7 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 
 	cmd.Flags().StringSliceVarP(&opts.mediaTypes, "media-type", "", nil, "accepted media types")
 	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "file `path` to write the fetched manifest to, use - for stdout")
-	opts.SetFormatOptions([]option.FormatOption{
+	opts.SetTypes([]option.FormatType{
 		{Name: option.TypeJSON, Usage: "Print in prettified JSON format"},
 		{Name: option.TypeGoTemplate, Usage: "Print using the given Go template"},
 	})

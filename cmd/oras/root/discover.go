@@ -95,8 +95,8 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 	}
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
-	cmd.Flags().StringVarP(&opts.Template, "output", "o", "tree", "[Deprecated] format in which to display referrers (table, json, or tree). tree format will also show indirect referrers")
-	opts.SetFormatOptions([]option.FormatOption{
+	cmd.Flags().StringVarP(&opts.Template, "output", "o", "", "[Deprecated] format in which to display referrers (table, json, or tree). tree format will also show indirect referrers")
+	opts.SetTypesAndDefault(option.TypeTree, []option.FormatType{
 		{Name: option.TypeTree, Usage: "Get referrers recursively and print in tree format (default)"},
 		{Name: option.TypeTable, Usage: "Get direct referrers and output in table format"},
 		{Name: option.TypeJSON, Usage: "Get direct referrers and output in JSON format"},
