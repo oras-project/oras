@@ -157,15 +157,18 @@ func (opts *Remote) Parse(cmd *cobra.Command) error {
 	if cmd.Flags().Lookup(passwordFromStdinFlag) != nil {
 		passwordAndIdTokenFlags = append(passwordAndIdTokenFlags, passwordFromStdinFlag)
 	}
-	if err := oerrors.CheckMutuallyExclusiveFlags(cmd.Flags(), usernameAndIdTokenFlags, passwordAndIdTokenFlags); err != nil {
+	if err := oerrors.CheckMutuallyExclusiveFlags(cmd.Flags(), usernameAndIdTokenFlags...); err != nil {
+		return err
+	}
+	if err := oerrors.CheckMutuallyExclusiveFlags(cmd.Flags(), passwordAndIdTokenFlags...); err != nil {
 		return err
 	}
 	if err := opts.parseCustomHeaders(); err != nil {
 		return err
 	}
-
-	cmd.MarkFlagsRequiredTogether(certFileAndKeyFileFlags...)
-
+	if err := oerrors.CheckRequiredTogetherFlags(cmd.Flags(), certFileAndKeyFileFlags...); err != nil {
+		return err
+	}
 	return opts.readSecret(cmd)
 }
 

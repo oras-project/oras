@@ -27,6 +27,7 @@ import (
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/cmd/oras/internal/argument"
+	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
@@ -149,7 +150,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 }
 
 func runPush(cmd *cobra.Command, opts *pushOptions) error {
-	ctx, logger := opts.WithContext(cmd.Context())
+	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err

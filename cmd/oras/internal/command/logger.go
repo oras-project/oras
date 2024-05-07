@@ -13,20 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package status
+package command
 
 import (
-	"github.com/opencontainers/go-digest"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"context"
+
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/trace"
 )
 
-// ShortDigest converts the digest of the descriptor to a short form for displaying.
-func ShortDigest(desc ocispec.Descriptor) (digestString string) {
-	digestString = desc.Digest.String()
-	if err := desc.Digest.Validate(); err == nil {
-		if algo := desc.Digest.Algorithm(); algo == digest.SHA256 {
-			digestString = desc.Digest.Encoded()[:12]
-		}
-	}
-	return digestString
+// GetLogger returns a new FieldLogger and an associated Context derived from command context.
+func GetLogger(cmd *cobra.Command, opts *option.Common) (context.Context, logrus.FieldLogger) {
+	ctx, logger := trace.NewLogger(cmd.Context(), opts.Debug, opts.Verbose)
+	cmd.SetContext(ctx)
+	return ctx, logger
 }

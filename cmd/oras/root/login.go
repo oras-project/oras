@@ -26,6 +26,7 @@ import (
 	"golang.org/x/term"
 	"oras.land/oras-go/v2/registry/remote/credentials"
 	"oras.land/oras/cmd/oras/internal/argument"
+	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/credential"
@@ -77,7 +78,7 @@ Example - Log in with username and password in an interactive terminal and no TL
 }
 
 func runLogin(cmd *cobra.Command, opts loginOptions) (err error) {
-	ctx, logger := opts.WithContext(cmd.Context())
+	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	outWriter := cmd.OutOrStdout()
 
 	// prompt for credential

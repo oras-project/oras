@@ -64,9 +64,15 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("discover", RegistryRef(ZOTHost, ImageRepo, "")).ExpectFailure().MatchErrKeyWords("Error:", "no tag or digest specified", "oras discover").Exec()
 		})
 
-		It("should fail if both output and format flags are used", func() {
+		It("should fail with correct error message if both output and format flags are used", func() {
 			ORAS("discover", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--format", "json", "--output", "json").
-				ExpectFailure().
+				ExpectFailure().MatchErrKeyWords("--format", "--output", "same time").
+				Exec()
+		})
+
+		It("should fail with correct error message if output flag is used before format flag", func() {
+			ORAS("discover", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--output", "json", "--format", "json").
+				ExpectFailure().MatchErrKeyWords("--format", "--output", "same time").
 				Exec()
 		})
 

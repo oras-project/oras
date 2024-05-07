@@ -16,6 +16,7 @@ limitations under the License.
 package descriptor
 
 import (
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"oras.land/oras/internal/docker"
@@ -24,4 +25,15 @@ import (
 // IsImageManifest checks whether a manifest is an image manifest.
 func IsImageManifest(desc ocispec.Descriptor) bool {
 	return desc.MediaType == docker.MediaTypeManifest || desc.MediaType == ocispec.MediaTypeImageManifest
+}
+
+// ShortDigest converts the digest of the descriptor to a short form for displaying.
+func ShortDigest(desc ocispec.Descriptor) (digestString string) {
+	digestString = desc.Digest.String()
+	if err := desc.Digest.Validate(); err == nil {
+		if algo := desc.Digest.Algorithm(); algo == digest.SHA256 {
+			digestString = desc.Digest.Encoded()[:12]
+		}
+	}
+	return digestString
 }

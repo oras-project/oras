@@ -24,6 +24,7 @@ import (
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/cmd/oras/internal/argument"
+	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/registryutil"
@@ -72,7 +73,7 @@ Example - Delete a blob and print its descriptor:
 }
 
 func deleteBlob(cmd *cobra.Command, opts *deleteBlobOptions) (err error) {
-	ctx, logger := opts.WithContext(cmd.Context())
+	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	blobs, err := opts.NewBlobDeleter(opts.Common, logger)
 	if err != nil {
 		return err

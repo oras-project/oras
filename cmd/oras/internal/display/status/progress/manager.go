@@ -27,7 +27,8 @@ import (
 const (
 	// BufferSize is the size of the status channel buffer.
 	BufferSize       = 1
-	bufFlushDuration = 200 * time.Millisecond
+	framePerSecond   = 5
+	bufFlushDuration = time.Second / framePerSecond
 )
 
 var errManagerStopped = errors.New("progress output manager has already been stopped")
