@@ -77,9 +77,10 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		It("should fail if invalid output type is used", func() {
-			ORAS("discover", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--output", "ukpkmkk").
+			invalidType := "ukpkmkk"
+			ORAS("discover", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--output", invalidType).
 				ExpectFailure().
-				MatchErrKeyWords("Error:", "output type can only be tree, table or json").
+				MatchErrKeyWords("Error:", "invalid format type", invalidType, "tree", "table", "json", "go-template").
 				Exec()
 		})
 

@@ -73,7 +73,7 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the manifest to fetch"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			switch {
-			case opts.outputPath == "-" && opts.Template != "":
+			case opts.outputPath == "-" && opts.Input != "":
 				return fmt.Errorf("`--output -` cannot be used with `--format %s` at the same time", opts.Template)
 			case opts.outputPath == "-" && opts.OutputDescriptor:
 				return fmt.Errorf("`--descriptor` cannot be used with `--output -` at the same time")
