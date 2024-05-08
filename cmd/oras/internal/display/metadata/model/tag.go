@@ -16,6 +16,7 @@ limitations under the License.
 package model
 
 import (
+	"slices"
 	"sync"
 )
 
@@ -31,18 +32,12 @@ func (tag *Tagged) AddTag(t string) {
 	defer tag.lock.Unlock()
 
 	tag.tags = append(tag.tags, t)
-	// sorted insert
-	for i := len(tag.tags) - 1; i > 0; i-- {
-		if tag.tags[i] >= tag.tags[i-1] {
-			break
-		}
-		tag.tags[i], tag.tags[i-1] = tag.tags[i-1], tag.tags[i]
-	}
 }
 
 // Tags returns the tags.
 func (tag *Tagged) Tags() []string {
 	tag.lock.RLock()
 	defer tag.lock.RUnlock()
+	slices.Sort(tag.tags)
 	return tag.tags
 }
