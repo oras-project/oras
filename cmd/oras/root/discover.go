@@ -96,11 +96,11 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().StringVarP(&opts.Template, "output", "o", "tree", "[Deprecated] format in which to display referrers (table, json, or tree). tree format will also show indirect referrers")
-	cmd.Flags().StringVarP(&opts.Template, "format", "", "tree", `[Experimental] Format output using a custom template:
+	cmd.Flags().StringVarP(&opts.Template, "format", "", "", `[Experimental] Format output using a custom template:
 'tree':       Get referrers recursively and print in tree format (default)
 'table':      Get direct referrers and output in table format
 'json':       Get direct referrers and output in JSON format
-'$TEMPLATE':  Print direct referrers using the given Go template.`)
+'$TEMPLATE':  Print direct referrers using the given Go template`)
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
