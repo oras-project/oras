@@ -43,7 +43,13 @@ type Descriptor struct {
 func FromDescriptor(name string, desc ocispec.Descriptor) Descriptor {
 	ret := Descriptor{
 		DigestReference: NewDigestReference(name, desc.Digest.String()),
-		Descriptor:      desc,
+		Descriptor: ocispec.Descriptor{
+			MediaType:    desc.MediaType,
+			Size:         desc.Size,
+			Digest:       desc.Digest,
+			Annotations:  desc.Annotations,
+			ArtifactType: desc.ArtifactType,
+		},
 	}
 	return ret
 }

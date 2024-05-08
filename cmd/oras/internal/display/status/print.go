@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"oras.land/oras/internal/descriptor"
+	"os"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -45,7 +46,12 @@ func (p *Printer) Println(a ...any) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	_, err := fmt.Fprintln(p.out, a...)
-	return err
+	if err != nil {
+		err = fmt.Errorf("display output error: %w", err)
+		_, _ = fmt.Fprint(os.Stderr, err)
+	}
+	// Errors are handled above, so return nil
+	return nil
 }
 
 // PrintStatus prints transfer status.
