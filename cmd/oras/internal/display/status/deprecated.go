@@ -61,11 +61,6 @@ func Print(a ...any) error {
 	return printer.Println(a...)
 }
 
-// StatusPrinter returns a tracking function for transfer status.
-func StatusPrinter(status string, verbose bool) PrintFunc {
-	return printer.StatusPrinter(status, verbose)
-}
-
 // PrintStatus prints transfer status.
 func PrintStatus(desc ocispec.Descriptor, status string, verbose bool) error {
 	return printer.PrintStatus(desc, status, verbose)
