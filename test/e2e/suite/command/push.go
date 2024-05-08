@@ -181,7 +181,7 @@ var _ = Describe("Remote registry users:", func() {
 			extraTag := "2e2"
 
 			ORAS("push", fmt.Sprintf("%s,%s", RegistryRef(ZOTHost, repo, tag), extraTag), foobar.FileBarName, "-v", "--format", "{{range .referenceAsTags}}{{println .}}{{end}}").
-				MatchContent(fmt.Sprintf("%s\n%s\n", RegistryRef(ZOTHost, repo, tag), RegistryRef(ZOTHost, repo, extraTag))).
+				MatchContent(fmt.Sprintf("%s\n%s\n", RegistryRef(ZOTHost, repo, extraTag), RegistryRef(ZOTHost, repo, tag))).
 				WithWorkDir(tempDir).Exec()
 
 			// validate
