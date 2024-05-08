@@ -33,7 +33,7 @@ import (
 )
 
 // NewPushHandler returns status and metadata handlers for push command.
-func NewPushHandler(format string, tty *os.File, out io.Writer, verbose bool) (status.PushHandler, metadata.PushHandler) {
+func NewPushHandler(out io.Writer, format string, tty *os.File, verbose bool) (status.PushHandler, metadata.PushHandler) {
 	var statusHandler status.PushHandler
 	if tty != nil {
 		statusHandler = status.NewTTYPushHandler(tty)
@@ -56,7 +56,7 @@ func NewPushHandler(format string, tty *os.File, out io.Writer, verbose bool) (s
 }
 
 // NewAttachHandler returns status and metadata handlers for attach command.
-func NewAttachHandler(format string, tty *os.File, out io.Writer, verbose bool) (status.AttachHandler, metadata.AttachHandler) {
+func NewAttachHandler(out io.Writer, format string, tty *os.File, verbose bool) (status.AttachHandler, metadata.AttachHandler) {
 	var statusHandler status.AttachHandler
 	if tty != nil {
 		statusHandler = status.NewTTYAttachHandler(tty)
@@ -79,7 +79,7 @@ func NewAttachHandler(format string, tty *os.File, out io.Writer, verbose bool) 
 }
 
 // NewPullHandler returns status and metadata handlers for pull command.
-func NewPullHandler(format string, path string, tty *os.File, out io.Writer, verbose bool) (status.PullHandler, metadata.PullHandler) {
+func NewPullHandler(out io.Writer, format string, path string, tty *os.File, verbose bool) (status.PullHandler, metadata.PullHandler) {
 	var statusHandler status.PullHandler
 	if tty != nil {
 		statusHandler = status.NewTTYPullHandler(tty)

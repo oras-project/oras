@@ -16,23 +16,28 @@ limitations under the License.
 package model
 
 import (
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"slices"
+	"sync"
 )
 
-// push contains metadata formatted by oras push.
-type push struct {
-	Descriptor
-	ReferenceAsTags []string `json:"referenceAsTags"`
+// Tagged contains metadata formatted by oras Tagged.
+type Tagged struct {
+	tags []string
+	lock sync.RWMutex
 }
 
-// NewPush returns a metadata getter for push command.
-func NewPush(desc ocispec.Descriptor, path string, tags []string) any {
-	var refAsTags []string
-	for _, tag := range tags {
-		refAsTags = append(refAsTags, path+":"+tag)
-	}
-	return push{
-		Descriptor:      FromDescriptor(path, desc),
-		ReferenceAsTags: refAsTags,
-	}
+// AddTag adds a tag to the metadata.
+func (tag *Tagged) AddTag(t string) {
+	tag.lock.Lock()
+	defer tag.lock.Unlock()
+
+	tag.tags = append(tag.tags, t)
+}
+
+// Tags returns the tags.
+func (tag *Tagged) Tags() []string {
+	tag.lock.RLock()
+	defer tag.lock.RUnlock()
+	slices.Sort(tag.tags)
+	return tag.tags
 }

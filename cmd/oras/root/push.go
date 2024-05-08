@@ -155,7 +155,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	if err != nil {
 		return err
 	}
-	displayStatus, displayMetadata := display.NewPushHandler(opts.Template, opts.TTY, cmd.OutOrStdout(), opts.Verbose)
+	displayStatus, displayMetadata := display.NewPushHandler(cmd.OutOrStdout(), opts.Template, opts.TTY, opts.Verbose)
 
 	// prepare pack
 	packOpts := oras.PackManifestOptions{
