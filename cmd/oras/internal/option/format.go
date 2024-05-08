@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 )
@@ -63,18 +64,15 @@ func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 	}
 	for _, option := range opts.types {
 		usage += fmt.Sprintf("\n'%s':%s%s", option.Name, strings.Repeat(" ", maxLength-len(option.Name)+2), option.Usage)
-		if option.Name == opts.Type {
-			usage += " (default)"
-		}
 	}
 
 	// apply flags
-	fs.StringVar(&opts.input, "format", "", usage)
+	fs.StringVar(&opts.input, "format", opts.input, usage)
 	fs.StringVar(&opts.Template, "template", "", `Template string used to format output`)
 }
 
 // Parse parses the input format flag.
-func (opts *Format) Parse() error {
+func (opts *Format) Parse(_ *cobra.Command) error {
 	if err := opts.parseFlag(); err != nil {
 		return err
 	}
@@ -110,8 +108,8 @@ func (opts *Format) parseFlag() error {
 	} else if index == len(opts.Type)-1 || index == 0 {
 		return fmt.Errorf("invalid format flag: %s", opts.input)
 	}
-	opts.Type = opts.Type[:index]
-	opts.Template = opts.Type[index+1:]
+	opts.Type = opts.input[:index]
+	opts.Template = opts.input[index+1:]
 	return nil
 }
 
@@ -122,7 +120,7 @@ func (opts *Format) SetTypes(types []FormatType) {
 
 // SetTypesAndDefault resets the format options and default value.
 func (opts *Format) SetTypesAndDefault(defaultType string, types []FormatType) {
-	opts.Type = defaultType
+	opts.input = defaultType
 	opts.types = types
 }
 
