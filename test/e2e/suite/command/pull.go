@@ -78,7 +78,7 @@ var _ = Describe("ORAS beginners:", func() {
 		It("should not show hint for go template output", func() {
 			tempDir := PrepareTempFiles()
 			ref := RegistryRef(ZOTHost, ArtifactRepo, unnamed.Tag)
-			out := ORAS("pull", ref, "--format", "{{.}}").WithWorkDir(tempDir).Exec().Out
+			out := ORAS("pull", ref, "--format", "go-template={{.}}").WithWorkDir(tempDir).Exec().Out
 			gomega.Expect(out).ShouldNot(gbytes.Say(hintMsg(ref)))
 		})
 
@@ -194,7 +194,7 @@ var _ = Describe("OCI spec 1.1 registry users:", func() {
 			for _, p := range foobar.ImageLayerNames {
 				paths = append(paths, filepath.Join(tempDir, p))
 			}
-			ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag), "--format", "{{range .files}}{{println .path}}{{end}}").
+			ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag), "--format", "go-template={{range .files}}{{println .path}}{{end}}").
 				WithWorkDir(tempDir).MatchKeyWords(paths...).Exec()
 		})
 

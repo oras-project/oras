@@ -78,16 +78,20 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 			if err := oerrors.CheckMutuallyExclusiveFlags(cmd.Flags(), "format", "output"); err != nil {
 				return err
 			}
+
+			opts.RawReference = args[0]
+			if err := option.Parse(cmd, &opts); err != nil {
+				return err
+			}
 			if cmd.Flags().Changed("output") {
-				switch opts.Template {
+				switch opts.Format.Type {
 				case "tree", "json", "table":
 					fmt.Fprintf(cmd.ErrOrStderr(), "[DEPRECATED] --output is deprecated, try `--format %s` instead\n", opts.Template)
 				default:
 					return errors.New("output type can only be tree, table or json")
 				}
 			}
-			opts.RawReference = args[0]
-			return option.Parse(cmd, &opts)
+			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runDiscover(cmd, &opts)
@@ -95,7 +99,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 	}
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
-	cmd.Flags().StringVarP(&opts.Template, "output", "o", "", "[Deprecated] format in which to display referrers (table, json, or tree). tree format will also show indirect referrers")
+	cmd.Flags().StringVarP(&opts.Format.Input, "output", "o", "tree", "[Deprecated] format in which to display referrers (table, json, or tree). tree format will also show indirect referrers")
 	opts.SetTypesAndDefault(option.TypeTree, []option.FormatType{
 		{Name: option.TypeTree, Usage: "Get referrers recursively and print in tree format"},
 		{Name: option.TypeTable, Usage: "Get direct referrers and output in table format"},

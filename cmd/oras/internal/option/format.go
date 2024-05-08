@@ -32,6 +32,7 @@ const (
 	TypeGoTemplate = "go-template"
 )
 
+// FormatType represents a custom type for formatting.
 type FormatType struct {
 	Name  string
 	Usage string
@@ -41,7 +42,7 @@ type FormatType struct {
 type Format struct {
 	Type     string
 	Template string
-	input    string
+	Input    string
 	types    []FormatType
 }
 
@@ -67,7 +68,7 @@ func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 	}
 
 	// apply flags
-	fs.StringVar(&opts.input, "format", opts.input, usage)
+	fs.StringVar(&opts.Input, "format", opts.Input, usage)
 	fs.StringVar(&opts.Template, "template", "", `Template string used to format output`)
 }
 
@@ -79,6 +80,10 @@ func (opts *Format) Parse(_ *cobra.Command) error {
 
 	if opts.Template != "" && opts.Type != TypeGoTemplate {
 		return fmt.Errorf("--template must be used with --format %s", TypeGoTemplate)
+	}
+	if opts.Type == "" {
+		// flag not specified
+		return nil
 	}
 
 	var optionalTypes []string
@@ -97,19 +102,19 @@ func (opts *Format) Parse(_ *cobra.Command) error {
 func (opts *Format) parseFlag() error {
 	if opts.Template != "" {
 		// template explicitly set
-		opts.Type = opts.input
+		opts.Type = opts.Input
 		return nil
 	}
-	index := strings.Index(opts.input, "=")
+	index := strings.Index(opts.Input, "=")
 	if index == -1 {
 		// no proper template found in the type flag
-		opts.Type = opts.input
+		opts.Type = opts.Input
 		return nil
 	} else if index == len(opts.Type)-1 || index == 0 {
-		return fmt.Errorf("invalid format flag: %s", opts.input)
+		return fmt.Errorf("invalid format flag: %s", opts.Input)
 	}
-	opts.Type = opts.input[:index]
-	opts.Template = opts.input[index+1:]
+	opts.Type = opts.Input[:index]
+	opts.Template = opts.Input[index+1:]
 	return nil
 }
 
@@ -120,7 +125,7 @@ func (opts *Format) SetTypes(types []FormatType) {
 
 // SetTypesAndDefault resets the format options and default value.
 func (opts *Format) SetTypesAndDefault(defaultType string, types []FormatType) {
-	opts.input = defaultType
+	opts.Input = defaultType
 	opts.types = types
 }
 

@@ -106,13 +106,13 @@ var _ = Describe("ORAS beginners:", func() {
 			})
 
 			It("should fail if stdout is used inpropriately", func() {
-				ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--output", "-", "--format", "test").
+				ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--output", "-", "--format", "json").
 					ExpectFailure().Exec()
-				ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--descriptor", "--format", "test").
+				ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--descriptor", "--format", "json").
 					ExpectFailure().Exec()
 				ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--output", "-", "--descriptor").
 					ExpectFailure().Exec()
-				ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--format", "test", "--pretty").
+				ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--format", "json", "--pretty").
 					ExpectFailure().Exec()
 			})
 		})
@@ -276,13 +276,13 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 
 		It("should fetch manifest with platform validation and output content", func() {
-			out := ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), "--platform", "linux/amd64", "--format", "{{toJson .content}}").
+			out := ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), "--platform", "linux/amd64", "--format", "go-template={{toJson .content}}").
 				Exec().Out.Contents()
 			Expect(out).To(MatchJSON(multi_arch.LinuxAMD64Manifest))
 		})
 
 		It("should fetch manifest and format output", func() {
-			ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, multi_arch.LinuxAMD64.Digest.String()), "--format", "{{(first .content.layers).digest}}").
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, multi_arch.LinuxAMD64.Digest.String()), "--format", "go-template={{(first .content.layers).digest}}").
 				MatchContent(multi_arch.LayerDigest).
 				Exec()
 		})

@@ -121,7 +121,8 @@ func init() {
 
 		// Login
 		cmd := exec.Command(ORASPath, "login", Host, "-u", Username, "-p", Password)
-		gomega.Expect(cmd.Run()).ShouldNot(gomega.HaveOccurred())
+		err := cmd.Run()
+		gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 		cmd = exec.Command(ORASPath, "login", FallbackHost, "-u", Username, "-p", Password)
 		gomega.Expect(cmd.Run()).ShouldNot(gomega.HaveOccurred())
 		cmd = exec.Command(ORASPath, "login", ZOTHost, "-u", Username, "-p", Password)
