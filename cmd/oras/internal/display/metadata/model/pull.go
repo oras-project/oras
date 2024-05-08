@@ -63,7 +63,7 @@ type pull struct {
 func NewPull(digestReference string, files []File) any {
 	return pull{
 		DigestReference: DigestReference{
-			Ref: digestReference,
+			Reference: digestReference,
 		},
 		Files: files,
 	}

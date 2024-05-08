@@ -119,7 +119,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 			Recommendation: `To attach to an existing artifact, please provide files via argument or annotations via flag "--annotation". Run "oras attach -h" for more options and examples`,
 		}
 	}
-	displayStatus, displayMetadata, err := display.NewAttachHandler(opts.Format, opts.TTY, cmd.OutOrStdout(), opts.Verbose)
+	displayStatus, displayMetadata, err := display.NewAttachHandler(cmd.OutOrStdout(), opts.Format, opts.TTY, opts.Verbose)
 	if err != nil {
 		return err
 	}

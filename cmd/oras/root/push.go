@@ -155,7 +155,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	if err != nil {
 		return err
 	}
-	displayStatus, displayMetadata, err := display.NewPushHandler(opts.Format, opts.TTY, cmd.OutOrStdout(), opts.Verbose)
+	displayStatus, displayMetadata, err := display.NewPushHandler(cmd.OutOrStdout(), opts.Format, opts.TTY, opts.Verbose)
 	if err != nil {
 		return err
 	}

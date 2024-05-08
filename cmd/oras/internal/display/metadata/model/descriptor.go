@@ -21,13 +21,13 @@ import (
 
 // DigestReference is a reference to an artifact with digest.
 type DigestReference struct {
-	Ref string `json:"ref"`
+	Reference string `json:"reference"`
 }
 
 // NewDigestReference creates a new digest reference.
 func NewDigestReference(name string, digest string) DigestReference {
 	return DigestReference{
-		Ref: name + "@" + digest,
+		Reference: name + "@" + digest,
 	}
 }
 
@@ -43,7 +43,13 @@ type Descriptor struct {
 func FromDescriptor(name string, desc ocispec.Descriptor) Descriptor {
 	ret := Descriptor{
 		DigestReference: NewDigestReference(name, desc.Digest.String()),
-		Descriptor:      desc,
+		Descriptor: ocispec.Descriptor{
+			MediaType:    desc.MediaType,
+			Size:         desc.Size,
+			Digest:       desc.Digest,
+			Annotations:  desc.Annotations,
+			ArtifactType: desc.ArtifactType,
+		},
 	}
 	return ret
 }
