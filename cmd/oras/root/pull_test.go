@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package manifest
+package root
 
 import (
 	"context"
@@ -23,18 +23,18 @@ import (
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
-func Test_fetchManifest_errType(t *testing.T) {
+func Test_runPull_errType(t *testing.T) {
 	// prpare
 	cmd := &cobra.Command{}
 	cmd.SetContext(context.Background())
 
 	// test
-	opts := &fetchOptions{
+	opts := &pullOptions{
 		Format: option.Format{
 			Type: "unknown",
 		},
 	}
-	got := fetchManifest(cmd, opts).Error()
+	got := runPull(cmd, opts).Error()
 	want := opts.TypeError().Error()
 	if got != want {
 		t.Fatalf("got %v, want %v", got, want)
