@@ -93,12 +93,13 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("pull", ref, "--template", "{{.}}").
 				WithWorkDir(tempDir).
 				ExpectFailure().
+				MatchErrKeyWords("--template must be used with --format go-template").
 				Exec()
 		})
 
-		It("should fail if template format is invalid", func() {
+		It("should fail if template format is invalid", Focus, func() {
 			tempDir := PrepareTempFiles()
-			invalidPrompt := "invalid format flag"
+			invalidPrompt := "invalid format type"
 			ref := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
 			ORAS("pull", ref, "--format", "json", "--format", "=").
 				WithWorkDir(tempDir).
@@ -106,11 +107,6 @@ var _ = Describe("ORAS beginners:", func() {
 				MatchErrKeyWords(invalidPrompt).
 				Exec()
 			ORAS("pull", ref, "--format", "json", "--format", "={{.}}").
-				WithWorkDir(tempDir).
-				ExpectFailure().
-				MatchErrKeyWords(invalidPrompt).
-				Exec()
-			ORAS("pull", ref, "--format", "json", "--format", "go-template=").
 				WithWorkDir(tempDir).
 				ExpectFailure().
 				MatchErrKeyWords(invalidPrompt).

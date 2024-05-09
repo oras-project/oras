@@ -78,9 +78,6 @@ func (opts *Format) Parse(_ *cobra.Command) error {
 		return err
 	}
 
-	if opts.Template != "" && opts.Type != FormatTypeGoTemplate {
-		return fmt.Errorf("--template must be used with --format %s", FormatTypeGoTemplate)
-	}
 	if opts.Type == "" {
 		// flag not specified
 		return nil
@@ -89,12 +86,13 @@ func (opts *Format) Parse(_ *cobra.Command) error {
 	var optionalTypes []string
 	for _, option := range opts.types {
 		if opts.Type == option.Name {
+			// type validation passed
 			return nil
 		}
 		optionalTypes = append(optionalTypes, option.Name)
 	}
 	return &oerrors.Error{
-		Err:            fmt.Errorf("invalid format type: %s", opts.Type),
+		Err:            fmt.Errorf("invalid format type: %q", opts.Type),
 		Recommendation: fmt.Sprintf("supported types: %s", strings.Join(optionalTypes, ", ")),
 	}
 }
@@ -103,18 +101,20 @@ func (opts *Format) parseFlag() error {
 	if opts.Template != "" {
 		// template explicitly set
 		opts.Type = opts.Input
+		if opts.Type != FormatTypeGoTemplate {
+			return fmt.Errorf("--template must be used with --format %s", FormatTypeGoTemplate)
+		}
 		return nil
 	}
-	index := strings.Index(opts.Input, "=")
-	if index == -1 {
-		// no proper template found in the type flag
+
+	goTemplatePrefix := FormatTypeGoTemplate + "="
+	if strings.HasPrefix(opts.Input, goTemplatePrefix) {
+		// add parameter to template
+		opts.Type = FormatTypeGoTemplate
+		opts.Template = opts.Input[len(goTemplatePrefix):]
+	} else {
 		opts.Type = opts.Input
-		return nil
-	} else if index == len(opts.Input)-1 || index == 0 {
-		return fmt.Errorf("invalid format flag: %s", opts.Input)
 	}
-	opts.Type = opts.Input[:index]
-	opts.Template = opts.Input[index+1:]
 	return nil
 }
 
