@@ -82,6 +82,41 @@ var _ = Describe("ORAS beginners:", func() {
 			gomega.Expect(out).ShouldNot(gbytes.Say(hintMsg(ref)))
 		})
 
+		It("should fail if template is specified without go template format", func() {
+			tempDir := PrepareTempFiles()
+			ref := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
+			ORAS("pull", ref, "--format", "json", "--template", "{{.}}").
+				WithWorkDir(tempDir).
+				ExpectFailure().
+				MatchErrKeyWords("--template must be used with --format go-template").
+				Exec()
+			ORAS("pull", ref, "--template", "{{.}}").
+				WithWorkDir(tempDir).
+				ExpectFailure().
+				Exec()
+		})
+
+		It("should fail if template format is invalid", func() {
+			tempDir := PrepareTempFiles()
+			invalidPrompt := "invalid format flag"
+			ref := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
+			ORAS("pull", ref, "--format", "json", "--format", "=").
+				WithWorkDir(tempDir).
+				ExpectFailure().
+				MatchErrKeyWords(invalidPrompt).
+				Exec()
+			ORAS("pull", ref, "--format", "json", "--format", "={{.}}").
+				WithWorkDir(tempDir).
+				ExpectFailure().
+				MatchErrKeyWords(invalidPrompt).
+				Exec()
+			ORAS("pull", ref, "--format", "json", "--format", "go-template=").
+				WithWorkDir(tempDir).
+				ExpectFailure().
+				MatchErrKeyWords(invalidPrompt).
+				Exec()
+		})
+
 		It("should fail and show detailed error description if no argument provided", func() {
 			err := ORAS("pull").ExpectFailure().Exec().Err
 			Expect(err).Should(gbytes.Say("Error"))
@@ -195,6 +230,16 @@ var _ = Describe("OCI spec 1.1 registry users:", func() {
 				paths = append(paths, filepath.Join(tempDir, p))
 			}
 			ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag), "--format", "go-template={{range .files}}{{println .path}}{{end}}").
+				WithWorkDir(tempDir).MatchKeyWords(paths...).Exec()
+		})
+
+		It("should pull and output downloaded file paths using --template", func() {
+			tempDir := GinkgoT().TempDir()
+			var paths []string
+			for _, p := range foobar.ImageLayerNames {
+				paths = append(paths, filepath.Join(tempDir, p))
+			}
+			ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag), "--format", "go-template", "--template", "{{range .files}}{{println .path}}{{end}}").
 				WithWorkDir(tempDir).MatchKeyWords(paths...).Exec()
 		})
 

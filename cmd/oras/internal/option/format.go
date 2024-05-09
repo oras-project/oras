@@ -110,7 +110,7 @@ func (opts *Format) parseFlag() error {
 		// no proper template found in the type flag
 		opts.Type = opts.Input
 		return nil
-	} else if index == len(opts.Type)-1 || index == 0 {
+	} else if index == len(opts.Input)-1 || index == 0 {
 		return fmt.Errorf("invalid format flag: %s", opts.Input)
 	}
 	opts.Type = opts.Input[:index]
