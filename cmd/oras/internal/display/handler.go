@@ -73,9 +73,9 @@ func NewAttachHandler(out io.Writer, format option.Format, tty *os.File, verbose
 	switch format.Type {
 	case "":
 		metadataHandler = text.NewAttachHandler(out)
-	case "json":
+	case option.TypeJSON:
 		metadataHandler = json.NewAttachHandler(out)
-	case "go-template":
+	case option.TypeGoTemplate:
 		metadataHandler = template.NewAttachHandler(out, format.Template)
 	default:
 		return nil, nil, format.TypeError()
