@@ -151,11 +151,12 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 
 func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-	annotations, err := opts.LoadManifestAnnotations()
+	displayStatus, displayMetadata, err := display.NewPushHandler(cmd.OutOrStdout(), opts.Format, opts.TTY, opts.Verbose)
 	if err != nil {
 		return err
 	}
-	displayStatus, displayMetadata, err := display.NewPushHandler(cmd.OutOrStdout(), opts.Format, opts.TTY, opts.Verbose)
+
+	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err
 	}
