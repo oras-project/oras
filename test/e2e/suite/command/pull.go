@@ -97,7 +97,7 @@ var _ = Describe("ORAS beginners:", func() {
 				Exec()
 		})
 
-		It("should fail if template format is invalid", Focus, func() {
+		It("should fail if template format is invalid", func() {
 			tempDir := PrepareTempFiles()
 			invalidPrompt := "invalid format type"
 			ref := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
