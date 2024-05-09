@@ -108,6 +108,10 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 
 func fetchManifest(cmd *cobra.Command, opts *fetchOptions) (fetchErr error) {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
+	metadataHandler, contentHandler, err := display.NewManifestFetchHandler(cmd.OutOrStdout(), opts.Format, opts.OutputDescriptor, opts.Pretty.Pretty, opts.outputPath)
+	if err != nil {
+		return err
+	}
 
 	target, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
@@ -126,11 +130,6 @@ func fetchManifest(cmd *cobra.Command, opts *fetchOptions) (fetchErr error) {
 	if err != nil {
 		return err
 	}
-	metadataHandler, contentHandler, err := display.NewManifestFetchHandler(cmd.OutOrStdout(), opts.Format, opts.OutputDescriptor, opts.Pretty.Pretty, opts.outputPath)
-	if err != nil {
-		return err
-	}
-
 	var desc ocispec.Descriptor
 	var content []byte
 	if opts.OutputDescriptor && opts.outputPath == "" {
