@@ -26,10 +26,10 @@ import (
 
 const (
 	// format types
-	TypeJSON       = "json"
-	TypeTree       = "tree"
-	TypeTable      = "table"
-	TypeGoTemplate = "go-template"
+	FormatTypeJSON       = "json"
+	FormatTypeTree       = "tree"
+	FormatTypeTable      = "table"
+	FormatTypeGoTemplate = "go-template"
 )
 
 // FormatType represents a custom type for formatting.
@@ -38,7 +38,7 @@ type FormatType struct {
 	Usage string
 }
 
-// Format is a flag to format metadata into output.
+// Format contains input and parsed options to format output.
 type Format struct {
 	Type     string
 	Template string
@@ -51,8 +51,8 @@ func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 	usage := "[Experimental] Format output using a custom template:"
 	if len(opts.types) == 0 {
 		opts.types = []FormatType{
-			{Name: TypeJSON, Usage: "Print in JSON format"},
-			{Name: TypeGoTemplate, Usage: "Print output using the given Go template"},
+			{Name: FormatTypeJSON, Usage: "Print in JSON format"},
+			{Name: FormatTypeGoTemplate, Usage: "Print output using the given Go template"},
 		}
 	}
 
@@ -78,8 +78,8 @@ func (opts *Format) Parse(_ *cobra.Command) error {
 		return err
 	}
 
-	if opts.Template != "" && opts.Type != TypeGoTemplate {
-		return fmt.Errorf("--template must be used with --format %s", TypeGoTemplate)
+	if opts.Template != "" && opts.Type != FormatTypeGoTemplate {
+		return fmt.Errorf("--template must be used with --format %s", FormatTypeGoTemplate)
 	}
 	if opts.Type == "" {
 		// flag not specified

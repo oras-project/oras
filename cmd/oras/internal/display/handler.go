@@ -48,9 +48,9 @@ func NewPushHandler(out io.Writer, format option.Format, tty *os.File, verbose b
 	switch format.Type {
 	case "":
 		metadataHandler = text.NewPushHandler(out)
-	case option.TypeJSON:
+	case option.FormatTypeJSON:
 		metadataHandler = json.NewPushHandler(out)
-	case option.TypeGoTemplate:
+	case option.FormatTypeGoTemplate:
 		metadataHandler = template.NewPushHandler(out, format.Template)
 	default:
 		return nil, nil, format.TypeError()
@@ -73,9 +73,9 @@ func NewAttachHandler(out io.Writer, format option.Format, tty *os.File, verbose
 	switch format.Type {
 	case "":
 		metadataHandler = text.NewAttachHandler(out)
-	case option.TypeJSON:
+	case option.FormatTypeJSON:
 		metadataHandler = json.NewAttachHandler(out)
-	case option.TypeGoTemplate:
+	case option.FormatTypeGoTemplate:
 		metadataHandler = template.NewAttachHandler(out, format.Template)
 	default:
 		return nil, nil, format.TypeError()
@@ -98,9 +98,9 @@ func NewPullHandler(out io.Writer, format option.Format, path string, tty *os.Fi
 	switch format.Type {
 	case "":
 		metadataHandler = text.NewPullHandler(out)
-	case option.TypeJSON:
+	case option.FormatTypeJSON:
 		metadataHandler = json.NewPullHandler(out, path)
-	case option.TypeGoTemplate:
+	case option.FormatTypeGoTemplate:
 		metadataHandler = template.NewPullHandler(out, path, format.Template)
 	default:
 		return nil, nil, format.TypeError()
@@ -112,13 +112,13 @@ func NewPullHandler(out io.Writer, format option.Format, path string, tty *os.Fi
 func NewDiscoverHandler(out io.Writer, format option.Format, path string, rawReference string, desc ocispec.Descriptor, verbose bool) (metadata.DiscoverHandler, error) {
 	var handler metadata.DiscoverHandler
 	switch format.Type {
-	case option.TypeTree, "":
+	case option.FormatTypeTree, "":
 		handler = tree.NewDiscoverHandler(out, path, desc, verbose)
-	case option.TypeTable:
+	case option.FormatTypeTable:
 		handler = table.NewDiscoverHandler(out, rawReference, desc, verbose)
-	case option.TypeJSON:
+	case option.FormatTypeJSON:
 		handler = json.NewDiscoverHandler(out, desc, path)
-	case option.TypeGoTemplate:
+	case option.FormatTypeGoTemplate:
 		handler = template.NewDiscoverHandler(out, desc, path, format.Template)
 	default:
 		return nil, format.TypeError()
@@ -139,13 +139,13 @@ func NewManifestFetchHandler(out io.Writer, format option.Format, outputDescript
 		} else {
 			metadataHandler = metadata.NewDiscardHandler()
 		}
-	case option.TypeJSON:
+	case option.FormatTypeJSON:
 		// json
 		metadataHandler = json.NewManifestFetchHandler(out)
 		if outputPath == "" {
 			contentHandler = content.NewDiscardHandler()
 		}
-	case option.TypeGoTemplate:
+	case option.FormatTypeGoTemplate:
 		// go template
 		metadataHandler = template.NewManifestFetchHandler(out, format.Template)
 		if outputPath == "" {
