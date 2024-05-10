@@ -114,7 +114,6 @@ func runPull(cmd *cobra.Command, opts *pullOptions) error {
 	if err != nil {
 		return err
 	}
-
 	// Copy Options
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency

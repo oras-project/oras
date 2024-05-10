@@ -32,13 +32,13 @@ const (
 	FormatTypeGoTemplate = "go-template"
 )
 
-// FormatType represents a custom type for formatting.
+// FormatType represents a custom description in help doc.
 type FormatType struct {
 	Name  string
 	Usage string
 }
 
-// Format contains input and parsed options to format output.
+// Format contains input and parsed options for formatted output flags.
 type Format struct {
 	Type     string
 	Template string
@@ -69,7 +69,7 @@ func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 
 	// apply flags
 	fs.StringVar(&opts.Input, "format", opts.Input, usage)
-	fs.StringVar(&opts.Template, "template", "", `Template string used to format output`)
+	fs.StringVar(&opts.Template, "template", "", "Template string used to format output")
 }
 
 // Parse parses the input format flag.
@@ -98,6 +98,7 @@ func (opts *Format) Parse(_ *cobra.Command) error {
 }
 
 func (opts *Format) parseFlag() error {
+	opts.Type = opts.Input
 	if opts.Template != "" {
 		// template explicitly set
 		opts.Type = opts.Input
@@ -112,8 +113,6 @@ func (opts *Format) parseFlag() error {
 		// add parameter to template
 		opts.Type = FormatTypeGoTemplate
 		opts.Template = opts.Input[len(goTemplatePrefix):]
-	} else {
-		opts.Type = opts.Input
 	}
 	return nil
 }
@@ -124,6 +123,7 @@ func (opts *Format) SetTypes(types []FormatType) {
 }
 
 // SetTypesAndDefault resets the format options and default value.
+// Caller should make sure that this function is used before applying flags.
 func (opts *Format) SetTypesAndDefault(defaultType string, types []FormatType) {
 	opts.Input = defaultType
 	opts.types = types

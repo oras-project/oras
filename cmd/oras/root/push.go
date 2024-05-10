@@ -155,7 +155,6 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	if err != nil {
 		return err
 	}
-
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err
