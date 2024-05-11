@@ -42,8 +42,10 @@ type FormatType struct {
 type Format struct {
 	Type     string
 	Template string
-	Input    string
-	types    []FormatType
+	// FormatFlag can be private once deprecated `--output` is removed from
+	// `oras discover`
+	FormatFlag string
+	types      []FormatType
 }
 
 // ApplyFlag implements FlagProvider.ApplyFlag.
@@ -68,7 +70,7 @@ func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 	}
 
 	// apply flags
-	fs.StringVar(&opts.Input, "format", opts.Input, usage)
+	fs.StringVar(&opts.FormatFlag, "format", opts.FormatFlag, usage)
 	fs.StringVar(&opts.Template, "template", "", "Template string used to format output")
 }
 
@@ -98,10 +100,10 @@ func (opts *Format) Parse(_ *cobra.Command) error {
 }
 
 func (opts *Format) parseFlag() error {
-	opts.Type = opts.Input
+	opts.Type = opts.FormatFlag
 	if opts.Template != "" {
 		// template explicitly set
-		opts.Type = opts.Input
+		opts.Type = opts.FormatFlag
 		if opts.Type != FormatTypeGoTemplate {
 			return fmt.Errorf("--template must be used with --format %s", FormatTypeGoTemplate)
 		}
@@ -109,10 +111,10 @@ func (opts *Format) parseFlag() error {
 	}
 
 	goTemplatePrefix := FormatTypeGoTemplate + "="
-	if strings.HasPrefix(opts.Input, goTemplatePrefix) {
+	if strings.HasPrefix(opts.FormatFlag, goTemplatePrefix) {
 		// add parameter to template
 		opts.Type = FormatTypeGoTemplate
-		opts.Template = opts.Input[len(goTemplatePrefix):]
+		opts.Template = opts.FormatFlag[len(goTemplatePrefix):]
 	}
 	return nil
 }
@@ -125,11 +127,16 @@ func (opts *Format) SetTypes(types []FormatType) {
 // SetTypesAndDefault resets the format options and default value.
 // Caller should make sure that this function is used before applying flags.
 func (opts *Format) SetTypesAndDefault(defaultType string, types []FormatType) {
-	opts.Input = defaultType
+	opts.FormatFlag = defaultType
 	opts.types = types
 }
 
-// FormatError generate the error message for an invalid type.
+// FormatError generates the error message for an invalid type.
 func (opts *Format) TypeError() error {
 	return fmt.Errorf("unsupported format type: %s", opts.Type)
+}
+
+// RawFormatFlag returns raw input of --format flag.
+func (opts *Format) RawFormatFlag() string {
+	return opts.FormatFlag
 }
