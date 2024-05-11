@@ -103,7 +103,6 @@ func (opts *Format) parseFlag() error {
 	opts.Type = opts.FormatFlag
 	if opts.Template != "" {
 		// template explicitly set
-		opts.Type = opts.FormatFlag
 		if opts.Type != FormatTypeGoTemplate {
 			return fmt.Errorf("--template must be used with --format %s", FormatTypeGoTemplate)
 		}
