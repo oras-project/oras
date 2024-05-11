@@ -71,7 +71,7 @@ func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 
 	// apply flags
 	fs.StringVar(&opts.FormatFlag, "format", opts.FormatFlag, usage)
-	fs.StringVar(&opts.Template, "template", "", "Template string used to format output")
+	fs.StringVar(&opts.Template, "template", "", "[Experimental] Template string used to format output")
 }
 
 // Parse parses the input format flag.
