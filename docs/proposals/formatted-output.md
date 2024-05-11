@@ -162,8 +162,12 @@ oras manifest fetch $REGISTRY/$REPO:$TAG --format json
 oras manifest fetch $REGISTRY/$REPO:$TAG --format go-template --template '{{ toPrettyJson .content.config }}'
 ```
 
-```console
-map[digest:sha256:590382c032d581e30d154bb5c4338d36f417d1649e5d3ae459c90f889d97251c mediaType:application/vnd.docker.container.image.v1+json size:2608]
+```json
+{
+  "digest": "sha256:b6f50765242581c887ff1acc2511fa2d885c52d8fb3ac8c4bba131fd86567f2e",
+  "mediaType": "application/vnd.docker.container.image.v1+json",
+  "size": 3362
+}
 ```
 
 ### oras pull
