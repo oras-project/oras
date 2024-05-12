@@ -24,7 +24,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"oras.land/oras/cmd/oras/internal/display/status"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
@@ -129,8 +131,10 @@ func Test_doCopy(t *testing.T) {
 	opts.Verbose = true
 	opts.From.Reference = memDesc.Digest.String()
 	dst := memory.New()
+	builder := &strings.Builder{}
+	printer := status.NewPrinter(builder)
 	// test
-	_, err = doCopy(context.Background(), memStore, dst, &opts)
+	_, err = doCopy(context.Background(), printer, memStore, dst, &opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,8 +155,10 @@ func Test_doCopy_skipped(t *testing.T) {
 	opts.TTY = slave
 	opts.Verbose = true
 	opts.From.Reference = memDesc.Digest.String()
+	builder := &strings.Builder{}
+	printer := status.NewPrinter(builder)
 	// test
-	_, err = doCopy(context.Background(), memStore, memStore, &opts)
+	_, err = doCopy(context.Background(), printer, memStore, memStore, &opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -184,8 +190,10 @@ func Test_doCopy_mounted(t *testing.T) {
 		t.Fatal(err)
 	}
 	to.PlainHTTP = true
+	builder := &strings.Builder{}
+	printer := status.NewPrinter(builder)
 	// test
-	_, err = doCopy(context.Background(), from, to, &opts)
+	_, err = doCopy(context.Background(), printer, from, to, &opts)
 	if err != nil {
 		t.Fatal(err)
 	}
