@@ -26,17 +26,22 @@ import (
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 )
 
-// FormatType represents a custom description in help doc.
+// FormatType represents a format type.
 type FormatType struct {
-	Name  string
+	// Name is the format type name.
+	Name string
+	// Usage is the usage string in help doc.
 	Usage string
+	// HasParams indicates whether the format type has parameters.
+	HasParams bool
 }
 
 // WithUsage returns a new format type with provided usage string.
 func (ft *FormatType) WithUsage(usage string) *FormatType {
 	return &FormatType{
-		Name:  ft.Name,
-		Usage: usage,
+		Name:      ft.Name,
+		HasParams: ft.HasParams,
+		Usage:     usage,
 	}
 }
 
@@ -47,8 +52,9 @@ var (
 		Usage: "Print in JSON format",
 	}
 	FormatTypeGoTemplate = &FormatType{
-		Name:  "go-template",
-		Usage: "Print output using the given Go template",
+		Name:      "go-template",
+		Usage:     "Print output using the given Go template",
+		HasParams: true,
 	}
 	FormatTypeTable = &FormatType{
 		Name:  "table",
@@ -123,11 +129,16 @@ func (opts *Format) parseFlag() error {
 		return nil
 	}
 
-	goTemplatePrefix := FormatTypeGoTemplate.Name + "="
-	if strings.HasPrefix(opts.FormatFlag, goTemplatePrefix) {
-		// add parameter to template
-		opts.Type = FormatTypeGoTemplate.Name
-		opts.Template = opts.FormatFlag[len(goTemplatePrefix):]
+	for _, t := range opts.AllowedTypes {
+		if !t.HasParams {
+			continue
+		}
+		prefix := t.Name + "="
+		if strings.HasPrefix(opts.FormatFlag, prefix) {
+			// parse type and add parameter to template
+			opts.Type = t.Name
+			opts.Template = opts.FormatFlag[len(prefix):]
+		}
 	}
 	return nil
 }
