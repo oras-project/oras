@@ -29,6 +29,7 @@ import (
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/argument"
+	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/manifest"
@@ -86,8 +87,10 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 		Args: oerrors.CheckArgs(argument.Exactly(2), "the destination to push to and the file to read manifest content from"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.fileRef = args[1]
-			if opts.fileRef == "-" && opts.PasswordFromStdin {
-				return errors.New("`-` read file from input and `--password-stdin` read password from input cannot be both used")
+			if opts.fileRef == "-" {
+				if err := option.CheckStdinConflict(cmd.Flags()); err != nil {
+					return err
+				}
 			}
 			refs := strings.Split(args[0], ",")
 			opts.RawReference = refs[0]
@@ -107,7 +110,7 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 }
 
 func pushManifest(cmd *cobra.Command, opts pushOptions) error {
-	ctx, logger := opts.WithContext(cmd.Context())
+	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	var target oras.Target
 	var err error
 	target, err = opts.NewTarget(opts.Common, logger)

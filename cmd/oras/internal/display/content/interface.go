@@ -13,15 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package json
+package content
 
 import (
-	"encoding/json"
-	"io"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-func printJSON(out io.Writer, object any) error {
-	encoder := json.NewEncoder(out)
-	encoder.SetIndent("", "  ")
-	return encoder.Encode(object)
+// ManifestFetchHandler handles raw output for manifest fetch events.
+type ManifestFetchHandler interface {
+	// OnContentFetched is called after the manifest content is fetched.
+	OnContentFetched(desc ocispec.Descriptor, content []byte) error
 }

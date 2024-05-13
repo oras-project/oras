@@ -93,8 +93,6 @@ func TestTTYPushHandler_TrackTarget(t *testing.T) {
 	}()
 	if ttyPushHandler, ok := ph.(*TTYPushHandler); !ok {
 		t.Errorf("TrackTarget() should return a *TTYPushHandler, got %T", ttyPushHandler)
-	} else if ttyPushHandler.tracked.Inner() != store {
-		t.Errorf("TrackTarget() tracks unexpected tracked target: %T", ttyPushHandler.tracked)
 	}
 }
 

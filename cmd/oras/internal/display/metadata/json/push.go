@@ -21,13 +21,16 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
+	"oras.land/oras/cmd/oras/internal/display/utils"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/contentutil"
 )
 
 // PushHandler handles JSON metadata output for push events.
 type PushHandler struct {
-	path string
-	out  io.Writer
+	path   string
+	out    io.Writer
+	tagged model.Tagged
 }
 
 // NewPushHandler creates a new handler for push events.
@@ -37,13 +40,22 @@ func NewPushHandler(out io.Writer) metadata.PushHandler {
 	}
 }
 
+// OnTagged implements metadata.TagHandler.
+func (ph *PushHandler) OnTagged(desc ocispec.Descriptor, tag string) error {
+	ph.tagged.AddTag(tag)
+	return nil
+}
+
 // OnCopied is called after files are copied.
 func (ph *PushHandler) OnCopied(opts *option.Target) error {
+	if opts.RawReference != "" && !contentutil.IsDigest(opts.Reference) {
+		ph.tagged.AddTag(opts.Reference)
+	}
 	ph.path = opts.Path
 	return nil
 }
 
 // OnCompleted is called after the push is completed.
 func (ph *PushHandler) OnCompleted(root ocispec.Descriptor) error {
-	return printJSON(ph.out, model.NewPush(root, ph.path))
+	return utils.PrintPrettyJSON(ph.out, model.NewPush(root, ph.path, ph.tagged.Tags()))
 }

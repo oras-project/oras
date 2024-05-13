@@ -16,11 +16,14 @@ limitations under the License.
 package option
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
+	_ "embed"
 	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -43,9 +46,63 @@ var testTagList = struct {
 	Tags: []string{"tag"},
 }
 
+// localhostServerCert is a PEM-encoded TLS cert with SAN IPs
+// "127.0.0.1" and "[::1]", expiring at Jan 29 16:00:00 2084 GMT.
+// adapted from golang crypto/tls:
+// go run generate_cert.go  --rsa-bits 4096 --host 127.0.0.1,::1,oras.land --ca --start-date "Jan 1 00:00:00 1970" --duration=1000000h
+//
+//go:embed testdata/localhostServer.crt
+var localhostServerCert []byte
+
+// localhostServerKey is the private key for localhostServerCert.
+//
+//go:embed testdata/localhostServer.key
+var localhostServerKey []byte
+
+// localhostClientCert is a PEM-encoded TLS cert with SAN IPs
+// "127.0.0.1" and "[::1]", expiring at Jan 29 16:00:00 2084 GMT.
+// adapted from golang crypto/tls (added Client Auth usage):
+// go run generate_cert.go  --rsa-bits 4096 --host 127.0.0.1,::1,oras.land --ca --start-date "Jan 1 00:00:00 1970" --duration=1000000h
+//
+//go:embed testdata/localhostClient.crt
+var localhostClientCert []byte
+
+// localhostClientKey is the private key for localhostClientCert.
+//
+//go:embed testdata/localhostClient.key
+var localhostClientKey []byte
+
+func testingKey(s []byte) []byte {
+	return bytes.ReplaceAll(s, []byte("TESTING KEY"), []byte("PRIVATE KEY"))
+}
+
+func loadTestingTLSConfig() *tls.Config {
+
+	clientCertPool := x509.NewCertPool()
+	clientCertPool.AppendCertsFromPEM(localhostClientCert)
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{loadTestingCert(localhostServerCert, testingKey(localhostServerKey))},
+		ClientAuth:   tls.VerifyClientCertIfGiven,
+		ClientCAs:    clientCertPool,
+	}
+
+	return tlsConfig
+}
+
+func loadTestingCert(certificate, key []byte) tls.Certificate {
+	cert, err := tls.X509KeyPair(certificate, key)
+	if err != nil {
+		panic(fmt.Sprintf("Unable to load testing certificate: %v", err))
+	}
+
+	return cert
+
+}
+
 func TestMain(m *testing.M) {
 	// Test server
-	ts = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts = httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p := r.URL.Path
 		m := r.Method
 		switch {
@@ -57,6 +114,8 @@ func TestMain(m *testing.M) {
 			}
 		}
 	}))
+	ts.TLS = loadTestingTLSConfig()
+	ts.StartTLS()
 	defer ts.Close()
 	m.Run()
 }
@@ -80,7 +139,7 @@ func TestRemote_authClient_RawCredential(t *testing.T) {
 	}
 	opts := Remote{
 		Username: want.Username,
-		Password: want.Password,
+		Secret:   want.Password,
 	}
 	client, err := opts.authClient("hostname", false)
 	if err != nil {
@@ -116,7 +175,7 @@ func TestRemote_authClient_skipTlsVerify(t *testing.T) {
 
 func TestRemote_authClient_CARoots(t *testing.T) {
 	caPath := filepath.Join(t.TempDir(), "oras-test.pem")
-	if err := os.WriteFile(caPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ts.Certificate().Raw}), 0644); err != nil {
+	if err := os.WriteFile(caPath, localhostServerCert, 0644); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -174,7 +233,7 @@ func plainHTTPNotSpecified() (plainHTTP bool, fromFlag bool) {
 
 func TestRemote_NewRegistry(t *testing.T) {
 	caPath := filepath.Join(t.TempDir(), "oras-test.pem")
-	if err := os.WriteFile(caPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ts.Certificate().Raw}), 0644); err != nil {
+	if err := os.WriteFile(caPath, localhostServerCert, 0644); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -203,7 +262,7 @@ func TestRemote_NewRegistry(t *testing.T) {
 
 func TestRemote_NewRepository(t *testing.T) {
 	caPath := filepath.Join(t.TempDir(), "oras-test.pem")
-	if err := os.WriteFile(caPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ts.Certificate().Raw}), 0644); err != nil {
+	if err := os.WriteFile(caPath, localhostServerCert, 0644); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	opts := struct {
@@ -236,13 +295,61 @@ func TestRemote_NewRepository(t *testing.T) {
 	}
 }
 
+func TestRemote_NewRepositoryMTLS(t *testing.T) {
+	caPath := filepath.Join(t.TempDir(), "oras-test.pem")
+	if err := os.WriteFile(caPath, localhostServerCert, 0644); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	clientCertPath := filepath.Join(t.TempDir(), "oras-test-client.pem")
+	if err := os.WriteFile(clientCertPath, localhostClientCert, 0644); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	clientKeyPath := filepath.Join(t.TempDir(), "oras-test-client.key")
+	if err := os.WriteFile(clientKeyPath, testingKey(localhostClientKey), 0644); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	opts := struct {
+		Remote
+		Common
+	}{
+		Remote{
+			CACertFilePath: caPath,
+			CertFilePath:   clientCertPath,
+			KeyFilePath:    clientKeyPath,
+			plainHTTP:      plainHTTPNotSpecified,
+		},
+		Common{},
+	}
+
+	uri, err := url.ParseRequestURI(ts.URL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	repo, err := opts.NewRepository(uri.Host+"/"+testRepo, opts.Common, logrus.New())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if err = repo.Tags(context.Background(), "", func(got []string) error {
+		want := []string{"tag"}
+		if len(got) != len(testTagList.Tags) || !reflect.DeepEqual(got, want) {
+			return fmt.Errorf("expect: %v, got: %v", testTagList.Tags, got)
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestRemote_NewRepository_Retry(t *testing.T) {
 	caPath := filepath.Join(t.TempDir(), "oras-test.pem")
-	if err := os.WriteFile(caPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ts.Certificate().Raw}), 0644); err != nil {
+	if err := os.WriteFile(caPath, localhostServerCert, 0644); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	retries, count := 3, 0
-	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		count++
 		if count < retries {
 			http.Error(w, "error", http.StatusTooManyRequests)
@@ -253,6 +360,8 @@ func TestRemote_NewRepository_Retry(t *testing.T) {
 			http.Error(w, "error encoding", http.StatusBadRequest)
 		}
 	}))
+	ts.TLS = loadTestingTLSConfig()
+	ts.StartTLS()
 	defer ts.Close()
 	opts := struct {
 		Remote

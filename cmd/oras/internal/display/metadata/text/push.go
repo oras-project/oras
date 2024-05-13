@@ -18,6 +18,7 @@ package text
 import (
 	"fmt"
 	"io"
+	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
@@ -26,7 +27,8 @@ import (
 
 // PushHandler handles text metadata output for push events.
 type PushHandler struct {
-	out io.Writer
+	out     io.Writer
+	tagLock sync.Mutex
 }
 
 // NewPushHandler returns a new handler for push events.
@@ -36,14 +38,26 @@ func NewPushHandler(out io.Writer) metadata.PushHandler {
 	}
 }
 
+// OnTagged implements metadata.TextTagHandler.
+func (h *PushHandler) OnTagged(_ ocispec.Descriptor, tag string) error {
+	h.tagLock.Lock()
+	defer h.tagLock.Unlock()
+	_, err := fmt.Fprintln(h.out, "Tagged", tag)
+	return err
+}
+
 // OnCopied is called after files are copied.
-func (p *PushHandler) OnCopied(opts *option.Target) error {
-	_, err := fmt.Fprintln(p.out, "Pushed", opts.AnnotatedReference())
+func (h *PushHandler) OnCopied(opts *option.Target) error {
+	_, err := fmt.Fprintln(h.out, "Pushed", opts.AnnotatedReference())
 	return err
 }
 
 // OnCompleted is called after the push is completed.
-func (p *PushHandler) OnCompleted(root ocispec.Descriptor) error {
-	_, err := fmt.Fprintln(p.out, "Digest:", root.Digest)
+func (h *PushHandler) OnCompleted(root ocispec.Descriptor) error {
+	_, err := fmt.Fprintln(h.out, "ArtifactType:", root.ArtifactType)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintln(h.out, "Digest:", root.Digest)
 	return err
 }

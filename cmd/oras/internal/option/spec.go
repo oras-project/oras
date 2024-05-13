@@ -36,13 +36,13 @@ const (
 
 // ImageSpec option struct which implements pflag.Value interface.
 type ImageSpec struct {
-	flag        string
+	Flag        string
 	PackVersion oras.PackManifestVersion
 }
 
 // Set validates and sets the flag value from a string argument.
 func (is *ImageSpec) Set(value string) error {
-	is.flag = value
+	is.Flag = value
 	switch value {
 	case ImageSpecV1_1:
 		is.PackVersion = oras.PackManifestVersion1_1
@@ -72,15 +72,16 @@ func (is *ImageSpec) Options() string {
 
 // String returns the string representation of the flag.
 func (is *ImageSpec) String() string {
-	return is.flag
+	// to avoid printing default value in usage doc
+	return ""
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (is *ImageSpec) ApplyFlags(fs *pflag.FlagSet) {
-	// default to v1.1-rc.4
+	// default to v1.1, unless --config is used and --artifact-type is not used
 	is.PackVersion = oras.PackManifestVersion1_1
-	defaultFlag := ImageSpecV1_1
-	fs.Var(is, "image-spec", fmt.Sprintf(`[Experimental] specify manifest type for building artifact. Options: %s (default %q)`, is.Options(), defaultFlag))
+	is.Flag = ImageSpecV1_1
+	fs.Var(is, "image-spec", `[Preview] specify manifest type for building artifact. Options: v1.1, v1.0 (default v1.1, overridden to v1.0 if --config is used without --artifact-type)`)
 }
 
 // DistributionSpec option struct which implements pflag.Value interface.

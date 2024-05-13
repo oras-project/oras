@@ -22,8 +22,10 @@ import (
 	"github.com/opencontainers/go-digest"
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/argument"
+	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/contentutil"
 )
 
 type showTagsOptions struct {
@@ -79,15 +81,14 @@ Example - [Experimental] Show tags associated with a digest:
 }
 
 func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
-	ctx, logger := opts.WithContext(cmd.Context())
+	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	finder, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
 		return err
 	}
 	filter := ""
 	if opts.Reference != "" {
-		_, err := digest.Parse(opts.Reference)
-		if err == nil {
+		if contentutil.IsDigest(opts.Reference) {
 			filter = opts.Reference
 		} else {
 			desc, err := finder.Resolve(ctx, opts.Reference)

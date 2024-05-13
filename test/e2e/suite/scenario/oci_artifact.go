@@ -64,12 +64,11 @@ var _ = Describe("OCI artifact users:", Ordered, func() {
 				WithWorkDir(tempDir).
 				WithDescription("attach with manifest exported").Exec()
 
-			session := ORAS("discover", subject, "-o", "json").Exec()
-			digest := string(Binary("jq", "-r", ".manifests[].digest").WithInput(session.Out).Exec().Out.Contents())
-			fetched := ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, digest)).MatchKeyWords(foobar.AttachFileMedia).Exec()
+			ref := string(ORAS("discover", subject, "--format", "{{(first .manifests).reference}}").Exec().Out.Contents())
+			fetched := ORAS("manifest", "fetch", ref).MatchKeyWords(foobar.AttachFileMedia).Exec()
 			MatchFile(filepath.Join(tempDir, pulledManifest), string(fetched.Out.Contents()), DefaultTimeout)
 
-			ORAS("pull", RegistryRef(ZOTHost, repo, digest), "-v", "-o", pullRoot).
+			ORAS("pull", ref, "-v", "-o", pullRoot).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, true, 1).
 				WithWorkDir(tempDir).
 				WithDescription("pull attached artifact").Exec()
@@ -82,12 +81,11 @@ var _ = Describe("OCI artifact users:", Ordered, func() {
 				WithWorkDir(tempDir).
 				WithDescription("attach again with manifest exported").Exec()
 
-			session = ORAS("discover", subject, "-o", "json", "--artifact-type", "test/artifact2").Exec()
-			digest = string(Binary("jq", "-r", ".manifests[].digest").WithInput(session.Out).Exec().Out.Contents())
-			fetched = ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, digest)).MatchKeyWords(foobar.AttachFileMedia).Exec()
+			ref = string(ORAS("discover", subject, "--format", "{{(first .manifests).reference}}", "--artifact-type", "test/artifact2").Exec().Out.Contents())
+			fetched = ORAS("manifest", "fetch", ref).MatchKeyWords(foobar.AttachFileMedia).Exec()
 			MatchFile(filepath.Join(tempDir, pulledManifest), string(fetched.Out.Contents()), DefaultTimeout)
 
-			ORAS("pull", RegistryRef(ZOTHost, repo, string(digest)), "-v", "-o", pullRoot, "--include-subject").
+			ORAS("pull", ref, "-v", "-o", pullRoot, "--include-subject").
 				MatchStatus(append(foobar.FileStateKeys, foobar.AttachFileStateKey), true, 4).
 				WithWorkDir(tempDir).
 				WithDescription("pull attached artifact and subject").Exec()

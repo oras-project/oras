@@ -35,15 +35,20 @@ const (
 	zeroDigest   = "  └─ loading digest..."
 )
 
+var (
+	spinnerColor  = aec.LightYellowF
+	doneMarkColor = aec.LightGreenF
+	progressColor = aec.LightBlueB
+)
+
 // status is used as message to update progress view.
 type status struct {
-	done           bool // done is true when the end time is set
-	prompt         string
-	descriptor     ocispec.Descriptor
-	offset         int64
-	total          humanize.Bytes
-	lastOffset     int64
-	lastRenderTime time.Time
+	done        bool // done is true when the end time is set
+	prompt      string
+	descriptor  ocispec.Descriptor
+	offset      int64
+	total       humanize.Bytes
+	speedWindow *speedWindow
 
 	startTime time.Time
 	endTime   time.Time
@@ -54,14 +59,14 @@ type status struct {
 // newStatus generates a base empty status.
 func newStatus() *status {
 	return &status{
-		offset:         -1,
-		total:          humanize.ToBytes(0),
-		lastRenderTime: time.Now(),
+		offset:      -1,
+		total:       humanize.ToBytes(0),
+		speedWindow: newSpeedWindow(framePerSecond),
 	}
 }
 
-// NewStatus generates a status.
-func NewStatus(prompt string, descriptor ocispec.Descriptor, offset int64) *status {
+// NewStatusMessage generates a status for messaging.
+func NewStatusMessage(prompt string, descriptor ocispec.Descriptor, offset int64) *status {
 	return &status{
 		prompt:     prompt,
 		descriptor: descriptor,
@@ -128,13 +133,15 @@ func (s *status) String(width int) (string, string) {
 	lenLeft := 0
 	if !s.done {
 		lenBar := int(percent * barLength)
-		bar := fmt.Sprintf("[%s%s]", aec.Inverse.Apply(strings.Repeat(" ", lenBar)), strings.Repeat(".", barLength-lenBar))
+		bar := fmt.Sprintf("[%s%s]", progressColor.Apply(strings.Repeat(" ", lenBar)), strings.Repeat(".", barLength-lenBar))
 		speed := s.calculateSpeed()
-		left = fmt.Sprintf("%c %s(%*s/s) %s %s", s.mark.symbol(), bar, speedLength, speed, s.prompt, name)
+		left = fmt.Sprintf("%s %s(%*s/s) %s %s",
+			spinnerColor.Apply(string(s.mark.symbol())),
+			bar, speedLength, speed, s.prompt, name)
 		// bar + wrapper(2) + space(1) + speed + "/s"(2) + wrapper(2) = len(bar) + len(speed) + 7
 		lenLeft = barLength + speedLength + 7
 	} else {
-		left = fmt.Sprintf("✓ %s %s", s.prompt, name)
+		left = fmt.Sprintf("%s %s %s", doneMarkColor.Apply("✓"), s.prompt, name)
 	}
 	// mark(1) + space(1) + prompt + space(1) + name = len(prompt) + len(name) + 3
 	lenLeft += utf8.RuneCountInString(s.prompt) + utf8.RuneCountInString(name) + 3
@@ -151,20 +158,12 @@ func (s *status) String(width int) (string, string) {
 // calculateSpeed calculates the speed of the progress and update last status.
 // caller must hold the lock.
 func (s *status) calculateSpeed() humanize.Bytes {
-	now := time.Now()
-	if s.lastRenderTime.IsZero() {
-		s.lastRenderTime = s.startTime
+	if s.offset < 0 {
+		// not started
+		return humanize.ToBytes(0)
 	}
-	secondsTaken := now.Sub(s.lastRenderTime).Seconds()
-	if secondsTaken == 0 {
-		secondsTaken = bufFlushDuration.Seconds()
-	}
-	bytes := float64(s.offset - s.lastOffset)
-
-	s.lastOffset = s.offset
-	s.lastRenderTime = now
-
-	return humanize.ToBytes(int64(bytes / secondsTaken))
+	s.speedWindow.Add(time.Now(), s.offset)
+	return humanize.ToBytes(int64(s.speedWindow.Mean()))
 }
 
 // durationString returns a viewable TTY string of the status with duration.
@@ -208,6 +207,7 @@ func (s *status) Update(n *status) {
 	}
 	if !n.startTime.IsZero() {
 		s.startTime = n.startTime
+		s.speedWindow.Add(s.startTime, 0)
 	}
 	if !n.endTime.IsZero() {
 		s.endTime = n.endTime

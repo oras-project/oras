@@ -20,12 +20,19 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
+	"oras.land/oras/cmd/oras/internal/display/utils"
 )
 
 func parseAndWrite(out io.Writer, object any, templateStr string) error {
+	// parse template
 	t, err := template.New("format output").Funcs(sprig.FuncMap()).Parse(templateStr)
 	if err != nil {
 		return err
 	}
-	return t.Execute(out, object)
+	// convert object to map[string]any
+	converted, err := utils.ToMap(object)
+	if err != nil {
+		return err
+	}
+	return t.Execute(out, converted)
 }

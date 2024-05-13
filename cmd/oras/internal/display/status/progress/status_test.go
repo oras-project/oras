@@ -48,12 +48,12 @@ func Test_status_String(t *testing.T) {
 	})
 	// full name
 	statusStr, digestStr := s.String(120)
-	if err := testutils.OrderedMatch(statusStr+digestStr, " [\x1b[7m\x1b[0m....................]", s.prompt, s.descriptor.MediaType, "0.00/2  B", "0.00%", s.descriptor.Digest.String()); err != nil {
+	if err := testutils.OrderedMatch(statusStr+digestStr, "\x1b[0m....................]", s.prompt, s.descriptor.MediaType, "0.00/2  B", "0.00%", s.descriptor.Digest.String()); err != nil {
 		t.Error(err)
 	}
 	// partial name
 	statusStr, digestStr = s.String(console.MinWidth)
-	if err := testutils.OrderedMatch(statusStr+digestStr, " [\x1b[7m\x1b[0m....................]", s.prompt, "application/v.", "0.00/2  B", "0.00%", s.descriptor.Digest.String()); err != nil {
+	if err := testutils.OrderedMatch(statusStr+digestStr, "\x1b[0m....................]", s.prompt, "application/v.", "0.00/2  B", "0.00%", s.descriptor.Digest.String()); err != nil {
 		t.Error(err)
 	}
 	// done
@@ -89,7 +89,7 @@ func Test_status_String_zeroWitdth(t *testing.T) {
 	})
 	// not done
 	statusStr, digestStr := s.String(120)
-	if err := testutils.OrderedMatch(statusStr+digestStr, " [\x1b[7m\x1b[0m....................]", s.prompt, s.descriptor.MediaType, "0.00/0  B", "0.00%", s.descriptor.Digest.String()); err != nil {
+	if err := testutils.OrderedMatch(statusStr+digestStr, "\x1b[0m....................]", s.prompt, s.descriptor.MediaType, "0.00/0  B", "0.00%", s.descriptor.Digest.String()); err != nil {
 		t.Error(err)
 	}
 	// done
@@ -138,5 +138,14 @@ func Test_status_durationString(t *testing.T) {
 	want = "1µs"
 	if d := s.durationString(); d != want {
 		t.Errorf("status.durationString() = %v, want %v", d, want)
+	}
+}
+
+func Test_status_calculateSpeed_negative(t *testing.T) {
+	s := &status{
+		offset: -1,
+	}
+	if s.calculateSpeed() != humanize.ToBytes(0) {
+		t.Errorf("status.calculateSpeed() = %v, want 0", s.calculateSpeed())
 	}
 }

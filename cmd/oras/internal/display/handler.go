@@ -19,15 +19,21 @@ import (
 	"io"
 	"os"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+
+	"oras.land/oras/cmd/oras/internal/display/content"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
+	"oras.land/oras/cmd/oras/internal/display/metadata/descriptor"
 	"oras.land/oras/cmd/oras/internal/display/metadata/json"
+	"oras.land/oras/cmd/oras/internal/display/metadata/table"
 	"oras.land/oras/cmd/oras/internal/display/metadata/template"
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
+	"oras.land/oras/cmd/oras/internal/display/metadata/tree"
 	"oras.land/oras/cmd/oras/internal/display/status"
 )
 
 // NewPushHandler returns status and metadata handlers for push command.
-func NewPushHandler(format string, tty *os.File, out io.Writer, verbose bool) (status.PushHandler, metadata.PushHandler) {
+func NewPushHandler(out io.Writer, format string, tty *os.File, verbose bool) (status.PushHandler, metadata.PushHandler) {
 	var statusHandler status.PushHandler
 	if tty != nil {
 		statusHandler = status.NewTTYPushHandler(tty)
@@ -50,7 +56,7 @@ func NewPushHandler(format string, tty *os.File, out io.Writer, verbose bool) (s
 }
 
 // NewAttachHandler returns status and metadata handlers for attach command.
-func NewAttachHandler(format string, tty *os.File, out io.Writer, verbose bool) (status.AttachHandler, metadata.AttachHandler) {
+func NewAttachHandler(out io.Writer, format string, tty *os.File, verbose bool) (status.AttachHandler, metadata.AttachHandler) {
 	var statusHandler status.AttachHandler
 	if tty != nil {
 		statusHandler = status.NewTTYAttachHandler(tty)
@@ -73,7 +79,7 @@ func NewAttachHandler(format string, tty *os.File, out io.Writer, verbose bool) 
 }
 
 // NewPullHandler returns status and metadata handlers for pull command.
-func NewPullHandler(format string, path string, tty *os.File, out io.Writer, verbose bool) (status.PullHandler, metadata.PullHandler) {
+func NewPullHandler(out io.Writer, format string, path string, tty *os.File, verbose bool) (status.PullHandler, metadata.PullHandler) {
 	var statusHandler status.PullHandler
 	if tty != nil {
 		statusHandler = status.NewTTYPullHandler(tty)
@@ -93,4 +99,51 @@ func NewPullHandler(format string, path string, tty *os.File, out io.Writer, ver
 		metadataHandler = template.NewPullHandler(out, path, format)
 	}
 	return statusHandler, metadataHandler
+}
+
+// NewDiscoverHandler returns status and metadata handlers for discover command.
+func NewDiscoverHandler(out io.Writer, outputType string, path string, rawReference string, desc ocispec.Descriptor, verbose bool) metadata.DiscoverHandler {
+	switch outputType {
+	case "tree", "":
+		return tree.NewDiscoverHandler(out, path, desc, verbose)
+	case "table":
+		return table.NewDiscoverHandler(out, rawReference, desc, verbose)
+	case "json":
+		return json.NewDiscoverHandler(out, desc, path)
+	default:
+		return template.NewDiscoverHandler(out, desc, path, outputType)
+	}
+}
+
+// NewManifestFetchHandler returns a manifest fetch handler.
+func NewManifestFetchHandler(out io.Writer, format string, outputDescriptor, pretty bool, outputPath string) (metadata.ManifestFetchHandler, content.ManifestFetchHandler) {
+	var metadataHandler metadata.ManifestFetchHandler
+	var contentHandler content.ManifestFetchHandler
+
+	switch format {
+	case "":
+		// raw
+		if outputDescriptor {
+			metadataHandler = descriptor.NewManifestFetchHandler(out, pretty)
+		} else {
+			metadataHandler = metadata.NewDiscardHandler()
+		}
+	case "json":
+		// json
+		metadataHandler = json.NewManifestFetchHandler(out)
+		if outputPath == "" {
+			contentHandler = content.NewDiscardHandler()
+		}
+	default:
+		// go template
+		metadataHandler = template.NewManifestFetchHandler(out, format)
+		if outputPath == "" {
+			contentHandler = content.NewDiscardHandler()
+		}
+	}
+
+	if contentHandler == nil {
+		contentHandler = content.NewManifestFetchHandler(out, pretty, outputPath)
+	}
+	return metadataHandler, contentHandler
 }

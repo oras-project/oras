@@ -27,13 +27,14 @@ import (
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/cmd/oras/internal/argument"
+	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/display/status"
-	"oras.land/oras/cmd/oras/internal/display/status/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/contentutil"
+	"oras.land/oras/internal/listener"
 	"oras.land/oras/internal/registryutil"
 )
 
@@ -108,6 +109,22 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
+
+			if opts.manifestConfigRef != "" && opts.artifactType == "" {
+				if !cmd.Flags().Changed("image-spec") {
+					// switch to v1.0 manifest since artifact type is suggested
+					// by OCI v1.1 artifact guidance but is not presented
+					// see https://github.com/opencontainers/image-spec/blob/e7f7c0ca69b21688c3cea7c87a04e4503e6099e2/manifest.md?plain=1#L170
+					opts.Flag = option.ImageSpecV1_0
+					opts.PackVersion = oras.PackManifestVersion1_0
+				} else if opts.Flag == option.ImageSpecV1_1 {
+					return &oerrors.Error{
+						Err:            errors.New(`missing artifact type for OCI image-spec v1.1 artifacts`),
+						Recommendation: "set an artifact type via `--artifact-type` or consider image spec v1.0",
+					}
+				}
+			}
+
 			switch opts.PackVersion {
 			case oras.PackManifestVersion1_0:
 				if opts.manifestConfigRef != "" && opts.artifactType != "" {
@@ -133,12 +150,12 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 }
 
 func runPush(cmd *cobra.Command, opts *pushOptions) error {
-	ctx, logger := opts.WithContext(cmd.Context())
+	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err
 	}
-	displayStatus, displayMetadata := display.NewPushHandler(opts.Template, opts.TTY, cmd.OutOrStdout(), opts.Verbose)
+	displayStatus, displayMetadata := display.NewPushHandler(cmd.OutOrStdout(), opts.Template, opts.TTY, opts.Verbose)
 
 	// prepare pack
 	packOpts := oras.PackManifestOptions{
@@ -180,11 +197,11 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	}
 
 	// prepare push
-	dst, err := opts.NewTarget(opts.Common, logger)
+	originalDst, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
 		return err
 	}
-	dst, stopTrack, err := displayStatus.TrackTarget(dst)
+	dst, stopTrack, err := displayStatus.TrackTarget(originalDst)
 	if err != nil {
 		return err
 	}
@@ -216,17 +233,14 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	}
 
 	if len(opts.extraRefs) != 0 {
-		taggable := dst
-		if tracked, ok := dst.(track.GraphTarget); ok {
-			taggable = tracked.Inner()
-		}
 		contentBytes, err := content.FetchAll(ctx, memoryStore, root)
 		if err != nil {
 			return err
 		}
 		tagBytesNOpts := oras.DefaultTagBytesNOptions
 		tagBytesNOpts.Concurrency = opts.concurrency
-		if _, err = oras.TagBytesN(ctx, status.NewTagStatusPrinter(taggable), root.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
+		dst := listener.NewTagListener(originalDst, nil, displayMetadata.OnTagged)
+		if _, err = oras.TagBytesN(ctx, dst, root.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}
 	}

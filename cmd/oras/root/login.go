@@ -26,6 +26,7 @@ import (
 	"golang.org/x/term"
 	"oras.land/oras-go/v2/registry/remote/credentials"
 	"oras.land/oras/cmd/oras/internal/argument"
+	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/credential"
@@ -52,10 +53,10 @@ Example - Log in with username and password from stdin:
   oras login -u username --password-stdin localhost:5000
 
 Example - Log in with identity token from command line flags:
-  oras login -p token localhost:5000
+  oras login --identity-token token localhost:5000
 
 Example - Log in with identity token from stdin:
-  oras login --password-stdin localhost:5000
+  oras login --identity-token-stdin localhost:5000
 
 Example - Log in with username and password in an interactive terminal:
   oras login localhost:5000
@@ -77,11 +78,11 @@ Example - Log in with username and password in an interactive terminal and no TL
 }
 
 func runLogin(cmd *cobra.Command, opts loginOptions) (err error) {
-	ctx, logger := opts.WithContext(cmd.Context())
+	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	outWriter := cmd.OutOrStdout()
 
 	// prompt for credential
-	if opts.Password == "" {
+	if opts.Secret == "" {
 		if opts.Username == "" {
 			// prompt for username
 			username, err := readLine(outWriter, "Username: ", false)
@@ -92,16 +93,16 @@ func runLogin(cmd *cobra.Command, opts loginOptions) (err error) {
 		}
 		if opts.Username == "" {
 			// prompt for token
-			if opts.Password, err = readLine(outWriter, "Token: ", true); err != nil {
+			if opts.Secret, err = readLine(outWriter, "Token: ", true); err != nil {
 				return err
-			} else if opts.Password == "" {
+			} else if opts.Secret == "" {
 				return errors.New("token required")
 			}
 		} else {
 			// prompt for password
-			if opts.Password, err = readLine(outWriter, "Password: ", true); err != nil {
+			if opts.Secret, err = readLine(outWriter, "Password: ", true); err != nil {
 				return err
-			} else if opts.Password == "" {
+			} else if opts.Secret == "" {
 				return errors.New("password required")
 			}
 		}

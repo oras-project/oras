@@ -13,21 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package utils
+package template
 
-import v1 "github.com/opencontainers/image-spec/specs-go/v1"
-
-// GenerateContentKey generates a unique key for each content descriptor, using
-// its digest and name if applicable.
-func GenerateContentKey(desc v1.Descriptor) string {
-	return desc.Digest.String() + desc.Annotations[v1.AnnotationTitle]
-}
-
-const (
-	PullPromptDownloading = "Downloading"
-	PullPromptPulled      = "Pulled     "
-	PullPromptProcessing  = "Processing "
-	PullPromptSkipped     = "Skipped    "
-	PullPromptRestored    = "Restored   "
-	PullPromptDownloaded  = "Downloaded "
+import (
+	"os"
+	"testing"
 )
+
+func Test_parseAndWrite_err(t *testing.T) {
+	if err := parseAndWrite(os.Stdout, func() {}, ""); err == nil {
+		t.Errorf("should return error")
+	}
+}

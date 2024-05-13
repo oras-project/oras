@@ -22,6 +22,8 @@ import (
 
 // PushHandler handles metadata output for push events.
 type PushHandler interface {
+	TagHandler
+
 	OnCopied(opts *option.Target) error
 	OnCompleted(root ocispec.Descriptor) error
 }
@@ -29,6 +31,23 @@ type PushHandler interface {
 // AttachHandler handles metadata output for attach events.
 type AttachHandler interface {
 	OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error
+}
+
+// DiscoverHandler handles metadata output for discover events.
+type DiscoverHandler interface {
+	// MultiLevelSupported returns true if the handler supports multi-level
+	// discovery.
+	MultiLevelSupported() bool
+	// OnDiscovered is called after a referrer is discovered.
+	OnDiscovered(referrer, subject ocispec.Descriptor) error
+	// OnCompleted is called when referrer discovery is completed.
+	OnCompleted() error
+}
+
+// ManifestFetchHandler handles metadata output for manifest fetch events.
+type ManifestFetchHandler interface {
+	// OnFetched is called after the manifest content is fetched.
+	OnFetched(path string, desc ocispec.Descriptor, content []byte) error
 }
 
 // PullHandler handles metadata output for pull events.
@@ -39,4 +58,10 @@ type PullHandler interface {
 	OnFilePulled(name string, outputDir string, desc ocispec.Descriptor, descPath string) error
 	// OnCompleted is called when the pull cmd execution is completed.
 	OnCompleted(opts *option.Target, desc ocispec.Descriptor) error
+}
+
+// TagHandler handles status output for tag command.
+type TagHandler interface {
+	// OnTagged is called when each tagging operation is done.
+	OnTagged(desc ocispec.Descriptor, tag string) error
 }

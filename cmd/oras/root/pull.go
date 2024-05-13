@@ -28,6 +28,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras/cmd/oras/internal/argument"
+	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/status"
@@ -108,7 +109,7 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 }
 
 func runPull(cmd *cobra.Command, opts *pullOptions) error {
-	ctx, logger := opts.WithContext(cmd.Context())
+	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	// Copy Options
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
@@ -134,7 +135,7 @@ func runPull(cmd *cobra.Command, opts *pullOptions) error {
 	dst.AllowPathTraversalOnWrite = opts.PathTraversal
 	dst.DisableOverwrite = opts.KeepOldFiles
 
-	statusHandler, metadataHandler := display.NewPullHandler(opts.Template, opts.Path, opts.TTY, cmd.OutOrStdout(), opts.Verbose)
+	statusHandler, metadataHandler := display.NewPullHandler(cmd.OutOrStdout(), opts.Template, opts.Path, opts.TTY, opts.Verbose)
 	desc, err := doPull(ctx, src, dst, copyOptions, metadataHandler, statusHandler, opts)
 	if err != nil {
 		if errors.Is(err, file.ErrPathTraversalDisallowed) {
