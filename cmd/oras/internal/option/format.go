@@ -99,7 +99,7 @@ func (opts *Format) Parse(_ *cobra.Command) error {
 	if opts.Type == FormatTypeGoTemplate.Name && opts.Template == "" {
 		return &oerrors.Error{
 			Err:            fmt.Errorf("%q format specified but no template given", opts.Type),
-			Recommendation: fmt.Sprintf("use `--format %q=TEMPLATE or --template TEMPLATE to specify the template", opts.Type),
+			Recommendation: fmt.Sprintf("use `--format %q=TEMPLATE` or `--format %q --template TEMPLATE` to specify the template", opts.Type, opts.Type),
 		}
 	}
 

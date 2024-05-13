@@ -111,6 +111,22 @@ var _ = Describe("ORAS beginners:", func() {
 				ExpectFailure().
 				MatchErrKeyWords(invalidPrompt).
 				Exec()
+			noTemplatePrompt := "format specified but no template given"
+			ORAS("pull", ref, "--format", "json", "--format", "go-template=").
+				WithWorkDir(tempDir).
+				ExpectFailure().
+				MatchErrKeyWords(noTemplatePrompt).
+				Exec()
+			ORAS("pull", ref, "--format", "json", "--format", "go-template=''").
+				WithWorkDir(tempDir).
+				ExpectFailure().
+				MatchErrKeyWords(noTemplatePrompt).
+				Exec()
+			ORAS("pull", ref, "--format", "json", "--format", "go-template").
+				WithWorkDir(tempDir).
+				ExpectFailure().
+				MatchErrKeyWords(noTemplatePrompt).
+				Exec()
 		})
 
 		It("should fail and show detailed error description if no argument provided", func() {
