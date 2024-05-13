@@ -14,9 +14,15 @@
 name: release-snap
 
 on:
-  push:
-    tags:
-      - v*
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'release version, like v1.2.0-beta.1'
+        required: true
+      isStable:
+          description: 'true for a stable release, otherwise false'
+          required: false
+          default: 'false'
 
 jobs:
   release-snap:
@@ -32,18 +38,12 @@ jobs:
       - name: extract version
         id: version
         run: |
-          VERSION=${GITHUB_REF#refs/*/}
-          BRANCH_NAME=${GITHUB_REF#refs/heads/}
-          if [[ "${VERSION}" == "${BRANCH_NAME}" ]]; then
-            VERSION=$(git rev-parse --short HEAD)
-          fi
-          PRERELEASE=${VERSION#*-rc}
-          if [[ -z "$PRERELEASE" || "$PRERELEASE" == "$VERSION" ]]; then
+          if [[ "${{ github.event.inputs.version }}" == "true" ]]; then
             echo "release=stable" >> $GITHUB_OUTPUT
           else
             echo "release=candidate" >> $GITHUB_OUTPUT
           fi
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
       - name: make snapcraft
         run: |
           sed -i 's/{VERSION}/${{ steps.version.outputs.version }}/g' snapcraft.yaml
