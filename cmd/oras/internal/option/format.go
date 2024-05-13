@@ -70,9 +70,8 @@ type Format struct {
 
 // ApplyFlag implements FlagProvider.ApplyFlag.
 func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
-	var buf bytes.Buffer
-	_, _ = buf.WriteString("[Experimental] Format output using a custom template:")
-	w := tabwriter.NewWriter(&buf, 0, 0, 2, ' ', 0)
+	buf := bytes.NewBufferString("[Experimental] Format output using a custom template:")
+	w := tabwriter.NewWriter(buf, 0, 0, 2, ' ', 0)
 	for _, t := range opts.AllowedTypes {
 		_, _ = fmt.Fprintf(w, "\n'%s':\t%s", t.Name, t.Usage)
 	}
