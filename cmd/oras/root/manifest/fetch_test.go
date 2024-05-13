@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -35,7 +36,7 @@ func Test_fetchManifest_errType(t *testing.T) {
 		},
 	}
 	got := fetchManifest(cmd, opts).Error()
-	want := opts.TypeError().Error()
+	want := errors.UnsupportedFormatTypeError(opts.Format.Type).Error()
 	if got != want {
 		t.Fatalf("got %v, want %v", got, want)
 	}

@@ -16,20 +16,14 @@ limitations under the License.
 package option
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
-)
-
-const (
-	// format types
-	FormatTypeJSON       = "json"
-	FormatTypeTree       = "tree"
-	FormatTypeTable      = "table"
-	FormatTypeGoTemplate = "go-template"
 )
 
 // FormatType represents a custom description in help doc.
@@ -38,39 +32,55 @@ type FormatType struct {
 	Usage string
 }
 
+// WithUsage returns a new format type with provided usage string.
+func (ft *FormatType) WithUsage(usage string) *FormatType {
+	return &FormatType{
+		Name:  ft.Name,
+		Usage: usage,
+	}
+}
+
+// format types
+var (
+	FormatTypeJSON = &FormatType{
+		Name:  "json",
+		Usage: "Print in JSON format",
+	}
+	FormatTypeGoTemplate = &FormatType{
+		Name:  "go-template",
+		Usage: "Print in JSON format",
+	}
+	FormatTypeTable = &FormatType{
+		Name:  "table",
+		Usage: "Get direct referrers and output in table format",
+	}
+	FormatTypeTree = &FormatType{
+		Name:  "tree",
+		Usage: "Get referrers recursively and print in tree format",
+	}
+)
+
 // Format contains input and parsed options for formatted output flags.
 type Format struct {
-	Type     string
-	Template string
-	// FormatFlag can be private once deprecated `--output` is removed from
-	// `oras discover`
-	FormatFlag string
-	types      []FormatType
+	FormatFlag   string
+	Type         string
+	Template     string
+	AllowedTypes []*FormatType
 }
 
 // ApplyFlag implements FlagProvider.ApplyFlag.
 func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
-	usage := "[Experimental] Format output using a custom template:"
-	if len(opts.types) == 0 {
-		opts.types = []FormatType{
-			{Name: FormatTypeJSON, Usage: "Print in JSON format"},
-			{Name: FormatTypeGoTemplate, Usage: "Print output using the given Go template"},
-		}
+	var buf bytes.Buffer
+	_, _ = buf.WriteString("[Experimental] Format output using a custom template:")
+	w := tabwriter.NewWriter(&buf, 0, 0, 2, ' ', 0)
+	if len(opts.AllowedTypes) == 0 {
+		opts.AllowedTypes = []*FormatType{FormatTypeJSON, FormatTypeGoTemplate}
 	}
-
-	// generate usage string
-	maxLength := 0
-	for _, option := range opts.types {
-		if len(option.Name) > maxLength {
-			maxLength = len(option.Name)
-		}
+	for _, t := range opts.AllowedTypes {
+		_, _ = fmt.Fprintf(w, "\n'%s':\t%s", t.Name, t.Usage)
 	}
-	for _, option := range opts.types {
-		usage += fmt.Sprintf("\n'%s':%s%s", option.Name, strings.Repeat(" ", maxLength-len(option.Name)+2), option.Usage)
-	}
-
 	// apply flags
-	fs.StringVar(&opts.FormatFlag, "format", opts.FormatFlag, usage)
+	fs.StringVar(&opts.FormatFlag, "format", opts.FormatFlag, buf.String())
 	fs.StringVar(&opts.Template, "template", "", "[Experimental] Template string used to format output")
 }
 
@@ -85,13 +95,20 @@ func (opts *Format) Parse(_ *cobra.Command) error {
 		return nil
 	}
 
+	if opts.Type == FormatTypeGoTemplate.Name && opts.Template == "" {
+		return &oerrors.Error{
+			Err:            fmt.Errorf("%q format specified but no template given", opts.Type),
+			Recommendation: fmt.Sprintf("use `--format %q=TEMPLATE or --template TEMPLATE to specify the template", opts.Type),
+		}
+	}
+
 	var optionalTypes []string
-	for _, option := range opts.types {
-		if opts.Type == option.Name {
+	for _, t := range opts.AllowedTypes {
+		if opts.Type == t.Name {
 			// type validation passed
 			return nil
 		}
-		optionalTypes = append(optionalTypes, option.Name)
+		optionalTypes = append(optionalTypes, t.Name)
 	}
 	return &oerrors.Error{
 		Err:            fmt.Errorf("invalid format type: %q", opts.Type),
@@ -103,39 +120,17 @@ func (opts *Format) parseFlag() error {
 	opts.Type = opts.FormatFlag
 	if opts.Template != "" {
 		// template explicitly set
-		if opts.Type != FormatTypeGoTemplate {
-			return fmt.Errorf("--template must be used with --format %s", FormatTypeGoTemplate)
+		if opts.Type != FormatTypeGoTemplate.Name {
+			return fmt.Errorf("--template must be used with --format %s", FormatTypeGoTemplate.Name)
 		}
 		return nil
 	}
 
-	goTemplatePrefix := FormatTypeGoTemplate + "="
+	goTemplatePrefix := FormatTypeGoTemplate.Name + "="
 	if strings.HasPrefix(opts.FormatFlag, goTemplatePrefix) {
 		// add parameter to template
-		opts.Type = FormatTypeGoTemplate
+		opts.Type = FormatTypeGoTemplate.Name
 		opts.Template = opts.FormatFlag[len(goTemplatePrefix):]
 	}
 	return nil
-}
-
-// SetTypes resets the format options and default value.
-func (opts *Format) SetTypes(types []FormatType) {
-	opts.types = types
-}
-
-// SetTypesAndDefault resets the format options and default value.
-// Caller should make sure that this function is used before applying flags.
-func (opts *Format) SetTypesAndDefault(defaultType string, types []FormatType) {
-	opts.FormatFlag = defaultType
-	opts.types = types
-}
-
-// FormatError generates the error message for an invalid type.
-func (opts *Format) TypeError() error {
-	return fmt.Errorf("unsupported format type: %s", opts.Type)
-}
-
-// RawFormatFlag returns raw input of --format flag.
-func (opts *Format) RawFormatFlag() string {
-	return opts.FormatFlag
 }

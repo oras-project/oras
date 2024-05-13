@@ -30,6 +30,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
 	"oras.land/oras/cmd/oras/internal/display/metadata/tree"
 	"oras.land/oras/cmd/oras/internal/display/status"
+	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -48,12 +49,12 @@ func NewPushHandler(out io.Writer, format option.Format, tty *os.File, verbose b
 	switch format.Type {
 	case "":
 		metadataHandler = text.NewPushHandler(out)
-	case option.FormatTypeJSON:
+	case option.FormatTypeJSON.Name:
 		metadataHandler = json.NewPushHandler(out)
-	case option.FormatTypeGoTemplate:
+	case option.FormatTypeGoTemplate.Name:
 		metadataHandler = template.NewPushHandler(out, format.Template)
 	default:
-		return nil, nil, format.TypeError()
+		return nil, nil, errors.UnsupportedFormatTypeError(format.Type)
 	}
 	return statusHandler, metadataHandler, nil
 }
@@ -73,12 +74,12 @@ func NewAttachHandler(out io.Writer, format option.Format, tty *os.File, verbose
 	switch format.Type {
 	case "":
 		metadataHandler = text.NewAttachHandler(out)
-	case option.FormatTypeJSON:
+	case option.FormatTypeJSON.Name:
 		metadataHandler = json.NewAttachHandler(out)
-	case option.FormatTypeGoTemplate:
+	case option.FormatTypeGoTemplate.Name:
 		metadataHandler = template.NewAttachHandler(out, format.Template)
 	default:
-		return nil, nil, format.TypeError()
+		return nil, nil, errors.UnsupportedFormatTypeError(format.Type)
 	}
 	return statusHandler, metadataHandler, nil
 }
@@ -98,12 +99,12 @@ func NewPullHandler(out io.Writer, format option.Format, path string, tty *os.Fi
 	switch format.Type {
 	case "":
 		metadataHandler = text.NewPullHandler(out)
-	case option.FormatTypeJSON:
+	case option.FormatTypeJSON.Name:
 		metadataHandler = json.NewPullHandler(out, path)
-	case option.FormatTypeGoTemplate:
+	case option.FormatTypeGoTemplate.Name:
 		metadataHandler = template.NewPullHandler(out, path, format.Template)
 	default:
-		return nil, nil, format.TypeError()
+		return nil, nil, errors.UnsupportedFormatTypeError(format.Type)
 	}
 	return statusHandler, metadataHandler, nil
 }
@@ -112,16 +113,16 @@ func NewPullHandler(out io.Writer, format option.Format, path string, tty *os.Fi
 func NewDiscoverHandler(out io.Writer, format option.Format, path string, rawReference string, desc ocispec.Descriptor, verbose bool) (metadata.DiscoverHandler, error) {
 	var handler metadata.DiscoverHandler
 	switch format.Type {
-	case option.FormatTypeTree, "":
+	case option.FormatTypeTree.Name, "":
 		handler = tree.NewDiscoverHandler(out, path, desc, verbose)
-	case option.FormatTypeTable:
+	case option.FormatTypeTable.Name:
 		handler = table.NewDiscoverHandler(out, rawReference, desc, verbose)
-	case option.FormatTypeJSON:
+	case option.FormatTypeJSON.Name:
 		handler = json.NewDiscoverHandler(out, desc, path)
-	case option.FormatTypeGoTemplate:
+	case option.FormatTypeGoTemplate.Name:
 		handler = template.NewDiscoverHandler(out, desc, path, format.Template)
 	default:
-		return nil, format.TypeError()
+		return nil, errors.UnsupportedFormatTypeError(format.Type)
 	}
 	return handler, nil
 }
@@ -139,20 +140,20 @@ func NewManifestFetchHandler(out io.Writer, format option.Format, outputDescript
 		} else {
 			metadataHandler = metadata.NewDiscardHandler()
 		}
-	case option.FormatTypeJSON:
+	case option.FormatTypeJSON.Name:
 		// json
 		metadataHandler = json.NewManifestFetchHandler(out)
 		if outputPath == "" {
 			contentHandler = content.NewDiscardHandler()
 		}
-	case option.FormatTypeGoTemplate:
+	case option.FormatTypeGoTemplate.Name:
 		// go template
 		metadataHandler = template.NewManifestFetchHandler(out, format.Template)
 		if outputPath == "" {
 			contentHandler = content.NewDiscardHandler()
 		}
 	default:
-		return nil, nil, format.TypeError()
+		return nil, nil, errors.UnsupportedFormatTypeError(format.Type)
 	}
 
 	if contentHandler == nil {

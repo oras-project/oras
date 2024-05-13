@@ -29,6 +29,13 @@ import (
 // RegistryErrorPrefix is the commandline prefix for errors from registry.
 const RegistryErrorPrefix = "Error response from registry:"
 
+// UnsupportedFormatTypeError generates the error message for an invalid type.
+type UnsupportedFormatTypeError string
+
+func (e UnsupportedFormatTypeError) Error() string {
+	return "unsupported format type: " + string(e)
+}
+
 // Error is the error type for CLI error messaging.
 type Error struct {
 	Err            error

@@ -73,7 +73,7 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the manifest to fetch"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			switch {
-			case opts.outputPath == "-" && opts.RawFormatFlag() != "":
+			case opts.outputPath == "-" && opts.FormatFlag != "":
 				return fmt.Errorf("`--output -` cannot be used with `--format %s` at the same time", opts.Template)
 			case opts.outputPath == "-" && opts.OutputDescriptor:
 				return fmt.Errorf("`--descriptor` cannot be used with `--output -` at the same time")
@@ -98,10 +98,10 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 
 	cmd.Flags().StringSliceVarP(&opts.mediaTypes, "media-type", "", nil, "accepted media types")
 	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "file `path` to write the fetched manifest to, use - for stdout")
-	opts.SetTypes([]option.FormatType{
-		{Name: option.FormatTypeJSON, Usage: "Print in prettified JSON format"},
-		{Name: option.FormatTypeGoTemplate, Usage: "Print using the given Go template"},
-	})
+	opts.AllowedTypes = []*option.FormatType{
+		option.FormatTypeJSON.WithUsage("Print in prettified JSON format"),
+		option.FormatTypeGoTemplate.WithUsage("Print using the given Go template"),
+	}
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
