@@ -48,7 +48,7 @@ var (
 	}
 	FormatTypeGoTemplate = &FormatType{
 		Name:  "go-template",
-		Usage: "Print in JSON format",
+		Usage: "Print output using the given Go template",
 	}
 	FormatTypeTable = &FormatType{
 		Name:  "table",
