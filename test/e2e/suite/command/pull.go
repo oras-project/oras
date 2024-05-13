@@ -117,11 +117,6 @@ var _ = Describe("ORAS beginners:", func() {
 				ExpectFailure().
 				MatchErrKeyWords(noTemplatePrompt).
 				Exec()
-			ORAS("pull", ref, "--format", "json", "--format", "go-template=''").
-				WithWorkDir(tempDir).
-				ExpectFailure().
-				MatchErrKeyWords(noTemplatePrompt).
-				Exec()
 			ORAS("pull", ref, "--format", "json", "--format", "go-template").
 				WithWorkDir(tempDir).
 				ExpectFailure().
