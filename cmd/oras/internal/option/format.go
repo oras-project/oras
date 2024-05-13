@@ -79,6 +79,7 @@ func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 	for _, t := range opts.AllowedTypes {
 		_, _ = fmt.Fprintf(w, "\n'%s':\t%s", t.Name, t.Usage)
 	}
+	w.Flush()
 	// apply flags
 	fs.StringVar(&opts.FormatFlag, "format", opts.FormatFlag, buf.String())
 	fs.StringVar(&opts.Template, "template", "", "[Experimental] Template string used to format output")
