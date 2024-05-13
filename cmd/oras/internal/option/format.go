@@ -73,9 +73,6 @@ func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 	var buf bytes.Buffer
 	_, _ = buf.WriteString("[Experimental] Format output using a custom template:")
 	w := tabwriter.NewWriter(&buf, 0, 0, 2, ' ', 0)
-	if len(opts.AllowedTypes) == 0 {
-		opts.AllowedTypes = []*FormatType{FormatTypeJSON, FormatTypeGoTemplate}
-	}
 	for _, t := range opts.AllowedTypes {
 		_, _ = fmt.Fprintf(w, "\n'%s':\t%s", t.Name, t.Usage)
 	}
