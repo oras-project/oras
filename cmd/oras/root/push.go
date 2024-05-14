@@ -144,18 +144,21 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "`path` of image config file")
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
-
+	opts.AllowedTypes = []*option.FormatType{option.FormatTypeJSON, option.FormatTypeGoTemplate}
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
 
 func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
+	displayStatus, displayMetadata, err := display.NewPushHandler(cmd.OutOrStdout(), opts.Format, opts.TTY, opts.Verbose)
+	if err != nil {
+		return err
+	}
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err
 	}
-	displayStatus, displayMetadata := display.NewPushHandler(cmd.OutOrStdout(), opts.Template, opts.TTY, opts.Verbose)
 
 	// prepare pack
 	packOpts := oras.PackManifestOptions{

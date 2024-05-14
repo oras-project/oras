@@ -77,9 +77,10 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		It("should fail if invalid output type is used", func() {
-			ORAS("discover", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--output", "ukpkmkk").
+			invalidType := "ukpkmkk"
+			ORAS("discover", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--output", invalidType).
 				ExpectFailure().
-				MatchErrKeyWords("Error:", "output type can only be tree, table or json").
+				MatchErrKeyWords("Error:", "invalid format type", invalidType, "tree", "table", "json", "go-template").
 				Exec()
 		})
 
@@ -204,7 +205,7 @@ var _ = Describe("1.1 registry users:", func() {
 	})
 	When("running discover command with go-template output", func() {
 		It("should show referrers digest of a subject", func() {
-			ORAS("discover", subjectRef, "--format", "{{(first .manifests).reference}}").
+			ORAS("discover", subjectRef, "--format", "go-template={{(first .manifests).reference}}").
 				MatchContent(RegistryRef(ZOTHost, ArtifactRepo, foobar.SBOMImageReferrer.Digest.String())).
 				Exec()
 		})

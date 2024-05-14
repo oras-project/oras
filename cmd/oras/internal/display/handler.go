@@ -30,97 +30,109 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
 	"oras.land/oras/cmd/oras/internal/display/metadata/tree"
 	"oras.land/oras/cmd/oras/internal/display/status"
+	"oras.land/oras/cmd/oras/internal/errors"
+	"oras.land/oras/cmd/oras/internal/option"
 )
 
 // NewPushHandler returns status and metadata handlers for push command.
-func NewPushHandler(out io.Writer, format string, tty *os.File, verbose bool) (status.PushHandler, metadata.PushHandler) {
+func NewPushHandler(out io.Writer, format option.Format, tty *os.File, verbose bool) (status.PushHandler, metadata.PushHandler, error) {
 	var statusHandler status.PushHandler
 	if tty != nil {
 		statusHandler = status.NewTTYPushHandler(tty)
-	} else if format == "" {
+	} else if format.Type == "" {
 		statusHandler = status.NewTextPushHandler(out, verbose)
 	} else {
 		statusHandler = status.NewDiscardHandler()
 	}
 
 	var metadataHandler metadata.PushHandler
-	switch format {
+	switch format.Type {
 	case "":
 		metadataHandler = text.NewPushHandler(out)
-	case "json":
+	case option.FormatTypeJSON.Name:
 		metadataHandler = json.NewPushHandler(out)
+	case option.FormatTypeGoTemplate.Name:
+		metadataHandler = template.NewPushHandler(out, format.Template)
 	default:
-		metadataHandler = template.NewPushHandler(out, format)
+		return nil, nil, errors.UnsupportedFormatTypeError(format.Type)
 	}
-	return statusHandler, metadataHandler
+	return statusHandler, metadataHandler, nil
 }
 
 // NewAttachHandler returns status and metadata handlers for attach command.
-func NewAttachHandler(out io.Writer, format string, tty *os.File, verbose bool) (status.AttachHandler, metadata.AttachHandler) {
+func NewAttachHandler(out io.Writer, format option.Format, tty *os.File, verbose bool) (status.AttachHandler, metadata.AttachHandler, error) {
 	var statusHandler status.AttachHandler
 	if tty != nil {
 		statusHandler = status.NewTTYAttachHandler(tty)
-	} else if format == "" {
+	} else if format.Type == "" {
 		statusHandler = status.NewTextAttachHandler(out, verbose)
 	} else {
 		statusHandler = status.NewDiscardHandler()
 	}
 
 	var metadataHandler metadata.AttachHandler
-	switch format {
+	switch format.Type {
 	case "":
 		metadataHandler = text.NewAttachHandler(out)
-	case "json":
+	case option.FormatTypeJSON.Name:
 		metadataHandler = json.NewAttachHandler(out)
+	case option.FormatTypeGoTemplate.Name:
+		metadataHandler = template.NewAttachHandler(out, format.Template)
 	default:
-		metadataHandler = template.NewAttachHandler(out, format)
+		return nil, nil, errors.UnsupportedFormatTypeError(format.Type)
 	}
-	return statusHandler, metadataHandler
+	return statusHandler, metadataHandler, nil
 }
 
 // NewPullHandler returns status and metadata handlers for pull command.
-func NewPullHandler(out io.Writer, format string, path string, tty *os.File, verbose bool) (status.PullHandler, metadata.PullHandler) {
+func NewPullHandler(out io.Writer, format option.Format, path string, tty *os.File, verbose bool) (status.PullHandler, metadata.PullHandler, error) {
 	var statusHandler status.PullHandler
 	if tty != nil {
 		statusHandler = status.NewTTYPullHandler(tty)
-	} else if format == "" {
+	} else if format.Type == "" {
 		statusHandler = status.NewTextPullHandler(out, verbose)
 	} else {
 		statusHandler = status.NewDiscardHandler()
 	}
 
 	var metadataHandler metadata.PullHandler
-	switch format {
+	switch format.Type {
 	case "":
 		metadataHandler = text.NewPullHandler(out)
-	case "json":
+	case option.FormatTypeJSON.Name:
 		metadataHandler = json.NewPullHandler(out, path)
+	case option.FormatTypeGoTemplate.Name:
+		metadataHandler = template.NewPullHandler(out, path, format.Template)
 	default:
-		metadataHandler = template.NewPullHandler(out, path, format)
+		return nil, nil, errors.UnsupportedFormatTypeError(format.Type)
 	}
-	return statusHandler, metadataHandler
+	return statusHandler, metadataHandler, nil
 }
 
 // NewDiscoverHandler returns status and metadata handlers for discover command.
-func NewDiscoverHandler(out io.Writer, outputType string, path string, rawReference string, desc ocispec.Descriptor, verbose bool) metadata.DiscoverHandler {
-	switch outputType {
-	case "tree", "":
-		return tree.NewDiscoverHandler(out, path, desc, verbose)
-	case "table":
-		return table.NewDiscoverHandler(out, rawReference, desc, verbose)
-	case "json":
-		return json.NewDiscoverHandler(out, desc, path)
+func NewDiscoverHandler(out io.Writer, format option.Format, path string, rawReference string, desc ocispec.Descriptor, verbose bool) (metadata.DiscoverHandler, error) {
+	var handler metadata.DiscoverHandler
+	switch format.Type {
+	case option.FormatTypeTree.Name, "":
+		handler = tree.NewDiscoverHandler(out, path, desc, verbose)
+	case option.FormatTypeTable.Name:
+		handler = table.NewDiscoverHandler(out, rawReference, desc, verbose)
+	case option.FormatTypeJSON.Name:
+		handler = json.NewDiscoverHandler(out, desc, path)
+	case option.FormatTypeGoTemplate.Name:
+		handler = template.NewDiscoverHandler(out, desc, path, format.Template)
 	default:
-		return template.NewDiscoverHandler(out, desc, path, outputType)
+		return nil, errors.UnsupportedFormatTypeError(format.Type)
 	}
+	return handler, nil
 }
 
 // NewManifestFetchHandler returns a manifest fetch handler.
-func NewManifestFetchHandler(out io.Writer, format string, outputDescriptor, pretty bool, outputPath string) (metadata.ManifestFetchHandler, content.ManifestFetchHandler) {
+func NewManifestFetchHandler(out io.Writer, format option.Format, outputDescriptor, pretty bool, outputPath string) (metadata.ManifestFetchHandler, content.ManifestFetchHandler, error) {
 	var metadataHandler metadata.ManifestFetchHandler
 	var contentHandler content.ManifestFetchHandler
 
-	switch format {
+	switch format.Type {
 	case "":
 		// raw
 		if outputDescriptor {
@@ -128,22 +140,24 @@ func NewManifestFetchHandler(out io.Writer, format string, outputDescriptor, pre
 		} else {
 			metadataHandler = metadata.NewDiscardHandler()
 		}
-	case "json":
+	case option.FormatTypeJSON.Name:
 		// json
 		metadataHandler = json.NewManifestFetchHandler(out)
 		if outputPath == "" {
 			contentHandler = content.NewDiscardHandler()
 		}
-	default:
+	case option.FormatTypeGoTemplate.Name:
 		// go template
-		metadataHandler = template.NewManifestFetchHandler(out, format)
+		metadataHandler = template.NewManifestFetchHandler(out, format.Template)
 		if outputPath == "" {
 			contentHandler = content.NewDiscardHandler()
 		}
+	default:
+		return nil, nil, errors.UnsupportedFormatTypeError(format.Type)
 	}
 
 	if contentHandler == nil {
 		contentHandler = content.NewManifestFetchHandler(out, pretty, outputPath)
 	}
-	return metadataHandler, contentHandler
+	return metadataHandler, contentHandler, nil
 }

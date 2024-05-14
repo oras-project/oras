@@ -78,16 +78,19 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 			if err := oerrors.CheckMutuallyExclusiveFlags(cmd.Flags(), "format", "output"); err != nil {
 				return err
 			}
+			opts.RawReference = args[0]
+			if err := option.Parse(cmd, &opts); err != nil {
+				return err
+			}
 			if cmd.Flags().Changed("output") {
-				switch opts.Template {
+				switch opts.Format.Type {
 				case "tree", "json", "table":
 					fmt.Fprintf(cmd.ErrOrStderr(), "[DEPRECATED] --output is deprecated, try `--format %s` instead\n", opts.Template)
 				default:
 					return errors.New("output type can only be tree, table or json")
 				}
 			}
-			opts.RawReference = args[0]
-			return option.Parse(cmd, &opts)
+			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runDiscover(cmd, &opts)
@@ -95,12 +98,14 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 	}
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
-	cmd.Flags().StringVarP(&opts.Template, "output", "o", "tree", "[Deprecated] format in which to display referrers (table, json, or tree). tree format will also show indirect referrers")
-	cmd.Flags().StringVarP(&opts.Template, "format", "", "", `[Experimental] Format output using a custom template:
-'tree':       Get referrers recursively and print in tree format (default)
-'table':      Get direct referrers and output in table format
-'json':       Get direct referrers and output in JSON format
-'$TEMPLATE':  Print direct referrers using the given Go template`)
+	cmd.Flags().StringVarP(&opts.Format.FormatFlag, "output", "o", "tree", "[Deprecated] format in which to display referrers (table, json, or tree). tree format will also show indirect referrers")
+	opts.FormatFlag = option.FormatTypeTree.Name
+	opts.AllowedTypes = []*option.FormatType{
+		option.FormatTypeTree,
+		option.FormatTypeTable,
+		option.FormatTypeJSON.WithUsage("Get direct referrers and output in JSON format"),
+		option.FormatTypeGoTemplate.WithUsage("Print direct referrers using the given Go template"),
+	}
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
@@ -124,7 +129,10 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 		return err
 	}
 
-	handler := display.NewDiscoverHandler(cmd.OutOrStdout(), opts.Template, opts.Path, opts.RawReference, desc, opts.Verbose)
+	handler, err := display.NewDiscoverHandler(cmd.OutOrStdout(), opts.Format, opts.Path, opts.RawReference, desc, opts.Verbose)
+	if err != nil {
+		return err
+	}
 	if handler.MultiLevelSupported() {
 		if err := fetchAllReferrers(ctx, repo, desc, opts.artifactType, handler); err != nil {
 			return err

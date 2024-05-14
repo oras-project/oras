@@ -102,12 +102,18 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 	opts.FlagDescription = "[Preview] attach to an arch-specific subject"
 	_ = cmd.MarkFlagRequired("artifact-type")
 	opts.EnableDistributionSpecFlag()
+	opts.AllowedTypes = []*option.FormatType{option.FormatTypeJSON, option.FormatTypeGoTemplate}
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
 
 func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
+	displayStatus, displayMetadata, err := display.NewAttachHandler(cmd.OutOrStdout(), opts.Format, opts.TTY, opts.Verbose)
+	if err != nil {
+		return err
+	}
+
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err
@@ -119,7 +125,6 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 			Recommendation: `To attach to an existing artifact, please provide files via argument or annotations via flag "--annotation". Run "oras attach -h" for more options and examples`,
 		}
 	}
-	displayStatus, displayMetadata := display.NewAttachHandler(cmd.OutOrStdout(), opts.Template, opts.TTY, opts.Verbose)
 
 	// prepare manifest
 	store, err := file.New("")
