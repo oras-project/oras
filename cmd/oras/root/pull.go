@@ -104,12 +104,17 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 	cmd.Flags().StringVarP(&opts.Output, "output", "o", ".", "output directory")
 	cmd.Flags().StringVarP(&opts.ManifestConfigRef, "config", "", "", "output manifest config file")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
+	opts.AllowedTypes = []*option.FormatType{option.FormatTypeJSON, option.FormatTypeGoTemplate}
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
 
 func runPull(cmd *cobra.Command, opts *pullOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
+	statusHandler, metadataHandler, err := display.NewPullHandler(cmd.OutOrStdout(), opts.Format, opts.Path, opts.TTY, opts.Verbose)
+	if err != nil {
+		return err
+	}
 	// Copy Options
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
@@ -135,7 +140,6 @@ func runPull(cmd *cobra.Command, opts *pullOptions) error {
 	dst.AllowPathTraversalOnWrite = opts.PathTraversal
 	dst.DisableOverwrite = opts.KeepOldFiles
 
-	statusHandler, metadataHandler := display.NewPullHandler(cmd.OutOrStdout(), opts.Template, opts.Path, opts.TTY, opts.Verbose)
 	desc, err := doPull(ctx, src, dst, copyOptions, metadataHandler, statusHandler, opts)
 	if err != nil {
 		if errors.Is(err, file.ErrPathTraversalDisallowed) {

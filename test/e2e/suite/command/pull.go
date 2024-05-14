@@ -78,8 +78,50 @@ var _ = Describe("ORAS beginners:", func() {
 		It("should not show hint for go template output", func() {
 			tempDir := PrepareTempFiles()
 			ref := RegistryRef(ZOTHost, ArtifactRepo, unnamed.Tag)
-			out := ORAS("pull", ref, "--format", "{{.}}").WithWorkDir(tempDir).Exec().Out
+			out := ORAS("pull", ref, "--format", "go-template={{.}}").WithWorkDir(tempDir).Exec().Out
 			gomega.Expect(out).ShouldNot(gbytes.Say(hintMsg(ref)))
+		})
+
+		It("should fail if template is specified without go template format", func() {
+			tempDir := PrepareTempFiles()
+			ref := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
+			ORAS("pull", ref, "--format", "json", "--template", "{{.}}").
+				WithWorkDir(tempDir).
+				ExpectFailure().
+				MatchErrKeyWords("--template must be used with --format go-template").
+				Exec()
+			ORAS("pull", ref, "--template", "{{.}}").
+				WithWorkDir(tempDir).
+				ExpectFailure().
+				MatchErrKeyWords("--template must be used with --format go-template").
+				Exec()
+		})
+
+		It("should fail if template format is invalid", func() {
+			tempDir := PrepareTempFiles()
+			invalidPrompt := "invalid format type"
+			ref := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
+			ORAS("pull", ref, "--format", "json", "--format", "=").
+				WithWorkDir(tempDir).
+				ExpectFailure().
+				MatchErrKeyWords(invalidPrompt).
+				Exec()
+			ORAS("pull", ref, "--format", "json", "--format", "={{.}}").
+				WithWorkDir(tempDir).
+				ExpectFailure().
+				MatchErrKeyWords(invalidPrompt).
+				Exec()
+			noTemplatePrompt := "format specified but no template given"
+			ORAS("pull", ref, "--format", "json", "--format", "go-template=").
+				WithWorkDir(tempDir).
+				ExpectFailure().
+				MatchErrKeyWords(noTemplatePrompt).
+				Exec()
+			ORAS("pull", ref, "--format", "json", "--format", "go-template").
+				WithWorkDir(tempDir).
+				ExpectFailure().
+				MatchErrKeyWords(noTemplatePrompt).
+				Exec()
 		})
 
 		It("should fail and show detailed error description if no argument provided", func() {
@@ -194,7 +236,17 @@ var _ = Describe("OCI spec 1.1 registry users:", func() {
 			for _, p := range foobar.ImageLayerNames {
 				paths = append(paths, filepath.Join(tempDir, p))
 			}
-			ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag), "--format", "{{range .files}}{{println .path}}{{end}}").
+			ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag), "--format", "go-template={{range .files}}{{println .path}}{{end}}").
+				WithWorkDir(tempDir).MatchKeyWords(paths...).Exec()
+		})
+
+		It("should pull and output downloaded file paths using --template", func() {
+			tempDir := GinkgoT().TempDir()
+			var paths []string
+			for _, p := range foobar.ImageLayerNames {
+				paths = append(paths, filepath.Join(tempDir, p))
+			}
+			ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag), "--format", "go-template", "--template", "{{range .files}}{{println .path}}{{end}}").
 				WithWorkDir(tempDir).MatchKeyWords(paths...).Exec()
 		})
 
