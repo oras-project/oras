@@ -20,9 +20,9 @@ on:
         description: 'release version, like v1.2.0-beta.1'
         required: true
       isStable:
-          description: 'true for a stable release, otherwise false'
-          required: false
-          default: 'false'
+        type: boolean
+        description: 'check for stable release'
+        default: false
 
 jobs:
   release-snap:
