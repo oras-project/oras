@@ -41,7 +41,7 @@ jobs:
       - name: extract version
         id: version
         run: |
-          if [[ "${{ github.event.inputs.version }}" == "true" ]]; then
+          if [[ "${{ github.event.inputs.isStable }}" == "true" ]]; then
             echo "release=stable" >> $GITHUB_OUTPUT
           else
             echo "release=candidate" >> $GITHUB_OUTPUT
