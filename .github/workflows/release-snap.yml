@@ -1,0 +1,64 @@
+# Copyright The ORAS Authors.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: release-snap
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'release version, like v1.2.0-beta.1'
+        required: true
+      isStable:
+        type: boolean
+        description: 'check for stable release'
+        default: false
+
+jobs:
+  release-snap:
+    strategy:
+      matrix:
+        arch:
+        - 'amd64'
+        - 'arm64'
+        - 's390x'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: extract version
+        id: version
+        run: |
+          if [[ "${{ github.event.inputs.isStable }}" == "true" ]]; then
+            echo "release=stable" >> $GITHUB_OUTPUT
+          else
+            echo "release=candidate" >> $GITHUB_OUTPUT
+          fi
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+      - name: make snapcraft
+        run: |
+          sed -i 's/{VERSION}/${{ steps.version.outputs.version }}/g' snapcraft.yaml
+          sed -i 's/{ARCH}/${{ matrix.arch }}/g' snapcraft.yaml
+          cat snapcraft.yaml
+      - uses: snapcore/action-build@v1
+        id: build
+      - uses: snapcore/action-publish@v1
+        name: publish
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        with:
+          snap: ${{ steps.build.outputs.snap }}
+          release: ${{ steps.version.outputs.release }}
+

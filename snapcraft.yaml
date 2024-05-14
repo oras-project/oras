@@ -12,21 +12,17 @@
 # limitations under the License.
 
 name: oras
-version: 'v1.0.0'
+version: '{VERSION}'
 summary: Package for the ORAS CLI tool
 description: |
   A snap package for the ORAS CLI tool, which is used for managing OCI artifacts.
 base: core22
-confinement: strict
+confinement: classic
 grade: stable
 
 architectures:
   - build-on: amd64
-    build-for: amd64
-  - build-on: amd64
-    build-for: arm64
-  - build-on: amd64
-    build-for: s390x
+    build-for: {ARCH}
 
 parts:
   oras:
@@ -35,12 +31,8 @@ parts:
     source-type: git
     source-tag: $SNAPCRAFT_PROJECT_VERSION
     build-environment:
-      - on amd64 to amd64:
-        - TARGET_ARCH: "amd64"
-      - on amd64 to arm64:
-        - TARGET_ARCH: "arm64"
-      - on amd64 to s390x:
-        - TARGET_ARCH: "s390x"
+      - on amd64 to {ARCH}:
+        - TARGET_ARCH: "{ARCH}"
     build-snaps:
       - go/1.22/stable
     build-packages:
