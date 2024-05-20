@@ -47,6 +47,3 @@ parts:
 apps:
   oras:
     command: bin/oras
-    plugs:
-      - home
-      - network
