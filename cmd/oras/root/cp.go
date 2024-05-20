@@ -109,6 +109,7 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 
 func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
+	printer := status.NewPrinter(cmd.OutOrStdout())
 
 	// Prepare source
 	src, err := opts.From.NewReadonlyTarget(ctx, opts.Common, logger)
@@ -126,7 +127,7 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	}
 	ctx = registryutil.WithScopeHint(ctx, dst, auth.ActionPull, auth.ActionPush)
 
-	desc, err := doCopy(ctx, src, dst, opts)
+	desc, err := doCopy(ctx, printer, src, dst, opts)
 	if err != nil {
 		return err
 	}
@@ -151,7 +152,7 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	return nil
 }
 
-func doCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) (ocispec.Descriptor, error) {
+func doCopy(ctx context.Context, printer *status.Printer, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) (ocispec.Descriptor, error) {
 	// Prepare copy options
 	committed := &sync.Map{}
 	extendedCopyOptions := oras.DefaultExtendedCopyOptions
@@ -178,21 +179,21 @@ func doCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTar
 		// none TTY output
 		extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return status.PrintStatus(desc, promptExists, opts.Verbose)
+			return printer.PrintStatus(desc, promptExists, opts.Verbose)
 		}
 		extendedCopyOptions.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-			return status.PrintStatus(desc, promptCopying, opts.Verbose)
+			return printer.PrintStatus(desc, promptCopying, opts.Verbose)
 		}
 		extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			if err := status.PrintSuccessorStatus(ctx, desc, dst, committed, status.StatusPrinter(promptSkipped, opts.Verbose)); err != nil {
+			if err := status.PrintSuccessorStatus(ctx, desc, dst, committed, printer.StatusPrinter(promptSkipped, opts.Verbose)); err != nil {
 				return err
 			}
-			return status.PrintStatus(desc, promptCopied, opts.Verbose)
+			return printer.PrintStatus(desc, promptCopied, opts.Verbose)
 		}
 		extendedCopyOptions.OnMounted = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return status.PrintStatus(desc, promptMounted, opts.Verbose)
+			return printer.PrintStatus(desc, promptMounted, opts.Verbose)
 		}
 	} else {
 		// TTY output
