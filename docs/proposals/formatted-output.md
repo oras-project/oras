@@ -75,6 +75,14 @@ jobs:
           cat $PATH
 ```
 
+### Verify local files
+
+Carol is a build engineer who needs to check whether some locally copied files are identical to the remote artifact content. she can utilize `oras manifest fetch` to generate a checksum file based on the manifest without pulling the whole artifact. (See related issue [here](https://github.com/oras-project/oras/issues/1368)).
+
+```bash
+oras manifest fetch $REGISTRY/$REPO:$TAG --format go-template='{{range .content.layers}}{{if index .annotations "org.opencontainers.image.title"}}{{(split ":" .digest)._1}}  {{index .annotations "org.opencontainers.image.title"}}{{println}}{{end}}{{end}}' | shasum -c
+```
+
 ## Proposal and desired user experience
 
 Enable users to use the `--format` flag to format metadata output into structured data (e.g. JSON) and optionally use the `--template` with the [Go template](https://pkg.go.dev/text/template) to manipulate the output data.
