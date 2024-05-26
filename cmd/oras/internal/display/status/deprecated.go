@@ -60,8 +60,3 @@ var printer = NewPrinter(os.Stdout)
 func Print(a ...any) error {
 	return printer.Println(a...)
 }
-
-// PrintStatus prints transfer status.
-func PrintStatus(desc ocispec.Descriptor, status string, verbose bool) error {
-	return printer.PrintStatus(desc, status, verbose)
-}

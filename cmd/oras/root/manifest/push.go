@@ -111,6 +111,7 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 
 func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
+	printer := status.NewPrinter(cmd.OutOrStdout())
 	var target oras.Target
 	var err error
 	target, err = opts.NewTarget(opts.Common, logger)
@@ -156,17 +157,17 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 	}
 	verbose := opts.Verbose && !opts.OutputDescriptor
 	if match {
-		if err := status.PrintStatus(desc, "Exists", verbose); err != nil {
+		if err := printer.PrintStatus(desc, "Exists", verbose); err != nil {
 			return err
 		}
 	} else {
-		if err = status.PrintStatus(desc, "Uploading", verbose); err != nil {
+		if err = printer.PrintStatus(desc, "Uploading", verbose); err != nil {
 			return err
 		}
 		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil {
 			return err
 		}
-		if err = status.PrintStatus(desc, "Uploaded ", verbose); err != nil {
+		if err = printer.PrintStatus(desc, "Uploaded ", verbose); err != nil {
 			return err
 		}
 	}

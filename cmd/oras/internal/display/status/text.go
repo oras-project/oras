@@ -100,27 +100,27 @@ func (ph *TextPullHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, S
 
 // OnNodeDownloading implements PullHandler.
 func (ph *TextPullHandler) OnNodeDownloading(desc ocispec.Descriptor) error {
-	return PrintStatus(desc, PullPromptDownloading, ph.verbose)
+	return ph.printer.PrintStatus(desc, PullPromptDownloading, ph.verbose)
 }
 
 // OnNodeDownloaded implements PullHandler.
 func (ph *TextPullHandler) OnNodeDownloaded(desc ocispec.Descriptor) error {
-	return PrintStatus(desc, PullPromptDownloaded, ph.verbose)
+	return ph.printer.PrintStatus(desc, PullPromptDownloaded, ph.verbose)
 }
 
 // OnNodeRestored implements PullHandler.
 func (ph *TextPullHandler) OnNodeRestored(desc ocispec.Descriptor) error {
-	return PrintStatus(desc, PullPromptRestored, ph.verbose)
+	return ph.printer.PrintStatus(desc, PullPromptRestored, ph.verbose)
 }
 
 // OnNodeProcessing implements PullHandler.
 func (ph *TextPullHandler) OnNodeProcessing(desc ocispec.Descriptor) error {
-	return PrintStatus(desc, PullPromptProcessing, ph.verbose)
+	return ph.printer.PrintStatus(desc, PullPromptProcessing, ph.verbose)
 }
 
 // OnNodeProcessing implements PullHandler.
 func (ph *TextPullHandler) OnNodeSkipped(desc ocispec.Descriptor) error {
-	return PrintStatus(desc, PullPromptSkipped, ph.verbose)
+	return ph.printer.PrintStatus(desc, PullPromptSkipped, ph.verbose)
 }
 
 // NewTextPullHandler returns a new handler for pull command.
