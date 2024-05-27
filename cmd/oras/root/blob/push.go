@@ -103,6 +103,7 @@ Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
 
 func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
+	printer := status.NewPrinter(cmd.OutOrStdout())
 
 	target, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
@@ -122,9 +123,9 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 	}
 	verbose := opts.Verbose && !opts.OutputDescriptor
 	if exists {
-		err = status.PrintStatus(desc, "Exists", verbose)
+		err = printer.PrintStatus(desc, "Exists", verbose)
 	} else {
-		err = opts.doPush(ctx, target, desc, rc)
+		err = opts.doPush(ctx, printer, target, desc, rc)
 	}
 	if err != nil {
 		return err
@@ -144,16 +145,16 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 
 	return nil
 }
-func (opts *pushBlobOptions) doPush(ctx context.Context, t oras.Target, desc ocispec.Descriptor, r io.Reader) error {
+func (opts *pushBlobOptions) doPush(ctx context.Context, printer *status.Printer, t oras.Target, desc ocispec.Descriptor, r io.Reader) error {
 	if opts.TTY == nil {
 		// none TTY output
-		if err := status.PrintStatus(desc, "Uploading", opts.Verbose); err != nil {
+		if err := printer.PrintStatus(desc, "Uploading", opts.Verbose); err != nil {
 			return err
 		}
 		if err := t.Push(ctx, desc, r); err != nil {
 			return err
 		}
-		return status.PrintStatus(desc, "Uploaded ", opts.Verbose)
+		return printer.PrintStatus(desc, "Uploaded ", opts.Verbose)
 	}
 
 	// TTY output
