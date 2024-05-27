@@ -18,6 +18,9 @@ package root
 import (
 	"errors"
 	"fmt"
+	"github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras/internal/listener"
+	"sync"
 
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
@@ -98,6 +101,7 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 
 func tagManifest(cmd *cobra.Command, opts *tagOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
+	printer := status.NewPrinter(cmd.OutOrStdout())
 	target, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
 		return err
@@ -106,11 +110,26 @@ func tagManifest(cmd *cobra.Command, opts *tagOptions) error {
 		return err
 	}
 
+	var printHint sync.Once
+	var printHintErr error
+	prefix := fmt.Sprintf("[%s] %s", opts.Type, opts.Path)
+	onTagging := func(desc v1.Descriptor, tag string) error {
+		printHint.Do(func() {
+			ref := prefix + "@" + desc.Digest.String()
+			printHintErr = printer.Println("Tagging", ref)
+		})
+		return printHintErr
+	}
+	onTagged := func(desc v1.Descriptor, tag string) error {
+		return printer.Println("Tagged", tag)
+	}
+	tagListener := listener.NewTagListener(target, onTagging, onTagged)
+
 	tagNOpts := oras.DefaultTagNOptions
 	tagNOpts.Concurrency = opts.concurrency
 	_, err = oras.TagN(
 		ctx,
-		status.NewTagStatusHintPrinter(target, fmt.Sprintf("[%s] %s", opts.Type, opts.Path)),
+		tagListener,
 		opts.Reference,
 		opts.targetRefs,
 		tagNOpts,

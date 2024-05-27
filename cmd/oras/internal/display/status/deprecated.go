@@ -16,34 +16,14 @@ limitations under the License.
 package status
 
 import (
-	"os"
-	"sync"
-
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras/internal/listener"
+	"os"
 )
 
 // Types and functions in this file are deprecated and should be removed when
 // no-longer referenced.
-
-// NewTagStatusHintPrinter creates a wrapper type for printing
-// tag status and hint.
-func NewTagStatusHintPrinter(target oras.Target, refPrefix string) oras.Target {
-	var printHint sync.Once
-	var printHintErr error
-	onTagging := func(desc ocispec.Descriptor, tag string) error {
-		printHint.Do(func() {
-			ref := refPrefix + "@" + desc.Digest.String()
-			printHintErr = Print("Tagging", ref)
-		})
-		return printHintErr
-	}
-	onTagged := func(desc ocispec.Descriptor, tag string) error {
-		return Print("Tagged", tag)
-	}
-	return listener.NewTagListener(target, onTagging, onTagged)
-}
 
 // NewTagStatusPrinter creates a wrapper type for printing tag status.
 func NewTagStatusPrinter(target oras.Target) oras.Target {
