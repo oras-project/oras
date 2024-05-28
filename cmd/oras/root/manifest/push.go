@@ -188,7 +188,7 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		}
 		return opts.Output(os.Stdout, descJSON)
 	}
-	status.Print("Pushed", opts.AnnotatedReference())
+	printer.Println("Pushed", opts.AnnotatedReference())
 	if len(opts.extraRefs) != 0 {
 		if _, err = oras.TagBytesN(ctx, status.NewTagStatusPrinter(target), mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
