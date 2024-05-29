@@ -64,6 +64,10 @@ var (
 		Name:  "tree",
 		Usage: "Get referrers recursively and print in tree format",
 	}
+	FormatTypeText = &FormatType{
+		Name:  "",
+		Usage: "Print in text format",
+	}
 )
 
 // Format contains input and parsed options for formatted output flags.
@@ -74,14 +78,14 @@ type Format struct {
 	AllowedTypes []*FormatType
 }
 
-// ApplyFlag implements FlagProvider.ApplyFlag.
+// ApplyFlags implements FlagProvider.ApplyFlag.
 func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 	buf := bytes.NewBufferString("[Experimental] Format output using a custom template:")
 	w := tabwriter.NewWriter(buf, 0, 0, 2, ' ', 0)
 	for _, t := range opts.AllowedTypes {
 		_, _ = fmt.Fprintf(w, "\n'%s':\t%s", t.Name, t.Usage)
 	}
-	w.Flush()
+	_ = w.Flush()
 	// apply flags
 	fs.StringVar(&opts.FormatFlag, "format", opts.FormatFlag, buf.String())
 	fs.StringVar(&opts.Template, "template", "", "[Experimental] Template string used to format output")
