@@ -67,6 +67,11 @@ Example - Fetch and print a blob from OCI image layout folder 'layout-dir':
 
 Example - Fetch and print a blob from OCI image layout archive file 'layout.tar':
   oras blob fetch --oci-layout --output - layout.tar@sha256:9a201d228ebd966211f7d1131be19f152be428bd373a92071c71d8deaf83b3e5
+
+Example - Fetch a blob with a specific reference, determine its size using 'jq', and use 'pv' to display the progress while redirecting the output to a file named 'layer.bin':
+  blob_ref=ghcr.io/oras-project/oras@sha256:74529e03eae02d1fff5c05e9a6ec2089e1f5ae96421169c29a7c165346e042e4
+  size=$(oras blob fetch --descriptor $blob_ref | jq -r .size)
+  oras blob fetch $blob_ref --output - | pv -s $size > layer.bin
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the target blob to fetch"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
