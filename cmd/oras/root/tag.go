@@ -98,6 +98,7 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 
 func tagManifest(cmd *cobra.Command, opts *tagOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
+	printer := status.NewPrinter(cmd.OutOrStdout())
 	target, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
 		return err
@@ -110,7 +111,7 @@ func tagManifest(cmd *cobra.Command, opts *tagOptions) error {
 	tagNOpts.Concurrency = opts.concurrency
 	_, err = oras.TagN(
 		ctx,
-		status.NewTagStatusHintPrinter(target, fmt.Sprintf("[%s] %s", opts.Type, opts.Path)),
+		status.NewTagStatusHintPrinter(printer, target, fmt.Sprintf("[%s] %s", opts.Type, opts.Path)),
 		opts.Reference,
 		opts.targetRefs,
 		tagNOpts,

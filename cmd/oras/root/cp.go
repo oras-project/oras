@@ -142,7 +142,7 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	if len(opts.extraRefs) != 0 {
 		tagNOpts := oras.DefaultTagNOptions
 		tagNOpts.Concurrency = opts.concurrency
-		if _, err = oras.TagN(ctx, status.NewTagStatusPrinter(dst), opts.To.Reference, opts.extraRefs, tagNOpts); err != nil {
+		if _, err = oras.TagN(ctx, status.NewTagStatusPrinter(printer, dst), opts.To.Reference, opts.extraRefs, tagNOpts); err != nil {
 			return err
 		}
 	}
