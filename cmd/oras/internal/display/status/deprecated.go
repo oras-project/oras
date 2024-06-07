@@ -16,7 +16,6 @@ limitations under the License.
 package status
 
 import (
-	"os"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -29,34 +28,25 @@ import (
 
 // NewTagStatusHintPrinter creates a wrapper type for printing
 // tag status and hint.
-func NewTagStatusHintPrinter(target oras.Target, refPrefix string) oras.Target {
+func NewTagStatusHintPrinter(printer *Printer, target oras.Target, refPrefix string) oras.Target {
 	var printHint sync.Once
 	var printHintErr error
 	onTagging := func(desc ocispec.Descriptor, tag string) error {
 		printHint.Do(func() {
 			ref := refPrefix + "@" + desc.Digest.String()
-			printHintErr = Print("Tagging", ref)
+			printHintErr = printer.Println("Tagging", ref)
 		})
 		return printHintErr
 	}
 	onTagged := func(desc ocispec.Descriptor, tag string) error {
-		return Print("Tagged", tag)
+		return printer.Println("Tagged", tag)
 	}
 	return listener.NewTagListener(target, onTagging, onTagged)
 }
 
 // NewTagStatusPrinter creates a wrapper type for printing tag status.
-func NewTagStatusPrinter(target oras.Target) oras.Target {
+func NewTagStatusPrinter(printer *Printer, target oras.Target) oras.Target {
 	return listener.NewTagListener(target, nil, func(desc ocispec.Descriptor, tag string) error {
-		return Print("Tagged", tag)
+		return printer.Println("Tagged", tag)
 	})
-}
-
-// printer is used by the code being deprecated. Related functions should be
-// removed when no-longer referenced.
-var printer = NewPrinter(os.Stdout)
-
-// Print objects to display concurrent-safely.
-func Print(a ...any) error {
-	return printer.Println(a...)
 }
