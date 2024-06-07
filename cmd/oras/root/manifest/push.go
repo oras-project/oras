@@ -190,7 +190,7 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 	}
 	printer.Println("Pushed", opts.AnnotatedReference())
 	if len(opts.extraRefs) != 0 {
-		if _, err = oras.TagBytesN(ctx, status.NewTagStatusPrinter(target), mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
+		if _, err = oras.TagBytesN(ctx, status.NewTagStatusPrinter(printer, target), mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}
 	}
