@@ -105,6 +105,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 		option.FormatTypeTable,
 		option.FormatTypeJSON.WithUsage("Get direct referrers and output in JSON format"),
 		option.FormatTypeGoTemplate.WithUsage("Print direct referrers using the given Go template"),
+		option.FormatTypeText,
 	}
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())

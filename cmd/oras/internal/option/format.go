@@ -65,7 +65,7 @@ var (
 		Usage: "Get referrers recursively and print in tree format",
 	}
 	FormatTypeText = &FormatType{
-		Name:  "",
+		Name:  "text",
 		Usage: "Print in text format",
 	}
 )
@@ -87,7 +87,7 @@ func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 	}
 	_ = w.Flush()
 	// apply flags
-	fs.StringVar(&opts.FormatFlag, "format", opts.FormatFlag, buf.String())
+	fs.StringVar(&opts.FormatFlag, "format", FormatTypeText.Name, buf.String())
 	fs.StringVar(&opts.Template, "template", "", "[Experimental] Template string used to format output")
 }
 
@@ -97,7 +97,7 @@ func (opts *Format) Parse(_ *cobra.Command) error {
 		return err
 	}
 
-	if opts.Type == "" {
+	if opts.Type == FormatTypeText.Name {
 		// flag not specified
 		return nil
 	}
