@@ -17,6 +17,7 @@ package status
 
 import (
 	"context"
+	"oras.land/oras/cmd/oras/internal/output"
 	"os"
 	"sync"
 
@@ -76,7 +77,7 @@ func (ph *TTYPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher
 	}
 	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return PrintSuccessorStatus(ctx, desc, fetcher, committed, func(d ocispec.Descriptor) error {
+		return output.PrintSuccessorStatus(ctx, desc, fetcher, committed, func(d ocispec.Descriptor) error {
 			return ph.tracked.Prompt(d, promptSkipped)
 		})
 	}

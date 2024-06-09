@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"oras.land/oras/cmd/oras/internal/output"
 	"slices"
 	"strings"
 	"sync"
@@ -109,7 +110,7 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 
 func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-	printer := status.NewPrinter(cmd.OutOrStdout())
+	printer := output.NewPrinter(cmd.OutOrStdout())
 
 	// Prepare source
 	src, err := opts.From.NewReadonlyTarget(ctx, opts.Common, logger)
@@ -152,7 +153,7 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	return nil
 }
 
-func doCopy(ctx context.Context, printer *status.Printer, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) (ocispec.Descriptor, error) {
+func doCopy(ctx context.Context, printer *output.Printer, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) (ocispec.Descriptor, error) {
 	// Prepare copy options
 	committed := &sync.Map{}
 	extendedCopyOptions := oras.DefaultExtendedCopyOptions
@@ -186,7 +187,7 @@ func doCopy(ctx context.Context, printer *status.Printer, src oras.ReadOnlyGraph
 		}
 		extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			if err := status.PrintSuccessorStatus(ctx, desc, dst, committed, printer.StatusPrinter(promptSkipped, opts.Verbose)); err != nil {
+			if err := output.PrintSuccessorStatus(ctx, desc, dst, committed, printer.StatusPrinter(promptSkipped, opts.Verbose)); err != nil {
 				return err
 			}
 			return printer.PrintStatus(desc, promptCopied, opts.Verbose)
@@ -209,7 +210,7 @@ func doCopy(ctx context.Context, printer *status.Printer, src oras.ReadOnlyGraph
 		}
 		extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return status.PrintSuccessorStatus(ctx, desc, tracked, committed, func(desc ocispec.Descriptor) error {
+			return output.PrintSuccessorStatus(ctx, desc, tracked, committed, func(desc ocispec.Descriptor) error {
 				return tracked.Prompt(desc, promptSkipped)
 			})
 		}

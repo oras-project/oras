@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"oras.land/oras/cmd/oras/internal/output"
 	"os"
 	"strings"
 
@@ -111,7 +112,7 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 
 func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-	printer := status.NewPrinter(cmd.OutOrStdout())
+	printer := output.NewPrinter(cmd.OutOrStdout())
 	var target oras.Target
 	var err error
 	target, err = opts.NewTarget(opts.Common, logger)
