@@ -18,6 +18,7 @@ package status
 import (
 	"context"
 	"io"
+	"oras.land/oras/cmd/oras/internal/output"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -28,14 +29,14 @@ import (
 // TextPushHandler handles text status output for push events.
 type TextPushHandler struct {
 	verbose bool
-	printer *Printer
+	printer *output.Printer
 }
 
 // NewTextPushHandler returns a new handler for push command.
 func NewTextPushHandler(out io.Writer, verbose bool) PushHandler {
 	return &TextPushHandler{
 		verbose: verbose,
-		printer: NewPrinter(out),
+		printer: output.NewPrinter(out),
 	}
 }
 
@@ -75,7 +76,7 @@ func (ph *TextPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetche
 	}
 	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		if err := PrintSuccessorStatus(ctx, desc, fetcher, committed, ph.printer.StatusPrinter(promptSkipped, ph.verbose)); err != nil {
+		if err := output.PrintSuccessorStatus(ctx, desc, fetcher, committed, ph.printer.StatusPrinter(promptSkipped, ph.verbose)); err != nil {
 			return err
 		}
 		return ph.printer.PrintStatus(desc, promptUploaded, ph.verbose)
@@ -90,7 +91,7 @@ func NewTextAttachHandler(out io.Writer, verbose bool) AttachHandler {
 // TextPullHandler handles text status output for pull events.
 type TextPullHandler struct {
 	verbose bool
-	printer *Printer
+	printer *output.Printer
 }
 
 // TrackTarget implements PullHander.
@@ -127,6 +128,6 @@ func (ph *TextPullHandler) OnNodeSkipped(desc ocispec.Descriptor) error {
 func NewTextPullHandler(out io.Writer, verbose bool) PullHandler {
 	return &TextPullHandler{
 		verbose: verbose,
-		printer: NewPrinter(out),
+		printer: output.NewPrinter(out),
 	}
 }

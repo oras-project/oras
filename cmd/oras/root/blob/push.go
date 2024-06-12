@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"oras.land/oras/cmd/oras/internal/output"
 	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -27,7 +28,6 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
-	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/cmd/oras/internal/display/status/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -103,7 +103,7 @@ Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
 
 func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-	printer := status.NewPrinter(cmd.OutOrStdout())
+	printer := output.NewPrinter(cmd.OutOrStdout())
 
 	target, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
@@ -145,7 +145,7 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 
 	return nil
 }
-func (opts *pushBlobOptions) doPush(ctx context.Context, printer *status.Printer, t oras.Target, desc ocispec.Descriptor, r io.Reader) error {
+func (opts *pushBlobOptions) doPush(ctx context.Context, printer *output.Printer, t oras.Target, desc ocispec.Descriptor, r io.Reader) error {
 	if opts.TTY == nil {
 		// none TTY output
 		if err := printer.PrintStatus(desc, "Uploading", opts.Verbose); err != nil {
