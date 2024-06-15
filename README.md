@@ -15,7 +15,7 @@ the project website: [oras.land/cli](https://oras.land/docs/category/oras-comman
 
 ## Development Environment Setup
 
-Refer to the [development guide](https://oras.land/docs/community/developer_guide) to get started [contributing to ORAS](https://oras.land/docs/community/contributing_guide).
+Refer to the [development guide](https://oras.land/community/developer_guide) to get started [contributing to ORAS](https://oras.land/community/contributing_guide).
 
 ## Code of Conduct
 
