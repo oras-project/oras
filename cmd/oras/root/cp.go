@@ -110,7 +110,7 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 
 func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-	printer := output.NewPrinter(cmd.OutOrStdout())
+	printer := output.NewPrinter(cmd.OutOrStdout(), opts.Verbose)
 
 	// Prepare source
 	src, err := opts.From.NewReadonlyTarget(ctx, opts.Common, logger)
@@ -180,21 +180,21 @@ func doCopy(ctx context.Context, printer *output.Printer, src oras.ReadOnlyGraph
 		// none TTY output
 		extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return printer.PrintStatus(desc, promptExists, opts.Verbose)
+			return printer.PrintStatus(desc, promptExists)
 		}
 		extendedCopyOptions.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-			return printer.PrintStatus(desc, promptCopying, opts.Verbose)
+			return printer.PrintStatus(desc, promptCopying)
 		}
 		extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			if err := output.PrintSuccessorStatus(ctx, desc, dst, committed, printer.StatusPrinter(promptSkipped, opts.Verbose)); err != nil {
+			if err := output.PrintSuccessorStatus(ctx, desc, dst, committed, printer.StatusPrinter(promptSkipped)); err != nil {
 				return err
 			}
-			return printer.PrintStatus(desc, promptCopied, opts.Verbose)
+			return printer.PrintStatus(desc, promptCopied)
 		}
 		extendedCopyOptions.OnMounted = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return printer.PrintStatus(desc, promptMounted, opts.Verbose)
+			return printer.PrintStatus(desc, promptMounted)
 		}
 	} else {
 		// TTY output
