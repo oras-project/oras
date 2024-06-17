@@ -80,9 +80,9 @@ type Format struct {
 }
 
 // SetTypes sets the default format type and allowed format types.
-func (f *Format) SetTypes(defaultType *FormatType, allowedTypes ...*FormatType) {
+func (f *Format) SetTypes(defaultType *FormatType, otherTypes ...*FormatType) {
 	f.defaultType = defaultType
-	f.allowedTypes = append(allowedTypes, defaultType)
+	f.allowedTypes = append(otherTypes, defaultType)
 }
 
 // ApplyFlags implements FlagProvider.ApplyFlag.
