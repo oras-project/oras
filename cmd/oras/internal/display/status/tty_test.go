@@ -20,8 +20,10 @@ package status
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
@@ -33,8 +35,9 @@ import (
 )
 
 var (
-	memStore *memory.Store
-	memDesc  ocispec.Descriptor
+	memStore     *memory.Store
+	memDesc      ocispec.Descriptor
+	manifestDesc ocispec.Descriptor
 )
 
 func TestMain(m *testing.M) {
@@ -48,6 +51,33 @@ func TestMain(m *testing.M) {
 		Size:      int64(len(content)),
 	}
 	if err := memStore.Push(context.Background(), memDesc, r); err != nil {
+		fmt.Println("Setup failed:", err)
+		os.Exit(1)
+	}
+	if err := memStore.Tag(context.Background(), memDesc, memDesc.Digest.String()); err != nil {
+		fmt.Println("Setup failed:", err)
+		os.Exit(1)
+	}
+
+	layer1Desc := memDesc
+	layer1Desc.Annotations = map[string]string{ocispec.AnnotationTitle: "layer1"}
+	layer2Desc := memDesc
+	layer2Desc.Annotations = map[string]string{ocispec.AnnotationTitle: "layer2"}
+	manifest := ocispec.Manifest{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Layers:    []ocispec.Descriptor{layer1Desc, layer2Desc},
+	}
+	manifestContent, err := json.Marshal(&manifest)
+	if err != nil {
+		fmt.Println("Setup failed:", err)
+		os.Exit(1)
+	}
+	manifestDesc = ocispec.Descriptor{
+		MediaType: manifest.MediaType,
+		Size:      int64(len(manifestContent)),
+		Digest:    digest.FromBytes(manifestContent),
+	}
+	if err := memStore.Push(context.Background(), manifestDesc, strings.NewReader(string(manifestContent))); err != nil {
 		fmt.Println("Setup failed:", err)
 		os.Exit(1)
 	}
