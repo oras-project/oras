@@ -65,13 +65,9 @@ func (p *Printer) PrintVerbose(a ...any) error {
 
 // PrintStatus prints transfer status.
 func (p *Printer) PrintStatus(desc ocispec.Descriptor, status string) error {
-	name, ok := desc.Annotations[ocispec.AnnotationTitle]
-	if !ok {
-		// no status for unnamed content
-		if !p.verbose {
-			return nil
-		}
-		name = desc.MediaType
+	name, isTitle := descriptor.GetTitleOrMediaType(desc)
+	if !isTitle {
+		return p.PrintVerbose(status, descriptor.ShortDigest(desc), name)
 	}
 	return p.Println(status, descriptor.ShortDigest(desc), name)
 }
