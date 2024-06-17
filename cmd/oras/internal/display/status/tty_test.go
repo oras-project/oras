@@ -96,6 +96,13 @@ func TestTTYPushHandler_TrackTarget(t *testing.T) {
 	}
 }
 
+func TestTTYPushHandler_TrackTarget_invalidTTY(t *testing.T) {
+	ph := NewTTYPushHandler(os.Stdin)
+	if _, _, err := ph.TrackTarget(nil); err == nil {
+		t.Error("TrackTarget() should return an error for non-tty file")
+	}
+}
+
 func TestTTYPushHandler_UpdateCopyOptions(t *testing.T) {
 	// prepare pty
 	pty, slave, err := testutils.NewPty()
