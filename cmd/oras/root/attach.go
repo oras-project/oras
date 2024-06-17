@@ -102,7 +102,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 	opts.FlagDescription = "[Preview] attach to an arch-specific subject"
 	_ = cmd.MarkFlagRequired("artifact-type")
 	opts.EnableDistributionSpecFlag()
-	opts.AllowedTypes = []*option.FormatType{option.FormatTypeJSON, option.FormatTypeGoTemplate, option.FormatTypeText}
+	opts.SetTypes(option.FormatTypeText, option.FormatTypeJSON, option.FormatTypeGoTemplate)
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }

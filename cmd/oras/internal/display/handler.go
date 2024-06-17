@@ -113,7 +113,7 @@ func NewPullHandler(out io.Writer, format option.Format, path string, tty *os.Fi
 func NewDiscoverHandler(out io.Writer, format option.Format, path string, rawReference string, desc ocispec.Descriptor, verbose bool) (metadata.DiscoverHandler, error) {
 	var handler metadata.DiscoverHandler
 	switch format.Type {
-	case option.FormatTypeTree.Name, option.FormatTypeText.Name:
+	case option.FormatTypeTree.Name:
 		handler = tree.NewDiscoverHandler(out, path, desc, verbose)
 	case option.FormatTypeTable.Name:
 		handler = table.NewDiscoverHandler(out, rawReference, desc, verbose)

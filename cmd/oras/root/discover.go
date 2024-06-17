@@ -100,13 +100,12 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().StringVarP(&opts.Format.FormatFlag, "output", "o", "tree", "[Deprecated] format in which to display referrers (table, json, or tree). tree format will also show indirect referrers")
 	opts.FormatFlag = option.FormatTypeTree.Name
-	opts.AllowedTypes = []*option.FormatType{
+	opts.SetTypes(
 		option.FormatTypeTree,
 		option.FormatTypeTable,
 		option.FormatTypeJSON.WithUsage("Get direct referrers and output in JSON format"),
 		option.FormatTypeGoTemplate.WithUsage("Print direct referrers using the given Go template"),
-		option.FormatTypeText,
-	}
+	)
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)

@@ -75,14 +75,21 @@ type Format struct {
 	FormatFlag   string
 	Type         string
 	Template     string
-	AllowedTypes []*FormatType
+	allowedTypes []*FormatType
+	defaultType  *FormatType
+}
+
+// SetTypes sets the default format type and allowed format types.
+func (f *Format) SetTypes(defaultType *FormatType, allowedTypes ...*FormatType) {
+	f.defaultType = defaultType
+	f.allowedTypes = append(allowedTypes, defaultType)
 }
 
 // ApplyFlags implements FlagProvider.ApplyFlag.
 func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 	buf := bytes.NewBufferString("[Experimental] Format output using a custom template:")
 	w := tabwriter.NewWriter(buf, 0, 0, 2, ' ', 0)
-	for _, t := range opts.AllowedTypes {
+	for _, t := range opts.allowedTypes {
 		_, _ = fmt.Fprintf(w, "\n'%s':\t%s", t.Name, t.Usage)
 	}
 	_ = w.Flush()
@@ -110,7 +117,7 @@ func (opts *Format) Parse(_ *cobra.Command) error {
 	}
 
 	var optionalTypes []string
-	for _, t := range opts.AllowedTypes {
+	for _, t := range opts.allowedTypes {
 		if opts.Type == t.Name {
 			// type validation passed
 			return nil
@@ -133,7 +140,7 @@ func (opts *Format) parseFlag() error {
 		return nil
 	}
 
-	for _, t := range opts.AllowedTypes {
+	for _, t := range opts.allowedTypes {
 		if !t.HasParams {
 			continue
 		}
