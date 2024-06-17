@@ -93,8 +93,12 @@ func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 		_, _ = fmt.Fprintf(w, "\n'%s':\t%s", t.Name, t.Usage)
 	}
 	_ = w.Flush()
+	defaultTypeName := FormatTypeText.Name
+	if opts.defaultType != nil {
+		defaultTypeName = opts.defaultType.Name
+	}
 	// apply flags
-	fs.StringVar(&opts.FormatFlag, "format", FormatTypeText.Name, buf.String())
+	fs.StringVar(&opts.FormatFlag, "format", defaultTypeName, buf.String())
 	fs.StringVar(&opts.Template, "template", "", "[Experimental] Template string used to format output")
 }
 
