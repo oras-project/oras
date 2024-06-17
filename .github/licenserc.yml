@@ -36,6 +36,7 @@ header:
     - 'go.mod'
     - 'go.sum'
     - 'go.work'
+    - 'test/e2e/go.work.sum'
     - '**/testdata/**'
 
   comment: on-failure
