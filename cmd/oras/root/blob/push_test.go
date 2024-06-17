@@ -40,7 +40,7 @@ func Test_pushBlobOptions_doPush(t *testing.T) {
 	src := memory.New()
 	content := []byte("test")
 	r := bytes.NewReader(content)
-	printer := output.NewPrinter(os.Stdout)
+	printer := output.NewPrinter(os.Stdout, false)
 	desc := ocispec.Descriptor{
 		MediaType: "application/octet-stream",
 		Digest:    digest.FromBytes(content),
