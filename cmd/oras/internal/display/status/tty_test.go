@@ -20,8 +20,10 @@ package status
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
@@ -33,8 +35,9 @@ import (
 )
 
 var (
-	memStore *memory.Store
-	memDesc  ocispec.Descriptor
+	memStore     *memory.Store
+	memDesc      ocispec.Descriptor
+	manifestDesc ocispec.Descriptor
 )
 
 func TestMain(m *testing.M) {
@@ -48,6 +51,34 @@ func TestMain(m *testing.M) {
 		Size:      int64(len(content)),
 	}
 	if err := memStore.Push(context.Background(), memDesc, r); err != nil {
+		fmt.Println("Setup failed:", err)
+		os.Exit(1)
+	}
+	if err := memStore.Tag(context.Background(), memDesc, memDesc.Digest.String()); err != nil {
+		fmt.Println("Setup failed:", err)
+		os.Exit(1)
+	}
+
+	layer1Desc := memDesc
+	layer1Desc.Annotations = map[string]string{ocispec.AnnotationTitle: "layer1"}
+	layer2Desc := memDesc
+	layer2Desc.Annotations = map[string]string{ocispec.AnnotationTitle: "layer2"}
+	manifest := ocispec.Manifest{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Layers:    []ocispec.Descriptor{layer1Desc, layer2Desc},
+		Config:    memDesc,
+	}
+	manifestContent, err := json.Marshal(&manifest)
+	if err != nil {
+		fmt.Println("Setup failed:", err)
+		os.Exit(1)
+	}
+	manifestDesc = ocispec.Descriptor{
+		MediaType: manifest.MediaType,
+		Size:      int64(len(manifestContent)),
+		Digest:    digest.FromBytes(manifestContent),
+	}
+	if err := memStore.Push(context.Background(), manifestDesc, strings.NewReader(string(manifestContent))); err != nil {
 		fmt.Println("Setup failed:", err)
 		os.Exit(1)
 	}
@@ -84,7 +115,7 @@ func TestTTYPushHandler_TrackTarget(t *testing.T) {
 	// test
 	_, fn, err := ph.TrackTarget(store)
 	if err != nil {
-		t.Error("TrackTarget() should not return an error")
+		t.Fatal("TrackTarget() should not return an error")
 	}
 	defer func() {
 		if err := fn(); err != nil {
@@ -92,7 +123,14 @@ func TestTTYPushHandler_TrackTarget(t *testing.T) {
 		}
 	}()
 	if ttyPushHandler, ok := ph.(*TTYPushHandler); !ok {
-		t.Errorf("TrackTarget() should return a *TTYPushHandler, got %T", ttyPushHandler)
+		t.Fatalf("TrackTarget() should return a *TTYPushHandler, got %T", ttyPushHandler)
+	}
+}
+
+func TestTTYPushHandler_TrackTarget_invalidTTY(t *testing.T) {
+	ph := NewTTYPushHandler(os.Stdin)
+	if _, _, err := ph.TrackTarget(nil); err == nil {
+		t.Error("TrackTarget() should return an error for non-tty file")
 	}
 }
 
@@ -106,24 +144,24 @@ func TestTTYPushHandler_UpdateCopyOptions(t *testing.T) {
 	ph := NewTTYPushHandler(slave)
 	gt, _, err := ph.TrackTarget(memory.New())
 	if err != nil {
-		t.Errorf("TrackTarget() should not return an error: %v", err)
+		t.Fatalf("TrackTarget() should not return an error: %v", err)
 	}
 	// test
 	opts := oras.CopyGraphOptions{}
 	ph.UpdateCopyOptions(&opts, memStore)
-	if err := oras.CopyGraph(context.Background(), memStore, gt, memDesc, opts); err != nil {
-		t.Errorf("CopyGraph() should not return an error: %v", err)
+	if err := oras.CopyGraph(context.Background(), memStore, gt, manifestDesc, opts); err != nil {
+		t.Fatalf("CopyGraph() should not return an error: %v", err)
 	}
-	if err := oras.CopyGraph(context.Background(), memStore, gt, memDesc, opts); err != nil {
-		t.Errorf("CopyGraph() should not return an error: %v", err)
+	if err := oras.CopyGraph(context.Background(), memStore, gt, manifestDesc, opts); err != nil {
+		t.Fatalf("CopyGraph() should not return an error: %v", err)
 	}
 	if tracked, ok := gt.(track.GraphTarget); !ok {
-		t.Errorf("TrackTarget() should return a *track.GraphTarget, got %T", tracked)
+		t.Fatalf("TrackTarget() should return a *track.GraphTarget, got %T", tracked)
 	} else {
 		tracked.Close()
 	}
 	// validate
-	if err = testutils.MatchPty(pty, slave, "Exists", memDesc.MediaType, "100.00%", memDesc.Digest.String()); err != nil {
+	if err = testutils.MatchPty(pty, slave, "Exists", manifestDesc.MediaType, "100.00%", manifestDesc.Digest.String()); err != nil {
 		t.Fatal(err)
 	}
 }
