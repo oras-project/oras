@@ -17,9 +17,10 @@ package status
 
 import (
 	"context"
-	"oras.land/oras/cmd/oras/internal/output"
 	"os"
 	"sync"
+
+	"oras.land/oras/cmd/oras/internal/output"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
@@ -52,7 +53,7 @@ func (ph *TTYPushHandler) OnEmptyArtifact() error {
 
 // TrackTarget returns a tracked target.
 func (ph *TTYPushHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, StopTrackTargetFunc, error) {
-	tracked, err := track.NewTarget(gt, promptUploading, promptUploaded, ph.tty)
+	tracked, err := track.NewTarget(gt, PushPromptUploading, PushPromptUploaded, ph.tty)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -65,12 +66,12 @@ func (ph *TTYPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher
 	committed := &sync.Map{}
 	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return ph.tracked.Prompt(desc, promptExists)
+		return ph.tracked.Prompt(desc, PushPromptExists)
 	}
 	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
 		return output.PrintSuccessorStatus(ctx, desc, fetcher, committed, func(d ocispec.Descriptor) error {
-			return ph.tracked.Prompt(d, promptSkipped)
+			return ph.tracked.Prompt(d, PushPromptSkipped)
 		})
 	}
 }
