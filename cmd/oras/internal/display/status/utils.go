@@ -31,8 +31,12 @@ const (
 	PullPromptSkipped     = "Skipped    "
 	PullPromptRestored    = "Restored   "
 	PullPromptDownloaded  = "Downloaded "
-	promptUploaded        = "Uploaded "
-	promptUploading       = "Uploading"
-	promptSkipped         = "Skipped  "
-	promptExists          = "Exists   "
+)
+
+// Prompts for push/attach events.
+const (
+	PushPromptUploaded  = "Uploaded "
+	PushPromptUploading = "Uploading"
+	PushPromptSkipped   = "Skipped  "
+	PushPromptExists    = "Exists   "
 )

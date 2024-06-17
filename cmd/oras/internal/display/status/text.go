@@ -18,8 +18,9 @@ package status
 import (
 	"context"
 	"io"
-	"oras.land/oras/cmd/oras/internal/output"
 	"sync"
+
+	"oras.land/oras/cmd/oras/internal/output"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
@@ -63,17 +64,17 @@ func (ph *TextPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetche
 	committed := &sync.Map{}
 	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return ph.printer.PrintStatus(desc, promptExists, ph.verbose)
+		return ph.printer.PrintStatus(desc, PushPromptExists, ph.verbose)
 	}
 	opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		return ph.printer.PrintStatus(desc, promptUploading, ph.verbose)
+		return ph.printer.PrintStatus(desc, PushPromptUploading, ph.verbose)
 	}
 	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		if err := output.PrintSuccessorStatus(ctx, desc, fetcher, committed, ph.printer.StatusPrinter(promptSkipped, ph.verbose)); err != nil {
+		if err := output.PrintSuccessorStatus(ctx, desc, fetcher, committed, ph.printer.StatusPrinter(PushPromptSkipped, ph.verbose)); err != nil {
 			return err
 		}
-		return ph.printer.PrintStatus(desc, promptUploaded, ph.verbose)
+		return ph.printer.PrintStatus(desc, PushPromptUploaded, ph.verbose)
 	}
 }
 
