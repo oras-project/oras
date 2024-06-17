@@ -31,4 +31,8 @@ const (
 	PullPromptSkipped     = "Skipped    "
 	PullPromptRestored    = "Restored   "
 	PullPromptDownloaded  = "Downloaded "
+	promptUploaded        = "Uploaded "
+	promptUploading       = "Uploading"
+	promptSkipped         = "Skipped  "
+	promptExists          = "Exists   "
 )

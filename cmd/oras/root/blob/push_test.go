@@ -20,7 +20,7 @@ package blob
 import (
 	"bytes"
 	"context"
-	"oras.land/oras/cmd/oras/internal/display/status"
+	"oras.land/oras/cmd/oras/internal/output"
 	"os"
 	"testing"
 
@@ -40,7 +40,7 @@ func Test_pushBlobOptions_doPush(t *testing.T) {
 	src := memory.New()
 	content := []byte("test")
 	r := bytes.NewReader(content)
-	printer := status.NewPrinter(os.Stdout)
+	printer := output.NewPrinter(os.Stdout, false)
 	desc := ocispec.Descriptor{
 		MediaType: "application/octet-stream",
 		Digest:    digest.FromBytes(content),

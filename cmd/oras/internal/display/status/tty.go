@@ -17,6 +17,7 @@ package status
 
 import (
 	"context"
+	"oras.land/oras/cmd/oras/internal/output"
 	"os"
 	"sync"
 
@@ -40,7 +41,7 @@ func NewTTYPushHandler(tty *os.File) PushHandler {
 }
 
 // OnFileLoading is called before loading a file.
-func (ph *TTYPushHandler) OnFileLoading(name string) error {
+func (ph *TTYPushHandler) OnFileLoading(_ string) error {
 	return nil
 }
 
@@ -51,10 +52,6 @@ func (ph *TTYPushHandler) OnEmptyArtifact() error {
 
 // TrackTarget returns a tracked target.
 func (ph *TTYPushHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, StopTrackTargetFunc, error) {
-	const (
-		promptUploaded  = "Uploaded "
-		promptUploading = "Uploading"
-	)
 	tracked, err := track.NewTarget(gt, promptUploading, promptUploaded, ph.tty)
 	if err != nil {
 		return nil, nil, err
@@ -65,10 +62,6 @@ func (ph *TTYPushHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, St
 
 // UpdateCopyOptions adds TTY status output to the copy options.
 func (ph *TTYPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher) {
-	const (
-		promptSkipped = "Skipped  "
-		promptExists  = "Exists   "
-	)
 	committed := &sync.Map{}
 	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
@@ -76,7 +69,7 @@ func (ph *TTYPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher
 	}
 	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return PrintSuccessorStatus(ctx, desc, fetcher, committed, func(d ocispec.Descriptor) error {
+		return output.PrintSuccessorStatus(ctx, desc, fetcher, committed, func(d ocispec.Descriptor) error {
 			return ph.tracked.Prompt(d, promptSkipped)
 		})
 	}
@@ -101,17 +94,17 @@ func NewTTYPullHandler(tty *os.File) PullHandler {
 }
 
 // OnNodeDownloading implements PullHandler.
-func (ph *TTYPullHandler) OnNodeDownloading(desc ocispec.Descriptor) error {
+func (ph *TTYPullHandler) OnNodeDownloading(_ ocispec.Descriptor) error {
 	return nil
 }
 
 // OnNodeDownloaded implements PullHandler.
-func (ph *TTYPullHandler) OnNodeDownloaded(desc ocispec.Descriptor) error {
+func (ph *TTYPullHandler) OnNodeDownloaded(_ ocispec.Descriptor) error {
 	return nil
 }
 
 // OnNodeProcessing implements PullHandler.
-func (ph *TTYPullHandler) OnNodeProcessing(desc ocispec.Descriptor) error {
+func (ph *TTYPullHandler) OnNodeProcessing(_ ocispec.Descriptor) error {
 	return nil
 }
 
@@ -120,7 +113,7 @@ func (ph *TTYPullHandler) OnNodeRestored(desc ocispec.Descriptor) error {
 	return ph.tracked.Prompt(desc, PullPromptRestored)
 }
 
-// OnNodeProcessing implements PullHandler.
+// OnNodeSkipped implements PullHandler.
 func (ph *TTYPullHandler) OnNodeSkipped(desc ocispec.Descriptor) error {
 	return ph.tracked.Prompt(desc, PullPromptSkipped)
 }

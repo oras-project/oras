@@ -24,7 +24,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"oras.land/oras/cmd/oras/internal/display/status"
+	"oras.land/oras/cmd/oras/internal/output"
 	"os"
 	"strings"
 	"testing"
@@ -132,7 +132,7 @@ func Test_doCopy(t *testing.T) {
 	opts.From.Reference = memDesc.Digest.String()
 	dst := memory.New()
 	builder := &strings.Builder{}
-	printer := status.NewPrinter(builder)
+	printer := output.NewPrinter(builder, opts.Verbose)
 	// test
 	_, err = doCopy(context.Background(), printer, memStore, dst, &opts)
 	if err != nil {
@@ -156,7 +156,7 @@ func Test_doCopy_skipped(t *testing.T) {
 	opts.Verbose = true
 	opts.From.Reference = memDesc.Digest.String()
 	builder := &strings.Builder{}
-	printer := status.NewPrinter(builder)
+	printer := output.NewPrinter(builder, opts.Verbose)
 	// test
 	_, err = doCopy(context.Background(), printer, memStore, memStore, &opts)
 	if err != nil {
@@ -191,7 +191,7 @@ func Test_doCopy_mounted(t *testing.T) {
 	}
 	to.PlainHTTP = true
 	builder := &strings.Builder{}
-	printer := status.NewPrinter(builder)
+	printer := output.NewPrinter(builder, opts.Verbose)
 	// test
 	_, err = doCopy(context.Background(), printer, from, to, &opts)
 	if err != nil {

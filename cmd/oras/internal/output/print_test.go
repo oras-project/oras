@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package status
+package output
 
 import (
 	"fmt"
@@ -42,7 +42,7 @@ func (mw *mockWriter) String() string {
 
 func TestPrint_Error(t *testing.T) {
 	mockWriter := &mockWriter{}
-	printer := NewPrinter(mockWriter)
+	printer := NewPrinter(mockWriter, false)
 	printer.Println("boom")
 	if mockWriter.errorCount != 1 {
 		t.Error("Expected one errors actual <" + strconv.Itoa(mockWriter.errorCount) + ">")
@@ -51,7 +51,7 @@ func TestPrint_Error(t *testing.T) {
 
 func TestPrint_NoError(t *testing.T) {
 	mockWriter := &mockWriter{}
-	printer := NewPrinter(mockWriter)
+	printer := NewPrinter(mockWriter, false)
 
 	expected := "blah blah"
 	printer.Println(expected)

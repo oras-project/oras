@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"oras.land/oras/cmd/oras/internal/output"
 	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -27,7 +28,6 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
-	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/cmd/oras/internal/display/status/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -103,7 +103,8 @@ Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
 
 func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-	printer := status.NewPrinter(cmd.OutOrStdout())
+	verbose := opts.Verbose && !opts.OutputDescriptor
+	printer := output.NewPrinter(cmd.OutOrStdout(), verbose)
 
 	target, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
@@ -121,9 +122,8 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 	if err != nil {
 		return err
 	}
-	verbose := opts.Verbose && !opts.OutputDescriptor
 	if exists {
-		err = printer.PrintStatus(desc, "Exists", verbose)
+		err = printer.PrintStatus(desc, "Exists")
 	} else {
 		err = opts.doPush(ctx, printer, target, desc, rc)
 	}
@@ -140,21 +140,21 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 	}
 
 	outWriter := cmd.OutOrStdout()
-	fmt.Fprintln(outWriter, "Pushed", opts.AnnotatedReference())
-	fmt.Fprintln(outWriter, "Digest:", desc.Digest)
+	_, _ = fmt.Fprintln(outWriter, "Pushed", opts.AnnotatedReference())
+	_, _ = fmt.Fprintln(outWriter, "Digest:", desc.Digest)
 
 	return nil
 }
-func (opts *pushBlobOptions) doPush(ctx context.Context, printer *status.Printer, t oras.Target, desc ocispec.Descriptor, r io.Reader) error {
+func (opts *pushBlobOptions) doPush(ctx context.Context, printer *output.Printer, t oras.Target, desc ocispec.Descriptor, r io.Reader) error {
 	if opts.TTY == nil {
 		// none TTY output
-		if err := printer.PrintStatus(desc, "Uploading", opts.Verbose); err != nil {
+		if err := printer.PrintStatus(desc, "Uploading"); err != nil {
 			return err
 		}
 		if err := t.Push(ctx, desc, r); err != nil {
 			return err
 		}
-		return printer.PrintStatus(desc, "Uploaded ", opts.Verbose)
+		return printer.PrintStatus(desc, "Uploaded ")
 	}
 
 	// TTY output

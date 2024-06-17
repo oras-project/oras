@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package status
+package output
 
 import (
 	"context"
@@ -32,13 +32,14 @@ type PrintFunc func(ocispec.Descriptor) error
 
 // Printer prints for status handlers.
 type Printer struct {
-	out  io.Writer
-	lock sync.Mutex
+	out     io.Writer
+	verbose bool
+	lock    sync.Mutex
 }
 
 // NewPrinter creates a new Printer.
-func NewPrinter(out io.Writer) *Printer {
-	return &Printer{out: out}
+func NewPrinter(out io.Writer, verbose bool) *Printer {
+	return &Printer{out: out, verbose: verbose}
 }
 
 // Println prints objects concurrent-safely with newline.
@@ -54,12 +55,20 @@ func (p *Printer) Println(a ...any) error {
 	return nil
 }
 
+// PrintVerbose prints when verbose is true.
+func (p *Printer) PrintVerbose(a ...any) error {
+	if !p.verbose {
+		return nil
+	}
+	return p.Println(a...)
+}
+
 // PrintStatus prints transfer status.
-func (p *Printer) PrintStatus(desc ocispec.Descriptor, status string, verbose bool) error {
+func (p *Printer) PrintStatus(desc ocispec.Descriptor, status string) error {
 	name, ok := desc.Annotations[ocispec.AnnotationTitle]
 	if !ok {
 		// no status for unnamed content
-		if !verbose {
+		if !p.verbose {
 			return nil
 		}
 		name = desc.MediaType
@@ -68,9 +77,9 @@ func (p *Printer) PrintStatus(desc ocispec.Descriptor, status string, verbose bo
 }
 
 // StatusPrinter returns a tracking function for transfer status.
-func (p *Printer) StatusPrinter(status string, verbose bool) PrintFunc {
+func (p *Printer) StatusPrinter(status string) PrintFunc {
 	return func(desc ocispec.Descriptor) error {
-		return p.PrintStatus(desc, status, verbose)
+		return p.PrintStatus(desc, status)
 	}
 }
 
