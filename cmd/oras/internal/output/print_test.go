@@ -71,7 +71,7 @@ func TestPrint_NoError(t *testing.T) {
 	}
 }
 
-func TestPrint_Verbose(t *testing.T) {
+func TestPrinter_PrintVerbose(t *testing.T) {
 	builder := &strings.Builder{}
 	printer := NewPrinter(builder, true)
 
