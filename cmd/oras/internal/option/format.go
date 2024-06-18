@@ -76,12 +76,11 @@ type Format struct {
 	Type         string
 	Template     string
 	allowedTypes []*FormatType
-	defaultType  *FormatType
 }
 
 // SetTypes sets the default format type and allowed format types.
 func (f *Format) SetTypes(defaultType *FormatType, otherTypes ...*FormatType) {
-	f.defaultType = defaultType
+	f.FormatFlag = defaultType.Name
 	f.allowedTypes = append(otherTypes, defaultType)
 }
 
@@ -93,12 +92,8 @@ func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 		_, _ = fmt.Fprintf(w, "\n'%s':\t%s", t.Name, t.Usage)
 	}
 	_ = w.Flush()
-	defaultTypeName := FormatTypeText.Name
-	if opts.defaultType != nil {
-		defaultTypeName = opts.defaultType.Name
-	}
 	// apply flags
-	fs.StringVar(&opts.FormatFlag, "format", defaultTypeName, buf.String())
+	fs.StringVar(&opts.FormatFlag, "format", opts.FormatFlag, buf.String())
 	fs.StringVar(&opts.Template, "template", "", "[Experimental] Template string used to format output")
 }
 
