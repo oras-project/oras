@@ -58,3 +58,5 @@ test/e2e/testdata/zot/
 !test/e2e/testdata/zot/command/blobs/**/*
 !test/e2e/testdata/zot/config.json
 !test/e2e/testdata/zot/passwd_bcrypt
+
+test/e2e/go.work.sum
