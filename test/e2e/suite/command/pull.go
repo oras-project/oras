@@ -43,6 +43,10 @@ var _ = Describe("ORAS beginners:", func() {
 			gomega.Expect(out).Should(gbytes.Say("--include-subject\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 		})
 
+		It("should show text as default format type in help doc", func() {
+			MatchDefaultFlagValue("format", "text", "pull")
+		})
+
 		hintMsg := func(reference string) string {
 			return fmt.Sprintf("Skipped pulling layers without file name in \"org.opencontainers.image.title\"\nUse 'oras copy %s --to-oci-layout <layout-dir>' to pull all layers.\n", reference)
 		}

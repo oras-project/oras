@@ -93,6 +93,10 @@ var _ = Describe("ORAS beginners:", func() {
 					Exec()
 			})
 
+			It("should show text as default format type in help doc", func() {
+				MatchDefaultFlagValue("format", "text", "manifest", "fetch")
+			})
+
 			It("should fail and show detailed error description if no argument provided", func() {
 				err := ORAS("manifest", "fetch").ExpectFailure().Exec().Err
 				gomega.Expect(err).Should(gbytes.Say("Error"))
