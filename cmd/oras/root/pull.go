@@ -35,6 +35,7 @@ import (
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/descriptor"
 	"oras.land/oras/internal/graph"
 )
 
@@ -172,7 +173,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 	var getConfigOnce sync.Once
 	opts.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		statusFetcher := content.FetcherFunc(func(ctx context.Context, target ocispec.Descriptor) (fetched io.ReadCloser, fetchErr error) {
-			if _, ok := printed.LoadOrStore(status.GenerateContentKey(target), true); ok {
+			if _, ok := printed.LoadOrStore(descriptor.GenerateContentKey(target), true); ok {
 				return fetcher.Fetch(ctx, target)
 			}
 			if err := statusHandler.OnNodeDownloading(target); err != nil {
@@ -260,7 +261,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 				}
 			}
 		}
-		printed.Store(status.GenerateContentKey(desc), true)
+		printed.Store(descriptor.GenerateContentKey(desc), true)
 		return statusHandler.OnNodeDownloaded(desc)
 	}
 
@@ -270,7 +271,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 }
 
 func notifyOnce(notified *sync.Map, s ocispec.Descriptor, notify func(ocispec.Descriptor) error) error {
-	if _, loaded := notified.LoadOrStore(status.GenerateContentKey(s), true); !loaded {
+	if _, loaded := notified.LoadOrStore(descriptor.GenerateContentKey(s), true); !loaded {
 		return notify(s)
 	}
 	return nil
