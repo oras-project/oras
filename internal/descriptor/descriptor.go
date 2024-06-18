@@ -37,3 +37,12 @@ func ShortDigest(desc ocispec.Descriptor) (digestString string) {
 	}
 	return digestString
 }
+
+// GetTitleOrMediaType gets a descriptor name using either title or media type.
+func GetTitleOrMediaType(desc ocispec.Descriptor) (name string, isTitle bool) {
+	name, ok := desc.Annotations[ocispec.AnnotationTitle]
+	if !ok {
+		return desc.MediaType, false
+	}
+	return name, true
+}
