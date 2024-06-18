@@ -45,6 +45,10 @@ var _ = Describe("ORAS beginners:", func() {
 			gomega.Expect(out).Should(gbytes.Say("--distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 		})
 
+		It("should show text as default format type in help doc", func() {
+			MatchDefaultFlagValue("format", "text", "attach")
+		})
+
 		It("should fail when no subject reference provided", func() {
 			ORAS("attach", "--artifact-type", "oras/test").ExpectFailure().MatchErrKeyWords("Error:").Exec()
 		})

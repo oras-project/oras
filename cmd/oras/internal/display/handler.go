@@ -39,7 +39,7 @@ func NewPushHandler(out io.Writer, format option.Format, tty *os.File, verbose b
 	var statusHandler status.PushHandler
 	if tty != nil {
 		statusHandler = status.NewTTYPushHandler(tty)
-	} else if format.Type == "" {
+	} else if format.Type == option.FormatTypeText.Name {
 		statusHandler = status.NewTextPushHandler(out, verbose)
 	} else {
 		statusHandler = status.NewDiscardHandler()
@@ -47,7 +47,7 @@ func NewPushHandler(out io.Writer, format option.Format, tty *os.File, verbose b
 
 	var metadataHandler metadata.PushHandler
 	switch format.Type {
-	case "":
+	case option.FormatTypeText.Name:
 		metadataHandler = text.NewPushHandler(out)
 	case option.FormatTypeJSON.Name:
 		metadataHandler = json.NewPushHandler(out)
@@ -64,7 +64,7 @@ func NewAttachHandler(out io.Writer, format option.Format, tty *os.File, verbose
 	var statusHandler status.AttachHandler
 	if tty != nil {
 		statusHandler = status.NewTTYAttachHandler(tty)
-	} else if format.Type == "" {
+	} else if format.Type == option.FormatTypeText.Name {
 		statusHandler = status.NewTextAttachHandler(out, verbose)
 	} else {
 		statusHandler = status.NewDiscardHandler()
@@ -72,7 +72,7 @@ func NewAttachHandler(out io.Writer, format option.Format, tty *os.File, verbose
 
 	var metadataHandler metadata.AttachHandler
 	switch format.Type {
-	case "":
+	case option.FormatTypeText.Name:
 		metadataHandler = text.NewAttachHandler(out)
 	case option.FormatTypeJSON.Name:
 		metadataHandler = json.NewAttachHandler(out)
@@ -89,7 +89,7 @@ func NewPullHandler(out io.Writer, format option.Format, path string, tty *os.Fi
 	var statusHandler status.PullHandler
 	if tty != nil {
 		statusHandler = status.NewTTYPullHandler(tty)
-	} else if format.Type == "" {
+	} else if format.Type == option.FormatTypeText.Name {
 		statusHandler = status.NewTextPullHandler(out, verbose)
 	} else {
 		statusHandler = status.NewDiscardHandler()
@@ -97,7 +97,7 @@ func NewPullHandler(out io.Writer, format option.Format, path string, tty *os.Fi
 
 	var metadataHandler metadata.PullHandler
 	switch format.Type {
-	case "":
+	case option.FormatTypeText.Name:
 		metadataHandler = text.NewPullHandler(out)
 	case option.FormatTypeJSON.Name:
 		metadataHandler = json.NewPullHandler(out, path)
@@ -113,7 +113,7 @@ func NewPullHandler(out io.Writer, format option.Format, path string, tty *os.Fi
 func NewDiscoverHandler(out io.Writer, format option.Format, path string, rawReference string, desc ocispec.Descriptor, verbose bool) (metadata.DiscoverHandler, error) {
 	var handler metadata.DiscoverHandler
 	switch format.Type {
-	case option.FormatTypeTree.Name, "":
+	case option.FormatTypeTree.Name:
 		handler = tree.NewDiscoverHandler(out, path, desc, verbose)
 	case option.FormatTypeTable.Name:
 		handler = table.NewDiscoverHandler(out, rawReference, desc, verbose)
@@ -133,7 +133,7 @@ func NewManifestFetchHandler(out io.Writer, format option.Format, outputDescript
 	var contentHandler content.ManifestFetchHandler
 
 	switch format.Type {
-	case "":
+	case option.FormatTypeText.Name:
 		// raw
 		if outputDescriptor {
 			metadataHandler = descriptor.NewManifestFetchHandler(out, pretty)
