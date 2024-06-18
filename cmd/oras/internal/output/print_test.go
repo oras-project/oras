@@ -40,26 +40,52 @@ func (mw *mockWriter) String() string {
 	return mw.written
 }
 
-func TestPrint_Error(t *testing.T) {
+func TestPrinter_Println(t *testing.T) {
 	mockWriter := &mockWriter{}
 	printer := NewPrinter(mockWriter, false)
-	printer.Println("boom")
+	err := printer.Println("boom")
 	if mockWriter.errorCount != 1 {
 		t.Error("Expected one errors actual <" + strconv.Itoa(mockWriter.errorCount) + ">")
 	}
+	if err != nil {
+		t.Error("Expected error to be ignored")
+	}
 }
 
-func TestPrint_NoError(t *testing.T) {
-	mockWriter := &mockWriter{}
-	printer := NewPrinter(mockWriter, false)
+func TestPrinter_PrintVerbose_noError(t *testing.T) {
+	builder := &strings.Builder{}
+	printer := NewPrinter(builder, false)
 
-	expected := "blah blah"
-	printer.Println(expected)
-	actual := strings.TrimSpace(mockWriter.String())
+	expected := "normal\n"
+	err := printer.Println("normal")
+	if err != nil {
+		t.Error("Expected no error got <" + err.Error() + ">")
+	}
+	err = printer.PrintVerbose("verbose")
+	if err != nil {
+		t.Error("Expected no error got <" + err.Error() + ">")
+	}
+	actual := builder.String()
 	if expected != actual {
 		t.Error("Expected <" + expected + "> not equal to actual <" + actual + ">")
 	}
-	if mockWriter.errorCount != 0 {
-		t.Error("Expected no errors actual <" + strconv.Itoa(mockWriter.errorCount) + ">")
+}
+
+func TestPrinter_PrintVerbose(t *testing.T) {
+	builder := &strings.Builder{}
+	printer := NewPrinter(builder, true)
+
+	expected := "normal\nverbose\n"
+	err := printer.Println("normal")
+	if err != nil {
+		t.Error("Expected no error got <" + err.Error() + ">")
+	}
+	err = printer.PrintVerbose("verbose")
+	if err != nil {
+		t.Error("Expected no error got <" + err.Error() + ">")
+	}
+	actual := builder.String()
+	if expected != actual {
+		t.Error("Expected <" + expected + "> not equal to actual <" + actual + ">")
 	}
 }
