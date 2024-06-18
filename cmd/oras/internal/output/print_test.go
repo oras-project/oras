@@ -52,7 +52,7 @@ func TestPrint_Error(t *testing.T) {
 	}
 }
 
-func TestPrint_NoError(t *testing.T) {
+func TestPrinter_PrintVerbose_noError(t *testing.T) {
 	builder := &strings.Builder{}
 	printer := NewPrinter(builder, false)
 
