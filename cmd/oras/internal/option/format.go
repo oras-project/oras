@@ -64,6 +64,10 @@ var (
 		Name:  "tree",
 		Usage: "Get referrers recursively and print in tree format",
 	}
+	FormatTypeText = &FormatType{
+		Name:  "text",
+		Usage: "Print in text format",
+	}
 )
 
 // Format contains input and parsed options for formatted output flags.
@@ -71,17 +75,23 @@ type Format struct {
 	FormatFlag   string
 	Type         string
 	Template     string
-	AllowedTypes []*FormatType
+	allowedTypes []*FormatType
 }
 
-// ApplyFlag implements FlagProvider.ApplyFlag.
+// SetTypes sets the default format type and allowed format types.
+func (f *Format) SetTypes(defaultType *FormatType, otherTypes ...*FormatType) {
+	f.FormatFlag = defaultType.Name
+	f.allowedTypes = append(otherTypes, defaultType)
+}
+
+// ApplyFlags implements FlagProvider.ApplyFlag.
 func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 	buf := bytes.NewBufferString("[Experimental] Format output using a custom template:")
 	w := tabwriter.NewWriter(buf, 0, 0, 2, ' ', 0)
-	for _, t := range opts.AllowedTypes {
+	for _, t := range opts.allowedTypes {
 		_, _ = fmt.Fprintf(w, "\n'%s':\t%s", t.Name, t.Usage)
 	}
-	w.Flush()
+	_ = w.Flush()
 	// apply flags
 	fs.StringVar(&opts.FormatFlag, "format", opts.FormatFlag, buf.String())
 	fs.StringVar(&opts.Template, "template", "", "[Experimental] Template string used to format output")
@@ -93,7 +103,7 @@ func (opts *Format) Parse(_ *cobra.Command) error {
 		return err
 	}
 
-	if opts.Type == "" {
+	if opts.Type == FormatTypeText.Name {
 		// flag not specified
 		return nil
 	}
@@ -106,7 +116,7 @@ func (opts *Format) Parse(_ *cobra.Command) error {
 	}
 
 	var optionalTypes []string
-	for _, t := range opts.AllowedTypes {
+	for _, t := range opts.allowedTypes {
 		if opts.Type == t.Name {
 			// type validation passed
 			return nil
@@ -129,7 +139,7 @@ func (opts *Format) parseFlag() error {
 		return nil
 	}
 
-	for _, t := range opts.AllowedTypes {
+	for _, t := range opts.allowedTypes {
 		if !t.HasParams {
 			continue
 		}
