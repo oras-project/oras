@@ -40,7 +40,7 @@ func (mw *mockWriter) String() string {
 	return mw.written
 }
 
-func TestPrint_Error(t *testing.T) {
+func TestPrinter_Println(t *testing.T) {
 	mockWriter := &mockWriter{}
 	printer := NewPrinter(mockWriter, false)
 	err := printer.Println("boom")
