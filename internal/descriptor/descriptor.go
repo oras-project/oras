@@ -46,3 +46,9 @@ func GetTitleOrMediaType(desc ocispec.Descriptor) (name string, isTitle bool) {
 	}
 	return name, true
 }
+
+// GenerateContentKey generates a unique key for each content descriptor using
+// digest and name.
+func GenerateContentKey(desc ocispec.Descriptor) string {
+	return desc.Digest.String() + desc.Annotations[ocispec.AnnotationTitle]
+}

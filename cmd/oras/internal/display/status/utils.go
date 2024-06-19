@@ -15,14 +15,6 @@ limitations under the License.
 
 package status
 
-import ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-
-// GenerateContentKey generates a unique key for each content descriptor, using
-// its digest and name if applicable.
-func GenerateContentKey(desc ocispec.Descriptor) string {
-	return desc.Digest.String() + desc.Annotations[ocispec.AnnotationTitle]
-}
-
 // Prompts for pull events.
 const (
 	PullPromptDownloading = "Downloading"
