@@ -22,6 +22,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/internal/output"
 )
 
 // PullHandler handles text metadata output for pull events.
@@ -34,7 +35,7 @@ type PullHandler struct {
 
 // OnCompleted implements metadata.PullHandler.
 func (ph *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor) error {
-	return parseAndWrite(ph.out, model.NewPull(ph.path+"@"+desc.Digest.String(), ph.pulled.Files()), ph.template)
+	return output.ParseAndWrite(ph.out, model.NewPull(ph.path+"@"+desc.Digest.String(), ph.pulled.Files()), ph.template)
 }
 
 // OnFilePulled implements metadata.PullHandler.

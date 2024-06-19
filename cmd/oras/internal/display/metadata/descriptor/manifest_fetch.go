@@ -19,10 +19,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"oras.land/oras/cmd/oras/internal/output"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
-	"oras.land/oras/cmd/oras/internal/display/utils"
 )
 
 // manifestFetchHandler handles metadata descriptor output.
@@ -37,7 +37,7 @@ func (h *manifestFetchHandler) OnFetched(_ string, desc ocispec.Descriptor, _ []
 	if err != nil {
 		return fmt.Errorf("invalid descriptor: %w", err)
 	}
-	return utils.PrintJSON(h.out, descBytes, h.pretty)
+	return output.PrintJSON(h.out, descBytes, h.pretty)
 }
 
 // NewManifestFetchHandler creates a new handler.

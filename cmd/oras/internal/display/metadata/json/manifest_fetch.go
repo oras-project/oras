@@ -22,7 +22,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
-	"oras.land/oras/cmd/oras/internal/display/utils"
+	"oras.land/oras/cmd/oras/internal/output"
 )
 
 // manifestFetchHandler handles JSON metadata output for manifest fetch events.
@@ -43,5 +43,5 @@ func (h *manifestFetchHandler) OnFetched(path string, desc ocispec.Descriptor, c
 	if err := json.Unmarshal(content, &manifest); err != nil {
 		manifest = nil
 	}
-	return utils.PrintPrettyJSON(h.out, model.NewFetched(path, desc, manifest))
+	return output.PrintPrettyJSON(h.out, model.NewFetched(path, desc, manifest))
 }

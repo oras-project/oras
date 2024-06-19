@@ -22,6 +22,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/contentutil"
 )
 
@@ -47,7 +48,7 @@ func (ph *PushHandler) OnTagged(desc ocispec.Descriptor, tag string) error {
 	return nil
 }
 
-// OnStarted is called after files are copied.
+// OnCopied is called after files are copied.
 func (ph *PushHandler) OnCopied(opts *option.Target) error {
 	if opts.RawReference != "" && !contentutil.IsDigest(opts.Reference) {
 		ph.tagged.AddTag(opts.Reference)
@@ -58,5 +59,5 @@ func (ph *PushHandler) OnCopied(opts *option.Target) error {
 
 // OnCompleted is called after the push is completed.
 func (ph *PushHandler) OnCompleted(root ocispec.Descriptor) error {
-	return parseAndWrite(ph.out, model.NewPush(root, ph.path, ph.tagged.Tags()), ph.template)
+	return output.ParseAndWrite(ph.out, model.NewPush(root, ph.path, ph.tagged.Tags()), ph.template)
 }

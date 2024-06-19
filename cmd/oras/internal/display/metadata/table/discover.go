@@ -23,7 +23,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
-	"oras.land/oras/cmd/oras/internal/display/utils"
+	"oras.land/oras/cmd/oras/internal/output"
 )
 
 // discoverHandler handles json metadata output for discover events.
@@ -91,7 +91,7 @@ func (h *discoverHandler) printDiscoveredReferrersTable() error {
 	for _, ref := range h.referrers {
 		print(ref.ArtifactType, ref.Digest)
 		if h.verbose {
-			if err := utils.PrintPrettyJSON(h.out, ref); err != nil {
+			if err := output.PrintPrettyJSON(h.out, ref); err != nil {
 				return fmt.Errorf("error printing JSON: %w", err)
 			}
 		}

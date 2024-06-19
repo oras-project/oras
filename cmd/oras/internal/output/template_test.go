@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package template
+package output
 
 import (
 	"os"
@@ -21,7 +21,7 @@ import (
 )
 
 func Test_parseAndWrite_err(t *testing.T) {
-	if err := parseAndWrite(os.Stdout, func() {}, ""); err == nil {
+	if err := ParseAndWrite(os.Stdout, func() {}, ""); err == nil {
 		t.Errorf("should return error")
 	}
 }

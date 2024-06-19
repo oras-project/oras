@@ -22,6 +22,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/internal/output"
 )
 
 // AttachHandler handles go-template metadata output for attach events.
@@ -40,5 +41,5 @@ func NewAttachHandler(out io.Writer, template string) metadata.AttachHandler {
 
 // OnCompleted formats the metadata of attach command.
 func (ah *AttachHandler) OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error {
-	return parseAndWrite(ah.out, model.NewAttach(root, opts.Path), ah.template)
+	return output.ParseAndWrite(ah.out, model.NewAttach(root, opts.Path), ah.template)
 }
