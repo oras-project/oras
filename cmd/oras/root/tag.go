@@ -18,6 +18,7 @@ package root
 import (
 	"errors"
 	"fmt"
+
 	"oras.land/oras/cmd/oras/internal/output"
 
 	"github.com/spf13/cobra"
@@ -58,7 +59,7 @@ Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.1', 'v1.0
   oras tag --concurrency 1 localhost:5000/hello:v1.0.1 v1.0.2 latest
 
 Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'layout-dir':
-  oras tag layout-dir:v1.0.1 v1.0.2
+  oras tag --oci-layout layout-dir:v1.0.1 v1.0.2
 `,
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 && (args[0] == "list" || args[0] == "ls") {
