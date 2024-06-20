@@ -20,24 +20,28 @@ import (
 	"testing"
 
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/internal/output"
 )
 
 func TestNewPushHandler(t *testing.T) {
-	_, _, err := NewPushHandler(os.Stdout, option.Format{Type: option.FormatTypeText.Name}, os.Stdout, false)
+	printer := output.NewPrinter(os.Stdout, false)
+	_, _, err := NewPushHandler(printer, option.Format{Type: option.FormatTypeText.Name}, os.Stdout)
 	if err != nil {
 		t.Errorf("NewPushHandler() error = %v, want nil", err)
 	}
 }
 
 func TestNewAttachHandler(t *testing.T) {
-	_, _, err := NewAttachHandler(os.Stdout, option.Format{Type: option.FormatTypeText.Name}, os.Stdout, false)
+	printer := output.NewPrinter(os.Stdout, false)
+	_, _, err := NewAttachHandler(printer, option.Format{Type: option.FormatTypeText.Name}, os.Stdout)
 	if err != nil {
 		t.Errorf("NewAttachHandler() error = %v, want nil", err)
 	}
 }
 
 func TestNewPullHandler(t *testing.T) {
-	_, _, err := NewPullHandler(os.Stdout, option.Format{Type: option.FormatTypeText.Name}, "", os.Stdout, false)
+	printer := output.NewPrinter(os.Stdout, false)
+	_, _, err := NewPullHandler(printer, option.Format{Type: option.FormatTypeText.Name}, "", os.Stdout)
 	if err != nil {
 		t.Errorf("NewPullHandler() error = %v, want nil", err)
 	}

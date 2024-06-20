@@ -35,6 +35,7 @@ import (
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/descriptor"
 	"oras.land/oras/internal/graph"
 )
@@ -112,7 +113,8 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 
 func runPull(cmd *cobra.Command, opts *pullOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-	statusHandler, metadataHandler, err := display.NewPullHandler(cmd.OutOrStdout(), opts.Format, opts.Path, opts.TTY, opts.Verbose)
+	printer := output.NewPrinter(cmd.OutOrStdout(), opts.Verbose)
+	statusHandler, metadataHandler, err := display.NewPullHandler(printer, opts.Format, opts.Path, opts.TTY)
 	if err != nil {
 		return err
 	}

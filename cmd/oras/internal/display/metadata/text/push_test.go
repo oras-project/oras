@@ -23,6 +23,7 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras/cmd/oras/internal/output"
 )
 
 type errorWriter struct{}
@@ -58,13 +59,14 @@ func TestPushHandler_OnCompleted(t *testing.T) {
 				Digest:    digest.FromBytes(content),
 				Size:      int64(len(content)),
 			},
-			true,
+			false, // Printer ignores error
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			printer := output.NewPrinter(tt.out, false)
 			p := &PushHandler{
-				out: tt.out,
+				printer: printer,
 			}
 			if err := p.OnCompleted(tt.root); (err != nil) != tt.wantErr {
 				t.Errorf("PushHandler.OnCompleted() error = %v, wantErr %v", err, tt.wantErr)

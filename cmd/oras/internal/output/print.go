@@ -42,11 +42,29 @@ func NewPrinter(out io.Writer, verbose bool) *Printer {
 	return &Printer{out: out, verbose: verbose}
 }
 
+// GetOut get the output writer for the printer.
+func (p *Printer) GetOut() io.Writer {
+	return p.out
+}
+
 // Println prints objects concurrent-safely with newline.
 func (p *Printer) Println(a ...any) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	_, err := fmt.Fprintln(p.out, a...)
+	if err != nil {
+		err = fmt.Errorf("display output error: %w", err)
+		_, _ = fmt.Fprint(os.Stderr, err)
+	}
+	// Errors are handled above, so return nil
+	return nil
+}
+
+// Printf prints objects concurrent-safely with newline.
+func (p *Printer) Printf(format string, a ...any) error {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+	_, err := fmt.Fprintf(p.out, format, a...)
 	if err != nil {
 		err = fmt.Errorf("display output error: %w", err)
 		_, _ = fmt.Fprint(os.Stderr, err)

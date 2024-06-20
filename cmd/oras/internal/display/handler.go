@@ -32,15 +32,16 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/internal/output"
 )
 
 // NewPushHandler returns status and metadata handlers for push command.
-func NewPushHandler(out io.Writer, format option.Format, tty *os.File, verbose bool) (status.PushHandler, metadata.PushHandler, error) {
+func NewPushHandler(printer *output.Printer, format option.Format, tty *os.File) (status.PushHandler, metadata.PushHandler, error) {
 	var statusHandler status.PushHandler
 	if tty != nil {
 		statusHandler = status.NewTTYPushHandler(tty)
 	} else if format.Type == option.FormatTypeText.Name {
-		statusHandler = status.NewTextPushHandler(out, verbose)
+		statusHandler = status.NewTextPushHandler(printer)
 	} else {
 		statusHandler = status.NewDiscardHandler()
 	}
@@ -48,11 +49,11 @@ func NewPushHandler(out io.Writer, format option.Format, tty *os.File, verbose b
 	var metadataHandler metadata.PushHandler
 	switch format.Type {
 	case option.FormatTypeText.Name:
-		metadataHandler = text.NewPushHandler(out)
+		metadataHandler = text.NewPushHandler(printer)
 	case option.FormatTypeJSON.Name:
-		metadataHandler = json.NewPushHandler(out)
+		metadataHandler = json.NewPushHandler(printer.GetOut())
 	case option.FormatTypeGoTemplate.Name:
-		metadataHandler = template.NewPushHandler(out, format.Template)
+		metadataHandler = template.NewPushHandler(printer.GetOut(), format.Template)
 	default:
 		return nil, nil, errors.UnsupportedFormatTypeError(format.Type)
 	}
@@ -60,12 +61,12 @@ func NewPushHandler(out io.Writer, format option.Format, tty *os.File, verbose b
 }
 
 // NewAttachHandler returns status and metadata handlers for attach command.
-func NewAttachHandler(out io.Writer, format option.Format, tty *os.File, verbose bool) (status.AttachHandler, metadata.AttachHandler, error) {
+func NewAttachHandler(printer *output.Printer, format option.Format, tty *os.File) (status.AttachHandler, metadata.AttachHandler, error) {
 	var statusHandler status.AttachHandler
 	if tty != nil {
 		statusHandler = status.NewTTYAttachHandler(tty)
 	} else if format.Type == option.FormatTypeText.Name {
-		statusHandler = status.NewTextAttachHandler(out, verbose)
+		statusHandler = status.NewTextAttachHandler(printer)
 	} else {
 		statusHandler = status.NewDiscardHandler()
 	}
@@ -73,11 +74,11 @@ func NewAttachHandler(out io.Writer, format option.Format, tty *os.File, verbose
 	var metadataHandler metadata.AttachHandler
 	switch format.Type {
 	case option.FormatTypeText.Name:
-		metadataHandler = text.NewAttachHandler(out)
+		metadataHandler = text.NewAttachHandler(printer)
 	case option.FormatTypeJSON.Name:
-		metadataHandler = json.NewAttachHandler(out)
+		metadataHandler = json.NewAttachHandler(printer.GetOut())
 	case option.FormatTypeGoTemplate.Name:
-		metadataHandler = template.NewAttachHandler(out, format.Template)
+		metadataHandler = template.NewAttachHandler(printer.GetOut(), format.Template)
 	default:
 		return nil, nil, errors.UnsupportedFormatTypeError(format.Type)
 	}
@@ -85,12 +86,12 @@ func NewAttachHandler(out io.Writer, format option.Format, tty *os.File, verbose
 }
 
 // NewPullHandler returns status and metadata handlers for pull command.
-func NewPullHandler(out io.Writer, format option.Format, path string, tty *os.File, verbose bool) (status.PullHandler, metadata.PullHandler, error) {
+func NewPullHandler(printer *output.Printer, format option.Format, path string, tty *os.File) (status.PullHandler, metadata.PullHandler, error) {
 	var statusHandler status.PullHandler
 	if tty != nil {
 		statusHandler = status.NewTTYPullHandler(tty)
 	} else if format.Type == option.FormatTypeText.Name {
-		statusHandler = status.NewTextPullHandler(out, verbose)
+		statusHandler = status.NewTextPullHandler(printer)
 	} else {
 		statusHandler = status.NewDiscardHandler()
 	}
@@ -98,11 +99,11 @@ func NewPullHandler(out io.Writer, format option.Format, path string, tty *os.Fi
 	var metadataHandler metadata.PullHandler
 	switch format.Type {
 	case option.FormatTypeText.Name:
-		metadataHandler = text.NewPullHandler(out)
+		metadataHandler = text.NewPullHandler(printer)
 	case option.FormatTypeJSON.Name:
-		metadataHandler = json.NewPullHandler(out, path)
+		metadataHandler = json.NewPullHandler(printer.GetOut(), path)
 	case option.FormatTypeGoTemplate.Name:
-		metadataHandler = template.NewPullHandler(out, path, format.Template)
+		metadataHandler = template.NewPullHandler(printer.GetOut(), path, format.Template)
 	default:
 		return nil, nil, errors.UnsupportedFormatTypeError(format.Type)
 	}
