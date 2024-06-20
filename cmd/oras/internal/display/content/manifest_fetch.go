@@ -21,7 +21,7 @@ import (
 	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras/cmd/oras/internal/display/utils"
+	"oras.land/oras/cmd/oras/internal/output"
 )
 
 // manifestFetch handles raw content output.
@@ -41,7 +41,7 @@ func (h *manifestFetch) OnContentFetched(desc ocispec.Descriptor, manifest []byt
 		defer f.Close()
 		out = f
 	}
-	return utils.PrintJSON(out, manifest, h.pretty)
+	return output.PrintJSON(out, manifest, h.pretty)
 }
 
 // NewManifestFetchHandler creates a new handler.

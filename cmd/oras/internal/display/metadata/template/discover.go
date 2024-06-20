@@ -23,6 +23,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
+	"oras.land/oras/cmd/oras/internal/output"
 )
 
 // discoverHandler handles json metadata output for discover events.
@@ -60,5 +61,5 @@ func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) err
 
 // OnCompleted implements metadata.DiscoverHandler.
 func (h *discoverHandler) OnCompleted() error {
-	return parseAndWrite(h.out, model.NewDiscover(h.path, h.referrers), h.template)
+	return output.ParseAndWrite(h.out, model.NewDiscover(h.path, h.referrers), h.template)
 }
