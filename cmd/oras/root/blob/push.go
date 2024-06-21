@@ -18,9 +18,7 @@ package blob
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
-	"oras.land/oras/cmd/oras/internal/output"
 	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -31,6 +29,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/status/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/file"
 )
 
@@ -139,9 +138,8 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	outWriter := cmd.OutOrStdout()
-	_, _ = fmt.Fprintln(outWriter, "Pushed", opts.AnnotatedReference())
-	_, _ = fmt.Fprintln(outWriter, "Digest:", desc.Digest)
+	_ = printer.Println("Pushed", opts.AnnotatedReference())
+	_ = printer.Println("Digest:", desc.Digest)
 
 	return nil
 }

@@ -19,7 +19,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"oras.land/oras/cmd/oras/internal/output"
 	"slices"
 	"strings"
 	"sync"
@@ -38,6 +37,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/status/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/docker"
 	"oras.land/oras/internal/graph"
 	"oras.land/oras/internal/registryutil"
@@ -137,8 +137,7 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 		// correct source digest
 		opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, desc.Digest.String())
 	}
-	outWriter := cmd.OutOrStdout()
-	fmt.Fprintln(outWriter, "Copied", opts.From.AnnotatedReference(), "=>", opts.To.AnnotatedReference())
+	_ = printer.Println("Copied", opts.From.AnnotatedReference(), "=>", opts.To.AnnotatedReference())
 
 	if len(opts.extraRefs) != 0 {
 		tagNOpts := oras.DefaultTagNOptions
@@ -148,7 +147,7 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 		}
 	}
 
-	fmt.Fprintln(outWriter, "Digest:", desc.Digest)
+	_ = printer.Println("Digest:", desc.Digest)
 
 	return nil
 }
