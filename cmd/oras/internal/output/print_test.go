@@ -45,7 +45,14 @@ func TestPrinter_Println(t *testing.T) {
 	printer := NewPrinter(mockWriter, false)
 	err := printer.Println("boom")
 	if mockWriter.errorCount != 1 {
-		t.Error("Expected one errors actual <" + strconv.Itoa(mockWriter.errorCount) + ">")
+		t.Error("Expected one error actual <" + strconv.Itoa(mockWriter.errorCount) + ">")
+	}
+	if err != nil {
+		t.Error("Expected error to be ignored")
+	}
+	err = printer.Printf("boom")
+	if mockWriter.errorCount != 2 {
+		t.Error("Expected two errors actual <" + strconv.Itoa(mockWriter.errorCount) + ">")
 	}
 	if err != nil {
 		t.Error("Expected error to be ignored")
@@ -56,8 +63,12 @@ func TestPrinter_PrintVerbose_noError(t *testing.T) {
 	builder := &strings.Builder{}
 	printer := NewPrinter(builder, false)
 
-	expected := "normal\n"
+	expected := "normal\nthing one\n"
 	err := printer.Println("normal")
+	if err != nil {
+		t.Error("Expected no error got <" + err.Error() + ">")
+	}
+	err = printer.Printf("thing %s\n", "one")
 	if err != nil {
 		t.Error("Expected no error got <" + err.Error() + ">")
 	}
