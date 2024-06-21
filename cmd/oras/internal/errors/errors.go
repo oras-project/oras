@@ -152,10 +152,10 @@ func reWrap(errA, errB, errC error) error {
 }
 
 // NewErrEmptyTagOrDigest creates a new error based on the reference string.
-func NewErrEmptyTagOrDigest(ref string, cmd *cobra.Command, needsTag bool) error {
+func NewErrEmptyTagOrDigest(ref string, cmd *cobra.Command, allowTag bool) error {
 	form := `"<name>@<digest>"`
 	errMsg := `no digest specified`
-	if needsTag {
+	if allowTag {
 		form = fmt.Sprintf(`"<name>:<tag>" or %s`, form)
 		errMsg = "no tag or digest specified"
 	}

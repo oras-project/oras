@@ -105,11 +105,13 @@ func (opts *Target) Parse(cmd *cobra.Command) error {
 		return opts.parseOCILayoutReference()
 	default:
 		opts.Type = TargetTypeRemote
-		if _, err := registry.ParseReference(opts.RawReference); err != nil {
+		if ref, err := registry.ParseReference(opts.RawReference); err != nil {
 			return &oerrors.Error{
 				Err:            fmt.Errorf("%q: %w", opts.RawReference, err),
 				Recommendation: "Please make sure the provided reference is in the form of <registry>/<repo>[:tag|@digest]",
 			}
+		} else {
+			opts.Reference = ref.Reference
 		}
 		return opts.Remote.Parse(cmd)
 	}
@@ -243,9 +245,9 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common, logger
 }
 
 // EnsureReferenceNotEmpty returns formalized error when the reference is empty.
-func (opts *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, needsTag bool) error {
+func (opts *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, allowTag bool) error {
 	if opts.Reference == "" {
-		return oerrors.NewErrEmptyTagOrDigest(opts.RawReference, cmd, needsTag)
+		return oerrors.NewErrEmptyTagOrDigest(opts.RawReference, cmd, allowTag)
 	}
 	return nil
 }

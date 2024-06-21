@@ -90,7 +90,13 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
-			return nil
+			if opts.Reference == "" && len(opts.FileRefs) == 0 && len(opts.ManifestAnnotations) == 0 {
+				return &oerrors.Error{
+					Err:            fmt.Errorf(`"%s" is an invalid artifact reference`, opts.RawReference),
+					Recommendation: fmt.Sprintf("Did you forget to specify a subject artifact?"),
+				}
+			}
+			return opts.EnsureReferenceNotEmpty(cmd, true)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runAttach(cmd, &opts)
@@ -135,9 +141,6 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 
 	dst, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
-		return err
-	}
-	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
 		return err
 	}
 	// add both pull and push scope hints for dst repository
