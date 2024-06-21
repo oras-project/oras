@@ -16,25 +16,24 @@ limitations under the License.
 package text
 
 import (
-	"fmt"
-	"io"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/internal/output"
 )
 
 // PushHandler handles text metadata output for push events.
 type PushHandler struct {
-	out     io.Writer
+	printer *output.Printer
 	tagLock sync.Mutex
 }
 
 // NewPushHandler returns a new handler for push events.
-func NewPushHandler(out io.Writer) metadata.PushHandler {
+func NewPushHandler(printer *output.Printer) metadata.PushHandler {
 	return &PushHandler{
-		out: out,
+		printer: printer,
 	}
 }
 
@@ -42,22 +41,19 @@ func NewPushHandler(out io.Writer) metadata.PushHandler {
 func (h *PushHandler) OnTagged(_ ocispec.Descriptor, tag string) error {
 	h.tagLock.Lock()
 	defer h.tagLock.Unlock()
-	_, err := fmt.Fprintln(h.out, "Tagged", tag)
-	return err
+	return h.printer.Println("Tagged", tag)
 }
 
 // OnCopied is called after files are copied.
 func (h *PushHandler) OnCopied(opts *option.Target) error {
-	_, err := fmt.Fprintln(h.out, "Pushed", opts.AnnotatedReference())
-	return err
+	return h.printer.Println("Pushed", opts.AnnotatedReference())
 }
 
 // OnCompleted is called after the push is completed.
 func (h *PushHandler) OnCompleted(root ocispec.Descriptor) error {
-	_, err := fmt.Fprintln(h.out, "ArtifactType:", root.ArtifactType)
+	err := h.printer.Println("ArtifactType:", root.ArtifactType)
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintln(h.out, "Digest:", root.Digest)
-	return err
+	return h.printer.Println("Digest:", root.Digest)
 }

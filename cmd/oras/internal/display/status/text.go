@@ -17,7 +17,6 @@ package status
 
 import (
 	"context"
-	"io"
 	"sync"
 
 	"oras.land/oras/cmd/oras/internal/output"
@@ -33,9 +32,9 @@ type TextPushHandler struct {
 }
 
 // NewTextPushHandler returns a new handler for push command.
-func NewTextPushHandler(out io.Writer, verbose bool) PushHandler {
+func NewTextPushHandler(printer *output.Printer) PushHandler {
 	return &TextPushHandler{
-		printer: output.NewPrinter(out, verbose),
+		printer: printer,
 	}
 }
 
@@ -74,8 +73,8 @@ func (ph *TextPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetche
 }
 
 // NewTextAttachHandler returns a new handler for attach command.
-func NewTextAttachHandler(out io.Writer, verbose bool) AttachHandler {
-	return NewTextPushHandler(out, verbose)
+func NewTextAttachHandler(printer *output.Printer) AttachHandler {
+	return NewTextPushHandler(printer)
 }
 
 // TextPullHandler handles text status output for pull events.
@@ -114,8 +113,8 @@ func (ph *TextPullHandler) OnNodeSkipped(desc ocispec.Descriptor) error {
 }
 
 // NewTextPullHandler returns a new handler for pull command.
-func NewTextPullHandler(out io.Writer, verbose bool) PullHandler {
+func NewTextPullHandler(printer *output.Printer) PullHandler {
 	return &TextPullHandler{
-		printer: output.NewPrinter(out, verbose),
+		printer: printer,
 	}
 }

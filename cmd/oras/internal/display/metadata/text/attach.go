@@ -17,36 +17,36 @@ package text
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/internal/output"
 )
 
 // AttachHandler handles text metadata output for attach events.
 type AttachHandler struct {
-	out io.Writer
+	printer *output.Printer
 }
 
 // NewAttachHandler returns a new handler for attach events.
-func NewAttachHandler(out io.Writer) metadata.AttachHandler {
+func NewAttachHandler(printer *output.Printer) metadata.AttachHandler {
 	return &AttachHandler{
-		out: out,
+		printer: printer,
 	}
 }
 
-// OnCompleted is called when the attach command is completed.
+// OnCompleted is called when the attach command is complete.
 func (ah *AttachHandler) OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error {
 	digest := subject.Digest.String()
 	if !strings.HasSuffix(opts.RawReference, digest) {
 		opts.RawReference = fmt.Sprintf("%s@%s", opts.Path, subject.Digest)
 	}
-	_, err := fmt.Fprintln(ah.out, "Attached to", opts.AnnotatedReference())
+	err := ah.printer.Println("Attached to", opts.AnnotatedReference())
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintln(ah.out, "Digest:", root.Digest)
+	err = ah.printer.Println("Digest:", root.Digest)
 	return err
 }

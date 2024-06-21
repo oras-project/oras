@@ -16,34 +16,33 @@ limitations under the License.
 package text
 
 import (
-	"fmt"
-	"io"
 	"sync/atomic"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/internal/output"
 )
 
 // PullHandler handles text metadata output for pull events.
 type PullHandler struct {
-	out          io.Writer
+	printer      *output.Printer
 	layerSkipped atomic.Bool
 }
 
 // OnCompleted implements metadata.PullHandler.
-func (p *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor) error {
-	if p.layerSkipped.Load() {
-		_, _ = fmt.Fprintf(p.out, "Skipped pulling layers without file name in %q\n", ocispec.AnnotationTitle)
-		_, _ = fmt.Fprintf(p.out, "Use 'oras copy %s --to-oci-layout <layout-dir>' to pull all layers.\n", opts.RawReference)
+func (ph *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor) error {
+	if ph.layerSkipped.Load() {
+		_ = ph.printer.Printf("Skipped pulling layers without file name in %q\n", ocispec.AnnotationTitle)
+		_ = ph.printer.Printf("Use 'oras copy %s --to-oci-layout <layout-dir>' to pull all layers.\n", opts.RawReference)
 	} else {
-		_, _ = fmt.Fprintln(p.out, "Pulled", opts.AnnotatedReference())
-		_, _ = fmt.Fprintln(p.out, "Digest:", desc.Digest)
+		_ = ph.printer.Println("Pulled", opts.AnnotatedReference())
+		_ = ph.printer.Println("Digest:", desc.Digest)
 	}
 	return nil
 }
 
-func (p *PullHandler) OnFilePulled(name string, outputDir string, desc ocispec.Descriptor, descPath string) error {
+func (ph *PullHandler) OnFilePulled(_ string, _ string, _ ocispec.Descriptor, _ string) error {
 	return nil
 }
 
@@ -54,8 +53,8 @@ func (ph *PullHandler) OnLayerSkipped(ocispec.Descriptor) error {
 }
 
 // NewPullHandler returns a new handler for Pull events.
-func NewPullHandler(out io.Writer) metadata.PullHandler {
+func NewPullHandler(printer *output.Printer) metadata.PullHandler {
 	return &PullHandler{
-		out: out,
+		printer: printer,
 	}
 }

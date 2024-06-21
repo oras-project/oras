@@ -31,6 +31,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/graph"
 	"oras.land/oras/internal/registryutil"
 )
@@ -109,7 +110,8 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 
 func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-	displayStatus, displayMetadata, err := display.NewAttachHandler(cmd.OutOrStdout(), opts.Format, opts.TTY, opts.Verbose)
+	printer := output.NewPrinter(cmd.OutOrStdout(), opts.Verbose)
+	displayStatus, displayMetadata, err := display.NewAttachHandler(printer, opts.Format, opts.TTY)
 	if err != nil {
 		return err
 	}
