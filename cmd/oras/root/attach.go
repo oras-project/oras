@@ -91,9 +91,10 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 				return err
 			}
 			if opts.Reference == "" && len(opts.FileRefs) == 0 && len(opts.ManifestAnnotations) == 0 {
+				form, errMsg := oerrors.InvalidTagOrDigestMessage(true)
 				return &oerrors.Error{
-					Err:            fmt.Errorf(`"%s" is an invalid artifact reference`, opts.RawReference),
-					Recommendation: fmt.Sprintf("Did you forget to specify a subject artifact?"),
+					Err:            fmt.Errorf(`"%s": %s`, opts.RawReference, errMsg),
+					Recommendation: fmt.Sprintf("Did you forget to specify a subject artifact? Please specify a reference in the form of %s", form),
 				}
 			}
 			return opts.EnsureReferenceNotEmpty(cmd, true)

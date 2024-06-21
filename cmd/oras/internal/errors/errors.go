@@ -151,14 +151,21 @@ func reWrap(errA, errB, errC error) error {
 	return errC
 }
 
-// NewErrEmptyTagOrDigest creates a new error based on the reference string.
-func NewErrEmptyTagOrDigest(ref string, cmd *cobra.Command, allowTag bool) error {
-	form := `"<name>@<digest>"`
-	errMsg := `no digest specified`
+// InvalidTagOrDigestMessage returns the form and message for invalid tag or
+// digest.
+func InvalidTagOrDigestMessage(allowTag bool) (form, errMsg string) {
+	form = `"<name>@<digest>"`
+	errMsg = `no digest specified`
 	if allowTag {
 		form = fmt.Sprintf(`"<name>:<tag>" or %s`, form)
 		errMsg = "no tag or digest specified"
 	}
+	return
+}
+
+// NewErrEmptyTagOrDigest creates a new error based on the reference string.
+func NewErrEmptyTagOrDigest(ref string, cmd *cobra.Command, allowTag bool) error {
+	form, errMsg := InvalidTagOrDigestMessage(allowTag)
 	return &Error{
 		Err:            fmt.Errorf(`"%s": %s`, ref, errMsg),
 		Usage:          fmt.Sprintf("%s %s", cmd.Parent().CommandPath(), cmd.Use),
