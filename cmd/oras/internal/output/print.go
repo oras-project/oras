@@ -19,9 +19,10 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"oras.land/oras/internal/descriptor"
 	"os"
 	"sync"
+
+	"oras.land/oras/internal/descriptor"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content"
@@ -42,9 +43,11 @@ func NewPrinter(out io.Writer, verbose bool) *Printer {
 	return &Printer{out: out, verbose: verbose}
 }
 
-// GetOut get the output writer for the printer.
-func (p *Printer) GetOut() io.Writer {
-	return p.out
+// Write implements the io.Writer interface.
+func (p *Printer) Write(b []byte) (int, error) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+	return p.out.Write(b)
 }
 
 // Println prints objects concurrent-safely with newline.

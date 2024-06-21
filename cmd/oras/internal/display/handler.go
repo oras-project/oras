@@ -51,9 +51,9 @@ func NewPushHandler(printer *output.Printer, format option.Format, tty *os.File)
 	case option.FormatTypeText.Name:
 		metadataHandler = text.NewPushHandler(printer)
 	case option.FormatTypeJSON.Name:
-		metadataHandler = json.NewPushHandler(printer.GetOut())
+		metadataHandler = json.NewPushHandler(printer)
 	case option.FormatTypeGoTemplate.Name:
-		metadataHandler = template.NewPushHandler(printer.GetOut(), format.Template)
+		metadataHandler = template.NewPushHandler(printer, format.Template)
 	default:
 		return nil, nil, errors.UnsupportedFormatTypeError(format.Type)
 	}
@@ -76,9 +76,9 @@ func NewAttachHandler(printer *output.Printer, format option.Format, tty *os.Fil
 	case option.FormatTypeText.Name:
 		metadataHandler = text.NewAttachHandler(printer)
 	case option.FormatTypeJSON.Name:
-		metadataHandler = json.NewAttachHandler(printer.GetOut())
+		metadataHandler = json.NewAttachHandler(printer)
 	case option.FormatTypeGoTemplate.Name:
-		metadataHandler = template.NewAttachHandler(printer.GetOut(), format.Template)
+		metadataHandler = template.NewAttachHandler(printer, format.Template)
 	default:
 		return nil, nil, errors.UnsupportedFormatTypeError(format.Type)
 	}
@@ -101,9 +101,9 @@ func NewPullHandler(printer *output.Printer, format option.Format, path string, 
 	case option.FormatTypeText.Name:
 		metadataHandler = text.NewPullHandler(printer)
 	case option.FormatTypeJSON.Name:
-		metadataHandler = json.NewPullHandler(printer.GetOut(), path)
+		metadataHandler = json.NewPullHandler(printer, path)
 	case option.FormatTypeGoTemplate.Name:
-		metadataHandler = template.NewPullHandler(printer.GetOut(), path, format.Template)
+		metadataHandler = template.NewPullHandler(printer, path, format.Template)
 	default:
 		return nil, nil, errors.UnsupportedFormatTypeError(format.Type)
 	}
