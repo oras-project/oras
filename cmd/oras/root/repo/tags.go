@@ -16,7 +16,6 @@ limitations under the License.
 package repo
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/opencontainers/go-digest"
@@ -25,6 +24,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/contentutil"
 )
 
@@ -81,6 +81,7 @@ Example - [Experimental] Show tags associated with a digest:
 }
 
 func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
+	printer := output.NewPrinter(cmd.OutOrStdout(), opts.Verbose)
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	finder, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
@@ -99,7 +100,6 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 		}
 		logger.Warnf("[Experimental] querying tags associated to %s, it may take a while...\n", filter)
 	}
-	outWriter := cmd.OutOrStdout()
 	return finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
 			if opts.excludeDigestTag && isDigestTag(tag) {
@@ -107,7 +107,7 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 			}
 			if filter != "" {
 				if tag == opts.Reference {
-					fmt.Fprintln(outWriter, tag)
+					_ = printer.Println(tag)
 					continue
 				}
 				desc, err := finder.Resolve(ctx, tag)
@@ -118,7 +118,7 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 					continue
 				}
 			}
-			fmt.Fprintln(outWriter, tag)
+			_ = printer.Println(tag)
 		}
 		return nil
 	})

@@ -29,6 +29,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/credential"
 	orasio "oras.land/oras/internal/io"
 )
@@ -78,14 +79,14 @@ Example - Log in with username and password in an interactive terminal and no TL
 }
 
 func runLogin(cmd *cobra.Command, opts loginOptions) (err error) {
+	printer := output.NewPrinter(cmd.OutOrStdout(), opts.Verbose)
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-	outWriter := cmd.OutOrStdout()
 
 	// prompt for credential
 	if opts.Secret == "" {
 		if opts.Username == "" {
 			// prompt for username
-			username, err := readLine(outWriter, "Username: ", false)
+			username, err := readLine(printer, "Username: ", false)
 			if err != nil {
 				return err
 			}
@@ -93,14 +94,14 @@ func runLogin(cmd *cobra.Command, opts loginOptions) (err error) {
 		}
 		if opts.Username == "" {
 			// prompt for token
-			if opts.Secret, err = readLine(outWriter, "Token: ", true); err != nil {
+			if opts.Secret, err = readLine(printer, "Token: ", true); err != nil {
 				return err
 			} else if opts.Secret == "" {
 				return errors.New("token required")
 			}
 		} else {
 			// prompt for password
-			if opts.Secret, err = readLine(outWriter, "Password: ", true); err != nil {
+			if opts.Secret, err = readLine(printer, "Password: ", true); err != nil {
 				return err
 			} else if opts.Secret == "" {
 				return errors.New("password required")
@@ -119,12 +120,12 @@ func runLogin(cmd *cobra.Command, opts loginOptions) (err error) {
 	if err = credentials.Login(ctx, store, remote, opts.Credential()); err != nil {
 		return err
 	}
-	fmt.Fprintln(outWriter, "Login Succeeded")
+	_ = printer.Println("Login Succeeded")
 	return nil
 }
 
 func readLine(outWriter io.Writer, prompt string, silent bool) (string, error) {
-	fmt.Fprint(outWriter, prompt)
+	_, _ = fmt.Fprint(outWriter, prompt)
 	fd := int(os.Stdin.Fd())
 	var bytes []byte
 	var err error
