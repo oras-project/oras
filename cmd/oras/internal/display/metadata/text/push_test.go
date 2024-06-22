@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
@@ -64,7 +65,7 @@ func TestPushHandler_OnCompleted(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			printer := output.NewPrinter(tt.out, false)
+			printer := output.NewPrinter(tt.out, os.Stderr, false)
 			p := &PushHandler{
 				printer: printer,
 			}

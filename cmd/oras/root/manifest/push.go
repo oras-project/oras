@@ -113,7 +113,7 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	verbose := opts.Verbose && !opts.OutputDescriptor
-	printer := output.NewPrinter(cmd.OutOrStdout(), verbose)
+	printer := output.NewPrinter(cmd.OutOrStdout(), cmd.ErrOrStderr(), verbose)
 	var target oras.Target
 	var err error
 	target, err = opts.NewTarget(opts.Common, logger)

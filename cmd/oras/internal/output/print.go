@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"sync"
 
 	"oras.land/oras/internal/descriptor"
@@ -34,13 +33,14 @@ type PrintFunc func(ocispec.Descriptor) error
 // Printer prints for status handlers.
 type Printer struct {
 	out     io.Writer
+	err     io.Writer
 	verbose bool
 	lock    sync.Mutex
 }
 
 // NewPrinter creates a new Printer.
-func NewPrinter(out io.Writer, verbose bool) *Printer {
-	return &Printer{out: out, verbose: verbose}
+func NewPrinter(out io.Writer, err io.Writer, verbose bool) *Printer {
+	return &Printer{out: out, err: err, verbose: verbose}
 }
 
 // Write implements the io.Writer interface.
@@ -57,7 +57,7 @@ func (p *Printer) Println(a ...any) error {
 	_, err := fmt.Fprintln(p.out, a...)
 	if err != nil {
 		err = fmt.Errorf("display output error: %w", err)
-		_, _ = fmt.Fprint(os.Stderr, err)
+		_, _ = fmt.Fprint(p.err, err)
 	}
 	// Errors are handled above, so return nil
 	return nil
@@ -70,7 +70,7 @@ func (p *Printer) Printf(format string, a ...any) error {
 	_, err := fmt.Fprintf(p.out, format, a...)
 	if err != nil {
 		err = fmt.Errorf("display output error: %w", err)
-		_, _ = fmt.Fprint(os.Stderr, err)
+		_, _ = fmt.Fprint(p.err, err)
 	}
 	// Errors are handled above, so return nil
 	return nil
