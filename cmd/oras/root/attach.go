@@ -88,17 +88,19 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
 			opts.FileRefs = args[1:]
-			if err := option.Parse(cmd, &opts); err != nil {
-				return err
+			err := option.Parse(cmd, &opts)
+			if err == nil && opts.Reference == "" {
+				// ensure reference is not empty
+				err = oerrors.NewErrEmptyTagOrDigest(opts.RawReference, cmd, true)
 			}
-			if opts.Reference == "" && len(opts.FileRefs) == 0 && len(opts.ManifestAnnotations) == 0 {
-				form, errMsg := oerrors.InvalidTagOrDigestMessage(true)
-				return &oerrors.Error{
-					Err:            fmt.Errorf(`invalid subject artifact "%s": %s`, opts.RawReference, errMsg),
-					Recommendation: fmt.Sprintf("Did you forget to provide the subject artifact? Please specify a reference in the form of %s", form),
+			if len(opts.FileRefs) == 0 && len(opts.ManifestAnnotations) == 0 {
+				// no file or annotation provided, validate reference
+				if err, ok := err.(*oerrors.Error); ok && err.OperationType == oerrors.ParseArtifactReference {
+					// add advice on missing artifact reference
+					err.Recommendation = fmt.Sprintf("Did you forget to provide the subject artifact? %s", err.Recommendation)
 				}
 			}
-			return opts.EnsureReferenceNotEmpty(cmd, true)
+			return err
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runAttach(cmd, &opts)

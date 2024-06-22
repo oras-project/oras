@@ -26,6 +26,15 @@ import (
 	"oras.land/oras-go/v2/registry/remote/errcode"
 )
 
+// OperationType reperesnts the type of operation.
+type OperationType string
+
+const (
+	// ParseArtifactReference is the operation type parsing artifact
+	// reference.
+	ParseArtifactReference = OperationType("")
+)
+
 // RegistryErrorPrefix is the commandline prefix for errors from registry.
 const RegistryErrorPrefix = "Error response from registry:"
 
@@ -39,6 +48,7 @@ func (e UnsupportedFormatTypeError) Error() string {
 
 // Error is the error type for CLI error messaging.
 type Error struct {
+	OperationType
 	Err            error
 	Usage          string
 	Recommendation string
@@ -167,6 +177,7 @@ func InvalidTagOrDigestMessage(allowTag bool) (form, errMsg string) {
 func NewErrEmptyTagOrDigest(ref string, cmd *cobra.Command, allowTag bool) error {
 	form, errMsg := InvalidTagOrDigestMessage(allowTag)
 	return &Error{
+		OperationType:  ParseArtifactReference,
 		Err:            fmt.Errorf(`"%s": %s`, ref, errMsg),
 		Usage:          fmt.Sprintf("%s %s", cmd.Parent().CommandPath(), cmd.Use),
 		Recommendation: fmt.Sprintf(`Please specify a reference in the form of %s. Run "%s -h" for more options and examples`, form, cmd.CommandPath()),
