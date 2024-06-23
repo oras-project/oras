@@ -110,7 +110,6 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 
 func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-	printer := output.NewPrinter(cmd.OutOrStdout(), opts.Verbose)
 
 	// Prepare source
 	src, err := opts.From.NewReadonlyTarget(ctx, opts.Common, logger)
@@ -128,7 +127,7 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	}
 	ctx = registryutil.WithScopeHint(ctx, dst, auth.ActionPull, auth.ActionPush)
 
-	desc, err := doCopy(ctx, printer, src, dst, opts)
+	desc, err := doCopy(ctx, opts.Printer, src, dst, opts)
 	if err != nil {
 		return err
 	}
@@ -137,17 +136,17 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 		// correct source digest
 		opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, desc.Digest.String())
 	}
-	_ = printer.Println("Copied", opts.From.AnnotatedReference(), "=>", opts.To.AnnotatedReference())
+	_ = opts.Println("Copied", opts.From.AnnotatedReference(), "=>", opts.To.AnnotatedReference())
 
 	if len(opts.extraRefs) != 0 {
 		tagNOpts := oras.DefaultTagNOptions
 		tagNOpts.Concurrency = opts.concurrency
-		if _, err = oras.TagN(ctx, status.NewTagStatusPrinter(printer, dst), opts.To.Reference, opts.extraRefs, tagNOpts); err != nil {
+		if _, err = oras.TagN(ctx, status.NewTagStatusPrinter(opts.Printer, dst), opts.To.Reference, opts.extraRefs, tagNOpts); err != nil {
 			return err
 		}
 	}
 
-	_ = printer.Println("Digest:", desc.Digest)
+	_ = opts.Println("Digest:", desc.Digest)
 
 	return nil
 }

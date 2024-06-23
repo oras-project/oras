@@ -24,7 +24,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/cmd/oras/internal/output"
 )
 
 type resolveOptions struct {
@@ -63,7 +62,6 @@ Example - Resolve digest of the target artifact:
 }
 
 func runResolve(cmd *cobra.Command, opts *resolveOptions) error {
-	printer := output.NewPrinter(cmd.OutOrStdout(), opts.Verbose)
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	repo, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
@@ -81,9 +79,9 @@ func runResolve(cmd *cobra.Command, opts *resolveOptions) error {
 	}
 
 	if opts.fullRef {
-		_ = printer.Printf("%s@%s\n", opts.Path, desc.Digest)
+		_ = opts.Printf("%s@%s\n", opts.Path, desc.Digest)
 	} else {
-		_ = printer.Println(desc.Digest.String())
+		_ = opts.Println(desc.Digest.String())
 	}
 
 	return nil
