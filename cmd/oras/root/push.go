@@ -33,7 +33,6 @@ import (
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/contentutil"
 	"oras.land/oras/internal/listener"
 	"oras.land/oras/internal/registryutil"
@@ -152,8 +151,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 
 func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-	printer := output.NewPrinter(cmd.OutOrStdout(), opts.Verbose)
-	displayStatus, displayMetadata, err := display.NewPushHandler(printer, opts.Format, opts.TTY)
+	displayStatus, displayMetadata, err := display.NewPushHandler(opts.Printer, opts.Format, opts.TTY)
 	if err != nil {
 		return err
 	}

@@ -27,7 +27,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/registryutil"
 )
 
@@ -78,7 +77,6 @@ Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614
 }
 
 func deleteManifest(cmd *cobra.Command, opts *deleteOptions) error {
-	printer := output.NewPrinter(cmd.OutOrStdout(), opts.Verbose)
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	manifests, err := opts.NewManifestDeleter(opts.Common, logger)
 	if err != nil {
@@ -100,7 +98,7 @@ func deleteManifest(cmd *cobra.Command, opts *deleteOptions) error {
 		if errors.Is(err, errdef.ErrNotFound) {
 			if opts.Force && !opts.OutputDescriptor {
 				// ignore nonexistent
-				_ = printer.Println("Missing", opts.RawReference)
+				_ = opts.Println("Missing", opts.RawReference)
 				return nil
 			}
 			return fmt.Errorf("%s: the specified manifest does not exist", opts.RawReference)
@@ -129,7 +127,7 @@ func deleteManifest(cmd *cobra.Command, opts *deleteOptions) error {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	_ = printer.Println("Deleted", opts.AnnotatedReference())
+	_ = opts.Println("Deleted", opts.AnnotatedReference())
 
 	return nil
 }
