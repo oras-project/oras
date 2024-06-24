@@ -93,11 +93,11 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 				// ensure reference is not empty
 				err = oerrors.NewErrEmptyTagOrDigest(opts.RawReference, cmd, true)
 			}
-			if len(opts.FileRefs) == 0 && len(opts.ManifestAnnotations) == 0 {
-				// no file or annotation provided, validate reference
+			if len(opts.FileRefs) == 0 {
+				// no file argument provided
 				if err, ok := err.(*oerrors.Error); ok && err.OperationType == oerrors.ParseArtifactReference {
-					// add advice on missing artifact reference
-					err.Recommendation = fmt.Sprintf("Did you forget to provide the subject artifact? %s", err.Recommendation)
+					// invalid reference
+					err.Recommendation = fmt.Sprintf("Have you specified an artifact reference to attach to? %s", err.Recommendation)
 				}
 			}
 			return err
