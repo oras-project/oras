@@ -17,13 +17,13 @@ package root
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"runtime"
 	"strings"
 
 	"github.com/spf13/cobra"
 
+	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/version"
 )
 
@@ -46,15 +46,15 @@ Example - print version:
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			outWriter := cmd.OutOrStdout()
-			return runVersion(outWriter)
+			printer := output.NewPrinter(cmd.OutOrStdout(), false)
+			return runVersion(printer)
 		},
 	}
 
 	return cmd
 }
 
-func runVersion(outWriter io.Writer) error {
+func runVersion(printer *output.Printer) error {
 	items := [][]string{
 		{"Version", version.GetVersion()},
 		{"Go version", runtime.Version()},
@@ -73,7 +73,7 @@ func runVersion(outWriter io.Writer) error {
 		}
 	}
 	for _, item := range items {
-		fmt.Fprintln(outWriter, item[0]+": "+strings.Repeat(" ", size-len(item[0]))+item[1])
+		_ = printer.Println(item[0] + ": " + strings.Repeat(" ", size-len(item[0])) + item[1])
 	}
 
 	return nil

@@ -19,7 +19,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"oras.land/oras/cmd/oras/internal/output"
 	"os"
 	"strings"
 
@@ -35,6 +34,7 @@ import (
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/manifest"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/file"
 )
 
@@ -189,14 +189,14 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		}
 		return opts.Output(os.Stdout, descJSON)
 	}
-	printer.Println("Pushed", opts.AnnotatedReference())
+	_ = printer.Println("Pushed", opts.AnnotatedReference())
 	if len(opts.extraRefs) != 0 {
 		if _, err = oras.TagBytesN(ctx, status.NewTagStatusPrinter(printer, target), mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}
 	}
 
-	fmt.Fprintln(cmd.OutOrStdout(), "Digest:", desc.Digest)
+	_ = printer.Println("Digest:", desc.Digest)
 
 	return nil
 }

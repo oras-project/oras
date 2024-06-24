@@ -27,6 +27,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/registryutil"
 )
 
@@ -73,6 +74,7 @@ Example - Delete a blob and print its descriptor:
 }
 
 func deleteBlob(cmd *cobra.Command, opts *deleteBlobOptions) (err error) {
+	printer := output.NewPrinter(cmd.OutOrStdout(), opts.Verbose)
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	blobs, err := opts.NewBlobDeleter(opts.Common, logger)
 	if err != nil {
@@ -83,14 +85,13 @@ func deleteBlob(cmd *cobra.Command, opts *deleteBlobOptions) (err error) {
 	}
 
 	// add both pull and delete scope hints for dst repository to save potential delete-scope token requests during deleting
-	outWriter := cmd.OutOrStdout()
 	ctx = registryutil.WithScopeHint(ctx, blobs, auth.ActionPull, auth.ActionDelete)
 	desc, err := blobs.Resolve(ctx, opts.Reference)
 	if err != nil {
 		if errors.Is(err, errdef.ErrNotFound) {
 			if opts.Force && !opts.OutputDescriptor {
 				// ignore nonexistent
-				fmt.Fprintln(outWriter, "Missing", opts.RawReference)
+				_ = printer.Println("Missing", opts.RawReference)
 				return nil
 			}
 			return fmt.Errorf("%s: the specified blob does not exist", opts.RawReference)
@@ -119,7 +120,7 @@ func deleteBlob(cmd *cobra.Command, opts *deleteBlobOptions) (err error) {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	fmt.Fprintln(outWriter, "Deleted", opts.AnnotatedReference())
+	_ = printer.Println("Deleted", opts.AnnotatedReference())
 
 	return nil
 }
