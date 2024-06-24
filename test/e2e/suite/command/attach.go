@@ -69,12 +69,25 @@ var _ = Describe("ORAS beginners:", func() {
 				ExpectFailure().MatchErrKeyWords("unknown distribution specification flag").Exec()
 		})
 
+		It("should fail with error suggesting subject missed", func() {
+			err := ORAS("attach", "--artifact-type", "oras/test", RegistryRef(ZOTHost, ImageRepo, "")).ExpectFailure().Exec().Err
+			Expect(err).Should(gbytes.Say("Error"))
+			Expect(err).Should(gbytes.Say("\nHave you specified an artifact reference to attach to?"))
+		})
+
+		It("should fail with error suggesting right form", func() {
+			err := ORAS("attach", "--artifact-type", "oras/test", RegistryRef(ZOTHost, ImageRepo, ""), "test.json").ExpectFailure().Exec().Err
+			Expect(err).Should(gbytes.Say("Error"))
+			Expect(err).Should(gbytes.Say("no tag or digest specified"))
+			Expect(err).ShouldNot(gbytes.Say("\nHave you specified an artifact reference to attach to?"))
+		})
+
 		It("should fail and show detailed error description if no argument provided", func() {
 			err := ORAS("attach").ExpectFailure().Exec().Err
-			gomega.Expect(err).Should(gbytes.Say("Error"))
-			gomega.Expect(err).Should(gbytes.Say("\nUsage: oras attach"))
-			gomega.Expect(err).Should(gbytes.Say("\n"))
-			gomega.Expect(err).Should(gbytes.Say(`Run "oras attach -h"`))
+			Expect(err).Should(gbytes.Say("Error"))
+			Expect(err).Should(gbytes.Say("\nUsage: oras attach"))
+			Expect(err).Should(gbytes.Say("\n"))
+			Expect(err).Should(gbytes.Say(`Run "oras attach -h"`))
 		})
 
 		It("should fail if distribution spec is not valid", func() {
