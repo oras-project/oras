@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/term"
+	"oras.land/oras/cmd/oras/internal/output"
 )
 
 const NoTTYFlag = "no-tty"
@@ -30,7 +31,7 @@ type Common struct {
 	Debug   bool
 	Verbose bool
 	TTY     *os.File
-
+	*output.Printer
 	noTTY bool
 }
 
@@ -42,7 +43,8 @@ func (opts *Common) ApplyFlags(fs *pflag.FlagSet) {
 }
 
 // Parse gets target options from user input.
-func (opts *Common) Parse(*cobra.Command) error {
+func (opts *Common) Parse(cmd *cobra.Command) error {
+	opts.Printer = output.NewPrinter(cmd.OutOrStdout(), opts.Verbose)
 	// use STDERR as TTY output since STDOUT is reserved for pipeable output
 	return opts.parseTTY(os.Stderr)
 }

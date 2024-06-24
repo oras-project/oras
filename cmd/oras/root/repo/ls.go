@@ -25,7 +25,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/repository"
 )
 
@@ -73,7 +72,6 @@ Example - List the repositories under the registry that include values lexically
 }
 
 func listRepository(cmd *cobra.Command, opts *repositoryOptions) error {
-	printer := output.NewPrinter(cmd.OutOrStdout(), opts.Verbose)
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	reg, err := opts.Remote.NewRegistry(opts.hostname, opts.Common, logger)
 	if err != nil {
@@ -82,7 +80,7 @@ func listRepository(cmd *cobra.Command, opts *repositoryOptions) error {
 	err = reg.Repositories(ctx, opts.last, func(repos []string) error {
 		for _, repo := range repos {
 			if subRepo, found := strings.CutPrefix(repo, opts.namespace); found {
-				_ = printer.Println(subRepo)
+				_ = opts.Println(subRepo)
 			}
 		}
 		return nil

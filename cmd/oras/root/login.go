@@ -29,7 +29,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/credential"
 	orasio "oras.land/oras/internal/io"
 )
@@ -79,14 +78,13 @@ Example - Log in with username and password in an interactive terminal and no TL
 }
 
 func runLogin(cmd *cobra.Command, opts loginOptions) (err error) {
-	printer := output.NewPrinter(cmd.OutOrStdout(), opts.Verbose)
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 
 	// prompt for credential
 	if opts.Secret == "" {
 		if opts.Username == "" {
 			// prompt for username
-			username, err := readLine(printer, "Username: ", false)
+			username, err := readLine(opts.Printer, "Username: ", false)
 			if err != nil {
 				return err
 			}
@@ -94,14 +92,14 @@ func runLogin(cmd *cobra.Command, opts loginOptions) (err error) {
 		}
 		if opts.Username == "" {
 			// prompt for token
-			if opts.Secret, err = readLine(printer, "Token: ", true); err != nil {
+			if opts.Secret, err = readLine(opts.Printer, "Token: ", true); err != nil {
 				return err
 			} else if opts.Secret == "" {
 				return errors.New("token required")
 			}
 		} else {
 			// prompt for password
-			if opts.Secret, err = readLine(printer, "Password: ", true); err != nil {
+			if opts.Secret, err = readLine(opts.Printer, "Password: ", true); err != nil {
 				return err
 			} else if opts.Secret == "" {
 				return errors.New("password required")
@@ -120,7 +118,7 @@ func runLogin(cmd *cobra.Command, opts loginOptions) (err error) {
 	if err = credentials.Login(ctx, store, remote, opts.Credential()); err != nil {
 		return err
 	}
-	_ = printer.Println("Login Succeeded")
+	_ = opts.Println("Login Succeeded")
 	return nil
 }
 
