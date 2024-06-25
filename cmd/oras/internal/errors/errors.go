@@ -26,13 +26,12 @@ import (
 	"oras.land/oras-go/v2/registry/remote/errcode"
 )
 
-// OperationType reperesnts the type of operation.
-type OperationType string
+type OperationType int
 
 const (
 	// ParseArtifactReference is the operation type parsing artifact
 	// reference.
-	ParseArtifactReference = OperationType("")
+	ParseArtifactReference = OperationType(iota)
 )
 
 // RegistryErrorPrefix is the commandline prefix for errors from registry.
