@@ -44,7 +44,7 @@ func (opts *Common) ApplyFlags(fs *pflag.FlagSet) {
 
 // Parse gets target options from user input.
 func (opts *Common) Parse(cmd *cobra.Command) error {
-	opts.Printer = output.NewPrinter(cmd.OutOrStdout(), opts.Verbose)
+	opts.Printer = output.NewPrinter(cmd.OutOrStdout(), cmd.OutOrStderr(), opts.Verbose)
 	// use STDERR as TTY output since STDOUT is reserved for pipeable output
 	return opts.parseTTY(os.Stderr)
 }
