@@ -24,7 +24,7 @@ import (
 )
 
 func TestNewPushHandler(t *testing.T) {
-	printer := output.NewPrinter(os.Stdout, false)
+	printer := output.NewPrinter(os.Stdout, os.Stderr, false)
 	_, _, err := NewPushHandler(printer, option.Format{Type: option.FormatTypeText.Name}, os.Stdout)
 	if err != nil {
 		t.Errorf("NewPushHandler() error = %v, want nil", err)
@@ -32,7 +32,7 @@ func TestNewPushHandler(t *testing.T) {
 }
 
 func TestNewAttachHandler(t *testing.T) {
-	printer := output.NewPrinter(os.Stdout, false)
+	printer := output.NewPrinter(os.Stdout, os.Stderr, false)
 	_, _, err := NewAttachHandler(printer, option.Format{Type: option.FormatTypeText.Name}, os.Stdout)
 	if err != nil {
 		t.Errorf("NewAttachHandler() error = %v, want nil", err)
@@ -40,7 +40,7 @@ func TestNewAttachHandler(t *testing.T) {
 }
 
 func TestNewPullHandler(t *testing.T) {
-	printer := output.NewPrinter(os.Stdout, false)
+	printer := output.NewPrinter(os.Stdout, os.Stderr, false)
 	_, _, err := NewPullHandler(printer, option.Format{Type: option.FormatTypeText.Name}, "", os.Stdout)
 	if err != nil {
 		t.Errorf("NewPullHandler() error = %v, want nil", err)
