@@ -121,7 +121,7 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 		return err
 	}
 	if exists {
-		opts.PrintStatus(desc, "Exists")
+		err = opts.PrintStatus(desc, "Exists")
 	} else {
 		err = opts.doPush(ctx, opts.Printer, target, desc, rc)
 	}
