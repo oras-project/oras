@@ -18,7 +18,6 @@ package root
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -85,7 +84,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 			if cmd.Flags().Changed("output") {
 				switch opts.Format.Type {
 				case "tree", "json", "table":
-					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "[DEPRECATED] --output is deprecated, try `--format %s` instead\n", opts.Template)
+					cmd.PrintErrf("[DEPRECATED] --output is deprecated, try `--format %s` instead\n", opts.Template)
 				default:
 					return errors.New("output type can only be tree, table or json")
 				}
@@ -128,7 +127,7 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 		return err
 	}
 
-	handler, err := display.NewDiscoverHandler(cmd.OutOrStdout(), opts.Format, opts.Path, opts.RawReference, desc, opts.Verbose)
+	handler, err := display.NewDiscoverHandler(opts.Printer, opts.Format, opts.Path, opts.RawReference, desc, opts.Verbose)
 	if err != nil {
 		return err
 	}

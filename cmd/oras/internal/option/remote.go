@@ -176,9 +176,9 @@ func (opts *Remote) Parse(cmd *cobra.Command) error {
 // optional cmd prompt.
 func (opts *Remote) readSecret(cmd *cobra.Command) (err error) {
 	if cmd.Flags().Changed(identityTokenFlag) {
-		fmt.Fprintln(cmd.ErrOrStderr(), "WARNING! Using --identity-token via the CLI is insecure. Use --identity-token-stdin.")
+		cmd.PrintErrln("WARNING! Using --identity-token via the CLI is insecure. Use --identity-token-stdin.")
 	} else if cmd.Flags().Changed(passwordFlag) {
-		fmt.Fprintln(cmd.ErrOrStderr(), "WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
+		cmd.PrintErrln("WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
 	} else if opts.secretFromStdin {
 		// Prompt for credential
 		secret, err := io.ReadAll(os.Stdin)

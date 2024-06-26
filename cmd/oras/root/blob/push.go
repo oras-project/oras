@@ -87,6 +87,7 @@ Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
 					return errors.New("`--size` must be provided if the blob is read from stdin")
 				}
 			}
+			opts.Verbose = opts.Verbose && !opts.OutputDescriptor
 			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -102,8 +103,6 @@ Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
 
 func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-	verbose := opts.Verbose && !opts.OutputDescriptor
-	printer := output.NewPrinter(cmd.OutOrStdout(), cmd.ErrOrStderr(), verbose)
 
 	target, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
@@ -122,9 +121,9 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 		return err
 	}
 	if exists {
-		err = printer.PrintStatus(desc, "Exists")
+		opts.PrintStatus(desc, "Exists")
 	} else {
-		err = opts.doPush(ctx, printer, target, desc, rc)
+		err = opts.doPush(ctx, opts.Printer, target, desc, rc)
 	}
 	if err != nil {
 		return err
@@ -138,8 +137,8 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	_ = printer.Println("Pushed", opts.AnnotatedReference())
-	_ = printer.Println("Digest:", desc.Digest)
+	_ = opts.Println("Pushed", opts.AnnotatedReference())
+	_ = opts.Println("Digest:", desc.Digest)
 
 	return nil
 }

@@ -34,7 +34,6 @@ import (
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/manifest"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/file"
 )
 
@@ -96,6 +95,7 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 			refs := strings.Split(args[0], ",")
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
+			opts.Verbose = opts.Verbose && !opts.OutputDescriptor
 			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -112,8 +112,6 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 
 func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-	verbose := opts.Verbose && !opts.OutputDescriptor
-	printer := output.NewPrinter(cmd.OutOrStdout(), cmd.ErrOrStderr(), verbose)
 	var target oras.Target
 	var err error
 	target, err = opts.NewTarget(opts.Common, logger)
@@ -158,17 +156,17 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		return err
 	}
 	if match {
-		if err := printer.PrintStatus(desc, "Exists"); err != nil {
+		if err := opts.PrintStatus(desc, "Exists"); err != nil {
 			return err
 		}
 	} else {
-		if err = printer.PrintStatus(desc, "Uploading"); err != nil {
+		if err = opts.PrintStatus(desc, "Uploading"); err != nil {
 			return err
 		}
 		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil {
 			return err
 		}
-		if err = printer.PrintStatus(desc, "Uploaded "); err != nil {
+		if err = opts.PrintStatus(desc, "Uploaded "); err != nil {
 			return err
 		}
 	}
@@ -189,14 +187,14 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		}
 		return opts.Output(os.Stdout, descJSON)
 	}
-	_ = printer.Println("Pushed", opts.AnnotatedReference())
+	_ = opts.Println("Pushed", opts.AnnotatedReference())
 	if len(opts.extraRefs) != 0 {
-		if _, err = oras.TagBytesN(ctx, status.NewTagStatusPrinter(printer, target), mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
+		if _, err = oras.TagBytesN(ctx, status.NewTagStatusPrinter(opts.Printer, target), mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}
 	}
 
-	_ = printer.Println("Digest:", desc.Digest)
+	_ = opts.Println("Digest:", desc.Digest)
 
 	return nil
 }
