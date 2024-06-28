@@ -72,14 +72,14 @@ var _ = Describe("ORAS beginners:", func() {
 		It("should fail with error suggesting subject missed", func() {
 			err := ORAS("attach", "--artifact-type", "oras/test", RegistryRef(ZOTHost, ImageRepo, "")).ExpectFailure().Exec().Err
 			Expect(err).Should(gbytes.Say("Error"))
-			Expect(err).Should(gbytes.Say("\nHave you specified an artifact reference to attach to?"))
+			Expect(err).Should(gbytes.Say("\nAre you missing an artifact reference to attach to?"))
 		})
 
 		It("should fail with error suggesting right form", func() {
 			err := ORAS("attach", "--artifact-type", "oras/test", RegistryRef(ZOTHost, ImageRepo, ""), "./test.json").ExpectFailure().Exec().Err
 			Expect(err).Should(gbytes.Say("Error"))
 			Expect(err).Should(gbytes.Say("no tag or digest specified"))
-			Expect(err).ShouldNot(gbytes.Say("\nHave you specified an artifact reference to attach to?"))
+			Expect(err).ShouldNot(gbytes.Say("\nAre you missing an artifact reference to attach to?"))
 		})
 
 		It("should fail and show detailed error description if no argument provided", func() {
