@@ -88,7 +88,10 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 			opts.RawReference = args[0]
 			opts.FileRefs = args[1:]
 			err := option.Parse(cmd, &opts)
-			if err == nil && opts.Reference == "" {
+			if err == nil {
+				if opts.Reference != "" {
+					return nil
+				}
 				// ensure reference is not empty
 				err = oerrors.NewErrEmptyTagOrDigest(opts.RawReference, cmd, true)
 			}
