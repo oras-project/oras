@@ -99,7 +99,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 				// no file argument provided
 				if err, ok := err.(*oerrors.Error); ok && err.OperationType == oerrors.OperationTypeParseArtifactReference {
 					// invalid reference
-					err.Recommendation = fmt.Sprintf("Have you specified an artifact reference to attach to? %s", err.Recommendation)
+					err.Recommendation = fmt.Sprintf("Are you missing an artifact reference to attach to? %s", err.Recommendation)
 				}
 			}
 			return err
