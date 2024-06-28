@@ -26,12 +26,13 @@ import (
 	"oras.land/oras-go/v2/registry/remote/errcode"
 )
 
+// OperationType stands for certain type of operations.
 type OperationType int
 
 const (
-	// ParseArtifactReference is the operation type parsing artifact
-	// reference.
-	ParseArtifactReference = OperationType(iota)
+	// OperationTypeParseArtifactReference represents parsing artifact
+	// reference operation.
+	OperationTypeParseArtifactReference OperationType = iota + 1
 )
 
 // RegistryErrorPrefix is the commandline prefix for errors from registry.
@@ -47,7 +48,7 @@ func (e UnsupportedFormatTypeError) Error() string {
 
 // Error is the error type for CLI error messaging.
 type Error struct {
-	OperationType
+	OperationType  OperationType
 	Err            error
 	Usage          string
 	Recommendation string
@@ -160,23 +161,16 @@ func reWrap(errA, errB, errC error) error {
 	return errC
 }
 
-// InvalidTagOrDigestMessage returns the form and message for invalid tag or
-// digest.
-func InvalidTagOrDigestMessage(allowTag bool) (form, errMsg string) {
-	form = `"<name>@<digest>"`
-	errMsg = `no digest specified`
-	if allowTag {
+// NewErrEmptyTagOrDigest creates a new error based on the reference string.
+func NewErrEmptyTagOrDigest(ref string, cmd *cobra.Command, needsTag bool) error {
+	form := `"<name>@<digest>"`
+	errMsg := `no digest specified`
+	if needsTag {
 		form = fmt.Sprintf(`"<name>:<tag>" or %s`, form)
 		errMsg = "no tag or digest specified"
 	}
-	return
-}
-
-// NewErrEmptyTagOrDigest creates a new error based on the reference string.
-func NewErrEmptyTagOrDigest(ref string, cmd *cobra.Command, allowTag bool) error {
-	form, errMsg := InvalidTagOrDigestMessage(allowTag)
 	return &Error{
-		OperationType:  ParseArtifactReference,
+		OperationType:  OperationTypeParseArtifactReference,
 		Err:            fmt.Errorf(`"%s": %s`, ref, errMsg),
 		Usage:          fmt.Sprintf("%s %s", cmd.Parent().CommandPath(), cmd.Use),
 		Recommendation: fmt.Sprintf(`Please specify a reference in the form of %s. Run "%s -h" for more options and examples`, form, cmd.CommandPath()),

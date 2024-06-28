@@ -107,7 +107,7 @@ func (opts *Target) Parse(cmd *cobra.Command) error {
 		opts.Type = TargetTypeRemote
 		if ref, err := registry.ParseReference(opts.RawReference); err != nil {
 			return &oerrors.Error{
-				OperationType:  oerrors.ParseArtifactReference,
+				OperationType:  oerrors.OperationTypeParseArtifactReference,
 				Err:            fmt.Errorf("%q: %w", opts.RawReference, err),
 				Recommendation: "Please make sure the provided reference is in the form of <registry>/<repo>[:tag|@digest]",
 			}
