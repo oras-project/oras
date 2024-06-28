@@ -92,7 +92,6 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 				if opts.Reference != "" {
 					return nil
 				}
-				// ensure reference is not empty
 				err = oerrors.NewErrEmptyTagOrDigest(opts.RawReference, cmd, true)
 			}
 			if len(opts.FileRefs) == 0 {
