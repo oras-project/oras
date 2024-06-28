@@ -18,13 +18,14 @@ package root
 import (
 	"errors"
 	"fmt"
+	"oras.land/oras/cmd/oras/internal/display/metadata/text"
+	"oras.land/oras/internal/listener"
 
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
-	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -108,9 +109,11 @@ func tagManifest(cmd *cobra.Command, opts *tagOptions) error {
 
 	tagNOpts := oras.DefaultTagNOptions
 	tagNOpts.Concurrency = opts.concurrency
+	tagHandler := text.NewTagHandler(opts.Printer, fmt.Sprintf("[%s] %s", opts.Type, opts.Path))
+	tagListener := listener.NewTagListener(target, tagHandler.OnTagging, tagHandler.OnTagged)
 	_, err = oras.TagN(
 		ctx,
-		status.NewTagStatusHintPrinter(opts.Printer, target, fmt.Sprintf("[%s] %s", opts.Type, opts.Path)),
+		tagListener,
 		opts.Reference,
 		opts.targetRefs,
 		tagNOpts,

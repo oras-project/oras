@@ -42,7 +42,7 @@ func NewPushHandler(out io.Writer, template string) metadata.PushHandler {
 	}
 }
 
-// OnTagged implements metadata.TagHandler.
+// OnTagged implements metadata.TaggedHandler.
 func (ph *PushHandler) OnTagged(desc ocispec.Descriptor, tag string) error {
 	ph.tagged.AddTag(tag)
 	return nil
