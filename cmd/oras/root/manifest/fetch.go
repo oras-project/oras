@@ -109,7 +109,7 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 
 func fetchManifest(cmd *cobra.Command, opts *fetchOptions) (fetchErr error) {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-	metadataHandler, contentHandler, err := display.NewManifestFetchHandler(cmd.OutOrStdout(), opts.Format, opts.OutputDescriptor, opts.Pretty.Pretty, opts.outputPath)
+	metadataHandler, contentHandler, err := display.NewManifestFetchHandler(opts.Printer, opts.Format, opts.OutputDescriptor, opts.Pretty.Pretty, opts.outputPath)
 	if err != nil {
 		return err
 	}
