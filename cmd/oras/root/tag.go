@@ -58,6 +58,10 @@ Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.1', 'v1.0
 
 Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'layout-dir':
   oras tag --oci-layout layout-dir:v1.0.1 v1.0.2
+
+Example - Tag the referrers with digest sha256:9463e0d192846bc994279417b50114606712d516aab45f4d8b31cbc6e46aad71 to 'v1.0.2' using specific methods for the Referrers API:
+  oras tag --distribution-spec v1.1-referrers-api localhost:5000/hello@sha256:9463e0d192846bc994279417b50114606712d516aab45f4d8b31cbc6e46aad71 v1.0.2
+  oras tag --distribution-spec v1.1-referrers-tag localhost:5000/hello@sha256:9463e0d192846bc994279417b50114606712d516aab45f4d8b31cbc6e46aad71 v1.0.2
 `,
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 && (args[0] == "list" || args[0] == "ls") {
@@ -91,6 +95,7 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 		},
 	}
 
+	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	return oerrors.Command(cmd, &opts.Target)
