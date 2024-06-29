@@ -96,28 +96,15 @@ var _ = Describe("1.1 registry users:", func() {
 
 var _ = Describe("1.0 registry users:", func() {
 	When("running `tag`", func() {
-		It("should tag a referrer witout tag schema", Focus, func() {
+		It("should tag a referrer witout tag schema", func() {
 			// prepare: generate a referrer manifest and push it to the fallback registry
-			root := GinkgoT().TempDir()
-			pushedDigestBytes := ORAS("push", Flags.Layout, root, "--format", "go-template={{.digest}}").
-				Exec().
-				Out.
-				Contents()
-			pushedDigest := string(pushedDigestBytes)
-			manifestPath := filepath.Join(root, "manifest.json")
-			attachedDigestBytes := ORAS("attach", "--artifact-type", "oras/e2e", Flags.Layout, LayoutRef(root, pushedDigest), "-a", "a=b", "--export-manifest", manifestPath, "--format", "go-template={{.digest}}").
-				Exec().
-				Out.
-				Contents()
-			attachedDigest := string(attachedDigestBytes)
 			repo := fmt.Sprintf("command/tag/%d/referrers", GinkgoRandomSeed())
-			attachedRef := RegistryRef(FallbackHost, repo, attachedDigest)
-			ORAS("push", RegistryRef(FallbackHost, repo, ""), "--artifact-type", "oras/e2e").Exec()
-			ORAS("manifest", "push", attachedRef, manifestPath).Exec()
+			ORAS("cp", "-r", RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), "--to-distribution-spec", "v1.1-referrers-api", RegistryRef(FallbackHost, repo, foobar.Tag)).Exec()
 			// test
-			tagAndValidate(FallbackHost, repo, attachedDigest, attachedDigest, "tagged-referrer")
+			referrerDigest := foobar.SBOMImageReferrer.Digest.String()
+			tagAndValidate(FallbackHost, repo, referrerDigest, referrerDigest, "tagged-referrer")
 			// ensure no referrer index is created
-			indexReferrerTag := RegistryRef(FallbackHost, repo, strings.Replace(pushedDigest, ":", "-", 1))
+			indexReferrerTag := RegistryRef(FallbackHost, repo, strings.Replace(foobar.Digest, ":", "-", 1))
 			ORAS("manifest", "fetch", indexReferrerTag).
 				MatchErrKeyWords(fmt.Sprintf("%s: not found", indexReferrerTag)).
 				ExpectFailure().
