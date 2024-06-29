@@ -81,7 +81,7 @@ var _ = Describe("1.1 registry users:", func() {
 		It("should add multiple tags to an existent manifest when providing tag reference", func() {
 			tagAndValidate(ZOTHost, ImageRepo, multi_arch.Tag, multi_arch.Digest, "tag1-via-tag", "tag1-via-tag", "tag1-via-tag")
 		})
-		It("should a referrer witout adding referrer index", func() {
+		It("should tag a referrer witout tag schema", func() {
 			referrerDigest := foobar.SBOMImageReferrer.Digest.String()
 			tagAndValidate(ZOTHost, ArtifactRepo, referrerDigest, referrerDigest, "tagged-referrer")
 			// ensure no referrer index is created
@@ -96,7 +96,7 @@ var _ = Describe("1.1 registry users:", func() {
 
 var _ = Describe("1.0 registry users:", func() {
 	When("running `tag`", func() {
-		It("should a referrer witout adding referrer index", func() {
+		It("should tag a referrer witout tag schema", func() {
 			// prepare: generate a referrer manifest and push it to the fallback registry
 			root := GinkgoT().TempDir()
 			pushedDigestBytes := ORAS("push", Flags.Layout, root, "--format", "go-template={{.digest}}").
