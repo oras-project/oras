@@ -96,7 +96,7 @@ var _ = Describe("1.1 registry users:", func() {
 
 var _ = Describe("1.0 registry users:", func() {
 	When("running `tag`", func() {
-		It("should tag a referrer witout tag schema", func() {
+		It("should tag a referrer witout tag schema", Focus, func() {
 			// prepare: generate a referrer manifest and push it to the fallback registry
 			root := GinkgoT().TempDir()
 			pushedDigestBytes := ORAS("push", Flags.Layout, root, "--format", "go-template={{.digest}}").
@@ -117,7 +117,7 @@ var _ = Describe("1.0 registry users:", func() {
 			// test
 			tagAndValidate(FallbackHost, repo, attachedDigest, attachedDigest, "tagged-referrer")
 			// ensure no referrer index is created
-			indexReferrerTag := RegistryRef(FallbackHost, ArtifactRepo, strings.Replace(pushedDigest, ":", "-", 1))
+			indexReferrerTag := RegistryRef(FallbackHost, repo, strings.Replace(pushedDigest, ":", "-", 1))
 			ORAS("manifest", "fetch", indexReferrerTag).
 				MatchErrKeyWords(fmt.Sprintf("%s: not found", indexReferrerTag)).
 				ExpectFailure().
