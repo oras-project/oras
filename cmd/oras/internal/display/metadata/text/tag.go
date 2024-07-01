@@ -29,7 +29,7 @@ type TagHandler struct {
 	refPrefix string
 }
 
-// NewTagHandler returns a new handler for attach events.
+// NewTagHandler returns a new handler for tag events.
 func NewTagHandler(printer *output.Printer, refPrefix string) metadata.TagHandler {
 	return &TagHandler{
 		printer:   printer,
