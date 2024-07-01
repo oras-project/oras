@@ -67,7 +67,6 @@ func tagAndValidate(reg string, repo string, tagOrDigest string, digestText stri
 }
 
 var _ = Describe("1.1 registry users:", func() {
-
 	When("running `tag`", func() {
 		It("should add a tag to an existent manifest when providing tag reference", func() {
 			tagAndValidate(ZOTHost, ImageRepo, multi_arch.Tag, multi_arch.Digest, "tag-via-tag")
@@ -82,10 +81,14 @@ var _ = Describe("1.1 registry users:", func() {
 			tagAndValidate(ZOTHost, ImageRepo, multi_arch.Tag, multi_arch.Digest, "tag1-via-tag", "tag1-via-tag", "tag1-via-tag")
 		})
 		It("should tag a referrer witout tag schema", func() {
+			// parepare:
+			repo := fmt.Sprintf("command/tag/%d/referrers", GinkgoRandomSeed())
+			ORAS("cp", "-r", RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag), "--to-distribution-spec", "v1.1-referrers-api", RegistryRef(ZOTHost, repo, foobar.Tag)).Exec()
+			// test
 			referrerDigest := foobar.SBOMImageReferrer.Digest.String()
-			tagAndValidate(ZOTHost, ArtifactRepo, referrerDigest, referrerDigest, "tagged-referrer")
+			tagAndValidate(ZOTHost, repo, referrerDigest, referrerDigest, "tagged-referrer")
 			// ensure no referrer index is created
-			ref := RegistryRef(ZOTHost, ArtifactRepo, strings.Replace(foobar.Digest, ":", "-", 1))
+			ref := RegistryRef(ZOTHost, repo, strings.Replace(foobar.Digest, ":", "-", 1))
 			ORAS("manifest", "fetch", ref).
 				MatchErrKeyWords(fmt.Sprintf("%s: not found", ref)).
 				ExpectFailure().
@@ -97,7 +100,7 @@ var _ = Describe("1.1 registry users:", func() {
 var _ = Describe("1.0 registry users:", func() {
 	When("running `tag`", func() {
 		It("should tag a referrer witout tag schema", func() {
-			// prepare: generate a referrer manifest and push it to the fallback registry
+			// prepare: copy to the fallback registry
 			repo := fmt.Sprintf("command/tag/%d/referrers", GinkgoRandomSeed())
 			ORAS("cp", "-r", RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), "--to-distribution-spec", "v1.1-referrers-api", RegistryRef(FallbackHost, repo, foobar.Tag)).Exec()
 			// test
