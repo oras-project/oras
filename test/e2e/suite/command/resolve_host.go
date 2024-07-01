@@ -48,7 +48,7 @@ func ResolveFlags(reg string, host string, flagType resolveType) []string {
 	resolveFlag := "resolve"
 	usernameFlag := "username"
 	passwordFlag := "password"
-	plainHttpFlag := "plain-http"
+	plainHttpFlag := "insecure"
 	fp := "--"
 
 	switch flagType {
@@ -64,7 +64,7 @@ func ResolveFlags(reg string, host string, flagType resolveType) []string {
 		plainHttpFlag = "to-" + plainHttpFlag
 	}
 
-	return []string{fp + resolveFlag, fmt.Sprintf("%s:80:127.0.0.1:%s", host, port), fp + usernameFlag, Username, fp + passwordFlag, Password, fp + plainHttpFlag}
+	return []string{fp + resolveFlag, fmt.Sprintf("%s:80:127.0.0.1:%s", host, port), fp + resolveFlag, fmt.Sprintf("%s:443:127.0.0.1:%s", host, port), fp + usernameFlag, Username, fp + passwordFlag, Password, fp + plainHttpFlag}
 }
 
 var _ = Describe("1.1 registry users:", func() {
