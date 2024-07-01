@@ -104,8 +104,8 @@ func tagManifest(cmd *cobra.Command, opts *tagOptions) error {
 		return err
 	}
 	if targetRepo, ok := target.(*remote.Repository); ok {
-		// Since referrer capability has not be set or detected yet, nil
-		// is the only returned value and thus can be ignored
+		// Since referrer capability has not been set or detected yet,
+		// nil is the only returned value and thus can be ignored
 		_ = targetRepo.SetReferrersCapability(true)
 	}
 	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
