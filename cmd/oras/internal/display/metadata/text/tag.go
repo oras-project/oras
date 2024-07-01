@@ -22,7 +22,7 @@ import (
 	"sync"
 )
 
-// TagHandler handles text metadata output for attach events.
+// TagHandler handles text metadata output for tag events.
 type TagHandler struct {
 	printer   *output.Printer
 	printOnce sync.Once
