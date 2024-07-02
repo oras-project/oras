@@ -375,6 +375,19 @@ var _ = Describe("1.1 registry users:", func() {
 				WithInput(strings.NewReader(manifest)).Exec()
 		})
 
+		It("should push a manifest and add multiple tags to it", func() {
+			repo := fmt.Sprintf(repoFmt, "push", "multi-tags")
+			CopyZOTRepo(ImageRepo, repo)
+			// test
+			ORAS("manifest", "push", fmt.Sprintf("%s,t2,t3", RegistryRef(ZOTHost, repo, "t1")), "-").
+				WithInput(strings.NewReader(manifest)).
+				Exec()
+			// verify
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, "t1")).Exec()
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, "t2")).Exec()
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, "t3")).Exec()
+		})
+
 		It("should push a manifest from file", func() {
 			manifestPath := WriteTempFile("manifest.json", manifest)
 			tag := "from-file"
