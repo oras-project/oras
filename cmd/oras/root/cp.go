@@ -33,13 +33,14 @@ import (
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
-	"oras.land/oras/cmd/oras/internal/display/status"
+	"oras.land/oras/cmd/oras/internal/display/metadata/text"
 	"oras.land/oras/cmd/oras/internal/display/status/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/docker"
 	"oras.land/oras/internal/graph"
+	"oras.land/oras/internal/listener"
 	"oras.land/oras/internal/registryutil"
 )
 
@@ -141,7 +142,9 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	if len(opts.extraRefs) != 0 {
 		tagNOpts := oras.DefaultTagNOptions
 		tagNOpts.Concurrency = opts.concurrency
-		if _, err = oras.TagN(ctx, status.NewTagStatusPrinter(opts.Printer, dst), opts.To.Reference, opts.extraRefs, tagNOpts); err != nil {
+		tagHandler := text.NewTagHandler(opts.Printer, "")
+		tagListener := listener.NewTagListener(dst, nil, tagHandler.OnTagged)
+		if _, err = oras.TagN(ctx, tagListener, opts.To.Reference, opts.extraRefs, tagNOpts); err != nil {
 			return err
 		}
 	}
