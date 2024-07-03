@@ -72,3 +72,13 @@ type TagHandler interface {
 	OnTagging(desc ocispec.Descriptor, tag string) error
 	TaggedHandler
 }
+
+// ManifestPushHandler handles metadata output for manifest push events.
+type ManifestPushHandler interface {
+	TaggedHandler
+}
+
+// CopyHandler handles metadata output for cp events.
+type CopyHandler interface {
+	TaggedHandler
+}

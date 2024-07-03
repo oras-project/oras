@@ -16,6 +16,7 @@ limitations under the License.
 package display
 
 import (
+	"fmt"
 	"io"
 	"os"
 
@@ -161,4 +162,19 @@ func NewManifestFetchHandler(out io.Writer, format option.Format, outputDescript
 		contentHandler = content.NewManifestFetchHandler(out, pretty, outputPath)
 	}
 	return metadataHandler, contentHandler, nil
+}
+
+// NewTagHandler returns a tag handler.
+func NewTagHandler(printer *output.Printer, target option.Target) metadata.TagHandler {
+	return text.NewTagHandler(printer, fmt.Sprintf("[%s] %s", target.Type, target.Path))
+}
+
+// NewManifestPushHandler returns a manifest push handler.
+func NewManifestPushHandler(printer *output.Printer) metadata.ManifestPushHandler {
+	return text.NewManifestPushHandler(printer)
+}
+
+// NewCopyHandler returns a manifest push handler.
+func NewCopyHandler(printer *output.Printer) metadata.CopyHandler {
+	return text.NewCopyHandler(printer)
 }

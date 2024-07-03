@@ -41,6 +41,12 @@ func NewTagListener(target oras.Target, onTagging, onTagged func(desc ocispec.De
 	}
 }
 
+// NewTaggedListener creates a wrapper type for printing all tagged statuses.
+// It can only be used for oras.TagBytes and oras.TagBytesN.
+func NewTaggedListener(target oras.Target, onTagged func(desc ocispec.Descriptor, tag string) error) oras.Target {
+	return NewTagListener(target, nil, onTagged)
+}
+
 type tagListenerForRepository struct {
 	registry.Repository
 	onTagging func(desc ocispec.Descriptor, tag string) error
