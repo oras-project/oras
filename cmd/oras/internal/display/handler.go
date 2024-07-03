@@ -174,7 +174,7 @@ func NewManifestPushHandler(printer *output.Printer) metadata.ManifestPushHandle
 	return text.NewManifestPushHandler(printer)
 }
 
-// NewCopyHandler returns a manifest push handler.
+// NewCopyHandler returns a copy handler.
 func NewCopyHandler(printer *output.Printer) metadata.CopyHandler {
 	return text.NewCopyHandler(printer)
 }
