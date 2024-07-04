@@ -49,7 +49,7 @@ type attachOptions struct {
 func attachCmd() *cobra.Command {
 	var opts attachOptions
 	cmd := &cobra.Command{
-		Use:   "attach [flags] --artifact-type=<type> <name>{:<tag>|@<digest>} <file>[:<layer_media_type>] [...]",
+		Use:   "attach [flags] --artifact-type=<type> <name>{:<tag>|@<digest>} {<file>[:<layer_media_type>]|--annotation <key>=<value>} [...]",
 		Short: "[Preview] Attach files to an existing artifact",
 		Long: `[Preview] Attach files to an existing artifact
 
@@ -87,10 +87,20 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
 			opts.FileRefs = args[1:]
-			if err := option.Parse(cmd, &opts); err != nil {
-				return err
+			err := option.Parse(cmd, &opts)
+			if err == nil {
+				if err = opts.EnsureReferenceNotEmpty(cmd, true); err == nil {
+					return nil
+				}
 			}
-			return nil
+			if len(opts.FileRefs) == 0 {
+				// no file argument provided
+				if err, ok := err.(*oerrors.Error); ok && err.OperationType == oerrors.OperationTypeParseArtifactReference {
+					// invalid reference
+					err.Recommendation = fmt.Sprintf("Are you missing an artifact reference to attach to? %s", err.Recommendation)
+				}
+			}
+			return err
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runAttach(cmd, &opts)
@@ -135,9 +145,6 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 
 	dst, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
-		return err
-	}
-	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
 		return err
 	}
 	// add both pull and push scope hints for dst repository
