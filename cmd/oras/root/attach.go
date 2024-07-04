@@ -49,7 +49,7 @@ type attachOptions struct {
 func attachCmd() *cobra.Command {
 	var opts attachOptions
 	cmd := &cobra.Command{
-		Use:   "attach [flags] --artifact-type=<type> <name>{:<tag>|@<digest>} <file>[:<layer_media_type>] [...]",
+		Use:   "attach [flags] --artifact-type=<type> <name>{:<tag>|@<digest>} {<file>[:<layer_media_type>]|--annotation <key>=<value>} [...]",
 		Short: "[Preview] Attach files to an existing artifact",
 		Long: `[Preview] Attach files to an existing artifact
 
@@ -89,10 +89,9 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 			opts.FileRefs = args[1:]
 			err := option.Parse(cmd, &opts)
 			if err == nil {
-				if opts.Reference != "" {
+				if err = opts.EnsureReferenceNotEmpty(cmd, true); err == nil {
 					return nil
 				}
-				err = oerrors.NewErrEmptyTagOrDigest(opts.RawReference, cmd, true)
 			}
 			if len(opts.FileRefs) == 0 {
 				// no file argument provided
