@@ -16,10 +16,13 @@ limitations under the License.
 package text
 
 import (
+	"fmt"
+	"sync"
+
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
+	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/cmd/oras/internal/output"
-	"sync"
 )
 
 // TagHandler handles text metadata output for tag events.
@@ -30,10 +33,10 @@ type TagHandler struct {
 }
 
 // NewTagHandler returns a new handler for tag events.
-func NewTagHandler(printer *output.Printer, refPrefix string) metadata.TagHandler {
+func NewTagHandler(printer *output.Printer, target option.Target) metadata.TagHandler {
 	return &TagHandler{
 		printer:   printer,
-		refPrefix: refPrefix,
+		refPrefix: fmt.Sprintf("[%s] %s", target.Type, target.Path),
 	}
 }
 

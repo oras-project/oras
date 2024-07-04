@@ -162,3 +162,18 @@ func NewManifestFetchHandler(out io.Writer, format option.Format, outputDescript
 	}
 	return metadataHandler, contentHandler, nil
 }
+
+// NewTagHandler returns a tag handler.
+func NewTagHandler(printer *output.Printer, target option.Target) metadata.TagHandler {
+	return text.NewTagHandler(printer, target)
+}
+
+// NewManifestPushHandler returns a manifest push handler.
+func NewManifestPushHandler(printer *output.Printer) metadata.ManifestPushHandler {
+	return text.NewManifestPushHandler(printer)
+}
+
+// NewCopyHandler returns a copy handler.
+func NewCopyHandler(printer *output.Printer) metadata.CopyHandler {
+	return text.NewCopyHandler(printer)
+}

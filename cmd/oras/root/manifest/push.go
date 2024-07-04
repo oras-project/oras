@@ -30,7 +30,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
-	"oras.land/oras/cmd/oras/internal/display/metadata/text"
+	"oras.land/oras/cmd/oras/internal/display"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/manifest"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -190,8 +190,8 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 	}
 	_ = opts.Println("Pushed", opts.AnnotatedReference())
 	if len(opts.extraRefs) != 0 {
-		tagHandler := text.NewTagHandler(opts.Printer, "")
-		tagListener := listener.NewTagListener(target, nil, tagHandler.OnTagged)
+		handler := display.NewManifestPushHandler(opts.Printer)
+		tagListener := listener.NewTaggedListener(target, handler.OnTagged)
 		if _, err = oras.TagBytesN(ctx, tagListener, mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}
