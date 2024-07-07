@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/cmd/oras/internal/output"
 	"os"
 	"strings"
@@ -133,8 +134,9 @@ func Test_doCopy(t *testing.T) {
 	dst := memory.New()
 	builder := &strings.Builder{}
 	printer := output.NewPrinter(builder, os.Stderr, opts.Verbose)
+	handler := status.NewTextCopyHandler(printer, dst)
 	// test
-	_, err = doCopy(context.Background(), printer, memStore, dst, &opts)
+	_, err = doCopy(context.Background(), handler, memStore, dst, &opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,8 +159,10 @@ func Test_doCopy_skipped(t *testing.T) {
 	opts.From.Reference = memDesc.Digest.String()
 	builder := &strings.Builder{}
 	printer := output.NewPrinter(builder, os.Stderr, opts.Verbose)
+	handler := status.NewTextCopyHandler(printer, memStore)
+
 	// test
-	_, err = doCopy(context.Background(), printer, memStore, memStore, &opts)
+	_, err = doCopy(context.Background(), handler, memStore, memStore, &opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,8 +196,10 @@ func Test_doCopy_mounted(t *testing.T) {
 	to.PlainHTTP = true
 	builder := &strings.Builder{}
 	printer := output.NewPrinter(builder, os.Stderr, opts.Verbose)
+	handler := status.NewTextCopyHandler(printer, to)
+
 	// test
-	_, err = doCopy(context.Background(), printer, from, to, &opts)
+	_, err = doCopy(context.Background(), handler, from, to, &opts)
 	if err != nil {
 		t.Fatal(err)
 	}
