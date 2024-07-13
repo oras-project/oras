@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/status/console"
 )
 
@@ -39,6 +40,7 @@ type Status chan *status
 // Manager is progress view master
 type Manager interface {
 	Add() (Status, error)
+	SendAndStop(desc ocispec.Descriptor, prompt string) error
 	Close() error
 }
 
@@ -118,6 +120,18 @@ func (m *manager) Add() (Status, error) {
 	defer m.console.NewRow()
 	defer m.console.NewRow()
 	return m.statusChan(s), nil
+}
+
+// SendAndStop send message for descriptor and stop timing.
+func (m *manager) SendAndStop(desc ocispec.Descriptor, prompt string) error {
+	status, err := m.Add()
+	if err != nil {
+		return err
+	}
+	defer close(status)
+	status <- NewStatusMessage(prompt, desc, desc.Size)
+	status <- EndTiming()
+	return nil
 }
 
 func (m *manager) statusChan(s *status) Status {
