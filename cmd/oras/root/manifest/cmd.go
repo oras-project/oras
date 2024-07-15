@@ -17,6 +17,7 @@ package manifest
 
 import (
 	"github.com/spf13/cobra"
+	"oras.land/oras/cmd/oras/root/manifest/index"
 )
 
 func Cmd() *cobra.Command {
@@ -30,6 +31,7 @@ func Cmd() *cobra.Command {
 		fetchCmd(),
 		fetchConfigCmd(),
 		pushCmd(),
+		index.Cmd(),
 	)
 	return cmd
 }
