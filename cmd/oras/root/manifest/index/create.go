@@ -1,3 +1,18 @@
+/*
+Copyright The ORAS Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package index
 
 import (
@@ -15,12 +30,14 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/contentutil"
+	"oras.land/oras/internal/descriptor"
 )
 
 type createOptions struct {
@@ -115,9 +132,47 @@ func resolveSourceManifests(cmd *cobra.Command, destOpts createOptions, logger l
 		if err != nil {
 			return []ocispec.Descriptor{}, fmt.Errorf("failed to resolve %s: %w", source.Reference, err)
 		}
+		// detect platform information
+		// 1. fetch config descriptor
+		configDesc, err := fetchConfigDesc(cmd.Context(), sourceTarget, source.Reference)
+		if err != nil {
+			return []ocispec.Descriptor{}, err
+		}
+		// 2. fetch config content
+		contentBytes, err := content.FetchAll(cmd.Context(), sourceTarget, configDesc)
+		if err != nil {
+			return []ocispec.Descriptor{}, err
+		}
+		var config ocispec.Image
+		if err := json.Unmarshal(contentBytes, &config); err != nil {
+			return []ocispec.Descriptor{}, err
+		}
+		// 3. extract platform information
+		desc.Platform = &config.Platform
+
 		resolved = append(resolved, desc)
 	}
 	return resolved, nil
+}
+
+func fetchConfigDesc(ctx context.Context, src oras.ReadOnlyTarget, reference string) (ocispec.Descriptor, error) {
+	// fetch manifest descriptor and content
+	fetchOpts := oras.DefaultFetchBytesOptions
+	manifestDesc, manifestContent, err := oras.FetchBytes(ctx, src, reference, fetchOpts)
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+
+	if !descriptor.IsImageManifest(manifestDesc) {
+		return ocispec.Descriptor{}, fmt.Errorf("%q is not an image manifest and does not have a config", manifestDesc.Digest)
+	}
+
+	// unmarshal manifest content to extract config descriptor
+	var manifest ocispec.Manifest
+	if err := json.Unmarshal(manifestContent, &manifest); err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	return manifest.Config, nil
 }
 
 func packIndex(manifests []ocispec.Descriptor) (ocispec.Descriptor, io.Reader) {
