@@ -50,18 +50,18 @@ type createOptions struct {
 func createCmd() *cobra.Command {
 	var opts createOptions
 	cmd := &cobra.Command{
-		Use:   "create [flags] --repo <repo-reference> <name>[:<tag>|@<digest>] [...]",
+		Use:   "create [flags] <name>[:<tag>|@<digest>] [{<tag>|<digest>}...]",
 		Short: "create and push an index from provided manifests",
 		Long: `create and push an index to a repository or an OCI image layout
 Example - create an index from source manifests tagged s1, s2, s3 in the repository
  localhost:5000/hello, and push the index without tagging it :
-  oras index create --repo localhost:5000/hello s1 s2 s3
+  oras manifest index create localhost:5000/hello s1 s2 s3
 Example - create an index from source manifests tagged s1, s2, s3 in the repository
  localhost:5000/hello, and push the index with tag 'latest' :
-  oras index create --repo localhost:5000/hello --tag latest s1 s2 s3
+  oras manifest index create localhost:5000/hello:latest s1 s2 s3
 Example - create an index from source manifests using both tags and digests, 
  and push the index with tag 'latest' :
-  oras index create --repo localhost:5000/hello --tag latest s1 sha256:xxx s3
+  oras manifest index create localhost:5000/hello latest s1 sha256:xxx s3
 `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -163,8 +163,9 @@ func fetchConfigDesc(ctx context.Context, src oras.ReadOnlyTarget, reference str
 		return ocispec.Descriptor{}, err
 	}
 
+	// if this manifest does not have a config
 	if !descriptor.IsImageManifest(manifestDesc) {
-		return ocispec.Descriptor{}, fmt.Errorf("%q is not an image manifest and does not have a config", manifestDesc.Digest)
+		return ocispec.Descriptor{}, nil
 	}
 
 	// unmarshal manifest content to extract config descriptor
