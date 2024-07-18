@@ -71,6 +71,23 @@ func updateCmd() *cobra.Command {
 				opts.addTargets[i] = m
 			}
 
+			opts.removeTargets = make([]option.Target, len(opts.removeArguments))
+			// parse the remove manifest arguments
+			for i, a := range opts.removeArguments {
+				var ref string
+				if contentutil.IsDigest(a) {
+					ref = fmt.Sprintf("%s@%s", repo, a)
+				} else {
+					ref = fmt.Sprintf("%s:%s", repo, a)
+				}
+				opts.removeArguments[i] = ref
+				m := option.Target{RawReference: ref, Remote: opts.Remote}
+				if err := m.Parse(cmd); err != nil {
+					return err
+				}
+				opts.removeTargets[i] = m
+			}
+
 			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -105,7 +122,7 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	}
 	manifests := index.Manifests
 
-	// resolve the index to add, need to get its platform information
+	// resolve the manifests to add, need to get theirs platform information
 	for _, b := range opts.addTargets {
 		target, err := b.NewReadonlyTarget(ctx, opts.Common, logger)
 		if err != nil {
@@ -138,6 +155,33 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 
 		manifests = append(manifests, desc)
 	}
+
+	// resolve the manifests to remove
+	set := make(map[digest.Digest]struct{})
+	for _, b := range opts.removeTargets {
+		target, err := b.NewReadonlyTarget(ctx, opts.Common, logger)
+		if err != nil {
+			return err
+		}
+		if err := b.EnsureReferenceNotEmpty(cmd, false); err != nil {
+			return err
+		}
+		desc, err := oras.Resolve(ctx, target, b.Reference, oras.DefaultResolveOptions)
+		if err != nil {
+			return fmt.Errorf("failed to resolve %s: %w", b.Reference, err)
+		}
+		set[desc.Digest] = struct{}{}
+	}
+
+	pointer := len(manifests) - 1
+	for i, m := range manifests {
+		if _, b := set[m.Digest]; b {
+			// swap
+			manifests[i] = manifests[pointer]
+			pointer = pointer - 1
+		}
+	}
+	manifests = manifests[:pointer+1]
 
 	// pack the new index
 	newIndex := ocispec.Index{
