@@ -68,7 +68,7 @@ func Test_status_String(t *testing.T) {
 	}
 }
 
-func Test_status_String_zeroWitdth(t *testing.T) {
+func Test_status_String_zeroWidth(t *testing.T) {
 	// zero status and progress
 	s := newStatus()
 	if status, digest := s.String(console.MinWidth); status != zeroStatus || digest != zeroDigest {
