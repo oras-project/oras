@@ -92,17 +92,17 @@ func (m *manager) render() {
 	defer m.statusLock.RUnlock()
 	// todo: update size in another routine
 	width, height := m.console.Size()
-	statusLength := len(m.status) * 2
+	lineCount := len(m.status) * 2
 	offset := 0
-	if statusLength > height {
+	if lineCount > height {
 		// skip statuses that cannot be rendered
-		offset = statusLength - height
+		offset = lineCount - height
 	}
 
-	for ; offset < statusLength; offset += 2 {
+	for ; offset < lineCount; offset += 2 {
 		status, progress := m.status[offset/2].String(width)
-		m.console.OutputTo(uint(statusLength-offset), status)
-		m.console.OutputTo(uint(statusLength-offset-1), progress)
+		m.console.OutputTo(uint(lineCount-offset), status)
+		m.console.OutputTo(uint(lineCount-offset-1), progress)
 	}
 }
 
