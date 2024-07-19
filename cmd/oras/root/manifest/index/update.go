@@ -79,17 +79,17 @@ func updateCmd() *cobra.Command {
 }
 
 func updateIndex(cmd *cobra.Command, opts updateOptions) error {
-	// fetch old index
+	// fetch the index to update, and get its manifests
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-	oldIndex, err := opts.NewTarget(opts.Common, logger)
+	indexTarget, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
 		return err
 	}
-	desc, err := oras.Resolve(ctx, oldIndex, opts.Reference, oras.DefaultResolveOptions)
+	desc, err := oras.Resolve(ctx, indexTarget, opts.Reference, oras.DefaultResolveOptions)
 	if err != nil {
 		return fmt.Errorf("failed to resolve %s: %w", opts.Reference, err)
 	}
-	contentBytes, err := content.FetchAll(ctx, oldIndex, desc)
+	contentBytes, err := content.FetchAll(ctx, indexTarget, desc)
 	if err != nil {
 		return err
 	}
@@ -100,36 +100,22 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	manifests := index.Manifests
 
 	// resolve the manifests to add, need to get their platform information
-	for _, b := range opts.addTargets {
-		target, err := b.NewReadonlyTarget(ctx, opts.Common, logger)
+	for _, addTarget := range opts.addTargets {
+		target, err := addTarget.NewReadonlyTarget(ctx, opts.Common, logger)
 		if err != nil {
 			return err
 		}
-		if err := b.EnsureReferenceNotEmpty(cmd, false); err != nil {
+		if err := addTarget.EnsureReferenceNotEmpty(cmd, false); err != nil {
 			return err
 		}
-		desc, err := oras.Resolve(ctx, target, b.Reference, oras.DefaultResolveOptions)
+		desc, err := oras.Resolve(ctx, target, addTarget.Reference, oras.DefaultResolveOptions)
 		if err != nil {
-			return fmt.Errorf("failed to resolve %s: %w", b.Reference, err)
+			return fmt.Errorf("failed to resolve %s: %w", addTarget.Reference, err)
 		}
-		// detect platform information
-		// 1. fetch config descriptor
-		configDesc, err := fetchConfigDesc(ctx, target, b.Reference)
+		desc.Platform, err = getPlatform(ctx, target, addTarget.Reference)
 		if err != nil {
 			return err
 		}
-		// 2. fetch config content
-		contentBytes, err := content.FetchAll(ctx, target, configDesc)
-		if err != nil {
-			return err
-		}
-		var config ocispec.Image
-		if err := json.Unmarshal(contentBytes, &config); err != nil {
-			return err
-		}
-		// 3. extract platform information
-		desc.Platform = &config.Platform
-
 		manifests = append(manifests, desc)
 	}
 
@@ -153,7 +139,7 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	pointer := len(manifests) - 1
 	for i, m := range manifests {
 		if _, b := set[m.Digest]; b {
-			// swap
+			// swap the to-be-removed manifest to the end of slice
 			manifests[i] = manifests[pointer]
 			pointer = pointer - 1
 		}
@@ -181,5 +167,5 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	reader := bytes.NewReader(content)
 
 	// push the new index
-	return pushIndex(ctx, oldIndex, newDesc, opts.Reference, reader)
+	return pushIndex(ctx, indexTarget, newDesc, opts.Reference, reader)
 }

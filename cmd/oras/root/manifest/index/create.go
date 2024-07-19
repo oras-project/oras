@@ -118,6 +118,24 @@ func parseTargetsFromStrings(cmd *cobra.Command, arguments []string, targets []o
 	return nil
 }
 
+func getPlatform(ctx context.Context, target oras.ReadOnlyTarget, reference string) (*ocispec.Platform, error) {
+	// fetch config descriptor
+	configDesc, err := fetchConfigDesc(ctx, target, reference)
+	if err != nil {
+		return &ocispec.Platform{}, err
+	}
+	// fetch config content
+	contentBytes, err := content.FetchAll(ctx, target, configDesc)
+	if err != nil {
+		return &ocispec.Platform{}, err
+	}
+	var config ocispec.Image
+	if err := json.Unmarshal(contentBytes, &config); err != nil {
+		return &ocispec.Platform{}, err
+	}
+	return &config.Platform, nil
+}
+
 func resolveSourceManifests(cmd *cobra.Command, destOpts createOptions, logger logrus.FieldLogger) ([]ocispec.Descriptor, error) {
 	var resolved []ocispec.Descriptor
 	for _, source := range destOpts.sources {
@@ -135,24 +153,10 @@ func resolveSourceManifests(cmd *cobra.Command, destOpts createOptions, logger l
 		if err != nil {
 			return []ocispec.Descriptor{}, fmt.Errorf("failed to resolve %s: %w", source.Reference, err)
 		}
-		// detect platform information
-		// 1. fetch config descriptor
-		configDesc, err := fetchConfigDesc(cmd.Context(), sourceTarget, source.Reference)
+		desc.Platform, err = getPlatform(cmd.Context(), sourceTarget, source.Reference)
 		if err != nil {
 			return []ocispec.Descriptor{}, err
 		}
-		// 2. fetch config content
-		contentBytes, err := content.FetchAll(cmd.Context(), sourceTarget, configDesc)
-		if err != nil {
-			return []ocispec.Descriptor{}, err
-		}
-		var config ocispec.Image
-		if err := json.Unmarshal(contentBytes, &config); err != nil {
-			return []ocispec.Descriptor{}, err
-		}
-		// 3. extract platform information
-		desc.Platform = &config.Platform
-
 		resolved = append(resolved, desc)
 	}
 	return resolved, nil
