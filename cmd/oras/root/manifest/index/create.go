@@ -97,7 +97,7 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 	if err != nil {
 		return err
 	}
-	desc, reader := packIndex(manifests)
+	desc, reader := packIndex(&ocispec.Index{}, manifests)
 	return pushIndex(ctx, dst, desc, opts.Reference, reader)
 }
 
@@ -183,14 +183,16 @@ func fetchConfigDesc(ctx context.Context, src oras.ReadOnlyTarget, reference str
 	return manifest.Config, nil
 }
 
-func packIndex(manifests []ocispec.Descriptor) (ocispec.Descriptor, io.Reader) {
+func packIndex(oldIndex *ocispec.Index, manifests []ocispec.Descriptor) (ocispec.Descriptor, io.Reader) {
 	index := ocispec.Index{
 		Versioned: specs.Versioned{
 			SchemaVersion: 2,
 		},
-		MediaType: ocispec.MediaTypeImageIndex,
-		Manifests: manifests,
-		// todo: annotations
+		MediaType:    ocispec.MediaTypeImageIndex,
+		ArtifactType: oldIndex.ArtifactType,
+		Manifests:    manifests,
+		Subject:      oldIndex.Subject,
+		Annotations:  oldIndex.Annotations,
 	}
 	content, _ := json.Marshal(index)
 	desc := ocispec.Descriptor{

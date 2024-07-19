@@ -16,13 +16,11 @@ limitations under the License.
 package index
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/opencontainers/go-digest"
-	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
@@ -144,28 +142,9 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 			pointer = pointer - 1
 		}
 	}
+	// shrink the slice to remove the manifests
 	manifests = manifests[:pointer+1]
 
-	// pack the new index
-	newIndex := ocispec.Index{
-		Versioned: specs.Versioned{
-			SchemaVersion: 2,
-		},
-		MediaType:    ocispec.MediaTypeImageIndex,
-		ArtifactType: index.ArtifactType,
-		Manifests:    manifests,
-		Subject:      index.Subject,
-		Annotations:  index.Annotations,
-		// todo: annotations
-	}
-	content, _ := json.Marshal(newIndex)
-	newDesc := ocispec.Descriptor{
-		Digest:    digest.FromBytes(content),
-		MediaType: ocispec.MediaTypeImageIndex,
-		Size:      int64(len(content)),
-	}
-	reader := bytes.NewReader(content)
-
-	// push the new index
+	newDesc, reader := packIndex(&index, manifests)
 	return pushIndex(ctx, indexTarget, newDesc, opts.Reference, reader)
 }
