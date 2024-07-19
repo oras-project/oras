@@ -30,7 +30,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/contentutil"
 )
 
 type updateOptions struct {
@@ -54,38 +53,16 @@ func updateCmd() *cobra.Command {
 			opts.RawReference = args[0]
 			repo, _, _ := strings.Cut(opts.RawReference, ":")
 
-			opts.addTargets = make([]option.Target, len(opts.addArguments))
 			// parse the add manifest arguments
-			for i, a := range opts.addArguments {
-				var ref string
-				if contentutil.IsDigest(a) {
-					ref = fmt.Sprintf("%s@%s", repo, a)
-				} else {
-					ref = fmt.Sprintf("%s:%s", repo, a)
-				}
-				opts.addArguments[i] = ref
-				m := option.Target{RawReference: ref, Remote: opts.Remote}
-				if err := m.Parse(cmd); err != nil {
-					return err
-				}
-				opts.addTargets[i] = m
+			opts.addTargets = make([]option.Target, len(opts.addArguments))
+			if err := parseTargetsFromStrings(cmd, opts.addArguments, opts.addTargets, repo, opts.Remote); err != nil {
+				return err
 			}
 
-			opts.removeTargets = make([]option.Target, len(opts.removeArguments))
 			// parse the remove manifest arguments
-			for i, a := range opts.removeArguments {
-				var ref string
-				if contentutil.IsDigest(a) {
-					ref = fmt.Sprintf("%s@%s", repo, a)
-				} else {
-					ref = fmt.Sprintf("%s:%s", repo, a)
-				}
-				opts.removeArguments[i] = ref
-				m := option.Target{RawReference: ref, Remote: opts.Remote}
-				if err := m.Parse(cmd); err != nil {
-					return err
-				}
-				opts.removeTargets[i] = m
+			opts.removeTargets = make([]option.Target, len(opts.removeArguments))
+			if err := parseTargetsFromStrings(cmd, opts.removeArguments, opts.removeTargets, repo, opts.Remote); err != nil {
+				return err
 			}
 
 			return option.Parse(cmd, &opts)
@@ -122,7 +99,7 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	}
 	manifests := index.Manifests
 
-	// resolve the manifests to add, need to get theirs platform information
+	// resolve the manifests to add, need to get their platform information
 	for _, b := range opts.addTargets {
 		target, err := b.NewReadonlyTarget(ctx, opts.Common, logger)
 		if err != nil {
@@ -204,8 +181,5 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	reader := bytes.NewReader(content)
 
 	// push the new index
-	if err := pushIndex(ctx, oldIndex, newDesc, opts.Reference, reader); err != nil {
-		return err
-	}
-	return nil
+	return pushIndex(ctx, oldIndex, newDesc, opts.Reference, reader)
 }

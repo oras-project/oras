@@ -65,26 +65,15 @@ Example - create an index from source manifests using both tags and digests,
 `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			// parse the target index reference
+			// parse the destination index reference
 			opts.RawReference = args[0]
 			repo, _, _ := strings.Cut(opts.RawReference, ":")
 
 			// parse the source manifests
 			opts.sources = make([]option.Target, len(args)-1)
-			for i, a := range args[1:] {
-				var ref string
-				if contentutil.IsDigest(a) {
-					ref = fmt.Sprintf("%s@%s", repo, a)
-				} else {
-					ref = fmt.Sprintf("%s:%s", repo, a)
-				}
-				m := option.Target{RawReference: ref, Remote: opts.Remote}
-				if err := m.Parse(cmd); err != nil {
-					return err
-				}
-				opts.sources[i] = m
+			if err := parseTargetsFromStrings(cmd, args[1:], opts.sources, repo, opts.Remote); err != nil {
+				return err
 			}
-
 			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -109,8 +98,22 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 		return err
 	}
 	desc, reader := packIndex(manifests)
-	if err := pushIndex(ctx, dst, desc, opts.Reference, reader); err != nil {
-		return err
+	return pushIndex(ctx, dst, desc, opts.Reference, reader)
+}
+
+func parseTargetsFromStrings(cmd *cobra.Command, arguments []string, targets []option.Target, repo string, remote option.Remote) error {
+	for i, arg := range arguments {
+		var ref string
+		if contentutil.IsDigest(arg) {
+			ref = fmt.Sprintf("%s@%s", repo, arg)
+		} else {
+			ref = fmt.Sprintf("%s:%s", repo, arg)
+		}
+		m := option.Target{RawReference: ref, Remote: remote}
+		if err := m.Parse(cmd); err != nil {
+			return err
+		}
+		targets[i] = m
 	}
 	return nil
 }
@@ -177,7 +180,6 @@ func fetchConfigDesc(ctx context.Context, src oras.ReadOnlyTarget, reference str
 }
 
 func packIndex(manifests []ocispec.Descriptor) (ocispec.Descriptor, io.Reader) {
-	// todo: oras-go needs PackIndex
 	index := ocispec.Index{
 		Versioned: specs.Versioned{
 			SchemaVersion: 2,
