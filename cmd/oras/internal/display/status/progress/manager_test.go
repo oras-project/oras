@@ -34,7 +34,9 @@ func Test_manager_render(t *testing.T) {
 	}
 	_, height := m.console.Size()
 	for i := 0; i < height; i++ {
-		m.Add()
+		if _, err := m.Add(); err != nil {
+			t.Fatal(err)
+		}
 	}
 	m.render()
 	// validate
