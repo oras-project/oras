@@ -75,6 +75,7 @@ Example - create an index from source manifests using both tags and digests,
 				return err
 			}
 			return option.Parse(cmd, &opts)
+			// todo: add EnsureReferenceNotEmpty somewhere
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return createIndex(cmd, opts)
@@ -143,9 +144,6 @@ func resolveSourceManifests(cmd *cobra.Command, destOpts createOptions, logger l
 		// prepare sourceTarget target
 		sourceTarget, err := source.NewReadonlyTarget(cmd.Context(), destOpts.Common, logger)
 		if err != nil {
-			return []ocispec.Descriptor{}, err
-		}
-		if err := source.EnsureReferenceNotEmpty(cmd, false); err != nil {
 			return []ocispec.Descriptor{}, err
 		}
 		var desc ocispec.Descriptor

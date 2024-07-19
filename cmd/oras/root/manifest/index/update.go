@@ -16,6 +16,7 @@ limitations under the License.
 package index
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -64,6 +65,7 @@ func updateCmd() *cobra.Command {
 			}
 
 			return option.Parse(cmd, &opts)
+			// todo: add EnsureReferenceNotEmpty somewhere
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return updateIndex(cmd, opts)
@@ -83,16 +85,8 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	if err != nil {
 		return err
 	}
-	desc, err := oras.Resolve(ctx, indexTarget, opts.Reference, oras.DefaultResolveOptions)
+	index, err := fetchIndex(ctx, indexTarget, opts.Reference)
 	if err != nil {
-		return fmt.Errorf("failed to resolve %s: %w", opts.Reference, err)
-	}
-	contentBytes, err := content.FetchAll(ctx, indexTarget, desc)
-	if err != nil {
-		return err
-	}
-	var index ocispec.Index
-	if err := json.Unmarshal(contentBytes, &index); err != nil {
 		return err
 	}
 	manifests := index.Manifests
@@ -124,9 +118,6 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 		if err != nil {
 			return err
 		}
-		if err := b.EnsureReferenceNotEmpty(cmd, false); err != nil {
-			return err
-		}
 		desc, err := oras.Resolve(ctx, target, b.Reference, oras.DefaultResolveOptions)
 		if err != nil {
 			return fmt.Errorf("failed to resolve %s: %w", b.Reference, err)
@@ -147,4 +138,20 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 
 	newDesc, reader := packIndex(&index, manifests)
 	return pushIndex(ctx, indexTarget, newDesc, opts.Reference, reader)
+}
+
+func fetchIndex(ctx context.Context, target oras.ReadOnlyTarget, reference string) (ocispec.Index, error) {
+	desc, err := oras.Resolve(ctx, target, reference, oras.DefaultResolveOptions)
+	if err != nil {
+		return ocispec.Index{}, fmt.Errorf("failed to resolve %s: %w", reference, err)
+	}
+	contentBytes, err := content.FetchAll(ctx, target, desc)
+	if err != nil {
+		return ocispec.Index{}, err
+	}
+	var index ocispec.Index
+	if err := json.Unmarshal(contentBytes, &index); err != nil {
+		return ocispec.Index{}, err
+	}
+	return index, nil
 }
