@@ -23,6 +23,7 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
@@ -79,7 +80,6 @@ func updateCmd() *cobra.Command {
 }
 
 func updateIndex(cmd *cobra.Command, opts updateOptions) error {
-	// fetch the index to update, and get its manifests
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	indexTarget, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
@@ -89,53 +89,14 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	if err != nil {
 		return err
 	}
-	manifests := index.Manifests
-
-	// resolve the manifests to add, need to get their platform information
-	for _, addTarget := range opts.addTargets {
-		target, err := addTarget.NewReadonlyTarget(ctx, opts.Common, logger)
-		if err != nil {
-			return err
-		}
-		if err := addTarget.EnsureReferenceNotEmpty(cmd, false); err != nil {
-			return err
-		}
-		desc, err := oras.Resolve(ctx, target, addTarget.Reference, oras.DefaultResolveOptions)
-		if err != nil {
-			return fmt.Errorf("failed to resolve %s: %w", addTarget.Reference, err)
-		}
-		desc.Platform, err = getPlatform(ctx, target, addTarget.Reference)
-		if err != nil {
-			return err
-		}
-		manifests = append(manifests, desc)
+	manifests, err := addManifests(ctx, opts.Common, logger, index.Manifests, opts.addTargets)
+	if err != nil {
+		return err
 	}
-
-	// resolve the manifests to remove
-	set := make(map[digest.Digest]struct{})
-	for _, b := range opts.removeTargets {
-		target, err := b.NewReadonlyTarget(ctx, opts.Common, logger)
-		if err != nil {
-			return err
-		}
-		desc, err := oras.Resolve(ctx, target, b.Reference, oras.DefaultResolveOptions)
-		if err != nil {
-			return fmt.Errorf("failed to resolve %s: %w", b.Reference, err)
-		}
-		set[desc.Digest] = struct{}{}
+	manifests, err = removeManifests(ctx, opts.Common, logger, manifests, opts.removeTargets)
+	if err != nil {
+		return err
 	}
-
-	pointer := len(manifests) - 1
-	for i, m := range manifests {
-		if _, b := set[m.Digest]; b {
-			// swap the to-be-removed manifest to the end of slice
-			manifests[i] = manifests[pointer]
-			pointer = pointer - 1
-		}
-	}
-	// shrink the slice to remove the manifests
-	manifests = manifests[:pointer+1]
-
 	newDesc, reader := packIndex(&index, manifests)
 	return pushIndex(ctx, indexTarget, newDesc, opts.Reference, reader)
 }
@@ -154,4 +115,49 @@ func fetchIndex(ctx context.Context, target oras.ReadOnlyTarget, reference strin
 		return ocispec.Index{}, err
 	}
 	return index, nil
+}
+
+func addManifests(ctx context.Context, common option.Common, logger logrus.FieldLogger, manifests []ocispec.Descriptor, targets []option.Target) ([]ocispec.Descriptor, error) {
+	for _, addTarget := range targets {
+		target, err := addTarget.NewReadonlyTarget(ctx, common, logger)
+		if err != nil {
+			return []ocispec.Descriptor{}, err
+		}
+		desc, err := oras.Resolve(ctx, target, addTarget.Reference, oras.DefaultResolveOptions)
+		if err != nil {
+			return []ocispec.Descriptor{}, fmt.Errorf("failed to resolve %s: %w", addTarget.Reference, err)
+		}
+		desc.Platform, err = getPlatform(ctx, target, addTarget.Reference)
+		if err != nil {
+			return []ocispec.Descriptor{}, err
+		}
+		manifests = append(manifests, desc)
+	}
+	return manifests, nil
+}
+
+func removeManifests(ctx context.Context, common option.Common, logger logrus.FieldLogger, manifests []ocispec.Descriptor, targets []option.Target) ([]ocispec.Descriptor, error) {
+	set := make(map[digest.Digest]struct{})
+	for _, b := range targets {
+		target, err := b.NewReadonlyTarget(ctx, common, logger)
+		if err != nil {
+			return []ocispec.Descriptor{}, err
+		}
+		desc, err := oras.Resolve(ctx, target, b.Reference, oras.DefaultResolveOptions)
+		if err != nil {
+			return []ocispec.Descriptor{}, fmt.Errorf("failed to resolve %s: %w", b.Reference, err)
+		}
+		set[desc.Digest] = struct{}{}
+	}
+	pointer := len(manifests) - 1
+	for i, m := range manifests {
+		if _, b := set[m.Digest]; b {
+			// swap the to-be-removed manifest to the end of slice
+			manifests[i] = manifests[pointer]
+			pointer = pointer - 1
+		}
+	}
+	// shrink the slice to remove the manifests
+	manifests = manifests[:pointer+1]
+	return manifests, nil
 }
