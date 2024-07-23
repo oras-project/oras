@@ -19,32 +19,37 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/opencontainers/go-digest"
+	"oras.land/oras-go/v2/content/memory"
 	"reflect"
 	"testing"
 
-	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras/internal/docker"
 )
 
-type fetcher struct {
+type contentFetcher struct {
 	content.Fetcher
 }
 
-func TestSuccessors(t *testing.T) {
+func newTestFetcher(t *testing.T) (subject, config, ociImage, dockerImage, index ocispec.Descriptor, fetcher content.Fetcher) {
 	var blobs [][]byte
-	var descs []ocispec.Descriptor
-	appendBlob := func(mediaType string, blob []byte) {
+	ctx := context.Background()
+	memoryStorage := memory.New()
+	appendBlob := func(mediaType string, blob []byte) ocispec.Descriptor {
 		blobs = append(blobs, blob)
-		descs = append(descs, ocispec.Descriptor{
+		desc := ocispec.Descriptor{
 			MediaType: mediaType,
 			Digest:    digest.FromBytes(blob),
 			Size:      int64(len(blob)),
-		})
+		}
+		if err := memoryStorage.Push(ctx, desc, bytes.NewReader(blob)); err != nil {
+			t.Errorf("Error pushing %v\n", err)
+		}
+		return desc
 	}
-	generateImage := func(subject *ocispec.Descriptor, mediaType string, config ocispec.Descriptor, layers ...ocispec.Descriptor) {
+	generateImage := func(subject *ocispec.Descriptor, mediaType string, config ocispec.Descriptor, layers ...ocispec.Descriptor) ocispec.Descriptor {
 		manifest := ocispec.Manifest{
 			MediaType: mediaType,
 			Subject:   subject,
@@ -55,40 +60,32 @@ func TestSuccessors(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		appendBlob(mediaType, manifestJSON)
+		return appendBlob(mediaType, manifestJSON)
 	}
-	generateIndex := func(manifests ...ocispec.Descriptor) {
+	generateIndex := func(manifests ...ocispec.Descriptor) ocispec.Descriptor {
 		index := ocispec.Index{
 			Manifests: manifests,
 		}
-		manifestJSON, err := json.Marshal(index)
+		indexJSON, err := json.Marshal(index)
 		if err != nil {
 			t.Fatal(err)
 		}
-		appendBlob(ocispec.MediaTypeImageIndex, manifestJSON)
+		return appendBlob(ocispec.MediaTypeImageIndex, indexJSON)
 	}
-	const (
-		subject = iota
-		config
-		ociImage
-		dockerImage
-		index
-	)
-	appendBlob(ocispec.MediaTypeImageLayer, []byte("blob"))
-	imageType := "test.image"
-	appendBlob(imageType, []byte("config content"))
-	generateImage(&descs[subject], ocispec.MediaTypeImageManifest, descs[config])
-	generateImage(&descs[subject], docker.MediaTypeManifest, descs[config])
-	generateIndex(descs[subject])
-	memory := memory.New()
-	ctx := context.Background()
-	for i := range descs {
-		if err := memory.Push(ctx, descs[i], bytes.NewReader(blobs[i])); err != nil {
-			t.Errorf("Error pushing %v\n", err)
-		}
-	}
-	fetcher := &fetcher{Fetcher: memory}
 
+	subject = appendBlob(ocispec.MediaTypeImageLayer, []byte("blob"))
+	imageType := "test.image"
+	config = appendBlob(imageType, []byte("config content"))
+	ociImage = generateImage(&subject, ocispec.MediaTypeImageManifest, config)
+	dockerImage = generateImage(&subject, docker.MediaTypeManifest, config)
+	index = generateIndex(subject)
+
+	return subject, config, ociImage, dockerImage, index, &contentFetcher{Fetcher: memoryStorage}
+}
+
+func TestSuccessors(t *testing.T) {
+	subject, config, ociImage, dockerImage, index, fetcher := newTestFetcher(t)
+	ctx := context.Background()
 	type args struct {
 		ctx     context.Context
 		fetcher content.Fetcher
@@ -104,9 +101,9 @@ func TestSuccessors(t *testing.T) {
 	}{
 		{"should failed to get non-existent OCI image", args{ctx, fetcher, ocispec.Descriptor{MediaType: ocispec.MediaTypeImageManifest}}, nil, nil, nil, true},
 		{"should failed to get non-existent docker image", args{ctx, fetcher, ocispec.Descriptor{MediaType: docker.MediaTypeManifest}}, nil, nil, nil, true},
-		{"should get success of a docker image", args{ctx, fetcher, descs[dockerImage]}, nil, &descs[subject], &descs[config], false},
-		{"should get success of an OCI image", args{ctx, fetcher, descs[ociImage]}, nil, &descs[subject], &descs[config], false},
-		{"should get success of an index", args{ctx, fetcher, descs[index]}, []ocispec.Descriptor{descs[subject]}, nil, nil, false},
+		{"should get success of a docker image", args{ctx, fetcher, dockerImage}, nil, &subject, &config, false},
+		{"should get success of an OCI image", args{ctx, fetcher, ociImage}, nil, &subject, &config, false},
+		{"should get success of an index", args{ctx, fetcher, index}, []ocispec.Descriptor{subject}, nil, nil, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
