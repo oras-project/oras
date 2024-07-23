@@ -56,40 +56,6 @@ type status struct {
 	lock      sync.Mutex
 }
 
-// newStatus generates a base empty status.
-func newStatus() *status {
-	return &status{
-		offset:      -1,
-		total:       humanize.ToBytes(0),
-		speedWindow: newSpeedWindow(framePerSecond),
-	}
-}
-
-// NewStatusMessage generates a status for messaging.
-func NewStatusMessage(prompt string, descriptor ocispec.Descriptor, offset int64) *status {
-	return &status{
-		prompt:     prompt,
-		descriptor: descriptor,
-		offset:     offset,
-	}
-}
-
-// StartTiming starts timing.
-func StartTiming() *status {
-	return &status{
-		offset:    -1,
-		startTime: time.Now(),
-	}
-}
-
-// EndTiming ends timing and set status to done.
-func EndTiming() *status {
-	return &status{
-		offset:  -1,
-		endTime: time.Now(),
-	}
-}
-
 func (s *status) isZero() bool {
 	return s.offset < 0 && s.startTime.IsZero() && s.endTime.IsZero()
 }
@@ -121,7 +87,7 @@ func (s *status) String(width int) (string, string) {
 		percent = 1
 	default: // 0% ~ 99%, show 2-digit precision
 		if total != 0 && s.offset >= 0 {
-			// percentage calculatable
+			// calculate percentage
 			percent = float64(s.offset) / float64(total)
 		}
 		offset = fmt.Sprintf("%.2f", humanize.RoundTo(s.total.Size*percent))
@@ -190,8 +156,7 @@ func (s *status) durationString() string {
 	return d.String()
 }
 
-// Update updates a status.
-func (s *status) Update(n *status) {
+func (s *status) update(n *status) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 

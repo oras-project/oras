@@ -34,12 +34,9 @@ const (
 
 var errManagerStopped = errors.New("progress output manager has already been stopped")
 
-// Status is print message channel
-type Status chan *status
-
 // Manager is progress view master
 type Manager interface {
-	Add() (Status, error)
+	Add() (*Messenger, error)
 	SendAndStop(desc ocispec.Descriptor, prompt string) error
 	Close() error
 }
@@ -107,7 +104,7 @@ func (m *manager) render() {
 }
 
 // Add appends a new status with 2-line space for rendering.
-func (m *manager) Add() (Status, error) {
+func (m *manager) Add() (*Messenger, error) {
 	if m.closed() {
 		return nil, errManagerStopped
 	}
@@ -124,26 +121,25 @@ func (m *manager) Add() (Status, error) {
 
 // SendAndStop send message for descriptor and stop timing.
 func (m *manager) SendAndStop(desc ocispec.Descriptor, prompt string) error {
-	status, err := m.Add()
+	messenger, err := m.Add()
 	if err != nil {
 		return err
 	}
-	defer close(status)
-	status <- NewStatusMessage(prompt, desc, desc.Size)
-	status <- EndTiming()
+	messenger.Send(prompt, desc, desc.Size)
+	messenger.Stop()
 	return nil
 }
 
-func (m *manager) statusChan(s *status) Status {
+func (m *manager) statusChan(s *status) *Messenger {
 	ch := make(chan *status, BufferSize)
 	m.updating.Add(1)
 	go func() {
 		defer m.updating.Done()
 		for newStatus := range ch {
-			s.Update(newStatus)
+			s.update(newStatus)
 		}
 	}()
-	return ch
+	return &Messenger{ch: ch}
 }
 
 // Close stops all status and waits for updating and rendering.

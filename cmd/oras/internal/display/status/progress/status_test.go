@@ -35,7 +35,7 @@ func Test_status_String(t *testing.T) {
 	}
 
 	// not done
-	s.Update(&status{
+	s.update(&status{
 		prompt: "test",
 		descriptor: ocispec.Descriptor{
 			MediaType: "application/vnd.oci.empty.oras.test.v1+json",
@@ -57,7 +57,7 @@ func Test_status_String(t *testing.T) {
 		t.Error(err)
 	}
 	// done
-	s.Update(&status{
+	s.update(&status{
 		endTime:    time.Now(),
 		offset:     s.descriptor.Size,
 		descriptor: s.descriptor,
@@ -76,7 +76,7 @@ func Test_status_String_zeroWidth(t *testing.T) {
 	}
 
 	// not done
-	s.Update(&status{
+	s.update(&status{
 		prompt: "test",
 		descriptor: ocispec.Descriptor{
 			MediaType: "application/vnd.oci.empty.oras.test.v1+json",
@@ -93,7 +93,7 @@ func Test_status_String_zeroWidth(t *testing.T) {
 		t.Error(err)
 	}
 	// done
-	s.Update(&status{
+	s.update(&status{
 		endTime:    time.Now(),
 		offset:     s.descriptor.Size,
 		descriptor: s.descriptor,

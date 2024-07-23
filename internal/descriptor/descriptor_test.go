@@ -31,13 +31,13 @@ var (
 	}
 
 	imageDesc = ocispec.Descriptor{
-		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		MediaType: ocispec.MediaTypeImageManifest,
 		Digest:    "sha256:2e0e0fe1fb3edbcdddad941c90d2b51e25a6bcd593e82545441a216de7bfa834",
 		Size:      474,
 	}
 
 	titledDesc = ocispec.Descriptor{
-		MediaType:   "application/vnd.oci.image.manifest.v1+json",
+		MediaType:   ocispec.MediaTypeImageManifest,
 		Digest:      "sha256:2e0e0fe1fb3edbcdddad941c90d2b51e25a6bcd593e82545441a216de7bfa834",
 		Size:        474,
 		Annotations: map[string]string{"org.opencontainers.image.title": "shaboozey"},
@@ -88,6 +88,6 @@ func TestDescriptor_GenerateContentKey(t *testing.T) {
 	expected := "sha256:2e0e0fe1fb3edbcdddad941c90d2b51e25a6bcd593e82545441a216de7bfa834shaboozey"
 	got := descriptor.GenerateContentKey(titledDesc)
 	if expected != got {
-		t.Fatalf("GetTitleOrMediaType() got %v, want %v", got, expected)
+		t.Fatalf("GenerateContentKey got %v, want %v", got, expected)
 	}
 }

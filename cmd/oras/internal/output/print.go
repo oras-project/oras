@@ -58,8 +58,8 @@ func (p *Printer) Println(a ...any) error {
 	if err != nil {
 		err = fmt.Errorf("display output error: %w", err)
 		_, _ = fmt.Fprint(p.err, err)
+		return err
 	}
-	// Errors are handled above, so return nil
 	return nil
 }
 
