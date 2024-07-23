@@ -20,6 +20,7 @@ import (
 	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	fetcher "oras.land/oras-go/v2/content"
 
 	"oras.land/oras/cmd/oras/internal/display/content"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
@@ -173,7 +174,7 @@ func NewManifestPushHandler(printer *output.Printer) metadata.ManifestPushHandle
 	return text.NewManifestPushHandler(printer)
 }
 
-// NewCopyHandler returns a copy handler.
-func NewCopyHandler(printer *output.Printer) metadata.CopyHandler {
-	return text.NewCopyHandler(printer)
+// NewCopyHandler returns copy handlers.
+func NewCopyHandler(printer *output.Printer, fetcher fetcher.Fetcher) (status.CopyHandler, metadata.CopyHandler) {
+	return status.NewTextCopyHandler(printer, fetcher), text.NewCopyHandler(printer)
 }

@@ -16,6 +16,7 @@ limitations under the License.
 package status
 
 import (
+	"context"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
@@ -50,4 +51,12 @@ type PullHandler interface {
 	OnNodeRestored(desc ocispec.Descriptor) error
 	// OnNodeSkipped is called when a node is skipped.
 	OnNodeSkipped(desc ocispec.Descriptor) error
+}
+
+// CopyHandler handles status output for cp command.
+type CopyHandler interface {
+	OnCopySkipped(ctx context.Context, desc ocispec.Descriptor) error
+	PreCopy(ctx context.Context, desc ocispec.Descriptor) error
+	PostCopy(ctx context.Context, desc ocispec.Descriptor) error
+	OnMounted(ctx context.Context, desc ocispec.Descriptor) error
 }

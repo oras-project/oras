@@ -118,3 +118,45 @@ func NewTextPullHandler(printer *output.Printer) PullHandler {
 		printer: printer,
 	}
 }
+
+// TextCopyHandler handles text status output for push events.
+type TextCopyHandler struct {
+	printer   *output.Printer
+	committed *sync.Map
+	fetcher   content.Fetcher
+}
+
+// NewTextCopyHandler returns a new handler for push command.
+func NewTextCopyHandler(printer *output.Printer, fetcher content.Fetcher) CopyHandler {
+	return &TextCopyHandler{
+		printer:   printer,
+		fetcher:   fetcher,
+		committed: &sync.Map{},
+	}
+}
+
+// OnCopySkipped is called when an object already exists.
+func (ch *TextCopyHandler) OnCopySkipped(_ context.Context, desc ocispec.Descriptor) error {
+	ch.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+	return ch.printer.PrintStatus(desc, copyPromptExists)
+}
+
+// PreCopy implements PreCopy of CopyHandler.
+func (ch *TextCopyHandler) PreCopy(_ context.Context, desc ocispec.Descriptor) error {
+	return ch.printer.PrintStatus(desc, copyPromptCopying)
+}
+
+// PostCopy implements PostCopy of CopyHandler.
+func (ch *TextCopyHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor) error {
+	ch.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+	if err := output.PrintSuccessorStatus(ctx, desc, ch.fetcher, ch.committed, ch.printer.StatusPrinter(copyPromptSkipped)); err != nil {
+		return err
+	}
+	return ch.printer.PrintStatus(desc, copyPromptCopied)
+}
+
+// OnMounted implements OnMounted of CopyHandler.
+func (ch *TextCopyHandler) OnMounted(_ context.Context, desc ocispec.Descriptor) error {
+	ch.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+	return ch.printer.PrintStatus(desc, copyPromptMounted)
+}

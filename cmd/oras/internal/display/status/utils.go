@@ -32,3 +32,12 @@ const (
 	PushPromptSkipped   = "Skipped  "
 	PushPromptExists    = "Exists   "
 )
+
+// Prompts for cp events.
+const (
+	copyPromptExists  = "Exists "
+	copyPromptCopying = "Copying"
+	copyPromptCopied  = "Copied "
+	copyPromptSkipped = "Skipped"
+	copyPromptMounted = "Mounted"
+)
