@@ -62,7 +62,7 @@ If the user specify the index with tags, the corresponding tags will be updated 
 Usage:
 
 ```
-oras manifest index update <name>{:<tag>|@<digest>} {--add/--remove} [{<tag>|<digest>}...]
+oras manifest index update <name>{:<tag>|@<digest>} {--add/--remove/--annotation/--annotation-file} {...}
 ```
 
 Flags:

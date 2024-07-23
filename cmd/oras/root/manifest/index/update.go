@@ -19,17 +19,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/descriptor"
 )
 
 type updateOptions struct {
@@ -38,33 +37,21 @@ type updateOptions struct {
 
 	addArguments    []string
 	removeArguments []string
-	addTargets      []option.Target
-	removeTargets   []option.Target
 }
 
 func updateCmd() *cobra.Command {
 	var opts updateOptions
 	cmd := &cobra.Command{
-		Use:   "update",
-		Short: "add or remove manifests from an image index",
-		Long:  `TBD`,
-		Args:  cobra.MinimumNArgs(1),
+		Use:   "update <name>{:<tag>|@<digest>} {--add/--remove/--annotation/--annotation-file} [...]",
+		Short: "Update an image index",
+		Long: `Update an image index and push to the repository or OCI image layout
+		
+Example - add one manifest and remove two manifests from an index:
+  oras manifest index update localhost:5000/hello:latest --add win64 --remove sha256:xxx --remove arm64
+		`,
+		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
-			repo, _, _ := strings.Cut(opts.RawReference, ":")
-
-			// parse the add manifest arguments
-			opts.addTargets = make([]option.Target, len(opts.addArguments))
-			if err := parseTargetsFromStrings(cmd, opts.addArguments, opts.addTargets, repo, opts.Remote); err != nil {
-				return err
-			}
-
-			// parse the remove manifest arguments
-			opts.removeTargets = make([]option.Target, len(opts.removeArguments))
-			if err := parseTargetsFromStrings(cmd, opts.removeArguments, opts.removeTargets, repo, opts.Remote); err != nil {
-				return err
-			}
-
 			return option.Parse(cmd, &opts)
 			// todo: add EnsureReferenceNotEmpty somewhere
 		},
@@ -81,24 +68,27 @@ func updateCmd() *cobra.Command {
 
 func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-	indexTarget, err := opts.NewTarget(opts.Common, logger)
+	target, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
 		return err
 	}
-	index, err := fetchIndex(ctx, indexTarget, opts.Reference)
+	index, err := fetchIndex(ctx, target, opts.Reference)
 	if err != nil {
 		return err
 	}
-	manifests, err := addManifests(ctx, opts.Common, logger, index.Manifests, opts.addTargets)
+	manifests, err := addManifests(ctx, index.Manifests, target, opts.addArguments)
 	if err != nil {
 		return err
 	}
-	manifests, err = removeManifests(ctx, opts.Common, logger, manifests, opts.removeTargets)
+	manifests, err = removeManifests(ctx, manifests, target, opts.removeArguments)
 	if err != nil {
 		return err
 	}
-	newDesc, reader := packIndex(&index, manifests)
-	return pushIndex(ctx, indexTarget, newDesc, opts.Reference, reader)
+	desc, content, err := packIndex(&index, manifests)
+	if err != nil {
+		return err
+	}
+	return pushIndex(ctx, target, opts.Reference, desc, content)
 }
 
 func fetchIndex(ctx context.Context, target oras.ReadOnlyTarget, reference string) (ocispec.Index, error) {
@@ -117,41 +107,35 @@ func fetchIndex(ctx context.Context, target oras.ReadOnlyTarget, reference strin
 	return index, nil
 }
 
-func addManifests(ctx context.Context, common option.Common, logger logrus.FieldLogger, manifests []ocispec.Descriptor, targets []option.Target) ([]ocispec.Descriptor, error) {
-	for _, addTarget := range targets {
-		target, err := addTarget.NewReadonlyTarget(ctx, common, logger)
+func addManifests(ctx context.Context, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, adds []string) ([]ocispec.Descriptor, error) {
+	for _, add := range adds {
+		desc, content, err := oras.FetchBytes(ctx, target, add, oras.DefaultFetchBytesOptions)
 		if err != nil {
-			return []ocispec.Descriptor{}, err
+			return nil, err
 		}
-		desc, err := oras.Resolve(ctx, target, addTarget.Reference, oras.DefaultResolveOptions)
-		if err != nil {
-			return []ocispec.Descriptor{}, fmt.Errorf("failed to resolve %s: %w", addTarget.Reference, err)
-		}
-		desc.Platform, err = getPlatform(ctx, target, addTarget.Reference)
-		if err != nil {
-			return []ocispec.Descriptor{}, err
+		if descriptor.IsImageManifest(desc) {
+			desc.Platform, err = getPlatform(ctx, target, content)
+			if err != nil {
+				return nil, err
+			}
 		}
 		manifests = append(manifests, desc)
 	}
 	return manifests, nil
 }
 
-func removeManifests(ctx context.Context, common option.Common, logger logrus.FieldLogger, manifests []ocispec.Descriptor, targets []option.Target) ([]ocispec.Descriptor, error) {
+func removeManifests(ctx context.Context, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, removes []string) ([]ocispec.Descriptor, error) {
 	set := make(map[digest.Digest]struct{})
-	for _, b := range targets {
-		target, err := b.NewReadonlyTarget(ctx, common, logger)
+	for _, rem := range removes {
+		desc, _, err := oras.FetchBytes(ctx, target, rem, oras.DefaultFetchBytesOptions)
 		if err != nil {
-			return []ocispec.Descriptor{}, err
-		}
-		desc, err := oras.Resolve(ctx, target, b.Reference, oras.DefaultResolveOptions)
-		if err != nil {
-			return []ocispec.Descriptor{}, fmt.Errorf("failed to resolve %s: %w", b.Reference, err)
+			return nil, err
 		}
 		set[desc.Digest] = struct{}{}
 	}
 	pointer := len(manifests) - 1
 	for i, m := range manifests {
-		if _, b := set[m.Digest]; b {
+		if _, exists := set[m.Digest]; exists {
 			// swap the to-be-removed manifest to the end of slice
 			manifests[i] = manifests[pointer]
 			pointer = pointer - 1
