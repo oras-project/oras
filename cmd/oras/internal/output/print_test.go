@@ -48,8 +48,8 @@ func TestPrinter_Println(t *testing.T) {
 	if mockWriter.errorCount != 1 {
 		t.Error("Expected one error actual <" + strconv.Itoa(mockWriter.errorCount) + ">")
 	}
-	if err != nil {
-		t.Error("Expected error to be ignored")
+	if err == nil {
+		t.Error("Expected error got <nil>")
 	}
 	err = printer.Printf("boom")
 	if mockWriter.errorCount != 2 {

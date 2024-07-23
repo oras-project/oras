@@ -30,7 +30,7 @@ type reader struct {
 	donePrompt   string
 	descriptor   ocispec.Descriptor
 	manager      progress.Manager
-	status       progress.Status
+	messenger    *progress.Messenger
 }
 
 // NewReader returns a new reader with tracked progress.
@@ -43,7 +43,7 @@ func NewReader(r io.Reader, descriptor ocispec.Descriptor, actionPrompt string, 
 }
 
 func managedReader(r io.Reader, descriptor ocispec.Descriptor, manager progress.Manager, actionPrompt string, donePrompt string) (*reader, error) {
-	ch, err := manager.Add()
+	messenger, err := manager.Add()
 	if err != nil {
 		return nil, err
 	}
@@ -54,11 +54,11 @@ func managedReader(r io.Reader, descriptor ocispec.Descriptor, manager progress.
 		actionPrompt: actionPrompt,
 		donePrompt:   donePrompt,
 		manager:      manager,
-		status:       ch,
+		messenger:    messenger,
 	}, nil
 }
 
-// StopManager stops the status channel and related manager.
+// StopManager stops the messenger channel and related manager.
 func (r *reader) StopManager() {
 	r.Close()
 	_ = r.manager.Close()
@@ -66,18 +66,18 @@ func (r *reader) StopManager() {
 
 // Done sends message to mark the tracked progress as complete.
 func (r *reader) Done() {
-	r.status <- progress.NewStatusMessage(r.donePrompt, r.descriptor, r.descriptor.Size)
-	r.status <- progress.EndTiming()
+	r.messenger.Send(r.donePrompt, r.descriptor, r.descriptor.Size)
+	r.messenger.Stop()
 }
 
 // Close closes the update channel.
 func (r *reader) Close() {
-	close(r.status)
+	r.messenger.Stop()
 }
 
-// Start sends the start timing to the status channel.
+// Start sends the start timing to the messenger channel.
 func (r *reader) Start() {
-	r.status <- progress.StartTiming()
+	r.messenger.Start()
 }
 
 // Read reads from the underlying reader and updates the progress.
@@ -93,12 +93,6 @@ func (r *reader) Read(p []byte) (int, error) {
 			return n, io.ErrUnexpectedEOF
 		}
 	}
-	for {
-		select {
-		case r.status <- progress.NewStatusMessage(r.actionPrompt, r.descriptor, r.offset):
-			// purge the channel until successfully pushed
-			return n, err
-		case <-r.status:
-		}
-	}
+	r.messenger.Send(r.actionPrompt, r.descriptor, r.offset)
+	return n, err
 }
