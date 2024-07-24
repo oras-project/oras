@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -35,6 +36,7 @@ type updateOptions struct {
 	option.Common
 	option.Target
 
+	extraRefs       []string
 	addArguments    []string
 	removeArguments []string
 }
@@ -48,10 +50,16 @@ func updateCmd() *cobra.Command {
 		
 Example - add one manifest and remove two manifests from an index:
   oras manifest index update localhost:5000/hello:latest --add win64 --remove sha256:xxx --remove arm64
-		`,
+		
+Example - update the index referenced by tag1 and tag3, and make tag1 and tag3 point to the
+ updated index. If the old index has other tags, they remain pointing to the old index.
+  oras manifest index update localhost:5000/hello:tag1,tag3 --remove sha256:xxx --remove sha256:xxx --add s390x
+  `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			opts.RawReference = args[0]
+			refs := strings.Split(args[0], ",")
+			opts.RawReference = refs[0]
+			opts.extraRefs = refs[1:]
 			return option.Parse(cmd, &opts)
 			// todo: add EnsureReferenceNotEmpty somewhere
 		},
@@ -88,7 +96,7 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	if err != nil {
 		return err
 	}
-	return pushIndex(ctx, target, opts.Reference, desc, content)
+	return pushIndex(ctx, target, desc, content, opts.Reference, opts.extraRefs)
 }
 
 func fetchIndex(ctx context.Context, target oras.ReadOnlyTarget, reference string) (ocispec.Index, error) {

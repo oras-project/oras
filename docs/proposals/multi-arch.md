@@ -52,6 +52,12 @@ Create an index from source manifests using both tags and digests, and push the 
 oras manifest index create localhost:5000/hello:latest amd64 sha256:xxx armv7
 ```
 
+Create an index and push it with multiple tags:
+
+```sh
+oras manifest index create localhost:5000/tag1, tag2, tag3 amd64 arm64 sha256:xxx
+```
+
 ### Update an image index
 
 #### Definition
@@ -84,6 +90,13 @@ Add one manifest and remove two manifests from an index.
 
 ```sh
 oras manifest index update localhost:5000/hello:latest --add win64 --remove sha256:xxx --remove arm64
+```
+
+Update the index referenced by tag1 and tag3, and make tag1 and tag3 point to the
+updated index. If the old index has other tags, they remain pointing to the old index.
+
+```sh
+oras manifest index update localhost:5000/hello:tag1,tag3 --remove sha256:xxx --remove sha256:xxx --add s390x
 ```
 
 ## Design Considerations

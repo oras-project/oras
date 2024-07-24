@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -36,31 +37,37 @@ type createOptions struct {
 	option.Common
 	option.Target
 
-	sources []string
+	sources   []string
+	extraRefs []string
 }
 
 func createCmd() *cobra.Command {
 	var opts createOptions
 	cmd := &cobra.Command{
-		Use:   "create [flags] <name>[:<tag>|@<digest>] [{<tag>|<digest>}...]",
+		Use:   "create [flags] <name>[:<tag[,<tag>][...]] [{<tag>|<digest>}...]",
 		Short: "Create and push an index from provided manifests",
 		Long: `Create and push an index to a repository or an OCI image layout
 
-Example - create an index from source manifests tagged s1, s2, s3 in the repository
+Example - create an index from source manifests tagged amd64, arm64, darwin in the repository
  localhost:5000/hello, and push the index without tagging it:
-  oras manifest index create localhost:5000/hello s1 s2 s3
+  oras manifest index create localhost:5000/hello amd64 arm64 darwin
 
-Example - create an index from source manifests tagged s1, s2, s3 in the repository
+Example - create an index from source manifests tagged amd64, arm64, darwin in the repository
  localhost:5000/hello, and push the index with tag 'latest':
-  oras manifest index create localhost:5000/hello:latest s1 s2 s3
+  oras manifest index create localhost:5000/hello:latest amd64 arm64 darwin
 
 Example - create an index from source manifests using both tags and digests, 
  and push the index with tag 'latest':
-  oras manifest index create localhost:5000/hello latest s1 sha256:xxx s3
+  oras manifest index create localhost:5000/hello latest amd64 sha256:xxx darwin
+
+Example - create an index and push it with multiple tags:
+  oras manifest index create localhost:5000/tag1, tag2, tag3 amd64 arm64 sha256:xxx
 `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			opts.RawReference = args[0]
+			refs := strings.Split(args[0], ",")
+			opts.RawReference = refs[0]
+			opts.extraRefs = refs[1:]
 			opts.sources = args[1:]
 			return option.Parse(cmd, &opts)
 			// todo: add EnsureReferenceNotEmpty somewhere
@@ -90,7 +97,7 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 	if err != nil {
 		return err
 	}
-	return pushIndex(ctx, target, opts.Reference, desc, content)
+	return pushIndex(ctx, target, desc, content, opts.Reference, opts.extraRefs)
 }
 
 func resolveSourceManifests(ctx context.Context, target oras.ReadOnlyTarget, sources []string) ([]ocispec.Descriptor, error) {
@@ -148,12 +155,13 @@ func packIndex(oldIndex *ocispec.Index, manifests []ocispec.Descriptor) (ocispec
 	return desc, indexBytes, nil
 }
 
-func pushIndex(ctx context.Context, target oras.Target, ref string, desc ocispec.Descriptor, content []byte) error {
+func pushIndex(ctx context.Context, target oras.Target, desc ocispec.Descriptor, content []byte, ref string, extraRefs []string) error {
 	var err error
-	if ref == "" {
+	refs := append(extraRefs, ref)
+	if len(refs) == 0 {
 		err = target.Push(ctx, desc, bytes.NewReader(content))
 	} else {
-		desc, err = oras.TagBytes(ctx, target, desc.MediaType, content, ref)
+		desc, err = oras.TagBytesN(ctx, target, desc.MediaType, content, refs, oras.DefaultTagBytesNOptions)
 	}
 	if err != nil {
 		return err
