@@ -68,3 +68,46 @@ func TestSuccessors(t *testing.T) {
 		})
 	}
 }
+
+func TestDescriptor_GetSuccessors(t *testing.T) {
+	mockFetcher := testutils.NewMockFetcher(t)
+
+	allFilter := func(ocispec.Descriptor) bool {
+		return true
+	}
+	got, err := FilteredSuccessors(context.Background(), mockFetcher.OciImage, mockFetcher.Fetcher, allFilter)
+	if nil != err {
+		t.Errorf("FilteredSuccessors unexpected error %v", err)
+	}
+	if len(got) != 2 {
+		t.Errorf("Expected 2 successors got %v", len(got))
+	}
+	if mockFetcher.Subject.Digest != got[0].Digest {
+		t.Errorf("FilteredSuccessors got %v, want %v", got[0], mockFetcher.Subject)
+	}
+	if mockFetcher.Config.Digest != got[1].Digest {
+		t.Errorf("FilteredSuccessors got %v, want %v", got[1], mockFetcher.Subject)
+	}
+
+	noConfig := func(desc ocispec.Descriptor) bool {
+		return desc.Digest != mockFetcher.Config.Digest
+	}
+	got, err = FilteredSuccessors(context.Background(), mockFetcher.OciImage, mockFetcher.Fetcher, noConfig)
+	if nil != err {
+		t.Errorf("FilteredSuccessors unexpected error %v", err)
+	}
+	if len(got) != 1 {
+		t.Errorf("Expected 1 successors got %v", len(got))
+	}
+	if mockFetcher.Subject.Digest != got[0].Digest {
+		t.Errorf("FilteredSuccessors got %v, want %v", got[0], mockFetcher.Subject)
+	}
+
+	got, err = FilteredSuccessors(context.Background(), ocispec.Descriptor{MediaType: ocispec.MediaTypeImageManifest}, mockFetcher.Fetcher, allFilter)
+	if nil == err {
+		t.Error("FilteredSuccessors expected error")
+	}
+	if got != nil {
+		t.Errorf("FilteredSuccessors unexpected %v", got)
+	}
+}

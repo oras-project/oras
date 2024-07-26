@@ -16,7 +16,6 @@ limitations under the License.
 package output
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"sync"
@@ -24,11 +23,7 @@ import (
 	"oras.land/oras/internal/descriptor"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras-go/v2/content"
 )
-
-// PrintFunc is the function type returned by StatusPrinter.
-type PrintFunc func(ocispec.Descriptor) error
 
 // Printer prints for status handlers.
 type Printer struct {
@@ -91,29 +86,4 @@ func (p *Printer) PrintStatus(desc ocispec.Descriptor, status string) error {
 		return p.PrintVerbose(status, descriptor.ShortDigest(desc), name)
 	}
 	return p.Println(status, descriptor.ShortDigest(desc), name)
-}
-
-// StatusPrinter returns a tracking function for transfer status.
-func (p *Printer) StatusPrinter(status string) PrintFunc {
-	return func(desc ocispec.Descriptor) error {
-		return p.PrintStatus(desc, status)
-	}
-}
-
-// PrintSuccessorStatus prints transfer status of successors.
-func PrintSuccessorStatus(ctx context.Context, desc ocispec.Descriptor, fetcher content.Fetcher, committed *sync.Map, print PrintFunc) error {
-	successors, err := content.Successors(ctx, fetcher, desc)
-	if err != nil {
-		return err
-	}
-	for _, s := range successors {
-		name := s.Annotations[ocispec.AnnotationTitle]
-		if v, ok := committed.Load(s.Digest.String()); ok && v != name {
-			// Reprint status for deduplicated content
-			if err := print(s); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }

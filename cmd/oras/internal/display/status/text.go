@@ -17,13 +17,13 @@ package status
 
 import (
 	"context"
+	"oras.land/oras/internal/graph"
 	"sync"
-
-	"oras.land/oras/cmd/oras/internal/output"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras/cmd/oras/internal/output"
 )
 
 // TextPushHandler handles text status output for push events.
@@ -65,8 +65,14 @@ func (ph *TextPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetche
 	}
 	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		if err := output.PrintSuccessorStatus(ctx, desc, fetcher, committed, ph.printer.StatusPrinter(PushPromptSkipped)); err != nil {
+		successors, err := graph.FilteredSuccessors(ctx, desc, fetcher, DeduplicatedFilter(committed))
+		if err != nil {
 			return err
+		}
+		for _, successor := range successors {
+			if err = ph.printer.PrintStatus(successor, PushPromptSkipped); err != nil {
+				return err
+			}
 		}
 		return ph.printer.PrintStatus(desc, PushPromptUploaded)
 	}
@@ -149,8 +155,14 @@ func (ch *TextCopyHandler) PreCopy(_ context.Context, desc ocispec.Descriptor) e
 // PostCopy implements PostCopy of CopyHandler.
 func (ch *TextCopyHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor) error {
 	ch.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-	if err := output.PrintSuccessorStatus(ctx, desc, ch.fetcher, ch.committed, ch.printer.StatusPrinter(copyPromptSkipped)); err != nil {
+	successors, err := graph.FilteredSuccessors(ctx, desc, ch.fetcher, DeduplicatedFilter(ch.committed))
+	if err != nil {
 		return err
+	}
+	for _, successor := range successors {
+		if err = ch.printer.PrintStatus(successor, copyPromptSkipped); err != nil {
+			return err
+		}
 	}
 	return ch.printer.PrintStatus(desc, copyPromptCopied)
 }

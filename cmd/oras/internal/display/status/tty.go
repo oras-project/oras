@@ -17,10 +17,9 @@ package status
 
 import (
 	"context"
+	"oras.land/oras/internal/graph"
 	"os"
 	"sync"
-
-	"oras.land/oras/cmd/oras/internal/output"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
@@ -70,9 +69,17 @@ func (ph *TTYPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher
 	}
 	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return output.PrintSuccessorStatus(ctx, desc, fetcher, committed, func(d ocispec.Descriptor) error {
-			return ph.tracked.Prompt(d, PushPromptSkipped)
-		})
+		successors, err := graph.FilteredSuccessors(ctx, desc, fetcher, DeduplicatedFilter(committed))
+		if err != nil {
+			return err
+		}
+		for _, successor := range successors {
+			err = ph.tracked.Prompt(successor, PushPromptSkipped)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 }
 
