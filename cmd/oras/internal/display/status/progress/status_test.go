@@ -23,8 +23,8 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/status/console"
-	"oras.land/oras/cmd/oras/internal/display/status/console/testutils"
 	"oras.land/oras/cmd/oras/internal/display/status/progress/humanize"
+	"oras.land/oras/internal/testutils"
 )
 
 func Test_status_String(t *testing.T) {
