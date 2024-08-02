@@ -55,7 +55,7 @@ Example - Fetch raw manifest from a registry:
 Example - Fetch the descriptor of a manifest from a registry:
   oras manifest fetch --descriptor localhost:5000/hello:v1
 
-Example - Fetch the manifest digest from a registry:
+Example - Fetch the manifest digest from a registry similar to the resolve command:
   oras manifest fetch --format go-template --template '{{ .digest }}' localhost:5000/hello:v1
 
 Example - Fetch manifest from a registry with specified media type:
