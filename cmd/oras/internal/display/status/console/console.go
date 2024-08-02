@@ -27,9 +27,9 @@ const (
 	MinWidth = 80
 	// MinHeight is the minimal height of supported console.
 	MinHeight = 10
-	// cannot use aec.Save since DEC has better compatilibity than SCO
+	// Save cannot use aec.Save since DEC has better compatibility than SCO
 	Save = "\0337"
-	// cannot use aec.Restore since DEC has better compatilibity than SCO
+	// Restore cannot use aec.Restore since DEC has better compatibility than SCO
 	Restore = "\0338"
 )
 
@@ -87,7 +87,7 @@ func (c *Console) OutputTo(upCnt uint, str string) {
 
 // Restore restores the saved cursor position.
 func (c *Console) Restore() {
-	// cannot use aec.Restore since DEC has better compatilibity than SCO
+	// cannot use aec.Restore since DEC has better compatibility than SCO
 	_, _ = c.Write([]byte(Restore))
 	_, _ = c.Write([]byte(aec.Column(0).
 		With(aec.EraseLine(aec.EraseModes.All)).

@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/status/console"
 )
 
@@ -33,12 +34,10 @@ const (
 
 var errManagerStopped = errors.New("progress output manager has already been stopped")
 
-// Status is print message channel
-type Status chan *status
-
 // Manager is progress view master
 type Manager interface {
-	Add() (Status, error)
+	Add() (*Messenger, error)
+	SendAndStop(desc ocispec.Descriptor, prompt string) error
 	Close() error
 }
 
@@ -90,22 +89,22 @@ func (m *manager) render() {
 	defer m.statusLock.RUnlock()
 	// todo: update size in another routine
 	width, height := m.console.Size()
-	len := len(m.status) * 2
+	lineCount := len(m.status) * 2
 	offset := 0
-	if len > height {
+	if lineCount > height {
 		// skip statuses that cannot be rendered
-		offset = len - height
+		offset = lineCount - height
 	}
 
-	for ; offset < len; offset += 2 {
+	for ; offset < lineCount; offset += 2 {
 		status, progress := m.status[offset/2].String(width)
-		m.console.OutputTo(uint(len-offset), status)
-		m.console.OutputTo(uint(len-offset-1), progress)
+		m.console.OutputTo(uint(lineCount-offset), status)
+		m.console.OutputTo(uint(lineCount-offset-1), progress)
 	}
 }
 
 // Add appends a new status with 2-line space for rendering.
-func (m *manager) Add() (Status, error) {
+func (m *manager) Add() (*Messenger, error) {
 	if m.closed() {
 		return nil, errManagerStopped
 	}
@@ -120,16 +119,27 @@ func (m *manager) Add() (Status, error) {
 	return m.statusChan(s), nil
 }
 
-func (m *manager) statusChan(s *status) Status {
+// SendAndStop send message for descriptor and stop timing.
+func (m *manager) SendAndStop(desc ocispec.Descriptor, prompt string) error {
+	messenger, err := m.Add()
+	if err != nil {
+		return err
+	}
+	messenger.Send(prompt, desc, desc.Size)
+	messenger.Stop()
+	return nil
+}
+
+func (m *manager) statusChan(s *status) *Messenger {
 	ch := make(chan *status, BufferSize)
 	m.updating.Add(1)
 	go func() {
 		defer m.updating.Done()
 		for newStatus := range ch {
-			s.Update(newStatus)
+			s.update(newStatus)
 		}
 	}()
-	return ch
+	return &Messenger{ch: ch}
 }
 
 // Close stops all status and waits for updating and rendering.

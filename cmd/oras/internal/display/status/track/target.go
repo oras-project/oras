@@ -110,12 +110,5 @@ func (t *graphTarget) Close() error {
 
 // Prompt prompts the user with the provided prompt and descriptor.
 func (t *graphTarget) Prompt(desc ocispec.Descriptor, prompt string) error {
-	status, err := t.manager.Add()
-	if err != nil {
-		return err
-	}
-	defer close(status)
-	status <- progress.NewStatusMessage(prompt, desc, desc.Size)
-	status <- progress.EndTiming()
-	return nil
+	return t.manager.SendAndStop(desc, prompt)
 }
