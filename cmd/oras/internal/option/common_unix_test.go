@@ -20,7 +20,7 @@ package option
 import (
 	"testing"
 
-	"oras.land/oras/cmd/oras/internal/display/status/console/testutils"
+	"oras.land/oras/internal/testutils"
 )
 
 func TestCommon_parseTTY(t *testing.T) {

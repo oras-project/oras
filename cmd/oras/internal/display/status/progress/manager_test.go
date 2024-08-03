@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"oras.land/oras/cmd/oras/internal/display/status/console"
-	"oras.land/oras/cmd/oras/internal/display/status/console/testutils"
+	"oras.land/oras/internal/testutils"
 )
 
 func Test_manager_render(t *testing.T) {

@@ -34,7 +34,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/registry/remote"
-	"oras.land/oras/cmd/oras/internal/display/status/console/testutils"
+	"oras.land/oras/internal/testutils"
 )
 
 var (

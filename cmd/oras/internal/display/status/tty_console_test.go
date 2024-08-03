@@ -21,8 +21,8 @@ import (
 	"context"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/memory"
-	"oras.land/oras/cmd/oras/internal/display/status/console/testutils"
 	"oras.land/oras/cmd/oras/internal/display/status/track"
+	"oras.land/oras/internal/testutils"
 	"testing"
 )
 
