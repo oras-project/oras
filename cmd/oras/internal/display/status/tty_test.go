@@ -16,10 +16,13 @@ limitations under the License.
 package status
 
 import (
+	"context"
+	"io"
 	"os"
 	"testing"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2"
 )
 
 func TestTTYPushHandler_OnFileLoading(t *testing.T) {
@@ -61,5 +64,50 @@ func TestTTYPullHandler_OnNodeProcessing(t *testing.T) {
 	ph := NewTTYPullHandler(nil)
 	if err := ph.OnNodeProcessing(ocispec.Descriptor{}); err != nil {
 		t.Error("OnNodeProcessing() should not return an error")
+	}
+}
+
+// ErrorFetcher implements content.Fetcher.
+type ErrorFetcher struct{}
+
+// Fetch returns an error.
+func (f *ErrorFetcher) Fetch(context.Context, ocispec.Descriptor) (io.ReadCloser, error) {
+	return nil, wantedError
+}
+
+func TestTTYPushHandler_errGetSuccessor(t *testing.T) {
+	ph := NewTTYPushHandler(nil)
+	opts := oras.CopyGraphOptions{}
+	ph.UpdateCopyOptions(&opts, &ErrorFetcher{})
+	if err := opts.PostCopy(context.Background(), ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageManifest,
+	}); err != wantedError {
+		t.Error("PostCopy() should return expected error")
+	}
+}
+
+// ErrorPromptor mocks trackable GraphTarget.
+type ErrorPromptor struct {
+	oras.GraphTarget
+	io.Closer
+}
+
+// Prompt mocks an errored prompt.
+func (p *ErrorPromptor) Prompt(ocispec.Descriptor, string) error {
+	return wantedError
+}
+
+func TestTTYPushHandler_errPrompt(t *testing.T) {
+	ph := TTYPushHandler{
+		tracked: &ErrorPromptor{},
+	}
+	opts := oras.CopyGraphOptions{}
+	ph.UpdateCopyOptions(&opts, memStore)
+	if err := opts.OnCopySkipped(ctx, layerDesc); err != wantedError {
+		t.Error("OnCopySkipped() should return expected error")
+	}
+	// test
+	if err := opts.PostCopy(context.Background(), manifestDesc); err != wantedError {
+		t.Error("PostCopy() should return expected error")
 	}
 }

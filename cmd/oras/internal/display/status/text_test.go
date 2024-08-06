@@ -20,14 +20,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
+	"testing"
+
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/testutils"
-	"os"
-	"strings"
-	"testing"
 )
 
 var (
@@ -36,37 +37,38 @@ var (
 	printer      *output.Printer
 	bogus        ocispec.Descriptor
 	memStore     *memory.Store
-	memDesc      ocispec.Descriptor
+	layerDesc    ocispec.Descriptor
 	manifestDesc ocispec.Descriptor
+	wantedError  = fmt.Errorf("wanted error")
 )
 
 func TestMain(m *testing.M) {
 	// memory store for testing
 	memStore = memory.New()
-	content := []byte("test")
-	r := bytes.NewReader(content)
-	memDesc = ocispec.Descriptor{
+	layerContent := []byte("test")
+	r := bytes.NewReader(layerContent)
+	layerDesc = ocispec.Descriptor{
 		MediaType: "application/octet-stream",
-		Digest:    digest.FromBytes(content),
-		Size:      int64(len(content)),
+		Digest:    digest.FromBytes(layerContent),
+		Size:      int64(len(layerContent)),
 	}
-	if err := memStore.Push(context.Background(), memDesc, r); err != nil {
+	if err := memStore.Push(context.Background(), layerDesc, r); err != nil {
 		fmt.Println("Setup failed:", err)
 		os.Exit(1)
 	}
-	if err := memStore.Tag(context.Background(), memDesc, memDesc.Digest.String()); err != nil {
+	if err := memStore.Tag(context.Background(), layerDesc, layerDesc.Digest.String()); err != nil {
 		fmt.Println("Setup failed:", err)
 		os.Exit(1)
 	}
 
-	layer1Desc := memDesc
+	layer1Desc := layerDesc
 	layer1Desc.Annotations = map[string]string{ocispec.AnnotationTitle: "layer1"}
-	layer2Desc := memDesc
+	layer2Desc := layerDesc
 	layer2Desc.Annotations = map[string]string{ocispec.AnnotationTitle: "layer2"}
 	manifest := ocispec.Manifest{
 		MediaType: ocispec.MediaTypeImageManifest,
 		Layers:    []ocispec.Descriptor{layer1Desc, layer2Desc},
-		Config:    memDesc,
+		Config:    layerDesc,
 	}
 	manifestContent, err := json.Marshal(&manifest)
 	if err != nil {
@@ -82,7 +84,7 @@ func TestMain(m *testing.M) {
 		fmt.Println("Setup failed:", err)
 		os.Exit(1)
 	}
-	if err := memStore.Tag(context.Background(), memDesc, memDesc.Digest.String()); err != nil {
+	if err := memStore.Tag(context.Background(), layerDesc, layerDesc.Digest.String()); err != nil {
 		fmt.Println("Setup failed:", err)
 		os.Exit(1)
 	}
