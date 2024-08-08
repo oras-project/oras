@@ -37,12 +37,12 @@ import (
 )
 
 // NewPushHandler returns status and metadata handlers for push command.
-func NewPushHandler(printer *output.Printer, format option.Format, tty *os.File) (status.PushHandler, metadata.PushHandler, error) {
+func NewPushHandler(printer *output.Printer, format option.Format, tty *os.File, fetcher fetcher.Fetcher) (status.PushHandler, metadata.PushHandler, error) {
 	var statusHandler status.PushHandler
 	if tty != nil {
-		statusHandler = status.NewTTYPushHandler(tty)
+		statusHandler = status.NewTTYPushHandler(tty, fetcher)
 	} else if format.Type == option.FormatTypeText.Name {
-		statusHandler = status.NewTextPushHandler(printer)
+		statusHandler = status.NewTextPushHandler(printer, fetcher)
 	} else {
 		statusHandler = status.NewDiscardHandler()
 	}
@@ -62,12 +62,12 @@ func NewPushHandler(printer *output.Printer, format option.Format, tty *os.File)
 }
 
 // NewAttachHandler returns status and metadata handlers for attach command.
-func NewAttachHandler(printer *output.Printer, format option.Format, tty *os.File) (status.AttachHandler, metadata.AttachHandler, error) {
+func NewAttachHandler(printer *output.Printer, format option.Format, tty *os.File, fetcher fetcher.Fetcher) (status.AttachHandler, metadata.AttachHandler, error) {
 	var statusHandler status.AttachHandler
 	if tty != nil {
-		statusHandler = status.NewTTYAttachHandler(tty)
+		statusHandler = status.NewTTYAttachHandler(tty, fetcher)
 	} else if format.Type == option.FormatTypeText.Name {
-		statusHandler = status.NewTextAttachHandler(printer)
+		statusHandler = status.NewTextAttachHandler(printer, fetcher)
 	} else {
 		statusHandler = status.NewDiscardHandler()
 	}

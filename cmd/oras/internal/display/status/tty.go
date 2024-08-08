@@ -29,14 +29,18 @@ import (
 
 // TTYPushHandler handles TTY status output for push command.
 type TTYPushHandler struct {
-	tty     *os.File
-	tracked track.GraphTarget
+	tty       *os.File
+	tracked   track.GraphTarget
+	committed *sync.Map
+	fetcher   content.Fetcher
 }
 
 // NewTTYPushHandler returns a new handler for push status events.
-func NewTTYPushHandler(tty *os.File) PushHandler {
+func NewTTYPushHandler(tty *os.File, fetcher content.Fetcher) PushHandler {
 	return &TTYPushHandler{
-		tty: tty,
+		tty:       tty,
+		fetcher:   fetcher,
+		committed: &sync.Map{},
 	}
 }
 
@@ -60,32 +64,36 @@ func (ph *TTYPushHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, St
 	return tracked, tracked.Close, nil
 }
 
-// UpdateCopyOptions adds TTY status output to the copy options.
-func (ph *TTYPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher) {
-	committed := &sync.Map{}
-	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return ph.tracked.Prompt(desc, PushPromptExists)
+// OnCopySkipped is called when an object already exists.
+func (ph *TTYPushHandler) OnCopySkipped(_ context.Context, desc ocispec.Descriptor) error {
+	ph.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+	return ph.tracked.Prompt(desc, PushPromptExists)
+}
+
+// PreCopy implements PreCopy of CopyHandler.
+func (ph *TTYPushHandler) PreCopy(_ context.Context, _ ocispec.Descriptor) error {
+	return nil
+}
+
+// PostCopy implements PostCopy of CopyHandler.
+func (ph *TTYPushHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor) error {
+	ph.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+	successors, err := graph.FilteredSuccessors(ctx, desc, ph.fetcher, DeduplicatedFilter(ph.committed))
+	if err != nil {
+		return err
 	}
-	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		successors, err := graph.FilteredSuccessors(ctx, desc, fetcher, DeduplicatedFilter(committed))
+	for _, successor := range successors {
+		err = ph.tracked.Prompt(successor, PushPromptSkipped)
 		if err != nil {
 			return err
 		}
-		for _, successor := range successors {
-			err = ph.tracked.Prompt(successor, PushPromptSkipped)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
 	}
+	return nil
 }
 
 // NewTTYAttachHandler returns a new handler for attach status events.
-func NewTTYAttachHandler(tty *os.File) AttachHandler {
-	return NewTTYPushHandler(tty)
+func NewTTYAttachHandler(tty *os.File, fetcher content.Fetcher) AttachHandler {
+	return NewTTYPushHandler(tty, fetcher)
 }
 
 // TTYPullHandler handles TTY status output for pull events.

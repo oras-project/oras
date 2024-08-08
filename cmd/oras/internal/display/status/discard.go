@@ -16,9 +16,10 @@ limitations under the License.
 package status
 
 import (
+	"context"
+
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
 )
 
 func discardStopTrack() error {
@@ -48,8 +49,20 @@ func (DiscardHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, StopTr
 	return gt, discardStopTrack, nil
 }
 
-// UpdateCopyOptions updates the copy options for the artifact push.
-func (DiscardHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher) {}
+// OnCopySkipped is called when an object already exists.
+func (DiscardHandler) OnCopySkipped(_ context.Context, _ ocispec.Descriptor) error {
+	return nil
+}
+
+// PreCopy implements PreCopy of CopyHandler.
+func (DiscardHandler) PreCopy(_ context.Context, _ ocispec.Descriptor) error {
+	return nil
+}
+
+// PostCopy implements PostCopy of CopyHandler.
+func (DiscardHandler) PostCopy(_ context.Context, _ ocispec.Descriptor) error {
+	return nil
+}
 
 // OnNodeDownloading implements PullHandler.
 func (DiscardHandler) OnNodeDownloading(desc ocispec.Descriptor) error {

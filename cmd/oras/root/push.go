@@ -151,10 +151,6 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 
 func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-	displayStatus, displayMetadata, err := display.NewPushHandler(opts.Printer, opts.Format, opts.TTY)
-	if err != nil {
-		return err
-	}
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err
@@ -182,12 +178,17 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 		desc.Annotations = packOpts.ConfigAnnotations
 		packOpts.ConfigDescriptor = &desc
 	}
+	memoryStore := memory.New()
+	union := contentutil.MultiReadOnlyTarget(memoryStore, store)
+	displayStatus, displayMetadata, err := display.NewPushHandler(opts.Printer, opts.Format, opts.TTY, union)
+	if err != nil {
+		return err
+	}
 	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, displayStatus)
 	if err != nil {
 		return err
 	}
 	packOpts.Layers = descs
-	memoryStore := memory.New()
 	pack := func() (ocispec.Descriptor, error) {
 		root, err := oras.PackManifest(ctx, memoryStore, opts.PackVersion, opts.artifactType, packOpts)
 		if err != nil {
@@ -210,8 +211,9 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	}
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
-	union := contentutil.MultiReadOnlyTarget(memoryStore, store)
-	displayStatus.UpdateCopyOptions(&copyOptions.CopyGraphOptions, union)
+	copyOptions.CopyGraphOptions.OnCopySkipped = displayStatus.OnCopySkipped
+	copyOptions.CopyGraphOptions.PreCopy = displayStatus.PreCopy
+	copyOptions.CopyGraphOptions.PostCopy = displayStatus.PostCopy
 	copy := func(root ocispec.Descriptor) error {
 		// add both pull and push scope hints for dst repository
 		// to save potential push-scope token requests during copy

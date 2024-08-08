@@ -27,7 +27,7 @@ import (
 )
 
 func TestSuccessors(t *testing.T) {
-	mockFetcher := testutils.NewMockFetcher(t)
+	mockFetcher := testutils.NewMockFetcher()
 	fetcher := mockFetcher.Fetcher
 	ctx := context.Background()
 	type args struct {
@@ -70,7 +70,7 @@ func TestSuccessors(t *testing.T) {
 }
 
 func TestDescriptor_GetSuccessors(t *testing.T) {
-	mockFetcher := testutils.NewMockFetcher(t)
+	mockFetcher := testutils.NewMockFetcher()
 
 	allFilter := func(ocispec.Descriptor) bool {
 		return true

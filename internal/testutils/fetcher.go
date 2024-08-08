@@ -19,16 +19,33 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"io"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras/internal/docker"
-	"testing"
 )
 
+// ErrorFetcher implements content.Fetcher.
+type ErrorFetcher struct {
+	ExpectedError error
+}
+
+// NewErrorFetcher create and error fetcher
+func NewErrorFetcher() *ErrorFetcher {
+	return &ErrorFetcher{
+		ExpectedError: fmt.Errorf("expected error"),
+	}
+}
+
+// Fetch returns an error.
+func (f *ErrorFetcher) Fetch(context.Context, ocispec.Descriptor) (io.ReadCloser, error) {
+	return nil, f.ExpectedError
+}
+
 type MockFetcher struct {
-	t           *testing.T
 	store       *memory.Store
 	Fetcher     content.Fetcher
 	Subject     ocispec.Descriptor
@@ -39,12 +56,13 @@ type MockFetcher struct {
 }
 
 // NewMockFetcher creates a MockFetcher and populates it.
-func NewMockFetcher(t *testing.T) (mockFetcher MockFetcher) {
-	mockFetcher = MockFetcher{store: memory.New(), t: t}
+func NewMockFetcher() (mockFetcher MockFetcher) {
+	mockFetcher = MockFetcher{store: memory.New()}
 	mockFetcher.Subject = mockFetcher.PushBlob(ocispec.MediaTypeImageLayer, []byte("blob"))
 	imageType := "test.image"
 	mockFetcher.Config = mockFetcher.PushBlob(imageType, []byte("config content"))
 	mockFetcher.OciImage = mockFetcher.PushOCIImage(&mockFetcher.Subject, mockFetcher.Config)
+	mockFetcher.OciImage.Annotations = map[string]string{ocispec.AnnotationTitle: "oci-image"}
 	mockFetcher.DockerImage = mockFetcher.PushDockerImage(&mockFetcher.Subject, mockFetcher.Config)
 	mockFetcher.Index = mockFetcher.PushIndex(mockFetcher.Subject)
 	mockFetcher.Fetcher = mockFetcher.store
@@ -59,7 +77,7 @@ func (mf *MockFetcher) PushBlob(mediaType string, blob []byte) ocispec.Descripto
 		Size:      int64(len(blob)),
 	}
 	if err := mf.store.Push(context.Background(), desc, bytes.NewReader(blob)); err != nil {
-		mf.t.Fatal(err)
+		panic(err)
 	}
 	return desc
 }
@@ -73,7 +91,7 @@ func (mf *MockFetcher) pushImage(subject *ocispec.Descriptor, mediaType string, 
 	}
 	manifestJSON, err := json.Marshal(manifest)
 	if err != nil {
-		mf.t.Fatal(err)
+		panic(err)
 	}
 	return mf.PushBlob(mediaType, manifestJSON)
 }
@@ -95,7 +113,7 @@ func (mf *MockFetcher) PushIndex(manifests ...ocispec.Descriptor) ocispec.Descri
 	}
 	indexJSON, err := json.Marshal(index)
 	if err != nil {
-		mf.t.Fatal(err)
+		panic(err)
 	}
 	return mf.PushBlob(ocispec.MediaTypeImageIndex, indexJSON)
 }

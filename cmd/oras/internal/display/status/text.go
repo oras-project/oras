@@ -28,14 +28,19 @@ import (
 
 // TextPushHandler handles text status output for push events.
 type TextPushHandler struct {
-	printer *output.Printer
+	printer   *output.Printer
+	committed *sync.Map
+	fetcher   content.Fetcher
 }
 
 // NewTextPushHandler returns a new handler for push command.
-func NewTextPushHandler(printer *output.Printer) PushHandler {
-	return &TextPushHandler{
-		printer: printer,
+func NewTextPushHandler(printer *output.Printer, fetcher content.Fetcher) PushHandler {
+	tch := TextPushHandler{
+		printer:   printer,
+		fetcher:   fetcher,
+		committed: &sync.Map{},
 	}
+	return &tch
 }
 
 // OnFileLoading is called when a file is being prepared for upload.
@@ -53,34 +58,35 @@ func (ph *TextPushHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, S
 	return gt, discardStopTrack, nil
 }
 
-// UpdateCopyOptions adds status update to the copy options.
-func (ph *TextPushHandler) UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher) {
-	committed := &sync.Map{}
-	opts.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		return ph.printer.PrintStatus(desc, PushPromptExists)
+// OnCopySkipped is called when an object already exists.
+func (ph *TextPushHandler) OnCopySkipped(_ context.Context, desc ocispec.Descriptor) error {
+	ph.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+	return ph.printer.PrintStatus(desc, PushPromptExists)
+}
+
+// PreCopy implements PreCopy of CopyHandler.
+func (ph *TextPushHandler) PreCopy(_ context.Context, desc ocispec.Descriptor) error {
+	return ph.printer.PrintStatus(desc, PushPromptUploading)
+}
+
+// PostCopy implements PostCopy of CopyHandler.
+func (ph *TextPushHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor) error {
+	ph.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+	successors, err := graph.FilteredSuccessors(ctx, desc, ph.fetcher, DeduplicatedFilter(ph.committed))
+	if err != nil {
+		return err
 	}
-	opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		return ph.printer.PrintStatus(desc, PushPromptUploading)
-	}
-	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-		committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-		successors, err := graph.FilteredSuccessors(ctx, desc, fetcher, DeduplicatedFilter(committed))
-		if err != nil {
+	for _, successor := range successors {
+		if err = ph.printer.PrintStatus(successor, PushPromptExists); err != nil {
 			return err
 		}
-		for _, successor := range successors {
-			if err = ph.printer.PrintStatus(successor, PushPromptSkipped); err != nil {
-				return err
-			}
-		}
-		return ph.printer.PrintStatus(desc, PushPromptUploaded)
 	}
+	return ph.printer.PrintStatus(desc, PushPromptUploaded)
 }
 
 // NewTextAttachHandler returns a new handler for attach command.
-func NewTextAttachHandler(printer *output.Printer) AttachHandler {
-	return NewTextPushHandler(printer)
+func NewTextAttachHandler(printer *output.Printer, fetcher content.Fetcher) AttachHandler {
+	return NewTextPushHandler(printer, fetcher)
 }
 
 // TextPullHandler handles text status output for pull events.
@@ -160,7 +166,7 @@ func (ch *TextCopyHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor
 		return err
 	}
 	for _, successor := range successors {
-		if err = ch.printer.PrintStatus(successor, copyPromptSkipped); err != nil {
+		if err = ch.printer.PrintStatus(successor, copyPromptExists); err != nil {
 			return err
 		}
 	}
