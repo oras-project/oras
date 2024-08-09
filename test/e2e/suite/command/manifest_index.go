@@ -36,6 +36,12 @@ var _ = Describe("ORAS beginners:", func() {
 			})
 		})
 	})
+
+	When("running `manifest index update`", func() {
+			It("should show help doc with --tag flag", func() {
+				ORAS("manifest", "index", "update", "--help").MatchKeyWords("--tag", "tags for the updated index").Exec()
+			})
+		})
 })
 
 func indexTestRepo(subcommand string, text string) string {
@@ -154,6 +160,130 @@ var _ = Describe("1.1 registry users:", func() {
 				MatchErrKeyWords("Error", "could not find", "does-not-exist").Exec()
 		})
 	})
+
+	When("running `manifest index update`", func() {
+		It("should update by specifying the index tag", func() {
+			testRepo := indexTestRepo("update", "by-index-tag")
+			CopyZOTRepo(ImageRepo, testRepo)
+			// create an index for testing purpose
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, "latest"),
+				string(multi_arch.LinuxAMD64.Digest), string(multi_arch.LinuxARM64.Digest)).Exec()
+			// add a manifest to the index
+			ORAS("manifest", "index", "update", RegistryRef(ZOTHost, testRepo, "latest"),
+				"--add", string(multi_arch.LinuxARMV7.Digest)).
+				MatchKeyWords("sha256:84887718c9e61daa0f1996aad3ae2eb10db15dcbdab394e4b2dfee7967c55f2c").Exec()
+			// verify
+			content := ORAS("manifest", "fetch", RegistryRef(ZOTHost, testRepo, "latest")).Exec().Out.Contents()
+			expectedManifests := []ocispec.Descriptor{multi_arch.LinuxAMD64, multi_arch.LinuxARM64, multi_arch.LinuxARMV7}
+			ValidateIndex(content, expectedManifests)
+		})
+
+		It("should update by specifying the index digest", func() {
+			testRepo := indexTestRepo("update", "by-index-digest")
+			CopyZOTRepo(ImageRepo, testRepo)
+			// create an index for testing purpose
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, ""),
+				string(multi_arch.LinuxAMD64.Digest), string(multi_arch.LinuxARM64.Digest)).Exec()
+			// add a manifest to the index
+			ORAS("manifest", "index", "update", RegistryRef(ZOTHost, testRepo, "sha256:cce9590b1193d8bcb70467e2381dc81e77869be4801c09abe9bc274b6a1d2001"),
+				"--add", string(multi_arch.LinuxARMV7.Digest)).
+				MatchKeyWords("sha256:84887718c9e61daa0f1996aad3ae2eb10db15dcbdab394e4b2dfee7967c55f2c").Exec()
+			// verify
+			content := ORAS("manifest", "fetch", RegistryRef(ZOTHost, testRepo, "sha256:84887718c9e61daa0f1996aad3ae2eb10db15dcbdab394e4b2dfee7967c55f2c")).
+				Exec().Out.Contents()
+			expectedManifests := []ocispec.Descriptor{multi_arch.LinuxAMD64, multi_arch.LinuxARM64, multi_arch.LinuxARMV7}
+			ValidateIndex(content, expectedManifests)
+		})
+
+		It("should update by add, merge and remove flags", func() {
+			testRepo := indexTestRepo("update", "all-flags")
+			CopyZOTRepo(ImageRepo, testRepo)
+			// create indexes for testing purpose
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, "index01"),
+				string(multi_arch.LinuxAMD64.Digest)).Exec()
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, "index02"),
+				string(multi_arch.LinuxARM64.Digest)).Exec()
+			// update index with add, merge and remove flags
+			ORAS("manifest", "index", "update", RegistryRef(ZOTHost, testRepo, "index01"),
+				"--add", string(multi_arch.LinuxARMV7.Digest), "--merge", "index02",
+				"--remove", string(multi_arch.LinuxAMD64.Digest)).Exec()
+			// verify
+			content := ORAS("manifest", "fetch", RegistryRef(ZOTHost, testRepo, "index01")).Exec().Out.Contents()
+			expectedManifests := []ocispec.Descriptor{multi_arch.LinuxARMV7, multi_arch.LinuxARM64}
+			ValidateIndex(content, expectedManifests)
+		})
+
+		It("should tell user nothing to update if no update flags are used", func() {
+			testRepo := indexTestRepo("update", "no-flags")
+			CopyZOTRepo(ImageRepo, testRepo)
+			ORAS("manifest", "index", "update", RegistryRef(ZOTHost, testRepo, "nothing-to-update")).
+				MatchKeyWords("nothing to update").Exec()
+		})
+
+		It("should fail if empty reference is given", func() {
+			testRepo := indexTestRepo("update", "empty-reference")
+			CopyZOTRepo(ImageRepo, testRepo)
+			ORAS("manifest", "index", "update", RegistryRef(ZOTHost, testRepo, ""),
+				"--add", string(multi_arch.LinuxARMV7.Digest)).ExpectFailure().
+				MatchErrKeyWords("Error:", "no tag or digest specified").Exec()
+		})
+
+		It("should fail if a wrong reference is given as the index to update", func() {
+			testRepo := indexTestRepo("update", "wrong-index-ref")
+			CopyZOTRepo(ImageRepo, testRepo)
+			ORAS("manifest", "index", "update", RegistryRef(ZOTHost, testRepo, "does-not-exist"),
+				"--add", string(multi_arch.LinuxARMV7.Digest)).ExpectFailure().
+				MatchErrKeyWords("Error", "could not find", "does-not-exist").Exec()
+		})
+
+		It("should fail if a wrong reference is given as the manifest to add", func() {
+			testRepo := indexTestRepo("update", "wrong-add-ref")
+			CopyZOTRepo(ImageRepo, testRepo)
+			// create an index for testing purpose
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, "add-wrong-tag"),
+				string(multi_arch.LinuxAMD64.Digest), string(multi_arch.LinuxARM64.Digest)).Exec()
+			// add a manifest to the index
+			ORAS("manifest", "index", "update", RegistryRef(ZOTHost, testRepo, "add-wrong-tag"),
+				"--add", "does-not-exist").ExpectFailure().
+				MatchErrKeyWords("Error", "could not find", "does-not-exist").Exec()
+		})
+
+		It("should fail if a wrong reference is given as the index to merge", func() {
+			testRepo := indexTestRepo("update", "wrong-merge-ref")
+			CopyZOTRepo(ImageRepo, testRepo)
+			// create an index for testing purpose
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, "merge-wrong-tag"),
+				string(multi_arch.LinuxAMD64.Digest), string(multi_arch.LinuxARM64.Digest)).Exec()
+			// add a manifest to the index
+			ORAS("manifest", "index", "update", RegistryRef(ZOTHost, testRepo, "merge-wrong-tag"),
+				"--merge", "does-not-exist").ExpectFailure().
+				MatchErrKeyWords("Error", "could not find", "does-not-exist").Exec()
+		})
+
+		It("should fail if a wrong reference is given as the manifest to remove", func() {
+			testRepo := indexTestRepo("update", "wrong-remove-ref")
+			CopyZOTRepo(ImageRepo, testRepo)
+			// create an index for testing purpose
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, "remove-wrong-tag"),
+				string(multi_arch.LinuxAMD64.Digest), string(multi_arch.LinuxARM64.Digest)).Exec()
+			// add a manifest to the index
+			ORAS("manifest", "index", "update", RegistryRef(ZOTHost, testRepo, "remove-wrong-tag"),
+				"--remove", "does-not-exist").ExpectFailure().
+				MatchErrKeyWords("Error", "could not resolve", "does-not-exist").Exec()
+		})
+
+		It("should fail if delete a manifest that does not exist in the index", func() {
+			testRepo := indexTestRepo("update", "wrong-remove-ref-index")
+			CopyZOTRepo(ImageRepo, testRepo)
+			// create an index for testing purpose
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, "remove-not-exist"),
+				string(multi_arch.LinuxAMD64.Digest)).Exec()
+			// add a manifest to the index
+			ORAS("manifest", "index", "update", RegistryRef(ZOTHost, testRepo, "remove-not-exist"),
+				"--remove", string(multi_arch.LinuxARM64.Digest)).ExpectFailure().
+				MatchErrKeyWords("Error", "does not exist").Exec()
+		})
+	})
 })
 
 var _ = Describe("OCI image layout users:", func() {
@@ -254,6 +384,116 @@ var _ = Describe("OCI image layout users:", func() {
 			indexRef := LayoutRef(root, "latest")
 			ORAS("manifest", "index", "create", Flags.Layout, indexRef, "sha256:02c15a8d1735c65bb8ca86c716615d3c0d8beb87dc68ed88bb49192f90b184e2").ExpectFailure().
 				MatchErrKeyWords("is not a manifest").Exec()
+		})
+	})
+
+	When("running `manifest index update`", func() {
+		It("should update by specifying the index tag", func() {
+			root := PrepareTempOCI(ImageRepo)
+			indexRef := LayoutRef(root, "latest")
+			// create an index for testing purpose
+			ORAS("manifest", "index", "create", Flags.Layout, indexRef,
+				string(multi_arch.LinuxAMD64.Digest), string(multi_arch.LinuxARM64.Digest)).Exec()
+			// add a manifest to the index
+			ORAS("manifest", "index", "update", Flags.Layout, indexRef,
+				"--add", string(multi_arch.LinuxARMV7.Digest)).
+				MatchKeyWords("sha256:84887718c9e61daa0f1996aad3ae2eb10db15dcbdab394e4b2dfee7967c55f2c").Exec()
+			// verify
+			content := ORAS("manifest", "fetch", Flags.Layout, indexRef).Exec().Out.Contents()
+			expectedManifests := []ocispec.Descriptor{multi_arch.LinuxAMD64, multi_arch.LinuxARM64, multi_arch.LinuxARMV7}
+			ValidateIndex(content, expectedManifests)
+		})
+
+		It("should update by specifying the index digest", func() {
+			root := PrepareTempOCI(ImageRepo)
+			// create an index for testing purpose
+			ORAS("manifest", "index", "create", Flags.Layout, LayoutRef(root, ""),
+				string(multi_arch.LinuxAMD64.Digest), string(multi_arch.LinuxARM64.Digest)).Exec()
+			// add a manifest to the index
+			ORAS("manifest", "index", "update", Flags.Layout, LayoutRef(root, "sha256:cce9590b1193d8bcb70467e2381dc81e77869be4801c09abe9bc274b6a1d2001"),
+				"--add", string(multi_arch.LinuxARMV7.Digest)).
+				MatchKeyWords("sha256:84887718c9e61daa0f1996aad3ae2eb10db15dcbdab394e4b2dfee7967c55f2c").Exec()
+			// verify
+			content := ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, "sha256:84887718c9e61daa0f1996aad3ae2eb10db15dcbdab394e4b2dfee7967c55f2c")).
+				Exec().Out.Contents()
+			expectedManifests := []ocispec.Descriptor{multi_arch.LinuxAMD64, multi_arch.LinuxARM64, multi_arch.LinuxARMV7}
+			ValidateIndex(content, expectedManifests)
+		})
+
+		It("should update by add, merge and remove flags", func() {
+			root := PrepareTempOCI(ImageRepo)
+			// create indexes for testing purpose
+			ORAS("manifest", "index", "create", Flags.Layout, LayoutRef(root, "index01"),
+				string(multi_arch.LinuxAMD64.Digest)).Exec()
+			ORAS("manifest", "index", "create", Flags.Layout, LayoutRef(root, "index02"),
+				string(multi_arch.LinuxARM64.Digest)).Exec()
+			// update index with add, merge and remove flags
+			ORAS("manifest", "index", "update", Flags.Layout, LayoutRef(root, "index01"),
+				"--add", string(multi_arch.LinuxARMV7.Digest), "--merge", "index02",
+				"--remove", string(multi_arch.LinuxAMD64.Digest)).Exec()
+			// verify
+			content := ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, "index01")).Exec().Out.Contents()
+			expectedManifests := []ocispec.Descriptor{multi_arch.LinuxARMV7, multi_arch.LinuxARM64}
+			ValidateIndex(content, expectedManifests)
+		})
+
+		It("should tell user nothing to update if no update flags are used", func() {
+			root := PrepareTempOCI(ImageRepo)
+			indexRef := LayoutRef(root, "latest")
+			ORAS("manifest", "index", "update", Flags.Layout, indexRef).
+				MatchKeyWords("nothing to update").Exec()
+		})
+
+		It("should fail if empty reference is given", func() {
+			root := PrepareTempOCI(ImageRepo)
+			indexRef := LayoutRef(root, "")
+			ORAS("manifest", "index", "update", Flags.Layout, indexRef,
+				"--add", string(multi_arch.LinuxARMV7.Digest)).ExpectFailure().
+				MatchErrKeyWords("Error:", "no tag or digest specified").Exec()
+		})
+
+		It("should fail if a non-index reference is given as the index to update", func() {
+			root := PrepareTempOCI(ImageRepo)
+			indexRef := LayoutRef(root, "linux-amd64")
+			ORAS("manifest", "index", "update", Flags.Layout, indexRef,
+				"--add", string(multi_arch.LinuxARMV7.Digest)).ExpectFailure().
+				MatchErrKeyWords("Error", "is not an index").Exec()
+		})
+
+		It("should fail if a non-manifest reference is given as the manifest to add", func() {
+			root := PrepareTempOCI(ImageRepo)
+			indexRef := LayoutRef(root, "latest")
+			// create an index for testing purpose
+			ORAS("manifest", "index", "create", Flags.Layout, indexRef,
+				string(multi_arch.LinuxAMD64.Digest), string(multi_arch.LinuxARM64.Digest)).Exec()
+			// add a manifest to the index
+			ORAS("manifest", "index", "update", Flags.Layout, indexRef,
+				"--add", "sha256:02c15a8d1735c65bb8ca86c716615d3c0d8beb87dc68ed88bb49192f90b184e2").ExpectFailure().
+				MatchErrKeyWords("Error", "is not a manifest").Exec()
+		})
+
+		It("should fail if a wrong reference is given as the index to merge", func() {
+			root := PrepareTempOCI(ImageRepo)
+			indexRef := LayoutRef(root, "latest")
+			// create an index for testing purpose
+			ORAS("manifest", "index", "create", Flags.Layout, indexRef,
+				string(multi_arch.LinuxAMD64.Digest), string(multi_arch.LinuxARM64.Digest)).Exec()
+			// add a manifest to the index
+			ORAS("manifest", "index", "update", Flags.Layout, indexRef,
+				"--merge", "linux-amd64").ExpectFailure().
+				MatchErrKeyWords("Error", "is not an index").Exec()
+		})
+
+		It("should fail if a wrong reference is given as the manifest to remove", func() {
+			root := PrepareTempOCI(ImageRepo)
+			indexRef := LayoutRef(root, "latest")
+			// create an index for testing purpose
+			ORAS("manifest", "index", "create", Flags.Layout, indexRef,
+				string(multi_arch.LinuxAMD64.Digest), string(multi_arch.LinuxARM64.Digest)).Exec()
+			// add a manifest to the index
+			ORAS("manifest", "index", "update", Flags.Layout, indexRef,
+				"--remove", "sha256:02c15a8d1735c65bb8ca86c716615d3c0d8beb87dc68ed88bb49192f90b184e2").ExpectFailure().
+				MatchErrKeyWords("Error", "is not a manifest").Exec()
 		})
 	})
 })

@@ -36,6 +36,7 @@ import (
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/cmd/oras/internal/output"
+	"oras.land/oras/internal/contentutil"
 	"oras.land/oras/internal/descriptor"
 	"oras.land/oras/internal/listener"
 )
@@ -182,7 +183,7 @@ func getPlatform(ctx context.Context, target oras.ReadOnlyTarget, manifestBytes 
 func pushIndex(ctx context.Context, target oras.Target, desc ocispec.Descriptor, content []byte, ref string, extraRefs []string, path string, printer *output.Printer) error {
 	// push the index
 	var err error
-	if ref == "" {
+	if ref == "" || contentutil.IsDigest(ref) {
 		err = target.Push(ctx, desc, bytes.NewReader(content))
 	} else {
 		_, err = oras.TagBytes(ctx, target, desc.MediaType, content, ref)

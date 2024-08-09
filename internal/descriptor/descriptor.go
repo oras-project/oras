@@ -22,7 +22,10 @@ import (
 )
 
 // IsManifest checks if a descriptor describes a manifest.
+<<<<<<< HEAD
 // Adapted from `oras-go`: https://github.com/oras-project/oras-go/blob/d6c837e439f4c567f8003eab6e423c22900452a8/internal/descriptor/descriptor.go#L67
+=======
+>>>>>>> 704e455 (rebase)
 func IsManifest(desc ocispec.Descriptor) bool {
 	switch desc.MediaType {
 	case docker.MediaTypeManifest,
@@ -38,6 +41,11 @@ func IsManifest(desc ocispec.Descriptor) bool {
 // IsImageManifest checks whether a manifest is an image manifest.
 func IsImageManifest(desc ocispec.Descriptor) bool {
 	return desc.MediaType == docker.MediaTypeManifest || desc.MediaType == ocispec.MediaTypeImageManifest
+}
+
+// IsIndex checks if a descriptor describes an image index or Docker manifest list.
+func IsIndex(desc ocispec.Descriptor) bool {
+	return desc.MediaType == ocispec.MediaTypeImageIndex || desc.MediaType == docker.MediaTypeManifestList
 }
 
 // ShortDigest converts the digest of the descriptor to a short form for displaying.

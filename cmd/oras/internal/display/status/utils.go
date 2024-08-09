@@ -50,10 +50,16 @@ const (
 
 // Prompts for index events.
 const (
-	IndexPromptFetching = "Fetching"
-	IndexPromptFetched  = "Fetched "
-	IndexPromptPacked   = "Packed  "
-	IndexPromptPushed   = "Pushed  "
+	IndexPromptFetching  = "Fetching "
+	IndexPromptFetched   = "Fetched  "
+	IndexPromptResolving = "Resolving"
+	IndexPromptResolved  = "Resolved "
+	IndexPromptAdded     = "Added    "
+	IndexPromptMerged    = "Merged   "
+	IndexPromptRemoved   = "Removed  "
+	IndexPromptPacked    = "Packed   "
+	IndexPromptPushed    = "Pushed   "
+	IndexPromptUpdated   = "Updated  "
 )
 
 // DeduplicatedFilter filters out deduplicated descriptors.
