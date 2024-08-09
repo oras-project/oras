@@ -39,6 +39,7 @@ type updateOptions struct {
 	extraRefs       []string
 	addArguments    []string
 	removeArguments []string
+	mergeArguments  []string
 }
 
 func updateCmd() *cobra.Command {
@@ -54,6 +55,9 @@ Example - add one manifest and remove two manifests from an index:
 Example - update the index referenced by tag1 and tag3, and make tag1 and tag3 point to the
  updated index. If the old index has other tags, they remain pointing to the old index.
   oras manifest index update localhost:5000/hello:tag1,tag3 --remove sha256:xxx --remove sha256:xxx --add s390x
+
+Example - remove a manifest and merge manifests from another two indexes.
+  oras manifest index update localhost:5000/hello:latest --remove sha256:xxx --merge index01 index02
   `,
 		Args: cobra.MinimumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -70,6 +74,7 @@ Example - update the index referenced by tag1 and tag3, and make tag1 and tag3 p
 	option.ApplyFlags(&opts, cmd.Flags())
 	cmd.Flags().StringArrayVarP(&opts.addArguments, "add", "", nil, "manifests to add to the index")
 	cmd.Flags().StringArrayVarP(&opts.removeArguments, "remove", "", nil, "manifests to remove from the index")
+	cmd.Flags().StringArrayVarP(&opts.mergeArguments, "merge", "", nil, "manifests to merge into the index")
 
 	return oerrors.Command(cmd, &opts.Target)
 }
@@ -85,6 +90,10 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 		return err
 	}
 	manifests, err := addManifests(ctx, index.Manifests, target, opts.addArguments)
+	if err != nil {
+		return err
+	}
+	manifests, err = mergeIndexes(ctx, manifests, target, opts.mergeArguments)
 	if err != nil {
 		return err
 	}
@@ -128,6 +137,24 @@ func addManifests(ctx context.Context, manifests []ocispec.Descriptor, target or
 			}
 		}
 		manifests = append(manifests, desc)
+	}
+	return manifests, nil
+}
+
+func mergeIndexes(ctx context.Context, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, indexes []string) ([]ocispec.Descriptor, error) {
+	for _, index := range indexes {
+		desc, content, err := oras.FetchBytes(ctx, target, index, oras.DefaultFetchBytesOptions)
+		if err != nil {
+			return nil, err
+		}
+		if desc.MediaType != ocispec.MediaTypeImageIndex {
+			return nil, fmt.Errorf("%s is not an image index", index)
+		}
+		var index ocispec.Index
+		if err := json.Unmarshal(content, &index); err != nil {
+			return nil, err
+		}
+		manifests = append(manifests, index.Manifests...)
 	}
 	return manifests, nil
 }

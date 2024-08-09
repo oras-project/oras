@@ -75,6 +75,7 @@ Flags:
 
 - `--add`: Add a manifest to the index. The manifest will be added as the last element of the index.
 - `--remove`: Remove a manifest from the index.
+- `--merge`: Merge the manifests from existing indexes. Subjects, artifact types and annotations of the existing indexes will not be in the updated index.
 - `--annotation`: Update annotations for the index.
 - `--annotation-file`: Update annotations for the index and the individual manifests.
 - `--oci-layout`: Set the target as an oci image layout.
@@ -82,7 +83,7 @@ Flags:
 - `--output`: Output the updated manifest to a location. Auto push is disabled.
 
 > [!NOTE]
-> One of `--add`/`--remove`/`--annotation`/`--annotation-file` should be used, as there has to be something to update. Otherwise the command does nothing.
+> One of `--add`/`--remove`/`--merge`/`--annotation`/`--annotation-file` should be used, as there has to be something to update. Otherwise the command does nothing.
 
 #### Examples
 
@@ -97,6 +98,12 @@ updated index. If the old index has other tags, they remain pointing to the old 
 
 ```sh
 oras manifest index update localhost:5000/hello:tag1,tag3 --remove sha256:xxx --remove sha256:xxx --add s390x
+```
+
+Remove a manifest and merge manifests from another two indexes.
+
+```sh
+oras manifest index update localhost:5000/hello:latest --remove sha256:xxx --merge index01 index02
 ```
 
 ## Design Considerations

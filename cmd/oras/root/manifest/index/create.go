@@ -157,11 +157,14 @@ func packIndex(oldIndex *ocispec.Index, manifests []ocispec.Descriptor) (ocispec
 
 func pushIndex(ctx context.Context, target oras.Target, desc ocispec.Descriptor, content []byte, ref string, extraRefs []string) error {
 	var err error
-	refs := append(extraRefs, ref)
-	if len(refs) == 0 {
+	// need to refine the variable names of ref, extra ref
+	if ref != "" {
+		extraRefs = append(extraRefs, ref)
+	}
+	if len(extraRefs) == 0 {
 		err = target.Push(ctx, desc, bytes.NewReader(content))
 	} else {
-		desc, err = oras.TagBytesN(ctx, target, desc.MediaType, content, refs, oras.DefaultTagBytesNOptions)
+		desc, err = oras.TagBytesN(ctx, target, desc.MediaType, content, extraRefs, oras.DefaultTagBytesNOptions)
 	}
 	if err != nil {
 		return err
