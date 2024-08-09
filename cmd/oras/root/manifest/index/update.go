@@ -40,6 +40,7 @@ type updateOptions struct {
 	addArguments    []string
 	removeArguments []string
 	mergeArguments  []string
+	tags            []string
 }
 
 func updateCmd() *cobra.Command {
@@ -75,6 +76,7 @@ Example - remove a manifest and merge manifests from another two indexes.
 	cmd.Flags().StringArrayVarP(&opts.addArguments, "add", "", nil, "manifests to add to the index")
 	cmd.Flags().StringArrayVarP(&opts.removeArguments, "remove", "", nil, "manifests to remove from the index")
 	cmd.Flags().StringArrayVarP(&opts.mergeArguments, "merge", "", nil, "manifests to merge into the index")
+	cmd.Flags().StringArrayVarP(&opts.tags, "tag", "", nil, "tag adds for the updated manifest")
 
 	return oerrors.Command(cmd, &opts.Target)
 }
@@ -105,7 +107,7 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	if err != nil {
 		return err
 	}
-	return pushIndex(ctx, target, desc, content, opts.Reference, opts.extraRefs)
+	return pushIndex(ctx, target, desc, content, opts.Reference, append(opts.extraRefs, opts.tags...))
 }
 
 func fetchIndex(ctx context.Context, target oras.ReadOnlyTarget, reference string) (ocispec.Index, error) {
