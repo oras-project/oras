@@ -13,25 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package manifest
+package index
 
 import (
 	"github.com/spf13/cobra"
-	"oras.land/oras/cmd/oras/root/manifest/index"
 )
 
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "manifest [command]",
-		Short: "Manifest operations",
+		Use:   "index [command]",
+		Short: "Index operations",
 	}
 
 	cmd.AddCommand(
-		deleteCmd(),
-		fetchCmd(),
-		fetchConfigCmd(),
-		pushCmd(),
-		index.Cmd(),
+		createCmd(),
+		updateCmd(),
 	)
 	return cmd
 }
