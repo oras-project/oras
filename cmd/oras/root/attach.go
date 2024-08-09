@@ -119,11 +119,6 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 
 func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-	displayStatus, displayMetadata, err := display.NewAttachHandler(opts.Printer, opts.Format, opts.TTY)
-	if err != nil {
-		return err
-	}
-
 	annotations, err := opts.LoadManifestAnnotations()
 	if err != nil {
 		return err
@@ -156,6 +151,10 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	if err != nil {
 		return fmt.Errorf("failed to resolve %s: %w", opts.Reference, err)
 	}
+	displayStatus, displayMetadata, err := display.NewAttachHandler(opts.Printer, opts.Format, opts.TTY, store)
+	if err != nil {
+		return err
+	}
 	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, displayStatus)
 	if err != nil {
 		return err
@@ -168,7 +167,9 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	}
 	graphCopyOptions := oras.DefaultCopyGraphOptions
 	graphCopyOptions.Concurrency = opts.concurrency
-	displayStatus.UpdateCopyOptions(&graphCopyOptions, store)
+	graphCopyOptions.OnCopySkipped = displayStatus.OnCopySkipped
+	graphCopyOptions.PreCopy = displayStatus.PreCopy
+	graphCopyOptions.PostCopy = displayStatus.PostCopy
 
 	packOpts := oras.PackManifestOptions{
 		Subject:             &subject,

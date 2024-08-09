@@ -18,10 +18,7 @@ limitations under the License.
 package status
 
 import (
-	"context"
-	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/memory"
-	"oras.land/oras/cmd/oras/internal/display/status/track"
 	"oras.land/oras/internal/testutils"
 	"testing"
 )
@@ -33,7 +30,7 @@ func TestTTYPushHandler_TrackTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer slave.Close()
-	ph := NewTTYPushHandler(slave)
+	ph := NewTTYPushHandler(slave, mockFetcher.Fetcher)
 	store := memory.New()
 	// test
 	_, fn, err := ph.TrackTarget(store)
@@ -47,38 +44,6 @@ func TestTTYPushHandler_TrackTarget(t *testing.T) {
 	}()
 	if ttyPushHandler, ok := ph.(*TTYPushHandler); !ok {
 		t.Fatalf("TrackTarget() should return a *TTYPushHandler, got %T", ttyPushHandler)
-	}
-}
-
-func TestTTYPushHandler_UpdateCopyOptions(t *testing.T) {
-	// prepare pty
-	pty, slave, err := testutils.NewPty()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer slave.Close()
-	ph := NewTTYPushHandler(slave)
-	gt, _, err := ph.TrackTarget(memory.New())
-	if err != nil {
-		t.Fatalf("TrackTarget() should not return an error: %v", err)
-	}
-	// test
-	opts := oras.CopyGraphOptions{}
-	ph.UpdateCopyOptions(&opts, memStore)
-	if err := oras.CopyGraph(context.Background(), memStore, gt, manifestDesc, opts); err != nil {
-		t.Fatalf("CopyGraph() should not return an error: %v", err)
-	}
-	if err := oras.CopyGraph(context.Background(), memStore, gt, manifestDesc, opts); err != nil {
-		t.Fatalf("CopyGraph() should not return an error: %v", err)
-	}
-	if tracked, ok := gt.(track.GraphTarget); !ok {
-		t.Fatalf("TrackTarget() should return a *track.GraphTarget, got %T", tracked)
-	} else {
-		_ = tracked.Close()
-	}
-	// validate
-	if err = testutils.MatchPty(pty, slave, "Exists", manifestDesc.MediaType, "100.00%", manifestDesc.Digest.String()); err != nil {
-		t.Fatal(err)
 	}
 }
 

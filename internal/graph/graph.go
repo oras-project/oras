@@ -130,3 +130,19 @@ func FindPredecessors(ctx context.Context, src oras.ReadOnlyGraphTarget, descs [
 	}
 	return referrers, nil
 }
+
+// FilteredSuccessors fetches successors and returns filtered ones.
+func FilteredSuccessors(ctx context.Context, desc ocispec.Descriptor, fetcher content.Fetcher, filter func(ocispec.Descriptor) bool) ([]ocispec.Descriptor, error) {
+	allSuccessors, err := content.Successors(ctx, fetcher, desc)
+	if err != nil {
+		return nil, err
+	}
+
+	var successors []ocispec.Descriptor
+	for _, s := range allSuccessors {
+		if filter(s) {
+			successors = append(successors, s)
+		}
+	}
+	return successors, nil
+}

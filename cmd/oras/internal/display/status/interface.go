@@ -19,7 +19,6 @@ import (
 	"context"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
 )
 
 // StopTrackTargetFunc is the function type to stop tracking a target.
@@ -30,7 +29,9 @@ type PushHandler interface {
 	OnFileLoading(name string) error
 	OnEmptyArtifact() error
 	TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, StopTrackTargetFunc, error)
-	UpdateCopyOptions(opts *oras.CopyGraphOptions, fetcher content.Fetcher)
+	OnCopySkipped(ctx context.Context, desc ocispec.Descriptor) error
+	PreCopy(ctx context.Context, desc ocispec.Descriptor) error
+	PostCopy(ctx context.Context, desc ocispec.Descriptor) error
 }
 
 // AttachHandler handles text status output for attach command.

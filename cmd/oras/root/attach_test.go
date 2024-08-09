@@ -17,10 +17,11 @@ package root
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/spf13/cobra"
-	"oras.land/oras/cmd/oras/internal/errors"
+
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -31,12 +32,13 @@ func Test_runAttach_errType(t *testing.T) {
 
 	// test
 	opts := &attachOptions{
-		Format: option.Format{
-			Type: "unknown",
+		Packer: option.Packer{
+			AnnotationFilePath:  "/tmp/whatever",
+			ManifestAnnotations: []string{"one", "two"},
 		},
 	}
 	got := runAttach(cmd, opts).Error()
-	want := errors.UnsupportedFormatTypeError(opts.Format.Type).Error()
+	want := errors.New("`--annotation` and `--annotation-file` cannot be both specified").Error()
 	if got != want {
 		t.Fatalf("got %v, want %v", got, want)
 	}
