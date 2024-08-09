@@ -19,32 +19,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
-
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras/internal/docker"
 )
-
-// ErrorFetcher implements content.Fetcher.
-type ErrorFetcher struct {
-	ExpectedError error
-}
-
-// NewErrorFetcher create and error fetcher
-func NewErrorFetcher() *ErrorFetcher {
-	return &ErrorFetcher{
-		ExpectedError: fmt.Errorf("expected error"),
-	}
-}
-
-// Fetch returns an error.
-func (f *ErrorFetcher) Fetch(context.Context, ocispec.Descriptor) (io.ReadCloser, error) {
-	return nil, f.ExpectedError
-}
 
 // MockFetcher implements content.Fetcher and populates a memory store.
 type MockFetcher struct {
