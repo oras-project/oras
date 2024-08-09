@@ -36,6 +36,7 @@ debug
 
 # Custom
 coverage.txt
+coverage-all.txt
 test/e2e/coverage.txt
 **/covcounters.*
 **/covmeta.*

@@ -33,7 +33,9 @@ LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitTreeState=${GIT_DIRTY}
 
 .PHONY: test
 test: tidy vendor check-encoding  ## tidy and run tests
-	$(GO_EXE) test -race -v -coverprofile=coverage.txt -covermode=atomic -coverpkg=$($(GO_EXE) list ./... | grep -v internal/testutils | tr '\n' ',') ./...
+	$(GO_EXE) test -race -v -coverprofile=coverage-all.txt -covermode=atomic -coverpkg=$($(GO_EXE) list ./... | tr '\n' ',') ./...
+	grep -v internal/testutils coverage-all.txt >coverage.txt
+	rm -f coverage-all.txt
 
 .PHONY: teste2e
 teste2e:  ## run end to end tests
