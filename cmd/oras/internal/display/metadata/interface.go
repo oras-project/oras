@@ -78,6 +78,11 @@ type ManifestPushHandler interface {
 	TaggedHandler
 }
 
+// ManifestIndexCreateHandler handles metadata output for index create events.
+type ManifestIndexCreateHandler interface {
+	TaggedHandler
+}
+
 // CopyHandler handles metadata output for cp events.
 type CopyHandler interface {
 	TaggedHandler

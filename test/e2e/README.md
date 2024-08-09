@@ -163,11 +163,18 @@ graph TD;
         A2-- hello.tar -->A8(blob)
         A3-- hello.tar -->A8(blob)
         A4-- hello.tar -->A8(blob)
+        A9>tag: linux-amd64]-..->A2
+        A10>tag: linux-arm64]-..->A3
+        A11>tag: linux-armv7]-..->A4
 
         B0>tag: foobar]-..->B1[oci image]
         B1-- foo1 -->B2(blob1)
         B1-- foo2 -->B2(blob1)
         B1-- bar -->B3(blob2)
+
+        C0>tag: nonjson-config]-..->C1[oci image]
+        C1-->C2(config4)
+        C1-->C3(blob4)
     end
 ```
 

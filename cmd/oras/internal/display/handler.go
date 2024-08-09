@@ -174,6 +174,11 @@ func NewManifestPushHandler(printer *output.Printer) metadata.ManifestPushHandle
 	return text.NewManifestPushHandler(printer)
 }
 
+// NewManifestIndexCreateHandler returns an index create handler.
+func NewManifestIndexCreateHandler(printer *output.Printer) metadata.ManifestIndexCreateHandler {
+	return text.NewManifestIndexCreateHandler(printer)
+}
+
 // NewCopyHandler returns copy handlers.
 func NewCopyHandler(printer *output.Printer, fetcher fetcher.Fetcher) (status.CopyHandler, metadata.CopyHandler) {
 	return status.NewTextCopyHandler(printer, fetcher), text.NewCopyHandler(printer)
