@@ -16,12 +16,12 @@ limitations under the License.
 package status
 
 import (
-	"context"
+	"errors"
 	"os"
+	"sync"
 	"testing"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-
 	"oras.land/oras/internal/testutils"
 )
 
@@ -67,13 +67,52 @@ func TestTTYPullHandler_OnNodeProcessing(t *testing.T) {
 	}
 }
 
-func TestTTYPushHandler_errGetSuccessor(t *testing.T) {
+func TestTTYPushHandler_PostCopy(t *testing.T) {
+	fetcher := testutils.NewMockFetcher()
+	committed := &sync.Map{}
+	committed.Store(fetcher.ImageLayer.Digest.String(), fetcher.ImageLayer.Annotations[ocispec.AnnotationTitle])
+	ph := &TTYPushHandler{
+		tracked:   &testutils.PromptDiscarder{},
+		committed: committed,
+		fetcher:   fetcher.Fetcher,
+	}
+	if err := ph.PostCopy(ctx, fetcher.OciImage); err != nil {
+		t.Errorf("unexpected error from PostCopy(): %v", err)
+	}
+}
+
+func TestTTYPushHandler_PostCopy_errGetSuccessor(t *testing.T) {
 	errorFetcher := testutils.NewErrorFetcher()
 	ph := NewTTYPushHandler(nil, errorFetcher)
-	err := ph.PostCopy(context.Background(), ocispec.Descriptor{
+	err := ph.PostCopy(ctx, ocispec.Descriptor{
 		MediaType: ocispec.MediaTypeImageManifest,
 	})
 	if err.Error() != errorFetcher.ExpectedError.Error() {
 		t.Errorf("PostCopy() should return expected error got %v", err.Error())
+	}
+}
+
+func TestTTYPushHandler_PostCopy_errPrompt(t *testing.T) {
+	fetcher := testutils.NewMockFetcher()
+	committed := &sync.Map{}
+	committed.Store(fetcher.ImageLayer.Digest.String(), fetcher.ImageLayer.Annotations[ocispec.AnnotationTitle]+"1")
+	wantedError := errors.New("wanted error")
+	ph := &TTYPushHandler{
+		tracked:   testutils.NewErrorPrompt(wantedError),
+		committed: committed,
+		fetcher:   fetcher.Fetcher,
+	}
+	if err := ph.PostCopy(ctx, fetcher.OciImage); err != wantedError {
+		t.Errorf("PostCopy() should return expected error got %v", err)
+	}
+}
+
+func TestTTYPushHandler_OnCopySkipped(t *testing.T) {
+	ph := &TTYPushHandler{
+		tracked:   &testutils.PromptDiscarder{},
+		committed: &sync.Map{},
+	}
+	if err := ph.OnCopySkipped(ctx, ocispec.Descriptor{}); err != nil {
+		t.Error("OnCopySkipped() should not return an error")
 	}
 }

@@ -45,7 +45,7 @@ func TestMain(m *testing.M) {
 
 func TestTextCopyHandler_OnMounted(t *testing.T) {
 	defer builder.Reset()
-	expected := "Mounted 6f42718876ce oci-image"
+	expected := "Mounted 0b442c23c1dd oci-image"
 	ch := NewTextCopyHandler(printer, mockFetcher.Fetcher)
 	if ch.OnMounted(ctx, mockFetcher.OciImage) != nil {
 		t.Error("OnMounted() should not return an error")
@@ -58,7 +58,7 @@ func TestTextCopyHandler_OnMounted(t *testing.T) {
 
 func TestTextCopyHandler_OnCopySkipped(t *testing.T) {
 	defer builder.Reset()
-	expected := "Exists  6f42718876ce oci-image"
+	expected := "Exists  0b442c23c1dd oci-image"
 	ch := NewTextCopyHandler(printer, mockFetcher.Fetcher)
 	if ch.OnCopySkipped(ctx, mockFetcher.OciImage) != nil {
 		t.Error("OnCopySkipped() should not return an error")
@@ -71,7 +71,7 @@ func TestTextCopyHandler_OnCopySkipped(t *testing.T) {
 
 func TestTextCopyHandler_PostCopy(t *testing.T) {
 	defer builder.Reset()
-	expected := "Copied  6f42718876ce oci-image"
+	expected := "Copied  0b442c23c1dd oci-image"
 	ch := NewTextCopyHandler(printer, mockFetcher.Fetcher)
 	if ch.PostCopy(ctx, mockFetcher.OciImage) != nil {
 		t.Error("PostCopy() should not return an error")
@@ -87,7 +87,7 @@ func TestTextCopyHandler_PostCopy(t *testing.T) {
 
 func TestTextCopyHandler_PreCopy(t *testing.T) {
 	defer builder.Reset()
-	expected := "Copying 6f42718876ce oci-image"
+	expected := "Copying 0b442c23c1dd oci-image"
 	ch := NewTextCopyHandler(printer, mockFetcher.Fetcher)
 	if ch.PreCopy(ctx, mockFetcher.OciImage) != nil {
 		t.Error("PreCopy() should not return an error")
@@ -100,7 +100,7 @@ func TestTextCopyHandler_PreCopy(t *testing.T) {
 
 func TestTextPullHandler_OnNodeDownloaded(t *testing.T) {
 	defer builder.Reset()
-	expected := "Downloaded  6f42718876ce oci-image"
+	expected := "Downloaded  0b442c23c1dd oci-image"
 	ph := NewTextPullHandler(printer)
 	if ph.OnNodeDownloaded(mockFetcher.OciImage) != nil {
 		t.Error("OnNodeDownloaded() should not return an error")
@@ -113,7 +113,7 @@ func TestTextPullHandler_OnNodeDownloaded(t *testing.T) {
 
 func TestTextPullHandler_OnNodeDownloading(t *testing.T) {
 	defer builder.Reset()
-	expected := "Downloading 6f42718876ce oci-image"
+	expected := "Downloading 0b442c23c1dd oci-image"
 	ph := NewTextPullHandler(printer)
 	if ph.OnNodeDownloading(mockFetcher.OciImage) != nil {
 		t.Error("OnNodeDownloading() should not return an error")
@@ -126,7 +126,7 @@ func TestTextPullHandler_OnNodeDownloading(t *testing.T) {
 
 func TestTextPullHandler_OnNodeProcessing(t *testing.T) {
 	defer builder.Reset()
-	expected := "Processing  6f42718876ce oci-image"
+	expected := "Processing  0b442c23c1dd oci-image"
 	ph := NewTextPullHandler(printer)
 	if ph.OnNodeProcessing(mockFetcher.OciImage) != nil {
 		t.Error("OnNodeProcessing() should not return an error")
@@ -139,7 +139,7 @@ func TestTextPullHandler_OnNodeProcessing(t *testing.T) {
 
 func TestTextPullHandler_OnNodeRestored(t *testing.T) {
 	defer builder.Reset()
-	expected := "Restored    6f42718876ce oci-image"
+	expected := "Restored    0b442c23c1dd oci-image"
 	ph := NewTextPullHandler(printer)
 	if ph.OnNodeRestored(mockFetcher.OciImage) != nil {
 		t.Error("OnNodeRestored() should not return an error")
@@ -152,7 +152,7 @@ func TestTextPullHandler_OnNodeRestored(t *testing.T) {
 
 func TestTextPullHandler_OnNodeSkipped(t *testing.T) {
 	defer builder.Reset()
-	expected := "Skipped     6f42718876ce oci-image"
+	expected := "Skipped     0b442c23c1dd oci-image"
 	ph := NewTextPullHandler(printer)
 	if ph.OnNodeSkipped(mockFetcher.OciImage) != nil {
 		t.Error("OnNodeSkipped() should not return an error")
@@ -165,7 +165,7 @@ func TestTextPullHandler_OnNodeSkipped(t *testing.T) {
 
 func TestTextPushHandler_OnCopySkipped(t *testing.T) {
 	defer builder.Reset()
-	expected := "Exists    6f42718876ce oci-image"
+	expected := "Exists    0b442c23c1dd oci-image"
 	ph := NewTextPushHandler(printer, mockFetcher.Fetcher)
 	if ph.OnCopySkipped(ctx, mockFetcher.OciImage) != nil {
 		t.Error("OnCopySkipped() should not return an error")
@@ -204,7 +204,7 @@ func TestTextPushHandler_OnFileLoading(t *testing.T) {
 
 func TestTextPushHandler_PostCopy(t *testing.T) {
 	defer builder.Reset()
-	expected := "Uploaded  6f42718876ce oci-image"
+	expected := "Uploaded  0b442c23c1dd oci-image"
 	ph := NewTextPushHandler(printer, mockFetcher.Fetcher)
 	if ph.PostCopy(ctx, mockFetcher.OciImage) != nil {
 		t.Error("PostCopy() should not return an error")
@@ -217,7 +217,7 @@ func TestTextPushHandler_PostCopy(t *testing.T) {
 
 func TestTextPushHandler_PreCopy(t *testing.T) {
 	defer builder.Reset()
-	expected := "Uploading 6f42718876ce oci-image"
+	expected := "Uploading 0b442c23c1dd oci-image"
 	ph := NewTextPushHandler(printer, mockFetcher.Fetcher)
 	if ph.PreCopy(ctx, mockFetcher.OciImage) != nil {
 		t.Error("PreCopy() should not return an error")

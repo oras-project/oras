@@ -17,9 +17,10 @@ package status
 
 import (
 	"context"
-	"oras.land/oras/internal/graph"
 	"os"
 	"sync"
+
+	"oras.land/oras/internal/graph"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
@@ -83,8 +84,7 @@ func (ph *TTYPushHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor)
 		return err
 	}
 	for _, successor := range successors {
-		err = ph.tracked.Prompt(successor, PushPromptSkipped)
-		if err != nil {
+		if err = ph.tracked.Prompt(successor, PushPromptSkipped); err != nil {
 			return err
 		}
 	}

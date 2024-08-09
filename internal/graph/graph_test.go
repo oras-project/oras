@@ -45,9 +45,9 @@ func TestSuccessors(t *testing.T) {
 	}{
 		{"should failed to get non-existent OCI image", args{ctx, fetcher, ocispec.Descriptor{MediaType: ocispec.MediaTypeImageManifest}}, nil, nil, nil, true},
 		{"should failed to get non-existent docker image", args{ctx, fetcher, ocispec.Descriptor{MediaType: docker.MediaTypeManifest}}, nil, nil, nil, true},
-		{"should get success of a docker image", args{ctx, fetcher, mockFetcher.DockerImage}, nil, &mockFetcher.Subject, &mockFetcher.Config, false},
-		{"should get success of an OCI image", args{ctx, fetcher, mockFetcher.OciImage}, nil, &mockFetcher.Subject, &mockFetcher.Config, false},
-		{"should get success of an index", args{ctx, fetcher, mockFetcher.Index}, []ocispec.Descriptor{mockFetcher.Subject}, nil, nil, false},
+		{"should get successors of a docker image", args{ctx, fetcher, mockFetcher.DockerImage}, nil, nil, &mockFetcher.Config, false},
+		{"should get successors of an OCI image", args{ctx, fetcher, mockFetcher.OciImage}, []ocispec.Descriptor{mockFetcher.ImageLayer}, &mockFetcher.Subject, &mockFetcher.Config, false},
+		{"should get successors of an index", args{ctx, fetcher, mockFetcher.Index}, []ocispec.Descriptor{mockFetcher.Subject}, nil, nil, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -79,7 +79,7 @@ func TestDescriptor_GetSuccessors(t *testing.T) {
 	if nil != err {
 		t.Errorf("FilteredSuccessors unexpected error %v", err)
 	}
-	if len(got) != 2 {
+	if len(got) != 3 {
 		t.Errorf("Expected 2 successors got %v", len(got))
 	}
 	if mockFetcher.Subject.Digest != got[0].Digest {
@@ -96,7 +96,7 @@ func TestDescriptor_GetSuccessors(t *testing.T) {
 	if nil != err {
 		t.Errorf("FilteredSuccessors unexpected error %v", err)
 	}
-	if len(got) != 1 {
+	if len(got) != 2 {
 		t.Errorf("Expected 1 successors got %v", len(got))
 	}
 	if mockFetcher.Subject.Digest != got[0].Digest {

@@ -20,9 +20,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"io"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras/internal/docker"
@@ -45,12 +46,14 @@ func (f *ErrorFetcher) Fetch(context.Context, ocispec.Descriptor) (io.ReadCloser
 	return nil, f.ExpectedError
 }
 
+// MockFetcher implements content.Fetcher and populates a memory store.
 type MockFetcher struct {
 	store       *memory.Store
 	Fetcher     content.Fetcher
 	Subject     ocispec.Descriptor
 	Config      ocispec.Descriptor
 	OciImage    ocispec.Descriptor
+	ImageLayer  ocispec.Descriptor
 	DockerImage ocispec.Descriptor
 	Index       ocispec.Descriptor
 }
@@ -58,12 +61,14 @@ type MockFetcher struct {
 // NewMockFetcher creates a MockFetcher and populates it.
 func NewMockFetcher() (mockFetcher MockFetcher) {
 	mockFetcher = MockFetcher{store: memory.New()}
-	mockFetcher.Subject = mockFetcher.PushBlob(ocispec.MediaTypeImageLayer, []byte("blob"))
 	imageType := "test.image"
 	mockFetcher.Config = mockFetcher.PushBlob(imageType, []byte("config content"))
-	mockFetcher.OciImage = mockFetcher.PushOCIImage(&mockFetcher.Subject, mockFetcher.Config)
+	mockFetcher.ImageLayer = mockFetcher.PushBlob(ocispec.MediaTypeImageLayer, []byte("layer content"))
+	mockFetcher.ImageLayer.Annotations = map[string]string{ocispec.AnnotationTitle: "layer"}
+	mockFetcher.Subject = mockFetcher.PushOCIImage(nil, mockFetcher.Config)
+	mockFetcher.OciImage = mockFetcher.PushOCIImage(&mockFetcher.Subject, mockFetcher.Config, mockFetcher.ImageLayer)
 	mockFetcher.OciImage.Annotations = map[string]string{ocispec.AnnotationTitle: "oci-image"}
-	mockFetcher.DockerImage = mockFetcher.PushDockerImage(&mockFetcher.Subject, mockFetcher.Config)
+	mockFetcher.DockerImage = mockFetcher.PushDockerImage(mockFetcher.Config)
 	mockFetcher.Index = mockFetcher.PushIndex(mockFetcher.Subject)
 	mockFetcher.Fetcher = mockFetcher.store
 	return mockFetcher
@@ -102,8 +107,8 @@ func (mf *MockFetcher) PushOCIImage(subject *ocispec.Descriptor, config ocispec.
 }
 
 // PushDockerImage pushes the given subject, config and layers as a Docker image.
-func (mf *MockFetcher) PushDockerImage(subject *ocispec.Descriptor, config ocispec.Descriptor, layers ...ocispec.Descriptor) ocispec.Descriptor {
-	return mf.pushImage(subject, docker.MediaTypeManifest, config, layers...)
+func (mf *MockFetcher) PushDockerImage(config ocispec.Descriptor, layers ...ocispec.Descriptor) ocispec.Descriptor {
+	return mf.pushImage(nil, docker.MediaTypeManifest, config, layers...)
 }
 
 // PushIndex pushes the manifests as an index.
