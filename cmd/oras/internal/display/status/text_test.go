@@ -43,35 +43,33 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
+func validatePrinted(t *testing.T, expected string) {
+	actual := strings.TrimSpace(builder.String())
+	if expected != actual {
+		t.Error("Output does not match expected <" + expected + "> actual <" + actual + ">")
+	}
+}
+
 func TestTextCopyHandler_OnMounted(t *testing.T) {
-	defer builder.Reset()
-	expected := "Mounted 0b442c23c1dd oci-image"
+	builder.Reset()
 	ch := NewTextCopyHandler(printer, mockFetcher.Fetcher)
 	if ch.OnMounted(ctx, mockFetcher.OciImage) != nil {
 		t.Error("OnMounted() should not return an error")
 	}
-	actual := strings.TrimSpace(builder.String())
-	if expected != actual {
-		t.Error("Output does not match expected <" + expected + "> actual <" + actual + ">")
-	}
+	validatePrinted(t, "Mounted 0b442c23c1dd oci-image")
 }
 
 func TestTextCopyHandler_OnCopySkipped(t *testing.T) {
-	defer builder.Reset()
-	expected := "Exists  0b442c23c1dd oci-image"
+	builder.Reset()
 	ch := NewTextCopyHandler(printer, mockFetcher.Fetcher)
 	if ch.OnCopySkipped(ctx, mockFetcher.OciImage) != nil {
 		t.Error("OnCopySkipped() should not return an error")
 	}
-	actual := strings.TrimSpace(builder.String())
-	if expected != actual {
-		t.Error("Output does not match expected <" + expected + "> actual <" + actual + ">")
-	}
+	validatePrinted(t, "Exists  0b442c23c1dd oci-image")
 }
 
 func TestTextCopyHandler_PostCopy(t *testing.T) {
-	defer builder.Reset()
-	expected := "Copied  0b442c23c1dd oci-image"
+	builder.Reset()
 	ch := NewTextCopyHandler(printer, mockFetcher.Fetcher)
 	if ch.PostCopy(ctx, mockFetcher.OciImage) != nil {
 		t.Error("PostCopy() should not return an error")
@@ -79,151 +77,104 @@ func TestTextCopyHandler_PostCopy(t *testing.T) {
 	if ch.PostCopy(ctx, bogus) == nil {
 		t.Error("PostCopy() should return an error")
 	}
-	actual := strings.TrimSpace(builder.String())
-	if expected != actual {
-		t.Error("Output does not match expected <" + expected + "> actual <" + actual + ">")
-	}
+	validatePrinted(t, "Copied  0b442c23c1dd oci-image")
 }
 
 func TestTextCopyHandler_PreCopy(t *testing.T) {
-	defer builder.Reset()
-	expected := "Copying 0b442c23c1dd oci-image"
+	builder.Reset()
 	ch := NewTextCopyHandler(printer, mockFetcher.Fetcher)
 	if ch.PreCopy(ctx, mockFetcher.OciImage) != nil {
 		t.Error("PreCopy() should not return an error")
 	}
-	actual := strings.TrimSpace(builder.String())
-	if expected != actual {
-		t.Error("Output does not match expected <" + expected + "> actual <" + actual + ">")
-	}
+	validatePrinted(t, "Copying 0b442c23c1dd oci-image")
 }
 
 func TestTextPullHandler_OnNodeDownloaded(t *testing.T) {
-	defer builder.Reset()
-	expected := "Downloaded  0b442c23c1dd oci-image"
+	builder.Reset()
 	ph := NewTextPullHandler(printer)
 	if ph.OnNodeDownloaded(mockFetcher.OciImage) != nil {
 		t.Error("OnNodeDownloaded() should not return an error")
 	}
-	actual := strings.TrimSpace(builder.String())
-	if expected != actual {
-		t.Error("Output does not match expected <" + expected + "> actual <" + actual + ">")
-	}
+	validatePrinted(t, "Downloaded  0b442c23c1dd oci-image")
 }
 
 func TestTextPullHandler_OnNodeDownloading(t *testing.T) {
-	defer builder.Reset()
-	expected := "Downloading 0b442c23c1dd oci-image"
+	builder.Reset()
 	ph := NewTextPullHandler(printer)
 	if ph.OnNodeDownloading(mockFetcher.OciImage) != nil {
 		t.Error("OnNodeDownloading() should not return an error")
 	}
-	actual := strings.TrimSpace(builder.String())
-	if expected != actual {
-		t.Error("Output does not match expected <" + expected + "> actual <" + actual + ">")
-	}
+	validatePrinted(t, "Downloading 0b442c23c1dd oci-image")
 }
 
 func TestTextPullHandler_OnNodeProcessing(t *testing.T) {
-	defer builder.Reset()
-	expected := "Processing  0b442c23c1dd oci-image"
+	builder.Reset()
 	ph := NewTextPullHandler(printer)
 	if ph.OnNodeProcessing(mockFetcher.OciImage) != nil {
 		t.Error("OnNodeProcessing() should not return an error")
 	}
-	actual := strings.TrimSpace(builder.String())
-	if expected != actual {
-		t.Error("Output does not match expected <" + expected + "> actual <" + actual + ">")
-	}
+	validatePrinted(t, "Processing  0b442c23c1dd oci-image")
 }
 
 func TestTextPullHandler_OnNodeRestored(t *testing.T) {
-	defer builder.Reset()
-	expected := "Restored    0b442c23c1dd oci-image"
+	builder.Reset()
 	ph := NewTextPullHandler(printer)
 	if ph.OnNodeRestored(mockFetcher.OciImage) != nil {
 		t.Error("OnNodeRestored() should not return an error")
 	}
-	actual := strings.TrimSpace(builder.String())
-	if expected != actual {
-		t.Error("Output does not match expected <" + expected + "> actual <" + actual + ">")
-	}
+	validatePrinted(t, "Restored    0b442c23c1dd oci-image")
 }
 
 func TestTextPullHandler_OnNodeSkipped(t *testing.T) {
-	defer builder.Reset()
-	expected := "Skipped     0b442c23c1dd oci-image"
+	builder.Reset()
 	ph := NewTextPullHandler(printer)
 	if ph.OnNodeSkipped(mockFetcher.OciImage) != nil {
 		t.Error("OnNodeSkipped() should not return an error")
 	}
-	actual := strings.TrimSpace(builder.String())
-	if expected != actual {
-		t.Error("Output does not match expected <" + expected + "> actual <" + actual + ">")
-	}
+	validatePrinted(t, "Skipped     0b442c23c1dd oci-image")
 }
 
 func TestTextPushHandler_OnCopySkipped(t *testing.T) {
-	defer builder.Reset()
-	expected := "Exists    0b442c23c1dd oci-image"
+	builder.Reset()
 	ph := NewTextPushHandler(printer, mockFetcher.Fetcher)
 	if ph.OnCopySkipped(ctx, mockFetcher.OciImage) != nil {
 		t.Error("OnCopySkipped() should not return an error")
 	}
-	actual := strings.TrimSpace(builder.String())
-	if expected != actual {
-		t.Error("Output does not match expected <" + expected + "> actual <" + actual + ">")
-	}
+	validatePrinted(t, "Exists    0b442c23c1dd oci-image")
 }
 
 func TestTextPushHandler_OnEmptyArtifact(t *testing.T) {
-	defer builder.Reset()
-	expected := "Uploading empty artifact"
+	builder.Reset()
 	ph := NewTextPushHandler(printer, mockFetcher.Fetcher)
 	if ph.OnEmptyArtifact() != nil {
 		t.Error("OnEmptyArtifact() should not return an error")
 	}
-	actual := strings.TrimSpace(builder.String())
-	if expected != actual {
-		t.Error("Output does not match expected <" + expected + "> actual <" + actual + ">")
-	}
+	validatePrinted(t, "Uploading empty artifact")
 }
 
 func TestTextPushHandler_OnFileLoading(t *testing.T) {
-	defer builder.Reset()
-	expected := ""
+	builder.Reset()
 	ph := NewTextPushHandler(printer, mockFetcher.Fetcher)
 	if ph.OnFileLoading("name") != nil {
 		t.Error("OnFileLoading() should not return an error")
 	}
-	actual := strings.TrimSpace(builder.String())
-	if expected != actual {
-		t.Error("Output does not match expected <" + expected + "> actual <" + actual + ">")
-	}
+	validatePrinted(t, "")
 }
 
 func TestTextPushHandler_PostCopy(t *testing.T) {
-	defer builder.Reset()
-	expected := "Uploaded  0b442c23c1dd oci-image"
+	builder.Reset()
 	ph := NewTextPushHandler(printer, mockFetcher.Fetcher)
 	if ph.PostCopy(ctx, mockFetcher.OciImage) != nil {
 		t.Error("PostCopy() should not return an error")
 	}
-	actual := strings.TrimSpace(builder.String())
-	if expected != actual {
-		t.Error("Output does not match expected <" + expected + "> actual <" + actual + ">")
-	}
+	validatePrinted(t, "Uploaded  0b442c23c1dd oci-image")
 }
 
 func TestTextPushHandler_PreCopy(t *testing.T) {
-	defer builder.Reset()
-	expected := "Uploading 0b442c23c1dd oci-image"
+	builder.Reset()
 	ph := NewTextPushHandler(printer, mockFetcher.Fetcher)
 	if ph.PreCopy(ctx, mockFetcher.OciImage) != nil {
 		t.Error("PreCopy() should not return an error")
 	}
-	actual := strings.TrimSpace(builder.String())
-	if expected != actual {
-		t.Error("Output does not match expected <" + expected + "> actual <" + actual + ">")
-	}
+	validatePrinted(t, "Uploading 0b442c23c1dd oci-image")
 }
