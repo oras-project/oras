@@ -117,7 +117,7 @@ func TestMain(m *testing.M) {
 	ts.TLS = loadTestingTLSConfig()
 	ts.StartTLS()
 	defer ts.Close()
-	m.Run()
+	os.Exit(m.Run())
 }
 
 func TestRemote_FlagsInit(t *testing.T) {
