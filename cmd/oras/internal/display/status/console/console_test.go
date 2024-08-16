@@ -1,5 +1,3 @@
-//go:build freebsd || linux || netbsd || openbsd || solaris
-
 /*
 Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,10 +16,21 @@ limitations under the License.
 package console
 
 import (
+	containerd "github.com/containerd/console"
 	"testing"
 
-	"github.com/containerd/console"
+	"oras.land/oras/internal/testutils"
 )
+
+func givenConsole(t *testing.T) (Console, containerd.Console) {
+	pty, _, err := containerd.NewPty()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &console{
+		Console: pty,
+	}, pty
+}
 
 func validateSize(t *testing.T, gotWidth, gotHeight, wantWidth, wantHeight int) {
 	t.Helper()
@@ -33,31 +42,65 @@ func validateSize(t *testing.T, gotWidth, gotHeight, wantWidth, wantHeight int) 
 	}
 }
 
-func TestConsole_Size(t *testing.T) {
-	pty, _, err := console.NewPty()
+func TestNewConsole(t *testing.T) {
+	_, device, err := testutils.NewPty()
 	if err != nil {
 		t.Fatal(err)
 	}
-	c := &Console{
-		Console: pty,
+	defer device.Close()
+
+	c, err := NewConsole(device)
+	if err != nil {
+		t.Fatal(err)
 	}
 
+	s, err := c.Size()
+	if err != nil {
+		t.Errorf("Unexpect error %v", err)
+	}
+	if s.Height != 10 {
+		t.Errorf("Expected height 10 got %d", s.Height)
+	}
+	if s.Width != 80 {
+		t.Errorf("Expected height 80 got %d", s.Width)
+	}
+}
+
+func TestConsole_Size(t *testing.T) {
+	c, pty := givenConsole(t)
+
 	// minimal width and height
-	gotWidth, gotHeight := c.Size()
+	gotHeight, gotWidth := c.GetHeightWidth()
 	validateSize(t, gotWidth, gotHeight, MinWidth, MinHeight)
 
 	// zero width
-	_ = pty.Resize(console.WinSize{Width: 0, Height: MinHeight})
-	gotWidth, gotHeight = c.Size()
+	_ = pty.Resize(containerd.WinSize{Width: 0, Height: MinHeight})
+	gotHeight, gotWidth = c.GetHeightWidth()
 	validateSize(t, gotWidth, gotHeight, MinWidth, MinHeight)
 
 	// zero height
-	_ = pty.Resize(console.WinSize{Width: MinWidth, Height: 0})
-	gotWidth, gotHeight = c.Size()
+	_ = pty.Resize(containerd.WinSize{Width: MinWidth, Height: 0})
+	gotHeight, gotWidth = c.GetHeightWidth()
 	validateSize(t, gotWidth, gotHeight, MinWidth, MinHeight)
 
 	// valid zero and height
-	_ = pty.Resize(console.WinSize{Width: 200, Height: 100})
-	gotWidth, gotHeight = c.Size()
+	_ = pty.Resize(containerd.WinSize{Width: 200, Height: 100})
+	gotHeight, gotWidth = c.GetHeightWidth()
 	validateSize(t, gotWidth, gotHeight, 200, 100)
+}
+
+func TestConsole_GetHeightWidth(t *testing.T) {
+
+}
+
+func TestConsole_NewRow(t *testing.T) {
+
+}
+
+func TestConsole_OutputTo(t *testing.T) {
+
+}
+
+func TestConsole_Restore(t *testing.T) {
+
 }

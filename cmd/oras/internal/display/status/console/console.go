@@ -16,10 +16,9 @@ limitations under the License.
 package console
 
 import (
-	"os"
-
-	"github.com/containerd/console"
+	containerd "github.com/containerd/console"
 	"github.com/morikuni/aec"
+	"os"
 )
 
 const (
@@ -33,52 +32,67 @@ const (
 	Restore = "\0338"
 )
 
-// Console is a wrapper around containerd's console.Console and ANSI escape
-// codes.
-type Console struct {
-	console.Console
+// Console is a wrapper around containerd's Console and ANSI escape codes.
+type Console interface {
+	containerd.Console
+	GetHeightWidth() (height, width int)
+	Save()
+	NewRow()
+	OutputTo(upCnt uint, str string)
+	Restore()
+}
+
+type console struct {
+	containerd.Console
+}
+
+// NewConsole generates a console from a file.
+func NewConsole(f *os.File) (Console, error) {
+	c, err := containerd.ConsoleFromFile(f)
+	if err != nil {
+		return nil, err
+	}
+	return &console{c}, nil
 }
 
 // Size returns the width and height of the console.
 // If the console size cannot be determined, returns a default value of 80x10.
-func (c *Console) Size() (width, height int) {
-	width = MinWidth
-	height = MinHeight
-	size, err := c.Console.Size()
-	if err == nil {
-		if size.Height > MinHeight {
-			height = int(size.Height)
+func (c *console) Size() (size containerd.WinSize, err error) {
+	size, err = c.Console.Size()
+	if err != nil {
+		size.Height = MinHeight
+		size.Width = MinWidth
+	} else {
+		if size.Height < MinHeight {
+			size.Height = MinHeight
 		}
-		if size.Width > MinWidth {
-			width = int(size.Width)
+		if size.Width < MinWidth {
+			size.Width = MinWidth
 		}
 	}
 	return
 }
 
-// New generates a Console from a file.
-func New(f *os.File) (*Console, error) {
-	c, err := console.ConsoleFromFile(f)
-	if err != nil {
-		return nil, err
-	}
-	return &Console{c}, nil
+// GetHeightWidth returns the width and height of the console.
+func (c *console) GetHeightWidth() (height, width int) {
+	windowSize, _ := c.Size()
+	return int(windowSize.Height), int(windowSize.Width)
 }
 
 // Save saves the current cursor position.
-func (c *Console) Save() {
+func (c *console) Save() {
 	_, _ = c.Write([]byte(aec.Hide.Apply(Save)))
 }
 
 // NewRow allocates a horizontal space to the output area with scroll if needed.
-func (c *Console) NewRow() {
+func (c *console) NewRow() {
 	_, _ = c.Write([]byte(Restore))
 	_, _ = c.Write([]byte("\n"))
 	_, _ = c.Write([]byte(Save))
 }
 
 // OutputTo outputs a string to a specific line.
-func (c *Console) OutputTo(upCnt uint, str string) {
+func (c *console) OutputTo(upCnt uint, str string) {
 	_, _ = c.Write([]byte(Restore))
 	_, _ = c.Write([]byte(aec.PreviousLine(upCnt).Apply(str)))
 	_, _ = c.Write([]byte("\n"))
@@ -86,7 +100,7 @@ func (c *Console) OutputTo(upCnt uint, str string) {
 }
 
 // Restore restores the saved cursor position.
-func (c *Console) Restore() {
+func (c *console) Restore() {
 	// cannot use aec.Restore since DEC has better compatibility than SCO
 	_, _ = c.Write([]byte(Restore))
 	_, _ = c.Write([]byte(aec.Column(0).

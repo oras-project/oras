@@ -31,10 +31,15 @@ func Test_manager_render(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer device.Close()
-	m := &manager{
-		console: &console.Console{Console: pty},
+	sole, err := console.NewConsole(device)
+	if err != nil {
+		t.Fatal(err)
 	}
-	_, height := m.console.Size()
+
+	m := &manager{
+		console: sole,
+	}
+	height, _ := m.console.GetHeightWidth()
 	for i := 0; i < height; i++ {
 		if _, err := m.Add(); err != nil {
 			t.Fatal(err)
