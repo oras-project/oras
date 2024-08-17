@@ -34,7 +34,7 @@ func (mw *mockWriter) Write(p []byte) (n int, err error) {
 		return len(string(p)), nil
 	}
 	mw.errorCount++
-	return 0, fmt.Errorf("Boom: " + string(p))
+	return 0, fmt.Errorf("boom %s", string(p))
 }
 
 func (mw *mockWriter) String() string {

@@ -40,7 +40,7 @@ func TestMain(m *testing.M) {
 	builder = &strings.Builder{}
 	printer = output.NewPrinter(builder, os.Stderr, false)
 	bogus = ocispec.Descriptor{MediaType: ocispec.MediaTypeImageManifest}
-	m.Run()
+	os.Exit(m.Run())
 }
 
 func validatePrinted(t *testing.T, expected string) {
