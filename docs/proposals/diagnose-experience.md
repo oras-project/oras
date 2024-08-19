@@ -96,8 +96,8 @@ Here are the guiding principles to print out debug logs.
 
 ## Proposals for ORAS CLI
 
-- Deprecate the global flag "--debug" and only remain "--verbose" to avoid ambiguous usage. 
-- Make the debug logs as an optional output controlled by "--verbose" via a parameter. Debug logs should be sent to stderr. 
+- Deprecate the global flag `--debug` and only remain `--verbose` to avoid ambiguous usage. 
+- Make the debug logs as an optional output controlled by `--verbose` via a parameter. Debug logs should be sent to stderr. 
 - Add separator lines between each request and response for readability.
 - Add the response body including [error code](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#error-codes) and the metadata of processed resource object (e.g. image manifest) to the debug logs
 - Add the detailed operation information to verbose output.
@@ -238,10 +238,10 @@ $ oras copy ghcr.io/oras-project/oras:v1.2.0 --to-oci-layout oras-dev:v1.2.0 --v
 
 1. Should ORAS applies appropriate log levels to differentiate the log inforamtion? For example:
 
-
 - **Debug Level:** Reserve the `DEBUG` log level for detailed, technical information meant for developers.
   - Example: `DEBUG: Parsed manifest with 3 layers. Digest: sha256:abcd1234`
   
 - **Other Levels:** Use other log levels (Info, Warn, Error) to avoid cluttering debug logs with less vital information.
   - Example (Info): `INFO: Successfully pushed artifact oras-demo:v1`
   - Example (Error): `ERROR: Failed to push artifact oras-demo:v1 due to network timeout`
+
