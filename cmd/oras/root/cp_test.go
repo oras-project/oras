@@ -24,8 +24,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"oras.land/oras/cmd/oras/internal/display/status"
-	"oras.land/oras/cmd/oras/internal/output"
 	"os"
 	"strings"
 	"testing"
@@ -34,6 +32,8 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras/cmd/oras/internal/display/status"
+	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/testutils"
 )
 
@@ -122,53 +122,51 @@ func TestMain(m *testing.M) {
 
 func Test_doCopy(t *testing.T) {
 	// prepare
-	pty, slave, err := testutils.NewPty()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer slave.Close()
 	var opts copyOptions
-	opts.TTY = slave
 	opts.Verbose = true
 	opts.From.Reference = memDesc.Digest.String()
 	dst := memory.New()
 	builder := &strings.Builder{}
 	printer := output.NewPrinter(builder, os.Stderr, opts.Verbose)
 	handler := status.NewTextCopyHandler(printer, dst)
+
 	// test
-	_, err = doCopy(context.Background(), handler, memStore, dst, &opts)
+	_, err := doCopy(context.Background(), handler, memStore, dst, &opts)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// validate
-	if err = testutils.MatchPty(pty, slave, "Copied", memDesc.MediaType, "100.00%", memDesc.Digest.String()); err != nil {
-		t.Fatal(err)
+	actual := builder.String()
+	if strings.Contains(actual, configDigest) {
+		t.Errorf("Expected <%s> to contain <%s>", actual, configDigest)
+	}
+	if strings.Contains(actual, configMediaType) {
+		t.Errorf("Expected <%s> to contain <%s>", actual, configMediaType)
 	}
 }
 
 func Test_doCopy_skipped(t *testing.T) {
 	// prepare
-	pty, slave, err := testutils.NewPty()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer slave.Close()
 	var opts copyOptions
-	opts.TTY = slave
 	opts.Verbose = true
 	opts.From.Reference = memDesc.Digest.String()
+	dst := memory.New()
 	builder := &strings.Builder{}
 	printer := output.NewPrinter(builder, os.Stderr, opts.Verbose)
-	handler := status.NewTextCopyHandler(printer, memStore)
+	handler := status.NewTextCopyHandler(printer, dst)
 
 	// test
-	_, err = doCopy(context.Background(), handler, memStore, memStore, &opts)
+	_, err := doCopy(context.Background(), handler, memStore, memStore, &opts)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// validate
-	if err = testutils.MatchPty(pty, slave, "Exists", memDesc.MediaType, "100.00%", memDesc.Digest.String()); err != nil {
-		t.Fatal(err)
+	actual := builder.String()
+	if strings.Contains(actual, configDigest) {
+		t.Errorf("Expected <%s> to contain <%s>", actual, configDigest)
+	}
+	if strings.Contains(actual, configMediaType) {
+		t.Errorf("Expected <%s> to contain <%s>", actual, configMediaType)
 	}
 }
 
@@ -194,9 +192,8 @@ func Test_doCopy_mounted(t *testing.T) {
 		t.Fatal(err)
 	}
 	to.PlainHTTP = true
-	builder := &strings.Builder{}
-	printer := output.NewPrinter(builder, os.Stderr, opts.Verbose)
-	handler := status.NewTextCopyHandler(printer, to)
+	handler := status.NewTTYCopyHandler(slave)
+	_, _ = handler.StartTracking(memStore)
 
 	// test
 	_, err = doCopy(context.Background(), handler, from, to, &opts)

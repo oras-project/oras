@@ -148,6 +148,15 @@ func NewTextCopyHandler(printer *output.Printer, fetcher content.Fetcher) CopyHa
 	}
 }
 
+// StartTracking starts a tracked target from a graph target.
+func (ch *TextCopyHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
+	return gt, nil
+}
+
+// StopTracking ends the copy tracking for the target.
+func (ch *TextCopyHandler) StopTracking() {
+}
+
 // OnCopySkipped is called when an object already exists.
 func (ch *TextCopyHandler) OnCopySkipped(_ context.Context, desc ocispec.Descriptor) error {
 	ch.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
