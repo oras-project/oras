@@ -166,7 +166,7 @@ func (ch *TextCopyHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor
 		return err
 	}
 	for _, successor := range successors {
-		if err = ch.printer.PrintStatus(successor, copyPromptExists); err != nil {
+		if err = ch.printer.PrintStatus(successor, copyPromptSkipped); err != nil {
 			return err
 		}
 	}
