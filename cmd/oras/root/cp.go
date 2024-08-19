@@ -21,9 +21,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"sync"
-
-	"oras.land/oras/cmd/oras/internal/display/status"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -36,7 +33,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
-	"oras.land/oras/cmd/oras/internal/display/status/track"
+	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/docker"
@@ -131,7 +128,7 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 		return err
 	}
 	ctx = registryutil.WithScopeHint(ctx, dst, auth.ActionPull, auth.ActionPush)
-	copyHandler, handler := display.NewCopyHandler(opts.Printer, dst)
+	copyHandler, handler := display.NewCopyHandler(opts.Printer, opts.TTY, dst)
 
 	desc, err := doCopy(ctx, copyHandler, src, dst, opts)
 	if err != nil {
@@ -158,22 +155,14 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	return nil
 }
 
-func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) (ocispec.Descriptor, error) {
+func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) (desc ocispec.Descriptor, err error) {
 	// Prepare copy options
-	committed := &sync.Map{}
 	extendedCopyOptions := oras.DefaultExtendedCopyOptions
 	extendedCopyOptions.Concurrency = opts.concurrency
 	extendedCopyOptions.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		return registry.Referrers(ctx, src, desc, "")
 	}
 
-	const (
-		promptExists  = "Exists "
-		promptCopying = "Copying"
-		promptCopied  = "Copied "
-		promptSkipped = "Skipped"
-		promptMounted = "Mounted"
-	)
 	srcRepo, srcIsRemote := src.(*remote.Repository)
 	dstRepo, dstIsRemote := dst.(*remote.Repository)
 	if srcIsRemote && dstIsRemote && srcRepo.Reference.Registry == dstRepo.Reference.Registry {
@@ -181,45 +170,16 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 			return []string{srcRepo.Reference.Repository}, nil
 		}
 	}
-	if opts.TTY == nil {
-		// no TTY output
-		extendedCopyOptions.OnCopySkipped = copyHandler.OnCopySkipped
-		extendedCopyOptions.PreCopy = copyHandler.PreCopy
-		extendedCopyOptions.PostCopy = copyHandler.PostCopy
-		extendedCopyOptions.OnMounted = copyHandler.OnMounted
-	} else {
-		// TTY output
-		tracked, err := track.NewTarget(dst, promptCopying, promptCopied, opts.TTY)
-		if err != nil {
-			return ocispec.Descriptor{}, err
-		}
-		defer tracked.Close()
-		dst = tracked
-		extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return tracked.Prompt(desc, promptExists)
-		}
-		extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			successors, err := graph.FilteredSuccessors(ctx, desc, tracked, status.DeduplicatedFilter(committed))
-			if err != nil {
-				return err
-			}
-			for _, successor := range successors {
-				if err = tracked.Prompt(successor, promptSkipped); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-		extendedCopyOptions.OnMounted = func(ctx context.Context, desc ocispec.Descriptor) error {
-			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return tracked.Prompt(desc, promptMounted)
-		}
+	dst, err = copyHandler.StartTracking(dst)
+	if err != nil {
+		return desc, err
 	}
+	defer copyHandler.StopTracking()
+	extendedCopyOptions.OnCopySkipped = copyHandler.OnCopySkipped
+	extendedCopyOptions.PreCopy = copyHandler.PreCopy
+	extendedCopyOptions.PostCopy = copyHandler.PostCopy
+	extendedCopyOptions.OnMounted = copyHandler.OnMounted
 
-	var desc ocispec.Descriptor
-	var err error
 	rOpts := oras.DefaultResolveOptions
 	rOpts.TargetPlatform = opts.Platform.Platform
 	if opts.recursive {

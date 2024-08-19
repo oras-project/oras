@@ -62,6 +62,8 @@ type CopyHandler interface {
 	PreCopy(ctx context.Context, desc ocispec.Descriptor) error
 	PostCopy(ctx context.Context, desc ocispec.Descriptor) error
 	OnMounted(ctx context.Context, desc ocispec.Descriptor) error
+	StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error)
+	StopTracking()
 }
 
 // ManifestIndexCreateHandler handles status output for manifest index create command.
