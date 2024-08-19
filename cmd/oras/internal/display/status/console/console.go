@@ -16,9 +16,10 @@ limitations under the License.
 package console
 
 import (
+	"os"
+
 	containerd "github.com/containerd/console"
 	"github.com/morikuni/aec"
-	"os"
 )
 
 const (
