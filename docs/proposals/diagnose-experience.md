@@ -1,29 +1,29 @@
 # Improve ORAS diagnose experience
 
-ORAS currently offers two global options, `--verbose` and `--debug`, which enable users to generate detailed output and debug logs, respectively. These features facilitate both users and developers in inspecting ORAS's performance, interactions with external services and internal systems, and in diagnosing issues by providing a clear picture of the tool’s operations.
+ORAS currently offers two global options, `--verbose` and `--debug`, which enable users to generate verbose output and debug logs respectively. These features facilitate both users and developers in inspecting ORAS's performance, interactions with external services and internal systems, and in diagnosing issues by providing a clear picture of the tool’s operations.
 
-Given the diverse roles and scenarios in which ORAS is utilized, we have received feedback from users and developers on how to improve the diagnostic experience. Enhancing the verbose output and debug logs can significantly benefit ORAS users and developers by making diagnostics clearer and more unambiguous.
+Given the diverse roles and scenarios in which ORAS CLI is utilized, we have received feedback from users and developers to improve the diagnostic experience. Enhancing the verbose output and debug logs can significantly benefit ORAS users and developers by making diagnostics clearer and more unambiguous.
 
 This proposal document aims to:
 
 1. Identify the issues associated with the current implementation of the `--verbose` and `--debug` options.
 2. Clarify the concepts of verbose output and debug logs.
-3. List the guilding principles to write comprehensive, clear, and conducive verbose output and debug logs for effective diagnosis.
-4. Propose solutions to improve the diagnostic experience for ORAS users and developers.
+3. List the guiding principles to write comprehensive, clear, and conducive verbose output and debug logs for effective diagnosis.
+4. Propose solutions to improve the diagnostic experience for ORAS CLI users and developers.
 
 ## Problem Statement
 
 Specifically, there are exiting GitHub issues raised in the ORAS community.
 
 - The user is confused about when to use `--verbose` and `--debug`. See the relevant issue [#1382](https://github.com/oras-project/oras/issues/1382).
-- Poor readability of debug logs. No separator lines between request and response information. Users even manually add separator lines for readability. See the relevant issue [#1382](https://github.com/oras-project/oras/issues/1382).
+- Poor readability of debug logs. No separator lines between request and response information. Users need to add separator lines manually for readability. See the relevant issue [#1382](https://github.com/oras-project/oras/issues/1382).
 - Critical information is missing in debug logs. For example, the [error code](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#error-codes) and metadata of the processed resource object (e.g. image manifest) are not displayed.
 - The detailed operation information is missing in verbose output. For example, how many resource objects are processed where. Less or none verbose output of ORAS commands in some use cases.
-- Timestamp of each request and response is missing in debug logs, which is hard to trace historical performed execution of the tool.
+- Timestamp of each request and response is missing in debug logs, which is hard to trace historical operation and trace the sequence of events accurately.
 
 ## Concepts
 
-Before re-factoring the log information in the ORAS debug log and [verbose output](https://en.wikipedia.org/wiki/Verbose_mode), it worth clarifying the concepts and differences between verbose output and debug logs.
+Before restructuring the log information of ORAS debug log and [verbose output](https://en.wikipedia.org/wiki/Verbose_mode), it worth clarifying the concepts and differences between verbose output and debug logs.
 
 ### Verbose Output 
 
