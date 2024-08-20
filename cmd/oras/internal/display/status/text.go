@@ -17,8 +17,9 @@ package status
 
 import (
 	"context"
-	"oras.land/oras/internal/graph"
 	"sync"
+
+	"oras.land/oras/internal/graph"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
@@ -161,11 +162,11 @@ func (ch *TextCopyHandler) PreCopy(_ context.Context, desc ocispec.Descriptor) e
 // PostCopy implements PostCopy of CopyHandler.
 func (ch *TextCopyHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor) error {
 	ch.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-	successors, err := graph.FilteredSuccessors(ctx, desc, ch.fetcher, DeduplicatedFilter(ch.committed))
+	deduplicated, err := graph.FilteredSuccessors(ctx, desc, ch.fetcher, DeduplicatedFilter(ch.committed))
 	if err != nil {
 		return err
 	}
-	for _, successor := range successors {
+	for _, successor := range deduplicated {
 		if err = ch.printer.PrintStatus(successor, copyPromptSkipped); err != nil {
 			return err
 		}
