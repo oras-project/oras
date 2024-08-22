@@ -19,6 +19,7 @@ import (
 	"context"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -68,7 +69,7 @@ func TestTextCopyHandler_OnCopySkipped(t *testing.T) {
 	validatePrinted(t, "Exists  0b442c23c1dd oci-image")
 }
 
-func TestTextCopyHandler_PostCopy(t *testing.T) {
+func TestTextCopyHandler_PostCopy_titled(t *testing.T) {
 	builder.Reset()
 	ch := NewTextCopyHandler(printer, mockFetcher.Fetcher)
 	if ch.PostCopy(ctx, mockFetcher.OciImage) != nil {
@@ -78,6 +79,20 @@ func TestTextCopyHandler_PostCopy(t *testing.T) {
 		t.Error("PostCopy() should return an error")
 	}
 	validatePrinted(t, "Copied  0b442c23c1dd oci-image")
+}
+
+func TestTextCopyHandler_PostCopy_skipped(t *testing.T) {
+	builder.Reset()
+	ch := &TextCopyHandler{
+		printer:   printer,
+		fetcher:   mockFetcher.Fetcher,
+		committed: &sync.Map{},
+	}
+	ch.committed.Store(mockFetcher.ImageLayer.Digest.String(), mockFetcher.ImageLayer.Annotations[ocispec.AnnotationTitle]+"bogus")
+	if err := ch.PostCopy(ctx, mockFetcher.OciImage); err != nil {
+		t.Error("PostCopy() returns unexpected err:", err)
+	}
+	validatePrinted(t, "Skipped f6b87e8e0fe1 layer\nCopied  0b442c23c1dd oci-image")
 }
 
 func TestTextCopyHandler_PreCopy(t *testing.T) {
