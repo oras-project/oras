@@ -34,7 +34,7 @@ parts:
       - on amd64 to {ARCH}:
         - TARGET_ARCH: "{ARCH}"
     build-snaps:
-      - go/1.22/stable
+      - go/1.23/stable
     build-packages:
       - make
     stage-packages:
