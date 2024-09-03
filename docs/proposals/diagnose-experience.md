@@ -13,12 +13,12 @@ This proposal document aims to:
 
 ## Problem Statement
 
-Specifically, there are exiting GitHub issues raised in the ORAS community.
+Specifically, there are existing GitHub issues raised in the ORAS community.
 
 - The user is confused about when to use `--verbose` and `--debug`. See the relevant issue [#1382](https://github.com/oras-project/oras/issues/1382).
 - Poor readability of debug logs. No separator lines between request and response information. Users need to add separator lines manually for readability. See the relevant issue [#1382](https://github.com/oras-project/oras/issues/1382).
 - Critical information is missing in debug logs. For example, the [error code](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#error-codes) and metadata of the processed resource object (e.g. image manifest) are not displayed.
-- The detailed operation information is missing in verbose output. For example, how many resource objects are processed where. Less or none verbose output of ORAS commands in some use cases.
+- The detailed operation information is missing in verbose output. For example, how many and where are objects processed. Less or no verbose output of ORAS commands in some use cases.
 - Timestamp of each request and response is missing in debug logs, which is hard to trace historical operation and trace the sequence of events accurately.
 
 ## Concepts
@@ -38,8 +38,8 @@ Verbose output focuses on providing a comprehensive, high-level view of the appl
 
 Debug logs focus on providing technical details for in-depth diagnosing and troubleshooting issues. It is intended for developers or technical users who need to understand the inner workings of the tool. Debug logs are detailed and technical, often including HTTP request and response from interactions between client and server, as well as code-specific information.
 
-- **Purpose**: Debug logs are specifically aimed at helping developers diagnose and fix issues within the application. They contain detailed technical information that is useful for troubleshooting problems.
-- **Target users**: Primarily intended for developers or technical users who are trying to understand the inner workings of the code and identify the root cause of issues.
+- **Purpose**: Debug logs are specifically aime to facilitate ORAS developers to diagnose ORAS tool itself. They contain detailed technical information that is useful for troubleshooting problems.
+**Target users**: Primarily intended for developers or technical users who are trying to understand the inner workings of the code and identify the root cause of a possible issue with the tool itself.
 - **Content**: Debug logs focus on providing context needed to troubleshoot issues, like variable values, execution paths, error stack traces, and internal states of the application.
 - **Level of Detail**: Extremely detailed, providing insights into the application's internal workings and logic, often including low-level details that are essential for debugging.
 
@@ -72,13 +72,6 @@ Here are the guiding principles to print out debug logs.
   
 - **Error Codes:** Include specific error codes to facilitate quick identification and resolution.
   - Example: `ERROR: [ErrorCode: 504] Network timeout while accessing /v2/oras-demo/manifests/latest`
-
-### 5. **Environment and Configuration Details**
-- **Environment Information:** Log details about the environment where the tool is running, such as OS version and architecture, tool version, and environment variables (excluding sensitive data).
-  - Example: `DEBUG: Running on OS: Ubuntu 20.04, Arch: Linux AMD64 ORAS version: v1.2.0`
-
-- **Configuration Settings:** Include current configuration settings that might affect the execution or behavior of the tool.
-  - Example: `DEBUG: Configuration - Registry URL: https://myregistry.io, Timeout: 30s, RetryCount: 3`
 
 ### 5. **Include Actionable Information**
 - **Guidance:** Where possible, provide suggestions within logs about potential fixes or next steps for resolving issues.
@@ -117,7 +110,7 @@ Docker has `--debug` and `--log-level` options to control debug logs output with
 
 #### Kubectl
 
-Kubectl has a command `kubectl logs` to show logs of resource objects such as Pod and container. No separate flags for verbose output and debug logs.
+Kubectl has a command `kubectl logs` to show logs of objects such as Pod and container. No separate flags for verbose output and debug logs.
 
 ## Examples in ORAS
 
@@ -245,3 +238,15 @@ $ oras copy ghcr.io/oras-project/oras:v1.2.0 --to-oci-layout oras-dev:v1.2.0 --v
   - Example (Info): `INFO: Successfully pushed artifact oras-demo:v1`
   - Example (Error): `ERROR: Failed to push artifact oras-demo:v1 due to network timeout`
 
+2. Is it much more reasonable to output the user's environment details in `oras version` rather than in debug logs? The details about the environment where the tool is running, such as OS version and architecture, tool version, and environment variables (excluding sensitive data) would be super helpful to help ORAS developers and users to diagnose an issue.
+
+For example, the command and output will be as follows if output these information in `oras version`: 
+
+```bash
+$ oras version --long
+
+ORAS Version:    1.2.0+Homebrew
+Go version: go1.22.3
+Running on OS: Ubuntu 20.04, 
+Arch: Linux AMD64
+```
