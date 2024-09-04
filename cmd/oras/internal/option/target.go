@@ -113,6 +113,21 @@ func (opts *Target) Parse(cmd *cobra.Command) error {
 			}
 		} else {
 			opts.Reference = ref.Reference
+
+			raw := opts.RawReference
+			var path string
+			if idx := strings.LastIndex(raw, "@"); idx != -1 {
+				// `digest` found
+				path = raw[:idx]
+			} else {
+				// find `tag`
+				var err error
+				path, _, err = fileref.Parse(raw, "")
+				if err != nil {
+					return errors.Join(err, errdef.ErrInvalidReference)
+				}
+			}
+			opts.Path = path
 		}
 		return opts.Remote.Parse(cmd)
 	}
