@@ -39,6 +39,8 @@ import (
 	"oras.land/oras/internal/listener"
 )
 
+var maxConfigSize int64 = 4 * 1024 * 1024 // 4 MiB
+
 type createOptions struct {
 	option.Common
 	option.Target
@@ -151,6 +153,10 @@ func getPlatform(ctx context.Context, target oras.ReadOnlyTarget, manifestBytes 
 	var manifest ocispec.Manifest
 	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
 		return nil, err
+	}
+	// if config size is larger than 4 MiB, discontinue the fetch
+	if manifest.Config.Size >= maxConfigSize {
+		return nil, fmt.Errorf("config is too large")
 	}
 	// fetch config content
 	contentBytes, err := content.FetchAll(ctx, target, manifest.Config)

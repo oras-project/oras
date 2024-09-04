@@ -21,8 +21,8 @@ import (
 	"oras.land/oras/internal/docker"
 )
 
-// IsManifest checks if a descriptor describes a manifest. Copied from oras-go with
-// slight modification.
+// IsManifest checks if a descriptor describes a manifest.
+// Copied from `oras-go`: https://github.com/oras-project/oras-go/blob/d6c837e439f4c567f8003eab6e423c22900452a8/internal/descriptor/descriptor.go#L67
 func IsManifest(desc ocispec.Descriptor) bool {
 	switch desc.MediaType {
 	case docker.MediaTypeManifest,
@@ -51,8 +51,8 @@ func ShortDigest(desc ocispec.Descriptor) (digestString string) {
 	return digestString
 }
 
-// Plain returns a plain descriptor that contains only MediaType, Digest and
-// Size. Copied from oras-go.
+// Plain returns a plain descriptor that contains only MediaType, Digest and Size.
+// Copied from `oras-go`: https://github.com/oras-project/oras-go/blob/d6c837e439f4c567f8003eab6e423c22900452a8/internal/descriptor/descriptor.go#L81
 func Plain(desc ocispec.Descriptor) ocispec.Descriptor {
 	return ocispec.Descriptor{
 		MediaType: desc.MediaType,
