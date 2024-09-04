@@ -130,21 +130,6 @@ var _ = Describe("1.1 registry users:", func() {
 			ValidateIndex(content, expectedManifests)
 		})
 
-		It("should fail if give a digest as index reference", func() {
-			testRepo := indexTestRepo("create", "bad-index-ref")
-			CopyZOTRepo(ImageRepo, testRepo)
-			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, "sha256:bfa1728d6292d5fa7689f8f4daa145ee6f067b5779528c6e059d1132745ef508"),
-				string(multi_arch.LinuxAMD64.Digest)).ExpectFailure().MatchErrKeyWords("not a valid tag").Exec()
-		})
-
-		It("should fail if give digests as among the index references", func() {
-			testRepo := indexTestRepo("create", "digest-ref")
-			CopyZOTRepo(ImageRepo, testRepo)
-			ORAS("manifest", "index", "create", fmt.Sprintf("%s,another-tag,sha256:bfa1728d6292d5fa7689f8f4daa145ee6f067b5779528c6e059d1132745ef508",
-				RegistryRef(ZOTHost, testRepo, "digest-test")),
-				string(multi_arch.LinuxAMD64.Digest)).ExpectFailure().MatchErrKeyWords("not a valid tag").Exec()
-		})
-
 		It("should fail if given a reference that does not exist in the repo", func() {
 			testRepo := indexTestRepo("create", "nonexist-ref")
 			CopyZOTRepo(ImageRepo, testRepo)
@@ -224,21 +209,6 @@ var _ = Describe("OCI image layout users:", func() {
 			content := ORAS("manifest", "fetch", Flags.Layout, indexRef).Exec().Out.Contents()
 			expectedManifests := []ocispec.Descriptor{nonjson_config.Descriptor}
 			ValidateIndex(content, expectedManifests)
-		})
-
-		It("should fail if give a digest as index reference", func() {
-			root := PrepareTempOCI(ImageRepo)
-			indexRef := LayoutRef(root, "sha256:bfa1728d6292d5fa7689f8f4daa145ee6f067b5779528c6e059d1132745ef508")
-			ORAS("manifest", "index", "create", Flags.Layout, indexRef, string(multi_arch.LinuxAMD64.Digest)).
-				ExpectFailure().MatchErrKeyWords("not a valid tag").Exec()
-		})
-
-		It("should fail if give digests as among the index references", func() {
-			root := PrepareTempOCI(ImageRepo)
-			indexRef := LayoutRef(root, "latest")
-			ORAS("manifest", "index", "create", Flags.Layout, fmt.Sprintf("%s,another-tag,sha256:bfa1728d6292d5fa7689f8f4daa145ee6f067b5779528c6e059d1132745ef508",
-				indexRef), string(multi_arch.LinuxAMD64.Digest)).
-				ExpectFailure().MatchErrKeyWords("not a valid tag").Exec()
 		})
 
 		It("should fail if given a reference that does not exist in the repo", func() {

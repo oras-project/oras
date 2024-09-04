@@ -15,9 +15,7 @@ limitations under the License.
 
 package contentutil
 
-import (
-	"github.com/opencontainers/go-digest"
-)
+import "github.com/opencontainers/go-digest"
 
 // IsDigest checks if the given string is a valid digest.
 func IsDigest(tagOrDigest string) bool {
