@@ -104,9 +104,13 @@ To make sure the ORAS diagnose functions are natural and easier to use, it worth
 
 Curl only has a `--verbose` option to output verbose logs. No `--debug` option.
 
-#### Docker
+#### Docker and Podman
 
-Docker has `--debug` and `--log-level` options to control debug logs output within different log levels, such as INFO, DEBUG, WARN, etc. No `--verbose` option. Docker has its own daemon service running in local so its logs might be much more complex.
+Docker provdes two options `--debug` and `--log-level`  to control debug logs output within different log levels, such as INFO, DEBUG, WARN, etc. No `--verbose` option. Docker has its own daemon service running in local so its logs might be much more complex.
+
+#### Helm
+
+Helm CLI tool provides a global flag `--debug` to enable verbose output.
 
 #### Kubectl
 
@@ -229,7 +233,7 @@ $ oras copy ghcr.io/oras-project/oras:v1.2.0 --to-oci-layout oras-dev:v1.2.0 --v
 
 ## Open Questions
 
-1. Should ORAS applies appropriate log levels to differentiate the log inforamtion? For example:
+1. Should ORAS applies appropriate log levels to differentiate the log information? For example:
 
 - **Debug Level:** Reserve the `DEBUG` log level for detailed, technical information meant for developers.
   - Example: `DEBUG: Parsed manifest with 3 layers. Digest: sha256:abcd1234`
@@ -250,3 +254,7 @@ Go version: go1.22.3
 Running on OS: Ubuntu 20.04, 
 Arch: Linux AMD64
 ```
+
+3. Is it a common practice to use an environment variable like `export ORAS_DEBUG=1` as a global switch for debug logs? What are the Pros and Cons of using this design?
+
+4. For the diagnose flag options, is it much more straightforward and less breaking if we only deprecate `--verbose` and remain `--debug` as it is?
