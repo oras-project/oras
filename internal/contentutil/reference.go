@@ -17,16 +17,10 @@ package contentutil
 
 import (
 	"github.com/opencontainers/go-digest"
-	"oras.land/oras-go/v2/registry"
 )
 
 // IsDigest checks if the given string is a valid digest.
 func IsDigest(tagOrDigest string) bool {
 	_, err := digest.Parse(tagOrDigest)
 	return err == nil
-}
-
-// IsValidTag checks if the given string is a valid tag.
-func IsValidTag(tag string) bool {
-	return registry.Reference{Reference: tag}.ValidateReferenceAsDigest() != nil
 }

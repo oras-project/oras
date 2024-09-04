@@ -34,7 +34,6 @@ import (
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/cmd/oras/internal/output"
-	"oras.land/oras/internal/contentutil"
 	"oras.land/oras/internal/descriptor"
 	"oras.land/oras/internal/listener"
 )
@@ -77,20 +76,7 @@ Example - create an index and push to an OCI image layout folder 'layout-dir' an
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
 			opts.sources = args[1:]
-			if err := option.Parse(cmd, &opts); err != nil {
-				return err
-			}
-			// check that all tags given by the user are valid tags
-			allRefs := opts.extraRefs
-			if opts.Reference != "" {
-				allRefs = append(opts.extraRefs, opts.Reference)
-			}
-			for _, ref := range allRefs {
-				if !contentutil.IsValidTag(ref) {
-					return fmt.Errorf("%s is not a valid tag", ref)
-				}
-			}
-			return nil
+			return option.Parse(cmd, &opts)
 		},
 		Aliases: []string{"pack"},
 		RunE: func(cmd *cobra.Command, args []string) error {
