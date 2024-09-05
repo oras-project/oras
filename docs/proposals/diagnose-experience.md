@@ -7,7 +7,7 @@ Given the diverse roles and scenarios in which ORAS CLI is utilized, we have rec
 This proposal document aims to:
 
 1. Identify the issues associated with the current implementation of the `--verbose` and `--debug` options.
-2. Clarify the concepts of verbose output and debug logs.
+2. Clarify the concepts of different types of output and logs for diagnostic purposes.
 3. List the guiding principles to write comprehensive, clear, and conducive verbose output and debug logs for effective diagnosis.
 4. Propose solutions to improve the diagnostic experience for ORAS CLI users and developers.
 
@@ -25,7 +25,7 @@ Specifically, there are existing GitHub issues raised in the ORAS community.
 
 Before restructuring the log information of ORAS debug log and [verbose output](https://en.wikipedia.org/wiki/Verbose_mode), it worth clarifying the concepts and differences between verbose output and debug logs.
 
-### Verbose Output 
+### Output 
 
 Verbose output focuses on providing a comprehensive, high-level view of the application's operations. It is intended for end-users who want to observe the detailed normal operation of the tool. It should be human readable and descriptive.
 
@@ -34,11 +34,11 @@ Verbose output focuses on providing a comprehensive, high-level view of the appl
 - **Content**: Verbose output includes lots of informational messages about the application's state, operations performed, configuration details, and more. They provide a broader view, which is helpful for tracing the overall execution of the tool.
 - **Level of Detail**: Very detailed, but usually focused on normal operations rather than errors or issues.
 
-### Debug Logs
+### Logs
 
 Debug logs focus on providing technical details for in-depth diagnosing and troubleshooting issues. It is intended for developers or technical users who need to understand the inner workings of the tool. Debug logs are detailed and technical, often including HTTP request and response from interactions between client and server, as well as code-specific information.
 
-- **Purpose**: Debug logs are specifically aime to facilitate ORAS developers to diagnose ORAS tool itself. They contain detailed technical information that is useful for troubleshooting problems.
+- **Purpose**: Debug logs are specifically aim to facilitate ORAS developers to diagnose ORAS tool itself. They contain detailed technical information that is useful for troubleshooting problems.
 **Target users**: Primarily intended for developers or technical users who are trying to understand the inner workings of the code and identify the root cause of a possible issue with the tool itself.
 - **Content**: Debug logs focus on providing context needed to troubleshoot issues, like variable values, execution paths, error stack traces, and internal states of the application.
 - **Level of Detail**: Extremely detailed, providing insights into the application's internal workings and logic, often including low-level details that are essential for debugging.
@@ -89,7 +89,7 @@ Here are the guiding principles to print out debug logs.
 
 ## Proposals for ORAS CLI
 
-- Deprecate the global flag `--debug` and only remain `--verbose` to avoid ambiguous usage. 
+- Deprecate the global flag `--verbose` and only remain `--debug` to avoid ambiguity. 
 - Make the debug logs as an optional output controlled by `--verbose` via a parameter. Debug logs should be sent to stderr. 
 - Add separator lines between each request and response for readability.
 - Add the response body including [error code](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#error-codes) and the metadata of processed resource object (e.g. image manifest) to the debug logs
@@ -247,7 +247,7 @@ $ oras copy ghcr.io/oras-project/oras:v1.2.0 --to-oci-layout oras-dev:v1.2.0 --v
 For example, the command and output will be as follows if output these information in `oras version`: 
 
 ```bash
-$ oras version --long
+$ oras version
 
 ORAS Version:    1.2.0+Homebrew
 Go version: go1.22.3
