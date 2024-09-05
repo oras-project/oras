@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
@@ -142,7 +143,7 @@ func getPlatform(ctx context.Context, target oras.ReadOnlyTarget, manifestBytes 
 	}
 	// if config size is larger than 4 MiB, discontinue the fetch
 	if manifest.Config.Size >= maxConfigSize {
-		return nil, fmt.Errorf("config is too large")
+		return nil, fmt.Errorf("config size %v exceeds MaxBytes %v: %w", manifest.Config.Size, maxConfigSize, errdef.ErrSizeExceedsLimit)
 	}
 	// fetch config content
 	contentBytes, err := content.FetchAll(ctx, target, manifest.Config)
