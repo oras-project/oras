@@ -56,6 +56,18 @@ func TestDescriptor_IsImageManifest(t *testing.T) {
 	}
 }
 
+func TestDescriptor_IsManifest(t *testing.T) {
+	got := descriptor.IsManifest(imageDesc)
+	if !got {
+		t.Fatalf("IsManifest() got %v, want %v", got, true)
+	}
+
+	got = descriptor.IsManifest(artifactDesc)
+	if got {
+		t.Fatalf("IsManifest() got %v, want %v", got, false)
+	}
+}
+
 func TestDescriptor_ShortDigest(t *testing.T) {
 	expected := "2e0e0fe1fb3e"
 	got := descriptor.ShortDigest(titledDesc)

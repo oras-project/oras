@@ -48,6 +48,14 @@ const (
 	copyPromptMounted = "Mounted"
 )
 
+// Prompts for index events.
+const (
+	IndexPromptFetching = "Fetching"
+	IndexPromptFetched  = "Fetched "
+	IndexPromptPacked   = "Packed  "
+	IndexPromptPushed   = "Pushed  "
+)
+
 // DeduplicatedFilter filters out deduplicated descriptors.
 func DeduplicatedFilter(committed *sync.Map) func(desc ocispec.Descriptor) bool {
 	return func(desc ocispec.Descriptor) bool {

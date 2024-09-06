@@ -13,25 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package manifest
+package nonjson_config
 
 import (
-	"github.com/spf13/cobra"
-	"oras.land/oras/cmd/oras/root/manifest/index"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-func Cmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "manifest [command]",
-		Short: "Manifest operations",
+var (
+	Descriptor = ocispec.Descriptor{
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Digest:    "sha256:9d16f5505246424aed7116cb21216704ba8c919997d0f1f37e154c11d509e1d2",
+		Size:      529,
 	}
-
-	cmd.AddCommand(
-		deleteCmd(),
-		fetchCmd(),
-		fetchConfigCmd(),
-		pushCmd(),
-		index.Cmd(),
-	)
-	return cmd
-}
+)
