@@ -23,8 +23,7 @@ ARCH        = $(shell uname -m)
 
 ifeq ($(OSNAME),Darwin)
   OS = mac
-else
-ifeq ($(OSNAME),Linux)
+else ifeq ($(OSNAME),Linux)
   OS = linux
 else
   OS = windows
