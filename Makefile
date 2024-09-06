@@ -28,7 +28,6 @@ else ifeq ($(OSNAME),Linux)
 else
   OS = windows
 endif
-endif
 
 TARGET_OBJS ?= checksums.txt darwin_amd64.tar.gz darwin_arm64.tar.gz linux_amd64.tar.gz linux_arm64.tar.gz linux_armv7.tar.gz linux_s390x.tar.gz linux_ppc64le.tar.gz linux_riscv64.tar.gz windows_amd64.zip freebsd_amd64.tar.gz
 
