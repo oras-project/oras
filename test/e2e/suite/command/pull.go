@@ -270,7 +270,8 @@ var _ = Describe("OCI spec 1.1 registry users:", func() {
 		It("should show correct reference", func() {
 			tempDir := PrepareTempFiles()
 			ref := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
-			ORAS("pull", ref, "--format", "go-template={{.reference}}").WithWorkDir(tempDir).Exec()
+			out := ORAS("pull", ref, "--format", "go-template={{.reference}}").WithWorkDir(tempDir).Exec().Out.Contents()
+			Expect(out).To(Equal("localhost:7000/command/artifacts@sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb"))
 		})
 
 		It("should pull specific platform", func() {
