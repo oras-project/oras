@@ -113,6 +113,8 @@ func (opts *Target) Parse(cmd *cobra.Command) error {
 			}
 		} else {
 			opts.Reference = ref.Reference
+			ref.Reference = ""
+			opts.Path = ref.String()
 		}
 		return opts.Remote.Parse(cmd)
 	}
@@ -145,15 +147,7 @@ func (opts *Target) newOCIStore() (*oci.Store, error) {
 }
 
 func (opts *Target) newRepository(common Common, logger logrus.FieldLogger) (*remote.Repository, error) {
-	repo, err := opts.NewRepository(opts.RawReference, common, logger)
-	if err != nil {
-		return nil, err
-	}
-	tmp := repo.Reference
-	tmp.Reference = ""
-	opts.Path = tmp.String()
-	opts.Reference = repo.Reference.Reference
-	return repo, nil
+	return opts.NewRepository(opts.RawReference, common, logger)
 }
 
 // NewTarget generates a new target based on opts.
@@ -232,15 +226,7 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common, logger
 		}
 		return store, nil
 	case TargetTypeRemote:
-		repo, err := opts.NewRepository(opts.RawReference, common, logger)
-		if err != nil {
-			return nil, err
-		}
-		tmp := repo.Reference
-		tmp.Reference = ""
-		opts.Path = tmp.String()
-		opts.Reference = repo.Reference.Reference
-		return repo, nil
+		return opts.NewRepository(opts.RawReference, common, logger)
 	}
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
 }
