@@ -89,12 +89,12 @@ Here are the guiding principles to print out debug logs.
 
 ## Proposals for ORAS CLI
 
-- Deprecate the global flag `--verbose` and only remain `--debug` to avoid ambiguity. 
-- Make the debug logs as an optional output controlled by `--verbose` via a parameter. Debug logs should be sent to stderr. 
+- Deprecate the global flag `--verbose` and only remain `--debug` to avoid ambiguity.
+- The existing output of `--verbose` in several ORAS commands `pull/push/attach/discover` can still be reserved. Per analysis above, these output will be controlled by introducing an additional flag.
 - Add separator lines between each request and response for readability.
-- Add the response body including [error code](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#error-codes) and the metadata of processed resource object (e.g. image manifest) to the debug logs
-- Add the detailed operation information to verbose output.
 - Add timestamp of each request and response to the beginning of each request and response.
+- Add the response body including [error code](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#error-codes) and the metadata of processed OCI object (e.g. image manifest) to the debug logs
+
 
 ## Investigation
 
@@ -106,7 +106,7 @@ Curl only has a `--verbose` option to output verbose logs. No `--debug` option.
 
 #### Docker and Podman
 
-Docker provdes two options `--debug` and `--log-level`  to control debug logs output within different log levels, such as INFO, DEBUG, WARN, etc. No `--verbose` option. Docker has its own daemon service running in local so its logs might be much more complex.
+Docker provides two options `--debug` and `--log-level`  to control debug logs output within different log levels, such as INFO, DEBUG, WARN, etc. No `--verbose` option. Docker has its own daemon service running in local so its logs might be much more complex.
 
 #### Helm
 
@@ -124,7 +124,7 @@ This section lists the current behaviors of ORAS verbose output and debug logs, 
 
 **Current debug logs** 
 
-Just pick the first two requests and responses as examples:
+Pick the first two requests and responses as examples:
 
 ```
 oras copy ghcr.io/oras-project/oras:v1.2.0 --to-oci-layout oras-dev:v1.2.0 --debug
