@@ -83,6 +83,12 @@ Example - Pull files from a registry with certain platform:
 Example - Pull all files with concurrency level tuned:
   oras pull --concurrency 6 localhost:5000/hello:v1
 
+Example - Pull files and format output with JSON:
+  oras pull localhost:5000/hello:v1 --format json
+
+Example - Pull files and format output with Go template:
+  oras pull localhost:5000/hello:v1 --format go-template={{.reference}}
+
 Example - Pull artifact files from an OCI image layout folder 'layout-dir':
   oras pull --oci-layout layout-dir:v1
 

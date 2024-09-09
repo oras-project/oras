@@ -79,6 +79,12 @@ Example - Push file "hi.txt" with config type "application/vnd.me.config":
 Example - Push file "hi.txt" with the custom manifest config "config.json" of the custom media type "application/vnd.me.config":
   oras push --config config.json:application/vnd.me.config localhost:5000/hello:v1 hi.txt
 
+Example - Push file "hi.txt" and format output with JSON:
+  oras push localhost:5000/hello:v1 hi.txt --format json
+
+Example - Push file "hi.txt" and format output with Go template:
+  oras push localhost:5000/hello:v1 hi.txt --format go-template={{.digest}}
+
 Example - Push file to the insecure registry:
   oras push --insecure localhost:5000/hello:v1 hi.txt
 

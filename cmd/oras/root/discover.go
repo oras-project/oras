@@ -51,27 +51,30 @@ func discoverCmd() *cobra.Command {
 
 ** This command is in preview and under development. **
 
-Example - Discover direct referrers of manifest 'hello:v1' in registry 'localhost:5000':
+Example - Discover all referrers of manifest 'hello:v1' in registry 'localhost:5000', displayed in a tree view:
   oras discover localhost:5000/hello:v1
 
-Example - Discover direct referrers via referrers API:
+Example - Discover referrers via referrers API:
   oras discover --distribution-spec v1.1-referrers-api localhost:5000/hello:v1
 
-Example - Discover direct referrers via tag scheme:
+Example - Discover referrers via tag scheme:
   oras discover --distribution-spec v1.1-referrers-tag localhost:5000/hello:v1
 
-Example - Discover all the referrers of manifest 'hello:v1' in registry 'localhost:5000', displayed in a tree view:
-  oras discover -o tree localhost:5000/hello:v1
+Example - Discover referrers and display in table view:
+  oras discover localhost:5000/hello:v1 --format table
+
+Example - Discover referrers and format output with Go template:
+  oras discover localhost:5000/hello:v1 --format go-template --template {{.manifests}}
 
 Example - Discover all the referrers of manifest with annotations, displayed in a tree view:
-  oras discover -v -o tree localhost:5000/hello:v1
+  oras discover -v localhost:5000/hello:v1
 
 Example - Discover referrers with type 'test-artifact' of manifest 'hello:v1' in registry 'localhost:5000':
   oras discover --artifact-type test-artifact localhost:5000/hello:v1
 
 Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout folder 'layout-dir':
   oras discover --oci-layout layout-dir:v1
-  oras discover --oci-layout -v -o tree layout-dir:v1
+  oras discover --oci-layout -v layout-dir:v1
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the target artifact to discover referrers from"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
