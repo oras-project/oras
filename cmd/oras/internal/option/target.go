@@ -227,7 +227,6 @@ func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common, logger
 		return store, nil
 	case TargetTypeRemote:
 		return opts.NewRepository(opts.RawReference, common, logger)
-
 	}
 	return nil, fmt.Errorf("unknown target type: %q", opts.Type)
 }

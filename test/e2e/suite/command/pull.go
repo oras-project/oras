@@ -267,6 +267,12 @@ var _ = Describe("OCI spec 1.1 registry users:", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
+		It("should show correct reference", func() {
+			tempDir := PrepareTempFiles()
+			ref := RegistryRef(ZOTHost, ArtifactRepo, unnamed.Tag)
+			ORAS("pull", ref, "--format", "{{.reference}}").WithWorkDir(tempDir).Exec()
+		})
+
 		It("should pull specific platform", func() {
 			ORAS("pull", RegistryRef(ZOTHost, ImageRepo, "multi"), "--platform", "linux/amd64", "-v", "-o", GinkgoT().TempDir()).
 				MatchStatus(multi_arch.LinuxAMD64StateKeys, true, len(multi_arch.LinuxAMD64StateKeys)).Exec()
