@@ -53,25 +53,22 @@ func updateCmd() *cobra.Command {
 		Short: "[Experimental] Update and push an image index",
 		Long: `[Experimental] Update and push an image index. All manifests should be in the same repository
 		
-Example - add one manifest and remove two manifests from an index tagged 'latest'. The tag will point to the updated index:
-  oras manifest index update localhost:5000/hello:latest --add linux-amd64 --remove sha256:xxx
+Example - remove a manifest and add two manifests from an index tagged 'v1'. The tag will point to the updated index:
+  oras manifest index update localhost:5000/hello:v1 --add linux-amd64 --add linux-arm64 --remove sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
 
 Example - update an index by specifying its digest:
-  oras manifest index update localhost:5000/hello@sha256:xxx --add sha256:xxx --remove linux-arm64
+  oras manifest index update localhost:5000/hello@sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9 --add linux-amd64 --remove linux-arm64
 
-Example - remove a manifest and merge manifests from the index tagged as 'index01':
-  oras manifest index update localhost:5000/hello:latest --remove sha256:xxx --merge index01
+Example - merge manifests from the index 'v1' to the index 'v2':
+  oras manifest index update localhost:5000/hello:v2 --merge v1
 
-Example - update an index and tag the updated index:
-  oras manifest index update localhost:5000/hello@sha256:xxx --remove sha256:xxx --tag "latest" --tag "v2.1.0"
+Example - update an index and tag the updated index as 'v2.1.0' and 'latest':
+  oras manifest index update localhost:5000/hello@sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9 --add linux-amd64 --tag "v2.1.0" --tag "latest"
   `,
 		Args: oerrors.CheckArgs(argument.AtLeast(1), "the destination index to update"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
-			if err := option.Parse(cmd, &opts); err != nil {
-				return err
-			}
-			return nil
+			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return updateIndex(cmd, opts)
@@ -152,16 +149,16 @@ func fetchIndex(ctx context.Context, target oras.ReadOnlyTarget, opts updateOpti
 }
 
 func addManifests(ctx context.Context, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, opts updateOptions) ([]ocispec.Descriptor, error) {
-	for _, manifest := range opts.addArguments {
-		printUpdateStatus(status.IndexPromptFetching, manifest, "", opts.Printer)
-		desc, content, err := oras.FetchBytes(ctx, target, manifest, oras.DefaultFetchBytesOptions)
+	for _, manifestRef := range opts.addArguments {
+		printUpdateStatus(status.IndexPromptFetching, manifestRef, "", opts.Printer)
+		desc, content, err := oras.FetchBytes(ctx, target, manifestRef, oras.DefaultFetchBytesOptions)
 		if err != nil {
-			return nil, fmt.Errorf("could not find the manifest %s: %w", manifest, err)
+			return nil, fmt.Errorf("could not find the manifest %s: %w", manifestRef, err)
 		}
 		if !descriptor.IsManifest(desc) {
-			return nil, fmt.Errorf("%s is not a manifest", manifest)
+			return nil, fmt.Errorf("%s is not a manifest", manifestRef)
 		}
-		printUpdateStatus(status.IndexPromptFetched, manifest, string(desc.Digest), opts.Printer)
+		printUpdateStatus(status.IndexPromptFetched, manifestRef, string(desc.Digest), opts.Printer)
 		if descriptor.IsImageManifest(desc) {
 			desc.Platform, err = getPlatform(ctx, target, content)
 			if err != nil {
@@ -169,7 +166,7 @@ func addManifests(ctx context.Context, manifests []ocispec.Descriptor, target or
 			}
 		}
 		manifests = append(manifests, desc)
-		printUpdateStatus(status.IndexPromptAdded, manifest, string(desc.Digest), opts.Printer)
+		printUpdateStatus(status.IndexPromptAdded, manifestRef, string(desc.Digest), opts.Printer)
 	}
 	return manifests, nil
 }
@@ -196,22 +193,22 @@ func mergeIndexes(ctx context.Context, manifests []ocispec.Descriptor, target or
 }
 
 func removeManifests(ctx context.Context, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, opts updateOptions) ([]ocispec.Descriptor, error) {
-	set := make(map[digest.Digest]int)
-	for _, manifest := range opts.removeArguments {
-		printUpdateStatus(status.IndexPromptResolving, manifest, "", opts.Printer)
-		desc, err := oras.Resolve(ctx, target, manifest, oras.DefaultResolveOptions)
+	digestCounter := make(map[digest.Digest]int)
+	for _, manifestRef := range opts.removeArguments {
+		printUpdateStatus(status.IndexPromptResolving, manifestRef, "", opts.Printer)
+		desc, err := oras.Resolve(ctx, target, manifestRef, oras.DefaultResolveOptions)
 		if err != nil {
-			return nil, fmt.Errorf("could not resolve the manifest %s: %w", manifest, err)
+			return nil, fmt.Errorf("could not resolve the manifest %s: %w", manifestRef, err)
 		}
 		if !descriptor.IsManifest(desc) {
-			return nil, fmt.Errorf("%s is not a manifest", manifest)
+			return nil, fmt.Errorf("%s is not a manifest", manifestRef)
 		}
-		printUpdateStatus(status.IndexPromptResolved, manifest, string(desc.Digest), opts.Printer)
-		set[desc.Digest] = set[desc.Digest] + 1
+		printUpdateStatus(status.IndexPromptResolved, manifestRef, string(desc.Digest), opts.Printer)
+		digestCounter[desc.Digest] = digestCounter[desc.Digest] + 1
 	}
 	pointer := len(manifests) - 1
 	for i := len(manifests) - 1; i >= 0; i-- {
-		if _, exists := set[manifests[i].Digest]; exists {
+		if _, exists := digestCounter[manifests[i].Digest]; exists {
 			val := manifests[i]
 			// move the item to the end of the slice
 			for j := i; j < pointer; j++ {
@@ -220,15 +217,15 @@ func removeManifests(ctx context.Context, manifests []ocispec.Descriptor, target
 			manifests[pointer] = val
 			pointer = pointer - 1
 			printUpdateStatus(status.IndexPromptRemoved, string(val.Digest), "", opts.Printer)
-			set[val.Digest] = set[val.Digest] - 1
-			if set[val.Digest] == 0 {
-				delete(set, val.Digest)
+			digestCounter[val.Digest] = digestCounter[val.Digest] - 1
+			if digestCounter[val.Digest] == 0 {
+				delete(digestCounter, val.Digest)
 			}
 		}
 	}
 	// shrink the slice to remove the manifests
 	manifests = manifests[:pointer+1]
-	for key := range set {
+	for key := range digestCounter {
 		return nil, fmt.Errorf("%s does not exist in the index %s", key, opts.Reference)
 	}
 	return manifests, nil
