@@ -51,7 +51,7 @@ func discoverCmd() *cobra.Command {
 
 ** This command is in preview and under development. **
 
-Example - Discover all referrers of manifest 'hello:v1' in registry 'localhost:5000', displayed in a tree view:
+Example - Discover referrers of manifest 'hello:v1' in registry 'localhost:5000', displayed in a tree view:
   oras discover localhost:5000/hello:v1
 
 Example - Discover referrers via referrers API:
@@ -60,7 +60,7 @@ Example - Discover referrers via referrers API:
 Example - Discover referrers via tag scheme:
   oras discover --distribution-spec v1.1-referrers-tag localhost:5000/hello:v1
 
-Example - Discover referrers and display in table view:
+Example - Discover referrers and display in a table view:
   oras discover localhost:5000/hello:v1 --format table
 
 Example - Discover referrers and format output with Go template:
