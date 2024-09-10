@@ -116,7 +116,10 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 		MediaType: ocispec.MediaTypeImageIndex,
 		Manifests: manifests,
 	}
-	indexBytes, _ := json.Marshal(index)
+	indexBytes, err := json.Marshal(index)
+	if err != nil {
+		return err
+	}
 	desc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageIndex, indexBytes)
 	opts.Println(status.IndexPromptPacked, descriptor.ShortDigest(desc), ocispec.MediaTypeImageIndex)
 

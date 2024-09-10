@@ -62,8 +62,8 @@ Example - update an index by specifying its digest:
 Example - merge manifests from the index 'v1' to the index 'v2':
   oras manifest index update localhost:5000/hello:v2 --merge v1
 
-Example - update an index and tag the updated index as 'v2.1.0' and 'latest':
-  oras manifest index update localhost:5000/hello@sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9 --add linux-amd64 --tag "v2.1.0" --tag "latest"
+Example - update an index and tag the updated index as 'v2.1.0' and 'v2':
+  oras manifest index update localhost:5000/hello@sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9 --add linux-amd64 --tag "v2.1.0" --tag "v2"
   `,
 		Args: oerrors.CheckArgs(argument.AtLeast(1), "the destination index to update"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -100,7 +100,13 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	if err != nil {
 		return err
 	}
-	manifests, err := addManifests(ctx, index.Manifests, target, opts)
+
+	manifests, err := removeManifests(ctx, index.Manifests, target, opts)
+	if err != nil {
+		return err
+	}
+
+	manifests, err = addManifests(ctx, manifests, target, opts)
 	if err != nil {
 		return err
 	}
@@ -108,23 +114,21 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	if err != nil {
 		return err
 	}
-	manifests, err = removeManifests(ctx, manifests, target, opts)
-	if err != nil {
-		return err
-	}
 
-	// media type may be converted to "application/vnd.oci.image.index.v1+json"
 	updatedIndex := ocispec.Index{
 		Versioned: specs.Versioned{
 			SchemaVersion: 2,
 		},
-		MediaType:    ocispec.MediaTypeImageIndex,
+		MediaType:    index.MediaType,
 		ArtifactType: index.ArtifactType,
 		Manifests:    manifests,
 		Subject:      index.Subject,
 		Annotations:  index.Annotations,
 	}
-	indexBytes, _ := json.Marshal(updatedIndex)
+	indexBytes, err := json.Marshal(updatedIndex)
+	if err != nil {
+		return err
+	}
 	desc := content.NewDescriptorFromBytes(updatedIndex.MediaType, indexBytes)
 
 	printUpdateStatus(status.IndexPromptUpdated, string(desc.Digest), "", opts.Printer)
