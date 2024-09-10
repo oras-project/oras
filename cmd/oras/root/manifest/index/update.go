@@ -197,7 +197,7 @@ func mergeIndexes(ctx context.Context, manifests []ocispec.Descriptor, target or
 }
 
 func removeManifests(ctx context.Context, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, opts updateOptions) ([]ocispec.Descriptor, error) {
-	digestCounter := make(map[digest.Digest]int)
+	digestSet := make(map[digest.Digest]struct{})
 	for _, manifestRef := range opts.removeArguments {
 		printUpdateStatus(status.IndexPromptResolving, manifestRef, "", opts.Printer)
 		desc, err := oras.Resolve(ctx, target, manifestRef, oras.DefaultResolveOptions)
@@ -208,11 +208,11 @@ func removeManifests(ctx context.Context, manifests []ocispec.Descriptor, target
 			return nil, fmt.Errorf("%s is not a manifest", manifestRef)
 		}
 		printUpdateStatus(status.IndexPromptResolved, manifestRef, string(desc.Digest), opts.Printer)
-		digestCounter[desc.Digest] = digestCounter[desc.Digest] + 1
+		digestSet[desc.Digest] = struct{}{}
 	}
 	pointer := len(manifests) - 1
 	for i := len(manifests) - 1; i >= 0; i-- {
-		if _, exists := digestCounter[manifests[i].Digest]; exists {
+		if _, exists := digestSet[manifests[i].Digest]; exists {
 			val := manifests[i]
 			// move the item to the end of the slice
 			for j := i; j < pointer; j++ {
@@ -221,15 +221,12 @@ func removeManifests(ctx context.Context, manifests []ocispec.Descriptor, target
 			manifests[pointer] = val
 			pointer = pointer - 1
 			printUpdateStatus(status.IndexPromptRemoved, string(val.Digest), "", opts.Printer)
-			digestCounter[val.Digest] = digestCounter[val.Digest] - 1
-			if digestCounter[val.Digest] == 0 {
-				delete(digestCounter, val.Digest)
-			}
+			delete(digestSet, val.Digest)
 		}
 	}
 	// shrink the slice to remove the manifests
 	manifests = manifests[:pointer+1]
-	for key := range digestCounter {
+	for key := range digestSet {
 		return nil, fmt.Errorf("%s does not exist in the index %s", key, opts.Reference)
 	}
 	return manifests, nil
