@@ -76,7 +76,7 @@ Example - update an index and tag the updated index as 'v2.1.0' and 'v2':
 	}
 	option.ApplyFlags(&opts, cmd.Flags())
 	cmd.Flags().StringArrayVarP(&opts.addArguments, "add", "", nil, "add manifests to the index")
-	cmd.Flags().StringArrayVarP(&opts.mergeArguments, "merge", "", nil, "merge the manifests of another index")
+	cmd.Flags().StringArrayVarP(&opts.mergeArguments, "merge", "", nil, "add all the manifests of another index to the index")
 	cmd.Flags().StringArrayVarP(&opts.removeArguments, "remove", "", nil, "manifests to remove from the index")
 	cmd.Flags().StringArrayVarP(&opts.tags, "tag", "", nil, "tags for the updated index")
 	return oerrors.Command(cmd, &opts.Target)
@@ -215,23 +215,23 @@ func removeManifestsFromIndex(ctx context.Context, manifests []ocispec.Descripto
 	return removeManifests(manifests, digestSet, opts.Printer, opts.Reference)
 }
 
-func removeManifests(manifests []ocispec.Descriptor, digestSet map[digest.Digest]bool, printer *output.Printer, indexRef string) ([]ocispec.Descriptor, error) {
-	newManifests := []ocispec.Descriptor{}
-	for i := 0; i < len(manifests); i++ {
-		if _, exists := digestSet[manifests[i].Digest]; exists {
-			digest := manifests[i].Digest
+func removeManifests(originalManifests []ocispec.Descriptor, digestSet map[digest.Digest]bool, printer *output.Printer, indexRef string) ([]ocispec.Descriptor, error) {
+	manifests := []ocispec.Descriptor{}
+	for _, m := range originalManifests {
+		if _, exists := digestSet[m.Digest]; exists {
+			digest := m.Digest
 			digestSet[digest] = true
 			printUpdateStatus(status.IndexPromptRemoved, string(digest), "", printer)
 		} else {
-			newManifests = append(newManifests, manifests[i])
+			manifests = append(manifests, m)
 		}
 	}
-	for key, val := range digestSet {
-		if !val {
-			return nil, fmt.Errorf("%s does not exist in the index %s", key, indexRef)
+	for digest, visited := range digestSet {
+		if !visited {
+			return nil, fmt.Errorf("%s does not exist in the index %s", digest, indexRef)
 		}
 	}
-	return newManifests, nil
+	return manifests, nil
 }
 
 func printUpdateStatus(verb string, reference string, resolvedDigest string, printer *output.Printer) {
