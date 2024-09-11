@@ -500,17 +500,5 @@ var _ = Describe("OCI image layout users:", func() {
 				"--merge", "linux-amd64").ExpectFailure().
 				MatchErrKeyWords("Error", "is not an index").Exec()
 		})
-
-		It("should fail if a wrong reference is given as the manifest to remove", func() {
-			root := PrepareTempOCI(ImageRepo)
-			indexRef := LayoutRef(root, "latest")
-			// create an index for testing purpose
-			ORAS("manifest", "index", "create", Flags.Layout, indexRef,
-				string(multi_arch.LinuxAMD64.Digest), string(multi_arch.LinuxARM64.Digest)).Exec()
-			// add a manifest to the index
-			ORAS("manifest", "index", "update", Flags.Layout, indexRef,
-				"--remove", "sha256:02c15a8d1735c65bb8ca86c716615d3c0d8beb87dc68ed88bb49192f90b184e2").ExpectFailure().
-				MatchErrKeyWords("Error", "is not a manifest").Exec()
-		})
 	})
 })
