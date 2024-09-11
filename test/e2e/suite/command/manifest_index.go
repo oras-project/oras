@@ -38,10 +38,10 @@ var _ = Describe("ORAS beginners:", func() {
 	})
 
 	When("running `manifest index update`", func() {
-			It("should show help doc with --tag flag", func() {
-				ORAS("manifest", "index", "update", "--help").MatchKeyWords("--tag", "tags for the updated index").Exec()
-			})
+		It("should show help doc with --tag flag", func() {
+			ORAS("manifest", "index", "update", "--help").MatchKeyWords("--tag", "tags for the updated index").Exec()
 		})
+	})
 })
 
 func indexTestRepo(subcommand string, text string) string {
@@ -210,6 +210,23 @@ var _ = Describe("1.1 registry users:", func() {
 			// verify
 			content := ORAS("manifest", "fetch", RegistryRef(ZOTHost, testRepo, "index01")).Exec().Out.Contents()
 			expectedManifests := []ocispec.Descriptor{multi_arch.LinuxARMV7, multi_arch.LinuxARM64}
+			ValidateIndex(content, expectedManifests)
+		})
+
+		It("should update and tag the updated index by --tag flag", func() {
+			testRepo := indexTestRepo("update", "tag-updated-index")
+			CopyZOTRepo(ImageRepo, testRepo)
+			// create an index for testing purpose
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, ""),
+				string(multi_arch.LinuxAMD64.Digest), string(multi_arch.LinuxARM64.Digest)).Exec()
+			// add a manifest to the index
+			ORAS("manifest", "index", "update", RegistryRef(ZOTHost, testRepo, "sha256:cce9590b1193d8bcb70467e2381dc81e77869be4801c09abe9bc274b6a1d2001"),
+				"--add", string(multi_arch.LinuxARMV7.Digest), "--tag", "updated").
+				MatchKeyWords("sha256:84887718c9e61daa0f1996aad3ae2eb10db15dcbdab394e4b2dfee7967c55f2c").Exec()
+			// verify
+			content := ORAS("manifest", "fetch", RegistryRef(ZOTHost, testRepo, "updated")).
+				Exec().Out.Contents()
+			expectedManifests := []ocispec.Descriptor{multi_arch.LinuxAMD64, multi_arch.LinuxARM64, multi_arch.LinuxARMV7}
 			ValidateIndex(content, expectedManifests)
 		})
 

@@ -132,7 +132,8 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	desc := content.NewDescriptorFromBytes(updatedIndex.MediaType, indexBytes)
 
 	printUpdateStatus(status.IndexPromptUpdated, string(desc.Digest), "", opts.Printer)
-	return pushIndex(ctx, target, desc, indexBytes, opts.Reference, opts.tags, opts.AnnotatedReference(), opts.Printer)
+	path := getPushPath(opts.RawReference, opts.Type, opts.Reference, opts.Path)
+	return pushIndex(ctx, target, desc, indexBytes, opts.Reference, opts.tags, path, opts.Printer)
 }
 
 func fetchIndex(ctx context.Context, target oras.ReadOnlyTarget, opts updateOptions) (ocispec.Index, error) {
@@ -239,4 +240,11 @@ func printUpdateStatus(verb string, reference string, resolvedDigest string, pri
 	} else {
 		printer.Println(verb, resolvedDigest, reference)
 	}
+}
+
+func getPushPath(rawReference string, targetType string, reference string, path string) string {
+	if contentutil.IsDigest(reference) {
+		return fmt.Sprintf("[%s] %s", targetType, path)
+	}
+	return fmt.Sprintf("[%s] %s", targetType, rawReference)
 }
