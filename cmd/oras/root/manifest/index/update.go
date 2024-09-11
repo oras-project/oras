@@ -101,12 +101,12 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 		return err
 	}
 
-	manifests, err := removeManifests(ctx, index.Manifests, target, opts)
+	manifests, err := removeManifestsFromIndex(ctx, index.Manifests, target, opts)
 	if err != nil {
 		return err
 	}
 
-	manifests, err = addManifests(ctx, manifests, target, opts)
+	manifests, err = addManifestsToIndex(ctx, manifests, target, opts)
 	if err != nil {
 		return err
 	}
@@ -152,7 +152,7 @@ func fetchIndex(ctx context.Context, target oras.ReadOnlyTarget, opts updateOpti
 	return index, nil
 }
 
-func addManifests(ctx context.Context, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, opts updateOptions) ([]ocispec.Descriptor, error) {
+func addManifestsToIndex(ctx context.Context, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, opts updateOptions) ([]ocispec.Descriptor, error) {
 	for _, manifestRef := range opts.addArguments {
 		printUpdateStatus(status.IndexPromptFetching, manifestRef, "", opts.Printer)
 		desc, content, err := oras.FetchBytes(ctx, target, manifestRef, oras.DefaultFetchBytesOptions)
@@ -196,8 +196,9 @@ func mergeIndexes(ctx context.Context, manifests []ocispec.Descriptor, target or
 	return manifests, nil
 }
 
-func removeManifests(ctx context.Context, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, opts updateOptions) ([]ocispec.Descriptor, error) {
-	digestSet := make(map[digest.Digest]struct{})
+func removeManifestsFromIndex(ctx context.Context, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, opts updateOptions) ([]ocispec.Descriptor, error) {
+	// create a set of digests to speed up the remove
+	digestSet := make(map[digest.Digest]int)
 	for _, manifestRef := range opts.removeArguments {
 		printUpdateStatus(status.IndexPromptResolving, manifestRef, "", opts.Printer)
 		desc, err := oras.Resolve(ctx, target, manifestRef, oras.DefaultResolveOptions)
@@ -208,26 +209,34 @@ func removeManifests(ctx context.Context, manifests []ocispec.Descriptor, target
 			return nil, fmt.Errorf("%s is not a manifest", manifestRef)
 		}
 		printUpdateStatus(status.IndexPromptResolved, manifestRef, string(desc.Digest), opts.Printer)
-		digestSet[desc.Digest] = struct{}{}
+		digestSet[desc.Digest] = 0
 	}
-	pointer := len(manifests) - 1
-	for i := len(manifests) - 1; i >= 0; i-- {
+	return removeManifests(manifests, digestSet, opts.Printer, opts.Reference)
+}
+
+// removeManifests removes descriptors whose digests are in digestSet. The remove is
+// done by moving the remaining items of the slice forward, overwriting the element
+// and finally shrinking the slice.
+func removeManifests(manifests []ocispec.Descriptor, digestSet map[digest.Digest]int, printer *output.Printer, indexRef string) ([]ocispec.Descriptor, error) {
+	end := len(manifests) - 1
+	for i := 0; i < end; i++ {
 		if _, exists := digestSet[manifests[i].Digest]; exists {
-			val := manifests[i]
-			// move the item to the end of the slice
-			for j := i; j < pointer; j++ {
+			digest := manifests[i].Digest
+			digestSet[digest]++
+			// overwrite the content of manifest[i] by moving the remaining items forward
+			for j := i; j < end; j++ {
 				manifests[j] = manifests[j+1]
 			}
-			manifests[pointer] = val
-			pointer = pointer - 1
-			printUpdateStatus(status.IndexPromptRemoved, string(val.Digest), "", opts.Printer)
-			delete(digestSet, val.Digest)
+			end = end - 1
+			printUpdateStatus(status.IndexPromptRemoved, string(digest), "", printer)
 		}
 	}
-	// shrink the slice to remove the manifests
-	manifests = manifests[:pointer+1]
-	for key := range digestSet {
-		return nil, fmt.Errorf("%s does not exist in the index %s", key, opts.Reference)
+	// shrink the slice
+	manifests = manifests[:end+1]
+	for key, val := range digestSet {
+		if val == 0 {
+			return nil, fmt.Errorf("%s does not exist in the index %s", key, indexRef)
+		}
 	}
 	return manifests, nil
 }
