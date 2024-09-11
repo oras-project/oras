@@ -75,8 +75,8 @@ Example - update an index and tag the updated index as 'v2.1.0' and 'v2':
 		},
 	}
 	option.ApplyFlags(&opts, cmd.Flags())
-	cmd.Flags().StringArrayVarP(&opts.addArguments, "add", "", nil, "add manifests to the index")
-	cmd.Flags().StringArrayVarP(&opts.mergeArguments, "merge", "", nil, "add all the manifests of another index to the index")
+	cmd.Flags().StringArrayVarP(&opts.addArguments, "add", "", nil, "manifests to add to the index")
+	cmd.Flags().StringArrayVarP(&opts.mergeArguments, "merge", "", nil, "indexes to be merged into the index")
 	cmd.Flags().StringArrayVarP(&opts.removeArguments, "remove", "", nil, "manifests to remove from the index")
 	cmd.Flags().StringArrayVarP(&opts.tags, "tag", "", nil, "tags for the updated index")
 	return oerrors.Command(cmd, &opts.Target)
