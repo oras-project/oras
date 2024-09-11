@@ -209,7 +209,7 @@ func removeManifestsFromIndex(ctx context.Context, manifests []ocispec.Descripto
 			return nil, fmt.Errorf("%s is not a manifest", manifestRef)
 		}
 		printUpdateStatus(status.IndexPromptResolved, manifestRef, string(desc.Digest), opts.Printer)
-		digestSet[desc.Digest] = true
+		digestSet[desc.Digest] = false
 	}
 	return removeManifests(manifests, digestSet, opts.Printer, opts.Reference)
 }
