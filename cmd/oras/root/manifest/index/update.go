@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	"github.com/opencontainers/go-digest"
-	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
@@ -57,15 +56,15 @@ Example - remove a manifest and add two manifests from an index tagged 'v1'. The
   oras manifest index update localhost:5000/hello:v1 --add linux-amd64 --add linux-arm64 --remove sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
 
 Example - update an index by specifying its digest:
-  oras manifest index update localhost:5000/hello@sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9 --add linux-amd64 --remove linux-arm64
+  oras manifest index update localhost:5000/hello@sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9 --add linux-amd64 --remove sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb
 
-Example - merge manifests from the index 'v1' to the index 'v2':
-  oras manifest index update localhost:5000/hello:v2 --merge v1
+Example - merge manifests from the index 'v2-windows' to the index 'v2':
+  oras manifest index update localhost:5000/hello:v2 --merge v2-windows
 
 Example - update an index and tag the updated index as 'v2.1.0' and 'v2':
   oras manifest index update localhost:5000/hello@sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9 --add linux-amd64 --tag "v2.1.0" --tag "v2"
   `,
-		Args: oerrors.CheckArgs(argument.AtLeast(1), "the destination index to update"),
+		Args: oerrors.CheckArgs(argument.Exactly(1), "the destination index to update"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
 			return option.Parse(cmd, &opts)
@@ -77,14 +76,14 @@ Example - update an index and tag the updated index as 'v2.1.0' and 'v2':
 	option.ApplyFlags(&opts, cmd.Flags())
 	cmd.Flags().StringArrayVarP(&opts.addArguments, "add", "", nil, "manifests to add to the index")
 	cmd.Flags().StringArrayVarP(&opts.mergeArguments, "merge", "", nil, "indexes to be merged into the index")
-	cmd.Flags().StringArrayVarP(&opts.removeArguments, "remove", "", nil, "manifests to remove from the index")
-	cmd.Flags().StringArrayVarP(&opts.tags, "tag", "", nil, "tags for the updated index")
+	cmd.Flags().StringArrayVarP(&opts.removeArguments, "remove", "", nil, "manifests to remove from the index, must be digests")
+	cmd.Flags().StringArrayVarP(&opts.tags, "tag", "", nil, "extra tags for the updated index")
 	return oerrors.Command(cmd, &opts.Target)
 }
 
 func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	// if no update flag is used, do nothing
-	if !cmd.Flags().Changed("add") && !cmd.Flags().Changed("remove") && !cmd.Flags().Changed("merge") {
+	if !updateFlagsUsed(cmd) {
 		opts.Println("No update flag is used. There's nothing to update.")
 		return nil
 	}
@@ -100,12 +99,10 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	if err != nil {
 		return err
 	}
-
 	manifests, err := removeManifestsFromIndex(ctx, index.Manifests, target, opts)
 	if err != nil {
 		return err
 	}
-
 	manifests, err = addManifestsToIndex(ctx, manifests, target, opts)
 	if err != nil {
 		return err
@@ -115,21 +112,12 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 		return err
 	}
 
-	updatedIndex := ocispec.Index{
-		Versioned: specs.Versioned{
-			SchemaVersion: 2,
-		},
-		MediaType:    index.MediaType,
-		ArtifactType: index.ArtifactType,
-		Manifests:    manifests,
-		Subject:      index.Subject,
-		Annotations:  index.Annotations,
-	}
-	indexBytes, err := json.Marshal(updatedIndex)
+	index.Manifests = manifests
+	indexBytes, err := json.Marshal(index)
 	if err != nil {
 		return err
 	}
-	desc := content.NewDescriptorFromBytes(updatedIndex.MediaType, indexBytes)
+	desc := content.NewDescriptorFromBytes(index.MediaType, indexBytes)
 
 	printUpdateStatus(status.IndexPromptUpdated, string(desc.Digest), "", opts.Printer)
 	path := getPushPath(opts.RawReference, opts.Type, opts.Reference, opts.Path)
@@ -199,39 +187,36 @@ func mergeIndexes(ctx context.Context, manifests []ocispec.Descriptor, target or
 
 func removeManifestsFromIndex(ctx context.Context, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, opts updateOptions) ([]ocispec.Descriptor, error) {
 	// create a set of digests to speed up the remove
-	digestSet := make(map[digest.Digest]bool)
+	digestToRemove := make(map[digest.Digest]bool)
 	for _, manifestRef := range opts.removeArguments {
-		printUpdateStatus(status.IndexPromptResolving, manifestRef, "", opts.Printer)
-		desc, err := oras.Resolve(ctx, target, manifestRef, oras.DefaultResolveOptions)
-		if err != nil {
-			return nil, fmt.Errorf("could not resolve the manifest %s: %w", manifestRef, err)
+		if !contentutil.IsDigest(manifestRef) {
+			return nil, fmt.Errorf("%s is not a digest", manifestRef)
 		}
-		if !descriptor.IsManifest(desc) {
-			return nil, fmt.Errorf("%s is not a manifest", manifestRef)
-		}
-		printUpdateStatus(status.IndexPromptResolved, manifestRef, string(desc.Digest), opts.Printer)
-		digestSet[desc.Digest] = false
+		digestToRemove[digest.Digest(manifestRef)] = false
 	}
-	return removeManifests(manifests, digestSet, opts.Printer, opts.Reference)
+	return removeManifests(manifests, digestToRemove, opts.Printer, opts.Reference)
 }
 
 func removeManifests(originalManifests []ocispec.Descriptor, digestSet map[digest.Digest]bool, printer *output.Printer, indexRef string) ([]ocispec.Descriptor, error) {
 	manifests := []ocispec.Descriptor{}
 	for _, m := range originalManifests {
 		if _, exists := digestSet[m.Digest]; exists {
-			digest := m.Digest
-			digestSet[digest] = true
-			printUpdateStatus(status.IndexPromptRemoved, string(digest), "", printer)
+			digestSet[m.Digest] = true
+			printUpdateStatus(status.IndexPromptRemoved, string(m.Digest), "", printer)
 		} else {
 			manifests = append(manifests, m)
 		}
 	}
-	for digest, visited := range digestSet {
-		if !visited {
+	for digest, removed := range digestSet {
+		if !removed {
 			return nil, fmt.Errorf("%s does not exist in the index %s", digest, indexRef)
 		}
 	}
 	return manifests, nil
+}
+
+func updateFlagsUsed(cmd *cobra.Command) bool {
+	return cmd.Flags().Changed("add") || cmd.Flags().Changed("remove") || cmd.Flags().Changed("merge")
 }
 
 func printUpdateStatus(verb string, reference string, resolvedDigest string, printer *output.Printer) {

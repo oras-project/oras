@@ -277,16 +277,16 @@ var _ = Describe("1.1 registry users:", func() {
 				MatchErrKeyWords("Error", "could not find", "does-not-exist").Exec()
 		})
 
-		It("should fail if a wrong reference is given as the manifest to remove", func() {
-			testRepo := indexTestRepo("update", "wrong-remove-ref")
+		It("should fail if a non-digest reference is given as the manifest to remove", func() {
+			testRepo := indexTestRepo("update", "remove-by-tag")
 			CopyZOTRepo(ImageRepo, testRepo)
 			// create an index for testing purpose
-			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, "remove-wrong-tag"),
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, "remove-by-tag"),
 				string(multi_arch.LinuxAMD64.Digest), string(multi_arch.LinuxARM64.Digest)).Exec()
 			// add a manifest to the index
-			ORAS("manifest", "index", "update", RegistryRef(ZOTHost, testRepo, "remove-wrong-tag"),
-				"--remove", "does-not-exist").ExpectFailure().
-				MatchErrKeyWords("Error", "could not resolve", "does-not-exist").Exec()
+			ORAS("manifest", "index", "update", RegistryRef(ZOTHost, testRepo, "remove-by-tag"),
+				"--remove", "latest").ExpectFailure().
+				MatchErrKeyWords("Error", "latest", "is not a digest").Exec()
 		})
 
 		It("should fail if delete a manifest that does not exist in the index", func() {
