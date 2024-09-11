@@ -198,7 +198,7 @@ func mergeIndexes(ctx context.Context, manifests []ocispec.Descriptor, target or
 
 func removeManifestsFromIndex(ctx context.Context, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, opts updateOptions) ([]ocispec.Descriptor, error) {
 	// create a set of digests to speed up the remove
-	digestSet := make(map[digest.Digest]int)
+	digestSet := make(map[digest.Digest]bool)
 	for _, manifestRef := range opts.removeArguments {
 		printUpdateStatus(status.IndexPromptResolving, manifestRef, "", opts.Printer)
 		desc, err := oras.Resolve(ctx, target, manifestRef, oras.DefaultResolveOptions)
@@ -209,36 +209,28 @@ func removeManifestsFromIndex(ctx context.Context, manifests []ocispec.Descripto
 			return nil, fmt.Errorf("%s is not a manifest", manifestRef)
 		}
 		printUpdateStatus(status.IndexPromptResolved, manifestRef, string(desc.Digest), opts.Printer)
-		digestSet[desc.Digest] = 0
+		digestSet[desc.Digest] = true
 	}
 	return removeManifests(manifests, digestSet, opts.Printer, opts.Reference)
 }
 
-// removeManifests removes descriptors whose digests are in digestSet. The remove is
-// done by moving the remaining items of the slice forward, overwriting the element
-// and finally shrinking the slice.
-func removeManifests(manifests []ocispec.Descriptor, digestSet map[digest.Digest]int, printer *output.Printer, indexRef string) ([]ocispec.Descriptor, error) {
-	end := len(manifests) - 1
-	for i := 0; i < end; i++ {
+func removeManifests(manifests []ocispec.Descriptor, digestSet map[digest.Digest]bool, printer *output.Printer, indexRef string) ([]ocispec.Descriptor, error) {
+	newManifests := []ocispec.Descriptor{}
+	for i := 0; i < len(manifests); i++ {
 		if _, exists := digestSet[manifests[i].Digest]; exists {
 			digest := manifests[i].Digest
-			digestSet[digest]++
-			// overwrite the content of manifest[i] by moving the remaining items forward
-			for j := i; j < end; j++ {
-				manifests[j] = manifests[j+1]
-			}
-			end = end - 1
+			digestSet[digest] = true
 			printUpdateStatus(status.IndexPromptRemoved, string(digest), "", printer)
+		} else {
+			newManifests = append(newManifests, manifests[i])
 		}
 	}
-	// shrink the slice
-	manifests = manifests[:end+1]
 	for key, val := range digestSet {
-		if val == 0 {
+		if !val {
 			return nil, fmt.Errorf("%s does not exist in the index %s", key, indexRef)
 		}
 	}
-	return manifests, nil
+	return newManifests, nil
 }
 
 func printUpdateStatus(verb string, reference string, resolvedDigest string, printer *output.Printer) {

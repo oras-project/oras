@@ -47,7 +47,7 @@ func Test_removeManifests(t *testing.T) {
 	tests := []struct {
 		name      string
 		manifests []ocispec.Descriptor
-		digestSet map[digest.Digest]int
+		digestSet map[digest.Digest]bool
 		printer   *output.Printer
 		indexRef  string
 		want      []ocispec.Descriptor
@@ -56,7 +56,7 @@ func Test_removeManifests(t *testing.T) {
 		{
 			name:      "remove one matched item",
 			manifests: []ocispec.Descriptor{A, B, C},
-			digestSet: map[digest.Digest]int{B.Digest: 0},
+			digestSet: map[digest.Digest]bool{B.Digest: false},
 			printer:   output.NewPrinter(os.Stdout, os.Stderr, false),
 			indexRef:  "test01",
 			want:      []ocispec.Descriptor{A, C},
@@ -64,19 +64,28 @@ func Test_removeManifests(t *testing.T) {
 		},
 		{
 			name:      "remove all matched items",
-			manifests: []ocispec.Descriptor{A, B, C},
-			digestSet: map[digest.Digest]int{A.Digest: 0},
+			manifests: []ocispec.Descriptor{A, B, A, C, A, A, A},
+			digestSet: map[digest.Digest]bool{A.Digest: false},
 			printer:   output.NewPrinter(os.Stdout, os.Stderr, false),
 			indexRef:  "test02",
 			want:      []ocispec.Descriptor{B, C},
 			wantErr:   false,
 		},
 		{
-			name:      "return error when deleting a nonexistent item",
-			manifests: []ocispec.Descriptor{A, C},
-			digestSet: map[digest.Digest]int{B.Digest: 0},
+			name:      "remove correctly when there is only one item",
+			manifests: []ocispec.Descriptor{A},
+			digestSet: map[digest.Digest]bool{A.Digest: false},
 			printer:   output.NewPrinter(os.Stdout, os.Stderr, false),
 			indexRef:  "test03",
+			want:      []ocispec.Descriptor{},
+			wantErr:   false,
+		},
+		{
+			name:      "return error when deleting a nonexistent item",
+			manifests: []ocispec.Descriptor{A, C},
+			digestSet: map[digest.Digest]bool{B.Digest: false},
+			printer:   output.NewPrinter(os.Stdout, os.Stderr, false),
+			indexRef:  "test04",
 			want:      nil,
 			wantErr:   true,
 		},
