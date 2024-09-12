@@ -18,6 +18,19 @@ GIT_COMMIT  = $(shell git rev-parse HEAD)
 GIT_TAG     = $(shell git describe --tags --abbrev=0 --exact-match 2>/dev/null)
 GIT_DIRTY   = $(shell test -n "`git status --porcelain`" && echo "dirty" || echo "clean")
 GO_EXE      = go
+OSNAME      = $(shell uname -o)
+ARCHNAME    = $(shell uname -m)
+
+ifeq ($(OSNAME),Darwin)
+  OS = mac
+else
+  OS = linux
+endif
+ifeq ($(ARCHNAME),arm64)
+  ARCH = arm64
+else
+  ARCH = amd64
+endif
 
 TARGET_OBJS ?= checksums.txt darwin_amd64.tar.gz darwin_arm64.tar.gz linux_amd64.tar.gz linux_arm64.tar.gz linux_armv7.tar.gz linux_s390x.tar.gz linux_ppc64le.tar.gz linux_riscv64.tar.gz windows_amd64.zip freebsd_amd64.tar.gz
 
@@ -30,6 +43,10 @@ ifneq ($(GIT_TAG),)
 endif
 LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitCommit=${GIT_COMMIT}
 LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitTreeState=${GIT_DIRTY}
+
+.PHONY: default
+default: test build-$(OS)-$(ARCH)
+	@echo 'Done ' build-$(OS)-$(ARCH)
 
 .PHONY: test
 test: tidy vendor check-encoding  ## tidy and run tests
