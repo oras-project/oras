@@ -132,10 +132,10 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 
 		It("should output created index to file", func() {
-			testRepo := indexTestRepo("create", "export-manifest")
+			testRepo := indexTestRepo("create", "output-to-file")
 			CopyZOTRepo(ImageRepo, testRepo)
 			filePath := filepath.Join(GinkgoT().TempDir(), "createdIndex")
-			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, ""), string(multi_arch.LinuxAMD64.Digest), "--export-manifest", filePath).Exec()
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, ""), string(multi_arch.LinuxAMD64.Digest), "--output", filePath).Exec()
 			MatchFile(filePath, multi_arch.CreatedIndex, DefaultTimeout)
 		})
 
@@ -222,9 +222,9 @@ var _ = Describe("OCI image layout users:", func() {
 
 		It("should output created index to file", func() {
 			root := PrepareTempOCI(ImageRepo)
-			indexRef := LayoutRef(root, "export-manifest")
+			indexRef := LayoutRef(root, "output-to-file")
 			filePath := filepath.Join(GinkgoT().TempDir(), "createdIndex")
-			ORAS("manifest", "index", "create", Flags.Layout, indexRef, string(multi_arch.LinuxAMD64.Digest), "--export-manifest", filePath).Exec()
+			ORAS("manifest", "index", "create", Flags.Layout, indexRef, string(multi_arch.LinuxAMD64.Digest), "--output", filePath).Exec()
 			MatchFile(filePath, multi_arch.CreatedIndex, DefaultTimeout)
 		})
 
