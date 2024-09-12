@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/opencontainers/image-spec/specs-go"
@@ -44,9 +45,11 @@ var maxConfigSize int64 = 4 * 1024 * 1024 // 4 MiB
 type createOptions struct {
 	option.Common
 	option.Target
+	option.Pretty
 
-	sources   []string
-	extraRefs []string
+	sources    []string
+	extraRefs  []string
+	outputPath string
 }
 
 func createCmd() *cobra.Command {
@@ -70,6 +73,12 @@ Example - create an index and push it with multiple tags:
 
 Example - create an index and push to an OCI image layout folder 'layout-dir' and tag with 'v1':
   oras manifest index create layout-dir:v1 linux-amd64 sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
+
+Example - create an index and save it locally to index.json, auto push will be disabled:
+  oras manifest index create --output index.json localhost:5000/hello linux-amd64 linux-arm64
+
+Example - create an index and output the index to stdout, auto push will be disabled:
+  oras manifest index create localhost:5000/hello linux-arm64 --output - --pretty
 `,
 		Args: oerrors.CheckArgs(argument.AtLeast(1), "the destination index to create."),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -84,6 +93,7 @@ Example - create an index and push to an OCI image layout folder 'layout-dir' an
 			return createIndex(cmd, opts)
 		},
 	}
+	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "file `path` to write the created index to, use - for stdout")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
@@ -108,7 +118,18 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 	indexBytes, _ := json.Marshal(index)
 	desc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageIndex, indexBytes)
 	opts.Println(status.IndexPromptPacked, descriptor.ShortDigest(desc), ocispec.MediaTypeImageIndex)
-	return pushIndex(ctx, target, desc, indexBytes, opts.Reference, opts.extraRefs, opts.AnnotatedReference(), opts.Printer)
+
+	switch opts.outputPath {
+	case "":
+		err = pushIndex(ctx, target, desc, indexBytes, opts.Reference, opts.extraRefs, opts.AnnotatedReference(), opts.Printer)
+	case "-":
+		opts.Println("Digest:", desc.Digest)
+		err = opts.Output(os.Stdout, indexBytes)
+	default:
+		opts.Println("Digest:", desc.Digest)
+		err = os.WriteFile(opts.outputPath, indexBytes, 0666)
+	}
+	return err
 }
 
 func fetchSourceManifests(ctx context.Context, target oras.ReadOnlyTarget, opts createOptions) ([]ocispec.Descriptor, error) {
