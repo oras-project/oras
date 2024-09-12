@@ -99,11 +99,11 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	if err != nil {
 		return err
 	}
-	manifests, err := removeManifestsFromIndex(ctx, index.Manifests, target, opts)
+	manifests, err := removeManifests(ctx, index.Manifests, target, opts)
 	if err != nil {
 		return err
 	}
-	manifests, err = addManifestsToIndex(ctx, manifests, target, opts)
+	manifests, err = addManifests(ctx, manifests, target, opts)
 	if err != nil {
 		return err
 	}
@@ -141,7 +141,7 @@ func fetchIndex(ctx context.Context, target oras.ReadOnlyTarget, opts updateOpti
 	return index, nil
 }
 
-func addManifestsToIndex(ctx context.Context, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, opts updateOptions) ([]ocispec.Descriptor, error) {
+func addManifests(ctx context.Context, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, opts updateOptions) ([]ocispec.Descriptor, error) {
 	for _, manifestRef := range opts.addArguments {
 		printUpdateStatus(status.IndexPromptFetching, manifestRef, "", opts.Printer)
 		desc, content, err := oras.FetchBytes(ctx, target, manifestRef, oras.DefaultFetchBytesOptions)
@@ -185,7 +185,7 @@ func mergeIndexes(ctx context.Context, manifests []ocispec.Descriptor, target or
 	return manifests, nil
 }
 
-func removeManifestsFromIndex(ctx context.Context, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, opts updateOptions) ([]ocispec.Descriptor, error) {
+func removeManifests(ctx context.Context, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, opts updateOptions) ([]ocispec.Descriptor, error) {
 	// create a set of digests to speed up the remove
 	digestToRemove := make(map[digest.Digest]bool)
 	for _, manifestRef := range opts.removeArguments {
@@ -194,10 +194,10 @@ func removeManifestsFromIndex(ctx context.Context, manifests []ocispec.Descripto
 		}
 		digestToRemove[digest.Digest(manifestRef)] = false
 	}
-	return removeManifests(manifests, digestToRemove, opts.Printer, opts.Reference)
+	return doRemoveManifests(manifests, digestToRemove, opts.Printer, opts.Reference)
 }
 
-func removeManifests(originalManifests []ocispec.Descriptor, digestSet map[digest.Digest]bool, printer *output.Printer, indexRef string) ([]ocispec.Descriptor, error) {
+func doRemoveManifests(originalManifests []ocispec.Descriptor, digestSet map[digest.Digest]bool, printer *output.Printer, indexRef string) ([]ocispec.Descriptor, error) {
 	manifests := []ocispec.Descriptor{}
 	for _, m := range originalManifests {
 		if _, exists := digestSet[m.Digest]; exists {
