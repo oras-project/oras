@@ -18,6 +18,7 @@ package command
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -130,6 +131,14 @@ var _ = Describe("1.1 registry users:", func() {
 			ValidateIndex(content, expectedManifests)
 		})
 
+		It("should output created index to file", func() {
+			testRepo := indexTestRepo("create", "export-manifest")
+			CopyZOTRepo(ImageRepo, testRepo)
+			filePath := filepath.Join(GinkgoT().TempDir(), "createdIndex")
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, ""), string(multi_arch.LinuxAMD64.Digest), "--export-manifest", filePath).Exec()
+			MatchFile(filePath, multi_arch.CreatedIndex, DefaultTimeout)
+		})
+
 		It("should fail if given a reference that does not exist in the repo", func() {
 			testRepo := indexTestRepo("create", "nonexist-ref")
 			CopyZOTRepo(ImageRepo, testRepo)
@@ -209,6 +218,14 @@ var _ = Describe("OCI image layout users:", func() {
 			content := ORAS("manifest", "fetch", Flags.Layout, indexRef).Exec().Out.Contents()
 			expectedManifests := []ocispec.Descriptor{nonjson_config.Descriptor}
 			ValidateIndex(content, expectedManifests)
+		})
+
+		It("should output created index to file", func() {
+			root := PrepareTempOCI(ImageRepo)
+			indexRef := LayoutRef(root, "export-manifest")
+			filePath := filepath.Join(GinkgoT().TempDir(), "createdIndex")
+			ORAS("manifest", "index", "create", Flags.Layout, indexRef, string(multi_arch.LinuxAMD64.Digest), "--export-manifest", filePath).Exec()
+			MatchFile(filePath, multi_arch.CreatedIndex, DefaultTimeout)
 		})
 
 		It("should fail if given a reference that does not exist in the repo", func() {

@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/opencontainers/image-spec/specs-go"
@@ -43,7 +44,9 @@ var maxConfigSize int64 = 4 * 1024 * 1024 // 4 MiB
 
 type createOptions struct {
 	option.Common
+	option.Packer
 	option.Target
+	option.Pretty
 
 	sources   []string
 	extraRefs []string
@@ -68,8 +71,8 @@ Example - create an index from source manifests using both tags and digests, and
 Example - create an index and push it with multiple tags:
   oras manifest index create localhost:5000/hello:tag1,tag2,tag3 linux-amd64 linux-arm64 sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
 
-Example - create an index and push to an OCI image layout folder 'layout-dir' and tag with 'v1':
-  oras manifest index create layout-dir:v1 linux-amd64 sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
+Example - create an index and export it to index.json, auto push will be disabled:
+  oras manifest index create --export-manifest index.json localhost:5000/hello linux-amd64 linux-arm64
 `,
 		Args: oerrors.CheckArgs(argument.AtLeast(1), "the destination index to create."),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -108,7 +111,12 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 	indexBytes, _ := json.Marshal(index)
 	desc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageIndex, indexBytes)
 	opts.Println(status.IndexPromptPacked, descriptor.ShortDigest(desc), ocispec.MediaTypeImageIndex)
-	return pushIndex(ctx, target, desc, indexBytes, opts.Reference, opts.extraRefs, opts.AnnotatedReference(), opts.Printer)
+
+	if opts.ManifestExportPath == "" {
+		return pushIndex(ctx, target, desc, indexBytes, opts.Reference, opts.extraRefs, opts.AnnotatedReference(), opts.Printer)
+	}
+
+	return os.WriteFile(opts.ManifestExportPath, indexBytes, 0666)
 }
 
 func fetchSourceManifests(ctx context.Context, target oras.ReadOnlyTarget, opts createOptions) ([]ocispec.Descriptor, error) {
