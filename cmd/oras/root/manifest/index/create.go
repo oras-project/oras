@@ -46,7 +46,6 @@ type createOptions struct {
 	option.Common
 	option.Packer
 	option.Target
-	option.Pretty
 
 	sources   []string
 	extraRefs []string
@@ -70,6 +69,9 @@ Example - create an index from source manifests using both tags and digests, and
 
 Example - create an index and push it with multiple tags:
   oras manifest index create localhost:5000/hello:tag1,tag2,tag3 linux-amd64 linux-arm64 sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
+
+Example - create an index and push to an OCI image layout folder 'layout-dir' and tag with 'v1':
+  oras manifest index create layout-dir:v1 linux-amd64 sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
 
 Example - create an index and export it to index.json, auto push will be disabled:
   oras manifest index create --export-manifest index.json localhost:5000/hello linux-amd64 linux-arm64
