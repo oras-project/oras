@@ -139,6 +139,13 @@ var _ = Describe("1.1 registry users:", func() {
 			MatchFile(filePath, multi_arch.CreatedIndex, DefaultTimeout)
 		})
 
+		It("should output created index to stdout", func() {
+			testRepo := indexTestRepo("create", "output-to-stdout")
+			CopyZOTRepo(ImageRepo, testRepo)
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, ""), string(multi_arch.LinuxAMD64.Digest),
+				"--output", "-").MatchKeyWords("application/vnd.oci.image.index.v1+json").Exec()
+		})
+
 		It("should fail if given a reference that does not exist in the repo", func() {
 			testRepo := indexTestRepo("create", "nonexist-ref")
 			CopyZOTRepo(ImageRepo, testRepo)
@@ -226,6 +233,13 @@ var _ = Describe("OCI image layout users:", func() {
 			filePath := filepath.Join(GinkgoT().TempDir(), "createdIndex")
 			ORAS("manifest", "index", "create", Flags.Layout, indexRef, string(multi_arch.LinuxAMD64.Digest), "--output", filePath).Exec()
 			MatchFile(filePath, multi_arch.CreatedIndex, DefaultTimeout)
+		})
+
+		It("should output created index to stdout", func() {
+			root := PrepareTempOCI(ImageRepo)
+			indexRef := LayoutRef(root, "output-to-stdout")
+			ORAS("manifest", "index", "create", Flags.Layout, indexRef, string(multi_arch.LinuxAMD64.Digest),
+				"--output", "-").MatchKeyWords("application/vnd.oci.image.index.v1+json").Exec()
 		})
 
 		It("should fail if given a reference that does not exist in the repo", func() {

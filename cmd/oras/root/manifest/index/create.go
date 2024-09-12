@@ -76,6 +76,9 @@ Example - create an index and push to an OCI image layout folder 'layout-dir' an
 
 Example - create an index and save it locally to index.json, auto push will be disabled:
   oras manifest index create --output index.json localhost:5000/hello linux-amd64 linux-arm64
+
+Example - create an index and output the index to stdout, auto push will be disabled:
+  oras manifest index create --output - localhost:5000/hello linux-arm64
 `,
 		Args: oerrors.CheckArgs(argument.AtLeast(1), "the destination index to create."),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
