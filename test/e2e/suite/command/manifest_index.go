@@ -143,7 +143,7 @@ var _ = Describe("1.1 registry users:", func() {
 			testRepo := indexTestRepo("create", "output-to-stdout")
 			CopyZOTRepo(ImageRepo, testRepo)
 			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, ""), string(multi_arch.LinuxAMD64.Digest),
-				"--output", "-").MatchKeyWords("application/vnd.oci.image.index.v1+json").Exec()
+				"--output", "-").MatchKeyWords(multi_arch.CreatedIndex).Exec()
 		})
 
 		It("should fail if given a reference that does not exist in the repo", func() {
@@ -239,7 +239,7 @@ var _ = Describe("OCI image layout users:", func() {
 			root := PrepareTempOCI(ImageRepo)
 			indexRef := LayoutRef(root, "output-to-stdout")
 			ORAS("manifest", "index", "create", Flags.Layout, indexRef, string(multi_arch.LinuxAMD64.Digest),
-				"--output", "-").MatchKeyWords("application/vnd.oci.image.index.v1+json").Exec()
+				"--output", "-").MatchKeyWords(multi_arch.CreatedIndex).Exec()
 		})
 
 		It("should fail if given a reference that does not exist in the repo", func() {
