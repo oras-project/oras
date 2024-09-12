@@ -19,10 +19,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"oras.land/oras/cmd/oras/internal/display/status"
 	"slices"
 	"strings"
 	"sync"
+
+	"oras.land/oras/cmd/oras/internal/display/status"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -60,7 +61,7 @@ func copyCmd() *cobra.Command {
 		Use:     "cp [flags] <from>{:<tag>|@<digest>} <to>[:<tag>[,<tag>][...]]",
 		Aliases: []string{"copy"},
 		Short:   "Copy artifacts from one target to another",
-		Long: `Copy artifacts from one target to another
+		Long: `Copy artifacts from one target to another. When copying an image index, all of its manifests will be copied
 
 Example - Copy an artifact between registries:
   oras cp localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:v1
