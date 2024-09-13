@@ -46,6 +46,7 @@ type Packer struct {
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Packer) ApplyFlags(fs *pflag.FlagSet) {
+	opts.Annotation.ApplyFlags(fs)
 	fs.StringVarP(&opts.ManifestExportPath, "export-manifest", "", "", "`path` of the pushed manifest")
 	fs.BoolVarP(&opts.PathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
 }
