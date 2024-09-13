@@ -78,7 +78,7 @@ Here are the guiding principles to write debug logs.
   - Example: `DEBUG: Starting upload of layer 2 of 3 for repository oras-demo`
   - Example: `DEBUG: Successfully uploaded layer 2 of 3 for repository oras-demo`
 
-- **State Logs:** Log important state information before and after key operations or decisions.
+- **State Logs:** Log important state information, function names, important variable state, file name and line number before and after key operations or decisions.
   - Example: `DEBUG: Current retry attempt: 1, Max retries: 3`
 
 ### 4. **Error and Exception Handling**
