@@ -49,7 +49,7 @@ type updateOptions struct {
 func updateCmd() *cobra.Command {
 	var opts updateOptions
 	cmd := &cobra.Command{
-		Use:   "update <name>{:<tag>|@<digest>} {--add/--merge/--remove} {<tag>|<digest>} [...]",
+		Use:   "update <name>{:<tag>|@<digest>} [{--add|--merge|--remove} {<tag>|<digest>}] [...]",
 		Short: "[Experimental] Update and push an image index",
 		Long: `[Experimental] Update and push an image index. All manifests should be in the same repository
 		
@@ -65,12 +65,12 @@ Example - Merge manifests from the index 'v2-windows' to the index 'v2':
 Example - Update an index and tag the updated index as 'v2.1.0' and 'v2':
   oras manifest index update localhost:5000/hello@sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9 --add linux-amd64 --tag "v2.1.0" --tag "v2"
   `,
-		Args: oerrors.CheckArgs(argument.Exactly(1), "the destination index to update"),
+		Args: oerrors.CheckArgs(argument.Exactly(1), "the target index to update"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
 			for _, manifestRef := range opts.removeArguments {
 				if !contentutil.IsDigest(manifestRef) {
-					return fmt.Errorf("%s is not a digest", manifestRef)
+					return fmt.Errorf("remove: %s is not a digest", manifestRef)
 				}
 			}
 			return option.Parse(cmd, &opts)
@@ -90,7 +90,7 @@ Example - Update an index and tag the updated index as 'v2.1.0' and 'v2':
 func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	// if no update flag is used, do nothing
 	if !updateFlagsUsed(cmd.Flags()) {
-		opts.Println("No update flag is used. There's nothing to update.")
+		opts.Println("Nothing to update as no change is requested")
 		return nil
 	}
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
@@ -210,11 +210,10 @@ func doRemoveManifests(originalManifests []ocispec.Descriptor, digestToRemove ma
 		}
 	}
 	for digest, removed := range digestToRemove {
-		if removed {
-			printUpdateStatus(status.IndexPromptRemoved, string(digest), "", printer)
-		} else {
+		if !removed {
 			return nil, fmt.Errorf("%s does not exist in the index %s", digest, indexRef)
 		}
+		printUpdateStatus(status.IndexPromptRemoved, string(digest), "", printer)
 	}
 	return manifests, nil
 }
