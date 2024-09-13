@@ -36,6 +36,7 @@ import (
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/cmd/oras/internal/output"
+	"oras.land/oras/internal/contentutil"
 	"oras.land/oras/internal/descriptor"
 	"oras.land/oras/internal/listener"
 )
@@ -59,25 +60,25 @@ func createCmd() *cobra.Command {
 		Short: "[Experimental] Create and push an index from provided manifests",
 		Long: `[Experimental] Create and push an index from provided manifests. All manifests should be in the same repository
 
-Example - create an index from source manifests tagged 'linux-amd64' and 'linux-arm64', and push without tagging:
+Example - Create an index from source manifests tagged 'linux-amd64' and 'linux-arm64', and push without tagging:
   oras manifest index create localhost:5000/hello linux-amd64 linux-arm64
 
-Example - create an index from source manifests tagged 'linux-amd64' and 'linux-arm64', and push with the tag 'v1':
+Example - Create an index from source manifests tagged 'linux-amd64' and 'linux-arm64', and push with the tag 'v1':
   oras manifest index create localhost:5000/hello:v1 linux-amd64 linux-arm64
 
-Example - create an index from source manifests using both tags and digests, and push with tag 'v1':
+Example - Create an index from source manifests using both tags and digests, and push with tag 'v1':
   oras manifest index create localhost:5000/hello:v1 linux-amd64 sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
 
-Example - create an index and push it with multiple tags:
+Example - Create an index and push it with multiple tags:
   oras manifest index create localhost:5000/hello:tag1,tag2,tag3 linux-amd64 linux-arm64 sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
 
-Example - create an index and push to an OCI image layout folder 'layout-dir' and tag with 'v1':
+Example - Create an index and push to an OCI image layout folder 'layout-dir' and tag with 'v1':
   oras manifest index create layout-dir:v1 linux-amd64 sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
 
-Example - create an index and save it locally to index.json, auto push will be disabled:
+Example - Create an index and save it locally to index.json, auto push will be disabled:
   oras manifest index create --output index.json localhost:5000/hello linux-amd64 linux-arm64
 
-Example - create an index and output the index to stdout, auto push will be disabled:
+Example - Create an index and output the index to stdout, auto push will be disabled:
   oras manifest index create localhost:5000/hello linux-arm64 --output - --pretty
 `,
 		Args: oerrors.CheckArgs(argument.AtLeast(1), "the destination index to create."),
@@ -115,7 +116,10 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 		MediaType: ocispec.MediaTypeImageIndex,
 		Manifests: manifests,
 	}
-	indexBytes, _ := json.Marshal(index)
+	indexBytes, err := json.Marshal(index)
+	if err != nil {
+		return err
+	}
 	desc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageIndex, indexBytes)
 	opts.Println(status.IndexPromptPacked, descriptor.ShortDigest(desc), ocispec.MediaTypeImageIndex)
 
@@ -182,7 +186,7 @@ func getPlatform(ctx context.Context, target oras.ReadOnlyTarget, manifestBytes 
 func pushIndex(ctx context.Context, target oras.Target, desc ocispec.Descriptor, content []byte, ref string, extraRefs []string, path string, printer *output.Printer) error {
 	// push the index
 	var err error
-	if ref == "" {
+	if ref == "" || contentutil.IsDigest(ref) {
 		err = target.Push(ctx, desc, bytes.NewReader(content))
 	} else {
 		_, err = oras.TagBytes(ctx, target, desc.MediaType, content, ref)

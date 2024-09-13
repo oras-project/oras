@@ -40,6 +40,11 @@ func IsImageManifest(desc ocispec.Descriptor) bool {
 	return desc.MediaType == docker.MediaTypeManifest || desc.MediaType == ocispec.MediaTypeImageManifest
 }
 
+// IsIndex checks if a descriptor describes an image index or Docker manifest list.
+func IsIndex(desc ocispec.Descriptor) bool {
+	return desc.MediaType == ocispec.MediaTypeImageIndex || desc.MediaType == docker.MediaTypeManifestList
+}
+
 // ShortDigest converts the digest of the descriptor to a short form for displaying.
 func ShortDigest(desc ocispec.Descriptor) (digestString string) {
 	digestString = desc.Digest.String()
