@@ -39,29 +39,37 @@ func TestPacker_FlagInit(t *testing.T) {
 
 func TestPacker_LoadManifestAnnotations_err(t *testing.T) {
 	opts := Packer{
-		AnnotationFilePath:  "this is not a file", // testFile,
-		ManifestAnnotations: []string{"Key=Val"},
+		Annotation: Annotation{
+			AnnotationFilePath:  "this is not a file", // testFile,
+			ManifestAnnotations: []string{"Key=Val"},
+		},
 	}
 	if _, err := opts.LoadManifestAnnotations(); !errors.Is(err, errAnnotationConflict) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	opts = Packer{
-		AnnotationFilePath: "this is not a file", // testFile,
+		Annotation: Annotation{
+			AnnotationFilePath: "this is not a file", // testFile,
+		},
 	}
 	if _, err := opts.LoadManifestAnnotations(); err == nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	opts = Packer{
-		ManifestAnnotations: []string{"KeyVal"},
+		Annotation: Annotation{
+			ManifestAnnotations: []string{"KeyVal"},
+		},
 	}
 	if _, err := opts.LoadManifestAnnotations(); !errors.Is(err, errAnnotationFormat) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	opts = Packer{
-		ManifestAnnotations: []string{"Key=Val1", "Key=Val2"},
+		Annotation: Annotation{
+			ManifestAnnotations: []string{"Key=Val1", "Key=Val2"},
+		},
 	}
 	if _, err := opts.LoadManifestAnnotations(); !errors.Is(err, errAnnotationDuplication) {
 		t.Fatalf("unexpected error: %v", err)
@@ -74,7 +82,11 @@ func TestPacker_LoadManifestAnnotations_annotationFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error writing %s: %v", testFile, err)
 	}
-	opts := Packer{AnnotationFilePath: testFile}
+	opts := Packer{
+		Annotation: Annotation{
+			AnnotationFilePath: testFile,
+		},
+	}
 
 	anno, err := opts.LoadManifestAnnotations()
 	if err != nil {
@@ -91,7 +103,11 @@ func TestPacker_LoadManifestAnnotations_annotationFlag(t *testing.T) {
 		"Key",
 	}
 	var annotations map[string]map[string]string
-	opts := Packer{ManifestAnnotations: invalidFlag0}
+	opts := Packer{
+		Annotation: Annotation{
+			ManifestAnnotations: invalidFlag0,
+		},
+	}
 	_, err := opts.LoadManifestAnnotations()
 	if !errors.Is(err, errAnnotationFormat) {
 		t.Fatalf("unexpected error: %v", err)
@@ -102,7 +118,11 @@ func TestPacker_LoadManifestAnnotations_annotationFlag(t *testing.T) {
 		"Key=0",
 		"Key=1",
 	}
-	opts = Packer{ManifestAnnotations: invalidFlag1}
+	opts = Packer{
+		Annotation: Annotation{
+			ManifestAnnotations: invalidFlag1,
+		},
+	}
 	_, err = opts.LoadManifestAnnotations()
 	if !errors.Is(err, errAnnotationDuplication) {
 		t.Fatalf("unexpected error: %v", err)
@@ -114,7 +134,11 @@ func TestPacker_LoadManifestAnnotations_annotationFlag(t *testing.T) {
 		"Key1=Val",             // 2. Normal Item
 		"Key2=${env:USERNAME}", // 3. Item contains variable eg. "${env:USERNAME}"
 	}
-	opts = Packer{ManifestAnnotations: validFlag}
+	opts = Packer{
+		Annotation: Annotation{
+			ManifestAnnotations: validFlag,
+		},
+	}
 	annotations, err = opts.LoadManifestAnnotations()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
