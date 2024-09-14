@@ -48,9 +48,11 @@ type createOptions struct {
 	option.Target
 	option.Pretty
 
-	sources    []string
-	extraRefs  []string
-	outputPath string
+	sources          []string
+	extraRefs        []string
+	rawAnnotations   []string
+	indexAnnotations map[string]string
+	outputPath       string
 }
 
 func createCmd() *cobra.Command {
@@ -72,6 +74,9 @@ Example - Create an index from source manifests using both tags and digests, and
 Example - Create an index and push it with multiple tags:
   oras manifest index create localhost:5000/hello:tag1,tag2,tag3 linux-amd64 linux-arm64 sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
 
+Example - Create and push an index with annotations:
+  oras manifest index create localhost:5000/hello:v1 linux-amd64 --annotation "key=val"
+
 Example - Create an index and push to an OCI image layout folder 'layout-dir' and tag with 'v1':
   oras manifest index create layout-dir:v1 linux-amd64 sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
 
@@ -87,6 +92,10 @@ Example - Create an index and output the index to stdout, auto push will be disa
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
 			opts.sources = args[1:]
+			opts.indexAnnotations = make(map[string]string)
+			if err := parseAnnotations(opts.rawAnnotations, opts.indexAnnotations); err != nil {
+				return err
+			}
 			return option.Parse(cmd, &opts)
 		},
 		Aliases: []string{"pack"},
@@ -95,6 +104,7 @@ Example - Create an index and output the index to stdout, auto push will be disa
 		},
 	}
 	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "file `path` to write the created index to, use - for stdout")
+	cmd.Flags().StringArrayVarP(&opts.rawAnnotations, "annotation", "a", nil, "index annotations")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
@@ -113,8 +123,9 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 		Versioned: specs.Versioned{
 			SchemaVersion: 2,
 		},
-		MediaType: ocispec.MediaTypeImageIndex,
-		Manifests: manifests,
+		MediaType:   ocispec.MediaTypeImageIndex,
+		Manifests:   manifests,
+		Annotations: opts.indexAnnotations,
 	}
 	indexBytes, err := json.Marshal(index)
 	if err != nil {
@@ -203,4 +214,15 @@ func pushIndex(ctx context.Context, target oras.Target, desc ocispec.Descriptor,
 		}
 	}
 	return printer.Println("Digest:", desc.Digest)
+}
+
+func parseAnnotations(input []string, annotations map[string]string) error {
+	for _, anno := range input {
+		key, val, success := strings.Cut(anno, "=")
+		if !success {
+			return fmt.Errorf("annotation value doesn't match the required format of \"key=value\"")
+		}
+		annotations[key] = val
+	}
+	return nil
 }
