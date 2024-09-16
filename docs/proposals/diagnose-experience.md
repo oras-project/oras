@@ -29,12 +29,12 @@ At first, the output of ORAS flag `--verbose` and `--debug` should be clarified 
 
 There are three types of output in ORAS CLI:
 
-- **Status output**: such as progress information, progress bar in pulling or pushing files 
-- **Metadata output**: showing what has been pulled (e.g. filename, digest, etc.) in specified format, such as JSON, text
-- **Content output**: it is to output the raw data obtained from the remote registry server or file system, such as the pulled artifact content save as a file
+- **Status output**: such as progress information, progress bar in pulling or pushing files.
+- **Metadata output**: showing what has been pulled (e.g. filename, digest, etc.) in specified format, such as JSON, text.
+- **Content output**: it is to output the raw data obtained from the remote registry server or file system, such as the pulled artifact content save as a file.
+- **Error output**: error message are expected to be helpful to troubleshoot where the user has done something wrong and the program is guiding them in the right direction.
 
-
-The target users of these types of output are normal users. Currently, the output of ORAS `--verbose` flag belongs to status output since it contains detailed progress status. The output of `--verbose` only exists in oras `pull/push/attach` commands. 
+The target users of these types of output are standard users. Currently, the output of ORAS `--verbose` flag only exists in oras `pull/push/attach/discover` commands, which prints out detailed status output and metadata output. 
 
 It is intended for end-users who want to observe the detailed file operation when using ORAS. It gives users a comprehensive view of what the tool is doing at every step and how long does it take when push or pull a file.
 
@@ -52,7 +52,7 @@ Logs focus on providing technical details for in-depth diagnosing and troublesho
 ## Proposals for ORAS CLI
 
 - Deprecate the global flag `--verbose` and only remain `--debug` to avoid ambiguity. Based on the concept above, it is reasonable to continue using `--debug` to enable the output of `DEBUG` level logs in ORAS as it is in ORAS. Meanwhile, This change will make the diagnose experience much more straightforward and less breaking since only ORAS `pull/push/attach/discover` commands have verbose output.
-- The existing output of `--verbose` in several ORAS commands `pull/push/attach/discover` can still be reserved. Introducing an additional flag to these commands.
+- Introduce a new flag `--detail` to replace the existing global flag `--verbose` of commands like `pull`, `push`, `attach`, and `discover` for detailed output.
 - Add separator lines between each request and response for readability.
 - Add timestamp of each request and response to the beginning of each request and response.
 - Add the response body including [error code](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#error-codes) and the metadata of processed OCI object (e.g. image manifest) to the debug logs
@@ -96,13 +96,10 @@ Here are the guiding principles to write debug logs.
   - Example: `DEBUG: Current registry URL: https://myregistry.io, Timeout setting:
 
 ### 6. **Avoid Logging Sensitive Information**
-- **Privacy:** Abstain from logging sensitive information such as passwords, personal data, or security tokens.
-  - Example: `DEBUG: Attempting to authenticate user [UserID: usr123]` (without password details)
+- **Privacy and Security:** Abstain from logging sensitive information such as passwords, personal data, or security tokens.
+  - Example: `DEBUG: Attempting to authenticate user [UserID: usr123]`  (exclude authentication token and password information).
 
-- **Compliance:** Ensure that logs adhere to relevant data protection and privacy regulations.
-  - Example: Anonymize or obfuscate sensitive customer data in logs.
-
-## Investigation
+## Investigation on other CLI tools
 
 To make sure the ORAS diagnose functions are natural and easier to use, it worth knowing how diagnose functions work in other popular client tools. 
 
@@ -118,10 +115,6 @@ Docker provides two options `--debug` and `--log-level`  to control debug logs o
 
 Helm CLI tool provides a global flag `--debug` to enable verbose output.
 
-#### Kubectl
-
-Kubectl has a command `kubectl logs` to show logs of objects such as Pod and container. No separate flags for verbose output and debug logs.
-
 ## Examples in ORAS
 
 This section lists the current behaviors of ORAS debug logs, proposes the suggested changes to ORAS CLI commands. More examples will be appended below.
@@ -134,7 +127,7 @@ Pick the first two requests and responses as examples:
 oras copy ghcr.io/oras-project/oras:v1.2.0 --to-oci-layout oras-dev:v1.2.0 --debug
 ```
 
-**Current debug log0-=s**
+**Current debug log**
 
 ```
 [DEBU0000] Request #0
@@ -244,7 +237,7 @@ $ oras version
 
 ORAS Version:    1.2.0+Homebrew
 Go version: go1.22.3
-OS/Arch: Linux AMD64
+OS/Arch: linux/amd64
 ```
 
 ## Q & A
@@ -253,6 +246,6 @@ OS/Arch: Linux AMD64
 
 **A:** Per our discussion in the ORAS community meeting, ORAS maintainers agreed to not introduce an additional environment variable as a global switch to enable debug logs since --debug is intuitive enough.
 
-**Q2**: For the diagnose flag options, why deprecate `--verbose` and remain `--debug` as it is?
+**Q2:**: For the diagnose flag options, why deprecate `--verbose` and remain `--debug` as it is?
 
 **A**: The major reason is that this change avoids overloading the flag `--verbose` and reduce ambiguity in ORAS diagnose experience. Moreover, the `--debug` is consistent with other popular container client tools, such as Helm and Docker. Deprecation of `--verbose` is less breaking than changing behaviors of `--debug`.
