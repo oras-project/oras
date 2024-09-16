@@ -236,8 +236,8 @@ For example, the operating system and architecture are supposed to be outputted 
 $ oras version
 
 ORAS Version:    1.2.0+Homebrew
-Go version: go1.22.3
-OS/Arch: linux/amd64
+Go version:      go1.22.3
+OS/Arch:         linux/amd64
 ```
 
 ## Q & A
