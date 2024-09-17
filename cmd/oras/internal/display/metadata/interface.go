@@ -16,7 +16,9 @@ limitations under the License.
 package metadata
 
 import (
+	"context"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -39,7 +41,7 @@ type DiscoverHandler interface {
 	// discovery.
 	MultiLevelSupported() bool
 	// OnDiscovered is called after a referrer is discovered.
-	OnDiscovered(referrer, subject ocispec.Descriptor) error
+	OnDiscovered(referrer, subject ocispec.Descriptor, ctx context.Context, target oras.ReadOnlyTarget, platform option.Platform) error
 	// OnCompleted is called when referrer discovery is completed.
 	OnCompleted() error
 }

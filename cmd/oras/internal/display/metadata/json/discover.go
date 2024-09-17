@@ -16,8 +16,11 @@ limitations under the License.
 package json
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"oras.land/oras-go/v2"
+	"oras.land/oras/cmd/oras/internal/option"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content"
@@ -49,7 +52,7 @@ func (h *discoverHandler) MultiLevelSupported() bool {
 }
 
 // OnDiscovered implements metadata.DiscoverHandler.
-func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) error {
+func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor, _ context.Context, _ oras.ReadOnlyTarget, _ option.Platform) error {
 	if !content.Equal(subject, h.root) {
 		return fmt.Errorf("unexpected subject descriptor: %v", subject)
 	}

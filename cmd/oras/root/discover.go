@@ -135,7 +135,7 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 		return err
 	}
 	if handler.MultiLevelSupported() {
-		if err := fetchAllReferrers(ctx, repo, desc, opts.artifactType, handler); err != nil {
+		if err := fetchAllReferrers(ctx, repo, desc, opts.artifactType, handler, opts.Platform); err != nil {
 			return err
 		}
 	} else {
@@ -144,7 +144,7 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 			return err
 		}
 		for _, ref := range refs {
-			if err := handler.OnDiscovered(ref, desc); err != nil {
+			if err := handler.OnDiscovered(ref, desc, ctx, repo, opts.Platform); err != nil {
 				return err
 			}
 		}
@@ -152,21 +152,21 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 	return handler.OnCompleted()
 }
 
-func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, handler metadata.DiscoverHandler) error {
+func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, handler metadata.DiscoverHandler, platform option.Platform) error {
 	results, err := registry.Referrers(ctx, repo, desc, artifactType)
 	if err != nil {
 		return err
 	}
 
 	for _, r := range results {
-		if err := handler.OnDiscovered(r, desc); err != nil {
+		if err := handler.OnDiscovered(r, desc, ctx, repo, platform); err != nil {
 			return err
 		}
 		if err := fetchAllReferrers(ctx, repo, ocispec.Descriptor{
 			Digest:    r.Digest,
 			Size:      r.Size,
 			MediaType: r.MediaType,
-		}, artifactType, handler); err != nil {
+		}, artifactType, handler, platform); err != nil {
 			return err
 		}
 	}

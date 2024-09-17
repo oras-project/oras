@@ -31,11 +31,17 @@ func New(value any) *Node {
 	}
 }
 
-// Add adds a leaf node.
+// Add adds a leaf node with value.
 func (n *Node) Add(value any) *Node {
 	node := New(value)
 	n.Nodes = append(n.Nodes, node)
 	return node
+}
+
+// AddNode adds a leaf Node.
+func (n *Node) AddNode(node *Node) *Node {
+	n.Nodes = append(n.Nodes, node)
+	return n
 }
 
 // AddPath adds a chain of nodes.
