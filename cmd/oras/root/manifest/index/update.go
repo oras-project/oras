@@ -76,6 +76,9 @@ Example - Update an index and output the index to stdout, auto push will be disa
   `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the target index to update"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := oerrors.CheckMutuallyExclusiveFlags(cmd.Flags(), "tag", "output"); err != nil {
+				return err
+			}
 			opts.RawReference = args[0]
 			for _, manifestRef := range opts.removeArguments {
 				if !contentutil.IsDigest(manifestRef) {

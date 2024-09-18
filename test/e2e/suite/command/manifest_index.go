@@ -243,7 +243,7 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 
 		It("should output updated index to stdout", func() {
-			testRepo := indexTestRepo("create", "output-to-stdout")
+			testRepo := indexTestRepo("update", "output-to-stdout")
 			CopyZOTRepo(ImageRepo, testRepo)
 			// create an index for testing purpose
 			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, "v1")).Exec()
@@ -321,6 +321,15 @@ var _ = Describe("1.1 registry users:", func() {
 			ORAS("manifest", "index", "update", RegistryRef(ZOTHost, testRepo, "remove-not-exist"),
 				"--remove", string(multi_arch.LinuxARM64.Digest)).ExpectFailure().
 				MatchErrKeyWords("Error", "does not exist").Exec()
+		})
+
+		It("should fail if --tag is used with --output", func() {
+			testRepo := indexTestRepo("update", "tag-and-output")
+			CopyZOTRepo(ImageRepo, testRepo)
+			// add a manifest to the index
+			ORAS("manifest", "index", "update", RegistryRef(ZOTHost, testRepo, "v1"),
+				"--add", string(multi_arch.LinuxAMD64.Digest), "--output", "-", "--tag", "v2").
+				ExpectFailure().MatchErrKeyWords("--tag, --output cannot be used at the same time").Exec()
 		})
 	})
 })
