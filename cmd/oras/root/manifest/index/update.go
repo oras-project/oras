@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -39,11 +40,13 @@ import (
 type updateOptions struct {
 	option.Common
 	option.Target
+	option.Pretty
 
 	addArguments    []string
 	mergeArguments  []string
 	removeArguments []string
 	tags            []string
+	outputPath      string
 }
 
 func updateCmd() *cobra.Command {
@@ -64,6 +67,12 @@ Example - Merge manifests from the index 'v2-windows' to the index 'v2':
 
 Example - Update an index and tag the updated index as 'v2.1.0' and 'v2':
   oras manifest index update localhost:5000/hello@sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9 --add linux-amd64 --tag "v2.1.0" --tag "v2"
+
+Example - Update an index and save it locally to index.json, auto push will be disabled:
+  oras manifest index update --output index.json localhost:5000/hello:v2 --add v2-linux-amd64
+
+Example - Update an index and output the index to stdout, auto push will be disabled:
+  oras manifest index update --output - --pretty localhost:5000/hello:v2 --remove sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
   `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the target index to update"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -84,6 +93,7 @@ Example - Update an index and tag the updated index as 'v2.1.0' and 'v2':
 	cmd.Flags().StringArrayVarP(&opts.mergeArguments, "merge", "", nil, "indexes to be merged into the index")
 	cmd.Flags().StringArrayVarP(&opts.removeArguments, "remove", "", nil, "manifests to remove from the index, must be digests")
 	cmd.Flags().StringArrayVarP(&opts.tags, "tag", "", nil, "extra tags for the updated index")
+	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "file `path` to write the created index to, use - for stdout")
 	return oerrors.Command(cmd, &opts.Target)
 }
 
@@ -127,7 +137,17 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 
 	printUpdateStatus(status.IndexPromptUpdated, string(desc.Digest), "", opts.Printer)
 	path := getPushPath(opts.RawReference, opts.Type, opts.Reference, opts.Path)
-	return pushIndex(ctx, target, desc, indexBytes, opts.Reference, opts.tags, path, opts.Printer)
+	switch opts.outputPath {
+	case "":
+		err = pushIndex(ctx, target, desc, indexBytes, opts.Reference, opts.tags, path, opts.Printer)
+	case "-":
+		opts.Println("Digest:", desc.Digest)
+		err = opts.Output(os.Stdout, indexBytes)
+	default:
+		opts.Println("Digest:", desc.Digest)
+		err = os.WriteFile(opts.outputPath, indexBytes, 0666)
+	}
+	return err
 }
 
 func fetchIndex(ctx context.Context, target oras.ReadOnlyTarget, opts updateOptions) (ocispec.Index, error) {

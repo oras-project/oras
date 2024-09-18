@@ -142,14 +142,14 @@ var _ = Describe("1.1 registry users:", func() {
 			CopyZOTRepo(ImageRepo, testRepo)
 			filePath := filepath.Join(GinkgoT().TempDir(), "createdIndex")
 			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, ""), string(multi_arch.LinuxAMD64.Digest), "--output", filePath).Exec()
-			MatchFile(filePath, multi_arch.CreatedIndex, DefaultTimeout)
+			MatchFile(filePath, multi_arch.OutputIndex, DefaultTimeout)
 		})
 
 		It("should output created index to stdout", func() {
 			testRepo := indexTestRepo("create", "output-to-stdout")
 			CopyZOTRepo(ImageRepo, testRepo)
 			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, ""), string(multi_arch.LinuxAMD64.Digest),
-				"--output", "-").MatchKeyWords(multi_arch.CreatedIndex).Exec()
+				"--output", "-").MatchKeyWords(multi_arch.OutputIndex).Exec()
 		})
 
 		It("should fail if given a reference that does not exist in the repo", func() {
@@ -228,6 +228,27 @@ var _ = Describe("1.1 registry users:", func() {
 				Exec().Out.Contents()
 			expectedManifests := []ocispec.Descriptor{multi_arch.LinuxAMD64, multi_arch.LinuxARM64, multi_arch.LinuxARMV7}
 			ValidateIndex(content, expectedManifests)
+		})
+
+		It("should output updated index to file", func() {
+			testRepo := indexTestRepo("update", "output-to-file")
+			CopyZOTRepo(ImageRepo, testRepo)
+			filePath := filepath.Join(GinkgoT().TempDir(), "updatedIndex")
+			// create an index for testing purpose
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, "v1")).Exec()
+			// add a manifest to the index
+			ORAS("manifest", "index", "update", RegistryRef(ZOTHost, testRepo, "v1"),
+				"--add", string(multi_arch.LinuxAMD64.Digest), "--output", filePath).Exec()
+			MatchFile(filePath, multi_arch.OutputIndex, DefaultTimeout)
+		})
+
+		It("should output created index to stdout", func() {
+			testRepo := indexTestRepo("create", "output-to-stdout")
+			CopyZOTRepo(ImageRepo, testRepo)
+			// create an index for testing purpose
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, "v1")).Exec()
+			ORAS("manifest", "index", "update", RegistryRef(ZOTHost, testRepo, "v1"),
+				"--add", string(multi_arch.LinuxAMD64.Digest), "--output", "-").MatchKeyWords(multi_arch.OutputIndex).Exec()
 		})
 
 		It("should tell user nothing to update if no update flags are used", func() {
@@ -379,14 +400,14 @@ var _ = Describe("OCI image layout users:", func() {
 			indexRef := LayoutRef(root, "output-to-file")
 			filePath := filepath.Join(GinkgoT().TempDir(), "createdIndex")
 			ORAS("manifest", "index", "create", Flags.Layout, indexRef, string(multi_arch.LinuxAMD64.Digest), "--output", filePath).Exec()
-			MatchFile(filePath, multi_arch.CreatedIndex, DefaultTimeout)
+			MatchFile(filePath, multi_arch.OutputIndex, DefaultTimeout)
 		})
 
 		It("should output created index to stdout", func() {
 			root := PrepareTempOCI(ImageRepo)
 			indexRef := LayoutRef(root, "output-to-stdout")
 			ORAS("manifest", "index", "create", Flags.Layout, indexRef, string(multi_arch.LinuxAMD64.Digest),
-				"--output", "-").MatchKeyWords(multi_arch.CreatedIndex).Exec()
+				"--output", "-").MatchKeyWords(multi_arch.OutputIndex).Exec()
 		})
 
 		It("should fail if given a reference that does not exist in the repo", func() {
