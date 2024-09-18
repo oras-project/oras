@@ -172,6 +172,14 @@ var _ = Describe("1.1 registry users:", func() {
 				"does-not-exist").ExpectFailure().
 				MatchErrKeyWords("Error", "could not find", "does-not-exist").Exec()
 		})
+
+		It("should fail if given annotation input of wrong format", func() {
+			testRepo := indexTestRepo("create", "bad-annotations")
+			CopyZOTRepo(ImageRepo, testRepo)
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, ""),
+				string(multi_arch.LinuxAMD64.Digest), "-a", "foo:bar").ExpectFailure().
+				MatchErrKeyWords("Error", "annotation value doesn't match the required format").Exec()
+		})
 	})
 
 	When("running `manifest index update`", func() {
