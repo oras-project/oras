@@ -242,11 +242,12 @@ var _ = Describe("1.1 registry users:", func() {
 			MatchFile(filePath, multi_arch.OutputIndex, DefaultTimeout)
 		})
 
-		It("should output created index to stdout", func() {
+		It("should output updated index to stdout", func() {
 			testRepo := indexTestRepo("create", "output-to-stdout")
 			CopyZOTRepo(ImageRepo, testRepo)
 			// create an index for testing purpose
 			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, "v1")).Exec()
+			// add a manifest to the index
 			ORAS("manifest", "index", "update", RegistryRef(ZOTHost, testRepo, "v1"),
 				"--add", string(multi_arch.LinuxAMD64.Digest), "--output", "-").MatchKeyWords(multi_arch.OutputIndex).Exec()
 		})
@@ -473,6 +474,26 @@ var _ = Describe("OCI image layout users:", func() {
 			content := ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, "index01")).Exec().Out.Contents()
 			expectedManifests := []ocispec.Descriptor{multi_arch.LinuxARMV7, multi_arch.LinuxARM64}
 			ValidateIndex(content, expectedManifests)
+		})
+
+		It("should output updated index to file", func() {
+			root := PrepareTempOCI(ImageRepo)
+			filePath := filepath.Join(GinkgoT().TempDir(), "updatedIndex")
+			// create an index for testing purpose
+			ORAS("manifest", "index", "create", Flags.Layout, LayoutRef(root, "index01")).Exec()
+			// add a manifest to the index
+			ORAS("manifest", "index", "update", Flags.Layout, LayoutRef(root, "index01"),
+				"--add", string(multi_arch.LinuxAMD64.Digest), "--output", filePath).Exec()
+			MatchFile(filePath, multi_arch.OutputIndex, DefaultTimeout)
+		})
+
+		It("should output updated index to stdout", func() {
+			root := PrepareTempOCI(ImageRepo)
+			// create an index for testing purpose
+			ORAS("manifest", "index", "create", Flags.Layout, LayoutRef(root, "index01")).Exec()
+			// add a manifest to the index
+			ORAS("manifest", "index", "update", Flags.Layout, LayoutRef(root, "index01"),
+				"--add", string(multi_arch.LinuxAMD64.Digest), "--output", "-").MatchKeyWords(multi_arch.OutputIndex).Exec()
 		})
 
 		It("should tell user nothing to update if no update flags are used", func() {
