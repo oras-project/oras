@@ -31,24 +31,23 @@ func Test_parseAnnotations(t *testing.T) {
 		{
 			name:            "valid input",
 			input:           []string{"a=b", "c=d", "e=f"},
-			annotations:     make(map[string]string),
 			wantErr:         false,
 			wantAnnotations: map[string]string{"a": "b", "c": "d", "e": "f"},
 		},
 		{
 			name:            "invalid input",
-			input:           []string{"c:d", "e=f"},
-			annotations:     make(map[string]string),
+			input:           []string{"a=b", "c:d", "e=f"},
 			wantErr:         true,
-			wantAnnotations: map[string]string{},
+			wantAnnotations: nil,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := parseAnnotations(tt.input, tt.annotations); (err != nil) != tt.wantErr {
+			annotations, err := parseAnnotations(tt.input)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("parseAnnotations() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			if !reflect.DeepEqual(tt.annotations, tt.wantAnnotations) {
+			if !reflect.DeepEqual(annotations, tt.wantAnnotations) {
 				t.Errorf("parseAnnotations() annotations = %v, want %v", tt.annotations, tt.wantAnnotations)
 			}
 		})

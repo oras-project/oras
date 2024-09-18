@@ -92,8 +92,9 @@ Example - Create an index and output the index to stdout, auto push will be disa
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
 			opts.sources = args[1:]
-			opts.indexAnnotations = make(map[string]string)
-			if err := parseAnnotations(opts.rawAnnotations, opts.indexAnnotations); err != nil {
+			var err error
+			opts.indexAnnotations, err = parseAnnotations(opts.rawAnnotations)
+			if err != nil {
 				return err
 			}
 			return option.Parse(cmd, &opts)
@@ -216,13 +217,14 @@ func pushIndex(ctx context.Context, target oras.Target, desc ocispec.Descriptor,
 	return printer.Println("Digest:", desc.Digest)
 }
 
-func parseAnnotations(input []string, annotations map[string]string) error {
+func parseAnnotations(input []string) (map[string]string, error) {
+	annotations := make(map[string]string)
 	for _, anno := range input {
 		key, val, success := strings.Cut(anno, "=")
 		if !success {
-			return fmt.Errorf("annotation value doesn't match the required format of \"key=value\"")
+			return nil, fmt.Errorf("annotation value doesn't match the required format of \"key=value\"")
 		}
 		annotations[key] = val
 	}
-	return nil
+	return annotations, nil
 }
