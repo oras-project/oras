@@ -40,6 +40,12 @@ func Test_parseAnnotations(t *testing.T) {
 			wantErr:         true,
 			wantAnnotations: nil,
 		},
+		{
+			name:            "duplicate key",
+			input:           []string{"a=b", "c=d", "a=e"},
+			wantErr:         true,
+			wantAnnotations: nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

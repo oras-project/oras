@@ -224,6 +224,9 @@ func parseAnnotations(input []string) (map[string]string, error) {
 		if !success {
 			return nil, fmt.Errorf("annotation value doesn't match the required format of \"key=value\"")
 		}
+		if _, ok := annotations[key]; ok {
+			return nil, fmt.Errorf("duplicate annotation key: %v", key)
+		}
 		annotations[key] = val
 	}
 	return annotations, nil
