@@ -26,7 +26,7 @@ import (
 )
 
 func Test_runAttach_errType(t *testing.T) {
-	// prpare
+	// prepare
 	cmd := &cobra.Command{}
 	cmd.SetContext(context.Background())
 
@@ -34,12 +34,12 @@ func Test_runAttach_errType(t *testing.T) {
 	opts := &attachOptions{
 		Packer: option.Packer{
 			Annotation: option.Annotation{
-				AnnotationFilePath:  "/tmp/whatever",
 				ManifestAnnotations: []string{"one", "two"},
 			},
+			AnnotationFilePath: "/tmp/whatever",
 		},
 	}
-	got := runAttach(cmd, opts).Error()
+	got := opts.Packer.Parse(cmd).Error()
 	want := errors.New("`--annotation` and `--annotation-file` cannot be both specified").Error()
 	if got != want {
 		t.Fatalf("got %v, want %v", got, want)

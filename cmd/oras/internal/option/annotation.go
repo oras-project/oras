@@ -24,14 +24,7 @@ import (
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 )
 
-// Pre-defined annotation keys for annotation file
-const (
-	AnnotationManifest = "$manifest"
-	AnnotationConfig   = "$config"
-)
-
 var (
-	errAnnotationConflict    = errors.New("`--annotation` and `--annotation-file` cannot be both specified")
 	errAnnotationFormat      = errors.New("annotation value doesn't match the required format")
 	errAnnotationDuplication = errors.New("duplicate annotation key")
 )
@@ -39,6 +32,7 @@ var (
 // Packer option struct.
 type Annotation struct {
 	ManifestAnnotations []string
+	Annotations         map[string]map[string]string
 }
 
 // ApplyFlags applies flags to a command flag set.
@@ -47,7 +41,7 @@ func (opts *Annotation) ApplyFlags(fs *pflag.FlagSet) {
 }
 
 // parseAnnotationFlags parses annotation flags into a map.
-func parseAnnotationFlags(flags []string, annotations map[string]map[string]string) error {
+func (opts *Annotation) parseAnnotationFlags(flags []string) error {
 	manifestAnnotations := make(map[string]string)
 	for _, anno := range flags {
 		key, val, success := strings.Cut(anno, "=")
@@ -62,6 +56,6 @@ func parseAnnotationFlags(flags []string, annotations map[string]map[string]stri
 		}
 		manifestAnnotations[key] = val
 	}
-	annotations[AnnotationManifest] = manifestAnnotations
+	opts.Annotations[AnnotationManifest] = manifestAnnotations
 	return nil
 }

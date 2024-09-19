@@ -32,8 +32,15 @@ import (
 	"oras.land/oras/cmd/oras/internal/fileref"
 )
 
+// Pre-defined annotation keys for annotation file
+const (
+	AnnotationManifest = "$manifest"
+	AnnotationConfig   = "$config"
+)
+
 var (
-	errPathValidation = errors.New("absolute file path detected. If it's intentional, use --disable-path-validation flag to skip this check")
+	errAnnotationConflict = errors.New("`--annotation` and `--annotation-file` cannot be both specified")
+	errPathValidation     = errors.New("absolute file path detected. If it's intentional, use --disable-path-validation flag to skip this check")
 )
 
 // Packer option struct.
@@ -84,26 +91,26 @@ func (opts *Packer) Parse(*cobra.Command) error {
 			return fmt.Errorf("%w: %v", errPathValidation, strings.Join(failedPaths, ", "))
 		}
 	}
-	return nil
+	return opts.LoadManifestAnnotations()
 }
 
 // LoadManifestAnnotations loads the manifest annotation map.
-func (opts *Packer) LoadManifestAnnotations() (annotations map[string]map[string]string, err error) {
+func (opts *Packer) LoadManifestAnnotations() (err error) {
 	if opts.AnnotationFilePath != "" && len(opts.ManifestAnnotations) != 0 {
-		return nil, errAnnotationConflict
+		return errAnnotationConflict
 	}
 	if opts.AnnotationFilePath != "" {
-		if err = decodeJSON(opts.AnnotationFilePath, &annotations); err != nil {
-			return nil, &oerrors.Error{
+		if err = decodeJSON(opts.AnnotationFilePath, &opts.Annotations); err != nil {
+			return &oerrors.Error{
 				Err:            fmt.Errorf(`invalid annotation json file: failed to load annotations from %s`, opts.AnnotationFilePath),
 				Recommendation: `Annotation file doesn't match the required format. Please refer to the document at https://oras.land/docs/how_to_guides/manifest_annotations`,
 			}
 		}
 	}
 	if len(opts.ManifestAnnotations) != 0 {
-		annotations = make(map[string]map[string]string)
-		if err = parseAnnotationFlags(opts.ManifestAnnotations, annotations); err != nil {
-			return nil, err
+		opts.Annotations = make(map[string]map[string]string)
+		if err = opts.parseAnnotationFlags(opts.ManifestAnnotations); err != nil {
+			return err
 		}
 	}
 	return

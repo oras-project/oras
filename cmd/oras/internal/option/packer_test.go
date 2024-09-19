@@ -40,20 +40,18 @@ func TestPacker_FlagInit(t *testing.T) {
 func TestPacker_LoadManifestAnnotations_err(t *testing.T) {
 	opts := Packer{
 		Annotation: Annotation{
-			AnnotationFilePath:  "this is not a file", // testFile,
 			ManifestAnnotations: []string{"Key=Val"},
 		},
+		AnnotationFilePath: "this is not a file", // testFile,
 	}
-	if _, err := opts.LoadManifestAnnotations(); !errors.Is(err, errAnnotationConflict) {
+	if err := opts.LoadManifestAnnotations(); !errors.Is(err, errAnnotationConflict) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	opts = Packer{
-		Annotation: Annotation{
-			AnnotationFilePath: "this is not a file", // testFile,
-		},
+		AnnotationFilePath: "this is not a file", // testFile,
 	}
-	if _, err := opts.LoadManifestAnnotations(); err == nil {
+	if err := opts.LoadManifestAnnotations(); err == nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -62,7 +60,7 @@ func TestPacker_LoadManifestAnnotations_err(t *testing.T) {
 			ManifestAnnotations: []string{"KeyVal"},
 		},
 	}
-	if _, err := opts.LoadManifestAnnotations(); !errors.Is(err, errAnnotationFormat) {
+	if err := opts.LoadManifestAnnotations(); !errors.Is(err, errAnnotationFormat) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -71,7 +69,7 @@ func TestPacker_LoadManifestAnnotations_err(t *testing.T) {
 			ManifestAnnotations: []string{"Key=Val1", "Key=Val2"},
 		},
 	}
-	if _, err := opts.LoadManifestAnnotations(); !errors.Is(err, errAnnotationDuplication) {
+	if err := opts.LoadManifestAnnotations(); !errors.Is(err, errAnnotationDuplication) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -83,17 +81,15 @@ func TestPacker_LoadManifestAnnotations_annotationFile(t *testing.T) {
 		t.Fatalf("Error writing %s: %v", testFile, err)
 	}
 	opts := Packer{
-		Annotation: Annotation{
-			AnnotationFilePath: testFile,
-		},
+		AnnotationFilePath: testFile,
 	}
 
-	anno, err := opts.LoadManifestAnnotations()
+	err = opts.LoadManifestAnnotations()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !reflect.DeepEqual(anno, expectedResult) {
-		t.Fatalf("unexpected error: %v", anno)
+	if !reflect.DeepEqual(opts.Annotations, expectedResult) {
+		t.Fatalf("unexpected error: %v", opts.Annotations)
 	}
 }
 
@@ -102,13 +98,12 @@ func TestPacker_LoadManifestAnnotations_annotationFlag(t *testing.T) {
 	invalidFlag0 := []string{
 		"Key",
 	}
-	var annotations map[string]map[string]string
 	opts := Packer{
 		Annotation: Annotation{
 			ManifestAnnotations: invalidFlag0,
 		},
 	}
-	_, err := opts.LoadManifestAnnotations()
+	err := opts.LoadManifestAnnotations()
 	if !errors.Is(err, errAnnotationFormat) {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -123,7 +118,7 @@ func TestPacker_LoadManifestAnnotations_annotationFlag(t *testing.T) {
 			ManifestAnnotations: invalidFlag1,
 		},
 	}
-	_, err = opts.LoadManifestAnnotations()
+	err = opts.LoadManifestAnnotations()
 	if !errors.Is(err, errAnnotationDuplication) {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -139,14 +134,14 @@ func TestPacker_LoadManifestAnnotations_annotationFlag(t *testing.T) {
 			ManifestAnnotations: validFlag,
 		},
 	}
-	annotations, err = opts.LoadManifestAnnotations()
+	err = opts.LoadManifestAnnotations()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if _, ok := annotations["$manifest"]; !ok {
+	if _, ok := opts.Annotations["$manifest"]; !ok {
 		t.Fatalf("unexpected error: failed when looking for '$manifest' in annotations")
 	}
-	if !reflect.DeepEqual(annotations,
+	if !reflect.DeepEqual(opts.Annotations,
 		map[string]map[string]string{
 			"$manifest": {
 				"Key0": "",
