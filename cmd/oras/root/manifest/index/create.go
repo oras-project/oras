@@ -47,12 +47,11 @@ type createOptions struct {
 	option.Common
 	option.Target
 	option.Pretty
+	option.Annotation
 
-	sources          []string
-	extraRefs        []string
-	rawAnnotations   []string
-	indexAnnotations map[string]string
-	outputPath       string
+	sources    []string
+	extraRefs  []string
+	outputPath string
 }
 
 func createCmd() *cobra.Command {
@@ -92,11 +91,6 @@ Example - Create an index and output the index to stdout, auto push will be disa
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
 			opts.sources = args[1:]
-			var err error
-			opts.indexAnnotations, err = parseAnnotations(opts.rawAnnotations)
-			if err != nil {
-				return err
-			}
 			return option.Parse(cmd, &opts)
 		},
 		Aliases: []string{"pack"},
@@ -105,7 +99,6 @@ Example - Create an index and output the index to stdout, auto push will be disa
 		},
 	}
 	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "file `path` to write the created index to, use - for stdout")
-	cmd.Flags().StringArrayVarP(&opts.rawAnnotations, "annotation", "a", nil, "index annotations")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
@@ -126,7 +119,7 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 		},
 		MediaType:   ocispec.MediaTypeImageIndex,
 		Manifests:   manifests,
-		Annotations: opts.indexAnnotations,
+		Annotations: opts.Annotations[option.AnnotationManifest],
 	}
 	indexBytes, err := json.Marshal(index)
 	if err != nil {
@@ -215,19 +208,4 @@ func pushIndex(ctx context.Context, target oras.Target, desc ocispec.Descriptor,
 		}
 	}
 	return printer.Println("Digest:", desc.Digest)
-}
-
-func parseAnnotations(input []string) (map[string]string, error) {
-	annotations := make(map[string]string)
-	for _, anno := range input {
-		key, val, success := strings.Cut(anno, "=")
-		if !success {
-			return nil, fmt.Errorf("annotation value doesn't match the required format of \"key=value\"")
-		}
-		if _, ok := annotations[key]; ok {
-			return nil, fmt.Errorf("duplicate annotation key: %v", key)
-		}
-		annotations[key] = val
-	}
-	return annotations, nil
 }
