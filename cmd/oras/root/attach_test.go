@@ -34,7 +34,7 @@ func Test_runAttach_errType(t *testing.T) {
 	opts := &attachOptions{
 		Packer: option.Packer{
 			Annotation: option.Annotation{
-				ManifestAnnotations: []string{"one", "two"},
+				ManifestAnnotationFlags: []string{"one", "two"},
 			},
 			AnnotationFilePath: "/tmp/whatever",
 		},

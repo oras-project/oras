@@ -74,7 +74,7 @@ func (opts *Packer) ExportManifest(ctx context.Context, fetcher content.Fetcher,
 	}
 	return os.WriteFile(opts.ManifestExportPath, manifestBytes, 0666)
 }
-func (opts *Packer) Parse(*cobra.Command) error {
+func (opts *Packer) Parse(cmd *cobra.Command) error {
 	if !opts.PathValidationDisabled {
 		var failedPaths []string
 		for _, path := range opts.FileRefs {
@@ -91,12 +91,12 @@ func (opts *Packer) Parse(*cobra.Command) error {
 			return fmt.Errorf("%w: %v", errPathValidation, strings.Join(failedPaths, ", "))
 		}
 	}
-	return opts.LoadManifestAnnotations()
+	return opts.parseAnnotations(cmd)
 }
 
-// LoadManifestAnnotations loads the manifest annotation map.
-func (opts *Packer) LoadManifestAnnotations() (err error) {
-	if opts.AnnotationFilePath != "" && len(opts.ManifestAnnotations) != 0 {
+// parseAnnotations loads the manifest annotation map.
+func (opts *Packer) parseAnnotations(cmd *cobra.Command) (err error) {
+	if opts.AnnotationFilePath != "" && len(opts.ManifestAnnotationFlags) != 0 {
 		return errAnnotationConflict
 	}
 	if opts.AnnotationFilePath != "" {
@@ -107,11 +107,8 @@ func (opts *Packer) LoadManifestAnnotations() (err error) {
 			}
 		}
 	}
-	if len(opts.ManifestAnnotations) != 0 {
-		opts.Annotations = make(map[string]map[string]string)
-		if err = opts.parseAnnotationFlags(opts.ManifestAnnotations); err != nil {
-			return err
-		}
+	if len(opts.ManifestAnnotationFlags) != 0 {
+		return opts.Annotation.Parse(cmd)
 	}
 	return
 }

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 )
@@ -31,19 +32,19 @@ var (
 
 // Packer option struct.
 type Annotation struct {
-	ManifestAnnotations []string
-	Annotations         map[string]map[string]string
+	ManifestAnnotationFlags []string                     // raw input of manifest annotation flags
+	Annotations             map[string]map[string]string // parsed manifest and config annotations
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Annotation) ApplyFlags(fs *pflag.FlagSet) {
-	fs.StringArrayVarP(&opts.ManifestAnnotations, "annotation", "a", nil, "manifest annotations")
+	fs.StringArrayVarP(&opts.ManifestAnnotationFlags, "annotation", "a", nil, "manifest annotations")
 }
 
-// parseAnnotationFlags parses annotation flags into a map.
-func (opts *Annotation) parseAnnotationFlags(flags []string) error {
+func (opts *Annotation) Parse(*cobra.Command) error {
+	opts.Annotations = make(map[string]map[string]string)
 	manifestAnnotations := make(map[string]string)
-	for _, anno := range flags {
+	for _, anno := range opts.ManifestAnnotationFlags {
 		key, val, success := strings.Cut(anno, "=")
 		if !success {
 			return &oerrors.Error{
