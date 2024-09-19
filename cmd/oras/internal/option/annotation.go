@@ -38,36 +38,12 @@ var (
 
 // Packer option struct.
 type Annotation struct {
-	AnnotationFilePath  string
 	ManifestAnnotations []string
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Annotation) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringArrayVarP(&opts.ManifestAnnotations, "annotation", "a", nil, "manifest annotations")
-	fs.StringVarP(&opts.AnnotationFilePath, "annotation-file", "", "", "path of the annotation file")
-}
-
-// LoadManifestAnnotations loads the manifest annotation map.
-func (opts *Annotation) LoadManifestAnnotations() (annotations map[string]map[string]string, err error) {
-	if opts.AnnotationFilePath != "" && len(opts.ManifestAnnotations) != 0 {
-		return nil, errAnnotationConflict
-	}
-	if opts.AnnotationFilePath != "" {
-		if err = decodeJSON(opts.AnnotationFilePath, &annotations); err != nil {
-			return nil, &oerrors.Error{
-				Err:            fmt.Errorf(`invalid annotation json file: failed to load annotations from %s`, opts.AnnotationFilePath),
-				Recommendation: `Annotation file doesn't match the required format. Please refer to the document at https://oras.land/docs/how_to_guides/manifest_annotations`,
-			}
-		}
-	}
-	if len(opts.ManifestAnnotations) != 0 {
-		annotations = make(map[string]map[string]string)
-		if err = parseAnnotationFlags(opts.ManifestAnnotations, annotations); err != nil {
-			return nil, err
-		}
-	}
-	return
 }
 
 // parseAnnotationFlags parses annotation flags into a map.
