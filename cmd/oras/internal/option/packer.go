@@ -74,6 +74,7 @@ func (opts *Packer) ExportManifest(ctx context.Context, fetcher content.Fetcher,
 	}
 	return os.WriteFile(opts.ManifestExportPath, manifestBytes, 0666)
 }
+
 func (opts *Packer) Parse(cmd *cobra.Command) error {
 	if !opts.PathValidationDisabled {
 		var failedPaths []string
@@ -95,22 +96,22 @@ func (opts *Packer) Parse(cmd *cobra.Command) error {
 }
 
 // parseAnnotations loads the manifest annotation map.
-func (opts *Packer) parseAnnotations(cmd *cobra.Command) (err error) {
-	if opts.AnnotationFilePath != "" && len(opts.ManifestAnnotationFlags) != 0 {
+func (opts *Packer) parseAnnotations(cmd *cobra.Command) error {
+	if opts.AnnotationFilePath != "" && len(opts.ManifestAnnotations) != 0 {
 		return errAnnotationConflict
 	}
 	if opts.AnnotationFilePath != "" {
-		if err = decodeJSON(opts.AnnotationFilePath, &opts.Annotations); err != nil {
+		if err := decodeJSON(opts.AnnotationFilePath, &opts.Annotations); err != nil {
 			return &oerrors.Error{
 				Err:            fmt.Errorf(`invalid annotation json file: failed to load annotations from %s`, opts.AnnotationFilePath),
 				Recommendation: `Annotation file doesn't match the required format. Please refer to the document at https://oras.land/docs/how_to_guides/manifest_annotations`,
 			}
 		}
 	}
-	if len(opts.ManifestAnnotationFlags) != 0 {
+	if len(opts.ManifestAnnotations) != 0 {
 		return opts.Annotation.Parse(cmd)
 	}
-	return
+	return nil
 }
 
 // decodeJSON decodes a json file v to filename.

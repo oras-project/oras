@@ -40,7 +40,7 @@ func TestPacker_FlagInit(t *testing.T) {
 func TestPacker_parseAnnotations_err(t *testing.T) {
 	opts := Packer{
 		Annotation: Annotation{
-			ManifestAnnotationFlags: []string{"Key=Val"},
+			ManifestAnnotations: []string{"Key=Val"},
 		},
 		AnnotationFilePath: "this is not a file", // testFile,
 	}
@@ -57,7 +57,7 @@ func TestPacker_parseAnnotations_err(t *testing.T) {
 
 	opts = Packer{
 		Annotation: Annotation{
-			ManifestAnnotationFlags: []string{"KeyVal"},
+			ManifestAnnotations: []string{"KeyVal"},
 		},
 	}
 	if err := opts.parseAnnotations(nil); !errors.Is(err, errAnnotationFormat) {
@@ -66,7 +66,7 @@ func TestPacker_parseAnnotations_err(t *testing.T) {
 
 	opts = Packer{
 		Annotation: Annotation{
-			ManifestAnnotationFlags: []string{"Key=Val1", "Key=Val2"},
+			ManifestAnnotations: []string{"Key=Val1", "Key=Val2"},
 		},
 	}
 	if err := opts.parseAnnotations(nil); !errors.Is(err, errAnnotationDuplication) {
@@ -100,7 +100,7 @@ func TestPacker_parseAnnotations_annotationFlag(t *testing.T) {
 	}
 	opts := Packer{
 		Annotation: Annotation{
-			ManifestAnnotationFlags: invalidFlag0,
+			ManifestAnnotations: invalidFlag0,
 		},
 	}
 	err := opts.parseAnnotations(nil)
@@ -115,7 +115,7 @@ func TestPacker_parseAnnotations_annotationFlag(t *testing.T) {
 	}
 	opts = Packer{
 		Annotation: Annotation{
-			ManifestAnnotationFlags: invalidFlag1,
+			ManifestAnnotations: invalidFlag1,
 		},
 	}
 	err = opts.parseAnnotations(nil)
@@ -131,7 +131,7 @@ func TestPacker_parseAnnotations_annotationFlag(t *testing.T) {
 	}
 	opts = Packer{
 		Annotation: Annotation{
-			ManifestAnnotationFlags: validFlag,
+			ManifestAnnotations: validFlag,
 		},
 	}
 	err = opts.parseAnnotations(nil)

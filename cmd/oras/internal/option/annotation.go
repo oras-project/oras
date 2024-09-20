@@ -32,19 +32,21 @@ var (
 
 // Packer option struct.
 type Annotation struct {
-	ManifestAnnotationFlags []string                     // raw input of manifest annotation flags
-	Annotations             map[string]map[string]string // parsed manifest and config annotations
+	// ManifestAnnotations contains raw input of manifest annotation "key=value" pairs
+	ManifestAnnotations []string
+
+	// Annotations contains parsed manifest and config annotations
+	Annotations map[string]map[string]string
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Annotation) ApplyFlags(fs *pflag.FlagSet) {
-	fs.StringArrayVarP(&opts.ManifestAnnotationFlags, "annotation", "a", nil, "manifest annotations")
+	fs.StringArrayVarP(&opts.ManifestAnnotations, "annotation", "a", nil, "manifest annotations")
 }
 
 func (opts *Annotation) Parse(*cobra.Command) error {
-	opts.Annotations = make(map[string]map[string]string)
 	manifestAnnotations := make(map[string]string)
-	for _, anno := range opts.ManifestAnnotationFlags {
+	for _, anno := range opts.ManifestAnnotations {
 		key, val, success := strings.Cut(anno, "=")
 		if !success {
 			return &oerrors.Error{
@@ -57,6 +59,8 @@ func (opts *Annotation) Parse(*cobra.Command) error {
 		}
 		manifestAnnotations[key] = val
 	}
-	opts.Annotations[AnnotationManifest] = manifestAnnotations
+	opts.Annotations = map[string]map[string]string{
+		AnnotationManifest: manifestAnnotations,
+	}
 	return nil
 }
