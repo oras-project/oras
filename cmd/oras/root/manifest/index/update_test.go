@@ -110,7 +110,7 @@ func Test_doRemoveManifests(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doRemoveManifests(tt.manifests, tt.digestSet, tt.printer, tt.indexRef)
+			got, err := doRemoveManifests(tt.manifests, tt.digestSet, tt.printer, false, tt.indexRef)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("removeManifestsFromIndex() error = %v, wantErr %v", err, tt.wantErr)
 				return

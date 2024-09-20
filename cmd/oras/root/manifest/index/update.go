@@ -47,6 +47,7 @@ type updateOptions struct {
 	removeArguments []string
 	tags            []string
 	outputPath      string
+	stdoutput       bool
 }
 
 func updateCmd() *cobra.Command {
@@ -85,6 +86,7 @@ Example - Update an index and output the index to stdout, auto push will be disa
 					return fmt.Errorf("remove: %s is not a digest", manifestRef)
 				}
 			}
+			opts.stdoutput = (opts.outputPath == "-")
 			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -138,13 +140,12 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	}
 	desc := content.NewDescriptorFromBytes(index.MediaType, indexBytes)
 
-	printUpdateStatus(status.IndexPromptUpdated, string(desc.Digest), "", opts.Printer)
+	printUpdateStatus(opts.stdoutput, status.IndexPromptUpdated, string(desc.Digest), "", opts.Printer)
 	path := getPushPath(opts.RawReference, opts.Type, opts.Reference, opts.Path)
 	switch opts.outputPath {
 	case "":
 		err = pushIndex(ctx, target, desc, indexBytes, opts.Reference, opts.tags, path, opts.Printer)
 	case "-":
-		opts.Println("Digest:", desc.Digest)
 		err = opts.Output(os.Stdout, indexBytes)
 	default:
 		opts.Println("Digest:", desc.Digest)
@@ -154,7 +155,7 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 }
 
 func fetchIndex(ctx context.Context, target oras.ReadOnlyTarget, opts updateOptions) (ocispec.Index, error) {
-	printUpdateStatus(status.IndexPromptFetching, opts.Reference, "", opts.Printer)
+	printUpdateStatus(opts.stdoutput, status.IndexPromptFetching, opts.Reference, "", opts.Printer)
 	desc, content, err := oras.FetchBytes(ctx, target, opts.Reference, oras.DefaultFetchBytesOptions)
 	if err != nil {
 		return ocispec.Index{}, fmt.Errorf("could not find the index %s: %w", opts.Reference, err)
@@ -162,7 +163,7 @@ func fetchIndex(ctx context.Context, target oras.ReadOnlyTarget, opts updateOpti
 	if !descriptor.IsIndex(desc) {
 		return ocispec.Index{}, fmt.Errorf("%s is not an index", opts.Reference)
 	}
-	printUpdateStatus(status.IndexPromptFetched, opts.Reference, string(desc.Digest), opts.Printer)
+	printUpdateStatus(opts.stdoutput, status.IndexPromptFetched, opts.Reference, string(desc.Digest), opts.Printer)
 	var index ocispec.Index
 	if err := json.Unmarshal(content, &index); err != nil {
 		return ocispec.Index{}, err
@@ -172,7 +173,7 @@ func fetchIndex(ctx context.Context, target oras.ReadOnlyTarget, opts updateOpti
 
 func addManifests(ctx context.Context, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, opts updateOptions) ([]ocispec.Descriptor, error) {
 	for _, manifestRef := range opts.addArguments {
-		printUpdateStatus(status.IndexPromptFetching, manifestRef, "", opts.Printer)
+		printUpdateStatus(opts.stdoutput, status.IndexPromptFetching, manifestRef, "", opts.Printer)
 		desc, content, err := oras.FetchBytes(ctx, target, manifestRef, oras.DefaultFetchBytesOptions)
 		if err != nil {
 			return nil, fmt.Errorf("could not find the manifest %s: %w", manifestRef, err)
@@ -180,7 +181,7 @@ func addManifests(ctx context.Context, manifests []ocispec.Descriptor, target or
 		if !descriptor.IsManifest(desc) {
 			return nil, fmt.Errorf("%s is not a manifest", manifestRef)
 		}
-		printUpdateStatus(status.IndexPromptFetched, manifestRef, string(desc.Digest), opts.Printer)
+		printUpdateStatus(opts.stdoutput, status.IndexPromptFetched, manifestRef, string(desc.Digest), opts.Printer)
 		if descriptor.IsImageManifest(desc) {
 			desc.Platform, err = getPlatform(ctx, target, content)
 			if err != nil {
@@ -188,14 +189,14 @@ func addManifests(ctx context.Context, manifests []ocispec.Descriptor, target or
 			}
 		}
 		manifests = append(manifests, desc)
-		printUpdateStatus(status.IndexPromptAdded, manifestRef, string(desc.Digest), opts.Printer)
+		printUpdateStatus(opts.stdoutput, status.IndexPromptAdded, manifestRef, string(desc.Digest), opts.Printer)
 	}
 	return manifests, nil
 }
 
 func mergeIndexes(ctx context.Context, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, opts updateOptions) ([]ocispec.Descriptor, error) {
 	for _, indexRef := range opts.mergeArguments {
-		printUpdateStatus(status.IndexPromptFetching, indexRef, "", opts.Printer)
+		printUpdateStatus(opts.stdoutput, status.IndexPromptFetching, indexRef, "", opts.Printer)
 		desc, content, err := oras.FetchBytes(ctx, target, indexRef, oras.DefaultFetchBytesOptions)
 		if err != nil {
 			return nil, fmt.Errorf("could not find the index %s: %w", indexRef, err)
@@ -203,13 +204,13 @@ func mergeIndexes(ctx context.Context, manifests []ocispec.Descriptor, target or
 		if !descriptor.IsIndex(desc) {
 			return nil, fmt.Errorf("%s is not an index", indexRef)
 		}
-		printUpdateStatus(status.IndexPromptFetched, indexRef, string(desc.Digest), opts.Printer)
+		printUpdateStatus(opts.stdoutput, status.IndexPromptFetched, indexRef, string(desc.Digest), opts.Printer)
 		var index ocispec.Index
 		if err := json.Unmarshal(content, &index); err != nil {
 			return nil, err
 		}
 		manifests = append(manifests, index.Manifests...)
-		printUpdateStatus(status.IndexPromptMerged, indexRef, string(desc.Digest), opts.Printer)
+		printUpdateStatus(opts.stdoutput, status.IndexPromptMerged, indexRef, string(desc.Digest), opts.Printer)
 	}
 	return manifests, nil
 }
@@ -220,10 +221,10 @@ func removeManifests(ctx context.Context, manifests []ocispec.Descriptor, target
 	for _, manifestRef := range opts.removeArguments {
 		digestToRemove[digest.Digest(manifestRef)] = false
 	}
-	return doRemoveManifests(manifests, digestToRemove, opts.Printer, opts.Reference)
+	return doRemoveManifests(manifests, digestToRemove, opts.Printer, opts.stdoutput, opts.Reference)
 }
 
-func doRemoveManifests(originalManifests []ocispec.Descriptor, digestToRemove map[digest.Digest]bool, printer *output.Printer, indexRef string) ([]ocispec.Descriptor, error) {
+func doRemoveManifests(originalManifests []ocispec.Descriptor, digestToRemove map[digest.Digest]bool, printer *output.Printer, stdoutput bool, indexRef string) ([]ocispec.Descriptor, error) {
 	manifests := []ocispec.Descriptor{}
 	for _, m := range originalManifests {
 		if _, exists := digestToRemove[m.Digest]; exists {
@@ -236,7 +237,7 @@ func doRemoveManifests(originalManifests []ocispec.Descriptor, digestToRemove ma
 		if !removed {
 			return nil, fmt.Errorf("%s does not exist in the index %s", digest, indexRef)
 		}
-		printUpdateStatus(status.IndexPromptRemoved, string(digest), "", printer)
+		printUpdateStatus(stdoutput, status.IndexPromptRemoved, string(digest), "", printer)
 	}
 	return manifests, nil
 }
@@ -245,7 +246,10 @@ func updateFlagsUsed(flags *pflag.FlagSet) bool {
 	return flags.Changed("add") || flags.Changed("remove") || flags.Changed("merge")
 }
 
-func printUpdateStatus(verb string, reference string, resolvedDigest string, printer *output.Printer) {
+func printUpdateStatus(stdoutput bool, verb string, reference string, resolvedDigest string, printer *output.Printer) {
+	if stdoutput {
+		return
+	}
 	if resolvedDigest == "" || contentutil.IsDigest(reference) {
 		printer.Println(verb, reference)
 	} else {

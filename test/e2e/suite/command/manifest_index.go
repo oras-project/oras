@@ -149,7 +149,7 @@ var _ = Describe("1.1 registry users:", func() {
 			testRepo := indexTestRepo("create", "output-to-stdout")
 			CopyZOTRepo(ImageRepo, testRepo)
 			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, ""), string(multi_arch.LinuxAMD64.Digest),
-				"--output", "-").MatchKeyWords(multi_arch.OutputIndex).Exec()
+				"--output", "-").MatchContent(multi_arch.OutputIndex).Exec()
 		})
 
 		It("should fail if given a reference that does not exist in the repo", func() {
@@ -249,7 +249,7 @@ var _ = Describe("1.1 registry users:", func() {
 			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, "v1")).Exec()
 			// add a manifest to the index
 			ORAS("manifest", "index", "update", RegistryRef(ZOTHost, testRepo, "v1"),
-				"--add", string(multi_arch.LinuxAMD64.Digest), "--output", "-").MatchKeyWords(multi_arch.OutputIndex).Exec()
+				"--add", string(multi_arch.LinuxAMD64.Digest), "--output", "-").MatchContent(multi_arch.OutputIndex).Exec()
 		})
 
 		It("should tell user nothing to update if no update flags are used", func() {
@@ -417,7 +417,7 @@ var _ = Describe("OCI image layout users:", func() {
 			root := PrepareTempOCI(ImageRepo)
 			indexRef := LayoutRef(root, "output-to-stdout")
 			ORAS("manifest", "index", "create", Flags.Layout, indexRef, string(multi_arch.LinuxAMD64.Digest),
-				"--output", "-").MatchKeyWords(multi_arch.OutputIndex).Exec()
+				"--output", "-").MatchContent(multi_arch.OutputIndex).Exec()
 		})
 
 		It("should fail if given a reference that does not exist in the repo", func() {
@@ -502,7 +502,7 @@ var _ = Describe("OCI image layout users:", func() {
 			ORAS("manifest", "index", "create", Flags.Layout, LayoutRef(root, "index01")).Exec()
 			// add a manifest to the index
 			ORAS("manifest", "index", "update", Flags.Layout, LayoutRef(root, "index01"),
-				"--add", string(multi_arch.LinuxAMD64.Digest), "--output", "-").MatchKeyWords(multi_arch.OutputIndex).Exec()
+				"--add", string(multi_arch.LinuxAMD64.Digest), "--output", "-").MatchContent(multi_arch.OutputIndex).Exec()
 		})
 
 		It("should tell user nothing to update if no update flags are used", func() {

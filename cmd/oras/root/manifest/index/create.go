@@ -51,6 +51,7 @@ type createOptions struct {
 	sources    []string
 	extraRefs  []string
 	outputPath string
+	stdoutput  bool
 }
 
 func createCmd() *cobra.Command {
@@ -87,6 +88,7 @@ Example - Create an index and output the index to stdout, auto push will be disa
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
 			opts.sources = args[1:]
+			opts.stdoutput = (opts.outputPath == "-")
 			return option.Parse(cmd, &opts)
 		},
 		Aliases: []string{"pack"},
@@ -121,13 +123,12 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 		return err
 	}
 	desc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageIndex, indexBytes)
-	opts.Println(status.IndexPromptPacked, descriptor.ShortDigest(desc), ocispec.MediaTypeImageIndex)
+	printCreateStatus(opts.stdoutput, opts.Printer, status.IndexPromptPacked, descriptor.ShortDigest(desc), ocispec.MediaTypeImageIndex)
 
 	switch opts.outputPath {
 	case "":
 		err = pushIndex(ctx, target, desc, indexBytes, opts.Reference, opts.extraRefs, opts.AnnotatedReference(), opts.Printer)
 	case "-":
-		opts.Println("Digest:", desc.Digest)
 		err = opts.Output(os.Stdout, indexBytes)
 	default:
 		opts.Println("Digest:", desc.Digest)
@@ -139,7 +140,7 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 func fetchSourceManifests(ctx context.Context, target oras.ReadOnlyTarget, opts createOptions) ([]ocispec.Descriptor, error) {
 	resolved := []ocispec.Descriptor{}
 	for _, source := range opts.sources {
-		opts.Println(status.IndexPromptFetching, source)
+		printCreateStatus(opts.stdoutput, opts.Printer, status.IndexPromptFetching, source)
 		desc, content, err := oras.FetchBytes(ctx, target, source, oras.DefaultFetchBytesOptions)
 		if err != nil {
 			return nil, fmt.Errorf("could not find the manifest %s: %w", source, err)
@@ -147,7 +148,7 @@ func fetchSourceManifests(ctx context.Context, target oras.ReadOnlyTarget, opts 
 		if !descriptor.IsManifest(desc) {
 			return nil, fmt.Errorf("%s is not a manifest", source)
 		}
-		opts.Println(status.IndexPromptFetched, source)
+		printCreateStatus(opts.stdoutput, opts.Printer, status.IndexPromptFetched, source)
 		desc = descriptor.Plain(desc)
 		if descriptor.IsImageManifest(desc) {
 			desc.Platform, err = getPlatform(ctx, target, content)
@@ -203,4 +204,10 @@ func pushIndex(ctx context.Context, target oras.Target, desc ocispec.Descriptor,
 		}
 	}
 	return printer.Println("Digest:", desc.Digest)
+}
+
+func printCreateStatus(stdoutput bool, printer *output.Printer, vals ...any) {
+	if !stdoutput {
+		printer.Println(vals...)
+	}
 }
