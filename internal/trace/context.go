@@ -36,7 +36,14 @@ func NewLogger(ctx context.Context, debug bool) (context.Context, logrus.FieldLo
 	}
 
 	logger := logrus.New()
-	logger.SetFormatter(&logrus.TextFormatter{DisableQuote: true})
+	// logger.SetFormatter(&logrus.TextFormatter{
+	// 	DisableQuote:           true,
+	// 	FullTimestamp:          true,
+	// 	DisableLevelTruncation: true,
+	// 	ForceColors:            true,
+	// })
+	logger.SetFormatter(&TextFormatter{})
+
 	logger.SetLevel(logLevel)
 	entry := logger.WithContext(ctx)
 	return context.WithValue(ctx, loggerKey, entry), entry

@@ -54,7 +54,7 @@ func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error
 	e := Logger(ctx)
 
 	// log the request
-	e.Debugf("Request #%d\n> Request URL: %q\n> Request method: %q\n> Request headers:\n%s",
+	e.Debugf("--> Request #%d\n> Request URL: %q\n> Request method: %q\n> Request headers:\n%s",
 		id, req.URL, req.Method, logHeader(req.Header))
 
 	// log the response
@@ -64,7 +64,7 @@ func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error
 	} else if resp == nil {
 		e.Errorf("No response obtained for request %s %q", req.Method, req.URL)
 	} else {
-		e.Debugf("Response #%d\n< Response Status: %q\n< Response headers:\n%s",
+		e.Debugf("<-- Response #%d\n< Response Status: %q\n< Response headers:\n%s",
 			id, resp.Status, logHeader(resp.Header))
 	}
 	return resp, err
