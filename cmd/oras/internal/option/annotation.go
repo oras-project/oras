@@ -30,7 +30,7 @@ var (
 	errAnnotationDuplication = errors.New("duplicate annotation key")
 )
 
-// Packer option struct.
+// Annotation option struct.
 type Annotation struct {
 	// ManifestAnnotations contains raw input of manifest annotation "key=value" pairs
 	ManifestAnnotations []string
@@ -44,6 +44,7 @@ func (opts *Annotation) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringArrayVarP(&opts.ManifestAnnotations, "annotation", "a", nil, "manifest annotations")
 }
 
+// Parse parses the input annotation flags.
 func (opts *Annotation) Parse(*cobra.Command) error {
 	manifestAnnotations := make(map[string]string)
 	for _, anno := range opts.ManifestAnnotations {
