@@ -39,26 +39,26 @@ const (
 )
 
 var (
-	errAnnotationConflict    = errors.New("`--annotation` and `--annotation-file` cannot be both specified")
-	errAnnotationFormat      = errors.New("annotation value doesn't match the required format")
-	errAnnotationDuplication = errors.New("duplicate annotation key")
-	errPathValidation        = errors.New("absolute file path detected. If it's intentional, use --disable-path-validation flag to skip this check")
+	errAnnotationConflict = errors.New("`--annotation` and `--annotation-file` cannot be both specified")
+	errPathValidation     = errors.New("absolute file path detected. If it's intentional, use --disable-path-validation flag to skip this check")
 )
 
 // Packer option struct.
 type Packer struct {
+	Annotation
+
 	ManifestExportPath     string
 	PathValidationDisabled bool
 	AnnotationFilePath     string
-	ManifestAnnotations    []string
 
 	FileRefs []string
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Packer) ApplyFlags(fs *pflag.FlagSet) {
+	opts.Annotation.ApplyFlags(fs)
+
 	fs.StringVarP(&opts.ManifestExportPath, "export-manifest", "", "", "`path` of the pushed manifest")
-	fs.StringArrayVarP(&opts.ManifestAnnotations, "annotation", "a", nil, "manifest annotations")
 	fs.StringVarP(&opts.AnnotationFilePath, "annotation-file", "", "", "path of the annotation file")
 	fs.BoolVarP(&opts.PathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
 }
@@ -74,7 +74,8 @@ func (opts *Packer) ExportManifest(ctx context.Context, fetcher content.Fetcher,
 	}
 	return os.WriteFile(opts.ManifestExportPath, manifestBytes, 0666)
 }
-func (opts *Packer) Parse(*cobra.Command) error {
+
+func (opts *Packer) Parse(cmd *cobra.Command) error {
 	if !opts.PathValidationDisabled {
 		var failedPaths []string
 		for _, path := range opts.FileRefs {
@@ -91,29 +92,26 @@ func (opts *Packer) Parse(*cobra.Command) error {
 			return fmt.Errorf("%w: %v", errPathValidation, strings.Join(failedPaths, ", "))
 		}
 	}
-	return nil
+	return opts.parseAnnotations(cmd)
 }
 
-// LoadManifestAnnotations loads the manifest annotation map.
-func (opts *Packer) LoadManifestAnnotations() (annotations map[string]map[string]string, err error) {
+// parseAnnotations loads the manifest annotation map.
+func (opts *Packer) parseAnnotations(cmd *cobra.Command) error {
 	if opts.AnnotationFilePath != "" && len(opts.ManifestAnnotations) != 0 {
-		return nil, errAnnotationConflict
+		return errAnnotationConflict
 	}
 	if opts.AnnotationFilePath != "" {
-		if err = decodeJSON(opts.AnnotationFilePath, &annotations); err != nil {
-			return nil, &oerrors.Error{
+		if err := decodeJSON(opts.AnnotationFilePath, &opts.Annotations); err != nil {
+			return &oerrors.Error{
 				Err:            fmt.Errorf(`invalid annotation json file: failed to load annotations from %s`, opts.AnnotationFilePath),
 				Recommendation: `Annotation file doesn't match the required format. Please refer to the document at https://oras.land/docs/how_to_guides/manifest_annotations`,
 			}
 		}
 	}
 	if len(opts.ManifestAnnotations) != 0 {
-		annotations = make(map[string]map[string]string)
-		if err = parseAnnotationFlags(opts.ManifestAnnotations, annotations); err != nil {
-			return nil, err
-		}
+		return opts.Annotation.Parse(cmd)
 	}
-	return
+	return nil
 }
 
 // decodeJSON decodes a json file v to filename.
@@ -124,24 +122,4 @@ func decodeJSON(filename string, v interface{}) error {
 	}
 	defer file.Close()
 	return json.NewDecoder(file).Decode(v)
-}
-
-// parseAnnotationFlags parses annotation flags into a map.
-func parseAnnotationFlags(flags []string, annotations map[string]map[string]string) error {
-	manifestAnnotations := make(map[string]string)
-	for _, anno := range flags {
-		key, val, success := strings.Cut(anno, "=")
-		if !success {
-			return &oerrors.Error{
-				Err:            errAnnotationFormat,
-				Recommendation: `Please use the correct format in the flag: --annotation "key=value"`,
-			}
-		}
-		if _, ok := manifestAnnotations[key]; ok {
-			return fmt.Errorf("%w: %v, ", errAnnotationDuplication, key)
-		}
-		manifestAnnotations[key] = val
-	}
-	annotations[AnnotationManifest] = manifestAnnotations
-	return nil
 }

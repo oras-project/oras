@@ -157,15 +157,11 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 
 func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-	annotations, err := opts.LoadManifestAnnotations()
-	if err != nil {
-		return err
-	}
 
 	// prepare pack
 	packOpts := oras.PackManifestOptions{
-		ConfigAnnotations:   annotations[option.AnnotationConfig],
-		ManifestAnnotations: annotations[option.AnnotationManifest],
+		ConfigAnnotations:   opts.Annotations[option.AnnotationConfig],
+		ManifestAnnotations: opts.Annotations[option.AnnotationManifest],
 	}
 	store, err := file.New("")
 	if err != nil {
@@ -190,7 +186,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	if err != nil {
 		return err
 	}
-	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, displayStatus)
+	descs, err := loadFiles(ctx, store, opts.Annotations, opts.FileRefs, displayStatus)
 	if err != nil {
 		return err
 	}
