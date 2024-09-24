@@ -16,6 +16,7 @@ limitations under the License.
 package text
 
 import (
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/output"
@@ -36,4 +37,9 @@ func NewManifestIndexCreateHandler(printer *output.Printer) metadata.ManifestInd
 // OnTagged implements metadata.TaggedHandler.
 func (h *ManifestIndexCreateHandler) OnTagged(_ ocispec.Descriptor, tag string) error {
 	return h.printer.Println("Tagged", tag)
+}
+
+// OnCompleted implements ManifestIndexCreateHandler.
+func (h *ManifestIndexCreateHandler) OnCompleted(digest digest.Digest) error {
+	return h.printer.Println("Digest:", digest)
 }

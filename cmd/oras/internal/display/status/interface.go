@@ -17,6 +17,7 @@ package status
 
 import (
 	"context"
+
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 )
@@ -60,4 +61,12 @@ type CopyHandler interface {
 	PreCopy(ctx context.Context, desc ocispec.Descriptor) error
 	PostCopy(ctx context.Context, desc ocispec.Descriptor) error
 	OnMounted(ctx context.Context, desc ocispec.Descriptor) error
+}
+
+// ManifestIndexCreateHandler handles status output for manifest index create command.
+type ManifestIndexCreateHandler interface {
+	OnManifestFetching(source string) error
+	OnManifestFetched(source string) error
+	OnIndexPacked(shortDigest string) error
+	OnIndexPushed(path string) error
 }

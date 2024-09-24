@@ -179,3 +179,36 @@ func (ch *TextCopyHandler) OnMounted(_ context.Context, desc ocispec.Descriptor)
 	ch.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
 	return ch.printer.PrintStatus(desc, copyPromptMounted)
 }
+
+// TextManifestIndexCreateHandler handles text status output for manifest index create events.
+type TextManifestIndexCreateHandler struct {
+	printer *output.Printer
+}
+
+// OnManifestFetching implements ManifestIndexCreateHandler.
+func (mich TextManifestIndexCreateHandler) OnManifestFetching(source string) error {
+	return mich.printer.Println(IndexPromptFetching, source)
+}
+
+// OnManifestFetched implements ManifestIndexCreateHandler.
+func (mich TextManifestIndexCreateHandler) OnManifestFetched(source string) error {
+	return mich.printer.Println(IndexPromptFetched, source)
+}
+
+// OnIndexPacked implements ManifestIndexCreateHandler.
+func (mich TextManifestIndexCreateHandler) OnIndexPacked(shortDigest string) error {
+	return mich.printer.Println(IndexPromptPacked, shortDigest, ocispec.MediaTypeImageIndex)
+}
+
+// OnIndexPushed implements ManifestIndexCreateHandler.
+func (mich TextManifestIndexCreateHandler) OnIndexPushed(path string) error {
+	return mich.printer.Println(IndexPromptPushed, path)
+}
+
+// NewTextManifestIndexCreateHandler returns a new handler for manifest index create command.
+func NewTextManifestIndexCreateHandler(printer *output.Printer) ManifestIndexCreateHandler {
+	tmich := TextManifestIndexCreateHandler{
+		printer: printer,
+	}
+	return &tmich
+}

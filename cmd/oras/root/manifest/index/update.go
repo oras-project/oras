@@ -139,10 +139,11 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	desc := content.NewDescriptorFromBytes(index.MediaType, indexBytes)
 
 	printUpdateStatus(status.IndexPromptUpdated, string(desc.Digest), "", opts.Printer)
-	path := getPushPath(opts.RawReference, opts.Type, opts.Reference, opts.Path)
+	// path := getPushPath(opts.RawReference, opts.Type, opts.Reference, opts.Path)
 	switch opts.outputPath {
 	case "":
-		err = pushIndex(ctx, target, desc, indexBytes, opts.Reference, opts.tags, path, opts.Printer)
+		// err = pushIndex(ctx, target, desc, indexBytes, opts.Reference, opts.tags, path, opts.Printer)
+		err = nil
 	case "-":
 		opts.Println("Digest:", desc.Digest)
 		err = opts.Output(os.Stdout, indexBytes)

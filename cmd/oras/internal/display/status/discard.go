@@ -88,3 +88,23 @@ func (DiscardHandler) OnNodeProcessing(desc ocispec.Descriptor) error {
 func (DiscardHandler) OnNodeSkipped(desc ocispec.Descriptor) error {
 	return nil
 }
+
+// OnManifestFetching implements ManifestIndexCreateHandler.
+func (DiscardHandler) OnManifestFetching(source string) error {
+	return nil
+}
+
+// OnManifestFetched implements ManifestIndexCreateHandler.
+func (DiscardHandler) OnManifestFetched(source string) error {
+	return nil
+}
+
+// OnIndexPacked implements ManifestIndexCreateHandler.
+func (DiscardHandler) OnIndexPacked(shortDigest string) error {
+	return nil
+}
+
+// OnIndexPushed implements ManifestIndexCreateHandler.
+func (DiscardHandler) OnIndexPushed(path string) error {
+	return nil
+}
