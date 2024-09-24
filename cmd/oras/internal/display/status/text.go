@@ -251,13 +251,19 @@ func (miuh TextManifestIndexUpdateHandler) OnManifestRemoved(digest digest.Diges
 }
 
 // OnManifestAdded implements ManifestIndexUpdateHandler.
-func (miuh TextManifestIndexUpdateHandler) OnManifestAdded(source string, digest digest.Digest) error {
-	return miuh.printer.Println(IndexPromptAdded, source)
+func (miuh TextManifestIndexUpdateHandler) OnManifestAdded(ref string, digest digest.Digest) error {
+	if digest != "" {
+		return miuh.printer.Println(IndexPromptAdded, digest, ref)
+	}
+	return miuh.printer.Println(IndexPromptAdded, ref)
 }
 
 // OnIndexMerged implements ManifestIndexUpdateHandler.
-func (miuh TextManifestIndexUpdateHandler) OnIndexMerged(source string, digest digest.Digest) error {
-	return miuh.printer.Println(IndexPromptMerged, source)
+func (miuh TextManifestIndexUpdateHandler) OnIndexMerged(ref string, digest digest.Digest) error {
+	if digest != "" {
+		return miuh.printer.Println(IndexPromptMerged, digest, ref)
+	}
+	return miuh.printer.Println(IndexPromptMerged, ref)
 }
 
 // OnIndexUpdated implements ManifestIndexUpdateHandler.
