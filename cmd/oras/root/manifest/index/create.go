@@ -140,7 +140,9 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 	case "-":
 		err = opts.Output(os.Stdout, indexBytes)
 	default:
-		displayMetadata.OnCompleted(desc.Digest)
+		if err := displayMetadata.OnCompleted(desc.Digest); err != nil {
+			return err
+		}
 		err = os.WriteFile(opts.outputPath, indexBytes, 0666)
 	}
 	return err
