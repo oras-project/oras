@@ -101,12 +101,12 @@ func (DiscardHandler) OnSourceManifestFetched(source string) error {
 }
 
 // OnManifestFetching implements ManifestIndexUpdateHandler.
-func (DiscardHandler) OnManifestFetching(source string) error {
+func (DiscardHandler) OnManifestFetching(ref string) error {
 	return nil
 }
 
 // OnManifestFetched implements ManifestIndexUpdateHandler.
-func (DiscardHandler) OnManifestFetched(source string, digest digest.Digest) error {
+func (DiscardHandler) OnManifestFetched(ref string, digest digest.Digest) error {
 	return nil
 }
 
@@ -116,7 +116,7 @@ func (DiscardHandler) OnManifestRemoved(digest digest.Digest) error {
 }
 
 // OnManifestAdded implements ManifestIndexUpdateHandler.
-func (DiscardHandler) OnManifestAdded(source string, digest digest.Digest) error {
+func (DiscardHandler) OnManifestAdded(ref string, digest digest.Digest) error {
 	return nil
 }
 
@@ -141,7 +141,7 @@ func (DiscardHandler) OnIndexPacked(shortDigest string) error {
 }
 
 // OnIndexUpdated implements ManifestIndexUpdateHandler.
-func (DiscardHandler) OnIndexUpdated(shortDigest string) error {
+func (DiscardHandler) OnIndexUpdated(digest digest.Digest) error {
 	return nil
 }
 

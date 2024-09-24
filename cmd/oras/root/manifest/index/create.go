@@ -113,7 +113,7 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 	if err != nil {
 		return err
 	}
-	manifests, err := fetchSourceManifests(ctx, displayStatus, target, opts)
+	manifests, err := fetchSourceManifests(ctx, displayStatus, target, opts.sources)
 	if err != nil {
 		return err
 	}
@@ -146,9 +146,9 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 	return err
 }
 
-func fetchSourceManifests(ctx context.Context, displayStatus status.ManifestIndexCreateHandler, target oras.ReadOnlyTarget, opts createOptions) ([]ocispec.Descriptor, error) {
+func fetchSourceManifests(ctx context.Context, displayStatus status.ManifestIndexCreateHandler, target oras.ReadOnlyTarget, sources []string) ([]ocispec.Descriptor, error) {
 	resolved := []ocispec.Descriptor{}
-	for _, source := range opts.sources {
+	for _, source := range sources {
 		if err := displayStatus.OnSourceManifestFetching(source); err != nil {
 			return nil, err
 		}

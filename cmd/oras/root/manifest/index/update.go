@@ -118,7 +118,7 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	if err != nil {
 		return err
 	}
-	index, err := fetchIndex(ctx, displayStatus, target, opts)
+	index, err := fetchIndex(ctx, displayStatus, target, opts.Reference)
 	if err != nil {
 		return err
 	}
@@ -126,11 +126,11 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	if err != nil {
 		return err
 	}
-	manifests, err = addManifests(ctx, displayStatus, manifests, target, opts)
+	manifests, err = addManifests(ctx, displayStatus, manifests, target, opts.addArguments)
 	if err != nil {
 		return err
 	}
-	manifests, err = mergeIndexes(ctx, displayStatus, manifests, target, opts)
+	manifests, err = mergeIndexes(ctx, displayStatus, manifests, target, opts.mergeArguments)
 	if err != nil {
 		return err
 	}
@@ -142,7 +142,7 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	}
 	desc := content.NewDescriptorFromBytes(index.MediaType, indexBytes)
 
-	displayStatus.OnIndexUpdated(string(desc.Digest))
+	displayStatus.OnIndexUpdated(desc.Digest)
 	path := getPushPath(opts.RawReference, opts.Type, opts.Reference, opts.Path)
 	switch opts.outputPath {
 	case "":
@@ -156,16 +156,16 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	return err
 }
 
-func fetchIndex(ctx context.Context, handler status.ManifestIndexUpdateHandler, target oras.ReadOnlyTarget, opts updateOptions) (ocispec.Index, error) {
-	handler.OnIndexFetching(opts.Reference)
-	desc, content, err := oras.FetchBytes(ctx, target, opts.Reference, oras.DefaultFetchBytesOptions)
+func fetchIndex(ctx context.Context, handler status.ManifestIndexUpdateHandler, target oras.ReadOnlyTarget, reference string) (ocispec.Index, error) {
+	handler.OnIndexFetching(reference)
+	desc, content, err := oras.FetchBytes(ctx, target, reference, oras.DefaultFetchBytesOptions)
 	if err != nil {
-		return ocispec.Index{}, fmt.Errorf("could not find the index %s: %w", opts.Reference, err)
+		return ocispec.Index{}, fmt.Errorf("could not find the index %s: %w", reference, err)
 	}
 	if !descriptor.IsIndex(desc) {
-		return ocispec.Index{}, fmt.Errorf("%s is not an index", opts.Reference)
+		return ocispec.Index{}, fmt.Errorf("%s is not an index", reference)
 	}
-	handler.OnIndexFetched(opts.Reference, desc.Digest)
+	handler.OnIndexFetched(reference, desc.Digest)
 	var index ocispec.Index
 	if err := json.Unmarshal(content, &index); err != nil {
 		return ocispec.Index{}, err
@@ -173,8 +173,8 @@ func fetchIndex(ctx context.Context, handler status.ManifestIndexUpdateHandler, 
 	return index, nil
 }
 
-func addManifests(ctx context.Context, handler status.ManifestIndexUpdateHandler, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, opts updateOptions) ([]ocispec.Descriptor, error) {
-	for _, manifestRef := range opts.addArguments {
+func addManifests(ctx context.Context, handler status.ManifestIndexUpdateHandler, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, addArguments []string) ([]ocispec.Descriptor, error) {
+	for _, manifestRef := range addArguments {
 		handler.OnManifestFetching(manifestRef)
 		desc, content, err := oras.FetchBytes(ctx, target, manifestRef, oras.DefaultFetchBytesOptions)
 		if err != nil {
@@ -196,8 +196,8 @@ func addManifests(ctx context.Context, handler status.ManifestIndexUpdateHandler
 	return manifests, nil
 }
 
-func mergeIndexes(ctx context.Context, handler status.ManifestIndexUpdateHandler, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, opts updateOptions) ([]ocispec.Descriptor, error) {
-	for _, indexRef := range opts.mergeArguments {
+func mergeIndexes(ctx context.Context, handler status.ManifestIndexUpdateHandler, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, mergeArguments []string) ([]ocispec.Descriptor, error) {
+	for _, indexRef := range mergeArguments {
 		handler.OnIndexFetching(indexRef)
 		desc, content, err := oras.FetchBytes(ctx, target, indexRef, oras.DefaultFetchBytesOptions)
 		if err != nil {

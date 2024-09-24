@@ -80,7 +80,7 @@ type ManifestIndexUpdateHandler interface {
 	OnManifestFetched(manifestRef string, digest digest.Digest) error
 	OnManifestRemoved(digest digest.Digest) error
 	OnManifestAdded(manifestRef string, digest digest.Digest) error
-	OnIndexMerged(manifestRef string, digest digest.Digest) error
-	OnIndexUpdated(shortDigest string) error
+	OnIndexMerged(indexRef string, digest digest.Digest) error
+	OnIndexUpdated(digest digest.Digest) error
 	OnIndexPushed(path string) error
 }

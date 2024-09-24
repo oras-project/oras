@@ -111,28 +111,6 @@ func NewPullHandler(printer *output.Printer, format option.Format, path string, 
 	return statusHandler, metadataHandler, nil
 }
 
-// NewManifestIndexCreateHandler returns status and metadata handlers for index create command.
-func NewManifestIndexCreateHandler(outputPath string, printer *output.Printer) (status.ManifestIndexCreateHandler, metadata.ManifestIndexCreateHandler, error) {
-	var statusHandler status.ManifestIndexCreateHandler
-	if outputPath == "-" {
-		statusHandler = status.NewDiscardHandler()
-	} else {
-		statusHandler = status.NewTextManifestIndexCreateHandler(printer)
-	}
-	return statusHandler, text.NewManifestIndexCreateHandler(printer), nil
-}
-
-// NewManifestIndexUpdateHandler returns status and metadata handlers for index update command.
-func NewManifestIndexUpdateHandler(outputPath string, printer *output.Printer) (status.ManifestIndexUpdateHandler, metadata.ManifestIndexUpdateHandler, error) {
-	var statusHandler status.ManifestIndexUpdateHandler
-	if outputPath == "-" {
-		statusHandler = status.NewDiscardHandler()
-	} else {
-		statusHandler = status.NewTextManifestIndexUpdateHandler(printer)
-	}
-	return statusHandler, text.NewManifestIndexCreateHandler(printer), nil
-}
-
 // NewDiscoverHandler returns status and metadata handlers for discover command.
 func NewDiscoverHandler(out io.Writer, format option.Format, path string, rawReference string, desc ocispec.Descriptor, verbose bool) (metadata.DiscoverHandler, error) {
 	var handler metadata.DiscoverHandler
@@ -194,6 +172,28 @@ func NewTagHandler(printer *output.Printer, target option.Target) metadata.TagHa
 // NewManifestPushHandler returns a manifest push handler.
 func NewManifestPushHandler(printer *output.Printer) metadata.ManifestPushHandler {
 	return text.NewManifestPushHandler(printer)
+}
+
+// NewManifestIndexCreateHandler returns status and metadata handlers for index create command.
+func NewManifestIndexCreateHandler(outputPath string, printer *output.Printer) (status.ManifestIndexCreateHandler, metadata.ManifestIndexCreateHandler, error) {
+	var statusHandler status.ManifestIndexCreateHandler
+	if outputPath == "-" {
+		statusHandler = status.NewDiscardHandler()
+	} else {
+		statusHandler = status.NewTextManifestIndexCreateHandler(printer)
+	}
+	return statusHandler, text.NewManifestIndexCreateHandler(printer), nil
+}
+
+// NewManifestIndexUpdateHandler returns status and metadata handlers for index update command.
+func NewManifestIndexUpdateHandler(outputPath string, printer *output.Printer) (status.ManifestIndexUpdateHandler, metadata.ManifestIndexUpdateHandler, error) {
+	var statusHandler status.ManifestIndexUpdateHandler
+	if outputPath == "-" {
+		statusHandler = status.NewDiscardHandler()
+	} else {
+		statusHandler = status.NewTextManifestIndexUpdateHandler(printer)
+	}
+	return statusHandler, text.NewManifestIndexCreateHandler(printer), nil
 }
 
 // NewCopyHandler returns copy handlers.

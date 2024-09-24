@@ -254,27 +254,27 @@ func (miuh TextManifestIndexUpdateHandler) OnManifestRemoved(digest digest.Diges
 // OnManifestAdded implements ManifestIndexUpdateHandler.
 func (miuh TextManifestIndexUpdateHandler) OnManifestAdded(ref string, digest digest.Digest) error {
 	if contentutil.IsDigest(ref) {
-		return miuh.printer.Println(IndexPromptFetched, ref)
+		return miuh.printer.Println(IndexPromptAdded, ref)
 	}
-	return miuh.printer.Println(IndexPromptFetched, digest, ref)
+	return miuh.printer.Println(IndexPromptAdded, digest, ref)
 }
 
 // OnIndexMerged implements ManifestIndexUpdateHandler.
 func (miuh TextManifestIndexUpdateHandler) OnIndexMerged(ref string, digest digest.Digest) error {
 	if contentutil.IsDigest(ref) {
-		return miuh.printer.Println(IndexPromptFetched, ref)
+		return miuh.printer.Println(IndexPromptMerged, ref)
 	}
-	return miuh.printer.Println(IndexPromptFetched, digest, ref)
+	return miuh.printer.Println(IndexPromptMerged, digest, ref)
 }
 
 // OnIndexUpdated implements ManifestIndexUpdateHandler.
-func (miuh TextManifestIndexUpdateHandler) OnIndexUpdated(source string) error {
-	return miuh.printer.Println(IndexPromptUpdated, source)
+func (miuh TextManifestIndexUpdateHandler) OnIndexUpdated(digest digest.Digest) error {
+	return miuh.printer.Println(IndexPromptUpdated, digest)
 }
 
 // OnIndexPushed implements ManifestIndexUpdateHandler.
-func (miuh TextManifestIndexUpdateHandler) OnIndexPushed(source string) error {
-	return miuh.printer.Println(IndexPromptPushed, source)
+func (miuh TextManifestIndexUpdateHandler) OnIndexPushed(indexRef string) error {
+	return miuh.printer.Println(IndexPromptPushed, indexRef)
 }
 
 // NewTextManifestIndexUpdateHandler returns a new handler for manifest index create command.
