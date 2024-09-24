@@ -21,6 +21,7 @@ import (
 
 	"oras.land/oras/internal/graph"
 
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
@@ -185,13 +186,13 @@ type TextManifestIndexCreateHandler struct {
 	printer *output.Printer
 }
 
-// OnManifestFetching implements ManifestIndexCreateHandler.
-func (mich TextManifestIndexCreateHandler) OnManifestFetching(source string) error {
+// OnSourceManifestFetching implements ManifestIndexCreateHandler.
+func (mich TextManifestIndexCreateHandler) OnSourceManifestFetching(source string) error {
 	return mich.printer.Println(IndexPromptFetching, source)
 }
 
-// OnManifestFetched implements ManifestIndexCreateHandler.
-func (mich TextManifestIndexCreateHandler) OnManifestFetched(source string) error {
+// OnSourceManifestFetched implements ManifestIndexCreateHandler.
+func (mich TextManifestIndexCreateHandler) OnSourceManifestFetched(source string) error {
 	return mich.printer.Println(IndexPromptFetched, source)
 }
 
@@ -211,4 +212,68 @@ func NewTextManifestIndexCreateHandler(printer *output.Printer) ManifestIndexCre
 		printer: printer,
 	}
 	return &tmich
+}
+
+// TextManifestIndexUpdateHandler handles text status output for manifest index update events.
+type TextManifestIndexUpdateHandler struct {
+	printer *output.Printer
+}
+
+// OnIndexFetching implements ManifestIndexUpdateHandler.
+func (miuh TextManifestIndexUpdateHandler) OnIndexFetching(indexRef string) error {
+	return miuh.printer.Println(IndexPromptFetching, indexRef)
+}
+
+// OnIndexFetched implements ManifestIndexUpdateHandler.
+func (miuh TextManifestIndexUpdateHandler) OnIndexFetched(indexRef string, digest digest.Digest) error {
+	if digest != "" {
+		return miuh.printer.Println(IndexPromptFetched, digest, indexRef)
+	}
+	return miuh.printer.Println(IndexPromptFetched, indexRef)
+}
+
+// OnManifestFetching implements ManifestIndexUpdateHandler.
+func (miuh TextManifestIndexUpdateHandler) OnManifestFetching(ref string) error {
+	return miuh.printer.Println(IndexPromptFetching, ref)
+}
+
+// OnManifestFetched implements ManifestIndexUpdateHandler.
+func (miuh TextManifestIndexUpdateHandler) OnManifestFetched(ref string, digest digest.Digest) error {
+	if digest != "" {
+		return miuh.printer.Println(IndexPromptFetched, digest, ref)
+	}
+	return miuh.printer.Println(IndexPromptFetched, ref)
+}
+
+// OnManifestRemoved implements ManifestIndexUpdateHandler.
+func (miuh TextManifestIndexUpdateHandler) OnManifestRemoved(digest digest.Digest) error {
+	return miuh.printer.Println(IndexPromptRemoved, digest)
+}
+
+// OnManifestAdded implements ManifestIndexUpdateHandler.
+func (miuh TextManifestIndexUpdateHandler) OnManifestAdded(source string, digest digest.Digest) error {
+	return miuh.printer.Println(IndexPromptAdded, source)
+}
+
+// OnIndexMerged implements ManifestIndexUpdateHandler.
+func (miuh TextManifestIndexUpdateHandler) OnIndexMerged(source string, digest digest.Digest) error {
+	return miuh.printer.Println(IndexPromptMerged, source)
+}
+
+// OnIndexUpdated implements ManifestIndexUpdateHandler.
+func (miuh TextManifestIndexUpdateHandler) OnIndexUpdated(source string) error {
+	return miuh.printer.Println(IndexPromptUpdated, source)
+}
+
+// OnIndexPushed implements ManifestIndexUpdateHandler.
+func (miuh TextManifestIndexUpdateHandler) OnIndexPushed(source string) error {
+	return miuh.printer.Println(IndexPromptPushed, source)
+}
+
+// NewTextManifestIndexUpdateHandler returns a new handler for manifest index create command.
+func NewTextManifestIndexUpdateHandler(printer *output.Printer) ManifestIndexUpdateHandler {
+	miuh := TextManifestIndexUpdateHandler{
+		printer: printer,
+	}
+	return &miuh
 }

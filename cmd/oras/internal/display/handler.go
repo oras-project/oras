@@ -122,6 +122,17 @@ func NewManifestIndexCreateHandler(outputPath string, printer *output.Printer) (
 	return statusHandler, text.NewManifestIndexCreateHandler(printer), nil
 }
 
+// NewManifestIndexUpdateHandler returns status and metadata handlers for index update command.
+func NewManifestIndexUpdateHandler(outputPath string, printer *output.Printer) (status.ManifestIndexUpdateHandler, metadata.ManifestIndexUpdateHandler, error) {
+	var statusHandler status.ManifestIndexUpdateHandler
+	if outputPath == "-" {
+		statusHandler = status.NewDiscardHandler()
+	} else {
+		statusHandler = status.NewTextManifestIndexUpdateHandler(printer)
+	}
+	return statusHandler, text.NewManifestIndexCreateHandler(printer), nil
+}
+
 // NewDiscoverHandler returns status and metadata handlers for discover command.
 func NewDiscoverHandler(out io.Writer, format option.Format, path string, rawReference string, desc ocispec.Descriptor, verbose bool) (metadata.DiscoverHandler, error) {
 	var handler metadata.DiscoverHandler

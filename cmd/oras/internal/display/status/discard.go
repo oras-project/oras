@@ -18,6 +18,7 @@ package status
 import (
 	"context"
 
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 )
@@ -89,18 +90,58 @@ func (DiscardHandler) OnNodeSkipped(desc ocispec.Descriptor) error {
 	return nil
 }
 
-// OnManifestFetching implements ManifestIndexCreateHandler.
+// OnSourceManifestFetching implements ManifestIndexCreateHandler.
+func (DiscardHandler) OnSourceManifestFetching(source string) error {
+	return nil
+}
+
+// OnSourceManifestFetched implements ManifestIndexCreateHandler.
+func (DiscardHandler) OnSourceManifestFetched(source string) error {
+	return nil
+}
+
+// OnManifestFetching implements ManifestIndexUpdateHandler.
 func (DiscardHandler) OnManifestFetching(source string) error {
 	return nil
 }
 
-// OnManifestFetched implements ManifestIndexCreateHandler.
-func (DiscardHandler) OnManifestFetched(source string) error {
+// OnManifestFetched implements ManifestIndexUpdateHandler.
+func (DiscardHandler) OnManifestFetched(source string, digest digest.Digest) error {
+	return nil
+}
+
+// OnManifestRemoved implements ManifestIndexUpdateHandler.
+func (DiscardHandler) OnManifestRemoved(digest digest.Digest) error {
+	return nil
+}
+
+// OnManifestAdded implements ManifestIndexUpdateHandler.
+func (DiscardHandler) OnManifestAdded(source string, digest digest.Digest) error {
+	return nil
+}
+
+// OnIndexFetching implements ManifestIndexUpdateHandler.
+func (DiscardHandler) OnIndexFetching(indexRef string) error {
+	return nil
+}
+
+// OnIndexFetched implements ManifestIndexUpdateHandler.
+func (DiscardHandler) OnIndexFetched(indexRef string, digest digest.Digest) error {
+	return nil
+}
+
+// OnIndexMerged implements ManifestIndexUpdateHandler.
+func (DiscardHandler) OnIndexMerged(indexRef string, digest digest.Digest) error {
 	return nil
 }
 
 // OnIndexPacked implements ManifestIndexCreateHandler.
 func (DiscardHandler) OnIndexPacked(shortDigest string) error {
+	return nil
+}
+
+// OnIndexUpdated implements ManifestIndexUpdateHandler.
+func (DiscardHandler) OnIndexUpdated(shortDigest string) error {
 	return nil
 }
 

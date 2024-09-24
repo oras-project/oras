@@ -22,6 +22,7 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/cmd/oras/internal/output"
 )
 
@@ -48,7 +49,7 @@ func Test_doRemoveManifests(t *testing.T) {
 		name      string
 		manifests []ocispec.Descriptor
 		digestSet map[digest.Digest]bool
-		printer   *output.Printer
+		handler   status.ManifestIndexUpdateHandler
 		indexRef  string
 		want      []ocispec.Descriptor
 		wantErr   bool
@@ -57,7 +58,7 @@ func Test_doRemoveManifests(t *testing.T) {
 			name:      "remove one matched item",
 			manifests: []ocispec.Descriptor{A, B, C},
 			digestSet: map[digest.Digest]bool{B.Digest: false},
-			printer:   output.NewPrinter(os.Stdout, os.Stderr, false),
+			handler:   status.NewTextManifestIndexUpdateHandler(output.NewPrinter(os.Stdout, os.Stderr, false)),
 			indexRef:  "test01",
 			want:      []ocispec.Descriptor{A, C},
 			wantErr:   false,
@@ -66,7 +67,7 @@ func Test_doRemoveManifests(t *testing.T) {
 			name:      "remove all matched items",
 			manifests: []ocispec.Descriptor{A, B, A, C, A, A, A},
 			digestSet: map[digest.Digest]bool{A.Digest: false},
-			printer:   output.NewPrinter(os.Stdout, os.Stderr, false),
+			handler:   status.NewTextManifestIndexUpdateHandler(output.NewPrinter(os.Stdout, os.Stderr, false)),
 			indexRef:  "test02",
 			want:      []ocispec.Descriptor{B, C},
 			wantErr:   false,
@@ -75,7 +76,7 @@ func Test_doRemoveManifests(t *testing.T) {
 			name:      "remove correctly when there is only one item",
 			manifests: []ocispec.Descriptor{A},
 			digestSet: map[digest.Digest]bool{A.Digest: false},
-			printer:   output.NewPrinter(os.Stdout, os.Stderr, false),
+			handler:   status.NewTextManifestIndexUpdateHandler(output.NewPrinter(os.Stdout, os.Stderr, false)),
 			indexRef:  "test03",
 			want:      []ocispec.Descriptor{},
 			wantErr:   false,
@@ -84,7 +85,7 @@ func Test_doRemoveManifests(t *testing.T) {
 			name:      "remove multiple distinct manifests",
 			manifests: []ocispec.Descriptor{A, B, C},
 			digestSet: map[digest.Digest]bool{A.Digest: false, C.Digest: false},
-			printer:   output.NewPrinter(os.Stdout, os.Stderr, false),
+			handler:   status.NewTextManifestIndexUpdateHandler(output.NewPrinter(os.Stdout, os.Stderr, false)),
 			indexRef:  "test04",
 			want:      []ocispec.Descriptor{B},
 			wantErr:   false,
@@ -93,7 +94,7 @@ func Test_doRemoveManifests(t *testing.T) {
 			name:      "remove multiple duplicate manifests",
 			manifests: []ocispec.Descriptor{A, B, C, C, B, A, B},
 			digestSet: map[digest.Digest]bool{A.Digest: false, C.Digest: false},
-			printer:   output.NewPrinter(os.Stdout, os.Stderr, false),
+			handler:   status.NewTextManifestIndexUpdateHandler(output.NewPrinter(os.Stdout, os.Stderr, false)),
 			indexRef:  "test04",
 			want:      []ocispec.Descriptor{B, B, B},
 			wantErr:   false,
@@ -102,7 +103,7 @@ func Test_doRemoveManifests(t *testing.T) {
 			name:      "return error when deleting a nonexistent item",
 			manifests: []ocispec.Descriptor{A, C},
 			digestSet: map[digest.Digest]bool{B.Digest: false},
-			printer:   output.NewPrinter(os.Stdout, os.Stderr, false),
+			handler:   status.NewTextManifestIndexUpdateHandler(output.NewPrinter(os.Stdout, os.Stderr, false)),
 			indexRef:  "test04",
 			want:      nil,
 			wantErr:   true,
@@ -110,7 +111,7 @@ func Test_doRemoveManifests(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := doRemoveManifests(tt.manifests, tt.digestSet, tt.printer, tt.indexRef)
+			got, err := doRemoveManifests(tt.manifests, tt.digestSet, tt.handler, tt.indexRef)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("removeManifestsFromIndex() error = %v, wantErr %v", err, tt.wantErr)
 				return

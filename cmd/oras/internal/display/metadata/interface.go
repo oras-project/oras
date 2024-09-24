@@ -85,6 +85,9 @@ type ManifestIndexCreateHandler interface {
 	OnCompleted(digest digest.Digest) error
 }
 
+// ManifestIndexUpdateHandler handles metadata output for index update events.
+type ManifestIndexUpdateHandler ManifestIndexCreateHandler
+
 // CopyHandler handles metadata output for cp events.
 type CopyHandler interface {
 	TaggedHandler

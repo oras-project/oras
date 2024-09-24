@@ -23,6 +23,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/opencontainers/go-digest"
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -32,7 +33,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
-	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -136,7 +136,7 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 
 	switch opts.outputPath {
 	case "":
-		err = pushIndex(ctx, displayStatus, displayMetadata, target, displayMetadata.OnTagged, desc, indexBytes, opts.Reference, opts.extraRefs, opts.AnnotatedReference())
+		err = pushIndex(ctx, displayStatus.OnIndexPushed, displayMetadata.OnCompleted, displayMetadata.OnTagged, target, desc, indexBytes, opts.Reference, opts.extraRefs, opts.AnnotatedReference())
 	case "-":
 		err = opts.Output(os.Stdout, indexBytes)
 	default:
@@ -149,7 +149,7 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 func fetchSourceManifests(ctx context.Context, displayStatus status.ManifestIndexCreateHandler, target oras.ReadOnlyTarget, opts createOptions) ([]ocispec.Descriptor, error) {
 	resolved := []ocispec.Descriptor{}
 	for _, source := range opts.sources {
-		if err := displayStatus.OnManifestFetching(source); err != nil {
+		if err := displayStatus.OnSourceManifestFetching(source); err != nil {
 			return nil, err
 		}
 		desc, content, err := oras.FetchBytes(ctx, target, source, oras.DefaultFetchBytesOptions)
@@ -159,7 +159,7 @@ func fetchSourceManifests(ctx context.Context, displayStatus status.ManifestInde
 		if !descriptor.IsManifest(desc) {
 			return nil, fmt.Errorf("%s is not a manifest", source)
 		}
-		if err := displayStatus.OnManifestFetched(source); err != nil {
+		if err := displayStatus.OnSourceManifestFetched(source); err != nil {
 			return nil, err
 		}
 		desc = descriptor.Plain(desc)
@@ -197,7 +197,11 @@ func getPlatform(ctx context.Context, target oras.ReadOnlyTarget, manifestBytes 
 	return &platform, nil
 }
 
-func pushIndex(ctx context.Context, displayStatus status.ManifestIndexCreateHandler, displayMetadata metadata.ManifestIndexCreateHandler, target oras.Target, onTagged func(desc ocispec.Descriptor, tag string) error, desc ocispec.Descriptor, content []byte, ref string, extraRefs []string, path string) error {
+func pushIndex(ctx context.Context,
+	onIndexPushed func(path string) error,
+	onCompleted func(digest digest.Digest) error,
+	onTagged func(desc ocispec.Descriptor, tag string) error,
+	target oras.Target, desc ocispec.Descriptor, content []byte, ref string, extraRefs []string, path string) error {
 	// push the index
 	var err error
 	if ref == "" || contentutil.IsDigest(ref) {
@@ -208,7 +212,7 @@ func pushIndex(ctx context.Context, displayStatus status.ManifestIndexCreateHand
 	if err != nil {
 		return err
 	}
-	if err := displayStatus.OnIndexPushed(path); err != nil {
+	if err := onIndexPushed(path); err != nil {
 		return err
 	}
 	if len(extraRefs) != 0 {
@@ -217,5 +221,5 @@ func pushIndex(ctx context.Context, displayStatus status.ManifestIndexCreateHand
 			return err
 		}
 	}
-	return displayMetadata.OnCompleted(desc.Digest)
+	return onCompleted(desc.Digest)
 }
