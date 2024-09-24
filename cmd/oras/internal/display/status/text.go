@@ -19,6 +19,7 @@ import (
 	"context"
 	"sync"
 
+	"oras.land/oras/internal/contentutil"
 	"oras.land/oras/internal/graph"
 
 	"github.com/opencontainers/go-digest"
@@ -226,10 +227,10 @@ func (miuh TextManifestIndexUpdateHandler) OnIndexFetching(indexRef string) erro
 
 // OnIndexFetched implements ManifestIndexUpdateHandler.
 func (miuh TextManifestIndexUpdateHandler) OnIndexFetched(indexRef string, digest digest.Digest) error {
-	if digest != "" {
-		return miuh.printer.Println(IndexPromptFetched, digest, indexRef)
+	if contentutil.IsDigest(indexRef) {
+		return miuh.printer.Println(IndexPromptFetched, indexRef)
 	}
-	return miuh.printer.Println(IndexPromptFetched, indexRef)
+	return miuh.printer.Println(IndexPromptFetched, digest, indexRef)
 }
 
 // OnManifestFetching implements ManifestIndexUpdateHandler.
@@ -239,10 +240,10 @@ func (miuh TextManifestIndexUpdateHandler) OnManifestFetching(ref string) error 
 
 // OnManifestFetched implements ManifestIndexUpdateHandler.
 func (miuh TextManifestIndexUpdateHandler) OnManifestFetched(ref string, digest digest.Digest) error {
-	if digest != "" {
-		return miuh.printer.Println(IndexPromptFetched, digest, ref)
+	if contentutil.IsDigest(ref) {
+		return miuh.printer.Println(IndexPromptFetched, ref)
 	}
-	return miuh.printer.Println(IndexPromptFetched, ref)
+	return miuh.printer.Println(IndexPromptFetched, digest, ref)
 }
 
 // OnManifestRemoved implements ManifestIndexUpdateHandler.
@@ -252,18 +253,18 @@ func (miuh TextManifestIndexUpdateHandler) OnManifestRemoved(digest digest.Diges
 
 // OnManifestAdded implements ManifestIndexUpdateHandler.
 func (miuh TextManifestIndexUpdateHandler) OnManifestAdded(ref string, digest digest.Digest) error {
-	if digest != "" {
-		return miuh.printer.Println(IndexPromptAdded, digest, ref)
+	if contentutil.IsDigest(ref) {
+		return miuh.printer.Println(IndexPromptFetched, ref)
 	}
-	return miuh.printer.Println(IndexPromptAdded, ref)
+	return miuh.printer.Println(IndexPromptFetched, digest, ref)
 }
 
 // OnIndexMerged implements ManifestIndexUpdateHandler.
 func (miuh TextManifestIndexUpdateHandler) OnIndexMerged(ref string, digest digest.Digest) error {
-	if digest != "" {
-		return miuh.printer.Println(IndexPromptMerged, digest, ref)
+	if contentutil.IsDigest(ref) {
+		return miuh.printer.Println(IndexPromptFetched, ref)
 	}
-	return miuh.printer.Println(IndexPromptMerged, ref)
+	return miuh.printer.Println(IndexPromptFetched, digest, ref)
 }
 
 // OnIndexUpdated implements ManifestIndexUpdateHandler.
