@@ -79,6 +79,10 @@ Example - Update an index and output the index to stdout, auto push will be disa
 				return err
 			}
 			opts.RawReference = args[0]
+			// ignore --pretty when output to a file
+			if opts.outputPath != "" && opts.outputPath != "-" {
+				opts.Pretty.Pretty = false
+			}
 			for _, manifestRef := range opts.removeArguments {
 				if !contentutil.IsDigest(manifestRef) {
 					return fmt.Errorf("remove: %s is not a digest", manifestRef)
