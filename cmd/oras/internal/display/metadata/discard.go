@@ -15,7 +15,10 @@ limitations under the License.
 
 package metadata
 
-import ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+import (
+	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+)
 
 type discard struct{}
 
@@ -26,5 +29,15 @@ func NewDiscardHandler() discard {
 
 // OnFetched implements ManifestFetchHandler.
 func (discard) OnFetched(string, ocispec.Descriptor, []byte) error {
+	return nil
+}
+
+// OnTagged implements ManifestIndexCreateHandler.
+func (discard) OnTagged(desc ocispec.Descriptor, tag string) error {
+	return nil
+}
+
+// OnCompleted implements ManifestIndexCreateHandler.
+func (discard) OnCompleted(digest digest.Digest) error {
 	return nil
 }

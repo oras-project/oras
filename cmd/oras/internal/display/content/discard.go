@@ -24,7 +24,12 @@ func (discardHandler) OnContentFetched(ocispec.Descriptor, []byte) error {
 	return nil
 }
 
+// OnContentCreated implements ManifestIndexCreateHandler.
+func (discardHandler) OnContentCreated(content []byte) error {
+	return nil
+}
+
 // NewDiscardHandler returns a new discard handler.
-func NewDiscardHandler() ManifestFetchHandler {
+func NewDiscardHandler() discardHandler {
 	return discardHandler{}
 }

@@ -174,26 +174,56 @@ func NewManifestPushHandler(printer *output.Printer) metadata.ManifestPushHandle
 	return text.NewManifestPushHandler(printer)
 }
 
-// NewManifestIndexCreateHandler returns status and metadata handlers for index create command.
-func NewManifestIndexCreateHandler(outputPath string, printer *output.Printer) (status.ManifestIndexCreateHandler, metadata.ManifestIndexCreateHandler, error) {
+// NewManifestIndexCreateHandler returns status, metadata and content handlers for index create command.
+func NewManifestIndexCreateHandler(outputPath string, printer *output.Printer, pretty bool) (
+	status.ManifestIndexCreateHandler,
+	metadata.ManifestIndexCreateHandler,
+	content.ManifestIndexCreateHandler,
+	error) {
 	var statusHandler status.ManifestIndexCreateHandler
-	if outputPath == "-" {
-		statusHandler = status.NewDiscardHandler()
-	} else {
+	var metadataHandler metadata.ManifestIndexCreateHandler
+	var contentHandler content.ManifestIndexCreateHandler
+	switch outputPath {
+	case "":
 		statusHandler = status.NewTextManifestIndexCreateHandler(printer)
+		metadataHandler = text.NewManifestIndexCreateHandler(printer)
+		contentHandler = content.NewDiscardHandler()
+	case "-":
+		statusHandler = status.NewDiscardHandler()
+		metadataHandler = metadata.NewDiscardHandler()
+		contentHandler = content.NewManifestIndexCreateHandler(printer, pretty, outputPath)
+	default:
+		statusHandler = status.NewTextManifestIndexCreateHandler(printer)
+		metadataHandler = text.NewManifestIndexCreateHandler(printer)
+		contentHandler = content.NewManifestIndexCreateHandler(printer, pretty, outputPath)
 	}
-	return statusHandler, text.NewManifestIndexCreateHandler(printer), nil
+	return statusHandler, metadataHandler, contentHandler, nil
 }
 
-// NewManifestIndexUpdateHandler returns status and metadata handlers for index update command.
-func NewManifestIndexUpdateHandler(outputPath string, printer *output.Printer) (status.ManifestIndexUpdateHandler, metadata.ManifestIndexUpdateHandler, error) {
+// NewManifestIndexUpdateHandler returns status, metadata and content handlers for index update command.
+func NewManifestIndexUpdateHandler(outputPath string, printer *output.Printer, pretty bool) (
+	status.ManifestIndexUpdateHandler,
+	metadata.ManifestIndexUpdateHandler,
+	content.ManifestIndexUpdateHandler,
+	error) {
 	var statusHandler status.ManifestIndexUpdateHandler
-	if outputPath == "-" {
-		statusHandler = status.NewDiscardHandler()
-	} else {
+	var metadataHandler metadata.ManifestIndexUpdateHandler
+	var contentHandler content.ManifestIndexUpdateHandler
+	switch outputPath {
+	case "":
 		statusHandler = status.NewTextManifestIndexUpdateHandler(printer)
+		metadataHandler = text.NewManifestIndexCreateHandler(printer)
+		contentHandler = content.NewDiscardHandler()
+	case "-":
+		statusHandler = status.NewDiscardHandler()
+		metadataHandler = metadata.NewDiscardHandler()
+		contentHandler = content.NewManifestIndexCreateHandler(printer, pretty, outputPath)
+	default:
+		statusHandler = status.NewTextManifestIndexUpdateHandler(printer)
+		metadataHandler = text.NewManifestIndexCreateHandler(printer)
+		contentHandler = content.NewManifestIndexCreateHandler(printer, pretty, outputPath)
 	}
-	return statusHandler, text.NewManifestIndexCreateHandler(printer), nil
+	return statusHandler, metadataHandler, contentHandler, nil
 }
 
 // NewCopyHandler returns copy handlers.

@@ -19,7 +19,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -114,7 +113,7 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
 		return err
 	}
-	displayStatus, displayMetadata, err := display.NewManifestIndexUpdateHandler(opts.outputPath, opts.Printer)
+	displayStatus, displayMetadata, displayContent, err := display.NewManifestIndexUpdateHandler(opts.outputPath, opts.Printer, opts.Pretty.Pretty)
 	if err != nil {
 		return err
 	}
@@ -134,30 +133,25 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	if err != nil {
 		return err
 	}
-
 	index.Manifests = manifests
 	indexBytes, err := json.Marshal(index)
 	if err != nil {
 		return err
 	}
 	desc := content.NewDescriptorFromBytes(index.MediaType, indexBytes)
-
 	if err := displayStatus.OnIndexUpdated(desc.Digest); err != nil {
 		return err
 	}
 	path := getPushPath(opts.RawReference, opts.Type, opts.Reference, opts.Path)
-	switch opts.outputPath {
-	case "":
-		err = pushIndex(ctx, displayStatus.OnIndexPushed, displayMetadata.OnCompleted, displayMetadata.OnTagged, target, desc, indexBytes, opts.Reference, opts.tags, path)
-	case "-":
-		err = opts.Output(os.Stdout, indexBytes)
-	default:
-		if err := displayMetadata.OnCompleted(desc.Digest); err != nil {
+	if err := displayContent.OnContentCreated(indexBytes); err != nil {
+		return err
+	}
+	if opts.outputPath == "" {
+		if err := pushIndex(ctx, displayStatus.OnIndexPushed, displayMetadata.OnTagged, target, desc, indexBytes, opts.Reference, opts.tags, path); err != nil {
 			return err
 		}
-		err = os.WriteFile(opts.outputPath, indexBytes, 0666)
 	}
-	return err
+	return displayMetadata.OnCompleted(desc.Digest)
 }
 
 func fetchIndex(ctx context.Context, handler status.ManifestIndexUpdateHandler, target oras.ReadOnlyTarget, reference string) (ocispec.Index, error) {

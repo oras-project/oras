@@ -20,10 +20,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
-	"github.com/opencontainers/go-digest"
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -109,7 +107,7 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 	if err != nil {
 		return err
 	}
-	displayStatus, displayMetadata, err := display.NewManifestIndexCreateHandler(opts.outputPath, opts.Printer)
+	displayStatus, displayMetadata, displayContent, err := display.NewManifestIndexCreateHandler(opts.outputPath, opts.Printer, opts.Pretty.Pretty)
 	if err != nil {
 		return err
 	}
@@ -133,19 +131,15 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 	if err := displayStatus.OnIndexPacked(descriptor.ShortDigest(desc)); err != nil {
 		return err
 	}
-
-	switch opts.outputPath {
-	case "":
-		err = pushIndex(ctx, displayStatus.OnIndexPushed, displayMetadata.OnCompleted, displayMetadata.OnTagged, target, desc, indexBytes, opts.Reference, opts.extraRefs, opts.AnnotatedReference())
-	case "-":
-		err = opts.Output(os.Stdout, indexBytes)
-	default:
-		if err := displayMetadata.OnCompleted(desc.Digest); err != nil {
+	if err := displayContent.OnContentCreated(indexBytes); err != nil {
+		return err
+	}
+	if opts.outputPath == "" {
+		if err := pushIndex(ctx, displayStatus.OnIndexPushed, displayMetadata.OnTagged, target, desc, indexBytes, opts.Reference, opts.extraRefs, opts.AnnotatedReference()); err != nil {
 			return err
 		}
-		err = os.WriteFile(opts.outputPath, indexBytes, 0666)
 	}
-	return err
+	return displayMetadata.OnCompleted(desc.Digest)
 }
 
 func fetchSourceManifests(ctx context.Context, displayStatus status.ManifestIndexCreateHandler, target oras.ReadOnlyTarget, sources []string) ([]ocispec.Descriptor, error) {
@@ -199,10 +193,7 @@ func getPlatform(ctx context.Context, target oras.ReadOnlyTarget, manifestBytes 
 	return &platform, nil
 }
 
-func pushIndex(ctx context.Context,
-	onIndexPushed func(path string) error,
-	onCompleted func(digest digest.Digest) error,
-	onTagged func(desc ocispec.Descriptor, tag string) error,
+func pushIndex(ctx context.Context, onIndexPushed func(path string) error, onTagged func(desc ocispec.Descriptor, tag string) error,
 	target oras.Target, desc ocispec.Descriptor, content []byte, ref string, extraRefs []string, path string) error {
 	// push the index
 	var err error
@@ -223,5 +214,5 @@ func pushIndex(ctx context.Context,
 			return err
 		}
 	}
-	return onCompleted(desc.Digest)
+	return nil
 }
