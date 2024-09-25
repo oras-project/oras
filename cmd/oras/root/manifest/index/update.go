@@ -121,7 +121,7 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	if err != nil {
 		return err
 	}
-	manifests, err := removeManifests(ctx, displayStatus, index.Manifests, target, opts)
+	manifests, err := removeManifests(displayStatus, index.Manifests, target, opts)
 	if err != nil {
 		return err
 	}
@@ -231,7 +231,7 @@ func mergeIndexes(ctx context.Context, handler status.ManifestIndexUpdateHandler
 	return manifests, nil
 }
 
-func removeManifests(ctx context.Context, handler status.ManifestIndexUpdateHandler, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, opts updateOptions) ([]ocispec.Descriptor, error) {
+func removeManifests(handler status.ManifestIndexUpdateHandler, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, opts updateOptions) ([]ocispec.Descriptor, error) {
 	// create a set of digests to speed up the remove
 	digestToRemove := make(map[digest.Digest]bool)
 	for _, manifestRef := range opts.removeArguments {
