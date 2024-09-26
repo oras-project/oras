@@ -1,6 +1,6 @@
 # Improve ORAS diagnose experience
 
-ORAS currently offers two global options, `--verbose` and `--debug`, which enable users to generate verbose output and logs respectively. These features facilitate both users and developers in inspecting ORAS's performance, interactions with external services and internal systems, and in diagnosing issues by providing a clear picture of the tool’s operations.
+ORAS v1.2.0 offers two global options, `--verbose` and `--debug`, which enable users to generate verbose output and logs respectively. These features facilitate both users and developers in inspecting ORAS's performance, interactions with external services and internal systems, and in diagnosing issues by providing a clear picture of the tool's operations.
 
 Given the diverse roles and scenarios in which ORAS CLI is utilized, we have received feedback from users and developers to improve the diagnostic experience. Enhancing debug logs can significantly benefit ORAS users and developers by making diagnostics clearer and more unambiguous.
 
@@ -27,14 +27,14 @@ At first, the output of ORAS flag `--verbose` and `--debug` should be clarified 
 
 ### Output
 
-There are three types of output in ORAS CLI:
+There are four types of output in ORAS CLI:
 
 - **Status output**: such as progress information, progress bar in pulling or pushing files.
 - **Metadata output**: showing what has been pulled (e.g. filename, digest, etc.) in specified format, such as JSON, text.
 - **Content output**: it is to output the raw data obtained from the remote registry server or file system, such as the pulled artifact content save as a file.
 - **Error output**: error message are expected to be helpful to troubleshoot where the user has done something wrong and the program is guiding them in the right direction.
 
-The target users of these types of output are standard users. Currently, the output of ORAS `--verbose` flag only exists in oras `pull/push/attach/discover` commands, which prints out detailed status output and metadata output. 
+The target users of these types of output are general users. Currently, the output of ORAS `--verbose` flag only exists in oras `pull/push/attach/discover` commands, which prints out detailed status output and metadata output. 
 
 It is intended for end-users who want to observe the detailed file operation when using ORAS. It gives users a comprehensive view of what the tool is doing at every step and how long does it take when push or pull a file.
 
@@ -42,7 +42,7 @@ Since ORAS v1.2.0, progress bar is enabled in `pull/push/attach` by default, thu
 
 ### Logs
 
-Logs focus on providing technical details for in-depth diagnosing and troubleshooting issues. It is intended for developers or technical users who need to understand the inner workings of the tool. Debug logs are detailed and technical, often including HTTP request and response from interactions between client and server, as well as code-specific information. In general, there are different levels of log including `DEBUG`, `INFO`, `WARNING`, `ERROR`, but only `DEBUG` level log is used in ORAS, which is controlled by the flag `--debug`. 
+Logs focus on providing technical details for in-depth diagnosing and troubleshooting issues. It is intended for developers or technical users who need to understand the inner workings of the tool. Debug logs are detailed and technical, often including HTTP request and response from interactions between client and server, as well as code-specific information. In general, there are different levels of logs. [Logrus](https://github.com/sirupsen/logrus) has been used by ORAS, which has seven logging levels: `Trace`, `Debug`, `Info`, `Warning`, `Error`, `Fatal` and `Panic`, but only `DEBUG` level log is used in ORAS, which is controlled by the flag `--debug`. 
 
 - **Purpose**: Debug logs are specifically aim to facilitate ORAS developers to diagnose ORAS tool itself. They contain detailed technical information that is useful for troubleshooting problems.
 - **Target users**: Primarily intended for developers or technical users who are trying to understand the inner workings of the code and identify the root cause of a possible issue with the tool itself.
@@ -73,8 +73,8 @@ Here are the guiding principles to write debug logs.
 - **API Responses:** Log details about the API responses received, including status codes, headers, and response body (excluding sensitive information).
   - Example: `DEBUG: [HTTPResponse] Status: 201 Created, Headers: {Location: /v2/oras-demo/blobs/uploads/uuid}, Body: {}`
 
-### 3. **Log Before and After Critical Operations**
-- **Operation Logs:** Log before performing critical operations and after completing them, including success or failure status.
+### 3. **Log Before and After Each operations**
+- **Operation Logs:** Log before performing each operation and after completing them, including success or failure status.
   - Example: `DEBUG: Starting upload of layer 2 of 3 for repository oras-demo`
   - Example: `DEBUG: Successfully uploaded layer 2 of 3 for repository oras-demo`
 
@@ -238,6 +238,8 @@ $ oras version
 ORAS Version:    1.2.0+Homebrew
 Go version:      go1.22.3
 OS/Arch:         linux/amd64
+Git commit:      xxxxxxxxxxxx
+Git tree state:  clean
 ```
 
 ## Q & A
