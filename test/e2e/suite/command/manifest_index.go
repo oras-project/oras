@@ -137,6 +137,19 @@ var _ = Describe("1.1 registry users:", func() {
 			ValidateIndex(content, expectedManifests)
 		})
 
+		It("should create index with annotations", func() {
+			testRepo := indexTestRepo("create", "with-annotations")
+			key := "image-anno-key"
+			value := "image-anno-value"
+			CopyZOTRepo(ImageRepo, testRepo)
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, "v1"), "--annotation", fmt.Sprintf("%s=%s", key, value)).Exec()
+			// verify
+			content := ORAS("manifest", "fetch", RegistryRef(ZOTHost, testRepo, "v1")).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(content, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Annotations[key]).To(Equal(value))
+		})
+
 		It("should output created index to file", func() {
 			testRepo := indexTestRepo("create", "output-to-file")
 			CopyZOTRepo(ImageRepo, testRepo)
@@ -158,6 +171,14 @@ var _ = Describe("1.1 registry users:", func() {
 			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, ""),
 				"does-not-exist").ExpectFailure().
 				MatchErrKeyWords("Error", "could not find", "does-not-exist").Exec()
+		})
+
+		It("should fail if given annotation input of wrong format", func() {
+			testRepo := indexTestRepo("create", "bad-annotations")
+			CopyZOTRepo(ImageRepo, testRepo)
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, ""),
+				string(multi_arch.LinuxAMD64.Digest), "-a", "foo:bar").ExpectFailure().
+				MatchErrKeyWords("Error", "annotation value doesn't match the required format").Exec()
 		})
 	})
 
@@ -403,6 +424,19 @@ var _ = Describe("OCI image layout users:", func() {
 			content := ORAS("manifest", "fetch", Flags.Layout, indexRef).Exec().Out.Contents()
 			expectedManifests := []ocispec.Descriptor{nonjson_config.Descriptor}
 			ValidateIndex(content, expectedManifests)
+		})
+
+		It("should create index with annotations", func() {
+			root := PrepareTempOCI(ImageRepo)
+			indexRef := LayoutRef(root, "with-annotations")
+			key := "image-anno-key"
+			value := "image-anno-value"
+			ORAS("manifest", "index", "create", Flags.Layout, indexRef, "--annotation", fmt.Sprintf("%s=%s", key, value)).Exec()
+			// verify
+			content := ORAS("manifest", "fetch", Flags.Layout, indexRef).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(content, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Annotations[key]).To(Equal(value))
 		})
 
 		It("should output created index to file", func() {

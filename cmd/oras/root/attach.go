@@ -125,11 +125,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 
 func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-	annotations, err := opts.LoadManifestAnnotations()
-	if err != nil {
-		return err
-	}
-	if len(opts.FileRefs) == 0 && len(annotations[option.AnnotationManifest]) == 0 {
+	if len(opts.FileRefs) == 0 && len(opts.Annotations[option.AnnotationManifest]) == 0 {
 		return &oerrors.Error{
 			Err:            errors.New(`neither file nor annotation provided in the command`),
 			Usage:          fmt.Sprintf("%s %s", cmd.Parent().CommandPath(), cmd.Use),
@@ -161,7 +157,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	if err != nil {
 		return err
 	}
-	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, displayStatus)
+	descs, err := loadFiles(ctx, store, opts.Annotations, opts.FileRefs, displayStatus)
 	if err != nil {
 		return err
 	}
@@ -179,7 +175,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 
 	packOpts := oras.PackManifestOptions{
 		Subject:             &subject,
-		ManifestAnnotations: annotations[option.AnnotationManifest],
+		ManifestAnnotations: opts.Annotations[option.AnnotationManifest],
 		Layers:              descs,
 	}
 	pack := func() (ocispec.Descriptor, error) {
