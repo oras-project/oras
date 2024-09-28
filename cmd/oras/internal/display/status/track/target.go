@@ -35,6 +35,7 @@ type GraphTarget interface {
 
 type graphTarget struct {
 	oras.GraphTarget
+	tty          *os.File
 	manager      progress.Manager
 	actionPrompt string
 	donePrompt   string
@@ -52,6 +53,7 @@ func NewTarget(t oras.GraphTarget, actionPrompt, donePrompt string, tty *os.File
 	}
 	gt := &graphTarget{
 		GraphTarget:  t,
+		tty:          tty,
 		manager:      manager,
 		actionPrompt: actionPrompt,
 		donePrompt:   donePrompt,
@@ -74,7 +76,7 @@ func (t *graphTarget) Mount(ctx context.Context, desc ocispec.Descriptor, fromRe
 
 // Push pushes the content to the base oras.GraphTarget with tracking.
 func (t *graphTarget) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
-	r, err := managedReader(content, expected, t.manager, t.actionPrompt, t.donePrompt)
+	r, err := NewReader(content, expected, t.actionPrompt, t.donePrompt, t.tty)
 	if err != nil {
 		return err
 	}
@@ -89,7 +91,7 @@ func (t *graphTarget) Push(ctx context.Context, expected ocispec.Descriptor, con
 
 // PushReference pushes the content to the base oras.GraphTarget with tracking.
 func (rgt *referenceGraphTarget) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
-	r, err := managedReader(content, expected, rgt.manager, rgt.actionPrompt, rgt.donePrompt)
+	r, err := NewReader(content, expected, rgt.actionPrompt, rgt.donePrompt, rgt.tty)
 	if err != nil {
 		return err
 	}

@@ -23,6 +23,14 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/status/progress"
 )
 
+type Reader interface {
+	io.Reader
+	Done()
+	Close()
+	Start()
+	StopManager()
+}
+
 type reader struct {
 	base         io.Reader
 	offset       int64
@@ -34,28 +42,20 @@ type reader struct {
 }
 
 // NewReader returns a new reader with tracked progress.
-func NewReader(r io.Reader, descriptor ocispec.Descriptor, actionPrompt string, donePrompt string, tty *os.File) (*reader, error) {
+func NewReader(r io.Reader, descriptor ocispec.Descriptor, actionPrompt string, donePrompt string, tty *os.File) (Reader, error) {
 	manager, err := progress.NewManager(tty)
 	if err != nil {
 		return nil, err
 	}
-	return managedReader(r, descriptor, manager, actionPrompt, donePrompt)
-}
-
-func managedReader(r io.Reader, descriptor ocispec.Descriptor, manager progress.Manager, actionPrompt string, donePrompt string) (*reader, error) {
-	messenger, err := manager.Add()
-	if err != nil {
-		return nil, err
-	}
-
-	return &reader{
+	tr := reader{
 		base:         r,
 		descriptor:   descriptor,
 		actionPrompt: actionPrompt,
 		donePrompt:   donePrompt,
 		manager:      manager,
-		messenger:    messenger,
-	}, nil
+	}
+	tr.messenger, err = manager.Add()
+	return &tr, err
 }
 
 // StopManager stops the messenger channel and related manager.
