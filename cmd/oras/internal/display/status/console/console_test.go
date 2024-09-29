@@ -67,17 +67,6 @@ func TestNewConsole(t *testing.T) {
 	}
 }
 
-func TestConsole_Size(t *testing.T) {
-	c, _ := givenConsole(t)
-
-	size, err := c.Size()
-	if err != nil {
-		t.Fatalf("unexpected error getting size: %v", err)
-	}
-	validateSize(t, int(size.Width), int(size.Height), MinWidth, MinHeight)
-
-}
-
 func TestConsole_GetHeightWidth(t *testing.T) {
 	c, pty := givenConsole(t)
 
