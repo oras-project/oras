@@ -19,6 +19,7 @@ package progress
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"oras.land/oras/cmd/oras/internal/display/status/console"
@@ -53,5 +54,33 @@ func Test_manager_render(t *testing.T) {
 	}
 	if err = testutils.MatchPty(pty, device, want...); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestNewManager(t *testing.T) {
+	mockFile, err := os.OpenFile(os.DevNull, os.O_RDWR, 0666)
+	if err != nil {
+		t.Fatalf("Unexpected error %v", err)
+	}
+
+	sut, err := NewManager("Action", "Done", mockFile)
+	if err != nil {
+		t.Errorf("Unexpected error %v", err)
+	}
+
+	messenger, err := sut.Add()
+	if err != nil {
+		t.Errorf("Unexpected error %v", err)
+	}
+	if messenger.actionPrompt != "Action" {
+		t.Errorf("Expected prompt Action actual %v", messenger.actionPrompt)
+	}
+	if messenger.donePrompt != "Done" {
+		t.Errorf("Expected prompt Done actual %v", messenger.donePrompt)
+	}
+
+	_, err = NewManager("Action", "Done", os.Stderr)
+	if err == nil {
+		t.Errorf("Expected error when using Stderr as console")
 	}
 }

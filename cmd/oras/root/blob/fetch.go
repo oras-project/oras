@@ -28,6 +28,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
+	"oras.land/oras/cmd/oras/internal/display/status/progress"
 	"oras.land/oras/cmd/oras/internal/display/status/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -170,12 +171,20 @@ func (opts *fetchBlobOptions) doFetch(ctx context.Context, src oras.ReadOnlyTarg
 			return ocispec.Descriptor{}, err
 		}
 	} else {
-		// TTY output
-		trackedReader, err := track.NewReader(vr, desc, "Downloading", "Downloaded ", opts.TTY)
+		manager, err := progress.NewManager("Downloading", "Downloaded ", opts.TTY)
 		if err != nil {
-			return ocispec.Descriptor{}, err
+			return desc, err
 		}
-		defer trackedReader.StopManager()
+		defer manager.Close()
+
+		messenger, err := manager.Add()
+		if err != nil {
+			return desc, err
+		}
+		defer messenger.Stop()
+
+		// TTY output
+		trackedReader := track.NewReader(vr, desc, messenger)
 		trackedReader.Start()
 		if _, err = io.Copy(writer, trackedReader); err != nil {
 			return ocispec.Descriptor{}, err

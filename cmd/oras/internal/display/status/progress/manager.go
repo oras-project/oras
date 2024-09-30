@@ -45,19 +45,23 @@ type manager struct {
 	status       []*status
 	statusLock   sync.RWMutex
 	console      console.Console
+	actionPrompt string
+	donePrompt   string
 	updating     sync.WaitGroup
 	renderDone   chan struct{}
 	renderClosed chan struct{}
 }
 
 // NewManager initialized a new progress manager.
-func NewManager(tty *os.File) (Manager, error) {
+func NewManager(actionPrompt string, donePrompt string, tty *os.File) (Manager, error) {
 	c, err := console.NewConsole(tty)
 	if err != nil {
 		return nil, err
 	}
 	m := &manager{
 		console:      c,
+		actionPrompt: actionPrompt,
+		donePrompt:   donePrompt,
 		renderDone:   make(chan struct{}),
 		renderClosed: make(chan struct{}),
 	}
@@ -131,15 +135,15 @@ func (m *manager) SendAndStop(desc ocispec.Descriptor, prompt string) error {
 }
 
 func (m *manager) statusChan(s *status) *Messenger {
-	ch := make(chan *status, BufferSize)
+	messenger := NewMessenger(m.actionPrompt, m.donePrompt)
 	m.updating.Add(1)
 	go func() {
 		defer m.updating.Done()
-		for newStatus := range ch {
+		for newStatus := range messenger.ch {
 			s.update(newStatus)
 		}
 	}()
-	return &Messenger{ch: ch}
+	return messenger
 }
 
 // Close stops all status and waits for updating and rendering.

@@ -35,9 +35,7 @@ type GraphTarget interface {
 
 type graphTarget struct {
 	oras.GraphTarget
-	manager      progress.Manager
-	actionPrompt string
-	donePrompt   string
+	manager progress.Manager
 }
 
 type referenceGraphTarget struct {
@@ -46,15 +44,13 @@ type referenceGraphTarget struct {
 
 // NewTarget creates a new tracked Target.
 func NewTarget(t oras.GraphTarget, actionPrompt, donePrompt string, tty *os.File) (GraphTarget, error) {
-	manager, err := progress.NewManager(tty)
+	manager, err := progress.NewManager(actionPrompt, donePrompt, tty)
 	if err != nil {
 		return nil, err
 	}
 	gt := &graphTarget{
-		GraphTarget:  t,
-		manager:      manager,
-		actionPrompt: actionPrompt,
-		donePrompt:   donePrompt,
+		GraphTarget: t,
+		manager:     manager,
 	}
 
 	if _, ok := t.(registry.ReferencePusher); ok {
@@ -74,7 +70,13 @@ func (t *graphTarget) Mount(ctx context.Context, desc ocispec.Descriptor, fromRe
 
 // Push pushes the content to the base oras.GraphTarget with tracking.
 func (t *graphTarget) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
-	r, err := managedReader(content, expected, t.manager, t.actionPrompt, t.donePrompt)
+	messenger, err := t.manager.Add()
+	if err != nil {
+		return err
+	}
+	defer messenger.Stop()
+
+	r := NewReader(content, expected, messenger)
 	if err != nil {
 		return err
 	}
@@ -89,7 +91,13 @@ func (t *graphTarget) Push(ctx context.Context, expected ocispec.Descriptor, con
 
 // PushReference pushes the content to the base oras.GraphTarget with tracking.
 func (rgt *referenceGraphTarget) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
-	r, err := managedReader(content, expected, rgt.manager, rgt.actionPrompt, rgt.donePrompt)
+	messenger, err := rgt.manager.Add()
+	if err != nil {
+		return err
+	}
+	defer messenger.Stop()
+
+	r := NewReader(content, expected, messenger)
 	if err != nil {
 		return err
 	}
