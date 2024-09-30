@@ -23,13 +23,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/containerd/console"
+	containerd "github.com/containerd/console"
 )
 
 // NewPty creates a new pty pair for testing, caller is responsible for closing
 // the returned device file if err is not nil.
-func NewPty() (console.Console, *os.File, error) {
-	pty, devicePath, err := console.NewPty()
+func NewPty() (containerd.Console, *os.File, error) {
+	pty, devicePath, err := containerd.NewPty()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -42,7 +42,7 @@ func NewPty() (console.Console, *os.File, error) {
 
 // MatchPty checks that the output matches the expected strings in specified
 // order.
-func MatchPty(pty console.Console, device *os.File, expected ...string) error {
+func MatchPty(pty containerd.Console, device *os.File, expected ...string) error {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	var buffer bytes.Buffer

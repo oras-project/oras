@@ -44,15 +44,15 @@ type Manager interface {
 type manager struct {
 	status       []*status
 	statusLock   sync.RWMutex
-	console      *console.Console
+	console      console.Console
 	updating     sync.WaitGroup
 	renderDone   chan struct{}
 	renderClosed chan struct{}
 }
 
 // NewManager initialized a new progress manager.
-func NewManager(f *os.File) (Manager, error) {
-	c, err := console.New(f)
+func NewManager(tty *os.File) (Manager, error) {
+	c, err := console.NewConsole(tty)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func (m *manager) render() {
 	m.statusLock.RLock()
 	defer m.statusLock.RUnlock()
 	// todo: update size in another routine
-	width, height := m.console.Size()
+	height, width := m.console.GetHeightWidth()
 	lineCount := len(m.status) * 2
 	offset := 0
 	if lineCount > height {

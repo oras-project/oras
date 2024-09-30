@@ -18,10 +18,37 @@ limitations under the License.
 package console
 
 import (
+	"os"
 	"testing"
 
-	"github.com/containerd/console"
+	containerd "github.com/containerd/console"
+	"oras.land/oras/internal/testutils"
 )
+
+func givenConsole(t *testing.T) (c Console, pty containerd.Console) {
+	pty, _, err := containerd.NewPty()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c = &console{
+		Console: pty,
+	}
+	return c, pty
+}
+
+func givenTestConsole(t *testing.T) (c Console, pty containerd.Console, tty *os.File) {
+	var err error
+	pty, tty, err = testutils.NewPty()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c = &console{
+		Console: pty,
+	}
+	return c, pty, tty
+}
 
 func validateSize(t *testing.T, gotWidth, gotHeight, wantWidth, wantHeight int) {
 	t.Helper()
@@ -33,31 +60,77 @@ func validateSize(t *testing.T, gotWidth, gotHeight, wantWidth, wantHeight int) 
 	}
 }
 
-func TestConsole_Size(t *testing.T) {
-	pty, _, err := console.NewPty()
-	if err != nil {
-		t.Fatal(err)
+func TestNewConsole(t *testing.T) {
+	_, err := NewConsole(os.Stdin)
+	if err == nil {
+		t.Error("expected error creating bogus console")
 	}
-	c := &Console{
-		Console: pty,
-	}
+}
+
+func TestConsole_GetHeightWidth(t *testing.T) {
+	c, pty := givenConsole(t)
 
 	// minimal width and height
-	gotWidth, gotHeight := c.Size()
+	gotHeight, gotWidth := c.GetHeightWidth()
 	validateSize(t, gotWidth, gotHeight, MinWidth, MinHeight)
 
 	// zero width
-	_ = pty.Resize(console.WinSize{Width: 0, Height: MinHeight})
-	gotWidth, gotHeight = c.Size()
+	_ = pty.Resize(containerd.WinSize{Width: 0, Height: MinHeight})
+	gotHeight, gotWidth = c.GetHeightWidth()
 	validateSize(t, gotWidth, gotHeight, MinWidth, MinHeight)
 
 	// zero height
-	_ = pty.Resize(console.WinSize{Width: MinWidth, Height: 0})
-	gotWidth, gotHeight = c.Size()
+	_ = pty.Resize(containerd.WinSize{Width: MinWidth, Height: 0})
+	gotHeight, gotWidth = c.GetHeightWidth()
 	validateSize(t, gotWidth, gotHeight, MinWidth, MinHeight)
 
 	// valid zero and height
-	_ = pty.Resize(console.WinSize{Width: 200, Height: 100})
-	gotWidth, gotHeight = c.Size()
+	_ = pty.Resize(containerd.WinSize{Width: 200, Height: 100})
+	gotHeight, gotWidth = c.GetHeightWidth()
 	validateSize(t, gotWidth, gotHeight, 200, 100)
+
+}
+
+func TestConsole_NewRow(t *testing.T) {
+	c, pty, tty := givenTestConsole(t)
+
+	c.NewRow()
+
+	err := testutils.MatchPty(pty, tty, "^[8\r\n^[7")
+	if err != nil {
+		t.Fatalf("NewRow output error: %v", err)
+	}
+}
+
+func TestConsole_OutputTo(t *testing.T) {
+	c, pty, tty := givenTestConsole(t)
+
+	c.OutputTo(1, "test string")
+
+	err := testutils.MatchPty(pty, tty, "^[8^[[1Ftest string^[[0m\r\n^[[0K")
+	if err != nil {
+		t.Fatalf("OutputTo output error: %v", err)
+	}
+}
+
+func TestConsole_Restore(t *testing.T) {
+	c, pty, tty := givenTestConsole(t)
+
+	c.Restore()
+
+	err := testutils.MatchPty(pty, tty, "^[8^[[0G^[[2K^[[?25h")
+	if err != nil {
+		t.Fatalf("Restore output error: %v", err)
+	}
+}
+
+func TestConsole_Save(t *testing.T) {
+	c, pty, tty := givenTestConsole(t)
+
+	c.Save()
+
+	err := testutils.MatchPty(pty, tty, "^[[?25l^[7^[[0m")
+	if err != nil {
+		t.Fatalf("Save output error: %v", err)
+	}
 }
