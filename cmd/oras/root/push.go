@@ -16,6 +16,8 @@ limitations under the License.
 package root
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"strings"
 
@@ -41,6 +43,7 @@ import (
 type pushOptions struct {
 	option.Common
 	option.Packer
+	option.ArtifactPlatform
 	option.ImageSpec
 	option.Target
 	option.Format
@@ -97,6 +100,9 @@ Example - Push repository with manifest annotations:
 Example - Push repository with manifest annotation file:
   oras push --annotation-file annotation.json localhost:5000/hello:v1
 
+Example - Push artifact to repository with platform:
+  oras push --artifact-platform linux/arm/v5 localhost:5000/hello:v1
+
 Example - Push file "hi.txt" with multiple tags:
   oras push localhost:5000/hello:tag1,tag2,tag3 hi.txt
 
@@ -116,7 +122,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 				return err
 			}
 
-			if opts.manifestConfigRef != "" && opts.artifactType == "" {
+			if (opts.manifestConfigRef != "" || opts.Platform.Platform != nil) && opts.artifactType == "" {
 				if !cmd.Flags().Changed("image-spec") {
 					// switch to v1.0 manifest since artifact type is suggested
 					// by OCI v1.1 artifact guidance but is not presented
@@ -130,11 +136,18 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 					}
 				}
 			}
+			configAndPlatform := []string{"config", "artifact-platform"}
+			if err := oerrors.CheckMutuallyExclusiveFlags(cmd.Flags(), configAndPlatform...); err != nil {
+				return err
+			}
 
 			switch opts.PackVersion {
 			case oras.PackManifestVersion1_0:
 				if opts.manifestConfigRef != "" && opts.artifactType != "" {
 					return errors.New("--artifact-type and --config cannot both be provided for 1.0 OCI image")
+				}
+				if opts.Platform.Platform != nil && opts.artifactType != "" {
+					return errors.New("--artifact-platform and --artifact-type cannot both be provided for 1.0 OCI image")
 				}
 			case oras.PackManifestVersion1_1:
 				if opts.manifestConfigRef == "" && opts.artifactType == "" {
@@ -174,6 +187,22 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 			return err
 		}
 		desc, err := addFile(ctx, store, option.AnnotationConfig, cfgMediaType, path)
+		if err != nil {
+			return err
+		}
+		desc.Annotations = packOpts.ConfigAnnotations
+		packOpts.ConfigDescriptor = &desc
+	} else if opts.Platform.Platform != nil {
+		blob, err := json.Marshal(opts.Platform.Platform)
+		if err != nil {
+			return err
+		}
+		mediaType := oras.MediaTypeUnknownConfig
+		if opts.Flag == option.ImageSpecV1_0 && opts.artifactType != "" {
+			mediaType = opts.artifactType
+		}
+		desc := content.NewDescriptorFromBytes(mediaType, blob)
+		err = store.Push(ctx, desc, bytes.NewReader(blob))
 		if err != nil {
 			return err
 		}
