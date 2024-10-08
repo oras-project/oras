@@ -38,7 +38,6 @@ import (
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/errcode"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
-	"oras.land/oras/cmd/oras/internal/fileref"
 )
 
 const (
@@ -123,20 +122,22 @@ func (opts *Target) Parse(cmd *cobra.Command) error {
 // parseOCILayoutReference parses the raw in format of <path>[:<tag>|@<digest>]
 func (opts *Target) parseOCILayoutReference() error {
 	raw := opts.RawReference
-	var path string
+	path := raw
 	var ref string
 	if idx := strings.LastIndex(raw, "@"); idx != -1 {
 		// `digest` found
 		path = raw[:idx]
 		ref = raw[idx+1:]
-	} else {
-		// find `tag`
-		var err error
-		path, ref, err = fileref.Parse(raw, "")
-		if err != nil {
-			return errors.Join(err, errdef.ErrInvalidReference)
-		}
+	} else if idx := strings.Index(raw, ":"); idx != -1 {
+		// `tag` found
+		path = raw[:idx]
+		ref = raw[idx+1:]
 	}
+
+	if path == "" {
+		return fmt.Errorf("found empty file path in %q", raw)
+	}
+
 	opts.Path = path
 	opts.Reference = ref
 	return nil

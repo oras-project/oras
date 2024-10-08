@@ -78,11 +78,12 @@ func Test_parseOCILayoutReference(t *testing.T) {
 	}{
 		{"Empty input", "", "", "", true},
 		{"Empty path and tag", ":", "", "", true},
-		{"Empty path and digest", "@", "", "", false},
+		{"Empty path and digest", "@", "", "", true},
 		{"Empty digest", "path@", "path", "", false},
 		{"Empty tag", "path:", "path", "", false},
 		{"path and digest", "path@digest", "path", "digest", false},
 		{"path and tag", "path:tag", "path", "tag", false},
+		{"path with full reference", "path:repo:tag", "path", "repo:tag", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
