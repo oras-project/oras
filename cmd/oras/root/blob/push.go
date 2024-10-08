@@ -26,6 +26,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
+	"oras.land/oras/cmd/oras/internal/display/status/progress"
 	"oras.land/oras/cmd/oras/internal/display/status/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -154,12 +155,20 @@ func (opts *pushBlobOptions) doPush(ctx context.Context, printer *output.Printer
 		return printer.PrintStatus(desc, "Uploaded ")
 	}
 
-	// TTY output
-	trackedReader, err := track.NewReader(r, desc, "Uploading", "Uploaded ", opts.TTY)
+	manager, err := progress.NewManager("Uploading", "Uploaded ", opts.TTY)
 	if err != nil {
 		return err
 	}
-	defer trackedReader.StopManager()
+	defer manager.Close()
+
+	messenger, err := manager.Add()
+	if err != nil {
+		return err
+	}
+	defer messenger.Stop()
+
+	// TTY output
+	trackedReader := track.NewReader(r, desc, messenger)
 	trackedReader.Start()
 	r = trackedReader
 	if err := t.Push(ctx, desc, r); err != nil {
