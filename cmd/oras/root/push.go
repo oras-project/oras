@@ -70,6 +70,9 @@ Example - Push file "hi.txt" with the custom media type "application/vnd.me.hi":
 Example - Push multiple files with different media types:
   oras push localhost:5000/hello:v1 hi.txt:application/vnd.me.hi bye.txt:application/vnd.me.bye
 
+Example - Push file with colon in name "hi:txt" with the default media type:
+  oras push localhost:5000/hello:v1 hi:txt:
+
 Example - Push file "hi.txt" with artifact type "application/vnd.example+type":
   oras push --artifact-type application/vnd.example+type localhost:5000/hello:v1 hi.txt
 
