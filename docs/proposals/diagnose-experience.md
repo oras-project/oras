@@ -67,7 +67,7 @@ Based on the concepts above,
 
 - Deprecate the global flag `--verbose` and only remain `--debug` to avoid ambiguity. Based on the concept above, it is reasonable to continue using `--debug` to enable the output of `DEBUG` level logs in ORAS as it is in ORAS. Meanwhile, This change will make the diagnose experience much more straightforward and less breaking since only ORAS `pull/push/attach/discover` commands have verbose output.
 - Make the verbose output of commands `pull`, `push`, `attach` as the default (status) output. See examples at the bottom.
-- Make the verbose output of command  `discover` as a formatted output, controlled by `--format tree-full`. See examples at the bottom.
+- Make the verbose output of command  `discover` as a formatted output, controlled by `--format tree-full`. 
 - Add an empty line as the separator between each request and response for readability.
 - Add timestamp of each request and response to the beginning of each request and response.
 - Add the response body including [error code](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#error-codes) and the metadata of processed OCI object (e.g. image manifest) to the debug logs.
@@ -198,6 +198,25 @@ DEBU[0002] Response #1
 }
 
 
+```
+
+### oras push/pull/attach
+
+The verbose output of commands `pull`, `push`, `attach` is now printed out in the default (status) output, the `--verbose` is no longer needed. Considering the progress bar is showed on terminal by default, the verbose output should be available on non-terminal environment using `--no-tty`. See `oras pull` command as an example:
+
+```bash
+$ oras push --oci-layout layout-test:sample README.md --no-tty
+
+Preparing README.md
+Uploading 9500d720111f README.md
+Uploading 44136fa355b3 application/vnd.oci.empty.v1+json
+Uploaded  44136fa355b3 application/vnd.oci.empty.v1+json
+Uploaded  9500d720111f README.md
+Uploading 655f5cc5d5d2 application/vnd.oci.image.manifest.v1+json
+Uploaded  655f5cc5d5d2 application/vnd.oci.image.manifest.v1+json
+Pushed [oci-layout] layout-test:sample
+ArtifactType: application/vnd.unknown.artifact.v1
+Digest: sha256:655f5cc5d5d2e7ff2ab90378514103996523b065ce5ef43cd6e6a4de7d80a535
 ```
 
 ### Show user's environment details
