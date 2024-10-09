@@ -91,61 +91,61 @@ func (DiscardHandler) OnNodeSkipped(desc ocispec.Descriptor) error {
 }
 
 // OnSourceManifestFetching implements ManifestIndexCreateHandler.
-func (DiscardHandler) OnSourceManifestFetching(source string) error {
+func (DiscardHandler) OnSourceManifestFetching(string) error {
 	return nil
 }
 
 // OnSourceManifestFetched implements ManifestIndexCreateHandler.
-func (DiscardHandler) OnSourceManifestFetched(source string) error {
+func (DiscardHandler) OnSourceManifestFetched(string) error {
 	return nil
 }
 
 // OnManifestFetching implements ManifestIndexUpdateHandler.
-func (DiscardHandler) OnManifestFetching(ref string) error {
+func (DiscardHandler) OnManifestFetching(string) error {
 	return nil
 }
 
 // OnManifestFetched implements ManifestIndexUpdateHandler.
-func (DiscardHandler) OnManifestFetched(ref string, digest digest.Digest) error {
+func (DiscardHandler) OnManifestFetched(string, digest.Digest) error {
 	return nil
 }
 
 // OnManifestRemoved implements ManifestIndexUpdateHandler.
-func (DiscardHandler) OnManifestRemoved(digest digest.Digest) error {
+func (DiscardHandler) OnManifestRemoved(digest.Digest) error {
 	return nil
 }
 
 // OnManifestAdded implements ManifestIndexUpdateHandler.
-func (DiscardHandler) OnManifestAdded(ref string, digest digest.Digest) error {
+func (DiscardHandler) OnManifestAdded(string, digest.Digest) error {
 	return nil
 }
 
 // OnIndexFetching implements ManifestIndexUpdateHandler.
-func (DiscardHandler) OnIndexFetching(indexRef string) error {
+func (DiscardHandler) OnIndexFetching(string) error {
 	return nil
 }
 
 // OnIndexFetched implements ManifestIndexUpdateHandler.
-func (DiscardHandler) OnIndexFetched(indexRef string, digest digest.Digest) error {
+func (DiscardHandler) OnIndexFetched(string, digest.Digest) error {
 	return nil
 }
 
 // OnIndexMerged implements ManifestIndexUpdateHandler.
-func (DiscardHandler) OnIndexMerged(indexRef string, digest digest.Digest) error {
+func (DiscardHandler) OnIndexMerged(string, digest.Digest) error {
 	return nil
 }
 
 // OnIndexPacked implements ManifestIndexCreateHandler.
-func (DiscardHandler) OnIndexPacked(shortDigest string) error {
+func (DiscardHandler) OnIndexPacked(string) error {
 	return nil
 }
 
 // OnIndexUpdated implements ManifestIndexUpdateHandler.
-func (DiscardHandler) OnIndexUpdated(digest digest.Digest) error {
+func (DiscardHandler) OnIndexUpdated(digest.Digest) error {
 	return nil
 }
 
 // OnIndexPushed implements ManifestIndexCreateHandler.
-func (DiscardHandler) OnIndexPushed(path string) error {
+func (DiscardHandler) OnIndexPushed(string) error {
 	return nil
 }

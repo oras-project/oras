@@ -25,7 +25,7 @@ func (discardHandler) OnContentFetched(ocispec.Descriptor, []byte) error {
 }
 
 // OnContentCreated implements ManifestIndexCreateHandler.
-func (discardHandler) OnContentCreated(content []byte) error {
+func (discardHandler) OnContentCreated([]byte) error {
 	return nil
 }
 

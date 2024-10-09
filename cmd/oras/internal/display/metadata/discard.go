@@ -33,11 +33,11 @@ func (discard) OnFetched(string, ocispec.Descriptor, []byte) error {
 }
 
 // OnTagged implements ManifestIndexCreateHandler.
-func (discard) OnTagged(desc ocispec.Descriptor, tag string) error {
+func (discard) OnTagged(ocispec.Descriptor, string) error {
 	return nil
 }
 
 // OnCompleted implements ManifestIndexCreateHandler.
-func (discard) OnCompleted(digest digest.Digest) error {
+func (discard) OnCompleted(digest.Digest) error {
 	return nil
 }
