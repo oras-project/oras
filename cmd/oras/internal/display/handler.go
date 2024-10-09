@@ -180,22 +180,15 @@ func NewManifestIndexCreateHandler(outputPath string, printer *output.Printer, p
 	metadata.ManifestIndexCreateHandler,
 	content.ManifestIndexCreateHandler,
 	error) {
-	var statusHandler status.ManifestIndexCreateHandler
-	var metadataHandler metadata.ManifestIndexCreateHandler
-	var contentHandler content.ManifestIndexCreateHandler
+	statusHandler := status.NewTextManifestIndexCreateHandler(printer)
+	metadataHandler := text.NewManifestIndexCreateHandler(printer)
+	contentHandler := content.NewManifestIndexCreateHandler(printer, pretty, outputPath)
 	switch outputPath {
 	case "":
-		statusHandler = status.NewTextManifestIndexCreateHandler(printer)
-		metadataHandler = text.NewManifestIndexCreateHandler(printer)
 		contentHandler = content.NewDiscardHandler()
 	case "-":
 		statusHandler = status.NewDiscardHandler()
 		metadataHandler = metadata.NewDiscardHandler()
-		contentHandler = content.NewManifestIndexCreateHandler(printer, pretty, outputPath)
-	default:
-		statusHandler = status.NewTextManifestIndexCreateHandler(printer)
-		metadataHandler = text.NewManifestIndexCreateHandler(printer)
-		contentHandler = content.NewManifestIndexCreateHandler(printer, pretty, outputPath)
 	}
 	return statusHandler, metadataHandler, contentHandler, nil
 }
@@ -206,22 +199,15 @@ func NewManifestIndexUpdateHandler(outputPath string, printer *output.Printer, p
 	metadata.ManifestIndexUpdateHandler,
 	content.ManifestIndexUpdateHandler,
 	error) {
-	var statusHandler status.ManifestIndexUpdateHandler
-	var metadataHandler metadata.ManifestIndexUpdateHandler
-	var contentHandler content.ManifestIndexUpdateHandler
+	statusHandler := status.NewTextManifestIndexUpdateHandler(printer)
+	metadataHandler := text.NewManifestIndexUpdateHandler(printer)
+	contentHandler := content.NewManifestIndexCreateHandler(printer, pretty, outputPath)
 	switch outputPath {
 	case "":
-		statusHandler = status.NewTextManifestIndexUpdateHandler(printer)
-		metadataHandler = text.NewManifestIndexCreateHandler(printer)
 		contentHandler = content.NewDiscardHandler()
 	case "-":
 		statusHandler = status.NewDiscardHandler()
 		metadataHandler = metadata.NewDiscardHandler()
-		contentHandler = content.NewManifestIndexCreateHandler(printer, pretty, outputPath)
-	default:
-		statusHandler = status.NewTextManifestIndexUpdateHandler(printer)
-		metadataHandler = text.NewManifestIndexCreateHandler(printer)
-		contentHandler = content.NewManifestIndexCreateHandler(printer, pretty, outputPath)
 	}
 	return statusHandler, metadataHandler, contentHandler, nil
 }

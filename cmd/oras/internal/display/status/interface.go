@@ -68,8 +68,6 @@ type CopyHandler interface {
 type ManifestIndexCreateHandler interface {
 	OnSourceManifestFetching(source string) error
 	OnSourceManifestFetched(source string) error
-	OnIndexPacked(shortDigest string) error
-	OnIndexPushed(path string) error
 }
 
 // ManifestIndexUpdateHandler handles status output for manifest index update command.
@@ -78,9 +76,4 @@ type ManifestIndexUpdateHandler interface {
 	OnIndexFetched(indexRef string, digest digest.Digest) error
 	OnManifestFetching(manifestRef string) error
 	OnManifestFetched(manifestRef string, digest digest.Digest) error
-	OnManifestRemoved(digest digest.Digest) error
-	OnManifestAdded(manifestRef string, digest digest.Digest) error
-	OnIndexMerged(indexRef string, digest digest.Digest) error
-	OnIndexUpdated(digest digest.Digest) error
-	OnIndexPushed(path string) error
 }

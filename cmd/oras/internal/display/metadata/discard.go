@@ -38,6 +38,36 @@ func (discard) OnTagged(ocispec.Descriptor, string) error {
 }
 
 // OnCompleted implements ManifestIndexCreateHandler.
-func (discard) OnCompleted(digest.Digest) error {
+func (discard) OnCompleted(ocispec.Descriptor) error {
+	return nil
+}
+
+// OnIndexPacked implements ManifestIndexCreateHandler.
+func (discard) OnIndexPacked(string) error {
+	return nil
+}
+
+// OnIndexPushed implements ManifestIndexCreateHandler.
+func (discard) OnIndexPushed(string) error {
+	return nil
+}
+
+// OnManifestRemoved implements ManifestIndexUpdateHandler.
+func (discard) OnManifestRemoved(digest.Digest) error {
+	return nil
+}
+
+// OnManifestAdded implements ManifestIndexUpdateHandler.
+func (discard) OnManifestAdded(string, digest.Digest) error {
+	return nil
+}
+
+// OnIndexMerged implements ManifestIndexUpdateHandler.
+func (discard) OnIndexMerged(string, digest.Digest) error {
+	return nil
+}
+
+// OnIndexUpdated implements ManifestIndexUpdateHandler.
+func (discard) OnIndexUpdated(digest.Digest) error {
 	return nil
 }

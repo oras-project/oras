@@ -132,18 +132,18 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 		return err
 	}
 	desc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageIndex, indexBytes)
-	if err := displayStatus.OnIndexPacked(descriptor.ShortDigest(desc)); err != nil {
+	if err := displayMetadata.OnIndexPacked(descriptor.ShortDigest(desc)); err != nil {
 		return err
 	}
 	if err := displayContent.OnContentCreated(indexBytes); err != nil {
 		return err
 	}
 	if opts.outputPath == "" {
-		if err := pushIndex(ctx, displayStatus.OnIndexPushed, displayMetadata.OnTagged, target, desc, indexBytes, opts.Reference, opts.extraRefs, opts.AnnotatedReference()); err != nil {
+		if err := pushIndex(ctx, displayMetadata.OnIndexPushed, displayMetadata.OnTagged, target, desc, indexBytes, opts.Reference, opts.extraRefs, opts.AnnotatedReference()); err != nil {
 			return err
 		}
 	}
-	return displayMetadata.OnCompleted(desc.Digest)
+	return displayMetadata.OnCompleted(desc)
 }
 
 func fetchSourceManifests(ctx context.Context, displayStatus status.ManifestIndexCreateHandler, target oras.ReadOnlyTarget, sources []string) ([]ocispec.Descriptor, error) {

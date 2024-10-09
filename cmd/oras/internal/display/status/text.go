@@ -197,16 +197,6 @@ func (mich TextManifestIndexCreateHandler) OnSourceManifestFetched(source string
 	return mich.printer.Println(IndexPromptFetched, source)
 }
 
-// OnIndexPacked implements ManifestIndexCreateHandler.
-func (mich TextManifestIndexCreateHandler) OnIndexPacked(shortDigest string) error {
-	return mich.printer.Println(IndexPromptPacked, shortDigest, ocispec.MediaTypeImageIndex)
-}
-
-// OnIndexPushed implements ManifestIndexCreateHandler.
-func (mich TextManifestIndexCreateHandler) OnIndexPushed(path string) error {
-	return mich.printer.Println(IndexPromptPushed, path)
-}
-
 // NewTextManifestIndexCreateHandler returns a new handler for manifest index create command.
 func NewTextManifestIndexCreateHandler(printer *output.Printer) ManifestIndexCreateHandler {
 	tmich := TextManifestIndexCreateHandler{
@@ -244,37 +234,6 @@ func (miuh TextManifestIndexUpdateHandler) OnManifestFetched(ref string, digest 
 		return miuh.printer.Println(IndexPromptFetched, ref)
 	}
 	return miuh.printer.Println(IndexPromptFetched, digest, ref)
-}
-
-// OnManifestRemoved implements ManifestIndexUpdateHandler.
-func (miuh TextManifestIndexUpdateHandler) OnManifestRemoved(digest digest.Digest) error {
-	return miuh.printer.Println(IndexPromptRemoved, digest)
-}
-
-// OnManifestAdded implements ManifestIndexUpdateHandler.
-func (miuh TextManifestIndexUpdateHandler) OnManifestAdded(ref string, digest digest.Digest) error {
-	if contentutil.IsDigest(ref) {
-		return miuh.printer.Println(IndexPromptAdded, ref)
-	}
-	return miuh.printer.Println(IndexPromptAdded, digest, ref)
-}
-
-// OnIndexMerged implements ManifestIndexUpdateHandler.
-func (miuh TextManifestIndexUpdateHandler) OnIndexMerged(ref string, digest digest.Digest) error {
-	if contentutil.IsDigest(ref) {
-		return miuh.printer.Println(IndexPromptMerged, ref)
-	}
-	return miuh.printer.Println(IndexPromptMerged, digest, ref)
-}
-
-// OnIndexUpdated implements ManifestIndexUpdateHandler.
-func (miuh TextManifestIndexUpdateHandler) OnIndexUpdated(digest digest.Digest) error {
-	return miuh.printer.Println(IndexPromptUpdated, digest)
-}
-
-// OnIndexPushed implements ManifestIndexUpdateHandler.
-func (miuh TextManifestIndexUpdateHandler) OnIndexPushed(indexRef string) error {
-	return miuh.printer.Println(IndexPromptPushed, indexRef)
 }
 
 // NewTextManifestIndexUpdateHandler returns a new handler for manifest index create command.
