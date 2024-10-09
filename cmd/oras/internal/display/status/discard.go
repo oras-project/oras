@@ -90,22 +90,12 @@ func (DiscardHandler) OnNodeSkipped(desc ocispec.Descriptor) error {
 	return nil
 }
 
-// OnSourceManifestFetching implements ManifestIndexCreateHandler.
-func (DiscardHandler) OnSourceManifestFetching(string) error {
-	return nil
-}
-
-// OnSourceManifestFetched implements ManifestIndexCreateHandler.
-func (DiscardHandler) OnSourceManifestFetched(string) error {
-	return nil
-}
-
-// OnManifestFetching implements ManifestIndexUpdateHandler.
+// OnSourceManifestFetching implements ManifestReferenceFetchHandler.
 func (DiscardHandler) OnManifestFetching(string) error {
 	return nil
 }
 
-// OnManifestFetched implements ManifestIndexUpdateHandler.
+// OnSourceManifestFetched implements ManifestReferenceFetchHandler.
 func (DiscardHandler) OnManifestFetched(string, digest.Digest) error {
 	return nil
 }

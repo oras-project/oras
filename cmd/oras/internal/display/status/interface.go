@@ -64,16 +64,20 @@ type CopyHandler interface {
 	OnMounted(ctx context.Context, desc ocispec.Descriptor) error
 }
 
+// ManifestReferenceFetchHandler handles status output for manifest reference fetch events.
+type ManifestReferenceFetchHandler interface {
+	OnManifestFetching(manifestRef string) error
+	OnManifestFetched(manifestRef string, digest digest.Digest) error
+}
+
 // ManifestIndexCreateHandler handles status output for manifest index create command.
 type ManifestIndexCreateHandler interface {
-	OnSourceManifestFetching(source string) error
-	OnSourceManifestFetched(source string) error
+	ManifestReferenceFetchHandler
 }
 
 // ManifestIndexUpdateHandler handles status output for manifest index update command.
 type ManifestIndexUpdateHandler interface {
+	ManifestReferenceFetchHandler
 	OnIndexFetching(indexRef string) error
 	OnIndexFetched(indexRef string, digest digest.Digest) error
-	OnManifestFetching(manifestRef string) error
-	OnManifestFetched(manifestRef string, digest digest.Digest) error
 }

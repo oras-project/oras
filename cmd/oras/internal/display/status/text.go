@@ -188,12 +188,12 @@ type TextManifestIndexCreateHandler struct {
 }
 
 // OnSourceManifestFetching implements ManifestIndexCreateHandler.
-func (mich TextManifestIndexCreateHandler) OnSourceManifestFetching(source string) error {
+func (mich TextManifestIndexCreateHandler) OnManifestFetching(source string) error {
 	return mich.printer.Println(IndexPromptFetching, source)
 }
 
 // OnSourceManifestFetched implements ManifestIndexCreateHandler.
-func (mich TextManifestIndexCreateHandler) OnSourceManifestFetched(source string) error {
+func (mich TextManifestIndexCreateHandler) OnManifestFetched(source string, _ digest.Digest) error {
 	return mich.printer.Println(IndexPromptFetched, source)
 }
 
