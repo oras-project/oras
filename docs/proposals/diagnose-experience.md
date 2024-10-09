@@ -34,11 +34,11 @@ There are four types of output in ORAS CLI:
 - **Content output**: it is to output the raw data obtained from the remote registry server or file system, such as the pulled artifact content save as a file.
 - **Error output**: error message are expected to be helpful to troubleshoot where the user has done something wrong and the program is guiding them in the right direction.
 
-The target users of these types of output are general users. Currently, the output of ORAS `--verbose` flag only exists in oras `pull/push/attach/discover` commands, which prints out detailed status output and metadata output. 
+The target users of these types of output are general users. 
+
+Currently, the output of ORAS `--verbose` flag only exists in oras `pull/push/attach/discover` commands, which prints out detailed status output and metadata output. Since ORAS v1.2.0, progress bar is enabled in `pull/push/attach` by default, thus the ORAS output is already verbose on a terminal.
 
 It is intended for end-users who want to observe the detailed file operation when using ORAS. It gives users a comprehensive view of what the tool is doing at every step and how long does it take when push or pull a file.
-
-Since ORAS v1.2.0, progress bar is enabled in `pull/push/attach` by default, thus the ORAS output is already verbose in a terminal.
 
 ### Logs
 
@@ -49,55 +49,29 @@ Logs focus on providing technical details for in-depth diagnosing and troublesho
 - **Content**: Debug logs focus on providing context needed to troubleshoot issues, like variable values, execution paths, error stack traces, and internal states of the application.
 - **Level of Detail**: Extremely detailed, providing insights into the application's internal workings and logic, often including low-level details that are essential for debugging.
 
-## Proposals for ORAS CLI
+### Common Conventions
 
-- Deprecate the global flag `--verbose` and only remain `--debug` to avoid ambiguity. Based on the concept above, it is reasonable to continue using `--debug` to enable the output of `DEBUG` level logs in ORAS as it is in ORAS. Meanwhile, This change will make the diagnose experience much more straightforward and less breaking since only ORAS `pull/push/attach/discover` commands have verbose output.
-- Introduce a new flag `--detail` to replace the existing global flag `--verbose` of commands like `pull`, `push`, `attach`, and `discover` for detailed output.
-- Add separator lines between each request and response for readability.
-- Add timestamp of each request and response to the beginning of each request and response.
-- Add the response body including [error code](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#error-codes) and the metadata of processed OCI object (e.g. image manifest) to the debug logs
-- Define guiding principles and conventions for writing clear and conductive debug logs
+Here are the common conventions to print clear and analyzable debug logs.
 
-### Guiding Principles
-
-Here are the guiding principles to write debug logs.
-
-### 1. **Timestamp Each Log Entry**
+### **Timestamp Each Log Entry**
 - **Precise Timing:** Ensure each log entry has a precise timestamp to trace the sequence of events accurately.
   - Example: `DEBUG: [2023-10-01T12:00:00Z] Starting metadata retrieval for repository oras-demo`
 
-### 2. **Capture API-Specific Details**
-- **API Requests:** Log detailed information about API requests made to the registry server, including the HTTP method, endpoint, headers, and body (excluding sensitive information).
-  - Example: `DEBUG: [HTTPRequest] POST /v2/oras-demo/blobs/uploads/ Headers: {Content-Length: 524288}`
-  
-- **API Responses:** Log details about the API responses received, including status codes, headers, and response body (excluding sensitive information).
-  - Example: `DEBUG: [HTTPResponse] Status: 201 Created, Headers: {Location: /v2/oras-demo/blobs/uploads/uuid}, Body: {}`
-
-### 3. **Log Before and After Each operations**
-- **Operation Logs:** Log before performing each operation and after completing them, including success or failure status.
-  - Example: `DEBUG: Starting upload of layer 2 of 3 for repository oras-demo`
-  - Example: `DEBUG: Successfully uploaded layer 2 of 3 for repository oras-demo`
-
-- **State Logs:** Log important state information, function names, important variable state, file name and line number before and after key operations or decisions.
-  - Example: `DEBUG: Current retry attempt: 1, Max retries: 3`
-
-### 4. **Error and Exception Handling**
-- **Catch and Log Exceptions:** Always catch exceptions and log them with relevant context and stack traces.
-  - Example: `ERROR: Exception occurred in fetchManifest: Network timeout while accessing /v2/oras-demo/manifests/latest`
-  
-- **Error Codes:** Include specific error codes to facilitate quick identification and resolution.
-  - Example: `ERROR: [ErrorCode: 504] Network timeout while accessing /v2/oras-demo/manifests/latest`
-
-### 5. **Include Actionable Information**
-- **Guidance:** Where possible, provide suggestions within logs about potential fixes or next steps for resolving issues.
-  - Example: `DEBUG: [Action] Check network connectivity and retry the operation. Error occurred while accessing /v2/oras-demo/manifests/latest`
-
-- **Diagnostic Tips:** Include information that can assist in diagnosing issues like configuration settings, environment variables, or system states.
-  - Example: `DEBUG: Current registry URL: https://myregistry.io, Timeout setting:
-
-### 6. **Avoid Logging Sensitive Information**
-- **Privacy and Security:** Abstain from logging sensitive information such as passwords, personal data, or security tokens.
+### **Avoid Logging Sensitive Information**
+- **Privacy and Security:** Abstain from logging sensitive information such as passwords, personal data, or authentication tokens.
   - Example: `DEBUG: Attempting to authenticate user [UserID: usr123]`  (exclude authentication token and password information).
+
+## Proposals for ORAS CLI
+
+Based on the concepts above, 
+
+- Deprecate the global flag `--verbose` and only remain `--debug` to avoid ambiguity. Based on the concept above, it is reasonable to continue using `--debug` to enable the output of `DEBUG` level logs in ORAS as it is in ORAS. Meanwhile, This change will make the diagnose experience much more straightforward and less breaking since only ORAS `pull/push/attach/discover` commands have verbose output.
+- Make the verbose output of commands `pull`, `push`, `attach` as the default (status) output. See examples at the bottom.
+- Make the verbose output of command  `discover` as a formatted output, controlled by `--format tree-full`. See examples at the bottom.
+- Add an empty line as the separator between each request and response for readability.
+- Add timestamp of each request and response to the beginning of each request and response.
+- Add the response body including [error code](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#error-codes) and the metadata of processed OCI object (e.g. image manifest) to the debug logs.
+- Summarize common conventions for writing clear and analyzable debug logs.
 
 ## Investigation on other CLI tools
 
