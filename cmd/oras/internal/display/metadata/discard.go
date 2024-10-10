@@ -43,7 +43,7 @@ func (discard) OnCompleted(ocispec.Descriptor) error {
 }
 
 // OnIndexPacked implements ManifestIndexCreateHandler.
-func (discard) OnIndexPacked(string) error {
+func (discard) OnIndexPacked(ocispec.Descriptor) error {
 	return nil
 }
 
@@ -64,10 +64,5 @@ func (discard) OnManifestAdded(string, digest.Digest) error {
 
 // OnIndexMerged implements ManifestIndexUpdateHandler.
 func (discard) OnIndexMerged(string, digest.Digest) error {
-	return nil
-}
-
-// OnIndexUpdated implements ManifestIndexUpdateHandler.
-func (discard) OnIndexUpdated(digest.Digest) error {
 	return nil
 }

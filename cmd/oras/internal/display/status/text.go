@@ -187,13 +187,13 @@ type TextManifestIndexCreateHandler struct {
 	printer *output.Printer
 }
 
-// OnSourceManifestFetching implements ManifestIndexCreateHandler.
-func (mich TextManifestIndexCreateHandler) OnManifestFetching(source string) error {
+// OnFetching implements ManifestIndexCreateHandler.
+func (mich TextManifestIndexCreateHandler) OnFetching(source string) error {
 	return mich.printer.Println(IndexPromptFetching, source)
 }
 
-// OnSourceManifestFetched implements ManifestIndexCreateHandler.
-func (mich TextManifestIndexCreateHandler) OnManifestFetched(source string, _ digest.Digest) error {
+// OnFetched implements ManifestIndexCreateHandler.
+func (mich TextManifestIndexCreateHandler) OnFetched(source string, _ ocispec.Descriptor) error {
 	return mich.printer.Println(IndexPromptFetched, source)
 }
 
@@ -223,17 +223,17 @@ func (miuh TextManifestIndexUpdateHandler) OnIndexFetched(indexRef string, diges
 	return miuh.printer.Println(IndexPromptFetched, digest, indexRef)
 }
 
-// OnManifestFetching implements ManifestIndexUpdateHandler.
-func (miuh TextManifestIndexUpdateHandler) OnManifestFetching(ref string) error {
+// OnFetching implements ManifestIndexUpdateHandler.
+func (miuh TextManifestIndexUpdateHandler) OnFetching(ref string) error {
 	return miuh.printer.Println(IndexPromptFetching, ref)
 }
 
-// OnManifestFetched implements ManifestIndexUpdateHandler.
-func (miuh TextManifestIndexUpdateHandler) OnManifestFetched(ref string, digest digest.Digest) error {
+// OnFetched implements ManifestIndexUpdateHandler.
+func (miuh TextManifestIndexUpdateHandler) OnFetched(ref string, desc ocispec.Descriptor) error {
 	if contentutil.IsDigest(ref) {
 		return miuh.printer.Println(IndexPromptFetched, ref)
 	}
-	return miuh.printer.Println(IndexPromptFetched, digest, ref)
+	return miuh.printer.Println(IndexPromptFetched, desc.Digest, ref)
 }
 
 // NewTextManifestIndexUpdateHandler returns a new handler for manifest index create command.

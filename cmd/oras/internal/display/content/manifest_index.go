@@ -33,7 +33,7 @@ type manifestIndexCreate struct {
 // OnContentCreated is called after index content is created.
 func (h *manifestIndexCreate) OnContentCreated(manifest []byte) error {
 	out := h.stdout
-	if h.outputPath != "-" && h.outputPath != "" {
+	if h.outputPath != "" && h.outputPath != "-" {
 		f, err := os.Create(h.outputPath)
 		if err != nil {
 			return fmt.Errorf("failed to open %q: %w", h.outputPath, err)

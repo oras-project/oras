@@ -128,7 +128,7 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 		return err
 	}
 	desc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageIndex, indexBytes)
-	if err := displayMetadata.OnIndexPacked(descriptor.ShortDigest(desc)); err != nil {
+	if err := displayMetadata.OnIndexPacked(desc); err != nil {
 		return err
 	}
 	if err := displayContent.OnContentCreated(indexBytes); err != nil {
@@ -145,7 +145,7 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 func fetchSourceManifests(ctx context.Context, displayStatus status.ManifestIndexCreateHandler, target oras.ReadOnlyTarget, sources []string) ([]ocispec.Descriptor, error) {
 	resolved := []ocispec.Descriptor{}
 	for _, source := range sources {
-		if err := displayStatus.OnManifestFetching(source); err != nil {
+		if err := displayStatus.OnFetching(source); err != nil {
 			return nil, err
 		}
 		desc, content, err := oras.FetchBytes(ctx, target, source, oras.DefaultFetchBytesOptions)
@@ -155,7 +155,7 @@ func fetchSourceManifests(ctx context.Context, displayStatus status.ManifestInde
 		if !descriptor.IsManifest(desc) {
 			return nil, fmt.Errorf("%s is not a manifest", source)
 		}
-		if err := displayStatus.OnManifestFetched(source, desc.Digest); err != nil {
+		if err := displayStatus.OnFetched(source, desc); err != nil {
 			return nil, err
 		}
 		desc = descriptor.Plain(desc)

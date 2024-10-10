@@ -21,6 +21,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/contentutil"
+	"oras.land/oras/internal/descriptor"
 )
 
 // ManifestIndexCreateHandler handles text metadata output for index create events.
@@ -36,8 +37,8 @@ func NewManifestIndexCreateHandler(printer *output.Printer) metadata.ManifestInd
 }
 
 // OnIndexPacked implements metadata.ManifestIndexCreateHandler.
-func (h *ManifestIndexCreateHandler) OnIndexPacked(shortDigest string) error {
-	return h.printer.Println("Packed", shortDigest, ocispec.MediaTypeImageIndex)
+func (h *ManifestIndexCreateHandler) OnIndexPacked(desc ocispec.Descriptor) error {
+	return h.printer.Println("Packed", descriptor.ShortDigest(desc), ocispec.MediaTypeImageIndex)
 }
 
 // OnIndexPushed implements metadata.ManifestIndexCreateHandler.
@@ -88,8 +89,8 @@ func (miuh ManifestIndexUpdateHandler) OnIndexMerged(ref string, digest digest.D
 }
 
 // OnIndexUpdated implements metadata.ManifestIndexUpdateHandler.
-func (miuh ManifestIndexUpdateHandler) OnIndexUpdated(digest digest.Digest) error {
-	return miuh.printer.Println("Updated", digest)
+func (miuh ManifestIndexUpdateHandler) OnIndexPacked(desc ocispec.Descriptor) error {
+	return miuh.printer.Println("Updated", desc.Digest)
 }
 
 // OnIndexPushed implements metadata.ManifestIndexUpdateHandler.

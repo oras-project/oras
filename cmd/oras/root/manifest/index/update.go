@@ -140,7 +140,7 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 		return err
 	}
 	desc := content.NewDescriptorFromBytes(index.MediaType, indexBytes)
-	if err := displayMetadata.OnIndexUpdated(desc.Digest); err != nil {
+	if err := displayMetadata.OnIndexPacked(desc); err != nil {
 		return err
 	}
 	path := getPushPath(opts.RawReference, opts.Type, opts.Reference, opts.Path)
@@ -156,7 +156,7 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 }
 
 func fetchIndex(ctx context.Context, handler status.ManifestIndexUpdateHandler, target oras.ReadOnlyTarget, reference string) (ocispec.Index, error) {
-	if err := handler.OnIndexFetching(reference); err != nil {
+	if err := handler.OnFetching(reference); err != nil {
 		return ocispec.Index{}, err
 	}
 	desc, content, err := oras.FetchBytes(ctx, target, reference, oras.DefaultFetchBytesOptions)
@@ -166,7 +166,7 @@ func fetchIndex(ctx context.Context, handler status.ManifestIndexUpdateHandler, 
 	if !descriptor.IsIndex(desc) {
 		return ocispec.Index{}, fmt.Errorf("%s is not an index", reference)
 	}
-	if err := handler.OnIndexFetched(reference, desc.Digest); err != nil {
+	if err := handler.OnFetched(reference, desc); err != nil {
 		return ocispec.Index{}, err
 	}
 	var index ocispec.Index
@@ -178,7 +178,7 @@ func fetchIndex(ctx context.Context, handler status.ManifestIndexUpdateHandler, 
 
 func addManifests(ctx context.Context, displayStatus status.ManifestIndexUpdateHandler, displayMetadata metadata.ManifestIndexUpdateHandler, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, addArguments []string) ([]ocispec.Descriptor, error) {
 	for _, manifestRef := range addArguments {
-		if err := displayStatus.OnManifestFetching(manifestRef); err != nil {
+		if err := displayStatus.OnFetching(manifestRef); err != nil {
 			return nil, err
 		}
 		desc, content, err := oras.FetchBytes(ctx, target, manifestRef, oras.DefaultFetchBytesOptions)
@@ -188,7 +188,7 @@ func addManifests(ctx context.Context, displayStatus status.ManifestIndexUpdateH
 		if !descriptor.IsManifest(desc) {
 			return nil, fmt.Errorf("%s is not a manifest", manifestRef)
 		}
-		if err := displayStatus.OnManifestFetched(manifestRef, desc.Digest); err != nil {
+		if err := displayStatus.OnFetched(manifestRef, desc); err != nil {
 			return nil, err
 		}
 		if descriptor.IsImageManifest(desc) {
@@ -207,7 +207,7 @@ func addManifests(ctx context.Context, displayStatus status.ManifestIndexUpdateH
 
 func mergeIndexes(ctx context.Context, displayStatus status.ManifestIndexUpdateHandler, displayMetadata metadata.ManifestIndexUpdateHandler, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, mergeArguments []string) ([]ocispec.Descriptor, error) {
 	for _, indexRef := range mergeArguments {
-		if err := displayStatus.OnIndexFetching(indexRef); err != nil {
+		if err := displayStatus.OnFetching(indexRef); err != nil {
 			return nil, err
 		}
 		desc, content, err := oras.FetchBytes(ctx, target, indexRef, oras.DefaultFetchBytesOptions)
@@ -217,7 +217,7 @@ func mergeIndexes(ctx context.Context, displayStatus status.ManifestIndexUpdateH
 		if !descriptor.IsIndex(desc) {
 			return nil, fmt.Errorf("%s is not an index", indexRef)
 		}
-		if err := displayStatus.OnIndexFetched(indexRef, desc.Digest); err != nil {
+		if err := displayStatus.OnFetched(indexRef, desc); err != nil {
 			return nil, err
 		}
 		var index ocispec.Index

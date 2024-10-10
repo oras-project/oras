@@ -18,7 +18,6 @@ package status
 import (
 	"context"
 
-	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 )
@@ -64,20 +63,16 @@ type CopyHandler interface {
 	OnMounted(ctx context.Context, desc ocispec.Descriptor) error
 }
 
-// ManifestReferenceFetchHandler handles status output for manifest reference fetch events.
-type ManifestReferenceFetchHandler interface {
-	OnManifestFetching(manifestRef string) error
-	OnManifestFetched(manifestRef string, digest digest.Digest) error
+// referenceFetchHandler handles status output for reference fetch events.
+type referenceFetchHandler interface {
+	OnFetching(manifestRef string) error
+	OnFetched(manifestRef string, desc ocispec.Descriptor) error
 }
 
 // ManifestIndexCreateHandler handles status output for manifest index create command.
 type ManifestIndexCreateHandler interface {
-	ManifestReferenceFetchHandler
+	referenceFetchHandler
 }
 
 // ManifestIndexUpdateHandler handles status output for manifest index update command.
-type ManifestIndexUpdateHandler interface {
-	ManifestReferenceFetchHandler
-	OnIndexFetching(indexRef string) error
-	OnIndexFetched(indexRef string, digest digest.Digest) error
-}
+type ManifestIndexUpdateHandler ManifestIndexCreateHandler
