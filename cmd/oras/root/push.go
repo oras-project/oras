@@ -216,7 +216,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	copyOptions.CopyGraphOptions.OnCopySkipped = displayStatus.OnCopySkipped
 	copyOptions.CopyGraphOptions.PreCopy = displayStatus.PreCopy
 	copyOptions.CopyGraphOptions.PostCopy = displayStatus.PostCopy
-	copy := func(root ocispec.Descriptor) error {
+	copyWithScopeHint := func(root ocispec.Descriptor) error {
 		// add both pull and push scope hints for dst repository
 		// to save potential push-scope token requests during copy
 		ctx = registryutil.WithScopeHint(ctx, dst, auth.ActionPull, auth.ActionPush)
@@ -230,7 +230,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	}
 
 	// Push
-	root, err := doPush(dst, stopTrack, pack, copy)
+	root, err := doPush(dst, stopTrack, pack, copyWithScopeHint)
 	if err != nil {
 		return err
 	}
@@ -272,7 +272,7 @@ func doPush(dst oras.Target, stopTrack status.StopTrackTargetFunc, pack packFunc
 type packFunc func() (ocispec.Descriptor, error)
 type copyFunc func(desc ocispec.Descriptor) error
 
-func pushArtifact(dst oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
+func pushArtifact(_ oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
 	root, err := pack()
 	if err != nil {
 		return ocispec.Descriptor{}, err
