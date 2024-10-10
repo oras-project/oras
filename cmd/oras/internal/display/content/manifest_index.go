@@ -46,6 +46,10 @@ func (h *manifestIndexCreate) OnContentCreated(manifest []byte) error {
 
 // NewManifestIndexCreateHandler creates a new handler.
 func NewManifestIndexCreateHandler(out io.Writer, pretty bool, outputPath string) ManifestIndexCreateHandler {
+	// ignore --pretty when output to a file
+	if outputPath != "" && outputPath != "-" {
+		pretty = false
+	}
 	return &manifestIndexCreate{
 		pretty:     pretty,
 		stdout:     out,

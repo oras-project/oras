@@ -89,10 +89,6 @@ Example - Create an index and output the index to stdout, auto push will be disa
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
 			opts.sources = args[1:]
-			// ignore --pretty when output to a file
-			if opts.outputPath != "" && opts.outputPath != "-" {
-				opts.Pretty.Pretty = false
-			}
 			return option.Parse(cmd, &opts)
 		},
 		Aliases: []string{"pack"},
