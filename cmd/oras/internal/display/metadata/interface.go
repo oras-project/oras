@@ -16,6 +16,7 @@ limitations under the License.
 package metadata
 
 import (
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -78,9 +79,25 @@ type ManifestPushHandler interface {
 	TaggedHandler
 }
 
+type manifestPackHandler interface {
+	OnIndexPacked(desc ocispec.Descriptor) error
+	OnIndexPushed(path string) error
+	OnCompleted(desc ocispec.Descriptor) error
+}
+
 // ManifestIndexCreateHandler handles metadata output for index create events.
 type ManifestIndexCreateHandler interface {
 	TaggedHandler
+	manifestPackHandler
+}
+
+// ManifestIndexUpdateHandler handles metadata output for index update events.
+type ManifestIndexUpdateHandler interface {
+	TaggedHandler
+	manifestPackHandler
+	OnManifestRemoved(digest digest.Digest) error
+	OnManifestAdded(manifestRef string, digest digest.Digest) error
+	OnIndexMerged(indexRef string, digest digest.Digest) error
 }
 
 // CopyHandler handles metadata output for cp events.
