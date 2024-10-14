@@ -44,7 +44,7 @@ It is intended for end-users who want to observe the detailed file operation whe
 
 Logs focus on providing technical details for in-depth diagnosing and troubleshooting issues. It is intended for developers or technical users who need to understand the inner workings of the tool. Debug logs are detailed and technical, often including HTTP request and response from interactions between client and server, as well as code-specific information. In general, there are different levels of logs. [Logrus](https://github.com/sirupsen/logrus) has been used by ORAS, which has seven logging levels: `Trace`, `Debug`, `Info`, `Warning`, `Error`, `Fatal` and `Panic`, but only `DEBUG` level log is used in ORAS, which is controlled by the flag `--debug`. 
 
-- **Purpose**: Debug logs are specifically aim to facilitate ORAS developers to diagnose ORAS tool itself. They contain detailed technical information that is useful for troubleshooting problems.
+- **Purpose**: Debug logs are specifically aimed to facilitate ORAS developers to diagnose ORAS tool itself. They contain detailed technical information that is useful for troubleshooting problems.
 - **Target users**: Primarily intended for developers or technical users who are trying to understand the inner workings of the code and identify the root cause of a possible issue with the tool itself.
 - **Content**: Debug logs focus on providing context needed to troubleshoot issues, like variable values, execution paths, error stack traces, and internal states of the application.
 - **Level of Detail**: Extremely detailed, providing insights into the application's internal workings and logic, often including low-level details that are essential for debugging.
@@ -63,12 +63,12 @@ Here are the common conventions to print clear and analyzable debug logs.
 
 ## Proposals for ORAS CLI
 
-Based on the concepts above, 
+Based on the concepts and conventions above, here are the proposal for ORAS diagnose experience improvement: 
 
-- Deprecate the global flag `--verbose` and only remain `--debug` to avoid ambiguity. Based on the concept above, it is reasonable to continue using `--debug` to enable the output of `DEBUG` level logs in ORAS as it is in ORAS. Meanwhile, This change will make the diagnose experience much more straightforward and less breaking since only ORAS `pull/push/attach/discover` commands have verbose output.
+- Deprecate the global flag `--verbose` and only remain `--debug` to avoid ambiguity. It is reasonable to continue using `--debug` to enable the output of `DEBUG` level logs as it is in ORAS. Meanwhile, This change will make the diagnose experience much more straightforward and less breaking since only ORAS `pull/push/attach/discover` commands have verbose output.
 - Make the verbose output of commands `pull`, `push`, `attach` as the default (status) output. See examples at the bottom.
 - Make the verbose output of command  `discover` as a formatted output, controlled by `--format tree-full`. 
-- Add an empty line as the separator between each request and response for readability.
+- Add two empty lines as the separator between each request and response for readability.
 - Add timestamp of each request and response to the beginning of each request and response.
 - Add the response body including [error code](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#error-codes) and the metadata of processed OCI object (e.g. image manifest) to the debug logs.
 - Summarize common conventions for writing clear and analyzable debug logs.
@@ -136,7 +136,7 @@ DEBU[0002] Response #1
 **Suggested debug logs:**
 
 ```
-2024-08-02 23:56:02 > msg=Request #0
+[2024-08-02 23:56:02] --> Request #0
 > Request URL: "https://ghcr.io/v2/oras-project/oras/manifests/v1.2.0"
 > Request method: "GET"
 > Request headers:
@@ -144,7 +144,7 @@ DEBU[0002] Response #1
    "Accept": "application/vnd.docker.distribution.manifest.v2+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.oci.image.index.v1+json, application/vnd.oci.artifact.manifest.v1+json" 
 
 
-2024-08-02 23:56:03 <  msg=Response #0
+[2024-08-02 23:56:03] <-- Response #0
 < Response Status: "401 Unauthorized"
 < Response headers:
    "Content-Length": "73"
@@ -164,15 +164,15 @@ DEBU[0002] Response #1
         ]
     }
 
-2024-08-02 23:56:02 > msg=Request #1
+
+[2024-08-02 23:56:04] --> Request #1
 > Request URL: "https://ghcr.io/token?scope=repository%3Aoras-project%2Foras%3Apull&service=ghcr.io"
 > Request method: "GET"
 > Request headers:
    "User-Agent": "oras/1.2.0+Homebrew" 
 
 
-
-2024-08-02 23:56:03 < msg=Response #1
+[2024-08-02 23:56:04] <-- Response #1
 < Response Status: "200 OK"
 < Response headers:
    "Content-Type": "application/json"
@@ -241,6 +241,6 @@ Git tree state:  clean
 
 **A:** Per our discussion in the ORAS community meeting, ORAS maintainers agreed to not introduce an additional environment variable as a global switch to enable debug logs since --debug is intuitive enough.
 
-**Q2:**: For the diagnose flag options, why deprecate `--verbose` and remain `--debug` as it is?
+**Q2:** For the diagnose flag options, why deprecate `--verbose` and remain `--debug` as it is?
 
-**A**: The major reason is that this change avoids overloading the flag `--verbose` and reduce ambiguity in ORAS diagnose experience. Moreover, the `--debug` is consistent with other popular container client tools, such as Helm and Docker. Deprecation of `--verbose` is less breaking than changing behaviors of `--debug`.
+**A:** The major reason is that this change avoids overloading the flag `--verbose` and reduce ambiguity in ORAS diagnose experience. Moreover, the `--debug` is consistent with other popular container client tools, such as Helm and Docker. Deprecation of `--verbose` is less breaking than changing behaviors of `--debug`.
