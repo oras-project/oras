@@ -153,12 +153,9 @@ func fetchSourceManifests(ctx context.Context, target oras.ReadOnlyTarget, opts 
 			return nil, fmt.Errorf("%s is not a manifest", source)
 		}
 		opts.Println(status.IndexPromptFetched, source)
-		desc = descriptor.Plain(desc)
-		if descriptor.IsImageManifest(desc) {
-			desc.Platform, err = getPlatform(ctx, target, content)
-			if err != nil {
-				return nil, err
-			}
+		desc, err = enrichDescriptor(ctx, target, desc, content)
+		if err != nil {
+			return nil, err
 		}
 		resolved = append(resolved, desc)
 	}
@@ -208,4 +205,16 @@ func pushIndex(ctx context.Context, target oras.Target, desc ocispec.Descriptor,
 		}
 	}
 	return printer.Println("Digest:", desc.Digest)
+}
+
+func enrichDescriptor(ctx context.Context, target oras.ReadOnlyTarget, desc ocispec.Descriptor, manifestBytes []byte) (ocispec.Descriptor, error) {
+	desc = descriptor.Plain(desc)
+	if descriptor.IsImageManifest(desc) {
+		var err error
+		desc.Platform, err = getPlatform(ctx, target, manifestBytes)
+		if err != nil {
+			return ocispec.Descriptor{}, err
+		}
+	}
+	return desc, nil
 }
