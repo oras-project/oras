@@ -21,40 +21,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/contentutil"
-	"oras.land/oras/internal/descriptor"
 )
-
-// ManifestIndexCreateHandler handles text metadata output for index create events.
-type ManifestIndexCreateHandler struct {
-	printer *output.Printer
-}
-
-// NewManifestIndexCreateHandler returns a new handler for index create events.
-func NewManifestIndexCreateHandler(printer *output.Printer) metadata.ManifestIndexCreateHandler {
-	return &ManifestIndexCreateHandler{
-		printer: printer,
-	}
-}
-
-// OnIndexPacked implements metadata.ManifestIndexCreateHandler.
-func (h *ManifestIndexCreateHandler) OnIndexPacked(desc ocispec.Descriptor) error {
-	return h.printer.Println("Packed", descriptor.ShortDigest(desc), ocispec.MediaTypeImageIndex)
-}
-
-// OnIndexPushed implements metadata.ManifestIndexCreateHandler.
-func (h *ManifestIndexCreateHandler) OnIndexPushed(path string) error {
-	return h.printer.Println("Pushed", path)
-}
-
-// OnTagged implements metadata.TaggedHandler.
-func (h *ManifestIndexCreateHandler) OnTagged(_ ocispec.Descriptor, tag string) error {
-	return h.printer.Println("Tagged", tag)
-}
-
-// OnCompleted implements metadata.ManifestIndexCreateHandler.
-func (h *ManifestIndexCreateHandler) OnCompleted(desc ocispec.Descriptor) error {
-	return h.printer.Println("Digest:", desc.Digest)
-}
 
 type ManifestIndexUpdateHandler struct {
 	printer *output.Printer
@@ -73,19 +40,19 @@ func (miuh ManifestIndexUpdateHandler) OnManifestRemoved(digest digest.Digest) e
 }
 
 // OnManifestAdded implements metadata.ManifestIndexUpdateHandler.
-func (miuh ManifestIndexUpdateHandler) OnManifestAdded(ref string, digest digest.Digest) error {
+func (miuh ManifestIndexUpdateHandler) OnManifestAdded(ref string, desc ocispec.Descriptor) error {
 	if contentutil.IsDigest(ref) {
 		return miuh.printer.Println("Added", ref)
 	}
-	return miuh.printer.Println("Added", digest, ref)
+	return miuh.printer.Println("Added", desc.Digest, ref)
 }
 
 // OnIndexMerged implements metadata.ManifestIndexUpdateHandler.
-func (miuh ManifestIndexUpdateHandler) OnIndexMerged(ref string, digest digest.Digest) error {
+func (miuh ManifestIndexUpdateHandler) OnIndexMerged(ref string, desc ocispec.Descriptor) error {
 	if contentutil.IsDigest(ref) {
 		return miuh.printer.Println("Merged", ref)
 	}
-	return miuh.printer.Println("Merged", digest, ref)
+	return miuh.printer.Println("Merged", desc.Digest, ref)
 }
 
 // OnIndexUpdated implements metadata.ManifestIndexUpdateHandler.

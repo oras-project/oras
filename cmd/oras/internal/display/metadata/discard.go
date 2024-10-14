@@ -58,11 +58,11 @@ func (discard) OnManifestRemoved(digest.Digest) error {
 }
 
 // OnManifestAdded implements ManifestIndexUpdateHandler.
-func (discard) OnManifestAdded(string, digest.Digest) error {
+func (discard) OnManifestAdded(string, ocispec.Descriptor) error {
 	return nil
 }
 
 // OnIndexMerged implements ManifestIndexUpdateHandler.
-func (discard) OnIndexMerged(string, digest.Digest) error {
+func (discard) OnIndexMerged(string, ocispec.Descriptor) error {
 	return nil
 }

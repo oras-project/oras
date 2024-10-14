@@ -114,10 +114,7 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
 		return err
 	}
-	displayStatus, displayMetadata, displayContent, err := display.NewManifestIndexUpdateHandler(opts.outputPath, opts.Printer, opts.Pretty.Pretty)
-	if err != nil {
-		return err
-	}
+	displayStatus, displayMetadata, displayContent := display.NewManifestIndexUpdateHandler(opts.outputPath, opts.Printer, opts.Pretty.Pretty)
 	index, err := fetchIndex(ctx, displayStatus, target, opts.Reference)
 	if err != nil {
 		return err
@@ -148,7 +145,7 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 		return err
 	}
 	if opts.outputPath == "" {
-		if err := pushIndex(ctx, displayMetadata.OnIndexPushed, displayMetadata.OnTagged, target, desc, indexBytes, opts.Reference, opts.tags, path); err != nil {
+		if err := pushIndex(ctx, displayMetadata, displayMetadata, target, desc, indexBytes, opts.Reference, opts.tags, path); err != nil {
 			return err
 		}
 	}
@@ -198,7 +195,7 @@ func addManifests(ctx context.Context, displayStatus status.ManifestIndexUpdateH
 			}
 		}
 		manifests = append(manifests, desc)
-		if err := displayMetadata.OnManifestAdded(manifestRef, desc.Digest); err != nil {
+		if err := displayMetadata.OnManifestAdded(manifestRef, desc); err != nil {
 			return nil, err
 		}
 	}
@@ -225,7 +222,7 @@ func mergeIndexes(ctx context.Context, displayStatus status.ManifestIndexUpdateH
 			return nil, err
 		}
 		manifests = append(manifests, index.Manifests...)
-		if err := displayMetadata.OnIndexMerged(indexRef, desc.Digest); err != nil {
+		if err := displayMetadata.OnIndexMerged(indexRef, desc); err != nil {
 			return nil, err
 		}
 	}

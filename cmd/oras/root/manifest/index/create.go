@@ -31,6 +31,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -107,7 +108,7 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 	if err != nil {
 		return err
 	}
-	displayStatus, displayMetadata, displayContent, err := display.NewManifestIndexCreateHandler(opts.outputPath, opts.Printer, opts.Pretty.Pretty)
+	displayStatus, displayMetadata, displayContent := display.NewManifestIndexCreateHandler(opts.outputPath, opts.Printer, opts.Pretty.Pretty)
 	if err != nil {
 		return err
 	}
@@ -135,7 +136,7 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 		return err
 	}
 	if opts.outputPath == "" {
-		if err := pushIndex(ctx, displayMetadata.OnIndexPushed, displayMetadata.OnTagged, target, desc, indexBytes, opts.Reference, opts.extraRefs, opts.AnnotatedReference()); err != nil {
+		if err := pushIndex(ctx, displayMetadata, displayMetadata, target, desc, indexBytes, opts.Reference, opts.extraRefs, opts.AnnotatedReference()); err != nil {
 			return err
 		}
 	}
@@ -193,7 +194,7 @@ func getPlatform(ctx context.Context, target oras.ReadOnlyTarget, manifestBytes 
 	return &platform, nil
 }
 
-func pushIndex(ctx context.Context, onIndexPushed func(path string) error, onTagged func(desc ocispec.Descriptor, tag string) error,
+func pushIndex(ctx context.Context, mph metadata.ManifestPackHandler, th metadata.TaggedHandler,
 	target oras.Target, desc ocispec.Descriptor, content []byte, ref string, extraRefs []string, path string) error {
 	// push the index
 	var err error
@@ -205,11 +206,11 @@ func pushIndex(ctx context.Context, onIndexPushed func(path string) error, onTag
 	if err != nil {
 		return err
 	}
-	if err := onIndexPushed(path); err != nil {
+	if err := mph.OnIndexPushed(path); err != nil {
 		return err
 	}
 	if len(extraRefs) != 0 {
-		tagListener := listener.NewTaggedListener(target, onTagged)
+		tagListener := listener.NewTaggedListener(target, th.OnTagged)
 		if _, err = oras.TagBytesN(ctx, tagListener, desc.MediaType, content, extraRefs, oras.DefaultTagBytesNOptions); err != nil {
 			return err
 		}

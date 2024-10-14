@@ -79,7 +79,7 @@ type ManifestPushHandler interface {
 	TaggedHandler
 }
 
-type manifestPackHandler interface {
+type ManifestPackHandler interface {
 	OnIndexPacked(desc ocispec.Descriptor) error
 	OnIndexPushed(path string) error
 	OnCompleted(desc ocispec.Descriptor) error
@@ -88,16 +88,16 @@ type manifestPackHandler interface {
 // ManifestIndexCreateHandler handles metadata output for index create events.
 type ManifestIndexCreateHandler interface {
 	TaggedHandler
-	manifestPackHandler
+	ManifestPackHandler
 }
 
 // ManifestIndexUpdateHandler handles metadata output for index update events.
 type ManifestIndexUpdateHandler interface {
 	TaggedHandler
-	manifestPackHandler
+	ManifestPackHandler
 	OnManifestRemoved(digest digest.Digest) error
-	OnManifestAdded(manifestRef string, digest digest.Digest) error
-	OnIndexMerged(indexRef string, digest digest.Digest) error
+	OnManifestAdded(manifestRef string, desc ocispec.Descriptor) error
+	OnIndexMerged(indexRef string, desc ocispec.Descriptor) error
 }
 
 // CopyHandler handles metadata output for cp events.

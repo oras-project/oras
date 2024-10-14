@@ -178,8 +178,7 @@ func NewManifestPushHandler(printer *output.Printer) metadata.ManifestPushHandle
 func NewManifestIndexCreateHandler(outputPath string, printer *output.Printer, pretty bool) (
 	status.ManifestIndexCreateHandler,
 	metadata.ManifestIndexCreateHandler,
-	content.ManifestIndexCreateHandler,
-	error) {
+	content.ManifestIndexCreateHandler) {
 	statusHandler := status.NewTextManifestIndexCreateHandler(printer)
 	metadataHandler := text.NewManifestIndexCreateHandler(printer)
 	contentHandler := content.NewManifestIndexCreateHandler(printer, pretty, outputPath)
@@ -190,15 +189,14 @@ func NewManifestIndexCreateHandler(outputPath string, printer *output.Printer, p
 		statusHandler = status.NewDiscardHandler()
 		metadataHandler = metadata.NewDiscardHandler()
 	}
-	return statusHandler, metadataHandler, contentHandler, nil
+	return statusHandler, metadataHandler, contentHandler
 }
 
 // NewManifestIndexUpdateHandler returns status, metadata and content handlers for index update command.
 func NewManifestIndexUpdateHandler(outputPath string, printer *output.Printer, pretty bool) (
 	status.ManifestIndexUpdateHandler,
 	metadata.ManifestIndexUpdateHandler,
-	content.ManifestIndexUpdateHandler,
-	error) {
+	content.ManifestIndexUpdateHandler) {
 	statusHandler := status.NewTextManifestIndexUpdateHandler(printer)
 	metadataHandler := text.NewManifestIndexUpdateHandler(printer)
 	contentHandler := content.NewManifestIndexCreateHandler(printer, pretty, outputPath)
@@ -209,7 +207,7 @@ func NewManifestIndexUpdateHandler(outputPath string, printer *output.Printer, p
 		statusHandler = status.NewDiscardHandler()
 		metadataHandler = metadata.NewDiscardHandler()
 	}
-	return statusHandler, metadataHandler, contentHandler, nil
+	return statusHandler, metadataHandler, contentHandler
 }
 
 // NewCopyHandler returns copy handlers.
