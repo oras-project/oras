@@ -19,8 +19,10 @@ import (
 	"context"
 	"sync"
 
+	"oras.land/oras/internal/contentutil"
 	"oras.land/oras/internal/graph"
 
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
@@ -178,4 +180,66 @@ func (ch *TextCopyHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor
 func (ch *TextCopyHandler) OnMounted(_ context.Context, desc ocispec.Descriptor) error {
 	ch.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
 	return ch.printer.PrintStatus(desc, copyPromptMounted)
+}
+
+// TextManifestIndexCreateHandler handles text status output for manifest index create events.
+type TextManifestIndexCreateHandler struct {
+	printer *output.Printer
+}
+
+// OnFetching implements ManifestIndexCreateHandler.
+func (mich TextManifestIndexCreateHandler) OnFetching(source string) error {
+	return mich.printer.Println(IndexPromptFetching, source)
+}
+
+// OnFetched implements ManifestIndexCreateHandler.
+func (mich TextManifestIndexCreateHandler) OnFetched(source string, _ ocispec.Descriptor) error {
+	return mich.printer.Println(IndexPromptFetched, source)
+}
+
+// NewTextManifestIndexCreateHandler returns a new handler for manifest index create command.
+func NewTextManifestIndexCreateHandler(printer *output.Printer) ManifestIndexCreateHandler {
+	tmich := TextManifestIndexCreateHandler{
+		printer: printer,
+	}
+	return &tmich
+}
+
+// TextManifestIndexUpdateHandler handles text status output for manifest index update events.
+type TextManifestIndexUpdateHandler struct {
+	printer *output.Printer
+}
+
+// OnIndexFetching implements ManifestIndexUpdateHandler.
+func (miuh TextManifestIndexUpdateHandler) OnIndexFetching(indexRef string) error {
+	return miuh.printer.Println(IndexPromptFetching, indexRef)
+}
+
+// OnIndexFetched implements ManifestIndexUpdateHandler.
+func (miuh TextManifestIndexUpdateHandler) OnIndexFetched(indexRef string, digest digest.Digest) error {
+	if contentutil.IsDigest(indexRef) {
+		return miuh.printer.Println(IndexPromptFetched, indexRef)
+	}
+	return miuh.printer.Println(IndexPromptFetched, digest, indexRef)
+}
+
+// OnFetching implements ManifestIndexUpdateHandler.
+func (miuh TextManifestIndexUpdateHandler) OnFetching(ref string) error {
+	return miuh.printer.Println(IndexPromptFetching, ref)
+}
+
+// OnFetched implements ManifestIndexUpdateHandler.
+func (miuh TextManifestIndexUpdateHandler) OnFetched(ref string, desc ocispec.Descriptor) error {
+	if contentutil.IsDigest(ref) {
+		return miuh.printer.Println(IndexPromptFetched, ref)
+	}
+	return miuh.printer.Println(IndexPromptFetched, desc.Digest, ref)
+}
+
+// NewTextManifestIndexUpdateHandler returns a new handler for manifest index create command.
+func NewTextManifestIndexUpdateHandler(printer *output.Printer) ManifestIndexUpdateHandler {
+	miuh := TextManifestIndexUpdateHandler{
+		printer: printer,
+	}
+	return &miuh
 }
