@@ -181,8 +181,7 @@ func addManifests(ctx context.Context, manifests []ocispec.Descriptor, target or
 			return nil, fmt.Errorf("%s is not a manifest", manifestRef)
 		}
 		printUpdateStatus(status.IndexPromptFetched, manifestRef, string(desc.Digest), opts.Printer)
-		desc, err = enrichDescriptor(ctx, target, desc, content)
-		if err != nil {
+		if desc, err = enrichDescriptor(ctx, target, desc, content); err != nil {
 			return nil, err
 		}
 		manifests = append(manifests, desc)

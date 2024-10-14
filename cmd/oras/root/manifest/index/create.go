@@ -153,8 +153,7 @@ func fetchSourceManifests(ctx context.Context, target oras.ReadOnlyTarget, opts 
 			return nil, fmt.Errorf("%s is not a manifest", source)
 		}
 		opts.Println(status.IndexPromptFetched, source)
-		desc, err = enrichDescriptor(ctx, target, desc, content)
-		if err != nil {
+		if desc, err = enrichDescriptor(ctx, target, desc, content); err != nil {
 			return nil, err
 		}
 		resolved = append(resolved, desc)
