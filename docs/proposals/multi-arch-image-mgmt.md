@@ -53,7 +53,7 @@ Users cannot install or use docker buildx plugin or even no Docker in some stric
 A security engineer Cindy needs to use image lifecycle annotations with ORAS to mark when the vulnerable image should be considered end of life (EoL) and no longer used by dependent services. 
 However, as there are multi-arch images and separate arch-specific images maintained by service teams, it is cumbersome that they can only apply annotations manually to each arch-specific image separately instead of the multi-arch image. Most consumers of multi-arch images only interact with the parent image index for tagging and deployment. The EoL annotation is not available on the multi-arch image (index), which makes the multi-arch image (index) unverifiable.
 
-![separate-annotation](separate-annotation.png)
+![separate-annotation](./img/separate-annotation.png)
 
 #### Hard to inspect a multi-arch image locally
 
