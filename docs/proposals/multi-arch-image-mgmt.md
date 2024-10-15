@@ -311,6 +311,7 @@ Based on the industry observation, Docker buildx plugin supports building a mult
 - Is multi-arch artifact in the scope of the `oras manifest` subcommands? Is the multi-arch artifact popular in the industry?
 - Should ORAS support creating Docker manifest list?
 - Is ORAS supposed to add flags “--artifact-type” and `--subject` to `oras manifest index create`?
+- Is it much extensible to introduce a new command `oras annotate` or `oras manifest index annotate` to add or modify annotations of an image index with its child image?
 
 ## Appendix 
 
