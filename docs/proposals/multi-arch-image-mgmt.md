@@ -53,6 +53,8 @@ Users cannot install or use docker buildx plugin or even no Docker in some stric
 A security engineer Cindy needs to use image lifecycle annotations with ORAS to mark when the vulnerable image should be considered end of life (EoL) and no longer used by dependent services. 
 However, as there are multi-arch images and separate arch-specific images maintained by service teams, it is cumbersome that they can only apply annotations manually to each arch-specific image separately instead of the multi-arch image. Most consumers of multi-arch images only interact with the parent image index for tagging and deployment. The EoL annotation is not available on the multi-arch image (index), which makes the multi-arch image (index) unverifiable.
 
+![separate-annotation](separate-annotation.png)
+
 #### Hard to inspect a multi-arch image locally
 
 It’s hard to inspect a multi-arch image’s manifest content locally since docker buildx stores the multi-arch image in Docker’s build cache. David is a sofware engineer who needs to tag and push the multi-arch image to a registry after build. He also wants to inspect the multi-arch image locally before the release. It makes the multi-arch image a black box, which is hard for local testing.
@@ -61,9 +63,17 @@ It’s hard to inspect a multi-arch image’s manifest content locally since doc
 
 Ideally, if ORAS extends the ability to manage a multi-arch image by introducing create, update, and annotate a multi-arch image, the problems listed above can be resolved. Managing an image index for a multi-arch image should be as easy as playing Legos. 
 
+The proposed CLI commands for managing a multi-arch image are listed below. The detailed use case and subcommands are articulated in the CLI Spec section.
+
+- Create a multi-arch image using OCI image index: `oras manifest index create`
+- Update a multi-arch image using OCI image index: `oras manifest index update`
+- Inspect a multi-arch image using OCI image index: `oras manifest inspect`
+- Annotate a multi-arch image using OCI image index: `oras manifest create/update --annotation`
+- List platform information of tags in a repository: `oras repo tags`
+
 The proposal uses an OCI image layout as the local store to create a multi-arch image as an OCI image index locally, then push the multi-arch image to the remote registry with ORAS.  
 
-### User scenario experience
+### User scenario and desired experience
 
 The sample workflow will be as following:
 
@@ -310,8 +320,8 @@ The PoC is used for demonstration and testing purposes. Note that the PoC is not
 
 #### Create a multi-arch image as an OCI image index locally
 
-<script src="https://asciinema.org/a/677877.js" id="asciicast-677877" async="true"></script>
+Preview it on [![asciicast](https://asciinema.org/a/677877.svg)](https://asciinema.org/a/677877).
 
 #### Update an existing OCI image index: add, remove, merge
 
-<script src="https://asciinema.org/a/677890.js" id="asciicast-677890" async="true"></script>
+Preview it on [![asciicast](https://asciinema.org/a/677890.svg)](https://asciinema.org/a/677890).
