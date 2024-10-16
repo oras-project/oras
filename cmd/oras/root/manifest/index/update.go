@@ -181,11 +181,8 @@ func addManifests(ctx context.Context, manifests []ocispec.Descriptor, target or
 			return nil, fmt.Errorf("%s is not a manifest", manifestRef)
 		}
 		printUpdateStatus(status.IndexPromptFetched, manifestRef, string(desc.Digest), opts.Printer)
-		if descriptor.IsImageManifest(desc) {
-			desc.Platform, err = getPlatform(ctx, target, content)
-			if err != nil {
-				return nil, err
-			}
+		if desc, err = enrichDescriptor(ctx, target, desc, content); err != nil {
+			return nil, err
 		}
 		manifests = append(manifests, desc)
 		printUpdateStatus(status.IndexPromptAdded, manifestRef, string(desc.Digest), opts.Printer)
