@@ -85,6 +85,7 @@ func (opts *Target) AnnotatedReference() string {
 func (opts *Target) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
 	flagPrefix, notePrefix := applyPrefix(prefix, description)
 	fs.BoolVarP(&opts.IsOCILayout, flagPrefix+"oci-layout", "", false, "set "+notePrefix+"target as an OCI image layout")
+	fs.StringVar(&opts.Path, flagPrefix+"oci-layout-path", "", "set the path for the "+notePrefix+"OCI image layout target")
 }
 
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
@@ -96,6 +97,10 @@ func (opts *Target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 
 // Parse gets target options from user input.
 func (opts *Target) Parse(cmd *cobra.Command) error {
+	if opts.IsOCILayout && opts.Path != "" {
+		return fmt.Errorf("flag %q is not supported with %q", "oci-layout-path", "oci-layout")
+	}
+
 	switch {
 	case opts.IsOCILayout:
 		opts.Type = TargetTypeOCILayout
@@ -103,6 +108,10 @@ func (opts *Target) Parse(cmd *cobra.Command) error {
 			return errors.New("custom header flags cannot be used on an OCI image layout target")
 		}
 		return opts.parseOCILayoutReference()
+	case opts.Path != "":
+		opts.Type = TargetTypeOCILayout
+		opts.Reference = opts.RawReference
+		return nil
 	default:
 		opts.Type = TargetTypeRemote
 		if ref, err := registry.ParseReference(opts.RawReference); err != nil {

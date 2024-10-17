@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -27,6 +28,19 @@ import (
 	"oras.land/oras-go/v2/registry/remote/errcode"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 )
+
+func TestTarget_Parse_oci_path(t *testing.T) {
+	opts := Target{
+		Path:         "foo",
+		RawReference: "mocked/test",
+	}
+	if err := opts.Parse(nil); err != nil {
+		t.Errorf("Target.Parse() error = %v", err)
+	}
+	if opts.Type != TargetTypeOCILayout {
+		t.Errorf("Target.Parse() failed, got %q, want %q", opts.Type, TargetTypeOCILayout)
+	}
+}
 
 func TestTarget_Parse_oci(t *testing.T) {
 	opts := Target{IsOCILayout: true}
@@ -36,6 +50,22 @@ func TestTarget_Parse_oci(t *testing.T) {
 	}
 	if opts.Type != TargetTypeOCILayout {
 		t.Errorf("Target.Parse() failed, got %q, want %q", opts.Type, TargetTypeOCILayout)
+	}
+}
+
+func TestTarget_Parse_oci_and_oci_path(t *testing.T) {
+	opts := Target{
+		IsOCILayout: true,
+		Path:        "foo",
+	}
+	cmd := &cobra.Command{}
+	ApplyFlags(&opts, cmd.Flags())
+	err := opts.Parse(cmd)
+	if err == nil {
+		t.Errorf("expect Target.Parse() to fail but not")
+	}
+	if !strings.Contains(err.Error(), "supported") {
+		t.Errorf("expect error message to contain 'supported' but not")
 	}
 }
 
