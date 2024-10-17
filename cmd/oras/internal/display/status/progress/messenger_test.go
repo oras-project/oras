@@ -22,12 +22,11 @@ import (
 
 func Test_Messenger(t *testing.T) {
 	var msg *status
-	ch := make(chan *status, BufferSize)
-	messenger := &Messenger{ch: ch}
+	messenger := NewMessenger("Action", "Done")
 
 	messenger.Start()
 	select {
-	case msg = <-ch:
+	case msg = <-messenger.ch:
 		if msg.offset != -1 {
 			t.Errorf("Expected start message with offset -1, got %d", msg.offset)
 		}
@@ -42,7 +41,7 @@ func Test_Messenger(t *testing.T) {
 	expected := int64(50)
 	messenger.Send("Reading", desc, expected)
 	select {
-	case msg = <-ch:
+	case msg = <-messenger.ch:
 		if msg.offset != expected {
 			t.Errorf("Expected status message with offset %d, got %d", expected, msg.offset)
 		}
@@ -56,7 +55,7 @@ func Test_Messenger(t *testing.T) {
 	messenger.Send("Reading", desc, expected)
 	messenger.Send("Read", desc, desc.Size)
 	select {
-	case msg = <-ch:
+	case msg = <-messenger.ch:
 		if msg.offset != desc.Size {
 			t.Errorf("Expected status message with offset %d, got %d", expected, msg.offset)
 		}
@@ -67,15 +66,42 @@ func Test_Messenger(t *testing.T) {
 		t.Error("Expected status message")
 	}
 	select {
-	case msg = <-ch:
+	case msg = <-messenger.ch:
 		t.Errorf("Unexpected status message %v", msg)
 	default:
+	}
+
+	messenger.SendAction(desc, expected)
+	select {
+	case msg = <-messenger.ch:
+		if msg.offset != expected {
+			t.Errorf("Expected status message with offset %d, got %d", expected, msg.offset)
+		}
+		if msg.prompt != "Action" {
+			t.Errorf("Expected status message prompt Action, got %s", msg.prompt)
+		}
+	default:
+		t.Error("Expected status message")
+	}
+
+	expected += 1
+	messenger.SendDone(desc, expected)
+	select {
+	case msg = <-messenger.ch:
+		if msg.offset != expected {
+			t.Errorf("Expected status message with offset %d, got %d", expected, msg.offset)
+		}
+		if msg.prompt != "Done" {
+			t.Errorf("Expected status message prompt Done, got %s", msg.prompt)
+		}
+	default:
+		t.Error("Expected status message")
 	}
 
 	expected = int64(-1)
 	messenger.Stop()
 	select {
-	case msg = <-ch:
+	case msg = <-messenger.ch:
 		if msg.offset != expected {
 			t.Errorf("Expected END status message with offset %d, got %d", expected, msg.offset)
 		}
@@ -85,7 +111,7 @@ func Test_Messenger(t *testing.T) {
 
 	messenger.Stop()
 	select {
-	case msg = <-ch:
+	case msg = <-messenger.ch:
 		if msg != nil {
 			t.Errorf("Unexpected status message %v", msg)
 		}

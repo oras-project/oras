@@ -23,8 +23,20 @@ import (
 
 // Messenger is progress message channel.
 type Messenger struct {
-	ch     chan *status
-	closed bool
+	ch           chan *status
+	actionPrompt string
+	donePrompt   string
+	closed       bool
+}
+
+// NewMessenger create a new messenger object
+func NewMessenger(actionPrompt, donePrompt string) *Messenger {
+	ch := make(chan *status, BufferSize)
+	return &Messenger{
+		ch:           ch,
+		actionPrompt: actionPrompt,
+		donePrompt:   donePrompt,
+	}
 }
 
 // Start initializes the messenger.
@@ -50,7 +62,17 @@ func (sm *Messenger) Send(prompt string, descriptor ocispec.Descriptor, offset i
 	}
 }
 
-// Stop the messenger after sending a end message.
+// SendAction send the action status message.
+func (sm *Messenger) SendAction(descriptor ocispec.Descriptor, offset int64) {
+	sm.Send(sm.actionPrompt, descriptor, offset)
+}
+
+// SendDone send the done status message.
+func (sm *Messenger) SendDone(descriptor ocispec.Descriptor, offset int64) {
+	sm.Send(sm.donePrompt, descriptor, offset)
+}
+
+// Stop the messenger after sending end message.
 func (sm *Messenger) Stop() {
 	if sm.closed {
 		return
