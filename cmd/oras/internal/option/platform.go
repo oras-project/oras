@@ -84,8 +84,3 @@ func (opts *ArtifactPlatform) ApplyFlags(fs *pflag.FlagSet) {
 	opts.FlagDescription = "set artifact platform"
 	fs.StringVarP(&opts.platform, "artifact-platform", "", "", "[Experimental] "+opts.FlagDescription+" in the form of `os[/arch][/variant][:os_version]`")
 }
-
-// Parse parses the input platform flag to an oci platform type.
-func (opts *ArtifactPlatform) Parse(cmd *cobra.Command) error {
-	return opts.Platform.Parse(cmd)
-}
