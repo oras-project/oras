@@ -188,11 +188,8 @@ func addManifests(ctx context.Context, displayStatus status.ManifestIndexUpdateH
 		if err := displayStatus.OnFetched(manifestRef, desc); err != nil {
 			return nil, err
 		}
-		if descriptor.IsImageManifest(desc) {
-			desc.Platform, err = getPlatform(ctx, target, content)
-			if err != nil {
-				return nil, err
-			}
+		if desc, err = enrichDescriptor(ctx, target, desc, content); err != nil {
+			return nil, err
 		}
 		manifests = append(manifests, desc)
 		if err := displayStatus.OnManifestAdded(manifestRef, desc); err != nil {
