@@ -198,7 +198,7 @@ func NewManifestIndexUpdateHandler(outputPath string, printer *output.Printer, p
 	metadata.ManifestIndexUpdateHandler,
 	content.ManifestIndexUpdateHandler) {
 	statusHandler := status.NewTextManifestIndexUpdateHandler(printer)
-	metadataHandler := text.NewManifestIndexUpdateHandler(printer)
+	metadataHandler := text.NewManifestIndexCreateHandler(printer)
 	contentHandler := content.NewManifestIndexCreateHandler(printer, pretty, outputPath)
 	switch outputPath {
 	case "":

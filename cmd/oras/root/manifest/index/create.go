@@ -129,14 +129,14 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 		return err
 	}
 	desc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageIndex, indexBytes)
-	if err := displayMetadata.OnIndexPacked(desc); err != nil {
+	if err := displayStatus.OnIndexPacked(desc); err != nil {
 		return err
 	}
 	if err := displayContent.OnContentCreated(indexBytes); err != nil {
 		return err
 	}
 	if opts.outputPath == "" {
-		if err := pushIndex(ctx, displayMetadata, displayMetadata, target, desc, indexBytes, opts.Reference, opts.extraRefs, opts.AnnotatedReference()); err != nil {
+		if err := pushIndex(ctx, displayStatus, displayMetadata, target, desc, indexBytes, opts.Reference, opts.extraRefs, opts.AnnotatedReference()); err != nil {
 			return err
 		}
 	}
@@ -194,7 +194,7 @@ func getPlatform(ctx context.Context, target oras.ReadOnlyTarget, manifestBytes 
 	return &platform, nil
 }
 
-func pushIndex(ctx context.Context, mph metadata.ManifestPackHandler, th metadata.TaggedHandler,
+func pushIndex(ctx context.Context, displayStatus status.ManifestIndexCreateHandler, taggedHandler metadata.TaggedHandler,
 	target oras.Target, desc ocispec.Descriptor, content []byte, ref string, extraRefs []string, path string) error {
 	// push the index
 	var err error
@@ -206,11 +206,11 @@ func pushIndex(ctx context.Context, mph metadata.ManifestPackHandler, th metadat
 	if err != nil {
 		return err
 	}
-	if err := mph.OnIndexPushed(path); err != nil {
+	if err := displayStatus.OnIndexPushed(path); err != nil {
 		return err
 	}
 	if len(extraRefs) != 0 {
-		tagListener := listener.NewTaggedListener(target, th.OnTagged)
+		tagListener := listener.NewTaggedListener(target, taggedHandler.OnTagged)
 		if _, err = oras.TagBytesN(ctx, tagListener, desc.MediaType, content, extraRefs, oras.DefaultTagBytesNOptions); err != nil {
 			return err
 		}

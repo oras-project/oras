@@ -19,7 +19,6 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/output"
-	"oras.land/oras/internal/descriptor"
 )
 
 // ManifestIndexCreateHandler handles text metadata output for index create events.
@@ -34,22 +33,12 @@ func NewManifestIndexCreateHandler(printer *output.Printer) metadata.ManifestInd
 	}
 }
 
-// OnIndexPacked implements metadata.ManifestIndexCreateHandler.
-func (h *ManifestIndexCreateHandler) OnIndexPacked(desc ocispec.Descriptor) error {
-	return h.printer.Println("Packed", descriptor.ShortDigest(desc), ocispec.MediaTypeImageIndex)
-}
-
-// OnIndexPushed implements metadata.ManifestIndexCreateHandler.
-func (h *ManifestIndexCreateHandler) OnIndexPushed(path string) error {
-	return h.printer.Println("Pushed", path)
-}
-
-// OnTagged implements metadata.TaggedHandler.
+// OnTagged implements TaggedHandler.
 func (h *ManifestIndexCreateHandler) OnTagged(_ ocispec.Descriptor, tag string) error {
 	return h.printer.Println("Tagged", tag)
 }
 
-// OnCompleted implements metadata.ManifestIndexCreateHandler.
+// OnCompleted implements ManifestIndexCreateHandler.
 func (h *ManifestIndexCreateHandler) OnCompleted(desc ocispec.Descriptor) error {
 	return h.printer.Println("Digest:", desc.Digest)
 }

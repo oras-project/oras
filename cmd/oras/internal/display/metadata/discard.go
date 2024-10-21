@@ -16,53 +16,27 @@ limitations under the License.
 package metadata
 
 import (
-	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-type discard struct{}
+type Discard struct{}
 
 // NewDiscardHandler creates a new handler that discards output for all events.
-func NewDiscardHandler() discard {
-	return discard{}
+func NewDiscardHandler() Discard {
+	return Discard{}
 }
 
 // OnFetched implements ManifestFetchHandler.
-func (discard) OnFetched(string, ocispec.Descriptor, []byte) error {
+func (Discard) OnFetched(string, ocispec.Descriptor, []byte) error {
 	return nil
 }
 
 // OnTagged implements ManifestIndexCreateHandler.
-func (discard) OnTagged(ocispec.Descriptor, string) error {
+func (Discard) OnTagged(ocispec.Descriptor, string) error {
 	return nil
 }
 
 // OnCompleted implements ManifestIndexCreateHandler.
-func (discard) OnCompleted(ocispec.Descriptor) error {
-	return nil
-}
-
-// OnIndexPacked implements ManifestIndexCreateHandler.
-func (discard) OnIndexPacked(ocispec.Descriptor) error {
-	return nil
-}
-
-// OnIndexPushed implements ManifestIndexCreateHandler.
-func (discard) OnIndexPushed(string) error {
-	return nil
-}
-
-// OnManifestRemoved implements ManifestIndexUpdateHandler.
-func (discard) OnManifestRemoved(digest.Digest) error {
-	return nil
-}
-
-// OnManifestAdded implements ManifestIndexUpdateHandler.
-func (discard) OnManifestAdded(string, ocispec.Descriptor) error {
-	return nil
-}
-
-// OnIndexMerged implements ManifestIndexUpdateHandler.
-func (discard) OnIndexMerged(string, ocispec.Descriptor) error {
+func (Discard) OnCompleted(ocispec.Descriptor) error {
 	return nil
 }

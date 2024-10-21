@@ -46,6 +46,10 @@ func (h *manifestFetch) OnContentFetched(desc ocispec.Descriptor, manifest []byt
 
 // NewManifestFetchHandler creates a new handler.
 func NewManifestFetchHandler(out io.Writer, pretty bool, outputPath string) ManifestFetchHandler {
+	// ignore --pretty when output to a file
+	if outputPath != "" && outputPath != "-" {
+		pretty = false
+	}
 	return &manifestFetch{
 		pretty:     pretty,
 		stdout:     out,

@@ -106,22 +106,17 @@ func (DiscardHandler) OnManifestRemoved(digest.Digest) error {
 }
 
 // OnManifestAdded implements ManifestIndexUpdateHandler.
-func (DiscardHandler) OnManifestAdded(string, digest.Digest) error {
+func (DiscardHandler) OnManifestAdded(string, ocispec.Descriptor) error {
 	return nil
 }
 
 // OnIndexMerged implements ManifestIndexUpdateHandler.
-func (DiscardHandler) OnIndexMerged(string, digest.Digest) error {
+func (DiscardHandler) OnIndexMerged(string, ocispec.Descriptor) error {
 	return nil
 }
 
 // OnIndexPacked implements ManifestIndexCreateHandler.
-func (DiscardHandler) OnIndexPacked(string) error {
-	return nil
-}
-
-// OnIndexUpdated implements ManifestIndexUpdateHandler.
-func (DiscardHandler) OnIndexUpdated(digest.Digest) error {
+func (DiscardHandler) OnIndexPacked(ocispec.Descriptor) error {
 	return nil
 }
 
