@@ -197,7 +197,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 		if err != nil {
 			return err
 		}
-		mediaType := oras.MediaTypeUnknownConfig
+		mediaType := ocispec.MediaTypeImageConfig
 		if opts.Flag == option.ImageSpecV1_0 && opts.artifactType != "" {
 			mediaType = opts.artifactType
 		}
