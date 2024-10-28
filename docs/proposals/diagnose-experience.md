@@ -38,7 +38,7 @@ The target users of these types of output are general users.
 
 Currently, the output of ORAS `--verbose` flag only exists in oras `pull/push/attach/discover` commands, which prints out detailed status output and metadata output. Since ORAS v1.2.0, progress bar is enabled in `pull/push/attach` by default, thus the ORAS output is already verbose on a terminal.
 
-It is intended for end-users who want to observe the detailed file operation when using ORAS. It gives users a comprehensive view of what the tool is doing at every step and how long does it take when push or pull a file.
+The original output of ORAS `--verbose` is intended for end-users who want to observe the detailed file operation when using ORAS. It gives users a comprehensive view of what the tool is doing at every step and how long does it take when push or pull a file.
 
 ### Logs
 
