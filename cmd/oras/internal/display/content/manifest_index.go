@@ -30,6 +30,19 @@ type manifestIndexCreate struct {
 	outputPath string
 }
 
+// NewManifestIndexCreateHandler creates a new handler.
+func NewManifestIndexCreateHandler(out io.Writer, pretty bool, outputPath string) ManifestIndexCreateHandler {
+	// ignore --pretty when output to a file
+	if outputPath != "" && outputPath != "-" {
+		pretty = false
+	}
+	return &manifestIndexCreate{
+		pretty:     pretty,
+		stdout:     out,
+		outputPath: outputPath,
+	}
+}
+
 // OnContentCreated is called after index content is created.
 func (h *manifestIndexCreate) OnContentCreated(manifest []byte) error {
 	out := h.stdout
@@ -42,17 +55,4 @@ func (h *manifestIndexCreate) OnContentCreated(manifest []byte) error {
 		out = f
 	}
 	return output.PrintJSON(out, manifest, h.pretty)
-}
-
-// NewManifestIndexCreateHandler creates a new handler.
-func NewManifestIndexCreateHandler(out io.Writer, pretty bool, outputPath string) ManifestIndexCreateHandler {
-	// ignore --pretty when output to a file
-	if outputPath != "" && outputPath != "-" {
-		pretty = false
-	}
-	return &manifestIndexCreate{
-		pretty:     pretty,
-		stdout:     out,
-		outputPath: outputPath,
-	}
 }

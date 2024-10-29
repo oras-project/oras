@@ -188,26 +188,6 @@ type TextManifestIndexCreateHandler struct {
 	printer *output.Printer
 }
 
-// OnFetching implements ManifestIndexCreateHandler.
-func (mich TextManifestIndexCreateHandler) OnFetching(source string) error {
-	return mich.printer.Println(IndexPromptFetching, source)
-}
-
-// OnFetched implements ManifestIndexCreateHandler.
-func (mich TextManifestIndexCreateHandler) OnFetched(source string, _ ocispec.Descriptor) error {
-	return mich.printer.Println(IndexPromptFetched, source)
-}
-
-// OnIndexPacked implements ManifestIndexCreateHandler.
-func (mich TextManifestIndexCreateHandler) OnIndexPacked(desc ocispec.Descriptor) error {
-	return mich.printer.Println(IndexPromptPacked, descriptor.ShortDigest(desc), ocispec.MediaTypeImageIndex)
-}
-
-// OnIndexPushed implements ManifestIndexCreateHandler.
-func (mich TextManifestIndexCreateHandler) OnIndexPushed(path string) error {
-	return mich.printer.Println(IndexPromptPushed, path)
-}
-
 // NewTextManifestIndexCreateHandler returns a new handler for manifest index create command.
 func NewTextManifestIndexCreateHandler(printer *output.Printer) ManifestIndexCreateHandler {
 	tmich := TextManifestIndexCreateHandler{
@@ -216,53 +196,29 @@ func NewTextManifestIndexCreateHandler(printer *output.Printer) ManifestIndexCre
 	return &tmich
 }
 
+// OnFetching implements ManifestIndexCreateHandler.
+func (mich *TextManifestIndexCreateHandler) OnFetching(source string) error {
+	return mich.printer.Println(IndexPromptFetching, source)
+}
+
+// OnFetched implements ManifestIndexCreateHandler.
+func (mich *TextManifestIndexCreateHandler) OnFetched(source string, _ ocispec.Descriptor) error {
+	return mich.printer.Println(IndexPromptFetched, source)
+}
+
+// OnIndexPacked implements ManifestIndexCreateHandler.
+func (mich *TextManifestIndexCreateHandler) OnIndexPacked(desc ocispec.Descriptor) error {
+	return mich.printer.Println(IndexPromptPacked, descriptor.ShortDigest(desc), ocispec.MediaTypeImageIndex)
+}
+
+// OnIndexPushed implements ManifestIndexCreateHandler.
+func (mich *TextManifestIndexCreateHandler) OnIndexPushed(path string) error {
+	return mich.printer.Println(IndexPromptPushed, path)
+}
+
 // TextManifestIndexUpdateHandler handles text status output for manifest index update events.
 type TextManifestIndexUpdateHandler struct {
 	printer *output.Printer
-}
-
-// OnFetching implements ManifestIndexUpdateHandler.
-func (miuh TextManifestIndexUpdateHandler) OnFetching(ref string) error {
-	return miuh.printer.Println(IndexPromptFetching, ref)
-}
-
-// OnFetched implements ManifestIndexUpdateHandler.
-func (miuh TextManifestIndexUpdateHandler) OnFetched(ref string, desc ocispec.Descriptor) error {
-	if contentutil.IsDigest(ref) {
-		return miuh.printer.Println(IndexPromptFetched, ref)
-	}
-	return miuh.printer.Println(IndexPromptFetched, desc.Digest, ref)
-}
-
-// OnManifestRemoved implements metadata.ManifestIndexUpdateHandler.
-func (miuh TextManifestIndexUpdateHandler) OnManifestRemoved(digest digest.Digest) error {
-	return miuh.printer.Println("Removed", digest)
-}
-
-// OnManifestAdded implements metadata.ManifestIndexUpdateHandler.
-func (miuh TextManifestIndexUpdateHandler) OnManifestAdded(ref string, desc ocispec.Descriptor) error {
-	if contentutil.IsDigest(ref) {
-		return miuh.printer.Println("Added", ref)
-	}
-	return miuh.printer.Println("Added", desc.Digest, ref)
-}
-
-// OnIndexMerged implements metadata.ManifestIndexUpdateHandler.
-func (miuh TextManifestIndexUpdateHandler) OnIndexMerged(ref string, desc ocispec.Descriptor) error {
-	if contentutil.IsDigest(ref) {
-		return miuh.printer.Println("Merged", ref)
-	}
-	return miuh.printer.Println("Merged", desc.Digest, ref)
-}
-
-// OnIndexUpdated implements metadata.ManifestIndexUpdateHandler.
-func (miuh TextManifestIndexUpdateHandler) OnIndexPacked(desc ocispec.Descriptor) error {
-	return miuh.printer.Println("Updated", desc.Digest)
-}
-
-// OnIndexPushed implements metadata.ManifestIndexUpdateHandler.
-func (miuh TextManifestIndexUpdateHandler) OnIndexPushed(indexRef string) error {
-	return miuh.printer.Println("Pushed", indexRef)
 }
 
 // NewTextManifestIndexUpdateHandler returns a new handler for manifest index create command.
@@ -271,4 +227,48 @@ func NewTextManifestIndexUpdateHandler(printer *output.Printer) ManifestIndexUpd
 		printer: printer,
 	}
 	return &miuh
+}
+
+// OnFetching implements ManifestIndexUpdateHandler.
+func (miuh *TextManifestIndexUpdateHandler) OnFetching(ref string) error {
+	return miuh.printer.Println(IndexPromptFetching, ref)
+}
+
+// OnFetched implements ManifestIndexUpdateHandler.
+func (miuh *TextManifestIndexUpdateHandler) OnFetched(ref string, desc ocispec.Descriptor) error {
+	if contentutil.IsDigest(ref) {
+		return miuh.printer.Println(IndexPromptFetched, ref)
+	}
+	return miuh.printer.Println(IndexPromptFetched, desc.Digest, ref)
+}
+
+// OnManifestRemoved implements ManifestIndexUpdateHandler.
+func (miuh *TextManifestIndexUpdateHandler) OnManifestRemoved(digest digest.Digest) error {
+	return miuh.printer.Println(IndexPromptRemoved, digest)
+}
+
+// OnManifestAdded implements ManifestIndexUpdateHandler.
+func (miuh *TextManifestIndexUpdateHandler) OnManifestAdded(ref string, desc ocispec.Descriptor) error {
+	if contentutil.IsDigest(ref) {
+		return miuh.printer.Println(IndexPromptAdded, ref)
+	}
+	return miuh.printer.Println(IndexPromptAdded, desc.Digest, ref)
+}
+
+// OnIndexMerged implements ManifestIndexUpdateHandler.
+func (miuh *TextManifestIndexUpdateHandler) OnIndexMerged(ref string, desc ocispec.Descriptor) error {
+	if contentutil.IsDigest(ref) {
+		return miuh.printer.Println(IndexPromptMerged, ref)
+	}
+	return miuh.printer.Println(IndexPromptMerged, desc.Digest, ref)
+}
+
+// OnIndexPacked implements ManifestIndexUpdateHandler.
+func (miuh *TextManifestIndexUpdateHandler) OnIndexPacked(desc ocispec.Descriptor) error {
+	return miuh.printer.Println(IndexPromptUpdated, desc.Digest)
+}
+
+// OnIndexPushed implements ManifestIndexUpdateHandler.
+func (miuh *TextManifestIndexUpdateHandler) OnIndexPushed(indexRef string) error {
+	return miuh.printer.Println(IndexPromptPushed, indexRef)
 }
