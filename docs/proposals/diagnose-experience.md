@@ -70,8 +70,9 @@ Based on the concepts and conventions above, here are the proposal for ORAS diag
 - Make the verbose output of command  `discover` as a formatted output, controlled by `--format tree-full`. 
 - Add two empty lines as the separator between each request and response for readability.
 - Add timestamp of each request and response to the beginning of each request and response.
-- Add the response body including [error code](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#error-codes) and the metadata of processed OCI object (e.g. image manifest) to the debug logs.
+- Upon success, print out the response body in the debug logs if the `mediaType` of the processed OCI object (e.g. image manifest) is JSON or plain text format. The [error code](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#error-codes) should be included in the response body by default for diagnose purposes.
 - Summarize common conventions for writing clear and analyzable debug logs.
+- Considering ORAS is not a daemon service so parsing debug logs to a logging system is not a common scenario. The target users of the debug logs are normal users and ORAS developers. Thereby, the debug logs in TTY mode and non-TTY (`--no-tty`) should be consistent, expect for the color. Specifically, debug logs SHOULD be colored-code in a TTY mode for better readability on Terminal but keeping plain text in a non-TTY mode respectively.
 
 ## Investigation on other CLI tools
 
@@ -91,7 +92,7 @@ Helm CLI tool provides a global flag `--debug` to enable verbose output.
 
 ## Examples in ORAS
 
-This section lists the current behaviors of ORAS debug logs, proposes the suggested changes to ORAS CLI commands. More examples will be appended below.
+This section lists the current behaviors of ORAS debug logs, proposes the suggested changes to ORAS CLI commands. 
 
 ### oras copy
 
@@ -162,7 +163,7 @@ DEBU[0002] Response #1
             },
             ...
         ]
-    }
+}
 
 
 [2024-08-02 23:56:04] --> Request #1
