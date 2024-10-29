@@ -674,7 +674,7 @@ var _ = Describe("OCI image layout users:", func() {
 			var manifest ocispec.Manifest
 			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
 			Expect(manifest.Config).Should(Equal(ocispec.Descriptor{
-				MediaType: "application/vnd.unknown.config.v1+json",
+				MediaType: "application/vnd.oci.image.config.v1+json",
 				Size:      int64(foobar.PlatformV10ConfigSize),
 				Digest:    foobar.PlatformV10ConfigDigest,
 			}))
