@@ -638,6 +638,10 @@ var _ = Describe("OCI image layout users:", func() {
 				Size:      int64(foobar.PlatformConfigSize),
 				Digest:    foobar.PlatformConfigDigest,
 			}))
+			ORAS("pull", "--platform", "darwin/arm64", Flags.Layout, ref).MatchStatus([]match.StateKey{
+				foobar.FileBarStateKey,
+			}, true, 1).Exec()
+
 		})
 
 		It("should push files with platform with mediaType as artifactType for v1.0", func() {
