@@ -199,7 +199,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 		}
 		if opts.Flag == option.ImageSpecV1_0 && opts.artifactType != "" {
 			return &oerrors.Error{
-				Err:            errors.New(`artifact type cannot be customized for OCI image-spec v1.0`),
+				Err:            errors.New(`artifact type cannot be customized for OCI image-spec v1.0 when platform is specified`),
 				Recommendation: "consider using image spec v1.1 or remove --artifact-type",
 			}
 		}
