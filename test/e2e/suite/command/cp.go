@@ -625,6 +625,91 @@ var _ = Describe("OCI layout users:", func() {
 			Expect(len(index.Manifests)).To(Equal(1))
 			Expect(index.Manifests[0].Digest.String()).To(Equal(ma.LinuxAMD64Referrer.Digest.String()))
 		})
+
+		// oci-layout-path tests
+
+		It("should copy an image from a registry to an OCI image layout via tag using --oci-layout-path", func() {
+			layoutDir := GinkgoT().TempDir()
+			src := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
+			ref := "copied"
+			dst := LayoutRef(layoutDir, ref)
+			ORAS("cp", src, ref, "-v", Flags.ToLayoutPath, layoutDir).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			// validate
+			srcManifest := ORAS("manifest", "fetch", src).WithDescription("fetch from source to validate").Exec().Out.Contents()
+			dstManifest := ORAS("manifest", "fetch", dst, Flags.Layout).WithDescription("fetch from destination to validate").Exec().Out.Contents()
+			Expect(srcManifest).To(Equal(dstManifest))
+		})
+
+		It("should copy an image from an OCI image layout to a registry via tag using --oci-layout-path", func() {
+			layoutDir := GinkgoT().TempDir()
+			ref := "copied"
+			src := LayoutRef(layoutDir, ref)
+			dst := RegistryRef(ZOTHost, cpTestRepo("from-layout-tag-path"), foobar.Tag)
+			// prepare
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), src, Flags.ToLayout).Exec()
+			// test
+			ORAS("cp", ref, dst, "-v", Flags.FromLayoutPath, layoutDir).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			// validate
+			srcManifest := ORAS("manifest", "fetch", src, Flags.Layout).WithDescription("fetch from source to validate").Exec().Out.Contents()
+			dstManifest := ORAS("manifest", "fetch", dst).WithDescription("fetch from destination to validate").Exec().Out.Contents()
+			Expect(srcManifest).To(Equal(dstManifest))
+		})
+
+		It("should copy an image between OCI image layouts via tag using --oci-layout-path", func() {
+			srcDir := GinkgoT().TempDir()
+			toDir := GinkgoT().TempDir()
+			srcRef := "from"
+			dstRef := "to"
+			src := LayoutRef(srcDir, srcRef)
+			dst := LayoutRef(toDir, dstRef)
+			// prepare
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), src, Flags.ToLayout).Exec()
+			// test
+			ORAS("cp", srcRef, dstRef, "-v", Flags.FromLayoutPath, srcDir, Flags.ToLayoutPath, toDir).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			// validate
+			srcManifest := ORAS("manifest", "fetch", src, Flags.Layout).WithDescription("fetch from source to validate").Exec().Out.Contents()
+			dstManifest := ORAS("manifest", "fetch", dst, Flags.Layout).WithDescription("fetch from destination to validate").Exec().Out.Contents()
+			Expect(srcManifest).To(Equal(dstManifest))
+		})
+
+		It("should copy an image from a registry to an OCI image layout via digest using --oci-layout-path", func() {
+			dstDir := GinkgoT().TempDir()
+			src := RegistryRef(ZOTHost, ImageRepo, foobar.Digest)
+			ORAS("cp", src, foobar.Digest, "-v", Flags.ToLayoutPath, dstDir).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			// validate
+			srcManifest := ORAS("manifest", "fetch", src).WithDescription("fetch from source to validate").Exec().Out.Contents()
+			dstManifest := ORAS("manifest", "fetch", LayoutRef(dstDir, foobar.Digest), Flags.Layout).WithDescription("fetch from destination to validate").Exec().Out.Contents()
+			Expect(srcManifest).To(Equal(dstManifest))
+		})
+
+		It("should copy an image from an OCI image layout to a registry via digest using --oci-layout-path", func() {
+			layoutDir := GinkgoT().TempDir()
+			src := LayoutRef(layoutDir, foobar.Digest)
+			dst := RegistryRef(ZOTHost, cpTestRepo("from-layout-digest-path"), "copied")
+			// prepare
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), layoutDir, Flags.ToLayout).Exec()
+			// test
+			ORAS("cp", foobar.Digest, dst, "-v", Flags.FromLayoutPath, layoutDir).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			// validate
+			srcManifest := ORAS("manifest", "fetch", src, Flags.Layout).WithDescription("fetch from source to validate").Exec().Out.Contents()
+			dstManifest := ORAS("manifest", "fetch", dst).WithDescription("fetch from destination to validate").Exec().Out.Contents()
+			Expect(srcManifest).To(Equal(dstManifest))
+		})
+
+		It("should copy an image between OCI image layouts via digest", func() {
+			srcDir := GinkgoT().TempDir()
+			toDir := GinkgoT().TempDir()
+			src := LayoutRef(srcDir, foobar.Digest)
+			dst := LayoutRef(toDir, foobar.Digest)
+			// prepare
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), srcDir, Flags.ToLayout).Exec()
+			// test
+			ORAS("cp", foobar.Digest, foobar.Digest, "-v", Flags.FromLayoutPath, srcDir, Flags.ToLayoutPath, toDir).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			// validate
+			srcManifest := ORAS("manifest", "fetch", src, Flags.Layout).WithDescription("fetch from source to validate").Exec().Out.Contents()
+			dstManifest := ORAS("manifest", "fetch", dst, Flags.Layout).WithDescription("fetch from destination to validate").Exec().Out.Contents()
+			Expect(srcManifest).To(Equal(dstManifest))
+		})
 	})
 })
 

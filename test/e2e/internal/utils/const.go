@@ -20,12 +20,16 @@ var (
 		Layout           string
 		FromLayout       string
 		ToLayout         string
+		FromLayoutPath   string
+		ToLayoutPath     string
 		DistributionSpec string
 		ImageSpec        string
 	}{
 		"--oci-layout",
 		"--from-oci-layout",
 		"--to-oci-layout",
+		"--from-oci-layout-path",
+		"--to-oci-layout-path",
 		"--distribution-spec",
 		"--image-spec",
 	}
