@@ -441,7 +441,7 @@ var _ = Describe("OCI layout users:", func() {
 
 		It("should copy an image from a registry to an OCI image layout via digest", func() {
 			dstDir := GinkgoT().TempDir()
-			src := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
+			src := RegistryRef(ZOTHost, ImageRepo, foobar.Digest)
 			ORAS("cp", src, dstDir, "-v", Flags.ToLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			// validate
 			srcManifest := ORAS("manifest", "fetch", src).WithDescription("fetch from source to validate").Exec().Out.Contents()
