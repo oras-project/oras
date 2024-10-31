@@ -36,10 +36,11 @@ import (
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
-	"oras.land/oras/cmd/oras/internal/display/status/track"
+	strack "oras.land/oras/cmd/oras/internal/display/status/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/docker"
+	"oras.land/oras/internal/experimental/track"
 	"oras.land/oras/internal/graph"
 	"oras.land/oras/internal/listener"
 	"oras.land/oras/internal/registryutil"
@@ -186,7 +187,15 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 		extendedCopyOptions.OnMounted = copyHandler.OnMounted
 	} else {
 		// TTY output
-		tracked, err := track.NewTarget(dst, promptCopying, promptCopied, opts.TTY)
+		prompt := map[track.State]string{
+			track.StateInitialized:  promptCopying,
+			track.StateTransmitting: promptCopying,
+			track.StateTransmitted:  promptCopied,
+			track.StateExists:       promptExists,
+			track.StateSkipped:      promptSkipped,
+			track.StateMounted:      promptMounted,
+		}
+		tracked, err := strack.NewTarget(dst, prompt, opts.TTY)
 		if err != nil {
 			return ocispec.Descriptor{}, err
 		}
@@ -194,7 +203,7 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 		dst = tracked
 		extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return tracked.Prompt(desc, promptExists)
+			return tracked.Report(desc, track.StateExists)
 		}
 		extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
@@ -203,7 +212,7 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 				return err
 			}
 			for _, successor := range successors {
-				if err = tracked.Prompt(successor, promptSkipped); err != nil {
+				if err = tracked.Report(successor, track.StateSkipped); err != nil {
 					return err
 				}
 			}
@@ -211,7 +220,7 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 		}
 		extendedCopyOptions.OnMounted = func(ctx context.Context, desc ocispec.Descriptor) error {
 			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return tracked.Prompt(desc, promptMounted)
+			return tracked.Report(desc, track.StateMounted)
 		}
 	}
 
