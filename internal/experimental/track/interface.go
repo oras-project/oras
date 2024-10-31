@@ -11,8 +11,9 @@ type State int
 
 const (
 	StateUnknown State = iota
-	StateStarted
-	StateStopped
+	StateInitialized
+	StateTransmitting
+	StateTransmitted
 	StateExists
 	StateSkipped
 	StateMounted
@@ -20,7 +21,11 @@ const (
 
 // Status represents the status of a descriptor.
 type Status struct {
-	State  State
+	// State represents the state of the descriptor.
+	State State
+
+	// Offset represents the current offset of the descriptor.
+	// Offset is discarded if set to a negative value.
 	Offset int64
 }
 
@@ -39,9 +44,19 @@ type Tracker interface {
 type Manager interface {
 	io.Closer
 
-	// Record records the progress of a descriptor.
-	Record(desc ocispec.Descriptor, status Status) error
-
 	// Track starts tracking the progress of a descriptor.
 	Track(desc ocispec.Descriptor) (Tracker, error)
+}
+
+// Record records the progress of a descriptor.
+func Record(m Manager, desc ocispec.Descriptor, status Status) error {
+	tracker, err := m.Track(desc)
+	if err != nil {
+		return err
+	}
+	err = tracker.Update(status)
+	if err != nil {
+		return err
+	}
+	return tracker.Close()
 }

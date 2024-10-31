@@ -16,32 +16,53 @@ limitations under the License.
 package progress
 
 import (
+	"time"
+
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/status/progress/humanize"
-	"time"
+	"oras.land/oras/internal/experimental/track"
 )
 
 // Messenger is progress message channel.
 type Messenger struct {
 	ch     chan *status
 	closed bool
+	desc   ocispec.Descriptor
+	prompt map[track.State]string
 }
 
-// Start initializes the messenger.
-func (sm *Messenger) Start() {
-	if sm.ch == nil {
+func (m *Messenger) Update(status track.Status) error {
+	if status.State == track.StateInitialized {
+		m.start()
+	}
+	m.send(m.prompt[status.State], status.Offset)
+	return nil
+}
+
+func (m *Messenger) Fail(err error) error {
+	return err
+}
+
+func (m *Messenger) Close() error {
+	m.stop()
+	return nil
+}
+
+// start initializes the messenger.
+func (m *Messenger) start() {
+	if m.ch == nil {
 		return
 	}
-	sm.ch <- startTiming()
+	m.ch <- startTiming()
 }
 
-// Send a status message for the specified descriptor.
-func (sm *Messenger) Send(prompt string, descriptor ocispec.Descriptor, offset int64) {
+// send a status message for the specified descriptor.
+func (m *Messenger) send(prompt string, offset int64) {
 	for {
 		select {
-		case sm.ch <- newStatusMessage(prompt, descriptor, offset):
+		case m.ch <- newStatusMessage(prompt, m.desc, offset):
 			return
-		case <-sm.ch:
+		case <-m.ch:
 			// purge the channel until successfully pushed
 		default:
 			// ch is nil
@@ -50,14 +71,14 @@ func (sm *Messenger) Send(prompt string, descriptor ocispec.Descriptor, offset i
 	}
 }
 
-// Stop the messenger after sending a end message.
-func (sm *Messenger) Stop() {
-	if sm.closed {
+// stop the messenger after sending a end message.
+func (m *Messenger) stop() {
+	if m.closed {
 		return
 	}
-	sm.ch <- endTiming()
-	close(sm.ch)
-	sm.closed = true
+	m.ch <- endTiming()
+	close(m.ch)
+	m.closed = true
 }
 
 // newStatus generates a base empty status.
