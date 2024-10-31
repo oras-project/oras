@@ -21,40 +21,43 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/status/progress"
+	"oras.land/oras/internal/experimental/track"
 )
 
 type reader struct {
-	base         io.Reader
-	offset       int64
-	actionPrompt string
-	donePrompt   string
-	descriptor   ocispec.Descriptor
-	manager      progress.Manager
-	messenger    *progress.Messenger
+	base      io.Reader
+	offset    int64
+	size      int64
+	manager   track.Manager
+	messenger track.Tracker
 }
 
 // NewReader returns a new reader with tracked progress.
 func NewReader(r io.Reader, descriptor ocispec.Descriptor, actionPrompt string, donePrompt string, tty *os.File) (*reader, error) {
-	manager, err := progress.NewManager(tty)
+	prompt := map[track.State]string{
+		track.StateInitialized:  actionPrompt,
+		track.StateTransmitting: actionPrompt,
+		track.StateTransmitted:  donePrompt,
+	}
+
+	manager, err := progress.NewManager(tty, prompt)
 	if err != nil {
 		return nil, err
 	}
-	return managedReader(r, descriptor, manager, actionPrompt, donePrompt)
+	return managedReader(r, descriptor, manager)
 }
 
-func managedReader(r io.Reader, descriptor ocispec.Descriptor, manager progress.Manager, actionPrompt string, donePrompt string) (*reader, error) {
-	messenger, err := manager.Add()
+func managedReader(r io.Reader, descriptor ocispec.Descriptor, manager track.Manager) (*reader, error) {
+	messenger, err := manager.Track(descriptor)
 	if err != nil {
 		return nil, err
 	}
 
 	return &reader{
-		base:         r,
-		descriptor:   descriptor,
-		actionPrompt: actionPrompt,
-		donePrompt:   donePrompt,
-		manager:      manager,
-		messenger:    messenger,
+		base:      r,
+		size:      descriptor.Size,
+		manager:   manager,
+		messenger: messenger,
 	}, nil
 }
 
@@ -66,18 +69,24 @@ func (r *reader) StopManager() {
 
 // Done sends message to mark the tracked progress as complete.
 func (r *reader) Done() {
-	r.messenger.Send(r.donePrompt, r.descriptor, r.descriptor.Size)
-	r.messenger.Stop()
+	r.messenger.Update(track.Status{
+		State:  track.StateTransmitted,
+		Offset: r.size,
+	})
+	r.messenger.Close()
 }
 
 // Close closes the update channel.
 func (r *reader) Close() {
-	r.messenger.Stop()
+	r.messenger.Close()
 }
 
 // Start sends the start timing to the messenger channel.
 func (r *reader) Start() {
-	r.messenger.Start()
+	r.messenger.Update(track.Status{
+		State:  track.StateInitialized,
+		Offset: -1,
+	})
 }
 
 // Read reads from the underlying reader and updates the progress.
@@ -89,10 +98,13 @@ func (r *reader) Read(p []byte) (int, error) {
 
 	r.offset = r.offset + int64(n)
 	if err == io.EOF {
-		if r.offset != r.descriptor.Size {
+		if r.offset != r.size {
 			return n, io.ErrUnexpectedEOF
 		}
 	}
-	r.messenger.Send(r.actionPrompt, r.descriptor, r.offset)
+	r.messenger.Update(track.Status{
+		State:  track.StateTransmitting,
+		Offset: r.offset,
+	})
 	return n, err
 }

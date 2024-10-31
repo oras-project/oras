@@ -26,20 +26,19 @@ import (
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/display/status/progress"
+	"oras.land/oras/internal/experimental/track"
 )
 
 // GraphTarget is a tracked oras.GraphTarget.
 type GraphTarget interface {
 	oras.GraphTarget
 	io.Closer
-	Prompt(desc ocispec.Descriptor, prompt string) error
+	Report(desc ocispec.Descriptor, state track.State) error
 }
 
 type graphTarget struct {
 	oras.GraphTarget
-	manager      progress.Manager
-	actionPrompt string
-	donePrompt   string
+	manager track.Manager
 }
 
 type referenceGraphTarget struct {
@@ -47,16 +46,14 @@ type referenceGraphTarget struct {
 }
 
 // NewTarget creates a new tracked Target.
-func NewTarget(t oras.GraphTarget, actionPrompt, donePrompt string, tty *os.File) (GraphTarget, error) {
-	manager, err := progress.NewManager(tty)
+func NewTarget(t oras.GraphTarget, prompt map[track.State]string, tty *os.File) (GraphTarget, error) {
+	manager, err := progress.NewManager(tty, prompt)
 	if err != nil {
 		return nil, err
 	}
 	gt := &graphTarget{
-		GraphTarget:  t,
-		manager:      manager,
-		actionPrompt: actionPrompt,
-		donePrompt:   donePrompt,
+		GraphTarget: t,
+		manager:     manager,
 	}
 
 	if _, ok := t.(registry.ReferencePusher); ok {
@@ -76,7 +73,7 @@ func (t *graphTarget) Mount(ctx context.Context, desc ocispec.Descriptor, fromRe
 
 // Push pushes the content to the base oras.GraphTarget with tracking.
 func (t *graphTarget) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
-	r, err := managedReader(content, expected, t.manager, t.actionPrompt, t.donePrompt)
+	r, err := managedReader(content, expected, t.manager)
 	if err != nil {
 		return err
 	}
@@ -95,7 +92,7 @@ func (t *graphTarget) Push(ctx context.Context, expected ocispec.Descriptor, con
 
 // PushReference pushes the content to the base oras.GraphTarget with tracking.
 func (rgt *referenceGraphTarget) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
-	r, err := managedReader(content, expected, rgt.manager, rgt.actionPrompt, rgt.donePrompt)
+	r, err := managedReader(content, expected, rgt.manager)
 	if err != nil {
 		return err
 	}
@@ -114,7 +111,10 @@ func (t *graphTarget) Close() error {
 	return t.manager.Close()
 }
 
-// Prompt prompts the user with the provided prompt and descriptor.
-func (t *graphTarget) Prompt(desc ocispec.Descriptor, prompt string) error {
-	return t.manager.SendAndStop(desc, prompt)
+// Report prompts the user with the provided state and descriptor.
+func (t *graphTarget) Report(desc ocispec.Descriptor, state track.State) error {
+	return track.Record(t.manager, desc, track.Status{
+		State:  state,
+		Offset: desc.Size,
+	})
 }
