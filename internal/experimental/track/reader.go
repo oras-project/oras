@@ -1,8 +1,6 @@
 package track
 
-import (
-	"io"
-)
+import "io"
 
 // ReadTracker tracks the transmission based on the read operation.
 type ReadTracker struct {
