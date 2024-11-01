@@ -46,13 +46,13 @@ func NewReader(r io.Reader, descriptor ocispec.Descriptor, actionPrompt string, 
 }
 
 func managedReader(r io.Reader, descriptor ocispec.Descriptor, manager track.Manager) (*reader, error) {
-	tracker, err := track.NewReadTracker(manager, descriptor, r)
+	tracker, err := manager.Track(descriptor)
 	if err != nil {
 		return nil, err
 	}
 
 	return &reader{
-		ReadTracker: tracker,
+		ReadTracker: track.NewReadTracker(tracker, r),
 		manager:     manager,
 	}, nil
 }
