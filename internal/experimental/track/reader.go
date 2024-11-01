@@ -2,8 +2,6 @@ package track
 
 import (
 	"io"
-
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // ReadTracker tracks the transmission based on the read operation.
@@ -13,16 +11,12 @@ type ReadTracker struct {
 	offset  int64
 }
 
-// NewReadTracker returns a new ReadTracker.
-func NewReadTracker(manager Manager, descriptor ocispec.Descriptor, r io.Reader) (*ReadTracker, error) {
-	tracker, err := manager.Track(descriptor)
-	if err != nil {
-		return nil, err
-	}
+// NewReadTracker attaches a tracker to a reader.
+func NewReadTracker(track Tracker, r io.Reader) *ReadTracker {
 	return &ReadTracker{
 		base:    r,
-		tracker: tracker,
-	}, nil
+		tracker: track,
+	}
 }
 
 // Read reads from the base reader and updates the status.
