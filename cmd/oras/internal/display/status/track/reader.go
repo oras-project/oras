@@ -25,11 +25,9 @@ import (
 )
 
 type reader struct {
-	base      io.Reader
-	offset    int64
-	size      int64
-	manager   track.Manager
-	messenger track.Tracker
+	*track.ReadTracker
+
+	manager track.Manager
 }
 
 // NewReader returns a new reader with tracked progress.
@@ -48,16 +46,14 @@ func NewReader(r io.Reader, descriptor ocispec.Descriptor, actionPrompt string, 
 }
 
 func managedReader(r io.Reader, descriptor ocispec.Descriptor, manager track.Manager) (*reader, error) {
-	messenger, err := manager.Track(descriptor)
+	tracker, err := track.NewReadTracker(manager, descriptor, r)
 	if err != nil {
 		return nil, err
 	}
 
 	return &reader{
-		base:      r,
-		size:      descriptor.Size,
-		manager:   manager,
-		messenger: messenger,
+		ReadTracker: tracker,
+		manager:     manager,
 	}, nil
 }
 
@@ -65,46 +61,4 @@ func managedReader(r io.Reader, descriptor ocispec.Descriptor, manager track.Man
 func (r *reader) StopManager() {
 	r.Close()
 	_ = r.manager.Close()
-}
-
-// Done sends message to mark the tracked progress as complete.
-func (r *reader) Done() {
-	r.messenger.Update(track.Status{
-		State:  track.StateTransmitted,
-		Offset: r.size,
-	})
-	r.messenger.Close()
-}
-
-// Close closes the update channel.
-func (r *reader) Close() {
-	r.messenger.Close()
-}
-
-// Start sends the start timing to the messenger channel.
-func (r *reader) Start() {
-	r.messenger.Update(track.Status{
-		State:  track.StateInitialized,
-		Offset: -1,
-	})
-}
-
-// Read reads from the underlying reader and updates the progress.
-func (r *reader) Read(p []byte) (int, error) {
-	n, err := r.base.Read(p)
-	if err != nil && err != io.EOF {
-		return n, err
-	}
-
-	r.offset = r.offset + int64(n)
-	if err == io.EOF {
-		if r.offset != r.size {
-			return n, io.ErrUnexpectedEOF
-		}
-	}
-	r.messenger.Update(track.Status{
-		State:  track.StateTransmitting,
-		Offset: r.offset,
-	})
-	return n, err
 }
