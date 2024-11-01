@@ -48,7 +48,7 @@ type Manager interface {
 	Track(desc ocispec.Descriptor) (Tracker, error)
 }
 
-// Record records the progress of a descriptor.
+// Record adds the progress of a descriptor as a single entry.
 func Record(m Manager, desc ocispec.Descriptor, status Status) error {
 	tracker, err := m.Track(desc)
 	if err != nil {
