@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -28,15 +29,50 @@ import (
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 )
 
+func TestTarget_Parse_oci_path(t *testing.T) {
+	opts := Target{
+		Path:         "foo",
+		RawReference: "mocked/test",
+	}
+	cmd := &cobra.Command{}
+	ApplyFlags(&opts, cmd.Flags())
+	if err := opts.Parse(cmd); err != nil {
+		t.Errorf("Target.Parse() error = %v", err)
+	}
+	if opts.Type != TargetTypeOCILayout {
+		t.Errorf("Target.Parse() failed, got %q, want %q", opts.Type, TargetTypeOCILayout)
+	}
+}
+
 func TestTarget_Parse_oci(t *testing.T) {
 	opts := Target{IsOCILayout: true}
-	err := opts.Parse(nil)
+	cmd := &cobra.Command{}
+	ApplyFlags(&opts, cmd.Flags())
+	err := opts.Parse(cmd)
 	if !errors.Is(err, errdef.ErrInvalidReference) {
 		t.Errorf("Target.Parse() error = %v, expect %v", err, errdef.ErrInvalidReference)
 	}
 	if opts.Type != TargetTypeOCILayout {
 		t.Errorf("Target.Parse() failed, got %q, want %q", opts.Type, TargetTypeOCILayout)
 	}
+}
+
+func TestTarget_Parse_oci_and_oci_path(t *testing.T) {
+	opts := Target{}
+	cmd := &cobra.Command{}
+	opts.ApplyFlags(cmd.Flags())
+	cmd.SetArgs([]string{"--oci-layout", "foo", "--oci-layout-path", "foo"})
+	if err := cmd.Execute(); err != nil {
+		t.Errorf("cmd.Execute() error = %v", err)
+	}
+	err := opts.Parse(cmd)
+	if err == nil {
+		t.Errorf("expect Target.Parse() to fail but not")
+	}
+	if !strings.Contains(err.Error(), "cannot be used at the same time") {
+		t.Errorf("expect error message to contain 'cannot be used at the same time' but not")
+	}
+
 }
 
 func TestTarget_Parse_remote(t *testing.T) {
@@ -59,7 +95,9 @@ func TestTarget_Parse_remote_err(t *testing.T) {
 		RawReference: "/test",
 		IsOCILayout:  false,
 	}
-	if err := opts.Parse(nil); err == nil {
+	cmd := &cobra.Command{}
+	ApplyFlags(&opts, cmd.Flags())
+	if err := opts.Parse(cmd); err == nil {
 		t.Errorf("expect Target.Parse() to fail but not")
 	}
 }
