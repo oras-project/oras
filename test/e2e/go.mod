@@ -4,7 +4,7 @@ go 1.23.0
 
 require (
 	github.com/onsi/ginkgo/v2 v2.21.0
-	github.com/onsi/gomega v1.35.0
+	github.com/onsi/gomega v1.35.1
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.0
 	gopkg.in/yaml.v2 v2.4.0
