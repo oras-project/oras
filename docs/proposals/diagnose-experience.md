@@ -31,7 +31,7 @@ There are four types of output in ORAS CLI:
 
 - **Status output**: such as progress information, progress bar in pulling or pushing files.
 - **Metadata output**: showing what has been pulled (e.g. filename, digest, etc.) in specified format, such as JSON, text.
-- **Content output**: it is to output the raw data obtained from the remote registry server or file system, such as the pulled artifact content save as a file.
+- **Content output**: it is to output the raw data obtained from the remote registry server or file system, such as the pulled artifact content saved as a file.
 - **Error output**: error message are expected to be helpful to troubleshoot where the user has done something wrong and the program is guiding them in the right direction.
 
 The target users of these types of output are general users. 
@@ -65,14 +65,14 @@ Here are the common conventions to print clear and analyzable debug logs.
 
 Based on the concepts and conventions above, here are the proposal for ORAS diagnose experience improvement: 
 
-- Deprecate the global flag `--verbose` and only remain `--debug` to avoid ambiguity. It is reasonable to continue using `--debug` to enable the output of `DEBUG` level logs as it is in ORAS. Meanwhile, This change will make the diagnose experience much more straightforward and less breaking since only ORAS `pull/push/attach/discover` commands have verbose output.
+- Deprecate the `--verbose` flag and keep `--debug` flag to avoid ambiguity. It is reasonable to continue using `--debug` to enable the output of `DEBUG` level logs as it is in ORAS. Meanwhile, This change will make the diagnose experience much more straightforward and less breaking since only ORAS `pull/push/attach/discover` commands have verbose output.
 - Make the verbose output of commands `pull`, `push`, `attach` as the default (status) output. See examples at the bottom.
 - Make the verbose output of command  `discover` as a formatted output, controlled by `--format tree-full`. 
 - Add two empty lines as the separator between each request and response for readability.
 - Add timestamp of each request and response to the beginning of each request and response.
 - Upon success, print out the response body in the debug logs if the `mediaType` of the processed OCI object (e.g. image manifest) is JSON or plain text format. The [error code](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#error-codes) should be included in the response body by default for diagnose purposes.
 - Summarize common conventions for writing clear and analyzable debug logs.
-- Considering ORAS is not a daemon service so parsing debug logs to a logging system is not a common scenario. The target users of the debug logs are normal users and ORAS developers. Thereby, the debug logs in TTY mode and non-TTY (`--no-tty`) should be consistent, expect for the color. Specifically, debug logs SHOULD be colored-code in a TTY mode for better readability on Terminal but keeping plain text in a non-TTY mode respectively.
+- Considering ORAS is not a daemon service so parsing debug logs to a logging system is not a common scenario. The target users of the debug logs are normal users and ORAS developers. Thereby, the debug logs in TTY mode and non-TTY (`--no-tty`) should be consistent, except for the color. Specifically, debug logs SHOULD be colored-code in a TTY mode for better readability on terminal but keeping plain text in a non-TTY mode respectively.
 
 ## Investigation on other CLI tools
 
@@ -203,7 +203,7 @@ DEBU[0002] Response #1
 
 ### oras push/pull/attach
 
-The verbose output of commands `pull`, `push`, `attach` is now printed out in the default (status) output, the `--verbose` is no longer needed. Considering the progress bar is showed on terminal by default, the verbose output should be available on non-terminal environment using `--no-tty`. See `oras pull` command as an example:
+The verbose output of commands `pull`, `push`, `attach` is now printed out in the default (status) output, the `--verbose` is no longer needed. Considering the progress bar is shown on terminal by default, the verbose output should be available on non-terminal environment using `--no-tty`. See `oras pull` command as an example:
 
 ```bash
 $ oras push --oci-layout layout-test:sample README.md --no-tty
