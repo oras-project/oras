@@ -1,5 +1,8 @@
 # Improve ORAS diagnose experience
 
+> [!NOTE]
+> The version of this specification is v1.3.0 Beta.1. It is subject to change until ORAS v1.3.0 is released. 
+
 ORAS v1.2.0 offers two global options, `--verbose` and `--debug`, which enable users to generate verbose output and logs respectively. These features facilitate both users and developers in inspecting ORAS's performance, interactions with external services and internal systems, and in diagnosing issues by providing a clear picture of the tool's operations.
 
 Given the diverse roles and scenarios in which ORAS CLI is utilized, we have received feedback from users and developers to improve the diagnostic experience. Enhancing debug logs can significantly benefit ORAS users and developers by making diagnostics clearer and more unambiguous.
