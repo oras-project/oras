@@ -22,6 +22,7 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2/registry/remote"
 
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry"
@@ -40,6 +41,7 @@ type discoverOptions struct {
 	option.Format
 
 	artifactType string
+	pageSize     int
 }
 
 func discoverCmd() *cobra.Command {
@@ -98,6 +100,9 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 	}
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
+	// If zero, the page size is determined by the remote registry.
+	// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#listing-referrers
+	cmd.Flags().IntVarP(&opts.pageSize, "page-size", "", 0, "page size for discover pagination")
 	cmd.Flags().StringVarP(&opts.Format.FormatFlag, "output", "o", "tree", "[Deprecated] format in which to display referrers (table, json, or tree). tree format will also show indirect referrers")
 	opts.SetTypes(
 		option.FormatTypeTree,
@@ -115,6 +120,11 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 	repo, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
 		return err
+	}
+	if r, ok := repo.(*remote.Repository); ok {
+		if opts.pageSize > 0 {
+			r.ReferrerListPageSize = opts.pageSize
+		}
 	}
 	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
 		return err
