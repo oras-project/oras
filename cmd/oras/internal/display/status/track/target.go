@@ -17,11 +17,13 @@ package track
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/display/status/progress"
 )
@@ -81,6 +83,10 @@ func (t *graphTarget) Push(ctx context.Context, expected ocispec.Descriptor, con
 	defer r.Close()
 	r.Start()
 	if err := t.GraphTarget.Push(ctx, expected, r); err != nil {
+		if errors.Is(err, errdef.ErrAlreadyExists) {
+			// allowed error types in oras-go oci and memory store
+			r.Done()
+		}
 		return err
 	}
 	r.Done()
