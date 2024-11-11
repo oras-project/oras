@@ -42,50 +42,53 @@ func (tros *testReadOnlyTarget) Fetch(ctx context.Context, desc ocispec.Descript
 }
 
 func (tros *testReadOnlyTarget) Resolve(ctx context.Context, reference string) (ocispec.Descriptor, error) {
-	return ocispec.Descriptor{MediaType: ocispec.MediaTypeImageManifest, Digest: digest.FromBytes([]byte(tros.content)), Size: 12}, nil
+	if bytes.Equal(tros.content, []byte("index")) {
+		return ocispec.Descriptor{MediaType: ocispec.MediaTypeImageIndex, Digest: digest.FromBytes(tros.content), Size: int64(len(tros.content))}, nil
+	}
+	return ocispec.Descriptor{MediaType: ocispec.MediaTypeImageManifest, Digest: digest.FromBytes(tros.content), Size: int64(len(tros.content))}, nil
 }
 
 func NewTestReadOnlyTarget(text string) oras.ReadOnlyTarget {
 	return &testReadOnlyTarget{content: []byte(text)}
 }
 
-type testDisplayStatus struct {
+type testCreateDisplayStatus struct {
 	onFetchingError    bool
 	onFetchedError     bool
 	onIndexPackedError bool
 	onIndexPushedError bool
 }
 
-func (tds *testDisplayStatus) OnFetching(manifestRef string) error {
+func (tds *testCreateDisplayStatus) OnFetching(manifestRef string) error {
 	if tds.onFetchingError {
 		return fmt.Errorf("OnFetching error")
 	}
 	return nil
 }
 
-func (tds *testDisplayStatus) OnFetched(manifestRef string, desc ocispec.Descriptor) error {
+func (tds *testCreateDisplayStatus) OnFetched(manifestRef string, desc ocispec.Descriptor) error {
 	if tds.onFetchedError {
 		return fmt.Errorf("OnFetched error")
 	}
 	return nil
 }
 
-func (tds *testDisplayStatus) OnIndexPacked(desc ocispec.Descriptor) error {
+func (tds *testCreateDisplayStatus) OnIndexPacked(desc ocispec.Descriptor) error {
 	if tds.onIndexPackedError {
 		return fmt.Errorf("error")
 	}
 	return nil
 }
 
-func (tds *testDisplayStatus) OnIndexPushed(path string) error {
+func (tds *testCreateDisplayStatus) OnIndexPushed(path string) error {
 	if tds.onIndexPushedError {
 		return fmt.Errorf("error")
 	}
 	return nil
 }
 
-func NewTestDisplayStatus(onFetching, onFetched, onIndexPacked, onIndexPushed bool) status.ManifestIndexCreateHandler {
-	return &testDisplayStatus{
+func NewTestCreateDisplayStatus(onFetching, onFetched, onIndexPacked, onIndexPushed bool) status.ManifestIndexCreateHandler {
+	return &testCreateDisplayStatus{
 		onFetchingError:    onFetching,
 		onFetchedError:     onFetched,
 		onIndexPackedError: onIndexPacked,
@@ -107,7 +110,7 @@ func Test_fetchSourceManifests(t *testing.T) {
 		{
 			name:          "OnFetching error",
 			ctx:           testContext,
-			displayStatus: NewTestDisplayStatus(true, false, false, false),
+			displayStatus: NewTestCreateDisplayStatus(true, false, false, false),
 			target:        NewTestReadOnlyTarget("test content"),
 			sources:       []string{"test"},
 			want:          nil,
@@ -116,7 +119,7 @@ func Test_fetchSourceManifests(t *testing.T) {
 		{
 			name:          "OnFetched error",
 			ctx:           testContext,
-			displayStatus: NewTestDisplayStatus(false, true, false, false),
+			displayStatus: NewTestCreateDisplayStatus(false, true, false, false),
 			target:        NewTestReadOnlyTarget("test content"),
 			sources:       []string{"test"},
 			want:          nil,
@@ -125,7 +128,7 @@ func Test_fetchSourceManifests(t *testing.T) {
 		{
 			name:          "getPlatform error",
 			ctx:           testContext,
-			displayStatus: NewTestDisplayStatus(false, false, false, false),
+			displayStatus: NewTestCreateDisplayStatus(false, false, false, false),
 			target:        NewTestReadOnlyTarget("test content"),
 			sources:       []string{"test"},
 			want:          nil,
