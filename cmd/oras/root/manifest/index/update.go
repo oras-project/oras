@@ -29,7 +29,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
-	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -123,11 +122,11 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	if err != nil {
 		return err
 	}
-	manifests, err = addManifests(ctx, displayStatus, displayMetadata, manifests, target, opts.addArguments)
+	manifests, err = addManifests(ctx, displayStatus, manifests, target, opts.addArguments)
 	if err != nil {
 		return err
 	}
-	manifests, err = mergeIndexes(ctx, displayStatus, displayMetadata, manifests, target, opts.mergeArguments)
+	manifests, err = mergeIndexes(ctx, displayStatus, manifests, target, opts.mergeArguments)
 	if err != nil {
 		return err
 	}
@@ -173,7 +172,7 @@ func fetchIndex(ctx context.Context, handler status.ManifestIndexUpdateHandler, 
 	return index, nil
 }
 
-func addManifests(ctx context.Context, displayStatus status.ManifestIndexUpdateHandler, displayMetadata metadata.ManifestIndexUpdateHandler, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, addArguments []string) ([]ocispec.Descriptor, error) {
+func addManifests(ctx context.Context, displayStatus status.ManifestIndexUpdateHandler, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, addArguments []string) ([]ocispec.Descriptor, error) {
 	for _, manifestRef := range addArguments {
 		if err := displayStatus.OnFetching(manifestRef); err != nil {
 			return nil, err
@@ -199,7 +198,7 @@ func addManifests(ctx context.Context, displayStatus status.ManifestIndexUpdateH
 	return manifests, nil
 }
 
-func mergeIndexes(ctx context.Context, displayStatus status.ManifestIndexUpdateHandler, displayMetadata metadata.ManifestIndexUpdateHandler, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, mergeArguments []string) ([]ocispec.Descriptor, error) {
+func mergeIndexes(ctx context.Context, displayStatus status.ManifestIndexUpdateHandler, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, mergeArguments []string) ([]ocispec.Descriptor, error) {
 	for _, indexRef := range mergeArguments {
 		if err := displayStatus.OnFetching(indexRef); err != nil {
 			return nil, err
