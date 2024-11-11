@@ -81,11 +81,16 @@ func (s *status) String(width int) (string, string) {
 	//           └─ digest(72)
 	var offset string
 	var percent float64
-	switch {
-	case s.done || total == 0: // 100%, show exact size
+	if s.done {
+		// 100%, show exact size
 		offset = fmt.Sprint(s.total.Size)
 		percent = 1
-	default: // 0% ~ 99%, show 2-digit precision
+	} else if total == 0 {
+		// 0 byte, show 100%
+		offset = "0"
+		percent = 1
+	} else {
+		// 0% ~ 99%, show 2-digit precision
 		if s.offset >= 0 {
 			// calculate percentage
 			percent = float64(s.offset) / float64(total)
