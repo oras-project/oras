@@ -197,11 +197,13 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 		if err != nil {
 			return err
 		}
-		mediaType := oras.MediaTypeUnknownConfig
 		if opts.Flag == option.ImageSpecV1_0 && opts.artifactType != "" {
-			mediaType = opts.artifactType
+			return &oerrors.Error{
+				Err:            errors.New(`artifact type cannot be customized for OCI image-spec v1.0 when platform is specified`),
+				Recommendation: "consider using image spec v1.1 or remove --artifact-type",
+			}
 		}
-		desc := content.NewDescriptorFromBytes(mediaType, blob)
+		desc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageConfig, blob)
 		err = store.Push(ctx, desc, bytes.NewReader(blob))
 		if err != nil {
 			return err

@@ -638,26 +638,18 @@ var _ = Describe("OCI image layout users:", func() {
 				Size:      int64(foobar.PlatformConfigSize),
 				Digest:    foobar.PlatformConfigDigest,
 			}))
+			ORAS("pull", "--platform", "darwin/arm64", Flags.Layout, ref).MatchStatus([]match.StateKey{
+				foobar.FileBarStateKey,
+			}, true, 1).Exec()
+
 		})
 
-		It("should push files with platform with mediaType as artifactType for v1.0", func() {
+		It("should fail to customize config mediaType when baking config blob with platform for v1.0", func() {
 			tempDir := PrepareTempFiles()
 			ref := LayoutRef(tempDir, tag)
 			ORAS("push", Flags.Layout, ref, "--image-spec", "v1.0", "--artifact-type", "test/artifact+json", "--artifact-platform", "darwin/arm64", foobar.FileBarName, "-v").
-				MatchStatus([]match.StateKey{
-					foobar.PlatformV10ConfigStateKey,
-					foobar.FileBarStateKey,
-				}, true, 2).
-				WithWorkDir(tempDir).Exec()
-			// validate
-			fetched := ORAS("manifest", "fetch", Flags.Layout, ref).Exec().Out.Contents()
-			var manifest ocispec.Manifest
-			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
-			Expect(manifest.Config).Should(Equal(ocispec.Descriptor{
-				MediaType: "test/artifact+json",
-				Size:      int64(foobar.PlatformV10ConfigSize),
-				Digest:    foobar.PlatformV10ConfigDigest,
-			}))
+				ExpectFailure().
+				Exec()
 		})
 
 		It("should push files with platform with no artifactType for v1.0", func() {
@@ -674,7 +666,7 @@ var _ = Describe("OCI image layout users:", func() {
 			var manifest ocispec.Manifest
 			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
 			Expect(manifest.Config).Should(Equal(ocispec.Descriptor{
-				MediaType: "application/vnd.unknown.config.v1+json",
+				MediaType: "application/vnd.oci.image.config.v1+json",
 				Size:      int64(foobar.PlatformV10ConfigSize),
 				Digest:    foobar.PlatformV10ConfigDigest,
 			}))
