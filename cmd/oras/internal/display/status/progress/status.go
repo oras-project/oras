@@ -84,6 +84,7 @@ func (s *status) String(width int) (string, string) {
 	switch {
 	case s.done || total == 0: // 100%, show exact size
 		offset = fmt.Sprint(s.total.Size)
+		percent = 1
 	default: // 0% ~ 99%, show 2-digit precision
 		if s.offset >= 0 {
 			// calculate percentage
