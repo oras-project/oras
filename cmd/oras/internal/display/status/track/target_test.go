@@ -20,6 +20,7 @@ package track
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"testing"
 
@@ -27,6 +28,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/internal/testutils"
 )
@@ -85,4 +87,45 @@ func Test_referenceGraphTarget_PushReference(t *testing.T) {
 func Test_referenceGraphTarget_Mount(t *testing.T) {
 	target := graphTarget{GraphTarget: &remote.Repository{}}
 	_ = target.Mount(context.Background(), ocispec.Descriptor{}, "", nil)
+}
+
+func Test_graphTarget_Push_alreadyExists(t *testing.T) {
+	// prepare
+	pty, device, err := testutils.NewPty()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer device.Close()
+	src := memory.New()
+	content := []byte("test")
+	r := bytes.NewReader(content)
+	desc := ocispec.Descriptor{
+		MediaType: "application/octet-stream",
+		Digest:    digest.FromBytes(content),
+		Size:      int64(len(content)),
+	}
+	if err := src.Push(context.Background(), desc, r); err != nil {
+		t.Fatal("Failed to prepare test environment:", err)
+	}
+	// test
+	actionPrompt := "action"
+	donePrompt := "done"
+	target, err := NewTarget(src, actionPrompt, donePrompt, device)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gt, ok := target.(*graphTarget); ok {
+		if err := gt.Push(context.Background(), desc, r); !errors.Is(err, errdef.ErrAlreadyExists) {
+			t.Fatal("Expected ErrAlreadyExists, got:", err)
+		}
+		if err := gt.manager.Close(); err != nil {
+			t.Fatal(err)
+		}
+	} else {
+		t.Fatal("not testing based on a referenceGraphTarget")
+	}
+	// validate
+	if err = testutils.MatchPty(pty, device, donePrompt, desc.MediaType, "100.00%", desc.Digest.String()); err != nil {
+		t.Fatal(err)
+	}
 }
