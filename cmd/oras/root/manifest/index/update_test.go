@@ -27,14 +27,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/status"
 )
 
-// // for quick drafting
-// type badWriter struct {
-// }
-
-// func (bw *badWriter) Write(p []byte) (n int, err error) {
-// 	return 0, fmt.Errorf("test error")
-// }
-
 type testUpdateDisplayStatus struct {
 	onFetchingError        bool
 	onFetchedError         bool
@@ -94,18 +86,6 @@ func (tds *testUpdateDisplayStatus) OnIndexMerged(indexRef string, desc ocispec.
 	return nil
 }
 
-func NewTestUpdateDisplayStatus(onFetching, onFetched, onIndexPacked, onIndexPushed, onManifestRemoved, onManifestAdded, onIndexMerged bool) status.ManifestIndexUpdateHandler {
-	return &testUpdateDisplayStatus{
-		onFetchingError:        onFetching,
-		onFetchedError:         onFetched,
-		onIndexPackedError:     onIndexPacked,
-		onIndexPushedError:     onIndexPushed,
-		onManifestRemovedError: onManifestRemoved,
-		onManifestAddedError:   onManifestAdded,
-		onIndexMergedError:     onIndexMerged,
-	}
-}
-
 var (
 	A = ocispec.Descriptor{
 		MediaType: ocispec.MediaTypeImageManifest,
@@ -138,7 +118,7 @@ func Test_doRemoveManifests(t *testing.T) {
 			name:          "remove one matched item",
 			manifests:     []ocispec.Descriptor{A, B, C},
 			digestSet:     map[digest.Digest]bool{B.Digest: false},
-			displayStatus: NewTestUpdateDisplayStatus(false, false, false, false, false, false, false),
+			displayStatus: &testUpdateDisplayStatus{},
 			indexRef:      "test01",
 			want:          []ocispec.Descriptor{A, C},
 			wantErr:       false,
@@ -147,7 +127,7 @@ func Test_doRemoveManifests(t *testing.T) {
 			name:          "remove all matched items",
 			manifests:     []ocispec.Descriptor{A, B, A, C, A, A, A},
 			digestSet:     map[digest.Digest]bool{A.Digest: false},
-			displayStatus: NewTestUpdateDisplayStatus(false, false, false, false, false, false, false),
+			displayStatus: &testUpdateDisplayStatus{},
 			indexRef:      "test02",
 			want:          []ocispec.Descriptor{B, C},
 			wantErr:       false,
@@ -156,7 +136,7 @@ func Test_doRemoveManifests(t *testing.T) {
 			name:          "remove correctly when there is only one item",
 			manifests:     []ocispec.Descriptor{A},
 			digestSet:     map[digest.Digest]bool{A.Digest: false},
-			displayStatus: NewTestUpdateDisplayStatus(false, false, false, false, false, false, false),
+			displayStatus: &testUpdateDisplayStatus{},
 			indexRef:      "test03",
 			want:          []ocispec.Descriptor{},
 			wantErr:       false,
@@ -165,7 +145,7 @@ func Test_doRemoveManifests(t *testing.T) {
 			name:          "remove multiple distinct manifests",
 			manifests:     []ocispec.Descriptor{A, B, C},
 			digestSet:     map[digest.Digest]bool{A.Digest: false, C.Digest: false},
-			displayStatus: NewTestUpdateDisplayStatus(false, false, false, false, false, false, false),
+			displayStatus: &testUpdateDisplayStatus{},
 			indexRef:      "test04",
 			want:          []ocispec.Descriptor{B},
 			wantErr:       false,
@@ -174,7 +154,7 @@ func Test_doRemoveManifests(t *testing.T) {
 			name:          "remove multiple duplicate manifests",
 			manifests:     []ocispec.Descriptor{A, B, C, C, B, A, B},
 			digestSet:     map[digest.Digest]bool{A.Digest: false, C.Digest: false},
-			displayStatus: NewTestUpdateDisplayStatus(false, false, false, false, false, false, false),
+			displayStatus: &testUpdateDisplayStatus{},
 			indexRef:      "test05",
 			want:          []ocispec.Descriptor{B, B, B},
 			wantErr:       false,
@@ -183,7 +163,7 @@ func Test_doRemoveManifests(t *testing.T) {
 			name:          "return error when deleting a nonexistent item",
 			manifests:     []ocispec.Descriptor{A, C},
 			digestSet:     map[digest.Digest]bool{B.Digest: false},
-			displayStatus: NewTestUpdateDisplayStatus(false, false, false, false, false, false, false),
+			displayStatus: &testUpdateDisplayStatus{},
 			indexRef:      "test06",
 			want:          nil,
 			wantErr:       true,
@@ -192,20 +172,11 @@ func Test_doRemoveManifests(t *testing.T) {
 			name:          "handler error",
 			manifests:     []ocispec.Descriptor{A, B, C},
 			digestSet:     map[digest.Digest]bool{B.Digest: false},
-			displayStatus: NewTestUpdateDisplayStatus(false, false, false, false, true, false, false),
+			displayStatus: &testUpdateDisplayStatus{onManifestRemovedError: true},
 			indexRef:      "test07",
 			want:          nil,
 			wantErr:       true,
 		},
-		// {
-		// 	name:          "bad writer test",
-		// 	manifests:     []ocispec.Descriptor{A, B, C},
-		// 	digestSet:     map[digest.Digest]bool{B.Digest: false},
-		// 	displayStatus: status.NewTextManifestIndexUpdateHandler(output.NewPrinter(&badWriter{}, os.Stderr, false)),
-		// 	indexRef:      "test draft",
-		// 	want:          nil,
-		// 	wantErr:       false,
-		// },
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -235,7 +206,7 @@ func Test_fetchIndex(t *testing.T) {
 		{
 			name:      "OnFetching error",
 			ctx:       testContext,
-			handler:   NewTestUpdateDisplayStatus(true, false, false, false, false, false, false),
+			handler:   &testUpdateDisplayStatus{onFetchingError: true},
 			target:    NewTestReadOnlyTarget("index"),
 			reference: "test",
 			want:      ocispec.Index{},
@@ -244,7 +215,7 @@ func Test_fetchIndex(t *testing.T) {
 		{
 			name:      "OnFetched error",
 			ctx:       testContext,
-			handler:   NewTestUpdateDisplayStatus(false, true, false, false, false, false, false),
+			handler:   &testUpdateDisplayStatus{onFetchedError: true},
 			target:    NewTestReadOnlyTarget("index"),
 			reference: "test",
 			want:      ocispec.Index{},
@@ -253,7 +224,7 @@ func Test_fetchIndex(t *testing.T) {
 		{
 			name:      "Unmarshall error",
 			ctx:       testContext,
-			handler:   NewTestUpdateDisplayStatus(false, false, false, false, false, false, false),
+			handler:   &testUpdateDisplayStatus{},
 			target:    NewTestReadOnlyTarget("index"),
 			reference: "test",
 			want:      ocispec.Index{},
@@ -289,7 +260,7 @@ func Test_mergeIndexes(t *testing.T) {
 		{
 			name:           "OnFetching error",
 			ctx:            testContext,
-			displayStatus:  NewTestUpdateDisplayStatus(true, false, false, false, false, false, false),
+			displayStatus:  &testUpdateDisplayStatus{onFetchingError: true},
 			manifests:      []ocispec.Descriptor{},
 			target:         NewTestReadOnlyTarget("index"),
 			mergeArguments: []string{"test"},
@@ -299,7 +270,7 @@ func Test_mergeIndexes(t *testing.T) {
 		{
 			name:           "OnFetched error",
 			ctx:            testContext,
-			displayStatus:  NewTestUpdateDisplayStatus(false, true, false, false, false, false, false),
+			displayStatus:  &testUpdateDisplayStatus{onFetchedError: true},
 			manifests:      []ocispec.Descriptor{},
 			target:         NewTestReadOnlyTarget("index"),
 			mergeArguments: []string{"test"},
@@ -309,7 +280,7 @@ func Test_mergeIndexes(t *testing.T) {
 		{
 			name:           "unmarshall error",
 			ctx:            testContext,
-			displayStatus:  NewTestUpdateDisplayStatus(false, false, false, false, false, false, false),
+			displayStatus:  &testUpdateDisplayStatus{},
 			manifests:      []ocispec.Descriptor{},
 			target:         NewTestReadOnlyTarget("index"),
 			mergeArguments: []string{"test"},

@@ -87,15 +87,6 @@ func (tds *testCreateDisplayStatus) OnIndexPushed(path string) error {
 	return nil
 }
 
-func NewTestCreateDisplayStatus(onFetching, onFetched, onIndexPacked, onIndexPushed bool) status.ManifestIndexCreateHandler {
-	return &testCreateDisplayStatus{
-		onFetchingError:    onFetching,
-		onFetchedError:     onFetched,
-		onIndexPackedError: onIndexPacked,
-		onIndexPushedError: onIndexPushed,
-	}
-}
-
 func Test_fetchSourceManifests(t *testing.T) {
 	testContext := context.Background()
 	tests := []struct {
@@ -110,7 +101,7 @@ func Test_fetchSourceManifests(t *testing.T) {
 		{
 			name:          "OnFetching error",
 			ctx:           testContext,
-			displayStatus: NewTestCreateDisplayStatus(true, false, false, false),
+			displayStatus: &testCreateDisplayStatus{onFetchingError: true},
 			target:        NewTestReadOnlyTarget("test content"),
 			sources:       []string{"test"},
 			want:          nil,
@@ -119,7 +110,7 @@ func Test_fetchSourceManifests(t *testing.T) {
 		{
 			name:          "OnFetched error",
 			ctx:           testContext,
-			displayStatus: NewTestCreateDisplayStatus(false, true, false, false),
+			displayStatus: &testCreateDisplayStatus{onFetchedError: true},
 			target:        NewTestReadOnlyTarget("test content"),
 			sources:       []string{"test"},
 			want:          nil,
@@ -128,7 +119,7 @@ func Test_fetchSourceManifests(t *testing.T) {
 		{
 			name:          "getPlatform error",
 			ctx:           testContext,
-			displayStatus: NewTestCreateDisplayStatus(false, false, false, false),
+			displayStatus: &testCreateDisplayStatus{},
 			target:        NewTestReadOnlyTarget("test content"),
 			sources:       []string{"test"},
 			want:          nil,
