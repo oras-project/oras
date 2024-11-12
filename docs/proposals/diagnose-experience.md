@@ -22,6 +22,7 @@ Specifically, there are existing GitHub issues raised in the ORAS community.
 - Poor readability of debug logs. No separator lines between request and response information. Users need to add separator lines manually for readability. See the relevant issue [#1382](https://github.com/oras-project/oras/issues/1382).
 - Critical information is missing in debug logs. For example, the [error code](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#error-codes) and metadata of the processed resource object (e.g. image manifest) are not displayed.
 - The detailed operation information is missing in verbose output. For example, how many and where are objects processed. Less or no verbose output of ORAS commands in some use cases.
+- The user environment information is not printed out. This causes a higher cost to reproduce the issues for ORAS developers locally.
 - Timestamp of each request and response is missing in debug logs, which is hard to trace historical operation and trace the sequence of events accurately.
 
 ## Concepts
@@ -58,11 +59,11 @@ Here are the common conventions to print clear and analyzable debug logs.
 
 ### **Timestamp Each Log Entry**
 - **Precise Timing:** Ensure each log entry has a precise timestamp to trace the sequence of events accurately.
-  - Example: `DEBUG: [2023-10-01T12:00:00Z] Starting metadata retrieval for repository oras-demo`
+  - Example: `[2024-08-02 23:56:02] Starting metadata retrieval for repository oras-demo`
 
 ### **Avoid Logging Sensitive Information**
 - **Privacy and Security:** Abstain from logging sensitive information such as passwords, personal data, or authentication tokens.
-  - Example: `DEBUG: Attempting to authenticate user [UserID: usr123]`  (exclude authentication token and password information).
+  - Example: `[2024-08-02 23:56:02] Attempting to authenticate user [UserID: usr123]`  (exclude authentication token and password information).
 
 ## Proposals for ORAS CLI
 
@@ -73,7 +74,8 @@ Based on the concepts and conventions above, here are the proposal for ORAS diag
 - Make the verbose output of command  `discover` as a formatted output, controlled by `--format tree-full`. 
 - Add two empty lines as the separator between each request and response for readability.
 - Add timestamp of each request and response to the beginning of each request and response.
-- Upon success, print out the response body in the debug logs if the `mediaType` of the processed OCI object (e.g. image manifest) is JSON or plain text format. The [error code](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#error-codes) should be included in the response body by default for diagnose purposes.
+- Print out the response body in the debug logs if the [Content-Type](https://www.rfc-editor.org/rfc/rfc2616#section-14.17) of the HTTP response body is JSON or plain text format. Upon a response with failures, the [error code](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#error-codes) should be included in the response body by default for diagnose purposes.
+- Show running environment details of ORAS such as `OS/Arch` in the output of `oras version`. It would be helpful to help the ORAS developers locate and reproduce the issue easier. 
 - Summarize common conventions for writing clear and analyzable debug logs.
 - Considering ORAS is not a daemon service so parsing debug logs to a logging system is not a common scenario. The target users of the debug logs are normal users and ORAS developers. Thereby, the debug logs in TTY mode and non-TTY (`--no-tty`) should be consistent, except for the color. Specifically, debug logs SHOULD be colored-code in a TTY mode for better readability on terminal but keeping plain text in a non-TTY mode respectively.
 
@@ -108,7 +110,7 @@ oras copy ghcr.io/oras-project/oras:v1.2.0 --to-oci-layout oras-dev:v1.2.0 --deb
 **Current debug log**
 
 ```
-[DEBU0000] Request #0
+DEBU[0000] Request #0
 > Request URL: "https://ghcr.io/v2/oras-project/oras/manifests/v1.2.0"
 > Request method: "GET"
 > Request headers:
