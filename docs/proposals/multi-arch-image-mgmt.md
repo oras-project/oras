@@ -42,7 +42,7 @@ To create a multi-arch image, ORAS users have to manually compose an OCI image i
 - ORAS user A: [POC: Create and install Postgres Trunk Binaries (github.com)](https://gist.github.com/theory/7dc164e5772cae652d838a1c508972ae#file-push_trunk-L22) and his blog post [POC: Distributing Trunk Binaries via OCI (justatheory.com)](https://justatheory.com/2024/06/trunk-oci-poc/)
 - ORAS user B: [Script to help create a simple mult-arch artifact (github.com)](https://gist.github.com/sajayantony/0c9d6436c03d531b1bbebe43249381cf)
 
-#### `docker duildx`/`docker` is unavailable
+#### `docker buildx`/`docker` is unavailable
 
 Users cannot install or use `docker buildx` plugin or even no `docker` in some strict environments. For example, Bob needs to create multi-arch images in an air-gapped environment without `docker`/`buildx` installed by default. Bob needs to seek for an alternative tool to create a mulit-arch image locally.
 
