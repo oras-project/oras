@@ -58,12 +58,12 @@ Logs focus on providing technical details for in-depth diagnosing and troublesho
 Here are the common conventions to print clear and analyzable debug logs.
 
 ### **Timestamp Each Log Entry**
-- **Precise Timing:** Ensure each log entry has a precise timestamp to trace the sequence of events accurately.
-  - Example: `[2024-08-02 23:56:02] Starting metadata retrieval for repository oras-demo`
+- **Precise Timing:** Ensure each log entry has a precise timestamp to trace the sequence of events accurately. ORAS SHOULD use the [Nanoseconds](https://pkg.go.dev/time#Duration.Nanoseconds) precision to print the timestamp in the first field of each line.
+  - Example: `[2024-08-02 23:56:02.6738192Z] Starting metadata retrieval for repository oras-demo`
 
 ### **Avoid Logging Sensitive Information**
 - **Privacy and Security:** Abstain from logging sensitive information such as passwords, personal data, or authentication tokens.
-  - Example: `[2024-08-02 23:56:02] Attempting to authenticate user [UserID: usr123]`  (exclude authentication token and password information).
+  - Example: `[2024-08-02 23:56:02.7338192Z] Attempting to authenticate user [UserID: usr123]`  (exclude authentication token and password information).
 
 ## Proposals for ORAS CLI
 
@@ -74,7 +74,8 @@ Based on the concepts and conventions above, here are the proposal for ORAS diag
 - Make the verbose output of command  `discover` as a formatted output, controlled by `--format tree-full`. 
 - Add two empty lines as the separator between each request and response for readability.
 - Add timestamp of each request and response to the beginning of each request and response.
-- Print out the response body in the debug logs if the [Content-Type](https://www.rfc-editor.org/rfc/rfc2616#section-14.17) of the HTTP response body is JSON or plain text format. Upon a response with failures, the [error code](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#error-codes) should be included in the response body by default for diagnose purposes.
+- Print out the response body in the debug logs if the [Content-Type](https://www.rfc-editor.org/rfc/rfc2616#section-14.17) of the HTTP response body is JSON or plain text format. ORAS SHOULD limit the size of a response body for preventing clients from overloading the registry server with massive payloads that could lead to performance issues.
+- Upon a response with failures, the [error code](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#error-codes) should be included in the response body by default for diagnose purposes.
 - Show running environment details of ORAS such as `OS/Arch` in the output of `oras version`. It would be helpful to help the ORAS developers locate and reproduce the issue easier. 
 - Summarize common conventions for writing clear and analyzable debug logs.
 - Considering ORAS is not a daemon service so parsing debug logs to a logging system is not a common scenario. The target users of the debug logs are normal users and ORAS developers. Thereby, the debug logs in TTY mode and non-TTY (`--no-tty`) should be consistent, except for the color. Specifically, debug logs SHOULD be colored-code in a TTY mode for better readability on terminal but keeping plain text in a non-TTY mode respectively.
@@ -101,7 +102,7 @@ This section lists the current behaviors of ORAS debug logs, proposes the sugges
 
 ### oras copy
 
-Pick the first two requests and responses as examples:
+Take the first two requests and responses from its debug logs as examples:
 
 ```
 oras copy ghcr.io/oras-project/oras:v1.2.0 --to-oci-layout oras-dev:v1.2.0 --debug
@@ -139,7 +140,9 @@ DEBU[0002] Response #1
    "X-Github-Request-Id": "9FC6:30019C:17C0D:1C46C:66AD0464" 
 ```
 
-**Suggested debug logs:**
+**Suggested debug logs in TTY and Non-TTY mode:**
+
+The debug logs in TTY mode and non-TTY (`--no-tty`) should be consistent, except for the color.
 
 ```
 [2024-08-02 23:56:02] --> Request #0
