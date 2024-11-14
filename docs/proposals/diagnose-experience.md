@@ -76,9 +76,9 @@ Based on the concepts and conventions above, here are the proposal for ORAS diag
 - Add timestamp of each request and response to the beginning of each request and response.
 - Print out the response body in the debug logs if the [Content-Type](https://www.rfc-editor.org/rfc/rfc2616#section-14.17) of the HTTP response body is JSON or plain text format. ORAS SHOULD limit the size of a response body for preventing clients from overloading the registry server with massive payloads that could lead to performance issues.
 - Upon a response with failures, the [error code](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#error-codes) should be included in the response body by default for diagnose purposes.
-- Show running environment details of ORAS such as `OS/Arch` in the output of `oras version`. It would be helpful to help the ORAS developers locate and reproduce the issue easier. 
+- Considering ORAS is not a daemon service so parsing debug logs to a logging system is not a common scenario. The target users of the debug logs are normal users and ORAS developers. Thereby, the debug logs in TTY mode and non-TTY (`--no-tty`) should be consistent, except for the color. Specifically, debug logs SHOULD be colored-code in a TTY mode for better readability on terminal but keeping plain text in a non-TTY mode.
 - Summarize common conventions for writing clear and analyzable debug logs.
-- Considering ORAS is not a daemon service so parsing debug logs to a logging system is not a common scenario. The target users of the debug logs are normal users and ORAS developers. Thereby, the debug logs in TTY mode and non-TTY (`--no-tty`) should be consistent, except for the color. Specifically, debug logs SHOULD be colored-code in a TTY mode for better readability on terminal but keeping plain text in a non-TTY mode respectively.
+- Show running environment details of ORAS such as `OS/Arch` in the output of `oras version`. It would be helpful to help the ORAS developers locate and reproduce the issue easier. 
 
 ## Investigation on other CLI tools
 
