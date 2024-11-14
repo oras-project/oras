@@ -69,7 +69,7 @@ Here are the common conventions to print clear and analyzable debug logs.
 
 Based on the concepts and conventions above, here are the proposal for ORAS diagnose experience improvement: 
 
-- Deprecate the `--verbose` flag and keep `--debug` flag to avoid ambiguity. It is reasonable to continue using `--debug` to enable the output of `DEBUG` level logs as it is in ORAS. Meanwhile, This change will make the diagnose experience much more straightforward and less breaking since only ORAS `pull/push/attach/discover` commands have verbose output.
+- Deprecate the `--verbose` flag and keep `--debug` flag to avoid ambiguity. It is reasonable to continue using `--debug` to enable the output of `DEBUG` level logs as it is in ORAS. Meanwhile, this change will make the diagnose experience much more straightforward and less breaking since only ORAS `pull/push/attach/discover` commands have verbose output.
 - Make the verbose output of commands `pull`, `push`, `attach` as the default (status) output. See examples at the bottom.
 - Make the verbose output of command  `discover` as a formatted output, controlled by `--format tree-full`. 
 - Add two empty lines as the separator between each request and response for readability.
@@ -108,7 +108,7 @@ Take the first two requests and responses from its debug logs as examples:
 oras copy ghcr.io/oras-project/oras:v1.2.0 --to-oci-layout oras-dev:v1.2.0 --debug
 ```
 
-**Current debug log**
+**Current debug log in TTY mode**
 
 ```
 DEBU[0000] Request #0
@@ -140,12 +140,44 @@ DEBU[0002] Response #1
    "X-Github-Request-Id": "9FC6:30019C:17C0D:1C46C:66AD0464" 
 ```
 
+**Current debug log in non-TTY mode**
+
+```
+time=2024-11-13T00:08:03-08:00 level=debug msg=Request #0
+> Request URL: "https://ghcr.io/v2/oras-project/oras/manifests/v1.2.0"
+> Request method: "GET"
+> Request headers:
+   "Accept": "application/vnd.docker.distribution.manifest.v2+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.oci.image.index.v1+json, application/vnd.oci.artifact.manifest.v1+json"
+   "User-Agent": "oras/1.2.0+Homebrew"
+time=2024-11-13T00:08:04-08:00 level=debug msg=Response #0
+< Response Status: "401 Unauthorized"
+< Response headers:
+   "Content-Type": "application/json"
+   "Www-Authenticate": "Bearer realm=\"https://ghcr.io/token\",service=\"ghcr.io\",scope=\"repository:oras-project/oras:pull\""
+   "Date": "Wed, 13 Nov 2024 08:08:04 GMT"
+   "Content-Length": "73"
+   "X-Github-Request-Id": "A976:6E843:5D1712B:5F3E769:67345E64"
+time=2024-11-13T00:08:04-08:00 level=debug msg=Request #1
+> Request URL: "https://ghcr.io/token?scope=repository%3Aoras-project%2Foras%3Apull&service=ghcr.io"
+> Request method: "GET"
+> Request headers:
+   "User-Agent": "oras/1.2.0+Homebrew"
+time=2024-11-13T00:08:04-08:00 level=debug msg=Response #1
+< Response Status: "200 OK"
+< Response headers:
+   "X-Github-Request-Id": "A976:6E843:5D171B4:5F3E7EE:67345E64"
+   "Content-Type": "application/json"
+   "Docker-Distribution-Api-Version": "registry/2.0"
+   "Date": "Wed, 13 Nov 2024 08:08:04 GMT"
+   "Content-Length": "69"
+```
+
 **Suggested debug logs in TTY and Non-TTY mode:**
 
 The debug logs in TTY mode and non-TTY (`--no-tty`) should be consistent, except for the color.
 
 ```
-[2024-08-02 23:56:02] --> Request #0
+[2024-08-02 23:56:02.6738192Z] --> Request #0
 > Request URL: "https://ghcr.io/v2/oras-project/oras/manifests/v1.2.0"
 > Request method: "GET"
 > Request headers:
@@ -153,7 +185,7 @@ The debug logs in TTY mode and non-TTY (`--no-tty`) should be consistent, except
    "Accept": "application/vnd.docker.distribution.manifest.v2+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.oci.image.index.v1+json, application/vnd.oci.artifact.manifest.v1+json" 
 
 
-[2024-08-02 23:56:03] <-- Response #0
+[2024-08-02 23:56:03.6738192Z] <-- Response #0
 < Response Status: "401 Unauthorized"
 < Response headers:
    "Content-Length": "73"
@@ -174,14 +206,14 @@ The debug logs in TTY mode and non-TTY (`--no-tty`) should be consistent, except
 }
 
 
-[2024-08-02 23:56:04] --> Request #1
+[2024-08-02 23:56:04.6738192Z] --> Request #1
 > Request URL: "https://ghcr.io/token?scope=repository%3Aoras-project%2Foras%3Apull&service=ghcr.io"
 > Request method: "GET"
 > Request headers:
    "User-Agent": "oras/1.2.0+Homebrew" 
 
 
-[2024-08-02 23:56:04] <-- Response #1
+[2024-08-02 23:56:04.6738192Z] <-- Response #1
 < Response Status: "200 OK"
 < Response headers:
    "Content-Type": "application/json"
