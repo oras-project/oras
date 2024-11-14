@@ -20,20 +20,33 @@ import (
 	"io"
 	"os"
 
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/output"
 )
 
-// manifestFetch handles raw content output.
-type manifestFetch struct {
+// manifestIndexCreate handles raw content output.
+type manifestIndexCreate struct {
 	pretty     bool
 	stdout     io.Writer
 	outputPath string
 }
 
-func (h *manifestFetch) OnContentFetched(desc ocispec.Descriptor, manifest []byte) error {
+// NewManifestIndexCreateHandler creates a new handler.
+func NewManifestIndexCreateHandler(out io.Writer, pretty bool, outputPath string) ManifestIndexCreateHandler {
+	// ignore --pretty when output to a file
+	if outputPath != "" && outputPath != "-" {
+		pretty = false
+	}
+	return &manifestIndexCreate{
+		pretty:     pretty,
+		stdout:     out,
+		outputPath: outputPath,
+	}
+}
+
+// OnContentCreated is called after index content is created.
+func (h *manifestIndexCreate) OnContentCreated(manifest []byte) error {
 	out := h.stdout
-	if h.outputPath != "-" && h.outputPath != "" {
+	if h.outputPath != "" && h.outputPath != "-" {
 		f, err := os.Create(h.outputPath)
 		if err != nil {
 			return fmt.Errorf("failed to open %q: %w", h.outputPath, err)
@@ -42,17 +55,4 @@ func (h *manifestFetch) OnContentFetched(desc ocispec.Descriptor, manifest []byt
 		out = f
 	}
 	return output.PrintJSON(out, manifest, h.pretty)
-}
-
-// NewManifestFetchHandler creates a new handler.
-func NewManifestFetchHandler(out io.Writer, pretty bool, outputPath string) ManifestFetchHandler {
-	// ignore --pretty when output to a file
-	if outputPath != "" && outputPath != "-" {
-		pretty = false
-	}
-	return &manifestFetch{
-		pretty:     pretty,
-		stdout:     out,
-		outputPath: outputPath,
-	}
 }

@@ -15,21 +15,14 @@ limitations under the License.
 
 package content
 
-import ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+import (
+	"os"
+	"testing"
+)
 
-type DiscardHandler struct{}
-
-// OnContentFetched implements ManifestFetchHandler.
-func (DiscardHandler) OnContentFetched(ocispec.Descriptor, []byte) error {
-	return nil
-}
-
-// OnContentCreated implements ManifestIndexCreateHandler.
-func (DiscardHandler) OnContentCreated([]byte) error {
-	return nil
-}
-
-// NewDiscardHandler returns a new discard handler.
-func NewDiscardHandler() DiscardHandler {
-	return DiscardHandler{}
+func Test_manifestIndexCreate_OnContentCreated(t *testing.T) {
+	testHandler := NewManifestIndexCreateHandler(os.Stdout, false, "invalid/path")
+	if err := testHandler.OnContentCreated([]byte("test content")); err == nil {
+		t.Errorf("manifestIndexCreate.OnContentCreated() error = %v, wantErr non-nil error", err)
+	}
 }

@@ -81,7 +81,11 @@ type ManifestPushHandler interface {
 // ManifestIndexCreateHandler handles metadata output for index create events.
 type ManifestIndexCreateHandler interface {
 	TaggedHandler
+	OnCompleted(desc ocispec.Descriptor) error
 }
+
+// ManifestIndexUpdateHandler handles metadata output for index update events.
+type ManifestIndexUpdateHandler ManifestIndexCreateHandler
 
 // CopyHandler handles metadata output for cp events.
 type CopyHandler interface {

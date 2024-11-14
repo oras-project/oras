@@ -13,23 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package content
+package metadata
 
-import ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+import (
+	"testing"
 
-type DiscardHandler struct{}
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+)
 
-// OnContentFetched implements ManifestFetchHandler.
-func (DiscardHandler) OnContentFetched(ocispec.Descriptor, []byte) error {
-	return nil
-}
-
-// OnContentCreated implements ManifestIndexCreateHandler.
-func (DiscardHandler) OnContentCreated([]byte) error {
-	return nil
-}
-
-// NewDiscardHandler returns a new discard handler.
-func NewDiscardHandler() DiscardHandler {
-	return DiscardHandler{}
+func TestDiscard_OnTagged(t *testing.T) {
+	testDiscard := NewDiscardHandler()
+	if err := testDiscard.OnTagged(ocispec.Descriptor{}, "test"); err != nil {
+		t.Errorf("testDiscard.OnTagged() error = %v, want nil", err)
+	}
 }
