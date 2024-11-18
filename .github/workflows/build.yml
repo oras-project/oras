@@ -53,7 +53,7 @@ jobs:
       - name: Check Version
         run: bin/linux/amd64/oras version
       - name: Upload coverage to codecov.io
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
