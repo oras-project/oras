@@ -1,4 +1,7 @@
-# Multi-arch image/**artifact**a manifest list is created from management with ORAS
+# Multi-arch image management with ORAS
+
+> [!NOTE]
+> The version of this specification is `1.3.0 Beta.1`. It is subject to change until ORAS v1.3.0 is released. 
 
 ## Overview
 
