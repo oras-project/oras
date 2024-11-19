@@ -35,6 +35,7 @@ echo " === installing ginkgo  === "
 repo_root=$(realpath --canonicalize-existing ${repo_root})
 cwd=$(pwd)
 cd ${repo_root}/test/e2e && go install github.com/onsi/ginkgo/v2/ginkgo@latest
+export PATH=$(go env GOPATH)/bin:$PATH
 trap "cd $cwd" EXIT
 
 # start registries
