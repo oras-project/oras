@@ -28,7 +28,7 @@ import (
 type TextFormatter struct{}
 
 // logEntrySeperator is the separator between log entries.
-const logEntrySeperator = "\n\n\n" // two empty lines
+const logEntrySeperator = "\n\n" // two empty lines
 
 // Format renders a single log entry.
 func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
@@ -36,10 +36,16 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 
 	timestamp := entry.Time.Format(time.RFC3339Nano)
 	levelText := strings.ToUpper(entry.Level.String())
-	buf.WriteString(fmt.Sprintf("[%s] %s: %s", timestamp, levelText, entry.Message))
-	buf.WriteString(logEntrySeperator)
+	buf.WriteString(fmt.Sprintf("[%s] %s: %s\n", timestamp, levelText, entry.Message))
+	// printing fields
+	buf.WriteString("[Data]:\n")
+	for k, v := range entry.Data {
+		buf.WriteString(fmt.Sprintf("  %s=%v\n", k, v))
+	}
 
-	// TODO: with fields?
+	// TODO: body?
+
+	buf.WriteString(logEntrySeperator)
 
 	return buf.Bytes(), nil
 }
