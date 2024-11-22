@@ -37,7 +37,7 @@ import (
 )
 
 var _ = Describe("ORAS beginners:", func() {
-	When("running pull command", Focus, func() {
+	When("running pull command", func() {
 		It("should show help description with feature flags", func() {
 			out := ORAS("pull", "--help").MatchKeyWords(ExampleDesc).Exec().Out
 			gomega.Expect(out).Should(gbytes.Say("--include-subject\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
@@ -53,12 +53,7 @@ var _ = Describe("ORAS beginners:", func() {
 		It("should show hint for unnamed layer", func() {
 			tempDir := PrepareTempFiles()
 			ref := RegistryRef(ZOTHost, ArtifactRepo, unnamed.Tag)
-			// stateKeys := []match.StateKey{
-			// 	{Digest: "977c6cf8e8ae", Name: "application/vnd.oci.image.manifest.v1+json"},
-			// 	{Digest: "2c26b46b68ff", Name: "application/vnd.oci.image.layer.v1.tar"},
-			// }
 			out := ORAS("pull", ref).WithWorkDir(tempDir).Exec().Out
-			// MatchStatus(stateKeys, true, len(stateKeys)).Exec().Out
 			gomega.Expect(out).Should(gbytes.Say(hintMsg(ref)))
 		})
 
