@@ -87,7 +87,6 @@ Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
 					return errors.New("`--size` must be provided if the blob is read from stdin")
 				}
 			}
-			// opts.SuppressUnnamed = opts.OutputDescriptor
 			opts.SuppressUntitled = opts.OutputDescriptor
 			return option.Parse(cmd, &opts)
 		},
