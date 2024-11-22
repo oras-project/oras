@@ -96,7 +96,7 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 			refs := strings.Split(args[0], ",")
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
-			opts.SuppressUnnamed = opts.OutputDescriptor
+			opts.SuppressUntitled = opts.OutputDescriptor
 			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {

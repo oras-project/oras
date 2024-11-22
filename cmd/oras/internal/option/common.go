@@ -32,8 +32,8 @@ type Common struct {
 	Verbose bool // deprecated, the current default behavior is equivalent to verbose=true
 	TTY     *os.File
 	*output.Printer
-	noTTY           bool
-	SuppressUnnamed bool // equivalent to verbose=false
+	noTTY            bool
+	SuppressUntitled bool // equivalent to verbose=false
 }
 
 // ApplyFlags applies flags to a command flag set.
@@ -47,7 +47,7 @@ func (opts *Common) ApplyFlags(fs *pflag.FlagSet) {
 
 // Parse gets target options from user input.
 func (opts *Common) Parse(cmd *cobra.Command) error {
-	opts.Printer = output.NewPrinter(cmd.OutOrStdout(), cmd.OutOrStderr(), opts.SuppressUnnamed)
+	opts.Printer = output.NewPrinter(cmd.OutOrStdout(), cmd.OutOrStderr(), opts.SuppressUntitled)
 	// use STDERR as TTY output since STDOUT is reserved for pipeable output
 	return opts.parseTTY(os.Stderr)
 }

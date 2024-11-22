@@ -27,15 +27,15 @@ import (
 
 // Printer prints for status handlers.
 type Printer struct {
-	out             io.Writer
-	err             io.Writer
-	lock            sync.Mutex
-	suppressUnnamed bool
+	out              io.Writer
+	err              io.Writer
+	lock             sync.Mutex
+	suppressUntitled bool
 }
 
 // NewPrinter creates a new Printer.
-func NewPrinter(out io.Writer, err io.Writer, suppressUnnamed bool) *Printer {
-	return &Printer{out: out, err: err, suppressUnnamed: suppressUnnamed}
+func NewPrinter(out io.Writer, err io.Writer, suppressUntitled bool) *Printer {
+	return &Printer{out: out, err: err, suppressUntitled: suppressUntitled}
 }
 
 // Write implements the io.Writer interface.
@@ -71,9 +71,9 @@ func (p *Printer) Printf(format string, a ...any) error {
 	return nil
 }
 
-// PrintUnnamed prints unless suppressed.
-func (p *Printer) PrintUnnamed(a ...any) error {
-	if p.suppressUnnamed {
+// PrintUntitled prints unless suppressed.
+func (p *Printer) PrintUntitled(a ...any) error {
+	if p.suppressUntitled {
 		return nil
 	}
 	return p.Println(a...)
@@ -83,7 +83,7 @@ func (p *Printer) PrintUnnamed(a ...any) error {
 func (p *Printer) PrintStatus(desc ocispec.Descriptor, status string) error {
 	name, isTitle := descriptor.GetTitleOrMediaType(desc)
 	if !isTitle {
-		return p.PrintUnnamed(status, descriptor.ShortDigest(desc), name)
+		return p.PrintUntitled(status, descriptor.ShortDigest(desc), name)
 	}
 	return p.Println(status, descriptor.ShortDigest(desc), name)
 }

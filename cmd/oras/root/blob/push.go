@@ -88,7 +88,7 @@ Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
 				}
 			}
 			// opts.SuppressUnnamed = opts.OutputDescriptor
-			opts.SuppressUnnamed = opts.OutputDescriptor
+			opts.SuppressUntitled = opts.OutputDescriptor
 			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
