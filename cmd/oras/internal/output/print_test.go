@@ -60,9 +60,10 @@ func TestPrinter_Println(t *testing.T) {
 	}
 }
 
-func TestPrinter_PrintVerbose_noError(t *testing.T) {
+func TestPrinter_SuppressUnnamed(t *testing.T) {
 	builder := &strings.Builder{}
-	printer := NewPrinter(builder, os.Stderr, false)
+	suppressUnnamed := true
+	printer := NewPrinter(builder, os.Stderr, suppressUnnamed)
 
 	expected := "normal\nthing one\n"
 	err := printer.Println("normal")
@@ -73,7 +74,7 @@ func TestPrinter_PrintVerbose_noError(t *testing.T) {
 	if err != nil {
 		t.Error("Expected no error got <" + err.Error() + ">")
 	}
-	err = printer.PrintVerbose("verbose")
+	err = printer.PrintUnnamed("verbose")
 	if err != nil {
 		t.Error("Expected no error got <" + err.Error() + ">")
 	}
@@ -83,16 +84,17 @@ func TestPrinter_PrintVerbose_noError(t *testing.T) {
 	}
 }
 
-func TestPrinter_PrintVerbose(t *testing.T) {
+func TestPrinter_PrintUnnamed(t *testing.T) {
 	builder := &strings.Builder{}
-	printer := NewPrinter(builder, os.Stderr, true)
+	suppressUnnamed := false
+	printer := NewPrinter(builder, os.Stderr, suppressUnnamed)
 
 	expected := "normal\nverbose\n"
 	err := printer.Println("normal")
 	if err != nil {
 		t.Error("Expected no error got <" + err.Error() + ">")
 	}
-	err = printer.PrintVerbose("verbose")
+	err = printer.PrintUnnamed("verbose")
 	if err != nil {
 		t.Error("Expected no error got <" + err.Error() + ">")
 	}

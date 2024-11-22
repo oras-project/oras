@@ -49,7 +49,7 @@ func NewTextPushHandler(printer *output.Printer, fetcher content.Fetcher) PushHa
 
 // OnFileLoading is called when a file is being prepared for upload.
 func (ph *TextPushHandler) OnFileLoading(name string) error {
-	return ph.printer.PrintVerbose("Preparing", name)
+	return ph.printer.PrintUnnamed("Preparing", name)
 }
 
 // OnEmptyArtifact is called when an empty artifact is being uploaded.

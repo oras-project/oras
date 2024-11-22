@@ -173,7 +173,7 @@ func TestTextPushHandler_OnFileLoading(t *testing.T) {
 	if ph.OnFileLoading("name") != nil {
 		t.Error("OnFileLoading() should not return an error")
 	}
-	validatePrinted(t, "")
+	validatePrinted(t, "Preparing name")
 }
 
 func TestTextPushHandler_PostCopy(t *testing.T) {

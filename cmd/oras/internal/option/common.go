@@ -29,22 +29,25 @@ const NoTTYFlag = "no-tty"
 // Common option struct.
 type Common struct {
 	Debug   bool
-	Verbose bool
+	Verbose bool // deprecated, the current default behavior is equivalent to verbose=true
 	TTY     *os.File
 	*output.Printer
-	noTTY bool
+	noTTY           bool
+	SuppressUnnamed bool // equivalent to verbose=false
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Common) ApplyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.Debug, "debug", "d", false, "output debug logs (implies --no-tty)")
-	fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "verbose output")
+	fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "[Deprecated] verbose output")
 	fs.BoolVarP(&opts.noTTY, NoTTYFlag, "", false, "[Preview] do not show progress output")
+
+	fs.MarkDeprecated("verbose", "and may be removed in a future release.") // TODO: e2e test
 }
 
 // Parse gets target options from user input.
 func (opts *Common) Parse(cmd *cobra.Command) error {
-	opts.Printer = output.NewPrinter(cmd.OutOrStdout(), cmd.OutOrStderr(), opts.Verbose)
+	opts.Printer = output.NewPrinter(cmd.OutOrStdout(), cmd.OutOrStderr(), opts.SuppressUnnamed)
 	// use STDERR as TTY output since STDOUT is reserved for pipeable output
 	return opts.parseTTY(os.Stderr)
 }

@@ -27,15 +27,15 @@ import (
 
 // Printer prints for status handlers.
 type Printer struct {
-	out     io.Writer
-	err     io.Writer
-	verbose bool
-	lock    sync.Mutex
+	out             io.Writer
+	err             io.Writer
+	lock            sync.Mutex
+	suppressUnnamed bool
 }
 
 // NewPrinter creates a new Printer.
-func NewPrinter(out io.Writer, err io.Writer, verbose bool) *Printer {
-	return &Printer{out: out, err: err, verbose: verbose}
+func NewPrinter(out io.Writer, err io.Writer, suppressUnnamed bool) *Printer {
+	return &Printer{out: out, err: err, suppressUnnamed: suppressUnnamed}
 }
 
 // Write implements the io.Writer interface.
@@ -71,9 +71,9 @@ func (p *Printer) Printf(format string, a ...any) error {
 	return nil
 }
 
-// PrintVerbose prints when verbose is true.
-func (p *Printer) PrintVerbose(a ...any) error {
-	if !p.verbose {
+// PrintUnnamed prints unless suppressed.
+func (p *Printer) PrintUnnamed(a ...any) error {
+	if p.suppressUnnamed {
 		return nil
 	}
 	return p.Println(a...)
@@ -83,7 +83,7 @@ func (p *Printer) PrintVerbose(a ...any) error {
 func (p *Printer) PrintStatus(desc ocispec.Descriptor, status string) error {
 	name, isTitle := descriptor.GetTitleOrMediaType(desc)
 	if !isTitle {
-		return p.PrintVerbose(status, descriptor.ShortDigest(desc), name)
+		return p.PrintUnnamed(status, descriptor.ShortDigest(desc), name)
 	}
 	return p.Println(status, descriptor.ShortDigest(desc), name)
 }
