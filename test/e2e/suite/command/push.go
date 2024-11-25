@@ -57,7 +57,8 @@ var _ = Describe("ORAS beginners:", func() {
 
 			ORAS("push", RegistryRef(ZOTHost, repo, tag), "--verbose").
 				WithWorkDir(tempDir).
-				MatchErrKeyWords("Flag --verbose has been deprecated")
+				MatchErrKeyWords("Flag --verbose has been deprecated").
+				Exec()
 		})
 
 		It("should fail and show detailed error description if no argument provided", func() {

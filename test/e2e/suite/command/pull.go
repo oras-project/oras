@@ -57,7 +57,8 @@ var _ = Describe("ORAS beginners:", func() {
 			ref := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
 			ORAS("pull", ref, "--verbose").
 				WithWorkDir(tempDir).
-				MatchErrKeyWords("Flag --verbose has been deprecated")
+				MatchErrKeyWords("Flag --verbose has been deprecated").
+				Exec()
 		})
 
 		hintMsg := func(reference string) string {
