@@ -35,7 +35,7 @@ type Common struct {
 	*output.Printer
 	noTTY bool
 
-	// Deprecated: Verbose is deprecated. Use SuppressUntitled instead (SuppressUntitled=false is equivalent to Verbose=true).
+	// Verbose is deprecated. Use SuppressUntitled instead (SuppressUntitled=false is equivalent to Verbose=true).
 	Verbose bool
 }
 
@@ -45,7 +45,7 @@ func (opts *Common) ApplyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "[Deprecated] verbose output")
 	fs.BoolVarP(&opts.noTTY, NoTTYFlag, "", false, "[Preview] do not show progress output")
 
-	fs.MarkDeprecated("verbose", "and may be removed in a future release.") // TODO: test deprecation message
+	_ = fs.MarkDeprecated("verbose", "and may be removed in a future release.") // TODO: test deprecation message
 }
 
 // Parse gets target options from user input.
