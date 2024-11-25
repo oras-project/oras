@@ -50,8 +50,8 @@ func MatchPty(pty containerd.Console, device *os.File, expected ...string) error
 		defer wg.Done()
 		_, _ = io.Copy(&buffer, pty)
 	}()
-	device.Close()
 	wg.Wait()
+	device.Close()
 
 	return OrderedMatch(buffer.String(), expected...)
 }
