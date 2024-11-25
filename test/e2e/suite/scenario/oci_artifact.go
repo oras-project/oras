@@ -37,7 +37,7 @@ var _ = Describe("OCI artifact users:", Ordered, func() {
 		pulledManifest := "packed.json"
 		pullRoot := "pulled"
 		It("should push and pull an artifact", func() {
-			ORAS("push", RegistryRef(ZOTHost, repo, tag), "--artifact-type", "test/artifact", foobar.FileLayerNames[0], foobar.FileLayerNames[1], foobar.FileLayerNames[2], "-v", "--export-manifest", pulledManifest).
+			ORAS("push", RegistryRef(ZOTHost, repo, tag), "--artifact-type", "test/artifact", foobar.FileLayerNames[0], foobar.FileLayerNames[1], foobar.FileLayerNames[2], "--export-manifest", pulledManifest).
 				MatchStatus(foobar.FileStateKeys, true, 3).
 				WithWorkDir(tempDir).
 				WithDescription("push with manifest exported").Exec()
@@ -45,7 +45,7 @@ var _ = Describe("OCI artifact users:", Ordered, func() {
 			fetched := ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, tag)).Exec()
 			MatchFile(filepath.Join(tempDir, pulledManifest), string(fetched.Out.Contents()), DefaultTimeout)
 
-			ORAS("pull", RegistryRef(ZOTHost, repo, tag), "-v", "-o", pullRoot).
+			ORAS("pull", RegistryRef(ZOTHost, repo, tag), "-o", pullRoot).
 				MatchStatus(foobar.FileStateKeys, true, 3).
 				WithWorkDir(tempDir).
 				WithDescription("pull artFiles with config").Exec()
@@ -59,7 +59,7 @@ var _ = Describe("OCI artifact users:", Ordered, func() {
 
 		It("should attach and pull an artifact", func() {
 			subject := RegistryRef(ZOTHost, repo, tag)
-			ORAS("attach", subject, "--artifact-type", "test/artifact1", fmt.Sprint(foobar.AttachFileName, ":", foobar.AttachFileMedia), "-v", "--export-manifest", pulledManifest).
+			ORAS("attach", subject, "--artifact-type", "test/artifact1", fmt.Sprint(foobar.AttachFileName, ":", foobar.AttachFileMedia), "--export-manifest", pulledManifest).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, true, 1).
 				WithWorkDir(tempDir).
 				WithDescription("attach with manifest exported").Exec()
@@ -68,7 +68,7 @@ var _ = Describe("OCI artifact users:", Ordered, func() {
 			fetched := ORAS("manifest", "fetch", ref).MatchKeyWords(foobar.AttachFileMedia).Exec()
 			MatchFile(filepath.Join(tempDir, pulledManifest), string(fetched.Out.Contents()), DefaultTimeout)
 
-			ORAS("pull", ref, "-v", "-o", pullRoot).
+			ORAS("pull", ref, "-o", pullRoot).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, true, 1).
 				WithWorkDir(tempDir).
 				WithDescription("pull attached artifact").Exec()
@@ -76,7 +76,7 @@ var _ = Describe("OCI artifact users:", Ordered, func() {
 				WithWorkDir(tempDir).
 				WithDescription("download identical file " + foobar.AttachFileName).Exec()
 
-			ORAS("attach", subject, "--artifact-type", "test/artifact2", fmt.Sprint(foobar.AttachFileName, ":", foobar.AttachFileMedia), "-v", "--export-manifest", pulledManifest).
+			ORAS("attach", subject, "--artifact-type", "test/artifact2", fmt.Sprint(foobar.AttachFileName, ":", foobar.AttachFileMedia), "--export-manifest", pulledManifest).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, true, 1).
 				WithWorkDir(tempDir).
 				WithDescription("attach again with manifest exported").Exec()
@@ -85,7 +85,7 @@ var _ = Describe("OCI artifact users:", Ordered, func() {
 			fetched = ORAS("manifest", "fetch", ref).MatchKeyWords(foobar.AttachFileMedia).Exec()
 			MatchFile(filepath.Join(tempDir, pulledManifest), string(fetched.Out.Contents()), DefaultTimeout)
 
-			ORAS("pull", ref, "-v", "-o", pullRoot, "--include-subject").
+			ORAS("pull", ref, "-o", pullRoot, "--include-subject").
 				MatchStatus(append(foobar.FileStateKeys, foobar.AttachFileStateKey), true, 4).
 				WithWorkDir(tempDir).
 				WithDescription("pull attached artifact and subject").Exec()
