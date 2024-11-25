@@ -35,7 +35,7 @@ type Common struct {
 	*output.Printer
 	noTTY bool
 
-	// Verbose is deprecated. The default status output now behaves as if verbose=true.
+	// Deprecated: Verbose is deprecated. Use SuppressUntitled instead (SuppressUntitled=false is equivalent to Verbose=true).
 	Verbose bool
 }
 
