@@ -29,11 +29,11 @@ const NoTTYFlag = "no-tty"
 // Common option struct.
 type Common struct {
 	Debug   bool
-	Verbose bool // deprecated, the current default behavior is equivalent to verbose=true
+	Verbose bool // deprecated, the current default behavior is equivalent to verbose=true TODO: better doc
 	TTY     *os.File
 	*output.Printer
 	noTTY            bool
-	SuppressUntitled bool // equivalent to verbose=false
+	SuppressUntitled bool // equivalent to verbose=false TODO: better doc
 }
 
 // ApplyFlags applies flags to a command flag set.
@@ -42,7 +42,7 @@ func (opts *Common) ApplyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "[Deprecated] verbose output")
 	fs.BoolVarP(&opts.noTTY, NoTTYFlag, "", false, "[Preview] do not show progress output")
 
-	fs.MarkDeprecated("verbose", "and may be removed in a future release.") // TODO: e2e test
+	fs.MarkDeprecated("verbose", "and may be removed in a future release.") // TODO: remove -v in e2e test; test deprecation message
 }
 
 // Parse gets target options from user input.

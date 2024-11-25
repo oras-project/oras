@@ -26,7 +26,7 @@ import (
 
 // GetLogger returns a new FieldLogger and an associated Context derived from command context.
 func GetLogger(cmd *cobra.Command, opts *option.Common) (context.Context, logrus.FieldLogger) {
-	ctx, logger := trace.NewLogger(cmd.Context(), opts.Debug, opts.Verbose)
+	ctx, logger := trace.NewLogger(cmd.Context(), opts.Debug)
 	cmd.SetContext(ctx)
 	return ctx, logger
 }
