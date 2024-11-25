@@ -45,6 +45,21 @@ var _ = Describe("ORAS beginners:", func() {
 			MatchDefaultFlagValue("format", "text", "push")
 		})
 
+		It("should not show --verbose in help doc", func() {
+			out := ORAS("push", "--help").MatchKeyWords(ExampleDesc).Exec().Out
+			gomega.Expect(out).ShouldNot(gbytes.Say("--verbose"))
+		})
+
+		It("should show deprecation message for --verbose", func() {
+			repo := pushTestRepo("test-verbose")
+			tag := "e2e"
+			tempDir := PrepareTempFiles()
+
+			ORAS("push", RegistryRef(ZOTHost, repo, tag), "--verbose").
+				WithWorkDir(tempDir).
+				MatchErrKeyWords("Flag --verbose has been deprecated")
+		})
+
 		It("should fail and show detailed error description if no argument provided", func() {
 			err := ORAS("push").ExpectFailure().Exec().Err
 			gomega.Expect(err).Should(gbytes.Say("Error"))
