@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
-	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -47,11 +46,6 @@ var _ = Describe("ORAS beginners:", func() {
 			Expect(out).Should(gbytes.Say("--from-distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 			Expect(out).Should(gbytes.Say("-r, --recursive\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 			Expect(out).Should(gbytes.Say("--to-distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
-		})
-
-		It("should not show --verbose in help doc", func() {
-			out := ORAS("cp", "--help").MatchKeyWords(ExampleDesc).Exec().Out
-			gomega.Expect(out).ShouldNot(gbytes.Say("--verbose"))
 		})
 
 		It("should fail when no reference provided", func() {

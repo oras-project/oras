@@ -29,23 +29,26 @@ const NoTTYFlag = "no-tty"
 // Common option struct.
 type Common struct {
 	Debug bool
+	noTTY bool
+	// Verbose is deprecated. Use SuppressUntitled instead.
+	// SuppressUntitled=false is equivalent to Verbose=true, while Verbose=false
+	// no longer takes effect.
+	Verbose bool
+
 	// SuppressUntitled suppresses the status output for untitled blobs.
+	// Default value: false.
 	SuppressUntitled bool
 	TTY              *os.File
 	*output.Printer
-	noTTY bool
-
-	// Verbose is deprecated. Use SuppressUntitled instead (SuppressUntitled=false is equivalent to Verbose=true).
-	Verbose bool
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Common) ApplyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.Debug, "debug", "d", false, "output debug logs (implies --no-tty)")
-	fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "[Deprecated] verbose output")
 	fs.BoolVarP(&opts.noTTY, NoTTYFlag, "", false, "[Preview] do not show progress output")
+	fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "[Deprecated] verbose output")
 
-	_ = fs.MarkDeprecated("verbose", "and may be removed in a future release.") // TODO: test deprecation message
+	_ = fs.MarkDeprecated("verbose", "and may be removed in a future release.")
 }
 
 // Parse gets target options from user input.
