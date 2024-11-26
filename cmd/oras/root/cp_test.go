@@ -133,7 +133,7 @@ func Test_doCopy(t *testing.T) {
 	opts.From.Reference = memDesc.Digest.String()
 	dst := memory.New()
 	builder := &strings.Builder{}
-	printer := output.NewPrinter(builder, os.Stderr, false)
+	printer := output.NewPrinter(builder, os.Stderr, opts.SuppressUntitled)
 	handler := status.NewTextCopyHandler(printer, dst)
 	// test
 	_, err = doCopy(context.Background(), handler, memStore, dst, &opts)
@@ -157,7 +157,7 @@ func Test_doCopy_skipped(t *testing.T) {
 	opts.TTY = slave
 	opts.From.Reference = memDesc.Digest.String()
 	builder := &strings.Builder{}
-	printer := output.NewPrinter(builder, os.Stderr, false)
+	printer := output.NewPrinter(builder, os.Stderr, opts.SuppressUntitled)
 	handler := status.NewTextCopyHandler(printer, memStore)
 
 	// test
@@ -193,7 +193,7 @@ func Test_doCopy_mounted(t *testing.T) {
 	}
 	to.PlainHTTP = true
 	builder := &strings.Builder{}
-	printer := output.NewPrinter(builder, os.Stderr, false)
+	printer := output.NewPrinter(builder, os.Stderr, opts.SuppressUntitled)
 	handler := status.NewTextCopyHandler(printer, to)
 
 	// test
