@@ -54,10 +54,14 @@ var _ = Describe("ORAS beginners:", func() {
 			repo := pushTestRepo("test-verbose")
 			tag := "e2e"
 			tempDir := PrepareTempFiles()
+			stateKeys := []match.StateKey{
+				artifact.DefaultConfigStateKey,
+			}
 
 			ORAS("push", RegistryRef(ZOTHost, repo, tag), "--verbose").
 				WithWorkDir(tempDir).
 				MatchErrKeyWords("Flag --verbose has been deprecated").
+				MatchStatus(stateKeys, true, len(stateKeys)).
 				Exec()
 		})
 
