@@ -55,9 +55,11 @@ var _ = Describe("ORAS beginners:", func() {
 		It("should show deprecation message for --verbose", func() {
 			tempDir := PrepareTempFiles()
 			ref := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
+			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey)
 			ORAS("pull", ref, "--verbose").
 				WithWorkDir(tempDir).
 				MatchErrKeyWords("Flag --verbose has been deprecated").
+				MatchStatus(stateKeys, true, len(stateKeys)).
 				Exec()
 		})
 
