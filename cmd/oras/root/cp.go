@@ -50,6 +50,9 @@ type copyOptions struct {
 	option.Platform
 	option.BinaryTarget
 
+	// Verbose is deprecated. The default behavior is now equivalent to
+	// Verbose=true, while Verbose=false no longer takes effect.
+	Verbose     bool
 	recursive   bool
 	concurrency int
 	extraRefs   []string
@@ -105,6 +108,9 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 	}
 	cmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "[Preview] recursively copy the artifact and its referrer artifacts")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
+	cmd.Flags().BoolVarP(&opts.Verbose, "verbose", "v", false, "[Deprecated] verbose output")
+	_ = cmd.Flags().MarkDeprecated("verbose", "and may be removed in a future release.")
+
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.BinaryTarget)

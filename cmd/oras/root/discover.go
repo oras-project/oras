@@ -38,6 +38,7 @@ type discoverOptions struct {
 	option.Platform
 	option.Target
 	option.Format
+	Verbose bool
 
 	artifactType string
 }
@@ -101,6 +102,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().StringVarP(&opts.Format.FormatFlag, "output", "o", "tree", "[Deprecated] format in which to display referrers (table, json, or tree). tree format will also show indirect referrers")
+	cmd.Flags().BoolVarP(&opts.Verbose, "verbose", "v", false, "display full metadata of referrers")
 	opts.SetTypes(
 		option.FormatTypeTree,
 		option.FormatTypeTable,

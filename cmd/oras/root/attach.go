@@ -42,6 +42,9 @@ type attachOptions struct {
 	option.Format
 	option.Platform
 
+	// Verbose is deprecated. The default behavior is now equivalent to
+	// Verbose=true, while Verbose=false no longer takes effect.
+	Verbose      bool
 	artifactType string
 	concurrency  int
 }
@@ -113,9 +116,12 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 		},
 	}
 
+	opts.FlagDescription = "[Preview] attach to an arch-specific subject"
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
-	opts.FlagDescription = "[Preview] attach to an arch-specific subject"
+	cmd.Flags().BoolVarP(&opts.Verbose, "verbose", "v", false, "[Deprecated] verbose output")
+
+	_ = cmd.Flags().MarkDeprecated("verbose", "and may be removed in a future release.")
 	_ = cmd.MarkFlagRequired("artifact-type")
 	opts.EnableDistributionSpecFlag()
 	opts.SetTypes(option.FormatTypeText, option.FormatTypeJSON, option.FormatTypeGoTemplate)

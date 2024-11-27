@@ -44,6 +44,9 @@ type pushOptions struct {
 	option.Pretty
 	option.Target
 
+	// Verbose is deprecated. The default behavior is now equivalent to
+	// Verbose=true, while Verbose=false no longer takes effect.
+	Verbose     bool
 	concurrency int
 	extraRefs   []string
 	fileRef     string
@@ -107,6 +110,9 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 	option.ApplyFlags(&opts, cmd.Flags())
 	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", "", "media type of manifest")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
+	cmd.Flags().BoolVarP(&opts.Verbose, "verbose", "v", false, "[Deprecated] verbose output")
+	_ = cmd.Flags().MarkDeprecated("verbose", "and may be removed in a future release.")
+
 	return oerrors.Command(cmd, &opts.Target)
 }
 

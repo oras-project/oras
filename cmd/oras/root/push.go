@@ -47,6 +47,9 @@ type pushOptions struct {
 	option.ImageSpec
 	option.Target
 	option.Format
+	// Verbose is deprecated. The default behavior is now equivalent to
+	// Verbose=true, while Verbose=false no longer takes effect.
+	Verbose bool
 
 	extraRefs         []string
 	manifestConfigRef string
@@ -163,6 +166,9 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "`path` of image config file")
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
+	cmd.Flags().BoolVarP(&opts.Verbose, "verbose", "v", false, "[Deprecated] verbose output")
+	_ = cmd.Flags().MarkDeprecated("verbose", "and may be removed in a future release.")
+
 	opts.SetTypes(option.FormatTypeText, option.FormatTypeJSON, option.FormatTypeGoTemplate)
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)

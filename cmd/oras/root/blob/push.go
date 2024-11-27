@@ -39,6 +39,9 @@ type pushBlobOptions struct {
 	option.Pretty
 	option.Target
 
+	// Verbose is deprecated. The default behavior is now equivalent to
+	// Verbose=true, while Verbose=false no longer takes effect.
+	Verbose   bool
 	fileRef   string
 	mediaType string
 	size      int64
@@ -96,6 +99,9 @@ Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
 
 	cmd.Flags().Int64VarP(&opts.size, "size", "", -1, "provide the blob size")
 	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", ocispec.MediaTypeImageLayer, "specify the returned media type in the descriptor if --descriptor is used")
+	cmd.Flags().BoolVarP(&opts.Verbose, "verbose", "v", false, "[Deprecated] verbose output")
+	_ = cmd.Flags().MarkDeprecated("verbose", "and may be removed in a future release.")
+
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
