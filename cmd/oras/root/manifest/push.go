@@ -96,7 +96,6 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 			refs := strings.Split(args[0], ",")
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
-			opts.SuppressUntitled = opts.OutputDescriptor
 			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -157,17 +156,17 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		return err
 	}
 	if match {
-		if err := opts.PrintStatus(desc, "Exists"); err != nil {
+		if err := opts.PrintStatusUnlessSuppressed(desc, "Exists", opts.OutputDescriptor); err != nil {
 			return err
 		}
 	} else {
-		if err = opts.PrintStatus(desc, "Uploading"); err != nil {
+		if err = opts.PrintStatusUnlessSuppressed(desc, "Uploading", opts.OutputDescriptor); err != nil {
 			return err
 		}
 		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil {
 			return err
 		}
-		if err = opts.PrintStatus(desc, "Uploaded "); err != nil {
+		if err = opts.PrintStatusUnlessSuppressed(desc, "Uploaded ", opts.OutputDescriptor); err != nil {
 			return err
 		}
 	}

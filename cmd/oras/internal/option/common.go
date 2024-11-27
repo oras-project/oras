@@ -35,10 +35,7 @@ type Common struct {
 	// no longer takes effect.
 	Verbose bool
 
-	// SuppressUntitled suppresses the status output for untitled blobs.
-	// Default value: false.
-	SuppressUntitled bool
-	TTY              *os.File
+	TTY *os.File
 	*output.Printer
 }
 
@@ -53,7 +50,7 @@ func (opts *Common) ApplyFlags(fs *pflag.FlagSet) {
 
 // Parse gets target options from user input.
 func (opts *Common) Parse(cmd *cobra.Command) error {
-	opts.Printer = output.NewPrinter(cmd.OutOrStdout(), cmd.OutOrStderr(), opts.SuppressUntitled)
+	opts.Printer = output.NewPrinter(cmd.OutOrStdout(), cmd.OutOrStderr())
 	// use STDERR as TTY output since STDOUT is reserved for pipeable output
 	return opts.parseTTY(os.Stderr)
 }

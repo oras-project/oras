@@ -78,21 +78,15 @@ func TestDescriptor_ShortDigest(t *testing.T) {
 
 func TestDescriptor_GetTitleOrMediaType(t *testing.T) {
 	expected := "application/vnd.oci.image.manifest.v1+json"
-	name, isTitle := descriptor.GetTitleOrMediaType(imageDesc)
+	name := descriptor.GetName(imageDesc)
 	if expected != name {
 		t.Fatalf("GetTitleOrMediaType() got %v, want %v", name, expected)
-	}
-	if false != isTitle {
-		t.Fatalf("GetTitleOrMediaType() got %v, want %v", isTitle, false)
 	}
 
 	expected = "shaboozey"
-	name, isTitle = descriptor.GetTitleOrMediaType(titledDesc)
+	name = descriptor.GetName(titledDesc)
 	if expected != name {
 		t.Fatalf("GetTitleOrMediaType() got %v, want %v", name, expected)
-	}
-	if true != isTitle {
-		t.Fatalf("GetTitleOrMediaType() got %v, want %v", isTitle, false)
 	}
 }
 

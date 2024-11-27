@@ -66,13 +66,13 @@ func Plain(desc ocispec.Descriptor) ocispec.Descriptor {
 	}
 }
 
-// GetTitleOrMediaType gets a descriptor name using either title or media type.
-func GetTitleOrMediaType(desc ocispec.Descriptor) (name string, isTitle bool) {
-	name, ok := desc.Annotations[ocispec.AnnotationTitle]
+// GetName gets a descriptor name using either title or media type.
+func GetName(desc ocispec.Descriptor) string {
+	title, ok := desc.Annotations[ocispec.AnnotationTitle]
 	if !ok {
-		return desc.MediaType, false
+		return desc.MediaType
 	}
-	return name, true
+	return title
 }
 
 // GenerateContentKey generates a unique key for each content descriptor using

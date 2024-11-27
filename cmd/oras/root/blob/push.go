@@ -87,7 +87,6 @@ Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
 					return errors.New("`--size` must be provided if the blob is read from stdin")
 				}
 			}
-			opts.SuppressUntitled = opts.OutputDescriptor
 			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -121,9 +120,9 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 		return err
 	}
 	if exists {
-		err = opts.PrintStatus(desc, "Exists")
+		err = opts.PrintStatusUnlessSuppressed(desc, "Exists", opts.OutputDescriptor)
 	} else {
-		err = opts.doPush(ctx, opts.Printer, target, desc, rc)
+		err = opts.doPush(ctx, opts.Printer, target, desc, rc, opts.OutputDescriptor)
 	}
 	if err != nil {
 		return err
@@ -142,16 +141,16 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 
 	return nil
 }
-func (opts *pushBlobOptions) doPush(ctx context.Context, printer *output.Printer, t oras.Target, desc ocispec.Descriptor, r io.Reader) error {
+func (opts *pushBlobOptions) doPush(ctx context.Context, printer *output.Printer, t oras.Target, desc ocispec.Descriptor, r io.Reader, statusSuppressed bool) error {
 	if opts.TTY == nil {
 		// none TTY output
-		if err := printer.PrintStatus(desc, "Uploading"); err != nil {
+		if err := printer.PrintStatusUnlessSuppressed(desc, "Uploading", statusSuppressed); err != nil {
 			return err
 		}
 		if err := t.Push(ctx, desc, r); err != nil {
 			return err
 		}
-		return printer.PrintStatus(desc, "Uploaded ")
+		return printer.PrintStatusUnlessSuppressed(desc, "Uploaded ", statusSuppressed)
 	}
 
 	// TTY output
