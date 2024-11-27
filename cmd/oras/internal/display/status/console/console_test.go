@@ -43,11 +43,11 @@ func givenTestConsole(t *testing.T) (c Console, pty containerd.Console, tty *os.
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	c = &console{
-		Console: pty,
+	c, err = NewConsole(tty)
+	if err != nil {
+		t.Fatal(err)
 	}
-	return c, pty, tty
+	return
 }
 
 func validateSize(t *testing.T, gotWidth, gotHeight, wantWidth, wantHeight int) {
@@ -96,7 +96,7 @@ func TestConsole_NewRow(t *testing.T) {
 
 	c.NewRow()
 
-	err := testutils.MatchPty(pty, tty, "^[8\r\n^[7")
+	err := testutils.MatchPty(pty, tty, "\x1b8\r\n\x1b7")
 	if err != nil {
 		t.Fatalf("NewRow output error: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestConsole_OutputTo(t *testing.T) {
 
 	c.OutputTo(1, "test string")
 
-	err := testutils.MatchPty(pty, tty, "^[8^[[1Ftest string^[[0m\r\n^[[0K")
+	err := testutils.MatchPty(pty, tty, "\x1b8\x1b[1Ftest string\x1b[0m\r\n\x1b[0K")
 	if err != nil {
 		t.Fatalf("OutputTo output error: %v", err)
 	}
@@ -118,7 +118,7 @@ func TestConsole_Restore(t *testing.T) {
 
 	c.Restore()
 
-	err := testutils.MatchPty(pty, tty, "^[8^[[0G^[[2K^[[?25h")
+	err := testutils.MatchPty(pty, tty, "\x1b8\x1b[0G\x1b[2K\x1b[?25h")
 	if err != nil {
 		t.Fatalf("Restore output error: %v", err)
 	}
@@ -129,7 +129,7 @@ func TestConsole_Save(t *testing.T) {
 
 	c.Save()
 
-	err := testutils.MatchPty(pty, tty, "^[[?25l^[7^[[0m")
+	err := testutils.MatchPty(pty, tty, "\x1b[?25l\x1b7\x1b[0m")
 	if err != nil {
 		t.Fatalf("Save output error: %v", err)
 	}
