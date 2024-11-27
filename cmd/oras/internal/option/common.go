@@ -30,9 +30,11 @@ const NoTTYFlag = "no-tty"
 type Common struct {
 	Debug bool
 	noTTY bool
+
 	// Verbose is deprecated. Use SuppressUntitled instead.
 	// SuppressUntitled=false is equivalent to Verbose=true, while Verbose=false
 	// no longer takes effect.
+	// TODO: remove from common
 	Verbose bool
 
 	TTY *os.File

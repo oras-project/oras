@@ -69,10 +69,10 @@ func Plain(desc ocispec.Descriptor) ocispec.Descriptor {
 // GetName gets a descriptor name using either title or media type.
 func GetName(desc ocispec.Descriptor) string {
 	title, ok := desc.Annotations[ocispec.AnnotationTitle]
-	if !ok {
-		return desc.MediaType
+	if ok {
+		return title
 	}
-	return title
+	return desc.MediaType
 }
 
 // GenerateContentKey generates a unique key for each content descriptor using
