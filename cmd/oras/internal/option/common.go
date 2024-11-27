@@ -31,12 +31,6 @@ type Common struct {
 	Debug bool
 	noTTY bool
 
-	// Verbose is deprecated. Use SuppressUntitled instead.
-	// SuppressUntitled=false is equivalent to Verbose=true, while Verbose=false
-	// no longer takes effect.
-	// TODO: remove from common
-	Verbose bool
-
 	TTY *os.File
 	*output.Printer
 }
@@ -45,9 +39,6 @@ type Common struct {
 func (opts *Common) ApplyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.Debug, "debug", "d", false, "output debug logs (implies --no-tty)")
 	fs.BoolVarP(&opts.noTTY, NoTTYFlag, "", false, "[Preview] do not show progress output")
-	fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "[Deprecated] verbose output")
-
-	_ = fs.MarkDeprecated("verbose", "and may be removed in a future release.")
 }
 
 // Parse gets target options from user input.
