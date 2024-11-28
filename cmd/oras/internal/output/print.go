@@ -27,15 +27,15 @@ import (
 
 // Printer prints for status handlers.
 type Printer struct {
+	Verbose bool
 	out     io.Writer
 	err     io.Writer
-	verbose bool
 	lock    sync.Mutex
 }
 
 // NewPrinter creates a new Printer.
-func NewPrinter(out io.Writer, err io.Writer, verbose bool) *Printer {
-	return &Printer{out: out, err: err, verbose: verbose}
+func NewPrinter(out io.Writer, err io.Writer) *Printer {
+	return &Printer{out: out, err: err}
 }
 
 // Write implements the io.Writer interface.
@@ -73,7 +73,7 @@ func (p *Printer) Printf(format string, a ...any) error {
 
 // PrintVerbose prints when verbose is true.
 func (p *Printer) PrintVerbose(a ...any) error {
-	if !p.verbose {
+	if !p.Verbose {
 		return nil
 	}
 	return p.Println(a...)

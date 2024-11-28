@@ -44,6 +44,7 @@ type attachOptions struct {
 
 	artifactType string
 	concurrency  int
+	verbose      bool
 }
 
 func attachCmd() *cobra.Command {
@@ -109,12 +110,14 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 			return err
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.Printer.Verbose = opts.verbose
 			return runAttach(cmd, &opts)
 		},
 	}
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
 	opts.FlagDescription = "[Preview] attach to an arch-specific subject"
 	_ = cmd.MarkFlagRequired("artifact-type")
 	opts.EnableDistributionSpecFlag()

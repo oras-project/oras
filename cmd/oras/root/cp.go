@@ -53,6 +53,7 @@ type copyOptions struct {
 	recursive   bool
 	concurrency int
 	extraRefs   []string
+	verbose     bool
 }
 
 func copyCmd() *cobra.Command {
@@ -100,11 +101,13 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.Printer.Verbose = opts.verbose
 			return runCopy(cmd, &opts)
 		},
 	}
 	cmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "[Preview] recursively copy the artifact and its referrer artifacts")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.BinaryTarget)
