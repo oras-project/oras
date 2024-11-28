@@ -98,7 +98,7 @@ Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
 
 	cmd.Flags().Int64VarP(&opts.size, "size", "", -1, "provide the blob size")
 	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", ocispec.MediaTypeImageLayer, "specify the returned media type in the descriptor if --descriptor is used")
-	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "verbose output")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "print status output for unnamed blobs")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
