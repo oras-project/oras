@@ -142,7 +142,7 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 		// correct source digest
 		opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, desc.Digest.String())
 	}
-	_ = opts.Println("Copied", opts.From.AnnotatedReference(), "=>", opts.To.AnnotatedReference())
+	_ = opts.Printer.Println("Copied", opts.From.AnnotatedReference(), "=>", opts.To.AnnotatedReference())
 
 	if len(opts.extraRefs) != 0 {
 		tagNOpts := oras.DefaultTagNOptions
@@ -153,7 +153,7 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 		}
 	}
 
-	_ = opts.Println("Digest:", desc.Digest)
+	_ = opts.Printer.Println("Digest:", desc.Digest)
 
 	return nil
 }

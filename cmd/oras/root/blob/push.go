@@ -123,7 +123,7 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 		return err
 	}
 	if exists {
-		err = opts.PrintStatus(desc, "Exists")
+		err = opts.Printer.PrintStatus(desc, "Exists")
 	} else {
 		err = opts.doPush(ctx, opts.Printer, target, desc, rc)
 	}
@@ -139,8 +139,8 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	_ = opts.Println("Pushed", opts.AnnotatedReference())
-	_ = opts.Println("Digest:", desc.Digest)
+	_ = opts.Printer.Println("Pushed", opts.AnnotatedReference())
+	_ = opts.Printer.Println("Digest:", desc.Digest)
 
 	return nil
 }

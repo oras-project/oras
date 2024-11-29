@@ -159,17 +159,17 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		return err
 	}
 	if match {
-		if err := opts.PrintStatus(desc, "Exists"); err != nil {
+		if err := opts.Printer.PrintStatus(desc, "Exists"); err != nil {
 			return err
 		}
 	} else {
-		if err = opts.PrintStatus(desc, "Uploading"); err != nil {
+		if err = opts.Printer.PrintStatus(desc, "Uploading"); err != nil {
 			return err
 		}
 		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil {
 			return err
 		}
-		if err = opts.PrintStatus(desc, "Uploaded "); err != nil {
+		if err = opts.Printer.PrintStatus(desc, "Uploaded "); err != nil {
 			return err
 		}
 	}
@@ -190,7 +190,7 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		}
 		return opts.Output(os.Stdout, descJSON)
 	}
-	_ = opts.Println("Pushed", opts.AnnotatedReference())
+	_ = opts.Printer.Println("Pushed", opts.AnnotatedReference())
 	if len(opts.extraRefs) != 0 {
 		handler := display.NewManifestPushHandler(opts.Printer)
 		tagListener := listener.NewTaggedListener(target, handler.OnTagged)
@@ -199,7 +199,7 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		}
 	}
 
-	_ = opts.Println("Digest:", desc.Digest)
+	_ = opts.Printer.Println("Digest:", desc.Digest)
 
 	return nil
 }

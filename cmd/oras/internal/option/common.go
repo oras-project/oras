@@ -28,8 +28,8 @@ const NoTTYFlag = "no-tty"
 
 // Common option struct.
 type Common struct {
-	*output.Printer
-	TTY *os.File
+	Printer *output.Printer
+	TTY     *os.File
 
 	Debug bool
 	noTTY bool
