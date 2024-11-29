@@ -37,6 +37,7 @@ const (
 	PushPromptUploading = "Uploading"
 	PushPromptSkipped   = "Skipped  "
 	PushPromptExists    = "Exists   "
+	PushPromptPushed    = "Pushed   "
 )
 
 // Prompts for cp events.

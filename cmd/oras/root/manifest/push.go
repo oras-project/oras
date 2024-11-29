@@ -145,6 +145,8 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		}
 	}
 
+	displayStatus, displayMetadata := display.NewManifestPushHandler(opts.Printer)
+
 	// prepare manifest descriptor
 	desc := content.NewDescriptorFromBytes(mediaType, contentBytes)
 
@@ -157,17 +159,17 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		return err
 	}
 	if match {
-		if err := opts.PrintStatus(desc, "Exists"); err != nil {
+		if err := displayStatus.OnManifestExists(desc); err != nil {
 			return err
 		}
 	} else {
-		if err = opts.PrintStatus(desc, "Uploading"); err != nil {
+		if err = displayStatus.OnManifestUploading(desc); err != nil {
 			return err
 		}
 		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil {
 			return err
 		}
-		if err = opts.PrintStatus(desc, "Uploaded "); err != nil {
+		if err = displayStatus.OnManifestUploaded(desc); err != nil {
 			return err
 		}
 	}
@@ -188,10 +190,11 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		}
 		return opts.Output(os.Stdout, descJSON)
 	}
-	_ = opts.Println("Pushed", opts.AnnotatedReference())
+	if err := displayStatus.OnManifestPushed(opts.AnnotatedReference()); err != nil {
+		return err
+	}
 	if len(opts.extraRefs) != 0 {
-		handler := display.NewManifestPushHandler(opts.Printer)
-		tagListener := listener.NewTaggedListener(target, handler.OnTagged)
+		tagListener := listener.NewTaggedListener(target, displayMetadata.OnTagged)
 		if _, err = oras.TagBytesN(ctx, tagListener, mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}

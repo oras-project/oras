@@ -64,6 +64,14 @@ type CopyHandler interface {
 	OnMounted(ctx context.Context, desc ocispec.Descriptor) error
 }
 
+// ManifestPushHandler handles status output for manifest push command.
+type ManifestPushHandler interface {
+	OnManifestExists(desc ocispec.Descriptor) error
+	OnManifestUploading(desc ocispec.Descriptor) error
+	OnManifestUploaded(desc ocispec.Descriptor) error
+	OnManifestPushed(ref string) error
+}
+
 // ManifestIndexCreateHandler handles status output for manifest index create command.
 type ManifestIndexCreateHandler interface {
 	OnFetching(manifestRef string) error
