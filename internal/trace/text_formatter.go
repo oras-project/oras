@@ -36,11 +36,11 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 
 	timestamp := entry.Time.Format(time.RFC3339Nano)
 	levelText := strings.ToUpper(entry.Level.String())
-	buf.WriteString(fmt.Sprintf("[%s] %s: %s\n", timestamp, levelText, entry.Message))
-	// printing fields
-	buf.WriteString("[Data]:\n")
+	buf.WriteString(fmt.Sprintf("[%s][%s]: %s\n", timestamp, levelText, entry.Message))
+	// printing data fields
+	buf.WriteString("==Data==\n")
 	for k, v := range entry.Data {
-		buf.WriteString(fmt.Sprintf("  %s=%v\n", k, v))
+		buf.WriteString(fmt.Sprintf("  {%s=%v}\n", k, v))
 	}
 
 	// TODO: body?
