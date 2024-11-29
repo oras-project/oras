@@ -145,7 +145,7 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		}
 	}
 
-	displayStatus, displayMetadata := display.NewManifestPushHandler(opts.Printer)
+	displayStatus, displayMetadata := display.NewManifestPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty)
 
 	// prepare manifest descriptor
 	desc := content.NewDescriptorFromBytes(mediaType, contentBytes)
@@ -200,9 +200,7 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		}
 	}
 
-	_ = opts.Println("Digest:", desc.Digest)
-
-	return nil
+	return displayMetadata.OnCompleted(desc)
 }
 
 // matchDigest checks whether the manifest's digest matches to it in the remote

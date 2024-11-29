@@ -170,7 +170,10 @@ func NewTagHandler(printer *output.Printer, target option.Target) metadata.TagHa
 }
 
 // NewManifestPushHandler returns a manifest push handler.
-func NewManifestPushHandler(printer *output.Printer) (status.ManifestPushHandler, metadata.ManifestPushHandler) {
+func NewManifestPushHandler(printer *output.Printer, outputDescriptor bool, pretty bool) (status.ManifestPushHandler, metadata.ManifestPushHandler) {
+	if outputDescriptor {
+		return status.NewDiscardHandler(), metadata.NewDiscardHandler()
+	}
 	return status.NewTextManifestPushHandler(printer), text.NewManifestPushHandler(printer)
 }
 

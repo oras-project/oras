@@ -37,3 +37,8 @@ func NewManifestPushHandler(printer *output.Printer) metadata.ManifestPushHandle
 func (h *ManifestPushHandler) OnTagged(_ ocispec.Descriptor, tag string) error {
 	return h.printer.Println("Tagged", tag)
 }
+
+// OnCompleted implements metadata.ManifestPushHandler.
+func (h *ManifestPushHandler) OnCompleted(desc ocispec.Descriptor) error {
+	return h.printer.Println("Digest:", desc.Digest)
+}
