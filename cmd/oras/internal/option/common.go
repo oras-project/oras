@@ -30,9 +30,8 @@ const NoTTYFlag = "no-tty"
 type Common struct {
 	Printer *output.Printer
 	TTY     *os.File
-
-	Debug bool
-	noTTY bool
+	Debug   bool
+	noTTY   bool
 }
 
 // ApplyFlags applies flags to a command flag set.
