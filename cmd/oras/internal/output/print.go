@@ -28,9 +28,10 @@ import (
 // Printer prints for status handlers.
 type Printer struct {
 	Verbose bool
-	out     io.Writer
-	err     io.Writer
-	lock    sync.Mutex
+
+	out  io.Writer
+	err  io.Writer
+	lock sync.Mutex
 }
 
 // NewPrinter creates a new Printer.
