@@ -16,7 +16,9 @@ limitations under the License.
 package trace
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -33,6 +35,9 @@ var (
 		"Set-Cookie",
 	}
 )
+
+// TODO: is this number reasonable? add docs
+const bodySizeLimit int64 = 8 * 1024 // 8 KiB
 
 // Transport is an http.RoundTripper that keeps track of the in-flight
 // request and add hooks to report HTTP tracing events.
@@ -68,8 +73,8 @@ func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error
 	} else if resp == nil {
 		e.Errorf("No response obtained for request %s %q", req.Method, req.URL)
 	} else {
-		e.Debugf("<-- Response #%d\n< Response Status: %q\n< Response headers:\n%s",
-			id, resp.Status, logHeader(resp.Header))
+		e.Debugf("<-- Response #%d\n< Response Status: %q\n< Response headers:\n%s\n< Response body:\n%s",
+			id, resp.Status, logHeader(resp.Header), logResponseBody(resp))
 	}
 	return resp, err
 }
@@ -90,4 +95,28 @@ func logHeader(header http.Header) string {
 		return strings.Join(headers, "\n")
 	}
 	return "   Empty header"
+}
+
+// TODO: test and docs
+func logResponseBody(resp *http.Response) string {
+	if resp.Body == nil {
+		return "   Empty body"
+	}
+	contentType := resp.Header.Get("Content-Type")
+	if !strings.HasPrefix(contentType, "application/json") && !strings.HasPrefix(contentType, "text/") {
+		return "   Body is hidden due to unsupported content type"
+	}
+
+	// TODO: if content type is json, pretty print the json?
+	var builder strings.Builder
+	lr := io.LimitReader(resp.Body, bodySizeLimit)
+	bodyBytes, err := io.ReadAll(lr)
+	if err != nil {
+		return fmt.Sprintf("   Error reading response body: %v", err)
+	}
+	builder.Write(bodyBytes)
+	resp.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
+	// TODO: add ... if body is larger than bodySizeLimit
+	return builder.String()
 }

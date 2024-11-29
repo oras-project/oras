@@ -40,10 +40,8 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	// printing data fields
 	buf.WriteString("==Data==\n")
 	for k, v := range entry.Data {
-		buf.WriteString(fmt.Sprintf("  {%s=%v}\n", k, v))
+		buf.WriteString(fmt.Sprintf("  %s=%v\n", k, v))
 	}
-
-	// TODO: body?
 
 	buf.WriteString(logEntrySeperator)
 
