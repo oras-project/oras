@@ -31,7 +31,8 @@ type Common struct {
 	Printer *output.Printer
 	TTY     *os.File
 	Debug   bool
-	noTTY   bool
+
+	noTTY bool
 }
 
 // ApplyFlags applies flags to a command flag set.
