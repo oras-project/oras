@@ -37,6 +37,7 @@ var (
 )
 
 const payloadSizeLimit int64 = 4 * 1024 * 1024 // 4 MiB
+// const payloadSizeLimit int64 = 8 // TEST
 
 // Transport is an http.RoundTripper that keeps track of the in-flight
 // request and add hooks to report HTTP tracing events.
@@ -105,17 +106,19 @@ func logResponseBody(resp *http.Response) string {
 	if !shouldPrint(contentType) {
 		return "   Body of this content type is not printed"
 	}
+	if resp.ContentLength > payloadSizeLimit {
+		return fmt.Sprintf("   Body larger to %d bytes is not printed", payloadSizeLimit)
+	}
 
 	var builder strings.Builder
-	lr := io.LimitReader(resp.Body, payloadSizeLimit)
-	bodyBytes, err := io.ReadAll(lr)
+	// TODO: what if body has been read out?
+	tr := io.TeeReader(resp.Body, &builder)
+	bodyBytes, err := io.ReadAll(tr)
 	if err != nil {
 		return fmt.Sprintf("   Error reading response body: %v", err)
 	}
-	builder.Write(bodyBytes)
-	resp.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+	resp.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 
-	// TODO: add ... if body is larger than bodySizeLimit
 	return builder.String()
 }
 
