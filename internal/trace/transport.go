@@ -94,13 +94,13 @@ func logHeader(header http.Header) string {
 		}
 		return strings.Join(headers, "\n")
 	}
-	return "   <empty>"
+	return "   Empty header"
 }
 
 // TODO: test and docs
 func logResponseBody(resp *http.Response) string {
-	if resp.Body == nil || resp.ContentLength <= 0 {
-		return "   <empty>"
+	if resp.Body == nil || resp.ContentLength <= 0 || resp.Body == http.NoBody {
+		return "   Empty body"
 	}
 	contentType := resp.Header.Get("Content-Type")
 	if !shouldPrint(contentType) {
