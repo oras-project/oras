@@ -38,9 +38,11 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	levelText := strings.ToUpper(entry.Level.String())
 	buf.WriteString(fmt.Sprintf("[%s][%s]: %s\n", timestamp, levelText, entry.Message))
 	// printing data fields
-	buf.WriteString("==Data==\n")
-	for k, v := range entry.Data {
-		buf.WriteString(fmt.Sprintf("  %s=%v\n", k, v))
+	if len(entry.Data) != 0 {
+		buf.WriteString("[Data]:\n")
+		for k, v := range entry.Data {
+			buf.WriteString(fmt.Sprintf("  %s=%v\n", k, v))
+		}
 	}
 
 	buf.WriteString(logEntrySeperator)

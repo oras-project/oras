@@ -36,8 +36,7 @@ var (
 	}
 )
 
-// TODO: is this number reasonable? add docs
-const bodySizeLimit int64 = 8 * 1024 // 8 KiB
+const payloadSizeLimit int64 = 4 * 1024 * 1024 // 4 MiB
 
 // Transport is an http.RoundTripper that keeps track of the in-flight
 // request and add hooks to report HTTP tracing events.
@@ -94,22 +93,21 @@ func logHeader(header http.Header) string {
 		}
 		return strings.Join(headers, "\n")
 	}
-	return "   Empty header"
+	return "   <empty>"
 }
 
 // TODO: test and docs
 func logResponseBody(resp *http.Response) string {
-	if resp.Body == nil {
-		return "   Empty body"
+	if resp.Body == nil || resp.ContentLength <= 0 {
+		return "   <empty>"
 	}
 	contentType := resp.Header.Get("Content-Type")
-	if !strings.HasPrefix(contentType, "application/json") && !strings.HasPrefix(contentType, "text/") {
-		return "   Body is hidden due to unsupported content type"
+	if !shouldPrint(contentType) {
+		return "   Body of this content type is not printed"
 	}
 
-	// TODO: if content type is json, pretty print the json?
 	var builder strings.Builder
-	lr := io.LimitReader(resp.Body, bodySizeLimit)
+	lr := io.LimitReader(resp.Body, payloadSizeLimit)
 	bodyBytes, err := io.ReadAll(lr)
 	if err != nil {
 		return fmt.Sprintf("   Error reading response body: %v", err)
@@ -119,4 +117,14 @@ func logResponseBody(resp *http.Response) string {
 
 	// TODO: add ... if body is larger than bodySizeLimit
 	return builder.String()
+}
+
+func shouldPrint(contentType string) bool {
+	if strings.HasPrefix(contentType, "application/json") || strings.HasSuffix(contentType, "+json") {
+		return true
+	}
+	if strings.HasPrefix(contentType, "text/") {
+		return true
+	}
+	return false
 }
