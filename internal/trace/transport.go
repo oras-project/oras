@@ -100,18 +100,17 @@ func logHeader(header http.Header) string {
 // TODO: test and docs
 func logResponseBody(resp *http.Response) string {
 	if resp.Body == nil || resp.ContentLength <= 0 || resp.Body == http.NoBody {
-		return "   Empty body"
+		return ""
 	}
 	contentType := resp.Header.Get("Content-Type")
 	if !shouldPrint(contentType) {
-		return "   Body of this content type is not printed"
+		return fmt.Sprintf("   Body of content type \"%s\" is not printed", contentType)
 	}
 	if resp.ContentLength > payloadSizeLimit {
-		return fmt.Sprintf("   Body larger to %d bytes is not printed", payloadSizeLimit)
+		return fmt.Sprintf("   Body larger than %d bytes is not printed", payloadSizeLimit)
 	}
 
 	var builder strings.Builder
-	// TODO: what if body has been read out?
 	tr := io.TeeReader(resp.Body, &builder)
 	bodyBytes, err := io.ReadAll(tr)
 	if err != nil {
@@ -123,9 +122,11 @@ func logResponseBody(resp *http.Response) string {
 }
 
 func shouldPrint(contentType string) bool {
+	// JSON types
 	if strings.HasPrefix(contentType, "application/json") || strings.HasSuffix(contentType, "+json") {
 		return true
 	}
+	// text types
 	if strings.HasPrefix(contentType, "text/") {
 		return true
 	}
