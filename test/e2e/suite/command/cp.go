@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -46,6 +47,11 @@ var _ = Describe("ORAS beginners:", func() {
 			Expect(out).Should(gbytes.Say("--from-distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 			Expect(out).Should(gbytes.Say("-r, --recursive\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 			Expect(out).Should(gbytes.Say("--to-distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+		})
+
+		It("should not show --verbose in help doc", func() {
+			out := ORAS("push", "--help").MatchKeyWords(ExampleDesc).Exec().Out
+			gomega.Expect(out).ShouldNot(gbytes.Say("--verbose"))
 		})
 
 		It("should fail when no reference provided", func() {
@@ -200,7 +206,7 @@ var _ = Describe("1.1 registry users:", func() {
 			dstRepo := cpTestRepo("index-referrers-concurrent")
 			dst := RegistryRef(ZOTHost, dstRepo, "copiedTag")
 			// test
-			ORAS("cp", src, dst, "-r", "-v", "--concurrency", "0").
+			ORAS("cp", src, dst, "-r", "--concurrency", "0").
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				MatchKeyWords("Digest: " + ma.Digest).
 				Exec()
@@ -217,7 +223,7 @@ var _ = Describe("1.1 registry users:", func() {
 			dstRepo := cpTestRepo("empty-index")
 			dst := RegistryRef(ZOTHost, dstRepo, "copiedTag")
 			// test
-			ORAS("cp", src, dst, "-r", "-v", "--concurrency", "0").Exec()
+			ORAS("cp", src, dst, "-r", "--concurrency", "0").Exec()
 			// validate
 			CompareRef(RegistryRef(ZOTHost, ImageRepo, ma.EmptyTag), dst)
 		})
@@ -346,7 +352,7 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 		It("should copy an image from a fallback registry to an OCI image layout via digest", func() {
 			dstDir := GinkgoT().TempDir()
 			src := RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag)
-			ORAS("cp", src, dstDir, "-v", Flags.ToLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			ORAS("cp", src, dstDir, Flags.ToLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			// validate
 			srcManifest := ORAS("manifest", "fetch", src).WithDescription("fetch from source to validate").Exec().Out.Contents()
 			dstManifest := ORAS("manifest", "fetch", LayoutRef(dstDir, foobar.Digest), Flags.Layout).WithDescription("fetch from destination to validate").Exec().Out.Contents()
@@ -360,7 +366,7 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 			// prepare
 			ORAS("cp", RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), layoutDir, Flags.ToLayout).Exec()
 			// test
-			ORAS("cp", src, dst, "-v", Flags.FromLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			ORAS("cp", src, dst, Flags.FromLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			// validate
 			srcManifest := ORAS("manifest", "fetch", src, Flags.Layout).WithDescription("fetch from source to validate").Exec().Out.Contents()
 			dstManifest := ORAS("manifest", "fetch", dst).WithDescription("fetch from destination to validate").Exec().Out.Contents()
@@ -377,7 +383,7 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 			ORAS("cp", RegistryRef(ZOTHost, ArtifactRepo, ma.Tag), src, Flags.ToLayout, "-r").Exec()
 			ORAS("cp", RegistryRef(ZOTHost, ArtifactRepo, ma.Tag), src, Flags.ToLayout, "-r", "--platform", "linux/amd64").Exec()
 			// test
-			ORAS("cp", src, Flags.FromLayout, dst, "-r", "-v", "--platform", "linux/amd64").
+			ORAS("cp", src, Flags.FromLayout, dst, "-r", "--platform", "linux/amd64").
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				MatchKeyWords("Digest: " + ma.LinuxAMD64.Digest.String()).
 				Exec()
@@ -403,7 +409,7 @@ var _ = Describe("OCI layout users:", func() {
 		It("should copy an image from a registry to an OCI image layout via tag", func() {
 			dst := LayoutRef(GinkgoT().TempDir(), "copied")
 			src := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
-			ORAS("cp", src, dst, "-v", Flags.ToLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			ORAS("cp", src, dst, Flags.ToLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			// validate
 			srcManifest := ORAS("manifest", "fetch", src).WithDescription("fetch from source to validate").Exec().Out.Contents()
 			dstManifest := ORAS("manifest", "fetch", dst, Flags.Layout).WithDescription("fetch from destination to validate").Exec().Out.Contents()
@@ -417,7 +423,7 @@ var _ = Describe("OCI layout users:", func() {
 			// prepare
 			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), src, Flags.ToLayout).Exec()
 			// test
-			ORAS("cp", src, dst, "-v", Flags.FromLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			ORAS("cp", src, dst, Flags.FromLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			// validate
 			srcManifest := ORAS("manifest", "fetch", src, Flags.Layout).WithDescription("fetch from source to validate").Exec().Out.Contents()
 			dstManifest := ORAS("manifest", "fetch", dst).WithDescription("fetch from destination to validate").Exec().Out.Contents()
@@ -432,7 +438,7 @@ var _ = Describe("OCI layout users:", func() {
 			// prepare
 			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), src, Flags.ToLayout).Exec()
 			// test
-			ORAS("cp", src, dst, "-v", Flags.FromLayout, Flags.ToLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			ORAS("cp", src, dst, Flags.FromLayout, Flags.ToLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			// validate
 			srcManifest := ORAS("manifest", "fetch", src, Flags.Layout).WithDescription("fetch from source to validate").Exec().Out.Contents()
 			dstManifest := ORAS("manifest", "fetch", dst, Flags.Layout).WithDescription("fetch from destination to validate").Exec().Out.Contents()
@@ -442,7 +448,7 @@ var _ = Describe("OCI layout users:", func() {
 		It("should copy an image from a registry to an OCI image layout via digest", func() {
 			dstDir := GinkgoT().TempDir()
 			src := RegistryRef(ZOTHost, ImageRepo, foobar.Digest)
-			ORAS("cp", src, dstDir, "-v", Flags.ToLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			ORAS("cp", src, dstDir, Flags.ToLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			// validate
 			srcManifest := ORAS("manifest", "fetch", src).WithDescription("fetch from source to validate").Exec().Out.Contents()
 			dstManifest := ORAS("manifest", "fetch", LayoutRef(dstDir, foobar.Digest), Flags.Layout).WithDescription("fetch from destination to validate").Exec().Out.Contents()
@@ -456,7 +462,7 @@ var _ = Describe("OCI layout users:", func() {
 			// prepare
 			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), layoutDir, Flags.ToLayout).Exec()
 			// test
-			ORAS("cp", src, dst, "-v", Flags.FromLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			ORAS("cp", src, dst, Flags.FromLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			// validate
 			srcManifest := ORAS("manifest", "fetch", src, Flags.Layout).WithDescription("fetch from source to validate").Exec().Out.Contents()
 			dstManifest := ORAS("manifest", "fetch", dst).WithDescription("fetch from destination to validate").Exec().Out.Contents()
@@ -471,7 +477,7 @@ var _ = Describe("OCI layout users:", func() {
 			// prepare
 			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), srcDir, Flags.ToLayout).Exec()
 			// test
-			ORAS("cp", src, toDir, "-v", Flags.FromLayout, Flags.ToLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			ORAS("cp", src, toDir, Flags.FromLayout, Flags.ToLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			// validate
 			srcManifest := ORAS("manifest", "fetch", src, Flags.Layout).WithDescription("fetch from source to validate").Exec().Out.Contents()
 			dstManifest := ORAS("manifest", "fetch", dst, Flags.Layout).WithDescription("fetch from destination to validate").Exec().Out.Contents()
@@ -483,7 +489,7 @@ var _ = Describe("OCI layout users:", func() {
 			src := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
 			tags := []string{"tag1", "tag2", "tag3"}
 			// test
-			ORAS("cp", src, dstDir+":"+strings.Join(tags, ","), "-v", Flags.ToLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			ORAS("cp", src, dstDir+":"+strings.Join(tags, ","), Flags.ToLayout).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			// validate
 			srcManifest := ORAS("manifest", "fetch", src).WithDescription("fetch from source to validate").Exec().Out.Contents()
 			for _, tag := range tags {
@@ -497,7 +503,7 @@ var _ = Describe("OCI layout users:", func() {
 			dst := LayoutRef(GinkgoT().TempDir(), "copied")
 			src := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
 			// test
-			ORAS("cp", "-r", src, dst, "-v", Flags.ToLayout).MatchStatus(stateKeys, true, len(stateKeys)).Exec()
+			ORAS("cp", "-r", src, dst, Flags.ToLayout).MatchStatus(stateKeys, true, len(stateKeys)).Exec()
 			// validate
 			srcManifest := ORAS("manifest", "fetch", src).WithDescription("fetch from source to validate").Exec().Out.Contents()
 			dstManifest := ORAS("manifest", "fetch", dst, Flags.Layout).WithDescription("fetch from destination to validate").Exec().Out.Contents()
@@ -509,7 +515,7 @@ var _ = Describe("OCI layout users:", func() {
 			toDir := GinkgoT().TempDir()
 			src := RegistryRef(ZOTHost, ArtifactRepo, foobar.Digest)
 			// test
-			ORAS("cp", "-r", src, toDir, "-v", Flags.ToLayout).MatchStatus(stateKeys, true, len(stateKeys)).Exec()
+			ORAS("cp", "-r", src, toDir, Flags.ToLayout).MatchStatus(stateKeys, true, len(stateKeys)).Exec()
 			// validate
 			srcManifest := ORAS("manifest", "fetch", src).WithDescription("fetch from source to validate").Exec().Out.Contents()
 			dstManifest := ORAS("manifest", "fetch", LayoutRef(toDir, foobar.Digest), Flags.Layout).WithDescription("fetch from destination to validate").Exec().Out.Contents()
@@ -582,7 +588,7 @@ var _ = Describe("OCI layout users:", func() {
 			ORAS("cp", RegistryRef(ZOTHost, ArtifactRepo, ma.Tag), src, Flags.ToLayout, "-r").Exec()
 			ORAS("cp", RegistryRef(ZOTHost, ArtifactRepo, ma.Tag), src, Flags.ToLayout, "-r", "--platform", "linux/amd64").Exec()
 			// test
-			ORAS("cp", src, Flags.FromLayout, dst, "-r", "-v", "--platform", "linux/amd64").
+			ORAS("cp", src, Flags.FromLayout, dst, "-r", "--platform", "linux/amd64").
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				MatchKeyWords("Digest: " + ma.LinuxAMD64.Digest.String()).
 				Exec()
@@ -607,7 +613,7 @@ var _ = Describe("OCI layout users:", func() {
 			toDir := GinkgoT().TempDir()
 			dst := LayoutRef(toDir, "copied")
 			// test
-			ORAS("cp", src, Flags.ToLayout, dst, "-r", "-v", "--platform", "linux/amd64").
+			ORAS("cp", src, Flags.ToLayout, dst, "-r", "--platform", "linux/amd64").
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				MatchKeyWords("Digest: " + ma.LinuxAMD64.Digest.String()).
 				Exec()
@@ -633,7 +639,7 @@ var _ = Describe("OCI layout users:", func() {
 			src := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
 			ref := "copied"
 			dst := LayoutRef(layoutDir, ref)
-			ORAS("cp", src, ref, "-v", Flags.ToLayoutPath, layoutDir).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			ORAS("cp", src, ref, Flags.ToLayoutPath, layoutDir).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			// validate
 			srcManifest := ORAS("manifest", "fetch", src).WithDescription("fetch from source to validate").Exec().Out.Contents()
 			dstManifest := ORAS("manifest", "fetch", dst, Flags.Layout).WithDescription("fetch from destination to validate").Exec().Out.Contents()
@@ -648,7 +654,7 @@ var _ = Describe("OCI layout users:", func() {
 			// prepare
 			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), src, Flags.ToLayout).Exec()
 			// test
-			ORAS("cp", ref, dst, "-v", Flags.FromLayoutPath, layoutDir).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			ORAS("cp", ref, dst, Flags.FromLayoutPath, layoutDir).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			// validate
 			srcManifest := ORAS("manifest", "fetch", src, Flags.Layout).WithDescription("fetch from source to validate").Exec().Out.Contents()
 			dstManifest := ORAS("manifest", "fetch", dst).WithDescription("fetch from destination to validate").Exec().Out.Contents()
@@ -665,7 +671,7 @@ var _ = Describe("OCI layout users:", func() {
 			// prepare
 			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), src, Flags.ToLayout).Exec()
 			// test
-			ORAS("cp", srcRef, dstRef, "-v", Flags.FromLayoutPath, srcDir, Flags.ToLayoutPath, toDir).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			ORAS("cp", srcRef, dstRef, Flags.FromLayoutPath, srcDir, Flags.ToLayoutPath, toDir).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			// validate
 			srcManifest := ORAS("manifest", "fetch", src, Flags.Layout).WithDescription("fetch from source to validate").Exec().Out.Contents()
 			dstManifest := ORAS("manifest", "fetch", dst, Flags.Layout).WithDescription("fetch from destination to validate").Exec().Out.Contents()
@@ -675,7 +681,7 @@ var _ = Describe("OCI layout users:", func() {
 		It("should copy an image from a registry to an OCI image layout via digest using --oci-layout-path", func() {
 			dstDir := GinkgoT().TempDir()
 			src := RegistryRef(ZOTHost, ImageRepo, foobar.Digest)
-			ORAS("cp", src, foobar.Digest, "-v", Flags.ToLayoutPath, dstDir).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			ORAS("cp", src, foobar.Digest, Flags.ToLayoutPath, dstDir).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			// validate
 			srcManifest := ORAS("manifest", "fetch", src).WithDescription("fetch from source to validate").Exec().Out.Contents()
 			dstManifest := ORAS("manifest", "fetch", LayoutRef(dstDir, foobar.Digest), Flags.Layout).WithDescription("fetch from destination to validate").Exec().Out.Contents()
@@ -689,7 +695,7 @@ var _ = Describe("OCI layout users:", func() {
 			// prepare
 			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), layoutDir, Flags.ToLayout).Exec()
 			// test
-			ORAS("cp", foobar.Digest, dst, "-v", Flags.FromLayoutPath, layoutDir).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			ORAS("cp", foobar.Digest, dst, Flags.FromLayoutPath, layoutDir).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			// validate
 			srcManifest := ORAS("manifest", "fetch", src, Flags.Layout).WithDescription("fetch from source to validate").Exec().Out.Contents()
 			dstManifest := ORAS("manifest", "fetch", dst).WithDescription("fetch from destination to validate").Exec().Out.Contents()
@@ -704,7 +710,7 @@ var _ = Describe("OCI layout users:", func() {
 			// prepare
 			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), srcDir, Flags.ToLayout).Exec()
 			// test
-			ORAS("cp", foobar.Digest, foobar.Digest, "-v", Flags.FromLayoutPath, srcDir, Flags.ToLayoutPath, toDir).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			ORAS("cp", foobar.Digest, foobar.Digest, Flags.FromLayoutPath, srcDir, Flags.ToLayoutPath, toDir).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			// validate
 			srcManifest := ORAS("manifest", "fetch", src, Flags.Layout).WithDescription("fetch from source to validate").Exec().Out.Contents()
 			dstManifest := ORAS("manifest", "fetch", dst, Flags.Layout).WithDescription("fetch from destination to validate").Exec().Out.Contents()

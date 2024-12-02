@@ -215,7 +215,7 @@ var _ = Describe("1.1 registry users:", func() {
 				tempDir := PrepareTempFiles()
 				stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(configName))
 				// test
-				ORAS(append([]string{"pull", RegistryRef(mockedHost, ImageRepo, foobar.Tag), "-v", "--config", configName, "-o", pullRoot}, unary...)...).
+				ORAS(append([]string{"pull", RegistryRef(mockedHost, ImageRepo, foobar.Tag), "--config", configName, "-o", pullRoot}, unary...)...).
 					MatchStatus(stateKeys, true, len(stateKeys)).
 					WithWorkDir(tempDir).Exec()
 				// validate config and layers
