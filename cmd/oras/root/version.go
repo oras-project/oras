@@ -58,6 +58,7 @@ func runVersion(printer *output.Printer) error {
 	items := [][]string{
 		{"Version", version.GetVersion()},
 		{"Go version", runtime.Version()},
+		{"OS/Arch", fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)},
 	}
 	if version.GitCommit != "" {
 		items = append(items, []string{"Git commit", version.GitCommit})
