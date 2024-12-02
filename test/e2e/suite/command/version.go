@@ -26,6 +26,10 @@ var _ = Describe("ORAS user:", func() {
 			ORAS("version").Exec()
 		})
 
+		It("should run version command and show OS/Arch information", func() {
+			ORAS("version").MatchKeyWords("OS/Arch", "linux/amd64").Exec()
+		})
+
 		It("should run version command and ignore extra arguments with warning", func() {
 			ORAS("version", "foo", "bar").MatchErrKeyWords("foo", "bar", "warning:").Exec()
 		})
