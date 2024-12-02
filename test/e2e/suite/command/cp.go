@@ -34,6 +34,7 @@ import (
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	ma "oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
+	"oras.land/oras/test/e2e/internal/utils/match"
 )
 
 func cpTestRepo(text string) string {
@@ -52,6 +53,29 @@ var _ = Describe("ORAS beginners:", func() {
 		It("should not show --verbose in help doc", func() {
 			out := ORAS("push", "--help").MatchKeyWords(ExampleDesc).Exec().Out
 			gomega.Expect(out).ShouldNot(gbytes.Say("--verbose"))
+		})
+
+		It("should show deprecation message and print unnamed status output for --verbose", func() {
+			src := RegistryRef(ZOTHost, ArtifactRepo, blob.Tag)
+			dst := RegistryRef(ZOTHost, cpTestRepo("test-verbose"), "copied")
+			ORAS("cp", src, dst, "--verbose").
+				MatchErrKeyWords(DeprecationMessageVerboseFlag).
+				MatchStatus(blob.StateKeys, true, len(blob.StateKeys)).
+				Exec()
+			CompareRef(src, dst)
+		})
+
+		It("should show deprecation message and print unnamed status output for --verbose=false", func() {
+			src := RegistryRef(ZOTHost, ArtifactRepo, blob.Tag)
+			dst := RegistryRef(ZOTHost, cpTestRepo("test-verbose-false"), "copied")
+			stateKeys := []match.StateKey{
+				{Digest: "2ef548696ac7", Name: "hello.tar"},
+			}
+			ORAS("cp", src, dst, "--verbose=false").
+				MatchErrKeyWords(DeprecationMessageVerboseFlag).
+				MatchStatus(stateKeys, true, len(stateKeys)).
+				Exec()
+			CompareRef(src, dst)
 		})
 
 		It("should fail when no reference provided", func() {
@@ -127,7 +151,7 @@ var _ = Describe("1.1 registry users:", func() {
 		It("should copy an artifact with blob", func() {
 			src := RegistryRef(ZOTHost, ArtifactRepo, blob.Tag)
 			dst := RegistryRef(ZOTHost, cpTestRepo("artifact-with-blob"), "copied")
-			ORAS("cp", src, dst, "-v").MatchStatus(blob.StateKeys, true, len(blob.StateKeys)).Exec()
+			ORAS("cp", src, dst).MatchStatus(blob.StateKeys, true, len(blob.StateKeys)).Exec()
 			CompareRef(src, dst)
 		})
 
@@ -143,34 +167,34 @@ var _ = Describe("1.1 registry users:", func() {
 		It("should copy an artifact with config", func() {
 			src := RegistryRef(ZOTHost, ArtifactRepo, config.Tag)
 			dst := RegistryRef(ZOTHost, cpTestRepo("artifact-with-config"), "copied")
-			ORAS("cp", src, dst, "-v").MatchStatus(config.StateKeys, true, len(config.StateKeys)).Exec()
+			ORAS("cp", src, dst).MatchStatus(config.StateKeys, true, len(config.StateKeys)).Exec()
 		})
 
 		It("should copy index and its subject", func() {
 			stateKeys := append(ma.IndexStateKeys, index.ManifestStatusKey)
 			src := RegistryRef(ZOTHost, ArtifactRepo, index.ManifestDigest)
 			dst := RegistryRef(ZOTHost, cpTestRepo("index-with-subject"), "")
-			ORAS("cp", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
+			ORAS("cp", src, dst).MatchStatus(stateKeys, true, len(stateKeys)).Exec()
 		})
 
 		It("should copy an image to a new repository via tag", func() {
 			src := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
 			dst := RegistryRef(ZOTHost, cpTestRepo("tag"), "copied")
-			ORAS("cp", src, dst, "-v").MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			ORAS("cp", src, dst).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			CompareRef(src, dst)
 		})
 
 		It("should copy an image to a new repository via digest", func() {
 			src := RegistryRef(ZOTHost, ImageRepo, foobar.Digest)
 			dst := RegistryRef(ZOTHost, cpTestRepo("digest"), "copiedTag")
-			ORAS("cp", src, dst, "-v").MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			ORAS("cp", src, dst).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			CompareRef(src, dst)
 		})
 
 		It("should copy an image to a new repository via tag without tagging", func() {
 			src := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
 			dst := RegistryRef(ZOTHost, cpTestRepo("no-tagging"), foobar.Digest)
-			ORAS("cp", src, dst, "-v").MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			ORAS("cp", src, dst).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			CompareRef(src, dst)
 		})
 
@@ -178,7 +202,7 @@ var _ = Describe("1.1 registry users:", func() {
 			stateKeys := append(append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageReferrerConfigStateKeys[0]), foobar.ImageReferrersStateKeys...)
 			src := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
 			dst := RegistryRef(ZOTHost, cpTestRepo("referrers"), foobar.Digest)
-			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
+			ORAS("cp", "-r", src, dst).MatchStatus(stateKeys, true, len(stateKeys)).Exec()
 			CompareRef(src, dst)
 		})
 
@@ -187,7 +211,7 @@ var _ = Describe("1.1 registry users:", func() {
 			src := RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)
 			dstRepo := cpTestRepo("index-referrers")
 			dst := RegistryRef(ZOTHost, dstRepo, "copiedTag")
-			ORAS("cp", src, dst, "-r", "-v").
+			ORAS("cp", src, dst, "-r").
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				MatchKeyWords("Digest: " + ma.Digest).
 				Exec()
@@ -233,7 +257,7 @@ var _ = Describe("1.1 registry users:", func() {
 			src := RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)
 			dstRepo := cpTestRepo("index-referrers-digest")
 			dst := RegistryRef(ZOTHost, dstRepo, ma.Digest)
-			ORAS("cp", src, dst, "-r", "-v").
+			ORAS("cp", src, dst, "-r").
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				MatchKeyWords("Digest: " + ma.Digest).
 				Exec()
@@ -249,7 +273,7 @@ var _ = Describe("1.1 registry users:", func() {
 			src := RegistryRef(ZOTHost, ImageRepo, ma.Tag)
 			dst := RegistryRef(ZOTHost, cpTestRepo("platform-tag"), "copiedTag")
 
-			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").
+			ORAS("cp", src, dst, "--platform", "linux/amd64").
 				MatchStatus(ma.LinuxAMD64StateKeys, true, len(ma.LinuxAMD64StateKeys)).
 				MatchKeyWords("Digest: " + ma.LinuxAMD64.Digest.String()).
 				Exec()
@@ -260,7 +284,7 @@ var _ = Describe("1.1 registry users:", func() {
 			src := RegistryRef(ZOTHost, ImageRepo, ma.Digest)
 			dstRepo := cpTestRepo("platform-digest")
 			dst := RegistryRef(ZOTHost, dstRepo, "")
-			ORAS("cp", src, dst, "--platform", "linux/amd64", "-v").
+			ORAS("cp", src, dst, "--platform", "linux/amd64").
 				MatchStatus(ma.LinuxAMD64StateKeys, true, len(ma.LinuxAMD64StateKeys)).
 				MatchKeyWords("Digest: " + ma.LinuxAMD64.Digest.String()).
 				Exec()
@@ -273,7 +297,7 @@ var _ = Describe("1.1 registry users:", func() {
 			dstRepo := cpTestRepo("platform-referrers")
 			dst := RegistryRef(ZOTHost, dstRepo, "copiedTag")
 			digest := ma.LinuxAMD64.Digest.String()
-			ORAS("cp", src, dst, "-r", "--platform", "linux/amd64", "-v").
+			ORAS("cp", src, dst, "-r", "--platform", "linux/amd64").
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				MatchKeyWords("Digest: " + digest).
 				Exec()
@@ -291,7 +315,7 @@ var _ = Describe("1.1 registry users:", func() {
 			dstRepo := cpTestRepo("platform-referrers-no-tag")
 			dst := RegistryRef(ZOTHost, dstRepo, "")
 			digest := ma.LinuxAMD64.Digest.String()
-			ORAS("cp", src, dst, "-r", "--platform", "linux/amd64", "-v").
+			ORAS("cp", src, dst, "-r", "--platform", "linux/amd64").
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				MatchKeyWords("Digest: " + digest).
 				Exec()
@@ -308,7 +332,7 @@ var _ = Describe("1.1 registry users:", func() {
 			tags := []string{"tag1", "tag2", "tag3"}
 			dstRepo := cpTestRepo("multi-tagging")
 			dst := RegistryRef(ZOTHost, dstRepo, "")
-			ORAS("cp", src, dst+":"+strings.Join(tags, ","), "-v").MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			ORAS("cp", src, dst+":"+strings.Join(tags, ",")).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 			for _, tag := range tags {
 				dst := RegistryRef(ZOTHost, dstRepo, tag)
 				CompareRef(src, dst)
@@ -323,7 +347,7 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 			repo := cpTestRepo("1.0-mount")
 			src := RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag)
 			dst := RegistryRef(FallbackHost, repo, "")
-			out := ORAS("cp", src, dst, "-v").Exec()
+			out := ORAS("cp", src, dst).Exec()
 			Expect(out).Should(gbytes.Say("Mounted fcde2b2edba5 bar"))
 			CompareRef(src, RegistryRef(FallbackHost, repo, foobar.Digest))
 		})
@@ -333,7 +357,7 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 			stateKeys := append(append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageReferrerConfigStateKeys[0]), foobar.ImageReferrersStateKeys...)
 			src := RegistryRef(ZOTHost, ArtifactRepo, foobar.SignatureImageReferrer.Digest.String())
 			dst := RegistryRef(FallbackHost, repo, "")
-			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
+			ORAS("cp", "-r", src, dst).MatchStatus(stateKeys, true, len(stateKeys)).Exec()
 			CompareRef(src, RegistryRef(FallbackHost, repo, foobar.SignatureImageReferrer.Digest.String()))
 			ORAS("discover", "-o", "tree", RegistryRef(FallbackHost, repo, foobar.Digest)).
 				WithDescription("discover referrer via subject").MatchKeyWords(foobar.SignatureImageReferrer.Digest.String(), foobar.SBOMImageReferrer.Digest.String()).Exec()
@@ -343,7 +367,7 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 			stateKeys := append(append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageReferrerConfigStateKeys[0]), foobar.ImageReferrersStateKeys...)
 			src := RegistryRef(FallbackHost, ArtifactRepo, foobar.SBOMImageReferrer.Digest.String())
 			dst := RegistryRef(ZOTHost, repo, "")
-			ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
+			ORAS("cp", "-r", src, dst).MatchStatus(stateKeys, true, len(stateKeys)).Exec()
 			CompareRef(src, RegistryRef(ZOTHost, repo, foobar.SBOMImageReferrer.Digest.String()))
 			ORAS("discover", "-o", "tree", RegistryRef(ZOTHost, repo, foobar.Digest)).
 				WithDescription("discover referrer via subject").MatchKeyWords(foobar.SignatureImageReferrer.Digest.String(), foobar.SBOMImageReferrer.Digest.String()).Exec()
@@ -528,7 +552,7 @@ var _ = Describe("OCI layout users:", func() {
 			toDir := GinkgoT().TempDir()
 			dst := LayoutRef(toDir, "copied")
 			// test
-			ORAS("cp", src, Flags.ToLayout, dst, "-r", "-v").
+			ORAS("cp", src, Flags.ToLayout, dst, "-r").
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				MatchKeyWords("Digest: " + ma.Digest).
 				Exec()
@@ -557,7 +581,7 @@ var _ = Describe("OCI layout users:", func() {
 			// prepare
 			ORAS("cp", RegistryRef(ZOTHost, ArtifactRepo, ma.Tag), src, Flags.ToLayout, "-r").Exec()
 			// test
-			ORAS("cp", src, Flags.FromLayout, dst, "-r", "-v").
+			ORAS("cp", src, Flags.FromLayout, dst, "-r").
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				MatchKeyWords("Digest: " + ma.Digest).
 				Exec()
@@ -725,7 +749,7 @@ var _ = Describe("OCI image spec v1.1.0-rc2 artifact users:", func() {
 		digest := foobar.SBOMArtifactReferrer.Digest.String()
 		src := RegistryRef(Host, ArtifactRepo, digest)
 		dst := RegistryRef(Host, cpTestRepo("referrers"), digest)
-		ORAS("cp", "-r", src, dst, "-v").MatchStatus(stateKeys, true, len(stateKeys)).Exec()
+		ORAS("cp", "-r", src, dst).MatchStatus(stateKeys, true, len(stateKeys)).Exec()
 		CompareRef(src, dst)
 	})
 })

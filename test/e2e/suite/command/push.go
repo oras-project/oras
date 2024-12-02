@@ -65,7 +65,7 @@ var _ = Describe("ORAS beginners:", func() {
 				Exec()
 		})
 
-		It("should show deprecation message and print unnamed status output for --verbose", func() {
+		It("should show deprecation message and print unnamed status output for --verbose=false", func() {
 			repo := pushTestRepo("test-verbose-false")
 			tag := "e2e"
 			tempDir := PrepareTempFiles()

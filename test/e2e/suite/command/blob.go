@@ -236,7 +236,7 @@ var _ = Describe("1.1 registry users:", func() {
 				MatchContent(fmt.Sprintf(pushDescFmt, mediaType)).Exec()
 			ORAS("blob", "fetch", RegistryRef(ZOTHost, repo, pushDigest), "--output", "-").MatchContent(pushContent).Exec()
 
-			ORAS("blob", "push", RegistryRef(ZOTHost, repo, ""), blobPath, "-v").
+			ORAS("blob", "push", RegistryRef(ZOTHost, repo, ""), blobPath).
 				WithDescription("skip the pushing if the blob already exists in the target repo").
 				MatchKeyWords("Exists").Exec()
 		})
@@ -347,7 +347,7 @@ var _ = Describe("OCI image layout users:", func() {
 			// test
 			ORAS("blob", "push", Flags.Layout, LayoutRef(tmpRoot, pushDigest), blobPath, "--media-type", mediaType, "--descriptor").
 				MatchContent(fmt.Sprintf(pushDescFmt, mediaType)).Exec()
-			ORAS("blob", "push", Flags.Layout, LayoutRef(tmpRoot, pushDigest), blobPath, "-v").
+			ORAS("blob", "push", Flags.Layout, LayoutRef(tmpRoot, pushDigest), blobPath).
 				WithDescription("skip pushing if the blob already exists in the target repo").
 				MatchKeyWords("Exists").Exec()
 			// validate
