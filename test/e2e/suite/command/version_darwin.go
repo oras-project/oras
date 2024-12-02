@@ -1,3 +1,5 @@
+//go:build darwin
+
 /*
 Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,14 +22,10 @@ import (
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
-var _ = Describe("ORAS user:", func() {
+var _ = Describe("ORAS darwin user:", func() {
 	When("checking oras version", func() {
-		It("should run version command", func() {
-			ORAS("version").Exec()
-		})
-
-		It("should run version command and ignore extra arguments with warning", func() {
-			ORAS("version", "foo", "bar").MatchErrKeyWords("foo", "bar", "warning:").Exec()
+		It("should run version command and show OS/Arch information", func() {
+			ORAS("version").MatchKeyWords("OS/Arch:", "darwin/").Exec()
 		})
 	})
 })
