@@ -105,7 +105,7 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 			}
 			if filter != "" {
 				if tag == opts.Reference {
-					_ = opts.Println(tag)
+					_ = opts.Printer.Println(tag)
 					continue
 				}
 				desc, err := finder.Resolve(ctx, tag)
@@ -116,7 +116,7 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 					continue
 				}
 			}
-			_ = opts.Println(tag)
+			_ = opts.Printer.Println(tag)
 		}
 		return nil
 	})
