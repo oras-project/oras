@@ -39,7 +39,7 @@ func TestMain(m *testing.M) {
 	mockFetcher = testutils.NewMockFetcher()
 	ctx = context.Background()
 	builder = &strings.Builder{}
-	printer = output.NewPrinter(builder, os.Stderr, false)
+	printer = output.NewPrinter(builder, os.Stderr)
 	bogus = ocispec.Descriptor{MediaType: ocispec.MediaTypeImageManifest}
 	os.Exit(m.Run())
 }
@@ -204,14 +204,14 @@ func TestTextManifestIndexUpdateHandler_OnManifestAdded(t *testing.T) {
 	}{
 		{
 			name:    "ref is a digest",
-			printer: output.NewPrinter(os.Stdout, os.Stderr, false),
+			printer: output.NewPrinter(os.Stdout, os.Stderr),
 			ref:     "sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb",
 			desc:    ocispec.Descriptor{MediaType: "test", Digest: "sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb", Size: 25},
 			wantErr: false,
 		},
 		{
 			name:    "ref is not a digest",
-			printer: output.NewPrinter(os.Stdout, os.Stderr, false),
+			printer: output.NewPrinter(os.Stdout, os.Stderr),
 			ref:     "v1",
 			desc:    ocispec.Descriptor{MediaType: "test", Digest: "sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb", Size: 25},
 			wantErr: false,
@@ -239,14 +239,14 @@ func TestTextManifestIndexUpdateHandler_OnIndexMerged(t *testing.T) {
 	}{
 		{
 			name:    "ref is a digest",
-			printer: output.NewPrinter(os.Stdout, os.Stderr, false),
+			printer: output.NewPrinter(os.Stdout, os.Stderr),
 			ref:     "sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb",
 			desc:    ocispec.Descriptor{MediaType: "test", Digest: "sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb", Size: 25},
 			wantErr: false,
 		},
 		{
 			name:    "ref is not a digest",
-			printer: output.NewPrinter(os.Stdout, os.Stderr, false),
+			printer: output.NewPrinter(os.Stdout, os.Stderr),
 			ref:     "v1",
 			desc:    ocispec.Descriptor{MediaType: "test", Digest: "sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb", Size: 25},
 			wantErr: false,

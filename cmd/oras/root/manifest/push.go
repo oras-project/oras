@@ -48,6 +48,7 @@ type pushOptions struct {
 	extraRefs   []string
 	fileRef     string
 	mediaType   string
+	verbose     bool
 }
 
 func pushCmd() *cobra.Command {
@@ -96,10 +97,10 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 			refs := strings.Split(args[0], ",")
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
-			opts.Verbose = opts.Verbose && !opts.OutputDescriptor
 			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.Printer.Verbose = opts.verbose && !opts.OutputDescriptor
 			return pushManifest(cmd, opts)
 		},
 	}
@@ -108,6 +109,7 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 	option.ApplyFlags(&opts, cmd.Flags())
 	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", "", "media type of manifest")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "print status output for unnamed blobs")
 	return oerrors.Command(cmd, &opts.Target)
 }
 
@@ -157,17 +159,17 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		return err
 	}
 	if match {
-		if err := opts.PrintStatus(desc, "Exists"); err != nil {
+		if err := opts.Printer.PrintStatus(desc, "Exists"); err != nil {
 			return err
 		}
 	} else {
-		if err = opts.PrintStatus(desc, "Uploading"); err != nil {
+		if err = opts.Printer.PrintStatus(desc, "Uploading"); err != nil {
 			return err
 		}
 		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil {
 			return err
 		}
-		if err = opts.PrintStatus(desc, "Uploaded "); err != nil {
+		if err = opts.Printer.PrintStatus(desc, "Uploaded "); err != nil {
 			return err
 		}
 	}
@@ -188,7 +190,7 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		}
 		return opts.Output(os.Stdout, descJSON)
 	}
-	_ = opts.Println("Pushed", opts.AnnotatedReference())
+	_ = opts.Printer.Println("Pushed", opts.AnnotatedReference())
 	if len(opts.extraRefs) != 0 {
 		handler := display.NewManifestPushHandler(opts.Printer)
 		tagListener := listener.NewTaggedListener(target, handler.OnTagged)
@@ -197,7 +199,7 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		}
 	}
 
-	_ = opts.Println("Digest:", desc.Digest)
+	_ = opts.Printer.Println("Digest:", desc.Digest)
 
 	return nil
 }

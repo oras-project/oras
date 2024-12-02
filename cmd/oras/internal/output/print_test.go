@@ -43,7 +43,7 @@ func (mw *mockWriter) String() string {
 
 func TestPrinter_Println(t *testing.T) {
 	mockWriter := &mockWriter{}
-	printer := NewPrinter(mockWriter, os.Stderr, false)
+	printer := NewPrinter(mockWriter, os.Stderr)
 	err := printer.Println("boom")
 	if mockWriter.errorCount != 1 {
 		t.Error("Expected one error actual <" + strconv.Itoa(mockWriter.errorCount) + ">")
@@ -62,7 +62,7 @@ func TestPrinter_Println(t *testing.T) {
 
 func TestPrinter_PrintVerbose_noError(t *testing.T) {
 	builder := &strings.Builder{}
-	printer := NewPrinter(builder, os.Stderr, false)
+	printer := NewPrinter(builder, os.Stderr)
 
 	expected := "normal\nthing one\n"
 	err := printer.Println("normal")
@@ -85,7 +85,8 @@ func TestPrinter_PrintVerbose_noError(t *testing.T) {
 
 func TestPrinter_PrintVerbose(t *testing.T) {
 	builder := &strings.Builder{}
-	printer := NewPrinter(builder, os.Stderr, true)
+	printer := NewPrinter(builder, os.Stderr)
+	printer.Verbose = true
 
 	expected := "normal\nverbose\n"
 	err := printer.Println("normal")

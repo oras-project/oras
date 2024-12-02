@@ -134,12 +134,12 @@ var _ = Describe("1.1 registry users:", func() {
 				WithDescription("prepare: copy tag with different digest").
 				Exec()
 			// test
-			viaTag := ORAS("repo", "tags", "-v", RegistryRef(ZOTHost, repo, foobar.Tag)).
+			viaTag := ORAS("repo", "tags", RegistryRef(ZOTHost, repo, foobar.Tag)).
 				MatchKeyWords(tags...).
 				MatchErrKeyWords(feature.Experimental.Mark, foobar.Digest).Exec().Out
 			Expect(viaTag).ShouldNot(gbytes.Say(multi_arch.Tag))
 
-			viaDigest := ORAS("repo", "tags", "-v", RegistryRef(ZOTHost, repo, foobar.Digest)).
+			viaDigest := ORAS("repo", "tags", RegistryRef(ZOTHost, repo, foobar.Digest)).
 				MatchKeyWords(tags...).
 				MatchErrKeyWords(feature.Experimental.Mark, foobar.Digest).Exec().Out
 			Expect(viaDigest).ShouldNot(gbytes.Say(multi_arch.Tag))
@@ -189,12 +189,12 @@ var _ = Describe("OCI image layout users:", func() {
 			tags := []string{foobar.Tag, "bax", "bay", "baz"}
 			root := prepare(ImageRepo, foobar.Tag, tags...)
 			// test
-			viaTag := ORAS("repo", "tags", "-v", LayoutRef(root, foobar.Tag), Flags.Layout).
+			viaTag := ORAS("repo", "tags", LayoutRef(root, foobar.Tag), Flags.Layout).
 				WithDescription("via tag").
 				MatchKeyWords(tags...).
 				MatchErrKeyWords(feature.Experimental.Mark, foobar.Digest).Exec().Out
 			Expect(viaTag).ShouldNot(gbytes.Say(multi_arch.Tag))
-			viaDigest := ORAS("repo", "tags", "-v", LayoutRef(root, foobar.Digest), Flags.Layout).
+			viaDigest := ORAS("repo", "tags", LayoutRef(root, foobar.Digest), Flags.Layout).
 				WithDescription("via digest").
 				MatchKeyWords(tags...).
 				MatchErrKeyWords(feature.Experimental.Mark, foobar.Digest).Exec().Out
