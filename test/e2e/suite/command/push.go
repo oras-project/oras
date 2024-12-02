@@ -39,15 +39,12 @@ var _ = Describe("ORAS beginners:", func() {
 		It("should show help description with feature flags", func() {
 			out := ORAS("push", "--help").MatchKeyWords(ExampleDesc).Exec().Out
 			gomega.Expect(out).Should(gbytes.Say("--image-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+			// verbose flag should be hidden in help doc
+			gomega.Expect(out).ShouldNot(gbytes.Say("--verbose"))
 		})
 
 		It("should show text as default format type in help doc", func() {
 			MatchDefaultFlagValue("format", "text", "push")
-		})
-
-		It("should not show --verbose in help doc", func() {
-			out := ORAS("push", "--help").MatchKeyWords(ExampleDesc).Exec().Out
-			gomega.Expect(out).ShouldNot(gbytes.Say("--verbose"))
 		})
 
 		It("should show deprecation message and print unnamed status output for --verbose", func() {
@@ -65,7 +62,7 @@ var _ = Describe("ORAS beginners:", func() {
 				Exec()
 		})
 
-		It("should show deprecation message and print unnamed status output for --verbose=false", func() {
+		It("should show deprecation message and should NOT print unnamed status output for --verbose=false", func() {
 			repo := pushTestRepo("test-verbose-false")
 			tag := "e2e"
 			tempDir := PrepareTempFiles()

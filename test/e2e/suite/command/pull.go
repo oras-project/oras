@@ -41,15 +41,12 @@ var _ = Describe("ORAS beginners:", func() {
 		It("should show help description with feature flags", func() {
 			out := ORAS("pull", "--help").MatchKeyWords(ExampleDesc).Exec().Out
 			gomega.Expect(out).Should(gbytes.Say("--include-subject\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+			// verbose flag should be hidden in help doc
+			gomega.Expect(out).ShouldNot(gbytes.Say("--verbose"))
 		})
 
 		It("should show text as default format type in help doc", func() {
 			MatchDefaultFlagValue("format", "text", "pull")
-		})
-
-		It("should not show --verbose in help doc", func() {
-			out := ORAS("pull", "--help").MatchKeyWords(ExampleDesc).Exec().Out
-			gomega.Expect(out).ShouldNot(gbytes.Say("--verbose"))
 		})
 
 		It("should show deprecation message and print unnamed status output for --verbose", func() {
@@ -67,11 +64,13 @@ var _ = Describe("ORAS beginners:", func() {
 			tempDir := PrepareTempFiles()
 			ref := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
 			stateKeys := foobar.ImageLayerStateKeys
-			ORAS("pull", ref, "--verbose=false").
+			out := ORAS("pull", ref, "--verbose=false").
 				WithWorkDir(tempDir).
 				MatchErrKeyWords(DeprecationMessageVerboseFlag).
-				MatchStatus(stateKeys, true, len(stateKeys)).
+				MatchStatus(stateKeys, false, len(stateKeys)).
 				Exec()
+			// should not print status output for unnamed blobs
+			gomega.Expect(out).ShouldNot(gbytes.Say("application/vnd.oci.image.manifest.v1+json"))
 		})
 
 		hintMsg := func(reference string) string {

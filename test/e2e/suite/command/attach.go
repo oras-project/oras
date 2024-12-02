@@ -42,7 +42,34 @@ var _ = Describe("ORAS beginners:", func() {
 
 		It("should show preview and help doc", func() {
 			out := ORAS("attach", "--help").MatchKeyWords(feature.Preview.Mark+" Attach", feature.Preview.Description, ExampleDesc).Exec()
+			// verbose flag should be hidden in help doc
 			gomega.Expect(out).Should(gbytes.Say("--distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+		})
+
+		It("should show deprecation message and print unnamed status output for --verbose", func() {
+			testRepo := attachTestRepo("test-verbose")
+			CopyZOTRepo(ImageRepo, testRepo)
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			stateKeys := []match.StateKey{
+				foobar.AttachFileStateKey,
+				{Digest: "44136fa355b3", Name: "application/vnd.oci.empty.v1+json"},
+			}
+			ORAS("attach", "--artifact-type", "test/attach", "--verbose", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+				WithWorkDir(PrepareTempFiles()).
+				MatchErrKeyWords(DeprecationMessageVerboseFlag).
+				MatchStatus(stateKeys, true, len(stateKeys)).Exec()
+		})
+
+		It("should show deprecation message and should NOT print unnamed status output for --verbose=false", func() {
+			testRepo := attachTestRepo("test-verbose-false")
+			CopyZOTRepo(ImageRepo, testRepo)
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			stateKeys := []match.StateKey{foobar.AttachFileStateKey}
+			out := ORAS("attach", "--artifact-type", "test/attach", "--verbose=false", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+				WithWorkDir(PrepareTempFiles()).
+				MatchErrKeyWords(DeprecationMessageVerboseFlag).
+				MatchStatus(stateKeys, false, len(stateKeys)).Exec()
+			gomega.Expect(out).ShouldNot(gbytes.Say("application/vnd.oci.empty.v1+json"))
 		})
 
 		It("should show text as default format type in help doc", func() {
