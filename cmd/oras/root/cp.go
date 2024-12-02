@@ -50,7 +50,7 @@ type copyOptions struct {
 	recursive   bool
 	concurrency int
 	extraRefs   []string
-	verbose     bool
+	verbose     bool // deprecated
 }
 
 func copyCmd() *cobra.Command {
@@ -104,7 +104,8 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 	}
 	cmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "[Preview] recursively copy the artifact and its referrer artifacts")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
-	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "print status output for unnamed blobs")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
+	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.BinaryTarget)
