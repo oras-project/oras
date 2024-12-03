@@ -48,7 +48,8 @@ type pushOptions struct {
 	extraRefs   []string
 	fileRef     string
 	mediaType   string
-	verbose     bool // deprecated
+	// Deprecated: verbose is deprecated and will be removed in the future.
+	verbose bool
 }
 
 func pushCmd() *cobra.Command {

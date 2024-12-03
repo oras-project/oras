@@ -42,7 +42,8 @@ type pushBlobOptions struct {
 	fileRef   string
 	mediaType string
 	size      int64
-	verbose   bool // deprecated
+	// Deprecated: verbose is deprecated and will be removed in the future.
+	verbose bool
 }
 
 func pushCmd() *cobra.Command {

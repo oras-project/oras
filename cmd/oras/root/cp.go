@@ -50,7 +50,8 @@ type copyOptions struct {
 	recursive   bool
 	concurrency int
 	extraRefs   []string
-	verbose     bool // deprecated
+	// Deprecated: verbose is deprecated and will be removed in the future.
+	verbose bool
 }
 
 func copyCmd() *cobra.Command {

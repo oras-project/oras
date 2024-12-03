@@ -52,7 +52,8 @@ type pullOptions struct {
 	PathTraversal     bool
 	Output            string
 	ManifestConfigRef string
-	verbose           bool // deprecated
+	// Deprecated: verbose is deprecated and will be removed in the future.
+	verbose bool
 }
 
 func pullCmd() *cobra.Command {

@@ -44,7 +44,8 @@ type attachOptions struct {
 
 	artifactType string
 	concurrency  int
-	verbose      bool // deprecated
+	// Deprecated: verbose is deprecated and will be removed in the future.
+	verbose bool
 }
 
 func attachCmd() *cobra.Command {
