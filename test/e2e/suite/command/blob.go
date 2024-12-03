@@ -26,6 +26,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	. "oras.land/oras/test/e2e/internal/utils"
+	"oras.land/oras/test/e2e/internal/utils/match"
 )
 
 const (
@@ -39,6 +40,30 @@ var _ = Describe("ORAS beginners:", func() {
 	repoFmt := fmt.Sprintf("command/blob/%%s/%d/%%s", GinkgoRandomSeed())
 	When("running blob command", func() {
 		When("running `blob push`", func() {
+			It("should not show --verbose in help doc", func() {
+				out := ORAS("push", "--help").MatchKeyWords(ExampleDesc).Exec().Out
+				gomega.Expect(out).ShouldNot(gbytes.Say("--verbose"))
+			})
+
+			It("should show deprecation message and print unnamed status output for --verbose", func() {
+				repo := fmt.Sprintf(repoFmt, "push", "test-verbose")
+				ORAS("blob", "push", RegistryRef(ZOTHost, repo, pushDigest), "-", "--size", strconv.Itoa(len(pushContent)), "--verbose").
+					WithInput(strings.NewReader(pushContent)).
+					MatchErrKeyWords(DeprecationMessageVerboseFlag).
+					MatchStatus([]match.StateKey{{Digest: "e1ca41574914", Name: "application/vnd.oci.image.layer.v1.tar"}}, true, 1).
+					Exec()
+			})
+
+			It("should show deprecation message and should NOT print unnamed status output for --verbose=false", func() {
+				repo := fmt.Sprintf(repoFmt, "push", "test-verbose-false")
+				out := ORAS("blob", "push", RegistryRef(ZOTHost, repo, pushDigest), "-", "--size", strconv.Itoa(len(pushContent)), "--verbose=false").
+					WithInput(strings.NewReader(pushContent)).
+					MatchErrKeyWords(DeprecationMessageVerboseFlag).
+					Exec()
+				// should not print status output for unnamed blobs
+				gomega.Expect(out).ShouldNot(gbytes.Say("application/vnd.oci.image.layer.v1.tar"))
+			})
+
 			It("should fail to read blob content and password from stdin at the same time", func() {
 				repo := fmt.Sprintf(repoFmt, "push", "password-stdin")
 				ORAS("blob", "push", RegistryRef(ZOTHost, repo, ""), "--password-stdin", "-").

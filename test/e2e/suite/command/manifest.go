@@ -72,10 +72,10 @@ var _ = Describe("ORAS beginners:", func() {
 
 				tag := "test-verbose"
 				ORAS("manifest", "push", RegistryRef(ZOTHost, ImageRepo, tag), "-", "--verbose").
+					WithInput(strings.NewReader(manifest)).
 					MatchErrKeyWords(DeprecationMessageVerboseFlag).
 					MatchKeyWords("Pushed", RegistryRef(ZOTHost, ImageRepo, tag), "Digest:", manifestDigest).
 					MatchStatus([]match.StateKey{{Digest: "bc1a59d49fc7", Name: "application/vnd.oci.image.manifest.v1+json"}}, true, 1).
-					WithInput(strings.NewReader(manifest)).
 					Exec()
 			})
 
@@ -85,9 +85,9 @@ var _ = Describe("ORAS beginners:", func() {
 
 				tag := "test-verbose-false"
 				out := ORAS("manifest", "push", RegistryRef(ZOTHost, ImageRepo, tag), "-", "--verbose=false").
+					WithInput(strings.NewReader(manifest)).
 					MatchErrKeyWords(DeprecationMessageVerboseFlag).
 					MatchKeyWords("Pushed", RegistryRef(ZOTHost, ImageRepo, tag), "Digest:", manifestDigest).
-					WithInput(strings.NewReader(manifest)).
 					Exec()
 				// should not print status output for unnamed blobs
 				gomega.Expect(out).ShouldNot(gbytes.Say("application/vnd.oci.image.manifest.v1+json"))
