@@ -28,6 +28,13 @@ func TestDiscardHandler_OnManifestPushed(t *testing.T) {
 	}
 }
 
+func TestDiscardHandler_OnManifestExists(t *testing.T) {
+	testDiscard := NewDiscardHandler()
+	if err := testDiscard.OnManifestExists(v1.Descriptor{}); err != nil {
+		t.Errorf("DiscardHandler.OnIndexExists() error = %v, wantErr nil", err)
+	}
+}
+
 func TestDiscardHandler_OnManifestRemoved(t *testing.T) {
 	testDiscard := NewDiscardHandler()
 	if err := testDiscard.OnManifestRemoved("sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"); err != nil {
