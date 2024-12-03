@@ -37,7 +37,6 @@ func NewLogger(ctx context.Context, debug bool) (context.Context, logrus.FieldLo
 
 	logger := logrus.New()
 	logger.SetFormatter(&TextFormatter{})
-
 	logger.SetLevel(logLevel)
 	entry := logger.WithContext(ctx)
 	return context.WithValue(ctx, loggerKey, entry), entry

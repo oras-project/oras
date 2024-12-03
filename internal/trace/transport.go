@@ -97,13 +97,14 @@ func logHeader(header http.Header) string {
 	return "   Empty header"
 }
 
-// TODO: test and docs
+// logResponseBody prints out the response body if it is printable and within
+// the size limit.
 func logResponseBody(resp *http.Response) string {
 	if resp.Body == nil || resp.Body == http.NoBody || resp.ContentLength <= 0 {
 		return ""
 	}
 	contentType := resp.Header.Get("Content-Type")
-	if !shouldPrint(contentType) {
+	if !isPrintableContentType(contentType) {
 		return fmt.Sprintf("   Body of content type \"%s\" is not printed", contentType)
 	}
 	if resp.ContentLength > payloadSizeLimit {
@@ -121,7 +122,8 @@ func logResponseBody(resp *http.Response) string {
 	return builder.String()
 }
 
-func shouldPrint(contentType string) bool {
+// isPrintableContentType returns true if the content of contentType is printable.
+func isPrintableContentType(contentType string) bool {
 	// JSON types
 	if strings.HasPrefix(contentType, "application/json") || strings.HasSuffix(contentType, "+json") {
 		return true

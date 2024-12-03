@@ -46,6 +46,5 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	}
 
 	buf.WriteString(logEntrySeperator)
-
 	return buf.Bytes(), nil
 }

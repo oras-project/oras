@@ -77,13 +77,6 @@ func listRepository(cmd *cobra.Command, opts *repositoryOptions) error {
 	if err != nil {
 		return err
 	}
-
-	// TEST: to be removed
-	logger = logger.WithField("registry", reg.Reference.Host())
-	logger = logger.WithField("testkey", 123)
-	logger.Info("test info")
-	logger.Warn("test warn")
-
 	err = reg.Repositories(ctx, opts.last, func(repos []string) error {
 		for _, repo := range repos {
 			if subRepo, found := strings.CutPrefix(repo, opts.namespace); found {
