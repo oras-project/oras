@@ -52,7 +52,8 @@ type pushOptions struct {
 	manifestConfigRef string
 	artifactType      string
 	concurrency       int
-	verbose           bool // deprecated
+	// Deprecated: verbose is deprecated and will be removed in the future.
+	verbose bool
 }
 
 func pushCmd() *cobra.Command {
