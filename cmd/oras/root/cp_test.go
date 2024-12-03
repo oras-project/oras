@@ -24,8 +24,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"oras.land/oras/cmd/oras/internal/display/status"
-	"oras.land/oras/cmd/oras/internal/output"
 	"os"
 	"strings"
 	"testing"
@@ -131,11 +129,10 @@ func Test_doCopy(t *testing.T) {
 	defer slave.Close()
 	var opts copyOptions
 	opts.TTY = slave
-	opts.Verbose = true
 	opts.From.Reference = memDesc.Digest.String()
 	dst := memory.New()
 	builder := &strings.Builder{}
-	printer := output.NewPrinter(builder, os.Stderr, opts.Verbose)
+	printer := output.NewPrinter(builder, os.Stderr)
 	handler := status.NewTextCopyHandler(printer, dst)
 	// test
 	_, err = doCopy(context.Background(), handler, memStore, dst, &opts)
@@ -157,11 +154,10 @@ func Test_doCopy_skipped(t *testing.T) {
 	defer slave.Close()
 	var opts copyOptions
 	opts.TTY = slave
-	opts.Verbose = true
 	opts.From.Reference = memDesc.Digest.String()
 	dst := memory.New()
 	builder := &strings.Builder{}
-	printer := output.NewPrinter(builder, os.Stderr, opts.Verbose)
+	printer := output.NewPrinter(builder, os.Stderr)
 	handler := status.NewTextCopyHandler(printer, dst)
 
 	// test
@@ -184,7 +180,6 @@ func Test_doCopy_mounted(t *testing.T) {
 	defer slave.Close()
 	var opts copyOptions
 	opts.TTY = slave
-	opts.Verbose = true
 	opts.From.Reference = manifestDigest
 	// mocked repositories
 	from, err := remote.NewRepository(fmt.Sprintf("%s/%s", host, repoFrom))

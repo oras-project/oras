@@ -18,6 +18,7 @@ package display
 import (
 	"oras.land/oras/internal/testutils"
 	"os"
+	"reflect"
 	"testing"
 
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
@@ -28,7 +29,7 @@ import (
 
 func TestNewPushHandler(t *testing.T) {
 	mockFetcher := testutils.NewMockFetcher()
-	printer := output.NewPrinter(os.Stdout, os.Stderr, false)
+	printer := output.NewPrinter(os.Stdout, os.Stderr)
 	_, _, err := NewPushHandler(printer, option.Format{Type: option.FormatTypeText.Name}, os.Stdout, mockFetcher.Fetcher)
 	if err != nil {
 		t.Errorf("NewPushHandler() error = %v, want nil", err)
@@ -37,7 +38,7 @@ func TestNewPushHandler(t *testing.T) {
 
 func TestNewAttachHandler(t *testing.T) {
 	mockFetcher := testutils.NewMockFetcher()
-	printer := output.NewPrinter(os.Stdout, os.Stderr, false)
+	printer := output.NewPrinter(os.Stdout, os.Stderr)
 	_, _, err := NewAttachHandler(printer, option.Format{Type: option.FormatTypeText.Name}, os.Stdout, mockFetcher.Fetcher)
 	if err != nil {
 		t.Errorf("NewAttachHandler() error = %v, want nil", err)
@@ -45,7 +46,7 @@ func TestNewAttachHandler(t *testing.T) {
 }
 
 func TestNewPullHandler(t *testing.T) {
-	printer := output.NewPrinter(os.Stdout, os.Stderr, false)
+	printer := output.NewPrinter(os.Stdout, os.Stderr)
 	_, _, err := NewPullHandler(printer, option.Format{Type: option.FormatTypeText.Name}, "", os.Stdout)
 	if err != nil {
 		t.Errorf("NewPullHandler() error = %v, want nil", err)
@@ -53,7 +54,7 @@ func TestNewPullHandler(t *testing.T) {
 }
 
 func TestNewCopyHandler(t *testing.T) {
-	printer := output.NewPrinter(os.Stdout, os.Stderr, false)
+	printer := output.NewPrinter(os.Stdout, os.Stderr)
 	copyHandler, copyMetadataHandler := NewCopyHandler(printer, os.Stdout, nil)
 	if _, ok := copyHandler.(*status.TTYCopyHandler); !ok {
 		t.Errorf("expected *status.TTYCopyHandler actual %v", reflect.TypeOf(copyHandler))

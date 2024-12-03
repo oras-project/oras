@@ -18,10 +18,12 @@ limitations under the License.
 package status
 
 import (
+	"strconv"
+	"testing"
+
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras/internal/testutils"
-	"testing"
 )
 
 type testGraphTarget struct {
@@ -117,13 +119,13 @@ func TestTTYCopyHandler_OnCopySkipped(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer ch.StopTracking()
 
 	if err = ch.OnCopySkipped(ctx, mockFetcher.OciImage); err != nil {
 		t.Errorf("OnCopySkipped() should not return an error: %v", err)
 	}
 
-	if err = testutils.MatchPty(pty, slave, "\x1b[?25l\x1b7\x1b[0m"); err != nil {
+	ch.StopTracking()
+	if err = testutils.MatchPty(pty, slave, "Exists", mockFetcher.OciImage.MediaType, strconv.FormatInt(mockFetcher.OciImage.Size, 10), "100%"); err != nil {
 		t.Fatal(err)
 	}
 }
