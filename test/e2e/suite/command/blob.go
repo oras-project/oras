@@ -42,6 +42,7 @@ var _ = Describe("ORAS beginners:", func() {
 		When("running `blob push`", func() {
 			It("should not show --verbose in help doc", func() {
 				out := ORAS("push", "--help").MatchKeyWords(ExampleDesc).Exec().Out
+				// verbose flag should be hidden in help doc
 				gomega.Expect(out).ShouldNot(gbytes.Say("--verbose"))
 			})
 
@@ -263,7 +264,9 @@ var _ = Describe("1.1 registry users:", func() {
 
 			ORAS("blob", "push", RegistryRef(ZOTHost, repo, ""), blobPath).
 				WithDescription("skip the pushing if the blob already exists in the target repo").
-				MatchKeyWords("Exists").Exec()
+				MatchStatus([]match.StateKey{{Digest: "e1ca41574914", Name: "application/vnd.oci.image.layer.v1.tar"}}, true, 1).
+				MatchKeyWords("Exists").
+				Exec()
 		})
 
 		It("should push a blob from a stdin and output the descriptor with specific media-type", func() {
