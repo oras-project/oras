@@ -147,28 +147,30 @@ func (ph *TTYPullHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, St
 // TTYCopyHandler handles tty status output for copy events.
 type TTYCopyHandler struct {
 	tty       *os.File
-	committed *sync.Map
+	committed sync.Map
 	tracked   track.GraphTarget
 }
 
 // NewTTYCopyHandler returns a new handler for copy command.
 func NewTTYCopyHandler(tty *os.File) CopyHandler {
 	return &TTYCopyHandler{
-		tty:       tty,
-		committed: &sync.Map{},
+		tty: tty,
 	}
 }
 
 // StartTracking returns a tracked target from a graph target.
 func (ch *TTYCopyHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
-	tracked, err := track.NewTarget(gt, copyPromptCopying, copyPromptCopied, ch.tty)
-	ch.tracked = tracked
-	return tracked, err
+	var err error
+	ch.tracked, err = track.NewTarget(gt, copyPromptCopying, copyPromptCopied, ch.tty)
+	if err != nil {
+		return nil, err
+	}
+	return ch.tracked, err
 }
 
 // StopTracking ends the copy tracking for the target.
-func (ch *TTYCopyHandler) StopTracking() {
-	_ = ch.tracked.Close()
+func (ch *TTYCopyHandler) StopTracking() error {
+	return ch.tracked.Close()
 }
 
 // OnCopySkipped is called when an object already exists.
@@ -178,14 +180,14 @@ func (ch *TTYCopyHandler) OnCopySkipped(_ context.Context, desc ocispec.Descript
 }
 
 // PreCopy implements PreCopy of CopyHandler.
-func (ch *TTYCopyHandler) PreCopy(_ context.Context, _ ocispec.Descriptor) error {
+func (ch *TTYCopyHandler) PreCopy(context.Context, ocispec.Descriptor) error {
 	return nil
 }
 
 // PostCopy implements PostCopy of CopyHandler.
 func (ch *TTYCopyHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor) error {
 	ch.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-	successors, err := graph.FilteredSuccessors(ctx, desc, ch.tracked, DeduplicatedFilter(ch.committed))
+	successors, err := graph.FilteredSuccessors(ctx, desc, ch.tracked, DeduplicatedFilter(&ch.committed))
 	if err != nil {
 		return err
 	}

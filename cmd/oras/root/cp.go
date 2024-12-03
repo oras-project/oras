@@ -128,9 +128,9 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 		return err
 	}
 	ctx = registryutil.WithScopeHint(ctx, dst, auth.ActionPull, auth.ActionPush)
-	copyHandler, handler := display.NewCopyHandler(opts.Printer, opts.TTY, dst)
+	statusHandler, metadataHandler := display.NewCopyHandler(opts.Printer, opts.TTY, dst)
 
-	desc, err := doCopy(ctx, copyHandler, src, dst, opts)
+	desc, err := doCopy(ctx, statusHandler, src, dst, opts)
 	if err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	if len(opts.extraRefs) != 0 {
 		tagNOpts := oras.DefaultTagNOptions
 		tagNOpts.Concurrency = opts.concurrency
-		tagListener := listener.NewTaggedListener(dst, handler.OnTagged)
+		tagListener := listener.NewTaggedListener(dst, metadataHandler.OnTagged)
 		if _, err = oras.TagN(ctx, tagListener, opts.To.Reference, opts.extraRefs, tagNOpts); err != nil {
 			return err
 		}

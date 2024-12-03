@@ -157,7 +157,8 @@ func (ch *TextCopyHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget,
 }
 
 // StopTracking ends the copy tracking for the target.
-func (ch *TextCopyHandler) StopTracking() {
+func (ch *TextCopyHandler) StopTracking() error {
+	return nil
 }
 
 // OnCopySkipped is called when an object already exists.
