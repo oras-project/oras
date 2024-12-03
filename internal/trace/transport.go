@@ -99,7 +99,7 @@ func logHeader(header http.Header) string {
 
 // TODO: test and docs
 func logResponseBody(resp *http.Response) string {
-	if resp.Body == nil || resp.ContentLength <= 0 || resp.Body == http.NoBody {
+	if resp.Body == nil || resp.Body == http.NoBody || resp.ContentLength <= 0 {
 		return ""
 	}
 	contentType := resp.Header.Get("Content-Type")
