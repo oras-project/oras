@@ -36,8 +36,8 @@ var (
 	}
 )
 
+// payloadSizeLimit limits the maximum size of the response body to be printed.
 const payloadSizeLimit int64 = 4 * 1024 * 1024 // 4 MiB
-// const payloadSizeLimit int64 = 8 // TEST
 
 // Transport is an http.RoundTripper that keeps track of the in-flight
 // request and add hooks to report HTTP tracing events.
@@ -112,13 +112,19 @@ func logResponseBody(resp *http.Response) string {
 	}
 
 	var builder strings.Builder
-	tr := io.TeeReader(resp.Body, &builder)
+	// It is possible that the actual body size is smaller or larger than the content length.
+	// In case of smaller, we just print the body and do not error out.
+	// In case of larger, we only print the part that is within the content length for security consideration.
+	lr := io.LimitReader(resp.Body, resp.ContentLength)
+	tr := io.TeeReader(lr, &builder)
 	bodyBytes, err := io.ReadAll(tr)
 	if err != nil {
 		return fmt.Sprintf("   Error reading response body: %v", err)
 	}
-	resp.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 
+	// Note: if the size of the read body bytes mismatches the content length,
+	// the subsequent response processing might be broken.
+	resp.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 	return builder.String()
 }
 
