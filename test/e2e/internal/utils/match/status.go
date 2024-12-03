@@ -77,6 +77,9 @@ func newStateMachine(cmd string) *stateMachine {
 		sm.addPath("Skipped")
 		sm.addPath("Exists")
 		sm.addPath("Mounted")
+	case "manifest", "blob": // for `manifest push` and `blob push`
+		sm.addPath("Uploading", "Uploaded")
+		sm.addPath("Exists")
 	default:
 		ginkgo.Fail("Unrecognized cmd name " + cmd)
 	}
