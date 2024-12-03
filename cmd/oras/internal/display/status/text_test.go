@@ -194,6 +194,14 @@ func TestTextPushHandler_PreCopy(t *testing.T) {
 	validatePrinted(t, "Uploading 0b442c23c1dd oci-image")
 }
 
+func TestTextManifestPushHandler_OnManifestExists(t *testing.T) {
+	mph := NewTextManifestPushHandler(printer)
+	if mph.OnManifestExists(ocispec.Descriptor{}) != nil {
+		t.Error("OnManifestExists() should not return an error")
+	}
+	validatePrinted(t, "")
+}
+
 func TestTextManifestIndexUpdateHandler_OnManifestAdded(t *testing.T) {
 	tests := []struct {
 		name    string
