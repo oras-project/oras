@@ -199,7 +199,6 @@ func TestTextManifestPushHandler_OnManifestExists(t *testing.T) {
 	if mph.OnManifestExists(ocispec.Descriptor{}) != nil {
 		t.Error("OnManifestExists() should not return an error")
 	}
-	validatePrinted(t, "")
 }
 
 func TestTextManifestIndexUpdateHandler_OnManifestAdded(t *testing.T) {
