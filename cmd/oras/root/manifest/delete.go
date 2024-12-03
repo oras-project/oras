@@ -98,7 +98,7 @@ func deleteManifest(cmd *cobra.Command, opts *deleteOptions) error {
 		if errors.Is(err, errdef.ErrNotFound) {
 			if opts.Force && !opts.OutputDescriptor {
 				// ignore nonexistent
-				_ = opts.Println("Missing", opts.RawReference)
+				_ = opts.Printer.Println("Missing", opts.RawReference)
 				return nil
 			}
 			return fmt.Errorf("%s: the specified manifest does not exist", opts.RawReference)
@@ -127,7 +127,7 @@ func deleteManifest(cmd *cobra.Command, opts *deleteOptions) error {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	_ = opts.Println("Deleted", opts.AnnotatedReference())
+	_ = opts.Printer.Println("Deleted", opts.AnnotatedReference())
 
 	return nil
 }

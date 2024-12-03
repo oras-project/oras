@@ -79,9 +79,9 @@ func runResolve(cmd *cobra.Command, opts *resolveOptions) error {
 	}
 
 	if opts.fullRef {
-		_ = opts.Printf("%s@%s\n", opts.Path, desc.Digest)
+		_ = opts.Printer.Printf("%s@%s\n", opts.Path, desc.Digest)
 	} else {
-		_ = opts.Println(desc.Digest.String())
+		_ = opts.Printer.Println(desc.Digest.String())
 	}
 
 	return nil

@@ -48,6 +48,7 @@ type pushOptions struct {
 	extraRefs   []string
 	fileRef     string
 	mediaType   string
+	verbose     bool
 }
 
 func pushCmd() *cobra.Command {
@@ -96,10 +97,10 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 			refs := strings.Split(args[0], ",")
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
-			opts.Verbose = opts.Verbose && !opts.OutputDescriptor
 			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.Printer.Verbose = opts.verbose && !opts.OutputDescriptor
 			return pushManifest(cmd, opts)
 		},
 	}
@@ -108,6 +109,7 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 	option.ApplyFlags(&opts, cmd.Flags())
 	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", "", "media type of manifest")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "print status output for unnamed blobs")
 	return oerrors.Command(cmd, &opts.Target)
 }
 

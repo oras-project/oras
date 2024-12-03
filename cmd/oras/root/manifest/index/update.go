@@ -102,7 +102,7 @@ Example - Update an index and output the index to stdout, auto push will be disa
 func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	// if no update flag is used, do nothing
 	if !updateFlagsUsed(cmd.Flags()) {
-		opts.Println("Nothing to update as no change is requested")
+		opts.Printer.Println("Nothing to update as no change is requested")
 		return nil
 	}
 	ctx, logger := command.GetLogger(cmd, &opts.Common)

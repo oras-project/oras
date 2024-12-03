@@ -52,6 +52,7 @@ type pullOptions struct {
 	PathTraversal     bool
 	Output            string
 	ManifestConfigRef string
+	verbose           bool
 }
 
 func pullCmd() *cobra.Command {
@@ -101,6 +102,7 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.Printer.Verbose = opts.verbose
 			return runPull(cmd, &opts)
 		},
 	}
@@ -111,6 +113,7 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 	cmd.Flags().StringVarP(&opts.Output, "output", "o", ".", "output directory")
 	cmd.Flags().StringVarP(&opts.ManifestConfigRef, "config", "", "", "output manifest config file")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "print status output for unnamed blobs")
 	opts.SetTypes(option.FormatTypeText, option.FormatTypeJSON, option.FormatTypeGoTemplate)
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)

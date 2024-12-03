@@ -42,6 +42,7 @@ type pushBlobOptions struct {
 	fileRef   string
 	mediaType string
 	size      int64
+	verbose   bool
 }
 
 func pushCmd() *cobra.Command {
@@ -87,16 +88,17 @@ Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
 					return errors.New("`--size` must be provided if the blob is read from stdin")
 				}
 			}
-			opts.Verbose = opts.Verbose && !opts.OutputDescriptor
 			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.Printer.Verbose = opts.verbose && !opts.OutputDescriptor
 			return pushBlob(cmd, &opts)
 		},
 	}
 
 	cmd.Flags().Int64VarP(&opts.size, "size", "", -1, "provide the blob size")
 	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", ocispec.MediaTypeImageLayer, "specify the returned media type in the descriptor if --descriptor is used")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "print status output for unnamed blobs")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
@@ -121,7 +123,7 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 		return err
 	}
 	if exists {
-		err = opts.PrintStatus(desc, "Exists")
+		err = opts.Printer.PrintStatus(desc, "Exists")
 	} else {
 		err = opts.doPush(ctx, opts.Printer, target, desc, rc)
 	}
@@ -137,8 +139,8 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	_ = opts.Println("Pushed", opts.AnnotatedReference())
-	_ = opts.Println("Digest:", desc.Digest)
+	_ = opts.Printer.Println("Pushed", opts.AnnotatedReference())
+	_ = opts.Printer.Println("Digest:", desc.Digest)
 
 	return nil
 }
