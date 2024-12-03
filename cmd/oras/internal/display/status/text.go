@@ -197,18 +197,15 @@ func NewTextManifestPushHandler(printer *output.Printer) ManifestPushHandler {
 }
 
 func (mph *TextManifestPushHandler) OnManifestExists(desc ocispec.Descriptor) error {
-	name, _ := descriptor.GetTitleOrMediaType(desc)
-	return mph.printer.Println(PushPromptExists, descriptor.ShortDigest(desc), name)
+	return mph.printer.PrintStatus(desc, PushPromptExists)
 }
 
 func (mph *TextManifestPushHandler) OnManifestUploading(desc ocispec.Descriptor) error {
-	name, _ := descriptor.GetTitleOrMediaType(desc)
-	return mph.printer.Println(PushPromptUploading, descriptor.ShortDigest(desc), name)
+	return mph.printer.PrintStatus(desc, PushPromptUploading)
 }
 
 func (mph *TextManifestPushHandler) OnManifestUploaded(desc ocispec.Descriptor) error {
-	name, _ := descriptor.GetTitleOrMediaType(desc)
-	return mph.printer.Println(PushPromptUploaded, descriptor.ShortDigest(desc), name)
+	return mph.printer.PrintStatus(desc, PushPromptUploaded)
 }
 
 func (mph *TextManifestPushHandler) OnManifestPushed(ref string) error {
