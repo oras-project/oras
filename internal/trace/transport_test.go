@@ -148,7 +148,7 @@ func Test_logResponseBody(t *testing.T) {
 		{
 			name: "Body larger than limit",
 			resp: &http.Response{
-				Body:          io.NopCloser(strings.NewReader(strings.Repeat("a", int(payloadSizeLimit+1)))),
+				Body:          io.NopCloser(strings.NewReader(strings.Repeat("a", int(payloadSizeLimit+1)))), // 1 byte larger than limit
 				ContentLength: payloadSizeLimit + 1,
 				Header:        http.Header{"Content-Type": []string{"text/plain"}},
 			},
@@ -167,16 +167,25 @@ func Test_logResponseBody(t *testing.T) {
 			name: "Actual body size is larger than content length",
 			resp: &http.Response{
 				Body:          io.NopCloser(strings.NewReader("data")),
-				ContentLength: 3,
+				ContentLength: 3, // mismatched content length
 				Header:        http.Header{"Content-Type": []string{"text/plain"}},
 			},
-			want: "dat",
+			want: "data",
+		},
+		{
+			name: "Actual body size is larger than content length and exceeds limit",
+			resp: &http.Response{
+				Body:          io.NopCloser(strings.NewReader(strings.Repeat("a", int(payloadSizeLimit+1)))), // 1 byte larger than limit
+				ContentLength: 1,                                                                             // mismatched content length
+				Header:        http.Header{"Content-Type": []string{"text/plain"}},
+			},
+			want: strings.Repeat("a", int(payloadSizeLimit)),
 		},
 		{
 			name: "Actual body size is smaller than content length",
 			resp: &http.Response{
 				Body:          io.NopCloser(strings.NewReader("data")),
-				ContentLength: 5,
+				ContentLength: 5, // mismatched content length
 				Header:        http.Header{"Content-Type": []string{"text/plain"}},
 			},
 			want: "data",

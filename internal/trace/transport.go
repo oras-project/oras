@@ -100,11 +100,13 @@ func logHeader(header http.Header) string {
 // logResponseBody prints out the response body if it is printable and within
 // the size limit.
 // TODO: review tests
+// TODO: what about seek case?
 func logResponseBody(resp *http.Response) string {
 	if resp.Body == nil || resp.Body == http.NoBody || resp.ContentLength == 0 {
 		return "   No response body to print"
 	}
 
+	// non-applicable body is not printed and remains untouched for subsequent processing
 	contentType := resp.Header.Get("Content-Type")
 	if !isPrintableContentType(contentType) {
 		return fmt.Sprintf("   Response body of content type \"%s\" is not printed", contentType)
@@ -116,22 +118,18 @@ func logResponseBody(resp *http.Response) string {
 		return fmt.Sprintf("   Response body larger than %d bytes is not printed", payloadSizeLimit)
 	}
 
-	// It is possible that the actual body size is smaller or larger than the content length.
-	// In case of smaller, we just print the body and do not error out.
-	// In case of larger, we only print the part that is within the limit for security consideration.
-	limit := payloadSizeLimit
-	if resp.ContentLength < limit {
-		limit = resp.ContentLength
-	}
+	// Note: Even if the actual body size mismatches the content length, we still print the body for debugging purposes.
+	// If the actual body size exceeds the limit, the body will be truncated to limit.
+	// In this case, the response processing subsequent to logging might be broken.
+	// TODO: can we tell the body is truncated?
 	defer resp.Body.Close()
-	lr := io.LimitReader(resp.Body, limit)
+	lr := io.LimitReader(resp.Body, payloadSizeLimit)
 	bodyBytes, err := io.ReadAll(lr)
 	if err != nil {
 		return fmt.Sprintf("   Error reading response body: %v", err)
 	}
 
-	// Note: if the size of the read body bytes mismatches the content length,
-	// the subsequent response processing might be broken.
+	// reset the body for subsequent processing
 	resp.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 	return string(bodyBytes)
 }
