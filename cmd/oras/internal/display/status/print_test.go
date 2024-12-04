@@ -16,7 +16,7 @@ limitations under the License.
 package status
 
 import (
-	"fmt"
+	"errors"
 	"strconv"
 	"strings"
 	"testing"
@@ -33,7 +33,7 @@ func (mw *mockWriter) Write(p []byte) (n int, err error) {
 		return len(string(p)), nil
 	}
 	mw.errorCount++
-	return 0, fmt.Error("Boom: " + string(p))
+	return 0, errors.New("Boom: " + string(p))
 }
 
 func (mw *mockWriter) String() string {
