@@ -100,18 +100,18 @@ func (DiscardHandler) OnFetched(string, ocispec.Descriptor) error {
 	return nil
 }
 
-// OnManifestExists implements ManifestPushHandler.
-func (DiscardHandler) OnManifestExists(desc ocispec.Descriptor) error {
+// OnPushSkipped implements ManifestPushHandler.
+func (DiscardHandler) OnPushSkipped() error {
 	return nil
 }
 
 // OnManifestUploading implements ManifestPushHandler.
-func (DiscardHandler) OnManifestUploading(desc ocispec.Descriptor) error {
+func (DiscardHandler) OnManifestUploading() error {
 	return nil
 }
 
 // OnManifestUploaded implements ManifestPushHandler.
-func (DiscardHandler) OnManifestUploaded(desc ocispec.Descriptor) error {
+func (DiscardHandler) OnManifestUploaded() error {
 	return nil
 }
 

@@ -28,9 +28,9 @@ func TestDiscardHandler_OnManifestPushed(t *testing.T) {
 	}
 }
 
-func TestDiscardHandler_OnManifestExists(t *testing.T) {
+func TestDiscardHandler_OnPushSkipped(t *testing.T) {
 	testDiscard := NewDiscardHandler()
-	if err := testDiscard.OnManifestExists(v1.Descriptor{}); err != nil {
+	if err := testDiscard.OnPushSkipped(); err != nil {
 		t.Errorf("DiscardHandler.OnIndexExists() error = %v, wantErr nil", err)
 	}
 }

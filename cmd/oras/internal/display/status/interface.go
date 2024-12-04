@@ -66,9 +66,9 @@ type CopyHandler interface {
 
 // ManifestPushHandler handles status output for manifest push command.
 type ManifestPushHandler interface {
-	OnManifestExists(desc ocispec.Descriptor) error
-	OnManifestUploading(desc ocispec.Descriptor) error
-	OnManifestUploaded(desc ocispec.Descriptor) error
+	OnPushSkipped() error
+	OnManifestUploading() error
+	OnManifestUploaded() error
 	OnManifestPushed(ref string) error
 }
 

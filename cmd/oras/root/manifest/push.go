@@ -147,10 +147,10 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		}
 	}
 
-	displayStatus, displayMetadata := display.NewManifestPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty)
-
 	// prepare manifest descriptor
 	desc := content.NewDescriptorFromBytes(mediaType, contentBytes)
+
+	displayStatus, displayMetadata := display.NewManifestPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc, opts.Target)
 
 	ref := opts.Reference
 	if ref == "" {
@@ -161,17 +161,17 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		return err
 	}
 	if match {
-		if err := displayStatus.OnManifestExists(desc); err != nil {
+		if err := displayStatus.OnPushSkipped(); err != nil {
 			return err
 		}
 	} else {
-		if err = displayStatus.OnManifestUploading(desc); err != nil {
+		if err = displayStatus.OnManifestUploading(); err != nil {
 			return err
 		}
 		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil {
 			return err
 		}
-		if err = displayStatus.OnManifestUploaded(desc); err != nil {
+		if err = displayStatus.OnManifestUploaded(); err != nil {
 			return err
 		}
 	}

@@ -185,27 +185,28 @@ func (ch *TextCopyHandler) OnMounted(_ context.Context, desc ocispec.Descriptor)
 
 // TextManifestPushHandler handles text status output for manifest push events.
 type TextManifestPushHandler struct {
+	desc    ocispec.Descriptor
 	printer *output.Printer
 }
 
 // NewTextManifestPushHandler returns a new handler for manifest push command.
-func NewTextManifestPushHandler(printer *output.Printer) ManifestPushHandler {
-	tmich := TextManifestPushHandler{
+func NewTextManifestPushHandler(printer *output.Printer, desc ocispec.Descriptor) ManifestPushHandler {
+	return &TextManifestPushHandler{
+		desc:    desc,
 		printer: printer,
 	}
-	return &tmich
 }
 
-func (mph *TextManifestPushHandler) OnManifestExists(desc ocispec.Descriptor) error {
-	return mph.printer.PrintStatus(desc, PushPromptExists)
+func (mph *TextManifestPushHandler) OnPushSkipped() error {
+	return mph.printer.PrintStatus(mph.desc, PushPromptExists)
 }
 
-func (mph *TextManifestPushHandler) OnManifestUploading(desc ocispec.Descriptor) error {
-	return mph.printer.PrintStatus(desc, PushPromptUploading)
+func (mph *TextManifestPushHandler) OnManifestUploading() error {
+	return mph.printer.PrintStatus(mph.desc, PushPromptUploading)
 }
 
-func (mph *TextManifestPushHandler) OnManifestUploaded(desc ocispec.Descriptor) error {
-	return mph.printer.PrintStatus(desc, PushPromptUploaded)
+func (mph *TextManifestPushHandler) OnManifestUploaded() error {
+	return mph.printer.PrintStatus(mph.desc, PushPromptUploaded)
 }
 
 func (mph *TextManifestPushHandler) OnManifestPushed(ref string) error {
