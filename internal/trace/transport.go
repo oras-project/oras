@@ -58,10 +58,6 @@ func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error
 	ctx := req.Context()
 	e := Logger(ctx)
 
-	// TEST: to be removed
-	e = e.WithField("host", req.Host)
-	e = e.WithField("testkey", 123)
-
 	// log the request
 	e.Debugf("--> Request #%d\n> Request URL: %q\n> Request method: %q\n> Request headers:\n%s",
 		id, req.URL, req.Method, logHeader(req.Header))
