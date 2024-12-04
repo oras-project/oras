@@ -158,7 +158,7 @@ func Test_doCopy_skipped(t *testing.T) {
 	dst := memory.New()
 	builder := &strings.Builder{}
 	printer := output.NewPrinter(builder, os.Stderr)
-	handler := status.NewTextCopyHandler(printer, dst)
+	handler := status.NewTextCopyHandler(printer, memStore)
 
 	// test
 	_, err = doCopy(context.Background(), handler, memStore, memStore, &opts)
