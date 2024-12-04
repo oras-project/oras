@@ -99,25 +99,33 @@ func logHeader(header http.Header) string {
 
 // logResponseBody prints out the response body if it is printable and within
 // the size limit.
+// TODO: review tests
 func logResponseBody(resp *http.Response) string {
-	if resp.Body == nil || resp.Body == http.NoBody || resp.ContentLength <= 0 {
-		return ""
-	}
-	contentType := resp.Header.Get("Content-Type")
-	if !isPrintableContentType(contentType) {
-		return fmt.Sprintf("   Body of content type \"%s\" is not printed", contentType)
-	}
-	if resp.ContentLength > payloadSizeLimit {
-		return fmt.Sprintf("   Body larger than %d bytes is not printed", payloadSizeLimit)
+	if resp.Body == nil || resp.Body == http.NoBody || resp.ContentLength == 0 {
+		return "   No response body to print"
 	}
 
-	var builder strings.Builder
+	contentType := resp.Header.Get("Content-Type")
+	if !isPrintableContentType(contentType) {
+		return fmt.Sprintf("   Response body of content type \"%s\" is not printed", contentType)
+	}
+	if resp.ContentLength < 0 {
+		return "   Response body of unknown content length is not printed"
+	}
+	if resp.ContentLength > payloadSizeLimit {
+		return fmt.Sprintf("   Response body larger than %d bytes is not printed", payloadSizeLimit)
+	}
+
 	// It is possible that the actual body size is smaller or larger than the content length.
 	// In case of smaller, we just print the body and do not error out.
-	// In case of larger, we only print the part that is within the content length for security consideration.
-	lr := io.LimitReader(resp.Body, resp.ContentLength)
-	tr := io.TeeReader(lr, &builder)
-	bodyBytes, err := io.ReadAll(tr)
+	// In case of larger, we only print the part that is within the limit for security consideration.
+	limit := payloadSizeLimit
+	if resp.ContentLength < limit {
+		limit = resp.ContentLength
+	}
+	defer resp.Body.Close()
+	lr := io.LimitReader(resp.Body, limit)
+	bodyBytes, err := io.ReadAll(lr)
 	if err != nil {
 		return fmt.Sprintf("   Error reading response body: %v", err)
 	}
@@ -125,7 +133,7 @@ func logResponseBody(resp *http.Response) string {
 	// Note: if the size of the read body bytes mismatches the content length,
 	// the subsequent response processing might be broken.
 	resp.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-	return builder.String()
+	return string(bodyBytes)
 }
 
 // isPrintableContentType returns true if the content of contentType is printable.

@@ -104,32 +104,37 @@ func Test_logResponseBody(t *testing.T) {
 		{
 			name: "Nil body",
 			resp: &http.Response{
-				Body: nil,
+				Body:   nil,
+				Header: http.Header{"Content-Type": []string{"application/json"}},
 			},
-			want: "",
+			want: "   No response body to print",
 		},
 		{
 			name: "No body",
 			resp: &http.Response{
-				Body: http.NoBody,
+				Body:          http.NoBody,
+				ContentLength: 100,
+				Header:        http.Header{"Content-Type": []string{"application/json"}},
 			},
-			want: "",
+			want: "   No response body to print",
 		},
 		{
 			name: "Empty body",
 			resp: &http.Response{
 				Body:          io.NopCloser(strings.NewReader("")),
 				ContentLength: 0,
+				Header:        http.Header{"Content-Type": []string{"text/plain"}},
 			},
-			want: "",
+			want: "   No response body to print",
 		},
 		{
 			name: "Unknown content length",
 			resp: &http.Response{
 				Body:          io.NopCloser(strings.NewReader("whatever")),
 				ContentLength: -1,
+				Header:        http.Header{"Content-Type": []string{"text/plain"}},
 			},
-			want: "",
+			want: "   Response body of unknown content length is not printed",
 		},
 		{
 			name: "Non-printable content type",
@@ -138,7 +143,7 @@ func Test_logResponseBody(t *testing.T) {
 				ContentLength: 10,
 				Header:        http.Header{"Content-Type": []string{"application/octet-stream"}},
 			},
-			want: "   Body of content type \"application/octet-stream\" is not printed",
+			want: "   Response body of content type \"application/octet-stream\" is not printed",
 		},
 		{
 			name: "Body larger than limit",
@@ -147,16 +152,16 @@ func Test_logResponseBody(t *testing.T) {
 				ContentLength: payloadSizeLimit + 1,
 				Header:        http.Header{"Content-Type": []string{"text/plain"}},
 			},
-			want: fmt.Sprintf("   Body larger than %d bytes is not printed", payloadSizeLimit),
+			want: fmt.Sprintf("   Response body larger than %d bytes is not printed", payloadSizeLimit),
 		},
 		{
 			name: "Printable content type within limit",
 			resp: &http.Response{
-				Body:          io.NopCloser(strings.NewReader("printable data")),
-				ContentLength: int64(len("printable data")),
+				Body:          io.NopCloser(strings.NewReader("data")),
+				ContentLength: int64(len("data")),
 				Header:        http.Header{"Content-Type": []string{"text/plain"}},
 			},
-			want: "printable data",
+			want: "data",
 		},
 		{
 			name: "Actual body size is larger than content length",
