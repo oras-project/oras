@@ -97,13 +97,16 @@ func TestTTYCopyHandler_OnMounted(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer ch.StopTracking()
 
 	if err = ch.OnMounted(ctx, mockFetcher.OciImage); err != nil {
-		t.Errorf("OnMounted() should not return an error: %v", err)
+		t.Fatalf("OnMounted() should not return an error: %v", err)
 	}
 
-	if err = testutils.MatchPty(pty, slave, "\x1b[?25l\x1b7\x1b[0m"); err != nil {
+	if err = ch.StopTracking(); err != nil {
+		t.Fatalf("StopTracking() should not return an error: %v", err)
+	}
+
+	if err = testutils.MatchPty(pty, slave, "✓", "Mounted", strconv.FormatInt(mockFetcher.OciImage.Size, 10), "100%", mockFetcher.OciImage.Digest.String()); err != nil {
 		t.Fatal(err)
 	}
 }
