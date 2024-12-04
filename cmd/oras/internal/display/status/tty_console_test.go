@@ -106,7 +106,7 @@ func TestTTYCopyHandler_OnMounted(t *testing.T) {
 		t.Fatalf("StopTracking() should not return an error: %v", err)
 	}
 
-	if err = testutils.MatchPty(pty, slave, "✓", "Mounted", strconv.FormatInt(mockFetcher.OciImage.Size, 10), "100%", mockFetcher.OciImage.Digest.String()); err != nil {
+	if err = testutils.MatchPty(pty, slave, "✓", "Mounted", strconv.FormatInt(mockFetcher.OciImage.Size, 10), "100.00%", mockFetcher.OciImage.Digest.String()); err != nil {
 		t.Fatal(err)
 	}
 }
