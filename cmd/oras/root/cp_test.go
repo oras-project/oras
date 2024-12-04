@@ -155,7 +155,6 @@ func Test_doCopy_skipped(t *testing.T) {
 	var opts copyOptions
 	opts.TTY = slave
 	opts.From.Reference = memDesc.Digest.String()
-	dst := memory.New()
 	builder := &strings.Builder{}
 	printer := output.NewPrinter(builder, os.Stderr)
 	handler := status.NewTextCopyHandler(printer, memStore)
