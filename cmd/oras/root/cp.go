@@ -174,7 +174,12 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 	if err != nil {
 		return desc, err
 	}
-	defer copyHandler.StopTracking()
+	defer func() {
+		stopErr := copyHandler.StopTracking()
+		if err == nil {
+			err = stopErr
+		}
+	}()
 	extendedCopyOptions.OnCopySkipped = copyHandler.OnCopySkipped
 	extendedCopyOptions.PreCopy = copyHandler.PreCopy
 	extendedCopyOptions.PostCopy = copyHandler.PostCopy

@@ -127,8 +127,10 @@ func TestTTYCopyHandler_OnCopySkipped(t *testing.T) {
 		t.Errorf("OnCopySkipped() should not return an error: %v", err)
 	}
 
-	ch.StopTracking()
-	if err = testutils.MatchPty(pty, slave, "Exists", mockFetcher.OciImage.MediaType, strconv.FormatInt(mockFetcher.OciImage.Size, 10), "100%"); err != nil {
+	if err = ch.StopTracking(); err != nil {
+		t.Errorf("StopTracking() should not return an error: %v", err)
+	}
+	if err = testutils.MatchPty(pty, slave, "Exists", "oci-image", strconv.FormatInt(mockFetcher.OciImage.Size, 10), "100.00%"); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -144,12 +146,14 @@ func TestTTYCopyHandler_PostCopy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer ch.StopTracking()
 
 	if ch.PostCopy(ctx, bogus) == nil {
 		t.Error("PostCopy() should return an error")
 	}
 
+	if err = ch.StopTracking(); err != nil {
+		t.Errorf("StopTracking() should not return an error: %v", err)
+	}
 	if err = testutils.MatchPty(pty, slave, "\x1b[?25l\x1b7\x1b[0m"); err != nil {
 		t.Fatal(err)
 	}
@@ -166,12 +170,14 @@ func TestTTYCopyHandler_PreCopy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer ch.StopTracking()
 
 	if err = ch.PreCopy(ctx, mockFetcher.OciImage); err != nil {
 		t.Errorf("PreCopy() should not return an error: %v", err)
 	}
 
+	if err = ch.StopTracking(); err != nil {
+		t.Errorf("StopTracking() should not return an error: %v", err)
+	}
 	if err = testutils.MatchPty(pty, slave, "\x1b[?25l\x1b7\x1b[0m"); err != nil {
 		t.Fatal(err)
 	}
