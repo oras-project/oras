@@ -168,7 +168,7 @@ func Test_logResponseBody(t *testing.T) {
 		{
 			name: "Body at the limit",
 			resp: &http.Response{
-				Body:          io.NopCloser(bytes.NewReader(bytes.Repeat([]byte("a"), int(payloadSizeLimit)))), // 1 byte larger than limit
+				Body:          io.NopCloser(bytes.NewReader(bytes.Repeat([]byte("a"), int(payloadSizeLimit)))),
 				ContentLength: payloadSizeLimit,
 				Header:        http.Header{"Content-Type": []string{"text/plain"}},
 			},
