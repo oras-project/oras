@@ -26,10 +26,11 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
+	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/cmd/oras/internal/display/status/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/file"
 )
 
@@ -118,14 +119,16 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 	}
 	defer rc.Close()
 
+	displayStatus := display.NewBlobPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc)
+
 	exists, err := target.Exists(ctx, desc)
 	if err != nil {
 		return err
 	}
 	if exists {
-		err = opts.Printer.PrintStatus(desc, "Exists")
+		err = displayStatus.OnPushSkipped()
 	} else {
-		err = opts.doPush(ctx, opts.Printer, target, desc, rc)
+		err = opts.doPush(ctx, displayStatus, target, desc, rc)
 	}
 	if err != nil {
 		return err
@@ -144,16 +147,16 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 
 	return nil
 }
-func (opts *pushBlobOptions) doPush(ctx context.Context, printer *output.Printer, t oras.Target, desc ocispec.Descriptor, r io.Reader) error {
+func (opts *pushBlobOptions) doPush(ctx context.Context, displayStatus status.BlobPushHandler, t oras.Target, desc ocispec.Descriptor, r io.Reader) error {
 	if opts.TTY == nil {
 		// none TTY output
-		if err := printer.PrintStatus(desc, "Uploading"); err != nil {
+		if err := displayStatus.OnBlobUploading(); err != nil {
 			return err
 		}
 		if err := t.Push(ctx, desc, r); err != nil {
 			return err
 		}
-		return printer.PrintStatus(desc, "Uploaded ")
+		return displayStatus.OnBlobUploaded()
 	}
 
 	// TTY output

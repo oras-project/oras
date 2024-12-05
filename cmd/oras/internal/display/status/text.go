@@ -272,3 +272,32 @@ func (miuh *TextManifestIndexUpdateHandler) OnIndexPacked(desc ocispec.Descripto
 func (miuh *TextManifestIndexUpdateHandler) OnIndexPushed(indexRef string) error {
 	return miuh.printer.Println(IndexPromptPushed, indexRef)
 }
+
+// TextBlobPushHandler handles text status output for blob push events.
+type TextBlobPushHandler struct {
+	desc    ocispec.Descriptor
+	printer *output.Printer
+}
+
+// NewTextBlobPushHandler returns a new handler for blob push command.
+func NewTextBlobPushHandler(printer *output.Printer, desc ocispec.Descriptor) BlobPushHandler {
+	return &TextBlobPushHandler{
+		desc:    desc,
+		printer: printer,
+	}
+}
+
+// OnPushSkipped implements BlobPushHandler.
+func (mph *TextBlobPushHandler) OnPushSkipped() error {
+	return mph.printer.PrintStatus(mph.desc, PushPromptExists)
+}
+
+// OnBlobUploading implements BlobPushHandler.
+func (mph *TextBlobPushHandler) OnBlobUploading() error {
+	return mph.printer.PrintStatus(mph.desc, PushPromptUploading)
+}
+
+// OnBlobUploaded implements BlobPushHandler.
+func (mph *TextBlobPushHandler) OnBlobUploaded() error {
+	return mph.printer.PrintStatus(mph.desc, PushPromptUploaded)
+}

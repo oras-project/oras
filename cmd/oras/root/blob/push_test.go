@@ -23,6 +23,7 @@ import (
 	"os"
 	"testing"
 
+	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/cmd/oras/internal/output"
 
 	"github.com/opencontainers/go-digest"
@@ -50,7 +51,7 @@ func Test_pushBlobOptions_doPush(t *testing.T) {
 	var opts pushBlobOptions
 	opts.Common.TTY = device
 	// test
-	err = opts.doPush(context.Background(), printer, src, desc, r)
+	err = opts.doPush(context.Background(), status.NewTextBlobPushHandler(printer, desc), src, desc, r)
 	if err != nil {
 		t.Fatal(err)
 	}

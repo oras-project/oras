@@ -218,3 +218,8 @@ func NewManifestIndexUpdateHandler(outputPath string, printer *output.Printer, p
 func NewCopyHandler(printer *output.Printer, fetcher fetcher.Fetcher) (status.CopyHandler, metadata.CopyHandler) {
 	return status.NewTextCopyHandler(printer, fetcher), text.NewCopyHandler(printer)
 }
+
+// NewBlobPushHandler ???
+func NewBlobPushHandler(printer *output.Printer, outputDescriptor bool, pretty bool, desc ocispec.Descriptor) status.BlobPushHandler {
+	return status.NewTextBlobPushHandler(printer, desc)
+}
