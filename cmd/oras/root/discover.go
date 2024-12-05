@@ -61,10 +61,10 @@ Example - Discover referrers via referrers API:
 Example - Discover referrers via tag scheme:
   oras discover --distribution-spec v1.1-referrers-tag localhost:5000/hello:v1
 
-Example - Discover referrers and display in a table view:
+Example - [Experimental] Discover referrers and display in a table view:
   oras discover localhost:5000/hello:v1 --format table
 
-Example - Discover referrers and format output with Go template:
+Example - [Experimental] Discover referrers and format output with Go template:
   oras discover localhost:5000/hello:v1 --format go-template --template "{{.manifests}}"
 
 Example - Discover all the referrers of manifest with annotations, displayed in a tree view:

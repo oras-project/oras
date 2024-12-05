@@ -44,13 +44,12 @@ type attachOptions struct {
 
 	artifactType string
 	concurrency  int
-	verbose      bool
 }
 
 func attachCmd() *cobra.Command {
 	var opts attachOptions
 	cmd := &cobra.Command{
-		Use:   "attach [flags] --artifact-type=<type> <name>{:<tag>|@<digest>} {<file>[:<layer_media_type>]|--annotation <key>=<value>} [...]",
+		Use:   "attach [flags] --artifact-type=<type> <name>{:<tag>|@<digest>} <file>[:<layer_media_type>] [...]",
 		Short: "[Preview] Attach files to an existing artifact",
 		Long: `[Preview] Attach files to an existing artifact
 
@@ -78,10 +77,10 @@ Example - Attach an artifact with manifest annotations:
 Example - Attach file 'hi.txt' and add manifest annotations:
   oras attach --artifact-type doc/example --annotation "key=val" localhost:5000/hello:v1 hi.txt
 
-Example - Attach file 'hi.txt' and format output in JSON:
+Example - [Experimental] Attach file 'hi.txt' and format output in JSON:
   oras attach --artifact-type doc/example localhost:5000/hello:v1 hi.txt --format json
 
-Example - Attach file 'hi.txt' and format output with Go template:
+Example - [Experimental] Attach file 'hi.txt' and format output with Go template:
   oras attach --artifact-type doc/example localhost:5000/hello:v1 hi.txt --format go-template --template "{{.digest}}"
 
 Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json':
@@ -94,41 +93,38 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
 			opts.FileRefs = args[1:]
-			err := option.Parse(cmd, &opts)
-			if err == nil {
-				if err = opts.EnsureReferenceNotEmpty(cmd, true); err == nil {
-					return nil
-				}
+			if err := option.Parse(cmd, &opts); err != nil {
+				return err
 			}
-			if len(opts.FileRefs) == 0 {
-				// no file argument provided
-				if err, ok := err.(*oerrors.Error); ok && err.OperationType == oerrors.OperationTypeParseArtifactReference {
-					// invalid reference
-					err.Recommendation = fmt.Sprintf("Are you missing an artifact reference to attach to? %s", err.Recommendation)
-				}
-			}
-			return err
+			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Printer.Verbose = opts.verbose
 			return runAttach(cmd, &opts)
 		},
 	}
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
-	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "print status output for unnamed blobs")
 	opts.FlagDescription = "[Preview] attach to an arch-specific subject"
 	_ = cmd.MarkFlagRequired("artifact-type")
 	opts.EnableDistributionSpecFlag()
-	opts.SetTypes(option.FormatTypeText, option.FormatTypeJSON, option.FormatTypeGoTemplate)
+	opts.AllowedTypes = []*option.FormatType{option.FormatTypeJSON, option.FormatTypeGoTemplate}
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
 
 func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-	if len(opts.FileRefs) == 0 && len(opts.Annotations[option.AnnotationManifest]) == 0 {
+	displayStatus, displayMetadata, err := display.NewAttachHandler(cmd.OutOrStdout(), opts.Format, opts.TTY, opts.Verbose)
+	if err != nil {
+		return err
+	}
+
+	annotations, err := opts.LoadManifestAnnotations()
+	if err != nil {
+		return err
+	}
+	if len(opts.FileRefs) == 0 && len(annotations[option.AnnotationManifest]) == 0 {
 		return &oerrors.Error{
 			Err:            errors.New(`neither file nor annotation provided in the command`),
 			Usage:          fmt.Sprintf("%s %s", cmd.Parent().CommandPath(), cmd.Use),
@@ -147,6 +143,9 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	if err != nil {
 		return err
 	}
+	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
+		return err
+	}
 	// add both pull and push scope hints for dst repository
 	// to save potential push-scope token requests during copy
 	ctx = registryutil.WithScopeHint(ctx, dst, auth.ActionPull, auth.ActionPush)
@@ -156,11 +155,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	if err != nil {
 		return fmt.Errorf("failed to resolve %s: %w", opts.Reference, err)
 	}
-	displayStatus, displayMetadata, err := display.NewAttachHandler(opts.Printer, opts.Format, opts.TTY, store)
-	if err != nil {
-		return err
-	}
-	descs, err := loadFiles(ctx, store, opts.Annotations, opts.FileRefs, displayStatus)
+	descs, err := loadFiles(ctx, store, annotations, opts.FileRefs, displayStatus)
 	if err != nil {
 		return err
 	}
@@ -172,13 +167,11 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	}
 	graphCopyOptions := oras.DefaultCopyGraphOptions
 	graphCopyOptions.Concurrency = opts.concurrency
-	graphCopyOptions.OnCopySkipped = displayStatus.OnCopySkipped
-	graphCopyOptions.PreCopy = displayStatus.PreCopy
-	graphCopyOptions.PostCopy = displayStatus.PostCopy
+	displayStatus.UpdateCopyOptions(&graphCopyOptions, store)
 
 	packOpts := oras.PackManifestOptions{
 		Subject:             &subject,
-		ManifestAnnotations: opts.Annotations[option.AnnotationManifest],
+		ManifestAnnotations: annotations[option.AnnotationManifest],
 		Layers:              descs,
 	}
 	pack := func() (ocispec.Descriptor, error) {
