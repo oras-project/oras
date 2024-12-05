@@ -86,10 +86,10 @@ Example - Push file "hi.txt" with config type "application/vnd.me.config":
 Example - Push file "hi.txt" with the custom manifest config "config.json" of the custom media type "application/vnd.me.config":
   oras push --config config.json:application/vnd.me.config localhost:5000/hello:v1 hi.txt
 
-Example - Push file "hi.txt" and format output in JSON:
+Example - [Experimental] Push file "hi.txt" and format output in JSON:
   oras push localhost:5000/hello:v1 hi.txt --format json
 
-Example - Push file "hi.txt" and format output with Go template:
+Example - [Experimental] Push file "hi.txt" and format output with Go template:
   oras push localhost:5000/hello:v1 hi.txt --format go-template="{{.digest}}"
 
 Example - Push file to the insecure registry:
@@ -104,7 +104,7 @@ Example - Push repository with manifest annotations:
 Example - Push repository with manifest annotation file:
   oras push --annotation-file annotation.json localhost:5000/hello:v1
 
-Example - Push artifact to repository with platform:
+Example - [Experimental] Push artifact to repository with platform:
   oras push --artifact-platform linux/arm/v5 localhost:5000/hello:v1
 
 Example - Push file "hi.txt" with multiple tags:
