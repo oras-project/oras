@@ -41,9 +41,13 @@ var _ = Describe("ORAS beginners:", func() {
 		RunAndShowPreviewInHelp([]string{"attach"})
 
 		It("should show preview and help doc", func() {
-			out := ORAS("attach", "--help").MatchKeyWords(feature.Preview.Mark+" Attach", feature.Preview.Description, ExampleDesc).Exec()
-			// verbose flag should be hidden in help doc
+			out := ORAS("attach", "--help").MatchKeyWords(feature.Preview.Mark+" Attach", feature.Preview.Description, ExampleDesc).Exec().Out
 			gomega.Expect(out).Should(gbytes.Say("--distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+		})
+
+		It("should not show --verbose in help doc", func() {
+			out := ORAS("push", "--help").MatchKeyWords(ExampleDesc).Exec().Out
+			gomega.Expect(out).ShouldNot(gbytes.Say("--verbose"))
 		})
 
 		It("should show deprecation message and print unnamed status output for --verbose", func() {
@@ -56,7 +60,7 @@ var _ = Describe("ORAS beginners:", func() {
 			}
 			ORAS("attach", "--artifact-type", "test/attach", "--verbose", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				WithWorkDir(PrepareTempFiles()).
-				MatchErrKeyWords(DeprecationMessageVerboseFlag).
+				MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).
 				MatchStatus(stateKeys, true, len(stateKeys)).Exec()
 		})
 
@@ -67,8 +71,8 @@ var _ = Describe("ORAS beginners:", func() {
 			stateKeys := []match.StateKey{foobar.AttachFileStateKey}
 			out := ORAS("attach", "--artifact-type", "test/attach", "--verbose=false", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				WithWorkDir(PrepareTempFiles()).
-				MatchErrKeyWords(DeprecationMessageVerboseFlag).
-				MatchStatus(stateKeys, false, len(stateKeys)).Exec()
+				MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).
+				MatchStatus(stateKeys, false, len(stateKeys)).Exec().Out
 			gomega.Expect(out).ShouldNot(gbytes.Say("application/vnd.oci.empty.v1+json"))
 		})
 

@@ -24,6 +24,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"oras.land/oras/test/e2e/internal/testdata/feature"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	. "oras.land/oras/test/e2e/internal/utils"
 	"oras.land/oras/test/e2e/internal/utils/match"
@@ -42,7 +43,6 @@ var _ = Describe("ORAS beginners:", func() {
 		When("running `blob push`", func() {
 			It("should not show --verbose in help doc", func() {
 				out := ORAS("push", "--help").MatchKeyWords(ExampleDesc).Exec().Out
-				// verbose flag should be hidden in help doc
 				gomega.Expect(out).ShouldNot(gbytes.Say("--verbose"))
 			})
 
@@ -50,7 +50,7 @@ var _ = Describe("ORAS beginners:", func() {
 				repo := fmt.Sprintf(repoFmt, "push", "test-verbose")
 				ORAS("blob", "push", RegistryRef(ZOTHost, repo, pushDigest), "-", "--size", strconv.Itoa(len(pushContent)), "--verbose").
 					WithInput(strings.NewReader(pushContent)).
-					MatchErrKeyWords(DeprecationMessageVerboseFlag).
+					MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).
 					MatchStatus([]match.StateKey{{Digest: "e1ca41574914", Name: "application/vnd.oci.image.layer.v1.tar"}}, true, 1).
 					Exec()
 			})
@@ -59,8 +59,8 @@ var _ = Describe("ORAS beginners:", func() {
 				repo := fmt.Sprintf(repoFmt, "push", "test-verbose-false")
 				out := ORAS("blob", "push", RegistryRef(ZOTHost, repo, pushDigest), "-", "--size", strconv.Itoa(len(pushContent)), "--verbose=false").
 					WithInput(strings.NewReader(pushContent)).
-					MatchErrKeyWords(DeprecationMessageVerboseFlag).
-					Exec()
+					MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).
+					Exec().Out
 				// should not print status output for unnamed blobs
 				gomega.Expect(out).ShouldNot(gbytes.Say("application/vnd.oci.image.layer.v1.tar"))
 			})

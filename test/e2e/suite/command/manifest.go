@@ -54,16 +54,19 @@ var _ = Describe("ORAS beginners:", func() {
 	When("running manifest command", func() {
 		When("running `manifest push`", func() {
 			It("should show help doc with feature flags", func() {
-				out := ORAS("manifest", "push", "--help").MatchKeyWords(ExampleDesc).Exec()
+				out := ORAS("manifest", "push", "--help").MatchKeyWords(ExampleDesc).Exec().Out
 				gomega.Expect(out).Should(gbytes.Say("--distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
-				// verbose flag should be hidden in help doc
-				gomega.Expect(out).ShouldNot(gbytes.Say("--verbose"))
 			})
 
 			It("should have flag for prettifying JSON output", func() {
 				ORAS("manifest", "push", "--help").
 					MatchKeyWords("--pretty", "prettify JSON").
 					Exec()
+			})
+
+			It("should not show --verbose in help doc", func() {
+				out := ORAS("push", "--help").MatchKeyWords(ExampleDesc).Exec().Out
+				gomega.Expect(out).ShouldNot(gbytes.Say("--verbose"))
 			})
 
 			It("should show deprecation message and print unnamed status output for --verbose", func() {
@@ -73,7 +76,7 @@ var _ = Describe("ORAS beginners:", func() {
 				tag := "test-verbose"
 				ORAS("manifest", "push", RegistryRef(ZOTHost, ImageRepo, tag), "-", "--verbose").
 					WithInput(strings.NewReader(manifest)).
-					MatchErrKeyWords(DeprecationMessageVerboseFlag).
+					MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).
 					MatchKeyWords("Pushed", RegistryRef(ZOTHost, ImageRepo, tag), "Digest:", manifestDigest).
 					MatchStatus([]match.StateKey{{Digest: "bc1a59d49fc7", Name: "application/vnd.oci.image.manifest.v1+json"}}, true, 1).
 					Exec()
@@ -86,9 +89,9 @@ var _ = Describe("ORAS beginners:", func() {
 				tag := "test-verbose-false"
 				out := ORAS("manifest", "push", RegistryRef(ZOTHost, ImageRepo, tag), "-", "--verbose=false").
 					WithInput(strings.NewReader(manifest)).
-					MatchErrKeyWords(DeprecationMessageVerboseFlag).
+					MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).
 					MatchKeyWords("Pushed", RegistryRef(ZOTHost, ImageRepo, tag), "Digest:", manifestDigest).
-					Exec()
+					Exec().Out
 				// should not print status output for unnamed blobs
 				gomega.Expect(out).ShouldNot(gbytes.Say("application/vnd.oci.image.manifest.v1+json"))
 			})
@@ -153,7 +156,7 @@ var _ = Describe("ORAS beginners:", func() {
 
 		When("running `manifest delete`", func() {
 			It("should show help doc with feature flags", func() {
-				out := ORAS("manifest", "delete", "--help").MatchKeyWords(ExampleDesc).Exec()
+				out := ORAS("manifest", "delete", "--help").MatchKeyWords(ExampleDesc).Exec().Out
 				gomega.Expect(out).Should(gbytes.Say("--distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 			})
 

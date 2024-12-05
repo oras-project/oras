@@ -48,15 +48,18 @@ var _ = Describe("ORAS beginners:", func() {
 			Expect(out).Should(gbytes.Say("--from-distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 			Expect(out).Should(gbytes.Say("-r, --recursive\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 			Expect(out).Should(gbytes.Say("--to-distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
-			// verbose flag should be hidden in help doc
-			Expect(out).ShouldNot(gbytes.Say("--verbose"))
+		})
+
+		It("should not show --verbose in help doc", func() {
+			out := ORAS("push", "--help").MatchKeyWords(ExampleDesc).Exec().Out
+			gomega.Expect(out).ShouldNot(gbytes.Say("--verbose"))
 		})
 
 		It("should show deprecation message and print unnamed status output for --verbose", func() {
 			src := RegistryRef(ZOTHost, ArtifactRepo, blob.Tag)
 			dst := RegistryRef(ZOTHost, cpTestRepo("test-verbose"), "copied")
 			ORAS("cp", src, dst, "--verbose").
-				MatchErrKeyWords(DeprecationMessageVerboseFlag).
+				MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).
 				MatchStatus(blob.StateKeys, true, len(blob.StateKeys)).
 				Exec()
 			CompareRef(src, dst)
@@ -69,9 +72,9 @@ var _ = Describe("ORAS beginners:", func() {
 				{Digest: "2ef548696ac7", Name: "hello.tar"},
 			}
 			out := ORAS("cp", src, dst, "--verbose=false").
-				MatchErrKeyWords(DeprecationMessageVerboseFlag).
+				MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).
 				MatchStatus(stateKeys, false, len(stateKeys)).
-				Exec()
+				Exec().Out
 			CompareRef(src, dst)
 			// should not print status output for unnamed blobs
 			gomega.Expect(out).ShouldNot(gbytes.Say("application/vnd.oci.empty.v1+json"))

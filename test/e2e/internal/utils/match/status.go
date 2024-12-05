@@ -78,6 +78,7 @@ func newStateMachine(cmd string) *stateMachine {
 		sm.addPath("Exists")
 		sm.addPath("Mounted")
 	case "manifest", "blob": // for `manifest push` and `blob push`
+		// TODO: refactor the matcher to match the complete arguments like `manifest push`, `manifest delete`, ...
 		sm.addPath("Uploading", "Uploaded")
 		sm.addPath("Exists")
 	default:
