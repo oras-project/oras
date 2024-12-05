@@ -14,7 +14,7 @@ There are two formats of implementation in industry to create a multi-arch image
 - **Docker manifest list**: a manifest list is created from images that are identical in function for different OS/Arch combinations, e.g. [docker.io/bitnami/kubectl:1.31](https://artifact-explorer.azurewebsites.net/artifact?image=docker.io/bitnami/kubectl:1.31). Note that there are some limitations to use Docker manifest list as articulated in the problems statement section below.
 - **OCI image index**: a higher-level manifest which points to specific image manifests, ideal for one or more platforms, e.g. [ghcr.io/oras-project/oras:v1.2.0](https://artifact-explorer.azurewebsites.net/artifact?image=ghcr.io/oras-project/oras:v1.2.0).
 
-![multi-arch image](./img/multi-arch-image.png)
+![multi-arch image](./img/multi-arch.png)
 
 As more and more container registries are fully compliant with the OCI specifications, OCI image index becomes a popular format to create a multi-arch image.
 
