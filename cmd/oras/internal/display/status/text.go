@@ -209,10 +209,6 @@ func (mph *TextManifestPushHandler) OnManifestUploaded() error {
 	return mph.printer.PrintStatus(mph.desc, PushPromptUploaded)
 }
 
-func (mph *TextManifestPushHandler) OnManifestPushed(ref string) error {
-	return mph.printer.Println(PushPromptPushed, ref)
-}
-
 // TextManifestIndexCreateHandler handles text status output for manifest index create events.
 type TextManifestIndexCreateHandler struct {
 	printer *output.Printer

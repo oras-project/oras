@@ -69,7 +69,6 @@ type ManifestPushHandler interface {
 	OnPushSkipped() error
 	OnManifestUploading() error
 	OnManifestUploaded() error
-	OnManifestPushed(ref string) error
 }
 
 // ManifestIndexCreateHandler handles status output for manifest index create command.

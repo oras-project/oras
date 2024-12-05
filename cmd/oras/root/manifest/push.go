@@ -192,7 +192,7 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		}
 		return opts.Output(os.Stdout, descJSON)
 	}
-	if err := displayStatus.OnManifestPushed(opts.AnnotatedReference()); err != nil {
+	if err := displayMetadata.OnManifestPushed(); err != nil {
 		return err
 	}
 	if len(opts.extraRefs) != 0 {
