@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/errdef"
+	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display/status"
@@ -57,7 +58,7 @@ Example - Tag the manifest 'v1.0.1' in 'localhost:5000/hello' to 'v1.0.1', 'v1.0
   oras tag --concurrency 1 localhost:5000/hello:v1.0.1 v1.0.2 latest
 
 Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'layout-dir':
-  oras tag layout-dir:v1.0.1 v1.0.2
+  oras tag --oci-layout layout-dir:v1.0.1 v1.0.2
 `,
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 && (args[0] == "list" || args[0] == "ls") {
@@ -101,6 +102,11 @@ func tagManifest(cmd *cobra.Command, opts *tagOptions) error {
 	target, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
 		return err
+	}
+	if targetRepo, ok := target.(*remote.Repository); ok {
+		// Since referrer capability has not been set or detected yet,
+		// nil is the only returned value and thus can be ignored
+		_ = targetRepo.SetReferrersCapability(true)
 	}
 	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
 		return err

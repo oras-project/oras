@@ -14,6 +14,7 @@
 # To release:
 #   GITHUB_TOKEN=*** goreleaser
 
+version: 2
 builds:
 - main: ./cmd/oras
   binary: ./oras

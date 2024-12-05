@@ -19,10 +19,12 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
@@ -56,14 +58,15 @@ var _ = Describe("ORAS beginners:", func() {
 	})
 })
 
+func tagAndValidate(reg string, repo string, tagOrDigest string, digestText string, tags ...string) {
+	out := ORAS(append([]string{"tag", RegistryRef(reg, repo, tagOrDigest)}, tags...)...).MatchKeyWords(tags...).Exec().Out
+	hint := regexp.QuoteMeta(fmt.Sprintf("Tagging [registry] %s", RegistryRef(reg, repo, digestText)))
+	gomega.Expect(out).To(gbytes.Say(hint))
+	gomega.Expect(out).NotTo(gbytes.Say(hint)) // should only say hint once
+	ORAS("repo", "tags", RegistryRef(reg, repo, "")).MatchKeyWords(tags...).Exec()
+}
+
 var _ = Describe("1.1 registry users:", func() {
-	var tagAndValidate = func(reg string, repo string, tagOrDigest string, digest string, tags ...string) {
-		out := ORAS(append([]string{"tag", RegistryRef(reg, repo, tagOrDigest)}, tags...)...).MatchKeyWords(tags...).Exec().Out
-		hint := regexp.QuoteMeta(fmt.Sprintf("Tagging [registry] %s", RegistryRef(reg, repo, digest)))
-		gomega.Expect(out).To(gbytes.Say(hint))
-		gomega.Expect(out).NotTo(gbytes.Say(hint)) // should only say hint once
-		ORAS("repo", "tags", RegistryRef(reg, repo, "")).MatchKeyWords(tags...).Exec()
-	}
 	When("running `tag`", func() {
 		It("should add a tag to an existent manifest when providing tag reference", func() {
 			tagAndValidate(ZOTHost, ImageRepo, multi_arch.Tag, multi_arch.Digest, "tag-via-tag")
@@ -76,6 +79,39 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 		It("should add multiple tags to an existent manifest when providing tag reference", func() {
 			tagAndValidate(ZOTHost, ImageRepo, multi_arch.Tag, multi_arch.Digest, "tag1-via-tag", "tag1-via-tag", "tag1-via-tag")
+		})
+		It("should tag a referrer witout tag schema", func() {
+			// parepare:
+			repo := fmt.Sprintf("command/tag/%d/referrers", GinkgoRandomSeed())
+			ORAS("cp", "-r", RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag), "--to-distribution-spec", "v1.1-referrers-api", RegistryRef(ZOTHost, repo, foobar.Tag)).Exec()
+			// test
+			referrerDigest := foobar.SBOMImageReferrer.Digest.String()
+			tagAndValidate(ZOTHost, repo, referrerDigest, referrerDigest, "tagged-referrer")
+			// ensure no referrer index is created
+			ref := RegistryRef(ZOTHost, repo, strings.Replace(foobar.Digest, ":", "-", 1))
+			ORAS("manifest", "fetch", ref).
+				MatchErrKeyWords(fmt.Sprintf("%s: not found", ref)).
+				ExpectFailure().
+				Exec()
+		})
+	})
+})
+
+var _ = Describe("1.0 registry users:", func() {
+	When("running `tag`", func() {
+		It("should tag a referrer witout tag schema", func() {
+			// prepare: copy to the fallback registry
+			repo := fmt.Sprintf("command/tag/%d/referrers", GinkgoRandomSeed())
+			ORAS("cp", "-r", RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), "--to-distribution-spec", "v1.1-referrers-api", RegistryRef(FallbackHost, repo, foobar.Tag)).Exec()
+			// test
+			referrerDigest := foobar.SBOMImageReferrer.Digest.String()
+			tagAndValidate(FallbackHost, repo, referrerDigest, referrerDigest, "tagged-referrer")
+			// ensure no referrer index is created
+			indexReferrerTag := RegistryRef(FallbackHost, repo, strings.Replace(foobar.Digest, ":", "-", 1))
+			ORAS("manifest", "fetch", indexReferrerTag).
+				MatchErrKeyWords(fmt.Sprintf("%s: not found", indexReferrerTag)).
+				ExpectFailure().
+				Exec()
 		})
 	})
 })

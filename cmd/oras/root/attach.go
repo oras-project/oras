@@ -55,7 +55,7 @@ func attachCmd() *cobra.Command {
 
 ** This command is in preview and under development. **
 
-Example - Attach file 'hi.txt' with aritifact type 'doc/example' to manifest 'hello:v1' in registry 'localhost:5000':
+Example - Attach file 'hi.txt' with artifact type 'doc/example' to manifest 'hello:v1' in registry 'localhost:5000':
   oras attach --artifact-type doc/example localhost:5000/hello:v1 hi.txt
 
 Example - Attach file 'hi.txt' to a specific artifact with platform 'linux/amd64' in multi-arch index 'hello:v1'
@@ -76,6 +76,12 @@ Example - Attach an artifact with manifest annotations:
 
 Example - Attach file 'hi.txt' and add manifest annotations:
   oras attach --artifact-type doc/example --annotation "key=val" localhost:5000/hello:v1 hi.txt
+
+Example - Attach file 'hi.txt' and format output in JSON:
+  oras attach --artifact-type doc/example localhost:5000/hello:v1 hi.txt --format json
+
+Example - Attach file 'hi.txt' and format output with Go template:
+  oras attach --artifact-type doc/example localhost:5000/hello:v1 hi.txt --format go-template --template "{{.digest}}"
 
 Example - Attach file 'hi.txt' and export the pushed manifest to 'manifest.json':
   oras attach --artifact-type doc/example --export-manifest manifest.json localhost:5000/hello:v1 hi.txt
