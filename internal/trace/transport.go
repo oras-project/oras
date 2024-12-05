@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -130,12 +131,17 @@ func logResponseBody(resp *http.Response) string {
 
 // isPrintableContentType returns true if the content of contentType is printable.
 func isPrintableContentType(contentType string) bool {
-	// JSON types
-	if strings.HasPrefix(contentType, "application/json") || strings.HasSuffix(contentType, "+json") {
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return false
+	}
+
+	if mediaType == "application/json" || strings.HasSuffix(mediaType, "+json") {
+		// JSON types
 		return true
 	}
-	// text types
-	if strings.HasPrefix(contentType, "text/") {
+	if mediaType == "text/plain" {
+		// text types
 		return true
 	}
 	return false

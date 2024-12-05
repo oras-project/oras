@@ -40,8 +40,23 @@ func Test_isPrintableContentType(t *testing.T) {
 			want:        true,
 		},
 		{
+			name:        "General JSON type with charset",
+			contentType: "application/json; charset=utf-8",
+			want:        true,
+		},
+		{
+			name:        "Random type with application/json prefix",
+			contentType: "application/jsonwhatever",
+			want:        false,
+		},
+		{
 			name:        "Manifest type in JSON",
 			contentType: "application/vnd.oci.image.manifest.v1+json",
+			want:        true,
+		},
+		{
+			name:        "Manifest type in JSON with charset",
+			contentType: "application/vnd.oci.image.manifest.v1+json; charset=utf-8",
 			want:        true,
 		},
 		{
@@ -60,14 +75,14 @@ func Test_isPrintableContentType(t *testing.T) {
 			want:        true,
 		},
 		{
-			name:        "HTML text type",
-			contentType: "text/html",
-			want:        true,
+			name:        "Random type with text/plain prefix",
+			contentType: "text/plainnnnn",
+			want:        false,
 		},
 		{
-			name:        "HTML text type with charset",
-			contentType: "text/html; charset=utf-8",
-			want:        true,
+			name:        "HTML type",
+			contentType: "text/html",
+			want:        false,
 		},
 		{
 			name:        "Binary type",
@@ -81,7 +96,12 @@ func Test_isPrintableContentType(t *testing.T) {
 		},
 		{
 			name:        "Invalid type",
-			contentType: "application/",
+			contentType: "text/",
+			want:        false,
+		},
+		{
+			name:        "Random string",
+			contentType: "random123!@#",
 			want:        false,
 		},
 	}
