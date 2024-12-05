@@ -97,7 +97,7 @@ func logHeader(header http.Header) string {
 // logResponseBody prints out the response body if it is printable and within
 // the size limit.
 func logResponseBody(resp *http.Response) string {
-	if resp.Body == nil || resp.Body == http.NoBody || resp.ContentLength == 0 {
+	if resp.Body == nil || resp.Body == http.NoBody {
 		return "   No response body to print"
 	}
 
@@ -106,27 +106,23 @@ func logResponseBody(resp *http.Response) string {
 	if !isPrintableContentType(contentType) {
 		return fmt.Sprintf("   Response body of content type \"%s\" is not printed", contentType)
 	}
-	if resp.ContentLength < 0 {
-		return "   Response body of unknown content length is not printed"
-	}
-	if resp.ContentLength > payloadSizeLimit {
-		return fmt.Sprintf("   Response body larger than %d bytes is not printed", payloadSizeLimit)
-	}
 
-	// Note: If the actual body size mismatches the content length and exceeds the limit,
-	// the body will be truncated to the limit for seucrity consideration.
-	// In this case, the response processing subsequent to logging might be broken.
-	rc := resp.Body
-	defer rc.Close()
-	lr := io.LimitReader(rc, payloadSizeLimit)
-	bodyBytes, err := io.ReadAll(lr)
+	// read the body up to limit+1 to check if the body exceeds the limit
+	lr := io.LimitReader(resp.Body, payloadSizeLimit+1)
+	readBody, err := io.ReadAll(lr)
 	if err != nil {
 		return fmt.Sprintf("   Error reading response body: %v", err)
 	}
+	// restore the body by concatenating the read body with the remaining body
+	resp.Body = io.NopCloser(io.MultiReader(bytes.NewReader(readBody), resp.Body))
 
-	// reset the body for subsequent processing
-	resp.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-	return string(bodyBytes)
+	if len(readBody) == 0 {
+		return "   Response body is empty"
+	}
+	if len(readBody) > int(payloadSizeLimit) {
+		return string(readBody[:payloadSizeLimit]) + "\n...(truncated)"
+	}
+	return string(readBody)
 }
 
 // isPrintableContentType returns true if the content of contentType is printable.

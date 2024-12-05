@@ -145,7 +145,7 @@ func Test_logResponseBody(t *testing.T) {
 				ContentLength: 0,
 				Header:        http.Header{"Content-Type": []string{"text/plain"}},
 			},
-			want: "   No response body to print",
+			want: "   Response body is empty",
 		},
 		{
 			name: "Unknown content length",
@@ -154,7 +154,7 @@ func Test_logResponseBody(t *testing.T) {
 				ContentLength: -1,
 				Header:        http.Header{"Content-Type": []string{"text/plain"}},
 			},
-			want: "   Response body of unknown content length is not printed",
+			want: "whatever",
 		},
 		{
 			name: "Non-printable content type",
@@ -181,7 +181,7 @@ func Test_logResponseBody(t *testing.T) {
 				ContentLength: payloadSizeLimit + 1,
 				Header:        http.Header{"Content-Type": []string{"text/plain"}},
 			},
-			want: fmt.Sprintf("   Response body larger than %d bytes is not printed", payloadSizeLimit),
+			want: string(bytes.Repeat([]byte("a"), int(payloadSizeLimit))) + "\n...(truncated)",
 		},
 		{
 			name: "Printable content type within limit",
@@ -208,7 +208,7 @@ func Test_logResponseBody(t *testing.T) {
 				ContentLength: 1,                                                                                 // mismatched content length
 				Header:        http.Header{"Content-Type": []string{"text/plain"}},
 			},
-			want: string(bytes.Repeat([]byte("a"), int(payloadSizeLimit))),
+			want: string(bytes.Repeat([]byte("a"), int(payloadSizeLimit))) + "\n...(truncated)",
 		},
 		{
 			name: "Actual body size is smaller than content length",
