@@ -38,7 +38,7 @@ var (
 )
 
 // payloadSizeLimit limits the maximum size of the response body to be printed.
-const payloadSizeLimit int64 = 4 * 1024 * 1024 // 4 MiB
+const payloadSizeLimit int64 = 4 * 1024 // 4 KiB
 
 // Transport is an http.RoundTripper that keeps track of the in-flight
 // request and add hooks to report HTTP tracing events.
@@ -113,8 +113,13 @@ func logResponseBody(resp *http.Response) string {
 	if err != nil {
 		return fmt.Sprintf("   Error reading response body: %v", err)
 	}
+
 	// restore the body by concatenating the read body with the remaining body
-	resp.Body = io.NopCloser(io.MultiReader(bytes.NewReader(readBody), resp.Body))
+	closeFunc := resp.Body.Close
+	resp.Body = &readCloser{
+		Reader:    io.MultiReader(bytes.NewReader(readBody), resp.Body),
+		closeFunc: closeFunc,
+	}
 
 	if len(readBody) == 0 {
 		return "   Response body is empty"
@@ -141,4 +146,16 @@ func isPrintableContentType(contentType string) bool {
 		return true
 	}
 	return false
+}
+
+// readCloser returns an io.ReadCloser that wraps an io.Reader and a
+// close function.
+type readCloser struct {
+	io.Reader
+	closeFunc func() error
+}
+
+// Close closes the readCloser.
+func (rc *readCloser) Close() error {
+	return rc.closeFunc()
 }
