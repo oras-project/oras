@@ -70,7 +70,9 @@ The proposal creates a multi-arch image using an OCI image index in an OCI image
 
 ### User scenario and desired experience
 
-The sample workflow will be as following:
+Here is the sample workflow to create a multi-arch image using an image index locally and push it to the registry for deployment:
+
+![multi-arch image](./img/create-multi-arch.png)
 
 1. Assume there are two arch-specific images tagged as `v1-linux-amd64` and `v1-linux-arm64` in an OCI image layout called `layout-dir`. List the tags in the OCI image layout:
 
@@ -78,7 +80,8 @@ The sample workflow will be as following:
 $ oras repo tags --oci-layout layout-dir 
 
 v1-linux-amd64 
-v1-linux-arm64 
+v1-linux-arm64
+v1-linux-arm/v7
 ```
 
 2. Create a multi-arch image by combining two image manifests into an image index, tag it with `v1` and push the tagged image index to an OCI image layout `layout-dir` automatically. Add annotations to this image index at the same time:  
