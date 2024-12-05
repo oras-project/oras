@@ -1,7 +1,7 @@
 # Multi-arch image management with ORAS
 
 > [!NOTE]
-> The version of this specification is `1.3.0 Beta.1`. It is subject to change until ORAS v1.3.0 is released. 
+> The version of this specification is `1.3.0 Beta.1`. It is subject to change until ORAS v1.3.0 is officially released. 
 
 ## Overview
 
@@ -18,11 +18,11 @@ There are two formats of implementation in industry to create a multi-arch image
 
 As more and more container registries are fully compliant with the OCI specifications, OCI image index becomes a popular format to create a multi-arch image.
 
-This document aims to elaborate on the scenarios and problems of creating and managing multi-arch images, propose a solution to resolve these problems and help users to effectively manage multi-arch images with ORAS.
+This document aims to elaborate on the scenarios and problems of creating and managing multi-arch images, propose a solution to resolve these problems and help users to effectively create and manage multi-arch images with ORAS.
 
 ## Target users
 
-For users who need to create, store, update, and push multi-arch images locally and in OCI registry. The primary user persona are cloud-native developers.
+For users who need to create, store, update, and push multi-arch images locally and in OCI registries. The primary user persona is cloud-native developers.
 
 ## Scenarios and Problems
 
@@ -30,13 +30,19 @@ The `oras manifest` provides subcommands to push, fetch, and delete an image man
 
 ### Problem statement
 
-Specifically, there are limitations and problems to create and manage multi-arch images using _docker_ or other registry clients:
+Specifically, there are limitations and problems to create and manage multi-arch images using `docker` or `docker buildx`:
 
-#### Rely on remote registry
+### Lack of native support for local environment
 
-A DevOps engineer Andy wants to create a multi-arch image locally so that he can inspect and test in a development environment before publishing to the registry. However, Andy has to push each arch-specific image to the registry and compose all these images from a registry when using [docker manifest create](https://docs.docker.com/reference/cli/docker/manifest/create/) to create a multi-arch image. 
+`docker buildx` confuses developers who are expecting to immediately run a multi-arch image after a successful build. Because `docker buildx` targets multiple architectures, it must be saved to a repository, not local storage. This requires the multi-arch image push to a repository and then a pull to run and test locally, which is inefficient for local development and testing.
 
-These arch-specific images become redundant in the registry since image consumers reference the multi-arch image by a tag. Andy has to clean these arch-specific images manually. Moreover, relying on a remote registry to create a multi-arch image is not acceptable in an air-gapped environment.
+In addition, `docker buildx` sometimes relies on a remote builder for the target architectures which do not match the build machine. Using a remote builder is also not convenient for testing changes. 
+
+#### Rely on remote registry to create multi-arch image
+
+[`docker manifest`](https://docs.docker.com/reference/cli/docker/manifest/create/) and [`docker buildx imagetools create`](https://docs.docker.com/reference/cli/docker/buildx/imagetools/create/) requires the separate arch-specific images (with different architectures/variants) to be pushed to a registry before creating an image index or manifest list. Normally, developers want to create a multi-arch image locally so that they can test in a development environment before publishing to the registry. 
+
+This is not convenient for local development and testing. Moreover, relying on a remote registry to create a multi-arch image is not acceptable in an air-gapped environment.
 
 #### Hard to compose and update a multi-arch image
 
@@ -47,34 +53,20 @@ To create a multi-arch image, ORAS users have to manually compose an OCI image i
 
 #### `docker buildx`/`docker` is unavailable
 
-Users cannot install or use `docker buildx` plugin or even no `docker` in some strict environments. For example, Bob needs to create multi-arch images in an air-gapped environment without `docker`/`buildx` installed by default. Bob needs to seek for an alternative tool to create a mulit-arch image locally.
-
-#### Hard to annotate an existing multi-arch image
-
-A security engineer Cindy needs to use image lifecycle annotations to mark when the vulnerable image should be considered end of life (EoL) and no longer used by dependent services. 
-
-However, as there are multi-arch images and separate arch-specific images maintained by service teams, it is cumbersome that Cindy can only apply annotations manually to each arch-specific image. Image consumers only reference the multi-arch image by a tag for deployment. The EoL annotation is not available on the multi-arch image (index), which makes the multi-arch image (index) unverifiable.
-
-![separate-annotation](./img/separate-annotation.png)
-
-#### Hard to inspect a multi-arch image locally
-
-`docker buildx` stores the multi-arch image in Docker’s build cache, which makes users hard to inspect a multi-arch image manifest content locally . David is a software engineer who wants to tag and push the multi-arch image to a registry after build, then inspect the multi-arch image locally before the release. It makes the multi-arch image a black box, which is hard for local testing.
+Users are not able to install or use `docker buildx` or even no `docker` and its daemon service in some strict environments. Users need to seek for an alternative tool to create a mulit-arch image without relying on `docker` or `docker buildx`.
 
 ## Proposed solution
 
-Ideally, if ORAS extends the ability to create and manage a multi-arch image from a local environment or a remote registry, the problems listed above can be resolved. Creating and managing a multi-arch image as an image index should be as easy as playing Legos. 
+Ideally, if ORAS extends the ability to create and manage a multi-arch image from a local environment or a remote registry, the problems listed above can be resolved. Creating and managing a multi-arch image using image index format should be as easy as playing Legos. 
 
 The proposed CLI commands for managing a multi-arch image are listed below. The detailed use cases and subcommands are articulated in the CLI Spec section.
 
-- Create a multi-arch image using OCI image index: `oras manifest index create`
-- Update a multi-arch image using OCI image index: `oras manifest index update`
-- Inspect a multi-arch image using OCI image index: `oras manifest fetch`. Add two alias `oras manifest inspect` and `oras manifest show` for usability
-- Annotate a multi-arch image using OCI image index: `oras manifest create/update --annotation`
-- Attach an annotation to an image index and propagate to each child image manifest: `oras attach --annotation "key=value" --platform all`
-- List platform information of tags in a repository: `oras repo tags`
+- Create a multi-arch image: `oras manifest index create`
+- Update a multi-arch image: `oras manifest index update`
+- Inspect a multi-arch image: `oras manifest fetch`. Add two alias `oras manifest inspect` and `oras manifest show` for usability
+- Add annotations to a multi-arch image: `oras manifest create --annotation`
 
-The proposal uses an OCI image layout as the local store to create a multi-arch image as an OCI image index locally, then push the multi-arch image to the remote registry with ORAS. 
+The proposal creates a multi-arch image using an OCI image index in an OCI image layout as a local storage, then push the multi-arch image to the registry with ORAS. 
 
 ### User scenario and desired experience
 
@@ -89,133 +81,78 @@ v1-linux-amd64
 v1-linux-arm64 
 ```
 
-2. Create a multi-arch image by composing two image manifests into an image index, tag it with `v1` and push the tagged image index to an OCI image layout `layout-dir` automatically:  
+2. Create a multi-arch image by combining two image manifests into an image index, tag it with `v1` and push the tagged image index to an OCI image layout `layout-dir` automatically. Add annotations to this image index at the same time:  
 
+```bash
+$ oras manifest index create --oci-layout layout-dir:v1 v1-linux-amd64 v1-linux-arm64 --annotation "platform=multi-arch" 
 ```
-$ oras manifest index create --oci-layout layout-dir:v1 v1-linux-amd64 v1-linux-arm64 
 
-Resolving  v1-linux-amd64 
-Resolved   v1-linux-amd64 
-Resolving  v1-linux-arm64 
-Resolved   v1-linux-arm64 
+```bash
+Fetching  v1-linux-amd64 
+Fetched   v1-linux-amd64 
+Fetching  v1-linux-arm64 
+Fetched   v1-linux-arm64 
 Packed     edb5bc1f0b5c application/vnd.oci.image.index.v1+json 
 Pushed     [oci-layout] layout-dir:v1 
 Digest: sha256:edb5bc1f0b5c21e9321b34e50c92beae739250fb8840905 
 
-An image index has been created and pushed to layout-dir:v1 
+Status: An image index has been created and pushed to layout-dir:v1 
 ```
 
 3. Inspect the image index from the OCI image layout: 
 
 ```bash
 $ oras manifest fetch --oci-layout layout-dir:v1 --pretty  
-
-{ 
-  "schemaVersion": 2, 
-  "mediaType": "application/vnd.oci.image.index.v1+json", 
-  "manifests": [ 
-    { 
-      "mediaType": "application/vnd.oci.image.manifest.v1+json", 
-      "digest": "sha256:42c524c48e0672568dbd2842d3a0cb34a", 
-      "size": 1239, 
-      "platform": { 
-        "architecture": "amd64", 
-        "os": "linux" 
-      } 
-    }, 
-    { 
-      "mediaType": "application/vnd.oci.image.manifest.v1+json", 
-      "digest": "sha256:965945e1a08031a63d5970c1da7c39af231c36e4c0a", 
-      "size": 1239, 
-      "platform": { 
-        "architecture": "arm64", 
-        "os": "linux" 
-      } 
-    } 
-  ] 
-} 
 ```
 
-4. Add (or change) annotations to an image index in the OCI layout: 
+```json
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.index.v1+json",
+  "manifests": [
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:42c524c48e0672568dbd2842d3a0cb34a415347145ee9fe1c8abaf65e7455b46",
+      "size": 1239,
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      }
+    },
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:965945e1a08031a63d5970c1da7c39af231c36e4c0a5a3cc276d02a3e06513ee",
+      "size": 1239,
+      "platform": {
+        "architecture": "arm64",
+        "os": "linux"
+      }
+    }
+  ],
+  "annotations": {
+    "platform": "multi-arch"
+  }
+}
+```
+
+4. Update the image index by adding a new architecture image in the OCI image layout: 
 
 ```bash
-$ oras manifest index update --oci-layout layout-dir:v1 --annotation "platform=multi-arch" 
-
-Resolving  v1 
-Resolved   sha256:2af402374d4c9297bf077b1e722d523c5ce37256d1d04 
-Updating anootation  v1 
-Updated    sha256:447c006400aae8b0d302cafba172f5da9889d50af085a 
-Pushed     [oci-layout] layout-dir:v1 
-Digest: sha256:447c006400aae8b0d302cafba172f5da9889d50af085a 
-Updated annotations of layout-dir:v1 
+$ oras manifest index update --oci-layout layout-dir:v1 --add linux-arm/v7 
 ```
-
-5. Attach an annotation as a referrer to an existing multi-arch image and its child arch-specific image manifest (without mutating its digest) in one shot. The same annotation is supposed to be added to the parent image index and its child arch-specific image manifest recursively: 
-
 
 ```bash
-oras attach --artifact-type application/vnd.artifact.lifecycle  --annotation "vnd.artifact.lifecycle.end-of-life.date=2023-05-12" --platform all --oci-layout layout-dir:v1  
+Fetching  v1
+Fetched   sha256:aba7563dbb28dcbe91b4d24ec84028af4ad97cfaf0cdf3fa550e8d619d5f36d1 v1
+Fetching  v1-linux-arm/v7
+Fetched   sha256:42c524c48e0672568dbd2842d3a0cb34a415347145ee9fe1c8abaf65e7455b46 v1-linux-arm/v7
+Added     sha256:42c524c48e0672568dbd2842d3a0cb34a415347145ee9fe1c8abaf65e7455b46 v1-linux-arm/v7
+Updated   sha256:7c65e066ada2a43efea2610451502498368ce3dcceef3e3d47d8fdcf32f47c57
+Pushed    [oci-layout] layout-dir:v1
+Digest: sha256:7c65e066ada2a43efea2610451502498368ce3dcceef3e3d47d8fdcf32f47c57
 
-Attached to [oci-layout] layout-dir@sha256:2af402374d4c9297bf077b1e722d52 
-Digest: sha256:117308d626166e77ffbd9c76b5545101b723csdcxcxc2344556642
-Attached to the child image manifest layout-dir@sha256:aaaaaaaaaaaaaaaaa
-Digest: sha256:bbbbbbbbbbbbbbbbb
-Attached to the child image manifest layout-dir@sha256:ccccccccccccccccc
-Digest: sha256:ddddddddddddddddd
+Status: An image index has been updated and pushed to layout-dir:v1
 ```
-
-6. View attached annotations of the multi-arch image (index) and its child image manifest: 
- 
-```bash
-$ oras discover --oci-layout layout-dir:v1 --platform all --format tree  
-
-|--Image index
-|  layout-dir@sha256:447c006400aae8b0d302cafba172f5da9889d50af085ad51d 
-|   └── application/vnd.artifact.lifecycle 
-|       └── sha256:b25b53b7df86a5dc7087cf96ed88fd1d8872271422224d7 
-|           └── vnd.artifact.lifecycle.end-of-life.date: "2023-05-12
-|
-|--Image manifest [1] 
-|  layout-dir@sha256:447c006400aae8b0d302caf9d50af089d50af089d50af089d 
-|  └── application/vnd.artifact.lifecycle 
-|      └── sha256:b25b53b7df86a5dc7087cf96ed88fd1d8872271422224d7 
-|          └── vnd.artifact.lifecycle.end-of-life.date: "2023-05-12" 
-|
-└--Image manifest [2] 
-   layout-dir@sha256:447c006400aae8b0d302cafba172f5da9889d50af085ad51d 
-   └── application/vnd.artifact.lifecycle 
-       └── sha256:b25b53b7df86a5dc7087cf96ed88fd1d8872271422224d7 
-           └── vnd.artifact.lifecycle.end-of-life.date: "2023-05-12" 
-
-```
-
-![annotation as referrers](./img/annotation-as-referrers.png)
-
-7. List the tags in the OCI image layout. The digest and platform information should be listed alongside the tags in the output. 
-
-```bash
-$ oras repo tags --oci-layout layout-dir 
-```
-
-The output should be returned as a table:
-
-
-| Tag  | Digest  | Platform   |
-|--- | --- |  ---  |
-| v1 | sha:256@xxxx | multi-arch (linux/amd64, linux/arm64)  |
-| v1-linux-amd64  |    sha:256@yyyy          |     linux/amd64   |
-| v1-linux-arm64  |    sha:256@zzzz          |     linux/arm64   |
-
-8. Push the multi-arch image and its associated referrer EoL annotation to the registry. 
-
-```bash
-$ oras cp --from-oci-layout layout-dir:v1 ghcr.io/oras/sample-app:v1 -r 
-
-Copied [oci-layout] layout-dir:v1 => [registry] ghcr.io/oras/sample-app:v1
-Digest: sha256:447c006400aae8b0d302cafba172f5da9889d50af085ad51de8eb87afb1a3cf0  
-```
-
-9. Check the media type and referrers on the registry. The multi-arch image has been pushed to the registry as an OCI image index format, along with the EOL annotation referrer. 
 
 ## CLI Specs for new subcommands 
 
@@ -270,36 +207,21 @@ oras manifest index update --output index.json localhost:5000/hello:v2 --add v2-
 oras manifest index update --output - --pretty localhost:5000/hello:v2 --remove sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
 ```
 
-### Annotate a multi-arch image
-
-```bash
-# Add annotations to an image image via key and value
-oras manifest index update --oci-layout layout-dir:v1 --annotation "platform=multi-arch" 
-
-# Attach an annotation as a referrer to an OCI image index and its child image in one shot
-oras attach --artifact-type application/vnd.rabbitnetworks.artifact.lifecycle --annotation "vnd.rabbitnetworks.artifact.lifecycle.end-of-life.date=2023-05-12" layout.tar:v1 --platform all
-```
-
 ### Inspect a multi-arch image
 
-### List tag-based arch/platform information in a repo
+Add two alias `show` and `inspect`:
 
+```bash
+Usage:
+  oras manifest fetch [flags] <name>{:<tag>|@<digest>}
+
+Aliases:
+  fetch, get, show, inspect
 ```
-oras repo tags --oci-layout layout-dir 
-```
-
-The sample output should be:
-
-| Tag  | Digest  | Platform   |
-|--- | --- |  ---  |
-| v1 | sha:256@xxxx | multi-arch (linux/amd64, linux/arm64) |
-| v1-linux-amd64  |    sha:256@yyyy          |     linux/amd64   |
-| v1-linux-arm64  |    sha:256@zzzz          |     linux/arm64   |
-
 
 ## Investigation on other client tools and industry
 
-Most of popular container client tools support create and push a multi-arch image using docker manifest list or OCI image index format, but these tools **require users to push platform-specific image to the registry separately**. They don’t provide native support for local build experience.
+Most of popular container client tools support create and push a multi-arch image using docker manifest list or OCI image index format, but these tools **require users to push platform-specific image push to the registry separately**. They don’t provide native support for local environment.
 
 - **docker**:
   - [docker buildx buildx](https://docs.docker.com/reference/cli/docker/buildx/build/)
@@ -311,22 +233,16 @@ Most of popular container client tools support create and push a multi-arch imag
 - **manifest-tool (Individual from AWS):** create docker manifest list or OCI image index in a registry by using the [manifest-tool push command with either a YAML file describing the images to assemble or by using a series of parameters](https://github.com/estesp/manifest-tool?tab=readme-ov-file#sample-usage).
 - **skopeo (Backed by Red Hat)**: doesn’t support OCI image index and docker manifest list
 
-Based on the industry observation, Docker buildx plugin supports building a multi-arch image using the OCI image index format. Even [Docker Official Images](https://docs.docker.com/trusted-content/official-images/) are using the OCI image index format to create multi-platform images.
+In addition, `docker buildx` supports building a multi-arch image using the OCI image index format. Even [Docker Official Images](https://docs.docker.com/trusted-content/official-images/) are using the OCI image index format to create multi-platform images. [Homebrew](https://github.com/orgs/Homebrew/packages) publishes all images on ghcr.io using OCI image index. 
 
-[Homebrew](https://github.com/orgs/Homebrew/packages) publishes all images on ghcr.io using OCI image index. Docker provides two ways to build a multi-arch image, i.e. _"_[_docker manifest_](https://docs.docker.com/reference/cli/docker/manifest/)_"_ and _"_[_docker buildx_](https://docs.docker.com/reference/cli/docker/buildx/build/)_"._ However, there are some limitations and problems of using Docker to build multi-arch images in certain scenarios and environments.
+## Follow-up enhancements in the future releases
 
-## Open Questions
-
-- Is multi-arch artifact in the scope of the `oras manifest` subcommands? Is the multi-arch artifact popular in the industry?
-- Should ORAS support creating Docker manifest list?
-- Is ORAS supposed to add flags "--artifact-type" and `--subject` to `oras manifest index create`?
-- Is it much extensible to introduce a new command `oras annotate` or `oras manifest index annotate` to add or modify annotations of an image index with its child image?
+- Support showing platform information of tags in formatted output:  https://github.com/oras-project/oras/issues/1547
+- Support attach annotations to image index and its child image manifest in `oras attach`: https://github.com/oras-project/oras/issues/1531
 
 ## Appendix 
 
 ### PoC 
-
-The PoC is used for demonstration and testing purposes. Note that the PoC is not the ultimate version and be left behind this spec. It will be updated accordingly based on this spec. 
 
 #### Create a multi-arch image as an OCI image index locally
 
