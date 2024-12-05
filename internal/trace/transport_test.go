@@ -272,7 +272,7 @@ func Test_logResponseBody_error(t *testing.T) {
 				ContentLength: 10,
 				Header:        http.Header{"Content-Type": []string{"text/plain"}},
 			},
-			want: "   Error reading response body: mock error",
+			want: "   Error reading response body: mock read error",
 		},
 	}
 
