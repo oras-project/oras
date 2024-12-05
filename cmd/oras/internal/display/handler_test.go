@@ -16,11 +16,13 @@ limitations under the License.
 package display
 
 import (
+	"oras.land/oras/internal/testutils"
 	"os"
+	"reflect"
 	"testing"
 
-	"oras.land/oras/internal/testutils"
-
+	"oras.land/oras/cmd/oras/internal/display/metadata/text"
+	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/cmd/oras/internal/output"
 )
@@ -48,5 +50,23 @@ func TestNewPullHandler(t *testing.T) {
 	_, _, err := NewPullHandler(printer, option.Format{Type: option.FormatTypeText.Name}, "", os.Stdout)
 	if err != nil {
 		t.Errorf("NewPullHandler() error = %v, want nil", err)
+	}
+}
+
+func TestNewCopyHandler(t *testing.T) {
+	printer := output.NewPrinter(os.Stdout, os.Stderr)
+	copyHandler, copyMetadataHandler := NewCopyHandler(printer, os.Stdout, nil)
+	if _, ok := copyHandler.(*status.TTYCopyHandler); !ok {
+		t.Errorf("expected *status.TTYCopyHandler actual %v", reflect.TypeOf(copyHandler))
+	}
+	if _, ok := copyMetadataHandler.(*text.CopyHandler); !ok {
+		t.Errorf("expected metadata.CopyHandler actual %v", reflect.TypeOf(copyMetadataHandler))
+	}
+	copyHandler, copyMetadataHandler = NewCopyHandler(printer, nil, nil)
+	if _, ok := copyHandler.(*status.TextCopyHandler); !ok {
+		t.Errorf("expected *status.TextCopyHandler actual %v", reflect.TypeOf(copyHandler))
+	}
+	if _, ok := copyMetadataHandler.(*text.CopyHandler); !ok {
+		t.Errorf("expected metadata.CopyHandler actual %v", reflect.TypeOf(copyMetadataHandler))
 	}
 }
