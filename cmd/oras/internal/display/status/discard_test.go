@@ -21,13 +21,6 @@ import (
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-func TestDiscardHandler_OnManifestPushed(t *testing.T) {
-	testDiscard := NewDiscardHandler()
-	if err := testDiscard.OnManifestPushed("test"); err != nil {
-		t.Errorf("DiscardHandler.OnIndexMerged() error = %v, wantErr nil", err)
-	}
-}
-
 func TestDiscardHandler_OnPushSkipped(t *testing.T) {
 	testDiscard := NewDiscardHandler()
 	if err := testDiscard.OnPushSkipped(); err != nil {

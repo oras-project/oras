@@ -105,18 +105,13 @@ func (DiscardHandler) OnPushSkipped() error {
 	return nil
 }
 
-// OnManifestUploading implements ManifestPushHandler.
-func (DiscardHandler) OnManifestUploading() error {
-	return nil
-}
-
-// OnManifestUploaded implements ManifestPushHandler.
-func (DiscardHandler) OnManifestUploaded() error {
+// OnManifestPushing implements ManifestPushHandler.
+func (DiscardHandler) OnManifestPushing() error {
 	return nil
 }
 
 // OnManifestPushed implements ManifestPushHandler.
-func (DiscardHandler) OnManifestPushed(ref string) error {
+func (DiscardHandler) OnManifestPushed() error {
 	return nil
 }
 

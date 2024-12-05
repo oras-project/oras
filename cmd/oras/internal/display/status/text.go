@@ -211,11 +211,11 @@ func (mph *TextManifestPushHandler) OnPushSkipped() error {
 	return mph.printer.PrintStatus(mph.desc, PushPromptExists)
 }
 
-func (mph *TextManifestPushHandler) OnManifestUploading() error {
+func (mph *TextManifestPushHandler) OnManifestPushing() error {
 	return mph.printer.PrintStatus(mph.desc, PushPromptUploading)
 }
 
-func (mph *TextManifestPushHandler) OnManifestUploaded() error {
+func (mph *TextManifestPushHandler) OnManifestPushed() error {
 	return mph.printer.PrintStatus(mph.desc, PushPromptUploaded)
 }
 

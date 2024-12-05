@@ -165,13 +165,13 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 			return err
 		}
 	} else {
-		if err = displayStatus.OnManifestUploading(); err != nil {
+		if err = displayStatus.OnManifestPushing(); err != nil {
 			return err
 		}
 		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil {
 			return err
 		}
-		if err = displayStatus.OnManifestUploaded(); err != nil {
+		if err = displayStatus.OnManifestPushed(); err != nil {
 			return err
 		}
 	}
