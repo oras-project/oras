@@ -104,7 +104,7 @@ func logResponseBody(resp *http.Response) string {
 	// non-applicable body is not printed and remains untouched for subsequent processing
 	contentType := resp.Header.Get("Content-Type")
 	if !isPrintableContentType(contentType) {
-		return fmt.Sprintf("   Response body of content type \"%s\" is not printed", contentType)
+		return fmt.Sprintf("   Response body of content type %q is not printed", contentType)
 	}
 
 	buf := bytes.NewBuffer(nil)
@@ -137,6 +137,10 @@ func logResponseBody(resp *http.Response) string {
 
 // isPrintableContentType returns true if the content of contentType is printable.
 func isPrintableContentType(contentType string) bool {
+	if len(contentType) == 0 {
+		return false
+	}
+
 	mediaType, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
 		return false
