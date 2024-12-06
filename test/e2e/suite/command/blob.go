@@ -24,8 +24,10 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"oras.land/oras/test/e2e/internal/testdata/feature"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	. "oras.land/oras/test/e2e/internal/utils"
+	"oras.land/oras/test/e2e/internal/utils/match"
 )
 
 const (
@@ -39,6 +41,30 @@ var _ = Describe("ORAS beginners:", func() {
 	repoFmt := fmt.Sprintf("command/blob/%%s/%d/%%s", GinkgoRandomSeed())
 	When("running blob command", func() {
 		When("running `blob push`", func() {
+			It("should not show --verbose in help doc", func() {
+				out := ORAS("push", "--help").MatchKeyWords(ExampleDesc).Exec().Out
+				gomega.Expect(out).ShouldNot(gbytes.Say("--verbose"))
+			})
+
+			It("should show deprecation message and print unnamed status output for --verbose", func() {
+				repo := fmt.Sprintf(repoFmt, "push", "test-verbose")
+				ORAS("blob", "push", RegistryRef(ZOTHost, repo, pushDigest), "-", "--size", strconv.Itoa(len(pushContent)), "--verbose").
+					WithInput(strings.NewReader(pushContent)).
+					MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).
+					MatchStatus([]match.StateKey{{Digest: "e1ca41574914", Name: "application/vnd.oci.image.layer.v1.tar"}}, true, 1).
+					Exec()
+			})
+
+			It("should show deprecation message and should NOT print unnamed status output for --verbose=false", func() {
+				repo := fmt.Sprintf(repoFmt, "push", "test-verbose-false")
+				out := ORAS("blob", "push", RegistryRef(ZOTHost, repo, pushDigest), "-", "--size", strconv.Itoa(len(pushContent)), "--verbose=false").
+					WithInput(strings.NewReader(pushContent)).
+					MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).
+					Exec().Out
+				// should not print status output for unnamed blobs
+				gomega.Expect(out).ShouldNot(gbytes.Say("application/vnd.oci.image.layer.v1.tar"))
+			})
+
 			It("should fail to read blob content and password from stdin at the same time", func() {
 				repo := fmt.Sprintf(repoFmt, "push", "password-stdin")
 				ORAS("blob", "push", RegistryRef(ZOTHost, repo, ""), "--password-stdin", "-").
@@ -236,9 +262,11 @@ var _ = Describe("1.1 registry users:", func() {
 				MatchContent(fmt.Sprintf(pushDescFmt, mediaType)).Exec()
 			ORAS("blob", "fetch", RegistryRef(ZOTHost, repo, pushDigest), "--output", "-").MatchContent(pushContent).Exec()
 
-			ORAS("blob", "push", RegistryRef(ZOTHost, repo, ""), blobPath, "-v").
+			ORAS("blob", "push", RegistryRef(ZOTHost, repo, ""), blobPath).
 				WithDescription("skip the pushing if the blob already exists in the target repo").
-				MatchKeyWords("Exists").Exec()
+				MatchStatus([]match.StateKey{{Digest: "e1ca41574914", Name: "application/vnd.oci.image.layer.v1.tar"}}, true, 1).
+				MatchKeyWords("Exists").
+				Exec()
 		})
 
 		It("should push a blob from a stdin and output the descriptor with specific media-type", func() {
@@ -347,7 +375,7 @@ var _ = Describe("OCI image layout users:", func() {
 			// test
 			ORAS("blob", "push", Flags.Layout, LayoutRef(tmpRoot, pushDigest), blobPath, "--media-type", mediaType, "--descriptor").
 				MatchContent(fmt.Sprintf(pushDescFmt, mediaType)).Exec()
-			ORAS("blob", "push", Flags.Layout, LayoutRef(tmpRoot, pushDigest), blobPath, "-v").
+			ORAS("blob", "push", Flags.Layout, LayoutRef(tmpRoot, pushDigest), blobPath).
 				WithDescription("skip pushing if the blob already exists in the target repo").
 				MatchKeyWords("Exists").Exec()
 			// validate

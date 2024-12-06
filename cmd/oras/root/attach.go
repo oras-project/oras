@@ -44,7 +44,8 @@ type attachOptions struct {
 
 	artifactType string
 	concurrency  int
-	verbose      bool
+	// Deprecated: verbose is deprecated and will be removed in the future.
+	verbose bool
 }
 
 func attachCmd() *cobra.Command {
@@ -117,9 +118,10 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
-	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "print status output for unnamed blobs")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
 	opts.FlagDescription = "[Preview] attach to an arch-specific subject"
 	_ = cmd.MarkFlagRequired("artifact-type")
+	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
 	opts.EnableDistributionSpecFlag()
 	opts.SetTypes(option.FormatTypeText, option.FormatTypeJSON, option.FormatTypeGoTemplate)
 	option.ApplyFlags(&opts, cmd.Flags())

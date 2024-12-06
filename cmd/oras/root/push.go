@@ -52,7 +52,8 @@ type pushOptions struct {
 	manifestConfigRef string
 	artifactType      string
 	concurrency       int
-	verbose           bool
+	// Deprecated: verbose is deprecated and will be removed in the future.
+	verbose bool
 }
 
 func pushCmd() *cobra.Command {
@@ -165,7 +166,8 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "`path` of image config file")
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
-	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "print status output for unnamed blobs")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
+	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
 	opts.SetTypes(option.FormatTypeText, option.FormatTypeJSON, option.FormatTypeGoTemplate)
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)

@@ -52,7 +52,7 @@ var _ = Describe("ORAS beginners:", func() {
 		RunAndShowPreviewInHelp([]string{"discover"})
 
 		It("should show preview and help doc", func() {
-			out := ORAS("discover", "--help").MatchKeyWords(feature.Preview.Mark+" Discover", feature.Preview.Description, ExampleDesc).Exec()
+			out := ORAS("discover", "--help").MatchKeyWords(feature.Preview.Mark+" Discover", feature.Preview.Description, ExampleDesc).Exec().Out
 			gomega.Expect(out).Should(gbytes.Say("--distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 		})
 
