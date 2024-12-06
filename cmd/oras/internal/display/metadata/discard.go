@@ -31,6 +31,11 @@ func (Discard) OnFetched(string, ocispec.Descriptor, []byte) error {
 	return nil
 }
 
+// OnManifestPushed implements ManifestPushHandler.
+func (Discard) OnManifestPushed() error {
+	return nil
+}
+
 // OnTagged implements ManifestIndexCreateHandler.
 func (Discard) OnTagged(ocispec.Descriptor, string) error {
 	return nil
