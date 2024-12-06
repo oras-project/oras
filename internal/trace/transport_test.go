@@ -255,7 +255,8 @@ func Test_logResponseBody(t *testing.T) {
 				ContentLength: 17,
 				Header:        http.Header{"Content-Type": []string{"application/json"}},
 			},
-			want: "   Response body redacted due to potential credentials",
+			wantData: []byte(`{"token":"12345"}`),
+			want:     "   Response body redacted due to potential credentials",
 		},
 		{
 			name: "Body contains access_token",
@@ -264,7 +265,8 @@ func Test_logResponseBody(t *testing.T) {
 				ContentLength: 17,
 				Header:        http.Header{"Content-Type": []string{"application/json"}},
 			},
-			want: "   Response body redacted due to potential credentials",
+			wantData: []byte(`{"access_token":"12345"}`),
+			want:     "   Response body redacted due to potential credentials",
 		},
 	}
 
