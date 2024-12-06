@@ -179,6 +179,25 @@ func Test_logResponseBody(t *testing.T) {
 			want: "whatever",
 		},
 		{
+			name:     "Missing content type header",
+			wantData: []byte("whatever"),
+			resp: &http.Response{
+				Body:          io.NopCloser(bytes.NewReader([]byte("whatever"))),
+				ContentLength: 8,
+			},
+			want: "   Response body without a content type is not printed",
+		},
+		{
+			name:     "Empty content type header",
+			wantData: []byte("whatever"),
+			resp: &http.Response{
+				Body:          io.NopCloser(bytes.NewReader([]byte("whatever"))),
+				ContentLength: 8,
+				Header:        http.Header{"Content-Type": []string{""}},
+			},
+			want: "   Response body without a content type is not printed",
+		},
+		{
 			name:     "Non-printable content type",
 			wantData: []byte("binary data"),
 			resp: &http.Response{
