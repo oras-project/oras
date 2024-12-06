@@ -23,7 +23,13 @@ import (
 	"testing"
 )
 
-var mockReadErr = errors.New("mock read error")
+var errMockRead = errors.New("mock read error")
+
+type errorReader struct{}
+
+func (e *errorReader) Read(p []byte) (n int, err error) {
+	return 0, errMockRead
+}
 
 func Test_isPrintableContentType(t *testing.T) {
 	tests := []struct {
@@ -84,6 +90,16 @@ func Test_isPrintableContentType(t *testing.T) {
 		{
 			name:        "HTML type",
 			contentType: "text/html",
+			want:        true,
+		},
+		{
+			name:        "Plain text type with charset",
+			contentType: "text/html; charset=utf-8",
+			want:        true,
+		},
+		{
+			name:        "Random type with text/html prefix",
+			contentType: "text/htmlllll",
 			want:        false,
 		},
 		{
@@ -232,6 +248,24 @@ func Test_logResponseBody(t *testing.T) {
 			},
 			want: "data",
 		},
+		{
+			name: "Body contains token",
+			resp: &http.Response{
+				Body:          io.NopCloser(bytes.NewReader([]byte(`{"token":"12345"}`))),
+				ContentLength: 17,
+				Header:        http.Header{"Content-Type": []string{"application/json"}},
+			},
+			want: "   Response body redacted due to potential credentials",
+		},
+		{
+			name: "Body contains access_token",
+			resp: &http.Response{
+				Body:          io.NopCloser(bytes.NewReader([]byte(`{"access_token":"12345"}`))),
+				ContentLength: 17,
+				Header:        http.Header{"Content-Type": []string{"application/json"}},
+			},
+			want: "   Response body redacted due to potential credentials",
+		},
 	}
 
 	for _, tt := range tests {
@@ -285,8 +319,59 @@ func Test_logResponseBody_error(t *testing.T) {
 	}
 }
 
-type errorReader struct{}
+func Test_containsCredentials(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		want bool
+	}{
+		{
+			name: "Contains token keyword",
+			body: `{"token": "12345"}`,
+			want: true,
+		},
+		{
+			name: "Contains quoted token keyword",
+			body: `whatever "token" blah`,
+			want: true,
+		},
+		{
+			name: "Contains unquoted token keyword",
+			body: `whatever token blah`,
+			want: false,
+		},
+		{
+			name: "Contains access_token keyword",
+			body: `{"access_token": "12345"}`,
+			want: true,
+		},
+		{
+			name: "Contains quoted access_token keyword",
+			body: `whatever "access_token" blah`,
+			want: true,
+		},
+		{
+			name: "Contains unquoted access_token keyword",
+			body: `whatever access_token blah`,
+			want: false,
+		},
+		{
+			name: "Does not contain credentials",
+			body: `{"key": "value"}`,
+			want: false,
+		},
+		{
+			name: "Empty body",
+			body: ``,
+			want: false,
+		},
+	}
 
-func (e *errorReader) Read(p []byte) (n int, err error) {
-	return 0, mockReadErr
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := containsCredentials(tt.body); got != tt.want {
+				t.Errorf("containsCredentials() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

@@ -38,7 +38,7 @@ var (
 )
 
 // payloadSizeLimit limits the maximum size of the response body to be printed.
-const payloadSizeLimit int64 = 4 * 1024 // 4 KiB
+const payloadSizeLimit int64 = 16 * 1024 // 16 KiB
 
 // Transport is an http.RoundTripper that keeps track of the in-flight
 // request and add hooks to report HTTP tracing events.
@@ -66,9 +66,9 @@ func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error
 	// log the response
 	resp, err = t.RoundTripper.RoundTrip(req)
 	if err != nil {
-		e.Errorf("Error in getting response: %w", err)
+		e.Errorf("<-- Response #%d\nError in getting response: %v", id, err)
 	} else if resp == nil {
-		e.Errorf("No response obtained for request %s %q", req.Method, req.URL)
+		e.Errorf("<-- Response #%d\nNo response obtained for request %s %q", id, req.Method, req.URL)
 	} else {
 		e.Debugf("<-- Response #%d\n< Response Status: %q\n< Response headers:\n%s\n< Response body:\n%s",
 			id, resp.Status, logHeader(resp.Header), logResponseBody(resp))
@@ -122,14 +122,17 @@ func logResponseBody(resp *http.Response) string {
 		return fmt.Sprintf("   Error reading response body: %v", err)
 	}
 
-	readBody := buf.Bytes()
+	readBody := buf.String()
 	if len(readBody) == 0 {
 		return "   Response body is empty"
 	}
-	if len(readBody) > int(payloadSizeLimit) {
-		return string(readBody[:payloadSizeLimit]) + "\n...(truncated)"
+	if containsCredentials(readBody) {
+		return "   Response body redacted due to potential credentials"
 	}
-	return string(readBody)
+	if len(readBody) > int(payloadSizeLimit) {
+		return readBody[:payloadSizeLimit] + "\n...(truncated)"
+	}
+	return readBody
 }
 
 // isPrintableContentType returns true if the content of contentType is printable.
@@ -139,13 +142,15 @@ func isPrintableContentType(contentType string) bool {
 		return false
 	}
 
-	if mediaType == "application/json" || strings.HasSuffix(mediaType, "+json") {
-		// JSON types
+	switch mediaType {
+	case "application/json", // JSON types
+		"text/plain", "text/html": // text types
 		return true
 	}
-	if mediaType == "text/plain" {
-		// text types
-		return true
-	}
-	return false
+	return strings.HasSuffix(mediaType, "+json")
+}
+
+// containsCredentials returns true if the body contains potential credentials.
+func containsCredentials(body string) bool {
+	return strings.Contains(body, `"token"`) || strings.Contains(body, `"access_token"`)
 }
