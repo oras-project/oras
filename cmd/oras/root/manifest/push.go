@@ -150,7 +150,7 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 	// prepare manifest descriptor
 	desc := content.NewDescriptorFromBytes(mediaType, contentBytes)
 
-	displayStatus, displayMetadata := display.NewManifestPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc, opts.Target)
+	statusHandler, metadataHandler := display.NewManifestPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc, &opts.Target)
 
 	ref := opts.Reference
 	if ref == "" {
@@ -161,17 +161,17 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		return err
 	}
 	if match {
-		if err := displayStatus.OnPushSkipped(); err != nil {
+		if err := statusHandler.OnPushSkipped(); err != nil {
 			return err
 		}
 	} else {
-		if err = displayStatus.OnManifestPushing(); err != nil {
+		if err = statusHandler.OnManifestPushing(); err != nil {
 			return err
 		}
 		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil {
 			return err
 		}
-		if err = displayStatus.OnManifestPushed(); err != nil {
+		if err = statusHandler.OnManifestPushed(); err != nil {
 			return err
 		}
 	}
@@ -192,17 +192,17 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		}
 		return opts.Output(os.Stdout, descJSON)
 	}
-	if err := displayMetadata.OnManifestPushed(); err != nil {
+	if err := metadataHandler.OnManifestPushed(); err != nil {
 		return err
 	}
 	if len(opts.extraRefs) != 0 {
-		tagListener := listener.NewTaggedListener(target, displayMetadata.OnTagged)
+		tagListener := listener.NewTaggedListener(target, metadataHandler.OnTagged)
 		if _, err = oras.TagBytesN(ctx, tagListener, mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}
 	}
 
-	return displayMetadata.OnCompleted(desc)
+	return metadataHandler.OnCompleted(desc)
 }
 
 // matchDigest checks whether the manifest's digest matches to it in the remote

@@ -25,11 +25,11 @@ import (
 // ManifestPushHandler handles text metadata output for manifest push events.
 type ManifestPushHandler struct {
 	printer *output.Printer
-	target  option.Target
+	target  *option.Target
 }
 
 // NewManifestPushHandler returns a new handler for manifest push events.
-func NewManifestPushHandler(printer *output.Printer, target option.Target) metadata.ManifestPushHandler {
+func NewManifestPushHandler(printer *output.Printer, target *option.Target) metadata.ManifestPushHandler {
 	return &ManifestPushHandler{
 		printer: printer,
 		target:  target,
