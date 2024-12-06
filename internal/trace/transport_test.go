@@ -23,10 +23,7 @@ import (
 	"testing"
 )
 
-var (
-	mockReadErr  = errors.New("mock read error")
-	mockCloseErr = errors.New("mock close error")
-)
+var mockReadErr = errors.New("mock read error")
 
 func Test_isPrintableContentType(t *testing.T) {
 	tests := []struct {
@@ -283,68 +280,6 @@ func Test_logResponseBody_error(t *testing.T) {
 			}
 			if closeErr := tt.resp.Body.Close(); closeErr != nil {
 				t.Errorf("failed to close body after logResponseBody(), err= %v", closeErr)
-			}
-		})
-	}
-}
-
-func Test_readCloser_Close(t *testing.T) {
-
-	tests := []struct {
-		name         string
-		reader       io.Reader
-		closeFunc    func() error
-		wantData     []byte
-		wantReadErr  error
-		wantCloseErr error
-	}{
-		{
-			name:     "successfully read and close",
-			wantData: []byte("data"),
-			reader:   bytes.NewReader([]byte("data")),
-			closeFunc: func() error {
-				return nil
-			},
-			wantReadErr:  nil,
-			wantCloseErr: nil,
-		},
-		{
-			name:     "error reading",
-			wantData: nil,
-			reader:   &errorReader{},
-			closeFunc: func() error {
-				return nil
-			},
-			wantReadErr:  mockReadErr,
-			wantCloseErr: nil,
-		},
-		{
-			name:     "error closing",
-			wantData: []byte("data"),
-			reader:   bytes.NewReader([]byte("data")),
-			closeFunc: func() error {
-				return mockCloseErr
-			},
-			wantReadErr:  nil,
-			wantCloseErr: mockCloseErr,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			rc := &readCloser{
-				Reader:    tt.reader,
-				closeFunc: tt.closeFunc,
-			}
-			got, err := io.ReadAll(rc)
-			if err != tt.wantReadErr {
-				t.Errorf("readCloser.ReadAll() error = %v, wantErr %v", err, tt.wantReadErr)
-			}
-			if !bytes.Equal(got, tt.wantData) {
-				t.Errorf("readCloser.ReadAll() = %v, want %v", got, tt.wantData)
-			}
-			if err := rc.Close(); err != tt.wantCloseErr {
-				t.Errorf("readCloser.Close() error = %v, wantErr %v", err, tt.wantCloseErr)
 			}
 		})
 	}

@@ -107,20 +107,22 @@ func logResponseBody(resp *http.Response) string {
 		return fmt.Sprintf("   Response body of content type \"%s\" is not printed", contentType)
 	}
 
+	buf := bytes.NewBuffer(nil)
+	body := resp.Body
+	// restore the body by concatenating the read body with the remaining body
+	resp.Body = struct {
+		io.Reader
+		io.Closer
+	}{
+		Reader: io.MultiReader(buf, body),
+		Closer: body,
+	}
 	// read the body up to limit+1 to check if the body exceeds the limit
-	lr := io.LimitReader(resp.Body, payloadSizeLimit+1)
-	readBody, err := io.ReadAll(lr)
-	if err != nil {
+	if _, err := io.CopyN(buf, body, payloadSizeLimit+1); err != nil && err != io.EOF {
 		return fmt.Sprintf("   Error reading response body: %v", err)
 	}
 
-	// restore the body by concatenating the read body with the remaining body
-	closeFunc := resp.Body.Close
-	resp.Body = &readCloser{
-		Reader:    io.MultiReader(bytes.NewReader(readBody), resp.Body),
-		closeFunc: closeFunc,
-	}
-
+	readBody := buf.Bytes()
 	if len(readBody) == 0 {
 		return "   Response body is empty"
 	}
@@ -146,16 +148,4 @@ func isPrintableContentType(contentType string) bool {
 		return true
 	}
 	return false
-}
-
-// readCloser returns an io.ReadCloser that wraps an io.Reader and a
-// close function.
-type readCloser struct {
-	io.Reader
-	closeFunc func() error
-}
-
-// Close closes the readCloser.
-func (rc *readCloser) Close() error {
-	return rc.closeFunc()
 }
