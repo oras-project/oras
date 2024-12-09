@@ -86,7 +86,7 @@ v1-linux-armv7
 2. Create a multi-arch image by combining two image manifests into an image index, tag it with `v1` and push the tagged image index to an OCI image layout `layout-dir` automatically. Add annotations to this image index at the same time:  
 
 ```console
-$ oras manifest index create --oci-layout layout-dir:v1 v1-linux-amd64 v1-linux-arm64 --annotation "platform=multi-arch" 
+$ oras manifest index create --oci-layout layout-dir:v1 v1-linux-amd64 v1-linux-arm64 --annotation "com.example.key=value" 
 
 Fetching  v1-linux-amd64
 Fetched   v1-linux-amd64
@@ -128,7 +128,10 @@ $ oras manifest fetch --oci-layout layout-dir:v1 --pretty
         "os": "linux"
       }
     }
-  ]
+  ],
+  "annotations": {
+    "com.example.key": "value"
+  }
 }
 ```
 
