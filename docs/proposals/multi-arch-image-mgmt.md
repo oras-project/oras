@@ -14,7 +14,7 @@ There are two formats of implementation in industry to create a multi-arch image
 - **Docker manifest list**: a manifest list is created from images that are identical in function for different OS/Arch combinations, e.g. [docker.io/bitnami/kubectl:1.31](https://artifact-explorer.azurewebsites.net/artifact?image=docker.io/bitnami/kubectl:1.31). Note that there are some limitations to use Docker manifest list as articulated in the problems statement section below.
 - **OCI image index**: a higher-level manifest which points to specific image manifests, ideal for one or more platforms, e.g. [ghcr.io/oras-project/oras:v1.2.0](https://artifact-explorer.azurewebsites.net/artifact?image=ghcr.io/oras-project/oras:v1.2.0).
 
-![multi-arch image](./img/multi-arch.png)
+![multi-arch image](./img/multi-arch-image.svg)
 
 As more and more container registries are fully compliant with the OCI specifications, OCI image index becomes a popular format to create a multi-arch image.
 
@@ -63,8 +63,7 @@ The proposed CLI commands for managing a multi-arch image are listed below. The 
 
 - Create a multi-arch image: `oras manifest index create`
 - Update a multi-arch image: `oras manifest index update`
-- Inspect a multi-arch image: `oras manifest fetch`. Add two alias `oras manifest inspect` and `oras manifest show` for usability
-- Add annotations to a multi-arch image: `oras manifest index create --annotation`
+- Add annotations to a multi-arch image during creation: `oras manifest index create --annotation`
 
 The proposal creates a multi-arch image using an OCI image index in an OCI image layout as a local storage, then push the multi-arch image to the registry with ORAS. 
 
@@ -72,7 +71,7 @@ The proposal creates a multi-arch image using an OCI image index in an OCI image
 
 Here is the sample workflow to create a multi-arch image using an image index locally and push it to the registry for deployment:
 
-![multi-arch image](./img/create-multi-arch.png)
+![multi-arch image](./img/create-multi-arch.svg)
 
 1. Assume there are two arch-specific images tagged as `v1-linux-amd64` and `v1-linux-arm64` in an OCI image layout called `layout-dir`. List the tags in the OCI image layout:
 
@@ -89,13 +88,13 @@ v1-linux-armv7
 ```console
 $ oras manifest index create --oci-layout layout-dir:v1 v1-linux-amd64 v1-linux-arm64 --annotation "platform=multi-arch" 
 
-Fetching  v1-linux-amd64 
-Fetched   v1-linux-amd64 
-Fetching  v1-linux-arm64 
-Fetched   v1-linux-arm64 
-Packed     edb5bc1f0b5c application/vnd.oci.image.index.v1+json 
-Pushed     [oci-layout] layout-dir:v1 
-Digest: sha256:edb5bc1f0b5c21e9321b34e50c92beae739250fb8840905
+Fetching  v1-linux-amd64
+Fetched   v1-linux-amd64
+Fetching  v1-linux-arm64
+Fetched   v1-linux-arm64
+Packed    edb5bc1f0b5c application/vnd.oci.image.index.v1+json
+Pushed    [oci-layout] layout-dir:v1
+Digest: sha256:edb5bc1f0b5c21e9321b34e50c92beae739250fb88409056e8719d9759f6b5b4
 
 Status: An image index has been created and pushed to layout-dir:v1
 ```
@@ -129,30 +128,23 @@ $ oras manifest fetch --oci-layout layout-dir:v1 --pretty
         "os": "linux"
       }
     }
-  ],
-  "annotations": {
-    "platform": "multi-arch"
-  }
+  ]
 }
 ```
 
 4. Update the image index by adding a new architecture image in the OCI image layout: 
 
-```bash
+```console
 $ oras manifest index update --oci-layout layout-dir:v1 --add linux-armv7 
-```
 
-```bash
 Fetching  v1
-Fetched   sha256:aba7563dbb28dcbe91b4d24ec84028af4ad97cfaf0cdf3fa550e8d619d5f36d1 v1
+Fetched   sha256:edb5bc1f0b5c21e9321b34e50c92beae739250fb88409056e8719d9759f6b5b4 v1
 Fetching  v1-linux-armv7
-Fetched   sha256:42c524c48e0672568dbd2842d3a0cb34a415347145ee9fe1c8abaf65e7455b46 v1-linux-armv7
-Added     sha256:42c524c48e0672568dbd2842d3a0cb34a415347145ee9fe1c8abaf65e7455b46 v1-linux-armv7
-Updated   sha256:7c65e066ada2a43efea2610451502498368ce3dcceef3e3d47d8fdcf32f47c57
+Fetched   sha256:965945e1a08031a63d5970c1da7c39af231c36e4c0a5a3cc276d02a3e06513ee v1-linux-armv7
+Added     sha256:965945e1a08031a63d5970c1da7c39af231c36e4c0a5a3cc276d02a3e06513ee v1-linux-armv7
+Updated   sha256:6a165dbdc7a24e677e7ec0748457604ba143ae74e5b27a19789b88b41bf49bb0
 Pushed    [oci-layout] layout-dir:v1
-Digest: sha256:7c65e066ada2a43efea2610451502498368ce3dcceef3e3d47d8fdcf32f47c57
-
-Status: An image index has been updated and pushed to layout-dir:v1
+Digest: sha256:6a165dbdc7a24e677e7ec0748457604ba143ae74e5b27a19789b88b41bf49bb0
 ```
 
 ## CLI Specs for new subcommands 
@@ -240,3 +232,5 @@ In addition, `docker buildx` supports building a multi-arch image using the OCI 
 
 - Support showing platform information of tags in formatted output:  https://github.com/oras-project/oras/issues/1547
 - Support attach annotations to image index and its child image manifest in `oras attach`: https://github.com/oras-project/oras/issues/1531
+- Add status output to show the command execution result: https://github.com/oras-project/oras/issues/1575
+- Add two alias to "oras manifest fetch": https://github.com/oras-project/oras/issues/1574
