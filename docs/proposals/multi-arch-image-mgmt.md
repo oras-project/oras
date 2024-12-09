@@ -88,10 +88,10 @@ v1-linux-armv7
 ```console
 $ oras manifest index create --oci-layout layout-dir:v1 v1-linux-amd64 v1-linux-arm64 --annotation "com.example.key=value" 
 
-Fetching  v1-linux-amd64
-Fetched   v1-linux-amd64
+Fetching  v1-linux-amd64 
+Fetched   sha256:42c524c48e0672568dbd2842d3a0cb34a415347145ee9fe1c8abaf65e7455b46 v1-linux-amd64 
 Fetching  v1-linux-arm64
-Fetched   v1-linux-arm64
+Fetched   sha256:965945e1a08031a63d5970c1da7c39af231c36e4c0a5a3cc276d02a3e06513ee v1-linux-arm64 
 Packed    edb5bc1f0b5c application/vnd.oci.image.index.v1+json
 Pushed    [oci-layout] layout-dir:v1
 Digest: sha256:edb5bc1f0b5c21e9321b34e50c92beae739250fb88409056e8719d9759f6b5b4
