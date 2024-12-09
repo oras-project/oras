@@ -32,7 +32,7 @@ The `oras manifest` provides subcommands to push, fetch, and delete an image man
 
 Specifically, there are limitations and problems to create and manage multi-arch images using `docker` or `docker buildx`:
 
-### Lack of native support for local environment
+#### Lack of native support for local environment
 
 `docker buildx` confuses developers who are expecting to immediately run a multi-arch image after a successful build. Because `docker buildx` targets multiple architectures, it must be saved to a repository, not local storage. This requires the multi-arch image push to a repository and then a pull to run and test locally, which is inefficient for local development and testing.
 
@@ -64,7 +64,7 @@ The proposed CLI commands for managing a multi-arch image are listed below. The 
 - Create a multi-arch image: `oras manifest index create`
 - Update a multi-arch image: `oras manifest index update`
 - Inspect a multi-arch image: `oras manifest fetch`. Add two alias `oras manifest inspect` and `oras manifest show` for usability
-- Add annotations to a multi-arch image: `oras manifest create --annotation`
+- Add annotations to a multi-arch image: `oras manifest index create --annotation`
 
 The proposal creates a multi-arch image using an OCI image index in an OCI image layout as a local storage, then push the multi-arch image to the registry with ORAS. 
 
@@ -81,25 +81,23 @@ $ oras repo tags --oci-layout layout-dir
 
 v1-linux-amd64 
 v1-linux-arm64
-v1-linux-arm/v7
+v1-linux-armv7
 ```
 
 2. Create a multi-arch image by combining two image manifests into an image index, tag it with `v1` and push the tagged image index to an OCI image layout `layout-dir` automatically. Add annotations to this image index at the same time:  
 
-```bash
+```console
 $ oras manifest index create --oci-layout layout-dir:v1 v1-linux-amd64 v1-linux-arm64 --annotation "platform=multi-arch" 
-```
 
-```bash
 Fetching  v1-linux-amd64 
 Fetched   v1-linux-amd64 
 Fetching  v1-linux-arm64 
 Fetched   v1-linux-arm64 
 Packed     edb5bc1f0b5c application/vnd.oci.image.index.v1+json 
 Pushed     [oci-layout] layout-dir:v1 
-Digest: sha256:edb5bc1f0b5c21e9321b34e50c92beae739250fb8840905 
+Digest: sha256:edb5bc1f0b5c21e9321b34e50c92beae739250fb8840905
 
-Status: An image index has been created and pushed to layout-dir:v1 
+Status: An image index has been created and pushed to layout-dir:v1
 ```
 
 3. Inspect the image index from the OCI image layout: 
@@ -141,15 +139,15 @@ $ oras manifest fetch --oci-layout layout-dir:v1 --pretty
 4. Update the image index by adding a new architecture image in the OCI image layout: 
 
 ```bash
-$ oras manifest index update --oci-layout layout-dir:v1 --add linux-arm/v7 
+$ oras manifest index update --oci-layout layout-dir:v1 --add linux-armv7 
 ```
 
 ```bash
 Fetching  v1
 Fetched   sha256:aba7563dbb28dcbe91b4d24ec84028af4ad97cfaf0cdf3fa550e8d619d5f36d1 v1
-Fetching  v1-linux-arm/v7
-Fetched   sha256:42c524c48e0672568dbd2842d3a0cb34a415347145ee9fe1c8abaf65e7455b46 v1-linux-arm/v7
-Added     sha256:42c524c48e0672568dbd2842d3a0cb34a415347145ee9fe1c8abaf65e7455b46 v1-linux-arm/v7
+Fetching  v1-linux-armv7
+Fetched   sha256:42c524c48e0672568dbd2842d3a0cb34a415347145ee9fe1c8abaf65e7455b46 v1-linux-armv7
+Added     sha256:42c524c48e0672568dbd2842d3a0cb34a415347145ee9fe1c8abaf65e7455b46 v1-linux-armv7
 Updated   sha256:7c65e066ada2a43efea2610451502498368ce3dcceef3e3d47d8fdcf32f47c57
 Pushed    [oci-layout] layout-dir:v1
 Digest: sha256:7c65e066ada2a43efea2610451502498368ce3dcceef3e3d47d8fdcf32f47c57
@@ -242,15 +240,3 @@ In addition, `docker buildx` supports building a multi-arch image using the OCI 
 
 - Support showing platform information of tags in formatted output:  https://github.com/oras-project/oras/issues/1547
 - Support attach annotations to image index and its child image manifest in `oras attach`: https://github.com/oras-project/oras/issues/1531
-
-## Appendix 
-
-### PoC 
-
-#### Create a multi-arch image as an OCI image index locally
-
-Preview it on [![asciicast](https://asciinema.org/a/677877.svg)](https://asciinema.org/a/677877).
-
-#### Update an existing OCI image index: add, remove, merge
-
-Preview it on [![asciicast](https://asciinema.org/a/677890.svg)](https://asciinema.org/a/677890).
