@@ -18,22 +18,35 @@ package text
 import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
+	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/cmd/oras/internal/output"
 )
 
 // ManifestPushHandler handles text metadata output for manifest push events.
 type ManifestPushHandler struct {
 	printer *output.Printer
+	target  *option.Target
 }
 
 // NewManifestPushHandler returns a new handler for manifest push events.
-func NewManifestPushHandler(printer *output.Printer) metadata.ManifestPushHandler {
+func NewManifestPushHandler(printer *output.Printer, target *option.Target) metadata.ManifestPushHandler {
 	return &ManifestPushHandler{
 		printer: printer,
+		target:  target,
 	}
 }
 
 // OnTagged implements metadata.TaggedHandler.
 func (h *ManifestPushHandler) OnTagged(_ ocispec.Descriptor, tag string) error {
 	return h.printer.Println("Tagged", tag)
+}
+
+// OnManifestPushed implements metadata.ManifestPushHandler.
+func (h *ManifestPushHandler) OnManifestPushed() error {
+	return h.printer.Println("Pushed:", h.target.AnnotatedReference())
+}
+
+// OnCompleted implements metadata.ManifestPushHandler.
+func (h *ManifestPushHandler) OnCompleted(desc ocispec.Descriptor) error {
+	return h.printer.Println("Digest:", desc.Digest)
 }
