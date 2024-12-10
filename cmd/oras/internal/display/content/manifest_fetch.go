@@ -31,14 +31,19 @@ type manifestFetch struct {
 	outputPath string
 }
 
-func (h *manifestFetch) OnContentFetched(desc ocispec.Descriptor, manifest []byte) error {
+func (h *manifestFetch) OnContentFetched(desc ocispec.Descriptor, manifest []byte) (err error) {
 	out := h.stdout
 	if h.outputPath != "-" && h.outputPath != "" {
 		f, err := os.Create(h.outputPath)
 		if err != nil {
 			return fmt.Errorf("failed to open %q: %w", h.outputPath, err)
 		}
-		defer f.Close()
+		defer func() {
+			fileCloseErr := f.Close()
+			if err == nil {
+				err = fileCloseErr
+			}
+		}()
 		out = f
 	}
 	return output.PrintJSON(out, manifest, h.pretty)

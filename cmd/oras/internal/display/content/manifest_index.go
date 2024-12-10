@@ -51,7 +51,12 @@ func (h *manifestIndexCreate) OnContentCreated(manifest []byte) error {
 		if err != nil {
 			return fmt.Errorf("failed to open %q: %w", h.outputPath, err)
 		}
-		defer f.Close()
+		defer func() {
+			fileCloseErr := f.Close()
+			if err == nil {
+				err = fileCloseErr
+			}
+		}()
 		out = f
 	}
 	return output.PrintJSON(out, manifest, h.pretty)
