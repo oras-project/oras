@@ -27,17 +27,25 @@ import (
 
 // AttachHandler handles json metadata output for attach events.
 type AttachHandler struct {
-	out io.Writer
+	out    io.Writer
+	target *option.Target
+	root   ocispec.Descriptor
 }
 
 // NewAttachHandler creates a new handler for attach events.
-func NewAttachHandler(out io.Writer) metadata.AttachHandler {
+func NewAttachHandler(out io.Writer, target *option.Target) metadata.AttachHandler {
 	return &AttachHandler{
-		out: out,
+		out:    out,
+		target: target,
 	}
 }
 
+// OnAttached implements AttachHandler.
+func (ah *AttachHandler) OnAttached(root ocispec.Descriptor, _ ocispec.Descriptor) {
+	ah.root = root
+}
+
 // OnCompleted is called when the attach command is completed.
-func (ah *AttachHandler) OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error {
-	return output.PrintPrettyJSON(ah.out, model.NewAttach(root, opts.Path))
+func (ah *AttachHandler) OnCompleted() error {
+	return output.PrintPrettyJSON(ah.out, model.NewAttach(ah.root, ah.target.Path))
 }

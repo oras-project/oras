@@ -28,25 +28,35 @@ import (
 // AttachHandler handles text metadata output for attach events.
 type AttachHandler struct {
 	printer *output.Printer
+	target  *option.Target
+	root    ocispec.Descriptor
+	subject ocispec.Descriptor
 }
 
 // NewAttachHandler returns a new handler for attach events.
-func NewAttachHandler(printer *output.Printer) metadata.AttachHandler {
+func NewAttachHandler(printer *output.Printer, target *option.Target) metadata.AttachHandler {
 	return &AttachHandler{
 		printer: printer,
+		target:  target,
 	}
 }
 
+// OnAttached implements AttachHandler.
+func (ah *AttachHandler) OnAttached(root ocispec.Descriptor, subject ocispec.Descriptor) {
+	ah.root = root
+	ah.subject = subject
+}
+
 // OnCompleted is called when the attach command is complete.
-func (ah *AttachHandler) OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error {
-	digest := subject.Digest.String()
-	if !strings.HasSuffix(opts.RawReference, digest) {
-		opts.RawReference = fmt.Sprintf("%s@%s", opts.Path, subject.Digest)
+func (ah *AttachHandler) OnCompleted() error {
+	digest := ah.subject.Digest.String()
+	if !strings.HasSuffix(ah.target.RawReference, digest) {
+		ah.target.RawReference = fmt.Sprintf("%s@%s", ah.target.Path, ah.subject.Digest)
 	}
-	err := ah.printer.Println("Attached to", opts.AnnotatedReference())
+	err := ah.printer.Println("Attached to", ah.target.AnnotatedReference())
 	if err != nil {
 		return err
 	}
-	err = ah.printer.Println("Digest:", root.Digest)
+	err = ah.printer.Println("Digest:", ah.root.Digest)
 	return err
 }

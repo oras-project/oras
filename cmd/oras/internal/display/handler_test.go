@@ -16,10 +16,11 @@ limitations under the License.
 package display
 
 import (
-	"oras.land/oras/internal/testutils"
 	"os"
 	"reflect"
 	"testing"
+
+	"oras.land/oras/internal/testutils"
 
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
 	"oras.land/oras/cmd/oras/internal/display/status"
@@ -39,7 +40,7 @@ func TestNewPushHandler(t *testing.T) {
 func TestNewAttachHandler(t *testing.T) {
 	mockFetcher := testutils.NewMockFetcher()
 	printer := output.NewPrinter(os.Stdout, os.Stderr)
-	_, _, err := NewAttachHandler(printer, option.Format{Type: option.FormatTypeText.Name}, os.Stdout, mockFetcher.Fetcher)
+	_, _, err := NewAttachHandler(printer, option.Format{Type: option.FormatTypeText.Name}, os.Stdout, mockFetcher.Fetcher, &option.Target{})
 	if err != nil {
 		t.Errorf("NewAttachHandler() error = %v, want nil", err)
 	}
