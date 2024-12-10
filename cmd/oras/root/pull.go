@@ -121,7 +121,7 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 	return oerrors.Command(cmd, &opts.Target)
 }
 
-func runPull(cmd *cobra.Command, opts *pullOptions) error {
+func runPull(cmd *cobra.Command, opts *pullOptions) (err error) {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	statusHandler, metadataHandler, err := display.NewPullHandler(opts.Printer, opts.Format, opts.Path, opts.TTY)
 	if err != nil {
@@ -148,7 +148,12 @@ func runPull(cmd *cobra.Command, opts *pullOptions) error {
 	if err != nil {
 		return err
 	}
-	defer dst.Close()
+	defer func() {
+		closeErr := dst.Close()
+		if err == nil {
+			err = closeErr
+		}
+	}()
 	dst.AllowPathTraversalOnWrite = opts.PathTraversal
 	dst.DisableOverwrite = opts.KeepOldFiles
 
