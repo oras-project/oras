@@ -34,21 +34,21 @@ type AttachHandler struct {
 }
 
 // NewAttachHandler returns a new handler for attach events.
-func NewAttachHandler(printer *output.Printer, target *option.Target) metadata.AttachHandler {
+func NewAttachHandler(printer *output.Printer) metadata.AttachHandler {
 	return &AttachHandler{
 		printer: printer,
-		target:  target,
 	}
 }
 
 // OnAttached implements AttachHandler.
-func (ah *AttachHandler) OnAttached(root ocispec.Descriptor, subject ocispec.Descriptor) {
+func (ah *AttachHandler) OnAttached(target *option.Target, root ocispec.Descriptor, subject ocispec.Descriptor) {
+	ah.target = target
 	ah.root = root
 	ah.subject = subject
 }
 
-// OnCompleted is called when the attach command is complete.
-func (ah *AttachHandler) OnCompleted() error {
+// Render is called when the attach command is complete.
+func (ah *AttachHandler) Render() error {
 	digest := ah.subject.Digest.String()
 	if !strings.HasSuffix(ah.target.RawReference, digest) {
 		ah.target.RawReference = fmt.Sprintf("%s@%s", ah.target.Path, ah.subject.Digest)

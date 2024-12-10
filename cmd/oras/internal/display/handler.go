@@ -62,7 +62,7 @@ func NewPushHandler(printer *output.Printer, format option.Format, tty *os.File,
 }
 
 // NewAttachHandler returns status and metadata handlers for attach command.
-func NewAttachHandler(printer *output.Printer, format option.Format, tty *os.File, fetcher fetcher.Fetcher, target *option.Target) (status.AttachHandler, metadata.AttachHandler, error) {
+func NewAttachHandler(printer *output.Printer, format option.Format, tty *os.File, fetcher fetcher.Fetcher) (status.AttachHandler, metadata.AttachHandler, error) {
 	var statusHandler status.AttachHandler
 	if tty != nil {
 		statusHandler = status.NewTTYAttachHandler(tty, fetcher)
@@ -75,11 +75,11 @@ func NewAttachHandler(printer *output.Printer, format option.Format, tty *os.Fil
 	var metadataHandler metadata.AttachHandler
 	switch format.Type {
 	case option.FormatTypeText.Name:
-		metadataHandler = text.NewAttachHandler(printer, target)
+		metadataHandler = text.NewAttachHandler(printer)
 	case option.FormatTypeJSON.Name:
-		metadataHandler = json.NewAttachHandler(printer, target)
+		metadataHandler = json.NewAttachHandler(printer)
 	case option.FormatTypeGoTemplate.Name:
-		metadataHandler = template.NewAttachHandler(printer, format.Template, target)
+		metadataHandler = template.NewAttachHandler(printer, format.Template)
 	default:
 		return nil, nil, errors.UnsupportedFormatTypeError(format.Type)
 	}

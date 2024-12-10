@@ -158,7 +158,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	if err != nil {
 		return fmt.Errorf("failed to resolve %s: %w", opts.Reference, err)
 	}
-	statusHandler, metadataHandler, err := display.NewAttachHandler(opts.Printer, opts.Format, opts.TTY, store, &opts.Target)
+	statusHandler, metadataHandler, err := display.NewAttachHandler(opts.Printer, opts.Format, opts.TTY, store)
 	if err != nil {
 		return err
 	}
@@ -211,9 +211,9 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 		return err
 	}
 
-	metadataHandler.OnAttached(root, subject)
+	metadataHandler.OnAttached(&opts.Target, root, subject)
 
-	err = metadataHandler.OnCompleted()
+	err = metadataHandler.Render()
 	if err != nil {
 		return err
 	}

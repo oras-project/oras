@@ -30,12 +30,12 @@ type PushHandler interface {
 
 // Renderer renders metadata information when an operation is complete.
 type Renderer interface {
-	OnCompleted() error
+	Render() error
 }
 
 // AttachHandler handles metadata output for attach events.
 type AttachHandler interface {
-	OnAttached(root ocispec.Descriptor, subject ocispec.Descriptor)
+	OnAttached(target *option.Target, root ocispec.Descriptor, subject ocispec.Descriptor)
 	Renderer
 }
 

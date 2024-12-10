@@ -34,20 +34,20 @@ type AttachHandler struct {
 }
 
 // NewAttachHandler returns a new handler for attach metadata events.
-func NewAttachHandler(out io.Writer, template string, target *option.Target) metadata.AttachHandler {
+func NewAttachHandler(out io.Writer, template string) metadata.AttachHandler {
 	return &AttachHandler{
 		out:      out,
 		template: template,
-		target:   target,
 	}
 }
 
 // OnAttached implements AttachHandler.
-func (ah *AttachHandler) OnAttached(root ocispec.Descriptor, _ ocispec.Descriptor) {
+func (ah *AttachHandler) OnAttached(target *option.Target, root ocispec.Descriptor, _ ocispec.Descriptor) {
+	ah.target = target
 	ah.root = root
 }
 
-// OnCompleted formats the metadata of attach command.
-func (ah *AttachHandler) OnCompleted() error {
+// Render formats the metadata of attach command.
+func (ah *AttachHandler) Render() error {
 	return output.ParseAndWrite(ah.out, model.NewAttach(ah.root, ah.target.Path), ah.template)
 }

@@ -33,19 +33,19 @@ type AttachHandler struct {
 }
 
 // NewAttachHandler creates a new handler for attach events.
-func NewAttachHandler(out io.Writer, target *option.Target) metadata.AttachHandler {
+func NewAttachHandler(out io.Writer) metadata.AttachHandler {
 	return &AttachHandler{
-		out:    out,
-		target: target,
+		out: out,
 	}
 }
 
 // OnAttached implements AttachHandler.
-func (ah *AttachHandler) OnAttached(root ocispec.Descriptor, _ ocispec.Descriptor) {
+func (ah *AttachHandler) OnAttached(target *option.Target, root ocispec.Descriptor, _ ocispec.Descriptor) {
+	ah.target = target
 	ah.root = root
 }
 
-// OnCompleted is called when the attach command is completed.
-func (ah *AttachHandler) OnCompleted() error {
+// Render is called when the attach command is completed.
+func (ah *AttachHandler) Render() error {
 	return output.PrintPrettyJSON(ah.out, model.NewAttach(ah.root, ah.target.Path))
 }
