@@ -168,8 +168,9 @@ func runPull(cmd *cobra.Command, opts *pullOptions) (err error) {
 	return metadataHandler.OnCompleted(&opts.Target, desc)
 }
 
-func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, opts oras.CopyOptions, metadataHandler metadata.PullHandler, statusHandler status.PullHandler, po *pullOptions) (_ ocispec.Descriptor, err error) {
+func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, opts oras.CopyOptions, metadataHandler metadata.PullHandler, statusHandler status.PullHandler, po *pullOptions) (ocispec.Descriptor, error) {
 	var configPath, configMediaType string
+	var err error
 
 	if po.ManifestConfigRef != "" {
 		configPath, configMediaType, err = fileref.Parse(po.ManifestConfigRef, "")

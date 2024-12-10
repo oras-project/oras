@@ -44,7 +44,7 @@ func NewManifestIndexCreateHandler(out io.Writer, pretty bool, outputPath string
 }
 
 // OnContentCreated is called after index content is created.
-func (h *manifestIndexCreate) OnContentCreated(manifest []byte) error {
+func (h *manifestIndexCreate) OnContentCreated(manifest []byte) (err error) {
 	out := h.stdout
 	if h.outputPath != "" && h.outputPath != "-" {
 		f, err := os.Create(h.outputPath)
