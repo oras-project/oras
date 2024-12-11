@@ -270,7 +270,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	if err != nil {
 		return err
 	}
-	err = displayMetadata.OnCopied(&opts.Target)
+	err = displayMetadata.OnCopied(&opts.Target, root)
 	if err != nil {
 		return err
 	}
@@ -288,7 +288,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 		}
 	}
 
-	err = displayMetadata.OnCompleted(root)
+	err = displayMetadata.Render()
 	if err != nil {
 		return err
 	}
