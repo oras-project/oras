@@ -149,9 +149,8 @@ func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 		return err
 	}
 	defer func() {
-		fileCloseErr := dst.Close()
-		if pullError == nil {
-			pullError = fileCloseErr
+		if err := dst.Close(); pullError == nil {
+			pullError = err
 		}
 	}()
 	dst.AllowPathTraversalOnWrite = opts.PathTraversal

@@ -31,7 +31,7 @@ type manifestFetch struct {
 	outputPath string
 }
 
-func (h *manifestFetch) OnContentFetched(desc ocispec.Descriptor, manifest []byte) (contentFetchedError error) {
+func (h *manifestFetch) OnContentFetched(desc ocispec.Descriptor, manifest []byte) (eventErr error) {
 	out := h.stdout
 	if h.outputPath != "-" && h.outputPath != "" {
 		f, err := os.Create(h.outputPath)
@@ -39,9 +39,8 @@ func (h *manifestFetch) OnContentFetched(desc ocispec.Descriptor, manifest []byt
 			return fmt.Errorf("failed to open %q: %w", h.outputPath, err)
 		}
 		defer func() {
-			fileCloseErr := f.Close()
-			if contentFetchedError == nil {
-				contentFetchedError = fileCloseErr
+			if err := f.Close(); eventErr == nil {
+				eventErr = err
 			}
 		}()
 		out = f

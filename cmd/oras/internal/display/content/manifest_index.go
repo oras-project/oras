@@ -44,7 +44,7 @@ func NewManifestIndexCreateHandler(out io.Writer, pretty bool, outputPath string
 }
 
 // OnContentCreated is called after index content is created.
-func (h *manifestIndexCreate) OnContentCreated(manifest []byte) (contentFetchedError error) {
+func (h *manifestIndexCreate) OnContentCreated(manifest []byte) (eventErr error) {
 	out := h.stdout
 	if h.outputPath != "" && h.outputPath != "-" {
 		f, err := os.Create(h.outputPath)
@@ -52,9 +52,8 @@ func (h *manifestIndexCreate) OnContentCreated(manifest []byte) (contentFetchedE
 			return fmt.Errorf("failed to open %q: %w", h.outputPath, err)
 		}
 		defer func() {
-			fileCloseErr := f.Close()
-			if contentFetchedError == nil {
-				contentFetchedError = fileCloseErr
+			if err := f.Close(); eventErr == nil {
+				eventErr = err
 			}
 		}()
 		out = f
