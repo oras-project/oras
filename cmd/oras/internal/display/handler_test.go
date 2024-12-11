@@ -16,10 +16,11 @@ limitations under the License.
 package display
 
 import (
-	"oras.land/oras/internal/testutils"
 	"os"
 	"reflect"
 	"testing"
+
+	"oras.land/oras/internal/testutils"
 
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
 	"oras.land/oras/cmd/oras/internal/display/status"
