@@ -170,8 +170,11 @@ func NewTagHandler(printer *output.Printer, target option.Target) metadata.TagHa
 }
 
 // NewManifestPushHandler returns a manifest push handler.
-func NewManifestPushHandler(printer *output.Printer) metadata.ManifestPushHandler {
-	return text.NewManifestPushHandler(printer)
+func NewManifestPushHandler(printer *output.Printer, outputDescriptor bool, pretty bool, desc ocispec.Descriptor, target *option.Target) (status.ManifestPushHandler, metadata.ManifestPushHandler) {
+	if outputDescriptor {
+		return status.NewDiscardHandler(), metadata.NewDiscardHandler()
+	}
+	return status.NewTextManifestPushHandler(printer, desc), text.NewManifestPushHandler(printer, target)
 }
 
 // NewManifestIndexCreateHandler returns status, metadata and content handlers for index create command.
