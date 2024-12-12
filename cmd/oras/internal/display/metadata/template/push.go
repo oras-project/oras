@@ -59,7 +59,7 @@ func (ph *PushHandler) OnCopied(opts *option.Target, root ocispec.Descriptor) er
 	return nil
 }
 
-// Render is called after the push is completed.
+// Render implements PushHandler.
 func (ph *PushHandler) Render() error {
 	return output.ParseAndWrite(ph.out, model.NewPush(ph.root, ph.path, ph.tagged.Tags()), ph.template)
 }

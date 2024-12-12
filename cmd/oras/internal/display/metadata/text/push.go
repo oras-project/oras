@@ -51,7 +51,7 @@ func (h *PushHandler) OnCopied(opts *option.Target, root ocispec.Descriptor) err
 	return h.printer.Println("Pushed", opts.AnnotatedReference())
 }
 
-// Render is called after the push is completed.
+// Render implements PushHandler.
 func (h *PushHandler) Render() error {
 	err := h.printer.Println("ArtifactType:", h.root.ArtifactType)
 	if err != nil {
