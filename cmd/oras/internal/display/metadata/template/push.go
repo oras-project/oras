@@ -32,6 +32,7 @@ type PushHandler struct {
 	path     string
 	tagged   model.Tagged
 	out      io.Writer
+	root     ocispec.Descriptor
 }
 
 // NewPushHandler returns a new handler for push events.
@@ -49,15 +50,16 @@ func (ph *PushHandler) OnTagged(desc ocispec.Descriptor, tag string) error {
 }
 
 // OnCopied is called after files are copied.
-func (ph *PushHandler) OnCopied(opts *option.Target) error {
+func (ph *PushHandler) OnCopied(opts *option.Target, root ocispec.Descriptor) error {
 	if opts.RawReference != "" && !contentutil.IsDigest(opts.Reference) {
 		ph.tagged.AddTag(opts.Reference)
 	}
 	ph.path = opts.Path
+	ph.root = root
 	return nil
 }
 
-// OnCompleted is called after the push is completed.
-func (ph *PushHandler) OnCompleted(root ocispec.Descriptor) error {
-	return output.ParseAndWrite(ph.out, model.NewPush(root, ph.path, ph.tagged.Tags()), ph.template)
+// Render implements PushHandler.
+func (ph *PushHandler) Render() error {
+	return output.ParseAndWrite(ph.out, model.NewPush(ph.root, ph.path, ph.tagged.Tags()), ph.template)
 }
