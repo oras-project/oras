@@ -210,9 +210,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	if err != nil {
 		return err
 	}
-
 	metadataHandler.OnAttached(&opts.Target, root, subject)
-
 	err = metadataHandler.Render()
 	if err != nil {
 		return err

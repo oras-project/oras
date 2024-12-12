@@ -29,7 +29,7 @@ import (
 type AttachHandler struct {
 	template string
 	out      io.Writer
-	target   *option.Target
+	path     string
 	root     ocispec.Descriptor
 }
 
@@ -43,11 +43,11 @@ func NewAttachHandler(out io.Writer, template string) metadata.AttachHandler {
 
 // OnAttached implements AttachHandler.
 func (ah *AttachHandler) OnAttached(target *option.Target, root ocispec.Descriptor, _ ocispec.Descriptor) {
-	ah.target = target
+	ah.path = target.Path
 	ah.root = root
 }
 
 // Render formats the metadata of attach command.
 func (ah *AttachHandler) Render() error {
-	return output.ParseAndWrite(ah.out, model.NewAttach(ah.root, ah.target.Path), ah.template)
+	return output.ParseAndWrite(ah.out, model.NewAttach(ah.root, ah.path), ah.template)
 }
