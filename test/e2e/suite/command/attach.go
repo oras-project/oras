@@ -138,12 +138,22 @@ var _ = Describe("ORAS beginners:", func() {
 var _ = Describe("1.1 registry users:", func() {
 	When("running attach command", func() {
 		It("should attach a file to a subject and output status", func() {
-			testRepo := attachTestRepo("simple")
+			testRepo := attachTestRepo("attach-tag")
 			CopyZOTRepo(ImageRepo, testRepo)
 			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
 			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				WithWorkDir(PrepareTempFiles()).
 				MatchKeyWords(fmt.Sprintf("Attached to [registry] %s", RegistryRef(ZOTHost, testRepo, foobar.Digest))).
+				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
+		})
+
+		It("should attach a file to a subject and output status", func() {
+			testRepo := attachTestRepo("attach-digest")
+			CopyZOTRepo(ImageRepo, testRepo)
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Digest)
+			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+				WithWorkDir(PrepareTempFiles()).
+				MatchKeyWords(fmt.Sprintf("Attached to [registry] %s", subjectRef)).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
 		})
 
