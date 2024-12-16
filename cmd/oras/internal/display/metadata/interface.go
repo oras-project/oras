@@ -28,9 +28,9 @@ type Renderer interface {
 // PushHandler handles metadata output for push events.
 type PushHandler interface {
 	TaggedHandler
+	Renderer
 
 	OnCopied(opts *option.Target, root ocispec.Descriptor) error
-	Renderer
 }
 
 // AttachHandler handles metadata output for attach events.
