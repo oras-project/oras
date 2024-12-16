@@ -35,8 +35,9 @@ type PushHandler interface {
 
 // AttachHandler handles metadata output for attach events.
 type AttachHandler interface {
-	OnAttached(target *option.Target, root ocispec.Descriptor, subject ocispec.Descriptor)
 	Renderer
+
+	OnAttached(target *option.Target, root ocispec.Descriptor, subject ocispec.Descriptor)
 }
 
 // DiscoverHandler handles metadata output for discover events.

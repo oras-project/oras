@@ -138,23 +138,32 @@ var _ = Describe("ORAS beginners:", func() {
 var _ = Describe("1.1 registry users:", func() {
 	When("running attach command", func() {
 		It("should attach a file to a subject and output status", func() {
-			testRepo := attachTestRepo("simple")
+			testRepo := attachTestRepo("attach-tag")
 			CopyZOTRepo(ImageRepo, testRepo)
 			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
 			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				WithWorkDir(PrepareTempFiles()).
+				MatchKeyWords(fmt.Sprintf("Attached to [registry] %s", RegistryRef(ZOTHost, testRepo, foobar.Digest))).
+				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
+		})
+
+		It("should attach a file to a subject and output status", func() {
+			testRepo := attachTestRepo("attach-digest")
+			CopyZOTRepo(ImageRepo, testRepo)
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Digest)
+			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+				WithWorkDir(PrepareTempFiles()).
+				MatchKeyWords(fmt.Sprintf("Attached to [registry] %s", subjectRef)).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
 		})
 
 		It("should attach a file to an arch-specific subject", func() {
+			// prepare
 			testRepo := attachTestRepo("arch-specific")
-			// Below line will cause unexpected 500
-			// pending for https://github.com/project-zot/zot/pull/2351 to be released
-			// CopyZOTRepo(ImageRepo, testRepo)
-			subjectRef := RegistryRef(ZOTHost, testRepo, multi_arch.Tag)
-			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), subjectRef).Exec()
-			artifactType := "test/attach"
+			CopyZOTRepo(ImageRepo, testRepo)
 			// test
+			subjectRef := RegistryRef(ZOTHost, testRepo, multi_arch.Tag)
+			artifactType := "test/attach"
 			out := ORAS("attach", "--artifact-type", artifactType, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "go-template={{.digest}}", "--platform", "linux/amd64").
 				WithWorkDir(PrepareTempFiles()).Exec().Out.Contents()
 			// validate
