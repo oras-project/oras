@@ -101,7 +101,6 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Printer.Verbose = opts.verbose && !opts.OutputDescriptor
 			return pushManifest(cmd, opts)
 		},
 	}
@@ -151,7 +150,6 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 
 	// prepare manifest descriptor
 	desc := content.NewDescriptorFromBytes(mediaType, contentBytes)
-
 	statusHandler, metadataHandler := display.NewManifestPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc, &opts.Target)
 
 	ref := opts.Reference
@@ -163,7 +161,7 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		return err
 	}
 	if match {
-		if err := statusHandler.OnPushSkipped(); err != nil {
+		if err := statusHandler.OnManifestPushSkipped(); err != nil {
 			return err
 		}
 	} else {

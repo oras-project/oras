@@ -196,7 +196,7 @@ func TestTextPushHandler_PreCopy(t *testing.T) {
 
 func TestTextManifestPushHandler_OnPushSkipped(t *testing.T) {
 	mph := NewTextManifestPushHandler(printer, ocispec.Descriptor{})
-	if mph.OnPushSkipped() != nil {
+	if mph.OnManifestPushSkipped() != nil {
 		t.Error("OnManifestExists() should not return an error")
 	}
 }

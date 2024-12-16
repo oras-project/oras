@@ -68,7 +68,7 @@ type CopyHandler interface {
 
 // ManifestPushHandler handles status output for manifest push command.
 type ManifestPushHandler interface {
-	OnPushSkipped() error
+	OnManifestPushSkipped() error
 	OnManifestPushing() error
 	OnManifestPushed() error
 }

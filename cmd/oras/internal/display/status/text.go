@@ -207,7 +207,7 @@ func NewTextManifestPushHandler(printer *output.Printer, desc ocispec.Descriptor
 	}
 }
 
-func (mph *TextManifestPushHandler) OnPushSkipped() error {
+func (mph *TextManifestPushHandler) OnManifestPushSkipped() error {
 	return mph.printer.PrintStatus(mph.desc, PushPromptExists)
 }
 

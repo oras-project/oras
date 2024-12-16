@@ -100,8 +100,8 @@ func (DiscardHandler) OnFetched(string, ocispec.Descriptor) error {
 	return nil
 }
 
-// OnPushSkipped implements ManifestPushHandler.
-func (DiscardHandler) OnPushSkipped() error {
+// OnManifestPushSkipped implements ManifestPushHandler.
+func (DiscardHandler) OnManifestPushSkipped() error {
 	return nil
 }
 
