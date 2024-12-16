@@ -30,7 +30,7 @@ func TestDiscard_OnTagged(t *testing.T) {
 
 func TestDiscardHandler_OnManifestPushed(t *testing.T) {
 	testDiscard := NewDiscardHandler()
-	if err := testDiscard.OnManifestPushed(); err != nil {
+	if err := testDiscard.OnManifestPushed(ocispec.Descriptor{}); err != nil {
 		t.Errorf("DiscardHandler.OnManifestPushed() error = %v, wantErr nil", err)
 	}
 }

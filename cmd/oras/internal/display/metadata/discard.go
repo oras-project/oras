@@ -32,7 +32,12 @@ func (Discard) OnFetched(string, ocispec.Descriptor, []byte) error {
 }
 
 // OnManifestPushed implements ManifestPushHandler.
-func (Discard) OnManifestPushed() error {
+func (Discard) OnManifestPushed(ocispec.Descriptor) error {
+	return nil
+}
+
+// Render implements ManifestPushHandler.
+func (Discard) Render() error {
 	return nil
 }
 

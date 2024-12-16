@@ -194,7 +194,7 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		}
 		return opts.Output(os.Stdout, descJSON)
 	}
-	if err := metadataHandler.OnManifestPushed(); err != nil {
+	if err := metadataHandler.OnManifestPushed(desc); err != nil {
 		return err
 	}
 	if len(opts.extraRefs) != 0 {
@@ -204,7 +204,7 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		}
 	}
 
-	return metadataHandler.OnCompleted(desc)
+	return metadataHandler.Render()
 }
 
 // matchDigest checks whether the manifest's digest matches to it in the remote

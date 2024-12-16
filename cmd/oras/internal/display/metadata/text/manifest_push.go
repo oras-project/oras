@@ -26,6 +26,7 @@ import (
 type ManifestPushHandler struct {
 	printer *output.Printer
 	target  *option.Target
+	desc    ocispec.Descriptor
 }
 
 // NewManifestPushHandler returns a new handler for manifest push events.
@@ -42,11 +43,12 @@ func (h *ManifestPushHandler) OnTagged(_ ocispec.Descriptor, tag string) error {
 }
 
 // OnManifestPushed implements metadata.ManifestPushHandler.
-func (h *ManifestPushHandler) OnManifestPushed() error {
+func (h *ManifestPushHandler) OnManifestPushed(desc ocispec.Descriptor) error {
+	h.desc = desc
 	return h.printer.Println("Pushed:", h.target.AnnotatedReference())
 }
 
-// OnCompleted implements metadata.ManifestPushHandler.
-func (h *ManifestPushHandler) OnCompleted(desc ocispec.Descriptor) error {
-	return h.printer.Println("Digest:", desc.Digest)
+// Render implements metadata.ManifestPushHandler.
+func (h *ManifestPushHandler) Render() error {
+	return h.printer.Println("Digest:", h.desc.Digest)
 }

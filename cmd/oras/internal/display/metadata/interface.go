@@ -83,8 +83,9 @@ type TagHandler interface {
 // ManifestPushHandler handles metadata output for manifest push events.
 type ManifestPushHandler interface {
 	TaggedHandler
-	OnManifestPushed() error
-	OnCompleted(desc ocispec.Descriptor) error
+	Renderer
+
+	OnManifestPushed(desc ocispec.Descriptor) error
 }
 
 // ManifestIndexCreateHandler handles metadata output for index create events.
