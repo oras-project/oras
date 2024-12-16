@@ -41,8 +41,39 @@ var _ = Describe("ORAS beginners:", func() {
 		RunAndShowPreviewInHelp([]string{"attach"})
 
 		It("should show preview and help doc", func() {
-			out := ORAS("attach", "--help").MatchKeyWords(feature.Preview.Mark+" Attach", feature.Preview.Description, ExampleDesc).Exec()
+			out := ORAS("attach", "--help").MatchKeyWords(feature.Preview.Mark+" Attach", feature.Preview.Description, ExampleDesc).Exec().Out
 			gomega.Expect(out).Should(gbytes.Say("--distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+		})
+
+		It("should not show --verbose in help doc", func() {
+			out := ORAS("push", "--help").MatchKeyWords(ExampleDesc).Exec().Out
+			gomega.Expect(out).ShouldNot(gbytes.Say("--verbose"))
+		})
+
+		It("should show deprecation message and print unnamed status output for --verbose", func() {
+			testRepo := attachTestRepo("test-verbose")
+			CopyZOTRepo(ImageRepo, testRepo)
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			stateKeys := []match.StateKey{
+				foobar.AttachFileStateKey,
+				{Digest: "44136fa355b3", Name: "application/vnd.oci.empty.v1+json"},
+			}
+			ORAS("attach", "--artifact-type", "test/attach", "--verbose", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+				WithWorkDir(PrepareTempFiles()).
+				MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).
+				MatchStatus(stateKeys, true, len(stateKeys)).Exec()
+		})
+
+		It("should show deprecation message and should NOT print unnamed status output for --verbose=false", func() {
+			testRepo := attachTestRepo("test-verbose-false")
+			CopyZOTRepo(ImageRepo, testRepo)
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			stateKeys := []match.StateKey{foobar.AttachFileStateKey}
+			out := ORAS("attach", "--artifact-type", "test/attach", "--verbose=false", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+				WithWorkDir(PrepareTempFiles()).
+				MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).
+				MatchStatus(stateKeys, false, len(stateKeys)).Exec().Out
+			gomega.Expect(out).ShouldNot(gbytes.Say("application/vnd.oci.empty.v1+json"))
 		})
 
 		It("should show text as default format type in help doc", func() {
@@ -107,23 +138,32 @@ var _ = Describe("ORAS beginners:", func() {
 var _ = Describe("1.1 registry users:", func() {
 	When("running attach command", func() {
 		It("should attach a file to a subject and output status", func() {
-			testRepo := attachTestRepo("simple")
+			testRepo := attachTestRepo("attach-tag")
 			CopyZOTRepo(ImageRepo, testRepo)
 			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
 			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				WithWorkDir(PrepareTempFiles()).
+				MatchKeyWords(fmt.Sprintf("Attached to [registry] %s", RegistryRef(ZOTHost, testRepo, foobar.Digest))).
+				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
+		})
+
+		It("should attach a file to a subject and output status", func() {
+			testRepo := attachTestRepo("attach-digest")
+			CopyZOTRepo(ImageRepo, testRepo)
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Digest)
+			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+				WithWorkDir(PrepareTempFiles()).
+				MatchKeyWords(fmt.Sprintf("Attached to [registry] %s", subjectRef)).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
 		})
 
 		It("should attach a file to an arch-specific subject", func() {
+			// prepare
 			testRepo := attachTestRepo("arch-specific")
-			// Below line will cause unexpected 500
-			// pending for https://github.com/project-zot/zot/pull/2351 to be released
-			// CopyZOTRepo(ImageRepo, testRepo)
-			subjectRef := RegistryRef(ZOTHost, testRepo, multi_arch.Tag)
-			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), subjectRef).Exec()
-			artifactType := "test/attach"
+			CopyZOTRepo(ImageRepo, testRepo)
 			// test
+			subjectRef := RegistryRef(ZOTHost, testRepo, multi_arch.Tag)
+			artifactType := "test/attach"
 			out := ORAS("attach", "--artifact-type", artifactType, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "go-template={{.digest}}", "--platform", "linux/amd64").
 				WithWorkDir(PrepareTempFiles()).Exec().Out.Contents()
 			// validate

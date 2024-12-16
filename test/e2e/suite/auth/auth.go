@@ -179,7 +179,7 @@ var _ = Describe("Common registry user", func() {
 			src := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
 			dst := RegistryRef(ZOTHost, fmt.Sprintf("command/auth/%d/copy", GinkgoRandomSeed()), foobar.Tag)
 			foobarStates := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(oras.MediaTypeUnknownConfig))
-			ORAS("cp", src, dst, "-v", "--from-registry-config", LegacyConfigPath, "--to-registry-config", LegacyConfigPath).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
+			ORAS("cp", src, dst, "--from-registry-config", LegacyConfigPath, "--to-registry-config", LegacyConfigPath).MatchStatus(foobarStates, true, len(foobarStates)).Exec()
 		})
 	})
 })

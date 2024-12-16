@@ -15,6 +15,8 @@ limitations under the License.
 
 package feature
 
+const DeprecationMessageVerboseFlag = "Flag --verbose has been deprecated, and will be removed in a future release."
+
 var (
 	Preview = struct {
 		Mark        string

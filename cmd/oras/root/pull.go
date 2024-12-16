@@ -52,7 +52,8 @@ type pullOptions struct {
 	PathTraversal     bool
 	Output            string
 	ManifestConfigRef string
-	verbose           bool
+	// Deprecated: verbose is deprecated and will be removed in the future.
+	verbose bool
 }
 
 func pullCmd() *cobra.Command {
@@ -113,13 +114,14 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 	cmd.Flags().StringVarP(&opts.Output, "output", "o", ".", "output directory")
 	cmd.Flags().StringVarP(&opts.ManifestConfigRef, "config", "", "", "output manifest config file")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
-	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "print status output for unnamed blobs")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
+	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
 	opts.SetTypes(option.FormatTypeText, option.FormatTypeJSON, option.FormatTypeGoTemplate)
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
 
-func runPull(cmd *cobra.Command, opts *pullOptions) error {
+func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	statusHandler, metadataHandler, err := display.NewPullHandler(opts.Printer, opts.Format, opts.Path, opts.TTY)
 	if err != nil {
@@ -146,7 +148,11 @@ func runPull(cmd *cobra.Command, opts *pullOptions) error {
 	if err != nil {
 		return err
 	}
-	defer dst.Close()
+	defer func() {
+		if err := dst.Close(); pullError == nil {
+			pullError = err
+		}
+	}()
 	dst.AllowPathTraversalOnWrite = opts.PathTraversal
 	dst.DisableOverwrite = opts.KeepOldFiles
 
