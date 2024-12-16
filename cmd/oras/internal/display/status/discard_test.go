@@ -24,7 +24,7 @@ import (
 func TestDiscardHandler_OnPushSkipped(t *testing.T) {
 	testDiscard := NewDiscardHandler()
 	if err := testDiscard.OnPushSkipped(); err != nil {
-		t.Errorf("DiscardHandler.OnIndexExists() error = %v, wantErr nil", err)
+		t.Errorf("DiscardHandler.OnPushSkipped() error = %v, wantErr nil", err)
 	}
 }
 
