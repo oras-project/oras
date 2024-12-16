@@ -163,8 +163,8 @@ func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 		}
 		return err
 	}
-
-	return metadataHandler.OnCompleted(&opts.Target, desc)
+	metadataHandler.OnPulled(&opts.Target, desc)
+	return metadataHandler.Render()
 }
 
 func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, opts oras.CopyOptions, metadataHandler metadata.PullHandler, statusHandler status.PullHandler, po *pullOptions) (ocispec.Descriptor, error) {
