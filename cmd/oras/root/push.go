@@ -218,11 +218,11 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	}
 	memoryStore := memory.New()
 	union := contentutil.MultiReadOnlyTarget(memoryStore, store)
-	displayStatus, displayMetadata, err := display.NewPushHandler(opts.Printer, opts.Format, opts.TTY, union)
+	statusHandler, metadataHandler, err := display.NewPushHandler(opts.Printer, opts.Format, opts.TTY, union)
 	if err != nil {
 		return err
 	}
-	descs, err := loadFiles(ctx, store, opts.Annotations, opts.FileRefs, displayStatus)
+	descs, err := loadFiles(ctx, store, opts.Annotations, opts.FileRefs, statusHandler)
 	if err != nil {
 		return err
 	}
@@ -243,15 +243,15 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	if err != nil {
 		return err
 	}
-	dst, stopTrack, err := displayStatus.TrackTarget(originalDst)
+	dst, stopTrack, err := statusHandler.TrackTarget(originalDst)
 	if err != nil {
 		return err
 	}
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
-	copyOptions.CopyGraphOptions.OnCopySkipped = displayStatus.OnCopySkipped
-	copyOptions.CopyGraphOptions.PreCopy = displayStatus.PreCopy
-	copyOptions.CopyGraphOptions.PostCopy = displayStatus.PostCopy
+	copyOptions.CopyGraphOptions.OnCopySkipped = statusHandler.OnCopySkipped
+	copyOptions.CopyGraphOptions.PreCopy = statusHandler.PreCopy
+	copyOptions.CopyGraphOptions.PostCopy = statusHandler.PostCopy
 	copyWithScopeHint := func(root ocispec.Descriptor) error {
 		// add both pull and push scope hints for dst repository
 		// to save potential push-scope token requests during copy
@@ -270,7 +270,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	if err != nil {
 		return err
 	}
-	err = displayMetadata.OnCopied(&opts.Target, root)
+	err = metadataHandler.OnCopied(&opts.Target, root)
 	if err != nil {
 		return err
 	}
@@ -282,13 +282,13 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 		}
 		tagBytesNOpts := oras.DefaultTagBytesNOptions
 		tagBytesNOpts.Concurrency = opts.concurrency
-		dst := listener.NewTagListener(originalDst, nil, displayMetadata.OnTagged)
+		dst := listener.NewTagListener(originalDst, nil, metadataHandler.OnTagged)
 		if _, err = oras.TagBytesN(ctx, dst, root.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}
 	}
 
-	err = displayMetadata.Render()
+	err = metadataHandler.Render()
 	if err != nil {
 		return err
 	}
