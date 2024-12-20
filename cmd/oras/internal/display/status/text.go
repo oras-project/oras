@@ -238,8 +238,11 @@ func (mich *TextManifestIndexCreateHandler) OnFetching(source string) error {
 }
 
 // OnFetched implements ManifestIndexCreateHandler.
-func (mich *TextManifestIndexCreateHandler) OnFetched(source string, _ ocispec.Descriptor) error {
-	return mich.printer.Println(IndexPromptFetched, source)
+func (mich *TextManifestIndexCreateHandler) OnFetched(ref string, desc ocispec.Descriptor) error {
+	if contentutil.IsDigest(ref) {
+		return mich.printer.Println(IndexPromptFetched, ref)
+	}
+	return mich.printer.Println(IndexPromptFetched, desc.Digest, ref)
 }
 
 // OnIndexPacked implements ManifestIndexCreateHandler.
