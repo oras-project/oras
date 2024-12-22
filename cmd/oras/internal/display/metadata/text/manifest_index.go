@@ -33,7 +33,12 @@ func NewManifestIndexCreateHandler(printer *output.Printer) metadata.ManifestInd
 	}
 }
 
-// OnTagged implements metadata.TaggedHandler.
+// OnTagged implements TaggedHandler.
 func (h *ManifestIndexCreateHandler) OnTagged(_ ocispec.Descriptor, tag string) error {
 	return h.printer.Println("Tagged", tag)
+}
+
+// OnCompleted implements ManifestIndexCreateHandler.
+func (h *ManifestIndexCreateHandler) OnCompleted(desc ocispec.Descriptor) error {
+	return h.printer.Println("Digest:", desc.Digest)
 }

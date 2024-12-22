@@ -17,14 +17,19 @@ package content
 
 import ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-type discardHandler struct{}
+type DiscardHandler struct{}
 
 // OnContentFetched implements ManifestFetchHandler.
-func (discardHandler) OnContentFetched(ocispec.Descriptor, []byte) error {
+func (DiscardHandler) OnContentFetched(ocispec.Descriptor, []byte) error {
+	return nil
+}
+
+// OnContentCreated implements ManifestIndexCreateHandler.
+func (DiscardHandler) OnContentCreated([]byte) error {
 	return nil
 }
 
 // NewDiscardHandler returns a new discard handler.
-func NewDiscardHandler() ManifestFetchHandler {
-	return discardHandler{}
+func NewDiscardHandler() DiscardHandler {
+	return DiscardHandler{}
 }

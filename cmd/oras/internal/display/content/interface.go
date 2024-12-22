@@ -24,3 +24,12 @@ type ManifestFetchHandler interface {
 	// OnContentFetched is called after the manifest content is fetched.
 	OnContentFetched(desc ocispec.Descriptor, content []byte) error
 }
+
+// ManifestIndexCreateHandler handles raw output for manifest index create events.
+type ManifestIndexCreateHandler interface {
+	// OnContentCreated is called after the index content is created.
+	OnContentCreated(content []byte) error
+}
+
+// ManifestIndexUpdateHandler handles raw output for manifest index update events.
+type ManifestIndexUpdateHandler ManifestIndexCreateHandler

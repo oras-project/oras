@@ -65,11 +65,12 @@ func TestPushHandler_OnCompleted(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			printer := output.NewPrinter(tt.out, os.Stderr, false)
+			printer := output.NewPrinter(tt.out, os.Stderr)
 			p := &PushHandler{
 				printer: printer,
+				root:    tt.root,
 			}
-			if err := p.OnCompleted(tt.root); (err != nil) != tt.wantErr {
+			if err := p.Render(); (err != nil) != tt.wantErr {
 				t.Errorf("PushHandler.OnCompleted() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

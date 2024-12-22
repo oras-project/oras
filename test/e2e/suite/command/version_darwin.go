@@ -1,3 +1,5 @@
+//go:build darwin
+
 /*
 Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,17 +18,14 @@ limitations under the License.
 package command
 
 import (
-	"context"
-
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/trace"
+	. "github.com/onsi/ginkgo/v2"
+	. "oras.land/oras/test/e2e/internal/utils"
 )
 
-// GetLogger returns a new FieldLogger and an associated Context derived from command context.
-func GetLogger(cmd *cobra.Command, opts *option.Common) (context.Context, logrus.FieldLogger) {
-	ctx, logger := trace.NewLogger(cmd.Context(), opts.Debug)
-	cmd.SetContext(ctx)
-	return ctx, logger
-}
+var _ = Describe("ORAS darwin user:", func() {
+	When("checking oras version", func() {
+		It("should run version command and show OS/Arch information", func() {
+			ORAS("version").MatchKeyWords("OS/Arch:", "darwin/").Exec()
+		})
+	})
+})

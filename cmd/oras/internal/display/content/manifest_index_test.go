@@ -13,20 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package command
+package content
 
 import (
-	"context"
-
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/trace"
+	"os"
+	"testing"
 )
 
-// GetLogger returns a new FieldLogger and an associated Context derived from command context.
-func GetLogger(cmd *cobra.Command, opts *option.Common) (context.Context, logrus.FieldLogger) {
-	ctx, logger := trace.NewLogger(cmd.Context(), opts.Debug)
-	cmd.SetContext(ctx)
-	return ctx, logger
+func Test_manifestIndexCreate_OnContentCreated(t *testing.T) {
+	testHandler := NewManifestIndexCreateHandler(os.Stdout, false, "invalid/path")
+	if err := testHandler.OnContentCreated([]byte("test content")); err == nil {
+		t.Errorf("manifestIndexCreate.OnContentCreated() error = %v, wantErr non-nil error", err)
+	}
 }

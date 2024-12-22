@@ -170,16 +170,57 @@ func NewTagHandler(printer *output.Printer, target option.Target) metadata.TagHa
 }
 
 // NewManifestPushHandler returns a manifest push handler.
-func NewManifestPushHandler(printer *output.Printer) metadata.ManifestPushHandler {
-	return text.NewManifestPushHandler(printer)
+func NewManifestPushHandler(printer *output.Printer, outputDescriptor bool, pretty bool, desc ocispec.Descriptor, target *option.Target) (status.ManifestPushHandler, metadata.ManifestPushHandler) {
+	if outputDescriptor {
+		return status.NewDiscardHandler(), metadata.NewDiscardHandler()
+	}
+	return status.NewTextManifestPushHandler(printer, desc), text.NewManifestPushHandler(printer, target)
 }
 
-// NewManifestIndexCreateHandler returns an index create handler.
-func NewManifestIndexCreateHandler(printer *output.Printer) metadata.ManifestIndexCreateHandler {
-	return text.NewManifestIndexCreateHandler(printer)
+// NewManifestIndexCreateHandler returns status, metadata and content handlers for index create command.
+func NewManifestIndexCreateHandler(outputPath string, printer *output.Printer, pretty bool) (status.ManifestIndexCreateHandler, metadata.ManifestIndexCreateHandler, content.ManifestIndexCreateHandler) {
+	var statusHandler status.ManifestIndexCreateHandler
+	var metadataHandler metadata.ManifestIndexCreateHandler
+	var contentHandler content.ManifestIndexCreateHandler
+	switch outputPath {
+	case "":
+		statusHandler = status.NewTextManifestIndexCreateHandler(printer)
+		metadataHandler = text.NewManifestIndexCreateHandler(printer)
+		contentHandler = content.NewDiscardHandler()
+	case "-":
+		statusHandler = status.NewDiscardHandler()
+		metadataHandler = metadata.NewDiscardHandler()
+		contentHandler = content.NewManifestIndexCreateHandler(printer, pretty, outputPath)
+	default:
+		statusHandler = status.NewTextManifestIndexCreateHandler(printer)
+		metadataHandler = text.NewManifestIndexCreateHandler(printer)
+		contentHandler = content.NewManifestIndexCreateHandler(printer, pretty, outputPath)
+	}
+	return statusHandler, metadataHandler, contentHandler
+}
+
+// NewManifestIndexUpdateHandler returns status, metadata and content handlers for index update command.
+func NewManifestIndexUpdateHandler(outputPath string, printer *output.Printer, pretty bool) (
+	status.ManifestIndexUpdateHandler,
+	metadata.ManifestIndexUpdateHandler,
+	content.ManifestIndexUpdateHandler) {
+	statusHandler := status.NewTextManifestIndexUpdateHandler(printer)
+	metadataHandler := text.NewManifestIndexCreateHandler(printer)
+	contentHandler := content.NewManifestIndexCreateHandler(printer, pretty, outputPath)
+	switch outputPath {
+	case "":
+		contentHandler = content.NewDiscardHandler()
+	case "-":
+		statusHandler = status.NewDiscardHandler()
+		metadataHandler = metadata.NewDiscardHandler()
+	}
+	return statusHandler, metadataHandler, contentHandler
 }
 
 // NewCopyHandler returns copy handlers.
-func NewCopyHandler(printer *output.Printer, fetcher fetcher.Fetcher) (status.CopyHandler, metadata.CopyHandler) {
+func NewCopyHandler(printer *output.Printer, tty *os.File, fetcher fetcher.Fetcher) (status.CopyHandler, metadata.CopyHandler) {
+	if tty != nil {
+		return status.NewTTYCopyHandler(tty), text.NewCopyHandler(printer)
+	}
 	return status.NewTextCopyHandler(printer, fetcher), text.NewCopyHandler(printer)
 }

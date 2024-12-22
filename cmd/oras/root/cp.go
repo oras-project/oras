@@ -21,9 +21,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"sync"
-
-	"oras.land/oras/cmd/oras/internal/display/status"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -36,7 +33,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
-	"oras.land/oras/cmd/oras/internal/display/status/track"
+	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/docker"
@@ -53,6 +50,8 @@ type copyOptions struct {
 	recursive   bool
 	concurrency int
 	extraRefs   []string
+	// Deprecated: verbose is deprecated and will be removed in the future.
+	verbose bool
 }
 
 func copyCmd() *cobra.Command {
@@ -100,11 +99,14 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.Printer.Verbose = opts.verbose
 			return runCopy(cmd, &opts)
 		},
 	}
 	cmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "[Preview] recursively copy the artifact and its referrer artifacts")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
+	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.BinaryTarget)
@@ -128,9 +130,9 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 		return err
 	}
 	ctx = registryutil.WithScopeHint(ctx, dst, auth.ActionPull, auth.ActionPush)
-	copyHandler, handler := display.NewCopyHandler(opts.Printer, dst)
+	statusHandler, metadataHandler := display.NewCopyHandler(opts.Printer, opts.TTY, dst)
 
-	desc, err := doCopy(ctx, copyHandler, src, dst, opts)
+	desc, err := doCopy(ctx, statusHandler, src, dst, opts)
 	if err != nil {
 		return err
 	}
@@ -139,38 +141,30 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 		// correct source digest
 		opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, desc.Digest.String())
 	}
-	_ = opts.Println("Copied", opts.From.AnnotatedReference(), "=>", opts.To.AnnotatedReference())
+	_ = opts.Printer.Println("Copied", opts.From.AnnotatedReference(), "=>", opts.To.AnnotatedReference())
 
 	if len(opts.extraRefs) != 0 {
 		tagNOpts := oras.DefaultTagNOptions
 		tagNOpts.Concurrency = opts.concurrency
-		tagListener := listener.NewTaggedListener(dst, handler.OnTagged)
+		tagListener := listener.NewTaggedListener(dst, metadataHandler.OnTagged)
 		if _, err = oras.TagN(ctx, tagListener, opts.To.Reference, opts.extraRefs, tagNOpts); err != nil {
 			return err
 		}
 	}
 
-	_ = opts.Println("Digest:", desc.Digest)
+	_ = opts.Printer.Println("Digest:", desc.Digest)
 
 	return nil
 }
 
-func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) (ocispec.Descriptor, error) {
+func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) (desc ocispec.Descriptor, err error) {
 	// Prepare copy options
-	committed := &sync.Map{}
 	extendedCopyOptions := oras.DefaultExtendedCopyOptions
 	extendedCopyOptions.Concurrency = opts.concurrency
 	extendedCopyOptions.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		return registry.Referrers(ctx, src, desc, "")
 	}
 
-	const (
-		promptExists  = "Exists "
-		promptCopying = "Copying"
-		promptCopied  = "Copied "
-		promptSkipped = "Skipped"
-		promptMounted = "Mounted"
-	)
 	srcRepo, srcIsRemote := src.(*remote.Repository)
 	dstRepo, dstIsRemote := dst.(*remote.Repository)
 	if srcIsRemote && dstIsRemote && srcRepo.Reference.Registry == dstRepo.Reference.Registry {
@@ -178,45 +172,21 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 			return []string{srcRepo.Reference.Repository}, nil
 		}
 	}
-	if opts.TTY == nil {
-		// no TTY output
-		extendedCopyOptions.OnCopySkipped = copyHandler.OnCopySkipped
-		extendedCopyOptions.PreCopy = copyHandler.PreCopy
-		extendedCopyOptions.PostCopy = copyHandler.PostCopy
-		extendedCopyOptions.OnMounted = copyHandler.OnMounted
-	} else {
-		// TTY output
-		tracked, err := track.NewTarget(dst, promptCopying, promptCopied, opts.TTY)
-		if err != nil {
-			return ocispec.Descriptor{}, err
-		}
-		defer tracked.Close()
-		dst = tracked
-		extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return tracked.Prompt(desc, promptExists)
-		}
-		extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			successors, err := graph.FilteredSuccessors(ctx, desc, tracked, status.DeduplicatedFilter(committed))
-			if err != nil {
-				return err
-			}
-			for _, successor := range successors {
-				if err = tracked.Prompt(successor, promptSkipped); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-		extendedCopyOptions.OnMounted = func(ctx context.Context, desc ocispec.Descriptor) error {
-			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return tracked.Prompt(desc, promptMounted)
-		}
+	dst, err = copyHandler.StartTracking(dst)
+	if err != nil {
+		return desc, err
 	}
+	defer func() {
+		stopErr := copyHandler.StopTracking()
+		if err == nil {
+			err = stopErr
+		}
+	}()
+	extendedCopyOptions.OnCopySkipped = copyHandler.OnCopySkipped
+	extendedCopyOptions.PreCopy = copyHandler.PreCopy
+	extendedCopyOptions.PostCopy = copyHandler.PostCopy
+	extendedCopyOptions.OnMounted = copyHandler.OnMounted
 
-	var desc ocispec.Descriptor
-	var err error
 	rOpts := oras.DefaultResolveOptions
 	rOpts.TargetPlatform = opts.Platform.Platform
 	if opts.recursive {

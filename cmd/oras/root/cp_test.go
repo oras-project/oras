@@ -24,16 +24,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"oras.land/oras/cmd/oras/internal/display/status"
-	"oras.land/oras/cmd/oras/internal/output"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/internal/testutils"
 )
 
@@ -129,12 +127,9 @@ func Test_doCopy(t *testing.T) {
 	defer slave.Close()
 	var opts copyOptions
 	opts.TTY = slave
-	opts.Verbose = true
 	opts.From.Reference = memDesc.Digest.String()
 	dst := memory.New()
-	builder := &strings.Builder{}
-	printer := output.NewPrinter(builder, os.Stderr, opts.Verbose)
-	handler := status.NewTextCopyHandler(printer, dst)
+	handler := status.NewTTYCopyHandler(opts.TTY)
 	// test
 	_, err = doCopy(context.Background(), handler, memStore, dst, &opts)
 	if err != nil {
@@ -155,11 +150,8 @@ func Test_doCopy_skipped(t *testing.T) {
 	defer slave.Close()
 	var opts copyOptions
 	opts.TTY = slave
-	opts.Verbose = true
 	opts.From.Reference = memDesc.Digest.String()
-	builder := &strings.Builder{}
-	printer := output.NewPrinter(builder, os.Stderr, opts.Verbose)
-	handler := status.NewTextCopyHandler(printer, memStore)
+	handler := status.NewTTYCopyHandler(opts.TTY)
 
 	// test
 	_, err = doCopy(context.Background(), handler, memStore, memStore, &opts)
@@ -181,7 +173,6 @@ func Test_doCopy_mounted(t *testing.T) {
 	defer slave.Close()
 	var opts copyOptions
 	opts.TTY = slave
-	opts.Verbose = true
 	opts.From.Reference = manifestDigest
 	// mocked repositories
 	from, err := remote.NewRepository(fmt.Sprintf("%s/%s", host, repoFrom))
@@ -194,9 +185,7 @@ func Test_doCopy_mounted(t *testing.T) {
 		t.Fatal(err)
 	}
 	to.PlainHTTP = true
-	builder := &strings.Builder{}
-	printer := output.NewPrinter(builder, os.Stderr, opts.Verbose)
-	handler := status.NewTextCopyHandler(printer, to)
+	handler := status.NewTTYCopyHandler(opts.TTY)
 
 	// test
 	_, err = doCopy(context.Background(), handler, from, to, &opts)

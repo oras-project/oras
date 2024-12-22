@@ -40,7 +40,7 @@ func (opts *Platform) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&opts.platform, "platform", "", "", opts.FlagDescription+" in the form of `os[/arch][/variant][:os_version]`")
 }
 
-// parse parses the input platform flag to an oci platform type.
+// Parse parses the input platform flag to an oci platform type.
 func (opts *Platform) Parse(*cobra.Command) error {
 	if opts.platform == "" {
 		return nil
@@ -72,4 +72,15 @@ func (opts *Platform) Parse(*cobra.Command) error {
 	}
 	opts.Platform = &p
 	return nil
+}
+
+// ArtifactPlatform option struct.
+type ArtifactPlatform struct {
+	Platform
+}
+
+// ApplyFlags applies flags to a command flag set.
+func (opts *ArtifactPlatform) ApplyFlags(fs *pflag.FlagSet) {
+	opts.FlagDescription = "set artifact platform"
+	fs.StringVarP(&opts.platform, "artifact-platform", "", "", "[Experimental] "+opts.FlagDescription+" in the form of `os[/arch][/variant][:os_version]`")
 }

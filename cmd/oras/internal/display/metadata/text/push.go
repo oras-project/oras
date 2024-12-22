@@ -28,6 +28,7 @@ import (
 type PushHandler struct {
 	printer *output.Printer
 	tagLock sync.Mutex
+	root    ocispec.Descriptor
 }
 
 // NewPushHandler returns a new handler for push events.
@@ -45,15 +46,16 @@ func (h *PushHandler) OnTagged(_ ocispec.Descriptor, tag string) error {
 }
 
 // OnCopied is called after files are copied.
-func (h *PushHandler) OnCopied(opts *option.Target) error {
+func (h *PushHandler) OnCopied(opts *option.Target, root ocispec.Descriptor) error {
+	h.root = root
 	return h.printer.Println("Pushed", opts.AnnotatedReference())
 }
 
-// OnCompleted is called after the push is completed.
-func (h *PushHandler) OnCompleted(root ocispec.Descriptor) error {
-	err := h.printer.Println("ArtifactType:", root.ArtifactType)
+// Render implements PushHandler.
+func (h *PushHandler) Render() error {
+	err := h.printer.Println("ArtifactType:", h.root.ArtifactType)
 	if err != nil {
 		return err
 	}
-	return h.printer.Println("Digest:", root.Digest)
+	return h.printer.Println("Digest:", h.root.Digest)
 }

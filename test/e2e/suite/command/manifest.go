@@ -32,6 +32,7 @@ import (
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
+	"oras.land/oras/test/e2e/internal/utils/match"
 )
 
 func prepare(src string, dst string) {
@@ -53,7 +54,7 @@ var _ = Describe("ORAS beginners:", func() {
 	When("running manifest command", func() {
 		When("running `manifest push`", func() {
 			It("should show help doc with feature flags", func() {
-				out := ORAS("manifest", "push", "--help").MatchKeyWords(ExampleDesc).Exec()
+				out := ORAS("manifest", "push", "--help").MatchKeyWords(ExampleDesc).Exec().Out
 				gomega.Expect(out).Should(gbytes.Say("--distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 			})
 
@@ -61,6 +62,38 @@ var _ = Describe("ORAS beginners:", func() {
 				ORAS("manifest", "push", "--help").
 					MatchKeyWords("--pretty", "prettify JSON").
 					Exec()
+			})
+
+			It("should not show --verbose in help doc", func() {
+				out := ORAS("push", "--help").MatchKeyWords(ExampleDesc).Exec().Out
+				gomega.Expect(out).ShouldNot(gbytes.Say("--verbose"))
+			})
+
+			It("should show deprecation message and print unnamed status output for --verbose", func() {
+				manifest := `{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:fe9dbc99451d0517d65e048c309f0b5afb2cc513b7a3d456b6cc29fe641386c5","size":53},"layers":[]}`
+				manifestDigest := "sha256:bc1a59d49fc7c7b0a31f22ca0c743ecdabdb736777e3d9672fa9d97b4fe323f4"
+
+				tag := "test-verbose"
+				ORAS("manifest", "push", RegistryRef(ZOTHost, ImageRepo, tag), "-", "--verbose").
+					WithInput(strings.NewReader(manifest)).
+					MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).
+					MatchKeyWords("Pushed", RegistryRef(ZOTHost, ImageRepo, tag), "Digest:", manifestDigest).
+					MatchStatus([]match.StateKey{{Digest: "bc1a59d49fc7", Name: "application/vnd.oci.image.manifest.v1+json"}}, true, 1).
+					Exec()
+			})
+
+			It("should show deprecation message and should NOT print unnamed status output for --verbose=false", func() {
+				manifest := `{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:fe9dbc99451d0517d65e048c309f0b5afb2cc513b7a3d456b6cc29fe641386c5","size":53},"layers":[]}`
+				manifestDigest := "sha256:bc1a59d49fc7c7b0a31f22ca0c743ecdabdb736777e3d9672fa9d97b4fe323f4"
+
+				tag := "test-verbose-false"
+				out := ORAS("manifest", "push", RegistryRef(ZOTHost, ImageRepo, tag), "-", "--verbose=false").
+					WithInput(strings.NewReader(manifest)).
+					MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).
+					MatchKeyWords("Pushed", RegistryRef(ZOTHost, ImageRepo, tag), "Digest:", manifestDigest).
+					Exec().Out
+				// should not print status output for unnamed blobs
+				gomega.Expect(out).ShouldNot(gbytes.Say("application/vnd.oci.image.manifest.v1+json"))
 			})
 
 			It("should fail and show detailed error description if no argument provided", func() {
@@ -123,7 +156,7 @@ var _ = Describe("ORAS beginners:", func() {
 
 		When("running `manifest delete`", func() {
 			It("should show help doc with feature flags", func() {
-				out := ORAS("manifest", "delete", "--help").MatchKeyWords(ExampleDesc).Exec()
+				out := ORAS("manifest", "delete", "--help").MatchKeyWords(ExampleDesc).Exec().Out
 				gomega.Expect(out).Should(gbytes.Say("--distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 			})
 

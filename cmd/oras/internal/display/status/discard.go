@@ -18,6 +18,7 @@ package status
 import (
 	"context"
 
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 )
@@ -86,5 +87,55 @@ func (DiscardHandler) OnNodeProcessing(desc ocispec.Descriptor) error {
 
 // OnNodeProcessing implements PullHandler.
 func (DiscardHandler) OnNodeSkipped(desc ocispec.Descriptor) error {
+	return nil
+}
+
+// OnFetching implements referenceFetchHandler.
+func (DiscardHandler) OnFetching(string) error {
+	return nil
+}
+
+// OnFetched implements referenceFetchHandler.
+func (DiscardHandler) OnFetched(string, ocispec.Descriptor) error {
+	return nil
+}
+
+// OnManifestPushSkipped implements ManifestPushHandler.
+func (DiscardHandler) OnManifestPushSkipped() error {
+	return nil
+}
+
+// OnManifestPushing implements ManifestPushHandler.
+func (DiscardHandler) OnManifestPushing() error {
+	return nil
+}
+
+// OnManifestPushed implements ManifestPushHandler.
+func (DiscardHandler) OnManifestPushed() error {
+	return nil
+}
+
+// OnManifestRemoved implements ManifestIndexUpdateHandler.
+func (DiscardHandler) OnManifestRemoved(digest.Digest) error {
+	return nil
+}
+
+// OnManifestAdded implements ManifestIndexUpdateHandler.
+func (DiscardHandler) OnManifestAdded(string, ocispec.Descriptor) error {
+	return nil
+}
+
+// OnIndexMerged implements ManifestIndexUpdateHandler.
+func (DiscardHandler) OnIndexMerged(string, ocispec.Descriptor) error {
+	return nil
+}
+
+// OnIndexPacked implements ManifestIndexCreateHandler.
+func (DiscardHandler) OnIndexPacked(ocispec.Descriptor) error {
+	return nil
+}
+
+// OnIndexPushed implements ManifestIndexCreateHandler.
+func (DiscardHandler) OnIndexPushed(string) error {
 	return nil
 }

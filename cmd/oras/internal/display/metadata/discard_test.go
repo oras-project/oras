@@ -13,20 +13,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package command
+package metadata
 
 import (
-	"context"
+	"testing"
 
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/trace"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// GetLogger returns a new FieldLogger and an associated Context derived from command context.
-func GetLogger(cmd *cobra.Command, opts *option.Common) (context.Context, logrus.FieldLogger) {
-	ctx, logger := trace.NewLogger(cmd.Context(), opts.Debug)
-	cmd.SetContext(ctx)
-	return ctx, logger
+func TestDiscard_OnTagged(t *testing.T) {
+	testDiscard := NewDiscardHandler()
+	if err := testDiscard.OnTagged(ocispec.Descriptor{}, "test"); err != nil {
+		t.Errorf("testDiscard.OnTagged() error = %v, want nil", err)
+	}
+}
+
+func TestDiscardHandler_OnManifestPushed(t *testing.T) {
+	testDiscard := NewDiscardHandler()
+	if err := testDiscard.OnManifestPushed(ocispec.Descriptor{}); err != nil {
+		t.Errorf("DiscardHandler.OnManifestPushed() error = %v, wantErr nil", err)
+	}
 }

@@ -89,7 +89,7 @@ func deleteBlob(cmd *cobra.Command, opts *deleteBlobOptions) (err error) {
 		if errors.Is(err, errdef.ErrNotFound) {
 			if opts.Force && !opts.OutputDescriptor {
 				// ignore nonexistent
-				_ = opts.Println("Missing", opts.RawReference)
+				_ = opts.Printer.Println("Missing", opts.RawReference)
 				return nil
 			}
 			return fmt.Errorf("%s: the specified blob does not exist", opts.RawReference)
@@ -118,7 +118,7 @@ func deleteBlob(cmd *cobra.Command, opts *deleteBlobOptions) (err error) {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	_ = opts.Println("Deleted", opts.AnnotatedReference())
+	_ = opts.Printer.Println("Deleted", opts.AnnotatedReference())
 
 	return nil
 }

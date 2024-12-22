@@ -27,18 +27,16 @@ type contextKey int
 const loggerKey contextKey = iota
 
 // NewLogger returns a logger.
-func NewLogger(ctx context.Context, debug bool, verbose bool) (context.Context, logrus.FieldLogger) {
+func NewLogger(ctx context.Context, debug bool) (context.Context, logrus.FieldLogger) {
 	var logLevel logrus.Level
 	if debug {
 		logLevel = logrus.DebugLevel
-	} else if verbose {
-		logLevel = logrus.InfoLevel
 	} else {
 		logLevel = logrus.WarnLevel
 	}
 
 	logger := logrus.New()
-	logger.SetFormatter(&logrus.TextFormatter{DisableQuote: true})
+	logger.SetFormatter(&TextFormatter{})
 	logger.SetLevel(logLevel)
 	entry := logger.WithContext(ctx)
 	return context.WithValue(ctx, loggerKey, entry), entry

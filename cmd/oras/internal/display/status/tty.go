@@ -143,3 +143,64 @@ func (ph *TTYPullHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, St
 	ph.tracked = tracked
 	return tracked, tracked.Close, nil
 }
+
+// TTYCopyHandler handles tty status output for copy events.
+type TTYCopyHandler struct {
+	tty       *os.File
+	committed sync.Map
+	tracked   track.GraphTarget
+}
+
+// NewTTYCopyHandler returns a new handler for copy command.
+func NewTTYCopyHandler(tty *os.File) CopyHandler {
+	return &TTYCopyHandler{
+		tty: tty,
+	}
+}
+
+// StartTracking returns a tracked target from a graph target.
+func (ch *TTYCopyHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
+	var err error
+	ch.tracked, err = track.NewTarget(gt, copyPromptCopying, copyPromptCopied, ch.tty)
+	if err != nil {
+		return nil, err
+	}
+	return ch.tracked, err
+}
+
+// StopTracking ends the copy tracking for the target.
+func (ch *TTYCopyHandler) StopTracking() error {
+	return ch.tracked.Close()
+}
+
+// OnCopySkipped is called when an object already exists.
+func (ch *TTYCopyHandler) OnCopySkipped(_ context.Context, desc ocispec.Descriptor) error {
+	ch.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+	return ch.tracked.Prompt(desc, copyPromptExists)
+}
+
+// PreCopy implements PreCopy of CopyHandler.
+func (ch *TTYCopyHandler) PreCopy(context.Context, ocispec.Descriptor) error {
+	return nil
+}
+
+// PostCopy implements PostCopy of CopyHandler.
+func (ch *TTYCopyHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor) error {
+	ch.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+	successors, err := graph.FilteredSuccessors(ctx, desc, ch.tracked, DeduplicatedFilter(&ch.committed))
+	if err != nil {
+		return err
+	}
+	for _, successor := range successors {
+		if err = ch.tracked.Prompt(successor, copyPromptSkipped); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// OnMounted implements OnMounted of CopyHandler.
+func (ch *TTYCopyHandler) OnMounted(_ context.Context, desc ocispec.Descriptor) error {
+	ch.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+	return ch.tracked.Prompt(desc, copyPromptMounted)
+}

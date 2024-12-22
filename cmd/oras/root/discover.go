@@ -40,6 +40,7 @@ type discoverOptions struct {
 	option.Format
 
 	artifactType string
+	verbose      bool
 }
 
 func discoverCmd() *cobra.Command {
@@ -60,10 +61,10 @@ Example - Discover referrers via referrers API:
 Example - Discover referrers via tag scheme:
   oras discover --distribution-spec v1.1-referrers-tag localhost:5000/hello:v1
 
-Example - Discover referrers and display in a table view:
+Example - [Experimental] Discover referrers and display in a table view:
   oras discover localhost:5000/hello:v1 --format table
 
-Example - Discover referrers and format output with Go template:
+Example - [Experimental] Discover referrers and format output with Go template:
   oras discover localhost:5000/hello:v1 --format go-template --template "{{.manifests}}"
 
 Example - Discover all the referrers of manifest with annotations, displayed in a tree view:
@@ -101,6 +102,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().StringVarP(&opts.Format.FormatFlag, "output", "o", "tree", "[Deprecated] format in which to display referrers (table, json, or tree). tree format will also show indirect referrers")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "display full metadata of referrers")
 	opts.SetTypes(
 		option.FormatTypeTree,
 		option.FormatTypeTable,
@@ -130,7 +132,7 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 		return err
 	}
 
-	handler, err := display.NewDiscoverHandler(opts.Printer, opts.Format, opts.Path, opts.RawReference, desc, opts.Verbose)
+	handler, err := display.NewDiscoverHandler(opts.Printer, opts.Format, opts.Path, opts.RawReference, desc, opts.verbose)
 	if err != nil {
 		return err
 	}

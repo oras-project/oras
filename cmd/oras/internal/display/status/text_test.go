@@ -39,7 +39,7 @@ func TestMain(m *testing.M) {
 	mockFetcher = testutils.NewMockFetcher()
 	ctx = context.Background()
 	builder = &strings.Builder{}
-	printer = output.NewPrinter(builder, os.Stderr, false)
+	printer = output.NewPrinter(builder, os.Stderr)
 	bogus = ocispec.Descriptor{MediaType: ocispec.MediaTypeImageManifest}
 	os.Exit(m.Run())
 }
@@ -192,4 +192,81 @@ func TestTextPushHandler_PreCopy(t *testing.T) {
 		t.Error("PreCopy() should not return an error")
 	}
 	validatePrinted(t, "Uploading 0b442c23c1dd oci-image")
+}
+
+func TestTextManifestPushHandler_OnPushSkipped(t *testing.T) {
+	mph := NewTextManifestPushHandler(printer, ocispec.Descriptor{})
+	if mph.OnManifestPushSkipped() != nil {
+		t.Error("OnManifestExists() should not return an error")
+	}
+}
+
+func TestTextManifestIndexUpdateHandler_OnManifestAdded(t *testing.T) {
+	tests := []struct {
+		name    string
+		printer *output.Printer
+		ref     string
+		desc    ocispec.Descriptor
+		wantErr bool
+	}{
+		{
+			name:    "ref is a digest",
+			printer: output.NewPrinter(os.Stdout, os.Stderr),
+			ref:     "sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb",
+			desc:    ocispec.Descriptor{MediaType: "test", Digest: "sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb", Size: 25},
+			wantErr: false,
+		},
+		{
+			name:    "ref is not a digest",
+			printer: output.NewPrinter(os.Stdout, os.Stderr),
+			ref:     "v1",
+			desc:    ocispec.Descriptor{MediaType: "test", Digest: "sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb", Size: 25},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			miuh := &TextManifestIndexUpdateHandler{
+				printer: tt.printer,
+			}
+			if err := miuh.OnManifestAdded(tt.ref, tt.desc); (err != nil) != tt.wantErr {
+				t.Errorf("TextManifestIndexUpdateHandler.OnManifestAdded() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestTextManifestIndexUpdateHandler_OnIndexMerged(t *testing.T) {
+	tests := []struct {
+		name    string
+		printer *output.Printer
+		ref     string
+		desc    ocispec.Descriptor
+		wantErr bool
+	}{
+		{
+			name:    "ref is a digest",
+			printer: output.NewPrinter(os.Stdout, os.Stderr),
+			ref:     "sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb",
+			desc:    ocispec.Descriptor{MediaType: "test", Digest: "sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb", Size: 25},
+			wantErr: false,
+		},
+		{
+			name:    "ref is not a digest",
+			printer: output.NewPrinter(os.Stdout, os.Stderr),
+			ref:     "v1",
+			desc:    ocispec.Descriptor{MediaType: "test", Digest: "sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb", Size: 25},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			miuh := &TextManifestIndexUpdateHandler{
+				printer: tt.printer,
+			}
+			if err := miuh.OnIndexMerged(tt.ref, tt.desc); (err != nil) != tt.wantErr {
+				t.Errorf("TextManifestIndexUpdateHandler.OnIndexMerged() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
 }

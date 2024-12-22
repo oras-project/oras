@@ -118,7 +118,7 @@ func runLogin(cmd *cobra.Command, opts loginOptions) (err error) {
 	if err = credentials.Login(ctx, store, remote, opts.Credential()); err != nil {
 		return err
 	}
-	_ = opts.Println("Login Succeeded")
+	_ = opts.Printer.Println("Login Succeeded")
 	return nil
 }
 

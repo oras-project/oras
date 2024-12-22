@@ -38,6 +38,21 @@ var (
 		Digest: "46b68ac1696c", Name: "application/vnd.unknown.config.v1+json",
 	}
 
+	PlatformConfigSize     = 38
+	PlatformConfigDigest   = digest.Digest("sha256:e94c0ba80a1157ffab5b5c6656fffc089c6446c7ed0604f3382910d1ef7dd40d")
+	PlatformConfigStateKey = match.StateKey{
+		Digest: "e94c0ba80a11", Name: "application/vnd.oci.image.config.v1+json",
+	}
+
+	PlatformV10ConfigSize     = 38
+	PlatformV10ConfigDigest   = digest.Digest("sha256:e94c0ba80a1157ffab5b5c6656fffc089c6446c7ed0604f3382910d1ef7dd40d")
+	PlatformV10ConfigStateKey = match.StateKey{
+		Digest: "e94c0ba80a11", Name: "test/artifact+json",
+	}
+	PlatformV1DEfaultConfigStateKey = match.StateKey{
+		Digest: "e94c0ba80a11", Name: "application/vnd.oci.image.config.v1+json",
+	}
+
 	FileBarName     = "foobar/bar"
 	FileBarStateKey = match.StateKey{Digest: "fcde2b2edba5", Name: FileLayerNames[2]}
 	FileStateKeys   = []match.StateKey{

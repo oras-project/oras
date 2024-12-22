@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/opencontainers/image-spec/specs-go"
@@ -32,10 +31,10 @@ import (
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/contentutil"
 	"oras.land/oras/internal/descriptor"
 	"oras.land/oras/internal/listener"
@@ -109,7 +108,11 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 	if err != nil {
 		return err
 	}
-	manifests, err := fetchSourceManifests(ctx, target, opts)
+	displayStatus, displayMetadata, displayContent := display.NewManifestIndexCreateHandler(opts.outputPath, opts.Printer, opts.Pretty.Pretty)
+	if err != nil {
+		return err
+	}
+	manifests, err := fetchSourceManifests(ctx, displayStatus, target, opts.sources)
 	if err != nil {
 		return err
 	}
@@ -126,25 +129,26 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 		return err
 	}
 	desc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageIndex, indexBytes)
-	opts.Println(status.IndexPromptPacked, descriptor.ShortDigest(desc), ocispec.MediaTypeImageIndex)
-
-	switch opts.outputPath {
-	case "":
-		err = pushIndex(ctx, target, desc, indexBytes, opts.Reference, opts.extraRefs, opts.AnnotatedReference(), opts.Printer)
-	case "-":
-		opts.Println("Digest:", desc.Digest)
-		err = opts.Output(os.Stdout, indexBytes)
-	default:
-		opts.Println("Digest:", desc.Digest)
-		err = os.WriteFile(opts.outputPath, indexBytes, 0666)
+	if err := displayStatus.OnIndexPacked(desc); err != nil {
+		return err
 	}
-	return err
+	if err := displayContent.OnContentCreated(indexBytes); err != nil {
+		return err
+	}
+	if opts.outputPath == "" {
+		if err := pushIndex(ctx, displayStatus, displayMetadata, target, desc, indexBytes, opts.Reference, opts.extraRefs, opts.AnnotatedReference()); err != nil {
+			return err
+		}
+	}
+	return displayMetadata.OnCompleted(desc)
 }
 
-func fetchSourceManifests(ctx context.Context, target oras.ReadOnlyTarget, opts createOptions) ([]ocispec.Descriptor, error) {
+func fetchSourceManifests(ctx context.Context, displayStatus status.ManifestIndexCreateHandler, target oras.ReadOnlyTarget, sources []string) ([]ocispec.Descriptor, error) {
 	resolved := []ocispec.Descriptor{}
-	for _, source := range opts.sources {
-		opts.Println(status.IndexPromptFetching, source)
+	for _, source := range sources {
+		if err := displayStatus.OnFetching(source); err != nil {
+			return nil, err
+		}
 		desc, content, err := oras.FetchBytes(ctx, target, source, oras.DefaultFetchBytesOptions)
 		if err != nil {
 			return nil, fmt.Errorf("could not find the manifest %s: %w", source, err)
@@ -152,7 +156,9 @@ func fetchSourceManifests(ctx context.Context, target oras.ReadOnlyTarget, opts 
 		if !descriptor.IsManifest(desc) {
 			return nil, fmt.Errorf("%s is not a manifest", source)
 		}
-		opts.Println(status.IndexPromptFetched, source)
+		if err := displayStatus.OnFetched(source, desc); err != nil {
+			return nil, err
+		}
 		if desc, err = enrichDescriptor(ctx, target, desc, content); err != nil {
 			return nil, err
 		}
@@ -184,7 +190,8 @@ func getPlatform(ctx context.Context, target oras.ReadOnlyTarget, manifestBytes 
 	return &platform, nil
 }
 
-func pushIndex(ctx context.Context, target oras.Target, desc ocispec.Descriptor, content []byte, ref string, extraRefs []string, path string, printer *output.Printer) error {
+func pushIndex(ctx context.Context, displayStatus status.ManifestIndexCreateHandler, taggedHandler metadata.TaggedHandler,
+	target oras.Target, desc ocispec.Descriptor, content []byte, ref string, extraRefs []string, path string) error {
 	// push the index
 	var err error
 	if ref == "" || contentutil.IsDigest(ref) {
@@ -195,15 +202,16 @@ func pushIndex(ctx context.Context, target oras.Target, desc ocispec.Descriptor,
 	if err != nil {
 		return err
 	}
-	printer.Println(status.IndexPromptPushed, path)
+	if err := displayStatus.OnIndexPushed(path); err != nil {
+		return err
+	}
 	if len(extraRefs) != 0 {
-		handler := display.NewManifestIndexCreateHandler(printer)
-		tagListener := listener.NewTaggedListener(target, handler.OnTagged)
+		tagListener := listener.NewTaggedListener(target, taggedHandler.OnTagged)
 		if _, err = oras.TagBytesN(ctx, tagListener, desc.MediaType, content, extraRefs, oras.DefaultTagBytesNOptions); err != nil {
 			return err
 		}
 	}
-	return printer.Println("Digest:", desc.Digest)
+	return nil
 }
 
 func enrichDescriptor(ctx context.Context, target oras.ReadOnlyTarget, desc ocispec.Descriptor, manifestBytes []byte) (ocispec.Descriptor, error) {
