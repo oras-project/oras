@@ -29,6 +29,8 @@ import (
 type AttachHandler struct {
 	template string
 	out      io.Writer
+	path     string
+	root     ocispec.Descriptor
 }
 
 // NewAttachHandler returns a new handler for attach metadata events.
@@ -39,7 +41,13 @@ func NewAttachHandler(out io.Writer, template string) metadata.AttachHandler {
 	}
 }
 
-// OnCompleted formats the metadata of attach command.
-func (ah *AttachHandler) OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error {
-	return output.ParseAndWrite(ah.out, model.NewAttach(root, opts.Path), ah.template)
+// OnAttached implements AttachHandler.
+func (ah *AttachHandler) OnAttached(target *option.Target, root ocispec.Descriptor, _ ocispec.Descriptor) {
+	ah.path = target.Path
+	ah.root = root
+}
+
+// Render formats the metadata of attach command.
+func (ah *AttachHandler) Render() error {
+	return output.ParseAndWrite(ah.out, model.NewAttach(ah.root, ah.path), ah.template)
 }

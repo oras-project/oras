@@ -158,25 +158,25 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	if err != nil {
 		return fmt.Errorf("failed to resolve %s: %w", opts.Reference, err)
 	}
-	displayStatus, displayMetadata, err := display.NewAttachHandler(opts.Printer, opts.Format, opts.TTY, store)
+	statusHandler, metadataHandler, err := display.NewAttachHandler(opts.Printer, opts.Format, opts.TTY, store)
 	if err != nil {
 		return err
 	}
-	descs, err := loadFiles(ctx, store, opts.Annotations, opts.FileRefs, displayStatus)
+	descs, err := loadFiles(ctx, store, opts.Annotations, opts.FileRefs, statusHandler)
 	if err != nil {
 		return err
 	}
 
 	// prepare push
-	dst, stopTrack, err := displayStatus.TrackTarget(dst)
+	dst, stopTrack, err := statusHandler.TrackTarget(dst)
 	if err != nil {
 		return err
 	}
 	graphCopyOptions := oras.DefaultCopyGraphOptions
 	graphCopyOptions.Concurrency = opts.concurrency
-	graphCopyOptions.OnCopySkipped = displayStatus.OnCopySkipped
-	graphCopyOptions.PreCopy = displayStatus.PreCopy
-	graphCopyOptions.PostCopy = displayStatus.PostCopy
+	graphCopyOptions.OnCopySkipped = statusHandler.OnCopySkipped
+	graphCopyOptions.PreCopy = statusHandler.PreCopy
+	graphCopyOptions.PostCopy = statusHandler.PostCopy
 
 	packOpts := oras.PackManifestOptions{
 		Subject:             &subject,
@@ -210,7 +210,8 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	if err != nil {
 		return err
 	}
-	err = displayMetadata.OnCompleted(&opts.Target, root, subject)
+	metadataHandler.OnAttached(&opts.Target, root, subject)
+	err = metadataHandler.Render()
 	if err != nil {
 		return err
 	}

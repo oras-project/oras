@@ -66,6 +66,13 @@ type CopyHandler interface {
 	StopTracking() error
 }
 
+// ManifestPushHandler handles status output for manifest push command.
+type ManifestPushHandler interface {
+	OnManifestPushSkipped() error
+	OnManifestPushing() error
+	OnManifestPushed() error
+}
+
 // ManifestIndexCreateHandler handles status output for manifest index create command.
 type ManifestIndexCreateHandler interface {
 	OnFetching(manifestRef string) error

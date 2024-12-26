@@ -193,6 +193,32 @@ func (ch *TextCopyHandler) OnMounted(_ context.Context, desc ocispec.Descriptor)
 	return ch.printer.PrintStatus(desc, copyPromptMounted)
 }
 
+// TextManifestPushHandler handles text status output for manifest push events.
+type TextManifestPushHandler struct {
+	desc    ocispec.Descriptor
+	printer *output.Printer
+}
+
+// NewTextManifestPushHandler returns a new handler for manifest push command.
+func NewTextManifestPushHandler(printer *output.Printer, desc ocispec.Descriptor) ManifestPushHandler {
+	return &TextManifestPushHandler{
+		desc:    desc,
+		printer: printer,
+	}
+}
+
+func (mph *TextManifestPushHandler) OnManifestPushSkipped() error {
+	return mph.printer.PrintStatus(mph.desc, PushPromptExists)
+}
+
+func (mph *TextManifestPushHandler) OnManifestPushing() error {
+	return mph.printer.PrintStatus(mph.desc, PushPromptUploading)
+}
+
+func (mph *TextManifestPushHandler) OnManifestPushed() error {
+	return mph.printer.PrintStatus(mph.desc, PushPromptUploaded)
+}
+
 // TextManifestIndexCreateHandler handles text status output for manifest index create events.
 type TextManifestIndexCreateHandler struct {
 	printer *output.Printer

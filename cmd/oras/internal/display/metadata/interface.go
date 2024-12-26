@@ -20,17 +20,24 @@ import (
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
+// Renderer renders metadata information when an operation is complete.
+type Renderer interface {
+	Render() error
+}
+
 // PushHandler handles metadata output for push events.
 type PushHandler interface {
 	TaggedHandler
+	Renderer
 
-	OnCopied(opts *option.Target) error
-	OnCompleted(root ocispec.Descriptor) error
+	OnCopied(opts *option.Target, root ocispec.Descriptor) error
 }
 
 // AttachHandler handles metadata output for attach events.
 type AttachHandler interface {
-	OnCompleted(opts *option.Target, root, subject ocispec.Descriptor) error
+	Renderer
+
+	OnAttached(target *option.Target, root ocispec.Descriptor, subject ocispec.Descriptor)
 }
 
 // DiscoverHandler handles metadata output for discover events.
@@ -76,6 +83,9 @@ type TagHandler interface {
 // ManifestPushHandler handles metadata output for manifest push events.
 type ManifestPushHandler interface {
 	TaggedHandler
+	Renderer
+
+	OnManifestPushed(desc ocispec.Descriptor) error
 }
 
 // ManifestIndexCreateHandler handles metadata output for index create events.
