@@ -224,7 +224,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	copy := func(root ocispec.Descriptor) error {
 		// add both pull and push scope hints for dst repository
 		// to save potential push-scope token requests during copy
-		ctx = registryutil.WithScopeHint(ctx, dst, auth.ActionPull, auth.ActionPush)
+		ctx = registryutil.WithScopeHint(ctx, originalDst, auth.ActionPull, auth.ActionPush)
 
 		if tag := opts.Reference; tag == "" {
 			err = oras.CopyGraph(ctx, union, dst, root, copyOptions.CopyGraphOptions)
