@@ -24,14 +24,8 @@ import (
 func Test_Messenger(t *testing.T) {
 	var msg *status
 	ch := make(chan *status, BufferSize)
-	desc := ocispec.Descriptor{
-		Digest: "mouse",
-		Size:   100,
-	}
-	messenger := &Messenger{
-		ch:   ch,
-		desc: desc,
-	}
+
+	messenger := &Messenger{ch: ch}
 
 	messenger.start()
 	select {
@@ -43,6 +37,9 @@ func Test_Messenger(t *testing.T) {
 		t.Error("Expected start message")
 	}
 
+	desc := ocispec.Descriptor{
+		Size: 100,
+	}
 	expected := int64(50)
 	messenger.send("Reading", expected)
 	select {

@@ -56,6 +56,40 @@ type status struct {
 	lock      sync.Mutex
 }
 
+// newStatus generates a base empty status.
+func newStatus(desc ocispec.Descriptor) *status {
+	return &status{
+		descriptor:  desc,
+		offset:      -1,
+		total:       humanize.ToBytes(desc.Size),
+		speedWindow: newSpeedWindow(framePerSecond),
+	}
+}
+
+// newStatusMessage generates a status for messaging.
+func newStatusMessage(prompt string, offset int64) *status {
+	return &status{
+		prompt: prompt,
+		offset: offset,
+	}
+}
+
+// startTiming creates start timing message.
+func startTiming() *status {
+	return &status{
+		offset:    -1,
+		startTime: time.Now(),
+	}
+}
+
+// endTiming creates end timing message.
+func endTiming() *status {
+	return &status{
+		offset:  -1,
+		endTime: time.Now(),
+	}
+}
+
 func (s *status) isZero() bool {
 	return s.offset < 0 && s.startTime.IsZero() && s.endTime.IsZero()
 }
@@ -167,10 +201,6 @@ func (s *status) update(n *status) {
 
 	if n.offset >= 0 {
 		s.offset = n.offset
-		if n.descriptor.Size != s.descriptor.Size {
-			s.total = humanize.ToBytes(n.descriptor.Size)
-		}
-		s.descriptor = n.descriptor
 	}
 	if n.prompt != "" {
 		s.prompt = n.prompt
