@@ -55,6 +55,7 @@ func NewManager(tty *os.File, prompt map[progress.State]string) (progress.Manage
 		console:      c,
 		renderDone:   make(chan struct{}),
 		renderClosed: make(chan struct{}),
+		prompt:       prompt,
 	}
 	m.start()
 	return m, nil
@@ -105,6 +106,7 @@ func (m *manager) Track(desc ocispec.Descriptor) (progress.Tracker, error) {
 	}
 
 	s := newStatus()
+	s.descriptor = desc
 	m.statusLock.Lock()
 	m.status = append(m.status, s)
 	m.statusLock.Unlock()

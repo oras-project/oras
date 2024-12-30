@@ -16,16 +16,24 @@ limitations under the License.
 package progress
 
 import (
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"testing"
+
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 func Test_Messenger(t *testing.T) {
 	var msg *status
 	ch := make(chan *status, BufferSize)
-	messenger := &Messenger{ch: ch}
+	desc := ocispec.Descriptor{
+		Digest: "mouse",
+		Size:   100,
+	}
+	messenger := &Messenger{
+		ch:   ch,
+		desc: desc,
+	}
 
-	messenger.Start()
+	messenger.start()
 	select {
 	case msg = <-ch:
 		if msg.offset != -1 {
@@ -35,12 +43,8 @@ func Test_Messenger(t *testing.T) {
 		t.Error("Expected start message")
 	}
 
-	desc := v1.Descriptor{
-		Digest: "mouse",
-		Size:   100,
-	}
 	expected := int64(50)
-	messenger.Send("Reading", desc, expected)
+	messenger.send("Reading", expected)
 	select {
 	case msg = <-ch:
 		if msg.offset != expected {
@@ -53,8 +57,8 @@ func Test_Messenger(t *testing.T) {
 		t.Error("Expected status message")
 	}
 
-	messenger.Send("Reading", desc, expected)
-	messenger.Send("Read", desc, desc.Size)
+	messenger.send("Reading", expected)
+	messenger.send("Read", desc.Size)
 	select {
 	case msg = <-ch:
 		if msg.offset != desc.Size {
@@ -73,7 +77,7 @@ func Test_Messenger(t *testing.T) {
 	}
 
 	expected = int64(-1)
-	messenger.Stop()
+	messenger.stop()
 	select {
 	case msg = <-ch:
 		if msg.offset != expected {
@@ -83,7 +87,7 @@ func Test_Messenger(t *testing.T) {
 		t.Error("Expected END status message")
 	}
 
-	messenger.Stop()
+	messenger.stop()
 	select {
 	case msg = <-ch:
 		if msg != nil {

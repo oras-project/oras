@@ -20,6 +20,7 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
+	"oras.land/oras/internal/progress"
 )
 
 // PromptDiscarder mocks trackable GraphTarget with discarded prompt.
@@ -29,7 +30,7 @@ type PromptDiscarder struct {
 }
 
 // Prompt discards the prompt.
-func (p *PromptDiscarder) Prompt(ocispec.Descriptor, string) error {
+func (p *PromptDiscarder) Report(ocispec.Descriptor, progress.State) error {
 	return nil
 }
 
@@ -48,6 +49,6 @@ func NewErrorPrompt(err error) *ErrorPrompt {
 }
 
 // Prompt mocks an errored prompt.
-func (e *ErrorPrompt) Prompt(ocispec.Descriptor, string) error {
+func (e *ErrorPrompt) Report(ocispec.Descriptor, progress.State) error {
 	return e.wanted
 }
