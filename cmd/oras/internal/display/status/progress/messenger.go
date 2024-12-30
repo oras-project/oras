@@ -15,19 +15,12 @@ limitations under the License.
 
 package progress
 
-import (
-	"time"
-
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras/cmd/oras/internal/display/status/progress/humanize"
-	"oras.land/oras/internal/progress"
-)
+import "oras.land/oras/internal/progress"
 
 // Messenger is progress message channel.
 type Messenger struct {
 	ch     chan *status
 	closed bool
-	desc   ocispec.Descriptor
 	prompt map[progress.State]string
 }
 
@@ -60,7 +53,7 @@ func (m *Messenger) start() {
 func (m *Messenger) send(prompt string, offset int64) {
 	for {
 		select {
-		case m.ch <- newStatusMessage(prompt, m.desc, offset):
+		case m.ch <- newStatusMessage(prompt, offset):
 			return
 		case <-m.ch:
 			// purge the channel until successfully pushed
@@ -79,38 +72,4 @@ func (m *Messenger) stop() {
 	m.ch <- endTiming()
 	close(m.ch)
 	m.closed = true
-}
-
-// newStatus generates a base empty status.
-func newStatus() *status {
-	return &status{
-		offset:      -1,
-		total:       humanize.ToBytes(0),
-		speedWindow: newSpeedWindow(framePerSecond),
-	}
-}
-
-// newStatusMessage generates a status for messaging.
-func newStatusMessage(prompt string, descriptor ocispec.Descriptor, offset int64) *status {
-	return &status{
-		prompt:     prompt,
-		descriptor: descriptor,
-		offset:     offset,
-	}
-}
-
-// startTiming creates start timing message.
-func startTiming() *status {
-	return &status{
-		offset:    -1,
-		startTime: time.Now(),
-	}
-}
-
-// endTiming creates end timing message.
-func endTiming() *status {
-	return &status{
-		offset:  -1,
-		endTime: time.Now(),
-	}
 }

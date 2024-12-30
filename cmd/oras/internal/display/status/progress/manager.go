@@ -105,18 +105,17 @@ func (m *manager) Track(desc ocispec.Descriptor) (progress.Tracker, error) {
 		return nil, errManagerStopped
 	}
 
-	s := newStatus()
-	s.descriptor = desc
+	s := newStatus(desc)
 	m.statusLock.Lock()
 	m.status = append(m.status, s)
 	m.statusLock.Unlock()
 
 	defer m.console.NewRow()
 	defer m.console.NewRow()
-	return m.statusChan(s, desc), nil
+	return m.statusChan(s), nil
 }
 
-func (m *manager) statusChan(s *status, desc ocispec.Descriptor) progress.Tracker {
+func (m *manager) statusChan(s *status) progress.Tracker {
 	ch := make(chan *status, BufferSize)
 	m.updating.Add(1)
 	go func() {
@@ -127,7 +126,6 @@ func (m *manager) statusChan(s *status, desc ocispec.Descriptor) progress.Tracke
 	}()
 	return &Messenger{
 		ch:     ch,
-		desc:   desc,
 		prompt: m.prompt,
 	}
 }
