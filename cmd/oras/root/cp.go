@@ -34,11 +34,9 @@ import (
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/display/status"
-	strack "oras.land/oras/cmd/oras/internal/display/status/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/docker"
-	"oras.land/oras/internal/experimental/track"
 	"oras.land/oras/internal/graph"
 	"oras.land/oras/internal/listener"
 	"oras.land/oras/internal/registryutil"
@@ -178,49 +176,6 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 	dst, err = copyHandler.StartTracking(dst)
 	if err != nil {
 		return desc, err
-	if opts.TTY == nil {
-		// no TTY output
-		extendedCopyOptions.OnCopySkipped = copyHandler.OnCopySkipped
-		extendedCopyOptions.PreCopy = copyHandler.PreCopy
-		extendedCopyOptions.PostCopy = copyHandler.PostCopy
-		extendedCopyOptions.OnMounted = copyHandler.OnMounted
-	} else {
-		// TTY output
-		prompt := map[track.State]string{
-			track.StateInitialized:  promptCopying,
-			track.StateTransmitting: promptCopying,
-			track.StateTransmitted:  promptCopied,
-			track.StateExists:       promptExists,
-			track.StateSkipped:      promptSkipped,
-			track.StateMounted:      promptMounted,
-		}
-		tracked, err := strack.NewTarget(dst, prompt, opts.TTY)
-		if err != nil {
-			return ocispec.Descriptor{}, err
-		}
-		defer tracked.Close()
-		dst = tracked
-		extendedCopyOptions.OnCopySkipped = func(ctx context.Context, desc ocispec.Descriptor) error {
-			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return tracked.Report(desc, track.StateExists)
-		}
-		extendedCopyOptions.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			successors, err := graph.FilteredSuccessors(ctx, desc, tracked, status.DeduplicatedFilter(committed))
-			if err != nil {
-				return err
-			}
-			for _, successor := range successors {
-				if err = tracked.Report(successor, track.StateSkipped); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-		extendedCopyOptions.OnMounted = func(ctx context.Context, desc ocispec.Descriptor) error {
-			committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-			return tracked.Report(desc, track.StateMounted)
-		}
 	}
 	defer func() {
 		stopErr := copyHandler.StopTracking()

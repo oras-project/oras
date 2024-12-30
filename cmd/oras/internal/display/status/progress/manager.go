@@ -23,7 +23,7 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/status/console"
-	"oras.land/oras/internal/experimental/track"
+	"oras.land/oras/internal/progress"
 )
 
 const (
@@ -42,11 +42,11 @@ type manager struct {
 	updating     sync.WaitGroup
 	renderDone   chan struct{}
 	renderClosed chan struct{}
-	prompt       map[track.State]string
+	prompt       map[progress.State]string
 }
 
 // NewManager initialized a new progress manager.
-func NewManager(tty *os.File, prompt map[track.State]string) (track.Manager, error) {
+func NewManager(tty *os.File, prompt map[progress.State]string) (progress.Manager, error) {
 	c, err := console.NewConsole(tty)
 	if err != nil {
 		return nil, err
@@ -99,7 +99,7 @@ func (m *manager) render() {
 }
 
 // Track appends a new status with 2-line space for rendering.
-func (m *manager) Track(desc ocispec.Descriptor) (track.Tracker, error) {
+func (m *manager) Track(desc ocispec.Descriptor) (progress.Tracker, error) {
 	if m.closed() {
 		return nil, errManagerStopped
 	}
@@ -114,7 +114,7 @@ func (m *manager) Track(desc ocispec.Descriptor) (track.Tracker, error) {
 	return m.statusChan(s, desc), nil
 }
 
-func (m *manager) statusChan(s *status, desc ocispec.Descriptor) track.Tracker {
+func (m *manager) statusChan(s *status, desc ocispec.Descriptor) progress.Tracker {
 	ch := make(chan *status, BufferSize)
 	m.updating.Add(1)
 	go func() {

@@ -31,6 +31,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/file"
+	"oras.land/oras/internal/progress"
 )
 
 type pushBlobOptions struct {
@@ -164,11 +165,11 @@ func (opts *pushBlobOptions) doPush(ctx context.Context, printer *output.Printer
 		return err
 	}
 	defer trackedReader.StopManager()
-	trackedReader.Start()
-	r = trackedReader
-	if err := t.Push(ctx, desc, r); err != nil {
+	if err := progress.Start(trackedReader); err != nil {
 		return err
 	}
-	trackedReader.Done()
-	return nil
+	if err := t.Push(ctx, desc, trackedReader); err != nil {
+		return err
+	}
+	return progress.Done(trackedReader)
 }
