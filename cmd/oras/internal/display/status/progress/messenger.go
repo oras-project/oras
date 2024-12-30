@@ -20,7 +20,7 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/status/progress/humanize"
-	"oras.land/oras/internal/experimental/track"
+	"oras.land/oras/internal/progress"
 )
 
 // Messenger is progress message channel.
@@ -28,11 +28,11 @@ type Messenger struct {
 	ch     chan *status
 	closed bool
 	desc   ocispec.Descriptor
-	prompt map[track.State]string
+	prompt map[progress.State]string
 }
 
-func (m *Messenger) Update(status track.Status) error {
-	if status.State == track.StateInitialized {
+func (m *Messenger) Update(status progress.Status) error {
+	if status.State == progress.StateInitialized {
 		m.start()
 	}
 	m.send(m.prompt[status.State], status.Offset)
@@ -40,7 +40,7 @@ func (m *Messenger) Update(status track.Status) error {
 }
 
 func (m *Messenger) Fail(err error) error {
-	return err
+	return nil
 }
 
 func (m *Messenger) Close() error {

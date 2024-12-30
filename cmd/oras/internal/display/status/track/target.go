@@ -25,20 +25,20 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
-	"oras.land/oras/cmd/oras/internal/display/status/progress"
-	"oras.land/oras/internal/experimental/track"
+	sprogress "oras.land/oras/cmd/oras/internal/display/status/progress"
+	"oras.land/oras/internal/progress"
 )
 
 // GraphTarget is a tracked oras.GraphTarget.
 type GraphTarget interface {
 	oras.GraphTarget
 	io.Closer
-	Report(desc ocispec.Descriptor, state track.State) error
+	Report(desc ocispec.Descriptor, state progress.State) error
 }
 
 type graphTarget struct {
 	oras.GraphTarget
-	manager track.Manager
+	manager progress.Manager
 }
 
 type referenceGraphTarget struct {
@@ -46,8 +46,8 @@ type referenceGraphTarget struct {
 }
 
 // NewTarget creates a new tracked Target.
-func NewTarget(t oras.GraphTarget, prompt map[track.State]string, tty *os.File) (GraphTarget, error) {
-	manager, err := progress.NewManager(tty, prompt)
+func NewTarget(t oras.GraphTarget, prompt map[progress.State]string, tty *os.File) (GraphTarget, error) {
+	manager, err := sprogress.NewManager(tty, prompt)
 	if err != nil {
 		return nil, err
 	}
@@ -78,16 +78,19 @@ func (t *graphTarget) Push(ctx context.Context, expected ocispec.Descriptor, con
 		return err
 	}
 	defer r.Close()
-	r.Start()
+	if err := progress.Start(r); err != nil {
+		return err
+	}
 	if err := t.GraphTarget.Push(ctx, expected, r); err != nil {
 		if errors.Is(err, errdef.ErrAlreadyExists) {
 			// allowed error types in oras-go oci and memory store
-			r.Done()
+			if err := progress.Done(r); err != nil {
+				return err
+			}
 		}
 		return err
 	}
-	r.Done()
-	return nil
+	return progress.Done(r)
 }
 
 // PushReference pushes the content to the base oras.GraphTarget with tracking.
@@ -97,13 +100,14 @@ func (rgt *referenceGraphTarget) PushReference(ctx context.Context, expected oci
 		return err
 	}
 	defer r.Close()
-	r.Start()
+	if err := progress.Start(r); err != nil {
+		return err
+	}
 	err = rgt.GraphTarget.(registry.ReferencePusher).PushReference(ctx, expected, r, reference)
 	if err != nil {
 		return err
 	}
-	r.Done()
-	return nil
+	return progress.Done(r)
 }
 
 // Close closes the tracking manager.
@@ -112,9 +116,16 @@ func (t *graphTarget) Close() error {
 }
 
 // Report prompts the user with the provided state and descriptor.
-func (t *graphTarget) Report(desc ocispec.Descriptor, state track.State) error {
-	return track.Record(t.manager, desc, track.Status{
+func (t *graphTarget) Report(desc ocispec.Descriptor, state progress.State) error {
+	tracker, err := t.manager.Track(desc)
+	if err != nil {
+		return err
+	}
+	if err = tracker.Update(progress.Status{
 		State:  state,
 		Offset: desc.Size,
-	})
+	}); err != nil {
+		return err
+	}
+	return tracker.Close()
 }

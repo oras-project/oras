@@ -20,45 +20,47 @@ import (
 	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras/cmd/oras/internal/display/status/progress"
-	"oras.land/oras/internal/experimental/track"
+	sprogress "oras.land/oras/cmd/oras/internal/display/status/progress"
+	"oras.land/oras/internal/progress"
 )
 
 type reader struct {
-	*track.ReadTracker
+	io.Reader
+	progress.Tracker
 
-	manager track.Manager
+	manager progress.Manager
 }
 
 // NewReader returns a new reader with tracked progress.
 func NewReader(r io.Reader, descriptor ocispec.Descriptor, actionPrompt string, donePrompt string, tty *os.File) (*reader, error) {
-	prompt := map[track.State]string{
-		track.StateInitialized:  actionPrompt,
-		track.StateTransmitting: actionPrompt,
-		track.StateTransmitted:  donePrompt,
+	prompt := map[progress.State]string{
+		progress.StateInitialized:  actionPrompt,
+		progress.StateTransmitting: actionPrompt,
+		progress.StateTransmitted:  donePrompt,
 	}
 
-	manager, err := progress.NewManager(tty, prompt)
+	manager, err := sprogress.NewManager(tty, prompt)
 	if err != nil {
 		return nil, err
 	}
 	return managedReader(r, descriptor, manager)
 }
 
-func managedReader(r io.Reader, descriptor ocispec.Descriptor, manager track.Manager) (*reader, error) {
+func managedReader(r io.Reader, descriptor ocispec.Descriptor, manager progress.Manager) (*reader, error) {
 	tracker, err := manager.Track(descriptor)
 	if err != nil {
 		return nil, err
 	}
 
 	return &reader{
-		ReadTracker: track.NewReadTracker(tracker, r),
-		manager:     manager,
+		Reader:  progress.TrackReader(tracker, r),
+		Tracker: tracker,
+		manager: manager,
 	}, nil
 }
 
 // StopManager stops the messenger channel and related manager.
 func (r *reader) StopManager() {
-	r.Close()
+	_ = r.Tracker.Close()
 	_ = r.manager.Close()
 }
