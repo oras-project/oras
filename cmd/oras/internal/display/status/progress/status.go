@@ -39,11 +39,13 @@ var (
 	spinnerColor  = aec.LightYellowF
 	doneMarkColor = aec.LightGreenF
 	progressColor = aec.LightBlueB
+	failureColor  = aec.LightRedF
 )
 
 // status is used as message to update progress view.
 type status struct {
 	done        bool // done is true when the end time is set
+	err         error
 	prompt      string
 	descriptor  ocispec.Descriptor
 	offset      int64
@@ -87,6 +89,13 @@ func endTiming() *status {
 	return &status{
 		offset:  -1,
 		endTime: time.Now(),
+	}
+}
+
+func fail(err error) *status {
+	return &status{
+		err:    err,
+		offset: -1,
 	}
 }
 
@@ -140,9 +149,13 @@ func (s *status) String(width int) (string, string) {
 		lenBar := int(percent * barLength)
 		bar := fmt.Sprintf("[%s%s]", progressColor.Apply(strings.Repeat(" ", lenBar)), strings.Repeat(".", barLength-lenBar))
 		speed := s.calculateSpeed()
-		left = fmt.Sprintf("%s %s(%*s/s) %s %s",
-			spinnerColor.Apply(string(s.mark.symbol())),
-			bar, speedLength, speed, s.prompt, name)
+		var mark string
+		if s.err == nil {
+			mark = spinnerColor.Apply(string(s.mark.symbol()))
+		} else {
+			mark = failureColor.Apply("✗")
+		}
+		left = fmt.Sprintf("%s %s(%*s/s) %s %s", mark, bar, speedLength, speed, s.prompt, name)
 		// bar + wrapper(2) + space(1) + speed + "/s"(2) + wrapper(2) = len(bar) + len(speed) + 7
 		lenLeft = barLength + speedLength + 7
 	} else {
@@ -199,6 +212,9 @@ func (s *status) update(n *status) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
+	if n.err != nil {
+		s.err = n.err
+	}
 	if n.offset >= 0 {
 		s.offset = n.offset
 	}
@@ -211,6 +227,8 @@ func (s *status) update(n *status) {
 	}
 	if !n.endTime.IsZero() {
 		s.endTime = n.endTime
-		s.done = true
+		if s.err == nil {
+			s.done = true
+		}
 	}
 }
