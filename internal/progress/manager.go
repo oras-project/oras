@@ -29,20 +29,3 @@ type Manager interface {
 	// Track starts tracking the progress of a descriptor.
 	Track(desc ocispec.Descriptor) (Tracker, error)
 }
-
-// ManagerFunc is an adapter to allow the use of ordinary functions as Managers.
-// If f is a function with the appropriate signature, ManagerFunc(f) is a
-// [Manager] that calls f.
-type ManagerFunc func(desc ocispec.Descriptor, status Status, err error) error
-
-// Close closes the manager.
-func (f ManagerFunc) Close() error {
-	return nil
-}
-
-// Track starts tracking the progress of a descriptor.
-func (f ManagerFunc) Track(desc ocispec.Descriptor) (Tracker, error) {
-	return TrackerFunc(func(status Status, err error) error {
-		return f(desc, status, err)
-	}), nil
-}
