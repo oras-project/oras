@@ -33,6 +33,7 @@ func (m *Messenger) Update(status progress.Status) error {
 }
 
 func (m *Messenger) Fail(err error) error {
+	m.ch <- fail(err)
 	return nil
 }
 
