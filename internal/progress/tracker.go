@@ -88,6 +88,8 @@ type readTracker struct {
 }
 
 // Read reads from the base reader and updates the status.
+// On partial read, the tracker treats it as two reads: a successful read with
+// status update and a failed read with failure report.
 func (rt *readTracker) Read(p []byte) (int, error) {
 	n, err := rt.base.Read(p)
 	rt.offset += int64(n)
@@ -96,7 +98,7 @@ func (rt *readTracker) Read(p []byte) (int, error) {
 			State:  StateTransmitting,
 			Offset: rt.offset,
 		}); updateErr != nil {
-			return n, updateErr
+			err = updateErr
 		}
 	}
 	if err != nil && err != io.EOF {
@@ -113,6 +115,8 @@ type readTrackerWriteTo struct {
 }
 
 // WriteTo writes to the base writer and updates the status.
+// On partial write, the tracker treats it as two writes: a successful write
+// with status update and a failed write with failure report.
 func (rt *readTrackerWriteTo) WriteTo(w io.Writer) (int64, error) {
 	wt := &writeTracker{
 		base:    w,
@@ -121,17 +125,25 @@ func (rt *readTrackerWriteTo) WriteTo(w io.Writer) (int64, error) {
 	}
 	n, err := rt.base.(io.WriterTo).WriteTo(wt)
 	rt.offset = wt.offset
+	if err != nil && wt.trackerErr == nil {
+		if failErr := rt.tracker.Fail(err); failErr != nil {
+			return n, failErr
+		}
+	}
 	return n, err
 }
 
 // writeTracker tracks the transmission based on the write operation.
 type writeTracker struct {
-	base    io.Writer
-	tracker Tracker
-	offset  int64
+	base       io.Writer
+	tracker    Tracker
+	offset     int64
+	trackerErr error
 }
 
 // Write writes to the base writer and updates the status.
+// On partial write, the tracker treats it as two writes: a successful write
+// with status update and a failed write with failure report.
 func (wt *writeTracker) Write(p []byte) (int, error) {
 	n, err := wt.base.Write(p)
 	wt.offset += int64(n)
@@ -140,11 +152,15 @@ func (wt *writeTracker) Write(p []byte) (int, error) {
 			State:  StateTransmitting,
 			Offset: wt.offset,
 		}); updateErr != nil {
-			return n, updateErr
+			wt.trackerErr = updateErr
+			err = updateErr
 		}
 	}
 	if err != nil {
-		return n, wt.tracker.Fail(err)
+		if failErr := wt.tracker.Fail(err); failErr != nil {
+			wt.trackerErr = failErr
+			return n, failErr
+		}
 	}
-	return n, nil
+	return n, err
 }
