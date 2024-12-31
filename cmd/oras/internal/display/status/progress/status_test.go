@@ -18,6 +18,7 @@ limitations under the License.
 package progress
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -99,6 +100,33 @@ func Test_status_String_zeroWidth(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func Test_status_String_failure(t *testing.T) {
+	// zero status and progress
+	s := newStatus(ocispec.Descriptor{
+		MediaType: "application/vnd.oci.empty.oras.test.v1+json",
+		Size:      2,
+		Digest:    "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+	})
+	if status, digest := s.String(console.MinWidth); status != zeroStatus || digest != zeroDigest {
+		t.Errorf("status.String() = %v, %v, want %v, %v", status, digest, zeroStatus, zeroDigest)
+	}
+
+	// done with failure
+	s.update(&status{
+		err:        context.Canceled,
+		prompt:     "test",
+		descriptor: s.descriptor,
+		offset:     1,
+		startTime:  time.Now().Add(-time.Minute),
+		endTime:    time.Now(),
+	})
+	statusStr, digestStr := s.String(120)
+	if err := testutils.OrderedMatch(statusStr+digestStr, "✗", s.prompt, s.descriptor.MediaType, "1.00/2  B", "50.00%", s.descriptor.Digest.String()); err != nil {
+		t.Error(err)
+	}
+}
+
 func Test_status_durationString(t *testing.T) {
 	// zero duration
 	s := newStatus(ocispec.Descriptor{})
