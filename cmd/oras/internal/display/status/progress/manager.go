@@ -23,6 +23,7 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/status/console"
+	"oras.land/oras/internal/progress"
 )
 
 const (
@@ -34,13 +35,6 @@ const (
 
 var errManagerStopped = errors.New("progress output manager has already been stopped")
 
-// Manager is progress view master
-type Manager interface {
-	Add() (*Messenger, error)
-	SendAndStop(desc ocispec.Descriptor, prompt string) error
-	Close() error
-}
-
 type manager struct {
 	status       []*status
 	statusLock   sync.RWMutex
@@ -48,10 +42,11 @@ type manager struct {
 	updating     sync.WaitGroup
 	renderDone   chan struct{}
 	renderClosed chan struct{}
+	prompt       map[progress.State]string
 }
 
 // NewManager initialized a new progress manager.
-func NewManager(tty *os.File) (Manager, error) {
+func NewManager(tty *os.File, prompt map[progress.State]string) (progress.Manager, error) {
 	c, err := console.NewConsole(tty)
 	if err != nil {
 		return nil, err
@@ -60,6 +55,7 @@ func NewManager(tty *os.File) (Manager, error) {
 		console:      c,
 		renderDone:   make(chan struct{}),
 		renderClosed: make(chan struct{}),
+		prompt:       prompt,
 	}
 	m.start()
 	return m, nil
@@ -103,13 +99,13 @@ func (m *manager) render() {
 	}
 }
 
-// Add appends a new status with 2-line space for rendering.
-func (m *manager) Add() (*Messenger, error) {
+// Track appends a new status with 2-line space for rendering.
+func (m *manager) Track(desc ocispec.Descriptor) (progress.Tracker, error) {
 	if m.closed() {
 		return nil, errManagerStopped
 	}
 
-	s := newStatus()
+	s := newStatus(desc)
 	m.statusLock.Lock()
 	m.status = append(m.status, s)
 	m.statusLock.Unlock()
@@ -119,18 +115,7 @@ func (m *manager) Add() (*Messenger, error) {
 	return m.statusChan(s), nil
 }
 
-// SendAndStop send message for descriptor and stop timing.
-func (m *manager) SendAndStop(desc ocispec.Descriptor, prompt string) error {
-	messenger, err := m.Add()
-	if err != nil {
-		return err
-	}
-	messenger.Send(prompt, desc, desc.Size)
-	messenger.Stop()
-	return nil
-}
-
-func (m *manager) statusChan(s *status) *Messenger {
+func (m *manager) statusChan(s *status) progress.Tracker {
 	ch := make(chan *status, BufferSize)
 	m.updating.Add(1)
 	go func() {
@@ -139,7 +124,10 @@ func (m *manager) statusChan(s *status) *Messenger {
 			s.update(newStatus)
 		}
 	}()
-	return &Messenger{ch: ch}
+	return &Messenger{
+		ch:     ch,
+		prompt: m.prompt,
+	}
 }
 
 // Close stops all status and waits for updating and rendering.
