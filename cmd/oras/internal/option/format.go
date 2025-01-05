@@ -68,6 +68,11 @@ var (
 		Name:  "text",
 		Usage: "Print in text format",
 	}
+
+	FormatTypeTreeFull = &FormatType{
+		Name:  "tree-full",
+		Usage: "Display a full tree view with detailed metadata output",
+	}
 )
 
 // Format contains input and parsed options for formatted output flags.
