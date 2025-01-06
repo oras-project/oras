@@ -1,4 +1,4 @@
-package fulltree
+package maxtree
 
 /*
 Copyright The ORAS Authors.
