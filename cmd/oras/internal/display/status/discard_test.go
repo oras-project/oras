@@ -21,6 +21,13 @@ import (
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
+func TestDiscardHandler_OnPushSkipped(t *testing.T) {
+	testDiscard := NewDiscardHandler()
+	if err := testDiscard.OnManifestPushSkipped(); err != nil {
+		t.Errorf("DiscardHandler.OnPushSkipped() error = %v, wantErr nil", err)
+	}
+}
+
 func TestDiscardHandler_OnManifestRemoved(t *testing.T) {
 	testDiscard := NewDiscardHandler()
 	if err := testDiscard.OnManifestRemoved("sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"); err != nil {

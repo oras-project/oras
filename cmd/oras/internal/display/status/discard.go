@@ -100,6 +100,21 @@ func (DiscardHandler) OnFetched(string, ocispec.Descriptor) error {
 	return nil
 }
 
+// OnManifestPushSkipped implements ManifestPushHandler.
+func (DiscardHandler) OnManifestPushSkipped() error {
+	return nil
+}
+
+// OnManifestPushing implements ManifestPushHandler.
+func (DiscardHandler) OnManifestPushing() error {
+	return nil
+}
+
+// OnManifestPushed implements ManifestPushHandler.
+func (DiscardHandler) OnManifestPushed() error {
+	return nil
+}
+
 // OnManifestRemoved implements ManifestIndexUpdateHandler.
 func (DiscardHandler) OnManifestRemoved(digest.Digest) error {
 	return nil
