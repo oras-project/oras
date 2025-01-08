@@ -26,7 +26,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/descriptor"
 	"oras.land/oras/cmd/oras/internal/display/metadata/json"
-	"oras.land/oras/cmd/oras/internal/display/metadata/maxtree"
 	"oras.land/oras/cmd/oras/internal/display/metadata/table"
 	"oras.land/oras/cmd/oras/internal/display/metadata/template"
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
@@ -118,8 +117,6 @@ func NewDiscoverHandler(out io.Writer, format option.Format, path string, rawRef
 	switch format.Type {
 	case option.FormatTypeTree.Name:
 		handler = tree.NewDiscoverHandler(out, path, desc, verbose)
-	case option.FormatTypeMaxTree.Name:
-		handler = maxtree.NewDiscoverHandler(out, path, desc, verbose)
 	case option.FormatTypeTable.Name:
 		handler = table.NewDiscoverHandler(out, rawReference, desc, verbose)
 	case option.FormatTypeJSON.Name:
