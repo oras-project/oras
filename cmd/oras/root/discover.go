@@ -105,7 +105,6 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "display full metadata of referrers")
 	opts.SetTypes(
 		option.FormatTypeTree,
-		option.FormatTypeMaxTree.WithUsage("Display a full tree view including indirect referrers with metadata"),
 		option.FormatTypeTable,
 		option.FormatTypeJSON.WithUsage("Get direct referrers and output in JSON format"),
 		option.FormatTypeGoTemplate.WithUsage("Print direct referrers using the given Go template"),

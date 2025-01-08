@@ -68,11 +68,6 @@ var (
 		Name:  "text",
 		Usage: "Print in text format",
 	}
-
-	FormatTypeMaxTree = &FormatType{
-		Name:  "max-tree",
-		Usage: "Display a full tree view with detailed metadata output",
-	}
 )
 
 // Format contains input and parsed options for formatted output flags.
