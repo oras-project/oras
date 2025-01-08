@@ -15,33 +15,48 @@ limitations under the License.
 
 package progress
 
-import (
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras/cmd/oras/internal/display/status/progress/humanize"
-	"time"
-)
+import "oras.land/oras/internal/progress"
 
 // Messenger is progress message channel.
 type Messenger struct {
 	ch     chan *status
 	closed bool
+	prompt map[progress.State]string
 }
 
-// Start initializes the messenger.
-func (sm *Messenger) Start() {
-	if sm.ch == nil {
+func (m *Messenger) Update(status progress.Status) error {
+	if status.State == progress.StateInitialized {
+		m.start()
+	}
+	m.send(m.prompt[status.State], status.Offset)
+	return nil
+}
+
+func (m *Messenger) Fail(err error) error {
+	m.ch <- fail(err)
+	return nil
+}
+
+func (m *Messenger) Close() error {
+	m.stop()
+	return nil
+}
+
+// start initializes the messenger.
+func (m *Messenger) start() {
+	if m.ch == nil {
 		return
 	}
-	sm.ch <- startTiming()
+	m.ch <- startTiming()
 }
 
-// Send a status message for the specified descriptor.
-func (sm *Messenger) Send(prompt string, descriptor ocispec.Descriptor, offset int64) {
+// send a status message for the specified descriptor.
+func (m *Messenger) send(prompt string, offset int64) {
 	for {
 		select {
-		case sm.ch <- newStatusMessage(prompt, descriptor, offset):
+		case m.ch <- newStatusMessage(prompt, offset):
 			return
-		case <-sm.ch:
+		case <-m.ch:
 			// purge the channel until successfully pushed
 		default:
 			// ch is nil
@@ -50,46 +65,12 @@ func (sm *Messenger) Send(prompt string, descriptor ocispec.Descriptor, offset i
 	}
 }
 
-// Stop the messenger after sending a end message.
-func (sm *Messenger) Stop() {
-	if sm.closed {
+// stop the messenger after sending a end message.
+func (m *Messenger) stop() {
+	if m.closed {
 		return
 	}
-	sm.ch <- endTiming()
-	close(sm.ch)
-	sm.closed = true
-}
-
-// newStatus generates a base empty status.
-func newStatus() *status {
-	return &status{
-		offset:      -1,
-		total:       humanize.ToBytes(0),
-		speedWindow: newSpeedWindow(framePerSecond),
-	}
-}
-
-// newStatusMessage generates a status for messaging.
-func newStatusMessage(prompt string, descriptor ocispec.Descriptor, offset int64) *status {
-	return &status{
-		prompt:     prompt,
-		descriptor: descriptor,
-		offset:     offset,
-	}
-}
-
-// startTiming creates start timing message.
-func startTiming() *status {
-	return &status{
-		offset:    -1,
-		startTime: time.Now(),
-	}
-}
-
-// endTiming creates end timing message.
-func endTiming() *status {
-	return &status{
-		offset:  -1,
-		endTime: time.Now(),
-	}
+	m.ch <- endTiming()
+	close(m.ch)
+	m.closed = true
 }
