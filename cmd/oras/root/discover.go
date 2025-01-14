@@ -132,12 +132,12 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 		return err
 	}
 
-	metadataHandler, err := display.NewDiscoverHandler(opts.Printer, opts.Format, opts.Path, opts.RawReference, desc, opts.verbose)
+	handler, err := display.NewDiscoverHandler(opts.Printer, opts.Format, opts.Path, opts.RawReference, desc, opts.verbose)
 	if err != nil {
 		return err
 	}
-	if metadataHandler.MultiLevelSupported() {
-		if err := fetchAllReferrers(ctx, repo, desc, opts.artifactType, metadataHandler); err != nil {
+	if handler.MultiLevelSupported() {
+		if err := fetchAllReferrers(ctx, repo, desc, opts.artifactType, handler); err != nil {
 			return err
 		}
 	} else {
@@ -146,12 +146,12 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 			return err
 		}
 		for _, ref := range refs {
-			if err := metadataHandler.OnDiscovered(ref, desc); err != nil {
+			if err := handler.OnDiscovered(ref, desc); err != nil {
 				return err
 			}
 		}
 	}
-	return metadataHandler.Render()
+	return handler.Render()
 }
 
 func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, handler metadata.DiscoverHandler) error {
