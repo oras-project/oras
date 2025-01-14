@@ -151,6 +151,16 @@ func NewTextCopyHandler(printer *output.Printer, fetcher content.Fetcher) CopyHa
 	}
 }
 
+// StartTracking starts a tracked target from a graph target.
+func (ch *TextCopyHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
+	return gt, nil
+}
+
+// StopTracking ends the copy tracking for the target.
+func (ch *TextCopyHandler) StopTracking() error {
+	return nil
+}
+
 // OnCopySkipped is called when an object already exists.
 func (ch *TextCopyHandler) OnCopySkipped(_ context.Context, desc ocispec.Descriptor) error {
 	ch.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
@@ -183,6 +193,32 @@ func (ch *TextCopyHandler) OnMounted(_ context.Context, desc ocispec.Descriptor)
 	return ch.printer.PrintStatus(desc, copyPromptMounted)
 }
 
+// TextManifestPushHandler handles text status output for manifest push events.
+type TextManifestPushHandler struct {
+	desc    ocispec.Descriptor
+	printer *output.Printer
+}
+
+// NewTextManifestPushHandler returns a new handler for manifest push command.
+func NewTextManifestPushHandler(printer *output.Printer, desc ocispec.Descriptor) ManifestPushHandler {
+	return &TextManifestPushHandler{
+		desc:    desc,
+		printer: printer,
+	}
+}
+
+func (mph *TextManifestPushHandler) OnManifestPushSkipped() error {
+	return mph.printer.PrintStatus(mph.desc, PushPromptExists)
+}
+
+func (mph *TextManifestPushHandler) OnManifestPushing() error {
+	return mph.printer.PrintStatus(mph.desc, PushPromptUploading)
+}
+
+func (mph *TextManifestPushHandler) OnManifestPushed() error {
+	return mph.printer.PrintStatus(mph.desc, PushPromptUploaded)
+}
+
 // TextManifestIndexCreateHandler handles text status output for manifest index create events.
 type TextManifestIndexCreateHandler struct {
 	printer *output.Printer
@@ -202,8 +238,11 @@ func (mich *TextManifestIndexCreateHandler) OnFetching(source string) error {
 }
 
 // OnFetched implements ManifestIndexCreateHandler.
-func (mich *TextManifestIndexCreateHandler) OnFetched(source string, _ ocispec.Descriptor) error {
-	return mich.printer.Println(IndexPromptFetched, source)
+func (mich *TextManifestIndexCreateHandler) OnFetched(ref string, desc ocispec.Descriptor) error {
+	if contentutil.IsDigest(ref) {
+		return mich.printer.Println(IndexPromptFetched, ref)
+	}
+	return mich.printer.Println(IndexPromptFetched, desc.Digest, ref)
 }
 
 // OnIndexPacked implements ManifestIndexCreateHandler.

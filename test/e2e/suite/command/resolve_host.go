@@ -126,7 +126,7 @@ var _ = Describe("1.1 registry users:", func() {
 			It("should copy an image with source resolve DNS rules", func() {
 				repo := testRepo("cp/from")
 				dst := RegistryRef(Host, repo, "copied")
-				ORAS(append([]string{"cp", RegistryRef(mockedHost, ImageRepo, foobar.Tag), dst, "-v"}, from...)...).
+				ORAS(append([]string{"cp", RegistryRef(mockedHost, ImageRepo, foobar.Tag), dst}, from...)...).
 					MatchStatus(foobarStates, true, len(foobarStates)).
 					Exec()
 				CompareRef(RegistryRef(Host, ImageRepo, foobar.Tag), dst)
@@ -136,7 +136,7 @@ var _ = Describe("1.1 registry users:", func() {
 				src := RegistryRef(Host, ImageRepo, foobar.Tag)
 				repo := testRepo("cp/to")
 				tag := "copied"
-				ORAS(append([]string{"cp", src, RegistryRef(mockedHost, repo, tag), "-v"}, to...)...).
+				ORAS(append([]string{"cp", src, RegistryRef(mockedHost, repo, tag)}, to...)...).
 					MatchStatus(foobarStates, true, len(foobarStates)).
 					Exec()
 				CompareRef(src, RegistryRef(Host, repo, tag))
@@ -147,7 +147,7 @@ var _ = Describe("1.1 registry users:", func() {
 				repo := testRepo("cp/base")
 				tag := "copied"
 				flags := append(to[2:], "--resolve", unary[1]) //hack to chop the destination flags off
-				ORAS(append([]string{"cp", src, RegistryRef(mockedHost, repo, tag), "-v"}, flags...)...).
+				ORAS(append([]string{"cp", src, RegistryRef(mockedHost, repo, tag)}, flags...)...).
 					MatchStatus(foobarStates, true, len(foobarStates)).
 					Exec()
 				CompareRef(src, RegistryRef(Host, repo, tag))
@@ -157,7 +157,7 @@ var _ = Describe("1.1 registry users:", func() {
 				repo := testRepo("cp/override")
 				tag := "copied"
 				flags := append(append(to, from...), "--resolve", mockedHost+":80:1.1.1.1:5000")
-				ORAS(append([]string{"cp", RegistryRef(mockedHost, ImageRepo, foobar.Tag), RegistryRef(mockedHost, repo, tag), "-v"}, flags...)...).
+				ORAS(append([]string{"cp", RegistryRef(mockedHost, ImageRepo, foobar.Tag), RegistryRef(mockedHost, repo, tag)}, flags...)...).
 					MatchStatus(foobarStates, true, len(foobarStates)).
 					Exec()
 				CompareRef(RegistryRef(Host, ImageRepo, foobar.Tag), RegistryRef(Host, repo, tag))
@@ -215,7 +215,7 @@ var _ = Describe("1.1 registry users:", func() {
 				tempDir := PrepareTempFiles()
 				stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(configName))
 				// test
-				ORAS(append([]string{"pull", RegistryRef(mockedHost, ImageRepo, foobar.Tag), "-v", "--config", configName, "-o", pullRoot}, unary...)...).
+				ORAS(append([]string{"pull", RegistryRef(mockedHost, ImageRepo, foobar.Tag), "--config", configName, "-o", pullRoot}, unary...)...).
 					MatchStatus(stateKeys, true, len(stateKeys)).
 					WithWorkDir(tempDir).Exec()
 				// validate config and layers
@@ -235,7 +235,7 @@ var _ = Describe("1.1 registry users:", func() {
 			It("should push files without customized media types", func() {
 				repo := testRepo("push")
 				tempDir := PrepareTempFiles()
-				ORAS(append([]string{"push", RegistryRef(mockedHost, repo, foobar.Tag), "-v"}, append(foobar.FileLayerNames, unary...)...)...).
+				ORAS(append([]string{"push", RegistryRef(mockedHost, repo, foobar.Tag)}, append(foobar.FileLayerNames, unary...)...)...).
 					MatchStatus(foobar.FileStateKeys, true, len(foobar.FileStateKeys)).
 					WithWorkDir(tempDir).Exec()
 			})

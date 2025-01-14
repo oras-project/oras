@@ -145,6 +145,10 @@ check-encoding:  ## check file CR/LF encoding
 fix-encoding:  ## fix file CR/LF encoding
 	find cmd internal -type f -name "*.go" -exec sed -i -e "s/\r//g" {} +
 
+.PHONY: lint
+lint:  ## run CI version of lint
+	golangci-lint run ./...
+
 .PHONY: tidy
 tidy:  ## go mod tidy
 	GO111MODULE=on $(GO_EXE) mod tidy

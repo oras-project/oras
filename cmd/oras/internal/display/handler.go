@@ -170,8 +170,11 @@ func NewTagHandler(printer *output.Printer, target option.Target) metadata.TagHa
 }
 
 // NewManifestPushHandler returns a manifest push handler.
-func NewManifestPushHandler(printer *output.Printer) metadata.ManifestPushHandler {
-	return text.NewManifestPushHandler(printer)
+func NewManifestPushHandler(printer *output.Printer, outputDescriptor bool, pretty bool, desc ocispec.Descriptor, target *option.Target) (status.ManifestPushHandler, metadata.ManifestPushHandler) {
+	if outputDescriptor {
+		return status.NewDiscardHandler(), metadata.NewDiscardHandler()
+	}
+	return status.NewTextManifestPushHandler(printer, desc), text.NewManifestPushHandler(printer, target)
 }
 
 // NewManifestIndexCreateHandler returns status, metadata and content handlers for index create command.
@@ -215,7 +218,10 @@ func NewManifestIndexUpdateHandler(outputPath string, printer *output.Printer, p
 }
 
 // NewCopyHandler returns copy handlers.
-func NewCopyHandler(printer *output.Printer, fetcher fetcher.Fetcher) (status.CopyHandler, metadata.CopyHandler) {
+func NewCopyHandler(printer *output.Printer, tty *os.File, fetcher fetcher.Fetcher) (status.CopyHandler, metadata.CopyHandler) {
+	if tty != nil {
+		return status.NewTTYCopyHandler(tty), text.NewCopyHandler(printer)
+	}
 	return status.NewTextCopyHandler(printer, fetcher), text.NewCopyHandler(printer)
 }
 

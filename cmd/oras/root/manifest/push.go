@@ -48,7 +48,8 @@ type pushOptions struct {
 	extraRefs   []string
 	fileRef     string
 	mediaType   string
-	verbose     bool
+	// Deprecated: verbose is deprecated and will be removed in the future.
+	verbose bool
 }
 
 func pushCmd() *cobra.Command {
@@ -100,7 +101,7 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Printer.Verbose = opts.verbose && !opts.OutputDescriptor
+			opts.Printer.Verbose = opts.verbose
 			return pushManifest(cmd, opts)
 		},
 	}
@@ -109,7 +110,8 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 	option.ApplyFlags(&opts, cmd.Flags())
 	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", "", "media type of manifest")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
-	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "print status output for unnamed blobs")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
+	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
 	return oerrors.Command(cmd, &opts.Target)
 }
 
@@ -149,6 +151,7 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 
 	// prepare manifest descriptor
 	desc := content.NewDescriptorFromBytes(mediaType, contentBytes)
+	statusHandler, metadataHandler := display.NewManifestPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc, &opts.Target)
 
 	ref := opts.Reference
 	if ref == "" {
@@ -159,17 +162,17 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		return err
 	}
 	if match {
-		if err := opts.Printer.PrintStatus(desc, "Exists"); err != nil {
+		if err := statusHandler.OnManifestPushSkipped(); err != nil {
 			return err
 		}
 	} else {
-		if err = opts.Printer.PrintStatus(desc, "Uploading"); err != nil {
+		if err = statusHandler.OnManifestPushing(); err != nil {
 			return err
 		}
 		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil {
 			return err
 		}
-		if err = opts.Printer.PrintStatus(desc, "Uploaded "); err != nil {
+		if err = statusHandler.OnManifestPushed(); err != nil {
 			return err
 		}
 	}
@@ -190,18 +193,17 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 		}
 		return opts.Output(os.Stdout, descJSON)
 	}
-	_ = opts.Printer.Println("Pushed", opts.AnnotatedReference())
+	if err := metadataHandler.OnManifestPushed(desc); err != nil {
+		return err
+	}
 	if len(opts.extraRefs) != 0 {
-		handler := display.NewManifestPushHandler(opts.Printer)
-		tagListener := listener.NewTaggedListener(target, handler.OnTagged)
+		tagListener := listener.NewTaggedListener(target, metadataHandler.OnTagged)
 		if _, err = oras.TagBytesN(ctx, tagListener, mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}
 	}
 
-	_ = opts.Printer.Println("Digest:", desc.Digest)
-
-	return nil
+	return metadataHandler.Render()
 }
 
 // matchDigest checks whether the manifest's digest matches to it in the remote

@@ -52,7 +52,8 @@ type pushOptions struct {
 	manifestConfigRef string
 	artifactType      string
 	concurrency       int
-	verbose           bool
+	// Deprecated: verbose is deprecated and will be removed in the future.
+	verbose bool
 }
 
 func pushCmd() *cobra.Command {
@@ -86,10 +87,10 @@ Example - Push file "hi.txt" with config type "application/vnd.me.config":
 Example - Push file "hi.txt" with the custom manifest config "config.json" of the custom media type "application/vnd.me.config":
   oras push --config config.json:application/vnd.me.config localhost:5000/hello:v1 hi.txt
 
-Example - Push file "hi.txt" and format output in JSON:
+Example - [Experimental] Push file "hi.txt" and format output in JSON:
   oras push localhost:5000/hello:v1 hi.txt --format json
 
-Example - Push file "hi.txt" and format output with Go template:
+Example - [Experimental] Push file "hi.txt" and format output with Go template:
   oras push localhost:5000/hello:v1 hi.txt --format go-template="{{.digest}}"
 
 Example - Push file to the insecure registry:
@@ -104,7 +105,7 @@ Example - Push repository with manifest annotations:
 Example - Push repository with manifest annotation file:
   oras push --annotation-file annotation.json localhost:5000/hello:v1
 
-Example - Push artifact to repository with platform:
+Example - [Experimental] Push artifact to repository with platform:
   oras push --artifact-platform linux/arm/v5 localhost:5000/hello:v1
 
 Example - Push file "hi.txt" with multiple tags:
@@ -165,7 +166,8 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "`path` of image config file")
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
-	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "print status output for unnamed blobs")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
+	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
 	opts.SetTypes(option.FormatTypeText, option.FormatTypeJSON, option.FormatTypeGoTemplate)
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
@@ -216,11 +218,11 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	}
 	memoryStore := memory.New()
 	union := contentutil.MultiReadOnlyTarget(memoryStore, store)
-	displayStatus, displayMetadata, err := display.NewPushHandler(opts.Printer, opts.Format, opts.TTY, union)
+	statusHandler, metadataHandler, err := display.NewPushHandler(opts.Printer, opts.Format, opts.TTY, union)
 	if err != nil {
 		return err
 	}
-	descs, err := loadFiles(ctx, store, opts.Annotations, opts.FileRefs, displayStatus)
+	descs, err := loadFiles(ctx, store, opts.Annotations, opts.FileRefs, statusHandler)
 	if err != nil {
 		return err
 	}
@@ -241,15 +243,15 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	if err != nil {
 		return err
 	}
-	dst, stopTrack, err := displayStatus.TrackTarget(originalDst)
+	dst, stopTrack, err := statusHandler.TrackTarget(originalDst)
 	if err != nil {
 		return err
 	}
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
-	copyOptions.CopyGraphOptions.OnCopySkipped = displayStatus.OnCopySkipped
-	copyOptions.CopyGraphOptions.PreCopy = displayStatus.PreCopy
-	copyOptions.CopyGraphOptions.PostCopy = displayStatus.PostCopy
+	copyOptions.CopyGraphOptions.OnCopySkipped = statusHandler.OnCopySkipped
+	copyOptions.CopyGraphOptions.PreCopy = statusHandler.PreCopy
+	copyOptions.CopyGraphOptions.PostCopy = statusHandler.PostCopy
 	copyWithScopeHint := func(root ocispec.Descriptor) error {
 		// add both pull and push scope hints for dst repository
 		// to save potential push-scope token requests during copy
@@ -268,7 +270,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	if err != nil {
 		return err
 	}
-	err = displayMetadata.OnCopied(&opts.Target)
+	err = metadataHandler.OnCopied(&opts.Target, root)
 	if err != nil {
 		return err
 	}
@@ -280,13 +282,13 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 		}
 		tagBytesNOpts := oras.DefaultTagBytesNOptions
 		tagBytesNOpts.Concurrency = opts.concurrency
-		dst := listener.NewTagListener(originalDst, nil, displayMetadata.OnTagged)
+		dst := listener.NewTagListener(originalDst, nil, metadataHandler.OnTagged)
 		if _, err = oras.TagBytesN(ctx, dst, root.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}
 	}
 
-	err = displayMetadata.OnCompleted(root)
+	err = metadataHandler.Render()
 	if err != nil {
 		return err
 	}

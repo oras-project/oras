@@ -43,7 +43,8 @@ type pushBlobOptions struct {
 	fileRef   string
 	mediaType string
 	size      int64
-	verbose   bool
+	// Deprecated: verbose is deprecated and will be removed in the future.
+	verbose bool
 }
 
 func pushCmd() *cobra.Command {
@@ -99,7 +100,8 @@ Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
 
 	cmd.Flags().Int64VarP(&opts.size, "size", "", -1, "provide the blob size")
 	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", ocispec.MediaTypeImageLayer, "specify the returned media type in the descriptor if --descriptor is used")
-	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "print status output for unnamed blobs")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
+	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
