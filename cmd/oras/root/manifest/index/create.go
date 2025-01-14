@@ -140,7 +140,8 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 			return err
 		}
 	}
-	return displayMetadata.OnCompleted(desc)
+	displayMetadata.OnIndexCreated(desc)
+	return displayMetadata.Render()
 }
 
 func fetchSourceManifests(ctx context.Context, displayStatus status.ManifestIndexCreateHandler, target oras.ReadOnlyTarget, sources []string) ([]ocispec.Descriptor, error) {
