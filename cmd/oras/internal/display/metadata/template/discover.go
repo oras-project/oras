@@ -59,7 +59,7 @@ func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) err
 	return nil
 }
 
-// OnCompleted implements metadata.DiscoverHandler.
-func (h *discoverHandler) OnCompleted() error {
+// Render implements metadata.DiscoverHandler.
+func (h *discoverHandler) Render() error {
 	return output.ParseAndWrite(h.out, model.NewDiscover(h.path, h.referrers), h.template)
 }

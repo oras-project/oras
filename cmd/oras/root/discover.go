@@ -151,7 +151,7 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 			}
 		}
 	}
-	return handler.OnCompleted()
+	return handler.Render()
 }
 
 func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, handler metadata.DiscoverHandler) error {
