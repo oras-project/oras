@@ -180,13 +180,13 @@ var _ = Describe("1.1 registry users:", func() {
 
 		It("should discover all referrers of a subject with annotations", func() {
 			ORAS("discover", subjectRef, "--format", format, "-v").
-				MatchKeyWords(append(discoverKeyWords(true, referrers...), RegistryRef(ZOTHost, ArtifactRepo, foobar.Digest))...).
+				MatchKeyWords(append(discoverKeyWords(true, referrers...), RegistryRef(ZOTHost, ArtifactRepo, foobar.Digest), "org.opencontainers.image.created: \"2023-01-18T08:37:42Z\"", "org.opencontainers.image.created: \"2023-01-18T08:37:57Z\"")...).
 				Exec()
 		})
 
 		It("should display <unknown> if a referrer has an empty artifact type", func() {
 			ORAS("discover", RegistryRef(ZOTHost, ArtifactRepo, "multi"), "--format", format).
-				MatchKeyWords("<unknown>").
+				MatchKeyWords("<unknown>", RegistryRef(ZOTHost, ArtifactRepo, "multi")).
 				Exec()
 		})
 	})
@@ -252,7 +252,7 @@ var _ = Describe("1.0 registry users:", func() {
 		It("should discover all referrers with annotation via tree output", func() {
 			referrers := []ocispec.Descriptor{foobar.SBOMImageReferrer, foobar.SignatureImageReferrer}
 			ORAS("discover", subjectRef, "-o", "tree", "-v").
-				MatchKeyWords(append(discoverKeyWords(true, referrers...), RegistryRef(FallbackHost, ArtifactRepo, foobar.Digest))...).
+				MatchKeyWords(append(discoverKeyWords(true, referrers...), RegistryRef(FallbackHost, ArtifactRepo, foobar.Digest), "org.opencontainers.image.created: \"2023-01-18T08:37:42Z\"")...).
 				Exec()
 		})
 
@@ -329,7 +329,7 @@ var _ = Describe("OCI image layout users:", func() {
 			root := PrepareTempOCI(ArtifactRepo)
 			subjectRef := LayoutRef(root, foobar.Tag)
 			ORAS("discover", subjectRef, "-o", format, "-v", Flags.Layout).
-				MatchKeyWords(append(discoverKeyWords(true, referrers...), LayoutRef(root, foobar.Digest))...).
+				MatchKeyWords(append(discoverKeyWords(true, referrers...), LayoutRef(root, foobar.Digest), "org.opencontainers.image.created: \"2023-01-18T08:37:42Z\"")...).
 				Exec()
 		})
 	})
