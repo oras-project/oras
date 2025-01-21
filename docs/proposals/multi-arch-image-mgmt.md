@@ -49,11 +49,11 @@ This is not convenient for local development and testing. Moreover, relying on a
 To create a multi-arch image, ORAS users have to manually compose an OCI image index from one or several manifest JSON files, then use "oras manifest push" to push it to an OCI layout or a registry. Typical examples can be found from these two scripts:
 
 - ORAS user A: [POC: Create and install Postgres Trunk Binaries (github.com)](https://gist.github.com/theory/7dc164e5772cae652d838a1c508972ae#file-push_trunk-L22) and his blog post [POC: Distributing Trunk Binaries via OCI (justatheory.com)](https://justatheory.com/2024/06/trunk-oci-poc/)
-- ORAS user B: [Script to help create a simple mult-arch artifact (github.com)](https://gist.github.com/sajayantony/0c9d6436c03d531b1bbebe43249381cf)
+- ORAS user B: [Script to help create a simple multi-arch artifact (github.com)](https://gist.github.com/sajayantony/0c9d6436c03d531b1bbebe43249381cf)
 
 #### `docker buildx`/`docker` is unavailable
 
-Users are not able to install or use `docker buildx` or even no `docker` and its daemon service in some strict environments. Users need to seek for an alternative tool to create a mulit-arch image without relying on `docker` or `docker buildx`.
+Users are not able to install or use `docker buildx` or even no `docker` and its daemon service in some strict environments. Users need to seek for an alternative tool to create a multi-arch image without relying on `docker` or `docker buildx`.
 
 ## Proposed solution
 
@@ -205,7 +205,7 @@ oras manifest index update --output - --pretty localhost:5000/hello:v2 --remove 
 
 ### Inspect a multi-arch image
 
-Add two alias `show` and `inspect`:
+To make the inspection operation more intuitive to users, add two alias `show` and `inspect` to the existing command `oras manifest fetch`:
 
 ```bash
 Usage:
@@ -224,10 +224,10 @@ Most of popular container client tools support create and push a multi-arch imag
   - [docker buildx imagetool](https://docs.docker.com/reference/cli/docker/buildx/imagetools/)
   - [docker manifest create](https://docs.docker.com/reference/cli/docker/manifest/)
 - **podman (Backed by Red Hat)**: similar with `docker manifest`, it provides `podman manifest` with subcommands to create and manipulate manifest lists and image indexes
-- **crane(Backed by Google)**: provides a single command [crane index append](https://github.com/google/go-containerregistry/blob/main/cmd/crane/recipes.md#create-a-multi-platform-image-from-scratch) to compose an image index
-- **regctl (Individual)** provides [regctl index add/create/delete](https://github.com/regclient/regclient/blob/main/docs/regctl.md#index-commands) to creates or manages OCI Indexes and Manifest Lists
+- **crane(Backed by Google)**: provides a single command [crane index append](https://github.com/google/go-containerregistry/blob/main/cmd/crane/recipes.md#create-a-multi-platform-image-from-scratch) to compose an image index. `crane index filter` supports filters the image index to include only platforms that are relevant to you.
+- **regctl (Individual)** provides [regctl index add/create/delete](https://github.com/regclient/regclient/blob/main/docs/regctl.md#index-commands) to creates or manages OCI image index and manifest list, `regctl artifact put --index` supports pushing the artifact and add it to an index in a single operation.
 - **manifest-tool (Individual from AWS):** create docker manifest list or OCI image index in a registry by using the [manifest-tool push command with either a YAML file describing the images to assemble or by using a series of parameters](https://github.com/estesp/manifest-tool?tab=readme-ov-file#sample-usage).
-- **skopeo (Backed by Red Hat)**: doesn’t support OCI image index and docker manifest list
+- **skopeo (Backed by Red Hat)**: Skopeo can consume and copy image index or manifest list, but it doesn't support generating or modifying them.
 
 In addition, `docker buildx` supports building a multi-arch image using the OCI image index format. Even [Docker Official Images](https://docs.docker.com/trusted-content/official-images/) are using the OCI image index format to create multi-platform images. [Homebrew](https://github.com/orgs/Homebrew/packages) publishes all images on ghcr.io using OCI image index. 
 
