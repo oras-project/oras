@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"testing"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/status/console"
 	"oras.land/oras/internal/testutils"
 )
@@ -41,7 +42,7 @@ func Test_manager_render(t *testing.T) {
 	}
 	height, _ := m.console.GetHeightWidth()
 	for i := 0; i < height; i++ {
-		if _, err := m.Add(); err != nil {
+		if _, err := m.Track(ocispec.Descriptor{}); err != nil {
 			t.Fatal(err)
 		}
 	}
