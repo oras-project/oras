@@ -85,7 +85,7 @@ func (opts *Target) AnnotatedReference() string {
 func (opts *Target) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
 	flagPrefix, notePrefix := applyPrefix(prefix, description)
 	fs.BoolVarP(&opts.IsOCILayout, flagPrefix+"oci-layout", "", false, "set "+notePrefix+"target as an OCI image layout")
-	fs.StringVar(&opts.Path, flagPrefix+"oci-layout-path", "", "[Experimental] Set the path for the "+notePrefix+"OCI image layout target")
+	fs.StringVar(&opts.Path, flagPrefix+"oci-layout-path", "", "[Experimental] set the path for the "+notePrefix+"OCI image layout target")
 }
 
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
