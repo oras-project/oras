@@ -17,56 +17,39 @@ package track
 
 import (
 	"io"
-	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/status/progress"
 )
 
+// Reader for progress tracked resource
+type Reader interface {
+	io.Reader
+	Done()
+	Close()
+	Start()
+}
+
 type reader struct {
-	base         io.Reader
-	offset       int64
-	actionPrompt string
-	donePrompt   string
-	descriptor   ocispec.Descriptor
-	manager      progress.Manager
-	messenger    *progress.Messenger
+	base       io.Reader
+	offset     int64
+	descriptor ocispec.Descriptor
+	messenger  *progress.Messenger
 }
 
 // NewReader returns a new reader with tracked progress.
-func NewReader(r io.Reader, descriptor ocispec.Descriptor, actionPrompt string, donePrompt string, tty *os.File) (*reader, error) {
-	manager, err := progress.NewManager(tty)
-	if err != nil {
-		return nil, err
+func NewReader(r io.Reader, descriptor ocispec.Descriptor, messenger *progress.Messenger) Reader {
+	tr := reader{
+		base:       r,
+		descriptor: descriptor,
+		messenger:  messenger,
 	}
-	return managedReader(r, descriptor, manager, actionPrompt, donePrompt)
-}
-
-func managedReader(r io.Reader, descriptor ocispec.Descriptor, manager progress.Manager, actionPrompt string, donePrompt string) (*reader, error) {
-	messenger, err := manager.Add()
-	if err != nil {
-		return nil, err
-	}
-
-	return &reader{
-		base:         r,
-		descriptor:   descriptor,
-		actionPrompt: actionPrompt,
-		donePrompt:   donePrompt,
-		manager:      manager,
-		messenger:    messenger,
-	}, nil
-}
-
-// StopManager stops the messenger channel and related manager.
-func (r *reader) StopManager() {
-	r.Close()
-	_ = r.manager.Close()
+	return &tr
 }
 
 // Done sends message to mark the tracked progress as complete.
 func (r *reader) Done() {
-	r.messenger.Send(r.donePrompt, r.descriptor, r.descriptor.Size)
+	r.messenger.SendDone(r.descriptor, r.descriptor.Size)
 	r.messenger.Stop()
 }
 
@@ -93,6 +76,6 @@ func (r *reader) Read(p []byte) (int, error) {
 			return n, io.ErrUnexpectedEOF
 		}
 	}
-	r.messenger.Send(r.actionPrompt, r.descriptor, r.offset)
+	r.messenger.SendAction(r.descriptor, r.offset)
 	return n, err
 }
