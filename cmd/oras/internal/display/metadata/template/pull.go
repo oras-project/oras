@@ -31,11 +31,26 @@ type PullHandler struct {
 	path     string
 	out      io.Writer
 	pulled   model.Pulled
+	root     ocispec.Descriptor
 }
 
-// OnCompleted implements metadata.PullHandler.
-func (ph *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor) error {
-	return output.ParseAndWrite(ph.out, model.NewPull(ph.path+"@"+desc.Digest.String(), ph.pulled.Files()), ph.template)
+// NewPullHandler returns a new handler for pull events.
+func NewPullHandler(out io.Writer, path string, template string) metadata.PullHandler {
+	return &PullHandler{
+		path:     path,
+		template: template,
+		out:      out,
+	}
+}
+
+// OnPulled implements metadata.PullHandler.
+func (ph *PullHandler) OnPulled(_ *option.Target, desc ocispec.Descriptor) {
+	ph.root = desc
+}
+
+// Render implements metadata.PullHandler.
+func (ph *PullHandler) Render() error {
+	return output.ParseAndWrite(ph.out, model.NewPull(ph.path+"@"+ph.root.Digest.String(), ph.pulled.Files()), ph.template)
 }
 
 // OnFilePulled implements metadata.PullHandler.
@@ -46,13 +61,4 @@ func (ph *PullHandler) OnFilePulled(name string, outputDir string, desc ocispec.
 // OnLayerSkipped implements metadata.PullHandler.
 func (ph *PullHandler) OnLayerSkipped(ocispec.Descriptor) error {
 	return nil
-}
-
-// NewPullHandler returns a new handler for pull events.
-func NewPullHandler(out io.Writer, path string, template string) metadata.PullHandler {
-	return &PullHandler{
-		path:     path,
-		template: template,
-		out:      out,
-	}
 }

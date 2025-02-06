@@ -42,13 +42,13 @@ type AttachHandler interface {
 
 // DiscoverHandler handles metadata output for discover events.
 type DiscoverHandler interface {
+	Renderer
+
 	// MultiLevelSupported returns true if the handler supports multi-level
 	// discovery.
 	MultiLevelSupported() bool
 	// OnDiscovered is called after a referrer is discovered.
 	OnDiscovered(referrer, subject ocispec.Descriptor) error
-	// OnCompleted is called when referrer discovery is completed.
-	OnCompleted() error
 }
 
 // ManifestFetchHandler handles metadata output for manifest fetch events.
@@ -59,12 +59,14 @@ type ManifestFetchHandler interface {
 
 // PullHandler handles metadata output for pull events.
 type PullHandler interface {
+	Renderer
+
 	// OnLayerSkipped is called when a layer is skipped.
 	OnLayerSkipped(ocispec.Descriptor) error
 	// OnFilePulled is called after a file is pulled.
 	OnFilePulled(name string, outputDir string, desc ocispec.Descriptor, descPath string) error
-	// OnCompleted is called when the pull cmd execution is completed.
-	OnCompleted(opts *option.Target, desc ocispec.Descriptor) error
+	// OnPulled is called when a pull operation completes.
+	OnPulled(target *option.Target, desc ocispec.Descriptor)
 }
 
 // TaggedHandler handles status output for tag command.

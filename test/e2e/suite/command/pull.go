@@ -41,6 +41,7 @@ var _ = Describe("ORAS beginners:", func() {
 		It("should show help description with feature flags", func() {
 			out := ORAS("pull", "--help").MatchKeyWords(ExampleDesc).Exec().Out
 			gomega.Expect(out).Should(gbytes.Say("--include-subject\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+			gomega.Expect(out).Should(gbytes.Say("--oci-layout-path string\\s+%s", regexp.QuoteMeta(feature.Experimental.Mark)))
 		})
 
 		It("should not show --verbose in help doc", func() {
