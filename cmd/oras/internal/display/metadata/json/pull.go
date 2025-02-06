@@ -30,7 +30,6 @@ type PullHandler struct {
 	path   string
 	pulled model.Pulled
 	out    io.Writer
-	target *option.Target
 	root   ocispec.Descriptor
 }
 
@@ -53,8 +52,7 @@ func (ph *PullHandler) OnFilePulled(name string, outputDir string, desc ocispec.
 }
 
 // OnPulled implements metadata.PullHandler.
-func (ph *PullHandler) OnPulled(target *option.Target, desc ocispec.Descriptor) {
-	ph.target = target
+func (ph *PullHandler) OnPulled(_ *option.Target, desc ocispec.Descriptor) {
 	ph.root = desc
 }
 
