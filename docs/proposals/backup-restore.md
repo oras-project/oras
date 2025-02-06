@@ -104,4 +104,4 @@ The restore command will support the `--input -` argument to read a compressed t
 
 ## Optimize blobs
 
-Add the feature to create blobs that are duplicated between images as hard links in the directory output and compressed tar files.
+A further enhancement is to create blobs that are duplicated between images as hard links in the directory output and compressed tar files.
