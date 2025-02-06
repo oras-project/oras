@@ -59,12 +59,14 @@ type ManifestFetchHandler interface {
 
 // PullHandler handles metadata output for pull events.
 type PullHandler interface {
+	Renderer
+
 	// OnLayerSkipped is called when a layer is skipped.
 	OnLayerSkipped(ocispec.Descriptor) error
 	// OnFilePulled is called after a file is pulled.
 	OnFilePulled(name string, outputDir string, desc ocispec.Descriptor, descPath string) error
-	// OnCompleted is called when the pull cmd execution is completed.
-	OnCompleted(opts *option.Target, desc ocispec.Descriptor) error
+	// OnPulled is called when a pull operation completes.
+	OnPulled(target *option.Target, desc ocispec.Descriptor)
 }
 
 // TaggedHandler handles status output for tag command.

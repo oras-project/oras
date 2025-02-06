@@ -28,18 +28,15 @@ import (
 type PullHandler struct {
 	printer      *output.Printer
 	layerSkipped atomic.Bool
+	target       *option.Target
+	root         ocispec.Descriptor
 }
 
-// OnCompleted implements metadata.PullHandler.
-func (ph *PullHandler) OnCompleted(opts *option.Target, desc ocispec.Descriptor) error {
-	if ph.layerSkipped.Load() {
-		_ = ph.printer.Printf("Skipped pulling layers without file name in %q\n", ocispec.AnnotationTitle)
-		_ = ph.printer.Printf("Use 'oras copy %s --to-oci-layout <layout-dir>' to pull all layers.\n", opts.RawReference)
-	} else {
-		_ = ph.printer.Println("Pulled", opts.AnnotatedReference())
-		_ = ph.printer.Println("Digest:", desc.Digest)
+// NewPullHandler returns a new handler for Pull events.
+func NewPullHandler(printer *output.Printer) metadata.PullHandler {
+	return &PullHandler{
+		printer: printer,
 	}
-	return nil
 }
 
 func (ph *PullHandler) OnFilePulled(_ string, _ string, _ ocispec.Descriptor, _ string) error {
@@ -52,9 +49,20 @@ func (ph *PullHandler) OnLayerSkipped(ocispec.Descriptor) error {
 	return nil
 }
 
-// NewPullHandler returns a new handler for Pull events.
-func NewPullHandler(printer *output.Printer) metadata.PullHandler {
-	return &PullHandler{
-		printer: printer,
+// OnPulled implements metadata.PullHandler.
+func (ph *PullHandler) OnPulled(target *option.Target, desc ocispec.Descriptor) {
+	ph.target = target
+	ph.root = desc
+}
+
+// Render implements metadata.PullHandler.
+func (ph *PullHandler) Render() error {
+	if ph.layerSkipped.Load() {
+		_ = ph.printer.Printf("Skipped pulling layers without file name in %q\n", ocispec.AnnotationTitle)
+		_ = ph.printer.Printf("Use 'oras copy %s --to-oci-layout <layout-dir>' to pull all layers.\n", ph.target.RawReference)
+	} else {
+		_ = ph.printer.Println("Pulled", ph.target.AnnotatedReference())
+		_ = ph.printer.Println("Digest:", ph.root.Digest)
 	}
+	return nil
 }
