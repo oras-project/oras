@@ -1,16 +1,20 @@
 # Backup and Restore Commands
+The backup and restore commands will add the capability to backup a list of artifacts from a registry and restore them to another registry.
+The artifacts that ill be supported are any OCI compatible artifact such as container images, helm charts and other artifacts.
+This feature will have many use cases, but the use case that will benefit the most is air gapped registries.
+These commands will allow copying artifacts to and from air gapped registries over the sneakernet or other limited communication channel.
 
 This document describes how the backup and restore commands will work and how the feature will be rolled out.
 The proposal is to create the feature as a minimum viable product and follow that up with non breaking features to the commands.
-The initial implementation will be the easiest implementation that is useful.
 
 ## Minimum Viable Product
 
 The backup command will initially just support writing to a directory and the restore command will only support reading from a directory.
+As well as the flags described here, the commands will support the normal set of flags to support TLS and authentication.
 
 ### oras backup
 
-The backup command will initially only support reading a list of files from the command line and writing to a directory:
+The backup command will initially only support reading a list of atifacts from the command line and writing to a directory:
 
 ```bash
 oras backup --output ./mirror  registry.k8s.io/kube-apiserver-arm64:v1.31.0 registry.k8s.io/kube-controller-manager-arm64:v1.31.0
@@ -89,7 +93,7 @@ If the specified source is a file, the format is assumed to be a compressed tar 
 
 ## Backup file input from a file
 
-The backup command will support an `--input filename` argument which will be a file containing the remove resources to retrieve.
+The backup command will support an `--input filename` argument which will be a file containing the remote resources to retrieve.
 The format of the contents of the file is a list of images names separated by newlines.
 If the `--input` argument is specified, no images may be specified on the command line.
 
