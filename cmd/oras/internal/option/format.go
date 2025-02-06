@@ -86,7 +86,7 @@ func (f *Format) SetTypes(defaultType *FormatType, otherTypes ...*FormatType) {
 
 // ApplyFlags implements FlagProvider.ApplyFlag.
 func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
-	buf := bytes.NewBufferString("[Experimental] Format output using a custom template:")
+	buf := bytes.NewBufferString("[Experimental] format output using a custom template:")
 	w := tabwriter.NewWriter(buf, 0, 0, 2, ' ', 0)
 	for _, t := range opts.allowedTypes {
 		_, _ = fmt.Fprintf(w, "\n'%s':\t%s", t.Name, t.Usage)
@@ -94,7 +94,7 @@ func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 	_ = w.Flush()
 	// apply flags
 	fs.StringVar(&opts.FormatFlag, "format", opts.FormatFlag, buf.String())
-	fs.StringVar(&opts.Template, "template", "", "[Experimental] Template string used to format output")
+	fs.StringVar(&opts.Template, "template", "", "[Experimental] template string used to format output")
 }
 
 // Parse parses the input format flag.
