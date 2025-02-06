@@ -32,7 +32,7 @@ type PullHandler struct {
 	out      io.Writer
 	pulled   model.Pulled
 	target   *option.Target
-	desc     ocispec.Descriptor
+	root     ocispec.Descriptor
 }
 
 // NewPullHandler returns a new handler for pull events.
@@ -47,12 +47,12 @@ func NewPullHandler(out io.Writer, path string, template string) metadata.PullHa
 // OnPulled implements metadata.PullHandler.
 func (ph *PullHandler) OnPulled(target *option.Target, desc ocispec.Descriptor) {
 	ph.target = target
-	ph.desc = desc
+	ph.root = desc
 }
 
 // Render implements metadata.PullHandler.
 func (ph *PullHandler) Render() error {
-	return output.ParseAndWrite(ph.out, model.NewPull(ph.path+"@"+ph.desc.Digest.String(), ph.pulled.Files()), ph.template)
+	return output.ParseAndWrite(ph.out, model.NewPull(ph.path+"@"+ph.root.Digest.String(), ph.pulled.Files()), ph.template)
 }
 
 // OnFilePulled implements metadata.PullHandler.

@@ -29,7 +29,7 @@ type PullHandler struct {
 	printer      *output.Printer
 	layerSkipped atomic.Bool
 	target       *option.Target
-	desc         ocispec.Descriptor
+	root         ocispec.Descriptor
 }
 
 // NewPullHandler returns a new handler for Pull events.
@@ -52,7 +52,7 @@ func (ph *PullHandler) OnLayerSkipped(ocispec.Descriptor) error {
 // OnPulled implements metadata.PullHandler.
 func (ph *PullHandler) OnPulled(target *option.Target, desc ocispec.Descriptor) {
 	ph.target = target
-	ph.desc = desc
+	ph.root = desc
 }
 
 // Render implements metadata.PullHandler.
@@ -62,7 +62,7 @@ func (ph *PullHandler) Render() error {
 		_ = ph.printer.Printf("Use 'oras copy %s --to-oci-layout <layout-dir>' to pull all layers.\n", ph.target.RawReference)
 	} else {
 		_ = ph.printer.Println("Pulled", ph.target.AnnotatedReference())
-		_ = ph.printer.Println("Digest:", ph.desc.Digest)
+		_ = ph.printer.Println("Digest:", ph.root.Digest)
 	}
 	return nil
 }
