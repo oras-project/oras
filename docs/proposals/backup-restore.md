@@ -51,7 +51,7 @@ Each image will be stored in a subdirectory which matches the repository name.
 
 ### oras restore
 
-Initially, the restore command will only support reading a directory and writing to a registry:
+Initially, the restore command will support reading a directory and writing the content to a remote registry:
 
 ```bash
 oras restore --input ./mirror localhost:15000/my-mirror
