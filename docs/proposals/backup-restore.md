@@ -4,7 +4,7 @@ This document describes how the backup and restore commands will work and how th
 The proposal is to create the feature as a minimum viable product and follow that up with non breaking features to the commands.
 The initial implementation will be the easiest implementation that is useful.
 
-## Minium Viable Product
+## Minimum Viable Product
 
 The backup command will initially just support writing to a directory and the restore command will only support reading from a directory.
 
