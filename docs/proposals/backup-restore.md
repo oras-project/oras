@@ -89,7 +89,7 @@ If the specified source is a file, the format is assumed to be a compressed tar 
 
 ## Backup file input from a file
 
-The backup command will support an `--input filename` argument which will be a file.
+The backup command will support an `--input filename` argument which will be a file containing the remove resources to retrieve.
 The format of the contents of the file is a list of images names separated by newlines.
 If the `--input` argument is specified, no images may be specified on the command line.
 
