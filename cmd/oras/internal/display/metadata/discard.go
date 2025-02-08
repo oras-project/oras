@@ -46,7 +46,5 @@ func (Discard) OnTagged(ocispec.Descriptor, string) error {
 	return nil
 }
 
-// OnCompleted implements ManifestIndexCreateHandler.
-func (Discard) OnCompleted(ocispec.Descriptor) error {
-	return nil
-}
+// OnIndexCreated implements ManifestIndexCreateHandler.
+func (Discard) OnIndexCreated(ocispec.Descriptor) {}

@@ -34,7 +34,7 @@ func (w *errorWriter) Write(p []byte) (n int, err error) {
 	return 0, fmt.Errorf("got an error")
 }
 
-func TestPushHandler_OnCompleted(t *testing.T) {
+func TestPushHandler_Render(t *testing.T) {
 	content := []byte("content")
 	tests := []struct {
 		name    string
@@ -71,7 +71,7 @@ func TestPushHandler_OnCompleted(t *testing.T) {
 				root:    tt.root,
 			}
 			if err := p.Render(); (err != nil) != tt.wantErr {
-				t.Errorf("PushHandler.OnCompleted() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("PushHandler.Render() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

@@ -44,10 +44,12 @@ func cpTestRepo(text string) string {
 var _ = Describe("ORAS beginners:", func() {
 	When("running cp command", func() {
 		It("should show help doc with feature flags", func() {
-			out := ORAS("cp", "--help").MatchKeyWords("Copy", ExampleDesc).Exec()
+			out := ORAS("cp", "--help").MatchKeyWords("Copy", ExampleDesc).Exec().Out
 			Expect(out).Should(gbytes.Say("--from-distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+			Expect(out).Should(gbytes.Say("--from-oci-layout-path string\\s+%s", regexp.QuoteMeta(feature.Experimental.Mark)))
 			Expect(out).Should(gbytes.Say("-r, --recursive\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 			Expect(out).Should(gbytes.Say("--to-distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+			Expect(out).Should(gbytes.Say("--to-oci-layout-path string\\s+%s", regexp.QuoteMeta(feature.Experimental.Mark)))
 		})
 
 		It("should not show --verbose in help doc", func() {

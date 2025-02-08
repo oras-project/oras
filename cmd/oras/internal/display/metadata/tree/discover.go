@@ -78,7 +78,7 @@ func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) err
 	return nil
 }
 
-// OnCompleted implements metadata.DiscoverHandler.
-func (h *discoverHandler) OnCompleted() error {
+// Render implements metadata.DiscoverHandler.
+func (h *discoverHandler) Render() error {
 	return tree.NewPrinter(h.out).Print(h.root)
 }
