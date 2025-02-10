@@ -121,16 +121,16 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 	}
 	defer rc.Close()
 
-	displayStatus := display.NewBlobPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc)
+	statusHandler, metadataHandler := display.NewBlobPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc, &opts.Target)
 
 	exists, err := target.Exists(ctx, desc)
 	if err != nil {
 		return err
 	}
 	if exists {
-		err = displayStatus.OnPushSkipped()
+		err = statusHandler.OnPushSkipped()
 	} else {
-		err = opts.doPush(ctx, displayStatus, target, desc, rc)
+		err = opts.doPush(ctx, statusHandler, target, desc, rc)
 	}
 	if err != nil {
 		return err
@@ -144,10 +144,8 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	_ = opts.Printer.Println("Pushed", opts.AnnotatedReference())
-	_ = opts.Printer.Println("Digest:", desc.Digest)
-
-	return nil
+	metadataHandler.OnBlobPushed(desc)
+	return metadataHandler.Render()
 }
 func (opts *pushBlobOptions) doPush(ctx context.Context, displayStatus status.BlobPushHandler, t oras.Target, desc ocispec.Descriptor, r io.Reader) error {
 	if opts.TTY == nil {

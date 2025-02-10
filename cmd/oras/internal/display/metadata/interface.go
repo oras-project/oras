@@ -105,3 +105,10 @@ type ManifestIndexUpdateHandler ManifestIndexCreateHandler
 type CopyHandler interface {
 	TaggedHandler
 }
+
+// BlobPushHandler handles metadata output for blob push events.
+type BlobPushHandler interface {
+	Renderer
+
+	OnBlobPushed(desc ocispec.Descriptor) error
+}

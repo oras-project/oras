@@ -225,7 +225,7 @@ func NewCopyHandler(printer *output.Printer, tty *os.File, fetcher fetcher.Fetch
 	return status.NewTextCopyHandler(printer, fetcher), text.NewCopyHandler(printer)
 }
 
-// NewBlobPushHandler ???
-func NewBlobPushHandler(printer *output.Printer, outputDescriptor bool, pretty bool, desc ocispec.Descriptor) status.BlobPushHandler {
-	return status.NewTextBlobPushHandler(printer, desc)
+// NewBlobPushHandler returns blob push handlers.
+func NewBlobPushHandler(printer *output.Printer, outputDescriptor bool, pretty bool, desc ocispec.Descriptor, target *option.Target) (status.BlobPushHandler, metadata.BlobPushHandler) {
+	return status.NewTextBlobPushHandler(printer, desc), text.NewBlobPushHandler(printer, target)
 }
