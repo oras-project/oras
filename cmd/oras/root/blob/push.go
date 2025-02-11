@@ -121,7 +121,7 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 	}
 	defer rc.Close()
 
-	statusHandler, metadataHandler := display.NewBlobPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc, &opts.Target)
+	statusHandler, metadataHandler := display.NewBlobPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc)
 
 	exists, err := target.Exists(ctx, desc)
 	if err != nil {
@@ -144,7 +144,7 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	if err := metadataHandler.OnBlobPushed(desc); err != nil {
+	if err := metadataHandler.OnBlobPushed(desc, opts.AnnotatedReference()); err != nil {
 		return err
 	}
 	return metadataHandler.Render()

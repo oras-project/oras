@@ -94,4 +94,7 @@ type BlobPushHandler interface {
 	OnPushSkipped() error
 	OnBlobUploading() error
 	OnBlobUploaded() error
+	StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error)
+	StopTracking() error
+	// may need onmounted
 }

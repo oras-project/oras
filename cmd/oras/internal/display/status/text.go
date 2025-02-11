@@ -340,3 +340,13 @@ func (mph *TextBlobPushHandler) OnBlobUploading() error {
 func (mph *TextBlobPushHandler) OnBlobUploaded() error {
 	return mph.printer.PrintStatus(mph.desc, PushPromptUploaded)
 }
+
+// ???
+func (mph *TextBlobPushHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
+	return gt, nil
+}
+
+// ???
+func (mph *TextBlobPushHandler) StopTracking() error {
+	return nil
+}

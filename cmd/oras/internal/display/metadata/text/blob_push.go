@@ -18,29 +18,26 @@ package text
 import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
-	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/cmd/oras/internal/output"
 )
 
 // BlobPushHandler handles text metadata output for blob push events.
 type BlobPushHandler struct {
 	printer *output.Printer
-	target  *option.Target
 	desc    ocispec.Descriptor
 }
 
 // NewBlobPushHandler returns a new handler for Blob push events.
-func NewBlobPushHandler(printer *output.Printer, target *option.Target) metadata.BlobPushHandler {
+func NewBlobPushHandler(printer *output.Printer) metadata.BlobPushHandler {
 	return &BlobPushHandler{
 		printer: printer,
-		target:  target,
 	}
 }
 
 // OnBlobPushed implements metadata.BlobPushHandler.
-func (h *BlobPushHandler) OnBlobPushed(desc ocispec.Descriptor) error {
+func (h *BlobPushHandler) OnBlobPushed(desc ocispec.Descriptor, reference string) error {
 	h.desc = desc
-	return h.printer.Println("Pushed:", h.target.AnnotatedReference())
+	return h.printer.Println("Pushed:", reference)
 }
 
 // Render implements metadata.BlobPushHandler.
