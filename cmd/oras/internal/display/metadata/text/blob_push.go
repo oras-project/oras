@@ -28,15 +28,15 @@ type BlobPushHandler struct {
 }
 
 // NewBlobPushHandler returns a new handler for Blob push events.
-func NewBlobPushHandler(printer *output.Printer) metadata.BlobPushHandler {
+func NewBlobPushHandler(printer *output.Printer, desc ocispec.Descriptor) metadata.BlobPushHandler {
 	return &BlobPushHandler{
 		printer: printer,
+		desc:    desc,
 	}
 }
 
 // OnBlobPushed implements metadata.BlobPushHandler.
-func (h *BlobPushHandler) OnBlobPushed(desc ocispec.Descriptor, reference string) error {
-	h.desc = desc
+func (h *BlobPushHandler) OnBlobPushed(reference string) error {
 	return h.printer.Println("Pushed:", reference)
 }
 

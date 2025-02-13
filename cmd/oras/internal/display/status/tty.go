@@ -207,25 +207,27 @@ func (ch *TTYCopyHandler) OnMounted(_ context.Context, desc ocispec.Descriptor) 
 
 // TTYBlobPushHandler handles tty status output for blob push events.
 type TTYBlobPushHandler struct {
+	desc    ocispec.Descriptor
 	tty     *os.File
 	tracked track.GraphTarget
 }
 
 // NewTTYBlobPushHandler returns a new handler for blob push command.
-func NewTTYBlobPushHandler(tty *os.File) BlobPushHandler {
+func NewTTYBlobPushHandler(tty *os.File, desc ocispec.Descriptor) BlobPushHandler {
 	return &TTYBlobPushHandler{
-		tty: tty,
+		tty:  tty,
+		desc: desc,
 	}
 }
 
 // StartTracking returns a tracked target from a graph target.
 func (bph *TTYBlobPushHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
-	var err error
-	bph.tracked, err = track.NewTarget(gt, "Uploading", "Uploaded ", bph.tty) // use const
+	tracked, err := track.NewTarget(gt, "Uploading", "Uploaded ", bph.tty) // use const
 	if err != nil {
 		return nil, err
 	}
-	return bph.tracked, err
+	bph.tracked = tracked
+	return bph.tracked, nil
 }
 
 // StopTracking ends the blob push tracking for the target.
@@ -235,7 +237,7 @@ func (bph *TTYBlobPushHandler) StopTracking() error {
 
 // ???
 func (bph *TTYBlobPushHandler) OnPushSkipped() error {
-	return nil // may need to change
+	return bph.tracked.Prompt(bph.desc, PushPromptExists)
 }
 
 // ???

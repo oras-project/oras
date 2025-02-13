@@ -110,5 +110,5 @@ type CopyHandler interface {
 type BlobPushHandler interface {
 	Renderer
 
-	OnBlobPushed(desc ocispec.Descriptor, reference string) error
+	OnBlobPushed(reference string) error
 }

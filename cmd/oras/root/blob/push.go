@@ -122,18 +122,23 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 
 	statusHandler, metadataHandler := display.NewBlobPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc, opts.TTY)
 
-	exists, err := target.Exists(ctx, desc)
-	if err != nil {
+	// exists, err := target.Exists(ctx, desc)
+	// if err != nil {
+	// 	return err
+	// }
+	// if exists {
+	// 	err = statusHandler.OnPushSkipped(target)
+	// } else {
+	// 	err = opts.doPush(ctx, statusHandler, target, desc, rc)
+	// }
+	// if err != nil {
+	// 	return err
+	// }
+
+	if err := opts.doPush(ctx, statusHandler, target, desc, rc); err != nil {
 		return err
 	}
-	if exists {
-		err = statusHandler.OnPushSkipped()
-	} else {
-		err = opts.doPush(ctx, statusHandler, target, desc, rc)
-	}
-	if err != nil {
-		return err
-	}
+
 	// outputs blob's descriptor
 	if opts.OutputDescriptor {
 		descJSON, err := opts.Marshal(desc)
@@ -143,7 +148,7 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	if err := metadataHandler.OnBlobPushed(desc, opts.AnnotatedReference()); err != nil {
+	if err := metadataHandler.OnBlobPushed(opts.AnnotatedReference()); err != nil {
 		return err
 	}
 	return metadataHandler.Render()
@@ -184,8 +189,20 @@ func (opts *pushBlobOptions) doPush(ctx context.Context, displayStatus status.Bl
 			err = stopErr
 		}
 	}()
-	displayStatus.OnBlobUploading()
-	gt.Push(ctx, desc, r)
+
+	exists, err := gt.Exists(ctx, desc)
+	if err != nil {
+		return err
+	}
+	if exists {
+		err = displayStatus.OnPushSkipped()
+	} else {
+		displayStatus.OnBlobUploading()
+		err = gt.Push(ctx, desc, r)
+	}
+	if err != nil {
+		return err
+	}
 
 	return displayStatus.OnBlobUploaded()
 }
