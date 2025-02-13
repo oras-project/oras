@@ -20,11 +20,9 @@ package blob
 import (
 	"bytes"
 	"context"
-	"os"
 	"testing"
 
 	"oras.land/oras/cmd/oras/internal/display/status"
-	"oras.land/oras/cmd/oras/internal/output"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -42,7 +40,6 @@ func Test_pushBlobOptions_doPush(t *testing.T) {
 	src := memory.New()
 	content := []byte("test")
 	r := bytes.NewReader(content)
-	printer := output.NewPrinter(os.Stdout, os.Stderr)
 	desc := ocispec.Descriptor{
 		MediaType: "application/octet-stream",
 		Digest:    digest.FromBytes(content),
@@ -51,7 +48,7 @@ func Test_pushBlobOptions_doPush(t *testing.T) {
 	var opts pushBlobOptions
 	opts.Common.TTY = device
 	// test
-	err = opts.doPush(context.Background(), status.NewTextBlobPushHandler(printer, desc), src, desc, r)
+	err = doPush(context.Background(), status.NewTTYBlobPushHandler(opts.Common.TTY, desc), src, desc, r)
 	if err != nil {
 		t.Fatal(err)
 	}

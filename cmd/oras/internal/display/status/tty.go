@@ -236,7 +236,7 @@ func (bph *TTYBlobPushHandler) StopTracking() error {
 }
 
 // ???
-func (bph *TTYBlobPushHandler) OnPushSkipped() error {
+func (bph *TTYBlobPushHandler) OnBlobPushSkipped() error {
 	return bph.tracked.Prompt(bph.desc, PushPromptExists)
 }
 

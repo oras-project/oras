@@ -121,21 +121,7 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 	defer rc.Close()
 
 	statusHandler, metadataHandler := display.NewBlobPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc, opts.TTY)
-
-	// exists, err := target.Exists(ctx, desc)
-	// if err != nil {
-	// 	return err
-	// }
-	// if exists {
-	// 	err = statusHandler.OnPushSkipped(target)
-	// } else {
-	// 	err = opts.doPush(ctx, statusHandler, target, desc, rc)
-	// }
-	// if err != nil {
-	// 	return err
-	// }
-
-	if err := opts.doPush(ctx, statusHandler, target, desc, rc); err != nil {
+	if err := doPush(ctx, statusHandler, target, desc, rc); err != nil {
 		return err
 	}
 
@@ -153,56 +139,31 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 	}
 	return metadataHandler.Render()
 }
-func (opts *pushBlobOptions) doPush(ctx context.Context, displayStatus status.BlobPushHandler, t oras.GraphTarget, desc ocispec.Descriptor, r io.Reader) error {
-	// if opts.TTY == nil {
-	// 	// none TTY output
-	// 	if err := displayStatus.OnBlobUploading(); err != nil {
-	// 		return err
-	// 	}
-	// 	if err := t.Push(ctx, desc, r); err != nil {
-	// 		return err
-	// 	}
-	// 	return displayStatus.OnBlobUploaded()
-	// }
 
-	// // TTY output
-	// trackedReader, err := track.NewReader(r, desc, "Uploading", "Uploaded ", opts.TTY)
-	// if err != nil {
-	// 	return err
-	// }
-	// defer trackedReader.StopManager()
-	// trackedReader.Start()
-	// r = trackedReader
-	// if err := t.Push(ctx, desc, r); err != nil {
-	// 	return err
-	// }
-	// trackedReader.Done()
-	// return nil
-	// reader, _ := displayStatus.GetReader(r, desc)
-	gt, err := displayStatus.StartTracking(t)
+func doPush(ctx context.Context, statusHandler status.BlobPushHandler, t oras.GraphTarget, desc ocispec.Descriptor, r io.Reader) error {
+	gt, err := statusHandler.StartTracking(t)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		stopErr := displayStatus.StopTracking()
+		stopErr := statusHandler.StopTracking()
 		if err == nil {
 			err = stopErr
 		}
 	}()
-
 	exists, err := gt.Exists(ctx, desc)
 	if err != nil {
 		return err
 	}
 	if exists {
-		err = displayStatus.OnPushSkipped()
+		return statusHandler.OnBlobPushSkipped()
 	} else {
-		displayStatus.OnBlobUploading()
-		err = gt.Push(ctx, desc, r)
+		if err := statusHandler.OnBlobUploading(); err != nil {
+			return err
+		}
+		if err := gt.Push(ctx, desc, r); err != nil {
+			return err
+		}
+		return statusHandler.OnBlobUploaded()
 	}
-	if err != nil {
-		return err
-	}
-
-	return displayStatus.OnBlobUploaded()
 }
