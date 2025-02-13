@@ -221,7 +221,7 @@ func NewTTYBlobPushHandler(tty *os.File) BlobPushHandler {
 // StartTracking returns a tracked target from a graph target.
 func (bph *TTYBlobPushHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
 	var err error
-	bph.tracked, err = track.NewTarget(gt, "pushing", "pushed", bph.tty) // need to change
+	bph.tracked, err = track.NewTarget(gt, "Uploading", "Uploaded ", bph.tty) // use const
 	if err != nil {
 		return nil, err
 	}

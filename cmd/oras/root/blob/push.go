@@ -28,7 +28,6 @@ import (
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/display/status"
-	"oras.land/oras/cmd/oras/internal/display/status/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/file"
@@ -121,7 +120,7 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 	}
 	defer rc.Close()
 
-	statusHandler, metadataHandler := display.NewBlobPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc)
+	statusHandler, metadataHandler := display.NewBlobPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc, opts.TTY)
 
 	exists, err := target.Exists(ctx, desc)
 	if err != nil {
@@ -149,29 +148,44 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 	}
 	return metadataHandler.Render()
 }
-func (opts *pushBlobOptions) doPush(ctx context.Context, displayStatus status.BlobPushHandler, t oras.Target, desc ocispec.Descriptor, r io.Reader) error {
-	if opts.TTY == nil {
-		// none TTY output
-		if err := displayStatus.OnBlobUploading(); err != nil {
-			return err
-		}
-		if err := t.Push(ctx, desc, r); err != nil {
-			return err
-		}
-		return displayStatus.OnBlobUploaded()
-	}
+func (opts *pushBlobOptions) doPush(ctx context.Context, displayStatus status.BlobPushHandler, t oras.GraphTarget, desc ocispec.Descriptor, r io.Reader) error {
+	// if opts.TTY == nil {
+	// 	// none TTY output
+	// 	if err := displayStatus.OnBlobUploading(); err != nil {
+	// 		return err
+	// 	}
+	// 	if err := t.Push(ctx, desc, r); err != nil {
+	// 		return err
+	// 	}
+	// 	return displayStatus.OnBlobUploaded()
+	// }
 
-	// TTY output
-	trackedReader, err := track.NewReader(r, desc, "Uploading", "Uploaded ", opts.TTY)
+	// // TTY output
+	// trackedReader, err := track.NewReader(r, desc, "Uploading", "Uploaded ", opts.TTY)
+	// if err != nil {
+	// 	return err
+	// }
+	// defer trackedReader.StopManager()
+	// trackedReader.Start()
+	// r = trackedReader
+	// if err := t.Push(ctx, desc, r); err != nil {
+	// 	return err
+	// }
+	// trackedReader.Done()
+	// return nil
+	// reader, _ := displayStatus.GetReader(r, desc)
+	gt, err := displayStatus.StartTracking(t)
 	if err != nil {
 		return err
 	}
-	defer trackedReader.StopManager()
-	trackedReader.Start()
-	r = trackedReader
-	if err := t.Push(ctx, desc, r); err != nil {
-		return err
-	}
-	trackedReader.Done()
-	return nil
+	defer func() {
+		stopErr := displayStatus.StopTracking()
+		if err == nil {
+			err = stopErr
+		}
+	}()
+	displayStatus.OnBlobUploading()
+	gt.Push(ctx, desc, r)
+
+	return displayStatus.OnBlobUploaded()
 }
