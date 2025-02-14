@@ -1,7 +1,7 @@
 # Multi-arch image management with ORAS
 
 > [!NOTE]
-> The version of this specification is `1.3.0 Beta.1`. It is subject to change until ORAS v1.3.0 is officially released. 
+> The version of this specification is `1.3.0 Beta.2`. It is subject to change until ORAS v1.3.0 is officially released. 
 
 ## Overview
 
@@ -32,17 +32,11 @@ The `oras manifest` provides subcommands to push, fetch, and delete an image man
 
 Specifically, there are limitations and problems to create and manage multi-arch images using `docker` or `docker buildx`:
 
-#### Lack of native support for local environment
+#### Rely on remote registry to create a multi-arch image
 
-`docker buildx` confuses developers who are expecting to immediately run a multi-arch image after a successful build. Because `docker buildx` targets multiple architectures, it must be saved to a repository, not local storage. This requires the multi-arch image push to a repository and then a pull to run and test locally, which is inefficient for local development and testing.
+[`docker manifest`](https://docs.docker.com/reference/cli/docker/manifest/create/) and [`docker buildx imagetools create`](https://docs.docker.com/reference/cli/docker/buildx/imagetools/create/) requires the separate arch-specific images (with different architectures/variants) to be pushed to a registry before creating an image index or manifest list. Normally, developers want to create a multi-arch image locally so that they can test in a development environment before publishing to the registry. This is not efficient for local development and testing.  Moreover, relying on a remote registry to create a multi-arch image is not acceptable in an air-gapped environment.
 
-In addition, `docker buildx` sometimes relies on a remote builder for the target architectures which do not match the build machine. Using a remote builder is also not convenient for testing changes. 
-
-#### Rely on remote registry to create multi-arch image
-
-[`docker manifest`](https://docs.docker.com/reference/cli/docker/manifest/create/) and [`docker buildx imagetools create`](https://docs.docker.com/reference/cli/docker/buildx/imagetools/create/) requires the separate arch-specific images (with different architectures/variants) to be pushed to a registry before creating an image index or manifest list. Normally, developers want to create a multi-arch image locally so that they can test in a development environment before publishing to the registry. 
-
-This is not convenient for local development and testing. Moreover, relying on a remote registry to create a multi-arch image is not acceptable in an air-gapped environment.
+In addition, `docker buildx` relies on a remote builder for the target architectures which do not match the build machine. Using a remote builder is not convenient and secure enough for testing changes. 
 
 #### Hard to compose and update a multi-arch image
 
@@ -57,14 +51,14 @@ Users are not able to install or use `docker buildx` or even no `docker` and its
 
 ## Proposed solution
 
-Ideally, if ORAS extends the ability to create and manage a multi-arch image from a local environment or a remote registry, the problems listed above can be resolved. Creating and managing a multi-arch image using image index format should be as easy as playing Legos. 
+Ideally, if ORAS extends the ability to create and manage a multi-arch image from either local environment or remote registry, the problems listed above can be resolved. Creating and managing a multi-arch image using image index format should be as easy as playing Legos. 
 
 The proposed CLI commands for managing a multi-arch image are listed below. The detailed use cases and subcommands are articulated in the CLI Spec section.
 
 - Create a multi-arch image: `oras manifest index create`
+  - Add annotations to a multi-arch image during creation: `oras manifest index create --annotation`
 - Update a multi-arch image: `oras manifest index update`
-- Add annotations to a multi-arch image during creation: `oras manifest index create --annotation`
-
+  
 The proposal creates a multi-arch image using an OCI image index in an OCI image layout as a local storage, then push the multi-arch image to the registry with ORAS. 
 
 ### User scenario and desired experience
@@ -99,7 +93,7 @@ Digest: sha256:edb5bc1f0b5c21e9321b34e50c92beae739250fb88409056e8719d9759f6b5b4
 Status: An image index has been created and pushed to layout-dir:v1
 ```
 
-3. Inspect the image index from the OCI image layout: 
+3. View the image index in the OCI image layout in a pretty JSON output: 
 
 ```bash
 $ oras manifest fetch --oci-layout layout-dir:v1 --pretty  
@@ -203,16 +197,16 @@ oras manifest index update --output index.json localhost:5000/hello:v2 --add v2-
 oras manifest index update --output - --pretty localhost:5000/hello:v2 --remove sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
 ```
 
-### Inspect a multi-arch image
+### View a multi-arch image 
 
-To make the inspection operation more intuitive to users, add two alias `show` and `inspect` to the existing command `oras manifest fetch`:
+To make the inspection operation more intuitive to users, add one alias `oras manifest show` to the existing command `oras manifest fetch`:
 
 ```bash
 Usage:
   oras manifest fetch [flags] <name>{:<tag>|@<digest>}
 
 Aliases:
-  fetch, get, show, inspect
+  fetch, get, show
 ```
 
 ## Investigation on other client tools and industry
@@ -220,12 +214,13 @@ Aliases:
 Most of popular container client tools support create and push a multi-arch image using docker manifest list or OCI image index format, but these tools **require users to push platform-specific image push to the registry separately**. They don’t provide native support for local environment.
 
 - **docker**:
-  - [docker buildx buildx](https://docs.docker.com/reference/cli/docker/buildx/build/)
+  - [docker buildx build](https://docs.docker.com/reference/cli/docker/buildx/build/)
   - [docker buildx imagetool](https://docs.docker.com/reference/cli/docker/buildx/imagetools/)
   - [docker manifest create](https://docs.docker.com/reference/cli/docker/manifest/)
-- **podman (Backed by Red Hat)**: similar with `docker manifest`, it provides `podman manifest` with subcommands to create and manipulate manifest lists and image indexes
+- **podman (Backed by Red Hat)**: similar with `docker manifest`, it provides `podman manifest` with subcommands to create and manipulate manifest lists and image indexes.
+- **buildah**: supports building a multi-platform image to [local filesystem](https://github.com/containers/buildah/blob/main/docs/buildah-build.1.md#building-an-image-using---output-custom-build-output.).
 - **crane(Backed by Google)**: provides a single command [crane index append](https://github.com/google/go-containerregistry/blob/main/cmd/crane/recipes.md#create-a-multi-platform-image-from-scratch) to compose an image index. `crane index filter` supports filters the image index to include only platforms that are relevant to you.
-- **regctl (Individual)** provides [regctl index add/create/delete](https://github.com/regclient/regclient/blob/main/docs/regctl.md#index-commands) to creates or manages OCI image index and manifest list, `regctl artifact put --index` supports pushing the artifact and add it to an index in a single operation.
+- **regctl (Individual)** provides [regctl index add/create/delete](https://github.com/regclient/regclient/blob/main/docs/regctl.md#index-commands) to creates or manages OCI image index and manifest list, `regctl artifact put --index` supports pushing the artifact and add it to an index in a single operation. It also provides native support for local environments in all commands with the OCI Layout.
 - **manifest-tool (Individual from AWS):** create docker manifest list or OCI image index in a registry by using the [manifest-tool push command with either a YAML file describing the images to assemble or by using a series of parameters](https://github.com/estesp/manifest-tool?tab=readme-ov-file#sample-usage).
 - **skopeo (Backed by Red Hat)**: Skopeo can consume and copy image index or manifest list, but it doesn't support generating or modifying them.
 
