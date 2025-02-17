@@ -43,8 +43,8 @@ var (
 // status is the model to present the progress of an operation.
 type status struct {
 	lock sync.RWMutex
-	done bool  // true if the operation is done and becomes immutable
-	err  error // error message when the operation failed
+	done bool  // true if the operation is succeeded
+	err  error // non-nil if the operation fails
 
 	mark      spinner
 	text      string
