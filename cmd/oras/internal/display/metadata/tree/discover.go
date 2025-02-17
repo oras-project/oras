@@ -22,7 +22,6 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"gopkg.in/yaml.v3"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/internal/tree"
 )
@@ -61,19 +60,28 @@ func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) err
 	if !ok {
 		return fmt.Errorf("unexpected subject descriptor: %v", subject)
 	}
-	if referrer.ArtifactType == "" {
-		referrer.ArtifactType = "<unknown>"
+
+	referrerNode := node.AddPath(fmt.Sprintf("ArtifactType: %s", referrer.ArtifactType), fmt.Sprintf("Digest: %s", referrer.Digest))
+
+	referrerNode.AddPath(fmt.Sprintf("MediaType: %s", referrer.MediaType))
+	referrerNode.AddPath(fmt.Sprintf("Size: %d bytes", referrer.Size))
+	if len(referrer.URLs) > 0 {
+		referrerNode.AddPath(fmt.Sprintf("URLs: %s", strings.Join(referrer.URLs, ", ")))
 	}
-	referrerNode := node.AddPath(referrer.ArtifactType, referrer.Digest)
-	if h.verbose {
-		for k, v := range referrer.Annotations {
-			bytes, err := yaml.Marshal(map[string]string{k: v})
-			if err != nil {
-				return err
-			}
-			referrerNode.AddPath(strings.TrimSpace(string(bytes)))
+	if len(referrer.Data) > 0 {
+		referrerNode.AddPath(fmt.Sprintf("Data: %s", string(referrer.Data)))
+	}
+	if referrer.Platform != nil {
+		referrerNode.AddPath(fmt.Sprintf("Platform: OS=%s, Architecture=%s, OSVersion=%s, Variant=%s",
+			referrer.Platform.OS, referrer.Platform.Architecture, referrer.Platform.OSVersion, referrer.Platform.Variant))
+		if len(referrer.Platform.OSFeatures) > 0 {
+			referrerNode.AddPath(fmt.Sprintf("Platform OSFeatures: %s", strings.Join(referrer.Platform.OSFeatures, ", ")))
 		}
 	}
+	for k, v := range referrer.Annotations {
+		referrerNode.AddPath(fmt.Sprintf("Annotation: %s = %s", k, v))
+	}
+
 	h.nodes[referrer.Digest] = referrerNode
 	return nil
 }
