@@ -124,15 +124,6 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 		return err
 	}
 
-	// // outputs blob's descriptor
-	// if opts.OutputDescriptor {
-	// 	descJSON, err := opts.Marshal(desc)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	return opts.Output(os.Stdout, descJSON)
-	// }
-
 	if err := contentHandler.OnBlobPushed(); err != nil {
 		return err
 	}
