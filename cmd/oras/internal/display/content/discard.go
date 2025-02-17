@@ -29,6 +29,11 @@ func (DiscardHandler) OnContentCreated([]byte) error {
 	return nil
 }
 
+// OnBlobPushed implements BlobPushHandler.
+func (DiscardHandler) OnBlobPushed() error {
+	return nil
+}
+
 // NewDiscardHandler returns a new discard handler.
 func NewDiscardHandler() DiscardHandler {
 	return DiscardHandler{}
