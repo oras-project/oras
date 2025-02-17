@@ -1,4 +1,12 @@
+# ORAS Enhancement Proposal Template
 
+A ORAS Enhancement Proposal (OEP) is a way to propose, communicate and coordinate on new features and enhancements for the `ORAS` project. It aims to provide a consistent format for proposing new features and improvements, ensures contributors follow a structured approach, making it easier for maintainers to review proposals.
+
+OEPs are suggested for most non-trivial changes. Specifically:
+
+- Anything that may be controversial
+- Most new features (except the small changes to existing flags or parameters)
+- Changes that are wide ranging or impact most of the project and users
 
 ## Overview 
 
