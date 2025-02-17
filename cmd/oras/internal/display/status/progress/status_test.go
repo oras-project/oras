@@ -19,6 +19,8 @@ package progress
 
 import (
 	"context"
+	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -35,8 +37,8 @@ func Test_status_String(t *testing.T) {
 		Size:      2,
 		Digest:    "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
 	})
-	if status, digest := s.String(console.MinWidth); status != zeroStatus || digest != zeroDigest {
-		t.Errorf("status.String() = %v, %v, want %v, %v", status, digest, zeroStatus, zeroDigest)
+	if view := s.Render(console.MinWidth); !reflect.DeepEqual(view, defaultView) {
+		t.Errorf("status.Render() = %v want %v", view, defaultView)
 	}
 
 	// not done
@@ -46,13 +48,13 @@ func Test_status_String(t *testing.T) {
 		offset:    0,
 	})
 	// full name
-	statusStr, digestStr := s.String(120)
-	if err := testutils.OrderedMatch(statusStr+digestStr, "\x1b[0m....................]", s.prompt, s.descriptor.MediaType, "0.00/2  B", "0.00%", s.descriptor.Digest.String()); err != nil {
+	view := s.Render(120)
+	if err := testutils.OrderedMatch(strings.Join(view[:], ""), "\x1b[0m....................]", s.prompt, s.descriptor.MediaType, "0.00/2  B", "0.00%", s.descriptor.Digest.String()); err != nil {
 		t.Error(err)
 	}
 	// partial name
-	statusStr, digestStr = s.String(console.MinWidth)
-	if err := testutils.OrderedMatch(statusStr+digestStr, "\x1b[0m....................]", s.prompt, "application/v.", "0.00/2  B", "0.00%", s.descriptor.Digest.String()); err != nil {
+	view = s.Render(console.MinWidth)
+	if err := testutils.OrderedMatch(strings.Join(view[:], ""), "\x1b[0m....................]", s.prompt, "application/v.", "0.00/2  B", "0.00%", s.descriptor.Digest.String()); err != nil {
 		t.Error(err)
 	}
 	// done
@@ -61,8 +63,8 @@ func Test_status_String(t *testing.T) {
 		offset:     s.descriptor.Size,
 		descriptor: s.descriptor,
 	})
-	statusStr, digestStr = s.String(120)
-	if err := testutils.OrderedMatch(statusStr+digestStr, "✓", s.prompt, s.descriptor.MediaType, "2/2  B", "100.00%", s.descriptor.Digest.String()); err != nil {
+	view = s.Render(120)
+	if err := testutils.OrderedMatch(strings.Join(view[:], ""), "✓", s.prompt, s.descriptor.MediaType, "2/2  B", "100.00%", s.descriptor.Digest.String()); err != nil {
 		t.Error(err)
 	}
 }
@@ -74,8 +76,8 @@ func Test_status_String_zeroWidth(t *testing.T) {
 		Size:      0,
 		Digest:    "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 	})
-	if status, digest := s.String(console.MinWidth); status != zeroStatus || digest != zeroDigest {
-		t.Errorf("status.String() = %v, %v, want %v, %v", status, digest, zeroStatus, zeroDigest)
+	if view := s.Render(console.MinWidth); !reflect.DeepEqual(view, defaultView) {
+		t.Errorf("status.Render() = %v want %v", view, defaultView)
 	}
 
 	// not done
@@ -85,8 +87,8 @@ func Test_status_String_zeroWidth(t *testing.T) {
 		offset:    0,
 	})
 	// not done
-	statusStr, digestStr := s.String(120)
-	if err := testutils.OrderedMatch(statusStr+digestStr, "\x1b[104m                    \x1b[0m", s.prompt, s.descriptor.MediaType, "0/0  B", "100.00%", s.descriptor.Digest.String()); err != nil {
+	view := s.Render(120)
+	if err := testutils.OrderedMatch(strings.Join(view[:], ""), "\x1b[104m                    \x1b[0m", s.prompt, s.descriptor.MediaType, "0/0  B", "100.00%", s.descriptor.Digest.String()); err != nil {
 		t.Error(err)
 	}
 	// done
@@ -95,8 +97,8 @@ func Test_status_String_zeroWidth(t *testing.T) {
 		offset:     s.descriptor.Size,
 		descriptor: s.descriptor,
 	})
-	statusStr, digestStr = s.String(120)
-	if err := testutils.OrderedMatch(statusStr+digestStr, "✓", s.prompt, s.descriptor.MediaType, "0/0  B", "100.00%", s.descriptor.Digest.String()); err != nil {
+	view = s.Render(120)
+	if err := testutils.OrderedMatch(strings.Join(view[:], ""), "✓", s.prompt, s.descriptor.MediaType, "0/0  B", "100.00%", s.descriptor.Digest.String()); err != nil {
 		t.Error(err)
 	}
 }
@@ -108,8 +110,8 @@ func Test_status_String_failure(t *testing.T) {
 		Size:      2,
 		Digest:    "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
 	})
-	if status, digest := s.String(console.MinWidth); status != zeroStatus || digest != zeroDigest {
-		t.Errorf("status.String() = %v, %v, want %v, %v", status, digest, zeroStatus, zeroDigest)
+	if view := s.Render(console.MinWidth); !reflect.DeepEqual(view, defaultView) {
+		t.Errorf("status.Render() = %v want %v", view, defaultView)
 	}
 
 	// done with failure
@@ -121,8 +123,8 @@ func Test_status_String_failure(t *testing.T) {
 		startTime:  time.Now().Add(-time.Minute),
 		endTime:    time.Now(),
 	})
-	statusStr, digestStr := s.String(120)
-	if err := testutils.OrderedMatch(statusStr+digestStr, "✗", s.prompt, s.descriptor.MediaType, "1.00/2  B", "50.00%", s.descriptor.Digest.String()); err != nil {
+	view := s.Render(120)
+	if err := testutils.OrderedMatch(strings.Join(view[:], ""), "✗", s.prompt, s.descriptor.MediaType, "1.00/2  B", "50.00%", s.descriptor.Digest.String()); err != nil {
 		t.Error(err)
 	}
 }
