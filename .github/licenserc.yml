@@ -37,6 +37,7 @@ header:
     - 'go.sum'
     - 'go.work'
     - '**/testdata/**'
+    - '**/*.svg'
 
   comment: on-failure
 
