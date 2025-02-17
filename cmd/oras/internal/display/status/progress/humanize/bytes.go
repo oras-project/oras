@@ -22,7 +22,7 @@ import (
 
 const base = 1024.0
 
-var units = []string{"B", "kB", "MB", "GB", "TB"}
+var units = []string{"B", "KB", "MB", "GB", "TB"}
 
 type Bytes struct {
 	Size float64
