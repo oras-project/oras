@@ -63,6 +63,7 @@ func (ph *TTYPushHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, St
 		progress.StateTransmitting: PushPromptUploading,
 		progress.StateTransmitted:  PushPromptUploaded,
 		progress.StateExists:       PushPromptExists,
+		progress.StateSkipped:      PushPromptSkipped,
 	}
 	tracked, err := track.NewTarget(gt, prompt, ph.tty)
 	if err != nil {
