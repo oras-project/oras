@@ -24,6 +24,7 @@ import (
 // CopyHandler handles text metadata output for cp events.
 type CopyHandler struct {
 	printer *output.Printer
+	desc    ocispec.Descriptor
 }
 
 // NewCopyHandler returns a new handler for cp events.
@@ -36,4 +37,15 @@ func NewCopyHandler(printer *output.Printer) metadata.CopyHandler {
 // OnTagged implements metadata.TaggedHandler.
 func (h *CopyHandler) OnTagged(_ ocispec.Descriptor, tag string) error {
 	return h.printer.Println("Tagged", tag)
+}
+
+// Render implements metadata.Renderer.
+func (h *CopyHandler) Render() error {
+	return h.printer.Println("Digest:", h.desc.Digest)
+}
+
+// OnCopied implements metadata.CopyHandler.
+func (h *CopyHandler) OnCopied(fromRef string, toRef string, desc ocispec.Descriptor) error {
+	h.desc = desc
+	return h.printer.Println("Copied", fromRef, "=>", toRef)
 }
