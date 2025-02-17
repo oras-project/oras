@@ -49,6 +49,9 @@ type console struct {
 
 // NewConsole generates a console from a file.
 func NewConsole(f *os.File) (Console, error) {
+	if f != nil && f.Name() == os.DevNull {
+		return NewDiscardConsole(f), nil
+	}
 	c, err := containerd.ConsoleFromFile(f)
 	if err != nil {
 		return nil, err
