@@ -65,8 +65,8 @@ func (r *Reader) Tracker() progress.Tracker {
 }
 
 // StopTracker stops the messenger channel.
-func (r *Reader) StopTracker() error {
-	return r.tracker.Close()
+func (r *Reader) StopTracker() {
+	_ = r.tracker.Close()
 }
 
 // StopManager stops the messenger channel and related manager.
