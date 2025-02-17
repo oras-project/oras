@@ -19,7 +19,7 @@ import "oras.land/oras/internal/progress"
 
 // Messenger is progress message channel.
 type Messenger struct {
-	ch     chan *status
+	update chan statusUpdate
 	closed bool
 	prompt map[progress.State]string
 }
@@ -33,7 +33,7 @@ func (m *Messenger) Update(status progress.Status) error {
 }
 
 func (m *Messenger) Fail(err error) error {
-	m.ch <- fail(err)
+	m.update <- updateStatusError(err)
 	return nil
 }
 
@@ -44,19 +44,19 @@ func (m *Messenger) Close() error {
 
 // start initializes the messenger.
 func (m *Messenger) start() {
-	if m.ch == nil {
+	if m.update == nil {
 		return
 	}
-	m.ch <- startTiming()
+	m.update <- updateStatusStartTime()
 }
 
 // send a status message for the specified descriptor.
 func (m *Messenger) send(prompt string, offset int64) {
 	for {
 		select {
-		case m.ch <- newStatusMessage(prompt, offset):
+		case m.update <- updateStatusMessage(prompt, offset):
 			return
-		case <-m.ch:
+		case <-m.update:
 			// purge the channel until successfully pushed
 		default:
 			// ch is nil
@@ -70,7 +70,7 @@ func (m *Messenger) stop() {
 	if m.closed {
 		return
 	}
-	m.ch <- endTiming()
-	close(m.ch)
+	m.update <- updateStatusEndTime()
+	close(m.update)
 	m.closed = true
 }
