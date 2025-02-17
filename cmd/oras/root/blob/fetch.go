@@ -177,13 +177,13 @@ func (opts *fetchBlobOptions) doFetch(ctx context.Context, src oras.ReadOnlyTarg
 			return ocispec.Descriptor{}, err
 		}
 		defer trackedReader.StopManager()
-		if err := progress.Start(trackedReader); err != nil {
+		if err := progress.Start(trackedReader.Tracker()); err != nil {
 			return ocispec.Descriptor{}, err
 		}
 		if _, err = io.Copy(writer, trackedReader); err != nil {
 			return ocispec.Descriptor{}, err
 		}
-		if err := progress.Done(trackedReader); err != nil {
+		if err := progress.Done(trackedReader.Tracker()); err != nil {
 			return ocispec.Descriptor{}, err
 		}
 	}

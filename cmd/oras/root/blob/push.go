@@ -165,11 +165,11 @@ func (opts *pushBlobOptions) doPush(ctx context.Context, printer *output.Printer
 		return err
 	}
 	defer trackedReader.StopManager()
-	if err := progress.Start(trackedReader); err != nil {
+	if err := progress.Start(trackedReader.Tracker()); err != nil {
 		return err
 	}
 	if err := t.Push(ctx, desc, trackedReader); err != nil {
 		return err
 	}
-	return progress.Done(trackedReader)
+	return progress.Done(trackedReader.Tracker())
 }
