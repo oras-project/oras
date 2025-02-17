@@ -34,4 +34,4 @@ OEPs are suggested for most non-trivial changes. Specifically:
 
 ## Proposal 
 
-> Proposed solution and alternative options. 
+> Proposed solution and alternative options. The desired user experience and CLI command operation can be included.
