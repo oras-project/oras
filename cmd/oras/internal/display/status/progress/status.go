@@ -181,6 +181,8 @@ func (s *status) durationString() string {
 // statusUpdate is a function to update the status.
 type statusUpdate func(*status)
 
+// updateStatusMessage returns a statusUpdate to update the status message.
+// Optionally, it can update the offset of the status.
 func updateStatusMessage(text string, offset int64) statusUpdate {
 	return func(s *status) {
 		s.lock.Lock()
@@ -193,6 +195,7 @@ func updateStatusMessage(text string, offset int64) statusUpdate {
 	}
 }
 
+// updateStatusStartTime returns a statusUpdate to update the status start time.
 func updateStatusStartTime() statusUpdate {
 	return func(s *status) {
 		s.lock.Lock()
@@ -203,6 +206,7 @@ func updateStatusStartTime() statusUpdate {
 	}
 }
 
+// updateStatusEndTime returns a statusUpdate to update the status end time.
 func updateStatusEndTime() statusUpdate {
 	return func(s *status) {
 		s.lock.Lock()
@@ -215,6 +219,7 @@ func updateStatusEndTime() statusUpdate {
 	}
 }
 
+// updateStatusError returns a statusUpdate to update the status error.
 func updateStatusError(err error) statusUpdate {
 	return func(s *status) {
 		s.lock.Lock()
