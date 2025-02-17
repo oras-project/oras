@@ -34,141 +34,103 @@ const (
 )
 
 var (
-	defaultView = [2]string{
-		"loading status...",
-		"  └─ loading digest...",
-	}
-)
-
-var (
 	spinnerColor  = aec.LightYellowF
 	doneMarkColor = aec.LightGreenF
 	progressColor = aec.LightBlueB
 	failureColor  = aec.LightRedF
 )
 
-// status is used as message to update progress view.
+// status is the model to present the progress of an operation.
 type status struct {
-	done        bool // done is true when the end time is set
-	err         error
-	prompt      string
-	descriptor  ocispec.Descriptor
-	offset      int64
-	total       humanize.Bytes
-	speedWindow *speedWindow
+	lock sync.RWMutex
+	done bool  // true if the operation is done and becomes immutable
+	err  error // error message when the operation failed
 
+	mark      spinner
+	text      string
 	startTime time.Time
 	endTime   time.Time
-	mark      spinner
-	lock      sync.Mutex
+
+	descriptor ocispec.Descriptor
+	offset     int64
+	total      humanize.Bytes
+	speed      *speedWindow
 }
 
 // newStatus generates a base empty status.
 func newStatus(desc ocispec.Descriptor) *status {
 	return &status{
-		descriptor:  desc,
-		offset:      -1,
-		total:       humanize.ToBytes(desc.Size),
-		speedWindow: newSpeedWindow(framePerSecond),
+		descriptor: desc,
+		offset:     -1,
+		total:      humanize.ToBytes(desc.Size),
+		speed:      newSpeedWindow(framePerSecond),
 	}
-}
-
-// newStatusMessage generates a status for messaging.
-func newStatusMessage(prompt string, offset int64) *status {
-	return &status{
-		prompt: prompt,
-		offset: offset,
-	}
-}
-
-// startTiming creates start timing message.
-func startTiming() *status {
-	return &status{
-		offset:    -1,
-		startTime: time.Now(),
-	}
-}
-
-// endTiming creates end timing message.
-func endTiming() *status {
-	return &status{
-		offset:  -1,
-		endTime: time.Now(),
-	}
-}
-
-func fail(err error) *status {
-	return &status{
-		err:    err,
-		offset: -1,
-	}
-}
-
-func (s *status) isZero() bool {
-	return s.offset < 0 && s.startTime.IsZero() && s.endTime.IsZero()
 }
 
 // Render returns human-readable TTY strings of the status.
+// Format:
+//
+//	[left--------------------------------------------][margin][right---------------------------------]
+//	mark(1) bar(22) speed(8) action(<=11) name(<=126)        size_per_size(<=13) percent(8) time(>=6)
+//	 └─ digest(72)
 func (s *status) Render(width int) [2]string {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 
-	if s.isZero() {
-		return defaultView
-	}
-	// todo: doesn't support multiline prompt
-	total := uint64(s.descriptor.Size)
-
-	name := s.descriptor.Annotations["org.opencontainers.image.title"]
+	// obtain object name
+	name := s.descriptor.Annotations[ocispec.AnnotationTitle]
 	if name == "" {
 		name = s.descriptor.MediaType
 	}
 
-	// format:  [left--------------------------------------------][margin][right---------------------------------]
-	//          mark(1) bar(22) speed(8) action(<=11) name(<=126)        size_per_size(<=13) percent(8) time(>=6)
-	//           └─ digest(72)
+	// calculate the progress percentage
 	var offset string
 	var percent float64
 	if s.done {
 		// 100%, show exact size
 		offset = fmt.Sprint(s.total.Size)
 		percent = 1
-	} else if total == 0 {
+	} else if s.offset < 0 {
+		// not started, show 0%
+		offset = "-"
+	} else if s.descriptor.Size == 0 {
 		// 0 byte, show 100%
 		offset = "0"
 		percent = 1
 	} else {
 		// 0% ~ 99%, show 2-digit precision
-		if s.offset >= 0 {
-			// calculate percentage
-			percent = float64(s.offset) / float64(total)
-		}
+		percent = float64(s.offset) / float64(s.descriptor.Size)
 		offset = fmt.Sprintf("%.2f", humanize.RoundTo(s.total.Size*percent))
 	}
-	right := fmt.Sprintf(" %s/%s %6.2f%% %6s", offset, s.total, percent*100, s.durationString())
-	lenRight := utf8.RuneCountInString(right)
 
+	// render the left side of the primary line
 	var left string
-	lenLeft := 0
-	if !s.done {
-		lenBar := int(percent * barLength)
-		bar := fmt.Sprintf("[%s%s]", progressColor.Apply(strings.Repeat(" ", lenBar)), strings.Repeat(".", barLength-lenBar))
-		speed := s.calculateSpeed()
+	lenLeft := 0 // manually calculate the string length due to the color escape sequence
+	if s.done {
+		left = fmt.Sprintf("%s %s %s", doneMarkColor.Apply("✓"), s.text, name)
+	} else {
 		var mark string
 		if s.err == nil {
 			mark = spinnerColor.Apply(string(s.mark.symbol()))
 		} else {
 			mark = failureColor.Apply("✗")
 		}
-		left = fmt.Sprintf("%s %s(%*s/s) %s %s", mark, bar, speedLength, speed, s.prompt, name)
+		lenBar := int(percent * barLength)
+		speed := s.calculateSpeed()
+		left = fmt.Sprintf("%s [%s%s](%*s/s) %s %s", mark,
+			progressColor.Apply(strings.Repeat(" ", lenBar)), strings.Repeat(".", barLength-lenBar),
+			speedLength, speed, s.text, name)
 		// bar + wrapper(2) + space(1) + speed + "/s"(2) + wrapper(2) = len(bar) + len(speed) + 7
 		lenLeft = barLength + speedLength + 7
-	} else {
-		left = fmt.Sprintf("%s %s %s", doneMarkColor.Apply("✓"), s.prompt, name)
 	}
 	// mark(1) + space(1) + prompt + space(1) + name = len(prompt) + len(name) + 3
-	lenLeft += utf8.RuneCountInString(s.prompt) + utf8.RuneCountInString(name) + 3
+	lenLeft += utf8.RuneCountInString(s.text) + utf8.RuneCountInString(name) + 3
 
+	// render the right side of the primary line
+	right := fmt.Sprintf(" %s/%s %6.2f%% %6s", offset, s.total, percent*100, s.durationString())
+	lenRight := utf8.RuneCountInString(right)
+
+	// render view
 	lenMargin := width - lenLeft - lenRight
 	if lenMargin < 0 {
 		// hide partial name with one space left
@@ -177,7 +139,7 @@ func (s *status) Render(width int) [2]string {
 	}
 	return [2]string{
 		fmt.Sprintf("%s%s%s", left, strings.Repeat(" ", lenMargin), right),
-		fmt.Sprintf("  └─ %s", s.descriptor.Digest.String()),
+		fmt.Sprintf("  └─ %s%s", s.descriptor.Digest, strings.Repeat(" ", width-len(s.descriptor.Digest)-5)),
 	}
 }
 
@@ -188,8 +150,8 @@ func (s *status) calculateSpeed() humanize.Bytes {
 		// not started
 		return humanize.ToBytes(0)
 	}
-	s.speedWindow.Add(time.Now(), s.offset)
-	return humanize.ToBytes(int64(s.speedWindow.Mean()))
+	s.speed.Add(time.Now(), s.offset)
+	return humanize.ToBytes(int64(s.speed.Mean()))
 }
 
 // durationString returns a viewable TTY string of the status with duration.
@@ -216,27 +178,48 @@ func (s *status) durationString() string {
 	return d.String()
 }
 
-func (s *status) update(n *status) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+// statusUpdate is a function to update the status.
+type statusUpdate func(*status)
 
-	if n.err != nil {
-		s.err = n.err
+func updateStatusMessage(text string, offset int64) statusUpdate {
+	return func(s *status) {
+		s.lock.Lock()
+		defer s.lock.Unlock()
+
+		s.text = text
+		if offset >= 0 {
+			s.offset = offset
+		}
 	}
-	if n.offset >= 0 {
-		s.offset = n.offset
+}
+
+func updateStatusStartTime() statusUpdate {
+	return func(s *status) {
+		s.lock.Lock()
+		defer s.lock.Unlock()
+
+		s.startTime = time.Now()
+		s.speed.Add(s.startTime, 0)
 	}
-	if n.prompt != "" {
-		s.prompt = n.prompt
-	}
-	if !n.startTime.IsZero() {
-		s.startTime = n.startTime
-		s.speedWindow.Add(s.startTime, 0)
-	}
-	if !n.endTime.IsZero() {
-		s.endTime = n.endTime
+}
+
+func updateStatusEndTime() statusUpdate {
+	return func(s *status) {
+		s.lock.Lock()
+		defer s.lock.Unlock()
+
+		s.endTime = time.Now()
 		if s.err == nil {
 			s.done = true
 		}
+	}
+}
+
+func updateStatusError(err error) statusUpdate {
+	return func(s *status) {
+		s.lock.Lock()
+		defer s.lock.Unlock()
+
+		s.err = err
 	}
 }
