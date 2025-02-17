@@ -46,7 +46,7 @@ func ToBytes(sizeInBytes int64) Bytes {
 
 // String returns the string representation of Bytes.
 func (b Bytes) String() string {
-	return fmt.Sprintf("%v %2s", b.Size, b.Unit)
+	return fmt.Sprintf("%g %2s", b.Size, b.Unit)
 }
 
 // RoundTo makes length of the size string to less than or equal to 4.
