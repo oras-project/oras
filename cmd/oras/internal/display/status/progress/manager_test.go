@@ -50,7 +50,7 @@ func Test_manager_render(t *testing.T) {
 	// validate
 	var want []string
 	for i := height; i > 0; i -= 2 {
-		want = append(want, fmt.Sprintf("%dF%s", i, zeroStatus))
+		want = append(want, fmt.Sprintf("%dF%s", i, defaultView[0]))
 	}
 	if err = testutils.MatchPty(pty, device, want...); err != nil {
 		t.Fatal(err)

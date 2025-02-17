@@ -31,8 +31,13 @@ const (
 	barLength    = 20
 	speedLength  = 7    // speed_size(4) + space(1) + speed_unit(2)
 	zeroDuration = "0s" // default zero value of time.Duration.String()
-	zeroStatus   = "loading status..."
-	zeroDigest   = "  └─ loading digest..."
+)
+
+var (
+	defaultView = [2]string{
+		"loading status...",
+		"  └─ loading digest...",
+	}
 )
 
 var (
@@ -103,13 +108,13 @@ func (s *status) isZero() bool {
 	return s.offset < 0 && s.startTime.IsZero() && s.endTime.IsZero()
 }
 
-// String returns human-readable TTY strings of the status.
-func (s *status) String(width int) (string, string) {
+// Render returns human-readable TTY strings of the status.
+func (s *status) Render(width int) [2]string {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	if s.isZero() {
-		return zeroStatus, zeroDigest
+		return defaultView
 	}
 	// todo: doesn't support multiline prompt
 	total := uint64(s.descriptor.Size)
@@ -170,7 +175,10 @@ func (s *status) String(width int) (string, string) {
 		left = left[:len(left)+lenMargin-1] + "."
 		lenMargin = 0
 	}
-	return fmt.Sprintf("%s%s%s", left, strings.Repeat(" ", lenMargin), right), fmt.Sprintf("  └─ %s", s.descriptor.Digest.String())
+	return [2]string{
+		fmt.Sprintf("%s%s%s", left, strings.Repeat(" ", lenMargin), right),
+		fmt.Sprintf("  └─ %s", s.descriptor.Digest.String()),
+	}
 }
 
 // calculateSpeed calculates the speed of the progress and update last status.

@@ -83,19 +83,22 @@ func (m *manager) start() {
 func (m *manager) render() {
 	m.statusLock.RLock()
 	defer m.statusLock.RUnlock()
-	// todo: update size in another routine
-	height, width := m.console.GetHeightWidth()
-	lineCount := len(m.status) * 2
-	offset := 0
-	if lineCount > height {
-		// skip statuses that cannot be rendered
-		offset = lineCount - height
-	}
 
-	for ; offset < lineCount; offset += 2 {
-		status, progress := m.status[offset/2].String(width)
-		m.console.OutputTo(uint(lineCount-offset), status)
-		m.console.OutputTo(uint(lineCount-offset-1), progress)
+	// render with culling: only the latter statuses are rendered.
+	models := m.status
+	height, width := m.console.GetHeightWidth()
+	if n := len(m.status) - height/2; n > 0 {
+		models = models[n:]
+		if height%2 == 1 {
+			view := m.status[n-1].Render(width)
+			m.console.OutputTo(uint(len(models)*2+1), view[1])
+		}
+	}
+	viewHeight := len(models) * 2
+	for i, model := range models {
+		view := model.Render(width)
+		m.console.OutputTo(uint(viewHeight-i*2), view[0])
+		m.console.OutputTo(uint(viewHeight-i*2-1), view[1])
 	}
 }
 
