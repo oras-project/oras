@@ -48,3 +48,8 @@ func (Discard) OnTagged(ocispec.Descriptor, string) error {
 
 // OnIndexCreated implements ManifestIndexCreateHandler.
 func (Discard) OnIndexCreated(ocispec.Descriptor) {}
+
+// OnBlobPushed implements BlobPushHandler
+func (Discard) OnBlobPushed(string) error {
+	return nil
+}
