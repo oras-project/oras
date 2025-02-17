@@ -73,41 +73,41 @@ func (t *graphTarget) Mount(ctx context.Context, desc ocispec.Descriptor, fromRe
 
 // Push pushes the content to the base oras.GraphTarget with tracking.
 func (t *graphTarget) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
-	r, err := managedReader(content, expected, t.manager)
+	r, err := newReader(content, expected, t.manager)
 	if err != nil {
 		return err
 	}
-	defer r.Close()
-	if err := progress.Start(r); err != nil {
+	defer r.StopTracker()
+	if err := progress.Start(r.Tracker()); err != nil {
 		return err
 	}
 	if err := t.GraphTarget.Push(ctx, expected, r); err != nil {
 		if errors.Is(err, errdef.ErrAlreadyExists) {
 			// allowed error types in oras-go oci and memory store
-			if err := progress.Done(r); err != nil {
+			if err := progress.Done(r.Tracker()); err != nil {
 				return err
 			}
 		}
 		return err
 	}
-	return progress.Done(r)
+	return progress.Done(r.Tracker())
 }
 
 // PushReference pushes the content to the base oras.GraphTarget with tracking.
 func (rgt *referenceGraphTarget) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
-	r, err := managedReader(content, expected, rgt.manager)
+	r, err := newReader(content, expected, rgt.manager)
 	if err != nil {
 		return err
 	}
-	defer r.Close()
-	if err := progress.Start(r); err != nil {
+	defer r.StopTracker()
+	if err := progress.Start(r.Tracker()); err != nil {
 		return err
 	}
 	err = rgt.GraphTarget.(registry.ReferencePusher).PushReference(ctx, expected, r, reference)
 	if err != nil {
 		return err
 	}
-	return progress.Done(r)
+	return progress.Done(r.Tracker())
 }
 
 // Close closes the tracking manager.

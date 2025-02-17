@@ -24,15 +24,15 @@ import (
 	"oras.land/oras/internal/progress"
 )
 
-type reader struct {
+// Reader is a tracked io.Reader.
+type Reader struct {
 	io.Reader
-	progress.Tracker
-
+	tracker progress.Tracker
 	manager progress.Manager
 }
 
 // NewReader returns a new reader with tracked progress.
-func NewReader(r io.Reader, descriptor ocispec.Descriptor, actionPrompt string, donePrompt string, tty *os.File) (*reader, error) {
+func NewReader(r io.Reader, descriptor ocispec.Descriptor, actionPrompt string, donePrompt string, tty *os.File) (*Reader, error) {
 	prompt := map[progress.State]string{
 		progress.StateInitialized:  actionPrompt,
 		progress.StateTransmitting: actionPrompt,
@@ -43,24 +43,34 @@ func NewReader(r io.Reader, descriptor ocispec.Descriptor, actionPrompt string, 
 	if err != nil {
 		return nil, err
 	}
-	return managedReader(r, descriptor, manager)
+	return newReader(r, descriptor, manager)
 }
 
-func managedReader(r io.Reader, descriptor ocispec.Descriptor, manager progress.Manager) (*reader, error) {
+func newReader(r io.Reader, descriptor ocispec.Descriptor, manager progress.Manager) (*Reader, error) {
 	tracker, err := manager.Track(descriptor)
 	if err != nil {
 		return nil, err
 	}
 
-	return &reader{
+	return &Reader{
 		Reader:  progress.TrackReader(tracker, r),
-		Tracker: tracker,
+		tracker: tracker,
 		manager: manager,
 	}, nil
 }
 
+// Tracker returns the progress tracker.
+func (r *Reader) Tracker() progress.Tracker {
+	return r.tracker
+}
+
+// StopTracker stops the messenger channel.
+func (r *Reader) StopTracker() error {
+	return r.tracker.Close()
+}
+
 // StopManager stops the messenger channel and related manager.
-func (r *reader) StopManager() {
-	_ = r.Tracker.Close()
+func (r *Reader) StopManager() {
+	_ = r.tracker.Close()
 	_ = r.manager.Close()
 }
