@@ -134,7 +134,7 @@ func (ph *TTYPullHandler) OnNodeProcessing(_ ocispec.Descriptor) error {
 
 // OnNodeRestored implements PullHandler.
 func (ph *TTYPullHandler) OnNodeRestored(desc ocispec.Descriptor) error {
-	return ph.tracked.Report(desc, progress.StateMounted)
+	return ph.tracked.Report(desc, progress.StateRestored)
 }
 
 // OnNodeSkipped implements PullHandler.
@@ -149,7 +149,7 @@ func (ph *TTYPullHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, St
 		progress.StateTransmitting: PullPromptDownloading,
 		progress.StateTransmitted:  PullPromptPulled,
 		progress.StateSkipped:      PullPromptSkipped,
-		progress.StateMounted:      PullPromptRestored,
+		progress.StateRestored:     PullPromptRestored,
 	}
 	tracked, err := track.NewTarget(gt, prompt, ph.tty)
 	if err != nil {
