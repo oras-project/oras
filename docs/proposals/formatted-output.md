@@ -396,6 +396,8 @@ When showing the subject image and all referrers' manifests recursively in a tre
   - `annotations`: contains arbitrary metadata in a referrer
   - `referrerManifests`: the list of referrers' manifest
 
+For example, when there are two refferers lifecycle metadata and in-toto attestation associated with a sample image, the signatures are associated with these two files respectively. The output in a tree view will be:
+
 ```bash
 oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01
 ```
