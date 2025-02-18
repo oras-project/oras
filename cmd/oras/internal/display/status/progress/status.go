@@ -137,9 +137,13 @@ func (s *status) Render(width int) [2]string {
 		left = left[:len(left)+lenMargin-1] + "."
 		lenMargin = 0
 	}
+	var padding string
+	if paddingLen := width - len(s.descriptor.Digest) - 5; paddingLen > 0 {
+		padding = strings.Repeat(" ", paddingLen)
+	}
 	return [2]string{
 		fmt.Sprintf("%s%s%s", left, strings.Repeat(" ", lenMargin), right),
-		fmt.Sprintf("  └─ %s%s", s.descriptor.Digest, strings.Repeat(" ", width-len(s.descriptor.Digest)-5)),
+		fmt.Sprintf("  └─ %s%s", s.descriptor.Digest, padding),
 	}
 }
 
