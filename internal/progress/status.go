@@ -27,6 +27,7 @@ const (
 	StateExists                    // content exists
 	StateSkipped                   // content skipped
 	StateMounted                   // content mounted
+	StateRestored                  // content restored
 )
 
 // Status represents the status of a descriptor.
