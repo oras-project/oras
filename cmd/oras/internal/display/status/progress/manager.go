@@ -27,8 +27,8 @@ import (
 )
 
 const (
-	// BufferSize is the size of the status channel buffer.
-	BufferSize       = 1
+	// bufferSize is the size of the status channel buffer.
+	bufferSize       = 1
 	framePerSecond   = 5
 	bufFlushDuration = time.Second / framePerSecond
 )
@@ -51,6 +51,10 @@ func NewManager(tty *os.File, prompt map[progress.State]string) (progress.Manage
 	if err != nil {
 		return nil, err
 	}
+	return newManager(c, prompt), nil
+}
+
+func newManager(c console.Console, prompt map[progress.State]string) progress.Manager {
 	m := &manager{
 		console:      c,
 		renderDone:   make(chan struct{}),
@@ -58,7 +62,7 @@ func NewManager(tty *os.File, prompt map[progress.State]string) (progress.Manage
 		prompt:       prompt,
 	}
 	m.start()
-	return m, nil
+	return m
 }
 
 func (m *manager) start() {
@@ -115,11 +119,11 @@ func (m *manager) Track(desc ocispec.Descriptor) (progress.Tracker, error) {
 
 	defer m.console.NewRow()
 	defer m.console.NewRow()
-	return m.statusChan(s), nil
+	return m.newTracker(s), nil
 }
 
-func (m *manager) statusChan(s *status) progress.Tracker {
-	ch := make(chan statusUpdate, BufferSize)
+func (m *manager) newTracker(s *status) progress.Tracker {
+	ch := make(chan statusUpdate, bufferSize)
 	m.updating.Add(1)
 	go func() {
 		defer m.updating.Done()
