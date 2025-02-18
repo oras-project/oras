@@ -25,10 +25,18 @@ type Messenger struct {
 }
 
 func (m *Messenger) Update(status progress.Status) error {
-	if status.State == progress.StateInitialized {
-		m.start()
+	switch status.State {
+	case progress.StateInitialized:
+		m.update <- updateStatusStartTime()
+	case progress.StateTransmitting:
+		select {
+		case m.update <- updateStatusMessage(m.prompt[progress.StateTransmitting], status.Offset):
+		default:
+			// drop message if channel is full
+		}
+	default:
+		m.update <- updateStatusMessage(m.prompt[status.State], status.Offset)
 	}
-	m.send(m.prompt[status.State], status.Offset)
 	return nil
 }
 
@@ -38,39 +46,11 @@ func (m *Messenger) Fail(err error) error {
 }
 
 func (m *Messenger) Close() error {
-	m.stop()
-	return nil
-}
-
-// start initializes the messenger.
-func (m *Messenger) start() {
-	if m.update == nil {
-		return
-	}
-	m.update <- updateStatusStartTime()
-}
-
-// send a status message for the specified descriptor.
-func (m *Messenger) send(prompt string, offset int64) {
-	for {
-		select {
-		case m.update <- updateStatusMessage(prompt, offset):
-			return
-		case <-m.update:
-			// purge the channel until successfully pushed
-		default:
-			// ch is nil
-			return
-		}
-	}
-}
-
-// stop the messenger after sending a end message.
-func (m *Messenger) stop() {
 	if m.closed {
-		return
+		return nil
 	}
 	m.update <- updateStatusEndTime()
 	close(m.update)
 	m.closed = true
+	return nil
 }
