@@ -31,6 +31,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/status/track"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/progress"
 )
 
 type fetchBlobOptions struct {
@@ -176,11 +177,15 @@ func (opts *fetchBlobOptions) doFetch(ctx context.Context, src oras.ReadOnlyTarg
 			return ocispec.Descriptor{}, err
 		}
 		defer trackedReader.StopManager()
-		trackedReader.Start()
+		if err := progress.Start(trackedReader.Tracker()); err != nil {
+			return ocispec.Descriptor{}, err
+		}
 		if _, err = io.Copy(writer, trackedReader); err != nil {
 			return ocispec.Descriptor{}, err
 		}
-		trackedReader.Done()
+		if err := progress.Done(trackedReader.Tracker()); err != nil {
+			return ocispec.Descriptor{}, err
+		}
 	}
 	if err := vr.Verify(); err != nil {
 		return ocispec.Descriptor{}, err

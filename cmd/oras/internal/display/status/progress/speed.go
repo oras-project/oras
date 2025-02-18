@@ -50,7 +50,7 @@ func (w *speedWindow) Add(time time.Time, offset int64) {
 // Mean returns the mean speed of the window with unit of byte per second.
 func (w *speedWindow) Mean() float64 {
 	if w.size < 2 {
-		// no speed diplayed for first read
+		// no speed displayed for first read
 		return 0
 	}
 

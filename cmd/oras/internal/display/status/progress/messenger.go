@@ -15,81 +15,42 @@ limitations under the License.
 
 package progress
 
-import (
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras/cmd/oras/internal/display/status/progress/humanize"
-	"time"
-)
+import "oras.land/oras/internal/progress"
 
 // Messenger is progress message channel.
 type Messenger struct {
-	ch     chan *status
+	update chan statusUpdate
 	closed bool
+	prompt map[progress.State]string
 }
 
-// Start initializes the messenger.
-func (sm *Messenger) Start() {
-	if sm.ch == nil {
-		return
-	}
-	sm.ch <- startTiming()
-}
-
-// Send a status message for the specified descriptor.
-func (sm *Messenger) Send(prompt string, descriptor ocispec.Descriptor, offset int64) {
-	for {
+func (m *Messenger) Update(status progress.Status) error {
+	switch status.State {
+	case progress.StateInitialized:
+		m.update <- updateStatusStartTime()
+	case progress.StateTransmitting:
 		select {
-		case sm.ch <- newStatusMessage(prompt, descriptor, offset):
-			return
-		case <-sm.ch:
-			// purge the channel until successfully pushed
+		case m.update <- updateStatusMessage(m.prompt[progress.StateTransmitting], status.Offset):
 		default:
-			// ch is nil
-			return
+			// drop message if channel is full
 		}
+	default:
+		m.update <- updateStatusMessage(m.prompt[status.State], status.Offset)
 	}
+	return nil
 }
 
-// Stop the messenger after sending a end message.
-func (sm *Messenger) Stop() {
-	if sm.closed {
-		return
-	}
-	sm.ch <- endTiming()
-	close(sm.ch)
-	sm.closed = true
+func (m *Messenger) Fail(err error) error {
+	m.update <- updateStatusError(err)
+	return nil
 }
 
-// newStatus generates a base empty status.
-func newStatus() *status {
-	return &status{
-		offset:      -1,
-		total:       humanize.ToBytes(0),
-		speedWindow: newSpeedWindow(framePerSecond),
+func (m *Messenger) Close() error {
+	if m.closed {
+		return nil
 	}
-}
-
-// newStatusMessage generates a status for messaging.
-func newStatusMessage(prompt string, descriptor ocispec.Descriptor, offset int64) *status {
-	return &status{
-		prompt:     prompt,
-		descriptor: descriptor,
-		offset:     offset,
-	}
-}
-
-// startTiming creates start timing message.
-func startTiming() *status {
-	return &status{
-		offset:    -1,
-		startTime: time.Now(),
-	}
-}
-
-// endTiming creates end timing message.
-func endTiming() *status {
-	return &status{
-		offset:  -1,
-		endTime: time.Now(),
-	}
+	m.update <- updateStatusEndTime()
+	close(m.update)
+	m.closed = true
+	return nil
 }

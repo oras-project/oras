@@ -26,6 +26,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras/cmd/oras/internal/display/status/track"
+	"oras.land/oras/internal/progress"
 )
 
 // TTYPushHandler handles TTY status output for push command.
@@ -57,7 +58,14 @@ func (ph *TTYPushHandler) OnEmptyArtifact() error {
 
 // TrackTarget returns a tracked target.
 func (ph *TTYPushHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, StopTrackTargetFunc, error) {
-	tracked, err := track.NewTarget(gt, PushPromptUploading, PushPromptUploaded, ph.tty)
+	prompt := map[progress.State]string{
+		progress.StateInitialized:  PushPromptUploading,
+		progress.StateTransmitting: PushPromptUploading,
+		progress.StateTransmitted:  PushPromptUploaded,
+		progress.StateExists:       PushPromptExists,
+		progress.StateSkipped:      PushPromptSkipped,
+	}
+	tracked, err := track.NewTarget(gt, prompt, ph.tty)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -68,7 +76,7 @@ func (ph *TTYPushHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, St
 // OnCopySkipped is called when an object already exists.
 func (ph *TTYPushHandler) OnCopySkipped(_ context.Context, desc ocispec.Descriptor) error {
 	ph.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-	return ph.tracked.Prompt(desc, PushPromptExists)
+	return ph.tracked.Report(desc, progress.StateExists)
 }
 
 // PreCopy implements PreCopy of CopyHandler.
@@ -84,7 +92,7 @@ func (ph *TTYPushHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor)
 		return err
 	}
 	for _, successor := range successors {
-		if err = ph.tracked.Prompt(successor, PushPromptSkipped); err != nil {
+		if err = ph.tracked.Report(successor, progress.StateSkipped); err != nil {
 			return err
 		}
 	}
@@ -126,17 +134,24 @@ func (ph *TTYPullHandler) OnNodeProcessing(_ ocispec.Descriptor) error {
 
 // OnNodeRestored implements PullHandler.
 func (ph *TTYPullHandler) OnNodeRestored(desc ocispec.Descriptor) error {
-	return ph.tracked.Prompt(desc, PullPromptRestored)
+	return ph.tracked.Report(desc, progress.StateRestored)
 }
 
 // OnNodeSkipped implements PullHandler.
 func (ph *TTYPullHandler) OnNodeSkipped(desc ocispec.Descriptor) error {
-	return ph.tracked.Prompt(desc, PullPromptSkipped)
+	return ph.tracked.Report(desc, progress.StateSkipped)
 }
 
 // TrackTarget returns a tracked target.
 func (ph *TTYPullHandler) TrackTarget(gt oras.GraphTarget) (oras.GraphTarget, StopTrackTargetFunc, error) {
-	tracked, err := track.NewTarget(gt, PullPromptDownloading, PullPromptPulled, ph.tty)
+	prompt := map[progress.State]string{
+		progress.StateInitialized:  PullPromptDownloading,
+		progress.StateTransmitting: PullPromptDownloading,
+		progress.StateTransmitted:  PullPromptPulled,
+		progress.StateSkipped:      PullPromptSkipped,
+		progress.StateRestored:     PullPromptRestored,
+	}
+	tracked, err := track.NewTarget(gt, prompt, ph.tty)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -160,8 +175,16 @@ func NewTTYCopyHandler(tty *os.File) CopyHandler {
 
 // StartTracking returns a tracked target from a graph target.
 func (ch *TTYCopyHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
+	prompt := map[progress.State]string{
+		progress.StateInitialized:  copyPromptCopying,
+		progress.StateTransmitting: copyPromptCopying,
+		progress.StateTransmitted:  copyPromptCopied,
+		progress.StateExists:       copyPromptExists,
+		progress.StateSkipped:      copyPromptSkipped,
+		progress.StateMounted:      copyPromptMounted,
+	}
 	var err error
-	ch.tracked, err = track.NewTarget(gt, copyPromptCopying, copyPromptCopied, ch.tty)
+	ch.tracked, err = track.NewTarget(gt, prompt, ch.tty)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +199,7 @@ func (ch *TTYCopyHandler) StopTracking() error {
 // OnCopySkipped is called when an object already exists.
 func (ch *TTYCopyHandler) OnCopySkipped(_ context.Context, desc ocispec.Descriptor) error {
 	ch.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-	return ch.tracked.Prompt(desc, copyPromptExists)
+	return ch.tracked.Report(desc, progress.StateExists)
 }
 
 // PreCopy implements PreCopy of CopyHandler.
@@ -192,7 +215,7 @@ func (ch *TTYCopyHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor)
 		return err
 	}
 	for _, successor := range successors {
-		if err = ch.tracked.Prompt(successor, copyPromptSkipped); err != nil {
+		if err = ch.tracked.Report(successor, progress.StateSkipped); err != nil {
 			return err
 		}
 	}
@@ -202,5 +225,5 @@ func (ch *TTYCopyHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor)
 // OnMounted implements OnMounted of CopyHandler.
 func (ch *TTYCopyHandler) OnMounted(_ context.Context, desc ocispec.Descriptor) error {
 	ch.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-	return ch.tracked.Prompt(desc, copyPromptMounted)
+	return ch.tracked.Report(desc, progress.StateMounted)
 }
