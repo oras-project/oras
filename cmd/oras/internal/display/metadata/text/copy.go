@@ -16,10 +16,9 @@ limitations under the License.
 package text
 
 import (
-	"fmt"
-
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
+	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/cmd/oras/internal/output"
 )
 
@@ -47,9 +46,7 @@ func (h *CopyHandler) Render() error {
 }
 
 // OnCopied implements metadata.CopyHandler.
-func (h *CopyHandler) OnCopied(fromType, fromRef, toType, toRef string, desc ocispec.Descriptor) error {
+func (h *CopyHandler) OnCopied(target *option.BinaryTarget, desc ocispec.Descriptor) error {
 	h.desc = desc
-	from := fmt.Sprintf("[%s] %s", fromType, fromRef)
-	to := fmt.Sprintf("[%s] %s", toType, toRef)
-	return h.printer.Println("Copied", from, "=>", to)
+	return h.printer.Println("Copied", target.From.AnnotatedReference(), "=>", target.To.AnnotatedReference())
 }

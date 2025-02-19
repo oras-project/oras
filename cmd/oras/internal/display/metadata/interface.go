@@ -106,5 +106,5 @@ type CopyHandler interface {
 	TaggedHandler
 	Renderer
 
-	OnCopied(fromType, fromRef, toType, toRef string, desc ocispec.Descriptor) error
+	OnCopied(target *option.BinaryTarget, desc ocispec.Descriptor) error
 }
