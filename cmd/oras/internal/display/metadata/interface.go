@@ -106,5 +106,5 @@ type CopyHandler interface {
 	TaggedHandler
 	Renderer
 
-	OnCopied(fromRef string, toRef string, desc ocispec.Descriptor) error
+	OnCopied(fromType, fromRef, toType, toRef string, desc ocispec.Descriptor) error
 }

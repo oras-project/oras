@@ -142,7 +142,7 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 		opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, desc.Digest.String())
 	}
 
-	if err := metadataHandler.OnCopied(opts.From.AnnotatedReference(), opts.To.AnnotatedReference(), desc); err != nil {
+	if err := metadataHandler.OnCopied(opts.From.Type, opts.From.RawReference, opts.To.Type, opts.To.RawReference, desc); err != nil {
 		return err
 	}
 
