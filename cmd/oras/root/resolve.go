@@ -22,6 +22,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
+	"oras.land/oras/cmd/oras/internal/display"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -72,6 +73,7 @@ func runResolve(cmd *cobra.Command, opts *resolveOptions) error {
 	}
 	resolveOpts := oras.DefaultResolveOptions
 	resolveOpts.TargetPlatform = opts.Platform.Platform
+	metadataHandler := display.NewResolveHandler()
 	desc, err := oras.Resolve(ctx, repo, opts.Reference, resolveOpts)
 
 	if err != nil {
