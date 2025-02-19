@@ -131,7 +131,7 @@ func (m *manager) newTracker(s *status) progress.Tracker {
 			update(s)
 		}
 	}()
-	return &Messenger{
+	return &messenger{
 		update:  ch,
 		prompts: m.prompts,
 	}

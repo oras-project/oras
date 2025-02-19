@@ -23,8 +23,8 @@ import (
 	"oras.land/oras/internal/progress"
 )
 
-func TestMessenger_Update(t *testing.T) {
-	m := &Messenger{
+func Test_messenger_Update(t *testing.T) {
+	m := &messenger{
 		update: make(chan statusUpdate, 1),
 		prompts: map[progress.State]string{
 			progress.StateInitialized:  "initialized",
@@ -45,16 +45,16 @@ func TestMessenger_Update(t *testing.T) {
 		State:  progress.StateInitialized,
 		Offset: -1,
 	}); err != nil {
-		t.Fatalf("Messenger.Update() error = %v, wantErr nil", err)
+		t.Fatalf("messenger.Update() error = %v, wantErr nil", err)
 	}
 	update := <-m.update
 	update(s)
 	if s.startTime.IsZero() {
-		t.Errorf("Messenger.Update(progress.StateInitialized) startTime = zero, want non-zero")
+		t.Errorf("messenger.Update(progress.StateInitialized) startTime = zero, want non-zero")
 	}
 	select {
 	case <-m.update:
-		t.Errorf("Messenger channel is not empty")
+		t.Errorf("messenger channel is not empty")
 	default:
 	}
 
@@ -63,7 +63,7 @@ func TestMessenger_Update(t *testing.T) {
 		State:  progress.StateTransmitting,
 		Offset: 42,
 	}); err != nil {
-		t.Fatalf("Messenger.Update() error = %v, wantErr nil", err)
+		t.Fatalf("messenger.Update() error = %v, wantErr nil", err)
 	}
 
 	// messages are dropped if channel is full
@@ -71,19 +71,19 @@ func TestMessenger_Update(t *testing.T) {
 		State:  progress.StateTransmitting,
 		Offset: 2048,
 	}); err != nil {
-		t.Fatalf("Messenger.Update() error = %v, wantErr nil", err)
+		t.Fatalf("messenger.Update() error = %v, wantErr nil", err)
 	}
 	update = <-m.update
 	update(s)
 	if s.text != "testing" {
-		t.Errorf("Messenger.Update(progress.StateTransmitting) text = %q, want %q", s.text, "testing")
+		t.Errorf("messenger.Update(progress.StateTransmitting) text = %q, want %q", s.text, "testing")
 	}
 	if s.offset != 42 {
-		t.Errorf("Messenger.Update(progress.StateTransmitting) offset = %d, want %d", s.offset, 42)
+		t.Errorf("messenger.Update(progress.StateTransmitting) offset = %d, want %d", s.offset, 42)
 	}
 	select {
 	case <-m.update:
-		t.Errorf("Messenger channel is not empty")
+		t.Errorf("messenger channel is not empty")
 	default:
 	}
 
@@ -92,25 +92,25 @@ func TestMessenger_Update(t *testing.T) {
 		State:  progress.StateTransmitted,
 		Offset: desc.Size,
 	}); err != nil {
-		t.Fatalf("Messenger.Update() error = %v, wantErr nil", err)
+		t.Fatalf("messenger.Update() error = %v, wantErr nil", err)
 	}
 	update = <-m.update
 	update(s)
 	if s.text != "tested" {
-		t.Errorf("Messenger.Update(progress.StateTransmitted) text = %q, want %q", s.text, "tested")
+		t.Errorf("messenger.Update(progress.StateTransmitted) text = %q, want %q", s.text, "tested")
 	}
 	if s.offset != desc.Size {
-		t.Errorf("Messenger.Update(progress.StateTransmitted) offset = %d, want %d", s.offset, desc.Size)
+		t.Errorf("messenger.Update(progress.StateTransmitted) offset = %d, want %d", s.offset, desc.Size)
 	}
 	select {
 	case <-m.update:
-		t.Errorf("Messenger channel is not empty")
+		t.Errorf("messenger channel is not empty")
 	default:
 	}
 }
 
-func TestMessenger_Fail(t *testing.T) {
-	m := &Messenger{
+func Test_messenger_Fail(t *testing.T) {
+	m := &messenger{
 		update: make(chan statusUpdate, 1),
 	}
 	defer m.Close()
@@ -118,24 +118,24 @@ func TestMessenger_Fail(t *testing.T) {
 	errTest := errors.New("test error")
 
 	if err := m.Fail(errTest); err != nil {
-		t.Fatalf("Messenger.Fail() error = %v, wantErr nil", err)
+		t.Fatalf("messenger.Fail() error = %v, wantErr nil", err)
 	}
 	update := <-m.update
 	update(s)
 	if s.err != errTest {
-		t.Errorf("Messenger.Fail() = %v, want %v", s.err, errTest)
+		t.Errorf("messenger.Fail() = %v, want %v", s.err, errTest)
 	}
 }
 
-func TestMessenger_Close(t *testing.T) {
-	m := &Messenger{
+func Test_messenger_Close(t *testing.T) {
+	m := &messenger{
 		update: make(chan statusUpdate, 1),
 	}
 	if err := m.Close(); err != nil {
-		t.Fatalf("Messenger.Close() error = %v, wantErr nil", err)
+		t.Fatalf("messenger.Close() error = %v, wantErr nil", err)
 	}
 	// double close should not panic or return an error
 	if err := m.Close(); err != nil {
-		t.Fatalf("Messenger.Close() error = %v, wantErr nil", err)
+		t.Fatalf("messenger.Close() error = %v, wantErr nil", err)
 	}
 }

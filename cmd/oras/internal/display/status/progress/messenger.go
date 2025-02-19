@@ -17,14 +17,14 @@ package progress
 
 import "oras.land/oras/internal/progress"
 
-// Messenger is progress message channel.
-type Messenger struct {
+// messenger is progress message channel.
+type messenger struct {
 	update  chan statusUpdate
 	closed  bool
 	prompts map[progress.State]string
 }
 
-func (m *Messenger) Update(status progress.Status) error {
+func (m *messenger) Update(status progress.Status) error {
 	switch status.State {
 	case progress.StateInitialized:
 		m.update <- updateStatusStartTime()
@@ -40,12 +40,12 @@ func (m *Messenger) Update(status progress.Status) error {
 	return nil
 }
 
-func (m *Messenger) Fail(err error) error {
+func (m *messenger) Fail(err error) error {
 	m.update <- updateStatusError(err)
 	return nil
 }
 
-func (m *Messenger) Close() error {
+func (m *messenger) Close() error {
 	if m.closed {
 		return nil
 	}
