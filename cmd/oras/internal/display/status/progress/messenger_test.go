@@ -16,79 +16,126 @@ limitations under the License.
 package progress
 
 import (
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
+	"errors"
 	"testing"
+
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras/internal/progress"
 )
 
-func Test_Messenger(t *testing.T) {
-	var msg *status
-	ch := make(chan *status, BufferSize)
-	messenger := &Messenger{ch: ch}
+func Test_messenger_Update(t *testing.T) {
+	m := &messenger{
+		update: make(chan statusUpdate, 1),
+		prompts: map[progress.State]string{
+			progress.StateInitialized:  "initialized",
+			progress.StateTransmitting: "testing",
+			progress.StateTransmitted:  "tested",
+		},
+	}
+	defer m.Close()
+	desc := ocispec.Descriptor{
+		MediaType: "application/vnd.docker.image.rootfs.diff.tar.gzip",
+		Size:      1234567890,
+		Digest:    "sha256:c775e7b757ede630cd0aa1113bd102661ab38829ca52a6422ab782862f268646",
+	}
+	s := newStatus(desc)
 
-	messenger.Start()
-	select {
-	case msg = <-ch:
-		if msg.offset != -1 {
-			t.Errorf("Expected start message with offset -1, got %d", msg.offset)
-		}
-	default:
-		t.Error("Expected start message")
+	// test StateInitialized
+	if err := m.Update(progress.Status{
+		State:  progress.StateInitialized,
+		Offset: -1,
+	}); err != nil {
+		t.Fatalf("messenger.Update() error = %v, wantErr nil", err)
 	}
-
-	desc := v1.Descriptor{
-		Digest: "mouse",
-		Size:   100,
-	}
-	expected := int64(50)
-	messenger.Send("Reading", desc, expected)
-	select {
-	case msg = <-ch:
-		if msg.offset != expected {
-			t.Errorf("Expected status message with offset %d, got %d", expected, msg.offset)
-		}
-		if msg.prompt != "Reading" {
-			t.Errorf("Expected status message prompt Reading, got %s", msg.prompt)
-		}
-	default:
-		t.Error("Expected status message")
-	}
-
-	messenger.Send("Reading", desc, expected)
-	messenger.Send("Read", desc, desc.Size)
-	select {
-	case msg = <-ch:
-		if msg.offset != desc.Size {
-			t.Errorf("Expected status message with offset %d, got %d", expected, msg.offset)
-		}
-		if msg.prompt != "Read" {
-			t.Errorf("Expected status message prompt Read, got %s", msg.prompt)
-		}
-	default:
-		t.Error("Expected status message")
+	update := <-m.update
+	update(s)
+	if s.startTime.IsZero() {
+		t.Errorf("messenger.Update(progress.StateInitialized) startTime = zero, want non-zero")
 	}
 	select {
-	case msg = <-ch:
-		t.Errorf("Unexpected status message %v", msg)
+	case <-m.update:
+		t.Errorf("messenger channel is not empty")
 	default:
 	}
 
-	expected = int64(-1)
-	messenger.Stop()
-	select {
-	case msg = <-ch:
-		if msg.offset != expected {
-			t.Errorf("Expected END status message with offset %d, got %d", expected, msg.offset)
-		}
-	default:
-		t.Error("Expected END status message")
+	// test StateTransmitting
+	if err := m.Update(progress.Status{
+		State:  progress.StateTransmitting,
+		Offset: 42,
+	}); err != nil {
+		t.Fatalf("messenger.Update() error = %v, wantErr nil", err)
 	}
 
-	messenger.Stop()
+	// messages are dropped if channel is full
+	if err := m.Update(progress.Status{
+		State:  progress.StateTransmitting,
+		Offset: 2048,
+	}); err != nil {
+		t.Fatalf("messenger.Update() error = %v, wantErr nil", err)
+	}
+	update = <-m.update
+	update(s)
+	if s.text != "testing" {
+		t.Errorf("messenger.Update(progress.StateTransmitting) text = %q, want %q", s.text, "testing")
+	}
+	if s.offset != 42 {
+		t.Errorf("messenger.Update(progress.StateTransmitting) offset = %d, want %d", s.offset, 42)
+	}
 	select {
-	case msg = <-ch:
-		if msg != nil {
-			t.Errorf("Unexpected status message %v", msg)
-		}
+	case <-m.update:
+		t.Errorf("messenger channel is not empty")
 	default:
+	}
+
+	// test StateTransmitted
+	if err := m.Update(progress.Status{
+		State:  progress.StateTransmitted,
+		Offset: desc.Size,
+	}); err != nil {
+		t.Fatalf("messenger.Update() error = %v, wantErr nil", err)
+	}
+	update = <-m.update
+	update(s)
+	if s.text != "tested" {
+		t.Errorf("messenger.Update(progress.StateTransmitted) text = %q, want %q", s.text, "tested")
+	}
+	if s.offset != desc.Size {
+		t.Errorf("messenger.Update(progress.StateTransmitted) offset = %d, want %d", s.offset, desc.Size)
+	}
+	select {
+	case <-m.update:
+		t.Errorf("messenger channel is not empty")
+	default:
+	}
+}
+
+func Test_messenger_Fail(t *testing.T) {
+	m := &messenger{
+		update: make(chan statusUpdate, 1),
+	}
+	defer m.Close()
+	s := new(status)
+	errTest := errors.New("test error")
+
+	if err := m.Fail(errTest); err != nil {
+		t.Fatalf("messenger.Fail() error = %v, wantErr nil", err)
+	}
+	update := <-m.update
+	update(s)
+	if s.err != errTest {
+		t.Errorf("messenger.Fail() = %v, want %v", s.err, errTest)
+	}
+}
+
+func Test_messenger_Close(t *testing.T) {
+	m := &messenger{
+		update: make(chan statusUpdate, 1),
+	}
+	if err := m.Close(); err != nil {
+		t.Fatalf("messenger.Close() error = %v, wantErr nil", err)
+	}
+	// double close should not panic or return an error
+	if err := m.Close(); err != nil {
+		t.Fatalf("messenger.Close() error = %v, wantErr nil", err)
 	}
 }
