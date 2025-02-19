@@ -327,26 +327,26 @@ func NewTextBlobPushHandler(printer *output.Printer, desc ocispec.Descriptor) Bl
 }
 
 // OnBlobPushSkipped implements BlobPushHandler.
-func (mph *TextBlobPushHandler) OnBlobPushSkipped() error {
-	return mph.printer.PrintStatus(mph.desc, PushPromptExists)
+func (bph *TextBlobPushHandler) OnBlobPushSkipped() error {
+	return bph.printer.PrintStatus(bph.desc, PushPromptExists)
 }
 
 // OnBlobUploading implements BlobPushHandler.
-func (mph *TextBlobPushHandler) OnBlobUploading() error {
-	return mph.printer.PrintStatus(mph.desc, PushPromptUploading)
+func (bph *TextBlobPushHandler) OnBlobUploading() error {
+	return bph.printer.PrintStatus(bph.desc, PushPromptUploading)
 }
 
 // OnBlobUploaded implements BlobPushHandler.
-func (mph *TextBlobPushHandler) OnBlobUploaded() error {
-	return mph.printer.PrintStatus(mph.desc, PushPromptUploaded)
+func (bph *TextBlobPushHandler) OnBlobUploaded() error {
+	return bph.printer.PrintStatus(bph.desc, PushPromptUploaded)
 }
 
 // StartTracking implements BlobPushHandler.
-func (mph *TextBlobPushHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
+func (bph *TextBlobPushHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
 	return gt, nil
 }
 
 // StopTracking implements BlobPushHandler.
-func (mph *TextBlobPushHandler) StopTracking() error {
+func (bph *TextBlobPushHandler) StopTracking() error {
 	return nil
 }

@@ -134,7 +134,7 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 	return metadataHandler.Render()
 }
 
-func doPush(ctx context.Context, statusHandler status.BlobPushHandler, t oras.GraphTarget, desc ocispec.Descriptor, r io.Reader) error {
+func doPush(ctx context.Context, statusHandler status.BlobPushHandler, t oras.GraphTarget, desc ocispec.Descriptor, r io.Reader) (err error) {
 	gt, err := statusHandler.StartTracking(t)
 	if err != nil {
 		return err
