@@ -29,7 +29,7 @@ type PromptDiscarder struct {
 	io.Closer
 }
 
-// Prompt discards the prompt.
+// Report discards the prompt.
 func (p *PromptDiscarder) Report(ocispec.Descriptor, progress.State) error {
 	return nil
 }
@@ -48,7 +48,7 @@ func NewErrorPrompt(err error) *ErrorPrompt {
 	}
 }
 
-// Prompt mocks an errored prompt.
+// Report reports wanted prompt.
 func (e *ErrorPrompt) Report(ocispec.Descriptor, progress.State) error {
 	return e.wanted
 }
