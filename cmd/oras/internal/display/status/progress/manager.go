@@ -42,24 +42,24 @@ type manager struct {
 	updating     sync.WaitGroup
 	renderDone   chan struct{}
 	renderClosed chan struct{}
-	prompt       map[progress.State]string
+	prompts      map[progress.State]string
 }
 
 // NewManager initialized a new progress manager.
-func NewManager(tty *os.File, prompt map[progress.State]string) (progress.Manager, error) {
+func NewManager(tty *os.File, prompts map[progress.State]string) (progress.Manager, error) {
 	c, err := console.NewConsole(tty)
 	if err != nil {
 		return nil, err
 	}
-	return newManager(c, prompt), nil
+	return newManager(c, prompts), nil
 }
 
-func newManager(c console.Console, prompt map[progress.State]string) progress.Manager {
+func newManager(c console.Console, prompts map[progress.State]string) progress.Manager {
 	m := &manager{
 		console:      c,
 		renderDone:   make(chan struct{}),
 		renderClosed: make(chan struct{}),
-		prompt:       prompt,
+		prompts:      prompts,
 	}
 	m.start()
 	return m
@@ -132,8 +132,8 @@ func (m *manager) newTracker(s *status) progress.Tracker {
 		}
 	}()
 	return &Messenger{
-		update: ch,
-		prompt: m.prompt,
+		update:  ch,
+		prompts: m.prompts,
 	}
 }
 

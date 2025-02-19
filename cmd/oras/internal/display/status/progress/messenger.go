@@ -19,9 +19,9 @@ import "oras.land/oras/internal/progress"
 
 // Messenger is progress message channel.
 type Messenger struct {
-	update chan statusUpdate
-	closed bool
-	prompt map[progress.State]string
+	update  chan statusUpdate
+	closed  bool
+	prompts map[progress.State]string
 }
 
 func (m *Messenger) Update(status progress.Status) error {
@@ -30,12 +30,12 @@ func (m *Messenger) Update(status progress.Status) error {
 		m.update <- updateStatusStartTime()
 	case progress.StateTransmitting:
 		select {
-		case m.update <- updateStatusMessage(m.prompt[progress.StateTransmitting], status.Offset):
+		case m.update <- updateStatusMessage(m.prompts[progress.StateTransmitting], status.Offset):
 		default:
 			// drop message if channel is full
 		}
 	default:
-		m.update <- updateStatusMessage(m.prompt[status.State], status.Offset)
+		m.update <- updateStatusMessage(m.prompts[status.State], status.Offset)
 	}
 	return nil
 }

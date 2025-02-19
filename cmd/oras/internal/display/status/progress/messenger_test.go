@@ -26,7 +26,7 @@ import (
 func TestMessenger_Update(t *testing.T) {
 	m := &Messenger{
 		update: make(chan statusUpdate, 1),
-		prompt: map[progress.State]string{
+		prompts: map[progress.State]string{
 			progress.StateInitialized:  "initialized",
 			progress.StateTransmitting: "testing",
 			progress.StateTransmitted:  "tested",

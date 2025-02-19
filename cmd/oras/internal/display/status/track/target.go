@@ -46,8 +46,8 @@ type referenceGraphTarget struct {
 }
 
 // NewTarget creates a new tracked Target.
-func NewTarget(t oras.GraphTarget, prompt map[progress.State]string, tty *os.File) (GraphTarget, error) {
-	manager, err := sprogress.NewManager(tty, prompt)
+func NewTarget(t oras.GraphTarget, prompts map[progress.State]string, tty *os.File) (GraphTarget, error) {
+	manager, err := sprogress.NewManager(tty, prompts)
 	if err != nil {
 		return nil, err
 	}
