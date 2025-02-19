@@ -104,6 +104,9 @@ type ManifestIndexUpdateHandler ManifestIndexCreateHandler
 // CopyHandler handles metadata output for cp events.
 type CopyHandler interface {
 	TaggedHandler
+	Renderer
+
+	OnCopied(target *option.BinaryTarget, desc ocispec.Descriptor) error
 }
 
 // BlobPushHandler handles metadata output for blob push events.
