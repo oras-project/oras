@@ -24,6 +24,7 @@ type messenger struct {
 	prompts map[progress.State]string
 }
 
+// Update sends the status to the message channel.
 func (m *messenger) Update(status progress.Status) error {
 	switch status.State {
 	case progress.StateInitialized:
@@ -40,11 +41,13 @@ func (m *messenger) Update(status progress.Status) error {
 	return nil
 }
 
+// Fail sends the error to the message channel.
 func (m *messenger) Fail(err error) error {
 	m.update <- updateStatusError(err)
 	return nil
 }
 
+// Close marks the progress as completed and closes the message channel.
 func (m *messenger) Close() error {
 	if m.closed {
 		return nil
