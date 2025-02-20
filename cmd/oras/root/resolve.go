@@ -80,11 +80,12 @@ func runResolve(cmd *cobra.Command, opts *resolveOptions) error {
 		return fmt.Errorf("failed to resolve digest: %w", err)
 	}
 
-	if opts.fullRef {
-		_ = opts.Printer.Printf("%s@%s\n", opts.Path, desc.Digest)
-	} else {
-		_ = opts.Printer.Println(desc.Digest.String())
-	}
+	// if opts.fullRef {
+	// 	_ = opts.Printer.Printf("%s@%s\n", opts.Path, desc.Digest)
+	// } else {
+	// 	_ = opts.Printer.Println(desc.Digest.String())
+	// }
 
-	return nil
+	// return nil
+	return metadataHandler.OnResolved(desc)
 }

@@ -237,6 +237,6 @@ func NewBlobPushHandler(printer *output.Printer, outputDescriptor bool, pretty b
 }
 
 // NewResolveHandler returns a resolve metadata handler.
-func NewResolveHandler() metadata.ResolveHandler {
-	return text.NewResolveHandler()
+func NewResolveHandler(printer *output.Printer, fullRef bool) metadata.ResolveHandler {
+	return text.NewResolveHandler(printer, fullRef)
 }
