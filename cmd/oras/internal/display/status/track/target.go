@@ -25,21 +25,20 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
-	"oras.land/oras/cmd/oras/internal/display/status/progress"
+	sprogress "oras.land/oras/cmd/oras/internal/display/status/progress"
+	"oras.land/oras/internal/progress"
 )
 
 // GraphTarget is a tracked oras.GraphTarget.
 type GraphTarget interface {
 	oras.GraphTarget
 	io.Closer
-	Prompt(desc ocispec.Descriptor, prompt string) error
+	Report(desc ocispec.Descriptor, state progress.State) error
 }
 
 type graphTarget struct {
 	oras.GraphTarget
-	manager      progress.Manager
-	actionPrompt string
-	donePrompt   string
+	manager progress.Manager
 }
 
 type referenceGraphTarget struct {
@@ -47,16 +46,14 @@ type referenceGraphTarget struct {
 }
 
 // NewTarget creates a new tracked Target.
-func NewTarget(t oras.GraphTarget, actionPrompt, donePrompt string, tty *os.File) (GraphTarget, error) {
-	manager, err := progress.NewManager(tty)
+func NewTarget(t oras.GraphTarget, prompts map[progress.State]string, tty *os.File) (GraphTarget, error) {
+	manager, err := sprogress.NewManager(tty, prompts)
 	if err != nil {
 		return nil, err
 	}
 	gt := &graphTarget{
-		GraphTarget:  t,
-		manager:      manager,
-		actionPrompt: actionPrompt,
-		donePrompt:   donePrompt,
+		GraphTarget: t,
+		manager:     manager,
 	}
 
 	if _, ok := t.(registry.ReferencePusher); ok {
@@ -76,37 +73,41 @@ func (t *graphTarget) Mount(ctx context.Context, desc ocispec.Descriptor, fromRe
 
 // Push pushes the content to the base oras.GraphTarget with tracking.
 func (t *graphTarget) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
-	r, err := managedReader(content, expected, t.manager, t.actionPrompt, t.donePrompt)
+	r, err := newReader(content, expected, t.manager)
 	if err != nil {
 		return err
 	}
-	defer r.Close()
-	r.Start()
+	defer r.StopTracker()
+	if err := progress.Start(r.Tracker()); err != nil {
+		return err
+	}
 	if err := t.GraphTarget.Push(ctx, expected, r); err != nil {
 		if errors.Is(err, errdef.ErrAlreadyExists) {
 			// allowed error types in oras-go oci and memory store
-			r.Done()
+			if err := progress.Done(r.Tracker()); err != nil {
+				return err
+			}
 		}
 		return err
 	}
-	r.Done()
-	return nil
+	return progress.Done(r.Tracker())
 }
 
 // PushReference pushes the content to the base oras.GraphTarget with tracking.
 func (rgt *referenceGraphTarget) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
-	r, err := managedReader(content, expected, rgt.manager, rgt.actionPrompt, rgt.donePrompt)
+	r, err := newReader(content, expected, rgt.manager)
 	if err != nil {
 		return err
 	}
-	defer r.Close()
-	r.Start()
+	defer r.StopTracker()
+	if err := progress.Start(r.Tracker()); err != nil {
+		return err
+	}
 	err = rgt.GraphTarget.(registry.ReferencePusher).PushReference(ctx, expected, r, reference)
 	if err != nil {
 		return err
 	}
-	r.Done()
-	return nil
+	return progress.Done(r.Tracker())
 }
 
 // Close closes the tracking manager.
@@ -114,7 +115,17 @@ func (t *graphTarget) Close() error {
 	return t.manager.Close()
 }
 
-// Prompt prompts the user with the provided prompt and descriptor.
-func (t *graphTarget) Prompt(desc ocispec.Descriptor, prompt string) error {
-	return t.manager.SendAndStop(desc, prompt)
+// Report prompts the user with the provided state and descriptor.
+func (t *graphTarget) Report(desc ocispec.Descriptor, state progress.State) error {
+	tracker, err := t.manager.Track(desc)
+	if err != nil {
+		return err
+	}
+	if err = tracker.Update(progress.Status{
+		State:  state,
+		Offset: desc.Size,
+	}); err != nil {
+		return err
+	}
+	return tracker.Close()
 }

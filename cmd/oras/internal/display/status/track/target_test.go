@@ -30,6 +30,7 @@ import (
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras/internal/progress"
 	"oras.land/oras/internal/testutils"
 )
 
@@ -62,9 +63,11 @@ func Test_referenceGraphTarget_PushReference(t *testing.T) {
 	}
 	// test
 	tag := "tagged"
-	actionPrompt := "action"
 	donePrompt := "done"
-	target, err := NewTarget(&testReferenceGraphTarget{src}, actionPrompt, donePrompt, device)
+	prompt := map[progress.State]string{
+		progress.StateTransmitted: donePrompt,
+	}
+	target, err := NewTarget(&testReferenceGraphTarget{src}, prompt, device)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,9 +111,11 @@ func Test_graphTarget_Push_alreadyExists(t *testing.T) {
 		t.Fatal("Failed to prepare test environment:", err)
 	}
 	// test
-	actionPrompt := "action"
 	donePrompt := "done"
-	target, err := NewTarget(src, actionPrompt, donePrompt, device)
+	prompt := map[progress.State]string{
+		progress.StateTransmitted: donePrompt,
+	}
+	target, err := NewTarget(src, prompt, device)
 	if err != nil {
 		t.Fatal(err)
 	}
