@@ -22,9 +22,9 @@ This document aims to elaborate on the scenarios and problems of creating and ma
 
 ## Target users
 
-For users who need to create, store, update, and push multi-arch images locally and in OCI registries. The primary user persona is cloud-native developers.
+For users who need to create, store, update, and push multi-arch images locally and in OCI registries. The primary user persona includes cloud-native developers, DevOps engineers, and security enigineers.
 
-## Scenarios and Problems
+## Problem Statement
 
 The `oras manifest` provides subcommands to push, fetch, and delete an image manifest, but it doesn’t support composing an image index for a multi-arch image. This causes some problems and limitations to users as articulated below when creating multi-arch images.
 
@@ -49,7 +49,36 @@ To create a multi-arch image, ORAS users have to manually compose an OCI image i
 
 Users are not able to install or use `docker buildx` or even no `docker` and its daemon service in some strict environments. Users need to seek for an alternative tool to create a multi-arch image without relying on `docker` or `docker buildx`.
 
-## Proposed solution
+## Scenarios
+
+### Create a multi-arch image in local filesystem
+
+Bob needs to create a multi-arch image in an air-gapped environment with strict isolation, meaning all resources must reside in the local filesystem, with no access to a container registry. Each architecture-specific image manifest has already been created and stored locally. Bob wants to use the `oras` client to assemble a multi-arch image by creating an OCI image index that references these existing arch-specific images. Once the multi-arch image is assembled, Bob will verify and test it locally to ensure correctness.
+
+### Create a multi-arch image from local and registry
+
+The user Bob wants to create a multi-arch image by combining architecture-specific images stored in both a local filesystem and a remote registry. Bob has already created some arch-specific image manifests and stored them locally, while others exist in a container registry. He wants to use the `oras` client to create a multi-arch image using an OCI image index, incorporating both local and remote images. Once created, Bob will push the final multi-arch image to a remote registry for distribution and testing.
+
+### Create a multi-arch image from registry only
+
+Bob wants to create a multi-arch image using arch-specific images stored in a remote container registry. Each architecture-specific image has already been pushed to the registry. Bob aims to use the `oras` client to assemble these remote images into a multi-arch image using an OCI image index, without downloading them to the local filesystem. After successfully creating the multi-arch image, Bob will push the final multi-arch to the registry for further use.
+
+### Update an existing multi-arch image
+
+Bob needs to update an existing multi-arch image by replacing or adding architecture-specific images. The current multi-arch image is stored either in a local filesystem or a remote registry. Bob has created new arch-specific images that need to be incorporated into the existing OCI image index. Using the `oras` client, he plans to:
+
+- Retrieve the existing multi-arch image to local
+- Modify the image index: He will replace outdated architecture-specific images with new ones or append additional architectures as needed.
+- Push the updated multi-arch image: Once modified, he will save the updated image index locally or push it to a registry for further use.
+- Verify the update: Finally, Bob will inspect the updated image to confirm that the changes were applied successfully.
+
+Bob expects `oras` client to streamline the updating process above. This ensures that Bob can efficiently manage multi-arch images while maintaining version consistency.
+
+### Annotate a multi-arch image
+
+This scenario will be included in a separate proposal doc.
+
+## Proposals
 
 Ideally, if ORAS extends the ability to create and manage a multi-arch image from either local environment or remote registry, the problems listed above can be resolved. Creating and managing a multi-arch image using image index format should be as easy as playing Legos. 
 
@@ -61,7 +90,9 @@ The proposed CLI commands for managing a multi-arch image are listed below. The 
   
 The proposal creates a multi-arch image using an OCI image index in an OCI image layout as a local storage, then push the multi-arch image to the registry with ORAS. 
 
-### User scenario and desired experience
+### Desired experience
+
+#### Create a multi-arch image in local filesystem
 
 Here is the sample workflow to create a multi-arch image using an image index locally and push it to the registry for deployment:
 
@@ -80,7 +111,7 @@ v1-linux-armv7
 2. Create a multi-arch image by combining two image manifests into an image index, tag it with `v1` and push the tagged image index to an OCI image layout `layout-dir` automatically. Add annotations to this image index at the same time:  
 
 ```console
-$ oras manifest index create --oci-layout layout-dir:v1 v1-linux-amd64 v1-linux-arm64 --annotation "com.example.key=value" 
+$ oras manifest index create v1-linux-amd64 v1-linux-arm64 --annotation "com.example.key=value" --oci-layout layout-dir:v1 
 
 Fetching  v1-linux-amd64 
 Fetched   sha256:42c524c48e0672568dbd2842d3a0cb34a415347145ee9fe1c8abaf65e7455b46 v1-linux-amd64 
@@ -129,10 +160,48 @@ $ oras manifest fetch --oci-layout layout-dir:v1 --pretty
 }
 ```
 
-4. Update the image index by adding a new architecture image in the OCI image layout: 
+#### Create a multi-arch image from local and registry
+
+Create a multi-arch image by combining two architecture-specific images stored in a local filesystem and a remote registry respectively, tag it with `v1` and push the tagged image index to an OCI image layout `layout-dir` automatically:  
 
 ```console
-$ oras manifest index update --oci-layout layout-dir:v1 --add linux-armv7 
+$ oras manifest index create v1-linux-amd64 localhost:5000/v1-linux-arm64 --oci-layout layout-dir:v1 
+
+Fetching  v1-linux-amd64 
+Fetched   sha256:42c524c48e0672568dbd2842d3a0cb34a415347145ee9fe1c8abaf65e7455b46 v1-linux-amd64 
+Fetching  v1-linux-arm64
+Fetched   sha256:965945e1a08031a63d5970c1da7c39af231c36e4c0a5a3cc276d02a3e06513ee v1-linux-arm64 
+Packed    edb5bc1f0b5c application/vnd.oci.image.index.v1+json
+Pushed    [oci-layout] layout-dir:v1
+Digest: sha256:edb5bc1f0b5c21e9321b34e50c92beae739250fb88409056e8719d9759f6b5b4
+
+Status: An image index has been created and pushed to layout-dir:v1
+```
+
+#### Create a multi-arch image from a registry only
+
+Create a multi-arch image using two arch-specific images stored in a registry only, tag it with `v1` and push the tagged image index to an OCI image layout `layout-dir` automatically.
+
+```console
+$ oras manifest index create localhost:5000/v1-linux-arm64 localhost:5000/v1-linux-arm64 --oci-layout layout-dir:v1 
+
+Fetching  v1-linux-amd64 
+Fetched   sha256:42c524c48e0672568dbd2842d3a0cb34a415347145ee9fe1c8abaf65e7455b46 v1-linux-amd64 
+Fetching  v1-linux-arm64
+Fetched   sha256:965945e1a08031a63d5970c1da7c39af231c36e4c0a5a3cc276d02a3e06513ee v1-linux-arm64 
+Packed    edb5bc1f0b5c application/vnd.oci.image.index.v1+json
+Pushed    [oci-layout] layout-dir:v1
+Digest: sha256:edb5bc1f0b5c21e9321b34e50c92beae739250fb88409056e8719d9759f6b5b4
+
+Status: An image index has been created and pushed to layout-dir:v1
+```
+
+#### Update an axisting multi-Arch image
+
+Update the image index by adding a new architecture from a registry in the OCI image layout: 
+
+```console
+$ oras manifest index update --add localhost:5000/v1-linux-arm64 --oci-layout layout-dir:v1
 
 Fetching  v1
 Fetched   sha256:edb5bc1f0b5c21e9321b34e50c92beae739250fb88409056e8719d9759f6b5b4 v1
