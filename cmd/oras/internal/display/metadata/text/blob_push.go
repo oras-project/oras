@@ -18,6 +18,7 @@ package text
 import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
+	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/cmd/oras/internal/output"
 )
 
@@ -36,8 +37,8 @@ func NewBlobPushHandler(printer *output.Printer, desc ocispec.Descriptor) metada
 }
 
 // OnBlobPushed implements metadata.BlobPushHandler.
-func (h *BlobPushHandler) OnBlobPushed(reference string) error {
-	return h.printer.Println("Pushed:", reference)
+func (h *BlobPushHandler) OnBlobPushed(target *option.Target) error {
+	return h.printer.Println("Pushed:", target.AnnotatedReference())
 }
 
 // Render implements metadata.BlobPushHandler.

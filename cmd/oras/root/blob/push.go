@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -119,16 +120,21 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 	}
 	defer rc.Close()
 
-	statusHandler, metadataHandler, contentHandler := display.NewBlobPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc, opts.TTY)
+	statusHandler, metadataHandler := display.NewBlobPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc, opts.TTY)
 	if err := doPush(ctx, statusHandler, target, desc, rc); err != nil {
 		return err
 	}
 
-	if err := contentHandler.OnBlobPushed(); err != nil {
-		return err
+	// outputs blob's descriptor
+	if opts.OutputDescriptor {
+		descJSON, err := opts.Marshal(desc)
+		if err != nil {
+			return err
+		}
+		return opts.Output(os.Stdout, descJSON)
 	}
 
-	if err := metadataHandler.OnBlobPushed(opts.AnnotatedReference()); err != nil {
+	if err := metadataHandler.OnBlobPushed(&opts.Target); err != nil {
 		return err
 	}
 	return metadataHandler.Render()

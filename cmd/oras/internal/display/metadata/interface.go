@@ -113,5 +113,5 @@ type CopyHandler interface {
 type BlobPushHandler interface {
 	Renderer
 
-	OnBlobPushed(reference string) error
+	OnBlobPushed(target *option.Target) error
 }

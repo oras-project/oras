@@ -31,11 +31,5 @@ type ManifestIndexCreateHandler interface {
 	OnContentCreated(content []byte) error
 }
 
-// BlobPushHandler handles descriptor output for blob push events.
-type BlobPushHandler interface {
-	// OnBlobPushed is called after a blob is pushed.
-	OnBlobPushed() error
-}
-
 // ManifestIndexUpdateHandler handles raw output for manifest index update events.
 type ManifestIndexUpdateHandler ManifestIndexCreateHandler
