@@ -245,7 +245,13 @@ func NewTTYBlobPushHandler(tty *os.File, desc ocispec.Descriptor) BlobPushHandle
 
 // StartTracking returns a tracked target from a graph target.
 func (bph *TTYBlobPushHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
-	tracked, err := track.NewTarget(gt, PushPromptUploading, PushPromptUploaded, bph.tty)
+	prompt := map[progress.State]string{
+		progress.StateInitialized:  PushPromptUploading,
+		progress.StateTransmitting: PushPromptUploading,
+		progress.StateTransmitted:  PushPromptUploaded,
+		progress.StateExists:       PushPromptExists,
+	}
+	tracked, err := track.NewTarget(gt, prompt, bph.tty)
 	if err != nil {
 		return nil, err
 	}
@@ -259,8 +265,8 @@ func (bph *TTYBlobPushHandler) StopTracking() error {
 }
 
 // OnBlobPushSkipped implements BlobPushHandler.
-func (bph *TTYBlobPushHandler) OnBlobPushSkipped() error {
-	return bph.tracked.Prompt(bph.desc, PushPromptExists)
+func (bph *TTYBlobPushHandler) OnBlobExists() error {
+	return bph.tracked.Report(bph.desc, progress.StateExists)
 }
 
 // OnBlobUploading implements BlobPushHandler.

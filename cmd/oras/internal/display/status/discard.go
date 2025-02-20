@@ -141,7 +141,7 @@ func (DiscardHandler) OnIndexPushed(string) error {
 }
 
 // OnBlobPushSkipped implements BlobPushHandler.
-func (DiscardHandler) OnBlobPushSkipped() error {
+func (DiscardHandler) OnBlobExists() error {
 	return nil
 }
 

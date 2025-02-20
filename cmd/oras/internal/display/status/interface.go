@@ -91,7 +91,7 @@ type ManifestIndexUpdateHandler interface {
 
 // BlobPushHandler handles status output for blob push command.
 type BlobPushHandler interface {
-	OnBlobPushSkipped() error
+	OnBlobExists() error
 	OnBlobUploading() error
 	OnBlobUploaded() error
 	StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error)

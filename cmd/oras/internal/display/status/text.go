@@ -327,7 +327,7 @@ func NewTextBlobPushHandler(printer *output.Printer, desc ocispec.Descriptor) Bl
 }
 
 // OnBlobPushSkipped implements BlobPushHandler.
-func (bph *TextBlobPushHandler) OnBlobPushSkipped() error {
+func (bph *TextBlobPushHandler) OnBlobExists() error {
 	return bph.printer.PrintStatus(bph.desc, PushPromptExists)
 }
 
