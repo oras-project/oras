@@ -1,6 +1,6 @@
 module oras.land/oras/test/e2e
 
-go 1.23.1
+go 1.24.0
 
 require (
 	github.com/onsi/ginkgo/v2 v2.22.2
