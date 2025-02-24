@@ -18,12 +18,14 @@ package text
 import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
+	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/cmd/oras/internal/output"
 )
 
 // CopyHandler handles text metadata output for cp events.
 type CopyHandler struct {
 	printer *output.Printer
+	desc    ocispec.Descriptor
 }
 
 // NewCopyHandler returns a new handler for cp events.
@@ -36,4 +38,15 @@ func NewCopyHandler(printer *output.Printer) metadata.CopyHandler {
 // OnTagged implements metadata.TaggedHandler.
 func (h *CopyHandler) OnTagged(_ ocispec.Descriptor, tag string) error {
 	return h.printer.Println("Tagged", tag)
+}
+
+// Render implements metadata.Renderer.
+func (h *CopyHandler) Render() error {
+	return h.printer.Println("Digest:", h.desc.Digest)
+}
+
+// OnCopied implements metadata.CopyHandler.
+func (h *CopyHandler) OnCopied(target *option.BinaryTarget, desc ocispec.Descriptor) error {
+	h.desc = desc
+	return h.printer.Println("Copied", target.From.AnnotatedReference(), "=>", target.To.AnnotatedReference())
 }

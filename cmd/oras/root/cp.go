@@ -141,7 +141,10 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 		// correct source digest
 		opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, desc.Digest.String())
 	}
-	_ = opts.Printer.Println("Copied", opts.From.AnnotatedReference(), "=>", opts.To.AnnotatedReference())
+
+	if err := metadataHandler.OnCopied(&opts.BinaryTarget, desc); err != nil {
+		return err
+	}
 
 	if len(opts.extraRefs) != 0 {
 		tagNOpts := oras.DefaultTagNOptions
@@ -152,9 +155,7 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 		}
 	}
 
-	_ = opts.Printer.Println("Digest:", desc.Digest)
-
-	return nil
+	return metadataHandler.Render()
 }
 
 func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) (desc ocispec.Descriptor, err error) {

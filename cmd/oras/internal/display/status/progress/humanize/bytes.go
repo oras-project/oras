@@ -22,7 +22,7 @@ import (
 
 const base = 1024.0
 
-var units = []string{"B", "kB", "MB", "GB", "TB"}
+var units = []string{"B", "KB", "MB", "GB", "TB"}
 
 type Bytes struct {
 	Size float64
@@ -46,7 +46,7 @@ func ToBytes(sizeInBytes int64) Bytes {
 
 // String returns the string representation of Bytes.
 func (b Bytes) String() string {
-	return fmt.Sprintf("%v %2s", b.Size, b.Unit)
+	return fmt.Sprintf("%g %2s", b.Size, b.Unit)
 }
 
 // RoundTo makes length of the size string to less than or equal to 4.
