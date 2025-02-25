@@ -71,21 +71,12 @@ func runResolve(cmd *cobra.Command, opts *resolveOptions) error {
 	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
 		return err
 	}
+	metadataHandler := display.NewResolveHandler(opts.Printer, opts.fullRef, opts.Path)
 	resolveOpts := oras.DefaultResolveOptions
 	resolveOpts.TargetPlatform = opts.Platform.Platform
-	metadataHandler := display.NewResolveHandler()
 	desc, err := oras.Resolve(ctx, repo, opts.Reference, resolveOpts)
-
 	if err != nil {
 		return fmt.Errorf("failed to resolve digest: %w", err)
 	}
-
-	// if opts.fullRef {
-	// 	_ = opts.Printer.Printf("%s@%s\n", opts.Path, desc.Digest)
-	// } else {
-	// 	_ = opts.Printer.Println(desc.Digest.String())
-	// }
-
-	// return nil
 	return metadataHandler.OnResolved(desc)
 }
