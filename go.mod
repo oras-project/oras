@@ -1,6 +1,6 @@
 module oras.land/oras
 
-go 1.23.1
+go 1.24.0
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
@@ -14,7 +14,7 @@ require (
 	golang.org/x/sync v0.11.0
 	golang.org/x/term v0.29.0
 	gopkg.in/yaml.v3 v3.0.1
-	oras.land/oras-go/v2 v2.5.0
+	oras.land/oras-go/v2 v2.5.1-0.20250221033735-cb6d75be7dd4
 )
 
 require (
