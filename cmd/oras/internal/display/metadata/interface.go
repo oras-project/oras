@@ -115,3 +115,8 @@ type BlobPushHandler interface {
 
 	OnBlobPushed(target *option.Target) error
 }
+
+// ResolveHandler handles metadata output for resolve events.
+type ResolveHandler interface {
+	OnResolved(desc ocispec.Descriptor) error
+}
