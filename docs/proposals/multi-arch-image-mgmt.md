@@ -254,7 +254,7 @@ oras manifest index update --output - --pretty localhost:5000/hello:v2 --remove 
 
 ### View a multi-arch image 
 
-To make the inspection operation more intuitive to users, add one alias `oras manifest show` to the existing command `oras manifest fetch`:
+To make view operation more intuitive to users, add one alias `oras manifest show` to the existing command `oras manifest fetch`:
 
 ```bash
 Usage:
@@ -284,5 +284,5 @@ In addition, `docker buildx` supports building a multi-arch image using the OCI 
 ## Follow-up enhancements in the future releases
 
 - Support showing platform information of tags in formatted output:  https://github.com/oras-project/oras/issues/1547
-- Support attach annotations to image index and its child image manifest in `oras attach`: https://github.com/oras-project/oras/issues/1531
+- Support attach annotations in `oras attach`: https://github.com/oras-project/oras/issues/1531
 - Add status output to show the command execution result: https://github.com/oras-project/oras/issues/1575
