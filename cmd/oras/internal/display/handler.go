@@ -240,3 +240,8 @@ func NewBlobPushHandler(printer *output.Printer, outputDescriptor bool, pretty b
 func NewResolveHandler(printer *output.Printer, fullRef bool, path string) metadata.ResolveHandler {
 	return text.NewResolveHandler(printer, fullRef, path)
 }
+
+// NewBlobDeleteHandler returns blob delete handlers.
+func NewBlobDeleteHandler(printer *output.Printer, target *option.Target) metadata.BlobDeleteHandler {
+	return text.NewBlobDeleteHandler(printer, target)
+}

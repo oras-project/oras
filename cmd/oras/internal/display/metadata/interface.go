@@ -120,3 +120,9 @@ type BlobPushHandler interface {
 type ResolveHandler interface {
 	OnResolved(desc ocispec.Descriptor) error
 }
+
+// BlobDeleteHandler handles metadata output for blob delete events.
+type BlobDeleteHandler interface {
+	OnBlobMissing() error
+	OnBlobDeleted() error
+}
