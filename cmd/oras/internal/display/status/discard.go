@@ -139,3 +139,28 @@ func (DiscardHandler) OnIndexPacked(ocispec.Descriptor) error {
 func (DiscardHandler) OnIndexPushed(string) error {
 	return nil
 }
+
+// OnBlobExists implements BlobPushHandler.
+func (DiscardHandler) OnBlobExists() error {
+	return nil
+}
+
+// OnBlobUploading implements BlobPushHandler.
+func (DiscardHandler) OnBlobUploading() error {
+	return nil
+}
+
+// OnBlobUploaded implements BlobPushHandler.
+func (DiscardHandler) OnBlobUploaded() error {
+	return nil
+}
+
+// StartTracking implements BlobPushHandler.
+func (DiscardHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
+	return gt, nil
+}
+
+// StopTracking implements BlobPushHandler.
+func (DiscardHandler) StopTracking() error {
+	return nil
+}

@@ -26,12 +26,11 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
-	"oras.land/oras/cmd/oras/internal/display/status/track"
+	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/file"
-	"oras.land/oras/internal/progress"
 )
 
 type pushBlobOptions struct {
@@ -121,18 +120,11 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 	}
 	defer rc.Close()
 
-	exists, err := target.Exists(ctx, desc)
-	if err != nil {
+	statusHandler, metadataHandler := display.NewBlobPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc, opts.TTY)
+	if err := doPush(ctx, statusHandler, target, desc, rc); err != nil {
 		return err
 	}
-	if exists {
-		err = opts.Printer.PrintStatus(desc, "Exists")
-	} else {
-		err = opts.doPush(ctx, opts.Printer, target, desc, rc)
-	}
-	if err != nil {
-		return err
-	}
+
 	// outputs blob's descriptor
 	if opts.OutputDescriptor {
 		descJSON, err := opts.Marshal(desc)
@@ -142,34 +134,35 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	_ = opts.Printer.Println("Pushed", opts.AnnotatedReference())
-	_ = opts.Printer.Println("Digest:", desc.Digest)
-
-	return nil
-}
-func (opts *pushBlobOptions) doPush(ctx context.Context, printer *output.Printer, t oras.Target, desc ocispec.Descriptor, r io.Reader) error {
-	if opts.TTY == nil {
-		// none TTY output
-		if err := printer.PrintStatus(desc, "Uploading"); err != nil {
-			return err
-		}
-		if err := t.Push(ctx, desc, r); err != nil {
-			return err
-		}
-		return printer.PrintStatus(desc, "Uploaded ")
+	if err := metadataHandler.OnBlobPushed(&opts.Target); err != nil {
+		return err
 	}
+	return metadataHandler.Render()
+}
 
-	// TTY output
-	trackedReader, err := track.NewReader(r, desc, "Uploading", "Uploaded ", opts.TTY)
+func doPush(ctx context.Context, statusHandler status.BlobPushHandler, t oras.GraphTarget, desc ocispec.Descriptor, r io.Reader) (err error) {
+	gt, err := statusHandler.StartTracking(t)
 	if err != nil {
 		return err
 	}
-	defer trackedReader.StopManager()
-	if err := progress.Start(trackedReader.Tracker()); err != nil {
+	defer func() {
+		stopErr := statusHandler.StopTracking()
+		if err == nil {
+			err = stopErr
+		}
+	}()
+	exists, err := gt.Exists(ctx, desc)
+	if err != nil {
 		return err
 	}
-	if err := t.Push(ctx, desc, trackedReader); err != nil {
+	if exists {
+		return statusHandler.OnBlobExists()
+	}
+	if err := statusHandler.OnBlobUploading(); err != nil {
 		return err
 	}
-	return progress.Done(trackedReader.Tracker())
+	if err := gt.Push(ctx, desc, r); err != nil {
+		return err
+	}
+	return statusHandler.OnBlobUploaded()
 }

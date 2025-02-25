@@ -311,3 +311,42 @@ func (miuh *TextManifestIndexUpdateHandler) OnIndexPacked(desc ocispec.Descripto
 func (miuh *TextManifestIndexUpdateHandler) OnIndexPushed(indexRef string) error {
 	return miuh.printer.Println(IndexPromptPushed, indexRef)
 }
+
+// TextBlobPushHandler handles text status output for blob push events.
+type TextBlobPushHandler struct {
+	desc    ocispec.Descriptor
+	printer *output.Printer
+}
+
+// NewTextBlobPushHandler returns a new handler for blob push command.
+func NewTextBlobPushHandler(printer *output.Printer, desc ocispec.Descriptor) BlobPushHandler {
+	return &TextBlobPushHandler{
+		desc:    desc,
+		printer: printer,
+	}
+}
+
+// OnBlobExists implements BlobPushHandler.
+func (bph *TextBlobPushHandler) OnBlobExists() error {
+	return bph.printer.PrintStatus(bph.desc, PushPromptExists)
+}
+
+// OnBlobUploading implements BlobPushHandler.
+func (bph *TextBlobPushHandler) OnBlobUploading() error {
+	return bph.printer.PrintStatus(bph.desc, PushPromptUploading)
+}
+
+// OnBlobUploaded implements BlobPushHandler.
+func (bph *TextBlobPushHandler) OnBlobUploaded() error {
+	return bph.printer.PrintStatus(bph.desc, PushPromptUploaded)
+}
+
+// StartTracking implements BlobPushHandler.
+func (bph *TextBlobPushHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
+	return gt, nil
+}
+
+// StopTracking implements BlobPushHandler.
+func (bph *TextBlobPushHandler) StopTracking() error {
+	return nil
+}

@@ -17,6 +17,7 @@ package metadata
 
 import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras/cmd/oras/internal/option"
 )
 
 type Discard struct{}
@@ -48,3 +49,8 @@ func (Discard) OnTagged(ocispec.Descriptor, string) error {
 
 // OnIndexCreated implements ManifestIndexCreateHandler.
 func (Discard) OnIndexCreated(ocispec.Descriptor) {}
+
+// OnBlobPushed implements BlobPushHandler
+func (Discard) OnBlobPushed(target *option.Target) error {
+	return nil
+}

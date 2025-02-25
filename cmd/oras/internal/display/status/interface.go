@@ -88,3 +88,12 @@ type ManifestIndexUpdateHandler interface {
 	OnManifestAdded(manifestRef string, desc ocispec.Descriptor) error
 	OnIndexMerged(indexRef string, desc ocispec.Descriptor) error
 }
+
+// BlobPushHandler handles status output for blob push command.
+type BlobPushHandler interface {
+	OnBlobExists() error
+	OnBlobUploading() error
+	OnBlobUploaded() error
+	StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error)
+	StopTracking() error
+}

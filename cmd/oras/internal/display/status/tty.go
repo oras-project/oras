@@ -227,3 +227,54 @@ func (ch *TTYCopyHandler) OnMounted(_ context.Context, desc ocispec.Descriptor) 
 	ch.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
 	return ch.tracked.Report(desc, progress.StateMounted)
 }
+
+// TTYBlobPushHandler handles tty status output for blob push events.
+type TTYBlobPushHandler struct {
+	desc    ocispec.Descriptor
+	tty     *os.File
+	tracked track.GraphTarget
+}
+
+// NewTTYBlobPushHandler returns a new handler for blob push command.
+func NewTTYBlobPushHandler(tty *os.File, desc ocispec.Descriptor) BlobPushHandler {
+	return &TTYBlobPushHandler{
+		tty:  tty,
+		desc: desc,
+	}
+}
+
+// StartTracking returns a tracked target from a graph target.
+func (bph *TTYBlobPushHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
+	prompt := map[progress.State]string{
+		progress.StateInitialized:  PushPromptUploading,
+		progress.StateTransmitting: PushPromptUploading,
+		progress.StateTransmitted:  PushPromptUploaded,
+		progress.StateExists:       PushPromptExists,
+	}
+	tracked, err := track.NewTarget(gt, prompt, bph.tty)
+	if err != nil {
+		return nil, err
+	}
+	bph.tracked = tracked
+	return bph.tracked, nil
+}
+
+// StopTracking ends the blob push tracking for the target.
+func (bph *TTYBlobPushHandler) StopTracking() error {
+	return bph.tracked.Close()
+}
+
+// OnBlobExists implements BlobPushHandler.
+func (bph *TTYBlobPushHandler) OnBlobExists() error {
+	return bph.tracked.Report(bph.desc, progress.StateExists)
+}
+
+// OnBlobUploading implements BlobPushHandler.
+func (bph *TTYBlobPushHandler) OnBlobUploading() error {
+	return nil
+}
+
+// OnBlobUploaded implements BlobPushHandler.
+func (bph *TTYBlobPushHandler) OnBlobUploaded() error {
+	return nil
+}
