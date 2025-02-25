@@ -25,6 +25,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
+	"oras.land/oras/cmd/oras/internal/display"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/registryutil"
@@ -86,6 +87,8 @@ func deleteManifest(cmd *cobra.Command, opts *deleteOptions) error {
 		return err
 	}
 
+	metadataHandler := display.NewManifestDeleteHandler(opts.Printer, &opts.Target)
+
 	// add both pull and delete scope hints for dst repository to save potential delete-scope token requests during deleting
 	hints := []string{auth.ActionPull, auth.ActionDelete}
 	if opts.ReferrersAPI == nil || !*opts.ReferrersAPI {
@@ -97,9 +100,7 @@ func deleteManifest(cmd *cobra.Command, opts *deleteOptions) error {
 	if err != nil {
 		if errors.Is(err, errdef.ErrNotFound) {
 			if opts.Force && !opts.OutputDescriptor {
-				// ignore nonexistent
-				_ = opts.Printer.Println("Missing", opts.RawReference)
-				return nil
+				return metadataHandler.OnManifestMissing()
 			}
 			return fmt.Errorf("%s: the specified manifest does not exist", opts.RawReference)
 		}
@@ -126,8 +127,5 @@ func deleteManifest(cmd *cobra.Command, opts *deleteOptions) error {
 		}
 		return opts.Output(os.Stdout, descJSON)
 	}
-
-	_ = opts.Printer.Println("Deleted", opts.AnnotatedReference())
-
-	return nil
+	return metadataHandler.OnManifestDeleted()
 }
