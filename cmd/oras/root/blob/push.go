@@ -157,13 +157,12 @@ func doPush(ctx context.Context, statusHandler status.BlobPushHandler, t oras.Gr
 	}
 	if exists {
 		return statusHandler.OnBlobExists()
-	} else {
-		if err := statusHandler.OnBlobUploading(); err != nil {
-			return err
-		}
-		if err := gt.Push(ctx, desc, r); err != nil {
-			return err
-		}
-		return statusHandler.OnBlobUploaded()
 	}
+	if err := statusHandler.OnBlobUploading(); err != nil {
+		return err
+	}
+	if err := gt.Push(ctx, desc, r); err != nil {
+		return err
+	}
+	return statusHandler.OnBlobUploaded()
 }

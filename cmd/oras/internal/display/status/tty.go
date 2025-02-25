@@ -264,7 +264,7 @@ func (bph *TTYBlobPushHandler) StopTracking() error {
 	return bph.tracked.Close()
 }
 
-// OnBlobPushSkipped implements BlobPushHandler.
+// OnBlobExists implements BlobPushHandler.
 func (bph *TTYBlobPushHandler) OnBlobExists() error {
 	return bph.tracked.Report(bph.desc, progress.StateExists)
 }

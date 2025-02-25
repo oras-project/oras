@@ -140,7 +140,7 @@ func (DiscardHandler) OnIndexPushed(string) error {
 	return nil
 }
 
-// OnBlobPushSkipped implements BlobPushHandler.
+// OnBlobExists implements BlobPushHandler.
 func (DiscardHandler) OnBlobExists() error {
 	return nil
 }
