@@ -25,6 +25,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
+	"oras.land/oras/cmd/oras/internal/display"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/registryutil"
@@ -82,7 +83,7 @@ func deleteBlob(cmd *cobra.Command, opts *deleteBlobOptions) (err error) {
 		return err
 	}
 
-	metadataHandler := dis
+	metadataHandler := display.NewBlobDeleteHandler(opts.Printer, &opts.Target)
 
 	// add both pull and delete scope hints for dst repository to save potential delete-scope token requests during deleting
 	ctx = registryutil.WithScopeHint(ctx, blobs, auth.ActionPull, auth.ActionDelete)
@@ -90,9 +91,7 @@ func deleteBlob(cmd *cobra.Command, opts *deleteBlobOptions) (err error) {
 	if err != nil {
 		if errors.Is(err, errdef.ErrNotFound) {
 			if opts.Force && !opts.OutputDescriptor {
-				// ignore nonexistent
-				_ = opts.Printer.Println("Missing", opts.RawReference)
-				return nil
+				return metadataHandler.OnBlobMissing()
 			}
 			return fmt.Errorf("%s: the specified blob does not exist", opts.RawReference)
 		}
@@ -120,7 +119,5 @@ func deleteBlob(cmd *cobra.Command, opts *deleteBlobOptions) (err error) {
 		return opts.Output(os.Stdout, descJSON)
 	}
 
-	_ = opts.Printer.Println("Deleted", opts.AnnotatedReference())
-
-	return nil
+	return metadataHandler.OnBlobDeleted()
 }

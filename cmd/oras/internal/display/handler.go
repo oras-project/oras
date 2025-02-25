@@ -242,6 +242,6 @@ func NewResolveHandler(printer *output.Printer, fullRef bool, path string) metad
 }
 
 // NewBlobDeleteHandler returns blob delete handlers.
-func NewBlobDeleteHandler() metadata.BlobDeleteHandler {
-	return text.NewBlobDeleteHandler()
+func NewBlobDeleteHandler(printer *output.Printer, target *option.Target) metadata.BlobDeleteHandler {
+	return text.NewBlobDeleteHandler(printer, target)
 }

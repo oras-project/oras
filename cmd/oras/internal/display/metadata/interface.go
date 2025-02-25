@@ -123,5 +123,6 @@ type ResolveHandler interface {
 
 // BlobDeleteHandler handles metadata output for blob delete events.
 type BlobDeleteHandler interface {
+	OnBlobMissing() error
 	OnBlobDeleted() error
 }
