@@ -126,3 +126,9 @@ type ManifestDeleteHandler interface {
 	OnManifestMissing() error
 	OnManifestDeleted() error
 }
+
+// BlobDeleteHandler handles metadata output for blob delete events.
+type BlobDeleteHandler interface {
+	OnBlobMissing() error
+	OnBlobDeleted() error
+}
