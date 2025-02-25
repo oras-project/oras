@@ -82,6 +82,8 @@ func deleteBlob(cmd *cobra.Command, opts *deleteBlobOptions) (err error) {
 		return err
 	}
 
+	metadataHandler := dis
+
 	// add both pull and delete scope hints for dst repository to save potential delete-scope token requests during deleting
 	ctx = registryutil.WithScopeHint(ctx, blobs, auth.ActionPull, auth.ActionDelete)
 	desc, err := blobs.Resolve(ctx, opts.Reference)
