@@ -67,6 +67,9 @@ Example - Merge manifests from the index 'v2-windows' to the index 'v2':
 Example - Update an index and tag the updated index as 'v2.1.0' and 'v2':
   oras manifest index update localhost:5000/hello@sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9 --add linux-amd64 --tag "v2.1.0" --tag "v2"
 
+Example - Update an index and push to an OCI image layout folder 'layout-dir' and tag with 'v2':
+  oras manifest index update --oci-layout layout-dir@99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9 --add linux-arm64 --tag "v2"
+
 Example - Update an index and save it locally to index.json, auto push will be disabled:
   oras manifest index update --output index.json localhost:5000/hello:v2 --add v2-linux-amd64
 

@@ -76,7 +76,7 @@ Example - Create and push an index with annotations:
   oras manifest index create localhost:5000/hello:v1 linux-amd64 --annotation "key=val"
 
 Example - Create an index and push to an OCI image layout folder 'layout-dir' and tag with 'v1':
-  oras manifest index create layout-dir:v1 linux-amd64 sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
+  oras manifest index create --oci-layout layout-dir:v1 linux-amd64 sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
 
 Example - Create an index and save it locally to index.json, auto push will be disabled:
   oras manifest index create --output index.json localhost:5000/hello linux-amd64 linux-arm64
