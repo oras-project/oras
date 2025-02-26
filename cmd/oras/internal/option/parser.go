@@ -29,7 +29,7 @@ type FlagParser interface {
 
 // Parse parses applicable fields of the passed-in option pointer and returns
 // error during parsing.
-func Parse(cmd *cobra.Command, optsPtr interface{}) error {
+func Parse(cmd *cobra.Command, optsPtr any) error {
 	for parser := range fields[FlagParser](optsPtr) {
 		if err := parser.Parse(cmd); err != nil {
 			return err
