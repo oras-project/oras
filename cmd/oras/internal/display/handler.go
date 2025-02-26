@@ -177,6 +177,11 @@ func NewManifestPushHandler(printer *output.Printer, outputDescriptor bool, pret
 	return status.NewTextManifestPushHandler(printer, desc), text.NewManifestPushHandler(printer, target)
 }
 
+// NewManifestDeleteHandler returns a manifest delete handler.
+func NewManifestDeleteHandler(printer *output.Printer, target *option.Target) metadata.ManifestDeleteHandler {
+	return text.NewManifestDeleteHandler(printer, target)
+}
+
 // NewManifestIndexCreateHandler returns status, metadata and content handlers for index create command.
 func NewManifestIndexCreateHandler(outputPath string, printer *output.Printer, pretty bool) (status.ManifestIndexCreateHandler, metadata.ManifestIndexCreateHandler, content.ManifestIndexCreateHandler) {
 	var statusHandler status.ManifestIndexCreateHandler

@@ -121,6 +121,12 @@ type ResolveHandler interface {
 	OnResolved(desc ocispec.Descriptor) error
 }
 
+// ManifestDeleteHandler handles metadata output for manifest delete events.
+type ManifestDeleteHandler interface {
+	OnManifestMissing() error
+	OnManifestDeleted() error
+}
+
 // BlobDeleteHandler handles metadata output for blob delete events.
 type BlobDeleteHandler interface {
 	OnBlobMissing() error
