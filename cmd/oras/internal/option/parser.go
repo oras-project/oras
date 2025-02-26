@@ -38,8 +38,8 @@ func Parse(cmd *cobra.Command, optsPtr any) error {
 	return nil
 }
 
-// fields goes through all fields of ptr, optionally run fn if a field is
-// public AND typed T.
+// fields goes through all fields of ptr, optionally run fn if a field is public
+// AND typed T.
 func fields[T any](ptr any) iter.Seq[T] {
 	return func(yield func(T) bool) {
 		v := reflect.ValueOf(ptr).Elem()
