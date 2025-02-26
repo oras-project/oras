@@ -46,8 +46,7 @@ func fields[T any](ptr any) iter.Seq[T] {
 		for i := 0; i < v.NumField(); i++ {
 			f := v.Field(i)
 			if f.CanSet() {
-				iface := f.Addr().Interface()
-				if opts, ok := iface.(T); ok {
+				if opts, ok := f.Addr().Interface().(T); ok {
 					if !yield(opts) {
 						return
 					}
