@@ -20,6 +20,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
@@ -78,8 +79,15 @@ func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) err
 			referrerNode.AddPath(fmt.Sprintf("Platform OSFeatures: %s", strings.Join(referrer.Platform.OSFeatures, ", ")))
 		}
 	}
-	for k, v := range referrer.Annotations {
-		referrerNode.AddPath(fmt.Sprintf("Annotation: %s = %s", k, v))
+	if len(referrer.Annotations) > 0 {
+		annotationsNode := referrerNode.Add("[annotations]")
+
+		for k, v := range referrer.Annotations {
+			coloredAnnotation := color.New(color.FgYellow).Sprintf("%s: %s", k, v)
+			annotationsNode.Add(coloredAnnotation)
+		}
+	} else {
+		referrerNode.Add(color.New(color.FgYellow).Sprint("[annotations] None"))
 	}
 
 	h.nodes[referrer.Digest] = referrerNode
