@@ -43,7 +43,7 @@ func Parse(cmd *cobra.Command, optsPtr any) error {
 func fields[T any](ptr any) iter.Seq[T] {
 	return func(yield func(T) bool) {
 		v := reflect.ValueOf(ptr).Elem()
-		for i := 0; i < v.NumField(); i++ {
+		for i := range v.NumField() {
 			f := v.Field(i)
 			if f.CanSet() {
 				if opts, ok := f.Addr().Interface().(T); ok {
