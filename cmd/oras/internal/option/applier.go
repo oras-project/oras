@@ -28,9 +28,8 @@ type FlagApplier interface {
 // target flag set.
 // NOTE: The option argument need to be a pointer to the options, so its value
 // becomes addressable.
-func ApplyFlags(optsPtr interface{}, target *pflag.FlagSet) {
-	_ = rangeFields(optsPtr, func(fa FlagApplier) error {
-		fa.ApplyFlags(target)
-		return nil
-	})
+func ApplyFlags(optsPtr any, target *pflag.FlagSet) {
+	for applier := range fields[FlagApplier](optsPtr) {
+		applier.ApplyFlags(target)
+	}
 }
