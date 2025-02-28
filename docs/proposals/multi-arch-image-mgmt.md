@@ -101,7 +101,7 @@ Here is the sample workflow to create a multi-arch image using an image index lo
 1. Assume there are two arch-specific images tagged as `v1-linux-amd64` and `v1-linux-arm64` in an OCI image layout called `layout-dir`. List the tags in the OCI image layout:
 
 ```bash
-$ oras repo tags --oci-layout layout-dir 
+$ oras repo tags layout-dir --oci-layout
 
 v1-linux-amd64 
 v1-linux-arm64
@@ -111,7 +111,7 @@ v1-linux-armv7
 2. Create a multi-arch image by combining two image manifests into an image index, tag it with `v1` and push the tagged image index to an OCI image layout `layout-dir` automatically. Add annotations to this image index at the same time:  
 
 ```console
-$ oras manifest index create --oci-layout layout-dir:v1 v1-linux-amd64 v1-linux-arm64 --annotation "com.example.key=value" 
+$ oras manifest index create layout-dir:v1 v1-linux-amd64 v1-linux-arm64 --oci-layout --annotation "com.example.key=value" 
 
 Fetching  v1-linux-amd64 
 Fetched   sha256:42c524c48e0672568dbd2842d3a0cb34a415347145ee9fe1c8abaf65e7455b46 v1-linux-amd64 
@@ -127,7 +127,7 @@ Status: An image index has been created and pushed to layout-dir:v1
 3. View the image index in the OCI image layout in a pretty JSON output: 
 
 ```bash
-$ oras manifest fetch --oci-layout layout-dir:v1 --pretty  
+$ oras manifest fetch layout-dir:v1 --oci-layout --pretty  
 ```
 
 ```json
@@ -178,14 +178,16 @@ Digest: sha256:edb5bc1f0b5c21e9321b34e50c92beae739250fb88409056e8719d9759f6b5b4
 
 #### Create a multi-arch image from local and registry
 
-ORAS does not support this scenario. Each arch-specific image is supposed to be stored in the same repository to assemble a multi-arch image. The image index acts as a pointer to different arch-specific images, and most OCI registries do not support cross-repository image references in an image index. Keeping all variants in the same repository ensures the registry can resolve and serve the correct architecture. 
+Users need to pull the target arch-specific image to the local repository or OCI image layout, then use `oras manifest index create` to create a multi-arch image.  
+
+Each arch-specific image is supposed to be stored in the same repository to assemble a multi-arch image. The image index acts as a pointer to different arch-specific images, and most OCI registries do not support cross-repository image references in an image index. Keeping all variants in the same repository ensures the registry can resolve and serve the correct architecture. 
 
 #### Update an existing multi-arch image in a registry
 
 Update the image index by adding a new architecture from a registry. These two images must be either in a registry or an OCI image layout: 
 
 ```console
-$ oras manifest index update --oci-layout layout-dir:v1 --add layout-dir:v1-linux-arm64
+$ oras manifest index update layout-dir:v1 --oci-layout --add v1-linux-armv7
 
 Fetching  v1
 Fetched   sha256:edb5bc1f0b5c21e9321b34e50c92beae739250fb88409056e8719d9759f6b5b4 v1
@@ -218,7 +220,7 @@ oras manifest index create localhost:5000/hello:tag1,tag2,tag3 linux-amd64 linux
 oras manifest index create localhost:5000/hello:v1 linux-amd64 --annotation "key=val"
 
 # Create an index and push to an OCI image layout folder 'layout-dir' and tag with 'v1':
-oras manifest index create --oci-layout layout-dir:v1 linux-amd64 sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
+oras manifest index create layout-dir:v1 linux-amd64 sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9 --oci-layout
 
 # Create an index and save it locally to index.json, auto push will be disabled:
 oras manifest index create --output index.json localhost:5000/hello linux-amd64 linux-arm64
