@@ -1,7 +1,7 @@
 # Multi-arch image management with ORAS
 
 > [!NOTE]
-> The version of this specification is `1.3.0 Beta.2`. It is subject to change until ORAS v1.3.0 is officially released. 
+> The version of this specification is `1.3.0 Beta.3`. It is subject to change until ORAS v1.3.0 is officially released. 
 
 ## Overview
 
