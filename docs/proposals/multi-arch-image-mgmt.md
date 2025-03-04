@@ -120,8 +120,6 @@ Fetched   sha256:965945e1a08031a63d5970c1da7c39af231c36e4c0a5a3cc276d02a3e06513e
 Packed    edb5bc1f0b5c application/vnd.oci.image.index.v1+json
 Pushed    [oci-layout] layout-dir:v1
 Digest: sha256:edb5bc1f0b5c21e9321b34e50c92beae739250fb88409056e8719d9759f6b5b4
-
-Status: An image index has been created and pushed to layout-dir:v1
 ```
 
 3. View the image index in the OCI image layout in a pretty JSON output: 
@@ -182,9 +180,28 @@ Users need to pull the target arch-specific image to the local repository or OCI
 
 Each arch-specific image is supposed to be stored in the same repository to assemble a multi-arch image. The image index acts as a pointer to different arch-specific images, and most OCI registries do not support cross-repository image references in an image index. Keeping all variants in the same repository ensures the registry can resolve and serve the correct architecture. 
 
-#### Update an existing multi-arch image in a registry
+```console
+$ oras copy --to-oci-layout ghcr.io/example:v1-linux-amd64 example:v1-linux-amd64
 
-Update the image index by adding a new architecture from a registry. These two images must be either in a registry or an OCI image layout: 
+Copied [registry] ghcr.io/example:v1-linux-amd64 => [oci-layout] example:v1-linux-amd64
+Digest: sha256:cd549d80c4aa89638aea5964a3cd8193a6dd8abf939a43b5d562c24dbab08ff1
+```
+
+```console
+$ oras manifest index create example:v1 v1-linux-amd64 v1-linux-arm64 --oci-layout
+
+Fetching  v1-linux-amd64 
+Fetched   sha256:42c524c48e0672568dbd2842d3a0cb34a415347145ee9fe1c8abaf65e7455b46 v1-linux-amd64 
+Fetching  v1-linux-arm64
+Fetched   sha256:965945e1a08031a63d5970c1da7c39af231c36e4c0a5a3cc276d02a3e06513ee v1-linux-arm64 
+Packed    edb5bc1f0b5c application/vnd.oci.image.index.v1+json
+Pushed    [oci-layout] example:v1
+Digest: sha256:edb5bc1f0b5c21e9321b34e50c92beae739250fb88409056e8719d9759f6b5b4
+```
+
+#### Update an existing multi-arch image in either a registry or local filesystem
+
+Update the image index by adding a new architecture. These two arch-specific images must be either in a registry or an OCI image layout. Taking OCI image layout as an example: 
 
 ```console
 $ oras manifest index update layout-dir:v1 --oci-layout --add v1-linux-armv7
