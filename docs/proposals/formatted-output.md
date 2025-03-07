@@ -379,24 +379,24 @@ oras discover $REGISTRY/$REPO:v1 --format json
 > [!NOTE]
 > The `--format` flag will replace the existing `--output` flag. The `--output` will be marked as "deprecated" in ORAS v1.2.0 and will be removed in the future releases.
 
-If the referrers have associated referrers, ORAS should be able to show the manifest content of the subject image and all referrers. 
+If the referrers have associated referrers, ORAS SHOULD show the manifest content of the subject image and all referrers recursively in all kinds of formatted outputs (tree, table, and JSON) by default. It ensures data consistency of different data formats in the output.
 
-When showing the subject image and all referrers' manifests recursively in a tree view output, the following fields should be returned:
+When showing the subject image and all referrers' manifests recursively, the following fields should be returned:
 
 - `reference`: full reference by digest of the subject image
 - `mediaType`: media type of the subject image
 - `digest`: digest of the subject image
 - `size`: subject image size in bytes
-- `manifests`: the list of referrers' manifest
+- `referrers`: the list of referrers' manifest
   - `reference`: full reference by digest of the referrer
   - `mediaType`: media type of the referrer
   - `digest`: digest of the referrer
   - `size`: referrer file size in bytes
   - `artifactType`: artifact type of a referrer
   - `annotations`: contains arbitrary metadata in a referrer
-  - `referrerManifests`: the list of referrers' manifest
+  - `referrers`: the list of referrers' manifest
 
-For example, when there are two refferers lifecycle metadata and in-toto attestation associated with a sample image, the signatures are associated with these two files respectively. The output in a tree view will be:
+For example, when there are two referrers' lifecycle metadata and in-toto attestation associated with a sample image, the signatures are associated with these two files respectively. The output in a tree view will be:
 
 ```bash
 oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01
@@ -417,11 +417,10 @@ localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa2
 When showing the subject image and all referrers' manifests recursively in a pretty JSON output, the following JSON output should be returned:
 
 ```bash
-oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01 --format json --recursive
+oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01 --format json
 ```
 
-```
-
+```json
   "reference": "localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01",
   "mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
   "digest": "sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01",
@@ -477,6 +476,31 @@ oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c7
   ]
 ```
 
+#### Set the depth of listed referrers
+
+ORAS shows all referrers of a subject image by default. To avoid throttling or hitting a performance issue when a subject image has a complicated graph of referrers, ORAS introduces a flag `--depth` to `oras discover` to allow users to set the maximum depth of referrers in the formatted output. 
+
+For example, show referrers within the thrid level in a tree view:
+
+```bash
+oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01 --format tree --depth 3
+```
+
+```console
+localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01
+├── application/vnd.oci.artifact.lifecycle
+│   └── sha256:325129be79f416fe11a9ec44233cfa57f5d89434e6d37170f97e48f7904983e3
+│       └── application/vnd.cncf.notary.signature
+│           └── sha256:f520330e9f43c05859c532e67a25c9c765b144782ae7b872656192c27fd4e2dd
+│               └── vnd/test-annotations
+│                   └── sha256:d2cb66a53e4d77488df1f15701554ebb11ffa1cf6eb90f79afa33d3b172f11d2
+└── application/vnd.in-toto+json
+    └── sha256:a811606b09341bab4bbc0a4deb2c0cb709ec9702635cbe2d36b77d58359ec046
+        └── application/vnd.cncf.notary.signature
+            └── sha256:04723fd7d00df77c6f226b907667396554bf9418dc48a7a04feb5ff24aa0b9ec
+                └── vnd/test-annotations
+│                   └── sha256:d2cb66a53e4d77488df1f15701554ebb11ffa1cf6eb90f79afa33d3b172f11d2
+```
 
 ## FAQ
 
@@ -485,3 +509,6 @@ oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c7
 
 **Q:** Why ORAS chooses [Go template](https://pkg.go.dev/text/template)?
 **A:** Go template is a powerful method to allow users to manipulate and customize output you want. It provides access to data objects and additional functions that are passed into the template engine programmatically. It also has some useful libraries that have strong functions for Go’s template language to manipulate the output data, such as [Sprig](https://masterminds.github.io/sprig/). The basic usage of Go template functions are easy to use.
+
+**Q:** Should ORAS allows to set the limit number of referrers in `oras discover`? 
+**A:** No. ORAS SHOULD provide timeout mechanism in case too many referrers cause the performance issue.
