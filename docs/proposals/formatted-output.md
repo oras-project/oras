@@ -476,29 +476,11 @@ oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c7
   ]
 ```
 
-When showing the subject image and all referrers' manifests recursively in a table output, the following JSON output should be returned:
-
-```bash
-oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01 --format table
-```
-
-```console
-Discovered 4 artifacts referencing localhost:5000/kubernetes@kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01
-Digest: sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01
-
-Artifact Type                                  Digest
-application/vnd.microsoft.artifact.lifecycle   sha256:325129be79f416fe11a9ec44233cfa57f5d89434e6d37170f97e48f7904983e3
-application/vnd.cncf.notary.signature          sha256:f2098a230b6311edeb44ab2d6e5789372300d9b98be34c4d9477d3b9638a3bb1
---------------------------------------------   -----------------------------------------------------------------------
-application/vnd.in-toto+json                   sha256:a811606b09341bab4bbc0a4deb2c0cb709ec9702635cbe2d36b77d58359ec046
-application/vnd.cncf.notary.signature          sha256:04723fd7d00df77c6f226b907667396554bf9418dc48a7a04feb5ff24aa0b9ec
-```
-
 #### Set the depth of listed referrers
 
-ORAS shows all referrers of a subject image by default. To avoid throttling or hitting a performance issue when a subject image has a complicated graph of referrers, ORAS introduces a flag `--depth` to `oras discover` to allow users to set the maximum depth of referrers in the formatted output. 
+ORAS shows all referrers of a subject image by default. To avoid throttling or hitting a performance issue when a subject image has a complicated graph of referrers, ORAS introduces an experimental flag `--depth` to `oras discover` to allow users to set the maximum depth of referrers in the formatted output. 
 
-For example, assume there is a sample image with four-level referrers. show referrers within the thrid level in a tree view:
+For example, assume there is a sample image with four-level referrers, show referrers within the thrid level only in a tree view:
 
 ```bash
 oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01 --format tree --depth 3
@@ -527,6 +509,3 @@ localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa2
 
 **Q:** Why ORAS chooses [Go template](https://pkg.go.dev/text/template)?
 **A:** Go template is a powerful method to allow users to manipulate and customize output you want. It provides access to data objects and additional functions that are passed into the template engine programmatically. It also has some useful libraries that have strong functions for Go’s template language to manipulate the output data, such as [Sprig](https://masterminds.github.io/sprig/). The basic usage of Go template functions are easy to use.
-
-**Q:** Should ORAS allows to set the limit number of referrers in `oras discover`? 
-**A:** No. ORAS SHOULD provide timeout mechanism in case too many referrers cause the performance issue.
