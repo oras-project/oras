@@ -334,7 +334,7 @@ $REGISTRY/$REPO@sha256:a3785f78ab8547ae2710c89e627783cfa7ee7824d3468cae6835c9f4e
 
 View an artifact's referrers manifest in pretty JSON output. The following fields should be outputted:
 
-- `manifests`: the list of referrers' manifest
+- `referrers`: the list of referrers' manifest
   - `reference`: full reference by digest of the referrer
   - `mediaType`: media type of the referrer
   - `digest`: digest of the referrer
@@ -350,7 +350,7 @@ oras discover $REGISTRY/$REPO:v1 --format json
 
 ```json
 {
-  "manifests": [
+  "referrers": [
     {
       "reference": "$REGISTRY/$REPO@sha256:8dee8cb9a1334595545e3baf15c3eeed13c4b35ae08e3ab32e1df31fb152dc1d",
       "mediaType": "application/vnd.oci.image.manifest.v1+json",
@@ -425,7 +425,7 @@ oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c7
   "mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
   "digest": "sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01",
   "size": 1788,
-  "manifests": [
+  "referrers": [
     {
       "reference": "localhost:5000/kubernetes/kubectl@sha256:325129be79f416fe11a9ec44233cfa57f5d89434e6d37170f97e48f7904983e3",
       "mediaType": "application/vnd.oci.image.manifest.v1+json",
@@ -436,7 +436,7 @@ oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c7
         "vnd.oci.artifact.lifecycle.end-of-life.date": "2024-03-15"
       },
       "artifactType": "application/vnd.oci.artifact.lifecycle",
-      "referrerManifests": [
+      "referrers": [
         {
           "reference": "localhost:5000/kubernetes/kubectl@sha256:f520330e9f43c05859c532e67a25c9c765b144782ae7b872656192c27fd4e2dd",
           "mediaType": "application/vnd.oci.image.manifest.v1+json",
@@ -459,7 +459,7 @@ oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c7
         "org.opencontainers.image.created": "2024-01-18T18:12:41Z"
       },
       "artifactType": "application/vnd.in-toto+json",
-      "referrerManifests": [
+      "referrers": [
         {
           "reference": "localhost:5000/kubernetes/kubectl@sha256:04723fd7d00df77c6f226b907667396554bf9418dc48a7a04feb5ff24aa0b9ec",
           "mediaType": "application/vnd.oci.image.manifest.v1+json",
@@ -476,11 +476,29 @@ oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c7
   ]
 ```
 
+When showing the subject image and all referrers' manifests recursively in a table output, the following JSON output should be returned:
+
+```bash
+oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01 --format table
+```
+
+```console
+Discovered 4 artifacts referencing localhost:5000/kubernetes@kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01
+Digest: sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01
+
+Artifact Type                                  Digest
+application/vnd.microsoft.artifact.lifecycle   sha256:325129be79f416fe11a9ec44233cfa57f5d89434e6d37170f97e48f7904983e3
+application/vnd.cncf.notary.signature          sha256:f2098a230b6311edeb44ab2d6e5789372300d9b98be34c4d9477d3b9638a3bb1
+--------------------------------------------   -----------------------------------------------------------------------
+application/vnd.in-toto+json                   sha256:a811606b09341bab4bbc0a4deb2c0cb709ec9702635cbe2d36b77d58359ec046
+application/vnd.cncf.notary.signature          sha256:04723fd7d00df77c6f226b907667396554bf9418dc48a7a04feb5ff24aa0b9ec
+```
+
 #### Set the depth of listed referrers
 
 ORAS shows all referrers of a subject image by default. To avoid throttling or hitting a performance issue when a subject image has a complicated graph of referrers, ORAS introduces a flag `--depth` to `oras discover` to allow users to set the maximum depth of referrers in the formatted output. 
 
-For example, show referrers within the thrid level in a tree view:
+For example, assume there is a sample image with four-level referrers. show referrers within the thrid level in a tree view:
 
 ```bash
 oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01 --format tree --depth 3
@@ -499,7 +517,7 @@ localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa2
         └── application/vnd.cncf.notary.signature
             └── sha256:04723fd7d00df77c6f226b907667396554bf9418dc48a7a04feb5ff24aa0b9ec
                 └── vnd/test-annotations
-│                   └── sha256:d2cb66a53e4d77488df1f15701554ebb11ffa1cf6eb90f79afa33d3b172f11d2
+                    └── sha256:d2cb66a53e4d77488df1f15701554ebb11ffa1cf6eb90f79afa33d3b172f11d2
 ```
 
 ## FAQ
