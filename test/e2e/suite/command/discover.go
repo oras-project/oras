@@ -324,7 +324,7 @@ var _ = Describe("OCI image layout users:", func() {
 			bytes := ORAS("discover", subjectRef, "--format", format, Flags.Layout).Exec().Out.Contents()
 			var disv discover
 			Expect(json.Unmarshal(bytes, &disv)).ShouldNot(HaveOccurred())
-			Expect(disv.Subject).Should(Equal(foobar.FooBar))
+			Expect(disv.Subject).Should(Equal(foobar.FooBarOCI))
 			Expect(disv.Referrers).To(HaveLen(1))
 			Expect(disv.Referrers).Should(ContainElement(foobar.SBOMImageReferrer))
 		})

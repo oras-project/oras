@@ -109,6 +109,14 @@ var (
 		Digest:    digest.Digest(Digest),
 		Size:      851,
 	}
+	FooBarOCI = ocispec.Descriptor{
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Digest:    digest.Digest(Digest),
+		Size:      851,
+		Annotations: map[string]string{
+			"org.opencontainers.image.ref.name": "foobar",
+		},
+	}
 	SBOMImageReferrer = ocispec.Descriptor{
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
 		Digest:    digest.Digest("sha256:e2c6633a79985906f1ed55c592718c73c41e809fb9818de232a635904a74d48d"),
