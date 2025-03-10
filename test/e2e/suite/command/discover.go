@@ -217,14 +217,18 @@ var _ = Describe("1.1 registry users:", func() {
 })
 
 var _ = Describe("1.0 registry users:", func() {
+	type discover struct {
+		Subject   ocispec.Descriptor
+		Referrers ocispec.Descriptor
+	}
 	subjectRef := RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag)
 	When("running discover command", func() {
 		It("should discover direct referrers of a subject via json output", func() {
-			bytes := ORAS("discover", subjectRef, "-o", "json").Exec().Out.Contents()
-			var index ocispec.Index
-			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
-			Expect(index.Manifests).To(HaveLen(1))
-			Expect(index.Manifests).Should(ContainElement(foobar.SBOMImageReferrer))
+			bytes := ORAS("discover", subjectRef, "-format", "json").Exec().Out.Contents()
+			var disv discover
+			Expect(json.Unmarshal(bytes, &disv)).ShouldNot(HaveOccurred())
+			Expect(disv.Referrers).To(HaveLen(1))
+			Expect(disv.Referrers).Should(ContainElement(foobar.SBOMImageReferrer))
 		})
 
 		It("should discover matched referrer when filtering via json output", func() {
