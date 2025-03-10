@@ -59,5 +59,5 @@ func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) err
 
 // Render implements metadata.DiscoverHandler.
 func (h *discoverHandler) Render() error {
-	return output.PrintPrettyJSON(h.out, model.NewDiscover(h.path, h.referrers))
+	return output.PrintPrettyJSON(h.out, model.NewDiscover(h.path, h.root, h.referrers))
 }
