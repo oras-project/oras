@@ -209,7 +209,7 @@ var _ = Describe("1.1 registry users:", func() {
 	})
 	When("running discover command with go-template output", func() {
 		It("should show referrers digest of a subject", func() {
-			ORAS("discover", subjectRef, "--format", "go-template={{(first .manifests).reference}}").
+			ORAS("discover", subjectRef, "--format", "go-template={{(first .referrers).reference}}").
 				MatchContent(RegistryRef(ZOTHost, ArtifactRepo, foobar.SBOMImageReferrer.Digest.String())).
 				Exec()
 		})

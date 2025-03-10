@@ -223,7 +223,7 @@ var _ = Describe("1.1 registry users:", func() {
 			// validate
 			CompareRef(RegistryRef(ZOTHost, ImageRepo, ma.Digest), dst)
 
-			digests := ORAS("discover", dst, "--format", "go-template={{range .manifests}}{{println .digest}}{{end}}").Exec().Out.Contents()
+			digests := ORAS("discover", dst, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
 			for _, digest := range strings.Split(strings.TrimSpace(string(digests)), "\n") {
 				CompareRef(RegistryRef(ZOTHost, ArtifactRepo, digest), RegistryRef(ZOTHost, dstRepo, digest))
 			}
@@ -241,7 +241,7 @@ var _ = Describe("1.1 registry users:", func() {
 				Exec()
 			// validate
 			CompareRef(RegistryRef(ZOTHost, ImageRepo, ma.Digest), dst)
-			digests := ORAS("discover", dst, "--format", "go-template={{range .manifests}}{{println .digest}}{{end}}").Exec().Out.Contents()
+			digests := ORAS("discover", dst, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
 			for _, digest := range strings.Split(strings.TrimSpace(string(digests)), "\n") {
 				CompareRef(RegistryRef(ZOTHost, ArtifactRepo, digest), RegistryRef(ZOTHost, dstRepo, digest))
 			}
@@ -268,7 +268,7 @@ var _ = Describe("1.1 registry users:", func() {
 				Exec()
 			// validate
 			CompareRef(RegistryRef(ZOTHost, ImageRepo, ma.Digest), dst)
-			digests := ORAS("discover", dst, "--format", "go-template={{range .manifests}}{{println .digest}}{{end}}").Exec().Out.Contents()
+			digests := ORAS("discover", dst, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
 			for _, digest := range strings.Split(strings.TrimSpace(string(digests)), "\n") {
 				CompareRef(RegistryRef(ZOTHost, ArtifactRepo, digest), RegistryRef(ZOTHost, dstRepo, digest))
 			}
@@ -308,7 +308,7 @@ var _ = Describe("1.1 registry users:", func() {
 				Exec()
 			// validate
 			CompareRef(RegistryRef(ZOTHost, ArtifactRepo, digest), dst)
-			digests := ORAS("discover", dst, "--format", "go-template={{range .manifests}}{{println .digest}}{{end}}").Exec().Out.Contents()
+			digests := ORAS("discover", dst, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
 			for _, digest := range strings.Split(strings.TrimSpace(string(digests)), "\n") {
 				CompareRef(RegistryRef(ZOTHost, ArtifactRepo, digest), RegistryRef(ZOTHost, dstRepo, digest))
 			}
@@ -326,7 +326,7 @@ var _ = Describe("1.1 registry users:", func() {
 				Exec()
 			// validate
 			CompareRef(RegistryRef(ZOTHost, ArtifactRepo, digest), RegistryRef(ZOTHost, dstRepo, digest))
-			digests := ORAS("discover", RegistryRef(ZOTHost, dstRepo, digest), "--format", "go-template={{range .manifests}}{{println .digest}}{{end}}").Exec().Out.Contents()
+			digests := ORAS("discover", RegistryRef(ZOTHost, dstRepo, digest), "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
 			for _, digest := range strings.Split(strings.TrimSpace(string(digests)), "\n") {
 				CompareRef(RegistryRef(ZOTHost, ArtifactRepo, digest), RegistryRef(ZOTHost, dstRepo, digest))
 			}
