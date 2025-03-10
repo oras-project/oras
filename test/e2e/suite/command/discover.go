@@ -128,6 +128,15 @@ var _ = Describe("1.1 registry users:", func() {
 			Expect(disv.Referrers).To(HaveLen(1))
 			Expect(disv.Referrers).Should(ContainElement(foobar.SBOMImageReferrer))
 		})
+		It("should include information of subject and referrers manifests", func() {
+			bytes := ORAS("discover", subjectRef, "--format", format).Exec().Out.Contents()
+			var disv discover
+			Expect(json.Unmarshal(bytes, &disv)).ShouldNot(HaveOccurred())
+			Expect(disv.Subject).To(HaveLen(1))
+			Expect(disv.Subject).Should(ContainElement(foobar.FooBar))
+			Expect(disv.Referrers).To(HaveLen(1))
+			Expect(disv.Referrers).Should(ContainElement(foobar.SBOMImageReferrer))
+		})
 
 		It("should discover matched referrer when filtering", func() {
 			bytes := ORAS("discover", subjectRef, "--format", format, "--artifact-type", foobar.SBOMImageReferrer.ArtifactType).
