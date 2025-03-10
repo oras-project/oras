@@ -224,7 +224,7 @@ var _ = Describe("1.0 registry users:", func() {
 	subjectRef := RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag)
 	When("running discover command", func() {
 		It("should discover direct referrers of a subject via json output", func() {
-			bytes := ORAS("discover", subjectRef, "-format", "json").Exec().Out.Contents()
+			bytes := ORAS("discover", subjectRef, "--format", "json").Exec().Out.Contents()
 			var disv discover
 			Expect(json.Unmarshal(bytes, &disv)).ShouldNot(HaveOccurred())
 			Expect(disv.Referrers).To(HaveLen(1))
