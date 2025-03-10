@@ -7,12 +7,12 @@ require (
 	github.com/containerd/console v1.0.4
 	github.com/morikuni/aec v1.0.0
 	github.com/opencontainers/go-digest v1.0.0
-	github.com/opencontainers/image-spec v1.1.0
+	github.com/opencontainers/image-spec v1.1.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
-	golang.org/x/sync v0.11.0
-	golang.org/x/term v0.29.0
+	golang.org/x/sync v0.12.0
+	golang.org/x/term v0.30.0
 	gopkg.in/yaml.v3 v3.0.1
 	oras.land/oras-go/v2 v2.5.1-0.20250221033735-cb6d75be7dd4
 )
@@ -29,5 +29,5 @@ require (
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/spf13/cast v1.7.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
 )
