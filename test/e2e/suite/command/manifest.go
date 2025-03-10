@@ -126,6 +126,12 @@ var _ = Describe("ORAS beginners:", func() {
 					Exec()
 			})
 
+			It("should show command aliases", func() {
+				ORAS("manifest", "fetch", "--help").
+					MatchKeyWords("Aliases:", "fetch, get, show").
+					Exec()
+			})
+
 			It("should show text as default format type in help doc", func() {
 				MatchDefaultFlagValue("format", "text", "manifest", "fetch")
 			})
