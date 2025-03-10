@@ -70,6 +70,10 @@ func ResolveFlags(reg string, host string, flagType resolveType) []string {
 var _ = Describe("1.1 registry users:", func() {
 	if strings.HasPrefix(Host, "localhost:") {
 		When("custom host is provided", func() {
+			type discover struct {
+				Subject   ocispec.Descriptor
+				Referrers []ocispec.Descriptor
+			}
 			// mockedHost represents a non-existent host name which
 			// only can be resolved by custom DNS rule
 			mockedHost := "oras.e2e.test"
@@ -89,10 +93,10 @@ var _ = Describe("1.1 registry users:", func() {
 					WithWorkDir(tempDir).
 					MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
 				// validate
-				var index ocispec.Index
-				bytes := ORAS("discover", "-o", "json", RegistryRef(Host, repo, foobar.Tag)).Exec().Out.Contents()
-				Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
-				Expect(len(index.Manifests)).To(Equal(1))
+				var disv discover
+				bytes := ORAS("discover", "--format", "json", RegistryRef(Host, repo, foobar.Tag)).Exec().Out.Contents()
+				Expect(json.Unmarshal(bytes, &disv)).ShouldNot(HaveOccurred())
+				Expect(len(disv.Referrers)).To(Equal(1))
 			})
 			It("should push a blob from a stdin and output the descriptor with specific media-type", func() {
 				mediaType := "test.media"
@@ -165,11 +169,11 @@ var _ = Describe("1.1 registry users:", func() {
 
 			It("should discover direct referrers of a subject", func() {
 				bytes := ORAS(append([]string{"discover", RegistryRef(mockedHost, ArtifactRepo, foobar.Tag), "-o", "json"}, unary...)...).Exec().Out.Contents()
-				var index ocispec.Index
-				Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
-				Expect(index.Manifests).To(HaveLen(2))
-				Expect(index.Manifests).Should(ContainElement(foobar.SBOMImageReferrer))
-				Expect(index.Manifests).Should(ContainElement(foobar.SBOMArtifactReferrer))
+				var disv discover
+				Expect(json.Unmarshal(bytes, &disv)).ShouldNot(HaveOccurred())
+				Expect(disv.Referrers).To(HaveLen(2))
+				Expect(disv.Referrers).Should(ContainElement(foobar.SBOMImageReferrer))
+				Expect(disv.Referrers).Should(ContainElement(foobar.SBOMArtifactReferrer))
 			})
 
 			It("should login", func() {
