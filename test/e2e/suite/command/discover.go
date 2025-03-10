@@ -132,8 +132,7 @@ var _ = Describe("1.1 registry users:", func() {
 			bytes := ORAS("discover", subjectRef, "--format", format).Exec().Out.Contents()
 			var disv discover
 			Expect(json.Unmarshal(bytes, &disv)).ShouldNot(HaveOccurred())
-			Expect(disv.Subject).To(HaveLen(1))
-			Expect(disv.Subject).Should(ContainElement(foobar.FooBar))
+			Expect(disv.Subject).Should(Equal(foobar.FooBar))
 			Expect(disv.Referrers).To(HaveLen(1))
 			Expect(disv.Referrers).Should(ContainElement(foobar.SBOMImageReferrer))
 		})
