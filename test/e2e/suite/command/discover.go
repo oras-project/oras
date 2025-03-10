@@ -219,7 +219,7 @@ var _ = Describe("1.1 registry users:", func() {
 var _ = Describe("1.0 registry users:", func() {
 	type discover struct {
 		Subject   ocispec.Descriptor
-		Referrers ocispec.Descriptor
+		Referrers []ocispec.Descriptor
 	}
 	subjectRef := RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag)
 	When("running discover command", func() {
