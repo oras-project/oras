@@ -120,14 +120,14 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		When("running `manifest fetch`", func() {
-			It("should call sub-commands with aliases", func() {
+			It("should call sub-commands with alias get", func() {
 				ORAS("manifest", "get", "--help").
 					MatchKeyWords(ExampleDesc).
 					Exec()
 			})
 
-			It("should show command aliases", func() {
-				ORAS("manifest", "fetch", "--help").
+			It("should call sub-commands with alias show", func() {
+				ORAS("manifest", "show", "--help").
 					MatchKeyWords("Aliases:", "fetch, get, show").
 					Exec()
 			})
