@@ -1,7 +1,7 @@
 # Multi-arch image management with ORAS
 
 > [!NOTE]
-> The version of this specification is `1.3.0 Beta.3`. It is subject to change until ORAS v1.3.0 is officially released. 
+> The version of this specification is `1.3.0-beta.3`. It is subject to change until ORAS v1.3.0 is officially released. 
 
 ## Overview
 
@@ -22,7 +22,7 @@ This document aims to elaborate on the scenarios and problems of creating and ma
 
 ## Target users
 
-For users who need to create, store, update, and push multi-arch images locally and in OCI registries. The primary user persona includes cloud-native developers, DevOps engineers, and security enigineers.
+For users who need to create, store, update, and push multi-arch images locally and in OCI registries. The primary user persona includes cloud-native developers, DevOps engineers, and security engineers.
 
 ## Problem Statement
 
@@ -102,7 +102,6 @@ Here is the sample workflow to create a multi-arch image using an image index lo
 
 ```bash
 $ oras repo tags layout-dir --oci-layout
-
 v1-linux-amd64 
 v1-linux-arm64
 v1-linux-armv7
@@ -112,7 +111,6 @@ v1-linux-armv7
 
 ```console
 $ oras manifest index create layout-dir:v1 v1-linux-amd64 v1-linux-arm64 --oci-layout --annotation "com.example.key=value" 
-
 Fetching  v1-linux-amd64 
 Fetched   sha256:42c524c48e0672568dbd2842d3a0cb34a415347145ee9fe1c8abaf65e7455b46 v1-linux-amd64 
 Fetching  v1-linux-arm64
@@ -124,11 +122,8 @@ Digest: sha256:edb5bc1f0b5c21e9321b34e50c92beae739250fb88409056e8719d9759f6b5b4
 
 3. View the image index in the OCI image layout in a pretty JSON output: 
 
-```bash
+```console
 $ oras manifest fetch layout-dir:v1 --oci-layout --pretty  
-```
-
-```json
 {
   "schemaVersion": 2,
   "mediaType": "application/vnd.oci.image.index.v1+json",
@@ -163,8 +158,7 @@ $ oras manifest fetch layout-dir:v1 --oci-layout --pretty
 Create a multi-arch image using two arch-specific images stored in a registry only, tag it with `v1` and push the tagged image index to a registry automatically.
 
 ```console
-$ oras manifest index create localhost:5000/example:v1 v1-linux-arm64 v1-linux-arm64
-
+$ oras manifest index create localhost:5000/example:v1 v1-linux-amd64 v1-linux-arm64
 Fetching  v1-linux-amd64 
 Fetched   sha256:42c524c48e0672568dbd2842d3a0cb34a415347145ee9fe1c8abaf65e7455b46 v1-linux-amd64 
 Fetching  v1-linux-arm64
@@ -182,14 +176,12 @@ Each arch-specific image is supposed to be stored in the same repository to asse
 
 ```console
 $ oras copy --to-oci-layout ghcr.io/example:v1-linux-amd64 example:v1-linux-amd64
-
 Copied [registry] ghcr.io/example:v1-linux-amd64 => [oci-layout] example:v1-linux-amd64
 Digest: sha256:cd549d80c4aa89638aea5964a3cd8193a6dd8abf939a43b5d562c24dbab08ff1
 ```
 
 ```console
 $ oras manifest index create example:v1 v1-linux-amd64 v1-linux-arm64 --oci-layout
-
 Fetching  v1-linux-amd64 
 Fetched   sha256:42c524c48e0672568dbd2842d3a0cb34a415347145ee9fe1c8abaf65e7455b46 v1-linux-amd64 
 Fetching  v1-linux-arm64
@@ -205,7 +197,6 @@ Update the image index by adding a new architecture. These two arch-specific ima
 
 ```console
 $ oras manifest index update layout-dir:v1 --oci-layout --add v1-linux-armv7
-
 Fetching  v1
 Fetched   sha256:edb5bc1f0b5c21e9321b34e50c92beae739250fb88409056e8719d9759f6b5b4 v1
 Fetching  v1-linux-armv7
