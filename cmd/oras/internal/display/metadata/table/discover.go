@@ -45,11 +45,6 @@ func NewDiscoverHandler(out io.Writer, rawReference string, root ocispec.Descrip
 	}
 }
 
-// MultiLevelSupported implements metadata.DiscoverHandler.
-func (h *discoverHandler) MultiLevelSupported() bool {
-	return false
-}
-
 // OnDiscovered implements metadata.DiscoverHandler.
 func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) error {
 	if !content.Equal(subject, h.root) {

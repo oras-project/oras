@@ -59,11 +59,11 @@ var (
 	// the table format is deprecated
 	FormatTypeTable = &FormatType{
 		Name:  "table",
-		Usage: "[Deprecated] Get direct referrers and output in table format",
+		Usage: "[Deprecated] Get referrers and output in table format",
 	}
 	FormatTypeTree = &FormatType{
 		Name:  "tree",
-		Usage: "Get referrers recursively and print in tree format",
+		Usage: "Get referrers and print in tree format",
 	}
 	FormatTypeText = &FormatType{
 		Name:  "text",
