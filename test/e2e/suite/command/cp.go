@@ -404,7 +404,7 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 
 		It("should copy a certain platform of image and its referrers from an OCI image layout to a fallback registry", func() {
 			type discover struct {
-				Subject   ocispec.Descriptor
+				ocispec.Descriptor
 				Referrers []ocispec.Descriptor
 			}
 			stateKeys := append(ma.LinuxAMD64StateKeys, ma.LinuxAMD64ReferrerStateKey, ma.LinuxAMD64ReferrerConfigStateKey)
@@ -440,7 +440,7 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 var _ = Describe("OCI layout users:", func() {
 	When("running `cp`", func() {
 		type discover struct {
-			Subject   ocispec.Descriptor
+			ocispec.Descriptor
 			Referrers []ocispec.Descriptor
 		}
 		It("should copy an image from a registry to an OCI image layout via tag", func() {

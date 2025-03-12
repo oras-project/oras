@@ -71,7 +71,7 @@ var _ = Describe("1.1 registry users:", func() {
 	if strings.HasPrefix(Host, "localhost:") {
 		When("custom host is provided", func() {
 			type discover struct {
-				Subject   ocispec.Descriptor
+				ocispec.Descriptor
 				Referrers []ocispec.Descriptor
 			}
 			// mockedHost represents a non-existent host name which

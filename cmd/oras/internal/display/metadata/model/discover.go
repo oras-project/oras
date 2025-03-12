@@ -18,18 +18,18 @@ package model
 import ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 type discover struct {
-	Subject   Descriptor   `json:"subject"`
-	Referrers []Descriptor `json:"referrers"`
+	Descriptor
+	Referrers []Descriptor `json:"referrers"` // I may need omitempty, add a test case
 }
 
 // NewDiscover creates a new discover model.
-func NewDiscover(name string, subject ocispec.Descriptor, descs []ocispec.Descriptor) discover {
+func NewDiscover(name string, subject ocispec.Descriptor, referrers []ocispec.Descriptor) discover {
 	discover := discover{
-		Subject:   FromDescriptor(name, subject),
-		Referrers: make([]Descriptor, 0, len(descs)),
+		Descriptor: FromDescriptor(name, subject),
+		Referrers:  make([]Descriptor, 0, len(referrers)),
 	}
-	for _, desc := range descs {
-		discover.Referrers = append(discover.Referrers, FromDescriptor(name, desc))
+	for _, referrer := range referrers {
+		discover.Referrers = append(discover.Referrers, FromDescriptor(name, referrer))
 	}
 	return discover
 }

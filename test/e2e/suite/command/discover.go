@@ -108,7 +108,7 @@ var _ = Describe("ORAS beginners:", func() {
 
 var _ = Describe("1.1 registry users:", func() {
 	type discover struct {
-		Subject   ocispec.Descriptor
+		ocispec.Descriptor
 		Referrers []ocispec.Descriptor
 	}
 	subjectRef := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
@@ -132,7 +132,7 @@ var _ = Describe("1.1 registry users:", func() {
 			bytes := ORAS("discover", subjectRef, "--format", format).Exec().Out.Contents()
 			var disv discover
 			Expect(json.Unmarshal(bytes, &disv)).ShouldNot(HaveOccurred())
-			Expect(disv.Subject).Should(Equal(foobar.FooBar))
+			Expect(disv.Descriptor).Should(Equal(foobar.FooBar))
 			Expect(disv.Referrers).To(HaveLen(1))
 			Expect(disv.Referrers).Should(ContainElement(foobar.SBOMImageReferrer))
 		})
@@ -230,7 +230,7 @@ var _ = Describe("1.1 registry users:", func() {
 
 var _ = Describe("1.0 registry users:", func() {
 	type discover struct {
-		Subject   ocispec.Descriptor
+		ocispec.Descriptor
 		Referrers []ocispec.Descriptor
 	}
 	subjectRef := RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag)
@@ -247,7 +247,7 @@ var _ = Describe("1.0 registry users:", func() {
 			bytes := ORAS("discover", subjectRef, "--format", "json").Exec().Out.Contents()
 			var disv discover
 			Expect(json.Unmarshal(bytes, &disv)).ShouldNot(HaveOccurred())
-			Expect(disv.Subject).Should(Equal(foobar.FooBar))
+			Expect(disv.Descriptor).Should(Equal(foobar.FooBar))
 			Expect(disv.Referrers).To(HaveLen(1))
 			Expect(disv.Referrers).Should(ContainElement(foobar.SBOMImageReferrer))
 		})
@@ -299,7 +299,7 @@ var _ = Describe("1.0 registry users:", func() {
 
 var _ = Describe("OCI image layout users:", func() {
 	type discover struct {
-		Subject   ocispec.Descriptor
+		ocispec.Descriptor
 		Referrers []ocispec.Descriptor
 	}
 	When("running discover command with json output", func() {
@@ -324,7 +324,7 @@ var _ = Describe("OCI image layout users:", func() {
 			bytes := ORAS("discover", subjectRef, "--format", format, Flags.Layout).Exec().Out.Contents()
 			var disv discover
 			Expect(json.Unmarshal(bytes, &disv)).ShouldNot(HaveOccurred())
-			Expect(disv.Subject).Should(Equal(foobar.FooBarOCI))
+			Expect(disv.Descriptor).Should(Equal(foobar.FooBarOCI))
 			Expect(disv.Referrers).To(HaveLen(1))
 			Expect(disv.Referrers).Should(ContainElement(foobar.SBOMImageReferrer))
 		})
