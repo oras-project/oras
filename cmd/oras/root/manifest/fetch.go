@@ -93,7 +93,7 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 			opts.RawReference = args[0]
 			return option.Parse(cmd, &opts)
 		},
-		Aliases: []string{"get"},
+		Aliases: []string{"get", "show"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return fetchManifest(cmd, &opts)
 		},
