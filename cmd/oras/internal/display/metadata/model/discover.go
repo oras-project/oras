@@ -19,7 +19,7 @@ import ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 type discover struct {
 	Descriptor
-	Referrers []Descriptor `json:"referrers"` // I may need omitempty, add a test case
+	Referrers []Descriptor `json:"referrers"`
 }
 
 // NewDiscover creates a new discover model.
