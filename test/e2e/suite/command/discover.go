@@ -189,6 +189,34 @@ var _ = Describe("1.1 registry users:", func() {
 				MatchKeyWords("<unknown>").
 				Exec()
 		})
+
+		It("should discover and display annotations in verbose mode", func() {
+			referrers := []ocispec.Descriptor{foobar.SBOMImageReferrer, foobar.SignatureImageReferrer}
+			ORAS("discover", subjectRef, "--format", "tree", "-v").
+				MatchKeyWords(append(discoverKeyWords(true, referrers...), RegistryRef(ZOTHost, ArtifactRepo, foobar.Digest), "[annotations]")...).
+				Exec()
+		})
+
+		It("should not display annotations without verbose flag", func() {
+			referrers := []ocispec.Descriptor{foobar.SBOMImageReferrer, foobar.SignatureImageReferrer}
+			ORAS("discover", subjectRef, "--format", "tree").
+				MatchKeyWords(append(discoverKeyWords(false, referrers...), RegistryRef(ZOTHost, ArtifactRepo, foobar.Digest))...).
+				Exec()
+		})
+
+		It("should not display annotations with --verbose=false", func() {
+			referrers := []ocispec.Descriptor{foobar.SBOMImageReferrer, foobar.SignatureImageReferrer}
+			out := ORAS("discover", subjectRef, "--format", "tree", "--verbose=false").
+				MatchKeyWords(append(discoverKeyWords(false, referrers...), RegistryRef(ZOTHost, ArtifactRepo, foobar.Digest))...).
+				Exec().Out
+			Expect(out).NotTo(gbytes.Say("\\[annotations\\]"))
+		})
+
+		It("should show deprecation message when using verbose flag", func() {
+			ORAS("discover", subjectRef, "--format", "tree", "--verbose").
+				MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).
+				Exec()
+		})
 	})
 	When("running discover command with table output", func() {
 		format := "table"
