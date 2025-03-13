@@ -318,6 +318,8 @@ oras attach $REGISTRY/$REPO:$TAG --artifact-type example/report-and-sbom vul-rep
 
 ### oras discover
 
+#### Tree format of `oras discover` output
+
 View an artifact's referrers. The default output should be listed in a tree view.
 
 ```bash
@@ -414,6 +416,8 @@ localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa2
             └── sha256:04723fd7d00df77c6f226b907667396554bf9418dc48a7a04feb5ff24aa0b9ec
 ```
 
+#### JSON output of `oras discover`
+
 When showing the subject image and all referrers' manifests recursively in a pretty JSON output, the following JSON output should be returned:
 
 ```bash
@@ -476,9 +480,42 @@ oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c7
   ]
 ```
 
-#### Set the depth of listed referrers
+#### Table format of `oras discover` output
+
+The `oras discover --format table` command currently lists only direct referrers in a table format. However, the table view has limitations—it does not effectively represent the hierarchical artifact reference relationships of all referrers. Users can't differentiate the refenrence relationship between each referrer in a table format output. See a sample output as follows:
+
+```console
+$ oras discover localhost:5000/kubectl:v1.29.1 --format table
+Discovered 4 artifacts referencing localhost:5000/kubectl:v1.29.1
+Digest: sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01
+
+Artifact Type                                  Digest
+application/vnd.microsoft.artifact.lifecycle   sha256:325129be79f416fe11a9ec44233cfa57f5d89434e6d37170f97e48f7904983e3
+application/vnd.cncf.notary.signature          sha256:f520330e9f43c05859c532e67a25c9c765b144782ae7b872656192c27fd4e2dd
+application/vnd.in-toto+json                   sha256:a811606b09341bab4bbc0a4deb2c0cb709ec9702635cbe2d36b77d58359ec046
+application/vnd.cncf.notary.signature          sha256:f2098a230b6311edeb44ab2d6e5789372300d9b98be34c4d9477d3b9638a3bb1
+```
+
+In contrast, the tree view offers a more structured and human-readable output by visually displaying relationships of each referrer. Given this advantage, the table view no longer provides significant value to users. This document proposes deprecating the `--format table` option. When user specifies `--format table` flag with `oras discover`, the warning message will be printed out as follows:
+
+```console
+$ oras discover localhost:5000/kubectl:v1.29.1 --format table
+Warning: "table" option has been deprecated in the "--format" flag, and will be removed in a future release. Please switch to either JSON or tree format for more structured output.
+Discovered 4 artifacts referencing localhost:5000/kubectl:v1.29.1
+Digest: sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01
+
+Artifact Type                                  Digest
+application/vnd.microsoft.artifact.lifecycle   sha256:325129be79f416fe11a9ec44233cfa57f5d89434e6d37170f97e48f7904983e3
+application/vnd.cncf.notary.signature          sha256:f520330e9f43c05859c532e67a25c9c765b144782ae7b872656192c27fd4e2dd
+application/vnd.in-toto+json                   sha256:a811606b09341bab4bbc0a4deb2c0cb709ec9702635cbe2d36b77d58359ec046
+application/vnd.cncf.notary.signature          sha256:f2098a230b6311edeb44ab2d6e5789372300d9b98be34c4d9477d3b9638a3bb1
+```
+#### Set the depth of listed referrers 
 
 ORAS shows all referrers of a subject image by default. To avoid throttling or hitting a performance issue when a subject image has a complicated graph of referrers, ORAS introduces an experimental flag `--depth` to `oras discover` to allow users to set the maximum depth of referrers in the formatted output. 
+
+By default, ORAS displays all referrers of a subject image. However, when a subject image has a complex referrer graph, this can lead to throttling or performance issues. To mitigate this, ORAS introduces an experimental `--depth` flag for `oras discover`, allowing users to specify the maximum depth of referrers in the formatted output.  
+
 
 For example, assume there is a sample image with four-level referrers, show referrers within the thrid level only in a tree view:
 
