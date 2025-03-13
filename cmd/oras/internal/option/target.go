@@ -94,6 +94,32 @@ func (target *Target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, descriptio
 	target.Remote.ApplyFlagsWithPrefix(fs, prefix, description)
 }
 
+// GetNewTarget gets target options from user input.
+func (opts *Target) GetNewTarget(cmd *cobra.Command, source string) (target *remote.Repository, err error) {
+	opts.Reference = ""
+	opts.Path = ""
+	opts.RawReference = source
+	err = opts.Parse(cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	err = opts.EnsureReferenceNotEmpty(cmd, true)
+	if err != nil {
+		return nil, err
+	}
+
+	target, err = remote.NewRepository(opts.RawReference)
+	if err != nil {
+		if errors.Unwrap(err) == errdef.ErrInvalidReference {
+			return nil, fmt.Errorf("%q: %v", opts.RawReference, err)
+		}
+		return nil, err
+	}
+
+	return target, nil
+}
+
 // Parse gets target options from user input.
 func (target *Target) Parse(cmd *cobra.Command) error {
 	if err := oerrors.CheckMutuallyExclusiveFlags(cmd.Flags(), target.flagPrefix+"oci-layout-path", target.flagPrefix+"oci-layout"); err != nil {
