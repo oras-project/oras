@@ -36,6 +36,7 @@ func New() *cobra.Command {
 		discoverCmd(),
 		resolveCmd(),
 		copyCmd(),
+		backupCmd(),
 		tagCmd(),
 		attachCmd(),
 		blob.Cmd(),
