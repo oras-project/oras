@@ -512,12 +512,11 @@ application/vnd.cncf.notary.signature          sha256:f2098a230b6311edeb44ab2d6e
 ```
 #### Set the depth of listed referrers 
 
-ORAS shows all referrers of a subject image by default. To avoid throttling or hitting a performance issue when a subject image has a complicated graph of referrers, ORAS introduces an experimental flag `--depth` to `oras discover` to allow users to set the maximum depth of referrers in the formatted output. 
+ORAS shows all referrers of a subject image by default. To avoid throttling or hitting a performance issue when a subject image has a complicated graph of referrers, ORAS SHOULD introduces an experimental flag `--depth` to `oras discover` to allow users to set the maximum depth of referrers in the formatted output. 
 
 By default, ORAS displays all referrers of a subject image. However, when a subject image has a complex referrer graph, this can lead to throttling or performance issues. To mitigate this, ORAS introduces an experimental `--depth` flag for `oras discover`, allowing users to specify the maximum depth of referrers in the formatted output.  
 
-
-For example, assume there is a sample image with four-level referrers, show referrers within the thrid level only in a tree view:
+Assume there is a sample image with referrers spanning four levels. By using the `--depth` flag, you can display only the referrers within the third level in a tree view. This command will display the referrers up to the third level only, helping to limit the scope and improve performance when dealing with complex referrer graphs. 
 
 ```bash
 oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01 --format tree --depth 3
