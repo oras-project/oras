@@ -23,10 +23,14 @@ import (
 	"oras.land/oras/cmd/oras/root"
 )
 
-func main() {
+func run() error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
-	if err := root.New().ExecuteContext(ctx); err != nil {
+	return root.New().ExecuteContext(ctx)
+}
+
+func main() {
+	if err := run(); err != nil {
 		os.Exit(1)
 	}
 }
