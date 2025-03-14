@@ -334,56 +334,14 @@ $REGISTRY/$REPO@sha256:a3785f78ab8547ae2710c89e627783cfa7ee7824d3468cae6835c9f4e
     └── sha256:50fd0dc107d84b5e7b402688000a7ed3aaf8a2692d5cb74da5277fa3c4cecf15
 ```
 
-View an artifact's referrers manifest in pretty JSON output. The following fields should be outputted:
-
-- `referrers`: the list of referrers' manifest
-  - `reference`: full reference by digest of the referrer
-  - `mediaType`: media type of the referrer
-  - `digest`: digest of the referrer
-  - `size`: referrer file size in bytes
-  - `annotations`: contains arbitrary metadata in a referrer
-  - `artifactType`: artifact type of a referrer
-
-See an example:
-
-```bash
-oras discover $REGISTRY/$REPO:v1 --format json
-```
-
-```json
-{
-  "referrers": [
-    {
-      "reference": "$REGISTRY/$REPO@sha256:8dee8cb9a1334595545e3baf15c3eeed13c4b35ae08e3ab32e1df31fb152dc1d",
-      "mediaType": "application/vnd.oci.image.manifest.v1+json",
-      "digest": "sha256:8dee8cb9a1334595545e3baf15c3eeed13c4b35ae08e3ab32e1df31fb152dc1d",
-      "size": 739,
-      "annotations": {
-        "io.cncf.notary.x509chain.thumbprint#S256": "[\"79e91aa1e109a16df87d200e493fd3d33c67253f76d41334d7f7c29c00ba55b3\"]",
-        "org.opencontainers.image.created": "2024-01-01T10:32:55Z"
-      },
-      "artifactType": "application/vnd.cncf.notary.signature"
-    },
-    {
-      "reference": "$REGISTRY/$REPO@sha256:50fd0dc107d84b5e7b402688000a7ed3aaf8a2692d5cb74da5277fa3c4cecf15",
-      "mediaType": "application/vnd.oci.image.manifest.v1+json",
-      "digest": "sha256:50fd0dc107d84b5e7b402688000a7ed3aaf8a2692d5cb74da5277fa3c4cecf15",
-      "size": 739,
-      "annotations": {
-        "org.opencontainers.image.created": "2024-01-01T07:57:10Z"
-      },
-      "artifactType": "sbom/example"
-    }
-  ]
-}
-```
-
 > [!NOTE]
-> The `--format` flag will replace the existing `--output` flag. The `--output` will be marked as "deprecated" in ORAS v1.2.0 and will be removed in the future releases.
+> The `--format` flag will replace the existing `--output` flag. The `--output` SHOULD be marked as "deprecated" in ORAS v1.2.0 and will be removed in future releases.
 
-If the referrers have associated referrers, ORAS SHOULD show the manifest content of the subject image and all referrers recursively in all kinds of formatted outputs (tree, table, and JSON) by default. It ensures data consistency of different data formats in the output.
+If the referrers have child referrers, ORAS SHOULD show the manifest content of the subject image and all referrers recursively in all formatted outputs (tree, JSON). It ensures data consistency of different data formats in the output.
 
-When showing the subject image and all referrers' manifests recursively, the following fields should be returned:
+#### JSON output of `oras discover`
+
+When showing the subject image and all referrers' manifests recursively in formatted JSON output, the following fields should be returned:
 
 - `reference`: full reference by digest of the subject image
 - `mediaType`: media type of the subject image
@@ -398,27 +356,89 @@ When showing the subject image and all referrers' manifests recursively, the fol
   - `annotations`: contains arbitrary metadata in a referrer
   - `referrers`: the list of referrers' manifest
 
-For example, when there are two referrers' lifecycle metadata and in-toto attestation associated with a sample image, the signatures are associated with these two files respectively. The output in a tree view will be:
+Here is the JSON Schema to describe the required fields of JSON output:
 
-```bash
-oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JSON Output of Subject Image and All Referrers ",
+  "type": "object",
+  "properties": {
+    "reference": {
+      "type": "string",
+      "description": "Full reference by digest of the subject image"
+    },
+    "mediaType": {
+      "type": "string",
+      "description": "Media type of the subject image"
+    },
+    "digest": {
+      "type": "string",
+      "description": "Digest of the subject image"
+    },
+    "size": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Size of the subject image in bytes"
+    },
+    "referrers": {
+      "type": "array",
+      "description": "List of referrers' manifests",
+      "items": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "description": "Full reference by digest of the referrer"
+          },
+          "mediaType": {
+            "type": "string",
+            "description": "Media type of the referrer"
+          },
+          "digest": {
+            "type": "string",
+            "description": "Digest of the referrer"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Referrer file size in bytes"
+          },
+          "artifactType": {
+            "type": "string",
+            "description": "Artifact type of the referrer"
+          },
+          "annotations": {
+            "type": "object",
+            "description": "Arbitrary metadata in a referrer",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "referrers": {
+            "type": "array",
+            "description": "List of nested referrers' manifests",
+            "items": {
+              "$ref": "#/properties/referrers/items"
+            }
+          }
+        },
+        "required": [
+          "reference",
+          "mediaType",
+          "digest",
+          "size",
+          "artifactType"
+        ]
+      }
+    }
+  },
+  "required": ["reference", "mediaType", "digest", "size"],
+  "additionalProperties": false
+}
 ```
 
-```console
-localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01
-├── application/vnd.oci.artifact.lifecycle
-│   └── sha256:325129be79f416fe11a9ec44233cfa57f5d89434e6d37170f97e48f7904983e3
-│       └── application/vnd.cncf.notary.signature
-│           └── sha256:f520330e9f43c05859c532e67a25c9c765b144782ae7b872656192c27fd4e2dd
-└── application/vnd.in-toto+json
-    └── sha256:a811606b09341bab4bbc0a4deb2c0cb709ec9702635cbe2d36b77d58359ec046
-        └── application/vnd.cncf.notary.signature
-            └── sha256:04723fd7d00df77c6f226b907667396554bf9418dc48a7a04feb5ff24aa0b9ec
-```
-
-#### JSON output of `oras discover`
-
-When showing the subject image and all referrers' manifests recursively in a pretty JSON output, the following JSON output should be returned:
+Here is the sample of a formatted JSON output:
 
 ```bash
 oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01 --format json
@@ -482,7 +502,7 @@ oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c7
 
 #### Table format of `oras discover` output
 
-The `oras discover --format table` command currently lists only direct referrers in a table format. However, the table view has limitations—it does not effectively represent the hierarchical artifact reference relationships of all referrers. Users can't differentiate the refenrence relationship between each referrer in a table format output. See a sample output as follows:
+The `oras discover --format table` command currently lists only direct referrers in a table format. However, the table view has limitations—it does not effectively represent the hierarchical artifact reference relationships of all referrers. Users can't differentiate the reference relationship between each referrer in a table format output. See current sample output as follows:
 
 ```console
 $ oras discover localhost:5000/kubectl:v1.29.1 --format table
@@ -512,7 +532,7 @@ application/vnd.cncf.notary.signature          sha256:f2098a230b6311edeb44ab2d6e
 ```
 #### Set the depth of listed referrers 
 
-ORAS shows all referrers of a subject image by default. To avoid throttling or hitting a performance issue when a subject image has a complicated graph of referrers, ORAS SHOULD introduces an experimental flag `--depth` to `oras discover` to allow users to set the maximum depth of referrers in the formatted output. 
+ORAS shows all referrers of a subject image by default. To avoid throttling or hitting a performance issue when a subject image has a complicated graph of referrers, ORAS SHOULD introduce an experimental flag `--depth` to `oras discover` to allow users to set the maximum depth of referrers in the formatted output. 
 
 By default, ORAS displays all referrers of a subject image. However, when a subject image has a complex referrer graph, this can lead to throttling or performance issues. To mitigate this, ORAS introduces an experimental `--depth` flag for `oras discover`, allowing users to specify the maximum depth of referrers in the formatted output.  
 
