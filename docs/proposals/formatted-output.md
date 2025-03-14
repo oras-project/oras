@@ -361,7 +361,7 @@ Here is the JSON Schema to describe the required fields of JSON output:
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "JSON Output of Subject Image and All Referrers ",
+  "title": "JSON Output of Subject Image and All Referrers",
   "type": "object",
   "properties": {
     "reference": {
