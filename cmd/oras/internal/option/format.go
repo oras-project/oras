@@ -56,7 +56,7 @@ var (
 		Usage:     "Print output using the given Go template",
 		HasParams: true,
 	}
-	// Deprecated: table format is deprecated and will be removed in the future.
+	// the table format is deprecated
 	FormatTypeTable = &FormatType{
 		Name:  "table",
 		Usage: "[Deprecated] Get direct referrers and output in table format",
@@ -101,7 +101,7 @@ func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 // Parse parses the input format flag.
 func (opts *Format) Parse(cmd *cobra.Command) error {
 	// print deprecation message for table format
-	if opts.FormatFlag == "table" {
+	if opts.FormatFlag == FormatTypeTable.Name {
 		fmt.Fprint(cmd.ErrOrStderr(), "Format \"table\" is deprecated and will be removed in a future release.\n")
 	}
 	if err := opts.parseFlag(); err != nil {
