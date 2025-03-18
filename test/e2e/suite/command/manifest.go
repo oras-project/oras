@@ -486,6 +486,13 @@ var _ = Describe("1.1 registry users:", func() {
 			validateTag(RegistryRef(ZOTHost, dstRepo, ""), tempTag, true)
 		})
 
+		It("should show deprecation message when running with --verbose flag", func() {
+			dstRepo := fmt.Sprintf(repoFmt, "delete", "verbose-flag")
+			prepare(RegistryRef(ZOTHost, ImageRepo, foobar.Tag), RegistryRef(ZOTHost, dstRepo, tempTag))
+			ORAS("manifest", "delete", RegistryRef(ZOTHost, dstRepo, tempTag), "--verbose").
+				MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).Exec()
+		})
+
 		It("should do confirmed deletion via flag", func() {
 			dstRepo := fmt.Sprintf(repoFmt, "delete", "confirm-flag")
 			prepare(RegistryRef(ZOTHost, ImageRepo, foobar.Tag), RegistryRef(ZOTHost, dstRepo, tempTag))
