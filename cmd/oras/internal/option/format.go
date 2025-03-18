@@ -58,11 +58,11 @@ var (
 	}
 	FormatTypeTable = &FormatType{
 		Name:  "table",
-		Usage: "Get direct referrers and output in table format",
+		Usage: "Get referrers and output in table format",
 	}
 	FormatTypeTree = &FormatType{
 		Name:  "tree",
-		Usage: "Get referrers recursively and print in tree format",
+		Usage: "Get referrers and print in tree format",
 	}
 	FormatTypeText = &FormatType{
 		Name:  "text",

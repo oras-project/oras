@@ -16,11 +16,9 @@ limitations under the License.
 package template
 
 import (
-	"fmt"
 	"io"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras-go/v2/content"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
 	"oras.land/oras/cmd/oras/internal/output"
@@ -28,38 +26,28 @@ import (
 
 // discoverHandler handles json metadata output for discover events.
 type discoverHandler struct {
-	referrers []ocispec.Descriptor
-	template  string
-	path      string
-	root      ocispec.Descriptor
-	out       io.Writer
+	template string
+	path     string
+	out      io.Writer
+	model    model.Discover
 }
 
 // NewDiscoverHandler creates a new handler for discover events.
 func NewDiscoverHandler(out io.Writer, root ocispec.Descriptor, path string, template string) metadata.DiscoverHandler {
 	return &discoverHandler{
 		out:      out,
-		root:     root,
 		path:     path,
 		template: template,
+		model:    model.NewDiscover(path, root),
 	}
-}
-
-// MultiLevelSupported implements metadata.DiscoverHandler.
-func (h *discoverHandler) MultiLevelSupported() bool {
-	return false
 }
 
 // OnDiscovered implements metadata.DiscoverHandler.
 func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) error {
-	if !content.Equal(subject, h.root) {
-		return fmt.Errorf("unexpected subject descriptor: %v", subject)
-	}
-	h.referrers = append(h.referrers, referrer)
-	return nil
+	return h.model.Add(referrer, subject)
 }
 
 // Render implements metadata.DiscoverHandler.
 func (h *discoverHandler) Render() error {
-	return output.ParseAndWrite(h.out, model.NewDiscover(h.path, h.referrers), h.template)
+	return output.ParseAndWrite(h.out, &h.model.Root, h.template)
 }

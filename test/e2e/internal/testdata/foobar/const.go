@@ -117,6 +117,10 @@ var (
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
 		Digest:    digest.Digest("sha256:0cb8c4da7e9ff2e7eefca33141091b9239218e3125a35e17e8bcd05fa3a5e714"),
 		Size:      670,
+		Annotations: map[string]string{
+			"org.opencontainers.image.created": "2023-01-18T08:37:57Z",
+		},
+		ArtifactType: "test/signature.file",
 	}
 	SBOMArtifactReferrer = ocispec.Descriptor{
 		MediaType: "application/vnd.oci.artifact.manifest.v1+json",

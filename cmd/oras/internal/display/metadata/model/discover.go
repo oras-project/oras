@@ -15,19 +15,54 @@ limitations under the License.
 
 package model
 
-import ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+import (
+	"fmt"
 
-type discover struct {
-	Manifests []Descriptor `json:"manifests"`
+	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+)
+
+// Discover is a model for discovered referrers.
+type Discover struct {
+	name  string
+	nodes map[digest.Digest]*Node
+	Root  *Node
+}
+
+// Node represents a node in the discovered reference tree.
+type Node struct {
+	Descriptor
+	Referrers []*Node `json:"manifests,omitempty"`
+}
+
+// Add adds a node to the discovered referrers tree.
+func (d *Discover) Add(referrer, subject ocispec.Descriptor) error {
+	to, ok := d.nodes[subject.Digest]
+	if !ok {
+		return fmt.Errorf("unexpected subject descriptor: %v", subject)
+	}
+	from := NewNode(d.name, referrer)
+	d.nodes[from.Digest] = from
+	to.Referrers = append(to.Referrers, from)
+	return nil
 }
 
 // NewDiscover creates a new discover model.
-func NewDiscover(name string, descs []ocispec.Descriptor) discover {
-	discover := discover{
-		Manifests: make([]Descriptor, 0, len(descs)),
+func NewDiscover(path string, root ocispec.Descriptor) Discover {
+	treeRoot := NewNode(path, root)
+	return Discover{
+		name: path,
+		nodes: map[digest.Digest]*Node{
+			root.Digest: treeRoot,
+		},
+		Root: treeRoot,
 	}
-	for _, desc := range descs {
-		discover.Manifests = append(discover.Manifests, FromDescriptor(name, desc))
+}
+
+// NewNode creates a new discover model.
+func NewNode(name string, desc ocispec.Descriptor) *Node {
+	return &Node{
+		Descriptor: FromDescriptor(name, desc),
 	}
-	return discover
+
 }

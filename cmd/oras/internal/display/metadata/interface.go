@@ -44,9 +44,6 @@ type AttachHandler interface {
 type DiscoverHandler interface {
 	Renderer
 
-	// MultiLevelSupported returns true if the handler supports multi-level
-	// discovery.
-	MultiLevelSupported() bool
 	// OnDiscovered is called after a referrer is discovered.
 	OnDiscovered(referrer, subject ocispec.Descriptor) error
 }
