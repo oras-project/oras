@@ -86,7 +86,7 @@ Example - Fetch and print the prettified descriptor of the config:
 	}
 
 	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "file `path` to write the fetched config to, use - for stdout")
-	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "verbose output")
 	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)

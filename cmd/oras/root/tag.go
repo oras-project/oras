@@ -98,7 +98,7 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 
 	option.ApplyFlags(&opts, cmd.Flags())
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
-	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "verbose output")
 	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
 	return oerrors.Command(cmd, &opts.Target)
 }

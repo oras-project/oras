@@ -108,7 +108,7 @@ Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
 		option.FormatTypeJSON.WithUsage("Print in prettified JSON format"),
 		option.FormatTypeGoTemplate.WithUsage("Print using the given Go template"),
 	)
-	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "verbose output")
 	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
