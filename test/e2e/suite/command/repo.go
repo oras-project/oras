@@ -93,6 +93,9 @@ var _ = Describe("1.1 registry users:", func() {
 		It("should list repositories under provided namespace", func() {
 			ORAS("repo", "ls", RegistryRef(ZOTHost, Namespace, "")).MatchKeyWords(ImageRepo[len(Namespace)+1:]).Exec()
 		})
+		It("should show deprecation message when running with --verbose flag", func() {
+			ORAS("repo", "ls", RegistryRef(ZOTHost, Namespace, "--verbose")).MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).Exec()
+		})
 
 		It("should not list repositories without a fully matched namespace", func() {
 			repo := "command-draft/images"
