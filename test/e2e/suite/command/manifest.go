@@ -134,6 +134,10 @@ var _ = Describe("ORAS beginners:", func() {
 				MatchDefaultFlagValue("format", "text", "manifest", "fetch")
 			})
 
+			It("should show deprecation message when running with --verbose flag", func() {
+				ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--verbose").MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).Exec()
+			})
+
 			It("should fail and show detailed error description if no argument provided", func() {
 				err := ORAS("manifest", "fetch").ExpectFailure().Exec().Err
 				gomega.Expect(err).Should(gbytes.Say("Error"))
