@@ -56,8 +56,12 @@ var _ = Describe("ORAS beginners:", func() {
 			gomega.Expect(out).Should(gbytes.Say("--distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 		})
 
-		It("should show text as default format type in help doc", func() {
+		It("should show tree as default format type in help doc", func() {
 			MatchDefaultFlagValue("format", "tree", "discover")
+		})
+
+		It("should show deprecation message when using table format", func() {
+			ORAS("discover", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--format", "table").MatchErrKeyWords(feature.DeprecationMessageTableFormat).Exec()
 		})
 
 		It("should fail when no subject reference provided", func() {
@@ -192,7 +196,7 @@ var _ = Describe("1.1 registry users:", func() {
 	})
 	When("running discover command with table output", func() {
 		format := "table"
-		It("should all referrers of a subject with deprecation hint", func() {
+		It("should show all referrers of a subject with deprecation hint", func() {
 			referrers := []ocispec.Descriptor{foobar.SBOMImageReferrer, foobar.SBOMImageReferrer}
 			ORAS("discover", subjectRef, "-o", format).
 				MatchErrKeyWords(feature.Deprecated.Mark).
@@ -204,7 +208,7 @@ var _ = Describe("1.1 registry users:", func() {
 			err := ORAS("discover", subjectRef, "--format", format).
 				MatchKeyWords(append(discoverKeyWords(false, referrers...), foobar.Digest)...).
 				Exec().Err
-			Expect(err).NotTo(gbytes.Say(feature.Deprecated.Mark))
+			Expect(err).To(gbytes.Say(feature.Deprecated.Mark))
 		})
 	})
 	When("running discover command with go-template output", func() {

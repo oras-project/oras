@@ -16,6 +16,7 @@ limitations under the License.
 package feature
 
 const DeprecationMessageVerboseFlag = "Flag --verbose has been deprecated, and will be removed in a future release."
+const DeprecationMessageTableFormat = "Format \"table\" is deprecated and will be removed in a future release.\n"
 
 var (
 	Preview = struct {
