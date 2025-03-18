@@ -25,6 +25,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"oras.land/oras-go/v2"
+	"oras.land/oras/test/e2e/internal/testdata/feature"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	. "oras.land/oras/test/e2e/internal/utils"
 )
@@ -90,6 +91,11 @@ var _ = Describe("Common registry user", func() {
 				WithTimeOut(20*time.Second).
 				MatchContent("Login Succeeded\n").
 				MatchErrKeyWords("WARNING", "Using --password via the CLI is insecure", "Use --password-stdin").Exec()
+		})
+
+		It("should show deprecation message when running with --verbose flag", func() {
+			ORAS("login", ZOTHost, "-u", Username, "-p", Password, "--registry-config", filepath.Join(GinkgoT().TempDir(), tmpConfigName), "--verbose").
+				MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).Exec()
 		})
 
 		It("should show detailed error description if no argument provided", func() {

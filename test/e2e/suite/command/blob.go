@@ -296,7 +296,7 @@ var _ = Describe("1.1 registry users:", func() {
 				MatchContent(foobar.FooBlobContent).Exec()
 		})
 		It("should show deprecation message when running with --verbose flag", func() {
-			ORAS("blob", "fetch", RegistryRef(ZOTHost, ImageRepo, foobar.FooBlobDigest), "--verbose").
+			ORAS("blob", "fetch", RegistryRef(ZOTHost, ImageRepo, foobar.FooBlobDigest), "--descriptor", "--verbose").
 				MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).Exec()
 		})
 		It("should fetch blob content and output to a file", func() {
