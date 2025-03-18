@@ -295,6 +295,10 @@ var _ = Describe("1.1 registry users:", func() {
 			ORAS("blob", "fetch", RegistryRef(ZOTHost, ImageRepo, foobar.FooBlobDigest), "--output", "-").
 				MatchContent(foobar.FooBlobContent).Exec()
 		})
+		It("should show deprecation message when running with --verbose flag", func() {
+			ORAS("blob", "fetch", RegistryRef(ZOTHost, ImageRepo, foobar.FooBlobDigest), "--verbose").
+				MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).Exec()
+		})
 		It("should fetch blob content and output to a file", func() {
 			tempDir := GinkgoT().TempDir()
 			contentPath := filepath.Join(tempDir, "fetched")
