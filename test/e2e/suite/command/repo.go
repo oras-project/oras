@@ -94,7 +94,7 @@ var _ = Describe("1.1 registry users:", func() {
 			ORAS("repo", "ls", RegistryRef(ZOTHost, Namespace, "")).MatchKeyWords(ImageRepo[len(Namespace)+1:]).Exec()
 		})
 		It("should show deprecation message when running with --verbose flag", func() {
-			ORAS("repo", "ls", RegistryRef(ZOTHost, Namespace, "--verbose")).MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).Exec()
+			ORAS("repository", "list", ZOTHost, "--verbose").MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).Exec()
 		})
 
 		It("should not list repositories without a fully matched namespace", func() {
@@ -122,7 +122,9 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 		It("should list tags via short command", func() {
 			ORAS("repo", "tags", repoRef).MatchKeyWords(multi_arch.Tag, foobar.Tag).Exec()
-
+		})
+		It("should show deprecation message when running with --verbose flag", func() {
+			ORAS("repo", "tags", repoRef, "--verbose").MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).Exec()
 		})
 
 		It("Should list out tags associated to the provided reference", func() {

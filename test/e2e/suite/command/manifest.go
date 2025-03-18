@@ -452,7 +452,7 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 
 		It("should show deprecation message when running with --verbose flag", func() {
-			ORAS("manifest", "fetch-config", RegistryRef(ZOTHost, ImageRepo, foobar.Tag)).
+			ORAS("manifest", "fetch-config", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--verbose").
 				MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).Exec()
 		})
 
