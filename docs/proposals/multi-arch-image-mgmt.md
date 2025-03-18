@@ -47,8 +47,7 @@ To create a multi-arch image, ORAS users have to manually compose an OCI image i
 
 #### `docker buildx`/`docker` is unavailable
 
-Users are not able to install or use `docker buildx` or even no `docker` and its daemon service in some strict environments. Users need to seek for an alternative tool to create a multi-arch image without relying on `docker` or `docker buildx`.
-
+Users are not able to install or use `docker buildx` or even no `docker` and its daemon service in some strict environments. Users need to seek an alternative tool to create a multi-arch image without relying on `docker` or `docker buildx`.
 ## Scenarios
 
 ### Create a multi-arch image in local filesystem
