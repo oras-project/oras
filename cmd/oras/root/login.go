@@ -37,8 +37,6 @@ type loginOptions struct {
 	option.Common
 	option.Remote
 	Hostname string
-	// Deprecated: verbose is deprecated and will be removed in the future.
-	verbose bool
 }
 
 func loginCmd() *cobra.Command {
@@ -75,8 +73,7 @@ Example - Log in with username and password in an interactive terminal and no TL
 			return runLogin(cmd, opts)
 		},
 	}
-	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "verbose output")
-	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
+	option.AddDeprecatedVerboseFlag(cmd.Flags())
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Remote)
 }

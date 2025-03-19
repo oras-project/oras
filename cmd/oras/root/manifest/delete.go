@@ -37,8 +37,6 @@ type deleteOptions struct {
 	option.Descriptor
 	option.Pretty
 	option.Target
-	// Deprecated: verbose is deprecated and will be removed in the future.
-	verbose bool
 }
 
 func deleteCmd() *cobra.Command {
@@ -74,10 +72,9 @@ Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614
 		},
 	}
 
-	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "verbose output")
-	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
+	option.AddDeprecatedVerboseFlag(cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
 

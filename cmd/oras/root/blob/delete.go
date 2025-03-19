@@ -37,8 +37,6 @@ type deleteBlobOptions struct {
 	option.Descriptor
 	option.Pretty
 	option.Target
-	// Deprecated: verbose is deprecated and will be removed in the future.
-	verbose bool
 }
 
 func deleteCmd() *cobra.Command {
@@ -71,8 +69,7 @@ Example - Delete a blob and print its descriptor:
 		},
 	}
 
-	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "verbose output")
-	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
+	option.AddDeprecatedVerboseFlag(cmd.Flags())
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
