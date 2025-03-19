@@ -20,6 +20,6 @@ import "github.com/spf13/pflag"
 // AddDeprecatedVerboseFlag adds the deprecated verbose flag to a command
 func AddDeprecatedVerboseFlag(flags *pflag.FlagSet) {
 	// ignoring the variable of the verbose flag, since we will not use it
-	_ = flags.BoolP("verbose", "v", true, "verbose output")
+	_ = flags.BoolP("verbose", "v", false, "verbose output")
 	_ = flags.MarkDeprecated("verbose", "and will be removed in a future release.")
 }
