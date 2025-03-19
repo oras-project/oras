@@ -33,8 +33,6 @@ type resolveOptions struct {
 	option.Target
 
 	fullRef bool
-	// Deprecated: verbose is deprecated and will be removed in the future.
-	verbose bool
 }
 
 func resolveCmd() *cobra.Command {
@@ -60,8 +58,7 @@ Example - Resolve digest of the target artifact:
 	}
 
 	cmd.Flags().BoolVarP(&opts.fullRef, "full-reference", "l", false, "print the full artifact reference with digest")
-	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "verbose output")
-	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
+	option.AddDeprecatedVerboseFlag(cmd.Flags())
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
