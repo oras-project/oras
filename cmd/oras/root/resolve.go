@@ -58,6 +58,7 @@ Example - Resolve digest of the target artifact:
 	}
 
 	cmd.Flags().BoolVarP(&opts.fullRef, "full-reference", "l", false, "print the full artifact reference with digest")
+	option.AddDeprecatedVerboseFlag(cmd.Flags())
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }

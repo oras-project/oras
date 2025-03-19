@@ -73,6 +73,7 @@ Example - Log in with username and password in an interactive terminal and no TL
 			return runLogin(cmd, opts)
 		},
 	}
+	option.AddDeprecatedVerboseFlag(cmd.Flags())
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Remote)
 }

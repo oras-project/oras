@@ -96,6 +96,7 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 
 	option.ApplyFlags(&opts, cmd.Flags())
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
+	option.AddDeprecatedVerboseFlag(cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
 
