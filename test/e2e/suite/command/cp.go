@@ -223,7 +223,7 @@ var _ = Describe("1.1 registry users:", func() {
 			// validate
 			CompareRef(RegistryRef(ZOTHost, ImageRepo, ma.Digest), dst)
 
-			digests := ORAS("discover", dst, "--format", "go-template={{range .manifests}}{{println .digest}}{{end}}").Exec().Out.Contents()
+			digests := ORAS("discover", dst, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
 			for _, digest := range strings.Split(strings.TrimSpace(string(digests)), "\n") {
 				CompareRef(RegistryRef(ZOTHost, ArtifactRepo, digest), RegistryRef(ZOTHost, dstRepo, digest))
 			}
@@ -241,7 +241,7 @@ var _ = Describe("1.1 registry users:", func() {
 				Exec()
 			// validate
 			CompareRef(RegistryRef(ZOTHost, ImageRepo, ma.Digest), dst)
-			digests := ORAS("discover", dst, "--format", "go-template={{range .manifests}}{{println .digest}}{{end}}").Exec().Out.Contents()
+			digests := ORAS("discover", dst, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
 			for _, digest := range strings.Split(strings.TrimSpace(string(digests)), "\n") {
 				CompareRef(RegistryRef(ZOTHost, ArtifactRepo, digest), RegistryRef(ZOTHost, dstRepo, digest))
 			}
@@ -268,7 +268,7 @@ var _ = Describe("1.1 registry users:", func() {
 				Exec()
 			// validate
 			CompareRef(RegistryRef(ZOTHost, ImageRepo, ma.Digest), dst)
-			digests := ORAS("discover", dst, "--format", "go-template={{range .manifests}}{{println .digest}}{{end}}").Exec().Out.Contents()
+			digests := ORAS("discover", dst, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
 			for _, digest := range strings.Split(strings.TrimSpace(string(digests)), "\n") {
 				CompareRef(RegistryRef(ZOTHost, ArtifactRepo, digest), RegistryRef(ZOTHost, dstRepo, digest))
 			}
@@ -308,7 +308,7 @@ var _ = Describe("1.1 registry users:", func() {
 				Exec()
 			// validate
 			CompareRef(RegistryRef(ZOTHost, ArtifactRepo, digest), dst)
-			digests := ORAS("discover", dst, "--format", "go-template={{range .manifests}}{{println .digest}}{{end}}").Exec().Out.Contents()
+			digests := ORAS("discover", dst, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
 			for _, digest := range strings.Split(strings.TrimSpace(string(digests)), "\n") {
 				CompareRef(RegistryRef(ZOTHost, ArtifactRepo, digest), RegistryRef(ZOTHost, dstRepo, digest))
 			}
@@ -326,7 +326,7 @@ var _ = Describe("1.1 registry users:", func() {
 				Exec()
 			// validate
 			CompareRef(RegistryRef(ZOTHost, ArtifactRepo, digest), RegistryRef(ZOTHost, dstRepo, digest))
-			digests := ORAS("discover", RegistryRef(ZOTHost, dstRepo, digest), "--format", "go-template={{range .manifests}}{{println .digest}}{{end}}").Exec().Out.Contents()
+			digests := ORAS("discover", RegistryRef(ZOTHost, dstRepo, digest), "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
 			for _, digest := range strings.Split(strings.TrimSpace(string(digests)), "\n") {
 				CompareRef(RegistryRef(ZOTHost, ArtifactRepo, digest), RegistryRef(ZOTHost, dstRepo, digest))
 			}
@@ -403,6 +403,10 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 		})
 
 		It("should copy a certain platform of image and its referrers from an OCI image layout to a fallback registry", func() {
+			type discover struct {
+				ocispec.Descriptor
+				Referrers []ocispec.Descriptor
+			}
 			stateKeys := append(ma.LinuxAMD64StateKeys, ma.LinuxAMD64ReferrerStateKey, ma.LinuxAMD64ReferrerConfigStateKey)
 			fromDir := GinkgoT().TempDir()
 			src := LayoutRef(fromDir, ma.Tag)
@@ -421,20 +425,24 @@ var _ = Describe("OCI spec 1.0 registry users:", func() {
 			dstManifest := ORAS("manifest", "fetch", dst).WithDescription("fetch from destination to validate").Exec().Out.Contents()
 			Expect(srcManifest).To(Equal(dstManifest))
 			ORAS("manifest", "fetch", RegistryRef(FallbackHost, dstRepo, ma.Digest)).WithDescription("not copy index").ExpectFailure().Exec()
-			var index ocispec.Index
+			var disv discover
 			bytes := ORAS("discover", dst, "-o", "json").
 				MatchKeyWords(ma.LinuxAMD64Referrer.Digest.String()).
 				WithDescription("copy image referrer").
 				Exec().Out.Contents()
-			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
-			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].Digest.String()).To(Equal(ma.LinuxAMD64Referrer.Digest.String()))
+			Expect(json.Unmarshal(bytes, &disv)).ShouldNot(HaveOccurred())
+			Expect(len(disv.Referrers)).To(Equal(1))
+			Expect(disv.Referrers[0].Digest.String()).To(Equal(ma.LinuxAMD64Referrer.Digest.String()))
 		})
 	})
 })
 
 var _ = Describe("OCI layout users:", func() {
 	When("running `cp`", func() {
+		type discover struct {
+			ocispec.Descriptor
+			Referrers []ocispec.Descriptor
+		}
 		It("should copy an image from a registry to an OCI image layout via tag", func() {
 			dst := LayoutRef(GinkgoT().TempDir(), "copied")
 			src := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
@@ -565,14 +573,14 @@ var _ = Describe("OCI layout users:", func() {
 			srcManifest := ORAS("manifest", "fetch", src).WithDescription("fetch from source to validate").Exec().Out.Contents()
 			dstManifest := ORAS("manifest", "fetch", dst, Flags.Layout).WithDescription("fetch from destination to validate").Exec().Out.Contents()
 			Expect(srcManifest).To(Equal(dstManifest))
-			var index ocispec.Index
+			var disv discover
 			bytes := ORAS("discover", dst, "-o", "json", Flags.Layout, "--artifact-type", ma.IndexReferrerConfigStateKey.Name).
 				// MatchKeyWords(ma.IndexReferrerDigest).
 				WithDescription("copy image referrer").
 				Exec().Out.Contents()
-			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
-			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].Digest.String()).To(Equal(ma.IndexReferrerDigest))
+			Expect(json.Unmarshal(bytes, &disv)).ShouldNot(HaveOccurred())
+			Expect(len(disv.Referrers)).To(Equal(1))
+			Expect(disv.Referrers[0].Digest.String()).To(Equal(ma.IndexReferrerDigest))
 			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(toDir, ma.LinuxAMD64Referrer.Digest.String())).
 				WithDescription("copy referrer of successor").
 				Exec()
@@ -594,14 +602,14 @@ var _ = Describe("OCI layout users:", func() {
 			srcManifest := ORAS("manifest", "fetch", src, Flags.Layout).WithDescription("fetch from source to validate").Exec().Out.Contents()
 			dstManifest := ORAS("manifest", "fetch", dst).WithDescription("fetch from destination to validate").Exec().Out.Contents()
 			Expect(srcManifest).To(Equal(dstManifest))
-			var index ocispec.Index
+			var disv discover
 			bytes := ORAS("discover", dst, "-o", "json", "--artifact-type", ma.IndexReferrerConfigStateKey.Name).
 				MatchKeyWords(ma.IndexReferrerDigest).
 				WithDescription("copy image referrer").
 				Exec().Out.Contents()
-			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
-			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].Digest.String()).To(Equal(ma.IndexReferrerDigest))
+			Expect(json.Unmarshal(bytes, &disv)).ShouldNot(HaveOccurred())
+			Expect(len(disv.Referrers)).To(Equal(1))
+			Expect(disv.Referrers[0].Digest.String()).To(Equal(ma.IndexReferrerDigest))
 			ORAS("manifest", "fetch", dst).
 				WithDescription("copy referrer of successor").
 				Exec()
@@ -626,14 +634,14 @@ var _ = Describe("OCI layout users:", func() {
 			dstManifest := ORAS("manifest", "fetch", dst).WithDescription("fetch from destination to validate").Exec().Out.Contents()
 			Expect(srcManifest).To(Equal(dstManifest))
 			ORAS("manifest", "fetch", RegistryRef(ZOTHost, dstRepo, ma.Digest)).WithDescription("not copy index").ExpectFailure().Exec()
-			var index ocispec.Index
+			var disv discover
 			bytes := ORAS("discover", dst, "-o", "json").
 				MatchKeyWords(ma.LinuxAMD64Referrer.Digest.String()).
 				WithDescription("copy image referrer").
 				Exec().Out.Contents()
-			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
-			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].Digest.String()).To(Equal(ma.LinuxAMD64Referrer.Digest.String()))
+			Expect(json.Unmarshal(bytes, &disv)).ShouldNot(HaveOccurred())
+			Expect(len(disv.Referrers)).To(Equal(1))
+			Expect(disv.Referrers[0].Digest.String()).To(Equal(ma.LinuxAMD64Referrer.Digest.String()))
 		})
 
 		It("should copy a certain platform of image and its referrers from a registry to an OCI image layout", func() {
@@ -651,14 +659,14 @@ var _ = Describe("OCI layout users:", func() {
 			dstManifest := ORAS("manifest", "fetch", dst, Flags.Layout).WithDescription("fetch from destination to validate").Exec().Out.Contents()
 			Expect(srcManifest).To(Equal(dstManifest))
 			ORAS("manifest", "fetch", LayoutRef(toDir, ma.Digest)).WithDescription("not copy index").ExpectFailure().Exec()
-			var index ocispec.Index
+			var disv discover
 			bytes := ORAS("discover", dst, "-o", "json", Flags.Layout).
 				MatchKeyWords(ma.LinuxAMD64Referrer.Digest.String()).
 				WithDescription("copy image referrer").
 				Exec().Out.Contents()
-			Expect(json.Unmarshal(bytes, &index)).ShouldNot(HaveOccurred())
-			Expect(len(index.Manifests)).To(Equal(1))
-			Expect(index.Manifests[0].Digest.String()).To(Equal(ma.LinuxAMD64Referrer.Digest.String()))
+			Expect(json.Unmarshal(bytes, &disv)).ShouldNot(HaveOccurred())
+			Expect(len(disv.Referrers)).To(Equal(1))
+			Expect(disv.Referrers[0].Digest.String()).To(Equal(ma.LinuxAMD64Referrer.Digest.String()))
 		})
 
 		// oci-layout-path tests
