@@ -335,13 +335,13 @@ $REGISTRY/$REPO@sha256:a3785f78ab8547ae2710c89e627783cfa7ee7824d3468cae6835c9f4e
 ```
 
 > [!NOTE]
-> The `--format` flag will replace the existing `--output` flag. The `--output` SHOULD be marked as "deprecated" in ORAS v1.2.0 and will be removed in future releases.
+> The `--output` flag will replaced by `--format` flag. The `--output` SHOULD be marked as "deprecated" in ORAS with warning message and will be removed in future releases. 
 
-If the referrers have child referrers, ORAS SHOULD show the manifest content of the subject image and all referrers recursively in all formatted outputs (tree, JSON). It ensures data consistency of different data formats in the output.
+If the referrers have child referrers, ORAS SHOULD show the manifest content of the subject image and all referrers recursively in all formatted outputs (tree, JSON, go-template). It ensures data consistency of different data formats in the output.
 
 #### JSON output of `oras discover`
 
-When showing the subject image and all referrers' manifests recursively in formatted JSON output, the following fields should be returned:
+When showing the subject image and all referrers' manifests recursively in a formatted JSON output, include the following fields:
 
 - `reference`: full reference by digest of the subject image
 - `mediaType`: media type of the subject image
@@ -502,7 +502,7 @@ oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c7
 
 #### Table format of `oras discover` output
 
-The `oras discover --format table` command currently lists only direct referrers in a table format. However, the table view has limitations—it does not effectively represent the hierarchical artifact reference relationships of all referrers. Users can't differentiate the reference relationship between each referrer in a table format output. See current sample output as follows:
+The `oras discover --format table` command currently lists only direct referrers in a table format. This table view has limitations: it does not effectively represent the hierarchical artifact reference relationships of all referrers. Users can't differentiate the reference relationship between each referrer in a table format output. See current sample output as follows:
 
 ```console
 $ oras discover localhost:5000/kubectl:v1.29.1 --format table
@@ -516,7 +516,7 @@ application/vnd.in-toto+json                   sha256:a811606b09341bab4bbc0a4deb
 application/vnd.cncf.notary.signature          sha256:f2098a230b6311edeb44ab2d6e5789372300d9b98be34c4d9477d3b9638a3bb1
 ```
 
-In contrast, the tree view offers a more structured and human-readable output by visually displaying relationships of each referrer. Given this advantage, the table view no longer provides significant value to users. This document proposes deprecating the `--format table` option. When user specifies `--format table` flag with `oras discover`, the warning message will be printed out as follows:
+In contrast, the tree view offers a more structured and human-readable output by visually displaying relationships of each referrer. Given this advantage, the table view no longer provides significant value to users. This document proposes deprecating the `--format table` option. When user specifies `--format table` flag with `oras discover`, the warning message SHOULD be printed out as follows:
 
 ```console
 $ oras discover localhost:5000/kubectl:v1.29.1 --format table
@@ -561,7 +561,9 @@ localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa2
 ## FAQ
 
 **Q:** Why choose to use `--format` flag to enable JSON formatted output instead of extending the existing `--output` flag?
+
 **A:** ORAS follows [GNU](https://www.gnu.org/prep/standards/html_node/Option-Table.html#Option-Table) design principles. ORAS uses `--output` to specify a file or directory content should be created within and `--format` to format the output into JSON or using the given Go template. Popular tools, like Docker, Podman, and Skopeo also follow this design principle within their formatted output feature.
 
 **Q:** Why ORAS chooses [Go template](https://pkg.go.dev/text/template)?
+
 **A:** Go template is a powerful method to allow users to manipulate and customize output you want. It provides access to data objects and additional functions that are passed into the template engine programmatically. It also has some useful libraries that have strong functions for Go’s template language to manipulate the output data, such as [Sprig](https://masterminds.github.io/sprig/). The basic usage of Go template functions are easy to use.
