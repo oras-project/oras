@@ -98,6 +98,14 @@ type ManifestIndexCreateHandler interface {
 // ManifestIndexUpdateHandler handles metadata output for index update events.
 type ManifestIndexUpdateHandler ManifestIndexCreateHandler
 
+// BackupHandler handles metadata output for cp events.
+type BackupHandler interface {
+	TaggedHandler
+	Renderer
+
+	OnCopied(source string, destination ocispec.Descriptor) error
+}
+
 // CopyHandler handles metadata output for cp events.
 type CopyHandler interface {
 	TaggedHandler
