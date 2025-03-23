@@ -118,21 +118,13 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		if err != nil {
 			return err
 		}
-
-		if from, err := digest.Parse(opts.From.Reference); err == nil && from != desc.Digest {
-			// correct source digest
-			opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, desc.Digest.String())
-		}
-		_ = opts.Printer.Println("Copied", opts.From.AnnotatedReference(), "=>[%s] %s", option.TargetTypeOCILayout, opts.output)
-		_ = opts.Printer.Println("Digest:", desc.Digest)
 	}
 
 	return nil
 }
 
 func doBackup(ctx context.Context, desc ocispec.Descriptor, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *backupOptions) (err error) {
-
-	backupHandler, _ := display.NewCopyHandler(opts.Printer, opts.TTY, dst)
+	backupHandler, metadataHandler := display.NewBackupHandler(opts.Printer, opts.TTY, dst)
 
 	// Prepare backup options
 	extendedCopyOptions := oras.DefaultExtendedCopyOptions
@@ -157,6 +149,18 @@ func doBackup(ctx context.Context, desc ocispec.Descriptor, src oras.ReadOnlyGra
 	extendedCopyOptions.OnMounted = backupHandler.OnMounted
 
 	err = recursiveBackup(ctx, src, dst, opts.output, desc, extendedCopyOptions)
+	if err != nil {
+		return err
+	}
+
+	if from, err := digest.Parse(opts.From.Reference); err == nil && from != desc.Digest {
+		// correct source digest
+		opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, desc.Digest.String())
+	}
+	if err := metadataHandler.OnCopied(opts.From.AnnotatedReference(), desc); err != nil {
+		return err
+	}
+
 	return err
 }
 
