@@ -45,7 +45,7 @@ func (h *BackupHandler) Render() error {
 }
 
 // OnCopied implements metadata.BackupHandler.
-func (h *BackupHandler) OnCopied(source string, destination ocispec.Descriptor) error {
-	h.desc = destination
-	return h.printer.Println("Copied", source, "=>", destination.URLs)
+func (h *BackupHandler) OnCopied(source, destination string, desc ocispec.Descriptor) error {
+	h.desc = desc
+	return h.printer.Println("Copied", source, "=>", destination)
 }

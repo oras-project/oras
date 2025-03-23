@@ -103,7 +103,7 @@ type BackupHandler interface {
 	TaggedHandler
 	Renderer
 
-	OnCopied(source string, destination ocispec.Descriptor) error
+	OnCopied(source, destination string, desc ocispec.Descriptor) error
 }
 
 // CopyHandler handles metadata output for cp events.
