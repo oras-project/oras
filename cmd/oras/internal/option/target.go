@@ -61,6 +61,14 @@ type Target struct {
 	IsOCILayout bool
 }
 
+// NewOCITarget creates an OCI layout target
+func NewOCITarget(reference string) *Target {
+	return &Target{
+		RawReference: reference,
+		IsOCILayout:  true,
+	}
+}
+
 // ApplyFlags applies flags to a command flag set for unary target
 func (target *Target) ApplyFlags(fs *pflag.FlagSet) {
 	target.applyFlagsWithPrefix(fs, "", "")

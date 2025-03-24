@@ -362,6 +362,7 @@ func (remo *Remote) NewRegistry(registry string, common Common, logger logrus.Fi
 
 // NewRepository assembles a oras remote repository.
 func (remo *Remote) NewRepository(reference string, common Common, logger logrus.FieldLogger) (repo *remote.Repository, err error) {
+	fmt.Println("**********************************")
 	repo, err = remote.NewRepository(reference)
 	if err != nil {
 		if errors.Unwrap(err) == errdef.ErrInvalidReference {
