@@ -79,42 +79,25 @@ Example - Backup artifacts from a registry to disk:
 func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	ctx, _ := command.GetLogger(cmd, &opts.Common)
 	for _, source := range opts.sources {
-		target, err := opts.From.GetNewTarget(cmd, source)
-		if err != nil {
-			return err
-		}
-		//repo.PlainHTTP = opts.isPlainHttp(registry)
-		//repo.HandleWarning = opts.handleWarning(registry, logger)
-		//if repo.Client, err = opts.authClient(registry, common.Debug); err != nil {
-		//	return nil, err
-		//}
-		//repo.SkipReferrersGC = true
-		//if opts.ReferrersAPI != nil {
-		//	if err := repo.SetReferrersCapability(*opts.ReferrersAPI); err != nil {
-		//		return nil, err
-		//	}
-		//}
-
-		src, err := opts.CachedTarget(target)
+		src, err := opts.From.GetNewTarget(cmd, source)
 		if err != nil {
 			return err
 		}
 
-		rOpts := oras.DefaultResolveOptions
-		rOpts.TargetPlatform = opts.Platform.Platform
-		desc, err := oras.Resolve(ctx, src, opts.From.Reference, rOpts)
+		path := filepath.Join(opts.output, src.Reference.Repository)
+		to := option.NewOCITarget(path)
+		err = to.Parse(cmd)
 		if err != nil {
-			return fmt.Errorf("failed to resolve %s: %w", opts.From.Reference, err)
+			return fmt.Errorf("parse target: %w", err)
 		}
 
-		destination := filepath.Join(opts.output, target.Reference.Repository)
-		dst, err := oci.New(destination)
+		dst, err := oci.New(path)
 		if err != nil {
-			return err
+			return fmt.Errorf("create oci target: %w", err)
 		}
+
 		ctx = registryutil.WithScopeHint(ctx, dst, auth.ActionPull, auth.ActionPush)
-
-		err = doBackup(ctx, desc, target, dst, opts)
+		err = doBackup(ctx, src, dst, to.AnnotatedReference(), opts)
 		if err != nil {
 			return err
 		}
@@ -123,8 +106,18 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	return nil
 }
 
-func doBackup(ctx context.Context, desc ocispec.Descriptor, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *backupOptions) (err error) {
-	backupHandler, metadataHandler := display.NewBackupHandler(opts.Printer, opts.TTY, dst)
+func doBackup(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, destination string, opts *backupOptions) (err error) {
+	rOpts := oras.DefaultResolveOptions
+	rOpts.TargetPlatform = opts.Platform.Platform
+	desc, err := oras.Resolve(ctx, src, opts.From.Reference, rOpts)
+	if err != nil {
+		return fmt.Errorf("failed to resolve %s: %w", opts.From.Reference, err)
+	}
+
+	_, err = opts.CachedTarget(src)
+	if err != nil {
+		return err
+	}
 
 	// Prepare backup options
 	extendedCopyOptions := oras.DefaultExtendedCopyOptions
@@ -133,6 +126,7 @@ func doBackup(ctx context.Context, desc ocispec.Descriptor, src oras.ReadOnlyGra
 		return registry.Referrers(ctx, src, desc, "")
 	}
 
+	backupHandler, metadataHandler := display.NewBackupHandler(opts.Printer, opts.TTY, dst)
 	dst, err = backupHandler.StartTracking(dst)
 	if err != nil {
 		return err
@@ -157,11 +151,8 @@ func doBackup(ctx context.Context, desc ocispec.Descriptor, src oras.ReadOnlyGra
 		// correct source digest
 		opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, desc.Digest.String())
 	}
-	if err := metadataHandler.OnCopied(opts.From.AnnotatedReference(), desc); err != nil {
-		return err
-	}
 
-	return err
+	return metadataHandler.OnCopied(opts.From.AnnotatedReference(), destination, desc)
 }
 
 // recursiveBackup copies an artifact and its referrers from one target to another.
