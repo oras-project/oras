@@ -19,6 +19,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
+	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -40,7 +42,8 @@ type attachOptions struct {
 	option.Packer
 	option.Target
 	option.Format
-	option.Platform
+	platforms []string
+	Platforms []*ocispec.Platform
 
 	artifactType string
 	concurrency  int
@@ -95,6 +98,9 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
 			opts.FileRefs = args[1:]
+			if err := parsePlatforms(&opts); err != nil {
+				return err
+			}
 			err := option.Parse(cmd, &opts)
 			if err == nil {
 				if err = opts.EnsureReferenceNotEmpty(cmd, true); err == nil {
@@ -119,7 +125,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
-	opts.FlagDescription = "[Preview] attach to an arch-specific subject"
+	cmd.Flags().StringArrayVarP(&opts.platforms, "platform", "", nil, "specify platforms to attach")
 	_ = cmd.MarkFlagRequired("artifact-type")
 	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
 	opts.EnableDistributionSpecFlag()
@@ -138,84 +144,124 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 		}
 	}
 
-	// prepare manifest
-	store, err := file.New("")
-	if err != nil {
-		return err
-	}
-	defer store.Close()
-
 	dst, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
 		return err
 	}
+
 	// add both pull and push scope hints for dst repository
 	// to save potential push-scope token requests during copy
 	ctx = registryutil.WithScopeHint(ctx, dst, auth.ActionPull, auth.ActionPush)
-	fetchOpts := oras.DefaultResolveOptions
-	fetchOpts.TargetPlatform = opts.Platform.Platform
-	subject, err := oras.Resolve(ctx, dst, opts.Reference, fetchOpts)
-	if err != nil {
-		return fmt.Errorf("failed to resolve %s: %w", opts.Reference, err)
-	}
-	statusHandler, metadataHandler, err := display.NewAttachHandler(opts.Printer, opts.Format, opts.TTY, store)
-	if err != nil {
-		return err
-	}
-	descs, err := loadFiles(ctx, store, opts.Annotations, opts.FileRefs, statusHandler)
-	if err != nil {
-		return err
-	}
 
-	// prepare push
-	dst, stopTrack, err := statusHandler.TrackTarget(dst)
-	if err != nil {
-		return err
-	}
-	graphCopyOptions := oras.DefaultCopyGraphOptions
-	graphCopyOptions.Concurrency = opts.concurrency
-	graphCopyOptions.OnCopySkipped = statusHandler.OnCopySkipped
-	graphCopyOptions.PreCopy = statusHandler.PreCopy
-	graphCopyOptions.PostCopy = statusHandler.PostCopy
-
-	packOpts := oras.PackManifestOptions{
-		Subject:             &subject,
-		ManifestAnnotations: opts.Annotations[option.AnnotationManifest],
-		Layers:              descs,
-	}
-	pack := func() (ocispec.Descriptor, error) {
-		return oras.PackManifest(ctx, store, oras.PackManifestVersion1_1, opts.artifactType, packOpts)
-	}
-
-	copy := func(root ocispec.Descriptor) error {
-		graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-			if content.Equal(node, root) {
-				// skip duplicated Resolve on subject
-				successors, _, config, err := graph.Successors(ctx, fetcher, node)
-				if err != nil {
-					return nil, err
-				}
-				if config != nil {
-					successors = append(successors, *config)
-				}
-				return successors, nil
-			}
-			return content.Successors(ctx, fetcher, node)
+	for _, pf := range opts.Platforms {
+		// prepare manifest
+		store, err := file.New("")
+		if err != nil {
+			return err
 		}
-		return oras.CopyGraph(ctx, store, dst, root, graphCopyOptions)
-	}
+		defer store.Close()
 
-	// Attach
-	root, err := doPush(dst, stopTrack, pack, copy)
-	if err != nil {
-		return err
-	}
-	metadataHandler.OnAttached(&opts.Target, root, subject)
-	err = metadataHandler.Render()
-	if err != nil {
-		return err
-	}
+		fetchOpts := oras.DefaultResolveOptions
+		fetchOpts.TargetPlatform = pf
+		subject, err := oras.Resolve(ctx, dst, opts.Reference, fetchOpts)
+		if err != nil {
+			return fmt.Errorf("failed to resolve %s: %w", opts.Reference, err)
+		}
+		statusHandler, metadataHandler, err := display.NewAttachHandler(opts.Printer, opts.Format, opts.TTY, store)
+		if err != nil {
+			return err
+		}
+		descs, err := loadFiles(ctx, store, opts.Annotations, opts.FileRefs, statusHandler)
+		if err != nil {
+			return err
+		}
+		// prepare push
+		dst, stopTrack, err := statusHandler.TrackTarget(dst)
+		if err != nil {
+			return err
+		}
+		graphCopyOptions := oras.DefaultCopyGraphOptions
+		graphCopyOptions.Concurrency = opts.concurrency
+		graphCopyOptions.OnCopySkipped = statusHandler.OnCopySkipped
+		graphCopyOptions.PreCopy = statusHandler.PreCopy
+		graphCopyOptions.PostCopy = statusHandler.PostCopy
 
-	// Export manifest
-	return opts.ExportManifest(ctx, store, root)
+		packOpts := oras.PackManifestOptions{
+			Subject:             &subject,
+			ManifestAnnotations: opts.Annotations[option.AnnotationManifest],
+			Layers:              descs,
+		}
+		pack := func() (ocispec.Descriptor, error) {
+			return oras.PackManifest(ctx, store, oras.PackManifestVersion1_1, opts.artifactType, packOpts)
+		}
+
+		copy := func(root ocispec.Descriptor) error {
+			graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+				if content.Equal(node, root) {
+					// skip duplicated Resolve on subject
+					successors, _, config, err := graph.Successors(ctx, fetcher, node)
+					if err != nil {
+						return nil, err
+					}
+					if config != nil {
+						successors = append(successors, *config)
+					}
+					return successors, nil
+				}
+				return content.Successors(ctx, fetcher, node)
+			}
+			return oras.CopyGraph(ctx, store, dst, root, graphCopyOptions)
+		}
+		// Attach
+		root, err := doPush(dst, stopTrack, pack, copy)
+		if err != nil {
+			return err
+		}
+		metadataHandler.OnAttached(&opts.Target, root, subject)
+		err = metadataHandler.Render()
+		if err != nil {
+			return err
+		}
+		// Export manifest
+		if err := opts.ExportManifest(ctx, store, root); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Copied from platform.go
+func parsePlatforms(opts *attachOptions) error {
+	if len(opts.platforms) == 0 {
+		opts.Platforms = append(opts.Platforms, nil)
+		return nil
+	}
+	for _, ps := range opts.platforms {
+		// OS[/Arch[/Variant]][:OSVersion]
+		// If Arch is not provided, will use GOARCH instead
+		var platformStr string
+		var p ocispec.Platform
+		platformStr, p.OSVersion, _ = strings.Cut(ps, ":")
+		parts := strings.Split(platformStr, "/")
+		switch len(parts) {
+		case 3:
+			p.Variant = parts[2]
+			fallthrough
+		case 2:
+			p.Architecture = parts[1]
+		case 1:
+			p.Architecture = runtime.GOARCH
+		default:
+			return fmt.Errorf("failed to parse platform %q: expected format os[/arch[/variant]]", ps)
+		}
+		p.OS = parts[0]
+		if p.OS == "" {
+			return fmt.Errorf("invalid platform: OS cannot be empty")
+		}
+		if p.Architecture == "" {
+			return fmt.Errorf("invalid platform: Architecture cannot be empty")
+		}
+		opts.Platforms = append(opts.Platforms, &p)
+	}
+	return nil
 }
