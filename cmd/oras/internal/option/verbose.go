@@ -13,24 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package option
 
-import (
-	"context"
-	"os"
-	"os/signal"
+import "github.com/spf13/pflag"
 
-	"oras.land/oras/cmd/oras/root"
-)
-
-func run() error {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer cancel()
-	return root.New().ExecuteContext(ctx)
-}
-
-func main() {
-	if err := run(); err != nil {
-		os.Exit(1)
-	}
+// AddDeprecatedVerboseFlag adds the deprecated verbose flag to a command
+func AddDeprecatedVerboseFlag(flags *pflag.FlagSet) {
+	// ignoring the variable of the verbose flag, since we will not use it
+	_ = flags.BoolP("verbose", "v", false, "verbose output")
+	_ = flags.MarkDeprecated("verbose", "and will be removed in a future release.")
 }

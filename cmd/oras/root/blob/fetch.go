@@ -92,6 +92,7 @@ Example - Fetch and print a blob from OCI image layout archive file 'layout.tar'
 	}
 
 	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "output file `path`, use - for stdout")
+	option.AddDeprecatedVerboseFlag(cmd.Flags())
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }

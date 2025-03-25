@@ -252,6 +252,13 @@ var _ = Describe("1.1 registry users:", func() {
 				MatchKeyWords("Missing", toDeleteRef).
 				Exec()
 		})
+
+		It("should show deprecation message when running with --verbose flag", func() {
+			dstRepo := fmt.Sprintf(repoFmt, "delete", "blob-delete-verbose")
+			CopyZOTRepo(BlobRepo, dstRepo)
+			toDeleteRef := RegistryRef(ZOTHost, dstRepo, foobar.FooBlobDigest)
+			ORAS("blob", "delete", toDeleteRef, "--verbose").MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).Exec()
+		})
 	})
 	When("running `blob push`", func() {
 		It("should push a blob from a file and output the descriptor with specific media-type", func() {
@@ -287,6 +294,10 @@ var _ = Describe("1.1 registry users:", func() {
 		It("should fetch blob content and output to stdout", func() {
 			ORAS("blob", "fetch", RegistryRef(ZOTHost, ImageRepo, foobar.FooBlobDigest), "--output", "-").
 				MatchContent(foobar.FooBlobContent).Exec()
+		})
+		It("should show deprecation message when running with --verbose flag", func() {
+			ORAS("blob", "fetch", RegistryRef(ZOTHost, ImageRepo, foobar.FooBlobDigest), "--descriptor", "--verbose").
+				MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).Exec()
 		})
 		It("should fetch blob content and output to a file", func() {
 			tempDir := GinkgoT().TempDir()

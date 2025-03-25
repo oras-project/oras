@@ -212,7 +212,7 @@ type ReadOnlyGraphTagFinderTarget interface {
 	registry.TagLister
 }
 
-// NewReadonlyTargets generates a new read only target based on opts.
+// NewReadonlyTarget generates a new read only target based on opts.
 func (opts *Target) NewReadonlyTarget(ctx context.Context, common Common, logger logrus.FieldLogger) (ReadOnlyGraphTagFinderTarget, error) {
 	switch opts.Type {
 	case TargetTypeOCILayout:

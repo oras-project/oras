@@ -234,7 +234,7 @@ For example, pull an artifact that contains multiple layers (files) and show the
 oras pull $REGISTRY/$REPO:$TAG --format go-template='{{toRawJson .}}'
 ```
 
-```
+```console
 {"reference":"localhost:5000/oras@sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd186111","files":[{"path":"/home/user/oras-install/sbom.spdx","reference":"localhost:5000/oras@sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd186222","mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd186222","size":820},{"path":"/home/user/oras-install/vul-scan.json","reference":"localhost:5000/oras@sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd18669b","mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd18669b","size":820}]}
 ```
 
@@ -318,6 +318,8 @@ oras attach $REGISTRY/$REPO:$TAG --artifact-type example/report-and-sbom vul-rep
 
 ### oras discover
 
+#### Tree format of `oras discover` output
+
 View an artifact's referrers. The default output should be listed in a tree view.
 
 ```bash
@@ -332,57 +334,234 @@ $REGISTRY/$REPO@sha256:a3785f78ab8547ae2710c89e627783cfa7ee7824d3468cae6835c9f4e
     └── sha256:50fd0dc107d84b5e7b402688000a7ed3aaf8a2692d5cb74da5277fa3c4cecf15
 ```
 
-View an artifact's referrers manifest in pretty JSON output. The following fields should be outputted:
+> [!NOTE]
+> The `--output` flag will be replaced by the `--format` flag. The `--output` flag SHOULD be marked as "deprecated" in ORAS with a warning message and will be removed in future releases.
 
-- `manifests`: the list of referrers
+If the referrers have child referrers, ORAS SHOULD show the manifest content of the subject image and all referrers recursively in all formatted outputs (`tree`, `JSON`, `go-template`). It ensures data consistency of different data formats in the output.
+
+#### JSON output of `oras discover`
+
+When showing the subject image and all referrers' manifests recursively in a formatted JSON output, include the following fields:
+
+- `reference`: full reference by digest of the subject image
+- `mediaType`: media type of the subject image
+- `digest`: digest of the subject image
+- `size`: subject image size in bytes
+- `referrers`: the list of referrers' manifest
   - `reference`: full reference by digest of the referrer
   - `mediaType`: media type of the referrer
-  - `size`: referrer file size in bytes
   - `digest`: digest of the referrer
+  - `size`: referrer file size in bytes
   - `artifactType`: artifact type of a referrer
   - `annotations`: contains arbitrary metadata in a referrer
+  - `referrers`: the list of referrers' manifest
 
-See an example:
-
-```bash
-oras discover $REGISTRY/$REPO:v1 --format json
-```
+Here is the JSON Schema to describe the required fields of JSON output:
 
 ```json
 {
-  "manifests": [
-    {
-      "reference": "$REGISTRY/$REPO@sha256:8dee8cb9a1334595545e3baf15c3eeed13c4b35ae08e3ab32e1df31fb152dc1d",
-      "mediaType": "application/vnd.oci.image.manifest.v1+json",
-      "digest": "sha256:8dee8cb9a1334595545e3baf15c3eeed13c4b35ae08e3ab32e1df31fb152dc1d",
-      "size": 739,
-      "annotations": {
-        "io.cncf.notary.x509chain.thumbprint#S256": "[\"79e91aa1e109a16df87d200e493fd3d33c67253f76d41334d7f7c29c00ba55b3\"]",
-        "org.opencontainers.image.created": "2024-01-01T10:32:55Z"
-      },
-      "artifactType": "application/vnd.cncf.notary.signature"
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JSON Output of Subject Image and All Referrers",
+  "type": "object",
+  "properties": {
+    "reference": {
+      "type": "string",
+      "description": "Full reference by digest of the subject image"
     },
-    {
-      "reference": "$REGISTRY/$REPO@sha256:50fd0dc107d84b5e7b402688000a7ed3aaf8a2692d5cb74da5277fa3c4cecf15",
-      "mediaType": "application/vnd.oci.image.manifest.v1+json",
-      "digest": "sha256:50fd0dc107d84b5e7b402688000a7ed3aaf8a2692d5cb74da5277fa3c4cecf15",
-      "size": 739,
-      "annotations": {
-        "org.opencontainers.image.created": "2024-01-01T07:57:10Z"
-      },
-      "artifactType": "sbom/example"
+    "mediaType": {
+      "type": "string",
+      "description": "Media type of the subject image"
+    },
+    "digest": {
+      "type": "string",
+      "description": "Digest of the subject image"
+    },
+    "size": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Size of the subject image in bytes"
+    },
+    "referrers": {
+      "type": "array",
+      "description": "List of referrers' manifests",
+      "items": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "description": "Full reference by digest of the referrer"
+          },
+          "mediaType": {
+            "type": "string",
+            "description": "Media type of the referrer"
+          },
+          "digest": {
+            "type": "string",
+            "description": "Digest of the referrer"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Referrer file size in bytes"
+          },
+          "artifactType": {
+            "type": "string",
+            "description": "Artifact type of the referrer"
+          },
+          "annotations": {
+            "type": "object",
+            "description": "Arbitrary metadata in a referrer",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "referrers": {
+            "type": "array",
+            "description": "List of nested referrers' manifests",
+            "items": {
+              "$ref": "#/properties/referrers/items"
+            }
+          }
+        },
+        "required": [
+          "reference",
+          "mediaType",
+          "digest",
+          "size",
+          "artifactType"
+        ]
+      }
     }
-  ]
+  },
+  "required": ["reference", "mediaType", "digest", "size"],
+  "additionalProperties": false
 }
 ```
 
-> [!NOTE]
-> The `--format` flag will replace the existing `--output` flag. The `--output` will be marked as "deprecated" in ORAS v1.2.0 and will be removed in the future releases.
+Here is the sample of a formatted JSON output:
+
+```bash
+oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01 --format json
+```
+
+```json
+  "reference": "localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01",
+  "mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
+  "digest": "sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01",
+  "size": 1788,
+  "referrers": [
+    {
+      "reference": "localhost:5000/kubernetes/kubectl@sha256:325129be79f416fe11a9ec44233cfa57f5d89434e6d37170f97e48f7904983e3",
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:325129be79f416fe11a9ec44233cfa57f5d89434e6d37170f97e48f7904983e3",
+      "size": 788,
+      "annotations": {
+        "org.opencontainers.image.created": "2024-03-15T22:49:10Z",
+        "vnd.oci.artifact.lifecycle.end-of-life.date": "2024-03-15"
+      },
+      "artifactType": "application/vnd.oci.artifact.lifecycle",
+      "referrers": [
+        {
+          "reference": "localhost:5000/kubernetes/kubectl@sha256:f520330e9f43c05859c532e67a25c9c765b144782ae7b872656192c27fd4e2dd",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "digest": "sha256:f520330e9f43c05859c532e67a25c9c765b144782ae7b872656192c27fd4e2dd",
+          "size": 1080,
+          "annotations": {
+            "io.cncf.notary.x509chain.thumbprint#S256": "[430ecf0685f8018443f8418f5d7134b146f28862116114925713635d5703fb69,9b1894f223d934cbd6575af3c6e1f6096b9221a7da132185f5a5cdc92235b5dc,23ffe2b8bdb9a1711515d4cffda04bc7f793d513c76c243f1020507d8669b7db]",
+            "org.opencontainers.image.created": "2024-03-15T22:54:42Z"
+          },
+          "artifactType": "application/vnd.cncf.notary.signature"
+        }
+      ]
+    },
+    {
+      "reference": "localhost:5000/kubernetes/kubectl@sha256:a811606b09341bab4bbc0a4deb2c0cb709ec9702635cbe2d36b77d58359ec046",
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:a811606b09341bab4bbc0a4deb2c0cb709ec9702635cbe2d36b77d58359ec046",
+      "size": 747,
+      "annotations": {
+        "org.opencontainers.image.created": "2024-01-18T18:12:41Z"
+      },
+      "artifactType": "application/vnd.in-toto+json",
+      "referrers": [
+        {
+          "reference": "localhost:5000/kubernetes/kubectl@sha256:04723fd7d00df77c6f226b907667396554bf9418dc48a7a04feb5ff24aa0b9ec",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "digest": "sha256:04723fd7d00df77c6f226b907667396554bf9418dc48a7a04feb5ff24aa0b9ec",
+          "size": 1080,
+          "annotations": {
+            "io.cncf.notary.x509chain.thumbprint#S256": "[430ecf0685f8018443f8418f5d7134b146f28862116114925713635d5703fb69,9b1894f223d934cbd6575af3c6e1f6096b9221a7da132185f5a5cdc92235b5dc,23ffe2b8bdb9a1711515d4cffda04bc7f793d513c76c243f1020507d8669b7db]",
+            "org.opencontainers.image.created": "2024-01-18T18:20:09Z"
+          },
+          "artifactType": "application/vnd.cncf.notary.signature"
+        }
+      ]
+    }
+  ]
+```
+
+#### Table format of `oras discover` output
+
+The `oras discover --format table` command currently lists only direct referrers in a table format. This table view has limitations: it does not effectively represent the hierarchical artifact reference relationships of all referrers. Users can't differentiate the reference relationship between each referrer in a table format output. See current sample output as follows:
+
+```console
+$ oras discover localhost:5000/kubectl:v1.29.1 --format table
+Discovered 4 artifacts referencing localhost:5000/kubectl:v1.29.1
+Digest: sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01
+
+Artifact Type                                  Digest
+application/vnd.microsoft.artifact.lifecycle   sha256:325129be79f416fe11a9ec44233cfa57f5d89434e6d37170f97e48f7904983e3
+application/vnd.cncf.notary.signature          sha256:f520330e9f43c05859c532e67a25c9c765b144782ae7b872656192c27fd4e2dd
+application/vnd.in-toto+json                   sha256:a811606b09341bab4bbc0a4deb2c0cb709ec9702635cbe2d36b77d58359ec046
+application/vnd.cncf.notary.signature          sha256:f2098a230b6311edeb44ab2d6e5789372300d9b98be34c4d9477d3b9638a3bb1
+```
+
+In contrast, the tree view offers a more structured and human-readable output by visually displaying relationships of each referrer. Given this advantage, the table view no longer provides significant value to users. This document proposes deprecating the `--format table` option. When user specifies `--format table` flag with `oras discover`, the warning message SHOULD be printed out as follows:
+
+```console
+$ oras discover localhost:5000/kubectl:v1.29.1 --format table
+Warning: "table" option has been deprecated in the "--format" flag, and will be removed in a future release. Please switch to either JSON or tree format for more structured output.
+Discovered 4 artifacts referencing localhost:5000/kubectl:v1.29.1
+Digest: sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01
+
+Artifact Type                                  Digest
+application/vnd.microsoft.artifact.lifecycle   sha256:325129be79f416fe11a9ec44233cfa57f5d89434e6d37170f97e48f7904983e3
+application/vnd.cncf.notary.signature          sha256:f520330e9f43c05859c532e67a25c9c765b144782ae7b872656192c27fd4e2dd
+application/vnd.in-toto+json                   sha256:a811606b09341bab4bbc0a4deb2c0cb709ec9702635cbe2d36b77d58359ec046
+application/vnd.cncf.notary.signature          sha256:f2098a230b6311edeb44ab2d6e5789372300d9b98be34c4d9477d3b9638a3bb1
+```
+#### Set the depth of listed referrers 
+
+By default, ORAS displays all referrers of a subject image. However, when a subject image has a complex referrer graph, this can lead to throttling or performance issues. To mitigate this, ORAS SHOULD introduce an experimental `--depth` flag for `oras discover`, allowing users to specify the maximum depth of referrers in the formatted output.  
+
+Assume there is a sample image with referrers spanning four levels. By using the `--depth` flag, you can display only the referrers within the third level in a tree view. This command will display the referrers up to the third level only, helping to limit the scope and improve performance when dealing with complex referrer graphs. 
+
+```bash
+oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01 --format tree --depth 3
+```
+
+```console
+localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01
+├── application/vnd.oci.artifact.lifecycle
+│   └── sha256:325129be79f416fe11a9ec44233cfa57f5d89434e6d37170f97e48f7904983e3
+│       └── application/vnd.cncf.notary.signature
+│           └── sha256:f520330e9f43c05859c532e67a25c9c765b144782ae7b872656192c27fd4e2dd
+│               └── vnd/test-annotations
+│                   └── sha256:d2cb66a53e4d77488df1f15701554ebb11ffa1cf6eb90f79afa33d3b172f11d2
+└── application/vnd.in-toto+json
+    └── sha256:a811606b09341bab4bbc0a4deb2c0cb709ec9702635cbe2d36b77d58359ec046
+        └── application/vnd.cncf.notary.signature
+            └── sha256:04723fd7d00df77c6f226b907667396554bf9418dc48a7a04feb5ff24aa0b9ec
+                └── vnd/test-annotations
+                    └── sha256:d2cb66a53e4d77488df1f15701554ebb11ffa1cf6eb90f79afa33d3b172f11d2
+```
 
 ## FAQ
 
 **Q:** Why choose to use `--format` flag to enable JSON formatted output instead of extending the existing `--output` flag?
+
 **A:** ORAS follows [GNU](https://www.gnu.org/prep/standards/html_node/Option-Table.html#Option-Table) design principles. ORAS uses `--output` to specify a file or directory content should be created within and `--format` to format the output into JSON or using the given Go template. Popular tools, like Docker, Podman, and Skopeo also follow this design principle within their formatted output feature.
 
 **Q:** Why ORAS chooses [Go template](https://pkg.go.dev/text/template)?
+
 **A:** Go template is a powerful method to allow users to manipulate and customize output you want. It provides access to data objects and additional functions that are passed into the template engine programmatically. It also has some useful libraries that have strong functions for Go’s template language to manipulate the output data, such as [Sprig](https://masterminds.github.io/sprig/). The basic usage of Go template functions are easy to use.

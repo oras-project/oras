@@ -67,6 +67,7 @@ Example - List the repositories under the registry that include values lexically
 	}
 
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the repository specified by `last`")
+	option.AddDeprecatedVerboseFlag(cmd.Flags())
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Remote)
 }
