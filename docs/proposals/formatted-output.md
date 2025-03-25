@@ -234,7 +234,7 @@ For example, pull an artifact that contains multiple layers (files) and show the
 oras pull $REGISTRY/$REPO:$TAG --format go-template='{{toRawJson .}}'
 ```
 
-```
+```console
 {"reference":"localhost:5000/oras@sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd186111","files":[{"path":"/home/user/oras-install/sbom.spdx","reference":"localhost:5000/oras@sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd186222","mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd186222","size":820},{"path":"/home/user/oras-install/vul-scan.json","reference":"localhost:5000/oras@sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd18669b","mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:7414904f07f515f48fe4afeaf876e3151039a81e7177b9c66e9e7ed6dd18669b","size":820}]}
 ```
 
