@@ -335,9 +335,9 @@ $REGISTRY/$REPO@sha256:a3785f78ab8547ae2710c89e627783cfa7ee7824d3468cae6835c9f4e
 ```
 
 > [!NOTE]
-> The `--output` flag will replaced by `--format` flag. The `--output` SHOULD be marked as "deprecated" in ORAS with warning message and will be removed in future releases. 
+> The `--output` flag will be replaced by the `--format` flag. The `--output` flag SHOULD be marked as "deprecated" in ORAS with a warning message and will be removed in future releases.
 
-If the referrers have child referrers, ORAS SHOULD show the manifest content of the subject image and all referrers recursively in all formatted outputs (tree, JSON, go-template). It ensures data consistency of different data formats in the output.
+If the referrers have child referrers, ORAS SHOULD show the manifest content of the subject image and all referrers recursively in all formatted outputs (`tree`, `JSON`, `go-template`). It ensures data consistency of different data formats in the output.
 
 #### JSON output of `oras discover`
 
