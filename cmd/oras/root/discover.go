@@ -65,7 +65,7 @@ Example - [Experimental] Discover referrers and display in a table view:
   oras discover localhost:5000/hello:v1 --format table
 
 Example - [Experimental] Discover referrers and format output with Go template:
-  oras discover localhost:5000/hello:v1 --format go-template --template "{{.manifests}}"
+  oras discover localhost:5000/hello:v1 --format go-template --template "{{.referrers}}"
 
 Example - Discover all the referrers of manifest with annotations, displayed in a tree view:
   oras discover -v localhost:5000/hello:v1
