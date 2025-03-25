@@ -151,7 +151,7 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 	})
 
-	When("running discover command with tree output", func() {
+	When("running discover command with tree output", Focus, func() {
 		referrers := []ocispec.Descriptor{foobar.SBOMImageReferrer, foobar.SBOMImageReferrer, foobar.SignatureImageReferrer, foobar.SignatureImageReferrer}
 		It("should show as tree by default", func() {
 			ORAS("discover", subjectRef).

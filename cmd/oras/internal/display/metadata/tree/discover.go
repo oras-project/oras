@@ -30,6 +30,7 @@ import (
 )
 
 var (
+	rootColor         = aec.LightBlueF
 	artifactTypeColor = aec.LightYellowF
 	digestColor       = aec.LightGreenF
 	annotationsColor  = aec.LightCyanF
@@ -47,7 +48,17 @@ type discoverHandler struct {
 
 // NewDiscoverHandler creates a new handler for discover events.
 func NewDiscoverHandler(out io.Writer, path string, root ocispec.Descriptor, verbose bool, tty *os.File) metadata.DiscoverHandler {
-	treeRoot := tree.New(fmt.Sprintf("%s@%s", path, root.Digest))
+	return newDiscoverHandler(out, path, root, verbose, tty)
+}
+
+// newDiscoverHandler creates a new handler for discover events.
+func newDiscoverHandler(out io.Writer, path string, root ocispec.Descriptor, verbose bool, tty *os.File) *discoverHandler {
+	rootDigest := fmt.Sprintf("%s@%s", path, root.Digest)
+	if tty != nil {
+		rootDigest = rootColor.Apply(rootDigest)
+	}
+	treeRoot := tree.New(rootDigest)
+
 	return &discoverHandler{
 		out:  out,
 		path: path,
