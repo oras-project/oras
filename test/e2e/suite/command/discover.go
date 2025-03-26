@@ -129,12 +129,12 @@ var _ = Describe("1.1 registry users:", func() {
 	subjectRef := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
 	When("running discover command with json output", func() {
 		format := "json"
-		It("should discover direct referrers of a subject with deprecation hint", func() {
+		It("should discover referrers of a subject with deprecation hint", func() {
 			bytes := ORAS("discover", subjectRef, "-o", format).MatchErrKeyWords(feature.Deprecated.Mark).Exec().Out.Contents()
 			var subject subject
 			Expect(json.Unmarshal(bytes, &subject)).ShouldNot(HaveOccurred())
 			Expect(subject.Referrers).To(HaveLen(1))
-			Expect(subject.Referrers).Should(ContainElement(foobar.SBOMImageReferrer))
+			Expect(subject.Referrers[0].Descriptor).Should(Equal(foobar.SBOMImageReferrer))
 		})
 		It("should discover direct and indirect referrers of a subject by default", func() {
 			bytes := ORAS("discover", subjectRef, "--format", format).Exec().Out.Contents()
@@ -163,7 +163,7 @@ var _ = Describe("1.1 registry users:", func() {
 			var subject subject
 			Expect(json.Unmarshal(bytes, &subject)).ShouldNot(HaveOccurred())
 			Expect(subject.Referrers).To(HaveLen(1))
-			Expect(subject.Referrers).Should(ContainElement(foobar.SBOMImageReferrer))
+			Expect(subject.Referrers[0].Descriptor).Should(Equal(foobar.SBOMImageReferrer))
 		})
 
 		It("should discover no matched referrer", func() {
@@ -318,7 +318,7 @@ var _ = Describe("1.0 registry users:", func() {
 			Expect(json.Unmarshal(bytes, &subject)).ShouldNot(HaveOccurred())
 			Expect(subject.Descriptor).Should(Equal(foobar.FooBar))
 			Expect(subject.Referrers).To(HaveLen(1))
-			Expect(subject.Referrers).Should(ContainElement(foobar.SBOMImageReferrer))
+			Expect(subject.Referrers[0].Descriptor).Should(Equal(foobar.SBOMImageReferrer))
 		})
 
 		It("should discover matched referrer when filtering via json output", func() {
