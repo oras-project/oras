@@ -144,15 +144,16 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 	if err != nil {
 		return err
 	}
-	if err := fetchAllReferrers(ctx, repo, desc, opts.artifactType, handler, 0, opts.depth); err != nil {
+	if err := fetchAllReferrers(ctx, repo, desc, opts.artifactType, handler, opts.depth); err != nil {
 		return err
 	}
 	return handler.Render()
 }
 
-func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, handler metadata.DiscoverHandler, currentDepth int, depth int) error {
-	if depth != 0 && currentDepth >= depth {
-		return nil
+func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, handler metadata.DiscoverHandler, depth int) error {
+	var nextDepth int
+	if depth > 0 {
+		nextDepth = depth - 1
 	}
 	results, err := registry.Referrers(ctx, repo, desc, artifactType)
 	if err != nil {
@@ -163,11 +164,14 @@ func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc 
 		if err := handler.OnDiscovered(r, desc); err != nil {
 			return err
 		}
+		if depth == 1 {
+			continue
+		}
 		if err := fetchAllReferrers(ctx, repo, ocispec.Descriptor{
 			Digest:    r.Digest,
 			Size:      r.Size,
 			MediaType: r.MediaType,
-		}, artifactType, handler, currentDepth+1, depth); err != nil {
+		}, artifactType, handler, nextDepth); err != nil {
 			return err
 		}
 	}
