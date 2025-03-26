@@ -474,7 +474,7 @@ var _ = Describe("OCI image layout users:", func() {
 			Expect(json.Unmarshal(bytes, &subject)).ShouldNot(HaveOccurred())
 			Expect(subject.Descriptor).Should(Equal(foobar.FooBarOCI))
 			Expect(subject.Referrers).To(HaveLen(1))
-			Expect(subject.Referrers).Should(ContainElement(foobar.SBOMImageReferrer))
+			Expect(subject.Referrers[0].Descriptor).Should(Equal(foobar.SBOMImageReferrer))
 		})
 
 		It("should discover matched referrer when filtering", func() {
