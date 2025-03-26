@@ -89,7 +89,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 				return errors.New("depth value should be at least 1")
 			}
 			// only show direct referrers for table format
-			if opts.FormatFlag == "table" {
+			if opts.FormatFlag == option.FormatTypeTable.Name {
 				opts.depth = 1
 			}
 			opts.RawReference = args[0]
@@ -98,7 +98,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 			}
 			if cmd.Flags().Changed("output") {
 				switch opts.Format.Type {
-				case "tree", "json", "table":
+				case option.FormatTypeTree.Name, option.FormatTypeJSON.Name, option.FormatTypeTable.Name:
 					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "[DEPRECATED] --output is deprecated, try `--format %s` instead\n", opts.Template)
 				default:
 					return errors.New("output type can only be tree, table or json")
