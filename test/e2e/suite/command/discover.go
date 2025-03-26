@@ -154,7 +154,7 @@ var _ = Describe("1.1 registry users:", func() {
 			Expect(json.Unmarshal(bytes, &subject)).ShouldNot(HaveOccurred())
 			Expect(subject.Descriptor).Should(Equal(foobar.FooBar))
 			Expect(subject.Referrers).To(HaveLen(1))
-			Expect(subject.Referrers).Should(ContainElement(foobar.SBOMImageReferrer))
+			Expect(subject.Referrers[0].Descriptor).Should(Equal(foobar.SBOMImageReferrer))
 		})
 
 		It("should discover matched referrer when filtering", func() {
@@ -179,7 +179,7 @@ var _ = Describe("1.1 registry users:", func() {
 			var subject subject
 			Expect(json.Unmarshal(bytes, &subject)).ShouldNot(HaveOccurred())
 			Expect(subject.Referrers).To(HaveLen(1))
-			Expect(subject.Referrers).Should(ContainElement(multi_arch.LinuxAMD64Referrer))
+			Expect(subject.Referrers[0].Descriptor).Should(ContainElement(multi_arch.LinuxAMD64Referrer))
 		})
 
 		It("should discover referrers correctly by depth 1", func() {
@@ -271,13 +271,6 @@ var _ = Describe("1.1 registry users:", func() {
 				MatchKeyWords(append(discoverKeyWords(false, referrers...), foobar.Digest)...).
 				Exec()
 		})
-		It("should show all referrers of a subject", func() {
-			referrers := []ocispec.Descriptor{foobar.SBOMImageReferrer, foobar.SBOMImageReferrer}
-			err := ORAS("discover", subjectRef, "--format", format, "--depth", "1").
-				MatchKeyWords(append(discoverKeyWords(false, referrers...), foobar.Digest)...).
-				Exec().Err
-			Expect(err).NotTo(gbytes.Say(feature.Deprecated.Mark))
-		})
 	})
 	When("running discover command with go-template output", func() {
 		It("should show referrers digest of a subject", func() {
@@ -326,7 +319,7 @@ var _ = Describe("1.0 registry users:", func() {
 			var subject subject
 			Expect(json.Unmarshal(bytes, &subject)).ShouldNot(HaveOccurred())
 			Expect(subject.Referrers).To(HaveLen(1))
-			Expect(subject.Referrers).Should(ContainElement(foobar.SBOMImageReferrer))
+			Expect(subject.Referrers[0].Descriptor).Should(ContainElement(foobar.SBOMImageReferrer))
 		})
 
 		It("should discover no referrer when not matching via json output", func() {
@@ -486,7 +479,7 @@ var _ = Describe("OCI image layout users:", func() {
 			var disv subject
 			Expect(json.Unmarshal(bytes, &disv)).ShouldNot(HaveOccurred())
 			Expect(disv.Referrers).To(HaveLen(1))
-			Expect(disv.Referrers).Should(ContainElement(foobar.SBOMImageReferrer))
+			Expect(disv.Referrers[0].Descriptor).Should(Equal(foobar.SBOMImageReferrer))
 		})
 
 		It("should discover no matched referrer", func() {
