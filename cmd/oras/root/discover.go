@@ -88,6 +88,10 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 			if cmd.Flags().Changed("depth") && opts.depth < 1 {
 				return errors.New("depth value should be at least 1")
 			}
+			// only show direct referrers for table format
+			if opts.FormatFlag == "table" {
+				opts.depth = 1
+			}
 			opts.RawReference = args[0]
 			if err := option.Parse(cmd, &opts); err != nil {
 				return err
