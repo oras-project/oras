@@ -179,8 +179,8 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 
 		It("should discover all referrers of a subject with annotations", func() {
-			ORAS("discover", subjectRef, "--format", format, "-v").
-				MatchKeyWords(append(discoverKeyWords(true, referrers...), RegistryRef(ZOTHost, ArtifactRepo, foobar.Digest))...).
+			ORAS("discover", subjectRef, "--format", format).
+				MatchKeyWords(append(discoverKeyWords(true, referrers...), RegistryRef(ZOTHost, ArtifactRepo, foobar.Digest), "[annotations]")...).
 				Exec()
 		})
 
@@ -190,30 +190,22 @@ var _ = Describe("1.1 registry users:", func() {
 				Exec()
 		})
 
-		It("should discover and display annotations in verbose mode", func() {
-			referrers := []ocispec.Descriptor{foobar.SBOMImageReferrer, foobar.SignatureImageReferrer}
-			ORAS("discover", subjectRef, "--format", "tree", "-v").
+		It("should discover and display annotations with --verbose", func() {
+			ORAS("discover", subjectRef, "--format", format, "-v").
 				MatchKeyWords(append(discoverKeyWords(true, referrers...), RegistryRef(ZOTHost, ArtifactRepo, foobar.Digest), "[annotations]")...).
-				Exec()
-		})
-
-		It("should not display annotations without verbose flag", func() {
-			referrers := []ocispec.Descriptor{foobar.SBOMImageReferrer, foobar.SignatureImageReferrer}
-			ORAS("discover", subjectRef, "--format", "tree").
-				MatchKeyWords(append(discoverKeyWords(false, referrers...), RegistryRef(ZOTHost, ArtifactRepo, foobar.Digest))...).
 				Exec()
 		})
 
 		It("should not display annotations with --verbose=false", func() {
 			referrers := []ocispec.Descriptor{foobar.SBOMImageReferrer, foobar.SignatureImageReferrer}
-			out := ORAS("discover", subjectRef, "--format", "tree", "--verbose=false").
+			out := ORAS("discover", subjectRef, "--format", format, "--verbose=false").
 				MatchKeyWords(append(discoverKeyWords(false, referrers...), RegistryRef(ZOTHost, ArtifactRepo, foobar.Digest))...).
 				Exec().Out
 			Expect(out).NotTo(gbytes.Say("\\[annotations\\]"))
 		})
 
 		It("should show deprecation message when using verbose flag", func() {
-			ORAS("discover", subjectRef, "--format", "tree", "--verbose").
+			ORAS("discover", subjectRef, "--format", format, "--verbose").
 				MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).
 				Exec()
 		})

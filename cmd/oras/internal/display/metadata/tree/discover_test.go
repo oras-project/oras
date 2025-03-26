@@ -44,7 +44,7 @@ func TestDiscoverHandler_OnDiscovered(t *testing.T) {
 		},
 		ArtifactType: "test/sbom.file",
 	}
-	coloredRoot := rootColor.Apply(fmt.Sprintf("%s@%s", path, subjectDesc.Digest))
+	coloredRoot := digestColor.Apply(fmt.Sprintf("%s@%s", path, subjectDesc.Digest))
 	coloredArtifactType := artifactTypeColor.Apply(referrerDesc.ArtifactType)
 	coloredDigest := digestColor.Apply(referrerDesc.Digest.String())
 	coloredAnnotations := annotationsColor.Apply("[annotations]")

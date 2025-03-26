@@ -30,7 +30,6 @@ import (
 )
 
 var (
-	rootColor         = aec.LightBlueF
 	artifactTypeColor = aec.LightYellowF
 	digestColor       = aec.LightGreenF
 	annotationsColor  = aec.LightCyanF
@@ -55,7 +54,7 @@ func NewDiscoverHandler(out io.Writer, path string, root ocispec.Descriptor, ver
 func newDiscoverHandler(out io.Writer, path string, root ocispec.Descriptor, verbose bool, tty *os.File) *discoverHandler {
 	rootDigest := fmt.Sprintf("%s@%s", path, root.Digest)
 	if tty != nil {
-		rootDigest = rootColor.Apply(rootDigest)
+		rootDigest = digestColor.Apply(rootDigest)
 	}
 	treeRoot := tree.New(rootDigest)
 
