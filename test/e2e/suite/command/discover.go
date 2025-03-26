@@ -179,7 +179,7 @@ var _ = Describe("1.1 registry users:", func() {
 			var subject subject
 			Expect(json.Unmarshal(bytes, &subject)).ShouldNot(HaveOccurred())
 			Expect(subject.Referrers).To(HaveLen(1))
-			Expect(subject.Referrers[0].Descriptor).Should(ContainElement(multi_arch.LinuxAMD64Referrer))
+			Expect(subject.Referrers[0].Descriptor).Should(Equal(multi_arch.LinuxAMD64Referrer))
 		})
 
 		It("should discover referrers correctly by depth 1", func() {
@@ -319,7 +319,7 @@ var _ = Describe("1.0 registry users:", func() {
 			var subject subject
 			Expect(json.Unmarshal(bytes, &subject)).ShouldNot(HaveOccurred())
 			Expect(subject.Referrers).To(HaveLen(1))
-			Expect(subject.Referrers[0].Descriptor).Should(ContainElement(foobar.SBOMImageReferrer))
+			Expect(subject.Referrers[0].Descriptor).Should(Equal(foobar.SBOMImageReferrer))
 		})
 
 		It("should discover no referrer when not matching via json output", func() {
