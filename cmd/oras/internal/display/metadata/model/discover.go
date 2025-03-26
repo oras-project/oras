@@ -64,5 +64,4 @@ func NewNode(name string, desc ocispec.Descriptor) *Node {
 	return &Node{
 		Descriptor: FromDescriptor(name, desc),
 	}
-
 }

@@ -155,15 +155,15 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 }
 
 func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, handler metadata.DiscoverHandler, depth int) error {
-	var nextDepth int
-	if depth > 0 {
-		nextDepth = depth - 1
-	}
 	results, err := registry.Referrers(ctx, repo, desc, artifactType)
 	if err != nil {
 		return err
 	}
 
+	var nextDepth int
+	if depth > 0 {
+		nextDepth = depth - 1
+	}
 	for _, r := range results {
 		if err := handler.OnDiscovered(r, desc); err != nil {
 			return err
