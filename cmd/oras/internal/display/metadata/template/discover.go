@@ -44,7 +44,7 @@ func NewDiscoverHandler(out io.Writer, root ocispec.Descriptor, path string, tem
 
 // OnDiscovered implements metadata.DiscoverHandler.
 func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) error {
-	return h.model.Add(referrer, subject)
+	return h.model.AddReferrer(referrer, subject)
 }
 
 // Render implements metadata.DiscoverHandler.

@@ -35,8 +35,8 @@ type Node struct {
 	Referrers []*Node `json:"referrers,omitempty"`
 }
 
-// Add adds a node to the discovered referrers tree.
-func (d *Discover) Add(referrer, subject ocispec.Descriptor) error {
+// AddReferrer adds a node to the discovered referrers tree.
+func (d *Discover) AddReferrer(referrer, subject ocispec.Descriptor) error {
 	to, ok := d.nodes[subject.Digest]
 	if !ok {
 		return fmt.Errorf("unexpected subject descriptor: %v", subject)
@@ -59,7 +59,7 @@ func NewDiscover(path string, root ocispec.Descriptor) Discover {
 	}
 }
 
-// NewNode creates a new discover model.
+// NewNode creates a new node.
 func NewNode(name string, desc ocispec.Descriptor) *Node {
 	return &Node{
 		Descriptor: FromDescriptor(name, desc),
