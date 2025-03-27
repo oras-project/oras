@@ -42,6 +42,7 @@ type backupOptions struct {
 	option.Cache
 	option.Common
 	option.Platform
+	option.Terminal
 
 	From        option.Target
 	output      string
@@ -63,6 +64,7 @@ Example - Backup artifacts from a registry to disk:
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.sources = args
 			opts.From.RawReference = args[0]
+			opts.DisableTTY(opts.Debug, false)
 			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -97,7 +99,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		}
 
 		ctx = registryutil.WithScopeHint(ctx, dst, auth.ActionPull, auth.ActionPush)
-		err = doBackup(ctx, src, dst, to.AnnotatedReference(), opts)
+		err = doBackup(ctx, src, dst, to.GetDisplayReference(), opts)
 		if err != nil {
 			return err
 		}
@@ -152,7 +154,7 @@ func doBackup(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphT
 		opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, desc.Digest.String())
 	}
 
-	return metadataHandler.OnCopied(opts.From.AnnotatedReference(), destination, desc)
+	return metadataHandler.OnCopied(opts.From.GetDisplayReference(), destination)
 }
 
 // recursiveBackup copies an artifact and its referrers from one target to another.
