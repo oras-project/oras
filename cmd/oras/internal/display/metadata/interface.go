@@ -101,9 +101,8 @@ type ManifestIndexUpdateHandler ManifestIndexCreateHandler
 // BackupHandler handles metadata output for cp events.
 type BackupHandler interface {
 	TaggedHandler
-	Renderer
 
-	OnCopied(source, destination string, desc ocispec.Descriptor) error
+	OnCopied(source, destination string) error
 }
 
 // CopyHandler handles metadata output for cp events.

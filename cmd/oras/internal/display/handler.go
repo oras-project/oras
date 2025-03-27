@@ -230,8 +230,16 @@ func NewCopyHandler(printer *output.Printer, tty *os.File, fetcher fetcher.Fetch
 	return status.NewTextCopyHandler(printer, fetcher), text.NewCopyHandler(printer)
 }
 
-// NewBackupHandler returns copy handlers.
+// NewBackupHandler returns backup handlers.
 func NewBackupHandler(printer *output.Printer, tty *os.File, fetcher fetcher.Fetcher) (status.BackupHandler, metadata.BackupHandler) {
+	if tty != nil {
+		return status.NewTTYCopyHandler(tty), text.NewBackupHandler(printer)
+	}
+	return status.NewTextCopyHandler(printer, fetcher), text.NewBackupHandler(printer)
+}
+
+// NewRestoreHandler returns restore handlers.
+func NewRestoreHandler(printer *output.Printer, tty *os.File, fetcher fetcher.Fetcher) (status.BackupHandler, metadata.BackupHandler) {
 	if tty != nil {
 		return status.NewTTYCopyHandler(tty), text.NewBackupHandler(printer)
 	}

@@ -24,7 +24,6 @@ import (
 // BackupHandler handles text metadata output for cp events.
 type BackupHandler struct {
 	printer *output.Printer
-	desc    ocispec.Descriptor
 }
 
 // NewBackupHandler returns a new handler for cp events.
@@ -39,13 +38,7 @@ func (h *BackupHandler) OnTagged(_ ocispec.Descriptor, tag string) error {
 	return h.printer.Println("Tagged", tag)
 }
 
-// Render implements metadata.Renderer.
-func (h *BackupHandler) Render() error {
-	return h.printer.Println("Digest:", h.desc.Digest)
-}
-
 // OnCopied implements metadata.BackupHandler.
-func (h *BackupHandler) OnCopied(source, destination string, desc ocispec.Descriptor) error {
-	h.desc = desc
+func (h *BackupHandler) OnCopied(source, destination string) error {
 	return h.printer.Println("Copied", source, "=>", destination)
 }

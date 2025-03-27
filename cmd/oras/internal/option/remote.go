@@ -86,6 +86,7 @@ func (remo *Remote) EnableDistributionSpecFlag() {
 
 // ApplyFlags applies flags to a command flag set.
 func (remo *Remote) ApplyFlags(fs *pflag.FlagSet) {
+	fmt.Printf("remote.ApplyFlags %v\n", remo)
 	remo.ApplyFlagsWithPrefix(fs, "", "")
 	fs.BoolVar(&remo.secretFromStdin, passwordFromStdinFlag, false, "read password from stdin")
 	fs.BoolVar(&remo.secretFromStdin, identityTokenFromStdinFlag, false, "read identity token from stdin")
@@ -122,6 +123,7 @@ func (remo *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	fs.BoolVar(&remo.Insecure, remo.flagPrefix+"insecure", false, "allow connections to "+notePrefix+"SSL registry without certs")
 	plainHTTPFlagName := remo.flagPrefix + "plain-http"
 	plainHTTP := fs.Bool(plainHTTPFlagName, false, "allow insecure connections to "+notePrefix+"registry without SSL check")
+	fmt.Printf("================ plainHTTP\n")
 	remo.plainHTTP = func() (bool, bool) {
 		return *plainHTTP, fs.Changed(plainHTTPFlagName)
 	}
@@ -362,6 +364,10 @@ func (remo *Remote) NewRegistry(registry string, common Common, logger logrus.Fi
 
 // NewRepository assembles a oras remote repository.
 func (remo *Remote) NewRepository(reference string, common Common, logger logrus.FieldLogger) (repo *remote.Repository, err error) {
+	fmt.Println("**********************************")
+	fmt.Printf("logger=%v\n", logger)
+	fmt.Printf("common=%v\n", common)
+	fmt.Printf("opts=%v\n", remo)
 	fmt.Println("**********************************")
 	repo, err = remote.NewRepository(reference)
 	if err != nil {
