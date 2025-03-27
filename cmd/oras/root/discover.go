@@ -41,6 +41,7 @@ type discoverOptions struct {
 
 	artifactType string
 	verbose      bool
+	depth        int
 }
 
 func discoverCmd() *cobra.Command {
@@ -67,6 +68,9 @@ Example - [Experimental] Discover referrers and display in a table view:
 Example - [Experimental] Discover referrers and format output with Go template:
   oras discover localhost:5000/hello:v1 --format go-template --template "{{.referrers}}"
 
+Example - [Experimental] Discover only direct referrers, displayed in json view:
+  oras discover localhost:5000/hello:v1 --format json --depth 1
+
 Example - Discover all the referrers of manifest with annotations, displayed in a tree view:
   oras discover -v localhost:5000/hello:v1
 
@@ -81,13 +85,20 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 			if err := oerrors.CheckMutuallyExclusiveFlags(cmd.Flags(), "format", "output"); err != nil {
 				return err
 			}
+			if cmd.Flags().Changed("depth") && opts.depth < 1 {
+				return errors.New("depth value should be at least 1")
+			}
+			// only show direct referrers for table format
+			if opts.FormatFlag == option.FormatTypeTable.Name {
+				opts.depth = 1
+			}
 			opts.RawReference = args[0]
 			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
 			if cmd.Flags().Changed("output") {
 				switch opts.Format.Type {
-				case "tree", "json", "table":
+				case option.FormatTypeTree.Name, option.FormatTypeJSON.Name, option.FormatTypeTable.Name:
 					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "[DEPRECATED] --output is deprecated, try `--format %s` instead\n", opts.Template)
 				default:
 					return errors.New("output type can only be tree, table or json")
@@ -101,13 +112,14 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 	}
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
-	cmd.Flags().StringVarP(&opts.Format.FormatFlag, "output", "o", "tree", "[Deprecated] format in which to display referrers (table, json, or tree). tree format will also show indirect referrers")
+	cmd.Flags().StringVarP(&opts.Format.FormatFlag, "output", "o", "tree", "[Deprecated] format in which to display referrers (table, json, or tree).")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "display full metadata of referrers")
+	cmd.Flags().IntVarP(&opts.depth, "depth", "", 0, "[Experimental] level of referrers to display, if unused shows referrers of all levels")
 	opts.SetTypes(
 		option.FormatTypeTree,
 		option.FormatTypeTable,
-		option.FormatTypeJSON.WithUsage("Get direct referrers and output in JSON format"),
-		option.FormatTypeGoTemplate.WithUsage("Print direct referrers using the given Go template"),
+		option.FormatTypeJSON.WithUsage("Get referrers and output in JSON format"),
+		option.FormatTypeGoTemplate.WithUsage("Print referrers using the given Go template"),
 	)
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
@@ -136,39 +148,34 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 	if err != nil {
 		return err
 	}
-	if handler.MultiLevelSupported() {
-		if err := fetchAllReferrers(ctx, repo, desc, opts.artifactType, handler); err != nil {
-			return err
-		}
-	} else {
-		refs, err := registry.Referrers(ctx, repo, desc, opts.artifactType)
-		if err != nil {
-			return err
-		}
-		for _, ref := range refs {
-			if err := handler.OnDiscovered(ref, desc); err != nil {
-				return err
-			}
-		}
+	if err := fetchAllReferrers(ctx, repo, desc, opts.artifactType, handler, opts.depth); err != nil {
+		return err
 	}
 	return handler.Render()
 }
 
-func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, handler metadata.DiscoverHandler) error {
+func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, handler metadata.DiscoverHandler, depth int) error {
 	results, err := registry.Referrers(ctx, repo, desc, artifactType)
 	if err != nil {
 		return err
 	}
 
+	var nextDepth int
+	if depth > 0 {
+		nextDepth = depth - 1
+	}
 	for _, r := range results {
 		if err := handler.OnDiscovered(r, desc); err != nil {
 			return err
+		}
+		if depth == 1 {
+			continue
 		}
 		if err := fetchAllReferrers(ctx, repo, ocispec.Descriptor{
 			Digest:    r.Digest,
 			Size:      r.Size,
 			MediaType: r.MediaType,
-		}, artifactType, handler); err != nil {
+		}, artifactType, handler, nextDepth); err != nil {
 			return err
 		}
 	}
