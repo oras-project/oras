@@ -151,8 +151,7 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 			return err
 		}
 	}
-	displayMetadata.OnIndexCreated(desc)
-	return displayMetadata.Render()
+	return displayMetadata.OnIndexCreated(desc)
 }
 
 func fetchIndex(ctx context.Context, handler status.ManifestIndexUpdateHandler, target oras.ReadOnlyTarget, reference string) (ocispec.Index, error) {
