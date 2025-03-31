@@ -65,7 +65,7 @@ func TestFile_PrepareManifestContent_fromStdin(t *testing.T) {
 	if err != nil {
 		t.Fatal("error calling os.Create(), error =", err)
 	}
-	defer tmpfile.Close()
+	defer func() { _ = tmpfile.Close() }()
 
 	if _, err := tmpfile.Write(content); err != nil {
 		t.Fatal("error calling Write(), error =", err)
@@ -189,7 +189,7 @@ func TestFile_PrepareBlobContent_fromStdin(t *testing.T) {
 	if err != nil {
 		t.Fatal("error calling os.Create(), error =", err)
 	}
-	defer tmpfile.Close()
+	defer func() { _ = tmpfile.Close() }()
 
 	if _, err := tmpfile.Write(content); err != nil {
 		t.Fatal("error calling Write(), error =", err)
@@ -211,7 +211,7 @@ func TestFile_PrepareBlobContent_fromStdin(t *testing.T) {
 
 	// test PrepareBlobContent with provided digest and size
 	gotDesc, gotRc, err := file.PrepareBlobContent("-", blobMediaType, string(dgst), size)
-	defer gotRc.Close()
+	defer func() { _ = gotRc.Close() }()
 	if err != nil {
 		t.Fatal("PrepareBlobContent() error=", err)
 	}

@@ -360,8 +360,8 @@ func TestTrackReader(t *testing.T) {
 			return wantErr
 		})
 		pipeReader, pipeWriter := io.Pipe()
-		pipeReader.Close()
-		pipeWriter.Close()
+		_ = pipeReader.Close()
+		_ = pipeWriter.Close()
 		gotReader := TrackReader(tracker, pipeReader)
 
 		buf := make([]byte, bufSize)
