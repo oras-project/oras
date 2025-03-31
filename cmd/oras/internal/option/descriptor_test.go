@@ -28,8 +28,8 @@ import (
 func TestDescriptor_ApplyFlags(t *testing.T) {
 	var test struct{ Descriptor }
 	ApplyFlags(&test, pflag.NewFlagSet("oras-test", pflag.ExitOnError))
-	if test.Descriptor.OutputDescriptor != false {
-		t.Fatalf("expecting OutputDescriptor to be false but got: %v", test.Descriptor.OutputDescriptor)
+	if test.OutputDescriptor != false {
+		t.Fatalf("expecting OutputDescriptor to be false but got: %v", test.OutputDescriptor)
 	}
 }
 
