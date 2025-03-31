@@ -16,7 +16,6 @@ limitations under the License.
 package option
 
 import (
-	"os"
 	"reflect"
 	"testing"
 
@@ -30,8 +29,7 @@ var mockTarget oras.ReadOnlyTarget = memory.New()
 
 func TestCache_CachedTarget(t *testing.T) {
 	tempDir := t.TempDir()
-	os.Setenv("ORAS_CACHE", tempDir)
-	defer os.Unsetenv("ORAS_CACHE")
+	t.Setenv("ORAS_CACHE", tempDir)
 	opts := Cache{}
 
 	ociStore, err := oci.New(tempDir)
@@ -50,7 +48,7 @@ func TestCache_CachedTarget(t *testing.T) {
 }
 
 func TestCache_CachedTarget_emptyRoot(t *testing.T) {
-	os.Setenv("ORAS_CACHE", "")
+	t.Setenv("ORAS_CACHE", "")
 	opts := Cache{}
 
 	got, err := opts.CachedTarget(mockTarget)
