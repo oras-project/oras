@@ -109,9 +109,6 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 		return err
 	}
 	displayStatus, displayMetadata, displayContent := display.NewManifestIndexCreateHandler(opts.outputPath, opts.Printer, opts.Pretty.Pretty)
-	if err != nil {
-		return err
-	}
 	manifests, err := fetchSourceManifests(ctx, displayStatus, target, opts.sources)
 	if err != nil {
 		return err
