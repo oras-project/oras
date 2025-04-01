@@ -112,7 +112,7 @@ func runLogin(cmd *cobra.Command, opts loginOptions) (err error) {
 	if err != nil {
 		return err
 	}
-	remote, err := opts.Remote.NewRegistry(opts.Hostname, opts.Common, logger)
+	remote, err := opts.NewRegistry(opts.Hostname, opts.Common, logger)
 	if err != nil {
 		return err
 	}

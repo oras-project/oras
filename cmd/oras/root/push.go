@@ -249,9 +249,9 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	}
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
-	copyOptions.CopyGraphOptions.OnCopySkipped = statusHandler.OnCopySkipped
-	copyOptions.CopyGraphOptions.PreCopy = statusHandler.PreCopy
-	copyOptions.CopyGraphOptions.PostCopy = statusHandler.PostCopy
+	copyOptions.OnCopySkipped = statusHandler.OnCopySkipped
+	copyOptions.PreCopy = statusHandler.PreCopy
+	copyOptions.PostCopy = statusHandler.PostCopy
 	copyWithScopeHint := func(root ocispec.Descriptor) error {
 		// add both pull and push scope hints for dst repository
 		// to save potential push-scope token requests during copy
