@@ -33,8 +33,8 @@ demo/alpine:a1a1 (image index)
 After patching, Alice attaches the EoL annotation to the outdated image index and platform-specific image:
 
 ```sh
-oras attach $registry/demo/alpine:a1a1 --artifact-type "application/vnd.demo.artifact.lifecycle" --annotation "vnd.demo.artifact.lifecycle.end-of-life.date": "2025-03-20T01:20:30Z"
-oras attach $registry/demo/alpine:a1a1 --artifact-type "application/vnd.demo.artifact.lifecycle" --annotation "vnd.demo.artifact.lifecycle.end-of-life.date": "2025-03-20T01:20:30Z" --platform linux/amd64
+oras attach $registry/demo/alpine:a1a1 --artifact-type "application/vnd.demo.artifact.lifecycle" --annotation "vnd.demo.artifact.lifecycle.end-of-life.date=2025-03-20T01:20:30Z"
+oras attach $registry/demo/alpine:a1a1 --artifact-type "application/vnd.demo.artifact.lifecycle" --annotation "vnd.demo.artifact.lifecycle.end-of-life.date=2025-03-20T01:20:30Z" --platform linux/amd64
 ```
 
 Resulting image structure:
@@ -51,6 +51,22 @@ A new image index is created:
 demo/alpine:z1z1 (image index)
 -> demo/alpine:r1r1 (linux/amd64)
 -> demo/alpine:c1c1 (linux/arm64)
+```
+
+In addition, if a vulnerability is detected and affects all platform-specific images, the parent index and each platform-specific image are patched, generating new digest of each. The outdated multi-platform image and each platform-specific image are marked as invalid using an EoL annotation similar as above.
+
+```console
+demo/alpine:a1a1 (image index)
+-> demo/alpine:b1b1  <-- VULNERABLE
+-> demo/alpine:c1c1  <-- VULNERABLE
+```
+
+Alice has to manually retrieve the new digests and run `oras attach` against each platform-specific image and the parent image index. There is no approach to attach the EoL annotation to the parent image index and propagate to all platform-specific images recursively.
+
+```sh
+oras attach $registry/demo/alpine:a1a1 --artifact-type "application/vnd.demo.artifact.lifecycle" --annotation "vnd.demo.artifact.lifecycle.end-of-life.date=2025-03-20T01:20:30Z"
+oras attach $registry/demo/alpine:a1a1 --artifact-type "application/vnd.demo.artifact.lifecycle" --annotation "vnd.demo.artifact.lifecycle.end-of-life.date=2025-03-20T01:20:30Z" --platform linux/amd64
+oras attach $registry/demo/alpine:a1a1 --artifact-type "application/vnd.demo.artifact.lifecycle" --annotation "vnd.demo.artifact.lifecycle.end-of-life.date=2025-03-20T01:20:30Z" --platform linux/arm64
 ```
 
 ### Attach a Signature
@@ -71,4 +87,5 @@ demo/alpine:a1a1 (image index) <-- signed with an attached signature a1a1.sig
 -> demo/alpine:c1c1 (linux/arm64)  <-- signed with an attached signature c1c1.sig
 ```
 
-It's cumbersome and inefficient for Bob to run the `oras attach` command multiple times. 
+It's cumbersome and inefficient for Bob to run the `oras attach` command multiple times against the parent image index and propagate to all platform-specific images recursively.
+
