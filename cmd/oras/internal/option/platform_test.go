@@ -25,8 +25,8 @@ import (
 func TestPlatform_ApplyFlags(t *testing.T) {
 	var test struct{ Platform }
 	ApplyFlags(&test, pflag.NewFlagSet("oras-test", pflag.ExitOnError))
-	if test.Platform.platform != "" {
-		t.Fatalf("expecting platform to be empty but got: %v", test.Platform.platform)
+	if test.platform != "" {
+		t.Fatalf("expecting platform to be empty but got: %v", test.platform)
 	}
 }
 
