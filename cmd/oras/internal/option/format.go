@@ -102,7 +102,7 @@ func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
 func (opts *Format) Parse(cmd *cobra.Command) error {
 	// print deprecation message for table format
 	if opts.FormatFlag == FormatTypeTable.Name {
-		fmt.Fprint(cmd.ErrOrStderr(), "Format \"table\" is deprecated and will be removed in a future release.\n")
+		_, _ = fmt.Fprint(cmd.ErrOrStderr(), "Format \"table\" is deprecated and will be removed in a future release.\n")
 	}
 	if err := opts.parseFlag(); err != nil {
 		return err
