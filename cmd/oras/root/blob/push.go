@@ -118,7 +118,7 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 	if err != nil {
 		return err
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 
 	statusHandler, metadataHandler := display.NewBlobPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc, opts.TTY)
 	if err := doPush(ctx, statusHandler, target, desc, rc); err != nil {
