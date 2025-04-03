@@ -50,18 +50,17 @@ func PrepareManifestContent(path string) ([]byte, error) {
 // path or stdin. Use the input digest and size if they are provided. Will
 // return error if the content is from stdin but the content digest and size
 // are missing.
-func PrepareBlobContent(path string, mediaType string, dgstStr string, size int64) (desc ocispec.Descriptor, rc io.ReadCloser, prepareErr error) {
+func PrepareBlobContent(path string, mediaType string, digestString string, size int64) (desc ocispec.Descriptor, rc io.ReadCloser, err error) {
 	if path == "" {
 		return ocispec.Descriptor{}, nil, errors.New("missing file name")
 	}
 
 	// validate digest
-	var dgst digest.Digest
-	if dgstStr != "" {
-		var err error
-		dgst, err = digest.Parse(dgstStr)
+	var blobDigest digest.Digest
+	if digestString != "" {
+		blobDigest, err = digest.Parse(digestString)
 		if err != nil {
-			return ocispec.Descriptor{}, nil, fmt.Errorf("invalid digest %s: %w", dgstStr, err)
+			return ocispec.Descriptor{}, nil, fmt.Errorf("invalid digest %s: %w", digestString, err)
 		}
 	}
 
@@ -71,27 +70,29 @@ func PrepareBlobContent(path string, mediaType string, dgstStr string, size int6
 		if size < 0 {
 			return ocispec.Descriptor{}, nil, errors.New("content size must be provided if it is read from stdin")
 		}
-		if dgst == "" {
+		if blobDigest == "" {
 			return ocispec.Descriptor{}, nil, errors.New("content digest must be provided if it is read from stdin")
 		}
 		return ocispec.Descriptor{
 			MediaType: mediaType,
-			Digest:    dgst,
+			Digest:    blobDigest,
 			Size:      size,
 		}, os.Stdin, nil
 	}
 
-	file, err := os.Open(path)
+	var file *os.File
+	file, err = os.Open(path)
 	if err != nil {
 		return ocispec.Descriptor{}, nil, fmt.Errorf("failed to open %s: %w", path, err)
 	}
 	defer func() {
-		if prepareErr != nil {
-			file.Close()
+		if err != nil {
+			_ = file.Close()
 		}
 	}()
 
-	fi, err := file.Stat()
+	var fi os.FileInfo
+	fi, err = file.Stat()
 	if err != nil {
 		return ocispec.Descriptor{}, nil, fmt.Errorf("failed to stat %s: %w", path, err)
 	}
@@ -100,8 +101,8 @@ func PrepareBlobContent(path string, mediaType string, dgstStr string, size int6
 		return ocispec.Descriptor{}, nil, fmt.Errorf("input size %d does not match the actual content size %d", size, actualSize)
 	}
 
-	if dgst == "" {
-		dgst, err = digest.FromReader(file)
+	if blobDigest == "" {
+		blobDigest, err = digest.FromReader(file)
 		if err != nil {
 			return ocispec.Descriptor{}, nil, err
 		}
@@ -112,7 +113,7 @@ func PrepareBlobContent(path string, mediaType string, dgstStr string, size int6
 
 	return ocispec.Descriptor{
 		MediaType: mediaType,
-		Digest:    dgst,
+		Digest:    blobDigest,
 		Size:      actualSize,
 	}, file, nil
 }
