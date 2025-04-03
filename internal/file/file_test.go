@@ -174,7 +174,7 @@ func TestFile_PrepareBlobContent(t *testing.T) {
 	// actual content size
 	_, _, err = file.PrepareBlobContent(path, blobMediaType, "", 15)
 	expected := fmt.Sprintf("input size %d does not match the actual content size %d", 15, size)
-	if err.Error() != expected {
+	if err == nil || err.Error() != expected {
 		t.Fatalf("PrepareBlobContent() error = %v, wantErr %v", err, expected)
 	}
 }
