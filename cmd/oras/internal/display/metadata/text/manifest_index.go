@@ -24,7 +24,6 @@ import (
 // ManifestIndexCreateHandler handles text metadata output for index create events.
 type ManifestIndexCreateHandler struct {
 	printer *output.Printer
-	root    ocispec.Descriptor
 }
 
 // NewManifestIndexCreateHandler returns a new handler for index create events.
@@ -40,11 +39,6 @@ func (h *ManifestIndexCreateHandler) OnTagged(_ ocispec.Descriptor, tag string) 
 }
 
 // OnIndexCreated implements ManifestIndexCreateHandler.
-func (h *ManifestIndexCreateHandler) OnIndexCreated(desc ocispec.Descriptor) {
-	h.root = desc
-}
-
-// Render implements ManifestIndexCreateHandler.
-func (h *ManifestIndexCreateHandler) Render() error {
-	return h.printer.Println("Digest:", h.root.Digest)
+func (h *ManifestIndexCreateHandler) OnIndexCreated(desc ocispec.Descriptor) error {
+	return h.printer.Println("Digest:", desc.Digest)
 }
