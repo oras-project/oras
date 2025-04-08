@@ -2,17 +2,19 @@
 
 ## Overview
 
-ORAS has supported multi-platform image creation and management as an experimental feature since v1.3.0-beta.1, as detailed in the [specification](https://github.com/oras-project/oras/blob/main/docs/proposals/multi-arch-image-mgmt.md). This proposal outlines the scenarios for attaching files to a multi-platform image and proposes a solution to support related scenarios using the `oras` CLI.
+ORAS has supported multi-platform image creation and management as an experimental feature since v1.3.0-beta.1, as detailed in the [specification](multi-arch-image-mgmt.md). This proposal outlines the scenarios for attaching files to a multi-platform image and proposes a solution to support related scenarios using the `oras` CLI.
 
 ## Problem Statement & Motivation
 
 Related GitHub issue: https://github.com/oras-project/oras/issues/1531
 
-When a multi-platform image is created using the [OCI image index format](https://github.com/opencontainers/image-spec/blob/main/image-index.md), users may want to attach a file and propagate it to platform-specific images. However, the current [oras attach](https://oras.land/docs/commands/oras_attach) command only allows users to attach a file to the image index or a single platform-specific image. Several scenarios require attaching a file as a referrer to both a multi-platform image and platform-specific images.
+When a multi-platform image is created using the [OCI image index format](https://github.com/opencontainers/image-spec/blob/v1.1.1/image-index.md), users may want to attach a file and propagate it to platform-specific images. However, the current [oras attach](https://oras.land/docs/commands/oras_attach) command only allows users to attach a file to the image index or a single platform-specific image. Several scenarios require attaching a file as a referrer to both a multi-platform image and platform-specific images.
 
 ## Scenarios
 
 ### Attach an End-of-Life (EoL) Annotation as a Referrer to a Multi-Platform Image
+
+- Scenario A: attach a refer to a platform-specific image to upward propagate to its parent index
 
 A security engineer, Alice, wants to use annotations to store EoL metadata to indicate that an image is no longer valid. Consider a multi-platform image `demo/alpine:a1a1` with multiple platform-specific images. When a vulnerability is detected in a platform-specific image `demo/alpine:b1b1`, it is patched, generating a new digest. The outdated image is marked as invalid using an EoL annotation:
 
@@ -53,7 +55,9 @@ demo/alpine:z1z1 (image index)
 -> demo/alpine:c1c1 (linux/arm64)
 ```
 
-In addition, if a vulnerability is detected and affects all platform-specific images, the parent index and each platform-specific image are patched, generating new digest of each. The outdated multi-platform image and each platform-specific image are marked as invalid using an EoL annotation similar as above.
+- Scenario A: attach a refer to an index to downward propagate to all child images
+
+In addition, if a vulnerability is detected and affects images of all platforms, the parent index and each child image are patched, generating new digest of each. The outdated multi-platform image and each child image are marked as invalid using an EoL annotation similar as above.
 
 ```console
 demo/alpine:a1a1 (image index)
