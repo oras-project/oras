@@ -45,7 +45,7 @@ func TestPretty_Output(t *testing.T) {
 	if err != nil {
 		t.Fatal("error calling os.Create(), error =", err)
 	}
-	defer fp.Close()
+	defer func() { _ = fp.Close() }()
 
 	// test unprettified content
 	opts := Pretty{

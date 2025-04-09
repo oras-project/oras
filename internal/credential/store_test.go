@@ -30,7 +30,7 @@ func TestNewStoreError(t *testing.T) {
 	if err != nil {
 		t.Errorf("error: cannot create file : %v", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	err = os.Chmod(filename, 000)
 	if err != nil {
