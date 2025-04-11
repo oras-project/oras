@@ -114,12 +114,16 @@ func (opts *Packer) parseAnnotations(cmd *cobra.Command) error {
 	return nil
 }
 
-// decodeJSON decodes a json file v to filename.
+// decodeJSON decodes file contents into json.
 func decodeJSON(filename string, v interface{}) error {
 	file, err := os.Open(filename)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
-	return json.NewDecoder(file).Decode(v)
+	err = json.NewDecoder(file).Decode(v)
+	if err != nil {
+		_ = file.Close()
+		return err
+	}
+	return file.Close()
 }
