@@ -40,9 +40,8 @@ type discoverOptions struct {
 	option.Format
 
 	artifactType string
-
-	// Deprecated: verbose is deprecated and will be removed in the future.
-	verbose bool
+	verbose      bool
+	depth        int
 }
 
 func discoverCmd() *cobra.Command {
