@@ -120,10 +120,11 @@ func decodeJSON(filename string, v interface{}) error {
 	if err != nil {
 		return err
 	}
-	err = json.NewDecoder(file).Decode(v)
-	if err != nil {
-		_ = file.Close()
-		return err
-	}
-	return file.Close()
+	defer func() {
+		closeErr := file.Close()
+		if err == nil {
+			err = closeErr
+		}
+	}()
+	return json.NewDecoder(file).Decode(v)
 }
