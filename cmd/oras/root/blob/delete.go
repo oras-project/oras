@@ -69,6 +69,7 @@ Example - Delete a blob and print its descriptor:
 		},
 	}
 
+	option.AddDeprecatedVerboseFlag(cmd.Flags())
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }

@@ -73,6 +73,7 @@ Example - Log in with username and password in an interactive terminal and no TL
 			return runLogin(cmd, opts)
 		},
 	}
+	option.AddDeprecatedVerboseFlag(cmd.Flags())
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Remote)
 }
@@ -111,7 +112,7 @@ func runLogin(cmd *cobra.Command, opts loginOptions) (err error) {
 	if err != nil {
 		return err
 	}
-	remote, err := opts.Remote.NewRegistry(opts.Hostname, opts.Common, logger)
+	remote, err := opts.NewRegistry(opts.Hostname, opts.Common, logger)
 	if err != nil {
 		return err
 	}

@@ -24,6 +24,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"oras.land/oras/test/e2e/internal/testdata/feature"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
@@ -68,6 +69,9 @@ func tagAndValidate(reg string, repo string, tagOrDigest string, digestText stri
 
 var _ = Describe("1.1 registry users:", func() {
 	When("running `tag`", func() {
+		It("should show deprecation message when running with --verbose flag", func() {
+			ORAS("tag", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), "latest", "--verbose").MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).Exec()
+		})
 		It("should add a tag to an existent manifest when providing tag reference", func() {
 			tagAndValidate(ZOTHost, ImageRepo, multi_arch.Tag, multi_arch.Digest, "tag-via-tag")
 		})

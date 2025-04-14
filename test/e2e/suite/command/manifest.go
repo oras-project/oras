@@ -134,6 +134,10 @@ var _ = Describe("ORAS beginners:", func() {
 				MatchDefaultFlagValue("format", "text", "manifest", "fetch")
 			})
 
+			It("should show deprecation message when running with --verbose flag", func() {
+				ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--verbose").MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).Exec()
+			})
+
 			It("should fail and show detailed error description if no argument provided", func() {
 				err := ORAS("manifest", "fetch").ExpectFailure().Exec().Err
 				gomega.Expect(err).Should(gbytes.Say("Error"))
@@ -447,6 +451,11 @@ var _ = Describe("1.1 registry users:", func() {
 				MatchContent("{}").Exec()
 		})
 
+		It("should show deprecation message when running with --verbose flag", func() {
+			ORAS("manifest", "fetch-config", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--verbose").
+				MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).Exec()
+		})
+
 		It("should fetch a config descriptor via a tag", func() {
 			ORAS("manifest", "fetch-config", "--descriptor", RegistryRef(ZOTHost, ImageRepo, foobar.Tag)).
 				MatchContent(foobar.ImageConfigDesc).Exec()
@@ -484,6 +493,13 @@ var _ = Describe("1.1 registry users:", func() {
 			ORAS("manifest", "delete", RegistryRef(ZOTHost, dstRepo, tempTag)).
 				WithInput(strings.NewReader("y")).Exec()
 			validateTag(RegistryRef(ZOTHost, dstRepo, ""), tempTag, true)
+		})
+
+		It("should show deprecation message when running with --verbose flag", func() {
+			dstRepo := fmt.Sprintf(repoFmt, "delete", "verbose-flag")
+			prepare(RegistryRef(ZOTHost, ImageRepo, foobar.Tag), RegistryRef(ZOTHost, dstRepo, tempTag))
+			ORAS("manifest", "delete", RegistryRef(ZOTHost, dstRepo, tempTag), "--verbose").
+				MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).Exec()
 		})
 
 		It("should do confirmed deletion via flag", func() {

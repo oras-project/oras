@@ -104,6 +104,19 @@ func ImageConfigStateKey(configName string) match.StateKey {
 
 // referrers
 var (
+	FooBar = ocispec.Descriptor{
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Digest:    digest.Digest(Digest),
+		Size:      851,
+	}
+	FooBarOCI = ocispec.Descriptor{
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Digest:    digest.Digest(Digest),
+		Size:      851,
+		Annotations: map[string]string{
+			"org.opencontainers.image.ref.name": "foobar",
+		},
+	}
 	SBOMImageReferrer = ocispec.Descriptor{
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
 		Digest:    digest.Digest("sha256:e2c6633a79985906f1ed55c592718c73c41e809fb9818de232a635904a74d48d"),
@@ -117,6 +130,10 @@ var (
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
 		Digest:    digest.Digest("sha256:0cb8c4da7e9ff2e7eefca33141091b9239218e3125a35e17e8bcd05fa3a5e714"),
 		Size:      670,
+		Annotations: map[string]string{
+			"org.opencontainers.image.created": "2023-01-18T08:37:57Z",
+		},
+		ArtifactType: "test/signature.file",
 	}
 	SBOMArtifactReferrer = ocispec.Descriptor{
 		MediaType: "application/vnd.oci.artifact.manifest.v1+json",

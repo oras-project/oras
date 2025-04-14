@@ -26,8 +26,8 @@ import (
 func TestConfirmation_ApplyFlags(t *testing.T) {
 	var test struct{ Confirmation }
 	ApplyFlags(&test, pflag.NewFlagSet("oras-test", pflag.ExitOnError))
-	if test.Confirmation.Force != false {
-		t.Fatalf("expecting Confirmed to be false but got: %v", test.Confirmation.Force)
+	if test.Force != false {
+		t.Fatalf("expecting Confirmed to be false but got: %v", test.Force)
 	}
 }
 

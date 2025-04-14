@@ -78,6 +78,9 @@ var _ = Describe("Common registry user", func() {
 			out := ORAS("digest", "-l", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag)).Exec().Out
 			gomega.Expect(out).To(gbytes.Say(fmt.Sprintf("%s/%s@%s", ZOTHost, ImageRepo, multi_arch.Digest)))
 		})
+		It("should show deprecation message when running with --verbose flag", func() {
+			ORAS("resolve", RegistryRef(ZOTHost, ImageRepo, multi_arch.Digest), "--verbose").MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).Exec()
+		})
 		It("should resolve with a fully qualified reference for a platform", func() {
 			out := ORAS("resolve", "--full-reference", "--platform", "linux/amd64", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag)).Exec().Out
 			gomega.Expect(out).To(gbytes.Say(fmt.Sprintf("%s/%s@%s", ZOTHost, ImageRepo, multi_arch.LinuxAMD64.Digest)))
