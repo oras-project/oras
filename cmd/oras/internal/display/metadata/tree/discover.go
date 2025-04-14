@@ -47,17 +47,11 @@ type discoverHandler struct {
 
 // NewDiscoverHandler creates a new handler for discover events.
 func NewDiscoverHandler(out io.Writer, path string, root ocispec.Descriptor, verbose bool, tty *os.File) metadata.DiscoverHandler {
-	return newDiscoverHandler(out, path, root, verbose, tty)
-}
-
-// newDiscoverHandler creates a new handler for discover events.
-func newDiscoverHandler(out io.Writer, path string, root ocispec.Descriptor, verbose bool, tty *os.File) *discoverHandler {
 	rootDigest := fmt.Sprintf("%s@%s", path, root.Digest)
 	if tty != nil {
 		rootDigest = digestColor.Apply(rootDigest)
 	}
 	treeRoot := tree.New(rootDigest)
-
 	return &discoverHandler{
 		out:  out,
 		path: path,
@@ -68,11 +62,6 @@ func newDiscoverHandler(out io.Writer, path string, root ocispec.Descriptor, ver
 		verbose: verbose,
 		tty:     tty,
 	}
-}
-
-// MultiLevelSupported implements metadata.DiscoverHandler.
-func (h *discoverHandler) MultiLevelSupported() bool {
-	return true
 }
 
 // OnDiscovered implements metadata.DiscoverHandler.

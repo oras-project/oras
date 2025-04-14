@@ -58,7 +58,7 @@ func TestDiscoverHandler_OnDiscovered(t *testing.T) {
 		defer os.Remove(tmp.Name())
 		defer tmp.Close()
 
-		h := newDiscoverHandler(&buf, path, subjectDesc, true, tmp)
+		h := NewDiscoverHandler(&buf, path, subjectDesc, true, tmp)
 		if err := h.OnDiscovered(referrerDesc, subjectDesc); err != nil {
 			t.Fatalf("OnDiscovered() error = %v", err)
 		}
@@ -93,7 +93,7 @@ func TestDiscoverHandler_OnDiscovered(t *testing.T) {
 	t.Run("WithoutTTY", func(t *testing.T) {
 		var buf bytes.Buffer
 
-		h := newDiscoverHandler(&buf, path, subjectDesc, true, nil)
+		h := NewDiscoverHandler(&buf, path, subjectDesc, true, nil)
 		if err := h.OnDiscovered(referrerDesc, subjectDesc); err != nil {
 			t.Fatalf("OnDiscovered() error = %v", err)
 		}
