@@ -75,7 +75,9 @@ oras attach $registry/demo/alpine:a1a1 --artifact-type "application/vnd.demo.art
 
 ### Attach a Signature
 
-A DevOps engineer, Bob, wants to attach a cryptographic signature as a referrer to a multi-platform image to ensure integrity and authenticity. Each signature must be attached to both the image index and each platform-specific image to prevent compromise. Given a multi-platform image `demo/alpine:a1a1`, Bob has to run multiple `oras attach` commands:
+A DevOps engineer, Bob, wants to attach a cryptographic signature as a referrer to a multi-platform image to ensure integrity and authenticity. Each signature must be attached to both the image index and each platform-specific image to prevent compromise. 
+
+Given a multi-platform image `demo/alpine:a1a1`, Bob has to run multiple `oras attach` commands:
 
 ```sh
 oras attach $registry/demo/alpine:a1a1 --artifact-type "application/vnd.demo.test.signature" a1a1.sig
@@ -86,10 +88,10 @@ oras attach $registry/demo/alpine:a1a1 --artifact-type "application/vnd.demo.tes
 Resulting image structure:
 
 ```console
-demo/alpine:a1a1 (image index) <-- signed with an attached signature a1a1.sig
--> demo/alpine:b1b1 (linux/amd64)  <-- signed with an attached signature b1b1.sig
--> demo/alpine:c1c1 (linux/arm64)  <-- signed with an attached signature c1c1.sig
+demo/alpine:a1a1 (image index) <-- signed with an attached signature a1a1.sig. This signature ensures the integrity of the snapshot of a whole image bundle.
+-> demo/alpine:b1b1 (linux/amd64)  <-- signed with an attached signature b1b1.sig. This signature ensures the integrity of the linux/amd64 image.
+-> demo/alpine:c1c1 (linux/arm64)  <-- signed with an attached signature c1c1.sig. This signature ensures the integrity of the linux/arm64 image.
 ```
 
-It's cumbersome and inefficient for Bob to run the `oras attach` command multiple times against the parent image index and propagate to all platform-specific images recursively.
+Each node is required to be updated individually. It's cumbersome and inefficient for Bob to run the `oras attach` command multiple times against the parent image index and each individual platform-specific image.
 
