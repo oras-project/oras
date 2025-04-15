@@ -115,7 +115,7 @@ func (opts *Packer) parseAnnotations(cmd *cobra.Command) error {
 }
 
 // decodeJSON decodes file contents into json.
-func decodeJSON(filename string, v interface{}) error {
+func decodeJSON(filename string, v interface{}) (err error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return err
