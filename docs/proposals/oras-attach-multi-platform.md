@@ -24,7 +24,7 @@ A security engineer, Alice, wants to use annotations to store EoL metadata to in
 
 Since the patched image has a new digest, the parent image index also receives an updated digest. When a platform-specific image is marked as EoL, dependent services stop using it, and vulnerability scanning tools can recognize it as deprecated through the lifecycle metadata.
 
-![multi-arch image](./img/oras-attach-EoL.svg)
+![multi-arch image](./img/oras-attach-EoL.drawio.svg)
 
 After patching `demo/alpine:b1b1`, Alice has to manually retrieve the new digests and run `oras attach` twice: once for the old digest of the parent image index and once for the platform-specific image manifest. If multiple platform-specific images require updates, she has execute multiple commands.
 
