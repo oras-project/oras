@@ -24,7 +24,7 @@ A security engineer, Alice, wants to use annotations to store EoL metadata to in
 
 Since the patched image has a new digest, the parent image index also receives an updated digest. When a platform-specific image is marked as EoL, dependent services stop using it, and vulnerability scanning tools can recognize it as deprecated through the lifecycle metadata.
 
-![multi-arch image](./img/attach-annotation.svg)
+![multi-arch image](./img/oras-attach-EoL.svg)
 
 After patching `demo/alpine:b1b1`, Alice has to manually retrieve the new digests and run `oras attach` twice: once for the old digest of the parent image index and once for the platform-specific image manifest. If multiple platform-specific images require updates, she has execute multiple commands.
 
@@ -75,25 +75,4 @@ oras attach $registry/demo/alpine:a1a1 --artifact-type "application/vnd.demo.art
 oras attach $registry/demo/alpine:a1a1 --artifact-type "application/vnd.demo.artifact.lifecycle" --annotation "vnd.demo.artifact.lifecycle.end-of-life.date=2025-03-20T01:20:30Z" --platform linux/arm64
 ```
 
-### Attach a Signature
-
-A DevOps engineer, Bob, wants to attach a cryptographic signature as a referrer to a multi-platform image to ensure integrity and authenticity. Each signature must be attached to both the image index and each platform-specific image to prevent compromise. 
-
-Given a multi-platform image `demo/alpine:a1a1`, Bob has to run multiple `oras attach` commands:
-
-```sh
-oras attach $registry/demo/alpine:a1a1 --artifact-type "application/vnd.demo.test.signature" a1a1.sig
-oras attach $registry/demo/alpine:a1a1 --artifact-type "application/vnd.demo.test.signature" b1b1.sig --platform linux/amd64
-oras attach $registry/demo/alpine:a1a1 --artifact-type "application/vnd.demo.test.signature" c1c1.sig --platform linux/arm64
-```
-
-Resulting image structure:
-
-```console
-demo/alpine:a1a1 (image index) <-- signed with an attached signature a1a1.sig. This signature ensures the integrity of the snapshot of a whole image bundle.
--> demo/alpine:b1b1 (linux/amd64)  <-- signed with an attached signature b1b1.sig. This signature ensures the integrity of the linux/amd64 image.
--> demo/alpine:c1c1 (linux/arm64)  <-- signed with an attached signature c1c1.sig. This signature ensures the integrity of the linux/arm64 image.
-```
-
-Each node is required to be updated individually. It's cumbersome and inefficient for Bob to run the `oras attach` command multiple times against the parent image index and each individual platform-specific image.
 
