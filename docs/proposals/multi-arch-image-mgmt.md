@@ -226,6 +226,9 @@ oras manifest index create localhost:5000/hello:tag1,tag2,tag3 linux-amd64 linux
 # Create and push an index with annotations:
 oras manifest index create localhost:5000/hello:v1 linux-amd64 --annotation "key=val"
 
+# Create an index with a specified artifact type:
+oras manifest index create --artifact-type="application/vnd.example+type" localhost:5000/hello linux-amd64
+
 # Create an index and push to an OCI image layout folder 'layout-dir' and tag with 'v1':
 oras manifest index create layout-dir:v1 linux-amd64 sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9 --oci-layout
 
@@ -257,6 +260,12 @@ oras manifest index update --output index.json localhost:5000/hello:v2 --add v2-
 
 # Update an index and output the index to stdout, auto push will be disabled:
 oras manifest index update --output - --pretty localhost:5000/hello:v2 --remove sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
+
+# Update an index to use a different artifact type:
+oras manifest index update localhost:5000/hello:v1 --artifact-type="application/vnd.example+type"
+
+# Update an index to remove any existing artifact type:
+oras manifest index update localhost:5000/hello:v1 --artifact-type=""
 ```
 
 ### View a multi-arch image 
@@ -270,6 +279,35 @@ Usage:
 Aliases:
   fetch, get, show
 ```
+
+## Index manifest structure
+
+The `oras manifest index` family of commands manipulates index manifests as described in [OCI Image Index Specification](https://github.com/opencontainers/image-spec/blob/v1.1.1/image-index.md).
+
+The image index properties defined in that specification are populated as follows:
+
+- `schemaVersion`: always set to `2`, as the specification requires.
+- `mediaType`: always set to `"application/vnd.oci.image.index.v1+json"` to distinguish from other manifest types, as the specification requires.
+- `artifactType`: set to the value provided in argument to the `--artifact-type` option if present and non-empty, or omitted otherwise.
+- `manifests`: an array of descriptors describing each of the child manifests selected by tag or digest on the `oras manifest index create` command line, or subsequently added using options like `oras manifest index update --add`.
+
+    The descriptor for each child manifest is populated as follows:
+
+    - `mediaType`: set to match the `mediaType` property of the associated manifest.
+    - `artifactType`: set to match the `artifactType` property of the associated manifest, if any.
+
+      If the associated manifest was also created using ORAS, this property would've been set using the `--artifact-type` option when running an earlier command such as `oras push`.
+    - `digest`: set to a blob digest of the associated manifest.
+    - `size`: set to the size of the blob containing the associated manifest, in bytes.
+    - `platform`: describes a specific platform specified in the associated manifest.
+
+      If the associated manifest was also created using ORAS, the information used to populate this property would've been set using the `--artifact-platform` option when running an earlier command such as `oras push`.
+
+      `oras push` currently uses the experimental approach of storing the target platform information in the configuration blob associated with the image manifest. Alternative approaches are currently under discussion in [opencontainers/image-spec#1216](https://github.com/opencontainers/image-spec/issues/1216) and may be adopted in a later version of this proposal.
+
+    No other descriptor properties are included.
+- `subject`: always omitted.
+- `annotations`: populated based on the `--annotation` command line option, if present.
 
 ## Investigation on other client tools and industry
 
