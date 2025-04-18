@@ -41,6 +41,7 @@ type attachOptions struct {
 	option.Target
 	option.Format
 	option.Platform
+	option.NoTTY
 
 	artifactType string
 	concurrency  int

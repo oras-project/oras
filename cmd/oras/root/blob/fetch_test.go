@@ -53,7 +53,7 @@ func Test_fetchBlobOptions_doFetch(t *testing.T) {
 	}
 	var opts fetchBlobOptions
 	opts.Reference = tag
-	opts.Common.TTY = device
+	opts.TTY = device
 	opts.outputPath = t.TempDir() + "/test"
 	// test
 	_, err = opts.doFetch(ctx, src)

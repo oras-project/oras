@@ -17,25 +17,30 @@ limitations under the License.
 
 package option
 
-// func TestCommon_parseTTY(t *testing.T) {
-// 	_, device, err := testutils.NewPty()
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	defer device.Close()
-// 	var opts Common
+import (
+	"testing"
+)
 
-// 	// TTY output
-// 	if err := opts.parseTTY(device); err != nil {
-// 		t.Errorf("unexpected error with TTY output: %v", err)
-// 	}
+// ??? handle this
+func TestCommon_parseTTY(t *testing.T) {
+	// _, device, err := testutils.NewPty()
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
+	// defer device.Close()
+	// var opts NoTTY
 
-// 	// --debug
-// 	opts.Debug = true
-// 	if err := opts.parseTTY(device); err != nil {
-// 		t.Errorf("unexpected error with --debug: %v", err)
-// 	}
-// 	if !opts.noTTY {
-// 		t.Errorf("expected --no-tty to be true with --debug")
-// 	}
-// }
+	// // TTY output
+	// if err := opts.Parse(); err != nil {
+	// 	t.Errorf("unexpected error with TTY output: %v", err)
+	// }
+
+	// // --debug
+	// opts.Debug = true
+	// if err := opts.parseTTY(device); err != nil {
+	// 	t.Errorf("unexpected error with --debug: %v", err)
+	// }
+	// if !opts.noTTY {
+	// 	t.Errorf("expected --no-tty to be true with --debug")
+	// }
+}

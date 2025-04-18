@@ -38,6 +38,7 @@ type pushBlobOptions struct {
 	option.Descriptor
 	option.Pretty
 	option.Target
+	option.NoTTY
 
 	fileRef   string
 	mediaType string

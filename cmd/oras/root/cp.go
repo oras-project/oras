@@ -46,6 +46,7 @@ type copyOptions struct {
 	option.Common
 	option.Platform
 	option.BinaryTarget
+	option.NoTTY
 
 	recursive   bool
 	concurrency int

@@ -38,6 +38,7 @@ type discoverOptions struct {
 	option.Platform
 	option.Target
 	option.Format
+	option.NoTTY
 
 	artifactType string
 	depth        int

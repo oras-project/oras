@@ -40,6 +40,7 @@ type fetchBlobOptions struct {
 	option.Descriptor
 	option.Pretty
 	option.Target
+	option.NoTTY
 
 	outputPath string
 }

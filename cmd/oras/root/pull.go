@@ -45,6 +45,7 @@ type pullOptions struct {
 	option.Platform
 	option.Target
 	option.Format
+	option.NoTTY
 
 	concurrency       int
 	KeepOldFiles      bool
