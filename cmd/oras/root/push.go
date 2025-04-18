@@ -47,6 +47,7 @@ type pushOptions struct {
 	option.ImageSpec
 	option.Target
 	option.Format
+	option.NoTTY
 
 	extraRefs         []string
 	manifestConfigRef string
