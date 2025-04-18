@@ -36,7 +36,7 @@ type NoTTY struct {
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *NoTTY) ApplyFlags(fs *pflag.FlagSet) {
-	fs.BoolVarP(&opts.noTTY, NoTTYFlag, "", false, "[Preview] do not show progress output")
+	fs.BoolVarP(&opts.noTTY, NoTTYFlag, "", false, "[Preview] disable progress bars")
 }
 
 // Parse parses the input annotation flags.

@@ -126,6 +126,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 	)
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
+	cmd.Flags().Lookup(option.NoTTYFlag).Usage = "[Preview] disable colors"
 	return oerrors.Command(cmd, &opts.Target)
 }
 
