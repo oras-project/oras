@@ -74,7 +74,7 @@ Example - Update an index and save it locally to index.json, auto push will be d
   oras manifest index update localhost:5000/hello:v2 --add v2-linux-amd64 --output index.json
 
 Example - Update an index and output the index to stdout, auto push will be disabled:
-  oras manifest index update --pretty localhost:5000/hello:v2 --remove sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9 --output -
+  oras manifest index update localhost:5000/hello:v2 --remove sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9 --output - --pretty
   `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the target index to update"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
