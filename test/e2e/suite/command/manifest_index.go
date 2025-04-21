@@ -116,6 +116,26 @@ var _ = Describe("1.1 registry users:", func() {
 			ValidateIndex(content, expectedManifests)
 		})
 
+		It("should copy artifactType from child manifests", func() {
+			testRepo := indexTestRepo("create", "child-artifact-type")
+			CopyZOTRepo(ImageRepo, testRepo)
+			artifactType := "application/vnd.test-example"
+			ORAS("push", "--artifact-type", artifactType,
+				RegistryRef(ZOTHost, testRepo, "with-artifact-type"),
+				"../../testdata/files/foobar/bar:application/octet-stream").
+				MatchKeyWords("Pushed",
+					"ArtifactType", artifactType).Exec()
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, "latest"), "with-artifact-type").
+				MatchKeyWords("Fetched", "with-artifact-type", "Pushed").Exec()
+			// verify
+			content := ORAS("manifest", "fetch", RegistryRef(ZOTHost, testRepo, "latest")).Exec().Out.Contents()
+			var index ocispec.Index
+			Expect(json.Unmarshal(content, &index)).ShouldNot(HaveOccurred())
+			Expect(index.ArtifactType).To(BeEmpty())
+			Expect(index.Manifests).To(HaveLen(1))
+			Expect(index.Manifests[0].ArtifactType).To(Equal(artifactType))
+		})
+
 		It("should create nested indexes", func() {
 			testRepo := indexTestRepo("create", "nested-index")
 			CopyZOTRepo(ImageRepo, testRepo)
@@ -462,6 +482,25 @@ var _ = Describe("OCI image layout users:", func() {
 			ValidateIndex(content, expectedManifests)
 			content = ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, "t3")).Exec().Out.Contents()
 			ValidateIndex(content, expectedManifests)
+		})
+
+		It("should copy artifactType from child manifests", func() {
+			root := PrepareTempOCI(ImageRepo)
+			artifactType := "application/vnd.test-example"
+			ORAS("push", "--artifact-type", artifactType,
+				Flags.Layout, LayoutRef(root, "with-artifact-type"),
+				"../../testdata/files/foobar/bar:application/octet-stream").
+				MatchKeyWords("Pushed",
+					"ArtifactType", artifactType).Exec()
+			ORAS("manifest", "index", "create", Flags.Layout, LayoutRef(root, "latest"), "with-artifact-type").
+				MatchKeyWords("Fetched", "with-artifact-type", "Pushed").Exec()
+			// verify
+			content := ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, "latest")).Exec().Out.Contents()
+			var index ocispec.Index
+			Expect(json.Unmarshal(content, &index)).ShouldNot(HaveOccurred())
+			Expect(index.ArtifactType).To(BeEmpty())
+			Expect(index.Manifests).To(HaveLen(1))
+			Expect(index.Manifests[0].ArtifactType).To(Equal(artifactType))
 		})
 
 		It("should create nested indexes", func() {
