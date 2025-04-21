@@ -56,6 +56,11 @@ var _ = Describe("ORAS beginners:", func() {
 			gomega.Expect(out).Should(gbytes.Say("--distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 		})
 
+		It("should say disable colors for --no-tty flag", func() {
+			out := ORAS("discover", "--help").MatchKeyWords("disable colors").Exec().Out
+			gomega.Expect(out).ShouldNot(gbytes.Say("disable progress bars"))
+		})
+
 		It("should show tree as default format type in help doc", func() {
 			MatchDefaultFlagValue("format", "tree", "discover")
 		})

@@ -25,13 +25,10 @@ import (
 
 const NoTTYFlag = "no-tty"
 
-// ???.
+// NoTTY option struct.
 type NoTTY struct {
-	// ???
-	TTY *os.File
-
-	// ???
 	noTTY bool
+	TTY   *os.File
 }
 
 // ApplyFlags applies flags to a command flag set.
@@ -39,10 +36,11 @@ func (opts *NoTTY) ApplyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.noTTY, NoTTYFlag, "", false, "[Preview] disable progress bars")
 }
 
-// Parse parses the input annotation flags.
+// Parse parses the input notty flag.
 func (opts *NoTTY) Parse(*cobra.Command) error {
+	// use STDERR as TTY output since STDOUT is reserved for pipeable output
 	if !opts.noTTY {
-		f := os.Stderr // use STDERR as TTY output since STDOUT is reserved for pipeable output
+		f := os.Stderr
 		if term.IsTerminal(int(f.Fd())) {
 			opts.TTY = f
 		}
