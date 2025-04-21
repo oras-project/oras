@@ -48,9 +48,10 @@ type createOptions struct {
 	option.Pretty
 	option.Annotation
 
-	sources    []string
-	extraRefs  []string
-	outputPath string
+	artifactType string
+	sources      []string
+	extraRefs    []string
+	outputPath   string
 }
 
 func createCmd() *cobra.Command {
@@ -75,6 +76,9 @@ Example - Create an index and push it with multiple tags:
 Example - Create and push an index with annotations:
   oras manifest index create localhost:5000/hello:v1 linux-amd64 --annotation "key=val"
 
+Example - Create an index with a specified artifact type:
+  oras manifest index create --artifact-type="application/vnd.example+type" localhost:5000/hello linux-amd64
+
 Example - Create an index and push to an OCI image layout folder 'layout-dir' and tag with 'v1':
   oras manifest index create layout-dir:v1 linux-amd64 sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9 --oci-layout
   
@@ -97,6 +101,7 @@ Example - Create an index and output the index to stdout, auto push will be disa
 			return createIndex(cmd, opts)
 		},
 	}
+	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type for overall index")
 	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "file `path` to write the created index to, use - for stdout")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
@@ -117,9 +122,10 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 		Versioned: specs.Versioned{
 			SchemaVersion: 2,
 		},
-		MediaType:   ocispec.MediaTypeImageIndex,
-		Manifests:   manifests,
-		Annotations: opts.Annotations[option.AnnotationManifest],
+		MediaType:    ocispec.MediaTypeImageIndex,
+		ArtifactType: opts.artifactType,
+		Manifests:    manifests,
+		Annotations:  opts.Annotations[option.AnnotationManifest],
 	}
 	indexBytes, err := json.Marshal(index)
 	if err != nil {
