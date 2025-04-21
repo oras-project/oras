@@ -82,7 +82,7 @@ Example - Fetch and print a blob from OCI image layout archive file 'layout.tar'
 			opts.RawReference = args[0]
 			err := option.Parse(cmd, &opts)
 			if err == nil {
-				opts.UpdateTTY(cmd.Flags().Changed(option.NoTTYFlag), opts.outputPath == "-")
+				opts.UpdateTTY(opts.Debug, cmd.Flags().Changed(option.NoTTYFlag), opts.outputPath == "-")
 			}
 			return err
 		},

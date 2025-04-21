@@ -41,13 +41,7 @@ func (opts *NoTTY) ApplyFlags(fs *pflag.FlagSet) {
 
 // Parse parses the input annotation flags.
 func (opts *NoTTY) Parse(*cobra.Command) error {
-	// ??? need to handle this in each command
 	if !opts.noTTY {
-		// if opts.Debug {
-		// 	opts.noTTY = true // ??? need to handle this in each command
-		// } else if term.IsTerminal(int(f.Fd())) {
-		// 	opts.TTY = f
-		// }
 		f := os.Stderr // use STDERR as TTY output since STDOUT is reserved for pipeable output
 		if term.IsTerminal(int(f.Fd())) {
 			opts.TTY = f
@@ -56,11 +50,15 @@ func (opts *NoTTY) Parse(*cobra.Command) error {
 	return nil
 }
 
-// UpdateTTY updates the TTY value, given the status of --no-tty flag and output
-// path value.
-func (opts *NoTTY) UpdateTTY(flagPresent bool, toSTDOUT bool) {
-	ttyEnforced := flagPresent && !opts.noTTY
-	if opts.noTTY || (toSTDOUT && !ttyEnforced) {
+// UpdateTTY updates the TTY value, given the status of --debug flag, --no-tty flag and output
+// path value.TTY value is set to nil if
+// 1. --no-tty flag is set to true
+// 2. --debug flag is used
+// 3. output path is set to stdout and --no-tty flag is not explicitly set to false
+// (i.e. not --no-tty==false)
+func (opts *NoTTY) UpdateTTY(debugEnabled, nottyFlagPresent, toSTDOUT bool) {
+	ttyEnforced := nottyFlagPresent && !opts.noTTY
+	if debugEnabled || opts.noTTY || (toSTDOUT && !ttyEnforced) {
 		opts.TTY = nil
 	}
 }

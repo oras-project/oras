@@ -18,29 +18,63 @@ limitations under the License.
 package option
 
 import (
+	"os"
+	"reflect"
 	"testing"
+
+	"github.com/spf13/pflag"
 )
 
-// ??? handle this
-func TestCommon_parseTTY(t *testing.T) {
-	// _, device, err := testutils.NewPty()
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-	// defer device.Close()
-	// var opts NoTTY
+func TestNotty_FlagsInit(t *testing.T) {
+	var test struct {
+		Common
+	}
 
-	// // TTY output
-	// if err := opts.Parse(); err != nil {
-	// 	t.Errorf("unexpected error with TTY output: %v", err)
-	// }
+	ApplyFlags(&test, pflag.NewFlagSet("oras-test", pflag.ExitOnError))
+}
 
-	// // --debug
-	// opts.Debug = true
-	// if err := opts.parseTTY(device); err != nil {
-	// 	t.Errorf("unexpected error with --debug: %v", err)
-	// }
-	// if !opts.noTTY {
-	// 	t.Errorf("expected --no-tty to be true with --debug")
-	// }
+func TestNotty_UpdateTTY(t *testing.T) {
+	testTTY := &os.File{}
+	tests := []struct {
+		name        string
+		debug       bool
+		flagPresent bool
+		toSTDOUT    bool
+		noTTY       bool
+		expectedTTY *os.File
+	}{
+		{
+			"output to STDOUT, --no-tty flag not used, reset TTY", false, false, true, false, nil,
+		},
+		{
+			"output to STDOUT, --no-tty set to true, reset TTY", false, true, true, true, nil,
+		},
+		{
+			"output to STDOUT, --no-tty set to false", false, true, true, false, testTTY,
+		},
+		{
+			"not output to STDOUT, --no-tty flag not used", false, false, false, false, testTTY,
+		},
+		{
+			"not output to STDOUT, --no-tty set to true, reset TTY", false, true, false, true, nil,
+		},
+		{
+			"not output to STDOUT, --no-tty set to false", false, true, false, false, testTTY,
+		},
+		{
+			"debug enabled, --no-tty flag is not used", true, false, false, false, nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := &NoTTY{
+				noTTY: tt.noTTY,
+				TTY:   testTTY,
+			}
+			opts.UpdateTTY(tt.debug, tt.flagPresent, tt.toSTDOUT)
+			if !reflect.DeepEqual(opts.TTY, tt.expectedTTY) {
+				t.Fatalf("tt.TTY got %v, want %v", opts.TTY, tt.expectedTTY)
+			}
+		})
+	}
 }

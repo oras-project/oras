@@ -106,6 +106,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 					return errors.New("output type can only be tree, table or json")
 				}
 			}
+			opts.UpdateTTY(opts.Debug, cmd.Flags().Changed(option.NoTTYFlag), false)
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
