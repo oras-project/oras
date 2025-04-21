@@ -22,7 +22,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"oras.land/oras/internal/testutils"
 )
 
 func TestNotty_FlagsInit(t *testing.T) {
@@ -31,6 +33,22 @@ func TestNotty_FlagsInit(t *testing.T) {
 	}
 
 	ApplyFlags(&test, pflag.NewFlagSet("oras-test", pflag.ExitOnError))
+}
+
+func TestCommon_ParseTTY(t *testing.T) {
+	_, device, err := testutils.NewPty()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer device.Close()
+	opts := NoTTY{
+		noTTY: false,
+		TTY:   device,
+	}
+	// TTY output
+	if err := opts.Parse(&cobra.Command{}); err != nil {
+		t.Errorf("unexpected error with TTY output: %v", err)
+	}
 }
 
 func TestNotty_UpdateTTY(t *testing.T) {
