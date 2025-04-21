@@ -48,9 +48,10 @@ type createOptions struct {
 	option.Pretty
 	option.Annotation
 
-	sources    []string
-	extraRefs  []string
-	outputPath string
+	artifactType string
+	sources      []string
+	extraRefs    []string
+	outputPath   string
 }
 
 func createCmd() *cobra.Command {
@@ -97,6 +98,7 @@ Example - Create an index and output the index to stdout, auto push will be disa
 			return createIndex(cmd, opts)
 		},
 	}
+	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type for overall index")
 	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "file `path` to write the created index to, use - for stdout")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
@@ -117,9 +119,10 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 		Versioned: specs.Versioned{
 			SchemaVersion: 2,
 		},
-		MediaType:   ocispec.MediaTypeImageIndex,
-		Manifests:   manifests,
-		Annotations: opts.Annotations[option.AnnotationManifest],
+		MediaType:    ocispec.MediaTypeImageIndex,
+		ArtifactType: opts.artifactType,
+		Manifests:    manifests,
+		Annotations:  opts.Annotations[option.AnnotationManifest],
 	}
 	indexBytes, err := json.Marshal(index)
 	if err != nil {
