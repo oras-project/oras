@@ -38,7 +38,7 @@ type discoverOptions struct {
 	option.Platform
 	option.Target
 	option.Format
-	option.NoTTY
+	option.TTY
 
 	artifactType string
 	depth        int
@@ -149,7 +149,7 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 		return err
 	}
 
-	handler, err := display.NewDiscoverHandler(opts.Printer, opts.Format, opts.Path, opts.RawReference, desc, opts.verbose, opts.TTY)
+	handler, err := display.NewDiscoverHandler(opts.Printer, opts.Format, opts.Path, opts.RawReference, desc, opts.verbose, opts.Tty)
 	if err != nil {
 		return err
 	}

@@ -46,7 +46,7 @@ type copyOptions struct {
 	option.Common
 	option.Platform
 	option.BinaryTarget
-	option.NoTTY
+	option.TTY
 
 	recursive   bool
 	concurrency int
@@ -135,7 +135,7 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 		return err
 	}
 	ctx = registryutil.WithScopeHint(ctx, dst, auth.ActionPull, auth.ActionPush)
-	statusHandler, metadataHandler := display.NewCopyHandler(opts.Printer, opts.TTY, dst)
+	statusHandler, metadataHandler := display.NewCopyHandler(opts.Printer, opts.Tty, dst)
 
 	desc, err := doCopy(ctx, statusHandler, src, dst, opts)
 	if err != nil {

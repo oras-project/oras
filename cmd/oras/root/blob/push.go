@@ -38,7 +38,7 @@ type pushBlobOptions struct {
 	option.Descriptor
 	option.Pretty
 	option.Target
-	option.NoTTY
+	option.TTY
 
 	fileRef   string
 	mediaType string
@@ -125,7 +125,7 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 	}
 	defer rc.Close()
 
-	statusHandler, metadataHandler := display.NewBlobPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc, opts.TTY)
+	statusHandler, metadataHandler := display.NewBlobPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc, opts.Tty)
 	if err := doPush(ctx, statusHandler, target, desc, rc); err != nil {
 		return err
 	}

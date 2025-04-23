@@ -40,7 +40,7 @@ type fetchBlobOptions struct {
 	option.Descriptor
 	option.Pretty
 	option.Target
-	option.NoTTY
+	option.TTY
 
 	outputPath string
 }
@@ -167,14 +167,14 @@ func (opts *fetchBlobOptions) doFetch(ctx context.Context, src oras.ReadOnlyTarg
 		writer = file
 	}
 
-	if opts.TTY == nil {
+	if opts.Tty == nil {
 		// none TTY output
 		if _, err = io.Copy(writer, vr); err != nil {
 			return ocispec.Descriptor{}, err
 		}
 	} else {
 		// TTY output
-		trackedReader, err := track.NewReader(vr, desc, "Downloading", "Downloaded ", opts.TTY)
+		trackedReader, err := track.NewReader(vr, desc, "Downloading", "Downloaded ", opts.Tty)
 		if err != nil {
 			return ocispec.Descriptor{}, err
 		}

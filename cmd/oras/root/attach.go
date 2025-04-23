@@ -41,7 +41,7 @@ type attachOptions struct {
 	option.Target
 	option.Format
 	option.Platform
-	option.NoTTY
+	option.TTY
 
 	artifactType string
 	concurrency  int
@@ -160,7 +160,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	if err != nil {
 		return fmt.Errorf("failed to resolve %s: %w", opts.Reference, err)
 	}
-	statusHandler, metadataHandler, err := display.NewAttachHandler(opts.Printer, opts.Format, opts.TTY, store)
+	statusHandler, metadataHandler, err := display.NewAttachHandler(opts.Printer, opts.Format, opts.Tty, store)
 	if err != nil {
 		return err
 	}

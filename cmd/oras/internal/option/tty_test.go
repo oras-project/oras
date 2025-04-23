@@ -23,27 +23,18 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"oras.land/oras/internal/testutils"
 )
 
-func TestNotty_FlagsInit(t *testing.T) {
-	var test struct {
-		Common
-	}
-
-	ApplyFlags(&test, pflag.NewFlagSet("oras-test", pflag.ExitOnError))
-}
-
-func TestCommon_ParseTTY(t *testing.T) {
+func TestTTY_ParseTTY(t *testing.T) {
 	_, device, err := testutils.NewPty()
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer device.Close()
-	opts := NoTTY{
+	opts := TTY{
 		noTTY: false,
-		TTY:   device,
+		Tty:   device,
 	}
 	// TTY output
 	if err := opts.Parse(&cobra.Command{}); err != nil {
@@ -51,7 +42,7 @@ func TestCommon_ParseTTY(t *testing.T) {
 	}
 }
 
-func TestNotty_UpdateTTY(t *testing.T) {
+func TestTTY_UpdateTTY(t *testing.T) {
 	testTTY := &os.File{}
 	tests := []struct {
 		name        string
@@ -85,13 +76,13 @@ func TestNotty_UpdateTTY(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			opts := &NoTTY{
+			opts := &TTY{
 				noTTY: tt.noTTY,
-				TTY:   testTTY,
+				Tty:   testTTY,
 			}
 			opts.UpdateTTY(tt.debug, tt.flagPresent, tt.toSTDOUT)
-			if !reflect.DeepEqual(opts.TTY, tt.expectedTTY) {
-				t.Fatalf("tt.TTY got %v, want %v", opts.TTY, tt.expectedTTY)
+			if !reflect.DeepEqual(opts.Tty, tt.expectedTTY) {
+				t.Fatalf("tt.TTY got %v, want %v", opts.Tty, tt.expectedTTY)
 			}
 		})
 	}

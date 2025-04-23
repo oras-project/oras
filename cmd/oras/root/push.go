@@ -47,7 +47,7 @@ type pushOptions struct {
 	option.ImageSpec
 	option.Target
 	option.Format
-	option.NoTTY
+	option.TTY
 
 	extraRefs         []string
 	manifestConfigRef string
@@ -219,7 +219,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	}
 	memoryStore := memory.New()
 	union := contentutil.MultiReadOnlyTarget(memoryStore, store)
-	statusHandler, metadataHandler, err := display.NewPushHandler(opts.Printer, opts.Format, opts.TTY, union)
+	statusHandler, metadataHandler, err := display.NewPushHandler(opts.Printer, opts.Format, opts.Tty, union)
 	if err != nil {
 		return err
 	}

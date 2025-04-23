@@ -45,7 +45,7 @@ type pullOptions struct {
 	option.Platform
 	option.Target
 	option.Format
-	option.NoTTY
+	option.TTY
 
 	concurrency       int
 	KeepOldFiles      bool
@@ -128,7 +128,7 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 
 func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-	statusHandler, metadataHandler, err := display.NewPullHandler(opts.Printer, opts.Format, opts.Path, opts.TTY)
+	statusHandler, metadataHandler, err := display.NewPullHandler(opts.Printer, opts.Format, opts.Path, opts.Tty)
 	if err != nil {
 		return err
 	}

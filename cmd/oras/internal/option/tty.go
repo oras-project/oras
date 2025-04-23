@@ -25,24 +25,24 @@ import (
 
 const NoTTYFlag = "no-tty"
 
-// NoTTY option struct.
-type NoTTY struct {
+// TTY option struct.
+type TTY struct {
 	noTTY bool
-	TTY   *os.File
+	Tty   *os.File
 }
 
 // ApplyFlags applies flags to a command flag set.
-func (opts *NoTTY) ApplyFlags(fs *pflag.FlagSet) {
+func (opts *TTY) ApplyFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&opts.noTTY, NoTTYFlag, "", false, "[Preview] disable progress bars")
 }
 
 // Parse parses the input notty flag.
-func (opts *NoTTY) Parse(*cobra.Command) error {
+func (opts *TTY) Parse(*cobra.Command) error {
 	// use STDERR as TTY output since STDOUT is reserved for pipeable output
 	if !opts.noTTY {
 		f := os.Stderr
 		if term.IsTerminal(int(f.Fd())) {
-			opts.TTY = f
+			opts.Tty = f
 		}
 	}
 	return nil
@@ -54,9 +54,9 @@ func (opts *NoTTY) Parse(*cobra.Command) error {
 // 2. --debug flag is used
 // 3. output path is set to stdout and --no-tty flag is not explicitly set to false
 // (i.e. not --no-tty==false)
-func (opts *NoTTY) UpdateTTY(debugEnabled, nottyFlagPresent, toSTDOUT bool) {
+func (opts *TTY) UpdateTTY(debugEnabled, nottyFlagPresent, toSTDOUT bool) {
 	ttyEnforced := nottyFlagPresent && !opts.noTTY
 	if debugEnabled || opts.noTTY || (toSTDOUT && !ttyEnforced) {
-		opts.TTY = nil
+		opts.Tty = nil
 	}
 }
