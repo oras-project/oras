@@ -38,6 +38,7 @@ type discoverOptions struct {
 	option.Platform
 	option.Target
 	option.Format
+	option.Terminal
 
 	artifactType string
 	depth        int
@@ -105,6 +106,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 					return errors.New("output type can only be tree, table or json")
 				}
 			}
+			opts.DisableTTY(opts.Debug, false)
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -125,6 +127,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 	)
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
+	cmd.Flags().Lookup(option.NoTTYFlag).Usage = "[Preview] disable colors"
 	return oerrors.Command(cmd, &opts.Target)
 }
 
