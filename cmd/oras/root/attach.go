@@ -110,10 +110,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 					err.Recommendation = fmt.Sprintf("Are you missing an artifact reference to attach to? %s", err.Recommendation)
 				}
 			}
-			if err != nil {
-				return err
-			}
-			return nil
+			return err
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Printer.Verbose = opts.verbose
