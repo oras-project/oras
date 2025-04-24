@@ -90,8 +90,7 @@ Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
 					return errors.New("`--size` must be provided if the blob is read from stdin")
 				}
 			}
-			err := option.Parse(cmd, &opts)
-			if err != nil {
+			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
 			opts.DisableTTY(opts.Debug, false)

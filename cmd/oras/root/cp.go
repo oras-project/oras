@@ -97,8 +97,7 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 			refs := strings.Split(args[1], ",")
 			opts.To.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
-			err := option.Parse(cmd, &opts)
-			if err != nil {
+			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
 			opts.DisableTTY(opts.Debug, false)

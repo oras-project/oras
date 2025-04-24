@@ -80,8 +80,7 @@ Example - Fetch and print a blob from OCI image layout archive file 'layout.tar'
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
 			}
 			opts.RawReference = args[0]
-			err := option.Parse(cmd, &opts)
-			if err != nil {
+			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
 			opts.DisableTTY(opts.Debug, opts.outputPath == "-")

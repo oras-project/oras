@@ -56,7 +56,7 @@ func (opts *Terminal) Parse(cmd *cobra.Command) error {
 // 1. --no-tty flag is set to true
 // 2. --debug flag is used
 // 3. output path is set to stdout and --no-tty flag is not explicitly set to false
-// (i.e. not --no-tty==false)
+// (i.e. not --no-tty=false)
 func (opts *Terminal) DisableTTY(debugEnabled, toSTDOUT bool) {
 	if debugEnabled || opts.noTTY || (toSTDOUT && !opts.ttyEnforced) {
 		opts.TTY = nil
