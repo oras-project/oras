@@ -26,7 +26,7 @@ import (
 	"oras.land/oras/internal/testutils"
 )
 
-func TestTerminal_ParseTTY(t *testing.T) {
+func TestTerminal_Parse(t *testing.T) {
 	_, device, err := testutils.NewPty()
 	if err != nil {
 		t.Fatal(err)
