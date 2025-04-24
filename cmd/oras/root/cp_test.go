@@ -126,10 +126,10 @@ func Test_doCopy(t *testing.T) {
 	}
 	defer slave.Close()
 	var opts copyOptions
-	opts.Tty = slave
+	opts.TTY = slave
 	opts.From.Reference = memDesc.Digest.String()
 	dst := memory.New()
-	handler := status.NewTTYCopyHandler(opts.Tty)
+	handler := status.NewTTYCopyHandler(opts.TTY)
 	// test
 	_, err = doCopy(context.Background(), handler, memStore, dst, &opts)
 	if err != nil {
@@ -149,9 +149,9 @@ func Test_doCopy_skipped(t *testing.T) {
 	}
 	defer slave.Close()
 	var opts copyOptions
-	opts.Tty = slave
+	opts.TTY = slave
 	opts.From.Reference = memDesc.Digest.String()
-	handler := status.NewTTYCopyHandler(opts.Tty)
+	handler := status.NewTTYCopyHandler(opts.TTY)
 
 	// test
 	_, err = doCopy(context.Background(), handler, memStore, memStore, &opts)
@@ -172,7 +172,7 @@ func Test_doCopy_mounted(t *testing.T) {
 	}
 	defer slave.Close()
 	var opts copyOptions
-	opts.Tty = slave
+	opts.TTY = slave
 	opts.From.Reference = manifestDigest
 	// mocked repositories
 	from, err := remote.NewRepository(fmt.Sprintf("%s/%s", host, repoFrom))
@@ -185,7 +185,7 @@ func Test_doCopy_mounted(t *testing.T) {
 		t.Fatal(err)
 	}
 	to.PlainHTTP = true
-	handler := status.NewTTYCopyHandler(opts.Tty)
+	handler := status.NewTTYCopyHandler(opts.TTY)
 
 	// test
 	_, err = doCopy(context.Background(), handler, from, to, &opts)

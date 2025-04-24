@@ -26,15 +26,15 @@ import (
 	"oras.land/oras/internal/testutils"
 )
 
-func TestTTY_ParseTTY(t *testing.T) {
+func TestTerminal_ParseTTY(t *testing.T) {
 	_, device, err := testutils.NewPty()
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer device.Close()
-	opts := TTY{
+	opts := Terminal{
 		noTTY: false,
-		Tty:   device,
+		TTY:   device,
 	}
 	// TTY output
 	if err := opts.Parse(&cobra.Command{}); err != nil {
@@ -42,14 +42,14 @@ func TestTTY_ParseTTY(t *testing.T) {
 	}
 }
 
-func TestTTY_UpdateTTY(t *testing.T) {
+func TestTerminal_UpdateTTY(t *testing.T) {
 	testTTY := &os.File{}
 	tests := []struct {
 		name        string
 		debug       bool
-		flagPresent bool
 		toSTDOUT    bool
 		noTTY       bool
+		ttyEnforced bool
 		expectedTTY *os.File
 	}{
 		{
@@ -59,16 +59,16 @@ func TestTTY_UpdateTTY(t *testing.T) {
 			"output to STDOUT, --no-tty set to true, reset TTY", false, true, true, true, nil,
 		},
 		{
-			"output to STDOUT, --no-tty set to false", false, true, true, false, testTTY,
+			"output to STDOUT, --no-tty set to false", false, true, false, true, testTTY,
 		},
 		{
 			"not output to STDOUT, --no-tty flag not used", false, false, false, false, testTTY,
 		},
 		{
-			"not output to STDOUT, --no-tty set to true, reset TTY", false, true, false, true, nil,
+			"not output to STDOUT, --no-tty set to true, reset TTY", false, false, true, false, nil,
 		},
 		{
-			"not output to STDOUT, --no-tty set to false", false, true, false, false, testTTY,
+			"not output to STDOUT, --no-tty set to false", false, false, false, true, testTTY,
 		},
 		{
 			"debug enabled, --no-tty flag is not used", true, false, false, false, nil,
@@ -76,13 +76,14 @@ func TestTTY_UpdateTTY(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			opts := &TTY{
-				noTTY: tt.noTTY,
-				Tty:   testTTY,
+			opts := &Terminal{
+				TTY:         testTTY,
+				noTTY:       tt.noTTY,
+				ttyEnforced: tt.ttyEnforced,
 			}
-			opts.UpdateTTY(tt.debug, tt.flagPresent, tt.toSTDOUT)
-			if !reflect.DeepEqual(opts.Tty, tt.expectedTTY) {
-				t.Fatalf("tt.TTY got %v, want %v", opts.Tty, tt.expectedTTY)
+			opts.DisableTTY(tt.debug, tt.toSTDOUT)
+			if !reflect.DeepEqual(opts.TTY, tt.expectedTTY) {
+				t.Fatalf("tt.TTY got %v, want %v", opts.TTY, tt.expectedTTY)
 			}
 		})
 	}

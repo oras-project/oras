@@ -45,7 +45,7 @@ type pullOptions struct {
 	option.Platform
 	option.Target
 	option.Format
-	option.TTY
+	option.Terminal
 
 	concurrency       int
 	KeepOldFiles      bool
@@ -102,10 +102,11 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
 			err := option.Parse(cmd, &opts)
-			if err == nil {
-				opts.UpdateTTY(opts.Debug, cmd.Flags().Changed(option.NoTTYFlag), false)
+			if err != nil {
+				return err
 			}
-			return err
+			opts.DisableTTY(opts.Debug, false)
+			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Printer.Verbose = opts.verbose
@@ -128,7 +129,7 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 
 func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-	statusHandler, metadataHandler, err := display.NewPullHandler(opts.Printer, opts.Format, opts.Path, opts.Tty)
+	statusHandler, metadataHandler, err := display.NewPullHandler(opts.Printer, opts.Format, opts.Path, opts.TTY)
 	if err != nil {
 		return err
 	}

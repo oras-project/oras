@@ -38,7 +38,7 @@ type discoverOptions struct {
 	option.Platform
 	option.Target
 	option.Format
-	option.TTY
+	option.Terminal
 
 	artifactType string
 	depth        int
@@ -106,7 +106,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 					return errors.New("output type can only be tree, table or json")
 				}
 			}
-			opts.UpdateTTY(opts.Debug, cmd.Flags().Changed(option.NoTTYFlag), false)
+			opts.DisableTTY(opts.Debug, false)
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -149,7 +149,7 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 		return err
 	}
 
-	handler, err := display.NewDiscoverHandler(opts.Printer, opts.Format, opts.Path, opts.RawReference, desc, opts.verbose, opts.Tty)
+	handler, err := display.NewDiscoverHandler(opts.Printer, opts.Format, opts.Path, opts.RawReference, desc, opts.verbose, opts.TTY)
 	if err != nil {
 		return err
 	}

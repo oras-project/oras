@@ -38,7 +38,7 @@ type pushBlobOptions struct {
 	option.Descriptor
 	option.Pretty
 	option.Target
-	option.TTY
+	option.Terminal
 
 	fileRef   string
 	mediaType string
@@ -91,10 +91,11 @@ Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
 				}
 			}
 			err := option.Parse(cmd, &opts)
-			if err == nil {
-				opts.UpdateTTY(opts.Debug, cmd.Flags().Changed(option.NoTTYFlag), false)
+			if err != nil {
+				return err
 			}
-			return err
+			opts.DisableTTY(opts.Debug, false)
+			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Printer.Verbose = opts.verbose && !opts.OutputDescriptor
@@ -125,7 +126,7 @@ func pushBlob(cmd *cobra.Command, opts *pushBlobOptions) (err error) {
 	}
 	defer rc.Close()
 
-	statusHandler, metadataHandler := display.NewBlobPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc, opts.Tty)
+	statusHandler, metadataHandler := display.NewBlobPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc, opts.TTY)
 	if err := doPush(ctx, statusHandler, target, desc, rc); err != nil {
 		return err
 	}

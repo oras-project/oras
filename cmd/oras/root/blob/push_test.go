@@ -46,9 +46,9 @@ func Test_pushBlobOptions_doPush(t *testing.T) {
 		Size:      int64(len(content)),
 	}
 	var opts pushBlobOptions
-	opts.Tty = device
+	opts.TTY = device
 	// test
-	err = doPush(context.Background(), status.NewTTYBlobPushHandler(opts.Tty, desc), src, desc, r)
+	err = doPush(context.Background(), status.NewTTYBlobPushHandler(opts.TTY, desc), src, desc, r)
 	if err != nil {
 		t.Fatal(err)
 	}

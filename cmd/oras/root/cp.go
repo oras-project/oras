@@ -46,7 +46,7 @@ type copyOptions struct {
 	option.Common
 	option.Platform
 	option.BinaryTarget
-	option.TTY
+	option.Terminal
 
 	recursive   bool
 	concurrency int
@@ -98,10 +98,11 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 			opts.To.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
 			err := option.Parse(cmd, &opts)
-			if err == nil {
-				opts.UpdateTTY(opts.Debug, cmd.Flags().Changed(option.NoTTYFlag), false)
+			if err != nil {
+				return err
 			}
-			return err
+			opts.DisableTTY(opts.Debug, false)
+			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Printer.Verbose = opts.verbose
@@ -135,7 +136,7 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 		return err
 	}
 	ctx = registryutil.WithScopeHint(ctx, dst, auth.ActionPull, auth.ActionPush)
-	statusHandler, metadataHandler := display.NewCopyHandler(opts.Printer, opts.Tty, dst)
+	statusHandler, metadataHandler := display.NewCopyHandler(opts.Printer, opts.TTY, dst)
 
 	desc, err := doCopy(ctx, statusHandler, src, dst, opts)
 	if err != nil {

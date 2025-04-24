@@ -41,7 +41,7 @@ type attachOptions struct {
 	option.Target
 	option.Format
 	option.Platform
-	option.TTY
+	option.Terminal
 
 	artifactType string
 	concurrency  int
@@ -98,7 +98,6 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 			opts.FileRefs = args[1:]
 			err := option.Parse(cmd, &opts)
 			if err == nil {
-				opts.UpdateTTY(opts.Debug, cmd.Flags().Changed(option.NoTTYFlag), false)
 				if err = opts.EnsureReferenceNotEmpty(cmd, true); err == nil {
 					return nil
 				}
@@ -110,7 +109,11 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 					err.Recommendation = fmt.Sprintf("Are you missing an artifact reference to attach to? %s", err.Recommendation)
 				}
 			}
-			return err
+			if err != nil {
+				return err
+			}
+			opts.DisableTTY(opts.Debug, false)
+			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Printer.Verbose = opts.verbose
@@ -160,7 +163,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	if err != nil {
 		return fmt.Errorf("failed to resolve %s: %w", opts.Reference, err)
 	}
-	statusHandler, metadataHandler, err := display.NewAttachHandler(opts.Printer, opts.Format, opts.Tty, store)
+	statusHandler, metadataHandler, err := display.NewAttachHandler(opts.Printer, opts.Format, opts.TTY, store)
 	if err != nil {
 		return err
 	}

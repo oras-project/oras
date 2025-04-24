@@ -40,7 +40,7 @@ type fetchBlobOptions struct {
 	option.Descriptor
 	option.Pretty
 	option.Target
-	option.TTY
+	option.Terminal
 
 	outputPath string
 }
@@ -81,10 +81,11 @@ Example - Fetch and print a blob from OCI image layout archive file 'layout.tar'
 			}
 			opts.RawReference = args[0]
 			err := option.Parse(cmd, &opts)
-			if err == nil {
-				opts.UpdateTTY(opts.Debug, cmd.Flags().Changed(option.NoTTYFlag), opts.outputPath == "-")
+			if err != nil {
+				return err
 			}
-			return err
+			opts.DisableTTY(opts.Debug, opts.outputPath == "-")
+			return nil
 		},
 		Aliases: []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -167,14 +168,14 @@ func (opts *fetchBlobOptions) doFetch(ctx context.Context, src oras.ReadOnlyTarg
 		writer = file
 	}
 
-	if opts.Tty == nil {
+	if opts.TTY == nil {
 		// none TTY output
 		if _, err = io.Copy(writer, vr); err != nil {
 			return ocispec.Descriptor{}, err
 		}
 	} else {
 		// TTY output
-		trackedReader, err := track.NewReader(vr, desc, "Downloading", "Downloaded ", opts.Tty)
+		trackedReader, err := track.NewReader(vr, desc, "Downloading", "Downloaded ", opts.TTY)
 		if err != nil {
 			return ocispec.Descriptor{}, err
 		}
