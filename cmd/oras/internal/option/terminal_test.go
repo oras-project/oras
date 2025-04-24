@@ -42,7 +42,7 @@ func TestTerminal_Parse(t *testing.T) {
 	}
 }
 
-func TestTerminal_UpdateTTY(t *testing.T) {
+func TestTerminal_DisableTTY(t *testing.T) {
 	testTTY := &os.File{}
 	tests := []struct {
 		name        string
