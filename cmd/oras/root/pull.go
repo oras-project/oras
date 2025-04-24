@@ -101,7 +101,8 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the artifact reference you want to pull"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
-			if err := option.Parse(cmd, &opts); err != nil {
+			err := option.Parse(cmd, &opts)
+			if err != nil {
 				return err
 			}
 			opts.DisableTTY(opts.Debug, false)
