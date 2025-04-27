@@ -16,7 +16,9 @@ limitations under the License.
 package display
 
 import (
+	"context"
 	"io"
+	"oras.land/oras-go/v2"
 	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -112,11 +114,11 @@ func NewPullHandler(printer *output.Printer, format option.Format, path string, 
 }
 
 // NewDiscoverHandler returns status and metadata handlers for discover command.
-func NewDiscoverHandler(out io.Writer, format option.Format, path string, rawReference string, desc ocispec.Descriptor, verbose bool, tty *os.File) (metadata.DiscoverHandler, error) {
+func NewDiscoverHandler(out io.Writer, format option.Format, path string, rawReference string, desc ocispec.Descriptor, verbose bool, dumpLayers bool, tty *os.File, context context.Context, target oras.ReadOnlyTarget, platform option.Platform) (metadata.DiscoverHandler, error) {
 	var handler metadata.DiscoverHandler
 	switch format.Type {
 	case option.FormatTypeTree.Name:
-		handler = tree.NewDiscoverHandler(out, path, desc, verbose, tty)
+		handler = tree.NewDiscoverHandler(out, path, desc, verbose, dumpLayers, tty, context, target, platform)
 	case option.FormatTypeTable.Name:
 		handler = table.NewDiscoverHandler(out, rawReference, desc, verbose)
 	case option.FormatTypeJSON.Name:

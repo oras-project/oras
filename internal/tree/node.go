@@ -16,7 +16,12 @@ limitations under the License.
 // Package tree pretty prints trees
 package tree
 
-import "reflect"
+import (
+	"reflect"
+	"strings"
+
+	"gopkg.in/yaml.v3"
+)
 
 // Node represents a tree node.
 type Node struct {
@@ -36,6 +41,22 @@ func (n *Node) Add(value any) *Node {
 	node := New(value)
 	n.Nodes = append(n.Nodes, node)
 	return node
+}
+
+// Add key/value node.
+func (n *Node) AddKV(key string, value any) *Node {
+	bytes, err := yaml.Marshal(map[string]any{key: value})
+	if err != nil {
+		panic(err)
+	}
+	node := n.AddPath(strings.TrimSpace(string(bytes)))
+	return node
+}
+
+// AddNode adds a leaf Node.
+func (n *Node) AddNode(node *Node) *Node {
+	n.Nodes = append(n.Nodes, node)
+	return n
 }
 
 // AddPath adds a chain of nodes.

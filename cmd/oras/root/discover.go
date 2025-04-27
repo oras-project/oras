@@ -43,7 +43,8 @@ type discoverOptions struct {
 	artifactType string
 	depth        int
 	// Deprecated: verbose is deprecated and will be removed in the future.
-	verbose bool
+	verbose    bool
+	dumpLayers bool
 }
 
 func discoverCmd() *cobra.Command {
@@ -117,6 +118,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().StringVarP(&opts.FormatFlag, "output", "o", "tree", "[Deprecated] format in which to display referrers (table, json, or tree).")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "display full metadata of referrers")
+	cmd.Flags().BoolVarP(&opts.dumpLayers, "dump-layers", "", true, "display full layers metadata of referrers")
 	cmd.Flags().IntVarP(&opts.depth, "depth", "", 0, "[Experimental] level of referrers to display, if unused shows referrers of all levels")
 	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
 	opts.SetTypes(
@@ -149,7 +151,7 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 		return err
 	}
 
-	handler, err := display.NewDiscoverHandler(opts.Printer, opts.Format, opts.Path, opts.RawReference, desc, opts.verbose, opts.TTY)
+	handler, err := display.NewDiscoverHandler(opts.Printer, opts.Format, opts.Path, opts.RawReference, desc, opts.verbose, opts.dumpLayers, opts.TTY, ctx, repo, opts.Platform)
 	if err != nil {
 		return err
 	}
