@@ -58,3 +58,15 @@ jobs:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
           fail_ci_if_error: true
+
+  build_image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Go 
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build image
+        run: make image-build

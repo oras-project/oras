@@ -20,6 +20,12 @@ GIT_DIRTY   = $(shell test -n "`git status --porcelain`" && echo "dirty" || echo
 GO_EXE      = go
 OSNAME      = $(shell uname -o)
 ARCHNAME    = $(shell uname -m)
+GO_VERSION  = $(shell awk '/^go /{print $$2}' go.mod|head -n1)
+BUILDER_IMAGE = golang:$(GO_VERSION)-alpine
+PLATFORMS ?= linux/amd64,linux/arm64
+DOCKER_BUILDX_CMD ?= docker buildx
+IMAGE_BUILD_CMD ?= $(DOCKER_BUILDX_CMD) build
+IMAGE_GIT_TAG ?= $(shell git describe --tags --dirty --always)
 
 ifeq ($(OSNAME),Darwin)
   OS = mac
@@ -181,3 +187,41 @@ teste2e-covdata:  ## test e2e coverage
 .PHONY: help
 help:  ## Display this help
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[%\/0-9A-Za-z_-]+:.*?##/ { printf "  \033[36m%-45s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+
+
+IMAGE_REGISTRY ?= ghcr.io/oras-project
+IMAGE_NAME := oras
+IMAGE_REPO ?= $(IMAGE_REGISTRY)/$(IMAGE_NAME)
+IMAGE_TAG ?= $(IMAGE_REPO):$(IMAGE_GIT_TAG)
+
+ifdef EXTRA_TAG
+IMAGE_EXTRA_TAG ?= $(IMAGE_REPO):$(EXTRA_TAG)
+endif
+ifdef IMAGE_EXTRA_TAG
+IMAGE_BUILD_EXTRA_OPTS += -t $(IMAGE_EXTRA_TAG)
+endif
+
+# Build the multiplatform container image locally and push to repo.
+.PHONY: image-local-push
+image-local-push: PUSH=--push
+image-local-push: image-local-build
+
+# Build the multiplatform container image locally.
+.PHONY: image-local-build
+image-local-build:
+	BUILDER=$(shell $(DOCKER_BUILDX_CMD) create --use)
+	$(MAKE) image-build PUSH=$(PUSH)
+	$(DOCKER_BUILDX_CMD) rm $$BUILDER
+
+.PHONY: image-push
+image-push: PUSH=--push
+image-push: image-build
+
+image-build:
+	$(IMAGE_BUILD_CMD) -t $(IMAGE_TAG) \
+		--platform=$(PLATFORMS) \
+		--build-arg BASE_IMAGE=$(BASE_IMAGE) \
+		--build-arg BUILDER_IMAGE=$(BUILDER_IMAGE) \
+		--build-arg CGO_ENABLED=$(CGO_ENABLED) \
+		$(PUSH) \
+		$(IMAGE_BUILD_EXTRA_OPTS) ./
