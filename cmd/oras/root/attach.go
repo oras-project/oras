@@ -41,6 +41,7 @@ type attachOptions struct {
 	option.Target
 	option.Format
 	option.Platform
+	option.Terminal
 
 	artifactType string
 	concurrency  int
@@ -97,6 +98,7 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 			opts.FileRefs = args[1:]
 			err := option.Parse(cmd, &opts)
 			if err == nil {
+				opts.DisableTTY(opts.Debug, false)
 				if err = opts.EnsureReferenceNotEmpty(cmd, true); err == nil {
 					return nil
 				}

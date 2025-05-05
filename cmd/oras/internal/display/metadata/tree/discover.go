@@ -18,13 +18,21 @@ package tree
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
+	"github.com/morikuni/aec"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"gopkg.in/yaml.v3"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/internal/tree"
+)
+
+var (
+	artifactTypeColor = aec.LightYellowF
+	digestColor       = aec.LightGreenF
+	annotationsColor  = aec.LightCyanF
 )
 
 // discoverHandler handles json metadata output for discover events.
@@ -34,11 +42,16 @@ type discoverHandler struct {
 	root    *tree.Node
 	nodes   map[digest.Digest]*tree.Node
 	verbose bool
+	tty     *os.File
 }
 
 // NewDiscoverHandler creates a new handler for discover events.
-func NewDiscoverHandler(out io.Writer, path string, root ocispec.Descriptor, verbose bool) metadata.DiscoverHandler {
-	treeRoot := tree.New(fmt.Sprintf("%s@%s", path, root.Digest))
+func NewDiscoverHandler(out io.Writer, path string, root ocispec.Descriptor, verbose bool, tty *os.File) metadata.DiscoverHandler {
+	rootDigest := fmt.Sprintf("%s@%s", path, root.Digest)
+	if tty != nil {
+		rootDigest = digestColor.Apply(rootDigest)
+	}
+	treeRoot := tree.New(rootDigest)
 	return &discoverHandler{
 		out:  out,
 		path: path,
@@ -47,6 +60,7 @@ func NewDiscoverHandler(out io.Writer, path string, root ocispec.Descriptor, ver
 			root.Digest: treeRoot,
 		},
 		verbose: verbose,
+		tty:     tty,
 	}
 }
 
@@ -56,17 +70,32 @@ func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) err
 	if !ok {
 		return fmt.Errorf("unexpected subject descriptor: %v", subject)
 	}
-	if referrer.ArtifactType == "" {
-		referrer.ArtifactType = "<unknown>"
+
+	// add artifact type and digest to the referrer
+	artifactType := referrer.ArtifactType
+	if artifactType == "" {
+		artifactType = "<unknown>"
 	}
-	referrerNode := node.AddPath(referrer.ArtifactType, referrer.Digest)
-	if h.verbose {
+	dgst := referrer.Digest.String()
+	if h.tty != nil {
+		artifactType = artifactTypeColor.Apply(artifactType)
+		dgst = digestColor.Apply(dgst)
+	}
+	referrerNode := node.AddPath(artifactType, dgst)
+
+	// add annotations to the referrer
+	if h.verbose && len(referrer.Annotations) > 0 {
+		annotationsTitle := "[annotations]"
+		if h.tty != nil {
+			annotationsTitle = annotationsColor.Apply(annotationsTitle)
+		}
+		annotationsNode := referrerNode.Add(annotationsTitle)
 		for k, v := range referrer.Annotations {
 			bytes, err := yaml.Marshal(map[string]string{k: v})
 			if err != nil {
 				return err
 			}
-			referrerNode.AddPath(strings.TrimSpace(string(bytes)))
+			annotationsNode.AddPath(strings.TrimSpace(string(bytes)))
 		}
 	}
 	h.nodes[referrer.Digest] = referrerNode
