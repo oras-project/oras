@@ -38,10 +38,12 @@ type discoverOptions struct {
 	option.Platform
 	option.Target
 	option.Format
+	option.Terminal
 
 	artifactType string
-	verbose      bool
 	depth        int
+	// Deprecated: verbose is deprecated and will be removed in the future.
+	verbose bool
 }
 
 func discoverCmd() *cobra.Command {
@@ -104,6 +106,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 					return errors.New("output type can only be tree, table or json")
 				}
 			}
+			opts.DisableTTY(opts.Debug, false)
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -113,8 +116,9 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().StringVarP(&opts.FormatFlag, "output", "o", "tree", "[Deprecated] format in which to display referrers (table, json, or tree).")
-	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "display full metadata of referrers")
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "display full metadata of referrers")
 	cmd.Flags().IntVarP(&opts.depth, "depth", "", 0, "[Experimental] level of referrers to display, if unused shows referrers of all levels")
+	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
 	opts.SetTypes(
 		option.FormatTypeTree,
 		option.FormatTypeTable,
@@ -123,6 +127,7 @@ Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout 
 	)
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
+	cmd.Flags().Lookup(option.NoTTYFlag).Usage = "[Preview] disable colors"
 	return oerrors.Command(cmd, &opts.Target)
 }
 
@@ -144,7 +149,7 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 		return err
 	}
 
-	handler, err := display.NewDiscoverHandler(opts.Printer, opts.Format, opts.Path, opts.RawReference, desc, opts.verbose)
+	handler, err := display.NewDiscoverHandler(opts.Printer, opts.Format, opts.Path, opts.RawReference, desc, opts.verbose, opts.TTY)
 	if err != nil {
 		return err
 	}

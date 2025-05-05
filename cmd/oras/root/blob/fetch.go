@@ -40,6 +40,7 @@ type fetchBlobOptions struct {
 	option.Descriptor
 	option.Pretty
 	option.Target
+	option.Terminal
 
 	outputPath string
 }
@@ -79,11 +80,11 @@ Example - Fetch and print a blob from OCI image layout archive file 'layout.tar'
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
 			}
 			opts.RawReference = args[0]
-			err := option.Parse(cmd, &opts)
-			if err == nil {
-				opts.UpdateTTY(cmd.Flags().Changed(option.NoTTYFlag), opts.outputPath == "-")
+			if err := option.Parse(cmd, &opts); err != nil {
+				return err
 			}
-			return err
+			opts.DisableTTY(opts.Debug, opts.outputPath == "-")
+			return nil
 		},
 		Aliases: []string{"get"},
 		RunE: func(cmd *cobra.Command, args []string) error {

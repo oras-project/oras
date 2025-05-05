@@ -56,7 +56,7 @@ func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) err
 
 // Render implements metadata.DiscoverHandler.
 func (h *discoverHandler) Render() error {
-	if n := len(h.referrers); n > 1 {
+	if n := len(h.referrers); n != 1 {
 		fmt.Fprintln(h.out, "Discovered", n, "artifacts referencing", h.rawReference)
 	} else {
 		fmt.Fprintln(h.out, "Discovered", n, "artifact referencing", h.rawReference)

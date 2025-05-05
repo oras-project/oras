@@ -56,6 +56,11 @@ var _ = Describe("ORAS beginners:", func() {
 			gomega.Expect(out).Should(gbytes.Say("--distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 		})
 
+		It("should say disable colors for --no-tty flag", func() {
+			out := ORAS("discover", "--help").MatchKeyWords("disable colors").Exec().Out
+			gomega.Expect(out).ShouldNot(gbytes.Say("disable progress bars"))
+		})
+
 		It("should show tree as default format type in help doc", func() {
 			MatchDefaultFlagValue("format", "tree", "discover")
 		})
@@ -238,14 +243,34 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 
 		It("should discover all referrers of a subject with annotations", func() {
-			ORAS("discover", subjectRef, "--format", format, "-v").
-				MatchKeyWords(append(discoverKeyWords(true, referrers...), RegistryRef(ZOTHost, ArtifactRepo, foobar.Digest))...).
+			ORAS("discover", subjectRef, "--format", format).
+				MatchKeyWords(append(discoverKeyWords(true, referrers...), RegistryRef(ZOTHost, ArtifactRepo, foobar.Digest), "[annotations]")...).
 				Exec()
 		})
 
 		It("should display <unknown> if a referrer has an empty artifact type", func() {
 			ORAS("discover", RegistryRef(ZOTHost, ArtifactRepo, "multi"), "--format", format).
 				MatchKeyWords("<unknown>").
+				Exec()
+		})
+
+		It("should discover and display annotations with --verbose", func() {
+			ORAS("discover", subjectRef, "--format", format, "-v").
+				MatchKeyWords(append(discoverKeyWords(true, referrers...), RegistryRef(ZOTHost, ArtifactRepo, foobar.Digest), "[annotations]")...).
+				Exec()
+		})
+
+		It("should not display annotations with --verbose=false", func() {
+			referrers := []ocispec.Descriptor{foobar.SBOMImageReferrer, foobar.SignatureImageReferrer}
+			out := ORAS("discover", subjectRef, "--format", format, "--verbose=false").
+				MatchKeyWords(append(discoverKeyWords(false, referrers...), RegistryRef(ZOTHost, ArtifactRepo, foobar.Digest))...).
+				Exec().Out
+			Expect(out).NotTo(gbytes.Say("\\[annotations\\]"))
+		})
+
+		It("should show deprecation message when using verbose flag", func() {
+			ORAS("discover", subjectRef, "--format", format, "--verbose").
+				MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).
 				Exec()
 		})
 
@@ -532,7 +557,7 @@ var _ = Describe("OCI image layout users:", func() {
 			root := PrepareTempOCI(ArtifactRepo)
 			subjectRef := LayoutRef(root, foobar.Tag)
 			ORAS("discover", subjectRef, "--format", format, "-v", Flags.Layout).
-				MatchKeyWords(append(discoverKeyWords(true, referrers...), LayoutRef(root, foobar.Digest))...).
+				MatchKeyWords(append(discoverKeyWords(true, referrers...), LayoutRef(root, foobar.Digest), "[annotations]")...).
 				Exec()
 		})
 	})
