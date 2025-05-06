@@ -18,6 +18,9 @@ package tree
 import (
 	"bytes"
 	"fmt"
+	"github.com/spf13/cobra"
+	"oras.land/oras/cmd/oras/internal/command"
+	"oras.land/oras/cmd/oras/internal/option"
 	"os"
 	"strings"
 	"testing"
@@ -25,6 +28,20 @@ import (
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
+
+type mockDiscoverOptions struct {
+	option.Common
+	option.Platform
+	option.Target
+	option.Format
+	option.Terminal
+
+	artifactType string
+	depth        int
+	// Deprecated: verbose is deprecated and will be removed in the future.
+	verbose    bool
+	dumpLayers bool
+}
 
 func TestDiscoverHandler_OnDiscovered(t *testing.T) {
 	path := "localhost:5000/test"
@@ -47,6 +64,18 @@ func TestDiscoverHandler_OnDiscovered(t *testing.T) {
 	coloredDigest := digestColor.Apply(referrerDesc.Digest.String())
 	coloredAnnotations := annotationsColor.Apply("[annotations]")
 
+	cmd := &cobra.Command{
+		Use:   "test use",
+		Short: "test short",
+		Long:  "test long",
+	}
+	cmd.SetContext(t.Context())
+
+	var opts mockDiscoverOptions
+	opts.dumpLayers = false
+	ctx, logger := command.GetLogger(cmd, &opts.Common)
+	repo, _ := opts.NewReadonlyTarget(ctx, opts.Common, logger)
+
 	t.Run("WithTTY", func(t *testing.T) {
 		var buf bytes.Buffer
 
@@ -58,7 +87,7 @@ func TestDiscoverHandler_OnDiscovered(t *testing.T) {
 		defer os.Remove(tmp.Name())
 		defer tmp.Close()
 
-		h := NewDiscoverHandler(&buf, path, subjectDesc, true, tmp)
+		h := NewDiscoverHandler(&buf, path, subjectDesc, true, opts.dumpLayers, tmp, ctx, repo, opts.Platform)
 		if err := h.OnDiscovered(referrerDesc, subjectDesc); err != nil {
 			t.Fatalf("OnDiscovered() error = %v", err)
 		}
@@ -93,7 +122,7 @@ func TestDiscoverHandler_OnDiscovered(t *testing.T) {
 	t.Run("WithoutTTY", func(t *testing.T) {
 		var buf bytes.Buffer
 
-		h := NewDiscoverHandler(&buf, path, subjectDesc, true, nil)
+		h := NewDiscoverHandler(&buf, path, subjectDesc, true, opts.dumpLayers, nil, ctx, repo, opts.Platform)
 		if err := h.OnDiscovered(referrerDesc, subjectDesc); err != nil {
 			t.Fatalf("OnDiscovered() error = %v", err)
 		}
