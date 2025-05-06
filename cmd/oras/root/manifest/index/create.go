@@ -48,9 +48,10 @@ type createOptions struct {
 	option.Pretty
 	option.Annotation
 
-	sources    []string
-	extraRefs  []string
-	outputPath string
+	artifactType string
+	sources      []string
+	extraRefs    []string
+	outputPath   string
 }
 
 func createCmd() *cobra.Command {
@@ -97,6 +98,7 @@ Example - Create an index and output the index to stdout, auto push will be disa
 			return createIndex(cmd, opts)
 		},
 	}
+	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type for overall index")
 	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "file `path` to write the created index to, use - for stdout")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
@@ -117,9 +119,10 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 		Versioned: specs.Versioned{
 			SchemaVersion: 2,
 		},
-		MediaType:   ocispec.MediaTypeImageIndex,
-		Manifests:   manifests,
-		Annotations: opts.Annotations[option.AnnotationManifest],
+		MediaType:    ocispec.MediaTypeImageIndex,
+		ArtifactType: opts.artifactType,
+		Manifests:    manifests,
+		Annotations:  opts.Annotations[option.AnnotationManifest],
 	}
 	indexBytes, err := json.Marshal(index)
 	if err != nil {
@@ -165,12 +168,7 @@ func fetchSourceManifests(ctx context.Context, displayStatus status.ManifestInde
 	return resolved, nil
 }
 
-func getPlatform(ctx context.Context, target oras.ReadOnlyTarget, manifestBytes []byte) (*ocispec.Platform, error) {
-	// extract config descriptor
-	var manifest ocispec.Manifest
-	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
-		return nil, err
-	}
+func getPlatform(ctx context.Context, target oras.ReadOnlyTarget, manifest *ocispec.Manifest) (*ocispec.Platform, error) {
 	// if config size is larger than 4 MiB, discontinue the fetch
 	if manifest.Config.Size > maxConfigSize {
 		return nil, fmt.Errorf("config size %v exceeds MaxBytes %v: %w", manifest.Config.Size, maxConfigSize, errdef.ErrSizeExceedsLimit)
@@ -216,10 +214,21 @@ func enrichDescriptor(ctx context.Context, target oras.ReadOnlyTarget, desc ocis
 	desc = descriptor.Plain(desc)
 	if descriptor.IsImageManifest(desc) {
 		var err error
-		desc.Platform, err = getPlatform(ctx, target, manifestBytes)
+		var manifest ocispec.Manifest
+		if err = json.Unmarshal(manifestBytes, &manifest); err != nil {
+			return ocispec.Descriptor{}, err
+		}
+		desc.Platform, err = getPlatform(ctx, target, &manifest)
 		if err != nil {
 			return ocispec.Descriptor{}, err
 		}
+		desc.ArtifactType = manifest.ArtifactType
+	} else if descriptor.IsImageManifest(desc) {
+		var index ocispec.Index
+		if err := json.Unmarshal(manifestBytes, &index); err != nil {
+			return ocispec.Descriptor{}, err
+		}
+		desc.ArtifactType = index.ArtifactType
 	}
 	return desc, nil
 }
