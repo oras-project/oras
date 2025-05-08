@@ -48,7 +48,6 @@ const (
 
 // Target struct contains flags and arguments specifying one registry or image
 // layout.
-// Target implements oerrors.Handler interface.
 type Target struct {
 	Remote
 	RawReference string
@@ -61,6 +60,9 @@ type Target struct {
 
 	IsOCILayout bool
 }
+
+// Make sure Target implements oerrors interface.
+var _ oerrors.Modifier = &Target{}
 
 // ApplyFlags applies flags to a command flag set for unary target
 func (target *Target) ApplyFlags(fs *pflag.FlagSet) {
