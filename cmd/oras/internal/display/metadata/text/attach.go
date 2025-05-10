@@ -43,12 +43,12 @@ func NewAttachHandler(printer *output.Printer) metadata.AttachHandler {
 func (ah *AttachHandler) OnAttached(target *option.Target, root ocispec.Descriptor, subject ocispec.Descriptor) {
 	ah.root = root
 	if strings.HasSuffix(target.RawReference, subject.Digest.String()) {
-		ah.subjectRefByDigest = target.AnnotatedReference()
+		ah.subjectRefByDigest = target.GetDisplayString()
 	} else {
 		// use subject digest instead of tag
 		newTarget := *target
 		newTarget.RawReference = fmt.Sprintf("%s@%s", target.Path, subject.Digest)
-		ah.subjectRefByDigest = newTarget.AnnotatedReference()
+		ah.subjectRefByDigest = newTarget.GetDisplayString()
 	}
 }
 

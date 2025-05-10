@@ -68,8 +68,8 @@ func (target *Target) ApplyFlags(fs *pflag.FlagSet) {
 	target.Remote.ApplyFlags(fs)
 }
 
-// AnnotatedReference returns full printable reference.
-func (target *Target) AnnotatedReference() string {
+// GetDisplayString returns full printable reference.
+func (target *Target) GetDisplayString() string {
 	return fmt.Sprintf("[%s] %s", target.Type, target.RawReference)
 }
 
