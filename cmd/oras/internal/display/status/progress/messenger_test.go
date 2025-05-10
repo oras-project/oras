@@ -32,7 +32,7 @@ func Test_messenger_Update(t *testing.T) {
 			progress.StateTransmitted:  "tested",
 		},
 	}
-	defer m.Close()
+	defer func() { _ = m.Close() }()
 	desc := ocispec.Descriptor{
 		MediaType: "application/vnd.docker.image.rootfs.diff.tar.gzip",
 		Size:      1234567890,
@@ -113,7 +113,7 @@ func Test_messenger_Fail(t *testing.T) {
 	m := &messenger{
 		update: make(chan statusUpdate, 1),
 	}
-	defer m.Close()
+	defer func() { _ = m.Close() }()
 	s := new(status)
 	errTest := errors.New("test error")
 
@@ -122,7 +122,7 @@ func Test_messenger_Fail(t *testing.T) {
 	}
 	update := <-m.update
 	update(s)
-	if s.err != errTest {
+	if !errors.Is(errTest, s.err) {
 		t.Errorf("messenger.Fail() = %v, want %v", s.err, errTest)
 	}
 }
