@@ -27,9 +27,9 @@ import (
 
 // AttachHandler handles text metadata output for attach events.
 type AttachHandler struct {
-	printer            *output.Printer
-	subjectRefByDigest string
-	root               ocispec.Descriptor
+	printer                 *output.Printer
+	subjectDisplayReference string
+	root                    ocispec.Descriptor
 }
 
 // NewAttachHandler returns a new handler for attach events.
@@ -43,18 +43,18 @@ func NewAttachHandler(printer *output.Printer) metadata.AttachHandler {
 func (ah *AttachHandler) OnAttached(target *option.Target, root ocispec.Descriptor, subject ocispec.Descriptor) {
 	ah.root = root
 	if strings.HasSuffix(target.RawReference, subject.Digest.String()) {
-		ah.subjectRefByDigest = target.AnnotatedReference()
+		ah.subjectDisplayReference = target.GetDisplayReference()
 	} else {
 		// use subject digest instead of tag
 		newTarget := *target
 		newTarget.RawReference = fmt.Sprintf("%s@%s", target.Path, subject.Digest)
-		ah.subjectRefByDigest = newTarget.AnnotatedReference()
+		ah.subjectDisplayReference = newTarget.GetDisplayReference()
 	}
 }
 
 // Render is called when the attach command is complete.
 func (ah *AttachHandler) Render() error {
-	err := ah.printer.Println("Attached to", ah.subjectRefByDigest)
+	err := ah.printer.Println("Attached to", ah.subjectDisplayReference)
 	if err != nil {
 		return err
 	}

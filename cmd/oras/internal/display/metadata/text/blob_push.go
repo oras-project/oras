@@ -38,7 +38,7 @@ func NewBlobPushHandler(printer *output.Printer, desc ocispec.Descriptor) metada
 
 // OnBlobPushed implements metadata.BlobPushHandler.
 func (h *BlobPushHandler) OnBlobPushed(target *option.Target) error {
-	return h.printer.Println("Pushed:", target.AnnotatedReference())
+	return h.printer.Println("Pushed:", target.GetDisplayReference())
 }
 
 // Render implements metadata.BlobPushHandler.

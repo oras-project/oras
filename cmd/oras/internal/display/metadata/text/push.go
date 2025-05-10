@@ -48,7 +48,7 @@ func (h *PushHandler) OnTagged(_ ocispec.Descriptor, tag string) error {
 // OnCopied is called after files are copied.
 func (h *PushHandler) OnCopied(opts *option.Target, root ocispec.Descriptor) error {
 	h.root = root
-	return h.printer.Println("Pushed", opts.AnnotatedReference())
+	return h.printer.Println("Pushed", opts.GetDisplayReference())
 }
 
 // Render implements PushHandler.
