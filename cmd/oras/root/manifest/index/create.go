@@ -56,7 +56,7 @@ type createOptions struct {
 func createCmd() *cobra.Command {
 	var opts createOptions
 	cmd := &cobra.Command{
-		Use:   "create [flags] <name>[:<tag[,<tag>][...]] [{<tag>|<digest>}...]",
+		Use:   "create [flags] <target>[:<tag[,<tag>][...]] <sources>[{<tag>|<digest>}...]",
 		Short: "[Experimental] Create and push an index from provided manifests",
 		Long: `[Experimental] Create and push an index from provided manifests. All manifests should be in the same repository
 
@@ -76,10 +76,10 @@ Example - Create and push an index with annotations:
   oras manifest index create localhost:5000/hello:v1 linux-amd64 --annotation "key=val"
 
 Example - Create an index and push to an OCI image layout folder 'layout-dir' and tag with 'v1':
-  oras manifest index create --oci-layout layout-dir:v1 linux-amd64 sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
-
+  oras manifest index create layout-dir:v1 linux-amd64 sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9 --oci-layout
+  
 Example - Create an index and save it locally to index.json, auto push will be disabled:
-  oras manifest index create --output index.json localhost:5000/hello linux-amd64 linux-arm64
+  oras manifest index create localhost:5000/hello linux-amd64 linux-arm64 --output index.json
 
 Example - Create an index and output the index to stdout, auto push will be disabled:
   oras manifest index create localhost:5000/hello linux-arm64 --output - --pretty
@@ -109,9 +109,6 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 		return err
 	}
 	displayStatus, displayMetadata, displayContent := display.NewManifestIndexCreateHandler(opts.outputPath, opts.Printer, opts.Pretty.Pretty)
-	if err != nil {
-		return err
-	}
 	manifests, err := fetchSourceManifests(ctx, displayStatus, target, opts.sources)
 	if err != nil {
 		return err

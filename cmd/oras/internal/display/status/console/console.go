@@ -59,7 +59,7 @@ func NewConsole(f *os.File) (Console, error) {
 // GetHeightWidth returns the width and height of the console.
 // If the console size cannot be determined, returns a default value of 80x10.
 func (c *console) GetHeightWidth() (height, width int) {
-	windowSize, err := c.Console.Size()
+	windowSize, err := c.Size()
 	if err != nil {
 		return MinHeight, MinWidth
 	}
