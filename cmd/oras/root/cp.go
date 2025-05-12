@@ -248,7 +248,7 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 	}
 	var index ocispec.Index
 	if err = json.Unmarshal(fetched, &index); err != nil {
-		return nil
+		return err
 	}
 
 	if len(index.Manifests) == 0 {

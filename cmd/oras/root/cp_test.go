@@ -21,14 +21,18 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/display/status"
@@ -195,5 +199,122 @@ func Test_doCopy_mounted(t *testing.T) {
 	// validate
 	if err = testutils.MatchPty(pty, slave, "Mounted", configMediaType, "100.00%", configDigest); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// fetchFailingReadOnlyGraphTarget is a mock implementation of oras.ReadOnlyGraphTarget
+type fetchFailingReadOnlyGraphTarget struct {
+	oras.ReadOnlyGraphTarget
+}
+
+func (m *fetchFailingReadOnlyGraphTarget) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
+	return nil, fmt.Errorf("failed to fetch content")
+}
+
+// invalidJSONReadOnlyGraphTarget is a mock implementation of oras.ReadOnlyGraphTarget
+// that returns invalid JSON data to simulate a JSON unmarshalling failure.
+type invalidJSONReadOnlyGraphTarget struct {
+	oras.ReadOnlyGraphTarget
+}
+
+func (m *invalidJSONReadOnlyGraphTarget) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
+	// Return invalid JSON data
+	return io.NopCloser(strings.NewReader("invalid-json")), nil
+}
+
+// mockReferrersFailingSource is a mock implementation of oras.ReadOnlyGraphTarget
+// that simulates a failure when fetching referrers.
+type mockReferrersFailingSource struct {
+	oras.ReadOnlyGraphTarget
+	indexContent string
+}
+
+func (m *mockReferrersFailingSource) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
+	// Return valid JSON data to pass the fetch step
+	return io.NopCloser(strings.NewReader(m.indexContent)), nil
+}
+
+func Test_prepareCopyOption(t *testing.T) {
+	type args struct {
+		src  oras.ReadOnlyGraphTarget
+		dst  oras.Target
+		root ocispec.Descriptor
+		opts *oras.ExtendedCopyOptions
+	}
+	mockedIndex := `{"schemaVersion":2,"manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2}]}`
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "non index",
+			args: args{
+				src: nil,
+				dst: nil,
+				root: ocispec.Descriptor{
+					MediaType: "application/vnd.oci.image.manifest.v1+json",
+				},
+				opts: nil,
+			},
+			wantErr: false,
+		},
+		{
+			name: "fetch failure",
+			args: args{
+				src: &fetchFailingReadOnlyGraphTarget{},
+				dst: memory.New(),
+				root: ocispec.Descriptor{
+					MediaType: ocispec.MediaTypeImageIndex,
+					Digest:    digest.FromString("nonexistent"),
+					Size:      int64(len("nonexistent")),
+				},
+				opts: &oras.ExtendedCopyOptions{},
+			},
+			wantErr: true,
+		},
+		{
+			name: "json unmarshal failure",
+			args: args{
+				src: &invalidJSONReadOnlyGraphTarget{},
+				dst: memory.New(),
+				root: ocispec.Descriptor{
+					MediaType: ocispec.MediaTypeImageIndex,
+					Digest:    digest.FromString("invalid-json"),
+					Size:      int64(len("invalid-json")),
+				},
+				opts: &oras.ExtendedCopyOptions{},
+			},
+			wantErr: true,
+		},
+		{
+			name: "referrers failure",
+			args: args{
+				src: &mockReferrersFailingSource{indexContent: mockedIndex},
+				dst: memory.New(),
+				root: ocispec.Descriptor{
+					MediaType: ocispec.MediaTypeImageIndex,
+					Digest:    digest.FromString(mockedIndex),
+					Size:      int64(len(mockedIndex)),
+				},
+				opts: &oras.ExtendedCopyOptions{
+					ExtendedCopyGraphOptions: oras.ExtendedCopyGraphOptions{
+						FindPredecessors: func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+							return nil, fmt.Errorf("failed to get referrers")
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	ctx := context.Background()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := prepareCopyOption(ctx, tt.args.src, tt.args.dst, tt.args.root, tt.args.opts); (err != nil) != tt.wantErr {
+				t.Errorf("prepareCopyOption() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
 }
