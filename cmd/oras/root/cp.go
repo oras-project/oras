@@ -244,14 +244,15 @@ func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.T
 		if err != nil {
 			return err
 		}
-		if len(referrers) == 0 {
-			// no child referrers
-			return nil
-		}
 
 		referrers = slices.DeleteFunc(referrers, func(desc ocispec.Descriptor) bool {
 			return content.Equal(desc, root)
 		})
+
+		if len(referrers) == 0 {
+			// no child referrers
+			return nil
+		}
 
 		findPredecessor := opts.FindPredecessors
 		opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
