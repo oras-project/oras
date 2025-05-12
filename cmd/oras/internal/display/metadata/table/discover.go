@@ -55,21 +55,30 @@ func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) err
 }
 
 // Render implements metadata.DiscoverHandler.
-func (h *discoverHandler) Render() error {
+func (h *discoverHandler) Render() (err error) {
 	if n := len(h.referrers); n != 1 {
-		fmt.Fprintln(h.out, "Discovered", n, "artifacts referencing", h.rawReference)
+		_, err = fmt.Fprintln(h.out, "Discovered", n, "artifacts referencing", h.rawReference)
 	} else {
-		fmt.Fprintln(h.out, "Discovered", n, "artifact referencing", h.rawReference)
+		_, err = fmt.Fprintln(h.out, "Discovered", n, "artifact referencing", h.rawReference)
 	}
-	fmt.Fprintln(h.out, "Digest:", h.root.Digest)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintln(h.out, "Digest:", h.root.Digest)
+	if err != nil {
+		return err
+	}
 	if len(h.referrers) == 0 {
 		return nil
 	}
-	fmt.Fprintln(h.out)
+	_, err = fmt.Fprintln(h.out)
+	if err != nil {
+		return err
+	}
 	return h.printDiscoveredReferrersTable()
 }
 
-func (h *discoverHandler) printDiscoveredReferrersTable() error {
+func (h *discoverHandler) printDiscoveredReferrersTable() (err error) {
 	typeNameTitle := "Artifact Type"
 	typeNameLength := len(typeNameTitle)
 	for _, ref := range h.referrers {
@@ -78,13 +87,20 @@ func (h *discoverHandler) printDiscoveredReferrersTable() error {
 		}
 	}
 
-	print := func(key string, value interface{}) {
-		fmt.Fprintln(h.out, key, strings.Repeat(" ", typeNameLength-len(key)+1), value)
+	printKey := func(key string, value interface{}) (err error) {
+		_, err = fmt.Fprintln(h.out, key, strings.Repeat(" ", typeNameLength-len(key)+1), value)
+		return err
 	}
 
-	print(typeNameTitle, "Digest")
+	err = printKey(typeNameTitle, "Digest")
+	if err != nil {
+		return err
+	}
 	for _, ref := range h.referrers {
-		print(ref.ArtifactType, ref.Digest)
+		err = printKey(ref.ArtifactType, ref.Digest)
+		if err != nil {
+			return err
+		}
 		if h.verbose {
 			if err := output.PrintPrettyJSON(h.out, ref); err != nil {
 				return fmt.Errorf("error printing JSON: %w", err)
