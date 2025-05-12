@@ -20,6 +20,8 @@ import (
 	"testing"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+
+	"oras.land/oras/internal/testutils"
 )
 
 func TestTableDiscoverHandler_OneReferrer(t *testing.T) {
@@ -136,5 +138,38 @@ func TestTableDiscoverHandler_Failure(t *testing.T) {
 	expected := "unexpected subject descriptor: { notRoot 0 [] map[] [] <nil> }"
 	if err.Error() != expected {
 		t.Errorf("Expected error <%s> actual error <%s>", expected, err.Error())
+	}
+}
+
+func Test_discoverHandler_Render(t *testing.T) {
+	root := ocispec.Descriptor{Digest: "root"}
+	one := ocispec.Descriptor{ArtifactType: ocispec.MediaTypeImageLayer, Digest: "one"}
+	two := ocispec.Descriptor{ArtifactType: ocispec.MediaTypeImageLayer, Digest: "two"}
+
+	tests := []struct {
+		wf *testutils.WriteFailure
+	}{
+		{wf: testutils.NewWriteFailure(1)},
+		{wf: testutils.NewWriteFailure(2)},
+		{wf: testutils.NewWriteFailure(3)},
+		{wf: testutils.NewWriteFailure(4)},
+		{wf: testutils.NewWriteFailure(5)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.wf.Expected(), func(t *testing.T) {
+			tdh := &discoverHandler{
+				out:          tt.wf,
+				rawReference: "rawRef",
+				root:         root,
+				verbose:      true,
+				referrers:    []ocispec.Descriptor{one, two},
+			}
+			err := tdh.Render()
+			if err == nil {
+				t.Errorf("OnDiscovered() Expected error <%s>", tt.wf.Expected())
+			} else if err.Error() != tt.wf.Expected() {
+				t.Errorf("Expected error <%s> actual error <%s>", tt.wf.Expected(), err.Error())
+			}
+		})
 	}
 }
