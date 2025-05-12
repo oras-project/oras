@@ -202,13 +202,42 @@ func Test_doCopy_mounted(t *testing.T) {
 	}
 }
 
+func Test_prepareCopyOption_NonIndex(t *testing.T) {
+	ctx := context.Background()
+	root := ocispec.Descriptor{
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+	}
+	err := prepareCopyOption(ctx, nil, nil, root, nil)
+	if err != nil {
+		t.Errorf("prepareCopyOption() error = %v, wantErr false", err)
+	}
+}
+
 // fetchFailingReadOnlyGraphTarget is a mock implementation of oras.ReadOnlyGraphTarget
 type fetchFailingReadOnlyGraphTarget struct {
 	oras.ReadOnlyGraphTarget
 }
 
+// Fetch simulates a failure when fetching content from the source.
 func (m *fetchFailingReadOnlyGraphTarget) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
 	return nil, fmt.Errorf("failed to fetch content")
+}
+
+func Test_prepareCopyOption_FetchFailure(t *testing.T) {
+	ctx := context.Background()
+	src := &fetchFailingReadOnlyGraphTarget{}
+	dst := memory.New()
+	root := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Digest:    digest.FromString("nonexistent"),
+		Size:      int64(len("nonexistent")),
+	}
+	opts := &oras.ExtendedCopyOptions{}
+
+	err := prepareCopyOption(ctx, src, dst, root, opts)
+	if err == nil {
+		t.Errorf("prepareCopyOption() error = nil, wantErr true")
+	}
 }
 
 // invalidJSONReadOnlyGraphTarget is a mock implementation of oras.ReadOnlyGraphTarget
@@ -217,9 +246,27 @@ type invalidJSONReadOnlyGraphTarget struct {
 	oras.ReadOnlyGraphTarget
 }
 
+// Fetch simulates a successful fetch of invalid JSON data.
 func (m *invalidJSONReadOnlyGraphTarget) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
 	// Return invalid JSON data
 	return io.NopCloser(strings.NewReader("invalid-json")), nil
+}
+
+func Test_prepareCopyOption_JSONUnmarshalFailure(t *testing.T) {
+	ctx := context.Background()
+	src := &invalidJSONReadOnlyGraphTarget{}
+	dst := memory.New()
+	root := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Digest:    digest.FromString("invalid-json"),
+		Size:      int64(len("invalid-json")),
+	}
+	opts := &oras.ExtendedCopyOptions{}
+
+	err := prepareCopyOption(ctx, src, dst, root, opts)
+	if err == nil {
+		t.Errorf("prepareCopyOption() error = nil, wantErr true")
+	}
 }
 
 // mockReferrersFailingSource is a mock implementation of oras.ReadOnlyGraphTarget
@@ -229,92 +276,56 @@ type mockReferrersFailingSource struct {
 	indexContent string
 }
 
+// Fetch simulates successful fetching of index content.
 func (m *mockReferrersFailingSource) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
 	// Return valid JSON data to pass the fetch step
 	return io.NopCloser(strings.NewReader(m.indexContent)), nil
 }
 
-func Test_prepareCopyOption(t *testing.T) {
-	type args struct {
-		src  oras.ReadOnlyGraphTarget
-		dst  oras.Target
-		root ocispec.Descriptor
-		opts *oras.ExtendedCopyOptions
-	}
+func Test_prepareCopyOption_ReferrersFailure(t *testing.T) {
+
+	ctx := context.Background()
 	mockedIndex := `{"schemaVersion":2,"manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2}]}`
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		{
-			name: "non index",
-			args: args{
-				src: nil,
-				dst: nil,
-				root: ocispec.Descriptor{
-					MediaType: "application/vnd.oci.image.manifest.v1+json",
-				},
-				opts: nil,
+	src := &mockReferrersFailingSource{indexContent: mockedIndex}
+	dst := memory.New()
+	root := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Digest:    digest.FromString(mockedIndex),
+		Size:      int64(len(mockedIndex)),
+	}
+	opts := &oras.ExtendedCopyOptions{
+		ExtendedCopyGraphOptions: oras.ExtendedCopyGraphOptions{
+			FindPredecessors: func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+				return nil, fmt.Errorf("failed to get referrers")
 			},
-			wantErr: false,
-		},
-		{
-			name: "fetch failure",
-			args: args{
-				src: &fetchFailingReadOnlyGraphTarget{},
-				dst: memory.New(),
-				root: ocispec.Descriptor{
-					MediaType: ocispec.MediaTypeImageIndex,
-					Digest:    digest.FromString("nonexistent"),
-					Size:      int64(len("nonexistent")),
-				},
-				opts: &oras.ExtendedCopyOptions{},
-			},
-			wantErr: true,
-		},
-		{
-			name: "json unmarshal failure",
-			args: args{
-				src: &invalidJSONReadOnlyGraphTarget{},
-				dst: memory.New(),
-				root: ocispec.Descriptor{
-					MediaType: ocispec.MediaTypeImageIndex,
-					Digest:    digest.FromString("invalid-json"),
-					Size:      int64(len("invalid-json")),
-				},
-				opts: &oras.ExtendedCopyOptions{},
-			},
-			wantErr: true,
-		},
-		{
-			name: "referrers failure",
-			args: args{
-				src: &mockReferrersFailingSource{indexContent: mockedIndex},
-				dst: memory.New(),
-				root: ocispec.Descriptor{
-					MediaType: ocispec.MediaTypeImageIndex,
-					Digest:    digest.FromString(mockedIndex),
-					Size:      int64(len(mockedIndex)),
-				},
-				opts: &oras.ExtendedCopyOptions{
-					ExtendedCopyGraphOptions: oras.ExtendedCopyGraphOptions{
-						FindPredecessors: func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-							return nil, fmt.Errorf("failed to get referrers")
-						},
-					},
-				},
-			},
-			wantErr: true,
 		},
 	}
 
+	err := prepareCopyOption(ctx, src, dst, root, opts)
+	if err == nil {
+		t.Errorf("prepareCopyOption() error = nil, wantErr true")
+	}
+}
+
+func Test_prepareCopyOption_NoReferrers(t *testing.T) {
 	ctx := context.Background()
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := prepareCopyOption(ctx, tt.args.src, tt.args.dst, tt.args.root, tt.args.opts); (err != nil) != tt.wantErr {
-				t.Errorf("prepareCopyOption() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
+	mockedIndex := `{"schemaVersion":2,"manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2}]}`
+	src := &mockReferrersFailingSource{indexContent: mockedIndex}
+	dst := memory.New()
+	root := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Digest:    digest.FromString(mockedIndex),
+		Size:      int64(len(mockedIndex)),
+	}
+	opts := &oras.ExtendedCopyOptions{
+		ExtendedCopyGraphOptions: oras.ExtendedCopyGraphOptions{
+			FindPredecessors: func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+				return nil, nil
+			},
+		},
+	}
+
+	if err := prepareCopyOption(ctx, src, dst, root, opts); err != nil {
+		t.Errorf("prepareCopyOption() error = %v, wantErr false", err)
 	}
 }
