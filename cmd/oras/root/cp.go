@@ -225,47 +225,8 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 // recursiveCopy copies an artifact and its referrers from one target to another.
 // If the artifact is a manifest list or index, referrers of its manifests are copied as well.
 func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, dstRef string, root ocispec.Descriptor, opts oras.ExtendedCopyOptions) error {
-	if root.MediaType == ocispec.MediaTypeImageIndex || root.MediaType == docker.MediaTypeManifestList {
-		fetched, err := content.FetchAll(ctx, src, root)
-		if err != nil {
-			return err
-		}
-		var index ocispec.Index
-		if err = json.Unmarshal(fetched, &index); err != nil {
-			return nil
-		}
-
-		if len(index.Manifests) == 0 {
-			// no child manifests, thus no child referrers
-			return nil
-		}
-
-		referrers, err := graph.FindPredecessors(ctx, src, index.Manifests, opts)
-		if err != nil {
-			return err
-		}
-
-		referrers = slices.DeleteFunc(referrers, func(desc ocispec.Descriptor) bool {
-			return content.Equal(desc, root)
-		})
-
-		if len(referrers) == 0 {
-			// no child referrers
-			return nil
-		}
-
-		findPredecessor := opts.FindPredecessors
-		opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-			descs, err := findPredecessor(ctx, src, desc)
-			if err != nil {
-				return nil, err
-			}
-			if content.Equal(desc, root) {
-				// make sure referrers of child manifests are copied by pointing them to root
-				descs = append(descs, referrers...)
-			}
-			return descs, nil
-		}
+	if err := prepareCopyOption(ctx, src, dst, root, &opts); err != nil {
+		return err
 	}
 
 	var err error
@@ -275,4 +236,51 @@ func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.T
 		_, err = oras.ExtendedCopy(ctx, src, root.Digest.String(), dst, dstRef, opts)
 	}
 	return err
+}
+
+func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, root ocispec.Descriptor, opts *oras.ExtendedCopyOptions) error {
+	if root.MediaType != ocispec.MediaTypeImageIndex && root.MediaType != docker.MediaTypeManifestList {
+		return nil
+	}
+	fetched, err := content.FetchAll(ctx, src, root)
+	if err != nil {
+		return err
+	}
+	var index ocispec.Index
+	if err = json.Unmarshal(fetched, &index); err != nil {
+		return nil
+	}
+
+	if len(index.Manifests) == 0 {
+		// no child manifests, thus no child referrers
+		return nil
+	}
+
+	referrers, err := graph.FindPredecessors(ctx, src, index.Manifests, *opts)
+	if err != nil {
+		return err
+	}
+
+	referrers = slices.DeleteFunc(referrers, func(desc ocispec.Descriptor) bool {
+		return content.Equal(desc, root)
+	})
+
+	if len(referrers) == 0 {
+		// no child referrers
+		return nil
+	}
+
+	findPredecessor := opts.FindPredecessors
+	opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		descs, err := findPredecessor(ctx, src, desc)
+		if err != nil {
+			return nil, err
+		}
+		if content.Equal(desc, root) {
+			// make sure referrers of child manifests are copied by pointing them to root
+			descs = append(descs, referrers...)
+		}
+		return descs, nil
+	}
+	return nil
 }
