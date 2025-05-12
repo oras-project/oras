@@ -223,7 +223,24 @@ func (m *fetchFailingReadOnlyGraphTarget) Fetch(ctx context.Context, target ocis
 	return nil, fmt.Errorf("failed to fetch content")
 }
 
-func Test_prepareCopyOption_FetchFailure(t *testing.T) {
+func Test_prepareCopyOption_fetchFailure(t *testing.T) {
+	ctx := context.Background()
+	src := &fetchFailingReadOnlyGraphTarget{}
+	dst := memory.New()
+	root := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Digest:    digest.FromString("nonexistent"),
+		Size:      int64(len("nonexistent")),
+	}
+	opts := &oras.ExtendedCopyOptions{}
+
+	err := prepareCopyOption(ctx, src, dst, root, opts)
+	if err == nil {
+		t.Errorf("prepareCopyOption() error = nil, wantErr true")
+	}
+}
+
+func Test_recursiveCopy_prepareCopyOptionFailure(t *testing.T) {
 	ctx := context.Background()
 	src := &fetchFailingReadOnlyGraphTarget{}
 	dst := memory.New()
@@ -252,7 +269,7 @@ func (m *invalidJSONReadOnlyGraphTarget) Fetch(ctx context.Context, target ocisp
 	return io.NopCloser(strings.NewReader("invalid-json")), nil
 }
 
-func Test_prepareCopyOption_JSONUnmarshalFailure(t *testing.T) {
+func Test_prepareCopyOption_jsonUnmarshalFailure(t *testing.T) {
 	ctx := context.Background()
 	src := &invalidJSONReadOnlyGraphTarget{}
 	dst := memory.New()
@@ -282,7 +299,7 @@ func (m *mockReferrersFailingSource) Fetch(ctx context.Context, target ocispec.D
 	return io.NopCloser(strings.NewReader(m.indexContent)), nil
 }
 
-func Test_prepareCopyOption_ReferrersFailure(t *testing.T) {
+func Test_prepareCopyOption_referrersFailure(t *testing.T) {
 
 	ctx := context.Background()
 	mockedIndex := `{"schemaVersion":2,"manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2}]}`
@@ -307,7 +324,7 @@ func Test_prepareCopyOption_ReferrersFailure(t *testing.T) {
 	}
 }
 
-func Test_prepareCopyOption_NoReferrers(t *testing.T) {
+func Test_prepareCopyOption_noReferrers(t *testing.T) {
 	ctx := context.Background()
 	mockedIndex := `{"schemaVersion":2,"manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2}]}`
 	src := &mockReferrersFailingSource{indexContent: mockedIndex}
