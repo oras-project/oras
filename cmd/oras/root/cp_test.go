@@ -208,8 +208,7 @@ func Test_prepareCopyOption_nonIndex(t *testing.T) {
 	root := ocispec.Descriptor{
 		MediaType: ocispec.MediaTypeImageManifest,
 	}
-	err := prepareCopyOption(ctx, nil, nil, root, nil)
-	if err != nil {
+	if err := prepareCopyOption(ctx, nil, nil, root, nil); err != nil {
 		t.Errorf("prepareCopyOption() error = %v, wantErr false", err)
 	}
 }
@@ -238,7 +237,7 @@ func Test_prepareCopyOption_fetchFailure(t *testing.T) {
 	opts := &oras.ExtendedCopyOptions{}
 
 	if err := prepareCopyOption(ctx, src, dst, root, opts); err != errMockedFetch {
-		t.Errorf("prepareCopyOption() error = nil, wantErr true")
+		t.Errorf("prepareCopyOption() error = %v, want %v", err, errMockedFetch)
 	}
 }
 
@@ -254,7 +253,7 @@ func Test_recursiveCopy_prepareCopyOptionFailure(t *testing.T) {
 	opts := &oras.ExtendedCopyOptions{}
 
 	if err := prepareCopyOption(ctx, src, dst, root, opts); err != errMockedFetch {
-		t.Errorf("prepareCopyOption() error = nil, wantErr true")
+		t.Errorf("prepareCopyOption() error = %v, want %v", err, errMockedFetch)
 	}
 }
 
