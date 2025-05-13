@@ -148,7 +148,7 @@ func (opts *fetchBlobOptions) doFetch(ctx context.Context, src oras.ReadOnlyTarg
 	if err != nil {
 		return ocispec.Descriptor{}, err
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 	vr := content.NewVerifyReader(rc, desc)
 
 	// outputs blob content if "--output -" is used
