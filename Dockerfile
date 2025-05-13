@@ -10,8 +10,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.24.2-alpine as builder
+ARG BUILDER_IMAGE=golang:1.24.2-alpine
+FROM --platform=$BUILDPLATFORM ${BUILDER_IMAGE} as builder
 ARG TARGETPLATFORM
 RUN apk add git make
 ENV ORASPKG /oras
