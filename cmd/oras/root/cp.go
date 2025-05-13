@@ -225,11 +225,11 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 // recursiveCopy copies an artifact and its referrers from one target to another.
 // If the artifact is a manifest list or index, referrers of its manifests are copied as well.
 func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, dstRef string, root ocispec.Descriptor, opts oras.ExtendedCopyOptions) error {
-	if err := prepareCopyOption(ctx, src, dst, root, &opts); err != nil {
+	var err error
+	if opts, err = prepareCopyOption(ctx, src, dst, root, opts); err != nil {
 		return err
 	}
 
-	var err error
 	if dstRef == "" || dstRef == root.Digest.String() {
 		err = oras.ExtendedCopyGraph(ctx, src, dst, root, opts.ExtendedCopyGraphOptions)
 	} else {
@@ -238,27 +238,28 @@ func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.T
 	return err
 }
 
-func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, root ocispec.Descriptor, opts *oras.ExtendedCopyOptions) error {
+func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, root ocispec.Descriptor, opts oras.ExtendedCopyOptions) (oras.ExtendedCopyOptions, error) {
 	if root.MediaType != ocispec.MediaTypeImageIndex && root.MediaType != docker.MediaTypeManifestList {
-		return nil
+		return opts, nil
 	}
+
 	fetched, err := content.FetchAll(ctx, src, root)
 	if err != nil {
-		return err
+		return opts, err
 	}
 	var index ocispec.Index
 	if err = json.Unmarshal(fetched, &index); err != nil {
-		return err
+		return opts, err
 	}
 
 	if len(index.Manifests) == 0 {
 		// no child manifests, thus no child referrers
-		return nil
+		return opts, nil
 	}
 
-	referrers, err := graph.FindPredecessors(ctx, src, index.Manifests, *opts)
+	referrers, err := graph.FindPredecessors(ctx, src, index.Manifests, opts)
 	if err != nil {
-		return err
+		return opts, err
 	}
 
 	referrers = slices.DeleteFunc(referrers, func(desc ocispec.Descriptor) bool {
@@ -267,7 +268,7 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 
 	if len(referrers) == 0 {
 		// no child referrers
-		return nil
+		return opts, nil
 	}
 
 	findPredecessor := opts.FindPredecessors
@@ -282,5 +283,5 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 		}
 		return descs, nil
 	}
-	return nil
+	return opts, nil
 }

@@ -208,7 +208,7 @@ func Test_prepareCopyOption_nonIndex(t *testing.T) {
 	root := ocispec.Descriptor{
 		MediaType: ocispec.MediaTypeImageManifest,
 	}
-	if err := prepareCopyOption(ctx, nil, nil, root, nil); err != nil {
+	if _, err := prepareCopyOption(ctx, nil, nil, root, oras.ExtendedCopyOptions{}); err != nil {
 		t.Errorf("prepareCopyOption() error = %v, wantErr false", err)
 	}
 }
@@ -234,9 +234,8 @@ func Test_prepareCopyOption_fetchFailure(t *testing.T) {
 		Digest:    digest.FromString("nonexistent"),
 		Size:      int64(len("nonexistent")),
 	}
-	opts := &oras.ExtendedCopyOptions{}
 
-	if err := prepareCopyOption(ctx, src, dst, root, opts); err != errMockedFetch {
+	if _, err := prepareCopyOption(ctx, src, dst, root, oras.ExtendedCopyOptions{}); err != errMockedFetch {
 		t.Errorf("prepareCopyOption() error = %v, want %v", err, errMockedFetch)
 	}
 }
@@ -250,9 +249,8 @@ func Test_recursiveCopy_prepareCopyOptionFailure(t *testing.T) {
 		Digest:    digest.FromString("nonexistent"),
 		Size:      int64(len("nonexistent")),
 	}
-	opts := &oras.ExtendedCopyOptions{}
 
-	if err := prepareCopyOption(ctx, src, dst, root, opts); err != errMockedFetch {
+	if _, err := prepareCopyOption(ctx, src, dst, root, oras.ExtendedCopyOptions{}); err != errMockedFetch {
 		t.Errorf("prepareCopyOption() error = %v, want %v", err, errMockedFetch)
 	}
 }
@@ -278,9 +276,7 @@ func Test_prepareCopyOption_jsonUnmarshalFailure(t *testing.T) {
 		Digest:    digest.FromString("invalid-json"),
 		Size:      int64(len("invalid-json")),
 	}
-	opts := &oras.ExtendedCopyOptions{}
-
-	err := prepareCopyOption(ctx, src, dst, root, opts)
+	_, err := prepareCopyOption(ctx, src, dst, root, oras.ExtendedCopyOptions{})
 	if _, ok := err.(*json.SyntaxError); !ok {
 		t.Errorf("prepareCopyOption() error = %v, want json.SyntaxError", err)
 	}
@@ -311,7 +307,7 @@ func Test_prepareCopyOption_referrersFailure(t *testing.T) {
 		Size:      int64(len(mockedIndex)),
 	}
 	errMockedReferrers := fmt.Errorf("failed to get referrers")
-	opts := &oras.ExtendedCopyOptions{
+	opts := oras.ExtendedCopyOptions{
 		ExtendedCopyGraphOptions: oras.ExtendedCopyGraphOptions{
 			FindPredecessors: func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 				return nil, errMockedReferrers
@@ -319,7 +315,7 @@ func Test_prepareCopyOption_referrersFailure(t *testing.T) {
 		},
 	}
 
-	if err := prepareCopyOption(ctx, src, dst, root, opts); err != errMockedReferrers {
+	if _, err := prepareCopyOption(ctx, src, dst, root, opts); err != errMockedReferrers {
 		t.Errorf("prepareCopyOption() error = %v, wantErr %v", err, errMockedReferrers)
 	}
 }
@@ -334,7 +330,7 @@ func Test_prepareCopyOption_noReferrers(t *testing.T) {
 		Digest:    digest.FromString(mockedIndex),
 		Size:      int64(len(mockedIndex)),
 	}
-	opts := &oras.ExtendedCopyOptions{
+	opts := oras.ExtendedCopyOptions{
 		ExtendedCopyGraphOptions: oras.ExtendedCopyGraphOptions{
 			FindPredecessors: func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 				return nil, nil
@@ -342,7 +338,7 @@ func Test_prepareCopyOption_noReferrers(t *testing.T) {
 		},
 	}
 
-	if err := prepareCopyOption(ctx, src, dst, root, opts); err != nil {
+	if _, err := prepareCopyOption(ctx, src, dst, root, opts); err != nil {
 		t.Errorf("prepareCopyOption() error = %v, wantErr false", err)
 	}
 }
