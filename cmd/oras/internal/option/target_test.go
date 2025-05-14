@@ -75,6 +75,25 @@ func TestTarget_Parse_oci_and_oci_path(t *testing.T) {
 
 }
 
+func TestTarget_Parse_to_oci_and_oci_path(t *testing.T) {
+	opts := Target{}
+	cmd := &cobra.Command{}
+	opts.setFlagDetails("to", "destination")
+	opts.ApplyFlags(cmd.Flags())
+	cmd.SetArgs([]string{"--to-oci-layout", "foo", "--to-oci-layout-path", "foo"})
+	if err := cmd.Execute(); err != nil {
+		t.Errorf("cmd.Execute() error = %v", err)
+	}
+	err := opts.Parse(cmd)
+	if err == nil {
+		t.Errorf("expect Target.Parse() to fail but not")
+	}
+	if !strings.Contains(err.Error(), "cannot be used at the same time") {
+		t.Errorf("expect error message to contain 'cannot be used at the same time' but not")
+	}
+
+}
+
 func TestTarget_Parse_remote(t *testing.T) {
 	opts := Target{
 		RawReference: "mocked/test",
