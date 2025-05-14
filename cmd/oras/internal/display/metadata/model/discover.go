@@ -32,7 +32,7 @@ type Discover struct {
 // Node represents a node in the discovered reference tree.
 type Node struct {
 	Descriptor
-	Referrers []*Node `json:"referrers,omitempty"`
+	Referrers []*Node `json:"referrers"`
 }
 
 // AddReferrer adds a node to the discovered referrers tree.
@@ -63,5 +63,6 @@ func NewDiscover(path string, root ocispec.Descriptor) Discover {
 func NewNode(name string, desc ocispec.Descriptor) *Node {
 	return &Node{
 		Descriptor: FromDescriptor(name, desc),
+		Referrers:  []*Node{},
 	}
 }

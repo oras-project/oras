@@ -211,6 +211,14 @@ var _ = Describe("1.1 registry users:", func() {
 			Expect(referrer.Referrers).To(HaveLen(1))
 			Expect(referrer.Referrers[0]).Should(Equal(foobar.SignatureImageReferrer))
 		})
+
+		It("should show the referrer field when no referrer is found", func() {
+			bytes := ORAS("discover", RegistryRef(ZOTHost, ArtifactRepo, string(foobar.SignatureImageReferrer.Digest)), "--format", format).Exec().Out.Contents()
+			var subject subject
+			Expect(json.Unmarshal(bytes, &subject)).ShouldNot(HaveOccurred())
+			Expect(subject.Referrers).ShouldNot(Equal(nil))
+			Expect(subject.Referrers).To(HaveLen(0))
+		})
 	})
 
 	When("running discover command with tree output", func() {
