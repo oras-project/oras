@@ -32,12 +32,12 @@ type testGraphTarget struct {
 
 func TestTTYPushHandler_TrackTarget(t *testing.T) {
 	// prepare pty
-	_, slave, err := testutils.NewPty()
+	_, child, err := testutils.NewPty()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer slave.Close()
-	ph := NewTTYPushHandler(slave, mockFetcher.Fetcher)
+	defer child.Close()
+	ph := NewTTYPushHandler(child, mockFetcher.Fetcher)
 	store := memory.New()
 	// test
 	_, fn, err := ph.TrackTarget(store)
@@ -87,12 +87,12 @@ func Test_TTYPullHandler_TrackTarget(t *testing.T) {
 }
 
 func TestTTYCopyHandler_OnMounted(t *testing.T) {
-	pty, slave, err := testutils.NewPty()
+	pty, child, err := testutils.NewPty()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer slave.Close()
-	ch := NewTTYCopyHandler(slave)
+	defer child.Close()
+	ch := NewTTYCopyHandler(child)
 	_, err = ch.StartTracking(&testGraphTarget{memory.New()})
 	if err != nil {
 		t.Fatal(err)
@@ -106,18 +106,18 @@ func TestTTYCopyHandler_OnMounted(t *testing.T) {
 		t.Fatalf("StopTracking() should not return an error: %v", err)
 	}
 
-	if err = testutils.MatchPty(pty, slave, "✓", "Mounted", strconv.FormatInt(mockFetcher.OciImage.Size, 10), "100.00%", mockFetcher.OciImage.Digest.String()); err != nil {
+	if err = testutils.MatchPty(pty, child, "✓", "Mounted", strconv.FormatInt(mockFetcher.OciImage.Size, 10), "100.00%", mockFetcher.OciImage.Digest.String()); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestTTYCopyHandler_OnCopySkipped(t *testing.T) {
-	pty, slave, err := testutils.NewPty()
+	pty, child, err := testutils.NewPty()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer slave.Close()
-	ch := NewTTYCopyHandler(slave)
+	defer child.Close()
+	ch := NewTTYCopyHandler(child)
 	_, err = ch.StartTracking(&testGraphTarget{memory.New()})
 	if err != nil {
 		t.Fatal(err)
@@ -130,18 +130,18 @@ func TestTTYCopyHandler_OnCopySkipped(t *testing.T) {
 	if err = ch.StopTracking(); err != nil {
 		t.Errorf("StopTracking() should not return an error: %v", err)
 	}
-	if err = testutils.MatchPty(pty, slave, "Exists", "oci-image", strconv.FormatInt(mockFetcher.OciImage.Size, 10), "100.00%"); err != nil {
+	if err = testutils.MatchPty(pty, child, "Exists", "oci-image", strconv.FormatInt(mockFetcher.OciImage.Size, 10), "100.00%"); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestTTYCopyHandler_PostCopy(t *testing.T) {
-	pty, slave, err := testutils.NewPty()
+	pty, child, err := testutils.NewPty()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer slave.Close()
-	ch := NewTTYCopyHandler(slave)
+	defer child.Close()
+	ch := NewTTYCopyHandler(child)
 	_, err = ch.StartTracking(&testGraphTarget{memory.New()})
 	if err != nil {
 		t.Fatal(err)
@@ -154,18 +154,18 @@ func TestTTYCopyHandler_PostCopy(t *testing.T) {
 	if err = ch.StopTracking(); err != nil {
 		t.Errorf("StopTracking() should not return an error: %v", err)
 	}
-	if err = testutils.MatchPty(pty, slave, "\x1b[?25l\x1b7\x1b[0m"); err != nil {
+	if err = testutils.MatchPty(pty, child, "\x1b[?25l\x1b7\x1b[0m"); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestTTYCopyHandler_PreCopy(t *testing.T) {
-	pty, slave, err := testutils.NewPty()
+	pty, child, err := testutils.NewPty()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer slave.Close()
-	ch := NewTTYCopyHandler(slave)
+	defer child.Close()
+	ch := NewTTYCopyHandler(child)
 	_, err = ch.StartTracking(&testGraphTarget{memory.New()})
 	if err != nil {
 		t.Fatal(err)
@@ -178,7 +178,7 @@ func TestTTYCopyHandler_PreCopy(t *testing.T) {
 	if err = ch.StopTracking(); err != nil {
 		t.Errorf("StopTracking() should not return an error: %v", err)
 	}
-	if err = testutils.MatchPty(pty, slave, "\x1b[?25l\x1b7\x1b[0m"); err != nil {
+	if err = testutils.MatchPty(pty, child, "\x1b[?25l\x1b7\x1b[0m"); err != nil {
 		t.Fatal(err)
 	}
 }
