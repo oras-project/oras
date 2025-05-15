@@ -206,7 +206,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 			}
 			defer func() {
 				if fetchErr != nil {
-					rc.Close()
+					_ = rc.Close()
 				}
 			}()
 			return rc, statusHandler.OnNodeProcessing(target)
