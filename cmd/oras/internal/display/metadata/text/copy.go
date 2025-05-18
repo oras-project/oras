@@ -48,5 +48,5 @@ func (h *CopyHandler) Render() error {
 // OnCopied implements metadata.CopyHandler.
 func (h *CopyHandler) OnCopied(target *option.BinaryTarget, desc ocispec.Descriptor) error {
 	h.desc = desc
-	return h.printer.Println("Copied", target.From.AnnotatedReference(), "=>", target.To.AnnotatedReference())
+	return h.printer.Println("Copied", target.From.GetDisplayReference(), "=>", target.To.GetDisplayReference())
 }

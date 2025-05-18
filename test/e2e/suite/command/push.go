@@ -303,7 +303,7 @@ var _ = Describe("Remote registry users:", func() {
 
 		It("should pack with image spec v1.0 when --config is used, --artifact-type is not used, and --image-spec set to auto", func() {
 			repo := pushTestRepo("config/without/artifact/type")
-			configType := "my/config/type"
+			configType := "my/config+type"
 			tempDir := PrepareTempFiles()
 
 			ORAS("push", RegistryRef(ZOTHost, repo, tag), "--config", fmt.Sprintf("%s:%s", foobar.FileConfigName, configType), foobar.FileBarName).

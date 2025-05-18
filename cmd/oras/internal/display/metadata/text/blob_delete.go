@@ -42,5 +42,5 @@ func (h *BlobDeleteHandler) OnBlobMissing() error {
 
 // OnBlobDeleted implements BlobDeleteHandler.
 func (h *BlobDeleteHandler) OnBlobDeleted() error {
-	return h.printer.Println("Deleted", h.target.AnnotatedReference())
+	return h.printer.Println("Deleted", h.target.GetDisplayReference())
 }

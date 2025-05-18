@@ -13,23 +13,30 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package version
+package testutils
 
-var (
-	// Version is the current version of the oras.
-	Version = "1.3.0-beta.3"
-	// BuildMetadata is the extra build time data
-	BuildMetadata = "unreleased"
-	// GitCommit is the git sha1
-	GitCommit = ""
-	// GitTreeState is the state of the git tree
-	GitTreeState = ""
-)
+import "fmt"
 
-// GetVersion returns the semver string of the version
-func GetVersion() string {
-	if BuildMetadata == "" {
-		return Version
+type WriteFailure struct {
+	count int
+	err   error
+}
+
+func NewWriteFailure(count int) *WriteFailure {
+	return &WriteFailure{
+		count: count,
+		err:   fmt.Errorf("failed on %d", count),
 	}
-	return Version + "+" + BuildMetadata
+}
+
+func (wf *WriteFailure) Write(p []byte) (n int, err error) {
+	wf.count = wf.count - 1
+	if wf.count <= 0 {
+		return 0, wf.err
+	}
+	return len(p), nil
+}
+
+func (wf *WriteFailure) Expected() string {
+	return wf.err.Error()
 }

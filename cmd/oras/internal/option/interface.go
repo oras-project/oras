@@ -16,24 +16,20 @@ limitations under the License.
 package option
 
 import (
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-	"oras.land/oras/cmd/oras/internal/output"
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/registry"
 )
 
-// Common option struct.
-type Common struct {
-	Printer *output.Printer
-	Debug   bool
+// ResolvableDeleter a target that resolve and delete
+type ResolvableDeleter interface {
+	content.Resolver
+	content.Deleter
 }
 
-// ApplyFlags applies flags to a command flag set.
-func (opts *Common) ApplyFlags(fs *pflag.FlagSet) {
-	fs.BoolVarP(&opts.Debug, "debug", "d", false, "output debug logs (implies --no-tty)")
-}
-
-// Parse gets target options from user input.
-func (opts *Common) Parse(cmd *cobra.Command) error {
-	opts.Printer = output.NewPrinter(cmd.OutOrStdout(), cmd.OutOrStderr())
-	return nil
+// ReadOnlyGraphTagFinderTarget represents a read-only graph target with tag
+// finder capability.
+type ReadOnlyGraphTagFinderTarget interface {
+	oras.ReadOnlyGraphTarget
+	registry.TagLister
 }

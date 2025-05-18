@@ -47,6 +47,7 @@ type pushOptions struct {
 	option.ImageSpec
 	option.Target
 	option.Format
+	option.Terminal
 
 	extraRefs         []string
 	manifestConfigRef string
@@ -126,7 +127,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
-
+			opts.DisableTTY(opts.Debug, false)
 			if opts.manifestConfigRef != "" && opts.artifactType == "" {
 				if !cmd.Flags().Changed("image-spec") {
 					// switch to v1.0 manifest since artifact type is suggested
@@ -185,7 +186,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	if err != nil {
 		return err
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 	if opts.manifestConfigRef != "" {
 		path, cfgMediaType, err := fileref.Parse(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
 		if err != nil {

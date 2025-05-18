@@ -46,8 +46,13 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		It("should not show --verbose in help doc", func() {
-			out := ORAS("push", "--help").MatchKeyWords(ExampleDesc).Exec().Out
+			out := ORAS("attach", "--help").MatchKeyWords(ExampleDesc).Exec().Out
 			gomega.Expect(out).ShouldNot(gbytes.Say("--verbose"))
+		})
+
+		It("should say disable progress bars for --no-tty flag", func() {
+			out := ORAS("attach", "--help").MatchKeyWords("disable progress bars").Exec().Out
+			gomega.Expect(out).ShouldNot(gbytes.Say("disable colors"))
 		})
 
 		It("should show deprecation message and print unnamed status output for --verbose", func() {

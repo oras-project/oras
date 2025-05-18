@@ -24,13 +24,12 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"sync"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
@@ -68,8 +67,8 @@ func (target *Target) ApplyFlags(fs *pflag.FlagSet) {
 	target.Remote.ApplyFlags(fs)
 }
 
-// AnnotatedReference returns full printable reference.
-func (target *Target) AnnotatedReference() string {
+// GetDisplayReference returns full printable reference.
+func (target *Target) GetDisplayReference() string {
 	return fmt.Sprintf("[%s] %s", target.Type, target.RawReference)
 }
 
@@ -170,11 +169,6 @@ func (target *Target) NewTarget(common Common, logger logrus.FieldLogger) (oras.
 	return nil, fmt.Errorf("unknown target type: %q", target.Type)
 }
 
-type ResolvableDeleter interface {
-	content.Resolver
-	content.Deleter
-}
-
 // NewBlobDeleter generates a new blob deleter based on target.
 func (target *Target) NewBlobDeleter(common Common, logger logrus.FieldLogger) (ResolvableDeleter, error) {
 	switch target.Type {
@@ -203,13 +197,6 @@ func (target *Target) NewManifestDeleter(common Common, logger logrus.FieldLogge
 		return repo.Manifests(), nil
 	}
 	return nil, fmt.Errorf("unknown target type: %q", target.Type)
-}
-
-// ReadOnlyGraphTagFinderTarget represents a read-only graph target with tag
-// finder capability.
-type ReadOnlyGraphTagFinderTarget interface {
-	oras.ReadOnlyGraphTarget
-	registry.TagLister
 }
 
 // NewReadonlyTarget generates a new read only target based on target.
@@ -295,52 +282,4 @@ func (target *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 		return ret, true
 	}
 	return err, false
-}
-
-// BinaryTarget struct contains flags and arguments specifying two registries or
-// image layouts.
-// BinaryTarget implements errors.Handler interface.
-type BinaryTarget struct {
-	From        Target
-	To          Target
-	resolveFlag []string
-}
-
-// EnsureSourceTargetReferenceNotEmpty ensures that from target reference is not empty.
-func (target *BinaryTarget) EnsureSourceTargetReferenceNotEmpty(cmd *cobra.Command) error {
-	if target.From.Reference == "" {
-		return oerrors.NewErrEmptyTagOrDigest(target.From.RawReference, cmd, true)
-	}
-	return nil
-}
-
-// EnableDistributionSpecFlag set distribution specification flag as applicable.
-func (target *BinaryTarget) EnableDistributionSpecFlag() {
-	target.From.EnableDistributionSpecFlag()
-	target.To.EnableDistributionSpecFlag()
-}
-
-// ApplyFlags applies flags to a command flag set fs.
-func (target *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
-	target.From.ApplyFlagsWithPrefix(fs, "from", "source")
-	target.To.ApplyFlagsWithPrefix(fs, "to", "destination")
-	fs.StringArrayVarP(&target.resolveFlag, "resolve", "", nil, "base DNS rules formatted in `host:port:address[:address_port]` for --from-resolve and --to-resolve")
-}
-
-// Parse parses user-provided flags and arguments into option struct.
-func (target *BinaryTarget) Parse(cmd *cobra.Command) error {
-	target.From.warned = make(map[string]*sync.Map)
-	target.To.warned = target.From.warned
-	// resolve are parsed in array order, latter will overwrite former
-	target.From.resolveFlag = append(target.resolveFlag, target.From.resolveFlag...)
-	target.To.resolveFlag = append(target.resolveFlag, target.To.resolveFlag...)
-	return Parse(cmd, target)
-}
-
-// Modify handles error during cmd execution.
-func (target *BinaryTarget) Modify(cmd *cobra.Command, err error) (error, bool) {
-	if modifiedErr, modified := target.From.Modify(cmd, err); modified {
-		return modifiedErr, modified
-	}
-	return target.To.Modify(cmd, err)
 }
