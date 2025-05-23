@@ -84,20 +84,6 @@ func (remo *Remote) EnableDistributionSpecFlag() {
 	remo.applyDistributionSpec = true
 }
 
-// ApplyFlags applies flags to a command flag set.
-func (remo *Remote) ApplyFlags(fs *pflag.FlagSet) {
-	remo.ApplyFlagsWithPrefix(fs, "", "")
-	fs.BoolVar(&remo.secretFromStdin, passwordFromStdinFlag, false, "read password from stdin")
-	fs.BoolVar(&remo.secretFromStdin, identityTokenFromStdinFlag, false, "read identity token from stdin")
-}
-
-func applyPrefix(prefix, description string) (flagPrefix, notePrefix string) {
-	if prefix == "" {
-		return "", ""
-	}
-	return prefix + "-", description + " "
-}
-
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
 // Commonly used for non-unary remote targets.
 func (remo *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
@@ -105,32 +91,37 @@ func (remo *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 		shortUser     string
 		shortPassword string
 		shortHeader   string
-		notePrefix    string
 	)
 	if prefix == "" {
 		shortUser, shortPassword = "u", "p"
 		shortHeader = "H"
 	}
-	remo.flagPrefix, notePrefix = applyPrefix(prefix, description)
+	remo.flagPrefix = prefix
 
 	if remo.applyDistributionSpec {
 		remo.DistributionSpec.ApplyFlagsWithPrefix(fs, prefix, description)
 	}
-	fs.StringVarP(&remo.Username, remo.flagPrefix+usernameFlag, shortUser, "", notePrefix+"registry username")
-	fs.StringVarP(&remo.Secret, remo.flagPrefix+passwordFlag, shortPassword, "", notePrefix+"registry password or identity token")
-	fs.StringVar(&remo.Secret, remo.flagPrefix+identityTokenFlag, "", notePrefix+"registry identity token")
-	fs.BoolVar(&remo.Insecure, remo.flagPrefix+"insecure", false, "allow connections to "+notePrefix+"SSL registry without certs")
+	if fs.Lookup(passwordFromStdinFlag) == nil {
+		fs.BoolVar(&remo.secretFromStdin, passwordFromStdinFlag, false, "read password from stdin")
+	}
+	if fs.Lookup(identityTokenFromStdinFlag) == nil {
+		fs.BoolVar(&remo.secretFromStdin, identityTokenFromStdinFlag, false, "read identity token from stdin")
+	}
+	fs.StringVarP(&remo.Username, remo.flagPrefix+usernameFlag, shortUser, "", description+"registry username")
+	fs.StringVarP(&remo.Secret, remo.flagPrefix+passwordFlag, shortPassword, "", description+"registry password or identity token")
+	fs.StringVar(&remo.Secret, remo.flagPrefix+identityTokenFlag, "", description+"registry identity token")
+	fs.BoolVar(&remo.Insecure, remo.flagPrefix+"insecure", false, "allow connections to "+description+"SSL registry without certs")
 	plainHTTPFlagName := remo.flagPrefix + "plain-http"
-	plainHTTP := fs.Bool(plainHTTPFlagName, false, "allow insecure connections to "+notePrefix+"registry without SSL check")
+	plainHTTP := fs.Bool(plainHTTPFlagName, false, "allow insecure connections to "+description+"registry without SSL check")
 	remo.plainHTTP = func() (bool, bool) {
 		return *plainHTTP, fs.Changed(plainHTTPFlagName)
 	}
-	fs.StringVar(&remo.CACertFilePath, remo.flagPrefix+caFileFlag, "", "server certificate authority file for the remote "+notePrefix+"registry")
-	fs.StringVarP(&remo.CertFilePath, remo.flagPrefix+certFileFlag, "", "", "client certificate file for the remote "+notePrefix+"registry")
-	fs.StringVarP(&remo.KeyFilePath, remo.flagPrefix+keyFileFlag, "", "", "client private key file for the remote "+notePrefix+"registry")
-	fs.StringArrayVar(&remo.resolveFlag, remo.flagPrefix+"resolve", nil, "customized DNS for "+notePrefix+"registry, formatted in `host:port:address[:address_port]`")
-	fs.StringArrayVar(&remo.Configs, remo.flagPrefix+"registry-config", nil, "`path` of the authentication file for "+notePrefix+"registry")
-	fs.StringArrayVarP(&remo.headerFlags, remo.flagPrefix+"header", shortHeader, nil, "add custom headers to "+notePrefix+"requests")
+	fs.StringVar(&remo.CACertFilePath, remo.flagPrefix+caFileFlag, "", "server certificate authority file for the remote "+description+"registry")
+	fs.StringVarP(&remo.CertFilePath, remo.flagPrefix+certFileFlag, "", "", "client certificate file for the remote "+description+"registry")
+	fs.StringVarP(&remo.KeyFilePath, remo.flagPrefix+keyFileFlag, "", "", "client private key file for the remote "+description+"registry")
+	fs.StringArrayVar(&remo.resolveFlag, remo.flagPrefix+"resolve", nil, "customized DNS for "+description+"registry, formatted in `host:port:address[:address_port]`")
+	fs.StringArrayVar(&remo.Configs, remo.flagPrefix+"registry-config", nil, "`path` of the authentication file for "+description+"registry")
+	fs.StringArrayVarP(&remo.headerFlags, remo.flagPrefix+"header", shortHeader, nil, "add custom headers to "+description+"requests")
 }
 
 // CheckStdinConflict checks if PasswordFromStdin or IdentityTokenFromStdin of a
