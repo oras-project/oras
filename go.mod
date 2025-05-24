@@ -4,7 +4,7 @@ go 1.24.2
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
-	github.com/containerd/console v1.0.4
+	github.com/containerd/console v1.0.5
 	github.com/morikuni/aec v1.0.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.1
