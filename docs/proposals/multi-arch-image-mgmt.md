@@ -1,4 +1,4 @@
-# Multi-arch image management with ORAS
+# Multi-platform artifact management with ORAS
 
 > [!NOTE]
 > The version of this specification is `1.3.0-beta.3`. It is subject to change until ORAS v1.3.0 is officially released. 
@@ -18,7 +18,9 @@ There are two formats of implementation in industry to create a multi-arch image
 
 As more and more container registries are fully compliant with the OCI specifications, OCI image index becomes a popular format to create a multi-arch image.
 
-This document aims to elaborate on the scenarios and problems of creating and managing multi-arch images, propose a solution to resolve these problems and help users to effectively create and manage multi-arch images with ORAS.
+This concept can also be generalized to other artifact types that require separate manifests for each supported platform, beyond just container images. Whereas container images are often built just for Linux systems and vary only by CPU architecture, other artifact types can be used in different ways and so we use the broader term "Multi-platform artifact" (as opposed to _multi-architecture_) for that situation.
+
+This document aims to elaborate on the scenarios and problems of creating and managing multi-platform artifacts, propose a solution to resolve these problems and help users to effectively create and manage multi-platform artifacts with ORAS.
 
 ## Target users
 
@@ -26,11 +28,11 @@ For users who need to create, store, update, and push multi-arch images locally 
 
 ## Problem Statement
 
-The `oras manifest` provides subcommands to push, fetch, and delete an image manifest, but it doesn’t support composing an image index for a multi-arch image. This causes some problems and limitations to users as articulated below when creating multi-arch images.
+The `oras manifest` provides subcommands to push, fetch, and delete an image manifest, but it doesn’t support composing an image index for a multi-platform artifact. This causes some problems and limitations to users as articulated below when creating multi-platform artifacts.
 
 ### Problem statement
 
-Specifically, there are limitations and problems to create and manage multi-arch images using `docker` or `docker buildx`:
+Specifically, there are limitations and problems to create and manage multi-platform artifacts using `docker` or `docker buildx`:
 
 #### Rely on remote registry to create a multi-arch image
 
@@ -77,17 +79,23 @@ Bob expects `oras` client to streamline the updating process above. This ensures
 
 This scenario will be included in a separate proposal doc.
 
+### Build multi-platform indexes for other artifact types
+
+Existing tools like `docker buildx` often prioritize container images in particular and lack support for other artifact types.
+
+Multi-platform artifacts use the `artifactType` property on both the child manifests and on the index manifest itself to help differentiate between different artifact types. Users of systems that use non-container-image artifacts need a tool that is able to populate the index manifest `artifactType` property with a specific value, and to include the `artifactType` property in the descriptors for child manifests.
+
 ## Proposals
 
-Ideally, if ORAS extends the ability to create and manage a multi-arch image from either local environment or remote registry, the problems listed above can be resolved. Creating and managing a multi-arch image using image index format should be as easy as playing Legos. 
+Ideally, if ORAS extends the ability to create and manage a multi-arch image from either local environment or remote registry, the problems listed above can be resolved. Creating and managing a multi-arch image using image index format should be as easy as playing Legos. With a small set of additional features ORAS can also effectively support multi-platform artifacts that are not container images.
 
-The proposed CLI commands for managing a multi-arch image are listed below. The detailed use cases and subcommands are articulated in the CLI Spec section.
+The proposed CLI commands for managing a multi-platform artifact are listed below. The detailed use cases and subcommands are articulated in the CLI Spec section.
 
-- Create a multi-arch image: `oras manifest index create`
-  - Add annotations to a multi-arch image during creation: `oras manifest index create --annotation`
-- Update a multi-arch image: `oras manifest index update`
+- Create a multi-platform artifact: `oras manifest index create`
+  - Add annotations to a multi-platform artifact during creation: `oras manifest index create --annotation`
+- Update a multi-platform artifact: `oras manifest index update`
   
-The proposal creates a multi-arch image using an OCI image index in an OCI image layout as a local storage, then push the multi-arch image to the registry with ORAS. 
+The proposal creates a multi-platform artifact using an OCI image index in an OCI image layout as a local storage, then push the multi-platform artifact to the registry with ORAS. 
 
 ### Desired experience
 
@@ -206,9 +214,26 @@ Pushed    [oci-layout] layout-dir:v1
 Digest: sha256:6a165dbdc7a24e677e7ec0748457604ba143ae74e5b27a19789b88b41bf49bb0
 ```
 
+#### Create a multi-platform artifact with specific `artifactType` values
+
+For non-container-image artifacts there are two main concerns:
+
+- The index manifest must have a specific value in its `artifactType` field indicating the type of the overall multi-platform artifact.
+- If any of the child manifests also have `artifactType` properties themselves, their values should be reflected in the descriptors in the index manifest so that clients can efficiently select only the specific artifact types they are expecting.
+
+`oras push` already supports an `--artifact-type` option which allows setting `artifactType` when creating the image manifest for a leaf object. The `oras manifest index` subcommands shall automatically copy this value from each child manifest, if defined, when building the index descriptors.
+
+The `oras manifest index create` command also supports the same `--artifact-type` option, causing it to set the top-level `artifactType` property in the generated index manifest.
+
+The `oras manifest index update` command supports the same option but treats its presence as a request to _change_ the existing `artifactType`:
+
+1. `oras manifest index update` without any `--artifact-type` option retains whatever value was already set for `artifactType` in the source manifest, if any.
+2. `oras manifest index update --artifact-type=application/vnd.example` overwrites any existing `artifactType` value in the source manifest with the given value `"application/vnd.example"`.
+3. `oras manifest index update --artifact-type=""` removes any existing `artifactType` value in the source manifest, so that the new index does not include the `artifactType` property at all.
+
 ## CLI Specs for new subcommands 
 
-### Create a multi-arch image
+### Create a multi-platform artifact
 
 ```bash
 # Create an index from source manifests tagged 'linux-amd64' and 'linux-arm64', and push without tagging:
@@ -226,6 +251,9 @@ oras manifest index create localhost:5000/hello:tag1,tag2,tag3 linux-amd64 linux
 # Create and push an index with annotations:
 oras manifest index create localhost:5000/hello:v1 linux-amd64 --annotation "key=val"
 
+# Create an index with a specified artifact type:
+oras manifest index create --artifact-type="application/vnd.example+type" localhost:5000/hello linux-amd64
+
 # Create an index and push to an OCI image layout folder 'layout-dir' and tag with 'v1':
 oras manifest index create layout-dir:v1 linux-amd64 sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9 --oci-layout
 
@@ -237,7 +265,7 @@ oras manifest index create localhost:5000/hello linux-arm64 --output - --pretty
 
 ```
 
-### Update a multi-arch image
+### Update a multi-platform artifact
 
 ```bash
 # Remove a manifest and add two manifests from an index tagged 'v1'. The tag will point to the updated index:
@@ -257,9 +285,15 @@ oras manifest index update --output index.json localhost:5000/hello:v2 --add v2-
 
 # Update an index and output the index to stdout, auto push will be disabled:
 oras manifest index update --output - --pretty localhost:5000/hello:v2 --remove sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
+
+# Update an index to use a different artifact type:
+oras manifest index update localhost:5000/hello:v1 --artifact-type="application/vnd.example+type"
+
+# Update an index to remove any existing artifact type:
+oras manifest index update localhost:5000/hello:v1 --artifact-type=""
 ```
 
-### View a multi-arch image 
+### View a multi-platform artifact
 
 To make view operation more intuitive to users, add one alias `oras manifest show` to the existing command `oras manifest fetch`:
 
@@ -270,6 +304,35 @@ Usage:
 Aliases:
   fetch, get, show
 ```
+
+## Index manifest structure
+
+The `oras manifest index` family of commands manipulates index manifests as described in [OCI Image Index Specification](https://github.com/opencontainers/image-spec/blob/v1.1.1/image-index.md).
+
+The image index properties defined in that specification are populated as follows:
+
+- `schemaVersion`: always set to `2`, as the specification requires.
+- `mediaType`: always set to `"application/vnd.oci.image.index.v1+json"` to distinguish from other manifest types, as the specification requires.
+- `artifactType`: set to the value provided in argument to the `--artifact-type` option if present and non-empty, or omitted otherwise.
+- `manifests`: an array of descriptors describing each of the child manifests selected by tag or digest on the `oras manifest index create` command line, or subsequently added using options like `oras manifest index update --add`.
+
+    The descriptor for each child manifest is populated as follows:
+
+    - `mediaType`: set to match the `mediaType` property of the associated manifest.
+    - `artifactType`: set to match the `artifactType` property of the associated manifest, if any.
+
+      If the associated manifest was also created using ORAS, this property would've been set using the `--artifact-type` option when running an earlier command such as `oras push`.
+    - `digest`: set to a blob digest of the associated manifest.
+    - `size`: set to the size of the blob containing the associated manifest, in bytes.
+    - `platform`: describes a specific platform specified in the associated manifest.
+
+      If the associated manifest was also created using ORAS, the information used to populate this property would've been set using the `--artifact-platform` option when running an earlier command such as `oras push`.
+
+      `oras push` currently uses the experimental approach of storing the target platform information in the configuration blob associated with the image manifest. Alternative approaches are currently under discussion in [opencontainers/image-spec#1216](https://github.com/opencontainers/image-spec/issues/1216) and may be adopted in a later version of this proposal.
+
+    No other descriptor properties are included.
+- `subject`: always omitted.
+- `annotations`: populated based on the `--annotation` command line option, if present.
 
 ## Investigation on other client tools and industry
 
@@ -282,7 +345,7 @@ Most of popular container client tools support create and push a multi-arch imag
 - **podman (Backed by Red Hat)**: similar with `docker manifest`, it provides `podman manifest` with subcommands to create and manipulate manifest lists and image indexes.
 - **buildah**: supports building a multi-platform image to [local filesystem](https://github.com/containers/buildah/blob/main/docs/buildah-build.1.md#building-an-image-using---output-custom-build-output.).
 - **crane(Backed by Google)**: provides a single command [crane index append](https://github.com/google/go-containerregistry/blob/main/cmd/crane/recipes.md#create-a-multi-platform-image-from-scratch) to compose an image index. `crane index filter` supports filters the image index to include only platforms that are relevant to you.
-- **regctl (Individual)** provides [regctl index add/create/delete](https://github.com/regclient/regclient/blob/main/docs/regctl.md#index-commands) to creates or manages OCI image index and manifest list, `regctl artifact put --index` supports pushing the artifact and add it to an index in a single operation. It also provides native support for local environments in all commands with the OCI Layout.
+- **regctl (Individual)** provides [regctl index add/create/delete](https://github.com/regclient/regclient/blob/main/docs/regctl.md#index-commands) to creates or manages OCI image index and manifest list, `regctl artifact put --index` supports pushing the artifact and add it to an index in a single operation. It also provides native support for local environments in all commands with the OCI Layout, and allows setting the `artifactType` property on generated indexes.
 - **manifest-tool (Individual from AWS):** create docker manifest list or OCI image index in a registry by using the [manifest-tool push command with either a YAML file describing the images to assemble or by using a series of parameters](https://github.com/estesp/manifest-tool?tab=readme-ov-file#sample-usage).
 - **skopeo (Backed by Red Hat)**: Skopeo can consume and copy image index or manifest list, but it doesn't support generating or modifying them.
 
