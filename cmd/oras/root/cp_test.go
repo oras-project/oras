@@ -125,13 +125,13 @@ func TestMain(m *testing.M) {
 
 func Test_doCopy(t *testing.T) {
 	// prepare
-	pty, slave, err := testutils.NewPty()
+	pty, child, err := testutils.NewPty()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer slave.Close()
+	defer child.Close()
 	var opts copyOptions
-	opts.TTY = slave
+	opts.TTY = child
 	opts.From.Reference = memDesc.Digest.String()
 	dst := memory.New()
 	handler := status.NewTTYCopyHandler(opts.TTY)
@@ -141,20 +141,20 @@ func Test_doCopy(t *testing.T) {
 		t.Fatal(err)
 	}
 	// validate
-	if err = testutils.MatchPty(pty, slave, "Copied", memDesc.MediaType, "100.00%", memDesc.Digest.String()); err != nil {
+	if err = testutils.MatchPty(pty, child, "Copied", memDesc.MediaType, "100.00%", memDesc.Digest.String()); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func Test_doCopy_skipped(t *testing.T) {
 	// prepare
-	pty, slave, err := testutils.NewPty()
+	pty, child, err := testutils.NewPty()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer slave.Close()
+	defer child.Close()
 	var opts copyOptions
-	opts.TTY = slave
+	opts.TTY = child
 	opts.From.Reference = memDesc.Digest.String()
 	handler := status.NewTTYCopyHandler(opts.TTY)
 
@@ -164,20 +164,20 @@ func Test_doCopy_skipped(t *testing.T) {
 		t.Fatal(err)
 	}
 	// validate
-	if err = testutils.MatchPty(pty, slave, "Exists", memDesc.MediaType, "100.00%", memDesc.Digest.String()); err != nil {
+	if err = testutils.MatchPty(pty, child, "Exists", memDesc.MediaType, "100.00%", memDesc.Digest.String()); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func Test_doCopy_mounted(t *testing.T) {
 	// prepare
-	pty, slave, err := testutils.NewPty()
+	pty, child, err := testutils.NewPty()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer slave.Close()
+	defer child.Close()
 	var opts copyOptions
-	opts.TTY = slave
+	opts.TTY = child
 	opts.From.Reference = manifestDigest
 	// mocked repositories
 	from, err := remote.NewRepository(fmt.Sprintf("%s/%s", host, repoFrom))
@@ -198,7 +198,7 @@ func Test_doCopy_mounted(t *testing.T) {
 		t.Fatal(err)
 	}
 	// validate
-	if err = testutils.MatchPty(pty, slave, "Mounted", configMediaType, "100.00%", configDigest); err != nil {
+	if err = testutils.MatchPty(pty, child, "Mounted", configMediaType, "100.00%", configDigest); err != nil {
 		t.Fatal(err)
 	}
 }
