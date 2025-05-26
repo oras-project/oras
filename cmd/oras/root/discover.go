@@ -78,6 +78,9 @@ Example - Discover referrers with type 'test-artifact' of manifest 'hello:v1' in
 
 Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout folder 'layout-dir':
   oras discover --oci-layout layout-dir:v1
+
+Example - Discover referrers of the manifest tagged 'example.com:v1' in an OCI image layout folder 'layout-dir':
+  oras discover example.com:v1 --oci-layout-path layout-dir
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the target artifact to discover referrers from"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
