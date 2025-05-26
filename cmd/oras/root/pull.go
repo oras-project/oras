@@ -97,6 +97,9 @@ Example - Pull artifact files from an OCI image layout folder 'layout-dir':
 
 Example - Pull artifact files from an OCI layout archive 'layout.tar':
   oras pull --oci-layout layout.tar:v1
+
+Example - Pull artifact files tagged 'example.com:v1' from an OCI image layout folder 'layout-dir':
+  oras pull example.com:v1 --oci-layout-path layout-dir
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the artifact reference you want to pull"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
