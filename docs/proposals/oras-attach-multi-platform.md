@@ -14,7 +14,7 @@ When a multi-platform image is created using the [OCI image index format](https:
 
 ### Attach an End-of-Life (EoL) Annotation as a Referrer to a Multi-Platform Image
 
-- Scenario A: attach a refer to a platform-specific image to upward propagate to its parent index
+#### Scenario A: attach a referrer to a platform-specific image to upward propagate to its parent index
 
 A security engineer, Alice, wants to use annotations to store EoL metadata to indicate that an image is no longer valid. Consider a multi-platform image `demo/alpine:a1a1` with multiple platform-specific images. When a vulnerability is detected in a platform-specific image `demo/alpine:b1b1`, it is patched, generating a new digest. The outdated image is marked as invalid using an EoL annotation:
 
@@ -65,7 +65,7 @@ demo/alpine:z1z1 (image index)
 -> demo/alpine:c1c1 (linux/arm64)
 ```
 
-- Scenario B: attach a refer to an index to downward propagate to all child images
+#### Scenario B: attach a referrer to an index to downward propagate to all child images
 
 In addition, if a vulnerability is detected and affects images of all platforms, the parent index and each child image are patched, generating new digest of each. The outdated multi-platform image and each child image are marked as invalid using an EoL annotation similar as above.
 
