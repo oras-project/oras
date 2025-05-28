@@ -22,6 +22,14 @@ A security engineer, Alice, wants to use annotations to store EoL metadata to in
 "vnd.demo.artifact.lifecycle.end-of-life.date": "2025-03-20T01:20:30Z"
 ```
 
+Set environment variables:
+
+```
+ARTIFACT_TYPE=application/vnd.demo.artifact.lifecycle
+ANNOTATION_KEY=vnd.demo.artifact.lifecycle.end-of-life.date
+ANNOTATION_VALUE=2025-03-20T01:20:30Z
+```
+
 Since the patched image has a new digest, the parent image index also receives an updated digest. When a platform-specific image is marked as EoL, dependent services stop using it, and vulnerability scanning tools can recognize it as deprecated through the lifecycle metadata.
 
 ![multi-arch image](./img/oras-attach-EoL.drawio.svg)
@@ -37,8 +45,8 @@ demo/alpine:a1a1 (image index)
 After patching, Alice attaches the EoL annotation to the outdated image index and platform-specific image:
 
 ```sh
-oras attach $registry/demo/alpine:a1a1 --artifact-type "application/vnd.demo.artifact.lifecycle" --annotation "vnd.demo.artifact.lifecycle.end-of-life.date=2025-03-20T01:20:30Z"
-oras attach $registry/demo/alpine:a1a1 --artifact-type "application/vnd.demo.artifact.lifecycle" --annotation "vnd.demo.artifact.lifecycle.end-of-life.date=2025-03-20T01:20:30Z" --platform linux/amd64
+oras attach $registry/demo/alpine:a1a1 --artifact-type $ARTIFACT_TYPE --annotation $ANNOTATION_KEY=$ANNOTATION_VALUE
+oras attach $registry/demo/alpine:a1a1 --artifact-type $ARTIFACT_TYPE --annotation $ANNOTATION_KEY=$ANNOTATION_VALUE --platform linux/amd64
 ```
 
 Resulting image structure:
@@ -70,9 +78,7 @@ demo/alpine:a1a1 (image index)
 Alice has to manually retrieve the new digests and run `oras attach` against each platform-specific image and the parent image index. There is no approach to attach the EoL annotation to the parent image index and propagate to all platform-specific images recursively.
 
 ```sh
-oras attach $registry/demo/alpine:a1a1 --artifact-type "application/vnd.demo.artifact.lifecycle" --annotation "vnd.demo.artifact.lifecycle.end-of-life.date=2025-03-20T01:20:30Z"
-oras attach $registry/demo/alpine:a1a1 --artifact-type "application/vnd.demo.artifact.lifecycle" --annotation "vnd.demo.artifact.lifecycle.end-of-life.date=2025-03-20T01:20:30Z" --platform linux/amd64
-oras attach $registry/demo/alpine:a1a1 --artifact-type "application/vnd.demo.artifact.lifecycle" --annotation "vnd.demo.artifact.lifecycle.end-of-life.date=2025-03-20T01:20:30Z" --platform linux/arm64
+oras attach $registry/demo/alpine:a1a1 --artifact-type $ARTIFACT_TYPE --annotation $ANNOTATION_KEY=$ANNOTATION_VALUE
+oras attach $registry/demo/alpine:a1a1 --artifact-type $ARTIFACT_TYPE --annotation $ANNOTATION_KEY=$ANNOTATION_VALUE --platform linux/amd64
+oras attach $registry/demo/alpine:a1a1 --artifact-type $ARTIFACT_TYPE --annotation $ANNOTATION_KEY=$ANNOTATION_VALUE --platform linux/arm64
 ```
-
-
