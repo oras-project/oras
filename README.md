@@ -3,6 +3,7 @@
 [![Build Status](https://github.com/oras-project/oras/actions/workflows/build.yml/badge.svg?event=push)](https://github.com/oras-project/oras/actions/workflows/build.yml?query=workflow%3Abuild+event%3Apush)
 [![codecov](https://codecov.io/gh/oras-project/oras/branch/main/graph/badge.svg)](https://codecov.io/gh/oras-project/oras)
 [![Go Report Card](https://goreportcard.com/badge/oras.land/oras)](https://goreportcard.com/report/oras.land/oras)
+[![LFX Health Score](https://img.shields.io/static/v1?label=Health%20Score&message=Healthy&color=A7F3D0&logo=linuxfoundation&logoColor=white&style=flat)](https://insights.linuxfoundation.org/project/oras)
 
 
 <p style="text-align: left;">
