@@ -279,10 +279,10 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 		if err != nil {
 			return nil, err
 		}
-		if content.Equal(desc, root) {
-			// make sure referrers of child manifests are copied by making them root's successors
-			successors = append(successors, referrers...)
-		}
+		// if content.Equal(desc, root) {
+		// 	// make sure referrers of child manifests are copied by making them root's successors
+		// 	successors = append(successors, referrers...)
+		// }
 		return successors, nil
 	}
 	return opts, nil
