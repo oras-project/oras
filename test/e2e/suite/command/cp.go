@@ -252,9 +252,16 @@ var _ = Describe("1.1 registry users:", func() {
 			dstRepo := cpTestRepo("index-without-referrers")
 			dst := RegistryRef(ZOTHost, dstRepo, "copiedTag")
 			// test
-			ORAS("cp", src, dst, "-r").Exec()
-			// validate
+			ORAS("cp", src, dst, "-r").MatchKeyWords("amd64", "arm64", "sbom", "signature", "referrerimage", "application/vnd.oci.image.index.v1+json").Exec()
+			// validate that the index is copied
 			CompareRef(src, dst)
+			// validate that the child images are copied
+			CompareRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:ab01d6e284e843d51fb5e753904a540f507a62361a5fd7e434e4f27b285ca5c9"), RegistryRef(ZOTHost, dstRepo, "sha256:ab01d6e284e843d51fb5e753904a540f507a62361a5fd7e434e4f27b285ca5c9"))
+			CompareRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:6aa11331ce0c766d6333b60dac98d584d98eea45fa93bbfc9b5bdb915ce3a43f"), RegistryRef(ZOTHost, dstRepo, "sha256:6aa11331ce0c766d6333b60dac98d584d98eea45fa93bbfc9b5bdb915ce3a43f"))
+			// validate that the referrers of the child images are copied
+			CompareRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:359bac7f6a262e0f36e83b6b78ee3cc7a0bb8813e04d330328ca7ca9785e1e0b"), RegistryRef(ZOTHost, dstRepo, "sha256:359bac7f6a262e0f36e83b6b78ee3cc7a0bb8813e04d330328ca7ca9785e1e0b"))
+			CompareRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:938419ae89a9947476bbed93abc5eb7abf7d5708be69679fe6cc4b22afe8fdd5"), RegistryRef(ZOTHost, dstRepo, "sha256:938419ae89a9947476bbed93abc5eb7abf7d5708be69679fe6cc4b22afe8fdd5"))
+			CompareRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:20e7d3a6ce087c54238c18a3428853b50cdaf4478a9d00caa8304119b58ae8a9"), RegistryRef(ZOTHost, dstRepo, "sha256:20e7d3a6ce087c54238c18a3428853b50cdaf4478a9d00caa8304119b58ae8a9"))
 		})
 
 		It("should copy an empty index", func() {
