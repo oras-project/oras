@@ -247,6 +247,16 @@ var _ = Describe("1.1 registry users:", func() {
 			}
 		})
 
+		It("should copy a multi-arch image, child images and referrers of the child images", func() {
+			src := RegistryRef(ZOTHost, ArtifactRepo, "v1.3.8")
+			dstRepo := cpTestRepo("index-without-referrers")
+			dst := RegistryRef(ZOTHost, dstRepo, "copiedTag")
+			// test
+			ORAS("cp", src, dst, "-r").Exec()
+			// validate
+			CompareRef(src, dst)
+		})
+
 		It("should copy an empty index", func() {
 			src := RegistryRef(ZOTHost, ImageRepo, ma.EmptyTag)
 			dstRepo := cpTestRepo("empty-index")
