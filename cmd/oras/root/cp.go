@@ -287,16 +287,29 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 	if findSuccessors == nil {
 		findSuccessors = content.Successors
 	}
-	opts.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		successors, err := findSuccessors(ctx, fetcher, desc)
+	// opts.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+	// 	successors, err := findSuccessors(ctx, fetcher, desc)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	if content.Equal(desc, root) {
+	// 		// make sure referrers of child manifests are copied by making them root's successors
+	// 		successors = append(successors, referrers...)
+	// 	}
+	// 	return successors, nil
+	// }
+
+	findPredecessor := opts.FindPredecessors
+	opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		descs, err := findPredecessor(ctx, src, desc)
 		if err != nil {
 			return nil, err
 		}
 		if content.Equal(desc, root) {
-			// make sure referrers of child manifests are copied by making them root's successors
-			successors = append(successors, referrers...)
+			// make sure referrers of child manifests are copied by pointing them to root
+			descs = append(descs, referrers...)
 		}
-		return successors, nil
+		return descs, nil
 	}
 	return opts, nil
 }
