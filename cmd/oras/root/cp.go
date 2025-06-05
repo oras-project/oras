@@ -257,22 +257,17 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 		return opts, nil
 	}
 
-	referrers, err := graph.FindPredecessors(ctx, src, index.Manifests, opts)
-	if err != nil {
-		return opts, err
+	// do breadth first search to find all levels of child referrers
+	var referrers []ocispec.Descriptor
+	descs := index.Manifests
+	for len(descs) > 0 {
+		foundReferrers, err := graph.FindPredecessors(ctx, src, descs, opts)
+		if err != nil {
+			return opts, err
+		}
+		referrers = append(referrers, foundReferrers...)
+		descs = foundReferrers
 	}
-
-	// // do breadth first search to find all levels of child referrers
-	// var referrers []ocispec.Descriptor
-	// descs := index.Manifests
-	// for len(descs) > 0 {
-	// 	foundReferrers, err := graph.FindPredecessors(ctx, src, descs, opts)
-	// 	if err != nil {
-	// 		return opts, err
-	// 	}
-	// 	referrers = append(referrers, foundReferrers...)
-	// 	descs = foundReferrers
-	// }
 
 	referrers = slices.DeleteFunc(referrers, func(desc ocispec.Descriptor) bool {
 		return content.Equal(desc, root)
@@ -287,29 +282,16 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 	if findSuccessors == nil {
 		findSuccessors = content.Successors
 	}
-	// opts.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-	// 	successors, err := findSuccessors(ctx, fetcher, desc)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	if content.Equal(desc, root) {
-	// 		// make sure referrers of child manifests are copied by making them root's successors
-	// 		successors = append(successors, referrers...)
-	// 	}
-	// 	return successors, nil
-	// }
-
-	findPredecessor := opts.FindPredecessors
-	opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		descs, err := findPredecessor(ctx, src, desc)
+	opts.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		successors, err := findSuccessors(ctx, fetcher, desc)
 		if err != nil {
 			return nil, err
 		}
 		if content.Equal(desc, root) {
-			// make sure referrers of child manifests are copied by pointing them to root
-			descs = append(descs, referrers...)
+			// make sure referrers of child manifests are copied by making them root's successors
+			successors = append(successors, referrers...)
 		}
-		return descs, nil
+		return successors, nil
 	}
 	return opts, nil
 }
