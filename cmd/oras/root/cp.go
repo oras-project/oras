@@ -259,8 +259,7 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 
 	// do breadth first search to find all levels of child referrers
 	var referrers []ocispec.Descriptor
-	descs := index.Manifests
-	for len(descs) > 0 {
+	for descs := index.Manifests; len(descs) > 0; {
 		foundReferrers, err := graph.FindPredecessors(ctx, src, descs, opts)
 		if err != nil {
 			return opts, err
