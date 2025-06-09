@@ -17,6 +17,7 @@ package root
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -31,6 +32,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/descriptor"
 )
 
 type discoverOptions struct {
@@ -142,20 +144,46 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 	}
 
 	// discover artifacts
-	resolveOpts := oras.DefaultResolveOptions
-	resolveOpts.TargetPlatform = opts.Platform.Platform
-	desc, err := oras.Resolve(ctx, repo, opts.Reference, resolveOpts)
+	// resolveOpts := oras.DefaultResolveOptions
+	// resolveOpts.TargetPlatform = opts.Platform.Platform
+	// desc, err := oras.Resolve(ctx, repo, opts.Reference, resolveOpts)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// fetch the manifest and its content
+	fetchBytesOpts := oras.DefaultFetchBytesOptions
+	fetchBytesOpts.TargetPlatform = opts.Platform.Platform
+	desc, manifestBytes, err := oras.FetchBytes(ctx, repo, opts.Reference, fetchBytesOpts)
 	if err != nil {
-		return err
+		return nil
 	}
 
-	handler, err := display.NewDiscoverHandler(opts.Printer, opts.Format, opts.Path, opts.RawReference, desc, opts.verbose, opts.TTY)
+	var children []ocispec.Descriptor
+	if descriptor.IsIndex(desc) {
+		// extract the children manifests
+		var index ocispec.Index
+		if err := json.Unmarshal(manifestBytes, &index); err != nil {
+			return err
+		}
+		children = index.Manifests
+	}
+
+	handler, err := display.NewDiscoverHandler(opts.Printer, opts.Format, opts.Path, opts.RawReference, desc, children, opts.verbose, opts.TTY)
 	if err != nil {
 		return err
 	}
 	if err := fetchAllReferrers(ctx, repo, desc, opts.artifactType, handler, opts.depth); err != nil {
 		return err
 	}
+
+	// finding referrers for children manifests
+	for _, child := range children {
+		if err := fetchAllReferrers(ctx, repo, child, opts.artifactType, handler, opts.depth); err != nil {
+			return err
+		}
+	}
+
 	return handler.Render()
 }
 

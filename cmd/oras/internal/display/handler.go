@@ -112,11 +112,11 @@ func NewPullHandler(printer *output.Printer, format option.Format, path string, 
 }
 
 // NewDiscoverHandler returns status and metadata handlers for discover command.
-func NewDiscoverHandler(out io.Writer, format option.Format, path string, rawReference string, desc ocispec.Descriptor, verbose bool, tty *os.File) (metadata.DiscoverHandler, error) {
+func NewDiscoverHandler(out io.Writer, format option.Format, path string, rawReference string, desc ocispec.Descriptor, children []ocispec.Descriptor, verbose bool, tty *os.File) (metadata.DiscoverHandler, error) {
 	var handler metadata.DiscoverHandler
 	switch format.Type {
 	case option.FormatTypeTree.Name:
-		handler = tree.NewDiscoverHandler(out, path, desc, verbose, tty)
+		handler = tree.NewDiscoverHandler(out, path, desc, children, verbose, tty)
 	case option.FormatTypeTable.Name:
 		handler = table.NewDiscoverHandler(out, rawReference, desc, verbose)
 	case option.FormatTypeJSON.Name:
