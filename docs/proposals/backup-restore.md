@@ -88,7 +88,8 @@ $
 
 Each image will be stored in a subdirectory which matches the repository name.
 
-The backup command will also have the ability to write output to a compressed tar file. For example:
+The backup command will also have the ability to write output to a new compressed tar file where the contents are in oci-layout
+format. For example:
 
 ```bash
 oras backup --output ./mirror.tgz  registry.k8s.io/kube-apiserver-arm64:v1.31.0 registry.k8s.io/kube-controller-manager-arm64:v1.31.0
