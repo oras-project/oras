@@ -674,7 +674,7 @@ var _ = Describe("OCI layout users:", func() {
 			Expect(disv.Referrers[0].Digest.String()).To(Equal(ma.LinuxAMD64Referrer.Digest.String()))
 		})
 
-		It("should copy a multi-arch image index, its referrers and manifests referrers from an OCI layout", func() {
+		It("should copy a multi-arch image, child images and referrers of the child images from an OCI layout", func() {
 			//stateKeys := append(ma.LinuxAMD64StateKeys, ma.LinuxAMD64ReferrerStateKey, ma.LinuxAMD64ReferrerConfigStateKey)
 			fromDir := GinkgoT().TempDir()
 			src := LayoutRef(fromDir, ma.Tag)
