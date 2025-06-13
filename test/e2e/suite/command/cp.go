@@ -674,34 +674,34 @@ var _ = Describe("OCI layout users:", func() {
 			Expect(disv.Referrers[0].Digest.String()).To(Equal(ma.LinuxAMD64Referrer.Digest.String()))
 		})
 
-		It("should copy a multi-arch image, child images and referrers of the child images from an OCI layout", func() {
-			//stateKeys := append(ma.LinuxAMD64StateKeys, ma.LinuxAMD64ReferrerStateKey, ma.LinuxAMD64ReferrerConfigStateKey)
-			fromDir := GinkgoT().TempDir()
-			src := LayoutRef(fromDir, ma.Tag)
-			dstRepo := cpTestRepo("platform-referrer-from-layout")
-			dst := RegistryRef(ZOTHost, dstRepo, "index")
-			// prepare
-			ORAS("cp", RegistryRef(ZOTHost, ArtifactRepo, ma.Tag), src, Flags.ToLayout, "-r").Exec()
-			//ORAS("cp", RegistryRef(ZOTHost, ArtifactRepo, ma.Tag), src, Flags.ToLayout, "-r", "--platform", "linux/amd64").Exec()
-			// test
-			ORAS("cp", src, Flags.FromLayout, dst, "-r").
-				//MatchStatus(stateKeys, true, len(stateKeys)).
-				//MatchKeyWords("Digest: " + ma.LinuxAMD64.Digest.String()).
-				Exec()
-			// validate
-			srcManifest := ORAS("manifest", "fetch", src, Flags.Layout).WithDescription("fetch from source to validate").Exec().Out.Contents()
-			dstManifest := ORAS("manifest", "fetch", dst).WithDescription("fetch from destination to validate").Exec().Out.Contents()
-			Expect(srcManifest).To(Equal(dstManifest))
-			// ORAS("manifest", "fetch", RegistryRef(ZOTHost, dstRepo, ma.Digest)).WithDescription("not copy index").ExpectFailure().Exec()
-			// var disv discover
-			// bytes := ORAS("discover", dst, "-o", "json").
-			// 	MatchKeyWords(ma.LinuxAMD64Referrer.Digest.String()).
-			// 	WithDescription("copy image referrer").
-			// 	Exec().Out.Contents()
-			// Expect(json.Unmarshal(bytes, &disv)).ShouldNot(HaveOccurred())
-			// Expect(len(disv.Referrers)).To(Equal(1))
-			// Expect(disv.Referrers[0].Digest.String()).To(Equal(ma.LinuxAMD64Referrer.Digest.String()))
-		})
+		// It("should copy a multi-arch image, child images and referrers of the child images from an OCI layout", func() {
+		// 	//stateKeys := append(ma.LinuxAMD64StateKeys, ma.LinuxAMD64ReferrerStateKey, ma.LinuxAMD64ReferrerConfigStateKey)
+		// 	fromDir := GinkgoT().TempDir()
+		// 	src := LayoutRef(fromDir, ma.Tag)
+		// 	dstRepo := cpTestRepo("platform-referrer-from-layout")
+		// 	dst := RegistryRef(ZOTHost, dstRepo, "index")
+		// 	// prepare
+		// 	ORAS("cp", RegistryRef(ZOTHost, ArtifactRepo, ma.Tag), src, Flags.ToLayout, "-r").Exec()
+		// 	//ORAS("cp", RegistryRef(ZOTHost, ArtifactRepo, ma.Tag), src, Flags.ToLayout, "-r", "--platform", "linux/amd64").Exec()
+		// 	// test
+		// 	ORAS("cp", src, Flags.FromLayout, dst, "-r").
+		// 		//MatchStatus(stateKeys, true, len(stateKeys)).
+		// 		//MatchKeyWords("Digest: " + ma.LinuxAMD64.Digest.String()).
+		// 		Exec()
+		// 	// validate
+		// 	srcManifest := ORAS("manifest", "fetch", src, Flags.Layout).WithDescription("fetch from source to validate").Exec().Out.Contents()
+		// 	dstManifest := ORAS("manifest", "fetch", dst).WithDescription("fetch from destination to validate").Exec().Out.Contents()
+		// 	Expect(srcManifest).To(Equal(dstManifest))
+		// 	// ORAS("manifest", "fetch", RegistryRef(ZOTHost, dstRepo, ma.Digest)).WithDescription("not copy index").ExpectFailure().Exec()
+		// 	// var disv discover
+		// 	// bytes := ORAS("discover", dst, "-o", "json").
+		// 	// 	MatchKeyWords(ma.LinuxAMD64Referrer.Digest.String()).
+		// 	// 	WithDescription("copy image referrer").
+		// 	// 	Exec().Out.Contents()
+		// 	// Expect(json.Unmarshal(bytes, &disv)).ShouldNot(HaveOccurred())
+		// 	// Expect(len(disv.Referrers)).To(Equal(1))
+		// 	// Expect(disv.Referrers[0].Digest.String()).To(Equal(ma.LinuxAMD64Referrer.Digest.String()))
+		// })
 
 		It("should copy a certain platform of image and its referrers from a registry to an OCI image layout", func() {
 			stateKeys := append(ma.LinuxAMD64StateKeys, ma.LinuxAMD64ReferrerStateKey, ma.LinuxAMD64ReferrerConfigStateKey)
