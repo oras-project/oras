@@ -245,10 +245,10 @@ func (target *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 		return target.DecorateCredentialError(err), true
 	}
 
-	if errors.Is(err, errdef.ErrNotFound) {
-		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
-		return err, true
-	}
+	// if errors.Is(err, errdef.ErrNotFound) {
+	// 	cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
+	// 	return err, true
+	// }
 
 	var errResp *errcode.ErrorResponse
 	if errors.As(err, &errResp) {
@@ -267,7 +267,7 @@ func (target *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 			}
 		}
 
-		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
+		// cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
 		ret := &oerrors.Error{
 			Err: oerrors.TrimErrResp(err, errResp),
 		}

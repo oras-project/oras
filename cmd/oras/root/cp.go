@@ -18,6 +18,7 @@ package root
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -140,6 +141,27 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 
 	desc, err := doCopy(ctx, statusHandler, src, dst, opts)
 	if err != nil {
+		var copyErr *oras.CopyError
+		if errors.As(err, &copyErr) {
+			var target option.Target
+			switch copyErr.Origin {
+			case oras.CopyErrorOriginSource:
+				target = opts.From
+			case oras.CopyErrorOriginDestination:
+				target = opts.To
+			default:
+				return err
+			}
+
+			typeName := target.Type
+			switch target.Type {
+			case option.TargetTypeOCILayout:
+				typeName = "OCI layout"
+			case option.TargetTypeRemote:
+				typeName = "remote repository"
+			}
+			return fmt.Errorf("operation %q failed on the %s %s %q: %w", copyErr.Op, copyErr.Origin.String(), typeName, target.RawReference, copyErr.Err)
+		}
 		return err
 	}
 
