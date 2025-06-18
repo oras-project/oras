@@ -174,9 +174,9 @@ func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 		if errors.As(err, &copyErr) {
 			switch copyErr.Origin {
 			case oras.CopyErrorOriginSource:
-				return fmt.Errorf("operation %q failed on the %s %s %q: %w", copyErr.Op, copyErr.Origin.String(), opts.Target.Type, opts.Target.RawReference, copyErr.Err)
+				return fmt.Errorf("operation %q failed on source %s %q (reference: %q): %w", copyErr.Op, opts.Target.Type, opts.Target.Path, opts.Target.Reference, copyErr.Err)
 			case oras.CopyErrorOriginDestination:
-				return fmt.Errorf("operation %q failed on the %s %s %q: %w", copyErr.Op, copyErr.Origin.String(), "directory", opts.Output, copyErr.Err)
+				return fmt.Errorf("operation %q failed on destination directory %q: %w", copyErr.Op, opts.Output, copyErr.Err)
 			default:
 				return err
 			}

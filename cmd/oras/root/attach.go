@@ -217,9 +217,9 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 		if errors.As(err, &copyErr) {
 			switch copyErr.Origin {
 			case oras.CopyErrorOriginSource:
-				return fmt.Errorf("operation %q failed on the source: %w", copyErr.Op, copyErr.Err)
+				return fmt.Errorf("operation %q failed on source: %w", copyErr.Op, copyErr.Err)
 			case oras.CopyErrorOriginDestination:
-				return fmt.Errorf("operation %q failed on the destination %s %q: %w", copyErr.Op, opts.Target.Type, opts.Target.RawReference, copyErr.Err)
+				return fmt.Errorf("operation %q failed on destination %s %q (reference: %q): %w", copyErr.Op, opts.Target.Type, opts.Target.Path, opts.Target.Reference, copyErr.Err)
 			default:
 				return err
 			}

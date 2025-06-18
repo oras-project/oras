@@ -153,7 +153,7 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 				return err
 			}
 
-			return fmt.Errorf("operation %q failed on the %s %s %q: %w", copyErr.Op, copyErr.Origin.String(), target.Type, target.RawReference, copyErr.Err)
+			return fmt.Errorf("operation %q failed on %s %s %q (reference: %q): %w", copyErr.Op, copyErr.Origin.String(), target.Type, target.Path, target.Reference, copyErr.Err)
 		}
 		return err
 	}
