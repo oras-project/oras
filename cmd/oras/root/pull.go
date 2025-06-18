@@ -168,7 +168,18 @@ func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 	desc, err := doPull(ctx, src, dst, copyOptions, metadataHandler, statusHandler, opts)
 	if err != nil {
 		if errors.Is(err, file.ErrPathTraversalDisallowed) {
-			err = fmt.Errorf("%s: %w", "use flag --allow-path-traversal to allow insecurely pulling files outside of working directory", err)
+			return fmt.Errorf("%s: %w", "use flag --allow-path-traversal to allow insecurely pulling files outside of working directory", err)
+		}
+		var copyErr *oras.CopyError
+		if errors.As(err, &copyErr) {
+			switch copyErr.Origin {
+			case oras.CopyErrorOriginSource:
+				return fmt.Errorf("operation %q failed on the %s %s %q: %w", copyErr.Op, copyErr.Origin.String(), opts.Target.Type, opts.Target.RawReference, copyErr.Err)
+			case oras.CopyErrorOriginDestination:
+				return fmt.Errorf("operation %q failed on the %s %s %q: %w", copyErr.Op, copyErr.Origin.String(), "directory", opts.Output, copyErr.Err)
+			default:
+				return err
+			}
 		}
 		return err
 	}

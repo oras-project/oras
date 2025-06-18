@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -272,6 +273,17 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	// Push
 	root, err := doPush(dst, stopTrack, pack, copyWithScopeHint)
 	if err != nil {
+		var copyErr *oras.CopyError
+		if errors.As(err, &copyErr) {
+			switch copyErr.Origin {
+			case oras.CopyErrorOriginSource:
+				return fmt.Errorf("operation %q failed on the source: %w", copyErr.Op, copyErr.Err)
+			case oras.CopyErrorOriginDestination:
+				return fmt.Errorf("operation %q failed on the destination %s %q: %w", copyErr.Op, opts.Target.Type, opts.Target.RawReference, copyErr.Err)
+			default:
+				return err
+			}
+		}
 		return err
 	}
 	err = metadataHandler.OnCopied(&opts.Target, root)

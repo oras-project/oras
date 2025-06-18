@@ -153,14 +153,7 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 				return err
 			}
 
-			typeName := target.Type
-			switch target.Type {
-			case option.TargetTypeOCILayout:
-				typeName = "OCI layout"
-			case option.TargetTypeRemote:
-				typeName = "remote repository"
-			}
-			return fmt.Errorf("operation %q failed on the %s %s %q: %w", copyErr.Op, copyErr.Origin.String(), typeName, target.RawReference, copyErr.Err)
+			return fmt.Errorf("operation %q failed on the %s %s %q: %w", copyErr.Op, copyErr.Origin.String(), target.Type, target.RawReference, copyErr.Err)
 		}
 		return err
 	}

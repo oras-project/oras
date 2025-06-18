@@ -41,8 +41,8 @@ import (
 )
 
 const (
-	TargetTypeRemote    = "registry"
-	TargetTypeOCILayout = "oci-layout"
+	TargetTypeRemote    = "remote repository"
+	TargetTypeOCILayout = "OCI layout"
 )
 
 // Target struct contains flags and arguments specifying one registry or image
