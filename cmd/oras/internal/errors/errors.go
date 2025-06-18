@@ -109,7 +109,7 @@ func TrimErrResp(err error, toTrim error) error {
 	var inner error
 	if errResp, ok := toTrim.(*errcode.ErrorResponse); ok {
 		if len(errResp.Errors) == 0 {
-			return fmt.Errorf("recognizable error message not found: %w", toTrim)
+			return fmt.Errorf("no recognizable error message found: %w", toTrim)
 		}
 		inner = errResp.Errors
 	} else {
