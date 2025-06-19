@@ -245,6 +245,8 @@ func (target *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 		return target.DecorateCredentialError(err), true
 	}
 
+	// TODO: refactor commands using RegistryErrorPrefix (run e2e)
+
 	// if errors.Is(err, errdef.ErrNotFound) {
 	// 	cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
 	// 	return err, true
