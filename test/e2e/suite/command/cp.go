@@ -696,11 +696,11 @@ var _ = Describe("OCI layout users:", func() {
 			// verify that "multi"'s referrers are copied
 			ORAS("discover", dst).MatchKeyWords("sha256:d37baf66300b9006b0f4c7102075d56b970fbf910be5c6bca07fdbb000dfa383", "sha256:7679bc22c33b87aa345c6950a993db98a6df7a6cc77a35c388908a3a50be6bad").Exec()
 			// verify that the child images are copied
-			ORAS("manifest", "fetch", dst, "sha256:9d84a5716c66a1d1b9c13f8ed157ba7d1edfe7f9b8766728b8a1f25c0d9c14c1").Exec()
-			ORAS("manifest", "fetch", dst, "sha256:4f93460061882467e6fb3b772dc6ab72130d9ac1906aed2fc7589a5cd145433c").Exec()
-			ORAS("manifest", "fetch", dst, "sha256:58efe73e78fe043ca31b89007a025c594ce12aa7e6da27d21c7b14b50112e255").Exec()
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, dstRepo, "sha256:9d84a5716c66a1d1b9c13f8ed157ba7d1edfe7f9b8766728b8a1f25c0d9c14c1")).Exec()
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, dstRepo, "sha256:4f93460061882467e6fb3b772dc6ab72130d9ac1906aed2fc7589a5cd145433c")).Exec()
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, dstRepo, "sha256:58efe73e78fe043ca31b89007a025c594ce12aa7e6da27d21c7b14b50112e255")).Exec()
 			// verify that the referrers of the child images are copied
-			ORAS("manifest", "fetch", dst, "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a").Exec()
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, dstRepo, "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a")).Exec()
 		})
 
 		It("should copy a certain platform of image and its referrers from a registry to an OCI image layout", func() {
