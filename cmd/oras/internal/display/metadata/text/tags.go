@@ -33,8 +33,8 @@ func NewTagsHandler(out io.Writer) metadata.TagsHandler {
 	}
 }
 
-// OnTag implements metadata.TagsHandler.
-func (h *tagsHandler) OnTag(tag string) error {
+// OnListed implements metadata.TagsHandler.
+func (h *tagsHandler) OnListed(tag string) error {
 	_, err := io.WriteString(h.out, tag+"\n")
 	return err
 }

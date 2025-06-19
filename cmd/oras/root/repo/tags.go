@@ -32,7 +32,6 @@ type showTagsOptions struct {
 	option.Common
 	option.Target
 	option.Format
-	option.Terminal
 
 	last             string
 	excludeDigestTag bool
@@ -82,13 +81,11 @@ Example - Show tags of the target repository in JSON format:
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the tag specified by `last`")
 	cmd.Flags().BoolVar(&opts.excludeDigestTag, "exclude-digest-tags", false, "[Preview] exclude all digest-like tags such as 'sha256-aaaa...'")
 	option.AddDeprecatedVerboseFlag(cmd.Flags())
-
 	opts.SetTypes(
 		option.FormatTypeText,
 		option.FormatTypeJSON.WithUsage("Get tags and output in JSON format"),
 		option.FormatTypeGoTemplate.WithUsage("Print tags using the given Go template"),
 	)
-
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
@@ -130,7 +127,7 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 			}
 			if filter != "" {
 				if tag == opts.Reference {
-					if err := handler.OnTag(tag); err != nil {
+					if err := handler.OnListed(tag); err != nil {
 						return err
 					}
 					continue
@@ -143,7 +140,7 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 					continue
 				}
 			}
-			if err := handler.OnTag(tag); err != nil {
+			if err := handler.OnListed(tag); err != nil {
 				return err
 			}
 		}

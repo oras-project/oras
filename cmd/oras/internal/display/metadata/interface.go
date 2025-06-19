@@ -76,8 +76,8 @@ type TaggedHandler interface {
 type TagsHandler interface {
 	Renderer
 
-	// OnTag is called for each tag that is listed.
-	OnTag(tag string) error
+	// OnListed is called for each tag that is listed.
+	OnListed(tag string) error
 }
 
 // TagHandler handles status output for tag command.

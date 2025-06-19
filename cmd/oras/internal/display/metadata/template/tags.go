@@ -39,8 +39,8 @@ func NewTagsHandler(out io.Writer, tmpl string, repoName string) metadata.TagsHa
 	}
 }
 
-// OnTag implements metadata.TagsHandler.
-func (h *tagsHandler) OnTag(tag string) error {
+// OnListed implements metadata.TagsHandler.
+func (h *tagsHandler) OnListed(tag string) error {
 	h.model.AddTag(tag)
 	return nil
 }

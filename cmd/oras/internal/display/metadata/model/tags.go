@@ -16,7 +16,6 @@ limitations under the License.
 package model
 
 import (
-	"path/filepath"
 	"sync"
 )
 
@@ -29,10 +28,8 @@ type Tags struct {
 
 // NewTags creates a new Tags model.
 func NewTags(repoName string) *Tags {
-	// Extract repository name from the path
-	name := filepath.Base(repoName)
 	return &Tags{
-		Name: name,
+		Name: repoName,
 		Tags: []string{},
 	}
 }
