@@ -31,10 +31,9 @@ type tagsHandler struct {
 }
 
 // NewTagsHandler creates a new template handler for repo tags command.
-func NewTagsHandler(out io.Writer, tmpl string, repoName string) metadata.TagsHandler {
-	return &tagsHandler{
+func NewTagsHandler(out io.Writer, tmpl string) metadata.TagsHandler {	return &tagsHandler{
 		out:      out,
-		model:    model.NewTags(repoName),
+		model:    model.NewTags(),
 		template: tmpl,
 	}
 }

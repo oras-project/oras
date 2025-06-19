@@ -110,11 +110,8 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 		logger.Warnf("[Experimental] querying tags associated to %s, it may take a while...\n", filter)
 	}
 
-	// Get the repository name for the handler
-	repoName := opts.Path
-
 	// Create the appropriate handler based on the format option
-	handler, err := display.NewTagsHandler(opts.Printer, opts.Format, repoName)
+	handler, err := display.NewTagsHandler(opts.Printer, opts.Format)
 	if err != nil {
 		return err
 	}

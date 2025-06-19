@@ -21,15 +21,13 @@ import (
 
 // Tags contains metadata formatted by oras repo tags.
 type Tags struct {
-	Name string   `json:"name"`
 	Tags []string `json:"tags"`
 	lock sync.RWMutex
 }
 
 // NewTags creates a new Tags model.
-func NewTags(repoName string) *Tags {
+func NewTags() *Tags {
 	return &Tags{
-		Name: repoName,
 		Tags: []string{},
 	}
 }

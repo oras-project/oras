@@ -165,15 +165,15 @@ func NewManifestFetchHandler(out io.Writer, format option.Format, outputDescript
 }
 
 // NewTagsHandler returns a tags handler.
-func NewTagsHandler(out io.Writer, format option.Format, repoName string) (metadata.TagsHandler, error) {
+func NewTagsHandler(out io.Writer, format option.Format) (metadata.TagsHandler, error) {
 	var handler metadata.TagsHandler
 	switch format.Type {
 	case option.FormatTypeText.Name:
 		handler = text.NewTagsHandler(out)
 	case option.FormatTypeJSON.Name:
-		handler = json.NewTagsHandler(out, repoName)
+		handler = json.NewTagsHandler(out)
 	case option.FormatTypeGoTemplate.Name:
-		handler = template.NewTagsHandler(out, repoName, format.Template)
+		handler = template.NewTagsHandler(out, format.Template)
 	default:
 		return nil, errors.UnsupportedFormatTypeError(format.Type)
 	}
