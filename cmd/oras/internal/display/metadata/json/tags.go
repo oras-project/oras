@@ -30,7 +30,8 @@ type tagsHandler struct {
 }
 
 // NewTagsHandler creates a new handler for repo tags events.
-func NewTagsHandler(out io.Writer) metadata.TagsHandler {	return &tagsHandler{
+func NewTagsHandler(out io.Writer) metadata.TagsHandler {
+	return &tagsHandler{
 		out:   out,
 		model: model.NewTags(),
 	}

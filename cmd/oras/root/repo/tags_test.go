@@ -18,6 +18,7 @@ package repo
 import (
 	"bytes"
 	"encoding/json"
+	"os"
 	"sort"
 	"testing"
 
@@ -29,7 +30,7 @@ import (
 // Let's add a unit test to verify the JSON output doesn't contain the name field
 func TestShowTagsJSON(t *testing.T) { // Create a buffer for testing the output
 	var buf bytes.Buffer
-	p := output.NewPrinter(&buf, &buf)	// Create a handler for JSON format
+	p := output.NewPrinter(&buf, os.Stderr) // Create a handler for JSON format
 	format := option.Format{Type: option.FormatTypeJSON.Name}
 	handler, err := display.NewTagsHandler(p, format)
 	if err != nil {
