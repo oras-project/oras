@@ -164,6 +164,22 @@ func NewManifestFetchHandler(out io.Writer, format option.Format, outputDescript
 	return metadataHandler, contentHandler, nil
 }
 
+// NewTagsHandler returns a tags handler.
+func NewTagsHandler(out io.Writer, format option.Format, repoName string) (metadata.TagsHandler, error) {
+	var handler metadata.TagsHandler
+	switch format.Type {
+	case option.FormatTypeText.Name:
+		handler = text.NewTagsHandler(out)
+	case option.FormatTypeJSON.Name:
+		handler = json.NewTagsHandler(out, repoName)
+	case option.FormatTypeGoTemplate.Name:
+		handler = template.NewTagsHandler(out, repoName, format.Template)
+	default:
+		return nil, errors.UnsupportedFormatTypeError(format.Type)
+	}
+	return handler, nil
+}
+
 // NewTagHandler returns a tag handler.
 func NewTagHandler(printer *output.Printer, target option.Target) metadata.TagHandler {
 	return text.NewTagHandler(printer, target)

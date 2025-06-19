@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
+	"oras.land/oras/cmd/oras/internal/display"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/contentutil"
@@ -30,6 +31,8 @@ import (
 type showTagsOptions struct {
 	option.Common
 	option.Target
+	option.Format
+	option.Terminal
 
 	last             string
 	excludeDigestTag bool
@@ -62,6 +65,9 @@ Example - [Experimental] Show tags associated with a particular tagged resource:
 
 Example - [Experimental] Show tags associated with a digest:
   oras repo tags localhost:5000/hello@sha256:c551125a624189cece9135981621f3f3144564ddabe14b523507bf74c2281d9b
+
+Example - Show tags of the target repository in JSON format:
+  oras repo tags localhost:5000/hello --format json
 `,
 		Args:    oerrors.CheckArgs(argument.Exactly(1), "the target repository to list tags from"),
 		Aliases: []string{"show-tags"},
@@ -76,6 +82,13 @@ Example - [Experimental] Show tags associated with a digest:
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the tag specified by `last`")
 	cmd.Flags().BoolVar(&opts.excludeDigestTag, "exclude-digest-tags", false, "[Preview] exclude all digest-like tags such as 'sha256-aaaa...'")
 	option.AddDeprecatedVerboseFlag(cmd.Flags())
+
+	opts.SetTypes(
+		option.FormatTypeText,
+		option.FormatTypeJSON.WithUsage("Get tags and output in JSON format"),
+		option.FormatTypeGoTemplate.WithUsage("Print tags using the given Go template"),
+	)
+
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
@@ -99,14 +112,27 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 		}
 		logger.Warnf("[Experimental] querying tags associated to %s, it may take a while...\n", filter)
 	}
-	return finder.Tags(ctx, opts.last, func(tags []string) error {
+
+	// Get the repository name for the handler
+	repoName := opts.Path
+
+	// Create the appropriate handler based on the format option
+	handler, err := display.NewTagsHandler(opts.Printer, opts.Format, repoName)
+	if err != nil {
+		return err
+	}
+
+	// Process tags with the handler
+	err = finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
 			if opts.excludeDigestTag && isDigestTag(tag) {
 				continue
 			}
 			if filter != "" {
 				if tag == opts.Reference {
-					_ = opts.Printer.Println(tag)
+					if err := handler.OnTag(tag); err != nil {
+						return err
+					}
 					continue
 				}
 				desc, err := finder.Resolve(ctx, tag)
@@ -117,10 +143,18 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 					continue
 				}
 			}
-			_ = opts.Printer.Println(tag)
+			if err := handler.OnTag(tag); err != nil {
+				return err
+			}
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	// Render the output
+	return handler.Render()
 }
 
 func isDigestTag(tag string) bool {

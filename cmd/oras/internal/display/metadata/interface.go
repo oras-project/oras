@@ -72,6 +72,14 @@ type TaggedHandler interface {
 	OnTagged(desc ocispec.Descriptor, tag string) error
 }
 
+// TagsHandler handles status output for repo tags command.
+type TagsHandler interface {
+	Renderer
+
+	// OnTag is called for each tag that is listed.
+	OnTag(tag string) error
+}
+
 // TagHandler handles status output for tag command.
 type TagHandler interface {
 	// OnTagging is called when tagging starts.
