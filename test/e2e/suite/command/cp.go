@@ -702,7 +702,7 @@ var _ = Describe("OCI layout users:", func() {
 			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(toDir, "sha256:4f93460061882467e6fb3b772dc6ab72130d9ac1906aed2fc7589a5cd145433c")).Exec()
 			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(toDir, "sha256:58efe73e78fe043ca31b89007a025c594ce12aa7e6da27d21c7b14b50112e255")).Exec()
 			// verify that the referrers of the child images are copied
-			ORAS("manifest", "discover", Flags.Layout, LayoutRef(toDir, "sha256:9d84a5716c66a1d1b9c13f8ed157ba7d1edfe7f9b8766728b8a1f25c0d9c14c1")).Exec()
+			ORAS("discover", Flags.Layout, LayoutRef(toDir, "sha256:9d84a5716c66a1d1b9c13f8ed157ba7d1edfe7f9b8766728b8a1f25c0d9c14c1")).Exec()
 		})
 
 		It("should copy a certain platform of image and its referrers from a registry to an OCI image layout", func() {
