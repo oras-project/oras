@@ -75,6 +75,9 @@ Example - Fetch raw manifest from an OCI image layout folder 'layout-dir':
 
 Example - Fetch raw manifest from an OCI layout archive file 'layout.tar':
   oras manifest fetch --oci-layout layout.tar:v1
+
+Example - Fetch raw manifest tagged 'example.com:v1' from an OCI image layout folder 'layout-dir':
+  oras manifest fetch example.com:v1 --oci-layout-path layout-dir
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the manifest to fetch"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {

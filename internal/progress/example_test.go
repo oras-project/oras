@@ -47,7 +47,7 @@ func ExampleTrackReader() {
 	})
 	// Close takes no effect for TrackerFunc but should be called for general
 	// Tracker implementations.
-	defer tracker.Close()
+	defer func() { _ = tracker.Close() }()
 
 	// Wrap a reader of a random content generator with the progress tracker.
 	r := io.LimitReader(rand.Reader, total)

@@ -73,14 +73,14 @@ Example - [Experimental] Discover referrers and format output with Go template:
 Example - [Experimental] Discover only direct referrers, displayed in json view:
   oras discover localhost:5000/hello:v1 --format json --depth 1
 
-Example - Discover all the referrers of manifest with annotations, displayed in a tree view:
-  oras discover -v localhost:5000/hello:v1
-
 Example - Discover referrers with type 'test-artifact' of manifest 'hello:v1' in registry 'localhost:5000':
   oras discover --artifact-type test-artifact localhost:5000/hello:v1
 
 Example - Discover referrers of the manifest tagged 'v1' in an OCI image layout folder 'layout-dir':
   oras discover --oci-layout layout-dir:v1
+
+Example - Discover referrers of the manifest tagged 'example.com:v1' in an OCI image layout folder 'layout-dir':
+  oras discover example.com:v1 --oci-layout-path layout-dir
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the target artifact to discover referrers from"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {

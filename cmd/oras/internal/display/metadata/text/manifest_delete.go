@@ -40,5 +40,5 @@ func (h *ManifestDeleteHandler) OnManifestMissing() error {
 
 // OnManifestDeleted implements ManifestDeleteHandler.
 func (h *ManifestDeleteHandler) OnManifestDeleted() error {
-	return h.printer.Println("Deleted", h.target.AnnotatedReference())
+	return h.printer.Println("Deleted", h.target.GetDisplayReference())
 }

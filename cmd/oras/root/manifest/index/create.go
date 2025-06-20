@@ -133,7 +133,7 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 		return err
 	}
 	if opts.outputPath == "" {
-		if err := pushIndex(ctx, displayStatus, displayMetadata, target, desc, indexBytes, opts.Reference, opts.extraRefs, opts.AnnotatedReference()); err != nil {
+		if err := pushIndex(ctx, displayStatus, displayMetadata, target, desc, indexBytes, opts.Reference, opts.extraRefs, opts.GetDisplayReference()); err != nil {
 			return err
 		}
 	}

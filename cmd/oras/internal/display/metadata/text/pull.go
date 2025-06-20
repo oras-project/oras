@@ -61,7 +61,7 @@ func (ph *PullHandler) Render() error {
 		_ = ph.printer.Printf("Skipped pulling layers without file name in %q\n", ocispec.AnnotationTitle)
 		_ = ph.printer.Printf("Use 'oras copy %s --to-oci-layout <layout-dir>' to pull all layers.\n", ph.target.RawReference)
 	} else {
-		_ = ph.printer.Println("Pulled", ph.target.AnnotatedReference())
+		_ = ph.printer.Println("Pulled", ph.target.GetDisplayReference())
 		_ = ph.printer.Println("Digest:", ph.root.Digest)
 	}
 	return nil

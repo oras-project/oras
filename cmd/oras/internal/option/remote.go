@@ -80,15 +80,15 @@ type Remote struct {
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
-func (opts *Remote) EnableDistributionSpecFlag() {
-	opts.applyDistributionSpec = true
+func (remo *Remote) EnableDistributionSpecFlag() {
+	remo.applyDistributionSpec = true
 }
 
 // ApplyFlags applies flags to a command flag set.
-func (opts *Remote) ApplyFlags(fs *pflag.FlagSet) {
-	opts.ApplyFlagsWithPrefix(fs, "", "")
-	fs.BoolVar(&opts.secretFromStdin, passwordFromStdinFlag, false, "read password from stdin")
-	fs.BoolVar(&opts.secretFromStdin, identityTokenFromStdinFlag, false, "read identity token from stdin")
+func (remo *Remote) ApplyFlags(fs *pflag.FlagSet) {
+	remo.ApplyFlagsWithPrefix(fs, "", "")
+	fs.BoolVar(&remo.secretFromStdin, passwordFromStdinFlag, false, "read password from stdin")
+	fs.BoolVar(&remo.secretFromStdin, identityTokenFromStdinFlag, false, "read identity token from stdin")
 }
 
 func applyPrefix(prefix, description string) (flagPrefix, notePrefix string) {
@@ -100,7 +100,7 @@ func applyPrefix(prefix, description string) (flagPrefix, notePrefix string) {
 
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
 // Commonly used for non-unary remote targets.
-func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
+func (remo *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
 	var (
 		shortUser     string
 		shortPassword string
@@ -111,26 +111,26 @@ func (opts *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 		shortUser, shortPassword = "u", "p"
 		shortHeader = "H"
 	}
-	opts.flagPrefix, notePrefix = applyPrefix(prefix, description)
+	remo.flagPrefix, notePrefix = applyPrefix(prefix, description)
 
-	if opts.applyDistributionSpec {
-		opts.DistributionSpec.ApplyFlagsWithPrefix(fs, prefix, description)
+	if remo.applyDistributionSpec {
+		remo.DistributionSpec.ApplyFlagsWithPrefix(fs, prefix, description)
 	}
-	fs.StringVarP(&opts.Username, opts.flagPrefix+usernameFlag, shortUser, "", notePrefix+"registry username")
-	fs.StringVarP(&opts.Secret, opts.flagPrefix+passwordFlag, shortPassword, "", notePrefix+"registry password or identity token")
-	fs.StringVar(&opts.Secret, opts.flagPrefix+identityTokenFlag, "", notePrefix+"registry identity token")
-	fs.BoolVar(&opts.Insecure, opts.flagPrefix+"insecure", false, "allow connections to "+notePrefix+"SSL registry without certs")
-	plainHTTPFlagName := opts.flagPrefix + "plain-http"
+	fs.StringVarP(&remo.Username, remo.flagPrefix+usernameFlag, shortUser, "", notePrefix+"registry username")
+	fs.StringVarP(&remo.Secret, remo.flagPrefix+passwordFlag, shortPassword, "", notePrefix+"registry password or identity token")
+	fs.StringVar(&remo.Secret, remo.flagPrefix+identityTokenFlag, "", notePrefix+"registry identity token")
+	fs.BoolVar(&remo.Insecure, remo.flagPrefix+"insecure", false, "allow connections to "+notePrefix+"SSL registry without certs")
+	plainHTTPFlagName := remo.flagPrefix + "plain-http"
 	plainHTTP := fs.Bool(plainHTTPFlagName, false, "allow insecure connections to "+notePrefix+"registry without SSL check")
-	opts.plainHTTP = func() (bool, bool) {
+	remo.plainHTTP = func() (bool, bool) {
 		return *plainHTTP, fs.Changed(plainHTTPFlagName)
 	}
-	fs.StringVar(&opts.CACertFilePath, opts.flagPrefix+caFileFlag, "", "server certificate authority file for the remote "+notePrefix+"registry")
-	fs.StringVarP(&opts.CertFilePath, opts.flagPrefix+certFileFlag, "", "", "client certificate file for the remote "+notePrefix+"registry")
-	fs.StringVarP(&opts.KeyFilePath, opts.flagPrefix+keyFileFlag, "", "", "client private key file for the remote "+notePrefix+"registry")
-	fs.StringArrayVar(&opts.resolveFlag, opts.flagPrefix+"resolve", nil, "customized DNS for "+notePrefix+"registry, formatted in `host:port:address[:address_port]`")
-	fs.StringArrayVar(&opts.Configs, opts.flagPrefix+"registry-config", nil, "`path` of the authentication file for "+notePrefix+"registry")
-	fs.StringArrayVarP(&opts.headerFlags, opts.flagPrefix+"header", shortHeader, nil, "add custom headers to "+notePrefix+"requests")
+	fs.StringVar(&remo.CACertFilePath, remo.flagPrefix+caFileFlag, "", "server certificate authority file for the remote "+notePrefix+"registry")
+	fs.StringVarP(&remo.CertFilePath, remo.flagPrefix+certFileFlag, "", "", "client certificate file for the remote "+notePrefix+"registry")
+	fs.StringVarP(&remo.KeyFilePath, remo.flagPrefix+keyFileFlag, "", "", "client private key file for the remote "+notePrefix+"registry")
+	fs.StringArrayVar(&remo.resolveFlag, remo.flagPrefix+"resolve", nil, "customized DNS for "+notePrefix+"registry, formatted in `host:port:address[:address_port]`")
+	fs.StringArrayVar(&remo.Configs, remo.flagPrefix+"registry-config", nil, "`path` of the authentication file for "+notePrefix+"registry")
+	fs.StringArrayVarP(&remo.headerFlags, remo.flagPrefix+"header", shortHeader, nil, "add custom headers to "+notePrefix+"requests")
 }
 
 // CheckStdinConflict checks if PasswordFromStdin or IdentityTokenFromStdin of a
@@ -146,10 +146,10 @@ func CheckStdinConflict(flags *pflag.FlagSet) error {
 }
 
 // Parse tries to read password with optional cmd prompt.
-func (opts *Remote) Parse(cmd *cobra.Command) error {
-	usernameAndIdTokenFlags := []string{opts.flagPrefix + usernameFlag, opts.flagPrefix + identityTokenFlag}
-	passwordAndIdTokenFlags := []string{opts.flagPrefix + passwordFlag, opts.flagPrefix + identityTokenFlag}
-	certFileAndKeyFileFlags := []string{opts.flagPrefix + certFileFlag, opts.flagPrefix + keyFileFlag}
+func (remo *Remote) Parse(cmd *cobra.Command) error {
+	usernameAndIdTokenFlags := []string{remo.flagPrefix + usernameFlag, remo.flagPrefix + identityTokenFlag}
+	passwordAndIdTokenFlags := []string{remo.flagPrefix + passwordFlag, remo.flagPrefix + identityTokenFlag}
+	certFileAndKeyFileFlags := []string{remo.flagPrefix + certFileFlag, remo.flagPrefix + keyFileFlag}
 	if cmd.Flags().Lookup(identityTokenFromStdinFlag) != nil {
 		usernameAndIdTokenFlags = append(usernameAndIdTokenFlags, identityTokenFromStdinFlag)
 		passwordAndIdTokenFlags = append(passwordAndIdTokenFlags, identityTokenFromStdinFlag)
@@ -163,37 +163,37 @@ func (opts *Remote) Parse(cmd *cobra.Command) error {
 	if err := oerrors.CheckMutuallyExclusiveFlags(cmd.Flags(), passwordAndIdTokenFlags...); err != nil {
 		return err
 	}
-	if err := opts.parseCustomHeaders(); err != nil {
+	if err := remo.parseCustomHeaders(); err != nil {
 		return err
 	}
 	if err := oerrors.CheckRequiredTogetherFlags(cmd.Flags(), certFileAndKeyFileFlags...); err != nil {
 		return err
 	}
-	return opts.readSecret(cmd)
+	return remo.readSecret(cmd)
 }
 
 // readSecret tries to read password or identity token with
 // optional cmd prompt.
-func (opts *Remote) readSecret(cmd *cobra.Command) (err error) {
+func (remo *Remote) readSecret(cmd *cobra.Command) (err error) {
 	if cmd.Flags().Changed(identityTokenFlag) {
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "WARNING! Using --identity-token via the CLI is insecure. Use --identity-token-stdin.")
 	} else if cmd.Flags().Changed(passwordFlag) {
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
-	} else if opts.secretFromStdin {
+	} else if remo.secretFromStdin {
 		// Prompt for credential
 		secret, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			return err
 		}
-		opts.Secret = strings.TrimSuffix(string(secret), "\n")
-		opts.Secret = strings.TrimSuffix(opts.Secret, "\r")
+		remo.Secret = strings.TrimSuffix(string(secret), "\n")
+		remo.Secret = strings.TrimSuffix(remo.Secret, "\r")
 	}
 	return nil
 }
 
 // parseResolve parses resolve flag.
-func (opts *Remote) parseResolve(baseDial onet.DialFunc) (onet.DialFunc, error) {
-	if len(opts.resolveFlag) == 0 {
+func (remo *Remote) parseResolve(baseDial onet.DialFunc) (onet.DialFunc, error) {
+	if len(remo.resolveFlag) == 0 {
 		return baseDial, nil
 	}
 
@@ -201,7 +201,7 @@ func (opts *Remote) parseResolve(baseDial onet.DialFunc) (onet.DialFunc, error) 
 		return fmt.Errorf("failed to parse resolve flag %q: %s", param, message)
 	}
 	var dialer onet.Dialer
-	for _, r := range opts.resolveFlag {
+	for _, r := range remo.resolveFlag {
 		parts := strings.SplitN(r, ":", 4)
 		length := len(parts)
 		if length < 3 {
@@ -231,19 +231,19 @@ func (opts *Remote) parseResolve(baseDial onet.DialFunc) (onet.DialFunc, error) 
 }
 
 // tlsConfig assembles the tls config.
-func (opts *Remote) tlsConfig() (*tls.Config, error) {
+func (remo *Remote) tlsConfig() (*tls.Config, error) {
 	config := &tls.Config{
-		InsecureSkipVerify: opts.Insecure,
+		InsecureSkipVerify: remo.Insecure,
 	}
-	if opts.CACertFilePath != "" {
+	if remo.CACertFilePath != "" {
 		var err error
-		config.RootCAs, err = crypto.LoadCertPool(opts.CACertFilePath)
+		config.RootCAs, err = crypto.LoadCertPool(remo.CACertFilePath)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if opts.CertFilePath != "" && opts.KeyFilePath != "" {
-		cert, err := tls.LoadX509KeyPair(opts.CertFilePath, opts.KeyFilePath)
+	if remo.CertFilePath != "" && remo.KeyFilePath != "" {
+		cert, err := tls.LoadX509KeyPair(remo.CertFilePath, remo.KeyFilePath)
 		if err != nil {
 			return nil, err
 		}
@@ -253,14 +253,14 @@ func (opts *Remote) tlsConfig() (*tls.Config, error) {
 }
 
 // authClient assembles a oras auth client.
-func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client, err error) {
-	config, err := opts.tlsConfig()
+func (remo *Remote) authClient(registry string, debug bool) (client *auth.Client, err error) {
+	config, err := remo.tlsConfig()
 	if err != nil {
 		return nil, err
 	}
 	baseTransport := http.DefaultTransport.(*http.Transport).Clone()
 	baseTransport.TLSClientConfig = config
-	dialContext, err := opts.parseResolve(baseTransport.DialContext)
+	dialContext, err := remo.parseResolve(baseTransport.DialContext)
 	if err != nil {
 		return nil, err
 	}
@@ -272,44 +272,44 @@ func (opts *Remote) authClient(registry string, debug bool) (client *auth.Client
 			Transport: retry.NewTransport(baseTransport),
 		},
 		Cache:  auth.NewCache(),
-		Header: opts.headers,
+		Header: remo.headers,
 	}
 	client.SetUserAgent("oras/" + version.GetVersion())
 	if debug {
 		client.Client.Transport = trace.NewTransport(client.Client.Transport)
 	}
 
-	cred := opts.Credential()
+	cred := remo.Credential()
 	if cred != auth.EmptyCredential {
 		client.Credential = func(ctx context.Context, s string) (auth.Credential, error) {
 			return cred, nil
 		}
 	} else {
 		var err error
-		opts.store, err = credential.NewStore(opts.Configs...)
+		remo.store, err = credential.NewStore(remo.Configs...)
 		if err != nil {
 			return nil, err
 		}
-		client.Credential = credentials.Credential(opts.store)
+		client.Credential = credentials.Credential(remo.store)
 	}
 	return
 }
 
 // ConfigPath returns the config path of the credential store.
-func (opts *Remote) ConfigPath() (string, error) {
-	if opts.store == nil {
+func (remo *Remote) ConfigPath() (string, error) {
+	if remo.store == nil {
 		return "", errors.New("no credential store initialized")
 	}
-	if ds, ok := opts.store.(*credentials.DynamicStore); ok {
+	if ds, ok := remo.store.(*credentials.DynamicStore); ok {
 		return ds.ConfigPath(), nil
 	}
 	return "", errors.New("store doesn't support getting config path")
 }
 
-func (opts *Remote) parseCustomHeaders() error {
-	if len(opts.headerFlags) != 0 {
+func (remo *Remote) parseCustomHeaders() error {
+	if len(remo.headerFlags) != 0 {
 		headers := map[string][]string{}
-		for _, h := range opts.headerFlags {
+		for _, h := range remo.headerFlags {
 			name, value, found := strings.Cut(h, ":")
 			if !found || strings.TrimSpace(name) == "" {
 				// In conformance to the RFC 2616 specification
@@ -318,24 +318,24 @@ func (opts *Remote) parseCustomHeaders() error {
 			}
 			headers[name] = append(headers[name], value)
 		}
-		opts.headers = headers
+		remo.headers = headers
 	}
 	return nil
 }
 
 // Credential returns a credential based on the remote options.
-func (opts *Remote) Credential() auth.Credential {
-	return credential.Credential(opts.Username, opts.Secret)
+func (remo *Remote) Credential() auth.Credential {
+	return credential.Credential(remo.Username, remo.Secret)
 }
 
-func (opts *Remote) handleWarning(registry string, logger logrus.FieldLogger) func(warning remote.Warning) {
-	if opts.warned == nil {
-		opts.warned = make(map[string]*sync.Map)
+func (remo *Remote) handleWarning(registry string, logger logrus.FieldLogger) func(warning remote.Warning) {
+	if remo.warned == nil {
+		remo.warned = make(map[string]*sync.Map)
 	}
-	warned := opts.warned[registry]
+	warned := remo.warned[registry]
 	if warned == nil {
 		warned = &sync.Map{}
-		opts.warned[registry] = warned
+		remo.warned[registry] = warned
 	}
 	logger = logger.WithField("registry", registry)
 	return func(warning remote.Warning) {
@@ -346,22 +346,22 @@ func (opts *Remote) handleWarning(registry string, logger logrus.FieldLogger) fu
 }
 
 // NewRegistry assembles a oras remote registry.
-func (opts *Remote) NewRegistry(registry string, common Common, logger logrus.FieldLogger) (reg *remote.Registry, err error) {
+func (remo *Remote) NewRegistry(registry string, common Common, logger logrus.FieldLogger) (reg *remote.Registry, err error) {
 	reg, err = remote.NewRegistry(registry)
 	if err != nil {
 		return nil, err
 	}
 	registry = reg.Reference.Registry
-	reg.PlainHTTP = opts.isPlainHttp(registry)
-	reg.HandleWarning = opts.handleWarning(registry, logger)
-	if reg.Client, err = opts.authClient(registry, common.Debug); err != nil {
+	reg.PlainHTTP = remo.isPlainHttp(registry)
+	reg.HandleWarning = remo.handleWarning(registry, logger)
+	if reg.Client, err = remo.authClient(registry, common.Debug); err != nil {
 		return nil, err
 	}
 	return
 }
 
 // NewRepository assembles a oras remote repository.
-func (opts *Remote) NewRepository(reference string, common Common, logger logrus.FieldLogger) (repo *remote.Repository, err error) {
+func (remo *Remote) NewRepository(reference string, common Common, logger logrus.FieldLogger) (repo *remote.Repository, err error) {
 	repo, err = remote.NewRepository(reference)
 	if err != nil {
 		if errors.Unwrap(err) == errdef.ErrInvalidReference {
@@ -370,14 +370,14 @@ func (opts *Remote) NewRepository(reference string, common Common, logger logrus
 		return nil, err
 	}
 	registry := repo.Reference.Registry
-	repo.PlainHTTP = opts.isPlainHttp(registry)
-	repo.HandleWarning = opts.handleWarning(registry, logger)
-	if repo.Client, err = opts.authClient(registry, common.Debug); err != nil {
+	repo.PlainHTTP = remo.isPlainHttp(registry)
+	repo.HandleWarning = remo.handleWarning(registry, logger)
+	if repo.Client, err = remo.authClient(registry, common.Debug); err != nil {
 		return nil, err
 	}
 	repo.SkipReferrersGC = true
-	if opts.ReferrersAPI != nil {
-		if err := repo.SetReferrersCapability(*opts.ReferrersAPI); err != nil {
+	if remo.ReferrersAPI != nil {
+		if err := repo.SetReferrersCapability(*remo.ReferrersAPI); err != nil {
 			return nil, err
 		}
 	}
@@ -385,8 +385,8 @@ func (opts *Remote) NewRepository(reference string, common Common, logger logrus
 }
 
 // isPlainHttp returns the plain http flag for a given registry.
-func (opts *Remote) isPlainHttp(registry string) bool {
-	plainHTTP, enforced := opts.plainHTTP()
+func (remo *Remote) isPlainHttp(registry string) bool {
+	plainHTTP, enforced := remo.plainHTTP()
 	if enforced {
 		return plainHTTP
 	}
@@ -399,11 +399,11 @@ func (opts *Remote) isPlainHttp(registry string) bool {
 }
 
 // Modify modifies error during cmd execution.
-func (opts *Remote) Modify(cmd *cobra.Command, err error) (error, bool) {
+func (remo *Remote) Modify(cmd *cobra.Command, err error) (error, bool) {
 	var errResp *errcode.ErrorResponse
 
 	if errors.Is(err, auth.ErrBasicCredentialNotFound) {
-		return opts.DecorateCredentialError(err), true
+		return remo.DecorateCredentialError(err), true
 	}
 
 	if errors.As(err, &errResp) {
@@ -416,9 +416,9 @@ func (opts *Remote) Modify(cmd *cobra.Command, err error) (error, bool) {
 }
 
 // DecorateCredentialError decorate error with recommendation.
-func (opts *Remote) DecorateCredentialError(err error) *oerrors.Error {
+func (remo *Remote) DecorateCredentialError(err error) *oerrors.Error {
 	configPath := " "
-	if path, pathErr := opts.ConfigPath(); pathErr == nil {
+	if path, pathErr := remo.ConfigPath(); pathErr == nil {
 		configPath += fmt.Sprintf("at %q ", path)
 	}
 	return &oerrors.Error{

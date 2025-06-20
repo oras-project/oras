@@ -152,3 +152,36 @@ func TestPacker_parseAnnotations_annotationFlag(t *testing.T) {
 		t.Fatalf("unexpected error: %v", errors.New("content not match"))
 	}
 }
+
+func givenTestFile(t *testing.T, data string) (path string) {
+	tempDir := t.TempDir()
+	fileName := "test.txt"
+	path = filepath.Join(tempDir, fileName)
+	content := []byte(data)
+	if err := os.WriteFile(path, content, 0444); err != nil {
+		t.Fatal("error calling WriteFile(), error =", err)
+	}
+	return path
+}
+
+func TestPacker_decodeJSON(t *testing.T) {
+	var annotation Annotation
+
+	path := "nonexistent-file.json"
+	err := decodeJSON(path, &annotation.Annotations)
+	if err == nil || err.Error() != "open nonexistent-file.json: no such file or directory" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	path = givenTestFile(t, "bogus data")
+	err = decodeJSON(path, &annotation.Annotations)
+	if err == nil || err.Error() != "invalid character 'b' looking for beginning of value" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	path = givenTestFile(t, "{\"annotations\":{\"org.opencontainers.image.ref.name\":\"ghcr.io/stefanprodan/podinfo:6.8.0\"}}")
+	err = decodeJSON(path, &annotation.Annotations)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}

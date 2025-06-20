@@ -117,6 +117,9 @@ Example - Push file "hi.txt" with multiple tags and concurrency level tuned:
 
 Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with tag 'test':
   oras push --oci-layout layout-dir:test hi.txt
+
+Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with tag 'example.com:test':
+  oras push example.com:test hi.txt --oci-layout-path layout-dir
 `,
 		Args: oerrors.CheckArgs(argument.AtLeast(1), "the destination for pushing"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -186,7 +189,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	if err != nil {
 		return err
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 	if opts.manifestConfigRef != "" {
 		path, cfgMediaType, err := fileref.Parse(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
 		if err != nil {

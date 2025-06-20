@@ -20,15 +20,20 @@ package root
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/display/status"
@@ -120,13 +125,13 @@ func TestMain(m *testing.M) {
 
 func Test_doCopy(t *testing.T) {
 	// prepare
-	pty, slave, err := testutils.NewPty()
+	pty, child, err := testutils.NewPty()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer slave.Close()
+	defer child.Close()
 	var opts copyOptions
-	opts.TTY = slave
+	opts.TTY = child
 	opts.From.Reference = memDesc.Digest.String()
 	dst := memory.New()
 	handler := status.NewTTYCopyHandler(opts.TTY)
@@ -136,20 +141,20 @@ func Test_doCopy(t *testing.T) {
 		t.Fatal(err)
 	}
 	// validate
-	if err = testutils.MatchPty(pty, slave, "Copied", memDesc.MediaType, "100.00%", memDesc.Digest.String()); err != nil {
+	if err = testutils.MatchPty(pty, child, "Copied", memDesc.MediaType, "100.00%", memDesc.Digest.String()); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func Test_doCopy_skipped(t *testing.T) {
 	// prepare
-	pty, slave, err := testutils.NewPty()
+	pty, child, err := testutils.NewPty()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer slave.Close()
+	defer child.Close()
 	var opts copyOptions
-	opts.TTY = slave
+	opts.TTY = child
 	opts.From.Reference = memDesc.Digest.String()
 	handler := status.NewTTYCopyHandler(opts.TTY)
 
@@ -159,20 +164,20 @@ func Test_doCopy_skipped(t *testing.T) {
 		t.Fatal(err)
 	}
 	// validate
-	if err = testutils.MatchPty(pty, slave, "Exists", memDesc.MediaType, "100.00%", memDesc.Digest.String()); err != nil {
+	if err = testutils.MatchPty(pty, child, "Exists", memDesc.MediaType, "100.00%", memDesc.Digest.String()); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func Test_doCopy_mounted(t *testing.T) {
 	// prepare
-	pty, slave, err := testutils.NewPty()
+	pty, child, err := testutils.NewPty()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer slave.Close()
+	defer child.Close()
 	var opts copyOptions
-	opts.TTY = slave
+	opts.TTY = child
 	opts.From.Reference = manifestDigest
 	// mocked repositories
 	from, err := remote.NewRepository(fmt.Sprintf("%s/%s", host, repoFrom))
@@ -193,7 +198,147 @@ func Test_doCopy_mounted(t *testing.T) {
 		t.Fatal(err)
 	}
 	// validate
-	if err = testutils.MatchPty(pty, slave, "Mounted", configMediaType, "100.00%", configDigest); err != nil {
+	if err = testutils.MatchPty(pty, child, "Mounted", configMediaType, "100.00%", configDigest); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func Test_prepareCopyOption_nonIndex(t *testing.T) {
+	ctx := context.Background()
+	root := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageManifest,
+	}
+	if _, err := prepareCopyOption(ctx, nil, nil, root, oras.ExtendedCopyOptions{}); err != nil {
+		t.Errorf("prepareCopyOption() error = %v, wantErr false", err)
+	}
+}
+
+var errMockedFetch = fmt.Errorf("fetch error")
+
+// fetchFailingReadOnlyGraphTarget is a mock implementation of oras.ReadOnlyGraphTarget
+type fetchFailingReadOnlyGraphTarget struct {
+	oras.ReadOnlyGraphTarget
+}
+
+// Fetch simulates a failure when fetching content from the source.
+func (m *fetchFailingReadOnlyGraphTarget) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
+	return nil, errMockedFetch
+}
+
+func Test_prepareCopyOption_fetchFailure(t *testing.T) {
+	ctx := context.Background()
+	src := &fetchFailingReadOnlyGraphTarget{}
+	dst := memory.New()
+	root := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Digest:    digest.FromString("nonexistent"),
+		Size:      int64(len("nonexistent")),
+	}
+
+	if _, err := prepareCopyOption(ctx, src, dst, root, oras.ExtendedCopyOptions{}); err != errMockedFetch {
+		t.Errorf("prepareCopyOption() error = %v, want %v", err, errMockedFetch)
+	}
+}
+
+func Test_recursiveCopy_prepareCopyOptionFailure(t *testing.T) {
+	ctx := context.Background()
+	src := &fetchFailingReadOnlyGraphTarget{}
+	dst := memory.New()
+	root := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Digest:    digest.FromString("nonexistent"),
+		Size:      int64(len("nonexistent")),
+	}
+
+	if _, err := prepareCopyOption(ctx, src, dst, root, oras.ExtendedCopyOptions{}); err != errMockedFetch {
+		t.Errorf("prepareCopyOption() error = %v, want %v", err, errMockedFetch)
+	}
+}
+
+// invalidJSONReadOnlyGraphTarget is a mock implementation of oras.ReadOnlyGraphTarget
+// that returns invalid JSON data to simulate a JSON unmarshalling failure.
+type invalidJSONReadOnlyGraphTarget struct {
+	oras.ReadOnlyGraphTarget
+}
+
+// Fetch simulates a successful fetch of invalid JSON data.
+func (m *invalidJSONReadOnlyGraphTarget) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
+	// Return invalid JSON data
+	return io.NopCloser(strings.NewReader("invalid-json")), nil
+}
+
+func Test_prepareCopyOption_jsonUnmarshalFailure(t *testing.T) {
+	ctx := context.Background()
+	src := &invalidJSONReadOnlyGraphTarget{}
+	dst := memory.New()
+	root := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Digest:    digest.FromString("invalid-json"),
+		Size:      int64(len("invalid-json")),
+	}
+	_, err := prepareCopyOption(ctx, src, dst, root, oras.ExtendedCopyOptions{})
+	if _, ok := err.(*json.SyntaxError); !ok {
+		t.Errorf("prepareCopyOption() error = %v, want json.SyntaxError", err)
+	}
+}
+
+// mockReferrersFailingSource is a mock implementation of oras.ReadOnlyGraphTarget
+// that simulates a failure when fetching referrers.
+type mockReferrersFailingSource struct {
+	oras.ReadOnlyGraphTarget
+	indexContent string
+}
+
+// Fetch simulates successful fetching of index content.
+func (m *mockReferrersFailingSource) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
+	// Return valid JSON data to pass the fetch step
+	return io.NopCloser(strings.NewReader(m.indexContent)), nil
+}
+
+func Test_prepareCopyOption_referrersFailure(t *testing.T) {
+
+	ctx := context.Background()
+	mockedIndex := `{"schemaVersion":2,"manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2}]}`
+	src := &mockReferrersFailingSource{indexContent: mockedIndex}
+	dst := memory.New()
+	root := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Digest:    digest.FromString(mockedIndex),
+		Size:      int64(len(mockedIndex)),
+	}
+	errMockedReferrers := fmt.Errorf("failed to get referrers")
+	opts := oras.ExtendedCopyOptions{
+		ExtendedCopyGraphOptions: oras.ExtendedCopyGraphOptions{
+			FindPredecessors: func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+				return nil, errMockedReferrers
+			},
+		},
+	}
+
+	if _, err := prepareCopyOption(ctx, src, dst, root, opts); err != errMockedReferrers {
+		t.Errorf("prepareCopyOption() error = %v, wantErr %v", err, errMockedReferrers)
+	}
+}
+
+func Test_prepareCopyOption_noReferrers(t *testing.T) {
+	ctx := context.Background()
+	mockedIndex := `{"schemaVersion":2,"manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2}]}`
+	src := &mockReferrersFailingSource{indexContent: mockedIndex}
+	dst := memory.New()
+	root := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Digest:    digest.FromString(mockedIndex),
+		Size:      int64(len(mockedIndex)),
+	}
+	opts := oras.ExtendedCopyOptions{
+		ExtendedCopyGraphOptions: oras.ExtendedCopyGraphOptions{
+			FindPredecessors: func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+				return nil, nil
+			},
+		},
+	}
+
+	if _, err := prepareCopyOption(ctx, src, dst, root, opts); err != nil {
+		t.Errorf("prepareCopyOption() error = %v, wantErr false", err)
 	}
 }
