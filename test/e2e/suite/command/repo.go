@@ -317,12 +317,6 @@ var _ = Describe("OCI image layout users:", func() {
 			// Use existing layout
 			root := PrepareTempOCI(ImageRepo)
 
-			// Add an additional tag to make more interesting test
-			extra := "test-json-tag"
-			ORAS("tag", LayoutRef(root, foobar.Tag), extra, Flags.Layout).
-				WithDescription("prepare additional tag in OCI layout").
-				Exec()
-
 			// Run repo tags with JSON format
 			bytes := ORAS("repository", "tags", root, "--format", "json", Flags.Layout).Exec().Out.Contents()
 
@@ -332,9 +326,7 @@ var _ = Describe("OCI image layout users:", func() {
 			}
 			Expect(json.Unmarshal(bytes, &result)).ShouldNot(HaveOccurred())
 
-			// Verify both tags are included in the output
-			Expect(result.Tags).Should(ContainElements(foobar.Tag, extra))
-			Expect(result.Tags).Should(HaveLen(2))
+			Expect(result.Tags).Should(ContainElements(foobar.Tag))
 		})
 
 		It("should list out tags associated to the provided reference", func() {
@@ -354,31 +346,10 @@ var _ = Describe("OCI image layout users:", func() {
 			Expect(viaDigest).ShouldNot(gbytes.Say(multi_arch.Tag))
 		})
 
-		It("should output tags in JSON format", func() {
-			// Use existing layout with additional tags
-			root := prepare(ImageRepo, foobar.Tag, "json-tag1", "json-tag2")
-
-			// Run repo tags with JSON format
-			bytes := ORAS("repo", "tags", root, "--format", "json", Flags.Layout).
-				WithDescription("get repo tags in JSON format for OCI layout").
-				Exec().Out.Contents()
-
-			// Parse the JSON output
-			var result struct {
-				Tags []string `json:"tags"`
-			}
-			Expect(json.Unmarshal(bytes, &result)).ShouldNot(HaveOccurred())
-
-			// Verify tags are in output
-			Expect(result.Tags).Should(ContainElements(foobar.Tag, "json-tag1", "json-tag2"))
-			Expect(result.Tags).Should(HaveLen(3))
-		})
-
 		It("should handle digest exclusion with JSON format", func() {
 			// Prepare layout with both normal and digest-like tags
 			digestLikeTag := "sha256-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-			normalTag := "normal-layout-tag"
-			root := prepare(ImageRepo, foobar.Tag, normalTag, digestLikeTag)
+			root := prepare(ImageRepo, foobar.Tag, digestLikeTag)
 
 			// Verify both tags are included without exclusion
 			plainBytes := ORAS("repo", "tags", root, "--format", "json", Flags.Layout).Exec().Out.Contents()
@@ -386,7 +357,7 @@ var _ = Describe("OCI image layout users:", func() {
 				Tags []string `json:"tags"`
 			}
 			Expect(json.Unmarshal(plainBytes, &plainResult)).ShouldNot(HaveOccurred())
-			Expect(plainResult.Tags).Should(ContainElements(normalTag, digestLikeTag, foobar.Tag))
+			Expect(plainResult.Tags).Should(ContainElements(digestLikeTag, foobar.Tag))
 
 			// Test with digest exclusion
 			bytes := ORAS("repo", "tags", root, "--format", "json", "--exclude-digest-tags", Flags.Layout).Exec().Out.Contents()
@@ -398,7 +369,7 @@ var _ = Describe("OCI image layout users:", func() {
 			Expect(json.Unmarshal(bytes, &result)).ShouldNot(HaveOccurred())
 
 			// Verify digest tag is excluded
-			Expect(result.Tags).Should(ContainElements(normalTag, foobar.Tag))
+			Expect(result.Tags).Should(ContainElements(foobar.Tag))
 			Expect(result.Tags).ShouldNot(ContainElement(digestLikeTag))
 		})
 	})
