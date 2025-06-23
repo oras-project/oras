@@ -15,14 +15,9 @@ limitations under the License.
 
 package model
 
-import (
-	"sync"
-)
-
 // Tags contains metadata formatted by oras repo tags.
 type Tags struct {
 	Tags []string `json:"tags"`
-	lock sync.RWMutex
 }
 
 // NewTags creates a new Tags model.
@@ -34,16 +29,5 @@ func NewTags() *Tags {
 
 // AddTag adds a tag to the metadata.
 func (t *Tags) AddTag(tag string) {
-	t.lock.Lock()
-	defer t.lock.Unlock()
-
 	t.Tags = append(t.Tags, tag)
-}
-
-// GetTags returns all tags.
-func (t *Tags) GetTags() []string {
-	t.lock.RLock()
-	defer t.lock.RUnlock()
-
-	return t.Tags
 }
