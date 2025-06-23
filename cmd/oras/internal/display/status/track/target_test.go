@@ -39,11 +39,11 @@ type testReferenceGraphTarget struct {
 }
 
 func (t *testReferenceGraphTarget) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
-	err := t.GraphTarget.Push(ctx, expected, content)
+	err := t.Push(ctx, expected, content)
 	if err != nil {
 		return err
 	}
-	return t.GraphTarget.Tag(ctx, expected, reference)
+	return t.Tag(ctx, expected, reference)
 }
 
 func Test_referenceGraphTarget_PushReference(t *testing.T) {
@@ -52,7 +52,7 @@ func Test_referenceGraphTarget_PushReference(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer device.Close()
+	defer func() { _ = device.Close() }()
 	src := memory.New()
 	content := []byte("test")
 	r := bytes.NewReader(content)
@@ -98,7 +98,7 @@ func Test_graphTarget_Push_alreadyExists(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer device.Close()
+	defer func() { _ = device.Close() }()
 	src := memory.New()
 	content := []byte("test")
 	r := bytes.NewReader(content)

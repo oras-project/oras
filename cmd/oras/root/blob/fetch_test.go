@@ -34,7 +34,7 @@ func Test_fetchBlobOptions_doFetch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer device.Close()
+	defer func() { _ = device.Close() }()
 	src := memory.New()
 	content := []byte("test")
 	r := bytes.NewReader(content)
