@@ -124,6 +124,11 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
 		return err
 	}
+	if opts.artifactType != "" {
+		if err := validateMediaType(opts.artifactType); err != nil {
+			return err
+		}
+	}
 	displayStatus, displayMetadata, displayContent := display.NewManifestIndexUpdateHandler(opts.outputPath, opts.Printer, opts.Pretty.Pretty)
 	index, err := fetchIndex(ctx, displayStatus, target, opts.Reference)
 	if err != nil {

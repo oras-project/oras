@@ -303,3 +303,30 @@ func Test_enrichDescriptor(t *testing.T) {
 		})
 	}
 }
+
+func Test_validateMediaType(t *testing.T) {
+	tests := []struct {
+		input string
+		valid bool
+	}{
+		{"application/json", true},
+		{ocispec.MediaTypeEmptyJSON, true},
+		{ocispec.MediaTypeImageManifest, true},
+		{ocispec.MediaTypeImageIndex, true},
+		{"application/vnd.custom", true},
+		{"", false},
+		{"json", false},
+		{"application/-json", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			err := validateMediaType(tt.input)
+			if err == nil && !tt.valid {
+				t.Errorf("no error for invalid media type %q", tt.input)
+			}
+			if err != nil && tt.valid {
+				t.Errorf("unexpected error for valid media type %q: %s", tt.input, err)
+			}
+		})
+	}
+}

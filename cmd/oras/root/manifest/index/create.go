@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/opencontainers/image-spec/specs-go"
@@ -41,6 +42,11 @@ import (
 )
 
 var maxConfigSize int64 = 4 * 1024 * 1024 // 4 MiB
+
+// mediaTypeRegexp is the regular expression pattern required for a valid
+// media type, as defined in the image spec schema:
+// - https://github.com/opencontainers/image-spec/blob/v1.1.1/schema/defs-descriptor.json#L7
+var mediaTypeRegexp = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}$`)
 
 type createOptions struct {
 	option.Common
@@ -112,6 +118,11 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 	target, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
 		return err
+	}
+	if opts.artifactType != "" {
+		if err := validateMediaType(opts.artifactType); err != nil {
+			return err
+		}
 	}
 	displayStatus, displayMetadata, displayContent := display.NewManifestIndexCreateHandler(opts.outputPath, opts.Printer, opts.Pretty.Pretty)
 	manifests, err := fetchSourceManifests(ctx, displayStatus, target, opts.sources)
@@ -234,4 +245,13 @@ func enrichDescriptor(ctx context.Context, target oras.ReadOnlyTarget, desc ocis
 		desc.ArtifactType = index.ArtifactType
 	}
 	return desc, nil
+}
+
+// validateMediaType checks whether mediaType uses valid media type syntax,
+// returning a non-nil error if not.
+func validateMediaType(mediaType string) error {
+	if !mediaTypeRegexp.MatchString(mediaType) {
+		return fmt.Errorf("%s: %w", mediaType, errdef.ErrInvalidMediaType)
+	}
+	return nil
 }

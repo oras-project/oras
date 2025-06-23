@@ -195,6 +195,13 @@ var _ = Describe("1.1 registry users:", func() {
 			Expect(index.ArtifactType).To(Equal(artifactType))
 		})
 
+		It("should reject invalid artifactType", func() {
+			root := PrepareTempOCI(ImageRepo)
+			ORAS("manifest", "index", "create", Flags.Layout, LayoutRef(root, "index"),
+				"--artifact-type", "invalid", string(multi_arch.LinuxAMD64.Digest)).
+				ExpectFailure().MatchErrKeyWords("invalid media type").Exec()
+		})
+
 		It("should output created index to file", func() {
 			testRepo := indexTestRepo("create", "output-to-file")
 			CopyZOTRepo(ImageRepo, testRepo)
@@ -684,6 +691,16 @@ var _ = Describe("OCI image layout users:", func() {
 			var index ocispec.Index
 			Expect(json.Unmarshal(content, &index)).ShouldNot(HaveOccurred())
 			Expect(index.ArtifactType).To(Equal("application/vnd.old"))
+		})
+
+		It("should reject invalid artifactType", func() {
+			root := PrepareTempOCI(ImageRepo)
+			// source index
+			ORAS("manifest", "index", "create", Flags.Layout, LayoutRef(root, "index"),
+				"--artifact-type", "application/vnd.old", string(multi_arch.LinuxAMD64.Digest)).Exec()
+			// update index with invalid artifact type
+			ORAS("manifest", "index", "update", Flags.Layout, LayoutRef(root, "index"), "--artifact-type", "invalid").
+				ExpectFailure().MatchErrKeyWords("invalid media type").Exec()
 		})
 
 		It("should output updated index to file", func() {
