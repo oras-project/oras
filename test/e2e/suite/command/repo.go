@@ -16,6 +16,7 @@ limitations under the License.
 package command
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -80,6 +81,166 @@ var _ = Describe("ORAS beginners:", func() {
 				gomega.Expect(err).Should(gbytes.Say("\nUsage: oras repo tags"))
 				gomega.Expect(err).Should(gbytes.Say("\n"))
 				gomega.Expect(err).Should(gbytes.Say(`Run "oras repo tags -h"`))
+			})
+
+			It("should output tags in JSON format when using --format json flag", func() {
+				// Use the existing repository
+				repoRef := RegistryRef(ZOTHost, ImageRepo, "")
+
+				// Run repo tags with JSON format
+				bytes := ORAS("repo", "tags", repoRef, "--format", "json").Exec().Out.Contents()
+
+				// Validate the JSON output
+				var result struct {
+					Tags []string `json:"tags"`
+				}
+				Expect(json.Unmarshal(bytes, &result)).ShouldNot(HaveOccurred())
+
+				// Verify tags are in the output (using the known tags from the standard repository)
+				Expect(result.Tags).Should(ContainElements(multi_arch.Tag, foobar.Tag))
+
+				// Verify that the expected structure is present
+				jsonString := string(bytes)
+				Expect(jsonString).To(ContainSubstring(`"tags"`))
+			})
+
+			It("should handle digest exclusion with JSON format output", func() {
+				// Prepare a repository with a digest-like tag
+				repo := fmt.Sprintf("command/repo-tags-json-digest/%d", GinkgoRandomSeed())
+				normalTag := "normal-tag"
+				digestLikeTag := "sha256-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+				// Create repository with tags
+				ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), RegistryRef(ZOTHost, repo, normalTag)).
+					WithDescription("prepare test repo with normal tag").Exec()
+				ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), RegistryRef(ZOTHost, repo, digestLikeTag)).
+					WithDescription("prepare test repo with digest-like tag").Exec()
+
+				// Verify both tags are listed without exclusion
+				plainBytes := ORAS("repo", "tags", RegistryRef(ZOTHost, repo, ""), "--format", "json").Exec().Out.Contents()
+				var plainResult struct {
+					Tags []string `json:"tags"`
+				}
+				Expect(json.Unmarshal(plainBytes, &plainResult)).ShouldNot(HaveOccurred())
+				Expect(plainResult.Tags).Should(ContainElements(normalTag, digestLikeTag))
+
+				// Run repo tags with JSON format and exclude digest tags
+				bytes := ORAS("repo", "tags", RegistryRef(ZOTHost, repo, ""), "--format", "json", "--exclude-digest-tags").Exec().Out.Contents()
+
+				// Validate the JSON output
+				var result struct {
+					Tags []string `json:"tags"`
+				}
+				Expect(json.Unmarshal(bytes, &result)).ShouldNot(HaveOccurred())
+
+				// Verify only normal tag is in the output
+				Expect(result.Tags).Should(ContainElement(normalTag))
+				Expect(result.Tags).ShouldNot(ContainElement(digestLikeTag))
+				Expect(result.Tags).Should(HaveLen(1))
+			})
+
+			It("should output tags in Go template format when using --format go-template flag", func() {
+				// Use the existing repository
+				repoRef := RegistryRef(ZOTHost, ImageRepo, "")
+
+				// Run repo tags with Go template format
+				template := "{{range .tags}}{{println .}}{{end}}"
+				output := ORAS("repo", "tags", repoRef, "--format", "go-template="+template).Exec().Out.Contents()
+
+				// Verify tags are in the output - should be one tag per line
+				outputString := string(output)
+				Expect(outputString).To(ContainSubstring(foobar.Tag))
+				Expect(outputString).To(ContainSubstring(multi_arch.Tag))
+
+				// Expected number of lines should match number of known tags
+				expectedLines := 2 // foobar.Tag and multi_arch.Tag
+				Expect(strings.Count(outputString, "\n")).To(Equal(expectedLines))
+			})
+
+			It("should handle empty repositories in JSON format", func() {
+				// Create an empty repository with unique name
+				emptyRepo := fmt.Sprintf("command/empty-repo-tags-json/%d", GinkgoRandomSeed())
+
+				// Create the repository by pushing and then deleting content
+				ref := RegistryRef(ZOTHost, emptyRepo, "temp-tag")
+				tempDir := PrepareTempFiles()
+				ORAS("push", ref, foobar.FileBarName).
+					WithWorkDir(tempDir).
+					WithDescription("create temporary repo").
+					Exec()
+
+				// Delete the manifest to make the repo empty
+				ORAS("manifest", "delete", ref).
+					WithDescription("delete manifest to make repo empty").
+					Exec()
+
+				// Verify the repository exists but has no tags in text mode
+				noTagsSession := ORAS("repo", "tags", RegistryRef(ZOTHost, emptyRepo, "")).
+					WithDescription("verify repo exists with no tags").
+					Exec()
+				Expect(noTagsSession.Out.Contents()).To(BeEmpty())
+
+				// Run repo tags with JSON format on the empty repo
+				bytes := ORAS("repo", "tags", RegistryRef(ZOTHost, emptyRepo, ""), "--format", "json").
+					WithDescription("get JSON format of empty repo").
+					Exec().Out.Contents()
+
+				// Validate the JSON output
+				var result struct {
+					Tags []string `json:"tags"`
+				}
+				Expect(json.Unmarshal(bytes, &result)).ShouldNot(HaveOccurred())
+
+				// Verify tags field exists and is an empty array
+				Expect(result.Tags).Should(BeEmpty())
+
+				// Verify the JSON structure is correct
+				jsonString := string(bytes)
+				Expect(jsonString).To(ContainSubstring(`"tags":[]`))
+			})
+
+			It("should return proper error format when using invalid repo with JSON format", func() {
+				// Run repo tags with JSON format on a non-existent repository
+				nonExistentRepo := fmt.Sprintf("non-existent-repo-%d", GinkgoRandomSeed())
+
+				// Should fail the same way regardless of output format
+				err := ORAS("repo", "tags", RegistryRef(ZOTHost, nonExistentRepo, ""), "--format", "json").
+					ExpectFailure().
+					MatchErrKeyWords(RegistryErrorPrefix).
+					Exec().Err
+
+				// Error should contain standard error message
+				gomega.Expect(err).Should(gbytes.Say("Error"))
+
+				// Compare with normal error output to ensure consistency
+				regularErr := ORAS("repo", "tags", RegistryRef(ZOTHost, nonExistentRepo, "")).
+					ExpectFailure().
+					Exec().Err
+
+				// Both error messages should indicate the same registry error
+				gomega.Expect(regularErr).Should(gbytes.Say(RegistryErrorPrefix))
+			})
+
+			It("should output tags in OCI layout with JSON format", func() {
+				// Use existing OCI layout tests for JSON output format
+				root := PrepareTempOCI(ImageRepo)
+
+				// Test JSON output for OCI layout
+				bytes := ORAS("repo", "tags", root, "--format", "json", Flags.Layout).Exec().Out.Contents()
+
+				// Parse the JSON output
+				var result struct {
+					Tags []string `json:"tags"`
+				}
+				Expect(json.Unmarshal(bytes, &result)).ShouldNot(HaveOccurred())
+
+				// Verify expected tag is in output
+				Expect(result.Tags).Should(ContainElement(foobar.Tag))
+
+				// Verify JSON structure
+				jsonString := string(bytes)
+				Expect(jsonString).To(ContainSubstring(`"tags"`))
+				Expect(jsonString).To(ContainSubstring(foobar.Tag))
 			})
 		})
 	})
@@ -187,6 +348,30 @@ var _ = Describe("OCI image layout users:", func() {
 			// test
 			session := ORAS("repository", "tags", root, "--last", foobar.Tag, Flags.Layout).MatchKeyWords(extra).Exec()
 			Expect(session.Out).ShouldNot(gbytes.Say(regexp.QuoteMeta(tagOutput)))
+		})
+
+		It("should list tags in JSON format for OCI layout", func() {
+			// Use existing layout
+			root := PrepareTempOCI(ImageRepo)
+
+			// Add an additional tag to make more interesting test
+			extra := "test-json-tag"
+			ORAS("tag", LayoutRef(root, foobar.Tag), extra, Flags.Layout).
+				WithDescription("prepare additional tag in OCI layout").
+				Exec()
+
+			// Run repo tags with JSON format
+			bytes := ORAS("repository", "tags", root, "--format", "json", Flags.Layout).Exec().Out.Contents()
+
+			// Parse the JSON output
+			var result struct {
+				Tags []string `json:"tags"`
+			}
+			Expect(json.Unmarshal(bytes, &result)).ShouldNot(HaveOccurred())
+
+			// Verify both tags are included in the output
+			Expect(result.Tags).Should(ContainElements(foobar.Tag, extra))
+			Expect(result.Tags).Should(HaveLen(2))
 		})
 
 		It("should list out tags associated to the provided reference", func() {
