@@ -41,6 +41,7 @@ type updateOptions struct {
 	option.Target
 	option.Pretty
 
+	artifactType    string
 	addArguments    []string
 	mergeArguments  []string
 	removeArguments []string
@@ -75,6 +76,12 @@ Example - Update an index and save it locally to index.json, auto push will be d
 
 Example - Update an index and output the index to stdout, auto push will be disabled:
   oras manifest index update localhost:5000/hello:v2 --remove sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9 --output - --pretty
+
+Example - Update an index to use a different artifact type:
+  oras manifest index update localhost:5000/hello:v1 --artifact-type="application/vnd.example+type"
+
+Example - Update an index to remove any existing artifact type:
+  oras manifest index update localhost:5000/hello:v1 --artifact-type=""
   `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the target index to update"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -94,6 +101,7 @@ Example - Update an index and output the index to stdout, auto push will be disa
 		},
 	}
 	option.ApplyFlags(&opts, cmd.Flags())
+	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "new artifact type for overall index")
 	cmd.Flags().StringArrayVarP(&opts.addArguments, "add", "", nil, "manifests to add to the index")
 	cmd.Flags().StringArrayVarP(&opts.mergeArguments, "merge", "", nil, "indexes to be merged into the index")
 	cmd.Flags().StringArrayVarP(&opts.removeArguments, "remove", "", nil, "manifests to remove from the index, must be digests")
@@ -116,10 +124,18 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
 		return err
 	}
+	if opts.artifactType != "" {
+		if err := validateMediaType(opts.artifactType); err != nil {
+			return err
+		}
+	}
 	displayStatus, displayMetadata, displayContent := display.NewManifestIndexUpdateHandler(opts.outputPath, opts.Printer, opts.Pretty.Pretty)
 	index, err := fetchIndex(ctx, displayStatus, target, opts.Reference)
 	if err != nil {
 		return err
+	}
+	if cmd.Flags().Changed("artifact-type") {
+		index.ArtifactType = opts.artifactType
 	}
 	manifests, err := removeManifests(displayStatus, index.Manifests, target, opts)
 	if err != nil {
@@ -259,7 +275,7 @@ func doRemoveManifests(originalManifests []ocispec.Descriptor, digestToRemove ma
 }
 
 func updateFlagsUsed(flags *pflag.FlagSet) bool {
-	return flags.Changed("add") || flags.Changed("remove") || flags.Changed("merge")
+	return flags.Changed("add") || flags.Changed("remove") || flags.Changed("merge") || flags.Changed("artifact-type")
 }
 
 func getPushPath(rawReference string, targetType string, reference string, path string) string {

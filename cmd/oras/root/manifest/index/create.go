@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/opencontainers/image-spec/specs-go"
@@ -42,15 +43,21 @@ import (
 
 var maxConfigSize int64 = 4 * 1024 * 1024 // 4 MiB
 
+// mediaTypeRegexp is the regular expression pattern required for a valid
+// media type, as defined in the image spec schema:
+// - https://github.com/opencontainers/image-spec/blob/v1.1.1/schema/defs-descriptor.json#L7
+var mediaTypeRegexp = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}$`)
+
 type createOptions struct {
 	option.Common
 	option.Target
 	option.Pretty
 	option.Annotation
 
-	sources    []string
-	extraRefs  []string
-	outputPath string
+	artifactType string
+	sources      []string
+	extraRefs    []string
+	outputPath   string
 }
 
 func createCmd() *cobra.Command {
@@ -75,6 +82,9 @@ Example - Create an index and push it with multiple tags:
 Example - Create and push an index with annotations:
   oras manifest index create localhost:5000/hello:v1 linux-amd64 --annotation "key=val"
 
+Example - Create an index with a specified artifact type:
+  oras manifest index create --artifact-type="application/vnd.example+type" localhost:5000/hello linux-amd64
+
 Example - Create an index and push to an OCI image layout folder 'layout-dir' and tag with 'v1':
   oras manifest index create layout-dir:v1 linux-amd64 sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9 --oci-layout
   
@@ -97,6 +107,7 @@ Example - Create an index and output the index to stdout, auto push will be disa
 			return createIndex(cmd, opts)
 		},
 	}
+	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type for overall index")
 	cmd.Flags().StringVarP(&opts.outputPath, "output", "o", "", "file `path` to write the created index to, use - for stdout")
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
@@ -108,6 +119,11 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 	if err != nil {
 		return err
 	}
+	if opts.artifactType != "" {
+		if err := validateMediaType(opts.artifactType); err != nil {
+			return err
+		}
+	}
 	displayStatus, displayMetadata, displayContent := display.NewManifestIndexCreateHandler(opts.outputPath, opts.Printer, opts.Pretty.Pretty)
 	manifests, err := fetchSourceManifests(ctx, displayStatus, target, opts.sources)
 	if err != nil {
@@ -117,9 +133,10 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 		Versioned: specs.Versioned{
 			SchemaVersion: 2,
 		},
-		MediaType:   ocispec.MediaTypeImageIndex,
-		Manifests:   manifests,
-		Annotations: opts.Annotations[option.AnnotationManifest],
+		MediaType:    ocispec.MediaTypeImageIndex,
+		ArtifactType: opts.artifactType,
+		Manifests:    manifests,
+		Annotations:  opts.Annotations[option.AnnotationManifest],
 	}
 	indexBytes, err := json.Marshal(index)
 	if err != nil {
@@ -165,12 +182,7 @@ func fetchSourceManifests(ctx context.Context, displayStatus status.ManifestInde
 	return resolved, nil
 }
 
-func getPlatform(ctx context.Context, target oras.ReadOnlyTarget, manifestBytes []byte) (*ocispec.Platform, error) {
-	// extract config descriptor
-	var manifest ocispec.Manifest
-	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
-		return nil, err
-	}
+func getPlatform(ctx context.Context, target oras.ReadOnlyTarget, manifest *ocispec.Manifest) (*ocispec.Platform, error) {
 	// if config size is larger than 4 MiB, discontinue the fetch
 	if manifest.Config.Size > maxConfigSize {
 		return nil, fmt.Errorf("config size %v exceeds MaxBytes %v: %w", manifest.Config.Size, maxConfigSize, errdef.ErrSizeExceedsLimit)
@@ -216,10 +228,30 @@ func enrichDescriptor(ctx context.Context, target oras.ReadOnlyTarget, desc ocis
 	desc = descriptor.Plain(desc)
 	if descriptor.IsImageManifest(desc) {
 		var err error
-		desc.Platform, err = getPlatform(ctx, target, manifestBytes)
+		var manifest ocispec.Manifest
+		if err = json.Unmarshal(manifestBytes, &manifest); err != nil {
+			return ocispec.Descriptor{}, err
+		}
+		desc.Platform, err = getPlatform(ctx, target, &manifest)
 		if err != nil {
 			return ocispec.Descriptor{}, err
 		}
+		desc.ArtifactType = manifest.ArtifactType
+	} else if descriptor.IsIndex(desc) {
+		var index ocispec.Index
+		if err := json.Unmarshal(manifestBytes, &index); err != nil {
+			return ocispec.Descriptor{}, err
+		}
+		desc.ArtifactType = index.ArtifactType
 	}
 	return desc, nil
+}
+
+// validateMediaType checks whether mediaType uses valid media type syntax,
+// returning a non-nil error if not.
+func validateMediaType(mediaType string) error {
+	if !mediaTypeRegexp.MatchString(mediaType) {
+		return fmt.Errorf("%s: %w", mediaType, errdef.ErrInvalidMediaType)
+	}
+	return nil
 }
