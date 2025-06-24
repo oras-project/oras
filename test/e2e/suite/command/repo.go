@@ -90,9 +90,12 @@ var _ = Describe("ORAS beginners:", func() {
 				// Check for format flag info in help
 				Expect(helpStr).To(ContainSubstring("--format"))
 				Expect(helpStr).To(ContainSubstring("json"))
+				Expect(helpStr).To(ContainSubstring("text"))
+				Expect(helpStr).To(ContainSubstring("go-template"))
 
 				// Check for example in help text
 				Expect(helpStr).To(ContainSubstring("oras repo tags localhost:5000/hello --format json"))
+				Expect(helpStr).To(ContainSubstring("oras repo tags localhost:5000/hello --format go-template"))
 			})
 		})
 	})
@@ -140,9 +143,38 @@ var _ = Describe("1.1 registry users:", func() {
 		It("should show deprecation message when running with --verbose flag", func() {
 			ORAS("repo", "tags", repoRef, "--verbose").MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).Exec()
 		})
+		It("Should list out tags associated to the provided reference", func() {
+			// prepare
+			repo := repoWithName("filter-tag")
+			tags := []string{foobar.Tag, "bax", "bay", "baz"}
+			refWithTags := fmt.Sprintf("%s:%s", RegistryRef(ZOTHost, repo, ""), strings.Join(tags, ","))
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), refWithTags).
+				WithDescription("prepare: copy and create multiple tags to " + refWithTags).
+				Exec()
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), RegistryRef(ZOTHost, ImageRepo, "")).
+				WithDescription("prepare: copy tag with different digest").
+				Exec()
+			// test
+			viaTag := ORAS("repo", "tags", RegistryRef(ZOTHost, repo, foobar.Tag)).
+				MatchKeyWords(tags...).
+				MatchErrKeyWords(feature.Experimental.Mark, foobar.Digest).Exec().Out
+			Expect(viaTag).ShouldNot(gbytes.Say(multi_arch.Tag))
 
-		It("should output tags in JSON format", func() {
-			// Use the existing repository
+			viaDigest := ORAS("repo", "tags", RegistryRef(ZOTHost, repo, foobar.Digest)).
+				MatchKeyWords(tags...).
+				MatchErrKeyWords(feature.Experimental.Mark, foobar.Digest).Exec().Out
+			Expect(viaDigest).ShouldNot(gbytes.Say(multi_arch.Tag))
+		})
+
+	})
+
+	When("running `repo tags` with JSON format", func() {
+		repoWithName := func(name string) string {
+			return fmt.Sprintf("command/images/repo/tags/%d/%s", GinkgoRandomSeed(), name)
+		}
+		repoRef := RegistryRef(ZOTHost, ImageRepo, "")
+
+		It("should list tags in JSON format", func() {
 			ORAS("repo", "tags", repoRef, "--format", "json").
 				WithDescription("get repo tags in JSON format").
 				MatchKeyWords(`"tags"`).
@@ -196,40 +228,6 @@ var _ = Describe("1.1 registry users:", func() {
 			Expect(result.Tags).Should(HaveLen(1))
 		})
 
-		It("should output tags using Go template format", func() {
-			// Run repo tags with Go template format
-			template := "{{range .tags}}{{println .}}{{end}}"
-			output := ORAS("repo", "tags", repoRef, "--format", "go-template="+template).Exec().Out.Contents()
-
-			// Verify tags are in the output - should be one tag per line
-			outputString := string(output)
-			Expect(outputString).To(ContainSubstring(foobar.Tag))
-			Expect(outputString).To(ContainSubstring(multi_arch.Tag))
-		})
-
-		It("Should list out tags associated to the provided reference", func() {
-			// prepare
-			repo := repoWithName("filter-tag")
-			tags := []string{foobar.Tag, "bax", "bay", "baz"}
-			refWithTags := fmt.Sprintf("%s:%s", RegistryRef(ZOTHost, repo, ""), strings.Join(tags, ","))
-			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), refWithTags).
-				WithDescription("prepare: copy and create multiple tags to " + refWithTags).
-				Exec()
-			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, multi_arch.Tag), RegistryRef(ZOTHost, ImageRepo, "")).
-				WithDescription("prepare: copy tag with different digest").
-				Exec()
-			// test
-			viaTag := ORAS("repo", "tags", RegistryRef(ZOTHost, repo, foobar.Tag)).
-				MatchKeyWords(tags...).
-				MatchErrKeyWords(feature.Experimental.Mark, foobar.Digest).Exec().Out
-			Expect(viaTag).ShouldNot(gbytes.Say(multi_arch.Tag))
-
-			viaDigest := ORAS("repo", "tags", RegistryRef(ZOTHost, repo, foobar.Digest)).
-				MatchKeyWords(tags...).
-				MatchErrKeyWords(feature.Experimental.Mark, foobar.Digest).Exec().Out
-			Expect(viaDigest).ShouldNot(gbytes.Say(multi_arch.Tag))
-		})
-
 		It("Should list out tags associated to reference in JSON format", func() {
 			// prepare
 			repo := repoWithName("filter-tag-json")
@@ -272,6 +270,21 @@ var _ = Describe("1.1 registry users:", func() {
 			for _, tag := range tags {
 				Expect(resultViaDigest.Tags).Should(ContainElement(tag))
 			}
+		})
+	})
+
+	When("running `repo tags` with go-template format", func() {
+		repoRef := RegistryRef(ZOTHost, ImageRepo, "")
+
+		It("should output tags using Go template format", func() {
+			// Run repo tags with Go template format
+			template := "{{range .tags}}{{println .}}{{end}}"
+			output := ORAS("repo", "tags", repoRef, "--format", "go-template="+template).Exec().Out.Contents()
+
+			// Verify tags are in the output - should be one tag per line
+			outputString := string(output)
+			Expect(outputString).To(ContainSubstring(foobar.Tag))
+			Expect(outputString).To(ContainSubstring(multi_arch.Tag))
 		})
 	})
 })
