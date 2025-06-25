@@ -116,6 +116,26 @@ var _ = Describe("1.1 registry users:", func() {
 			ValidateIndex(content, expectedManifests)
 		})
 
+		It("should copy artifactType from child manifests", func() {
+			testRepo := indexTestRepo("create", "child-artifact-type")
+			CopyZOTRepo(ImageRepo, testRepo)
+			artifactType := "application/vnd.test-example"
+			ORAS("push", "--artifact-type", artifactType,
+				RegistryRef(ZOTHost, testRepo, "with-artifact-type"),
+				"../../testdata/files/foobar/bar:application/octet-stream").
+				MatchKeyWords("Pushed",
+					"ArtifactType", artifactType).Exec()
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, "latest"), "with-artifact-type").
+				MatchKeyWords("Fetched", "with-artifact-type", "Pushed").Exec()
+			// verify
+			content := ORAS("manifest", "fetch", RegistryRef(ZOTHost, testRepo, "latest")).Exec().Out.Contents()
+			var index ocispec.Index
+			Expect(json.Unmarshal(content, &index)).ShouldNot(HaveOccurred())
+			Expect(index.ArtifactType).To(BeEmpty())
+			Expect(index.Manifests).To(HaveLen(1))
+			Expect(index.Manifests[0].ArtifactType).To(Equal(artifactType))
+		})
+
 		It("should create nested indexes", func() {
 			testRepo := indexTestRepo("create", "nested-index")
 			CopyZOTRepo(ImageRepo, testRepo)
@@ -148,6 +168,38 @@ var _ = Describe("1.1 registry users:", func() {
 			var manifest ocispec.Manifest
 			Expect(json.Unmarshal(content, &manifest)).ShouldNot(HaveOccurred())
 			Expect(manifest.Annotations[key]).To(Equal(value))
+		})
+
+		It("should create index with artifactType", func() {
+			testRepo := indexTestRepo("create", "with-artifact-type")
+			artifactType := "application/vnd.test-example"
+			CopyZOTRepo(ImageRepo, testRepo)
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, "v1"), "--artifact-type", artifactType).Exec()
+			// verify
+			content := ORAS("manifest", "fetch", RegistryRef(ZOTHost, testRepo, "v1")).Exec().Out.Contents()
+			var index ocispec.Index
+			Expect(json.Unmarshal(content, &index)).ShouldNot(HaveOccurred())
+			Expect(index.ArtifactType).To(Equal(artifactType))
+		})
+
+		It("should create index with artifactType while ignoring redundant options", func() {
+			testRepo := indexTestRepo("create", "with-artifact-type-multi")
+			ignoredArtifactType := "application/vnd.test-ignored"
+			artifactType := "application/vnd.test-example"
+			CopyZOTRepo(ImageRepo, testRepo)
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, "v1"), "--artifact-type", ignoredArtifactType, "--artifact-type", artifactType).Exec()
+			// verify
+			content := ORAS("manifest", "fetch", RegistryRef(ZOTHost, testRepo, "v1")).Exec().Out.Contents()
+			var index ocispec.Index
+			Expect(json.Unmarshal(content, &index)).ShouldNot(HaveOccurred())
+			Expect(index.ArtifactType).To(Equal(artifactType))
+		})
+
+		It("should reject invalid artifactType", func() {
+			root := PrepareTempOCI(ImageRepo)
+			ORAS("manifest", "index", "create", Flags.Layout, LayoutRef(root, "index"),
+				"--artifact-type", "invalid", string(multi_arch.LinuxAMD64.Digest)).
+				ExpectFailure().MatchErrKeyWords("invalid media type").Exec()
 		})
 
 		It("should output created index to file", func() {
@@ -232,6 +284,39 @@ var _ = Describe("1.1 registry users:", func() {
 			content := ORAS("manifest", "fetch", RegistryRef(ZOTHost, testRepo, "index01")).Exec().Out.Contents()
 			expectedManifests := []ocispec.Descriptor{multi_arch.LinuxARMV7, multi_arch.LinuxARM64}
 			ValidateIndex(content, expectedManifests)
+		})
+
+		It("should update artifactType", func() {
+			testRepo := indexTestRepo("update", "artifact-type")
+			CopyZOTRepo(ImageRepo, testRepo)
+			// source index
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, "index"),
+				string(multi_arch.LinuxAMD64.Digest)).Exec()
+			// update index with artifact type
+			artifactType := "application/vnd.test-example"
+			ORAS("manifest", "index", "update", RegistryRef(ZOTHost, testRepo, "index"),
+				"--artifact-type", artifactType).Exec()
+			// verify
+			content := ORAS("manifest", "fetch", RegistryRef(ZOTHost, testRepo, "index")).Exec().Out.Contents()
+			var index ocispec.Index
+			Expect(json.Unmarshal(content, &index)).ShouldNot(HaveOccurred())
+			Expect(index.ArtifactType).To(Equal(artifactType))
+		})
+
+		It("should remove artifactType", func() {
+			testRepo := indexTestRepo("update", "artifact-type-unset")
+			CopyZOTRepo(ImageRepo, testRepo)
+			// source index
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, testRepo, "index"),
+				"--artifact-type", "application/vnd.old", string(multi_arch.LinuxAMD64.Digest)).Exec()
+			// update index with artifact type
+			ORAS("manifest", "index", "update", RegistryRef(ZOTHost, testRepo, "index"),
+				"--artifact-type", "").Exec()
+			// verify
+			content := ORAS("manifest", "fetch", RegistryRef(ZOTHost, testRepo, "index")).Exec().Out.Contents()
+			var index ocispec.Index
+			Expect(json.Unmarshal(content, &index)).ShouldNot(HaveOccurred())
+			Expect(index.ArtifactType).To(BeEmpty())
 		})
 
 		It("should update and tag the updated index by --tag flag", func() {
@@ -406,6 +491,25 @@ var _ = Describe("OCI image layout users:", func() {
 			ValidateIndex(content, expectedManifests)
 		})
 
+		It("should copy artifactType from child manifests", func() {
+			root := PrepareTempOCI(ImageRepo)
+			artifactType := "application/vnd.test-example"
+			ORAS("push", "--artifact-type", artifactType,
+				Flags.Layout, LayoutRef(root, "with-artifact-type"),
+				"../../testdata/files/foobar/bar:application/octet-stream").
+				MatchKeyWords("Pushed",
+					"ArtifactType", artifactType).Exec()
+			ORAS("manifest", "index", "create", Flags.Layout, LayoutRef(root, "latest"), "with-artifact-type").
+				MatchKeyWords("Fetched", "with-artifact-type", "Pushed").Exec()
+			// verify
+			content := ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, "latest")).Exec().Out.Contents()
+			var index ocispec.Index
+			Expect(json.Unmarshal(content, &index)).ShouldNot(HaveOccurred())
+			Expect(index.ArtifactType).To(BeEmpty())
+			Expect(index.Manifests).To(HaveLen(1))
+			Expect(index.Manifests[0].ArtifactType).To(Equal(artifactType))
+		})
+
 		It("should create nested indexes", func() {
 			root := PrepareTempOCI(ImageRepo)
 			indexRef := LayoutRef(root, "nested-index")
@@ -437,6 +541,31 @@ var _ = Describe("OCI image layout users:", func() {
 			var manifest ocispec.Manifest
 			Expect(json.Unmarshal(content, &manifest)).ShouldNot(HaveOccurred())
 			Expect(manifest.Annotations[key]).To(Equal(value))
+		})
+
+		It("should create index with artifactType", func() {
+			root := PrepareTempOCI(ImageRepo)
+			indexRef := LayoutRef(root, "with-artifact-type")
+			artifactType := "application/vnd.test-example"
+			ORAS("manifest", "index", "create", Flags.Layout, indexRef, "--artifact-type", artifactType).Exec()
+			// verify
+			content := ORAS("manifest", "fetch", Flags.Layout, indexRef).Exec().Out.Contents()
+			var index ocispec.Index
+			Expect(json.Unmarshal(content, &index)).ShouldNot(HaveOccurred())
+			Expect(index.ArtifactType).To(Equal(artifactType))
+		})
+
+		It("should create index with artifactType while ignoring redundant options", func() {
+			root := PrepareTempOCI(ImageRepo)
+			indexRef := LayoutRef(root, "with-artifact-type-multi")
+			ignoredArtifactType := "application/vnd.test-ignored"
+			artifactType := "application/vnd.test-example"
+			ORAS("manifest", "index", "create", Flags.Layout, indexRef, "--artifact-type", ignoredArtifactType, "--artifact-type", artifactType).Exec()
+			// verify
+			content := ORAS("manifest", "fetch", Flags.Layout, indexRef).Exec().Out.Contents()
+			var index ocispec.Index
+			Expect(json.Unmarshal(content, &index)).ShouldNot(HaveOccurred())
+			Expect(index.ArtifactType).To(Equal(artifactType))
 		})
 
 		It("should output created index to file", func() {
@@ -517,6 +646,61 @@ var _ = Describe("OCI image layout users:", func() {
 			content := ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, "index01")).Exec().Out.Contents()
 			expectedManifests := []ocispec.Descriptor{multi_arch.LinuxARMV7, multi_arch.LinuxARM64}
 			ValidateIndex(content, expectedManifests)
+		})
+
+		It("should update artifactType", func() {
+			root := PrepareTempOCI(ImageRepo)
+			// source index
+			ORAS("manifest", "index", "create", Flags.Layout, LayoutRef(root, "index"),
+				string(multi_arch.LinuxAMD64.Digest)).Exec()
+			// update index with artifact type
+			artifactType := "application/vnd.test-example"
+			ORAS("manifest", "index", "update", Flags.Layout, LayoutRef(root, "index"),
+				"--artifact-type", artifactType).Exec()
+			// verify
+			content := ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, "index")).Exec().Out.Contents()
+			var index ocispec.Index
+			Expect(json.Unmarshal(content, &index)).ShouldNot(HaveOccurred())
+			Expect(index.ArtifactType).To(Equal(artifactType))
+		})
+
+		It("should remove artifactType", func() {
+			root := PrepareTempOCI(ImageRepo)
+			// source index
+			ORAS("manifest", "index", "create", Flags.Layout, LayoutRef(root, "index"),
+				"--artifact-type", "application/vnd.old", string(multi_arch.LinuxAMD64.Digest)).Exec()
+			// update index with artifact type
+			ORAS("manifest", "index", "update", Flags.Layout, LayoutRef(root, "index"),
+				"--artifact-type", "").Exec()
+			// verify
+			content := ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, "index")).Exec().Out.Contents()
+			var index ocispec.Index
+			Expect(json.Unmarshal(content, &index)).ShouldNot(HaveOccurred())
+			Expect(index.ArtifactType).To(BeEmpty())
+		})
+
+		It("should preserve artifactType when not overridden", func() {
+			root := PrepareTempOCI(ImageRepo)
+			// source index
+			ORAS("manifest", "index", "create", Flags.Layout, LayoutRef(root, "index"),
+				"--artifact-type", "application/vnd.old", string(multi_arch.LinuxAMD64.Digest)).Exec()
+			// update index with artifact type
+			ORAS("manifest", "index", "update", Flags.Layout, LayoutRef(root, "index")).Exec()
+			// verify
+			content := ORAS("manifest", "fetch", Flags.Layout, LayoutRef(root, "index")).Exec().Out.Contents()
+			var index ocispec.Index
+			Expect(json.Unmarshal(content, &index)).ShouldNot(HaveOccurred())
+			Expect(index.ArtifactType).To(Equal("application/vnd.old"))
+		})
+
+		It("should reject invalid artifactType", func() {
+			root := PrepareTempOCI(ImageRepo)
+			// source index
+			ORAS("manifest", "index", "create", Flags.Layout, LayoutRef(root, "index"),
+				"--artifact-type", "application/vnd.old", string(multi_arch.LinuxAMD64.Digest)).Exec()
+			// update index with invalid artifact type
+			ORAS("manifest", "index", "update", Flags.Layout, LayoutRef(root, "index"), "--artifact-type", "invalid").
+				ExpectFailure().MatchErrKeyWords("invalid media type").Exec()
 		})
 
 		It("should output updated index to file", func() {
