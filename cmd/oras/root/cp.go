@@ -141,21 +141,7 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 
 	desc, err := doCopy(ctx, statusHandler, src, dst, opts)
 	if err != nil {
-		var copyErr *oras.CopyError
-		if errors.As(err, &copyErr) {
-			var target option.Target
-			switch copyErr.Origin {
-			case oras.CopyErrorOriginSource:
-				target = opts.From
-			case oras.CopyErrorOriginDestination:
-				target = opts.To
-			default:
-				return err
-			}
-
-			return fmt.Errorf("operation %q failed on %s %s %q (reference: %q): %w", copyErr.Op, copyErr.Origin.String(), target.Type, target.Path, target.Reference, copyErr.Err)
-		}
-		return err
+		return reportCPError(err, opts)
 	}
 
 	if from, err := digest.Parse(opts.From.Reference); err == nil && from != desc.Digest {
@@ -299,4 +285,30 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 		return descs, nil
 	}
 	return opts, nil
+}
+
+// reportCPError processes errors from copy operations and returns formatted user-friendly errors
+func reportCPError(err error, opts *copyOptions) error {
+	var copyErr *oras.CopyError
+	if !errors.As(err, &copyErr) {
+		return err
+	}
+
+	// Determine which target had the error
+	var target option.Target
+	var prep string
+	switch copyErr.Origin {
+	case oras.CopyErrorOriginSource:
+		target = opts.From
+		prep = "from"
+	case oras.CopyErrorOriginDestination:
+		target = opts.To
+		prep = "to"
+	default:
+		return err
+	}
+
+	// Build error messages
+	msg := fmt.Sprintf("failed to copy %s %s %s %q (reference: %q)", prep, copyErr.Origin, target.Type, target.Path, target.Reference)
+	return oerrors.ReportCopyErr(*copyErr, msg)
 }

@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/errcode"
 )
@@ -199,6 +200,15 @@ func CheckRequiredTogetherFlags(fs *pflag.FlagSet, requiredTogetherFlags ...stri
 		return fmt.Errorf("%s must be used in conjunction with %s", changed, unchanged)
 	}
 	return nil
+}
+
+func ReportCopyErr(copyErr oras.CopyError, msg string) error {
+	msg += fmt.Sprintf("\n> Inner error: operation %q failed at the %s", copyErr.Op, copyErr.Origin)
+	var errResp *errcode.ErrorResponse
+	if errors.As(copyErr.Err, &errResp) {
+		return fmt.Errorf("%s\n> Error from registry: %w", msg, errResp)
+	}
+	return fmt.Errorf("%s: %w", msg, copyErr.Err)
 }
 
 func checkChangedFlags(fs *pflag.FlagSet, flagSet ...string) (changedFlags []string, unchangedFlags []string) {
