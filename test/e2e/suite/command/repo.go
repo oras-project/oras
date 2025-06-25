@@ -274,6 +274,9 @@ var _ = Describe("1.1 registry users:", func() {
 	})
 
 	When("running `repo tags` with go-template format", func() {
+		repoWithName := func(name string) string {
+			return fmt.Sprintf("command/images/repo/tags/%d/%s", GinkgoRandomSeed(), name)
+		}
 		repoRef := RegistryRef(ZOTHost, ImageRepo, "")
 
 		It("should output tags using Go template format", func() {
@@ -285,6 +288,65 @@ var _ = Describe("1.1 registry users:", func() {
 			outputString := string(output)
 			Expect(outputString).To(ContainSubstring(foobar.Tag))
 			Expect(outputString).To(ContainSubstring(multi_arch.Tag))
+		})
+
+		It("should handle digest exclusion with go-template format", func() {
+			// Prepare a repository with a digest-like tag
+			repo := repoWithName("template-digest")
+			normalTag := "normal-tag"
+			digestLikeTag := "sha256-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+			// Create repository with tags
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), RegistryRef(ZOTHost, repo, normalTag)).
+				WithDescription("prepare test repo with normal tag").Exec()
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), RegistryRef(ZOTHost, repo, digestLikeTag)).
+				WithDescription("prepare test repo with digest-like tag").Exec()
+
+			// Run with go-template and exclude digest tags
+			template := "{{range .tags}}{{println .}}{{end}}"
+			output := ORAS("repo", "tags", RegistryRef(ZOTHost, repo, ""), "--format", "go-template="+template, "--exclude-digest-tags").Exec().Out.Contents()
+
+			// Verify only normal tag is in the output
+			outputString := string(output)
+			Expect(outputString).To(ContainSubstring(normalTag))
+			Expect(outputString).NotTo(ContainSubstring(digestLikeTag))
+		})
+
+		It("Should list out tags associated to reference in go-template format", func() {
+			// prepare
+			repo := repoWithName("filter-tag-template")
+			tags := []string{foobar.Tag, "template1", "template2", "template3"}
+			refWithTags := fmt.Sprintf("%s:%s", RegistryRef(ZOTHost, repo, ""), strings.Join(tags, ","))
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), refWithTags).
+				WithDescription("prepare: copy and create multiple tags").
+				Exec()
+
+			// Define template to list all tags one per line
+			template := "{{range .tags}}{{println .}}{{end}}"
+
+			// Test via tag with go-template format
+			outputViaTag := ORAS("repo", "tags", RegistryRef(ZOTHost, repo, foobar.Tag), "--format", "go-template="+template).
+				MatchErrKeyWords(feature.Experimental.Mark).
+				WithDescription("get go-template format via tag").
+				Exec().Out.Contents()
+
+			// Check each tag is in the output
+			outputTagStr := string(outputViaTag)
+			for _, tag := range tags {
+				Expect(outputTagStr).To(ContainSubstring(tag))
+			}
+
+			// Test via digest with go-template format
+			outputViaDigest := ORAS("repo", "tags", RegistryRef(ZOTHost, repo, foobar.Digest), "--format", "go-template="+template).
+				MatchErrKeyWords(feature.Experimental.Mark).
+				WithDescription("get go-template format via digest").
+				Exec().Out.Contents()
+
+			// Check each tag is in the output
+			outputDigestStr := string(outputViaDigest)
+			for _, tag := range tags {
+				Expect(outputDigestStr).To(ContainSubstring(tag))
+			}
 		})
 	})
 })
