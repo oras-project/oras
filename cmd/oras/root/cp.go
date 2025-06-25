@@ -259,18 +259,19 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 
 	// do breadth first search to find all levels of child referrers
 	var referrers []ocispec.Descriptor
-	for descs := index.Manifests; len(descs) > 0; {
+	descs := index.Manifests
+	for len(descs) > 0 {
 		foundReferrers, err := graph.FindPredecessors(ctx, src, descs, opts)
 		if err != nil {
 			return opts, err
 		}
+		foundReferrers = slices.DeleteFunc(foundReferrers, func(desc ocispec.Descriptor) bool {
+			return content.Equal(desc, root)
+		})
+		// delete elements from foundReferrers
 		referrers = append(referrers, foundReferrers...)
 		descs = foundReferrers
 	}
-
-	referrers = slices.DeleteFunc(referrers, func(desc ocispec.Descriptor) bool {
-		return content.Equal(desc, root)
-	})
 
 	if len(referrers) == 0 {
 		// no child referrers
