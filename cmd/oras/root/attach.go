@@ -213,18 +213,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	// Attach
 	root, err := doPush(dst, stopTrack, pack, copy)
 	if err != nil {
-		var copyErr *oras.CopyError
-		if errors.As(err, &copyErr) {
-			switch copyErr.Origin {
-			case oras.CopyErrorOriginSource:
-				return fmt.Errorf("operation %q failed on source: %w", copyErr.Op, copyErr.Err)
-			case oras.CopyErrorOriginDestination:
-				return fmt.Errorf("operation %q failed on destination %s %q (reference: %q): %w", copyErr.Op, opts.Target.Type, opts.Target.Path, opts.Target.Reference, copyErr.Err)
-			default:
-				return err
-			}
-		}
-		return err
+		return reportAttachErr(err, opts)
 	}
 	metadataHandler.OnAttached(&opts.Target, root, subject)
 	err = metadataHandler.Render()
@@ -234,4 +223,21 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 
 	// Export manifest
 	return opts.ExportManifest(ctx, store, root)
+}
+
+func reportAttachErr(err error, opts *attachOptions) error {
+	var copyErr *oras.CopyError
+	if errors.As(err, &copyErr) {
+		var msg string
+		switch copyErr.Origin {
+		case oras.CopyErrorOriginSource:
+			msg = fmt.Sprintf("failed to attach %s", opts.FileRefs)
+		case oras.CopyErrorOriginDestination:
+			msg = fmt.Sprintf("failed to attach to destination %s %q (reference: %q)", opts.Target.Type, opts.Target.Path, opts.Target.Reference)
+		default:
+			return err
+		}
+		return oerrors.ReportCopyErr(*copyErr, msg)
+	}
+	return err
 }

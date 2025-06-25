@@ -119,6 +119,7 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 	return oerrors.Command(cmd, &opts.BinaryTarget)
 }
 
+// TODO: modify error?
 func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 
