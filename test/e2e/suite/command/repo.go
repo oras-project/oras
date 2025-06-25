@@ -365,9 +365,9 @@ var _ = Describe("OCI image layout users:", func() {
 	When("running `repo tags`", func() {
 		prepare := func(repo string, fromTag string, toTags ...string) string {
 			root := PrepareTempOCI(repo)
-			ORAS("tag", LayoutRef(root, fromTag), strings.Join(toTags, " "), Flags.Layout).
-				WithDescription("prepare in OCI layout").
-				Exec()
+			args := []string{"tag", LayoutRef(root, fromTag), Flags.Layout}
+			args = append(args, toTags...)
+			ORAS(args...).WithDescription("prepare in OCI layout").Exec()
 			return root
 		}
 		tagOutput := foobar.Tag + "\n"
@@ -408,9 +408,9 @@ var _ = Describe("OCI image layout users:", func() {
 	When("running `repo tags` with JSON format", func() {
 		prepare := func(repo string, fromTag string, toTags ...string) string {
 			root := PrepareTempOCI(repo)
-			ORAS("tag", LayoutRef(root, fromTag), strings.Join(toTags, " "), Flags.Layout).
-				WithDescription("prepare in OCI layout").
-				Exec()
+			args := []string{"tag", LayoutRef(root, fromTag), Flags.Layout}
+			args = append(args, toTags...)
+			ORAS(args...).WithDescription("prepare in OCI layout").Exec()
 			return root
 		}
 
@@ -501,9 +501,9 @@ var _ = Describe("OCI image layout users:", func() {
 	When("running `repo tags` with go-template format", func() {
 		prepare := func(repo string, fromTag string, toTags ...string) string {
 			root := PrepareTempOCI(repo)
-			ORAS("tag", LayoutRef(root, fromTag), strings.Join(toTags, " "), Flags.Layout).
-				WithDescription("prepare in OCI layout").
-				Exec()
+			args := []string{"tag", LayoutRef(root, fromTag), Flags.Layout}
+			args = append(args, toTags...)
+			ORAS(args...).WithDescription("prepare in OCI layout").Exec()
 			return root
 		}
 
