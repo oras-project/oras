@@ -21,25 +21,25 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 )
 
-// tagsHandler handles text output for repo tags command.
-type tagsHandler struct {
+// repoTagsHandler handles text output for repo tags command.
+type repoTagsHandler struct {
 	out io.Writer
 }
 
-// NewTagsHandler creates a new text handler for repo tags command.
-func NewTagsHandler(out io.Writer) metadata.TagsHandler {
-	return &tagsHandler{
+// NewRepoTagsHandler creates a new text handler for repo tags command.
+func NewRepoTagsHandler(out io.Writer) metadata.RepoTagsHandler {
+	return &repoTagsHandler{
 		out: out,
 	}
 }
 
-// OnListed implements metadata.TagsHandler.
-func (h *tagsHandler) OnListed(tag string) error {
+// OnTagListed implements metadata.TagsHandler.
+func (h *repoTagsHandler) OnTagListed(tag string) error {
 	_, err := io.WriteString(h.out, tag+"\n")
 	return err
 }
 
 // Render implements metadata.TagsHandler.
-func (h *tagsHandler) Render() error {
+func (h *repoTagsHandler) Render() error {
 	return nil
 }

@@ -23,29 +23,29 @@ import (
 	"oras.land/oras/cmd/oras/internal/output"
 )
 
-// tagsHandler handles template metadata output for repo tags command.
-type tagsHandler struct {
+// repoTagsHandler handles template metadata output for repo tags command.
+type repoTagsHandler struct {
 	out      io.Writer
 	model    *model.Tags
 	template string
 }
 
-// NewTagsHandler creates a new template handler for repo tags command.
-func NewTagsHandler(out io.Writer, tmpl string) metadata.TagsHandler {
-	return &tagsHandler{
+// NewRepoTagsHandler creates a new template handler for repo tags command.
+func NewRepoTagsHandler(out io.Writer, tmpl string) metadata.RepoTagsHandler {
+	return &repoTagsHandler{
 		out:      out,
 		model:    model.NewTags(),
 		template: tmpl,
 	}
 }
 
-// OnListed implements metadata.TagsHandler.
-func (h *tagsHandler) OnListed(tag string) error {
+// OnTagListed implements metadata.TagsHandler.
+func (h *repoTagsHandler) OnTagListed(tag string) error {
 	h.model.AddTag(tag)
 	return nil
 }
 
 // Render implements metadata.TagsHandler.
-func (h *tagsHandler) Render() error {
+func (h *repoTagsHandler) Render() error {
 	return output.ParseAndWrite(h.out, h.model, h.template)
 }

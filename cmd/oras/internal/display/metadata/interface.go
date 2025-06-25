@@ -72,14 +72,6 @@ type TaggedHandler interface {
 	OnTagged(desc ocispec.Descriptor, tag string) error
 }
 
-// TagsHandler handles status output for repo tags command.
-type TagsHandler interface {
-	Renderer
-
-	// OnListed is called for each tag that is listed.
-	OnListed(tag string) error
-}
-
 // TagHandler handles status output for tag command.
 type TagHandler interface {
 	// OnTagging is called when tagging starts.
@@ -136,4 +128,12 @@ type ManifestDeleteHandler interface {
 type BlobDeleteHandler interface {
 	OnBlobMissing() error
 	OnBlobDeleted() error
+}
+
+// RepoTagsHandler handles status output for repo tags command.
+type RepoTagsHandler interface {
+	Renderer
+
+	// OnTagListed is called for each tag that is listed.
+	OnTagListed(tag string) error
 }

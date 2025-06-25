@@ -84,11 +84,7 @@ Example - [Experimental] Show tags of the target repository with Go template:
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the tag specified by `last`")
 	cmd.Flags().BoolVar(&opts.excludeDigestTag, "exclude-digest-tags", false, "[Preview] exclude all digest-like tags such as 'sha256-aaaa...'")
 	option.AddDeprecatedVerboseFlag(cmd.Flags())
-	opts.SetTypes(
-		option.FormatTypeText,
-		option.FormatTypeJSON.WithUsage("Get tags and output in JSON format"),
-		option.FormatTypeGoTemplate.WithUsage("Print tags using the given Go template"),
-	)
+	opts.SetTypes(option.FormatTypeText, option.FormatTypeJSON, option.FormatTypeGoTemplate)
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
@@ -114,7 +110,7 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 	}
 
 	// Create the appropriate handler based on the format option
-	handler, err := display.NewTagsHandler(opts.Printer, opts.Format)
+	handler, err := display.NewRepoTagsHandler(opts.Printer, opts.Format)
 	if err != nil {
 		return err
 	}
@@ -127,7 +123,7 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 			}
 			if filter != "" {
 				if tag == opts.Reference {
-					if err := handler.OnListed(tag); err != nil {
+					if err := handler.OnTagListed(tag); err != nil {
 						return err
 					}
 					continue
@@ -140,7 +136,7 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 					continue
 				}
 			}
-			if err := handler.OnListed(tag); err != nil {
+			if err := handler.OnTagListed(tag); err != nil {
 				return err
 			}
 		}

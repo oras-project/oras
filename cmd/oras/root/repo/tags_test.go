@@ -32,16 +32,16 @@ func TestShowTagsJSON(t *testing.T) { // Create a buffer for testing the output
 	var buf bytes.Buffer
 	p := output.NewPrinter(&buf, os.Stderr) // Create a handler for JSON format
 	format := option.Format{Type: option.FormatTypeJSON.Name}
-	handler, err := display.NewTagsHandler(p, format)
+	handler, err := display.NewRepoTagsHandler(p, format)
 	if err != nil {
 		t.Fatalf("Failed to create handler: %v", err)
 	}
 
 	// Add some test tags
-	if err := handler.OnListed("tag1"); err != nil {
+	if err := handler.OnTagListed("tag1"); err != nil {
 		t.Fatalf("Failed to add tag: %v", err)
 	}
-	if err := handler.OnListed("tag2"); err != nil {
+	if err := handler.OnTagListed("tag2"); err != nil {
 		t.Fatalf("Failed to add tag: %v", err)
 	}
 
