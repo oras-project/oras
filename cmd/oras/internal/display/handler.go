@@ -251,7 +251,7 @@ func NewBlobDeleteHandler(printer *output.Printer, target *option.Target) metada
 	return text.NewBlobDeleteHandler(printer, target)
 }
 
-// NewRepoTagsHandler returns a tags handler.
+// NewRepoTagsHandler returns a repo tags handler.
 func NewRepoTagsHandler(out io.Writer, format option.Format) (metadata.RepoTagsHandler, error) {
 	var handler metadata.RepoTagsHandler
 	switch format.Type {

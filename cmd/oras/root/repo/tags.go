@@ -109,13 +109,10 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 		logger.Warnf("[Experimental] querying tags associated to %s, it may take a while...\n", filter)
 	}
 
-	// Create the appropriate handler based on the format option
 	handler, err := display.NewRepoTagsHandler(opts.Printer, opts.Format)
 	if err != nil {
 		return err
 	}
-
-	// Process tags with the handler
 	err = finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
 			if opts.excludeDigestTag && isDigestTag(tag) {
@@ -146,7 +143,6 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 		return err
 	}
 
-	// Render the output
 	return handler.Render()
 }
 

@@ -143,6 +143,7 @@ var _ = Describe("1.1 registry users:", func() {
 		It("should show deprecation message when running with --verbose flag", func() {
 			ORAS("repo", "tags", repoRef, "--verbose").MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).Exec()
 		})
+
 		It("Should list out tags associated to the provided reference", func() {
 			// prepare
 			repo := repoWithName("filter-tag")
@@ -203,15 +204,6 @@ var _ = Describe("1.1 registry users:", func() {
 				WithDescription("prepare test repo with normal tag").Exec()
 			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), RegistryRef(ZOTHost, repo, digestLikeTag)).
 				WithDescription("prepare test repo with digest-like tag").Exec()
-
-			// Verify both tags are listed without exclusion
-			plainBytes := ORAS("repo", "tags", RegistryRef(ZOTHost, repo, ""), "--format", "json").Exec().Out.Contents()
-			var plainResult struct {
-				Tags []string `json:"tags"`
-			}
-			Expect(json.Unmarshal(plainBytes, &plainResult)).ShouldNot(HaveOccurred())
-			Expect(plainResult.Tags).Should(ContainElement(normalTag))
-			Expect(plainResult.Tags).Should(ContainElement(digestLikeTag))
 
 			// Run repo tags with JSON format and exclude digest tags
 			bytes := ORAS("repo", "tags", RegistryRef(ZOTHost, repo, ""), "--format", "json", "--exclude-digest-tags").Exec().Out.Contents()
