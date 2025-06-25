@@ -387,23 +387,6 @@ var _ = Describe("OCI image layout users:", func() {
 			session := ORAS("repository", "tags", root, "--last", foobar.Tag, Flags.Layout).MatchKeyWords(extra).Exec()
 			Expect(session.Out).ShouldNot(gbytes.Say(regexp.QuoteMeta(tagOutput)))
 		})
-
-		It("should list tags in JSON format for OCI layout", func() {
-			// Use existing layout
-			root := PrepareTempOCI(ImageRepo)
-
-			// Run repo tags with JSON format
-			bytes := ORAS("repository", "tags", root, "--format", "json", Flags.Layout).Exec().Out.Contents()
-
-			// Parse the JSON output
-			var result struct {
-				Tags []string `json:"tags"`
-			}
-			Expect(json.Unmarshal(bytes, &result)).ShouldNot(HaveOccurred())
-
-			Expect(result.Tags).Should(ContainElements(foobar.Tag))
-		})
-
 		It("should list out tags associated to the provided reference", func() {
 			// prepare
 			tags := []string{foobar.Tag, "bax", "bay", "baz"}
@@ -419,6 +402,32 @@ var _ = Describe("OCI image layout users:", func() {
 				MatchKeyWords(tags...).
 				MatchErrKeyWords(feature.Experimental.Mark, foobar.Digest).Exec().Out
 			Expect(viaDigest).ShouldNot(gbytes.Say(multi_arch.Tag))
+		})
+	})
+
+	When("running `repo tags` with JSON format", func() {
+		prepare := func(repo string, fromTag string, toTags ...string) string {
+			root := PrepareTempOCI(repo)
+			ORAS("tag", LayoutRef(root, fromTag), strings.Join(toTags, " "), Flags.Layout).
+				WithDescription("prepare in OCI layout").
+				Exec()
+			return root
+		}
+
+		It("should list tags in JSON format for OCI layout", func() {
+			// Use existing layout
+			root := PrepareTempOCI(ImageRepo)
+
+			// Run repo tags with JSON format
+			bytes := ORAS("repository", "tags", root, "--format", "json", Flags.Layout).Exec().Out.Contents()
+
+			// Parse the JSON output
+			var result struct {
+				Tags []string `json:"tags"`
+			}
+			Expect(json.Unmarshal(bytes, &result)).ShouldNot(HaveOccurred())
+
+			Expect(result.Tags).Should(ContainElements(foobar.Tag))
 		})
 
 		It("should handle digest exclusion with JSON format", func() {
@@ -446,6 +455,124 @@ var _ = Describe("OCI image layout users:", func() {
 			// Verify digest tag is excluded
 			Expect(result.Tags).Should(ContainElements(foobar.Tag))
 			Expect(result.Tags).ShouldNot(ContainElement(digestLikeTag))
+		})
+
+		It("should list out tags associated to the provided reference in JSON format", func() {
+			// prepare
+			tags := []string{foobar.Tag, "bax", "bay", "baz"}
+			root := prepare(ImageRepo, foobar.Tag, tags...)
+
+			// Test via tag with JSON format
+			bytesViaTag := ORAS("repo", "tags", LayoutRef(root, foobar.Tag), "--format", "json", Flags.Layout).
+				WithDescription("via tag JSON").
+				MatchErrKeyWords(feature.Experimental.Mark).
+				Exec().Out.Contents()
+
+			// Parse and verify JSON output
+			var resultViaTag struct {
+				Tags []string `json:"tags"`
+			}
+			Expect(json.Unmarshal(bytesViaTag, &resultViaTag)).ShouldNot(HaveOccurred())
+
+			// Check each tag individually
+			for _, tag := range tags {
+				Expect(resultViaTag.Tags).Should(ContainElement(tag))
+			}
+
+			// Test via digest with JSON format
+			bytesViaDigest := ORAS("repo", "tags", LayoutRef(root, foobar.Digest), "--format", "json", Flags.Layout).
+				WithDescription("via digest JSON").
+				MatchErrKeyWords(feature.Experimental.Mark).
+				Exec().Out.Contents()
+
+			// Parse and verify JSON output
+			var resultViaDigest struct {
+				Tags []string `json:"tags"`
+			}
+			Expect(json.Unmarshal(bytesViaDigest, &resultViaDigest)).ShouldNot(HaveOccurred())
+
+			// Check each tag individually
+			for _, tag := range tags {
+				Expect(resultViaDigest.Tags).Should(ContainElement(tag))
+			}
+		})
+	})
+
+	When("running `repo tags` with go-template format", func() {
+		prepare := func(repo string, fromTag string, toTags ...string) string {
+			root := PrepareTempOCI(repo)
+			ORAS("tag", LayoutRef(root, fromTag), strings.Join(toTags, " "), Flags.Layout).
+				WithDescription("prepare in OCI layout").
+				Exec()
+			return root
+		}
+
+		It("should list tags in go-template format for OCI layout", func() {
+			// Use existing layout
+			root := PrepareTempOCI(ImageRepo)
+
+			// Simple template to list tags
+			template := "{{range .tags}}{{println .}}{{end}}"
+
+			// Run repo tags with go-template format
+			output := ORAS("repository", "tags", root, "--format", "go-template="+template, Flags.Layout).
+				Exec().Out.Contents()
+
+			// Verify output contains the expected tag
+			outputString := string(output)
+			Expect(outputString).To(ContainSubstring(foobar.Tag))
+		})
+
+		It("should handle digest exclusion with go-template format in OCI layout", func() {
+			// Prepare layout with both normal and digest-like tags
+			normalTag := "normal-tag"
+			digestLikeTag := "sha256-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+			root := prepare(ImageRepo, foobar.Tag, normalTag, digestLikeTag)
+
+			// Template to list all tags
+			template := "{{range .tags}}{{println .}}{{end}}"
+
+			// Verify output with digest exclusion
+			output := ORAS("repo", "tags", root, "--format", "go-template="+template, "--exclude-digest-tags", Flags.Layout).
+				Exec().Out.Contents()
+
+			// Check results
+			outputString := string(output)
+			Expect(outputString).To(ContainSubstring(normalTag))
+			Expect(outputString).NotTo(ContainSubstring(digestLikeTag))
+		})
+
+		It("should list out tags associated to the provided reference in go-template format", func() {
+			// prepare
+			tags := []string{foobar.Tag, "bax", "bay", "baz"}
+			root := prepare(ImageRepo, foobar.Tag, tags...)
+
+			// Define template to list tags one per line
+			template := "{{range .tags}}{{println .}}{{end}}"
+
+			// Test via tag with go-template format
+			outputViaTag := ORAS("repo", "tags", LayoutRef(root, foobar.Tag), "--format", "go-template="+template, Flags.Layout).
+				WithDescription("via tag with go-template").
+				MatchErrKeyWords(feature.Experimental.Mark).
+				Exec().Out.Contents()
+
+			// Verify each tag is in the output
+			outputTagStr := string(outputViaTag)
+			for _, tag := range tags {
+				Expect(outputTagStr).To(ContainSubstring(tag))
+			}
+
+			// Test via digest with go-template format
+			outputViaDigest := ORAS("repo", "tags", LayoutRef(root, foobar.Digest), "--format", "go-template="+template, Flags.Layout).
+				WithDescription("via digest with go-template").
+				MatchErrKeyWords(feature.Experimental.Mark).
+				Exec().Out.Contents()
+
+			// Verify each tag is in the output
+			outputDigestStr := string(outputViaDigest)
+			for _, tag := range tags {
+				Expect(outputDigestStr).To(ContainSubstring(tag))
+			}
 		})
 	})
 })
