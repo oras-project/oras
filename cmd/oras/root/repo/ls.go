@@ -57,7 +57,7 @@ Example - List the repositories under the registry that include values lexically
 Example - [Experimental] List the repositories under the registry in JSON format:
   oras repo ls localhost:5000 --format json
 
-Example - [Experimental] List the repositories under the registry with Go template:
+Example - [Experimental] List the repositories under the registry using the given Go template:
   oras repo ls localhost:5000 --format go-template --template "{{.repositories}}"
 `,
 		Args:    oerrors.CheckArgs(argument.Exactly(1), "the target registry to list repositories from"),
