@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/opencontainers/go-digest"
@@ -36,6 +37,7 @@ import (
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/docker"
+	"oras.land/oras/internal/graph"
 	"oras.land/oras/internal/listener"
 	"oras.land/oras/internal/registryutil"
 )
@@ -259,24 +261,24 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 	var referrers []ocispec.Descriptor
 	descs := index.Manifests
 	for len(descs) > 0 {
-		//foundReferrers, err := graph.FindPredecessors(ctx, src, descs, opts)
-		// if err != nil {
-		// 	return opts, err
-		// }
-		// foundReferrers = slices.DeleteFunc(foundReferrers, func(desc ocispec.Descriptor) bool {
-		// 	return content.Equal(desc, root)
-		// })
-		// // delete elements from foundReferrers
-		// referrers = append(referrers, foundReferrers...)
-		// descs = foundReferrers
-
-		foundReferrers, err := registry.Referrers(ctx, src, descs[0], "")
+		foundReferrers, err := graph.FindPredecessors(ctx, src, descs, opts)
 		if err != nil {
 			return opts, err
 		}
+		// remove root from foundReferrers to prevent loop
+		foundReferrers = slices.DeleteFunc(foundReferrers, func(desc ocispec.Descriptor) bool {
+			return content.Equal(desc, root)
+		})
 		referrers = append(referrers, foundReferrers...)
-		descs = descs[1:]
-		descs = append(descs, foundReferrers...)
+		descs = foundReferrers
+
+		// foundReferrers, err := registry.Referrers(ctx, src, descs[0], "")
+		// if err != nil {
+		// 	return opts, err
+		// }
+		// referrers = append(referrers, foundReferrers...)
+		// descs = descs[1:]
+		// descs = append(descs, foundReferrers...)
 	}
 
 	if len(referrers) == 0 {
