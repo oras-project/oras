@@ -72,6 +72,44 @@ func TestNewCopyHandler(t *testing.T) {
 	}
 }
 
+func TestNewRepoTagsHandler(t *testing.T) {
+	// Test with text format
+	handler, err := NewRepoTagsHandler(os.Stdout, option.Format{Type: option.FormatTypeText.Name})
+	if err != nil {
+		t.Errorf("NewRepoTagsHandler() with text format error = %v, want nil", err)
+	}
+	if handler == nil {
+		t.Error("NewRepoTagsHandler() with text format returned nil handler")
+	}
+
+	// Test with JSON format
+	handler, err = NewRepoTagsHandler(os.Stdout, option.Format{Type: option.FormatTypeJSON.Name})
+	if err != nil {
+		t.Errorf("NewRepoTagsHandler() with JSON format error = %v, want nil", err)
+	}
+	if handler == nil {
+		t.Error("NewRepoTagsHandler() with JSON format returned nil handler")
+	}
+
+	// Test with Go template format
+	handler, err = NewRepoTagsHandler(os.Stdout, option.Format{
+		Type:     option.FormatTypeGoTemplate.Name,
+		Template: "{{.tags}}",
+	})
+	if err != nil {
+		t.Errorf("NewRepoTagsHandler() with Go template format error = %v, want nil", err)
+	}
+	if handler == nil {
+		t.Error("NewRepoTagsHandler() with Go template format returned nil handler")
+	}
+
+	// Test with unsupported format
+	_, err = NewRepoTagsHandler(os.Stdout, option.Format{Type: "unsupported"})
+	if err == nil {
+		t.Error("NewRepoTagsHandler() with unsupported format expected error, got nil")
+	}
+}
+
 func TestNewRepoListHandler(t *testing.T) {
 	printer := output.NewPrinter(os.Stdout, os.Stderr)
 
