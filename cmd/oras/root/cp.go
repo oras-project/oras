@@ -311,5 +311,5 @@ func reportCPError(err error, opts *copyOptions) error {
 
 	// Build error messages
 	msg := fmt.Sprintf("failed to copy %s %s %s %q (reference: %q)", prep, copyErr.Origin, target.Type, target.Path, target.Reference)
-	return oerrors.ReportCopyErr(*copyErr, msg)
+	return oerrors.ReportCopyError(*copyErr, msg)
 }

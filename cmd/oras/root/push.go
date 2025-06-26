@@ -314,7 +314,7 @@ func reportPushErr(err error, opts *pushOptions) error {
 		default:
 			return err
 		}
-		return oerrors.ReportCopyErr(*copyErr, msg)
+		return oerrors.ReportCopyError(*copyErr, msg)
 	}
 	return err
 }

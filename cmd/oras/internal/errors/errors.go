@@ -202,7 +202,7 @@ func CheckRequiredTogetherFlags(fs *pflag.FlagSet, requiredTogetherFlags ...stri
 	return nil
 }
 
-func ReportCopyErr(copyErr oras.CopyError, msg string) error {
+func ReportCopyError(copyErr oras.CopyError, msg string) error {
 	msg += fmt.Sprintf("\n* Inner error: operation %q failed at the %s", copyErr.Op, copyErr.Origin)
 	var errResp *errcode.ErrorResponse
 	if errors.As(copyErr.Err, &errResp) {

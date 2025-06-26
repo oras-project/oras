@@ -313,7 +313,7 @@ func reportPullErr(err error, opts *pullOptions) error {
 		default:
 			return err
 		}
-		return oerrors.ReportCopyErr(*copyErr, msg)
+		return oerrors.ReportCopyError(*copyErr, msg)
 
 	}
 	return err
