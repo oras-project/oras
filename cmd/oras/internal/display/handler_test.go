@@ -111,10 +111,8 @@ func TestNewRepoTagsHandler(t *testing.T) {
 }
 
 func TestNewRepoListHandler(t *testing.T) {
-	printer := output.NewPrinter(os.Stdout, os.Stderr)
-
 	// Test with text format
-	handler, err := NewRepoListHandler(printer, option.Format{Type: option.FormatTypeText.Name})
+	handler, err := NewRepoListHandler(os.Stdout, option.Format{Type: option.FormatTypeText.Name})
 	if err != nil {
 		t.Errorf("NewRepoListHandler() with text format error = %v, want nil", err)
 	}
@@ -123,7 +121,7 @@ func TestNewRepoListHandler(t *testing.T) {
 	}
 
 	// Test with JSON format
-	handler, err = NewRepoListHandler(printer, option.Format{Type: option.FormatTypeJSON.Name})
+	handler, err = NewRepoListHandler(os.Stdout, option.Format{Type: option.FormatTypeJSON.Name})
 	if err != nil {
 		t.Errorf("NewRepoListHandler() with JSON format error = %v, want nil", err)
 	}
@@ -132,7 +130,7 @@ func TestNewRepoListHandler(t *testing.T) {
 	}
 
 	// Test with Go template format
-	handler, err = NewRepoListHandler(printer, option.Format{
+	handler, err = NewRepoListHandler(os.Stdout, option.Format{
 		Type:     option.FormatTypeGoTemplate.Name,
 		Template: "{{.repositories}}",
 	})
@@ -144,7 +142,7 @@ func TestNewRepoListHandler(t *testing.T) {
 	}
 
 	// Test with unsupported format
-	_, err = NewRepoListHandler(printer, option.Format{Type: "unsupported"})
+	_, err = NewRepoListHandler(os.Stdout, option.Format{Type: "unsupported"})
 	if err == nil {
 		t.Error("NewRepoListHandler() with unsupported format expected error, got nil")
 	}

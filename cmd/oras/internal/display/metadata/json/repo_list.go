@@ -16,6 +16,8 @@ limitations under the License.
 package json
 
 import (
+	"io"
+
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
 	"oras.land/oras/cmd/oras/internal/output"
@@ -23,14 +25,14 @@ import (
 
 // repoListHandler handles JSON metadata output for repo ls command.
 type repoListHandler struct {
-	out   *output.Printer
+	out   io.Writer
 	model *model.RepoList
 }
 
 // NewRepoListHandler creates a new handler for repo ls events.
-func NewRepoListHandler(printer *output.Printer) metadata.RepoListHandler {
+func NewRepoListHandler(out io.Writer) metadata.RepoListHandler {
 	return &repoListHandler{
-		out:   printer,
+		out:   out,
 		model: model.NewRepoList(),
 	}
 }

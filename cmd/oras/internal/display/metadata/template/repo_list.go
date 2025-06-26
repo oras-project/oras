@@ -16,6 +16,8 @@ limitations under the License.
 package template
 
 import (
+	"io"
+
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/metadata/model"
 	"oras.land/oras/cmd/oras/internal/output"
@@ -23,15 +25,15 @@ import (
 
 // repoListHandler handles template metadata output for repo ls command.
 type repoListHandler struct {
-	out      *output.Printer
+	out      io.Writer
 	model    *model.RepoList
 	template string
 }
 
 // NewRepoListHandler creates a new template handler for repo ls command.
-func NewRepoListHandler(printer *output.Printer, tmpl string) metadata.RepoListHandler {
+func NewRepoListHandler(out io.Writer, tmpl string) metadata.RepoListHandler {
 	return &repoListHandler{
-		out:      printer,
+		out:      out,
 		model:    model.NewRepoList(),
 		template: tmpl,
 	}

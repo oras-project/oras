@@ -16,25 +16,27 @@ limitations under the License.
 package text
 
 import (
+	"io"
+
 	"oras.land/oras/cmd/oras/internal/display/metadata"
-	"oras.land/oras/cmd/oras/internal/output"
 )
 
 // repoListHandler handles text output for repo ls command.
 type repoListHandler struct {
-	out *output.Printer
+	out io.Writer
 }
 
 // NewRepoListHandler creates a new text handler for repo ls command.
-func NewRepoListHandler(printer *output.Printer) metadata.RepoListHandler {
+func NewRepoListHandler(out io.Writer) metadata.RepoListHandler {
 	return &repoListHandler{
-		out: printer,
+		out: out,
 	}
 }
 
 // OnRepositoryListed implements metadata.RepoListHandler.
 func (h *repoListHandler) OnRepositoryListed(repo string) error {
-	return h.out.Println(repo)
+	_, err := io.WriteString(h.out, repo+"\n")
+	return err
 }
 
 // Render implements metadata.RepoListHandler.
