@@ -71,3 +71,43 @@ func TestNewCopyHandler(t *testing.T) {
 		t.Errorf("expected metadata.CopyHandler actual %v", reflect.TypeOf(copyMetadataHandler))
 	}
 }
+
+func TestNewRepoListHandler(t *testing.T) {
+	printer := output.NewPrinter(os.Stdout, os.Stderr)
+
+	// Test with text format
+	handler, err := NewRepoListHandler(printer, option.Format{Type: option.FormatTypeText.Name})
+	if err != nil {
+		t.Errorf("NewRepoListHandler() with text format error = %v, want nil", err)
+	}
+	if handler == nil {
+		t.Error("NewRepoListHandler() with text format returned nil handler")
+	}
+
+	// Test with JSON format
+	handler, err = NewRepoListHandler(printer, option.Format{Type: option.FormatTypeJSON.Name})
+	if err != nil {
+		t.Errorf("NewRepoListHandler() with JSON format error = %v, want nil", err)
+	}
+	if handler == nil {
+		t.Error("NewRepoListHandler() with JSON format returned nil handler")
+	}
+
+	// Test with Go template format
+	handler, err = NewRepoListHandler(printer, option.Format{
+		Type:     option.FormatTypeGoTemplate.Name,
+		Template: "{{.repositories}}",
+	})
+	if err != nil {
+		t.Errorf("NewRepoListHandler() with template format error = %v, want nil", err)
+	}
+	if handler == nil {
+		t.Error("NewRepoListHandler() with template format returned nil handler")
+	}
+
+	// Test with unsupported format
+	_, err = NewRepoListHandler(printer, option.Format{Type: "unsupported"})
+	if err == nil {
+		t.Error("NewRepoListHandler() with unsupported format expected error, got nil")
+	}
+}
