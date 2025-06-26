@@ -139,3 +139,194 @@ func Test_fetchSourceManifests(t *testing.T) {
 		})
 	}
 }
+
+func Test_enrichDescriptor(t *testing.T) {
+	tests := []struct {
+		name              string
+		target            oras.ReadOnlyTarget
+		manifestBytes     []byte
+		manifestMediaType string
+		checkDesc         func(t *testing.T, gotDesc, inputDesc ocispec.Descriptor)
+		wantErr           bool
+	}{
+		{
+			name:   "child index, valid",
+			target: NewTestReadOnlyTarget("(unused)"),
+			manifestBytes: []byte(`
+				{
+					"schemaVersion": 2,
+					"mediaType": "application/vnd.oci.image.index.v1+json",
+					"artifactType": "application/vnd.example",
+					"manifests": [],
+					"annotations": {
+						"test-only": ""
+					}
+				}
+			`),
+			manifestMediaType: "application/vnd.oci.image.index.v1+json",
+			checkDesc: func(t *testing.T, gotDesc, inputDesc ocispec.Descriptor) {
+				if got, want := gotDesc.ArtifactType, "application/vnd.example"; got != want {
+					t.Errorf("ArtifactType = %s, want %s", got, want)
+				}
+			},
+			wantErr: false,
+		},
+		{
+			name:   "child manifest, valid with platform",
+			target: NewTestReadOnlyTarget(`{"architecture":"testarch","os":"testos"}`),
+			manifestBytes: []byte(`
+				{
+					"schemaVersion": 2,
+					"mediaType": "application/vnd.oci.image.manifest.v1+json",
+					"artifactType": "application/vnd.example",
+					"config": {
+						"mediaType": "application/vnd.oci.image.config.v1+json",
+						"digest": "sha256:5fefde2b739e2ff1976ecea4fb4f5e4827a1c424e9b1fb147ba5fd21b9197422",
+						"size": 41
+					},
+					"layers": [],
+					"annotations": {
+						"test-only": ""
+					}
+				}
+			`),
+			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
+			checkDesc: func(t *testing.T, gotDesc, inputDesc ocispec.Descriptor) {
+				if got, want := gotDesc.ArtifactType, "application/vnd.example"; got != want {
+					t.Errorf("ArtifactType = %s, want %s", got, want)
+				}
+				wantPlatform := &ocispec.Platform{
+					Architecture: "testarch",
+					OS:           "testos",
+				}
+				if !reflect.DeepEqual(gotDesc.Platform, wantPlatform) {
+					t.Errorf("Platform = %#v, want %#v", gotDesc.Platform, wantPlatform)
+				}
+			},
+			wantErr: false,
+		},
+		{
+			name:   "child manifest, valid without platform",
+			target: NewTestReadOnlyTarget(`intentionally not valid JSON`),
+			manifestBytes: []byte(`
+				{
+					"schemaVersion": 2,
+					"mediaType": "application/vnd.oci.image.manifest.v1+json",
+					"artifactType": "application/vnd.example",
+					"config": {
+						"mediaType": "application/vnd.other",
+						"digest": "sha256:dc889043956f34871cc04ae96e03efc29dfe2f582c26195a72dd4827f4dd830d",
+						"size": 28
+					},
+					"layers": [],
+					"annotations": {
+						"test-only": ""
+					}
+				}
+			`),
+			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
+			checkDesc: func(t *testing.T, gotDesc, inputDesc ocispec.Descriptor) {
+				if got, want := gotDesc.ArtifactType, "application/vnd.example"; got != want {
+					t.Errorf("ArtifactType = %s, want %s", got, want)
+				}
+				if gotDesc.Platform != nil {
+					t.Errorf("Platform = %#v, want nil", gotDesc.Platform)
+				}
+			},
+			wantErr: false,
+		},
+		{
+			name:              "child of unrecognized type",
+			target:            NewTestReadOnlyTarget("(unused)"),
+			manifestBytes:     []byte(`{}`),
+			manifestMediaType: "application/vnd.custom",
+			checkDesc: func(t *testing.T, gotDesc, inputDesc ocispec.Descriptor) {
+				if !reflect.DeepEqual(gotDesc, inputDesc) {
+					t.Errorf("result does not match input: got %#v, want %#v", gotDesc, inputDesc)
+				}
+			},
+			wantErr: false,
+		},
+		{
+			name:              "child manifest, invalid",
+			target:            NewTestReadOnlyTarget(`unused`),
+			manifestBytes:     []byte(`not actually a manifest`),
+			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
+			wantErr:           true,
+		},
+		{
+			name:              "child index, invalid",
+			target:            NewTestReadOnlyTarget(`unused`),
+			manifestBytes:     []byte(`not actually an index`),
+			manifestMediaType: "application/vnd.oci.image.index.v1+json",
+			wantErr:           true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inputDesc := ocispec.Descriptor{
+				MediaType: tt.manifestMediaType,
+				Digest:    digest.FromBytes(tt.manifestBytes),
+				Size:      int64(len(tt.manifestBytes)),
+			}
+			gotDesc, err := enrichDescriptor(t.Context(), tt.target, inputDesc, tt.manifestBytes)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("enrichDescriptor() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if err != nil {
+				return // gotDesc is not valid when there's an error
+			}
+			// The fields we set in inputDesc should always be unchanged in
+			// the result.
+			if got, want := gotDesc.MediaType, inputDesc.MediaType; got != want {
+				t.Errorf("MediaType = %s, want %s", got, want)
+			}
+			if got, want := gotDesc.Digest, inputDesc.Digest; got != want {
+				t.Errorf("Digest = %s, want %s", got, want)
+			}
+			if got, want := gotDesc.Size, inputDesc.Size; got != want {
+				t.Errorf("Size = %d, want %d", got, want)
+			}
+			// Currently we do not enrich with annotations, though a future
+			// proposal might change that in which case the following should
+			// be removed in favor of specific tests in checkDesc.
+			//
+			// Discussion here:
+			//     https://github.com/oras-project/oras/pull/1696#issuecomment-2852473626
+			if len(gotDesc.Annotations) != 0 {
+				t.Errorf("Annotations = %#v, want none", gotDesc.Annotations)
+			}
+			// Other test-case-specific checks
+			if tt.checkDesc != nil {
+				tt.checkDesc(t, gotDesc, inputDesc)
+			}
+		})
+	}
+}
+
+func Test_validateMediaType(t *testing.T) {
+	tests := []struct {
+		input string
+		valid bool
+	}{
+		{"application/json", true},
+		{ocispec.MediaTypeEmptyJSON, true},
+		{ocispec.MediaTypeImageManifest, true},
+		{ocispec.MediaTypeImageIndex, true},
+		{"application/vnd.custom", true},
+		{"", false},
+		{"json", false},
+		{"application/-json", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			err := validateMediaType(tt.input)
+			if err == nil && !tt.valid {
+				t.Errorf("no error for invalid media type %q", tt.input)
+			}
+			if err != nil && tt.valid {
+				t.Errorf("unexpected error for valid media type %q: %s", tt.input, err)
+			}
+		})
+	}
+}

@@ -250,3 +250,19 @@ func NewResolveHandler(printer *output.Printer, fullRef bool, path string) metad
 func NewBlobDeleteHandler(printer *output.Printer, target *option.Target) metadata.BlobDeleteHandler {
 	return text.NewBlobDeleteHandler(printer, target)
 }
+
+// NewRepoTagsHandler returns a repo tags handler.
+func NewRepoTagsHandler(out io.Writer, format option.Format) (metadata.RepoTagsHandler, error) {
+	var handler metadata.RepoTagsHandler
+	switch format.Type {
+	case option.FormatTypeText.Name:
+		handler = text.NewRepoTagsHandler(out)
+	case option.FormatTypeJSON.Name:
+		handler = json.NewRepoTagsHandler(out)
+	case option.FormatTypeGoTemplate.Name:
+		handler = template.NewRepoTagsHandler(out, format.Template)
+	default:
+		return nil, errors.UnsupportedFormatTypeError(format.Type)
+	}
+	return handler, nil
+}
