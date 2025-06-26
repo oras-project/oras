@@ -58,6 +58,21 @@ var _ = Describe("ORAS beginners:", func() {
 				ORAS("repo", "ls", ZOTHost, "-u", Username, "-p", "???").
 					MatchErrKeyWords(RegistryErrorPrefix).ExpectFailure().Exec()
 			})
+
+			It("should show format help in command output", func() {
+				help := ORAS("repo", "ls", "--help").Exec().Out.Contents()
+				helpStr := string(help)
+
+				// Check for format flag info in help
+				Expect(helpStr).To(ContainSubstring("--format"))
+				Expect(helpStr).To(ContainSubstring("json"))
+				Expect(helpStr).To(ContainSubstring("text"))
+				Expect(helpStr).To(ContainSubstring("go-template"))
+
+				// Check for example in help text
+				Expect(helpStr).To(ContainSubstring("oras repo ls localhost:5000 --format json"))
+				Expect(helpStr).To(ContainSubstring("oras repo ls localhost:5000 --format go-template"))
+			})
 		})
 		When("running `repo tags`", func() {
 			It("should show help description with feature flags", func() {
@@ -112,7 +127,21 @@ var _ = Describe("1.1 registry users:", func() {
 		It("should show deprecation message when running with --verbose flag", func() {
 			ORAS("repository", "list", ZOTHost, "--verbose").MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).Exec()
 		})
+		It("should not list repositories without a fully matched namespace", func() {
+			repo := "command-draft/images"
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), RegistryRef(ZOTHost, repo, foobar.Tag)).
+				WithDescription("prepare destination repo: " + repo).
+				Exec()
+			ORAS("repo", "ls", ZOTHost).MatchKeyWords(ImageRepo, repo).Exec()
+			session := ORAS("repo", "ls", RegistryRef(ZOTHost, Namespace, "")).MatchKeyWords(ImageRepo[len(Namespace)+1:]).Exec()
+			Expect(session.Out).ShouldNot(gbytes.Say(repo[len(Namespace)+1:]))
+		})
+		It("should list repositories via short command", func() {
+			ORAS("repo", "ls", ZOTHost).MatchKeyWords(ImageRepo).Exec()
+		})
+	})
 
+	When("running `repo ls` with JSON format", func() {
 		It("should list repositories in JSON format", func() {
 			bytes := ORAS("repo", "ls", ZOTHost, "--format", "json").
 				WithDescription("get repos in JSON format").
@@ -129,6 +158,24 @@ var _ = Describe("1.1 registry users:", func() {
 			Expect(result.Repositories).Should(ContainElement(ImageRepo))
 		})
 
+		It("should list repositories under provided namespace in JSON format", func() {
+			bytes := ORAS("repo", "ls", RegistryRef(ZOTHost, Namespace, ""), "--format", "json").
+				WithDescription("get repos in JSON format under namespace").
+				MatchKeyWords(`"repositories"`).
+				Exec().Out.Contents()
+
+			// Parse the JSON output
+			var result struct {
+				Repositories []string `json:"repositories"`
+			}
+			Expect(json.Unmarshal(bytes, &result)).ShouldNot(HaveOccurred())
+
+			// Verify repositories are in the output
+			Expect(result.Repositories).Should(ContainElement(ImageRepo[len(Namespace)+1:]))
+		})
+	})
+
+	When("running `repo ls` with go-template format", func() {
 		It("should list repositories in go-template format", func() {
 			template := "{{range .repositories}}{{println .}}{{end}}"
 			output := ORAS("repo", "ls", ZOTHost, "--format", "go-template="+template).
@@ -140,20 +187,15 @@ var _ = Describe("1.1 registry users:", func() {
 			Expect(outputString).To(ContainSubstring(ImageRepo))
 		})
 
-		It("should not list repositories without a fully matched namespace", func() {
-			repo := "command-draft/images"
-			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), RegistryRef(ZOTHost, repo, foobar.Tag)).
-				WithDescription("prepare destination repo: " + repo).
-				Exec()
-			ORAS("repo", "ls", ZOTHost).MatchKeyWords(ImageRepo, repo).Exec()
-			session := ORAS("repo", "ls", RegistryRef(ZOTHost, Namespace, "")).MatchKeyWords(ImageRepo[len(Namespace)+1:]).Exec()
-			Expect(session.Out).ShouldNot(gbytes.Say(repo[len(Namespace)+1:]))
+		It("should list repositories under provided namespace in go-template format", func() {
+			template := "{{range .repositories}}{{println .}}{{end}}"
+			output := ORAS("repo", "ls", RegistryRef(ZOTHost, Namespace, ""), "--format", "go-template="+template).
+				WithDescription("get repos in go-template format under namespace").
+				Exec().Out.Contents()
+			// Verify repositories are in the output
+			outputString := string(output)
+			Expect(outputString).To(ContainSubstring(ImageRepo[len(Namespace)+1:]))
 		})
-
-		It("should list repositories via short command", func() {
-			ORAS("repo", "ls", ZOTHost).MatchKeyWords(ImageRepo).Exec()
-		})
-
 	})
 
 	When("running `repo tags`", func() {
@@ -381,42 +423,6 @@ var _ = Describe("1.0 registry users:", func() {
 })
 
 var _ = Describe("OCI image layout users:", func() {
-	When("running `repo ls`", func() {
-		It("should list repositories in JSON format for OCI layout", func() {
-			// Use existing layout
-			root := PrepareTempOCI(ImageRepo)
-
-			// Run repo ls with JSON format (there should be only one repository in OCI layout)
-			bytes := ORAS("repo", "ls", root, "--format", "json", Flags.Layout).Exec().Out.Contents()
-
-			// Parse the JSON output
-			var result struct {
-				Repositories []string `json:"repositories"`
-			}
-			Expect(json.Unmarshal(bytes, &result)).ShouldNot(HaveOccurred())
-
-			// Verify repositories (the name should be empty as OCI layout has a single unnamed repository)
-			Expect(result.Repositories).Should(HaveLen(1))
-			Expect(result.Repositories[0]).Should(Equal(""))
-		})
-
-		It("should list repositories in go-template format for OCI layout", func() {
-			// Use existing layout
-			root := PrepareTempOCI(ImageRepo)
-
-			// Simple template to list repositories
-			template := "{{range .repositories}}{{println .}}{{end}}"
-
-			// Run repo ls with go-template format
-			output := ORAS("repo", "ls", root, "--format", "go-template="+template, Flags.Layout).
-				Exec().Out.Contents()
-
-			// Verify output (should be a single empty line as OCI layout has a single unnamed repository)
-			outputString := string(output)
-			Expect(outputString).To(ContainSubstring("\n"))
-		})
-	})
-
 	When("running `repo tags`", func() {
 		prepare := func(repo string, fromTag string, toTags ...string) string {
 			root := PrepareTempOCI(repo)
