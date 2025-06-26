@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
+	"oras.land/oras/cmd/oras/internal/display"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/repository"
@@ -31,6 +32,7 @@ import (
 type repositoryOptions struct {
 	option.Remote
 	option.Common
+	option.Format
 	hostname  string
 	namespace string
 	last      string
@@ -51,6 +53,12 @@ Example - List the repositories under a namespace in the registry:
 
 Example - List the repositories under the registry that include values lexically after last:
   oras repo ls --last "last_repo" localhost:5000
+
+Example - List the repositories under the registry in JSON format:
+  oras repo ls localhost:5000 --format json
+
+Example - List the repositories under the registry with Go template:
+  oras repo ls localhost:5000 --format go-template --template "{{.repositories}}"
 `,
 		Args:    oerrors.CheckArgs(argument.Exactly(1), "the target registry to list repositories from"),
 		Aliases: []string{"list"},
@@ -68,6 +76,7 @@ Example - List the repositories under the registry that include values lexically
 
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the repository specified by `last`")
 	option.AddDeprecatedVerboseFlag(cmd.Flags())
+	opts.SetTypes(option.FormatTypeText, option.FormatTypeJSON, option.FormatTypeGoTemplate)
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Remote)
 }
@@ -78,10 +87,18 @@ func listRepository(cmd *cobra.Command, opts *repositoryOptions) error {
 	if err != nil {
 		return err
 	}
+
+	handler, err := display.NewRepoListHandler(opts.Printer, opts.Format)
+	if err != nil {
+		return err
+	}
+
 	err = reg.Repositories(ctx, opts.last, func(repos []string) error {
 		for _, repo := range repos {
 			if subRepo, found := strings.CutPrefix(repo, opts.namespace); found {
-				_ = opts.Printer.Println(subRepo)
+				if err := handler.OnRepositoryListed(subRepo); err != nil {
+					return err
+				}
 			}
 		}
 		return nil
@@ -97,5 +114,5 @@ func listRepository(cmd *cobra.Command, opts *repositoryOptions) error {
 		return errors.Join(repoErr, err)
 	}
 
-	return nil
+	return handler.Render()
 }

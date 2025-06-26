@@ -137,3 +137,11 @@ type RepoTagsHandler interface {
 	// OnTagListed is called for each tag that is listed.
 	OnTagListed(tag string) error
 }
+
+// RepoListHandler handles status output for repo ls command.
+type RepoListHandler interface {
+	Renderer
+
+	// OnRepositoryListed is called for each repository that is listed.
+	OnRepositoryListed(repo string) error
+}

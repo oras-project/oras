@@ -113,6 +113,33 @@ var _ = Describe("1.1 registry users:", func() {
 			ORAS("repository", "list", ZOTHost, "--verbose").MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).Exec()
 		})
 
+		It("should list repositories in JSON format", func() {
+			bytes := ORAS("repo", "ls", ZOTHost, "--format", "json").
+				WithDescription("get repos in JSON format").
+				MatchKeyWords(`"repositories"`).
+				Exec().Out.Contents()
+
+			// Parse the JSON output
+			var result struct {
+				Repositories []string `json:"repositories"`
+			}
+			Expect(json.Unmarshal(bytes, &result)).ShouldNot(HaveOccurred())
+
+			// Verify repositories are in the output
+			Expect(result.Repositories).Should(ContainElement(ImageRepo))
+		})
+
+		It("should list repositories in go-template format", func() {
+			template := "{{range .repositories}}{{println .}}{{end}}"
+			output := ORAS("repo", "ls", ZOTHost, "--format", "go-template="+template).
+				WithDescription("get repos in go-template format").
+				Exec().Out.Contents()
+
+			// Verify repositories are in the output
+			outputString := string(output)
+			Expect(outputString).To(ContainSubstring(ImageRepo))
+		})
+
 		It("should not list repositories without a fully matched namespace", func() {
 			repo := "command-draft/images"
 			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), RegistryRef(ZOTHost, repo, foobar.Tag)).
@@ -354,6 +381,42 @@ var _ = Describe("1.0 registry users:", func() {
 })
 
 var _ = Describe("OCI image layout users:", func() {
+	When("running `repo ls`", func() {
+		It("should list repositories in JSON format for OCI layout", func() {
+			// Use existing layout
+			root := PrepareTempOCI(ImageRepo)
+
+			// Run repo ls with JSON format (there should be only one repository in OCI layout)
+			bytes := ORAS("repo", "ls", root, "--format", "json", Flags.Layout).Exec().Out.Contents()
+
+			// Parse the JSON output
+			var result struct {
+				Repositories []string `json:"repositories"`
+			}
+			Expect(json.Unmarshal(bytes, &result)).ShouldNot(HaveOccurred())
+
+			// Verify repositories (the name should be empty as OCI layout has a single unnamed repository)
+			Expect(result.Repositories).Should(HaveLen(1))
+			Expect(result.Repositories[0]).Should(Equal(""))
+		})
+
+		It("should list repositories in go-template format for OCI layout", func() {
+			// Use existing layout
+			root := PrepareTempOCI(ImageRepo)
+
+			// Simple template to list repositories
+			template := "{{range .repositories}}{{println .}}{{end}}"
+
+			// Run repo ls with go-template format
+			output := ORAS("repo", "ls", root, "--format", "go-template="+template, Flags.Layout).
+				Exec().Out.Contents()
+
+			// Verify output (should be a single empty line as OCI layout has a single unnamed repository)
+			outputString := string(output)
+			Expect(outputString).To(ContainSubstring("\n"))
+		})
+	})
+
 	When("running `repo tags`", func() {
 		prepare := func(repo string, fromTag string, toTags ...string) string {
 			root := PrepareTempOCI(repo)
