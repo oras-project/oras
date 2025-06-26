@@ -273,18 +273,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	// Push
 	root, err := doPush(dst, stopTrack, pack, copyWithScopeHint)
 	if err != nil {
-		var copyErr *oras.CopyError
-		if errors.As(err, &copyErr) {
-			switch copyErr.Origin {
-			case oras.CopyErrorOriginSource:
-				return fmt.Errorf("operation %q failed on source: %w", copyErr.Op, copyErr.Err)
-			case oras.CopyErrorOriginDestination:
-				return fmt.Errorf("operation %q failed on destination %s %q (reference: %q): %w", copyErr.Op, opts.Target.Type, opts.Target.Path, opts.Target.Reference, copyErr.Err)
-			default:
-				return err
-			}
-		}
-		return err
+		return reportPushErr(err, opts)
 	}
 	err = metadataHandler.OnCopied(&opts.Target, root)
 	if err != nil {
@@ -311,6 +300,23 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 
 	// Export manifest
 	return opts.ExportManifest(ctx, memoryStore, root)
+}
+
+func reportPushErr(err error, opts *pushOptions) error {
+	var copyErr *oras.CopyError
+	var msg string
+	if errors.As(err, &copyErr) {
+		switch copyErr.Origin {
+		case oras.CopyErrorOriginSource:
+			msg = fmt.Sprintf("failed to push %s", opts.FileRefs)
+		case oras.CopyErrorOriginDestination:
+			msg = fmt.Sprintf("failed to push to destination %s %q (reference: %q)", opts.Target.Type, opts.Target.Path, opts.Target.Reference)
+		default:
+			return err
+		}
+		return oerrors.ReportCopyErr(*copyErr, msg)
+	}
+	return err
 }
 
 func doPush(dst oras.Target, stopTrack status.StopTrackTargetFunc, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
