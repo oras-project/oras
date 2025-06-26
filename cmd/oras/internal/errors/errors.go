@@ -203,10 +203,10 @@ func CheckRequiredTogetherFlags(fs *pflag.FlagSet, requiredTogetherFlags ...stri
 }
 
 func ReportCopyErr(copyErr oras.CopyError, msg string) error {
-	msg += fmt.Sprintf("\n> Inner error: operation %q failed at the %s", copyErr.Op, copyErr.Origin)
+	msg += fmt.Sprintf("\n* Inner error: operation %q failed at the %s", copyErr.Op, copyErr.Origin)
 	var errResp *errcode.ErrorResponse
 	if errors.As(copyErr.Err, &errResp) {
-		return fmt.Errorf("%s\n> Error from registry: %w", msg, errResp)
+		return fmt.Errorf("%s\n* Error from registry: %w", msg, errResp)
 	}
 	return fmt.Errorf("%s: %w", msg, copyErr.Err)
 }
