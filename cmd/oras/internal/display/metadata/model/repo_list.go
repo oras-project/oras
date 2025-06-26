@@ -15,19 +15,19 @@ limitations under the License.
 
 package model
 
-// RepoList contains metadata formatted by oras repo ls.
-type RepoList struct {
+// Repositories contains metadata formatted by oras repo ls.
+type Repositories struct {
 	Repositories []string `json:"repositories"`
 }
 
-// NewRepoList creates a new RepoList model.
-func NewRepoList() *RepoList {
-	return &RepoList{
+// NewRepositories creates a new Repositories model.
+func NewRepositories() *Repositories {
+	return &Repositories{
 		Repositories: []string{},
 	}
 }
 
 // AddRepository adds a repository to the metadata.
-func (r *RepoList) AddRepository(repo string) {
+func (r *Repositories) AddRepository(repo string) {
 	r.Repositories = append(r.Repositories, repo)
 }

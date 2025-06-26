@@ -54,10 +54,10 @@ Example - List the repositories under a namespace in the registry:
 Example - List the repositories under the registry that include values lexically after last:
   oras repo ls --last "last_repo" localhost:5000
 
-Example - List the repositories under the registry in JSON format:
+Example - [Experimental] List the repositories under the registry in JSON format:
   oras repo ls localhost:5000 --format json
 
-Example - List the repositories under the registry with Go template:
+Example - [Experimental] List the repositories under the registry with Go template:
   oras repo ls localhost:5000 --format go-template --template "{{.repositories}}"
 `,
 		Args:    oerrors.CheckArgs(argument.Exactly(1), "the target registry to list repositories from"),
@@ -92,7 +92,6 @@ func listRepository(cmd *cobra.Command, opts *repositoryOptions) error {
 	if err != nil {
 		return err
 	}
-
 	err = reg.Repositories(ctx, opts.last, func(repos []string) error {
 		for _, repo := range repos {
 			if subRepo, found := strings.CutPrefix(repo, opts.namespace); found {

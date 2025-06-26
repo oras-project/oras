@@ -130,7 +130,7 @@ type BlobDeleteHandler interface {
 	OnBlobDeleted() error
 }
 
-// RepoTagsHandler handles status output for repo tags command.
+// RepoTagsHandler handles metadata output for repo tags command.
 type RepoTagsHandler interface {
 	Renderer
 
@@ -138,7 +138,7 @@ type RepoTagsHandler interface {
 	OnTagListed(tag string) error
 }
 
-// RepoListHandler handles status output for repo ls command.
+// RepoListHandler handles metadata output for repo ls command.
 type RepoListHandler interface {
 	Renderer
 

@@ -26,7 +26,7 @@ import (
 // repoListHandler handles template metadata output for repo ls command.
 type repoListHandler struct {
 	out      io.Writer
-	model    *model.RepoList
+	model    *model.Repositories
 	template string
 }
 
@@ -34,7 +34,7 @@ type repoListHandler struct {
 func NewRepoListHandler(out io.Writer, tmpl string) metadata.RepoListHandler {
 	return &repoListHandler{
 		out:      out,
-		model:    model.NewRepoList(),
+		model:    model.NewRepositories(),
 		template: tmpl,
 	}
 }

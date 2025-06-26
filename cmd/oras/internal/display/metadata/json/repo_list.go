@@ -26,14 +26,14 @@ import (
 // repoListHandler handles JSON metadata output for repo ls command.
 type repoListHandler struct {
 	out   io.Writer
-	model *model.RepoList
+	model *model.Repositories
 }
 
 // NewRepoListHandler creates a new handler for repo ls events.
 func NewRepoListHandler(out io.Writer) metadata.RepoListHandler {
 	return &repoListHandler{
 		out:   out,
-		model: model.NewRepoList(),
+		model: model.NewRepositories(),
 	}
 }
 

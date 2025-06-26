@@ -73,77 +73,63 @@ func TestNewCopyHandler(t *testing.T) {
 }
 
 func TestNewRepoTagsHandler(t *testing.T) {
-	// Test with text format
-	handler, err := NewRepoTagsHandler(os.Stdout, option.Format{Type: option.FormatTypeText.Name})
-	if err != nil {
-		t.Errorf("NewRepoTagsHandler() with text format error = %v, want nil", err)
-	}
-	if handler == nil {
-		t.Error("NewRepoTagsHandler() with text format returned nil handler")
-	}
-
-	// Test with JSON format
-	handler, err = NewRepoTagsHandler(os.Stdout, option.Format{Type: option.FormatTypeJSON.Name})
-	if err != nil {
-		t.Errorf("NewRepoTagsHandler() with JSON format error = %v, want nil", err)
-	}
-	if handler == nil {
-		t.Error("NewRepoTagsHandler() with JSON format returned nil handler")
+	tests := []struct {
+		name        string
+		format      option.Format
+		expectError bool
+	}{
+		{"text format", option.Format{Type: option.FormatTypeText.Name}, false},
+		{"JSON format", option.Format{Type: option.FormatTypeJSON.Name}, false},
+		{"Go template", option.Format{Type: option.FormatTypeGoTemplate.Name, Template: "{{.tags}}"}, false},
+		{"unsupported", option.Format{Type: "unsupported"}, true},
 	}
 
-	// Test with Go template format
-	handler, err = NewRepoTagsHandler(os.Stdout, option.Format{
-		Type:     option.FormatTypeGoTemplate.Name,
-		Template: "{{.tags}}",
-	})
-	if err != nil {
-		t.Errorf("NewRepoTagsHandler() with Go template format error = %v, want nil", err)
-	}
-	if handler == nil {
-		t.Error("NewRepoTagsHandler() with Go template format returned nil handler")
-	}
-
-	// Test with unsupported format
-	_, err = NewRepoTagsHandler(os.Stdout, option.Format{Type: "unsupported"})
-	if err == nil {
-		t.Error("NewRepoTagsHandler() with unsupported format expected error, got nil")
+	// Test with stdout
+	for _, tt := range tests {
+		t.Run(tt.name+" with stdout", func(t *testing.T) {
+			handler, err := NewRepoTagsHandler(os.Stdout, tt.format)
+			if tt.expectError && err == nil {
+				t.Error("expected error, got nil")
+			}
+			if !tt.expectError {
+				if err != nil {
+					t.Errorf("error = %v, want nil", err)
+				}
+				if handler == nil {
+					t.Error("returned nil handler")
+				}
+			}
+		})
 	}
 }
 
 func TestNewRepoListHandler(t *testing.T) {
-	// Test with text format
-	handler, err := NewRepoListHandler(os.Stdout, option.Format{Type: option.FormatTypeText.Name})
-	if err != nil {
-		t.Errorf("NewRepoListHandler() with text format error = %v, want nil", err)
-	}
-	if handler == nil {
-		t.Error("NewRepoListHandler() with text format returned nil handler")
-	}
-
-	// Test with JSON format
-	handler, err = NewRepoListHandler(os.Stdout, option.Format{Type: option.FormatTypeJSON.Name})
-	if err != nil {
-		t.Errorf("NewRepoListHandler() with JSON format error = %v, want nil", err)
-	}
-	if handler == nil {
-		t.Error("NewRepoListHandler() with JSON format returned nil handler")
+	tests := []struct {
+		name        string
+		format      option.Format
+		expectError bool
+	}{
+		{"text format", option.Format{Type: option.FormatTypeText.Name}, false},
+		{"JSON format", option.Format{Type: option.FormatTypeJSON.Name}, false},
+		{"Go template", option.Format{Type: option.FormatTypeGoTemplate.Name, Template: "{{.repositories}}"}, false},
+		{"unsupported", option.Format{Type: "unsupported"}, true},
 	}
 
-	// Test with Go template format
-	handler, err = NewRepoListHandler(os.Stdout, option.Format{
-		Type:     option.FormatTypeGoTemplate.Name,
-		Template: "{{.repositories}}",
-	})
-	if err != nil {
-		t.Errorf("NewRepoListHandler() with template format error = %v, want nil", err)
-	}
-	if handler == nil {
-		t.Error("NewRepoListHandler() with template format returned nil handler")
-	}
-
-	// Test with unsupported format
-	_, err = NewRepoListHandler(os.Stdout, option.Format{Type: "unsupported"})
-	if err == nil {
-		t.Error("NewRepoListHandler() with unsupported format expected error, got nil")
+	// Test with stdout
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			handler, err := NewRepoListHandler(os.Stdout, tt.format)
+			if tt.expectError && err == nil {
+				t.Error("expected error, got nil")
+			}
+			if !tt.expectError {
+				if err != nil {
+					t.Errorf("error = %v, want nil", err)
+				}
+				if handler == nil {
+					t.Error("returned nil handler")
+				}
+			}
+		})
 	}
 }
