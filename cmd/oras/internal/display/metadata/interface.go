@@ -129,3 +129,11 @@ type BlobDeleteHandler interface {
 	OnBlobMissing() error
 	OnBlobDeleted() error
 }
+
+// RepoTagsHandler handles status output for repo tags command.
+type RepoTagsHandler interface {
+	Renderer
+
+	// OnTagListed is called for each tag that is listed.
+	OnTagListed(tag string) error
+}
