@@ -202,11 +202,17 @@ func CheckRequiredTogetherFlags(fs *pflag.FlagSet, requiredTogetherFlags ...stri
 	return nil
 }
 
+// ReportCopyError formats the copy error message with additional context.
+// Example:
+//
+// Error: failed to copy from source remote repository "localhost:5000/test" (reference: "v1")
+// * Inner error: operation "copy" failed at the "source"
+// * Error response from registry: v1: not found
 func ReportCopyError(copyErr oras.CopyError, msg string) error {
 	msg += fmt.Sprintf("\n* Inner error: operation %q failed at the %s", copyErr.Op, copyErr.Origin)
 	var errResp *errcode.ErrorResponse
 	if errors.As(copyErr.Err, &errResp) {
-		return fmt.Errorf("%s\n* Error from registry: %w", msg, errResp)
+		return fmt.Errorf("%s\n* Error response from registry: %w", msg, errResp)
 	}
 	return fmt.Errorf("%s: %w", msg, copyErr.Err)
 }
