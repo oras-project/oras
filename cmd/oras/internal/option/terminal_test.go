@@ -31,7 +31,7 @@ func TestTerminal_Parse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer device.Close()
+	defer func() { _ = device.Close() }()
 	opts := Terminal{
 		noTTY: false,
 		TTY:   device,
