@@ -567,4 +567,23 @@ var _ = Describe("OCI image layout users:", func() {
 			}
 		})
 	})
+
+	When("showing tags of a specific repository using `--oci-layout-path` flag", func() {
+		prepare := func(repo string, fromTag string, toTags ...string) string {
+			root := PrepareTempOCI(repo)
+			args := []string{"tag", LayoutRef(root, fromTag), Flags.Layout}
+			args = append(args, toTags...)
+			ORAS(args...).WithDescription("prepare in OCI layout").Exec()
+			return root
+		}
+		tagOutput := foobar.Tag + "\n"
+
+		It("should show tag of the repo example.registry.com/foo", func() {
+			// prepare
+			root := prepare(ImageRepo, "example.registry.com/foo:latest", "test.com/bar:v1")
+			// test
+			session := ORAS("repo", "tags", root, Flags.Layout, "--oci-layout-path", root, "example.registry.com/foo").Exec()
+			Expect(session.Out).ShouldNot(gbytes.Say(regexp.QuoteMeta(tagOutput)))
+		})
+	})
 })

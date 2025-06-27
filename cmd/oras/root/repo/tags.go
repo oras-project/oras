@@ -71,6 +71,9 @@ Example - [Experimental] Show tags of the target repository in JSON view:
 
 Example - [Experimental] Show tags of the target repository with Go template:
   oras repo tags localhost:5000/hello --format go-template --template "{{.tags}}"
+
+Example - [Experimental] Show tags of a specific repository in OCI layout:
+  oras repo tags --oci-layout-path layout-dir "localhost:5000/hello"
 `,
 		Args:    oerrors.CheckArgs(argument.Exactly(1), "the target repository to list tags from"),
 		Aliases: []string{"show-tags"},
@@ -125,7 +128,9 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 			if cmd.Flags().Changed("oci-layout-path") && opts.Reference != "" {
 				ref, err := registry.ParseReference(tag)
 				if err == nil && ref.Registry == registryName && ref.Repository == repositoryName {
-					handler.OnTagListed(ref.Reference)
+					if err := handler.OnTagListed(ref.Reference); err != nil {
+						return err
+					}
 				}
 				continue
 			}
