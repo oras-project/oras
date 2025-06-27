@@ -580,7 +580,7 @@ var _ = Describe("OCI image layout users:", func() {
 
 		It("should show tag of the repo example.registry.com/foo", func() {
 			// prepare
-			root := prepare(ImageRepo, "example.registry.com/foo:latest", "test.com/bar:v1")
+			root := prepare(ImageRepo, foobar.Tag, "example.registry.com/foo:latest", "test.com/bar:v1")
 			// test
 			ORAS("repo", "tags", root, Flags.Layout, "--oci-layout-path", root, "example.registry.com/foo").Exec()
 		})
