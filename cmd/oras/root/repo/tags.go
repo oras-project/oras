@@ -20,6 +20,7 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
@@ -96,7 +97,13 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 		return err
 	}
 	filter := ""
-	if opts.Reference != "" {
+	registryName := ""
+	repositoryName := ""
+	if cmd.Flags().Changed("oci-layout-path") && opts.Reference != "" {
+		ref, _ := registry.ParseReference(opts.Reference)
+		registryName = ref.Registry
+		repositoryName = ref.Repository
+	} else if opts.Reference != "" {
 		if contentutil.IsDigest(opts.Reference) {
 			filter = opts.Reference
 		} else {
@@ -115,6 +122,13 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 	}
 	err = finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
+			if cmd.Flags().Changed("oci-layout-path") && opts.Reference != "" {
+				ref, err := registry.ParseReference(tag)
+				if err == nil && ref.Registry == registryName && ref.Repository == repositoryName {
+					handler.OnTagListed(ref.Reference)
+				}
+				continue
+			}
 			if opts.excludeDigestTag && isDigestTag(tag) {
 				continue
 			}
