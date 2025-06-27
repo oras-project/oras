@@ -582,7 +582,7 @@ var _ = Describe("OCI image layout users:", func() {
 			// prepare
 			root := prepare(ImageRepo, foobar.Tag, "example.registry.com/foo:latest", "test.com/bar:v1")
 			// test
-			ORAS("repo", "tags", root, Flags.Layout, "--oci-layout-path", root, "example.registry.com/foo").Exec()
+			ORAS("repo", "tags", "--oci-layout-path", root, "example.registry.com/foo").Exec()
 		})
 	})
 })
