@@ -99,9 +99,10 @@ format. For example:
 oras backup --output ./mirror.tgz  registry.k8s.io/kube-apiserver-arm64:v1.31.0 registry.k8s.io/kube-controller-manager-arm64:v1.31.0
 ```
 
-There will be no validation on file name.
-The file name does not need to end in `tgz`, but the format will be compressed tar file.
-If the file exists, it will be overwritten.
+If the output specified is an existing directory, the output will be written in that directory in OCI layout format.
+If the output specified is an existing file, it will be overwritten.
+If the output specified is neither a file or a directory, file output is assumed.
+The file name does NOT need to end in `tgz`, but file output will be compressed tar file.
 
 #### Optimize blobs
 
@@ -120,7 +121,9 @@ An example of restoring from a directory:
 oras restore --input ./mirror localhost:15000/my-mirror
 ```
 
-The above backup example would result in:
+It is mandatory to specify `--input` argument with the source directory or file.
+
+The above restore example would result in:
 ```bash
 localhost:15000/my-mirror/kube-apiserver-arm64:v1.31.0
 localhost:15000/my-mirror/kube-controller-manager-arm64:v1.31.0
