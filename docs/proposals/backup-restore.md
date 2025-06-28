@@ -6,7 +6,7 @@ Backup and restore will be support for any OCI compatible artifact (e.g. contain
 
 ## Overview 
 
-This document outlines the different ways that the ORAS backup and restore commands can be used.
+This document outlines various scenarios related to backing up and restoring OCI images from registries and local files. It covers a common workflow for downloading and uploading one or more image resources to and from disk, identifies limitations and challenges in existing solutions, and presents proposals for improvements to enhance usability and portability of managing OCI images.
 
 
 ## Problem Statement & Motivation 
