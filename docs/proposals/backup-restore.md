@@ -11,7 +11,7 @@ This document outlines the different ways that the ORAS backup and restore comma
 
 ## Problem Statement & Motivation 
 
-Currently, ORAS commands function on one artifact at a time, so copying a large numbers of artifacts will require scripting.
+Currently, ORAS commands function on one artifact at a time, so copying a large number of artifacts will require scripting.
 There is also no ability to copy multiple artifacts to a compressed tar file.
 
 * https://github.com/oras-project/oras/issues/1366
