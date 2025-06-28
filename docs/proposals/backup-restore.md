@@ -30,7 +30,7 @@ Air gapped environments normally require users to copy many artifacts to a porta
 The backup and restore commands will make writing that portable storage medium easy.
 
 The backup and restore commands will also help users wanting to copy artifacts from a registry for disaster recovery.
-It may be significantly easier to restore a registy from a backup rather than recreate the artifacts.
+It may be significantly easier to restore a registry from a backup rather than recreate the artifacts.
 
 
 ## Existing Solutions or Expectations
