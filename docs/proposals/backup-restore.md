@@ -122,6 +122,9 @@ oras restore --input ./mirror localhost:15000/my-mirror
 ```
 
 It is mandatory to specify `--input` argument with the source directory or file.
+The destination registry that is being restored to may be different from the source registry.
+An option will be provided to map repositories from the backup to different repositories on the destination registry.
+For example, a backup of `foo.registry.example/test` can be restored to `bar.registry.example/another-test` where `test` is mapped to `another-test`.
 
 The above restore example would result in:
 ```bash
