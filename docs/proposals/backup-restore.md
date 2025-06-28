@@ -26,10 +26,10 @@ Users often need to mirror registries for performance and reliability reasons.
 Pulling images over the Internet can be significantly slower than pulling images from a local registry.
 If network connections are unreliable, a local registry will potentially be a lot more reliable.
 
-Air gapped environments normally require users to copy many artifiacts to a portable storage medium and sneaker net that storage into the environment.
+Air gapped environments normally require users to copy many artifacts to a portable storage medium and sneaker net that storage into the environment.
 The backup and restore commands will make writing that portable storage medium easy.
 
-The backup and restore commands will also help users wanting to copy artifiacts from a registry for disaster recovery.
+The backup and restore commands will also help users wanting to copy artifacts from a registry for disaster recovery.
 It may be significantly easier to restore a registy from a backup rather than recreate the artifacts.
 
 
