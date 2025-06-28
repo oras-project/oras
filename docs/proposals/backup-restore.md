@@ -56,6 +56,10 @@ For example, backing up artifacts specified on the command line to a directory:
 oras backup --output ./mirror  registry.k8s.io/kube-apiserver-arm64:v1.31.0 registry.k8s.io/kube-controller-manager-arm64:v1.31.0
 ```
 
+It is mandatory to specify `--output` argument with the destination.
+The source artifacts may be read from different registries although the example reads artifacts from one registry.
+If no reference tag or digest is specified, the entire repository will be copied.
+
 The generated directory structure is `<specified-directory>/<repository>`.
 The command above puts the OCI layout for the Kubernetes API server in `mirror/kube-api-server-arm64`.
 The directory structure with intermediate blobs removed:
@@ -98,17 +102,6 @@ oras backup --output ./mirror.tgz  registry.k8s.io/kube-apiserver-arm64:v1.31.0 
 There will be no validation on file name.
 The file name does not need to end in `tgz`, but the format will be compressed tar file.
 If the file exists, it will be overwritten.
-
-#### Backup file input from a file
-
-The backup command will support an `--input filename` argument which will be a file containing the remote resources to retrieve.
-The format of the contents of the file is a list of images names separated by newlines.
-If the `--input` argument is specified, no images may be specified on the command line.
-
-#### Backup file input from standard input
-
-The backup command will support the `--input -` argument to read a list of images from standard input.
-The format of the input is a list of images names separated by newlines.
 
 #### Optimize blobs
 
