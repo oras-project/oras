@@ -26,6 +26,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
+	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
@@ -33,6 +34,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/docker"
 	"oras.land/oras/internal/graph"
+	"oras.land/oras/internal/listener"
 	"oras.land/oras/internal/registryutil"
 	"path/filepath"
 	"slices"
@@ -97,9 +99,15 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		if err != nil {
 			return fmt.Errorf("create oci target: %w", err)
 		}
+		dst.AutoSaveIndex = false
 
 		ctx = registryutil.WithScopeHint(ctx, dst, auth.ActionPull, auth.ActionPush)
 		err = doBackup(ctx, src, dst, to.GetDisplayReference(), opts)
+		if err != nil {
+			return err
+		}
+
+		err = dst.SaveIndex()
 		if err != nil {
 			return err
 		}
@@ -108,7 +116,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	return nil
 }
 
-func doBackup(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, destination string, opts *backupOptions) (err error) {
+func doBackup(ctx context.Context, src *remote.Repository, dst oras.GraphTarget, destination string, opts *backupOptions) (err error) {
 	rOpts := oras.DefaultResolveOptions
 	rOpts.TargetPlatform = opts.Platform.Platform
 	desc, err := oras.Resolve(ctx, src, opts.From.Reference, rOpts)
@@ -154,7 +162,18 @@ func doBackup(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphT
 		opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, desc.Digest.String())
 	}
 
-	return metadataHandler.OnCopied(opts.From.GetDisplayReference(), destination)
+	err = metadataHandler.OnCopied(opts.From.GetDisplayReference(), destination)
+	if err != nil {
+		return err
+	}
+
+	tagListener := listener.NewTaggedListener(dst, metadataHandler.OnTagged)
+	tag := src.Reference.Repository
+	if opts.From.Reference != desc.Digest.String() {
+		tag += ":" + opts.From.Reference
+	}
+	_, err = oras.Tag(ctx, tagListener, desc.Digest.String(), tag)
+	return err
 }
 
 // recursiveBackup copies an artifact and its referrers from one target to another.
