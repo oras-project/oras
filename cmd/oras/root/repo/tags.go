@@ -130,11 +130,14 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 	if err != nil {
 		return err
 	}
+	isUnderDirectory := func(ref registry.Reference) bool {
+		return ref.Registry == registryName && ref.Repository == repositoryName && ref.Reference != ""
+	}
 	err = finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
 			if refIsDirectory {
 				ref, err := registry.ParseReference(tag)
-				if err == nil && ref.Registry == registryName && ref.Repository == repositoryName && ref.Reference != "" {
+				if err == nil && isUnderDirectory(ref) {
 					if err := handler.OnTagListed(ref.Reference); err != nil {
 						return err
 					}
