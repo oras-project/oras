@@ -16,6 +16,7 @@ limitations under the License.
 package repo
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/opencontainers/go-digest"
@@ -73,7 +74,7 @@ Example - [Experimental] Show tags of the target repository with Go template:
   oras repo tags localhost:5000/hello --format go-template --template "{{.tags}}"
 
 Example - [Experimental] Show tags of a specific repository in OCI layout:
-  oras repo tags --oci-layout-path layout-dir "localhost:5000/hello"
+  oras repo tags --oci-layout-path layout-dir localhost:5000/hello
 `,
 		Args:    oerrors.CheckArgs(argument.Exactly(1), "the target repository to list tags from"),
 		Aliases: []string{"show-tags"},
@@ -99,21 +100,25 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 	if err != nil {
 		return err
 	}
-	// parse opts.Reference, check if it is a directory
-	registryName := ""
-	repositoryName := ""
-	referenceName := ""
-	if cmd.Flags().Changed("oci-layout-path") && opts.Reference != "" {
-		ref, _ := registry.ParseReference(opts.Reference)
-		registryName = ref.Registry
-		repositoryName = ref.Repository
-		referenceName = ref.Reference
-	}
-	refIsDirectory := registryName != "" && repositoryName != "" && referenceName == ""
 
-	// filtering functionality
+	// if a repository path is given, filter the tags under the repository
+	var repoFilter func(ref string) (string, bool)
+	if opts.Target.Type == option.TargetTypeOCILayout {
+		ref, err := registry.ParseReference(opts.Reference)
+		if err == nil && ref.Reference == "" {
+			prefix := fmt.Sprintf("%s/%s:", ref.Registry, ref.Repository)
+			repoFilter = func(ref string) (string, bool) {
+				if strings.HasPrefix(ref, prefix) {
+					return ref[len(prefix):], true
+				}
+				return ref, false
+			}
+		}
+	}
+
+	// if a tag is given, show the associated tags
 	filter := ""
-	if opts.Reference != "" && !refIsDirectory {
+	if repoFilter == nil && opts.Reference != "" {
 		if contentutil.IsDigest(opts.Reference) {
 			filter = opts.Reference
 		} else {
@@ -130,19 +135,14 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 	if err != nil {
 		return err
 	}
-	isUnderDirectory := func(ref registry.Reference) bool {
-		return ref.Registry == registryName && ref.Repository == repositoryName && ref.Reference != ""
-	}
 	err = finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
-			if refIsDirectory {
-				ref, err := registry.ParseReference(tag)
-				if err == nil && isUnderDirectory(ref) {
-					if err := handler.OnTagListed(ref.Reference); err != nil {
-						return err
-					}
+			if repoFilter != nil {
+				if scopedTag, ok := repoFilter(tag); ok {
+					tag = scopedTag
+				} else {
+					continue
 				}
-				continue
 			}
 			if opts.excludeDigestTag && isDigestTag(tag) {
 				continue
