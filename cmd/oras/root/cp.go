@@ -257,16 +257,9 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 		return opts, nil
 	}
 
-	// do breadth first search to find all levels of child referrers
-	var referrers []ocispec.Descriptor
-	descs := index.Manifests
-	for len(descs) > 0 {
-		foundReferrers, err := graph.FindPredecessors(ctx, src, descs, opts)
-		if err != nil {
-			return opts, err
-		}
-		referrers = append(referrers, foundReferrers...)
-		descs = foundReferrers
+	referrers, err := graph.FindPredecessors(ctx, src, index.Manifests, opts)
+	if err != nil {
+		return opts, err
 	}
 
 	referrers = slices.DeleteFunc(referrers, func(desc ocispec.Descriptor) bool {
@@ -278,20 +271,17 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 		return opts, nil
 	}
 
-	findSuccessors := opts.FindSuccessors
-	if findSuccessors == nil {
-		findSuccessors = content.Successors
-	}
-	opts.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		successors, err := findSuccessors(ctx, fetcher, desc)
+	findPredecessor := opts.FindPredecessors
+	opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		descs, err := findPredecessor(ctx, src, desc)
 		if err != nil {
 			return nil, err
 		}
 		if content.Equal(desc, root) {
-			// make sure referrers of child manifests are copied by making them root's successors
-			successors = append(successors, referrers...)
+			// make sure referrers of child manifests are copied by pointing them to root
+			descs = append(descs, referrers...)
 		}
-		return successors, nil
+		return descs, nil
 	}
 	return opts, nil
 }
