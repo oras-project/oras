@@ -265,21 +265,13 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 		if err != nil {
 			return opts, err
 		}
-		// remove root from foundReferrers to prevent loop
-		foundReferrers = slices.DeleteFunc(foundReferrers, func(desc ocispec.Descriptor) bool {
-			return content.Equal(desc, root)
-		})
 		referrers = append(referrers, foundReferrers...)
 		descs = foundReferrers
-
-		// foundReferrers, err := registry.Referrers(ctx, src, descs[0], "")
-		// if err != nil {
-		// 	return opts, err
-		// }
-		// referrers = append(referrers, foundReferrers...)
-		// descs = descs[1:]
-		// descs = append(descs, foundReferrers...)
 	}
+
+	referrers = slices.DeleteFunc(referrers, func(desc ocispec.Descriptor) bool {
+		return content.Equal(desc, root)
+	})
 
 	if len(referrers) == 0 {
 		// no child referrers
