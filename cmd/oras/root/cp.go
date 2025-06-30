@@ -226,7 +226,7 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 // If the artifact is a manifest list or index, referrers of its manifests are copied as well.
 func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, dstRef string, root ocispec.Descriptor, opts oras.ExtendedCopyOptions) error {
 	var err error
-	if opts, err = prepareCopyOption(ctx, src, dst, root, opts); err != nil {
+	if opts, root, err = prepareCopyOption(ctx, src, dst, root, opts); err != nil {
 		return err
 	}
 
@@ -238,28 +238,28 @@ func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.T
 	return err
 }
 
-func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, root ocispec.Descriptor, opts oras.ExtendedCopyOptions) (oras.ExtendedCopyOptions, error) {
+func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, root ocispec.Descriptor, opts oras.ExtendedCopyOptions) (oras.ExtendedCopyOptions, ocispec.Descriptor, error) {
 	if root.MediaType != ocispec.MediaTypeImageIndex && root.MediaType != docker.MediaTypeManifestList {
-		return opts, nil
+		return opts, root, nil
 	}
 
 	fetched, err := content.FetchAll(ctx, src, root)
 	if err != nil {
-		return opts, err
+		return opts, root, err
 	}
 	var index ocispec.Index
 	if err = json.Unmarshal(fetched, &index); err != nil {
-		return opts, err
+		return opts, root, err
 	}
 
 	if len(index.Manifests) == 0 {
 		// no child manifests, thus no child referrers
-		return opts, nil
+		return opts, root, nil
 	}
 
 	referrers, err := graph.FindPredecessors(ctx, src, index.Manifests, opts)
 	if err != nil {
-		return opts, err
+		return opts, root, err
 	}
 
 	referrers = slices.DeleteFunc(referrers, func(desc ocispec.Descriptor) bool {
@@ -268,7 +268,7 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 
 	if len(referrers) == 0 {
 		// no child referrers
-		return opts, nil
+		return opts, root, nil
 	}
 
 	findPredecessor := opts.FindPredecessors
@@ -283,5 +283,15 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 		}
 		return descs, nil
 	}
-	return opts, nil
+
+	// check if root has referrers. If not, ExtendedCopy will start from one of
+	// its manifest to ensure that root will be copied.
+	rootReferrers, err := registry.Referrers(ctx, src, root, "")
+	if err != nil {
+		return opts, root, err
+	}
+	if len(rootReferrers) == 0 {
+		return opts, index.Manifests[0], nil
+	}
+	return opts, root, nil
 }
