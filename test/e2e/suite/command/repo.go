@@ -590,6 +590,7 @@ var _ = Describe("OCI image layout users:", func() {
 			root := prepare(ImageRepo, foobar.Tag, "example.registry.com/foo:latest", "example.registry.com/foo:v1.2.6", "test.com/bar:v1")
 			// test
 			session := ORAS("repo", "tags", "--oci-layout-path", root, "example.registry.com").Exec()
+			Expect(session.Out.Contents()).To(Equal(""))
 			Expect(session.Out).ShouldNot(gbytes.Say(foobar.Tag, "example.registry.com/foo:latest", "example.registry.com/foo:v1.2.6", "test.com/bar:v1"))
 		})
 
