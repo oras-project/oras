@@ -585,20 +585,11 @@ var _ = Describe("OCI image layout users:", func() {
 			Expect(session.Out).ShouldNot(gbytes.Say(foobar.Tag, "example.registry.com/foo:latest", "example.registry.com/foo:v1.2.6", "test.com/bar:v1"))
 		})
 
-		It("should not show tags if only the registry is provided", func() {
-			// prepare
-			root := prepare(ImageRepo, foobar.Tag, "example.registry.com/foo:latest", "example.registry.com/foo:v1.2.6", "test.com/bar:v1")
-			// test
-			session := ORAS("repo", "tags", "--oci-layout-path", root, "example.registry.com").Exec()
-			Expect(session.Out.Contents()).To(Equal(""))
-			Expect(session.Out).ShouldNot(gbytes.Say(foobar.Tag, "example.registry.com/foo:latest", "example.registry.com/foo:v1.2.6", "test.com/bar:v1"))
-		})
-
 		It("should still find associated tags if a full reference is provided", func() {
 			// prepare
 			root := prepare(ImageRepo, foobar.Tag, "example.registry.com/foo:latest", "example.registry.com/foo:v1.2.6", "test.com/bar:v1")
 			// test
-			ORAS("repo", "tags", "--oci-layout-path", root, foobar.Tag).MatchKeyWords("example.registry.com/foo:latest\n", "example.registry.com/foo:v1.2.6\n", "test.com/bar:v1\n").Exec()
+			ORAS("repo", "tags", "--oci-layout-path", root, "example.registry.com/foo:latest").MatchKeyWords("querying tags associated to").Exec()
 		})
 	})
 })

@@ -99,7 +99,7 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 	if err != nil {
 		return err
 	}
-	filter := ""
+	// parse opts.Reference, check if it is a directory
 	registryName := ""
 	repositoryName := ""
 	referenceName := ""
@@ -108,7 +108,12 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 		registryName = ref.Registry
 		repositoryName = ref.Repository
 		referenceName = ref.Reference
-	} else if opts.Reference != "" {
+	}
+	refIsDirectory := registryName != "" && repositoryName != "" && referenceName == ""
+
+	// filtering functionality
+	filter := ""
+	if opts.Reference != "" && !refIsDirectory {
 		if contentutil.IsDigest(opts.Reference) {
 			filter = opts.Reference
 		} else {
@@ -127,7 +132,7 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 	}
 	err = finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
-			if cmd.Flags().Changed("oci-layout-path") && registryName != "" && repositoryName != "" && referenceName == "" {
+			if refIsDirectory {
 				ref, err := registry.ParseReference(tag)
 				if err == nil && ref.Registry == registryName && ref.Repository == repositoryName {
 					if err := handler.OnTagListed(ref.Reference); err != nil {
