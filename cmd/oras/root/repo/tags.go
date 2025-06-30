@@ -134,7 +134,7 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 		for _, tag := range tags {
 			if refIsDirectory {
 				ref, err := registry.ParseReference(tag)
-				if err == nil && ref.Registry == registryName && ref.Repository == repositoryName {
+				if err == nil && ref.Registry == registryName && ref.Repository == repositoryName && ref.Reference != "" {
 					if err := handler.OnTagListed(ref.Reference); err != nil {
 						return err
 					}

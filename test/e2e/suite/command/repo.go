@@ -589,7 +589,7 @@ var _ = Describe("OCI image layout users:", func() {
 			// prepare
 			root := prepare(ImageRepo, foobar.Tag, "example.registry.com/foo:latest", "example.registry.com/foo:v1.2.6", "test.com/bar:v1")
 			// test
-			ORAS("repo", "tags", "--oci-layout-path", root, "example.registry.com/foo:latest").MatchKeyWords("querying tags associated to").Exec()
+			ORAS("repo", "tags", "--oci-layout-path", root, "example.registry.com/foo:latest").MatchKeyWords(foobar.Tag, "example.registry.com/foo:latest", "example.registry.com/foo:v1.2.6", "test.com/bar:v1").Exec()
 		})
 	})
 })
