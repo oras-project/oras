@@ -102,33 +102,28 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 	}
 
 	// if a repository path is given, filter the tags under the repository
-	var tagFilter func(ref string) (string, bool)
+	//var tagFilter func(ref string) (string, bool)
+	var targetPrefix string
 	if opts.Target.Type == option.TargetTypeOCILayout {
 		ref, err := registry.ParseReference(opts.Reference)
 		if err == nil && ref.Reference == "" {
-			prefix := fmt.Sprintf("%s/%s:", ref.Registry, ref.Repository)
-			tagFilter = func(ref string) (string, bool) {
-				if strings.HasPrefix(ref, prefix) {
-					return ref[len(prefix):], true
-				}
-				return ref, false
-			}
+			targetPrefix = fmt.Sprintf("%s/%s:", ref.Registry, ref.Repository)
 		}
 	}
 
 	// if a tag is given, show the associated tags
-	filter := ""
-	if tagFilter == nil && opts.Reference != "" {
+	var targetDigest string
+	if targetPrefix == "" && opts.Reference != "" {
 		if contentutil.IsDigest(opts.Reference) {
-			filter = opts.Reference
+			targetDigest = opts.Reference
 		} else {
 			desc, err := finder.Resolve(ctx, opts.Reference)
 			if err != nil {
 				return err
 			}
-			filter = desc.Digest.String()
+			targetDigest = desc.Digest.String()
 		}
-		logger.Warnf("[Experimental] querying tags associated to %s, it may take a while...\n", filter)
+		logger.Warnf("[Experimental] querying tags associated to %s, it may take a while...\n", targetDigest)
 	}
 
 	handler, err := display.NewRepoTagsHandler(opts.Printer, opts.Format)
@@ -137,8 +132,8 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 	}
 	err = finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
-			if tagFilter != nil {
-				if scopedTag, ok := tagFilter(tag); ok {
+			if targetPrefix != "" {
+				if scopedTag, ok := strings.CutPrefix(tag, targetPrefix); ok {
 					tag = scopedTag
 				} else {
 					continue
@@ -147,7 +142,7 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 			if opts.excludeDigestTag && isDigestTag(tag) {
 				continue
 			}
-			if filter != "" {
+			if targetDigest != "" {
 				if tag == opts.Reference {
 					if err := handler.OnTagListed(tag); err != nil {
 						return err
@@ -158,7 +153,7 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 				if err != nil {
 					return err
 				}
-				if desc.Digest.String() != filter {
+				if desc.Digest.String() != targetDigest {
 					continue
 				}
 			}
