@@ -295,6 +295,12 @@ func (m *mockReferrersFailingSource) Fetch(ctx context.Context, target ocispec.D
 	return io.NopCloser(strings.NewReader(m.indexContent)), nil
 }
 
+// Predecessors simulates successful fetching of predecessors.
+func (m *mockReferrersFailingSource) Predecessors(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+	// Return an empty slice to simulate no predecessors
+	return nil, nil
+}
+
 func Test_prepareCopyOption_referrersFailure(t *testing.T) {
 
 	ctx := context.Background()
