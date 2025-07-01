@@ -102,12 +102,12 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 	}
 
 	// if a repository path is given, filter the tags under the repository
-	var repoFilter func(ref string) (string, bool)
+	var tagFilter func(ref string) (string, bool)
 	if opts.Target.Type == option.TargetTypeOCILayout {
 		ref, err := registry.ParseReference(opts.Reference)
 		if err == nil && ref.Reference == "" {
 			prefix := fmt.Sprintf("%s/%s:", ref.Registry, ref.Repository)
-			repoFilter = func(ref string) (string, bool) {
+			tagFilter = func(ref string) (string, bool) {
 				if strings.HasPrefix(ref, prefix) {
 					return ref[len(prefix):], true
 				}
@@ -118,7 +118,7 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 
 	// if a tag is given, show the associated tags
 	filter := ""
-	if repoFilter == nil && opts.Reference != "" {
+	if tagFilter == nil && opts.Reference != "" {
 		if contentutil.IsDigest(opts.Reference) {
 			filter = opts.Reference
 		} else {
@@ -137,8 +137,8 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 	}
 	err = finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
-			if repoFilter != nil {
-				if scopedTag, ok := repoFilter(tag); ok {
+			if tagFilter != nil {
+				if scopedTag, ok := tagFilter(tag); ok {
 					tag = scopedTag
 				} else {
 					continue
