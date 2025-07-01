@@ -291,6 +291,20 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 		return opts, root, err
 	}
 	if len(rootReferrers) == 0 {
+		// we need to add the index as the predecessor of the first child manifest, so
+		// that the index will be found and copied from the child manifest.
+		findPredecessor := opts.FindPredecessors
+		opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			descs, err := findPredecessor(ctx, src, desc)
+			if err != nil {
+				return nil, err
+			}
+			if content.Equal(desc, index.Manifests[0]) {
+				// make sure referrers of child manifests are copied by pointing them to root
+				descs = append(descs, root)
+			}
+			return descs, nil
+		}
 		return opts, index.Manifests[0], nil
 	}
 	return opts, root, nil
