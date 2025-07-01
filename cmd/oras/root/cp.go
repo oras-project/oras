@@ -226,14 +226,17 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 // If the artifact is a manifest list or index, referrers of its manifests are copied as well.
 func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, dstRef string, root ocispec.Descriptor, opts oras.ExtendedCopyOptions) error {
 	var err error
-	if opts, root, err = prepareCopyOption(ctx, src, dst, root, opts); err != nil {
+	var copyRoot ocispec.Descriptor
+	if opts, copyRoot, err = prepareCopyOption(ctx, src, dst, root, opts); err != nil {
 		return err
 	}
-
-	if dstRef == "" || dstRef == root.Digest.String() {
-		err = oras.ExtendedCopyGraph(ctx, src, dst, root, opts.ExtendedCopyGraphOptions)
-	} else {
-		_, err = oras.ExtendedCopy(ctx, src, root.Digest.String(), dst, dstRef, opts)
+	if err := oras.ExtendedCopyGraph(ctx, src, dst, copyRoot, opts.ExtendedCopyGraphOptions); err != nil {
+		return err
+	}
+	if dstRef != "" || dstRef != root.Digest.String() {
+		if err := dst.Tag(ctx, root, dstRef); err != nil {
+			return err
+		}
 	}
 	return err
 }
