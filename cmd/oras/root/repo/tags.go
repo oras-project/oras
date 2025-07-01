@@ -102,7 +102,6 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 	}
 
 	// if a repository path is given, filter the tags under the repository
-	//var tagFilter func(ref string) (string, bool)
 	var targetPrefix string
 	if opts.Target.Type == option.TargetTypeOCILayout {
 		ref, err := registry.ParseReference(opts.Reference)
