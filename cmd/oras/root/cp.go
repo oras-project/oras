@@ -233,7 +233,7 @@ func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.T
 	if err := oras.ExtendedCopyGraph(ctx, src, dst, copyRoot, opts.ExtendedCopyGraphOptions); err != nil {
 		return err
 	}
-	if dstRef != "" || dstRef != root.Digest.String() {
+	if dstRef != "" && dstRef != root.Digest.String() {
 		if err := dst.Tag(ctx, root, dstRef); err != nil {
 			return err
 		}
