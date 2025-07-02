@@ -180,7 +180,7 @@ var _ = Describe("1.1 registry users:", func() {
 			Expect(result.Repositories).Should(ContainElement(ImageRepo))
 		})
 
-		It("should not list repositories without a fully matched namespace", func() {
+		It("should not list repositories without a fully matched namespace in JSON format", func() {
 			repo := "command-draft/images"
 			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), RegistryRef(ZOTHost, repo, foobar.Tag)).
 				WithDescription("prepare destination repo: " + repo).
@@ -230,6 +230,25 @@ var _ = Describe("1.1 registry users:", func() {
 			Expect(outputString).To(ContainSubstring("Registry: " + ZOTHost))
 			// Verify repositories are in the output
 			Expect(outputString).To(ContainSubstring(ImageRepo))
+		})
+
+		It("should not list repositories without a fully matched namespace in go-template format", func() {
+			repo := "command-draft/images"
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), RegistryRef(ZOTHost, repo, foobar.Tag)).
+				WithDescription("prepare destination repo: " + repo).
+				Exec()
+			template := "Registry: {{.registry}}{{println}}{{range .repositories}}{{println .}}{{end}}"
+			output := ORAS("repo", "ls", RegistryRef(ZOTHost, Namespace, ""), "--format", "go-template"+template).
+				WithDescription("get repos in go-template format under namespace").
+				Exec().Out.Contents()
+
+			outputString := string(output)
+			// Verify registry is in the output
+			Expect(outputString).To(ContainSubstring("Registry: " + ZOTHost))
+			// Verify repositories are in the output
+			Expect(outputString).To(ContainSubstring(ImageRepo))
+			// Ensure the other repo is not listed
+			Expect(outputString).ShouldNot(ContainSubstring(repo))
 		})
 	})
 
