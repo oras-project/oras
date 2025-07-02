@@ -77,6 +77,8 @@ type Remote struct {
 	warned                map[string]*sync.Map
 	plainHTTP             func() (plainHTTP bool, enforced bool)
 	store                 credentials.Store
+	UseSimpleAuth         bool
+	tlsConfigFn           func() (*tls.Config, error)
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
@@ -131,6 +133,7 @@ func (remo *Remote) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description 
 	fs.StringArrayVar(&remo.resolveFlag, remo.flagPrefix+"resolve", nil, "customized DNS for "+notePrefix+"registry, formatted in `host:port:address[:address_port]`")
 	fs.StringArrayVar(&remo.Configs, remo.flagPrefix+"registry-config", nil, "`path` of the authentication file for "+notePrefix+"registry")
 	fs.StringArrayVarP(&remo.headerFlags, remo.flagPrefix+"header", shortHeader, nil, "add custom headers to "+notePrefix+"requests")
+	fs.BoolVar(&remo.UseSimpleAuth, remo.flagPrefix+"simple-auth", false, "use simple auth with per-target credential cache")
 }
 
 // CheckStdinConflict checks if PasswordFromStdin or IdentityTokenFromStdin of a
@@ -254,10 +257,15 @@ func (remo *Remote) tlsConfig() (*tls.Config, error) {
 
 // authClient assembles a oras auth client.
 func (remo *Remote) authClient(registry string, debug bool) (client *auth.Client, err error) {
-	config, err := remo.tlsConfig()
+	tlsConfigFn := remo.tlsConfigFn
+	if tlsConfigFn == nil {
+		tlsConfigFn = remo.tlsConfig
+	}
+	config, err := tlsConfigFn()
 	if err != nil {
 		return nil, err
 	}
+
 	baseTransport := http.DefaultTransport.(*http.Transport).Clone()
 	baseTransport.TLSClientConfig = config
 	dialContext, err := remo.parseResolve(baseTransport.DialContext)
@@ -265,13 +273,22 @@ func (remo *Remote) authClient(registry string, debug bool) (client *auth.Client
 		return nil, err
 	}
 	baseTransport.DialContext = dialContext
+
+	// 🔽 CHANGED: Use simple per-target cache if requested
+	var cache auth.Cache
+	if remo.UseSimpleAuth {
+		cache = auth.NewSingleContextCache() // ✅ Scoped cache
+	} else {
+		cache = auth.NewCache() // ✅ Default shared cache
+	}
+
 	client = &auth.Client{
 		Client: &http.Client{
 			// http.RoundTripper with a retry using the DefaultPolicy
 			// see: https://pkg.go.dev/oras.land/oras-go/v2/registry/remote/retry#Policy
 			Transport: retry.NewTransport(baseTransport),
 		},
-		Cache:  auth.NewCache(),
+		Cache:  cache,
 		Header: remo.headers,
 	}
 	client.SetUserAgent("oras/" + version.GetVersion())
