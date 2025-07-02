@@ -268,15 +268,15 @@ func NewRepoTagsHandler(out io.Writer, format option.Format) (metadata.RepoTagsH
 }
 
 // NewRepoListHandler returns a repo ls handler.
-func NewRepoListHandler(out io.Writer, format option.Format, registry string) (metadata.RepoListHandler, error) {
+func NewRepoListHandler(out io.Writer, format option.Format, registry string, namespace string) (metadata.RepoListHandler, error) {
 	var handler metadata.RepoListHandler
 	switch format.Type {
 	case option.FormatTypeText.Name:
-		handler = text.NewRepoListHandler(out)
+		handler = text.NewRepoListHandler(out, namespace)
 	case option.FormatTypeJSON.Name:
-		handler = json.NewRepoListHandler(out, registry)
+		handler = json.NewRepoListHandler(out, registry, namespace)
 	case option.FormatTypeGoTemplate.Name:
-		handler = template.NewRepoListHandler(out, format.Template, registry)
+		handler = template.NewRepoListHandler(out, format.Template, registry, namespace)
 	default:
 		return nil, errors.UnsupportedFormatTypeError(format.Type)
 	}

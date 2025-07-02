@@ -30,7 +30,7 @@ type repoListHandler struct {
 }
 
 // NewRepoListHandler creates a new handler for repo ls events.
-func NewRepoListHandler(out io.Writer, registry string) metadata.RepoListHandler {
+func NewRepoListHandler(out io.Writer, registry string, _ string) metadata.RepoListHandler {
 	return &repoListHandler{
 		out:   out,
 		model: model.NewRepositories(registry),
@@ -38,7 +38,7 @@ func NewRepoListHandler(out io.Writer, registry string) metadata.RepoListHandler
 }
 
 // OnRepositoryListed implements metadata.RepoListHandler.
-func (h *repoListHandler) OnRepositoryListed(repo, _ string) error {
+func (h *repoListHandler) OnRepositoryListed(repo string) error {
 	// For JSON format, show the full repository name
 	h.model.AddRepository(repo)
 	return nil

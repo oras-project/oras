@@ -25,22 +25,24 @@ import (
 
 // repoListHandler handles template metadata output for repo ls command.
 type repoListHandler struct {
-	out      io.Writer
-	model    *model.Repositories
-	template string
+	out       io.Writer
+	model     *model.Repositories
+	namespace string
+	template  string
 }
 
 // NewRepoListHandler creates a new template handler for repo ls command.
-func NewRepoListHandler(out io.Writer, tmpl string, registry string) metadata.RepoListHandler {
+func NewRepoListHandler(out io.Writer, tmpl string, registry string, namespace string) metadata.RepoListHandler {
 	return &repoListHandler{
-		out:      out,
-		model:    model.NewRepositories(registry),
-		template: tmpl,
+		out:       out,
+		model:     model.NewRepositories(registry),
+		template:  tmpl,
+		namespace: namespace,
 	}
 }
 
 // OnRepositoryListed implements metadata.RepoListHandler.
-func (h *repoListHandler) OnRepositoryListed(repo, _ string) error {
+func (h *repoListHandler) OnRepositoryListed(repo string) error {
 	// For Go-template format, show the full repository name
 	h.model.AddRepository(repo)
 	return nil

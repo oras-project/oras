@@ -88,15 +88,15 @@ func listRepository(cmd *cobra.Command, opts *repositoryOptions) error {
 		return err
 	}
 
-	handler, err := display.NewRepoListHandler(opts.Printer, opts.Format, reg.Reference.Registry)
+	handler, err := display.NewRepoListHandler(opts.Printer, opts.Format, reg.Reference.Registry, opts.namespace)
 	if err != nil {
 		return err
 	}
 	err = reg.Repositories(ctx, opts.last, func(repos []string) error {
 		for _, repo := range repos {
-			if prefix := opts.namespace; strings.HasPrefix(repo, prefix) {
+			if strings.HasPrefix(repo, opts.namespace) {
 				// list repositories under the specified namespace
-				if err := handler.OnRepositoryListed(repo, prefix); err != nil {
+				if err := handler.OnRepositoryListed(repo); err != nil {
 					return err
 				}
 			}

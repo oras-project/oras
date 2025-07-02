@@ -24,20 +24,22 @@ import (
 
 // repoListHandler handles text output for repo ls command.
 type repoListHandler struct {
-	out io.Writer
+	out       io.Writer
+	namespace string
 }
 
 // NewRepoListHandler creates a new text handler for repo ls command.
-func NewRepoListHandler(out io.Writer) metadata.RepoListHandler {
+func NewRepoListHandler(out io.Writer, namespace string) metadata.RepoListHandler {
 	return &repoListHandler{
-		out: out,
+		out:       out,
+		namespace: namespace,
 	}
 }
 
 // OnRepositoryListed implements metadata.RepoListHandler.
-func (h *repoListHandler) OnRepositoryListed(repo, prefix string) error {
+func (h *repoListHandler) OnRepositoryListed(repo string) error {
 	// For text format, show only the sub repo (without the namespace prefix) for better readability
-	subRepo := strings.TrimPrefix(repo, prefix)
+	subRepo := strings.TrimPrefix(repo, h.namespace)
 	_, err := io.WriteString(h.out, subRepo+"\n")
 	return err
 }
