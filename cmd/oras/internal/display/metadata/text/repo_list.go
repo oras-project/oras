@@ -34,9 +34,9 @@ func NewRepoListHandler(out io.Writer) metadata.RepoListHandler {
 }
 
 // OnRepositoryListed implements metadata.RepoListHandler.
-func (h *repoListHandler) OnRepositoryListed(_, _, subRepo string) error {
-	// For text format, show only sub-repository name for better readability
-	_, err := io.WriteString(h.out, subRepo+"\n")
+func (h *repoListHandler) OnRepositoryListed(_, shortRepo string) error {
+	// For text format, show only the short repo name for better readability
+	_, err := io.WriteString(h.out, shortRepo+"\n")
 	return err
 }
 

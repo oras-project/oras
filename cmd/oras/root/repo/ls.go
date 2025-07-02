@@ -96,7 +96,7 @@ func listRepository(cmd *cobra.Command, opts *repositoryOptions) error {
 		for _, repo := range repos {
 			if subRepo, found := strings.CutPrefix(repo, opts.namespace); found {
 				// list repositories under the specified namespace
-				if err := handler.OnRepositoryListed(repo, opts.namespace, subRepo); err != nil {
+				if err := handler.OnRepositoryListed(repo, subRepo); err != nil {
 					return err
 				}
 			}
