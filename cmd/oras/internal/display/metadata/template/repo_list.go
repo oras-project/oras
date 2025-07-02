@@ -40,9 +40,9 @@ func NewRepoListHandler(out io.Writer, tmpl string, registry string) metadata.Re
 }
 
 // OnRepositoryListed implements metadata.RepoListHandler.
-func (h *repoListHandler) OnRepositoryListed(fullRepo, _ string) error {
+func (h *repoListHandler) OnRepositoryListed(repo, _ string) error {
 	// For Go-template format, show the full repository name
-	h.model.AddRepository(fullRepo)
+	h.model.AddRepository(repo)
 	return nil
 }
 

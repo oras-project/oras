@@ -17,6 +17,7 @@ package text
 
 import (
 	"io"
+	"strings"
 
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 )
@@ -34,8 +35,9 @@ func NewRepoListHandler(out io.Writer) metadata.RepoListHandler {
 }
 
 // OnRepositoryListed implements metadata.RepoListHandler.
-func (h *repoListHandler) OnRepositoryListed(_, subRepo string) error {
+func (h *repoListHandler) OnRepositoryListed(repo, prefix string) error {
 	// For text format, show only the sub repo (without the namespace prefix) for better readability
+	subRepo := strings.TrimPrefix(repo, prefix)
 	_, err := io.WriteString(h.out, subRepo+"\n")
 	return err
 }
