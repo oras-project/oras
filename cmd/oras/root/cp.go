@@ -225,9 +225,8 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 // recursiveCopy copies an artifact and its referrers from one target to another.
 // If the artifact is a manifest list or index, referrers of its manifests are copied as well.
 func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, dstRef string, root ocispec.Descriptor, opts oras.ExtendedCopyOptions) error {
-	var err error
-	var copyRoot ocispec.Descriptor
-	if opts, copyRoot, err = prepareCopyOption(ctx, src, dst, root, opts); err != nil {
+	opts, copyRoot, err := prepareCopyOption(ctx, src, dst, root, opts)
+	if err != nil {
 		return err
 	}
 	if err := oras.ExtendedCopyGraph(ctx, src, dst, copyRoot, opts.ExtendedCopyGraphOptions); err != nil {
@@ -258,42 +257,37 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 		return opts, root, nil
 	}
 
-	// check if root has referrers. If not, ExtendedCopy will start from one of
-	// its manifest to ensure that root will be copied.
-	copyRoot := root
-	rootReferrers, err := registry.Referrers(ctx, src, root, "")
+	referrers, err := graph.FindPredecessors(ctx, src, index.Manifests, opts)
 	if err != nil {
 		return opts, root, err
 	}
-	if len(rootReferrers) == 0 {
-		// we need to add the index as the predecessor of the first child manifest, so
-		// that the index will be found and copied from the child manifest.
-		findPredecessor := opts.FindPredecessors
-		opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-			descs, err := findPredecessor(ctx, src, desc)
-			if err != nil {
-				return nil, err
-			}
-			if content.Equal(desc, index.Manifests[0]) {
-				// make sure root is copied by making it a predecessor of a child manifest
-				descs = append(descs, root)
-			}
-			return descs, nil
-		}
-		copyRoot = index.Manifests[0]
-	}
-
-	referrers, err := graph.FindPredecessors(ctx, src, index.Manifests, opts)
-	if err != nil {
-		return opts, copyRoot, err
-	}
 
 	referrers = slices.DeleteFunc(referrers, func(desc ocispec.Descriptor) bool {
-		return content.Equal(desc, copyRoot)
+		return content.Equal(desc, root)
 	})
 
 	if len(referrers) == 0 {
 		// no child referrers
+		return opts, root, nil
+	}
+
+	rootReferrers, err := opts.FindPredecessors(ctx, src, root)
+	if err != nil {
+		return opts, root, err
+	}
+	if len(rootReferrers) == 0 {
+		copyRoot := index.Manifests[0]
+		copyRootReferrers := append([]ocispec.Descriptor{root}, referrers...)
+		findPredecessor := opts.FindPredecessors
+		opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			switch {
+			case content.Equal(desc, root):
+				return nil, nil
+			case content.Equal(desc, copyRoot):
+				return copyRootReferrers, nil
+			}
+			return findPredecessor(ctx, src, desc)
+		}
 		return opts, copyRoot, nil
 	}
 
@@ -303,11 +297,11 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 		if err != nil {
 			return nil, err
 		}
-		if content.Equal(desc, copyRoot) {
+		if content.Equal(desc, root) {
 			// make sure referrers of child manifests are copied by pointing them to root
 			descs = append(descs, referrers...)
 		}
 		return descs, nil
 	}
-	return opts, copyRoot, nil
+	return opts, root, nil
 }

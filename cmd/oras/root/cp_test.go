@@ -283,49 +283,24 @@ func Test_prepareCopyOption_jsonUnmarshalFailure(t *testing.T) {
 	}
 }
 
-// mockchildManifestReferrersFailingSource is a mock implementation of oras.ReadOnlyGraphTarget
-// that simulates a failure when fetching referrers of manifests of the index.
-type mockchildManifestReferrersFailingSource struct {
+// mockReferrersFailingSource is a mock implementation of oras.ReadOnlyGraphTarget
+// that simulates a failure when fetching referrers.
+type mockReferrersFailingSource struct {
 	oras.ReadOnlyGraphTarget
 	indexContent string
 }
 
 // Fetch simulates successful fetching of index content.
-func (m *mockchildManifestReferrersFailingSource) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
+func (m *mockReferrersFailingSource) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
 	// Return valid JSON data to pass the fetch step
 	return io.NopCloser(strings.NewReader(m.indexContent)), nil
 }
 
-// Predecessors simulates successful fetching of predecessors.
-func (m *mockchildManifestReferrersFailingSource) Predecessors(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-	// Return an empty slice to simulate no predecessors
-	return []ocispec.Descriptor{}, nil
-}
-
-// mockIndexManifestReferrersFailingSource is a mock implementation of oras.ReadOnlyGraphTarget
-// that simulates a failure when fetching referrers of the index.
-type mockIndexReferrersFailingSource struct {
-	oras.ReadOnlyGraphTarget
-	indexContent string
-}
-
-// Fetch simulates successful fetching of index content.
-func (m *mockIndexReferrersFailingSource) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
-	// Return valid JSON data to pass the fetch step
-	return io.NopCloser(strings.NewReader(m.indexContent)), nil
-}
-
-// Predecessors simulates failed fetching of predecessors.
-func (m *mockIndexReferrersFailingSource) Predecessors(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-	// Return an empty slice to simulate no predecessors
-	return nil, errMockedReferrers
-}
-
-func Test_prepareCopyOption_manifestReferrersFailure(t *testing.T) {
+func Test_prepareCopyOption_referrersFailure(t *testing.T) {
 
 	ctx := context.Background()
 	mockedIndex := `{"schemaVersion":2,"manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2}]}`
-	src := &mockchildManifestReferrersFailingSource{indexContent: mockedIndex}
+	src := &mockReferrersFailingSource{indexContent: mockedIndex}
 	dst := memory.New()
 	root := ocispec.Descriptor{
 		MediaType: ocispec.MediaTypeImageIndex,
@@ -349,7 +324,7 @@ func Test_prepareCopyOption_manifestReferrersFailure(t *testing.T) {
 func Test_prepareCopyOption_noReferrers(t *testing.T) {
 	ctx := context.Background()
 	mockedIndex := `{"schemaVersion":2,"manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2}]}`
-	src := &mockchildManifestReferrersFailingSource{indexContent: mockedIndex}
+	src := &mockReferrersFailingSource{indexContent: mockedIndex}
 	dst := memory.New()
 	root := ocispec.Descriptor{
 		MediaType: ocispec.MediaTypeImageIndex,
@@ -366,22 +341,5 @@ func Test_prepareCopyOption_noReferrers(t *testing.T) {
 
 	if _, _, err := prepareCopyOption(ctx, src, dst, root, opts); err != nil {
 		t.Errorf("prepareCopyOption() error = %v, wantErr false", err)
-	}
-}
-
-func Test_prepareCopyOption_IndexReferrersFailure(t *testing.T) {
-
-	ctx := context.Background()
-	mockedIndex := `{"schemaVersion":2,"manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2}]}`
-	src := &mockIndexReferrersFailingSource{indexContent: mockedIndex}
-	dst := memory.New()
-	root := ocispec.Descriptor{
-		MediaType: ocispec.MediaTypeImageIndex,
-		Digest:    digest.FromString(mockedIndex),
-		Size:      int64(len(mockedIndex)),
-	}
-
-	if _, _, err := prepareCopyOption(ctx, src, dst, root, oras.DefaultExtendedCopyOptions); err != errMockedReferrers {
-		t.Errorf("prepareCopyOption() error = %v, wantErr %v", err, errMockedReferrers)
 	}
 }
