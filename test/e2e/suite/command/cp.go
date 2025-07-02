@@ -251,20 +251,20 @@ var _ = Describe("1.1 registry users:", func() {
 			src := RegistryRef(ZOTHost, ArtifactRepo, "v1.3.8")
 			dstRepo := cpTestRepo("index-without-referrers")
 			dst := RegistryRef(ZOTHost, dstRepo, "copiedTag")
-			// stateKeys := []match.StateKey{
-			// 	{Digest: "44136fa355b3", Name: "application/vnd.oci.empty.v1+json"},
-			// 	{Digest: "01fa0c3558d5", Name: "arm64"},
-			// 	{Digest: "2960eae76dd7", Name: "amd64"},
-			// 	{Digest: "ab01d6e284e8", Name: "application/vnd.oci.image.manifest.v1+json"},
-			// 	{Digest: "6aa11331ce0c", Name: "application/vnd.oci.image.manifest.v1+json"},
-			// 	{Digest: "58e0d01dbd27", Name: "signature"},
-			// 	{Digest: "ecbd32686867", Name: "referrerimage"},
-			// 	{Digest: "02746a135c9e", Name: "sbom"},
-			// 	{Digest: "553c18eccc8b", Name: "application/vnd.oci.image.index.v1+json"},
-			// }
+			stateKeys := []match.StateKey{
+				{Digest: "44136fa355b3", Name: "application/vnd.oci.empty.v1+json"},
+				{Digest: "01fa0c3558d5", Name: "arm64"},
+				{Digest: "2960eae76dd7", Name: "amd64"},
+				{Digest: "ab01d6e284e8", Name: "application/vnd.oci.image.manifest.v1+json"},
+				{Digest: "6aa11331ce0c", Name: "application/vnd.oci.image.manifest.v1+json"},
+				{Digest: "58e0d01dbd27", Name: "signature"},
+				{Digest: "ecbd32686867", Name: "referrerimage"},
+				{Digest: "02746a135c9e", Name: "sbom"},
+				{Digest: "553c18eccc8b", Name: "application/vnd.oci.image.index.v1+json"},
+			}
 			// test
 			ORAS("cp", src, dst, "-r").
-				//MatchStatus(stateKeys, true, len(stateKeys)).
+				MatchStatus(stateKeys, true, len(stateKeys)).
 				Exec()
 			// validate that the index is copied
 			CompareRef(src, dst)
