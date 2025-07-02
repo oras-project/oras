@@ -268,7 +268,7 @@ func NewRepoTagsHandler(out io.Writer, format option.Format) (metadata.RepoTagsH
 }
 
 // NewRepoListHandler returns a repo ls handler.
-func NewRepoListHandler(out io.Writer, format option.Format, registry string, namespace string) (metadata.RepoListHandler, error) {
+func NewRepoListHandler(out io.Writer, format option.Format, registry, namespace string) (metadata.RepoListHandler, error) {
 	var handler metadata.RepoListHandler
 	switch format.Type {
 	case option.FormatTypeText.Name:
