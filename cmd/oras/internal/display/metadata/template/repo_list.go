@@ -25,19 +25,17 @@ import (
 
 // repoListHandler handles template metadata output for repo ls command.
 type repoListHandler struct {
-	out       io.Writer
-	model     *model.Repositories
-	namespace string
-	template  string
+	out      io.Writer
+	model    *model.Repositories
+	template string
 }
 
 // NewRepoListHandler creates a new template handler for repo ls command.
-func NewRepoListHandler(out io.Writer, tmpl string, registry string, namespace string) metadata.RepoListHandler {
+func NewRepoListHandler(out io.Writer, tmpl string, registry string) metadata.RepoListHandler {
 	return &repoListHandler{
-		out:       out,
-		model:     model.NewRepositories(registry),
-		template:  tmpl,
-		namespace: namespace,
+		out:      out,
+		model:    model.NewRepositories(registry),
+		template: tmpl,
 	}
 }
 

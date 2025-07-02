@@ -30,7 +30,7 @@ type repoListHandler struct {
 }
 
 // NewRepoListHandler creates a new handler for repo ls events.
-func NewRepoListHandler(out io.Writer, registry string, _ string) metadata.RepoListHandler {
+func NewRepoListHandler(out io.Writer, registry string) metadata.RepoListHandler {
 	return &repoListHandler{
 		out:   out,
 		model: model.NewRepositories(registry),

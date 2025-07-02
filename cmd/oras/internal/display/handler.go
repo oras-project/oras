@@ -274,9 +274,9 @@ func NewRepoListHandler(out io.Writer, format option.Format, registry string, na
 	case option.FormatTypeText.Name:
 		handler = text.NewRepoListHandler(out, namespace)
 	case option.FormatTypeJSON.Name:
-		handler = json.NewRepoListHandler(out, registry, namespace)
+		handler = json.NewRepoListHandler(out, registry)
 	case option.FormatTypeGoTemplate.Name:
-		handler = template.NewRepoListHandler(out, format.Template, registry, namespace)
+		handler = template.NewRepoListHandler(out, format.Template, registry)
 	default:
 		return nil, errors.UnsupportedFormatTypeError(format.Type)
 	}
