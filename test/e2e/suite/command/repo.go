@@ -179,6 +179,29 @@ var _ = Describe("1.1 registry users:", func() {
 			// Verify repositories are in the output
 			Expect(result.Repositories).Should(ContainElement(ImageRepo))
 		})
+
+		It("should not list repositories without a fully matched namespace", func() {
+			repo := "command-draft/images"
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), RegistryRef(ZOTHost, repo, foobar.Tag)).
+				WithDescription("prepare destination repo: " + repo).
+				Exec()
+			bytes := ORAS("repo", "ls", RegistryRef(ZOTHost, Namespace, ""), "--format", "json").
+				WithDescription("get repos in JSON format under namespace").
+				Exec().Out.Contents()
+
+			// Parse the JSON output
+			var result struct {
+				Registry     string   `json:"registry"`
+				Repositories []string `json:"repositories"`
+			}
+			Expect(json.Unmarshal(bytes, &result)).ShouldNot(HaveOccurred())
+			// Verify registry is in the output
+			Expect(result.Registry).To(Equal(ZOTHost))
+			// Verify repositories are in the output
+			Expect(result.Repositories).Should(ContainElement(ImageRepo))
+			// Ensure the other repo is not listed
+			Expect(result.Repositories).ShouldNot(ContainElement(repo))
+		})
 	})
 
 	When("running `repo ls` with go-template format", func() {
