@@ -150,10 +150,13 @@ var _ = Describe("1.1 registry users:", func() {
 
 			// Parse the JSON output
 			var result struct {
+				Registry     string   `json:"registry"`
 				Repositories []string `json:"repositories"`
 			}
 			Expect(json.Unmarshal(bytes, &result)).ShouldNot(HaveOccurred())
 
+			// Verify registry is in the output
+			Expect(result.Registry).To(Equal(ZOTHost))
 			// Verify repositories are in the output
 			Expect(result.Repositories).Should(ContainElement(ImageRepo))
 		})
@@ -166,35 +169,44 @@ var _ = Describe("1.1 registry users:", func() {
 
 			// Parse the JSON output
 			var result struct {
+				Registry     string   `json:"registry"`
 				Repositories []string `json:"repositories"`
 			}
 			Expect(json.Unmarshal(bytes, &result)).ShouldNot(HaveOccurred())
 
+			// Verify registry is in the output
+			Expect(result.Registry).To(Equal(ZOTHost))
 			// Verify repositories are in the output
-			Expect(result.Repositories).Should(ContainElement(ImageRepo[len(Namespace)+1:]))
+			Expect(result.Repositories).Should(ContainElement(ImageRepo))
 		})
 	})
 
 	When("running `repo ls` with go-template format", func() {
 		It("should list repositories in go-template format", func() {
-			template := "{{range .repositories}}{{println .}}{{end}}"
+			template := "Registry: {{.registry}}{{println}}{{range .repositories}}{{println .}}{{end}}"
 			output := ORAS("repo", "ls", ZOTHost, "--format", "go-template="+template).
 				WithDescription("get repos in go-template format").
 				Exec().Out.Contents()
 
-			// Verify repositories are in the output
 			outputString := string(output)
+			// Verify registry is in the output
+			Expect(outputString).To(ContainSubstring("Registry: " + ZOTHost))
+			// Verify repositories are in the output
 			Expect(outputString).To(ContainSubstring(ImageRepo))
 		})
 
 		It("should list repositories under provided namespace in go-template format", func() {
-			template := "{{range .repositories}}{{println .}}{{end}}"
+			// Template that prints registry and then each repository
+			template := "Registry: {{.registry}}{{println}}{{range .repositories}}{{println .}}{{end}}"
 			output := ORAS("repo", "ls", RegistryRef(ZOTHost, Namespace, ""), "--format", "go-template="+template).
 				WithDescription("get repos in go-template format under namespace").
 				Exec().Out.Contents()
-			// Verify repositories are in the output
+
 			outputString := string(output)
-			Expect(outputString).To(ContainSubstring(ImageRepo[len(Namespace)+1:]))
+			// Verify registry is in the output
+			Expect(outputString).To(ContainSubstring("Registry: " + ZOTHost))
+			// Verify repositories are in the output
+			Expect(outputString).To(ContainSubstring(ImageRepo))
 		})
 	})
 
