@@ -206,7 +206,7 @@ var _ = Describe("1.1 registry users:", func() {
 
 	When("running `repo ls` with go-template format", func() {
 		It("should list repositories in go-template format", func() {
-			template := "Registry: {{.registry}}{{println}}{{range .repositories}}{{println .}}{{end}}"
+			template := `"Registry: {{.registry}}{{println}}{{range .repositories}}{{println .}}{{end}}"`
 			output := ORAS("repo", "ls", ZOTHost, "--format", "go-template="+template).
 				WithDescription("get repos in go-template format").
 				Exec().Out.Contents()
@@ -220,7 +220,7 @@ var _ = Describe("1.1 registry users:", func() {
 
 		It("should list repositories under provided namespace in go-template format", func() {
 			// Template that prints registry and then each repository
-			template := "Registry: {{.registry}}{{println}}{{range .repositories}}{{println .}}{{end}}"
+			template := `"Registry: {{.registry}}{{println}}{{range .repositories}}{{println .}}{{end}}"`
 			output := ORAS("repo", "ls", RegistryRef(ZOTHost, Namespace, ""), "--format", "go-template="+template).
 				WithDescription("get repos in go-template format under namespace").
 				Exec().Out.Contents()
@@ -237,8 +237,8 @@ var _ = Describe("1.1 registry users:", func() {
 			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), RegistryRef(ZOTHost, repo, foobar.Tag)).
 				WithDescription("prepare destination repo: " + repo).
 				Exec()
-			template := "Registry: {{.registry}}{{println}}{{range .repositories}}{{println .}}{{end}}"
-			output := ORAS("repo", "ls", RegistryRef(ZOTHost, Namespace, ""), "--format", "go-template"+template).
+			template := `"Registry: {{.registry}}{{println}}{{range .repositories}}{{println .}}{{end}}"`
+			output := ORAS("repo", "ls", RegistryRef(ZOTHost, Namespace, ""), "--format", "go-template="+template).
 				WithDescription("get repos in go-template format under namespace").
 				Exec().Out.Contents()
 
