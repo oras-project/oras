@@ -39,8 +39,10 @@ func NewRepoListHandler(out io.Writer, namespace string) metadata.RepoListHandle
 // OnRepositoryListed implements metadata.RepoListHandler.
 func (h *repoListHandler) OnRepositoryListed(repo string) error {
 	// For text format, show only the sub repo (without the namespace prefix) for better readability
-	subRepo := strings.TrimPrefix(repo, h.namespace)
-	_, err := io.WriteString(h.out, subRepo+"\n")
+	if h.namespace != "" {
+		repo = strings.TrimPrefix(repo, h.namespace)
+	}
+	_, err := io.WriteString(h.out, repo+"\n")
 	return err
 }
 

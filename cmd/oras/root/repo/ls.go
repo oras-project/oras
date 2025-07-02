@@ -94,7 +94,7 @@ func listRepository(cmd *cobra.Command, opts *repositoryOptions) error {
 	}
 	err = reg.Repositories(ctx, opts.last, func(repos []string) error {
 		for _, repo := range repos {
-			if strings.HasPrefix(repo, opts.namespace) {
+			if opts.namespace == "" || strings.HasPrefix(repo, opts.namespace) {
 				// list repositories under the specified namespace
 				if err := handler.OnRepositoryListed(repo); err != nil {
 					return err
