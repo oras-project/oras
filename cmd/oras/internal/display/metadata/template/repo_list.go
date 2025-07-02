@@ -31,16 +31,17 @@ type repoListHandler struct {
 }
 
 // NewRepoListHandler creates a new template handler for repo ls command.
-func NewRepoListHandler(out io.Writer, tmpl string) metadata.RepoListHandler {
+func NewRepoListHandler(out io.Writer, tmpl string, registry string) metadata.RepoListHandler {
 	return &repoListHandler{
 		out:      out,
-		model:    model.NewRepositories(),
+		model:    model.NewRepositories(registry),
 		template: tmpl,
 	}
 }
 
 // OnRepositoryListed implements metadata.RepoListHandler.
-func (h *repoListHandler) OnRepositoryListed(repo string) error {
+func (h *repoListHandler) OnRepositoryListed(repo, _, _ string) error {
+	// For Go-template format, show the full repository name
 	h.model.AddRepository(repo)
 	return nil
 }

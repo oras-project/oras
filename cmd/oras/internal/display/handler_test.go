@@ -118,7 +118,8 @@ func TestNewRepoListHandler(t *testing.T) {
 	// Test with stdout
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handler, err := NewRepoListHandler(os.Stdout, tt.format)
+			registry := "example.com"
+			handler, err := NewRepoListHandler(os.Stdout, tt.format, registry)
 			if tt.expectError && err == nil {
 				t.Error("expected error, got nil")
 			}

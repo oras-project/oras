@@ -17,12 +17,14 @@ package model
 
 // Repositories contains metadata formatted by oras repo ls.
 type Repositories struct {
+	Registry     string   `json:"registry"`
 	Repositories []string `json:"repositories"`
 }
 
 // NewRepositories creates a new Repositories model.
-func NewRepositories() *Repositories {
+func NewRepositories(registry string) *Repositories {
 	return &Repositories{
+		Registry:     registry,
 		Repositories: []string{},
 	}
 }

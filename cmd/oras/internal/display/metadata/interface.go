@@ -143,5 +143,5 @@ type RepoListHandler interface {
 	Renderer
 
 	// OnRepositoryListed is called for each repository that is listed.
-	OnRepositoryListed(repo string) error
+	OnRepositoryListed(repo, namespace, subRepo string) error
 }
