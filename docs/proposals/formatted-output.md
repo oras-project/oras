@@ -626,7 +626,7 @@ $ oras repo ls localhost:5000/dev --format json
 }
 ```
 
-Meanwhile, the default text output for the same command omits the namespace prefix for better readability:
+The default text output for the same command omits the namespace prefix for better readability:
 
 ```console
 $ oras repo ls localhost:5000/dev
