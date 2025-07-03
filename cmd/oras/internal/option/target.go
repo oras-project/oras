@@ -61,6 +61,24 @@ type Target struct {
 	IsOCILayout bool
 }
 
+// NewOCITarget creates an OCI layout target
+func NewOCITarget(reference string) *Target {
+	return &Target{
+		RawReference: reference,
+		Type:         TargetTypeOCILayout,
+		IsOCILayout:  true,
+	}
+}
+
+// NewRemoteTarget creates an OCI layout target
+func NewRemoteTarget(reference string) *Target {
+	return &Target{
+		RawReference: reference,
+		Type:         TargetTypeRemote,
+		IsOCILayout:  false,
+	}
+}
+
 // ApplyFlags applies flags to a command flag set for unary target
 func (target *Target) ApplyFlags(fs *pflag.FlagSet) {
 	target.applyFlagsWithPrefix(fs, "", "")
@@ -92,6 +110,32 @@ func (target *Target) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, descriptio
 func (target *Target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
 	target.applyFlagsWithPrefix(fs, prefix, description)
 	target.Remote.ApplyFlagsWithPrefix(fs, prefix, description)
+}
+
+// GetRemoteRepository gets remote repository for source string.
+func (target *Target) GetRemoteRepository(cmd *cobra.Command, source string) (repository *remote.Repository, err error) {
+	target.Reference = ""
+	target.Path = ""
+	target.RawReference = source
+	err = target.Parse(cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	err = target.EnsureReferenceNotEmpty(cmd, true)
+	if err != nil {
+		return nil, err
+	}
+
+	repository, err = remote.NewRepository(target.RawReference)
+	if err != nil {
+		if errors.Unwrap(err) == errdef.ErrInvalidReference {
+			return nil, fmt.Errorf("%q: %v", target.RawReference, err)
+		}
+		return nil, err
+	}
+
+	return repository, nil
 }
 
 // Parse gets target options from user input.
