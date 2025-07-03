@@ -1,154 +1,263 @@
-# ORAS Backup and Restore Commands
+# Portable Backup, and Restore of OCI Artifacts and images
 
-The backup and restore commands will add the capability to backup a list of artifacts from a registry and restore them to another registry.
-Backup and restore will be support for any OCI compatible artifact (e.g. container images, helm charts, configuration files,...).
+Authors: @TerryHowe @FeynmanZhou 
 
+## Overview
 
-## Overview 
+Organizations rely on container images and other OCI artifacts to build, deploy, and operate their applications. These images and artifacts are built locally and stored in public or private OCI registries. However, as organizations mature their supply chain security, they face increasing demands to efficiently acquire, migrate, promote, mirror, and backup images and artifacts across registries and local environments, while preserving provenance, integrity, and metadata.
 
-This document outlines various scenarios related to backing up and restoring OCI images from registries and local files. It covers a common workflow for downloading and uploading one or more image resources to and from disk, identifies limitations and challenges in existing solutions, and presents proposals for improvements to enhance usability and portability of managing OCI images.
+Today, fragmented tooling and manual scripts make these tasks complex, error-prone, and operationally expensive. Common tools like `docker save/load` and `oras pull/push`, `oras copy` only cover parts of the workflow, often lacking support for referrers, deduplication, and structured backups. This results in brittle processes, duplicated blobs, missing attestations, and frustrated developers.
 
+This document describes the challenges faced by users managing images and OCI artifacts across registries and local environment. It proposes a unified, reliable, and portable solution built into the `oras` CLI to address these gaps. In particular, this document motivates the need for structured backup and restore workflows that simplify artifact movement, ensure completeness, and integrate seamlessly with security and compliance practices.
 
-## Problem Statement & Motivation 
+## Problem Statement & Motivation
 
-Currently, ORAS commands function on one artifact at a time, so copying a large number of artifacts will require scripting.
-There is also no ability to copy multiple artifacts to a compressed tar file.
+As organizations scale their software supply chain, acquiring and managing OCI artifacts is no longer as simple as pulling images from public registries e.g. Docker Hub or pushing them into a private registry. Security-conscious enterprises are imposing strict controls over how container images, Helm charts, AI models, SBOMs, attestations, and other OCI artifacts flow between registries and local environments.
 
-* https://github.com/oras-project/oras/issues/1366
-* https://github.com/oras-project/oras/issues/730
+Take for example, a global bank that cannot allow development teams to directly pull from public registries. Instead, they operate an internal acquisition pipeline where artifacts must first pass through vulnerability scans, software license checks, and supply chain attestation validation. Only after passing these gates are images and artifacts published to the bank's trusted registry for internal use. Similarly, security-critical systems maintain air-gapped environments. For them, acquiring artifacts requires carefully controlled offline transfers, with no room for manual errors or missing metadata.
 
+Enterprises often maintain separate registries for development (DEV), quality assurance (QA), and production (PROD) to reduce the risk of untested artifacts reaching production. Promotion workflows rely on moving OCI artifacts across local environment and registries in a traceable, consistent, and secure manner.
 
-## Scenarios 
+Yet today, developers and users resort to fragmented, CLI tools like:
 
-This feature will be useful for mirroring, air gapped registries, and disaster recovery.
+* `docker save/load` for container images.
+* `oras pull/push` for OCI artifacts.
+* `oras copy` for copying a single image with artifacts
+* Ad-hoc scripts to cobble together backups and restores artifacts across different environments.
 
-Users often need to mirror registries for performance and reliability reasons.
-Pulling images over the Internet can be significantly slower than pulling images from a local registry.
-If network connections are unreliable, a local registry will potentially be a lot more reliable.
+This patchwork approach brings significant limitations and problems:
 
-Air gapped environments normally require users to copy many artifacts to a portable storage medium and sneaker net that storage into the environment.
-The backup and restore commands will make writing that portable storage medium easy.
+* Backups lack structure, making recovery error-prone.
+* Artifact referrers, attestations, and SBOMs are often lost in transit.
+* Promotion and migration workflows are tedious, inconsistent, and fragile.
+* Duplication of blobs wastes storage and network bandwidth.
 
-The backup and restore commands will also help users wanting to copy artifacts from a registry for disaster recovery.
-It may be significantly easier to restore a registry from a backup rather than recreate the artifacts.
+The result is frustrated DevOps engineers, wasted resources, and security gaps that erode confidence in artifact management processes. There is a clear need for an integrated, reliable, and user-friendly solution to:
 
+* Efficiently acquire and promote artifacts across local environment and registries.
+* Create portable, structured backups in standard formats.
+* Restore registry state, including all metadata and dependencies.
+* Empower teams to meet security, compliance, and operational requirements across air-gapped, multi-cloud, and hybrid environments.
+
+## Scenarios
+
+This document illustrates real-world scenarios highlighting these challenges and how unified, structured backup and restore functionality built into `oras` can significantly improve user experience, operational efficiency, and supply chain security.
+
+### Scenario 1: Creating Offline Snapshots for Air-Gapped Environments
+
+Dave, a security engineer at a FinTech company. To create a snapshot of the image and its referrers in an air-gapped environment, Dave needs to run the following flow:
+
+1. Packages the image and its referrers from an OCI image layout into a `.tar` for portability.
+2. Copies compressed files via secured channels to the air-gapped network.
+3. Restore all artifacts from a compressed file to an OCI registry in an air-gapped environment.
+
+No unified snapshot solution available in `docker` or `oras`. Blobs duplicated across files and no assurance of artifact integrity and completeness causes problems to users. See [GitHub Issue #730](https://github.com/oras-project/oras/issues/730)
+
+### Scenario 2: Image and Artifact Portability Across Isolated Environments
+
+Cindy is a DevOps engineer working for a SaaS company that enforces strict network isolation between development, testing, staging, and production environments. Each environment has its own isolated OCI registry with no direct network connectivity between them. Cindy is responsible for promoting container images and artifacts across these isolated environments. For example, after building and testing an application image in the development environment, she needs to transfer it to the test and production environments.
+
+However, direct registry-to-registry transfers are impossible due to network isolation and security policies. Today, Cindy uses `docker save/load`:
+
+```bash
+# Build image in development
+docker build -t myapp:v1 .
+
+# Export to a tar file
+docker save myapp:v1 -o myapp.tar
+
+# Manually transfer the tar file to test or production environment (e.g., via secure file transfer)
+
+# Load image in the target environment
+docker load -i myapp.tar
+
+# Tag and push to the target environment registry
+docker tag myapp:v1 registry.test.example.com/myapp:v1
+docker push registry.test.example.com/myapp:v1
+```
+
+This process becomes even more complex when promoting artifacts beyond images, such as Helm charts, SBOMs, or signed attestations. Cindy must maintain separate scripts, manual tag tracking, and artifact validation. This process increased the risk of human error, artifact loss, and security gaps.
+
+Manual tag mapping and artifact tracking introduce errors. The existing `docker`-based workflow cannot easily handle artifacts beyond images. Referrers and metadata are often lost during promotion, and in environments where `docker` is unavailable, image portability becomes impossible.
+
+With a unified backup and restore solution, Cindy can efficiently move images and artifacts between isolated environments using a consistent, reliable workflow. The process preserves all referrers, tags, and metadata end-to-end, and works even in restricted environments without relying on `docker`. This ensures artifact integrity and completeness across the entire software delivery pipeline while significantly reducing operational complexity and human error.
+
+### Scenario 3: Backup and Restore Repositories
+
+Alice is an infrastructure engineer at a multi-cloud SaaS company responsible for maintaining container images and artifacts across multiple registries. These registries, hosted on different cloud providers, store critical application components required for her company’s services to run reliably across regions.
+
+One of Alice's primary concerns is disaster recovery. If the repository is accidentally deleted, corrupted, or compromised, she needs a reliable way to restore it quickly to minimize downtime and operational impact. However, existing tools fall short. For example, docker save/load works only for images and requires the image to be pulled into Docker's internal storage (containerd image store) first, which is inefficient and limited. Worse, it doesn’t preserve referrer artifacts, such as SBOMs, signatures, or attestations, nor does it handle repository-level metadata.
+
+Alice wants a simple, portable solution that allows her to archive an entire repository or even multiple repositories for an application stack, including all artifacts, tags, referrers, and metadata, into a single, compressed file that can be stored in durable blob storage. This archive acts as a disaster recovery backup, ready to be restored at any time to any registry, whether on-premises or in the cloud. Alternatively, Alice also wants to backup a repository to local system as an OCI image layout for local modification. 
+
+With the backup in place, Alice can confidently proceed with registry maintenance tasks or operational changes, knowing that if something goes wrong—such as an accidental repository deletion—she can quickly restore the entire repository from her backup archive. This streamlined backup and restore process eliminates the need for manual scripting, reduces human error, and ensures artifact integrity and completeness. Alice can now maintain disaster recovery readiness across all her registries, improving operational resilience and reducing business risk.
+
+### Scenario 4: Uploading and Downloading Image With Referrers Using `oras pull/push` 
+
+Bob, a developer maintaining containerized applications. Bob wants to create a backup of OCI images from the registry to local disk for disaster recovery, local modification, or air-gapped use. However, Bob incorrectly uses `oras pull` and `oras push`:
+
+```bash  
+# Pull an image to local saved as a tarball  (incorrect usage)
+oras pull foo.example.com/app/backend:v1.0.0 -o backend.tar
+# Extract the tarball and modify it locally
+tar -xf backend.tar
+# Push the modified image back to the registry
+oras push foo.example.com/app/backend:v1.0.1 ./extracted
+```
+
+At first glance, this appears to work. The image is pushed back to the registry. But when the image consumer try to pull and run the image, they encounter errors. The image referrers also lost when pulling and running the image. This is because `oras pull/push` only handles raw artifacts, not the full OCI image required for runnable images. Bob should be using `oras copy --recursive` with `--to-oci-layout` and `--from-oci-layout` to properly export and import an image with referrers in OCI image layout format:
+
+```bash
+oras copy --recursive --to-oci-layout registry.example.com/app/backend:v1.0.0 ./image-backup:v1.0.0 
+```
+
+To restore from an OCI image layout to an image:
+
+```bash
+oras copy --recursive --from-oci-layout ./image-backup:v1.0.0 registry.example.com/app/backend:v1.0.0
+```
+
+Lack of clarity and built-in commands for standardized, reliable image backup and restore causes user confusion and broken workflows. OCI image layout is not widely adopted by users. This pattern is reported repeatedly by users tracked in [GitHub Issue #1160](https://github.com/oras-project/oras/issues/1160), [GitHub Issue #1353](https://github.com/oras-project/oras/issues/1353), [GitHub Issue #1366](https://github.com/oras-project/oras/issues/1366).
 
 ## Existing Solutions or Expectations
 
-This functionality is similar, but more flexible than `docker save` and `docker load`.
-The Docker commands only allow the use of a tar file.
+* `docker save/load` supports exporting and importing images but not referrers or OCI artifacts.
+* `oras pull/push` handles single artifacts, but not repository-level operations.
+* There is no built-in way to persist multiple artifacts in OCI layout format via `oras`.
 
+This proposal meets user expectations of portability, structure, and artifact completeness using OCI specifications.
 
-## Proposal 
+## Proposal
 
-The backup and restore commands will support reading and writing multiple files to and from a registry.
-As well as the flags described here, the commands will support the normal set of flags to support TLS and authentication.
+This document proposes two new command sets, `oras backup` and `oras restore`, to address the identified problems and support the scenarios outlined above. It also describes the desired user experience for backing up and restoring artifacts, images, and repositories between a registry and the local environment.
 
+### New Command/Parameters in the CLI
 
-### oras backup
+#### Command: `oras backup`
 
-The backup command will read a list of atifacts from the command line or from standard input.
-It will support writing to a directory or compressed tar file.
+**Short summary:**
+Backup OCI artifacts and repositories from a registry into a structured, portable OCI image layout or archive tarball file locally.
 
-For example, backing up artifacts specified on the command line to a directory:
-
+**Syntax:**
 ```bash
-oras backup --output ./mirror  registry.k8s.io/kube-apiserver-arm64:v1.31.0 registry.k8s.io/kube-controller-manager-arm64:v1.31.0
+oras backup [flags] <registry>/<repository>[:<ref1>[,<ref2>...]] [...]
 ```
 
-It is mandatory to specify `--output` argument with the destination.
-The source artifacts may be read from different registries although the example reads artifacts from one registry.
-If no reference tag or digest is specified, the entire repository will be copied.
+**Output:**
+An OCI image layout directory or `.tar` archive containing the images, artifacts, their metadata, and optional referrers.
 
-The generated directory structure is `<specified-directory>/<repository>`.
-The command above puts the OCI layout for the Kubernetes API server in `mirror/kube-api-server-arm64`.
-The directory structure with intermediate blobs removed:
+**New Flags:**
 
+* `--include-referrers`: Back up the image and its linked referrers (e.g., attestations, SBOMs).
+* `--output <path>`: Required. Target file path or archive tarball file to write in local filesystem.
+
+> [!NOTE] 
+> > The file extension determines the output format. If the output path does not include a file extension, it is assumed that the output should be a directory. When an unsupported extension such as `.zip` or `.tar.gz` is specified, `oras` should display a warning indicating that the format is not supported. In such cases, it will proceed to create a directory at the specified path instead.
+
+**Common flags:**
+
+* `--concurrency <int>`: Number of parallel fetch operations. Default: `3`.
+* `--plain-http`: Allow insecure connections to registry without SSL check.
+* `--insecure`: Allow connections to registries without valid TLS certificates.
+* `--registry-config <path>`: Path to the authentication configuration file for the registry.
+* `--username <string>`: Username for authenticating to the registry.
+* `--password <string>`: Password for authenticating to the registry.
+* `--password-stdin`: Read password from stdin.
+* `--identity-token <string>`: Use bearer token for authentication.
+* `--identity-token-stdin`: Read identity token from stdin.
+* `--ca-file <path>`: Path to custom CA certificate file.
+* `--cert-file <path>`: Path to client TLS certificate file.
+* `--key-file <path>`: Path to client private key file.
+* `--resolve <host:port:address[:address_port]>`: Customized DNS for registry.
+* `--debug`: Output debug logs (implies `--no-tty`).
+* `--no-tty`: Disable progress bars
+
+#### Command: `oras restore`
+
+**Short summary:**
+Restore OCI artifacts or images from a local OCI image layout or archive into a registry.
+
+**Syntax:**
 ```bash
-$ find mirror
-mirror
-mirror/kube-apiserver-arm64
-mirror/kube-apiserver-arm64
-mirror/kube-apiserver-arm64/ingest
-mirror/kube-apiserver-arm64/oci-layout
-mirror/kube-apiserver-arm64/blobs
-mirror/kube-apiserver-arm64/blobs/sha256
-mirror/kube-apiserver-arm64/blobs/sha256/3f4e2c5863480125882d92060440a5250766bce764fee10acdbac18c872e4dc7
-...
-mirror/kube-apiserver-arm64/blobs/sha256/4f80fb2b9442dbecd41e68b598533dcaaf58f9d45cce2e03a715499aa9f6b676
-mirror/kube-apiserver-arm64/index.json
-mirror/kube-controller-manager-arm64
-mirror/kube-controller-manager-arm64
-mirror/kube-controller-manager-arm64/ingest
-mirror/kube-controller-manager-arm64/oci-layout
-mirror/kube-controller-manager-arm64/blobs
-mirror/kube-controller-manager-arm64/blobs/sha256
-mirror/kube-controller-manager-arm64/blobs/sha256/3f4e2c5863480125882d92060440a5250766bce764fee10acdbac18c872e4dc7
-...
-mirror/kube-controller-manager-arm64/blobs/sha256/4f80fb2b9442dbecd41e68b598533dcaaf58f9d45cce2e03a715499aa9f6b676
-mirror/kube-controller-manager-arm64/index.json
-$
+oras restore [flags] <registry>/<repository>[:<ref1>[,<ref2>...]] [...]
 ```
 
-Each image will be stored in a subdirectory which matches the repository name.
+**Output:**
+Artifacts are uploaded to the target registry/registries as specified.
 
-The backup command will also have the ability to write output to a new compressed tar file where the contents are in oci-layout
-format. For example:
+**New flags:**
 
-```bash
-oras backup --output ./mirror.tgz  registry.k8s.io/kube-apiserver-arm64:v1.31.0 registry.k8s.io/kube-controller-manager-arm64:v1.31.0
-```
+- `--input <path>`: Required. Restore from a folder or archive file to registry.
+- `--exclude-referrers`: Restore the image from backup without the referrers
 
-If the output specified is an existing directory, the output will be written in that directory in OCI layout format.
-If the output specified is an existing file, it will be overwritten.
-If the output specified is neither a file or a directory, file output is assumed.
-The file name does NOT need to end in `tgz`, but file output will be compressed tar file.
+**Common flags:**
 
-#### Optimize blobs
+* `--concurrency <int>`: Number of parallel upload operations. Default: `3`.
+* `--plain-http`: Allow insecure connections to registry without SSL check.
+* `--insecure`: Allow connections to registries without valid TLS certificates.
+* `--registry-config <path>`: Path to the authentication configuration file for the registry.
+* `--username <string>`: Username for authenticating to the registry.
+* `--password <string>`: Password for authenticating to the registry.
+* `--password-stdin`: Read password from stdin.
+* `--identity-token <string>`: Use bearer token for authentication.
+* `--identity-token-stdin`: Read identity token from stdin.
+* `--ca-file <path>`: Path to custom CA certificate file.
+* `--cert-file <path>`: Path to client TLS certificate file.
+* `--key-file <path>`: Path to client private key file.
+* `--resolve <host:port:address[:address_port]>`: Customized DNS for registry.
+* `--debug`: Output debug logs (implies `--no-tty`).
+* `--distribution-spec string`: [Preview] set OCI distribution spec version and API option for target. Options: v1.1-referrers-tag, v1.1-referrers-api
+* `--no-tty`: Disable progress bars.
 
-A further enhancement is to create blobs that are duplicated between images as hard links in the directory output and compressed tar files.
+### User Experience in the CLI
 
-
-### oras restore
-
-The restore command will support reading a directory or a compressed tar file and writing the content to a remote registry.
-
-#### Restore from a directory
-
-An example of restoring from a directory:
-
-```bash
-oras restore --input ./mirror localhost:15000/my-mirror
-```
-
-It is mandatory to specify `--input` argument with the source directory or file.
-The destination registry that is being restored to may be different from the source registry.
-An option will be provided to map repositories from the backup to different repositories on the destination registry.
-For example, a backup of `foo.registry.example/test` can be restored to `bar.registry.example/another-test` where `test` is mapped to `another-test`.
-
-The above restore example would result in:
-```bash
-localhost:15000/my-mirror/kube-apiserver-arm64:v1.31.0
-localhost:15000/my-mirror/kube-controller-manager-arm64:v1.31.0
-```
-
-A namespace in the registry will be optional.
-The registry in the above example could be specified as `localhost:15000`.
-
-Any directory in the input that does not contain an `index.json` shall be silently ignored.
-
-#### Restore from a compressed tar file
-
-The directory structure in the tar file will be the same as in the directory output.
-An example of reading from a compressed tar file:
+**Backup and Restore an Entire Repository and Tagged Artifacts**
 
 ```bash
-oras restore --input ./mirror.tgz localhost:15000/my-mirror
+# Backup a repository from a registry to a local compressed tarball
+oras backup --output multi-backup.tar --include-referrers registry.acme.com/repo
+
+# Transfer the backup file to new environment via secure channels (e.g., BitLocker-enabled removable drives)
+
+# Restore images and referrer artifacts from a local backup file to a target registry
+oras restore --input multi-backup.tar registry.backup.com/repo  
 ```
 
-If the specified source is a file, the format is assumed to be a compressed tar file.
-There will be no validation of file name format.
+The backup includes images and all linked referrers. 
 
-#### Restore file input from standard input
+**Backup and Restore Multiple Repositories**
 
-The restore command will support the `--input -` argument to read a compressed tar input from standard input.
+```bash
+# Backup multiple repositories from a registry to a local OCI image layout
+$ oras backup registry.k8s.io/kube-apiserver-arm64:v1.31.0 registry.k8s.io/kube-controller-manager-arm64:v1.31.0 --output k8s-control-plane
+
+# List the tags in the OCI image layout
+$ oras repo tags --oci-layout k8s-control-plane
+registry.k8s.io/kube-apiserver-arm64:v1.31.0
+registry.k8s.io/kube-controller-manager-arm64:v1.31.0
+
+# Restore them to two repositories in a registry
+$ oras restore localhost:5000/kube-apiserver-arm64:v1.31.0 localhost:5000/kube-controller-manager-arm64:v1.31.0 --input k8s-control-plane:v1.31.0
+```
+
+**Offline Snapshot for Air-Gapped Environments**
+
+Create a snapshot of images and referrers for an air-gapped environment:
+
+```bash
+oras backup secure.registry/repo:stable --output airgap-snapshot.tar
+```
+
+By default, referrers are included in the backup along with the image. Users can use the `--exclude-referrers` flag to omit linked referrers from the backup.
+
+Transfer the `.tar` file to the air-gapped system:
+
+```bash
+oras restore sample.registry/repo:stable --input airgap-snapshot.tar
+```
+
+All artifacts and linked referrers are reliably restored with minimal steps.
+
+## Summary
+
+The `oras backup` and `oras restore` commands introduce a structured, OCI-compliant way to persist and rehydrate registry artifacts, bridging a critical gap in the current functionality of the `oras` CLI. This enhancement empowers users with flexible, scriptable, and portable tooling for registry state management.
