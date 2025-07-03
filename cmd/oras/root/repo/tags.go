@@ -16,6 +16,7 @@ limitations under the License.
 package repo
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/opencontainers/go-digest"
@@ -35,6 +36,7 @@ type showTagsOptions struct {
 
 	last             string
 	excludeDigestTag bool
+	limit            int
 }
 
 func showTagsCmd() *cobra.Command {
@@ -83,6 +85,7 @@ Example - [Experimental] Show tags of the target repository with Go template:
 	}
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the tag specified by `last`")
 	cmd.Flags().BoolVar(&opts.excludeDigestTag, "exclude-digest-tags", false, "[Preview] exclude all digest-like tags such as 'sha256-aaaa...'")
+	cmd.Flags().IntVar(&opts.limit, "limit", 0, "Maximum number of tags to return")
 	option.AddDeprecatedVerboseFlag(cmd.Flags())
 	opts.SetTypes(option.FormatTypeText, option.FormatTypeJSON, option.FormatTypeGoTemplate)
 	option.ApplyFlags(&opts, cmd.Flags())
@@ -91,6 +94,11 @@ Example - [Experimental] Show tags of the target repository with Go template:
 
 func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
+
+	if opts.limit < 0 {
+		return fmt.Errorf("--limit must be 0 or a positive number") 
+	}
+
 	finder, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
 		return err
@@ -113,8 +121,12 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 	if err != nil {
 		return err
 	}
+	printed := 0
 	err = finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
+			if opts.limit > 0 && printed >= opts.limit {
+				break 
+			}
 			if opts.excludeDigestTag && isDigestTag(tag) {
 				continue
 			}
@@ -123,6 +135,7 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 					if err := handler.OnTagListed(tag); err != nil {
 						return err
 					}
+					printed++
 					continue
 				}
 				desc, err := finder.Resolve(ctx, tag)
@@ -136,6 +149,7 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 			if err := handler.OnTagListed(tag); err != nil {
 				return err
 			}
+			printed++
 		}
 		return nil
 	})
