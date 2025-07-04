@@ -407,6 +407,7 @@ func (remo *Remote) Modify(cmd *cobra.Command, err error) (error, bool) {
 	}
 
 	if errors.As(err, &errResp) {
+		// TODO: handle this
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
 		return &oerrors.Error{
 			Err: oerrors.TrimErrResp(err, errResp),

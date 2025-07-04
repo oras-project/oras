@@ -237,13 +237,14 @@ func (target *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, allowTag bool)
 
 // Modify handles error during cmd execution.
 func (target *Target) Modify(cmd *cobra.Command, err error) (modifiedErr error, modified bool) {
+	modifiedErr = err
 	var copyErr *oras.CopyError
 	if errors.As(err, &copyErr) {
 		switch copyErr.Origin {
 		case oras.CopyErrorOriginSource, oras.CopyErrorOriginDestination:
 			// example: Error from source remote registry for "localhost:5000/test:v1":
 			// example: Error from destination OCI layout for "oci-dir:v1":
-			cmd.SetErrPrefix(fmt.Sprintf("Error from %s %s at %q:", copyErr.Origin, target.Type, target.RawReference))
+			cmd.SetErrPrefix(fmt.Sprintf("Error from %s %s for %q:", copyErr.Origin, target.Type, target.RawReference))
 			modifiedErr = copyErr.Err
 			modified = true
 		}
@@ -280,8 +281,10 @@ func (target *Target) Modify(cmd *cobra.Command, err error) (modifiedErr error, 
 		}
 
 		// cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
+		// TODO: what if errResp.Errors is empty?
 		ret := &oerrors.Error{
-			Err: errResp.Errors,
+			// Err: errResp.Errors,
+			Err: oerrors.TrimErrResp(err, errResp),
 		}
 
 		if ref.Registry == "docker.io" && errResp.StatusCode == http.StatusUnauthorized {
