@@ -34,6 +34,7 @@ type repositoryOptions struct {
 	hostname  string
 	namespace string
 	last      string
+	limit     int
 }
 
 func listCmd() *cobra.Command {
@@ -67,6 +68,7 @@ Example - List the repositories under the registry that include values lexically
 	}
 
 	cmd.Flags().StringVar(&opts.last, "last", "", "start after the repository specified by `last`")
+	cmd.Flags().IntVar(&opts.limit, "limit", 0, "Maximum number of repositories to return")
 	option.AddDeprecatedVerboseFlag(cmd.Flags())
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Remote)
@@ -74,14 +76,23 @@ Example - List the repositories under the registry that include values lexically
 
 func listRepository(cmd *cobra.Command, opts *repositoryOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
+	if opts.limit < 0 {
+		return fmt.Errorf("--limit must be 0 or a positive number") 
+	}
+
 	reg, err := opts.NewRegistry(opts.hostname, opts.Common, logger)
 	if err != nil {
 		return err
 	}
+	printed := 0
 	err = reg.Repositories(ctx, opts.last, func(repos []string) error {
 		for _, repo := range repos {
+			if opts.limit > 0 && printed >= opts.limit { 
+				break
+			}
 			if subRepo, found := strings.CutPrefix(repo, opts.namespace); found {
 				_ = opts.Printer.Println(subRepo)
+				printed++ 
 			}
 		}
 		return nil

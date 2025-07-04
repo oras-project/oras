@@ -59,6 +59,7 @@ type Target struct {
 	Path string
 
 	IsOCILayout bool
+	UseSimpleAuth bool
 }
 
 // ApplyFlags applies flags to a command flag set for unary target
