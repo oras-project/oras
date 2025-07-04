@@ -41,7 +41,7 @@ import (
 )
 
 const (
-	TargetTypeRemote    = "remote registry"
+	TargetTypeRemote    = "registry"
 	TargetTypeOCILayout = "OCI layout"
 )
 
