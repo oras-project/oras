@@ -29,7 +29,7 @@ func TestListRepository_Limit(t *testing.T) {
 	count := 0
 
 	err := simulateRepoList(ctx, repos, limit, func(result []string) error {
-		for _, _ = range result {
+		for range result {
 			if count >= limit {
 				break
 			}
