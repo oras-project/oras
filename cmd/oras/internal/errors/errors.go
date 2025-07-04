@@ -106,16 +106,18 @@ func Command(cmd *cobra.Command, handler Modifier) *cobra.Command {
 
 // TrimErrResp tries to trim toTrim from err.
 func TrimErrResp(err error, toTrim error) error {
-	var inner error
+	// var inner error
 	if errResp, ok := toTrim.(*errcode.ErrorResponse); ok {
 		if len(errResp.Errors) == 0 {
-			return fmt.Errorf("recognizable error message not found: %w", toTrim)
+			// return fmt.Errorf("no recognizable error message found: %w", toTrim)
+			return toTrim
 		}
-		inner = errResp.Errors
+		return errResp.Errors
+		// inner = errResp.Errors
 	} else {
 		return err
 	}
-	return reWrap(err, toTrim, inner)
+	// return reWrap(err, toTrim, inner)
 }
 
 // TrimErrBasicCredentialNotFound trims the credentials from err.
