@@ -252,6 +252,12 @@ func (target *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 		}
 	}
 
+	if target.IsOCILayout {
+		// short circuit for OCI layout (non-remote targets)
+		return modifiedErr, modified
+	}
+
+	// Handle errors for remote targets
 	if errors.Is(err, auth.ErrBasicCredentialNotFound) {
 		return target.DecorateCredentialError(modifiedErr), true
 	}
