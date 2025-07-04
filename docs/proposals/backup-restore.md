@@ -211,53 +211,81 @@ Artifacts are uploaded to the target registry/registries as specified.
 
 ### User Experience in the CLI
 
-**Backup and Restore an Entire Repository and Tagged Artifacts**
-
-```bash
-# Backup a repository from a registry to a local compressed tarball
-oras backup --output multi-backup.tar --include-referrers registry.acme.com/repo
-
-# Transfer the backup file to new environment via secure channels (e.g., BitLocker-enabled removable drives)
-
-# Restore images and referrer artifacts from a local backup file to a target registry
-oras restore --input multi-backup.tar registry.backup.com/repo  
-```
-
-The backup includes images and all linked referrers. 
-
-**Backup and Restore Multiple Repositories**
-
-```bash
-# Backup multiple repositories from a registry to a local OCI image layout
-$ oras backup registry.k8s.io/kube-apiserver-arm64:v1.31.0 registry.k8s.io/kube-controller-manager-arm64:v1.31.0 --output k8s-control-plane
-
-# List the tags in the OCI image layout
-$ oras repo tags --oci-layout k8s-control-plane
-registry.k8s.io/kube-apiserver-arm64:v1.31.0
-registry.k8s.io/kube-controller-manager-arm64:v1.31.0
-
-# Restore them to two repositories in a registry
-$ oras restore localhost:5000/kube-apiserver-arm64:v1.31.0 localhost:5000/kube-controller-manager-arm64:v1.31.0 --input k8s-control-plane:v1.31.0
-```
-
 **Offline Snapshot for Air-Gapped Environments**
 
-Create a snapshot of images and referrers for an air-gapped environment:
+Create a snapshot of a sample image `registry-a.k8s.io/kube-apiserver:v1` and its referrer (e.g. signature) for an air-gapped environment:
 
 ```bash
-oras backup secure.registry/repo:stable --output airgap-snapshot.tar
+oras backup registry-a.k8s.io/kube-apiserver:v1 --include-referrers --output airgap-snapshot.tar
 ```
 
 By default, referrers are included in the backup along with the image. Users can use the `--exclude-referrers` flag to omit linked referrers from the backup.
 
-Transfer the `.tar` file to the air-gapped system:
+Transfer the `.tar` file to the air-gapped system via a secured channel. Restore the tarball from local to another registry:
 
 ```bash
-oras restore sample.registry/repo:stable --input airgap-snapshot.tar
+oras restore registry-b.k8s.io/kube-apiserver:v1 --input airgap-snapshot.tar
 ```
 
-All artifacts and linked referrers are reliably restored with minimal steps.
+The image and linked referrers are reliably restored to another registry with minimal steps.
+
+```bash
+$ oras discover registry-b.k8s.io/kube-apiserver:v1
+registry-b.k8s.io/kube-apiserver@sha256:9081a6f83f4febf47369fc46b6f0f7683c7db243df5b43fc9defe51b0471a950
+└── application/vnd.cncf.notary.signature
+    └── sha256:78833f9c870d3b069cdd998cae33b935629399f24743e680ab3bebb90de76589
+        └── [annotations]
+            ├── org.opencontainers.image.created: "2025-06-10T20:25:53Z"
+            └── io.cncf.notary.x509chain.thumbprint#S256: '["xxxxxx"]'
+```
+
+**Backup and Restore an Entire Repository and Tagged Artifacts**
+
+Assume two tags `v1` and `v2` are stored in a repostiory `registry.k8s.io/kube-apiserver`. Backup the entire repo to a tarball and restore it to another registry:
+
+```bash
+# Backup a repository from a registry to a local compressed tarball. All tags and their referrers will be included.
+oras backup --output backup.tar --include-referrers registry-a.k8s.io/kube-apiserver
+```
+
+Transfer the backup file to new environment via secure channels (e.g., BitLocker-enabled removable drives)
+
+Restore images and referrer artifacts from a local backup file to a target registry. All tags and their referrers will be included be default.
+
+```bash
+oras restore --input backup.tar registry-b.k8s.io/kube-apiserver
+```
+
+List all tags from the repo `registry-b.k8s.io/kube-apiserver`
+
+```bash
+oras repo tags registry-b.k8s.io/kube-apiserver
+v1
+v2
+```
+
+**Backup and Restore Multiple Repositories**
+
+Backup multiple repositories from a registry to a local OCI image layout
+
+```bash
+$ oras backup registry.k8s.io/kube-apiserver registry.k8s.io/kube-controller-manager --output k8s-control-plane
+```
+
+List the repositories in the OCI image layout
+
+```bash
+$ oras repo list --oci-layout k8s-control-plane 
+kube-apiserver
+kube-controller-manager
+```
+
+Restore them to two repositories in a registry
+
+```bash
+$ oras restore localhost:5000/kube-apiserver localhost:5000/kube-controller --input k8s-control-plane
+```
 
 ## Summary
 
-The `oras backup` and `oras restore` commands introduce a structured, OCI-compliant way to persist and rehydrate registry artifacts, bridging a critical gap in the current functionality of the `oras` CLI. This enhancement empowers users with flexible, scriptable, and portable tooling for registry state management.
+The `oras backup` and `oras restore` commands introduce a structured, OCI-compliant way to persist and rehydrate artifacts and referrers, bridging a critical gap in the current functionality of the `oras` CLI. This enhancement empowers users with flexible, scriptable, and portable tooling for registry state management.
