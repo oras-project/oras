@@ -53,6 +53,7 @@ type copyOptions struct {
 	extraRefs   []string
 	// Deprecated: verbose is deprecated and will be removed in the future.
 	verbose bool
+	simpleAuth bool
 }
 
 func copyCmd() *cobra.Command {
@@ -113,6 +114,9 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
 	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
+
+	cmd.Flags().BoolVar(&opts.simpleAuth, "simple-auth", false, "use per-request scoped authentication instead of shared cache")
+
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.BinaryTarget)
@@ -120,6 +124,9 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 
 func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
+
+	opts.From.UseSimpleAuth = opts.simpleAuth
+	opts.To.UseSimpleAuth = opts.simpleAuth
 
 	// Prepare source
 	src, err := opts.From.NewReadonlyTarget(ctx, opts.Common, logger)
