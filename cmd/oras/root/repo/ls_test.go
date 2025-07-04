@@ -17,7 +17,7 @@ package repo
 import (
 	"context"
 	"testing"
-
+	
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,6 +39,35 @@ func TestListRepository_Limit(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, 2, count)
+}
+
+func TestListRepository_ZeroLimit(t *testing.T) {
+	ctx := context.Background()
+	repos := []string{"repo1", "repo2"}
+	limit := 0
+	count := 0
+
+	err := simulateRepoList(ctx, repos, limit, func(result []string) error {
+		for range result {
+			if count >= limit {
+				break
+			}
+			count++
+		}
+		return nil
+	})
+	require.NoError(t, err)
+	require.Equal(t, 0, count)
+}
+func TestListRepository_InvalidLimit(t *testing.T) {
+	cmd := listCmd()
+	cmd.SetArgs([]string{"localhost:5000"})
+
+	err := cmd.Flags().Set("limit", "-1")
+	require.NoError(t, err)
+
+	err = cmd.Execute()
+	require.ErrorContains(t, err, "--limit must be 0 or a positive number")
 }
 
 // simulateRepoList mocks a registry.Repositories() behavior
