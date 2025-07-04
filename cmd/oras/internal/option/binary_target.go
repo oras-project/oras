@@ -48,8 +48,10 @@ func (target *BinaryTarget) EnableDistributionSpecFlag() {
 
 // ApplyFlags applies flags to a command flag set fs.
 func (target *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
-	target.From.ApplyFlagsWithPrefix(fs, "from", "source")
-	target.To.ApplyFlagsWithPrefix(fs, "to", "destination")
+	target.From.setFlagDetails("from", "source")
+	target.From.ApplyFlags(fs)
+	target.To.setFlagDetails("to", "destination")
+	target.To.ApplyFlags(fs)
 	fs.StringArrayVarP(&target.resolveFlag, "resolve", "", nil, "base DNS rules formatted in `host:port:address[:address_port]` for --from-resolve and --to-resolve")
 }
 
