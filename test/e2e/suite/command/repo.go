@@ -690,4 +690,37 @@ var _ = Describe("OCI image layout users:", func() {
 			}
 		})
 	})
+
+	When("showing tags of a specific repository using `--oci-layout-path` flag", func() {
+		prepare := func(repo string, fromTag string, toTags ...string) string {
+			root := PrepareTempOCI(repo)
+			args := []string{"tag", LayoutRef(root, fromTag), Flags.Layout}
+			args = append(args, toTags...)
+			ORAS(args...).WithDescription("prepare in OCI layout").Exec()
+			return root
+		}
+
+		It("should show tags of the repo example.registry.com/foo", func() {
+			// prepare
+			root := prepare(ImageRepo, foobar.Tag, "example.registry.com/foo:latest", "example.registry.com/foo:v1.2.6", "test.com/bar:v1")
+			// test
+			session := ORAS("repo", "tags", "--oci-layout-path", root, "example.registry.com/foo").MatchKeyWords("latest\n", "v1.2.6\n").Exec()
+			Expect(session.Out).ShouldNot(gbytes.Say(foobar.Tag, "example.registry.com/foo:latest", "example.registry.com/foo:v1.2.6", "test.com/bar:v1"))
+		})
+
+		It("should still find associated tags if a full reference is provided", func() {
+			// prepare
+			root := prepare(ImageRepo, foobar.Tag, "example.registry.com/foo:latest", "example.registry.com/foo:v1.2.6", "test.com/bar:v1")
+			// test
+			ORAS("repo", "tags", "--oci-layout-path", root, "example.registry.com/foo:latest").MatchKeyWords(foobar.Tag, "example.registry.com/foo:latest", "example.registry.com/foo:v1.2.6", "test.com/bar:v1").Exec()
+		})
+
+		It("should not show digest tags if --exclude-digest-tags is used", func() {
+			// prepare
+			root := prepare(ImageRepo, foobar.Tag, "example.registry.com/foo:latest", "example.registry.com/foo:v1.2.6", "test.com/bar:v1", "example.registry.com/foo:sha256-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+			// test
+			session := ORAS("repo", "tags", "--oci-layout-path", root, "example.registry.com/foo", "--exclude-digest-tags").MatchKeyWords("latest\n", "v1.2.6\n").Exec()
+			Expect(session.Out).ShouldNot(gbytes.Say(foobar.Tag, "example.registry.com/foo:latest", "example.registry.com/foo:v1.2.6", "test.com/bar:v1", "sha256-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"))
+		})
+	})
 })
