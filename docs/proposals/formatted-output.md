@@ -10,12 +10,19 @@
   - [Scenarios](#scenarios)
     - [Scripting](#scripting)
     - [CI/CD](#cicd)
+    - [Verify local files](#verify-local-files)
   - [Proposal and desired user experience](#proposal-and-desired-user-experience)
     - [oras manifest fetch](#oras-manifest-fetch)
     - [oras pull](#oras-pull)
     - [oras push](#oras-push)
     - [oras attach](#oras-attach)
     - [oras discover](#oras-discover)
+      - [Tree format of `oras discover` output](#tree-format-of-oras-discover-output)
+      - [JSON output of `oras discover`](#json-output-of-oras-discover)
+      - [Table format of `oras discover` output](#table-format-of-oras-discover-output)
+      - [Set the depth of listed referrers](#set-the-depth-of-listed-referrers)
+    - [oras repo ls](#oras-repo-ls)
+    - [oras repo tags](#oras-repo-tags)
   - [FAQ](#faq)
 
 ## Background
@@ -445,6 +452,7 @@ oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c7
 ```
 
 ```json
+{
   "reference": "localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01",
   "mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
   "digest": "sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa20d4cca40136b51d9557918b01",
@@ -498,6 +506,7 @@ oras discover localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c7
       ]
     }
   ]
+}
 ```
 
 #### Table format of `oras discover` output
@@ -555,6 +564,117 @@ localhost:5000/kubernetes/kubectl@sha256:bece4f4746a39cb39e38451c70fa5a1e5ea4fa2
                 └── vnd/test-annotations
                     └── sha256:d2cb66a53e4d77488df1f15701554ebb11ffa1cf6eb90f79afa33d3b172f11d2
 ```
+
+### oras repo ls
+
+When using `oras repo ls` with the `--format` flag, the JSON output contains the following fields:
+
+- `registry`: The name of the registry (e.g., `example.com`).
+- `repositories`: A list of repositories in the registry.
+
+The JSON schema for the output is as follows:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JSON Output of Repositories in a Registry",
+  "type": "object",
+  "properties": {
+    "registry": {
+      "type": "string",
+      "description": "The registry name"
+    },
+    "repositories": {
+      "type": "array",
+      "description": "List of repositories in the registry",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["registry", "repositories"],
+  "additionalProperties": false
+}
+```
+
+For example, to list all repositories in a registry and format the output as JSON:
+
+```console
+$ oras repo ls localhost:5000 --format json
+{
+  "registry": "localhost:5000",
+  "repositories": [
+    "dev/foo",
+    "dev/bar",
+    "test/foo"
+  ]
+}
+```
+
+When listing repositories under a specific namespace, the JSON output provides the full repository names, including the namespace prefix. This differs from the default text output, which only shows sub-repository names.
+
+For example, listing repositories under the `dev` namespace with JSON formatting:
+
+```console
+$ oras repo ls localhost:5000/dev --format json
+{
+  "registry": "localhost:5000",
+  "repositories": [
+    "dev/foo",
+    "dev/bar"
+  ]
+}
+```
+
+The default text output for the same command omits the namespace prefix for better readability:
+
+```console
+$ oras repo ls localhost:5000/dev
+foo
+bar
+```
+
+### oras repo tags
+
+When using `oras repo tags` with the `--format` flag, the JSON output contains the following fields:
+
+- `tags`: A list of tags available in the specified repository
+
+
+The JSON schema for the output is as follows:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JSON Output of Tags in a Repository",
+  "type": "object",
+  "properties": {
+    "tags": {
+      "type": "array",
+      "description": "List of tags in the repository",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["tags"],
+  "additionalProperties": false
+}
+```
+
+For example, to list all tags in a repository and format the output as JSON:
+
+```console
+$ oras repo tags localhost:5000/test --format json
+{
+  "tags": [
+    "latest",
+    "v1.0",
+    "v1.1"
+  ]
+}
+```
+
 
 ## FAQ
 
