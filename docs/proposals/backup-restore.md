@@ -1,4 +1,4 @@
-# Portable Backup, and Restore of OCI Artifacts and images
+# Portable Backup, and Restore of OCI Artifacts and Images
 
 Authors: @TerryHowe @FeynmanZhou 
 
@@ -49,9 +49,9 @@ Dave, a security engineer at a FinTech company. To create a snapshot of the imag
 
 1. Packages the image and its referrers from an OCI image layout into a `.tar` for portability.
 2. Copies compressed files via secured channels to the air-gapped network.
-3. Restore all artifacts from a compressed file to an OCI registry in an air-gapped environment.
+3. Restores all artifacts from a compressed file to an OCI registry in an air-gapped environment.
 
-No unified snapshot solution available in `docker` or `oras`. Blobs duplicated across files and no assurance of artifact integrity and completeness causes problems to users. See [GitHub Issue #730](https://github.com/oras-project/oras/issues/730)
+No unified snapshot solution available in `docker` or `oras`. Blobs duplicated across files and no assurance of artifact integrity and completeness causes problems to users. See [GitHub Issue #730](https://github.com/oras-project/oras/issues/730).
 
 ### Scenario 2: Image and Artifact Portability Across Isolated Environments
 
@@ -105,7 +105,7 @@ tar -xf backend.tar
 oras push foo.example.com/app/backend:v1.0.1 ./extracted
 ```
 
-At first glance, this appears to work. The image is pushed back to the registry. But when the image consumer try to pull and run the image, they encounter errors. The image referrers also lost when pulling and running the image. This is because `oras pull/push` only handles raw artifacts, not the full OCI image required for runnable images. Bob should be using `oras copy --recursive` with `--to-oci-layout` and `--from-oci-layout` to properly export and import an image with referrers in OCI image layout format:
+At first glance, this appears to work. The image is pushed back to the registry. But when the image consumers try to pull and run the image, they encounter errors. The image referrers also lost when pulling and running the image. This is because `oras pull/push` only handles raw artifacts, not the full OCI image required for runnable images. Bob should be using `oras copy --recursive` with `--to-oci-layout` and `--from-oci-layout` to properly export and import an image with referrers in OCI image layout format:
 
 ```bash
 oras copy --recursive --to-oci-layout registry.example.com/app/backend:v1.0.0 ./image-backup:v1.0.0 
@@ -123,7 +123,7 @@ Lack of clarity and built-in commands for standardized, reliable image backup an
 
 * `docker save/load` supports exporting and importing images but not referrers or OCI artifacts.
 * `oras pull/push` handles single artifacts, but not repository-level operations.
-* There is no built-in way to persist multiple artifacts in OCI layout format via `oras`.
+* It's inefficient to persist multiple artifacts in OCI layout format via `oras copy`.
 
 This proposal meets user expectations of portability, structure, and artifact completeness using OCI specifications.
 
@@ -148,11 +148,11 @@ An OCI image layout directory or `.tar` archive containing the images, artifacts
 
 **New Flags:**
 
+* `--output <path>`: Required. Target directory path or tar file path to write in local filesystem.
 * `--include-referrers`: Back up the image and its linked referrers (e.g., attestations, SBOMs).
-* `--output <path>`: Required. Target file path or archive tarball file to write in local filesystem.
 
 > [!NOTE] 
-> > The file extension determines the output format. If the output path does not include a file extension, it is assumed that the output should be a directory. When an unsupported extension such as `.zip` or `.tar.gz` is specified, `oras` should display a warning indicating that the format is not supported. In such cases, it will proceed to create a directory at the specified path instead.
+> The file extension determines the output format. If the output path does not include a file extension, it is assumed that the output should be a directory. When an unsupported extension such as `.zip` or `.tar.gz` is specified, `oras` should display a warning indicating that the format is not supported. In such cases, it will proceed to create a directory at the specified path instead.
 
 **Common flags:**
 
@@ -219,17 +219,15 @@ Create a snapshot of a sample image `registry-a.k8s.io/kube-apiserver:v1` and it
 oras backup registry-a.k8s.io/kube-apiserver:v1 --include-referrers --output airgap-snapshot.tar
 ```
 
-By default, referrers are included in the backup along with the image. Users can use the `--exclude-referrers` flag to omit linked referrers from the backup.
-
 Transfer the `.tar` file to the air-gapped system via a secured channel. Restore the tarball from local to another registry:
 
 ```bash
 oras restore registry-b.k8s.io/kube-apiserver:v1 --input airgap-snapshot.tar
 ```
 
-The image and linked referrers are reliably restored to another registry with minimal steps.
+By default, the image and linked referrers are reliably restored to another registry with minimal steps. Users can use the `--exclude-referrers` flag to exclude linked referrers when using `oras restore`.
 
-```bash
+```console
 $ oras discover registry-b.k8s.io/kube-apiserver:v1
 registry-b.k8s.io/kube-apiserver@sha256:9081a6f83f4febf47369fc46b6f0f7683c7db243df5b43fc9defe51b0471a950
 └── application/vnd.cncf.notary.signature
@@ -241,7 +239,7 @@ registry-b.k8s.io/kube-apiserver@sha256:9081a6f83f4febf47369fc46b6f0f7683c7db243
 
 **Backup and Restore an Entire Repository and Tagged Artifacts**
 
-Assume two tags `v1` and `v2` are stored in a repostiory `registry.k8s.io/kube-apiserver`. Backup the entire repo to a tarball and restore it to another registry:
+Assume two tags `v1` and `v2` are stored in a repository `registry.k8s.io/kube-apiserver`. Backup the entire repo to a tarball and restore it to another registry:
 
 ```bash
 # Backup a repository from a registry to a local compressed tarball. All tags and their referrers will be included.
@@ -258,8 +256,8 @@ oras restore --input backup.tar registry-b.k8s.io/kube-apiserver
 
 List all tags from the repo `registry-b.k8s.io/kube-apiserver`
 
-```bash
-oras repo tags registry-b.k8s.io/kube-apiserver
+```console
+$ oras repo tags registry-b.k8s.io/kube-apiserver
 v1
 v2
 ```
@@ -274,10 +272,10 @@ $ oras backup registry.k8s.io/kube-apiserver registry.k8s.io/kube-controller-man
 
 List the repositories in the OCI image layout
 
-```bash
+```console
 $ oras repo list --oci-layout k8s-control-plane 
-kube-apiserver
-kube-controller-manager
+registry.k8s.io/kube-apiserver
+registry.k8s.io/kube-controller-manager
 ```
 
 Restore them to two repositories in a registry
