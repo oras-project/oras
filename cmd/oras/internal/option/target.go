@@ -42,7 +42,7 @@ import (
 
 const (
 	TargetTypeRemote    = "registry"
-	TargetTypeOCILayout = "oci-layout"
+	TargetTypeOCILayout = "OCI layout"
 )
 
 // Target struct contains flags and arguments specifying one registry or image
@@ -237,17 +237,29 @@ func (target *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, allowTag bool)
 
 // Modify handles error during cmd execution.
 func (target *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
+	modifiedErr := err
+	modified := false
+
+	var copyErr *oras.CopyError
+	if errors.As(err, &copyErr) {
+		switch copyErr.Origin {
+		case oras.CopyErrorOriginSource, oras.CopyErrorOriginDestination:
+			// Example: Error from source registry for "localhost:5000/test:v1":
+			// Example: Error from destination OCI layout for "oci-dir:v1":
+			cmd.SetErrPrefix(fmt.Sprintf("Error from %s %s for %q:", copyErr.Origin, target.Type, target.RawReference))
+			modifiedErr = copyErr.Err
+			modified = true
+		}
+	}
+
 	if target.IsOCILayout {
-		return err, false
+		// short circuit for OCI layout (non-remote targets)
+		return modifiedErr, modified
 	}
 
+	// Handle errors for remote targets
 	if errors.Is(err, auth.ErrBasicCredentialNotFound) {
-		return target.DecorateCredentialError(err), true
-	}
-
-	if errors.Is(err, errdef.ErrNotFound) {
-		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
-		return err, true
+		return target.DecorateCredentialError(modifiedErr), true
 	}
 
 	var errResp *errcode.ErrorResponse
@@ -267,9 +279,8 @@ func (target *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 			}
 		}
 
-		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
 		ret := &oerrors.Error{
-			Err: oerrors.TrimErrResp(err, errResp),
+			Err: oerrors.ReportErrResp(errResp),
 		}
 
 		if ref.Registry == "docker.io" && errResp.StatusCode == http.StatusUnauthorized {
@@ -281,5 +292,5 @@ func (target *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 		}
 		return ret, true
 	}
-	return err, false
+	return modifiedErr, modified
 }

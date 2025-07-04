@@ -104,18 +104,17 @@ func Command(cmd *cobra.Command, handler Modifier) *cobra.Command {
 	return cmd
 }
 
-// TrimErrResp tries to trim toTrim from err.
-func TrimErrResp(err error, toTrim error) error {
-	var inner error
-	if errResp, ok := toTrim.(*errcode.ErrorResponse); ok {
-		if len(errResp.Errors) == 0 {
-			return fmt.Errorf("recognizable error message not found: %w", toTrim)
-		}
-		inner = errResp.Errors
-	} else {
-		return err
+// ReportErrResp returns the inner error message from errResp.Errors.
+// If errResp.Errors is empty, it returns the original errResp.
+func ReportErrResp(errResp *errcode.ErrorResponse) error {
+	if len(errResp.Errors) == 0 {
+		// Example error string:
+		// GET "registry.example.com/v2/_catalog": response status code 401: 401
+		return errResp
 	}
-	return reWrap(err, toTrim, inner)
+	// Example error string:
+	// unauthorized: authentication required
+	return errResp.Errors
 }
 
 // TrimErrBasicCredentialNotFound trims the credentials from err.

@@ -409,7 +409,7 @@ func (remo *Remote) Modify(cmd *cobra.Command, err error) (error, bool) {
 	if errors.As(err, &errResp) {
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
 		return &oerrors.Error{
-			Err: oerrors.TrimErrResp(err, errResp),
+			Err: oerrors.ReportErrResp(errResp),
 		}, true
 	}
 	return err, false
