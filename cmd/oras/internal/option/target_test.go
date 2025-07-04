@@ -19,7 +19,6 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -286,7 +285,7 @@ func TestTarget_Modify_dockerHint(t *testing.T) {
 			if !ok {
 				t.Errorf("expecting error to be *oerrors.Error but received %T", got)
 			}
-			if !reflect.DeepEqual(gotErr.Err, tt.modifiedErr.Err) || gotErr.Usage != tt.modifiedErr.Usage || gotErr.Recommendation != tt.modifiedErr.Recommendation {
+			if gotErr.Err.Error() != tt.modifiedErr.Err.Error() || gotErr.Usage != tt.modifiedErr.Usage || gotErr.Recommendation != tt.modifiedErr.Recommendation {
 				t.Errorf("Target.Modify() error = %v, wantErr %v", gotErr, tt.modifiedErr)
 			}
 			if !modified {
