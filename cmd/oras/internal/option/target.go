@@ -236,32 +236,25 @@ func (target *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, allowTag bool)
 }
 
 // Modify handles error during cmd execution.
-func (target *Target) Modify(cmd *cobra.Command, err error) (modifiedErr error, modified bool) {
-	modifiedErr = err
+func (target *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
+	modifiedErr := err
+	modified := false
+
 	var copyErr *oras.CopyError
 	if errors.As(err, &copyErr) {
 		switch copyErr.Origin {
 		case oras.CopyErrorOriginSource, oras.CopyErrorOriginDestination:
-			// example: Error from source remote registry for "localhost:5000/test:v1":
-			// example: Error from destination OCI layout for "oci-dir:v1":
+			// Example: Error from source remote registry for "localhost:5000/test:v1":
+			// Example: Error from destination OCI layout for "oci-dir:v1":
 			cmd.SetErrPrefix(fmt.Sprintf("Error from %s %s for %q:", copyErr.Origin, target.Type, target.RawReference))
 			modifiedErr = copyErr.Err
 			modified = true
 		}
 	}
 
-	// if target.IsOCILayout {
-	// 	return modifiedErr, modified
-	// }
-
 	if errors.Is(err, auth.ErrBasicCredentialNotFound) {
 		return target.DecorateCredentialError(modifiedErr), true
 	}
-
-	// if errors.Is(err, errdef.ErrNotFound) {
-	// 	// cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
-	// 	return modifiedErr, true
-	// }
 
 	var errResp *errcode.ErrorResponse
 	if errors.As(err, &errResp) {
@@ -272,19 +265,16 @@ func (target *Target) Modify(cmd *cobra.Command, err error) (modifiedErr error, 
 			ref, parseErr = registry.ParseReference(target.RawReference)
 			if parseErr != nil {
 				// this should not happen
-				return
+				return err, false
 			}
 			if errResp.URL.Host != ref.Host() {
 				// not handle if the error is not from the target
-				return
+				return err, false
 			}
 		}
 
-		// cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
-		// TODO: what if errResp.Errors is empty?
 		ret := &oerrors.Error{
-			// Err: errResp.Errors,
-			Err: oerrors.TrimErrResp(err, errResp),
+			Err: oerrors.ReportErrResp(errResp),
 		}
 
 		if ref.Registry == "docker.io" && errResp.StatusCode == http.StatusUnauthorized {
@@ -296,5 +286,5 @@ func (target *Target) Modify(cmd *cobra.Command, err error) (modifiedErr error, 
 		}
 		return ret, true
 	}
-	return
+	return modifiedErr, modified
 }
