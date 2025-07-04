@@ -244,7 +244,7 @@ func (target *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 	if errors.As(err, &copyErr) {
 		switch copyErr.Origin {
 		case oras.CopyErrorOriginSource, oras.CopyErrorOriginDestination:
-			// Example: Error from source remote registry for "localhost:5000/test:v1":
+			// Example: Error from source registry for "localhost:5000/test:v1":
 			// Example: Error from destination OCI layout for "oci-dir:v1":
 			cmd.SetErrPrefix(fmt.Sprintf("Error from %s %s for %q:", copyErr.Origin, target.Type, target.RawReference))
 			modifiedErr = copyErr.Err

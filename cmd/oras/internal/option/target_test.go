@@ -17,12 +17,14 @@ package option
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote/errcode"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
@@ -290,6 +292,107 @@ func TestTarget_Modify_dockerHint(t *testing.T) {
 			}
 			if !modified {
 				t.Errorf("Failed to modify %v", tt.err)
+			}
+		})
+	}
+}
+
+// TODO: error response
+func TestTarget_Modify_copyError(t *testing.T) {
+	tests := []struct {
+		name          string
+		targetType    string
+		rawReference  string
+		origin        oras.CopyErrorOrigin
+		wantErrPrefix string
+		wantModified  bool
+		isOCILayout   bool
+	}{
+		{
+			name:          "Source error with remote registry target",
+			targetType:    TargetTypeRemote,
+			rawReference:  "localhost:5000/test:v1",
+			origin:        oras.CopyErrorOriginSource,
+			wantErrPrefix: "Error from source registry for \"localhost:5000/test:v1\":",
+			wantModified:  true,
+			isOCILayout:   false,
+		},
+		{
+			name:          "Destination error with remote registry target",
+			targetType:    TargetTypeRemote,
+			rawReference:  "localhost:5000/test:v1",
+			origin:        oras.CopyErrorOriginDestination,
+			wantErrPrefix: "Error from destination registry for \"localhost:5000/test:v1\":",
+			wantModified:  true,
+			isOCILayout:   false,
+		},
+		{
+			name:          "Source error with OCI layout target",
+			targetType:    TargetTypeOCILayout,
+			rawReference:  "oci-dir:v1",
+			origin:        oras.CopyErrorOriginSource,
+			wantErrPrefix: "Error from source OCI layout for \"oci-dir:v1\":",
+			wantModified:  true,
+			isOCILayout:   true,
+		},
+		{
+			name:          "Destination error with OCI layout target",
+			targetType:    TargetTypeOCILayout,
+			rawReference:  "oci-dir:v1",
+			origin:        oras.CopyErrorOriginDestination,
+			wantErrPrefix: "Error from destination OCI layout for \"oci-dir:v1\":",
+			wantModified:  true,
+			isOCILayout:   true,
+		},
+		{
+			name:          "Other error origin",
+			targetType:    TargetTypeRemote,
+			rawReference:  "localhost:5000/test:v1",
+			origin:        oras.CopyErrorOrigin(99), // Using a non-existing origin
+			wantErrPrefix: "",
+			wantModified:  false,
+			isOCILayout:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := &Target{
+				Type:         tt.targetType,
+				RawReference: tt.rawReference,
+				IsOCILayout:  tt.isOCILayout,
+			}
+
+			// Create an error with the specified origin
+			origErr := fmt.Errorf("original error")
+			copyErr := &oras.CopyError{
+				Origin: tt.origin,
+				Err:    origErr,
+			}
+
+			cmd := &cobra.Command{}
+
+			got, modified := opts.Modify(cmd, copyErr)
+
+			if modified != tt.wantModified {
+				t.Errorf("Target.Modify() modified = %v, want %v", modified, tt.wantModified)
+			}
+
+			if tt.wantModified {
+				// If it should be modified, check that we got the original error
+				if got != origErr {
+					t.Errorf("Target.Modify() got = %v, want %v", got, origErr)
+				}
+
+				// And check the error prefix was set correctly
+				if cmd.ErrPrefix() != tt.wantErrPrefix {
+					t.Errorf("Target.Modify() error prefix = %q, want %q", cmd.ErrPrefix(), tt.wantErrPrefix)
+				}
+			} else {
+				// If not modified, the original copy error should be returned
+				if got != copyErr {
+					t.Errorf("Target.Modify() got = %v, want %v", got, copyErr)
+				}
 			}
 		})
 	}
