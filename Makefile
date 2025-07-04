@@ -45,7 +45,7 @@ LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitCommit=${GIT_COMMIT}
 LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitTreeState=${GIT_DIRTY}
 
 .PHONY: default
-default: test build-$(OS)-$(ARCH)
+default: build-$(OS)-$(ARCH)
 	@echo 'Done ' build-$(OS)-$(ARCH)
 
 .PHONY: test

@@ -66,6 +66,11 @@ type CopyHandler interface {
 	StopTracking() error
 }
 
+// BackupHandler handles status output for cp command.
+type BackupHandler interface {
+	CopyHandler
+}
+
 // ManifestPushHandler handles status output for manifest push command.
 type ManifestPushHandler interface {
 	OnManifestPushSkipped() error
