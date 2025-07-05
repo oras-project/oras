@@ -1,7 +1,7 @@
 # ORAS Backup and Restore Commands
 
 The backup and restore commands will add the capability to backup a list of artifacts from a registry and restore them to another registry.
-Backup and restore will be support for any OCI compatible artifact (e.g. container images, helm charts, configuration files,...).
+Backup and restore will be supported for any OCI compatible artifact (e.g. container images, helm charts, configuration files,...).
 
 
 ## Overview 
@@ -47,7 +47,7 @@ As well as the flags described here, the commands will support the normal set of
 
 ### oras backup
 
-The backup command will read a list of atifacts from the command line or from standard input.
+The backup command will read a list of artifacts from the command line or from standard input.
 It will support writing to a directory or compressed tar file.
 
 For example, backing up artifacts specified on the command line to a directory:
@@ -60,39 +60,18 @@ It is mandatory to specify `--output` argument with the destination.
 The source artifacts may be read from different registries although the example reads artifacts from one registry.
 If no reference tag or digest is specified, the entire repository will be copied.
 
-The generated directory structure is `<specified-directory>/<repository>`.
-The command above puts the OCI layout for the Kubernetes API server in `mirror/kube-api-server-arm64`.
-The directory structure with intermediate blobs removed:
+The output directory structure is a single OCI layout containing all of the artifacts.
+Each artifact in the output OCI layout will be tagged with the name of source.
+For example, the `registry.k8s.io/kube-apiserver-arm64:v1.31.0` artifact will be tagged `registry.k8s.io/kube-apiserver-arm64:v1.31.0`.
 
 ```bash
-$ find mirror
-mirror
-mirror/kube-apiserver-arm64
-mirror/kube-apiserver-arm64
-mirror/kube-apiserver-arm64/ingest
-mirror/kube-apiserver-arm64/oci-layout
-mirror/kube-apiserver-arm64/blobs
-mirror/kube-apiserver-arm64/blobs/sha256
-mirror/kube-apiserver-arm64/blobs/sha256/3f4e2c5863480125882d92060440a5250766bce764fee10acdbac18c872e4dc7
-...
-mirror/kube-apiserver-arm64/blobs/sha256/4f80fb2b9442dbecd41e68b598533dcaaf58f9d45cce2e03a715499aa9f6b676
-mirror/kube-apiserver-arm64/index.json
-mirror/kube-controller-manager-arm64
-mirror/kube-controller-manager-arm64
-mirror/kube-controller-manager-arm64/ingest
-mirror/kube-controller-manager-arm64/oci-layout
-mirror/kube-controller-manager-arm64/blobs
-mirror/kube-controller-manager-arm64/blobs/sha256
-mirror/kube-controller-manager-arm64/blobs/sha256/3f4e2c5863480125882d92060440a5250766bce764fee10acdbac18c872e4dc7
-...
-mirror/kube-controller-manager-arm64/blobs/sha256/4f80fb2b9442dbecd41e68b598533dcaaf58f9d45cce2e03a715499aa9f6b676
-mirror/kube-controller-manager-arm64/index.json
-$
+% oras repo tags --oci-layout ./mirror
+registry.k8s.io/kube-apiserver-arm64:v1.31.0
+registry.k8s.io/kube-apiserver-arm64:v1.32.0
+registry.k8s.io/kube-controller-manager-arm64:v1.31.0
 ```
 
-Each image will be stored in a subdirectory which matches the repository name.
-
-The backup command will also have the ability to write output to a new compressed tar file where the contents are in oci-layout
+The backup command will also have the ability to write output to a new compressed tar file where the contents are in a single oci-layout
 format. For example:
 
 ```bash
@@ -103,11 +82,6 @@ If the output specified is an existing directory, the output will be written in 
 If the output specified is an existing file, it will be overwritten.
 If the output specified is neither a file or a directory, file output is assumed.
 The file name does NOT need to end in `tgz`, but file output will be compressed tar file.
-
-#### Optimize blobs
-
-A further enhancement is to create blobs that are duplicated between images as hard links in the directory output and compressed tar files.
-
 
 ### oras restore
 
@@ -125,17 +99,20 @@ It is mandatory to specify `--input` argument with the source directory or file.
 The destination registry that is being restored to may be different from the source registry.
 An option will be provided to map repositories from the backup to different repositories on the destination registry.
 For example, a backup of `foo.registry.example/test` can be restored to `bar.registry.example/another-test` where `test` is mapped to `another-test`.
+The tags in the input OCI layout will be used to reconstruct the source.
 
 The above restore example would result in:
-```bash
-localhost:15000/my-mirror/kube-apiserver-arm64:v1.31.0
-localhost:15000/my-mirror/kube-controller-manager-arm64:v1.31.0
+```console
+% oras repo ls localhost:15000/my-mirror
+kube-apiserver-arm64
+kube-controller-manager-arm64
+% oras repo tags localhost:15000/my-mirror/kube-apiserver-arm64
+v1.31.0
+v1.32.0
 ```
 
 A namespace in the registry will be optional.
 The registry in the above example could be specified as `localhost:15000`.
-
-Any directory in the input that does not contain an `index.json` shall be silently ignored.
 
 #### Restore from a compressed tar file
 
