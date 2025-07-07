@@ -269,7 +269,7 @@ func (target *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 	}
 
 	var errResp *errcode.ErrorResponse
-	if errors.As(err, &errResp) {
+	if errors.As(modifiedErr, &errResp) {
 		ref := registry.Reference{Registry: target.RawReference}
 		if errResp.URL.Host != ref.Host() {
 			// raw reference is not registry host
@@ -277,11 +277,11 @@ func (target *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 			ref, parseErr = registry.ParseReference(target.RawReference)
 			if parseErr != nil {
 				// this should not happen
-				return err, false
+				return modifiedErr, modified
 			}
 			if errResp.URL.Host != ref.Host() {
 				// not handle if the error is not from the target
-				return err, false
+				return modifiedErr, modified
 			}
 		}
 
