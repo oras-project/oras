@@ -17,7 +17,6 @@ package option
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -297,61 +296,95 @@ func TestTarget_Modify_dockerHint(t *testing.T) {
 	}
 }
 
-// TODO: error response
 func TestTarget_Modify_copyError(t *testing.T) {
 	tests := []struct {
-		name          string
-		targetType    string
-		rawReference  string
-		origin        oras.CopyErrorOrigin
-		wantErrPrefix string
-		wantModified  bool
-		isOCILayout   bool
+		name            string
+		targetType      string
+		rawReference    string
+		copyErr         *oras.CopyError
+		wantErrPrefix   string
+		wantModifiedErr error
+		wantModified    bool
+		isOCILayout     bool
 	}{
 		{
-			name:          "Source error with remote registry target",
-			targetType:    TargetTypeRemote,
-			rawReference:  "localhost:5000/test:v1",
-			origin:        oras.CopyErrorOriginSource,
+			name:         "Source error with remote registry target",
+			targetType:   TargetTypeRemote,
+			rawReference: "localhost:5000/test:v1",
+			copyErr: &oras.CopyError{Origin: oras.CopyErrorOriginSource, Err: &errcode.ErrorResponse{
+				URL:        &url.URL{Host: "localhost:5000"},
+				StatusCode: http.StatusBadRequest,
+				Errors: errcode.Errors{
+					{
+						Code:    "NAME_INVALID",
+						Message: "invalid name",
+					},
+				},
+			}},
 			wantErrPrefix: "Error from source registry for \"localhost:5000/test:v1\":",
-			wantModified:  true,
-			isOCILayout:   false,
+			wantModifiedErr: errcode.Errors{
+				{
+					Code:    "NAME_INVALID",
+					Message: "invalid name",
+				},
+			},
+			wantModified: true,
+			isOCILayout:  false,
 		},
 		{
-			name:          "Destination error with remote registry target",
-			targetType:    TargetTypeRemote,
-			rawReference:  "localhost:5000/test:v1",
-			origin:        oras.CopyErrorOriginDestination,
+			name:         "Destination error with remote registry target",
+			targetType:   TargetTypeRemote,
+			rawReference: "localhost:5000/test:v1",
+
+			copyErr: &oras.CopyError{Origin: oras.CopyErrorOriginDestination, Err: &errcode.ErrorResponse{
+				URL:        &url.URL{Host: "localhost:5000"},
+				StatusCode: http.StatusBadRequest,
+				Errors: errcode.Errors{
+					{
+						Code:    "NAME_INVALID",
+						Message: "invalid name",
+					},
+				},
+			}},
 			wantErrPrefix: "Error from destination registry for \"localhost:5000/test:v1\":",
-			wantModified:  true,
-			isOCILayout:   false,
+			wantModifiedErr: errcode.Errors{
+				{
+					Code:    "NAME_INVALID",
+					Message: "invalid name",
+				},
+			},
+			wantModified: true,
+			isOCILayout:  false,
 		},
 		{
-			name:          "Source error with OCI layout target",
-			targetType:    TargetTypeOCILayout,
-			rawReference:  "oci-dir:v1",
-			origin:        oras.CopyErrorOriginSource,
-			wantErrPrefix: "Error from source OCI layout for \"oci-dir:v1\":",
-			wantModified:  true,
-			isOCILayout:   true,
+			name:            "Source error with OCI layout target",
+			targetType:      TargetTypeOCILayout,
+			rawReference:    "oci-dir:v1",
+			copyErr:         &oras.CopyError{Origin: oras.CopyErrorOriginSource, Err: errors.New("source error")},
+			wantErrPrefix:   "Error from source OCI layout for \"oci-dir:v1\":",
+			wantModifiedErr: errors.New("source error"),
+			wantModified:    true,
+			isOCILayout:     true,
 		},
 		{
-			name:          "Destination error with OCI layout target",
-			targetType:    TargetTypeOCILayout,
-			rawReference:  "oci-dir:v1",
-			origin:        oras.CopyErrorOriginDestination,
-			wantErrPrefix: "Error from destination OCI layout for \"oci-dir:v1\":",
-			wantModified:  true,
-			isOCILayout:   true,
+			name:            "Destination error with OCI layout target",
+			targetType:      TargetTypeOCILayout,
+			rawReference:    "oci-dir:v1",
+			copyErr:         &oras.CopyError{Origin: oras.CopyErrorOriginDestination, Err: errors.New("destination error")},
+			wantErrPrefix:   "Error from destination OCI layout for \"oci-dir:v1\":",
+			wantModifiedErr: errors.New("destination error"),
+			wantModified:    true,
+			isOCILayout:     true,
 		},
 		{
-			name:          "Other error origin",
-			targetType:    TargetTypeRemote,
-			rawReference:  "localhost:5000/test:v1",
-			origin:        oras.CopyErrorOrigin(99), // Using a non-existing origin
-			wantErrPrefix: "",
-			wantModified:  false,
-			isOCILayout:   false,
+			name:            "Other error origin",
+			targetType:      TargetTypeRemote,
+			rawReference:    "localhost:5000/test:v1",
+			copyErr:         &oras.CopyError{Origin: oras.CopyErrorOrigin(99), Err: errors.New("unknown error")}, // Using a non-existing origin
+			wantErrPrefix:   "",
+			wantModifiedErr: errors.New("unknown error"),
+			wantModified:    false,
+			isOCILayout:     false,
 		},
 	}
 
@@ -363,16 +396,8 @@ func TestTarget_Modify_copyError(t *testing.T) {
 				IsOCILayout:  tt.isOCILayout,
 			}
 
-			// Create an error with the specified origin
-			origErr := fmt.Errorf("original error")
-			copyErr := &oras.CopyError{
-				Origin: tt.origin,
-				Err:    origErr,
-			}
-
 			cmd := &cobra.Command{}
-
-			got, modified := opts.Modify(cmd, copyErr)
+			got, modified := opts.Modify(cmd, tt.copyErr)
 
 			if modified != tt.wantModified {
 				t.Errorf("Target.Modify() modified = %v, want %v", modified, tt.wantModified)
@@ -380,8 +405,8 @@ func TestTarget_Modify_copyError(t *testing.T) {
 
 			if tt.wantModified {
 				// If it should be modified, check that we got the original error
-				if got != origErr {
-					t.Errorf("Target.Modify() got = %v, want %v", got, origErr)
+				if got.Error() != tt.wantModifiedErr.Error() {
+					t.Errorf("Target.Modify() got = %v, want %v", got, tt.wantModifiedErr)
 				}
 
 				// And check the error prefix was set correctly
@@ -390,8 +415,8 @@ func TestTarget_Modify_copyError(t *testing.T) {
 				}
 			} else {
 				// If not modified, the original copy error should be returned
-				if got != copyErr {
-					t.Errorf("Target.Modify() got = %v, want %v", got, copyErr)
+				if got.Error() != tt.copyErr.Error() {
+					t.Errorf("Target.Modify() got = %v, want %v", got, tt.copyErr)
 				}
 			}
 		})
