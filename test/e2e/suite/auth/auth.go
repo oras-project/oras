@@ -30,7 +30,7 @@ import (
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
-var _ = Describe("Common registry user", Focus, func() {
+var _ = Describe("Common registry user", func() {
 	When("not logged in", func() {
 		It("should run commands without logging in", func() {
 			authConfigPath := filepath.Join(GinkgoT().TempDir(), "auth.config")
