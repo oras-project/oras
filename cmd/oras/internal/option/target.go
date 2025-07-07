@@ -42,7 +42,7 @@ import (
 
 const (
 	TargetTypeRemote    = "registry"
-	TargetTypeOCILayout = "OCI layout"
+	TargetTypeOCILayout = "oci-layout"
 )
 
 // Target struct contains flags and arguments specifying one registry or image
@@ -245,15 +245,15 @@ func (target *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 		switch copyErr.Origin {
 		case oras.CopyErrorOriginSource, oras.CopyErrorOriginDestination:
 			// Example: Error from source registry for "localhost:5000/test:v1":
-			// Example: Error from destination OCI layout for "oci-dir:v1":
+			// Example: Error from destination oci-layout for "oci-dir:v1":
 			cmd.SetErrPrefix(fmt.Sprintf("Error from %s %s for %q:", copyErr.Origin, target.Type, target.RawReference))
 			modifiedErr = copyErr.Err
 			modified = true
 		}
 	}
 
-	if target.IsOCILayout {
-		// short circuit for OCI layout (non-remote targets)
+	if target.Type != TargetTypeRemote {
+		// short circuit for non-remote targets
 		return modifiedErr, modified
 	}
 
@@ -263,6 +263,7 @@ func (target *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 	}
 
 	if !modified && errors.Is(err, errdef.ErrNotFound) {
+		// special handling for not found error retured by registry target
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
 		return modifiedErr, true
 	}

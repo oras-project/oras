@@ -17,6 +17,7 @@ package option
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -153,6 +154,54 @@ func TestTarget_Modify_ociLayout(t *testing.T) {
 	}
 }
 
+func TestTarget_Modify_NotFound(t *testing.T) {
+	// test errdef.ErrNotFound error returned by oci layout and remote
+	tests := []struct {
+		name            string
+		targetType      string
+		rawReference    string
+		wantErrPrefix   string
+		wantModifiedErr error
+		wantModified    bool
+		isOCILayout     bool
+	}{
+		{
+			name:          "not found",
+			targetType:    TargetTypeOCILayout,
+			rawReference:  "oci-dir:latest",
+			wantErrPrefix: "Error:",
+			wantModified:  false,
+			isOCILayout:   true,
+		},
+		{
+			name:          "remote not found",
+			targetType:    TargetTypeRemote,
+			rawReference:  "localhost:5000/test:latest",
+			wantErrPrefix: oerrors.RegistryErrorPrefix,
+			wantModified:  true,
+			isOCILayout:   false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := &Target{
+				Type:         tt.targetType,
+				RawReference: tt.rawReference,
+				IsOCILayout:  tt.isOCILayout,
+			}
+			cmd := &cobra.Command{}
+			originalErr := fmt.Errorf("not found: %w", errdef.ErrNotFound)
+			got, modified := opts.Modify(cmd, originalErr)
+			if modified != tt.wantModified {
+				t.Errorf("Target.Modify() modified = %v, want %v", modified, tt.wantModified)
+			}
+			if got != originalErr {
+				t.Errorf("Target.Modify() got = %v, want %v", got, originalErr)
+			}
+		})
+	}
+}
+
 func TestTarget_Modify_errResponse(t *testing.T) {
 	errResp := &errcode.ErrorResponse{
 		URL:        &url.URL{Host: "localhost:5000"},
@@ -166,6 +215,7 @@ func TestTarget_Modify_errResponse(t *testing.T) {
 	}
 
 	opts := &Target{
+		Type:         TargetTypeRemote,
 		RawReference: "localhost:5000/test:v1",
 	}
 	cmd := &cobra.Command{}
@@ -195,6 +245,7 @@ func TestTarget_Modify_errInvalidReference(t *testing.T) {
 		},
 	}
 	opts := &Target{
+		Type:         TargetTypeRemote,
 		RawReference: "invalid-reference",
 	}
 	cmd := &cobra.Command{}
@@ -225,6 +276,7 @@ func TestTarget_Modify_errHostNotMatching(t *testing.T) {
 	}
 
 	opts := &Target{
+		Type:         TargetTypeRemote,
 		RawReference: "registry-2.docker.io/test:tag",
 	}
 	cmd := &cobra.Command{}
@@ -261,7 +313,10 @@ func TestTarget_Modify_dockerHint(t *testing.T) {
 	}{
 		{
 			"namespace already exists",
-			fields{RawReference: "docker.io/library/alpine:latest"},
+			fields{
+				Type:         TargetTypeRemote,
+				RawReference: "docker.io/library/alpine:latest",
+			},
 			&errcode.ErrorResponse{
 				URL:        &url.URL{Host: "registry-1.docker.io"},
 				StatusCode: http.StatusUnauthorized,
@@ -271,7 +326,10 @@ func TestTarget_Modify_dockerHint(t *testing.T) {
 		},
 		{
 			"no namespace",
-			fields{RawReference: "docker.io"},
+			fields{
+				Type:         TargetTypeRemote,
+				RawReference: "docker.io",
+			},
 			&errcode.ErrorResponse{
 				URL:        &url.URL{Host: "registry-1.docker.io"},
 				StatusCode: http.StatusUnauthorized,
@@ -281,7 +339,10 @@ func TestTarget_Modify_dockerHint(t *testing.T) {
 		},
 		{
 			"not 401",
-			fields{RawReference: "docker.io"},
+			fields{
+				Type:         TargetTypeRemote,
+				RawReference: "docker.io",
+			},
 			&errcode.ErrorResponse{
 				URL:        &url.URL{Host: "registry-1.docker.io"},
 				StatusCode: http.StatusConflict,
@@ -292,6 +353,7 @@ func TestTarget_Modify_dockerHint(t *testing.T) {
 		{
 			"should hint",
 			fields{
+				Type:         TargetTypeRemote,
 				RawReference: "docker.io/alpine",
 				Path:         "oras test",
 			},
@@ -389,7 +451,7 @@ func TestTarget_Modify_copyError(t *testing.T) {
 			targetType:      TargetTypeOCILayout,
 			rawReference:    "oci-dir:v1",
 			copyErr:         &oras.CopyError{Origin: oras.CopyErrorOriginSource, Err: errors.New("source error")},
-			wantErrPrefix:   "Error from source OCI layout for \"oci-dir:v1\":",
+			wantErrPrefix:   "Error from source oci-layout for \"oci-dir:v1\":",
 			wantModifiedErr: errors.New("source error"),
 			wantModified:    true,
 			isOCILayout:     true,
@@ -399,7 +461,7 @@ func TestTarget_Modify_copyError(t *testing.T) {
 			targetType:      TargetTypeOCILayout,
 			rawReference:    "oci-dir:v1",
 			copyErr:         &oras.CopyError{Origin: oras.CopyErrorOriginDestination, Err: errors.New("destination error")},
-			wantErrPrefix:   "Error from destination OCI layout for \"oci-dir:v1\":",
+			wantErrPrefix:   "Error from destination oci-layout for \"oci-dir:v1\":",
 			wantModifiedErr: errors.New("destination error"),
 			wantModified:    true,
 			isOCILayout:     true,
