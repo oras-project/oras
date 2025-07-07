@@ -149,7 +149,36 @@ func TestTarget_Modify_ociLayout(t *testing.T) {
 		t.Errorf("expect error not to be modified but received true")
 	}
 	if got != errClient {
-		t.Errorf("unexpected output from Target.Process() = %v", got)
+		t.Errorf("unexpected output from Target.Modify() = %v", got)
+	}
+}
+
+func TestTarget_Modify_errResponse(t *testing.T) {
+	errResp := &errcode.ErrorResponse{
+		URL:        &url.URL{Host: "localhost:5000"},
+		StatusCode: http.StatusUnauthorized,
+		Errors: errcode.Errors{
+			errcode.Error{
+				Code:    "NAME_INVALID",
+				Message: "invalid name",
+			},
+		},
+	}
+
+	opts := &Target{
+		RawReference: "localhost:5000/test:v1",
+	}
+	cmd := &cobra.Command{}
+	got, modified := opts.Modify(cmd, errResp)
+
+	if !modified {
+		t.Errorf("expected error to be modified but received %v", modified)
+	}
+	if got.Error() != errResp.Errors.Error() {
+		t.Errorf("unexpected output from Target.Modify() = %v", got)
+	}
+	if cmd.ErrPrefix() != oerrors.RegistryErrorPrefix {
+		t.Errorf("unexpected error prefix set on command: %q, want %q", cmd.ErrPrefix(), oerrors.RegistryErrorPrefix)
 	}
 }
 
@@ -168,13 +197,17 @@ func TestTarget_Modify_errInvalidReference(t *testing.T) {
 	opts := &Target{
 		RawReference: "invalid-reference",
 	}
-	got, modified := opts.Modify(&cobra.Command{}, errResp)
+	cmd := &cobra.Command{}
+	got, modified := opts.Modify(cmd, errResp)
 
 	if modified {
 		t.Errorf("expect error not to be modified but received true")
 	}
 	if got != errResp {
-		t.Errorf("unexpected output from Target.Process() = %v", got)
+		t.Errorf("unexpected output from Target.Modify() = %v", got)
+	}
+	if want := "Error:"; cmd.ErrPrefix() != want {
+		t.Errorf("unexpected error prefix set on command: %q, want %q", cmd.ErrPrefix(), want)
 	}
 }
 
@@ -194,9 +227,13 @@ func TestTarget_Modify_errHostNotMatching(t *testing.T) {
 	opts := &Target{
 		RawReference: "registry-2.docker.io/test:tag",
 	}
-	_, modified := opts.Modify(&cobra.Command{}, errResp)
+	cmd := &cobra.Command{}
+	_, modified := opts.Modify(cmd, errResp)
 	if modified {
 		t.Errorf("expect error not to be modified but received true")
+	}
+	if want := "Error:"; cmd.ErrPrefix() != want {
+		t.Errorf("unexpected error prefix set on command: %q, want %q", cmd.ErrPrefix(), want)
 	}
 }
 

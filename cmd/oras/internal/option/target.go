@@ -239,7 +239,6 @@ func (target *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, allowTag bool)
 func (target *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 	modifiedErr := err
 	var modified bool
-	var errPrefixSet bool
 
 	var copyErr *oras.CopyError
 	if errors.As(err, &copyErr) {
@@ -250,7 +249,6 @@ func (target *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 			cmd.SetErrPrefix(fmt.Sprintf("Error from %s %s for %q:", copyErr.Origin, target.Type, target.RawReference))
 			modifiedErr = copyErr.Err
 			modified = true
-			errPrefixSet = true
 		}
 	}
 
@@ -281,7 +279,7 @@ func (target *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 			}
 		}
 
-		if !errPrefixSet {
+		if !modified {
 			cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
 		}
 		ret := &oerrors.Error{
