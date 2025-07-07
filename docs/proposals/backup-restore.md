@@ -1,4 +1,4 @@
-# Portable Backup, and Restore of OCI Artifacts and Images
+# Portable Backup and Restore of OCI Artifacts and Images
 
 Authors: @TerryHowe @FeynmanZhou 
 
@@ -22,7 +22,7 @@ Yet today, developers and users resort to fragmented, CLI tools like:
 
 * `docker save/load` for container images.
 * `oras pull/push` for OCI artifacts.
-* `oras copy` for copying a single image with artifacts
+* `oras copy` for copying a single image with artifacts.
 * Ad-hoc scripts to cobble together backups and restores artifacts across different environments.
 
 This patchwork approach brings significant limitations and problems:
@@ -59,7 +59,7 @@ Cindy is a DevOps engineer working for a SaaS company that enforces strict netwo
 
 However, direct registry-to-registry transfers are impossible due to network isolation and security policies. Today, Cindy uses `docker save/load`:
 
-```bash
+```console
 # Build image in development
 docker build -t myapp:v1 .
 
@@ -96,7 +96,7 @@ With the backup in place, Alice can confidently proceed with registry maintenanc
 
 Bob, a developer maintaining containerized applications. Bob wants to create a backup of OCI images from the registry to local disk for disaster recovery, local modification, or air-gapped use. However, Bob incorrectly uses `oras pull` and `oras push`:
 
-```bash  
+```console  
 # Pull an image to local saved as a tarball  (incorrect usage)
 oras pull foo.example.com/app/backend:v1.0.0 -o backend.tar
 # Extract the tarball and modify it locally
@@ -107,29 +107,27 @@ oras push foo.example.com/app/backend:v1.0.1 ./extracted
 
 At first glance, this appears to work. The image is pushed back to the registry. But when the image consumers try to pull and run the image, they encounter errors. The image referrers also lost when pulling and running the image. This is because `oras pull/push` only handles raw artifacts, not the full OCI image required for runnable images. Bob should be using `oras copy --recursive` with `--to-oci-layout` and `--from-oci-layout` to properly export and import an image with referrers in OCI image layout format:
 
-```bash
+```console
 oras copy --recursive --to-oci-layout registry.example.com/app/backend:v1.0.0 ./image-backup:v1.0.0 
 ```
 
 To restore from an OCI image layout to an image:
 
-```bash
+```console
 oras copy --recursive --from-oci-layout ./image-backup:v1.0.0 registry.example.com/app/backend:v1.0.0
 ```
 
 Lack of clarity and built-in commands for standardized, reliable image backup and restore causes user confusion and broken workflows. OCI image layout is not widely adopted by users. This pattern is reported repeatedly by users tracked in [GitHub Issue #1160](https://github.com/oras-project/oras/issues/1160), [GitHub Issue #1353](https://github.com/oras-project/oras/issues/1353), [GitHub Issue #1366](https://github.com/oras-project/oras/issues/1366).
 
-## Existing Solutions or Expectations
+## Existing Solutions
 
 * `docker save/load` supports exporting and importing images but not referrers or OCI artifacts.
 * `oras pull/push` handles single artifacts, but not repository-level operations.
-* It's inefficient to persist multiple artifacts in OCI layout format via `oras copy`.
-
-This proposal meets user expectations of portability, structure, and artifact completeness using OCI specifications.
+* Users can write scripts to persist multiple artifacts and repositories in local OCI layout and distribute to registries via `oras copy`, but it's error-prone for users to do so.
 
 ## Proposal
 
-This document proposes two new command sets, `oras backup` and `oras restore`, to address the identified problems and support the scenarios outlined above. It also describes the desired user experience for backing up and restoring artifacts, images, and repositories between a registry and the local environment.
+This document proposes two new command sets, `oras backup` and `oras restore`, to address the identified problems and support the scenarios outlined above. It also describes the desired user experience for backing up and restoring artifacts, images, and repositories between a registry and the local environment. This proposal meets user expectations of portability, structure, and artifact completeness using OCI specifications.
 
 ### New Command/Parameters in the CLI
 
@@ -139,7 +137,7 @@ This document proposes two new command sets, `oras backup` and `oras restore`, t
 Backup OCI artifacts and repositories from a registry into a structured, portable OCI image layout or archive tarball file locally.
 
 **Syntax:**
-```bash
+```console
 oras backup [flags] <registry>/<repository>[:<ref1>[,<ref2>...]] [...]
 ```
 
@@ -178,7 +176,7 @@ An OCI image layout directory or `.tar` archive containing the images, artifacts
 Restore OCI artifacts or images from a local OCI image layout or archive into a registry.
 
 **Syntax:**
-```bash
+```console
 oras restore [flags] <registry>/<repository>[:<ref1>[,<ref2>...]] [...]
 ```
 
@@ -215,13 +213,13 @@ Artifacts are uploaded to the target registry/registries as specified.
 
 Create a snapshot of a sample image `registry-a.k8s.io/kube-apiserver:v1` and its referrer (e.g. signature) for an air-gapped environment:
 
-```bash
+```console
 oras backup registry-a.k8s.io/kube-apiserver:v1 --include-referrers --output airgap-snapshot.tar
 ```
 
 Transfer the `.tar` file to the air-gapped system via a secured channel. Restore the tarball from local to another registry:
 
-```bash
+```console
 oras restore registry-b.k8s.io/kube-apiserver:v1 --input airgap-snapshot.tar
 ```
 
@@ -241,16 +239,16 @@ registry-b.k8s.io/kube-apiserver@sha256:9081a6f83f4febf47369fc46b6f0f7683c7db243
 
 Assume two tags `v1` and `v2` are stored in a repository `registry.k8s.io/kube-apiserver`. Backup the entire repo to a tarball and restore it to another registry:
 
-```bash
+```console
 # Backup a repository from a registry to a local compressed tarball. All tags and their referrers will be included.
 oras backup --output backup.tar --include-referrers registry-a.k8s.io/kube-apiserver
 ```
 
 Transfer the backup file to new environment via secure channels (e.g., BitLocker-enabled removable drives)
 
-Restore images and referrer artifacts from a local backup file to a target registry. All tags and their referrers will be included be default.
+Restore images and referrer artifacts from a local backup file to a target registry. All tags and their referrers will be included by default.
 
-```bash
+```console
 oras restore --input backup.tar registry-b.k8s.io/kube-apiserver
 ```
 
@@ -266,7 +264,7 @@ v2
 
 Backup multiple repositories from a registry to a local OCI image layout
 
-```bash
+```console
 $ oras backup registry.k8s.io/kube-apiserver registry.k8s.io/kube-controller-manager --output k8s-control-plane
 ```
 
@@ -278,10 +276,10 @@ registry.k8s.io/kube-apiserver
 registry.k8s.io/kube-controller-manager
 ```
 
-Restore them to two repositories in a registry
+Restore them from local OCI image layout to two repositories respectively in a registry
 
-```bash
-$ oras restore localhost:5000/kube-apiserver localhost:5000/kube-controller --input k8s-control-plane
+```console
+oras restore localhost:5000/kube-apiserver localhost:5000/kube-controller-manager --input k8s-control-plane
 ```
 
 ## Summary
