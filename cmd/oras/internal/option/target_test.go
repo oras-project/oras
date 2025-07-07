@@ -335,23 +335,14 @@ func TestTarget_Modify_copyError(t *testing.T) {
 			name:         "Destination error with remote registry target",
 			targetType:   TargetTypeRemote,
 			rawReference: "localhost:5000/test:v1",
-
 			copyErr: &oras.CopyError{Origin: oras.CopyErrorOriginDestination, Err: &errcode.ErrorResponse{
 				URL:        &url.URL{Host: "localhost:5000"},
 				StatusCode: http.StatusBadRequest,
-				Errors: errcode.Errors{
-					{
-						Code:    "NAME_INVALID",
-						Message: "invalid name",
-					},
-				},
 			}},
 			wantErrPrefix: "Error from destination registry for \"localhost:5000/test:v1\":",
-			wantModifiedErr: errcode.Errors{
-				{
-					Code:    "NAME_INVALID",
-					Message: "invalid name",
-				},
+			wantModifiedErr: &errcode.ErrorResponse{
+				URL:        &url.URL{Host: "localhost:5000"},
+				StatusCode: http.StatusBadRequest,
 			},
 			wantModified: true,
 			isOCILayout:  false,
