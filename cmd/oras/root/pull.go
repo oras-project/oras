@@ -47,12 +47,13 @@ type pullOptions struct {
 	option.Format
 	option.Terminal
 
-	concurrency       int
-	KeepOldFiles      bool
-	IncludeSubject    bool
-	PathTraversal     bool
-	Output            string
-	ManifestConfigRef string
+	concurrency         int
+	KeepOldFiles        bool
+	IncludeSubject      bool
+	PathTraversal       bool
+        PreservePermissions bool
+	Output              string
+	ManifestConfigRef   string
 	// Deprecated: verbose is deprecated and will be removed in the future.
 	verbose bool
 }
