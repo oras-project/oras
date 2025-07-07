@@ -262,6 +262,11 @@ func (target *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 		return target.DecorateCredentialError(modifiedErr), true
 	}
 
+	if !modified && errors.Is(err, errdef.ErrNotFound) {
+		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
+		return modifiedErr, true
+	}
+
 	var errResp *errcode.ErrorResponse
 	if errors.As(err, &errResp) {
 		ref := registry.Reference{Registry: target.RawReference}
