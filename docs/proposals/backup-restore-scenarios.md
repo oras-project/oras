@@ -22,8 +22,8 @@ Yet today, developers and users resort to fragmented, CLI tools like:
 
 * `docker save/load` for container images.
 * `oras pull/push` for OCI artifacts.
-* `oras copy` for copying a single image with artifacts.
-* Ad-hoc scripts to cobble together backups and restores artifacts across different environments.
+* `oras copy` for copying a single image with referrers.
+* Ad-hoc scripts to cobble together backups and restore artifacts across different environments.
 
 This patchwork approach brings significant limitations and problems:
 
@@ -97,10 +97,12 @@ With the backup in place, Alice can confidently proceed with registry maintenanc
 Bob, a developer maintaining containerized applications. Bob wants to create a backup of OCI images from the registry to local disk for disaster recovery, local modification, or air-gapped use. However, Bob incorrectly uses `oras pull` and `oras push`:
 
 ```console  
-# Pull an image to local saved as a tarball  (incorrect usage)
+# Pull an image and save it locally as a tarball (incorrect usage)
 oras pull foo.example.com/app/backend:v1.0.0 -o backend.tar
+
 # Extract the tarball and modify it locally
 tar -xf backend.tar
+
 # Push the modified image back to the registry
 oras push foo.example.com/app/backend:v1.0.1 ./extracted
 ```
