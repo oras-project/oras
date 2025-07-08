@@ -268,7 +268,7 @@ Backup multiple repositories from a registry to a local OCI image layout
 $ oras backup registry.k8s.io/kube-apiserver registry.k8s.io/kube-controller-manager --output k8s-control-plane
 ```
 
-List the repositories in the OCI image layout
+List the backup repositories in the OCI image layout. 
 
 ```console
 $ oras repo list --oci-layout k8s-control-plane 
