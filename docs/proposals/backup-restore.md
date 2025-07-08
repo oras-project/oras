@@ -1,4 +1,4 @@
-# Portable Backup and Restore of OCI Artifacts and Images
+# Proposal: Portable Backup and Restore of OCI Artifacts and Images
 
 Authors: @TerryHowe @FeynmanZhou 
 
