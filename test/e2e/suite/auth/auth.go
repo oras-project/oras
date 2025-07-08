@@ -36,6 +36,8 @@ var _ = Describe("Common registry user", func() {
 			authConfigPath := filepath.Join(GinkgoT().TempDir(), "auth.config")
 			RunWithoutLogin("attach", ZOTHost+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example", "--registry-config", authConfigPath)
 			RunWithoutLogin("discover", ZOTHost+"/repo:tag", "--registry-config", authConfigPath)
+			RunWithoutLogin("push", "-a", "key=value", ZOTHost+"/repo:tag", "--registry-config", authConfigPath)
+			RunWithoutLogin("pull", ZOTHost+"/repo:tag", "--registry-config", authConfigPath)
 			RunWithoutLogin("manifest", "fetch", ZOTHost+"/repo:tag", "--registry-config", authConfigPath)
 			RunWithoutLogin("blob", "delete", ZOTHost+"/repo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "--registry-config", authConfigPath)
 			RunWithoutLogin("blob", "push", ZOTHost+"/repo", WriteTempFile("blob", "test"), "--registry-config", authConfigPath)
@@ -51,18 +53,6 @@ var _ = Describe("Common registry user", func() {
 			ORAS("copy", ZOTHost+"/repo:from", ZOTHost+"/repo:to", "--from-registry-config", authConfigPath, "--to-registry-config", authConfigPath).
 				ExpectFailure().
 				MatchErrKeyWords(fmt.Sprintf("Error from source registry for %q", ZOTHost+"/repo:from"), "basic credential not found").
-				WithDescription("fail with modified error prefix when not logged in").
-				Exec()
-
-			ORAS("pull", ZOTHost+"/repo:tag", "--registry-config", authConfigPath).
-				ExpectFailure().
-				MatchErrKeyWords(fmt.Sprintf("Error from source registry for %q", ZOTHost+"/repo:tag"), "basic credential not found").
-				WithDescription("fail with modified error prefix when not logged in").
-				Exec()
-
-			ORAS("push", "-a", "key=value", ZOTHost+"/repo:tag", "--registry-config", authConfigPath).
-				ExpectFailure().
-				MatchErrKeyWords(fmt.Sprintf("Error from destination registry for %q", ZOTHost+"/repo:tag"), "basic credential not found").
 				WithDescription("fail with modified error prefix when not logged in").
 				Exec()
 		})
@@ -81,26 +71,14 @@ var _ = Describe("Common registry user", func() {
 			RunWithInvalidCreds("repo", "tags", RegistryRef(ZOTHost, "repo", ""))
 			RunWithInvalidCreds("manifest", "fetch-config", ZOTHost+"/repo:tag")
 		})
-
-		It("should fail with modified error prefix when credential is invalid", func() {
-			ORAS("pull", ZOTHost+"/repo:tag", "-u", Username, "-p", Password+"1").
-				ExpectFailure().
-				MatchErrKeyWords(fmt.Sprintf("Error from source registry for %q", ZOTHost+"/repo:tag")).
-				WithDescription("pull fails with modified error prefix when credential is invalid").
-				Exec()
-
-			ORAS("push", "-a", "key=value", ZOTHost+"/repo:tag", "-u", Username, "-p", Password+"1").
-				ExpectFailure().
-				MatchErrKeyWords(fmt.Sprintf("Error from destination registry for %q", ZOTHost+"/repo:tag")).
-				WithDescription("push fails with modified error prefix when credential is invalid").
-				Exec()
-		})
 	})
 
 	When("credential for basic auth not found in the config file", func() {
 		It("should fail with registry error", func() {
 			RunWithEmptyRegistryConfig("attach", ZOTHost+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
 			RunWithEmptyRegistryConfig("discover", ZOTHost+"/repo:tag")
+			RunWithEmptyRegistryConfig("push", "-a", "key=value", ZOTHost+"/repo:tag")
+			RunWithEmptyRegistryConfig("pull", ZOTHost+"/repo:tag")
 			RunWithEmptyRegistryConfig("manifest", "fetch", ZOTHost+"/repo:tag")
 			RunWithEmptyRegistryConfig("blob", "delete", ZOTHost+"/repo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
 			RunWithEmptyRegistryConfig("blob", "push", ZOTHost+"/repo", WriteTempFile("blob", "test"))
@@ -109,18 +87,6 @@ var _ = Describe("Common registry user", func() {
 			RunWithEmptyRegistryConfig("repo", "ls", ZOTHost)
 			RunWithEmptyRegistryConfig("repo", "tags", RegistryRef(ZOTHost, "repo", ""))
 			RunWithEmptyRegistryConfig("manifest", "fetch-config", ZOTHost+"/repo:tag")
-		})
-
-		It("should fail with modified error prefix when credential for basic auth not found in the config file", func() {
-			ORAS("pull", ZOTHost+"/repo:tag", "--registry-config", EmptyConfigName).ExpectFailure().
-				MatchErrKeyWords(fmt.Sprintf("Error from source registry for %q", ZOTHost+"/repo:tag"), fmt.Sprintf(`Please check whether the registry credential stored in the authentication file at %q is correct`, EmptyConfigName)).
-				WithDescription("pull fails with empty registry config").
-				Exec()
-
-			ORAS("push", "-a", "key=value", ZOTHost+"/repo:tag", "--registry-config", EmptyConfigName).ExpectFailure().
-				MatchErrKeyWords(fmt.Sprintf("Error from destination registry for %q", ZOTHost+"/repo:tag"), fmt.Sprintf(`Please check whether the registry credential stored in the authentication file at %q is correct`, EmptyConfigName)).
-				WithDescription("push fails with empty registry config").
-				Exec()
 		})
 	})
 

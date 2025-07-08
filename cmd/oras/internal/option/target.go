@@ -236,20 +236,14 @@ func (target *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, allowTag bool)
 }
 
 // Modify handles error during cmd execution.
-func (target *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
+func (target *Target) Modify(cmd *cobra.Command, err error, canSetPrefix bool) (error, bool) {
 	modifiedErr := err
 	var modified bool
 
 	var copyErr *oras.CopyError
 	if errors.As(err, &copyErr) {
-		switch copyErr.Origin {
-		case oras.CopyErrorOriginSource, oras.CopyErrorOriginDestination:
-			// Example: Error from source registry for "localhost:5000/test:v1":
-			// Example: Error from destination oci-layout for "oci-dir:v1":
-			cmd.SetErrPrefix(fmt.Sprintf("Error from %s %s for %q:", copyErr.Origin, target.Type, target.RawReference))
-			modifiedErr = copyErr.Err
-			modified = true
-		}
+		modifiedErr = copyErr.Err
+		modified = true
 	}
 
 	if target.Type != TargetTypeRemote {
@@ -262,7 +256,7 @@ func (target *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 		return target.DecorateCredentialError(modifiedErr), true
 	}
 
-	if !modified && errors.Is(err, errdef.ErrNotFound) {
+	if canSetPrefix && errors.Is(err, errdef.ErrNotFound) {
 		// special handling for not found error retured by registry target
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
 		return modifiedErr, true
@@ -285,8 +279,9 @@ func (target *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
 			}
 		}
 
-		if !modified {
+		if canSetPrefix {
 			cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
+			canSetPrefix = false // do not set prefix again
 		}
 		ret := &oerrors.Error{
 			Err: oerrors.ReportErrResp(errResp),

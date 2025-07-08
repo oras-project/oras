@@ -16,10 +16,13 @@ limitations under the License.
 package option
 
 import (
+	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"oras.land/oras-go/v2"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 )
 
@@ -64,9 +67,34 @@ func (target *BinaryTarget) Parse(cmd *cobra.Command) error {
 }
 
 // Modify handles error during cmd execution.
-func (target *BinaryTarget) Modify(cmd *cobra.Command, err error) (error, bool) {
-	if modifiedErr, modified := target.From.Modify(cmd, err); modified {
+func (target *BinaryTarget) Modify(cmd *cobra.Command, err error, canSetPrefix bool) (error, bool) {
+	var copyErr *oras.CopyError
+	if errors.As(err, &copyErr) {
+		err = copyErr.Err
+
+		var errTarget Target
+		switch copyErr.Origin {
+		case oras.CopyErrorOriginSource:
+			errTarget = target.From
+		case oras.CopyErrorOriginDestination:
+			errTarget = target.To
+		default:
+			return target.modify(cmd, err, canSetPrefix)
+		}
+
+		if canSetPrefix {
+			// Example: Error from source registry for "localhost:5000/test:v1":
+			// Example: Error from destination oci-layout for "oci-dir:v1":
+			cmd.SetErrPrefix(fmt.Sprintf("Error from %s %s for %q:", copyErr.Origin, errTarget.Type, errTarget.RawReference))
+			canSetPrefix = false // do not set prefix again
+		}
+	}
+	return target.modify(cmd, err, canSetPrefix)
+}
+
+func (target *BinaryTarget) modify(cmd *cobra.Command, err error, canSetPrefix bool) (error, bool) {
+	if modifiedErr, modified := target.From.Modify(cmd, err, canSetPrefix); modified {
 		return modifiedErr, modified
 	}
-	return target.To.Modify(cmd, err)
+	return target.To.Modify(cmd, err, canSetPrefix)
 }
