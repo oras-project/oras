@@ -107,7 +107,7 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 
 			reference, err := registry.ParseReference(tag)
 			if err != nil {
-				logger.Warnf("Skipping tag with parse error %s: %w\n", tag, err)
+				logger.Warnf("Skipping tag with parse error %s: %v\n", tag, err)
 				continue
 			}
 			if reference.Reference == "" {
@@ -143,12 +143,6 @@ func doRestore(ctx context.Context, from *option.Target, src oras.GraphTarget, t
 	desc, err := oras.Resolve(ctx, src, from.Reference, rOpts)
 	if err != nil {
 		return fmt.Errorf("failed to resolve %v %s: %w", src, from.Path, err)
-	}
-
-	// what is this silly thing
-	_, err = opts.CachedTarget(dst)
-	if err != nil {
-		return err
 	}
 
 	// Prepare restore options

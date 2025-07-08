@@ -94,7 +94,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	}
 
 	for _, source := range opts.sources {
-		src, err := opts.From.GetRemoteRepository(cmd, source)
+		src, err := opts.From.NewRemoteRepository(cmd, source)
 		if err != nil {
 			return fmt.Errorf("failed to get remote repository %s: %w", source, err)
 		}

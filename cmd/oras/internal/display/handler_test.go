@@ -46,6 +46,26 @@ func TestNewAttachHandler(t *testing.T) {
 	}
 }
 
+func TestNewBackupHandler(t *testing.T) {
+	mockFetcher := testutils.NewMockFetcher()
+	printer := output.NewPrinter(os.Stdout, os.Stderr)
+	statusHandler, metadataHandler := NewBackupHandler(printer, os.Stdout, mockFetcher.Fetcher)
+	if _, ok := statusHandler.(*status.TTYCopyHandler); !ok {
+		t.Errorf("NewBackupHandler() returns %T, want status.TTYCopyHandler", statusHandler)
+	}
+	if _, ok := metadataHandler.(*text.BackupHandler); !ok {
+		t.Errorf("NewBackupHandler() returns %T, want text.BackupHandler", metadataHandler)
+	}
+
+	statusHandler, metadataHandler = NewBackupHandler(printer, nil, mockFetcher.Fetcher)
+	if _, ok := statusHandler.(*status.TextCopyHandler); !ok {
+		t.Errorf("NewBackupHandler() returns %T, want status.TextCopyHandler", statusHandler)
+	}
+	if _, ok := metadataHandler.(*text.BackupHandler); !ok {
+		t.Errorf("NewBackupHandler() returns %T, want text.BackupHandler", metadataHandler)
+	}
+}
+
 func TestNewPullHandler(t *testing.T) {
 	printer := output.NewPrinter(os.Stdout, os.Stderr)
 	_, _, err := NewPullHandler(printer, option.Format{Type: option.FormatTypeText.Name}, "", os.Stdout)
@@ -133,5 +153,25 @@ func TestNewRepoListHandler(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestNewRestoreHandler(t *testing.T) {
+	mockFetcher := testutils.NewMockFetcher()
+	printer := output.NewPrinter(os.Stdout, os.Stderr)
+	statusHandler, metadataHandler := NewRestoreHandler(printer, os.Stdout, mockFetcher.Fetcher)
+	if _, ok := statusHandler.(*status.TTYCopyHandler); !ok {
+		t.Errorf("NewBackupHandler() returns %T, want status.TTYCopyHandler", statusHandler)
+	}
+	if _, ok := metadataHandler.(*text.BackupHandler); !ok {
+		t.Errorf("NewBackupHandler() returns %T, want text.BackupHandler", metadataHandler)
+	}
+
+	statusHandler, metadataHandler = NewRestoreHandler(printer, nil, mockFetcher.Fetcher)
+	if _, ok := statusHandler.(*status.TextCopyHandler); !ok {
+		t.Errorf("NewBackupHandler() returns %T, want status.TextCopyHandler", statusHandler)
+	}
+	if _, ok := metadataHandler.(*text.BackupHandler); !ok {
+		t.Errorf("NewBackupHandler() returns %T, want text.BackupHandler", metadataHandler)
 	}
 }
