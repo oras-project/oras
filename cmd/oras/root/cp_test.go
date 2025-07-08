@@ -49,6 +49,7 @@ var (
 	configDigest    = "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
 	configMediaType = "application/vnd.oci.empty.v1+json"
 	host            string
+	genericHost     string
 	repoFrom        = "from"
 	repoTo          = "to"
 )
@@ -120,6 +121,13 @@ func TestMain(m *testing.M) {
 	defer ts.Close()
 	uri, _ := url.Parse(ts.URL)
 	host = "localhost:" + uri.Port()
+
+	// genericRegistry is a test fixture designed to function
+	// exactly like a normal registry would
+	genericRegistry := NewMockOCIRegistry()
+	defer genericRegistry.Close()
+	genericUri, _ := url.Parse(genericRegistry.URL())
+	genericHost = "localhost:" + genericUri.Port()
 	m.Run()
 }
 
