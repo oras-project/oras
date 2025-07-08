@@ -281,7 +281,6 @@ func (target *Target) Modify(cmd *cobra.Command, err error, canSetPrefix bool) (
 
 		if canSetPrefix {
 			cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
-			canSetPrefix = false // do not set prefix again
 		}
 		ret := &oerrors.Error{
 			Err: oerrors.ReportErrResp(errResp),

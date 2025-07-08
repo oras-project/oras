@@ -125,7 +125,7 @@ var _ = Describe("ORAS beginners:", func() {
 			src := PrepareTempOCI(ArtifactRepo)
 			dst := RegistryRef(ZOTHost, cpTestRepo("dest-not-logged-in"), "")
 			ORAS("cp", Flags.FromLayout, LayoutRef(src, foobar.Tag), dst, "--to-username", Username, "--to-password", Password+"?").
-				MatchErrKeyWords(RegistryErrorPrefix).
+				MatchErrKeyWords(fmt.Sprintf("Error from destination registry for %q", dst)).
 				ExpectFailure().Exec()
 		})
 
@@ -133,7 +133,7 @@ var _ = Describe("ORAS beginners:", func() {
 			src := RegistryRef(ZOTHost, cpTestRepo("src-not-logged-in"), foobar.Tag)
 			dst := RegistryRef(ZOTHost, ArtifactRepo, "")
 			ORAS("cp", src, dst, "--from-username", Username, "--from-password", Password+"?").
-				MatchErrKeyWords(RegistryErrorPrefix).ExpectFailure().Exec()
+				MatchErrKeyWords(fmt.Sprintf("Error from source registry for %q", src)).ExpectFailure().Exec()
 		})
 
 		It("should fail if basic auth flag is used with identity token flag", func() {
