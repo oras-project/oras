@@ -236,8 +236,8 @@ func (target *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, allowTag bool)
 	return nil
 }
 
-// Modify handles error during cmd execution.
-func (target *Target) Modify(cmd *cobra.Command, err error, canSetPrefix bool) (error, bool) {
+// ModifyErr handles error during cmd execution.
+func (target *Target) ModifyErr(cmd *cobra.Command, err error, canSetPrefix bool) (error, bool) {
 	var modified bool
 	err, modified = oerrors.UnwrapCopyError(err)
 	if errors.Is(err, file.ErrPathTraversalDisallowed) {

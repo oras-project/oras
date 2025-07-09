@@ -398,8 +398,8 @@ func (remo *Remote) isPlainHttp(registry string) bool {
 	return plainHTTP
 }
 
-// Modify modifies error during cmd execution.
-func (remo *Remote) Modify(cmd *cobra.Command, err error, canSetPrefix bool) (error, bool) {
+// ModifyErr modifies error during cmd execution.
+func (remo *Remote) ModifyErr(cmd *cobra.Command, err error, canSetPrefix bool) (error, bool) {
 	if errors.Is(err, auth.ErrBasicCredentialNotFound) {
 		return remo.DecorateCredentialError(err), true
 	}

@@ -68,33 +68,37 @@ func (target *BinaryTarget) Parse(cmd *cobra.Command) error {
 
 // Modify handles error during cmd execution.
 func (target *BinaryTarget) Modify(cmd *cobra.Command, err error, canSetPrefix bool) (error, bool) {
-	var copyErr *oras.CopyError
-	if errors.As(err, &copyErr) {
-		err = copyErr.Err // extract inner error
-
-		var errTarget Target
-		switch copyErr.Origin {
-		case oras.CopyErrorOriginSource:
-			errTarget = target.From
-		case oras.CopyErrorOriginDestination:
-			errTarget = target.To
-		default:
-			return target.modify(cmd, err, canSetPrefix)
-		}
-
-		if canSetPrefix {
-			// Example: Error from source registry for "localhost:5000/test:v1":
-			// Example: Error from destination oci-layout for "oci-dir:v1":
-			cmd.SetErrPrefix(fmt.Sprintf("Error from %s %s for %q:", copyErr.Origin, errTarget.Type, errTarget.RawReference))
-			canSetPrefix = false // do not set prefix again
-		}
+	if !canSetPrefix {
+		return target.modifyErr(cmd, err, false)
 	}
-	return target.modify(cmd, err, canSetPrefix)
+
+	var copyErr *oras.CopyError
+	if !errors.As(err, &copyErr) {
+		return target.modifyErr(cmd, err, true)
+	}
+
+	err = copyErr.Err // extract inner error
+	var errTarget Target
+	switch copyErr.Origin {
+	case oras.CopyErrorOriginSource:
+		errTarget = target.From
+	case oras.CopyErrorOriginDestination:
+		errTarget = target.To
+	default:
+		err, _ := target.modifyErr(cmd, err, true)
+		return err, true
+	}
+
+	// Example: Error from source registry for "localhost:5000/test:v1":
+	// Example: Error from destination oci-layout for "oci-dir:v1":
+	cmd.SetErrPrefix(fmt.Sprintf("Error from %s %s for %q:", copyErr.Origin, errTarget.Type, errTarget.RawReference))
+	err, _ = target.modifyErr(cmd, err, false) // do not set prefix again
+	return err, true
 }
 
-func (target *BinaryTarget) modify(cmd *cobra.Command, err error, canSetPrefix bool) (error, bool) {
-	if modifiedErr, modified := target.From.Modify(cmd, err, canSetPrefix); modified {
+func (target *BinaryTarget) modifyErr(cmd *cobra.Command, err error, canSetPrefix bool) (error, bool) {
+	if modifiedErr, modified := target.From.ModifyErr(cmd, err, canSetPrefix); modified {
 		return modifiedErr, modified
 	}
-	return target.To.Modify(cmd, err, canSetPrefix)
+	return target.To.ModifyErr(cmd, err, canSetPrefix)
 }
