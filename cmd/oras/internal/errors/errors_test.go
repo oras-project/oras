@@ -16,10 +16,12 @@ limitations under the License.
 package errors
 
 import (
+	"fmt"
 	"net/url"
 	"testing"
 
 	"github.com/spf13/pflag"
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote/errcode"
 )
 
@@ -144,6 +146,46 @@ func TestReportErrResp(t *testing.T) {
 			got := ReportErrResp(tt.errResp)
 			if got.Error() != tt.wantErr.Error() {
 				t.Errorf("ReportErrResp() = %v, want %v", got, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestUnwrapCopyError(t *testing.T) {
+	// Create a regular error
+	regularErr := fmt.Errorf("regular error")
+
+	// Create an oras.CopyError with an inner error
+	innerErr := fmt.Errorf("inner error")
+	copyErr := &oras.CopyError{Err: innerErr}
+
+	tests := []struct {
+		name     string
+		inputErr error
+		wantErr  error
+	}{
+		{
+			name:     "nil error",
+			inputErr: nil,
+			wantErr:  nil,
+		},
+		{
+			name:     "regular error",
+			inputErr: regularErr,
+			wantErr:  regularErr,
+		},
+		{
+			name:     "copy error",
+			inputErr: copyErr,
+			wantErr:  innerErr,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotErr := UnwrapCopyError(tt.inputErr)
+			if gotErr != tt.wantErr {
+				t.Errorf("UnwrapCopyError() = %v, want %v", gotErr, tt.wantErr)
 			}
 		})
 	}

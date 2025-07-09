@@ -118,16 +118,15 @@ func ReportErrResp(errResp *errcode.ErrorResponse) error {
 	return errResp.Errors
 }
 
-// UnwrapCopyError attempts to unwrap an error as an oras.CopyError.
-// If the given error is an oras.CopyError, it returns the underlying error
-// from the CopyError and true.
-// Otherwise, it returns the original error unchanged and false.
-func UnwrapCopyError(err error) (error, bool) {
+// UnwrapCopyError extracts the underlying error from an oras.CopyError.
+// If err is of type *oras.CopyError, it returns the inner error (copyErr.Err).
+// Otherwise, it returns the original error unchanged.
+func UnwrapCopyError(err error) error {
 	var copyErr *oras.CopyError
 	if errors.As(err, &copyErr) {
-		return copyErr.Err, true
+		return copyErr.Err
 	}
-	return err, false
+	return err
 }
 
 // TrimErrBasicCredentialNotFound trims the credentials from err.

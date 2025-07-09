@@ -24,8 +24,6 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote/errcode"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
@@ -393,32 +391,5 @@ func TestTarget_Modify_dockerHint(t *testing.T) {
 				t.Errorf("Failed to modify %v", tt.err)
 			}
 		})
-	}
-}
-
-func TestTarget_ModifyErr_PathTraversal(t *testing.T) {
-	opts := &Target{
-		Type:         TargetTypeRemote,
-		RawReference: "example.com/repo:tag",
-	}
-	cmd := &cobra.Command{}
-	err := &oras.CopyError{
-		Err:    file.ErrPathTraversalDisallowed,
-		Origin: oras.CopyErrorOriginDestination,
-	}
-
-	got, modified := opts.ModifyErr(cmd, err, true)
-	if !modified {
-		t.Error("Target.ModifyErr() modified = false, want true")
-	}
-	oerr, ok := got.(*oerrors.Error)
-	if !ok {
-		t.Fatalf("Target.ModifyErr() returned %T, want *oerrors.Error", got)
-	}
-	if !errors.Is(oerr.Err, file.ErrPathTraversalDisallowed) {
-		t.Errorf("Target.ModifyErr() got = %v, want error containing %v", got, file.ErrPathTraversalDisallowed)
-	}
-	if oerr.Recommendation == "" {
-		t.Error("Target.ModifyErr() returned recommendation is empty, expected non-empty")
 	}
 }
