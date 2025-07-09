@@ -238,8 +238,6 @@ func (target *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, allowTag bool)
 
 // ModifyErr handles error during cmd execution.
 func (target *Target) ModifyErr(cmd *cobra.Command, err error, canSetPrefix bool) (error, bool) {
-	var modified bool
-	err, modified = oerrors.UnwrapCopyError(err)
 	if errors.Is(err, file.ErrPathTraversalDisallowed) {
 		// handle path traversal error returned by file store
 		return &oerrors.Error{
@@ -250,7 +248,7 @@ func (target *Target) ModifyErr(cmd *cobra.Command, err error, canSetPrefix bool
 
 	if target.Type != TargetTypeRemote {
 		// short circuit for non-remote targets
-		return err, modified
+		return err, false
 	}
 
 	// handle errors for remote targets
@@ -273,11 +271,11 @@ func (target *Target) ModifyErr(cmd *cobra.Command, err error, canSetPrefix bool
 			ref, parseErr = registry.ParseReference(target.RawReference)
 			if parseErr != nil {
 				// this should not happen
-				return err, modified
+				return err, false
 			}
 			if errResp.URL.Host != ref.Host() {
 				// not handle if the error is not from the target
-				return err, modified
+				return err, false
 			}
 		}
 
@@ -297,5 +295,5 @@ func (target *Target) ModifyErr(cmd *cobra.Command, err error, canSetPrefix bool
 		}
 		return ret, true
 	}
-	return err, modified
+	return err, false
 }
