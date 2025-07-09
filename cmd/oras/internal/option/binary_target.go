@@ -68,16 +68,17 @@ func (target *BinaryTarget) Parse(cmd *cobra.Command) error {
 
 // Modify handles error during cmd execution.
 func (target *BinaryTarget) ModifyErr(cmd *cobra.Command, err error, canSetPrefix bool) (error, bool) {
-	if !canSetPrefix {
-		return target.modifyErr(cmd, err, false)
-	}
-
 	var copyErr *oras.CopyError
 	if !errors.As(err, &copyErr) {
-		return target.modifyErr(cmd, err, true)
+		return target.modifyErr(cmd, err, canSetPrefix)
 	}
 
 	err = copyErr.Err // extract inner error
+	if !canSetPrefix {
+		err, _ := target.modifyErr(cmd, err, canSetPrefix)
+		return err, true
+	}
+
 	var errTarget Target
 	switch copyErr.Origin {
 	case oras.CopyErrorOriginSource:
@@ -85,14 +86,15 @@ func (target *BinaryTarget) ModifyErr(cmd *cobra.Command, err error, canSetPrefi
 	case oras.CopyErrorOriginDestination:
 		errTarget = target.To
 	default:
-		err, _ := target.modifyErr(cmd, err, true)
+		err, _ := target.modifyErr(cmd, err, canSetPrefix)
 		return err, true
 	}
 
 	// Example: Error from source registry for "localhost:5000/test:v1":
 	// Example: Error from destination oci-layout for "oci-dir:v1":
 	cmd.SetErrPrefix(fmt.Sprintf("Error from %s %s for %q:", copyErr.Origin, errTarget.Type, errTarget.RawReference))
-	err, _ = target.modifyErr(cmd, err, false) // do not set prefix again
+	canSetPrefix = false // do not set prefix again
+	err, _ = target.modifyErr(cmd, err, canSetPrefix)
 	return err, true
 }
 
