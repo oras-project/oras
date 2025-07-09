@@ -30,6 +30,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
@@ -237,13 +238,13 @@ func (target *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, allowTag bool)
 
 // Modify handles error during cmd execution.
 func (target *Target) Modify(cmd *cobra.Command, err error, canSetPrefix bool) (error, bool) {
-	modifiedErr := err
-	var modified bool
-
-	var copyErr *oras.CopyError
-	if errors.As(err, &copyErr) {
-		modifiedErr = copyErr.Err
-		modified = true
+	modifiedErr, modified := oerrors.UnwrapCopyError(err)
+	if errors.Is(err, file.ErrPathTraversalDisallowed) {
+		// Handle path traversal error returned by file store
+		return &oerrors.Error{
+			Err:            modifiedErr,
+			Recommendation: `Pulling files outside of working directory is insecure and blocked by default. If you trust the content producer, use --allow-path-traversal to bypass this check.`,
+		}, true
 	}
 
 	if target.Type != TargetTypeRemote {

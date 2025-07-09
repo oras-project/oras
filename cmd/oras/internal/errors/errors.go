@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/errcode"
 )
@@ -117,6 +118,15 @@ func ReportErrResp(errResp *errcode.ErrorResponse) error {
 	return errResp.Errors
 }
 
+func UnwrapCopyError(err error) (error, bool) {
+	var copyErr *oras.CopyError
+	if errors.As(err, &copyErr) {
+		// unwrap the copy error to get the original error
+		return copyErr.Err, true
+	}
+	return err, false
+}
+
 // TrimErrBasicCredentialNotFound trims the credentials from err.
 // Caller should make sure the err is auth.ErrBasicCredentialNotFound.
 func TrimErrBasicCredentialNotFound(err error) error {
@@ -143,21 +153,21 @@ func TrimErrBasicCredentialNotFound(err error) error {
 	return reWrap(err, toTrim, auth.ErrBasicCredentialNotFound)
 }
 
-// reWrap re-wraps errA to errC and trims out errB, returns errC if scrub fails.
-// +---------- errA ----------+
-// |         +---- errB ----+ |      +---- errA ----+
-// |         |    errC      | |  =>  |     errC     |
+// reWrap re-wraps outter to errC and trims out mid, returns inner if scrub fails.
+// +---------- outter ----------+
+// |         +---- mid ----+ |      +---- outter ----+
+// |         |    inner      | |  =>  |     inner     |
 // |         +--------------+ |      +--------------+
 // +--------------------------+
-func reWrap(errA, errB, errC error) error {
+func reWrap(outter, mid, inner error) error {
 	// TODO: trim dedicated error type when
 	// https://github.com/oras-project/oras-go/issues/677 is done
-	contentA := errA.Error()
-	contentB := errB.Error()
+	contentA := outter.Error()
+	contentB := mid.Error()
 	if idx := strings.Index(contentA, contentB); idx > 0 {
-		return fmt.Errorf("%s%w", contentA[:idx], errC)
+		return fmt.Errorf("%s%w", contentA[:idx], inner)
 	}
-	return errC
+	return inner
 }
 
 // NewErrEmptyTagOrDigest creates a new error based on the reference string.
