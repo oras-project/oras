@@ -238,33 +238,34 @@ func (target *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, allowTag bool)
 
 // Modify handles error during cmd execution.
 func (target *Target) Modify(cmd *cobra.Command, err error, canSetPrefix bool) (error, bool) {
-	modifiedErr, modified := oerrors.UnwrapCopyError(err)
+	var modified bool
+	err, modified = oerrors.UnwrapCopyError(err)
 	if errors.Is(err, file.ErrPathTraversalDisallowed) {
-		// Handle path traversal error returned by file store
+		// handle path traversal error returned by file store
 		return &oerrors.Error{
-			Err:            modifiedErr,
+			Err:            err,
 			Recommendation: `Pulling files outside of working directory is insecure and blocked by default. If you trust the content producer, use --allow-path-traversal to bypass this check.`,
 		}, true
 	}
 
 	if target.Type != TargetTypeRemote {
 		// short circuit for non-remote targets
-		return modifiedErr, modified
+		return err, modified
 	}
 
-	// Handle errors for remote targets
+	// handle errors for remote targets
 	if errors.Is(err, auth.ErrBasicCredentialNotFound) {
-		return target.DecorateCredentialError(modifiedErr), true
+		return target.DecorateCredentialError(err), true
 	}
 
 	if canSetPrefix && errors.Is(err, errdef.ErrNotFound) {
 		// special handling for not found error retured by registry target
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
-		return modifiedErr, true
+		return err, true
 	}
 
 	var errResp *errcode.ErrorResponse
-	if errors.As(modifiedErr, &errResp) {
+	if errors.As(err, &errResp) {
 		ref := registry.Reference{Registry: target.RawReference}
 		if errResp.URL.Host != ref.Host() {
 			// raw reference is not registry host
@@ -272,11 +273,11 @@ func (target *Target) Modify(cmd *cobra.Command, err error, canSetPrefix bool) (
 			ref, parseErr = registry.ParseReference(target.RawReference)
 			if parseErr != nil {
 				// this should not happen
-				return modifiedErr, modified
+				return err, modified
 			}
 			if errResp.URL.Host != ref.Host() {
 				// not handle if the error is not from the target
-				return modifiedErr, modified
+				return err, modified
 			}
 		}
 
@@ -296,5 +297,5 @@ func (target *Target) Modify(cmd *cobra.Command, err error, canSetPrefix bool) (
 		}
 		return ret, true
 	}
-	return modifiedErr, modified
+	return err, modified
 }

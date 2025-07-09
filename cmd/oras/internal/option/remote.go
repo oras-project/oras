@@ -400,12 +400,11 @@ func (remo *Remote) isPlainHttp(registry string) bool {
 
 // Modify modifies error during cmd execution.
 func (remo *Remote) Modify(cmd *cobra.Command, err error, canSetPrefix bool) (error, bool) {
-	var errResp *errcode.ErrorResponse
-
 	if errors.Is(err, auth.ErrBasicCredentialNotFound) {
 		return remo.DecorateCredentialError(err), true
 	}
 
+	var errResp *errcode.ErrorResponse
 	if errors.As(err, &errResp) {
 		if canSetPrefix {
 			cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)

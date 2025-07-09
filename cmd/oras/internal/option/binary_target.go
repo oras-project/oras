@@ -70,7 +70,7 @@ func (target *BinaryTarget) Parse(cmd *cobra.Command) error {
 func (target *BinaryTarget) Modify(cmd *cobra.Command, err error, canSetPrefix bool) (error, bool) {
 	var copyErr *oras.CopyError
 	if errors.As(err, &copyErr) {
-		err = copyErr.Err
+		err = copyErr.Err // extract inner error
 
 		var errTarget Target
 		switch copyErr.Origin {
