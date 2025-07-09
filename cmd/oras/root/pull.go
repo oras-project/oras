@@ -173,6 +173,7 @@ func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 				Recommendation: `Pulling files outside of working directory is insecure and blocked by default. If you trust the content producer, use --allow-path-traversal to bypass this check.`,
 			}
 		}
+		return err
 	}
 	metadataHandler.OnPulled(&opts.Target, desc)
 	return metadataHandler.Render()
