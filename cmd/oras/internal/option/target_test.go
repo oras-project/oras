@@ -24,6 +24,8 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote/errcode"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
@@ -394,120 +396,29 @@ func TestTarget_Modify_dockerHint(t *testing.T) {
 	}
 }
 
-// func TestTarget_Modify_copyError(t *testing.T) {
-// 	tests := []struct {
-// 		name            string
-// 		targetType      string
-// 		rawReference    string
-// 		copyErr         *oras.CopyError
-// 		wantErrPrefix   string
-// 		wantModifiedErr error
-// 		wantModified    bool
-// 		isOCILayout     bool
-// 	}{
-// 		{
-// 			name:         "Source error with remote registry target",
-// 			targetType:   TargetTypeRemote,
-// 			rawReference: "localhost:5000/test:v1",
-// 			copyErr: &oras.CopyError{Origin: oras.CopyErrorOriginSource, Err: &errcode.ErrorResponse{
-// 				URL:        &url.URL{Host: "localhost:5000"},
-// 				StatusCode: http.StatusBadRequest,
-// 				Errors: errcode.Errors{
-// 					{
-// 						Code:    "NAME_INVALID",
-// 						Message: "invalid name",
-// 					},
-// 				},
-// 			}},
-// 			wantErrPrefix: "Error from source registry for \"localhost:5000/test:v1\":",
-// 			wantModifiedErr: errcode.Errors{
-// 				{
-// 					Code:    "NAME_INVALID",
-// 					Message: "invalid name",
-// 				},
-// 			},
-// 			wantModified: true,
-// 			isOCILayout:  false,
-// 		},
-// 		{
-// 			name:         "Destination error with remote registry target",
-// 			targetType:   TargetTypeRemote,
-// 			rawReference: "localhost:5000/test:v1",
-// 			copyErr: &oras.CopyError{Origin: oras.CopyErrorOriginDestination, Err: &errcode.ErrorResponse{
-// 				URL:        &url.URL{Host: "localhost:5000"},
-// 				StatusCode: http.StatusBadRequest,
-// 			}},
-// 			wantErrPrefix: "Error from destination registry for \"localhost:5000/test:v1\":",
-// 			wantModifiedErr: &errcode.ErrorResponse{
-// 				URL:        &url.URL{Host: "localhost:5000"},
-// 				StatusCode: http.StatusBadRequest,
-// 			},
-// 			wantModified: true,
-// 			isOCILayout:  false,
-// 		},
-// 		{
-// 			name:            "Source error with OCI layout target",
-// 			targetType:      TargetTypeOCILayout,
-// 			rawReference:    "oci-dir:v1",
-// 			copyErr:         &oras.CopyError{Origin: oras.CopyErrorOriginSource, Err: errors.New("source error")},
-// 			wantErrPrefix:   "Error from source oci-layout for \"oci-dir:v1\":",
-// 			wantModifiedErr: errors.New("source error"),
-// 			wantModified:    true,
-// 			isOCILayout:     true,
-// 		},
-// 		{
-// 			name:            "Destination error with OCI layout target",
-// 			targetType:      TargetTypeOCILayout,
-// 			rawReference:    "oci-dir:v1",
-// 			copyErr:         &oras.CopyError{Origin: oras.CopyErrorOriginDestination, Err: errors.New("destination error")},
-// 			wantErrPrefix:   "Error from destination oci-layout for \"oci-dir:v1\":",
-// 			wantModifiedErr: errors.New("destination error"),
-// 			wantModified:    true,
-// 			isOCILayout:     true,
-// 		},
-// 		{
-// 			name:            "Other error origin",
-// 			targetType:      TargetTypeRemote,
-// 			rawReference:    "localhost:5000/test:v1",
-// 			copyErr:         &oras.CopyError{Origin: oras.CopyErrorOrigin(99), Err: errors.New("unknown error")}, // Using a non-existing origin
-// 			wantErrPrefix:   "",
-// 			wantModifiedErr: errors.New("unknown error"),
-// 			wantModified:    false,
-// 			isOCILayout:     false,
-// 		},
-// 	}
+func TestTarget_ModifyErr_PathTraversal(t *testing.T) {
+	opts := &Target{
+		Type:         TargetTypeRemote,
+		RawReference: "example.com/repo:tag",
+	}
+	cmd := &cobra.Command{}
+	err := &oras.CopyError{
+		Err:    file.ErrPathTraversalDisallowed,
+		Origin: oras.CopyErrorOriginDestination,
+	}
 
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			opts := &Target{
-// 				Type:         tt.targetType,
-// 				RawReference: tt.rawReference,
-// 				IsOCILayout:  tt.isOCILayout,
-// 			}
-
-// 			cmd := &cobra.Command{}
-// 			got, modified := opts.Modify(cmd, tt.copyErr)
-
-// 			if modified != tt.wantModified {
-// 				t.Errorf("Target.Modify() modified = %v, want %v", modified, tt.wantModified)
-// 			}
-
-// 			if tt.wantModified {
-// 				// If it should be modified, check that we got the original error
-// 				if got.Error() != tt.wantModifiedErr.Error() {
-// 					t.Errorf("Target.Modify() got = %v, want %v", got, tt.wantModifiedErr)
-// 				}
-
-// 				// And check the error prefix was set correctly
-// 				if cmd.ErrPrefix() != tt.wantErrPrefix {
-// 					t.Errorf("Target.Modify() error prefix = %q, want %q", cmd.ErrPrefix(), tt.wantErrPrefix)
-// 				}
-// 			} else {
-// 				// If not modified, the original copy error should be returned
-// 				if got.Error() != tt.copyErr.Error() {
-// 					t.Errorf("Target.Modify() got = %v, want %v", got, tt.copyErr)
-// 				}
-// 			}
-// 		})
-// 	}
-// }
+	got, modified := opts.ModifyErr(cmd, err, true)
+	if !modified {
+		t.Error("Target.ModifyErr() modified = false, want true")
+	}
+	oerr, ok := got.(*oerrors.Error)
+	if !ok {
+		t.Fatalf("Target.ModifyErr() returned %T, want *oerrors.Error", got)
+	}
+	if !errors.Is(oerr.Err, file.ErrPathTraversalDisallowed) {
+		t.Errorf("Target.ModifyErr() got = %v, want error containing %v", got, file.ErrPathTraversalDisallowed)
+	}
+	if oerr.Recommendation == "" {
+		t.Error("Target.ModifyErr() returned recommendation is empty, expected non-empty")
+	}
+}

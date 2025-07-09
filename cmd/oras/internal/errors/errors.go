@@ -118,10 +118,13 @@ func ReportErrResp(errResp *errcode.ErrorResponse) error {
 	return errResp.Errors
 }
 
+// UnwrapCopyError attempts to unwrap an error as an oras.CopyError.
+// If the given error is an oras.CopyError, it returns the underlying error
+// from the CopyError and true.
+// Otherwise, it returns the original error unchanged and false.
 func UnwrapCopyError(err error) (error, bool) {
 	var copyErr *oras.CopyError
 	if errors.As(err, &copyErr) {
-		// unwrap the copy error to get the original error
 		return copyErr.Err, true
 	}
 	return err, false
@@ -160,8 +163,6 @@ func TrimErrBasicCredentialNotFound(err error) error {
 // |         +--------------+ |      +--------------+
 // +--------------------------+
 func reWrap(outter, mid, inner error) error {
-	// TODO: trim dedicated error type when
-	// https://github.com/oras-project/oras-go/issues/677 is done
 	contentA := outter.Error()
 	contentB := mid.Error()
 	if idx := strings.Index(contentA, contentB); idx > 0 {

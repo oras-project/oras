@@ -48,7 +48,7 @@ func TestBinaryTarget_Modify(t *testing.T) {
 			err:          &oras.CopyError{Origin: oras.CopyErrorOriginSource, Err: errors.New("source error")},
 			canSetPrefix: true,
 			wantModified: true,
-			wantPrefix:   "Error from source registry for \"localhost:5000/test:v1\":",
+			wantPrefix:   `Error from source registry for "localhost:5000/test:v1":`,
 			wantErr:      errors.New("source error"),
 		},
 		{
@@ -66,7 +66,7 @@ func TestBinaryTarget_Modify(t *testing.T) {
 			err:          &oras.CopyError{Origin: oras.CopyErrorOriginDestination, Err: errors.New("destination error")},
 			canSetPrefix: true,
 			wantModified: true,
-			wantPrefix:   "Error from destination oci-layout for \"oci-dir:v1\":",
+			wantPrefix:   `Error from destination oci-layout for "oci-dir:v1":`,
 			wantErr:      errors.New("destination error"),
 		},
 		{
@@ -109,9 +109,8 @@ func TestBinaryTarget_Modify(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Call Modify
 			cmd := &cobra.Command{}
-			err, modified := tc.target.Modify(cmd, tc.err, tc.canSetPrefix)
+			err, modified := tc.target.ModifyErr(cmd, tc.err, tc.canSetPrefix)
 			if modified != tc.wantModified {
 				t.Errorf("Modify() modified = %v, want %v", modified, tc.wantModified)
 			}

@@ -67,7 +67,7 @@ func (target *BinaryTarget) Parse(cmd *cobra.Command) error {
 }
 
 // Modify handles error during cmd execution.
-func (target *BinaryTarget) Modify(cmd *cobra.Command, err error, canSetPrefix bool) (error, bool) {
+func (target *BinaryTarget) ModifyErr(cmd *cobra.Command, err error, canSetPrefix bool) (error, bool) {
 	if !canSetPrefix {
 		return target.modifyErr(cmd, err, false)
 	}
