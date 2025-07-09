@@ -156,16 +156,16 @@ func TrimErrBasicCredentialNotFound(err error) error {
 }
 
 // reWrap re-wraps outter to errC and trims out mid, returns inner if scrub fails.
-// +---------- outter ----------+
-// |         +---- mid ----+ |      +---- outter ----+
-// |         |    inner      | |  =>  |     inner     |
-// |         +--------------+ |      +--------------+
-// +--------------------------+
+// +---------- outter ----------+      +------ outter ------+
+// |         +---- mid ----+    |      |                    |
+// |         |    inner    |    |  =>  |      inner         |
+// |         +-------------+    |      |                    |
+// +--------------------------+        +--------------------+
 func reWrap(outter, mid, inner error) error {
-	contentA := outter.Error()
-	contentB := mid.Error()
-	if idx := strings.Index(contentA, contentB); idx > 0 {
-		return fmt.Errorf("%s%w", contentA[:idx], inner)
+	msgOutter := outter.Error()
+	msgMid := mid.Error()
+	if idx := strings.Index(msgOutter, msgMid); idx > 0 {
+		return fmt.Errorf("%s%w", msgOutter[:idx], inner)
 	}
 	return inner
 }
