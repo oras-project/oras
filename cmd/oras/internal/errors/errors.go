@@ -86,18 +86,18 @@ func CheckArgs(checker func(args []string) (bool, string), Usage string) cobra.P
 	}
 }
 
-// ErrModifier modifies the error during cmd execution.
-type ErrModifier interface {
-	ModifyErr(cmd *cobra.Command, err error, canSetPrefix bool) (modifiedErr error, modified bool)
+// ErrorModifier modifies the error during cmd execution.
+type ErrorModifier interface {
+	ModifyError(cmd *cobra.Command, err error, canSetPrefix bool) (modifiedErr error, modified bool)
 }
 
 // Command returns an error-handled cobra command.
-func Command(cmd *cobra.Command, handler ErrModifier) *cobra.Command {
+func Command(cmd *cobra.Command, handler ErrorModifier) *cobra.Command {
 	runE := cmd.RunE
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		err := runE(cmd, args)
 		if err != nil {
-			err, _ = handler.ModifyErr(cmd, err, true)
+			err, _ = handler.ModifyError(cmd, err, true)
 			return err
 		}
 		return nil
@@ -155,17 +155,17 @@ func TrimErrBasicCredentialNotFound(err error) error {
 	return reWrap(err, toTrim, auth.ErrBasicCredentialNotFound)
 }
 
-// reWrap re-wraps outter to errC and trims out mid, returns inner if scrub fails.
-// +---------- outter ----------+      +------ outter ------+
-// |         +---- mid ----+    |      |                    |
-// |         |    inner    |    |  =>  |      inner         |
-// |         +-------------+    |      |                    |
-// +--------------------------+        +--------------------+
-func reWrap(outter, mid, inner error) error {
-	msgOutter := outter.Error()
+// reWrap re-wraps outer to inner by trimming out mid, returns inner if extraction fails.
+// +---------- outer ----------+      +------ outer ------+
+// |         +---- mid ----+   |      |                   |
+// |         |    inner    |   |  =>  |       inner       |
+// |         +-------------+   |      |                   |
+// +---------------------------+      +-------------------+
+func reWrap(outer, mid, inner error) error {
+	msgOuter := outer.Error()
 	msgMid := mid.Error()
-	if idx := strings.Index(msgOutter, msgMid); idx > 0 {
-		return fmt.Errorf("%s%w", msgOutter[:idx], inner)
+	if idx := strings.Index(msgOuter, msgMid); idx > 0 {
+		return fmt.Errorf("%s%w", msgOuter[:idx], inner)
 	}
 	return inner
 }

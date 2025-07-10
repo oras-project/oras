@@ -23,7 +23,7 @@ import (
 	"oras.land/oras-go/v2"
 )
 
-func TestBinaryTarget_Modify(t *testing.T) {
+func TestBinaryTarget_ModifyError(t *testing.T) {
 	testCases := []struct {
 		name         string
 		target       *BinaryTarget
@@ -110,15 +110,15 @@ func TestBinaryTarget_Modify(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			cmd := &cobra.Command{}
-			err, modified := tc.target.ModifyErr(cmd, tc.err, tc.canSetPrefix)
+			err, modified := tc.target.ModifyError(cmd, tc.err, tc.canSetPrefix)
 			if modified != tc.wantModified {
-				t.Errorf("Modify() modified = %v, want %v", modified, tc.wantModified)
+				t.Errorf("ModifyError() modified = %v, want %v", modified, tc.wantModified)
 			}
 			if modified && cmd.ErrPrefix() != tc.wantPrefix {
-				t.Errorf("Modify() cmd.ErrPrefix() = %q, want %q", cmd.ErrPrefix(), tc.wantPrefix)
+				t.Errorf("ModifyError() cmd.ErrPrefix() = %q, want %q", cmd.ErrPrefix(), tc.wantPrefix)
 			}
 			if err.Error() != tc.wantErr.Error() {
-				t.Errorf("Modify() error = %q, want %q", err.Error(), tc.wantErr.Error())
+				t.Errorf("ModifyError() error = %q, want %q", err.Error(), tc.wantErr.Error())
 			}
 		})
 	}

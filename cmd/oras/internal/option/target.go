@@ -235,8 +235,8 @@ func (target *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, allowTag bool)
 	return nil
 }
 
-// ModifyErr handles error during cmd execution.
-func (target *Target) ModifyErr(cmd *cobra.Command, err error, canSetPrefix bool) (error, bool) {
+// ModifyError handles error during cmd execution.
+func (target *Target) ModifyError(cmd *cobra.Command, err error, canSetPrefix bool) (error, bool) {
 	if target.IsOCILayout {
 		// short circuit for non-remote targets
 		return err, false
