@@ -245,11 +245,11 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 
 	fetched, err := content.FetchAll(ctx, src, root)
 	if err != nil {
-		return opts, root, err
+		return opts, ocispec.Descriptor{}, err
 	}
 	var index ocispec.Index
 	if err = json.Unmarshal(fetched, &index); err != nil {
-		return opts, root, err
+		return opts, ocispec.Descriptor{}, err
 	}
 
 	if len(index.Manifests) == 0 {
@@ -259,7 +259,7 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 
 	referrers, err := graph.FindPredecessors(ctx, src, index.Manifests, opts)
 	if err != nil {
-		return opts, root, err
+		return opts, ocispec.Descriptor{}, err
 	}
 
 	referrers = slices.DeleteFunc(referrers, func(desc ocispec.Descriptor) bool {
@@ -273,8 +273,12 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 
 	rootReferrers, err := opts.FindPredecessors(ctx, src, root)
 	if err != nil {
-		return opts, root, err
+		return opts, ocispec.Descriptor{}, err
 	}
+
+	// If root has no referrers, we make one of its manifests the entry point
+	// of extended copy, and make root and the referrers of the manifests the
+	// predecessors of the entry point.
 	if len(rootReferrers) == 0 {
 		copyRoot := index.Manifests[0]
 		copyRootReferrers := append([]ocispec.Descriptor{root}, referrers...)
