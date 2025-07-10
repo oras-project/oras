@@ -71,8 +71,8 @@ Example - Pull artifact files from a registry:
 Example - Recursively pulling all files from a registry, including subjects of hello:v1:
   oras pull --include-subject localhost:5000/hello:v1
 
-Example - Pull artifact files from a registry, preserving file permissions:
-  oras pull --preserve-permissions -o out localhost:5000/hello:v1
+Example - Pull files from a directory-based artifact in a registry, preserving original permissions
+oras pull --preserve-permissions -o out localhost:5000/hello-dir:v1
 
 Example - Pull files from an insecure registry:
   oras pull --insecure localhost:5000/hello:v1
