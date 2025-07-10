@@ -131,6 +131,8 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 	}
 	err = finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
+			// if --oci-layout-path is used with a repository path, filter the
+			// tags under the repository.
 			if targetPrefix != "" {
 				if scopedTag, ok := strings.CutPrefix(tag, targetPrefix); ok {
 					tag = scopedTag
@@ -138,9 +140,13 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 					continue
 				}
 			}
+
+			// if --exclude-digest-tags is used, skip digest-like tags
 			if opts.excludeDigestTag && isDigestTag(tag) {
 				continue
 			}
+
+			// if a tag or digest is given, show the associated tags
 			if targetDigest != "" {
 				if tag == opts.Reference {
 					if err := handler.OnTagListed(tag); err != nil {
@@ -156,6 +162,8 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 					continue
 				}
 			}
+
+			// show the tags in the repository
 			if err := handler.OnTagListed(tag); err != nil {
 				return err
 			}
