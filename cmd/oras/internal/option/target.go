@@ -59,12 +59,9 @@ type Target struct {
 	Path string
 
 	IsOCILayout bool
-}
 
-// ApplyFlags applies flags to a command flag set for unary target
-func (target *Target) ApplyFlags(fs *pflag.FlagSet) {
-	target.applyFlagsWithPrefix(fs, "", "")
-	target.Remote.ApplyFlags(fs)
+	prefix      string
+	description string
 }
 
 // GetDisplayReference returns full printable reference.
@@ -72,7 +69,15 @@ func (target *Target) GetDisplayReference() string {
 	return fmt.Sprintf("[%s] %s", target.Type, target.RawReference)
 }
 
-// applyFlagsWithPrefix applies flags to fs with prefix and description.
+// setFlagDetails set directional flag prefix and description details
+func (target *Target) setFlagDetails(prefix, description string) {
+	if prefix != "" {
+		target.prefix = prefix + "-"
+		target.description = description + " "
+	}
+}
+
+// ApplyFlags applies flags to a command flag set
 // The complete form of the `target` flag is designed to be
 //
 //	--target type=<type>[[,<key>=<value>][...]]
@@ -81,17 +86,13 @@ func (target *Target) GetDisplayReference() string {
 // `--target type=oci-layout`.
 // Since there is only one target type besides the default `registry` type,
 // the full form is not implemented until a new type comes in.
-func (target *Target) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
-	flagPrefix, notePrefix := applyPrefix(prefix, description)
-	fs.BoolVarP(&target.IsOCILayout, flagPrefix+"oci-layout", "", false, "set "+notePrefix+"target as an OCI image layout")
-	fs.StringVar(&target.Path, flagPrefix+"oci-layout-path", "", "[Experimental] set the path for the "+notePrefix+"OCI image layout target")
-}
-
-// ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
-// Commonly used for non-unary remote targets.
-func (target *Target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
-	target.applyFlagsWithPrefix(fs, prefix, description)
-	target.Remote.ApplyFlagsWithPrefix(fs, prefix, description)
+func (target *Target) ApplyFlags(fs *pflag.FlagSet) {
+	target.ApplyFlagsWithPrefix(fs, target.prefix, target.description)
+	if target.prefix == "" {
+		target.applyStdinFlags(fs)
+	}
+	fs.BoolVarP(&target.IsOCILayout, target.prefix+"oci-layout", "", false, "set "+target.description+"target as an OCI image layout")
+	fs.StringVar(&target.Path, target.prefix+"oci-layout-path", "", "[Experimental] set the path for the "+target.description+"OCI image layout target")
 }
 
 // Parse gets target options from user input.
