@@ -71,3 +71,67 @@ func TestNewCopyHandler(t *testing.T) {
 		t.Errorf("expected metadata.CopyHandler actual %v", reflect.TypeOf(copyMetadataHandler))
 	}
 }
+
+func TestNewRepoTagsHandler(t *testing.T) {
+	tests := []struct {
+		name        string
+		format      option.Format
+		expectError bool
+	}{
+		{"text format", option.Format{Type: option.FormatTypeText.Name}, false},
+		{"JSON format", option.Format{Type: option.FormatTypeJSON.Name}, false},
+		{"Go template", option.Format{Type: option.FormatTypeGoTemplate.Name, Template: "{{.tags}}"}, false},
+		{"unsupported", option.Format{Type: "unsupported"}, true},
+	}
+
+	// Test with stdout
+	for _, tt := range tests {
+		t.Run(tt.name+" with stdout", func(t *testing.T) {
+			handler, err := NewRepoTagsHandler(os.Stdout, tt.format)
+			if tt.expectError && err == nil {
+				t.Error("expected error, got nil")
+			}
+			if !tt.expectError {
+				if err != nil {
+					t.Errorf("error = %v, want nil", err)
+				}
+				if handler == nil {
+					t.Error("returned nil handler")
+				}
+			}
+		})
+	}
+}
+
+func TestNewRepoListHandler(t *testing.T) {
+	tests := []struct {
+		name        string
+		format      option.Format
+		expectError bool
+	}{
+		{"text format", option.Format{Type: option.FormatTypeText.Name}, false},
+		{"JSON format", option.Format{Type: option.FormatTypeJSON.Name}, false},
+		{"Go template", option.Format{Type: option.FormatTypeGoTemplate.Name, Template: "{{.repositories}}"}, false},
+		{"unsupported", option.Format{Type: "unsupported"}, true},
+	}
+
+	// Test with stdout
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			registry := "example.com"
+			namespace := "foo/bar"
+			handler, err := NewRepoListHandler(os.Stdout, tt.format, registry, namespace)
+			if tt.expectError && err == nil {
+				t.Error("expected error, got nil")
+			}
+			if !tt.expectError {
+				if err != nil {
+					t.Errorf("error = %v, want nil", err)
+				}
+				if handler == nil {
+					t.Error("returned nil handler")
+				}
+			}
+		})
+	}
+}

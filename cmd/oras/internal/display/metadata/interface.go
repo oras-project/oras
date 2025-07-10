@@ -129,3 +129,19 @@ type BlobDeleteHandler interface {
 	OnBlobMissing() error
 	OnBlobDeleted() error
 }
+
+// RepoTagsHandler handles metadata output for repo tags command.
+type RepoTagsHandler interface {
+	Renderer
+
+	// OnTagListed is called for each tag that is listed.
+	OnTagListed(tag string) error
+}
+
+// RepoListHandler handles metadata output for repo ls command.
+type RepoListHandler interface {
+	Renderer
+
+	// OnRepositoryListed is called for each repository that is listed.
+	OnRepositoryListed(repo string) error
+}

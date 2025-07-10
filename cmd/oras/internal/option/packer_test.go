@@ -169,7 +169,7 @@ func TestPacker_decodeJSON(t *testing.T) {
 
 	path := "nonexistent-file.json"
 	err := decodeJSON(path, &annotation.Annotations)
-	if err == nil || err.Error() != "open nonexistent-file.json: no such file or directory" {
+	if !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 

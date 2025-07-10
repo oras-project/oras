@@ -36,7 +36,7 @@ func TestTTYPushHandler_TrackTarget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer child.Close()
+	defer func() { _ = child.Close() }()
 	ph := NewTTYPushHandler(child, mockFetcher.Fetcher)
 	store := memory.New()
 	// test
@@ -61,7 +61,7 @@ func Test_TTYPullHandler_TrackTarget(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer device.Close()
+		defer func() { _ = device.Close() }()
 		ph := NewTTYPullHandler(device)
 		got, fn, err := ph.TrackTarget(src)
 		if err != nil {
@@ -91,7 +91,7 @@ func TestTTYCopyHandler_OnMounted(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer child.Close()
+	defer func() { _ = child.Close() }()
 	ch := NewTTYCopyHandler(child)
 	_, err = ch.StartTracking(&testGraphTarget{memory.New()})
 	if err != nil {
@@ -116,7 +116,7 @@ func TestTTYCopyHandler_OnCopySkipped(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer child.Close()
+	defer func() { _ = child.Close() }()
 	ch := NewTTYCopyHandler(child)
 	_, err = ch.StartTracking(&testGraphTarget{memory.New()})
 	if err != nil {
@@ -140,7 +140,7 @@ func TestTTYCopyHandler_PostCopy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer child.Close()
+	defer func() { _ = child.Close() }()
 	ch := NewTTYCopyHandler(child)
 	_, err = ch.StartTracking(&testGraphTarget{memory.New()})
 	if err != nil {
@@ -164,7 +164,7 @@ func TestTTYCopyHandler_PreCopy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer child.Close()
+	defer func() { _ = child.Close() }()
 	ch := NewTTYCopyHandler(child)
 	_, err = ch.StartTracking(&testGraphTarget{memory.New()})
 	if err != nil {

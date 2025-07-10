@@ -129,7 +129,7 @@ func Test_doCopy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer child.Close()
+	defer func() { _ = child.Close() }()
 	var opts copyOptions
 	opts.TTY = child
 	opts.From.Reference = memDesc.Digest.String()
@@ -152,7 +152,7 @@ func Test_doCopy_skipped(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer child.Close()
+	defer func() { _ = child.Close() }()
 	var opts copyOptions
 	opts.TTY = child
 	opts.From.Reference = memDesc.Digest.String()
@@ -175,7 +175,7 @@ func Test_doCopy_mounted(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer child.Close()
+	defer func() { _ = child.Close() }()
 	var opts copyOptions
 	opts.TTY = child
 	opts.From.Reference = manifestDigest
