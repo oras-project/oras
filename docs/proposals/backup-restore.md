@@ -1,12 +1,10 @@
-# Proposal: Portable Backup and Restore of OCI Artifacts and Images
-
-Authors: @TerryHowe @FeynmanZhou 
+# Proposal: Portable Backup and Restore of OCI Artifacts, Images, and Repositories
 
 ## Overview
 
 As the adoption of referrers and OCI artifacts expands beyond container images to include signatures, SBOMs, Helm charts, and other supply chain metadata, users face increasing challenges in managing and preserving complete repository states across environments. Existing tooling lacks a consistent and efficient way to perform portable, repository-level backups and restores that include all images and associated referrers.
 
-This proposal introduces a holistic solution with two new commands `oras backup` and `oras restore` to the ORAS CLI to address these gaps. The proposed solution enables users to archive entire repositories or specific tagged artifacts from an OCI registry into a portable, structured format (directory or archive), and to restore them reliably back into any registry. This supports critical scenarios such as disaster recovery, migration between environments, air-gapped deployments, and supply chain integrity validation.
+This proposal introduces a holistic solution with two new commands `oras backup` and `oras restore` to the ORAS CLI to address these gaps. The proposed solution enables users to archive entire repositories or specific images with referrers from an OCI registry into a portable, structured format (directory or archive), and to restore them reliably back into any registry. This supports critical scenarios such as disaster recovery, migration between isolated environments, air-gapped deployments, and supply chain integrity validation.
 
 By providing native support for comprehensive backup and restore workflows, this enhancement improves user experience, simplifies operational tooling, and ensures that all artifacts including linked referrers are preserved with integrity and fidelity according to OCI specifications.
 
@@ -49,7 +47,7 @@ An OCI image layout directory or `.tar` archive containing the images, artifacts
 * `--include-referrers`: Back up the image and its linked referrers (e.g., attestations, SBOMs).
 
 > [!NOTE] 
-> The file extension determines the output format. If the output path does not include a file extension, it is assumed that the output should be a directory. When an unsupported extension such as `.zip` or `.tar.gz` is specified, `oras` should display a warning indicating that the format is not supported. In such cases, it will proceed to create a directory at the specified path instead.
+> The file extension determines the output format. `oras` supports `.tar` archive as the default format since OCI and Docker ecosystem uses `.tar` archive. If the output path does not include a file extension, it is assumed that the output should be a directory. When an unsupported extension such as `.zip` or `.tar.gz` is specified, `oras` should display a warning indicating that the format is not supported. In such cases, it will proceed to create a directory at the specified path instead.
 
 **Common flags:**
 
@@ -108,7 +106,9 @@ Artifacts are uploaded to the target registry/registries as specified.
 
 ### User Experience in the CLI
 
-**Offline Snapshot for Air-Gapped Environments**
+The desired end-to-end user experience of using `oras backup` and `oras restore` to address the identified problems and support the outlined user scenarios is illustrated below.
+
+#### Offline Snapshot for Air-Gapped Environments
 
 Create a snapshot of a sample image `registry-a.k8s.io/kube-apiserver:v1` and its referrer (e.g. signature) for an air-gapped environment:
 
@@ -116,10 +116,29 @@ Create a snapshot of a sample image `registry-a.k8s.io/kube-apiserver:v1` and it
 oras backup registry-a.k8s.io/kube-apiserver:v1 --include-referrers --output airgap-snapshot.tar
 ```
 
+Upon success, the output will be:
+
+```console
+Pulled 1 descriptor(s) from registry-a.k8s.io/kube-apiserver:v1
+Found 1 linked referrer(s)
+Included referrers in backup: application/vnd.cncf.notary.signature
+Exported backup to airgap-snapshot.tar
+Backup completed: 2 artifact(s) written
+```
+
 Transfer the `.tar` file to the air-gapped system via a secured channel. Restore the tarball from local to another registry:
 
 ```console
 oras restore registry-b.k8s.io/kube-apiserver:v1 --input airgap-snapshot.tar
+```
+
+Upon success, the output will be:
+
+```console
+Loaded 2 artifact(s) from airgap-snapshot.tar
+Pushed image to registry-b.k8s.io/kube-apiserver:v1
+Pushed linked referrer: sha256:78833f9c870...
+Restore completed successfully
 ```
 
 By default, the image and linked referrers are reliably restored to another registry with minimal steps. Users can use the `--exclude-referrers` flag to exclude linked referrers when using `oras restore`.
@@ -134,13 +153,78 @@ registry-b.k8s.io/kube-apiserver@sha256:9081a6f83f4febf47369fc46b6f0f7683c7db243
             └── io.cncf.notary.x509chain.thumbprint#S256: '["xxxxxx"]'
 ```
 
-**Backup and Restore an Entire Repository and Tagged Artifacts**
+#### Backup Artifacts to a Directory and Restore to Another Registry
 
-Assume two tags `v1` and `v2` are stored in a repository `registry.k8s.io/kube-apiserver`. Backup the entire repo to a tarball and restore it to another registry:
+Backing up multiple artifacts to a directory:
 
 ```console
-# Backup a repository from a registry to a local compressed tarball. All tags and their referrers will be included.
+oras backup --output ./mirror registry.k8s.io/kube-apiserver-arm64:v1.31.0 registry.k8s.io/kube-controller-manager-arm64:v1.31.0
+```
+
+Upon success, the output will be:
+
+```console
+Pulled 1 descriptor(s) from registry.k8s.io/kube-apiserver-arm64:v1.31.0
+Pulled 1 descriptor(s) from registry.k8s.io/kube-controller-manager-arm64:v1.31.0
+Exported artifacts to ./mirror in OCI layout format
+Backup completed: 2 artifact(s) written
+```
+
+The output directory structure is a single OCI layout containing all of the artifacts. Each artifact in the output OCI layout will be tagged with the name of source. 
+
+```console
+% oras repo tags --oci-layout ./mirror
+registry.k8s.io/kube-apiserver-arm64:v1.31.0
+registry.k8s.io/kube-controller-manager-arm64:v1.31.0
+```
+
+> [!NOTE]
+> If the specified output is an existing directory, the content will be written to that directory in OCI layout format. If the output is an existing file, it will be overwritten. If the output path does not correspond to an existing file or directory, it is treated as a file path, and the output will be a tar archive. The file name does not need to have a `.tar` extension, but the output will still be a tarball file.
+
+Restore a directory and writing to a remote registry.
+
+```console
+oras restore --input ./mirror localhost:15000/my-mirror
+```
+
+Upon success, the output will be:
+
+```console
+Loaded 2 artifact(s) from ./mirror
+Pushed image to localhost:15000/my-mirror/kube-apiserver-arm64:v1.31.0
+Pushed image to localhost:15000/my-mirror/kube-controller-manager-arm64:v1.31.0
+Restore completed successfully
+```
+
+```console
+## List the tags in the namespace within the new registry
+$ oras repo ls localhost:15000/my-mirror
+kube-apiserver-arm64
+kube-controller-manager-arm64
+
+## List the tags in the repository
+ oras repo tags localhost:15000/my-mirror/kube-apiserver-arm64
+v1.31.0
+v1.32.0
+```
+
+#### Backup an Entire Repository to a Tarball and Restore to Another Registry
+
+Assume two tags `v1` and `v2` are stored in a repository `registry.k8s.io/kube-apiserver` and each tag has one referrer. Backup the entire repo to a tarball and restore it to another registry:
+
+```console
+## Backup a repository from a registry to a local compressed tarball. All tags and their referrers will be included.
 oras backup --output backup.tar --include-referrers registry-a.k8s.io/kube-apiserver
+```
+
+Upon success, the output will be:
+
+```console
+Pulled 2 descriptor(s) from registry-a.k8s.io/kube-apiserver
+Found 2 linked referrer(s) across tags
+Included referrers in backup: application/vnd.cncf.notary.signature
+Exported backup to backup.tar
+Backup completed: 4 artifact(s) written
 ```
 
 Transfer the backup file to new environment via secure channels (e.g., BitLocker-enabled removable drives)
@@ -149,6 +233,16 @@ Restore images and referrer artifacts from a local backup file to a target regis
 
 ```console
 oras restore --input backup.tar registry-b.k8s.io/kube-apiserver
+```
+
+Upon success, the output will be:
+
+```console
+Loaded 4 artifact(s) from backup.tar
+Pushed image to registry-b.k8s.io/kube-apiserver:v1
+Pushed image to registry-b.k8s.io/kube-apiserver:v2
+Pushed 2 linked referrer(s)
+Restore completed successfully
 ```
 
 List all tags from the repo `registry-b.k8s.io/kube-apiserver`
@@ -167,6 +261,15 @@ Backup multiple repositories from a registry to a local OCI image layout
 $ oras backup registry.k8s.io/kube-apiserver registry.k8s.io/kube-controller-manager --output ./k8s-control-plane
 ```
 
+Upon success, the output will be:
+
+```console
+Pulled 2 descriptor(s) from registry.k8s.io/kube-apiserver
+Pulled 2 descriptor(s) from registry.k8s.io/kube-controller-manager
+Exported artifacts to ./k8s-control-plane in OCI layout format
+Backup completed: 4 artifact(s) written
+```
+
 List the backup repositories in the OCI image layout. 
 
 ```console
@@ -179,6 +282,15 @@ Restore them from local OCI image layout to two repositories respectively in a r
 
 ```console
 oras restore localhost:5000/kube-apiserver localhost:5000/kube-controller-manager --input ./k8s-control-plane
+```
+
+Upon success, the output will be:
+
+```console
+Loaded 4 artifact(s) from ./k8s-control-plane
+Pushed image to localhost:5000/kube-apiserver
+Pushed image to localhost:5000/kube-controller-manager
+Restore completed successfully
 ```
 
 ## Summary

@@ -58,6 +58,21 @@ var _ = Describe("ORAS beginners:", func() {
 				ORAS("repo", "ls", ZOTHost, "-u", Username, "-p", "???").
 					MatchErrKeyWords(RegistryErrorPrefix).ExpectFailure().Exec()
 			})
+
+			It("should show format help in command output", func() {
+				help := ORAS("repo", "ls", "--help").Exec().Out.Contents()
+				helpStr := string(help)
+
+				// Check for format flag info in help
+				Expect(helpStr).To(ContainSubstring("--format"))
+				Expect(helpStr).To(ContainSubstring("json"))
+				Expect(helpStr).To(ContainSubstring("text"))
+				Expect(helpStr).To(ContainSubstring("go-template"))
+
+				// Check for example in help text
+				Expect(helpStr).To(ContainSubstring("oras repo ls localhost:5000 --format json"))
+				Expect(helpStr).To(ContainSubstring("oras repo ls localhost:5000 --format go-template"))
+			})
 		})
 		When("running `repo tags`", func() {
 			It("should show help description with feature flags", func() {
@@ -112,7 +127,6 @@ var _ = Describe("1.1 registry users:", func() {
 		It("should show deprecation message when running with --verbose flag", func() {
 			ORAS("repository", "list", ZOTHost, "--verbose").MatchErrKeyWords(feature.DeprecationMessageVerboseFlag).Exec()
 		})
-
 		It("should not list repositories without a fully matched namespace", func() {
 			repo := "command-draft/images"
 			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), RegistryRef(ZOTHost, repo, foobar.Tag)).
@@ -122,11 +136,120 @@ var _ = Describe("1.1 registry users:", func() {
 			session := ORAS("repo", "ls", RegistryRef(ZOTHost, Namespace, "")).MatchKeyWords(ImageRepo[len(Namespace)+1:]).Exec()
 			Expect(session.Out).ShouldNot(gbytes.Say(repo[len(Namespace)+1:]))
 		})
-
 		It("should list repositories via short command", func() {
 			ORAS("repo", "ls", ZOTHost).MatchKeyWords(ImageRepo).Exec()
 		})
+	})
 
+	When("running `repo ls` with JSON format", func() {
+		It("should list repositories in JSON format", func() {
+			bytes := ORAS("repo", "ls", ZOTHost, "--format", "json").
+				WithDescription("get repos in JSON format").
+				MatchKeyWords(`"repositories"`).
+				Exec().Out.Contents()
+
+			// Parse the JSON output
+			var result struct {
+				Registry     string   `json:"registry"`
+				Repositories []string `json:"repositories"`
+			}
+			Expect(json.Unmarshal(bytes, &result)).ShouldNot(HaveOccurred())
+
+			// Verify registry is in the output
+			Expect(result.Registry).To(Equal(ZOTHost))
+			// Verify repositories are in the output
+			Expect(result.Repositories).Should(ContainElement(ImageRepo))
+		})
+
+		It("should list repositories under provided namespace in JSON format", func() {
+			bytes := ORAS("repo", "ls", RegistryRef(ZOTHost, Namespace, ""), "--format", "json").
+				WithDescription("get repos in JSON format under namespace").
+				MatchKeyWords(`"repositories"`).
+				Exec().Out.Contents()
+
+			// Parse the JSON output
+			var result struct {
+				Registry     string   `json:"registry"`
+				Repositories []string `json:"repositories"`
+			}
+			Expect(json.Unmarshal(bytes, &result)).ShouldNot(HaveOccurred())
+
+			// Verify registry is in the output
+			Expect(result.Registry).To(Equal(ZOTHost))
+			// Verify repositories are in the output
+			Expect(result.Repositories).Should(ContainElement(ImageRepo))
+		})
+
+		It("should not list repositories without a fully matched namespace in JSON format", func() {
+			repo := "command-draft/images"
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), RegistryRef(ZOTHost, repo, foobar.Tag)).
+				WithDescription("prepare destination repo: " + repo).
+				Exec()
+			bytes := ORAS("repo", "ls", RegistryRef(ZOTHost, Namespace, ""), "--format", "json").
+				WithDescription("get repos in JSON format under namespace").
+				Exec().Out.Contents()
+
+			// Parse the JSON output
+			var result struct {
+				Registry     string   `json:"registry"`
+				Repositories []string `json:"repositories"`
+			}
+			Expect(json.Unmarshal(bytes, &result)).ShouldNot(HaveOccurred())
+			// Verify registry is in the output
+			Expect(result.Registry).To(Equal(ZOTHost))
+			// Verify repositories are in the output
+			Expect(result.Repositories).Should(ContainElement(ImageRepo))
+			// Ensure the other repo is not listed
+			Expect(result.Repositories).ShouldNot(ContainElement(repo))
+		})
+	})
+
+	When("running `repo ls` with go-template format", func() {
+		It("should list repositories in go-template format", func() {
+			template := `"Registry: {{.registry}}{{println}}{{range .repositories}}{{println .}}{{end}}"`
+			output := ORAS("repo", "ls", ZOTHost, "--format", "go-template="+template).
+				WithDescription("get repos in go-template format").
+				Exec().Out.Contents()
+
+			outputString := string(output)
+			// Verify registry is in the output
+			Expect(outputString).To(ContainSubstring("Registry: " + ZOTHost))
+			// Verify repositories are in the output
+			Expect(outputString).To(ContainSubstring(ImageRepo))
+		})
+
+		It("should list repositories under provided namespace in go-template format", func() {
+			// Template that prints registry and then each repository
+			template := `"Registry: {{.registry}}{{println}}{{range .repositories}}{{println .}}{{end}}"`
+			output := ORAS("repo", "ls", RegistryRef(ZOTHost, Namespace, ""), "--format", "go-template="+template).
+				WithDescription("get repos in go-template format under namespace").
+				Exec().Out.Contents()
+
+			outputString := string(output)
+			// Verify registry is in the output
+			Expect(outputString).To(ContainSubstring("Registry: " + ZOTHost))
+			// Verify repositories are in the output
+			Expect(outputString).To(ContainSubstring(ImageRepo))
+		})
+
+		It("should not list repositories without a fully matched namespace in go-template format", func() {
+			repo := "command-draft/images"
+			ORAS("cp", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), RegistryRef(ZOTHost, repo, foobar.Tag)).
+				WithDescription("prepare destination repo: " + repo).
+				Exec()
+			template := `"Registry: {{.registry}}{{println}}{{range .repositories}}{{println .}}{{end}}"`
+			output := ORAS("repo", "ls", RegistryRef(ZOTHost, Namespace, ""), "--format", "go-template="+template).
+				WithDescription("get repos in go-template format under namespace").
+				Exec().Out.Contents()
+
+			outputString := string(output)
+			// Verify registry is in the output
+			Expect(outputString).To(ContainSubstring("Registry: " + ZOTHost))
+			// Verify repositories are in the output
+			Expect(outputString).To(ContainSubstring(ImageRepo))
+			// Ensure the other repo is not listed
+			Expect(outputString).ShouldNot(ContainSubstring(repo))
+		})
 	})
 
 	When("running `repo tags`", func() {
