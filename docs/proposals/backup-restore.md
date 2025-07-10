@@ -83,7 +83,7 @@ Artifacts are uploaded to the target registry/registries as specified.
 **New flags:**
 
 - `--input <path>`: Required. Restore from a folder or archive file to registry.
-- `--exclude-referrers`: Restore the image from backup without the referrers
+- `--exclude-referrers`: Restore the image from backup excluding referrers.
 
 **Common flags:**
 
