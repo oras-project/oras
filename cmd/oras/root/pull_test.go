@@ -47,8 +47,8 @@ func Test_runPull_errType(t *testing.T) {
 
 func Test_doPull(t *testing.T) {
 	t.Run("PreservePermissions", func(t *testing.T) {
-		repo := "pp"
-		tagReference := "dppp"
+		repo := "t_dopull"
+		tagReference := "preservepermissions"
 		// Create a temporary directory, put a file in there with mode 0777
 		srcRoot, err := os.MkdirTemp("", "doPull_preservePermissions_srcDir-*")
 		if err != nil {
@@ -75,7 +75,6 @@ func Test_doPull(t *testing.T) {
 		}
 		defer func() { _ = os.Chdir(oldWd) }()
 
-		//fmt.Println(filepath.Base(srcDir))
 		subDir := filepath.Base(srcDir)
 
 		pushArgs := []string{
@@ -83,8 +82,6 @@ func Test_doPull(t *testing.T) {
 			"--insecure",
 			"--plain-http",
 			"--no-tty",
-			"--format",
-			"go-template=\n",
 			fmt.Sprintf("%s/%s:%s", genericHost, repo, tagReference),
 			subDir,
 		}
@@ -107,8 +104,6 @@ func Test_doPull(t *testing.T) {
 			"--insecure",
 			"--plain-http",
 			"--no-tty",
-			"--format",
-			"go-template=\n",
 			fmt.Sprintf("%s/%s:%s", genericHost, repo, tagReference),
 			"-o",
 			tgtDir,
