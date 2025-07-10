@@ -253,46 +253,6 @@ v1
 v2
 ```
 
-**Backup and Restore Multiple Repositories**
-
-Backup multiple repositories from a registry to a local OCI image layout
-
-```console
-$ oras backup registry.k8s.io/kube-apiserver registry.k8s.io/kube-controller-manager --output ./k8s-control-plane
-```
-
-Upon success, the output will be:
-
-```console
-Pulled 2 descriptor(s) from registry.k8s.io/kube-apiserver
-Pulled 2 descriptor(s) from registry.k8s.io/kube-controller-manager
-Exported artifacts to ./k8s-control-plane in OCI layout format
-Backup completed: 4 artifact(s) written
-```
-
-List the backup repositories in the OCI image layout. 
-
-```console
-$ oras repo list --oci-layout k8s-control-plane 
-registry.k8s.io/kube-apiserver
-registry.k8s.io/kube-controller-manager
-```
-
-Restore them from local OCI image layout to two repositories respectively in a registry
-
-```console
-oras restore localhost:5000/kube-apiserver localhost:5000/kube-controller-manager --input ./k8s-control-plane
-```
-
-Upon success, the output will be:
-
-```console
-Loaded 4 artifact(s) from ./k8s-control-plane
-Pushed image to localhost:5000/kube-apiserver
-Pushed image to localhost:5000/kube-controller-manager
-Restore completed successfully
-```
-
 ## Summary
 
 The `oras backup` and `oras restore` commands introduce a structured, OCI-compliant way to persist and rehydrate artifacts and referrers, bridging a critical gap in the current functionality of the `oras` CLI. This enhancement empowers users with flexible, scriptable, and portable tooling for registry state management.
