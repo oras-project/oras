@@ -67,10 +67,10 @@ Example - [Experimental] Show tags associated with a particular tagged resource:
 Example - [Experimental] Show tags associated with a digest:
   oras repo tags localhost:5000/hello@sha256:c551125a624189cece9135981621f3f3144564ddabe14b523507bf74c2281d9b
 
-Example - [Experimental] Show tags of the target repository in JSON view:
+Example - [Experimental] Show tags of the target repository in JSON format:
   oras repo tags localhost:5000/hello --format json
 
-Example - [Experimental] Show tags of the target repository with Go template:
+Example - [Experimental] Show tags of the target repository using the given Go template:
   oras repo tags localhost:5000/hello --format go-template --template "{{.tags}}"
 
 Example - [Experimental] Show tags of a specific repository in OCI layout:
