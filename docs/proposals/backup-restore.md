@@ -167,7 +167,7 @@ oras backup registry-a.k8s.io/kube-apiserver:v1 --include-referrers --output air
 Upon success, the output will be:
 
 ```console
-Pulled 1 manifest(s) from registry-a.k8s.io/kube-apiserver:v1
+Pulled 1 tag from registry-a.k8s.io/kube-apiserver:v1
 Found 1 linked referrer(s)
 Included referrers in backup: [application/vnd.cncf.notary.signature] registry-a.k8s.io/kube-apiserver@sha256:78833f9c870...
 Exported backup to airgap-snapshot.tar
