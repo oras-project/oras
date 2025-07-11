@@ -47,12 +47,13 @@ type pullOptions struct {
 	option.Format
 	option.Terminal
 
-	concurrency       int
-	KeepOldFiles      bool
-	IncludeSubject    bool
-	PathTraversal     bool
-	Output            string
-	ManifestConfigRef string
+	concurrency         int
+	KeepOldFiles        bool
+	IncludeSubject      bool
+	PathTraversal       bool
+	PreservePermissions bool
+	Output              string
+	ManifestConfigRef   string
 	// Deprecated: verbose is deprecated and will be removed in the future.
 	verbose bool
 }
@@ -69,6 +70,9 @@ Example - Pull artifact files from a registry:
 
 Example - Recursively pulling all files from a registry, including subjects of hello:v1:
   oras pull --include-subject localhost:5000/hello:v1
+
+Example - Pull files from a directory-based artifact in a registry, preserving original permissions
+  oras pull --preserve-permissions localhost:5000/hello-dir:v1
 
 Example - Pull files from an insecure registry:
   oras pull --insecure localhost:5000/hello:v1
@@ -120,6 +124,7 @@ Example - Pull artifact files tagged 'example.com:v1' from an OCI image layout f
 	cmd.Flags().BoolVarP(&opts.KeepOldFiles, "keep-old-files", "k", false, "do not replace existing files when pulling, treat them as errors")
 	cmd.Flags().BoolVarP(&opts.PathTraversal, "allow-path-traversal", "T", false, "allow storing files out of the output directory")
 	cmd.Flags().BoolVarP(&opts.IncludeSubject, "include-subject", "", false, "[Preview] recursively pull the subject of artifacts")
+	cmd.Flags().BoolVarP(&opts.PreservePermissions, "preserve-permissions", "", false, "[Preview] Preserve original file permissions when extracting tar archives, ignoring the current umask.")
 	cmd.Flags().StringVarP(&opts.Output, "output", "o", ".", "output directory")
 	cmd.Flags().StringVarP(&opts.ManifestConfigRef, "config", "", "", "output manifest config file")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
@@ -164,6 +169,7 @@ func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 	}()
 	dst.AllowPathTraversalOnWrite = opts.PathTraversal
 	dst.DisableOverwrite = opts.KeepOldFiles
+	dst.PreservePermissions = opts.PreservePermissions
 
 	desc, err := doPull(ctx, src, dst, copyOptions, metadataHandler, statusHandler, opts)
 	if err != nil {
