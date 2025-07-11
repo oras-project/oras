@@ -73,8 +73,7 @@ func (target *BinaryTarget) ModifyError(cmd *cobra.Command, err error) (error, b
 		return target.modifyError(cmd, err)
 	}
 
-	// rewrap copyErr.Err with the outer error (err)
-	err = oerrors.ReWrap(err, copyErr, copyErr.Err)
+	err = copyErr.Err // extract the inner error
 	var errTarget Target
 	switch copyErr.Origin {
 	case oras.CopyErrorOriginSource:

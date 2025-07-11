@@ -152,16 +152,16 @@ func TrimErrBasicCredentialNotFound(err error) error {
 		}
 		break
 	}
-	return ReWrap(err, toTrim, auth.ErrBasicCredentialNotFound)
+	return reWrap(err, toTrim, auth.ErrBasicCredentialNotFound)
 }
 
-// ReWrap re-wraps outer to inner by trimming out mid, returns inner if extraction fails.
+// reWrap re-wraps outer to inner by trimming out mid, returns inner if extraction fails.
 // +---------- outer ----------+      +------ outer ------+
 // |         +---- mid ----+   |      |                   |
 // |         |    inner    |   |  =>  |       inner       |
 // |         +-------------+   |      |                   |
 // +---------------------------+      +-------------------+
-func ReWrap(outer, mid, inner error) error {
+func reWrap(outer, mid, inner error) error {
 	msgOuter := outer.Error()
 	msgMid := mid.Error()
 	if idx := strings.Index(msgOuter, msgMid); idx > 0 {

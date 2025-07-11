@@ -166,6 +166,7 @@ func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 
 	desc, err := doPull(ctx, src, dst, copyOptions, metadataHandler, statusHandler, opts)
 	if err != nil {
+		err = oerrors.UnwrapCopyError(err)
 		if errors.Is(err, file.ErrPathTraversalDisallowed) {
 			return &oerrors.Error{
 				Err:            err,

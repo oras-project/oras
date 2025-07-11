@@ -237,12 +237,6 @@ func (target *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, allowTag bool)
 
 // ModifyError handles error during cmd execution.
 func (target *Target) ModifyError(cmd *cobra.Command, err error) (error, bool) {
-	var copyErr *oras.CopyError
-	if errors.As(err, &copyErr) {
-		// rewrap copyErr.Err with the outer error (err)
-		err = oerrors.ReWrap(err, copyErr, copyErr.Err)
-	}
-
 	if target.IsOCILayout {
 		// short circuit for non-remote targets
 		return err, false
