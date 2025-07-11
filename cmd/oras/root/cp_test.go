@@ -122,12 +122,6 @@ func TestMain(m *testing.M) {
 	uri, _ := url.Parse(ts.URL)
 	host = "localhost:" + uri.Port()
 
-	// genericRegistry is a test fixture designed to function
-	// exactly like a normal registry would
-	genericRegistry := NewMockOCIRegistry()
-	defer genericRegistry.Close()
-	genericUri, _ := url.Parse(genericRegistry.URL())
-	genericHost = "localhost:" + genericUri.Port()
 	m.Run()
 }
 

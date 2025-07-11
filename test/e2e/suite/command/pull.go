@@ -200,6 +200,28 @@ var _ = Describe("ORAS beginners:", func() {
 				ExpectFailure().
 				MatchErrKeyWords("Error: ", "--allow-path-traversal").Exec()
 		})
+
+		It("should preserve permissions", func() {
+
+			// prepare
+			pushRoot := GinkgoT().TempDir()
+			tag := "pushed_preserve_permissions"
+			ref := RegistryRef(ZOTHost, ArtifactRepo, tag)
+			Expect(CopyTestFiles(pushRoot)).ShouldNot(HaveOccurred())
+			ORAS("push", ref, foobar.DirectoryName).WithWorkDir(pushRoot).Exec()
+
+			// test
+			pullRoot := GinkgoT().TempDir()
+			fmt.Println(LayoutRef(pushRoot, tag))
+			ORAS("pull", "--preserve-permissions", ref, "-o", "pulled").
+				WithDescription(pullRoot).Exec()
+
+			have, err := os.Stat(filepath.Join("pulled", foobar.PermissionFileName))
+			Expect(err).NotTo(HaveOccurred())
+			want, err := os.Stat(filepath.Join(pushRoot, foobar.PermissionFileName))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(have.Mode().Perm()).To(Equal(want.Mode().Perm()))
+		})
 	})
 })
 
