@@ -236,7 +236,7 @@ func (target *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, allowTag bool)
 }
 
 // ModifyError handles error during cmd execution.
-func (target *Target) ModifyError(cmd *cobra.Command, err error, canSetPrefix bool) (error, bool) {
+func (target *Target) ModifyError(cmd *cobra.Command, err error) (error, bool) {
 	var copyErr *oras.CopyError
 	if errors.As(err, &copyErr) {
 		// rewrap copyErr.Err with the outer error (err)
@@ -253,7 +253,7 @@ func (target *Target) ModifyError(cmd *cobra.Command, err error, canSetPrefix bo
 		return target.DecorateCredentialError(err), true
 	}
 
-	if canSetPrefix && errors.Is(err, errdef.ErrNotFound) {
+	if errors.Is(err, errdef.ErrNotFound) {
 		// special handling for not found error retured by registry target
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
 		return err, true
@@ -276,9 +276,7 @@ func (target *Target) ModifyError(cmd *cobra.Command, err error, canSetPrefix bo
 			}
 		}
 
-		if canSetPrefix {
-			cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
-		}
+		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
 		ret := &oerrors.Error{
 			Err: oerrors.ReportErrResp(errResp),
 		}

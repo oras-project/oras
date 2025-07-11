@@ -143,7 +143,7 @@ func Test_parseOCILayoutReference(t *testing.T) {
 func TestTarget_ModifyError_ociLayout(t *testing.T) {
 	errClient := errors.New("client error")
 	opts := &Target{}
-	got, modified := opts.ModifyError(&cobra.Command{}, errClient, true)
+	got, modified := opts.ModifyError(&cobra.Command{}, errClient)
 
 	if modified {
 		t.Errorf("expect error not to be modified but received true")
@@ -190,7 +190,7 @@ func TestTarget_ModifyError_NotFound(t *testing.T) {
 			}
 			cmd := &cobra.Command{}
 			originalErr := fmt.Errorf("not found: %w", errdef.ErrNotFound)
-			got, modified := opts.ModifyError(cmd, originalErr, true)
+			got, modified := opts.ModifyError(cmd, originalErr)
 			if modified != tt.wantModified {
 				t.Errorf("Target.ModifyError() modified = %v, want %v", modified, tt.wantModified)
 			}
@@ -218,7 +218,7 @@ func TestTarget_ModifyError_errResponse(t *testing.T) {
 		RawReference: "localhost:5000/test:v1",
 	}
 	cmd := &cobra.Command{}
-	got, modified := opts.ModifyError(cmd, errResp, true)
+	got, modified := opts.ModifyError(cmd, errResp)
 
 	if !modified {
 		t.Errorf("expected error to be modified but received %v", modified)
@@ -248,7 +248,7 @@ func TestTarget_ModifyError_errInvalidReference(t *testing.T) {
 		RawReference: "invalid-reference",
 	}
 	cmd := &cobra.Command{}
-	got, modified := opts.ModifyError(cmd, errResp, true)
+	got, modified := opts.ModifyError(cmd, errResp)
 
 	if modified {
 		t.Errorf("expect error not to be modified but received true")
@@ -279,7 +279,7 @@ func TestTarget_ModifyError_errHostNotMatching(t *testing.T) {
 		RawReference: "registry-2.docker.io/test:tag",
 	}
 	cmd := &cobra.Command{}
-	_, modified := opts.ModifyError(cmd, errResp, true)
+	_, modified := opts.ModifyError(cmd, errResp)
 	if modified {
 		t.Errorf("expect error not to be modified but received true")
 	}
@@ -379,7 +379,7 @@ func TestTarget_ModifyError_dockerHint(t *testing.T) {
 				Path:         tt.fields.Path,
 				IsOCILayout:  tt.fields.IsOCILayout,
 			}
-			got, modified := opts.ModifyError(cmd, tt.err, true)
+			got, modified := opts.ModifyError(cmd, tt.err)
 			gotErr, ok := got.(*oerrors.Error)
 			if !ok {
 				t.Errorf("expecting error to be *oerrors.Error but received %T", got)

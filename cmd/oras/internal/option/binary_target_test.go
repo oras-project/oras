@@ -28,7 +28,6 @@ func TestBinaryTarget_ModifyError(t *testing.T) {
 		name         string
 		target       *BinaryTarget
 		err          error
-		canSetPrefix bool
 		wantModified bool
 		wantPrefix   string
 		wantErr      error
@@ -46,7 +45,6 @@ func TestBinaryTarget_ModifyError(t *testing.T) {
 				},
 			},
 			err:          &oras.CopyError{Origin: oras.CopyErrorOriginSource, Err: errors.New("source error")},
-			canSetPrefix: true,
 			wantModified: true,
 			wantPrefix:   `Error from source registry for "localhost:5000/test:v1":`,
 			wantErr:      errors.New("source error"),
@@ -64,28 +62,9 @@ func TestBinaryTarget_ModifyError(t *testing.T) {
 				},
 			},
 			err:          &oras.CopyError{Origin: oras.CopyErrorOriginDestination, Err: errors.New("destination error")},
-			canSetPrefix: true,
 			wantModified: true,
 			wantPrefix:   `Error from destination oci-layout for "oci-dir:v1":`,
 			wantErr:      errors.New("destination error"),
-		},
-		{
-			name: "CopyError but canSetPrefix is false",
-			target: &BinaryTarget{
-				From: Target{
-					Type:         "registry",
-					RawReference: "localhost:5000/test:v1",
-				},
-				To: Target{
-					Type:         "oci-layout",
-					RawReference: "oci-dir:v1",
-				},
-			},
-			err:          &oras.CopyError{Origin: oras.CopyErrorOriginSource, Err: errors.New("source error")},
-			canSetPrefix: false,
-			wantModified: true,
-			wantPrefix:   "Error:",
-			wantErr:      errors.New("source error"),
 		},
 		{
 			name: "CopyError with unknown origin",
@@ -100,7 +79,6 @@ func TestBinaryTarget_ModifyError(t *testing.T) {
 				},
 			},
 			err:          &oras.CopyError{Origin: oras.CopyErrorOrigin(-1), Err: errors.New("unknown error")},
-			canSetPrefix: true,
 			wantPrefix:   "Error:",
 			wantModified: true,
 			wantErr:      errors.New("unknown error"),
@@ -110,7 +88,7 @@ func TestBinaryTarget_ModifyError(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			cmd := &cobra.Command{}
-			err, modified := tc.target.ModifyError(cmd, tc.err, tc.canSetPrefix)
+			err, modified := tc.target.ModifyError(cmd, tc.err)
 			if modified != tc.wantModified {
 				t.Errorf("ModifyError() modified = %v, want %v", modified, tc.wantModified)
 			}
