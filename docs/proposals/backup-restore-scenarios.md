@@ -1,14 +1,12 @@
 # Scenarios: Portable Backup and Restore of OCI Artifacts and Images
 
-Authors: @TerryHowe @FeynmanZhou 
-
 ## Overview
 
 Organizations rely on container images and other OCI artifacts to build, deploy, and operate their applications. These images and artifacts are built locally and stored in public or private OCI registries. However, as organizations mature their supply chain security, they face increasing demands to efficiently acquire, migrate, promote, mirror, and backup images and artifacts across registries and local environments, while preserving provenance, integrity, and metadata.
 
 Today, fragmented tooling and manual scripts make these tasks complex, error-prone, and operationally expensive. Common tools like `docker save/load` and `oras pull/push`, `oras copy` only cover parts of the workflow, often lacking support for referrers, deduplication, and structured backups. This results in brittle processes, duplicated blobs, missing attestations, and frustrated developers.
 
-This document describes the challenges faced by users managing images and OCI artifacts across registries and local environment. It proposes a unified, reliable, and portable solution built into the `oras` CLI to address these gaps. In particular, this document motivates the need for structured backup and restore workflows that simplify artifact movement, ensure completeness, and integrate seamlessly with security and compliance practices.
+This document describes the challenges faced by users managing images and OCI artifacts across registries and local environment. It proposes a unified, reliable, and portable solution built into the `oras` CLI to address these gaps. In particular, this document motivates the need for structured backup and restore workflows that simplify artifact movement, ensure completeness, and integrate seamlessly with security and compliance practices. The proposals and detailed CLI design are documented in the [Proposal: Portable Backup and Restore of OCI Artifacts, Images, and Repositories](./backup-restore.md).
 
 ## Problem Statement & Motivation
 
@@ -45,13 +43,17 @@ This document illustrates real-world scenarios highlighting these challenges and
 
 ### Scenario 1: Creating Offline Snapshots for Air-Gapped Environments
 
-Dave, a security engineer at a FinTech company. To create a snapshot of the image and its referrers in an air-gapped environment, Dave needs to run the following flow:
+Dave is a security engineer at a FinTech company that operates in a highly regulated environment. As part of their infrastructure security policies, the production environment is fully air-gapped to reduce the attack surface and comply with regulatory standards.
 
-1. Packages the image and its referrers from an OCI image layout into a `.tar` for portability.
-2. Copies compressed files via secured channels to the air-gapped network.
-3. Restores all artifacts from a compressed file to an OCI registry in an air-gapped environment.
+To deploy software to this air-gapped environment, Dave is responsible for preparing offline snapshots of all required container images and associated artifacts, including SBOMs, signatures, and attestations. These artifacts must be reviewed, signed, and bundled in a secure, verifiable manner before being transferred to production.
 
-No unified snapshot solution available in `docker` or `oras`. Blobs duplicated across files and no assurance of artifact integrity and completeness causes problems to users. See [GitHub Issue #730](https://github.com/oras-project/oras/issues/730).
+The process typically involves:
+
+1. Packaging an image and all its linked referrers from a remote registry into a single `.tar` archive or directory using OCI image layout format locally.
+2. Transferring the compressed snapshot over secure channels to the air-gapped network.
+3. Restoring the image and referrer rtifacts into an internal OCI-compliant registry for deployment.
+
+Today, Dave has no native way to do this using `docker save/load`, `oras pull/push`, or other common tools. The lack of a unified snapshot solution means that artifacts must be copied manually or scripted with `oras copy`, often resulting in incomplete transfers (e.g., missing signatures or dependencies), blobs duplicated across files and no assurance of artifact integrity and completeness, difficulty validating artifact integrity upon restore. See an example GitHub issue [#730](https://github.com/oras-project/oras/issues/730) for details.
 
 ### Scenario 2: Image and Artifact Portability Across Isolated Environments
 
@@ -82,15 +84,15 @@ Manual tag mapping and artifact tracking introduce errors. The existing `docker`
 
 With a unified backup and restore solution, Cindy can efficiently move images and artifacts between isolated environments using a consistent, reliable workflow. The process preserves all referrers, tags, and metadata end-to-end, and works even in restricted environments without relying on `docker`. This ensures artifact integrity and completeness across the entire software delivery pipeline while significantly reducing operational complexity and human error.
 
-### Scenario 3: Backup and Restore Repositories
+### Scenario 3: Backup and Restore Repositories for Disaster Recovery and Compliance Audit
 
-Alice is an infrastructure engineer at a multi-cloud SaaS company responsible for maintaining container images and artifacts across multiple registries. These registries, hosted on different cloud providers, store critical application components required for her company’s services to run reliably across regions.
+Alice is an infrastructure engineer at a multi-cloud SaaS company. She manages critical application repositories across multiple registries. These repositories contain not only images but also supply chain artifacts like SBOMs, signatures, and image lifecycle metadata.
 
-One of Alice's primary concerns is disaster recovery. If the repository is accidentally deleted, corrupted, or compromised, she needs a reliable way to restore it quickly to minimize downtime and operational impact. However, existing tools fall short. For example, docker save/load works only for images and requires the image to be pulled into Docker's internal storage (containerd image store) first, which is inefficient and limited. Worse, it doesn’t preserve referrer artifacts, such as SBOMs, signatures, or attestations, nor does it handle repository-level metadata.
+Recently, a misconfigured cleanup job accidentally deleted an entire production repository. Although image builds could be recreated, many old tags still in use by customers were lost, along with their associated attestations. Old tags are particularly important for her team. For example, base images like `ubuntu` has multiple old tags `18.04`, `20.04`, etc, many enterprise customers still run old versions and those tags must remain accessible for hotfix builds, compliance audits, or rollback. The team spent hours manually recovering what they could using `docker` and `oras`, and scattered scripts, but couldn’t fully restore the original state.
 
-Alice wants a simple, portable solution that allows her to archive an entire repository or even multiple repositories for an application stack, including all artifacts, tags, referrers, and metadata, into a single, compressed file that can be stored in durable blob storage. This archive acts as a disaster recovery backup, ready to be restored at any time to any registry, whether on-premises or in the cloud. Alternatively, Alice also wants to backup a repository to local system as an OCI image layout for local modification. 
+To prevent future incidents and meet compliance audit requirements, Alice needs a unifed, portable solution to back up an entire repository including all tags and referrers into a single archive or directory. She also wants to restore it quickly and completely if something goes wrong.
 
-With the backup in place, Alice can confidently proceed with registry maintenance tasks or operational changes, knowing that if something goes wrong—such as an accidental repository deletion—she can quickly restore the entire repository from her backup archive. This streamlined backup and restore process eliminates the need for manual scripting, reduces human error, and ensures artifact integrity and completeness. Alice can now maintain disaster recovery readiness across all her registries, improving operational resilience and reducing business risk.
+With a holistic backup and restore solution in `oras`, Alice can capture the full state of a repository and recover it with confidence, improving operational resilience and audit readiness while eliminating complex manual work.
 
 ### Scenario 4: Uploading and Downloading Image With Referrers Using `oras pull/push` 
 
