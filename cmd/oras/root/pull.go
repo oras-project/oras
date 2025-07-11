@@ -72,7 +72,7 @@ Example - Recursively pulling all files from a registry, including subjects of h
   oras pull --include-subject localhost:5000/hello:v1
 
 Example - Pull files from a directory-based artifact in a registry, preserving original permissions
-oras pull --preserve-permissions -o out localhost:5000/hello-dir:v1
+  oras pull --preserve-permissions localhost:5000/hello-dir:v1
 
 Example - Pull files from an insecure registry:
   oras pull --insecure localhost:5000/hello:v1
@@ -124,7 +124,7 @@ Example - Pull artifact files tagged 'example.com:v1' from an OCI image layout f
 	cmd.Flags().BoolVarP(&opts.KeepOldFiles, "keep-old-files", "k", false, "do not replace existing files when pulling, treat them as errors")
 	cmd.Flags().BoolVarP(&opts.PathTraversal, "allow-path-traversal", "T", false, "allow storing files out of the output directory")
 	cmd.Flags().BoolVarP(&opts.IncludeSubject, "include-subject", "", false, "[Preview] recursively pull the subject of artifacts")
-	cmd.Flags().BoolVarP(&opts.PreservePermissions, "preserve-permissions", "", false, "Preserve original file permissions when extracting tar archives, ignoring the current umask.")
+	cmd.Flags().BoolVarP(&opts.PreservePermissions, "preserve-permissions", "", false, "[Preview] Preserve original file permissions when extracting tar archives, ignoring the current umask.")
 	cmd.Flags().StringVarP(&opts.Output, "output", "o", ".", "output directory")
 	cmd.Flags().StringVarP(&opts.ManifestConfigRef, "config", "", "", "output manifest config file")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
