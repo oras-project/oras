@@ -251,7 +251,7 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 
 		It("should attach file with path validation disabled", func() {
-			testRepo := attachTestRepo("simple")
+			testRepo := attachTestRepo("simple-no-path-validation")
 			absAttachFileName := filepath.Join(PrepareTempFiles(), foobar.AttachFileName)
 
 			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
@@ -262,7 +262,7 @@ var _ = Describe("1.1 registry users:", func() {
 		})
 
 		It("should fail path validation when attaching file with absolute path", func() {
-			testRepo := attachTestRepo("simple")
+			testRepo := attachTestRepo("simple-fail-path-validation")
 			absAttachFileName := filepath.Join(PrepareTempFiles(), foobar.AttachFileName)
 
 			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
