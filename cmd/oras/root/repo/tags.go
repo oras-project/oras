@@ -134,11 +134,11 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 			// if --oci-layout-path is used with a repository path, filter the
 			// tags under the repository.
 			if targetPrefix != "" {
-				if scopedTag, ok := strings.CutPrefix(tag, targetPrefix); ok {
-					tag = scopedTag
-				} else {
+				scopedTag, ok := strings.CutPrefix(tag, targetPrefix)
+				if !ok {
 					continue
 				}
+				tag = scopedTag
 			}
 
 			// if --exclude-digest-tags is used, skip digest-like tags
