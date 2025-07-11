@@ -119,11 +119,11 @@ oras backup registry-a.k8s.io/kube-apiserver:v1 --include-referrers --output air
 Upon success, the output will be:
 
 ```console
-Pulled 1 descriptor(s) from registry-a.k8s.io/kube-apiserver:v1
+Pulled 1 manifest(s) from registry-a.k8s.io/kube-apiserver:v1
 Found 1 linked referrer(s)
-Included referrers in backup: application/vnd.cncf.notary.signature
+Included referrers in backup: [application/vnd.cncf.notary.signature] sha256:78833f9c870...
 Exported backup to airgap-snapshot.tar
-Backup completed: 2 artifact(s) written
+Backup completed: 2 manifest(s) written
 ```
 
 Transfer the `.tar` file to the air-gapped system via a secured channel. Restore the tarball from local to another registry:
@@ -135,9 +135,9 @@ oras restore registry-b.k8s.io/kube-apiserver:v1 --input airgap-snapshot.tar
 Upon success, the output will be:
 
 ```console
-Loaded 2 artifact(s) from airgap-snapshot.tar
+Loaded 2 manifest(s) from airgap-snapshot.tar
 Pushed image to registry-b.k8s.io/kube-apiserver:v1
-Pushed linked referrer: sha256:78833f9c870...
+Pushed linked referrer: [application/vnd.cncf.notary.signature] registry-b.k8s.io/kube-apiserver@sha256:78833f9c870...
 Restore completed successfully
 ```
 
@@ -155,7 +155,7 @@ registry-b.k8s.io/kube-apiserver@sha256:9081a6f83f4febf47369fc46b6f0f7683c7db243
 
 #### Backup Artifacts to a Directory and Restore to Another Registry
 
-Backing up multiple artifacts to a directory:
+Backing up multiple artifacts from different repositories to a directory:
 
 ```console
 oras backup --output ./mirror registry.k8s.io/kube-apiserver-arm64:v1.31.0 registry.k8s.io/kube-controller-manager-arm64:v1.31.0
@@ -164,13 +164,13 @@ oras backup --output ./mirror registry.k8s.io/kube-apiserver-arm64:v1.31.0 regis
 Upon success, the output will be:
 
 ```console
-Pulled 1 descriptor(s) from registry.k8s.io/kube-apiserver-arm64:v1.31.0
-Pulled 1 descriptor(s) from registry.k8s.io/kube-controller-manager-arm64:v1.31.0
-Exported artifacts to ./mirror in OCI layout format
-Backup completed: 2 artifact(s) written
+Pulled 1 manifest from registry.k8s.io/kube-apiserver-arm64:v1.31.0
+Pulled 1 manifest from registry.k8s.io/kube-controller-manager-arm64:v1.31.0
+Exported manifests to ./mirror in OCI layout format
+Backup completed: 2 manifest(s) written
 ```
 
-The output directory structure is a single OCI layout containing all of the artifacts. Each artifact in the output OCI layout will be tagged with the name of source. 
+The output directory structure is a single OCI layout containing all of the artifacts. Each artifact in the output OCI layout will be tagged with the name of source. It's easy to modify the images in the OCI layout locally.
 
 ```console
 % oras repo tags --oci-layout ./mirror
@@ -181,7 +181,7 @@ registry.k8s.io/kube-controller-manager-arm64:v1.31.0
 > [!NOTE]
 > If the specified output is an existing directory, the content will be written to that directory in OCI layout format. If the output is an existing file, it will be overwritten. If the output path does not correspond to an existing file or directory, it is treated as a file path, and the output will be a tar archive. The file name does not need to have a `.tar` extension, but the output will still be a tarball file.
 
-Restore a directory and writing to a remote registry.
+Restore a directory (an OCI image layout) and write to a namespace in another registry.
 
 ```console
 oras restore --input ./mirror localhost:15000/my-mirror
@@ -190,22 +190,23 @@ oras restore --input ./mirror localhost:15000/my-mirror
 Upon success, the output will be:
 
 ```console
-Loaded 2 artifact(s) from ./mirror
+Loaded 2 manifest(s) from ./mirror
 Pushed image to localhost:15000/my-mirror/kube-apiserver-arm64:v1.31.0
 Pushed image to localhost:15000/my-mirror/kube-controller-manager-arm64:v1.31.0
 Restore completed successfully
 ```
 
 ```console
-## List the tags in the namespace within the new registry
+## List the repositories in the namespace within the new registry
 $ oras repo ls localhost:15000/my-mirror
 kube-apiserver-arm64
 kube-controller-manager-arm64
 
 ## List the tags in the repository
- oras repo tags localhost:15000/my-mirror/kube-apiserver-arm64
+$ oras repo tags localhost:15000/my-mirror/kube-apiserver-arm64
 v1.31.0
-v1.32.0
+$ oras repo tags localhost:15000/my-mirror/controller-manager-arm64
+v1.31.0
 ```
 
 #### Backup an Entire Repository to a Tarball and Restore to Another Registry
@@ -220,14 +221,15 @@ oras backup --output backup.tar --include-referrers registry-a.k8s.io/kube-apise
 Upon success, the output will be:
 
 ```console
-Pulled 2 descriptor(s) from registry-a.k8s.io/kube-apiserver
-Found 2 linked referrer(s) across tags
-Included referrers in backup: application/vnd.cncf.notary.signature
+Pulled 1 manifest from registry-a.k8s.io/kube-apiserver:v1
+Included referrer in backup: [application/vnd.cncf.notary.signature]: sha256:a18210fdb52...
+Pulled 1 manifest from registry-a.k8s.io/kube-apiserver:v2
+Included referrer in backup: [application/vnd.cyclonedx+json]: sha256:4fc21fe77e83...
 Exported backup to backup.tar
-Backup completed: 4 artifact(s) written
+Backup completed: 4 manifest(s) written
 ```
 
-Transfer the backup file to new environment via secure channels (e.g., BitLocker-enabled removable drives)
+Transfer the backup file to new environment via secure channels (e.g., BitLocker-enabled removable drives).
 
 Restore images and referrer artifacts from a local backup file to a target registry. All tags and their referrers will be included by default.
 
@@ -238,14 +240,15 @@ oras restore --input backup.tar registry-b.k8s.io/kube-apiserver
 Upon success, the output will be:
 
 ```console
-Loaded 4 artifact(s) from backup.tar
+Loaded 4 manifest(s) from backup.tar
 Pushed image to registry-b.k8s.io/kube-apiserver:v1
+Pushed linked referrer to [application/vnd.cncf.notary.signature]: registry-b.k8s.io/kube-apiserver@sha256:a18210fdb52...
 Pushed image to registry-b.k8s.io/kube-apiserver:v2
-Pushed 2 linked referrer(s)
+Pushed linked referrer to [application/vnd.cyclonedx+json]: registry-b.k8s.io/kube-apiserver@sha256:4fc21fe77e83...
 Restore completed successfully
 ```
 
-List all tags from the repo `registry-b.k8s.io/kube-apiserver`
+List all tags from the repo `registry-b.k8s.io/kube-apiserver`:
 
 ```console
 $ oras repo tags registry-b.k8s.io/kube-apiserver
