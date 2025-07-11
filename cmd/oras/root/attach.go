@@ -213,7 +213,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	// Attach
 	root, err := doPush(dst, stopTrack, pack, copy)
 	if err != nil {
-		return oerrors.UnwrapCopyError(err)
+		return err
 	}
 	metadataHandler.OnAttached(&opts.Target, root, subject)
 	err = metadataHandler.Render()

@@ -86,13 +86,13 @@ func CheckArgs(checker func(args []string) (bool, string), Usage string) cobra.P
 	}
 }
 
-// ErrorModifier modifies the error during cmd execution.
-type ErrorModifier interface {
+// Modifier modifies the error during cmd execution.
+type Modifier interface {
 	ModifyError(cmd *cobra.Command, err error, canSetPrefix bool) (modifiedErr error, modified bool)
 }
 
 // Command returns an error-handled cobra command.
-func Command(cmd *cobra.Command, handler ErrorModifier) *cobra.Command {
+func Command(cmd *cobra.Command, handler Modifier) *cobra.Command {
 	runE := cmd.RunE
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		err := runE(cmd, args)
@@ -152,16 +152,16 @@ func TrimErrBasicCredentialNotFound(err error) error {
 		}
 		break
 	}
-	return reWrap(err, toTrim, auth.ErrBasicCredentialNotFound)
+	return ReWrap(err, toTrim, auth.ErrBasicCredentialNotFound)
 }
 
-// reWrap re-wraps outer to inner by trimming out mid, returns inner if extraction fails.
+// ReWrap re-wraps outer to inner by trimming out mid, returns inner if extraction fails.
 // +---------- outer ----------+      +------ outer ------+
 // |         +---- mid ----+   |      |                   |
 // |         |    inner    |   |  =>  |       inner       |
 // |         +-------------+   |      |                   |
 // +---------------------------+      +-------------------+
-func reWrap(outer, mid, inner error) error {
+func ReWrap(outer, mid, inner error) error {
 	msgOuter := outer.Error()
 	msgMid := mid.Error()
 	if idx := strings.Index(msgOuter, msgMid); idx > 0 {
