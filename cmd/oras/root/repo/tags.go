@@ -16,10 +16,12 @@ limitations under the License.
 package repo
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/opencontainers/go-digest"
 	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
@@ -70,6 +72,9 @@ Example - [Experimental] Show tags of the target repository in JSON format:
 
 Example - [Experimental] Show tags of the target repository using the given Go template:
   oras repo tags localhost:5000/hello --format go-template --template "{{.tags}}"
+
+Example - [Experimental] Show tags of a specific repository in OCI layout:
+  oras repo tags --oci-layout-path layout-dir localhost:5000/hello
 `,
 		Args:    oerrors.CheckArgs(argument.Exactly(1), "the target repository to list tags from"),
 		Aliases: []string{"show-tags"},
@@ -95,18 +100,29 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 	if err != nil {
 		return err
 	}
-	filter := ""
-	if opts.Reference != "" {
+
+	// if a repository path is given, filter the tags under the repository
+	var targetPrefix string
+	if opts.Target.Type == option.TargetTypeOCILayout {
+		ref, err := registry.ParseReference(opts.Reference)
+		if err == nil && ref.Reference == "" {
+			targetPrefix = fmt.Sprintf("%s/%s:", ref.Registry, ref.Repository)
+		}
+	}
+
+	// if a tag is given, show the associated tags
+	var targetDigest string
+	if targetPrefix == "" && opts.Reference != "" {
 		if contentutil.IsDigest(opts.Reference) {
-			filter = opts.Reference
+			targetDigest = opts.Reference
 		} else {
 			desc, err := finder.Resolve(ctx, opts.Reference)
 			if err != nil {
 				return err
 			}
-			filter = desc.Digest.String()
+			targetDigest = desc.Digest.String()
 		}
-		logger.Warnf("[Experimental] querying tags associated to %s, it may take a while...\n", filter)
+		logger.Warnf("[Experimental] querying tags associated to %s, it may take a while...\n", targetDigest)
 	}
 
 	handler, err := display.NewRepoTagsHandler(opts.Printer, opts.Format)
@@ -115,10 +131,23 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 	}
 	err = finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
+			// if --oci-layout-path is used with a repository path, filter the
+			// tags under the repository.
+			if targetPrefix != "" {
+				scopedTag, ok := strings.CutPrefix(tag, targetPrefix)
+				if !ok {
+					continue
+				}
+				tag = scopedTag
+			}
+
+			// if --exclude-digest-tags is used, skip digest-like tags
 			if opts.excludeDigestTag && isDigestTag(tag) {
 				continue
 			}
-			if filter != "" {
+
+			// if a tag or digest is given, show the associated tags
+			if targetDigest != "" {
 				if tag == opts.Reference {
 					if err := handler.OnTagListed(tag); err != nil {
 						return err
@@ -129,10 +158,12 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 				if err != nil {
 					return err
 				}
-				if desc.Digest.String() != filter {
+				if desc.Digest.String() != targetDigest {
 					continue
 				}
 			}
+
+			// show the tags in the repository
 			if err := handler.OnTagListed(tag); err != nil {
 				return err
 			}
