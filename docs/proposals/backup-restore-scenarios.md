@@ -2,11 +2,11 @@
 
 ## Overview
 
-Organizations rely on container images and other OCI artifacts to build, deploy, and operate their applications. These images and artifacts are built locally and stored in public or private OCI registries. However, as organizations mature their supply chain security, they face increasing demands to efficiently acquire, migrate, promote, mirror, and backup images and artifacts across registries and local environments, while preserving provenance, integrity, and metadata.
+Organizations rely on container images and other OCI artifacts to build, deploy, and operate their applications. These images and artifacts are built locally and stored in public or private OCI registries. However, as organizations mature their supply chain security, disaster recovery, and regulatory compliance, they face increasing demands to efficiently acquire, migrate, promote, mirror, and backup images and artifacts across registries and local environments, while preserving provenance, integrity, and metadata.
 
 Today, fragmented tooling and manual scripts make these tasks complex, error-prone, and operationally expensive. Common tools like `docker save/load` and `oras pull/push`, `oras copy` only cover parts of the workflow, often lacking support for referrers, deduplication, and structured backups. This results in brittle processes, duplicated blobs, missing attestations, and frustrated developers.
 
-This document describes the challenges faced by users managing images and OCI artifacts across registries and local environment. It proposes a unified, reliable, and portable solution built into the `oras` CLI to address these gaps. In particular, this document motivates the need for structured backup and restore workflows that simplify artifact movement, ensure completeness, and integrate seamlessly with security and compliance practices. The proposals and detailed CLI design are documented in the [Proposal: Portable Backup and Restore of OCI Artifacts, Images, and Repositories](./backup-restore.md).
+This document describes the user scenarios and challenges faced by users managing images and OCI artifacts across registries and local environment. It proposes a unified, reliable, and portable solution built into the `oras` CLI to address these gaps. In particular, this document motivates the need for structured backup and restore workflows that simplify artifact movement, ensure completeness, and integrate seamlessly with security and compliance practices. The proposals and detailed CLI design are documented in the [Proposal: Portable Backup and Restore of OCI Artifacts, Images, and Repositories](./backup-restore.md).
 
 ## Problem Statement & Motivation
 
