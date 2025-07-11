@@ -49,7 +49,6 @@ var (
 	configDigest    = "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
 	configMediaType = "application/vnd.oci.empty.v1+json"
 	host            string
-	genericHost     string
 	repoFrom        = "from"
 	repoTo          = "to"
 )
