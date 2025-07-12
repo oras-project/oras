@@ -237,12 +237,9 @@ func (target *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, allowTag bool)
 
 // ModifyError handles error during cmd execution.
 func (target *Target) ModifyError(cmd *cobra.Command, err error) (error, bool) {
-	var modified bool
-	err, modified = oerrors.ExtractCopyError(err)
-
 	if target.IsOCILayout {
 		// short circuit for non-remote targets
-		return err, modified
+		return err, false
 	}
 
 	// handle errors for remote targets
@@ -257,36 +254,35 @@ func (target *Target) ModifyError(cmd *cobra.Command, err error) (error, bool) {
 	}
 
 	var errResp *errcode.ErrorResponse
-	if !errors.As(err, &errResp) {
-		return err, modified
-	}
-
-	ref := registry.Reference{Registry: target.RawReference}
-	if errResp.URL.Host != ref.Host() {
-		// raw reference is not registry host
-		var parseErr error
-		ref, parseErr = registry.ParseReference(target.RawReference)
-		if parseErr != nil {
-			// this should not happen
-			return err, modified
-		}
+	if errors.As(err, &errResp) {
+		ref := registry.Reference{Registry: target.RawReference}
 		if errResp.URL.Host != ref.Host() {
-			// not handle if the error is not from the target
-			return err, modified
+			// raw reference is not registry host
+			var parseErr error
+			ref, parseErr = registry.ParseReference(target.RawReference)
+			if parseErr != nil {
+				// this should not happen
+				return err, false
+			}
+			if errResp.URL.Host != ref.Host() {
+				// not handle if the error is not from the target
+				return err, false
+			}
 		}
-	}
 
-	cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
-	ret := &oerrors.Error{
-		Err: oerrors.ReportErrResp(errResp),
-	}
-
-	if ref.Registry == "docker.io" && errResp.StatusCode == http.StatusUnauthorized {
-		if ref.Repository != "" && !strings.Contains(ref.Repository, "/") {
-			// docker.io/xxx -> docker.io/library/xxx
-			ref.Repository = "library/" + ref.Repository
-			ret.Recommendation = fmt.Sprintf("Namespace seems missing. Do you mean `%s %s`?", cmd.CommandPath(), ref)
+		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
+		ret := &oerrors.Error{
+			Err: oerrors.ReportErrResp(errResp),
 		}
+
+		if ref.Registry == "docker.io" && errResp.StatusCode == http.StatusUnauthorized {
+			if ref.Repository != "" && !strings.Contains(ref.Repository, "/") {
+				// docker.io/xxx -> docker.io/library/xxx
+				ref.Repository = "library/" + ref.Repository
+				ret.Recommendation = fmt.Sprintf("Namespace seems missing. Do you mean `%s %s`?", cmd.CommandPath(), ref)
+			}
+		}
+		return ret, true
 	}
-	return ret, true
+	return err, false
 }

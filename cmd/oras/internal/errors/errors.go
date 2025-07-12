@@ -129,25 +129,6 @@ func UnwrapCopyError(err error) error {
 	return err
 }
 
-// ExtractCopyError extracts the inner error from an oras.CopyError and rewrap it in the outer Error type.
-// If err does not contain an oras.CopyError, it returns the original error unchanged.
-// If err is not of type* Error, it returns the inner error of CopyError.
-func ExtractCopyError(err error) (error, bool) {
-	var copyErr *oras.CopyError
-	if !errors.As(err, &copyErr) {
-		return err, false
-	}
-
-	innerErr := copyErr.Err
-	var cliErr *Error
-	if !errors.As(innerErr, &cliErr) {
-		return innerErr, true
-	}
-
-	cliErr.Err = innerErr
-	return cliErr, true
-}
-
 // TrimErrBasicCredentialNotFound trims the credentials from err.
 // Caller should make sure the err is auth.ErrBasicCredentialNotFound.
 func TrimErrBasicCredentialNotFound(err error) error {
