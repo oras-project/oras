@@ -125,7 +125,8 @@ var _ = Describe("ORAS beginners:", func() {
 			src := PrepareTempOCI(ArtifactRepo)
 			dst := RegistryRef(ZOTHost, cpTestRepo("dest-not-logged-in"), "")
 			ORAS("cp", Flags.FromLayout, LayoutRef(src, foobar.Tag), dst, "--to-username", Username, "--to-password", Password+"?").
-				MatchErrKeyWords(RegistryErrorPrefix).ExpectFailure().Exec()
+				MatchErrKeyWords(fmt.Sprintf("Error from destination registry for %q", dst)).
+				ExpectFailure().Exec()
 		})
 
 		It("should fail and show registry error prefix if source registry is not logged in", func() {

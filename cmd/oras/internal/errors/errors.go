@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/errcode"
 )
@@ -87,7 +88,7 @@ func CheckArgs(checker func(args []string) (bool, string), Usage string) cobra.P
 
 // Modifier modifies the error during cmd execution.
 type Modifier interface {
-	Modify(cmd *cobra.Command, err error) (modifiedErr error, modified bool)
+	ModifyError(cmd *cobra.Command, err error) (modifiedErr error, modified bool)
 }
 
 // Command returns an error-handled cobra command.
@@ -96,7 +97,7 @@ func Command(cmd *cobra.Command, handler Modifier) *cobra.Command {
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		err := runE(cmd, args)
 		if err != nil {
-			err, _ = handler.Modify(cmd, err)
+			err, _ = handler.ModifyError(cmd, err)
 			return err
 		}
 		return nil
@@ -104,18 +105,28 @@ func Command(cmd *cobra.Command, handler Modifier) *cobra.Command {
 	return cmd
 }
 
-// TrimErrResp tries to trim toTrim from err.
-func TrimErrResp(err error, toTrim error) error {
-	var inner error
-	if errResp, ok := toTrim.(*errcode.ErrorResponse); ok {
-		if len(errResp.Errors) == 0 {
-			return fmt.Errorf("recognizable error message not found: %w", toTrim)
-		}
-		inner = errResp.Errors
-	} else {
-		return err
+// ReportErrResp returns the inner error message from errResp.Errors.
+// If errResp.Errors is empty, it returns the original errResp.
+func ReportErrResp(errResp *errcode.ErrorResponse) error {
+	if len(errResp.Errors) == 0 {
+		// Example error string:
+		// GET "registry.example.com/v2/_catalog": response status code 401: 401
+		return errResp
 	}
-	return reWrap(err, toTrim, inner)
+	// Example error string:
+	// unauthorized: authentication required
+	return errResp.Errors
+}
+
+// UnwrapCopyError extracts the underlying error from an oras.CopyError.
+// If err is of type *oras.CopyError, it returns the inner error (copyErr.Err).
+// Otherwise, it returns the original error unchanged.
+func UnwrapCopyError(err error) error {
+	var copyErr *oras.CopyError
+	if errors.As(err, &copyErr) {
+		return copyErr.Err
+	}
+	return err
 }
 
 // TrimErrBasicCredentialNotFound trims the credentials from err.
@@ -144,21 +155,19 @@ func TrimErrBasicCredentialNotFound(err error) error {
 	return reWrap(err, toTrim, auth.ErrBasicCredentialNotFound)
 }
 
-// reWrap re-wraps errA to errC and trims out errB, returns errC if scrub fails.
-// +---------- errA ----------+
-// |         +---- errB ----+ |      +---- errA ----+
-// |         |    errC      | |  =>  |     errC     |
-// |         +--------------+ |      +--------------+
-// +--------------------------+
-func reWrap(errA, errB, errC error) error {
-	// TODO: trim dedicated error type when
-	// https://github.com/oras-project/oras-go/issues/677 is done
-	contentA := errA.Error()
-	contentB := errB.Error()
-	if idx := strings.Index(contentA, contentB); idx > 0 {
-		return fmt.Errorf("%s%w", contentA[:idx], errC)
+// reWrap re-wraps outer to inner by trimming out mid, returns inner if extraction fails.
+// +---------- outer ----------+      +------ outer ------+
+// |         +---- mid ----+   |      |                   |
+// |         |    inner    |   |  =>  |       inner       |
+// |         +-------------+   |      |                   |
+// +---------------------------+      +-------------------+
+func reWrap(outer, mid, inner error) error {
+	msgOuter := outer.Error()
+	msgMid := mid.Error()
+	if idx := strings.Index(msgOuter, msgMid); idx > 0 {
+		return fmt.Errorf("%s%w", msgOuter[:idx], inner)
 	}
-	return errC
+	return inner
 }
 
 // NewErrEmptyTagOrDigest creates a new error based on the reference string.

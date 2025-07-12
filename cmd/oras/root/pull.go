@@ -18,7 +18,6 @@ package root
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"sync"
 
@@ -167,8 +166,12 @@ func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 
 	desc, err := doPull(ctx, src, dst, copyOptions, metadataHandler, statusHandler, opts)
 	if err != nil {
+		err = oerrors.UnwrapCopyError(err)
 		if errors.Is(err, file.ErrPathTraversalDisallowed) {
-			err = fmt.Errorf("%s: %w", "use flag --allow-path-traversal to allow insecurely pulling files outside of working directory", err)
+			return &oerrors.Error{
+				Err:            err,
+				Recommendation: `Pulling files outside of working directory is insecure and blocked by default. If you trust the content producer, use --allow-path-traversal to bypass this check.`,
+			}
 		}
 		return err
 	}

@@ -272,7 +272,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	// Push
 	root, err := doPush(dst, stopTrack, pack, copyWithScopeHint)
 	if err != nil {
-		return err
+		return oerrors.UnwrapCopyError(err)
 	}
 	err = metadataHandler.OnCopied(&opts.Target, root)
 	if err != nil {

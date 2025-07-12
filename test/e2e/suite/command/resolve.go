@@ -52,7 +52,7 @@ var _ = Describe("ORAS beginners:", func() {
 		It("should fail with empty response when returned response doesn't have body", func() {
 			ORAS("resolve", RegistryRef(ZOTHost, ImageRepo, InvalidTag), "-u", Username, "-p", Password+"1").
 				ExpectFailure().
-				MatchErrKeyWords(RegistryErrorPrefix, EmptyBodyPrefix, "response status code 401: Unauthorized").
+				MatchErrKeyWords(RegistryErrorPrefix, "response status code 401: Unauthorized").
 				Exec()
 		})
 
