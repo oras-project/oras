@@ -140,7 +140,6 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 
 	desc, err := doCopy(ctx, statusHandler, src, dst, opts)
 	if err != nil {
-		// don't unwrap CopyError here and leave it to ModifyError
 		return err
 	}
 
