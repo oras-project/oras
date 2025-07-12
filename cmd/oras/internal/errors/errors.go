@@ -129,13 +129,10 @@ func UnwrapCopyError(err error) error {
 	return err
 }
 
-// ReWrapCopyError unwraps an *oras.CopyError and re-wraps its inner error.
-// If err contains an *oras.CopyError, the function extracts the inner error.
-// Additionally, if err is also a CLI error (*Error), it preserves
-// the CLI error structure but updates its inner error field.
-//
-// It returns the modified error and a boolean indicating whether the error was modified.
-func ReWrapCopyError(err error) (error, bool) {
+// ExtractCopyError extracts the inner error from an oras.CopyError and rewrap it in the outer Error type.
+// If err does not contain an oras.CopyError, it returns the original error unchanged.
+// If err is not of type* Error, it returns the inner error of CopyError.
+func ExtractCopyError(err error) (error, bool) {
 	var copyErr *oras.CopyError
 	if !errors.As(err, &copyErr) {
 		return err, false
@@ -143,7 +140,7 @@ func ReWrapCopyError(err error) (error, bool) {
 
 	innerErr := copyErr.Err
 	var cliErr *Error
-	if !errors.As(err, &cliErr) {
+	if !errors.As(innerErr, &cliErr) {
 		return innerErr, true
 	}
 
