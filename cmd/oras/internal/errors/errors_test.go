@@ -190,3 +190,83 @@ func TestUnwrapCopyError(t *testing.T) {
 		})
 	}
 }
+
+func TestReWrapCopyError(t *testing.T) {
+	// Create a regular error
+	regularErr := fmt.Errorf("regular error")
+
+	// Create an inner error for oras.CopyError
+	innerErr := fmt.Errorf("inner error")
+
+	// Create an oras.CopyError with an inner error
+	copyErr := &oras.CopyError{Err: innerErr}
+
+	// Create an Error wrapping a CopyError
+	cliErr := &Error{
+		OperationType:  OperationTypeParseArtifactReference,
+		Err:            copyErr,
+		Usage:          "test usage",
+		Recommendation: "test recommendation",
+	}
+
+	tests := []struct {
+		name      string
+		inputErr  error
+		wantErr   error
+		wantBool  bool
+		checkFunc func(gotErr error, wantErr error) bool
+	}{
+		{
+			name:     "nil error",
+			inputErr: nil,
+			wantErr:  nil,
+			wantBool: false,
+			checkFunc: func(gotErr error, wantErr error) bool {
+				return gotErr == wantErr
+			},
+		},
+		{
+			name:     "regular error",
+			inputErr: regularErr,
+			wantErr:  regularErr,
+			wantBool: false,
+			checkFunc: func(gotErr error, wantErr error) bool {
+				return gotErr == wantErr
+			},
+		},
+		{
+			name:     "copy error without cli error wrapper",
+			inputErr: copyErr,
+			wantErr:  innerErr,
+			wantBool: true,
+			checkFunc: func(gotErr error, wantErr error) bool {
+				return gotErr == wantErr
+			},
+		},
+		{
+			name:     "copy error with cli error wrapper",
+			inputErr: cliErr,
+			wantErr:  cliErr,
+			wantBool: true,
+			checkFunc: func(gotErr error, wantErr error) bool {
+				gotCliErr, ok := gotErr.(*Error)
+				return ok && gotCliErr.OperationType == cliErr.OperationType &&
+					gotCliErr.Err == innerErr &&
+					gotCliErr.Usage == cliErr.Usage &&
+					gotCliErr.Recommendation == cliErr.Recommendation
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotErr, gotBool := ReWrapCopyError(tt.inputErr)
+			if gotBool != tt.wantBool {
+				t.Errorf("ReWrapCopyError() bool = %v, want %v", gotBool, tt.wantBool)
+			}
+			if !tt.checkFunc(gotErr, tt.wantErr) {
+				t.Errorf("ReWrapCopyError() error = %v, want %v", gotErr, tt.wantErr)
+			}
+		})
+	}
+}
