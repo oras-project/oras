@@ -276,9 +276,10 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 		return oras.ExtendedCopyOptions{}, ocispec.Descriptor{}, err
 	}
 
-	// If root has no referrers, we make one of its manifests the entry point
-	// of extended copy, and make root and the referrers of the manifests the
-	// predecessors of the entry point.
+	// If root has no referrers, we set copyRoot, which is the entry point of
+	// extended copy, to the first manifest in the index. We also put the root
+	// and the referrers of the manifests as the predecessors of copyRoot. This
+	// is to ensure that all these nodes can be copied by calling extended copy.
 	if len(rootReferrers) == 0 {
 		copyRoot := index.Manifests[0]
 		copyRootReferrers := append([]ocispec.Descriptor{root}, referrers...)
