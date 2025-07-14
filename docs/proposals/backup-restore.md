@@ -35,7 +35,7 @@ Backup OCI artifacts and repositories from a registry into a structured, portabl
 
 **Syntax:**
 ```bash
-oras backup --output [flags] <registry>/<repository>[:<ref1>[,<ref2>...]] [...]
+oras backup [flags] --output <path> <registry>/<repository>[:<ref1>[,<ref2>...]]
 ```
 
 **Output:**
@@ -74,7 +74,7 @@ Restore OCI artifacts or images from a local OCI image layout or archive into a 
 
 **Syntax:**
 ```bash
-oras restore --input [flags] <registry>/<repository>[:<ref1>[,<ref2>...]] [...]
+oras restore [flags] --input <path> <registry>/<repository>[:<ref1>[,<ref2>...]]
 ```
 
 **Output:**
@@ -113,7 +113,7 @@ The desired end-to-end user experience of using `oras backup` and `oras restore`
 
 Assume two tags `v1` and `v2` are stored in a repository `registry.k8s.io/kube-apiserver` and each tag has one referrer. Backup the entire repo to a tarball and restore it to another registry:
 
-```console
+```bash
 ## Backup a repository from a registry to a local compressed tarball. All tags and their referrers will be included.
 oras backup --output backup.tar --include-referrers registry-a.k8s.io/kube-apiserver
 ```
@@ -121,12 +121,12 @@ oras backup --output backup.tar --include-referrers registry-a.k8s.io/kube-apise
 Upon success, the output will be:
 
 ```console
-Pulled 1 tag from registry-a.k8s.io/kube-apiserver:v1
-Included referrer in backup: [application/vnd.cncf.notary.signature]: sha256:a18210fdb52...
-Pulled 1 tag from registry-a.k8s.io/kube-apiserver:v2
-Included referrer in backup: [application/vnd.cyclonedx+json]: sha256:4fc21fe77e83...
-Exported backup to backup.tar
-Backup completed: 4 manifest(s) written
+Found 2 tag(s) in registry-a.k8s.io/kube-apiserver
+- v1
+- v2
+<progress bar>...
+Exporting to backup.tar
+Successfully backed up 2 tag(s) from registry-a.k8s.io/kube-apiserver to backup.tar
 ```
 
 Transfer the backup file to new environment via secure channels (e.g., BitLocker-enabled removable drives).
@@ -140,12 +140,12 @@ oras restore --input backup.tar registry-b.k8s.io/kube-apiserver
 Upon success, the output will be:
 
 ```console
-Loaded 4 manifest(s) from backup.tar
-Pushed image to registry-b.k8s.io/kube-apiserver:v1
-Pushed linked referrer to [application/vnd.cncf.notary.signature]: registry-b.k8s.io/kube-apiserver@sha256:a18210fdb52...
-Pushed image to registry-b.k8s.io/kube-apiserver:v2
-Pushed linked referrer to [application/vnd.cyclonedx+json]: registry-b.k8s.io/kube-apiserver@sha256:4fc21fe77e83...
-Restore completed successfully
+Found 2 tag(s) in backup.tar
+- v1
+- v2
+<progress bar>...
+Pushing to registry-b.k8s.io/kube-apiserver
+Successfully restored 2 tag(s) to registry-a.k8s.io/kube-apiserver
 ```
 
 List all tags from the repo `registry-b.k8s.io/kube-apiserver`:
@@ -167,11 +167,11 @@ oras backup registry-a.k8s.io/kube-apiserver:v1 --include-referrers --output air
 Upon success, the output will be:
 
 ```console
-Pulled 1 tag from registry-a.k8s.io/kube-apiserver:v1
-Found 1 linked referrer(s)
-Included referrers in backup: [application/vnd.cncf.notary.signature] registry-a.k8s.io/kube-apiserver@sha256:78833f9c870...
-Exported backup to airgap-snapshot.tar
-Backup completed: 2 manifest(s) written
+Found 1 tag(s) in registry-a.k8s.io/kube-apiserver
+v1
+<progress bar>...
+Exporting to airgap-snapshot.tar
+Successfully backed up 1 tag(s) from registry-a.k8s.io/kube-apiserver to airgap-snapshot.tar
 ```
 
 Transfer the `.tar` file to the air-gapped system via a secured channel. Restore the tarball from local to another registry:
@@ -183,10 +183,11 @@ oras restore registry-b.k8s.io/kube-apiserver:v1 --input airgap-snapshot.tar
 Upon success, the output will be:
 
 ```console
-Loaded 2 manifest(s) from airgap-snapshot.tar
-Pushed image to registry-b.k8s.io/kube-apiserver:v1
-Pushed linked referrer: [application/vnd.cncf.notary.signature] registry-b.k8s.io/kube-apiserver@sha256:78833f9c870...
-Restore completed successfully
+Found 1 tag(s) in airgap-snapshot.tar
+v1
+<progress bar>...
+Pushing to registry-b.k8s.io/kube-apiserver
+Successfully restored 1 tag(s) to registry-b.k8s.io/kube-apiserver
 ```
 
 By default, the image and linked referrers are reliably restored to another registry with minimal steps. Users can use the `--exclude-referrers` flag to exclude linked referrers when using `oras restore`.
