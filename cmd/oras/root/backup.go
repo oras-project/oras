@@ -28,9 +28,7 @@ import (
 type backupOptions struct {
 	option.Cache
 	option.Common
-	option.Platform
-	option.Target
-	option.Format
+	option.Remote
 	option.Terminal
 
 	Output           string
@@ -61,21 +59,12 @@ Example - Back up artifact with local cache:
   export ORAS_CACHE=~/.oras/cache
   oras backup --output backup.tar registry.com/myrepo:v1
 
-Example - Back up artifact with certain platform:
-  oras backup --output backup.tar --platform linux/arm/v5 registry.com/myrepo:v1
-
 Example - Back up with concurrency level tuned:
   oras backup --output backup.tar --concurrency 6 registry.com/myrepo:v1
-
-Example - [Experimental] Back up and format output in JSON:
-  oras backup --output backup.tar registry.com/myrepo:v1 --format json
-
-Example - [Experimental] Back up and format output with Go template:
-  oras backup --output backup.tar registry.com/myrepo:v1 --format go-template="{{.reference}}"
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the artifact reference you want to back up"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			opts.RawReference = args[0]
+			// opts.RawReference = args[0]
 			err := option.Parse(cmd, &opts)
 			if err != nil {
 				return err
@@ -95,22 +84,12 @@ Example - [Experimental] Back up and format output with Go template:
 	// Mark output flag as required
 	_ = cmd.MarkFlagRequired("output")
 
-	opts.SetTypes(option.FormatTypeText, option.FormatTypeJSON, option.FormatTypeGoTemplate)
 	option.ApplyFlags(&opts, cmd.Flags())
-	return oerrors.Command(cmd, &opts.Target)
+	return oerrors.Command(cmd, &opts.Remote)
 }
 
 func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-
-	// Basic format validation to match other commands
-	// TODO: Create proper backup handlers when implementing business logic
-	switch opts.Format.Type {
-	case option.FormatTypeText.Name, option.FormatTypeJSON.Name, option.FormatTypeGoTemplate.Name:
-		// Valid format types
-	default:
-		return oerrors.UnsupportedFormatTypeError(opts.Format.Type)
-	}
 
 	// Validate that output is specified (should be caught by required flag, but double-check)
 	if opts.Output == "" {
