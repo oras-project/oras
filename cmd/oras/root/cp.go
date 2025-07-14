@@ -140,7 +140,6 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 
 	desc, err := doCopy(ctx, statusHandler, src, dst, opts)
 	if err != nil {
-		// don't unwrap CopyError here and leave it to ModifyError
 		return err
 	}
 
@@ -220,6 +219,7 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 			desc, err = oras.Copy(ctx, src, opts.From.Reference, dst, opts.To.Reference, copyOptions)
 		}
 	}
+	// leave the CopyError to oerrors.Modifier for prefix processing
 	return desc, err
 }
 

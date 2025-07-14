@@ -207,13 +207,14 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 			}
 			return content.Successors(ctx, fetcher, node)
 		}
-		return oras.CopyGraph(ctx, store, dst, root, graphCopyOptions)
+		err := oras.CopyGraph(ctx, store, dst, root, graphCopyOptions)
+		return oerrors.UnwrapCopyError(err) // we don't need the CopyError information so we unwrap it here
 	}
 
 	// Attach
 	root, err := doPush(dst, stopTrack, pack, copy)
 	if err != nil {
-		return oerrors.UnwrapCopyError(err)
+		return err
 	}
 	metadataHandler.OnAttached(&opts.Target, root, subject)
 	err = metadataHandler.Render()
