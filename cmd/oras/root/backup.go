@@ -27,6 +27,11 @@ import (
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
+const (
+	outputTypeTar = "tar"
+	outputTypeDir = "directory"
+)
+
 type backupOptions struct {
 	option.Cache
 	option.Common
@@ -34,6 +39,7 @@ type backupOptions struct {
 	option.Terminal
 
 	output           string
+	outputType       string // "tar" or "directory"
 	includeReferrers bool
 	concurrency      int
 
@@ -88,6 +94,14 @@ Example - Back up with concurrency level tuned:
 			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
+
+			// parse output type
+			if strings.HasSuffix(opts.output, ".tar") {
+				opts.outputType = outputTypeTar
+			} else {
+				opts.outputType = outputTypeDir
+			}
+
 			opts.DisableTTY(opts.Debug, false)
 			return nil
 		},
@@ -110,11 +124,6 @@ Example - Back up with concurrency level tuned:
 func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 
-	// Validate that output is specified (should be caught by required flag, but double-check)
-	if opts.output == "" {
-		return fmt.Errorf("--output is required")
-	}
-
 	// debugging
 	fmt.Println("******OPTIONS******")
 	fmt.Println("rawReference:", opts.rawReference)
@@ -122,6 +131,8 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	fmt.Println("reference:", opts.reference)
 	fmt.Println("path:", opts.path)
 	fmt.Println("output:", opts.output)
+	fmt.Println("outputType:", opts.outputType)
+	fmt.Println("includeReferrers:", opts.includeReferrers)
 	fmt.Println("******END OF OPTIONS******")
 
 	// TODO: Implement backup business logic
