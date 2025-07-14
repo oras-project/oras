@@ -219,6 +219,7 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 			desc, err = oras.Copy(ctx, src, opts.From.Reference, dst, opts.To.Reference, copyOptions)
 		}
 	}
+	// leave the CopyError to oerrors.Modifier for prefix processing
 	return desc, err
 }
 
