@@ -298,10 +298,11 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 		return opts, copyRoot, nil
 	}
 
+	rootReferrers = append(rootReferrers, referrers...)
 	findPredecessor := opts.FindPredecessors
 	opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		if content.Equal(desc, root) {
-			return append(rootReferrers, referrers...), nil
+			return rootReferrers, nil
 		}
 		return findPredecessor(ctx, src, desc)
 	}
