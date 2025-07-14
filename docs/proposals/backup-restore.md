@@ -114,8 +114,14 @@ The desired end-to-end user experience of using `oras backup` and `oras restore`
 Assume two tags `v1` and `v2` are stored in a repository `registry.k8s.io/kube-apiserver` and each tag has one referrer. Backup the entire repo to a tarball and restore it to another registry:
 
 ```bash
-## Backup a repository from a registry to a local compressed tarball. All tags and their referrers will be included.
+## Backup a repository from a registry to a local tarball. All tags and their referrers will be included.
 oras backup --output backup.tar --include-referrers registry-a.k8s.io/kube-apiserver
+```
+
+Alternatively, `oras` should also enables users to choose which tags within a repository to back up. For example, back up `v1` and `v2` tags with their referrers:
+
+```bash
+oras backup registry-a.k8s.io/kube-apiserver:v1,v2 --include-referrers --output airgap-snapshot.tar
 ```
 
 Upon success, the output will be:
