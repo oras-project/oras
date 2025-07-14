@@ -280,6 +280,7 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 	// extended copy, to the first manifest in the index. We also put the root
 	// and the referrers of the manifests as the predecessors of copyRoot. This
 	// is to ensure that all these nodes can be copied by calling extended copy.
+	// Reference: https://github.com/oras-project/oras/issues/1728
 	if len(rootReferrers) == 0 {
 		copyRoot := index.Manifests[0]
 		copyRootReferrers := append([]ocispec.Descriptor{root}, referrers...)
