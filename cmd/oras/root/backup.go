@@ -17,8 +17,10 @@ package root
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
@@ -31,9 +33,15 @@ type backupOptions struct {
 	option.Remote
 	option.Terminal
 
-	Output           string
-	IncludeReferrers bool
+	output           string
+	includeReferrers bool
 	concurrency      int
+
+	rawReference string
+	reference    string //contains tag or digest
+	// path contains registry and repository for the remote target
+	path      string
+	extraRefs []string
 }
 
 func backupCmd() *cobra.Command {
@@ -64,9 +72,20 @@ Example - Back up with concurrency level tuned:
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the artifact reference you want to back up"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			// opts.RawReference = args[0]
-			err := option.Parse(cmd, &opts)
+			refs := strings.Split(args[0], ",")
+			opts.rawReference = refs[0]
+			opts.extraRefs = refs[1:]
+
+			// parse raw reference
+			ref, err := registry.ParseReference(opts.rawReference)
 			if err != nil {
+				return err
+			}
+			opts.reference = ref.Reference
+			ref.Reference = ""
+			opts.path = ref.String()
+
+			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
 			opts.DisableTTY(opts.Debug, false)
@@ -77,8 +96,8 @@ Example - Back up with concurrency level tuned:
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.Output, "output", "o", "", "target directory path or tar file path to write in local filesystem (required)")
-	cmd.Flags().BoolVarP(&opts.IncludeReferrers, "include-referrers", "", false, "back up the image and its linked referrers (e.g., attestations, SBOMs)")
+	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "target directory path or tar file path to write in local filesystem (required)")
+	cmd.Flags().BoolVarP(&opts.includeReferrers, "include-referrers", "", false, "back up the image and its linked referrers (e.g., attestations, SBOMs)")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 
 	// Mark output flag as required
@@ -92,9 +111,18 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 
 	// Validate that output is specified (should be caught by required flag, but double-check)
-	if opts.Output == "" {
+	if opts.output == "" {
 		return fmt.Errorf("--output is required")
 	}
+
+	// debugging
+	fmt.Println("******OPTIONS******")
+	fmt.Println("rawReference:", opts.rawReference)
+	fmt.Println("extraRefs:", opts.extraRefs)
+	fmt.Println("reference:", opts.reference)
+	fmt.Println("path:", opts.path)
+	fmt.Println("output:", opts.output)
+	fmt.Println("******END OF OPTIONS******")
 
 	// TODO: Implement backup business logic
 	// This is just plumbing - business logic will be implemented later
