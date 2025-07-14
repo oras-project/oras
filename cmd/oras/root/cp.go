@@ -300,15 +300,10 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 
 	findPredecessor := opts.FindPredecessors
 	opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		descs, err := findPredecessor(ctx, src, desc)
-		if err != nil {
-			return nil, err
-		}
 		if content.Equal(desc, root) {
-			// make sure referrers of child manifests are copied by pointing them to root
-			descs = append(descs, referrers...)
+			return append(rootReferrers, referrers...), nil
 		}
-		return descs, nil
+		return findPredecessor(ctx, src, desc)
 	}
 	return opts, root, nil
 }
