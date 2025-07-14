@@ -226,41 +226,41 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 // recursiveCopy copies an artifact and its referrers from one target to another.
 // If the artifact is a manifest list or index, referrers of its manifests are copied as well.
 func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, dstRef string, root ocispec.Descriptor, opts oras.ExtendedCopyOptions) error {
-	var err error
-	if opts, err = prepareCopyOption(ctx, src, dst, root, opts); err != nil {
+	opts, copyRoot, err := prepareCopyOption(ctx, src, dst, root, opts)
+	if err != nil {
 		return err
 	}
-
-	if dstRef == "" || dstRef == root.Digest.String() {
-		err = oras.ExtendedCopyGraph(ctx, src, dst, root, opts.ExtendedCopyGraphOptions)
-	} else {
-		_, err = oras.ExtendedCopy(ctx, src, root.Digest.String(), dst, dstRef, opts)
+	if err := oras.ExtendedCopyGraph(ctx, src, dst, copyRoot, opts.ExtendedCopyGraphOptions); err != nil {
+		return err
 	}
-	return err
+	if dstRef != "" && dstRef != root.Digest.String() {
+		return dst.Tag(ctx, root, dstRef)
+	}
+	return nil
 }
 
-func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, root ocispec.Descriptor, opts oras.ExtendedCopyOptions) (oras.ExtendedCopyOptions, error) {
+func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, root ocispec.Descriptor, opts oras.ExtendedCopyOptions) (oras.ExtendedCopyOptions, ocispec.Descriptor, error) {
 	if root.MediaType != ocispec.MediaTypeImageIndex && root.MediaType != docker.MediaTypeManifestList {
-		return opts, nil
+		return opts, root, nil
 	}
 
 	fetched, err := content.FetchAll(ctx, src, root)
 	if err != nil {
-		return opts, err
+		return oras.ExtendedCopyOptions{}, ocispec.Descriptor{}, err
 	}
 	var index ocispec.Index
 	if err = json.Unmarshal(fetched, &index); err != nil {
-		return opts, err
+		return oras.ExtendedCopyOptions{}, ocispec.Descriptor{}, err
 	}
 
 	if len(index.Manifests) == 0 {
 		// no child manifests, thus no child referrers
-		return opts, nil
+		return opts, root, nil
 	}
 
 	referrers, err := graph.FindPredecessors(ctx, src, index.Manifests, opts)
 	if err != nil {
-		return opts, err
+		return oras.ExtendedCopyOptions{}, ocispec.Descriptor{}, err
 	}
 
 	referrers = slices.DeleteFunc(referrers, func(desc ocispec.Descriptor) bool {
@@ -269,20 +269,42 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 
 	if len(referrers) == 0 {
 		// no child referrers
-		return opts, nil
+		return opts, root, nil
 	}
 
+	rootReferrers, err := opts.FindPredecessors(ctx, src, root)
+	if err != nil {
+		return oras.ExtendedCopyOptions{}, ocispec.Descriptor{}, err
+	}
+
+	// If root has no referrers, we set copyRoot, which is the entry point of
+	// extended copy, to the first manifest in the index. We also put the root
+	// and the referrers of the manifests as the predecessors of copyRoot. This
+	// is to ensure that all these nodes can be copied by calling extended copy.
+	// Reference: https://github.com/oras-project/oras/issues/1728
+	if len(rootReferrers) == 0 {
+		copyRoot := index.Manifests[0]
+		copyRootReferrers := append([]ocispec.Descriptor{root}, referrers...)
+		findPredecessor := opts.FindPredecessors
+		opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			switch {
+			case content.Equal(desc, root):
+				return nil, nil
+			case content.Equal(desc, copyRoot):
+				return copyRootReferrers, nil
+			}
+			return findPredecessor(ctx, src, desc)
+		}
+		return opts, copyRoot, nil
+	}
+
+	rootReferrers = append(rootReferrers, referrers...)
 	findPredecessor := opts.FindPredecessors
 	opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		descs, err := findPredecessor(ctx, src, desc)
-		if err != nil {
-			return nil, err
-		}
 		if content.Equal(desc, root) {
-			// make sure referrers of child manifests are copied by pointing them to root
-			descs = append(descs, referrers...)
+			return rootReferrers, nil
 		}
-		return descs, nil
+		return findPredecessor(ctx, src, desc)
 	}
-	return opts, nil
+	return opts, root, nil
 }

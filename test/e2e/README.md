@@ -199,6 +199,14 @@ graph TD;
         
         H0>tag: unnamed]-..->H1["artifact contains unnamed layer"]
         I0>tag: empty]-..->I1["artifact contains only one empty layer"]
+
+        J0>tag: v1.3.8]-..->J1[oci index]
+        J1--linux/amd64-->J2[oci image]
+        J3["referrer.image(image)"] -- subject --> J2
+        J5["test.sbom.file(image)"] -- subject --> J4
+        J6["test.signature.file(image)"] -- subject --> J5
+        J1--linux/arm64-->J4[oci image]
+
     end
 ```
 
