@@ -248,7 +248,7 @@ func (target *Target) ModifyError(cmd *cobra.Command, err error) (error, bool) {
 	}
 
 	if errors.Is(err, errdef.ErrNotFound) {
-		// special handling for not found error retured by registry target
+		// special handling for not found error returned by registry target
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
 		return err, true
 	}

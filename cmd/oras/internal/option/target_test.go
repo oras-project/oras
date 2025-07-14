@@ -143,13 +143,17 @@ func Test_parseOCILayoutReference(t *testing.T) {
 func TestTarget_ModifyError_ociLayout(t *testing.T) {
 	errClient := errors.New("client error")
 	opts := &Target{}
-	got, modified := opts.ModifyError(&cobra.Command{}, errClient)
+	cmd := &cobra.Command{}
+	got, modified := opts.ModifyError(cmd, errClient)
 
 	if modified {
 		t.Errorf("expect error not to be modified but received true")
 	}
 	if got != errClient {
 		t.Errorf("unexpected output from Target.ModifyError() = %v", got)
+	}
+	if want := "Error:"; cmd.ErrPrefix() != want {
+		t.Errorf("unexpected error prefix set on command: %q, want %q", cmd.ErrPrefix(), want)
 	}
 }
 
@@ -196,6 +200,9 @@ func TestTarget_ModifyError_NotFound(t *testing.T) {
 			}
 			if got != originalErr {
 				t.Errorf("Target.ModifyError() got = %v, want %v", got, originalErr)
+			}
+			if cmd.ErrPrefix() != tt.wantErrPrefix {
+				t.Errorf("Target.ModifyError() cmd.ErrPrefix() = %q, want %q", cmd.ErrPrefix(), tt.wantErrPrefix)
 			}
 		})
 	}

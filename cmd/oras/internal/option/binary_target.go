@@ -66,7 +66,7 @@ func (target *BinaryTarget) Parse(cmd *cobra.Command) error {
 	return Parse(cmd, target)
 }
 
-// Modify handles error during cmd execution.
+// ModifyError handles error during cmd execution.
 func (target *BinaryTarget) ModifyError(cmd *cobra.Command, err error) (error, bool) {
 	var copyErr *oras.CopyError
 	if !errors.As(err, &copyErr) {
