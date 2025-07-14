@@ -38,6 +38,7 @@ func New() *cobra.Command {
 		copyCmd(),
 		tagCmd(),
 		attachCmd(),
+		backupCmd(),
 		blob.Cmd(),
 		manifest.Cmd(),
 		repo.Cmd(),
