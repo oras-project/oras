@@ -128,6 +128,7 @@ Upon success, the output will be:
 
 ```console
 ## <progress_bar>
+Found 2 tag(s): v1, v2 in registry-a.k8s.io/kube-apiserver
 ✔ Pulled tag v1 and 1 referrer(s)
 ✓ Pulled  application/vnd.oci.image.config.v1+json                                                               2.26/2.26 KB  100.00%  447ms
   └─ sha256:45a5868eb9f1dfbce42513000964664014789a43310865b0c8461e773e9972b9
@@ -145,9 +146,9 @@ Upon success, the output will be:
   └─ sha256:854ad9e87ce93dae54ae1699837b2c812d2f373c3fb62625ea6992efa8f023c4
 
 ## <status output>
-Found 2 tag(s): v1, v2 in registry-a.k8s.io/kube-apiserver
 Pulled tag v1 and 1 referrer(s)
 Pulled tag v2 and 1 referrer(s)
+Exporting to backup.tar
 Exported to backup.tar (58.8 MB)
 Successfully backed up 2 tag(s) from registry-a.k8s.io/kube-apiserver
 ```
@@ -164,6 +165,8 @@ Upon success, the output will be:
 
 ```console
 ## <progress_bar>
+Loaded backup archive: backup.tar (58.8 MB)
+Found 2 tag(s): v1, v2
 ✔ Pushed tag v1 and 1 referrer(s)
 ✓ Pushed  application/vnd.oci.image.config.v1+json                                                               2.26/2.26 KB  100.00%  447ms
   └─ sha256:45a5868eb9f1dfbce42513000964664014789a43310865b0c8461e773e9972b9
@@ -181,8 +184,6 @@ Upon success, the output will be:
   └─ sha256:854ad9e87ce93dae54ae1699837b2c812d2f373c3fb62625ea6992efa8f023c4
 
 ## <status output>
-Loaded backup archive: backup.tar (58.8 MB)
-Found 2 tag(s): v1, v2
 Pushed tag v1 with 1 referrer(s)
 Pushed tag v2 with 1 referrer(s)
 Successfully restored 2 tag(s) to registry-b.k8s.io/kube-apiserver
@@ -208,6 +209,7 @@ Upon success, the output will be:
 
 ```console
 ## <progress_bar>
+Found 1 tag: v1
 ✓ Pulled  application/vnd.oci.image.config.v1+json                                                               2.26/2.26 KB  100.00%  447ms
   └─ sha256:45a5868eb9f1dfbce42513000964664014789a43310865b0c8461e773e9972b9
 ✓ Pulled  application/vnd.oci.image.layer.v1.tar+gzip                                                            25.6/25.6 MB  100.00%     4s
@@ -216,8 +218,8 @@ Upon success, the output will be:
   └─ sha256:9b666bc868511a0f2d33a738a9ff0bd54eb750a72a832e8b59085d22bbdbaac2
 
 ## <status output>
-Found 1 tag: v1
 Pulled tag v1 and 1 referrer(s)
+Exporting to airgap-snapshot.tar
 Exported to airgap-snapshot.tar (58.8 MB)
 Successfully backed up 1 tag from registry-a.k8s.io/kube-apiserver
 ```
@@ -232,6 +234,8 @@ Upon success, the output will be:
 
 ```console
 ## <progress_bar>
+Loaded backup archive: airgap-snapshot.tar (58.8 MB)
+Found 1 tag: v1
 ✓ Pushed  application/vnd.oci.image.config.v1+json                                                               2.26/2.26 KB  100.00%  412ms
   └─ sha256:45a5868eb9f1dfbce42513000964664014789a43310865b0c8461e773e9972b9
 ✓ Pushed  application/vnd.oci.image.layer.v1.tar+gzip                                                            25.6/25.6 MB  100.00%  3.9s
@@ -240,8 +244,6 @@ Upon success, the output will be:
   └─ sha256:9b666bc868511a0f2d33a738a9ff0bd54eb750a72a832e8b59085d22bbdbaac2
 
 ## <status output>
-Loaded backup archive: airgap-snapshot.tar (58.8 MB)
-Found 1 tag: v1
 Pushed tag v1 with 1 referrer(s)
 Successfully restored 1 tag to registry-b.k8s.io/kube-apiserver
 ```
