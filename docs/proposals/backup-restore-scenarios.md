@@ -51,7 +51,7 @@ The process typically involves:
 
 1. Packaging an image and all its linked referrers from a remote registry into a single `.tar` archive or directory using OCI image layout format locally.
 2. Transferring the compressed snapshot over secure channels to the air-gapped network.
-3. Restoring the image and referrer rtifacts into an internal OCI-compliant registry for deployment.
+3. Restoring the image and referrer artifacts into an internal OCI-compliant registry for deployment.
 
 Today, Dave has no native way to do this using `docker save/load`, `oras pull/push`, or other common tools. The lack of a unified snapshot solution means that artifacts must be copied manually or scripted with `oras copy`, often resulting in incomplete transfers (e.g., missing signatures or dependencies), blobs duplicated across files and no assurance of artifact integrity and completeness, difficulty validating artifact integrity upon restore. See an example GitHub issue [#730](https://github.com/oras-project/oras/issues/730) for details.
 
