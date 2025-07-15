@@ -16,11 +16,16 @@ limitations under the License.
 package root
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
+	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
@@ -48,6 +53,8 @@ type backupOptions struct {
 	// path contains registry and repository for the remote target
 	path      string
 	extraRefs []string
+
+	references []string
 }
 
 func backupCmd() *cobra.Command {
@@ -83,13 +90,18 @@ Example - Back up with concurrency level tuned:
 			opts.extraRefs = refs[1:]
 
 			// parse raw reference
+			// case: "registry-a.k8s.io/kube-apiserver:,"
+			// case: "registry-a.k8s.io/kube-apiserver:,v2"
 			ref, err := registry.ParseReference(opts.rawReference)
 			if err != nil {
-				return err
+				// TODO: better error message
+				return fmt.Errorf("failed to parse reference %q: %w", opts.rawReference, err)
 			}
 			opts.reference = ref.Reference
 			ref.Reference = ""
 			opts.path = ref.String()
+			// TODO: might need to refactor reference parsing with error handling
+			opts.references = append([]string{opts.reference}, opts.extraRefs...)
 
 			if err := option.Parse(cmd, &opts); err != nil {
 				return err
@@ -130,17 +142,78 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	fmt.Println("extraRefs:", opts.extraRefs)
 	fmt.Println("reference:", opts.reference)
 	fmt.Println("path:", opts.path)
+	fmt.Println("references:", opts.references)
 	fmt.Println("output:", opts.output)
 	fmt.Println("outputType:", opts.outputType)
 	fmt.Println("includeReferrers:", opts.includeReferrers)
 	fmt.Println("******END OF OPTIONS******")
 
-	// TODO: Implement backup business logic
-	// This is just plumbing - business logic will be implemented later
+	// TODO:
+	// Overall, copy the artifacts from remote to OCI layout, and create a tar file if output type is tar
+	// If no references is specified: discover all tags in the repository and copy them
+	// If references are specified: copy the specified reference and extra refs
+	// If includeReferrers is true: do extended copy (questions: handle multi-arch?)
 
-	_ = ctx
-	_ = logger
-	_ = opts
+	// Prepare remote repo as the source
+	src, err := opts.Remote.NewRepository(opts.path, opts.Common, logger)
+	if err != nil {
+		return err
+	}
 
+	// Prepare OCI layout as the destination
+	tempDir, err := os.MkdirTemp("", "oras-backup-*")
+	if err != nil {
+		// TODO: better error message?
+		return fmt.Errorf("failed to create temporary directory: %w", err)
+	}
+	defer func() {
+		if err := os.RemoveAll(tempDir); err != nil {
+			logger.Warnf("failed to remove temporary directory %s: %v", tempDir, err)
+		}
+	}()
+
+	dst, err := oci.New(tempDir)
+	if err != nil {
+		return fmt.Errorf("failed to create OCI store: %w", err)
+	}
+
+	if len(opts.references) == 0 {
+		return backupRepository(ctx, src, dst, tempDir, opts)
+	}
+	return backupArtifacts()
+}
+
+func backupRepository(ctx context.Context, src *remote.Repository, dst *oci.Store, tempDir string, opts *backupOptions) error {
+	// TODO: Implement backup logic for the entire repository
+	// TODO: call doCopy()?
+
+	// Start with getting all tags first and then copy
+	// Might refactor to do copy while discovering tags later
+	tags, err := registry.Tags(ctx, src)
+	if err != nil {
+		return fmt.Errorf("failed to list tags in repository %s: %w", src.Reference, err)
+	}
+
+	copyOpts := oras.CopyOptions{
+		CopyGraphOptions: oras.CopyGraphOptions{
+			Concurrency: opts.concurrency,
+		},
+	}
+	for _, tag := range tags {
+		// TODO: handle concurrency between tags
+		// TODO: handle output format
+		root, err := oras.Copy(ctx, src, tag, dst, tag, copyOpts)
+		if err != nil {
+			return fmt.Errorf("failed to copy tag %s: %w", tag, err)
+		}
+		fmt.Printf("Copied tag: %s, root digest: %s\n", tag, root.Digest)
+	}
+
+	return nil
+}
+
+func backupArtifacts() error {
+	// TODO: Implement backup logic for the artifacts with specific references
+	// TODO: call doCopy()?
 	return nil
 }
