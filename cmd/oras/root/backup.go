@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -36,6 +37,12 @@ const (
 	outputTypeTar = "tar"
 	outputTypeDir = "directory"
 )
+
+// tagRegexp checks the tag name.
+// The docker and OCI spec have the same regular expression.
+//
+// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#pulling-manifests
+var tagRegexp = regexp.MustCompile(`^[\w][\w.-]{0,127}$`)
 
 type backupOptions struct {
 	option.Cache
@@ -167,8 +174,8 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		return fmt.Errorf("failed to create OCI store: %w", err)
 	}
 
-	refs := referencesToBackup(ctx, src, opts)
-	if len(refs) == 0 {
+	tags := referencesToBackup(ctx, src, opts)
+	if len(tags) == 0 {
 		// TODO: better error message
 		return fmt.Errorf("no references to back up, please specify at least one reference")
 	}
@@ -186,22 +193,22 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 			},
 		},
 	}
-	for _, ref := range refs {
+	for _, tag := range tags {
 		// TODO: handle concurrency between refs
 		// TODO: handle output format
-		fmt.Println("Found ref:", ref)
+		fmt.Println("Found ref:", tag)
 		if opts.includeReferrers {
-			root, err := oras.ExtendedCopy(ctx, src, ref, dst, ref, extendedCopyOpts)
+			root, err := oras.ExtendedCopy(ctx, src, tag, dst, tag, extendedCopyOpts)
 			if err != nil {
-				return fmt.Errorf("failed to extended copy ref %s: %w", ref, err)
+				return fmt.Errorf("failed to extended copy ref %s: %w", tag, err)
 			}
-			fmt.Printf("Extended copied ref: %s, root digest: %s\n", ref, root.Digest)
+			fmt.Printf("Extended copied ref: %s, root digest: %s\n", tag, root.Digest)
 		} else {
-			root, err := oras.Copy(ctx, src, ref, dst, ref, copyOpts)
+			root, err := oras.Copy(ctx, src, tag, dst, tag, copyOpts)
 			if err != nil {
-				return fmt.Errorf("failed to copy ref %s: %w", ref, err)
+				return fmt.Errorf("failed to copy ref %s: %w", tag, err)
 			}
-			fmt.Printf("Copied ref: %s, root digest: %s\n", ref, root.Digest)
+			fmt.Printf("Copied ref: %s, root digest: %s\n", tag, root.Digest)
 		}
 	}
 
@@ -223,31 +230,43 @@ func referencesToBackup(ctx context.Context, repo *remote.Repository, opts *back
 	return tags
 }
 
-func parseArtifactRefs(artifactRefs string) (repository string, references []string, err error) {
-	// TODO: refactor
-	// parse raw reference
-	// case: "registry-a.k8s.io/kube-apiserver:,"
-	// case: "registry-a.k8s.io/kube-apiserver:,v2"
-	// case: "registry-a.k8s.io/kube-apiserver:v1,v2"
-	// case: "registry-a.k8s.io/kube-apiserver@sha256:1234567890abcdef"
-	// case: "registry-a.k8s.io/kube-apiserver@sha256:1234567890abcdef,v2"
-	// case: "registry-a.k8s.io/kube-apiserver:v1,@sha256:1234567890abcdef"
-	// case: "registry-a.k8s.io/kube-apiserver:v1@sha256:1234567890abcdef"
+func parseArtifactRefs(artifactRefs string) (repository string, tags []string, err error) {
+	// TODO: more tests
+	// Reject digest references
+	if len(artifactRefs) == 0 {
+		return "", nil, fmt.Errorf("invalid reference format: empty reference")
+	}
+	if strings.Contains(artifactRefs, "@") {
+		return "", nil, fmt.Errorf("digest references are not supported: %q", artifactRefs)
+	}
+
 	refs := strings.Split(artifactRefs, ",")
 	artifactRef := refs[0]
 	extraRefs := refs[1:]
+
+	// Validate the main reference
 	parsedRef, err := registry.ParseReference(artifactRef)
 	if err != nil {
-		// TODO: better error message
 		return "", nil, fmt.Errorf("failed to parse reference %q: %w", artifactRef, err)
 	}
 
+	// Process references
 	if parsedRef.Reference == "" {
-		references = extraRefs[:]
+		tags = extraRefs[:]
 	} else {
-		references = append([]string{parsedRef.Reference}, extraRefs...)
+		tags = append([]string{parsedRef.Reference}, extraRefs...)
 	}
+
+	// Strip the reference part to get the repository
 	parsedRef.Reference = ""
 	repository = parsedRef.String()
-	return repository, references, nil
+
+	for _, tag := range tags {
+		if !tagRegexp.MatchString(tag) {
+			return "", nil, fmt.Errorf("invalid tag %q in reference %q", tag, artifactRefs)
+		}
+	}
+
+	// TODO: validate each reference against tagRegex?
+	return repository, tags, nil
 }
