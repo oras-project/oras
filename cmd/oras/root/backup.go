@@ -100,9 +100,12 @@ Example - Back up with concurrency level tuned:
 			opts.reference = ref.Reference
 			ref.Reference = ""
 			opts.path = ref.String()
-			// TODO: might need to refactor reference parsing with error handling
-			opts.references = append([]string{opts.reference}, opts.extraRefs...)
-
+			// TODO: need to refactor reference parsing with error handling
+			if opts.reference == "" {
+				opts.references = opts.extraRefs[:]
+			} else {
+				opts.references = append([]string{opts.reference}, opts.extraRefs...)
+			}
 			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
@@ -160,30 +163,47 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		return err
 	}
 
-	// Prepare OCI layout as the destination
-	tempDir, err := os.MkdirTemp("", "oras-backup-*")
-	if err != nil {
-		// TODO: better error message?
-		return fmt.Errorf("failed to create temporary directory: %w", err)
-	}
-	defer func() {
-		if err := os.RemoveAll(tempDir); err != nil {
-			logger.Warnf("failed to remove temporary directory %s: %v", tempDir, err)
+	var dstRoot string
+	switch opts.outputType {
+	case outputTypeDir:
+		dstRoot = opts.output
+	case outputTypeTar:
+		tempDir, err := os.MkdirTemp("", "oras-backup-*")
+		if err != nil {
+			// TODO: better error message?
+			return fmt.Errorf("failed to create temporary directory: %w", err)
 		}
-	}()
+		defer func() {
+			if err := os.RemoveAll(tempDir); err != nil {
+				logger.Warnf("failed to remove temporary directory %s: %v", tempDir, err)
+			}
+		}()
+	default:
+		// this should not happen
+		return fmt.Errorf("unsupported output type: %s", opts.outputType)
+	}
 
-	dst, err := oci.New(tempDir)
+	// Prepare OCI layout as the destination
+
+	dst, err := oci.New(dstRoot)
 	if err != nil {
 		return fmt.Errorf("failed to create OCI store: %w", err)
 	}
 
-	if len(opts.references) == 0 {
-		return backupRepository(ctx, src, dst, tempDir, opts)
+	if len(opts.references) > 0 {
+		err = backupArtifacts()
+	} else {
+		err = backupRepository(ctx, src, dst, opts)
 	}
-	return backupArtifacts()
+	if err != nil {
+		return fmt.Errorf("failed to back up artifacts: %w", err)
+	}
+
+	// TODO: if output type is tar, create a tar file from the OCI layout
+	return nil
 }
 
-func backupRepository(ctx context.Context, src *remote.Repository, dst *oci.Store, tempDir string, opts *backupOptions) error {
+func backupRepository(ctx context.Context, src *remote.Repository, dst *oci.Store, opts *backupOptions) error {
 	// TODO: Implement backup logic for the entire repository
 	// TODO: call doCopy()?
 
@@ -199,16 +219,31 @@ func backupRepository(ctx context.Context, src *remote.Repository, dst *oci.Stor
 			Concurrency: opts.concurrency,
 		},
 	}
+	extendedCopyOpts := oras.ExtendedCopyOptions{
+		ExtendedCopyGraphOptions: oras.ExtendedCopyGraphOptions{
+			CopyGraphOptions: oras.CopyGraphOptions{
+				Concurrency: opts.concurrency,
+			},
+		},
+	}
 	for _, tag := range tags {
 		// TODO: handle concurrency between tags
 		// TODO: handle output format
-		root, err := oras.Copy(ctx, src, tag, dst, tag, copyOpts)
-		if err != nil {
-			return fmt.Errorf("failed to copy tag %s: %w", tag, err)
+		fmt.Println("Found tag:", tag)
+		if opts.includeReferrers {
+			root, err := oras.ExtendedCopy(ctx, src, tag, dst, tag, extendedCopyOpts)
+			if err != nil {
+				return fmt.Errorf("failed to extended copy tag %s: %w", tag, err)
+			}
+			fmt.Printf("Extended copied tag: %s, root digest: %s\n", tag, root.Digest)
+		} else {
+			root, err := oras.Copy(ctx, src, tag, dst, tag, copyOpts)
+			if err != nil {
+				return fmt.Errorf("failed to copy tag %s: %w", tag, err)
+			}
+			fmt.Printf("Copied tag: %s, root digest: %s\n", tag, root.Digest)
 		}
-		fmt.Printf("Copied tag: %s, root digest: %s\n", tag, root.Digest)
 	}
-
 	return nil
 }
 
