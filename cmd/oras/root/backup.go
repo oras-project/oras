@@ -48,12 +48,7 @@ type backupOptions struct {
 	includeReferrers bool
 	concurrency      int
 
-	rawReference string
-	reference    string //contains tag or digest
-	// path contains registry and repository for the remote target
-	path      string
-	extraRefs []string
-
+	repository string
 	references []string
 }
 
@@ -85,28 +80,14 @@ Example - Back up with concurrency level tuned:
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the artifact reference you want to back up"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			refs := strings.Split(args[0], ",")
-			opts.rawReference = refs[0]
-			opts.extraRefs = refs[1:]
-
-			// parse raw reference
-			// case: "registry-a.k8s.io/kube-apiserver:,"
-			// case: "registry-a.k8s.io/kube-apiserver:,v2"
-			ref, err := registry.ParseReference(opts.rawReference)
-			if err != nil {
-				// TODO: better error message
-				return fmt.Errorf("failed to parse reference %q: %w", opts.rawReference, err)
-			}
-			opts.reference = ref.Reference
-			ref.Reference = ""
-			opts.path = ref.String()
-			// TODO: need to refactor reference parsing with error handling
-			if opts.reference == "" {
-				opts.references = opts.extraRefs[:]
-			} else {
-				opts.references = append([]string{opts.reference}, opts.extraRefs...)
-			}
 			if err := option.Parse(cmd, &opts); err != nil {
+				return err
+			}
+
+			// parse repo and references
+			var err error
+			opts.repository, opts.references, err = parseArtifactRefs(args[0])
+			if err != nil {
 				return err
 			}
 
@@ -141,10 +122,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 
 	// debugging
 	fmt.Println("******OPTIONS******")
-	fmt.Println("rawReference:", opts.rawReference)
-	fmt.Println("extraRefs:", opts.extraRefs)
-	fmt.Println("reference:", opts.reference)
-	fmt.Println("path:", opts.path)
+	fmt.Println("path:", opts.repository)
 	fmt.Println("references:", opts.references)
 	fmt.Println("output:", opts.output)
 	fmt.Println("outputType:", opts.outputType)
@@ -179,7 +157,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	}
 
 	// Prepare remote repo as the source
-	src, err := opts.Remote.NewRepository(opts.path, opts.Common, logger)
+	src, err := opts.Remote.NewRepository(opts.repository, opts.Common, logger)
 	if err != nil {
 		return err
 	}
@@ -243,4 +221,33 @@ func referencesToBackup(ctx context.Context, repo *remote.Repository, opts *back
 		return nil
 	}
 	return tags
+}
+
+func parseArtifactRefs(artifactRefs string) (repository string, references []string, err error) {
+	// TODO: refactor
+	// parse raw reference
+	// case: "registry-a.k8s.io/kube-apiserver:,"
+	// case: "registry-a.k8s.io/kube-apiserver:,v2"
+	// case: "registry-a.k8s.io/kube-apiserver:v1,v2"
+	// case: "registry-a.k8s.io/kube-apiserver@sha256:1234567890abcdef"
+	// case: "registry-a.k8s.io/kube-apiserver@sha256:1234567890abcdef,v2"
+	// case: "registry-a.k8s.io/kube-apiserver:v1,@sha256:1234567890abcdef"
+	// case: "registry-a.k8s.io/kube-apiserver:v1@sha256:1234567890abcdef"
+	refs := strings.Split(artifactRefs, ",")
+	artifactRef := refs[0]
+	extraRefs := refs[1:]
+	parsedRef, err := registry.ParseReference(artifactRef)
+	if err != nil {
+		// TODO: better error message
+		return "", nil, fmt.Errorf("failed to parse reference %q: %w", artifactRef, err)
+	}
+
+	if parsedRef.Reference == "" {
+		references = extraRefs[:]
+	} else {
+		references = append([]string{parsedRef.Reference}, extraRefs...)
+	}
+	parsedRef.Reference = ""
+	repository = parsedRef.String()
+	return repository, references, nil
 }
