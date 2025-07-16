@@ -157,12 +157,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	// If references are specified: copy the specified reference and extra refs
 	// If includeReferrers is true: do extended copy (questions: handle multi-arch?)
 
-	// Prepare remote repo as the source
-	src, err := opts.Remote.NewRepository(opts.path, opts.Common, logger)
-	if err != nil {
-		return err
-	}
-
+	// TODO: might need to refactor output type handling here
 	var dstRoot string
 	switch opts.outputType {
 	case outputTypeDir:
@@ -183,37 +178,24 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		return fmt.Errorf("unsupported output type: %s", opts.outputType)
 	}
 
+	// Prepare remote repo as the source
+	src, err := opts.Remote.NewRepository(opts.path, opts.Common, logger)
+	if err != nil {
+		return err
+	}
 	// Prepare OCI layout as the destination
-
 	dst, err := oci.New(dstRoot)
 	if err != nil {
 		return fmt.Errorf("failed to create OCI store: %w", err)
 	}
 
-	if len(opts.references) > 0 {
-		err = backupArtifacts()
-	} else {
-		err = backupRepository(ctx, src, dst, opts)
-	}
-	if err != nil {
-		return fmt.Errorf("failed to back up artifacts: %w", err)
+	refs := referencesToBackup(ctx, src, opts)
+	if len(refs) == 0 {
+		// TODO: better error message
+		return fmt.Errorf("no references to back up, please specify at least one reference")
 	}
 
-	// TODO: if output type is tar, create a tar file from the OCI layout
-	return nil
-}
-
-func backupRepository(ctx context.Context, src *remote.Repository, dst *oci.Store, opts *backupOptions) error {
-	// TODO: Implement backup logic for the entire repository
-	// TODO: call doCopy()?
-
-	// Start with getting all tags first and then copy
-	// Might refactor to do copy while discovering tags later
-	tags, err := registry.Tags(ctx, src)
-	if err != nil {
-		return fmt.Errorf("failed to list tags in repository %s: %w", src.Reference, err)
-	}
-
+	// Do the backup
 	copyOpts := oras.CopyOptions{
 		CopyGraphOptions: oras.CopyGraphOptions{
 			Concurrency: opts.concurrency,
@@ -226,29 +208,39 @@ func backupRepository(ctx context.Context, src *remote.Repository, dst *oci.Stor
 			},
 		},
 	}
-	for _, tag := range tags {
-		// TODO: handle concurrency between tags
+	for _, ref := range refs {
+		// TODO: handle concurrency between refs
 		// TODO: handle output format
-		fmt.Println("Found tag:", tag)
+		fmt.Println("Found ref:", ref)
 		if opts.includeReferrers {
-			root, err := oras.ExtendedCopy(ctx, src, tag, dst, tag, extendedCopyOpts)
+			root, err := oras.ExtendedCopy(ctx, src, ref, dst, ref, extendedCopyOpts)
 			if err != nil {
-				return fmt.Errorf("failed to extended copy tag %s: %w", tag, err)
+				return fmt.Errorf("failed to extended copy ref %s: %w", ref, err)
 			}
-			fmt.Printf("Extended copied tag: %s, root digest: %s\n", tag, root.Digest)
+			fmt.Printf("Extended copied ref: %s, root digest: %s\n", ref, root.Digest)
 		} else {
-			root, err := oras.Copy(ctx, src, tag, dst, tag, copyOpts)
+			root, err := oras.Copy(ctx, src, ref, dst, ref, copyOpts)
 			if err != nil {
-				return fmt.Errorf("failed to copy tag %s: %w", tag, err)
+				return fmt.Errorf("failed to copy ref %s: %w", ref, err)
 			}
-			fmt.Printf("Copied tag: %s, root digest: %s\n", tag, root.Digest)
+			fmt.Printf("Copied ref: %s, root digest: %s\n", ref, root.Digest)
 		}
 	}
+
+	// TODO: if output type is tar, create a tar file from the OCI layout
 	return nil
 }
 
-func backupArtifacts() error {
-	// TODO: Implement backup logic for the artifacts with specific references
-	// TODO: call doCopy()?
-	return nil
+func referencesToBackup(ctx context.Context, repo *remote.Repository, opts *backupOptions) []string {
+	if len(opts.references) > 0 {
+		// TODO: handle reference, e.g., tag or digest
+		return opts.references
+	}
+
+	// If no references are specified, discover all tags in the repository
+	tags, err := registry.Tags(ctx, repo)
+	if err != nil {
+		return nil
+	}
+	return tags
 }
