@@ -31,6 +31,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/io"
 )
 
 const (
@@ -158,6 +159,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 				logger.Warnf("failed to remove temporary directory %s: %v", tempDir, err)
 			}
 		}()
+		dstRoot = tempDir
 	default:
 		// this should not happen
 		return fmt.Errorf("unsupported output type: %s", opts.outputType)
@@ -212,7 +214,29 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		}
 	}
 
-	// TODO: if output type is tar, create a tar file from the OCI layout
+	if opts.outputType != outputTypeTar {
+		return nil
+	}
+
+	// TODO: remove ingest dir from dstRoot
+
+	// get a tarFile writer by creating the tarFile or replace if existing
+	// TODO: refactor for better structure?
+	tempTar, err := os.CreateTemp("", "oras-backup-*.tar")
+	if err != nil {
+		return fmt.Errorf("failed to create output tar file %s: %w", opts.output, err)
+	}
+	if err := io.TarDirectory(ctx, tempTar, dstRoot); err != nil {
+		return fmt.Errorf("failed to write tar file %s: %w", opts.output, err)
+	}
+	if err := tempTar.Close(); err != nil {
+		logger.Warnf("failed to close tar file %s: %v", opts.output, err)
+	}
+	if err := os.Rename(tempTar.Name(), opts.output); err != nil {
+		return fmt.Errorf("failed to rename tar file %s to %s: %w", tempTar.Name(), opts.output, err)
+	}
+
+	fmt.Println("Successfully backed up artifacts to", opts.output)
 	return nil
 }
 
