@@ -71,23 +71,23 @@ func TarDirectory(ctx context.Context, writer io.Writer, sourceDir string) (tarE
 			return fmt.Errorf("failed to get relative path: %w", err)
 		}
 
+		// Skip the root directory itself
+		if relPath == "." {
+			return nil
+		}
+
 		// Create a header based on the file info
 		header, err := tar.FileInfoHeader(info, "")
 		if err != nil {
 			return fmt.Errorf("failed to create tar header: %w", err)
 		}
+
 		// Convert Windows paths to tar format (using forward slashes)
 		header.Name = filepath.ToSlash(relPath)
 		header.Uid = 0
 		header.Gid = 0
 		header.Uname = ""
 		header.Gname = ""
-
-		// // Skip the root directory itself
-		// if header.Name == "." {
-		// 	return nil
-		// }
-
 		// Write the header
 		if err := tw.WriteHeader(header); err != nil {
 			return fmt.Errorf("failed to write tar header: %w", err)

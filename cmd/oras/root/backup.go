@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -217,14 +218,19 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		}
 	}
 
+	// Remove ingest dir for a cleaner output
+	ingestDir := filepath.Join(dstRoot, "ingest")
+	if _, err := os.Stat(ingestDir); err == nil {
+		if err := os.RemoveAll(ingestDir); err != nil {
+			logger.Debugf("failed to remove ingest directory: %v", err)
+		}
+	}
+
 	if opts.outputType != outputTypeTar {
 		return nil
 	}
 
-	// TODO: remove ingest dir from dstRoot
-
-	// get a tarFile writer by creating the tarFile or replace if existing
-	// TODO: refactor for better structure?
+	// Create the tarball from the OCI layout directory
 	tempTar, err := os.CreateTemp("", "oras-backup-*.tar")
 	if err != nil {
 		return fmt.Errorf("failed to create output tar file %s: %w", opts.output, err)
