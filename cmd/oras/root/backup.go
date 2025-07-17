@@ -176,7 +176,10 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		return fmt.Errorf("failed to create OCI store: %w", err)
 	}
 
-	tags := referencesToBackup(ctx, src, opts)
+	tags, err := referencesToBackup(ctx, src, opts)
+	if err != nil {
+		return fmt.Errorf("failed to get references to back up: %w", err)
+	}
 	if len(tags) == 0 {
 		// TODO: better error message
 		return fmt.Errorf("no references to back up, please specify at least one reference")
@@ -232,6 +235,8 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	if err := tempTar.Close(); err != nil {
 		logger.Warnf("failed to close tar file %s: %v", opts.output, err)
 	}
+	// TODO: handle abs path of output?
+	// TODO: cross-system error?
 	if err := os.Rename(tempTar.Name(), opts.output); err != nil {
 		return fmt.Errorf("failed to rename tar file %s to %s: %w", tempTar.Name(), opts.output, err)
 	}
@@ -240,18 +245,14 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	return nil
 }
 
-func referencesToBackup(ctx context.Context, repo *remote.Repository, opts *backupOptions) []string {
+func referencesToBackup(ctx context.Context, repo *remote.Repository, opts *backupOptions) ([]string, error) {
 	if len(opts.references) > 0 {
 		// TODO: handle reference, e.g., tag or digest
-		return opts.references
+		return opts.references, nil
 	}
 
 	// If no references are specified, discover all tags in the repository
-	tags, err := registry.Tags(ctx, repo)
-	if err != nil {
-		return nil
-	}
-	return tags
+	return registry.Tags(ctx, repo)
 }
 
 func parseArtifactRefs(artifactRefs string) (repository string, tags []string, err error) {
