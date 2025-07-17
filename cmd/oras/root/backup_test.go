@@ -17,6 +17,7 @@ package root
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -28,6 +29,7 @@ func TestParseArtifactRefs(t *testing.T) {
 		wantRefs []string
 		wantErr  bool
 	}{
+		// Basic test cases
 		{
 			name:     "valid reference with tag",
 			input:    "localhost:5000/repo:v1",
@@ -39,6 +41,13 @@ func TestParseArtifactRefs(t *testing.T) {
 			name:     "valid reference with multiple tags",
 			input:    "localhost:5000/repo:v1,v2",
 			wantRepo: "localhost:5000/repo",
+			wantRefs: []string{"v1", "v2"},
+			wantErr:  false,
+		},
+		{
+			name:     "complex repository with multiple slashes",
+			input:    "localhost:5000/org/team/project:v1,v2",
+			wantRepo: "localhost:5000/org/team/project",
 			wantRefs: []string{"v1", "v2"},
 			wantErr:  false,
 		},
@@ -84,13 +93,71 @@ func TestParseArtifactRefs(t *testing.T) {
 			wantRefs: nil,
 			wantErr:  true,
 		},
+
+		// Edge cases
+		{
+			name:     "empty reference",
+			input:    "",
+			wantRepo: "",
+			wantRefs: nil,
+			wantErr:  true,
+		},
+		{
+			name:     "multiple empty tags",
+			input:    "localhost:5000/repo:,,",
+			wantRepo: "localhost:5000/repo",
+			wantRefs: []string{},
+			wantErr:  false,
+		},
+		{
+			name:     "invalid tag format",
+			input:    "localhost:5000/repo:valid,invalid@tag",
+			wantRepo: "",
+			wantRefs: nil,
+			wantErr:  true,
+		},
+		{
+			name:     "valid tag with special characters",
+			input:    "localhost:5000/repo:v1.0-beta_1",
+			wantRepo: "localhost:5000/repo",
+			wantRefs: []string{"v1.0-beta_1"},
+			wantErr:  false,
+		},
+		{
+			name:     "invalid repository format",
+			input:    "localhost:5000/repo space:v1",
+			wantRepo: "",
+			wantRefs: nil,
+			wantErr:  true,
+		},
+		{
+			name:     "tag exceeding max length",
+			input:    "localhost:5000/repo:" + strings.Repeat("a", 129),
+			wantRepo: "",
+			wantRefs: nil,
+			wantErr:  true,
+		},
+		{
+			name:     "invalid tag starting with non-word character",
+			input:    "localhost:5000/repo:.invalid",
+			wantRepo: "",
+			wantRefs: nil,
+			wantErr:  true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repository, references, err := parseArtifactRefs(tt.input)
 
-			if !tt.wantErr && err != nil {
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("expected error but got nil")
+				}
+				return
+			}
+
+			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 				return
 			}
