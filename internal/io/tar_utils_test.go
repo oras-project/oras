@@ -19,6 +19,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -56,6 +57,9 @@ func TestTarDirectory(t *testing.T) {
 
 	// Create a buffer to store the tar archive
 	var buf bytes.Buffer
+
+	// Note: We're not testing symlinks as they are intentionally not supported
+	// by the TarDirectory function design
 
 	// Call TarDirectory
 	err = iotest.TarDirectory(context.Background(), &buf, tmpDir)
@@ -142,9 +146,12 @@ func TestTarDirectory_ContextCancellation(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// Create a file in the directory
-	if err := os.WriteFile(filepath.Join(tmpDir, "test.txt"), []byte("test"), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
+	// Create a few more files to increase likelihood of catching cancellation during processing
+	for i := range 5 {
+		filename := filepath.Join(tmpDir, fmt.Sprintf("test%d.txt", i))
+		if err := os.WriteFile(filename, []byte("test content"), 0644); err != nil {
+			t.Fatalf("Failed to create test file %s: %v", filename, err)
+		}
 	}
 
 	var buf bytes.Buffer
@@ -154,7 +161,7 @@ func TestTarDirectory_ContextCancellation(t *testing.T) {
 	cancel()
 
 	err = iotest.TarDirectory(ctx, &buf, tmpDir)
-	if err == nil {
-		t.Error("Expected context cancellation error, but got nil")
+	if err == nil || err != context.Canceled {
+		t.Errorf("Expected context cancellation error (context.Canceled), but got: %v", err)
 	}
 }

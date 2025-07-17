@@ -24,10 +24,9 @@ import (
 	"path/filepath"
 )
 
-// TarDirectory creates a tar archive from the specified directory.
-// The sourceDir is the root directory to start archiving from.
-// All files and directories within sourceDir will be added to the tar archive.
-// The paths in the archive will be relative to sourceDir.
+// TarDirectory creates a tar archive from the contents of sourceDir and writes it to the given writer.
+// It walks through the directory tree, adding all regular files and directory entries to the archive.
+// Symlinks, devices, pipes, and other special files are skipped.
 func TarDirectory(ctx context.Context, writer io.Writer, sourceDir string) (tarErr error) {
 	// Ensure sourceDir exists and is a directory
 	fi, err := os.Stat(sourceDir)
@@ -60,8 +59,9 @@ func TarDirectory(ctx context.Context, writer io.Writer, sourceDir string) (tarE
 			return err
 		}
 
+		// Skip if it's not a regular file and not a directory
+		// This explicitly excludes symlinks, devices, pipes, etc.
 		if !info.Mode().IsRegular() && !info.IsDir() {
-			// Skip if it's not a regular file or not a directory
 			return nil
 		}
 
@@ -98,7 +98,6 @@ func TarDirectory(ctx context.Context, writer io.Writer, sourceDir string) (tarE
 			return nil
 		}
 
-		// Open the fp for reading
 		fp, err := os.Open(path)
 		if err != nil {
 			return fmt.Errorf("failed to open file %s: %w", path, err)
