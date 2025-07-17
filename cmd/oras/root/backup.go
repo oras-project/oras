@@ -23,6 +23,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
@@ -32,7 +33,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/io"
+	orasio "oras.land/oras/internal/io"
 )
 
 const (
@@ -103,6 +104,7 @@ Example - Back up with concurrency level tuned:
 				return err
 			}
 
+			// TODO: should we record abs file path of the output?
 			// parse output type
 			if strings.HasSuffix(opts.output, ".tar") {
 				opts.outputType = outputTypeTar
@@ -160,7 +162,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		}
 		defer func() {
 			if err := os.RemoveAll(tempDir); err != nil {
-				logger.Warnf("failed to remove temporary directory %s: %v", tempDir, err)
+				logger.Debugf("failed to remove temporary directory %s: %v", tempDir, err)
 			}
 		}()
 		dstRoot = tempDir
@@ -221,6 +223,15 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		}
 	}
 
+	if err := prepareOutput(ctx, dstRoot, opts, logger); err != nil {
+		return err
+	}
+
+	fmt.Printf("Successfully backed up artifact(s) to %s\n", opts.output)
+	return nil
+}
+
+func prepareOutput(ctx context.Context, dstRoot string, opts *backupOptions, logger logrus.FieldLogger) error {
 	// Remove ingest dir for a cleaner output
 	ingestDir := filepath.Join(dstRoot, "ingest")
 	if _, err := os.Stat(ingestDir); err == nil {
@@ -230,27 +241,38 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	}
 
 	if opts.outputType != outputTypeTar {
+		// If output type is not a tar, we are done
 		return nil
 	}
 
-	// Create the tarball from the OCI layout directory
+	// Create a temporary file for the tarball
 	tempTar, err := os.CreateTemp("", "oras-backup-*.tar")
 	if err != nil {
-		return fmt.Errorf("failed to create output tar file %s: %w", opts.output, err)
+		return fmt.Errorf("failed to create temporary tar file: %w", err)
 	}
-	if err := io.TarDirectory(ctx, tempTar, dstRoot); err != nil {
-		return fmt.Errorf("failed to write tar file %s: %w", opts.output, err)
+	tempTarPath := tempTar.Name()
+	if err := orasio.TarDirectory(ctx, tempTar, dstRoot); err != nil {
+		return fmt.Errorf("failed to create tar archive from directory %s: %w", dstRoot, err)
 	}
 	if err := tempTar.Close(); err != nil {
-		logger.Warnf("failed to close tar file %s: %v", opts.output, err)
-	}
-	// TODO: handle abs path of output?
-	// TODO: cross-system error?
-	if err := os.Rename(tempTar.Name(), opts.output); err != nil {
-		return fmt.Errorf("failed to rename tar file %s to %s: %w", tempTar.Name(), opts.output, err)
+		return fmt.Errorf("failed to close temporary tar file: %w", err)
 	}
 
-	fmt.Println("Successfully backed up artifacts to", opts.output)
+	// Ensure target directory exists
+	outputPath := opts.output
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0777); err != nil {
+		return fmt.Errorf("failed to create directory for output file %s: %w", outputPath, err)
+	}
+
+	// Move the temporary tar file to the final output path
+	if err := os.Rename(tempTarPath, outputPath); err != nil {
+		removeErr := os.Remove(tempTarPath)
+		if removeErr != nil {
+			logger.Debugf("failed to remove temporary tar file %s: %v", tempTarPath, removeErr)
+		}
+		return err
+	}
+
 	return nil
 }
 
@@ -284,23 +306,25 @@ func parseArtifactRefs(artifactRefs string) (repository string, tags []string, e
 		return "", nil, fmt.Errorf("failed to parse reference %q: %w", artifactRef, err)
 	}
 
-	// Process references
-	if parsedRef.Reference == "" {
-		tags = extraRefs[:]
-	} else {
-		tags = append([]string{parsedRef.Reference}, extraRefs...)
+	// Process references and filter out empty tags
+	tags = make([]string, 0, len(extraRefs)+1)
+
+	// Add the main reference if it exists
+	if parsedRef.Reference != "" {
+		tags = append(tags, parsedRef.Reference)
+	}
+	// Add additional references, filtering out empty tags and validating them
+	for _, tag := range extraRefs {
+		if tag != "" {
+			if !tagRegexp.MatchString(tag) {
+				return "", nil, fmt.Errorf("invalid tag %q in reference %q: tag must match %s", tag, artifactRefs, tagRegexp)
+			}
+			tags = append(tags, tag)
+		}
 	}
 
 	// Strip the reference part to get the repository
 	parsedRef.Reference = ""
 	repository = parsedRef.String()
-
-	for _, tag := range tags {
-		if !tagRegexp.MatchString(tag) {
-			return "", nil, fmt.Errorf("invalid tag %q in reference %q", tag, artifactRefs)
-		}
-	}
-
-	// TODO: validate each reference against tagRegex?
 	return repository, tags, nil
 }
