@@ -228,6 +228,72 @@ func (ch *TTYCopyHandler) OnMounted(_ context.Context, desc ocispec.Descriptor) 
 	return ch.tracked.Report(desc, progress.StateMounted)
 }
 
+type TTYBackupHandler struct {
+	tty     *os.File
+	tracked track.GraphTarget
+}
+
+func NewTTYBackupHandler(tty *os.File) BackupHandler {
+	return &TTYBackupHandler{
+		tty: tty,
+	}
+}
+
+func (bh *TTYBackupHandler) OnTagsDiscovered(tags []string) error {
+	return nil
+}
+
+func (bh *TTYBackupHandler) OnTagsPulled(tag string) error {
+	return nil
+}
+
+func (bh *TTYBackupHandler) OnExporting(path string) error {
+	return nil
+}
+
+func (bh *TTYBackupHandler) OnExported(path string) error {
+	return nil
+}
+
+func (bh *TTYBackupHandler) OnBackupCompleted() error {
+	return nil
+}
+
+func (bh *TTYBackupHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
+	prompt := map[progress.State]string{
+		progress.StateInitialized:  backupPromptPulling,
+		progress.StateTransmitting: backupPromptPulling,
+		progress.StateTransmitted:  backupPromptPulled,
+		progress.StateExists:       backupPromptExists,
+		progress.StateSkipped:      backupPromptSkipped,
+	}
+	var err error
+	bh.tracked, err = track.NewTarget(gt, prompt, bh.tty)
+	if err != nil {
+		return nil, err
+	}
+	return bh.tracked, err
+}
+
+func (bh *TTYBackupHandler) StopTracking() error {
+	return bh.tracked.Close()
+}
+
+// OnCopySkipped implements BackupHandler.
+func (bh *TTYBackupHandler) OnCopySkipped(ctx context.Context, desc ocispec.Descriptor) error {
+	return bh.tracked.Report(desc, progress.StateSkipped)
+}
+
+// PostCopy implements BackupHandler.
+func (bh *TTYBackupHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor) error {
+	return nil
+}
+
+// PreCopy implements BackupHandler.
+func (bh *TTYBackupHandler) PreCopy(ctx context.Context, desc ocispec.Descriptor) error {
+	return nil
+}
+
 // TTYBlobPushHandler handles tty status output for blob push events.
 type TTYBlobPushHandler struct {
 	desc    ocispec.Descriptor
