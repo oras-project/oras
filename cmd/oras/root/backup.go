@@ -64,28 +64,31 @@ type backupOptions struct {
 func backupCmd() *cobra.Command {
 	var opts backupOptions
 	cmd := &cobra.Command{
-		Use:   "backup [flags] --output <path> <registry>/<repository>[:<ref1>[,<ref2>...]]",
-		Short: "Back up artifacts from a registry to a local directory or tar file",
-		Long: `Back up artifacts from a registry to a local directory or tar file
+		Use:   "oras backup [flags] --output <path> <registry>/<repository>[:<ref1>[,<ref2>...]]",
+		Short: "Back up artifacts from a registry into an OCI image layout, saved either as a directory or a tar archive",
+		Long: `Back up artifacts from a registry into an OCI image layout, saved either as a directory or a tar archive. The output format is determined by the file extension of the specified output path: if it ends with ".tar", the output will be a tar archive; otherwise, it will be a directory.
 
-Example - Back up artifact with referrers from a registry to a tar file:
-  oras backup --output backup.tar --include-referrers registry-a.k8s.io/kube-apiserver
+Example - Back up an artifact with referrers from a registry to an OCI image layout directory:
+  oras backup --output hello --include-referrers localhost:5000/hello:v1
 
-Example - Back up specific tagged artifacts with referrers:
-  oras backup --output backup.tar --include-referrers registry-a.k8s.io/kube-apiserver:v1,v2
+Example - Back up an artifact with referrers from a registry to a tar archive:
+  oras backup --output hello.tar --include-referrers localhost:5000/hello:v1
+
+Example - Back up multiple artifacts with their referrers:
+  oras backup --output hello.tar --include-referrers localhost:5000/hello:v1,v2,v3
 
 Example - Back up artifact from an insecure registry:
-  oras backup --output backup.tar --insecure localhost:5000/hello:v1
+  oras backup --output hello.tar --insecure localhost:5000/hello:v1
 
 Example - Back up artifact from the HTTP registry:
-  oras backup --output backup.tar --plain-http localhost:5000/hello:v1
+  oras backup --output hello.tar --plain-http localhost:5000/hello:v1
 
 Example - Back up artifact with local cache:
   export ORAS_CACHE=~/.oras/cache
-  oras backup --output backup.tar registry.com/myrepo:v1
+  oras backup --output hello.tar localhost:5000/hello:v1
 
 Example - Back up with concurrency level tuned:
-  oras backup --output backup.tar --concurrency 6 registry.com/myrepo:v1
+  oras backup --output hello.tar --concurrency 6 localhost:5000/hello:v1
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the artifact reference you want to back up"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
