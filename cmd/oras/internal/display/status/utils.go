@@ -48,6 +48,14 @@ const (
 	copyPromptMounted = "Mounted"
 )
 
+// Prompts for backup events.
+const (
+	backupPromptPulling = "Pulling  "
+	backupPromptPulled  = "Pulled   "
+	backupPromptExists  = "Exists   "
+	backupPromptSkipped = "Skipped  "
+)
+
 // Prompts for index events.
 const (
 	IndexPromptFetching = "Fetching "

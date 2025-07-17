@@ -31,6 +31,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
+	"oras.land/oras/cmd/oras/internal/display"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	orasio "oras.land/oras/internal/io"
@@ -191,31 +192,46 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		return fmt.Errorf("no references to back up, please specify at least one reference")
 	}
 
+	statusHandler, _ := display.NewBackupHandler(opts.Printer, opts.TTY)
+
+	copyGraphOpts := oras.DefaultCopyGraphOptions
+	copyGraphOpts.Concurrency = opts.concurrency
+	copyGraphOpts.PreCopy = statusHandler.PreCopy
+	copyGraphOpts.PostCopy = statusHandler.PostCopy
+	copyGraphOpts.OnCopySkipped = statusHandler.OnCopySkipped
 	// Do the backup
 	copyOpts := oras.CopyOptions{
-		CopyGraphOptions: oras.CopyGraphOptions{
-			Concurrency: opts.concurrency,
-		},
+		CopyGraphOptions: copyGraphOpts,
 	}
 	extendedCopyOpts := oras.ExtendedCopyOptions{
 		ExtendedCopyGraphOptions: oras.ExtendedCopyGraphOptions{
-			CopyGraphOptions: oras.CopyGraphOptions{
-				Concurrency: opts.concurrency,
-			},
+			CopyGraphOptions: copyGraphOpts,
 		},
 	}
+
+	trackedDst, err := statusHandler.StartTracking(dst)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		stopErr := statusHandler.StopTracking()
+		if err == nil {
+			err = stopErr
+		}
+	}()
+
 	for _, tag := range tags {
 		// TODO: handle concurrency between refs
 		// TODO: handle output format
 		fmt.Println("Found ref:", tag)
 		if opts.includeReferrers {
-			root, err := oras.ExtendedCopy(ctx, src, tag, dst, tag, extendedCopyOpts)
+			root, err := oras.ExtendedCopy(ctx, src, tag, trackedDst, tag, extendedCopyOpts)
 			if err != nil {
 				return fmt.Errorf("failed to extended copy ref %s: %w", tag, err)
 			}
 			fmt.Printf("Extended copied ref: %s, root digest: %s\n", tag, root.Digest)
 		} else {
-			root, err := oras.Copy(ctx, src, tag, dst, tag, copyOpts)
+			root, err := oras.Copy(ctx, src, tag, trackedDst, tag, copyOpts)
 			if err != nil {
 				return fmt.Errorf("failed to copy ref %s: %w", tag, err)
 			}
