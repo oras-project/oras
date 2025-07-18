@@ -331,12 +331,13 @@ func parseArtifactRefs(artifactRefs string) (repository string, tags []string, e
 	}
 	// Add additional references, filtering out empty tags and validating them
 	for _, tag := range extraRefs {
-		if tag != "" {
-			if !tagRegexp.MatchString(tag) {
-				return "", nil, fmt.Errorf("invalid tag %q in reference %q: tag must match %s", tag, artifactRefs, tagRegexp)
-			}
-			tags = append(tags, tag)
+		if tag == "" {
+			continue // skip empty tags
 		}
+		if !tagRegexp.MatchString(tag) {
+			return "", nil, fmt.Errorf("invalid tag %q in reference %q: tag must match %s", tag, artifactRefs, tagRegexp)
+		}
+		tags = append(tags, tag)
 	}
 
 	// Strip the reference part to get the repository
