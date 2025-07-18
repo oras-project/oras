@@ -303,34 +303,47 @@ func referencesToBackup(ctx context.Context, repo *remote.Repository, opts *back
 }
 
 func parseArtifactRefs(artifactRefs string) (repository string, tags []string, err error) {
-	// TODO: more tests
-	// Reject digest references
-	if len(artifactRefs) == 0 {
-		return "", nil, fmt.Errorf("invalid reference format: empty reference")
+	// Validate input
+	if artifactRefs == "" {
+		return "", nil, fmt.Errorf("empty reference")
 	}
-	if strings.Contains(artifactRefs, "@") {
+	// Reject digest references early
+	if strings.ContainsRune(artifactRefs, '@') {
 		return "", nil, fmt.Errorf("digest references are not supported: %q", artifactRefs)
 	}
 
-	refs := strings.Split(artifactRefs, ",")
-	artifactRef := refs[0]
-	extraRefs := refs[1:]
+	// 1. Split the input into repository and tag parts
+	lastSlash := strings.LastIndexByte(artifactRefs, '/')
+	lastColon := strings.LastIndexByte(artifactRefs, ':')
 
-	// Validate the main reference
-	parsedRef, err := registry.ParseReference(artifactRef)
+	var repoParts string
+	var tagsPart string
+	if lastColon != -1 && lastColon > lastSlash {
+		// A colon after the last slash denotes the beginning of tags
+		repoParts = artifactRefs[:lastColon]
+		tagsPart = artifactRefs[lastColon+1:]
+	} else {
+		repoParts = artifactRefs
+		// tagPart stays empty - no tags
+	}
+
+	// 2. Validate repository
+	parsedRepo, err := registry.ParseReference(repoParts)
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to parse reference %q: %w", artifactRef, err)
+		return "", nil, fmt.Errorf("invalid repository %q: %w", repoParts, err)
 	}
+	repository = parsedRepo.String()
 
-	// Process references and filter out empty tags
-	tags = make([]string, 0, len(extraRefs)+1)
-
-	// Add the main reference if it exists
-	if parsedRef.Reference != "" {
-		tags = append(tags, parsedRef.Reference)
+	// 3. Process tags
+	if tagsPart == "" {
+		return repository, nil, nil
 	}
-	// Add additional references, filtering out empty tags and validating them
-	for _, tag := range extraRefs {
+	tagList := strings.Split(tagsPart, ",")
+	tags = make([]string, 0, len(tagList))
+
+	// Validate each tag
+	for _, tag := range tagList {
+		tag = strings.TrimSpace(tag)
 		if tag == "" {
 			continue // skip empty tags
 		}
@@ -339,9 +352,5 @@ func parseArtifactRefs(artifactRefs string) (repository string, tags []string, e
 		}
 		tags = append(tags, tag)
 	}
-
-	// Strip the reference part to get the repository
-	parsedRef.Reference = ""
-	repository = parsedRef.String()
 	return repository, tags, nil
 }
