@@ -171,7 +171,7 @@ func TestParseArtifactRefs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repository, references, err := parseArtifactRefs(tt.input)
+			repository, references, err := parseArtifactsToBackup(tt.input)
 
 			// Check error expectation
 			if tt.wantErr {
