@@ -37,18 +37,22 @@ func NewBackupHandler(repo string, printer *output.Printer) metadata.BackupHandl
 }
 
 // OnBackupCompleted implements metadata.BackupHandler.
-func (bh *BackupHandler) OnBackupCompleted(tags []string, path string) error {
-	panic("unimplemented")
+func (bh *BackupHandler) OnBackupCompleted(tagsCount int, path string) error {
+	bh.printer.Printf("Successfully backed up %d tag(s) from %q to %q\n", tagsCount, bh.repo, path)
+	return nil
 }
 
 // OnExported implements metadata.BackupHandler.
 func (bh *BackupHandler) OnExported(path string) error {
-	panic("unimplemented")
+	// TODO: size?
+	_ = bh.printer.Printf("Exported to %s\n", path)
+	return nil
 }
 
 // OnExporting implements metadata.BackupHandler.
 func (bh *BackupHandler) OnExporting(path string) error {
-	panic("unimplemented")
+	_ = bh.printer.Printf("Exporting to %s\n", path)
+	return nil
 }
 
 // OnArtifactPulled implements metadata.BackupHandler.
@@ -59,12 +63,15 @@ func (bh *BackupHandler) OnArtifactPulled(tag string, referrersCount int) error 
 
 // OnTagsFound implements metadata.BackupHandler.
 func (bh *BackupHandler) OnTagsFound(tags []string) error {
+	if len(tags) == 0 {
+		return nil
+	}
 	bh.tags = tags
-	bh.printer.Printf("Found %d tag(s) in %s: %s\n", len(tags), bh.repo, strings.Join(tags, ", "))
+	bh.printer.Printf("Found %d tag(s) in %q: %s\n", len(tags), bh.repo, strings.Join(tags, ", "))
 	return nil
 }
 
 // Render implements metadata.BackupHandler.
 func (bh *BackupHandler) Render() error {
-	panic("unimplemented")
+	return nil
 }
