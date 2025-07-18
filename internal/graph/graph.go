@@ -111,6 +111,11 @@ func FindPredecessors(ctx context.Context, src oras.ReadOnlyGraphTarget, descs [
 	if opts.Concurrency != 0 {
 		g.SetLimit(opts.Concurrency)
 	}
+	if opts.FindPredecessors == nil {
+		opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			return src.Predecessors(ctx, desc)
+		}
+	}
 	for _, desc := range descs {
 		g.Go(func(node ocispec.Descriptor) func() error {
 			return func() error {

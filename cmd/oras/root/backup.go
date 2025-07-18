@@ -216,15 +216,23 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	}()
 
 	for _, tag := range tags {
-		// TODO: handle concurrency between refs
 		// TODO: handle output format
 		fmt.Println("Found ref:", tag)
 		if opts.includeReferrers {
-			root, err := oras.ExtendedCopy(ctx, srcRepo, tag, trackedDst, tag, extendedCopyOpts)
+			// TODO: handle platform resolution?
+			desc, err := oras.Resolve(ctx, srcRepo, tag, oras.DefaultResolveOptions)
 			if err != nil {
-				return fmt.Errorf("failed to extended copy ref %s: %w", tag, err)
+				return fmt.Errorf("failed to resolve %s: %w", tag, err)
 			}
-			fmt.Printf("Extended copied ref: %s, root digest: %s\n", tag, root.Digest)
+			extendedCopyOpts, err = prepareCopyOption(ctx, srcRepo, trackedDst, desc, extendedCopyOpts)
+			if err != nil {
+				return fmt.Errorf("failed to prepare extended copy options for %s: %w", tag, err)
+			}
+			_, err = oras.ExtendedCopy(ctx, srcRepo, desc.Digest.String(), trackedDst, tag, extendedCopyOpts)
+			if err != nil {
+				return fmt.Errorf("failed to copy tag %s: %w", tag, err)
+			}
+			fmt.Printf("Extended copied ref: %s, root digest: %s\n", tag, desc.Digest)
 		} else {
 			root, err := oras.Copy(ctx, srcRepo, tag, trackedDst, tag, copyOpts)
 			if err != nil {
@@ -237,7 +245,6 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	if err := prepareBackupOutput(ctx, dstRoot, opts, logger); err != nil {
 		return err
 	}
-
 	fmt.Printf("Successfully backed up artifact(s) to %s\n", opts.output)
 	return nil
 }
