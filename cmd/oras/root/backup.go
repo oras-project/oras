@@ -49,7 +49,6 @@ const (
 var tagRegexp = regexp.MustCompile(`^[\w][\w.-]{0,127}$`)
 
 type backupOptions struct {
-	option.Cache
 	option.Common
 	option.Remote
 	option.Terminal
@@ -84,10 +83,6 @@ Example - Back up artifact from an insecure registry:
 
 Example - Back up artifact from the HTTP registry:
   oras backup --output hello.tar --plain-http localhost:5000/hello:v1
-
-Example - Back up artifact with local cache:
-  export ORAS_CACHE=~/.oras/cache
-  oras backup --output hello.tar localhost:5000/hello:v1
 
 Example - Back up with concurrency level tuned:
   oras backup --output hello.tar --concurrency 6 localhost:5000/hello:v1
@@ -209,10 +204,6 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		},
 	}
 
-	cachedSrc, err := opts.CachedTarget(srcRepo)
-	if err != nil {
-		return fmt.Errorf("failed to cache source repository: %w", err)
-	}
 	trackedDst, err := statusHandler.StartTracking(dstOCI)
 	if err != nil {
 		return err
@@ -229,14 +220,13 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		// TODO: handle output format
 		fmt.Println("Found ref:", tag)
 		if opts.includeReferrers {
-			// TODO: use cachedSrc?
 			root, err := oras.ExtendedCopy(ctx, srcRepo, tag, trackedDst, tag, extendedCopyOpts)
 			if err != nil {
 				return fmt.Errorf("failed to extended copy ref %s: %w", tag, err)
 			}
 			fmt.Printf("Extended copied ref: %s, root digest: %s\n", tag, root.Digest)
 		} else {
-			root, err := oras.Copy(ctx, cachedSrc, tag, trackedDst, tag, copyOpts)
+			root, err := oras.Copy(ctx, srcRepo, tag, trackedDst, tag, copyOpts)
 			if err != nil {
 				return fmt.Errorf("failed to copy ref %s: %w", tag, err)
 			}
