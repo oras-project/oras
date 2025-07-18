@@ -60,7 +60,7 @@ type backupOptions struct {
 	concurrency      int
 
 	repository string
-	references []string
+	tags       []string
 }
 
 func backupCmd() *cobra.Command {
@@ -100,7 +100,7 @@ Example - Back up with concurrency level tuned:
 
 			// parse repo and references
 			var err error
-			opts.repository, opts.references, err = parseArtifactRefs(args[0])
+			opts.repository, opts.tags, err = parseArtifactsToBackup(args[0])
 			if err != nil {
 				return err
 			}
@@ -138,16 +138,15 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	// debugging
 	fmt.Println("******OPTIONS******")
 	fmt.Println("path:", opts.repository)
-	fmt.Println("references:", opts.references)
+	fmt.Println("references:", opts.tags)
 	fmt.Println("output:", opts.output)
 	fmt.Println("outputType:", opts.outputType)
 	fmt.Println("includeReferrers:", opts.includeReferrers)
 	fmt.Println("******END OF OPTIONS******")
 
-	// TODO:
 	// Overall, copy the artifacts from remote to OCI layout, and create a tar file if output type is tar
-	// If no references is specified: discover all tags in the repository and copy them
-	// If references are specified: copy the specified reference and extra refs
+	// If no tags are specified: discover all tags in the repository and copy them
+	// If tags are specified: copy the specified tag and extra tags
 	// If includeReferrers is true: do extended copy (questions: handle multi-arch?)
 
 	// TODO: might need to refactor output type handling here
@@ -172,28 +171,29 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		return fmt.Errorf("unsupported output type: %s", opts.outputType)
 	}
 
-	// Prepare remote repo as the source
-	src, err := opts.Remote.NewRepository(opts.repository, opts.Common, logger)
+	// Prepare remote srcRepo as the source
+	srcRepo, err := opts.Remote.NewRepository(opts.repository, opts.Common, logger)
 	if err != nil {
 		return err
 	}
 	// Prepare OCI layout as the destination
-	dst, err := oci.New(dstRoot)
+	dstOCI, err := oci.New(dstRoot)
 	if err != nil {
 		return fmt.Errorf("failed to create OCI store: %w", err)
 	}
 
-	tags, err := referencesToBackup(ctx, src, opts)
+	tags, err := findTagsToBackup(ctx, srcRepo, opts)
 	if err != nil {
-		return fmt.Errorf("failed to get references to back up: %w", err)
+		return fmt.Errorf("failed to get tags to back up: %w", err)
 	}
 	if len(tags) == 0 {
 		// TODO: better error message
-		return fmt.Errorf("no references to back up, please specify at least one reference")
+		return fmt.Errorf("no tags to back up, please specify at least one tag")
 	}
 
 	statusHandler, _ := display.NewBackupHandler(opts.Printer, opts.TTY)
 
+	// TODO: more options
 	copyGraphOpts := oras.DefaultCopyGraphOptions
 	copyGraphOpts.Concurrency = opts.concurrency
 	copyGraphOpts.PreCopy = statusHandler.PreCopy
@@ -209,7 +209,11 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		},
 	}
 
-	trackedDst, err := statusHandler.StartTracking(dst)
+	cachedSrc, err := opts.CachedTarget(srcRepo)
+	if err != nil {
+		return fmt.Errorf("failed to cache source repository: %w", err)
+	}
+	trackedDst, err := statusHandler.StartTracking(dstOCI)
 	if err != nil {
 		return err
 	}
@@ -225,13 +229,14 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		// TODO: handle output format
 		fmt.Println("Found ref:", tag)
 		if opts.includeReferrers {
-			root, err := oras.ExtendedCopy(ctx, src, tag, trackedDst, tag, extendedCopyOpts)
+			// TODO: use cachedSrc?
+			root, err := oras.ExtendedCopy(ctx, srcRepo, tag, trackedDst, tag, extendedCopyOpts)
 			if err != nil {
 				return fmt.Errorf("failed to extended copy ref %s: %w", tag, err)
 			}
 			fmt.Printf("Extended copied ref: %s, root digest: %s\n", tag, root.Digest)
 		} else {
-			root, err := oras.Copy(ctx, src, tag, trackedDst, tag, copyOpts)
+			root, err := oras.Copy(ctx, cachedSrc, tag, trackedDst, tag, copyOpts)
 			if err != nil {
 				return fmt.Errorf("failed to copy ref %s: %w", tag, err)
 			}
@@ -239,7 +244,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		}
 	}
 
-	if err := prepareOutput(ctx, dstRoot, opts, logger); err != nil {
+	if err := prepareBackupOutput(ctx, dstRoot, opts, logger); err != nil {
 		return err
 	}
 
@@ -247,7 +252,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	return nil
 }
 
-func prepareOutput(ctx context.Context, dstRoot string, opts *backupOptions, logger logrus.FieldLogger) error {
+func prepareBackupOutput(ctx context.Context, dstRoot string, opts *backupOptions, logger logrus.FieldLogger) error {
 	// Remove ingest dir for a cleaner output
 	ingestDir := filepath.Join(dstRoot, "ingest")
 	if _, err := os.Stat(ingestDir); err == nil {
@@ -292,17 +297,16 @@ func prepareOutput(ctx context.Context, dstRoot string, opts *backupOptions, log
 	return nil
 }
 
-func referencesToBackup(ctx context.Context, repo *remote.Repository, opts *backupOptions) ([]string, error) {
-	if len(opts.references) > 0 {
-		// TODO: handle reference, e.g., tag or digest
-		return opts.references, nil
+func findTagsToBackup(ctx context.Context, repo *remote.Repository, opts *backupOptions) ([]string, error) {
+	if len(opts.tags) > 0 {
+		return opts.tags, nil
 	}
 
 	// If no references are specified, discover all tags in the repository
 	return registry.Tags(ctx, repo)
 }
 
-func parseArtifactRefs(artifactRefs string) (repository string, tags []string, err error) {
+func parseArtifactsToBackup(artifactRefs string) (repository string, tags []string, err error) {
 	// Validate input
 	if artifactRefs == "" {
 		return "", nil, fmt.Errorf("empty reference")
