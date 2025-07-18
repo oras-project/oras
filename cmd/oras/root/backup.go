@@ -32,6 +32,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	orasio "oras.land/oras/internal/io"
@@ -216,6 +217,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		}
 	}()
 
+	// TODO: handle copy error
 	for _, tag := range tags {
 		if opts.includeReferrers {
 			// TODO: handle platform resolution?
@@ -246,14 +248,14 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		}
 	}
 
-	if err := prepareBackupOutput(ctx, dstRoot, opts, logger); err != nil {
+	if err := prepareBackupOutput(ctx, dstRoot, opts, logger, metadataHandler); err != nil {
 		return err
 	}
-	fmt.Printf("Successfully backed up artifact(s) to %s\n", opts.output)
+	metadataHandler.OnBackupCompleted(len(tags), opts.output)
 	return nil
 }
 
-func prepareBackupOutput(ctx context.Context, dstRoot string, opts *backupOptions, logger logrus.FieldLogger) error {
+func prepareBackupOutput(ctx context.Context, dstRoot string, opts *backupOptions, logger logrus.FieldLogger, metadataHandler metadata.BackupHandler) error {
 	// Remove ingest dir for a cleaner output
 	ingestDir := filepath.Join(dstRoot, "ingest")
 	if _, err := os.Stat(ingestDir); err == nil {
@@ -267,6 +269,7 @@ func prepareBackupOutput(ctx context.Context, dstRoot string, opts *backupOption
 		return nil
 	}
 
+	metadataHandler.OnExporting(opts.output)
 	// Create a temporary file for the tarball
 	tempTar, err := os.CreateTemp("", "oras-backup-*.tar")
 	if err != nil {
@@ -281,13 +284,12 @@ func prepareBackupOutput(ctx context.Context, dstRoot string, opts *backupOption
 	}
 
 	// Ensure target directory exists
-	outputPath := opts.output
-	if err := os.MkdirAll(filepath.Dir(outputPath), 0777); err != nil {
-		return fmt.Errorf("failed to create directory for output file %s: %w", outputPath, err)
+	if err := os.MkdirAll(filepath.Dir(opts.output), 0777); err != nil {
+		return fmt.Errorf("failed to create directory for output file %s: %w", opts.output, err)
 	}
 
 	// Move the temporary tar file to the final output path
-	if err := os.Rename(tempTarPath, outputPath); err != nil {
+	if err := os.Rename(tempTarPath, opts.output); err != nil {
 		removeErr := os.Remove(tempTarPath)
 		if removeErr != nil {
 			logger.Debugf("failed to remove temporary tar file %s: %v", tempTarPath, removeErr)
@@ -295,6 +297,7 @@ func prepareBackupOutput(ctx context.Context, dstRoot string, opts *backupOption
 		return err
 	}
 
+	metadataHandler.OnExported(opts.output)
 	return nil
 }
 

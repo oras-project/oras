@@ -113,7 +113,7 @@ type BackupHandler interface {
 	OnArtifactPulled(tag string, referrerCount int) error
 	OnExporting(path string) error
 	OnExported(path string) error
-	OnBackupCompleted(tags []string, path string) error
+	OnBackupCompleted(tagsCount int, path string) error
 }
 
 // BlobPushHandler handles metadata output for blob push events.
