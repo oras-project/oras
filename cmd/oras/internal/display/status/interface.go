@@ -68,7 +68,7 @@ type CopyHandler interface {
 
 type BackupHandler interface {
 	OnTagsDiscovered(tags []string) error
-	OnTagsPulled(tag string) error
+	OnTagPulled(tag string) error
 	OnExporting(path string) error
 	OnExported(path string) error
 	OnBackupCompleted() error
