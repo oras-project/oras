@@ -132,8 +132,8 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 
 	// debugging
 	fmt.Println("******OPTIONS******")
-	fmt.Println("path:", opts.repository)
-	fmt.Println("references:", opts.tags)
+	fmt.Println("repository:", opts.repository)
+	fmt.Println("tags:", opts.tags)
 	fmt.Println("output:", opts.output)
 	fmt.Println("outputType:", opts.outputType)
 	fmt.Println("includeReferrers:", opts.includeReferrers)
@@ -177,6 +177,8 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		return fmt.Errorf("failed to create OCI store: %w", err)
 	}
 
+	statusHandler, metadataHandler := display.NewBackupHandler(opts.Printer, opts.TTY, opts.repository)
+
 	tags, err := findTagsToBackup(ctx, srcRepo, opts)
 	if err != nil {
 		return fmt.Errorf("failed to get tags to back up: %w", err)
@@ -185,8 +187,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		// TODO: better error message
 		return fmt.Errorf("no tags to back up, please specify at least one tag")
 	}
-
-	statusHandler, _ := display.NewBackupHandler(opts.Printer, opts.TTY)
+	metadataHandler.OnTagsFound(tags)
 
 	// TODO: more options
 	copyGraphOpts := oras.DefaultCopyGraphOptions
@@ -216,8 +217,6 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	}()
 
 	for _, tag := range tags {
-		// TODO: handle output format
-		fmt.Println("Found ref:", tag)
 		if opts.includeReferrers {
 			// TODO: handle platform resolution?
 			desc, err := oras.Resolve(ctx, srcRepo, tag, oras.DefaultResolveOptions)
@@ -232,13 +231,18 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 			if err != nil {
 				return fmt.Errorf("failed to copy tag %s: %w", tag, err)
 			}
-			fmt.Printf("Extended copied ref: %s, root digest: %s\n", tag, desc.Digest)
+
+			referrers, err := registry.Referrers(ctx, dstOCI, desc, "")
+			if err != nil {
+				return fmt.Errorf("failed to get referrers for %s: %w", tag, err)
+			}
+			metadataHandler.OnArtifactPulled(tag, len(referrers))
 		} else {
-			root, err := oras.Copy(ctx, srcRepo, tag, trackedDst, tag, copyOpts)
+			_, err := oras.Copy(ctx, srcRepo, tag, trackedDst, tag, copyOpts)
 			if err != nil {
 				return fmt.Errorf("failed to copy ref %s: %w", tag, err)
 			}
-			fmt.Printf("Copied ref: %s, root digest: %s\n", tag, root.Digest)
+			metadataHandler.OnArtifactPulled(tag, 0)
 		}
 	}
 
