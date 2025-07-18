@@ -230,11 +230,11 @@ func NewCopyHandler(printer *output.Printer, tty *os.File, fetcher fetcher.Fetch
 	return status.NewTextCopyHandler(printer, fetcher), text.NewCopyHandler(printer)
 }
 
-func NewBackupHandler(printer *output.Printer, tty *os.File) (status.BackupHandler, metadata.BackupHandler) {
+func NewBackupHandler(printer *output.Printer, tty *os.File, repo string) (status.BackupHandler, metadata.BackupHandler) {
 	if tty != nil {
-		return status.NewTTYBackupHandler(tty), nil
+		return status.NewTTYBackupHandler(tty), text.NewBackupHandler(repo, printer)
 	}
-	return nil, nil
+	return status.NewTextBackupHandler(printer), text.NewBackupHandler(repo, printer)
 }
 
 // NewBlobPushHandler returns blob push handlers.

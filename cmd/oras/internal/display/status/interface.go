@@ -67,11 +67,6 @@ type CopyHandler interface {
 }
 
 type BackupHandler interface {
-	OnTagsDiscovered(tags []string) error
-	OnTagPulled(tag string) error
-	OnExporting(path string) error
-	OnExported(path string) error
-	OnBackupCompleted() error
 	StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error)
 	StopTracking() error
 	OnCopySkipped(ctx context.Context, desc ocispec.Descriptor) error

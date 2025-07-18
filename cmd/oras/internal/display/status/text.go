@@ -193,6 +193,41 @@ func (ch *TextCopyHandler) OnMounted(_ context.Context, desc ocispec.Descriptor)
 	return ch.printer.PrintStatus(desc, copyPromptMounted)
 }
 
+func NewTextBackupHandler(printer *output.Printer) BackupHandler {
+	return &TextBackupHandler{
+		printer: printer,
+	}
+}
+
+type TextBackupHandler struct {
+	printer *output.Printer
+}
+
+// OnCopySkipped implements BackupHandler.
+func (t *TextBackupHandler) OnCopySkipped(ctx context.Context, desc ocispec.Descriptor) error {
+	return nil
+}
+
+// PostCopy implements BackupHandler.
+func (t *TextBackupHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor) error {
+	return nil
+}
+
+// PreCopy implements BackupHandler.
+func (t *TextBackupHandler) PreCopy(ctx context.Context, desc ocispec.Descriptor) error {
+	return nil
+}
+
+// StartTracking implements BackupHandler.
+func (t *TextBackupHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
+	return gt, nil
+}
+
+// StopTracking implements BackupHandler.
+func (t *TextBackupHandler) StopTracking() error {
+	return nil
+}
+
 // TextManifestPushHandler handles text status output for manifest push events.
 type TextManifestPushHandler struct {
 	desc    ocispec.Descriptor
