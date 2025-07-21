@@ -309,7 +309,11 @@ func prepareBackupOutput(ctx context.Context, dstRoot string, opts *backupOption
 		return err
 	}
 
-	return metadataHandler.OnTarExported(opts.output)
+	fi, err := os.Stat(absOutput)
+	if err != nil {
+		return fmt.Errorf("failed to stat output file %s: %w", absOutput, err)
+	}
+	return metadataHandler.OnTarExported(opts.output, fi.Size())
 }
 
 func findTagsToBackup(ctx context.Context, repo *remote.Repository, opts *backupOptions) ([]string, error) {

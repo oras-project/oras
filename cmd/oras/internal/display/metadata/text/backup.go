@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"oras.land/oras/cmd/oras/internal/display/metadata"
+	"oras.land/oras/cmd/oras/internal/display/status/progress/humanize"
 	"oras.land/oras/cmd/oras/internal/output"
 )
 
@@ -42,9 +43,8 @@ func (bh *BackupHandler) OnBackupCompleted(tagsCount int, path string) error {
 }
 
 // OnTarExported implements metadata.BackupHandler.
-func (bh *BackupHandler) OnTarExported(path string) error {
-	// TODO: size?
-	return bh.printer.Printf("Exported to %s\n", path)
+func (bh *BackupHandler) OnTarExported(path string, size int64) error {
+	return bh.printer.Printf("Exported to %s (%s)\n", path, humanize.ToBytes(size))
 }
 
 // OnTarExporting implements metadata.BackupHandler.
