@@ -186,7 +186,6 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	copyGraphOpts.PreCopy = statusHandler.PreCopy
 	copyGraphOpts.PostCopy = statusHandler.PostCopy
 	copyGraphOpts.OnCopySkipped = statusHandler.OnCopySkipped
-	// Do the backup
 	copyOpts := oras.CopyOptions{
 		CopyGraphOptions: copyGraphOpts,
 	}
@@ -196,20 +195,28 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		},
 	}
 
-	trackedDst, err := statusHandler.StartTracking(dstOCI)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		stopErr := statusHandler.StopTracking()
-		if err == nil {
-			err = stopErr
-		}
-	}()
+	for _, t := range tags {
+		err := func(tag string) (retErr error) {
+			trackedDst, err := statusHandler.StartTracking(dstOCI)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				stopErr := statusHandler.StopTracking()
+				if retErr == nil {
+					retErr = stopErr
+				}
+			}()
 
-	// TODO: handle copy error
-	for _, tag := range tags {
-		if opts.includeReferrers {
+			if !opts.includeReferrers {
+				_, err := oras.Copy(ctx, srcRepo, tag, trackedDst, tag, copyOpts)
+				if err != nil {
+					return fmt.Errorf("failed to copy ref %s: %w", tag, err)
+				}
+				return metadataHandler.OnArtifactPulled(tag, 0)
+			}
+
+			// copy with referrers
 			desc, err := oras.Resolve(ctx, srcRepo, tag, oras.DefaultResolveOptions)
 			if err != nil {
 				return fmt.Errorf("failed to resolve %s: %w", tag, err)
@@ -222,26 +229,21 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 			if err != nil {
 				return fmt.Errorf("failed to copy tag %s: %w", tag, err)
 			}
-
 			referrers, err := registry.Referrers(ctx, dstOCI, desc, "")
 			if err != nil {
 				return fmt.Errorf("failed to get referrers for %s: %w", tag, err)
 			}
-			metadataHandler.OnArtifactPulled(tag, len(referrers))
-		} else {
-			_, err := oras.Copy(ctx, srcRepo, tag, trackedDst, tag, copyOpts)
-			if err != nil {
-				return fmt.Errorf("failed to copy ref %s: %w", tag, err)
-			}
-			metadataHandler.OnArtifactPulled(tag, 0)
+			return metadataHandler.OnArtifactPulled(tag, len(referrers))
+		}(t)
+		if err != nil {
+			return oerrors.UnwrapCopyError(err)
 		}
 	}
 
 	if err := prepareBackupOutput(ctx, dstRoot, opts, logger, metadataHandler); err != nil {
 		return err
 	}
-	metadataHandler.OnBackupCompleted(len(tags), opts.output)
-	return nil
+	return metadataHandler.OnBackupCompleted(len(tags), opts.output)
 }
 
 func prepareBackupOutput(ctx context.Context, dstRoot string, opts *backupOptions, logger logrus.FieldLogger, metadataHandler metadata.BackupHandler) error {
