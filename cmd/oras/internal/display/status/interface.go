@@ -66,6 +66,7 @@ type CopyHandler interface {
 	StopTracking() error
 }
 
+// BackupHandler handles status output for backup command.
 type BackupHandler interface {
 	StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error)
 	StopTracking() error
