@@ -117,6 +117,7 @@ Example - Back up with concurrency level tuned:
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.Printer.Verbose = true // always print verbose output
 			return runBackup(cmd, &opts)
 		},
 	}
@@ -168,7 +169,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		return fmt.Errorf("failed to create OCI store: %w", err)
 	}
 
-	statusHandler, metadataHandler := display.NewBackupHandler(opts.Printer, opts.TTY, opts.repository)
+	statusHandler, metadataHandler := display.NewBackupHandler(opts.Printer, opts.TTY, opts.repository, dstOCI)
 
 	tags, err := findTagsToBackup(ctx, srcRepo, opts)
 	if err != nil {
