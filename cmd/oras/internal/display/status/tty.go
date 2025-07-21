@@ -228,39 +228,21 @@ func (ch *TTYCopyHandler) OnMounted(_ context.Context, desc ocispec.Descriptor) 
 	return ch.tracked.Report(desc, progress.StateMounted)
 }
 
+// TTYBackupHandler handles tty status output for backup events.
 type TTYBackupHandler struct {
-	// TODO: fix duplicates?
 	tty       *os.File
 	committed sync.Map
 	tracked   track.GraphTarget
 }
 
+// NewTTYBackupHandler returns a new handler for backup command.
 func NewTTYBackupHandler(tty *os.File) BackupHandler {
 	return &TTYBackupHandler{
 		tty: tty,
 	}
 }
 
-func (bh *TTYBackupHandler) OnTagsDiscovered(tags []string) error {
-	return nil
-}
-
-func (bh *TTYBackupHandler) OnTagPulled(tag string) error {
-	return nil
-}
-
-func (bh *TTYBackupHandler) OnExporting(path string) error {
-	return nil
-}
-
-func (bh *TTYBackupHandler) OnExported(path string) error {
-	return nil
-}
-
-func (bh *TTYBackupHandler) OnBackupCompleted() error {
-	return nil
-}
-
+// StartTracking returns a tracked target from a graph target.
 func (bh *TTYBackupHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
 	prompts := map[progress.State]string{
 		progress.StateInitialized:  backupPromptPulling,
@@ -278,22 +260,23 @@ func (bh *TTYBackupHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget
 	return bh.tracked, err
 }
 
+// StopTracking ends the backup tracking for the target.
 func (bh *TTYBackupHandler) StopTracking() error {
 	return bh.tracked.Close()
 }
 
-// OnCopySkipped implements BackupHandler.
+// OnCopySkipped implements OnCopySkipped of BackupHandler.
 func (bh *TTYBackupHandler) OnCopySkipped(ctx context.Context, desc ocispec.Descriptor) error {
 	bh.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
 	return bh.tracked.Report(desc, progress.StateExists)
 }
 
-// PreCopy implements BackupHandler.
+// PreCopy implements PreCopy of BackupHandler.
 func (bh *TTYBackupHandler) PreCopy(ctx context.Context, desc ocispec.Descriptor) error {
 	return nil
 }
 
-// PostCopy implements BackupHandler.
+// PostCopy implements PostCopy of BackupHandler.
 func (bh *TTYBackupHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor) error {
 	bh.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
 	successors, err := graph.FilteredSuccessors(ctx, desc, bh.tracked, DeduplicatedFilter(&bh.committed))

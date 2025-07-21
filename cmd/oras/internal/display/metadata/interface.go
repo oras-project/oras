@@ -106,6 +106,7 @@ type CopyHandler interface {
 	OnCopied(target *option.BinaryTarget, desc ocispec.Descriptor) error
 }
 
+// BlobPushHandler handles metadata output for backup events.
 type BackupHandler interface {
 	Renderer
 
