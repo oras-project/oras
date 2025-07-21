@@ -71,8 +71,9 @@ func backupCmd() *cobra.Command {
 	var opts backupOptions
 	cmd := &cobra.Command{
 		Use:   "backup [flags] --output <path> <registry>/<repository>[:<ref1>[,<ref2>...]]",
-		Short: "Back up artifacts from a registry into an OCI image layout, saved either as a directory or a tar archive",
-		Long: `Back up artifacts from a registry into an OCI image layout, saved either as a directory or a tar archive. The output format is determined by the file extension of the specified output path: if it ends with ".tar", the output will be a tar archive; otherwise, it will be a directory.
+		Short: "Back up artifacts from a registry into an OCI image layout",
+		Long: `Back up artifacts from a registry into an OCI image layout, saved either as a directory or a tar archive.
+The output format is determined by the file extension of the specified output path: if it ends with ".tar", the output will be a tar archive; otherwise, it will be considered as a directory.
 
 Example - Back up an artifact with referrers from a registry to an OCI image layout directory:
   oras backup --output hello --include-referrers localhost:5000/hello:v1
@@ -122,11 +123,9 @@ Example - Back up with concurrency level tuned:
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "target directory path or tar file path to write in local filesystem (required)")
+	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "path to the target output, either a tar archive (*.tar) or a directory")
 	cmd.Flags().BoolVarP(&opts.includeReferrers, "include-referrers", "", false, "back up the image and its linked referrers (e.g., attestations, SBOMs)")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
-
-	// Mark output flag as required
 	_ = cmd.MarkFlagRequired("output")
 
 	option.ApplyFlags(&opts, cmd.Flags())
@@ -136,7 +135,6 @@ Example - Back up with concurrency level tuned:
 func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 
-	// TODO: might need to refactor output format handling here
 	var dstRoot string
 	switch opts.outputFormat {
 	case outputFormatDir:
@@ -158,19 +156,18 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		return fmt.Errorf("unsupported output format")
 	}
 
-	// Prepare remote srcRepo as the source
+	// Prepare copy source and destination
 	srcRepo, err := opts.Remote.NewRepository(opts.repository, opts.Common, logger)
 	if err != nil {
 		return err
 	}
-	// Prepare OCI layout as the destination
 	dstOCI, err := oci.New(dstRoot)
 	if err != nil {
 		return fmt.Errorf("failed to create OCI store: %w", err)
 	}
-
 	statusHandler, metadataHandler := display.NewBackupHandler(opts.Printer, opts.TTY, opts.repository, dstOCI)
 
+	// Find tags to back up
 	tags, err := findTagsToBackup(ctx, srcRepo, opts)
 	if err != nil {
 		return fmt.Errorf("failed to get tags to back up: %w", err)
@@ -179,9 +176,11 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		// TODO: better error message
 		return fmt.Errorf("no tags to back up, please specify at least one tag")
 	}
-	metadataHandler.OnTagsFound(tags)
+	if err := metadataHandler.OnTagsFound(tags); err != nil {
+		return err
+	}
 
-	// TODO: more options
+	// Prepare copy options
 	copyGraphOpts := oras.DefaultCopyGraphOptions
 	copyGraphOpts.Concurrency = opts.concurrency
 	copyGraphOpts.PreCopy = statusHandler.PreCopy
@@ -215,7 +214,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 			return oerrors.UnwrapCopyError(err)
 		}
 		if err := metadataHandler.OnArtifactPulled(t, referrerCount); err != nil {
-			return fmt.Errorf("failed to handle artifact pulled event for %s: %w", t, err)
+			return err
 		}
 	}
 
@@ -268,13 +267,14 @@ func prepareBackupOutput(ctx context.Context, dstRoot string, opts *backupOption
 			logger.Debugf("failed to remove ingest directory: %v", err)
 		}
 	}
-
 	if opts.outputFormat != outputFormatTar {
 		// If output format is not a tar, we are done
 		return nil
 	}
 
-	metadataHandler.OnTarExporting(opts.output)
+	if err := metadataHandler.OnTarExporting(opts.output); err != nil {
+		return err
+	}
 	// Create a temporary file for the tarball
 	tempTar, err := os.CreateTemp("", "oras-backup-*.tar")
 	if err != nil {
@@ -289,12 +289,19 @@ func prepareBackupOutput(ctx context.Context, dstRoot string, opts *backupOption
 	}
 
 	// Ensure target directory exists
-	if err := os.MkdirAll(filepath.Dir(opts.output), 0777); err != nil {
-		return fmt.Errorf("failed to create directory for output file %s: %w", opts.output, err)
+	absOutput := opts.output
+	if !filepath.IsAbs(absOutput) {
+		absOutput, err = filepath.Abs(opts.output)
+		if err != nil {
+			return fmt.Errorf("failed to get absolute path for output file %s: %w", opts.output, err)
+		}
+	}
+	if err := os.MkdirAll(filepath.Dir(absOutput), 0777); err != nil {
+		return fmt.Errorf("failed to create directory for output file %s: %w", absOutput, err)
 	}
 
 	// Move the temporary tar file to the final output path
-	if err := os.Rename(tempTarPath, opts.output); err != nil {
+	if err := os.Rename(tempTarPath, absOutput); err != nil {
 		removeErr := os.Remove(tempTarPath)
 		if removeErr != nil {
 			logger.Debugf("failed to remove temporary tar file %s: %v", tempTarPath, removeErr)
@@ -302,8 +309,7 @@ func prepareBackupOutput(ctx context.Context, dstRoot string, opts *backupOption
 		return err
 	}
 
-	metadataHandler.OnTarExported(opts.output)
-	return nil
+	return metadataHandler.OnTarExported(opts.output)
 }
 
 func findTagsToBackup(ctx context.Context, repo *remote.Repository, opts *backupOptions) ([]string, error) {
