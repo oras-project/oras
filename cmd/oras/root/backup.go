@@ -273,7 +273,7 @@ func prepareBackupOutput(ctx context.Context, dstRoot string, opts *backupOption
 		return nil
 	}
 
-	metadataHandler.OnExporting(opts.output)
+	metadataHandler.OnTarExporting(opts.output)
 	// Create a temporary file for the tarball
 	tempTar, err := os.CreateTemp("", "oras-backup-*.tar")
 	if err != nil {
@@ -301,7 +301,7 @@ func prepareBackupOutput(ctx context.Context, dstRoot string, opts *backupOption
 		return err
 	}
 
-	metadataHandler.OnExported(opts.output)
+	metadataHandler.OnTarExported(opts.output)
 	return nil
 }
 

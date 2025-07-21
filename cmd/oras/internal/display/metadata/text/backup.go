@@ -25,7 +25,6 @@ import (
 type BackupHandler struct {
 	printer *output.Printer
 	repo    string
-	tags    []string
 }
 
 // NewBackupHandler returns a new handler for backup events.
@@ -41,14 +40,14 @@ func (bh *BackupHandler) OnBackupCompleted(tagsCount int, path string) error {
 	return bh.printer.Printf("Successfully backed up %d tag(s) from %q to %q\n", tagsCount, bh.repo, path)
 }
 
-// OnExported implements metadata.BackupHandler.
-func (bh *BackupHandler) OnExported(path string) error {
+// OnTarExported implements metadata.BackupHandler.
+func (bh *BackupHandler) OnTarExported(path string) error {
 	// TODO: size?
 	return bh.printer.Printf("Exported to %s\n", path)
 }
 
-// OnExporting implements metadata.BackupHandler.
-func (bh *BackupHandler) OnExporting(path string) error {
+// OnTarExporting implements metadata.BackupHandler.
+func (bh *BackupHandler) OnTarExporting(path string) error {
 	return bh.printer.Printf("Exporting to %s\n", path)
 }
 
@@ -62,7 +61,6 @@ func (bh *BackupHandler) OnTagsFound(tags []string) error {
 	if len(tags) == 0 {
 		return nil
 	}
-	bh.tags = tags
 	return bh.printer.Printf("Found %d tag(s) in %q: %s\n", len(tags), bh.repo, strings.Join(tags, ", "))
 }
 
