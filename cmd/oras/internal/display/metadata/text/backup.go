@@ -43,17 +43,17 @@ func (bh *BackupHandler) OnBackupCompleted(tagsCount int, path string) error {
 // OnTarExported implements metadata.BackupHandler.
 func (bh *BackupHandler) OnTarExported(path string) error {
 	// TODO: size?
-	return bh.printer.Printf("Exported to %s\n", path)
+	return bh.printer.Printf("Exported to %q\n", path)
 }
 
 // OnTarExporting implements metadata.BackupHandler.
 func (bh *BackupHandler) OnTarExporting(path string) error {
-	return bh.printer.Printf("Exporting to %s\n", path)
+	return bh.printer.Printf("Exporting to %q\n", path)
 }
 
 // OnArtifactPulled implements metadata.BackupHandler.
-func (bh *BackupHandler) OnArtifactPulled(tag string, referrersCount int) error {
-	return bh.printer.Printf("Pulled tag %q and %d referrer(s)\n\n", tag, referrersCount)
+func (bh *BackupHandler) OnArtifactPulled(tag string, referrerCount int) error {
+	return bh.printer.Printf("Pulled tag %q and %d referrer(s)\n", tag, referrerCount)
 }
 
 // OnTagsFound implements metadata.BackupHandler.

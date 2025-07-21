@@ -193,38 +193,55 @@ func (ch *TextCopyHandler) OnMounted(_ context.Context, desc ocispec.Descriptor)
 	return ch.printer.PrintStatus(desc, copyPromptMounted)
 }
 
-func NewTextBackupHandler(printer *output.Printer) BackupHandler {
+// TextBackupHandler handles text status output for backup events.
+type TextBackupHandler struct {
+	printer   *output.Printer
+	committed *sync.Map
+	fetcher   content.Fetcher
+}
+
+// NewTextBackupHandler returns a new handler for backup command.
+func NewTextBackupHandler(printer *output.Printer, fetcher content.Fetcher) BackupHandler {
 	return &TextBackupHandler{
-		printer: printer,
+		printer:   printer,
+		fetcher:   fetcher,
+		committed: &sync.Map{},
 	}
 }
 
-type TextBackupHandler struct {
-	printer *output.Printer
-}
-
 // OnCopySkipped implements BackupHandler.
-func (t *TextBackupHandler) OnCopySkipped(ctx context.Context, desc ocispec.Descriptor) error {
-	return nil
-}
-
-// PostCopy implements BackupHandler.
-func (t *TextBackupHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor) error {
-	return nil
+func (tbh *TextBackupHandler) OnCopySkipped(ctx context.Context, desc ocispec.Descriptor) error {
+	tbh.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+	return tbh.printer.PrintStatus(desc, backupPromptExists)
 }
 
 // PreCopy implements BackupHandler.
-func (t *TextBackupHandler) PreCopy(ctx context.Context, desc ocispec.Descriptor) error {
-	return nil
+func (tbh *TextBackupHandler) PreCopy(ctx context.Context, desc ocispec.Descriptor) error {
+	return tbh.printer.PrintStatus(desc, backupPromptPulling)
+}
+
+// PostCopy implements BackupHandler.
+func (tbh *TextBackupHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor) error {
+	tbh.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+	deduplicated, err := graph.FilteredSuccessors(ctx, desc, tbh.fetcher, DeduplicatedFilter(tbh.committed))
+	if err != nil {
+		return err
+	}
+	for _, successor := range deduplicated {
+		if err = tbh.printer.PrintStatus(successor, backupPromptSkipped); err != nil {
+			return err
+		}
+	}
+	return tbh.printer.PrintStatus(desc, backupPromptPulled)
 }
 
 // StartTracking implements BackupHandler.
-func (t *TextBackupHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
+func (tbh *TextBackupHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
 	return gt, nil
 }
 
 // StopTracking implements BackupHandler.
-func (t *TextBackupHandler) StopTracking() error {
+func (tbh *TextBackupHandler) StopTracking() error {
 	return nil
 }
 
