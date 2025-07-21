@@ -111,8 +111,8 @@ type BackupHandler interface {
 
 	OnTagsFound(tags []string) error
 	OnArtifactPulled(tag string, referrerCount int) error
-	OnExporting(path string) error
-	OnExported(path string) error
+	OnTarExporting(path string) error
+	OnTarExported(path string) error
 	OnBackupCompleted(tagsCount int, path string) error
 }
 
