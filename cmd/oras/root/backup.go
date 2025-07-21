@@ -196,10 +196,10 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	}
 
 	for _, t := range tags {
-		err := func(tag string) (retErr error) {
+		referrersCount, err := func(tag string) (referrersCount int, retErr error) {
 			trackedDst, err := statusHandler.StartTracking(dstOCI)
 			if err != nil {
-				return err
+				return 0, err
 			}
 			defer func() {
 				stopErr := statusHandler.StopTracking()
@@ -208,35 +208,13 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 				}
 			}()
 
-			if !opts.includeReferrers {
-				_, err := oras.Copy(ctx, srcRepo, tag, trackedDst, tag, copyOpts)
-				if err != nil {
-					return fmt.Errorf("failed to copy ref %s: %w", tag, err)
-				}
-				return metadataHandler.OnArtifactPulled(tag, 0)
-			}
-
-			// copy with referrers
-			desc, err := oras.Resolve(ctx, srcRepo, tag, oras.DefaultResolveOptions)
-			if err != nil {
-				return fmt.Errorf("failed to resolve %s: %w", tag, err)
-			}
-			extendedCopyOpts, err = prepareCopyOption(ctx, srcRepo, trackedDst, desc, extendedCopyOpts)
-			if err != nil {
-				return fmt.Errorf("failed to prepare extended copy options for %s: %w", tag, err)
-			}
-			_, err = oras.ExtendedCopy(ctx, srcRepo, desc.Digest.String(), trackedDst, tag, extendedCopyOpts)
-			if err != nil {
-				return fmt.Errorf("failed to copy tag %s: %w", tag, err)
-			}
-			referrers, err := registry.Referrers(ctx, dstOCI, desc, "")
-			if err != nil {
-				return fmt.Errorf("failed to get referrers for %s: %w", tag, err)
-			}
-			return metadataHandler.OnArtifactPulled(tag, len(referrers))
+			return backupTag(ctx, srcRepo, trackedDst, t, opts.includeReferrers, copyOpts, extendedCopyOpts)
 		}(t)
 		if err != nil {
 			return oerrors.UnwrapCopyError(err)
+		}
+		if err := metadataHandler.OnArtifactPulled(t, referrersCount); err != nil {
+			return fmt.Errorf("failed to handle artifact pulled event for %s: %w", t, err)
 		}
 	}
 
@@ -244,6 +222,41 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		return err
 	}
 	return metadataHandler.OnBackupCompleted(len(tags), opts.output)
+}
+
+func backupTag(ctx context.Context,
+	src oras.ReadOnlyGraphTarget,
+	dst oras.GraphTarget,
+	tag string,
+	includeReferrers bool,
+	copyOpts oras.CopyOptions,
+	extCopyOpts oras.ExtendedCopyOptions) (int, error) {
+	if !includeReferrers {
+		_, err := oras.Copy(ctx, src, tag, dst, tag, copyOpts)
+		if err != nil {
+			return 0, fmt.Errorf("failed to copy ref %s: %w", tag, err)
+		}
+		return 0, nil
+	}
+
+	// copy with referrers
+	desc, err := oras.Resolve(ctx, src, tag, oras.DefaultResolveOptions)
+	if err != nil {
+		return 0, fmt.Errorf("failed to resolve %s: %w", tag, err)
+	}
+	extCopyOpts, err = prepareCopyOption(ctx, src, dst, desc, extCopyOpts)
+	if err != nil {
+		return 0, fmt.Errorf("failed to prepare extended copy options for %s: %w", tag, err)
+	}
+	_, err = oras.ExtendedCopy(ctx, src, desc.Digest.String(), dst, tag, extCopyOpts)
+	if err != nil {
+		return 0, fmt.Errorf("failed to copy tag %s: %w", tag, err)
+	}
+	referrers, err := registry.Referrers(ctx, dst, desc, "")
+	if err != nil {
+		return 0, fmt.Errorf("failed to get referrers for %s: %w", tag, err)
+	}
+	return len(referrers), nil
 }
 
 func prepareBackupOutput(ctx context.Context, dstRoot string, opts *backupOptions, logger logrus.FieldLogger, metadataHandler metadata.BackupHandler) error {
