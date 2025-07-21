@@ -38,9 +38,11 @@ import (
 	orasio "oras.land/oras/internal/io"
 )
 
+type outputFormat int
+
 const (
-	outputTypeTar = "tar"
-	outputTypeDir = "directory"
+	outputFormatDir outputFormat = iota
+	outputFormatTar
 )
 
 // tagRegexp checks the tag name.
@@ -54,13 +56,15 @@ type backupOptions struct {
 	option.Remote
 	option.Terminal
 
+	// flags
 	output           string
-	outputType       string // "tar" or "directory"
 	includeReferrers bool
 	concurrency      int
 
-	repository string
-	tags       []string
+	// derived options
+	outputFormat outputFormat
+	repository   string
+	tags         []string
 }
 
 func backupCmd() *cobra.Command {
@@ -102,11 +106,11 @@ Example - Back up with concurrency level tuned:
 			}
 
 			// TODO: should we record abs file path of the output?
-			// parse output type
+			// parse output format
 			if strings.HasSuffix(opts.output, ".tar") {
-				opts.outputType = outputTypeTar
+				opts.outputFormat = outputFormatTar
 			} else {
-				opts.outputType = outputTypeDir
+				opts.outputFormat = outputFormatDir
 			}
 
 			opts.DisableTTY(opts.Debug, false)
@@ -131,26 +135,12 @@ Example - Back up with concurrency level tuned:
 func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 
-	// debugging
-	fmt.Println("******OPTIONS******")
-	fmt.Println("repository:", opts.repository)
-	fmt.Println("tags:", opts.tags)
-	fmt.Println("output:", opts.output)
-	fmt.Println("outputType:", opts.outputType)
-	fmt.Println("includeReferrers:", opts.includeReferrers)
-	fmt.Println("******END OF OPTIONS******")
-
-	// Overall, copy the artifacts from remote to OCI layout, and create a tar file if output type is tar
-	// If no tags are specified: discover all tags in the repository and copy them
-	// If tags are specified: copy the specified tag and extra tags
-	// If includeReferrers is true: do extended copy (questions: handle multi-arch?)
-
-	// TODO: might need to refactor output type handling here
+	// TODO: might need to refactor output format handling here
 	var dstRoot string
-	switch opts.outputType {
-	case outputTypeDir:
+	switch opts.outputFormat {
+	case outputFormatDir:
 		dstRoot = opts.output
-	case outputTypeTar:
+	case outputFormatTar:
 		tempDir, err := os.MkdirTemp("", "oras-backup-*")
 		if err != nil {
 			// TODO: better error message?
@@ -164,7 +154,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		dstRoot = tempDir
 	default:
 		// this should not happen
-		return fmt.Errorf("unsupported output type: %s", opts.outputType)
+		return fmt.Errorf("unsupported output format")
 	}
 
 	// Prepare remote srcRepo as the source
@@ -220,7 +210,6 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	// TODO: handle copy error
 	for _, tag := range tags {
 		if opts.includeReferrers {
-			// TODO: handle platform resolution?
 			desc, err := oras.Resolve(ctx, srcRepo, tag, oras.DefaultResolveOptions)
 			if err != nil {
 				return fmt.Errorf("failed to resolve %s: %w", tag, err)
@@ -264,8 +253,8 @@ func prepareBackupOutput(ctx context.Context, dstRoot string, opts *backupOption
 		}
 	}
 
-	if opts.outputType != outputTypeTar {
-		// If output type is not a tar, we are done
+	if opts.outputFormat != outputFormatTar {
+		// If output format is not a tar, we are done
 		return nil
 	}
 
