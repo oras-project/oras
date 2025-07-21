@@ -106,7 +106,6 @@ Example - Back up with concurrency level tuned:
 				return err
 			}
 
-			// TODO: should we record abs file path of the output?
 			// parse output format
 			if strings.HasSuffix(opts.output, ".tar") {
 				opts.outputFormat = outputFormatTar
@@ -142,7 +141,6 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	case outputFormatTar:
 		tempDir, err := os.MkdirTemp("", "oras-backup-*")
 		if err != nil {
-			// TODO: better error message?
 			return fmt.Errorf("failed to create temporary directory: %w", err)
 		}
 		defer func() {
@@ -173,8 +171,11 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		return fmt.Errorf("failed to get tags to back up: %w", err)
 	}
 	if len(tags) == 0 {
-		// TODO: better error message
-		return fmt.Errorf("no tags to back up, please specify at least one tag")
+		return &oerrors.Error{
+			Err:            fmt.Errorf("no tags found in repository %s, please specify at least one tag to back up", opts.repository),
+			Usage:          fmt.Sprintf("%s %s", cmd.Parent().CommandPath(), cmd.Use),
+			Recommendation: fmt.Sprintf(`If you want to list available tags in %s, use "oras repo tags"`, opts.repository),
+		}
 	}
 	if err := metadataHandler.OnTagsFound(tags); err != nil {
 		return err
