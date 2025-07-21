@@ -196,7 +196,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	}
 
 	for _, t := range tags {
-		referrersCount, err := func(tag string) (referrersCount int, retErr error) {
+		referrerCount, err := func(tag string) (referrerCount int, retErr error) {
 			trackedDst, err := statusHandler.StartTracking(dstOCI)
 			if err != nil {
 				return 0, err
@@ -213,7 +213,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		if err != nil {
 			return oerrors.UnwrapCopyError(err)
 		}
-		if err := metadataHandler.OnArtifactPulled(t, referrersCount); err != nil {
+		if err := metadataHandler.OnArtifactPulled(t, referrerCount); err != nil {
 			return fmt.Errorf("failed to handle artifact pulled event for %s: %w", t, err)
 		}
 	}
