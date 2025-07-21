@@ -285,7 +285,7 @@ func (bh *TTYBackupHandler) StopTracking() error {
 // OnCopySkipped implements BackupHandler.
 func (bh *TTYBackupHandler) OnCopySkipped(ctx context.Context, desc ocispec.Descriptor) error {
 	bh.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-	return bh.tracked.Report(desc, progress.StateSkipped)
+	return bh.tracked.Report(desc, progress.StateExists)
 }
 
 // PreCopy implements BackupHandler.
