@@ -71,9 +71,6 @@ Example - Pull artifact files from a registry:
 Example - Recursively pulling all files from a registry, including subjects of hello:v1:
   oras pull --include-subject localhost:5000/hello:v1
 
-Example - Pull files from a directory-based artifact in a registry, preserving original permissions
-  oras pull --preserve-permissions localhost:5000/hello-dir:v1
-
 Example - Pull files from an insecure registry:
   oras pull --insecure localhost:5000/hello:v1
 
@@ -104,6 +101,9 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 
 Example - Pull artifact files tagged 'example.com:v1' from an OCI image layout folder 'layout-dir':
   oras pull example.com:v1 --oci-layout-path layout-dir
+
+Example - [Preview] Pull files from a directory-based artifact in a registry, preserving original permissions
+  oras pull --preserve-permissions localhost:5000/hello-dir:v1
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the artifact reference you want to pull"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {

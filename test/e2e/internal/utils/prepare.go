@@ -120,7 +120,10 @@ func copyFile(srcFile, dstFile string) error {
 	}
 
 	// Also preserve file permissions.
-	srcStat, _ := from.Stat()
+	srcStat, err := from.Stat()
+	if err != nil {
+		return err
+	}
 	err = os.Chmod(dstFile, srcStat.Mode())
 	return err
 }

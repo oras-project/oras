@@ -200,28 +200,6 @@ var _ = Describe("ORAS beginners:", func() {
 				ExpectFailure().
 				MatchErrKeyWords("Error: ", "--allow-path-traversal").Exec()
 		})
-
-		It("should preserve permissions", func() {
-
-			// prepare
-			pushRoot := GinkgoT().TempDir()
-			tag := "pushed_preserve_permissions"
-			ref := RegistryRef(ZOTHost, ArtifactRepo, tag)
-			Expect(CopyTestFiles(pushRoot)).ShouldNot(HaveOccurred())
-			ORAS("push", ref, foobar.DirectoryName).WithWorkDir(pushRoot).Exec()
-
-			// test
-			pullRoot := GinkgoT().TempDir()
-			fmt.Println(LayoutRef(pushRoot, tag))
-			ORAS("pull", "--preserve-permissions", ref, "-o", "pulled").
-				WithDescription(pullRoot).Exec()
-
-			have, err := os.Stat(filepath.Join("pulled", foobar.PermissionFileName))
-			Expect(err).NotTo(HaveOccurred())
-			want, err := os.Stat(filepath.Join(pushRoot, foobar.PermissionFileName))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(have.Mode().Perm()).To(Equal(want.Mode().Perm()))
-		})
 	})
 })
 
@@ -352,6 +330,46 @@ var _ = Describe("OCI spec 1.1 registry users:", func() {
 			ORAS("discover", "-o", "tree", RegistryRef(FallbackHost, repo, foobar.Digest)).
 				WithDescription("discover referrer via subject").MatchKeyWords(foobar.SignatureImageReferrer.Digest.String(), foobar.SBOMImageReferrer.Digest.String()).Exec()
 		})
+
+		It("should preserve permissions", func() {
+			// prepare
+			pushRoot := GinkgoT().TempDir()
+			tag := "pushed_preserve_permissions"
+			ref := RegistryRef(ZOTHost, ArtifactRepo, tag)
+			Expect(CopyTestFiles(pushRoot)).ShouldNot(HaveOccurred())
+			ORAS("push", ref, foobar.PermissionDirectoryName).WithWorkDir(pushRoot).Exec()
+
+			// test
+			pullRoot := GinkgoT().TempDir()
+			ORAS("pull", "--preserve-permissions", ref, "-o", pullRoot).
+				WithDescription(pullRoot).Exec()
+
+			have, err := os.Stat(filepath.Join(pullRoot, foobar.PermissionFileName))
+			Expect(err).NotTo(HaveOccurred())
+			want, err := os.Stat(filepath.Join(pushRoot, foobar.PermissionFileName))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(have.Mode().Perm()).To(Equal(want.Mode().Perm()))
+		})
+
+		It("should not preserve permissions", func() {
+			// prepare
+			pushRoot := GinkgoT().TempDir()
+			tag := "pushed_no_preserve_permissions"
+			ref := RegistryRef(ZOTHost, ArtifactRepo, tag)
+			Expect(CopyTestFiles(pushRoot)).ShouldNot(HaveOccurred())
+			ORAS("push", ref, foobar.PermissionDirectoryName).WithWorkDir(pushRoot).Exec()
+
+			// test
+			pullRoot := GinkgoT().TempDir()
+			ORAS("pull", ref, "-o", pullRoot).
+				WithDescription(pullRoot).Exec()
+
+			have, err := os.Stat(filepath.Join(pullRoot, foobar.PermissionFileName))
+			Expect(err).NotTo(HaveOccurred())
+			want, err := os.Stat(filepath.Join(pushRoot, foobar.NoPermissionFileName))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(have.Mode().Perm()).ToNot(Equal(want.Mode().Perm()))
+		})
 	})
 })
 
@@ -458,6 +476,46 @@ var _ = Describe("OCI image layout users:", func() {
 			root := PrepareTempOCI(ImageRepo)
 			ORAS("pull", Flags.Layout, LayoutRef(root, multi_arch.Tag), "--platform", "linux/amd64", "-o", root).
 				MatchStatus(multi_arch.LinuxAMD64StateKeys, true, len(multi_arch.LinuxAMD64StateKeys)).Exec()
+		})
+
+		It("should preserve permissions", func() {
+			// prepare
+			pushRoot := GinkgoT().TempDir()
+			tag := "pushed_preserve_permissions"
+			ref := RegistryRef(ZOTHost, ArtifactRepo, tag)
+			Expect(CopyTestFiles(pushRoot)).ShouldNot(HaveOccurred())
+			ORAS("push", ref, foobar.PermissionDirectoryName).WithWorkDir(pushRoot).Exec()
+
+			// test
+			pullRoot := GinkgoT().TempDir()
+			ORAS("pull", "--preserve-permissions", ref, "-o", pullRoot).
+				WithDescription(pullRoot).Exec()
+
+			have, err := os.Stat(filepath.Join(pullRoot, foobar.PermissionFileName))
+			Expect(err).NotTo(HaveOccurred())
+			want, err := os.Stat(filepath.Join(pushRoot, foobar.PermissionFileName))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(have.Mode().Perm()).To(Equal(want.Mode().Perm()))
+		})
+
+		It("should not preserve permissions", func() {
+			// prepare
+			pushRoot := GinkgoT().TempDir()
+			tag := "pushed_no_preserve_permissions"
+			ref := RegistryRef(ZOTHost, ArtifactRepo, tag)
+			Expect(CopyTestFiles(pushRoot)).ShouldNot(HaveOccurred())
+			ORAS("push", ref, foobar.PermissionDirectoryName).WithWorkDir(pushRoot).Exec()
+
+			// test
+			pullRoot := GinkgoT().TempDir()
+			ORAS("pull", ref, "-o", pullRoot).
+				WithDescription(pullRoot).Exec()
+
+			have, err := os.Stat(filepath.Join(pullRoot, foobar.PermissionFileName))
+			Expect(err).NotTo(HaveOccurred())
+			want, err := os.Stat(filepath.Join(pushRoot, foobar.NoPermissionFileName))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(have.Mode().Perm()).ToNot(Equal(want.Mode().Perm()))
 		})
 	})
 })

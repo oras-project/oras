@@ -17,6 +17,9 @@ package root
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -41,3 +44,4 @@ func Test_runPull_errType(t *testing.T) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 }
+
