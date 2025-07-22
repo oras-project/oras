@@ -32,7 +32,7 @@ else
   ARCH = amd64
 endif
 
-TARGET_OBJS ?= checksums.txt darwin_amd64.tar.gz darwin_arm64.tar.gz linux_amd64.tar.gz linux_arm64.tar.gz linux_armv7.tar.gz linux_s390x.tar.gz linux_ppc64le.tar.gz linux_riscv64.tar.gz windows_amd64.zip freebsd_amd64.tar.gz
+TARGET_OBJS ?= checksums.txt darwin_amd64.tar.gz darwin_arm64.tar.gz linux_amd64.tar.gz linux_arm64.tar.gz linux_armv7.tar.gz linux_s390x.tar.gz linux_ppc64le.tar.gz linux_riscv64.tar.gz linux_loong64.tar.gz windows_amd64.zip freebsd_amd64.tar.gz
 
 LDFLAGS = -w
 ifdef VERSION
@@ -68,7 +68,7 @@ clean:  ## clean up build
 build: build-linux build-mac build-windows  ## build for all targets
 
 .PHONY: build-linux-all
-build-linux-all: build-linux-amd64 build-linux-arm64 build-linux-arm-v7 build-linux-s390x build-linux-ppc64le build-linux-riscv64 ## build all linux architectures
+build-linux-all: build-linux-amd64 build-linux-arm64 build-linux-arm-v7 build-linux-s390x build-linux-ppc64le build-linux-riscv64 build-linux-loong64 ## build all linux architectures
 
 .PHONY: build-linux
 build-linux: build-linux-amd64 build-linux-arm64
@@ -102,6 +102,11 @@ build-linux-ppc64le:  ## build for linux ppc64le
 build-linux-riscv64:  ## build for linux riscv64
 	GOARCH=riscv64 CGO_ENABLED=0 GOOS=linux $(GO_EXE) build -v --ldflags="$(LDFLAGS)" \
 		-o bin/linux/riscv64/$(CLI_EXE) $(CLI_PKG)
+
+.PHONY: build-linux-loong64
+build-linux-loong64:  ## build for linux loong64
+	GOARCH=loong64 CGO_ENABLED=0 GOOS=linux $(GO_EXE) build -v --ldflags="$(LDFLAGS)" \
+		-o bin/linux/loong64/$(CLI_EXE) $(CLI_PKG)
 
 .PHONY: build-mac
 build-mac: build-mac-arm64 build-mac-amd64  ## build all mac architectures
