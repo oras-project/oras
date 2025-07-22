@@ -129,28 +129,30 @@ Upon success, the output will be:
 ```console
 ## <progress_bar>
 Found 2 tag(s): v1, v2 in registry-a.k8s.io/kube-apiserver
-✔ Pulled tag v1 and 1 referrer(s)
+
 ✓ Pulled  application/vnd.oci.image.config.v1+json                                                               2.26/2.26 KB  100.00%  447ms
   └─ sha256:45a5868eb9f1dfbce42513000964664014789a43310865b0c8461e773e9972b9
 ✓ Pulled  application/vnd.oci.image.layer.v1.tar+gzip                                                            25.6/25.6 MB  100.00%     4s
   └─ sha256:149362fdfa6e6a5d9f009b896da3be3172c395ba2287b57d4969f3f46e573055
 ✓ Pulled  application/vnd.cncf.notary.signature                                                                 1.85/1.85 MB  100.00%  898ms
   └─ sha256:9b666bc868511a0f2d33a738a9ff0bd54eb750a72a832e8b59085d22bbdbaac2
+✔ Pulled tag v1 and 1 referrer(s)
 
-✔ Pulled tag v2 and 1 referrer(s)
+
 ✓ Pulled  application/vnd.oci.image.config.v1+json                                                               2.24/2.24 KB  100.00%  353ms
   └─ sha256:f9248aac10f2f82e0970222e36cc7b71215b88e974e001282e5cd89797a82218
 ✓ Pulled  application/vnd.oci.image.layer.v1.tar+gzip                                                            28.3/28.3 MB  100.00%     3s
   └─ sha256:b08e2ff4391ef70ca747960a731d1f21a75febbd86edc403cd1514a099615808
 ✓ Pulled  application/vnd.cncf.notary.signature                                                                 1.85/1.85 MB  100.00%  890ms
   └─ sha256:854ad9e87ce93dae54ae1699837b2c812d2f373c3fb62625ea6992efa8f023c4
+✔ Pulled tag v2 and 1 referrer(s)
 
 ## <status output>
 Pulled tag v1 and 1 referrer(s)
 Pulled tag v2 and 1 referrer(s)
 Exporting to backup.tar
 Exported to backup.tar (58.8 MB)
-Successfully backed up 2 tag(s) from registry-a.k8s.io/kube-apiserver
+Successfully backed up 2 tag(s) from registry-a.k8s.io/kube-apiserver in 5s.
 ```
 
 Transfer the backup file to new environment via secure channels (e.g., BitLocker-enabled removable drives).
@@ -167,26 +169,27 @@ Upon success, the output will be:
 ## <progress_bar>
 Loaded backup archive: backup.tar (58.8 MB)
 Found 2 tag(s): v1, v2
-✔ Pushed tag v1 and 1 referrer(s)
+
 ✓ Pushed  application/vnd.oci.image.config.v1+json                                                               2.26/2.26 KB  100.00%  447ms
   └─ sha256:45a5868eb9f1dfbce42513000964664014789a43310865b0c8461e773e9972b9
 ✓ Pushed  application/vnd.oci.image.layer.v1.tar+gzip                                                            25.6/25.6 MB  100.00%     4s
   └─ sha256:149362fdfa6e6a5d9f009b896da3be3172c395ba2287b57d4969f3f46e573055
 ✓ Pushed  application/vnd.cncf.notary.signature                                                                 1.85/1.85 MB  100.00%  898ms
   └─ sha256:9b666bc868511a0f2d33a738a9ff0bd54eb750a72a832e8b59085d22bbdbaac2
+✔ Pushed tag v1 and 1 referrer(s)
 
-✔ Pushed tag v2 and 1 referrer(s)
 ✓ Pushed  application/vnd.oci.image.config.v1+json                                                               2.24/2.24 KB  100.00%  353ms
   └─ sha256:f9248aac10f2f82e0970222e36cc7b71215b88e974e001282e5cd89797a82218
 ✓ Pushed  application/vnd.oci.image.layer.v1.tar+gzip                                                            28.3/28.3 MB  100.00%     3s
   └─ sha256:b08e2ff4391ef70ca747960a731d1f21a75febbd86edc403cd1514a099615808
 ✓ Pushed  application/vnd.cncf.notary.signature                                                                 1.85/1.85 MB  100.00%  890ms
   └─ sha256:854ad9e87ce93dae54ae1699837b2c812d2f373c3fb62625ea6992efa8f023c4
+✔ Pushed tag v2 and 1 referrer(s)
 
 ## <status output>
 Pushed tag v1 with 1 referrer(s)
 Pushed tag v2 with 1 referrer(s)
-Successfully restored 2 tag(s) to registry-b.k8s.io/kube-apiserver
+Successfully restored 2 tag(s) to registry-b.k8s.io/kube-apiserver in 5s.
 ```
 
 List all tags from the repo `registry-b.k8s.io/kube-apiserver`:
@@ -221,7 +224,7 @@ Found 1 tag: v1
 Pulled tag v1 and 1 referrer(s)
 Exporting to airgap-snapshot.tar
 Exported to airgap-snapshot.tar (58.8 MB)
-Successfully backed up 1 tag from registry-a.k8s.io/kube-apiserver
+Successfully backed up 1 tag from registry-a.k8s.io/kube-apiserver in 5s.
 ```
 
 Transfer the `.tar` file to the air-gapped system via a secured channel. Restore the tarball from local to another registry:
@@ -258,6 +261,42 @@ registry-b.k8s.io/kube-apiserver@sha256:9081a6f83f4febf47369fc46b6f0f7683c7db243
         └── [annotations]
             ├── org.opencontainers.image.created: "2025-06-10T20:25:53Z"
             └── io.cncf.notary.x509chain.thumbprint#S256: '["xxxxxx"]'
+```
+
+Back up an image from Docker Hub to local. Upon success, the output in a non-tty mode will be:
+
+```bash
+oras backup docker.io/bitnami/nginx: 1.29.0 --include-referrers --output airgap-snapshot.tar --no-tty
+```
+
+```console
+✔ Found 1 tag in docker.io/bitnami/nginx: 1.29.0
+✔ Starting backup with referrers included...
+
+Pulling content:
+  • application/jose+json                         fe00f3e4bc13    Pulled
+  • application/vnd.cncf.notary.signature         44136fa355b3    Pulled
+  • application/vnd.docker.container.image.v1+json
+    ├─ 6362258f3406                                Pulled
+    └─ 82a9b7e46a1e                                Pulled
+  • application/vnd.docker.image.rootfs.diff.tar.gzip
+    ├─ 10d16b6044ea                                Pulled
+    └─ 69b0811bd0fa                                Pulled
+  • application/vnd.docker.distribution.manifest.v2+json
+    ├─ 2a14388b4e43                                Pulled
+    └─ 65d6a41df25a                                Pulled
+  • application/vnd.docker.distribution.manifest.list.v2+json
+    └─ fb10fc2fe49f                                Pulled
+  • application/vnd.oci.image.manifest.v1+json
+    └─ 35445b78dd8b                                Pulled
+
+✔ Pulled tag 1.29.0 with 1 referrer(s)
+
+Exporting:
+  • Writing to bitnami-nginx.tar...
+  • Export complete (128 MB)
+
+Successfully backed up 1 tag from docker.io/bitnami/nginx to `bitnami-nginx.tar` in 5.4s.
 ```
 
 ## Summary
