@@ -284,7 +284,9 @@ func TestPrepareBackupOutput(t *testing.T) {
 		}
 
 		// Clean up
-		os.Remove(outputPath)
+		if err := os.Remove(outputPath); err != nil {
+			t.Logf("Failed to remove output tar file: %v", err)
+		}
 	})
 
 	t.Run("Error in OnTarExporting", func(t *testing.T) {
