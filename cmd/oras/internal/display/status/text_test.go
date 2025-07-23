@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/testutils"
 )
@@ -269,4 +270,66 @@ func TestTextManifestIndexUpdateHandler_OnIndexMerged(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTextBackupHandler(t *testing.T) {
+	t.Run("OnCopySkipped", func(t *testing.T) {
+		builder.Reset()
+		bh := NewTextBackupHandler(printer, mockFetcher.Fetcher)
+		if bh.OnCopySkipped(ctx, mockFetcher.OciImage) != nil {
+			t.Error("OnCopySkipped() should not return an error")
+		}
+		validatePrinted(t, "Exists    0b442c23c1dd oci-image")
+	})
+
+	t.Run("PreCopy", func(t *testing.T) {
+		builder.Reset()
+		bh := NewTextBackupHandler(printer, mockFetcher.Fetcher)
+		if bh.PreCopy(ctx, mockFetcher.OciImage) != nil {
+			t.Error("PreCopy() should not return an error")
+		}
+		validatePrinted(t, "Pulling   0b442c23c1dd oci-image")
+	})
+
+	t.Run("PostCopy", func(t *testing.T) {
+		builder.Reset()
+		bh := NewTextBackupHandler(printer, mockFetcher.Fetcher)
+		if bh.PostCopy(ctx, mockFetcher.OciImage) != nil {
+			t.Error("PostCopy() should not return an error")
+		}
+		validatePrinted(t, "Pulled    0b442c23c1dd oci-image")
+	})
+
+	t.Run("PostCopy_Skipped", func(t *testing.T) {
+		builder.Reset()
+		bh := &TextBackupHandler{
+			printer:   printer,
+			fetcher:   mockFetcher.Fetcher,
+			committed: &sync.Map{},
+		}
+		bh.committed.Store(mockFetcher.ImageLayer.Digest.String(), mockFetcher.ImageLayer.Annotations[ocispec.AnnotationTitle]+"bogus")
+		if err := bh.PostCopy(ctx, mockFetcher.OciImage); err != nil {
+			t.Error("PostCopy() returns unexpected err:", err)
+		}
+		validatePrinted(t, "Skipped   f6b87e8e0fe1 layer\nPulled    0b442c23c1dd oci-image")
+	})
+
+	t.Run("StartTracking", func(t *testing.T) {
+		bh := NewTextBackupHandler(printer, mockFetcher.Fetcher)
+		gt := memory.New()
+		result, err := bh.StartTracking(gt)
+		if err != nil {
+			t.Error("StartTracking() should not return an error")
+		}
+		if result != gt {
+			t.Error("StartTracking() should return the same GraphTarget")
+		}
+	})
+
+	t.Run("StopTracking", func(t *testing.T) {
+		bh := NewTextBackupHandler(printer, mockFetcher.Fetcher)
+		if bh.StopTracking() != nil {
+			t.Error("StopTracking() should not return an error")
+		}
+	})
 }
