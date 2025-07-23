@@ -241,19 +241,19 @@ func backupTag(ctx context.Context,
 	}
 
 	// copy with referrers
-	desc, err := oras.Resolve(ctx, src, tag, oras.DefaultResolveOptions)
+	root, err := oras.Resolve(ctx, src, tag, oras.DefaultResolveOptions)
 	if err != nil {
 		return 0, fmt.Errorf("failed to resolve %s: %w", tag, err)
 	}
-	extCopyOpts, err = prepareCopyOption(ctx, src, dst, desc, extCopyOpts)
+	extCopyOpts, root, err = prepareCopyOption(ctx, src, dst, root, extCopyOpts)
 	if err != nil {
 		return 0, fmt.Errorf("failed to prepare extended copy options for %s: %w", tag, err)
 	}
-	_, err = oras.ExtendedCopy(ctx, src, desc.Digest.String(), dst, tag, extCopyOpts)
+	_, err = oras.ExtendedCopy(ctx, src, root.Digest.String(), dst, tag, extCopyOpts)
 	if err != nil {
 		return 0, fmt.Errorf("failed to copy tag %s: %w", tag, err)
 	}
-	referrers, err := registry.Referrers(ctx, dst, desc, "")
+	referrers, err := registry.Referrers(ctx, dst, root, "")
 	if err != nil {
 		return 0, fmt.Errorf("failed to get referrers for %s: %w", tag, err)
 	}
