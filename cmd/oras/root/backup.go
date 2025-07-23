@@ -155,7 +155,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	}
 
 	// Prepare copy source and destination
-	srcRepo, err := opts.Remote.NewRepository(opts.repository, opts.Common, logger)
+	srcRepo, err := opts.NewRepository(opts.repository, opts.Common, logger)
 	if err != nil {
 		return err
 	}

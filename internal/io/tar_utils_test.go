@@ -34,7 +34,11 @@ func TestTarDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Logf("Failed to remove temporary directory: %v", err)
+		}
+	}()
 
 	// Create test files and directories
 	testFiles := map[string]string{
@@ -129,8 +133,16 @@ func TestTarDirectory_InvalidSource(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
-	defer os.Remove(tmpFile.Name())
-	defer tmpFile.Close()
+	defer func() {
+		if err := os.Remove(tmpFile.Name()); err != nil {
+			t.Logf("Failed to remove temporary file: %v", err)
+		}
+	}()
+	defer func() {
+		if err := tmpFile.Close(); err != nil {
+			t.Logf("Failed to close temporary file: %v", err)
+		}
+	}()
 
 	err = iotest.TarDirectory(context.Background(), &buf, tmpFile.Name())
 	if err == nil {
@@ -144,7 +156,11 @@ func TestTarDirectory_ContextCancellation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Logf("Failed to remove temporary directory: %v", err)
+		}
+	}()
 
 	// Create a few more files to increase likelihood of catching cancellation during processing
 	for i := range 5 {
