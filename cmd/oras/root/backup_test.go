@@ -30,7 +30,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 )
 
-func TestParseArtifactRefs(t *testing.T) {
+func TestParseArtifactReferences(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
@@ -180,7 +180,7 @@ func TestParseArtifactRefs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repository, references, err := parseArtifactsToBackup(tt.input)
+			repository, references, err := parseArtifactReferences(tt.input)
 
 			// Check error expectation
 			if tt.wantErr {

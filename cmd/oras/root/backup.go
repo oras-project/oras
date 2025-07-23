@@ -101,7 +101,7 @@ Example - Back up with concurrency level tuned:
 
 			// parse repo and references
 			var err error
-			opts.repository, opts.tags, err = parseArtifactsToBackup(args[0])
+			opts.repository, opts.tags, err = parseArtifactReferences(args[0])
 			if err != nil {
 				return err
 			}
@@ -326,7 +326,7 @@ func findTagsToBackup(ctx context.Context, repo *remote.Repository, opts *backup
 	return registry.Tags(ctx, repo)
 }
 
-func parseArtifactsToBackup(artifactRefs string) (repository string, tags []string, err error) {
+func parseArtifactReferences(artifactRefs string) (repository string, tags []string, err error) {
 	// Validate input
 	if artifactRefs == "" {
 		return "", nil, fmt.Errorf("empty reference")
