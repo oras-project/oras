@@ -71,8 +71,8 @@ func backupCmd() *cobra.Command {
 	var opts backupOptions
 	cmd := &cobra.Command{
 		Use:   "backup [flags] --output <path> <registry>/<repository>[:<ref1>[,<ref2>...]]",
-		Short: "Back up artifacts from a registry into an OCI image layout",
-		Long: `Back up artifacts from a registry into an OCI image layout, saved either as a directory or a tar archive.
+		Short: "[Experimental] Back up artifacts from a registry into an OCI image layout",
+		Long: `[Experimental] Back up artifacts from a registry into an OCI image layout, saved either as a directory or a tar archive.
 The output format is determined by the file extension of the specified output path: if it ends with ".tar", the output will be a tar archive; otherwise, it will be considered as a directory.
 
 Example - Back up an artifact with referrers from a registry to an OCI image layout directory:
