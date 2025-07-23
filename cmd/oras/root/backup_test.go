@@ -367,7 +367,7 @@ func TestFindTagsToBackup(t *testing.T) {
 		mux.HandleFunc("/v2/testrepo/tags/list", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"name":"testrepo","tags":["v1","v2","latest"]}`))
+			_, _ = w.Write([]byte(`{"name":"testrepo","tags":["v1","v2","latest"]}`))
 		})
 
 		serverURL := strings.TrimPrefix(server.URL, "http://")
@@ -403,7 +403,7 @@ func TestFindTagsToBackup(t *testing.T) {
 
 		mux.HandleFunc("/v2/testrepo/tags/list", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"errors":[{"code":"SERVER_ERROR","message":"Internal server error"}]}`))
+			_, _ = w.Write([]byte(`{"errors":[{"code":"SERVER_ERROR","message":"Internal server error"}]}`))
 		})
 
 		serverURL := strings.TrimPrefix(server.URL, "http://")
@@ -440,7 +440,7 @@ func TestFindTagsToBackup(t *testing.T) {
 		mux.HandleFunc("/v2/testrepo/tags/list", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"name":"testrepo","tags":[]}`))
+			_, _ = w.Write([]byte(`{"name":"testrepo","tags":[]}`))
 		})
 
 		serverURL := strings.TrimPrefix(server.URL, "http://")
