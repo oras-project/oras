@@ -16,9 +16,15 @@ limitations under the License.
 package root
 
 import (
+	"context"
+	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/sirupsen/logrus"
 )
 
 func TestParseArtifactRefs(t *testing.T) {
@@ -195,4 +201,213 @@ func TestParseArtifactRefs(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPrepareBackupOutput(t *testing.T) {
+	// Create a temporary directory for our tests
+	tempDir, err := os.MkdirTemp("", "backup-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
+
+	// Create a mock logger
+	mockLogger := &mockLogger{}
+
+	// Setup test context
+	ctx := context.Background()
+
+	t.Run("Directory output format", func(t *testing.T) {
+		// Create an ingest directory to ensure it gets removed
+		ingestDir := filepath.Join(tempDir, "ingest")
+		if err := os.MkdirAll(ingestDir, 0755); err != nil {
+			t.Fatalf("Failed to create ingest dir: %v", err)
+		}
+
+		mockHandler := &mockBackupHandler{}
+		opts := &backupOptions{
+			outputFormat: outputFormatDir,
+			output:       filepath.Join(tempDir, "output-dir"),
+		}
+
+		err := prepareBackupOutput(ctx, tempDir, opts, mockLogger, mockHandler)
+		if err != nil {
+			t.Errorf("Expected no error for directory output, got: %v", err)
+		}
+
+		// Ensure ingest directory was removed
+		if _, err := os.Stat(ingestDir); !os.IsNotExist(err) {
+			t.Errorf("Expected ingest directory to be removed")
+		}
+
+		// Verify handler methods weren't called for directory output
+		if mockHandler.tarExportingCalled {
+			t.Errorf("OnTarExporting should not be called for directory output")
+		}
+		if mockHandler.tarExportedCalled {
+			t.Errorf("OnTarExported should not be called for directory output")
+		}
+	})
+
+	t.Run("Tar output format", func(t *testing.T) {
+		// Create an ingest directory to ensure it gets removed
+		ingestDir := filepath.Join(tempDir, "ingest")
+		if err := os.MkdirAll(ingestDir, 0755); err != nil {
+			t.Fatalf("Failed to create ingest dir: %v", err)
+		}
+
+		outputPath := filepath.Join(tempDir, "output.tar")
+		opts := &backupOptions{
+			outputFormat: outputFormatTar,
+			output:       outputPath,
+		}
+
+		mockHandler := &mockBackupHandler{}
+		err := prepareBackupOutput(ctx, tempDir, opts, mockLogger, mockHandler)
+		if err != nil {
+			t.Errorf("Expected no error for tar output, got: %v", err)
+		}
+
+		// Check if tar file was created
+		if _, err := os.Stat(outputPath); os.IsNotExist(err) {
+			t.Errorf("Expected tar file to exist at %s", outputPath)
+		}
+
+		// Verify handler methods were called for tar output
+		if !mockHandler.tarExportingCalled {
+			t.Errorf("OnTarExporting wasn't called")
+		}
+		if !mockHandler.tarExportedCalled {
+			t.Errorf("OnTarExported wasn't called")
+		}
+
+		// Clean up
+		os.Remove(outputPath)
+	})
+
+	t.Run("Error in OnTarExporting", func(t *testing.T) {
+		ingestDir := filepath.Join(tempDir, "ingest")
+		if err := os.MkdirAll(ingestDir, 0755); err != nil {
+			t.Fatalf("Failed to create ingest dir: %v", err)
+		}
+
+		opts := &backupOptions{
+			outputFormat: outputFormatTar,
+			output:       filepath.Join(tempDir, "error.tar"),
+		}
+
+		expectedErr := fmt.Errorf("export error")
+		mockHandler := &mockBackupHandler{
+			tarExportingResult: expectedErr,
+		}
+
+		err := prepareBackupOutput(ctx, tempDir, opts, mockLogger, mockHandler)
+		if err != expectedErr {
+			t.Errorf("Expected error %v, got: %v", expectedErr, err)
+		}
+	})
+
+	t.Run("Error in OnTarExported", func(t *testing.T) {
+		ingestDir := filepath.Join(tempDir, "ingest")
+		if err := os.MkdirAll(ingestDir, 0755); err != nil {
+			t.Fatalf("Failed to create ingest dir: %v", err)
+		}
+
+		opts := &backupOptions{
+			outputFormat: outputFormatTar,
+			output:       filepath.Join(tempDir, "error.tar"),
+		}
+
+		expectedErr := fmt.Errorf("tar exported error")
+		mockHandler := &mockBackupHandler{
+			tarExportedResult: expectedErr,
+		}
+
+		err := prepareBackupOutput(ctx, tempDir, opts, mockLogger, mockHandler)
+		if err != expectedErr {
+			t.Errorf("Expected error %v, got: %v", expectedErr, err)
+		}
+	})
+}
+
+// Mock implementations
+type mockLogger struct {
+	debugMessages []string
+}
+
+func (m *mockLogger) WithField(key string, value interface{}) *logrus.Entry {
+	return logrus.WithField(key, value)
+}
+
+func (m *mockLogger) WithFields(fields logrus.Fields) *logrus.Entry {
+	return logrus.WithFields(fields)
+}
+
+func (m *mockLogger) WithError(err error) *logrus.Entry {
+	return logrus.WithError(err)
+}
+
+func (m *mockLogger) Debugf(format string, args ...interface{}) {
+	m.debugMessages = append(m.debugMessages, fmt.Sprintf(format, args...))
+}
+
+func (m *mockLogger) Infof(format string, args ...interface{})    {}
+func (m *mockLogger) Printf(format string, args ...interface{})   {}
+func (m *mockLogger) Warnf(format string, args ...interface{})    {}
+func (m *mockLogger) Warningf(format string, args ...interface{}) {}
+func (m *mockLogger) Errorf(format string, args ...interface{})   {}
+func (m *mockLogger) Fatalf(format string, args ...interface{})   {}
+func (m *mockLogger) Panicf(format string, args ...interface{})   {}
+
+func (m *mockLogger) Debug(args ...interface{})   {}
+func (m *mockLogger) Info(args ...interface{})    {}
+func (m *mockLogger) Print(args ...interface{})   {}
+func (m *mockLogger) Warn(args ...interface{})    {}
+func (m *mockLogger) Warning(args ...interface{}) {}
+func (m *mockLogger) Error(args ...interface{})   {}
+func (m *mockLogger) Fatal(args ...interface{})   {}
+func (m *mockLogger) Panic(args ...interface{})   {}
+
+func (m *mockLogger) Debugln(args ...interface{})   {}
+func (m *mockLogger) Infoln(args ...interface{})    {}
+func (m *mockLogger) Println(args ...interface{})   {}
+func (m *mockLogger) Warnln(args ...interface{})    {}
+func (m *mockLogger) Warningln(args ...interface{}) {}
+func (m *mockLogger) Errorln(args ...interface{})   {}
+func (m *mockLogger) Fatalln(args ...interface{})   {}
+func (m *mockLogger) Panicln(args ...interface{})   {}
+
+type mockBackupHandler struct {
+	tarExportingCalled bool
+	tarExportedCalled  bool
+	tarExportingResult error
+	tarExportedResult  error
+}
+
+func (m *mockBackupHandler) OnTarExporting(path string) error {
+	m.tarExportingCalled = true
+	return m.tarExportingResult
+}
+
+func (m *mockBackupHandler) OnTarExported(path string, size int64) error {
+	m.tarExportedCalled = true
+	return m.tarExportedResult
+}
+
+func (m *mockBackupHandler) OnTagsFound(tags []string) error {
+	return nil
+}
+
+func (m *mockBackupHandler) OnArtifactPulled(tag string, referrerCount int) error {
+	return nil
+}
+
+func (m *mockBackupHandler) OnBackupCompleted(count int, outputPath string) error {
+	return nil
+}
+
+func (m *mockBackupHandler) Render() error {
+	return nil
 }
