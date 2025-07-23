@@ -263,42 +263,6 @@ registry-b.k8s.io/kube-apiserver@sha256:9081a6f83f4febf47369fc46b6f0f7683c7db243
             └── io.cncf.notary.x509chain.thumbprint#S256: '["xxxxxx"]'
 ```
 
-Back up an image from Docker Hub to local. Upon success, the output in a non-tty mode will be:
-
-```bash
-oras backup docker.io/bitnami/nginx: 1.29.0 --include-referrers --output airgap-snapshot.tar --no-tty
-```
-
-```console
-✔ Found 1 tag in docker.io/bitnami/nginx: 1.29.0
-✔ Starting backup with referrers included...
-
-Pulling content:
-  • application/jose+json                         fe00f3e4bc13    Pulled
-  • application/vnd.cncf.notary.signature         44136fa355b3    Pulled
-  • application/vnd.docker.container.image.v1+json
-    ├─ 6362258f3406                                Pulled
-    └─ 82a9b7e46a1e                                Pulled
-  • application/vnd.docker.image.rootfs.diff.tar.gzip
-    ├─ 10d16b6044ea                                Pulled
-    └─ 69b0811bd0fa                                Pulled
-  • application/vnd.docker.distribution.manifest.v2+json
-    ├─ 2a14388b4e43                                Pulled
-    └─ 65d6a41df25a                                Pulled
-  • application/vnd.docker.distribution.manifest.list.v2+json
-    └─ fb10fc2fe49f                                Pulled
-  • application/vnd.oci.image.manifest.v1+json
-    └─ 35445b78dd8b                                Pulled
-
-✔ Pulled tag 1.29.0 with 1 referrer(s)
-
-Exporting:
-  • Writing to bitnami-nginx.tar...
-  • Export complete (128 MB)
-
-Successfully backed up 1 tag from docker.io/bitnami/nginx to `bitnami-nginx.tar` in 5.4s.
-```
-
 ## Summary
 
 The `oras backup` and `oras restore` commands introduce a structured, OCI-compliant way to persist and rehydrate artifacts and referrers, bridging a critical gap in the current functionality of the `oras` CLI. This enhancement empowers users with flexible, scriptable, and portable tooling for registry state management.
