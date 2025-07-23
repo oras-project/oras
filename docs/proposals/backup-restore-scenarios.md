@@ -23,7 +23,7 @@ Yet today, developers and users resort to fragmented, CLI tools like:
 * `oras copy` for copying a single image with referrers.
 * Ad-hoc scripts to cobble together backups and restore artifacts across different environments.
 
-This patchwork approach brings significant limitations and problems:
+This approach brings significant limitations and problems:
 
 * Backups lack structure, making recovery error-prone.
 * Artifact referrers, attestations, and SBOMs are often lost in transit.
@@ -92,7 +92,7 @@ Recently, a misconfigured cleanup job accidentally deleted an entire production 
 
 To prevent future incidents and meet compliance audit requirements, Alice needs a unifed, portable solution to back up an entire repository including all tags and referrers into a single archive or directory. She also wants to restore it quickly and completely if something goes wrong.
 
-With a holistic backup and restore solution in `oras`, Alice can capture the full state of a repository and recover it with confidence, improving operational resilience and audit readiness while eliminating complex manual work.
+With a holistic backup and restore solution in `oras`, Alice can capture all artifacts of a repository and recover it with confidence, improving operational resilience and audit readiness while eliminating complex manual work.
 
 ### Scenario 4: Uploading and Downloading Image With Referrers Using `oras pull/push` 
 
