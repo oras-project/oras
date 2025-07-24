@@ -46,12 +46,13 @@ type pullOptions struct {
 	option.Format
 	option.Terminal
 
-	concurrency       int
-	KeepOldFiles      bool
-	IncludeSubject    bool
-	PathTraversal     bool
-	Output            string
-	ManifestConfigRef string
+	concurrency         int
+	KeepOldFiles        bool
+	IncludeSubject      bool
+	PathTraversal       bool
+	PreservePermissions bool
+	Output              string
+	ManifestConfigRef   string
 	// Deprecated: verbose is deprecated and will be removed in the future.
 	verbose bool
 }
@@ -99,6 +100,9 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
 
 Example - Pull artifact files tagged 'example.com:v1' from an OCI image layout folder 'layout-dir':
   oras pull example.com:v1 --oci-layout-path layout-dir
+
+Example - [Preview] Pull files from a directory-based artifact in a registry, preserving original permissions
+  oras pull --preserve-permissions localhost:5000/hello-dir:v1
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the artifact reference you want to pull"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -119,6 +123,7 @@ Example - Pull artifact files tagged 'example.com:v1' from an OCI image layout f
 	cmd.Flags().BoolVarP(&opts.KeepOldFiles, "keep-old-files", "k", false, "do not replace existing files when pulling, treat them as errors")
 	cmd.Flags().BoolVarP(&opts.PathTraversal, "allow-path-traversal", "T", false, "allow storing files out of the output directory")
 	cmd.Flags().BoolVarP(&opts.IncludeSubject, "include-subject", "", false, "[Preview] recursively pull the subject of artifacts")
+	cmd.Flags().BoolVarP(&opts.PreservePermissions, "preserve-permissions", "", false, "[Preview] Preserve original file permissions when extracting tar archives, ignoring the current umask.")
 	cmd.Flags().StringVarP(&opts.Output, "output", "o", ".", "output directory")
 	cmd.Flags().StringVarP(&opts.ManifestConfigRef, "config", "", "", "output manifest config file")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
@@ -163,6 +168,7 @@ func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 	}()
 	dst.AllowPathTraversalOnWrite = opts.PathTraversal
 	dst.DisableOverwrite = opts.KeepOldFiles
+	dst.PreservePermissions = opts.PreservePermissions
 
 	desc, err := doPull(ctx, src, dst, copyOptions, metadataHandler, statusHandler, opts)
 	if err != nil {
