@@ -77,6 +77,10 @@ func newStateMachine(cmd string) *stateMachine {
 		sm.addPath("Skipped")
 		sm.addPath("Exists")
 		sm.addPath("Mounted")
+	case "backup":
+		sm.addPath("Pulling", "Pulled")
+		sm.addPath("Skipped")
+		sm.addPath("Exists")
 	case "manifest", "blob": // for `manifest push` and `blob push`
 		// TODO: refactor the matcher to match full command like `manifest push`, `manifest delete`, etc.
 		// Tracking issue: https://github.com/oras-project/oras/issues/1571
