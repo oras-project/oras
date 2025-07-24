@@ -39,6 +39,7 @@ func NewBackupHandler(repo string, printer *output.Printer) metadata.BackupHandl
 
 // OnBackupCompleted implements metadata.BackupHandler.
 func (bh *BackupHandler) OnBackupCompleted(tagsCount int, path string) error {
+	// TODO: add time elapsed?
 	return bh.printer.Printf("Successfully backed up %d tag(s) from %s to %s\n", tagsCount, bh.repo, path)
 }
 
@@ -54,7 +55,7 @@ func (bh *BackupHandler) OnTarExporting(path string) error {
 
 // OnArtifactPulled implements metadata.BackupHandler.
 func (bh *BackupHandler) OnArtifactPulled(tag string, referrerCount int) error {
-	return bh.printer.Printf("Pulled tag %s and %d referrer(s)\n", tag, referrerCount)
+	return bh.printer.Printf("Backed up tag %s and %d referrer(s)\n", tag, referrerCount)
 }
 
 // OnTagsFound implements metadata.BackupHandler.

@@ -98,7 +98,6 @@ var _ = Describe("ORAS users:", func() {
 		It("should backup an artifact with its referrers to a directory", func() {
 			tmpDir := GinkgoT().TempDir()
 			outDir := filepath.Join(tmpDir, "backup-single-tag-referrers")
-			// Using artifact from ZOT registry that has referrers
 			srcRef := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
 			foobarStates := append(append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageReferrerConfigStateKeys[0]), foobar.ImageReferrersStateKeys...)
 
@@ -162,11 +161,11 @@ var _ = Describe("ORAS users:", func() {
 	When("backing up a single tag to tar archive", func() {
 		It("should successfully backup an image to tar file", func() {
 			tmpDir := GinkgoT().TempDir()
-			outTar := filepath.Join(tmpDir, "backup.tar")
-			src := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
+			outTar := filepath.Join(tmpDir, "backup-single-tag.tar")
+			srcRef := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
 			foobarStates := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(oras.MediaTypeUnknownConfig))
 
-			ORAS("backup", "--output", outTar, src).
+			ORAS("backup", "--output", outTar, srcRef).
 				MatchStatus(foobarStates, true, len(foobarStates)).
 				Exec()
 
@@ -175,16 +174,38 @@ var _ = Describe("ORAS users:", func() {
 
 			// Verify backed up content
 			dstRef := LayoutRef(outTar, foobar.Tag)
-			compareBackupRef(src, dstRef)
+			compareBackupRef(srcRef, dstRef)
+		})
+
+		It("should successfully backup an artifact with referrers to tar file", func() {
+			tmpDir := GinkgoT().TempDir()
+			outTar := filepath.Join(tmpDir, "backup-single-tag-referrers.tar")
+			srcRef := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
+			foobarStates := append(append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageReferrerConfigStateKeys[0]), foobar.ImageReferrersStateKeys...)
+
+			ORAS("backup", "--output", outTar, Flags.IncludeReferrers, srcRef).
+				MatchStatus(foobarStates, true, len(foobarStates)).
+				Exec()
+
+			// Verify backup structure
+			verifyBackupTarStructure(outTar)
+
+			// Verify backed up content
+			dstRef := LayoutRef(outTar, foobar.Tag)
+			compareBackupRef(srcRef, dstRef)
+			referrers := ORAS("discover", Flags.Layout, dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
+			for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
+				compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), LayoutRef(outTar, referrerDgst))
+			}
 		})
 
 		It("should successfully backup a multi-arch artifact to tar file", func() {
 			tmpDir := GinkgoT().TempDir()
 			outTar := filepath.Join(tmpDir, "multi-arch.tar")
-			src := RegistryRef(ZOTHost, ImageRepo, ma.Tag)
+			srcRef := RegistryRef(ZOTHost, ImageRepo, ma.Tag)
 			stateKeys := ma.IndexStateKeys
 
-			ORAS("backup", "--output", outTar, src).
+			ORAS("backup", "--output", outTar, srcRef).
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				Exec()
 
@@ -193,7 +214,29 @@ var _ = Describe("ORAS users:", func() {
 
 			// Verify backed up content
 			dstRef := LayoutRef(outTar, ma.Tag)
-			compareBackupRef(src, dstRef)
+			compareBackupRef(srcRef, dstRef)
+		})
+
+		It("should successfully backup a multi-arch artifact with referrers to tar file", func() {
+			tmpDir := GinkgoT().TempDir()
+			outTar := filepath.Join(tmpDir, "multi-arch-referrers.tar")
+			srcRef := RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)
+			stateKeys := append(ma.IndexStateKeys, ma.IndexZOTReferrerStateKey, ma.LinuxAMD64ReferrerConfigStateKey)
+
+			ORAS("backup", "--output", outTar, Flags.IncludeReferrers, srcRef).
+				MatchStatus(stateKeys, true, len(stateKeys)).
+				Exec()
+
+			// Verify backup structure
+			verifyBackupTarStructure(outTar)
+
+			// Verify backed up content
+			dstRef := LayoutRef(outTar, ma.Tag)
+			compareBackupRef(srcRef, dstRef)
+			referrers := ORAS("discover", Flags.Layout, dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
+			for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
+				compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), LayoutRef(outTar, referrerDgst))
+			}
 		})
 	})
 
