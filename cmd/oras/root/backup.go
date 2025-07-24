@@ -52,6 +52,7 @@ const (
 var tagRegexp = regexp.MustCompile(`^[\w][\w.-]{0,127}$`)
 
 type backupOptions struct {
+	// TODO: handle distribution spec flag
 	option.Common
 	option.Remote
 	option.Terminal
