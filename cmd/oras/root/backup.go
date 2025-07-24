@@ -246,13 +246,8 @@ func backupTag(ctx context.Context,
 	if err != nil {
 		return 0, fmt.Errorf("failed to resolve %s: %w", tag, err)
 	}
-	extCopyOpts, root, err = prepareCopyOption(ctx, src, dst, root, extCopyOpts)
-	if err != nil {
-		return 0, fmt.Errorf("failed to prepare extended copy options for %s: %w", tag, err)
-	}
-	_, err = oras.ExtendedCopy(ctx, src, root.Digest.String(), dst, tag, extCopyOpts)
-	if err != nil {
-		return 0, fmt.Errorf("failed to copy tag %s: %w", tag, err)
+	if err := recursiveCopy(ctx, src, dst, tag, root, extCopyOpts); err != nil {
+		return 0, fmt.Errorf("failed to backup with referrers for %s: %w", tag, err)
 	}
 	referrers, err := registry.Referrers(ctx, dst, root, "")
 	if err != nil {
