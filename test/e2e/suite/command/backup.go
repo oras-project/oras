@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -77,7 +78,8 @@ var _ = Describe("ORAS beginners:", func() {
 var _ = Describe("ORAS users:", func() {
 	When("backing up a single tag to directory", func() {
 		It("should successfully backup an image to a directory", func() {
-			outDir := GinkgoT().TempDir()
+			tmpDir := GinkgoT().TempDir()
+			outDir := filepath.Join(tmpDir, "backup-single-tag")
 			srcRef := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
 			foobarStates := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(oras.MediaTypeUnknownConfig))
 
@@ -95,7 +97,7 @@ var _ = Describe("ORAS users:", func() {
 
 		It("should backup an artifact with its referrers to a directory", func() {
 			tmpDir := GinkgoT().TempDir()
-			outDir := filepath.Join(tmpDir, "with-referrers")
+			outDir := filepath.Join(tmpDir, "backup-single-tag-referrers")
 			// Using artifact from ZOT registry that has referrers
 			srcRef := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
 			foobarStates := append(append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageReferrerConfigStateKeys[0]), foobar.ImageReferrersStateKeys...)
@@ -110,10 +112,15 @@ var _ = Describe("ORAS users:", func() {
 			// Verify backed up content
 			dstRef := LayoutRef(outDir, foobar.Tag)
 			compareBackupRef(srcRef, dstRef)
+			referrers := ORAS("discover", Flags.Layout, dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
+			for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
+				compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), LayoutRef(outDir, referrerDgst))
+			}
 		})
 
 		It("should successfully backup a multi-arch artifact to a directory", func() {
-			outDir := GinkgoT().TempDir()
+			tmpDir := GinkgoT().TempDir()
+			outDir := filepath.Join(tmpDir, "backup-multi-arch")
 			srcRef := RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)
 			stateKeys := ma.IndexStateKeys
 
@@ -129,12 +136,12 @@ var _ = Describe("ORAS users:", func() {
 			compareBackupRef(srcRef, dstRef)
 		})
 
-		It("should successfully backup a multi-arch artifact with referrers to a directory", Focus, func() {
-			outDir := GinkgoT().TempDir()
+		It("should successfully backup a multi-arch artifact with referrers to a directory", func() {
+			tmpDir := GinkgoT().TempDir()
+			outDir := filepath.Join(tmpDir, "backup-multi-arch-referrers")
 			srcRef := RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)
 			stateKeys := append(ma.IndexStateKeys, ma.IndexZOTReferrerStateKey, ma.LinuxAMD64ReferrerConfigStateKey)
 
-			// TODO: fix bug
 			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, srcRef).
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				Exec()
@@ -145,6 +152,10 @@ var _ = Describe("ORAS users:", func() {
 			// Verify backed up content
 			dstRef := LayoutRef(outDir, ma.Tag)
 			compareBackupRef(srcRef, dstRef)
+			referrers := ORAS("discover", Flags.Layout, dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
+			for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
+				compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), LayoutRef(outDir, referrerDgst))
+			}
 		})
 	})
 

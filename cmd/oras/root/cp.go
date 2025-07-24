@@ -258,6 +258,11 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 		return opts, root, nil
 	}
 
+	if opts.FindPredecessors == nil {
+		opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			return src.Predecessors(ctx, desc)
+		}
+	}
 	referrers, err := graph.FindPredecessors(ctx, src, index.Manifests, opts)
 	if err != nil {
 		return oras.ExtendedCopyOptions{}, ocispec.Descriptor{}, err
@@ -271,7 +276,6 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 		// no child referrers
 		return opts, root, nil
 	}
-
 	rootReferrers, err := opts.FindPredecessors(ctx, src, root)
 	if err != nil {
 		return oras.ExtendedCopyOptions{}, ocispec.Descriptor{}, err
