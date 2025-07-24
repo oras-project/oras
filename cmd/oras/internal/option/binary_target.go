@@ -16,10 +16,13 @@ limitations under the License.
 package option
 
 import (
+	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"oras.land/oras-go/v2"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 )
 
@@ -48,8 +51,10 @@ func (target *BinaryTarget) EnableDistributionSpecFlag() {
 
 // ApplyFlags applies flags to a command flag set fs.
 func (target *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
-	target.From.ApplyFlagsWithPrefix(fs, "from", "source")
-	target.To.ApplyFlagsWithPrefix(fs, "to", "destination")
+	target.From.setFlagDetails("from", "source")
+	target.From.ApplyFlags(fs)
+	target.To.setFlagDetails("to", "destination")
+	target.To.ApplyFlags(fs)
 	fs.StringArrayVarP(&target.resolveFlag, "resolve", "", nil, "base DNS rules formatted in `host:port:address[:address_port]` for --from-resolve and --to-resolve")
 }
 
@@ -63,10 +68,35 @@ func (target *BinaryTarget) Parse(cmd *cobra.Command) error {
 	return Parse(cmd, target)
 }
 
-// Modify handles error during cmd execution.
-func (target *BinaryTarget) Modify(cmd *cobra.Command, err error) (error, bool) {
-	if modifiedErr, modified := target.From.Modify(cmd, err); modified {
+// ModifyError handles error during cmd execution.
+func (target *BinaryTarget) ModifyError(cmd *cobra.Command, err error) (error, bool) {
+	var copyErr *oras.CopyError
+	if !errors.As(err, &copyErr) {
+		return target.modifyError(cmd, err)
+	}
+
+	err = copyErr.Err // extract the inner error
+	var errTarget Target
+	switch copyErr.Origin {
+	case oras.CopyErrorOriginSource:
+		errTarget = target.From
+	case oras.CopyErrorOriginDestination:
+		errTarget = target.To
+	default:
+		err, _ := target.modifyError(cmd, err)
+		return err, true
+	}
+
+	err, _ = target.modifyError(cmd, err)
+	// Example: Error from source registry for "localhost:5000/test:v1":
+	// Example: Error from destination oci-layout for "oci-dir:v1":
+	cmd.SetErrPrefix(fmt.Sprintf("Error from %s %s for %q:", copyErr.Origin, errTarget.Type, errTarget.RawReference))
+	return err, true
+}
+
+func (target *BinaryTarget) modifyError(cmd *cobra.Command, err error) (error, bool) {
+	if modifiedErr, modified := target.From.ModifyError(cmd, err); modified {
 		return modifiedErr, modified
 	}
-	return target.To.Modify(cmd, err)
+	return target.To.ModifyError(cmd, err)
 }

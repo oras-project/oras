@@ -59,12 +59,9 @@ type Target struct {
 	Path string
 
 	IsOCILayout bool
-}
 
-// ApplyFlags applies flags to a command flag set for unary target
-func (target *Target) ApplyFlags(fs *pflag.FlagSet) {
-	target.applyFlagsWithPrefix(fs, "", "")
-	target.Remote.ApplyFlags(fs)
+	prefix      string
+	description string
 }
 
 // GetDisplayReference returns full printable reference.
@@ -72,7 +69,15 @@ func (target *Target) GetDisplayReference() string {
 	return fmt.Sprintf("[%s] %s", target.Type, target.RawReference)
 }
 
-// applyFlagsWithPrefix applies flags to fs with prefix and description.
+// setFlagDetails set directional flag prefix and description details
+func (target *Target) setFlagDetails(prefix, description string) {
+	if prefix != "" {
+		target.prefix = prefix + "-"
+		target.description = description + " "
+	}
+}
+
+// ApplyFlags applies flags to a command flag set
 // The complete form of the `target` flag is designed to be
 //
 //	--target type=<type>[[,<key>=<value>][...]]
@@ -81,17 +86,13 @@ func (target *Target) GetDisplayReference() string {
 // `--target type=oci-layout`.
 // Since there is only one target type besides the default `registry` type,
 // the full form is not implemented until a new type comes in.
-func (target *Target) applyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
-	flagPrefix, notePrefix := applyPrefix(prefix, description)
-	fs.BoolVarP(&target.IsOCILayout, flagPrefix+"oci-layout", "", false, "set "+notePrefix+"target as an OCI image layout")
-	fs.StringVar(&target.Path, flagPrefix+"oci-layout-path", "", "[Experimental] set the path for the "+notePrefix+"OCI image layout target")
-}
-
-// ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
-// Commonly used for non-unary remote targets.
-func (target *Target) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
-	target.applyFlagsWithPrefix(fs, prefix, description)
-	target.Remote.ApplyFlagsWithPrefix(fs, prefix, description)
+func (target *Target) ApplyFlags(fs *pflag.FlagSet) {
+	target.ApplyFlagsWithPrefix(fs, target.prefix, target.description)
+	if target.prefix == "" {
+		target.applyStdinFlags(fs)
+	}
+	fs.BoolVarP(&target.IsOCILayout, target.prefix+"oci-layout", "", false, "set "+target.description+"target as an OCI image layout")
+	fs.StringVar(&target.Path, target.prefix+"oci-layout-path", "", "[Experimental] set the path for the "+target.description+"OCI image layout target")
 }
 
 // Parse gets target options from user input.
@@ -235,51 +236,56 @@ func (target *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, allowTag bool)
 	return nil
 }
 
-// Modify handles error during cmd execution.
-func (target *Target) Modify(cmd *cobra.Command, err error) (error, bool) {
+// ModifyError handles error during cmd execution.
+func (target *Target) ModifyError(cmd *cobra.Command, err error) (error, bool) {
 	if target.IsOCILayout {
+		// short circuit for non-remote targets
 		return err, false
 	}
 
+	// handle errors for remote targets
 	if errors.Is(err, auth.ErrBasicCredentialNotFound) {
 		return target.DecorateCredentialError(err), true
 	}
 
 	if errors.Is(err, errdef.ErrNotFound) {
+		// special handling for not found error returned by registry target
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
 		return err, true
 	}
 
 	var errResp *errcode.ErrorResponse
-	if errors.As(err, &errResp) {
-		ref := registry.Reference{Registry: target.RawReference}
-		if errResp.URL.Host != ref.Host() {
-			// raw reference is not registry host
-			var parseErr error
-			ref, parseErr = registry.ParseReference(target.RawReference)
-			if parseErr != nil {
-				// this should not happen
-				return err, false
-			}
-			if errResp.URL.Host != ref.Host() {
-				// not handle if the error is not from the target
-				return err, false
-			}
-		}
-
-		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
-		ret := &oerrors.Error{
-			Err: oerrors.TrimErrResp(err, errResp),
-		}
-
-		if ref.Registry == "docker.io" && errResp.StatusCode == http.StatusUnauthorized {
-			if ref.Repository != "" && !strings.Contains(ref.Repository, "/") {
-				// docker.io/xxx -> docker.io/library/xxx
-				ref.Repository = "library/" + ref.Repository
-				ret.Recommendation = fmt.Sprintf("Namespace seems missing. Do you mean `%s %s`?", cmd.CommandPath(), ref)
-			}
-		}
-		return ret, true
+	if !errors.As(err, &errResp) {
+		// short circuit if the error is not an ErrorResponse
+		return err, false
 	}
-	return err, false
+
+	ref := registry.Reference{Registry: target.RawReference}
+	if errResp.URL.Host != ref.Host() {
+		// raw reference is not registry host
+		var parseErr error
+		ref, parseErr = registry.ParseReference(target.RawReference)
+		if parseErr != nil {
+			// this should not happen
+			return err, false
+		}
+		if errResp.URL.Host != ref.Host() {
+			// not handle if the error is not from the target
+			return err, false
+		}
+	}
+
+	cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
+	ret := &oerrors.Error{
+		Err: oerrors.ReportErrResp(errResp),
+	}
+
+	if ref.Registry == "docker.io" && errResp.StatusCode == http.StatusUnauthorized {
+		if ref.Repository != "" && !strings.Contains(ref.Repository, "/") {
+			// docker.io/xxx -> docker.io/library/xxx
+			ref.Repository = "library/" + ref.Repository
+			ret.Recommendation = fmt.Sprintf("Namespace seems missing. Do you mean `%s %s`?", cmd.CommandPath(), ref)
+		}
+	}
+	return ret, true
 }

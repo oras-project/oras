@@ -266,7 +266,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 		} else {
 			_, err = oras.Copy(ctx, union, root.Digest.String(), dst, tag, copyOptions)
 		}
-		return err
+		return oerrors.UnwrapCopyError(err) // we don't need the CopyError information so we unwrap it here
 	}
 
 	// Push

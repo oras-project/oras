@@ -17,9 +17,9 @@ package option
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -62,6 +62,25 @@ func TestTarget_Parse_oci_and_oci_path(t *testing.T) {
 	cmd := &cobra.Command{}
 	opts.ApplyFlags(cmd.Flags())
 	cmd.SetArgs([]string{"--oci-layout", "foo", "--oci-layout-path", "foo"})
+	if err := cmd.Execute(); err != nil {
+		t.Errorf("cmd.Execute() error = %v", err)
+	}
+	err := opts.Parse(cmd)
+	if err == nil {
+		t.Errorf("expect Target.Parse() to fail but not")
+	}
+	if !strings.Contains(err.Error(), "cannot be used at the same time") {
+		t.Errorf("expect error message to contain 'cannot be used at the same time' but not")
+	}
+
+}
+
+func TestTarget_Parse_to_oci_and_oci_path(t *testing.T) {
+	opts := Target{}
+	cmd := &cobra.Command{}
+	opts.setFlagDetails("to", "destination")
+	opts.ApplyFlags(cmd.Flags())
+	cmd.SetArgs([]string{"--to-oci-layout", "foo", "--to-oci-layout-path", "foo"})
 	if err := cmd.Execute(); err != nil {
 		t.Errorf("cmd.Execute() error = %v", err)
 	}
@@ -140,20 +159,105 @@ func Test_parseOCILayoutReference(t *testing.T) {
 	}
 }
 
-func TestTarget_Modify_ociLayout(t *testing.T) {
+func TestTarget_ModifyError_ociLayout(t *testing.T) {
 	errClient := errors.New("client error")
 	opts := &Target{}
-	got, modified := opts.Modify(&cobra.Command{}, errClient)
+	cmd := &cobra.Command{}
+	got, modified := opts.ModifyError(cmd, errClient)
 
 	if modified {
 		t.Errorf("expect error not to be modified but received true")
 	}
 	if got != errClient {
-		t.Errorf("unexpected output from Target.Process() = %v", got)
+		t.Errorf("unexpected output from Target.ModifyError() = %v", got)
+	}
+	if want := "Error:"; cmd.ErrPrefix() != want {
+		t.Errorf("unexpected error prefix set on command: %q, want %q", cmd.ErrPrefix(), want)
 	}
 }
 
-func TestTarget_Modify_errInvalidReference(t *testing.T) {
+func TestTarget_ModifyError_NotFound(t *testing.T) {
+	// test errdef.ErrNotFound error returned by oci layout and remote
+	tests := []struct {
+		name            string
+		targetType      string
+		rawReference    string
+		wantErrPrefix   string
+		wantModifiedErr error
+		wantModified    bool
+		isOCILayout     bool
+	}{
+		{
+			name:          "not found",
+			targetType:    TargetTypeOCILayout,
+			rawReference:  "oci-dir:latest",
+			wantErrPrefix: "Error:",
+			wantModified:  false,
+			isOCILayout:   true,
+		},
+		{
+			name:          "remote not found",
+			targetType:    TargetTypeRemote,
+			rawReference:  "localhost:5000/test:latest",
+			wantErrPrefix: oerrors.RegistryErrorPrefix,
+			wantModified:  true,
+			isOCILayout:   false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := &Target{
+				Type:         tt.targetType,
+				RawReference: tt.rawReference,
+				IsOCILayout:  tt.isOCILayout,
+			}
+			cmd := &cobra.Command{}
+			originalErr := fmt.Errorf("not found: %w", errdef.ErrNotFound)
+			got, modified := opts.ModifyError(cmd, originalErr)
+			if modified != tt.wantModified {
+				t.Errorf("Target.ModifyError() modified = %v, want %v", modified, tt.wantModified)
+			}
+			if got != originalErr {
+				t.Errorf("Target.ModifyError() got = %v, want %v", got, originalErr)
+			}
+			if cmd.ErrPrefix() != tt.wantErrPrefix {
+				t.Errorf("Target.ModifyError() cmd.ErrPrefix() = %q, want %q", cmd.ErrPrefix(), tt.wantErrPrefix)
+			}
+		})
+	}
+}
+
+func TestTarget_ModifyError_errResponse(t *testing.T) {
+	errResp := &errcode.ErrorResponse{
+		URL:        &url.URL{Host: "localhost:5000"},
+		StatusCode: http.StatusUnauthorized,
+		Errors: errcode.Errors{
+			errcode.Error{
+				Code:    "NAME_INVALID",
+				Message: "invalid name",
+			},
+		},
+	}
+
+	opts := &Target{
+		Type:         TargetTypeRemote,
+		RawReference: "localhost:5000/test:v1",
+	}
+	cmd := &cobra.Command{}
+	got, modified := opts.ModifyError(cmd, errResp)
+
+	if !modified {
+		t.Errorf("expected error to be modified but received %v", modified)
+	}
+	if got.Error() != errResp.Errors.Error() {
+		t.Errorf("unexpected output from Target.ModifyError() = %v", got)
+	}
+	if cmd.ErrPrefix() != oerrors.RegistryErrorPrefix {
+		t.Errorf("unexpected error prefix set on command: %q, want %q", cmd.ErrPrefix(), oerrors.RegistryErrorPrefix)
+	}
+}
+
+func TestTarget_ModifyError_errInvalidReference(t *testing.T) {
 	errResp := &errcode.ErrorResponse{
 		URL:        &url.URL{Host: "registry-1.docker.io"},
 		StatusCode: http.StatusUnauthorized,
@@ -166,19 +270,24 @@ func TestTarget_Modify_errInvalidReference(t *testing.T) {
 		},
 	}
 	opts := &Target{
+		Type:         TargetTypeRemote,
 		RawReference: "invalid-reference",
 	}
-	got, modified := opts.Modify(&cobra.Command{}, errResp)
+	cmd := &cobra.Command{}
+	got, modified := opts.ModifyError(cmd, errResp)
 
 	if modified {
 		t.Errorf("expect error not to be modified but received true")
 	}
 	if got != errResp {
-		t.Errorf("unexpected output from Target.Process() = %v", got)
+		t.Errorf("unexpected output from Target.ModifyError() = %v", got)
+	}
+	if want := "Error:"; cmd.ErrPrefix() != want {
+		t.Errorf("unexpected error prefix set on command: %q, want %q", cmd.ErrPrefix(), want)
 	}
 }
 
-func TestTarget_Modify_errHostNotMatching(t *testing.T) {
+func TestTarget_ModifyError_errHostNotMatching(t *testing.T) {
 	errResp := &errcode.ErrorResponse{
 		URL:        &url.URL{Host: "registry-1.docker.io"},
 		StatusCode: http.StatusUnauthorized,
@@ -192,15 +301,20 @@ func TestTarget_Modify_errHostNotMatching(t *testing.T) {
 	}
 
 	opts := &Target{
+		Type:         TargetTypeRemote,
 		RawReference: "registry-2.docker.io/test:tag",
 	}
-	_, modified := opts.Modify(&cobra.Command{}, errResp)
+	cmd := &cobra.Command{}
+	_, modified := opts.ModifyError(cmd, errResp)
 	if modified {
 		t.Errorf("expect error not to be modified but received true")
 	}
+	if want := "Error:"; cmd.ErrPrefix() != want {
+		t.Errorf("unexpected error prefix set on command: %q, want %q", cmd.ErrPrefix(), want)
+	}
 }
 
-func TestTarget_Modify_dockerHint(t *testing.T) {
+func TestTarget_ModifyError_dockerHint(t *testing.T) {
 	type fields struct {
 		Remote       Remote
 		RawReference string
@@ -224,7 +338,10 @@ func TestTarget_Modify_dockerHint(t *testing.T) {
 	}{
 		{
 			"namespace already exists",
-			fields{RawReference: "docker.io/library/alpine:latest"},
+			fields{
+				Type:         TargetTypeRemote,
+				RawReference: "docker.io/library/alpine:latest",
+			},
 			&errcode.ErrorResponse{
 				URL:        &url.URL{Host: "registry-1.docker.io"},
 				StatusCode: http.StatusUnauthorized,
@@ -234,7 +351,10 @@ func TestTarget_Modify_dockerHint(t *testing.T) {
 		},
 		{
 			"no namespace",
-			fields{RawReference: "docker.io"},
+			fields{
+				Type:         TargetTypeRemote,
+				RawReference: "docker.io",
+			},
 			&errcode.ErrorResponse{
 				URL:        &url.URL{Host: "registry-1.docker.io"},
 				StatusCode: http.StatusUnauthorized,
@@ -244,7 +364,10 @@ func TestTarget_Modify_dockerHint(t *testing.T) {
 		},
 		{
 			"not 401",
-			fields{RawReference: "docker.io"},
+			fields{
+				Type:         TargetTypeRemote,
+				RawReference: "docker.io",
+			},
 			&errcode.ErrorResponse{
 				URL:        &url.URL{Host: "registry-1.docker.io"},
 				StatusCode: http.StatusConflict,
@@ -255,6 +378,7 @@ func TestTarget_Modify_dockerHint(t *testing.T) {
 		{
 			"should hint",
 			fields{
+				Type:         TargetTypeRemote,
 				RawReference: "docker.io/alpine",
 				Path:         "oras test",
 			},
@@ -281,13 +405,13 @@ func TestTarget_Modify_dockerHint(t *testing.T) {
 				Path:         tt.fields.Path,
 				IsOCILayout:  tt.fields.IsOCILayout,
 			}
-			got, modified := opts.Modify(cmd, tt.err)
+			got, modified := opts.ModifyError(cmd, tt.err)
 			gotErr, ok := got.(*oerrors.Error)
 			if !ok {
 				t.Errorf("expecting error to be *oerrors.Error but received %T", got)
 			}
-			if !reflect.DeepEqual(gotErr.Err, tt.modifiedErr.Err) || gotErr.Usage != tt.modifiedErr.Usage || gotErr.Recommendation != tt.modifiedErr.Recommendation {
-				t.Errorf("Target.Modify() error = %v, wantErr %v", gotErr, tt.modifiedErr)
+			if gotErr.Err.Error() != tt.modifiedErr.Err.Error() || gotErr.Usage != tt.modifiedErr.Usage || gotErr.Recommendation != tt.modifiedErr.Recommendation {
+				t.Errorf("Target.ModifyError() error = %v, wantErr %v", gotErr, tt.modifiedErr)
 			}
 			if !modified {
 				t.Errorf("Failed to modify %v", tt.err)
