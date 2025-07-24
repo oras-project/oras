@@ -31,6 +31,7 @@ import (
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	ma "oras.land/oras/test/e2e/internal/testdata/multi_arch"
 	. "oras.land/oras/test/e2e/internal/utils"
+	"oras.land/oras/test/e2e/internal/utils/match"
 )
 
 func verifyBackupDirectoryStructure(backupPath string) {
@@ -155,6 +156,44 @@ var _ = Describe("ORAS users:", func() {
 			for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
 				compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), LayoutRef(outDir, referrerDgst))
 			}
+		})
+
+		It("should back up a multi-arch image, child images and referrers of the child images, to a directory", Focus, func() {
+			// TODO: fix cp root
+			tag := "v1.3.8"
+			srcRef := RegistryRef(ZOTHost, ArtifactRepo, tag)
+			tmpDir := GinkgoT().TempDir()
+			outDir := filepath.Join(tmpDir, "index-without-referrers")
+			stateKeys := []match.StateKey{
+				{Digest: "44136fa355b3", Name: "application/vnd.oci.empty.v1+json"},
+				{Digest: "01fa0c3558d5", Name: "arm64"},
+				{Digest: "2960eae76dd7", Name: "amd64"},
+				{Digest: "ab01d6e284e8", Name: "application/vnd.oci.image.manifest.v1+json"},
+				{Digest: "6aa11331ce0c", Name: "application/vnd.oci.image.manifest.v1+json"},
+				{Digest: "58e0d01dbd27", Name: "signature"},
+				{Digest: "ecbd32686867", Name: "referrerimage"},
+				{Digest: "02746a135c9e", Name: "sbom"},
+				{Digest: "553c18eccc8b", Name: "application/vnd.oci.image.index.v1+json"},
+			}
+
+			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, srcRef).
+				MatchStatus(stateKeys, true, len(stateKeys)).
+				Exec()
+
+				// Verify backup output structure
+			verifyBackupDirectoryStructure(outDir)
+
+			// Verify backed up content
+			dstRef := LayoutRef(outDir, tag)
+			// validate that the index is copied
+			compareBackupRef(srcRef, dstRef)
+			// validate that the child images are copied
+			compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:ab01d6e284e843d51fb5e753904a540f507a62361a5fd7e434e4f27b285ca5c9"), LayoutRef(outDir, "sha256:ab01d6e284e843d51fb5e753904a540f507a62361a5fd7e434e4f27b285ca5c9"))
+			compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:6aa11331ce0c766d6333b60dac98d584d98eea45fa93bbfc9b5bdb915ce3a43f"), LayoutRef(outDir, "sha256:6aa11331ce0c766d6333b60dac98d584d98eea45fa93bbfc9b5bdb915ce3a43f"))
+			// validate that the referrers of the child images are copied
+			compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:359bac7f6a262e0f36e83b6b78ee3cc7a0bb8813e04d330328ca7ca9785e1e0b"), LayoutRef(outDir, "sha256:359bac7f6a262e0f36e83b6b78ee3cc7a0bb8813e04d330328ca7ca9785e1e0b"))
+			compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:938419ae89a9947476bbed93abc5eb7abf7d5708be69679fe6cc4b22afe8fdd5"), LayoutRef(outDir, "sha256:938419ae89a9947476bbed93abc5eb7abf7d5708be69679fe6cc4b22afe8fdd5"))
+			compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:20e7d3a6ce087c54238c18a3428853b50cdaf4478a9d00caa8304119b58ae8a9"), LayoutRef(outDir, "sha256:20e7d3a6ce087c54238c18a3428853b50cdaf4478a9d00caa8304119b58ae8a9"))
 		})
 	})
 
