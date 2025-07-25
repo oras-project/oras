@@ -52,7 +52,6 @@ const (
 var tagRegexp = regexp.MustCompile(`^[\w][\w.-]{0,127}$`)
 
 type backupOptions struct {
-	// TODO: handle distribution spec flag
 	option.Common
 	option.Remote
 	option.Terminal
@@ -74,24 +73,33 @@ func backupCmd() *cobra.Command {
 		Use:   "backup [flags] --output <path> <registry>/<repository>[:<ref1>[,<ref2>...]]",
 		Short: "[Experimental] Back up artifacts from a registry into an OCI image layout",
 		Long: `[Experimental] Back up artifacts from a registry into an OCI image layout, saved either as a directory or a tar archive.
-The output format is determined by the file extension of the specified output path: if it ends with ".tar", the output will be a tar archive; otherwise, it will be considered as a directory.
+The output format is determined by the file extension of the specified output path: if it ends with ".tar", the output will be a tar archive; otherwise, it will be a directory.
 
-Example - Back up an artifact with referrers from a registry to an OCI image layout directory:
+Example - Back up an artifact and its referrers to a directory:
   oras backup --output hello --include-referrers localhost:5000/hello:v1
 
-Example - Back up an artifact with referrers from a registry to a tar archive:
+Example - Back up an artifact and its referrers to a tar archive:
   oras backup --output hello.tar --include-referrers localhost:5000/hello:v1
 
-Example - Back up multiple artifacts with their referrers:
-  oras backup --output hello.tar --include-referrers localhost:5000/hello:v1,v2,v3
+Example - Back up multiple tagged artifacts and their referrers:
+  oras backup --output hello --include-referrers localhost:5000/hello:v1,v2,v3
 
-Example - Back up artifact from an insecure registry:
+Example - Back up all tagged artifacts and their referrers in a repository:
+  oras backup --output hello --include-referrers localhost:5000/hello
+
+Example - Back up an artifact and its referrers discovered via Referrers API:
+  oras backup --output hello --include-referrers --distribution-spec v1.1-referrers-api localhost:5000/hello
+
+Example - Back up an artifact and its referrers discovered via Referrers Tag Schema:
+  oras backup --output hello --include-referrers --distribution-spec v1.1-referrers-tag localhost:5000/hello
+
+Example - Back up from an insecure registry:
   oras backup --output hello.tar --insecure localhost:5000/hello:v1
 
-Example - Back up artifact from the HTTP registry:
+Example - Back up from a plain HTTP registry:
   oras backup --output hello.tar --plain-http localhost:5000/hello:v1
 
-Example - Back up with concurrency level tuned:
+Example - Back up with a custom concurrency level:
   oras backup --output hello.tar --concurrency 6 localhost:5000/hello:v1
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the artifact reference you want to back up"),
@@ -126,6 +134,7 @@ Example - Back up with concurrency level tuned:
 	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "path to the target output, either a tar archive (*.tar) or a directory")
 	cmd.Flags().BoolVarP(&opts.includeReferrers, "include-referrers", "", false, "back up the image and its linked referrers (e.g., attestations, SBOMs)")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
+	opts.EnableDistributionSpecFlag()
 	_ = cmd.MarkFlagRequired("output")
 
 	option.ApplyFlags(&opts, cmd.Flags())
