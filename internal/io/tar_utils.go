@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 )
 
 // TarDirectory creates a tar archive from the contents of sourceDir and writes it to the given writer.
@@ -46,74 +45,5 @@ func TarDirectory(ctx context.Context, writer io.Writer, sourceDir string) (tarE
 		}
 	}()
 
-	// Walk through the directory tree
-	return filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) (walkErr error) {
-		// Check for context cancellation
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
-
-		if err != nil {
-			return err
-		}
-
-		// Skip if it's not a regular file and not a directory
-		// This explicitly excludes symlinks, devices, pipes, etc.
-		if !info.Mode().IsRegular() && !info.IsDir() {
-			return nil
-		}
-
-		// Set the name to be relative to sourceDir
-		relPath, err := filepath.Rel(sourceDir, path)
-		if err != nil {
-			return fmt.Errorf("failed to get relative path: %w", err)
-		}
-
-		// Skip the root directory itself
-		if relPath == "." {
-			return nil
-		}
-
-		// Create a header based on the file info
-		header, err := tar.FileInfoHeader(info, "")
-		if err != nil {
-			return fmt.Errorf("failed to create tar header: %w", err)
-		}
-
-		// Convert Windows paths to tar format (using forward slashes)
-		header.Name = filepath.ToSlash(relPath)
-		header.Uid = 0
-		header.Gid = 0
-		header.Uname = ""
-		header.Gname = ""
-		// Write the header
-		if err := tw.WriteHeader(header); err != nil {
-			return fmt.Errorf("failed to write tar header: %w", err)
-		}
-
-		if !info.Mode().IsRegular() {
-			// Skip if it's not a regular file
-			return nil
-		}
-
-		fp, err := os.Open(path)
-		if err != nil {
-			return fmt.Errorf("failed to open file %s: %w", path, err)
-		}
-		defer func() {
-			closeErr := fp.Close()
-			if walkErr == nil {
-				walkErr = closeErr
-			}
-		}()
-
-		// Copy the file contents to the tar writer
-		if _, err := io.Copy(tw, fp); err != nil {
-			return fmt.Errorf("failed to write file content to tar: %w", err)
-		}
-
-		return nil
-	})
+	return tw.AddFS(os.DirFS(sourceDir))
 }

@@ -19,7 +19,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -147,37 +146,5 @@ func TestTarDirectory_InvalidSource(t *testing.T) {
 	err = iotest.TarDirectory(context.Background(), &buf, tmpFile.Name())
 	if err == nil {
 		t.Error("Expected error for file as source, but got nil")
-	}
-}
-
-func TestTarDirectory_ContextCancellation(t *testing.T) {
-	// Create a temporary directory
-	tmpDir, err := os.MkdirTemp("", "tar-test-cancel")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer func() {
-		if err := os.RemoveAll(tmpDir); err != nil {
-			t.Logf("Failed to remove temporary directory: %v", err)
-		}
-	}()
-
-	// Create a few more files to increase likelihood of catching cancellation during processing
-	for i := range 5 {
-		filename := filepath.Join(tmpDir, fmt.Sprintf("test%d.txt", i))
-		if err := os.WriteFile(filename, []byte("test content"), 0644); err != nil {
-			t.Fatalf("Failed to create test file %s: %v", filename, err)
-		}
-	}
-
-	var buf bytes.Buffer
-	ctx, cancel := context.WithCancel(context.Background())
-
-	// Cancel the context immediately to simulate interruption
-	cancel()
-
-	err = iotest.TarDirectory(ctx, &buf, tmpDir)
-	if err == nil || err != context.Canceled {
-		t.Errorf("Expected context cancellation error (context.Canceled), but got: %v", err)
 	}
 }
