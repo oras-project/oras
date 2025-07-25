@@ -52,6 +52,7 @@ An OCI image layout directory or `.tar` archive containing the images, artifacts
 **Common flags:**
 
 * `--concurrency <int>`: Number of parallel fetch operations. Default: `3`.
+* `--distribution-spec <string>`: [Preview] set OCI distribution spec version and API option for the registry. Options: v1.1-referrers-tag, v1.1-referrers-api.
 * `--plain-http`: Allow insecure connections to registry without SSL check.
 * `--insecure`: Allow connections to registries without valid TLS certificates.
 * `--registry-config <path>`: Path to the authentication configuration file for the registry.
@@ -89,6 +90,7 @@ Artifacts are uploaded to the target registry/registries as specified.
 **Common flags:**
 
 * `--concurrency <int>`: Number of parallel upload operations. Default: `3`.
+* `--distribution-spec <string>`: [Preview] set OCI distribution spec version and API option for the registry. Options: v1.1-referrers-tag, v1.1-referrers-api.
 * `--plain-http`: Allow insecure connections to registry without SSL check.
 * `--insecure`: Allow connections to registries without valid TLS certificates.
 * `--registry-config <path>`: Path to the authentication configuration file for the registry.
@@ -128,7 +130,7 @@ Upon success, the output will be:
 
 ```console
 ## <progress_bar>
-Found 2 tag(s): v1, v2 in registry-a.k8s.io/kube-apiserver
+Found 2 tag(s) in registry-a.k8s.io/kube-apiserver: v1, v2
 
 ✓ Pulled  application/vnd.oci.image.config.v1+json                                                               2.26/2.26 KB  100.00%  447ms
   └─ sha256:45a5868eb9f1dfbce42513000964664014789a43310865b0c8461e773e9972b9
