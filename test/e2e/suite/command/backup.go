@@ -362,35 +362,6 @@ var _ = Describe("ORAS users:", func() {
 	// 		})
 	// 	})
 
-	// 	When("backing up multiple tags", func() {
-	// 		It("should backup all specified tags", func() {
-	// 			outDir := filepath.Join(tmpDir, "multiple-tags")
-	// 			repo := ZOTHost + "/" + ArtifactRepo
-
-	// 			// Specify multiple tags in format: repo:tag1,tag2
-	// 			ORAS("backup", "--output", outDir, fmt.Sprintf("%s:%s,%s", repo, foobar.Tag, "multi")).
-	// 				Exec()
-
-	// 			// Verify directory structure was created correctly
-	// 			Expect(outDir).To(BeADirectory())
-	// 			Expect(filepath.Join(outDir, "index.json")).To(BeAnExistingFile())
-	// 			Expect(filepath.Join(outDir, "blobs")).To(BeADirectory())
-	// 		})
-
-	// 		It("should auto-discover all tags when no tag is specified", func() {
-	// 			outDir := filepath.Join(tmpDir, "discover-tags")
-	// 			repo := ZOTHost + "/" + ArtifactRepo
-
-	// 			// Don't specify any tag - should discover all tags
-	// 			ORAS("backup", "--output", outDir, repo).Exec()
-
-	// 			// Verify directory structure was created correctly
-	// 			Expect(outDir).To(BeADirectory())
-	// 			Expect(filepath.Join(outDir, "index.json")).To(BeAnExistingFile())
-	// 			Expect(filepath.Join(outDir, "blobs")).To(BeADirectory())
-	// 		})
-	// 	})
-
 	// 	When("using insecure registries", func() {
 	// 		It("should successfully backup from insecure registry using --insecure flag", func() {
 	// 			outDir := filepath.Join(tmpDir, "insecure")

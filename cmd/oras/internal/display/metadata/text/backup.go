@@ -17,6 +17,7 @@ package text
 
 import (
 	"strings"
+	"time"
 
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/status/progress/humanize"
@@ -38,9 +39,8 @@ func NewBackupHandler(repo string, printer *output.Printer) metadata.BackupHandl
 }
 
 // OnBackupCompleted implements metadata.BackupHandler.
-func (bh *BackupHandler) OnBackupCompleted(tagsCount int, path string) error {
-	// TODO: add time elapsed?
-	return bh.printer.Printf("Successfully backed up %d tag(s) from %s to %s\n", tagsCount, bh.repo, path)
+func (bh *BackupHandler) OnBackupCompleted(tagsCount int, path string, duration time.Duration) error {
+	return bh.printer.Printf("Successfully backed up %d tag(s) from %q to %q in %s.\n", tagsCount, bh.repo, path, humanize.FormatDuration(duration))
 }
 
 // OnTarExported implements metadata.BackupHandler.
@@ -55,6 +55,7 @@ func (bh *BackupHandler) OnTarExporting(path string) error {
 
 // OnArtifactPulled implements metadata.BackupHandler.
 func (bh *BackupHandler) OnArtifactPulled(tag string, referrerCount int) error {
+	// represent duration in a human-readable format
 	return bh.printer.Printf("Pulled tag %s and %d referrer(s)\n", tag, referrerCount)
 }
 

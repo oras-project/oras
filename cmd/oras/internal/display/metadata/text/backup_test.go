@@ -21,43 +21,10 @@ import (
 	"io"
 	"os"
 	"testing"
+	"time"
 
 	"oras.land/oras/cmd/oras/internal/output"
 )
-
-func TestBackupHandler_OnBackupCompleted(t *testing.T) {
-	repo := "testRepo"
-	path := "testPath"
-	tagsCount := 5
-	tests := []struct {
-		name    string
-		out     io.Writer
-		wantErr bool
-		want    string
-	}{
-		{
-			name:    "good path",
-			out:     &bytes.Buffer{},
-			wantErr: false,
-			want:    fmt.Sprintf("Successfully backed up %d tag(s) from %s to %s\n", tagsCount, repo, path),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			printer := output.NewPrinter(tt.out, os.Stderr)
-			bh := NewBackupHandler(repo, printer)
-			if err := bh.OnBackupCompleted(tagsCount, path); (err != nil) != tt.wantErr {
-				t.Errorf("OnBackupCompleted() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if !tt.wantErr {
-				got := tt.out.(*bytes.Buffer).String()
-				if got != tt.want {
-					t.Errorf("OnBackupCompleted() got = %v, want %v", got, tt.want)
-				}
-			}
-		})
-	}
-}
 
 func TestBackupHandler_OnTarExported(t *testing.T) {
 	path := "test.tar"
@@ -221,6 +188,41 @@ func TestBackupHandler_Render(t *testing.T) {
 			bh := &BackupHandler{}
 			if err := bh.Render(); (err != nil) != tt.wantErr {
 				t.Errorf("Render() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestBackupHandler_OnBackupCompleted(t *testing.T) {
+	repo := "testRepo"
+	path := "testPath"
+	tagsCount := 5
+	duration := time.Second * 30
+	tests := []struct {
+		name    string
+		out     io.Writer
+		wantErr bool
+		want    string
+	}{
+		{
+			name:    "good path",
+			out:     &bytes.Buffer{},
+			wantErr: false,
+			want:    fmt.Sprintf("Successfully backed up %d tag(s) from %q to %q in %s.\n", tagsCount, repo, path, "30s"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			printer := output.NewPrinter(tt.out, os.Stderr)
+			bh := NewBackupHandler(repo, printer)
+			if err := bh.OnBackupCompleted(tagsCount, path, duration); (err != nil) != tt.wantErr {
+				t.Errorf("OnBackupCompleted() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !tt.wantErr {
+				got := tt.out.(*bytes.Buffer).String()
+				if got != tt.want {
+					t.Errorf("OnBackupCompleted() got = %v, want %v", got, tt.want)
+				}
 			}
 		})
 	}

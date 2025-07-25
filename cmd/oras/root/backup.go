@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -176,6 +177,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	statusHandler, metadataHandler := display.NewBackupHandler(opts.Printer, opts.TTY, opts.repository, dstOCI)
 
 	// Find tags to back up
+	startTime := time.Now()
 	tags, err := findTagsToBackup(ctx, srcRepo, opts)
 	if err != nil {
 		return fmt.Errorf("failed to get tags to back up: %w", err)
@@ -232,7 +234,8 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	if err := prepareBackupOutput(ctx, dstRoot, opts, logger, metadataHandler); err != nil {
 		return err
 	}
-	return metadataHandler.OnBackupCompleted(len(tags), opts.output)
+	duration := time.Since(startTime)
+	return metadataHandler.OnBackupCompleted(len(tags), opts.output, duration)
 }
 
 func backupTag(ctx context.Context,

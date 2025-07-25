@@ -171,15 +171,7 @@ func (s *status) durationString() string {
 		d = s.endTime.Sub(s.startTime)
 	}
 
-	switch {
-	case d > time.Second:
-		d = d.Round(time.Second)
-	case d > time.Millisecond:
-		d = d.Round(time.Millisecond)
-	default:
-		d = d.Round(time.Microsecond)
-	}
-	return d.String()
+	return humanize.FormatDuration(d)
 }
 
 // statusUpdate is a function to update the status.
