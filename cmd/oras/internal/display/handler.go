@@ -233,7 +233,7 @@ func NewCopyHandler(printer *output.Printer, tty *os.File, fetcher fetcher.Fetch
 // NewBackupHandler returns backup handlers.
 func NewBackupHandler(printer *output.Printer, tty *os.File, repo string, fetcher fetcher.Fetcher) (status.BackupHandler, metadata.BackupHandler) {
 	if tty != nil {
-		return status.NewTTYBackupHandler(tty), text.NewBackupHandler(repo, printer)
+		return status.NewTTYBackupHandler(tty, fetcher), text.NewBackupHandler(repo, printer)
 	}
 	return status.NewTextBackupHandler(printer, fetcher), text.NewBackupHandler(repo, printer)
 }

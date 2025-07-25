@@ -231,14 +231,17 @@ func (ch *TTYCopyHandler) OnMounted(_ context.Context, desc ocispec.Descriptor) 
 // TTYBackupHandler handles tty status output for backup events.
 type TTYBackupHandler struct {
 	tty       *os.File
-	committed sync.Map
+	committed *sync.Map
 	tracked   track.GraphTarget
+	fetcher   content.Fetcher
 }
 
 // NewTTYBackupHandler returns a new handler for backup command.
-func NewTTYBackupHandler(tty *os.File) BackupHandler {
+func NewTTYBackupHandler(tty *os.File, fetcher content.Fetcher) BackupHandler {
 	return &TTYBackupHandler{
-		tty: tty,
+		tty:       tty,
+		committed: &sync.Map{},
+		fetcher:   fetcher,
 	}
 }
 
@@ -279,7 +282,7 @@ func (bh *TTYBackupHandler) PreCopy(ctx context.Context, desc ocispec.Descriptor
 // PostCopy implements PostCopy of BackupHandler.
 func (bh *TTYBackupHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor) error {
 	bh.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
-	successors, err := graph.FilteredSuccessors(ctx, desc, bh.tracked, DeduplicatedFilter(&bh.committed))
+	successors, err := graph.FilteredSuccessors(ctx, desc, bh.fetcher, DeduplicatedFilter(bh.committed))
 	if err != nil {
 		return err
 	}
