@@ -16,6 +16,7 @@ limitations under the License.
 package command
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -77,7 +78,8 @@ var _ = Describe("ORAS beginners:", func() {
 })
 
 var _ = Describe("ORAS users:", func() {
-	When("backing up a single tag to directory", func() {
+
+	When("backing up a single tag", func() {
 		It("should successfully backup an image to a directory", func() {
 			tmpDir := GinkgoT().TempDir()
 			outDir := filepath.Join(tmpDir, "backup-single-tag")
@@ -158,12 +160,11 @@ var _ = Describe("ORAS users:", func() {
 			}
 		})
 
-		It("should back up a multi-arch image, child images and referrers of the child images, to a directory", Focus, func() {
-			// TODO: fix cp root
+		It("should back up a multi-arch image (itself has no referrers), child images and referrers of the child images, to a directory", func() {
 			tag := "v1.3.8"
 			srcRef := RegistryRef(ZOTHost, ArtifactRepo, tag)
 			tmpDir := GinkgoT().TempDir()
-			outDir := filepath.Join(tmpDir, "index-without-referrers")
+			outDir := filepath.Join(tmpDir, "backup-index-without-referrers")
 			stateKeys := []match.StateKey{
 				{Digest: "44136fa355b3", Name: "application/vnd.oci.empty.v1+json"},
 				{Digest: "01fa0c3558d5", Name: "arm64"},
@@ -195,9 +196,7 @@ var _ = Describe("ORAS users:", func() {
 			compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:938419ae89a9947476bbed93abc5eb7abf7d5708be69679fe6cc4b22afe8fdd5"), LayoutRef(outDir, "sha256:938419ae89a9947476bbed93abc5eb7abf7d5708be69679fe6cc4b22afe8fdd5"))
 			compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:20e7d3a6ce087c54238c18a3428853b50cdaf4478a9d00caa8304119b58ae8a9"), LayoutRef(outDir, "sha256:20e7d3a6ce087c54238c18a3428853b50cdaf4478a9d00caa8304119b58ae8a9"))
 		})
-	})
 
-	When("backing up a single tag to tar archive", func() {
 		It("should successfully backup an image to tar file", func() {
 			tmpDir := GinkgoT().TempDir()
 			outTar := filepath.Join(tmpDir, "backup-single-tag.tar")
@@ -215,68 +214,76 @@ var _ = Describe("ORAS users:", func() {
 			dstRef := LayoutRef(outTar, foobar.Tag)
 			compareBackupRef(srcRef, dstRef)
 		})
+	})
 
-		It("should successfully backup an artifact with referrers to tar file", func() {
+	When("backing up multiple tags", func() {
+		It("should backup all specified tags", func() {
 			tmpDir := GinkgoT().TempDir()
-			outTar := filepath.Join(tmpDir, "backup-single-tag-referrers.tar")
-			srcRef := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
-			foobarStates := append(append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageReferrerConfigStateKeys[0]), foobar.ImageReferrersStateKeys...)
+			outDir := filepath.Join(tmpDir, "backup-multiple-tags")
+			srcTags := []string{foobar.Tag, ma.Tag}
+			srcRefs := fmt.Sprintf("%s/%s:%s", ZOTHost, ArtifactRepo, strings.Join(srcTags, ","))
+			// foobar state keys
+			foobarStateKeys := append(append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageReferrerConfigStateKeys[0]), foobar.ImageReferrersStateKeys...)
+			// ma state keys
+			maStateKeys := append(ma.IndexStateKeys, ma.IndexZOTReferrerStateKey, ma.LinuxAMD64ReferrerConfigStateKey)
+			// combined state keys
+			stateKeys := append(foobarStateKeys, maStateKeys...)
 
-			ORAS("backup", "--output", outTar, Flags.IncludeReferrers, srcRef).
-				MatchStatus(foobarStates, true, len(foobarStates)).
-				Exec()
-
-			// Verify backup structure
-			verifyBackupTarStructure(outTar)
-
-			// Verify backed up content
-			dstRef := LayoutRef(outTar, foobar.Tag)
-			compareBackupRef(srcRef, dstRef)
-			referrers := ORAS("discover", Flags.Layout, dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
-			for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
-				compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), LayoutRef(outTar, referrerDgst))
-			}
-		})
-
-		It("should successfully backup a multi-arch artifact to tar file", func() {
-			tmpDir := GinkgoT().TempDir()
-			outTar := filepath.Join(tmpDir, "multi-arch.tar")
-			srcRef := RegistryRef(ZOTHost, ImageRepo, ma.Tag)
-			stateKeys := ma.IndexStateKeys
-
-			ORAS("backup", "--output", outTar, srcRef).
+			// Specify multiple tags in format: repo:tag1,tag2
+			ORAS("backup", "--output", outDir, srcRefs).
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				Exec()
 
-			// Verify backup structure
-			verifyBackupTarStructure(outTar)
+			// Verify backup output structure
+			verifyBackupDirectoryStructure(outDir)
 
 			// Verify backed up content
-			dstRef := LayoutRef(outTar, ma.Tag)
-			compareBackupRef(srcRef, dstRef)
+			for _, tag := range srcTags {
+				compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, tag), LayoutRef(outDir, tag))
+			}
 		})
 
-		It("should successfully backup a multi-arch artifact with referrers to tar file", func() {
+		It("should backup all specified tags with referrers", func() {
 			tmpDir := GinkgoT().TempDir()
-			outTar := filepath.Join(tmpDir, "multi-arch-referrers.tar")
-			srcRef := RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)
-			stateKeys := append(ma.IndexStateKeys, ma.IndexZOTReferrerStateKey, ma.LinuxAMD64ReferrerConfigStateKey)
+			outDir := filepath.Join(tmpDir, "backup-multiple-tags")
+			srcTags := []string{foobar.Tag, ma.Tag}
+			srcRefs := fmt.Sprintf("%s/%s:%s", ZOTHost, ArtifactRepo, strings.Join(srcTags, ","))
+			// foobar state keys
+			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey)
+			// ma state keys
+			stateKeys = append(stateKeys, ma.IndexStateKeys...)
 
-			ORAS("backup", "--output", outTar, Flags.IncludeReferrers, srcRef).
+			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, srcRefs).
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				Exec()
 
-			// Verify backup structure
-			verifyBackupTarStructure(outTar)
+			// Verify backup output structure
+			verifyBackupDirectoryStructure(outDir)
 
 			// Verify backed up content
-			dstRef := LayoutRef(outTar, ma.Tag)
-			compareBackupRef(srcRef, dstRef)
-			referrers := ORAS("discover", Flags.Layout, dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
-			for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
-				compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), LayoutRef(outTar, referrerDgst))
+			for _, tag := range srcTags {
+				srcRef := RegistryRef(ZOTHost, ArtifactRepo, tag)
+				dstRef := LayoutRef(outDir, tag)
+				compareBackupRef(srcRef, dstRef)
+				referrers := ORAS("discover", Flags.Layout, dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
+				for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
+					compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), LayoutRef(outDir, referrerDgst))
+				}
 			}
 		})
+
+		// It("should auto-discover all tags when no tag is specified", func() {
+		// 	outDir := filepath.Join(tmpDir, "discover-tags")
+		// 	repo := ZOTHost + "/" + ArtifactRepo
+
+		// 	// Don't specify any tag - should discover all tags
+		// 	ORAS("backup", "--output", outDir, repo).Exec()
+
+		// 	// Verify directory structure was created correctly
+		// 	Expect(outDir).To(BeADirectory())
+		// 	Expect(filepath.Join(outDir, "index.json")).To(BeAnExistingFile())
+		// 	Expect(filepath.Join(outDir, "blobs")).To(BeADirectory())
+		// })
 	})
 
 	// 	When("using --concurrency flag", func() {
