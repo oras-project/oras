@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -78,11 +79,37 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("backup", "--output", tmpDir, RegistryRef(ZOTHost, ImageRepo, InvalidTag)).ExpectFailure().
 				MatchErrKeyWords("Error:", InvalidTag).Exec()
 		})
+
+		It("should fail with appropriate error when digest is provided", func() {
+			tmpDir := GinkgoT().TempDir()
+			outDir := filepath.Join(tmpDir, "digest-reference")
+
+			// Test with a malformed reference
+			ORAS("backup", "--output", outDir, "invalid/format@sha256:digest").ExpectFailure().
+				MatchErrKeyWords("Error:", "digest references are not supported").Exec()
+		})
+
+		It("should fail with appropriate error when invalid tag format provided", func() {
+			tmpDir := GinkgoT().TempDir()
+			outDir := filepath.Join(tmpDir, "invalid-tag")
+
+			// Test with invalid tag format
+			ORAS("backup", "--output", outDir, "localhost:5000/repo:invalid+tag").ExpectFailure().
+				MatchErrKeyWords("Error:").Exec()
+		})
+
+		It("should fail with appropriate error when tag is provided with digest", func() {
+			tmpDir := GinkgoT().TempDir()
+			outDir := filepath.Join(tmpDir, "invalid-reference")
+
+			// Test with a malformed reference
+			ORAS("backup", "--output", outDir, "invalid/format:v1,@sha256:123abc").ExpectFailure().
+				MatchErrKeyWords("Error:", "digest references are not supported").Exec()
+		})
 	})
 })
 
 var _ = Describe("ORAS users:", func() {
-
 	When("backing up a single tag", func() {
 		It("should successfully backup an image to a directory", func() {
 			tmpDir := GinkgoT().TempDir()
@@ -346,82 +373,120 @@ var _ = Describe("ORAS users:", func() {
 		})
 	})
 
-	// 	When("using --concurrency flag", func() {
-	// 		It("should successfully backup with custom concurrency level", func() {
-	// 			outDir := filepath.Join(tmpDir, "concurrency")
-	// 			src := RegistryRef(ZOTHost, ImageRepo, ma.Tag)
+	When("using --distribution-spec flag", func() {
+		It("should backup using referrers API with --distribution-spec v1.1-referrers-api", func() {
+			tmpDir := GinkgoT().TempDir()
+			outDir := filepath.Join(tmpDir, "backup-referrers-api")
+			srcRef := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
 
-	// 			ORAS("backup", "--output", outDir, "--concurrency", "5", src).
-	// 				MatchStatus(ma.StateKeys, true, len(ma.StateKeys)).
-	// 				Exec()
+			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, Flags.DistributionSpec, "v1.1-referrers-api", srcRef).Exec()
 
-	// 			// Verify directory structure was created correctly
-	// 			Expect(outDir).To(BeADirectory())
-	// 			Expect(filepath.Join(outDir, "index.json")).To(BeAnExistingFile())
-	// 			Expect(filepath.Join(outDir, "blobs")).To(BeADirectory())
-	// 		})
-	// 	})
+			// Verify backup output structure
+			verifyBackupDirectoryStructure(outDir)
 
-	// 	When("using insecure registries", func() {
-	// 		It("should successfully backup from insecure registry using --insecure flag", func() {
-	// 			outDir := filepath.Join(tmpDir, "insecure")
-	// 			src := RegistryRef(RegistryHost, ArtifactRepo, foobar.Tag)
+			// Verify backed up content
+			dstRef := LayoutRef(outDir, foobar.Tag)
+			compareBackupRef(srcRef, dstRef)
+			referrers := ORAS("discover", Flags.Layout, dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
+			for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
+				compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), LayoutRef(outDir, referrerDgst))
+			}
+		})
 
-	// 			ORAS("backup", "--output", outDir, "--insecure", src).Exec()
+		It("should backup using tag schema with --distribution-spec v1.1-referrers-tag", func() {
+			tmpDir := GinkgoT().TempDir()
+			outDir := filepath.Join(tmpDir, "backup-referrers-tag")
+			srcRef := RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag)
 
-	// 			// Verify directory structure was created correctly
-	// 			Expect(outDir).To(BeADirectory())
-	// 			Expect(filepath.Join(outDir, "index.json")).To(BeAnExistingFile())
-	// 			Expect(filepath.Join(outDir, "blobs")).To(BeADirectory())
-	// 		})
+			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, Flags.DistributionSpec, "v1.1-referrers-tag", srcRef).Exec()
 
-	// 		It("should successfully backup from HTTP registry using --plain-http flag", func() {
-	// 			outDir := filepath.Join(tmpDir, "plain-http")
-	// 			src := RegistryRef(RegistryFallbackHost, ArtifactRepo, foobar.Tag)
+			// Verify backup output structure
+			verifyBackupDirectoryStructure(outDir)
 
-	// 			ORAS("backup", "--output", outDir, "--plain-http", src).Exec()
+			// Verify backed up content
+			dstRef := LayoutRef(outDir, foobar.Tag)
+			compareBackupRef(srcRef, dstRef)
+			referrers := ORAS("discover", Flags.Layout, dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
+			for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
+				compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), LayoutRef(outDir, referrerDgst))
+			}
+		})
+	})
 
-	// 			// Verify directory structure was created correctly
-	// 			Expect(outDir).To(BeADirectory())
-	// 			Expect(filepath.Join(outDir, "index.json")).To(BeAnExistingFile())
-	// 			Expect(filepath.Join(outDir, "blobs")).To(BeADirectory())
-	// 		})
-	// 	})
-	// })
+	When("using --concurrency flag", func() {
+		It("should successfully backup with custom concurrency level", func() {
+			tmpDir := GinkgoT().TempDir()
+			outDir := filepath.Join(tmpDir, "concurrency")
+			src := RegistryRef(ZOTHost, ImageRepo, ma.Tag)
 
-	// var _ = Describe("ORAS administrators:", func() {
-	// 	When("handling error cases", func() {
-	// 		It("should fail with appropriate error when invalid reference format provided", func() {
-	// 			tmpDir := filepath.Join(os.TempDir(), backupTestDir("invalid-reference"))
-	// 			defer os.RemoveAll(tmpDir)
+			stateKeys := ma.IndexStateKeys
 
-	// 			// Test with a malformed reference
-	// 			ORAS("backup", "--output", tmpDir, "invalid/format@sha256:digest").ExpectFailure().
-	// 				MatchErrKeyWords("Error:", "digest references are not supported").Exec()
-	// 		})
+			ORAS("backup", "--output", outDir, "--concurrency", "5", src).
+				MatchStatus(stateKeys, true, len(stateKeys)).
+				Exec()
 
-	// 		It("should fail with appropriate error when invalid tag format provided", func() {
-	// 			tmpDir := filepath.Join(os.TempDir(), backupTestDir("invalid-tag"))
-	// 			defer os.RemoveAll(tmpDir)
+			// Verify directory structure was created correctly
+			verifyBackupDirectoryStructure(outDir)
+			// Verify backed up content
+			compareBackupRef(src, LayoutRef(outDir, ma.Tag))
+		})
+	})
 
-	// 			// Test with invalid tag format
-	// 			ORAS("backup", "--output", tmpDir, "localhost:5000/repo:invalid@tag").ExpectFailure().
-	// 				MatchErrKeyWords("Error:").Exec()
-	// 		})
+	When("handling error cases", func() {
+		It("should fail when output directory cannot be created", func() {
+			// Create a file that will conflict with our output path
+			tmpDir := GinkgoT().TempDir()
+			conflictFile := filepath.Join(tmpDir, "backup-conflict-file")
+			defer func() {
+				_ = os.RemoveAll(conflictFile)
+			}()
 
-	// 		It("should fail when output directory cannot be created", func() {
-	// 			// Create a file that will conflict with our output path
-	// 			conflictFile := filepath.Join(os.TempDir(), backupTestDir("conflict-file"))
-	// 			defer os.RemoveAll(conflictFile)
+			// Create a file (not a directory)
+			fp, err := os.Create(conflictFile)
+			Expect(err).ToNot(HaveOccurred())
+			_ = fp.Close()
 
-	// 			// Create a file (not a directory)
-	// 			file, err := os.Create(conflictFile)
-	// 			Expect(err).ToNot(HaveOccurred())
-	// 			file.Close()
+			// Try to use the file as an output directory
+			ORAS("backup", "--output", conflictFile, RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)).
+				ExpectFailure().MatchErrKeyWords("Error:").Exec()
+		})
 
-	// 			// Try to use the file as an output directory
-	// 			ORAS("backup", "--output", conflictFile, RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)).
-	// 				ExpectFailure().MatchErrKeyWords("Error:").Exec()
-	// 		})
-	// 	})
+		It("should fail when the repository doesn't exist", func() {
+			tmpDir := GinkgoT().TempDir()
+			outDir := filepath.Join(tmpDir, "backup-nonexistent-repo")
+
+			// Use a repository name that definitely doesn't exist
+			nonexistentRepo := fmt.Sprintf("nonexistent-repo-%d-%d", GinkgoRandomSeed(), time.Now().UnixNano())
+			srcRef := fmt.Sprintf("%s/%s", ZOTHost, nonexistentRepo)
+
+			ORAS("backup", "--output", outDir, srcRef).ExpectFailure().
+				MatchErrKeyWords("Error response from registry:").Exec()
+		})
+
+		It("should fail when no tags are found in the repository", func() {
+			tmpDir := GinkgoT().TempDir()
+			outDir := filepath.Join(tmpDir, "backup-no-tags")
+
+			// Setup a test repository with no tags
+			testRepo := backupTestRepo("backup-repo-no-tags")
+			srcRef := fmt.Sprintf("%s/%s", ZOTHost, testRepo)
+			prepare(RegistryRef(ZOTHost, ArtifactRepo, foobar.Digest), RegistryRef(ZOTHost, testRepo, foobar.Digest))
+
+			ORAS("backup", "--output", outDir, srcRef).ExpectFailure().
+				MatchErrKeyWords("Error:", "no tags found").
+				MatchErrKeyWords("oras repo tags"). // test recommendation
+				Exec()
+		})
+
+		It("should fail when a specified tag doesn't exist", func() {
+			tmpDir := GinkgoT().TempDir()
+			outDir := filepath.Join(tmpDir, "backup-nonexistent-tag")
+
+			// Try to backup a nonexistent tag from this repo
+			srcRef := RegistryRef(ZOTHost, ImageRepo, InvalidTag)
+
+			ORAS("backup", "--output", outDir, srcRef).ExpectFailure().
+				MatchErrKeyWords("Error:", InvalidTag, "not found").Exec()
+		})
+	})
 })
