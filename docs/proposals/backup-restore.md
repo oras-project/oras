@@ -104,7 +104,6 @@ Artifacts are uploaded to the target registry/registries as specified.
 * `--key-file <path>`: Path to client private key file.
 * `--resolve <host:port:address[:address_port]>`: Customized DNS for registry.
 * `--debug`: Output debug logs (implies `--no-tty`).
-* `--distribution-spec string`: [Preview] set OCI distribution spec version and API option for target. Options: v1.1-referrers-tag, v1.1-referrers-api
 * `--no-tty`: Disable progress bars.
 
 ### User Experience in the CLI
