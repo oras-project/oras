@@ -25,6 +25,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"oras.land/oras-go/v2/registry/remote"
@@ -536,7 +537,7 @@ func (m *mockBackupHandler) OnArtifactPulled(tag string, referrerCount int) erro
 	return nil
 }
 
-func (m *mockBackupHandler) OnBackupCompleted(count int, outputPath string) error {
+func (m *mockBackupHandler) OnBackupCompleted(tagsCount int, path string, duration time.Duration) error {
 	return nil
 }
 
