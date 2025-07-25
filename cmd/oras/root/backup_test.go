@@ -336,6 +336,72 @@ func TestPrepareBackupOutput(t *testing.T) {
 			t.Errorf("Expected error %v, got: %v", expectedErr, err)
 		}
 	})
+
+	t.Run("Non-existent output directory", func(t *testing.T) {
+		// Create a temporary directory that we can control
+		nonExistentDir := filepath.Join(tempDir, "non-existent")
+
+		// Make sure it doesn't exist by removing it if it does
+		_ = os.RemoveAll(nonExistentDir)
+
+		// Setup a path in a non-existent directory that should trigger mkdir
+		outputPath := filepath.Join(nonExistentDir, "nested", "output.tar")
+
+		opts := &backupOptions{
+			outputFormat: outputFormatTar,
+			output:       outputPath,
+		}
+
+		mockHandler := &mockBackupHandler{}
+		err := prepareBackupOutput(ctx, tempDir, opts, mockLogger, mockHandler)
+		if err != nil {
+			t.Errorf("Expected no error creating directories, got: %v", err)
+		}
+
+		// Verify the directory was created
+		if _, err := os.Stat(filepath.Dir(outputPath)); os.IsNotExist(err) {
+			t.Errorf("Expected output directory to be created")
+		}
+	})
+
+	t.Run("Relative output path", func(t *testing.T) {
+		// Save current directory
+		cwd, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("Failed to get current working directory: %v", err)
+		}
+
+		// Change to temp directory temporarily
+		if err := os.Chdir(tempDir); err != nil {
+			t.Fatalf("Failed to change to temp directory: %v", err)
+		}
+		defer func() {
+			// Change back to original directory
+			if err := os.Chdir(cwd); err != nil {
+				t.Logf("Failed to restore working directory: %v", err)
+			}
+		}()
+
+		// Use a relative path
+		relPath := "./relative/output.tar"
+
+		opts := &backupOptions{
+			outputFormat: outputFormatTar,
+			output:       relPath,
+		}
+
+		mockHandler := &mockBackupHandler{}
+		err = prepareBackupOutput(ctx, tempDir, opts, mockLogger, mockHandler)
+		if err != nil {
+			t.Errorf("Expected no error with relative path, got: %v", err)
+		}
+
+		// Verify the file was created with the correct path
+		absPath, _ := filepath.Abs(relPath)
+		if _, err := os.Stat(absPath); os.IsNotExist(err) {
+			t.Errorf("Expected tar file to exist at absolute path %s", absPath)
+		}
+	})
 }
 
 func TestFindTagsToBackup(t *testing.T) {
