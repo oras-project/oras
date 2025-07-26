@@ -17,6 +17,7 @@ package root
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -46,10 +47,8 @@ const (
 	outputFormatTar
 )
 
-// tagRegexp checks the tag name.
-// The docker and OCI spec have the same regular expression.
-//
-// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#pulling-manifests
+// tagRegexp matches valid OCI artifact tags.
+// reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#pulling-manifests
 var tagRegexp = regexp.MustCompile(`^[\w][\w.-]{0,127}$`)
 
 type backupOptions struct {
@@ -103,7 +102,7 @@ Example - Back up from a plain HTTP registry:
 Example - Back up with a custom concurrency level:
   oras backup --output hello.tar --concurrency 6 localhost:5000/hello:v1
 `,
-		Args: oerrors.CheckArgs(argument.Exactly(1), "the artifact reference you want to back up"),
+		Args: oerrors.CheckArgs(argument.Exactly(1), "the artifacts to back up"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := option.Parse(cmd, &opts); err != nil {
 				return err
@@ -133,16 +132,16 @@ Example - Back up with a custom concurrency level:
 	}
 
 	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "path to the target output, either a tar archive (*.tar) or a directory")
-	cmd.Flags().BoolVarP(&opts.includeReferrers, "include-referrers", "", false, "back up the image and its linked referrers (e.g., attestations, SBOMs)")
+	cmd.Flags().BoolVarP(&opts.includeReferrers, "include-referrers", "", false, "back up the artifact with its referrers (e.g., attestations, SBOMs)")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 	opts.EnableDistributionSpecFlag()
 	_ = cmd.MarkFlagRequired("output")
-
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Remote)
 }
 
 func runBackup(cmd *cobra.Command, opts *backupOptions) error {
+	startTime := time.Now() // start timing the backup process
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 
 	var dstRoot string
@@ -152,7 +151,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	case outputFormatTar:
 		tempDir, err := os.MkdirTemp("", "oras-backup-*")
 		if err != nil {
-			return fmt.Errorf("failed to create temporary directory: %w", err)
+			return fmt.Errorf("failed to create temporary directory for backup: %w", err)
 		}
 		defer func() {
 			if err := os.RemoveAll(tempDir); err != nil {
@@ -161,31 +160,29 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		}()
 		dstRoot = tempDir
 	default:
-		// this should not happen
+		// this should not happen, just a safeguard
 		return fmt.Errorf("unsupported output format")
 	}
 
 	// Prepare copy source and destination
 	srcRepo, err := opts.NewRepository(opts.repository, opts.Common, logger)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to construct repository %s: %w", opts.repository, err)
 	}
 	dstOCI, err := oci.New(dstRoot)
 	if err != nil {
-		return fmt.Errorf("failed to create OCI store: %w", err)
+		return fmt.Errorf("failed to construct OCI store: %w", err)
 	}
 	statusHandler, metadataHandler := display.NewBackupHandler(opts.Printer, opts.TTY, opts.repository, dstOCI)
 
 	// Find tags to back up
-	startTime := time.Now()
 	tags, err := findTagsToBackup(ctx, srcRepo, opts)
 	if err != nil {
-		return fmt.Errorf("failed to get tags to back up: %w", err)
+		return fmt.Errorf("failed to find tags to back up: %w", err)
 	}
 	if len(tags) == 0 {
 		return &oerrors.Error{
-			Err:            fmt.Errorf("no tags found in repository %s, please specify at least one tag to back up", opts.repository),
-			Usage:          fmt.Sprintf("%s %s", cmd.Parent().CommandPath(), cmd.Use),
+			Err:            fmt.Errorf("no tags found in repository %s", opts.repository),
 			Recommendation: fmt.Sprintf(`If you want to list available tags in %s, use "oras repo tags"`, opts.repository),
 		}
 	}
@@ -248,7 +245,7 @@ func backupTag(ctx context.Context,
 	if !includeReferrers {
 		_, err := oras.Copy(ctx, src, tag, dst, tag, copyOpts)
 		if err != nil {
-			return 0, fmt.Errorf("failed to copy ref %s: %w", tag, err)
+			return 0, fmt.Errorf("failed to copy tag %s: %w", tag, err)
 		}
 		return 0, nil
 	}
@@ -256,14 +253,14 @@ func backupTag(ctx context.Context,
 	// copy with referrers
 	root, err := oras.Resolve(ctx, src, tag, oras.DefaultResolveOptions)
 	if err != nil {
-		return 0, fmt.Errorf("failed to resolve %s: %w", tag, err)
+		return 0, fmt.Errorf("failed to resolve tag %s: %w", tag, err)
 	}
 	if err := recursiveCopy(ctx, src, dst, tag, root, extCopyOpts); err != nil {
-		return 0, fmt.Errorf("failed to backup with referrers for %s: %w", tag, err)
+		return 0, fmt.Errorf("failed to backup with referrers for tag %s: %w", tag, err)
 	}
 	referrers, err := registry.Referrers(ctx, dst, root, "")
 	if err != nil {
-		return 0, fmt.Errorf("failed to get referrers for %s: %w", tag, err)
+		return 0, fmt.Errorf("failed to get referrers for tag %s: %w", tag, err)
 	}
 	return len(referrers), nil
 }
@@ -305,7 +302,7 @@ func prepareBackupOutput(ctx context.Context, dstRoot string, opts *backupOption
 			return fmt.Errorf("failed to get absolute path for output file %s: %w", opts.output, err)
 		}
 	}
-	if err := os.MkdirAll(filepath.Dir(absOutput), 0777); err != nil {
+	if err := os.MkdirAll(filepath.Dir(absOutput), 0755); err != nil {
 		return fmt.Errorf("failed to create directory for output file %s: %w", absOutput, err)
 	}
 
@@ -337,7 +334,7 @@ func findTagsToBackup(ctx context.Context, repo *remote.Repository, opts *backup
 func parseArtifactReferences(artifactRefs string) (repository string, tags []string, err error) {
 	// Validate input
 	if artifactRefs == "" {
-		return "", nil, fmt.Errorf("empty reference")
+		return "", nil, errors.New("artifact reference cannot be empty")
 	}
 	// Reject digest references early
 	if strings.ContainsRune(artifactRefs, '@') {
@@ -362,7 +359,7 @@ func parseArtifactReferences(artifactRefs string) (repository string, tags []str
 	// 2. Validate repository
 	parsedRepo, err := registry.ParseReference(repoParts)
 	if err != nil {
-		return "", nil, fmt.Errorf("invalid repository %q: %w", repoParts, err)
+		return "", nil, fmt.Errorf("invalid repository %q in reference %q: %w", repoParts, artifactRefs, err)
 	}
 	repository = parsedRepo.String()
 
