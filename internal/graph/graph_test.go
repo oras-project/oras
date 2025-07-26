@@ -18,10 +18,14 @@ package graph
 import (
 	"context"
 	"reflect"
+	"strconv"
 	"testing"
 
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras/internal/docker"
 	"oras.land/oras/internal/testutils"
 )
@@ -109,5 +113,60 @@ func TestDescriptor_GetSuccessors(t *testing.T) {
 	}
 	if got != nil {
 		t.Errorf("FilteredSuccessors unexpected %v", got)
+	}
+}
+
+func TestFindPredecessors(t *testing.T) {
+	store := memory.New()
+	ctx := context.Background()
+
+	// prepare subjects
+	var subjects []ocispec.Descriptor
+	for i := range 2 {
+		subject, err := oras.PackManifest(ctx, store, oras.PackManifestVersion1_1, "test/subject", oras.PackManifestOptions{
+			ManifestAnnotations: map[string]string{
+				"test.subject.number": strconv.Itoa(i),
+			},
+		})
+		if err != nil {
+			t.Fatalf("PackManifest unexpected error: %v", err)
+		}
+		subjects = append(subjects, subject)
+	}
+
+	// prepare referrers
+	referrers := make(map[digest.Digest]ocispec.Descriptor)
+	for _, subject := range subjects {
+		for i := range 3 {
+			referrer, err := oras.PackManifest(ctx, store, oras.PackManifestVersion1_1, "test/referrer", oras.PackManifestOptions{
+				Subject: &subject,
+				ManifestAnnotations: map[string]string{
+					"test.referrer.number": strconv.Itoa(i),
+				},
+			})
+			if err != nil {
+				t.Fatalf("PackManifest unexpected error: %v", err)
+			}
+			referrers[referrer.Digest] = referrer
+		}
+	}
+
+	// test FindPredecessors
+	opts := oras.DefaultExtendedCopyOptions
+	gotReferrers, err := FindPredecessors(ctx, store, subjects, opts)
+	if err != nil {
+		t.Fatalf("FindPredecessors unexpected error: %v", err)
+	}
+	if len(gotReferrers) != len(referrers) {
+		t.Fatalf("FindPredecessors got %d referrers, want %d", len(gotReferrers), len(referrers))
+	}
+	for _, got := range gotReferrers {
+		wantReferrer, ok := referrers[got.Digest]
+		if !ok {
+			t.Errorf("FindPredecessors got unexpected referrer %v", got)
+		}
+		if !reflect.DeepEqual(got, wantReferrer) {
+			t.Errorf("FindPredecessors got referrer %v, want %v", got, wantReferrer)
+		}
 	}
 }
