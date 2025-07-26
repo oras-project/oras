@@ -24,6 +24,7 @@ var (
 		ToLayoutPath     string
 		DistributionSpec string
 		ImageSpec        string
+		IncludeReferrers string
 	}{
 		"--oci-layout",
 		"--from-oci-layout",
@@ -32,6 +33,7 @@ var (
 		"--to-oci-layout-path",
 		"--distribution-spec",
 		"--image-spec",
+		"--include-referrers",
 	}
 	RegistryErrorPrefix = "Error response from registry: "
 	InvalidTag          = "i-dont-think-this-tag-exists"

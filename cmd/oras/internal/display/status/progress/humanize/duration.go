@@ -13,35 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package root
+package humanize
 
-import (
-	"github.com/spf13/cobra"
-	"oras.land/oras/cmd/oras/root/blob"
-	"oras.land/oras/cmd/oras/root/manifest"
-	"oras.land/oras/cmd/oras/root/repo"
-)
+import "time"
 
-func New() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:          "oras [command]",
-		SilenceUsage: true,
+// FormatDuration formats a duration into a human-readable string.
+// It rounds the duration to the nearest second, millisecond, or microsecond
+// depending on its value.
+func FormatDuration(d time.Duration) string {
+	switch {
+	case d > time.Second:
+		d = d.Round(time.Second)
+	case d > time.Millisecond:
+		d = d.Round(time.Millisecond)
+	default:
+		d = d.Round(time.Microsecond)
 	}
-	cmd.AddCommand(
-		pullCmd(),
-		pushCmd(),
-		loginCmd(),
-		logoutCmd(),
-		versionCmd(),
-		discoverCmd(),
-		resolveCmd(),
-		copyCmd(),
-		tagCmd(),
-		attachCmd(),
-		backupCmd(),
-		blob.Cmd(),
-		manifest.Cmd(),
-		repo.Cmd(),
-	)
-	return cmd
+	return d.String()
 }
