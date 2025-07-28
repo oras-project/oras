@@ -113,9 +113,6 @@ Example - Back up with a custom concurrency level:
 			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
-			if opts.output == "" {
-				return errors.New("the output path cannot be empty")
-			}
 
 			// parse repo and references
 			var err error
@@ -150,6 +147,9 @@ Example - Back up with a custom concurrency level:
 }
 
 func runBackup(cmd *cobra.Command, opts *backupOptions) error {
+	if opts.output == "" {
+		return errors.New("the output path cannot be empty")
+	}
 	startTime := time.Now() // start timing the backup process
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 

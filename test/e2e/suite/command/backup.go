@@ -72,6 +72,11 @@ var _ = Describe("ORAS beginners:", func() {
 				MatchErrKeyWords("Error:", `required flag(s) "output" not set`).Exec()
 		})
 
+		It("should fail when the output path is empty", func() {
+			ORAS("backup", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "-o", "").ExpectFailure().
+				MatchErrKeyWords("Error:", `the output path cannot be empty`).Exec()
+		})
+
 		It("should fail when source doesn't exist", func() {
 			tmpDir := GinkgoT().TempDir()
 			defer os.RemoveAll(tmpDir)
