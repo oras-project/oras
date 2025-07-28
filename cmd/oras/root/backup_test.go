@@ -19,7 +19,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -31,6 +30,8 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
+	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
 )
 
@@ -412,18 +413,18 @@ func Test_resolveTags(t *testing.T) {
 	repoName := "test/repo"
 
 	// Mock descriptors
-	descV1 := ocispec.Descriptor{
+	desc1 := ocispec.Descriptor{
 		MediaType: ocispec.MediaTypeImageManifest,
 		Digest:    "sha256:d5b7c742df27379894518554b73f7a3a03b4440ea435151a8b525a8d2555a0b2",
 		Size:      123,
 	}
-	descV2 := ocispec.Descriptor{
+	desc2 := ocispec.Descriptor{
 		MediaType: ocispec.MediaTypeImageManifest,
 		Digest:    "sha256:a948904f2f0f479b8f8197694b30184b0d2ed1c1cd2a1ec0fb85d299a192a447",
 		Size:      456,
 	}
 
-	// Common server setup
+	// test server setup
 	setupServer := func(handlers map[string]http.HandlerFunc) *httptest.Server {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/v2/", func(w http.ResponseWriter, r *http.Request) {
@@ -448,8 +449,8 @@ func Test_resolveTags(t *testing.T) {
 
 	t.Run("with specified tags", func(t *testing.T) {
 		server := setupServer(map[string]http.HandlerFunc{
-			fmt.Sprintf("/v2/%s/manifests/v1", repoName): manifestHandler(descV1),
-			fmt.Sprintf("/v2/%s/manifests/v2", repoName): manifestHandler(descV2),
+			fmt.Sprintf("/v2/%s/manifests/v1", repoName): manifestHandler(desc1),
+			fmt.Sprintf("/v2/%s/manifests/v2", repoName): manifestHandler(desc2),
 		})
 		defer server.Close()
 
@@ -469,11 +470,11 @@ func Test_resolveTags(t *testing.T) {
 		if len(descs) != 2 {
 			t.Fatalf("resolveTags() expected 2 descriptors, got %d", len(descs))
 		}
-		if descs[0].Digest != descV1.Digest {
-			t.Errorf("resolveTags() desc[0] digest = %v, want %v", descs[0].Digest, descV1.Digest)
+		if descs[0].Digest != desc1.Digest {
+			t.Errorf("resolveTags() desc[0] digest = %v, want %v", descs[0].Digest, desc1.Digest)
 		}
-		if descs[1].Digest != descV2.Digest {
-			t.Errorf("resolveTags() desc[1] digest = %v, want %v", descs[1].Digest, descV2.Digest)
+		if descs[1].Digest != desc2.Digest {
+			t.Errorf("resolveTags() desc[1] digest = %v, want %v", descs[1].Digest, desc2.Digest)
 		}
 	})
 
@@ -492,8 +493,8 @@ func Test_resolveTags(t *testing.T) {
 		repo.PlainHTTP = true
 
 		_, _, err = resolveTags(ctx, repo, []string{"non-existent"})
-		if err == nil {
-			t.Fatal("resolveTags() error = nil, wantErr not nil")
+		if wantErr := errdef.ErrNotFound; !errors.Is(err, wantErr) {
+			t.Errorf("resolveTags() error = %v, wantErr %v", err, wantErr)
 		}
 	})
 
@@ -503,8 +504,8 @@ func Test_resolveTags(t *testing.T) {
 				w.Header().Set("Content-Type", "application/json")
 				_, _ = w.Write([]byte(`{"name":"` + repoName + `","tags":["v1","v2"]}`))
 			},
-			fmt.Sprintf("/v2/%s/manifests/v1", repoName): manifestHandler(descV1),
-			fmt.Sprintf("/v2/%s/manifests/v2", repoName): manifestHandler(descV2),
+			fmt.Sprintf("/v2/%s/manifests/v1", repoName): manifestHandler(desc1),
+			fmt.Sprintf("/v2/%s/manifests/v2", repoName): manifestHandler(desc2),
 		})
 		defer server.Close()
 
@@ -525,11 +526,11 @@ func Test_resolveTags(t *testing.T) {
 		if len(descs) != 2 {
 			t.Fatalf("resolveTags() expected 2 descriptors, got %d", len(descs))
 		}
-		if descs[0].Digest != descV1.Digest {
-			t.Errorf("resolveTags() desc[0] digest = %v, want %v", descs[0].Digest, descV1.Digest)
+		if descs[0].Digest != desc1.Digest {
+			t.Errorf("resolveTags() desc[0] digest = %v, want %v", descs[0].Digest, desc1.Digest)
 		}
-		if descs[1].Digest != descV2.Digest {
-			t.Errorf("resolveTags() desc[1] digest = %v, want %v", descs[1].Digest, descV2.Digest)
+		if descs[1].Digest != desc2.Digest {
+			t.Errorf("resolveTags() desc[1] digest = %v, want %v", descs[1].Digest, desc2.Digest)
 		}
 	})
 
@@ -549,7 +550,7 @@ func Test_resolveTags(t *testing.T) {
 
 		_, _, err = resolveTags(ctx, repo, nil)
 		if err == nil {
-			t.Fatal("resolveTags() error = nil, wantErr not nil")
+			t.Error("resolveTags() error = nil, wantErr not nil")
 		}
 	})
 
@@ -559,7 +560,7 @@ func Test_resolveTags(t *testing.T) {
 				w.Header().Set("Content-Type", "application/json")
 				_, _ = w.Write([]byte(`{"name":"` + repoName + `","tags":["v1","v2-bad"]}`))
 			},
-			fmt.Sprintf("/v2/%s/manifests/v1", repoName): manifestHandler(descV1),
+			fmt.Sprintf("/v2/%s/manifests/v1", repoName): manifestHandler(desc1),
 			fmt.Sprintf("/v2/%s/manifests/v2-bad", repoName): func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusNotFound)
 			},
@@ -573,8 +574,8 @@ func Test_resolveTags(t *testing.T) {
 		repo.PlainHTTP = true
 
 		_, _, err = resolveTags(ctx, repo, nil)
-		if err == nil {
-			t.Fatal("resolveTags() error = nil, wantErr not nil")
+		if wantErr := errdef.ErrNotFound; !errors.Is(err, wantErr) {
+			t.Errorf("resolveTags() error = %v, wantErr %v", err, wantErr)
 		}
 	})
 
@@ -607,159 +608,13 @@ func Test_resolveTags(t *testing.T) {
 
 	t.Run("target does not support tag listing", func(t *testing.T) {
 		// Use a simple mock that doesn't implement registry.TagLister
-		mockTarget := &mockReadOnlyTarget{}
-		_, _, err := resolveTags(ctx, mockTarget, nil)
-		if err == nil {
-			t.Fatal("resolveTags() error = nil, wantErr not nil")
-		}
-		if !strings.Contains(err.Error(), "does not support tag listing") {
-			t.Errorf("resolveTags() error = %q, want error to contain 'does not support tag listing'", err.Error())
+		target := memory.New()
+		_, _, err := resolveTags(ctx, target, nil)
+		if wantErr := errTagListNotSupported; !errors.Is(err, wantErr) {
+			t.Errorf("resolveTags() error = %v, wantErr %v", err, wantErr)
 		}
 	})
 }
-
-// mockReadOnlyTarget is a mock for oras.ReadOnlyTarget that does not
-// implement registry.TagLister.
-type mockReadOnlyTarget struct{}
-
-func (m *mockReadOnlyTarget) Exists(ctx context.Context, target ocispec.Descriptor) (bool, error) {
-	return false, nil
-}
-
-func (m *mockReadOnlyTarget) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
-	return nil, errors.New("not implemented")
-}
-
-func (m *mockReadOnlyTarget) Resolve(ctx context.Context, reference string) (ocispec.Descriptor, error) {
-	return ocispec.Descriptor{}, errors.New("not implemented")
-}
-
-// func TestFindTagsToBackup(t *testing.T) {
-// 	ctx := context.Background()
-
-// 	t.Run("with tags in options", func(t *testing.T) {
-// 		opts := &backupOptions{
-// 			tags: []string{"v1", "v2", "latest"},
-// 		}
-// 		repo := &remote.Repository{}
-// 		tags, err := findTagsToBackup(ctx, repo, opts)
-// 		if err != nil {
-// 			t.Errorf("Expected no error, got %v", err)
-// 		}
-// 		if !reflect.DeepEqual(tags, opts.tags) {
-// 			t.Errorf("Expected tags %v, got %v", opts.tags, tags)
-// 		}
-// 	})
-
-// 	t.Run("fetching tags from repository", func(t *testing.T) {
-// 		mux := http.NewServeMux()
-// 		server := httptest.NewServer(mux)
-// 		defer server.Close()
-
-// 		mux.HandleFunc("/v2/", func(w http.ResponseWriter, r *http.Request) {
-// 			w.Header().Set("Docker-Distribution-Api-Version", "registry/2.0")
-// 			w.WriteHeader(http.StatusOK)
-// 		})
-
-// 		mux.HandleFunc("/v2/testrepo/tags/list", func(w http.ResponseWriter, r *http.Request) {
-// 			w.Header().Set("Content-Type", "application/json")
-// 			w.WriteHeader(http.StatusOK)
-// 			_, _ = w.Write([]byte(`{"name":"testrepo","tags":["v1","v2","latest"]}`))
-// 		})
-
-// 		serverURL := strings.TrimPrefix(server.URL, "http://")
-// 		repo, err := remote.NewRepository(fmt.Sprintf("%s/testrepo", serverURL))
-// 		if err != nil {
-// 			t.Fatalf("Failed to create repository: %v", err)
-// 		}
-// 		repo.PlainHTTP = true
-
-// 		opts := &backupOptions{
-// 			tags: []string{},
-// 		}
-// 		tags, err := findTagsToBackup(ctx, repo, opts)
-// 		if err != nil {
-// 			t.Errorf("Expected no error, got %v", err)
-// 		}
-
-// 		expectedTags := []string{"v1", "v2", "latest"}
-// 		if !reflect.DeepEqual(tags, expectedTags) {
-// 			t.Errorf("Expected tags %v, got %v", expectedTags, tags)
-// 		}
-// 	})
-
-// 	t.Run("error from repository", func(t *testing.T) {
-// 		mux := http.NewServeMux()
-// 		server := httptest.NewServer(mux)
-// 		defer server.Close()
-
-// 		mux.HandleFunc("/v2/", func(w http.ResponseWriter, r *http.Request) {
-// 			w.Header().Set("Docker-Distribution-Api-Version", "registry/2.0")
-// 			w.WriteHeader(http.StatusOK)
-// 		})
-
-// 		mux.HandleFunc("/v2/testrepo/tags/list", func(w http.ResponseWriter, r *http.Request) {
-// 			w.WriteHeader(http.StatusInternalServerError)
-// 			_, _ = w.Write([]byte(`{"errors":[{"code":"SERVER_ERROR","message":"Internal server error"}]}`))
-// 		})
-
-// 		serverURL := strings.TrimPrefix(server.URL, "http://")
-
-// 		repo, err := remote.NewRepository(fmt.Sprintf("%s/testrepo", serverURL))
-// 		if err != nil {
-// 			t.Fatalf("Failed to create repository: %v", err)
-// 		}
-// 		repo.PlainHTTP = true
-
-// 		opts := &backupOptions{
-// 			tags: []string{},
-// 		}
-
-// 		tags, err := findTagsToBackup(ctx, repo, opts)
-// 		if err == nil {
-// 			t.Errorf("Expected error, got nil")
-// 		}
-// 		if tags != nil {
-// 			t.Errorf("Expected nil tags, got %v", tags)
-// 		}
-// 	})
-
-// 	t.Run("empty tags list from repository", func(t *testing.T) {
-// 		mux := http.NewServeMux()
-// 		server := httptest.NewServer(mux)
-// 		defer server.Close()
-
-// 		mux.HandleFunc("/v2/", func(w http.ResponseWriter, r *http.Request) {
-// 			w.Header().Set("Docker-Distribution-Api-Version", "registry/2.0")
-// 			w.WriteHeader(http.StatusOK)
-// 		})
-
-// 		mux.HandleFunc("/v2/testrepo/tags/list", func(w http.ResponseWriter, r *http.Request) {
-// 			w.Header().Set("Content-Type", "application/json")
-// 			w.WriteHeader(http.StatusOK)
-// 			_, _ = w.Write([]byte(`{"name":"testrepo","tags":[]}`))
-// 		})
-
-// 		serverURL := strings.TrimPrefix(server.URL, "http://")
-
-// 		repo, err := remote.NewRepository(fmt.Sprintf("%s/testrepo", serverURL))
-// 		if err != nil {
-// 			t.Fatalf("Failed to create repository: %v", err)
-// 		}
-// 		repo.PlainHTTP = true
-// 		opts := &backupOptions{
-// 			tags: []string{},
-// 		}
-
-// 		tags, err := findTagsToBackup(ctx, repo, opts)
-// 		if err != nil {
-// 			t.Errorf("Expected no error, got %v", err)
-// 		}
-// 		if len(tags) != 0 {
-// 			t.Errorf("Expected empty tags list, got %v", tags)
-// 		}
-// 	})
-// }
 
 // Mock implementations
 type mockLogger struct {

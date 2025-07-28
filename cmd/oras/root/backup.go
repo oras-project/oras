@@ -40,16 +40,22 @@ import (
 	orasio "oras.land/oras/internal/io"
 )
 
+// outputFormat defines the format of the backup output.
 type outputFormat int
 
 const (
+	// outputFormatDir indicates the output is a directory.
 	outputFormatDir outputFormat = iota
+	// outputFormatTar indicates the output is a tar archive.
 	outputFormatTar
 )
 
 // tagRegexp matches valid OCI artifact tags.
 // reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#pulling-manifests
 var tagRegexp = regexp.MustCompile(`^[\w][\w.-]{0,127}$`)
+
+// errTagListNotSupported is returned when the target does not support tag listing.
+var errTagListNotSupported = errors.New("the target does not support tag listing")
 
 type backupOptions struct {
 	option.Common
@@ -341,7 +347,7 @@ func resolveTags(ctx context.Context, target oras.ReadOnlyTarget, specifiedTags 
 	// discover all tags in the repository and resolve them
 	tagLister, ok := target.(registry.TagLister)
 	if !ok {
-		return nil, nil, errors.New("the target does not support tag listing")
+		return nil, nil, errTagListNotSupported
 	}
 	if err := tagLister.Tags(ctx, "", func(gotTags []string) error {
 		for _, gotTag := range gotTags {
@@ -360,6 +366,8 @@ func resolveTags(ctx context.Context, target oras.ReadOnlyTarget, specifiedTags 
 	return tags, descs, nil
 }
 
+// parseArtifactReferences parses the input string into a repository
+// and a slice of tags.
 func parseArtifactReferences(artifactRefs string) (repository string, tags []string, err error) {
 	// Validate input
 	if artifactRefs == "" {
