@@ -104,7 +104,7 @@ func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descr
 }
 
 // FindPredecessors returns all predecessors of descs in src concurrently.
-func FindPredecessors(ctx context.Context, src oras.ReadOnlyGraphTarget, descs []ocispec.Descriptor, opts oras.ExtendedCopyOptions) ([]ocispec.Descriptor, error) {
+func FindPredecessors(ctx context.Context, src oras.ReadOnlyGraphTarget, descs []ocispec.Descriptor, opts oras.ExtendedCopyGraphOptions) ([]ocispec.Descriptor, error) {
 	var referrers []ocispec.Descriptor
 	g, ctx := errgroup.WithContext(ctx)
 	var m sync.Mutex

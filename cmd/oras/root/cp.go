@@ -166,16 +166,16 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 
 func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) (desc ocispec.Descriptor, err error) {
 	// Prepare copy options
-	extendedCopyOptions := oras.DefaultExtendedCopyOptions
-	extendedCopyOptions.Concurrency = opts.concurrency
-	extendedCopyOptions.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+	extendedCopyGraphOptions := oras.DefaultExtendedCopyGraphOptions
+	extendedCopyGraphOptions.Concurrency = opts.concurrency
+	extendedCopyGraphOptions.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		return registry.Referrers(ctx, src, desc, "")
 	}
 
 	srcRepo, srcIsRemote := src.(*remote.Repository)
 	dstRepo, dstIsRemote := dst.(*remote.Repository)
 	if srcIsRemote && dstIsRemote && srcRepo.Reference.Registry == dstRepo.Reference.Registry {
-		extendedCopyOptions.MountFrom = func(ctx context.Context, desc ocispec.Descriptor) ([]string, error) {
+		extendedCopyGraphOptions.MountFrom = func(ctx context.Context, desc ocispec.Descriptor) ([]string, error) {
 			return []string{srcRepo.Reference.Repository}, nil
 		}
 	}
@@ -189,10 +189,10 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 			err = stopErr
 		}
 	}()
-	extendedCopyOptions.OnCopySkipped = copyHandler.OnCopySkipped
-	extendedCopyOptions.PreCopy = copyHandler.PreCopy
-	extendedCopyOptions.PostCopy = copyHandler.PostCopy
-	extendedCopyOptions.OnMounted = copyHandler.OnMounted
+	extendedCopyGraphOptions.OnCopySkipped = copyHandler.OnCopySkipped
+	extendedCopyGraphOptions.PreCopy = copyHandler.PreCopy
+	extendedCopyGraphOptions.PostCopy = copyHandler.PostCopy
+	extendedCopyGraphOptions.OnMounted = copyHandler.OnMounted
 
 	rOpts := oras.DefaultResolveOptions
 	rOpts.TargetPlatform = opts.Platform.Platform
@@ -201,17 +201,17 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 		if err != nil {
 			return ocispec.Descriptor{}, fmt.Errorf("failed to resolve %s: %w", opts.From.Reference, err)
 		}
-		err = recursiveCopy(ctx, src, dst, opts.To.Reference, desc, extendedCopyOptions)
+		err = recursiveCopy(ctx, src, dst, opts.To.Reference, desc, extendedCopyGraphOptions)
 	} else {
 		if opts.To.Reference == "" {
 			desc, err = oras.Resolve(ctx, src, opts.From.Reference, rOpts)
 			if err != nil {
 				return ocispec.Descriptor{}, fmt.Errorf("failed to resolve %s: %w", opts.From.Reference, err)
 			}
-			err = oras.CopyGraph(ctx, src, dst, desc, extendedCopyOptions.CopyGraphOptions)
+			err = oras.CopyGraph(ctx, src, dst, desc, extendedCopyGraphOptions.CopyGraphOptions)
 		} else {
 			copyOptions := oras.CopyOptions{
-				CopyGraphOptions: extendedCopyOptions.CopyGraphOptions,
+				CopyGraphOptions: extendedCopyGraphOptions.CopyGraphOptions,
 			}
 			if opts.Platform.Platform != nil {
 				copyOptions.WithTargetPlatform(opts.Platform.Platform)
@@ -225,12 +225,12 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 
 // recursiveCopy copies an artifact and its referrers from one target to another.
 // If the artifact is a manifest list or index, referrers of its manifests are copied as well.
-func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, dstRef string, root ocispec.Descriptor, opts oras.ExtendedCopyOptions) error {
+func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, dstRef string, root ocispec.Descriptor, opts oras.ExtendedCopyGraphOptions) error {
 	opts, copyRoot, err := prepareCopyOption(ctx, src, dst, root, opts)
 	if err != nil {
 		return err
 	}
-	if err := oras.ExtendedCopyGraph(ctx, src, dst, copyRoot, opts.ExtendedCopyGraphOptions); err != nil {
+	if err := oras.ExtendedCopyGraph(ctx, src, dst, copyRoot, opts); err != nil {
 		return err
 	}
 	if dstRef != "" && dstRef != root.Digest.String() {
@@ -239,18 +239,18 @@ func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.T
 	return nil
 }
 
-func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, root ocispec.Descriptor, opts oras.ExtendedCopyOptions) (oras.ExtendedCopyOptions, ocispec.Descriptor, error) {
+func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, root ocispec.Descriptor, opts oras.ExtendedCopyGraphOptions) (oras.ExtendedCopyGraphOptions, ocispec.Descriptor, error) {
 	if root.MediaType != ocispec.MediaTypeImageIndex && root.MediaType != docker.MediaTypeManifestList {
 		return opts, root, nil
 	}
 
 	fetched, err := content.FetchAll(ctx, src, root)
 	if err != nil {
-		return oras.ExtendedCopyOptions{}, ocispec.Descriptor{}, err
+		return oras.ExtendedCopyGraphOptions{}, ocispec.Descriptor{}, err
 	}
 	var index ocispec.Index
 	if err = json.Unmarshal(fetched, &index); err != nil {
-		return oras.ExtendedCopyOptions{}, ocispec.Descriptor{}, err
+		return oras.ExtendedCopyGraphOptions{}, ocispec.Descriptor{}, err
 	}
 
 	if len(index.Manifests) == 0 {
@@ -260,7 +260,7 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 
 	referrers, err := graph.FindPredecessors(ctx, src, index.Manifests, opts)
 	if err != nil {
-		return oras.ExtendedCopyOptions{}, ocispec.Descriptor{}, err
+		return oras.ExtendedCopyGraphOptions{}, ocispec.Descriptor{}, err
 	}
 
 	referrers = slices.DeleteFunc(referrers, func(desc ocispec.Descriptor) bool {
@@ -279,7 +279,7 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 	}
 	rootReferrers, err := opts.FindPredecessors(ctx, src, root)
 	if err != nil {
-		return oras.ExtendedCopyOptions{}, ocispec.Descriptor{}, err
+		return oras.ExtendedCopyGraphOptions{}, ocispec.Descriptor{}, err
 	}
 
 	// If root has no referrers, we set copyRoot, which is the entry point of

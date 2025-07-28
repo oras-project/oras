@@ -152,7 +152,7 @@ func TestFindPredecessors(t *testing.T) {
 	}
 
 	// test FindPredecessors
-	opts := oras.DefaultExtendedCopyOptions
+	opts := oras.DefaultExtendedCopyGraphOptions
 	gotReferrers, err := FindPredecessors(ctx, store, subjects, opts)
 	if err != nil {
 		t.Fatalf("FindPredecessors unexpected error: %v", err)

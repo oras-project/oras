@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
@@ -186,6 +187,16 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 			Recommendation: fmt.Sprintf(`If you want to list available tags in %s, use "oras repo tags"`, opts.repository),
 		}
 	}
+
+	// resolve tags to root descriptors
+	roots := make([]ocispec.Descriptor, 0, len(tags))
+	for _, tag := range tags {
+		root, err := oras.Resolve(ctx, srcRepo, tag, oras.DefaultResolveOptions)
+		if err != nil {
+			return fmt.Errorf("failed to resolve tag %q: %w", tag, err)
+		}
+		roots = append(roots, root)
+	}
 	if err := metadataHandler.OnTagsFound(tags); err != nil {
 		return err
 	}
@@ -196,16 +207,11 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	copyGraphOpts.PreCopy = statusHandler.PreCopy
 	copyGraphOpts.PostCopy = statusHandler.PostCopy
 	copyGraphOpts.OnCopySkipped = statusHandler.OnCopySkipped
-	copyOpts := oras.CopyOptions{
+	extCopyGraphOpts := oras.ExtendedCopyGraphOptions{
 		CopyGraphOptions: copyGraphOpts,
 	}
-	extendedCopyOpts := oras.ExtendedCopyOptions{
-		ExtendedCopyGraphOptions: oras.ExtendedCopyGraphOptions{
-			CopyGraphOptions: copyGraphOpts,
-		},
-	}
 
-	for _, t := range tags {
+	for i, t := range tags {
 		referrerCount, err := func(tag string) (referrerCount int, retErr error) {
 			trackedDst, err := statusHandler.StartTracking(dstOCI)
 			if err != nil {
@@ -218,7 +224,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 				}
 			}()
 
-			return backupTag(ctx, srcRepo, trackedDst, t, opts.includeReferrers, copyOpts, extendedCopyOpts)
+			return backupTag(ctx, srcRepo, trackedDst, roots[i], t, opts.includeReferrers, copyGraphOpts, extCopyGraphOpts)
 		}(t)
 		if err != nil {
 			return oerrors.UnwrapCopyError(err)
@@ -238,29 +244,28 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 func backupTag(ctx context.Context,
 	src oras.ReadOnlyGraphTarget,
 	dst oras.GraphTarget,
+	root ocispec.Descriptor,
 	tag string,
 	includeReferrers bool,
-	copyOpts oras.CopyOptions,
-	extCopyOpts oras.ExtendedCopyOptions) (int, error) {
+	copyGraphOpts oras.CopyGraphOptions,
+	extCopyGraphOpts oras.ExtendedCopyGraphOptions) (int, error) {
 	if !includeReferrers {
-		_, err := oras.Copy(ctx, src, tag, dst, tag, copyOpts)
-		if err != nil {
-			return 0, fmt.Errorf("failed to copy tag %s: %w", tag, err)
+		if err := oras.CopyGraph(ctx, src, dst, root, copyGraphOpts); err != nil {
+			return 0, fmt.Errorf("failed to pull tag %q, digest %q: %w", tag, root.Digest.String(), err)
+		}
+		if err := dst.Tag(ctx, root, tag); err != nil {
+			return 0, fmt.Errorf("failed to tag %q with %q: %w", root.Digest.String(), tag, err)
 		}
 		return 0, nil
 	}
 
 	// copy with referrers
-	root, err := oras.Resolve(ctx, src, tag, oras.DefaultResolveOptions)
-	if err != nil {
-		return 0, fmt.Errorf("failed to resolve tag %s: %w", tag, err)
-	}
-	if err := recursiveCopy(ctx, src, dst, tag, root, extCopyOpts); err != nil {
-		return 0, fmt.Errorf("failed to backup with referrers for tag %s: %w", tag, err)
+	if err := recursiveCopy(ctx, src, dst, tag, root, extCopyGraphOpts); err != nil {
+		return 0, fmt.Errorf("failed to pull tag %q and referrers, digest %q: %w", tag, root.Digest.String(), err)
 	}
 	referrers, err := registry.Referrers(ctx, dst, root, "")
 	if err != nil {
-		return 0, fmt.Errorf("failed to get referrers for tag %s: %w", tag, err)
+		return 0, fmt.Errorf("failed to get referrers for tag %q, digest %q: %w", tag, root.Digest.String(), err)
 	}
 	return len(referrers), nil
 }
