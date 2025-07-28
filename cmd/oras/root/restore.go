@@ -1,0 +1,105 @@
+/*
+Copyright The ORAS Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package root
+
+import (
+	"github.com/spf13/cobra"
+	"oras.land/oras/cmd/oras/internal/argument"
+	"oras.land/oras/cmd/oras/internal/command"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
+	"oras.land/oras/cmd/oras/internal/option"
+)
+
+type restoreOptions struct {
+	option.Common
+	option.Remote
+	option.Terminal
+
+	// flags
+	input            string
+	excludeReferrers bool
+	dryRun           bool
+
+	// derived options
+	repository string
+	tags       []string
+}
+
+func restoreCmd() *cobra.Command {
+	var opts restoreOptions
+	cmd := &cobra.Command{
+		Use:   "restore [flags] --input <path> <registry>/<repository>[:<ref1>[,<ref2>...]]",
+		Short: "Restore artifacts from a backup to a registry",
+		Long: `Restore artifacts from a backup to a registry
+
+Example - Restore artifacts from a backup file to a registry with multiple tags:
+  oras restore localhost:5000/hello:v1,v2 --input hello-snapshot.tar
+
+Example - Restore artifacts from a backup folder to a registry excluding referrers:
+  oras restore localhost:5000/hello --input hello-snapshot --exclude-referrers
+
+Example - Perform a dry run of the restore process without uploading artifacts:
+  oras restore localhost:5000/hello:v1 --input hello-snapshot.tar --dry-run
+`,
+		Args: oerrors.CheckArgs(argument.Exactly(1), "the target registry to restore to"),
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := option.Parse(cmd, &opts); err != nil {
+				return err
+			}
+
+			// Parse repository and references using the same function as backup
+			var err error
+			opts.repository, opts.tags, err = parseArtifactReferences(args[0])
+			if err != nil {
+				return err
+			}
+
+			opts.DisableTTY(opts.Debug, false)
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.Printer.Verbose = true // always print verbose output
+			return runRestore(cmd, &opts)
+		},
+	}
+
+	// required flag
+	cmd.Flags().StringVar(&opts.input, "input", "", "restore from a folder or archive file to registry")
+	_ = cmd.MarkFlagRequired("input")
+	// optional flags
+	cmd.Flags().BoolVar(&opts.excludeReferrers, "exclude-referrers", false, "restore the image from backup excluding referrers")
+	cmd.Flags().BoolVar(&opts.dryRun, "dry-run", false, "simulate the restore process without actually uploading any artifacts to the target registry")
+	opts.EnableDistributionSpecFlag()
+	// apply flags
+	option.ApplyFlags(&opts, cmd.Flags())
+	return oerrors.Command(cmd, &opts.Remote)
+}
+
+func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
+	ctx, logger := command.GetLogger(cmd, &opts.Common)
+
+	// This is just the plumbing, no business logic implemented as per requirements
+	// When implemented, this would:
+	// 1. Read from the input path (directory or tar archive)
+	// 2. Connect to the target registry
+	// 3. Upload artifacts based on the options (exclude-referrers, dry-run)
+
+	// Suppress unused variable warnings during development
+	_ = ctx
+	_ = logger
+
+	return nil
+}
