@@ -22,8 +22,10 @@ import (
 	"regexp"
 	"strings"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/argument"
@@ -137,27 +139,86 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 		return fmt.Errorf("failed to prepare target repository %q: %w", opts.repository, err)
 	}
 
+	// resolve tags to restore
+	tags, roots, err := resolveTags(ctx, srcOCI, opts.tags)
+	if err != nil {
+		return err
+	}
+	if len(tags) == 0 {
+		return &oerrors.Error{
+			Err:            fmt.Errorf("no tags found in OCI layout %s", opts.input),
+			Recommendation: fmt.Sprintf(`If you want to list available tags in %s, use "oras repo tags --oci-layout"`, opts.input),
+		}
+	}
+
+	// TODO: status and metadata handlers
+	copyOpts := oras.DefaultCopyOptions
+	extCopyOpts := oras.DefaultExtendedCopyOptions
+	extCopyOpts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		return registry.Referrers(ctx, srcOCI, desc, "")
+	}
+	for i, tag := range tags {
+		if opts.dryRun {
+			// TODO: dry run output?
+			fmt.Printf("Dry run: would restore tag %q to repository %q\n", tag, opts.repository)
+			continue
+		}
+
+		if opts.excludeReferrers {
+			if _, err := oras.Copy(ctx, srcOCI, tag, dstRepo, tag, copyOpts); err != nil {
+				return fmt.Errorf("failed to copy tag %q from %q to %q: %w", tag, opts.input, opts.repository, err)
+			}
+			continue
+		}
+
+		if err := recursiveCopy(ctx, srcOCI, dstRepo, tag, roots[i], extCopyOpts); err != nil {
+			return fmt.Errorf("failed to restore tag %q from %q to %q: %w", tag, opts.input, opts.repository, err)
+		}
+	}
+
+	fmt.Printf("Successfully restored %d tags from %s to %s\n", len(tags), opts.input, opts.repository)
 	return nil
 }
 
-func findTagsToRestore(ctx context.Context, opts *restoreOptions, srcOCI oras.ReadOnlyGraphTarget) ([]string, error) {
-	if len(opts.tags) > 0 {
-		return opts.tags, nil
+// resolveTags resolves tags to their descriptors.
+// It returns the resolved tags and their corresponding descriptors.
+func resolveTags(ctx context.Context, target oras.ReadOnlyTarget, specifiedTags []string) ([]string, []ocispec.Descriptor, error) {
+	var tags []string
+	var descs []ocispec.Descriptor
+	if len(specifiedTags) > 0 {
+		// resolve the specified tags
+		tags = specifiedTags
+		descs = make([]ocispec.Descriptor, 0, len(tags))
+		for _, tag := range tags {
+			desc, err := oras.Resolve(ctx, target, tag, oras.DefaultResolveOptions)
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to resolve tag %q: %w", tag, err)
+			}
+			descs = append(descs, desc)
+		}
+		return tags, descs, nil
 	}
 
-	// If no references are specified, discover all tags in the repository
-	lister, ok := srcOCI.(registry.TagLister)
+	// discover all tags in the repository and resolve them
+	tagLister, ok := target.(registry.TagLister)
 	if !ok {
-		return nil, fmt.Errorf("the source OCI store does not support tag listing: %T", srcOCI)
+		return nil, nil, errors.New("the target does not support tag listing")
 	}
-	var tags []string
-	if err := lister.Tags(ctx, "", func(got []string) error {
-		tags = append(tags, got...)
+	if err := tagLister.Tags(ctx, "", func(gotTags []string) error {
+		for _, gotTag := range gotTags {
+			desc, err := oras.Resolve(ctx, target, gotTag, oras.DefaultResolveOptions)
+			if err != nil {
+				return fmt.Errorf("failed to resolve tag %q: %w", gotTag, err)
+			}
+			tags = append(tags, gotTag)
+			descs = append(descs, desc)
+		}
 		return nil
 	}); err != nil {
-		return nil, fmt.Errorf("failed to list tags in repository %q: %w", opts.repository, err)
+		return nil, nil, fmt.Errorf("failed to find tags: %w", err)
 	}
-	return tags, nil
+
+	return tags, descs, nil
 }
 
 func parseArtifactReferences(artifactRefs string) (repository string, tags []string, err error) {
