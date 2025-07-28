@@ -18,7 +18,6 @@ package io_test
 import (
 	"archive/tar"
 	"bytes"
-	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -65,7 +64,7 @@ func TestTarDirectory(t *testing.T) {
 	// by the TarDirectory function design
 
 	// Call TarDirectory
-	err = iotest.TarDirectory(context.Background(), &buf, tmpDir)
+	err = iotest.TarDirectory(&buf, tmpDir)
 	if err != nil {
 		t.Fatalf("TarDirectory failed: %v", err)
 	}
@@ -122,29 +121,33 @@ func TestTarDirectory_InvalidSource(t *testing.T) {
 	var buf bytes.Buffer
 
 	// Test with non-existent directory
-	err := iotest.TarDirectory(context.Background(), &buf, "/path/does/not/exist")
-	if err == nil {
-		t.Error("Expected error for non-existent source directory, but got nil")
-	}
+	t.Run("Source directory does not exist", func(t *testing.T) {
+		err := iotest.TarDirectory(&buf, "/path/does/not/exist")
+		if err == nil {
+			t.Error("Expected error for non-existent source directory, but got nil")
+		}
+	})
 
 	// Create a temporary file to test with non-directory source
-	tmpFile, err := os.CreateTemp("", "not-a-dir")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	defer func() {
-		if err := os.Remove(tmpFile.Name()); err != nil {
-			t.Logf("Failed to remove temporary file: %v", err)
+	t.Run("Source is not a directory", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "not-a-dir")
+		if err != nil {
+			t.Fatalf("Failed to create temp file: %v", err)
 		}
-	}()
-	defer func() {
-		if err := tmpFile.Close(); err != nil {
-			t.Logf("Failed to close temporary file: %v", err)
-		}
-	}()
+		defer func() {
+			if err := os.Remove(tmpFile.Name()); err != nil {
+				t.Logf("Failed to remove temporary file: %v", err)
+			}
+		}()
+		defer func() {
+			if err := tmpFile.Close(); err != nil {
+				t.Logf("Failed to close temporary file: %v", err)
+			}
+		}()
 
-	err = iotest.TarDirectory(context.Background(), &buf, tmpFile.Name())
-	if err == nil {
-		t.Error("Expected error for file as source, but got nil")
-	}
+		err = iotest.TarDirectory(&buf, tmpFile.Name())
+		if err == nil {
+			t.Error("Expected error for file as source, but got nil")
+		}
+	})
 }

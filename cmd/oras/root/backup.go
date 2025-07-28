@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -209,8 +210,8 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		CopyGraphOptions: copyGraphOpts,
 	}
 
-	for i, t := range tags {
-		referrerCount, err := func(tag string) (referrerCount int, retErr error) {
+	for i, tag := range tags {
+		referrerCount, err := func() (referrerCount int, retErr error) {
 			trackedDst, err := statusHandler.StartTracking(dstOCI)
 			if err != nil {
 				return 0, err
@@ -222,42 +223,37 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 				}
 			}()
 
-			return backupTag(ctx, srcRepo, trackedDst, roots[i], t, opts.includeReferrers, copyGraphOpts, extCopyGraphOpts)
-		}(t)
+			if opts.includeReferrers {
+				return backupTagWithReferrers(ctx, srcRepo, trackedDst, tag, roots[i], extCopyGraphOpts)
+			}
+			return 0, backupTag(ctx, srcRepo, trackedDst, tag, roots[i], copyGraphOpts)
+		}()
 		if err != nil {
 			return oerrors.UnwrapCopyError(err)
 		}
-		if err := metadataHandler.OnArtifactPulled(t, referrerCount); err != nil {
+		if err := metadataHandler.OnArtifactPulled(tag, referrerCount); err != nil {
 			return err
 		}
 	}
 
-	if err := prepareBackupOutput(ctx, dstRoot, opts, logger, metadataHandler); err != nil {
+	if err := prepareBackupOutput(dstRoot, opts, logger, metadataHandler); err != nil {
 		return err
 	}
 	duration := time.Since(startTime)
 	return metadataHandler.OnBackupCompleted(len(tags), opts.output, duration)
 }
 
-func backupTag(ctx context.Context,
-	src oras.ReadOnlyGraphTarget,
-	dst oras.GraphTarget,
-	root ocispec.Descriptor,
-	tag string,
-	includeReferrers bool,
-	copyGraphOpts oras.CopyGraphOptions,
-	extCopyGraphOpts oras.ExtendedCopyGraphOptions) (int, error) {
-	if !includeReferrers {
-		if err := oras.CopyGraph(ctx, src, dst, root, copyGraphOpts); err != nil {
-			return 0, fmt.Errorf("failed to pull tag %q, digest %q: %w", tag, root.Digest.String(), err)
-		}
-		if err := dst.Tag(ctx, root, tag); err != nil {
-			return 0, fmt.Errorf("failed to tag %q with %q: %w", root.Digest.String(), tag, err)
-		}
-		return 0, nil
+func backupTag(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, tag string, root ocispec.Descriptor, copyGraphOpts oras.CopyGraphOptions) error {
+	if err := oras.CopyGraph(ctx, src, dst, root, copyGraphOpts); err != nil {
+		return fmt.Errorf("failed to pull tag %q, digest %q: %w", tag, root.Digest.String(), err)
 	}
+	if err := dst.Tag(ctx, root, tag); err != nil {
+		return fmt.Errorf("failed to tag %q with %q: %w", root.Digest.String(), tag, err)
+	}
+	return nil
+}
 
-	// copy with referrers
+func backupTagWithReferrers(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, tag string, root ocispec.Descriptor, extCopyGraphOpts oras.ExtendedCopyGraphOptions) (int, error) {
 	if err := recursiveCopy(ctx, src, dst, tag, root, extCopyGraphOpts); err != nil {
 		return 0, fmt.Errorf("failed to pull tag %q and referrers, digest %q: %w", tag, root.Digest.String(), err)
 	}
@@ -268,13 +264,11 @@ func backupTag(ctx context.Context,
 	return len(referrers), nil
 }
 
-func prepareBackupOutput(ctx context.Context, dstRoot string, opts *backupOptions, logger logrus.FieldLogger, metadataHandler metadata.BackupHandler) error {
+func prepareBackupOutput(dstRoot string, opts *backupOptions, logger logrus.FieldLogger, metadataHandler metadata.BackupHandler) error {
 	// Remove ingest dir for a cleaner output
 	ingestDir := filepath.Join(dstRoot, "ingest")
-	if _, err := os.Stat(ingestDir); err == nil {
-		if err := os.RemoveAll(ingestDir); err != nil {
-			logger.Debugf("failed to remove ingest directory: %v", err)
-		}
+	if err := os.RemoveAll(ingestDir); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		logger.Debugf("failed to remove ingest directory: %v", err)
 	}
 	if opts.outputFormat != outputFormatTar {
 		// If output format is not a tar, we are done
@@ -290,7 +284,7 @@ func prepareBackupOutput(ctx context.Context, dstRoot string, opts *backupOption
 		return fmt.Errorf("failed to create temporary tar file: %w", err)
 	}
 	tempTarPath := tempTar.Name()
-	if err := orasio.TarDirectory(ctx, tempTar, dstRoot); err != nil {
+	if err := orasio.TarDirectory(tempTar, dstRoot); err != nil {
 		return fmt.Errorf("failed to create tar archive from directory %s: %w", dstRoot, err)
 	}
 	if err := tempTar.Close(); err != nil {
@@ -362,7 +356,6 @@ func resolveTags(ctx context.Context, target oras.ReadOnlyTarget, specifiedTags 
 	}); err != nil {
 		return nil, nil, fmt.Errorf("failed to find tags: %w", err)
 	}
-
 	return tags, descs, nil
 }
 

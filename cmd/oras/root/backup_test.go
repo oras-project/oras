@@ -224,9 +224,6 @@ func TestPrepareBackupOutput(t *testing.T) {
 	// Create a mock logger
 	mockLogger := &mockLogger{}
 
-	// Setup test context
-	ctx := context.Background()
-
 	t.Run("Directory output format", func(t *testing.T) {
 		// Create an ingest directory to ensure it gets removed
 		ingestDir := filepath.Join(tempDir, "ingest")
@@ -240,7 +237,7 @@ func TestPrepareBackupOutput(t *testing.T) {
 			output:       filepath.Join(tempDir, "output-dir"),
 		}
 
-		err := prepareBackupOutput(ctx, tempDir, opts, mockLogger, mockHandler)
+		err := prepareBackupOutput(tempDir, opts, mockLogger, mockHandler)
 		if err != nil {
 			t.Errorf("Expected no error for directory output, got: %v", err)
 		}
@@ -273,7 +270,7 @@ func TestPrepareBackupOutput(t *testing.T) {
 		}
 
 		mockHandler := &mockBackupHandler{}
-		err := prepareBackupOutput(ctx, tempDir, opts, mockLogger, mockHandler)
+		err := prepareBackupOutput(tempDir, opts, mockLogger, mockHandler)
 		if err != nil {
 			t.Errorf("Expected no error for tar output, got: %v", err)
 		}
@@ -313,7 +310,7 @@ func TestPrepareBackupOutput(t *testing.T) {
 			tarExportingResult: expectedErr,
 		}
 
-		err := prepareBackupOutput(ctx, tempDir, opts, mockLogger, mockHandler)
+		err := prepareBackupOutput(tempDir, opts, mockLogger, mockHandler)
 		if err != expectedErr {
 			t.Errorf("Expected error %v, got: %v", expectedErr, err)
 		}
@@ -335,7 +332,7 @@ func TestPrepareBackupOutput(t *testing.T) {
 			tarExportedResult: expectedErr,
 		}
 
-		err := prepareBackupOutput(ctx, tempDir, opts, mockLogger, mockHandler)
+		err := prepareBackupOutput(tempDir, opts, mockLogger, mockHandler)
 		if err != expectedErr {
 			t.Errorf("Expected error %v, got: %v", expectedErr, err)
 		}
@@ -357,7 +354,7 @@ func TestPrepareBackupOutput(t *testing.T) {
 		}
 
 		mockHandler := &mockBackupHandler{}
-		err := prepareBackupOutput(ctx, tempDir, opts, mockLogger, mockHandler)
+		err := prepareBackupOutput(tempDir, opts, mockLogger, mockHandler)
 		if err != nil {
 			t.Errorf("Expected no error creating directories, got: %v", err)
 		}
@@ -395,7 +392,7 @@ func TestPrepareBackupOutput(t *testing.T) {
 		}
 
 		mockHandler := &mockBackupHandler{}
-		err = prepareBackupOutput(ctx, tempDir, opts, mockLogger, mockHandler)
+		err = prepareBackupOutput(tempDir, opts, mockLogger, mockHandler)
 		if err != nil {
 			t.Errorf("Expected no error with relative path, got: %v", err)
 		}

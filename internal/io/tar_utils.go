@@ -17,16 +17,13 @@ package io
 
 import (
 	"archive/tar"
-	"context"
 	"fmt"
 	"io"
 	"os"
 )
 
 // TarDirectory creates a tar archive from the contents of sourceDir and writes it to the given writer.
-// It walks through the directory tree, adding all regular files and directory entries to the archive.
-// Symlinks, devices, pipes, and other special files are skipped.
-func TarDirectory(ctx context.Context, writer io.Writer, sourceDir string) (tarErr error) {
+func TarDirectory(writer io.Writer, sourceDir string) (tarErr error) {
 	// Ensure sourceDir exists and is a directory
 	fi, err := os.Stat(sourceDir)
 	if err != nil {
