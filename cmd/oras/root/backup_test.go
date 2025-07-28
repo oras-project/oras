@@ -17,7 +17,9 @@ package root
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -27,6 +29,7 @@ import (
 	"testing"
 	"time"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 	"oras.land/oras-go/v2/registry/remote"
 )
@@ -404,132 +407,359 @@ func TestPrepareBackupOutput(t *testing.T) {
 	})
 }
 
-func TestFindTagsToBackup(t *testing.T) {
+func Test_resolveTags(t *testing.T) {
 	ctx := context.Background()
+	repoName := "test/repo"
 
-	t.Run("with tags in options", func(t *testing.T) {
-		opts := &backupOptions{
-			tags: []string{"v1", "v2", "latest"},
-		}
-		repo := &remote.Repository{}
-		tags, err := findTagsToBackup(ctx, repo, opts)
-		if err != nil {
-			t.Errorf("Expected no error, got %v", err)
-		}
-		if !reflect.DeepEqual(tags, opts.tags) {
-			t.Errorf("Expected tags %v, got %v", opts.tags, tags)
-		}
-	})
+	// Mock descriptors
+	descV1 := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Digest:    "sha256:d5b7c742df27379894518554b73f7a3a03b4440ea435151a8b525a8d2555a0b2",
+		Size:      123,
+	}
+	descV2 := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Digest:    "sha256:a948904f2f0f479b8f8197694b30184b0d2ed1c1cd2a1ec0fb85d299a192a447",
+		Size:      456,
+	}
 
-	t.Run("fetching tags from repository", func(t *testing.T) {
+	// Common server setup
+	setupServer := func(handlers map[string]http.HandlerFunc) *httptest.Server {
 		mux := http.NewServeMux()
-		server := httptest.NewServer(mux)
-		defer server.Close()
-
 		mux.HandleFunc("/v2/", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Docker-Distribution-Api-Version", "registry/2.0")
 			w.WriteHeader(http.StatusOK)
 		})
+		for path, handler := range handlers {
+			mux.HandleFunc(path, handler)
+		}
+		return httptest.NewServer(mux)
+	}
 
-		mux.HandleFunc("/v2/testrepo/tags/list", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
+	// Common manifest handler
+	manifestHandler := func(desc ocispec.Descriptor) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", desc.MediaType)
+			w.Header().Set("Docker-Content-Digest", desc.Digest.String())
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"name":"testrepo","tags":["v1","v2","latest"]}`))
-		})
+			_, _ = w.Write(make([]byte, desc.Size))
+		}
+	}
 
-		serverURL := strings.TrimPrefix(server.URL, "http://")
-		repo, err := remote.NewRepository(fmt.Sprintf("%s/testrepo", serverURL))
+	t.Run("with specified tags", func(t *testing.T) {
+		server := setupServer(map[string]http.HandlerFunc{
+			fmt.Sprintf("/v2/%s/manifests/v1", repoName): manifestHandler(descV1),
+			fmt.Sprintf("/v2/%s/manifests/v2", repoName): manifestHandler(descV2),
+		})
+		defer server.Close()
+
+		repo, err := remote.NewRepository(strings.TrimPrefix(server.URL, "http://") + "/" + repoName)
 		if err != nil {
-			t.Fatalf("Failed to create repository: %v", err)
+			t.Fatalf("failed to create remote repository: %v", err)
 		}
 		repo.PlainHTTP = true
 
-		opts := &backupOptions{
-			tags: []string{},
-		}
-		tags, err := findTagsToBackup(ctx, repo, opts)
+		tags, descs, err := resolveTags(ctx, repo, []string{"v1", "v2"})
 		if err != nil {
-			t.Errorf("Expected no error, got %v", err)
+			t.Fatalf("resolveTags() error = %v, wantErr nil", err)
 		}
-
-		expectedTags := []string{"v1", "v2", "latest"}
-		if !reflect.DeepEqual(tags, expectedTags) {
-			t.Errorf("Expected tags %v, got %v", expectedTags, tags)
+		if !reflect.DeepEqual(tags, []string{"v1", "v2"}) {
+			t.Errorf("resolveTags() tags = %v, want %v", tags, []string{"v1", "v2"})
+		}
+		if len(descs) != 2 {
+			t.Fatalf("resolveTags() expected 2 descriptors, got %d", len(descs))
+		}
+		if descs[0].Digest != descV1.Digest {
+			t.Errorf("resolveTags() desc[0] digest = %v, want %v", descs[0].Digest, descV1.Digest)
+		}
+		if descs[1].Digest != descV2.Digest {
+			t.Errorf("resolveTags() desc[1] digest = %v, want %v", descs[1].Digest, descV2.Digest)
 		}
 	})
 
-	t.Run("error from repository", func(t *testing.T) {
-		mux := http.NewServeMux()
-		server := httptest.NewServer(mux)
+	t.Run("error resolving specified tag", func(t *testing.T) {
+		server := setupServer(map[string]http.HandlerFunc{
+			fmt.Sprintf("/v2/%s/manifests/non-existent", repoName): func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusNotFound)
+			},
+		})
 		defer server.Close()
 
-		mux.HandleFunc("/v2/", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Docker-Distribution-Api-Version", "registry/2.0")
-			w.WriteHeader(http.StatusOK)
-		})
-
-		mux.HandleFunc("/v2/testrepo/tags/list", func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write([]byte(`{"errors":[{"code":"SERVER_ERROR","message":"Internal server error"}]}`))
-		})
-
-		serverURL := strings.TrimPrefix(server.URL, "http://")
-
-		repo, err := remote.NewRepository(fmt.Sprintf("%s/testrepo", serverURL))
+		repo, err := remote.NewRepository(strings.TrimPrefix(server.URL, "http://") + "/" + repoName)
 		if err != nil {
-			t.Fatalf("Failed to create repository: %v", err)
+			t.Fatalf("failed to create remote repository: %v", err)
 		}
 		repo.PlainHTTP = true
 
-		opts := &backupOptions{
-			tags: []string{},
-		}
-
-		tags, err := findTagsToBackup(ctx, repo, opts)
+		_, _, err = resolveTags(ctx, repo, []string{"non-existent"})
 		if err == nil {
-			t.Errorf("Expected error, got nil")
-		}
-		if tags != nil {
-			t.Errorf("Expected nil tags, got %v", tags)
+			t.Fatal("resolveTags() error = nil, wantErr not nil")
 		}
 	})
 
-	t.Run("empty tags list from repository", func(t *testing.T) {
-		mux := http.NewServeMux()
-		server := httptest.NewServer(mux)
+	t.Run("fetching all tags from repository", func(t *testing.T) {
+		server := setupServer(map[string]http.HandlerFunc{
+			fmt.Sprintf("/v2/%s/tags/list", repoName): func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"name":"` + repoName + `","tags":["v1","v2"]}`))
+			},
+			fmt.Sprintf("/v2/%s/manifests/v1", repoName): manifestHandler(descV1),
+			fmt.Sprintf("/v2/%s/manifests/v2", repoName): manifestHandler(descV2),
+		})
 		defer server.Close()
 
-		mux.HandleFunc("/v2/", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Docker-Distribution-Api-Version", "registry/2.0")
-			w.WriteHeader(http.StatusOK)
-		})
-
-		mux.HandleFunc("/v2/testrepo/tags/list", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"name":"testrepo","tags":[]}`))
-		})
-
-		serverURL := strings.TrimPrefix(server.URL, "http://")
-
-		repo, err := remote.NewRepository(fmt.Sprintf("%s/testrepo", serverURL))
+		repo, err := remote.NewRepository(strings.TrimPrefix(server.URL, "http://") + "/" + repoName)
 		if err != nil {
-			t.Fatalf("Failed to create repository: %v", err)
+			t.Fatalf("failed to create remote repository: %v", err)
 		}
 		repo.PlainHTTP = true
-		opts := &backupOptions{
-			tags: []string{},
-		}
 
-		tags, err := findTagsToBackup(ctx, repo, opts)
+		tags, descs, err := resolveTags(ctx, repo, nil)
 		if err != nil {
-			t.Errorf("Expected no error, got %v", err)
+			t.Fatalf("resolveTags() error = %v, wantErr nil", err)
+		}
+		expectedTags := []string{"v1", "v2"}
+		if !reflect.DeepEqual(tags, expectedTags) {
+			t.Errorf("resolveTags() tags = %v, want %v", tags, expectedTags)
+		}
+		if len(descs) != 2 {
+			t.Fatalf("resolveTags() expected 2 descriptors, got %d", len(descs))
+		}
+		if descs[0].Digest != descV1.Digest {
+			t.Errorf("resolveTags() desc[0] digest = %v, want %v", descs[0].Digest, descV1.Digest)
+		}
+		if descs[1].Digest != descV2.Digest {
+			t.Errorf("resolveTags() desc[1] digest = %v, want %v", descs[1].Digest, descV2.Digest)
+		}
+	})
+
+	t.Run("error listing tags from repository", func(t *testing.T) {
+		server := setupServer(map[string]http.HandlerFunc{
+			fmt.Sprintf("/v2/%s/tags/list", repoName): func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusInternalServerError)
+			},
+		})
+		defer server.Close()
+
+		repo, err := remote.NewRepository(strings.TrimPrefix(server.URL, "http://") + "/" + repoName)
+		if err != nil {
+			t.Fatalf("failed to create remote repository: %v", err)
+		}
+		repo.PlainHTTP = true
+
+		_, _, err = resolveTags(ctx, repo, nil)
+		if err == nil {
+			t.Fatal("resolveTags() error = nil, wantErr not nil")
+		}
+	})
+
+	t.Run("error resolving one of the listed tags", func(t *testing.T) {
+		server := setupServer(map[string]http.HandlerFunc{
+			fmt.Sprintf("/v2/%s/tags/list", repoName): func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"name":"` + repoName + `","tags":["v1","v2-bad"]}`))
+			},
+			fmt.Sprintf("/v2/%s/manifests/v1", repoName): manifestHandler(descV1),
+			fmt.Sprintf("/v2/%s/manifests/v2-bad", repoName): func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusNotFound)
+			},
+		})
+		defer server.Close()
+
+		repo, err := remote.NewRepository(strings.TrimPrefix(server.URL, "http://") + "/" + repoName)
+		if err != nil {
+			t.Fatalf("failed to create remote repository: %v", err)
+		}
+		repo.PlainHTTP = true
+
+		_, _, err = resolveTags(ctx, repo, nil)
+		if err == nil {
+			t.Fatal("resolveTags() error = nil, wantErr not nil")
+		}
+	})
+
+	t.Run("empty tag list from repository", func(t *testing.T) {
+		server := setupServer(map[string]http.HandlerFunc{
+			fmt.Sprintf("/v2/%s/tags/list", repoName): func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"name":"` + repoName + `","tags":[]}`))
+			},
+		})
+		defer server.Close()
+
+		repo, err := remote.NewRepository(strings.TrimPrefix(server.URL, "http://") + "/" + repoName)
+		if err != nil {
+			t.Fatalf("failed to create remote repository: %v", err)
+		}
+		repo.PlainHTTP = true
+
+		tags, descs, err := resolveTags(ctx, repo, nil)
+		if err != nil {
+			t.Fatalf("resolveTags() error = %v, wantErr nil", err)
 		}
 		if len(tags) != 0 {
-			t.Errorf("Expected empty tags list, got %v", tags)
+			t.Errorf("resolveTags() tags = %v, want empty slice", tags)
+		}
+		if len(descs) != 0 {
+			t.Errorf("resolveTags() descs = %v, want empty slice", descs)
+		}
+	})
+
+	t.Run("target does not support tag listing", func(t *testing.T) {
+		// Use a simple mock that doesn't implement registry.TagLister
+		mockTarget := &mockReadOnlyTarget{}
+		_, _, err := resolveTags(ctx, mockTarget, nil)
+		if err == nil {
+			t.Fatal("resolveTags() error = nil, wantErr not nil")
+		}
+		if !strings.Contains(err.Error(), "does not support tag listing") {
+			t.Errorf("resolveTags() error = %q, want error to contain 'does not support tag listing'", err.Error())
 		}
 	})
 }
+
+// mockReadOnlyTarget is a mock for oras.ReadOnlyTarget that does not
+// implement registry.TagLister.
+type mockReadOnlyTarget struct{}
+
+func (m *mockReadOnlyTarget) Exists(ctx context.Context, target ocispec.Descriptor) (bool, error) {
+	return false, nil
+}
+
+func (m *mockReadOnlyTarget) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m *mockReadOnlyTarget) Resolve(ctx context.Context, reference string) (ocispec.Descriptor, error) {
+	return ocispec.Descriptor{}, errors.New("not implemented")
+}
+
+// func TestFindTagsToBackup(t *testing.T) {
+// 	ctx := context.Background()
+
+// 	t.Run("with tags in options", func(t *testing.T) {
+// 		opts := &backupOptions{
+// 			tags: []string{"v1", "v2", "latest"},
+// 		}
+// 		repo := &remote.Repository{}
+// 		tags, err := findTagsToBackup(ctx, repo, opts)
+// 		if err != nil {
+// 			t.Errorf("Expected no error, got %v", err)
+// 		}
+// 		if !reflect.DeepEqual(tags, opts.tags) {
+// 			t.Errorf("Expected tags %v, got %v", opts.tags, tags)
+// 		}
+// 	})
+
+// 	t.Run("fetching tags from repository", func(t *testing.T) {
+// 		mux := http.NewServeMux()
+// 		server := httptest.NewServer(mux)
+// 		defer server.Close()
+
+// 		mux.HandleFunc("/v2/", func(w http.ResponseWriter, r *http.Request) {
+// 			w.Header().Set("Docker-Distribution-Api-Version", "registry/2.0")
+// 			w.WriteHeader(http.StatusOK)
+// 		})
+
+// 		mux.HandleFunc("/v2/testrepo/tags/list", func(w http.ResponseWriter, r *http.Request) {
+// 			w.Header().Set("Content-Type", "application/json")
+// 			w.WriteHeader(http.StatusOK)
+// 			_, _ = w.Write([]byte(`{"name":"testrepo","tags":["v1","v2","latest"]}`))
+// 		})
+
+// 		serverURL := strings.TrimPrefix(server.URL, "http://")
+// 		repo, err := remote.NewRepository(fmt.Sprintf("%s/testrepo", serverURL))
+// 		if err != nil {
+// 			t.Fatalf("Failed to create repository: %v", err)
+// 		}
+// 		repo.PlainHTTP = true
+
+// 		opts := &backupOptions{
+// 			tags: []string{},
+// 		}
+// 		tags, err := findTagsToBackup(ctx, repo, opts)
+// 		if err != nil {
+// 			t.Errorf("Expected no error, got %v", err)
+// 		}
+
+// 		expectedTags := []string{"v1", "v2", "latest"}
+// 		if !reflect.DeepEqual(tags, expectedTags) {
+// 			t.Errorf("Expected tags %v, got %v", expectedTags, tags)
+// 		}
+// 	})
+
+// 	t.Run("error from repository", func(t *testing.T) {
+// 		mux := http.NewServeMux()
+// 		server := httptest.NewServer(mux)
+// 		defer server.Close()
+
+// 		mux.HandleFunc("/v2/", func(w http.ResponseWriter, r *http.Request) {
+// 			w.Header().Set("Docker-Distribution-Api-Version", "registry/2.0")
+// 			w.WriteHeader(http.StatusOK)
+// 		})
+
+// 		mux.HandleFunc("/v2/testrepo/tags/list", func(w http.ResponseWriter, r *http.Request) {
+// 			w.WriteHeader(http.StatusInternalServerError)
+// 			_, _ = w.Write([]byte(`{"errors":[{"code":"SERVER_ERROR","message":"Internal server error"}]}`))
+// 		})
+
+// 		serverURL := strings.TrimPrefix(server.URL, "http://")
+
+// 		repo, err := remote.NewRepository(fmt.Sprintf("%s/testrepo", serverURL))
+// 		if err != nil {
+// 			t.Fatalf("Failed to create repository: %v", err)
+// 		}
+// 		repo.PlainHTTP = true
+
+// 		opts := &backupOptions{
+// 			tags: []string{},
+// 		}
+
+// 		tags, err := findTagsToBackup(ctx, repo, opts)
+// 		if err == nil {
+// 			t.Errorf("Expected error, got nil")
+// 		}
+// 		if tags != nil {
+// 			t.Errorf("Expected nil tags, got %v", tags)
+// 		}
+// 	})
+
+// 	t.Run("empty tags list from repository", func(t *testing.T) {
+// 		mux := http.NewServeMux()
+// 		server := httptest.NewServer(mux)
+// 		defer server.Close()
+
+// 		mux.HandleFunc("/v2/", func(w http.ResponseWriter, r *http.Request) {
+// 			w.Header().Set("Docker-Distribution-Api-Version", "registry/2.0")
+// 			w.WriteHeader(http.StatusOK)
+// 		})
+
+// 		mux.HandleFunc("/v2/testrepo/tags/list", func(w http.ResponseWriter, r *http.Request) {
+// 			w.Header().Set("Content-Type", "application/json")
+// 			w.WriteHeader(http.StatusOK)
+// 			_, _ = w.Write([]byte(`{"name":"testrepo","tags":[]}`))
+// 		})
+
+// 		serverURL := strings.TrimPrefix(server.URL, "http://")
+
+// 		repo, err := remote.NewRepository(fmt.Sprintf("%s/testrepo", serverURL))
+// 		if err != nil {
+// 			t.Fatalf("Failed to create repository: %v", err)
+// 		}
+// 		repo.PlainHTTP = true
+// 		opts := &backupOptions{
+// 			tags: []string{},
+// 		}
+
+// 		tags, err := findTagsToBackup(ctx, repo, opts)
+// 		if err != nil {
+// 			t.Errorf("Expected no error, got %v", err)
+// 		}
+// 		if len(tags) != 0 {
+// 			t.Errorf("Expected empty tags list, got %v", tags)
+// 		}
+// 	})
+// }
 
 // Mock implementations
 type mockLogger struct {

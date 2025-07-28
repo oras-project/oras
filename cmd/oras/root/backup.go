@@ -31,7 +31,6 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
-	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
@@ -108,6 +107,9 @@ Example - Back up with a custom concurrency level:
 			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
+			if opts.output == "" {
+				return errors.New("the output path cannot be empty")
+			}
 
 			// parse repo and references
 			var err error
@@ -168,34 +170,24 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	// Prepare copy source and destination
 	srcRepo, err := opts.NewRepository(opts.repository, opts.Common, logger)
 	if err != nil {
-		return fmt.Errorf("failed to construct repository %s: %w", opts.repository, err)
+		return fmt.Errorf("failed to prepare repository %s for backup: %w", opts.repository, err)
 	}
 	dstOCI, err := oci.New(dstRoot)
 	if err != nil {
-		return fmt.Errorf("failed to construct OCI store: %w", err)
+		return fmt.Errorf("failed to prepare OCI store for backup: %w", err)
 	}
 	statusHandler, metadataHandler := display.NewBackupHandler(opts.Printer, opts.TTY, opts.repository, dstOCI)
 
-	// Find tags to back up
-	tags, err := findTagsToBackup(ctx, srcRepo, opts)
+	// Resolve tags to back up
+	tags, roots, err := resolveTags(ctx, srcRepo, opts.tags)
 	if err != nil {
-		return fmt.Errorf("failed to find tags to back up: %w", err)
+		return err
 	}
 	if len(tags) == 0 {
 		return &oerrors.Error{
 			Err:            fmt.Errorf("no tags found in repository %s", opts.repository),
 			Recommendation: fmt.Sprintf(`If you want to list available tags in %s, use "oras repo tags"`, opts.repository),
 		}
-	}
-
-	// resolve tags to root descriptors
-	roots := make([]ocispec.Descriptor, 0, len(tags))
-	for _, tag := range tags {
-		root, err := oras.Resolve(ctx, srcRepo, tag, oras.DefaultResolveOptions)
-		if err != nil {
-			return fmt.Errorf("failed to resolve tag %q: %w", tag, err)
-		}
-		roots = append(roots, root)
 	}
 	if err := metadataHandler.OnTagsFound(tags); err != nil {
 		return err
@@ -327,13 +319,45 @@ func prepareBackupOutput(ctx context.Context, dstRoot string, opts *backupOption
 	return metadataHandler.OnTarExported(opts.output, fi.Size())
 }
 
-func findTagsToBackup(ctx context.Context, repo *remote.Repository, opts *backupOptions) ([]string, error) {
-	if len(opts.tags) > 0 {
-		return opts.tags, nil
+// resolveTags resolves tags to their descriptors.
+// It returns the resolved tags and their corresponding descriptors.
+func resolveTags(ctx context.Context, target oras.ReadOnlyTarget, specifiedTags []string) ([]string, []ocispec.Descriptor, error) {
+	var tags []string
+	var descs []ocispec.Descriptor
+	if len(specifiedTags) > 0 {
+		// resolve the specified tags
+		tags = specifiedTags
+		descs = make([]ocispec.Descriptor, 0, len(tags))
+		for _, tag := range tags {
+			desc, err := oras.Resolve(ctx, target, tag, oras.DefaultResolveOptions)
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to resolve tag %q: %w", tag, err)
+			}
+			descs = append(descs, desc)
+		}
+		return tags, descs, nil
 	}
 
-	// If no references are specified, discover all tags in the repository
-	return registry.Tags(ctx, repo)
+	// discover all tags in the repository and resolve them
+	tagLister, ok := target.(registry.TagLister)
+	if !ok {
+		return nil, nil, errors.New("the target does not support tag listing")
+	}
+	if err := tagLister.Tags(ctx, "", func(gotTags []string) error {
+		for _, gotTag := range gotTags {
+			desc, err := oras.Resolve(ctx, target, gotTag, oras.DefaultResolveOptions)
+			if err != nil {
+				return fmt.Errorf("failed to resolve tag %q: %w", gotTag, err)
+			}
+			tags = append(tags, gotTag)
+			descs = append(descs, desc)
+		}
+		return nil
+	}); err != nil {
+		return nil, nil, fmt.Errorf("failed to find tags: %w", err)
+	}
+
+	return tags, descs, nil
 }
 
 func parseArtifactReferences(artifactRefs string) (repository string, tags []string, err error) {
