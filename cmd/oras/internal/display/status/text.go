@@ -193,6 +193,58 @@ func (ch *TextCopyHandler) OnMounted(_ context.Context, desc ocispec.Descriptor)
 	return ch.printer.PrintStatus(desc, copyPromptMounted)
 }
 
+// TextRestoreHandler handles text status output for restore events.
+type TextRestoreHandler struct {
+	printer   *output.Printer
+	committed *sync.Map
+	fetcher   content.Fetcher
+}
+
+// NewTextRestoreHandler returns a new text handler for restore command.
+func NewTextRestoreHandler(printer *output.Printer, fetcher content.Fetcher) RestoreHandler {
+	return &TextRestoreHandler{
+		printer:   printer,
+		fetcher:   fetcher,
+		committed: &sync.Map{},
+	}
+}
+
+// OnCopySkipped implements OnCopySkipped of RestoreHandler.
+func (trh *TextRestoreHandler) OnCopySkipped(ctx context.Context, desc ocispec.Descriptor) error {
+	trh.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+	return trh.printer.PrintStatus(desc, restorePromptExists)
+}
+
+// PreCopy implements PreCopy of RestoreHandler.
+func (trh *TextRestoreHandler) PreCopy(ctx context.Context, desc ocispec.Descriptor) error {
+	return trh.printer.PrintStatus(desc, restorePromptPushing)
+}
+
+// PostCopy implements PostCopy of RestoreHandler.
+func (trh *TextRestoreHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor) error {
+	trh.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+	deduplicated, err := graph.FilteredSuccessors(ctx, desc, trh.fetcher, DeduplicatedFilter(trh.committed))
+	if err != nil {
+		return err
+	}
+	for _, successor := range deduplicated {
+		if err = trh.printer.PrintStatus(successor, restorePromptSkipped); err != nil {
+			return err
+		}
+	}
+	return trh.printer.PrintStatus(desc, restorePromptPushed)
+}
+
+// StartTracking implements StartTracking of RestoreHandler.
+func (trh *TextRestoreHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
+	return gt, nil
+}
+
+// StopTracking implements StopTracking of RestoreHandler.
+func (trh *TextRestoreHandler) StopTracking() error {
+	return nil
+}
+
 // TextManifestPushHandler handles text status output for manifest push events.
 type TextManifestPushHandler struct {
 	desc    ocispec.Descriptor
