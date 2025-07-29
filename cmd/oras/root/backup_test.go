@@ -211,7 +211,7 @@ func TestParseArtifactReferences(t *testing.T) {
 	}
 }
 
-func TestPrepareBackupOutput(t *testing.T) {
+func TestFinalizeBackupOutput(t *testing.T) {
 	// Create a temporary directory for our tests
 	tempDir, err := os.MkdirTemp("", "backup-test-*")
 	if err != nil {
@@ -237,7 +237,7 @@ func TestPrepareBackupOutput(t *testing.T) {
 			output:       filepath.Join(tempDir, "output-dir"),
 		}
 
-		err := prepareBackupOutput(tempDir, opts, mockLogger, mockHandler)
+		err := finalizeBackupOutput(tempDir, opts, mockLogger, mockHandler)
 		if err != nil {
 			t.Errorf("Expected no error for directory output, got: %v", err)
 		}
@@ -270,7 +270,7 @@ func TestPrepareBackupOutput(t *testing.T) {
 		}
 
 		mockHandler := &mockBackupHandler{}
-		err := prepareBackupOutput(tempDir, opts, mockLogger, mockHandler)
+		err := finalizeBackupOutput(tempDir, opts, mockLogger, mockHandler)
 		if err != nil {
 			t.Errorf("Expected no error for tar output, got: %v", err)
 		}
@@ -310,7 +310,7 @@ func TestPrepareBackupOutput(t *testing.T) {
 			tarExportingResult: expectedErr,
 		}
 
-		err := prepareBackupOutput(tempDir, opts, mockLogger, mockHandler)
+		err := finalizeBackupOutput(tempDir, opts, mockLogger, mockHandler)
 		if err != expectedErr {
 			t.Errorf("Expected error %v, got: %v", expectedErr, err)
 		}
@@ -332,7 +332,7 @@ func TestPrepareBackupOutput(t *testing.T) {
 			tarExportedResult: expectedErr,
 		}
 
-		err := prepareBackupOutput(tempDir, opts, mockLogger, mockHandler)
+		err := finalizeBackupOutput(tempDir, opts, mockLogger, mockHandler)
 		if err != expectedErr {
 			t.Errorf("Expected error %v, got: %v", expectedErr, err)
 		}
@@ -354,7 +354,7 @@ func TestPrepareBackupOutput(t *testing.T) {
 		}
 
 		mockHandler := &mockBackupHandler{}
-		err := prepareBackupOutput(tempDir, opts, mockLogger, mockHandler)
+		err := finalizeBackupOutput(tempDir, opts, mockLogger, mockHandler)
 		if err != nil {
 			t.Errorf("Expected no error creating directories, got: %v", err)
 		}
@@ -392,7 +392,7 @@ func TestPrepareBackupOutput(t *testing.T) {
 		}
 
 		mockHandler := &mockBackupHandler{}
-		err = prepareBackupOutput(tempDir, opts, mockLogger, mockHandler)
+		err = finalizeBackupOutput(tempDir, opts, mockLogger, mockHandler)
 		if err != nil {
 			t.Errorf("Expected no error with relative path, got: %v", err)
 		}
