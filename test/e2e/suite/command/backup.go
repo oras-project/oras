@@ -142,7 +142,7 @@ var _ = Describe("ORAS users:", func() {
 
 			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, srcRef).
 				MatchStatus(foobarStates, true, len(foobarStates)).
-				MatchKeyWords("1 referrer(s)").
+				MatchKeyWords("2 referrer(s)").
 				Exec()
 
 			// Verify backup output structure
@@ -388,7 +388,7 @@ var _ = Describe("ORAS users:", func() {
 			srcRef := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
 
 			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, Flags.DistributionSpec, "v1.1-referrers-api", srcRef).
-				MatchKeyWords("1 referrer(s)").
+				MatchKeyWords("2 referrer(s)").
 				Exec()
 
 			// Verify backup output structure
@@ -409,7 +409,7 @@ var _ = Describe("ORAS users:", func() {
 			srcRef := RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag)
 
 			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, Flags.DistributionSpec, "v1.1-referrers-tag", srcRef).
-				MatchKeyWords("1 referrer(s)").
+				MatchKeyWords("2 referrer(s)").
 				Exec()
 
 			// Verify backup output structure
