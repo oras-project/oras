@@ -142,6 +142,7 @@ var _ = Describe("ORAS users:", func() {
 
 			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, srcRef).
 				MatchStatus(foobarStates, true, len(foobarStates)).
+				MatchKeyWords("1 referrer(s)").
 				Exec()
 
 			// Verify backup output structure
@@ -182,6 +183,7 @@ var _ = Describe("ORAS users:", func() {
 
 			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, srcRef).
 				MatchStatus(stateKeys, true, len(stateKeys)).
+				MatchKeyWords("3 referrer(s)").
 				Exec()
 
 			// Verify backup output structure
@@ -215,6 +217,7 @@ var _ = Describe("ORAS users:", func() {
 
 			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, srcRef).
 				MatchStatus(stateKeys, true, len(stateKeys)).
+				MatchKeyWords("3 referrer(s)").
 				Exec()
 
 				// Verify backup output structure
@@ -384,7 +387,9 @@ var _ = Describe("ORAS users:", func() {
 			outDir := filepath.Join(tmpDir, "backup-referrers-api")
 			srcRef := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
 
-			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, Flags.DistributionSpec, "v1.1-referrers-api", srcRef).Exec()
+			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, Flags.DistributionSpec, "v1.1-referrers-api", srcRef).
+				MatchKeyWords("1 referrer(s)").
+				Exec()
 
 			// Verify backup output structure
 			verifyBackupDirectoryStructure(outDir)
@@ -403,7 +408,9 @@ var _ = Describe("ORAS users:", func() {
 			outDir := filepath.Join(tmpDir, "backup-referrers-tag")
 			srcRef := RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag)
 
-			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, Flags.DistributionSpec, "v1.1-referrers-tag", srcRef).Exec()
+			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, Flags.DistributionSpec, "v1.1-referrers-tag", srcRef).
+				MatchKeyWords("1 referrer(s)").
+				Exec()
 
 			// Verify backup output structure
 			verifyBackupDirectoryStructure(outDir)
