@@ -137,6 +137,19 @@ func FindPredecessors(ctx context.Context, src oras.ReadOnlyGraphTarget, descs [
 	return referrers, nil
 }
 
+func RecursiveFindPredecessors(ctx context.Context, src oras.ReadOnlyGraphTarget, descs []ocispec.Descriptor, opts oras.ExtendedCopyGraphOptions) ([]ocispec.Descriptor, error) {
+	var allPredecessors []ocispec.Descriptor
+	for len(descs) > 0 {
+		predecessors, err := FindPredecessors(ctx, src, descs, opts)
+		if err != nil {
+			return nil, err
+		}
+		allPredecessors = append(allPredecessors, predecessors...)
+		descs = predecessors
+	}
+	return allPredecessors, nil
+}
+
 // FilteredSuccessors fetches successors and returns filtered ones.
 func FilteredSuccessors(ctx context.Context, desc ocispec.Descriptor, fetcher content.Fetcher, filter func(ocispec.Descriptor) bool) ([]ocispec.Descriptor, error) {
 	allSuccessors, err := content.Successors(ctx, fetcher, desc)

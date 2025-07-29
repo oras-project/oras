@@ -17,11 +17,13 @@ package graph
 
 import (
 	"context"
+	"encoding/json"
 	"reflect"
 	"strconv"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
+	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
@@ -169,4 +171,179 @@ func TestFindPredecessors(t *testing.T) {
 			t.Errorf("FindPredecessors got referrer %v, want %v", got, wantReferrer)
 		}
 	}
+}
+
+func TestRecursiveFindPredecessors(t *testing.T) {
+	// prepare test data
+	ctx := context.Background()
+	target := memory.New()
+
+	// create manifests
+	manifestDesc1, err := oras.PackManifest(ctx, target, oras.PackManifestVersion1_1, "test/manifest1", oras.PackManifestOptions{})
+	if err != nil {
+		t.Fatalf("failed to create manifest descriptor 1: %v", err)
+	}
+	manifestDesc2, err := oras.PackManifest(ctx, target, oras.PackManifestVersion1_1, "test/manifest2", oras.PackManifestOptions{})
+	if err != nil {
+		t.Fatalf("failed to create manifest descriptor 2: %v", err)
+	}
+	// create flatten referrers
+	referrerDesc1_1, err := oras.PackManifest(ctx, target, oras.PackManifestVersion1_1, "test/referrer1_1", oras.PackManifestOptions{Subject: &manifestDesc1})
+	if err != nil {
+		t.Fatalf("failed to create referrer descriptor 1: %v", err)
+	}
+	referrerDesc1_2, err := oras.PackManifest(ctx, target, oras.PackManifestVersion1_1, "test/referrer1_2", oras.PackManifestOptions{Subject: &manifestDesc1})
+	if err != nil {
+		t.Fatalf("failed to create referrer descriptor 1: %v", err)
+	}
+	// create nested referrers
+	referrerDesc2_1, err := oras.PackManifest(ctx, target, oras.PackManifestVersion1_1, "test/referrer2_1", oras.PackManifestOptions{Subject: &manifestDesc2})
+	if err != nil {
+		t.Fatalf("failed to create referrer descriptor 2: %v", err)
+	}
+	referrerDesc2_1_1, err := oras.PackManifest(ctx, target, oras.PackManifestVersion1_1, "test/referrer2_1_1", oras.PackManifestOptions{Subject: &referrerDesc2_1})
+	if err != nil {
+		t.Fatalf("failed to create referrer descriptor 2: %v", err)
+	}
+	// create index manifest
+	index := ocispec.Index{
+		Versioned: specs.Versioned{
+			SchemaVersion: 2,
+		},
+		Manifests: []ocispec.Descriptor{
+			manifestDesc1,
+			manifestDesc2,
+		},
+	}
+	indexBytes, err := json.Marshal(index)
+	if err != nil {
+		t.Fatalf("failed to marshal index manifest: %v", err)
+	}
+	indexDesc, err := oras.PushBytes(ctx, target, ocispec.MediaTypeImageIndex, indexBytes)
+	if err != nil {
+		t.Fatalf("failed to push index manifest: %v", err)
+	}
+	// add nested referrers to the index
+	referrerDesc3_1, err := oras.PackManifest(ctx, target, oras.PackManifestVersion1_1, "test/index", oras.PackManifestOptions{Subject: &indexDesc})
+	if err != nil {
+		t.Fatalf("failed to create index referrer: %v", err)
+	}
+	referrerDesc3_1_1, err := oras.PackManifest(ctx, target, oras.PackManifestVersion1_1, "test/index_referrer1", oras.PackManifestOptions{Subject: &referrerDesc3_1})
+	if err != nil {
+		t.Fatalf("failed to create nested index referrer: %v", err)
+	}
+
+	t.Run("find referers for empty manifest list", func(t *testing.T) {
+		gotReferrers, err := RecursiveFindPredecessors(ctx, target, []ocispec.Descriptor{}, oras.DefaultExtendedCopyGraphOptions)
+		if err != nil {
+			t.Fatalf("RecursiveFindPredecessors unexpected error: %v", err)
+		}
+		if len(gotReferrers) != 0 {
+			t.Errorf("RecursiveFindPredecessors got %d referrers, want 0", len(gotReferrers))
+		}
+	})
+
+	t.Run("find referrers for manifest without referrers", func(t *testing.T) {
+		gotReferrers, err := RecursiveFindPredecessors(ctx, target, []ocispec.Descriptor{referrerDesc3_1_1}, oras.DefaultExtendedCopyGraphOptions)
+		if err != nil {
+			t.Fatalf("RecursiveFindPredecessors unexpected error: %v", err)
+		}
+		if len(gotReferrers) != 0 {
+			t.Errorf("RecursiveFindPredecessors got %d referrers, want 0", len(gotReferrers))
+		}
+	})
+
+	t.Run("find referrers for manifest 1", func(t *testing.T) {
+		gotReferrers, err := RecursiveFindPredecessors(ctx, target, []ocispec.Descriptor{manifestDesc1}, oras.DefaultExtendedCopyGraphOptions)
+		if err != nil {
+			t.Fatalf("RecursiveFindPredecessors unexpected error: %v", err)
+		}
+		wantReferrers := map[digest.Digest]ocispec.Descriptor{
+			referrerDesc1_1.Digest: referrerDesc1_1,
+			referrerDesc1_2.Digest: referrerDesc1_2,
+		}
+		if len(gotReferrers) != len(wantReferrers) {
+			t.Fatalf("RecursiveFindPredecessors got %d referrers, want %d", len(gotReferrers), len(wantReferrers))
+		}
+		for _, got := range gotReferrers {
+			want, ok := wantReferrers[got.Digest]
+			if !ok {
+				t.Errorf("RecursiveFindPredecessors got unexpected referrer %v", got)
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("RecursiveFindPredecessors got referrer %v, want %v", got, want)
+			}
+		}
+	})
+
+	t.Run("find referrers for manifest 2", func(t *testing.T) {
+		gotReferrers, err := RecursiveFindPredecessors(ctx, target, []ocispec.Descriptor{manifestDesc2}, oras.DefaultExtendedCopyGraphOptions)
+		if err != nil {
+			t.Fatalf("RecursiveFindPredecessors unexpected error: %v", err)
+		}
+		wantReferrers := map[digest.Digest]ocispec.Descriptor{
+			referrerDesc2_1.Digest:   referrerDesc2_1,
+			referrerDesc2_1_1.Digest: referrerDesc2_1_1,
+		}
+		if len(gotReferrers) != len(wantReferrers) {
+			t.Fatalf("RecursiveFindPredecessors got %d referrers, want %d", len(gotReferrers), len(wantReferrers))
+		}
+		for _, got := range gotReferrers {
+			want, ok := wantReferrers[got.Digest]
+			if !ok {
+				t.Errorf("RecursiveFindPredecessors got unexpected referrer %v", got)
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("RecursiveFindPredecessors got referrer %v, want %v", got, want)
+			}
+		}
+	})
+
+	t.Run("find referrers for manifest 1 and 2", func(t *testing.T) {
+		gotReferrers, err := RecursiveFindPredecessors(ctx, target, []ocispec.Descriptor{manifestDesc1, manifestDesc2}, oras.DefaultExtendedCopyGraphOptions)
+		if err != nil {
+			t.Fatalf("RecursiveFindPredecessors unexpected error: %v", err)
+		}
+		wantReferrers := map[digest.Digest]ocispec.Descriptor{
+			referrerDesc1_1.Digest:   referrerDesc1_1,
+			referrerDesc1_2.Digest:   referrerDesc1_2,
+			referrerDesc2_1.Digest:   referrerDesc2_1,
+			referrerDesc2_1_1.Digest: referrerDesc2_1_1,
+		}
+		if len(gotReferrers) != len(wantReferrers) {
+			t.Fatalf("RecursiveFindPredecessors got %d referrers, want %d", len(gotReferrers), len(wantReferrers))
+		}
+		for _, got := range gotReferrers {
+			want, ok := wantReferrers[got.Digest]
+			if !ok {
+				t.Errorf("RecursiveFindPredecessors got unexpected referrer %v", got)
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("RecursiveFindPredecessors got referrer %v, want %v", got, want)
+			}
+		}
+	})
+
+	t.Run("find referrers for index manifest", func(t *testing.T) {
+		gotReferrers, err := RecursiveFindPredecessors(ctx, target, []ocispec.Descriptor{indexDesc}, oras.DefaultExtendedCopyGraphOptions)
+		if err != nil {
+			t.Fatalf("RecursiveFindPredecessors unexpected error: %v", err)
+		}
+		wantReferrers := map[digest.Digest]ocispec.Descriptor{
+			referrerDesc3_1.Digest:   referrerDesc3_1,
+			referrerDesc3_1_1.Digest: referrerDesc3_1_1,
+		}
+		if len(gotReferrers) != len(wantReferrers) {
+			t.Fatalf("RecursiveFindPredecessors got %d referrers, want %d", len(gotReferrers), len(wantReferrers))
+		}
+		for _, got := range gotReferrers {
+			want, ok := wantReferrers[got.Digest]
+			if !ok {
+				t.Errorf("RecursiveFindPredecessors got unexpected referrer %v", got)
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("RecursiveFindPredecessors got referrer %v, want %v", got, want)
+			}
+		}
+	})
 }

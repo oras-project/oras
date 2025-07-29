@@ -17,6 +17,7 @@ package root
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -28,8 +29,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
@@ -609,6 +612,108 @@ func Test_resolveTags(t *testing.T) {
 		_, _, err := resolveTags(ctx, target, nil)
 		if wantErr := errTagListNotSupported; !errors.Is(err, wantErr) {
 			t.Errorf("resolveTags() error = %v, wantErr %v", err, wantErr)
+		}
+	})
+}
+
+func Test_countReferrers(t *testing.T) {
+	// prepare test data
+	ctx := context.Background()
+	target := memory.New()
+	tag := "test"
+
+	// create manifests
+	manifestDesc1, err := oras.PackManifest(ctx, target, oras.PackManifestVersion1_1, "test/manifest1", oras.PackManifestOptions{})
+	if err != nil {
+		t.Fatalf("failed to create manifest descriptor 1: %v", err)
+	}
+	manifestDesc2, err := oras.PackManifest(ctx, target, oras.PackManifestVersion1_1, "test/manifest2", oras.PackManifestOptions{})
+	if err != nil {
+		t.Fatalf("failed to create manifest descriptor 2: %v", err)
+	}
+	// create flatten referrers
+	_, err = oras.PackManifest(ctx, target, oras.PackManifestVersion1_1, "test/referrer1_1", oras.PackManifestOptions{Subject: &manifestDesc1})
+	if err != nil {
+		t.Fatalf("failed to create referrer descriptor 1: %v", err)
+	}
+	_, err = oras.PackManifest(ctx, target, oras.PackManifestVersion1_1, "test/referrer1_2", oras.PackManifestOptions{Subject: &manifestDesc1})
+	if err != nil {
+		t.Fatalf("failed to create referrer descriptor 1: %v", err)
+	}
+	// create nested referrers
+	referrerDesc2_1, err := oras.PackManifest(ctx, target, oras.PackManifestVersion1_1, "test/referrer2_1", oras.PackManifestOptions{Subject: &manifestDesc2})
+	if err != nil {
+		t.Fatalf("failed to create referrer descriptor 2: %v", err)
+	}
+	_, err = oras.PackManifest(ctx, target, oras.PackManifestVersion1_1, "test/referrer2_1_1", oras.PackManifestOptions{Subject: &referrerDesc2_1})
+	if err != nil {
+		t.Fatalf("failed to create referrer descriptor 2: %v", err)
+	}
+	// create index manifest
+	index := ocispec.Index{
+		Versioned: specs.Versioned{
+			SchemaVersion: 2,
+		},
+		Manifests: []ocispec.Descriptor{
+			manifestDesc1,
+			manifestDesc2,
+		},
+	}
+	indexBytes, err := json.Marshal(index)
+	if err != nil {
+		t.Fatalf("failed to marshal index manifest: %v", err)
+	}
+	indexDesc, err := oras.PushBytes(ctx, target, ocispec.MediaTypeImageIndex, indexBytes)
+	if err != nil {
+		t.Fatalf("failed to push index manifest: %v", err)
+	}
+	// add nested referrers to the index
+	referrerDesc3_1, err := oras.PackManifest(ctx, target, oras.PackManifestVersion1_1, "test/index", oras.PackManifestOptions{Subject: &indexDesc})
+	if err != nil {
+		t.Fatalf("failed to create index referrer: %v", err)
+	}
+	referrerDesc3_1_1, err := oras.PackManifest(ctx, target, oras.PackManifestVersion1_1, "test/index_referrer1", oras.PackManifestOptions{Subject: &referrerDesc3_1})
+	if err != nil {
+		t.Fatalf("failed to create nested index referrer: %v", err)
+	}
+
+	t.Run("count flatten referrers for manifest 1", func(t *testing.T) {
+		count, err := countReferrers(ctx, target, tag, manifestDesc1, oras.DefaultExtendedCopyGraphOptions)
+		if err != nil {
+			t.Fatalf("countReferrers() error = %v, wantErr nil", err)
+		}
+		if wantCount := 2; count != wantCount {
+			t.Errorf("countReferrers() count = %d, want %d", count, wantCount)
+		}
+	})
+
+	t.Run("count nested referrers for manifest 2", func(t *testing.T) {
+		count, err := countReferrers(ctx, target, tag, manifestDesc2, oras.DefaultExtendedCopyGraphOptions)
+		if err != nil {
+			t.Fatalf("countReferrers() error = %v, wantErr nil", err)
+		}
+		if wantCount := 2; count != wantCount {
+			t.Errorf("countReferrers() count = %d, want %d", count, wantCount)
+		}
+	})
+
+	t.Run("count referrers for index", func(t *testing.T) {
+		count, err := countReferrers(ctx, target, tag, indexDesc, oras.DefaultExtendedCopyGraphOptions)
+		if err != nil {
+			t.Fatalf("countReferrers() error = %v, wantErr nil", err)
+		}
+		if wantCount := 6; count != wantCount {
+			t.Errorf("countReferrers() count = %d, want %d", count, wantCount)
+		}
+	})
+
+	t.Run("count referrers for manifest with no referrers", func(t *testing.T) {
+		count, err := countReferrers(ctx, target, tag, referrerDesc3_1_1, oras.DefaultExtendedCopyGraphOptions)
+		if err != nil {
+			t.Fatalf("countReferrers() error = %v, wantErr nil", err)
+		}
+		if wantCount := 0; count != wantCount {
+			t.Errorf("countReferrers() count = %d, want %d", count, wantCount)
 		}
 	})
 }

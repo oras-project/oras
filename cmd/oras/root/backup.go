@@ -272,9 +272,9 @@ func backupTagWithReferrers(ctx context.Context, src oras.ReadOnlyGraphTarget, d
 // countReferrers counts the total number of referrers for the given artifact identified by tag, including the referrers
 // of its children manifests if the artifact is an image index or manifest list.
 func countReferrers(ctx context.Context, target oras.ReadOnlyGraphTarget, tag string, root ocispec.Descriptor, extCopyGraphOpts oras.ExtendedCopyGraphOptions) (int, error) {
-	referrers, err := registry.Referrers(ctx, target, root, "")
+	referrers, err := graph.RecursiveFindPredecessors(ctx, target, []ocispec.Descriptor{root}, extCopyGraphOpts)
 	if err != nil {
-		return 0, fmt.Errorf("failed to list referrers for tag %q, digest %q: %w", tag, root.Digest.String(), err)
+		return 0, fmt.Errorf("failed to count referrers for tag %q, digest %q: %w", tag, root.Digest.String(), err)
 	}
 	referrerCount := len(referrers)
 	if root.MediaType != ocispec.MediaTypeImageIndex && root.MediaType != docker.MediaTypeManifestList {
@@ -282,6 +282,7 @@ func countReferrers(ctx context.Context, target oras.ReadOnlyGraphTarget, tag st
 		return referrerCount, nil
 	}
 
+	// count referrers of children manifests
 	manifestBytes, err := content.FetchAll(ctx, target, root)
 	if err != nil {
 		return 0, fmt.Errorf("failed to fetch content of tag %q, digest %q: %w", tag, root.Digest.String(), err)
@@ -290,20 +291,11 @@ func countReferrers(ctx context.Context, target oras.ReadOnlyGraphTarget, tag st
 	if err = json.Unmarshal(manifestBytes, &index); err != nil {
 		return 0, fmt.Errorf("failed to unmarshal index for tag %q, digest %q: %w", tag, root.Digest.String(), err)
 	}
-	if len(index.Manifests) == 0 {
-		// no child manifests, thus no child referrers
-		return referrerCount, nil
+	childrenReferrers, err := graph.RecursiveFindPredecessors(ctx, target, index.Manifests, extCopyGraphOpts)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count referrers for children manifests of tag %q, digest %q: %w", tag, root.Digest.String(), err)
 	}
-	// recursively count children manifests' referrers
-	manifests := index.Manifests
-	for len(manifests) > 0 {
-		foundReferrers, err := graph.FindPredecessors(ctx, target, manifests, extCopyGraphOpts)
-		if err != nil {
-			return 0, fmt.Errorf("failed to find predecessors for children manifests of tag %q: %w", tag, err)
-		}
-		referrerCount += len(foundReferrers)
-		manifests = foundReferrers
-	}
+	referrerCount += len(childrenReferrers)
 	return referrerCount, nil
 }
 
