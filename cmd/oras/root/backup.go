@@ -323,6 +323,10 @@ func finalizeBackupOutput(dstRoot string, opts *backupOptions, logger logrus.Fie
 			return fmt.Errorf("failed to get absolute path for output file %s: %w", opts.output, err)
 		}
 	}
+	if err := os.MkdirAll(filepath.Dir(absOutput), 0755); err != nil {
+		// ensure target directory exists
+		return fmt.Errorf("failed to create directory for output file %s: %w", absOutput, err)
+	}
 	// create a temporary file for the tarball for atomicity, this ensures that the tar file is not partially written in case of errors
 	tempTar, err := os.CreateTemp("", "oras-backup-*.tar")
 	if err != nil {
@@ -344,10 +348,6 @@ func finalizeBackupOutput(dstRoot string, opts *backupOptions, logger logrus.Fie
 		}
 		if err := tempTar.Close(); err != nil {
 			return fmt.Errorf("failed to close temporary tar file: %w", err)
-		}
-		if err := os.MkdirAll(filepath.Dir(absOutput), 0755); err != nil {
-			// ensure target directory exists
-			return fmt.Errorf("failed to create directory for output file %s: %w", absOutput, err)
 		}
 		// move the temporary tar file to the final output path
 		return os.Rename(tempTarPath, absOutput)
