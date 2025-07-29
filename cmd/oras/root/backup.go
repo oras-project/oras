@@ -17,6 +17,7 @@ package root
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -30,6 +31,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/argument"
@@ -38,6 +40,8 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/docker"
+	"oras.land/oras/internal/graph"
 	orasio "oras.land/oras/internal/io"
 )
 
@@ -208,6 +212,9 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	copyGraphOpts.OnCopySkipped = statusHandler.OnCopySkipped
 	extCopyGraphOpts := oras.ExtendedCopyGraphOptions{
 		CopyGraphOptions: copyGraphOpts,
+		FindPredecessors: func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			return registry.Referrers(ctx, src, desc, "")
+		},
 	}
 
 	for i, tag := range tags {
@@ -243,6 +250,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	return metadataHandler.OnBackupCompleted(len(tags), opts.output, duration)
 }
 
+// backupTag copies the artifact identified by the tag from src to dst.
 func backupTag(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, tag string, root ocispec.Descriptor, copyGraphOpts oras.CopyGraphOptions) error {
 	if err := oras.CopyGraph(ctx, src, dst, root, copyGraphOpts); err != nil {
 		return fmt.Errorf("failed to pull tag %q, digest %q: %w", tag, root.Digest.String(), err)
@@ -253,17 +261,50 @@ func backupTag(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Graph
 	return nil
 }
 
+// backupTagWithReferrers copies the artifact identified by tag and its referrers from src to dst.
 func backupTagWithReferrers(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, tag string, root ocispec.Descriptor, extCopyGraphOpts oras.ExtendedCopyGraphOptions) (int, error) {
 	if err := recursiveCopy(ctx, src, dst, tag, root, extCopyGraphOpts); err != nil {
 		return 0, fmt.Errorf("failed to pull tag %q and referrers, digest %q: %w", tag, root.Digest.String(), err)
 	}
-	referrers, err := registry.Referrers(ctx, dst, root, "")
-	if err != nil {
-		return 0, fmt.Errorf("failed to get referrers for tag %q, digest %q: %w", tag, root.Digest.String(), err)
-	}
-	return len(referrers), nil
+	return countReferrers(ctx, dst, tag, root, extCopyGraphOpts)
 }
 
+// countReferrers counts the total number of referrers for the given artifact identified by tag, including the referrers
+// of its children manifests if the artifact is an image index or manifest list.
+func countReferrers(ctx context.Context, target oras.ReadOnlyGraphTarget, tag string, root ocispec.Descriptor, extCopyGraphOpts oras.ExtendedCopyGraphOptions) (int, error) {
+	referrerCount := 0
+	referrers, err := registry.Referrers(ctx, target, root, "")
+	if err != nil {
+		return 0, fmt.Errorf("failed to list referrers for tag %q, digest %q: %w", tag, root.Digest.String(), err)
+	}
+	referrerCount += len(referrers)
+	if root.MediaType != ocispec.MediaTypeImageIndex && root.MediaType != docker.MediaTypeManifestList {
+		// If the root is not an image index or manifest list, we have counted all referrers
+		return referrerCount, nil
+	}
+
+	manifestBytes, err := content.FetchAll(ctx, target, root)
+	if err != nil {
+		return 0, fmt.Errorf("failed to fetch content of tag %q, digest %q: %w", tag, root.Digest.String(), err)
+	}
+	var index ocispec.Index
+	if err = json.Unmarshal(manifestBytes, &index); err != nil {
+		return 0, fmt.Errorf("failed to unmarshal index for tag %q, digest %q: %w", tag, root.Digest.String(), err)
+	}
+	if len(index.Manifests) == 0 {
+		// no child manifests, thus no child referrers
+		return referrerCount, nil
+	}
+	// count children manifests' referrers
+	childrenReferrers, err := graph.FindPredecessors(ctx, target, index.Manifests, extCopyGraphOpts)
+	if err != nil {
+		return 0, fmt.Errorf("failed to find predecessors for children manifests of tag %q: %w", tag, err)
+	}
+	referrerCount += len(childrenReferrers)
+	return referrerCount, nil
+}
+
+// finalizeBackupOutput finalizes the backup output by removing temporary directories and exporting to a tar archive if needed.
 func finalizeBackupOutput(dstRoot string, opts *backupOptions, logger logrus.FieldLogger, metadataHandler metadata.BackupHandler) error {
 	// Remove ingest dir for a cleaner output
 	ingestDir := filepath.Join(dstRoot, "ingest")
@@ -390,7 +431,7 @@ func parseArtifactReferences(artifactRefs string) (repository string, tags []str
 		tagsPart = artifactRefs[lastColon+1:]
 	} else {
 		repoParts = artifactRefs
-		// tagPart stays empty - no tags
+		// tagsPart stays empty - no tags
 	}
 
 	// 2. Validate repository

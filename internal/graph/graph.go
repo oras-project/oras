@@ -24,6 +24,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/internal/docker"
 )
 
@@ -113,7 +114,7 @@ func FindPredecessors(ctx context.Context, src oras.ReadOnlyGraphTarget, descs [
 	}
 	if opts.FindPredecessors == nil {
 		opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-			return src.Predecessors(ctx, desc)
+			return registry.Referrers(ctx, src, desc, "")
 		}
 	}
 	for _, desc := range descs {
