@@ -125,7 +125,8 @@ var _ = Describe("ORAS beginners:", func() {
 			src := PrepareTempOCI(ArtifactRepo)
 			dst := RegistryRef(ZOTHost, cpTestRepo("dest-not-logged-in"), "")
 			ORAS("cp", Flags.FromLayout, LayoutRef(src, foobar.Tag), dst, "--to-username", Username, "--to-password", Password+"?").
-				MatchErrKeyWords(RegistryErrorPrefix).ExpectFailure().Exec()
+				MatchErrKeyWords(fmt.Sprintf("Error from destination registry for %q", dst)).
+				ExpectFailure().Exec()
 		})
 
 		It("should fail and show registry error prefix if source registry is not logged in", func() {
@@ -245,6 +246,36 @@ var _ = Describe("1.1 registry users:", func() {
 			for _, digest := range strings.Split(strings.TrimSpace(string(digests)), "\n") {
 				CompareRef(RegistryRef(ZOTHost, ArtifactRepo, digest), RegistryRef(ZOTHost, dstRepo, digest))
 			}
+		})
+
+		It("should copy a multi-arch image, child images and referrers of the child images", func() {
+			src := RegistryRef(ZOTHost, ArtifactRepo, "v1.3.8")
+			dstRepo := cpTestRepo("index-without-referrers")
+			dst := RegistryRef(ZOTHost, dstRepo, "copiedTag")
+			stateKeys := []match.StateKey{
+				{Digest: "44136fa355b3", Name: "application/vnd.oci.empty.v1+json"},
+				{Digest: "01fa0c3558d5", Name: "arm64"},
+				{Digest: "2960eae76dd7", Name: "amd64"},
+				{Digest: "ab01d6e284e8", Name: "application/vnd.oci.image.manifest.v1+json"},
+				{Digest: "6aa11331ce0c", Name: "application/vnd.oci.image.manifest.v1+json"},
+				{Digest: "58e0d01dbd27", Name: "signature"},
+				{Digest: "ecbd32686867", Name: "referrerimage"},
+				{Digest: "02746a135c9e", Name: "sbom"},
+				{Digest: "553c18eccc8b", Name: "application/vnd.oci.image.index.v1+json"},
+			}
+			// test
+			ORAS("cp", src, dst, "-r").
+				MatchStatus(stateKeys, true, len(stateKeys)).
+				Exec()
+			// validate that the index is copied
+			CompareRef(src, dst)
+			// validate that the child images are copied
+			CompareRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:ab01d6e284e843d51fb5e753904a540f507a62361a5fd7e434e4f27b285ca5c9"), RegistryRef(ZOTHost, dstRepo, "sha256:ab01d6e284e843d51fb5e753904a540f507a62361a5fd7e434e4f27b285ca5c9"))
+			CompareRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:6aa11331ce0c766d6333b60dac98d584d98eea45fa93bbfc9b5bdb915ce3a43f"), RegistryRef(ZOTHost, dstRepo, "sha256:6aa11331ce0c766d6333b60dac98d584d98eea45fa93bbfc9b5bdb915ce3a43f"))
+			// validate that the referrers of the child images are copied
+			CompareRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:359bac7f6a262e0f36e83b6b78ee3cc7a0bb8813e04d330328ca7ca9785e1e0b"), RegistryRef(ZOTHost, dstRepo, "sha256:359bac7f6a262e0f36e83b6b78ee3cc7a0bb8813e04d330328ca7ca9785e1e0b"))
+			CompareRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:938419ae89a9947476bbed93abc5eb7abf7d5708be69679fe6cc4b22afe8fdd5"), RegistryRef(ZOTHost, dstRepo, "sha256:938419ae89a9947476bbed93abc5eb7abf7d5708be69679fe6cc4b22afe8fdd5"))
+			CompareRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:20e7d3a6ce087c54238c18a3428853b50cdaf4478a9d00caa8304119b58ae8a9"), RegistryRef(ZOTHost, dstRepo, "sha256:20e7d3a6ce087c54238c18a3428853b50cdaf4478a9d00caa8304119b58ae8a9"))
 		})
 
 		It("should copy an empty index", func() {
@@ -642,6 +673,30 @@ var _ = Describe("OCI layout users:", func() {
 			Expect(json.Unmarshal(bytes, &disv)).ShouldNot(HaveOccurred())
 			Expect(len(disv.Referrers)).To(Equal(1))
 			Expect(disv.Referrers[0].Digest.String()).To(Equal(ma.LinuxAMD64Referrer.Digest.String()))
+		})
+
+		It("should copy a multi-arch image, child images and referrers of the child images from an OCI layout", func() {
+			fromDir := GinkgoT().TempDir()
+			toDir := GinkgoT().TempDir()
+			src := LayoutRef(fromDir, ma.Tag)
+			dst := LayoutRef(toDir, "copiedIndex")
+			// prepare
+			ORAS("cp", RegistryRef(ZOTHost, ArtifactRepo, ma.Tag), src, Flags.ToLayout, "-r").Exec()
+			// test
+			ORAS("cp", src, Flags.FromLayout, dst, Flags.ToLayout, "-r").Exec()
+			// validate
+			// verify that the index "multi" is copied
+			srcManifest := ORAS("manifest", "fetch", src, Flags.Layout).WithDescription("fetch from source to validate").Exec().Out.Contents()
+			dstManifest := ORAS("manifest", "fetch", dst, Flags.Layout).WithDescription("fetch from destination to validate").Exec().Out.Contents()
+			Expect(srcManifest).To(Equal(dstManifest))
+			// verify that "multi"'s referrers are copied
+			ORAS("discover", dst, Flags.Layout).MatchKeyWords("sha256:d37baf66300b9006b0f4c7102075d56b970fbf910be5c6bca07fdbb000dfa383", "sha256:7679bc22c33b87aa345c6950a993db98a6df7a6cc77a35c388908a3a50be6bad").Exec()
+			// verify that the child images are copied
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(toDir, "sha256:9d84a5716c66a1d1b9c13f8ed157ba7d1edfe7f9b8766728b8a1f25c0d9c14c1")).Exec()
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(toDir, "sha256:4f93460061882467e6fb3b772dc6ab72130d9ac1906aed2fc7589a5cd145433c")).Exec()
+			ORAS("manifest", "fetch", Flags.Layout, LayoutRef(toDir, "sha256:58efe73e78fe043ca31b89007a025c594ce12aa7e6da27d21c7b14b50112e255")).Exec()
+			// verify that the referrers of the child images are copied
+			ORAS("discover", Flags.Layout, LayoutRef(toDir, "sha256:9d84a5716c66a1d1b9c13f8ed157ba7d1edfe7f9b8766728b8a1f25c0d9c14c1")).MatchKeyWords("c5e00045954a70e3fd28307dd543d4cc158946117943700b8f520f72ddca031f").Exec()
 		})
 
 		It("should copy a certain platform of image and its referrers from a registry to an OCI image layout", func() {

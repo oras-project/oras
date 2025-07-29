@@ -34,6 +34,5 @@ var (
 		"--image-spec",
 	}
 	RegistryErrorPrefix = "Error response from registry: "
-	EmptyBodyPrefix     = "recognizable error message not found: "
 	InvalidTag          = "i-dont-think-this-tag-exists"
 )

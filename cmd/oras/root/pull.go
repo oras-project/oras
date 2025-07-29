@@ -18,7 +18,6 @@ package root
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"sync"
 
@@ -167,10 +166,14 @@ func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 
 	desc, err := doPull(ctx, src, dst, copyOptions, metadataHandler, statusHandler, opts)
 	if err != nil {
-		if errors.Is(err, file.ErrPathTraversalDisallowed) {
-			err = fmt.Errorf("%s: %w", "use flag --allow-path-traversal to allow insecurely pulling files outside of working directory", err)
+		if !errors.Is(err, file.ErrPathTraversalDisallowed) {
+			return err
 		}
-		return err
+		// customize friendly message for path traversal error
+		return &oerrors.Error{
+			Err:            err,
+			Recommendation: `Pulling files outside of working directory is insecure and blocked by default. If you trust the content producer, use --allow-path-traversal to bypass this check.`,
+		}
 	}
 	metadataHandler.OnPulled(&opts.Target, desc)
 	return metadataHandler.Render()
@@ -291,7 +294,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 
 	// Copy
 	desc, err := oras.Copy(ctx, src, po.Reference, dst, po.Reference, opts)
-	return desc, err
+	return desc, oerrors.UnwrapCopyError(err) // we don't need the CopyError information so we unwrap it here
 }
 
 func notifyOnce(notified *sync.Map, s ocispec.Descriptor, notify func(ocispec.Descriptor) error) error {

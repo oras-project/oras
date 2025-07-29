@@ -35,7 +35,6 @@ var _ = Describe("Common registry user", func() {
 		It("should run commands without logging in", func() {
 			authConfigPath := filepath.Join(GinkgoT().TempDir(), "auth.config")
 			RunWithoutLogin("attach", ZOTHost+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example", "--registry-config", authConfigPath)
-			RunWithoutLogin("copy", ZOTHost+"/repo:from", ZOTHost+"/repo:to", "--from-registry-config", authConfigPath, "--to-registry-config", authConfigPath)
 			RunWithoutLogin("discover", ZOTHost+"/repo:tag", "--registry-config", authConfigPath)
 			RunWithoutLogin("push", "-a", "key=value", ZOTHost+"/repo:tag", "--registry-config", authConfigPath)
 			RunWithoutLogin("pull", ZOTHost+"/repo:tag", "--registry-config", authConfigPath)
@@ -48,14 +47,21 @@ var _ = Describe("Common registry user", func() {
 			RunWithoutLogin("repo", "tags", RegistryRef(ZOTHost, "repo", ""), "--registry-config", authConfigPath)
 			RunWithoutLogin("manifest", "fetch-config", ZOTHost+"/repo:tag", "--registry-config", authConfigPath)
 		})
+
+		It("should fail with modified error prefix when running commands without logging in", func() {
+			authConfigPath := filepath.Join(GinkgoT().TempDir(), "auth.config")
+			ORAS("copy", ZOTHost+"/repo:from", ZOTHost+"/repo:to", "--from-registry-config", authConfigPath, "--to-registry-config", authConfigPath).
+				ExpectFailure().
+				MatchErrKeyWords(fmt.Sprintf("Error from source registry for %q", ZOTHost+"/repo:from"), "basic credential not found").
+				WithDescription("fail with modified error prefix when not logged in").
+				Exec()
+		})
 	})
 
 	When("credential is invalid", func() {
 		It("should fail with registry error", func() {
 			RunWithInvalidCreds("attach", ZOTHost+"/repo:tag", "-a", "test=true", "--artifact-type", "doc/example")
 			RunWithInvalidCreds("discover", ZOTHost+"/repo:tag")
-			RunWithInvalidCreds("push", "-a", "key=value", ZOTHost+"/repo:tag")
-			RunWithInvalidCreds("pull", ZOTHost+"/repo:tag")
 			RunWithInvalidCreds("manifest", "fetch", ZOTHost+"/repo:tag")
 			RunWithInvalidCreds("blob", "delete", ZOTHost+"/repo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
 			RunWithInvalidCreds("blob", "push", ZOTHost+"/repo", WriteTempFile("blob", "test"))
