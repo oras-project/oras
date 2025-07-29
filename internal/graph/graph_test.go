@@ -18,6 +18,7 @@ package graph
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"reflect"
 	"strconv"
 	"testing"
@@ -344,6 +345,19 @@ func TestRecursiveFindPredecessors(t *testing.T) {
 			if !reflect.DeepEqual(got, want) {
 				t.Errorf("RecursiveFindPredecessors got referrer %v, want %v", got, want)
 			}
+		}
+	})
+
+	t.Run("bad FindPredecessors options", func(t *testing.T) {
+		testErr := errors.New("test error")
+		opts := oras.ExtendedCopyGraphOptions{
+			FindPredecessors: func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+				return nil, testErr
+			},
+		}
+		_, err := RecursiveFindPredecessors(ctx, target, []ocispec.Descriptor{manifestDesc1}, opts)
+		if !errors.Is(err, testErr) {
+			t.Errorf("expected error %v, got %v", testErr, err)
 		}
 	})
 }

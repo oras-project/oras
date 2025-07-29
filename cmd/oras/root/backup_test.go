@@ -33,6 +33,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
@@ -716,6 +717,20 @@ func Test_countReferrers(t *testing.T) {
 			t.Errorf("countReferrers() count = %d, want %d", count, wantCount)
 		}
 	})
+
+	t.Run("bad FindPredecessors", func(t *testing.T) {
+		testErr := errors.New("test error")
+		opts := oras.ExtendedCopyGraphOptions{
+			FindPredecessors: func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+				return nil, testErr
+			},
+		}
+		_, err := countReferrers(ctx, target, tag, manifestDesc1, opts)
+		if !errors.Is(err, testErr) {
+			t.Errorf("countReferrers() error = %v, want %v", err, testErr)
+		}
+	})
+
 }
 
 // Mock implementations
