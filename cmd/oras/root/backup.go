@@ -300,7 +300,7 @@ func countReferrers(ctx context.Context, target oras.ReadOnlyGraphTarget, tag st
 }
 
 // finalizeBackupOutput finalizes the backup output by removing temporary directories and exporting to a tar archive if needed.
-func finalizeBackupOutput(dstRoot string, opts *backupOptions, logger logrus.FieldLogger, metadataHandler metadata.BackupHandler) error {
+func finalizeBackupOutput(dstRoot string, opts *backupOptions, logger logrus.FieldLogger, metadataHandler metadata.BackupHandler) (returnErr error) {
 	// Remove ingest dir for a cleaner output
 	ingestDir := filepath.Join(dstRoot, "ingest")
 	if err := os.RemoveAll(ingestDir); err != nil && !errors.Is(err, fs.ErrNotExist) {
@@ -315,49 +315,26 @@ func finalizeBackupOutput(dstRoot string, opts *backupOptions, logger logrus.Fie
 	if err := metadataHandler.OnTarExporting(opts.output); err != nil {
 		return err
 	}
-	absOutput := opts.output
-	if !filepath.IsAbs(absOutput) {
-		var err error
-		absOutput, err = filepath.Abs(opts.output)
-		if err != nil {
-			return fmt.Errorf("failed to get absolute path for output file %s: %w", opts.output, err)
-		}
-	}
-	if err := os.MkdirAll(filepath.Dir(absOutput), 0755); err != nil {
-		// ensure target directory exists
-		return fmt.Errorf("failed to create directory for output file %s: %w", absOutput, err)
-	}
-	// create a temporary file for the tarball for atomicity, this ensures that the tar file is not partially written in case of errors
-	tempTar, err := os.CreateTemp("", "oras-backup-*.tar")
+	tarFile, err := os.Create(opts.output)
 	if err != nil {
-		return fmt.Errorf("failed to create temporary tar file: %w", err)
+		return fmt.Errorf("failed to create output file %s: %w", opts.output, err)
 	}
-	tempTarPath := tempTar.Name()
-	if err := func() (exportErr error) {
-		defer func() {
-			if exportErr != nil {
-				// If there is an error during the export process, remove the temporary tar file
-				if err := os.Remove(tempTarPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
-					logger.Debugf("failed to remove temporary tar file %s: %v", tempTarPath, err)
-				}
-			}
-		}()
-
-		if err := orasio.TarDirectory(tempTar, dstRoot); err != nil {
-			return fmt.Errorf("failed to create tar archive from directory %s: %w", dstRoot, err)
+	defer func() {
+		err := tarFile.Close()
+		if returnErr == nil {
+			returnErr = err
 		}
-		if err := tempTar.Close(); err != nil {
-			return fmt.Errorf("failed to close temporary tar file: %w", err)
+	}()
+	if err := orasio.TarDirectory(tarFile, dstRoot); err != nil {
+		// remove the output file in case of error
+		if err := os.Remove(opts.output); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			logger.Debugf("failed to remove output file %s: %v", opts.output, err)
 		}
-		// move the temporary tar file to the final output path
-		return os.Rename(tempTarPath, absOutput)
-	}(); err != nil {
-		return fmt.Errorf("failed to export backup to tar archive: %w", err)
+		return fmt.Errorf("failed to create tar archive at %s: %w", opts.output, err)
 	}
-
-	fi, err := os.Stat(absOutput)
+	fi, err := os.Stat(opts.output)
 	if err != nil {
-		return fmt.Errorf("failed to stat output file %s: %w", absOutput, err)
+		return fmt.Errorf("failed to stat output file %s: %w", opts.output, err)
 	}
 	return metadataHandler.OnTarExported(opts.output, fi.Size())
 }

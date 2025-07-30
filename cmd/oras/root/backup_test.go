@@ -216,21 +216,13 @@ func TestParseArtifactReferences(t *testing.T) {
 }
 
 func TestFinalizeBackupOutput(t *testing.T) {
-	// Create a temporary directory for our tests
-	tempDir, err := os.MkdirTemp("", "backup-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer func() {
-		_ = os.RemoveAll(tempDir)
-	}()
-
-	// Create a mock logger
 	mockLogger := &mockLogger{}
 
 	t.Run("Directory output format", func(t *testing.T) {
+		tempDir := t.TempDir()
 		// Create an ingest directory to ensure it gets removed
-		ingestDir := filepath.Join(tempDir, "ingest")
+		dstRoot := filepath.Join(tempDir, "root")
+		ingestDir := filepath.Join(dstRoot, "ingest")
 		if err := os.MkdirAll(ingestDir, 0755); err != nil {
 			t.Fatalf("Failed to create ingest dir: %v", err)
 		}
@@ -241,7 +233,7 @@ func TestFinalizeBackupOutput(t *testing.T) {
 			output:       filepath.Join(tempDir, "output-dir"),
 		}
 
-		err := finalizeBackupOutput(tempDir, opts, mockLogger, mockHandler)
+		err := finalizeBackupOutput(dstRoot, opts, mockLogger, mockHandler)
 		if err != nil {
 			t.Errorf("Expected no error for directory output, got: %v", err)
 		}
@@ -261,8 +253,10 @@ func TestFinalizeBackupOutput(t *testing.T) {
 	})
 
 	t.Run("Tar output format", func(t *testing.T) {
+		tempDir := t.TempDir()
 		// Create an ingest directory to ensure it gets removed
-		ingestDir := filepath.Join(tempDir, "ingest")
+		dstRoot := filepath.Join(tempDir, "root")
+		ingestDir := filepath.Join(dstRoot, "ingest")
 		if err := os.MkdirAll(ingestDir, 0755); err != nil {
 			t.Fatalf("Failed to create ingest dir: %v", err)
 		}
@@ -274,9 +268,9 @@ func TestFinalizeBackupOutput(t *testing.T) {
 		}
 
 		mockHandler := &mockBackupHandler{}
-		err := finalizeBackupOutput(tempDir, opts, mockLogger, mockHandler)
+		err := finalizeBackupOutput(dstRoot, opts, mockLogger, mockHandler)
 		if err != nil {
-			t.Errorf("Expected no error for tar output, got: %v", err)
+			t.Fatalf("Expected no error for tar output, got: %v", err)
 		}
 
 		// Check if tar file was created
@@ -299,7 +293,9 @@ func TestFinalizeBackupOutput(t *testing.T) {
 	})
 
 	t.Run("Error in OnTarExporting", func(t *testing.T) {
-		ingestDir := filepath.Join(tempDir, "ingest")
+		tempDir := t.TempDir()
+		dstRoot := filepath.Join(tempDir, "root")
+		ingestDir := filepath.Join(dstRoot, "ingest")
 		if err := os.MkdirAll(ingestDir, 0755); err != nil {
 			t.Fatalf("Failed to create ingest dir: %v", err)
 		}
@@ -314,14 +310,16 @@ func TestFinalizeBackupOutput(t *testing.T) {
 			tarExportingResult: expectedErr,
 		}
 
-		err := finalizeBackupOutput(tempDir, opts, mockLogger, mockHandler)
+		err := finalizeBackupOutput(dstRoot, opts, mockLogger, mockHandler)
 		if err != expectedErr {
 			t.Errorf("Expected error %v, got: %v", expectedErr, err)
 		}
 	})
 
 	t.Run("Error in OnTarExported", func(t *testing.T) {
-		ingestDir := filepath.Join(tempDir, "ingest")
+		tempDir := t.TempDir()
+		dstRoot := filepath.Join(tempDir, "root")
+		ingestDir := filepath.Join(dstRoot, "ingest")
 		if err := os.MkdirAll(ingestDir, 0755); err != nil {
 			t.Fatalf("Failed to create ingest dir: %v", err)
 		}
@@ -336,13 +334,14 @@ func TestFinalizeBackupOutput(t *testing.T) {
 			tarExportedResult: expectedErr,
 		}
 
-		err := finalizeBackupOutput(tempDir, opts, mockLogger, mockHandler)
+		err := finalizeBackupOutput(dstRoot, opts, mockLogger, mockHandler)
 		if err != expectedErr {
 			t.Errorf("Expected error %v, got: %v", expectedErr, err)
 		}
 	})
 
 	t.Run("Non-existent output directory", func(t *testing.T) {
+		tempDir := t.TempDir()
 		// Create a temporary directory that we can control
 		nonExistentDir := filepath.Join(tempDir, "non-existent")
 
@@ -358,53 +357,8 @@ func TestFinalizeBackupOutput(t *testing.T) {
 		}
 
 		mockHandler := &mockBackupHandler{}
-		err := finalizeBackupOutput(tempDir, opts, mockLogger, mockHandler)
-		if err != nil {
-			t.Errorf("Expected no error creating directories, got: %v", err)
-		}
-
-		// Verify the directory was created
-		if _, err := os.Stat(filepath.Dir(outputPath)); os.IsNotExist(err) {
-			t.Errorf("Expected output directory to be created")
-		}
-	})
-
-	t.Run("Relative output path", func(t *testing.T) {
-		// Save current directory
-		cwd, err := os.Getwd()
-		if err != nil {
-			t.Fatalf("Failed to get current working directory: %v", err)
-		}
-
-		// Change to temp directory temporarily
-		if err := os.Chdir(tempDir); err != nil {
-			t.Fatalf("Failed to change to temp directory: %v", err)
-		}
-		defer func() {
-			// Change back to original directory
-			if err := os.Chdir(cwd); err != nil {
-				t.Logf("Failed to restore working directory: %v", err)
-			}
-		}()
-
-		// Use a relative path
-		relPath := "./relative/output.tar"
-
-		opts := &backupOptions{
-			outputFormat: outputFormatTar,
-			output:       relPath,
-		}
-
-		mockHandler := &mockBackupHandler{}
-		err = finalizeBackupOutput(tempDir, opts, mockLogger, mockHandler)
-		if err != nil {
-			t.Errorf("Expected no error with relative path, got: %v", err)
-		}
-
-		// Verify the file was created with the correct path
-		absPath, _ := filepath.Abs(relPath)
-		if _, err := os.Stat(absPath); os.IsNotExist(err) {
-			t.Errorf("Expected tar file to exist at absolute path %s", absPath)
+		if err := finalizeBackupOutput(tempDir, opts, mockLogger, mockHandler); err == nil {
+			t.Errorf("Expected error for non-existent output directory, got nil")
 		}
 	})
 }
