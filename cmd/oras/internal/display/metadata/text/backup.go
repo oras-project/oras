@@ -62,7 +62,7 @@ func (bh *BackupHandler) OnArtifactPulled(tag string, referrerCount int) error {
 // OnTagsFound implements metadata.BackupHandler.
 func (bh *BackupHandler) OnTagsFound(tags []string) error {
 	if len(tags) == 0 {
-		return nil
+		return bh.printer.Printf("No tags found in %s\n", bh.repo)
 	}
 	return bh.printer.Printf("Found %d tag(s) in %s: %s\n", len(tags), bh.repo, strings.Join(tags, ", "))
 }
