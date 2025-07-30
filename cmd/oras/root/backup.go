@@ -342,36 +342,37 @@ func finalizeBackupOutput(dstRoot string, opts *backupOptions, logger logrus.Fie
 // resolveTags resolves tags to their descriptors.
 // It returns the resolved tags and their corresponding descriptors.
 func resolveTags(ctx context.Context, target oras.ReadOnlyTarget, specifiedTags []string) ([]string, []ocispec.Descriptor, error) {
-	var tags []string
 	var descs []ocispec.Descriptor
-	if len(specifiedTags) > 0 {
-		// resolve the specified tags
-		tags = specifiedTags
-		descs = make([]ocispec.Descriptor, 0, len(tags))
+	resolve := func(tags []string) error {
 		for _, tag := range tags {
 			desc, err := oras.Resolve(ctx, target, tag, oras.DefaultResolveOptions)
 			if err != nil {
-				return nil, nil, fmt.Errorf("failed to resolve tag %q: %w", tag, err)
+				return fmt.Errorf("failed to resolve tag %q: %w", tag, err)
 			}
 			descs = append(descs, desc)
 		}
-		return tags, descs, nil
+		return nil
+	}
+	if len(specifiedTags) > 0 {
+		// resolve the specified tags
+		descs = make([]ocispec.Descriptor, 0, len(specifiedTags))
+		if err := resolve(specifiedTags); err != nil {
+			return nil, nil, err
+		}
+		return specifiedTags, descs, nil
 	}
 
 	// discover all tags in the repository and resolve them
+	var tags []string
 	tagLister, ok := target.(registry.TagLister)
 	if !ok {
 		return nil, nil, errTagListNotSupported
 	}
 	if err := tagLister.Tags(ctx, "", func(gotTags []string) error {
-		for _, gotTag := range gotTags {
-			desc, err := oras.Resolve(ctx, target, gotTag, oras.DefaultResolveOptions)
-			if err != nil {
-				return fmt.Errorf("failed to resolve tag %q: %w", gotTag, err)
-			}
-			tags = append(tags, gotTag)
-			descs = append(descs, desc)
+		if err := resolve(gotTags); err != nil {
+			return err
 		}
+		tags = append(tags, gotTags...)
 		return nil
 	}); err != nil {
 		return nil, nil, fmt.Errorf("failed to find tags: %w", err)
