@@ -391,38 +391,25 @@ func parseArtifactReferences(artifactRefs string) (repository string, tags []str
 	if strings.ContainsRune(artifactRefs, '@') {
 		return "", nil, fmt.Errorf("digest references are not supported: %q", artifactRefs)
 	}
+	refParts := strings.Split(artifactRefs, ",")
+	mainRef := refParts[0]
+	extraTags := refParts[1:]
 
-	// 1. Split the input into repository and tag parts
-	lastSlash := strings.LastIndexByte(artifactRefs, '/')
-	lastColon := strings.LastIndexByte(artifactRefs, ':')
-
-	var repoParts string
-	var tagsPart string
-	if lastColon != -1 && lastColon > lastSlash {
-		// A colon after the last slash denotes the beginning of tags
-		repoParts = artifactRefs[:lastColon]
-		tagsPart = artifactRefs[lastColon+1:]
-	} else {
-		repoParts = artifactRefs
-		// tagsPart stays empty - no tags
-	}
-
-	// 2. Validate repository
-	parsedRepo, err := registry.ParseReference(repoParts)
+	// Validate repository
+	parsedRepo, err := registry.ParseReference(mainRef)
 	if err != nil {
-		return "", nil, fmt.Errorf("invalid repository %q in reference %q: %w", repoParts, artifactRefs, err)
+		return "", nil, fmt.Errorf("invalid reference %q: %w", mainRef, err)
 	}
+	mainTag := parsedRepo.Reference
+	parsedRepo.Reference = "" // clear the tag
 	repository = parsedRepo.String()
 
-	// 3. Process tags
-	if tagsPart == "" {
-		return repository, nil, nil
+	tags = make([]string, 0, len(extraTags)+1)
+	if mainTag != "" {
+		tags = append(tags, mainTag)
 	}
-	tagList := strings.Split(tagsPart, ",")
-	tags = make([]string, 0, len(tagList))
-
 	// Validate each tag
-	for _, tag := range tagList {
+	for _, tag := range extraTags {
 		tag = strings.TrimSpace(tag)
 		if tag == "" {
 			continue // skip empty tags
