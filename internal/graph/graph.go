@@ -106,7 +106,7 @@ func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descr
 
 // FindPredecessors returns all predecessors of descs in src concurrently.
 func FindPredecessors(ctx context.Context, src oras.ReadOnlyGraphTarget, descs []ocispec.Descriptor, opts oras.ExtendedCopyGraphOptions) ([]ocispec.Descriptor, error) {
-	var referrers []ocispec.Descriptor
+	var predecessors []ocispec.Descriptor
 	g, ctx := errgroup.WithContext(ctx)
 	var m sync.Mutex
 	if opts.Concurrency != 0 {
@@ -114,7 +114,7 @@ func FindPredecessors(ctx context.Context, src oras.ReadOnlyGraphTarget, descs [
 	}
 	if opts.FindPredecessors == nil {
 		opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-			return registry.Referrers(ctx, src, desc, "")
+			return src.Predecessors(ctx, desc)
 		}
 	}
 	for _, desc := range descs {
@@ -126,7 +126,7 @@ func FindPredecessors(ctx context.Context, src oras.ReadOnlyGraphTarget, descs [
 				}
 				m.Lock()
 				defer m.Unlock()
-				referrers = append(referrers, descs...)
+				predecessors = append(predecessors, descs...)
 				return nil
 			}
 		}(desc))
@@ -134,20 +134,26 @@ func FindPredecessors(ctx context.Context, src oras.ReadOnlyGraphTarget, descs [
 	if err := g.Wait(); err != nil {
 		return nil, err
 	}
-	return referrers, nil
+	return predecessors, nil
 }
 
-func RecursiveFindPredecessors(ctx context.Context, src oras.ReadOnlyGraphTarget, descs []ocispec.Descriptor, opts oras.ExtendedCopyGraphOptions) ([]ocispec.Descriptor, error) {
-	var allPredecessors []ocispec.Descriptor
+// RecursiveFindReferrers finds all referrers of the given descriptors recursively.
+func RecursiveFindReferrers(ctx context.Context, src oras.ReadOnlyGraphTarget, descs []ocispec.Descriptor, opts oras.ExtendedCopyGraphOptions) ([]ocispec.Descriptor, error) {
+	if opts.FindPredecessors == nil {
+		opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			return registry.Referrers(ctx, src, desc, "")
+		}
+	}
+	var allReferrers []ocispec.Descriptor
 	for len(descs) > 0 {
-		predecessors, err := FindPredecessors(ctx, src, descs, opts)
+		referrers, err := FindPredecessors(ctx, src, descs, opts)
 		if err != nil {
 			return nil, err
 		}
-		allPredecessors = append(allPredecessors, predecessors...)
-		descs = predecessors
+		allReferrers = append(allReferrers, referrers...)
+		descs = referrers
 	}
-	return allPredecessors, nil
+	return allReferrers, nil
 }
 
 // FilteredSuccessors fetches successors and returns filtered ones.

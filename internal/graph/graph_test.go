@@ -235,7 +235,7 @@ func TestRecursiveFindPredecessors(t *testing.T) {
 	}
 
 	t.Run("find referers for empty manifest list", func(t *testing.T) {
-		gotReferrers, err := RecursiveFindPredecessors(ctx, target, []ocispec.Descriptor{}, oras.DefaultExtendedCopyGraphOptions)
+		gotReferrers, err := RecursiveFindReferrers(ctx, target, []ocispec.Descriptor{}, oras.DefaultExtendedCopyGraphOptions)
 		if err != nil {
 			t.Fatalf("RecursiveFindPredecessors unexpected error: %v", err)
 		}
@@ -245,7 +245,7 @@ func TestRecursiveFindPredecessors(t *testing.T) {
 	})
 
 	t.Run("find referrers for manifest without referrers", func(t *testing.T) {
-		gotReferrers, err := RecursiveFindPredecessors(ctx, target, []ocispec.Descriptor{referrerDesc3_1_1}, oras.DefaultExtendedCopyGraphOptions)
+		gotReferrers, err := RecursiveFindReferrers(ctx, target, []ocispec.Descriptor{referrerDesc3_1_1}, oras.DefaultExtendedCopyGraphOptions)
 		if err != nil {
 			t.Fatalf("RecursiveFindPredecessors unexpected error: %v", err)
 		}
@@ -255,7 +255,7 @@ func TestRecursiveFindPredecessors(t *testing.T) {
 	})
 
 	t.Run("find referrers for manifest 1", func(t *testing.T) {
-		gotReferrers, err := RecursiveFindPredecessors(ctx, target, []ocispec.Descriptor{manifestDesc1}, oras.DefaultExtendedCopyGraphOptions)
+		gotReferrers, err := RecursiveFindReferrers(ctx, target, []ocispec.Descriptor{manifestDesc1}, oras.DefaultExtendedCopyGraphOptions)
 		if err != nil {
 			t.Fatalf("RecursiveFindPredecessors unexpected error: %v", err)
 		}
@@ -278,7 +278,7 @@ func TestRecursiveFindPredecessors(t *testing.T) {
 	})
 
 	t.Run("find referrers for manifest 2", func(t *testing.T) {
-		gotReferrers, err := RecursiveFindPredecessors(ctx, target, []ocispec.Descriptor{manifestDesc2}, oras.DefaultExtendedCopyGraphOptions)
+		gotReferrers, err := RecursiveFindReferrers(ctx, target, []ocispec.Descriptor{manifestDesc2}, oras.DefaultExtendedCopyGraphOptions)
 		if err != nil {
 			t.Fatalf("RecursiveFindPredecessors unexpected error: %v", err)
 		}
@@ -301,7 +301,7 @@ func TestRecursiveFindPredecessors(t *testing.T) {
 	})
 
 	t.Run("find referrers for manifest 1 and 2", func(t *testing.T) {
-		gotReferrers, err := RecursiveFindPredecessors(ctx, target, []ocispec.Descriptor{manifestDesc1, manifestDesc2}, oras.DefaultExtendedCopyGraphOptions)
+		gotReferrers, err := RecursiveFindReferrers(ctx, target, []ocispec.Descriptor{manifestDesc1, manifestDesc2}, oras.DefaultExtendedCopyGraphOptions)
 		if err != nil {
 			t.Fatalf("RecursiveFindPredecessors unexpected error: %v", err)
 		}
@@ -326,7 +326,7 @@ func TestRecursiveFindPredecessors(t *testing.T) {
 	})
 
 	t.Run("find referrers for index manifest", func(t *testing.T) {
-		gotReferrers, err := RecursiveFindPredecessors(ctx, target, []ocispec.Descriptor{indexDesc}, oras.DefaultExtendedCopyGraphOptions)
+		gotReferrers, err := RecursiveFindReferrers(ctx, target, []ocispec.Descriptor{indexDesc}, oras.DefaultExtendedCopyGraphOptions)
 		if err != nil {
 			t.Fatalf("RecursiveFindPredecessors unexpected error: %v", err)
 		}
@@ -355,7 +355,7 @@ func TestRecursiveFindPredecessors(t *testing.T) {
 				return nil, testErr
 			},
 		}
-		_, err := RecursiveFindPredecessors(ctx, target, []ocispec.Descriptor{manifestDesc1}, opts)
+		_, err := RecursiveFindReferrers(ctx, target, []ocispec.Descriptor{manifestDesc1}, opts)
 		if !errors.Is(err, testErr) {
 			t.Errorf("expected error %v, got %v", testErr, err)
 		}

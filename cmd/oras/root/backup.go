@@ -272,7 +272,7 @@ func backupTagWithReferrers(ctx context.Context, src oras.ReadOnlyGraphTarget, d
 // countReferrers counts the total number of referrers for the given artifact identified by tag, including the referrers
 // of its children manifests if the artifact is an image index or manifest list.
 func countReferrers(ctx context.Context, target oras.ReadOnlyGraphTarget, tag string, root ocispec.Descriptor, extCopyGraphOpts oras.ExtendedCopyGraphOptions) (int, error) {
-	referrers, err := graph.RecursiveFindPredecessors(ctx, target, []ocispec.Descriptor{root}, extCopyGraphOpts)
+	referrers, err := graph.RecursiveFindReferrers(ctx, target, []ocispec.Descriptor{root}, extCopyGraphOpts)
 	if err != nil {
 		return 0, fmt.Errorf("failed to count referrers for tag %q, digest %q: %w", tag, root.Digest.String(), err)
 	}
@@ -291,7 +291,7 @@ func countReferrers(ctx context.Context, target oras.ReadOnlyGraphTarget, tag st
 	if err = json.Unmarshal(manifestBytes, &index); err != nil {
 		return 0, fmt.Errorf("failed to unmarshal index for tag %q, digest %q: %w", tag, root.Digest.String(), err)
 	}
-	childrenReferrers, err := graph.RecursiveFindPredecessors(ctx, target, index.Manifests, extCopyGraphOpts)
+	childrenReferrers, err := graph.RecursiveFindReferrers(ctx, target, index.Manifests, extCopyGraphOpts)
 	if err != nil {
 		return 0, fmt.Errorf("failed to count referrers for children manifests of tag %q, digest %q: %w", tag, root.Digest.String(), err)
 	}
