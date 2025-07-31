@@ -174,7 +174,7 @@ func TestFindPredecessors(t *testing.T) {
 	}
 }
 
-func TestRecursiveFindPredecessors(t *testing.T) {
+func TestRecursiveFindReferrers(t *testing.T) {
 	// prepare test data
 	ctx := context.Background()
 	target := memory.New()
@@ -237,42 +237,42 @@ func TestRecursiveFindPredecessors(t *testing.T) {
 	t.Run("find referers for empty manifest list", func(t *testing.T) {
 		gotReferrers, err := RecursiveFindReferrers(ctx, target, []ocispec.Descriptor{}, oras.DefaultExtendedCopyGraphOptions)
 		if err != nil {
-			t.Fatalf("RecursiveFindPredecessors unexpected error: %v", err)
+			t.Fatalf("RecursiveFindReferrers unexpected error: %v", err)
 		}
 		if len(gotReferrers) != 0 {
-			t.Errorf("RecursiveFindPredecessors got %d referrers, want 0", len(gotReferrers))
+			t.Errorf("RecursiveFindReferrers got %d referrers, want 0", len(gotReferrers))
 		}
 	})
 
 	t.Run("find referrers for manifest without referrers", func(t *testing.T) {
 		gotReferrers, err := RecursiveFindReferrers(ctx, target, []ocispec.Descriptor{referrerDesc3_1_1}, oras.DefaultExtendedCopyGraphOptions)
 		if err != nil {
-			t.Fatalf("RecursiveFindPredecessors unexpected error: %v", err)
+			t.Fatalf("RecursiveFindReferrers unexpected error: %v", err)
 		}
 		if len(gotReferrers) != 0 {
-			t.Errorf("RecursiveFindPredecessors got %d referrers, want 0", len(gotReferrers))
+			t.Errorf("RecursiveFindReferrers got %d referrers, want 0", len(gotReferrers))
 		}
 	})
 
 	t.Run("find referrers for manifest 1", func(t *testing.T) {
 		gotReferrers, err := RecursiveFindReferrers(ctx, target, []ocispec.Descriptor{manifestDesc1}, oras.DefaultExtendedCopyGraphOptions)
 		if err != nil {
-			t.Fatalf("RecursiveFindPredecessors unexpected error: %v", err)
+			t.Fatalf("RecursiveFindReferrers unexpected error: %v", err)
 		}
 		wantReferrers := map[digest.Digest]ocispec.Descriptor{
 			referrerDesc1_1.Digest: referrerDesc1_1,
 			referrerDesc1_2.Digest: referrerDesc1_2,
 		}
 		if len(gotReferrers) != len(wantReferrers) {
-			t.Fatalf("RecursiveFindPredecessors got %d referrers, want %d", len(gotReferrers), len(wantReferrers))
+			t.Fatalf("RecursiveFindReferrers got %d referrers, want %d", len(gotReferrers), len(wantReferrers))
 		}
 		for _, got := range gotReferrers {
 			want, ok := wantReferrers[got.Digest]
 			if !ok {
-				t.Errorf("RecursiveFindPredecessors got unexpected referrer %v", got)
+				t.Errorf("RecursiveFindReferrers got unexpected referrer %v", got)
 			}
 			if !reflect.DeepEqual(got, want) {
-				t.Errorf("RecursiveFindPredecessors got referrer %v, want %v", got, want)
+				t.Errorf("RecursiveFindReferrers got referrer %v, want %v", got, want)
 			}
 		}
 	})
@@ -280,22 +280,22 @@ func TestRecursiveFindPredecessors(t *testing.T) {
 	t.Run("find referrers for manifest 2", func(t *testing.T) {
 		gotReferrers, err := RecursiveFindReferrers(ctx, target, []ocispec.Descriptor{manifestDesc2}, oras.DefaultExtendedCopyGraphOptions)
 		if err != nil {
-			t.Fatalf("RecursiveFindPredecessors unexpected error: %v", err)
+			t.Fatalf("RecursiveFindReferrers unexpected error: %v", err)
 		}
 		wantReferrers := map[digest.Digest]ocispec.Descriptor{
 			referrerDesc2_1.Digest:   referrerDesc2_1,
 			referrerDesc2_1_1.Digest: referrerDesc2_1_1,
 		}
 		if len(gotReferrers) != len(wantReferrers) {
-			t.Fatalf("RecursiveFindPredecessors got %d referrers, want %d", len(gotReferrers), len(wantReferrers))
+			t.Fatalf("RecursiveFindReferrers got %d referrers, want %d", len(gotReferrers), len(wantReferrers))
 		}
 		for _, got := range gotReferrers {
 			want, ok := wantReferrers[got.Digest]
 			if !ok {
-				t.Errorf("RecursiveFindPredecessors got unexpected referrer %v", got)
+				t.Errorf("RecursiveFindReferrers got unexpected referrer %v", got)
 			}
 			if !reflect.DeepEqual(got, want) {
-				t.Errorf("RecursiveFindPredecessors got referrer %v, want %v", got, want)
+				t.Errorf("RecursiveFindReferrers got referrer %v, want %v", got, want)
 			}
 		}
 	})
@@ -303,7 +303,7 @@ func TestRecursiveFindPredecessors(t *testing.T) {
 	t.Run("find referrers for manifest 1 and 2", func(t *testing.T) {
 		gotReferrers, err := RecursiveFindReferrers(ctx, target, []ocispec.Descriptor{manifestDesc1, manifestDesc2}, oras.DefaultExtendedCopyGraphOptions)
 		if err != nil {
-			t.Fatalf("RecursiveFindPredecessors unexpected error: %v", err)
+			t.Fatalf("RecursiveFindReferrers unexpected error: %v", err)
 		}
 		wantReferrers := map[digest.Digest]ocispec.Descriptor{
 			referrerDesc1_1.Digest:   referrerDesc1_1,
@@ -312,15 +312,15 @@ func TestRecursiveFindPredecessors(t *testing.T) {
 			referrerDesc2_1_1.Digest: referrerDesc2_1_1,
 		}
 		if len(gotReferrers) != len(wantReferrers) {
-			t.Fatalf("RecursiveFindPredecessors got %d referrers, want %d", len(gotReferrers), len(wantReferrers))
+			t.Fatalf("RecursiveFindReferrers got %d referrers, want %d", len(gotReferrers), len(wantReferrers))
 		}
 		for _, got := range gotReferrers {
 			want, ok := wantReferrers[got.Digest]
 			if !ok {
-				t.Errorf("RecursiveFindPredecessors got unexpected referrer %v", got)
+				t.Errorf("RecursiveFindReferrers got unexpected referrer %v", got)
 			}
 			if !reflect.DeepEqual(got, want) {
-				t.Errorf("RecursiveFindPredecessors got referrer %v, want %v", got, want)
+				t.Errorf("RecursiveFindReferrers got referrer %v, want %v", got, want)
 			}
 		}
 	})
@@ -328,22 +328,22 @@ func TestRecursiveFindPredecessors(t *testing.T) {
 	t.Run("find referrers for index manifest", func(t *testing.T) {
 		gotReferrers, err := RecursiveFindReferrers(ctx, target, []ocispec.Descriptor{indexDesc}, oras.DefaultExtendedCopyGraphOptions)
 		if err != nil {
-			t.Fatalf("RecursiveFindPredecessors unexpected error: %v", err)
+			t.Fatalf("RecursiveFindReferrers unexpected error: %v", err)
 		}
 		wantReferrers := map[digest.Digest]ocispec.Descriptor{
 			referrerDesc3_1.Digest:   referrerDesc3_1,
 			referrerDesc3_1_1.Digest: referrerDesc3_1_1,
 		}
 		if len(gotReferrers) != len(wantReferrers) {
-			t.Fatalf("RecursiveFindPredecessors got %d referrers, want %d", len(gotReferrers), len(wantReferrers))
+			t.Fatalf("RecursiveFindReferrers got %d referrers, want %d", len(gotReferrers), len(wantReferrers))
 		}
 		for _, got := range gotReferrers {
 			want, ok := wantReferrers[got.Digest]
 			if !ok {
-				t.Errorf("RecursiveFindPredecessors got unexpected referrer %v", got)
+				t.Errorf("RecursiveFindReferrers got unexpected referrer %v", got)
 			}
 			if !reflect.DeepEqual(got, want) {
-				t.Errorf("RecursiveFindPredecessors got referrer %v, want %v", got, want)
+				t.Errorf("RecursiveFindReferrers got referrer %v, want %v", got, want)
 			}
 		}
 	})
