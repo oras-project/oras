@@ -159,7 +159,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		dstRoot = opts.output
 	case outputFormatTar:
 		// test if the output file can be created and fail early if there is an issue
-		fp, err := os.OpenFile(opts.output, os.O_CREATE|os.O_WRONLY, 0644)
+		fp, err := os.OpenFile(opts.output, os.O_CREATE|os.O_WRONLY, 0666)
 		if err != nil {
 			return fmt.Errorf("unable to create output file %s: %w", opts.output, err)
 		}
