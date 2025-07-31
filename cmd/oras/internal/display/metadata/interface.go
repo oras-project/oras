@@ -16,6 +16,8 @@ limitations under the License.
 package metadata
 
 import (
+	"time"
+
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -104,6 +106,17 @@ type CopyHandler interface {
 	Renderer
 
 	OnCopied(target *option.BinaryTarget, desc ocispec.Descriptor) error
+}
+
+// BackupHandler handles metadata output for backup events.
+type BackupHandler interface {
+	Renderer
+
+	OnTagsFound(tags []string) error
+	OnArtifactPulled(tag string, referrerCount int) error
+	OnTarExporting(path string) error
+	OnTarExported(path string, size int64) error
+	OnBackupCompleted(tagsCount int, path string, duration time.Duration) error
 }
 
 // BlobPushHandler handles metadata output for blob push events.

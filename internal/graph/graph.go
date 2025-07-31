@@ -24,6 +24,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/internal/docker"
 )
 
@@ -104,12 +105,17 @@ func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descr
 }
 
 // FindPredecessors returns all predecessors of descs in src concurrently.
-func FindPredecessors(ctx context.Context, src oras.ReadOnlyGraphTarget, descs []ocispec.Descriptor, opts oras.ExtendedCopyOptions) ([]ocispec.Descriptor, error) {
-	var referrers []ocispec.Descriptor
+func FindPredecessors(ctx context.Context, src oras.ReadOnlyGraphTarget, descs []ocispec.Descriptor, opts oras.ExtendedCopyGraphOptions) ([]ocispec.Descriptor, error) {
+	var predecessors []ocispec.Descriptor
 	g, ctx := errgroup.WithContext(ctx)
 	var m sync.Mutex
 	if opts.Concurrency != 0 {
 		g.SetLimit(opts.Concurrency)
+	}
+	if opts.FindPredecessors == nil {
+		opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			return src.Predecessors(ctx, desc)
+		}
 	}
 	for _, desc := range descs {
 		g.Go(func(node ocispec.Descriptor) func() error {
@@ -120,7 +126,7 @@ func FindPredecessors(ctx context.Context, src oras.ReadOnlyGraphTarget, descs [
 				}
 				m.Lock()
 				defer m.Unlock()
-				referrers = append(referrers, descs...)
+				predecessors = append(predecessors, descs...)
 				return nil
 			}
 		}(desc))
@@ -128,7 +134,26 @@ func FindPredecessors(ctx context.Context, src oras.ReadOnlyGraphTarget, descs [
 	if err := g.Wait(); err != nil {
 		return nil, err
 	}
-	return referrers, nil
+	return predecessors, nil
+}
+
+// RecursiveFindReferrers finds all referrers of the given descriptors recursively.
+func RecursiveFindReferrers(ctx context.Context, src oras.ReadOnlyGraphTarget, descs []ocispec.Descriptor, opts oras.ExtendedCopyGraphOptions) ([]ocispec.Descriptor, error) {
+	if opts.FindPredecessors == nil {
+		opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			return registry.Referrers(ctx, src, desc, "")
+		}
+	}
+	var allReferrers []ocispec.Descriptor
+	for len(descs) > 0 {
+		referrers, err := FindPredecessors(ctx, src, descs, opts)
+		if err != nil {
+			return nil, err
+		}
+		allReferrers = append(allReferrers, referrers...)
+		descs = referrers
+	}
+	return allReferrers, nil
 }
 
 // FilteredSuccessors fetches successors and returns filtered ones.
