@@ -383,11 +383,11 @@ func resolveTags(ctx context.Context, target oras.ReadOnlyTarget, specifiedTags 
 // parseArtifactReferences parses the input string into a repository
 // and a slice of tags.
 func parseArtifactReferences(artifactRefs string) (repository string, tags []string, err error) {
-	// Validate input
+	// validate input
 	if artifactRefs == "" {
 		return "", nil, errors.New("artifact reference cannot be empty")
 	}
-	// Reject digest references early
+	// reject digest references early
 	if strings.ContainsRune(artifactRefs, '@') {
 		return "", nil, fmt.Errorf("digest references are not supported: %q", artifactRefs)
 	}
@@ -395,7 +395,7 @@ func parseArtifactReferences(artifactRefs string) (repository string, tags []str
 	mainRef := refParts[0]
 	extraTags := refParts[1:]
 
-	// Validate repository
+	// validate repository
 	parsedRepo, err := registry.ParseReference(mainRef)
 	if err != nil {
 		return "", nil, fmt.Errorf("invalid reference %q: %w", mainRef, err)
@@ -404,20 +404,26 @@ func parseArtifactReferences(artifactRefs string) (repository string, tags []str
 	parsedRepo.Reference = "" // clear the tag
 	repository = parsedRepo.String()
 
-	tags = make([]string, 0, len(extraTags)+1)
-	if mainTag != "" {
-		tags = append(tags, mainTag)
-	}
-	// Validate each tag
+	// validate each tag
 	for _, tag := range extraTags {
-		tag = strings.TrimSpace(tag)
 		if tag == "" {
-			continue // skip empty tags
+			return "", nil, fmt.Errorf("empty tag in reference %q", artifactRefs)
 		}
 		if !tagRegexp.MatchString(tag) {
 			return "", nil, fmt.Errorf("invalid tag %q in reference %q: tag must match %s", tag, artifactRefs, tagRegexp)
 		}
-		tags = append(tags, tag)
 	}
+	if mainTag == "" {
+		if len(extraTags) == 0 {
+			// no tags
+			return repository, nil, nil
+		}
+		// "localhost:5000/repo:,v1" is invalid
+		return "", nil, fmt.Errorf("empty tag in reference %q", artifactRefs)
+	}
+
+	tags = make([]string, 0, 1+len(extraTags))
+	tags = append(tags, mainTag)
+	tags = append(tags, extraTags...)
 	return repository, tags, nil
 }
