@@ -23,7 +23,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -54,10 +53,6 @@ const (
 	// outputFormatTar indicates the output is a tar archive.
 	outputFormatTar
 )
-
-// tagRegexp matches valid OCI artifact tags.
-// reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#pulling-manifests
-var tagRegexp = regexp.MustCompile(`^[\w][\w.-]{0,127}$`)
 
 // errTagListNotSupported is returned when the target does not support tag listing.
 var errTagListNotSupported = errors.New("the target does not support tag listing")
@@ -164,7 +159,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		dstRoot = opts.output
 	case outputFormatTar:
 		// test if the output file can be created and fail early if there is an issue
-		fp, err := os.Create(opts.output)
+		fp, err := os.OpenFile(opts.output, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			return fmt.Errorf("unable to create output file %s: %w", opts.output, err)
 		}
@@ -392,7 +387,7 @@ func resolveTags(ctx context.Context, target oras.ReadOnlyTarget, specifiedTags 
 
 // parseArtifactReferences parses the input string into a repository
 // and a slice of tags.
-func parseArtifactReferences(artifactRefs string) (repository string, tags []string, err error) {
+func parseArtifactReferences(artifactRefs string) (string, []string, error) {
 	// validate input
 	if artifactRefs == "" {
 		return "", nil, errors.New("artifact reference cannot be empty")
@@ -412,28 +407,22 @@ func parseArtifactReferences(artifactRefs string) (repository string, tags []str
 	}
 	mainTag := parsedRepo.Reference
 	parsedRepo.Reference = "" // clear the tag
-	repository = parsedRepo.String()
+	repository := parsedRepo.String()
+	if mainTag == "" && len(extraTags) == 0 {
+		// no tags
+		return repository, nil, nil
+	}
 
 	// validate each tag
-	for _, tag := range extraTags {
+	tags := append([]string{mainTag}, extraTags...)
+	for _, tag := range tags {
 		if tag == "" {
 			return "", nil, fmt.Errorf("empty tag in reference %q", artifactRefs)
 		}
-		if !tagRegexp.MatchString(tag) {
-			return "", nil, fmt.Errorf("invalid tag %q in reference %q: tag must match %s", tag, artifactRefs, tagRegexp)
+		parsedRepo.Reference = tag
+		if err := parsedRepo.ValidateReferenceAsTag(); err != nil {
+			return "", nil, fmt.Errorf("invalid tag %q in reference %q: %w", tag, artifactRefs, err)
 		}
 	}
-	if mainTag == "" {
-		if len(extraTags) == 0 {
-			// no tags
-			return repository, nil, nil
-		}
-		// "localhost:5000/repo:,v1" is invalid
-		return "", nil, fmt.Errorf("empty tag in reference %q", artifactRefs)
-	}
-
-	tags = make([]string, 0, 1+len(extraTags))
-	tags = append(tags, mainTag)
-	tags = append(tags, extraTags...)
 	return repository, tags, nil
 }
