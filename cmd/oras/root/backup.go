@@ -163,6 +163,16 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	case outputFormatDir:
 		dstRoot = opts.output
 	case outputFormatTar:
+		// test if the output file can be created and fail early if there is an issue
+		fp, err := os.Create(opts.output)
+		if err != nil {
+			return fmt.Errorf("unable to create output file %s: %w", opts.output, err)
+		}
+		if err := fp.Close(); err != nil {
+			return fmt.Errorf("unable to close output file %s: %w", opts.output, err)
+		}
+
+		// create a temporary directory as the working directory for OCI store
 		tempDir, err := os.MkdirTemp("", "oras-backup-*")
 		if err != nil {
 			return fmt.Errorf("failed to create temporary directory for backup: %w", err)
