@@ -48,13 +48,6 @@ const (
 	copyPromptMounted = "Mounted"
 )
 
-const (
-	restorePromptPushing = "Pushing  "
-	restorePromptPushed  = "Pushed   "
-	restorePromptExists  = "Exists   "
-	restorePromptSkipped = "Skipped  "
-)
-
 // Prompts for index events.
 const (
 	IndexPromptFetching = "Fetching "
@@ -65,6 +58,13 @@ const (
 	IndexPromptPacked   = "Packed   "
 	IndexPromptPushed   = "Pushed   "
 	IndexPromptUpdated  = "Updated  "
+)
+
+const (
+	restorePromptPushing = "Pushing  "
+	restorePromptPushed  = "Pushed   "
+	restorePromptExists  = "Exists   "
+	restorePromptSkipped = "Skipped  "
 )
 
 // DeduplicatedFilter filters out deduplicated descriptors.
