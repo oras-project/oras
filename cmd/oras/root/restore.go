@@ -173,7 +173,7 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 	copyOpts.PreCopy = statusHandler.PreCopy
 	copyOpts.PostCopy = statusHandler.PostCopy
 	copyOpts.OnCopySkipped = statusHandler.OnCopySkipped
-	extCopyOpts := oras.ExtendedCopyGraphOptions{
+	extCopyGraphOpts := oras.ExtendedCopyGraphOptions{
 		CopyGraphOptions: copyOpts.CopyGraphOptions,
 		FindPredecessors: func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 			return registry.Referrers(ctx, srcOCI, desc, "")
@@ -183,7 +183,10 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 		var referrerCount int
 		if !opts.excludeReferrers {
 			// count referrers from source
-			referrerCount = 3 // mock number
+			referrerCount, err = countReferrers(ctx, srcOCI, tag, roots[i], extCopyGraphOpts)
+			if err != nil {
+				return fmt.Errorf("failed to count referrers for tag %q: %w", tag, err)
+			}
 		}
 		if opts.dryRun {
 			// TODO: dry run output?
@@ -211,7 +214,7 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 				}
 				return nil
 			}
-			if err := recursiveCopy(ctx, srcOCI, trackedDst, tag, roots[i], extCopyOpts); err != nil {
+			if err := recursiveCopy(ctx, srcOCI, trackedDst, tag, roots[i], extCopyGraphOpts); err != nil {
 				return fmt.Errorf("failed to restore tag %q from %q to %q: %w", tag, opts.input, opts.repository, err)
 			}
 			return nil

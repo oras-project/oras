@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"oras.land/oras/cmd/oras/internal/display/status/progress/humanize"
 	"oras.land/oras/cmd/oras/internal/output"
 )
 
@@ -36,8 +37,7 @@ func NewRestoreHandler(printer *output.Printer) *RestoreHandler {
 
 // OnTarLoaded implements metadata.RestoreHandler.
 func (rh *RestoreHandler) OnTarLoaded(path string, size int64) error {
-	// TODO: humanize the size
-	return rh.printer.Printf("Loaded backup archive: %s (%d bytes)\n", path, size)
+	return rh.printer.Printf("Loaded backup archive: %s (%s)\n", path, humanize.ToBytes(size))
 }
 
 // OnTagsFound implements metadata.RestoreHandler.
@@ -62,7 +62,7 @@ func (rh *RestoreHandler) OnRestoreCompleted(dryRun bool, tagsCount int, repo st
 	if dryRun {
 		return rh.printer.Printf("Dry run completed: would have restored %d tag(s) to %q; no data was pushed.\n", tagsCount, repo)
 	}
-	return rh.printer.Printf("Successfully restored %d tag(s) to %q in %s\n", tagsCount, repo, duration)
+	return rh.printer.Printf("Successfully restored %d tag(s) to %q in %s\n", tagsCount, repo, humanize.FormatDuration(duration))
 }
 
 // Render implements metadata.RestoreHandler.
