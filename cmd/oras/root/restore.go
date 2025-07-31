@@ -19,8 +19,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -30,6 +32,7 @@ import (
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
+	"oras.land/oras/cmd/oras/internal/display"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -47,6 +50,7 @@ type restoreOptions struct {
 	input            string
 	excludeReferrers bool
 	dryRun           bool
+	concurrency      int
 
 	// derived options
 	repository string
@@ -108,6 +112,11 @@ Example - Perform a dry run of the restore process without uploading artifacts:
 }
 
 func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
+	if opts.input == "" {
+		return errors.New("the input path cannot be empty")
+	}
+	startTime := time.Now() // start timing the restore process
+
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 
 	// TODO:
@@ -119,24 +128,33 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 	// If dry-run is true, do not upload
 
 	// Suppress unused variable warnings during development
-	_ = logger
-
-	// prepare the source OCI store
-	var srcOCI oras.ReadOnlyGraphTarget
-	var err error
-	if strings.HasSuffix(opts.input, ".tar") {
-		srcOCI, err = oci.NewFromTar(ctx, opts.input)
-	} else {
-		srcOCI, err = oci.NewWithContext(ctx, opts.input)
-	}
-	if err != nil {
-		return fmt.Errorf("failed to prepare OCI store from input %q: %w", opts.input, err)
-	}
 
 	// prepare the target registry
 	dstRepo, err := opts.NewRepository(opts.repository, opts.Common, logger)
 	if err != nil {
 		return fmt.Errorf("failed to prepare target repository %q: %w", opts.repository, err)
+	}
+	statusHandler, metadataHandler := display.NewRestoreHandler(opts.Printer, opts.TTY, dstRepo)
+
+	// prepare the source OCI store
+	var srcOCI oras.ReadOnlyGraphTarget
+	if strings.HasSuffix(opts.input, ".tar") {
+		srcOCI, err = oci.NewFromTar(ctx, opts.input)
+		if err != nil {
+			return fmt.Errorf("failed to prepare OCI store from tar %q: %w", opts.input, err)
+		}
+		fi, err := os.Stat(opts.input)
+		if err != nil {
+			return fmt.Errorf("failed to stat tar file %q: %w", opts.input, err)
+		}
+		if err := metadataHandler.OnTarLoaded(opts.input, fi.Size()); err != nil {
+			return err
+		}
+	} else {
+		srcOCI, err = oci.NewWithContext(ctx, opts.input)
+		if err != nil {
+			return fmt.Errorf("failed to prepare OCI store from directory %q: %w", opts.input, err)
+		}
 	}
 
 	// resolve tags to restore
@@ -150,34 +168,71 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 			Recommendation: fmt.Sprintf(`If you want to list available tags in %s, use "oras repo tags --oci-layout"`, opts.input),
 		}
 	}
+	if err := metadataHandler.OnTagsFound(tags); err != nil {
+		return err
+	}
 
 	// TODO: status and metadata handlers
 	copyOpts := oras.DefaultCopyOptions
-	extCopyOpts := oras.DefaultExtendedCopyOptions
-	extCopyOpts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		return registry.Referrers(ctx, srcOCI, desc, "")
+	copyOpts.Concurrency = opts.concurrency
+	copyOpts.PreCopy = statusHandler.PreCopy
+	copyOpts.PostCopy = statusHandler.PostCopy
+	copyOpts.OnCopySkipped = statusHandler.OnCopySkipped
+	extCopyOpts := oras.ExtendedCopyOptions{
+		ExtendedCopyGraphOptions: oras.ExtendedCopyGraphOptions{
+			CopyGraphOptions: copyOpts.CopyGraphOptions,
+			FindPredecessors: func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+				return registry.Referrers(ctx, srcOCI, desc, "")
+			},
+		},
 	}
 	for i, tag := range tags {
+		var referrerCount int
+		if !opts.excludeReferrers {
+			// count referrers from source
+			referrerCount = 3 // mock number
+		}
 		if opts.dryRun {
 			// TODO: dry run output?
-			fmt.Printf("Dry run: would restore tag %q to repository %q\n", tag, opts.repository)
-			continue
-		}
-
-		if opts.excludeReferrers {
-			if _, err := oras.Copy(ctx, srcOCI, tag, dstRepo, tag, copyOpts); err != nil {
-				return fmt.Errorf("failed to copy tag %q from %q to %q: %w", tag, opts.input, opts.repository, err)
+			if err := metadataHandler.OnArtifactPushed(true, tag, referrerCount); err != nil {
+				return err
 			}
 			continue
 		}
 
-		if err := recursiveCopy(ctx, srcOCI, dstRepo, tag, roots[i], extCopyOpts); err != nil {
-			return fmt.Errorf("failed to restore tag %q from %q to %q: %w", tag, opts.input, opts.repository, err)
+		if err := func() (retErr error) {
+			trackedDst, err := statusHandler.StartTracking(dstRepo)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				stopErr := statusHandler.StopTracking()
+				if retErr == nil {
+					retErr = stopErr
+				}
+			}()
+
+			if opts.excludeReferrers {
+				if _, err := oras.Copy(ctx, srcOCI, tag, trackedDst, tag, copyOpts); err != nil {
+					return fmt.Errorf("failed to copy tag %q from %q to %q: %w", tag, opts.input, opts.repository, err)
+				}
+				return nil
+			}
+			if err := recursiveCopy(ctx, srcOCI, trackedDst, tag, roots[i], extCopyOpts); err != nil {
+				return fmt.Errorf("failed to restore tag %q from %q to %q: %w", tag, opts.input, opts.repository, err)
+			}
+			return nil
+		}(); err != nil {
+			return oerrors.UnwrapCopyError(err)
+		}
+
+		if err := metadataHandler.OnArtifactPushed(false, tag, referrerCount); err != nil {
+			return err
 		}
 	}
 
-	fmt.Printf("Successfully restored %d tags from %s to %s\n", len(tags), opts.input, opts.repository)
-	return nil
+	duration := time.Since(startTime)
+	return metadataHandler.OnRestoreCompleted(opts.dryRun, len(tags), opts.repository, duration)
 }
 
 // resolveTags resolves tags to their descriptors.

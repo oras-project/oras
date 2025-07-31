@@ -112,10 +112,10 @@ type CopyHandler interface {
 type RestoreHandler interface {
 	Renderer
 
-	OnTagsFound(tags []string) error
-	OnArtifactPushed(tag string, referrerCount int) error
 	OnTarLoaded(path string, size int64) error
-	OnRestoreCompleted(tagsCount int, repo string, duration time.Duration) error
+	OnTagsFound(tags []string) error
+	OnArtifactPushed(dryRun bool, tag string, referrerCount int) error
+	OnRestoreCompleted(dryRun bool, tagsCount int, repo string, duration time.Duration) error
 }
 
 // BlobPushHandler handles metadata output for blob push events.
