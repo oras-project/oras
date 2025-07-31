@@ -51,16 +51,16 @@ func (rh *RestoreHandler) OnTagsFound(tags []string) error {
 // OnArtifactPushed implements metadata.RestoreHandler.
 func (rh *RestoreHandler) OnArtifactPushed(dryRun bool, tag string, referrerCount int) error {
 	if dryRun {
-		return rh.printer.Printf("Dry run: would push tag %s and %d referrer(s)\n", tag, referrerCount)
+		return rh.printer.Printf("Dry run: would push tag %s with %d referrer(s)\n", tag, referrerCount)
 	}
-	return rh.printer.Printf("Pushed tag %s and %d referrer(s)\n", tag, referrerCount)
+	return rh.printer.Printf("Pushed tag %s with %d referrer(s)\n", tag, referrerCount)
 }
 
 // OnRestoreCompleted implements metadata.RestoreHandler.
 func (rh *RestoreHandler) OnRestoreCompleted(dryRun bool, tagsCount int, repo string, duration time.Duration) error {
 	// TODO: humanize the duration
 	if dryRun {
-		return rh.printer.Printf("Dry run completed: would have restored %d tag(s) to %q; no data was pushed.\n", tagsCount, repo)
+		return rh.printer.Printf("Dry run complete: %d tag(s) would be restored to %q (no data pushed)\n", tagsCount, repo)
 	}
 	return rh.printer.Printf("Successfully restored %d tag(s) to %q in %s\n", tagsCount, repo, humanize.FormatDuration(duration))
 }

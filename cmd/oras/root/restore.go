@@ -110,19 +110,9 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 	if opts.input == "" {
 		return errors.New("the input path cannot be empty")
 	}
+
 	startTime := time.Now() // start timing the restore process
-
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
-
-	// TODO:
-	// Create OCI store from the input path
-	// Connect to the target registry
-	// Resolve the specified tags in the store
-	// If no tags are specified, discover all tags in the store
-	// Extended copy artifacts from the store to the registry: If exclude-referrers is true, use copy
-	// If dry-run is true, do not upload
-
-	// Suppress unused variable warnings during development
 
 	// prepare the target registry
 	dstRepo, err := opts.NewRepository(opts.repository, opts.Common, logger)
@@ -167,7 +157,7 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 		return err
 	}
 
-	// TODO: status and metadata handlers
+	// prepare copy options
 	copyOpts := oras.DefaultCopyOptions
 	copyOpts.Concurrency = opts.concurrency
 	copyOpts.PreCopy = statusHandler.PreCopy
@@ -189,7 +179,6 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 			}
 		}
 		if opts.dryRun {
-			// TODO: dry run output?
 			if err := metadataHandler.OnArtifactPushed(true, tag, referrerCount); err != nil {
 				return err
 			}

@@ -56,7 +56,7 @@ func (bh *BackupHandler) OnTarExporting(path string) error {
 // OnArtifactPulled implements metadata.BackupHandler.
 func (bh *BackupHandler) OnArtifactPulled(tag string, referrerCount int) error {
 	// represent duration in a human-readable format
-	return bh.printer.Printf("Pulled tag %s and %d referrer(s)\n", tag, referrerCount)
+	return bh.printer.Printf("Pulled tag %s with %d referrer(s)\n", tag, referrerCount)
 }
 
 // OnTagsFound implements metadata.BackupHandler.
