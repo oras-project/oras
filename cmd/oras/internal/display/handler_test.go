@@ -135,3 +135,29 @@ func TestNewRepoListHandler(t *testing.T) {
 		})
 	}
 }
+
+func TestNewBackupHandler(t *testing.T) {
+	printer := output.NewPrinter(os.Stdout, os.Stderr)
+	repo := "test/repo"
+	mockFetcher := testutils.NewMockFetcher()
+
+	t.Run("with TTY", func(t *testing.T) {
+		statusHandler, metadataHandler := NewBackupHandler(printer, os.Stdout, repo, mockFetcher.Fetcher)
+		if _, ok := statusHandler.(*status.TTYBackupHandler); !ok {
+			t.Errorf("expected *status.TTYBackupHandler actual %v", reflect.TypeOf(statusHandler))
+		}
+		if _, ok := metadataHandler.(*text.BackupHandler); !ok {
+			t.Errorf("expected *text.BackupHandler actual %v", reflect.TypeOf(metadataHandler))
+		}
+	})
+
+	t.Run("without TTY", func(t *testing.T) {
+		statusHandler, metadataHandler := NewBackupHandler(printer, nil, repo, mockFetcher.Fetcher)
+		if _, ok := statusHandler.(*status.TextBackupHandler); !ok {
+			t.Errorf("expected *status.TextBackupHandler actual %v", reflect.TypeOf(statusHandler))
+		}
+		if _, ok := metadataHandler.(*text.BackupHandler); !ok {
+			t.Errorf("expected *text.BackupHandler actual %v", reflect.TypeOf(metadataHandler))
+		}
+	})
+}

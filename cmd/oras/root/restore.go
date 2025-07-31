@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 
@@ -36,10 +35,6 @@ import (
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
-
-// tagRegexp matches valid OCI artifact tags.
-// reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#pulling-manifests
-var tagRegexp = regexp.MustCompile(`^[\w][\w.-]{0,127}$`)
 
 type restoreOptions struct {
 	option.Common
@@ -178,12 +173,10 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 	copyOpts.PreCopy = statusHandler.PreCopy
 	copyOpts.PostCopy = statusHandler.PostCopy
 	copyOpts.OnCopySkipped = statusHandler.OnCopySkipped
-	extCopyOpts := oras.ExtendedCopyOptions{
-		ExtendedCopyGraphOptions: oras.ExtendedCopyGraphOptions{
-			CopyGraphOptions: copyOpts.CopyGraphOptions,
-			FindPredecessors: func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-				return registry.Referrers(ctx, srcOCI, desc, "")
-			},
+	extCopyOpts := oras.ExtendedCopyGraphOptions{
+		CopyGraphOptions: copyOpts.CopyGraphOptions,
+		FindPredecessors: func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			return registry.Referrers(ctx, srcOCI, desc, "")
 		},
 	}
 	for i, tag := range tags {
@@ -233,98 +226,4 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 
 	duration := time.Since(startTime)
 	return metadataHandler.OnRestoreCompleted(opts.dryRun, len(tags), opts.repository, duration)
-}
-
-// resolveTags resolves tags to their descriptors.
-// It returns the resolved tags and their corresponding descriptors.
-func resolveTags(ctx context.Context, target oras.ReadOnlyTarget, specifiedTags []string) ([]string, []ocispec.Descriptor, error) {
-	var tags []string
-	var descs []ocispec.Descriptor
-	if len(specifiedTags) > 0 {
-		// resolve the specified tags
-		tags = specifiedTags
-		descs = make([]ocispec.Descriptor, 0, len(tags))
-		for _, tag := range tags {
-			desc, err := oras.Resolve(ctx, target, tag, oras.DefaultResolveOptions)
-			if err != nil {
-				return nil, nil, fmt.Errorf("failed to resolve tag %q: %w", tag, err)
-			}
-			descs = append(descs, desc)
-		}
-		return tags, descs, nil
-	}
-
-	// discover all tags in the repository and resolve them
-	tagLister, ok := target.(registry.TagLister)
-	if !ok {
-		return nil, nil, errors.New("the target does not support tag listing")
-	}
-	if err := tagLister.Tags(ctx, "", func(gotTags []string) error {
-		for _, gotTag := range gotTags {
-			desc, err := oras.Resolve(ctx, target, gotTag, oras.DefaultResolveOptions)
-			if err != nil {
-				return fmt.Errorf("failed to resolve tag %q: %w", gotTag, err)
-			}
-			tags = append(tags, gotTag)
-			descs = append(descs, desc)
-		}
-		return nil
-	}); err != nil {
-		return nil, nil, fmt.Errorf("failed to find tags: %w", err)
-	}
-
-	return tags, descs, nil
-}
-
-func parseArtifactReferences(artifactRefs string) (repository string, tags []string, err error) {
-	// Validate input
-	if artifactRefs == "" {
-		return "", nil, errors.New("artifact reference cannot be empty")
-	}
-	// Reject digest references early
-	if strings.ContainsRune(artifactRefs, '@') {
-		return "", nil, fmt.Errorf("digest references are not supported: %q", artifactRefs)
-	}
-
-	// 1. Split the input into repository and tag parts
-	lastSlash := strings.LastIndexByte(artifactRefs, '/')
-	lastColon := strings.LastIndexByte(artifactRefs, ':')
-
-	var repoParts string
-	var tagsPart string
-	if lastColon != -1 && lastColon > lastSlash {
-		// A colon after the last slash denotes the beginning of tags
-		repoParts = artifactRefs[:lastColon]
-		tagsPart = artifactRefs[lastColon+1:]
-	} else {
-		repoParts = artifactRefs
-		// tagPart stays empty - no tags
-	}
-
-	// 2. Validate repository
-	parsedRepo, err := registry.ParseReference(repoParts)
-	if err != nil {
-		return "", nil, fmt.Errorf("invalid repository %q in reference %q: %w", repoParts, artifactRefs, err)
-	}
-	repository = parsedRepo.String()
-
-	// 3. Process tags
-	if tagsPart == "" {
-		return repository, nil, nil
-	}
-	tagList := strings.Split(tagsPart, ",")
-	tags = make([]string, 0, len(tagList))
-
-	// Validate each tag
-	for _, tag := range tagList {
-		tag = strings.TrimSpace(tag)
-		if tag == "" {
-			continue // skip empty tags
-		}
-		if !tagRegexp.MatchString(tag) {
-			return "", nil, fmt.Errorf("invalid tag %q in reference %q: tag must match %s", tag, artifactRefs, tagRegexp)
-		}
-		tags = append(tags, tag)
-	}
-	return repository, tags, nil
 }

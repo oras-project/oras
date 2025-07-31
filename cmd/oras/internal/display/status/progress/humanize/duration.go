@@ -13,28 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package utils
+package humanize
 
-var (
-	Flags = struct {
-		Layout           string
-		FromLayout       string
-		ToLayout         string
-		FromLayoutPath   string
-		ToLayoutPath     string
-		DistributionSpec string
-		ImageSpec        string
-		IncludeReferrers string
-	}{
-		"--oci-layout",
-		"--from-oci-layout",
-		"--to-oci-layout",
-		"--from-oci-layout-path",
-		"--to-oci-layout-path",
-		"--distribution-spec",
-		"--image-spec",
-		"--include-referrers",
+import "time"
+
+// FormatDuration formats a duration into a human-readable string.
+// It rounds the duration to the nearest second, millisecond, or microsecond
+// depending on its value.
+func FormatDuration(d time.Duration) string {
+	switch {
+	case d > time.Second:
+		d = d.Round(time.Second)
+	case d > time.Millisecond:
+		d = d.Round(time.Millisecond)
+	default:
+		d = d.Round(time.Microsecond)
 	}
-	RegistryErrorPrefix = "Error response from registry: "
-	InvalidTag          = "i-dont-think-this-tag-exists"
-)
+	return d.String()
+}
