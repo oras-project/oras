@@ -25,6 +25,7 @@ var (
 		DistributionSpec string
 		ImageSpec        string
 		IncludeReferrers string
+		ExcludeReferrers string
 	}{
 		"--oci-layout",
 		"--from-oci-layout",
@@ -34,6 +35,7 @@ var (
 		"--distribution-spec",
 		"--image-spec",
 		"--include-referrers",
+		"--exclude-referrers",
 	}
 	RegistryErrorPrefix = "Error response from registry: "
 	InvalidTag          = "i-dont-think-this-tag-exists"

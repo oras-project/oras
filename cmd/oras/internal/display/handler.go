@@ -238,6 +238,13 @@ func NewBackupHandler(printer *output.Printer, tty *os.File, repo string, fetche
 	return status.NewTextBackupHandler(printer, fetcher), text.NewBackupHandler(repo, printer)
 }
 
+func NewRestoreHandler(printer *output.Printer, tty *os.File, fetcher fetcher.Fetcher) (status.RestoreHandler, metadata.RestoreHandler) {
+	if tty != nil {
+		return status.NewTTYRestoreHandler(tty, fetcher), text.NewRestoreHandler(printer)
+	}
+	return status.NewTextRestoreHandler(printer, fetcher), text.NewRestoreHandler(printer)
+}
+
 // NewBlobPushHandler returns blob push handlers.
 func NewBlobPushHandler(printer *output.Printer, outputDescriptor bool, pretty bool, desc ocispec.Descriptor, tty *os.File) (status.BlobPushHandler, metadata.BlobPushHandler) {
 	if outputDescriptor {
@@ -289,11 +296,4 @@ func NewRepoListHandler(out io.Writer, format option.Format, registry, namespace
 		return nil, errors.UnsupportedFormatTypeError(format.Type)
 	}
 	return handler, nil
-}
-
-func NewRestoreHandler(printer *output.Printer, tty *os.File, fetcher fetcher.Fetcher) (status.RestoreHandler, metadata.RestoreHandler) {
-	if tty != nil {
-		return status.NewTTYRestoreHandler(tty, fetcher), text.NewRestoreHandler(printer)
-	}
-	return status.NewTextRestoreHandler(printer, fetcher), text.NewRestoreHandler(printer)
 }
