@@ -106,3 +106,11 @@ type BlobPushHandler interface {
 	StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error)
 	StopTracking() error
 }
+
+type RestoreHandler interface {
+	StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error)
+	StopTracking() error
+	OnCopySkipped(ctx context.Context, desc ocispec.Descriptor) error
+	PreCopy(ctx context.Context, desc ocispec.Descriptor) error
+	PostCopy(ctx context.Context, desc ocispec.Descriptor) error
+}

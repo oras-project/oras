@@ -1,0 +1,71 @@
+/*
+Copyright The ORAS Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package text
+
+import (
+	"strings"
+	"time"
+
+	"oras.land/oras/cmd/oras/internal/display/status/progress/humanize"
+	"oras.land/oras/cmd/oras/internal/output"
+)
+
+// RestoreHandler handles  text metadata output for restore command.
+type RestoreHandler struct {
+	printer *output.Printer
+}
+
+// NewRestoreHandler creates a new RestoreHandler.
+func NewRestoreHandler(printer *output.Printer) *RestoreHandler {
+	return &RestoreHandler{
+		printer: printer,
+	}
+}
+
+// OnTarLoaded implements metadata.RestoreHandler.
+func (rh *RestoreHandler) OnTarLoaded(path string, size int64) error {
+	return rh.printer.Printf("Loaded backup archive: %s (%s)\n", path, humanize.ToBytes(size))
+}
+
+// OnTagsFound implements metadata.RestoreHandler.
+func (rh *RestoreHandler) OnTagsFound(tags []string) error {
+	if len(tags) == 0 {
+		return nil
+	}
+	return rh.printer.Printf("Found %d tag(s) in the backup: %s\n", len(tags), strings.Join(tags, ", "))
+}
+
+// OnArtifactPushed implements metadata.RestoreHandler.
+func (rh *RestoreHandler) OnArtifactPushed(dryRun bool, tag string, referrerCount int) error {
+	if dryRun {
+		return rh.printer.Printf("Dry run: would push tag %s with %d referrer(s)\n", tag, referrerCount)
+	}
+	return rh.printer.Printf("Pushed tag %s with %d referrer(s)\n", tag, referrerCount)
+}
+
+// OnRestoreCompleted implements metadata.RestoreHandler.
+func (rh *RestoreHandler) OnRestoreCompleted(dryRun bool, tagsCount int, repo string, duration time.Duration) error {
+	// TODO: humanize the duration
+	if dryRun {
+		return rh.printer.Printf("Dry run complete: %d tag(s) would be restored to %q (no data pushed)\n", tagsCount, repo)
+	}
+	return rh.printer.Printf("Successfully restored %d tag(s) to %q in %s\n", tagsCount, repo, humanize.FormatDuration(duration))
+}
+
+// Render implements metadata.RestoreHandler.
+func (rh *RestoreHandler) Render() error {
+	return nil
+}

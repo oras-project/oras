@@ -81,31 +81,34 @@ func backupCmd() *cobra.Command {
 		Long: `[Experimental] Back up artifacts from a registry into an OCI image layout, saved either as a directory or a tar archive.
 The output format is determined by the file extension of the specified output path: if it ends with ".tar", the output will be a tar archive; otherwise, it will be a directory.
 
-Example - Back up an artifact and its referrers to a directory:
-  oras backup --output hello --include-referrers localhost:5000/hello:v1
+Example - Back up a single artifact to a directory:
+  oras backup --output hello-dir localhost:5000/hello:v1
 
-Example - Back up an artifact and its referrers to a tar archive:
-  oras backup --output hello.tar --include-referrers localhost:5000/hello:v1
+Example - Back up to a tar archive:
+  oras backup --output hello.tar localhost:5000/hello:v1
 
-Example - Back up multiple tagged artifacts and their referrers:
-  oras backup --output hello --include-referrers localhost:5000/hello:v1,v2,v3
+Example - Back up an artifact along with its referrers (e.g. attestations, SBOMs):
+  oras backup --output hello-complete --include-referrers localhost:5000/hello:v1
 
-Example - Back up all tagged artifacts and their referrers in a repository:
-  oras backup --output hello --include-referrers localhost:5000/hello
+Example - Back up multiple specific tags:
+  oras backup --output hello-multi localhost:5000/hello:v1,v2,v3
 
-Example - Back up an artifact and its referrers discovered via Referrers API:
-  oras backup --output hello --include-referrers --distribution-spec v1.1-referrers-api localhost:5000/hello
+Example - Back up all tagged artifacts in a repository:
+  oras backup --output hello-all localhost:5000/hello
 
-Example - Back up an artifact and its referrers discovered via Referrers Tag Schema:
-  oras backup --output hello --include-referrers --distribution-spec v1.1-referrers-tag localhost:5000/hello
+Example - Use Referrers API for discovering referrers:
+  oras backup --output hello --include-referrers --distribution-spec v1.1-referrers-api localhost:5000/hello:v1
+
+Example - Use Referrers Tag Schema for discovering referrers:
+  oras backup --output hello --include-referrers --distribution-spec v1.1-referrers-tag localhost:5000/hello:v1
 
 Example - Back up from an insecure registry:
   oras backup --output hello.tar --insecure localhost:5000/hello:v1
 
-Example - Back up from a plain HTTP registry:
+Example - Back up from a registry using plain HTTP (no TLS):
   oras backup --output hello.tar --plain-http localhost:5000/hello:v1
 
-Example - Back up with a custom concurrency level:
+Example - Set custom concurrency level:
   oras backup --output hello.tar --concurrency 6 localhost:5000/hello:v1
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the artifacts to back up"),

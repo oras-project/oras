@@ -112,7 +112,7 @@ func TestBackupHandler_OnArtifactPulled(t *testing.T) {
 			name:    "good path",
 			out:     &bytes.Buffer{},
 			wantErr: false,
-			want:    fmt.Sprintf("Pulled tag %s and %d referrer(s)\n", tag, referrerCount),
+			want:    fmt.Sprintf("Pulled tag %s with %d referrer(s)\n", tag, referrerCount),
 		},
 	}
 	for _, tt := range tests {
