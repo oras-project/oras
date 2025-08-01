@@ -120,6 +120,7 @@ func TestMain(m *testing.M) {
 	defer ts.Close()
 	uri, _ := url.Parse(ts.URL)
 	host = "localhost:" + uri.Port()
+
 	m.Run()
 }
 
