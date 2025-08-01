@@ -128,6 +128,9 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 	if opts.input == "" {
 		return errors.New("the input path cannot be empty")
 	}
+	if _, err := os.Stat(opts.input); err != nil {
+		return fmt.Errorf("failed to access input path %q: %w", opts.input, err)
+	}
 	startTime := time.Now() // start timing the restore process
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 

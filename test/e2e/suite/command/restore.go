@@ -17,6 +17,7 @@ package command
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -25,6 +26,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 
+	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"oras.land/oras-go/v2"
 	"oras.land/oras/test/e2e/internal/testdata/feature"
@@ -634,6 +636,73 @@ var _ = Describe("ORAS users:", func() {
 	})
 
 	When("handling error cases", func() {
+		It("should fail when restoring from a non-existent backup directory", func() {
+			// Create a non-existent backup directory
+			nonExistentBackupDir := filepath.Join(GinkgoT().TempDir(), "non-existent-backup")
+
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, restoreTestRepo("restore-non-existent-backup"))
+			// Attempt to restore from non-existent backup directory
+			ORAS("restore", "--input", nonExistentBackupDir, dstRef).ExpectFailure().
+				MatchErrKeyWords("Error:", "no such file or directory").
+				Exec()
+		})
+
+		It("should fail when restoring from an empty backup directory", func() {
+			// Create an invalid backup directory (empty)
+			tmpDir := GinkgoT().TempDir()
+			backupDir := filepath.Join(tmpDir, "empty-backup")
+
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, restoreTestRepo("restore-empty-backup"))
+			// Attempt to restore from empty backup directory
+			ORAS("restore", "--input", backupDir, dstRef).ExpectFailure().
+				MatchErrKeyWords("Error:", "no tags found").
+				MatchErrKeyWords("oras repo tags --oci-layout"). // test recommendation
+				Exec()
+		})
+
+		It("should fail when restoring from an invalid backup directory", func() {
+			// Create an invalid backup directory (not a valid OCI layout)
+			tmpDir := GinkgoT().TempDir()
+			backupDir := filepath.Join(tmpDir, "invalid-backup")
+
+			// Create an empty file to simulate an invalid layout
+			err := os.WriteFile(filepath.Join(backupDir, "invalid-file.txt"), []byte("not a valid layout"), 0644)
+			Expect(err).ToNot(HaveOccurred())
+
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, restoreTestRepo("restore-invalid-backup"))
+			// Attempt to restore from invalid backup directory
+			ORAS("restore", "--input", backupDir, dstRef).ExpectFailure().
+				MatchErrKeyWords("Error:", "no tags found").
+				Exec()
+		})
+
+		It("should fail when restoring from a non-existent backup tar file", func() {
+			// Create a non-existent backup tar file
+			nonExistentBackupTar := filepath.Join(GinkgoT().TempDir(), "non-existent-backup.tar")
+
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, restoreTestRepo("restore-non-existent-backup-tar"))
+			// Attempt to restore from non-existent backup tar file
+			ORAS("restore", "--input", nonExistentBackupTar, dstRef).ExpectFailure().
+				MatchErrKeyWords("Error:", "no such file or directory").
+				Exec()
+		})
+
+		It("should fail when restoring from an invalid backup tar file", func() {
+			// Create an invalid backup tar file (empty)
+			tmpDir := GinkgoT().TempDir()
+			backupTar := filepath.Join(tmpDir, "invalid-backup.tar")
+
+			// Create an empty file to simulate an invalid tar
+			err := os.WriteFile(backupTar, []byte{}, 0644)
+			Expect(err).ToNot(HaveOccurred())
+
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, restoreTestRepo("restore-invalid-backup-tar"))
+			// Attempt to restore from invalid backup tar file
+			ORAS("restore", "--input", backupTar, dstRef).ExpectFailure().
+				MatchErrKeyWords("Error:", "invalid OCI Image Layout").
+				Exec()
+		})
+
 		It("should fail when no tags are found in the backup", func() {
 			// Create an OCI layout with no tags
 			tmpDir := GinkgoT().TempDir()
