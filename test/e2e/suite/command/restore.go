@@ -561,7 +561,7 @@ var _ = Describe("ORAS users:", func() {
 			// Create a backup
 			tmpDir := GinkgoT().TempDir()
 			backupDir := filepath.Join(tmpDir, "backup-concurrency")
-			srcRef := RegistryRef(ZOTHost, ImageRepo, ma.Tag)
+			srcRef := RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)
 
 			ORAS("backup", "--output", backupDir, srcRef).Exec()
 
@@ -569,7 +569,7 @@ var _ = Describe("ORAS users:", func() {
 			testRepo := restoreTestRepo("restore-concurrency")
 			dstRef := RegistryRef(ZOTHost, testRepo, ma.Tag)
 
-			stateKeys := ma.IndexStateKeys
+			stateKeys := append(ma.IndexStateKeys, ma.IndexZOTReferrerStateKey, ma.LinuxAMD64ReferrerConfigStateKey)
 
 			ORAS("restore", "--input", backupDir, "--concurrency", "5", dstRef).
 				MatchStatus(stateKeys, true, len(stateKeys)).
@@ -640,7 +640,7 @@ var _ = Describe("ORAS users:", func() {
 			backupDir := filepath.Join(tmpDir, "backup-no-tags")
 			ORAS("push", Flags.Layout, backupDir).Exec()
 
-			dstRef := RegistryRef(ZOTHost, restoreTestRepo("restore-no-tags"), foobar.Tag)
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, restoreTestRepo("restore-no-tags"))
 			// Attempt to restore from empty backup
 			ORAS("restore", "--input", backupDir, dstRef).ExpectFailure().
 				MatchErrKeyWords("Error:", "no tags found").
@@ -665,7 +665,7 @@ var _ = Describe("ORAS users:", func() {
 				MatchErrKeyWords("Error:", "non-existent-tag").Exec()
 		})
 
-		It("should fail when trying to restore to a non-existent repository", func() {
+		It("should fail when trying to restore to a non-existent registry", func() {
 			// Create a backup
 			tmpDir := GinkgoT().TempDir()
 			backupDir := filepath.Join(tmpDir, "backup-nonexistent-registry")
@@ -673,11 +673,11 @@ var _ = Describe("ORAS users:", func() {
 
 			ORAS("backup", "--output", backupDir, srcRef).Exec()
 
-			// Try to restore to a non-existent repository
-			nonExistentRepo := fmt.Sprintf("non-existent-repo-%d-%d.example.com", GinkgoRandomSeed(), time.Now().UnixNano())
-			dstRef := RegistryRef(ZOTHost, nonExistentRepo, foobar.Tag)
+			// Try to restore to a non-existent registry
+			nonExistentRegistry := fmt.Sprintf("non-existent-repo-%d-%d.example.com", GinkgoRandomSeed(), time.Now().UnixNano())
+			dstRef := RegistryRef(nonExistentRegistry, restoreTestRepo("restore-test"), foobar.Tag)
 
-			// Attempt to restore to a non-existent repository
+			// Attempt to restore to a non-existent registry
 			ORAS("restore", "--input", backupDir, dstRef).ExpectFailure().
 				MatchErrKeyWords("Error:").
 				Exec()
