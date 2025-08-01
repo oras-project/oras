@@ -259,7 +259,7 @@ var _ = Describe("ORAS users:", func() {
 			backupTar := filepath.Join(tmpDir, "backup-single-tag.tar")
 			srcRef := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
 
-			ORAS("backup", "--output", backupTar, Flags.ExcludeReferrers, srcRef).Exec()
+			ORAS("backup", "--output", backupTar, srcRef).Exec()
 
 			// Create target repo for restore
 			testRepo := restoreTestRepo("restore-single-tag-tar")
@@ -268,7 +268,7 @@ var _ = Describe("ORAS users:", func() {
 			// Restore from backup tar
 			foobarStates := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(oras.MediaTypeUnknownConfig))
 
-			ORAS("restore", "--input", backupTar, dstRef).
+			ORAS("restore", "--input", backupTar, Flags.ExcludeReferrers, dstRef).
 				MatchStatus(foobarStates, true, len(foobarStates)).
 				Exec()
 
