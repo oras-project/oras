@@ -333,3 +333,65 @@ func TestTextBackupHandler(t *testing.T) {
 		}
 	})
 }
+
+func TestTextRestoreHandler(t *testing.T) {
+	t.Run("OnCopySkipped", func(t *testing.T) {
+		builder.Reset()
+		rh := NewTextRestoreHandler(printer, mockFetcher.Fetcher)
+		if rh.OnCopySkipped(ctx, mockFetcher.OciImage) != nil {
+			t.Error("OnCopySkipped() should not return an error")
+		}
+		validatePrinted(t, "Exists    0b442c23c1dd oci-image")
+	})
+
+	t.Run("PreCopy", func(t *testing.T) {
+		builder.Reset()
+		rh := NewTextRestoreHandler(printer, mockFetcher.Fetcher)
+		if rh.PreCopy(ctx, mockFetcher.OciImage) != nil {
+			t.Error("PreCopy() should not return an error")
+		}
+		validatePrinted(t, "Pushing   0b442c23c1dd oci-image")
+	})
+
+	t.Run("PostCopy", func(t *testing.T) {
+		builder.Reset()
+		rh := NewTextRestoreHandler(printer, mockFetcher.Fetcher)
+		if rh.PostCopy(ctx, mockFetcher.OciImage) != nil {
+			t.Error("PostCopy() should not return an error")
+		}
+		validatePrinted(t, "Pushed    0b442c23c1dd oci-image")
+	})
+
+	t.Run("PostCopy_Skipped", func(t *testing.T) {
+		builder.Reset()
+		rh := &TextRestoreHandler{
+			printer:   printer,
+			fetcher:   mockFetcher.Fetcher,
+			committed: &sync.Map{},
+		}
+		rh.committed.Store(mockFetcher.ImageLayer.Digest.String(), mockFetcher.ImageLayer.Annotations[ocispec.AnnotationTitle]+"bogus")
+		if err := rh.PostCopy(ctx, mockFetcher.OciImage); err != nil {
+			t.Error("PostCopy() returns unexpected err:", err)
+		}
+		validatePrinted(t, "Skipped   f6b87e8e0fe1 layer\nPushed    0b442c23c1dd oci-image")
+	})
+
+	t.Run("StartTracking", func(t *testing.T) {
+		rh := NewTextRestoreHandler(printer, mockFetcher.Fetcher)
+		gt := memory.New()
+		result, err := rh.StartTracking(gt)
+		if err != nil {
+			t.Error("StartTracking() should not return an error")
+		}
+		if result != gt {
+			t.Error("StartTracking() should return the same GraphTarget")
+		}
+	})
+
+	t.Run("StopTracking", func(t *testing.T) {
+		rh := NewTextRestoreHandler(printer, mockFetcher.Fetcher)
+		if rh.StopTracking() != nil {
+			t.Error("StopTracking() should not return an error")
+		}
+	})
+}
