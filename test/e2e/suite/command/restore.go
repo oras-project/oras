@@ -86,7 +86,7 @@ var _ = Describe("ORAS beginners:", func() {
 })
 
 var _ = Describe("ORAS users:", func() {
-	When("restoring a single tag", Focus, func() {
+	When("restoring a single tag", func() {
 		It("should successfully restore an image without referrers from a directory", func() {
 			// Prepare a backup to restore from
 			tmpDir := GinkgoT().TempDir()
@@ -103,6 +103,8 @@ var _ = Describe("ORAS users:", func() {
 			foobarStates := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(oras.MediaTypeUnknownConfig))
 			ORAS("restore", "--input", backupDir, Flags.ExcludeReferrers, dstRef).
 				MatchStatus(foobarStates, true, len(foobarStates)).
+				MatchKeyWords("0 referrer(s)").
+				MatchKeyWords("Successfully restored 1 tag(s)").
 				Exec()
 
 			// Verify restored content
@@ -127,6 +129,7 @@ var _ = Describe("ORAS users:", func() {
 			ORAS("restore", "--input", backupDir, dstRef).
 				MatchStatus(foobarStates, true, len(foobarStates)).
 				MatchKeyWords("2 referrer(s)").
+				MatchKeyWords("Successfully restored 1 tag(s)").
 				Exec()
 
 			// Verify restored content
@@ -156,6 +159,8 @@ var _ = Describe("ORAS users:", func() {
 
 			ORAS("restore", "--input", backupDir, Flags.ExcludeReferrers, dstRef).
 				MatchStatus(stateKeys, true, len(stateKeys)).
+				MatchKeyWords("0 referrer(s)").
+				MatchKeyWords("Successfully restored 1 tag(s)").
 				Exec()
 
 			// Verify restored content
@@ -180,6 +185,7 @@ var _ = Describe("ORAS users:", func() {
 			ORAS("restore", "--input", backupDir, dstRef).
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				MatchKeyWords("3 referrer(s)").
+				MatchKeyWords("Successfully restored 1 tag(s)").
 				Exec()
 
 			// Verify restored content
@@ -222,6 +228,7 @@ var _ = Describe("ORAS users:", func() {
 			ORAS("restore", "--input", backupDir, dstRef).
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				MatchKeyWords("3 referrer(s)").
+				MatchKeyWords("Successfully restored 1 tag(s)").
 				Exec()
 
 			// Verify restored content
@@ -270,6 +277,8 @@ var _ = Describe("ORAS users:", func() {
 
 			ORAS("restore", "--input", backupTar, Flags.ExcludeReferrers, dstRef).
 				MatchStatus(foobarStates, true, len(foobarStates)).
+				MatchKeyWords("0 referrer(s)").
+				MatchKeyWords("Successfully restored 1 tag(s)").
 				Exec()
 
 			// Verify restored content
@@ -294,6 +303,7 @@ var _ = Describe("ORAS users:", func() {
 			ORAS("restore", "--input", backupTar, dstRef).
 				MatchStatus(foobarStates, true, len(foobarStates)).
 				MatchKeyWords("2 referrer(s)").
+				MatchKeyWords("Successfully restored 1 tag(s)").
 				Exec()
 
 			// Verify restored content
@@ -323,6 +333,8 @@ var _ = Describe("ORAS users:", func() {
 
 			ORAS("restore", "--input", backupTar, Flags.ExcludeReferrers, dstRef).
 				MatchStatus(stateKeys, true, len(stateKeys)).
+				MatchKeyWords("0 referrer(s)").
+				MatchKeyWords("Successfully restored 1 tag(s)").
 				Exec()
 
 			// Verify restored content
@@ -350,6 +362,8 @@ var _ = Describe("ORAS users:", func() {
 
 			ORAS("restore", "--input", backupDir, Flags.ExcludeReferrers, dstRefs).
 				MatchStatus(stateKeys, true, len(stateKeys)).
+				MatchKeyWords("0 referrer(s)").
+				MatchKeyWords("Successfully restored 2 tag(s)").
 				Exec()
 
 			// Verify restored content
@@ -384,7 +398,7 @@ var _ = Describe("ORAS users:", func() {
 
 			ORAS("restore", "--input", backupDir, dstRefs).
 				MatchStatus(stateKeys, true, len(stateKeys)).
-				MatchKeyWords("referrer(s)").
+				MatchKeyWords("Successfully restored 2 tag(s)").
 				Exec()
 
 			// Verify restored content
@@ -428,6 +442,8 @@ var _ = Describe("ORAS users:", func() {
 
 			ORAS("restore", "--input", backupDir, Flags.ExcludeReferrers, dstRepoRef).
 				MatchStatus(stateKeys, true, len(stateKeys)).
+				MatchKeyWords("0 referrer(s)").
+				MatchKeyWords("Successfully restored 2 tag(s)").
 				Exec()
 
 			// Verify all tags were restored
@@ -471,7 +487,7 @@ var _ = Describe("ORAS users:", func() {
 
 			ORAS("restore", "--input", backupDir, dstRepoRef).
 				MatchStatus(stateKeys, true, len(stateKeys)).
-				MatchKeyWords("referrer(s)").
+				MatchKeyWords("Successfully restored 2 tag(s)").
 				Exec()
 
 			// Verify all tags and their referrers were restored
@@ -508,6 +524,7 @@ var _ = Describe("ORAS users:", func() {
 
 			ORAS("restore", "--input", backupDir, Flags.ExcludeReferrers, "--dry-run", dstRef).
 				MatchStatus(foobarStates, true, len(foobarStates)).
+				MatchKeyWords("0 referrer(s)").
 				MatchKeyWords("Dry run complete", "would be restored").
 				Exec()
 
@@ -535,7 +552,8 @@ var _ = Describe("ORAS users:", func() {
 
 			ORAS("restore", "--input", backupDir, dstRef).
 				MatchStatus(foobarStates, true, len(foobarStates)).
-				MatchKeyWords("Dry run complete", "would be restored", "2 referrer(s)").
+				MatchKeyWords("2 referrer(s)").
+				MatchKeyWords("Dry run complete", "would be restored").
 				Exec()
 
 			// Verify nothing was actually pushed

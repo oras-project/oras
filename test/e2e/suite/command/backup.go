@@ -124,6 +124,7 @@ var _ = Describe("ORAS users:", func() {
 
 			ORAS("backup", "--output", outDir, srcRef).
 				MatchStatus(foobarStates, true, len(foobarStates)).
+				MatchKeyWords("Successfully backed up 1 tag(s)").
 				Exec()
 
 			// Verify backup output structure
@@ -143,6 +144,7 @@ var _ = Describe("ORAS users:", func() {
 			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, srcRef).
 				MatchStatus(foobarStates, true, len(foobarStates)).
 				MatchKeyWords("2 referrer(s)").
+				MatchKeyWords("Successfully backed up 1 tag(s)").
 				Exec()
 
 			// Verify backup output structure
@@ -165,6 +167,7 @@ var _ = Describe("ORAS users:", func() {
 
 			ORAS("backup", "--output", outDir, srcRef).
 				MatchStatus(stateKeys, true, len(stateKeys)).
+				MatchKeyWords("Successfully backed up 1 tag(s)").
 				Exec()
 
 			// Verify backup output structure
@@ -184,6 +187,7 @@ var _ = Describe("ORAS users:", func() {
 			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, srcRef).
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				MatchKeyWords("3 referrer(s)").
+				MatchKeyWords("Successfully backed up 1 tag(s)").
 				Exec()
 
 			// Verify backup output structure
@@ -218,6 +222,7 @@ var _ = Describe("ORAS users:", func() {
 			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, srcRef).
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				MatchKeyWords("3 referrer(s)").
+				MatchKeyWords("Successfully backed up 1 tag(s)").
 				Exec()
 
 				// Verify backup output structure
@@ -269,6 +274,7 @@ var _ = Describe("ORAS users:", func() {
 			// Specify multiple tags in format: repo:tag1,tag2
 			ORAS("backup", "--output", outDir, srcRefs).
 				MatchStatus(stateKeys, true, len(stateKeys)).
+				MatchKeyWords("Successfully backed up 2 tag(s)").
 				Exec()
 
 			// Verify backup output structure
@@ -294,6 +300,7 @@ var _ = Describe("ORAS users:", func() {
 
 			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, srcRefs).
 				MatchStatus(stateKeys, true, len(stateKeys)).
+				MatchKeyWords("Successfully backed up 2 tag(s)").
 				Exec()
 
 			// Verify backup output structure
@@ -330,6 +337,7 @@ var _ = Describe("ORAS users:", func() {
 			srcRefs := fmt.Sprintf("%s/%s", ZOTHost, testRepo)
 			ORAS("backup", "--output", outDir, srcRefs).
 				MatchStatus(stateKeys, true, len(stateKeys)).
+				MatchKeyWords("Successfully backed up 2 tag(s)").
 				Exec()
 
 			// Verify backup output structure
@@ -363,6 +371,7 @@ var _ = Describe("ORAS users:", func() {
 			srcRefs := fmt.Sprintf("%s/%s", ZOTHost, testRepo)
 			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, srcRefs).
 				MatchStatus(stateKeys, true, len(stateKeys)).
+				MatchKeyWords("Successfully backed up 2 tag(s)").
 				Exec()
 
 			// Verify backup output structure
