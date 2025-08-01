@@ -60,14 +60,35 @@ func restoreCmd() *cobra.Command {
 		Long: `[Experimental] Restore artifacts to a registry from an OCI image layout, which can be a directory or a tar archive. 
 If the input path ends with ".tar", it is recognized as a tar archive; otherwise, it is recognized as a directory.
 
-Example - Restore artifacts from a backup file to a registry with multiple tags:
-  oras restore localhost:5000/hello:v1,v2 --input hello-snapshot.tar
+Example - Restore a single artifact from a tar archive:
+  oras restore --input hello-backup.tar localhost:5000/hello:v1
 
-Example - Restore artifacts from a backup folder to a registry excluding referrers:
-  oras restore localhost:5000/hello --input hello-snapshot --exclude-referrers
+Example - Perform a dry run without actually uploading artifacts:
+  oras restore --input hello-backup.tar --dry-run localhost:5000/hello:v1
 
-Example - Perform a dry run of the restore process without uploading artifacts:
-  oras restore localhost:5000/hello:v1 --input hello-snapshot.tar --dry-run
+Example - Restore multiple specific tags from a backup directory:
+  oras restore --input hello-backup localhost:5000/hello:v1,v2
+
+Example - Restore all tagged artifacts (no tag specified in target):
+  oras restore --input hello-backup.tar localhost:5000/hello
+
+Example - Exclude referrers when restoring artifacts:
+  oras restore --input hello-backup --exclude-referrers localhost:5000/hello
+
+Example - Use Referrers API for discovering referrers:
+  oras restore --input hello-backup --distribution-spec v1.1-referrers-api localhost:5000/hello
+
+Example - Use Referrers Tag Schema for discovering referrers:
+  oras restore --input hello-backup --distribution-spec v1.1-referrers-tag localhost:5000/hello
+
+Example - Restore to an insecure registry:
+  oras restore --input hello-backup.tar --insecure localhost:5000/hello:v1
+
+Example - Restore to a plain HTTP registry (no TLS):
+  oras restore --input hello-backup.tar --plain-http localhost:5000/hello:v1
+
+Example - Set custom concurrency level:
+  oras restore --input hello-backup.tar --concurrency 6 localhost:5000/hello:v1
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the target repository to restore to"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
