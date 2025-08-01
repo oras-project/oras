@@ -90,13 +90,10 @@ Example - Restore to a plain HTTP registry (no TLS):
 Example - Set custom concurrency level:
   oras restore --input hello-backup.tar --concurrency 6 localhost:5000/hello:v1
 `,
-		Args: oerrors.CheckArgs(argument.Exactly(1), "the target repository to restore to"),
+		Args: oerrors.CheckArgs(argument.Exactly(1), "the targets to restore to"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := option.Parse(cmd, &opts); err != nil {
 				return err
-			}
-			if opts.input == "" {
-				return errors.New("the input path cannot be empty")
 			}
 
 			// parse repo and tags
@@ -119,8 +116,8 @@ Example - Set custom concurrency level:
 	cmd.Flags().StringVar(&opts.input, "input", "", "restore from a folder or archive file to registry")
 	_ = cmd.MarkFlagRequired("input")
 	// optional flags
-	cmd.Flags().BoolVar(&opts.excludeReferrers, "exclude-referrers", false, "restore the image from backup excluding referrers")
-	cmd.Flags().BoolVar(&opts.dryRun, "dry-run", false, "simulate the restore process without actually uploading any artifacts to the target registry")
+	cmd.Flags().BoolVar(&opts.excludeReferrers, "exclude-referrers", false, "restore artifacts excluding their referrers")
+	cmd.Flags().BoolVar(&opts.dryRun, "dry-run", false, "simulate the restore process without actually uploading any artifacts")
 	opts.EnableDistributionSpecFlag()
 	// apply flags
 	option.ApplyFlags(&opts, cmd.Flags())
@@ -131,7 +128,6 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 	if opts.input == "" {
 		return errors.New("the input path cannot be empty")
 	}
-
 	startTime := time.Now() // start timing the restore process
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 
@@ -203,6 +199,7 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 			if err := metadataHandler.OnArtifactPushed(true, tag, referrerCount); err != nil {
 				return err
 			}
+			// dry run, skip actual copy
 			continue
 		}
 
