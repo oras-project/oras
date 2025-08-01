@@ -519,13 +519,9 @@ var _ = Describe("ORAS users:", func() {
 			testRepo := restoreTestRepo("restore-dry-run")
 			dstRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
 
-			// Perform dry run
-			foobarStates := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(oras.MediaTypeUnknownConfig))
-
 			ORAS("restore", "--input", backupDir, Flags.ExcludeReferrers, "--dry-run", dstRef).
-				MatchStatus(foobarStates, true, len(foobarStates)).
-				MatchKeyWords("0 referrer(s)").
-				MatchKeyWords("Dry run complete", "would be restored").
+				MatchKeyWords("would push tag", "0 referrer(s)").
+				MatchKeyWords("Dry run complete", "1 tag(s) would be restored").
 				Exec()
 
 			// Verify nothing was actually pushed
@@ -547,13 +543,9 @@ var _ = Describe("ORAS users:", func() {
 			testRepo := restoreTestRepo("restore-dry-run-referrers")
 			dstRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
 
-			// Perform dry run with referrers
-			foobarStates := append(append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageReferrerConfigStateKeys[0]), foobar.ImageReferrersStateKeys...)
-
-			ORAS("restore", "--input", backupDir, dstRef).
-				MatchStatus(foobarStates, true, len(foobarStates)).
-				MatchKeyWords("2 referrer(s)").
-				MatchKeyWords("Dry run complete", "would be restored").
+			ORAS("restore", "--input", backupDir, "--dry-run", dstRef).
+				MatchKeyWords("would push tag", "2 referrer(s)").
+				MatchKeyWords("Dry run complete", "1 tag(s) would be restored").
 				Exec()
 
 			// Verify nothing was actually pushed
