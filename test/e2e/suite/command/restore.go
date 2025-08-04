@@ -345,7 +345,7 @@ var _ = Describe("ORAS users:", func() {
 	})
 
 	When("restoring multiple tags", func() {
-		It("should restore multiple specified tags without refrrers from a directory", func() {
+		It("should restore multiple specified tags without referrers from a directory", func() {
 			// Create a backup with multiple tags
 			tmpDir := GinkgoT().TempDir()
 			backupDir := filepath.Join(tmpDir, "backup-multiple-tags")

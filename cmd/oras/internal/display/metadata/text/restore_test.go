@@ -106,7 +106,7 @@ func TestRestoreHandler_OnTagsFound(t *testing.T) {
 			tags:    []string{},
 			out:     &bytes.Buffer{},
 			wantErr: false,
-			want:    "",
+			want:    "No tags found in the backup\n",
 		},
 	}
 	for _, tt := range tests {

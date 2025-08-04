@@ -23,7 +23,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/output"
 )
 
-// RestoreHandler handles  text metadata output for restore command.
+// RestoreHandler handles text metadata output for restore command.
 type RestoreHandler struct {
 	printer *output.Printer
 }
@@ -43,7 +43,8 @@ func (rh *RestoreHandler) OnTarLoaded(path string, size int64) error {
 // OnTagsFound implements metadata.RestoreHandler.
 func (rh *RestoreHandler) OnTagsFound(tags []string) error {
 	if len(tags) == 0 {
-		return nil
+		return rh.printer.Printf("No tags found in the backup\n")
+
 	}
 	return rh.printer.Printf("Found %d tag(s) in the backup: %s\n", len(tags), strings.Join(tags, ", "))
 }
@@ -58,7 +59,6 @@ func (rh *RestoreHandler) OnArtifactPushed(dryRun bool, tag string, referrerCoun
 
 // OnRestoreCompleted implements metadata.RestoreHandler.
 func (rh *RestoreHandler) OnRestoreCompleted(dryRun bool, tagsCount int, repo string, duration time.Duration) error {
-	// TODO: humanize the duration
 	if dryRun {
 		return rh.printer.Printf("Dry run complete: %d tag(s) would be restored to %q (no data pushed)\n", tagsCount, repo)
 	}

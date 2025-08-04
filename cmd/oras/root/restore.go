@@ -61,34 +61,37 @@ func restoreCmd() *cobra.Command {
 If the input path ends with ".tar", it is recognized as a tar archive; otherwise, it is recognized as a directory.
 
 Example - Restore a single artifact from a tar archive:
-  oras restore --input hello-backup.tar localhost:5000/hello:v1
+  oras restore --input hello.tar localhost:5000/hello:v1
+
+Example - Restore a single artifact from a directory:
+  oras restore --input hello localhost:5000/hello:v1
 
 Example - Perform a dry run without actually uploading artifacts:
-  oras restore --input hello-backup.tar --dry-run localhost:5000/hello:v1
+  oras restore --input hello --dry-run localhost:5000/hello:v1
 
-Example - Restore multiple specific tags from a backup directory:
-  oras restore --input hello-backup localhost:5000/hello:v1,v2
+Example - Restore multiple specific tags:
+  oras restore --input hello localhost:5000/hello:v1,v2
 
-Example - Restore all tagged artifacts (no tag specified in target):
-  oras restore --input hello-backup.tar localhost:5000/hello
+Example - Restore all tagged artifacts:
+  oras restore --input hello localhost:5000/hello
 
 Example - Exclude referrers when restoring artifacts:
-  oras restore --input hello-backup --exclude-referrers localhost:5000/hello
+  oras restore --input hello --exclude-referrers localhost:5000/hello
 
 Example - Use Referrers API for discovering referrers:
-  oras restore --input hello-backup --distribution-spec v1.1-referrers-api localhost:5000/hello
+  oras restore --input hello --distribution-spec v1.1-referrers-api localhost:5000/hello
 
 Example - Use Referrers Tag Schema for discovering referrers:
-  oras restore --input hello-backup --distribution-spec v1.1-referrers-tag localhost:5000/hello
+  oras restore --input hello --distribution-spec v1.1-referrers-tag localhost:5000/hello
 
 Example - Restore to an insecure registry:
-  oras restore --input hello-backup.tar --insecure localhost:5000/hello:v1
+  oras restore --input hello --insecure localhost:5000/hello:v1
 
 Example - Restore to a plain HTTP registry (no TLS):
-  oras restore --input hello-backup.tar --plain-http localhost:5000/hello:v1
+  oras restore --input hello --plain-http localhost:5000/hello:v1
 
 Example - Set custom concurrency level:
-  oras restore --input hello-backup.tar --concurrency 6 localhost:5000/hello:v1
+  oras restore --input hello --concurrency 6 localhost:5000/hello:v1
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the targets to restore to"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {

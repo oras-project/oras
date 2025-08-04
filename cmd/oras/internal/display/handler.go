@@ -238,6 +238,7 @@ func NewBackupHandler(printer *output.Printer, tty *os.File, repo string, fetche
 	return status.NewTextBackupHandler(printer, fetcher), text.NewBackupHandler(repo, printer)
 }
 
+// NewRestoreHandler returns restore handlers.
 func NewRestoreHandler(printer *output.Printer, tty *os.File, fetcher fetcher.Fetcher) (status.RestoreHandler, metadata.RestoreHandler) {
 	if tty != nil {
 		return status.NewTTYRestoreHandler(tty, fetcher), text.NewRestoreHandler(printer)

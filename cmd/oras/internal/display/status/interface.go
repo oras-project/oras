@@ -75,6 +75,15 @@ type BackupHandler interface {
 	PostCopy(ctx context.Context, desc ocispec.Descriptor) error
 }
 
+// RestoreHandler handles status output for restore command.
+type RestoreHandler interface {
+	StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error)
+	StopTracking() error
+	OnCopySkipped(ctx context.Context, desc ocispec.Descriptor) error
+	PreCopy(ctx context.Context, desc ocispec.Descriptor) error
+	PostCopy(ctx context.Context, desc ocispec.Descriptor) error
+}
+
 // ManifestPushHandler handles status output for manifest push command.
 type ManifestPushHandler interface {
 	OnManifestPushSkipped() error
@@ -105,12 +114,4 @@ type BlobPushHandler interface {
 	OnBlobUploaded() error
 	StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error)
 	StopTracking() error
-}
-
-type RestoreHandler interface {
-	StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error)
-	StopTracking() error
-	OnCopySkipped(ctx context.Context, desc ocispec.Descriptor) error
-	PreCopy(ctx context.Context, desc ocispec.Descriptor) error
-	PostCopy(ctx context.Context, desc ocispec.Descriptor) error
 }
