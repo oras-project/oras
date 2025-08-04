@@ -247,7 +247,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 			return 0, backupTag(ctx, srcRepo, trackedDst, tag, roots[i], copyGraphOpts)
 		}()
 		if err != nil {
-			return oerrors.UnwrapCopyError(err)
+			return fmt.Errorf("failed to back up tag %q from %q to %q: %w", tag, opts.repository, dstRoot, oerrors.UnwrapCopyError(err))
 		}
 		if err := metadataHandler.OnArtifactPulled(tag, referrerCount); err != nil {
 			return err
@@ -264,7 +264,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 // backupTag copies the artifact identified by the tag from src to dst.
 func backupTag(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, tag string, root ocispec.Descriptor, copyGraphOpts oras.CopyGraphOptions) error {
 	if err := oras.CopyGraph(ctx, src, dst, root, copyGraphOpts); err != nil {
-		return fmt.Errorf("failed to pull tag %q, digest %q: %w", tag, root.Digest.String(), err)
+		return err
 	}
 	if err := dst.Tag(ctx, root, tag); err != nil {
 		return fmt.Errorf("failed to tag %q with %q: %w", root.Digest.String(), tag, err)
@@ -275,7 +275,7 @@ func backupTag(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Graph
 // backupTagWithReferrers copies the artifact identified by tag and its referrers from src to dst.
 func backupTagWithReferrers(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, tag string, root ocispec.Descriptor, extCopyGraphOpts oras.ExtendedCopyGraphOptions) (int, error) {
 	if err := recursiveCopy(ctx, src, dst, tag, root, extCopyGraphOpts); err != nil {
-		return 0, fmt.Errorf("failed to pull tag %q and referrers, digest %q: %w", tag, root.Digest.String(), err)
+		return 0, err
 	}
 	return countReferrers(ctx, dst, tag, root, extCopyGraphOpts)
 }

@@ -167,7 +167,7 @@ func TestNewRestoreHandler(t *testing.T) {
 	mockFetcher := testutils.NewMockFetcher()
 
 	t.Run("with TTY", func(t *testing.T) {
-		statusHandler, metadataHandler := NewRestoreHandler(printer, os.Stdout, mockFetcher.Fetcher)
+		statusHandler, metadataHandler := NewRestoreHandler(printer, os.Stdout, mockFetcher.Fetcher, false)
 		if _, ok := statusHandler.(*status.TTYRestoreHandler); !ok {
 			t.Errorf("expected *status.TTYRestoreHandler actual %v", reflect.TypeOf(statusHandler))
 		}
@@ -177,7 +177,7 @@ func TestNewRestoreHandler(t *testing.T) {
 	})
 
 	t.Run("without TTY", func(t *testing.T) {
-		statusHandler, metadataHandler := NewRestoreHandler(printer, nil, mockFetcher.Fetcher)
+		statusHandler, metadataHandler := NewRestoreHandler(printer, nil, mockFetcher.Fetcher, false)
 		if _, ok := statusHandler.(*status.TextRestoreHandler); !ok {
 			t.Errorf("expected *status.TextRestoreHandler actual %v", reflect.TypeOf(statusHandler))
 		}

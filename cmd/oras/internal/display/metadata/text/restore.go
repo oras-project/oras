@@ -26,12 +26,14 @@ import (
 // RestoreHandler handles text metadata output for restore command.
 type RestoreHandler struct {
 	printer *output.Printer
+	dryRun  bool
 }
 
 // NewRestoreHandler creates a new RestoreHandler.
-func NewRestoreHandler(printer *output.Printer) *RestoreHandler {
+func NewRestoreHandler(printer *output.Printer, dryRun bool) *RestoreHandler {
 	return &RestoreHandler{
 		printer: printer,
+		dryRun:  dryRun,
 	}
 }
 
@@ -50,16 +52,16 @@ func (rh *RestoreHandler) OnTagsFound(tags []string) error {
 }
 
 // OnArtifactPushed implements metadata.RestoreHandler.
-func (rh *RestoreHandler) OnArtifactPushed(dryRun bool, tag string, referrerCount int) error {
-	if dryRun {
+func (rh *RestoreHandler) OnArtifactPushed(tag string, referrerCount int) error {
+	if rh.dryRun {
 		return rh.printer.Printf("Dry run: would push tag %s with %d referrer(s)\n", tag, referrerCount)
 	}
 	return rh.printer.Printf("Pushed tag %s with %d referrer(s)\n", tag, referrerCount)
 }
 
 // OnRestoreCompleted implements metadata.RestoreHandler.
-func (rh *RestoreHandler) OnRestoreCompleted(dryRun bool, tagsCount int, repo string, duration time.Duration) error {
-	if dryRun {
+func (rh *RestoreHandler) OnRestoreCompleted(tagsCount int, repo string, duration time.Duration) error {
+	if rh.dryRun {
 		return rh.printer.Printf("Dry run complete: %d tag(s) would be restored to %q (no data pushed)\n", tagsCount, repo)
 	}
 	return rh.printer.Printf("Successfully restored %d tag(s) to %q in %s\n", tagsCount, repo, humanize.FormatDuration(duration))

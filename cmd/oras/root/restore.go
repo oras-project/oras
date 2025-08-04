@@ -58,7 +58,6 @@ func restoreCmd() *cobra.Command {
 		Use:   "restore [flags] --input <path> <registry>/<repository>[:<ref1>[,<ref2>...]]",
 		Short: "[Experimental] Restore artifacts to a registry from an OCI image layout",
 		Long: `[Experimental] Restore artifacts to a registry from an OCI image layout, which can be either a directory or a tar archive. 
-If the input path ends with ".tar", it is recognized as a tar archive; otherwise, it is recognized as a directory.
 
 Example - Restore a single artifact from a tar archive:
   oras restore --input hello.tar localhost:5000/hello:v1
@@ -121,7 +120,7 @@ Example - Set custom concurrency level:
 	// optional flags
 	cmd.Flags().BoolVar(&opts.excludeReferrers, "exclude-referrers", false, "restore artifacts excluding their referrers")
 	cmd.Flags().BoolVar(&opts.dryRun, "dry-run", false, "simulate the restore process without actually uploading any artifacts")
-	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
+	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	opts.EnableDistributionSpecFlag()
 	// apply flags
 	option.ApplyFlags(&opts, cmd.Flags())
@@ -143,7 +142,7 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 	if err != nil {
 		return fmt.Errorf("failed to prepare target repository %q: %w", opts.repository, err)
 	}
-	statusHandler, metadataHandler := display.NewRestoreHandler(opts.Printer, opts.TTY, dstRepo)
+	statusHandler, metadataHandler := display.NewRestoreHandler(opts.Printer, opts.TTY, dstRepo, opts.dryRun)
 
 	// prepare the source OCI store
 	var srcOCI oras.ReadOnlyGraphTarget
@@ -190,7 +189,7 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 	extCopyGraphOpts := oras.ExtendedCopyGraphOptions{
 		CopyGraphOptions: copyOpts.CopyGraphOptions,
 		FindPredecessors: func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-			return registry.Referrers(ctx, srcOCI, desc, "")
+			return registry.Referrers(ctx, src, desc, "")
 		},
 	}
 	for i, tag := range tags {
@@ -203,7 +202,7 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 			}
 		}
 		if opts.dryRun {
-			if err := metadataHandler.OnArtifactPushed(true, tag, referrerCount); err != nil {
+			if err := metadataHandler.OnArtifactPushed(tag, referrerCount); err != nil {
 				return err
 			}
 			// dry run, skip actual copy
@@ -224,23 +223,23 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 
 			if opts.excludeReferrers {
 				if _, err := oras.Copy(ctx, srcOCI, tag, trackedDst, tag, copyOpts); err != nil {
-					return fmt.Errorf("failed to copy tag %q from %q to %q: %w", tag, opts.input, opts.repository, err)
+					return err
 				}
 				return nil
 			}
 			if err := recursiveCopy(ctx, srcOCI, trackedDst, tag, roots[i], extCopyGraphOpts); err != nil {
-				return fmt.Errorf("failed to restore tag %q from %q to %q: %w", tag, opts.input, opts.repository, err)
+				return err
 			}
 			return nil
 		}(); err != nil {
-			return oerrors.UnwrapCopyError(err)
+			return fmt.Errorf("failed to restore tag %q from %q to %q: %w", tag, opts.input, opts.repository, oerrors.UnwrapCopyError(err))
 		}
 
-		if err := metadataHandler.OnArtifactPushed(false, tag, referrerCount); err != nil {
+		if err := metadataHandler.OnArtifactPushed(tag, referrerCount); err != nil {
 			return err
 		}
 	}
 
 	duration := time.Since(startTime)
-	return metadataHandler.OnRestoreCompleted(opts.dryRun, len(tags), opts.repository, duration)
+	return metadataHandler.OnRestoreCompleted(len(tags), opts.repository, duration)
 }

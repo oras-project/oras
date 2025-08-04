@@ -28,13 +28,35 @@ import (
 
 // TestNewRestoreHandler tests the constructor for RestoreHandler
 func TestNewRestoreHandler(t *testing.T) {
-	printer := output.NewPrinter(&bytes.Buffer{}, &bytes.Buffer{})
-	handler := NewRestoreHandler(printer)
-	if handler == nil {
-		t.Fatal("expected a non-nil handler")
+	tests := []struct {
+		name   string
+		dryRun bool
+	}{
+		{
+			name:   "with dryRun false",
+			dryRun: false,
+		},
+		{
+			name:   "with dryRun true",
+			dryRun: true,
+		},
 	}
-	if handler.printer != printer {
-		t.Errorf("expected handler.printer to be %v, got %v", printer, handler.printer)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			printer := output.NewPrinter(&bytes.Buffer{}, &bytes.Buffer{})
+			handler := NewRestoreHandler(printer, tt.dryRun)
+
+			if handler == nil {
+				t.Fatal("expected a non-nil handler")
+			}
+			if handler.printer != printer {
+				t.Errorf("expected handler.printer to be %v, got %v", printer, handler.printer)
+			}
+			if handler.dryRun != tt.dryRun {
+				t.Errorf("expected handler.dryRun to be %v, got %v", tt.dryRun, handler.dryRun)
+			}
+		})
 	}
 }
 
@@ -65,7 +87,7 @@ func TestRestoreHandler_OnTarLoaded(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			printer := output.NewPrinter(tt.out, os.Stderr)
-			handler := NewRestoreHandler(printer)
+			handler := NewRestoreHandler(printer, false)
 			if err := handler.OnTarLoaded(path, tt.size); (err != nil) != tt.wantErr {
 				t.Errorf("OnTarLoaded() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -112,7 +134,7 @@ func TestRestoreHandler_OnTagsFound(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			printer := output.NewPrinter(tt.out, os.Stderr)
-			handler := NewRestoreHandler(printer)
+			handler := NewRestoreHandler(printer, false)
 			if err := handler.OnTagsFound(tt.tags); (err != nil) != tt.wantErr {
 				t.Errorf("OnTagsFound() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -154,8 +176,8 @@ func TestRestoreHandler_OnArtifactPushed(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			printer := output.NewPrinter(tt.out, os.Stderr)
-			handler := NewRestoreHandler(printer)
-			if err := handler.OnArtifactPushed(tt.dryRun, tag, referrerCount); (err != nil) != tt.wantErr {
+			handler := NewRestoreHandler(printer, tt.dryRun)
+			if err := handler.OnArtifactPushed(tag, referrerCount); (err != nil) != tt.wantErr {
 				t.Errorf("OnArtifactPushed() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if !tt.wantErr {
@@ -197,8 +219,8 @@ func TestRestoreHandler_OnRestoreCompleted(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			printer := output.NewPrinter(tt.out, os.Stderr)
-			handler := NewRestoreHandler(printer)
-			if err := handler.OnRestoreCompleted(tt.dryRun, tagsCount, repo, duration); (err != nil) != tt.wantErr {
+			handler := NewRestoreHandler(printer, tt.dryRun)
+			if err := handler.OnRestoreCompleted(tagsCount, repo, duration); (err != nil) != tt.wantErr {
 				t.Errorf("OnRestoreCompleted() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if !tt.wantErr {
@@ -223,7 +245,10 @@ func TestRestoreHandler_Render(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handler := &RestoreHandler{}
+			handler := &RestoreHandler{
+				printer: output.NewPrinter(&bytes.Buffer{}, &bytes.Buffer{}),
+				dryRun:  false,
+			}
 			if err := handler.Render(); (err != nil) != tt.wantErr {
 				t.Errorf("Render() error = %v, wantErr %v", err, tt.wantErr)
 			}

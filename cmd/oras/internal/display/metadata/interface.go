@@ -125,8 +125,8 @@ type RestoreHandler interface {
 
 	OnTarLoaded(path string, size int64) error
 	OnTagsFound(tags []string) error
-	OnArtifactPushed(dryRun bool, tag string, referrerCount int) error
-	OnRestoreCompleted(dryRun bool, tagsCount int, repo string, duration time.Duration) error
+	OnArtifactPushed(tag string, referrerCount int) error
+	OnRestoreCompleted(tagsCount int, repo string, duration time.Duration) error
 }
 
 // BlobPushHandler handles metadata output for blob push events.
