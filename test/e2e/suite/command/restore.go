@@ -529,7 +529,7 @@ var _ = Describe("ORAS users:", func() {
 			// Verify nothing was actually pushed
 			ORAS("manifest", "fetch", dstRef).
 				ExpectFailure().
-				MatchErrKeyWords("Error:", "not found").
+				MatchErrKeyWords("Error response from registry:", "not found").
 				Exec()
 		})
 
@@ -553,7 +553,7 @@ var _ = Describe("ORAS users:", func() {
 			// Verify nothing was actually pushed
 			ORAS("manifest", "fetch", dstRef).
 				ExpectFailure().
-				MatchErrKeyWords("Error:", "not found").
+				MatchErrKeyWords("Error response from registry:", "not found").
 				Exec()
 		})
 	})
@@ -630,7 +630,7 @@ var _ = Describe("ORAS users:", func() {
 			// Verify referrers were restored
 			referrers := ORAS("discover", dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
 			for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
-				CompareRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), RegistryRef(ZOTHost, testRepo, referrerDgst))
+				CompareRef(RegistryRef(FallbackHost, ArtifactRepo, referrerDgst), RegistryRef(FallbackHost, testRepo, referrerDgst))
 			}
 		})
 	})
@@ -651,6 +651,8 @@ var _ = Describe("ORAS users:", func() {
 			// Create an invalid backup directory (empty)
 			tmpDir := GinkgoT().TempDir()
 			backupDir := filepath.Join(tmpDir, "empty-backup")
+			err := os.MkdirAll(backupDir, 0755)
+			Expect(err).ToNot(HaveOccurred())
 
 			dstRef := fmt.Sprintf("%s/%s", ZOTHost, restoreTestRepo("restore-empty-backup"))
 			// Attempt to restore from empty backup directory
@@ -664,9 +666,9 @@ var _ = Describe("ORAS users:", func() {
 			// Create an invalid backup directory (not a valid OCI layout)
 			tmpDir := GinkgoT().TempDir()
 			backupDir := filepath.Join(tmpDir, "invalid-backup")
-
-			// Create an empty file to simulate an invalid layout
-			err := os.WriteFile(filepath.Join(backupDir, "invalid-file.txt"), []byte("not a valid layout"), 0644)
+			err := os.MkdirAll(backupDir, 0755)
+			Expect(err).ToNot(HaveOccurred())
+			err = os.WriteFile(filepath.Join(backupDir, "invalid-file.txt"), []byte("not a valid layout"), 0644)
 			Expect(err).ToNot(HaveOccurred())
 
 			dstRef := fmt.Sprintf("%s/%s", ZOTHost, restoreTestRepo("restore-invalid-backup"))

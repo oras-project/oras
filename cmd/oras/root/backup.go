@@ -140,11 +140,14 @@ Example - Set custom concurrency level:
 		},
 	}
 
+	// required flags
 	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "path to the target output, either a tar archive (*.tar) or a directory")
+	_ = cmd.MarkFlagRequired("output")
+	// optional flags
 	cmd.Flags().BoolVarP(&opts.includeReferrers, "include-referrers", "", false, "back up the artifact with its referrers (e.g., attestations, SBOMs)")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 	opts.EnableDistributionSpecFlag()
-	_ = cmd.MarkFlagRequired("output")
+	// apply flags
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Remote)
 }
@@ -204,8 +207,8 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	}
 	if len(tags) == 0 {
 		return &oerrors.Error{
-			Err:            fmt.Errorf("no tags found in repository %s", opts.repository),
-			Recommendation: fmt.Sprintf(`If you want to list available tags in %s, use "oras repo tags"`, opts.repository),
+			Err:            fmt.Errorf("no tags found in repository %q", opts.repository),
+			Recommendation: fmt.Sprintf(`If you want to list available tags in %q, use "oras repo tags"`, opts.repository),
 		}
 	}
 	if err := metadataHandler.OnTagsFound(tags); err != nil {

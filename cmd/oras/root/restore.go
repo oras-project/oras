@@ -118,6 +118,7 @@ Example - Set custom concurrency level:
 	// optional flags
 	cmd.Flags().BoolVar(&opts.excludeReferrers, "exclude-referrers", false, "restore artifacts excluding their referrers")
 	cmd.Flags().BoolVar(&opts.dryRun, "dry-run", false, "simulate the restore process without actually uploading any artifacts")
+	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 	opts.EnableDistributionSpecFlag()
 	// apply flags
 	option.ApplyFlags(&opts, cmd.Flags())
@@ -169,8 +170,8 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 	}
 	if len(tags) == 0 {
 		return &oerrors.Error{
-			Err:            fmt.Errorf("no tags found in OCI layout %s", opts.input),
-			Recommendation: fmt.Sprintf(`If you want to list available tags in %s, use "oras repo tags --oci-layout"`, opts.input),
+			Err:            fmt.Errorf("no tags found in OCI layout %q", opts.input),
+			Recommendation: fmt.Sprintf(`If you want to list available tags in %q, use "oras repo tags --oci-layout"`, opts.input),
 		}
 	}
 	if err := metadataHandler.OnTagsFound(tags); err != nil {
