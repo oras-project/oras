@@ -57,7 +57,7 @@ func restoreCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "restore [flags] --input <path> <registry>/<repository>[:<ref1>[,<ref2>...]]",
 		Short: "[Experimental] Restore artifacts to a registry from an OCI image layout",
-		Long: `[Experimental] Restore artifacts to a registry from an OCI image layout, which can be a directory or a tar archive. 
+		Long: `[Experimental] Restore artifacts to a registry from an OCI image layout, which can be either a directory or a tar archive. 
 If the input path ends with ".tar", it is recognized as a tar archive; otherwise, it is recognized as a directory.
 
 Example - Restore a single artifact from a tar archive:
@@ -113,7 +113,7 @@ Example - Set custom concurrency level:
 	}
 
 	// required flag
-	cmd.Flags().StringVar(&opts.input, "input", "", "restore from a folder or archive file to registry")
+	cmd.Flags().StringVar(&opts.input, "input", "", "path to the OCI layout, either a tar archive (*.tar) or a directory")
 	_ = cmd.MarkFlagRequired("input")
 	// optional flags
 	cmd.Flags().BoolVar(&opts.excludeReferrers, "exclude-referrers", false, "restore artifacts excluding their referrers")

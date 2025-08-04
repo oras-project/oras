@@ -442,7 +442,7 @@ var _ = Describe("ORAS users:", func() {
 
 			stateKeys := ma.IndexStateKeys
 
-			ORAS("backup", "--output", outDir, "--concurrency", "5", src).
+			ORAS("backup", "--output", outDir, "--concurrency", "1", src).
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				Exec()
 

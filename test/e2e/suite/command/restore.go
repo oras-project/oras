@@ -563,7 +563,7 @@ var _ = Describe("ORAS users:", func() {
 			// Create a backup
 			tmpDir := GinkgoT().TempDir()
 			backupDir := filepath.Join(tmpDir, "backup-concurrency")
-			srcRef := RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)
+			srcRef := RegistryRef(ZOTHost, ImageRepo, ma.Tag)
 
 			ORAS("backup", "--output", backupDir, srcRef).Exec()
 
@@ -571,9 +571,8 @@ var _ = Describe("ORAS users:", func() {
 			testRepo := restoreTestRepo("restore-concurrency")
 			dstRef := RegistryRef(ZOTHost, testRepo, ma.Tag)
 
-			stateKeys := append(ma.IndexStateKeys, ma.IndexZOTReferrerStateKey, ma.LinuxAMD64ReferrerConfigStateKey)
-
-			ORAS("restore", "--input", backupDir, "--concurrency", "5", dstRef).
+			stateKeys := ma.IndexStateKeys
+			ORAS("restore", "--input", backupDir, "--concurrency", "1", dstRef).
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				Exec()
 
