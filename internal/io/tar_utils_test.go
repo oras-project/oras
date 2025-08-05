@@ -187,20 +187,39 @@ func TestIsTarFile(t *testing.T) {
 		}
 	})
 
-	// Test case 3: File with tar magic number but without .tar extension
-	t.Run("File with tar magic number", func(t *testing.T) {
+	// Test case 3: Tar file without .tar extension
+	t.Run("Tar file without .tar extension", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		nonTarPath := filepath.Join(tmpDir, "test.bin")
+		nonTarExtPath := filepath.Join(tmpDir, "test.bin")
 
-		// Create a file with the tar magic number at position 257
-		content := make([]byte, 512) // Typical tar header size
-		copy(content[257:], []byte("ustar"))
-
-		if err := os.WriteFile(nonTarPath, content, 0644); err != nil {
+		fp, err := os.Create(nonTarExtPath)
+		if err != nil {
 			t.Fatalf("Failed to create test file: %v", err)
 		}
+		defer func() {
+			_ = fp.Close()
+		}()
 
-		isTar, err := iotest.IsTarFile(nonTarPath)
+		tw := tar.NewWriter(fp)
+		// write a symlink file to the tar
+		header := &tar.Header{
+			Name:     "symlink",
+			Typeflag: tar.TypeSymlink,
+			Linkname: "target",
+			Mode:     0755,
+			Size:     0,
+		}
+		if err := tw.WriteHeader(header); err != nil {
+			t.Fatalf("Failed to write tar header: %v", err)
+		}
+		if err := tw.Close(); err != nil {
+			t.Fatalf("Failed to close tar writer: %v", err)
+		}
+		if err := fp.Close(); err != nil {
+			t.Fatalf("Failed to close test file: %v", err)
+		}
+
+		isTar, err := iotest.IsTarFile(nonTarExtPath)
 		if err != nil {
 			t.Errorf("IsTarFile returned unexpected error: %v", err)
 		}
@@ -214,10 +233,8 @@ func TestIsTarFile(t *testing.T) {
 		tmpDir := t.TempDir()
 		regularFilePath := filepath.Join(tmpDir, "regular.txt")
 
-		// Create a file that's large enough but doesn't have the tar magic number
-		content := make([]byte, 512)
-		copy(content[257:], []byte("nope!"))
-
+		// write random content to the file
+		content := []byte("This is a regular file, not a tar archive.")
 		if err := os.WriteFile(regularFilePath, content, 0644); err != nil {
 			t.Fatalf("Failed to create test file: %v", err)
 		}
@@ -242,24 +259,6 @@ func TestIsTarFile(t *testing.T) {
 		}
 		if isTar {
 			t.Error("IsTarFile should return false for non-existent file")
-		}
-	})
-
-	// Test case 6: File too small for magic number check
-	t.Run("File too small for magic number", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		smallFilePath := filepath.Join(tmpDir, "small.txt")
-
-		if err := os.WriteFile(smallFilePath, []byte("small file"), 0644); err != nil {
-			t.Fatalf("Failed to create test file: %v", err)
-		}
-
-		isTar, err := iotest.IsTarFile(smallFilePath)
-		if err == nil {
-			t.Error("IsTarFile should return error for file too small for magic number check")
-		}
-		if isTar {
-			t.Error("IsTarFile should return false for file too small for magic number check")
 		}
 	})
 }

@@ -229,15 +229,10 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 			}()
 
 			if opts.excludeReferrers {
-				if _, err := oras.Copy(ctx, srcOCI, tag, trackedDst, tag, copyOpts); err != nil {
-					return err
-				}
-				return nil
-			}
-			if err := recursiveCopy(ctx, srcOCI, trackedDst, tag, roots[i], extCopyGraphOpts); err != nil {
+				_, err := oras.Copy(ctx, srcOCI, tag, trackedDst, tag, copyOpts)
 				return err
 			}
-			return nil
+			return recursiveCopy(ctx, srcOCI, trackedDst, tag, roots[i], extCopyGraphOpts)
 		}(); err != nil {
 			return fmt.Errorf("failed to restore tag %q from %q to %q: %w", tag, opts.input, opts.repository, oerrors.UnwrapCopyError(err))
 		}

@@ -18,6 +18,7 @@ package io
 import (
 	"archive/tar"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -68,7 +69,7 @@ func IsTarFile(path string) (bool, error) {
 	// read 5 bytes ("ustar") at the position where the magic number is located
 	magic := make([]byte, 5)
 	_, err = fp.ReadAt(magic, 257) // ustar magic number starts at byte 257
-	if err != nil {
+	if err != nil && !errors.Is(err, io.EOF) {
 		return false, fmt.Errorf("failed to read magic number from file %q: %w", path, err)
 	}
 	return bytes.Equal(magic, []byte("ustar")), nil
