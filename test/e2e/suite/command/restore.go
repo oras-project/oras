@@ -704,6 +704,22 @@ var _ = Describe("ORAS users:", func() {
 				Exec()
 		})
 
+		It("should fail when restoring from a non-tar file", func() {
+			// Create a non-tar backup file
+			tmpDir := GinkgoT().TempDir()
+			backupFile := filepath.Join(tmpDir, "not-tar.txt")
+
+			// Create an empty non-tar file
+			err := os.WriteFile(backupFile, []byte{}, 0644)
+			Expect(err).ToNot(HaveOccurred())
+
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, restoreTestRepo("restore-non-tar-file"))
+			// Attempt to restore from invalid backup tar file
+			ORAS("restore", "--input", backupFile, dstRef).ExpectFailure().
+				MatchErrKeyWords("Error:").
+				Exec()
+		})
+
 		It("should fail when no tags are found in the backup", func() {
 			// Create an OCI layout with no tags
 			tmpDir := GinkgoT().TempDir()

@@ -125,7 +125,7 @@ Example - Set custom concurrency level:
 			}
 
 			// parse output format
-			if strings.HasSuffix(opts.output, ".tar") {
+			if strings.EqualFold(filepath.Ext(opts.output), ".tar") {
 				opts.outputFormat = outputFormatTar
 			} else {
 				opts.outputFormat = outputFormatDir

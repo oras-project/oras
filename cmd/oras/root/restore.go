@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -34,6 +33,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	orasio "oras.land/oras/internal/io"
 )
 
 type restoreOptions struct {
@@ -131,9 +131,6 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 	if opts.input == "" {
 		return errors.New("the input path cannot be empty")
 	}
-	if _, err := os.Stat(opts.input); err != nil {
-		return fmt.Errorf("failed to access input path %q: %w", opts.input, err)
-	}
 	startTime := time.Now() // start timing the restore process
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 
@@ -146,23 +143,33 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 
 	// prepare the source OCI store
 	var srcOCI oras.ReadOnlyGraphTarget
-	if strings.HasSuffix(opts.input, ".tar") {
+	fi, err := os.Stat(opts.input)
+	if err != nil {
+		return fmt.Errorf("failed to stat input path %q: %w", opts.input, err)
+	}
+	switch {
+	case fi.Mode().IsRegular():
+		isTar, err := orasio.IsTarFile(opts.input)
+		if err != nil {
+			return fmt.Errorf("unable to determine if %q is a tar archive: %w", opts.input, err)
+		}
+		if !isTar {
+			return fmt.Errorf("input path %q is not a tar archive", opts.input)
+		}
 		srcOCI, err = oci.NewFromTar(ctx, opts.input)
 		if err != nil {
-			return fmt.Errorf("failed to prepare OCI store from tar %q: %w", opts.input, err)
-		}
-		fi, err := os.Stat(opts.input)
-		if err != nil {
-			return fmt.Errorf("failed to stat tar file %q: %w", opts.input, err)
+			return fmt.Errorf("failed to prepare OCI store from tar archive %q: %w", opts.input, err)
 		}
 		if err := metadataHandler.OnTarLoaded(opts.input, fi.Size()); err != nil {
 			return err
 		}
-	} else {
+	case fi.IsDir():
 		srcOCI, err = oci.NewWithContext(ctx, opts.input)
 		if err != nil {
 			return fmt.Errorf("failed to prepare OCI store from directory %q: %w", opts.input, err)
 		}
+	default:
+		return fmt.Errorf("input path %q must be a directory or a tar archive", opts.input)
 	}
 
 	// resolve tags to restore

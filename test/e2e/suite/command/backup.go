@@ -258,6 +258,24 @@ var _ = Describe("ORAS users:", func() {
 			dstRef := LayoutRef(outTar, foobar.Tag)
 			compareBackupRef(srcRef, dstRef)
 		})
+
+		It("should successfully backup an image to tar file (case insensitive)", func() {
+			tmpDir := GinkgoT().TempDir()
+			outTar := filepath.Join(tmpDir, "backup-single-tag.tAr")
+			srcRef := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
+			foobarStates := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(oras.MediaTypeUnknownConfig))
+
+			ORAS("backup", "--output", outTar, srcRef).
+				MatchStatus(foobarStates, true, len(foobarStates)).
+				Exec()
+
+			// Verify backup structure
+			verifyBackupTarStructure(outTar)
+
+			// Verify backed up content
+			dstRef := LayoutRef(outTar, foobar.Tag)
+			compareBackupRef(srcRef, dstRef)
+		})
 	})
 
 	When("backing up multiple tags", func() {

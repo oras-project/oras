@@ -151,3 +151,115 @@ func TestTarDirectory_InvalidSource(t *testing.T) {
 		}
 	})
 }
+
+func TestIsTarFile(t *testing.T) {
+	// Test case 1: File with .tar extension
+	t.Run("File with .tar extension", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		tarFilePath := filepath.Join(tmpDir, "test.tar")
+		if err := os.WriteFile(tarFilePath, []byte("not really a tar file"), 0644); err != nil {
+			t.Fatalf("Failed to create test file: %v", err)
+		}
+
+		isTar, err := iotest.IsTarFile(tarFilePath)
+		if err != nil {
+			t.Errorf("IsTarFile returned unexpected error: %v", err)
+		}
+		if !isTar {
+			t.Error("IsTarFile should identify .tar files as tar archives regardless of content")
+		}
+	})
+
+	// Test case 2: File with .taR extension (case-insensitive)
+	t.Run("File with .taR extension (mixed case)", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		tarFilePath := filepath.Join(tmpDir, "test.taR")
+		if err := os.WriteFile(tarFilePath, []byte("not really a tar file"), 0644); err != nil {
+			t.Fatalf("Failed to create test file: %v", err)
+		}
+
+		isTar, err := iotest.IsTarFile(tarFilePath)
+		if err != nil {
+			t.Errorf("IsTarFile returned unexpected error: %v", err)
+		}
+		if !isTar {
+			t.Error("IsTarFile should identify .TAR files as tar archives (case-insensitive)")
+		}
+	})
+
+	// Test case 3: File with tar magic number but without .tar extension
+	t.Run("File with tar magic number", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		nonTarPath := filepath.Join(tmpDir, "test.bin")
+
+		// Create a file with the tar magic number at position 257
+		content := make([]byte, 512) // Typical tar header size
+		copy(content[257:], []byte("ustar"))
+
+		if err := os.WriteFile(nonTarPath, content, 0644); err != nil {
+			t.Fatalf("Failed to create test file: %v", err)
+		}
+
+		isTar, err := iotest.IsTarFile(nonTarPath)
+		if err != nil {
+			t.Errorf("IsTarFile returned unexpected error: %v", err)
+		}
+		if !isTar {
+			t.Error("IsTarFile should identify files with tar magic number as tar archives")
+		}
+	})
+
+	// Test case 4: Regular file without tar magic number
+	t.Run("Regular non-tar file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		regularFilePath := filepath.Join(tmpDir, "regular.txt")
+
+		// Create a file that's large enough but doesn't have the tar magic number
+		content := make([]byte, 512)
+		copy(content[257:], []byte("nope!"))
+
+		if err := os.WriteFile(regularFilePath, content, 0644); err != nil {
+			t.Fatalf("Failed to create test file: %v", err)
+		}
+
+		isTar, err := iotest.IsTarFile(regularFilePath)
+		if err != nil {
+			t.Errorf("IsTarFile returned unexpected error: %v", err)
+		}
+		if isTar {
+			t.Error("IsTarFile should not identify regular files as tar archives")
+		}
+	})
+
+	// Test case 5: Non-existent file
+	t.Run("Non-existent file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		nonExistentPath := filepath.Join(tmpDir, "does-not-exist.txt")
+
+		isTar, err := iotest.IsTarFile(nonExistentPath)
+		if err == nil {
+			t.Error("IsTarFile should return error for non-existent file")
+		}
+		if isTar {
+			t.Error("IsTarFile should return false for non-existent file")
+		}
+	})
+
+	// Test case 6: File too small for magic number check
+	t.Run("File too small for magic number", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		smallFilePath := filepath.Join(tmpDir, "small.txt")
+
+		if err := os.WriteFile(smallFilePath, []byte("small file"), 0644); err != nil {
+			t.Fatalf("Failed to create test file: %v", err)
+		}
+
+		isTar, err := iotest.IsTarFile(smallFilePath)
+		if err == nil {
+			t.Error("IsTarFile should return error for file too small for magic number check")
+		}
+		if isTar {
+			t.Error("IsTarFile should return false for file too small for magic number check")
+		}
+	})
+}

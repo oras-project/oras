@@ -17,9 +17,12 @@ package io
 
 import (
 	"archive/tar"
+	"bytes"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
 // TarDirectory creates a tar archive from the contents of sourceDir and writes it to the given writer.
@@ -43,4 +46,30 @@ func TarDirectory(writer io.Writer, sourceDir string) (tarErr error) {
 	}()
 
 	return tw.AddFS(os.DirFS(sourceDir))
+}
+
+// IsTarFile loosely checks whether the given file path refers to a tar archive
+// by examining its extension and magic number.
+func IsTarFile(path string) (bool, error) {
+	// loose check: consider *.tar files as tar archives
+	if strings.EqualFold(filepath.Ext(path), ".tar") {
+		return true, nil
+	}
+
+	// check the magic number to determine the file type
+	fp, err := os.Open(path)
+	if err != nil {
+		return false, fmt.Errorf("failed to open file %q: %w", path, err)
+	}
+	defer func() {
+		_ = fp.Close()
+	}()
+
+	// read 5 bytes ("ustar") at the position where the magic number is located
+	magic := make([]byte, 5)
+	_, err = fp.ReadAt(magic, 257) // ustar magic number starts at byte 257
+	if err != nil {
+		return false, fmt.Errorf("failed to read magic number from file %q: %w", path, err)
+	}
+	return bytes.Equal(magic, []byte("ustar")), nil
 }
