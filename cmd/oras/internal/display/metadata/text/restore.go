@@ -46,9 +46,21 @@ func (rh *RestoreHandler) OnTarLoaded(path string, size int64) error {
 func (rh *RestoreHandler) OnTagsFound(tags []string) error {
 	if len(tags) == 0 {
 		return rh.printer.Printf("No tags found in the backup\n")
-
 	}
-	return rh.printer.Printf("Found %d tag(s) in the backup: %s\n", len(tags), strings.Join(tags, ", "))
+	if len(tags) <= 5 {
+		// print small number of tags in one line
+		return rh.printer.Printf("Found %d tag(s) in the backup: %s\n", len(tags), strings.Join(tags, ", "))
+	}
+	// print large number of tags line by line
+	if err := rh.printer.Printf("Found %d tag(s) in the backup:\n", len(tags)); err != nil {
+		return err
+	}
+	for _, tag := range tags {
+		if err := rh.printer.Println(tag); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // OnArtifactPushed implements metadata.RestoreHandler.

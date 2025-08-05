@@ -110,11 +110,25 @@ func TestRestoreHandler_OnTagsFound(t *testing.T) {
 		want    string
 	}{
 		{
-			name:    "good path with tags",
+			name:    "good path with a few tags",
 			tags:    []string{"v1.0", "latest", "stable"},
 			out:     &bytes.Buffer{},
 			wantErr: false,
 			want:    "Found 3 tag(s) in the backup: v1.0, latest, stable\n",
+		},
+		{
+			name:    "good path with exactly 5 tags",
+			tags:    []string{"v1.0", "v2.0", "latest", "stable", "beta"},
+			out:     &bytes.Buffer{},
+			wantErr: false,
+			want:    "Found 5 tag(s) in the backup: v1.0, v2.0, latest, stable, beta\n",
+		},
+		{
+			name:    "good path with more than 5 tags",
+			tags:    []string{"v1.0", "v2.0", "v3.0", "latest", "stable", "beta", "dev"},
+			out:     &bytes.Buffer{},
+			wantErr: false,
+			want:    "Found 7 tag(s) in the backup:\nv1.0\nv2.0\nv3.0\nlatest\nstable\nbeta\ndev\n",
 		},
 		{
 			name:    "good path with one tag",

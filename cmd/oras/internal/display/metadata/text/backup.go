@@ -64,7 +64,20 @@ func (bh *BackupHandler) OnTagsFound(tags []string) error {
 	if len(tags) == 0 {
 		return bh.printer.Printf("No tags found in %s\n", bh.repo)
 	}
-	return bh.printer.Printf("Found %d tag(s) in %s: %s\n", len(tags), bh.repo, strings.Join(tags, ", "))
+	if len(tags) <= 5 {
+		// print small number of tags in one line
+		return bh.printer.Printf("Found %d tag(s) in %s: %s\n", len(tags), bh.repo, strings.Join(tags, ", "))
+	}
+	// print large number of tags line by line
+	if err := bh.printer.Printf("Found %d tag(s) in %s:\n", len(tags), bh.repo); err != nil {
+		return err
+	}
+	for _, tag := range tags {
+		if err := bh.printer.Println(tag); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Render implements metadata.BackupHandler.
