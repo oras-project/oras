@@ -56,6 +56,13 @@ const (
 	backupPromptSkipped = "Skipped  "
 )
 
+const (
+	restorePromptPushing = "Pushing  "
+	restorePromptPushed  = "Pushed   "
+	restorePromptExists  = "Exists   "
+	restorePromptSkipped = "Skipped  "
+)
+
 // Prompts for index events.
 const (
 	IndexPromptFetching = "Fetching "

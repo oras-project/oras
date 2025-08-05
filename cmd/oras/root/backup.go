@@ -81,32 +81,35 @@ func backupCmd() *cobra.Command {
 		Long: `[Experimental] Back up artifacts from a registry into an OCI image layout, saved either as a directory or a tar archive.
 The output format is determined by the file extension of the specified output path: if it ends with ".tar", the output will be a tar archive; otherwise, it will be a directory.
 
-Example - Back up an artifact and its referrers to a directory:
+Example - Back up a single artifact to a directory:
+  oras backup --output hello localhost:5000/hello:v1
+
+Example - Back up to a tar archive:
+  oras backup --output hello.tar localhost:5000/hello:v1
+
+Example - Back up an artifact along with its referrers (e.g. attestations, SBOMs):
   oras backup --output hello --include-referrers localhost:5000/hello:v1
 
-Example - Back up an artifact and its referrers to a tar archive:
-  oras backup --output hello.tar --include-referrers localhost:5000/hello:v1
+Example - Back up multiple specific tags:
+  oras backup --output hello localhost:5000/hello:v1,v2,v3
 
-Example - Back up multiple tagged artifacts and their referrers:
-  oras backup --output hello --include-referrers localhost:5000/hello:v1,v2,v3
+Example - Back up all tagged artifacts in a repository:
+  oras backup --output hello localhost:5000/hello
 
-Example - Back up all tagged artifacts and their referrers in a repository:
-  oras backup --output hello --include-referrers localhost:5000/hello
+Example - Use Referrers API for discovering referrers:
+  oras backup --output hello --include-referrers --distribution-spec v1.1-referrers-api localhost:5000/hello:v1
 
-Example - Back up an artifact and its referrers discovered via Referrers API:
-  oras backup --output hello --include-referrers --distribution-spec v1.1-referrers-api localhost:5000/hello
-
-Example - Back up an artifact and its referrers discovered via Referrers Tag Schema:
-  oras backup --output hello --include-referrers --distribution-spec v1.1-referrers-tag localhost:5000/hello
+Example - Use Referrers Tag Schema for discovering referrers:
+  oras backup --output hello --include-referrers --distribution-spec v1.1-referrers-tag localhost:5000/hello:v1
 
 Example - Back up from an insecure registry:
-  oras backup --output hello.tar --insecure localhost:5000/hello:v1
+  oras backup --output hello --insecure localhost:5000/hello:v1
 
-Example - Back up from a plain HTTP registry:
-  oras backup --output hello.tar --plain-http localhost:5000/hello:v1
+Example - Back up from a registry using plain HTTP (no TLS):
+  oras backup --output hello --plain-http localhost:5000/hello:v1
 
-Example - Back up with a custom concurrency level:
-  oras backup --output hello.tar --concurrency 6 localhost:5000/hello:v1
+Example - Set custom concurrency level:
+  oras backup --output hello --concurrency 6 localhost:5000/hello:v1
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the artifacts to back up"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -122,7 +125,7 @@ Example - Back up with a custom concurrency level:
 			}
 
 			// parse output format
-			if strings.HasSuffix(opts.output, ".tar") {
+			if strings.EqualFold(filepath.Ext(opts.output), ".tar") {
 				opts.outputFormat = outputFormatTar
 			} else {
 				opts.outputFormat = outputFormatDir
@@ -137,11 +140,14 @@ Example - Back up with a custom concurrency level:
 		},
 	}
 
+	// required flags
 	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "path to the target output, either a tar archive (*.tar) or a directory")
+	_ = cmd.MarkFlagRequired("output")
+	// optional flags
 	cmd.Flags().BoolVarP(&opts.includeReferrers, "include-referrers", "", false, "back up the artifact with its referrers (e.g., attestations, SBOMs)")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 	opts.EnableDistributionSpecFlag()
-	_ = cmd.MarkFlagRequired("output")
+	// apply flags
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Remote)
 }
@@ -201,8 +207,8 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	}
 	if len(tags) == 0 {
 		return &oerrors.Error{
-			Err:            fmt.Errorf("no tags found in repository %s", opts.repository),
-			Recommendation: fmt.Sprintf(`If you want to list available tags in %s, use "oras repo tags"`, opts.repository),
+			Err:            fmt.Errorf("no tags found in repository %q", opts.repository),
+			Recommendation: fmt.Sprintf(`If you want to list available tags in %q, use "oras repo tags"`, opts.repository),
 		}
 	}
 	if err := metadataHandler.OnTagsFound(tags); err != nil {
@@ -241,7 +247,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 			return 0, backupTag(ctx, srcRepo, trackedDst, tag, roots[i], copyGraphOpts)
 		}()
 		if err != nil {
-			return oerrors.UnwrapCopyError(err)
+			return fmt.Errorf("failed to back up tag %q from %q to %q: %w", tag, opts.repository, dstRoot, oerrors.UnwrapCopyError(err))
 		}
 		if err := metadataHandler.OnArtifactPulled(tag, referrerCount); err != nil {
 			return err
@@ -258,7 +264,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 // backupTag copies the artifact identified by the tag from src to dst.
 func backupTag(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, tag string, root ocispec.Descriptor, copyGraphOpts oras.CopyGraphOptions) error {
 	if err := oras.CopyGraph(ctx, src, dst, root, copyGraphOpts); err != nil {
-		return fmt.Errorf("failed to pull tag %q, digest %q: %w", tag, root.Digest.String(), err)
+		return err
 	}
 	if err := dst.Tag(ctx, root, tag); err != nil {
 		return fmt.Errorf("failed to tag %q with %q: %w", root.Digest.String(), tag, err)
@@ -269,7 +275,7 @@ func backupTag(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Graph
 // backupTagWithReferrers copies the artifact identified by tag and its referrers from src to dst.
 func backupTagWithReferrers(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, tag string, root ocispec.Descriptor, extCopyGraphOpts oras.ExtendedCopyGraphOptions) (int, error) {
 	if err := recursiveCopy(ctx, src, dst, tag, root, extCopyGraphOpts); err != nil {
-		return 0, fmt.Errorf("failed to pull tag %q and referrers, digest %q: %w", tag, root.Digest.String(), err)
+		return 0, err
 	}
 	return countReferrers(ctx, dst, tag, root, extCopyGraphOpts)
 }

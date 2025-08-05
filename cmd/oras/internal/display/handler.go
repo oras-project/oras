@@ -238,6 +238,14 @@ func NewBackupHandler(printer *output.Printer, tty *os.File, repo string, fetche
 	return status.NewTextBackupHandler(printer, fetcher), text.NewBackupHandler(repo, printer)
 }
 
+// NewRestoreHandler returns restore handlers.
+func NewRestoreHandler(printer *output.Printer, tty *os.File, fetcher fetcher.Fetcher, dryRun bool) (status.RestoreHandler, metadata.RestoreHandler) {
+	if tty != nil {
+		return status.NewTTYRestoreHandler(tty, fetcher), text.NewRestoreHandler(printer, dryRun)
+	}
+	return status.NewTextRestoreHandler(printer, fetcher), text.NewRestoreHandler(printer, dryRun)
+}
+
 // NewBlobPushHandler returns blob push handlers.
 func NewBlobPushHandler(printer *output.Printer, outputDescriptor bool, pretty bool, desc ocispec.Descriptor, tty *os.File) (status.BlobPushHandler, metadata.BlobPushHandler) {
 	if outputDescriptor {

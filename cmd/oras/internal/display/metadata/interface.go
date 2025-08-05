@@ -119,6 +119,16 @@ type BackupHandler interface {
 	OnBackupCompleted(tagsCount int, path string, duration time.Duration) error
 }
 
+// RestoreHandler handles metadata output for restore events.
+type RestoreHandler interface {
+	Renderer
+
+	OnTarLoaded(path string, size int64) error
+	OnTagsFound(tags []string) error
+	OnArtifactPushed(tag string, referrerCount int) error
+	OnRestoreCompleted(tagsCount int, repo string, duration time.Duration) error
+}
+
 // BlobPushHandler handles metadata output for blob push events.
 type BlobPushHandler interface {
 	Renderer

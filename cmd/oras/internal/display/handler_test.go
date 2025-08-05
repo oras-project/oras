@@ -161,3 +161,28 @@ func TestNewBackupHandler(t *testing.T) {
 		}
 	})
 }
+
+func TestNewRestoreHandler(t *testing.T) {
+	printer := output.NewPrinter(os.Stdout, os.Stderr)
+	mockFetcher := testutils.NewMockFetcher()
+
+	t.Run("with TTY", func(t *testing.T) {
+		statusHandler, metadataHandler := NewRestoreHandler(printer, os.Stdout, mockFetcher.Fetcher, false)
+		if _, ok := statusHandler.(*status.TTYRestoreHandler); !ok {
+			t.Errorf("expected *status.TTYRestoreHandler actual %v", reflect.TypeOf(statusHandler))
+		}
+		if _, ok := metadataHandler.(*text.RestoreHandler); !ok {
+			t.Errorf("expected *text.RestoreHandler actual %v", reflect.TypeOf(metadataHandler))
+		}
+	})
+
+	t.Run("without TTY", func(t *testing.T) {
+		statusHandler, metadataHandler := NewRestoreHandler(printer, nil, mockFetcher.Fetcher, false)
+		if _, ok := statusHandler.(*status.TextRestoreHandler); !ok {
+			t.Errorf("expected *status.TextRestoreHandler actual %v", reflect.TypeOf(statusHandler))
+		}
+		if _, ok := metadataHandler.(*text.RestoreHandler); !ok {
+			t.Errorf("expected *text.RestoreHandler actual %v", reflect.TypeOf(metadataHandler))
+		}
+	})
+}

@@ -160,18 +160,6 @@ func TestTTYBackupHandler_PostCopy(t *testing.T) {
 	if err := bh.PostCopy(ctx, fetcher.OciImage); err != nil {
 		t.Errorf("unexpected error from PostCopy(): %v", err)
 	}
-
-	// fetcher := testutils.NewMockFetcher()
-	// committed := &sync.Map{}
-	// committed.Store(fetcher.ImageLayer.Digest.String(), fetcher.ImageLayer.Annotations[ocispec.AnnotationTitle])
-	// ph := &TTYPushHandler{
-	// 	tracked:   &testutils.PromptDiscarder{},
-	// 	committed: committed,
-	// 	fetcher:   fetcher.Fetcher,
-	// }
-	// if err := ph.PostCopy(ctx, fetcher.OciImage); err != nil {
-	// 	t.Errorf("unexpected error from PostCopy(): %v", err)
-	// }
 }
 
 func TestTTYBackupHandler_PostCopy_errGetSuccessor(t *testing.T) {
@@ -203,6 +191,93 @@ func TestTTYBackupHandler_PostCopy_errPrompt(t *testing.T) {
 		fetcher:   fetcher.Fetcher,
 	}
 	if err := bh.PostCopy(ctx, fetcher.OciImage); err != wantedError {
+		t.Errorf("PostCopy() should return expected error got %v", err)
+	}
+}
+
+func TestNewTTYRestoreHandler(t *testing.T) {
+	handler := NewTTYRestoreHandler(os.Stdout, nil)
+	if handler == nil {
+		t.Error("NewTTYRestoreHandler() should not return nil")
+	}
+}
+
+func TestTTYRestoreHandler_StartTracking_invalidTTY(t *testing.T) {
+	rh := NewTTYRestoreHandler(os.Stdin, nil)
+	gt := memory.New()
+	if _, err := rh.StartTracking(gt); err == nil {
+		t.Error("StartTracking() should return an error for non-tty file")
+	}
+}
+
+func TestTTYRestoreHandler_OnCopySkipped(t *testing.T) {
+	fetcher := testutils.NewMockFetcher()
+	rh := &TTYRestoreHandler{
+		tracked:   &testutils.PromptDiscarder{},
+		committed: &sync.Map{},
+		fetcher:   fetcher.Fetcher,
+	}
+	if err := rh.OnCopySkipped(ctx, fetcher.ImageLayer); err != nil {
+		t.Errorf("OnCopySkipped() should not return an error: %v", err)
+	}
+
+	// Verify that the descriptor is stored in the committed map
+	if _, ok := rh.committed.Load(fetcher.ImageLayer.Digest.String()); !ok {
+		t.Error("OnCopySkipped() should store the descriptor in the committed map")
+	}
+}
+
+func TestTTYRestoreHandler_PreCopy(t *testing.T) {
+	fetcher := testutils.NewMockFetcher()
+	rh := &TTYRestoreHandler{}
+	if err := rh.PreCopy(ctx, fetcher.ImageLayer); err != nil {
+		t.Errorf("PreCopy() should not return an error: %v", err)
+	}
+}
+
+func TestTTYRestoreHandler_PostCopy(t *testing.T) {
+	fetcher := testutils.NewMockFetcher()
+	committed := &sync.Map{}
+	committed.Store(fetcher.ImageLayer.Digest.String(), fetcher.ImageLayer.Annotations[ocispec.AnnotationTitle])
+	rh := &TTYRestoreHandler{
+		tracked:   &testutils.PromptDiscarder{},
+		committed: committed,
+		fetcher:   fetcher.Fetcher,
+	}
+	if err := rh.PostCopy(ctx, fetcher.OciImage); err != nil {
+		t.Errorf("unexpected error from PostCopy(): %v", err)
+	}
+}
+
+func TestTTYRestoreHandler_PostCopy_errGetSuccessor(t *testing.T) {
+	errorFetcher := testutils.NewErrorFetcher()
+	prompt := &testutils.PromptDiscarder{}
+	rh := &TTYRestoreHandler{
+		tracked:   prompt,
+		committed: &sync.Map{},
+		fetcher:   errorFetcher,
+	}
+
+	err := rh.PostCopy(ctx, ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageManifest,
+	})
+
+	if err == nil || err.Error() != errorFetcher.ExpectedError.Error() {
+		t.Errorf("PostCopy() should return expected error got %v", err)
+	}
+}
+
+func TestTTYRestoreHandler_PostCopy_errPrompt(t *testing.T) {
+	fetcher := testutils.NewMockFetcher()
+	committed := &sync.Map{}
+	committed.Store(fetcher.ImageLayer.Digest.String(), fetcher.ImageLayer.Annotations[ocispec.AnnotationTitle]+"1")
+	wantedError := errors.New("wanted error")
+	rh := &TTYRestoreHandler{
+		tracked:   testutils.NewErrorPrompt(wantedError),
+		committed: committed,
+		fetcher:   fetcher.Fetcher,
+	}
+	if err := rh.PostCopy(ctx, fetcher.OciImage); err != wantedError {
 		t.Errorf("PostCopy() should return expected error got %v", err)
 	}
 }

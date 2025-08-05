@@ -124,6 +124,7 @@ var _ = Describe("ORAS users:", func() {
 
 			ORAS("backup", "--output", outDir, srcRef).
 				MatchStatus(foobarStates, true, len(foobarStates)).
+				MatchKeyWords("Successfully backed up 1 tag(s)").
 				Exec()
 
 			// Verify backup output structure
@@ -143,6 +144,7 @@ var _ = Describe("ORAS users:", func() {
 			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, srcRef).
 				MatchStatus(foobarStates, true, len(foobarStates)).
 				MatchKeyWords("2 referrer(s)").
+				MatchKeyWords("Successfully backed up 1 tag(s)").
 				Exec()
 
 			// Verify backup output structure
@@ -165,6 +167,7 @@ var _ = Describe("ORAS users:", func() {
 
 			ORAS("backup", "--output", outDir, srcRef).
 				MatchStatus(stateKeys, true, len(stateKeys)).
+				MatchKeyWords("Successfully backed up 1 tag(s)").
 				Exec()
 
 			// Verify backup output structure
@@ -184,6 +187,7 @@ var _ = Describe("ORAS users:", func() {
 			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, srcRef).
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				MatchKeyWords("3 referrer(s)").
+				MatchKeyWords("Successfully backed up 1 tag(s)").
 				Exec()
 
 			// Verify backup output structure
@@ -218,6 +222,7 @@ var _ = Describe("ORAS users:", func() {
 			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, srcRef).
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				MatchKeyWords("3 referrer(s)").
+				MatchKeyWords("Successfully backed up 1 tag(s)").
 				Exec()
 
 				// Verify backup output structure
@@ -253,6 +258,24 @@ var _ = Describe("ORAS users:", func() {
 			dstRef := LayoutRef(outTar, foobar.Tag)
 			compareBackupRef(srcRef, dstRef)
 		})
+
+		It("should successfully backup an image to tar file (case insensitive)", func() {
+			tmpDir := GinkgoT().TempDir()
+			outTar := filepath.Join(tmpDir, "backup-single-tag.tAr")
+			srcRef := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
+			foobarStates := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(oras.MediaTypeUnknownConfig))
+
+			ORAS("backup", "--output", outTar, srcRef).
+				MatchStatus(foobarStates, true, len(foobarStates)).
+				Exec()
+
+			// Verify backup structure
+			verifyBackupTarStructure(outTar)
+
+			// Verify backed up content
+			dstRef := LayoutRef(outTar, foobar.Tag)
+			compareBackupRef(srcRef, dstRef)
+		})
 	})
 
 	When("backing up multiple tags", func() {
@@ -269,6 +292,7 @@ var _ = Describe("ORAS users:", func() {
 			// Specify multiple tags in format: repo:tag1,tag2
 			ORAS("backup", "--output", outDir, srcRefs).
 				MatchStatus(stateKeys, true, len(stateKeys)).
+				MatchKeyWords("Successfully backed up 2 tag(s)").
 				Exec()
 
 			// Verify backup output structure
@@ -294,6 +318,7 @@ var _ = Describe("ORAS users:", func() {
 
 			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, srcRefs).
 				MatchStatus(stateKeys, true, len(stateKeys)).
+				MatchKeyWords("Successfully backed up 2 tag(s)").
 				Exec()
 
 			// Verify backup output structure
@@ -330,6 +355,7 @@ var _ = Describe("ORAS users:", func() {
 			srcRefs := fmt.Sprintf("%s/%s", ZOTHost, testRepo)
 			ORAS("backup", "--output", outDir, srcRefs).
 				MatchStatus(stateKeys, true, len(stateKeys)).
+				MatchKeyWords("Successfully backed up 2 tag(s)").
 				Exec()
 
 			// Verify backup output structure
@@ -363,6 +389,7 @@ var _ = Describe("ORAS users:", func() {
 			srcRefs := fmt.Sprintf("%s/%s", ZOTHost, testRepo)
 			ORAS("backup", "--output", outDir, Flags.IncludeReferrers, srcRefs).
 				MatchStatus(stateKeys, true, len(stateKeys)).
+				MatchKeyWords("Successfully backed up 2 tag(s)").
 				Exec()
 
 			// Verify backup output structure
@@ -433,7 +460,7 @@ var _ = Describe("ORAS users:", func() {
 
 			stateKeys := ma.IndexStateKeys
 
-			ORAS("backup", "--output", outDir, "--concurrency", "5", src).
+			ORAS("backup", "--output", outDir, "--concurrency", "1", src).
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				Exec()
 

@@ -112,7 +112,7 @@ func TestBackupHandler_OnArtifactPulled(t *testing.T) {
 			name:    "good path",
 			out:     &bytes.Buffer{},
 			wantErr: false,
-			want:    fmt.Sprintf("Pulled tag %s and %d referrer(s)\n", tag, referrerCount),
+			want:    fmt.Sprintf("Pulled tag %s with %d referrer(s)\n", tag, referrerCount),
 		},
 	}
 	for _, tt := range tests {
@@ -142,11 +142,25 @@ func TestBackupHandler_OnTagsFound(t *testing.T) {
 		want    string
 	}{
 		{
-			name:    "good path with tags",
+			name:    "good path with few tags",
 			tags:    []string{"t1", "t2"},
 			out:     &bytes.Buffer{},
 			wantErr: false,
 			want:    fmt.Sprintf("Found 2 tag(s) in %s: t1, t2\n", repo),
+		},
+		{
+			name:    "good path with exactly 5 tags",
+			tags:    []string{"t1", "t2", "t3", "t4", "t5"},
+			out:     &bytes.Buffer{},
+			wantErr: false,
+			want:    fmt.Sprintf("Found 5 tag(s) in %s: t1, t2, t3, t4, t5\n", repo),
+		},
+		{
+			name:    "good path with more than 5 tags",
+			tags:    []string{"t1", "t2", "t3", "t4", "t5", "t6"},
+			out:     &bytes.Buffer{},
+			wantErr: false,
+			want:    fmt.Sprintf("Found 6 tag(s) in %s:\nt1\nt2\nt3\nt4\nt5\nt6\n", repo),
 		},
 		{
 			name:    "good path with no tags",

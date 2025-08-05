@@ -294,6 +294,72 @@ func (bh *TTYBackupHandler) PostCopy(ctx context.Context, desc ocispec.Descripto
 	return nil
 }
 
+// TTYRestoreHandler handles tty status output for restore events.
+type TTYRestoreHandler struct {
+	tty       *os.File
+	committed *sync.Map
+	tracked   track.GraphTarget
+	fetcher   content.Fetcher
+}
+
+// NewTTYRestoreHandler returns a new handler for restore command.
+func NewTTYRestoreHandler(tty *os.File, fetcher content.Fetcher) RestoreHandler {
+	return &TTYRestoreHandler{
+		tty:       tty,
+		committed: &sync.Map{},
+		fetcher:   fetcher,
+	}
+}
+
+// StartTracking returns a tracked target from a graph target.
+func (rh *TTYRestoreHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
+	prompts := map[progress.State]string{
+		progress.StateInitialized:  restorePromptPushing,
+		progress.StateTransmitting: restorePromptPushing,
+		progress.StateTransmitted:  restorePromptPushed,
+		progress.StateExists:       restorePromptExists,
+		progress.StateSkipped:      restorePromptSkipped,
+	}
+
+	var err error
+	rh.tracked, err = track.NewTarget(gt, prompts, rh.tty)
+	if err != nil {
+		return nil, err
+	}
+	return rh.tracked, err
+}
+
+// StopTracking ends the restore tracking for the target.
+func (rh *TTYRestoreHandler) StopTracking() error {
+	return rh.tracked.Close()
+}
+
+// OnCopySkipped implements OnCopySkipped of RestoreHandler.
+func (rh *TTYRestoreHandler) OnCopySkipped(ctx context.Context, desc ocispec.Descriptor) error {
+	rh.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+	return rh.tracked.Report(desc, progress.StateExists)
+}
+
+// PreCopy implements PreCopy of RestoreHandler.
+func (rh *TTYRestoreHandler) PreCopy(ctx context.Context, desc ocispec.Descriptor) error {
+	return nil
+}
+
+// PostCopy implements PostCopy of RestoreHandler.
+func (rh *TTYRestoreHandler) PostCopy(ctx context.Context, desc ocispec.Descriptor) error {
+	rh.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
+	successors, err := graph.FilteredSuccessors(ctx, desc, rh.fetcher, DeduplicatedFilter(rh.committed))
+	if err != nil {
+		return err
+	}
+	for _, successor := range successors {
+		if err = rh.tracked.Report(successor, progress.StateSkipped); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // TTYBlobPushHandler handles tty status output for blob push events.
 type TTYBlobPushHandler struct {
 	desc    ocispec.Descriptor
