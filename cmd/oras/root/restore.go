@@ -145,7 +145,7 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 	var srcOCI oras.ReadOnlyGraphTarget
 	fi, err := os.Stat(opts.input)
 	if err != nil {
-		return fmt.Errorf("failed to stat input path %q: %w", opts.input, err)
+		return fmt.Errorf("failed to access input path %q: %w", opts.input, err)
 	}
 	switch {
 	case fi.Mode().IsRegular():
