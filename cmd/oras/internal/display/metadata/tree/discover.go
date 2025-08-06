@@ -46,19 +46,26 @@ type discoverHandler struct {
 }
 
 // NewDiscoverHandler creates a new handler for discover events.
-func NewDiscoverHandler(out io.Writer, path string, root ocispec.Descriptor, verbose bool, tty *os.File) metadata.DiscoverHandler {
+func NewDiscoverHandler(out io.Writer, path string, root ocispec.Descriptor, children []ocispec.Descriptor, verbose bool, tty *os.File) metadata.DiscoverHandler {
 	rootDigest := fmt.Sprintf("%s@%s", path, root.Digest)
 	if tty != nil {
 		rootDigest = digestColor.Apply(rootDigest)
 	}
 	treeRoot := tree.New(rootDigest)
+	theMap := make(map[digest.Digest]*tree.Node)
+	theMap[root.Digest] = treeRoot
+
+	// adding the children to the root node
+	for _, child := range children {
+		childnode := treeRoot.AddPath("children manifests", child.MediaType, child.Digest.String())
+		theMap[child.Digest] = childnode
+	}
+
 	return &discoverHandler{
-		out:  out,
-		path: path,
-		root: treeRoot,
-		nodes: map[digest.Digest]*tree.Node{
-			root.Digest: treeRoot,
-		},
+		out:     out,
+		path:    path,
+		root:    treeRoot,
+		nodes:   theMap,
 		verbose: verbose,
 		tty:     tty,
 	}
