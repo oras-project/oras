@@ -115,5 +115,15 @@ func copyFile(srcFile, dstFile string) error {
 	defer from.Close()
 
 	_, err = io.Copy(to, from)
+	if err != nil {
+		return err
+	}
+
+	// Also preserve file permissions.
+	srcStat, err := from.Stat()
+	if err != nil {
+		return err
+	}
+	err = os.Chmod(dstFile, srcStat.Mode())
 	return err
 }
