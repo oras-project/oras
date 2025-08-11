@@ -74,6 +74,14 @@ func runCheck(cmd *cobra.Command, opts *checkOptions) error {
 	if descriptor.IsIndex(desc) {
 		return fmt.Errorf("index validation is not yet supported")
 	}
+	if err := checkImage(ctx, target, desc); err != nil {
+		return err
+	}
+	return opts.Printer.Printf("check successful!\n")
+}
+
+// checkImage verifies the manifest, blobs and subject of an image.
+func checkImage(ctx context.Context, target oras.GraphTarget, desc ocispec.Descriptor) error {
 	// validate manifest
 	manifest, err := checkManifest(ctx, target, desc)
 	if err != nil {
@@ -85,7 +93,11 @@ func runCheck(cmd *cobra.Command, opts *checkOptions) error {
 	if err := checkBlobs(ctx, target, blobs); err != nil {
 		return err
 	}
-	return opts.Printer.Printf("check successful!\n")
+	// validate the subject, if applicable
+	if manifest.Subject != nil {
+		return checkImage(ctx, target, *manifest.Subject)
+	}
+	return nil
 }
 
 // checkManifest verifies the mediaType, digest and size against the given
