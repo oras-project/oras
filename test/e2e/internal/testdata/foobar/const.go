@@ -17,6 +17,7 @@ package foobar
 
 import (
 	"path/filepath"
+
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/test/e2e/internal/utils/match"
@@ -28,7 +29,6 @@ var (
 	ManifestStateKey        = match.StateKey{Digest: "fd6ed2f36b54", Name: "application/vnd.oci.image.manifest.v1+json"}
 	PermissionDirectoryName = "test-permission-dir"
 	PermissionFileName      = filepath.Join(PermissionDirectoryName, "test-permission-file")
-	NoPermissionFileName    = filepath.Join(PermissionDirectoryName, "test-no-permission-file")
 
 	FileLayerNames = []string{
 		"foobar/foo1",

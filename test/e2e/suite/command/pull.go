@@ -366,9 +366,8 @@ var _ = Describe("OCI spec 1.1 registry users:", func() {
 
 			have, err := os.Stat(filepath.Join(pullRoot, foobar.PermissionFileName))
 			Expect(err).NotTo(HaveOccurred())
-			want, err := os.Stat(filepath.Join(pushRoot, foobar.NoPermissionFileName))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(have.Mode().Perm()).ToNot(Equal(want.Mode().Perm()))
+			expectedPermissions := os.FileMode(0644)
+			Expect(have.Mode().Perm()).ToNot(Equal(expectedPermissions))
 		})
 	})
 })
@@ -513,9 +512,8 @@ var _ = Describe("OCI image layout users:", func() {
 
 			have, err := os.Stat(filepath.Join(pullRoot, foobar.PermissionFileName))
 			Expect(err).NotTo(HaveOccurred())
-			want, err := os.Stat(filepath.Join(pushRoot, foobar.NoPermissionFileName))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(have.Mode().Perm()).ToNot(Equal(want.Mode().Perm()))
+			expectedPermissions := os.FileMode(0644)
+			Expect(have.Mode().Perm()).ToNot(Equal(expectedPermissions))
 		})
 	})
 })
