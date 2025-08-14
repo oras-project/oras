@@ -131,15 +131,15 @@ func checkBlobs(ctx context.Context, target oras.GraphTarget, blobs []ocispec.De
 		if err != nil {
 			switch {
 			case errors.Is(err, errdef.ErrNotFound):
-				return fmt.Errorf("blob not found: %w", err)
+				return fmt.Errorf("check failed for blob %s: blob not found: %w", blob.Digest, err)
 			case errors.Is(err, io.ErrUnexpectedEOF):
-				return fmt.Errorf("invalid blob size: expect size=%d: %w", blob.Size, err)
+				return fmt.Errorf("check failed for blob %s: invalid blob size: expect size=%d: %w", blob.Digest, blob.Size, err)
 			case errors.Is(err, content.ErrTrailingData):
-				return fmt.Errorf("invalid blob size: expect size=%d: %w", blob.Size, err)
+				return fmt.Errorf("check failed for blob %s: invalid blob size: expect size=%d: %w", blob.Digest, blob.Size, err)
 			case errors.Is(err, content.ErrMismatchedDigest):
-				return fmt.Errorf("invalid blob digest: expect digest=%s: %w", blob.Digest, err)
+				return fmt.Errorf("check failed for blob %s: invalid blob digest: expect digest=%s: %w", blob.Digest, blob.Digest, err)
 			default:
-				return err
+				return fmt.Errorf("check failed for blob %s: %w", blob.Digest, err)
 			}
 		}
 	}
