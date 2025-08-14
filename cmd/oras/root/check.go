@@ -18,12 +18,15 @@ package root
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
@@ -126,7 +129,18 @@ func checkBlobs(ctx context.Context, target oras.GraphTarget, blobs []ocispec.De
 	for _, blob := range blobs {
 		_, err := content.FetchAll(ctx, target, blob)
 		if err != nil {
-			return err
+			switch {
+			case errors.Is(err, errdef.ErrNotFound):
+				return fmt.Errorf("blob not found: %w", err)
+			case errors.Is(err, io.ErrUnexpectedEOF):
+				return fmt.Errorf("invalid blob size: expect size=%d: %w", blob.Size, err)
+			case errors.Is(err, content.ErrTrailingData):
+				return fmt.Errorf("invalid blob size: expect size=%d: %w", blob.Size, err)
+			case errors.Is(err, content.ErrMismatchedDigest):
+				return fmt.Errorf("invalid blob digest: expect digest=%s: %w", blob.Digest, err)
+			default:
+				return err
+			}
 		}
 	}
 	return nil
