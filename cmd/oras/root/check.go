@@ -32,12 +32,17 @@ import (
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/descriptor"
+	"oras.land/oras/internal/docker"
 )
 
 type checkOptions struct {
 	option.Common
 	option.Target
 }
+
+// errMismatchedMediaType is returned when the manifest media type is different
+// from the descriptor media type.
+var errMismatchedMediaType = errors.New("the manifest media type is different from the descriptor media type")
 
 func checkCmd() *cobra.Command {
 	var opts checkOptions
@@ -62,6 +67,7 @@ Example - Check TBD
 }
 
 func runCheck(cmd *cobra.Command, opts *checkOptions) error {
+	opts.Printer.Verbose = true
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	target, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
@@ -74,74 +80,132 @@ func runCheck(cmd *cobra.Command, opts *checkOptions) error {
 	if !descriptor.IsManifest(desc) {
 		return fmt.Errorf("the reference %s is not a manifest", opts.Reference)
 	}
-	if descriptor.IsIndex(desc) {
-		return fmt.Errorf("index validation is not yet supported")
-	}
-	if err := checkImage(ctx, target, desc); err != nil {
+	if err := checkGraph(ctx, target, desc, opts); err != nil {
 		return err
 	}
 	return opts.Printer.Printf("check successful!\n")
 }
 
-// checkImage verifies the manifest, blobs and subject of an image.
-func checkImage(ctx context.Context, target oras.GraphTarget, desc ocispec.Descriptor) error {
-	// validate manifest
-	manifest, err := checkManifest(ctx, target, desc)
+// checkGraph
+func checkGraph(ctx context.Context, target oras.GraphTarget, root ocispec.Descriptor, opts *checkOptions) error {
+	opts.Printer.PrintStatus(root, "Checking")
+	successors, err := checkNode(ctx, target, root)
 	if err != nil {
 		return err
 	}
-	// validate the blobs
-	blobs := []ocispec.Descriptor{manifest.Config}
-	blobs = append(blobs, manifest.Layers...)
-	if err := checkBlobs(ctx, target, blobs); err != nil {
-		return err
-	}
-	// validate the subject, if applicable
-	if manifest.Subject != nil {
-		return checkImage(ctx, target, *manifest.Subject)
+	opts.Printer.PrintStatus(root, "Checked")
+	for _, successor := range successors {
+		err = checkGraph(ctx, target, successor, opts)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+// checkNode
+func checkNode(ctx context.Context, target oras.GraphTarget, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+	if descriptor.IsManifest(desc) {
+		manifestBytes, err := checkManifest(ctx, target, desc)
+		if err != nil {
+			return nil, err
+		}
+		return getSuccessors(manifestBytes, desc)
+	}
+	return nil, checkBlob(ctx, target, desc)
 }
 
 // checkManifest verifies the mediaType, digest and size against the given
 // descriptor and returns the parsed manifest.
-func checkManifest(ctx context.Context, target oras.GraphTarget, desc ocispec.Descriptor) (ocispec.Manifest, error) {
+func checkManifest(ctx context.Context, target oras.GraphTarget, desc ocispec.Descriptor) ([]byte, error) {
 	// verify size and digest
 	manifestBytes, err := content.FetchAll(ctx, target, desc)
 	if err != nil {
-		return ocispec.Manifest{}, err
+		switch {
+		case errors.Is(err, errdef.ErrNotFound):
+			return nil, fmt.Errorf("check failed for manifest %s: manifest not found: %w", desc.Digest, err)
+		case errors.Is(err, io.ErrUnexpectedEOF):
+			return nil, fmt.Errorf("check failed for manifest %s: invalid manifest size: expect size=%d: %w", desc.Digest, desc.Size, err)
+		case errors.Is(err, content.ErrTrailingData):
+			return nil, fmt.Errorf("check failed for manifest %s: invalid manifest size: expect size=%d: %w", desc.Digest, desc.Size, err)
+		case errors.Is(err, content.ErrMismatchedDigest):
+			return nil, fmt.Errorf("check failed for manifest %s: invalid manifest digest: expect digest=%s: %w", desc.Digest, desc.Digest, err)
+		default:
+			return nil, fmt.Errorf("check failed for manifest %s: %w", desc.Digest, err)
+		}
 	}
 	// parse the fetched manifest
-	var manifest ocispec.Manifest
-	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
-		return ocispec.Manifest{}, err
+	type mediaType struct {
+		MediaType string `json:"mediaType,omitempty"`
+	}
+	var mt mediaType
+	if err := json.Unmarshal(manifestBytes, &mt); err != nil {
+		return nil, err
 	}
 	// verify media type
-	if manifest.MediaType != desc.MediaType {
-		return ocispec.Manifest{}, fmt.Errorf("media type mismatch: %q != %q", manifest.MediaType, desc.MediaType)
+	if mt.MediaType != desc.MediaType {
+		return nil, fmt.Errorf("media type mismatch: %q != %q: %w", mt.MediaType, desc.MediaType, errMismatchedMediaType)
 	}
-	return manifest, nil
+	return manifestBytes, nil
 }
 
-// checkBlobs verifies the digest and size against the given blob descriptor.
-// Should leverage concurrency later.
-func checkBlobs(ctx context.Context, target oras.GraphTarget, blobs []ocispec.Descriptor) error {
-	for _, blob := range blobs {
-		_, err := content.FetchAll(ctx, target, blob)
-		if err != nil {
-			switch {
-			case errors.Is(err, errdef.ErrNotFound):
-				return fmt.Errorf("check failed for blob %s: blob not found: %w", blob.Digest, err)
-			case errors.Is(err, io.ErrUnexpectedEOF):
-				return fmt.Errorf("check failed for blob %s: invalid blob size: expect size=%d: %w", blob.Digest, blob.Size, err)
-			case errors.Is(err, content.ErrTrailingData):
-				return fmt.Errorf("check failed for blob %s: invalid blob size: expect size=%d: %w", blob.Digest, blob.Size, err)
-			case errors.Is(err, content.ErrMismatchedDigest):
-				return fmt.Errorf("check failed for blob %s: invalid blob digest: expect digest=%s: %w", blob.Digest, blob.Digest, err)
-			default:
-				return fmt.Errorf("check failed for blob %s: %w", blob.Digest, err)
-			}
+// checkBlob verifies the digest and size against the given blob descriptor.
+func checkBlob(ctx context.Context, target oras.GraphTarget, desc ocispec.Descriptor) error {
+	_, err := content.FetchAll(ctx, target, desc)
+	if err != nil {
+		switch {
+		case errors.Is(err, errdef.ErrNotFound):
+			return fmt.Errorf("check failed for blob %s: blob not found: %w", desc.Digest, err)
+		case errors.Is(err, io.ErrUnexpectedEOF):
+			return fmt.Errorf("check failed for blob %s: invalid blob size: expect size=%d: %w", desc.Digest, desc.Size, err)
+		case errors.Is(err, content.ErrTrailingData):
+			return fmt.Errorf("check failed for blob %s: invalid blob size: expect size=%d: %w", desc.Digest, desc.Size, err)
+		case errors.Is(err, content.ErrMismatchedDigest):
+			return fmt.Errorf("check failed for blob %s: invalid blob digest: expect digest=%s: %w", desc.Digest, desc.Digest, err)
+		default:
+			return fmt.Errorf("check failed for blob %s: %w", desc.Digest, err)
 		}
 	}
 	return nil
+}
+
+func getSuccessors(bytes []byte, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+	switch desc.MediaType {
+	case docker.MediaTypeManifest:
+		// OCI manifest schema can be used to marshal docker manifest
+		var manifest ocispec.Manifest
+		if err := json.Unmarshal(bytes, &manifest); err != nil {
+			return nil, err
+		}
+		return append([]ocispec.Descriptor{manifest.Config}, manifest.Layers...), nil
+	case ocispec.MediaTypeImageManifest:
+		var manifest ocispec.Manifest
+		if err := json.Unmarshal(bytes, &manifest); err != nil {
+			return nil, err
+		}
+		var nodes []ocispec.Descriptor
+		if manifest.Subject != nil {
+			nodes = append(nodes, *manifest.Subject)
+		}
+		nodes = append(nodes, manifest.Config)
+		return append(nodes, manifest.Layers...), nil
+	case docker.MediaTypeManifestList:
+		// OCI manifest index schema can be used to marshal docker manifest list
+		var index ocispec.Index
+		if err := json.Unmarshal(bytes, &index); err != nil {
+			return nil, err
+		}
+		return index.Manifests, nil
+	case ocispec.MediaTypeImageIndex:
+		var index ocispec.Index
+		if err := json.Unmarshal(bytes, &index); err != nil {
+			return nil, err
+		}
+		var nodes []ocispec.Descriptor
+		if index.Subject != nil {
+			nodes = append(nodes, *index.Subject)
+		}
+		return append(nodes, index.Manifests...), nil
+	}
+	return nil, nil
 }

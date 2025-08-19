@@ -30,9 +30,9 @@ import (
 )
 
 var (
+	// blob test data
 	goodBlob                     = "good blob"
 	goodBlobDescriptor           = content.NewDescriptorFromBytes(ocispec.MediaTypeImageLayer, []byte(goodBlob))
-	nonexistentBlobDescriptor    = ocispec.Descriptor{MediaType: ocispec.MediaTypeImageLayer, Digest: "sha256:9d16f5505246424aed7116cb21216704ba8c919997d0f1f37e154c11d509e1d2", Size: 123}
 	badBlobSizeSmaller           = "bad blob size smaller than the descriptor size"
 	badBlobSizeSmallerDescriptor = ocispec.Descriptor{
 		MediaType: ocispec.MediaTypeImageLayer,
@@ -51,6 +51,32 @@ var (
 		Digest:    "sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb",
 		Size:      int64(len(badBlobDigest)),
 	}
+	nonexistentBlobDescriptor = ocispec.Descriptor{MediaType: ocispec.MediaTypeImageLayer, Digest: "sha256:9d16f5505246424aed7116cb21216704ba8c919997d0f1f37e154c11d509e1d2", Size: 123}
+
+	// manifest test data
+	goodManifest                     = `{"mediaType":"application/vnd.oci.image.manifest.v1+json"}`
+	goodManifestDescriptor           = content.NewDescriptorFromBytes(ocispec.MediaTypeImageManifest, []byte(goodManifest))
+	badManifestSizeSmaller           = `{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json"}`
+	badManifestSizeSmallerDescriptor = ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Digest:    digest.FromBytes([]byte(badManifestSizeSmaller)),
+		Size:      int64(len(badManifestSizeSmaller)) + 1,
+	}
+	badManifestSizeLarger           = `{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json"},"config":{}`
+	badManifestSizeLargerDescriptor = ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Digest:    digest.FromBytes([]byte(badManifestSizeLarger)),
+		Size:      int64(len(badManifestSizeLarger)) - 1,
+	}
+	badManifestDigest           = `{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json"},"config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:fe9dbc99451d0517d65e048c309f0b5afb2cc513b7a3d456b6cc29fe641386c5","size":53}`
+	badManifestDigestDescriptor = ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Digest:    "sha256:fe9dbc99451d0517d65e048c309f0b5afb2cc513b7a3d456b6cc29fe641386c5",
+		Size:      int64(len(badManifestDigest)),
+	}
+	badManifestMismatchedMediaType           = `{"mediaType":"application/vnd.docker.distribution.manifest.list.v2+json"}`
+	badManifestMismatchedMediaTypeDescriptor = content.NewDescriptorFromBytes(ocispec.MediaTypeImageManifest, []byte(badManifestMismatchedMediaType))
+	nonexistentManifestDescriptor            = ocispec.Descriptor{MediaType: ocispec.MediaTypeImageManifest, Digest: "sha256:9d16f5505246424aed7116cb21216704ba8c919997d0f1f37e154c11d509e1d2", Size: 123}
 )
 
 type TestGraphTarget struct {
@@ -62,19 +88,22 @@ func (gt *TestGraphTarget) Exists(ctx context.Context, target ocispec.Descriptor
 }
 
 func (gt *TestGraphTarget) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
-	if target.Digest == badBlobSizeSmallerDescriptor.Digest {
+	switch target.Digest {
+	case badBlobSizeSmallerDescriptor.Digest:
 		return io.NopCloser(bytes.NewReader([]byte(badBlobSizeSmaller))), nil
-	}
-	if target.Digest == badBlobSizeSmallerDescriptor.Digest {
-		return io.NopCloser(bytes.NewReader([]byte(badBlobSizeSmaller))), nil
-	}
-	if target.Digest == badBlobSizeLargerDescriptor.Digest {
+	case badBlobSizeLargerDescriptor.Digest:
 		return io.NopCloser(bytes.NewReader([]byte(badBlobSizeLarger))), nil
-	}
-	if target.Digest == badBlobDigestDescriptor.Digest {
+	case badBlobDigestDescriptor.Digest:
 		return io.NopCloser(bytes.NewReader([]byte(badBlobDigest))), nil
+	case badManifestSizeSmallerDescriptor.Digest:
+		return io.NopCloser(bytes.NewReader([]byte(badManifestSizeSmaller))), nil
+	case badManifestSizeLargerDescriptor.Digest:
+		return io.NopCloser(bytes.NewReader([]byte(badManifestSizeLarger))), nil
+	case badManifestDigestDescriptor.Digest:
+		return io.NopCloser(bytes.NewReader([]byte(badManifestDigest))), nil
+	default:
+		return gt.store.Fetch(ctx, target)
 	}
-	return gt.store.Fetch(ctx, target)
 }
 
 func (gt *TestGraphTarget) Predecessors(ctx context.Context, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
@@ -98,47 +127,97 @@ func prepareTestGraphTarget(ctx context.Context) *TestGraphTarget {
 		store: memory.New(),
 	}
 	gt.Push(ctx, goodBlobDescriptor, bytes.NewReader([]byte(goodBlob)))
+	gt.Push(ctx, goodManifestDescriptor, bytes.NewReader([]byte(goodManifest)))
+	gt.Push(ctx, badManifestMismatchedMediaTypeDescriptor, bytes.NewReader([]byte(badManifestMismatchedMediaType)))
 	return gt
 }
 
 func Test_checkBlobs(t *testing.T) {
 	tests := []struct {
 		name          string
-		blobs         []ocispec.Descriptor
+		blob          ocispec.Descriptor
 		expectedError error
 	}{
 		{
 			name:          "a valid blob",
-			blobs:         []ocispec.Descriptor{goodBlobDescriptor},
+			blob:          goodBlobDescriptor,
 			expectedError: nil,
 		},
 		{
-			name:          "a nonexistent blob",
-			blobs:         []ocispec.Descriptor{nonexistentBlobDescriptor},
-			expectedError: errdef.ErrNotFound,
-		},
-		{
 			name:          "a blob with smaller size than the descriptor size",
-			blobs:         []ocispec.Descriptor{badBlobSizeSmallerDescriptor},
+			blob:          badBlobSizeSmallerDescriptor,
 			expectedError: io.ErrUnexpectedEOF,
 		},
 		{
 			name:          "a blob with larger size than the descriptor size",
-			blobs:         []ocispec.Descriptor{badBlobSizeLargerDescriptor},
+			blob:          badBlobSizeLargerDescriptor,
 			expectedError: content.ErrTrailingData,
 		},
 		{
 			name:          "a blob with mismatched digest from the descriptor digest",
-			blobs:         []ocispec.Descriptor{badBlobDigestDescriptor},
+			blob:          badBlobDigestDescriptor,
 			expectedError: content.ErrMismatchedDigest,
 		},
+		{
+			name:          "a nonexistent blob",
+			blob:          nonexistentBlobDescriptor,
+			expectedError: errdef.ErrNotFound,
+		},
 	}
+	ctx := context.Background()
+	gt := prepareTestGraphTarget(ctx)
 	for _, tt := range tests {
-		ctx := context.Background()
-		gt := prepareTestGraphTarget(ctx)
 		t.Run(tt.name, func(t *testing.T) {
-			if err := checkBlobs(ctx, gt, tt.blobs); !errors.Is(err, tt.expectedError) {
-				t.Errorf("checkBlobs() error = %v, wantErr %v", err, tt.expectedError)
+			if err := checkBlob(ctx, gt, tt.blob); !errors.Is(err, tt.expectedError) {
+				t.Errorf("checkBlob() error = %v, wantErr %v", err, tt.expectedError)
+			}
+		})
+	}
+}
+
+func Test_checkManifest(t *testing.T) {
+	tests := []struct {
+		name          string
+		manifest      ocispec.Descriptor
+		expectedError error
+	}{
+		{
+			name:          "a valid manifest",
+			manifest:      goodManifestDescriptor,
+			expectedError: nil,
+		},
+		{
+			name:          "a manifest with smaller size than the descriptor size",
+			manifest:      badManifestSizeSmallerDescriptor,
+			expectedError: io.ErrUnexpectedEOF,
+		},
+		{
+			name:          "a manifest with larger size than the descriptor size",
+			manifest:      badManifestSizeLargerDescriptor,
+			expectedError: content.ErrTrailingData,
+		},
+		{
+			name:          "a manifest with mismatched digest from the descriptor digest",
+			manifest:      badManifestDigestDescriptor,
+			expectedError: content.ErrMismatchedDigest,
+		},
+		{
+			name:          "a manifest with mismatched media type from the descriptor media type",
+			manifest:      badManifestMismatchedMediaTypeDescriptor,
+			expectedError: errMismatchedMediaType,
+		},
+		{
+			name:          "a nonexistent manifest",
+			manifest:      nonexistentManifestDescriptor,
+			expectedError: errdef.ErrNotFound,
+		},
+	}
+	ctx := context.Background()
+	gt := prepareTestGraphTarget(ctx)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := checkManifest(ctx, gt, tt.manifest); !errors.Is(err, tt.expectedError) {
+				t.Errorf("checkManifest() error = %v, wantErr %v", err, tt.expectedError)
 			}
 		})
 	}
