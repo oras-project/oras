@@ -23,6 +23,8 @@ Example - validate a single image referenced by digest:
 
 `--oci-layout` / `--oci-layout-path` ：OCI Layout validation
 
+`--platform`: check specific platform for multi-arch image index
+
 `--include-referrers`: include validation of the referrers (Note: this is predecessor validation, only enabled by flag)
 
 `--concurrency`: set concurrency level
@@ -69,15 +71,21 @@ Error: oras check failed on f18232174bc9 application/vnd.oci.image.layer.v1.tar+
 ```
 
 
-## Validation behaviors (For manifest only, not index yet)
+## Validation behaviors
 
-When validating an image, the `oras check` command verifies the integrity of the manifest and all associated blobs. If the manifest includes a subject field, the referenced subject image is also validated recursively using the same process. The check proceeds through all components, reporting any failures, but does not stop at any failed check; instead, it continues until every component has been checked.
+When validating an image, the `oras check` command verifies the integrity of the manifest and all referenced blobs. If the manifest includes a subject field, the referenced subject image is also validated recursively using the same process. 
+
+If an error is found during validating the manifest, the check process stops and the reference blobs will not be checked. But if an error is found during validating a blob, the check continues until all blobs of the manifests are checked. A more formal description about when the check process fails is in the next section (Implementation with graph modeling).
+
+When validating an index, the `oras check` command verifies the integrity of the index and all the referenced manifests.
+
+Step by step description of the validation process:
 
 * Step 1: Resolve the reference given by the user
 
-Returns an error if the reference fails to resolve, or resolves to a blob instead of a manifest.
+Returns an error if the reference fails to resolve.
 
-* Step 2: Validate the manifest against the resolved descriptor
+* Step 2: Validate the manifest (including index) against the resolved descriptor
 
 Fetch the manifest content by descriptor, and check if the **MediaType**, **Size** and **Digest** are consistent with the descriptor.
 
@@ -105,10 +113,12 @@ Resolve the referrer descriptors, then do step 2 and 3.
 
 Verify that the subject descriptor of the referrers is consistent with the manifest.
 
+## Implementation with graph modeling
+Similar to the `oras cp` command, the `oras check` command models an OCI artifact as a graph, and runs the check by checking the subgraph of each node.
+
 ## PoC implementation
 https://github.com/oras-project/oras/pull/1801
 
 ## Questions for discussion
-1. Should we support reference by digest?
-2. Should we support validating index? What should the behavior be?
-3. Should we support validating an entire repository? (`oras check localhost:5000/hello`, no image reference is given)
+1. Should we run the check if user gives a blob digest? (Why not?)
+2. Should we check if a manifest misses a config or schema value (not conformant to OCI spec)? Currently we are only checking if the media type, size and digest matches the descriptor resolved by the server.
