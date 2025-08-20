@@ -77,30 +77,35 @@ func runCheck(cmd *cobra.Command, opts *checkOptions) error {
 	if err != nil {
 		return err
 	}
-	if !descriptor.IsManifest(desc) {
-		return fmt.Errorf("the reference %s is not a manifest", opts.Reference)
+	errCount, errList := checkGraph(ctx, target, desc, 0, []error{}, opts)
+	if errCount > 0 {
+		opts.Printer.Printf("\nChecked %s. %d errors found.\n", opts.RawReference, errCount)
+		for _, err := range errList {
+			opts.Printer.Printf("[Failed]\n")
+			opts.Printer.Printf("  - %s\n", err)
+		}
+		return nil
 	}
-	if err := checkGraph(ctx, target, desc, opts); err != nil {
-		return err
-	}
-	return opts.Printer.Printf("check successful!\n")
+	return opts.Printer.Printf("\nChecked %s. No errors found.\n", opts.RawReference)
 }
 
 // checkGraph
-func checkGraph(ctx context.Context, target oras.GraphTarget, root ocispec.Descriptor, opts *checkOptions) error {
-	opts.Printer.PrintStatus(root, "Checking")
+func checkGraph(ctx context.Context, target oras.GraphTarget, root ocispec.Descriptor, errCount int, errList []error, opts *checkOptions) (int, []error) {
+	opts.Printer.PrintStatus(root, "Checking          ")
 	successors, err := checkNode(ctx, target, root)
 	if err != nil {
-		return err
+		opts.Printer.PrintStatus(root, "Checked   [Failed]")
+		return errCount + 1, append(errList, err)
 	}
-	opts.Printer.PrintStatus(root, "Checked")
+	opts.Printer.PrintStatus(root, "Checked   [Pass]  ")
 	for _, successor := range successors {
-		err = checkGraph(ctx, target, successor, opts)
-		if err != nil {
-			return err
+		subgraphErrCount, subGraphErrors := checkGraph(ctx, target, successor, 0, []error{}, opts)
+		if len(subGraphErrors) > 0 {
+			errCount += subgraphErrCount
+			errList = append(errList, subGraphErrors...)
 		}
 	}
-	return nil
+	return errCount, errList
 }
 
 // checkNode
