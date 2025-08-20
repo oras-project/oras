@@ -35,39 +35,38 @@ The command should display progress output similar to the output of `oras cp`, s
 
 ```
 oras check localhost:5000/hello:v1 --no-tty
-Checking f18232174bc9 application/vnd.oci.image.layer.v1.tar+gzip
-Checking aded1e1a5b37 application/vnd.oci.image.config.v1+json
-Checked [succeeded] aded1e1a5b37 application/vnd.oci.image.config.v1+json
-Checked [failed]    f18232174bc9 application/vnd.oci.image.layer.v1.tar+gzip
 Checking 1c4eef651f65 application/vnd.oci.image.manifest.v1+json
-Checked [succeeded] 1c4eef651f65 application/vnd.oci.image.manifest.v1+json
-Checked [failed]    [registry] localhost:5000/hello:v1
+Checked  [Pass]   1c4eef651f65 application/vnd.oci.image.manifest.v1+json
+Checking          aded1e1a5b37 application/vnd.oci.image.config.v1+json
+Checked  [Failed] aded1e1a5b37 application/vnd.oci.image.config.v1+json
+Checking          f18232174bc9 application/vnd.oci.image.layer.v1.tar+gzip
+Checked  [Pass]   f18232174bc9 application/vnd.oci.image.layer.v1.tar+gzip
 
 Checked localhost:5000/hello:v1 in 15s. 1 check failed.
 [Failed]
-Error: oras check failed on f18232174bc9 application/vnd.oci.image.layer.v1.tar+gzip: layer size mismatch: expect 257, got 233
+Error: oras check failed on aded1e1a5b37 application/vnd.oci.image.config.v1+json: blob size mismatch: expect 257, got 233
 ```
 
 ```
 oras check localhost:5000/hello:v1
-✓ Checked [failed]     application/vnd.oci.image.layer.v1.tar+gzip                                        3.47/3.47 MB 100.00%     2s
-  └─ sha256:f18232174bc91741fdf3da96d85011092101a032a93a388b79e99e69c2d5c870
-✓ Checked [succeeded]  application/vnd.oci.image.config.v1+json                                             581/581  B 100.00%  463ms
-  └─ sha256:aded1e1a5b3705116fa0a92ba074a5e0b0031647d9c315983ccba2ee5428ec8b
-✓ Checked [succeeded]  application/vnd.oci.image.manifest.v1+json                                         1022/1022  B 100.00%  437ms
+✓ Checked [Pass]     application/vnd.oci.image.manifest.v1+json                                         1022/1022  B 100.00%  437ms
   └─ sha256:1c4eef651f65e2f7daee7ee785882ac164b02b78fb74503052a26dc061c90474
-Checked [failed]    [registry] localhost:5000/hello:v1
+✓ Checked [Failed]   application/vnd.oci.image.config.v1+json                                             581/581  B 100.00%  463ms
+  └─ sha256:aded1e1a5b3705116fa0a92ba074a5e0b0031647d9c315983ccba2ee5428ec8b
+✓ Checked [Pass]     application/vnd.oci.image.layer.v1.tar+gzip                                        3.47/3.47 MB 100.00%     2s
+  └─ sha256:f18232174bc91741fdf3da96d85011092101a032a93a388b79e99e69c2d5c870
 
 Checked localhost:5000/hello:v1 in 15s. 1 check failed.
 [Failed]
-Error: oras check failed on f18232174bc9 application/vnd.oci.image.layer.v1.tar+gzip: layer size mismatch: expect 257, got 233
+Error: oras check failed on aded1e1a5b37 application/vnd.oci.image.config.v1+json: blob size mismatch: expect 257, got 233
 ```
+
 ### Error messages:
 
 The `oras check` command should return refined error messages for failed checks. For example:
 ```
 [Failed]
-Error: oras check failed on f18232174bc9 application/vnd.oci.image.layer.v1.tar+gzip: layer size mismatch: expect 257, got 233
+Error: oras check failed on f18232174bc9 application/vnd.oci.image.layer.v1.tar+gzip: blob size mismatch: expect 257, got 233
 ```
 
 
@@ -75,7 +74,7 @@ Error: oras check failed on f18232174bc9 application/vnd.oci.image.layer.v1.tar+
 
 When validating an image, the `oras check` command verifies the integrity of the manifest and all referenced blobs. If the manifest includes a subject field, the referenced subject image is also validated recursively using the same process. 
 
-If an error is found during validating the manifest, the check process stops and the reference blobs will not be checked. But if an error is found during validating a blob, the check continues until all blobs of the manifests are checked. A more formal description about when the check process fails is in the next section (Implementation with graph modeling).
+If an error is found during validating the manifest, the check process stops and the reference blobs will not be checked. But if an error is found during validating a blob, the check continues until all blobs of the manifests are checked. This is because that if a manifest fails the validation, the information in the manifest should not be trusted, and there's no point to continue checking the blobs referenced in the manifest.
 
 When validating an index, the `oras check` command verifies the integrity of the index and all the referenced manifests.
 
@@ -99,6 +98,27 @@ graph TD;
     A[referrer of v1] -- subject --> B[manifest v1]
 ```
 
+```
+# referrer of v1
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "config": {
+    ...
+  },
+  "layers": [
+    {
+      ...
+    }
+  ],
+  "Subject": {
+    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+    "digest": "sha256:aded1e1a5b3705116fa0a92ba074a5e0b0031647d9c315983ccba2ee5428ec8b",
+    "size": 581
+  }
+}
+```
+
 * Step 4: If the subject field is not empty, validate the subject manifest
 
 (Note: this is successor validation, enabled by default)
@@ -114,11 +134,10 @@ Resolve the referrer descriptors, then do step 2 and 3.
 Verify that the subject descriptor of the referrers is consistent with the manifest.
 
 ## Implementation with graph modeling
-Similar to the `oras cp` command, the `oras check` command models an OCI artifact as a graph, and runs the check by checking the subgraph of each node.
+Similar to the `oras cp` command, the `oras check` command models an OCI artifact as a graph, and runs the check by checking the subgraph of each node recursively.
 
 ## PoC implementation
 https://github.com/oras-project/oras/pull/1801
 
 ## Questions for discussion
-1. Should we run the check if user gives a blob digest? (Why not?)
-2. Should we check if a manifest misses a config or schema value (not conformant to OCI spec)? Currently we are only checking if the media type, size and digest matches the descriptor resolved by the server.
+1. Should we check if a manifest misses a config or schema value (not conformant to OCI spec)? Currently we are only checking if the media type, size and digest matches the descriptor resolved by the server. Similar question for image config.
