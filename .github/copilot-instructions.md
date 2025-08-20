@@ -26,8 +26,10 @@ Always reference these instructions first and fallback to search or bash command
   make test  # Run all unit tests - takes ~40 seconds. NEVER CANCEL. Set timeout to 120+ seconds.
   ```
   - NEVER CANCEL: Unit tests take 40 seconds. Set timeout to 120+ seconds.
-  - Note: Tests may show warnings about missing "covdata" tool but tests will pass successfully
-  - Coverage reports are generated in `coverage.txt`
+  - **EXPECTED BEHAVIOR**: Tests may show warnings about missing "covdata" tool and make will exit with error code 1, but the actual tests pass successfully
+  - This is due to Go 1.25 compatibility issues with coverage tooling
+  - Coverage reports are generated in `coverage.txt` despite the error
+  - Individual test results will show "PASS" for all test packages
 
 - Run E2E tests (requires Docker):
   ```bash
@@ -185,5 +187,30 @@ make test                # 40 seconds
 ├── go.mod           # Go module definition
 └── bin/             # Built binaries (created after build)
 ```
+
+## Summary for Quick Reference
+
+**Essential Commands** (copy-paste ready):
+```bash
+# Complete setup from fresh clone
+make tidy && make vendor                    # ~4 seconds
+make build-linux-amd64                     # ~15 seconds, NEVER CANCEL
+make test                                   # ~40 seconds, NEVER CANCEL (expect error code 1 but tests pass)
+./bin/linux/amd64/oras version             # Validate build works
+```
+
+**Key Validation After Changes**:
+```bash
+make check-encoding                         # File encoding check
+make test                                   # Unit tests (ignore final error, check individual PASS results)
+./bin/linux/amd64/oras version && ./bin/linux/amd64/oras --help  # CLI validation
+```
+
+**Important Notes**:
+- Go 1.25.0 required
+- Unit tests pass but `make test` exits with error code 1 due to covdata tool compatibility
+- golangci-lint may fail locally with Go 1.25 but works in CI
+- E2E tests take 15-20+ minutes and require Docker
+- All timeout values include buffer time - NEVER CANCEL long operations
 
 Always build and exercise your changes using the validation scenarios above. The CLI provides comprehensive help via `--help` flags on any command.
