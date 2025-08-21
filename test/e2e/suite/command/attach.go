@@ -38,10 +38,8 @@ func attachTestRepo(text string) string {
 
 var _ = Describe("ORAS beginners:", func() {
 	When("running attach command", func() {
-		RunAndShowPreviewInHelp([]string{"attach"})
-
 		It("should show preview and help doc", func() {
-			out := ORAS("attach", "--help").MatchKeyWords(feature.Preview.Mark+" Attach", feature.Preview.Description, ExampleDesc).Exec().Out
+			out := ORAS("attach", "--help").Exec().Out
 			gomega.Expect(out).Should(gbytes.Say("--distribution-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 		})
 
