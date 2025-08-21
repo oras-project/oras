@@ -31,11 +31,11 @@ var _ = Describe("ORAS beginners:", func() {
 	When("running resolve command", func() {
 		It("should show help description with feature mark", func() {
 			out := ORAS("resolve", "--help").MatchKeyWords(ExampleDesc).Exec().Out
-			gomega.Expect(out.Contents()).Should(gomega.HavePrefix(feature.Experimental.Mark))
+			gomega.Expect(out.Contents()).Should(gomega.HavePrefix(feature.Preview.Mark))
 		})
 		It("should show help description via alias", func() {
 			out := ORAS("digest", "--help").MatchKeyWords(ExampleDesc).Exec().Out
-			gomega.Expect(out.Contents()).Should(gomega.HavePrefix(feature.Experimental.Mark))
+			gomega.Expect(out.Contents()).Should(gomega.HavePrefix(feature.Preview.Mark))
 		})
 		It("should fail when no manifest reference provided", func() {
 			ORAS("resolve").ExpectFailure().MatchErrKeyWords("Error:").Exec()
