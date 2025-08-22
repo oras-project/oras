@@ -65,8 +65,48 @@ func Test_manager(t *testing.T) {
 		},
 	}
 
+	// // simulate a console run
+	// c := newMockConsole(80, 24)
+	// m := newManager(c, map[progress.State]string{
+	// 	progress.StateExists: "Exists",
+	// })
+	// tracker, err := m.Track(desc)
+	// if err != nil {
+	// 	t.Fatalf("manager.Track() error = %v, wantErr nil", err)
+	// }
+	// if err = tracker.Update(progress.Status{
+	// 	State:  progress.StateExists,
+	// 	Offset: -1,
+	// }); err != nil {
+	// 	t.Errorf("tracker.Update() error = %v, wantErr nil", err)
+	// }
+	// if err := tracker.Close(); err != nil {
+	// 	t.Errorf("tracker.Close() error = %v, wantErr nil", err)
+	// }
+	// if err := m.Close(); err != nil {
+	// 	t.Errorf("manager.Close() error = %v, wantErr nil", err)
+	// }
+
+	// // verify the console output
+	// want := []string{
+	// 	"✓ Exists hello.bin                                   1.15/1.15 GB 100.00%     0s",
+	// 	"  └─ sha256:c775e7b757ede630cd0aa1113bd102661ab38829ca52a6422ab782862f268646    ",
+	// }
+	// if len(c.view) != len(want) {
+	// 	t.Errorf("console view length = %d, want %d", len(c.view), len(want))
+	// }
+	// escRegexp := regexp.MustCompile("\x1b\\[[0-9]+m")
+	// equal := func(got, want string) bool {
+	// 	return escRegexp.ReplaceAllString(got, "") == want
+	// }
+	// for i, v := range want {
+	// 	if !equal(c.view[i], v) {
+	// 		t.Errorf("console view[%d] = %q, want %q", i, c.view[i], v)
+	// 	}
+	// }
+
 	// simulate a console run
-	c := newMockConsole(80, 24)
+	c := newMockConsole(80, 1)
 	m := newManager(c, map[progress.State]string{
 		progress.StateExists: "Exists",
 	})
