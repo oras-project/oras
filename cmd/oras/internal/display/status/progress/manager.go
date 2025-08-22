@@ -37,7 +37,7 @@ var errManagerStopped = errors.New("progress output manager has already been sto
 
 type manager struct {
 	status       []*status
-	statusLock   sync.RWMutex
+	statusLock   sync.Mutex
 	console      console.Console
 	updating     sync.WaitGroup
 	renderDone   chan struct{}
@@ -85,17 +85,17 @@ func (m *manager) start() {
 }
 
 func (m *manager) render() {
-	m.statusLock.RLock()
-	defer m.statusLock.RUnlock()
+	m.statusLock.Lock()
+	defer m.statusLock.Unlock()
 
 	// render with culling: only the latter statuses are rendered.
 	models := m.status
 	height, width := m.console.GetHeightWidth()
 	if n := len(m.status) - height/2; n > 0 {
-		models = models[n:]
-		if height%2 == 1 {
-			view := m.status[n-1].Render(width)
-			m.console.OutputTo(uint(len(models)*2+1), view[1])
+		if height%2 == 0 {
+			models = models[n:]
+		} else {
+			models = models[n-1:]
 		}
 	}
 	viewHeight := len(models) * 2
@@ -112,13 +112,13 @@ func (m *manager) Track(desc ocispec.Descriptor) (progress.Tracker, error) {
 		return nil, errManagerStopped
 	}
 
+	m.render()
 	s := newStatus(desc)
 	m.statusLock.Lock()
 	m.status = append(m.status, s)
+	m.console.NewRow()
+	m.console.NewRow()
 	m.statusLock.Unlock()
-
-	defer m.console.NewRow()
-	defer m.console.NewRow()
 	return m.newTracker(s), nil
 }
 
