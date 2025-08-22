@@ -92,10 +92,10 @@ func (m *manager) render() {
 	models := m.status
 	height, width := m.console.GetHeightWidth()
 	if n := len(m.status) - height/2; n > 0 {
-		if height%2 == 0 {
-			models = models[n:]
-		} else {
-			models = models[n-1:]
+		models = models[n:]
+		if height%2 == 1 {
+			view := m.status[n-1].Render(width)
+			m.console.OutputTo(uint(len(models)*2+1), view[1])
 		}
 	}
 	viewHeight := len(models) * 2
