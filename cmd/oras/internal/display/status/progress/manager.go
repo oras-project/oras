@@ -36,8 +36,8 @@ const (
 var errManagerStopped = errors.New("progress output manager has already been stopped")
 
 type manager struct {
-	lock         sync.Mutex // locks status and console
 	status       []*status
+	statusLock   sync.RWMutex // locks status and console, write lock is used for adding new status so that it has a higher priority
 	console      console.Console
 	updating     sync.WaitGroup
 	renderDone   chan struct{}
@@ -85,8 +85,8 @@ func (m *manager) start() {
 }
 
 func (m *manager) render() {
-	m.lock.Lock()
-	defer m.lock.Unlock()
+	m.statusLock.RLock()
+	defer m.statusLock.RUnlock()
 
 	// render with culling: only the latter statuses are rendered.
 	models := m.status
@@ -114,8 +114,8 @@ func (m *manager) Track(desc ocispec.Descriptor) (progress.Tracker, error) {
 
 	m.render()
 	s := newStatus(desc)
-	m.lock.Lock()
-	defer m.lock.Unlock()
+	m.statusLock.Lock()
+	defer m.statusLock.Unlock()
 	m.status = append(m.status, s)
 	m.console.NewRow()
 	m.console.NewRow()
