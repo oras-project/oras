@@ -58,7 +58,7 @@ var _ = Describe("OCI image layout users:", func() {
 			// prepare
 			goodImageReferrerRef := LayoutRef(PrepareTempOCI(GraphRepo), graph.GoodImageReferrerDigest)
 			// test
-			ORAS("check", Flags.Layout, graph.GoodImageReferrerDigest).MatchKeyWords("Checked", graph.GoodImageShortDigest, goodImageReferrerRef).Exec()
+			ORAS("check", Flags.Layout, goodImageReferrerRef).MatchKeyWords("Checked", graph.GoodImageShortDigest, goodImageReferrerRef).Exec()
 		})
 	})
 })
