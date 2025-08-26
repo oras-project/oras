@@ -16,5 +16,7 @@ limitations under the License.
 package graph
 
 var (
-	GoodImageTag = "good-image"
+	GoodImageTag            = "good-image"
+	GoodImageShortDigest    = "87ab46b2a0ba"
+	GoodImageReferrerDigest = "sha256:f85dd10854364a7e4940bb65c6f2cce72c6b563618bc81f3ac08202a54ea22ee"
 )

@@ -23,54 +23,42 @@ import (
 	. "oras.land/oras/test/e2e/internal/utils"
 )
 
-const (
-	referrerDigest = "sha256:f85dd10854364a7e4940bb65c6f2cce72c6b563618bc81f3ac08202a54ea22ee"
-)
-
 var _ = Describe("ORAS beginners:", func() {
 	When("running `check`", func() {
 		It("should show examples in help doc", func() {
 			out := ORAS("check", "--help").MatchKeyWords(ExampleDesc).Exec().Out
 			gomega.Expect(out).ShouldNot(gbytes.Say("--verbose"))
 		})
-
-		// It("should have flag for including referrers", func() {
-		// 	ORAS("blob", "get", "--help").
-		// 		MatchKeyWords("--pretty", "prettify JSON").
-		// 		Exec()
-		// })
 	})
 })
 
 var _ = Describe("1.1 registry users:", func() {
-	//repoFmt := fmt.Sprintf("command/check/%%s/%d/%%s", GinkgoRandomSeed())
 	When("running `check`", func() {
 		It("should check a valid image with no errors", func() {
 			goodImageRef := RegistryRef(ZOTHost, GraphRepo, graph.GoodImageTag)
 			ORAS("check", goodImageRef).MatchKeyWords("Checked", goodImageRef).Exec()
 		})
-
-		// It("should delete a blob with force flag and output descriptor", func() {
-		// 	dstRepo := fmt.Sprintf(repoFmt, "delete", "flag-confirmation")
-		// 	CopyZOTRepo(BlobRepo, dstRepo)
-		// 	toDeleteRef := RegistryRef(ZOTHost, dstRepo, foobar.FooBlobDigest)
-		// 	ORAS("blob", "delete", toDeleteRef, "--force", "--descriptor").MatchContent(foobar.FooBlobDescriptor).Exec()
-		// })
+		It("should check the subject field if subject is present", func() {
+			goodImageReferrerRef := RegistryRef(ZOTHost, GraphRepo, graph.GoodImageReferrerDigest)
+			ORAS("check", goodImageReferrerRef).MatchKeyWords("Checked", graph.GoodImageShortDigest, goodImageReferrerRef).Exec()
+		})
 
 	})
 })
 
-// var _ = Describe("OCI image layout users:", func() {
-// 	When("running `blob delete`", func() {
-// 		It("should delete a blob with interactive confirmation", func() {
-// 			// prepare
-// 			toDeleteRef := LayoutRef(PrepareTempOCI(ImageRepo), foobar.FooBlobDigest)
-// 			// test
-// 			ORAS("blob", "delete", Flags.Layout, toDeleteRef).
-// 				WithInput(strings.NewReader("y")).
-// 				MatchKeyWords("Deleted", toDeleteRef).Exec()
-// 			// validate
-// 			ORAS("blob", "fetch", toDeleteRef, Flags.Layout, "--output", "-").ExpectFailure().Exec()
-// 		})
-// 	})
-// })
+var _ = Describe("OCI image layout users:", func() {
+	When("running `check`", func() {
+		It("should check a valid image with no errors", func() {
+			// prepare
+			goodImageRef := LayoutRef(PrepareTempOCI(GraphRepo), graph.GoodImageTag)
+			// test
+			ORAS("check", Flags.Layout, goodImageRef).MatchKeyWords("Checked", goodImageRef).Exec()
+		})
+		It("should check the subject field if subject is present", func() {
+			// prepare
+			goodImageReferrerRef := LayoutRef(PrepareTempOCI(GraphRepo), graph.GoodImageReferrerDigest)
+			// test
+			ORAS("check", Flags.Layout, graph.GoodImageReferrerDigest).MatchKeyWords("Checked", graph.GoodImageShortDigest, goodImageReferrerRef).Exec()
+		})
+	})
+})
