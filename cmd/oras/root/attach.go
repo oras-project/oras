@@ -53,10 +53,8 @@ func attachCmd() *cobra.Command {
 	var opts attachOptions
 	cmd := &cobra.Command{
 		Use:   "attach [flags] --artifact-type=<type> <name>{:<tag>|@<digest>} {<file>[:<layer_media_type>]|--annotation <key>=<value>} [...]",
-		Short: "[Preview] Attach files to an existing artifact",
-		Long: `[Preview] Attach files to an existing artifact
-
-** This command is in preview and under development. **
+		Short: "Attach files to an existing artifact",
+		Long: `Attach files to an existing artifact
 
 Example - Attach file 'hi.txt' with artifact type 'doc/example' to manifest 'hello:v1' in registry 'localhost:5000':
   oras attach --artifact-type doc/example localhost:5000/hello:v1 hi.txt
@@ -124,7 +122,7 @@ Example - Attach file to the manifest tagged 'example.com:v1' in an OCI image la
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
-	opts.FlagDescription = "[Preview] attach to an arch-specific subject"
+	opts.FlagDescription = "attach to an arch-specific subject"
 	_ = cmd.MarkFlagRequired("artifact-type")
 	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
 	opts.EnableDistributionSpecFlag()

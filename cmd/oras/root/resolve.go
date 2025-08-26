@@ -40,8 +40,8 @@ func resolveCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "resolve [flags] <name>{:<tag>|@<digest>}",
-		Short: "[Experimental] Resolves digest of the target artifact",
-		Long: `[Experimental] Resolves digest of the target artifact
+		Short: "[Preview] Resolves digest of the target artifact",
+		Long: `[Preview] Resolves digest of the target artifact
 
 Example - Resolve digest of the target artifact:
   oras resolve localhost:5000/hello-world:v1
