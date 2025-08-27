@@ -490,6 +490,26 @@ var _ = Describe("ORAS users:", func() {
 				ExpectFailure().MatchErrKeyWords("Error:").Exec()
 		})
 
+		It("should fail with appropriate error when output path is a directory but tar file expected", func() {
+			// Create a directory that will conflict with the tar output path
+			tmpDir := GinkgoT().TempDir()
+			tarDirPath := filepath.Join(tmpDir, "backup-dir-conflict.tar")
+
+			// Create a directory with the .tar extension
+			err := os.MkdirAll(tarDirPath, 0755)
+			Expect(err).ToNot(HaveOccurred())
+			defer func() {
+				_ = os.RemoveAll(tarDirPath)
+			}()
+
+			// Try to use the directory as a tar output file
+			ORAS("backup", "--output", tarDirPath, RegistryRef(ZOTHost, ImageRepo, foobar.Tag)).
+				ExpectFailure().
+				MatchErrKeyWords("Error:", "already exists and is a directory").
+				MatchErrKeyWords("To back up to a tar archive, please specify a different output file name or remove the existing directory.").
+				Exec()
+		})
+
 		It("should fail when the repository doesn't exist", func() {
 			tmpDir := GinkgoT().TempDir()
 			outDir := filepath.Join(tmpDir, "backup-nonexistent-repo")

@@ -167,6 +167,12 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		// test if the output file can be created and fail early if there is an issue
 		fp, err := os.OpenFile(opts.output, os.O_CREATE|os.O_WRONLY, 0666)
 		if err != nil {
+			if fi, statErr := os.Stat(opts.output); statErr == nil && fi.IsDir() {
+				return &oerrors.Error{
+					Err:            fmt.Errorf("the output path %q already exists and is a directory", opts.output),
+					Recommendation: "To back up to a tar archive, please specify a different output file name or remove the existing directory.",
+				}
+			}
 			return fmt.Errorf("unable to create output file %s: %w", opts.output, err)
 		}
 		if err := fp.Close(); err != nil {

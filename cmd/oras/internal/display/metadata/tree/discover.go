@@ -31,8 +31,8 @@ import (
 
 var (
 	artifactTypeColor = aec.LightYellowF
-	digestColor       = aec.LightGreenF
-	annotationsColor  = aec.LightCyanF
+	digestColor       = aec.GreenF
+	annotationsColor  = aec.LightBlackF
 )
 
 // discoverHandler handles json metadata output for discover events.
