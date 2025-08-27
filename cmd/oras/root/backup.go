@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -167,6 +168,13 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		// test if the output file can be created and fail early if there is an issue
 		fp, err := os.OpenFile(opts.output, os.O_CREATE|os.O_WRONLY, 0666)
 		if err != nil {
+			var pe *fs.PathError
+			if errors.As(err, &pe) && errors.Is(pe.Err, syscall.EISDIR) {
+				return &oerrors.Error{
+					Err:            fmt.Errorf("the output path %s already exists and is a directory: %w", opts.output, err),
+					Recommendation: "To back up to a tar archive, please specify a different output file name or remove the existing directory.",
+				}
+			}
 			return fmt.Errorf("unable to create output file %s: %w", opts.output, err)
 		}
 		if err := fp.Close(); err != nil {
