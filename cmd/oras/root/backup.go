@@ -171,7 +171,7 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 			var pe *fs.PathError
 			if errors.As(err, &pe) && errors.Is(pe.Err, syscall.EISDIR) {
 				return &oerrors.Error{
-					Err:            fmt.Errorf("the output path %s already exists and is a directory: %w", opts.output, err),
+					Err:            fmt.Errorf("the output path %q already exists and is a directory", opts.output),
 					Recommendation: "To back up to a tar archive, please specify a different output file name or remove the existing directory.",
 				}
 			}
