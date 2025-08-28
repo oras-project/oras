@@ -13,37 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package root
+package graph
 
-import (
-	"github.com/spf13/cobra"
-	"oras.land/oras/cmd/oras/root/blob"
-	"oras.land/oras/cmd/oras/root/manifest"
-	"oras.land/oras/cmd/oras/root/repo"
+var (
+	GoodImageTag            = "good-image"
+	GoodImageShortDigest    = "87ab46b2a0ba"
+	GoodImageReferrerDigest = "sha256:f85dd10854364a7e4940bb65c6f2cce72c6b563618bc81f3ac08202a54ea22ee"
 )
-
-func New() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:          "oras [command]",
-		SilenceUsage: true,
-	}
-	cmd.AddCommand(
-		pullCmd(),
-		pushCmd(),
-		loginCmd(),
-		logoutCmd(),
-		versionCmd(),
-		discoverCmd(),
-		resolveCmd(),
-		copyCmd(),
-		tagCmd(),
-		attachCmd(),
-		backupCmd(),
-		restoreCmd(),
-		checkCmd(),
-		blob.Cmd(),
-		manifest.Cmd(),
-		repo.Cmd(),
-	)
-	return cmd
-}

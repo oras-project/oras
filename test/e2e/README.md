@@ -210,5 +210,15 @@ graph TD;
     end
 ```
 
+```mermaid
+graph TD;
+    subgraph "repository: command/graphs"
+        A0>tag: good-image]-..->A1[oci image]
+        A1-->A2[config blob]
+        A1-->A4[layer blob]
+        A5[referrer]--subject-->A1
+    end
+```
+
 #### 9.2 Scenario Suite
 Test files used by scenario-based specs are placed in `$REPO_ROOT/test/e2e/testdata/files`.
