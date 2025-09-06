@@ -20,6 +20,9 @@ import (
 	"oras.land/oras/cmd/oras/root/blob"
 	"oras.land/oras/cmd/oras/root/manifest"
 	"oras.land/oras/cmd/oras/root/repo"
+
+	"github.com/njayp/ophis"
+	"github.com/njayp/ophis/tools"
 )
 
 func New() *cobra.Command {
@@ -43,6 +46,23 @@ func New() *cobra.Command {
 		blob.Cmd(),
 		manifest.Cmd(),
 		repo.Cmd(),
+
+		// mcp server commands
+		ophis.Command(&ophis.Config{
+			GeneratorOptions: []tools.GeneratorOption{
+				tools.WithFilters(tools.Allow([]string{
+					"version",
+					"discover",
+					"resolve",
+					"pull",
+					"manifest fetch",
+					"manifest fetch-config", 
+					"blob fetch",
+					"repo ls",
+					"repo tags",
+				})),
+			},
+		}),
 	)
 	return cmd
 }
