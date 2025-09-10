@@ -18,8 +18,9 @@ package console
 import (
 	"os"
 
-	containerd "github.com/containerd/console"
+	"github.com/creack/pty"
 	"github.com/morikuni/aec"
+	"golang.org/x/term"
 )
 
 const (
@@ -33,9 +34,10 @@ const (
 	Restore = "\0338"
 )
 
-// Console is a wrapper around containerd's Console and ANSI escape codes.
+// Console is a wrapper around PTY and ANSI escape codes.
 type Console interface {
-	containerd.Console
+	Write(p []byte) (n int, err error)
+	Size() (*WinSize, error)
 	GetHeightWidth() (height, width int)
 	Save()
 	NewRow()
@@ -43,17 +45,36 @@ type Console interface {
 	Restore()
 }
 
+// WinSize represents the size of a terminal window.
+type WinSize struct {
+	Height uint16
+	Width  uint16
+}
+
 type console struct {
-	containerd.Console
+	file *os.File
 }
 
 // NewConsole generates a console from a file.
 func NewConsole(f *os.File) (Console, error) {
-	c, err := containerd.ConsoleFromFile(f)
+	if !term.IsTerminal(int(f.Fd())) {
+		return nil, os.ErrInvalid
+	}
+	return &console{file: f}, nil
+}
+
+// Write writes data to the console.
+func (c *console) Write(p []byte) (n int, err error) {
+	return c.file.Write(p)
+}
+
+// Size returns the size of the console.
+func (c *console) Size() (*WinSize, error) {
+	rows, cols, err := pty.Getsize(c.file)
 	if err != nil {
 		return nil, err
 	}
-	return &console{c}, nil
+	return &WinSize{Height: uint16(rows), Width: uint16(cols)}, nil
 }
 
 // GetHeightWidth returns the width and height of the console.
