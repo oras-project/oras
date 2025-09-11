@@ -87,7 +87,7 @@ func (h *discoverHandler) printDiscoveredReferrersTable() (err error) {
 		}
 	}
 
-	printKey := func(key string, value interface{}) (err error) {
+	printKey := func(key string, value any) (err error) {
 		_, err = fmt.Fprintln(h.out, key, strings.Repeat(" ", typeNameLength-len(key)+1), value)
 		return err
 	}
