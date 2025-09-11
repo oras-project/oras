@@ -36,19 +36,11 @@ const (
 
 // Console is a wrapper around PTY and ANSI escape codes.
 type Console interface {
-	Write(p []byte) (n int, err error)
-	Size() (*WinSize, error)
 	GetHeightWidth() (height, width int)
 	Save()
 	NewRow()
 	OutputTo(upCnt uint, str string)
 	Restore()
-}
-
-// WinSize represents the size of a terminal window.
-type WinSize struct {
-	Height uint16
-	Width  uint16
 }
 
 type console struct {
@@ -63,61 +55,52 @@ func NewConsole(f *os.File) (Console, error) {
 	return &console{file: f}, nil
 }
 
-// Write writes data to the console.
-func (c *console) Write(p []byte) (n int, err error) {
+// write writes data to the console.
+func (c *console) write(p []byte) (n int, err error) {
 	return c.file.Write(p)
-}
-
-// Size returns the size of the console.
-func (c *console) Size() (*WinSize, error) {
-	rows, cols, err := pty.Getsize(c.file)
-	if err != nil {
-		return nil, err
-	}
-	return &WinSize{Height: uint16(rows), Width: uint16(cols)}, nil
 }
 
 // GetHeightWidth returns the width and height of the console.
 // If the console size cannot be determined, returns a default value of 80x10.
 func (c *console) GetHeightWidth() (height, width int) {
-	windowSize, err := c.Size()
+	rows, cols, err := pty.Getsize(c.file)
 	if err != nil {
 		return MinHeight, MinWidth
 	}
-	if windowSize.Height < MinHeight {
-		windowSize.Height = MinHeight
+	if rows < MinHeight {
+		rows = MinHeight
 	}
-	if windowSize.Width < MinWidth {
-		windowSize.Width = MinWidth
+	if cols < MinWidth {
+		cols = MinWidth
 	}
-	return int(windowSize.Height), int(windowSize.Width)
+	return rows, cols
 }
 
 // Save saves the current cursor position.
 func (c *console) Save() {
-	_, _ = c.Write([]byte(aec.Hide.Apply(Save)))
+	_, _ = c.write([]byte(aec.Hide.Apply(Save)))
 }
 
 // NewRow allocates a horizontal space to the output area with scroll if needed.
 func (c *console) NewRow() {
-	_, _ = c.Write([]byte(Restore))
-	_, _ = c.Write([]byte("\n"))
-	_, _ = c.Write([]byte(Save))
+	_, _ = c.write([]byte(Restore))
+	_, _ = c.write([]byte("\n"))
+	_, _ = c.write([]byte(Save))
 }
 
 // OutputTo outputs a string to a specific line.
 func (c *console) OutputTo(upCnt uint, str string) {
-	_, _ = c.Write([]byte(Restore))
-	_, _ = c.Write([]byte(aec.PreviousLine(upCnt).Apply(str)))
-	_, _ = c.Write([]byte("\n"))
-	_, _ = c.Write([]byte(aec.EraseLine(aec.EraseModes.Tail).String()))
+	_, _ = c.write([]byte(Restore))
+	_, _ = c.write([]byte(aec.PreviousLine(upCnt).Apply(str)))
+	_, _ = c.write([]byte("\n"))
+	_, _ = c.write([]byte(aec.EraseLine(aec.EraseModes.Tail).String()))
 }
 
 // Restore restores the saved cursor position.
 func (c *console) Restore() {
 	// cannot use aec.Restore since DEC has better compatibility than SCO
-	_, _ = c.Write([]byte(Restore))
-	_, _ = c.Write([]byte(aec.Column(0).
+	_, _ = c.write([]byte(Restore))
+	_, _ = c.write([]byte(aec.Column(0).
 		With(aec.EraseLine(aec.EraseModes.All)).
 		With(aec.Show).String()))
 }

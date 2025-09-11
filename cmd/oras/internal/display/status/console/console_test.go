@@ -1,4 +1,4 @@
-//go:build !windows && !darwin
+//go:build !windows
 
 /*
 Copyright The ORAS Authors.
@@ -140,5 +140,67 @@ func TestConsole_Save(t *testing.T) {
 	err := testutils.MatchPty(ptmx, pts, "\x1b[?25l\x1b7\x1b[0m")
 	if err != nil {
 		t.Fatalf("Save output error: %v", err)
+	}
+}
+
+func TestConsole_Write(t *testing.T) {
+	ptmx, pts, err := pty.Open()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = ptmx.Close()
+		_ = pts.Close()
+	}()
+
+	c := &console{file: ptmx}
+	testData := []byte("test data")
+	n, err := c.write(testData)
+	if err != nil {
+		t.Fatalf("write() error = %v, want nil", err)
+	}
+	if n != len(testData) {
+		t.Errorf("write() returned %d bytes, want %d", n, len(testData))
+	}
+}
+
+func TestConsole_GetHeightWidth_Error(t *testing.T) {
+	// Create a console with a file that will cause pty.Getsize to fail
+	ptmx, pts, err := pty.Open()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = ptmx.Close()
+		_ = pts.Close()
+	}()
+
+	// Close ptmx to make Getsize fail
+	_ = ptmx.Close()
+
+	c := &console{file: ptmx}
+	height, width := c.GetHeightWidth()
+
+	// Should return default values when Getsize fails
+	if height != MinHeight {
+		t.Errorf("GetHeightWidth() height = %d, want %d", height, MinHeight)
+	}
+	if width != MinWidth {
+		t.Errorf("GetHeightWidth() width = %d, want %d", width, MinWidth)
+	}
+}
+
+func TestConstants(t *testing.T) {
+	if MinWidth != 80 {
+		t.Errorf("MinWidth = %d, want 80", MinWidth)
+	}
+	if MinHeight != 10 {
+		t.Errorf("MinHeight = %d, want 10", MinHeight)
+	}
+	if Save != "\0337" {
+		t.Errorf("Save = %q, want \\0337", Save)
+	}
+	if Restore != "\0338" {
+		t.Errorf("Restore = %q, want \\0338", Restore)
 	}
 }
