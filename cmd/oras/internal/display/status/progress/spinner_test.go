@@ -19,7 +19,7 @@ import "testing"
 
 func Test_spinner_symbol(t *testing.T) {
 	var s spinner
-	for i := 0; i < len(spinnerSymbols); i++ {
+	for i := range len(spinnerSymbols) {
 		if s.symbol() != spinnerSymbols[i] {
 			t.Errorf("symbol() = %v, want %v", s.symbol(), spinnerSymbols[i])
 		}

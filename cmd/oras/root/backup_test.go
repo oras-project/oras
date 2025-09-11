@@ -682,7 +682,7 @@ type mockLogger struct {
 	debugMessages []string
 }
 
-func (m *mockLogger) WithField(key string, value interface{}) *logrus.Entry {
+func (m *mockLogger) WithField(key string, value any) *logrus.Entry {
 	return logrus.WithField(key, value)
 }
 
@@ -694,35 +694,35 @@ func (m *mockLogger) WithError(err error) *logrus.Entry {
 	return logrus.WithError(err)
 }
 
-func (m *mockLogger) Debugf(format string, args ...interface{}) {
+func (m *mockLogger) Debugf(format string, args ...any) {
 	m.debugMessages = append(m.debugMessages, fmt.Sprintf(format, args...))
 }
 
-func (m *mockLogger) Infof(format string, args ...interface{})    {}
-func (m *mockLogger) Printf(format string, args ...interface{})   {}
-func (m *mockLogger) Warnf(format string, args ...interface{})    {}
-func (m *mockLogger) Warningf(format string, args ...interface{}) {}
-func (m *mockLogger) Errorf(format string, args ...interface{})   {}
-func (m *mockLogger) Fatalf(format string, args ...interface{})   {}
-func (m *mockLogger) Panicf(format string, args ...interface{})   {}
+func (m *mockLogger) Infof(format string, args ...any)    {}
+func (m *mockLogger) Printf(format string, args ...any)   {}
+func (m *mockLogger) Warnf(format string, args ...any)    {}
+func (m *mockLogger) Warningf(format string, args ...any) {}
+func (m *mockLogger) Errorf(format string, args ...any)   {}
+func (m *mockLogger) Fatalf(format string, args ...any)   {}
+func (m *mockLogger) Panicf(format string, args ...any)   {}
 
-func (m *mockLogger) Debug(args ...interface{})   {}
-func (m *mockLogger) Info(args ...interface{})    {}
-func (m *mockLogger) Print(args ...interface{})   {}
-func (m *mockLogger) Warn(args ...interface{})    {}
-func (m *mockLogger) Warning(args ...interface{}) {}
-func (m *mockLogger) Error(args ...interface{})   {}
-func (m *mockLogger) Fatal(args ...interface{})   {}
-func (m *mockLogger) Panic(args ...interface{})   {}
+func (m *mockLogger) Debug(args ...any)   {}
+func (m *mockLogger) Info(args ...any)    {}
+func (m *mockLogger) Print(args ...any)   {}
+func (m *mockLogger) Warn(args ...any)    {}
+func (m *mockLogger) Warning(args ...any) {}
+func (m *mockLogger) Error(args ...any)   {}
+func (m *mockLogger) Fatal(args ...any)   {}
+func (m *mockLogger) Panic(args ...any)   {}
 
-func (m *mockLogger) Debugln(args ...interface{})   {}
-func (m *mockLogger) Infoln(args ...interface{})    {}
-func (m *mockLogger) Println(args ...interface{})   {}
-func (m *mockLogger) Warnln(args ...interface{})    {}
-func (m *mockLogger) Warningln(args ...interface{}) {}
-func (m *mockLogger) Errorln(args ...interface{})   {}
-func (m *mockLogger) Fatalln(args ...interface{})   {}
-func (m *mockLogger) Panicln(args ...interface{})   {}
+func (m *mockLogger) Debugln(args ...any)   {}
+func (m *mockLogger) Infoln(args ...any)    {}
+func (m *mockLogger) Println(args ...any)   {}
+func (m *mockLogger) Warnln(args ...any)    {}
+func (m *mockLogger) Warningln(args ...any) {}
+func (m *mockLogger) Errorln(args ...any)   {}
+func (m *mockLogger) Fatalln(args ...any)   {}
+func (m *mockLogger) Panicln(args ...any)   {}
 
 type mockBackupHandler struct {
 	tarExportingCalled bool
