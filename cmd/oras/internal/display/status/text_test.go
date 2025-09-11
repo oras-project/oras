@@ -46,6 +46,7 @@ func TestMain(m *testing.M) {
 }
 
 func validatePrinted(t *testing.T, expected string) {
+	t.Helper()
 	actual := strings.TrimSpace(builder.String())
 	if expected != actual {
 		t.Error("Output does not match expected <" + expected + "> actual <" + actual + ">")
