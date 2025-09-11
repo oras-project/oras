@@ -20,6 +20,7 @@ GIT_DIRTY   = $(shell test -n "`git status --porcelain`" && echo "dirty" || echo
 GO_EXE      = go
 OSNAME      = $(shell uname -o)
 ARCHNAME    = $(shell uname -m)
+PKG         = ./...
 
 ifeq ($(OSNAME),Darwin)
   OS = mac
@@ -50,7 +51,7 @@ default: test build-$(OS)-$(ARCH)
 
 .PHONY: test
 test: tidy vendor check-encoding  ## tidy and run tests
-	$(GO_EXE) test -race -v -coverprofile=coverage.txt -covermode=atomic -coverpkg=./... ./...
+	$(GO_EXE) test -race -v -coverprofile=coverage.txt -covermode=atomic -coverpkg=$(PKG) $(PKG)
 
 .PHONY: teste2e
 teste2e:  ## run end to end tests
@@ -152,7 +153,7 @@ fix-encoding:  ## fix file CR/LF encoding
 
 .PHONY: lint
 lint:  ## run CI version of lint
-	golangci-lint run ./...
+	golangci-lint run $(PKG)
 
 .PHONY: tidy
 tidy:  ## go mod tidy
