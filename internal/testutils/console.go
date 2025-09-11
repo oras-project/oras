@@ -1,4 +1,4 @@
-//go:build !windows && !darwin
+//go:build !windows
 
 /*
 Copyright The ORAS Authors.
@@ -31,11 +31,7 @@ import (
 // NewPty creates a new pty pair for testing, caller is responsible for closing
 // the returned files if err is not nil.
 func NewPty() (*os.File, *os.File, error) {
-	ptmx, pts, err := pty.Open()
-	if err != nil {
-		return nil, nil, err
-	}
-	return ptmx, pts, nil
+	return pty.Open()
 }
 
 // MatchPty checks that the output matches the expected strings in specified
