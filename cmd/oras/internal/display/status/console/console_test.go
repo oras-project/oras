@@ -26,6 +26,7 @@ import (
 )
 
 func givenConsole(t *testing.T) (c Console, pty containerd.Console) {
+	t.Helper()
 	pty, _, err := containerd.NewPty()
 	if err != nil {
 		t.Fatal(err)
@@ -38,6 +39,7 @@ func givenConsole(t *testing.T) (c Console, pty containerd.Console) {
 }
 
 func givenTestConsole(t *testing.T) (c Console, pty containerd.Console, tty *os.File) {
+	t.Helper()
 	var err error
 	pty, tty, err = testutils.NewPty()
 	if err != nil {
