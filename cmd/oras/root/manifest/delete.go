@@ -92,7 +92,7 @@ func deleteManifest(cmd *cobra.Command, opts *deleteOptions) error {
 
 	// add both pull and delete scope hints for dst repository to save potential delete-scope token requests during deleting
 	hints := []string{auth.ActionPull, auth.ActionDelete}
-	if opts.ReferrersAPI == nil || !*opts.ReferrersAPI {
+	if opts.ReferrersAPI != option.ReferrersStateSupported {
 		// possibly needed when adding a new referrers index
 		hints = append(hints, auth.ActionPush)
 	}
