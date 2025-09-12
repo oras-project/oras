@@ -30,6 +30,7 @@ const (
 )
 
 const (
+	DistributionSpecReferrersUnknown = "unknown"
 	DistributionSpecReferrersTagV1_1 = "v1.1-referrers-tag"
 	DistributionSpecReferrersAPIV1_1 = "v1.1-referrers-api"
 )
@@ -84,11 +85,25 @@ func (is *ImageSpec) ApplyFlags(fs *pflag.FlagSet) {
 	fs.Var(is, "image-spec", `[Preview] specify manifest type for building artifact. Options: v1.1, v1.0 (default v1.1, overridden to v1.0 if --config is used without --artifact-type)`)
 }
 
+// referrersState represents the state of Referrers API.
+type referrersState = int32
+
+const (
+	// ReferrersStateUnknown represents an unknown state of Referrers API.
+	ReferrersStateUnknown referrersState = iota
+	// ReferrersStateSupported represents that the repository is known to
+	// support Referrers API.
+	ReferrersStateSupported
+	// ReferrersStateUnsupported represents that the repository is known to
+	// not support Referrers API.
+	ReferrersStateUnsupported
+)
+
 // DistributionSpec option struct which implements pflag.Value interface.
 type DistributionSpec struct {
 	// ReferrersAPI indicates the preference of the implementation of the Referrers API.
 	// Set to true for referrers API, false for referrers tag scheme, and nil for auto fallback.
-	ReferrersAPI *bool
+	ReferrersAPI referrersState
 
 	// specFlag should be provided in form of`<version>-<api>-<option>`
 	flag string
@@ -97,13 +112,12 @@ type DistributionSpec struct {
 // Set validates and sets the flag value from a string argument.
 func (ds *DistributionSpec) Set(value string) error {
 	ds.flag = value
+	ds.ReferrersAPI = ReferrersStateUnknown
 	switch ds.flag {
 	case DistributionSpecReferrersTagV1_1:
-		isApi := false
-		ds.ReferrersAPI = &isApi
+		ds.ReferrersAPI = ReferrersStateUnsupported
 	case DistributionSpecReferrersAPIV1_1:
-		isApi := true
-		ds.ReferrersAPI = &isApi
+		ds.ReferrersAPI = ReferrersStateSupported
 	default:
 		return &oerrors.Error{
 			Err:            fmt.Errorf("unknown distribution specification flag: %s", value),
@@ -133,5 +147,6 @@ func (ds *DistributionSpec) String() string {
 
 // ApplyFlagsWithPrefix applies flags to a command flag set with a prefix string.
 func (ds *DistributionSpec) ApplyFlagsWithPrefix(fs *pflag.FlagSet, prefix, description string) {
+	ds.flag = DistributionSpecReferrersUnknown
 	fs.Var(ds, prefix+"distribution-spec", fmt.Sprintf("[Preview] set OCI distribution spec version and API option for %starget. Options: %s", description, ds.Options()))
 }
