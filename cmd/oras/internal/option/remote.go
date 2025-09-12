@@ -372,8 +372,8 @@ func (remo *Remote) NewRepository(reference string, common Common, logger logrus
 		return nil, err
 	}
 	repo.SkipReferrersGC = true
-	if remo.ReferrersAPI != nil {
-		if err := repo.SetReferrersCapability(*remo.ReferrersAPI); err != nil {
+	if remo.ReferrersAPI != ReferrersStateUnknown {
+		if err := repo.SetReferrersCapability(remo.ReferrersAPI == ReferrersStateSupported); err != nil {
 			return nil, err
 		}
 	}
