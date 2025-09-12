@@ -67,7 +67,7 @@ Example - [Experimental] List the repositories under the registry using the give
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
-			if opts.hostname, opts.namespace, err = repository.ParseRepoPath(args[0]); err != nil {
+			if opts.hostname, opts.namespace, err = repository.ParseRemoteRepository(args[0]); err != nil {
 				return fmt.Errorf("could not parse repository path: %w", err)
 			}
 			return listRepository(cmd, &opts)
