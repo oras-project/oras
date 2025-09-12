@@ -26,7 +26,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -74,7 +73,6 @@ type Remote struct {
 	applyDistributionSpec bool
 	headerFlags           []string
 	headers               http.Header
-	warned                map[string]*sync.Map
 	plainHTTP             func() (plainHTTP bool, enforced bool)
 	store                 credentials.Store
 }
@@ -324,23 +322,6 @@ func (remo *Remote) Credential() auth.Credential {
 	return credential.Credential(remo.Username, remo.Secret)
 }
 
-func (remo *Remote) handleWarning(registry string, logger logrus.FieldLogger) func(warning remote.Warning) {
-	if remo.warned == nil {
-		remo.warned = make(map[string]*sync.Map)
-	}
-	warned := remo.warned[registry]
-	if warned == nil {
-		warned = &sync.Map{}
-		remo.warned[registry] = warned
-	}
-	logger = logger.WithField("registry", registry)
-	return func(warning remote.Warning) {
-		if _, loaded := warned.LoadOrStore(warning.WarningValue, struct{}{}); !loaded {
-			logger.Warn(warning.Text)
-		}
-	}
-}
-
 // NewRegistry assembles a oras remote registry.
 func (remo *Remote) NewRegistry(registry string, common Common, logger logrus.FieldLogger) (reg *remote.Registry, err error) {
 	reg, err = remote.NewRegistry(registry)
@@ -349,7 +330,7 @@ func (remo *Remote) NewRegistry(registry string, common Common, logger logrus.Fi
 	}
 	registry = reg.Reference.Registry
 	reg.PlainHTTP = remo.isPlainHttp(registry)
-	reg.HandleWarning = remo.handleWarning(registry, logger)
+	reg.HandleWarning = warningHandler.GetHandler(registry, logger)
 	if reg.Client, err = remo.authClient(registry, common.Debug); err != nil {
 		return nil, err
 	}
@@ -367,7 +348,7 @@ func (remo *Remote) NewRepository(reference string, common Common, logger logrus
 	}
 	registry := repo.Reference.Registry
 	repo.PlainHTTP = remo.isPlainHttp(registry)
-	repo.HandleWarning = remo.handleWarning(registry, logger)
+	repo.HandleWarning = warningHandler.GetHandler(registry, logger)
 	if repo.Client, err = remo.authClient(registry, common.Debug); err != nil {
 		return nil, err
 	}
