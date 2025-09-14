@@ -24,7 +24,6 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/cmd/oras/internal/output"
 )
@@ -48,11 +47,6 @@ func TestNewCopyHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			printer := output.NewPrinter(tt.out, os.Stderr)
 			handler := NewCopyHandler(printer)
-
-			// Verify the handler implements the correct interface
-			if _, ok := handler.(metadata.CopyHandler); !ok {
-				t.Error("NewCopyHandler() does not return a valid metadata.CopyHandler")
-			}
 
 			// Verify it's the correct concrete type
 			if _, ok := handler.(*CopyHandler); !ok {
