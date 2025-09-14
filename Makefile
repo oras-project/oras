@@ -53,6 +53,12 @@ default: test build-$(OS)-$(ARCH)
 test: tidy vendor check-encoding  ## tidy and run tests
 	$(GO_EXE) test -race -v -coverprofile=coverage.txt -covermode=atomic -coverpkg=$(PKG) $(PKG)
 
+.PHONY: test-coverage
+test-coverage:  ## look at code coverage
+	@echo
+	@echo "==> Running unit tests with coverage: $(PKG) <=="
+	@ ./scripts/coverage.sh $(PKG)
+
 .PHONY: teste2e
 teste2e:  ## run end to end tests
 	./test/e2e/scripts/e2e.sh $(shell git rev-parse --show-toplevel) --clean
