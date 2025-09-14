@@ -20,6 +20,7 @@ const (
 	ExampleDesc      = "\nExample - "
 	ImageRepo        = "command/images"
 	BlobRepo         = "command/blobs"
+	GraphRepo        = "command/graphs"
 	ArtifactRepo     = "command/artifacts"
 	Namespace        = "command"
 	InvalidRepo      = "INVALID"
