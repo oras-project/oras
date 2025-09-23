@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"io/fs"
+	"maps"
 	"path/filepath"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -53,9 +54,7 @@ func loadFiles(ctx context.Context, store *file.Store, annotations map[string]ma
 			if file.Annotations == nil {
 				file.Annotations = value
 			} else {
-				for k, v := range value {
-					file.Annotations[k] = v
-				}
+				maps.Copy(file.Annotations, value)
 			}
 		}
 		files = append(files, file)
