@@ -29,7 +29,7 @@ func TestNewBlobDeleteHandler(t *testing.T) {
 	printer := output.NewPrinter(&bytes.Buffer{}, os.Stderr)
 	target := &option.Target{
 		Type:         "registry",
-		RawReference: "localhost:5000/test@sha256:abcd1234",
+		RawReference: "localhost:5000/test@sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
 	}
 
 	handler := NewBlobDeleteHandler(printer, target)
@@ -64,10 +64,10 @@ func TestBlobDeleteHandler_OnBlobMissing(t *testing.T) {
 			out:  &bytes.Buffer{},
 			target: &option.Target{
 				Type:         "registry",
-				RawReference: "localhost:5000/test@sha256:abcd1234",
+				RawReference: "localhost:5000/test@sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
 			},
 			wantErr:    false,
-			wantOutput: "Missing localhost:5000/test@sha256:abcd1234\n",
+			wantOutput: "Missing localhost:5000/test@sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\n",
 		},
 		{
 			name: "blob missing with tag reference",
@@ -84,17 +84,17 @@ func TestBlobDeleteHandler_OnBlobMissing(t *testing.T) {
 			out:  &bytes.Buffer{},
 			target: &option.Target{
 				Type:         "oci-layout",
-				RawReference: "./layout@sha256:abcd1234",
+				RawReference: "./layout@sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
 			},
 			wantErr:    false,
-			wantOutput: "Missing ./layout@sha256:abcd1234\n",
+			wantOutput: "Missing ./layout@sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\n",
 		},
 		{
 			name: "error writer",
 			out:  &errorWriter{},
 			target: &option.Target{
 				Type:         "registry",
-				RawReference: "localhost:5000/test@sha256:abcd1234",
+				RawReference: "localhost:5000/test@sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
 			},
 			wantErr: true,
 		},
@@ -133,10 +133,10 @@ func TestBlobDeleteHandler_OnBlobDeleted(t *testing.T) {
 			out:  &bytes.Buffer{},
 			target: &option.Target{
 				Type:         "registry",
-				RawReference: "localhost:5000/test@sha256:abcd1234",
+				RawReference: "localhost:5000/test@sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
 			},
 			wantErr:    false,
-			wantOutput: "Deleted [registry] localhost:5000/test@sha256:abcd1234\n",
+			wantOutput: "Deleted [registry] localhost:5000/test@sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\n",
 		},
 		{
 			name: "blob deleted with tag reference",
@@ -153,17 +153,17 @@ func TestBlobDeleteHandler_OnBlobDeleted(t *testing.T) {
 			out:  &bytes.Buffer{},
 			target: &option.Target{
 				Type:         "oci-layout",
-				RawReference: "./layout@sha256:abcd1234",
+				RawReference: "./layout@sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
 			},
 			wantErr:    false,
-			wantOutput: "Deleted [oci-layout] ./layout@sha256:abcd1234\n",
+			wantOutput: "Deleted [oci-layout] ./layout@sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\n",
 		},
 		{
 			name: "error writer",
 			out:  &errorWriter{},
 			target: &option.Target{
 				Type:         "registry",
-				RawReference: "localhost:5000/test@sha256:abcd1234",
+				RawReference: "localhost:5000/test@sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
 			},
 			wantErr: true,
 		},
