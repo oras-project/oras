@@ -380,6 +380,21 @@ var _ = Describe("Remote registry users:", func() {
 			Expect(len(manifest.Layers)).To(Equal(1))
 			Expect(manifest.Layers[0].Annotations["foo"]).To(Equal("bar"))
 		})
+
+		It("should allow renaming files using customized file annotation", func() {
+			repo := pushTestRepo("file-annotation-rename")
+			tempDir := PrepareTempFiles()
+
+			ORAS("push", RegistryRef(ZOTHost, repo, tag), foobar.FileBarName, "--annotation-file", "foobar/annotation-rename.json", "--config", foobar.FileConfigName).
+				WithWorkDir(tempDir).Exec()
+
+			// validate
+			// see testdata\files\foobar\annotation-rename.json
+			fetched := ORAS("manifest", "fetch", RegistryRef(ZOTHost, repo, tag)).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Layers[0].Annotations["org.opencontainers.image.title"]).To(Equal("foobar/baz"))
+		})
 	})
 
 	When("pushing to OCI spec v1.1 registries", func() {
@@ -740,6 +755,21 @@ var _ = Describe("OCI image layout users:", func() {
 			Expect(manifest.Config.Annotations["hello"]).To(Equal("config"))
 			Expect(len(manifest.Layers)).To(Equal(1))
 			Expect(manifest.Layers[0].Annotations["foo"]).To(Equal("bar"))
+		})
+
+		It("should allow renaming files using customized file annotation", func() {
+			tempDir := PrepareTempFiles()
+			ref := LayoutRef(tempDir, tag)
+			// test
+			ORAS("push", ref, Flags.Layout, foobar.FileBarName, "--annotation-file", "foobar/annotation-rename.json", "--config", foobar.FileConfigName).
+				WithWorkDir(tempDir).Exec()
+
+			// validate
+			// see testdata\files\foobar\annotation-rename.json
+			fetched := ORAS("manifest", "fetch", ref, Flags.Layout).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Layers[0].Annotations["org.opencontainers.image.title"]).To(Equal("foobar/baz"))
 		})
 	})
 })
