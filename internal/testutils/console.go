@@ -1,4 +1,4 @@
-//go:build !windows && !darwin
+//go:build !windows
 
 /*
 Copyright The ORAS Authors.
@@ -25,34 +25,26 @@ import (
 	"strings"
 	"sync"
 
-	containerd "github.com/containerd/console"
+	"github.com/creack/pty"
 )
 
 // NewPty creates a new pty pair for testing, caller is responsible for closing
-// the returned device file if err is not nil.
-func NewPty() (containerd.Console, *os.File, error) {
-	pty, devicePath, err := containerd.NewPty()
-	if err != nil {
-		return nil, nil, err
-	}
-	device, err := os.OpenFile(devicePath, os.O_RDWR, 0)
-	if err != nil {
-		return nil, nil, err
-	}
-	return pty, device, nil
+// the returned files if err is not nil.
+func NewPty() (*os.File, *os.File, error) {
+	return pty.Open()
 }
 
 // MatchPty checks that the output matches the expected strings in specified
 // order.
-func MatchPty(pty containerd.Console, device *os.File, expected ...string) error {
+func MatchPty(ptmx *os.File, pts *os.File, expected ...string) error {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	var buffer bytes.Buffer
 	go func() {
 		defer wg.Done()
-		_, _ = io.Copy(&buffer, pty)
+		_, _ = io.Copy(&buffer, ptmx)
 	}()
-	_ = device.Close()
+	_ = pts.Close()
 	wg.Wait()
 
 	return OrderedMatch(buffer.String(), expected...)
