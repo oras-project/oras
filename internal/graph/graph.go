@@ -65,11 +65,11 @@ func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descr
 		var fetched []byte
 		fetched, err = content.FetchAll(ctx, fetcher, node)
 		if err != nil {
-			return nil, nil, nil, err
+			return
 		}
 		var manifest ocispec.Manifest
 		if err = json.Unmarshal(fetched, &manifest); err != nil {
-			return nil, nil, nil, err
+			return
 		}
 		nodes = manifest.Layers
 		subject = manifest.Subject
@@ -78,11 +78,11 @@ func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descr
 		var fetched []byte
 		fetched, err = content.FetchAll(ctx, fetcher, node)
 		if err != nil {
-			return nil, nil, nil, err
+			return
 		}
 		var manifest Artifact
 		if err = json.Unmarshal(fetched, &manifest); err != nil {
-			return nil, nil, nil, err
+			return
 		}
 		nodes = manifest.Blobs
 		subject = manifest.Subject
@@ -90,18 +90,18 @@ func Successors(ctx context.Context, fetcher content.Fetcher, node ocispec.Descr
 		var fetched []byte
 		fetched, err = content.FetchAll(ctx, fetcher, node)
 		if err != nil {
-			return nil, nil, nil, err
+			return
 		}
 		var index ocispec.Index
 		if err = json.Unmarshal(fetched, &index); err != nil {
-			return nil, nil, nil, err
+			return
 		}
 		nodes = index.Manifests
 		subject = index.Subject
 	default:
 		nodes, err = content.Successors(ctx, fetcher, node)
 	}
-	return nodes, subject, config, err
+	return
 }
 
 // FindPredecessors returns all predecessors of descs in src concurrently.

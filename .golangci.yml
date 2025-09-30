@@ -33,7 +33,6 @@ linters:
     - govet
     - ineffassign
     - misspell
-    - nakedret
     - staticcheck
     - thelper
     - unused
