@@ -288,7 +288,7 @@ func (remo *Remote) authClient(registry string, debug bool) (client *auth.Client
 		}
 		client.Credential = credentials.Credential(remo.store)
 	}
-	return client, nil
+	return
 }
 
 // ConfigPath returns the config path of the credential store.
