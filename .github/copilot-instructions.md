@@ -54,7 +54,7 @@ Follow the [Error Handling and Message Guideline](../docs/proposals/error-handli
 
 1. **Commands**: Place in `cmd/oras/root/` or appropriate subdirectory
 2. **Internal packages**: Use `internal/` for non-exported functionality
-3. **Options**: Group related flags in option structs (see `internal/option/`)
+3. **Options**: Group related flags in option structs (see `cmd/oras/internal/option/`)
 4. **Display**: Separate presentation logic in display handlers
 
 ## Building and Testing
