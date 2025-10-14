@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.25.1-alpine as builder
+FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.25.2-alpine as builder
 ARG TARGETPLATFORM
 RUN apk add git make
 ENV ORASPKG /oras
@@ -20,7 +20,7 @@ WORKDIR ${ORASPKG}
 RUN make "build-$(echo $TARGETPLATFORM | tr / -)"
 RUN mv ${ORASPKG}/bin/${TARGETPLATFORM}/oras /go/bin/oras
 
-FROM docker.io/library/alpine:3.22.1
+FROM docker.io/library/alpine:3.22.2
 RUN apk --update add ca-certificates
 COPY --from=builder /go/bin/oras /bin/oras
 RUN mkdir /workspace
