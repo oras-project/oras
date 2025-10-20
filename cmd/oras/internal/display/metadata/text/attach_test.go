@@ -51,11 +51,11 @@ func TestAttachHandler_OnAttached(t *testing.T) {
 	rootDigest := digest.FromBytes([]byte("root content"))
 
 	tests := []struct {
-		name                        string
-		target                      *option.Target
-		root                        ocispec.Descriptor
-		subject                     ocispec.Descriptor
-		expectedDisplayReference    string
+		name                     string
+		target                   *option.Target
+		root                     ocispec.Descriptor
+		subject                  ocispec.Descriptor
+		expectedDisplayReference string
 	}{
 		{
 			name: "reference ends with subject digest",
@@ -141,13 +141,13 @@ func TestAttachHandler_Render(t *testing.T) {
 	rootDigest := digest.FromBytes(content)
 
 	tests := []struct {
-		name                     string
-		out                      *bytes.Buffer
-		errorOut                 bool
-		subjectDisplayReference  string
-		root                     ocispec.Descriptor
-		wantErr                  bool
-		expectedOutput           string
+		name                    string
+		out                     *bytes.Buffer
+		errorOut                bool
+		subjectDisplayReference string
+		root                    ocispec.Descriptor
+		wantErr                 bool
+		expectedOutput          string
 	}{
 		{
 			name:                    "successful render",
