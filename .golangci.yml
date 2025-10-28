@@ -40,7 +40,7 @@ linters:
     - usetesting
 
   exclusions:
-  
+
     generated: lax
 
     presets:
