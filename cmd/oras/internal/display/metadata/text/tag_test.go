@@ -35,7 +35,6 @@ func TestNewTagHandler(t *testing.T) {
 	}
 
 	handler := NewTagHandler(printer, target)
-	
 	if handler == nil {
 		t.Fatal("NewTagHandler should not return nil")
 	}

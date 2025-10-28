@@ -19,10 +19,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"oras.land/oras/cmd/oras/internal/output"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
+	"oras.land/oras/cmd/oras/internal/output"
 )
 
 // manifestFetchHandler handles metadata descriptor output.
