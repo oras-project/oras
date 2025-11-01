@@ -98,6 +98,8 @@ func newStateMachine(cmd string) *stateMachine {
 		// This handles the legacy case where commands were passed as just "manifest" or "blob"
 		sm.addPath("Uploading", "Uploaded")
 		sm.addPath("Exists")
+		// Include Skipped to cover cases where an operation is skipped (e.g., already exists)
+		sm.addPath("Skipped")
 	default:
 		ginkgo.Fail("Unrecognized cmd name " + cmd)
 	}
