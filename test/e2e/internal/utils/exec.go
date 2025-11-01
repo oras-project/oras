@@ -146,7 +146,7 @@ func (opts *ExecOption) MatchContent(content string) *ExecOption {
 	return opts
 }
 
-// MatchTrimedContent adds trimmed content matching to the execution.
+// MatchTrimmedContent adds trimmed content matching to the execution.
 func (opts *ExecOption) MatchTrimmedContent(content string) *ExecOption {
 	if opts.exitCode == 0 {
 		opts.stdout = append(opts.stdout, match.NewContentMatcher(content, true))
@@ -158,7 +158,26 @@ func (opts *ExecOption) MatchTrimmedContent(content string) *ExecOption {
 
 // MatchStatus adds full content matching to the execution option.
 func (opts *ExecOption) MatchStatus(keys []match.StateKey, verbose bool, successCount int) *ExecOption {
-	opts.stdout = append(opts.stdout, match.NewStatusMatcher(keys, opts.args[0], verbose, successCount))
+	// Construct full command string like "manifest push", "blob push", etc.
+	// This allows the matcher to distinguish between different subcommands
+	// Fixes: https://github.com/oras-project/oras/issues/1571
+	cmd := opts.args[0]
+	// Commands that have subcommands: manifest, blob, repo
+	if len(opts.args) > 1 {
+		subcmd := opts.args[1]
+		// Check if the second arg looks like a subcommand (not a flag or reference)
+		// A subcommand is a simple identifier that doesn't start with "-" and doesn't contain
+		// registry reference characters like "/", ":", or "@"
+		if !strings.HasPrefix(subcmd, "-") &&
+			!strings.Contains(subcmd, "/") &&
+			!strings.Contains(subcmd, ":") &&
+			!strings.Contains(subcmd, "@") {
+			cmd = cmd + " " + subcmd
+		}
+	}
+	// Normalize whitespace in command string (handle multiple spaces)
+	cmd = strings.Join(strings.Fields(cmd), " ")
+	opts.stdout = append(opts.stdout, match.NewStatusMatcher(keys, cmd, verbose, successCount))
 	return opts
 }
 

@@ -61,6 +61,9 @@ func newStateMachine(cmd string) *stateMachine {
 		edges: make(map[string][]edge),
 	}
 
+	// Normalize whitespace in command string (handle multiple spaces)
+	cmd = strings.Join(strings.Fields(cmd), " ")
+
 	// prepare edges
 	switch cmd {
 	case "push", "attach":
@@ -85,9 +88,14 @@ func newStateMachine(cmd string) *stateMachine {
 		sm.addPath("Pushing", "Pushed")
 		sm.addPath("Skipped")
 		sm.addPath("Exists")
-	case "manifest", "blob": // for `manifest push` and `blob push`
-		// TODO: refactor the matcher to match full command like `manifest push`, `manifest delete`, etc.
-		// Tracking issue: https://github.com/oras-project/oras/issues/1571
+	case "manifest push", "blob push":
+		// Handle full command strings for manifest and blob push operations
+		sm.addPath("Uploading", "Uploaded")
+		sm.addPath("Exists")
+		sm.addPath("Skipped")
+	case "manifest", "blob":
+		// Fallback for backward compatibility when only base command is provided
+		// This handles the legacy case where commands were passed as just "manifest" or "blob"
 		sm.addPath("Uploading", "Uploaded")
 		sm.addPath("Exists")
 	default:
