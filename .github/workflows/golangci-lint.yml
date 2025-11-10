@@ -38,4 +38,4 @@ jobs:
         go-version: ${{ matrix.go-version }}
         check-latest: true
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v8
+      uses: golangci/golangci-lint-action@v9
