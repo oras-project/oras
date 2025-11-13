@@ -481,13 +481,10 @@ var _ = Describe("ORAS users:", func() {
 			tag := "v1.0"
 			srcRef := RegistryRef(ZOTHost, repo, tag)
 
-			// Prepare test artifact
 			prepare(RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag), srcRef)
 
-			// Backup the artifact
 			ORAS("backup", "--output", outDir, srcRef).Exec()
 
-			// Verify backup directory structure
 			verifyBackupDirectoryStructure(outDir)
 
 			// Read and verify index.json annotations
@@ -495,7 +492,6 @@ var _ = Describe("ORAS users:", func() {
 			indexBytes, err := os.ReadFile(indexPath)
 			Expect(err).ToNot(HaveOccurred())
 
-			// Parse the index
 			var index ocispec.Index
 			err = json.Unmarshal(indexBytes, &index)
 			Expect(err).ToNot(HaveOccurred())
