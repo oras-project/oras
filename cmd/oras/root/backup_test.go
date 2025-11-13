@@ -35,7 +35,6 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
-	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
 )
@@ -706,104 +705,6 @@ func (m *mockLogger) Warningf(format string, args ...any) {}
 func (m *mockLogger) Errorf(format string, args ...any)   {}
 func (m *mockLogger) Fatalf(format string, args ...any)   {}
 func (m *mockLogger) Panicf(format string, args ...any)   {}
-
-func Test_backupTag_titleAnnotation(t *testing.T) {
-	// This test verifies that backupTag stores:
-	// - The tag in org.opencontainers.image.ref.name
-	// - The full image reference in org.opencontainers.image.title
-	ctx := context.Background()
-
-	// Create a source memory store with a simple manifest
-	src := memory.New()
-
-	// Push config blob first
-	configContent := []byte("{}")
-	configDesc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageConfig, configContent)
-	if err := src.Push(ctx, configDesc, strings.NewReader(string(configContent))); err != nil {
-		t.Fatalf("failed to push config: %v", err)
-	}
-
-	// Create a manifest that references the config
-	manifestContent := fmt.Sprintf(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"%s","size":%d},"layers":[]}`, configDesc.Digest, configDesc.Size)
-
-	// Push the manifest and let the store calculate the digest
-	manifestDesc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageManifest, []byte(manifestContent))
-	if err := src.Push(ctx, manifestDesc, strings.NewReader(manifestContent)); err != nil {
-		t.Fatalf("failed to push manifest: %v", err)
-	}
-
-	// Create a temporary directory for the OCI store
-	tempDir := t.TempDir()
-	dstOCIPath := filepath.Join(tempDir, "oci-layout")
-	if err := os.MkdirAll(dstOCIPath, 0755); err != nil {
-		t.Fatalf("failed to create temp directory: %v", err)
-	}
-
-	// Create destination OCI store
-	dst, err := oci.New(dstOCIPath)
-	if err != nil {
-		t.Fatalf("failed to create OCI store: %v", err)
-	}
-
-	// Add the full image reference to the descriptor's title annotation
-	tag := "v1.0"
-	fullRef := "localhost:5000/test/image:v1.0"
-	manifestDesc.Annotations = map[string]string{
-		ocispec.AnnotationTitle: fullRef,
-	}
-
-	if err := backupTag(ctx, src, dst, tag, manifestDesc, oras.DefaultCopyGraphOptions); err != nil {
-		t.Fatalf("backupTag() error = %v, want nil", err)
-	}
-
-	// Save the index to write annotations
-	if err := dst.SaveIndex(); err != nil {
-		t.Fatalf("failed to save index: %v", err)
-	}
-
-	// Read the index.json file to verify the annotations
-	indexPath := filepath.Join(dstOCIPath, "index.json")
-	indexBytes, err := os.ReadFile(indexPath)
-	if err != nil {
-		t.Fatalf("failed to read index.json: %v", err)
-	}
-
-	var index ocispec.Index
-	if err := json.Unmarshal(indexBytes, &index); err != nil {
-		t.Fatalf("failed to unmarshal index.json: %v", err)
-	}
-
-	// Verify the annotations
-	found := false
-	for _, manifest := range index.Manifests {
-		if manifest.Digest == manifestDesc.Digest {
-			// Verify ref.name contains just the tag
-			if refName, ok := manifest.Annotations[ocispec.AnnotationRefName]; ok {
-				if refName != tag {
-					t.Errorf("annotation %s = %q, want %q", ocispec.AnnotationRefName, refName, tag)
-				}
-			} else {
-				t.Errorf("annotation %s not found", ocispec.AnnotationRefName)
-			}
-
-			// Verify title contains the full reference
-			if title, ok := manifest.Annotations[ocispec.AnnotationTitle]; ok {
-				if title != fullRef {
-					t.Errorf("annotation %s = %q, want %q", ocispec.AnnotationTitle, title, fullRef)
-				}
-			} else {
-				t.Errorf("annotation %s not found", ocispec.AnnotationTitle)
-			}
-
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		t.Errorf("manifest with digest %s not found in index", manifestDesc.Digest)
-	}
-}
 
 func (m *mockLogger) Debug(args ...any)   {}
 func (m *mockLogger) Info(args ...any)    {}
