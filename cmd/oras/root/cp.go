@@ -172,11 +172,9 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 		return registry.Referrers(ctx, src, desc, "")
 	}
 
-	srcRepo, srcIsRemote := src.(*remote.Repository)
-	dstRepo, dstIsRemote := dst.(*remote.Repository)
-	if srcIsRemote && dstIsRemote && srcRepo.Reference.Registry == dstRepo.Reference.Registry {
+	if canMount, mountRepo := checkMount(src, dst, opts); canMount {
 		extendedCopyGraphOptions.MountFrom = func(ctx context.Context, desc ocispec.Descriptor) ([]string, error) {
-			return []string{srcRepo.Reference.Repository}, nil
+			return []string{mountRepo}, nil
 		}
 	}
 	dst, err = copyHandler.StartTracking(dst)
@@ -312,4 +310,21 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 		return findPredecessor(ctx, src, desc)
 	}
 	return opts, root, nil
+}
+
+func checkMount(src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) (bool, string) {
+	srcRepo, srcIsRemote := src.(*remote.Repository)
+	dstRepo, dstIsRemote := dst.(*remote.Repository)
+	if !srcIsRemote || !dstIsRemote {
+		return false, ""
+	}
+	if srcRepo.Reference.Registry != dstRepo.Reference.Registry {
+		return false, ""
+	}
+	srcCred := opts.From.Credential()
+	dstCred := opts.To.Credential()
+	if srcCred != dstCred {
+		return false, ""
+	}
+	return true, srcRepo.Reference.Repository
 }

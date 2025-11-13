@@ -364,3 +364,90 @@ func Test_prepareCopyOption_noReferrers(t *testing.T) {
 		t.Errorf("prepareCopyOption() error = %v, wantErr false", err)
 	}
 }
+
+func Test_checkMount(t *testing.T) {
+	registry1Repo1 := &remote.Repository{}
+	registry1Repo1.Reference.Registry = "localhost:5000"
+	registry1Repo1.Reference.Repository = "repo1"
+
+	registry1Repo2 := &remote.Repository{}
+	registry1Repo2.Reference.Registry = "localhost:5000"
+	registry1Repo2.Reference.Repository = "repo2"
+
+	registry2Repo1 := &remote.Repository{}
+	registry2Repo1.Reference.Registry = "localhost:6000"
+	registry2Repo1.Reference.Repository = "repo1"
+
+	tests := []struct {
+		name         string
+		src          oras.ReadOnlyGraphTarget
+		dst          oras.GraphTarget
+		fromUsername string
+		fromPassword string
+		toUsername   string
+		toPassword   string
+		wantMount    bool
+		wantRepo     string
+	}{
+		{
+			name:         "should mount: both remote, same registry, same credentials",
+			src:          registry1Repo1,
+			dst:          registry1Repo2,
+			fromUsername: "user1",
+			fromPassword: "pass1",
+			toUsername:   "user1",
+			toPassword:   "pass1",
+			wantMount:    true,
+			wantRepo:     "repo1",
+		},
+		{
+			name:         "should not mount: both remote, same registry, different credentials",
+			src:          registry1Repo1,
+			dst:          registry1Repo2,
+			fromUsername: "user1",
+			fromPassword: "pass1",
+			toUsername:   "user2",
+			toPassword:   "pass2",
+			wantMount:    false,
+			wantRepo:     "",
+		},
+		{
+			name:         "should not mount: both remote, different registries",
+			src:          registry1Repo1,
+			dst:          registry2Repo1,
+			fromUsername: "user1",
+			fromPassword: "pass1",
+			toUsername:   "user3",
+			toPassword:   "pass3",
+			wantMount:    false,
+			wantRepo:     "",
+		},
+		{
+			name:       "should not mount: source is not remote",
+			src:        memStore,
+			dst:        registry1Repo1,
+			toUsername: "user1",
+			toPassword: "pass1",
+			wantMount:  false,
+			wantRepo:   "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := &copyOptions{}
+			opts.From.Username = tt.fromUsername
+			opts.From.Secret = tt.fromPassword
+			opts.To.Username = tt.toUsername
+			opts.To.Secret = tt.toPassword
+
+			gotMount, gotRepo := checkMount(tt.src, tt.dst, opts)
+			if gotMount != tt.wantMount {
+				t.Errorf("checkMount() gotMount = %v, want %v", gotMount, tt.wantMount)
+			}
+			if gotRepo != tt.wantRepo {
+				t.Errorf("checkMount() gotRepo = %v, want %v", gotRepo, tt.wantRepo)
+			}
+		})
+	}
+}
