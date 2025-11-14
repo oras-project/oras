@@ -172,7 +172,7 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 		return registry.Referrers(ctx, src, desc, "")
 	}
 
-	if canMount, mountRepo := checkMount(src, dst, opts); canMount {
+	if mountRepo, canMount := getMountPoint(src, dst, opts); canMount {
 		extendedCopyGraphOptions.MountFrom = func(ctx context.Context, desc ocispec.Descriptor) ([]string, error) {
 			return []string{mountRepo}, nil
 		}
@@ -312,19 +312,22 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 	return opts, root, nil
 }
 
-func checkMount(src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) (bool, string) {
+// getMountPoint checks if mounting can be performed between two targets and returns
+// the repository name to be mounted from if applicable. Mount can be performed if the two
+// targets are both remote repositories, are in the same registry and have identical credentials.
+func getMountPoint(src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) (string, bool) {
 	srcRepo, srcIsRemote := src.(*remote.Repository)
 	dstRepo, dstIsRemote := dst.(*remote.Repository)
 	if !srcIsRemote || !dstIsRemote {
-		return false, ""
+		return "", false
 	}
 	if srcRepo.Reference.Registry != dstRepo.Reference.Registry {
-		return false, ""
+		return "", false
 	}
 	srcCred := opts.From.Credential()
 	dstCred := opts.To.Credential()
 	if srcCred != dstCred {
-		return false, ""
+		return "", false
 	}
-	return true, srcRepo.Reference.Repository
+	return srcRepo.Reference.Repository, true
 }

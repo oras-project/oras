@@ -386,8 +386,8 @@ func Test_checkMount(t *testing.T) {
 		fromPassword string
 		toUsername   string
 		toPassword   string
-		wantMount    bool
-		wantRepo     string
+		wantRepo     bool
+		wantMount    string
 	}{
 		{
 			name:         "should mount: both remote, same registry, same credentials",
@@ -397,8 +397,8 @@ func Test_checkMount(t *testing.T) {
 			fromPassword: "pass1",
 			toUsername:   "user1",
 			toPassword:   "pass1",
-			wantMount:    true,
-			wantRepo:     "repo1",
+			wantRepo:     true,
+			wantMount:    "repo1",
 		},
 		{
 			name:         "should not mount: both remote, same registry, different credentials",
@@ -408,8 +408,8 @@ func Test_checkMount(t *testing.T) {
 			fromPassword: "pass1",
 			toUsername:   "user2",
 			toPassword:   "pass2",
-			wantMount:    false,
-			wantRepo:     "",
+			wantRepo:     false,
+			wantMount:    "",
 		},
 		{
 			name:         "should not mount: both remote, different registries",
@@ -419,8 +419,8 @@ func Test_checkMount(t *testing.T) {
 			fromPassword: "pass1",
 			toUsername:   "user3",
 			toPassword:   "pass3",
-			wantMount:    false,
-			wantRepo:     "",
+			wantRepo:     false,
+			wantMount:    "",
 		},
 		{
 			name:       "should not mount: source is not remote",
@@ -428,8 +428,8 @@ func Test_checkMount(t *testing.T) {
 			dst:        registry1Repo1,
 			toUsername: "user1",
 			toPassword: "pass1",
-			wantMount:  false,
-			wantRepo:   "",
+			wantRepo:   false,
+			wantMount:  "",
 		},
 	}
 
@@ -441,12 +441,12 @@ func Test_checkMount(t *testing.T) {
 			opts.To.Username = tt.toUsername
 			opts.To.Secret = tt.toPassword
 
-			gotMount, gotRepo := checkMount(tt.src, tt.dst, opts)
-			if gotMount != tt.wantMount {
-				t.Errorf("checkMount() gotMount = %v, want %v", gotMount, tt.wantMount)
-			}
+			gotMount, gotRepo := getMountPoint(tt.src, tt.dst, opts)
 			if gotRepo != tt.wantRepo {
 				t.Errorf("checkMount() gotRepo = %v, want %v", gotRepo, tt.wantRepo)
+			}
+			if gotMount != tt.wantMount {
+				t.Errorf("checkMount() gotRepo = %v, want %v", gotMount, tt.wantMount)
 			}
 		})
 	}
