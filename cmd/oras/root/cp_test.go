@@ -365,7 +365,7 @@ func Test_prepareCopyOption_noReferrers(t *testing.T) {
 	}
 }
 
-func Test_checkMount(t *testing.T) {
+func Test_getMountPoint(t *testing.T) {
 	registry1Repo1 := &remote.Repository{}
 	registry1Repo1.Reference.Registry = "localhost:5000"
 	registry1Repo1.Reference.Repository = "repo1"
