@@ -11,45 +11,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-
-# Test binary, build with `go test -c`
-*.test
-
-# Output of the go coverage tool, specifically when used with LiteIDE
-*.out
-coverage.html
-
-# VS Code
-.vscode
-debug
-
-# Jetbrains
-.idea
-
-# vi
-*.sw*
-
-# Custom
-coverage.txt
-test/e2e/coverage.txt
-**/covcounters.*
-**/covmeta.*
-bin/
-dist/
-*.tar.gz
-vendor/
-_dist/
-.DS_Store
-
-# Distribution storage files for local E2E testing
-test/e2e/testdata/distribution/mount/docker/
-test/e2e/testdata/distribution/mount_fallback/docker/
-
-
-test/e2e/go.work.sum
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oras-e2e-tests
+  labels:
+    name: oras-e2e-tests
+    purpose: testing
