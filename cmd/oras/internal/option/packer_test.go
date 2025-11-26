@@ -154,6 +154,7 @@ func TestPacker_parseAnnotations_annotationFlag(t *testing.T) {
 }
 
 func givenTestFile(t *testing.T, data string) (path string) {
+	t.Helper()
 	tempDir := t.TempDir()
 	fileName := "test.txt"
 	path = filepath.Join(tempDir, fileName)
