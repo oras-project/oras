@@ -25,7 +25,7 @@ import (
 )
 
 func Test_fetchManifest_errType(t *testing.T) {
-    // prepare
+	// prepare
 	cmd := &cobra.Command{}
 	cmd.SetContext(context.Background())
 
