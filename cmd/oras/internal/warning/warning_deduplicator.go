@@ -31,6 +31,9 @@ type warningDeduplicator struct {
 	seen sync.Map
 }
 
+// GetDeduplicator returns a warning handler function that deduplicates warnings
+// for the specified registry. Multiple calls with the same registry share the
+// same deduplication state.
 func GetDeduplicator(registry string, logger logrus.FieldLogger) func(warning remote.Warning) {
 	result, _ := globalDeduplicator.seen.LoadOrStore(registry, &sync.Map{})
 	warner := result.(*sync.Map)
