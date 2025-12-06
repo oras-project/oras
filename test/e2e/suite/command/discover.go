@@ -25,7 +25,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"gopkg.in/yaml.v2"
+	"go.yaml.in/yaml/v4"
 	"oras.land/oras/test/e2e/internal/testdata/feature"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
