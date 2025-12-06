@@ -4,6 +4,7 @@ Owners:
   - Sajay Antony (@sajayantony)
   - Shiwei Zhang (@shizhMSFT)
   - Steve Lasker (@stevelasker)
+  - Terry Howe (@TerryHowe)
 
 Emeritus:
   - Avi Deitcher (@deitch)
