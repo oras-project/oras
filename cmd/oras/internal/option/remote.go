@@ -45,6 +45,38 @@ import (
 	"oras.land/oras/internal/version"
 )
 
+var (
+	// sharedClient is a package-level auth client that can be shared across
+	// multiple command executions to avoid re-authentication. The client's
+	// cache stores OAuth tokens obtained during the first authentication.
+	sharedClient     *auth.Client
+	sharedClientLock sync.RWMutex
+)
+
+// SetSharedClient sets a shared auth client to be reused across command
+// executions. This allows multiple commands to share the same authentication
+// cache, avoiding repeated authentication requests to the registry.
+func SetSharedClient(client *auth.Client) {
+	sharedClientLock.Lock()
+	defer sharedClientLock.Unlock()
+	sharedClient = client
+}
+
+// GetSharedClient returns the shared auth client if one has been set.
+// Returns nil if no shared client has been configured.
+func GetSharedClient() *auth.Client {
+	sharedClientLock.RLock()
+	defer sharedClientLock.RUnlock()
+	return sharedClient
+}
+
+// ClearSharedClient removes the shared auth client.
+func ClearSharedClient() {
+	sharedClientLock.Lock()
+	defer sharedClientLock.Unlock()
+	sharedClient = nil
+}
+
 const (
 	caFileFlag                 = "ca-file"
 	certFileFlag               = "cert-file"
@@ -261,13 +293,22 @@ func (remo *Remote) authClient(registry string, debug bool) (client *auth.Client
 		return nil, err
 	}
 	baseTransport.DialContext = dialContext
+
+	// Check if there's a shared client we can reuse for its cache
+	var cache auth.Cache
+	if existing := GetSharedClient(); existing != nil {
+		cache = existing.Cache
+	} else {
+		cache = auth.NewCache()
+	}
+
 	client = &auth.Client{
 		Client: &http.Client{
 			// http.RoundTripper with a retry using the DefaultPolicy
 			// see: https://pkg.go.dev/oras.land/oras-go/v2/registry/remote/retry#Policy
 			Transport: retry.NewTransport(baseTransport),
 		},
-		Cache:  auth.NewCache(),
+		Cache:  cache,
 		Header: remo.headers,
 	}
 	client.SetUserAgent("oras/" + version.GetVersion())
@@ -288,6 +329,12 @@ func (remo *Remote) authClient(registry string, debug bool) (client *auth.Client
 		}
 		client.Credential = credentials.Credential(remo.store)
 	}
+
+	// Store this client as the shared client for subsequent commands
+	if GetSharedClient() == nil {
+		SetSharedClient(client)
+	}
+
 	return
 }
 
