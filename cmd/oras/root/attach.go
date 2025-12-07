@@ -114,7 +114,7 @@ Example - Attach file to the manifest tagged 'example.com:v1' in an OCI image la
 			}
 			return err
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts.Printer.Verbose = opts.verbose
 			return runAttach(cmd, &opts)
 		},

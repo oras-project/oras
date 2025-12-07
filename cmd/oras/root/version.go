@@ -45,7 +45,7 @@ Example - print version:
 			}
 			return nil
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			printer := output.NewPrinter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 			return runVersion(printer)
 		},

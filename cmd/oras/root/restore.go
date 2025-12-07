@@ -57,7 +57,7 @@ func restoreCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "restore [flags] --input <path> <registry>/<repository>[:<ref1>[,<ref2>...]]",
 		Short: "[Experimental] Restore artifacts to a registry from an OCI image layout",
-		Long: `[Experimental] Restore artifacts to a registry from an OCI image layout, which can be either a directory or a tar archive. 
+		Long: `[Experimental] Restore artifacts to a registry from an OCI image layout, which can be either a directory or a tar archive.
 
 Example - Restore a single artifact from a tar archive:
   oras restore --input hello.tar localhost:5000/hello:v1
@@ -108,7 +108,7 @@ Example - Set custom concurrency level:
 			opts.DisableTTY(opts.Debug, false)
 			return nil
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts.Printer.Verbose = true // always print verbose output
 			return runRestore(cmd, &opts)
 		},

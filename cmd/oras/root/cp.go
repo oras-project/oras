@@ -173,7 +173,7 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 	}
 
 	if mountRepo, canMount := getMountPoint(src, dst, opts); canMount {
-		extendedCopyGraphOptions.MountFrom = func(ctx context.Context, desc ocispec.Descriptor) ([]string, error) {
+		extendedCopyGraphOptions.MountFrom = func(_ context.Context, _ ocispec.Descriptor) ([]string, error) {
 			return []string{mountRepo}, nil
 		}
 	}

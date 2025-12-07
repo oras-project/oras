@@ -697,13 +697,13 @@ func (m *mockLogger) Debugf(format string, args ...any) {
 	m.debugMessages = append(m.debugMessages, fmt.Sprintf(format, args...))
 }
 
-func (m *mockLogger) Infof(_ string, args ...any)    {}
-func (m *mockLogger) Printf(_ string, args ...any)   {}
-func (m *mockLogger) Warnf(_ string, args ...any)    {}
-func (m *mockLogger) Warningf(_ string, args ...any) {}
-func (m *mockLogger) Errorf(_ string, args ...any)   {}
-func (m *mockLogger) Fatalf(_ string, args ...any)   {}
-func (m *mockLogger) Panicf(_ string, args ...any)   {}
+func (m *mockLogger) Infof(_ string, _ ...any)    {}
+func (m *mockLogger) Printf(_ string, _ ...any)   {}
+func (m *mockLogger) Warnf(_ string, _ ...any)    {}
+func (m *mockLogger) Warningf(_ string, _ ...any) {}
+func (m *mockLogger) Errorf(_ string, _ ...any)   {}
+func (m *mockLogger) Fatalf(_ string, _ ...any)   {}
+func (m *mockLogger) Panicf(_ string, _ ...any)   {}
 
 func (m *mockLogger) Debug(args ...any)   {}
 func (m *mockLogger) Info(args ...any)    {}
