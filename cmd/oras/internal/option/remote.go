@@ -143,20 +143,20 @@ func CheckStdinConflict(flags *pflag.FlagSet) error {
 
 // Parse tries to read password with optional cmd prompt.
 func (remo *Remote) Parse(cmd *cobra.Command) error {
-	usernameAndIdTokenFlags := []string{remo.flagPrefix + usernameFlag, remo.flagPrefix + identityTokenFlag}
-	passwordAndIdTokenFlags := []string{remo.flagPrefix + passwordFlag, remo.flagPrefix + identityTokenFlag}
+	usernameAndIDTokenFlags := []string{remo.flagPrefix + usernameFlag, remo.flagPrefix + identityTokenFlag}
+	passwordAndIDTokenFlags := []string{remo.flagPrefix + passwordFlag, remo.flagPrefix + identityTokenFlag}
 	certFileAndKeyFileFlags := []string{remo.flagPrefix + certFileFlag, remo.flagPrefix + keyFileFlag}
 	if cmd.Flags().Lookup(identityTokenFromStdinFlag) != nil {
-		usernameAndIdTokenFlags = append(usernameAndIdTokenFlags, identityTokenFromStdinFlag)
-		passwordAndIdTokenFlags = append(passwordAndIdTokenFlags, identityTokenFromStdinFlag)
+		usernameAndIDTokenFlags = append(usernameAndIDTokenFlags, identityTokenFromStdinFlag)
+		passwordAndIDTokenFlags = append(passwordAndIDTokenFlags, identityTokenFromStdinFlag)
 	}
 	if cmd.Flags().Lookup(passwordFromStdinFlag) != nil {
-		passwordAndIdTokenFlags = append(passwordAndIdTokenFlags, passwordFromStdinFlag)
+		passwordAndIDTokenFlags = append(passwordAndIDTokenFlags, passwordFromStdinFlag)
 	}
-	if err := oerrors.CheckMutuallyExclusiveFlags(cmd.Flags(), usernameAndIdTokenFlags...); err != nil {
+	if err := oerrors.CheckMutuallyExclusiveFlags(cmd.Flags(), usernameAndIDTokenFlags...); err != nil {
 		return err
 	}
-	if err := oerrors.CheckMutuallyExclusiveFlags(cmd.Flags(), passwordAndIdTokenFlags...); err != nil {
+	if err := oerrors.CheckMutuallyExclusiveFlags(cmd.Flags(), passwordAndIDTokenFlags...); err != nil {
 		return err
 	}
 	if err := remo.parseCustomHeaders(); err != nil {
@@ -277,7 +277,7 @@ func (remo *Remote) authClient(_ string, debug bool) (client *auth.Client, err e
 
 	cred := remo.Credential()
 	if cred != auth.EmptyCredential {
-		client.Credential = func(ctx context.Context, s string) (auth.Credential, error) {
+		client.Credential = func(_ context.Context, s string) (auth.Credential, error) {
 			return cred, nil
 		}
 	} else {
@@ -348,7 +348,7 @@ func (remo *Remote) NewRegistry(registry string, common Common, logger logrus.Fi
 		return nil, err
 	}
 	registry = reg.Reference.Registry
-	reg.PlainHTTP = remo.isPlainHttp(registry)
+	reg.PlainHTTP = remo.isPlainHTTP(registry)
 	reg.HandleWarning = remo.handleWarning(registry, logger)
 	if reg.Client, err = remo.authClient(registry, common.Debug); err != nil {
 		return nil, err
@@ -366,7 +366,7 @@ func (remo *Remote) NewRepository(reference string, common Common, logger logrus
 		return nil, err
 	}
 	registry := repo.Reference.Registry
-	repo.PlainHTTP = remo.isPlainHttp(registry)
+	repo.PlainHTTP = remo.isPlainHTTP(registry)
 	repo.HandleWarning = remo.handleWarning(registry, logger)
 	if repo.Client, err = remo.authClient(registry, common.Debug); err != nil {
 		return nil, err
@@ -380,8 +380,8 @@ func (remo *Remote) NewRepository(reference string, common Common, logger logrus
 	return
 }
 
-// isPlainHttp returns the plain http flag for a given registry.
-func (remo *Remote) isPlainHttp(registry string) bool {
+// isPlainHTTP returns the plain http flag for a given registry.
+func (remo *Remote) isPlainHTTP(registry string) bool {
 	plainHTTP, enforced := remo.plainHTTP()
 	if enforced {
 		return plainHTTP
@@ -395,19 +395,19 @@ func (remo *Remote) isPlainHttp(registry string) bool {
 }
 
 // ModifyError modifies error during cmd execution.
-func (remo *Remote) ModifyError(cmd *cobra.Command, err error) (error, bool) {
+func (remo *Remote) ModifyError(cmd *cobra.Command, err error) (bool, error) {
 	if errors.Is(err, auth.ErrBasicCredentialNotFound) {
-		return remo.DecorateCredentialError(err), true
+		return  true, remo.DecorateCredentialError(err)
 	}
 
 	var errResp *errcode.ErrorResponse
 	if errors.As(err, &errResp) {
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
-		return &oerrors.Error{
+		return true, &oerrors.Error{
 			Err: oerrors.ReportErrResp(errResp),
-		}, true
+		}
 	}
-	return err, false
+	return false, err
 }
 
 // DecorateCredentialError decorate error with recommendation.

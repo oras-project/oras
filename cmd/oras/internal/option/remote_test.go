@@ -118,7 +118,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestRemote_FlagsInit(t *testing.T) {
+func TestRemote_FlagsInit(_ *testing.T) {
 	var test struct {
 		Remote
 	}
@@ -350,7 +350,7 @@ func TestRemote_NewRepository_Retry(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	retries, count := 3, 0
-	ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		count++
 		if count < retries {
 			http.Error(w, "error", http.StatusTooManyRequests)

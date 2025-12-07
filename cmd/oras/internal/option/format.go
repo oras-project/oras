@@ -86,73 +86,73 @@ func (f *Format) SetTypes(defaultType *FormatType, otherTypes ...*FormatType) {
 }
 
 // ApplyFlags implements FlagProvider.ApplyFlag.
-func (opts *Format) ApplyFlags(fs *pflag.FlagSet) {
+func (f *Format) ApplyFlags(fs *pflag.FlagSet) {
 	buf := bytes.NewBufferString("[Experimental] format output using a custom template:")
 	w := tabwriter.NewWriter(buf, 0, 0, 2, ' ', 0)
-	for _, t := range opts.allowedTypes {
+	for _, t := range f.allowedTypes {
 		_, _ = fmt.Fprintf(w, "\n'%s':\t%s", t.Name, t.Usage)
 	}
 	_ = w.Flush()
 	// apply flags
-	fs.StringVar(&opts.FormatFlag, "format", opts.FormatFlag, buf.String())
-	fs.StringVar(&opts.Template, "template", "", "[Experimental] template string used to format output")
+	fs.StringVar(&f.FormatFlag, "format", f.FormatFlag, buf.String())
+	fs.StringVar(&f.Template, "template", "", "[Experimental] template string used to format output")
 }
 
 // Parse parses the input format flag.
-func (opts *Format) Parse(cmd *cobra.Command) error {
+func (f *Format) Parse(cmd *cobra.Command) error {
 	// print deprecation message for table format
-	if opts.FormatFlag == FormatTypeTable.Name {
+	if f.FormatFlag == FormatTypeTable.Name {
 		_, _ = fmt.Fprint(cmd.ErrOrStderr(), "Format \"table\" is deprecated and will be removed in a future release.\n")
 	}
-	if err := opts.parseFlag(); err != nil {
+	if err := f.parseFlag(); err != nil {
 		return err
 	}
 
-	if opts.Type == FormatTypeText.Name {
+	if f.Type == FormatTypeText.Name {
 		// flag not specified
 		return nil
 	}
 
-	if opts.Type == FormatTypeGoTemplate.Name && opts.Template == "" {
+	if f.Type == FormatTypeGoTemplate.Name && f.Template == "" {
 		return &oerrors.Error{
-			Err:            fmt.Errorf("%q format specified but no template given", opts.Type),
-			Recommendation: fmt.Sprintf("use `--format %s=TEMPLATE` to specify the template", opts.Type),
+			Err:            fmt.Errorf("%q format specified but no template given", f.Type),
+			Recommendation: fmt.Sprintf("use `--format %s=TEMPLATE` to specify the template", f.Type),
 		}
 	}
 
 	var optionalTypes []string
-	for _, t := range opts.allowedTypes {
-		if opts.Type == t.Name {
+	for _, t := range f.allowedTypes {
+		if f.Type == t.Name {
 			// type validation passed
 			return nil
 		}
 		optionalTypes = append(optionalTypes, t.Name)
 	}
 	return &oerrors.Error{
-		Err:            fmt.Errorf("invalid format type: %q", opts.Type),
+		Err:            fmt.Errorf("invalid format type: %q", f.Type),
 		Recommendation: fmt.Sprintf("supported types: %s", strings.Join(optionalTypes, ", ")),
 	}
 }
 
-func (opts *Format) parseFlag() error {
-	opts.Type = opts.FormatFlag
-	if opts.Template != "" {
+func (f *Format) parseFlag() error {
+	f.Type = f.FormatFlag
+	if f.Template != "" {
 		// template explicitly set
-		if opts.Type != FormatTypeGoTemplate.Name {
+		if f.Type != FormatTypeGoTemplate.Name {
 			return fmt.Errorf("--template must be used with --format %s", FormatTypeGoTemplate.Name)
 		}
 		return nil
 	}
 
-	for _, t := range opts.allowedTypes {
+	for _, t := range f.allowedTypes {
 		if !t.HasParams {
 			continue
 		}
 		prefix := t.Name + "="
-		if strings.HasPrefix(opts.FormatFlag, prefix) {
+		if strings.HasPrefix(f.FormatFlag, prefix) {
 			// parse type and add parameter to template
-			opts.Type = t.Name
-			opts.Template = opts.FormatFlag[len(prefix):]
+			f.Type = t.Name
+			f.Template = f.FormatFlag[len(prefix):]
 		}
 	}
 	return nil
