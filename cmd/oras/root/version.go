@@ -36,7 +36,7 @@ func versionCmd() *cobra.Command {
 Example - print version:
   oras version
 `,
-		Args: func(cmd *cobra.Command, args []string) error {
+		Args: func(_ *cobra.Command, args []string) error {
 			if len(args) != 0 {
 				_, err := fmt.Fprintf(os.Stderr, "warning: `oras version` requires no argument, %q will be ignored\n", strings.Join(args, ","))
 				if err != nil {

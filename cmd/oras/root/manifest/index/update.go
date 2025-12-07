@@ -55,7 +55,7 @@ func updateCmd() *cobra.Command {
 		Use:   "update <index>{:<tag>|@<digest>} [{--add|--merge|--remove} <manifest>{<tag>|<digest>}] [...]",
 		Short: "[Experimental] Update and push an image index",
 		Long: `[Experimental] Update and push an image index. All manifests should be in the same repository
-		
+
 Example - Remove a manifest and add two manifests from an index tagged 'v1'. The tag will point to the updated index:
   oras manifest index update localhost:5000/hello:v1 --add linux-amd64 --add linux-arm64 --remove sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9
 
@@ -245,7 +245,7 @@ func mergeIndexes(ctx context.Context, displayStatus status.ManifestIndexUpdateH
 	return manifests, nil
 }
 
-func removeManifests(handler status.ManifestIndexUpdateHandler, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, opts updateOptions) ([]ocispec.Descriptor, error) {
+func removeManifests(handler status.ManifestIndexUpdateHandler, manifests []ocispec.Descriptor, _ oras.ReadOnlyTarget, opts updateOptions) ([]ocispec.Descriptor, error) {
 	// create a set of digests to speed up the remove
 	digestToRemove := make(map[digest.Digest]bool)
 	for _, manifestRef := range opts.removeArguments {
