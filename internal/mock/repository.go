@@ -33,7 +33,7 @@ type content struct {
 	blob []byte
 }
 
-type repository struct {
+type Repository struct {
 	cas                map[string]content
 	remote.Repository  // make tests compile
 	isFetcher          bool
@@ -42,26 +42,26 @@ type repository struct {
 }
 
 // WithFetch enables mocking for Fetch.
-func (repo *repository) WithFetch() *repository {
+func (repo *Repository) WithFetch() *Repository {
 	repo.isFetcher = true
 	return repo
 }
 
 // WithFetchReference enables mocking for FetchReference.
-func (repo *repository) WithFetchReference() *repository {
+func (repo *Repository) WithFetchReference() *Repository {
 	repo.isReferenceFetcher = true
 	return repo
 }
 
 // WithResolve enables mocking for Resolve.
-func (repo *repository) WithResolve() *repository {
+func (repo *Repository) WithResolve() *Repository {
 	repo.isResolver = true
 	return repo
 }
 
-// New returns a new repository struct.
-func New() *repository {
-	return &repository{}
+// New returns a new Repository struct.
+func New() *Repository {
+	return &Repository{}
 }
 
 // Blob mocks a content blob stored in content-addressable storage.
@@ -71,8 +71,8 @@ type Blob struct {
 	Tag       string
 }
 
-// Remount remounts the underlying CAS of the repository.
-func (repo *repository) Remount(blobs []Blob) {
+// Remount remounts the underlying CAS of the Repository.
+func (repo *Repository) Remount(blobs []Blob) {
 	repo.cas = make(map[string]content)
 	for _, blob := range blobs {
 		bytes := []byte(blob.Content)
@@ -91,7 +91,7 @@ func (repo *repository) Remount(blobs []Blob) {
 var errNotImplemented = errors.New("not implemented")
 
 // FetchReference mocks the fetching via a reference ref.
-func (repo *repository) FetchReference(ctx context.Context, ref string) (ocispec.Descriptor, io.ReadCloser, error) {
+func (repo *Repository) FetchReference(_ context.Context, ref string) (ocispec.Descriptor, io.ReadCloser, error) {
 	if !repo.isReferenceFetcher {
 		return ocispec.Descriptor{}, nil, errNotImplemented
 	}
@@ -103,7 +103,7 @@ func (repo *repository) FetchReference(ctx context.Context, ref string) (ocispec
 }
 
 // Fetch mocks fetching the target descriptor.
-func (repo *repository) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
+func (repo *Repository) Fetch(_ context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
 	if !repo.isFetcher {
 		return nil, errNotImplemented
 	}
@@ -115,7 +115,7 @@ func (repo *repository) Fetch(ctx context.Context, target ocispec.Descriptor) (i
 }
 
 // Resolve mocks resolving via a reference.
-func (repo *repository) Resolve(ctx context.Context, reference string) (ocispec.Descriptor, error) {
+func (repo *Repository) Resolve(_ context.Context, reference string) (ocispec.Descriptor, error) {
 	if !repo.isResolver {
 		return ocispec.Descriptor{}, errNotImplemented
 	}

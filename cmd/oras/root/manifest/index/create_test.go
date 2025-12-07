@@ -80,7 +80,7 @@ func (tds *testCreateDisplayStatus) OnIndexPacked(desc ocispec.Descriptor) error
 	return nil
 }
 
-func (tds *testCreateDisplayStatus) OnIndexPushed(path string) error {
+func (tds *testCreateDisplayStatus) OnIndexPushed(_ string) error {
 	if tds.onIndexPushedError {
 		return fmt.Errorf("error")
 	}
@@ -164,7 +164,7 @@ func Test_enrichDescriptor(t *testing.T) {
 				}
 			`),
 			manifestMediaType: "application/vnd.oci.image.index.v1+json",
-			checkDesc: func(t *testing.T, gotDesc, inputDesc ocispec.Descriptor) {
+			checkDesc: func(t *testing.T, gotDesc, _ ocispec.Descriptor) {
 				t.Helper()
 				if got, want := gotDesc.ArtifactType, "application/vnd.example"; got != want {
 					t.Errorf("ArtifactType = %s, want %s", got, want)
@@ -192,7 +192,7 @@ func Test_enrichDescriptor(t *testing.T) {
 				}
 			`),
 			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
-			checkDesc: func(t *testing.T, gotDesc, inputDesc ocispec.Descriptor) {
+			checkDesc: func(t *testing.T, gotDesc, _ ocispec.Descriptor) {
 				t.Helper()
 				if got, want := gotDesc.ArtifactType, "application/vnd.example"; got != want {
 					t.Errorf("ArtifactType = %s, want %s", got, want)
@@ -227,7 +227,7 @@ func Test_enrichDescriptor(t *testing.T) {
 				}
 			`),
 			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
-			checkDesc: func(t *testing.T, gotDesc, inputDesc ocispec.Descriptor) {
+			checkDesc: func(t *testing.T, gotDesc, _ ocispec.Descriptor) {
 				t.Helper()
 				if got, want := gotDesc.ArtifactType, "application/vnd.example"; got != want {
 					t.Errorf("ArtifactType = %s, want %s", got, want)

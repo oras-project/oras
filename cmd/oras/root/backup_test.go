@@ -372,7 +372,7 @@ func Test_resolveTags(t *testing.T) {
 	// test server setup
 	setupServer := func(handlers map[string]http.HandlerFunc) *httptest.Server {
 		mux := http.NewServeMux()
-		mux.HandleFunc("/v2/", func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("/v2/", func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Docker-Distribution-Api-Version", "registry/2.0")
 			w.WriteHeader(http.StatusOK)
 		})
@@ -384,7 +384,7 @@ func Test_resolveTags(t *testing.T) {
 
 	// Common manifest handler
 	manifestHandler := func(desc ocispec.Descriptor) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
+		return func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", desc.MediaType)
 			w.Header().Set("Docker-Content-Digest", desc.Digest.String())
 			w.WriteHeader(http.StatusOK)
@@ -425,7 +425,7 @@ func Test_resolveTags(t *testing.T) {
 
 	t.Run("error resolving specified tag", func(t *testing.T) {
 		server := setupServer(map[string]http.HandlerFunc{
-			fmt.Sprintf("/v2/%s/manifests/non-existent", repoName): func(w http.ResponseWriter, r *http.Request) {
+			fmt.Sprintf("/v2/%s/manifests/non-existent", repoName): func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusNotFound)
 			},
 		})
@@ -697,13 +697,13 @@ func (m *mockLogger) Debugf(format string, args ...any) {
 	m.debugMessages = append(m.debugMessages, fmt.Sprintf(format, args...))
 }
 
-func (m *mockLogger) Infof(format string, args ...any)    {}
-func (m *mockLogger) Printf(format string, args ...any)   {}
-func (m *mockLogger) Warnf(format string, args ...any)    {}
-func (m *mockLogger) Warningf(format string, args ...any) {}
-func (m *mockLogger) Errorf(format string, args ...any)   {}
-func (m *mockLogger) Fatalf(format string, args ...any)   {}
-func (m *mockLogger) Panicf(format string, args ...any)   {}
+func (m *mockLogger) Infof(_ string, args ...any)    {}
+func (m *mockLogger) Printf(_ string, args ...any)   {}
+func (m *mockLogger) Warnf(_ string, args ...any)    {}
+func (m *mockLogger) Warningf(_ string, args ...any) {}
+func (m *mockLogger) Errorf(_ string, args ...any)   {}
+func (m *mockLogger) Fatalf(_ string, args ...any)   {}
+func (m *mockLogger) Panicf(_ string, args ...any)   {}
 
 func (m *mockLogger) Debug(args ...any)   {}
 func (m *mockLogger) Info(args ...any)    {}
@@ -730,7 +730,7 @@ type mockBackupHandler struct {
 	tarExportedResult  error
 }
 
-func (m *mockBackupHandler) OnTarExporting(path string) error {
+func (m *mockBackupHandler) OnTarExporting(_ string) error {
 	m.tarExportingCalled = true
 	return m.tarExportingResult
 }
@@ -740,15 +740,15 @@ func (m *mockBackupHandler) OnTarExported(path string, size int64) error {
 	return m.tarExportedResult
 }
 
-func (m *mockBackupHandler) OnTagsFound(tags []string) error {
+func (m *mockBackupHandler) OnTagsFound(_ []string) error {
 	return nil
 }
 
-func (m *mockBackupHandler) OnArtifactPulled(tag string, referrerCount int) error {
+func (m *mockBackupHandler) OnArtifactPulled(_ string, referrerCount int) error {
 	return nil
 }
 
-func (m *mockBackupHandler) OnBackupCompleted(tagsCount int, path string, duration time.Duration) error {
+func (m *mockBackupHandler) OnBackupCompleted(_ int, path string, duration time.Duration) error {
 	return nil
 }
 

@@ -47,6 +47,7 @@ linters:
     - unparam
     - unused
     - usestdlibvars
+    - revive
     - usetesting
     - whitespace
 

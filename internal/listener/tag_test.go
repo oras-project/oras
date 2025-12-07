@@ -26,7 +26,7 @@ import (
 )
 
 func TestNewTagListener(t *testing.T) {
-	failOnTagging := func(desc ocispec.Descriptor, tag string) error {
+	failOnTagging := func(ocispec.Descriptor, string) error {
 		return errors.New("tagging error")
 	}
 	failOnTagged := func(ocispec.Descriptor, string) error {
