@@ -96,7 +96,7 @@ Example - Update an index to remove any existing artifact type:
 			}
 			return option.Parse(cmd, &opts)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return updateIndex(cmd, opts)
 		},
 	}

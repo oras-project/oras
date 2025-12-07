@@ -59,21 +59,21 @@ type testCreateDisplayStatus struct {
 	onIndexPushedError bool
 }
 
-func (tds *testCreateDisplayStatus) OnFetching(manifestRef string) error {
+func (tds *testCreateDisplayStatus) OnFetching(_ string) error {
 	if tds.onFetchingError {
 		return fmt.Errorf("OnFetching error")
 	}
 	return nil
 }
 
-func (tds *testCreateDisplayStatus) OnFetched(manifestRef string, desc ocispec.Descriptor) error {
+func (tds *testCreateDisplayStatus) OnFetched(_ string, desc ocispec.Descriptor) error {
 	if tds.onFetchedError {
 		return fmt.Errorf("OnFetched error")
 	}
 	return nil
 }
 
-func (tds *testCreateDisplayStatus) OnIndexPacked(desc ocispec.Descriptor) error {
+func (tds *testCreateDisplayStatus) OnIndexPacked(_ ocispec.Descriptor) error {
 	if tds.onIndexPackedError {
 		return fmt.Errorf("error")
 	}
