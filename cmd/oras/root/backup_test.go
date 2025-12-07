@@ -665,7 +665,7 @@ func Test_countReferrers(t *testing.T) {
 	t.Run("bad FindPredecessors", func(t *testing.T) {
 		testErr := errors.New("test error")
 		opts := oras.ExtendedCopyGraphOptions{
-			FindPredecessors: func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			FindPredecessors: func(_ context.Context, _ content.ReadOnlyGraphStorage, _ ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 				return nil, testErr
 			},
 		}
@@ -705,23 +705,23 @@ func (m *mockLogger) Errorf(_ string, _ ...any)   {}
 func (m *mockLogger) Fatalf(_ string, _ ...any)   {}
 func (m *mockLogger) Panicf(_ string, _ ...any)   {}
 
-func (m *mockLogger) Debug(args ...any)   {}
-func (m *mockLogger) Info(args ...any)    {}
-func (m *mockLogger) Print(args ...any)   {}
-func (m *mockLogger) Warn(args ...any)    {}
-func (m *mockLogger) Warning(args ...any) {}
-func (m *mockLogger) Error(args ...any)   {}
-func (m *mockLogger) Fatal(args ...any)   {}
-func (m *mockLogger) Panic(args ...any)   {}
+func (m *mockLogger) Debug(_ ...any)   {}
+func (m *mockLogger) Info(_ ...any)    {}
+func (m *mockLogger) Print(_ ...any)   {}
+func (m *mockLogger) Warn(_ ...any)    {}
+func (m *mockLogger) Warning(_ ...any) {}
+func (m *mockLogger) Error(_ ...any)   {}
+func (m *mockLogger) Fatal(_ ...any)   {}
+func (m *mockLogger) Panic(_ ...any)   {}
 
-func (m *mockLogger) Debugln(args ...any)   {}
-func (m *mockLogger) Infoln(args ...any)    {}
-func (m *mockLogger) Println(args ...any)   {}
-func (m *mockLogger) Warnln(args ...any)    {}
-func (m *mockLogger) Warningln(args ...any) {}
-func (m *mockLogger) Errorln(args ...any)   {}
-func (m *mockLogger) Fatalln(args ...any)   {}
-func (m *mockLogger) Panicln(args ...any)   {}
+func (m *mockLogger) Debugln(_ ...any)   {}
+func (m *mockLogger) Infoln(_ ...any)    {}
+func (m *mockLogger) Println(_ ...any)   {}
+func (m *mockLogger) Warnln(_ ...any)    {}
+func (m *mockLogger) Warningln(_ ...any) {}
+func (m *mockLogger) Errorln(_ ...any)   {}
+func (m *mockLogger) Fatalln(_ ...any)   {}
+func (m *mockLogger) Panicln(_ ...any)   {}
 
 type mockBackupHandler struct {
 	tarExportingCalled bool
