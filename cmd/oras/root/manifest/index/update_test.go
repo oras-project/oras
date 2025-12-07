@@ -44,14 +44,14 @@ func (tds *testUpdateDisplayStatus) OnFetching(_ string) error {
 	return nil
 }
 
-func (tds *testUpdateDisplayStatus) OnFetched(_ string, desc ocispec.Descriptor) error {
+func (tds *testUpdateDisplayStatus) OnFetched(_ string, _ ocispec.Descriptor) error {
 	if tds.onFetchedError {
 		return fmt.Errorf("OnFetched error")
 	}
 	return nil
 }
 
-func (tds *testUpdateDisplayStatus) OnIndexPacked(desc ocispec.Descriptor) error {
+func (tds *testUpdateDisplayStatus) OnIndexPacked(_ ocispec.Descriptor) error {
 	if tds.onIndexPackedError {
 		return fmt.Errorf("error")
 	}
@@ -72,14 +72,14 @@ func (tds *testUpdateDisplayStatus) OnManifestRemoved(_ digest.Digest) error {
 	return nil
 }
 
-func (tds *testUpdateDisplayStatus) OnManifestAdded(_ string, desc ocispec.Descriptor) error {
+func (tds *testUpdateDisplayStatus) OnManifestAdded(_ string, _ ocispec.Descriptor) error {
 	if tds.onManifestAddedError {
 		return fmt.Errorf("error")
 	}
 	return nil
 }
 
-func (tds *testUpdateDisplayStatus) OnIndexMerged(_ string, desc ocispec.Descriptor) error {
+func (tds *testUpdateDisplayStatus) OnIndexMerged(_ string, _ ocispec.Descriptor) error {
 	if tds.onIndexMergedError {
 		return fmt.Errorf("error")
 	}

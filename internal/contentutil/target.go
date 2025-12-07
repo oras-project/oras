@@ -55,7 +55,7 @@ func (m *multiReadOnlyTarget) Fetch(ctx context.Context, target ocispec.Descript
 
 // Exists returns true if the content exists in any of the targets.
 // multiReadOnlyTarget does not implement Exists() because it's read-only.
-func (m *multiReadOnlyTarget) Exists(ctx context.Context, target ocispec.Descriptor) (bool, error) {
+func (m *multiReadOnlyTarget) Exists(_ context.Context, _ ocispec.Descriptor) (bool, error) {
 	return false, errors.New("MultiReadOnlyTarget.Exists() is not implemented")
 }
 

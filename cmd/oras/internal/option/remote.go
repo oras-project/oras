@@ -277,7 +277,7 @@ func (remo *Remote) authClient(_ string, debug bool) (client *auth.Client, err e
 
 	cred := remo.Credential()
 	if cred != auth.EmptyCredential {
-		client.Credential = func(_ context.Context, s string) (auth.Credential, error) {
+		client.Credential = func(_ context.Context, _ string) (auth.Credential, error) {
 			return cred, nil
 		}
 	} else {
@@ -397,7 +397,7 @@ func (remo *Remote) isPlainHTTP(registry string) bool {
 // ModifyError modifies error during cmd execution.
 func (remo *Remote) ModifyError(cmd *cobra.Command, err error) (bool, error) {
 	if errors.Is(err, auth.ErrBasicCredentialNotFound) {
-		return  true, remo.DecorateCredentialError(err)
+		return true, remo.DecorateCredentialError(err)
 	}
 
 	var errResp *errcode.ErrorResponse

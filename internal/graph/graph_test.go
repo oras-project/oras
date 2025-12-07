@@ -351,7 +351,7 @@ func TestRecursiveFindReferrers(t *testing.T) {
 	t.Run("bad FindPredecessors options", func(t *testing.T) {
 		testErr := errors.New("test error")
 		opts := oras.ExtendedCopyGraphOptions{
-			FindPredecessors: func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			FindPredecessors: func(_ context.Context, _ content.ReadOnlyGraphStorage, _ ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 				return nil, testErr
 			},
 		}

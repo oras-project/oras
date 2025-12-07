@@ -96,7 +96,7 @@ func TestStart(t *testing.T) {
 		},
 		{
 			name: "fail to report initialization",
-			t: TrackerFunc(func(status Status, _ error) error {
+			t: TrackerFunc(func(_ Status, _ error) error {
 				return errors.New("fail to track")
 			}),
 			wantErr: true,

@@ -445,7 +445,7 @@ func Test_resolveTags(t *testing.T) {
 
 	t.Run("fetching all tags from repository", func(t *testing.T) {
 		server := setupServer(map[string]http.HandlerFunc{
-			fmt.Sprintf("/v2/%s/tags/list", repoName): func(w http.ResponseWriter, r *http.Request) {
+			fmt.Sprintf("/v2/%s/tags/list", repoName): func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				_, _ = w.Write([]byte(`{"name":"` + repoName + `","tags":["v1","v2"]}`))
 			},
@@ -481,7 +481,7 @@ func Test_resolveTags(t *testing.T) {
 
 	t.Run("error listing tags from repository", func(t *testing.T) {
 		server := setupServer(map[string]http.HandlerFunc{
-			fmt.Sprintf("/v2/%s/tags/list", repoName): func(w http.ResponseWriter, r *http.Request) {
+			fmt.Sprintf("/v2/%s/tags/list", repoName): func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
 			},
 		})
@@ -735,7 +735,7 @@ func (m *mockBackupHandler) OnTarExporting(_ string) error {
 	return m.tarExportingResult
 }
 
-func (m *mockBackupHandler) OnTarExported(path string, size int64) error {
+func (m *mockBackupHandler) OnTarExported(_ string, _ int64) error {
 	m.tarExportedCalled = true
 	return m.tarExportedResult
 }
@@ -744,11 +744,11 @@ func (m *mockBackupHandler) OnTagsFound(_ []string) error {
 	return nil
 }
 
-func (m *mockBackupHandler) OnArtifactPulled(_ string, referrerCount int) error {
+func (m *mockBackupHandler) OnArtifactPulled(_ string, _ int) error {
 	return nil
 }
 
-func (m *mockBackupHandler) OnBackupCompleted(_ int, path string, duration time.Duration) error {
+func (m *mockBackupHandler) OnBackupCompleted(_ int, _ string, _ time.Duration) error {
 	return nil
 }
 
