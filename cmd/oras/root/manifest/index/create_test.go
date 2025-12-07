@@ -33,15 +33,15 @@ type testReadOnlyTarget struct {
 	content []byte
 }
 
-func (tros *testReadOnlyTarget) Exists(ctx context.Context, desc ocispec.Descriptor) (bool, error) {
+func (tros *testReadOnlyTarget) Exists(_ context.Context, _ ocispec.Descriptor) (bool, error) {
 	return true, nil
 }
 
-func (tros *testReadOnlyTarget) Fetch(ctx context.Context, desc ocispec.Descriptor) (io.ReadCloser, error) {
+func (tros *testReadOnlyTarget) Fetch(_ context.Context, _ ocispec.Descriptor) (io.ReadCloser, error) {
 	return io.NopCloser(bytes.NewReader(tros.content)), nil
 }
 
-func (tros *testReadOnlyTarget) Resolve(ctx context.Context, reference string) (ocispec.Descriptor, error) {
+func (tros *testReadOnlyTarget) Resolve(_ context.Context, _ string) (ocispec.Descriptor, error) {
 	if bytes.Equal(tros.content, []byte("index")) {
 		return ocispec.Descriptor{MediaType: ocispec.MediaTypeImageIndex, Digest: digest.FromBytes(tros.content), Size: int64(len(tros.content))}, nil
 	}
