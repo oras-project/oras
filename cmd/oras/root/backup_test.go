@@ -501,12 +501,12 @@ func Test_resolveTags(t *testing.T) {
 
 	t.Run("error resolving one of the listed tags", func(t *testing.T) {
 		server := setupServer(map[string]http.HandlerFunc{
-			fmt.Sprintf("/v2/%s/tags/list", repoName): func(w http.ResponseWriter, r *http.Request) {
+			fmt.Sprintf("/v2/%s/tags/list", repoName): func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				_, _ = w.Write([]byte(`{"name":"` + repoName + `","tags":["v1","v2-bad"]}`))
 			},
 			fmt.Sprintf("/v2/%s/manifests/v1", repoName): manifestHandler(desc1),
-			fmt.Sprintf("/v2/%s/manifests/v2-bad", repoName): func(w http.ResponseWriter, r *http.Request) {
+			fmt.Sprintf("/v2/%s/manifests/v2-bad", repoName): func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusNotFound)
 			},
 		})
@@ -526,7 +526,7 @@ func Test_resolveTags(t *testing.T) {
 
 	t.Run("empty tag list from repository", func(t *testing.T) {
 		server := setupServer(map[string]http.HandlerFunc{
-			fmt.Sprintf("/v2/%s/tags/list", repoName): func(w http.ResponseWriter, r *http.Request) {
+			fmt.Sprintf("/v2/%s/tags/list", repoName): func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				_, _ = w.Write([]byte(`{"name":"` + repoName + `","tags":[]}`))
 			},

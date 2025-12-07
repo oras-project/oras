@@ -66,7 +66,7 @@ func (tds *testCreateDisplayStatus) OnFetching(_ string) error {
 	return nil
 }
 
-func (tds *testCreateDisplayStatus) OnFetched(_ string, desc ocispec.Descriptor) error {
+func (tds *testCreateDisplayStatus) OnFetched(_ string, _ ocispec.Descriptor) error {
 	if tds.onFetchedError {
 		return fmt.Errorf("OnFetched error")
 	}
