@@ -162,7 +162,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 			}
 			return nil
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts.Printer.Verbose = opts.verbose
 			return runPush(cmd, &opts)
 		},
