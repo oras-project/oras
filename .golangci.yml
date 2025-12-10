@@ -39,6 +39,7 @@ linters:
     - ineffassign
     - misspell
     - nilerr
+    - nilnil
     - noctx
     - staticcheck
     - thelper
