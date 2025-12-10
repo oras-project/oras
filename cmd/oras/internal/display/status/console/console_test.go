@@ -90,7 +90,6 @@ func TestConsole_GetHeightWidth(t *testing.T) {
 	_ = pty.Resize(containerd.WinSize{Width: 200, Height: 100})
 	gotHeight, gotWidth = c.GetHeightWidth()
 	validateSize(t, gotWidth, gotHeight, 200, 100)
-
 }
 
 func TestConsole_NewRow(t *testing.T) {

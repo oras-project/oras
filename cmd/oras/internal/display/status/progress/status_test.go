@@ -322,7 +322,7 @@ func Test_updateStatus(t *testing.T) {
 	equal := func(s, t *status) bool {
 		// speed is not compared
 		return s.done == t.done &&
-			s.err == t.err &&
+			errors.Is(s.err, t.err) &&
 			s.text == t.text &&
 			s.startTime.Equal(t.startTime) &&
 			s.endTime.Equal(t.endTime) &&

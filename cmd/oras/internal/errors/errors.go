@@ -135,13 +135,14 @@ func TrimErrBasicCredentialNotFound(err error) error {
 	toTrim := err
 	inner := err
 	for {
-		switch x := inner.(type) {
-		case interface{ Unwrap() error }:
+		var unwrapper interface{ Unwrap() error }
+		var multiUnwrapper interface{ Unwrap() []error }
+		if errors.As(inner, &unwrapper) {
 			toTrim = inner
-			inner = x.Unwrap()
+			inner = unwrapper.Unwrap()
 			continue
-		case interface{ Unwrap() []error }:
-			for _, errItem := range x.Unwrap() {
+		} else if errors.As(inner, &multiUnwrapper) {
+			for _, errItem := range multiUnwrapper.Unwrap() {
 				if errors.Is(errItem, auth.ErrBasicCredentialNotFound) {
 					toTrim = errItem
 					inner = errItem

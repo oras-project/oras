@@ -301,7 +301,7 @@ func TestFinalizeBackupOutput(t *testing.T) {
 		}
 
 		err := finalizeBackupOutput(dstRoot, opts, mockLogger, mockHandler)
-		if err != expectedErr {
+		if !errors.Is(err, expectedErr) {
 			t.Errorf("Expected error %v, got: %v", expectedErr, err)
 		}
 	})
@@ -325,7 +325,7 @@ func TestFinalizeBackupOutput(t *testing.T) {
 		}
 
 		err := finalizeBackupOutput(dstRoot, opts, mockLogger, mockHandler)
-		if err != expectedErr {
+		if !errors.Is(err, expectedErr) {
 			t.Errorf("Expected error %v, got: %v", expectedErr, err)
 		}
 	})
@@ -674,7 +674,6 @@ func Test_countReferrers(t *testing.T) {
 			t.Errorf("countReferrers() error = %v, want %v", err, testErr)
 		}
 	})
-
 }
 
 // Mock implementations

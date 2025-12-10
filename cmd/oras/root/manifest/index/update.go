@@ -245,7 +245,7 @@ func mergeIndexes(ctx context.Context, displayStatus status.ManifestIndexUpdateH
 	return manifests, nil
 }
 
-func removeManifests(handler status.ManifestIndexUpdateHandler, manifests []ocispec.Descriptor, target oras.ReadOnlyTarget, opts updateOptions) ([]ocispec.Descriptor, error) {
+func removeManifests(handler status.ManifestIndexUpdateHandler, manifests []ocispec.Descriptor, _ oras.ReadOnlyTarget, opts updateOptions) ([]ocispec.Descriptor, error) {
 	// create a set of digests to speed up the remove
 	digestToRemove := make(map[digest.Digest]bool)
 	for _, manifestRef := range opts.removeArguments {
