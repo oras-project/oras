@@ -27,18 +27,28 @@ linters:
   default: standard
 
   enable:
+    - bodyclose
+    - copyloopvar
     - depguard
     - dupl
+    - errorlint
     - goheader
     - gomodguard
+    - gosec
     - govet
     - ineffassign
     - misspell
+    - nilerr
+    - noctx
+    - prealloc
     - staticcheck
     - thelper
+    - unconvert
+    - unparam
     - unused
     - usestdlibvars
     - usetesting
+    - whitespace
 
   exclusions:
 
