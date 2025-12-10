@@ -155,6 +155,10 @@ fix-encoding:  ## fix file CR/LF encoding
 lint:  ## run CI version of lint
 	golangci-lint run $(PKG)
 
+.PHONY: govulncheck
+govulncheck:  ## run vulnerability check on dependencies
+	$(GO_EXE) run golang.org/x/vuln/cmd/govulncheck@latest $(PKG)
+
 .PHONY: tidy
 tidy:  ## go mod tidy
 	GO111MODULE=on $(GO_EXE) mod tidy
