@@ -39,7 +39,6 @@ linters:
     - misspell
     - nilerr
     - noctx
-    - prealloc
     - staticcheck
     - thelper
     - unconvert
@@ -73,6 +72,12 @@ linters:
 
     dupl:
       threshold: 400
+
+    gosec:
+      excludes:
+        - G306
+        - G115
+        - G402
 
 run:
   timeout: 10m

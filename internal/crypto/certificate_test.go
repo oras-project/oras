@@ -37,8 +37,9 @@ func TestLoadCertPool(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	client := &http.Client{}
-	_, err = client.Do(req)
+	resp, err := client.Do(req)
 	if err == nil {
+		resp.Body.Close()
 		t.Fatalf("expecting TLS check failure error but didn't get one")
 	}
 
@@ -52,10 +53,11 @@ func TestLoadCertPool(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	client = &http.Client{Transport: tp}
-	_, err = client.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to trust the self signed pem: %v", err)
 	}
+	resp.Body.Close()
 }
 
 func TestLoadCertPool_invalidPem(t *testing.T) {

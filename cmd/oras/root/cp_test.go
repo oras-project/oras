@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -235,7 +236,7 @@ func Test_prepareCopyOption_fetchFailure(t *testing.T) {
 		Size:      int64(len("nonexistent")),
 	}
 
-	if _, _, err := prepareCopyOption(ctx, src, dst, root, oras.ExtendedCopyGraphOptions{}); err != errMockedFetch {
+	if _, _, err := prepareCopyOption(ctx, src, dst, root, oras.ExtendedCopyGraphOptions{}); !errors.Is(err, errMockedFetch) {
 		t.Errorf("prepareCopyOption() error = %v, want %v", err, errMockedFetch)
 	}
 }
@@ -250,7 +251,7 @@ func Test_recursiveCopy_prepareCopyOptionFailure(t *testing.T) {
 		Size:      int64(len("nonexistent")),
 	}
 
-	if _, _, err := prepareCopyOption(ctx, src, dst, root, oras.ExtendedCopyGraphOptions{}); err != errMockedFetch {
+	if _, _, err := prepareCopyOption(ctx, src, dst, root, oras.ExtendedCopyGraphOptions{}); !errors.Is(err, errMockedFetch) {
 		t.Errorf("prepareCopyOption() error = %v, want %v", err, errMockedFetch)
 	}
 }
@@ -277,7 +278,8 @@ func Test_prepareCopyOption_jsonUnmarshalFailure(t *testing.T) {
 		Size:      int64(len("invalid-json")),
 	}
 	_, _, err := prepareCopyOption(ctx, src, dst, root, oras.ExtendedCopyGraphOptions{})
-	if _, ok := err.(*json.SyntaxError); !ok {
+	var syntaxErr *json.SyntaxError
+	if !errors.As(err, &syntaxErr) {
 		t.Errorf("prepareCopyOption() error = %v, want json.SyntaxError", err)
 	}
 }
@@ -296,7 +298,6 @@ func (m *mockReferrersFailingSource) Fetch(ctx context.Context, target ocispec.D
 }
 
 func Test_prepareCopyOption_referrersFailure(t *testing.T) {
-
 	ctx := context.Background()
 	mockedIndex := `{"schemaVersion":2,"manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2}]}`
 	src := &mockReferrersFailingSource{indexContent: mockedIndex}
@@ -313,13 +314,12 @@ func Test_prepareCopyOption_referrersFailure(t *testing.T) {
 		},
 	}
 
-	if _, _, err := prepareCopyOption(ctx, src, dst, root, opts); err != errMockedReferrers {
+	if _, _, err := prepareCopyOption(ctx, src, dst, root, opts); !errors.Is(err, errMockedReferrers) {
 		t.Errorf("prepareCopyOption() error = %v, wantErr %v", err, errMockedReferrers)
 	}
 }
 
 func Test_prepareCopyOption_referrersFailureOnIndex(t *testing.T) {
-
 	ctx := context.Background()
 	mockedIndex := `{"schemaVersion":2,"manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2}]}`
 	src := &mockReferrersFailingSource{indexContent: mockedIndex}
@@ -340,7 +340,7 @@ func Test_prepareCopyOption_referrersFailureOnIndex(t *testing.T) {
 		},
 	}
 
-	if _, _, err := prepareCopyOption(ctx, src, dst, root, opts); err != errMockedReferrers {
+	if _, _, err := prepareCopyOption(ctx, src, dst, root, opts); !errors.Is(err, errMockedReferrers) {
 		t.Errorf("prepareCopyOption() error = %v, wantErr %v", err, errMockedReferrers)
 	}
 }
