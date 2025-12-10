@@ -30,6 +30,7 @@ linters:
     - depguard
     - dupl
     - gomodguard
+    - gosec
     - govet
     - ineffassign
     - misspell
