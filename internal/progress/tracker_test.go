@@ -87,7 +87,7 @@ func TestStart(t *testing.T) {
 	}{
 		{
 			name: "successful report initialization",
-			t: TrackerFunc(func(status Status, err error) error {
+			t: TrackerFunc(func(status Status, _ error) error {
 				if status.State != StateInitialized {
 					t.Errorf("expected state to be StateInitialized, got %v", status.State)
 				}
@@ -96,7 +96,7 @@ func TestStart(t *testing.T) {
 		},
 		{
 			name: "fail to report initialization",
-			t: TrackerFunc(func(status Status, err error) error {
+			t: TrackerFunc(func(_ Status, _ error) error {
 				return errors.New("fail to track")
 			}),
 			wantErr: true,
@@ -119,7 +119,7 @@ func TestDone(t *testing.T) {
 	}{
 		{
 			name: "successful report initialization",
-			t: TrackerFunc(func(status Status, err error) error {
+			t: TrackerFunc(func(status Status, _ error) error {
 				if status.State != StateTransmitted {
 					t.Errorf("expected state to be StateTransmitted, got %v", status.State)
 				}
@@ -128,7 +128,7 @@ func TestDone(t *testing.T) {
 		},
 		{
 			name: "fail to report initialization",
-			t: TrackerFunc(func(status Status, err error) error {
+			t: TrackerFunc(func(_ Status, _ error) error {
 				return errors.New("fail to track")
 			}),
 			wantErr: true,
@@ -249,7 +249,7 @@ func TestTrackReader(t *testing.T) {
 	})
 
 	t.Run("empty io.Reader", func(t *testing.T) {
-		tracker := TrackerFunc(func(status Status, err error) error {
+		tracker := TrackerFunc(func(_ Status, _ error) error {
 			t.Errorf("TrackerFunc should not be called for empty read")
 			return nil
 		})

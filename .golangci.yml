@@ -38,6 +38,7 @@ linters:
     - thelper
     - unused
     - usestdlibvars
+    - revive
     - usetesting
 
   exclusions:

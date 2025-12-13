@@ -120,7 +120,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestRemote_FlagsInit(t *testing.T) {
+func TestRemote_FlagsInit(_ *testing.T) {
 	var test struct {
 		Remote
 	}
@@ -349,7 +349,7 @@ func TestRemote_NewRepository_Retry(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	retries, count := 3, 0
-	ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		count++
 		if count < retries {
 			http.Error(w, "error", http.StatusTooManyRequests)
@@ -400,13 +400,13 @@ func TestRemote_NewRepository_Retry(t *testing.T) {
 
 func TestRemote_default_localhost(t *testing.T) {
 	opts := Remote{plainHTTP: plainHTTPNotSpecified}
-	got := opts.isPlainHttp("localhost")
+	got := opts.isPlainHTTP("localhost")
 	if got != true {
 		t.Fatalf("tls should be disabled when domain is localhost")
 
 	}
 
-	got = opts.isPlainHttp("localhost:9090")
+	got = opts.isPlainHTTP("localhost:9090")
 	if got != true {
 		t.Fatalf("tls should be disabled when domain is localhost")
 
@@ -415,13 +415,13 @@ func TestRemote_default_localhost(t *testing.T) {
 
 func TestRemote_isPlainHTTP_localhost(t *testing.T) {
 	opts := Remote{plainHTTP: plainHTTPEnabled}
-	isplainHTTP := opts.isPlainHttp("localhost")
+	isplainHTTP := opts.isPlainHTTP("localhost")
 	if isplainHTTP != true {
 		t.Fatalf("tls should be disabled when domain is localhost and --plain-http is used")
 
 	}
 
-	isplainHTTP = opts.isPlainHttp("localhost:9090")
+	isplainHTTP = opts.isPlainHTTP("localhost:9090")
 	if isplainHTTP != true {
 		t.Fatalf("tls should be disabled when domain is localhost and --plain-http is used")
 
@@ -430,13 +430,13 @@ func TestRemote_isPlainHTTP_localhost(t *testing.T) {
 
 func TestRemote_isHTTPS_localhost(t *testing.T) {
 	opts := Remote{plainHTTP: HTTPSEnabled}
-	got := opts.isPlainHttp("localhost")
+	got := opts.isPlainHTTP("localhost")
 	if got != false {
 		t.Fatalf("tls should be enabled when domain is localhost and --plain-http=false is used")
 
 	}
 
-	got = opts.isPlainHttp("localhost:9090")
+	got = opts.isPlainHTTP("localhost:9090")
 	if got != false {
 		t.Fatalf("tls should be enabled when domain is localhost and --plain-http=false is used")
 
