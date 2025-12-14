@@ -29,11 +29,14 @@ linters:
   enable:
     - depguard
     - dupl
+    - errcheck
+    - errorlint
     - goheader
     - gomodguard
     - govet
     - ineffassign
     - misspell
+    - nilerr
     - staticcheck
     - thelper
     - unused
