@@ -360,8 +360,8 @@ func (remo *Remote) NewRegistry(registry string, common Common, logger logrus.Fi
 func (remo *Remote) NewRepository(reference string, common Common, logger logrus.FieldLogger) (repo *remote.Repository, err error) {
 	repo, err = remote.NewRepository(reference)
 	if err != nil {
-		if errors.Unwrap(err) == errdef.ErrInvalidReference {
-			return nil, fmt.Errorf("%q: %v", reference, err)
+		if errors.Is(err, errdef.ErrInvalidReference) {
+			return nil, fmt.Errorf("%q: %w", reference, err)
 		}
 		return nil, err
 	}

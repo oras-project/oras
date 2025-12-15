@@ -106,9 +106,10 @@ Example - Attach file to the manifest tagged 'example.com:v1' in an OCI image la
 			}
 			if len(opts.FileRefs) == 0 {
 				// no file argument provided
-				if err, ok := err.(*oerrors.Error); ok && err.OperationType == oerrors.OperationTypeParseArtifactReference {
+				var oErr *oerrors.Error
+				if errors.As(err, &oErr) && oErr.OperationType == oerrors.OperationTypeParseArtifactReference {
 					// invalid reference
-					err.Recommendation = fmt.Sprintf("Are you missing an artifact reference to attach to? %s", err.Recommendation)
+					oErr.Recommendation = fmt.Sprintf("Are you missing an artifact reference to attach to? %s", oErr.Recommendation)
 				}
 			}
 			return err

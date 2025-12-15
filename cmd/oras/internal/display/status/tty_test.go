@@ -88,8 +88,8 @@ func TestTTYPushHandler_PostCopy_errGetSuccessor(t *testing.T) {
 	err := ph.PostCopy(ctx, ocispec.Descriptor{
 		MediaType: ocispec.MediaTypeImageManifest,
 	})
-	if err.Error() != errorFetcher.ExpectedError.Error() {
-		t.Errorf("PostCopy() should return expected error got %v", err.Error())
+	if !errors.Is(err, errorFetcher.ExpectedError) {
+		t.Errorf("PostCopy() should return expected error got %v", err)
 	}
 }
 
@@ -175,8 +175,8 @@ func TestTTYBackupHandler_PostCopy_errGetSuccessor(t *testing.T) {
 		MediaType: ocispec.MediaTypeImageManifest,
 	})
 
-	if err == nil || err.Error() != errorFetcher.ExpectedError.Error() {
-		t.Errorf("PostCopy() should return expected error got %v", err.Error())
+	if !errors.Is(err, errorFetcher.ExpectedError) {
+		t.Errorf("PostCopy() should return expected error got %v", err)
 	}
 }
 
@@ -262,7 +262,7 @@ func TestTTYRestoreHandler_PostCopy_errGetSuccessor(t *testing.T) {
 		MediaType: ocispec.MediaTypeImageManifest,
 	})
 
-	if err == nil || err.Error() != errorFetcher.ExpectedError.Error() {
+	if !errors.Is(err, errorFetcher.ExpectedError) {
 		t.Errorf("PostCopy() should return expected error got %v", err)
 	}
 }

@@ -249,7 +249,7 @@ func TestTarget_ModifyError_errResponse(t *testing.T) {
 	if !modified {
 		t.Errorf("expected error to be modified but received %v", modified)
 	}
-	if got.Error() != errResp.Errors.Error() {
+	if got == nil || got.Error() != errResp.Errors.Error() {
 		t.Errorf("unexpected output from Target.ModifyError() = %v", got)
 	}
 	if cmd.ErrPrefix() != oerrors.RegistryErrorPrefix {
@@ -406,8 +406,8 @@ func TestTarget_ModifyError_dockerHint(t *testing.T) {
 				IsOCILayout:  tt.fields.IsOCILayout,
 			}
 			got, modified := opts.ModifyError(cmd, tt.err)
-			gotErr, ok := got.(*oerrors.Error)
-			if !ok {
+			var gotErr *oerrors.Error
+			if !errors.As(got, &gotErr) {
 				t.Errorf("expecting error to be *oerrors.Error but received %T", got)
 			}
 			if gotErr.Err.Error() != tt.modifiedErr.Err.Error() || gotErr.Usage != tt.modifiedErr.Usage || gotErr.Recommendation != tt.modifiedErr.Recommendation {
