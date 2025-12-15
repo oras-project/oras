@@ -249,7 +249,7 @@ func TestTarget_ModifyError_errResponse(t *testing.T) {
 	if !modified {
 		t.Errorf("expected error to be modified but received %v", modified)
 	}
-	if got == nil || got.Error() != errResp.Errors.Error() {
+	if got != nil && got.Error() != errResp.Errors.Error() {
 		t.Errorf("unexpected output from Target.ModifyError() = %v", got)
 	}
 	if cmd.ErrPrefix() != oerrors.RegistryErrorPrefix {
@@ -331,10 +331,10 @@ func TestTarget_ModifyError_dockerHint(t *testing.T) {
 		},
 	}
 	tests := []struct {
-		name        string
-		fields      fields
-		err         error
-		modifiedErr *oerrors.Error
+		name          string
+		fields        fields
+		err           error
+		expectedError *oerrors.Error
 	}{
 		{
 			"namespace already exists",
@@ -410,8 +410,8 @@ func TestTarget_ModifyError_dockerHint(t *testing.T) {
 			if !errors.As(got, &gotErr) {
 				t.Errorf("expecting error to be *oerrors.Error but received %T", got)
 			}
-			if gotErr.Err.Error() != tt.modifiedErr.Err.Error() || gotErr.Usage != tt.modifiedErr.Usage || gotErr.Recommendation != tt.modifiedErr.Recommendation {
-				t.Errorf("Target.ModifyError() error = %v, wantErr %v", gotErr, tt.modifiedErr)
+			if gotErr.Err.Error() != tt.expectedError.Err.Error() || gotErr.Usage != tt.expectedError.Usage || gotErr.Recommendation != tt.expectedError.Recommendation {
+				t.Errorf("Target.ModifyError() error = %v, wantErr %v", gotErr, tt.expectedError)
 			}
 			if !modified {
 				t.Errorf("Failed to modify %v", tt.err)
