@@ -18,7 +18,9 @@ package root
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
 	"slices"
 	"strings"
 
@@ -30,6 +32,7 @@ import (
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/errcode"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
@@ -230,15 +233,17 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 
 	// Mount failed due to permissions, retry without mounting
 	if err != nil && extendedCopyGraphOptions.MountFrom != nil {
-		// Check for specific Mount error strings
-		errStr := err.Error()
-		if strings.Contains(errStr, "unauthorized") ||
-			strings.Contains(errStr, "failed to perform \"Mount\"") ||
-			strings.Contains(errStr, "authentication required") {
-
-			// Disable mounting and retry
-			extendedCopyGraphOptions.MountFrom = nil
-			desc, err = executeCopy(extendedCopyGraphOptions)
+		var copyErr *oras.CopyError
+		if errors.As(err, &copyErr) && copyErr.Op == "Mount" {
+			var errResp *errcode.ErrorResponse
+			if errors.As(copyErr.Err, &errResp) {
+				if errResp.StatusCode == http.StatusUnauthorized ||
+					errResp.StatusCode == http.StatusForbidden {
+					// Disable mounting and retry
+					extendedCopyGraphOptions.MountFrom = nil
+					desc, err = executeCopy(extendedCopyGraphOptions)
+				}
+			}
 		}
 	}
 	// leave the CopyError to oerrors.Modifier for prefix processing
