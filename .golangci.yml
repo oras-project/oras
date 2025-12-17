@@ -61,6 +61,11 @@ linters:
       - legacy
       - std-error-handling
 
+    rules:
+      - linters: [revive]
+        path: "internal/"
+        text: "var-naming: avoid package names"
+
     warn-unused: true
 
   settings:
