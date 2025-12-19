@@ -429,7 +429,7 @@ This approach:
 - **Multi-repository backups always use full references** to disambiguate artifacts from different repositories
 
 > [!WARNING]
-> Backups created with `--full-reference` are **not compatible** with ORAS CLI versions prior to v1.4.0 or tools that expect tag-only references in `org.opencontainers.image.ref.name`. Use this flag only when you need full reference information for automation or multi-registry scenarios.
+> Backups created with `--full-reference` are **not compatible** with ORAS CLI versions prior to v1.4.0 or tools that expect tag-only references in `org.opencontainers.image.ref.name`. Use this flag only when you need full reference information for automation or multi-repository scenarios.
 
 **Example `index.json` formats:**
 
