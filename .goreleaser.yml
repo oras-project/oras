@@ -68,6 +68,9 @@ archives:
     - goos: windows
       format: zip
 
+sboms:
+  - artifacts: archive
+
 release:
   draft: true
   prerelease: auto
