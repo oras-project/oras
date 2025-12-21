@@ -335,7 +335,8 @@ func Test_prepareCopyOption_referrersFailureOnIndex(t *testing.T) {
 			if desc.MediaType == ocispec.MediaTypeImageIndex {
 				return nil, errMockedReferrers
 			}
-			return []ocispec.Descriptor{ocispec.Descriptor{}}, nil
+			entry := ocispec.Descriptor{}
+			return []ocispec.Descriptor{entry}, nil
 		},
 	}
 
