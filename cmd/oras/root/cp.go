@@ -237,7 +237,7 @@ func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.T
 	return nil
 }
 
-func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, root ocispec.Descriptor, opts oras.ExtendedCopyGraphOptions) (oras.ExtendedCopyGraphOptions, ocispec.Descriptor, error) {
+func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, _ oras.Target, root ocispec.Descriptor, opts oras.ExtendedCopyGraphOptions) (oras.ExtendedCopyGraphOptions, ocispec.Descriptor, error) {
 	if root.MediaType != ocispec.MediaTypeImageIndex && root.MediaType != docker.MediaTypeManifestList {
 		return opts, root, nil
 	}
