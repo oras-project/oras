@@ -16,6 +16,7 @@ limitations under the License.
 package errors
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"testing"
@@ -184,7 +185,7 @@ func TestUnwrapCopyError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotErr := UnwrapCopyError(tt.inputErr)
-			if gotErr != tt.wantErr {
+			if !errors.Is(gotErr, tt.wantErr) {
 				t.Errorf("UnwrapCopyError() = %v, want %v", gotErr, tt.wantErr)
 			}
 		})

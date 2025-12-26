@@ -67,7 +67,7 @@ func (p *Printer) print(prefix string, n *Node) error {
 			return err
 		}
 		if err := p.print(prefixPipe, n); err != nil {
-			return nil
+			return err
 		}
 	}
 	if _, err := io.WriteString(p.writer, prefix+EdgeLast); err != nil {

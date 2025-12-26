@@ -43,7 +43,6 @@ func TestNewStoreError(t *testing.T) {
 	if err != nil {
 		ok := strings.Contains(err.Error(), "failed to open config file")
 		reflect.DeepEqual(ok, true)
-
 	} else {
 		t.Errorf("Expected err to be not nil")
 	}
