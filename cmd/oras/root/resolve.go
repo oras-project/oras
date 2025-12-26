@@ -52,7 +52,7 @@ Example - Resolve digest of the target artifact:
 			opts.RawReference = args[0]
 			return option.Parse(cmd, &opts)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runResolve(cmd, &opts)
 		},
 	}
