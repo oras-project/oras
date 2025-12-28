@@ -17,6 +17,8 @@ package root
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -39,5 +41,61 @@ func Test_runPush_errType(t *testing.T) {
 	want := errors.UnsupportedFormatTypeError(opts.Format.Type).Error()
 	if got != want {
 		t.Fatalf("got %v, want %v", got, want)
+	}
+}
+
+func Test_runPushRecursive_errType(t *testing.T) {
+	// prepare
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
+
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "test.txt")
+	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+
+	// test
+	opts := &pushOptions{
+		Format: option.Format{
+			Type: "unknown",
+		},
+		Recursive: option.Recursive{
+			Recursive:           true,
+			MaxBlobsPerManifest: 1000,
+		},
+	}
+	opts.FileRefs = []string{tmpDir}
+
+	got := runPushRecursive(cmd, opts).Error()
+	want := errors.UnsupportedFormatTypeError(opts.Format.Type).Error()
+	if got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+}
+
+func Test_runPushRecursive_emptyDir(t *testing.T) {
+	// prepare
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
+
+	tmpDir := t.TempDir()
+
+	// test with empty directory and no preserve-empty-dirs
+	opts := &pushOptions{
+		Recursive: option.Recursive{
+			Recursive:           true,
+			MaxBlobsPerManifest: 1000,
+			PreserveEmptyDirs:   false,
+		},
+	}
+	opts.FileRefs = []string{tmpDir}
+
+	err := runPushRecursive(cmd, opts)
+	if err == nil {
+		t.Fatal("expected error for empty directory")
+	}
+	if err.Error() != "directory is empty; nothing to push" {
+		t.Fatalf("got error %q, want %q", err.Error(), "directory is empty; nothing to push")
 	}
 }
