@@ -29,9 +29,9 @@ jobs:
       - name: setup go environment
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25.4'
+          go-version: '1.25.5'
       - name: Install Syft
-        uses: anchore/sbom-action/download-syft@v0.20.11
+        uses: anchore/sbom-action/download-syft@v0.21.0
         with:
           syft-version: v1.32.0
       - name: run goreleaser
