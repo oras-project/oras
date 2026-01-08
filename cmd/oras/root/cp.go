@@ -33,6 +33,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -84,6 +85,9 @@ Example - Copy an artifact and referrers using specific methods for the Referrer
 
 Example - Copy certain platform of an artifact:
   oras cp --platform linux/arm/v5 localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:v1
+
+Example - Copy certain platforms of an artifact:
+  oras cp --platform linux/amd64,linux/arm64,linux/arm/v7 localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:v1
 
 Example - Copy an artifact with multiple tags:
   oras cp localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:tag1,tag2,tag3
@@ -138,20 +142,181 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	ctx = registryutil.WithScopeHint(ctx, dst, auth.ActionPull, auth.ActionPush)
 	statusHandler, metadataHandler := display.NewCopyHandler(opts.Printer, opts.TTY, dst)
 
-	desc, err := doCopy(ctx, statusHandler, src, dst, opts)
+	// Check if multiple platforms are specified
+	if len(opts.Platform.Platforms) > 1 && !opts.recursive {
+		// Handle multiple platforms - copy manifests that match the specified platforms
+		return copyMultiplePlatforms(ctx, statusHandler, metadataHandler, src, dst, opts)
+	} else {
+		// Original behavior for single platform or recursive mode
+		desc, err := doCopy(ctx, statusHandler, src, dst, opts)
+		if err != nil {
+			return err
+		}
+
+		if from, err := digest.Parse(opts.From.Reference); err == nil && from != desc.Digest {
+			// correct source digest
+			opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, desc.Digest.String())
+		}
+
+		if err := metadataHandler.OnCopied(&opts.BinaryTarget, desc); err != nil {
+			return err
+		}
+
+		if len(opts.extraRefs) != 0 {
+			tagNOpts := oras.DefaultTagNOptions
+			tagNOpts.Concurrency = opts.concurrency
+			tagListener := listener.NewTaggedListener(dst, metadataHandler.OnTagged)
+			if _, err = oras.TagN(ctx, tagListener, opts.To.Reference, opts.extraRefs, tagNOpts); err != nil {
+				return err
+			}
+		}
+
+		return metadataHandler.Render()
+	}
+}
+
+// copyMultiplePlatforms handles copying when multiple platforms are specified
+func copyMultiplePlatforms(ctx context.Context, statusHandler status.CopyHandler, metadataHandler metadata.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) error {
+	// Resolve the source reference to get the root descriptor
+	resolveOpts := oras.DefaultResolveOptions
+	// We don't set TargetPlatform here since we want to get the full index/list
+	root, err := oras.Resolve(ctx, src, opts.From.Reference, resolveOpts)
+	if err != nil {
+		return fmt.Errorf("failed to resolve %s: %w", opts.From.Reference, err)
+	}
+
+	// Check if the resolved descriptor is an index/manifest list
+	isIndex := root.MediaType == ocispec.MediaTypeImageIndex || root.MediaType == docker.MediaTypeManifestList
+	if !isIndex {
+		// If not an index, fall back to single platform behavior with first platform
+		tempOpts := *opts
+		tempOpts.Platform.Platform = opts.Platform.Platforms[0]
+		desc, err := doCopy(ctx, statusHandler, src, dst, &tempOpts)
+		if err != nil {
+			return err
+		}
+
+		if from, err := digest.Parse(opts.From.Reference); err == nil && from != desc.Digest {
+			opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, desc.Digest.String())
+		}
+
+		if err := metadataHandler.OnCopied(&opts.BinaryTarget, desc); err != nil {
+			return err
+		}
+
+		if len(opts.extraRefs) != 0 {
+			tagNOpts := oras.DefaultTagNOptions
+			tagNOpts.Concurrency = opts.concurrency
+			tagListener := listener.NewTaggedListener(dst, metadataHandler.OnTagged)
+			if _, err = oras.TagN(ctx, tagListener, opts.To.Reference, opts.extraRefs, tagNOpts); err != nil {
+				return err
+			}
+		}
+
+		return metadataHandler.Render()
+	}
+
+	// For indexes/lists, fetch the index content
+	indexContent, err := content.FetchAll(ctx, src, root)
+	if err != nil {
+		return fmt.Errorf("failed to fetch index: %w", err)
+	}
+
+	var index ocispec.Index
+	if err := json.Unmarshal(indexContent, &index); err != nil {
+		return fmt.Errorf("failed to parse index: %w", err)
+	}
+
+	// Filter manifests based on the specified platforms
+	var filteredManifests []ocispec.Descriptor
+	for _, manifest := range index.Manifests {
+		if manifest.Platform != nil && matchesAnyPlatform(manifest.Platform, opts.Platform.Platforms) {
+			filteredManifests = append(filteredManifests, manifest)
+		}
+	}
+
+	if len(filteredManifests) == 0 {
+		requestedPlatforms := opts.Platform.Platforms
+		var availablePlatforms []string
+		for _, manifest := range index.Manifests {
+			if manifest.Platform != nil {
+				availablePlatforms = append(availablePlatforms, fmt.Sprintf("%s/%s", manifest.Platform.OS, manifest.Platform.Architecture))
+			}
+		}
+		availableDesc := "none"
+		if len(availablePlatforms) > 0 {
+			availableDesc = strings.Join(availablePlatforms, ", ")
+		}
+		return fmt.Errorf("no manifests match the requested platforms %v; available platforms in index: %s", requestedPlatforms, availableDesc)
+	}
+
+	// Create a new index with only the filtered manifests
+	newIndex := ocispec.Index{
+		Versioned:   index.Versioned,
+		MediaType:   index.MediaType,
+		Manifests:   filteredManifests,
+		Annotations: index.Annotations,
+	}
+
+	// Marshal the new index
+	newIndexContent, err := json.Marshal(newIndex)
+	if err != nil {
+		return fmt.Errorf("failed to marshal new index: %w", err)
+	}
+
+	// Create a descriptor for the new index
+	newIndexDesc := ocispec.Descriptor{
+		MediaType:   index.MediaType,
+		Digest:      digest.FromBytes(newIndexContent),
+		Size:        int64(len(newIndexContent)),
+		Annotations: index.Annotations,
+	}
+
+	// Prepare copy options
+	extendedCopyGraphOptions := oras.DefaultExtendedCopyGraphOptions
+	extendedCopyGraphOptions.Concurrency = opts.concurrency
+	extendedCopyGraphOptions.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		return registry.Referrers(ctx, src, desc, "")
+	}
+
+	if mountRepo, canMount := getMountPoint(src, dst, opts); canMount {
+		extendedCopyGraphOptions.MountFrom = func(ctx context.Context, desc ocispec.Descriptor) ([]string, error) {
+			return []string{mountRepo}, nil
+		}
+	}
+	dst, err = statusHandler.StartTracking(dst)
 	if err != nil {
 		return err
 	}
+	defer func() {
+		_ = statusHandler.StopTracking()
+	}()
+	extendedCopyGraphOptions.OnCopySkipped = statusHandler.OnCopySkipped
+	extendedCopyGraphOptions.PreCopy = statusHandler.PreCopy
+	extendedCopyGraphOptions.PostCopy = statusHandler.PostCopy
+	extendedCopyGraphOptions.OnMounted = statusHandler.OnMounted
 
-	if from, err := digest.Parse(opts.From.Reference); err == nil && from != desc.Digest {
-		// correct source digest
-		opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, desc.Digest.String())
+	// Copy all matching manifests and their content
+	for _, manifestDesc := range filteredManifests {
+		// Copy the manifest itself
+		if err := oras.CopyGraph(ctx, src, dst, manifestDesc, extendedCopyGraphOptions.CopyGraphOptions); err != nil {
+			return fmt.Errorf("failed to copy manifest %s: %w", manifestDesc.Digest, err)
+		}
 	}
 
-	if err := metadataHandler.OnCopied(&opts.BinaryTarget, desc); err != nil {
-		return err
+	// Push the new index to the destination
+	if err := dst.Push(ctx, newIndexDesc, strings.NewReader(string(newIndexContent))); err != nil {
+		return fmt.Errorf("failed to push new index: %w", err)
 	}
 
+	// Tag the new index if needed
+	if opts.To.Reference != "" {
+		if err := dst.Tag(ctx, newIndexDesc, opts.To.Reference); err != nil {
+			return fmt.Errorf("failed to tag new index: %w", err)
+		}
+	}
+
+	// Handle extra references
 	if len(opts.extraRefs) != 0 {
 		tagNOpts := oras.DefaultTagNOptions
 		tagNOpts.Concurrency = opts.concurrency
@@ -161,7 +326,45 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 		}
 	}
 
+	// Update reference if needed
+	if from, err := digest.Parse(opts.From.Reference); err == nil && from != newIndexDesc.Digest {
+		opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, newIndexDesc.Digest.String())
+	}
+
+	if err := metadataHandler.OnCopied(&opts.BinaryTarget, newIndexDesc); err != nil {
+		return err
+	}
+
 	return metadataHandler.Render()
+}
+
+// matchesAnyPlatform checks if a manifest platform matches any of the specified platforms
+func matchesAnyPlatform(manifestPlatform *ocispec.Platform, platforms []*ocispec.Platform) bool {
+	for _, platform := range platforms {
+		if platformMatches(manifestPlatform, platform) {
+			return true
+		}
+	}
+	return false
+}
+
+// platformMatches checks if two platforms match
+func platformMatches(a, b *ocispec.Platform) bool {
+	if a.OS != b.OS || a.Architecture != b.Architecture {
+		return false
+	}
+
+	// Variant is optional; only treat it as a mismatch if both variants are non-empty and different.
+	if a.Variant != "" && b.Variant != "" && a.Variant != b.Variant {
+		return false
+	}
+
+	// OSVersion is optional; only treat it as a mismatch if both OSVersions are non-empty and different.
+	if a.OSVersion != "" && b.OSVersion != "" && a.OSVersion != b.OSVersion {
+		return false
+	}
+
+	return true
 }
 
 func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) (desc ocispec.Descriptor, err error) {

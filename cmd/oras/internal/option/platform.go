@@ -29,6 +29,7 @@ import (
 type Platform struct {
 	platform        string
 	Platform        *ocispec.Platform
+	Platforms       []*ocispec.Platform // Added to support multiple platforms
 	FlagDescription string
 }
 
@@ -37,7 +38,7 @@ func (opts *Platform) ApplyFlags(fs *pflag.FlagSet) {
 	if opts.FlagDescription == "" {
 		opts.FlagDescription = "request platform"
 	}
-	fs.StringVarP(&opts.platform, "platform", "", "", opts.FlagDescription+" in the form of `os[/arch][/variant][:os_version]`")
+	fs.StringVarP(&opts.platform, "platform", "", "", opts.FlagDescription+" in the form of `os[/arch][/variant][:os_version]` or comma-separated list for multiple platforms")
 }
 
 // Parse parses the input platform flag to an oci platform type.
@@ -46,12 +47,62 @@ func (opts *Platform) Parse(*cobra.Command) error {
 		return nil
 	}
 
+	// Split by comma to support multiple platforms
+	platformStrings := strings.Split(opts.platform, ",")
+	if len(platformStrings) == 1 {
+		// Single platform case - existing behavior
+		return opts.parseSinglePlatform(opts.platform)
+	}
+
+	// Multiple platforms case
+	opts.Platforms = make([]*ocispec.Platform, 0, len(platformStrings))
+	for _, platformStr := range platformStrings {
+		platformStr = strings.TrimSpace(platformStr)
+		if platformStr == "" {
+			continue
+		}
+
+		var p ocispec.Platform
+		platformPart, osVersion, _ := strings.Cut(platformStr, ":")
+		parts := strings.Split(platformPart, "/")
+		switch len(parts) {
+		case 3:
+			p.Variant = parts[2]
+			fallthrough
+		case 2:
+			p.Architecture = parts[1]
+		case 1:
+			p.Architecture = runtime.GOARCH
+		default:
+			return fmt.Errorf("failed to parse platform %q: expected format os[/arch[/variant]]", platformStr)
+		}
+		p.OS = parts[0]
+		if p.OS == "" {
+			return fmt.Errorf("invalid platform: OS cannot be empty")
+		}
+		if p.Architecture == "" {
+			return fmt.Errorf("invalid platform: Architecture cannot be empty")
+		}
+		p.OSVersion = osVersion
+		opts.Platforms = append(opts.Platforms, &p)
+	}
+
+	// Set the first platform as the primary one for backward compatibility
+	if len(opts.Platforms) > 0 {
+		opts.Platform = opts.Platforms[0]
+	}
+
+	return nil
+}
+
+// parseSinglePlatform maintains the original parsing behavior for a single platform
+func (opts *Platform) parseSinglePlatform(platformStr string) error {
 	// OS[/Arch[/Variant]][:OSVersion]
 	// If Arch is not provided, will use GOARCH instead
-	var platformStr string
+	var platformPart string
 	var p ocispec.Platform
-	platformStr, p.OSVersion, _ = strings.Cut(opts.platform, ":")
-	parts := strings.Split(platformStr, "/")
+	platformPart, p.OSVersion, _ = strings.Cut(platformStr, ":")
+	parts := strings.Split(platformPart, "/")
 	switch len(parts) {
 	case 3:
 		p.Variant = parts[2]
@@ -61,7 +112,7 @@ func (opts *Platform) Parse(*cobra.Command) error {
 	case 1:
 		p.Architecture = runtime.GOARCH
 	default:
-		return fmt.Errorf("failed to parse platform %q: expected format os[/arch[/variant]]", opts.platform)
+		return fmt.Errorf("failed to parse platform %q: expected format os[/arch[/variant]]", platformStr)
 	}
 	p.OS = parts[0]
 	if p.OS == "" {
