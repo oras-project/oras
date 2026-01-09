@@ -19,6 +19,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"os"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -36,7 +38,9 @@ import (
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/contentutil"
+	"oras.land/oras/internal/dir"
 	"oras.land/oras/internal/listener"
+	"oras.land/oras/internal/manifestutil"
 	"oras.land/oras/internal/registryutil"
 )
 
@@ -48,6 +52,7 @@ type pushOptions struct {
 	option.Target
 	option.Format
 	option.Terminal
+	option.Recursive
 
 	extraRefs         []string
 	manifestConfigRef string
@@ -120,6 +125,12 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 
 Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with tag 'example.com:test':
   oras push example.com:test hi.txt --oci-layout-path layout-dir
+
+Example - [Experimental] Push a directory recursively with hierarchical manifests:
+  oras push --recursive localhost:5000/hello:v1 ./mydir
+
+Example - [Experimental] Push a directory recursively with custom max blobs per manifest:
+  oras push --recursive --max-blobs-per-manifest 500 localhost:5000/hello:v1 ./mydir
 `,
 		Args: oerrors.CheckArgs(argument.AtLeast(1), "the destination for pushing"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -160,10 +171,37 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 					opts.artifactType = oras.MediaTypeUnknownArtifact
 				}
 			}
+
+			// Validate recursive options
+			if err := opts.Validate(); err != nil {
+				return err
+			}
+
+			// Recursive push has some restrictions
+			if opts.Recursive.Recursive {
+				if opts.manifestConfigRef != "" {
+					return errors.New("--config cannot be used with --recursive")
+				}
+				if len(opts.FileRefs) != 1 {
+					return errors.New("--recursive requires exactly one directory argument")
+				}
+				// Verify the argument is a directory
+				info, err := os.Stat(opts.FileRefs[0])
+				if err != nil {
+					return fmt.Errorf("cannot access %q: %w", opts.FileRefs[0], err)
+				}
+				if !info.IsDir() {
+					return fmt.Errorf("%q is not a directory; --recursive requires a directory", opts.FileRefs[0])
+				}
+			}
+
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Printer.Verbose = opts.verbose
+			if opts.Recursive.Recursive {
+				return runPushRecursive(cmd, &opts)
+			}
 			return runPush(cmd, &opts)
 		},
 	}
@@ -323,4 +361,148 @@ func pushArtifact(_ oras.Target, pack packFunc, copy copyFunc) (ocispec.Descript
 		return ocispec.Descriptor{}, err
 	}
 	return root, nil
+}
+
+// runPushRecursive handles recursive directory push with hierarchical manifests.
+func runPushRecursive(cmd *cobra.Command, opts *pushOptions) error {
+	ctx, logger := command.GetLogger(cmd, &opts.Common)
+	dirPath := opts.FileRefs[0]
+
+	// Walk the directory tree
+	walkOpts := dir.WalkOptions{
+		FollowSymlinks: opts.FollowSymlinks,
+		IncludeEmpty:   opts.PreserveEmptyDirs,
+	}
+	rootNode, err := dir.Walk(dirPath, walkOpts)
+	if err != nil {
+		return fmt.Errorf("failed to walk directory %q: %w", dirPath, err)
+	}
+
+	fileCount := rootNode.FileCount()
+	if fileCount == 0 && !opts.PreserveEmptyDirs {
+		return errors.New("directory is empty; nothing to push")
+	}
+
+	// Create file store
+	store, err := file.New("")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = store.Close() }()
+
+	memoryStore := memory.New()
+	union := contentutil.MultiReadOnlyTarget(memoryStore, store)
+
+	statusHandler, metadataHandler, err := display.NewPushHandler(opts.Printer, opts.Format, opts.TTY, union)
+	if err != nil {
+		return err
+	}
+
+	// Load all files and get their descriptors
+	allFiles := dir.FlattenFiles(rootNode)
+	fileDescs := make(map[string]ocispec.Descriptor)
+
+	for _, fileNode := range allFiles {
+		if err := statusHandler.OnFileLoading(fileNode.Path); err != nil {
+			return err
+		}
+
+		// Add file to store
+		desc, err := store.Add(ctx, fileNode.Path, "", fileNode.AbsPath)
+		if err != nil {
+			return fmt.Errorf("failed to add file %q: %w", fileNode.Path, err)
+		}
+
+		// Apply annotations if any
+		if value, ok := opts.Annotations[fileNode.Path]; ok {
+			if desc.Annotations == nil {
+				desc.Annotations = make(map[string]string)
+			}
+			for k, v := range value {
+				desc.Annotations[k] = v
+			}
+		}
+
+		fileDescs[fileNode.Path] = desc
+	}
+
+	// Prepare destination
+	originalDst, err := opts.NewTarget(opts.Common, logger)
+	if err != nil {
+		return err
+	}
+	dst, stopTrack, err := statusHandler.TrackTarget(originalDst)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = stopTrack() }()
+
+	// Build the manifest hierarchy
+	builder := manifestutil.NewBuilder(memoryStore, manifestutil.BuilderOptions{
+		MaxBlobsPerManifest: opts.MaxBlobsPerManifest,
+		ArtifactType:        opts.artifactType,
+		ManifestAnnotations: opts.Annotations[option.AnnotationManifest],
+		PreserveEmptyDirs:   opts.PreserveEmptyDirs,
+	})
+
+	result, err := builder.BuildFromNode(ctx, rootNode, fileDescs)
+	if err != nil {
+		return fmt.Errorf("failed to build manifest hierarchy: %w", err)
+	}
+
+	// Tag the root in memory store so it can be resolved
+	if err := memoryStore.Tag(ctx, result.Root, result.Root.Digest.String()); err != nil {
+		return fmt.Errorf("failed to tag root: %w", err)
+	}
+
+	// Create a combined source for copying
+	combinedSource := contentutil.MultiReadOnlyTarget(memoryStore, store)
+
+	// Copy options
+	copyOptions := oras.DefaultCopyOptions
+	copyOptions.Concurrency = opts.concurrency
+	copyOptions.OnCopySkipped = statusHandler.OnCopySkipped
+	copyOptions.PreCopy = statusHandler.PreCopy
+	copyOptions.PostCopy = statusHandler.PostCopy
+
+	// Add scope hints
+	ctx = registryutil.WithScopeHint(ctx, originalDst, auth.ActionPull, auth.ActionPush)
+
+	// Copy the graph
+	if tag := opts.Reference; tag == "" {
+		err = oras.CopyGraph(ctx, combinedSource, dst, result.Root, copyOptions.CopyGraphOptions)
+	} else {
+		_, err = oras.Copy(ctx, combinedSource, result.Root.Digest.String(), dst, tag, copyOptions)
+	}
+	if err != nil {
+		return oerrors.UnwrapCopyError(err)
+	}
+
+	if err := metadataHandler.OnCopied(&opts.Target, result.Root); err != nil {
+		return err
+	}
+
+	// Handle extra tags
+	if len(opts.extraRefs) != 0 {
+		contentBytes, err := content.FetchAll(ctx, memoryStore, result.Root)
+		if err != nil {
+			return err
+		}
+		tagBytesNOpts := oras.DefaultTagBytesNOptions
+		tagBytesNOpts.Concurrency = opts.concurrency
+		tagDst := listener.NewTagListener(originalDst, nil, metadataHandler.OnTagged)
+		if _, err = oras.TagBytesN(ctx, tagDst, result.Root.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
+			return err
+		}
+	}
+
+	if err := metadataHandler.Render(); err != nil {
+		return err
+	}
+
+	// Print summary
+	opts.Printer.Println("Pushed", fileCount, "files in", result.ManifestCount, "manifest(s) and", result.IndexCount, "index(es)")
+
+	// Export manifest if requested
+	return opts.ExportManifest(ctx, memoryStore, result.Root)
 }
