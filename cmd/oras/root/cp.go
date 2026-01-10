@@ -320,7 +320,11 @@ func copyMultiplePlatforms(ctx context.Context, statusHandler status.CopyHandler
 		opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, newIndexDesc.Digest.String())
 	}
 
-	return metadataHandler.OnCopied(&opts.BinaryTarget, newIndexDesc)
+	if err := metadataHandler.OnCopied(&opts.BinaryTarget, newIndexDesc); err != nil {
+		return err
+	}
+
+	return metadataHandler.Render()
 }
 
 // matchesAnyPlatform checks if a manifest platform matches any of the specified platforms
