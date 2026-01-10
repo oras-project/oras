@@ -278,10 +278,7 @@ func copyMultiplePlatforms(ctx context.Context, statusHandler status.CopyHandler
 		return err
 	}
 	defer func() {
-		stopErr := statusHandler.StopTracking()
-		if err != nil {
-			stopErr = stopErr // suppress error if there's already an error
-		}
+		_ = statusHandler.StopTracking()
 	}()
 	extendedCopyGraphOptions.OnCopySkipped = statusHandler.OnCopySkipped
 	extendedCopyGraphOptions.PreCopy = statusHandler.PreCopy
