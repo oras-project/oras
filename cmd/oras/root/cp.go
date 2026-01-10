@@ -143,7 +143,7 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	statusHandler, metadataHandler := display.NewCopyHandler(opts.Printer, opts.TTY, dst)
 
 	// Check if multiple platforms are specified
-	if len(opts.Platform.Platforms) > 0 && !opts.recursive {
+	if len(opts.Platform.Platforms) > 1 && !opts.recursive {
 		// Handle multiple platforms - copy manifests that match the specified platforms
 		return copyMultiplePlatforms(ctx, statusHandler, metadataHandler, src, dst, opts)
 	} else {
