@@ -64,7 +64,7 @@ Example - Delete a blob and print its descriptor:
 			}
 			return option.Parse(cmd, &opts)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return deleteBlob(cmd, &opts)
 		},
 	}

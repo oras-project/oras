@@ -87,7 +87,7 @@ Example - Create an index with a specified artifact type:
 
 Example - Create an index and push to an OCI image layout folder 'layout-dir' and tag with 'v1':
   oras manifest index create layout-dir:v1 linux-amd64 sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9 --oci-layout
-  
+
 Example - Create an index and save it locally to index.json, auto push will be disabled:
   oras manifest index create localhost:5000/hello linux-amd64 linux-arm64 --output index.json
 
@@ -103,7 +103,7 @@ Example - Create an index and output the index to stdout, auto push will be disa
 			return option.Parse(cmd, &opts)
 		},
 		Aliases: []string{"pack"},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return createIndex(cmd, opts)
 		},
 	}

@@ -210,13 +210,13 @@ func NewTextBackupHandler(printer *output.Printer, fetcher content.Fetcher) Back
 }
 
 // OnCopySkipped implements OnCopySkipped of BackupHandler.
-func (tbh *TextBackupHandler) OnCopySkipped(ctx context.Context, desc ocispec.Descriptor) error {
+func (tbh *TextBackupHandler) OnCopySkipped(_ context.Context, desc ocispec.Descriptor) error {
 	tbh.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
 	return tbh.printer.PrintStatus(desc, backupPromptExists)
 }
 
 // PreCopy implements PreCopy of BackupHandler.
-func (tbh *TextBackupHandler) PreCopy(ctx context.Context, desc ocispec.Descriptor) error {
+func (tbh *TextBackupHandler) PreCopy(_ context.Context, desc ocispec.Descriptor) error {
 	return tbh.printer.PrintStatus(desc, backupPromptPulling)
 }
 
@@ -262,13 +262,13 @@ func NewTextRestoreHandler(printer *output.Printer, fetcher content.Fetcher) Res
 }
 
 // OnCopySkipped implements OnCopySkipped of RestoreHandler.
-func (trh *TextRestoreHandler) OnCopySkipped(ctx context.Context, desc ocispec.Descriptor) error {
+func (trh *TextRestoreHandler) OnCopySkipped(_ context.Context, desc ocispec.Descriptor) error {
 	trh.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
 	return trh.printer.PrintStatus(desc, restorePromptExists)
 }
 
 // PreCopy implements PreCopy of RestoreHandler.
-func (trh *TextRestoreHandler) PreCopy(ctx context.Context, desc ocispec.Descriptor) error {
+func (trh *TextRestoreHandler) PreCopy(_ context.Context, desc ocispec.Descriptor) error {
 	return trh.printer.PrintStatus(desc, restorePromptPushing)
 }
 

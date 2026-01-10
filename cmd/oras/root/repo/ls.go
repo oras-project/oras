@@ -62,7 +62,7 @@ Example - [Experimental] List the repositories under the registry using the give
 `,
 		Args:    oerrors.CheckArgs(argument.Exactly(1), "the target registry to list repositories from"),
 		Aliases: []string{"list"},
-		PreRunE: func(cmd *cobra.Command, args []string) error {
+		PreRunE: func(cmd *cobra.Command, _ []string) error {
 			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
