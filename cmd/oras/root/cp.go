@@ -354,12 +354,12 @@ func platformMatches(a, b *ocispec.Platform) bool {
 		return false
 	}
 
-	// Variant is optional, if one is empty, ignore comparison
+	// Variant is optional; only treat it as a mismatch if both variants are non-empty and different.
 	if a.Variant != "" && b.Variant != "" && a.Variant != b.Variant {
 		return false
 	}
 
-	// OSVersion is optional, if one is empty, ignore comparison
+	// OSVersion is optional; only treat it as a mismatch if both OSVersions are non-empty and different.
 	if a.OSVersion != "" && b.OSVersion != "" && a.OSVersion != b.OSVersion {
 		return false
 	}
