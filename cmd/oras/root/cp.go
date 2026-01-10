@@ -236,7 +236,18 @@ func copyMultiplePlatforms(ctx context.Context, statusHandler status.CopyHandler
 	}
 
 	if len(filteredManifests) == 0 {
-		return fmt.Errorf("no manifests match the specified platforms")
+		requestedPlatforms := opts.Platform.Platforms
+		var availablePlatforms []string
+		for _, manifest := range index.Manifests {
+			if manifest.Platform != nil {
+				availablePlatforms = append(availablePlatforms, fmt.Sprintf("%s/%s", manifest.Platform.OS, manifest.Platform.Architecture))
+			}
+		}
+		availableDesc := "none"
+		if len(availablePlatforms) > 0 {
+			availableDesc = strings.Join(availablePlatforms, ", ")
+		}
+		return fmt.Errorf("no manifests match the requested platforms %v; available platforms in index: %s", requestedPlatforms, availableDesc)
 	}
 
 	// Create a new index with only the filtered manifests
