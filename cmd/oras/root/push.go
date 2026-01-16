@@ -162,7 +162,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 			}
 			return nil
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts.Printer.Verbose = opts.verbose
 			return runPush(cmd, &opts)
 		},
@@ -301,25 +301,25 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	return opts.ExportManifest(ctx, memoryStore, root)
 }
 
-func doPush(dst oras.Target, stopTrack status.StopTrackTargetFunc, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
+func doPush(dst oras.Target, stopTrack status.StopTrackTargetFunc, pack packFunc, copyFunc copyFunc) (ocispec.Descriptor, error) {
 	defer func() {
 		_ = stopTrack()
 	}()
 	// Push
-	return pushArtifact(dst, pack, copy)
+	return pushArtifact(dst, pack, copyFunc)
 }
 
 type packFunc func() (ocispec.Descriptor, error)
 type copyFunc func(desc ocispec.Descriptor) error
 
-func pushArtifact(_ oras.Target, pack packFunc, copy copyFunc) (ocispec.Descriptor, error) {
+func pushArtifact(_ oras.Target, pack packFunc, copyFunc copyFunc) (ocispec.Descriptor, error) {
 	root, err := pack()
 	if err != nil {
 		return ocispec.Descriptor{}, err
 	}
 
 	// push
-	if err = copy(root); err != nil {
+	if err = copyFunc(root); err != nil {
 		return ocispec.Descriptor{}, err
 	}
 	return root, nil
