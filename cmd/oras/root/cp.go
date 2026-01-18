@@ -146,33 +146,37 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	if len(opts.Platform.Platforms) > 1 && !opts.recursive {
 		// Handle multiple platforms - copy manifests that match the specified platforms
 		return copyMultiplePlatforms(ctx, statusHandler, metadataHandler, src, dst, opts)
-	} else {
-		// Original behavior for single platform or recursive mode
-		desc, err := doCopy(ctx, statusHandler, src, dst, opts)
-		if err != nil {
-			return err
-		}
-
-		if from, err := digest.Parse(opts.From.Reference); err == nil && from != desc.Digest {
-			// correct source digest
-			opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, desc.Digest.String())
-		}
-
-		if err := metadataHandler.OnCopied(&opts.BinaryTarget, desc); err != nil {
-			return err
-		}
-
-		if len(opts.extraRefs) != 0 {
-			tagNOpts := oras.DefaultTagNOptions
-			tagNOpts.Concurrency = opts.concurrency
-			tagListener := listener.NewTaggedListener(dst, metadataHandler.OnTagged)
-			if _, err = oras.TagN(ctx, tagListener, opts.To.Reference, opts.extraRefs, tagNOpts); err != nil {
-				return err
-			}
-		}
-
-		return metadataHandler.Render()
 	}
+
+	// Handle single platform or recursive mode
+	return copySinglePlatformOrRecursive(ctx, statusHandler, metadataHandler, src, dst, opts)
+}
+
+func copySinglePlatformOrRecursive(ctx context.Context, statusHandler status.CopyHandler, metadataHandler metadata.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) error {
+	desc, err := doCopy(ctx, statusHandler, src, dst, opts)
+	if err != nil {
+		return err
+	}
+
+	if from, err := digest.Parse(opts.From.Reference); err == nil && from != desc.Digest {
+		// correct source digest
+		opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, desc.Digest.String())
+	}
+
+	if err := metadataHandler.OnCopied(&opts.BinaryTarget, desc); err != nil {
+		return err
+	}
+
+	if len(opts.extraRefs) != 0 {
+		tagNOpts := oras.DefaultTagNOptions
+		tagNOpts.Concurrency = opts.concurrency
+		tagListener := listener.NewTaggedListener(dst, metadataHandler.OnTagged)
+		if _, err = oras.TagN(ctx, tagListener, opts.To.Reference, opts.extraRefs, tagNOpts); err != nil {
+			return err
+		}
+	}
+
+	return metadataHandler.Render()
 }
 
 // copyMultiplePlatforms handles copying when multiple platforms are specified
@@ -188,32 +192,8 @@ func copyMultiplePlatforms(ctx context.Context, statusHandler status.CopyHandler
 	// Check if the resolved descriptor is an index/manifest list
 	isIndex := root.MediaType == ocispec.MediaTypeImageIndex || root.MediaType == docker.MediaTypeManifestList
 	if !isIndex {
-		// If not an index, fall back to single platform behavior with first platform
-		tempOpts := *opts
-		tempOpts.Platform.Platform = opts.Platform.Platforms[0]
-		desc, err := doCopy(ctx, statusHandler, src, dst, &tempOpts)
-		if err != nil {
-			return err
-		}
-
-		if from, err := digest.Parse(opts.From.Reference); err == nil && from != desc.Digest {
-			opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, desc.Digest.String())
-		}
-
-		if err := metadataHandler.OnCopied(&opts.BinaryTarget, desc); err != nil {
-			return err
-		}
-
-		if len(opts.extraRefs) != 0 {
-			tagNOpts := oras.DefaultTagNOptions
-			tagNOpts.Concurrency = opts.concurrency
-			tagListener := listener.NewTaggedListener(dst, metadataHandler.OnTagged)
-			if _, err = oras.TagN(ctx, tagListener, opts.To.Reference, opts.extraRefs, tagNOpts); err != nil {
-				return err
-			}
-		}
-
-		return metadataHandler.Render()
+		// If not an index, return an error
+		return fmt.Errorf("source reference %s is not an index or manifest list", opts.From.Reference)
 	}
 
 	// For indexes/lists, fetch the index content
@@ -227,36 +207,39 @@ func copyMultiplePlatforms(ctx context.Context, statusHandler status.CopyHandler
 		return fmt.Errorf("failed to parse index: %w", err)
 	}
 
+	var availablePlatforms []string
 	// Filter manifests based on the specified platforms
 	var filteredManifests []ocispec.Descriptor
+	matchedPlatforms := make(map[string]bool)
 	for _, manifest := range index.Manifests {
-		if manifest.Platform != nil && matchesAnyPlatform(manifest.Platform, opts.Platform.Platforms) {
+		if manifest.Platform == nil {
+			continue
+		}
+		availablePlatforms = append(availablePlatforms, fmt.Sprintf("%s/%s", manifest.Platform.OS, manifest.Platform.Architecture))
+		if matchesAnyPlatform(manifest.Platform, opts.Platform.Platforms) {
 			filteredManifests = append(filteredManifests, manifest)
+			matchedPlatforms[fmt.Sprintf("%s/%s", manifest.Platform.OS, manifest.Platform.Architecture)] = true
 		}
 	}
 
-	if len(filteredManifests) == 0 {
-		requestedPlatforms := opts.Platform.Platforms
-		var availablePlatforms []string
-		for _, manifest := range index.Manifests {
-			if manifest.Platform != nil {
-				availablePlatforms = append(availablePlatforms, fmt.Sprintf("%s/%s", manifest.Platform.OS, manifest.Platform.Architecture))
+	if len(filteredManifests) != len(opts.Platform.Platforms) {
+
+		var unmatchedPlatforms []string
+		for _, platform := range opts.Platform.Platforms {
+			platformStr := fmt.Sprintf("%s/%s", platform.OS, platform.Architecture)
+			if !matchedPlatforms[platformStr] {
+				unmatchedPlatforms = append(unmatchedPlatforms, platformStr)
 			}
 		}
-		availableDesc := "none"
-		if len(availablePlatforms) > 0 {
-			availableDesc = strings.Join(availablePlatforms, ", ")
-		}
-		return fmt.Errorf("no manifests match the requested platforms %v; available platforms in index: %s", requestedPlatforms, availableDesc)
+
+		// Return error with details about unmatched platforms
+		return fmt.Errorf("only %d of %d requested platforms were matched: unmatched platforms: [%s]; available platforms in index: [%s]",
+			len(filteredManifests), len(opts.Platform.Platforms), strings.Join(unmatchedPlatforms, ", "), strings.Join(availablePlatforms, ", "))
 	}
 
 	// Create a new index with only the filtered manifests
-	newIndex := ocispec.Index{
-		Versioned:   index.Versioned,
-		MediaType:   index.MediaType,
-		Manifests:   filteredManifests,
-		Annotations: index.Annotations,
-	}
+	newIndex := index
+	newIndex.Manifests = filteredManifests
 
 	// Marshal the new index
 	newIndexContent, err := json.Marshal(newIndex)

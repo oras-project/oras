@@ -27,9 +27,9 @@ import (
 
 // Platform option struct.
 type Platform struct {
-	platform        string
+	platform        []string
 	Platform        *ocispec.Platform
-	Platforms       []*ocispec.Platform // Added to support multiple platforms
+	Platforms       []*ocispec.Platform
 	FlagDescription string
 }
 
@@ -38,22 +38,25 @@ func (opts *Platform) ApplyFlags(fs *pflag.FlagSet) {
 	if opts.FlagDescription == "" {
 		opts.FlagDescription = "request platform"
 	}
-	fs.StringVarP(&opts.platform, "platform", "", "", opts.FlagDescription+" in the form of `os[/arch][/variant][:os_version]` or comma-separated list for multiple platforms")
+	fs.StringSliceVarP(&opts.platform, "platform", "", []string{}, opts.FlagDescription+" in the form of `os[/arch][/variant][:os_version]` or comma-separated list for multiple platforms")
 }
 
 // Parse parses the input platform flag to an oci platform type.
 func (opts *Platform) Parse(*cobra.Command) error {
-	if opts.platform == "" {
+	if len(opts.platform) == 0 {
 		return nil
 	}
 
-	// Split by comma to support multiple platforms
-	platformStrings := strings.Split(opts.platform, ",")
-	if len(platformStrings) == 1 {
+	if len(opts.platform) == 1 {
 		// Single platform case - existing behavior
-		return opts.parseSinglePlatform(opts.platform)
+		return opts.parseSinglePlatform(opts.platform[0])
 	}
 
+	return opts.parseMultiplePlatform(opts.platform)
+}
+
+// parseMultiplePlatform parses multiple platforms
+func (opts *Platform) parseMultiplePlatform(platformStrings []string) error {
 	// Multiple platforms case
 	opts.Platforms = make([]*ocispec.Platform, 0, len(platformStrings))
 	for _, platformStr := range platformStrings {
@@ -133,5 +136,5 @@ type ArtifactPlatform struct {
 // ApplyFlags applies flags to a command flag set.
 func (opts *ArtifactPlatform) ApplyFlags(fs *pflag.FlagSet) {
 	opts.FlagDescription = "set artifact platform"
-	fs.StringVarP(&opts.platform, "artifact-platform", "", "", "[Experimental] "+opts.FlagDescription+" in the form of `os[/arch][/variant][:os_version]`")
+	fs.StringSliceVarP(&opts.platform, "artifact-platform", "", []string{}, "[Experimental] "+opts.FlagDescription+" in the form of `os[/arch][/variant][:os_version]`")
 }
