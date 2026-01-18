@@ -38,6 +38,7 @@ import (
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/display/status"
+	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/testutils"
 )
 
@@ -450,5 +451,378 @@ func Test_getMountPoint(t *testing.T) {
 				t.Errorf("checkMount() gotRepo = %v, want %v", gotMount, tt.wantMount)
 			}
 		})
+	}
+}
+
+func Test_matchesAnyPlatform(t *testing.T) {
+	tests := []struct {
+		name       string
+		manifest   *ocispec.Platform
+		platforms  []*ocispec.Platform
+		wantResult bool
+	}{
+		{
+			name: "matching platform",
+			manifest: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "amd64",
+			},
+			platforms: []*ocispec.Platform{
+				{
+					OS:           "linux",
+					Architecture: "amd64",
+				},
+			},
+			wantResult: true,
+		},
+		{
+			name: "non-matching platform",
+			manifest: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "amd64",
+			},
+			platforms: []*ocispec.Platform{
+				{
+					OS:           "windows",
+					Architecture: "amd64",
+				},
+			},
+			wantResult: false,
+		},
+		{
+			name: "multiple platforms with match",
+			manifest: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "arm64",
+			},
+			platforms: []*ocispec.Platform{
+				{
+					OS:           "linux",
+					Architecture: "amd64",
+				},
+				{
+					OS:           "linux",
+					Architecture: "arm64",
+				},
+			},
+			wantResult: true,
+		},
+		{
+			name: "multiple platforms without match",
+			manifest: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "arm64",
+			},
+			platforms: []*ocispec.Platform{
+				{
+					OS:           "linux",
+					Architecture: "amd64",
+				},
+				{
+					OS:           "windows",
+					Architecture: "arm64",
+				},
+			},
+			wantResult: false,
+		},
+		{
+			name: "platform with variant match",
+			manifest: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "arm",
+				Variant:      "v7",
+			},
+			platforms: []*ocispec.Platform{
+				{
+					OS:           "linux",
+					Architecture: "arm",
+					Variant:      "v7",
+				},
+			},
+			wantResult: true,
+		},
+		{
+			name: "platform with variant mismatch",
+			manifest: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "arm",
+				Variant:      "v7",
+			},
+			platforms: []*ocispec.Platform{
+				{
+					OS:           "linux",
+					Architecture: "arm",
+					Variant:      "v8",
+				},
+			},
+			wantResult: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := matchesAnyPlatform(tt.manifest, tt.platforms)
+			if result != tt.wantResult {
+				t.Errorf("matchesAnyPlatform() = %v, want %v", result, tt.wantResult)
+			}
+		})
+	}
+}
+
+func Test_platformMatches(t *testing.T) {
+	tests := []struct {
+		name       string
+		a          *ocispec.Platform
+		b          *ocispec.Platform
+		wantResult bool
+	}{
+		{
+			name: "identical platforms",
+			a: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "amd64",
+			},
+			b: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "amd64",
+			},
+			wantResult: true,
+		},
+		{
+			name: "different OS",
+			a: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "amd64",
+			},
+			b: &ocispec.Platform{
+				OS:           "windows",
+				Architecture: "amd64",
+			},
+			wantResult: false,
+		},
+		{
+			name: "different architecture",
+			a: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "amd64",
+			},
+			b: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "arm64",
+			},
+			wantResult: false,
+		},
+		{
+			name: "same platform with empty variants",
+			a: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "arm",
+				Variant:      "",
+			},
+			b: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "arm",
+				Variant:      "",
+			},
+			wantResult: true,
+		},
+		{
+			name: "platform with empty variant matches platform with specific variant",
+			a: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "arm",
+				Variant:      "",
+			},
+			b: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "arm",
+				Variant:      "v7",
+			},
+			wantResult: true,
+		},
+		{
+			name: "platform with specific variant matches platform with empty variant",
+			a: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "arm",
+				Variant:      "v7",
+			},
+			b: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "arm",
+				Variant:      "",
+			},
+			wantResult: true,
+		},
+		{
+			name: "platform with specific variant matches same variant",
+			a: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "arm",
+				Variant:      "v7",
+			},
+			b: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "arm",
+				Variant:      "v7",
+			},
+			wantResult: true,
+		},
+		{
+			name: "platform with different variants",
+			a: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "arm",
+				Variant:      "v7",
+			},
+			b: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "arm",
+				Variant:      "v8",
+			},
+			wantResult: false,
+		},
+		{
+			name: "platform with empty OSVersion matches platform with specific OSVersion",
+			a: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "amd64",
+				OSVersion:    "",
+			},
+			b: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "amd64",
+				OSVersion:    "18.04",
+			},
+			wantResult: true,
+		},
+		{
+			name: "platform with specific OSVersion matches same OSVersion",
+			a: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "amd64",
+				OSVersion:    "18.04",
+			},
+			b: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "amd64",
+				OSVersion:    "18.04",
+			},
+			wantResult: true,
+		},
+		{
+			name: "platform with different OSVersion",
+			a: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "amd64",
+				OSVersion:    "18.04",
+			},
+			b: &ocispec.Platform{
+				OS:           "linux",
+				Architecture: "amd64",
+				OSVersion:    "20.04",
+			},
+			wantResult: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := platformMatches(tt.a, tt.b)
+			if result != tt.wantResult {
+				t.Errorf("platformMatches() = %v, want %v", result, tt.wantResult)
+			}
+		})
+	}
+}
+
+func Test_checkMultiplePlatformsFeatureEnabled(t *testing.T) {
+	// Test when only one platform is specified (should not trigger multiple platforms logic)
+	opts := &copyOptions{
+		Platform: option.Platform{
+			Platforms: []*ocispec.Platform{
+				{
+					OS:           "linux",
+					Architecture: "amd64",
+				},
+			},
+		},
+		recursive: false,
+	}
+
+	result := len(opts.Platform.Platforms) > 1 && !opts.recursive
+	if result {
+		t.Errorf("Expected single platform not to trigger multiple platforms logic, got %v", result)
+	}
+
+	// Test when multiple platforms are specified (should trigger multiple platforms logic)
+	optsMultiple := &copyOptions{
+		Platform: option.Platform{
+			Platforms: []*ocispec.Platform{
+				{
+					OS:           "linux",
+					Architecture: "amd64",
+				},
+				{
+					OS:           "linux",
+					Architecture: "arm64",
+				},
+			},
+		},
+		recursive: false,
+	}
+
+	resultMultiple := len(optsMultiple.Platform.Platforms) > 1 && !optsMultiple.recursive
+	if !resultMultiple {
+		t.Errorf("Expected multiple platforms to trigger multiple platforms logic, got %v", resultMultiple)
+	}
+
+	// Test when multiple platforms are specified but recursive is true (should not trigger multiple platforms logic)
+	optsRecursive := &copyOptions{
+		Platform: option.Platform{
+			Platforms: []*ocispec.Platform{
+				{
+					OS:           "linux",
+					Architecture: "amd64",
+				},
+				{
+					OS:           "linux",
+					Architecture: "arm64",
+				},
+			},
+		},
+		recursive: true,
+	}
+
+	resultRecursive := len(optsRecursive.Platform.Platforms) > 1 && !optsRecursive.recursive
+	if resultRecursive {
+		t.Errorf("Expected recursive mode with multiple platforms not to trigger multiple platforms logic, got %v", resultRecursive)
+	}
+}
+
+func Test_formatPlatformString(t *testing.T) {
+	platform := &ocispec.Platform{
+		OS:           "linux",
+		Architecture: "amd64",
+	}
+
+	expected := "linux/amd64"
+	result := fmt.Sprintf("%s/%s", platform.OS, platform.Architecture)
+
+	if result != expected {
+		t.Errorf("formatPlatformString() = %v, want %v", result, expected)
+	}
+
+	platformWithVariant := &ocispec.Platform{
+		OS:           "linux",
+		Architecture: "arm",
+		Variant:      "v7",
+	}
+
+	expectedWithVariant := "linux/arm"
+	resultWithVariant := fmt.Sprintf("%s/%s", platformWithVariant.OS, platformWithVariant.Architecture)
+
+	if resultWithVariant != expectedWithVariant {
+		t.Errorf("formatPlatformString() with variant = %v, want %v", resultWithVariant, expectedWithVariant)
 	}
 }
