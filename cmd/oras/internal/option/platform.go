@@ -38,7 +38,7 @@ func (opts *Platform) ApplyFlags(fs *pflag.FlagSet) {
 	if opts.FlagDescription == "" {
 		opts.FlagDescription = "request platform"
 	}
-	fs.StringSliceVarP(&opts.platform, "platform", "", []string{}, opts.FlagDescription+" in the form of `os[/arch][/variant][:os_version]` or comma-separated list for multiple platforms")
+	fs.StringSliceVarP(&opts.platform, "platform", "", nil, opts.FlagDescription+" in the form of `os[/arch][/variant][:os_version]` or comma-separated list for multiple platforms (supported in oras cp only)")
 }
 
 // Parse parses the input platform flag to an oci platform type.
@@ -46,25 +46,17 @@ func (opts *Platform) Parse(*cobra.Command) error {
 	if len(opts.platform) == 0 {
 		return nil
 	}
-
-	if len(opts.platform) == 1 {
-		// Single platform case - existing behavior
-		return opts.parseSinglePlatform(opts.platform[0])
-	}
-
-	return opts.parseMultiplePlatform(opts.platform)
+	return opts.parsePlatform(opts.platform)
 }
 
-// parseMultiplePlatform parses multiple platforms
-func (opts *Platform) parseMultiplePlatform(platformStrings []string) error {
-	// Multiple platforms case
+// parsePlatform parses multiple platforms
+func (opts *Platform) parsePlatform(platformStrings []string) error {
 	opts.Platforms = make([]*ocispec.Platform, 0, len(platformStrings))
 	for _, platformStr := range platformStrings {
 		platformStr = strings.TrimSpace(platformStr)
 		if platformStr == "" {
 			continue
 		}
-
 		var p ocispec.Platform
 		platformPart, osVersion, _ := strings.Cut(platformStr, ":")
 		parts := strings.Split(platformPart, "/")
@@ -94,37 +86,6 @@ func (opts *Platform) parseMultiplePlatform(platformStrings []string) error {
 	if len(opts.Platforms) > 0 {
 		opts.Platform = opts.Platforms[0]
 	}
-
-	return nil
-}
-
-// parseSinglePlatform maintains the original parsing behavior for a single platform
-func (opts *Platform) parseSinglePlatform(platformStr string) error {
-	// OS[/Arch[/Variant]][:OSVersion]
-	// If Arch is not provided, will use GOARCH instead
-	var platformPart string
-	var p ocispec.Platform
-	platformPart, p.OSVersion, _ = strings.Cut(platformStr, ":")
-	parts := strings.Split(platformPart, "/")
-	switch len(parts) {
-	case 3:
-		p.Variant = parts[2]
-		fallthrough
-	case 2:
-		p.Architecture = parts[1]
-	case 1:
-		p.Architecture = runtime.GOARCH
-	default:
-		return fmt.Errorf("failed to parse platform %q: expected format os[/arch[/variant]]", platformStr)
-	}
-	p.OS = parts[0]
-	if p.OS == "" {
-		return fmt.Errorf("invalid platform: OS cannot be empty")
-	}
-	if p.Architecture == "" {
-		return fmt.Errorf("invalid platform: Architecture cannot be empty")
-	}
-	opts.Platform = &p
 	return nil
 }
 
@@ -136,5 +97,5 @@ type ArtifactPlatform struct {
 // ApplyFlags applies flags to a command flag set.
 func (opts *ArtifactPlatform) ApplyFlags(fs *pflag.FlagSet) {
 	opts.FlagDescription = "set artifact platform"
-	fs.StringSliceVarP(&opts.platform, "artifact-platform", "", []string{}, "[Experimental] "+opts.FlagDescription+" in the form of `os[/arch][/variant][:os_version]`")
+	fs.StringSliceVarP(&opts.platform, "artifact-platform", "", nil, "[Experimental] "+opts.FlagDescription+" in the form of `os[/arch][/variant][:os_version]`")
 }

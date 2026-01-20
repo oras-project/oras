@@ -196,47 +196,81 @@ func copyMultiplePlatforms(ctx context.Context, statusHandler status.CopyHandler
 		return fmt.Errorf("source reference %s is not an index or manifest list", opts.From.Reference)
 	}
 
+	index, filteredManifests, err := filterManifestByPlatform(ctx, src, root, opts)
+	if err != nil {
+		return err
+	}
+
+	// If all platforms are specified, we can just copy the root descriptor
+	if len(index.Manifests) == len(filteredManifests) {
+		opts.Platform.Platform = nil
+		return copySinglePlatformOrRecursive(ctx, statusHandler, metadataHandler, src, dst, opts)
+	}
+
+	// Perform multiple copies
+	return doMultipleCopy(ctx, statusHandler, metadataHandler, src, dst, opts, index, filteredManifests)
+}
+
+func filterManifestByPlatform(ctx context.Context, src oras.ReadOnlyGraphTarget, root ocispec.Descriptor, opts *copyOptions) (ocispec.Index, []ocispec.Descriptor, error) {
 	// For indexes/lists, fetch the index content
 	indexContent, err := content.FetchAll(ctx, src, root)
 	if err != nil {
-		return fmt.Errorf("failed to fetch index: %w", err)
+		return ocispec.Index{}, nil, fmt.Errorf("failed to fetch index: %w", err)
 	}
 
 	var index ocispec.Index
-	if err := json.Unmarshal(indexContent, &index); err != nil {
-		return fmt.Errorf("failed to parse index: %w", err)
+	if err = json.Unmarshal(indexContent, &index); err != nil {
+		return ocispec.Index{}, nil, fmt.Errorf("failed to parse index: %w", err)
 	}
 
-	var availablePlatforms []string
 	// Filter manifests based on the specified platforms
+	var availablePlatforms []string
 	var filteredManifests []ocispec.Descriptor
-	matchedPlatforms := make(map[string]bool)
 	for _, manifest := range index.Manifests {
 		if manifest.Platform == nil {
 			continue
 		}
-		availablePlatforms = append(availablePlatforms, fmt.Sprintf("%s/%s", manifest.Platform.OS, manifest.Platform.Architecture))
+		var platformStr string
+		if manifest.Platform.Variant != "" {
+			platformStr = fmt.Sprintf("%s/%s/%s", manifest.Platform.OS, manifest.Platform.Architecture, manifest.Platform.Variant)
+		} else {
+			platformStr = fmt.Sprintf("%s/%s", manifest.Platform.OS, manifest.Platform.Architecture)
+		}
+		availablePlatforms = append(availablePlatforms, platformStr)
 		if matchesAnyPlatform(manifest.Platform, opts.Platform.Platforms) {
 			filteredManifests = append(filteredManifests, manifest)
-			matchedPlatforms[fmt.Sprintf("%s/%s", manifest.Platform.OS, manifest.Platform.Architecture)] = true
 		}
 	}
 
-	if len(filteredManifests) != len(opts.Platform.Platforms) {
-
-		var unmatchedPlatforms []string
-		for _, platform := range opts.Platform.Platforms {
-			platformStr := fmt.Sprintf("%s/%s", platform.OS, platform.Architecture)
-			if !matchedPlatforms[platformStr] {
-				unmatchedPlatforms = append(unmatchedPlatforms, platformStr)
-			}
+	// Check if any platforms were unmatched
+	var unmatchedPlatforms []string
+	for _, platform := range opts.Platform.Platforms {
+		var platformStr string
+		var contains bool
+		if platform.Variant != "" {
+			platformStr = fmt.Sprintf("%s/%s/%s", platform.OS, platform.Architecture, platform.Variant)
+			contains = slices.ContainsFunc(filteredManifests, func(manifest ocispec.Descriptor) bool {
+				return manifest.Platform.OS == platform.OS && manifest.Platform.Architecture == platform.Architecture && manifest.Platform.Variant == platform.Variant
+			})
+		} else {
+			platformStr = fmt.Sprintf("%s/%s", platform.OS, platform.Architecture)
+			contains = slices.ContainsFunc(filteredManifests, func(manifest ocispec.Descriptor) bool {
+				return manifest.Platform.OS == platform.OS && manifest.Platform.Architecture == platform.Architecture
+			})
 		}
-
-		// Return error with details about unmatched platforms
-		return fmt.Errorf("only %d of %d requested platforms were matched: unmatched platforms: [%s]; available platforms in index: [%s]",
-			len(filteredManifests), len(opts.Platform.Platforms), strings.Join(unmatchedPlatforms, ", "), strings.Join(availablePlatforms, ", "))
+		if !contains {
+			unmatchedPlatforms = append(unmatchedPlatforms, platformStr)
+		}
 	}
+	// Return error with details about unmatched platforms
+	if len(unmatchedPlatforms) > 0 {
+		return ocispec.Index{}, nil, fmt.Errorf("some requested platforms were not matched; unmatched platforms: [%s]; available platforms in index: [%s]",
+			strings.Join(unmatchedPlatforms, ", "), strings.Join(availablePlatforms, ", "))
+	}
+	return index, filteredManifests, nil
+}
 
+func doMultipleCopy(ctx context.Context, statusHandler status.CopyHandler, metadataHandler metadata.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions, index ocispec.Index, filteredManifests []ocispec.Descriptor) error {
 	// Create a new index with only the filtered manifests
 	newIndex := index
 	newIndex.Manifests = filteredManifests
@@ -261,7 +295,6 @@ func copyMultiplePlatforms(ctx context.Context, statusHandler status.CopyHandler
 	extendedCopyGraphOptions.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		return registry.Referrers(ctx, src, desc, "")
 	}
-
 	if mountRepo, canMount := getMountPoint(src, dst, opts); canMount {
 		extendedCopyGraphOptions.MountFrom = func(ctx context.Context, desc ocispec.Descriptor) ([]string, error) {
 			return []string{mountRepo}, nil
@@ -282,19 +315,19 @@ func copyMultiplePlatforms(ctx context.Context, statusHandler status.CopyHandler
 	// Copy all matching manifests and their content
 	for _, manifestDesc := range filteredManifests {
 		// Copy the manifest itself
-		if err := oras.CopyGraph(ctx, src, dst, manifestDesc, extendedCopyGraphOptions.CopyGraphOptions); err != nil {
+		if err = oras.CopyGraph(ctx, src, dst, manifestDesc, extendedCopyGraphOptions.CopyGraphOptions); err != nil {
 			return fmt.Errorf("failed to copy manifest %s: %w", manifestDesc.Digest, err)
 		}
 	}
 
 	// Push the new index to the destination
-	if err := dst.Push(ctx, newIndexDesc, strings.NewReader(string(newIndexContent))); err != nil {
+	if err = dst.Push(ctx, newIndexDesc, strings.NewReader(string(newIndexContent))); err != nil {
 		return fmt.Errorf("failed to push new index: %w", err)
 	}
 
 	// Tag the new index if needed
 	if opts.To.Reference != "" {
-		if err := dst.Tag(ctx, newIndexDesc, opts.To.Reference); err != nil {
+		if err = dst.Tag(ctx, newIndexDesc, opts.To.Reference); err != nil {
 			return fmt.Errorf("failed to tag new index: %w", err)
 		}
 	}
@@ -313,37 +346,38 @@ func copyMultiplePlatforms(ctx context.Context, statusHandler status.CopyHandler
 	if from, err := digest.Parse(opts.From.Reference); err == nil && from != newIndexDesc.Digest {
 		opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, newIndexDesc.Digest.String())
 	}
-
-	if err := metadataHandler.OnCopied(&opts.BinaryTarget, newIndexDesc); err != nil {
+	if err = metadataHandler.OnCopied(&opts.BinaryTarget, newIndexDesc); err != nil {
 		return err
 	}
-
 	return metadataHandler.Render()
 }
 
 // matchesAnyPlatform checks if a manifest platform matches any of the specified platforms
 func matchesAnyPlatform(manifestPlatform *ocispec.Platform, platforms []*ocispec.Platform) bool {
-	for _, platform := range platforms {
-		if platformMatches(manifestPlatform, platform) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(platforms, func(platform *ocispec.Platform) bool {
+		return platformMatches(manifestPlatform, platform)
+	})
 }
 
 // platformMatches checks if two platforms match
-func platformMatches(a, b *ocispec.Platform) bool {
-	if a.OS != b.OS || a.Architecture != b.Architecture {
+func platformMatches(manifestPlatform, targetPlatform *ocispec.Platform) bool {
+	if manifestPlatform.OS != targetPlatform.OS || manifestPlatform.Architecture != targetPlatform.Architecture {
 		return false
 	}
 
-	// Variant is optional; only treat it as a mismatch if both variants are non-empty and different.
-	if a.Variant != "" && b.Variant != "" && a.Variant != b.Variant {
+	// Variant: optional; if specified, must match exactly, otherwise it is ignored
+	//if targetPlatform.Variant == "" && manifestPlatform.Variant != "" {
+	//	return false
+	//}
+	if targetPlatform.Variant != "" && manifestPlatform.Variant == "" {
+		return false
+	}
+	if targetPlatform.Variant != "" && manifestPlatform.Variant != "" && targetPlatform.Variant != manifestPlatform.Variant {
 		return false
 	}
 
 	// OSVersion is optional; only treat it as a mismatch if both OSVersions are non-empty and different.
-	if a.OSVersion != "" && b.OSVersion != "" && a.OSVersion != b.OSVersion {
+	if manifestPlatform.OSVersion != "" && targetPlatform.OSVersion != "" && manifestPlatform.OSVersion != targetPlatform.OSVersion {
 		return false
 	}
 
