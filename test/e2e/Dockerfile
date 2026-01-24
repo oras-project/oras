@@ -65,8 +65,8 @@ echo "Building oras binary..."
 
 cd /workspace
 
-# Build oras using make (determines correct OS and ARCH automatically)
-make > out || cat out
+# Build oras binary for linux/amd64 (skip lint/test which run separately in CI)
+make build-linux-amd64
 
 # Construct the binary path using Makefile logic: bin/$(OS)/$(ARCH)/$(CLI_EXE)
 ORAS_BIN="/workspace/bin/linux/amd64/oras"
