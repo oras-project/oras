@@ -27,18 +27,28 @@ linters:
   default: standard
 
   enable:
+    - bodyclose
+    - copyloopvar
     - depguard
     - dupl
+    - errorlint
     - goheader
     - gomodguard
+    - gosec
     - govet
     - ineffassign
     - misspell
+    - nilerr
+    - nilnil
+    - noctx
     - staticcheck
     - thelper
+    - unconvert
+    - unparam
     - unused
     - usestdlibvars
     - usetesting
+    - whitespace
 
   exclusions:
 
@@ -67,6 +77,12 @@ linters:
 
     goheader:
       template-path: copyright.tmpl
+
+    gosec:
+      excludes:
+        - G306
+        - G115
+        - G402
 
 run:
   timeout: 10m

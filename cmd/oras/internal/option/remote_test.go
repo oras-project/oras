@@ -77,7 +77,6 @@ func testingKey(s []byte) []byte {
 }
 
 func loadTestingTLSConfig() *tls.Config {
-
 	clientCertPool := x509.NewCertPool()
 	clientCertPool.AppendCertsFromPEM(localhostClientCert)
 
@@ -97,7 +96,6 @@ func loadTestingCert(certificate, key []byte) tls.Certificate {
 	}
 
 	return cert
-
 }
 
 func TestMain(m *testing.M) {
@@ -167,10 +165,11 @@ func TestRemote_authClient_skipTlsVerify(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	_, err = client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	resp.Body.Close()
 }
 
 func TestRemote_authClient_CARoots(t *testing.T) {
@@ -190,10 +189,11 @@ func TestRemote_authClient_CARoots(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	_, err = client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	resp.Body.Close()
 }
 
 func TestRemote_authClient_resolve(t *testing.T) {
@@ -215,10 +215,11 @@ func TestRemote_authClient_resolve(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error when generating request: %v", err)
 	}
-	_, err = client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("unexpected error when sending request: %v", err)
 	}
+	resp.Body.Close()
 }
 
 func plainHTTPEnabled() (plainHTTP bool, fromFlag bool) {
@@ -403,13 +404,11 @@ func TestRemote_default_localhost(t *testing.T) {
 	got := opts.isPlainHttp("localhost")
 	if got != true {
 		t.Fatalf("tls should be disabled when domain is localhost")
-
 	}
 
 	got = opts.isPlainHttp("localhost:9090")
 	if got != true {
 		t.Fatalf("tls should be disabled when domain is localhost")
-
 	}
 }
 
@@ -418,13 +417,11 @@ func TestRemote_isPlainHTTP_localhost(t *testing.T) {
 	isplainHTTP := opts.isPlainHttp("localhost")
 	if isplainHTTP != true {
 		t.Fatalf("tls should be disabled when domain is localhost and --plain-http is used")
-
 	}
 
 	isplainHTTP = opts.isPlainHttp("localhost:9090")
 	if isplainHTTP != true {
 		t.Fatalf("tls should be disabled when domain is localhost and --plain-http is used")
-
 	}
 }
 
@@ -433,13 +430,11 @@ func TestRemote_isHTTPS_localhost(t *testing.T) {
 	got := opts.isPlainHttp("localhost")
 	if got != false {
 		t.Fatalf("tls should be enabled when domain is localhost and --plain-http=false is used")
-
 	}
 
 	got = opts.isPlainHttp("localhost:9090")
 	if got != false {
 		t.Fatalf("tls should be enabled when domain is localhost and --plain-http=false is used")
-
 	}
 }
 
