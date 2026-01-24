@@ -45,12 +45,12 @@ func TestTrackerFunc_Update(t *testing.T) {
 		return wantErr
 	})
 
-	if err := tracker.Update(wantStatus); err != wantErr {
+	if err := tracker.Update(wantStatus); !errors.Is(err, wantErr) {
 		t.Errorf("TrackerFunc.Update() error = %v, want %v", err, wantErr)
 	}
 
 	wantErr = errors.New("fail to track")
-	if err := tracker.Update(wantStatus); err != wantErr {
+	if err := tracker.Update(wantStatus); !errors.Is(err, wantErr) {
 		t.Errorf("TrackerFunc.Update() error = %v, want %v", err, wantErr)
 	}
 }
@@ -63,18 +63,18 @@ func TestTrackerFunc_Fail(t *testing.T) {
 		if status != wantStatus {
 			t.Errorf("TrackerFunc status = %v, want %v", status, wantStatus)
 		}
-		if err != reportErr {
+		if !errors.Is(err, reportErr) {
 			t.Errorf("TrackerFunc err = %v, want %v", err, reportErr)
 		}
 		return wantErr
 	})
 
-	if err := tracker.Fail(reportErr); err != wantErr {
+	if err := tracker.Fail(reportErr); !errors.Is(err, wantErr) {
 		t.Errorf("TrackerFunc.Fail() error = %v, want %v", err, wantErr)
 	}
 
 	wantErr = errors.New("fail to track")
-	if err := tracker.Fail(reportErr); err != wantErr {
+	if err := tracker.Fail(reportErr); !errors.Is(err, wantErr) {
 		t.Errorf("TrackerFunc.Fail() error = %v, want %v", err, wantErr)
 	}
 }
@@ -257,7 +257,7 @@ func TestTrackReader(t *testing.T) {
 
 		buf := make([]byte, bufSize)
 		n, err := gotReader.Read(buf)
-		if want := io.EOF; err != want {
+		if want := io.EOF; !errors.Is(err, want) {
 			t.Fatalf("TrackReader() error = %v, want %v", err, want)
 		}
 		if want := 0; n != want {
@@ -300,7 +300,7 @@ func TestTrackReader(t *testing.T) {
 				if wantStatus := emptyStatus; status != wantStatus {
 					t.Errorf("TrackerFunc status = %v, want %v", status, wantStatus)
 				}
-				if err != wantErr {
+				if !errors.Is(err, wantErr) {
 					t.Errorf("TrackerFunc err = %v, want %v", err, wantErr)
 				}
 				return nil
@@ -317,7 +317,7 @@ func TestTrackReader(t *testing.T) {
 		}
 		buf := make([]byte, bufSize)
 		n, err := gotReader.Read(buf)
-		if err != wantErr {
+		if !errors.Is(err, wantErr) {
 			t.Fatalf("TrackReader() error = %v, want %v", err, wantErr)
 		}
 		if n != bufSize {
@@ -334,7 +334,7 @@ func TestTrackReader(t *testing.T) {
 		trackerMockStage = 0
 		writeBuf := bytes.NewBuffer(nil)
 		wn, err := gotReader.(io.WriterTo).WriteTo(writeBuf)
-		if err != wantErr {
+		if !errors.Is(err, wantErr) {
 			t.Fatalf("TrackReader() error = %v, want %v", err, wantErr)
 		}
 		if want := len(content) - bufSize; wn != int64(want) {
@@ -354,7 +354,7 @@ func TestTrackReader(t *testing.T) {
 			if status != wantStatus {
 				t.Errorf("TrackerFunc status = %v, want %v", status, wantStatus)
 			}
-			if err != reportErr {
+			if !errors.Is(err, reportErr) {
 				t.Errorf("TrackerFunc err = %v, want %v", err, reportErr)
 			}
 			return wantErr
@@ -366,7 +366,7 @@ func TestTrackReader(t *testing.T) {
 
 		buf := make([]byte, bufSize)
 		n, err := gotReader.Read(buf)
-		if err != reportErr {
+		if !errors.Is(err, reportErr) {
 			t.Fatalf("TrackReader() error = %v, want %v", err, reportErr)
 		}
 		if want := 0; n != want {
@@ -375,7 +375,7 @@ func TestTrackReader(t *testing.T) {
 
 		wantErr = errors.New("fail to track")
 		n, err = gotReader.Read(buf)
-		if err != wantErr {
+		if !errors.Is(err, wantErr) {
 			t.Fatalf("TrackReader() error = %v, want %v", err, wantErr)
 		}
 		if want := 0; n != want {
@@ -386,7 +386,7 @@ func TestTrackReader(t *testing.T) {
 		wantErr = nil
 		writeBuf := bytes.NewBuffer(nil)
 		wn, err := gotReader.(io.WriterTo).WriteTo(writeBuf)
-		if err != reportErr {
+		if !errors.Is(err, reportErr) {
 			t.Fatalf("TrackReader() error = %v, want %v", err, reportErr)
 		}
 		if want := int64(0); wn != want {
@@ -400,7 +400,7 @@ func TestTrackReader(t *testing.T) {
 		gotReader = TrackReader(tracker, io.MultiReader(pipeReader)) // wrap io.WriteTo
 		wantErr = errors.New("fail to track")
 		wn, err = gotReader.(io.WriterTo).WriteTo(writeBuf)
-		if err != wantErr {
+		if !errors.Is(err, wantErr) {
 			t.Fatalf("TrackReader() error = %v, want %v", err, wantErr)
 		}
 		if want := int64(0); wn != want {

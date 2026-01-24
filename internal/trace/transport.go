@@ -17,6 +17,7 @@ package trace
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -121,7 +122,7 @@ func logResponseBody(resp *http.Response) string {
 		Closer: body,
 	}
 	// read the body up to limit+1 to check if the body exceeds the limit
-	if _, err := io.CopyN(buf, body, payloadSizeLimit+1); err != nil && err != io.EOF {
+	if _, err := io.CopyN(buf, body, payloadSizeLimit+1); err != nil && !errors.Is(err, io.EOF) {
 		return fmt.Sprintf("   Error reading response body: %v", err)
 	}
 

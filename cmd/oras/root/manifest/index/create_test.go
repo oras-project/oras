@@ -165,6 +165,7 @@ func Test_enrichDescriptor(t *testing.T) {
 			`),
 			manifestMediaType: "application/vnd.oci.image.index.v1+json",
 			checkDesc: func(t *testing.T, gotDesc, inputDesc ocispec.Descriptor) {
+				t.Helper()
 				if got, want := gotDesc.ArtifactType, "application/vnd.example"; got != want {
 					t.Errorf("ArtifactType = %s, want %s", got, want)
 				}
@@ -192,6 +193,7 @@ func Test_enrichDescriptor(t *testing.T) {
 			`),
 			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
 			checkDesc: func(t *testing.T, gotDesc, inputDesc ocispec.Descriptor) {
+				t.Helper()
 				if got, want := gotDesc.ArtifactType, "application/vnd.example"; got != want {
 					t.Errorf("ArtifactType = %s, want %s", got, want)
 				}
@@ -226,6 +228,7 @@ func Test_enrichDescriptor(t *testing.T) {
 			`),
 			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
 			checkDesc: func(t *testing.T, gotDesc, inputDesc ocispec.Descriptor) {
+				t.Helper()
 				if got, want := gotDesc.ArtifactType, "application/vnd.example"; got != want {
 					t.Errorf("ArtifactType = %s, want %s", got, want)
 				}
@@ -241,6 +244,7 @@ func Test_enrichDescriptor(t *testing.T) {
 			manifestBytes:     []byte(`{}`),
 			manifestMediaType: "application/vnd.custom",
 			checkDesc: func(t *testing.T, gotDesc, inputDesc ocispec.Descriptor) {
+				t.Helper()
 				if !reflect.DeepEqual(gotDesc, inputDesc) {
 					t.Errorf("result does not match input: got %#v, want %#v", gotDesc, inputDesc)
 				}

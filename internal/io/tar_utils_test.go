@@ -28,15 +28,7 @@ import (
 
 func TestTarDirectory(t *testing.T) {
 	// Create a temporary directory structure for testing
-	tmpDir, err := os.MkdirTemp("", "tar-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer func() {
-		if err := os.RemoveAll(tmpDir); err != nil {
-			t.Logf("Failed to remove temporary directory: %v", err)
-		}
-	}()
+	tmpDir := t.TempDir()
 
 	// Create test files and directories
 	testFiles := map[string]string{
@@ -64,7 +56,7 @@ func TestTarDirectory(t *testing.T) {
 	// by the TarDirectory function design
 
 	// Call TarDirectory
-	err = iotest.TarDirectory(&buf, tmpDir)
+	err := iotest.TarDirectory(&buf, tmpDir)
 	if err != nil {
 		t.Fatalf("TarDirectory failed: %v", err)
 	}
@@ -87,7 +79,7 @@ func TestTarDirectory(t *testing.T) {
 		}
 
 		var contentBuf bytes.Buffer
-		if _, err := io.Copy(&contentBuf, tr); err != nil {
+		if _, err := io.Copy(&contentBuf, io.LimitReader(tr, 10*1024*1024)); err != nil {
 			t.Fatalf("Failed to read file content: %v", err)
 		}
 
@@ -130,15 +122,10 @@ func TestTarDirectory_InvalidSource(t *testing.T) {
 
 	// Create a temporary file to test with non-directory source
 	t.Run("Source is not a directory", func(t *testing.T) {
-		tmpFile, err := os.CreateTemp("", "not-a-dir")
+		tmpFile, err := os.CreateTemp(t.TempDir(), "not-a-dir")
 		if err != nil {
 			t.Fatalf("Failed to create temp file: %v", err)
 		}
-		defer func() {
-			if err := os.Remove(tmpFile.Name()); err != nil {
-				t.Logf("Failed to remove temporary file: %v", err)
-			}
-		}()
 		defer func() {
 			if err := tmpFile.Close(); err != nil {
 				t.Logf("Failed to close temporary file: %v", err)
