@@ -193,9 +193,13 @@ func getPlatform(ctx context.Context, target oras.ReadOnlyTarget, manifest *ocis
 		return nil, err
 	}
 	var platform ocispec.Platform
-	if err := json.Unmarshal(contentBytes, &platform); err != nil || (platform.Architecture == "" && platform.OS == "") {
+	if err := json.Unmarshal(contentBytes, &platform); err != nil {
+		// ignore JSON unmarshal errors if the manifest does not have platform information
+		return nil, nil //nolint:nilerr,nilnil
+	}
+	if platform.Architecture == "" && platform.OS == "" {
 		// ignore if the manifest does not have platform information
-		return nil, nil
+		return nil, nil //nolint:nilnil
 	}
 	return &platform, nil
 }

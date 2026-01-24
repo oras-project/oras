@@ -112,7 +112,6 @@ func (repo *repository) Fetch(ctx context.Context, target ocispec.Descriptor) (i
 		return io.NopCloser(bytes.NewReader(r.blob)), nil
 	}
 	return nil, fmt.Errorf("unexpected descriptor %v", target)
-
 }
 
 // Resolve mocks resolving via a reference.
