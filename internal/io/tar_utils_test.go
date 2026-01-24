@@ -79,7 +79,7 @@ func TestTarDirectory(t *testing.T) {
 		}
 
 		var contentBuf bytes.Buffer
-		if _, err := io.Copy(&contentBuf, tr); err != nil {
+		if _, err := io.Copy(&contentBuf, io.LimitReader(tr, 10*1024*1024)); err != nil {
 			t.Fatalf("Failed to read file content: %v", err)
 		}
 
