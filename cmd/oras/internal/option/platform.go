@@ -27,8 +27,9 @@ import (
 
 // Platform option struct.
 type Platform struct {
-	platform        string
+	platform        []string
 	Platform        *ocispec.Platform
+	Platforms       []*ocispec.Platform
 	FlagDescription string
 }
 
@@ -37,40 +38,54 @@ func (opts *Platform) ApplyFlags(fs *pflag.FlagSet) {
 	if opts.FlagDescription == "" {
 		opts.FlagDescription = "request platform"
 	}
-	fs.StringVarP(&opts.platform, "platform", "", "", opts.FlagDescription+" in the form of `os[/arch][/variant][:os_version]`")
+	fs.StringSliceVarP(&opts.platform, "platform", "", nil, opts.FlagDescription+" in the form of `os[/arch][/variant][:os_version]` or comma-separated list for multiple platforms (supported in oras cp only)")
 }
 
 // Parse parses the input platform flag to an oci platform type.
 func (opts *Platform) Parse(*cobra.Command) error {
-	if opts.platform == "" {
+	if len(opts.platform) == 0 {
 		return nil
 	}
+	return opts.parsePlatform(opts.platform)
+}
 
-	// OS[/Arch[/Variant]][:OSVersion]
-	// If Arch is not provided, will use GOARCH instead
-	var platformStr string
-	var p ocispec.Platform
-	platformStr, p.OSVersion, _ = strings.Cut(opts.platform, ":")
-	parts := strings.Split(platformStr, "/")
-	switch len(parts) {
-	case 3:
-		p.Variant = parts[2]
-		fallthrough
-	case 2:
-		p.Architecture = parts[1]
-	case 1:
-		p.Architecture = runtime.GOARCH
-	default:
-		return fmt.Errorf("failed to parse platform %q: expected format os[/arch[/variant]]", opts.platform)
+// parsePlatform parses multiple platforms
+func (opts *Platform) parsePlatform(platformStrings []string) error {
+	opts.Platforms = make([]*ocispec.Platform, 0, len(platformStrings))
+	for _, platformStr := range platformStrings {
+		platformStr = strings.TrimSpace(platformStr)
+		if platformStr == "" {
+			continue
+		}
+		var p ocispec.Platform
+		platformPart, osVersion, _ := strings.Cut(platformStr, ":")
+		parts := strings.Split(platformPart, "/")
+		switch len(parts) {
+		case 3:
+			p.Variant = parts[2]
+			fallthrough
+		case 2:
+			p.Architecture = parts[1]
+		case 1:
+			p.Architecture = runtime.GOARCH
+		default:
+			return fmt.Errorf("failed to parse platform %q: expected format os[/arch[/variant]]", platformStr)
+		}
+		p.OS = parts[0]
+		if p.OS == "" {
+			return fmt.Errorf("invalid platform: OS cannot be empty")
+		}
+		if p.Architecture == "" {
+			return fmt.Errorf("invalid platform: Architecture cannot be empty")
+		}
+		p.OSVersion = osVersion
+		opts.Platforms = append(opts.Platforms, &p)
 	}
-	p.OS = parts[0]
-	if p.OS == "" {
-		return fmt.Errorf("invalid platform: OS cannot be empty")
+
+	// Set the first platform as the primary one for backward compatibility
+	if len(opts.Platforms) > 0 {
+		opts.Platform = opts.Platforms[0]
 	}
-	if p.Architecture == "" {
-		return fmt.Errorf("invalid platform: Architecture cannot be empty")
-	}
-	opts.Platform = &p
 	return nil
 }
 
@@ -82,5 +97,5 @@ type ArtifactPlatform struct {
 // ApplyFlags applies flags to a command flag set.
 func (opts *ArtifactPlatform) ApplyFlags(fs *pflag.FlagSet) {
 	opts.FlagDescription = "set artifact platform"
-	fs.StringVarP(&opts.platform, "artifact-platform", "", "", "[Experimental] "+opts.FlagDescription+" in the form of `os[/arch][/variant][:os_version]`")
+	fs.StringSliceVarP(&opts.platform, "artifact-platform", "", nil, "[Experimental] "+opts.FlagDescription+" in the form of `os[/arch][/variant][:os_version]`")
 }
