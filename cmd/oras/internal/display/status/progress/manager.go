@@ -124,11 +124,13 @@ func (m *manager) Track(desc ocispec.Descriptor) (progress.Tracker, error) {
 
 func (m *manager) newTracker(s *status) progress.Tracker {
 	ch := make(chan statusUpdate, bufferSize)
-	m.updating.Go(func() {
+	m.updating.Add(1)
+	go func() {
+		defer m.updating.Done()
 		for update := range ch {
 			update(s)
 		}
-	})
+	}()
 	return &messenger{
 		update:  ch,
 		prompts: m.prompts,
