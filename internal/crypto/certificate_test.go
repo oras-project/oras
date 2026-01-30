@@ -29,7 +29,7 @@ var ts *httptest.Server
 
 func TestLoadCertPool(t *testing.T) {
 	// Test server
-	ts = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	ts = httptest.NewTLSServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}))
 	defer ts.Close()
 	var err error
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, ts.URL, nil)

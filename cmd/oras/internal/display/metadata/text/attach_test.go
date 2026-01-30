@@ -235,6 +235,6 @@ func TestAttachHandler_Render_SuccessfulCase(t *testing.T) {
 	}
 }
 
-func TestAttachHandler_InterfaceCompliance(t *testing.T) {
+func TestAttachHandler_InterfaceCompliance(_ *testing.T) {
 	var _ metadata.AttachHandler = (*AttachHandler)(nil)
 }

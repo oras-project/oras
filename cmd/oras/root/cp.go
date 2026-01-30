@@ -104,7 +104,7 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 			opts.DisableTTY(opts.Debug, false)
 			return nil
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts.Printer.Verbose = opts.verbose
 			return runCopy(cmd, &opts)
 		},
@@ -173,7 +173,7 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 	}
 
 	if mountRepo, canMount := getMountPoint(src, dst, opts); canMount {
-		extendedCopyGraphOptions.MountFrom = func(ctx context.Context, desc ocispec.Descriptor) ([]string, error) {
+		extendedCopyGraphOptions.MountFrom = func(_ context.Context, _ ocispec.Descriptor) ([]string, error) {
 			return []string{mountRepo}, nil
 		}
 	}
