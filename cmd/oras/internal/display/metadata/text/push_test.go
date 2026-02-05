@@ -30,7 +30,7 @@ import (
 type errorWriter struct{}
 
 // Write implements the io.Writer interface and returns an error in Write.
-func (w *errorWriter) Write(p []byte) (n int, err error) {
+func (w *errorWriter) Write(_ []byte) (n int, err error) {
 	return 0, fmt.Errorf("got an error")
 }
 

@@ -27,8 +27,8 @@ type Test struct {
 	CntPtr *int
 }
 
-func (t *Test) Parse(cmd *cobra.Command) error {
-	*t.CntPtr += 1
+func (t *Test) Parse(_ *cobra.Command) error {
+	*t.CntPtr++
 	if *t.CntPtr == 2 {
 		return errors.New("should not be tried twice")
 	}

@@ -170,7 +170,7 @@ func NewTagHandler(printer *output.Printer, target option.Target) metadata.TagHa
 }
 
 // NewManifestPushHandler returns a manifest push handler.
-func NewManifestPushHandler(printer *output.Printer, outputDescriptor bool, pretty bool, desc ocispec.Descriptor, target *option.Target) (status.ManifestPushHandler, metadata.ManifestPushHandler) {
+func NewManifestPushHandler(printer *output.Printer, outputDescriptor bool, _ bool, desc ocispec.Descriptor, target *option.Target) (status.ManifestPushHandler, metadata.ManifestPushHandler) {
 	if outputDescriptor {
 		return status.NewDiscardHandler(), metadata.NewDiscardHandler()
 	}
@@ -247,7 +247,7 @@ func NewRestoreHandler(printer *output.Printer, tty *os.File, fetcher fetcher.Fe
 }
 
 // NewBlobPushHandler returns blob push handlers.
-func NewBlobPushHandler(printer *output.Printer, outputDescriptor bool, pretty bool, desc ocispec.Descriptor, tty *os.File) (status.BlobPushHandler, metadata.BlobPushHandler) {
+func NewBlobPushHandler(printer *output.Printer, outputDescriptor bool, _ bool, desc ocispec.Descriptor, tty *os.File) (status.BlobPushHandler, metadata.BlobPushHandler) {
 	if outputDescriptor {
 		return status.NewDiscardHandler(), metadata.NewDiscardHandler()
 	}

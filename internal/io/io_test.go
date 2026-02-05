@@ -70,7 +70,7 @@ func TestReadLine(t *testing.T) {
 
 type mockReader struct{}
 
-func (m *mockReader) Read(p []byte) (n int, err error) {
+func (m *mockReader) Read(_ []byte) (n int, err error) {
 	return 0, errors.New("mock error")
 }
 

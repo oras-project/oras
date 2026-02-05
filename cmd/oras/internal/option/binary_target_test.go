@@ -88,7 +88,7 @@ func TestBinaryTarget_ModifyError(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			cmd := &cobra.Command{}
-			err, modified := tc.target.ModifyError(cmd, tc.err)
+			modified, err := tc.target.ModifyError(cmd, tc.err)
 			if modified != tc.wantModified {
 				t.Errorf("ModifyError() modified = %v, want %v", modified, tc.wantModified)
 			}

@@ -30,7 +30,7 @@ const testContent = `{"$config":{"hello":"world"},"$manifest":{"foo":"bar"},"cak
 
 var expectedResult = map[string]map[string]string{"$config": {"hello": "world"}, "$manifest": {"foo": "bar"}, "cake.txt": {"fun": "more cream"}}
 
-func TestPacker_FlagInit(t *testing.T) {
+func TestPacker_FlagInit(_ *testing.T) {
 	var test struct {
 		Packer
 	}

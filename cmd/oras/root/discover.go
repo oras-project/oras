@@ -109,7 +109,7 @@ Example - Discover referrers of the manifest tagged 'example.com:v1' in an OCI i
 			opts.DisableTTY(opts.Debug, false)
 			return nil
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runDiscover(cmd, &opts)
 		},
 	}

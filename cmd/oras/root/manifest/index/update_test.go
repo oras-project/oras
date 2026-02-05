@@ -37,49 +37,49 @@ type testUpdateDisplayStatus struct {
 	onIndexMergedError     bool
 }
 
-func (tds *testUpdateDisplayStatus) OnFetching(manifestRef string) error {
+func (tds *testUpdateDisplayStatus) OnFetching(_ string) error {
 	if tds.onFetchingError {
 		return fmt.Errorf("OnFetching error")
 	}
 	return nil
 }
 
-func (tds *testUpdateDisplayStatus) OnFetched(manifestRef string, desc ocispec.Descriptor) error {
+func (tds *testUpdateDisplayStatus) OnFetched(_ string, _ ocispec.Descriptor) error {
 	if tds.onFetchedError {
 		return fmt.Errorf("OnFetched error")
 	}
 	return nil
 }
 
-func (tds *testUpdateDisplayStatus) OnIndexPacked(desc ocispec.Descriptor) error {
+func (tds *testUpdateDisplayStatus) OnIndexPacked(_ ocispec.Descriptor) error {
 	if tds.onIndexPackedError {
 		return fmt.Errorf("error")
 	}
 	return nil
 }
 
-func (tds *testUpdateDisplayStatus) OnIndexPushed(path string) error {
+func (tds *testUpdateDisplayStatus) OnIndexPushed(_ string) error {
 	if tds.onIndexPushedError {
 		return fmt.Errorf("error")
 	}
 	return nil
 }
 
-func (tds *testUpdateDisplayStatus) OnManifestRemoved(digest digest.Digest) error {
+func (tds *testUpdateDisplayStatus) OnManifestRemoved(_ digest.Digest) error {
 	if tds.onManifestRemovedError {
 		return fmt.Errorf("OnManifestRemoved error")
 	}
 	return nil
 }
 
-func (tds *testUpdateDisplayStatus) OnManifestAdded(manifestRef string, desc ocispec.Descriptor) error {
+func (tds *testUpdateDisplayStatus) OnManifestAdded(_ string, _ ocispec.Descriptor) error {
 	if tds.onManifestAddedError {
 		return fmt.Errorf("error")
 	}
 	return nil
 }
 
-func (tds *testUpdateDisplayStatus) OnIndexMerged(indexRef string, desc ocispec.Descriptor) error {
+func (tds *testUpdateDisplayStatus) OnIndexMerged(_ string, _ ocispec.Descriptor) error {
 	if tds.onIndexMergedError {
 		return fmt.Errorf("error")
 	}

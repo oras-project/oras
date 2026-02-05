@@ -31,7 +31,7 @@ type manifestFetch struct {
 	outputPath string
 }
 
-func (h *manifestFetch) OnContentFetched(desc ocispec.Descriptor, manifest []byte) (eventErr error) {
+func (h *manifestFetch) OnContentFetched(_ ocispec.Descriptor, manifest []byte) (eventErr error) {
 	out := h.stdout
 	if h.outputPath != "-" && h.outputPath != "" {
 		f, err := os.Create(h.outputPath)

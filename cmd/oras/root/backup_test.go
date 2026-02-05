@@ -372,7 +372,7 @@ func Test_resolveTags(t *testing.T) {
 	// test server setup
 	setupServer := func(handlers map[string]http.HandlerFunc) *httptest.Server {
 		mux := http.NewServeMux()
-		mux.HandleFunc("/v2/", func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("/v2/", func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Docker-Distribution-Api-Version", "registry/2.0")
 			w.WriteHeader(http.StatusOK)
 		})
@@ -384,7 +384,7 @@ func Test_resolveTags(t *testing.T) {
 
 	// Common manifest handler
 	manifestHandler := func(desc ocispec.Descriptor) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
+		return func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", desc.MediaType)
 			w.Header().Set("Docker-Content-Digest", desc.Digest.String())
 			w.WriteHeader(http.StatusOK)
@@ -425,7 +425,7 @@ func Test_resolveTags(t *testing.T) {
 
 	t.Run("error resolving specified tag", func(t *testing.T) {
 		server := setupServer(map[string]http.HandlerFunc{
-			fmt.Sprintf("/v2/%s/manifests/non-existent", repoName): func(w http.ResponseWriter, r *http.Request) {
+			fmt.Sprintf("/v2/%s/manifests/non-existent", repoName): func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusNotFound)
 			},
 		})
@@ -445,7 +445,7 @@ func Test_resolveTags(t *testing.T) {
 
 	t.Run("fetching all tags from repository", func(t *testing.T) {
 		server := setupServer(map[string]http.HandlerFunc{
-			fmt.Sprintf("/v2/%s/tags/list", repoName): func(w http.ResponseWriter, r *http.Request) {
+			fmt.Sprintf("/v2/%s/tags/list", repoName): func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				_, _ = w.Write([]byte(`{"name":"` + repoName + `","tags":["v1","v2"]}`))
 			},
@@ -481,7 +481,7 @@ func Test_resolveTags(t *testing.T) {
 
 	t.Run("error listing tags from repository", func(t *testing.T) {
 		server := setupServer(map[string]http.HandlerFunc{
-			fmt.Sprintf("/v2/%s/tags/list", repoName): func(w http.ResponseWriter, r *http.Request) {
+			fmt.Sprintf("/v2/%s/tags/list", repoName): func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
 			},
 		})
@@ -501,12 +501,12 @@ func Test_resolveTags(t *testing.T) {
 
 	t.Run("error resolving one of the listed tags", func(t *testing.T) {
 		server := setupServer(map[string]http.HandlerFunc{
-			fmt.Sprintf("/v2/%s/tags/list", repoName): func(w http.ResponseWriter, r *http.Request) {
+			fmt.Sprintf("/v2/%s/tags/list", repoName): func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				_, _ = w.Write([]byte(`{"name":"` + repoName + `","tags":["v1","v2-bad"]}`))
 			},
 			fmt.Sprintf("/v2/%s/manifests/v1", repoName): manifestHandler(desc1),
-			fmt.Sprintf("/v2/%s/manifests/v2-bad", repoName): func(w http.ResponseWriter, r *http.Request) {
+			fmt.Sprintf("/v2/%s/manifests/v2-bad", repoName): func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusNotFound)
 			},
 		})
@@ -526,7 +526,7 @@ func Test_resolveTags(t *testing.T) {
 
 	t.Run("empty tag list from repository", func(t *testing.T) {
 		server := setupServer(map[string]http.HandlerFunc{
-			fmt.Sprintf("/v2/%s/tags/list", repoName): func(w http.ResponseWriter, r *http.Request) {
+			fmt.Sprintf("/v2/%s/tags/list", repoName): func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				_, _ = w.Write([]byte(`{"name":"` + repoName + `","tags":[]}`))
 			},
@@ -665,7 +665,7 @@ func Test_countReferrers(t *testing.T) {
 	t.Run("bad FindPredecessors", func(t *testing.T) {
 		testErr := errors.New("test error")
 		opts := oras.ExtendedCopyGraphOptions{
-			FindPredecessors: func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			FindPredecessors: func(_ context.Context, _ content.ReadOnlyGraphStorage, _ ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 				return nil, testErr
 			},
 		}
@@ -697,31 +697,31 @@ func (m *mockLogger) Debugf(format string, args ...any) {
 	m.debugMessages = append(m.debugMessages, fmt.Sprintf(format, args...))
 }
 
-func (m *mockLogger) Infof(format string, args ...any)    {}
-func (m *mockLogger) Printf(format string, args ...any)   {}
-func (m *mockLogger) Warnf(format string, args ...any)    {}
-func (m *mockLogger) Warningf(format string, args ...any) {}
-func (m *mockLogger) Errorf(format string, args ...any)   {}
-func (m *mockLogger) Fatalf(format string, args ...any)   {}
-func (m *mockLogger) Panicf(format string, args ...any)   {}
+func (m *mockLogger) Infof(_ string, _ ...any)    {}
+func (m *mockLogger) Printf(_ string, _ ...any)   {}
+func (m *mockLogger) Warnf(_ string, _ ...any)    {}
+func (m *mockLogger) Warningf(_ string, _ ...any) {}
+func (m *mockLogger) Errorf(_ string, _ ...any)   {}
+func (m *mockLogger) Fatalf(_ string, _ ...any)   {}
+func (m *mockLogger) Panicf(_ string, _ ...any)   {}
 
-func (m *mockLogger) Debug(args ...any)   {}
-func (m *mockLogger) Info(args ...any)    {}
-func (m *mockLogger) Print(args ...any)   {}
-func (m *mockLogger) Warn(args ...any)    {}
-func (m *mockLogger) Warning(args ...any) {}
-func (m *mockLogger) Error(args ...any)   {}
-func (m *mockLogger) Fatal(args ...any)   {}
-func (m *mockLogger) Panic(args ...any)   {}
+func (m *mockLogger) Debug(_ ...any)   {}
+func (m *mockLogger) Info(_ ...any)    {}
+func (m *mockLogger) Print(_ ...any)   {}
+func (m *mockLogger) Warn(_ ...any)    {}
+func (m *mockLogger) Warning(_ ...any) {}
+func (m *mockLogger) Error(_ ...any)   {}
+func (m *mockLogger) Fatal(_ ...any)   {}
+func (m *mockLogger) Panic(_ ...any)   {}
 
-func (m *mockLogger) Debugln(args ...any)   {}
-func (m *mockLogger) Infoln(args ...any)    {}
-func (m *mockLogger) Println(args ...any)   {}
-func (m *mockLogger) Warnln(args ...any)    {}
-func (m *mockLogger) Warningln(args ...any) {}
-func (m *mockLogger) Errorln(args ...any)   {}
-func (m *mockLogger) Fatalln(args ...any)   {}
-func (m *mockLogger) Panicln(args ...any)   {}
+func (m *mockLogger) Debugln(_ ...any)   {}
+func (m *mockLogger) Infoln(_ ...any)    {}
+func (m *mockLogger) Println(_ ...any)   {}
+func (m *mockLogger) Warnln(_ ...any)    {}
+func (m *mockLogger) Warningln(_ ...any) {}
+func (m *mockLogger) Errorln(_ ...any)   {}
+func (m *mockLogger) Fatalln(_ ...any)   {}
+func (m *mockLogger) Panicln(_ ...any)   {}
 
 type mockBackupHandler struct {
 	tarExportingCalled bool
@@ -730,25 +730,25 @@ type mockBackupHandler struct {
 	tarExportedResult  error
 }
 
-func (m *mockBackupHandler) OnTarExporting(path string) error {
+func (m *mockBackupHandler) OnTarExporting(_ string) error {
 	m.tarExportingCalled = true
 	return m.tarExportingResult
 }
 
-func (m *mockBackupHandler) OnTarExported(path string, size int64) error {
+func (m *mockBackupHandler) OnTarExported(_ string, _ int64) error {
 	m.tarExportedCalled = true
 	return m.tarExportedResult
 }
 
-func (m *mockBackupHandler) OnTagsFound(tags []string) error {
+func (m *mockBackupHandler) OnTagsFound(_ []string) error {
 	return nil
 }
 
-func (m *mockBackupHandler) OnArtifactPulled(tag string, referrerCount int) error {
+func (m *mockBackupHandler) OnArtifactPulled(_ string, _ int) error {
 	return nil
 }
 
-func (m *mockBackupHandler) OnBackupCompleted(tagsCount int, path string, duration time.Duration) error {
+func (m *mockBackupHandler) OnBackupCompleted(_ int, _ string, _ time.Duration) error {
 	return nil
 }
 

@@ -114,17 +114,17 @@ func (target *Target) Parse(cmd *cobra.Command) error {
 		return nil
 	default:
 		target.Type = TargetTypeRemote
-		if ref, err := registry.ParseReference(target.RawReference); err != nil {
+		ref, err := registry.ParseReference(target.RawReference)
+		if err != nil {
 			return &oerrors.Error{
 				OperationType:  oerrors.OperationTypeParseArtifactReference,
 				Err:            fmt.Errorf("%q: %w", target.RawReference, err),
 				Recommendation: "Please make sure the provided reference is in the form of <registry>/<repo>[:tag|@digest]",
 			}
-		} else {
-			target.Reference = ref.Reference
-			ref.Reference = ""
-			target.Path = ref.String()
 		}
+		target.Reference = ref.Reference
+		ref.Reference = ""
+		target.Path = ref.String()
 		return target.Remote.Parse(cmd)
 	}
 }
@@ -237,27 +237,27 @@ func (target *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, allowTag bool)
 }
 
 // ModifyError handles error during cmd execution.
-func (target *Target) ModifyError(cmd *cobra.Command, err error) (error, bool) {
+func (target *Target) ModifyError(cmd *cobra.Command, err error) (bool, error) {
 	if target.IsOCILayout {
 		// short circuit for non-remote targets
-		return err, false
+		return false, err
 	}
 
 	// handle errors for remote targets
 	if errors.Is(err, auth.ErrBasicCredentialNotFound) {
-		return target.DecorateCredentialError(err), true
+		return true, target.DecorateCredentialError(err)
 	}
 
 	if errors.Is(err, errdef.ErrNotFound) {
 		// special handling for not found error returned by registry target
 		cmd.SetErrPrefix(oerrors.RegistryErrorPrefix)
-		return err, true
+		return true, err
 	}
 
 	var errResp *errcode.ErrorResponse
 	if !errors.As(err, &errResp) {
 		// short circuit if the error is not an ErrorResponse
-		return err, false
+		return false, err
 	}
 
 	ref := registry.Reference{Registry: target.RawReference}
@@ -267,11 +267,11 @@ func (target *Target) ModifyError(cmd *cobra.Command, err error) (error, bool) {
 		ref, parseErr = registry.ParseReference(target.RawReference)
 		if parseErr != nil {
 			// this should not happen
-			return err, false
+			return false, err
 		}
 		if errResp.URL.Host != ref.Host() {
 			// not handle if the error is not from the target
-			return err, false
+			return false, err
 		}
 	}
 
@@ -287,5 +287,5 @@ func (target *Target) ModifyError(cmd *cobra.Command, err error) (error, bool) {
 			ret.Recommendation = fmt.Sprintf("Namespace seems missing. Do you mean `%s %s`?", cmd.CommandPath(), ref)
 		}
 	}
-	return ret, true
+	return true, ret
 }
