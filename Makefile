@@ -51,7 +51,12 @@ default: lint test build-$(OS)-$(ARCH)
 
 .PHONY: test
 test: tidy vendor check-encoding  ## tidy and run tests
-	$(GO_EXE) test -race -v -coverprofile=coverage.txt -covermode=atomic -coverpkg=$(PKG) $(PKG)
+	@if $(GO_EXE) tool -n | grep -q covdata; then \
+		$(GO_EXE) test -race -v -coverprofile=coverage.txt -covermode=atomic -coverpkg=$(PKG) $(PKG); \
+	else \
+		echo "Warning: covdata tool not available, running tests without coverage profiling"; \
+		$(GO_EXE) test -race -v $(PKG); \
+	fi
 
 .PHONY: teste2e
 teste2e:  ## run end to end tests
@@ -183,10 +188,15 @@ sign:  ## sign
 
 .PHONY: teste2e-covdata
 teste2e-covdata:  ## test e2e coverage
-	export GOCOVERDIR=$(CURDIR)/test/e2e/.cover; \
-	rm -rf $$GOCOVERDIR; \
-	mkdir -p $$GOCOVERDIR; \
-	$(MAKE) teste2e && $(GO_EXE) tool covdata textfmt -i=$$GOCOVERDIR -o "$(CURDIR)/test/e2e/coverage.txt"
+	@if $(GO_EXE) tool -n | grep -q covdata; then \
+		export GOCOVERDIR=$(CURDIR)/test/e2e/.cover; \
+		rm -rf $$GOCOVERDIR; \
+		mkdir -p $$GOCOVERDIR; \
+		$(MAKE) teste2e && $(GO_EXE) tool covdata textfmt -i=$$GOCOVERDIR -o "$(CURDIR)/test/e2e/coverage.txt"; \
+	else \
+		echo "Warning: covdata tool not available, running e2e tests without coverage"; \
+		$(MAKE) teste2e; \
+	fi
 
 .PHONY: help
 help:  ## Display this help
