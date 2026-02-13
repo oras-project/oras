@@ -1,0 +1,125 @@
+# Copyright The ORAS Authors.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: oras-e2e-tests
+  namespace: oras-e2e-tests
+  labels:
+    app: oras-e2e-tests
+spec:
+  # Keep completed jobs for 1 hour for log inspection
+  ttlSecondsAfterFinished: 3600
+  backoffLimit: 0  # Don't retry on failure
+  template:
+    metadata:
+      labels:
+        app: oras-e2e-tests
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: e2e-tests
+        # This image needs to be built and pushed to a registry
+        # See test/e2e/scripts/build-image.sh
+        image: oras-e2e-tests:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        # Enable CGO (required for -race flag)
+        - name: CGO_ENABLED
+          value: "1"
+        # Registry endpoints accessible within the cluster
+        - name: DOCKER_REGISTRY_HOST
+          value: "docker-registry.oras-e2e-tests.svc.cluster.local:5000"
+        - name: FALLBACK_REGISTRY_HOST
+          value: "fallback-registry.oras-e2e-tests.svc.cluster.local:5000"
+        - name: ZOT_REGISTRY_HOST
+          value: "zot-registry.oras-e2e-tests.svc.cluster.local:5000"
+        # Required by e2e tests (matching prepare.sh)
+        - name: ORAS_REGISTRY_HOST
+          value: "docker-registry.oras-e2e-tests.svc.cluster.local:5000"
+        - name: ORAS_REGISTRY_FALLBACK_HOST
+          value: "fallback-registry.oras-e2e-tests.svc.cluster.local:5000"
+        - name: ORAS_PATH
+          value: "/workspace/bin/linux/amd64/oras"
+        # Add ORAS binary directory to PATH
+        - name: PATH
+          value: "/workspace/bin/linux/amd64:/usr/local/go/bin:/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+        # Enable plain HTTP for in-cluster communication
+        - name: ORAS_E2E_PLAIN_HTTP
+          value: "true"
+        # Set test timeout
+        - name: ORAS_E2E_TIMEOUT
+          value: "10m"
+        args:
+        - /bin/sh
+        - -c
+        - |
+          echo "==================================="
+          echo "ORAS Go E2E Tests"
+          echo "==================================="
+          echo ""
+          echo "Test Configuration:"
+          echo "  ORAS_REGISTRY_HOST:          ${ORAS_REGISTRY_HOST}"
+          echo "  ORAS_REGISTRY_FALLBACK_HOST: ${ORAS_REGISTRY_FALLBACK_HOST}"
+          echo "  ZOT_REGISTRY_HOST:           ${ZOT_REGISTRY_HOST}"
+          echo "  Plain HTTP:                  ${ORAS_E2E_PLAIN_HTTP}"
+          echo ""
+
+          # Wait for registries to be ready
+          echo "Waiting for registries to be ready..."
+          for i in $(seq 1 30); do
+            if wget -q -O- "http://${DOCKER_REGISTRY_HOST}/v2/" > /dev/null 2>&1 && \
+               wget -q -O- "http://${FALLBACK_REGISTRY_HOST}/v2/" > /dev/null 2>&1 && \
+               wget -q -O- "http://${ZOT_REGISTRY_HOST}/v2/" > /dev/null 2>&1; then
+              echo "✓ All registries are ready"
+              break
+            fi
+            echo "  Waiting... (attempt $i/30)"
+            sleep 2
+          done
+
+          echo ""
+          echo "Running e2e tests with ginkgo..."
+          echo "-----------------------------------"
+
+          # Run the tests with ginkgo (ORAS_PATH is set by entrypoint)
+          ginkgo -r -p --race --timeout=${ORAS_E2E_TIMEOUT} suite
+          TEST_EXIT_CODE=$?
+
+          echo ""
+          echo "-----------------------------------"
+          if [ $TEST_EXIT_CODE -eq 0 ]; then
+            echo "✓ All tests passed"
+          else
+            echo "✗ Tests failed with exit code: $TEST_EXIT_CODE"
+          fi
+          echo "==================================="
+
+          exit $TEST_EXIT_CODE
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        volumeMounts:
+        - name: zot-data
+          mountPath: /zot-data
+      volumes:
+      - name: zot-data
+        hostPath:
+          path: /tmp/oras-e2e-zot-data
+          type: DirectoryOrCreate

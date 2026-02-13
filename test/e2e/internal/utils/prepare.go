@@ -30,7 +30,17 @@ import (
 
 // CopyZOTRepo copies oci layout data between repostories.
 func CopyZOTRepo(fromRepo string, toRepo string) {
-	zotRoot := filepath.Join(TestDataRoot, "zot")
+	// Check if zot PVC is mounted (Kubernetes environment)
+	zotDataMount := "/zot-data"
+	var zotRoot string
+	if fi, err := os.Stat(zotDataMount); err == nil && fi.IsDir() {
+		// Use mounted PVC in Kubernetes
+		zotRoot = zotDataMount
+	} else {
+		// Fallback to local testdata (for local testing)
+		zotRoot = filepath.Join(TestDataRoot, "zot")
+	}
+
 	fromRepo = filepath.Join(zotRoot, fromRepo)
 	toRepo = filepath.Join(zotRoot, toRepo)
 	Expect(CopyFiles(fromRepo, toRepo)).ShouldNot(HaveOccurred())
@@ -102,6 +112,17 @@ func WriteTempFile(name string, content string) (path string) {
 }
 
 func copyFile(srcFile, dstFile string) error {
+	// Try hard link first for blobs to preserve deduplication
+	if filepath.Base(filepath.Dir(srcFile)) == "sha256" &&
+		filepath.Base(filepath.Dir(filepath.Dir(srcFile))) == "blobs" {
+		if err := os.Link(srcFile, dstFile); err == nil {
+			return nil
+		}
+		// Fall through to regular copy if hard link fails
+		// (e.g., cross-device link or permission issues)
+	}
+
+	// Regular file copy
 	to, err := os.Create(dstFile)
 	if err != nil {
 		return err
