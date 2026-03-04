@@ -188,6 +188,22 @@ teste2e-covdata:  ## test e2e coverage
 	mkdir -p $$GOCOVERDIR; \
 	$(MAKE) teste2e && $(GO_EXE) tool covdata textfmt -i=$$GOCOVERDIR -o "$(CURDIR)/test/e2e/coverage.txt"
 
+.PHONY: release-prep
+release-prep:  ## prepare release: bump version, create PR
+	@scripts/release.sh prep $(VERSION)
+
+.PHONY: release-tag
+release-tag:  ## tag release: create and push signed tag
+	@scripts/release.sh tag $(VERSION) $(SHA)
+
+.PHONY: release-validate
+release-validate:  ## validate release: verify CI, artifacts, checksums
+	@scripts/release.sh validate $(VERSION)
+
+.PHONY: release-publish
+release-publish:  ## publish release: sign, upload, publish
+	@scripts/release.sh publish $(VERSION)
+
 .PHONY: help
 help:  ## Display this help
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[%\/0-9A-Za-z_-]+:.*?##/ { printf "  \033[36m%-45s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
