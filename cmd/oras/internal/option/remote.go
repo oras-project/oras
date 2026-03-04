@@ -67,7 +67,7 @@ type Remote struct {
 	Configs         []string
 	Username        string
 	secretFromStdin bool
-	Secret          string
+	Secret          string //nolint:gosec // G117: not a hardcoded secret, this is a CLI option field
 	flagPrefix      string
 
 	resolveFlag           []string
