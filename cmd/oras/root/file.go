@@ -41,6 +41,12 @@ func loadFiles(ctx context.Context, store *file.Store, annotations map[string]ma
 			name = filepath.ToSlash(name)
 		}
 
+		if value, ok := annotations[filename]; ok {
+			if nameFromAnnotations, ok := value[ocispec.AnnotationTitle]; ok {
+				name = nameFromAnnotations
+			}
+		}
+
 		err = displayStatus.OnFileLoading(name)
 		if err != nil {
 			return nil, err
