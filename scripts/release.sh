@@ -14,497 +14,565 @@
 
 set -euo pipefail
 
-# ── Configuration ────────────────────────────────────────────────────────────
-REPO="oras-project/oras"
-REMOTE="${ORAS_REMOTE:-upstream}"
-DRY_RUN=false
-VERSION_FILE="internal/version/version.go"
+# ORAS Release Helper Script
+# Usage: scripts/release.sh <phase> <version> [args...]
+# Phases: prep, tag, validate, publish
 
-# ── Colors ───────────────────────────────────────────────────────────────────
+REPO="oras-project/oras"
+VERSION_FILE="internal/version/version.go"
+REMOTE="${ORAS_REMOTE:-upstream}"
+
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
-BOLD='\033[1m'
 NC='\033[0m' # No Color
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
 info()    { echo -e "${CYAN}[INFO]${NC} $*"; }
 success() { echo -e "${GREEN}[OK]${NC} $*"; }
-warn()    { echo -e "${YELLOW}[WARN]${NC} $*"; }
+warn()    { echo -e "${YELLOW}[MANUAL]${NC} $*"; }
 error()   { echo -e "${RED}[ERROR]${NC} $*" >&2; }
-fatal()   { error "$@"; exit 1; }
 
-confirm() {
-    local msg="$1"
-    if [[ "$DRY_RUN" == "true" ]]; then
-        info "[dry-run] Would prompt: $msg"
-        return 0
-    fi
-    echo -en "${BOLD}$msg [y/N]${NC} "
-    read -r answer
-    [[ "$answer" =~ ^[Yy]$ ]] || { info "Aborted."; exit 0; }
+DRY_RUN=false
+
+# Parse global flags
+parse_global_flags() {
+    local args=()
+    for arg in "$@"; do
+        case "$arg" in
+            --dry-run) DRY_RUN=true ;;
+            *) args+=("$arg") ;;
+        esac
+    done
+    echo "${args[@]:-}"
 }
 
 run() {
-    if [[ "$DRY_RUN" == "true" ]]; then
-        info "[dry-run] $*"
-    else
-        "$@"
+    if [ "$DRY_RUN" = true ]; then
+        info "[DRY-RUN] $*"
+        return 0
     fi
+    "$@"
 }
 
-# ── Validation ───────────────────────────────────────────────────────────────
-validate_semver() {
+confirm() {
+    if [ "$DRY_RUN" = true ]; then
+        info "[DRY-RUN] Would confirm: $1"
+        return 0
+    fi
+    echo -en "${YELLOW}$1 [y/N]: ${NC}"
+    read -r response
+    case "$response" in
+        [yY][eE][sS]|[yY]) return 0 ;;
+        *) error "Aborted."; exit 1 ;;
+    esac
+}
+
+# Validate semver format
+validate_version() {
     local version="$1"
-    if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)\.[0-9]+)?$ ]]; then
-        fatal "Invalid semver: '$version'. Expected format: X.Y.Z or X.Y.Z-(alpha|beta|rc).N"
+    if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+        error "Invalid version format: $version (expected semver like 1.2.3 or 1.2.3-rc.1)"
+        exit 1
     fi
 }
 
+# Check if this is a new minor version (patch == 0, no pre-release)
+is_new_minor() {
+    local version="$1"
+    local patch
+    patch=$(echo "$version" | cut -d. -f3 | cut -d- -f1)
+    if [[ "$patch" == "0" && ! "$version" =~ - ]]; then
+        return 0
+    fi
+    return 1
+}
+
+# Get major.minor from version
+get_major_minor() {
+    local version="$1"
+    echo "$version" | cut -d. -f1-2
+}
+
+###############################################################################
+# Check prerequisites (gh, gpg, remote)
+###############################################################################
 check_prerequisites() {
     info "Checking prerequisites..."
-
     if ! command -v gh &>/dev/null; then
-        fatal "'gh' (GitHub CLI) is not installed. Install it from https://cli.github.com/"
+        error "'gh' CLI not found. Install: https://cli.github.com"
+        exit 1
     fi
-
     if ! gh auth status &>/dev/null; then
-        fatal "'gh' is not authenticated. Run 'gh auth login' first."
+        error "'gh' CLI not authenticated. Run: gh auth login"
+        exit 1
     fi
-
     if ! command -v gpg &>/dev/null; then
-        fatal "'gpg' is not installed. Install GnuPG first."
+        error "'gpg' not found. Install GPG."
+        exit 1
     fi
-
-    if ! gpg --list-secret-keys --keyid-format=long 2>/dev/null | grep -q sec; then
-        fatal "No GPG secret keys found. Generate one with 'gpg --full-generate-key'."
+    if ! gpg --list-secret-keys --keyid-format LONG 2>/dev/null | grep -q sec; then
+        error "No GPG secret keys found. Import or generate a key."
+        exit 1
     fi
-
     if ! git remote get-url "$REMOTE" &>/dev/null; then
-        fatal "Git remote '$REMOTE' not found. Set ORAS_REMOTE or add the remote."
-    fi
-
-    success "All prerequisites satisfied."
-}
-
-parse_version_parts() {
-    local version="$1"
-    local base="${version%%-*}"
-    MAJOR="${base%%.*}"
-    local rest="${base#*.}"
-    MINOR="${rest%%.*}"
-    PATCH="${rest#*.}"
-    PRERELEASE=""
-    if [[ "$version" == *-* ]]; then
-        PRERELEASE="${version#*-}"
+        error "Git remote '${REMOTE}' not found. Set ORAS_REMOTE or add the remote."
+        exit 1
     fi
 }
 
-# ── Phase: prep ──────────────────────────────────────────────────────────────
-phase_prep() {
+###############################################################################
+# Phase 1: Prep
+###############################################################################
+do_prep() {
     local version="$1"
-    validate_semver "$version"
+    validate_version "$version"
+    info "Preparing release v${version}"
+
     check_prerequisites
+    success "Prerequisites OK"
 
-    parse_version_parts "$version"
-
-    # Determine base branch
-    local base_branch="main"
-    if [[ "$PATCH" -gt 0 ]]; then
-        base_branch="release-${MAJOR}.${MINOR}"
-        info "Patch release detected, targeting branch '$base_branch'."
+    # Check we're on main and up to date
+    local current_branch
+    current_branch=$(git branch --show-current)
+    if [ "$current_branch" != "main" ]; then
+        warn "Currently on branch '$current_branch', not 'main'."
+        confirm "Continue anyway?"
     fi
 
-    info "Preparing release v${version}..."
-
-    # Ensure we are up-to-date
-    info "Fetching latest from ${REMOTE}..."
-    run git fetch "$REMOTE"
-
-    # Create release branch
-    local branch="chore/release-v${version}"
-    info "Creating branch '${branch}' from '${REMOTE}/${base_branch}'..."
-    run git checkout -b "$branch" "${REMOTE}/${base_branch}"
+    # Ensure working tree is clean
+    if ! git diff --quiet || ! git diff --cached --quiet; then
+        error "Working tree is not clean. Commit or stash changes before running prep."
+        exit 1
+    fi
 
     # Update version file
     info "Updating ${VERSION_FILE}..."
-    if [[ "$DRY_RUN" != "true" ]]; then
-        sed -i.bak -E "s/(Version = \").*(\")/\1${version}\2/" "$VERSION_FILE"
-        sed -i.bak -E "s/(BuildMetadata = \").*(\")/\1\2/" "$VERSION_FILE"
-        rm -f "${VERSION_FILE}.bak"
-    else
-        info "[dry-run] Would set Version = \"${version}\" and BuildMetadata = \"\""
-    fi
+    sed -i.bak -E "s/Version = \"[^\"]+\"/Version = \"${version}\"/" "$VERSION_FILE"
+    sed -i.bak -E "s/BuildMetadata = \"[^\"]*\"/BuildMetadata = \"\"/" "$VERSION_FILE"
+    rm -f "${VERSION_FILE}.bak"
+    success "Version set to ${version}"
 
-    # Commit and push
-    info "Committing version bump..."
+    # Show the diff
+    git diff "$VERSION_FILE"
+
+    # Create branch, commit, push, PR
+    local branch="chore/release-v${version}"
+    info "Creating branch ${branch}..."
+    run git checkout -b "$branch"
     run git add "$VERSION_FILE"
-    run git commit -s -m "chore: bump version to ${version}"
-    info "Pushing branch '${branch}' to origin..."
-    run git push origin "$branch"
+    run git commit -m "bump: tag and release ORAS CLI v${version}"
+    run git push "${REMOTE}" "$branch"
 
-    # Create PR
-    local pr_title="bump: tag and release ORAS CLI v${version}"
     info "Creating pull request..."
-    if [[ "$DRY_RUN" != "true" ]]; then
-        gh pr create \
-            --repo "$REPO" \
-            --title "$pr_title" \
-            --base "$base_branch" \
-            --body "$(cat <<EOF
-## Release ORAS CLI v${version}
-
-This PR bumps the version to **${version}** and clears the build metadata in preparation for the release.
-
-### Changes
-- Set \`Version\` to \`${version}\`
-- Set \`BuildMetadata\` to \`""\`
-
-### Release Checklist
-- [ ] Version bump reviewed
-- [ ] CI passing
-- [ ] Maintainer approval received
-EOF
-)"
+    local pr_url
+    if [ "$DRY_RUN" = true ]; then
+        pr_url="https://github.com/${REPO}/pull/DRY-RUN"
+        info "[DRY-RUN] Would create PR"
     else
-        info "[dry-run] Would create PR: '$pr_title' targeting '$base_branch'"
-    fi
+        pr_url=$(gh pr create \
+            --repo "$REPO" \
+            --title "bump: tag and release ORAS CLI v${version}" \
+            --body "$(cat <<EOF
+## Release v${version}
 
-    # Print commit SHA
+This PR bumps the version to v${version} for the upcoming release.
+
+### Checklist
+- [ ] Version updated in \`internal/version/version.go\`
+- [ ] CI checks pass
+- [ ] Vote called in Slack
+- [ ] Vote passed (3+ binding votes, no vetoes)
+EOF
+)" \
+            --head "$branch" \
+            --base main)
+    fi
+    success "PR created: ${pr_url}"
+
+    # Get the commit SHA
     local sha
     sha=$(git rev-parse HEAD)
-    success "Version bump committed."
     echo ""
-    echo -e "${BOLD}Commit SHA:${NC} ${sha}"
-    echo ""
+    success "Release commit SHA: ${sha}"
 
-    # Slack vote template
-    echo -e "${BOLD}Slack Vote Template:${NC}"
-    echo "────────────────────────────────────────"
+    # Print Slack vote template
+    echo ""
+    warn "Copy the following message to Slack #oras to call for a vote:"
+    echo ""
+    echo -e "${CYAN}---${NC}"
     cat <<EOF
-:oras: *ORAS CLI v${version} Release Vote*
+:ballot_box: *[VOTE] Release ORAS CLI v${version}*
 
-Hi team, I'd like to propose the release of ORAS CLI v${version}.
+Hi everyone, I'd like to call a vote for the release of ORAS CLI v${version}.
 
-*Release PR:* (paste PR URL here)
-*Commit SHA:* \`${sha}\`
+*Release PR:* ${pr_url}
+*Release commit:* \`${sha}\`
 
-Please vote:
-:+1: Approve
-:-1: Object (please provide reason)
+Please review the PR and vote:
+  :+1: (binding) — approve
+  :-1: (binding) — veto (please provide reason)
 
-Vote closes in 48 hours. Requires at least 2 approvals from maintainers.
+The vote will remain open for at least 72 hours.
+A minimum of 3 binding +1 votes and no vetoes is required.
 EOF
-    echo "────────────────────────────────────────"
+    echo -e "${CYAN}---${NC}"
+    echo ""
+    warn "After the vote passes and the PR is merged, run:"
+    echo "  scripts/release.sh tag ${version} <merged-commit-sha>"
 }
 
-# ── Phase: tag ───────────────────────────────────────────────────────────────
-phase_tag() {
+###############################################################################
+# Phase 2: Tag
+###############################################################################
+do_tag() {
     local version="$1"
-    local sha="$2"
-    validate_semver "$version"
+    local sha="${2:-}"
+    validate_version "$version"
 
-    info "Tagging release v${version} at ${sha}..."
-
-    # Validate the commit has the correct version
-    info "Validating version at commit ${sha}..."
-    local committed_version
-    committed_version=$(git show "${sha}:${VERSION_FILE}" | grep 'Version = ' | sed -E 's/.*"(.*)".*/\1/')
-    if [[ "$committed_version" != "$version" ]]; then
-        fatal "Version mismatch: commit has '${committed_version}', expected '${version}'."
+    if [ -z "$sha" ]; then
+        error "Usage: scripts/release.sh tag <version> <commit-sha>"
+        exit 1
     fi
 
-    local committed_metadata
-    committed_metadata=$(git show "${sha}:${VERSION_FILE}" | grep 'BuildMetadata = ' | sed -E 's/.*"(.*)".*/\1/')
-    if [[ -n "$committed_metadata" ]]; then
-        fatal "BuildMetadata is not empty at ${sha}: '${committed_metadata}'. Expected empty string."
+    info "Tagging v${version} at ${sha}"
+
+    check_prerequisites
+    success "Prerequisites OK"
+
+    # Verify the commit exists and is on main
+    if ! git cat-file -t "$sha" &>/dev/null; then
+        error "Commit ${sha} not found. Did you fetch latest?"
+        exit 1
     fi
 
-    success "Version validated: ${version} (BuildMetadata is clear)."
+    # Check that the version file at that commit has the right version
+    local file_version
+    file_version=$(git show "${sha}:${VERSION_FILE}" | grep 'Version = ' | sed -E 's/.*"([^"]+)".*/\1/')
+    if [ "$file_version" != "$version" ]; then
+        error "Version in ${VERSION_FILE} at ${sha} is '${file_version}', expected '${version}'"
+        exit 1
+    fi
 
     # Create signed tag
     confirm "Create signed tag v${version} at ${sha}?"
-    info "Creating signed tag v${version}..."
     run git tag -s "v${version}" "$sha" -m "Release v${version}"
-    info "Pushing tag v${version} to ${REMOTE}..."
-    run git push "$REMOTE" "v${version}"
+    success "Tag v${version} created"
 
-    success "Tag v${version} pushed to ${REMOTE}."
+    # Push tag
+    confirm "Push tag v${version} to ${REMOTE}?"
+    run git push "${REMOTE}" "v${version}"
+    success "Tag pushed"
 
-    # Create release branch for new minor versions (patch==0, no pre-release)
-    parse_version_parts "$version"
-    if [[ "$PATCH" -eq 0 && -z "$PRERELEASE" ]]; then
-        local release_branch="release-${MAJOR}.${MINOR}"
-        info "New minor release detected. Creating release branch '${release_branch}'..."
-        confirm "Create and push release branch '${release_branch}'?"
+    # Create release branch for new minor versions
+    if is_new_minor "$version"; then
+        local release_branch="release-$(get_major_minor "$version")"
+        info "New minor version detected. Creating release branch ${release_branch}..."
         run git branch "$release_branch" "$sha"
-        run git push "$REMOTE" "$release_branch"
-        success "Release branch '${release_branch}' created and pushed."
+        confirm "Push release branch ${release_branch} to ${REMOTE}?"
+        run git push "${REMOTE}" "$release_branch"
+        success "Release branch ${release_branch} pushed"
     fi
+
+    echo ""
+    info "CI workflows triggered. Monitor at:"
+    echo "  https://github.com/${REPO}/actions?query=event%3Apush+branch%3Av${version}"
+    echo ""
+    warn "Once CI completes, run:"
+    echo "  scripts/release.sh validate ${version}"
 }
 
-# ── Phase: validate ──────────────────────────────────────────────────────────
-phase_validate() {
+###############################################################################
+# Phase 3: Validate
+###############################################################################
+do_validate() {
     local version="$1"
-    validate_semver "$version"
+    validate_version "$version"
+    info "Validating release v${version}"
 
-    info "Validating release v${version}..."
-
-    # Poll GitHub Actions workflows
+    # Wait for CI workflows
+    info "Checking CI workflow status..."
     local workflows=("release-ghcr" "release-github")
-    for wf in "${workflows[@]}"; do
-        info "Polling workflow '${wf}' for tag v${version}..."
-        if [[ "$DRY_RUN" == "true" ]]; then
-            info "[dry-run] Would poll workflow '${wf}' until completion."
-            continue
-        fi
+    local all_done=false
+    local max_attempts=60  # 30 minutes at 30s intervals
+    local attempt=0
 
-        local max_attempts=60
-        local attempt=0
-        while [[ $attempt -lt $max_attempts ]]; do
+    while [ "$all_done" != "true" ] && [ "$attempt" -lt "$max_attempts" ]; do
+        all_done=true
+        for wf in "${workflows[@]}"; do
             local status
             status=$(gh run list \
                 --repo "$REPO" \
-                --workflow "${wf}.yml" \
+                --workflow "$wf" \
                 --branch "v${version}" \
                 --limit 1 \
                 --json status,conclusion \
                 --jq '.[0] | "\(.status) \(.conclusion)"' 2>/dev/null || echo "not_found")
 
-            if [[ "$status" == "not_found" || "$status" == " " ]]; then
-                info "Workflow '${wf}' not found yet, waiting..."
-            elif [[ "$status" == "completed success" ]]; then
-                success "Workflow '${wf}' completed successfully."
-                break
-            elif [[ "$status" == completed* ]]; then
-                fatal "Workflow '${wf}' failed: ${status}"
+            if [[ "$status" == *"completed success"* ]]; then
+                success "Workflow ${wf}: completed successfully"
+            elif [[ "$status" == *"completed"* ]]; then
+                error "Workflow ${wf}: ${status}"
+                exit 1
+            elif [[ "$status" == "not_found" ]]; then
+                warn "Workflow ${wf}: not found yet"
+                all_done=false
             else
-                info "Workflow '${wf}' status: ${status}. Waiting..."
+                info "Workflow ${wf}: ${status} (waiting...)"
+                all_done=false
             fi
-
-            attempt=$((attempt + 1))
-            sleep 30
         done
 
-        if [[ $attempt -ge $max_attempts ]]; then
-            fatal "Timed out waiting for workflow '${wf}' to complete."
+        if [ "$all_done" != "true" ]; then
+            ((attempt++))
+            if [ "$attempt" -lt "$max_attempts" ]; then
+                info "Waiting 30s for workflows... (attempt ${attempt}/${max_attempts})"
+                sleep 30
+            fi
         fi
     done
+
+    if [ "$all_done" != "true" ]; then
+        error "Timed out waiting for workflows"
+        exit 1
+    fi
+    success "All CI workflows completed"
 
     # Fetch distribution artifacts
     info "Fetching distribution artifacts..."
     run make fetch-dist VERSION="$version"
+    success "Artifacts downloaded to _dist/"
 
     # Verify checksums
     info "Verifying checksums..."
-    if [[ "$DRY_RUN" != "true" ]]; then
-        cd _dist
-        if ! shasum -a 256 -c "oras_${version}_checksums.txt" --ignore-missing; then
-            fatal "Checksum verification failed!"
-        fi
-        success "Checksums verified."
-        cd ..
+    if command -v sha256sum >/dev/null 2>&1; then
+        (cd _dist && sha256sum -c "oras_${version}_checksums.txt" --ignore-missing)
+    elif command -v shasum >/dev/null 2>&1; then
+        (cd _dist && shasum -a 256 -c "oras_${version}_checksums.txt" --ignore-missing)
+    else
+        error "Neither sha256sum nor shasum is available; cannot verify checksums."
+        exit 1
+    fi
+    success "Checksums verified"
+
+    # Test binary
+    info "Testing linux/amd64 binary..."
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    tar -xzf "_dist/oras_${version}_linux_amd64.tar.gz" -C "$tmpdir"
+    local bin_version
+    bin_version=$("$tmpdir/oras" version 2>/dev/null | head -1 || echo "unknown")
+    rm -rf "$tmpdir"
+
+    if echo "$bin_version" | grep -q "$version"; then
+        success "Binary version matches: ${bin_version}"
+    else
+        error "Binary version mismatch. Expected '${version}', got: ${bin_version}"
+        exit 1
     fi
 
-    # Test linux/amd64 binary
-    info "Testing linux/amd64 binary version..."
-    if [[ "$DRY_RUN" != "true" ]]; then
-        local tarball="_dist/oras_${version}_linux_amd64.tar.gz"
-        if [[ ! -f "$tarball" ]]; then
-            fatal "Binary archive not found: ${tarball}"
-        fi
-        local tmpdir
-        tmpdir=$(mktemp -d)
-        tar -xzf "$tarball" -C "$tmpdir"
-        local binary_version
-        binary_version=$("${tmpdir}/oras" version 2>/dev/null | grep 'Version:' | awk '{print $2}' || echo "unknown")
-        rm -rf "$tmpdir"
-
-        if [[ "$binary_version" != "$version" ]]; then
-            fatal "Binary version mismatch: got '${binary_version}', expected '${version}'."
-        fi
-        success "Binary version verified: ${binary_version}"
+    # Check git commit in binary
+    local tag_sha
+    tag_sha=$(git rev-list -n 1 "v${version}" 2>/dev/null || echo "unknown")
+    if echo "$bin_version" | grep -q "${tag_sha:0:7}"; then
+        success "Binary git commit matches tag SHA"
+    else
+        warn "Could not verify git commit in binary output (non-fatal)"
     fi
 
-    success "Release v${version} validation complete."
+    echo ""
+    success "All validation checks passed!"
+    echo ""
+    warn "Review the release notes at:"
+    echo "  https://github.com/${REPO}/releases/tag/v${version}"
+    echo ""
+    warn "When ready, run:"
+    echo "  scripts/release.sh publish ${version}"
 }
 
-# ── Phase: publish ───────────────────────────────────────────────────────────
-phase_publish() {
+###############################################################################
+# Phase 4: Sign & Publish
+###############################################################################
+do_publish() {
     local version="$1"
-    validate_semver "$version"
+    validate_version "$version"
+    info "Publishing release v${version}"
 
-    info "Publishing release v${version}..."
+    # Check artifacts exist
+    if [ ! -d "_dist" ]; then
+        error "_dist/ directory not found. Run 'scripts/release.sh validate ${version}' first."
+        exit 1
+    fi
 
     # Sign artifacts
-    info "Signing artifacts..."
-    run make sign
+    info "Signing artifacts with GPG..."
+    run make SHELL=/bin/bash sign
+    success "Artifacts signed"
 
-    # Verify GPG signatures
+    # Verify signatures
     info "Verifying GPG signatures..."
-    if [[ "$DRY_RUN" != "true" ]]; then
-        local failed=false
-        for sig in _dist/*.asc; do
-            local original="${sig%.asc}"
-            if ! gpg --verify "$sig" "$original" 2>/dev/null; then
-                error "GPG verification failed for: ${original}"
-                failed=true
-            fi
-        done
-        if [[ "$failed" == "true" ]]; then
-            fatal "One or more GPG signature verifications failed."
+    local sig_count=0
+    for asc in _dist/*.asc; do
+        [ -f "$asc" ] || continue
+        local orig="${asc%.asc}"
+        if gpg --verify "$asc" "$orig" 2>/dev/null; then
+            success "Verified: $(basename "$asc")"
+            ((sig_count++))
+        else
+            error "Signature verification failed: $(basename "$asc")"
+            exit 1
         fi
-        success "All GPG signatures verified."
+    done
+    if [ "$sig_count" -eq 0 ]; then
+        error "No .asc signature files found in _dist/"
+        exit 1
+    fi
+    success "All ${sig_count} signatures verified"
+
+    # Upload signatures to GitHub release
+    info "Uploading signatures to GitHub release..."
+    confirm "Upload ${sig_count} .asc files to release v${version}?"
+    if [[ "$DRY_RUN" == "true" ]]; then
+        info "[DRY-RUN] Would upload ${sig_count} .asc files to release v${version}"
+    else
+        gh release upload "v${version}" _dist/*.asc --repo "$REPO"
+    fi
+    success "Signatures uploaded"
+
+    # Get GPG key fingerprint for release notes
+    local fingerprint
+    fingerprint=$(gpg --list-secret-keys --keyid-format LONG 2>/dev/null | grep sec | head -1 | awk '{print $2}' | cut -d/ -f2)
+    if [ -n "$fingerprint" ]; then
+        info "Adding signing key info to release notes..."
+        local note="## Verification\n\nAll release artifacts are signed with GPG key \`${fingerprint}\`. Signatures (\`.asc\` files) are attached to this release.\n\nPublic keys are available in the [KEYS](https://github.com/${REPO}/blob/main/KEYS) file."
+        if [ "$DRY_RUN" = true ]; then
+            info "[DRY-RUN] Would append signing info to release notes"
+        else
+            local existing_notes
+            existing_notes=$(gh release view "v${version}" --repo "$REPO" --json body --jq '.body')
+            gh release edit "v${version}" --repo "$REPO" --notes "$(printf '%s\n\n%b' "$existing_notes" "$note")"
+        fi
+        success "Release notes updated with signing key info"
     fi
 
-    # Upload .asc files to GitHub release
-    info "Uploading signature files to GitHub release..."
-    if [[ "$DRY_RUN" != "true" ]]; then
-        for sig in _dist/*.asc; do
-            info "Uploading $(basename "$sig")..."
-            gh release upload "v${version}" "$sig" --repo "$REPO" --clobber
-        done
-        success "Signature files uploaded."
-    fi
-
-    # Add signing key info to release notes
-    info "Adding signing key information to release notes..."
-    if [[ "$DRY_RUN" != "true" ]]; then
-        local gpg_key_id
-        gpg_key_id=$(gpg --list-secret-keys --keyid-format=long 2>/dev/null \
-            | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
-
-        local existing_notes
-        existing_notes=$(gh release view "v${version}" --repo "$REPO" --json body --jq '.body')
-
-        local signing_note
-        signing_note="$(cat <<EOF
-
----
-
-## Verification
-
-The release artifacts are signed with GPG key \`${gpg_key_id}\`.
-
-To verify a downloaded artifact:
-\`\`\`bash
-# Import the signing key (if not already imported)
-gpg --keyserver keyserver.ubuntu.com --recv-keys ${gpg_key_id}
-
-# Verify the signature
-gpg --verify oras_${version}_linux_amd64.tar.gz.asc oras_${version}_linux_amd64.tar.gz
-\`\`\`
-EOF
-)"
-        gh release edit "v${version}" --repo "$REPO" \
-            --notes "${existing_notes}${signing_note}"
-        success "Release notes updated with signing key info."
-    fi
-
-    # Publish release (remove draft status)
+    # Publish release
     confirm "Publish release v${version} (remove draft status)?"
-    info "Publishing release..."
     run gh release edit "v${version}" --repo "$REPO" --draft=false
+    success "Release v${version} published!"
 
     # Trigger snap workflow
     info "Triggering snap workflow..."
-    if [[ "$DRY_RUN" != "true" ]]; then
-        gh workflow run snap.yml --repo "$REPO" --ref "v${version}" 2>/dev/null || \
-            warn "Could not trigger snap workflow. You may need to trigger it manually."
+    local is_stable="true"
+    if [[ "$version" == *"-"* ]]; then
+        is_stable="false"
+    fi
+    if [ "$DRY_RUN" = true ]; then
+        info "[DRY-RUN] Would trigger release-snap.yml with version=v${version} isStable=${is_stable}"
+    else
+        gh workflow run release-snap.yml \
+            --repo "$REPO" \
+            --ref "v${version}" \
+            --field version="v${version}" \
+            --field isStable="${is_stable}" 2>/dev/null \
+        && success "Snap workflow triggered" \
+        || warn "Could not trigger snap workflow. You may need to trigger it manually."
     fi
 
     # Clean up
-    info "Cleaning up _dist/ directory..."
-    run rm -rf _dist/
+    confirm "Remove _dist/ directory?"
+    run rm -rf _dist
+    success "Cleaned up _dist/"
 
-    success "Release v${version} published successfully!"
     echo ""
-    echo -e "${BOLD}Post-release Slack Template:${NC}"
-    echo "────────────────────────────────────────"
+    success "Release v${version} is live!"
+    echo "  https://github.com/${REPO}/releases/tag/v${version}"
+    echo ""
+    warn "Post-release steps (manual):"
+    echo "  1. Update oras-www docs if needed"
+    echo "  2. Announce in Slack #oras:"
+    echo ""
+    echo -e "${CYAN}---${NC}"
     cat <<EOF
-:tada: *ORAS CLI v${version} has been released!*
+:tada: *ORAS CLI v${version} Released!*
 
-*Release page:* https://github.com/${REPO}/releases/tag/v${version}
-*GHCR:* \`ghcr.io/oras-project/oras:v${version}\`
+We're excited to announce the release of ORAS CLI v${version}!
 
-Thanks to all contributors! :heart:
+*Release:* https://github.com/${REPO}/releases/tag/v${version}
+*Changelog:* https://github.com/${REPO}/releases/tag/v${version}
+
+Thank you to all contributors!
 EOF
-    echo "────────────────────────────────────────"
+    echo -e "${CYAN}---${NC}"
 }
 
-# ── Main ─────────────────────────────────────────────────────────────────────
+###############################################################################
+# Main
+###############################################################################
 usage() {
     cat <<EOF
-Usage: $(basename "$0") [--dry-run] <phase> <version> [sha]
+Usage: scripts/release.sh [--dry-run] <phase> <version> [args...]
 
 Phases:
-  prep <version>        Prepare a release: bump version, create PR
-  tag <version> <sha>   Tag a release: create and push signed tag
-  validate <version>    Validate a release: verify CI, artifacts, checksums
-  publish <version>     Publish a release: sign, upload, publish
+  prep <version>              Bump version, create PR, print vote template
+  tag <version> <commit-sha>  Create and push signed tag
+  validate <version>          Wait for CI, download and verify artifacts
+  publish <version>           Sign, upload signatures, publish release
 
-Options:
-  --dry-run    Print commands without executing them
+Flags:
+  --dry-run                   Print actions without executing them
 
 Environment:
-  ORAS_REMOTE  Git remote for upstream (default: upstream)
+  ORAS_REMOTE                 Git remote name (default: upstream)
 
 Examples:
-  $(basename "$0") prep 1.3.0
-  $(basename "$0") tag 1.3.0 abc1234
-  $(basename "$0") validate 1.3.0
-  $(basename "$0") publish 1.3.0
-  $(basename "$0") --dry-run prep 1.3.0-rc.1
+  scripts/release.sh prep 1.3.0
+  scripts/release.sh tag 1.3.0 abc1234
+  scripts/release.sh validate 1.3.0
+  scripts/release.sh publish 1.3.0
+  scripts/release.sh --dry-run prep 1.3.0-rc.1
 EOF
 }
 
 main() {
-    # Parse global flags
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            --dry-run)
-                DRY_RUN=true
-                info "Dry-run mode enabled."
-                shift
-                ;;
-            -h|--help)
-                usage
-                exit 0
-                ;;
-            *)
-                break
-                ;;
-        esac
-    done
+    local args
+    args=$(parse_global_flags "$@")
+    # Re-split args
+    set -- $args
 
-    if [[ $# -lt 1 ]]; then
+    local phase="${1:-}"
+    local version="${2:-}"
+
+    if [ -z "$phase" ]; then
         usage
         exit 1
     fi
 
-    local phase="$1"
-    shift
+    # Ensure we're in the repo root
+    cd "$(git rev-parse --show-toplevel)"
 
     case "$phase" in
         prep)
-            [[ $# -ge 1 ]] || { error "Usage: $0 prep <version>"; exit 1; }
-            phase_prep "$1"
+            [ -z "$version" ] && { error "Usage: scripts/release.sh prep <version>"; exit 1; }
+            do_prep "$version"
             ;;
         tag)
-            [[ $# -ge 2 ]] || { error "Usage: $0 tag <version> <sha>"; exit 1; }
-            phase_tag "$1" "$2"
+            [ -z "$version" ] && { error "Usage: scripts/release.sh tag <version> <sha>"; exit 1; }
+            do_tag "$version" "${3:-}"
             ;;
         validate)
-            [[ $# -ge 1 ]] || { error "Usage: $0 validate <version>"; exit 1; }
-            phase_validate "$1"
+            [ -z "$version" ] && { error "Usage: scripts/release.sh validate <version>"; exit 1; }
+            do_validate "$version"
             ;;
         publish)
-            [[ $# -ge 1 ]] || { error "Usage: $0 publish <version>"; exit 1; }
-            phase_publish "$1"
+            [ -z "$version" ] && { error "Usage: scripts/release.sh publish <version>"; exit 1; }
+            do_publish "$version"
+            ;;
+        help|--help|-h)
+            usage
             ;;
         *)
-            error "Unknown phase: '${phase}'"
+            error "Unknown phase: ${phase}"
             usage
             exit 1
             ;;
