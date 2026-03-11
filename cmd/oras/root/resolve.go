@@ -18,8 +18,8 @@ package root
 import (
 	"fmt"
 
-	"github.com/spf13/cobra"
 	"github.com/oras-project/oras-go/v3"
+	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
