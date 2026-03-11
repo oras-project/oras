@@ -24,8 +24,8 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/v2/errdef"
-	"oras.land/oras-go/v2/registry/remote/errcode"
+	"github.com/oras-project/oras-go/v3/errdef"
+	"github.com/oras-project/oras-go/v3/registry/remote/errcode"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 )
 

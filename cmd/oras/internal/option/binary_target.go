@@ -22,7 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"oras.land/oras-go/v2"
+	"github.com/oras-project/oras-go/v3"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 )
 

@@ -22,8 +22,8 @@ import (
 	"testing"
 
 	"github.com/spf13/pflag"
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/registry/remote/errcode"
+	"github.com/oras-project/oras-go/v3"
+	"github.com/oras-project/oras-go/v3/registry/remote/errcode"
 )
 
 func TestCheckMutuallyExclusiveFlags(t *testing.T) {
