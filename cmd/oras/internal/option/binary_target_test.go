@@ -19,8 +19,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/spf13/cobra"
 	"github.com/oras-project/oras-go/v3"
+	"github.com/spf13/cobra"
 )
 
 func TestBinaryTarget_ModifyError(t *testing.T) {

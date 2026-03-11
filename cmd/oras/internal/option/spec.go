@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/spf13/pflag"
 	"github.com/oras-project/oras-go/v3"
+	"github.com/spf13/pflag"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 )
 

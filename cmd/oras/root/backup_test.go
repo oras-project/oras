@@ -31,12 +31,12 @@ import (
 
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/sirupsen/logrus"
 	"github.com/oras-project/oras-go/v3"
 	"github.com/oras-project/oras-go/v3/content"
 	"github.com/oras-project/oras-go/v3/content/memory"
 	"github.com/oras-project/oras-go/v3/errdef"
 	"github.com/oras-project/oras-go/v3/registry/remote"
+	"github.com/sirupsen/logrus"
 )
 
 func TestParseArtifactReferences(t *testing.T) {
