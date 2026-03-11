@@ -29,13 +29,13 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content/oci"
-	"oras.land/oras-go/v2/errdef"
-	"oras.land/oras-go/v2/registry"
-	"oras.land/oras-go/v2/registry/remote"
-	"oras.land/oras-go/v2/registry/remote/auth"
-	"oras.land/oras-go/v2/registry/remote/errcode"
+	"github.com/oras-project/oras-go/v3"
+	"github.com/oras-project/oras-go/v3/content/oci"
+	"github.com/oras-project/oras-go/v3/errdef"
+	"github.com/oras-project/oras-go/v3/registry"
+	"github.com/oras-project/oras-go/v3/registry/remote"
+	"github.com/oras-project/oras-go/v3/registry/remote/auth"
+	"github.com/oras-project/oras-go/v3/registry/remote/errcode"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 )
@@ -122,8 +122,10 @@ func (target *Target) Parse(cmd *cobra.Command) error {
 				Recommendation: "Please make sure the provided reference is in the form of <registry>/<repo>[:tag|@digest]",
 			}
 		}
-		target.Reference = ref.Reference
+		target.Reference = ref.GetReference()
 		ref.Reference = ""
+		ref.Tag = ""
+		ref.Digest = ""
 		target.Path = ref.String()
 		return target.Remote.Parse(cmd)
 	}
