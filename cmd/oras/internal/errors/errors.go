@@ -20,11 +20,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"github.com/oras-project/oras-go/v3"
 	"github.com/oras-project/oras-go/v3/registry/remote/auth"
 	"github.com/oras-project/oras-go/v3/registry/remote/errcode"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 // OperationType stands for certain type of operations.

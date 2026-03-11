@@ -32,10 +32,10 @@ import (
 	"github.com/oras-project/oras-go/v3"
 	"github.com/oras-project/oras-go/v3/content/oci"
 	"github.com/oras-project/oras-go/v3/errdef"
-	"github.com/oras-project/oras-go/v3/registry"
 	"github.com/oras-project/oras-go/v3/registry/remote"
 	"github.com/oras-project/oras-go/v3/registry/remote/auth"
 	"github.com/oras-project/oras-go/v3/registry/remote/errcode"
+	"github.com/oras-project/oras-go/v3/registry/remote/properties"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 )
@@ -114,7 +114,7 @@ func (target *Target) Parse(cmd *cobra.Command) error {
 		return nil
 	default:
 		target.Type = TargetTypeRemote
-		ref, err := registry.ParseReference(target.RawReference)
+		ref, err := properties.NewReference(target.RawReference)
 		if err != nil {
 			return &oerrors.Error{
 				OperationType:  oerrors.OperationTypeParseArtifactReference,
@@ -123,7 +123,6 @@ func (target *Target) Parse(cmd *cobra.Command) error {
 			}
 		}
 		target.Reference = ref.GetReference()
-		ref.Reference = ""
 		ref.Tag = ""
 		ref.Digest = ""
 		target.Path = ref.String()
@@ -262,11 +261,11 @@ func (target *Target) ModifyError(cmd *cobra.Command, err error) (bool, error) {
 		return false, err
 	}
 
-	ref := registry.Reference{Registry: target.RawReference}
+	ref := properties.Reference{Registry: target.RawReference}
 	if errResp.URL.Host != ref.Host() {
 		// raw reference is not registry host
 		var parseErr error
-		ref, parseErr = registry.ParseReference(target.RawReference)
+		ref, parseErr = properties.NewReference(target.RawReference)
 		if parseErr != nil {
 			// this should not happen
 			return false, err

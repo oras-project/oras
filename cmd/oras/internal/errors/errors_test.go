@@ -21,9 +21,9 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/spf13/pflag"
 	"github.com/oras-project/oras-go/v3"
 	"github.com/oras-project/oras-go/v3/registry/remote/errcode"
+	"github.com/spf13/pflag"
 )
 
 func TestCheckMutuallyExclusiveFlags(t *testing.T) {
