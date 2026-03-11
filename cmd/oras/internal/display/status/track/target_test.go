@@ -87,8 +87,12 @@ func Test_referenceGraphTarget_PushReference(t *testing.T) {
 	}
 }
 
-func Test_referenceGraphTarget_Mount(_ *testing.T) {
-	target := graphTarget{GraphTarget: &remote.Repository{}}
+func Test_referenceGraphTarget_Mount(t *testing.T) {
+	repo, err := remote.NewRepository("localhost/repo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := graphTarget{GraphTarget: repo}
 	_ = target.Mount(context.Background(), ocispec.Descriptor{}, "", nil)
 }
 
