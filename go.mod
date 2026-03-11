@@ -17,8 +17,6 @@ require (
 	golang.org/x/term v0.40.0
 )
 
-replace github.com/oras-project/oras-go/v3 => ../oras-go
-
 require (
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/BurntSushi/toml v1.4.0 // indirect
