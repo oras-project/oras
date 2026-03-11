@@ -33,9 +33,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/oras-project/oras-go/v3/registry/remote/credentials"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
-	"github.com/oras-project/oras-go/v3/registry/remote/credentials"
 )
 
 var ts *httptest.Server
