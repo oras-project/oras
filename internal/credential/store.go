@@ -16,7 +16,8 @@ limitations under the License.
 package credential
 
 import (
-	"oras.land/oras-go/v2/registry/remote/credentials"
+	_ "github.com/oras-project/oras-go/v3/registry/remote/config" // registers config loader
+	"github.com/oras-project/oras-go/v3/registry/remote/credentials"
 )
 
 // NewStore generates a store based on the passed-in config file paths.
