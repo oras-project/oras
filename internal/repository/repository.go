@@ -19,15 +19,15 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/oras-project/oras-go/v3/registry"
+	"github.com/oras-project/oras-go/v3/registry/remote/properties"
 )
 
 // ParseRemoteRepository extracts hostname and namespace from rawReference.
 func ParseRemoteRepository(rawReference string) (hostname, namespace string, err error) {
 	rawReference = strings.TrimSuffix(rawReference, "/")
 	if strings.Contains(rawReference, "/") {
-		var ref registry.Reference
-		ref, err = registry.ParseReference(rawReference)
+		var ref properties.Reference
+		ref, err = properties.NewReference(rawReference)
 		if err != nil {
 			return
 		}
