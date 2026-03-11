@@ -32,12 +32,12 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"oras.land/oras-go/v2/errdef"
-	"oras.land/oras-go/v2/registry/remote"
-	"oras.land/oras-go/v2/registry/remote/auth"
-	"oras.land/oras-go/v2/registry/remote/credentials"
-	"oras.land/oras-go/v2/registry/remote/errcode"
-	"oras.land/oras-go/v2/registry/remote/retry"
+	"github.com/oras-project/oras-go/v3/errdef"
+	"github.com/oras-project/oras-go/v3/registry/remote"
+	"github.com/oras-project/oras-go/v3/registry/remote/auth"
+	"github.com/oras-project/oras-go/v3/registry/remote/credentials"
+	"github.com/oras-project/oras-go/v3/registry/remote/errcode"
+	"github.com/oras-project/oras-go/v3/registry/remote/retry"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/internal/credential"
 	"oras.land/oras/internal/crypto"
@@ -439,7 +439,7 @@ func (remo *Remote) authClient(registry string, plainHTTP, debug bool) (client *
 	client = &auth.Client{
 		Client: &http.Client{
 			// http.RoundTripper with a retry using the DefaultPolicy
-			// see: https://pkg.go.dev/oras.land/oras-go/v2/registry/remote/retry#Policy
+			// see: https://pkg.go.dev/github.com/oras-project/oras-go/v3/registry/remote/retry#Policy
 			Transport: transport,
 		},
 		Cache:  cache,
@@ -451,8 +451,8 @@ func (remo *Remote) authClient(registry string, plainHTTP, debug bool) (client *
 	}
 
 	cred := remo.Credential()
-	if cred != auth.EmptyCredential {
-		client.Credential = func(_ context.Context, _ string) (auth.Credential, error) {
+	if !cred.IsEmpty() {
+		client.CredentialFunc = func(_ context.Context, _ string) (credentials.Credential, error) {
 			return cred, nil
 		}
 	} else {
@@ -461,7 +461,7 @@ func (remo *Remote) authClient(registry string, plainHTTP, debug bool) (client *
 		if err != nil {
 			return nil, err
 		}
-		client.Credential = credentials.Credential(remo.store)
+		client.CredentialFunc = remo.store.Get
 	}
 
 	// Store this client as the shared client for subsequent commands
@@ -501,7 +501,7 @@ func (remo *Remote) parseCustomHeaders() error {
 }
 
 // Credential returns a credential based on the remote options.
-func (remo *Remote) Credential() auth.Credential {
+func (remo *Remote) Credential() credentials.Credential {
 	return credential.Credential(remo.Username, remo.Secret)
 }
 
@@ -546,17 +546,15 @@ func (remo *Remote) NewRepository(reference string, common Common, logger logrus
 		}
 		return nil, err
 	}
-	registry := repo.Reference.Registry
-	repo.PlainHTTP = remo.isPlainHTTP(registry)
-	repo.HandleWarning = remo.handleWarning(registry, logger)
-	if repo.Client, err = remo.authClient(repo.Reference.Host(), repo.PlainHTTP, common.Debug); err != nil {
+	registry := repo.Registry.Reference.Registry
+	repo.Registry.PlainHTTP = remo.isPlainHTTP(registry)
+	repo.Registry.HandleWarning = remo.handleWarning(registry, logger)
+	if repo.Registry.Client, err = remo.authClient(repo.Reference().Host(), repo.Registry.PlainHTTP, common.Debug); err != nil {
 		return nil, err
 	}
 	repo.SkipReferrersGC = true
 	if remo.ReferrersAPI != ReferrersStateUnknown {
-		if err := repo.SetReferrersCapability(remo.ReferrersAPI == ReferrersStateSupported); err != nil {
-			return nil, err
-		}
+		repo.SetReferrersCapability(remo.ReferrersAPI == ReferrersStateSupported)
 	}
 	return
 }

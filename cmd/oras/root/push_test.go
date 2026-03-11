@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/v2/content/oci"
+	"github.com/oras-project/oras-go/v3/content/oci"
 	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )

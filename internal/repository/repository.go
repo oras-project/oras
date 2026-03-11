@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"oras.land/oras-go/v2/registry"
+	"github.com/oras-project/oras-go/v3/registry"
 )
 
 // ParseRemoteRepository extracts hostname and namespace from rawReference.
@@ -31,7 +31,7 @@ func ParseRemoteRepository(rawReference string) (hostname, namespace string, err
 		if err != nil {
 			return
 		}
-		if ref.Reference != "" {
+		if ref.GetReference() != "" {
 			err = fmt.Errorf("tags or digests should not be provided")
 			return
 		}

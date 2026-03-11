@@ -21,7 +21,7 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/v2/registry"
+	"github.com/oras-project/oras-go/v3/registry"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
@@ -105,7 +105,7 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 	var targetPrefix string
 	if opts.Target.Type == option.TargetTypeOCILayout {
 		ref, err := registry.ParseReference(opts.Reference)
-		if err == nil && ref.Reference == "" {
+		if err == nil && ref.GetReference() == "" {
 			targetPrefix = fmt.Sprintf("%s/%s:", ref.Registry, ref.Repository)
 		}
 	}
