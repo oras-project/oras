@@ -170,10 +170,7 @@ vendor:  ## go mod vendor
 .PHONY: fetch-dist
 fetch-dist:  ## fetch distribution
 	mkdir -p _dist
-	cd _dist && \
-	for obj in ${TARGET_OBJS} ; do \
-		curl -sSL -o oras_${VERSION}_$${obj} https://github.com/oras-project/oras/releases/download/v${VERSION}/oras_${VERSION}_$${obj} ; \
-	done
+	gh release download v${VERSION} --repo oras-project/oras --dir _dist --clobber
 
 .PHONY: sign
 sign:  ## sign
@@ -187,6 +184,22 @@ teste2e-covdata:  ## test e2e coverage
 	rm -rf $$GOCOVERDIR; \
 	mkdir -p $$GOCOVERDIR; \
 	$(MAKE) teste2e && $(GO_EXE) tool covdata textfmt -i=$$GOCOVERDIR -o "$(CURDIR)/test/e2e/coverage.txt"
+
+.PHONY: release-prep
+release-prep:  ## prepare release: bump version, create PR
+	@scripts/release.sh prep $(VERSION)
+
+.PHONY: release-tag
+release-tag:  ## tag release: create and push signed tag
+	@scripts/release.sh tag $(VERSION) $(SHA)
+
+.PHONY: release-validate
+release-validate:  ## validate release: verify CI, artifacts, checksums
+	@scripts/release.sh validate $(VERSION)
+
+.PHONY: release-publish
+release-publish:  ## publish release: sign, upload, publish
+	@scripts/release.sh publish $(VERSION)
 
 .PHONY: help
 help:  ## Display this help
