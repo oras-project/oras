@@ -170,10 +170,7 @@ vendor:  ## go mod vendor
 .PHONY: fetch-dist
 fetch-dist:  ## fetch distribution
 	mkdir -p _dist
-	cd _dist && \
-	for obj in ${TARGET_OBJS} ; do \
-		curl -sSL -o oras_${VERSION}_$${obj} https://github.com/oras-project/oras/releases/download/v${VERSION}/oras_${VERSION}_$${obj} ; \
-	done
+	gh release download v${VERSION} --repo oras-project/oras --dir _dist --clobber
 
 .PHONY: sign
 sign:  ## sign
