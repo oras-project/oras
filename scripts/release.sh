@@ -356,11 +356,23 @@ do_validate() {
     fi
     success "Checksums verified"
 
-    # Test binary
-    info "Testing linux/amd64 binary..."
+    # Test binary for the current OS/arch
+    local os arch artifact
+    case "$(uname -s)" in
+        Darwin) os="darwin" ;;
+        Linux)  os="linux" ;;
+        *)      os="linux" ;;
+    esac
+    case "$(uname -m)" in
+        x86_64)  arch="amd64" ;;
+        arm64|aarch64) arch="arm64" ;;
+        *)       arch="amd64" ;;
+    esac
+    artifact="${os}_${arch}"
+    info "Testing ${os}/${arch} binary..."
     local tmpdir
     tmpdir=$(mktemp -d)
-    tar -xzf "_dist/oras_${version}_linux_amd64.tar.gz" -C "$tmpdir"
+    tar -xzf "_dist/oras_${version}_${artifact}.tar.gz" -C "$tmpdir"
     local bin_version
     bin_version=$("$tmpdir/oras" version 2>/dev/null | head -1 || echo "unknown")
     rm -rf "$tmpdir"
