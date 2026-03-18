@@ -46,7 +46,7 @@ LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitCommit=${GIT_COMMIT}
 LDFLAGS += -X $(PROJECT_PKG)/internal/version.GitTreeState=${GIT_DIRTY}
 
 .PHONY: default
-default: test build-$(OS)-$(ARCH)
+default: lint test build-$(OS)-$(ARCH)
 	@echo 'Done ' build-$(OS)-$(ARCH)
 
 .PHONY: test
@@ -154,6 +154,10 @@ fix-encoding:  ## fix file CR/LF encoding
 .PHONY: lint
 lint:  ## run CI version of lint
 	golangci-lint run $(PKG)
+
+.PHONY: govulncheck
+govulncheck:  ## run vulnerability check on dependencies
+	$(GO_EXE) run golang.org/x/vuln/cmd/govulncheck@latest $(PKG)
 
 .PHONY: tidy
 tidy:  ## go mod tidy

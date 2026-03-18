@@ -72,7 +72,6 @@ func TestTarget_Parse_oci_and_oci_path(t *testing.T) {
 	if !strings.Contains(err.Error(), "cannot be used at the same time") {
 		t.Errorf("expect error message to contain 'cannot be used at the same time' but not")
 	}
-
 }
 
 func TestTarget_Parse_to_oci_and_oci_path(t *testing.T) {
@@ -91,7 +90,6 @@ func TestTarget_Parse_to_oci_and_oci_path(t *testing.T) {
 	if !strings.Contains(err.Error(), "cannot be used at the same time") {
 		t.Errorf("expect error message to contain 'cannot be used at the same time' but not")
 	}
-
 }
 
 func TestTarget_Parse_remote(t *testing.T) {
@@ -163,12 +161,12 @@ func TestTarget_ModifyError_ociLayout(t *testing.T) {
 	errClient := errors.New("client error")
 	opts := &Target{}
 	cmd := &cobra.Command{}
-	got, modified := opts.ModifyError(cmd, errClient)
+	modified, got := opts.ModifyError(cmd, errClient)
 
 	if modified {
 		t.Errorf("expect error not to be modified but received true")
 	}
-	if got != errClient {
+	if !errors.Is(got, errClient) {
 		t.Errorf("unexpected output from Target.ModifyError() = %v", got)
 	}
 	if want := "Error:"; cmd.ErrPrefix() != want {
@@ -213,11 +211,11 @@ func TestTarget_ModifyError_NotFound(t *testing.T) {
 			}
 			cmd := &cobra.Command{}
 			originalErr := fmt.Errorf("not found: %w", errdef.ErrNotFound)
-			got, modified := opts.ModifyError(cmd, originalErr)
+			modified, got := opts.ModifyError(cmd, originalErr)
 			if modified != tt.wantModified {
 				t.Errorf("Target.ModifyError() modified = %v, want %v", modified, tt.wantModified)
 			}
-			if got != originalErr {
+			if !errors.Is(got, originalErr) {
 				t.Errorf("Target.ModifyError() got = %v, want %v", got, originalErr)
 			}
 			if cmd.ErrPrefix() != tt.wantErrPrefix {
@@ -244,7 +242,7 @@ func TestTarget_ModifyError_errResponse(t *testing.T) {
 		RawReference: "localhost:5000/test:v1",
 	}
 	cmd := &cobra.Command{}
-	got, modified := opts.ModifyError(cmd, errResp)
+	modified, got := opts.ModifyError(cmd, errResp)
 
 	if !modified {
 		t.Errorf("expected error to be modified but received %v", modified)
@@ -274,12 +272,12 @@ func TestTarget_ModifyError_errInvalidReference(t *testing.T) {
 		RawReference: "invalid-reference",
 	}
 	cmd := &cobra.Command{}
-	got, modified := opts.ModifyError(cmd, errResp)
+	modified, got := opts.ModifyError(cmd, errResp)
 
 	if modified {
 		t.Errorf("expect error not to be modified but received true")
 	}
-	if got != errResp {
+	if !errors.Is(got, errResp) {
 		t.Errorf("unexpected output from Target.ModifyError() = %v", got)
 	}
 	if want := "Error:"; cmd.ErrPrefix() != want {
@@ -305,7 +303,7 @@ func TestTarget_ModifyError_errHostNotMatching(t *testing.T) {
 		RawReference: "registry-2.docker.io/test:tag",
 	}
 	cmd := &cobra.Command{}
-	_, modified := opts.ModifyError(cmd, errResp)
+	modified, _ := opts.ModifyError(cmd, errResp)
 	if modified {
 		t.Errorf("expect error not to be modified but received true")
 	}
@@ -405,9 +403,9 @@ func TestTarget_ModifyError_dockerHint(t *testing.T) {
 				Path:         tt.fields.Path,
 				IsOCILayout:  tt.fields.IsOCILayout,
 			}
-			got, modified := opts.ModifyError(cmd, tt.err)
-			gotErr, ok := got.(*oerrors.Error)
-			if !ok {
+			modified, got := opts.ModifyError(cmd, tt.err)
+			var gotErr *oerrors.Error
+			if !errors.As(got, &gotErr) {
 				t.Errorf("expecting error to be *oerrors.Error but received %T", got)
 			}
 			if gotErr.Err.Error() != tt.modifiedErr.Err.Error() || gotErr.Usage != tt.modifiedErr.Usage || gotErr.Recommendation != tt.modifiedErr.Recommendation {

@@ -104,7 +104,7 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 			opts.DisableTTY(opts.Debug, false)
 			return nil
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts.Printer.Verbose = opts.verbose
 			return runCopy(cmd, &opts)
 		},
@@ -172,11 +172,9 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 		return registry.Referrers(ctx, src, desc, "")
 	}
 
-	srcRepo, srcIsRemote := src.(*remote.Repository)
-	dstRepo, dstIsRemote := dst.(*remote.Repository)
-	if srcIsRemote && dstIsRemote && srcRepo.Reference.Registry == dstRepo.Reference.Registry {
-		extendedCopyGraphOptions.MountFrom = func(ctx context.Context, desc ocispec.Descriptor) ([]string, error) {
-			return []string{srcRepo.Reference.Repository}, nil
+	if mountRepo, canMount := getMountPoint(src, dst, opts); canMount {
+		extendedCopyGraphOptions.MountFrom = func(_ context.Context, _ ocispec.Descriptor) ([]string, error) {
+			return []string{mountRepo}, nil
 		}
 	}
 	dst, err = copyHandler.StartTracking(dst)
@@ -239,7 +237,7 @@ func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.T
 	return nil
 }
 
-func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, root ocispec.Descriptor, opts oras.ExtendedCopyGraphOptions) (oras.ExtendedCopyGraphOptions, ocispec.Descriptor, error) {
+func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, _ oras.Target, root ocispec.Descriptor, opts oras.ExtendedCopyGraphOptions) (oras.ExtendedCopyGraphOptions, ocispec.Descriptor, error) {
 	if root.MediaType != ocispec.MediaTypeImageIndex && root.MediaType != docker.MediaTypeManifestList {
 		return opts, root, nil
 	}
@@ -312,4 +310,24 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst or
 		return findPredecessor(ctx, src, desc)
 	}
 	return opts, root, nil
+}
+
+// getMountPoint checks if mounting can be performed between two targets and returns
+// the repository name to be mounted from if applicable. Mount can be performed if the two
+// targets are both remote repositories, are in the same registry and have identical credentials.
+func getMountPoint(src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) (string, bool) {
+	srcRepo, srcIsRemote := src.(*remote.Repository)
+	dstRepo, dstIsRemote := dst.(*remote.Repository)
+	if !srcIsRemote || !dstIsRemote {
+		return "", false
+	}
+	if srcRepo.Reference.Registry != dstRepo.Reference.Registry {
+		return "", false
+	}
+	srcCred := opts.From.Credential()
+	dstCred := opts.To.Credential()
+	if srcCred != dstCred {
+		return "", false
+	}
+	return srcRepo.Reference.Repository, true
 }

@@ -15,7 +15,10 @@ limitations under the License.
 
 package progress
 
-import "io"
+import (
+	"errors"
+	"io"
+)
 
 // Tracker updates the status of a descriptor.
 type Tracker interface {
@@ -101,7 +104,7 @@ func (rt *readTracker) Read(p []byte) (int, error) {
 			err = updateErr
 		}
 	}
-	if err != nil && err != io.EOF {
+	if err != nil && !errors.Is(err, io.EOF) {
 		if failErr := rt.tracker.Fail(err); failErr != nil {
 			return n, failErr
 		}

@@ -69,7 +69,7 @@ func (target *BinaryTarget) Parse(cmd *cobra.Command) error {
 }
 
 // ModifyError handles error during cmd execution.
-func (target *BinaryTarget) ModifyError(cmd *cobra.Command, err error) (error, bool) {
+func (target *BinaryTarget) ModifyError(cmd *cobra.Command, err error) (bool, error) {
 	var copyErr *oras.CopyError
 	if !errors.As(err, &copyErr) {
 		return target.modifyError(cmd, err)
@@ -83,20 +83,20 @@ func (target *BinaryTarget) ModifyError(cmd *cobra.Command, err error) (error, b
 	case oras.CopyErrorOriginDestination:
 		errTarget = target.To
 	default:
-		err, _ := target.modifyError(cmd, err)
-		return err, true
+		_, err := target.modifyError(cmd, err)
+		return true, err
 	}
 
-	err, _ = target.modifyError(cmd, err)
+	_, err = target.modifyError(cmd, err)
 	// Example: Error from source registry for "localhost:5000/test:v1":
 	// Example: Error from destination oci-layout for "oci-dir:v1":
 	cmd.SetErrPrefix(fmt.Sprintf("Error from %s %s for %q:", copyErr.Origin, errTarget.Type, errTarget.RawReference))
-	return err, true
+	return true, err
 }
 
-func (target *BinaryTarget) modifyError(cmd *cobra.Command, err error) (error, bool) {
-	if modifiedErr, modified := target.From.ModifyError(cmd, err); modified {
-		return modifiedErr, modified
+func (target *BinaryTarget) modifyError(cmd *cobra.Command, err error) (bool, error) {
+	if modified, modifiedErr := target.From.ModifyError(cmd, err); modified {
+		return modified, modifiedErr
 	}
 	return target.To.ModifyError(cmd, err)
 }

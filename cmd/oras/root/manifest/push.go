@@ -103,7 +103,7 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 			opts.extraRefs = refs[1:]
 			return option.Parse(cmd, &opts)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts.Printer.Verbose = opts.verbose
 			return pushManifest(cmd, opts)
 		},

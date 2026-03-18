@@ -54,7 +54,7 @@ func TestReadLine(t *testing.T) {
 				return
 			}
 			if left, err := io.ReadAll(tt.args.reader); err != nil {
-				if err != io.EOF {
+				if !errors.Is(err, io.EOF) {
 					t.Errorf("Unexpected error in reading left: %v", err)
 				}
 				if len(left) != 0 || strings.ContainsAny(string(left), "\r\n") {
@@ -70,7 +70,7 @@ func TestReadLine(t *testing.T) {
 
 type mockReader struct{}
 
-func (m *mockReader) Read(p []byte) (n int, err error) {
+func (m *mockReader) Read(_ []byte) (n int, err error) {
 	return 0, errors.New("mock error")
 }
 

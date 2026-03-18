@@ -87,7 +87,7 @@ func Test_referenceGraphTarget_PushReference(t *testing.T) {
 	}
 }
 
-func Test_referenceGraphTarget_Mount(t *testing.T) {
+func Test_referenceGraphTarget_Mount(_ *testing.T) {
 	target := graphTarget{GraphTarget: &remote.Repository{}}
 	_ = target.Mount(context.Background(), ocispec.Descriptor{}, "", nil)
 }

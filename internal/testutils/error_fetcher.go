@@ -18,8 +18,9 @@ package testutils
 import (
 	"context"
 	"fmt"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"io"
+
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // ErrorFetcher implements content.Fetcher.

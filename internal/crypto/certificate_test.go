@@ -29,7 +29,7 @@ var ts *httptest.Server
 
 func TestLoadCertPool(t *testing.T) {
 	// Test server
-	ts = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	ts = httptest.NewTLSServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}))
 	defer ts.Close()
 	var err error
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, ts.URL, nil)
@@ -37,8 +37,9 @@ func TestLoadCertPool(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	client := &http.Client{}
-	_, err = client.Do(req)
+	resp, err := client.Do(req) //nolint:gosec // G704: URL is from local httptest.Server
 	if err == nil {
+		resp.Body.Close()
 		t.Fatalf("expecting TLS check failure error but didn't get one")
 	}
 
@@ -52,10 +53,11 @@ func TestLoadCertPool(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	client = &http.Client{Transport: tp}
-	_, err = client.Do(req)
+	resp, err = client.Do(req) //nolint:gosec // G704: URL is from local httptest.Server
 	if err != nil {
 		t.Fatalf("failed to trust the self signed pem: %v", err)
 	}
+	resp.Body.Close()
 }
 
 func TestLoadCertPool_invalidPem(t *testing.T) {

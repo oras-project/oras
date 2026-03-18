@@ -173,7 +173,7 @@ func TestProxy_fetchReference(t *testing.T) {
 				r.URL.Path == fmt.Sprintf("/v2/%s/manifests/%s", repoName, digest)) {
 			w.Header().Set("Content-Type", mediaType)
 			w.Header().Set("Docker-Content-Digest", digest.String())
-			w.Header().Set("Content-Length", strconv.Itoa(len([]byte(blob))))
+			w.Header().Set("Content-Length", strconv.Itoa(len(blob)))
 			w.WriteHeader(http.StatusOK)
 			// write data to the response if this is the first request
 			if requestCount == 1 {

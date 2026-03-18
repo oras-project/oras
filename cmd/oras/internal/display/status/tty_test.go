@@ -103,7 +103,7 @@ func TestTTYPushHandler_PostCopy_errPrompt(t *testing.T) {
 		committed: committed,
 		fetcher:   fetcher.Fetcher,
 	}
-	if err := ph.PostCopy(ctx, fetcher.OciImage); err != wantedError {
+	if err := ph.PostCopy(ctx, fetcher.OciImage); !errors.Is(err, wantedError) {
 		t.Errorf("PostCopy() should return expected error got %v", err)
 	}
 }
@@ -190,7 +190,7 @@ func TestTTYBackupHandler_PostCopy_errPrompt(t *testing.T) {
 		committed: committed,
 		fetcher:   fetcher.Fetcher,
 	}
-	if err := bh.PostCopy(ctx, fetcher.OciImage); err != wantedError {
+	if err := bh.PostCopy(ctx, fetcher.OciImage); !errors.Is(err, wantedError) {
 		t.Errorf("PostCopy() should return expected error got %v", err)
 	}
 }
@@ -277,7 +277,7 @@ func TestTTYRestoreHandler_PostCopy_errPrompt(t *testing.T) {
 		committed: committed,
 		fetcher:   fetcher.Fetcher,
 	}
-	if err := rh.PostCopy(ctx, fetcher.OciImage); err != wantedError {
+	if err := rh.PostCopy(ctx, fetcher.OciImage); !errors.Is(err, wantedError) {
 		t.Errorf("PostCopy() should return expected error got %v", err)
 	}
 }

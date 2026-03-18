@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -221,7 +222,7 @@ type fetchFailingReadOnlyGraphTarget struct {
 }
 
 // Fetch simulates a failure when fetching content from the source.
-func (m *fetchFailingReadOnlyGraphTarget) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
+func (m *fetchFailingReadOnlyGraphTarget) Fetch(_ context.Context, _ ocispec.Descriptor) (io.ReadCloser, error) {
 	return nil, errMockedFetch
 }
 
@@ -235,7 +236,7 @@ func Test_prepareCopyOption_fetchFailure(t *testing.T) {
 		Size:      int64(len("nonexistent")),
 	}
 
-	if _, _, err := prepareCopyOption(ctx, src, dst, root, oras.ExtendedCopyGraphOptions{}); err != errMockedFetch {
+	if _, _, err := prepareCopyOption(ctx, src, dst, root, oras.ExtendedCopyGraphOptions{}); !errors.Is(err, errMockedFetch) {
 		t.Errorf("prepareCopyOption() error = %v, want %v", err, errMockedFetch)
 	}
 }
@@ -250,7 +251,7 @@ func Test_recursiveCopy_prepareCopyOptionFailure(t *testing.T) {
 		Size:      int64(len("nonexistent")),
 	}
 
-	if _, _, err := prepareCopyOption(ctx, src, dst, root, oras.ExtendedCopyGraphOptions{}); err != errMockedFetch {
+	if _, _, err := prepareCopyOption(ctx, src, dst, root, oras.ExtendedCopyGraphOptions{}); !errors.Is(err, errMockedFetch) {
 		t.Errorf("prepareCopyOption() error = %v, want %v", err, errMockedFetch)
 	}
 }
@@ -262,7 +263,7 @@ type invalidJSONReadOnlyGraphTarget struct {
 }
 
 // Fetch simulates a successful fetch of invalid JSON data.
-func (m *invalidJSONReadOnlyGraphTarget) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
+func (m *invalidJSONReadOnlyGraphTarget) Fetch(_ context.Context, _ ocispec.Descriptor) (io.ReadCloser, error) {
 	// Return invalid JSON data
 	return io.NopCloser(strings.NewReader("invalid-json")), nil
 }
@@ -277,7 +278,8 @@ func Test_prepareCopyOption_jsonUnmarshalFailure(t *testing.T) {
 		Size:      int64(len("invalid-json")),
 	}
 	_, _, err := prepareCopyOption(ctx, src, dst, root, oras.ExtendedCopyGraphOptions{})
-	if _, ok := err.(*json.SyntaxError); !ok {
+	var syntaxErr *json.SyntaxError
+	if !errors.As(err, &syntaxErr) {
 		t.Errorf("prepareCopyOption() error = %v, want json.SyntaxError", err)
 	}
 }
@@ -290,13 +292,12 @@ type mockReferrersFailingSource struct {
 }
 
 // Fetch simulates successful fetching of index content.
-func (m *mockReferrersFailingSource) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
+func (m *mockReferrersFailingSource) Fetch(_ context.Context, _ ocispec.Descriptor) (io.ReadCloser, error) {
 	// Return valid JSON data to pass the fetch step
 	return io.NopCloser(strings.NewReader(m.indexContent)), nil
 }
 
 func Test_prepareCopyOption_referrersFailure(t *testing.T) {
-
 	ctx := context.Background()
 	mockedIndex := `{"schemaVersion":2,"manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2}]}`
 	src := &mockReferrersFailingSource{indexContent: mockedIndex}
@@ -308,18 +309,17 @@ func Test_prepareCopyOption_referrersFailure(t *testing.T) {
 	}
 	errMockedReferrers := fmt.Errorf("failed to get referrers")
 	opts := oras.ExtendedCopyGraphOptions{
-		FindPredecessors: func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		FindPredecessors: func(_ context.Context, _ content.ReadOnlyGraphStorage, _ ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 			return nil, errMockedReferrers
 		},
 	}
 
-	if _, _, err := prepareCopyOption(ctx, src, dst, root, opts); err != errMockedReferrers {
+	if _, _, err := prepareCopyOption(ctx, src, dst, root, opts); !errors.Is(err, errMockedReferrers) {
 		t.Errorf("prepareCopyOption() error = %v, wantErr %v", err, errMockedReferrers)
 	}
 }
 
 func Test_prepareCopyOption_referrersFailureOnIndex(t *testing.T) {
-
 	ctx := context.Background()
 	mockedIndex := `{"schemaVersion":2,"manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","size":2}]}`
 	src := &mockReferrersFailingSource{indexContent: mockedIndex}
@@ -331,15 +331,16 @@ func Test_prepareCopyOption_referrersFailureOnIndex(t *testing.T) {
 	}
 	errMockedReferrers := fmt.Errorf("failed to get referrers")
 	opts := oras.ExtendedCopyGraphOptions{
-		FindPredecessors: func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		FindPredecessors: func(_ context.Context, _ content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 			if desc.MediaType == ocispec.MediaTypeImageIndex {
 				return nil, errMockedReferrers
 			}
-			return []ocispec.Descriptor{ocispec.Descriptor{}}, nil
+			entry := ocispec.Descriptor{}
+			return []ocispec.Descriptor{entry}, nil
 		},
 	}
 
-	if _, _, err := prepareCopyOption(ctx, src, dst, root, opts); err != errMockedReferrers {
+	if _, _, err := prepareCopyOption(ctx, src, dst, root, opts); !errors.Is(err, errMockedReferrers) {
 		t.Errorf("prepareCopyOption() error = %v, wantErr %v", err, errMockedReferrers)
 	}
 }
@@ -355,12 +356,99 @@ func Test_prepareCopyOption_noReferrers(t *testing.T) {
 		Size:      int64(len(mockedIndex)),
 	}
 	opts := oras.ExtendedCopyGraphOptions{
-		FindPredecessors: func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		FindPredecessors: func(_ context.Context, _ content.ReadOnlyGraphStorage, _ ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 			return nil, nil
 		},
 	}
 
 	if _, _, err := prepareCopyOption(ctx, src, dst, root, opts); err != nil {
 		t.Errorf("prepareCopyOption() error = %v, wantErr false", err)
+	}
+}
+
+func Test_getMountPoint(t *testing.T) {
+	registry1Repo1 := &remote.Repository{}
+	registry1Repo1.Reference.Registry = "localhost:5000"
+	registry1Repo1.Reference.Repository = "repo1"
+
+	registry1Repo2 := &remote.Repository{}
+	registry1Repo2.Reference.Registry = "localhost:5000"
+	registry1Repo2.Reference.Repository = "repo2"
+
+	registry2Repo1 := &remote.Repository{}
+	registry2Repo1.Reference.Registry = "localhost:6000"
+	registry2Repo1.Reference.Repository = "repo1"
+
+	tests := []struct {
+		name         string
+		src          oras.ReadOnlyGraphTarget
+		dst          oras.GraphTarget
+		fromUsername string
+		fromPassword string
+		toUsername   string
+		toPassword   string
+		wantRepo     bool
+		wantMount    string
+	}{
+		{
+			name:         "should mount: both remote, same registry, same credentials",
+			src:          registry1Repo1,
+			dst:          registry1Repo2,
+			fromUsername: "user1",
+			fromPassword: "pass1",
+			toUsername:   "user1",
+			toPassword:   "pass1",
+			wantRepo:     true,
+			wantMount:    "repo1",
+		},
+		{
+			name:         "should not mount: both remote, same registry, different credentials",
+			src:          registry1Repo1,
+			dst:          registry1Repo2,
+			fromUsername: "user1",
+			fromPassword: "pass1",
+			toUsername:   "user2",
+			toPassword:   "pass2",
+			wantRepo:     false,
+			wantMount:    "",
+		},
+		{
+			name:         "should not mount: both remote, different registries",
+			src:          registry1Repo1,
+			dst:          registry2Repo1,
+			fromUsername: "user1",
+			fromPassword: "pass1",
+			toUsername:   "user3",
+			toPassword:   "pass3",
+			wantRepo:     false,
+			wantMount:    "",
+		},
+		{
+			name:       "should not mount: source is not remote",
+			src:        memStore,
+			dst:        registry1Repo1,
+			toUsername: "user1",
+			toPassword: "pass1",
+			wantRepo:   false,
+			wantMount:  "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := &copyOptions{}
+			opts.From.Username = tt.fromUsername
+			opts.From.Secret = tt.fromPassword
+			opts.To.Username = tt.toUsername
+			opts.To.Secret = tt.toPassword
+
+			gotMount, gotRepo := getMountPoint(tt.src, tt.dst, opts)
+			if gotRepo != tt.wantRepo {
+				t.Errorf("checkMount() gotRepo = %v, want %v", gotRepo, tt.wantRepo)
+			}
+			if gotMount != tt.wantMount {
+				t.Errorf("checkMount() gotRepo = %v, want %v", gotMount, tt.wantMount)
+			}
+		})
 	}
 }

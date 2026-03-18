@@ -322,7 +322,7 @@ func Test_updateStatus(t *testing.T) {
 	equal := func(s, t *status) bool {
 		// speed is not compared
 		return s.done == t.done &&
-			s.err == t.err &&
+			errors.Is(s.err, t.err) &&
 			s.text == t.text &&
 			s.startTime.Equal(t.startTime) &&
 			s.endTime.Equal(t.endTime) &&
@@ -363,6 +363,7 @@ func Test_updateStatus(t *testing.T) {
 			name:   "updateStatusStartTime",
 			update: updateStatusStartTime(),
 			check: func(t *testing.T, s *status) {
+				t.Helper()
 				if s.startTime.IsZero() {
 					t.Errorf("updateStatusStartTime() = %v, want non-zero", s.startTime)
 				}
@@ -375,6 +376,7 @@ func Test_updateStatus(t *testing.T) {
 			name:   "updateStatusEndTime",
 			update: updateStatusEndTime(),
 			check: func(t *testing.T, s *status) {
+				t.Helper()
 				if s.endTime.IsZero() {
 					t.Errorf("updateStatusEndTime() = %v, want non-zero", s.endTime)
 				}
@@ -388,6 +390,7 @@ func Test_updateStatus(t *testing.T) {
 			setup:  updateStatusError(errTest),
 			update: updateStatusEndTime(),
 			check: func(t *testing.T, s *status) {
+				t.Helper()
 				if s.endTime.IsZero() {
 					t.Errorf("updateStatusEndTime() = %v, want non-zero", s.endTime)
 				}

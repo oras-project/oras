@@ -46,10 +46,6 @@ func TestNewRestoreHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			printer := output.NewPrinter(&bytes.Buffer{}, &bytes.Buffer{})
 			handler := NewRestoreHandler(printer, tt.dryRun)
-
-			if handler == nil {
-				t.Fatal("expected a non-nil handler")
-			}
 			if handler.printer != printer {
 				t.Errorf("expected handler.printer to be %v, got %v", printer, handler.printer)
 			}
