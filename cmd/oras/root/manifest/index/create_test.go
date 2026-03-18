@@ -33,15 +33,15 @@ type testReadOnlyTarget struct {
 	content []byte
 }
 
-func (tros *testReadOnlyTarget) Exists(ctx context.Context, desc ocispec.Descriptor) (bool, error) {
+func (tros *testReadOnlyTarget) Exists(_ context.Context, _ ocispec.Descriptor) (bool, error) {
 	return true, nil
 }
 
-func (tros *testReadOnlyTarget) Fetch(ctx context.Context, desc ocispec.Descriptor) (io.ReadCloser, error) {
+func (tros *testReadOnlyTarget) Fetch(_ context.Context, _ ocispec.Descriptor) (io.ReadCloser, error) {
 	return io.NopCloser(bytes.NewReader(tros.content)), nil
 }
 
-func (tros *testReadOnlyTarget) Resolve(ctx context.Context, reference string) (ocispec.Descriptor, error) {
+func (tros *testReadOnlyTarget) Resolve(_ context.Context, _ string) (ocispec.Descriptor, error) {
 	if bytes.Equal(tros.content, []byte("index")) {
 		return ocispec.Descriptor{MediaType: ocispec.MediaTypeImageIndex, Digest: digest.FromBytes(tros.content), Size: int64(len(tros.content))}, nil
 	}
@@ -59,28 +59,28 @@ type testCreateDisplayStatus struct {
 	onIndexPushedError bool
 }
 
-func (tds *testCreateDisplayStatus) OnFetching(manifestRef string) error {
+func (tds *testCreateDisplayStatus) OnFetching(_ string) error {
 	if tds.onFetchingError {
 		return fmt.Errorf("OnFetching error")
 	}
 	return nil
 }
 
-func (tds *testCreateDisplayStatus) OnFetched(manifestRef string, desc ocispec.Descriptor) error {
+func (tds *testCreateDisplayStatus) OnFetched(_ string, _ ocispec.Descriptor) error {
 	if tds.onFetchedError {
 		return fmt.Errorf("OnFetched error")
 	}
 	return nil
 }
 
-func (tds *testCreateDisplayStatus) OnIndexPacked(desc ocispec.Descriptor) error {
+func (tds *testCreateDisplayStatus) OnIndexPacked(_ ocispec.Descriptor) error {
 	if tds.onIndexPackedError {
 		return fmt.Errorf("error")
 	}
 	return nil
 }
 
-func (tds *testCreateDisplayStatus) OnIndexPushed(path string) error {
+func (tds *testCreateDisplayStatus) OnIndexPushed(_ string) error {
 	if tds.onIndexPushedError {
 		return fmt.Errorf("error")
 	}
@@ -164,7 +164,7 @@ func Test_enrichDescriptor(t *testing.T) {
 				}
 			`),
 			manifestMediaType: "application/vnd.oci.image.index.v1+json",
-			checkDesc: func(t *testing.T, gotDesc, inputDesc ocispec.Descriptor) {
+			checkDesc: func(t *testing.T, gotDesc, _ ocispec.Descriptor) {
 				t.Helper()
 				if got, want := gotDesc.ArtifactType, "application/vnd.example"; got != want {
 					t.Errorf("ArtifactType = %s, want %s", got, want)
@@ -192,7 +192,7 @@ func Test_enrichDescriptor(t *testing.T) {
 				}
 			`),
 			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
-			checkDesc: func(t *testing.T, gotDesc, inputDesc ocispec.Descriptor) {
+			checkDesc: func(t *testing.T, gotDesc, _ ocispec.Descriptor) {
 				t.Helper()
 				if got, want := gotDesc.ArtifactType, "application/vnd.example"; got != want {
 					t.Errorf("ArtifactType = %s, want %s", got, want)
@@ -227,7 +227,7 @@ func Test_enrichDescriptor(t *testing.T) {
 				}
 			`),
 			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
-			checkDesc: func(t *testing.T, gotDesc, inputDesc ocispec.Descriptor) {
+			checkDesc: func(t *testing.T, gotDesc, _ ocispec.Descriptor) {
 				t.Helper()
 				if got, want := gotDesc.ArtifactType, "application/vnd.example"; got != want {
 					t.Errorf("ArtifactType = %s, want %s", got, want)

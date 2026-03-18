@@ -114,7 +114,7 @@ Example - Attach file to the manifest tagged 'example.com:v1' in an OCI image la
 			}
 			return err
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts.Printer.Verbose = opts.verbose
 			return runAttach(cmd, &opts)
 		},
@@ -191,7 +191,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 		return oras.PackManifest(ctx, store, oras.PackManifestVersion1_1, opts.artifactType, packOpts)
 	}
 
-	copy := func(root ocispec.Descriptor) error {
+	copyFunc := func(root ocispec.Descriptor) error {
 		graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 			if content.Equal(node, root) {
 				// skip duplicated Resolve on subject
@@ -211,7 +211,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	}
 
 	// Attach
-	root, err := doPush(dst, stopTrack, pack, copy)
+	root, err := doPush(dst, stopTrack, pack, copyFunc)
 	if err != nil {
 		return err
 	}
