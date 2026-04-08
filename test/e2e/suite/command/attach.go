@@ -16,6 +16,7 @@ limitations under the License.
 package command
 
 import (
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"regexp"
@@ -25,6 +26,7 @@ import (
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/test/e2e/internal/testdata/feature"
 	"oras.land/oras/test/e2e/internal/testdata/foobar"
 	"oras.land/oras/test/e2e/internal/testdata/multi_arch"
@@ -270,6 +272,54 @@ var _ = Describe("1.1 registry users:", func() {
 			ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", absAttachFileName, foobar.AttachFileMedia)).
 				ExpectFailure().
 				Exec()
+		})
+
+		It("should attach a file to a subject with customized config file", func() {
+			// prepare
+			testRepo := attachTestRepo("config")
+			tempDir := PrepareTempFiles()
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			CopyZOTRepo(ImageRepo, testRepo)
+			// test
+			ref := ORAS("attach", "--artifact-type", "test/attach", "--config", foobar.FileConfigName, subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "go-template={{.reference}}").
+				WithWorkDir(tempDir).Exec().Out.Contents()
+			// validate
+			fetched := ORAS("manifest", "fetch", string(ref)).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Config).Should(Equal(ocispec.Descriptor{
+				MediaType: "application/vnd.unknown.config.v1+json",
+				Size:      int64(foobar.FileConfigSize),
+				Digest:    foobar.FileConfigDigest,
+			}))
+		})
+
+		It("should attach a file to a subject with customized config file and media type", func() {
+			// prepare
+			testRepo := attachTestRepo("config/mediatype")
+			configType := "config/type"
+			tempDir := PrepareTempFiles()
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			CopyZOTRepo(ImageRepo, testRepo)
+			// test
+			ref := ORAS("attach", "--artifact-type", "test/attach", "--config", fmt.Sprintf("%s:%s", foobar.FileConfigName, configType), subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--format", "go-template={{.reference}}").
+				WithWorkDir(tempDir).Exec().Out.Contents()
+			// validate
+			fetched := ORAS("manifest", "fetch", string(ref)).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Config).Should(Equal(ocispec.Descriptor{
+				MediaType: configType,
+				Size:      int64(foobar.FileConfigSize),
+				Digest:    foobar.FileConfigDigest,
+			}))
+		})
+
+		It("should fail to use --config and --platform at the same time", func() {
+			ref := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
+			tempDir := PrepareTempFiles()
+			ORAS("attach", "--artifact-type", "test/attach", "--config", foobar.FileConfigName, "--platform", "linux/amd64", ref, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+				ExpectFailure().WithWorkDir(tempDir).Exec()
 		})
 	})
 })

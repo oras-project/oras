@@ -193,7 +193,6 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 
 	packOpts := oras.PackManifestOptions{
 		Subject:             &subject,
-		ConfigAnnotations:   opts.Annotations[option.AnnotationConfig],
 		ManifestAnnotations: opts.Annotations[option.AnnotationManifest],
 		Layers:              descs,
 	}
@@ -206,7 +205,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 		if err != nil {
 			return err
 		}
-		desc.Annotations = packOpts.ConfigAnnotations
+		desc.Annotations = opts.Annotations[option.AnnotationConfig]
 		packOpts.ConfigDescriptor = &desc
 	}
 	pack := func() (ocispec.Descriptor, error) {
