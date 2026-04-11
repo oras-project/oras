@@ -321,6 +321,23 @@ var _ = Describe("1.1 registry users:", func() {
 			ORAS("attach", "--artifact-type", "test/attach", "--config", foobar.FileConfigName, "--platform", "linux/amd64", ref, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
 				ExpectFailure().WithWorkDir(tempDir).Exec()
 		})
+
+		It("should fail when config file path is empty", func() {
+			testRepo := attachTestRepo("config/empty-path")
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			CopyZOTRepo(ImageRepo, testRepo)
+			tempDir := PrepareTempFiles()
+			ORAS("attach", "--artifact-type", "test/attach", "--config", ":", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+				ExpectFailure().WithWorkDir(tempDir).Exec()
+		})
+
+		It("should fail when config file does not exist", func() {
+			testRepo := attachTestRepo("config/notfound")
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			CopyZOTRepo(ImageRepo, testRepo)
+			ORAS("attach", "--artifact-type", "test/attach", "--config", "nonexistent-config.json", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia)).
+				ExpectFailure().Exec()
+		})
 	})
 })
 
