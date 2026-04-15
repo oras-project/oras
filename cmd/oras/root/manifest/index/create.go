@@ -87,7 +87,7 @@ Example - Create an index with a specified artifact type:
 
 Example - Create an index and push to an OCI image layout folder 'layout-dir' and tag with 'v1':
   oras manifest index create layout-dir:v1 linux-amd64 sha256:99e4703fbf30916f549cd6bfa9cdbab614b5392fbe64fdee971359a77073cdf9 --oci-layout
-  
+
 Example - Create an index and save it locally to index.json, auto push will be disabled:
   oras manifest index create localhost:5000/hello linux-amd64 linux-arm64 --output index.json
 
@@ -103,7 +103,7 @@ Example - Create an index and output the index to stdout, auto push will be disa
 			return option.Parse(cmd, &opts)
 		},
 		Aliases: []string{"pack"},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return createIndex(cmd, opts)
 		},
 	}
@@ -193,9 +193,13 @@ func getPlatform(ctx context.Context, target oras.ReadOnlyTarget, manifest *ocis
 		return nil, err
 	}
 	var platform ocispec.Platform
-	if err := json.Unmarshal(contentBytes, &platform); err != nil || (platform.Architecture == "" && platform.OS == "") {
+	if err := json.Unmarshal(contentBytes, &platform); err != nil {
+		// ignore JSON unmarshal errors if the manifest does not have platform information
+		return nil, nil //nolint:nilerr,nilnil
+	}
+	if platform.Architecture == "" && platform.OS == "" {
 		// ignore if the manifest does not have platform information
-		return nil, nil
+		return nil, nil //nolint:nilnil
 	}
 	return &platform, nil
 }

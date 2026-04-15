@@ -88,7 +88,7 @@ func CheckArgs(checker func(args []string) (bool, string), Usage string) cobra.P
 
 // Modifier modifies the error during cmd execution.
 type Modifier interface {
-	ModifyError(cmd *cobra.Command, err error) (modifiedErr error, modified bool)
+	ModifyError(cmd *cobra.Command, err error) (modified bool, modifiedErr error)
 }
 
 // Command returns an error-handled cobra command.
@@ -97,7 +97,7 @@ func Command(cmd *cobra.Command, handler Modifier) *cobra.Command {
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		err := runE(cmd, args)
 		if err != nil {
-			err, _ = handler.ModifyError(cmd, err)
+			_, err = handler.ModifyError(cmd, err)
 			return err
 		}
 		return nil
@@ -135,13 +135,14 @@ func TrimErrBasicCredentialNotFound(err error) error {
 	toTrim := err
 	inner := err
 	for {
-		switch x := inner.(type) {
-		case interface{ Unwrap() error }:
+		var unwrapper interface{ Unwrap() error }
+		var multiUnwrapper interface{ Unwrap() []error }
+		if errors.As(inner, &unwrapper) {
 			toTrim = inner
-			inner = x.Unwrap()
+			inner = unwrapper.Unwrap()
 			continue
-		case interface{ Unwrap() []error }:
-			for _, errItem := range x.Unwrap() {
+		} else if errors.As(inner, &multiUnwrapper) {
+			for _, errItem := range multiUnwrapper.Unwrap() {
 				if errors.Is(errItem, auth.ErrBasicCredentialNotFound) {
 					toTrim = errItem
 					inner = errItem

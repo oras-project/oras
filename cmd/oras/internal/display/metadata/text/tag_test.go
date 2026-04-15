@@ -156,7 +156,7 @@ func TestTagHandler_OnTagged_WithError(t *testing.T) {
 	}
 }
 
-func TestTagHandler_InterfaceImplementation(t *testing.T) {
+func TestTagHandler_InterfaceImplementation(_ *testing.T) {
 	// Verify that TagHandler implements metadata.TagHandler
 	var _ metadata.TagHandler = (*TagHandler)(nil)
 }

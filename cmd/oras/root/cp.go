@@ -104,7 +104,7 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 			opts.DisableTTY(opts.Debug, false)
 			return nil
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts.Printer.Verbose = opts.verbose
 			return runCopy(cmd, &opts)
 		},
@@ -173,7 +173,7 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 	}
 
 	if mountRepo, canMount := getMountPoint(src, dst, opts); canMount {
-		extendedCopyGraphOptions.MountFrom = func(ctx context.Context, desc ocispec.Descriptor) ([]string, error) {
+		extendedCopyGraphOptions.MountFrom = func(_ context.Context, _ ocispec.Descriptor) ([]string, error) {
 			return []string{mountRepo}, nil
 		}
 	}
@@ -237,7 +237,7 @@ func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.T
 	return nil
 }
 
-func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.Target, root ocispec.Descriptor, opts oras.ExtendedCopyGraphOptions) (oras.ExtendedCopyGraphOptions, ocispec.Descriptor, error) {
+func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, _ oras.Target, root ocispec.Descriptor, opts oras.ExtendedCopyGraphOptions) (oras.ExtendedCopyGraphOptions, ocispec.Descriptor, error) {
 	if root.MediaType != ocispec.MediaTypeImageIndex && root.MediaType != docker.MediaTypeManifestList {
 		return opts, root, nil
 	}

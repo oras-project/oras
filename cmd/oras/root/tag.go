@@ -80,7 +80,8 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 			opts.RawReference = args[0]
 			opts.targetRefs = args[1:]
 			if err := option.Parse(cmd, &opts); err != nil {
-				if inner, ok := err.(*oerrors.Error); ok {
+				var inner *oerrors.Error
+				if errors.As(err, &inner) {
 					if errors.Is(inner, errdef.ErrInvalidReference) {
 						inner.Err = fmt.Errorf("unable to add tag for '%s': %w", opts.RawReference, inner.Err)
 					}
@@ -89,7 +90,7 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 			}
 			return nil
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return tagManifest(cmd, &opts)
 		},
 	}

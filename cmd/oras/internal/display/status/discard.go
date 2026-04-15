@@ -36,7 +36,7 @@ func NewDiscardHandler() DiscardHandler {
 }
 
 // OnFileLoading is called before a file is being loaded.
-func (DiscardHandler) OnFileLoading(name string) error {
+func (DiscardHandler) OnFileLoading(string) error {
 	return nil
 }
 
@@ -66,12 +66,12 @@ func (DiscardHandler) PostCopy(_ context.Context, _ ocispec.Descriptor) error {
 }
 
 // OnNodeDownloading implements PullHandler.
-func (DiscardHandler) OnNodeDownloading(desc ocispec.Descriptor) error {
+func (DiscardHandler) OnNodeDownloading(_ ocispec.Descriptor) error {
 	return nil
 }
 
 // OnNodeDownloaded implements PullHandler.
-func (DiscardHandler) OnNodeDownloaded(desc ocispec.Descriptor) error {
+func (DiscardHandler) OnNodeDownloaded(_ ocispec.Descriptor) error {
 	return nil
 }
 
@@ -81,12 +81,12 @@ func (DiscardHandler) OnNodeRestored(_ ocispec.Descriptor) error {
 }
 
 // OnNodeProcessing implements PullHandler.
-func (DiscardHandler) OnNodeProcessing(desc ocispec.Descriptor) error {
+func (DiscardHandler) OnNodeProcessing(_ ocispec.Descriptor) error {
 	return nil
 }
 
 // OnNodeProcessing implements PullHandler.
-func (DiscardHandler) OnNodeSkipped(desc ocispec.Descriptor) error {
+func (DiscardHandler) OnNodeSkipped(_ ocispec.Descriptor) error {
 	return nil
 }
 
