@@ -83,6 +83,11 @@ get_major_minor() {
     echo "$version" | cut -d. -f1-2
 }
 
+# Read version from VERSION_FILE
+version_from_file() {
+    sed -nE 's/.*Version = "([^"]+)".*/\1/p' "$VERSION_FILE"
+}
+
 ###############################################################################
 # Check prerequisites (gh, gpg, remote)
 ###############################################################################
@@ -531,8 +536,8 @@ Usage: scripts/release.sh [--dry-run] <phase> <version> [args...]
 Phases:
   prep <version>              Bump version, create PR, print vote template
   tag <version> <commit-sha>  Create and push signed tag
-  validate <version>          Wait for CI, download and verify artifacts
-  publish <version>           Sign, upload signatures, publish release
+  validate [version]          Wait for CI, download and verify artifacts (default: version from version.go)
+  publish [version]           Sign, upload signatures, publish release (default: version from version.go)
 
 Flags:
   --dry-run                   Print actions without executing them
@@ -543,8 +548,8 @@ Environment:
 Examples:
   scripts/release.sh prep 1.3.0
   scripts/release.sh tag 1.3.0 abc1234
-  scripts/release.sh validate 1.3.0
-  scripts/release.sh publish 1.3.0
+  scripts/release.sh validate
+  scripts/release.sh publish
   scripts/release.sh --dry-run prep 1.3.0-rc.1
 EOF
 }
@@ -576,11 +581,13 @@ main() {
             do_tag "$version" "${3:-}"
             ;;
         validate)
-            [ -z "$version" ] && { error "Usage: scripts/release.sh validate <version>"; exit 1; }
+            [ -z "$version" ] && version=$(version_from_file)
+            [ -z "$version" ] && { error "Usage: scripts/release.sh validate [version]"; exit 1; }
             do_validate "$version"
             ;;
         publish)
-            [ -z "$version" ] && { error "Usage: scripts/release.sh publish <version>"; exit 1; }
+            [ -z "$version" ] && version=$(version_from_file)
+            [ -z "$version" ] && { error "Usage: scripts/release.sh publish [version]"; exit 1; }
             do_publish "$version"
             ;;
         help|--help|-h)
