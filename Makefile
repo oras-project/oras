@@ -198,11 +198,11 @@ release-tag:  ## tag release: create and push signed tag
 
 .PHONY: release-validate
 release-validate:  ## validate release: verify CI, artifacts, checksums
-	@scripts/release.sh validate $(VERSION)
+	@scripts/release.sh validate
 
 .PHONY: release-publish
 release-publish:  ## publish release: sign, upload, publish
-	@scripts/release.sh publish $(VERSION)
+	@scripts/release.sh publish
 
 .PHONY: help
 help:  ## Display this help
