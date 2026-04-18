@@ -325,7 +325,7 @@ do_validate() {
         done
 
         if [ "$all_done" != "true" ]; then
-            ((attempt++))
+            attempt=$(( attempt + 1 ))
             if [ "$attempt" -lt "$max_attempts" ]; then
                 info "Waiting 30s for workflows... (attempt ${attempt}/${max_attempts})"
                 sleep 30
@@ -449,7 +449,7 @@ do_publish() {
         local orig="${asc%.asc}"
         if gpg --verify "$asc" "$orig" 2>/dev/null; then
             success "Verified: $(basename "$asc")"
-            ((sig_count++))
+            sig_count=$(( sig_count + 1 ))
         else
             error "Signature verification failed: $(basename "$asc")"
             exit 1
