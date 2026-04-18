@@ -525,7 +525,6 @@ do_publish() {
 We're excited to announce the release of ORAS CLI v${version}!
 
 *Release:* https://github.com/${REPO}/releases/tag/v${version}
-*Changelog:* https://github.com/${REPO}/releases/tag/v${version}
 
 Thank you to all contributors!
 EOF
