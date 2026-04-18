@@ -62,7 +62,7 @@ confirm() {
         return 0
     fi
     echo -en "${YELLOW}$1 [y/N]: ${NC}"
-    read -r response
+    read -r response </dev/tty
     case "$response" in
         [yY][eE][sS]|[yY]) return 0 ;;
         *) error "Aborted."; exit 1 ;;
