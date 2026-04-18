@@ -56,18 +56,6 @@ run() {
     "$@"
 }
 
-confirm() {
-    if [ "$DRY_RUN" = true ]; then
-        info "[DRY-RUN] Would confirm: $1"
-        return 0
-    fi
-    echo -en "${YELLOW}$1 [y/N]: ${NC}"
-    read -r response </dev/tty
-    case "$response" in
-        [yY][eE][sS]|[yY]) return 0 ;;
-        *) error "Aborted."; exit 1 ;;
-    esac
-}
 
 # Validate semver format
 validate_version() {
@@ -133,12 +121,14 @@ do_prep() {
     check_prerequisites
     success "Prerequisites OK"
 
-    # Check we're on main and up to date
-    local current_branch
+    # Verify we're on main or the correct release branch
+    local current_branch major_minor expected_branch
     current_branch=$(git branch --show-current)
-    if [ "$current_branch" != "main" ]; then
-        warn "Currently on branch '$current_branch', not 'main'."
-        confirm "Continue anyway?"
+    major_minor=$(get_major_minor "$version")
+    expected_branch="release-${major_minor}"
+    if [ "$current_branch" != "main" ] && [ "$current_branch" != "$expected_branch" ]; then
+        error "Must be on 'main' or '${expected_branch}' to release v${version}, but currently on '${current_branch}'."
+        exit 1
     fi
 
     # Ensure working tree is clean
@@ -256,12 +246,10 @@ do_tag() {
     fi
 
     # Create signed tag
-    confirm "Create signed tag v${version} at ${sha}?"
     run git tag -s "v${version}" "$sha" -m "Release v${version}"
     success "Tag v${version} created"
 
     # Push tag
-    confirm "Push tag v${version} to ${REMOTE}?"
     run git push "${REMOTE}" "v${version}"
     success "Tag pushed"
 
@@ -270,7 +258,6 @@ do_tag() {
         local release_branch="release-$(get_major_minor "$version")"
         info "New minor version detected. Creating release branch ${release_branch}..."
         run git branch "$release_branch" "$sha"
-        confirm "Push release branch ${release_branch} to ${REMOTE}?"
         run git push "${REMOTE}" "$release_branch"
         success "Release branch ${release_branch} pushed"
     fi
@@ -463,7 +450,6 @@ do_publish() {
 
     # Upload signatures to GitHub release
     info "Uploading signatures to GitHub release..."
-    confirm "Upload ${sig_count} .asc files to release v${version}?"
     if [[ "$DRY_RUN" == "true" ]]; then
         info "[DRY-RUN] Would upload ${sig_count} .asc files to release v${version}"
     else
@@ -488,7 +474,6 @@ do_publish() {
     fi
 
     # Publish release
-    confirm "Publish release v${version} (remove draft status)?"
     run gh release edit "v${version}" --repo "$REPO" --draft=false
     success "Release v${version} published!"
 
@@ -511,7 +496,6 @@ do_publish() {
     fi
 
     # Clean up
-    confirm "Remove _dist/ directory?"
     run rm -rf _dist
     success "Cleaned up _dist/"
 
