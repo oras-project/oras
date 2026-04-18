@@ -21,6 +21,7 @@ set -euo pipefail
 REPO="oras-project/oras"
 VERSION_FILE="internal/version/version.go"
 REMOTE="${ORAS_REMOTE:-upstream}"
+MAIN_RELEASE_VERSION="${ORAS_MAIN_RELEASE_VERSION:-2.0}"
 
 # Colors
 RED='\033[0;31m'
@@ -131,7 +132,12 @@ do_prep() {
     current_branch=$(git branch --show-current)
     major_minor=$(get_major_minor "$version")
     expected_branch="release-${major_minor}"
-    if [ "$current_branch" != "main" ] && [ "$current_branch" != "$expected_branch" ]; then
+    if [ "$current_branch" = "main" ]; then
+        if [ "$major_minor" != "$MAIN_RELEASE_VERSION" ]; then
+            error "Releases from 'main' must be v${MAIN_RELEASE_VERSION}.x, but version is v${version}. Use branch '${expected_branch}' for this release, or set ORAS_MAIN_RELEASE_VERSION if the next main-branch series has changed."
+            exit 1
+        fi
+    elif [ "$current_branch" != "$expected_branch" ]; then
         error "Must be on 'main' or '${expected_branch}' to release v${version}, but currently on '${current_branch}'."
         exit 1
     fi
