@@ -424,13 +424,27 @@ do_publish() {
 
     # Sign artifacts
     info "Signing artifacts with GPG..."
-    run make SHELL=/bin/bash sign
-    success "Artifacts signed"
+    local sign_failed=false
+    for f in _dist/oras_"${version}"_*; do
+        [[ "$f" == *.asc ]] && continue
+        [ -f "$f" ] || continue
+        if run gpg --armor --detach-sign "$f"; then
+            success "Signed: $(basename "$f")"
+        else
+            error "Failed to sign: $(basename "$f")"
+            sign_failed=true
+        fi
+    done
+    if [ "$sign_failed" = true ]; then
+        error "One or more artifacts failed to sign. Ensure your GPG key is unlocked and retry."
+        exit 1
+    fi
+    success "All artifacts signed"
 
     # Verify signatures
     info "Verifying GPG signatures..."
     local sig_count=0
-    for asc in _dist/*.asc; do
+    for asc in _dist/oras_"${version}"_*.asc; do
         [ -f "$asc" ] || continue
         local orig="${asc%.asc}"
         if gpg --verify "$asc" "$orig" 2>/dev/null; then
@@ -453,7 +467,7 @@ do_publish() {
     if [[ "$DRY_RUN" == "true" ]]; then
         info "[DRY-RUN] Would upload ${sig_count} .asc files to release v${version}"
     else
-        gh release upload "v${version}" _dist/*.asc --repo "$REPO"
+        gh release upload "v${version}" _dist/oras_"${version}"_*.asc --repo "$REPO" --clobber
     fi
     success "Signatures uploaded"
 
