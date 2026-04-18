@@ -339,9 +339,14 @@ do_validate() {
     fi
     success "All CI workflows completed"
 
-    # Fetch distribution artifacts
+    # Fetch distribution artifacts via gh to support draft releases
     info "Fetching distribution artifacts..."
-    run make fetch-dist VERSION="$version"
+    run mkdir -p _dist
+    run gh release download "v${version}" \
+        --repo "$REPO" \
+        --dir _dist/ \
+        --pattern "oras_${version}_*" \
+        --clobber
     success "Artifacts downloaded to _dist/"
 
     # Verify checksums
