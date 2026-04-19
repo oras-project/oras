@@ -52,9 +52,9 @@ jobs:
           sed -i 's/{VERSION}/${{ steps.version.outputs.version }}/g' snapcraft.yaml
           sed -i 's/{ARCH}/${{ matrix.arch }}/g' snapcraft.yaml
           cat snapcraft.yaml
-      - uses: snapcore/action-build@3bdaa03e1ba6bf59a65f84a751d943d549a54e79 # v1
+      - uses: canonical/action-build@3bdaa03e1ba6bf59a65f84a751d943d549a54e79 # v1.3.0
         id: build
-      - uses: snapcore/action-publish@214b86e5ca036ead1668c79afb81e550e6c54d40 # v1
+      - uses: canonical/action-publish@214b86e5ca036ead1668c79afb81e550e6c54d40 # v1.2.0
         name: publish
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
