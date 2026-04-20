@@ -51,6 +51,6 @@ func (Discard) OnTagged(ocispec.Descriptor, string) error {
 func (Discard) OnIndexCreated(ocispec.Descriptor) {}
 
 // OnBlobPushed implements BlobPushHandler
-func (Discard) OnBlobPushed(target *option.Target) error {
+func (Discard) OnBlobPushed(*option.Target) error {
 	return nil
 }

@@ -78,7 +78,7 @@ Example - Fetch and print the prettified descriptor of the config:
 			opts.RawReference = args[0]
 			return option.Parse(cmd, &opts)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return fetchConfig(cmd, &opts)
 		},
 	}

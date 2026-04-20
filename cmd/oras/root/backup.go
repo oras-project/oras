@@ -134,7 +134,7 @@ Example - Set custom concurrency level:
 			opts.DisableTTY(opts.Debug, false)
 			return nil
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts.Printer.Verbose = true // always print verbose output
 			return runBackup(cmd, &opts)
 		},
