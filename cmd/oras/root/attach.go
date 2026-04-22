@@ -193,6 +193,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 
 	packOpts := oras.PackManifestOptions{
 		Subject:             &subject,
+		ConfigAnnotations:   opts.Annotations[option.AnnotationConfig],
 		ManifestAnnotations: opts.Annotations[option.AnnotationManifest],
 		Layers:              descs,
 	}
