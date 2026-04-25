@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -47,6 +48,7 @@ type attachOptions struct {
 	artifactType      string
 	manifestConfigRef string
 	concurrency       int
+	reproducible      bool
 	// Deprecated: verbose is deprecated and will be removed in the future.
 	verbose bool
 }
@@ -134,6 +136,7 @@ Example - Attach file 'hi.txt' with the custom manifest config "config.json" of 
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
 	opts.FlagDescription = "attach to an arch-specific subject"
 	_ = cmd.MarkFlagRequired("artifact-type")
+	cmd.Flags().BoolVarP(&opts.reproducible, "reproducible", "", false, "make it reproducible")
 	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
 	opts.EnableDistributionSpecFlag()
 	opts.SetTypes(option.FormatTypeText, option.FormatTypeJSON, option.FormatTypeGoTemplate)
@@ -157,6 +160,19 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 		return err
 	}
 	defer func() { _ = store.Close() }()
+
+	if opts.reproducible {
+		// make manifest reproducible
+		annotations := packOpts.ManifestAnnotations
+		if annotations == nil {
+			annotations = map[string]string{}
+		}
+		zero := time.Time{}
+		annotations[ocispec.AnnotationCreated] = zero.Format(time.RFC3339)
+		packOpts.ManifestAnnotations = annotations
+
+		store.TarReproducible = true
+	}
 
 	dst, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
