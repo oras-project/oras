@@ -408,7 +408,7 @@ func runPushRecursive(cmd *cobra.Command, opts *pushOptions) error {
 		}
 
 		// Add file to store
-		desc, err := store.Add(ctx, fileNode.Path, "", fileNode.AbsPath)
+		desc, err := store.Add(ctx, fileNode.Path, "application/octet-stream", fileNode.AbsPath)
 		if err != nil {
 			return fmt.Errorf("failed to add file %q: %w", fileNode.Path, err)
 		}
