@@ -17,12 +17,82 @@ package manifestutil
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras/internal/dir"
 )
+
+// TestBuildFromNode_noAnnotationTitleOnIndexDescriptors is a regression test for
+// the bug reported in https://github.com/oras-project/oras/pull/1951 where
+// oras pull would fail with "open <path>: is a directory" after a recursive push.
+//
+// Root cause: Image Index descriptors stored in parent index manifests lists
+// carried org.opencontainers.image.title = "<dirname>". oras pull sees any
+// descriptor with AnnotationTitle and calls metadataHandler.OnFilePulled, which
+// tries to open/create that path as a file — failing when a directory with that
+// name already exists on disk.
+func TestBuildFromNode_noAnnotationTitleOnIndexDescriptors(t *testing.T) {
+	ctx := context.Background()
+	store := memory.New()
+	b := NewBuilder(store, BuilderOptions{MaxBlobsPerManifest: 1000})
+
+	// Build a tree that produces a root Image Index with a child Image Index
+	// (for "subdir") — this is the exact shape that triggers the pull bug.
+	root := &dir.Node{
+		Name:  "root",
+		Path:  ".",
+		IsDir: true,
+		Children: []*dir.Node{
+			{
+				Name:  "subdir",
+				Path:  "subdir",
+				IsDir: true,
+				Children: []*dir.Node{
+					{Name: "file.txt", Path: "subdir/file.txt", IsDir: false},
+				},
+			},
+		},
+	}
+	fileDesc := content.NewDescriptorFromBytes("application/vnd.oci.image.layer.v1.tar", []byte("hello"))
+	fileDesc.Annotations = map[string]string{ocispec.AnnotationTitle: "subdir/file.txt"}
+	fileDescs := map[string]ocispec.Descriptor{
+		"subdir/file.txt": fileDesc,
+	}
+
+	res, err := b.BuildFromNode(ctx, root, fileDescs)
+	if err != nil {
+		t.Fatalf("BuildFromNode() error = %v", err)
+	}
+	if res.Root.MediaType != ocispec.MediaTypeImageIndex {
+		t.Fatalf("root MediaType = %q, want %q", res.Root.MediaType, ocispec.MediaTypeImageIndex)
+	}
+
+	// Fetch the root index JSON from the store and inspect its manifest entries.
+	rc, err := store.Fetch(ctx, res.Root)
+	if err != nil {
+		t.Fatalf("Fetch root index: %v", err)
+	}
+	defer rc.Close()
+
+	var idx ocispec.Index
+	if err := json.NewDecoder(rc).Decode(&idx); err != nil {
+		t.Fatalf("decode index: %v", err)
+	}
+
+	// Every entry in the root index is a child directory (Image Index).
+	// None of them should have AnnotationTitle — oras pull uses that annotation
+	// to decide whether to write a file, so having it on an index descriptor
+	// causes "open <dirname>: is a directory".
+	for i, m := range idx.Manifests {
+		if title, ok := m.Annotations[ocispec.AnnotationTitle]; ok {
+			t.Errorf("manifest[%d] has AnnotationTitle=%q — this will cause oras pull to fail with \"is a directory\"", i, title)
+		}
+	}
+}
 
 func TestNewBuilder(t *testing.T) {
 	store := memory.New()

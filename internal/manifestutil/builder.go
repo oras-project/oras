@@ -118,11 +118,10 @@ func (b *Builder) buildNode(ctx context.Context, node *dir.Node, fileDescs map[s
 			return ocispec.Descriptor{}, err
 		}
 		if childDesc.Digest != "" {
-			// Add directory annotations
-			if childDesc.Annotations == nil {
-				childDesc.Annotations = make(map[string]string)
-			}
-			maps.Copy(childDesc.Annotations, descriptor.MakeDirectoryAnnotations(childDir.Path, childDir.Name))
+			// Assign (replace) directory annotations — do NOT merge with
+			// maps.Copy, which would preserve any AnnotationTitle set by
+			// createIndex and cause oras pull to treat the index as a file.
+			childDesc.Annotations = descriptor.MakeDirectoryAnnotations(childDir.Path, childDir.Name)
 			childDirDescs = append(childDirDescs, childDesc)
 		}
 	}
@@ -248,9 +247,12 @@ func (b *Builder) createManifestWithAnnotations(ctx context.Context, layers []oc
 
 // createIndex creates and pushes an OCI index.
 func (b *Builder) createIndex(ctx context.Context, manifests []ocispec.Descriptor, node *dir.Node, result *BuildResult, isRoot bool) (ocispec.Descriptor, error) {
+	// Do NOT add ocispec.AnnotationTitle here. If AnnotationTitle is present on
+	// a descriptor stored in a parent index's manifests list, oras pull will
+	// call metadataHandler.OnFilePulled with that name and try to create a file
+	// — which fails with "is a directory" when a same-named directory exists.
 	annotations := make(map[string]string)
 	if node != nil {
-		annotations[ocispec.AnnotationTitle] = node.Name
 		maps.Copy(annotations, descriptor.MakeDirectoryAnnotations(node.Path, node.Name))
 	}
 	if isRoot {
