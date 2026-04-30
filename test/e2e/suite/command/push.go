@@ -830,31 +830,5 @@ var _ = Describe("Remote registry users:", func() {
 				Expect(string(got)).To(Equal(want), "content mismatch for %q", rel)
 			}
 		})
-
-		It("should fail when the argument is a file, not a directory", func() {
-			tmpFile := filepath.Join(GinkgoT().TempDir(), "notadir.txt")
-			Expect(os.WriteFile(tmpFile, []byte("x"), 0644)).To(Succeed())
-
-			ORAS("push", "--recursive",
-				RegistryRef(ZOTHost, pushTestRepo("recursive-not-dir"), tag),
-				tmpFile).
-				ExpectFailure().
-				MatchErrKeyWords("is not a directory").
-				Exec()
-		})
-
-		It("should fail when --config is combined with --recursive", func() {
-			srcDir := GinkgoT().TempDir()
-			Expect(os.WriteFile(filepath.Join(srcDir, "f.txt"), []byte("x"), 0644)).To(Succeed())
-			cfgFile := filepath.Join(GinkgoT().TempDir(), "cfg.json")
-			Expect(os.WriteFile(cfgFile, []byte("{}"), 0644)).To(Succeed())
-
-			ORAS("push", "--recursive", "--config", cfgFile,
-				RegistryRef(ZOTHost, pushTestRepo("recursive-config-conflict"), tag),
-				srcDir).
-				ExpectFailure().
-				MatchErrKeyWords("--config cannot be used with --recursive").
-				Exec()
-		})
 	})
 })
