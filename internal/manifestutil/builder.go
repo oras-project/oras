@@ -154,9 +154,15 @@ func (b *Builder) buildNode(ctx context.Context, node *dir.Node, fileDescs map[s
 	if hasFiles {
 		chunks := chunkDescriptors(fileLayerDescs, b.opts.MaxBlobsPerManifest)
 		for i, chunkDescs := range chunks {
-			annotations := map[string]string{
-				ocispec.AnnotationTitle: node.Name,
-			}
+			// Do NOT set AnnotationTitle here. When this descriptor is stored
+			// in the parent index's manifests list, oras pull's PostCopy calls
+			// content.Successors on the index and then OnFilePulled for every
+			// successor that has AnnotationTitle — which would try to create a
+			// file named "<dirname>" and fail with "is a directory" when that
+			// directory already exists on disk. The file layers inside the
+			// manifest carry their own AnnotationTitle values which is what
+			// drives actual file restoration during pull.
+			annotations := make(map[string]string)
 			if len(chunks) > 1 {
 				annotations["org.oras.content.chunk.index"] = string(rune('0' + i))
 			}

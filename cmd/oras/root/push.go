@@ -138,6 +138,12 @@ Example - [Experimental] Push a directory recursively with custom max blobs per 
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
 			opts.FileRefs = args[1:]
+			// For recursive push the argument is a root directory path, not a
+			// file-as-artifact path. The directory path is never stored as an
+			// annotation title, so the absolute-path check is irrelevant.
+			if opts.Recursive.Recursive {
+				opts.PathValidationDisabled = true
+			}
 			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
