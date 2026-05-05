@@ -18,12 +18,39 @@ package root
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
 
 	"oras.land/oras/cmd/oras/internal/option"
 )
+
+func Test_attachCmd_configAndPlatformMutuallyExclusive(t *testing.T) {
+	cmd := attachCmd()
+	cmd.SetArgs([]string{
+		"--artifact-type", "doc/example",
+		"--config", "config.json",
+		"--platform", "linux/amd64",
+		"localhost:5000/hello:v1",
+		"hi.txt",
+	})
+	err := cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "cannot be used at the same time") {
+		t.Fatalf("expected mutual exclusion error, got %v", err)
+	}
+}
+
+func Test_attachCmd_configFlagRegistered(t *testing.T) {
+	cmd := attachCmd()
+	f := cmd.Flags().Lookup("config")
+	if f == nil {
+		t.Fatal("expected --config flag to be registered")
+	}
+	if f.Usage != "`path` of image config file" {
+		t.Fatalf("unexpected usage: %q", f.Usage)
+	}
+}
 
 func Test_runAttach_errType(t *testing.T) {
 	// prepare
