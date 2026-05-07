@@ -33,9 +33,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/oras-project/oras-go/v3/registry/remote/credentials"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
-	"oras.land/oras-go/v2/registry/remote/auth"
 )
 
 var ts *httptest.Server
@@ -131,7 +131,7 @@ func TestRemote_authClient_RawCredential(t *testing.T) {
 	if _, err := rand.Read(password); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	want := auth.Credential{
+	want := credentials.Credential{
 		Username: "mocked^^??oras-@@!#",
 		Password: base64.StdEncoding.EncodeToString(password),
 	}
@@ -143,7 +143,7 @@ func TestRemote_authClient_RawCredential(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	got, err := client.Credential(nil, "")
+	got, err := client.CredentialFunc(nil, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
