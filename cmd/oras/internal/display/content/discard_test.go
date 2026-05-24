@@ -53,7 +53,7 @@ func TestDiscardHandler_OnContentCreated(t *testing.T) {
 	}
 }
 
-func TestDiscardHandler_ImplementsInterfaces(t *testing.T) {
+func TestDiscardHandler_ImplementsInterfaces(_ *testing.T) {
 	handler := NewDiscardHandler()
 
 	// Verify DiscardHandler implements ManifestFetchHandler
