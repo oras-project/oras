@@ -18,6 +18,8 @@ package root
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -70,5 +72,29 @@ func Test_runAttach_errType(t *testing.T) {
 	want := errors.New("`--annotation` and `--annotation-file` cannot be both specified").Error()
 	if got != want {
 		t.Fatalf("got %v, want %v", got, want)
+	}
+}
+
+func Test_attachCmd_configAnnotationsWiredFromFile(t *testing.T) {
+	// Regression for #2022: config annotations from an annotation file must
+	// be available as opts.Annotations[option.AnnotationConfig] after parsing
+	// so that runAttach can pass them to oras.PackManifestOptions.ConfigAnnotations.
+	annotationFile := filepath.Join(t.TempDir(), "annot.json")
+	content := `{"$config":{"org.example.key":"val"}}`
+	if err := os.WriteFile(annotationFile, []byte(content), 0600); err != nil {
+		t.Fatal(err)
+	}
+	cmd := &cobra.Command{}
+	opts := &attachOptions{}
+	opts.Packer.AnnotationFilePath = annotationFile
+	if err := opts.Packer.Parse(cmd); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	cfgAnnotations := opts.Annotations[option.AnnotationConfig]
+	if cfgAnnotations == nil {
+		t.Fatal("expected ConfigAnnotations to be populated; got nil")
+	}
+	if cfgAnnotations["org.example.key"] != "val" {
+		t.Fatalf("expected 'org.example.key'='val', got %v", cfgAnnotations)
 	}
 }
