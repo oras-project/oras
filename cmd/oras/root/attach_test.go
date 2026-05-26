@@ -86,7 +86,7 @@ func Test_attachCmd_configAnnotationsWiredToPackOpts(t *testing.T) {
 	}
 	cmd := &cobra.Command{}
 	opts := &attachOptions{}
-	opts.Packer.AnnotationFilePath = annotationFile
+	opts.AnnotationFilePath = annotationFile
 	if err := opts.Packer.Parse(cmd); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
