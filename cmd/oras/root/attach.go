@@ -141,6 +141,17 @@ Example - Attach file 'hi.txt' with the custom manifest config "config.json" of 
 	return oerrors.Command(cmd, &opts.Target)
 }
 
+// buildAttachPackOpts assembles a PackManifestOptions from the resolved
+// attach options, subject descriptor, and layer descriptors.
+func buildAttachPackOpts(opts *attachOptions, subject ocispec.Descriptor, descs []ocispec.Descriptor) oras.PackManifestOptions {
+	return oras.PackManifestOptions{
+		Subject:             &subject,
+		ConfigAnnotations:   opts.Annotations[option.AnnotationConfig],
+		ManifestAnnotations: opts.Annotations[option.AnnotationManifest],
+		Layers:              descs,
+	}
+}
+
 func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	if len(opts.FileRefs) == 0 && len(opts.Annotations[option.AnnotationManifest]) == 0 {
@@ -191,11 +202,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	graphCopyOptions.PreCopy = statusHandler.PreCopy
 	graphCopyOptions.PostCopy = statusHandler.PostCopy
 
-	packOpts := oras.PackManifestOptions{
-		Subject:             &subject,
-		ManifestAnnotations: opts.Annotations[option.AnnotationManifest],
-		Layers:              descs,
-	}
+	packOpts := buildAttachPackOpts(opts, subject, descs)
 	if opts.manifestConfigRef != "" {
 		path, cfgMediaType, err := fileref.Parse(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
 		if err != nil {
