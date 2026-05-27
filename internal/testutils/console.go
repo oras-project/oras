@@ -1,5 +1,3 @@
-//go:build !windows && !darwin
-
 /*
 Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,35 +22,27 @@ import (
 	"os"
 	"strings"
 	"sync"
-
-	containerd "github.com/containerd/console"
 )
 
-// NewPty creates a new pty pair for testing, caller is responsible for closing
-// the returned device file if err is not nil.
-func NewPty() (containerd.Console, *os.File, error) {
-	pty, devicePath, err := containerd.NewPty()
-	if err != nil {
-		return nil, nil, err
-	}
-	device, err := os.OpenFile(devicePath, os.O_RDWR, 0)
-	if err != nil {
-		return nil, nil, err
-	}
-	return pty, device, nil
+// NewPipe creates an in-memory pipe that stands in for a terminal in tests.
+// The returned writer is passed to the code under test as the TTY device; the
+// returned reader captures everything written to it. The caller is responsible
+// for closing the writer (see MatchPipe, which closes it).
+func NewPipe() (reader *os.File, writer *os.File, err error) {
+	return os.Pipe()
 }
 
-// MatchPty checks that the output matches the expected strings in specified
-// order.
-func MatchPty(pty containerd.Console, device *os.File, expected ...string) error {
+// MatchPipe closes the writer, drains the reader and checks that the captured
+// output contains the expected strings in the specified order.
+func MatchPipe(reader, writer *os.File, expected ...string) error {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	var buffer bytes.Buffer
 	go func() {
 		defer wg.Done()
-		_, _ = io.Copy(&buffer, pty)
+		_, _ = io.Copy(&buffer, reader)
 	}()
-	_ = device.Close()
+	_ = writer.Close()
 	wg.Wait()
 
 	return OrderedMatch(buffer.String(), expected...)

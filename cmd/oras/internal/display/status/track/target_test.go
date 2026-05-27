@@ -1,5 +1,3 @@
-//go:build !windows && !darwin
-
 /*
 Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,7 +46,7 @@ func (t *testReferenceGraphTarget) PushReference(ctx context.Context, expected o
 
 func Test_referenceGraphTarget_PushReference(t *testing.T) {
 	// prepare
-	pty, device, err := testutils.NewPty()
+	reader, device, err := testutils.NewPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +80,7 @@ func Test_referenceGraphTarget_PushReference(t *testing.T) {
 		t.Fatal("not testing based on a referenceGraphTarget")
 	}
 	// validate
-	if err = testutils.MatchPty(pty, device, donePrompt, desc.MediaType, "100.00%", desc.Digest.String()); err != nil {
+	if err = testutils.MatchPipe(reader, device, donePrompt, desc.MediaType, "100.00%", desc.Digest.String()); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -94,7 +92,7 @@ func Test_referenceGraphTarget_Mount(_ *testing.T) {
 
 func Test_graphTarget_Push_alreadyExists(t *testing.T) {
 	// prepare
-	pty, device, err := testutils.NewPty()
+	reader, device, err := testutils.NewPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +128,7 @@ func Test_graphTarget_Push_alreadyExists(t *testing.T) {
 		t.Fatal("not testing based on a referenceGraphTarget")
 	}
 	// validate
-	if err = testutils.MatchPty(pty, device, donePrompt, desc.MediaType, "100.00%", desc.Digest.String()); err != nil {
+	if err = testutils.MatchPipe(reader, device, donePrompt, desc.MediaType, "100.00%", desc.Digest.String()); err != nil {
 		t.Fatal(err)
 	}
 }

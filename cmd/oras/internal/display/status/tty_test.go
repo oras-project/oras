@@ -41,9 +41,9 @@ func TestTTYPushHandler_OnEmptyArtifact(t *testing.T) {
 }
 
 func TestTTYPushHandler_TrackTarget_invalidTTY(t *testing.T) {
-	ph := NewTTYPushHandler(os.Stdin, mockFetcher.Fetcher)
+	ph := NewTTYPushHandler(nil, mockFetcher.Fetcher)
 	if _, _, err := ph.TrackTarget(nil); err == nil {
-		t.Error("TrackTarget() should return an error for non-tty file")
+		t.Error("TrackTarget() should return an error for nil tty")
 	}
 }
 
@@ -116,10 +116,10 @@ func TestNewTTYBackupHandler(t *testing.T) {
 }
 
 func TestTTYBackupHandler_StartTracking_invalidTTY(t *testing.T) {
-	bh := NewTTYBackupHandler(os.Stdin, nil)
+	bh := NewTTYBackupHandler(nil, nil)
 	gt := memory.New()
 	if _, err := bh.StartTracking(gt); err == nil {
-		t.Error("StartTracking() should return an error for non-tty file")
+		t.Error("StartTracking() should return an error for nil tty")
 	}
 }
 
@@ -203,10 +203,10 @@ func TestNewTTYRestoreHandler(t *testing.T) {
 }
 
 func TestTTYRestoreHandler_StartTracking_invalidTTY(t *testing.T) {
-	rh := NewTTYRestoreHandler(os.Stdin, nil)
+	rh := NewTTYRestoreHandler(nil, nil)
 	gt := memory.New()
 	if _, err := rh.StartTracking(gt); err == nil {
-		t.Error("StartTracking() should return an error for non-tty file")
+		t.Error("StartTracking() should return an error for nil tty")
 	}
 }
 
