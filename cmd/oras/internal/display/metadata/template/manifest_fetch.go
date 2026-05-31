@@ -18,6 +18,7 @@ package template
 import (
 	"encoding/json"
 	"io"
+	"maps"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
@@ -41,9 +42,17 @@ func NewManifestFetchHandler(out io.Writer, template string) metadata.ManifestFe
 
 // OnFetched is called after the manifest fetch is completed.
 func (h *manifestFetchHandler) OnFetched(path string, desc ocispec.Descriptor, content []byte) error {
-	var manifest map[string]any
-	if err := json.Unmarshal(content, &manifest); err != nil {
-		manifest = nil
+	//convert descriptor to base map
+	base, err := output.ToMap(model.NewFetched(path, desc, nil))
+	if err != nil {
+		return err
 	}
-	return output.ParseAndWrite(h.out, model.NewFetched(path, desc, manifest), h.template)
+
+	//unmarshall manifest body and merge into top level
+	// manifest feilds take precedence
+	var manifest map[string]any
+	if err := json.Unmarshal(content, &manifest); err == nil {
+		maps.Copy(base, manifest)
+	}
+	return output.ParseAndWrite(h.out, base, h.template)
 }
