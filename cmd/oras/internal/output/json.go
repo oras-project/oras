@@ -45,14 +45,19 @@ func PrintJSON(out io.Writer, data []byte, pretty bool) error {
 
 // ToMap converts the data to a map[string]any with json tag as key.
 func ToMap(data any) (map[string]any, error) {
-	// slow but easy
-	content, err := json.Marshal(data)
-	if err != nil {
-		return nil, err
+	switch v := data.(type) {
+	case map[string]any:
+		return v, nil
+	default:
+		// slow but easy
+		content, err := json.Marshal(data)
+		if err != nil {
+			return nil, err
+		}
+		var ret map[string]any
+		if err = json.Unmarshal(content, &ret); err != nil {
+			return nil, err
+		}
+		return ret, nil
 	}
-	var ret map[string]any
-	if err = json.Unmarshal(content, &ret); err != nil {
-		return nil, err
-	}
-	return ret, nil
 }

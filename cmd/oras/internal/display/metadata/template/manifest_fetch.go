@@ -45,5 +45,16 @@ func (h *manifestFetchHandler) OnFetched(path string, desc ocispec.Descriptor, c
 	if err := json.Unmarshal(content, &manifest); err != nil {
 		manifest = nil
 	}
-	return output.ParseAndWrite(h.out, model.NewFetched(path, desc, manifest), h.template)
+	// Build the output structure with descriptor info and manifest content
+	// to allow go-template access to all fields including nested ones
+	output := map[string]any{
+		"descriptor": map[string]any{
+			"mediaType": desc.MediaType,
+			"size":      desc.Size,
+			"digest":    desc.Digest.String(),
+		},
+		"path":    path,
+		"content": manifest,
+	}
+	return output.ParseAndWrite(h.out, output, h.template)
 }
