@@ -11,10 +11,10 @@ require (
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
-	go.yaml.in/yaml/v4 v4.0.0-rc.4
-	golang.org/x/sync v0.20.0
-	golang.org/x/term v0.43.0
-	oras.land/oras-go/v2 v2.6.0
+	go.yaml.in/yaml/v4 v4.0.0-rc.5
+	golang.org/x/sync v0.21.0
+	golang.org/x/term v0.44.0
+	oras.land/oras-go/v2 v2.6.1
 )
 
 require (
@@ -29,5 +29,5 @@ require (
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/spf13/cast v1.9.2 // indirect
 	golang.org/x/crypto v0.45.0 // indirect
-	golang.org/x/sys v0.44.0 // indirect
+	golang.org/x/sys v0.46.0 // indirect
 )
