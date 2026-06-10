@@ -38,8 +38,11 @@ func logoutCmd() *cobra.Command {
 		Short: "Log out from a remote registry",
 		Long: `Log out from a remote registry
 
-Example - Logout:
+Example - Log out from a registry:
   oras logout localhost:5000
+
+Example - Log out from a registry with a custom auth config path:
+  oras logout --registry-config ~/.config/oras/auth.json localhost:5000
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the registry you want to log out"),
 		RunE: func(cmd *cobra.Command, args []string) error {
