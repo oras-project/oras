@@ -20,7 +20,9 @@ set -euo pipefail
 
 REPO="oras-project/oras"
 VERSION_FILE="internal/version/version.go"
-REMOTE="${ORAS_REMOTE:-upstream}"
+# Resolved lazily by detect_remote() once we're inside the repo. Do not assume
+# any particular remote name (e.g. "upstream") here.
+REMOTE=""
 MAIN_RELEASE_VERSION="${ORAS_MAIN_RELEASE_VERSION:-2.0}"
 
 # Colors
@@ -89,6 +91,31 @@ version_from_file() {
     sed -nE 's/.*Version = "([^"]+)".*/\1/p' "$VERSION_FILE"
 }
 
+# Detect the git remote that points at the canonical ORAS repo ($REPO).
+# Honors ORAS_REMOTE when set; otherwise it matches each remote's URL against
+# $REPO so it works no matter what the remote is named (upstream, origin, ...).
+# Matches both SSH (git@github.com:oras-project/oras.git) and HTTPS forms, with
+# or without a trailing ".git".
+detect_remote() {
+    if [ -n "${ORAS_REMOTE:-}" ]; then
+        if ! git remote get-url "$ORAS_REMOTE" &>/dev/null; then
+            error "ORAS_REMOTE is set to '${ORAS_REMOTE}', but no such git remote exists."
+            return 1
+        fi
+        echo "$ORAS_REMOTE"
+        return 0
+    fi
+    local remote url
+    while read -r remote; do
+        url=$(git remote get-url "$remote" 2>/dev/null || echo "")
+        if [[ "$url" == *"${REPO}.git" || "$url" == *"${REPO}" ]]; then
+            echo "$remote"
+            return 0
+        fi
+    done < <(git remote)
+    return 1
+}
+
 ###############################################################################
 # Check prerequisites (gh, gpg, remote)
 ###############################################################################
@@ -110,10 +137,11 @@ check_prerequisites() {
         error "No GPG secret keys found. Import or generate a key."
         exit 1
     fi
-    if ! git remote get-url "$REMOTE" &>/dev/null; then
-        error "Git remote '${REMOTE}' not found. Set ORAS_REMOTE or add the remote."
+    if ! REMOTE=$(detect_remote); then
+        error "Could not find a git remote pointing at ${REPO}. Add it (e.g. 'git remote add upstream https://github.com/${REPO}.git') or set ORAS_REMOTE to the correct remote name."
         exit 1
     fi
+    info "Using git remote '${REMOTE}' for ${REPO}"
 }
 
 ###############################################################################
@@ -158,8 +186,10 @@ do_prep() {
     # Show the diff
     git diff "$VERSION_FILE"
 
-    # Create branch, commit, push, PR
+    # Create branch, commit, push, PR. The PR targets the branch we are
+    # releasing from: 'main' for the main series, or 'release-X.Y' for patches.
     local branch="chore/release-v${version}"
+    local base_branch="$current_branch"
     info "Creating branch ${branch}..."
     run git checkout -b "$branch"
     run git add "$VERSION_FILE"
@@ -183,12 +213,12 @@ This PR bumps the version to v${version} for the upcoming release.
 ### Checklist
 - [ ] Version updated in \`internal/version/version.go\`
 - [ ] CI checks pass
-- [ ] Vote called in Slack
-- [ ] Vote passed (3+ binding votes, no vetoes)
+- [ ] Vote called in the ORAS Slack channel
+- [ ] Super-majority of approval from ORAS maintainers
 EOF
 )" \
             --head "$branch" \
-            --base main)
+            --base "$base_branch")
     fi
     success "PR created: ${pr_url}"
 
@@ -212,11 +242,10 @@ Hi everyone, I'd like to call a vote for the release of ORAS CLI v${version}.
 *Release commit:* \`${sha}\`
 
 Please review the PR and vote:
-  :+1: (binding) — approve
-  :-1: (binding) — veto (please provide reason)
+  :+1: — approve
+  :-1: — request changes (please provide a reason)
 
-The vote will remain open for at least 72 hours.
-A minimum of 3 binding +1 votes and no vetoes is required.
+A super-majority of approval from ORAS maintainers is required before the PR can be merged.
 EOF
     echo -e "${CYAN}---${NC}"
     echo ""
@@ -548,7 +577,9 @@ Flags:
   --dry-run                   Print actions without executing them
 
 Environment:
-  ORAS_REMOTE                 Git remote name (default: upstream)
+  ORAS_REMOTE                 Git remote name for ${REPO}
+                              (default: auto-detected from remote URLs)
+  ORAS_MAIN_RELEASE_VERSION   Major.minor series released from 'main' (default: ${MAIN_RELEASE_VERSION})
 
 Examples:
   scripts/release.sh prep 1.3.0
