@@ -30,6 +30,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
+	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/graph"
 	"oras.land/oras/internal/registryutil"
@@ -43,8 +44,9 @@ type attachOptions struct {
 	option.Platform
 	option.Terminal
 
-	artifactType string
-	concurrency  int
+	artifactType      string
+	manifestConfigRef string
+	concurrency       int
 	// Deprecated: verbose is deprecated and will be removed in the future.
 	verbose bool
 }
@@ -92,6 +94,9 @@ Example - Attach file to the manifest tagged 'v1' in an OCI image layout folder 
 
 Example - Attach file to the manifest tagged 'example.com:v1' in an OCI image layout folder 'layout-dir':
   oras attach --artifact-type doc/example --oci-layout-path layout-dir example.com:v1 hi.txt
+
+Example - Attach file 'hi.txt' with the custom manifest config "config.json" of the custom media type "application/vnd.me.config":
+  oras attach --artifact-type doc/example --config config.json:application/vnd.me.config localhost:5000/hello:v1 hi.txt
 `,
 		Args: oerrors.CheckArgs(argument.AtLeast(1), "the destination artifact for attaching."),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -100,6 +105,9 @@ Example - Attach file to the manifest tagged 'example.com:v1' in an OCI image la
 			err := option.Parse(cmd, &opts)
 			if err == nil {
 				opts.DisableTTY(opts.Debug, false)
+				if err = oerrors.CheckMutuallyExclusiveFlags(cmd.Flags(), "config", "platform"); err != nil {
+					return err
+				}
 				if err = opts.EnsureReferenceNotEmpty(cmd, true); err == nil {
 					return nil
 				}
@@ -114,13 +122,14 @@ Example - Attach file to the manifest tagged 'example.com:v1' in an OCI image la
 			}
 			return err
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts.Printer.Verbose = opts.verbose
 			return runAttach(cmd, &opts)
 		},
 	}
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
+	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "`path` of image config file")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
 	opts.FlagDescription = "attach to an arch-specific subject"
@@ -130,6 +139,17 @@ Example - Attach file to the manifest tagged 'example.com:v1' in an OCI image la
 	opts.SetTypes(option.FormatTypeText, option.FormatTypeJSON, option.FormatTypeGoTemplate)
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
+}
+
+// buildAttachPackOpts assembles a PackManifestOptions from the resolved
+// attach options, subject descriptor, and layer descriptors.
+func buildAttachPackOpts(opts *attachOptions, subject ocispec.Descriptor, descs []ocispec.Descriptor) oras.PackManifestOptions {
+	return oras.PackManifestOptions{
+		Subject:             &subject,
+		ConfigAnnotations:   opts.Annotations[option.AnnotationConfig],
+		ManifestAnnotations: opts.Annotations[option.AnnotationManifest],
+		Layers:              descs,
+	}
 }
 
 func runAttach(cmd *cobra.Command, opts *attachOptions) error {
@@ -182,16 +202,24 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	graphCopyOptions.PreCopy = statusHandler.PreCopy
 	graphCopyOptions.PostCopy = statusHandler.PostCopy
 
-	packOpts := oras.PackManifestOptions{
-		Subject:             &subject,
-		ManifestAnnotations: opts.Annotations[option.AnnotationManifest],
-		Layers:              descs,
+	packOpts := buildAttachPackOpts(opts, subject, descs)
+	if opts.manifestConfigRef != "" {
+		path, cfgMediaType, err := fileref.Parse(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
+		if err != nil {
+			return err
+		}
+		desc, err := addFile(ctx, store, option.AnnotationConfig, cfgMediaType, path)
+		if err != nil {
+			return err
+		}
+		desc.Annotations = opts.Annotations[option.AnnotationConfig]
+		packOpts.ConfigDescriptor = &desc
 	}
 	pack := func() (ocispec.Descriptor, error) {
 		return oras.PackManifest(ctx, store, oras.PackManifestVersion1_1, opts.artifactType, packOpts)
 	}
 
-	copy := func(root ocispec.Descriptor) error {
+	copyFunc := func(root ocispec.Descriptor) error {
 		graphCopyOptions.FindSuccessors = func(ctx context.Context, fetcher content.Fetcher, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 			if content.Equal(node, root) {
 				// skip duplicated Resolve on subject
@@ -211,7 +239,7 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	}
 
 	// Attach
-	root, err := doPush(dst, stopTrack, pack, copy)
+	root, err := doPush(dst, stopTrack, pack, copyFunc)
 	if err != nil {
 		return err
 	}

@@ -97,7 +97,7 @@ Example - Fetch raw manifest tagged 'example.com:v1' from an OCI image layout fo
 			return option.Parse(cmd, &opts)
 		},
 		Aliases: []string{"get", "show"},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return fetchManifest(cmd, &opts)
 		},
 	}

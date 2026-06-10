@@ -269,13 +269,13 @@ func (bh *TTYBackupHandler) StopTracking() error {
 }
 
 // OnCopySkipped implements OnCopySkipped of BackupHandler.
-func (bh *TTYBackupHandler) OnCopySkipped(ctx context.Context, desc ocispec.Descriptor) error {
+func (bh *TTYBackupHandler) OnCopySkipped(_ context.Context, desc ocispec.Descriptor) error {
 	bh.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
 	return bh.tracked.Report(desc, progress.StateExists)
 }
 
 // PreCopy implements PreCopy of BackupHandler.
-func (bh *TTYBackupHandler) PreCopy(ctx context.Context, desc ocispec.Descriptor) error {
+func (bh *TTYBackupHandler) PreCopy(_ context.Context, _ ocispec.Descriptor) error {
 	return nil
 }
 
@@ -335,13 +335,13 @@ func (rh *TTYRestoreHandler) StopTracking() error {
 }
 
 // OnCopySkipped implements OnCopySkipped of RestoreHandler.
-func (rh *TTYRestoreHandler) OnCopySkipped(ctx context.Context, desc ocispec.Descriptor) error {
+func (rh *TTYRestoreHandler) OnCopySkipped(_ context.Context, desc ocispec.Descriptor) error {
 	rh.committed.Store(desc.Digest.String(), desc.Annotations[ocispec.AnnotationTitle])
 	return rh.tracked.Report(desc, progress.StateExists)
 }
 
 // PreCopy implements PreCopy of RestoreHandler.
-func (rh *TTYRestoreHandler) PreCopy(ctx context.Context, desc ocispec.Descriptor) error {
+func (rh *TTYRestoreHandler) PreCopy(_ context.Context, _ ocispec.Descriptor) error {
 	return nil
 }
 
