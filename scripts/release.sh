@@ -497,12 +497,15 @@ do_publish() {
     fi
     success "Signatures uploaded"
 
-    # Get GPG key fingerprint for release notes
-    local fingerprint
-    fingerprint=$(gpg --list-secret-keys --keyid-format LONG 2>/dev/null | grep sec | head -1 | awk '{print $2}' | cut -d/ -f2)
+    # Get GPG fingerprint and signer handle for release notes
+    local fingerprint signer
+    fingerprint=$(gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '/^fpr:/ {print $10; exit}')
+    signer=$(gh api user --jq '.login' 2>/dev/null || echo "")
     if [ -n "$fingerprint" ]; then
         info "Adding signing key info to release notes..."
-        local note="## Verification\n\nAll release artifacts are signed with GPG key \`${fingerprint}\`. Signatures (\`.asc\` files) are attached to this release.\n\nPublic keys are available in the [KEYS](https://github.com/${REPO}/blob/main/KEYS) file."
+        local signed_by="."
+        [ -n "$signer" ] && signed_by=" by [@${signer}](https://github.com/${signer}) (key: https://github.com/${signer}.gpg)."
+        local note="## Verification\n\nThis release was signed with GPG key \`${fingerprint}\`${signed_by} Signatures (\`.asc\` files) are attached to this release.\n\nPublic keys are available in the [KEYS](https://github.com/${REPO}/blob/main/KEYS) file."
         if [ "$DRY_RUN" = true ]; then
             info "[DRY-RUN] Would append signing info to release notes"
         else
