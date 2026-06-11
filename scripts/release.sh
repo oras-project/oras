@@ -38,17 +38,20 @@ warn()    { echo -e "${YELLOW}[MANUAL]${NC} $*"; }
 error()   { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 
 DRY_RUN=false
+POSITIONAL_ARGS=()
 
-# Parse global flags
+# Parse global flags, leaving non-flag arguments in the POSITIONAL_ARGS global.
+# This sets DRY_RUN in the current shell, so it MUST be called directly and not
+# in a command substitution / subshell, or the assignment would be lost (which
+# previously caused --dry-run to be silently ignored).
 parse_global_flags() {
-    local args=()
+    POSITIONAL_ARGS=()
     for arg in "$@"; do
         case "$arg" in
             --dry-run) DRY_RUN=true ;;
-            *) args+=("$arg") ;;
+            *) POSITIONAL_ARGS+=("$arg") ;;
         esac
     done
-    echo "${args[@]:-}"
 }
 
 run() {
@@ -230,7 +233,7 @@ EOF
 
     # Print Slack vote template
     echo ""
-    warn "Copy the following message to Slack #oras to call for a vote:"
+    warn "Copy the following message to the Slack #oras-maintainers channel to call for a vote:"
     echo ""
     echo -e "${CYAN}---${NC}"
     cat <<EOF
@@ -594,10 +597,8 @@ EOF
 }
 
 main() {
-    local args
-    args=$(parse_global_flags "$@")
-    # Re-split args
-    set -- $args
+    parse_global_flags "$@"
+    set -- ${POSITIONAL_ARGS[@]+"${POSITIONAL_ARGS[@]}"}
 
     local phase="${1:-}"
     local version="${2:-}"
