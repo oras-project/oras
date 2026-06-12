@@ -110,7 +110,7 @@ Example - Pull artifact files tagged 'example.com:v1' from an OCI image layout f
 			opts.DisableTTY(opts.Debug, false)
 			return nil
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts.Printer.Verbose = opts.verbose
 			return runPull(cmd, &opts)
 		},
@@ -269,7 +269,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 		return ret, nil
 	}
 
-	opts.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
+	opts.PreCopy = func(_ context.Context, desc ocispec.Descriptor) error {
 		return notifyOnce(&printed, desc, statusHandler.OnNodeDownloading)
 	}
 	opts.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {

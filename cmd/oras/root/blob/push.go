@@ -96,7 +96,7 @@ Example - Push blob 'hi.txt' into an OCI image layout folder 'layout-dir':
 			opts.DisableTTY(opts.Debug, false)
 			return nil
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts.Printer.Verbose = opts.verbose && !opts.OutputDescriptor
 			return pushBlob(cmd, &opts)
 		},

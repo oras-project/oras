@@ -22,8 +22,8 @@ import (
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
-func (t *Test) ApplyFlags(fs *pflag.FlagSet) {
-	*t.CntPtr += 1
+func (t *Test) ApplyFlags(_ *pflag.FlagSet) {
+	*t.CntPtr++
 }
 
 func TestApplyFlags(t *testing.T) {

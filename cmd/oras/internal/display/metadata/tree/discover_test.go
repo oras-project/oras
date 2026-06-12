@@ -55,7 +55,6 @@ func TestDiscoverHandler_OnDiscovered(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create temporary file: %v", err)
 		}
-		defer func() { _ = os.Remove(tmp.Name()) }()
 		defer func() { _ = tmp.Close() }()
 
 		h := NewDiscoverHandler(&buf, path, subjectDesc, true, tmp)

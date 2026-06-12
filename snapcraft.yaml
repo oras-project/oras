@@ -31,6 +31,7 @@ parts:
     source-type: git
     source-tag: $SNAPCRAFT_PROJECT_VERSION
     build-environment:
+      - GOTOOLCHAIN: "local"
       - on amd64 to {ARCH}:
         - TARGET_ARCH: "{ARCH}"
     build-snaps:
