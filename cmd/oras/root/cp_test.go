@@ -29,6 +29,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
@@ -200,6 +201,121 @@ func Test_doCopy_mounted(t *testing.T) {
 	}
 	// validate
 	if err = testutils.MatchPty(pty, child, "Mounted", configMediaType, "100.00%", configDigest); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func Test_doCopy_mountFallback(t *testing.T) {
+	// Test that copy falls back to regular upload when mount fails with 401/403
+	repoFromFallback := "from-fallback"
+	repoToFallback := "to-fallback"
+
+	var uploadSessionStarted atomic.Bool
+	var blobUploaded atomic.Bool
+
+	// test server that returns 401 for mount but allows regular upload
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == fmt.Sprintf("/v2/%s/manifests/%s", repoFromFallback, manifestDigest) &&
+			r.Method == http.MethodHead:
+			w.Header().Set("Content-Type", ocispec.MediaTypeImageManifest)
+			w.Header().Set("Content-Length", fmt.Sprint(len(manifestContent)))
+			w.WriteHeader(http.StatusOK)
+		case r.URL.Path == fmt.Sprintf("/v2/%s/manifests/%s", repoFromFallback, manifestDigest) &&
+			r.Method == http.MethodGet:
+			w.Header().Set("Content-Type", ocispec.MediaTypeImageManifest)
+			w.Header().Set("Content-Length", fmt.Sprint(len(manifestContent)))
+			_, _ = w.Write(manifestContent)
+		case r.URL.Path == fmt.Sprintf("/v2/%s/blobs/%s", repoFromFallback, configDigest) &&
+			r.Method == http.MethodGet:
+			w.Header().Set("Content-Type", "application/octet-stream")
+			w.Header().Set("Content-Length", fmt.Sprint(len(configContent)))
+			_, _ = w.Write(configContent)
+		case r.URL.Path == fmt.Sprintf("/v2/%s/manifests/%s", repoToFallback, manifestDigest) &&
+			r.Method == http.MethodHead:
+			w.WriteHeader(http.StatusNotFound)
+		case r.URL.Path == fmt.Sprintf("/v2/%s/blobs/%s", repoToFallback, configDigest) &&
+			r.Method == http.MethodHead:
+			// check if blob exists before upload - not found initially
+			if blobUploaded.Load() {
+				w.Header().Set("Content-Type", "application/octet-stream")
+				w.Header().Set("Content-Length", fmt.Sprint(len(configContent)))
+				w.WriteHeader(http.StatusOK)
+			} else {
+				w.WriteHeader(http.StatusNotFound)
+			}
+		case r.URL.Path == fmt.Sprintf("/v2/%s/blobs/uploads/", repoToFallback) &&
+			r.URL.Query().Get("mount") != "" &&
+			r.Method == http.MethodPost:
+			// Return 401 Unauthorized for mount requests to simulate permission denial
+			w.WriteHeader(http.StatusUnauthorized)
+		case r.URL.Path == fmt.Sprintf("/v2/%s/blobs/uploads/", repoToFallback) &&
+			r.URL.Query().Get("mount") == "" &&
+			r.Method == http.MethodPost:
+			// Regular blob upload initiation - allow this
+			uploadSessionStarted.Store(true)
+			w.Header().Set("Location", fmt.Sprintf("/v2/%s/blobs/uploads/session123", repoToFallback))
+			w.WriteHeader(http.StatusAccepted)
+		case strings.HasPrefix(r.URL.Path, fmt.Sprintf("/v2/%s/blobs/uploads/", repoToFallback)) &&
+			r.Method == http.MethodPut:
+			// Blob upload completion
+			blobUploaded.Store(true)
+			w.Header().Set("Docker-Content-Digest", configDigest)
+			w.WriteHeader(http.StatusCreated)
+		case r.URL.Path == fmt.Sprintf("/v2/%s/manifests/%s", repoToFallback, manifestDigest) &&
+			r.Method == http.MethodPut:
+			w.WriteHeader(http.StatusCreated)
+		case r.URL.Path == fmt.Sprintf("/v2/%s/manifests/%s", repoToFallback, manifestDigest) &&
+			r.Method == http.MethodGet:
+			w.Header().Set("Content-Type", ocispec.MediaTypeImageManifest)
+			w.Header().Set("Content-Length", fmt.Sprint(len(manifestContent)))
+			_, _ = w.Write(manifestContent)
+		default:
+			w.WriteHeader(http.StatusNotAcceptable)
+		}
+	}))
+	defer ts.Close()
+
+	uri, _ := url.Parse(ts.URL)
+	testHost := "localhost:" + uri.Port()
+
+	// prepare
+	pty, child, err := testutils.NewPty()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = child.Close() }()
+	var opts copyOptions
+	opts.TTY = child
+	opts.From.Reference = manifestDigest
+	// mocked repositories
+	from, err := remote.NewRepository(fmt.Sprintf("%s/%s", testHost, repoFromFallback))
+	if err != nil {
+		t.Fatal(err)
+	}
+	from.PlainHTTP = true
+	to, err := remote.NewRepository(fmt.Sprintf("%s/%s", testHost, repoToFallback))
+	if err != nil {
+		t.Fatal(err)
+	}
+	to.PlainHTTP = true
+	handler := status.NewTTYCopyHandler(opts.TTY)
+
+	// test
+	_, err = doCopy(context.Background(), handler, from, to, &opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// validate that regular upload was used (fallback succeeded)
+	if !uploadSessionStarted.Load() {
+		t.Error("expected regular upload session to be started after mount failure")
+	}
+	if !blobUploaded.Load() {
+		t.Error("expected blob to be uploaded via regular upload after mount failure")
+	}
+	// validate output shows "Copied" instead of "Mounted"
+	if err = testutils.MatchPty(pty, child, "Copied", configMediaType, "100.00%", configDigest); err != nil {
 		t.Fatal(err)
 	}
 }

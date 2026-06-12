@@ -18,7 +18,9 @@ package root
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
 	"slices"
 	"strings"
 
@@ -30,6 +32,7 @@ import (
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/errcode"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
@@ -177,6 +180,7 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 			return []string{mountRepo}, nil
 		}
 	}
+
 	dst, err = copyHandler.StartTracking(dst)
 	if err != nil {
 		return desc, err
@@ -187,6 +191,8 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 			err = stopErr
 		}
 	}()
+
+	// Hook up handlers
 	extendedCopyGraphOptions.OnCopySkipped = copyHandler.OnCopySkipped
 	extendedCopyGraphOptions.PreCopy = copyHandler.PreCopy
 	extendedCopyGraphOptions.PostCopy = copyHandler.PostCopy
@@ -194,27 +200,50 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 
 	rOpts := oras.DefaultResolveOptions
 	rOpts.TargetPlatform = opts.Platform.Platform
-	if opts.recursive {
-		desc, err = oras.Resolve(ctx, src, opts.From.Reference, rOpts)
-		if err != nil {
-			return ocispec.Descriptor{}, fmt.Errorf("failed to resolve %s: %w", opts.From.Reference, err)
+
+	// Define the execution logic as a closure so we can retry it
+	executeCopy := func(copyOpts oras.ExtendedCopyGraphOptions) (ocispec.Descriptor, error) {
+		if opts.recursive {
+			root, resolveErr := oras.Resolve(ctx, src, opts.From.Reference, rOpts)
+			if resolveErr != nil {
+				return ocispec.Descriptor{}, fmt.Errorf("failed to resolve %s: %w", opts.From.Reference, resolveErr)
+			}
+			return root, recursiveCopy(ctx, src, dst, opts.To.Reference, root, copyOpts)
 		}
-		err = recursiveCopy(ctx, src, dst, opts.To.Reference, desc, extendedCopyGraphOptions)
-	} else {
+
 		if opts.To.Reference == "" {
-			desc, err = oras.Resolve(ctx, src, opts.From.Reference, rOpts)
-			if err != nil {
-				return ocispec.Descriptor{}, fmt.Errorf("failed to resolve %s: %w", opts.From.Reference, err)
+			root, resolveErr := oras.Resolve(ctx, src, opts.From.Reference, rOpts)
+			if resolveErr != nil {
+				return ocispec.Descriptor{}, fmt.Errorf("failed to resolve %s: %w", opts.From.Reference, resolveErr)
 			}
-			err = oras.CopyGraph(ctx, src, dst, desc, extendedCopyGraphOptions.CopyGraphOptions)
-		} else {
-			copyOptions := oras.CopyOptions{
-				CopyGraphOptions: extendedCopyGraphOptions.CopyGraphOptions,
+			return root, oras.CopyGraph(ctx, src, dst, root, copyOpts.CopyGraphOptions)
+		}
+
+		// Standard copy
+		stdCopyOpts := oras.CopyOptions{
+			CopyGraphOptions: copyOpts.CopyGraphOptions,
+		}
+		if opts.Platform.Platform != nil {
+			stdCopyOpts.WithTargetPlatform(opts.Platform.Platform)
+		}
+		return oras.Copy(ctx, src, opts.From.Reference, dst, opts.To.Reference, stdCopyOpts)
+	}
+
+	desc, err = executeCopy(extendedCopyGraphOptions)
+
+	// Mount failed due to permissions, retry without mounting
+	if err != nil && extendedCopyGraphOptions.MountFrom != nil {
+		var copyErr *oras.CopyError
+		if errors.As(err, &copyErr) && copyErr.Op == "Mount" {
+			var errResp *errcode.ErrorResponse
+			if errors.As(copyErr.Err, &errResp) {
+				if errResp.StatusCode == http.StatusUnauthorized ||
+					errResp.StatusCode == http.StatusForbidden {
+					// Disable mounting and retry
+					extendedCopyGraphOptions.MountFrom = nil
+					desc, err = executeCopy(extendedCopyGraphOptions)
+				}
 			}
-			if opts.Platform.Platform != nil {
-				copyOptions.WithTargetPlatform(opts.Platform.Platform)
-			}
-			desc, err = oras.Copy(ctx, src, opts.From.Reference, dst, opts.To.Reference, copyOptions)
 		}
 	}
 	// leave the CopyError to oerrors.Modifier for prefix processing
