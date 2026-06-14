@@ -253,7 +253,7 @@ func TestRecursiveFindReferrers(t *testing.T) {
 		descA := ocispec.Descriptor{MediaType: ocispec.MediaTypeImageManifest, Digest: digest.FromString("A"), Size: 1}
 		descB := ocispec.Descriptor{MediaType: ocispec.MediaTypeImageManifest, Digest: digest.FromString("B"), Size: 1}
 		opts := oras.DefaultExtendedCopyGraphOptions
-		opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		opts.FindPredecessors = func(_ context.Context, _ content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 			switch desc.Digest {
 			case descA.Digest:
 				return []ocispec.Descriptor{descB}, nil

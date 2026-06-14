@@ -32,7 +32,7 @@ type cyclicReferrerTarget struct {
 	referrers map[digest.Digest][]ocispec.Descriptor
 }
 
-func (t *cyclicReferrerTarget) Referrers(ctx context.Context, desc ocispec.Descriptor, artifactType string, fn func(referrers []ocispec.Descriptor) error) error {
+func (t *cyclicReferrerTarget) Referrers(_ context.Context, desc ocispec.Descriptor, _ string, fn func(referrers []ocispec.Descriptor) error) error {
 	return fn(t.referrers[desc.Digest])
 }
 
@@ -57,7 +57,7 @@ type recordingDiscoverHandler struct {
 	count int
 }
 
-func (h *recordingDiscoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) error {
+func (h *recordingDiscoverHandler) OnDiscovered(_, _ ocispec.Descriptor) error {
 	h.count++
 	return nil
 }
