@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 
@@ -153,13 +154,22 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 	if err != nil {
 		return err
 	}
-	if err := fetchAllReferrers(ctx, repo, desc, opts.artifactType, handler, opts.depth); err != nil {
+	if err := fetchAllReferrers(ctx, repo, desc, opts.artifactType, handler, opts.depth, make(map[digest.Digest]bool)); err != nil {
 		return err
 	}
 	return handler.Render()
 }
 
-func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, handler metadata.DiscoverHandler, depth int) error {
+// fetchAllReferrers recursively discovers the referrers of desc. visited tracks
+// the descriptors already traversed so that a cyclic referrer graph (e.g.
+// A -> B -> A), which a malicious registry can craft, does not cause unbounded
+// recursion.
+func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, handler metadata.DiscoverHandler, depth int, visited map[digest.Digest]bool) error {
+	if visited[desc.Digest] {
+		return nil
+	}
+	visited[desc.Digest] = true
+
 	results, err := registry.Referrers(ctx, repo, desc, artifactType)
 	if err != nil {
 		return err
@@ -180,7 +190,7 @@ func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc 
 			Digest:    r.Digest,
 			Size:      r.Size,
 			MediaType: r.MediaType,
-		}, artifactType, handler, nextDepth); err != nil {
+		}, artifactType, handler, nextDepth, visited); err != nil {
 			return err
 		}
 	}

@@ -244,6 +244,43 @@ func TestRecursiveFindReferrers(t *testing.T) {
 		}
 	})
 
+	t.Run("cyclic referrer graph terminates", func(t *testing.T) {
+		// A content-addressable store cannot hold a real cycle, so inject a
+		// FindPredecessors that reports a cyclic referrer graph A -> B -> A,
+		// as a malicious registry could. Without cycle detection this loops
+		// forever; with it the traversal terminates and each node is collected
+		// exactly once.
+		descA := ocispec.Descriptor{MediaType: ocispec.MediaTypeImageManifest, Digest: digest.FromString("A"), Size: 1}
+		descB := ocispec.Descriptor{MediaType: ocispec.MediaTypeImageManifest, Digest: digest.FromString("B"), Size: 1}
+		opts := oras.DefaultExtendedCopyGraphOptions
+		opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			switch desc.Digest {
+			case descA.Digest:
+				return []ocispec.Descriptor{descB}, nil
+			case descB.Digest:
+				return []ocispec.Descriptor{descA}, nil
+			default:
+				return nil, nil
+			}
+		}
+		gotReferrers, err := RecursiveFindReferrers(ctx, target, []ocispec.Descriptor{descA}, opts)
+		if err != nil {
+			t.Fatalf("RecursiveFindReferrers unexpected error: %v", err)
+		}
+		wantReferrers := map[digest.Digest]ocispec.Descriptor{
+			descA.Digest: descA,
+			descB.Digest: descB,
+		}
+		if len(gotReferrers) != len(wantReferrers) {
+			t.Fatalf("RecursiveFindReferrers got %d referrers, want %d", len(gotReferrers), len(wantReferrers))
+		}
+		for _, got := range gotReferrers {
+			if _, ok := wantReferrers[got.Digest]; !ok {
+				t.Errorf("RecursiveFindReferrers got unexpected referrer %v", got)
+			}
+		}
+	})
+
 	t.Run("find referrers for manifest without referrers", func(t *testing.T) {
 		gotReferrers, err := RecursiveFindReferrers(ctx, target, []ocispec.Descriptor{referrerDesc3_1_1}, oras.DefaultExtendedCopyGraphOptions)
 		if err != nil {

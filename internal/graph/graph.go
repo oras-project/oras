@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"sync"
 
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/sync/errgroup"
 	"oras.land/oras-go/v2"
@@ -145,13 +146,25 @@ func RecursiveFindReferrers(ctx context.Context, src oras.ReadOnlyGraphTarget, d
 		}
 	}
 	var allReferrers []ocispec.Descriptor
+	// visited tracks descriptors that have already been collected so that a
+	// cyclic referrer graph (e.g. A -> B -> A), which a malicious registry can
+	// craft, does not cause unbounded recursion and memory growth.
+	visited := make(map[digest.Digest]bool)
 	for len(descs) > 0 {
 		referrers, err := FindPredecessors(ctx, src, descs, opts)
 		if err != nil {
 			return nil, err
 		}
-		allReferrers = append(allReferrers, referrers...)
-		descs = referrers
+		var next []ocispec.Descriptor
+		for _, referrer := range referrers {
+			if visited[referrer.Digest] {
+				continue
+			}
+			visited[referrer.Digest] = true
+			next = append(next, referrer)
+		}
+		allReferrers = append(allReferrers, next...)
+		descs = next
 	}
 	return allReferrers, nil
 }
