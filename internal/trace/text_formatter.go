@@ -27,8 +27,8 @@ import (
 // TextFormatter formats logs into text.
 type TextFormatter struct{}
 
-// logEntrySeperator is the separator between log entries.
-const logEntrySeperator = "\n\n" // two empty lines
+// logEntrySeparator is the separator between log entries.
+const logEntrySeparator = "\n\n" // two empty lines
 
 // Format renders a single log entry.
 func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
@@ -45,6 +45,6 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		}
 	}
 
-	buf.WriteString(logEntrySeperator)
+	buf.WriteString(logEntrySeparator)
 	return buf.Bytes(), nil
 }
