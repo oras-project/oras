@@ -170,7 +170,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 	}
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "`path` of image config file")
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
-	cmd.Flags().BoolVarP(&opts.force, "force", "", false, "force a deep verification of the destination graph before tagging the root; useful when the destination is partially populated (e.g. by a registry cache)")
+	cmd.Flags().BoolVarP(&opts.force, "force", "", false, "force a deep traversal of the destination graph before tagging the root; useful when the destination is partially populated (e.g. by a registry cache)")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
 	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
@@ -251,10 +251,10 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	}
 	// Keep the unwrapped destination for scope hinting; WithScopeHint relies
 	// on a concrete *remote.Repository type assertion and would silently
-	// skip the hint if passed the VerifyingTarget wrapper.
+	// skip the hint if passed the TraversingTarget wrapper.
 	scopeHintDst := originalDst
 	if opts.force {
-		originalDst = &contentutil.VerifyingTarget{GraphTarget: originalDst}
+		originalDst = &contentutil.TraversingTarget{GraphTarget: originalDst}
 	}
 	dst, stopTrack, err := statusHandler.TrackTarget(originalDst)
 	if err != nil {

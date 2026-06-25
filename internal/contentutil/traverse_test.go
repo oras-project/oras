@@ -63,7 +63,7 @@ func (f *fakeGraphTarget) Exists(_ context.Context, _ ocispec.Descriptor) (bool,
 	return f.existsResult, f.existsErr
 }
 
-func TestVerifyingTarget_Exists(t *testing.T) {
+func TestTraversingTarget_Exists(t *testing.T) {
 	tests := []struct {
 		name             string
 		mediaType        string
@@ -113,7 +113,7 @@ func TestVerifyingTarget_Exists(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := &fakeGraphTarget{existsResult: tt.underlyingExists, existsErr: tt.underlyingErr}
-			v := &VerifyingTarget{GraphTarget: f}
+			v := &TraversingTarget{GraphTarget: f}
 			got, err := v.Exists(context.Background(), ocispec.Descriptor{
 				MediaType: tt.mediaType,
 				Digest:    digest.FromString("x"),

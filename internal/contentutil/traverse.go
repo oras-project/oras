@@ -38,7 +38,7 @@ func IsManifestMediaType(mediaType string) bool {
 	return false
 }
 
-// VerifyingTarget wraps an [oras.GraphTarget] and reports manifest
+// TraversingTarget wraps an [oras.GraphTarget] and reports manifest
 // descriptors as not yet present in the destination. This defeats the
 // sub-DAG skip in oras-go's copyGraph (where any descriptor reported as
 // existing causes its entire successor tree to be skipped) and forces
@@ -47,14 +47,14 @@ func IsManifestMediaType(mediaType string) bool {
 //
 // Blob existence checks still short-circuit, so layers that are already
 // in the destination are not re-uploaded.
-type VerifyingTarget struct {
+type TraversingTarget struct {
 	oras.GraphTarget
 }
 
 // Exists returns false for manifest descriptors regardless of the
 // underlying target's state; for non-manifest descriptors it delegates
 // to the wrapped target.
-func (v *VerifyingTarget) Exists(ctx context.Context, target ocispec.Descriptor) (bool, error) {
+func (v *TraversingTarget) Exists(ctx context.Context, target ocispec.Descriptor) (bool, error) {
 	if IsManifestMediaType(target.MediaType) {
 		return false, nil
 	}

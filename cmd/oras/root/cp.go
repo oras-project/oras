@@ -118,7 +118,7 @@ Example - Copy a multi-arch image to a destination that may be partially populat
 		},
 	}
 	cmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "[Preview] recursively copy the artifact and its referrer artifacts")
-	cmd.Flags().BoolVarP(&opts.force, "force", "", false, "force a deep verification of the destination graph before tagging the root; useful when the destination is partially populated (e.g. by a registry cache)")
+	cmd.Flags().BoolVarP(&opts.force, "force", "", false, "force a deep traversal of the destination graph before tagging the root; useful when the destination is partially populated (e.g. by a registry cache)")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
 	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
@@ -194,7 +194,7 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 		// updated. This handles destinations that hold only a partial copy
 		// of the artifact (e.g. registries with a pull-through cache that
 		// has been populated from a single platform).
-		dst = &contentutil.VerifyingTarget{GraphTarget: dst}
+		dst = &contentutil.TraversingTarget{GraphTarget: dst}
 	}
 	dst, err = copyHandler.StartTracking(dst)
 	if err != nil {

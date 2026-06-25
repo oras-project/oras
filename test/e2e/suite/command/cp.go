@@ -415,10 +415,15 @@ var _ = Describe("1.1 registry users:", func() {
 			ORAS("manifest", "fetch", Flags.Layout, missingARM64).ExpectFailure().Exec()
 			ORAS("manifest", "fetch", Flags.Layout, missingARMv7).ExpectFailure().Exec()
 
-			// Without --force the second cp would short-circuit on
-			// Exists(index)=true and leave the missing platforms in
-			// place; --force forces a deep walk so they get pushed
-			// before the tag is updated.
+			// Negative control: without --force, cp short-circuits on
+			// Exists(index)=true, skips the sub-DAG, and leaves the
+			// missing platforms absent.
+			ORAS("cp", src, dst, Flags.ToLayout).Exec()
+			ORAS("manifest", "fetch", Flags.Layout, missingARM64).ExpectFailure().Exec()
+			ORAS("manifest", "fetch", Flags.Layout, missingARMv7).ExpectFailure().Exec()
+
+			// With --force, cp performs a deep traversal so the missing
+			// platforms get pushed before the tag is updated.
 			ORAS("cp", src, dst, Flags.ToLayout, "--force").Exec()
 
 			// The index in the layout must match the source.
