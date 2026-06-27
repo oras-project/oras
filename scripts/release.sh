@@ -196,7 +196,7 @@ do_prep() {
     info "Creating branch ${branch}..."
     run git checkout -b "$branch"
     run git add "$VERSION_FILE"
-    run git commit -m "bump: tag and release ORAS CLI v${version}"
+    run git commit -s -m "bump: tag and release ORAS CLI v${version}"
     run git push "${REMOTE}" "$branch"
 
     info "Creating pull request..."
