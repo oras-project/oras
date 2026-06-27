@@ -28,80 +28,88 @@ import (
 var (
 	errAnnotationFormat      = errors.New("annotation value doesn't match the required format")
 	errAnnotationDuplication = errors.New("duplicate annotation key")
-	errAnnotationLayerKey    = errors.New("annotation key must not be empty after the file prefix")
+	errAnnotationTarget      = errors.New("annotation target must not be empty before the colon")
+	errAnnotationLayerKey    = errors.New("annotation key must not be empty after the target")
 )
 
 // Annotation option struct.
 type Annotation struct {
 	// ManifestAnnotations contains raw input annotation flags.
 	// Two formats are accepted:
-	//   "key=value"               → manifest-level annotation
-	//   "filename:key=value"      → layer-level annotation bound to filename
+	//   "key=value"             → manifest-level annotation
+	//   "target:key=value"      → annotation scoped to an explicit target,
+	//                             which is a filename (layer), "$config", or
+	//                             "$manifest"
 	ManifestAnnotations []string
 
 	// Annotations contains parsed annotations keyed by target:
-	// "$manifest" → manifest-level, or a filename → layer-level.
+	// "$manifest" → manifest-level, "$config" → config-level, or a filename
+	// → layer-level.
 	Annotations map[string]map[string]string
 }
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Annotation) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringArrayVarP(&opts.ManifestAnnotations, "annotation", "a", nil,
-		`manifest annotations (e.g. "key=value") or layer annotations (e.g. "filename:key=value")`)
+		`annotation in the format of "key=value"; prefix a target to scope it, e.g. "filename:key=value" (layer), "$config:key=value" (config), or "$manifest:key=value" (manifest)`)
 }
 
 // Parse parses the input annotation flags.
 //
 // Accepted formats:
 //   - "key=value"           → manifest-level annotation
-//   - "filename:key=value"  → layer-level annotation bound to filename
+//   - "target:key=value"    → annotation scoped to an explicit target:
+//     a filename (layer), "$config", or "$manifest"
 //
-// A colon before the first equals sign is treated as the file/key separator.
-// This matches the annotation-file JSON format where filenames are top-level keys.
+// A colon before the first equals sign separates the target from the key.
+// This matches the annotation-file JSON format where targets ("$manifest",
+// "$config", or filenames) are top-level keys. OCI annotation keys use
+// reverse-DNS with dots (not colons), so the colon is safe as a separator.
 func (opts *Annotation) Parse(*cobra.Command) error {
-	manifestAnnotations := make(map[string]string)
-	fileAnnotations := make(map[string]map[string]string)
+	// The manifest target always has an entry so downstream packing can rely
+	// on its presence even when only layer/config annotations are set.
+	annotations := map[string]map[string]string{
+		AnnotationManifest: {},
+	}
 
 	for _, anno := range opts.ManifestAnnotations {
-		// Split on the first "=" to separate key-part from value.
-		keyPart, val, success := strings.Cut(anno, "=")
-		if !success {
+		// Split on the first "=" to separate the key-part from the value.
+		keyPart, value, ok := strings.Cut(anno, "=")
+		if !ok {
 			return &oerrors.Error{
 				Err:            errAnnotationFormat,
-				Recommendation: `Please use the correct format: --annotation "key=value" or --annotation "filename:key=value"`,
+				Recommendation: `Please use the correct format: --annotation "key=value" or --annotation "target:key=value"`,
 			}
 		}
 
-		// A colon in keyPart (before the "=") signals a layer annotation.
-		if fileRef, key, isLayer := strings.Cut(keyPart, ":"); isLayer {
-			if key == "" {
+		// A colon in the key-part (before the "=") scopes the annotation to
+		// an explicit target. Without a colon it applies to the manifest.
+		target, key := AnnotationManifest, keyPart
+		if ref, refKey, scoped := strings.Cut(keyPart, ":"); scoped {
+			if ref == "" {
 				return &oerrors.Error{
-					Err:            errAnnotationLayerKey,
-					Recommendation: fmt.Sprintf(`Provide an annotation key after the file prefix: --annotation "%s:key=value"`, fileRef),
+					Err:            errAnnotationTarget,
+					Recommendation: fmt.Sprintf(`Provide a target before the colon, e.g. --annotation "filename:%s=value", or drop it for a manifest annotation: --annotation "%s=value"`, refKey, refKey),
 				}
 			}
-			if fileAnnotations[fileRef] == nil {
-				fileAnnotations[fileRef] = make(map[string]string)
+			if refKey == "" {
+				return &oerrors.Error{
+					Err:            errAnnotationLayerKey,
+					Recommendation: fmt.Sprintf(`Provide an annotation key after the target: --annotation "%s:key=value"`, ref),
+				}
 			}
-			if _, ok := fileAnnotations[fileRef][key]; ok {
-				return fmt.Errorf("%w: %v (layer: %v)", errAnnotationDuplication, key, fileRef)
-			}
-			fileAnnotations[fileRef][key] = val
-		} else {
-			// Manifest-level annotation.
-			key := keyPart
-			if _, ok := manifestAnnotations[key]; ok {
-				return fmt.Errorf("%w: %v, ", errAnnotationDuplication, key)
-			}
-			manifestAnnotations[key] = val
+			target, key = ref, refKey
 		}
+
+		if annotations[target] == nil {
+			annotations[target] = make(map[string]string)
+		}
+		if _, exists := annotations[target][key]; exists {
+			return fmt.Errorf("%w: %q (target: %q)", errAnnotationDuplication, key, target)
+		}
+		annotations[target][key] = value
 	}
 
-	opts.Annotations = map[string]map[string]string{
-		AnnotationManifest: manifestAnnotations,
-	}
-	for fileRef, annos := range fileAnnotations {
-		opts.Annotations[fileRef] = annos
-	}
+	opts.Annotations = annotations
 	return nil
 }

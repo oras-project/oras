@@ -103,6 +103,12 @@ Example - Push file to the HTTP registry:
 Example - Push repository with manifest annotations:
   oras push --annotation "key=val" localhost:5000/hello:v1
 
+Example - Push file "hi.txt" with a layer annotation scoped to that file:
+  oras push --annotation "hi.txt:key=val" localhost:5000/hello:v1 hi.txt
+
+Example - Push repository with a config annotation:
+  oras push --annotation "$config:key=val" localhost:5000/hello:v1
+
 Example - Push repository with manifest annotation file:
   oras push --annotation-file annotation.json localhost:5000/hello:v1
 

@@ -145,3 +145,74 @@ func TestAnnotation_Parse_errorEmptyKeyAfterFilePrefix(t *testing.T) {
 		t.Fatalf("expected errAnnotationLayerKey, got: %v", err)
 	}
 }
+
+func TestAnnotation_Parse_errorEmptyTarget(t *testing.T) {
+	opts := Annotation{
+		ManifestAnnotations: []string{":key=value"},
+	}
+	if err := opts.Parse(nil); !errors.Is(err, errAnnotationTarget) {
+		t.Fatalf("expected errAnnotationTarget, got: %v", err)
+	}
+}
+
+func TestAnnotation_Parse_configTarget(t *testing.T) {
+	opts := Annotation{
+		ManifestAnnotations: []string{"$config:hello=world"},
+	}
+	if err := opts.Parse(nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := map[string]map[string]string{
+		AnnotationManifest: {},
+		AnnotationConfig:   {"hello": "world"},
+	}
+	if !reflect.DeepEqual(opts.Annotations, want) {
+		t.Fatalf("got %v, want %v", opts.Annotations, want)
+	}
+}
+
+func TestAnnotation_Parse_manifestTargetMergesWithBareKeys(t *testing.T) {
+	opts := Annotation{
+		ManifestAnnotations: []string{"foo=bar", "$manifest:baz=qux"},
+	}
+	if err := opts.Parse(nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := map[string]map[string]string{
+		AnnotationManifest: {"foo": "bar", "baz": "qux"},
+	}
+	if !reflect.DeepEqual(opts.Annotations, want) {
+		t.Fatalf("got %v, want %v", opts.Annotations, want)
+	}
+}
+
+func TestAnnotation_Parse_specialAndLayerTargets(t *testing.T) {
+	opts := Annotation{
+		ManifestAnnotations: []string{
+			"top=level",
+			"$config:cfg=on",
+			"$manifest:mkey=mval",
+			"file.tar:lkey=lval",
+		},
+	}
+	if err := opts.Parse(nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := map[string]map[string]string{
+		AnnotationManifest: {"top": "level", "mkey": "mval"},
+		AnnotationConfig:   {"cfg": "on"},
+		"file.tar":         {"lkey": "lval"},
+	}
+	if !reflect.DeepEqual(opts.Annotations, want) {
+		t.Fatalf("got %v, want %v", opts.Annotations, want)
+	}
+}
+
+func TestAnnotation_Parse_errorDuplicateAcrossManifestForms(t *testing.T) {
+	opts := Annotation{
+		ManifestAnnotations: []string{"key=val1", "$manifest:key=val2"},
+	}
+	if err := opts.Parse(nil); !errors.Is(err, errAnnotationDuplication) {
+		t.Fatalf("expected errAnnotationDuplication, got: %v", err)
+	}
+}
