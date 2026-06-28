@@ -23,7 +23,7 @@ VERSION_FILE="internal/version/version.go"
 # Resolved lazily by detect_remote() once we're inside the repo. Do not assume
 # any particular remote name (e.g. "upstream") here.
 REMOTE=""
-MAIN_RELEASE_VERSION="${ORAS_MAIN_RELEASE_VERSION:-2.0}"
+MAIN_RELEASE_VERSION="${ORAS_MAIN_RELEASE_VERSION:-3.0}"
 
 # Colors
 RED='\033[0;31m'
