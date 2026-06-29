@@ -18,7 +18,6 @@ package option
 import (
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -60,8 +59,6 @@ func (target *BinaryTarget) ApplyFlags(fs *pflag.FlagSet) {
 
 // Parse parses user-provided flags and arguments into option struct.
 func (target *BinaryTarget) Parse(cmd *cobra.Command) error {
-	target.From.warned = make(map[string]*sync.Map)
-	target.To.warned = target.From.warned
 	// resolve are parsed in array order, latter will overwrite former
 	target.From.resolveFlag = append(target.resolveFlag, target.From.resolveFlag...)
 	target.To.resolveFlag = append(target.resolveFlag, target.To.resolveFlag...)
