@@ -1,5 +1,3 @@
-//go:build !windows && !darwin
-
 /*
 Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +30,7 @@ type testGraphTarget struct {
 
 func TestTTYPushHandler_TrackTarget(t *testing.T) {
 	// prepare pty
-	_, child, err := testutils.NewPty()
+	_, child, err := testutils.NewPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +55,7 @@ func TestTTYPushHandler_TrackTarget(t *testing.T) {
 func Test_TTYPullHandler_TrackTarget(t *testing.T) {
 	src := memory.New()
 	t.Run("has TTY", func(t *testing.T) {
-		_, device, err := testutils.NewPty()
+		_, device, err := testutils.NewPipe()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -87,7 +85,7 @@ func Test_TTYPullHandler_TrackTarget(t *testing.T) {
 }
 
 func TestTTYCopyHandler_OnMounted(t *testing.T) {
-	pty, child, err := testutils.NewPty()
+	reader, child, err := testutils.NewPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,13 +104,13 @@ func TestTTYCopyHandler_OnMounted(t *testing.T) {
 		t.Fatalf("StopTracking() should not return an error: %v", err)
 	}
 
-	if err = testutils.MatchPty(pty, child, "✓", "Mounted", strconv.FormatInt(mockFetcher.OciImage.Size, 10), "100.00%", mockFetcher.OciImage.Digest.String()); err != nil {
+	if err = testutils.MatchPipe(reader, child, "✓", "Mounted", strconv.FormatInt(mockFetcher.OciImage.Size, 10), "100.00%", mockFetcher.OciImage.Digest.String()); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestTTYCopyHandler_OnCopySkipped(t *testing.T) {
-	pty, child, err := testutils.NewPty()
+	reader, child, err := testutils.NewPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,13 +128,13 @@ func TestTTYCopyHandler_OnCopySkipped(t *testing.T) {
 	if err = ch.StopTracking(); err != nil {
 		t.Errorf("StopTracking() should not return an error: %v", err)
 	}
-	if err = testutils.MatchPty(pty, child, "Exists", "oci-image", strconv.FormatInt(mockFetcher.OciImage.Size, 10), "100.00%"); err != nil {
+	if err = testutils.MatchPipe(reader, child, "Exists", "oci-image", strconv.FormatInt(mockFetcher.OciImage.Size, 10), "100.00%"); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestTTYCopyHandler_PostCopy(t *testing.T) {
-	pty, child, err := testutils.NewPty()
+	reader, child, err := testutils.NewPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,13 +152,13 @@ func TestTTYCopyHandler_PostCopy(t *testing.T) {
 	if err = ch.StopTracking(); err != nil {
 		t.Errorf("StopTracking() should not return an error: %v", err)
 	}
-	if err = testutils.MatchPty(pty, child, "\x1b[?25l\x1b7\x1b[0m"); err != nil {
+	if err = testutils.MatchPipe(reader, child, "\x1b[?25l\x1b7\x1b[0m"); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestTTYCopyHandler_PreCopy(t *testing.T) {
-	pty, child, err := testutils.NewPty()
+	reader, child, err := testutils.NewPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +176,7 @@ func TestTTYCopyHandler_PreCopy(t *testing.T) {
 	if err = ch.StopTracking(); err != nil {
 		t.Errorf("StopTracking() should not return an error: %v", err)
 	}
-	if err = testutils.MatchPty(pty, child, "\x1b[?25l\x1b7\x1b[0m"); err != nil {
+	if err = testutils.MatchPipe(reader, child, "\x1b[?25l\x1b7\x1b[0m"); err != nil {
 		t.Fatal(err)
 	}
 }

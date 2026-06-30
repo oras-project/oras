@@ -16,10 +16,12 @@ limitations under the License.
 package console
 
 import (
+	"errors"
+	"io"
 	"os"
 
-	containerd "github.com/containerd/console"
 	"github.com/morikuni/aec"
+	"golang.org/x/term"
 )
 
 const (
@@ -33,9 +35,8 @@ const (
 	Restore = "\0338"
 )
 
-// Console is a wrapper around containerd's Console and ANSI escape codes.
+// Console is a wrapper around a terminal and ANSI escape codes.
 type Console interface {
-	containerd.Console
 	GetHeightWidth() (height, width int)
 	Save()
 	NewRow()
@@ -43,60 +44,80 @@ type Console interface {
 	Restore()
 }
 
+// terminal is the minimal backend that a Console renders to. It decouples the
+// cursor and escape-code logic from the underlying terminal implementation so
+// that the backing library (currently golang.org/x/term) can be swapped or
+// extended without touching callers.
+type terminal interface {
+	io.Writer
+	// size returns the height and width of the terminal in cells.
+	size() (height, width int, err error)
+}
+
+// fileTerminal is a terminal backed by an *os.File, using golang.org/x/term
+// for size queries.
+type fileTerminal struct {
+	*os.File
+}
+
+func (t *fileTerminal) size() (height, width int, err error) {
+	width, height, err = term.GetSize(int(t.Fd()))
+	return height, width, err
+}
+
 type console struct {
-	containerd.Console
+	term terminal
 }
 
 // NewConsole generates a console from a file.
 func NewConsole(f *os.File) (Console, error) {
-	c, err := containerd.ConsoleFromFile(f)
-	if err != nil {
-		return nil, err
+	if f == nil {
+		return nil, errors.New("cannot create console from nil file")
 	}
-	return &console{c}, nil
+	return &console{term: &fileTerminal{f}}, nil
 }
 
-// GetHeightWidth returns the width and height of the console.
+// GetHeightWidth returns the height and width of the console.
 // If the console size cannot be determined, returns a default value of 80x10.
 func (c *console) GetHeightWidth() (height, width int) {
-	windowSize, err := c.Size()
+	height, width, err := c.term.size()
 	if err != nil {
 		return MinHeight, MinWidth
 	}
-	if windowSize.Height < MinHeight {
-		windowSize.Height = MinHeight
+	if height < MinHeight {
+		height = MinHeight
 	}
-	if windowSize.Width < MinWidth {
-		windowSize.Width = MinWidth
+	if width < MinWidth {
+		width = MinWidth
 	}
-	return int(windowSize.Height), int(windowSize.Width)
+	return height, width
 }
 
 // Save saves the current cursor position.
 func (c *console) Save() {
-	_, _ = c.Write([]byte(aec.Hide.Apply(Save)))
+	_, _ = c.term.Write([]byte(aec.Hide.Apply(Save)))
 }
 
 // NewRow allocates a horizontal space to the output area with scroll if needed.
 func (c *console) NewRow() {
-	_, _ = c.Write([]byte(Restore))
-	_, _ = c.Write([]byte("\n"))
-	_, _ = c.Write([]byte(Save))
+	_, _ = c.term.Write([]byte(Restore))
+	_, _ = c.term.Write([]byte("\n"))
+	_, _ = c.term.Write([]byte(Save))
 }
 
 // OutputTo outputs a string to a specific line.
 func (c *console) OutputTo(upCnt uint, str string) {
-	_, _ = c.Write([]byte(Restore))
-	_, _ = c.Write([]byte(aec.PreviousLine(upCnt).Apply(str)))
-	_, _ = c.Write([]byte("\n"))
-	_, _ = c.Write([]byte(aec.EraseLine(aec.EraseModes.Tail).String()))
+	_, _ = c.term.Write([]byte(Restore))
+	_, _ = c.term.Write([]byte(aec.PreviousLine(upCnt).Apply(str)))
+	_, _ = c.term.Write([]byte("\n"))
+	_, _ = c.term.Write([]byte(aec.EraseLine(aec.EraseModes.Tail).String()))
 }
 
 // Restore restores the saved cursor position.
 func (c *console) Restore() {
 	// cannot use aec.Restore since DEC has better compatibility than SCO
-	_, _ = c.Write([]byte(Restore))
-	_, _ = c.Write([]byte(aec.Column(0).
+	_, _ = c.term.Write([]byte(Restore))
+	_, _ = c.term.Write([]byte(aec.Column(0).
 		With(aec.EraseLine(aec.EraseModes.All)).
 		With(aec.Show).String()))
 }
