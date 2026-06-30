@@ -38,12 +38,11 @@ func TestPullHandler_OnLayerSkipped(t *testing.T) {
 
 	desc := ocispec.Descriptor{
 		MediaType: "application/vnd.oci.image.layer.v1.tar+gzip",
-		Digest:    "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		Digest:    testDigest,
 		Size:      1024,
 	}
 
-	err := handler.OnLayerSkipped(desc)
-	if err != nil {
+	if err := handler.OnLayerSkipped(desc); err != nil {
 		t.Errorf("PullHandler.OnLayerSkipped() error = %v, want nil", err)
 	}
 }
@@ -54,13 +53,23 @@ func TestPullHandler_OnFilePulled(t *testing.T) {
 
 	desc := ocispec.Descriptor{
 		MediaType: "application/vnd.oci.image.layer.v1.tar+gzip",
-		Digest:    "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		Digest:    testDigest,
 		Size:      1024,
 	}
 
-	err := handler.OnFilePulled("test.txt", "/output", desc, "blobs/sha256/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
-	if err != nil {
-		t.Errorf("PullHandler.OnFilePulled() error = %v, want nil", err)
+	if err := handler.OnFilePulled("test.txt", "/output", desc, "blobs/sha256/"+testDigest[len("sha256:"):]); err != nil {
+		t.Fatalf("PullHandler.OnFilePulled() error = %v, want nil", err)
+	}
+
+	files := handler.pulled.Files()
+	if len(files) != 1 {
+		t.Fatalf("PullHandler.OnFilePulled() did not record file: got %d files, want 1", len(files))
+	}
+	if files[0].Digest != desc.Digest {
+		t.Errorf("recorded file Digest = %q, want %q", files[0].Digest, desc.Digest)
+	}
+	if files[0].MediaType != desc.MediaType {
+		t.Errorf("recorded file MediaType = %q, want %q", files[0].MediaType, desc.MediaType)
 	}
 }
 
@@ -70,7 +79,7 @@ func TestPullHandler_OnPulled(t *testing.T) {
 
 	desc := ocispec.Descriptor{
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
-		Digest:    "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		Digest:    testDigest,
 		Size:      100,
 	}
 
@@ -85,22 +94,54 @@ func TestPullHandler_Render(t *testing.T) {
 	buf := &bytes.Buffer{}
 	handler := NewPullHandler(buf, "localhost:5000/test").(*PullHandler)
 
-	desc := ocispec.Descriptor{
+	rootDesc := ocispec.Descriptor{
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
-		Digest:    "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		Digest:    testDigest,
 		Size:      100,
 	}
-
-	handler.OnPulled(&option.Target{}, desc)
-
-	err := handler.Render()
-	if err != nil {
-		t.Errorf("PullHandler.Render() error = %v, want nil", err)
+	fileDesc := ocispec.Descriptor{
+		MediaType: "application/vnd.oci.image.layer.v1.tar+gzip",
+		Digest:    testDigest,
+		Size:      1024,
 	}
 
-	// Verify JSON output is valid
-	var result map[string]interface{}
+	handler.OnPulled(&option.Target{}, rootDesc)
+	if err := handler.OnFilePulled("test.txt", "/output", fileDesc, "blobs/sha256/"+testDigest[len("sha256:"):]); err != nil {
+		t.Fatalf("PullHandler.OnFilePulled() error = %v", err)
+	}
+
+	if err := handler.Render(); err != nil {
+		t.Fatalf("PullHandler.Render() error = %v, want nil", err)
+	}
+
+	var result struct {
+		Reference string `json:"reference"`
+		Files     []struct {
+			Path      string `json:"path"`
+			Reference string `json:"reference"`
+			MediaType string `json:"mediaType"`
+			Digest    string `json:"digest"`
+			Size      int64  `json:"size"`
+		} `json:"files"`
+	}
 	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
-		t.Errorf("PullHandler.Render() produced invalid JSON: %v", err)
+		t.Fatalf("PullHandler.Render() produced invalid JSON: %v", err)
+	}
+
+	wantReference := "localhost:5000/test@" + testDigest
+	if result.Reference != wantReference {
+		t.Errorf("Render() reference = %q, want %q", result.Reference, wantReference)
+	}
+	if len(result.Files) != 1 {
+		t.Fatalf("Render() files length = %d, want 1", len(result.Files))
+	}
+	if result.Files[0].MediaType != fileDesc.MediaType {
+		t.Errorf("Render() files[0].mediaType = %q, want %q", result.Files[0].MediaType, fileDesc.MediaType)
+	}
+	if result.Files[0].Digest != string(fileDesc.Digest) {
+		t.Errorf("Render() files[0].digest = %q, want %q", result.Files[0].Digest, fileDesc.Digest)
+	}
+	if result.Files[0].Size != fileDesc.Size {
+		t.Errorf("Render() files[0].size = %d, want %d", result.Files[0].Size, fileDesc.Size)
 	}
 }
