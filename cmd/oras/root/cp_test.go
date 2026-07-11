@@ -1,5 +1,3 @@
-//go:build !windows && !darwin
-
 /*
 Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -127,7 +125,7 @@ func TestMain(m *testing.M) {
 
 func Test_doCopy(t *testing.T) {
 	// prepare
-	pty, child, err := testutils.NewPty()
+	reader, child, err := testutils.NewPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,14 +141,14 @@ func Test_doCopy(t *testing.T) {
 		t.Fatal(err)
 	}
 	// validate
-	if err = testutils.MatchPty(pty, child, "Copied", memDesc.MediaType, "100.00%", memDesc.Digest.String()); err != nil {
+	if err = testutils.MatchPipe(reader, child, "Copied", memDesc.MediaType, "100.00%", memDesc.Digest.String()); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func Test_doCopy_skipped(t *testing.T) {
 	// prepare
-	pty, child, err := testutils.NewPty()
+	reader, child, err := testutils.NewPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,14 +164,14 @@ func Test_doCopy_skipped(t *testing.T) {
 		t.Fatal(err)
 	}
 	// validate
-	if err = testutils.MatchPty(pty, child, "Exists", memDesc.MediaType, "100.00%", memDesc.Digest.String()); err != nil {
+	if err = testutils.MatchPipe(reader, child, "Exists", memDesc.MediaType, "100.00%", memDesc.Digest.String()); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func Test_doCopy_mounted(t *testing.T) {
 	// prepare
-	pty, child, err := testutils.NewPty()
+	reader, child, err := testutils.NewPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,7 +198,7 @@ func Test_doCopy_mounted(t *testing.T) {
 		t.Fatal(err)
 	}
 	// validate
-	if err = testutils.MatchPty(pty, child, "Mounted", configMediaType, "100.00%", configDigest); err != nil {
+	if err = testutils.MatchPipe(reader, child, "Mounted", configMediaType, "100.00%", configDigest); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -280,7 +278,7 @@ func Test_doCopy_mountFallback(t *testing.T) {
 	testHost := "localhost:" + uri.Port()
 
 	// prepare
-	pty, child, err := testutils.NewPty()
+	reader, child, err := testutils.NewPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -315,7 +313,7 @@ func Test_doCopy_mountFallback(t *testing.T) {
 		t.Error("expected blob to be uploaded via regular upload after mount failure")
 	}
 	// validate output shows "Copied" instead of "Mounted"
-	if err = testutils.MatchPty(pty, child, "Copied", configMediaType, "100.00%", configDigest); err != nil {
+	if err = testutils.MatchPipe(reader, child, "Copied", configMediaType, "100.00%", configDigest); err != nil {
 		t.Fatal(err)
 	}
 }

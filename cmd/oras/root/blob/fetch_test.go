@@ -1,5 +1,3 @@
-//go:build !windows && !darwin
-
 /*
 Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +28,7 @@ import (
 
 func Test_fetchBlobOptions_doFetch(t *testing.T) {
 	// prepare
-	pty, device, err := testutils.NewPty()
+	reader, device, err := testutils.NewPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +59,7 @@ func Test_fetchBlobOptions_doFetch(t *testing.T) {
 		t.Fatal(err)
 	}
 	// validate
-	if err = testutils.MatchPty(pty, device, "Downloaded  ", desc.MediaType, "100.00%", desc.Digest.String()); err != nil {
+	if err = testutils.MatchPipe(reader, device, "Downloaded  ", desc.MediaType, "100.00%", desc.Digest.String()); err != nil {
 		t.Fatal(err)
 	}
 }
