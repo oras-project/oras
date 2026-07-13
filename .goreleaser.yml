@@ -74,7 +74,16 @@ sboms:
 release:
   draft: true
   prerelease: auto
-#signs:
-#  - artifacts: all
-#    args: ["--output", "${signature}", "--detach-sign", "--armor", "${artifact}"]
-#    signature: "${artifact}.asc"
+
+signs:
+  - artifacts: checksum
+    signature: "${artifact}.asc"
+    args:
+      - "--batch"
+      - "--pinentry-mode=loopback"
+      - "--passphrase={{ .Env.GPG_PASSPHRASE }}"
+      - "--local-user=C6FC42F0DE84A345FAADB742F44418110791EF37"
+      - "--output=${signature}"
+      - "--detach-sign"
+      - "--armor"
+      - "${artifact}"
