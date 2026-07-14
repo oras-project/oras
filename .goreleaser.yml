@@ -76,7 +76,7 @@ release:
   prerelease: auto
 
 signs:
-  - artifacts: checksum
+  - artifacts: all
     signature: "${artifact}.asc"
     args:
       - "--batch"
