@@ -241,6 +241,13 @@ func enrichDescriptor(ctx context.Context, target oras.ReadOnlyTarget, desc ocis
 			return ocispec.Descriptor{}, err
 		}
 		desc.ArtifactType = manifest.ArtifactType
+		if desc.ArtifactType == "" && manifest.Config.MediaType != ocispec.MediaTypeImageConfig {
+			// Old-style artifacts predate the manifest artifactType field and
+			// convey their type through config.mediaType instead. Per the
+			// image-spec descriptor guidance, fall back to config.mediaType so
+			// the enriched descriptor still advertises an artifactType.
+			desc.ArtifactType = manifest.Config.MediaType
+		}
 	} else if descriptor.IsIndex(desc) {
 		var index ocispec.Index
 		if err := json.Unmarshal(manifestBytes, &index); err != nil {

@@ -239,6 +239,54 @@ func Test_enrichDescriptor(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:   "old-style artifact, artifactType falls back to config mediaType",
+			target: NewTestReadOnlyTarget(`intentionally not valid JSON`),
+			manifestBytes: []byte(`
+				{
+					"schemaVersion": 2,
+					"mediaType": "application/vnd.oci.image.manifest.v1+json",
+					"config": {
+						"mediaType": "application/vnd.example.config",
+						"digest": "sha256:dc889043956f34871cc04ae96e03efc29dfe2f582c26195a72dd4827f4dd830d",
+						"size": 28
+					},
+					"layers": []
+				}
+			`),
+			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
+			checkDesc: func(t *testing.T, gotDesc, _ ocispec.Descriptor) {
+				t.Helper()
+				if got, want := gotDesc.ArtifactType, "application/vnd.example.config"; got != want {
+					t.Errorf("ArtifactType = %s, want %s", got, want)
+				}
+			},
+			wantErr: false,
+		},
+		{
+			name:   "empty artifactType with standard config type stays empty",
+			target: NewTestReadOnlyTarget(`intentionally not valid JSON`),
+			manifestBytes: []byte(`
+				{
+					"schemaVersion": 2,
+					"mediaType": "application/vnd.oci.image.manifest.v1+json",
+					"config": {
+						"mediaType": "application/vnd.oci.image.config.v1+json",
+						"digest": "sha256:dc889043956f34871cc04ae96e03efc29dfe2f582c26195a72dd4827f4dd830d",
+						"size": 28
+					},
+					"layers": []
+				}
+			`),
+			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
+			checkDesc: func(t *testing.T, gotDesc, _ ocispec.Descriptor) {
+				t.Helper()
+				if got, want := gotDesc.ArtifactType, ""; got != want {
+					t.Errorf("ArtifactType = %q, want empty", got)
+				}
+			},
+			wantErr: false,
+		},
+		{
 			name:              "child of unrecognized type",
 			target:            NewTestReadOnlyTarget("(unused)"),
 			manifestBytes:     []byte(`{}`),
