@@ -18,11 +18,14 @@ package json
 import (
 	"bytes"
 	"encoding/json"
+	"slices"
 	"testing"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/option"
 )
+
+const testDigest = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
 func TestNewPushHandler(t *testing.T) {
 	buf := &bytes.Buffer{}
@@ -38,13 +41,17 @@ func TestPushHandler_OnTagged(t *testing.T) {
 
 	desc := ocispec.Descriptor{
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
-		Digest:    "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		Digest:    testDigest,
 		Size:      100,
 	}
 
-	err := handler.OnTagged(desc, "v1.0.0")
-	if err != nil {
-		t.Errorf("PushHandler.OnTagged() error = %v, want nil", err)
+	if err := handler.OnTagged(desc, "v1.0.0"); err != nil {
+		t.Fatalf("PushHandler.OnTagged() error = %v, want nil", err)
+	}
+
+	tags := handler.tagged.Tags()
+	if !slices.Contains(tags, "v1.0.0") {
+		t.Errorf("PushHandler.OnTagged() did not store tag: got tags = %v, want to contain %q", tags, "v1.0.0")
 	}
 }
 
@@ -54,7 +61,7 @@ func TestPushHandler_OnCopied(t *testing.T) {
 
 	desc := ocispec.Descriptor{
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
-		Digest:    "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		Digest:    testDigest,
 		Size:      100,
 	}
 
@@ -64,9 +71,19 @@ func TestPushHandler_OnCopied(t *testing.T) {
 		Reference:    "v1.0.0",
 	}
 
-	err := handler.OnCopied(opts, desc)
-	if err != nil {
-		t.Errorf("PushHandler.OnCopied() error = %v, want nil", err)
+	if err := handler.OnCopied(opts, desc); err != nil {
+		t.Fatalf("PushHandler.OnCopied() error = %v, want nil", err)
+	}
+
+	if handler.path != opts.Path {
+		t.Errorf("PushHandler.OnCopied() path = %q, want %q", handler.path, opts.Path)
+	}
+	if handler.root.Digest != desc.Digest {
+		t.Errorf("PushHandler.OnCopied() root.Digest = %q, want %q", handler.root.Digest, desc.Digest)
+	}
+	tags := handler.tagged.Tags()
+	if !slices.Contains(tags, "v1.0.0") {
+		t.Errorf("PushHandler.OnCopied() did not store tag for non-digest reference: got tags = %v", tags)
 	}
 }
 
@@ -76,19 +93,28 @@ func TestPushHandler_OnCopied_WithDigest(t *testing.T) {
 
 	desc := ocispec.Descriptor{
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
-		Digest:    "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		Digest:    testDigest,
 		Size:      100,
 	}
 
 	opts := &option.Target{
-		RawReference: "localhost:5000/test@sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		RawReference: "localhost:5000/test@" + testDigest,
 		Path:         "localhost:5000/test",
-		Reference:    "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		Reference:    testDigest,
 	}
 
-	err := handler.OnCopied(opts, desc)
-	if err != nil {
-		t.Errorf("PushHandler.OnCopied() error = %v, want nil", err)
+	if err := handler.OnCopied(opts, desc); err != nil {
+		t.Fatalf("PushHandler.OnCopied() error = %v, want nil", err)
+	}
+
+	if tags := handler.tagged.Tags(); len(tags) != 0 {
+		t.Errorf("PushHandler.OnCopied() with digest reference should not add a tag, got tags = %v", tags)
+	}
+	if handler.path != opts.Path {
+		t.Errorf("PushHandler.OnCopied() path = %q, want %q", handler.path, opts.Path)
+	}
+	if handler.root.Digest != desc.Digest {
+		t.Errorf("PushHandler.OnCopied() root.Digest = %q, want %q", handler.root.Digest, desc.Digest)
 	}
 }
 
@@ -98,7 +124,7 @@ func TestPushHandler_Render(t *testing.T) {
 
 	desc := ocispec.Descriptor{
 		MediaType: "application/vnd.oci.image.manifest.v1+json",
-		Digest:    "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		Digest:    testDigest,
 		Size:      100,
 	}
 
@@ -112,14 +138,36 @@ func TestPushHandler_Render(t *testing.T) {
 		t.Fatalf("PushHandler.OnCopied() error = %v", err)
 	}
 
-	err := handler.Render()
-	if err != nil {
-		t.Errorf("PushHandler.Render() error = %v, want nil", err)
+	if err := handler.Render(); err != nil {
+		t.Fatalf("PushHandler.Render() error = %v, want nil", err)
 	}
 
-	// Verify JSON output is valid
-	var result map[string]interface{}
+	var result struct {
+		Reference       string   `json:"reference"`
+		MediaType       string   `json:"mediaType"`
+		Digest          string   `json:"digest"`
+		Size            int64    `json:"size"`
+		ReferenceAsTags []string `json:"referenceAsTags"`
+	}
 	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
-		t.Errorf("PushHandler.Render() produced invalid JSON: %v", err)
+		t.Fatalf("PushHandler.Render() produced invalid JSON: %v", err)
+	}
+
+	wantReference := opts.Path + "@" + testDigest
+	if result.Reference != wantReference {
+		t.Errorf("Render() reference = %q, want %q", result.Reference, wantReference)
+	}
+	if result.MediaType != desc.MediaType {
+		t.Errorf("Render() mediaType = %q, want %q", result.MediaType, desc.MediaType)
+	}
+	if result.Digest != string(desc.Digest) {
+		t.Errorf("Render() digest = %q, want %q", result.Digest, desc.Digest)
+	}
+	if result.Size != desc.Size {
+		t.Errorf("Render() size = %d, want %d", result.Size, desc.Size)
+	}
+	wantRefAsTags := []string{"localhost:5000/test:v1.0.0"}
+	if !slices.Equal(result.ReferenceAsTags, wantRefAsTags) {
+		t.Errorf("Render() referenceAsTags = %v, want %v", result.ReferenceAsTags, wantRefAsTags)
 	}
 }
