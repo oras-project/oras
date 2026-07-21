@@ -263,7 +263,7 @@ func Test_enrichDescriptor(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:   "empty artifactType with standard config type stays empty",
+			name:   "empty artifactType with OCI image config stays empty",
 			target: NewTestReadOnlyTarget(`intentionally not valid JSON`),
 			manifestBytes: []byte(`
 				{
@@ -280,7 +280,55 @@ func Test_enrichDescriptor(t *testing.T) {
 			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
 			checkDesc: func(t *testing.T, gotDesc, _ ocispec.Descriptor) {
 				t.Helper()
-				if got, want := gotDesc.ArtifactType, ""; got != want {
+				if got := gotDesc.ArtifactType; got != "" {
+					t.Errorf("ArtifactType = %q, want empty", got)
+				}
+			},
+			wantErr: false,
+		},
+		{
+			name:   "empty artifactType with empty JSON config stays empty",
+			target: NewTestReadOnlyTarget(`intentionally not valid JSON`),
+			manifestBytes: []byte(`
+				{
+					"schemaVersion": 2,
+					"mediaType": "application/vnd.oci.image.manifest.v1+json",
+					"config": {
+						"mediaType": "application/vnd.oci.empty.v1+json",
+						"digest": "sha256:dc889043956f34871cc04ae96e03efc29dfe2f582c26195a72dd4827f4dd830d",
+						"size": 28
+					},
+					"layers": []
+				}
+			`),
+			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
+			checkDesc: func(t *testing.T, gotDesc, _ ocispec.Descriptor) {
+				t.Helper()
+				if got := gotDesc.ArtifactType; got != "" {
+					t.Errorf("ArtifactType = %q, want empty", got)
+				}
+			},
+			wantErr: false,
+		},
+		{
+			name:   "empty artifactType with docker image config stays empty",
+			target: NewTestReadOnlyTarget(`intentionally not valid JSON`),
+			manifestBytes: []byte(`
+				{
+					"schemaVersion": 2,
+					"mediaType": "application/vnd.oci.image.manifest.v1+json",
+					"config": {
+						"mediaType": "application/vnd.docker.container.image.v1+json",
+						"digest": "sha256:dc889043956f34871cc04ae96e03efc29dfe2f582c26195a72dd4827f4dd830d",
+						"size": 28
+					},
+					"layers": []
+				}
+			`),
+			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
+			checkDesc: func(t *testing.T, gotDesc, _ ocispec.Descriptor) {
+				t.Helper()
+				if got := gotDesc.ArtifactType; got != "" {
 					t.Errorf("ArtifactType = %q, want empty", got)
 				}
 			},
