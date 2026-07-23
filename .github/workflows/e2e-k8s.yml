@@ -1,0 +1,91 @@
+# Copyright The ORAS Authors.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: e2e-k8s
+
+on:
+  push:
+    branches:
+      - main
+      - release-*
+  pull_request:
+    branches:
+      - main
+      - release-*
+
+jobs:
+  e2e-k8s:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ['1.25']
+      fail-fast: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go-version }}
+          check-latest: true
+
+      - name: Create k8s KinD Cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: kind
+
+      - name: Verify Cluster
+        run: |
+          kubectl cluster-info
+          kubectl get nodes
+
+      - name: Build Test Image
+        run: |
+          cd test/e2e/scripts
+          ./build-image.sh
+
+      - name: Deploy Test Registries
+        run: |
+          cd test/e2e/scripts
+          ./deploy.sh
+
+      - name: Wait for Registries
+        run: |
+          cd test/e2e/scripts
+          ./status.sh
+
+      - name: Run E2E Tests
+        run: |
+          cd test/e2e/scripts
+          ./run-tests.sh
+        env:
+          ORAS_PATH: /workspace/bin/linux/amd64/oras
+
+      - name: Show Registry Logs on Failure
+        if: failure()
+        run: |
+          echo "=== Docker Registry Logs ==="
+          kubectl logs -n oras-e2e-tests deployment/docker-registry --tail=100 || true
+          echo "=== Fallback Registry Logs ==="
+          kubectl logs -n oras-e2e-tests deployment/fallback-registry --tail=100 || true
+          echo "=== Zot Registry Logs ==="
+          kubectl logs -n oras-e2e-tests deployment/zot-registry --tail=100 || true
+          echo "=== Test Job Logs ==="
+          kubectl logs -n oras-e2e-tests job/oras-e2e-tests --tail=200 || true
+
+      - name: Cleanup
+        if: always()
+        run: |
+          cd test/e2e/scripts
+          ./teardown.sh || true
