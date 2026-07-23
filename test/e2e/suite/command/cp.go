@@ -18,6 +18,8 @@ package command
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -373,6 +375,68 @@ var _ = Describe("1.1 registry users:", func() {
 				dst := RegistryRef(ZOTHost, dstRepo, tag)
 				CompareRef(src, dst)
 			}
+		})
+
+		It("should copy a multi-arch image to a partially populated destination with --force", func() {
+			// Reproduce the pull-through-cache failure mode: the
+			// destination already advertises the index manifest as
+			// present (Exists(index)=true) while one or more referenced
+			// platform manifests are actually missing. In that state the
+			// default copy short-circuits the sub-DAG and the missing
+			// platforms are never pushed. With --force, cp must walk
+			// every referenced manifest and push the missing ones before
+			// updating the tag.
+			//
+			// Conformant registries reject indices whose children aren't
+			// present, so the partial state can't be produced over the
+			// distribution API. Use an OCI image layout as the
+			// destination instead: it stores manifests as plain files,
+			// which lets us delete two child manifests on disk and mint
+			// the exact "index known, children missing" state that
+			// pull-through caches expose. The --force code path under
+			// test (verifyingTarget wrapping the destination) is
+			// identical for layout and registry targets.
+			src := RegistryRef(ZOTHost, ImageRepo, ma.Tag)
+			dstDir := GinkgoT().TempDir()
+			tag := "copiedTag"
+			dst := LayoutRef(dstDir, tag)
+
+			// Fully populate the layout, then physically remove two
+			// child manifest blobs so the index advertises them while
+			// they are absent on disk.
+			ORAS("cp", src, dst, Flags.ToLayout).Exec()
+			for _, child := range []string{ma.LinuxARM64.Digest.String(), ma.LinuxARMV7.Digest.String()} {
+				algo, hex, ok := strings.Cut(child, ":")
+				Expect(ok).To(BeTrue())
+				Expect(os.Remove(filepath.Join(dstDir, "blobs", algo, hex))).To(Succeed())
+			}
+			missingARM64 := LayoutRef(dstDir, ma.LinuxARM64.Digest.String())
+			missingARMv7 := LayoutRef(dstDir, ma.LinuxARMV7.Digest.String())
+			ORAS("manifest", "fetch", Flags.Layout, missingARM64).ExpectFailure().Exec()
+			ORAS("manifest", "fetch", Flags.Layout, missingARMv7).ExpectFailure().Exec()
+
+			// Negative control: without --force, cp short-circuits on
+			// Exists(index)=true, skips the sub-DAG, and leaves the
+			// missing platforms absent.
+			ORAS("cp", src, dst, Flags.ToLayout).Exec()
+			ORAS("manifest", "fetch", Flags.Layout, missingARM64).ExpectFailure().Exec()
+			ORAS("manifest", "fetch", Flags.Layout, missingARMv7).ExpectFailure().Exec()
+
+			// With --force, cp performs a deep traversal so the missing
+			// platforms get pushed before the tag is updated.
+			ORAS("cp", src, dst, Flags.ToLayout, "--force").Exec()
+
+			// The index in the layout must match the source.
+			srcIndex := ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, ma.Digest)).Exec().Out.Contents()
+			dstIndex := ORAS("manifest", "fetch", Flags.Layout, dst).Exec().Out.Contents()
+			Expect(srcIndex).To(Equal(dstIndex))
+			// The previously-missing platform manifests must be present.
+			srcARM64 := ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, ma.LinuxARM64.Digest.String())).Exec().Out.Contents()
+			dstARM64 := ORAS("manifest", "fetch", Flags.Layout, missingARM64).Exec().Out.Contents()
+			Expect(srcARM64).To(Equal(dstARM64))
+			srcARMv7 := ORAS("manifest", "fetch", RegistryRef(ZOTHost, ImageRepo, ma.LinuxARMV7.Digest.String())).Exec().Out.Contents()
+			dstARMv7 := ORAS("manifest", "fetch", Flags.Layout, missingARMv7).Exec().Out.Contents()
+			Expect(srcARMv7).To(Equal(dstARMv7))
 		})
 	})
 })

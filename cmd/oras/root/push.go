@@ -52,6 +52,7 @@ type pushOptions struct {
 	extraRefs         []string
 	manifestConfigRef string
 	artifactType      string
+	force             bool
 	concurrency       int
 	// Deprecated: verbose is deprecated and will be removed in the future.
 	verbose bool
@@ -169,6 +170,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 	}
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "`path` of image config file")
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
+	cmd.Flags().BoolVarP(&opts.force, "force", "", false, "force a deep traversal of the destination graph before tagging the root; useful when the destination is partially populated (e.g. by a registry cache)")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
 	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
@@ -247,6 +249,13 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	if err != nil {
 		return err
 	}
+	// Keep the unwrapped destination for scope hinting; WithScopeHint relies
+	// on a concrete *remote.Repository type assertion and would silently
+	// skip the hint if passed the TraversingTarget wrapper.
+	scopeHintDst := originalDst
+	if opts.force {
+		originalDst = &contentutil.TraversingTarget{GraphTarget: originalDst}
+	}
 	dst, stopTrack, err := statusHandler.TrackTarget(originalDst)
 	if err != nil {
 		return err
@@ -259,7 +268,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	copyWithScopeHint := func(root ocispec.Descriptor) error {
 		// add both pull and push scope hints for dst repository
 		// to save potential push-scope token requests during copy
-		ctx = registryutil.WithScopeHint(ctx, originalDst, auth.ActionPull, auth.ActionPush)
+		ctx = registryutil.WithScopeHint(ctx, scopeHintDst, auth.ActionPull, auth.ActionPush)
 
 		if tag := opts.Reference; tag == "" {
 			err = oras.CopyGraph(ctx, union, dst, root, copyOptions.CopyGraphOptions)
