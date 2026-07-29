@@ -45,10 +45,8 @@ func Test_runPush_errType(t *testing.T) {
 	}
 }
 
-// Test_runPush_force verifies that pushing with --force succeeds and wraps the
-// destination in a contentutil.TraversingTarget (covering the force branch in
-// runPush). Extra tags are also supplied so the wrapped originalDst is used by
-// the extraRefs tagging path.
+// Test_runPush_force exercises pushing with --force, including the extra-tag
+// path that uses the TraversingTarget-wrapped destination.
 func Test_runPush_force(t *testing.T) {
 	// prepare a file to push
 	tempDir := t.TempDir()

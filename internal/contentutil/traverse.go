@@ -24,8 +24,7 @@ import (
 	"oras.land/oras/internal/graph"
 )
 
-// IsManifestMediaType reports whether the given media type denotes a
-// manifest (i.e. a non-leaf node in a content-addressable graph).
+// IsManifestMediaType reports whether the given media type denotes a manifest.
 func IsManifestMediaType(mediaType string) bool {
 	switch mediaType {
 	case ocispec.MediaTypeImageManifest,
@@ -45,8 +44,8 @@ func IsManifestMediaType(mediaType string) bool {
 // recursive traversal so that missing referenced manifests or blobs are
 // discovered and copied.
 //
-// Blob existence checks still short-circuit, so layers that are already
-// in the destination are not re-uploaded.
+// Non-manifest existence checks still delegate to the wrapped target, so
+// content that is already in the destination is not re-uploaded.
 type TraversingTarget struct {
 	oras.GraphTarget
 }

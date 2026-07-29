@@ -394,8 +394,9 @@ var _ = Describe("1.1 registry users:", func() {
 			// which lets us delete two child manifests on disk and mint
 			// the exact "index known, children missing" state that
 			// pull-through caches expose. The --force code path under
-			// test (verifyingTarget wrapping the destination) is
-			// identical for layout and registry targets.
+			// test (wrapping the destination in a
+			// contentutil.TraversingTarget) is identical for layout and
+			// registry targets.
 			src := RegistryRef(ZOTHost, ImageRepo, ma.Tag)
 			dstDir := GinkgoT().TempDir()
 			tag := "copiedTag"
