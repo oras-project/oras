@@ -18,6 +18,7 @@ package command
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 
@@ -770,6 +771,64 @@ var _ = Describe("OCI image layout users:", func() {
 			var manifest ocispec.Manifest
 			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
 			Expect(manifest.Layers[0].Annotations["org.opencontainers.image.title"]).To(Equal("foobar/baz"))
+		})
+	})
+})
+
+var _ = Describe("Remote registry users:", func() {
+	When("pushing recursively with --recursive flag", func() {
+		tag := "recursive-e2e"
+
+		// buildRecursiveDir creates a temp directory with a nested structure and
+		// returns the path. The structure is:
+		//   <tmp>/
+		//     file1.txt
+		//     file2.txt
+		//     subdir/
+		//       file3.txt
+		//       nested/
+		//         file4.txt
+		buildRecursiveDir := func() (string, map[string]string) {
+			srcDir := GinkgoT().TempDir()
+			files := map[string]string{
+				"file1.txt":              "root file one\n",
+				"file2.txt":              "root file two\n",
+				"subdir/file3.txt":       "subdir file three\n",
+				"subdir/nested/file4.txt": "nested file four\n",
+			}
+			for rel, content := range files {
+				full := filepath.Join(srcDir, rel)
+				Expect(os.MkdirAll(filepath.Dir(full), 0755)).To(Succeed())
+				Expect(os.WriteFile(full, []byte(content), 0644)).To(Succeed())
+			}
+			return srcDir, files
+		}
+
+		It("should push recursively and pull back with correct file contents", func() {
+			// Regression test for https://github.com/oras-project/oras/pull/1951
+			// where oras pull failed with "open <path>: is a directory" because
+			// Image Index descriptors carried AnnotationTitle = directory name.
+			repo := pushTestRepo("recursive-roundtrip")
+			ref := RegistryRef(ZOTHost, repo, tag)
+
+			srcDir, files := buildRecursiveDir()
+
+			ORAS("push", "--recursive", ref, srcDir).
+				WithDescription("recursive push of nested directory").
+				Exec()
+
+			dstDir := GinkgoT().TempDir()
+			ORAS("pull", ref).
+				WithWorkDir(dstDir).
+				WithDescription("pull after recursive push").
+				Exec()
+
+			for rel, want := range files {
+				full := filepath.Join(dstDir, rel)
+				got, err := os.ReadFile(full)
+				Expect(err).NotTo(HaveOccurred(), "expected pulled file %q to exist", rel)
+				Expect(string(got)).To(Equal(want), "content mismatch for %q", rel)
+			}
 		})
 	})
 })
