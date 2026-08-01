@@ -16,17 +16,23 @@ limitations under the License.
 package command
 
 import (
+	"bytes"
 	"context"
+	"strings"
+	"testing"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/trace"
 )
 
-// GetLogger returns a new FieldLogger and an associated Context derived from command context.
-func GetLogger(cmd *cobra.Command, opts *option.Common) (context.Context, logrus.FieldLogger) {
-	ctx, logger := trace.NewLogger(cmd.Context(), opts.Debug, cmd.ErrOrStderr())
-	cmd.SetContext(ctx)
-	return ctx, logger
+func TestGetLoggerUsesCommandErrorWriter(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
+	var stderr bytes.Buffer
+	cmd.SetErr(&stderr)
+	_, logger := GetLogger(cmd, &option.Common{})
+	logger.Warn("warning")
+	if !strings.Contains(stderr.String(), "warning") {
+		t.Fatalf("GetLogger() output = %q, want warning", stderr.String())
+	}
 }
