@@ -17,6 +17,7 @@ package trace
 
 import (
 	"context"
+	"io"
 
 	"github.com/sirupsen/logrus"
 )
@@ -27,7 +28,7 @@ type contextKey int
 const loggerKey contextKey = iota
 
 // NewLogger returns a logger.
-func NewLogger(ctx context.Context, debug bool) (context.Context, logrus.FieldLogger) {
+func NewLogger(ctx context.Context, debug bool, output io.Writer) (context.Context, logrus.FieldLogger) {
 	var logLevel logrus.Level
 	if debug {
 		logLevel = logrus.DebugLevel
@@ -38,6 +39,7 @@ func NewLogger(ctx context.Context, debug bool) (context.Context, logrus.FieldLo
 	logger := logrus.New()
 	logger.SetFormatter(&TextFormatter{})
 	logger.SetLevel(logLevel)
+	logger.SetOutput(output)
 	entry := logger.WithContext(ctx)
 	return context.WithValue(ctx, loggerKey, entry), entry
 }
