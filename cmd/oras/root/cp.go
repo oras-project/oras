@@ -39,6 +39,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/contentutil"
 	"oras.land/oras/internal/docker"
 	"oras.land/oras/internal/graph"
 	"oras.land/oras/internal/listener"
@@ -52,6 +53,7 @@ type copyOptions struct {
 	option.Terminal
 
 	recursive   bool
+	force       bool
 	concurrency int
 	extraRefs   []string
 	// Deprecated: verbose is deprecated and will be removed in the future.
@@ -93,6 +95,9 @@ Example - Copy an artifact with multiple tags:
 
 Example - Copy an artifact with multiple tags with concurrency tuned:
   oras cp --concurrency 10 localhost:5000/net-monitor:v1 localhost:5000/net-monitor-copy:tag1,tag2,tag3
+
+Example - Copy a multi-arch image to a destination that may be partially populated (e.g. a registry cache):
+  oras cp --force localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:v1
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(2), "the source and destination for copying"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -113,6 +118,7 @@ Example - Copy an artifact with multiple tags with concurrency tuned:
 		},
 	}
 	cmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "[Preview] recursively copy the artifact and its referrer artifacts")
+	cmd.Flags().BoolVarP(&opts.force, "force", "", false, "force a deep traversal of the destination graph before tagging the root; useful when the destination is partially populated (e.g. by a registry cache)")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
 	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
@@ -181,6 +187,15 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 		}
 	}
 
+	if opts.force {
+		// Defeat the sub-DAG skip in oras-go's copyGraph so that every
+		// referenced manifest is visited and any missing successor (manifest
+		// or blob) is copied to the destination before the root tag is
+		// updated. This handles destinations that hold only a partial copy
+		// of the artifact (e.g. registries with a pull-through cache that
+		// has been populated from a single platform).
+		dst = &contentutil.TraversingTarget{GraphTarget: dst}
+	}
 	dst, err = copyHandler.StartTracking(dst)
 	if err != nil {
 		return desc, err
