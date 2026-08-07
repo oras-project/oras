@@ -153,6 +153,49 @@ func TestRemote_authClient_RawCredential(t *testing.T) {
 	}
 }
 
+func TestRemote_authClient_SharedCache(t *testing.T) {
+	ClearSharedClient()
+	t.Cleanup(ClearSharedClient)
+
+	opts := Remote{
+		Username: "test-user",
+		Secret:   "test-password",
+	}
+	first, err := opts.authClient("hostname", false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := GetSharedClient(); got != first {
+		t.Fatalf("expected first client to be shared, got %p", got)
+	}
+
+	const (
+		registry = "registry.example.com"
+		cacheKey = "repository:test:pull"
+		want     = "test-token"
+	)
+	if _, err := first.Cache.Set(context.Background(), registry, auth.SchemeBearer, cacheKey, func(context.Context) (string, error) {
+		return want, nil
+	}); err != nil {
+		t.Fatalf("unexpected error when populating shared cache: %v", err)
+	}
+
+	second, err := opts.authClient("hostname", false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if second == first {
+		t.Fatal("expected a new auth client")
+	}
+	got, err := second.Cache.GetToken(context.Background(), registry, auth.SchemeBearer, cacheKey)
+	if err != nil {
+		t.Fatalf("unexpected error when reading shared cache: %v", err)
+	}
+	if got != want {
+		t.Fatalf("expected cached token %q, got %q", want, got)
+	}
+}
+
 func TestRemote_authClient_skipTlsVerify(t *testing.T) {
 	opts := Remote{
 		Insecure: true,
