@@ -123,16 +123,11 @@ func (m *manager) Track(desc ocispec.Descriptor) (progress.Tracker, error) {
 }
 
 func (m *manager) newTracker(s *status) progress.Tracker {
-	ch := make(chan statusUpdate, bufferSize)
+	msg := newMessenger(m.prompts)
 	m.updating.Go(func() {
-		for update := range ch {
-			update(s)
-		}
+		msg.drain(s)
 	})
-	return &messenger{
-		update:  ch,
-		prompts: m.prompts,
-	}
+	return msg
 }
 
 // Close stops all status and waits for updating and rendering.
