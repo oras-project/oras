@@ -46,7 +46,9 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		It("should not show --verbose in help doc", func() {
-			out := ORAS("attach", "--help").MatchKeyWords(ExampleDesc).Exec().Out
+			out := ORAS("attach", "--help").
+				MatchKeyWords(ExampleDesc, "'$config:key=val'", "'$manifest:example:key=val'").
+				Exec().Out
 			gomega.Expect(out).ShouldNot(gbytes.Say("--verbose"))
 		})
 
@@ -160,6 +162,32 @@ var _ = Describe("1.1 registry users:", func() {
 				WithWorkDir(PrepareTempFiles()).
 				MatchKeyWords(fmt.Sprintf("Attached to [registry] %s", subjectRef)).
 				MatchStatus([]match.StateKey{foobar.AttachFileStateKey}, false, 1).Exec()
+		})
+
+		It("should attach a file with targeted annotations", func() {
+			testRepo := attachTestRepo("targeted-annotations")
+			tempDir := PrepareTempFiles()
+			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			layerKey, layerValue := "layer-key", "layer-value"
+			configKey, configValue := "config-key", "config-value"
+			manifestKey, manifestValue := "manifest-key", "manifest-value"
+			CopyZOTRepo(ImageRepo, testRepo)
+
+			ref := ORAS("attach", "--artifact-type", "test/attach", subjectRef,
+				fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia),
+				"--annotation", fmt.Sprintf("%s:%s=%s", foobar.AttachFileName, layerKey, layerValue),
+				"--annotation", fmt.Sprintf("$config:%s=%s", configKey, configValue),
+				"--annotation", fmt.Sprintf("$manifest:%s=%s", manifestKey, manifestValue),
+				"--format", "go-template={{.reference}}").
+				WithWorkDir(tempDir).Exec().Out.Contents()
+
+			fetched := ORAS("manifest", "fetch", string(ref)).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Annotations[manifestKey]).To(Equal(manifestValue))
+			Expect(manifest.Config.Annotations[configKey]).To(Equal(configValue))
+			Expect(manifest.Layers).To(HaveLen(1))
+			Expect(manifest.Layers[0].Annotations[layerKey]).To(Equal(layerValue))
 		})
 
 		It("should attach a file to an arch-specific subject", func() {
