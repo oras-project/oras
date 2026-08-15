@@ -17,11 +17,13 @@ package trace
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync/atomic"
 )
@@ -34,6 +36,8 @@ var (
 	// toScrub is a set of headers that should be scrubbed from the log.
 	toScrub = []string{
 		"Authorization",
+		"Cookie",
+		"Proxy-Authorization",
 		"Set-Cookie",
 	}
 )
@@ -41,16 +45,20 @@ var (
 // payloadSizeLimit limits the maximum size of the response body to be printed.
 const payloadSizeLimit int64 = 16 * 1024 // 16 KiB
 
+const redactedValue = "REDACTED"
+
 // Transport is an http.RoundTripper that keeps track of the in-flight
 // request and add hooks to report HTTP tracing events.
 type Transport struct {
 	http.RoundTripper
+	sensitiveHeaders []string
 }
 
-// NewTransport creates and returns a new instance of Transport
-func NewTransport(base http.RoundTripper) *Transport {
+// NewTransport creates a Transport that additionally scrubs sensitiveHeaders.
+func NewTransport(base http.RoundTripper, sensitiveHeaders ...string) *Transport {
 	return &Transport{
-		RoundTripper: base,
+		RoundTripper:     base,
+		sensitiveHeaders: sensitiveHeaders,
 	}
 }
 
@@ -62,31 +70,35 @@ func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error
 
 	// log the request
 	e.Debugf("--> Request #%d\n> Request URL: %q\n> Request method: %q\n> Request headers:\n%s",
-		id, req.URL, req.Method, logHeader(req.Header))
+		id, redactURL(req.URL), req.Method, logHeader(req.Header, t.sensitiveHeaders...))
 
 	// log the response
 	resp, err = t.RoundTripper.RoundTrip(req)
 	if err != nil {
 		e.Errorf("<-- Response #%d\nError in getting response: %v", id, err)
 	} else if resp == nil {
-		e.Errorf("<-- Response #%d\nNo response obtained for request %s %q", id, req.Method, req.URL)
+		e.Errorf("<-- Response #%d\nNo response obtained for request %s %q", id, req.Method, redactURL(req.URL))
 	} else {
 		e.Debugf("<-- Response #%d\n< Response Status: %q\n< Response headers:\n%s\n< Response body:\n%s",
-			id, resp.Status, logHeader(resp.Header), logResponseBody(resp))
+			id, resp.Status, logHeader(resp.Header, t.sensitiveHeaders...), logResponseBody(resp))
 	}
 	return resp, err
 }
 
-// logHeader prints out the provided header keys and values, with auth header
-// scrubbed.
-func logHeader(header http.Header) string {
+// logHeader prints header keys and values with sensitive values and URL queries scrubbed.
+func logHeader(header http.Header, sensitiveHeaders ...string) string {
 	if len(header) > 0 {
 		headers := []string{}
 		for k, v := range header {
-			for _, h := range toScrub {
-				if strings.EqualFold(k, h) {
-					v = []string{"*****"}
+			if isSensitiveHeader(k, sensitiveHeaders) {
+				v = []string{"*****"}
+			}
+			if strings.EqualFold(k, "Location") || strings.EqualFold(k, "Content-Location") || strings.EqualFold(k, "Referer") {
+				redacted := make([]string, len(v))
+				for i, value := range v {
+					redacted[i] = redactURLString(value)
 				}
+				v = redacted
 			}
 			headers = append(headers, fmt.Sprintf("   %q: %q", k, strings.Join(v, ", ")))
 		}
@@ -95,11 +107,28 @@ func logHeader(header http.Header) string {
 	return "   Empty header"
 }
 
+func isSensitiveHeader(name string, additional []string) bool {
+	for _, candidate := range toScrub {
+		if strings.EqualFold(name, candidate) {
+			return true
+		}
+	}
+	for _, candidate := range additional {
+		if strings.EqualFold(name, candidate) {
+			return true
+		}
+	}
+	return false
+}
+
 // logResponseBody prints out the response body if it is printable and within
 // the size limit.
 func logResponseBody(resp *http.Response) string {
 	if resp.Body == nil || resp.Body == http.NoBody {
 		return "   No response body to print"
+	}
+	if resp.StatusCode >= http.StatusMultipleChoices && resp.StatusCode < http.StatusBadRequest {
+		return "   Response body for redirect is not printed"
 	}
 
 	// non-applicable body is not printed and remains untouched for subsequent processing
@@ -130,13 +159,37 @@ func logResponseBody(resp *http.Response) string {
 	if len(readBody) == 0 {
 		return "   Response body is empty"
 	}
+	if len(readBody) > int(payloadSizeLimit) {
+		return "   Response body exceeding the trace size limit is not printed"
+	}
 	if containsCredentials(readBody) {
 		return "   Response body redacted due to potential credentials"
 	}
-	if len(readBody) > int(payloadSizeLimit) {
-		return readBody[:payloadSizeLimit] + "\n...(truncated)"
-	}
 	return readBody
+}
+
+func redactURLString(value string) string {
+	u, err := url.Parse(value)
+	if err != nil {
+		return redactedValue
+	}
+	return redactURL(u)
+}
+
+func redactURL(u *url.URL) string {
+	if u == nil {
+		return ""
+	}
+	redacted := *u
+	if redacted.User != nil {
+		redacted.User = url.User(redactedValue)
+	}
+	query := redacted.Query()
+	for key := range query {
+		query[key] = []string{redactedValue}
+	}
+	redacted.RawQuery = query.Encode()
+	return redacted.String()
 }
 
 // isPrintableContentType returns true if the content of contentType is printable.
@@ -154,7 +207,54 @@ func isPrintableContentType(contentType string) bool {
 	return strings.HasSuffix(mediaType, "+json")
 }
 
+var credentialJSONKeys = [...]string{
+	"token",
+	"access_token",
+	"refresh_token",
+	"id_token",
+	"identity_token",
+}
+
 // containsCredentials returns true if the body contains potential credentials.
 func containsCredentials(body string) bool {
-	return strings.Contains(body, `"token"`) || strings.Contains(body, `"access_token"`)
+	var value any
+	decoder := json.NewDecoder(strings.NewReader(body))
+	decoder.UseNumber()
+	if err := decoder.Decode(&value); err == nil {
+		return containsCredentialValue(value)
+	}
+	lowerBody := strings.ToLower(body)
+	for _, key := range credentialJSONKeys {
+		if strings.Contains(lowerBody, `"`+key+`"`) {
+			return true
+		}
+	}
+	return false
+}
+
+func containsCredentialValue(value any) bool {
+	switch value := value.(type) {
+	case map[string]any:
+		for key, child := range value {
+			if isCredentialJSONKey(key) || containsCredentialValue(child) {
+				return true
+			}
+		}
+	case []any:
+		for _, child := range value {
+			if containsCredentialValue(child) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func isCredentialJSONKey(key string) bool {
+	for _, candidate := range credentialJSONKeys {
+		if strings.EqualFold(key, candidate) {
+			return true
+		}
+	}
+	return false
 }

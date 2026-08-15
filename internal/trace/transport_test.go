@@ -17,10 +17,15 @@ package trace
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
+
+	"github.com/sirupsen/logrus"
 )
 
 var errMockRead = errors.New("mock read error")
@@ -225,7 +230,7 @@ func Test_logResponseBody(t *testing.T) {
 				ContentLength: payloadSizeLimit + 1,
 				Header:        http.Header{"Content-Type": []string{"text/plain"}},
 			},
-			want: string(bytes.Repeat([]byte("a"), int(payloadSizeLimit))) + "\n...(truncated)",
+			want: "   Response body exceeding the trace size limit is not printed",
 		},
 		{
 			name:     "Printable content type within limit",
@@ -255,7 +260,7 @@ func Test_logResponseBody(t *testing.T) {
 				ContentLength: 1,                                                                                 // mismatched content length
 				Header:        http.Header{"Content-Type": []string{"text/plain"}},
 			},
-			want: string(bytes.Repeat([]byte("a"), int(payloadSizeLimit))) + "\n...(truncated)",
+			want: "   Response body exceeding the trace size limit is not printed",
 		},
 		{
 			name:     "Actual body size is smaller than content length",
@@ -311,6 +316,36 @@ func Test_logResponseBody(t *testing.T) {
 	}
 }
 
+func TestLogResponseBodyRedactsOversizedCredential(t *testing.T) {
+	const secret = "oversized-json-token"
+	body := []byte(`{"access\u005ftoken":"` + secret + `","pad":"` +
+		strings.Repeat("x", int(payloadSizeLimit)) + `"}`)
+	for _, contentType := range []string{"application/json", "text/plain"} {
+		t.Run(contentType, func(t *testing.T) {
+			resp := &http.Response{
+				Body:          io.NopCloser(bytes.NewReader(body)),
+				ContentLength: int64(len(body)),
+				Header:        http.Header{"Content-Type": []string{contentType}},
+			}
+
+			got := logResponseBody(resp)
+			if strings.Contains(got, secret) {
+				t.Fatalf("trace contains credential from oversized body: %q", got)
+			}
+			restored, err := io.ReadAll(resp.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(restored, body) {
+				t.Fatal("logResponseBody did not restore oversized response body")
+			}
+			if err := resp.Body.Close(); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
 func Test_logResponseBody_error(t *testing.T) {
 	tests := []struct {
 		name string
@@ -337,6 +372,32 @@ func Test_logResponseBody_error(t *testing.T) {
 				t.Errorf("failed to close body after logResponseBody(), err= %v", closeErr)
 			}
 		})
+	}
+}
+
+func TestLogHeaderScrubsCredentials(t *testing.T) {
+	header := http.Header{
+		"Authorization":       {"authorization-secret"},
+		"Cookie":              {"cookie-secret"},
+		"Proxy-Authorization": {"proxy-secret"},
+		"Set-Cookie":          {"set-cookie-secret"},
+		"X-API-Key":           {"api-key-secret"},
+		"X-Request-ID":        {"request-id"},
+	}
+	got := logHeader(header, "X-API-Key")
+	for _, secret := range []string{
+		"authorization-secret",
+		"api-key-secret",
+		"cookie-secret",
+		"proxy-secret",
+		"set-cookie-secret",
+	} {
+		if strings.Contains(got, secret) {
+			t.Fatalf("trace header log contains credential %q: %s", secret, got)
+		}
+	}
+	if !strings.Contains(got, "request-id") {
+		t.Fatalf("trace header log omitted non-sensitive header: %s", got)
 	}
 }
 
@@ -377,6 +438,46 @@ func Test_containsCredentials(t *testing.T) {
 			want: false,
 		},
 		{
+			name: "Contains uppercase access token key",
+			body: `{"ACCESS_TOKEN": "12345"}`,
+			want: true,
+		},
+		{
+			name: "Contains escaped access token key",
+			body: `{"access\u005ftoken": "12345"}`,
+			want: true,
+		},
+		{
+			name: "Contains escaped access token key before trailing data",
+			body: `{"access\u005ftoken": "12345"} trailing`,
+			want: true,
+		},
+		{
+			name: "Contains escaped access token with large unknown number",
+			body: `{"access\u005ftoken": "12345", "pad": 1e1000}`,
+			want: true,
+		},
+		{
+			name: "Contains nested refresh token key",
+			body: `{"result": {"refresh_token": "12345"}}`,
+			want: true,
+		},
+		{
+			name: "Contains identity token key in array",
+			body: `[{"id_token": "12345"}]`,
+			want: true,
+		},
+		{
+			name: "Contains uppercase token key in non-JSON body",
+			body: `whatever "TOKEN" blah`,
+			want: true,
+		},
+		{
+			name: "Token type is not a credential",
+			body: `{"token_type": "Bearer"}`,
+			want: false,
+		},
+		{
 			name: "Does not contain credentials",
 			body: `{"key": "value"}`,
 			want: false,
@@ -394,5 +495,60 @@ func Test_containsCredentials(t *testing.T) {
 				t.Errorf("containsCredentials() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestTransport_RedactsRedirectQueryValues(t *testing.T) {
+	const secret = "private-query-credential"
+	received := make(chan string, 1)
+	finalReferer := make(chan string, 1)
+	final := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		finalReferer <- r.Referer()
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer final.Close()
+
+	sink := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received <- r.URL.Query().Get("X-Amz-Signature")
+		http.Redirect(w, r, final.URL, http.StatusFound)
+	}))
+	defer sink.Close()
+
+	redirector := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, sink.URL+"/blob?X-Amz-Credential=example&X-Amz-Signature="+secret, http.StatusFound)
+	}))
+	defer redirector.Close()
+
+	var log bytes.Buffer
+	logger := logrus.New()
+	logger.SetLevel(logrus.DebugLevel)
+	logger.SetOutput(&log)
+	ctx := context.WithValue(context.Background(), loggerKey, logger.WithContext(context.Background()))
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, redirector.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := &http.Client{Transport: NewTransport(http.DefaultTransport)}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := resp.Body.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if got := <-received; got != secret {
+		t.Fatalf("redirect query changed in transit: got %q, want %q", got, secret)
+	}
+	if referer := <-finalReferer; !strings.Contains(referer, secret) {
+		t.Fatalf("redirect referer did not retain query credential: %q", referer)
+	}
+
+	got := log.String()
+	if strings.Contains(got, secret) {
+		t.Fatalf("trace log contains redirected URL credential: %s", got)
+	}
+	if !strings.Contains(got, "X-Amz-Signature=REDACTED") {
+		t.Fatalf("trace log does not contain redacted query parameter: %s", got)
 	}
 }

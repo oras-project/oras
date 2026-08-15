@@ -293,6 +293,11 @@ func (remo *Remote) authClient(_ string, debug bool) (client *auth.Client, err e
 		return nil, err
 	}
 	baseTransport.DialContext = dialContext
+	// sensitiveHeaders are the custom --header names supplied for this registry.
+	sensitiveHeaders := make([]string, 0, len(remo.headers))
+	for name := range remo.headers {
+		sensitiveHeaders = append(sensitiveHeaders, name)
+	}
 
 	// Check if there's a shared client we can reuse for its cache
 	var cache auth.Cache
@@ -313,7 +318,7 @@ func (remo *Remote) authClient(_ string, debug bool) (client *auth.Client, err e
 	}
 	client.SetUserAgent("oras/" + version.GetVersion())
 	if debug {
-		client.Client.Transport = trace.NewTransport(client.Client.Transport)
+		client.Client.Transport = trace.NewTransport(client.Client.Transport, sensitiveHeaders...)
 	}
 
 	cred := remo.Credential()
