@@ -31,6 +31,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -139,7 +140,7 @@ func TestRemote_authClient_RawCredential(t *testing.T) {
 		Username: want.Username,
 		Secret:   want.Password,
 	}
-	client, err := opts.authClient("hostname", false)
+	client, err := opts.authClient("hostname", false, false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -161,7 +162,7 @@ func TestRemote_authClient_SharedCache(t *testing.T) {
 		Username: "test-user",
 		Secret:   "test-password",
 	}
-	first, err := opts.authClient("hostname", false)
+	first, err := opts.authClient("hostname", false, false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -180,7 +181,7 @@ func TestRemote_authClient_SharedCache(t *testing.T) {
 		t.Fatalf("unexpected error when populating shared cache: %v", err)
 	}
 
-	second, err := opts.authClient("hostname", false)
+	second, err := opts.authClient("hostname", false, false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -200,7 +201,7 @@ func TestRemote_authClient_skipTlsVerify(t *testing.T) {
 	opts := Remote{
 		Insecure: true,
 	}
-	client, err := opts.authClient("hostname", false)
+	client, err := opts.authClient("hostname", false, false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -224,7 +225,7 @@ func TestRemote_authClient_CARoots(t *testing.T) {
 	opts := Remote{
 		CACertFilePath: caPath,
 	}
-	client, err := opts.authClient("hostname", false)
+	client, err := opts.authClient("hostname", false, false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -250,7 +251,7 @@ func TestRemote_authClient_resolve(t *testing.T) {
 		resolveFlag: []string{fmt.Sprintf("%s:%s:%s", testHost, URL.Port(), URL.Hostname())},
 		Insecure:    true,
 	}
-	client, err := opts.authClient(testHost, false)
+	client, err := opts.authClient(testHost, false, false)
 	if err != nil {
 		t.Fatalf("unexpected error when creating auth client: %v", err)
 	}
@@ -649,5 +650,134 @@ func TestRemote_parseCustomHeaders(t *testing.T) {
 				t.Errorf("Remote.parseCustomHeaders() = %v, want %v", opts.headers, tt.want)
 			}
 		})
+	}
+}
+
+func TestSameRegistryOrigin(t *testing.T) {
+	tests := []struct {
+		name           string
+		scheme         string
+		authority      string
+		registryScheme string
+		registry       string
+		want           bool
+	}{
+		{"same authority", "https", "registry.example:5443", "https", "registry.example:5443", true},
+		{"case insensitive host", "HTTPS", "REGISTRY.EXAMPLE:5443", "https", "registry.example:5443", true},
+		{"implicit HTTPS port", "https", "registry.example", "https", "registry.example:443", true},
+		{"explicit HTTPS port", "https", "registry.example:443", "https", "registry.example", true},
+		{"empty explicit HTTPS port", "https", "registry.example:", "https", "registry.example", true},
+		{"plain HTTP registry", "http", "registry.example", "http", "registry.example:80", true},
+		{"different port", "https", "registry.example:5443", "https", "registry.example:443", false},
+		{"different host", "https", "redirect.example:443", "https", "registry.example:443", false},
+		{"different scheme", "http", "registry.example:443", "https", "registry.example:443", false},
+		{"same IPv4 literal", "https", "127.0.0.1:5443", "https", "127.0.0.1:5443", true},
+		{"compressed and expanded IPv6", "https", "[::1]:5443", "https", "[0:0:0:0:0:0:0:1]:5443", true},
+		{"uppercase IPv6 hex digits", "https", "[fe80::ABCD]:5443", "https", "[fe80::abcd]:5443", true},
+		{"IPv6 implicit HTTPS port", "https", "[::1]", "https", "[::1]:443", true},
+		{"IPv6 explicit HTTPS port", "https", "[::1]:443", "https", "[::1]", true},
+		{"IPv6 different port", "https", "[::1]:5443", "https", "[::1]:443", false},
+		{"different IPv6 address", "https", "[::2]:443", "https", "[::1]:443", false},
+		{"IPv6 zone identifier case differs", "https", "[fe80::1%eth0]:443", "https", "[fe80::1%ETH0]:443", false},
+		{"same IPv6 zone identifier", "https", "[fe80::1%eth0]:443", "https", "[fe80::1%eth0]:443", true},
+		{"IPv6 zone identifier only on registry", "https", "[fe80::1]:443", "https", "[fe80::1%eth0]:443", false},
+		{"IP literal against DNS name", "https", "[::1]:443", "https", "registry.example:443", false},
+		{"DNS name against IP literal", "https", "registry.example:443", "https", "[::1]:443", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := sameRegistryOrigin(tt.scheme, tt.authority, tt.registryScheme, tt.registry); got != tt.want {
+				t.Fatalf("sameRegistryOrigin() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRemote_authClientScopesCustomHeadersToRegistry(t *testing.T) {
+	const secret = "private-api-key"
+
+	sinkHeader := make(chan string, 1)
+	sink := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sinkHeader <- r.Header.Get("X-API-Key")
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer sink.Close()
+
+	sourceHeader := make(chan string, 1)
+	source := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sourceHeader <- r.Header.Get("X-API-Key")
+		http.Redirect(w, r, sink.URL, http.StatusFound)
+	}))
+	defer source.Close()
+
+	sourceURL, err := url.Parse(source.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opts := Remote{headerFlags: []string{"X-API-Key: " + secret}}
+	if err := opts.parseCustomHeaders(); err != nil {
+		t.Fatal(err)
+	}
+	client, err := opts.authClient(sourceURL.Host, true, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, source.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := resp.Body.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := <-sourceHeader; got != secret {
+		t.Fatalf("configured registry received X-API-Key %q, want %q", got, secret)
+	}
+	if got := <-sinkHeader; got != "" {
+		t.Fatalf("different redirect origin received X-API-Key %q", got)
+	}
+}
+
+func TestRemote_authClientDoesNotShareHeaderState(t *testing.T) {
+	received := make(chan http.Header, 1)
+	sink := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received <- r.Header.Clone()
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer sink.Close()
+
+	opts := Remote{headerFlags: []string{"X-API-Key: private-api-key"}}
+	if err := opts.parseCustomHeaders(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := opts.authClient("registry.example", true, false); err != nil {
+		t.Fatal(err)
+	}
+	client, err := opts.authClient("registry.example", true, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, sink.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := resp.Body.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	header := <-received
+	if got := header.Get("X-API-Key"); got != "" {
+		t.Fatalf("different origin received X-API-Key %q", got)
+	}
+	if got := header.Get("User-Agent"); !strings.HasPrefix(got, "oras/") {
+		t.Fatalf("different origin received User-Agent %q, want oras/ prefix", got)
 	}
 }

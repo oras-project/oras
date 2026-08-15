@@ -23,6 +23,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"strconv"
 	"strings"
@@ -280,11 +281,88 @@ func (remo *Remote) tlsConfig() (*tls.Config, error) {
 	return config, nil
 }
 
+// registryCredentialTransport scopes custom headers to a registry origin.
+type registryCredentialTransport struct {
+	registryScheme    string
+	registry          string
+	registryTransport http.RoundTripper
+	sensitiveHeaders  []string
+}
+
+func (t *registryCredentialTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if !sameRegistryOrigin(req.URL.Scheme, req.URL.Host, t.registryScheme, t.registry) {
+		// Clone deep-copies the header map, so the caller's request is untouched.
+		req = req.Clone(req.Context())
+		removeHeaders(req.Header, t.sensitiveHeaders)
+	}
+	return t.registryTransport.RoundTrip(req)
+}
+
+func removeHeaders(header http.Header, names []string) {
+	for key := range header {
+		for _, name := range names {
+			if strings.EqualFold(key, name) {
+				delete(header, key)
+				break
+			}
+		}
+	}
+}
+
+func sameRegistryOrigin(scheme, authority, registryScheme, registry string) bool {
+	if !strings.EqualFold(scheme, registryScheme) {
+		return false
+	}
+	defaultPort := "443"
+	if strings.EqualFold(scheme, "http") {
+		defaultPort = "80"
+	}
+	host, port := splitAuthority(authority, defaultPort)
+	registryHost, registryPort := splitAuthority(registry, defaultPort)
+	return sameHost(host, registryHost) && port == registryPort
+}
+
+// sameHost reports whether two host components denote the same host. IP
+// literals are compared by parsed address so that equivalent IPv6 spellings
+// (for example "::1" and "0:0:0:0:0:0:0:1") match, while zone identifiers,
+// which are case-sensitive, must be identical. DNS names are compared
+// case-insensitively.
+func sameHost(host, registryHost string) bool {
+	addr, err := netip.ParseAddr(host)
+	if err != nil {
+		// Not an IP literal: compare as a DNS name.
+		if _, err := netip.ParseAddr(registryHost); err == nil {
+			return false
+		}
+		return strings.EqualFold(host, registryHost)
+	}
+	registryAddr, err := netip.ParseAddr(registryHost)
+	if err != nil {
+		return false
+	}
+	return addr == registryAddr
+}
+
+func splitAuthority(authority, defaultPort string) (host, port string) {
+	host, port, err := net.SplitHostPort(authority)
+	if err == nil {
+		if port == "" {
+			port = defaultPort
+		}
+		return host, port
+	}
+	return strings.Trim(authority, "[]"), defaultPort
+}
+
 // authClient assembles a oras auth client.
-func (remo *Remote) authClient(_ string, debug bool) (client *auth.Client, err error) {
+func (remo *Remote) authClient(registry string, plainHTTP, debug bool) (client *auth.Client, err error) {
 	config, err := remo.tlsConfig()
 	if err != nil {
 		return nil, err
+	}
+	registryScheme := "https"
+	if plainHTTP {
+		registryScheme = "http"
 	}
 	baseTransport := http.DefaultTransport.(*http.Transport).Clone()
 	baseTransport.TLSClientConfig = config
@@ -293,10 +371,21 @@ func (remo *Remote) authClient(_ string, debug bool) (client *auth.Client, err e
 		return nil, err
 	}
 	baseTransport.DialContext = dialContext
+	registryTransport := retry.NewTransport(baseTransport)
+
 	// sensitiveHeaders are the custom --header names supplied for this registry.
 	sensitiveHeaders := make([]string, 0, len(remo.headers))
 	for name := range remo.headers {
 		sensitiveHeaders = append(sensitiveHeaders, name)
+	}
+	var transport http.RoundTripper = registryTransport
+	if len(sensitiveHeaders) != 0 {
+		transport = &registryCredentialTransport{
+			registryScheme:    registryScheme,
+			registry:          registry,
+			registryTransport: registryTransport,
+			sensitiveHeaders:  sensitiveHeaders,
+		}
 	}
 
 	// Check if there's a shared client we can reuse for its cache
@@ -311,10 +400,10 @@ func (remo *Remote) authClient(_ string, debug bool) (client *auth.Client, err e
 		Client: &http.Client{
 			// http.RoundTripper with a retry using the DefaultPolicy
 			// see: https://pkg.go.dev/oras.land/oras-go/v2/registry/remote/retry#Policy
-			Transport: retry.NewTransport(baseTransport),
+			Transport: transport,
 		},
 		Cache:  cache,
-		Header: remo.headers,
+		Header: remo.headers.Clone(),
 	}
 	client.SetUserAgent("oras/" + version.GetVersion())
 	if debug {
@@ -402,7 +491,7 @@ func (remo *Remote) NewRegistry(registry string, common Common, logger logrus.Fi
 	registry = reg.Reference.Registry
 	reg.PlainHTTP = remo.isPlainHTTP(registry)
 	reg.HandleWarning = remo.handleWarning(registry, logger)
-	if reg.Client, err = remo.authClient(registry, common.Debug); err != nil {
+	if reg.Client, err = remo.authClient(reg.Reference.Host(), reg.PlainHTTP, common.Debug); err != nil {
 		return nil, err
 	}
 	return
@@ -420,7 +509,7 @@ func (remo *Remote) NewRepository(reference string, common Common, logger logrus
 	registry := repo.Reference.Registry
 	repo.PlainHTTP = remo.isPlainHTTP(registry)
 	repo.HandleWarning = remo.handleWarning(registry, logger)
-	if repo.Client, err = remo.authClient(registry, common.Debug); err != nil {
+	if repo.Client, err = remo.authClient(repo.Reference.Host(), repo.PlainHTTP, common.Debug); err != nil {
 		return nil, err
 	}
 	repo.SkipReferrersGC = true
