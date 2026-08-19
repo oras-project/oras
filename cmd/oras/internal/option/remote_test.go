@@ -25,6 +25,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -33,10 +35,12 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/retry"
 )
 
 var ts *httptest.Server
@@ -690,6 +694,314 @@ func TestSameRegistryOrigin(t *testing.T) {
 				t.Fatalf("sameRegistryOrigin() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestRemoteNewRegistryScopesClientCertificateToEffectiveHost(t *testing.T) {
+	tempDir := t.TempDir()
+	clientCertPath := filepath.Join(tempDir, "oras-test-client.pem")
+	if err := os.WriteFile(clientCertPath, localhostClientCert, 0600); err != nil {
+		t.Fatal(err)
+	}
+	clientKeyPath := filepath.Join(tempDir, "oras-test-client.key")
+	if err := os.WriteFile(clientKeyPath, testingKey(localhostClientKey), 0600); err != nil {
+		t.Fatal(err)
+	}
+	opts := Remote{
+		CertFilePath: clientCertPath,
+		KeyFilePath:  clientKeyPath,
+		plainHTTP:    plainHTTPNotSpecified,
+	}
+	reg, err := opts.NewRegistry("docker.io", Common{}, logrus.New())
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, ok := reg.Client.(*auth.Client)
+	if !ok {
+		t.Fatalf("registry client has type %T, want *auth.Client", reg.Client)
+	}
+	transport, ok := client.Client.Transport.(*registryCredentialTransport)
+	if !ok {
+		t.Fatalf("registry transport has type %T, want *registryCredentialTransport", client.Client.Transport)
+	}
+	if got, want := transport.registry, "registry-1.docker.io"; got != want {
+		t.Fatalf("client certificate registry = %q, want %q", got, want)
+	}
+}
+
+func TestRemote_authClientScopesClientCertificateToRegistry(t *testing.T) {
+	sinkCertificate := make(chan bool, 1)
+	sink := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sinkCertificate <- len(r.TLS.PeerCertificates) > 0
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	sink.TLS = loadTestingTLSConfig()
+	sink.StartTLS()
+	defer sink.Close()
+
+	sourceCertificate := make(chan bool, 1)
+	source := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sourceCertificate <- len(r.TLS.PeerCertificates) > 0
+		http.Redirect(w, r, sink.URL, http.StatusFound)
+	}))
+	source.TLS = loadTestingTLSConfig()
+	source.StartTLS()
+	defer source.Close()
+
+	tempDir := t.TempDir()
+	caPath := filepath.Join(tempDir, "oras-test.pem")
+	if err := os.WriteFile(caPath, localhostServerCert, 0600); err != nil {
+		t.Fatal(err)
+	}
+	clientCertPath := filepath.Join(tempDir, "oras-test-client.pem")
+	if err := os.WriteFile(clientCertPath, localhostClientCert, 0600); err != nil {
+		t.Fatal(err)
+	}
+	clientKeyPath := filepath.Join(tempDir, "oras-test-client.key")
+	if err := os.WriteFile(clientKeyPath, testingKey(localhostClientKey), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	sourceURL, err := url.Parse(source.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opts := Remote{
+		CACertFilePath: caPath,
+		CertFilePath:   clientCertPath,
+		KeyFilePath:    clientKeyPath,
+	}
+	client, err := opts.authClient(sourceURL.Host, false, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, source.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := resp.Body.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	if !<-sourceCertificate {
+		t.Fatal("client certificate was not sent to the configured registry")
+	}
+	if <-sinkCertificate {
+		t.Fatal("client certificate was sent to a different redirect origin")
+	}
+}
+
+func TestRemote_authClientDoesNotSendClientCertificateToHTTPSProxy(t *testing.T) {
+	proxyCertificate := make(chan bool, 2)
+	var registryAddress string
+	proxy := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxyCertificate <- len(r.TLS.PeerCertificates) > 0
+		if r.Method != http.MethodConnect {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		if r.Host != registryAddress {
+			http.Error(w, "unexpected CONNECT target", http.StatusForbidden)
+			return
+		}
+		upstream, err := (&net.Dialer{}).DialContext(r.Context(), "tcp", registryAddress)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		hijacker, ok := w.(http.Hijacker)
+		if !ok {
+			_ = upstream.Close()
+			http.Error(w, "proxy does not support hijacking", http.StatusInternalServerError)
+			return
+		}
+		downstream, rw, err := hijacker.Hijack()
+		if err != nil {
+			_ = upstream.Close()
+			return
+		}
+		if _, err := rw.WriteString("HTTP/1.1 200 Connection Established\r\n\r\n"); err != nil {
+			_ = downstream.Close()
+			_ = upstream.Close()
+			return
+		}
+		if err := rw.Flush(); err != nil {
+			_ = downstream.Close()
+			_ = upstream.Close()
+			return
+		}
+		go func() {
+			defer downstream.Close()
+			defer upstream.Close()
+			_, _ = io.Copy(downstream, upstream)
+		}()
+		go func() {
+			defer downstream.Close()
+			defer upstream.Close()
+			_, _ = io.Copy(upstream, downstream)
+		}()
+	}))
+	proxy.TLS = loadTestingTLSConfig()
+	proxy.TLS.ClientAuth = tls.RequestClientCert
+	proxy.StartTLS()
+	defer proxy.Close()
+
+	registryCertificate := make(chan bool, 1)
+	registry := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		registryCertificate <- len(r.TLS.PeerCertificates) > 0
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	registry.TLS = loadTestingTLSConfig()
+	registry.TLS.ClientAuth = tls.RequestClientCert
+	registry.StartTLS()
+	defer registry.Close()
+	registryURL, err := url.Parse(registry.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	registryAddress = registryURL.Host
+
+	tempDir := t.TempDir()
+	caPath := filepath.Join(tempDir, "oras-test.pem")
+	if err := os.WriteFile(caPath, localhostServerCert, 0600); err != nil {
+		t.Fatal(err)
+	}
+	clientCertPath := filepath.Join(tempDir, "oras-test-client.pem")
+	if err := os.WriteFile(clientCertPath, localhostClientCert, 0600); err != nil {
+		t.Fatal(err)
+	}
+	clientKeyPath := filepath.Join(tempDir, "oras-test-client.key")
+	if err := os.WriteFile(clientKeyPath, testingKey(localhostClientKey), 0600); err != nil {
+		t.Fatal(err)
+	}
+	opts := Remote{
+		CACertFilePath: caPath,
+		CertFilePath:   clientCertPath,
+		KeyFilePath:    clientKeyPath,
+	}
+	proxyURL, err := url.Parse(proxy.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name       string
+		registry   string
+		plainHTTP  bool
+		requestURL string
+	}{
+		{"HTTPS registry", registryURL.Host, false, registry.URL},
+		{"plain HTTP registry", "registry.example", true, "http://registry.example/v2/"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client, err := opts.authClient(tt.registry, tt.plainHTTP, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			scopedTransport, ok := client.Client.Transport.(*registryCredentialTransport)
+			if !ok {
+				t.Fatalf("registry transport has type %T, want *registryCredentialTransport", client.Client.Transport)
+			}
+			retryTransport, ok := scopedTransport.registryTransport.(*retry.Transport)
+			if !ok {
+				t.Fatalf("registry route has type %T, want *retry.Transport", scopedTransport.registryTransport)
+			}
+			baseTransport, ok := retryTransport.Base.(*http.Transport)
+			if !ok {
+				t.Fatalf("registry retry base has type %T, want *http.Transport", retryTransport.Base)
+			}
+			baseTransport.Proxy = http.ProxyURL(proxyURL)
+			defer baseTransport.CloseIdleConnections()
+
+			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, tt.requestURL, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			resp, err := client.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := resp.Body.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if presented := <-proxyCertificate; presented {
+				t.Fatal("registry client certificate was sent to the HTTPS proxy")
+			}
+			if !tt.plainHTTP && !<-registryCertificate {
+				t.Fatal("registry did not receive its client certificate through the HTTPS proxy")
+			}
+		})
+	}
+}
+
+func TestRemote_authClientPreservesTLSHandshakeTimeout(t *testing.T) {
+	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	accepted := make(chan net.Conn, 1)
+	go func() {
+		conn, err := listener.Accept()
+		if err == nil {
+			accepted <- conn
+		}
+	}()
+	defer func() {
+		_ = listener.Close()
+		select {
+		case conn := <-accepted:
+			_ = conn.Close()
+		default:
+		}
+	}()
+
+	tempDir := t.TempDir()
+	clientCertPath := filepath.Join(tempDir, "oras-test-client.pem")
+	if err := os.WriteFile(clientCertPath, localhostClientCert, 0600); err != nil {
+		t.Fatal(err)
+	}
+	clientKeyPath := filepath.Join(tempDir, "oras-test-client.key")
+	if err := os.WriteFile(clientKeyPath, testingKey(localhostClientKey), 0600); err != nil {
+		t.Fatal(err)
+	}
+	opts := Remote{
+		CertFilePath: clientCertPath,
+		KeyFilePath:  clientKeyPath,
+	}
+	client, err := opts.authClient(listener.Addr().String(), false, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	scopedTransport := client.Client.Transport.(*registryCredentialTransport)
+	retryTransport := scopedTransport.registryTransport.(*retry.Transport)
+	baseTransport := retryTransport.Base.(*http.Transport)
+	baseTransport.TLSHandshakeTimeout = 20 * time.Millisecond
+	defer baseTransport.CloseIdleConnections()
+
+	req, err := http.NewRequestWithContext(
+		context.Background(),
+		http.MethodGet,
+		"https://"+listener.Addr().String()+"/v2/",
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := time.Now()
+	resp, err := baseTransport.RoundTrip(req)
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
+	if err == nil {
+		t.Fatal("expected TLS handshake timeout")
+	}
+	if elapsed := time.Since(start); elapsed > time.Second {
+		t.Fatalf("TLS handshake timeout took %v", elapsed)
 	}
 }
 

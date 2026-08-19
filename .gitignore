@@ -61,3 +61,5 @@ test/e2e/testdata/zot/
 !test/e2e/testdata/zot/passwd_bcrypt
 
 test/e2e/go.work.sum
+# Local build output
+/oras

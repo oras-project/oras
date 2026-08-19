@@ -281,21 +281,25 @@ func (remo *Remote) tlsConfig() (*tls.Config, error) {
 	return config, nil
 }
 
-// registryCredentialTransport scopes custom headers to a registry origin.
+// registryCredentialTransport scopes client certificates and custom headers to a registry origin.
 type registryCredentialTransport struct {
 	registryScheme    string
 	registry          string
 	registryTransport http.RoundTripper
+	fallbackTransport http.RoundTripper
 	sensitiveHeaders  []string
 }
 
 func (t *registryCredentialTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	if !sameRegistryOrigin(req.URL.Scheme, req.URL.Host, t.registryScheme, t.registry) {
+	if sameRegistryOrigin(req.URL.Scheme, req.URL.Host, t.registryScheme, t.registry) {
+		return t.registryTransport.RoundTrip(req)
+	}
+	if len(t.sensitiveHeaders) != 0 {
 		// Clone deep-copies the header map, so the caller's request is untouched.
 		req = req.Clone(req.Context())
 		removeHeaders(req.Header, t.sensitiveHeaders)
 	}
-	return t.registryTransport.RoundTrip(req)
+	return t.fallbackTransport.RoundTrip(req)
 }
 
 func removeHeaders(header http.Header, names []string) {
@@ -364,6 +368,7 @@ func (remo *Remote) authClient(registry string, plainHTTP, debug bool) (client *
 	if plainHTTP {
 		registryScheme = "http"
 	}
+	hasClientCertificate := len(config.Certificates) != 0
 	baseTransport := http.DefaultTransport.(*http.Transport).Clone()
 	baseTransport.TLSClientConfig = config
 	dialContext, err := remo.parseResolve(baseTransport.DialContext)
@@ -371,19 +376,54 @@ func (remo *Remote) authClient(registry string, plainHTTP, debug bool) (client *
 		return nil, err
 	}
 	baseTransport.DialContext = dialContext
-	registryTransport := retry.NewTransport(baseTransport)
 
 	// sensitiveHeaders are the custom --header names supplied for this registry.
 	sensitiveHeaders := make([]string, 0, len(remo.headers))
 	for name := range remo.headers {
 		sensitiveHeaders = append(sensitiveHeaders, name)
 	}
+	if hasClientCertificate {
+		baseTransport.DialTLSContext = func(ctx context.Context, network, address string) (net.Conn, error) {
+			conn, err := dialContext(ctx, network, address)
+			if err != nil {
+				return nil, err
+			}
+			tlsConfig := baseTransport.TLSClientConfig.Clone()
+			if !sameRegistryOrigin("https", address, registryScheme, registry) {
+				tlsConfig.Certificates = nil
+			}
+			if tlsConfig.ServerName == "" {
+				tlsConfig.ServerName, _ = splitAuthority(address, "443")
+			}
+			tlsConn := tls.Client(conn, tlsConfig)
+			if baseTransport.TLSHandshakeTimeout > 0 {
+				handshakeContext, cancel := context.WithTimeout(ctx, baseTransport.TLSHandshakeTimeout)
+				defer cancel()
+				ctx = handshakeContext
+			}
+			if err := tlsConn.HandshakeContext(ctx); err != nil {
+				_ = conn.Close()
+				return nil, err
+			}
+			return tlsConn, nil
+		}
+	}
+	registryTransport := retry.NewTransport(baseTransport)
+	var fallbackTransport http.RoundTripper = registryTransport
+	if hasClientCertificate {
+		withoutCertificate := baseTransport.Clone()
+		fallbackConfig := config.Clone()
+		fallbackConfig.Certificates = nil
+		withoutCertificate.TLSClientConfig = fallbackConfig
+		fallbackTransport = retry.NewTransport(withoutCertificate)
+	}
 	var transport http.RoundTripper = registryTransport
-	if len(sensitiveHeaders) != 0 {
+	if hasClientCertificate || len(sensitiveHeaders) != 0 {
 		transport = &registryCredentialTransport{
 			registryScheme:    registryScheme,
 			registry:          registry,
 			registryTransport: registryTransport,
+			fallbackTransport: fallbackTransport,
 			sensitiveHeaders:  sensitiveHeaders,
 		}
 	}
