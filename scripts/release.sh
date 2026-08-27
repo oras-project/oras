@@ -23,7 +23,9 @@ VERSION_FILE="internal/version/version.go"
 # Resolved lazily by detect_remote() once we're inside the repo. Do not assume
 # any particular remote name (e.g. "upstream") here.
 REMOTE=""
-MAIN_RELEASE_VERSION="${ORAS_MAIN_RELEASE_VERSION:-3.0}"
+# Fingerprint of the ORAS project release key. Artifacts are signed with it in
+# CI by release-github.yml; see the "signs" block in .goreleaser.yml.
+RELEASE_SIGNING_KEY="C6FC42F0DE84A345FAADB742F44418110791EF37"
 
 # Colors
 RED='\033[0;31m'
@@ -89,6 +91,18 @@ get_major_minor() {
     echo "$version" | cut -d. -f1-2
 }
 
+# Major.minor series currently released from 'main'. Honors
+# ORAS_MAIN_RELEASE_VERSION when set; otherwise it is derived from the version
+# already recorded in VERSION_FILE on the current branch, so it tracks the
+# branch instead of needing a hardcoded edit every time the series moves.
+main_release_version() {
+    if [ -n "${ORAS_MAIN_RELEASE_VERSION:-}" ]; then
+        echo "$ORAS_MAIN_RELEASE_VERSION"
+        return 0
+    fi
+    get_major_minor "$(version_from_file)"
+}
+
 # Read version from VERSION_FILE
 version_from_file() {
     sed -nE 's/.*Version = "([^"]+)".*/\1/p' "$VERSION_FILE"
@@ -132,19 +146,44 @@ check_prerequisites() {
         error "'gh' CLI not authenticated. Run: gh auth login"
         exit 1
     fi
-    if ! command -v gpg &>/dev/null; then
-        error "'gpg' not found. Install GPG."
-        exit 1
-    fi
-    if ! gpg --list-secret-keys --keyid-format LONG 2>/dev/null | grep -q sec; then
-        error "No GPG secret keys found. Import or generate a key."
-        exit 1
-    fi
     if ! REMOTE=$(detect_remote); then
         error "Could not find a git remote pointing at ${REPO}. Add it (e.g. 'git remote add upstream https://github.com/${REPO}.git') or set ORAS_REMOTE to the correct remote name."
         exit 1
     fi
     info "Using git remote '${REMOTE}' for ${REPO}"
+}
+
+# Check that git can sign the commits and tags this script creates.
+# 'git tag -s' honors gpg.format, which may be openpgp (the default), ssh or
+# x509. Testing only for a GPG secret key both rejects maintainers who sign
+# with SSH and passes maintainers whose GPG key git will never reach for.
+check_signing() {
+    local format
+    format=$(git config --get gpg.format || echo "openpgp")
+    case "$format" in
+        ssh)
+            if [ -z "$(git config --get user.signingkey || echo "")" ] &&
+               [ -z "$(git config --get gpg.ssh.defaultKeyCommand || echo "")" ]; then
+                error "gpg.format is 'ssh' but neither user.signingkey nor gpg.ssh.defaultKeyCommand is set."
+                exit 1
+            fi
+            info "Signing tags and commits with SSH key"
+            ;;
+        openpgp|"")
+            if ! command -v gpg &>/dev/null; then
+                error "'gpg' not found. Install GPG, or configure SSH signing (git config gpg.format ssh)."
+                exit 1
+            fi
+            if ! gpg --list-secret-keys --keyid-format LONG 2>/dev/null | grep -q sec; then
+                error "No GPG secret keys found. Import or generate a key."
+                exit 1
+            fi
+            info "Signing tags and commits with GPG key"
+            ;;
+        *)
+            info "Tag signing format is '${format}'; skipping signing key check"
+            ;;
+    esac
 }
 
 ###############################################################################
@@ -156,6 +195,7 @@ do_prep() {
     info "Preparing release v${version}"
 
     check_prerequisites
+    check_signing
     success "Prerequisites OK"
 
     # Verify we're on main or the correct release branch
@@ -164,8 +204,13 @@ do_prep() {
     major_minor=$(get_major_minor "$version")
     expected_branch="release-${major_minor}"
     if [ "$current_branch" = "main" ]; then
-        if [ "$major_minor" != "$MAIN_RELEASE_VERSION" ]; then
-            error "Releases from 'main' must be v${MAIN_RELEASE_VERSION}.x, but version is v${version}. Use branch '${expected_branch}' for this release, or set ORAS_MAIN_RELEASE_VERSION if the next main-branch series has changed."
+        # 'main' carries the current series, and it is also where the next
+        # minor is cut from, so allow both. Older patch releases belong on
+        # their own release branch.
+        local main_series
+        main_series=$(main_release_version)
+        if [ "$major_minor" != "$main_series" ] && ! is_new_minor "$version"; then
+            error "'main' is on the v${main_series} series, so it cannot cut patch release v${version}. Use branch '${expected_branch}', or set ORAS_MAIN_RELEASE_VERSION to override the detected series."
             exit 1
         fi
     elif [ "$current_branch" != "$expected_branch" ]; then
@@ -179,15 +224,21 @@ do_prep() {
         exit 1
     fi
 
-    # Update version file
+    # Update version file. These edits are guarded explicitly rather than via
+    # run(), which cannot wrap a redirect-free in-place sed, so that --dry-run
+    # leaves the working tree untouched.
     info "Updating ${VERSION_FILE}..."
-    sed -i.bak -E "s/Version = \"[^\"]+\"/Version = \"${version}\"/" "$VERSION_FILE"
-    sed -i.bak -E "s/BuildMetadata = \"[^\"]*\"/BuildMetadata = \"\"/" "$VERSION_FILE"
-    rm -f "${VERSION_FILE}.bak"
-    success "Version set to ${version}"
+    if [ "$DRY_RUN" = true ]; then
+        info "[DRY-RUN] Would set Version to ${version} and clear BuildMetadata in ${VERSION_FILE}"
+    else
+        sed -i.bak -E "s/Version = \"[^\"]+\"/Version = \"${version}\"/" "$VERSION_FILE"
+        sed -i.bak -E "s/BuildMetadata = \"[^\"]*\"/BuildMetadata = \"\"/" "$VERSION_FILE"
+        rm -f "${VERSION_FILE}.bak"
+        success "Version set to ${version}"
 
-    # Show the diff
-    git diff "$VERSION_FILE"
+        # Show the diff
+        git diff "$VERSION_FILE"
+    fi
 
     # Create branch, commit, push, PR. The PR targets the branch we are
     # releasing from: 'main' for the main series, or 'release-X.Y' for patches.
@@ -272,6 +323,7 @@ do_tag() {
     info "Tagging v${version} at ${sha}"
 
     check_prerequisites
+    check_signing
     success "Prerequisites OK"
 
     # Verify the commit exists and is on main
@@ -439,7 +491,7 @@ do_validate() {
 }
 
 ###############################################################################
-# Phase 4: Sign & Publish
+# Phase 4: Verify & Publish
 ###############################################################################
 do_publish() {
     local version="$1"
@@ -452,71 +504,58 @@ do_publish() {
         exit 1
     fi
 
-    # Sign artifacts
-    info "Signing artifacts with GPG..."
-    local sign_failed=false
-    for f in _dist/oras_"${version}"_*; do
-        [[ "$f" == *.asc ]] && continue
-        [ -f "$f" ] || continue
-        if run gpg --armor --detach-sign "$f"; then
-            success "Signed: $(basename "$f")"
-        else
-            error "Failed to sign: $(basename "$f")"
-            sign_failed=true
+    # Artifacts are signed in CI with the ORAS project release key (see the
+    # "signs" block in .goreleaser.yml), and the .asc files ship with the
+    # release, so 'validate' already downloaded them. Verify them here rather
+    # than signing again: a local signature would be made with whichever key
+    # gpg defaults to and would replace the project key's signatures on the
+    # release.
+    if ! gpg --list-keys "$RELEASE_SIGNING_KEY" &>/dev/null; then
+        info "Release signing key not in keyring, importing from KEYS..."
+        gpg --import KEYS &>/dev/null || true
+        if ! gpg --list-keys "$RELEASE_SIGNING_KEY" &>/dev/null; then
+            error "Release signing key ${RELEASE_SIGNING_KEY} is not in your keyring and could not be imported from KEYS."
+            exit 1
         fi
-    done
-    if [ "$sign_failed" = true ]; then
-        error "One or more artifacts failed to sign. Ensure your GPG key is unlocked and retry."
-        exit 1
     fi
-    success "All artifacts signed"
 
-    # Verify signatures
-    info "Verifying GPG signatures..."
+    info "Verifying release signatures against ${RELEASE_SIGNING_KEY}..."
     local sig_count=0
     for asc in _dist/oras_"${version}"_*.asc; do
         [ -f "$asc" ] || continue
         local orig="${asc%.asc}"
-        if gpg --verify "$asc" "$orig" 2>/dev/null; then
-            success "Verified: $(basename "$asc")"
+        if [ ! -f "$orig" ]; then
+            error "Signature $(basename "$asc") has no matching artifact in _dist/"
+            exit 1
+        fi
+        if gpg --verify --status-fd=1 "$asc" "$orig" 2>/dev/null | grep -q "VALIDSIG .*${RELEASE_SIGNING_KEY}"; then
+            success "Verified: $(basename "$orig")"
             sig_count=$(( sig_count + 1 ))
         else
-            error "Signature verification failed: $(basename "$asc")"
+            error "Signature verification failed for $(basename "$orig"); expected a signature by ${RELEASE_SIGNING_KEY}"
             exit 1
         fi
     done
     if [ "$sig_count" -eq 0 ]; then
-        error "No .asc signature files found in _dist/"
+        error "No .asc signature files found in _dist/. Check that release-github.yml signed the artifacts."
         exit 1
     fi
     success "All ${sig_count} signatures verified"
 
-    # Upload signatures to GitHub release
-    info "Uploading signatures to GitHub release..."
-    if [[ "$DRY_RUN" == "true" ]]; then
-        info "[DRY-RUN] Would upload ${sig_count} .asc files to release v${version}"
+    # Record the signing key in the release notes
+    local existing_notes
+    if [ "$DRY_RUN" = true ]; then
+        info "[DRY-RUN] Would append signing info to release notes"
     else
-        gh release upload "v${version}" _dist/oras_"${version}"_*.asc --repo "$REPO" --clobber
-    fi
-    success "Signatures uploaded"
-
-    # Get GPG fingerprint and signer handle for release notes
-    local fingerprint signer
-    fingerprint=$(gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '/^fpr:/ {print $10; exit}')
-    signer=$(gh api user --jq '.login' 2>/dev/null || echo "")
-    if [ -n "$fingerprint" ]; then
-        info "Adding signing key info to release notes..."
-        local signed_by="."
-        [ -n "$signer" ] && signed_by=" by [@${signer}](https://github.com/${signer}) (key: https://github.com/${signer}.gpg)."
-        local note="## Verification\n\nThis release was signed with GPG key \`${fingerprint}\`${signed_by} Signatures (\`.asc\` files) are attached to this release.\n\nPublic keys are available in the [KEYS](https://github.com/${REPO}/blob/main/KEYS) file."
-        if [ "$DRY_RUN" = true ]; then
-            info "[DRY-RUN] Would append signing info to release notes"
+        existing_notes=$(gh release view "v${version}" --repo "$REPO" --json body --jq '.body')
+        if [[ "$existing_notes" == *"## Verification"* ]]; then
+            info "Release notes already carry a Verification section, leaving them as they are"
         else
-            local existing_notes
-            existing_notes=$(gh release view "v${version}" --repo "$REPO" --json body --jq '.body')
+            info "Adding signing key info to release notes..."
+            local note="## Verification\n\nRelease artifacts are signed with the ORAS project release key \`${RELEASE_SIGNING_KEY}\`. Signatures (\`.asc\` files) are attached to this release.\n\nPublic keys are available in the [KEYS](https://github.com/${REPO}/blob/main/KEYS) file."
             gh release edit "v${version}" --repo "$REPO" --notes "$(printf '%s\n\n%b' "$existing_notes" "$note")"
+            success "Release notes updated with signing key info"
         fi
-        success "Release notes updated with signing key info"
     fi
 
     # Publish release
@@ -577,7 +616,7 @@ Phases:
   prep <version>              Bump version, create PR, print vote template
   tag <version> <commit-sha>  Create and push signed tag
   validate [version]          Wait for CI, download and verify artifacts (default: version from version.go)
-  publish [version]           Sign, upload signatures, publish release (default: version from version.go)
+  publish [version]           Verify signatures, publish release (default: version from version.go)
 
 Flags:
   --dry-run                   Print actions without executing them
@@ -585,7 +624,8 @@ Flags:
 Environment:
   ORAS_REMOTE                 Git remote name for ${REPO}
                               (default: auto-detected from remote URLs)
-  ORAS_MAIN_RELEASE_VERSION   Major.minor series released from 'main' (default: ${MAIN_RELEASE_VERSION})
+  ORAS_MAIN_RELEASE_VERSION   Major.minor series released from 'main'
+                              (default: derived from ${VERSION_FILE})
 
 Examples:
   scripts/release.sh prep 1.3.0
