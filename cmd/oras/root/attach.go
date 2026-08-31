@@ -80,6 +80,15 @@ Example - Attach an artifact with manifest annotations:
 Example - Attach file 'hi.txt' and add manifest annotations:
   oras attach --artifact-type doc/example --annotation "key=val" localhost:5000/hello:v1 hi.txt
 
+Example - Attach file 'hi.txt' with a layer annotation scoped to that file:
+  oras attach --artifact-type doc/example --annotation "hi.txt:key=val" localhost:5000/hello:v1 hi.txt
+
+Example - Attach file 'hi.txt' with a config annotation:
+  oras attach --artifact-type doc/example --annotation '$config:key=val' localhost:5000/hello:v1 hi.txt
+
+Example - Attach file 'hi.txt' with ':' in a manifest annotation key:
+  oras attach --artifact-type doc/example --annotation '$manifest:example:key=val' localhost:5000/hello:v1 hi.txt
+
 Example - [Experimental] Attach file 'hi.txt' and format output in JSON:
   oras attach --artifact-type doc/example localhost:5000/hello:v1 hi.txt --format json
 
