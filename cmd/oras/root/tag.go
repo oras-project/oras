@@ -22,10 +22,10 @@ import (
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/internal/listener"
 
-	"github.com/spf13/cobra"
 	"github.com/oras-project/oras-go/v3"
 	"github.com/oras-project/oras-go/v3/errdef"
 	"github.com/oras-project/oras-go/v3/registry/remote"
+	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"

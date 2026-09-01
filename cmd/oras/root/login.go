@@ -22,9 +22,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/oras-project/oras-go/v3/registry/remote"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
-	"github.com/oras-project/oras-go/v3/registry/remote"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"

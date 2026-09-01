@@ -37,11 +37,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/pflag"
 	"github.com/oras-project/oras-go/v3/registry/remote/auth"
 	"github.com/oras-project/oras-go/v3/registry/remote/credentials"
 	"github.com/oras-project/oras-go/v3/registry/remote/retry"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/pflag"
 )
 
 var ts *httptest.Server
