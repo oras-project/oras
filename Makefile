@@ -33,6 +33,8 @@ else
   ARCH = amd64
 endif
 
+ORAS_REPO   ?= oras-project/oras
+
 TARGET_OBJS ?= checksums.txt darwin_amd64.tar.gz darwin_arm64.tar.gz linux_amd64.tar.gz linux_arm64.tar.gz linux_armv7.tar.gz linux_s390x.tar.gz linux_ppc64le.tar.gz linux_riscv64.tar.gz linux_loong64.tar.gz windows_amd64.zip freebsd_amd64.tar.gz
 
 LDFLAGS = -w
@@ -168,12 +170,10 @@ vendor:  ## go mod vendor
 	GO111MODULE=on $(GO_EXE) mod vendor
 
 .PHONY: fetch-dist
-fetch-dist:  ## fetch distribution
+fetch-dist:  ## fetch distribution (requires gh CLI: https://cli.github.com)
+	@command -v gh >/dev/null 2>&1 || { echo "gh CLI not found. Install: https://cli.github.com"; exit 1; }
 	mkdir -p _dist
-	cd _dist && \
-	for obj in ${TARGET_OBJS} ; do \
-		curl -sSL -o oras_${VERSION}_$${obj} https://github.com/oras-project/oras/releases/download/v${VERSION}/oras_${VERSION}_$${obj} ; \
-	done
+	gh release download v${VERSION} --repo $(ORAS_REPO) --dir _dist --clobber
 
 .PHONY: sign
 sign:  ## sign
@@ -187,6 +187,22 @@ teste2e-covdata:  ## test e2e coverage
 	rm -rf $$GOCOVERDIR; \
 	mkdir -p $$GOCOVERDIR; \
 	$(MAKE) teste2e && $(GO_EXE) tool covdata textfmt -i=$$GOCOVERDIR -o "$(CURDIR)/test/e2e/coverage.txt"
+
+.PHONY: release-prep
+release-prep:  ## prepare release: bump version, create PR
+	@scripts/release.sh prep $(VERSION)
+
+.PHONY: release-tag
+release-tag:  ## tag release: create and push signed tag
+	@scripts/release.sh tag $(VERSION) $(SHA)
+
+.PHONY: release-validate
+release-validate:  ## validate release: verify CI, artifacts, checksums
+	@scripts/release.sh validate
+
+.PHONY: release-publish
+release-publish:  ## publish release: sign, upload, publish
+	@scripts/release.sh publish
 
 .PHONY: help
 help:  ## Display this help
