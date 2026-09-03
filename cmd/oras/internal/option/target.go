@@ -157,7 +157,9 @@ func (target *Target) newOCIStore() (*oci.Store, error) {
 }
 
 func (target *Target) newRepository(common Common, logger logrus.FieldLogger) (*remote.Repository, error) {
-	return target.NewRepository(target.RawReference, common, logger)
+	// Path holds the reference with any tag or digest stripped, which is what
+	// remote.NewRepository requires.
+	return target.NewRepository(target.Path, common, logger)
 }
 
 // NewTarget generates a new target based on target.
@@ -224,7 +226,7 @@ func (target *Target) NewReadonlyTarget(ctx context.Context, common Common, logg
 		}
 		return store, nil
 	case TargetTypeRemote:
-		return target.NewRepository(target.RawReference, common, logger)
+		return target.NewRepository(target.Path, common, logger)
 	}
 	return nil, fmt.Errorf("unknown target type: %q", target.Type)
 }

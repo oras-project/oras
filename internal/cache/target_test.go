@@ -192,7 +192,7 @@ func TestProxy_fetchReference(t *testing.T) {
 	if err != nil {
 		t.Fatalf("invalid test http server: %v", err)
 	}
-	repo, err := remote.NewRepository(fmt.Sprintf("%s/%s:%s", uri.Host, repoName, tagName))
+	repo, err := remote.NewRepository(fmt.Sprintf("%s/%s", uri.Host, repoName))
 	if err != nil {
 		t.Fatalf("NewRepository() error = %v", err)
 	}

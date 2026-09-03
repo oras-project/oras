@@ -40,7 +40,7 @@ func TestNewTagListener(t *testing.T) {
 		t.Error("expecting tagging error but got nil")
 	}
 
-	repo, err := remote.NewRepository("oras.land/test:unit-test")
+	repo, err := remote.NewRepository("oras.land/test")
 	if err != nil {
 		t.Fatal(err)
 	}
