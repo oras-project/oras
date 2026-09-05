@@ -43,7 +43,7 @@ header:
 
 dependency:
   files:
-    - go.mod
+    - ../go.mod
   licenses:
     # known issue: https://github.com/apache/skywalking-eyes/pull/107#issuecomment-1129761574
     - name: github.com/chzyer/logex
