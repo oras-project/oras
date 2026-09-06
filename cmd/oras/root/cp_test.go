@@ -35,13 +35,13 @@ import (
 	"github.com/opencontainers/go-digest"
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/oras-project/oras-go/v3"
+	"github.com/oras-project/oras-go/v3/content"
+	"github.com/oras-project/oras-go/v3/content/memory"
+	"github.com/oras-project/oras-go/v3/content/oci"
+	"github.com/oras-project/oras-go/v3/errdef"
+	"github.com/oras-project/oras-go/v3/registry/remote"
 	"github.com/sirupsen/logrus"
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/content/memory"
-	"oras.land/oras-go/v2/content/oci"
-	"oras.land/oras-go/v2/errdef"
-	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
@@ -193,12 +193,12 @@ func Test_doCopy_mounted(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	from.PlainHTTP = true
+	from.Registry.PlainHTTP = true
 	to, err := remote.NewRepository(fmt.Sprintf("%s/%s", host, repoTo))
 	if err != nil {
 		t.Fatal(err)
 	}
-	to.PlainHTTP = true
+	to.Registry.PlainHTTP = true
 	handler := status.NewTTYCopyHandler(opts.TTY)
 
 	// test
@@ -300,12 +300,12 @@ func Test_doCopy_mountFallback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	from.PlainHTTP = true
+	from.Registry.PlainHTTP = true
 	to, err := remote.NewRepository(fmt.Sprintf("%s/%s", testHost, repoToFallback))
 	if err != nil {
 		t.Fatal(err)
 	}
-	to.PlainHTTP = true
+	to.Registry.PlainHTTP = true
 	handler := status.NewTTYCopyHandler(opts.TTY)
 
 	// test
@@ -490,17 +490,9 @@ func Test_prepareCopyOption_noReferrers(t *testing.T) {
 }
 
 func Test_getMountPoint(t *testing.T) {
-	registry1Repo1 := &remote.Repository{}
-	registry1Repo1.Reference.Registry = "localhost:5000"
-	registry1Repo1.Reference.Repository = "repo1"
-
-	registry1Repo2 := &remote.Repository{}
-	registry1Repo2.Reference.Registry = "localhost:5000"
-	registry1Repo2.Reference.Repository = "repo2"
-
-	registry2Repo1 := &remote.Repository{}
-	registry2Repo1.Reference.Registry = "localhost:6000"
-	registry2Repo1.Reference.Repository = "repo1"
+	registry1Repo1, _ := remote.NewRepository("localhost:5000/repo1")
+	registry1Repo2, _ := remote.NewRepository("localhost:5000/repo2")
+	registry2Repo1, _ := remote.NewRepository("localhost:6000/repo1")
 
 	tests := []struct {
 		name         string
