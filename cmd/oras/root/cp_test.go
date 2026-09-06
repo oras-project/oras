@@ -35,6 +35,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/internal/testutils"
@@ -564,5 +565,39 @@ func Test_getMountPoint(t *testing.T) {
 				t.Errorf("checkMount() gotRepo = %v, want %v", gotMount, tt.wantMount)
 			}
 		})
+	}
+}
+
+// tagFailingTarget is a mock implementation of oras.Target whose Tag always
+// fails, simulating a destination registry that rejects the root tag.
+type tagFailingTarget struct {
+	oras.Target
+}
+
+// Tag simulates a not found failure at the destination.
+func (t *tagFailingTarget) Tag(_ context.Context, _ ocispec.Descriptor, _ string) error {
+	return errdef.ErrNotFound
+}
+
+func Test_recursiveCopy_tagFailure(t *testing.T) {
+	ctx := context.Background()
+	dst := &tagFailingTarget{Target: memory.New()}
+
+	err := recursiveCopy(ctx, memStore, dst, "v1", memDesc, oras.DefaultExtendedCopyGraphOptions)
+	if err == nil {
+		t.Fatal("recursiveCopy() error = nil, wantErr true")
+	}
+	var copyErr *oras.CopyError
+	if !errors.As(err, &copyErr) {
+		t.Fatalf("recursiveCopy() error = %v, want *oras.CopyError", err)
+	}
+	if copyErr.Op != "Tag" {
+		t.Errorf("recursiveCopy() error Op = %q, want %q", copyErr.Op, "Tag")
+	}
+	if copyErr.Origin != oras.CopyErrorOriginDestination {
+		t.Errorf("recursiveCopy() error Origin = %v, want %v", copyErr.Origin, oras.CopyErrorOriginDestination)
+	}
+	if !errors.Is(err, errdef.ErrNotFound) {
+		t.Errorf("recursiveCopy() error = %v, want to wrap %v", err, errdef.ErrNotFound)
 	}
 }

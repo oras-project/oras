@@ -276,7 +276,16 @@ func recursiveCopy(ctx context.Context, src oras.ReadOnlyGraphTarget, dst oras.T
 		return err
 	}
 	if dstRef != "" && dstRef != root.Digest.String() {
-		return dst.Tag(ctx, root, dstRef)
+		if err := dst.Tag(ctx, root, dstRef); err != nil {
+			// oras.Copy reports a failed root tagging as a destination-side
+			// copy error. Do the same here so that the error is attributed to
+			// the destination instead of the source.
+			return &oras.CopyError{
+				Op:     "Tag",
+				Origin: oras.CopyErrorOriginDestination,
+				Err:    err,
+			}
+		}
 	}
 	return nil
 }
