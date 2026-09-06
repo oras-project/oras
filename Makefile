@@ -175,12 +175,6 @@ fetch-dist:  ## fetch distribution (requires gh CLI: https://cli.github.com)
 	mkdir -p _dist
 	gh release download v${VERSION} --repo $(ORAS_REPO) --dir _dist --clobber
 
-.PHONY: sign
-sign:  ## sign
-	for f in $$(ls _dist/*.{gz,txt} 2>/dev/null) ; do \
-		gpg --armor --detach-sign $${f} ; \
-	done
-
 .PHONY: teste2e-covdata
 teste2e-covdata:  ## test e2e coverage
 	export GOCOVERDIR=$(CURDIR)/test/e2e/.cover; \
@@ -201,7 +195,7 @@ release-validate:  ## validate release: verify CI, artifacts, checksums
 	@scripts/release.sh validate
 
 .PHONY: release-publish
-release-publish:  ## publish release: sign, upload, publish
+release-publish:  ## publish release: verify signatures, publish, trigger snap
 	@scripts/release.sh publish
 
 .PHONY: help
