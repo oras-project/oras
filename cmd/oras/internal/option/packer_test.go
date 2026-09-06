@@ -153,6 +153,35 @@ func TestPacker_parseAnnotations_annotationFlag(t *testing.T) {
 	}
 }
 
+func TestPacker_parseAnnotations_layerTargetValidation(t *testing.T) {
+	// Layer targets that match a file in the command are accepted, alongside
+	// the special $manifest/$config targets.
+	opts := Packer{
+		Annotation: Annotation{
+			ManifestAnnotations: []string{
+				"top=level",
+				"$config:cfg=on",
+				"hello.txt:layer=yes",
+			},
+		},
+		FileRefs: []string{"hello.txt:application/vnd.oci.image.layer.v1.tar"},
+	}
+	if err := opts.parseAnnotations(nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// A layer target that does not match any file is rejected.
+	opts = Packer{
+		Annotation: Annotation{
+			ManifestAnnotations: []string{"missing.txt:layer=yes"},
+		},
+		FileRefs: []string{"hello.txt"},
+	}
+	if err := opts.parseAnnotations(nil); !errors.Is(err, errAnnotationNoMatchingFile) {
+		t.Fatalf("expected errAnnotationNoMatchingFile, got: %v", err)
+	}
+}
+
 func givenTestFile(t *testing.T, data string) (path string) {
 	t.Helper()
 	tempDir := t.TempDir()

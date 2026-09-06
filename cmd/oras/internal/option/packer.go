@@ -39,8 +39,9 @@ const (
 )
 
 var (
-	errAnnotationConflict = errors.New("`--annotation` and `--annotation-file` cannot be both specified")
-	errPathValidation     = errors.New("absolute file path detected. If it's intentional, use --disable-path-validation flag to skip this check")
+	errAnnotationConflict       = errors.New("`--annotation` and `--annotation-file` cannot be both specified")
+	errPathValidation           = errors.New("absolute file path detected. If it's intentional, use --disable-path-validation flag to skip this check")
+	errAnnotationNoMatchingFile = errors.New("annotation target does not match any file in this command")
 )
 
 // Packer option struct.
@@ -109,7 +110,43 @@ func (opts *Packer) parseAnnotations(cmd *cobra.Command) error {
 		}
 	}
 	if len(opts.ManifestAnnotations) != 0 {
-		return opts.Annotation.Parse(cmd)
+		if err := opts.Annotation.Parse(cmd); err != nil {
+			return err
+		}
+		return opts.validateAnnotationTargets()
+	}
+	return nil
+}
+
+// validateAnnotationTargets ensures every layer annotation set via the
+// `--annotation "filename:key=value"` flag refers to a file that is part of
+// this command. The special "$manifest" and "$config" targets are always
+// allowed. This surfaces typos as errors instead of silently dropping them,
+// since loadFiles only applies annotations to files it actually loads.
+//
+// It only runs for the `--annotation` flag path; the `--annotation-file` path
+// is mutually exclusive with it (see parseAnnotations) and is left untouched
+// to preserve backward compatibility.
+func (opts *Packer) validateAnnotationTargets() error {
+	files := make(map[string]struct{}, len(opts.FileRefs))
+	for _, ref := range opts.FileRefs {
+		filename, _, err := fileref.Parse(ref, "")
+		if err != nil {
+			return err
+		}
+		files[filename] = struct{}{}
+	}
+	for target := range opts.Annotations {
+		switch target {
+		case AnnotationManifest, AnnotationConfig:
+			continue
+		}
+		if _, ok := files[target]; !ok {
+			return &oerrors.Error{
+				Err:            fmt.Errorf("%w: %q", errAnnotationNoMatchingFile, target),
+				Recommendation: `Use a file reference that is part of this command, or "$manifest"/"$config" to annotate the manifest or config`,
+			}
+		}
 	}
 	return nil
 }
