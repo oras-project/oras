@@ -19,4 +19,5 @@ package docker
 const (
 	MediaTypeManifest     = "application/vnd.docker.distribution.manifest.v2+json"
 	MediaTypeManifestList = "application/vnd.docker.distribution.manifest.list.v2+json"
+	MediaTypeConfig       = "application/vnd.docker.container.image.v1+json"
 )
