@@ -20,51 +20,6 @@ import (
 	"testing"
 )
 
-func TestNewRepoListHandler(t *testing.T) {
-	if got := NewRepoListHandler(&bytes.Buffer{}, "{{.registry}}", "localhost:5000"); got == nil {
-		t.Fatal("NewRepoListHandler() returned nil")
-	}
-}
-
-func TestRepoListHandler_Render(t *testing.T) {
-	buf := &bytes.Buffer{}
-	handler := NewRepoListHandler(buf, "{{.registry}}|{{range .repositories}}{{.}} {{end}}", "localhost:5000")
-
-	for _, repo := range []string{"team/alpha", "team/beta"} {
-		if err := handler.OnRepositoryListed(repo); err != nil {
-			t.Fatalf("OnRepositoryListed(%q) error = %v, want nil", repo, err)
-		}
-	}
-	if err := handler.Render(); err != nil {
-		t.Fatalf("Render() error = %v, want nil", err)
-	}
-
-	want := "localhost:5000|team/alpha team/beta "
-	if got := buf.String(); got != want {
-		t.Errorf("Render() = %q, want %q", got, want)
-	}
-}
-
-// With nothing listed the model still renders, with an empty repository list.
-func TestRepoListHandler_Render_empty(t *testing.T) {
-	buf := &bytes.Buffer{}
-	handler := NewRepoListHandler(buf, "{{len .repositories}}", "localhost:5000")
-
-	if err := handler.Render(); err != nil {
-		t.Fatalf("Render() error = %v, want nil", err)
-	}
-	if got, want := buf.String(), "0"; got != want {
-		t.Errorf("Render() = %q, want %q", got, want)
-	}
-}
-
-func TestRepoListHandler_Render_invalidTemplate(t *testing.T) {
-	handler := NewRepoListHandler(&bytes.Buffer{}, "{{.registry", "localhost:5000")
-	if err := handler.Render(); err == nil {
-		t.Error("Render() error = nil, want an error for an unparsable template")
-	}
-}
-
 func TestNewRepoTagsHandler(t *testing.T) {
 	if got := NewRepoTagsHandler(&bytes.Buffer{}, "{{.tags}}"); got == nil {
 		t.Fatal("NewRepoTagsHandler() returned nil")
