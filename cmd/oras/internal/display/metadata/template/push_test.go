@@ -111,3 +111,21 @@ func TestPushHandler_Render_invalidTemplate(t *testing.T) {
 		t.Error("Render() error = nil, want an error for an unparsable template")
 	}
 }
+
+// After an untagged push, a template must be able to take the length of
+// referenceAsTags, as it can for the tags of repo tags and the repositories of
+// repo ls.
+func TestPushHandler_Render_untaggedLen(t *testing.T) {
+	buf := &bytes.Buffer{}
+	handler := NewPushHandler(buf, "{{len .referenceAsTags}}").(*PushHandler)
+
+	if err := handler.OnCopied(&option.Target{Path: "localhost:5000/test"}, testDescriptor); err != nil {
+		t.Fatalf("OnCopied() error = %v, want nil", err)
+	}
+	if err := handler.Render(); err != nil {
+		t.Fatalf("Render() error = %v, want nil", err)
+	}
+	if got, want := buf.String(), "0"; got != want {
+		t.Errorf("Render() = %q, want %q", got, want)
+	}
+}
