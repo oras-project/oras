@@ -37,7 +37,9 @@ import (
 var _ = Describe("ORAS beginners:", func() {
 	When("running push command", func() {
 		It("should show help description with feature flags", func() {
-			out := ORAS("push", "--help").MatchKeyWords(ExampleDesc).Exec().Out
+			out := ORAS("push", "--help").
+				MatchKeyWords(ExampleDesc, "'$config:key=val'", "'$manifest:example:key=val'").
+				Exec().Out
 			gomega.Expect(out).Should(gbytes.Say("--image-spec string\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 			gomega.Expect(out).Should(gbytes.Say("--oci-layout-path string\\s+%s", regexp.QuoteMeta(feature.Experimental.Mark)))
 		})
@@ -360,6 +362,29 @@ var _ = Describe("Remote registry users:", func() {
 			var manifest ocispec.Manifest
 			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
 			Expect(manifest.Annotations[key]).To(Equal(value))
+		})
+
+		It("should push files with targeted annotations", func() {
+			repo := pushTestRepo("targeted-annotations")
+			ref := RegistryRef(ZOTHost, repo, tag)
+			tempDir := PrepareTempFiles()
+			layerKey, layerValue := "layer-key", "layer-value"
+			configKey, configValue := "config-key", "config-value"
+			manifestKey, manifestValue := "manifest-key", "manifest-value"
+
+			ORAS("push", ref, foobar.FileBarName,
+				"--annotation", fmt.Sprintf("%s:%s=%s", foobar.FileBarName, layerKey, layerValue),
+				"--annotation", fmt.Sprintf("$config:%s=%s", configKey, configValue),
+				"--annotation", fmt.Sprintf("$manifest:%s=%s", manifestKey, manifestValue)).
+				WithWorkDir(tempDir).Exec()
+
+			fetched := ORAS("manifest", "fetch", ref).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Annotations[manifestKey]).To(Equal(manifestValue))
+			Expect(manifest.Config.Annotations[configKey]).To(Equal(configValue))
+			Expect(manifest.Layers).To(HaveLen(1))
+			Expect(manifest.Layers[0].Annotations[layerKey]).To(Equal(layerValue))
 		})
 
 		It("should push files with customized file annotation", func() {
