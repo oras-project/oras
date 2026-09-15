@@ -38,6 +38,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/contentutil"
 	"oras.land/oras/internal/descriptor"
+	"oras.land/oras/internal/docker"
 	"oras.land/oras/internal/listener"
 )
 
@@ -241,6 +242,18 @@ func enrichDescriptor(ctx context.Context, target oras.ReadOnlyTarget, desc ocis
 			return ocispec.Descriptor{}, err
 		}
 		desc.ArtifactType = manifest.ArtifactType
+		if desc.ArtifactType == "" {
+			// Old-style artifacts predate the manifest artifactType field and
+			// convey their type through config.mediaType instead. Per the
+			// image-spec descriptor guidance, fall back to config.mediaType so
+			// the enriched descriptor still advertises an artifactType.
+			switch manifest.Config.MediaType {
+			case ocispec.MediaTypeImageConfig, ocispec.MediaTypeEmptyJSON, docker.MediaTypeConfig:
+				// standard image / empty config: not an artifact type, leave empty
+			default:
+				desc.ArtifactType = manifest.Config.MediaType
+			}
+		}
 	} else if descriptor.IsIndex(desc) {
 		var index ocispec.Index
 		if err := json.Unmarshal(manifestBytes, &index); err != nil {
