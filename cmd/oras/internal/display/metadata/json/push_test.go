@@ -171,3 +171,30 @@ func TestPushHandler_Render(t *testing.T) {
 		t.Errorf("Render() referenceAsTags = %v, want %v", result.ReferenceAsTags, wantRefAsTags)
 	}
 }
+
+// An untagged push must report referenceAsTags as an empty array, not null,
+// consistent with the repositories and tags lists of repo ls and repo tags.
+func TestPushHandler_Render_untagged(t *testing.T) {
+	buf := &bytes.Buffer{}
+	handler := NewPushHandler(buf).(*PushHandler)
+
+	desc := ocispec.Descriptor{
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Digest:    testDigest,
+		Size:      100,
+	}
+	if err := handler.OnCopied(&option.Target{Path: "localhost:5000/test"}, desc); err != nil {
+		t.Fatalf("PushHandler.OnCopied() error = %v", err)
+	}
+	if err := handler.Render(); err != nil {
+		t.Fatalf("PushHandler.Render() error = %v, want nil", err)
+	}
+
+	var result map[string]json.RawMessage
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		t.Fatalf("PushHandler.Render() produced invalid JSON: %v", err)
+	}
+	if got := string(result["referenceAsTags"]); got != "[]" {
+		t.Errorf("Render() referenceAsTags = %s, want []", got)
+	}
+}
