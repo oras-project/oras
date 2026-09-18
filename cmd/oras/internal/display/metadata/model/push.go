@@ -27,7 +27,7 @@ type push struct {
 
 // NewPush returns a metadata getter for push command.
 func NewPush(desc ocispec.Descriptor, path string, tags []string) any {
-	var refAsTags []string
+	refAsTags := []string{}
 	for _, tag := range tags {
 		refAsTags = append(refAsTags, path+":"+tag)
 	}
