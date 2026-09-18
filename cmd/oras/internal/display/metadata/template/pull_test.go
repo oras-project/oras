@@ -83,7 +83,7 @@ func TestPullHandler_Render_noFiles(t *testing.T) {
 	if err := handler.Render(); err != nil {
 		t.Fatalf("Render() error = %v, want nil", err)
 	}
-	want := "localhost:5000/test@" + testDigest + "|""
+	want := "localhost:5000/test@" + testDigest + "|"
 	if got := buf.String(); got != want {
 		t.Errorf("Render() = %q, want %q", got, want)
 	}
