@@ -77,13 +77,13 @@ func TestPullHandler_Render(t *testing.T) {
 
 func TestPullHandler_Render_noFiles(t *testing.T) {
 	buf := &bytes.Buffer{}
-	handler := NewPullHandler(buf, "localhost:5000/test", "{{.reference}}|{{len .files}}").(*PullHandler)
+	handler := NewPullHandler(buf, "localhost:5000/test", "{{.reference}}|{{range .files}}{{.path}};{{end}}").(*PullHandler)
 	handler.OnPulled(nil, testDescriptor)
 
 	if err := handler.Render(); err != nil {
 		t.Fatalf("Render() error = %v, want nil", err)
 	}
-	want := "localhost:5000/test@" + testDigest + "|0"
+	want := "localhost:5000/test@" + testDigest + "|""
 	if got := buf.String(); got != want {
 		t.Errorf("Render() = %q, want %q", got, want)
 	}
