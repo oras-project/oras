@@ -601,3 +601,121 @@ func Test_recursiveCopy_tagFailure(t *testing.T) {
 		t.Errorf("recursiveCopy() error = %v, want to wrap %v", err, errdef.ErrNotFound)
 	}
 }
+
+// newStrandedRootSource builds a source holding an index with a single child
+// manifest, together with the FindPredecessors that a registry without
+// Referrers API support produces for it: resolving the referrers tag
+// `sha256-<hex>` as the digest `sha256:<hex>` answers with the index itself,
+// so the index's own child comes back as its referrer.
+func newStrandedRootSource(t *testing.T) (*memory.Store, ocispec.Descriptor, oras.ExtendedCopyGraphOptions) {
+	t.Helper()
+	ctx := context.Background()
+	src := memory.New()
+
+	configDesc := ocispec.Descriptor{
+		MediaType: configMediaType,
+		Digest:    digest.FromBytes(configContent),
+		Size:      int64(len(configContent)),
+	}
+	if err := src.Push(ctx, configDesc, bytes.NewReader(configContent)); err != nil {
+		t.Fatal(err)
+	}
+
+	child := []byte(fmt.Sprintf(`{"schemaVersion":2,"mediaType":%q,"config":{"mediaType":%q,"digest":%q,"size":%d},"layers":[]}`,
+		ocispec.MediaTypeImageManifest, configDesc.MediaType, configDesc.Digest, configDesc.Size))
+	childDesc := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Digest:    digest.FromBytes(child),
+		Size:      int64(len(child)),
+	}
+	if err := src.Push(ctx, childDesc, bytes.NewReader(child)); err != nil {
+		t.Fatal(err)
+	}
+
+	index := []byte(fmt.Sprintf(`{"schemaVersion":2,"mediaType":%q,"manifests":[{"mediaType":%q,"digest":%q,"size":%d}]}`,
+		ocispec.MediaTypeImageIndex, childDesc.MediaType, childDesc.Digest, childDesc.Size))
+	indexDesc := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Digest:    digest.FromBytes(index),
+		Size:      int64(len(index)),
+	}
+	if err := src.Push(ctx, indexDesc, bytes.NewReader(index)); err != nil {
+		t.Fatal(err)
+	}
+
+	opts := oras.DefaultExtendedCopyGraphOptions
+	opts.FindPredecessors = func(_ context.Context, _ content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		if content.Equal(desc, indexDesc) {
+			return []ocispec.Descriptor{childDesc}, nil
+		}
+		return nil, nil
+	}
+	return src, indexDesc, opts
+}
+
+// Test_recursiveCopy_strandedRoot covers the copy failure reported in
+// https://github.com/oras-project/oras/issues/2148. Extended copy walks up to
+// the bogus referrers, treats the child as the graph root and never copies the
+// index, which used to leave the final tagging with nothing to tag.
+func Test_recursiveCopy_strandedRoot(t *testing.T) {
+	ctx := context.Background()
+	src, indexDesc, opts := newStrandedRootSource(t)
+	dst := memory.New()
+
+	if err := recursiveCopy(ctx, src, dst, "v1", indexDesc, opts); err != nil {
+		t.Fatalf("recursiveCopy() error = %v, wantErr false", err)
+	}
+
+	exists, err := dst.Exists(ctx, indexDesc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !exists {
+		t.Error("recursiveCopy() left the root index out of the destination")
+	}
+	got, err := dst.Resolve(ctx, "v1")
+	if err != nil {
+		t.Fatalf("Resolve() error = %v, wantErr false", err)
+	}
+	if !content.Equal(got, indexDesc) {
+		t.Errorf("Resolve() = %v, want %v", got, indexDesc)
+	}
+}
+
+var errMockedPush = errors.New("push error")
+
+// pushFailingTarget is a mock implementation of oras.Target that rejects one
+// descriptor, simulating a destination that cannot accept the root.
+type pushFailingTarget struct {
+	oras.Target
+	failOn ocispec.Descriptor
+}
+
+// Push simulates a failure for the tracked descriptor.
+func (t *pushFailingTarget) Push(ctx context.Context, desc ocispec.Descriptor, r io.Reader) error {
+	if content.Equal(desc, t.failOn) {
+		return errMockedPush
+	}
+	return t.Target.Push(ctx, desc, r)
+}
+
+func Test_recursiveCopy_rootPushFailure(t *testing.T) {
+	ctx := context.Background()
+	src, indexDesc, opts := newStrandedRootSource(t)
+	dst := &pushFailingTarget{Target: memory.New(), failOn: indexDesc}
+
+	err := recursiveCopy(ctx, src, dst, "v1", indexDesc, opts)
+	if !errors.Is(err, errMockedPush) {
+		t.Fatalf("recursiveCopy() error = %v, want to wrap %v", err, errMockedPush)
+	}
+	var copyErr *oras.CopyError
+	if !errors.As(err, &copyErr) {
+		t.Fatalf("recursiveCopy() error = %v, want *oras.CopyError", err)
+	}
+	if copyErr.Op != "Push" {
+		t.Errorf("recursiveCopy() error Op = %q, want %q", copyErr.Op, "Push")
+	}
+	if copyErr.Origin != oras.CopyErrorOriginDestination {
+		t.Errorf("recursiveCopy() error Origin = %v, want %v", copyErr.Origin, oras.CopyErrorOriginDestination)
+	}
+}
