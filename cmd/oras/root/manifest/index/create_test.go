@@ -173,6 +173,31 @@ func Test_enrichDescriptor(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:   "child manifest, non-image config with platform fields",
+			target: NewTestReadOnlyTarget(`{"architecture":"testarch","os":"testos"}`),
+			manifestBytes: []byte(`
+		        {
+		            "schemaVersion": 2,
+		            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+		            "artifactType": "application/vnd.example",
+		            "config": {
+		                "mediaType": "application/vnd.example.config+json",
+		                "digest": "sha256:5fefde2b739e2ff1976ecea4fb4f5e4827a1c424e9b1fb147ba5fd21b9197422",
+		                "size": 41
+		            },
+		            "layers": []
+		        }
+		    `),
+			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
+			checkDesc: func(t *testing.T, gotDesc, _ ocispec.Descriptor) {
+				t.Helper()
+				if gotDesc.Platform != nil {
+					t.Errorf("Platform = %#v, want nil", gotDesc.Platform)
+				}
+			},
+			wantErr: false,
+		},
+		{
 			name:   "child manifest, valid with platform",
 			target: NewTestReadOnlyTarget(`{"architecture":"testarch","os":"testos"}`),
 			manifestBytes: []byte(`
