@@ -145,3 +145,27 @@ func TestPullHandler_Render(t *testing.T) {
 		t.Errorf("Render() files[0].size = %d, want %d", result.Files[0].Size, fileDesc.Size)
 	}
 }
+
+// A pull that produced no files must still report files as an empty array, not
+// null, consistent with the repositories and tags lists of repo ls/repo tags.
+func TestPullHandler_Render_noFiles(t *testing.T) {
+	buf := &bytes.Buffer{}
+	handler := NewPullHandler(buf, "localhost:5000/test").(*PullHandler)
+	handler.OnPulled(&option.Target{}, ocispec.Descriptor{
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Digest:    testDigest,
+		Size:      100,
+	})
+
+	if err := handler.Render(); err != nil {
+		t.Fatalf("PullHandler.Render() error = %v, want nil", err)
+	}
+
+	var result map[string]json.RawMessage
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		t.Fatalf("PullHandler.Render() produced invalid JSON: %v", err)
+	}
+	if got := string(result["files"]); got != "[]" {
+		t.Errorf("Render() files = %s, want []", got)
+	}
+}
