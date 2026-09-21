@@ -38,6 +38,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/contentutil"
 	"oras.land/oras/internal/descriptor"
+	"oras.land/oras/internal/docker"
 	"oras.land/oras/internal/listener"
 )
 
@@ -183,6 +184,10 @@ func fetchSourceManifests(ctx context.Context, displayStatus status.ManifestInde
 }
 
 func getPlatform(ctx context.Context, target oras.ReadOnlyTarget, manifest *ocispec.Manifest) (*ocispec.Platform, error) {
+	if manifest.Config.MediaType != ocispec.MediaTypeImageConfig &&
+		manifest.Config.MediaType != docker.MediaTypeConfig {
+		return nil, nil //nolint:nilnil
+	}
 	// if config size is larger than 4 MiB, discontinue the fetch
 	if manifest.Config.Size > maxConfigSize {
 		return nil, fmt.Errorf("config size %v exceeds MaxBytes %v: %w", manifest.Config.Size, maxConfigSize, errdef.ErrSizeExceedsLimit)
