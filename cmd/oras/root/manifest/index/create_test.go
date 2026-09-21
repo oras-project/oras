@@ -233,6 +233,34 @@ func Test_enrichDescriptor(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:   "child manifest, docker config with platform",
+			target: NewTestReadOnlyTarget(`{"architecture":"testarch","os":"testos"}`),
+			manifestBytes: []byte(`
+				{
+					"schemaVersion": 2,
+					"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+					"config": {
+						"mediaType": "application/vnd.docker.container.image.v1+json",
+						"digest": "sha256:5fefde2b739e2ff1976ecea4fb4f5e4827a1c424e9b1fb147ba5fd21b9197422",
+						"size": 41
+					},
+					"layers": []
+				}
+			`),
+			manifestMediaType: "application/vnd.docker.distribution.manifest.v2+json",
+			checkDesc: func(t *testing.T, gotDesc, _ ocispec.Descriptor) {
+				t.Helper()
+				wantPlatform := &ocispec.Platform{
+					Architecture: "testarch",
+					OS:           "testos",
+				}
+				if !reflect.DeepEqual(gotDesc.Platform, wantPlatform) {
+					t.Errorf("Platform = %#v, want %#v", gotDesc.Platform, wantPlatform)
+				}
+			},
+			wantErr: false,
+		},
+		{
 			name:   "child manifest, valid without platform",
 			target: NewTestReadOnlyTarget(`intentionally not valid JSON`),
 			manifestBytes: []byte(`
