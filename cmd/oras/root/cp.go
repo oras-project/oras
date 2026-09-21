@@ -318,36 +318,58 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, _ oras
 		return content.Equal(desc, root)
 	})
 
+	// A registry without Referrers API support may resolve the referrers tag
+	// sha256-<hex> as the digest sha256:<hex> and answer with the index itself,
+	// reporting the index's own children as its referrers. A child can never be
+	// a genuine referrer of its own parent: it would have to carry digest(root)
+	// in its subject, while digest(root) is taken over JSON that already
+	// contains the child's digest, so the pair is unconstructible. Left in
+	// place these phantom referrers make extended copy walk up into the
+	// children, take those for the graph roots and never copy the index, so the
+	// root tagging in recursiveCopy has nothing to tag.
+	// Reference: https://github.com/oras-project/oras/issues/2148
+	type findPredecessorsFunc = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error)
+	dropOwnChildren := func(findPredecessors findPredecessorsFunc) findPredecessorsFunc {
+		return func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			descs, err := findPredecessors(ctx, src, desc)
+			if err != nil || !content.Equal(desc, root) {
+				return descs, err
+			}
+			// Collect into a new slice: descs belongs to the wrapped
+			// implementation and must not be modified in place.
+			kept := make([]ocispec.Descriptor, 0, len(descs))
+			for _, predecessor := range descs {
+				if slices.ContainsFunc(index.Manifests, func(child ocispec.Descriptor) bool {
+					return content.Equal(child, predecessor)
+				}) {
+					continue
+				}
+				kept = append(kept, predecessor)
+			}
+			return kept, nil
+		}
+	}
+
+	if len(referrers) == 0 {
+		// No child referrers, but root still needs the guard above. Wrap
+		// oras-go's own default instead of registry.Referrers so that
+		// predecessor discovery on this path is otherwise unchanged.
+		findPredecessors := opts.FindPredecessors
+		if findPredecessors == nil {
+			findPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+				return src.Predecessors(ctx, desc)
+			}
+		}
+		opts.FindPredecessors = dropOwnChildren(findPredecessors)
+		return opts, root, nil
+	}
+
 	if opts.FindPredecessors == nil {
 		opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 			return registry.Referrers(ctx, src, desc, "")
 		}
 	}
-
-	// A registry without Referrers API support may resolve the referrers tag
-	// sha256-<hex> as the digest sha256:<hex> and answer with the index
-	// itself, reporting the index's own children as its referrers. A successor
-	// is never a predecessor: left in place they make extended copy walk up
-	// into the children, take those for the graph roots and never copy the
-	// index, so the root tagging below has nothing to tag.
-	// Reference: https://github.com/oras-project/oras/issues/2148
-	findPredecessors := opts.FindPredecessors
-	opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		descs, err := findPredecessors(ctx, src, desc)
-		if err != nil || !content.Equal(desc, root) {
-			return descs, err
-		}
-		return slices.DeleteFunc(descs, func(predecessor ocispec.Descriptor) bool {
-			return slices.ContainsFunc(index.Manifests, func(child ocispec.Descriptor) bool {
-				return content.Equal(child, predecessor)
-			})
-		}), nil
-	}
-
-	if len(referrers) == 0 {
-		// no child referrers
-		return opts, root, nil
-	}
+	opts.FindPredecessors = dropOwnChildren(opts.FindPredecessors)
 
 	rootReferrers, err := opts.FindPredecessors(ctx, src, root)
 	if err != nil {

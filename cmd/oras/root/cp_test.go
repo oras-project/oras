@@ -719,3 +719,60 @@ func Test_recursiveCopy_rootPushFailure(t *testing.T) {
 		t.Errorf("recursiveCopy() error Origin = %v, want %v", copyErr.Origin, oras.CopyErrorOriginDestination)
 	}
 }
+
+// Test_recursiveCopy_genuineRootReferrerSurvives guards the filter above
+// against over-filtering: a real referrer of the root must still be copied
+// even when the same FindPredecessors call also reports the index's own
+// children as referrers.
+func Test_recursiveCopy_genuineRootReferrerSurvives(t *testing.T) {
+	ctx := context.Background()
+	src := memory.New()
+	push := func(blob []byte, mediaType string) ocispec.Descriptor {
+		desc := ocispec.Descriptor{
+			MediaType: mediaType,
+			Digest:    digest.FromBytes(blob),
+			Size:      int64(len(blob)),
+		}
+		if err := src.Push(ctx, desc, bytes.NewReader(blob)); err != nil {
+			t.Fatal(err)
+		}
+		return desc
+	}
+
+	configDesc := push(configContent, configMediaType)
+	childDesc := push([]byte(fmt.Sprintf(`{"schemaVersion":2,"mediaType":%q,"config":{"mediaType":%q,"digest":%q,"size":%d},"layers":[]}`,
+		ocispec.MediaTypeImageManifest, configDesc.MediaType, configDesc.Digest, configDesc.Size)), ocispec.MediaTypeImageManifest)
+	indexDesc := push([]byte(fmt.Sprintf(`{"schemaVersion":2,"mediaType":%q,"manifests":[{"mediaType":%q,"digest":%q,"size":%d}]}`,
+		ocispec.MediaTypeImageIndex, childDesc.MediaType, childDesc.Digest, childDesc.Size)), ocispec.MediaTypeImageIndex)
+	// A genuine referrer of the index, i.e. a manifest declaring it as subject.
+	referrerDesc := push([]byte(fmt.Sprintf(`{"schemaVersion":2,"mediaType":%q,"artifactType":"application/vnd.test.referrer","config":{"mediaType":%q,"digest":%q,"size":%d},"layers":[],"subject":{"mediaType":%q,"digest":%q,"size":%d}}`,
+		ocispec.MediaTypeImageManifest, configDesc.MediaType, configDesc.Digest, configDesc.Size,
+		indexDesc.MediaType, indexDesc.Digest, indexDesc.Size)), ocispec.MediaTypeImageManifest)
+
+	opts := oras.DefaultExtendedCopyGraphOptions
+	opts.FindPredecessors = func(_ context.Context, _ content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		if content.Equal(desc, indexDesc) {
+			// The phantom child and the genuine referrer, reported together.
+			return []ocispec.Descriptor{childDesc, referrerDesc}, nil
+		}
+		return nil, nil
+	}
+
+	dst := memory.New()
+	if err := recursiveCopy(ctx, src, dst, "v1", indexDesc, opts); err != nil {
+		t.Fatalf("recursiveCopy() error = %v, wantErr false", err)
+	}
+	for name, desc := range map[string]ocispec.Descriptor{
+		"index":    indexDesc,
+		"child":    childDesc,
+		"referrer": referrerDesc,
+	} {
+		exists, err := dst.Exists(ctx, desc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !exists {
+			t.Errorf("recursiveCopy() left the %s out of the destination", name)
+		}
+	}
+}
