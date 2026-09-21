@@ -144,3 +144,18 @@ func TestPullHandler_OnLayerSkipped(t *testing.T) {
 		t.Errorf("OnLayerSkipped() error = %v, want nil", err)
 	}
 }
+
+// {{len .files}} must work after a pull that produced no files, as it does for
+// the tags of repo tags and the repositories of repo ls.
+func TestPullHandler_Render_noFilesLen(t *testing.T) {
+	buf := &bytes.Buffer{}
+	handler := NewPullHandler(buf, "localhost:5000/test", "{{len .files}}").(*PullHandler)
+	handler.OnPulled(nil, testDescriptor)
+
+	if err := handler.Render(); err != nil {
+		t.Fatalf("Render() error = %v, want nil", err)
+	}
+	if got, want := buf.String(), "0"; got != want {
+		t.Errorf("Render() = %q, want %q", got, want)
+	}
+}
