@@ -17,6 +17,7 @@ package model
 
 import (
 	"slices"
+	"sync"
 	"testing"
 )
 
@@ -53,5 +54,35 @@ func TestTagged_Tags_empty(t *testing.T) {
 	var tagged Tagged
 	if got := tagged.Tags(); len(got) != 0 {
 		t.Errorf("Tags() = %v, want empty", got)
+	}
+}
+
+func TestTagged_Tags_concurrent(_ *testing.T) {
+	var tagged Tagged
+	for _, tag := range []string{"c", "a", "b"} {
+		tagged.AddTag(tag)
+	}
+
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_ = tagged.Tags()
+		}()
+	}
+	wg.Wait()
+}
+
+func TestTagged_Tags_returnsCopy(t *testing.T) {
+	var tagged Tagged
+	tagged.AddTag("TanvirTian")
+
+	got := tagged.Tags()
+	got[0] = "modified"
+
+	want := []string{"TanvirTian"}
+	if got := tagged.Tags(); !slices.Equal(got, want) {
+		t.Errorf("Tags() = %v, want %v", got, want)
 	}
 }
