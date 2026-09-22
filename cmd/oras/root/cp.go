@@ -351,9 +351,10 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, _ oras
 	}
 
 	if len(referrers) == 0 {
-		// No child referrers, but root still needs the guard above. Wrap
-		// oras-go's own default instead of registry.Referrers so that
-		// predecessor discovery on this path is otherwise unchanged.
+		// No child referrers, but root still needs the guard above. The CLI
+		// always sets FindPredecessors in doCopy; this nil case is for library
+		// callers. Default to src.Predecessors rather than registry.Referrers
+		// so that predecessor discovery on this path is otherwise unchanged.
 		findPredecessors := opts.FindPredecessors
 		if findPredecessors == nil {
 			findPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {

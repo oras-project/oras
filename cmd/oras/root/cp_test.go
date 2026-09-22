@@ -776,3 +776,63 @@ func Test_recursiveCopy_genuineRootReferrerSurvives(t *testing.T) {
 		}
 	}
 }
+
+// Test_recursiveCopy_strandedRootWithChildReferrer covers the #1728 shape of
+// https://github.com/oras-project/oras/issues/2148: the index has no referrer
+// of its own, but a child does, so FindPredecessors reports the phantom
+// referrers on the path where the child referrer list is non-empty.
+func Test_recursiveCopy_strandedRootWithChildReferrer(t *testing.T) {
+	ctx := context.Background()
+	src := memory.New()
+	push := func(blob []byte, mediaType string) ocispec.Descriptor {
+		desc := ocispec.Descriptor{
+			MediaType: mediaType,
+			Digest:    digest.FromBytes(blob),
+			Size:      int64(len(blob)),
+		}
+		if err := src.Push(ctx, desc, bytes.NewReader(blob)); err != nil {
+			t.Fatal(err)
+		}
+		return desc
+	}
+
+	configDesc := push(configContent, configMediaType)
+	childDesc := push([]byte(fmt.Sprintf(`{"schemaVersion":2,"mediaType":%q,"config":{"mediaType":%q,"digest":%q,"size":%d},"layers":[]}`,
+		ocispec.MediaTypeImageManifest, configDesc.MediaType, configDesc.Digest, configDesc.Size)), ocispec.MediaTypeImageManifest)
+	indexDesc := push([]byte(fmt.Sprintf(`{"schemaVersion":2,"mediaType":%q,"manifests":[{"mediaType":%q,"digest":%q,"size":%d}]}`,
+		ocispec.MediaTypeImageIndex, childDesc.MediaType, childDesc.Digest, childDesc.Size)), ocispec.MediaTypeImageIndex)
+	// A genuine referrer of the child, not of the index.
+	referrerDesc := push([]byte(fmt.Sprintf(`{"schemaVersion":2,"mediaType":%q,"artifactType":"application/vnd.test.referrer","config":{"mediaType":%q,"digest":%q,"size":%d},"layers":[],"subject":{"mediaType":%q,"digest":%q,"size":%d}}`,
+		ocispec.MediaTypeImageManifest, configDesc.MediaType, configDesc.Digest, configDesc.Size,
+		childDesc.MediaType, childDesc.Digest, childDesc.Size)), ocispec.MediaTypeImageManifest)
+
+	opts := oras.DefaultExtendedCopyGraphOptions
+	opts.FindPredecessors = func(_ context.Context, _ content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		switch {
+		case content.Equal(desc, indexDesc):
+			// Phantom: the index's own child, reported as its referrer.
+			return []ocispec.Descriptor{childDesc}, nil
+		case content.Equal(desc, childDesc):
+			return []ocispec.Descriptor{referrerDesc}, nil
+		}
+		return nil, nil
+	}
+
+	dst := memory.New()
+	if err := recursiveCopy(ctx, src, dst, "v1", indexDesc, opts); err != nil {
+		t.Fatalf("recursiveCopy() error = %v, wantErr false", err)
+	}
+	for name, desc := range map[string]ocispec.Descriptor{
+		"index":    indexDesc,
+		"child":    childDesc,
+		"referrer": referrerDesc,
+	} {
+		exists, err := dst.Exists(ctx, desc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !exists {
+			t.Errorf("recursiveCopy() left the %s out of the destination", name)
+		}
+	}
+}
