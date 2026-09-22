@@ -12,7 +12,7 @@
 # limitations under the License.
 
 # Build stage
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git make
@@ -29,7 +29,7 @@ RUN go mod vendor
 COPY . .
 
 # Run stage
-FROM golang:1.25-alpine
+FROM golang:1.26-alpine
 
 # Install runtime dependencies including build tools for CGO (required for -race flag)
 RUN apk add --no-cache ca-certificates git curl wget bash gcc musl-dev make file
