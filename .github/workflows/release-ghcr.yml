@@ -20,6 +20,9 @@ on:
 
 jobs:
   build:
+    concurrency:
+      group: release-ghcr-${{ github.ref_type == 'tag' && 'tag' || github.ref }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -27,11 +30,47 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - name: prepare
         id: prepare
+        shell: bash
         run: |
-          TAG=${GITHUB_REF#refs/*/} # get branch or tag as image tag
-          echo "ref=ghcr.io/${{ github.repository }}:${TAG}" >> $GITHUB_OUTPUT
+          set -euo pipefail
+
+          ref="${GITHUB_REF#refs/*/}" # get branch or tag as image tag
+          tags=("$ref")
+
+          # Only stable release tags may move rolling tags. This prevents
+          # prereleases and maintenance-branch backports from moving them
+          # backwards.
+          if [[ "$GITHUB_REF" == refs/tags/v* && "$ref" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            stable_tags="$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true)"
+            highest_stable="$(printf '%s\n' "$stable_tags" | head -n1)"
+            major="${ref%%.*}"
+            minor="${ref%.*}"
+            minor_re="${minor//./\\.}" # escape the dot so it is not a regex wildcard
+            highest_major="$(printf '%s\n' "$stable_tags" | grep -E "^${major}\.[0-9]+\.[0-9]+$" | head -n1 || true)"
+            highest_minor="$(printf '%s\n' "$stable_tags" | grep -E "^${minor_re}\.[0-9]+$" | head -n1 || true)"
+
+            if [[ "$ref" == "$highest_minor" ]]; then
+              tags+=("$minor")
+            fi
+            if [[ "$ref" == "$highest_major" ]]; then
+              tags+=("$major")
+            fi
+            if [[ "$ref" == "$highest_stable" ]]; then
+              tags+=("latest")
+            fi
+          fi
+
+          {
+            echo 'tags<<EOF'
+            for tag in "${tags[@]}"; do
+              echo "ghcr.io/${{ github.repository }}:$tag"
+            done
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
       - name: docker login
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
@@ -39,10 +78,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: docker build
-        run: |          
+        env:
+          IMAGE_TAGS: ${{ steps.prepare.outputs.tags }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
           docker buildx create --use
-          docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7,linux/s390x,linux/ppc64le -t ${{ steps.prepare.outputs.ref }} --push .
+          tag_args=()
+          while IFS= read -r tag; do
+            [[ -z "$tag" ]] && continue
+            tag_args+=(--tag "$tag")
+          done <<< "$IMAGE_TAGS"
+          docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7,linux/s390x,linux/ppc64le "${tag_args[@]}" --push .
       - name: clear
         if: always()
         run: |
-          rm -f ${HOME}/.docker/config.json
+          rm -f "${HOME}/.docker/config.json"
