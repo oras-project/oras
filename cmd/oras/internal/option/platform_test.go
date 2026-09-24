@@ -16,6 +16,7 @@ limitations under the License.
 package option
 
 import (
+	"fmt"
 	"reflect"
 	"runtime"
 	"testing"
@@ -25,30 +26,27 @@ import (
 )
 
 func TestPlatform_ApplyFlags(t *testing.T) {
-	var test struct{ Platform }
-	ApplyFlags(&test, pflag.NewFlagSet("oras-test", pflag.ExitOnError))
-	if test.platform != "" {
-		t.Fatalf("expecting platform to be empty but got: %v", test.platform)
+	var opts Platform
+	fs := pflag.NewFlagSet("oras-test", pflag.ContinueOnError)
+	opts.ApplyFlags(fs)
+	if err := fs.Parse([]string{"--platform", "linux/amd64"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := opts.Parse(nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := opts.Platform; !reflect.DeepEqual(got, &ocispec.Platform{OS: "linux", Architecture: "amd64"}) {
+		t.Fatalf("Platform = %#v, want linux/amd64", got)
 	}
 }
 
 func TestPlatform_Parse_err(t *testing.T) {
-	tests := []struct {
-		name string
-		opts *Platform
-	}{
-		{name: "empty arch 1", opts: &Platform{"os/", nil, ""}},
-		{name: "empty arch 2", opts: &Platform{"os//variant", nil, ""}},
-		{name: "empty os", opts: &Platform{"/arch", nil, ""}},
-		{name: "empty os with variant", opts: &Platform{"/arch/variant", nil, ""}},
-		{name: "trailing slash", opts: &Platform{"os/arch/variant/llama", nil, ""}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.opts.Parse(nil)
-			if err == nil {
-				t.Errorf("Platform.Parse() error = %v, wantErr %v", err, true)
-				return
+	tests := []string{"os/", "os//variant", "/arch", "/arch/variant", "os/arch/variant/llama"}
+	for _, platform := range tests {
+		t.Run(platform, func(t *testing.T) {
+			opts := &Platform{platform: platform}
+			if err := opts.Parse(nil); err == nil {
+				t.Error("Platform.Parse() error = nil, want an error")
 			}
 		})
 	}
@@ -57,25 +55,65 @@ func TestPlatform_Parse_err(t *testing.T) {
 func TestPlatform_Parse(t *testing.T) {
 	tests := []struct {
 		name string
-		opts *Platform
+		in   string
 		want *ocispec.Platform
 	}{
-		{name: "empty", opts: &Platform{platform: ""}, want: nil},
-		{name: "default arch", opts: &Platform{platform: "os"}, want: &ocispec.Platform{OS: "os", Architecture: runtime.GOARCH}},
-		{name: "os&arch", opts: &Platform{platform: "os/aRcH"}, want: &ocispec.Platform{OS: "os", Architecture: "aRcH"}},
-		{name: "empty variant", opts: &Platform{platform: "os/aRcH/"}, want: &ocispec.Platform{OS: "os", Architecture: "aRcH", Variant: ""}},
-		{name: "os&arch&variant", opts: &Platform{platform: "os/aRcH/vAriAnt"}, want: &ocispec.Platform{OS: "os", Architecture: "aRcH", Variant: "vAriAnt"}},
-		{name: "os version", opts: &Platform{platform: "os/aRcH/vAriAnt:osversion"}, want: &ocispec.Platform{OS: "os", Architecture: "aRcH", Variant: "vAriAnt", OSVersion: "osversion"}},
-		{name: "long os version", opts: &Platform{platform: "os/aRcH"}, want: &ocispec.Platform{OS: "os", Architecture: "aRcH"}},
+		{name: "empty", in: "", want: nil},
+		{name: "default arch", in: "os", want: &ocispec.Platform{OS: "os", Architecture: runtime.GOARCH}},
+		{name: "os and arch", in: "os/aRcH", want: &ocispec.Platform{OS: "os", Architecture: "aRcH"}},
+		{name: "empty variant", in: "os/aRcH/", want: &ocispec.Platform{OS: "os", Architecture: "aRcH"}},
+		{name: "variant", in: "os/aRcH/vAriAnt", want: &ocispec.Platform{OS: "os", Architecture: "aRcH", Variant: "vAriAnt"}},
+		{name: "os version", in: "os/aRcH/vAriAnt:osversion", want: &ocispec.Platform{OS: "os", Architecture: "aRcH", Variant: "vAriAnt", OSVersion: "osversion"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.opts.Parse(nil); err != nil {
-				t.Errorf("Platform.Parse() error = %v", err)
+			opts := &Platform{platform: tt.in}
+			if err := opts.Parse(nil); err != nil {
+				t.Fatal(err)
 			}
-			got := tt.opts.Platform
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Platform.Parse() = %v, want %v", got, tt.want)
+			if !reflect.DeepEqual(opts.Platform, tt.want) {
+				t.Errorf("Platform.Parse() = %#v, want %#v", opts.Platform, tt.want)
+			}
+		})
+	}
+}
+
+func TestPlatforms_Parse(t *testing.T) {
+	opts := &Platforms{platforms: []string{"linux/amd64", "linux/arm/v7", "windows/amd64:10"}}
+	if err := opts.Parse(nil); err != nil {
+		t.Fatal(err)
+	}
+	want := []*ocispec.Platform{
+		{OS: "linux", Architecture: "amd64"},
+		{OS: "linux", Architecture: "arm", Variant: "v7"},
+		{OS: "windows", Architecture: "amd64", OSVersion: "10"},
+	}
+	if !reflect.DeepEqual(opts.Platforms, want) {
+		t.Fatalf("Platforms.Parse() = %#v, want %#v", opts.Platforms, want)
+	}
+}
+
+func TestPlatforms_ApplyFlags(t *testing.T) {
+	var opts Platforms
+	fs := pflag.NewFlagSet("oras-test", pflag.ContinueOnError)
+	opts.ApplyFlags(fs)
+	if err := fs.Parse([]string{"--platform", "linux/amd64,linux/arm64", "--platform", "windows/amd64"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := opts.Parse(nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := len(opts.Platforms); got != 3 {
+		t.Fatalf("len(Platforms) = %d, want 3", got)
+	}
+}
+
+func TestPlatforms_Parse_empty(t *testing.T) {
+	for i, platforms := range [][]string{{"linux/amd64", ""}, {"linux/amd64", "", "linux/arm64"}} {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			opts := &Platforms{platforms: platforms}
+			if err := opts.Parse(nil); err == nil {
+				t.Error("Platforms.Parse() error = nil, want an error")
 			}
 		})
 	}

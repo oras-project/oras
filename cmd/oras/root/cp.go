@@ -16,10 +16,12 @@ limitations under the License.
 package root
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"slices"
 	"strings"
@@ -36,6 +38,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -48,7 +51,7 @@ import (
 
 type copyOptions struct {
 	option.Common
-	option.Platform
+	Platform option.Platforms
 	option.BinaryTarget
 	option.Terminal
 
@@ -89,6 +92,9 @@ Example - Copy an artifact and referrers using specific methods for the Referrer
 
 Example - Copy certain platform of an artifact:
   oras cp --platform linux/arm/v5 localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:v1
+
+Example - Copy certain platforms of an artifact:
+  oras cp --platform linux/amd64,linux/arm64,linux/arm/v7 localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:v1
 
 Example - Copy an artifact with multiple tags:
   oras cp localhost:5000/net-monitor:v1 localhost:6000/net-monitor-copy:tag1,tag2,tag3
@@ -147,6 +153,17 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	ctx = registryutil.WithScopeHint(ctx, dst, auth.ActionPull, auth.ActionPush)
 	statusHandler, metadataHandler := display.NewCopyHandler(opts.Printer, opts.TTY, dst)
 
+	// Check if multiple platforms are specified
+	if len(opts.Platform.Platforms) > 1 {
+		// Handle multiple platforms - copy manifests that match the specified platforms
+		return copyMultiplePlatforms(ctx, statusHandler, metadataHandler, src, dst, opts)
+	}
+
+	// Handle single platform or recursive mode
+	return copySinglePlatformOrRecursive(ctx, statusHandler, metadataHandler, src, dst, opts)
+}
+
+func copySinglePlatformOrRecursive(ctx context.Context, statusHandler status.CopyHandler, metadataHandler metadata.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) error {
 	desc, err := doCopy(ctx, statusHandler, src, dst, opts)
 	if err != nil {
 		return err
@@ -171,6 +188,183 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	}
 
 	return metadataHandler.Render()
+}
+
+// copyMultiplePlatforms handles copying when multiple platforms are specified
+func copyMultiplePlatforms(ctx context.Context, statusHandler status.CopyHandler, metadataHandler metadata.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) error {
+	// Resolve the source reference to get the root descriptor
+	resolveOpts := oras.DefaultResolveOptions
+	// We don't set TargetPlatform here since we want to get the full index/list
+	root, err := oras.Resolve(ctx, src, opts.From.Reference, resolveOpts)
+	if err != nil {
+		return fmt.Errorf("failed to resolve %s: %w", opts.From.Reference, err)
+	}
+
+	// Check if the resolved descriptor is an index/manifest list
+	isIndex := root.MediaType == ocispec.MediaTypeImageIndex || root.MediaType == docker.MediaTypeManifestList
+	if !isIndex {
+		// If not an index, return an error
+		return fmt.Errorf("source reference %s is not an index or manifest list", opts.From.Reference)
+	}
+
+	index, filteredManifests, err := filterManifestByPlatform(ctx, src, root, opts)
+	if err != nil {
+		return err
+	}
+
+	// If all platforms are specified, we can just copy the root descriptor
+	if len(index.Manifests) == len(filteredManifests) {
+		return copySinglePlatformOrRecursive(ctx, statusHandler, metadataHandler, src, dst, opts)
+	}
+
+	// Perform multiple copies
+	return doMultipleCopy(ctx, statusHandler, metadataHandler, src, dst, opts, root, index, filteredManifests)
+}
+
+func filterManifestByPlatform(ctx context.Context, src oras.ReadOnlyGraphTarget, root ocispec.Descriptor, opts *copyOptions) (ocispec.Index, []ocispec.Descriptor, error) {
+	// For indexes/lists, fetch the index content
+	indexContent, err := content.FetchAll(ctx, src, root)
+	if err != nil {
+		return ocispec.Index{}, nil, fmt.Errorf("failed to fetch index: %w", err)
+	}
+
+	var index ocispec.Index
+	if err = json.Unmarshal(indexContent, &index); err != nil {
+		return ocispec.Index{}, nil, fmt.Errorf("failed to parse index: %w", err)
+	}
+
+	// Filter manifests based on the specified platforms
+	var availablePlatforms []string
+	var filteredManifests []ocispec.Descriptor
+	for _, manifest := range index.Manifests {
+		if manifest.Platform == nil {
+			continue
+		}
+		availablePlatforms = append(availablePlatforms, formatPlatform(manifest.Platform))
+		if matchesAnyPlatform(manifest.Platform, opts.Platform.Platforms) {
+			filteredManifests = append(filteredManifests, manifest)
+		}
+	}
+
+	// Check if any platforms were unmatched
+	var unmatchedPlatforms []string
+	for _, platform := range opts.Platform.Platforms {
+		platformStr := formatPlatform(platform)
+		contains := slices.ContainsFunc(index.Manifests, func(manifest ocispec.Descriptor) bool {
+			return platformMatches(manifest.Platform, platform)
+		})
+		if !contains {
+			unmatchedPlatforms = append(unmatchedPlatforms, platformStr)
+		}
+	}
+	// Return error with details about unmatched platforms
+	if len(unmatchedPlatforms) > 0 {
+		return ocispec.Index{}, nil, fmt.Errorf("some requested platforms were not matched; unmatched platforms: [%s]; available platforms in index: [%s]",
+			strings.Join(unmatchedPlatforms, ", "), strings.Join(availablePlatforms, ", "))
+	}
+	return index, filteredManifests, nil
+}
+
+func formatPlatform(platform *ocispec.Platform) string {
+	if platform == nil {
+		return "<unknown>"
+	}
+	result := platform.OS + "/" + platform.Architecture
+	if platform.Variant != "" {
+		result += "/" + platform.Variant
+	}
+	if platform.OSVersion != "" {
+		result += ":" + platform.OSVersion
+	}
+	return result
+}
+
+func doMultipleCopy(ctx context.Context, statusHandler status.CopyHandler, metadataHandler metadata.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions, root ocispec.Descriptor, index ocispec.Index, filteredManifests []ocispec.Descriptor) error {
+	index.Manifests = filteredManifests
+	indexContent, err := json.Marshal(index)
+	if err != nil {
+		return fmt.Errorf("failed to marshal filtered index: %w", err)
+	}
+
+	filteredRoot := root
+	filteredRoot.Digest = digest.FromBytes(indexContent)
+	filteredRoot.Size = int64(len(indexContent))
+	filteredSource := &filteredIndexSource{
+		ReadOnlyGraphTarget: src,
+		reference:           opts.From.Reference,
+		root:                filteredRoot,
+		content:             indexContent,
+	}
+	return copySinglePlatformOrRecursive(ctx, statusHandler, metadataHandler, filteredSource, dst, opts)
+}
+
+// filteredIndexSource presents a filtered index at the original source
+// reference while delegating all other content and predecessor lookups to the
+// source target. This lets the normal copy machinery handle manifests, blobs,
+// referrers, force traversal, status reporting, and tagging consistently.
+type filteredIndexSource struct {
+	oras.ReadOnlyGraphTarget
+	reference string
+	root      ocispec.Descriptor
+	content   []byte
+}
+
+func (s *filteredIndexSource) Resolve(ctx context.Context, reference string) (ocispec.Descriptor, error) {
+	if reference == s.reference {
+		return s.root, nil
+	}
+	return s.ReadOnlyGraphTarget.Resolve(ctx, reference)
+}
+
+func (s *filteredIndexSource) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
+	if content.Equal(target, s.root) {
+		return io.NopCloser(bytes.NewReader(s.content)), nil
+	}
+	return s.ReadOnlyGraphTarget.Fetch(ctx, target)
+}
+
+func (s *filteredIndexSource) Exists(ctx context.Context, target ocispec.Descriptor) (bool, error) {
+	if content.Equal(target, s.root) {
+		return true, nil
+	}
+	return s.ReadOnlyGraphTarget.Exists(ctx, target)
+}
+
+func (s *filteredIndexSource) Predecessors(ctx context.Context, target ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+	if content.Equal(target, s.root) {
+		// The filtered root has a new digest, so referrers of the original root
+		// cannot be attached to it without rewriting their subjects.
+		return nil, nil
+	}
+	return s.ReadOnlyGraphTarget.Predecessors(ctx, target)
+}
+
+// matchesAnyPlatform checks if a manifest platform matches any of the specified platforms
+func matchesAnyPlatform(manifestPlatform *ocispec.Platform, platforms []*ocispec.Platform) bool {
+	return slices.ContainsFunc(platforms, func(platform *ocispec.Platform) bool {
+		return platformMatches(manifestPlatform, platform)
+	})
+}
+
+// platformMatches checks if two platforms match
+func platformMatches(manifestPlatform, targetPlatform *ocispec.Platform) bool {
+	if manifestPlatform == nil || targetPlatform == nil {
+		return false
+	}
+	if manifestPlatform.OS != targetPlatform.OS || manifestPlatform.Architecture != targetPlatform.Architecture {
+		return false
+	}
+
+	// An omitted variant or OS version is a wildcard. When supplied, the
+	// requested value must match the descriptor exactly.
+	if targetPlatform.Variant != "" && manifestPlatform.Variant != targetPlatform.Variant {
+		return false
+	}
+	if targetPlatform.OSVersion != "" && manifestPlatform.OSVersion != targetPlatform.OSVersion {
+		return false
+	}
+
+	return true
 }
 
 func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) (desc ocispec.Descriptor, err error) {
@@ -214,7 +408,9 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 	extendedCopyGraphOptions.OnMounted = copyHandler.OnMounted
 
 	rOpts := oras.DefaultResolveOptions
-	rOpts.TargetPlatform = opts.Platform.Platform
+	if len(opts.Platform.Platforms) == 1 {
+		rOpts.TargetPlatform = opts.Platform.Platforms[0]
+	}
 
 	// Define the execution logic as a closure so we can retry it
 	executeCopy := func(copyOpts oras.ExtendedCopyGraphOptions) (ocispec.Descriptor, error) {
@@ -238,8 +434,8 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 		stdCopyOpts := oras.CopyOptions{
 			CopyGraphOptions: copyOpts.CopyGraphOptions,
 		}
-		if opts.Platform.Platform != nil {
-			stdCopyOpts.WithTargetPlatform(opts.Platform.Platform)
+		if len(opts.Platform.Platforms) == 1 {
+			stdCopyOpts.WithTargetPlatform(opts.Platform.Platforms[0])
 		}
 		return oras.Copy(ctx, src, opts.From.Reference, dst, opts.To.Reference, stdCopyOpts)
 	}

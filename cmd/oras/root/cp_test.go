@@ -31,13 +31,16 @@ import (
 	"testing"
 
 	"github.com/opencontainers/go-digest"
+	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/status"
+	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/testutils"
 )
 
@@ -834,5 +837,227 @@ func Test_recursiveCopy_strandedRootWithChildReferrer(t *testing.T) {
 		if !exists {
 			t.Errorf("recursiveCopy() left the %s out of the destination", name)
 		}
+	}
+}
+
+func newMultiPlatformSource(t *testing.T) (*memory.Store, ocispec.Descriptor, ocispec.Index) {
+	t.Helper()
+	ctx := context.Background()
+	src := memory.New()
+	config := []byte(`{}`)
+	configDesc := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageConfig,
+		Digest:    digest.FromBytes(config),
+		Size:      int64(len(config)),
+	}
+	if err := src.Push(ctx, configDesc, bytes.NewReader(config)); err != nil {
+		t.Fatal(err)
+	}
+
+	platforms := []*ocispec.Platform{
+		{OS: "linux", Architecture: "amd64"},
+		{OS: "linux", Architecture: "arm", Variant: "v6"},
+		{OS: "linux", Architecture: "arm", Variant: "v7"},
+	}
+	manifests := make([]ocispec.Descriptor, 0, len(platforms))
+	for _, platform := range platforms {
+		manifest := ocispec.Manifest{
+			Versioned: specs.Versioned{SchemaVersion: 2},
+			MediaType: ocispec.MediaTypeImageManifest,
+			Annotations: map[string]string{
+				"test.platform": formatPlatform(platform),
+			},
+			Config: configDesc,
+			Layers: []ocispec.Descriptor{},
+		}
+		contentBytes, err := json.Marshal(manifest)
+		if err != nil {
+			t.Fatal(err)
+		}
+		desc := ocispec.Descriptor{
+			MediaType: ocispec.MediaTypeImageManifest,
+			Digest:    digest.FromBytes(contentBytes),
+			Size:      int64(len(contentBytes)),
+			Platform:  platform,
+		}
+		if err := src.Push(ctx, desc, bytes.NewReader(contentBytes)); err != nil {
+			t.Fatal(err)
+		}
+		manifests = append(manifests, desc)
+	}
+	index := ocispec.Index{
+		Versioned: specs.Versioned{SchemaVersion: 2},
+		MediaType: ocispec.MediaTypeImageIndex,
+		Manifests: manifests,
+	}
+	indexBytes, err := json.Marshal(index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Digest:    digest.FromBytes(indexBytes),
+		Size:      int64(len(indexBytes)),
+	}
+	if err := src.Push(ctx, root, bytes.NewReader(indexBytes)); err != nil {
+		t.Fatal(err)
+	}
+	if err := src.Tag(ctx, root, "source"); err != nil {
+		t.Fatal(err)
+	}
+	return src, root, index
+}
+
+type discardCopyHandler struct {
+	status.DiscardHandler
+}
+
+func (discardCopyHandler) OnMounted(context.Context, ocispec.Descriptor) error {
+	return nil
+}
+
+type discardMetadataHandler struct {
+	metadata.Discard
+}
+
+func (discardMetadataHandler) OnCopied(*option.BinaryTarget, ocispec.Descriptor) error {
+	return nil
+}
+
+func Test_filterManifestsByPlatform(t *testing.T) {
+	src, root, _ := newMultiPlatformSource(t)
+	platforms := option.Platforms{Platforms: []*ocispec.Platform{{OS: "linux", Architecture: "arm"}}}
+	opts := &copyOptions{Platform: platforms}
+	_, selected, err := filterManifestByPlatform(context.Background(), src, root, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(selected) != 2 {
+		t.Fatalf("selected %d manifests, want 2", len(selected))
+	}
+
+	opts.Platform.Platforms = []*ocispec.Platform{{OS: "linux", Architecture: "arm", Variant: "v7"}}
+	_, selected, err = filterManifestByPlatform(context.Background(), src, root, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(selected) != 1 || selected[0].Platform.Variant != "v7" {
+		t.Fatalf("selected %#v, want only arm/v7", selected)
+	}
+
+	opts.Platform.Platforms = []*ocispec.Platform{{OS: "windows", Architecture: "amd64"}}
+	if _, _, err = filterManifestByPlatform(context.Background(), src, root, opts); err == nil || !strings.Contains(err.Error(), "linux/amd64") {
+		t.Fatalf("filterManifestsByPlatform() error = %v, want available platforms", err)
+	}
+}
+
+func Test_doMultipleCopy_copiesFilteredIndex(t *testing.T) {
+	ctx := context.Background()
+	src, root, index := newMultiPlatformSource(t)
+	dst := memory.New()
+	opts := &copyOptions{
+		Platform: option.Platforms{Platforms: []*ocispec.Platform{
+			{OS: "linux", Architecture: "amd64"},
+			{OS: "linux", Architecture: "arm", Variant: "v7"},
+		}},
+	}
+	opts.From.Reference = "source"
+	opts.To.Reference = "destination"
+	_, selected, err := filterManifestByPlatform(ctx, src, root, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	statusHandler := discardCopyHandler{DiscardHandler: status.NewDiscardHandler()}
+	metadataHandler := discardMetadataHandler{Discard: metadata.NewDiscardHandler()}
+	if err := doMultipleCopy(ctx, statusHandler, metadataHandler, src, dst, opts, root, index, selected); err != nil {
+		t.Fatal(err)
+	}
+
+	gotRoot, err := dst.Resolve(ctx, "destination")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if content.Equal(gotRoot, root) {
+		t.Fatal("filtered copy retained the original root digest")
+	}
+	filteredBytes, err := content.FetchAll(ctx, dst, gotRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var filtered ocispec.Index
+	if err := json.Unmarshal(filteredBytes, &filtered); err != nil {
+		t.Fatal(err)
+	}
+	if len(filtered.Manifests) != 2 {
+		t.Fatalf("filtered index contains %d manifests, want 2", len(filtered.Manifests))
+	}
+	if filtered.Manifests[1].Platform.Variant != "v7" {
+		t.Fatalf("filtered index contains %#v, want arm/v7", filtered.Manifests[1].Platform)
+	}
+	if exists, err := dst.Exists(ctx, index.Manifests[1]); err != nil {
+		t.Fatal(err)
+	} else if exists {
+		t.Fatal("filtered copy included the unselected arm/v6 manifest")
+	}
+}
+
+func Test_copyMultiplePlatforms_allSelectionPreservesRoot(t *testing.T) {
+	ctx := context.Background()
+	src, root, _ := newMultiPlatformSource(t)
+	dst := memory.New()
+	opts := &copyOptions{
+		Platform: option.Platforms{Platforms: []*ocispec.Platform{
+			{OS: "linux", Architecture: "amd64"},
+			{OS: "linux", Architecture: "arm"},
+		}},
+	}
+	opts.From.Reference = "source"
+	opts.To.Reference = "destination"
+	statusHandler := discardCopyHandler{DiscardHandler: status.NewDiscardHandler()}
+	metadataHandler := discardMetadataHandler{Discard: metadata.NewDiscardHandler()}
+	if err := copyMultiplePlatforms(ctx, statusHandler, metadataHandler, src, dst, opts); err != nil {
+		t.Fatal(err)
+	}
+	got, err := dst.Resolve(ctx, "destination")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !content.Equal(got, root) {
+		t.Fatalf("destination root = %v, want original root %v", got.Digest, root.Digest)
+	}
+}
+
+func Test_doMultipleCopy_recursiveCopiesSelectedReferrer(t *testing.T) {
+	ctx := context.Background()
+	src, root, index := newMultiPlatformSource(t)
+	referrer, err := oras.PackManifest(ctx, src, oras.PackManifestVersion1_1, "application/vnd.test.signature", oras.PackManifestOptions{Subject: &index.Manifests[0]})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dst := memory.New()
+	opts := &copyOptions{
+		Platform:  option.Platforms{Platforms: []*ocispec.Platform{{OS: "linux", Architecture: "amd64"}}},
+		recursive: true,
+	}
+	opts.From.Reference = "source"
+	opts.To.Reference = "destination"
+	_, selected, err := filterManifestByPlatform(ctx, src, root, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	statusHandler := discardCopyHandler{DiscardHandler: status.NewDiscardHandler()}
+	metadataHandler := discardMetadataHandler{Discard: metadata.NewDiscardHandler()}
+	if err := doMultipleCopy(ctx, statusHandler, metadataHandler, src, dst, opts, root, index, selected); err != nil {
+		t.Fatal(err)
+	}
+	if exists, err := dst.Exists(ctx, referrer); err != nil {
+		t.Fatal(err)
+	} else if !exists {
+		t.Fatal("recursive filtered copy did not include the selected manifest referrer")
+	}
+	if exists, err := dst.Exists(ctx, index.Manifests[1]); err != nil {
+		t.Fatal(err)
+	} else if exists {
+		t.Fatal("recursive filtered copy included an unselected manifest")
 	}
 }
