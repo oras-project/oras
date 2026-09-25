@@ -17,6 +17,7 @@ package root
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -39,5 +40,17 @@ func Test_runPull_errType(t *testing.T) {
 	want := errors.UnsupportedFormatTypeError(opts.Format.Type).Error()
 	if got != want {
 		t.Fatalf("got %v, want %v", got, want)
+	}
+}
+
+func TestNewPullCleanup_NonexistentOutput(t *testing.T) {
+	output := filepath.Join(t.TempDir(), "output")
+
+	cleanup, err := newPullCleanup(output)
+	if err != nil {
+		t.Fatalf("newPullCleanup() error = %v", err)
+	}
+	if len(cleanup.existing) != 0 {
+		t.Fatalf("newPullCleanup() existing = %d, want 0", len(cleanup.existing))
 	}
 }

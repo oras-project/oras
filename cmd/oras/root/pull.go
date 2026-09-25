@@ -19,6 +19,9 @@ import (
 	"context"
 	"errors"
 	"io"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -129,6 +132,61 @@ Example - Pull artifact files tagged 'example.com:v1' from an OCI image layout f
 	return oerrors.Command(cmd, &opts.Target)
 }
 
+type pullCleanup struct {
+	mu       sync.Mutex
+	existing map[string]struct{}
+	created  map[string]struct{}
+}
+
+func newPullCleanup(output string) (*pullCleanup, error) {
+	existing := make(map[string]struct{})
+
+	output, err := filepath.Abs(output)
+	if err != nil {
+		return nil, err
+	}
+
+	err = filepath.WalkDir(output, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() {
+			existing[path] = struct{}{}
+		}
+		return nil
+	})
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return nil, err
+	}
+
+	return &pullCleanup{
+		existing: existing,
+		created:  make(map[string]struct{}),
+	}, nil
+}
+
+func (c *pullCleanup) add(path string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if _, existed := c.existing[path]; !existed {
+		c.created[path] = struct{}{}
+	}
+}
+
+func (c *pullCleanup) cleanup() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	var err error
+	for path := range c.created {
+		if removeErr := os.Remove(path); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
+			err = errors.Join(err, removeErr)
+		}
+	}
+	return err
+}
+
 func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	statusHandler, metadataHandler, err := display.NewPullHandler(opts.Printer, opts.Format, opts.Path, opts.TTY)
@@ -152,10 +210,17 @@ func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 	if err != nil {
 		return err
 	}
+
+	cleanup, err := newPullCleanup(opts.Output)
+	if err != nil {
+		return err
+	}
+
 	dst, err := file.New(opts.Output)
 	if err != nil {
 		return err
 	}
+
 	defer func() {
 		if err := dst.Close(); pullError == nil {
 			pullError = err
@@ -164,8 +229,10 @@ func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 	dst.AllowPathTraversalOnWrite = opts.PathTraversal
 	dst.DisableOverwrite = opts.KeepOldFiles
 
-	desc, err := doPull(ctx, src, dst, copyOptions, metadataHandler, statusHandler, opts)
+	desc, err := doPull(ctx, src, dst, copyOptions, metadataHandler, statusHandler, opts, cleanup)
 	if err != nil {
+		_ = cleanup.cleanup()
+
 		if !errors.Is(err, file.ErrPathTraversalDisallowed) {
 			return err
 		}
@@ -179,7 +246,7 @@ func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 	return metadataHandler.Render()
 }
 
-func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, opts oras.CopyOptions, metadataHandler metadata.PullHandler, statusHandler status.PullHandler, po *pullOptions) (ocispec.Descriptor, error) {
+func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, opts oras.CopyOptions, metadataHandler metadata.PullHandler, statusHandler status.PullHandler, po *pullOptions, cleanup *pullCleanup) (ocispec.Descriptor, error) {
 	var configPath, configMediaType string
 	var err error
 
@@ -283,6 +350,17 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 				if err = metadataHandler.OnFilePulled(name, po.Output, s, po.Path); err != nil {
 					return err
 				}
+				path := name
+				if !filepath.IsAbs(path) {
+					path, err = filepath.Abs(filepath.Join(po.Output, path))
+					if err != nil {
+						return err
+					}
+				} else {
+					path = filepath.Clean(path)
+				}
+				cleanup.add(path)
+
 				if err = notifyOnce(&printed, s, statusHandler.OnNodeRestored); err != nil {
 					return err
 				}
