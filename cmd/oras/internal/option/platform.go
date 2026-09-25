@@ -75,6 +75,7 @@ func (opts *Platforms) Parse(*cobra.Command) error {
 		return nil
 	}
 	opts.Platforms = make([]*ocispec.Platform, 0, len(opts.platforms))
+	seen := make(map[string]struct{}, len(opts.platforms))
 	for _, platformStr := range opts.platforms {
 		platformStr = strings.TrimSpace(platformStr)
 		if platformStr == "" {
@@ -84,6 +85,11 @@ func (opts *Platforms) Parse(*cobra.Command) error {
 		if err != nil {
 			return err
 		}
+		key := strings.Join([]string{p.OS, p.Architecture, p.Variant, p.OSVersion}, "\x00")
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
 		opts.Platforms = append(opts.Platforms, p)
 	}
 	return nil

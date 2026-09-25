@@ -79,7 +79,7 @@ func TestPlatform_Parse(t *testing.T) {
 }
 
 func TestPlatforms_Parse(t *testing.T) {
-	opts := &Platforms{platforms: []string{"linux/amd64", "linux/arm/v7", "windows/amd64:10"}}
+	opts := &Platforms{platforms: []string{"linux/amd64", "linux/arm/v7", "windows/amd64:10", "linux/amd64"}}
 	if err := opts.Parse(nil); err != nil {
 		t.Fatal(err)
 	}

@@ -203,8 +203,14 @@ func copyMultiplePlatforms(ctx context.Context, statusHandler status.CopyHandler
 	// Check if the resolved descriptor is an index/manifest list
 	isIndex := root.MediaType == ocispec.MediaTypeImageIndex || root.MediaType == docker.MediaTypeManifestList
 	if !isIndex {
-		// If not an index, return an error
-		return fmt.Errorf("source reference %s is not an index or manifest list", opts.From.Reference)
+		sourceReference := opts.From.RawReference
+		if sourceReference == "" {
+			sourceReference = opts.From.Reference
+		}
+		return &oerrors.Error{
+			Err:            fmt.Errorf("%q is not an image index or a manifest list", sourceReference),
+			Recommendation: "selecting multiple platforms requires a multi-platform source; use a single --platform value to copy a specific platform of an image",
+		}
 	}
 
 	index, filteredManifests, err := filterManifestByPlatform(ctx, src, root, opts)
@@ -212,8 +218,9 @@ func copyMultiplePlatforms(ctx context.Context, statusHandler status.CopyHandler
 		return err
 	}
 
-	// If all platforms are specified, we can just copy the root descriptor
-	if len(index.Manifests) == len(filteredManifests) {
+	// If every platform-bearing manifest was selected, preserve the original
+	// root so that its digest, referrers, and platform-less entries are kept.
+	if allPlatformManifestsSelected(index, opts) {
 		return copySinglePlatformOrRecursive(ctx, statusHandler, metadataHandler, src, dst, opts)
 	}
 
@@ -233,16 +240,18 @@ func filterManifestByPlatform(ctx context.Context, src oras.ReadOnlyGraphTarget,
 		return ocispec.Index{}, nil, fmt.Errorf("failed to parse index: %w", err)
 	}
 
-	// Filter manifests based on the specified platforms
+	// Find the platform-bearing manifests selected by the request first. This
+	// lets us retain associated attestations even when they use unknown/unknown
+	// or omit the platform field.
 	var availablePlatforms []string
-	var filteredManifests []ocispec.Descriptor
+	var selectedPlatformManifests []ocispec.Descriptor
 	for _, manifest := range index.Manifests {
 		if manifest.Platform == nil {
 			continue
 		}
 		availablePlatforms = append(availablePlatforms, formatPlatform(manifest.Platform))
 		if matchesAnyPlatform(manifest.Platform, opts.Platform.Platforms) {
-			filteredManifests = append(filteredManifests, manifest)
+			selectedPlatformManifests = append(selectedPlatformManifests, manifest)
 		}
 	}
 
@@ -262,7 +271,38 @@ func filterManifestByPlatform(ctx context.Context, src oras.ReadOnlyGraphTarget,
 		return ocispec.Index{}, nil, fmt.Errorf("some requested platforms were not matched; unmatched platforms: [%s]; available platforms in index: [%s]",
 			strings.Join(unmatchedPlatforms, ", "), strings.Join(availablePlatforms, ", "))
 	}
+
+	var filteredManifests []ocispec.Descriptor
+	for _, manifest := range index.Manifests {
+		if slices.ContainsFunc(selectedPlatformManifests, func(selected ocispec.Descriptor) bool {
+			return content.Equal(selected, manifest)
+		}) || associatedWithSelectedManifest(manifest, selectedPlatformManifests) {
+			filteredManifests = append(filteredManifests, manifest)
+		}
+	}
 	return index, filteredManifests, nil
+}
+
+func allPlatformManifestsSelected(index ocispec.Index, opts *copyOptions) bool {
+	for _, manifest := range index.Manifests {
+		if manifest.Platform != nil && !matchesAnyPlatform(manifest.Platform, opts.Platform.Platforms) {
+			return false
+		}
+	}
+	return true
+}
+
+func associatedWithSelectedManifest(manifest ocispec.Descriptor, selected []ocispec.Descriptor) bool {
+	if manifest.Annotations == nil {
+		return false
+	}
+	referenceDigest := manifest.Annotations["vnd.docker.reference.digest"]
+	if referenceDigest == "" {
+		return false
+	}
+	return slices.ContainsFunc(selected, func(desc ocispec.Descriptor) bool {
+		return referenceDigest == desc.Digest.String()
+	})
 }
 
 func formatPlatform(platform *ocispec.Platform) string {
@@ -279,11 +319,14 @@ func formatPlatform(platform *ocispec.Platform) string {
 	return result
 }
 
-func doMultipleCopy(ctx context.Context, statusHandler status.CopyHandler, metadataHandler metadata.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions, root ocispec.Descriptor, index ocispec.Index, filteredManifests []ocispec.Descriptor) error {
-	index.Manifests = filteredManifests
-	indexContent, err := json.Marshal(index)
+func doMultipleCopy(ctx context.Context, statusHandler status.CopyHandler, metadataHandler metadata.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions, root ocispec.Descriptor, _ ocispec.Index, filteredManifests []ocispec.Descriptor) error {
+	originalIndexContent, err := content.FetchAll(ctx, src, root)
 	if err != nil {
-		return fmt.Errorf("failed to marshal filtered index: %w", err)
+		return fmt.Errorf("failed to fetch index: %w", err)
+	}
+	indexContent, err := filterIndexContent(originalIndexContent, filteredManifests)
+	if err != nil {
+		return fmt.Errorf("failed to filter index: %w", err)
 	}
 
 	filteredRoot := root
@@ -295,7 +338,52 @@ func doMultipleCopy(ctx context.Context, statusHandler status.CopyHandler, metad
 		root:                filteredRoot,
 		content:             indexContent,
 	}
-	return copySinglePlatformOrRecursive(ctx, statusHandler, metadataHandler, filteredSource, dst, opts)
+	var filteredTarget oras.ReadOnlyGraphTarget = filteredSource
+	if referrerLister, ok := src.(registry.ReferrerLister); ok {
+		filteredTarget = &filteredIndexReferrerSource{
+			filteredIndexSource: filteredSource,
+			ReferrerLister:      referrerLister,
+		}
+	}
+	if opts.recursive && opts.Printer != nil {
+		if err := opts.Printer.Println("Warning: referrers of the source index are not copied because selecting a subset of platforms produces a new index digest"); err != nil {
+			return err
+		}
+	}
+	return copySinglePlatformOrRecursive(ctx, statusHandler, metadataHandler, filteredTarget, dst, opts)
+}
+
+func filterIndexContent(indexContent []byte, selected []ocispec.Descriptor) ([]byte, error) {
+	var index map[string]json.RawMessage
+	if err := json.Unmarshal(indexContent, &index); err != nil {
+		return nil, err
+	}
+	manifestContent, ok := index["manifests"]
+	if !ok {
+		return nil, errors.New("index does not contain a manifests array")
+	}
+	var manifests []json.RawMessage
+	if err := json.Unmarshal(manifestContent, &manifests); err != nil {
+		return nil, err
+	}
+	filtered := make([]json.RawMessage, 0, len(selected))
+	for _, raw := range manifests {
+		var manifest ocispec.Descriptor
+		if err := json.Unmarshal(raw, &manifest); err != nil {
+			return nil, err
+		}
+		if slices.ContainsFunc(selected, func(desc ocispec.Descriptor) bool {
+			return content.Equal(desc, manifest)
+		}) {
+			filtered = append(filtered, raw)
+		}
+	}
+	encoded, err := json.Marshal(filtered)
+	if err != nil {
+		return nil, err
+	}
+	index["manifests"] = encoded
+	return json.Marshal(index)
 }
 
 // filteredIndexSource presents a filtered index at the original source
@@ -337,6 +425,22 @@ func (s *filteredIndexSource) Predecessors(ctx context.Context, target ocispec.D
 		return nil, nil
 	}
 	return s.ReadOnlyGraphTarget.Predecessors(ctx, target)
+}
+
+func (s *filteredIndexSource) Unwrap() oras.ReadOnlyGraphTarget {
+	return s.ReadOnlyGraphTarget
+}
+
+type filteredIndexReferrerSource struct {
+	*filteredIndexSource
+	registry.ReferrerLister
+}
+
+func (s *filteredIndexReferrerSource) Referrers(ctx context.Context, desc ocispec.Descriptor, artifactType string, fn func([]ocispec.Descriptor) error) error {
+	if content.Equal(desc, s.root) {
+		return nil
+	}
+	return s.ReferrerLister.Referrers(ctx, desc, artifactType, fn)
 }
 
 // matchesAnyPlatform checks if a manifest platform matches any of the specified platforms
@@ -609,6 +713,11 @@ func prepareCopyOption(ctx context.Context, src oras.ReadOnlyGraphTarget, _ oras
 // the repository name to be mounted from if applicable. Mount can be performed if the two
 // targets are both remote repositories, are in the same registry and have identical credentials.
 func getMountPoint(src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) (string, bool) {
+	if unwrapper, ok := src.(interface {
+		Unwrap() oras.ReadOnlyGraphTarget
+	}); ok {
+		src = unwrapper.Unwrap()
+	}
 	srcRepo, srcIsRemote := src.(*remote.Repository)
 	dstRepo, dstIsRemote := dst.(*remote.Repository)
 	if !srcIsRemote || !dstIsRemote {
