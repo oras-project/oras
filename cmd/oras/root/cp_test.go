@@ -31,13 +31,17 @@ import (
 	"testing"
 
 	"github.com/opencontainers/go-digest"
+	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/status"
+	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/internal/output"
 	"oras.land/oras/internal/testutils"
 )
 
@@ -566,6 +570,12 @@ func Test_getMountPoint(t *testing.T) {
 			}
 		})
 	}
+
+	filtered := &filteredIndexSource{ReadOnlyGraphTarget: registry1Repo1}
+	gotMount, gotRepo := getMountPoint(filtered, registry1Repo2, &copyOptions{})
+	if !gotRepo || gotMount != "repo1" {
+		t.Fatalf("getMountPoint() through filtered source = (%q, %v), want (%q, true)", gotMount, gotRepo, "repo1")
+	}
 }
 
 // tagFailingTarget is a mock implementation of oras.Target whose Tag always
@@ -834,5 +844,517 @@ func Test_recursiveCopy_strandedRootWithChildReferrer(t *testing.T) {
 		if !exists {
 			t.Errorf("recursiveCopy() left the %s out of the destination", name)
 		}
+	}
+}
+
+func newMultiPlatformSource(t *testing.T) (*memory.Store, ocispec.Descriptor, ocispec.Index) {
+	t.Helper()
+	ctx := context.Background()
+	src := memory.New()
+	config := []byte(`{}`)
+	configDesc := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageConfig,
+		Digest:    digest.FromBytes(config),
+		Size:      int64(len(config)),
+	}
+	if err := src.Push(ctx, configDesc, bytes.NewReader(config)); err != nil {
+		t.Fatal(err)
+	}
+
+	platforms := []*ocispec.Platform{
+		{OS: "linux", Architecture: "amd64"},
+		{OS: "linux", Architecture: "arm", Variant: "v6"},
+		{OS: "linux", Architecture: "arm", Variant: "v7"},
+	}
+	manifests := make([]ocispec.Descriptor, 0, len(platforms))
+	for _, platform := range platforms {
+		manifest := ocispec.Manifest{
+			Versioned: specs.Versioned{SchemaVersion: 2},
+			MediaType: ocispec.MediaTypeImageManifest,
+			Annotations: map[string]string{
+				"test.platform": formatPlatform(platform),
+			},
+			Config: configDesc,
+			Layers: []ocispec.Descriptor{},
+		}
+		contentBytes, err := json.Marshal(manifest)
+		if err != nil {
+			t.Fatal(err)
+		}
+		desc := ocispec.Descriptor{
+			MediaType: ocispec.MediaTypeImageManifest,
+			Digest:    digest.FromBytes(contentBytes),
+			Size:      int64(len(contentBytes)),
+			Platform:  platform,
+		}
+		if err := src.Push(ctx, desc, bytes.NewReader(contentBytes)); err != nil {
+			t.Fatal(err)
+		}
+		manifests = append(manifests, desc)
+	}
+	index := ocispec.Index{
+		Versioned: specs.Versioned{SchemaVersion: 2},
+		MediaType: ocispec.MediaTypeImageIndex,
+		Manifests: manifests,
+	}
+	indexBytes, err := json.Marshal(index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Digest:    digest.FromBytes(indexBytes),
+		Size:      int64(len(indexBytes)),
+	}
+	if err := src.Push(ctx, root, bytes.NewReader(indexBytes)); err != nil {
+		t.Fatal(err)
+	}
+	if err := src.Tag(ctx, root, "source"); err != nil {
+		t.Fatal(err)
+	}
+	return src, root, index
+}
+
+type discardCopyHandler struct {
+	status.DiscardHandler
+}
+
+func (discardCopyHandler) OnMounted(context.Context, ocispec.Descriptor) error {
+	return nil
+}
+
+type discardMetadataHandler struct {
+	metadata.Discard
+}
+
+func (discardMetadataHandler) OnCopied(*option.BinaryTarget, ocispec.Descriptor) error {
+	return nil
+}
+
+func Test_filterManifestsByPlatform(t *testing.T) {
+	src, root, _ := newMultiPlatformSource(t)
+	platforms := option.Platforms{Platforms: []*ocispec.Platform{{OS: "linux", Architecture: "arm"}}}
+	opts := &copyOptions{Platform: platforms}
+	_, selected, err := filterManifestByPlatform(context.Background(), src, root, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(selected) != 2 {
+		t.Fatalf("selected %d manifests, want 2", len(selected))
+	}
+
+	opts.Platform.Platforms = []*ocispec.Platform{{OS: "linux", Architecture: "arm", Variant: "v7"}}
+	_, selected, err = filterManifestByPlatform(context.Background(), src, root, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(selected) != 1 || selected[0].Platform.Variant != "v7" {
+		t.Fatalf("selected %#v, want only arm/v7", selected)
+	}
+
+	opts.Platform.Platforms = []*ocispec.Platform{{OS: "windows", Architecture: "amd64"}}
+	if _, _, err = filterManifestByPlatform(context.Background(), src, root, opts); err == nil || !strings.Contains(err.Error(), "linux/amd64") {
+		t.Fatalf("filterManifestsByPlatform() error = %v, want available platforms", err)
+	}
+}
+
+func Test_doMultipleCopy_copiesFilteredIndex(t *testing.T) {
+	ctx := context.Background()
+	src, root, index := newMultiPlatformSource(t)
+	dst := memory.New()
+	opts := &copyOptions{
+		Platform: option.Platforms{Platforms: []*ocispec.Platform{
+			{OS: "linux", Architecture: "amd64"},
+			{OS: "linux", Architecture: "arm", Variant: "v7"},
+		}},
+	}
+	opts.From.Reference = "source"
+	opts.To.Reference = "destination"
+	_, selected, err := filterManifestByPlatform(ctx, src, root, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	statusHandler := discardCopyHandler{DiscardHandler: status.NewDiscardHandler()}
+	metadataHandler := discardMetadataHandler{Discard: metadata.NewDiscardHandler()}
+	if err := doMultipleCopy(ctx, statusHandler, metadataHandler, src, dst, opts, root, index, selected); err != nil {
+		t.Fatal(err)
+	}
+
+	gotRoot, err := dst.Resolve(ctx, "destination")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if content.Equal(gotRoot, root) {
+		t.Fatal("filtered copy retained the original root digest")
+	}
+	filteredBytes, err := content.FetchAll(ctx, dst, gotRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var filtered ocispec.Index
+	if err := json.Unmarshal(filteredBytes, &filtered); err != nil {
+		t.Fatal(err)
+	}
+	if len(filtered.Manifests) != 2 {
+		t.Fatalf("filtered index contains %d manifests, want 2", len(filtered.Manifests))
+	}
+	if filtered.Manifests[1].Platform.Variant != "v7" {
+		t.Fatalf("filtered index contains %#v, want arm/v7", filtered.Manifests[1].Platform)
+	}
+	if exists, err := dst.Exists(ctx, index.Manifests[1]); err != nil {
+		t.Fatal(err)
+	} else if exists {
+		t.Fatal("filtered copy included the unselected arm/v6 manifest")
+	}
+}
+
+func Test_copyMultiplePlatforms_allSelectionPreservesRoot(t *testing.T) {
+	ctx := context.Background()
+	src, root, _ := newMultiPlatformSource(t)
+	dst := memory.New()
+	opts := &copyOptions{
+		Platform: option.Platforms{Platforms: []*ocispec.Platform{
+			{OS: "linux", Architecture: "amd64"},
+			{OS: "linux", Architecture: "arm"},
+		}},
+	}
+	opts.From.Reference = "source"
+	opts.To.Reference = "destination"
+	statusHandler := discardCopyHandler{DiscardHandler: status.NewDiscardHandler()}
+	metadataHandler := discardMetadataHandler{Discard: metadata.NewDiscardHandler()}
+	if err := copyMultiplePlatforms(ctx, statusHandler, metadataHandler, src, dst, opts); err != nil {
+		t.Fatal(err)
+	}
+	got, err := dst.Resolve(ctx, "destination")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !content.Equal(got, root) {
+		t.Fatalf("destination root = %v, want original root %v", got.Digest, root.Digest)
+	}
+}
+
+func Test_doMultipleCopy_recursiveCopiesSelectedReferrer(t *testing.T) {
+	ctx := context.Background()
+	src, root, index := newMultiPlatformSource(t)
+	referrer, err := oras.PackManifest(ctx, src, oras.PackManifestVersion1_1, "application/vnd.test.signature", oras.PackManifestOptions{Subject: &index.Manifests[0]})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dst := memory.New()
+	opts := &copyOptions{
+		Platform:  option.Platforms{Platforms: []*ocispec.Platform{{OS: "linux", Architecture: "amd64"}}},
+		recursive: true,
+	}
+	opts.From.Reference = "source"
+	opts.To.Reference = "destination"
+	var warning bytes.Buffer
+	opts.Printer = output.NewPrinter(&warning, &warning)
+	_, selected, err := filterManifestByPlatform(ctx, src, root, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	statusHandler := discardCopyHandler{DiscardHandler: status.NewDiscardHandler()}
+	metadataHandler := discardMetadataHandler{Discard: metadata.NewDiscardHandler()}
+	if err := doMultipleCopy(ctx, statusHandler, metadataHandler, src, dst, opts, root, index, selected); err != nil {
+		t.Fatal(err)
+	}
+	if exists, err := dst.Exists(ctx, referrer); err != nil {
+		t.Fatal(err)
+	} else if !exists {
+		t.Fatal("recursive filtered copy did not include the selected manifest referrer")
+	}
+	if exists, err := dst.Exists(ctx, index.Manifests[1]); err != nil {
+		t.Fatal(err)
+	} else if exists {
+		t.Fatal("recursive filtered copy included an unselected manifest")
+	}
+	if got := warning.String(); !strings.Contains(got, "referrers of the source index are not copied") {
+		t.Fatalf("warning = %q, want source-index referrer warning", got)
+	}
+}
+
+type testReferrerSource struct {
+	*memory.Store
+	called bool
+}
+
+func (s *testReferrerSource) Referrers(_ context.Context, _ ocispec.Descriptor, _ string, fn func([]ocispec.Descriptor) error) error {
+	s.called = true
+	return fn(nil)
+}
+
+func Test_filteredIndexReferrerSource(t *testing.T) {
+	root := ocispec.Descriptor{MediaType: ocispec.MediaTypeImageIndex, Digest: digest.FromString("root"), Size: 4}
+	underlying := &testReferrerSource{Store: memory.New()}
+	base := &filteredIndexSource{ReadOnlyGraphTarget: underlying, root: root}
+	wrapped := &filteredIndexReferrerSource{filteredIndexSource: base, ReferrerLister: underlying}
+
+	if got := wrapped.Unwrap(); got != underlying {
+		t.Fatal("Unwrap() did not return the underlying source")
+	}
+	if err := wrapped.Referrers(context.Background(), root, "", func([]ocispec.Descriptor) error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+	if underlying.called {
+		t.Fatal("root referrers should be suppressed for a filtered root")
+	}
+	other := ocispec.Descriptor{MediaType: ocispec.MediaTypeImageManifest, Digest: digest.FromString("other"), Size: 5}
+	if err := wrapped.Referrers(context.Background(), other, "", func([]ocispec.Descriptor) error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+	if !underlying.called {
+		t.Fatal("underlying Referrers API was not used for a child")
+	}
+}
+
+func Test_filteredIndexSource_delegatesNonRootOperations(t *testing.T) {
+	ctx := context.Background()
+	underlying := memory.New()
+	childContent := []byte("child")
+	child := content.NewDescriptorFromBytes("application/octet-stream", childContent)
+	if err := underlying.Push(ctx, child, bytes.NewReader(childContent)); err != nil {
+		t.Fatal(err)
+	}
+	if err := underlying.Tag(ctx, child, "child"); err != nil {
+		t.Fatal(err)
+	}
+	rootContent := []byte(`{"schemaVersion":2,"manifests":[]}`)
+	root := content.NewDescriptorFromBytes(ocispec.MediaTypeImageIndex, rootContent)
+	source := &filteredIndexSource{
+		ReadOnlyGraphTarget: underlying,
+		reference:           "source",
+		root:                root,
+		content:             rootContent,
+	}
+
+	if got, err := source.Resolve(ctx, "source"); err != nil || !content.Equal(got, root) {
+		t.Fatalf("Resolve(source) = %v, %v, want %v, nil", got, err, root)
+	}
+	if got, err := source.Resolve(ctx, "child"); err != nil || !content.Equal(got, child) {
+		t.Fatalf("Resolve(child) = %v, %v, want %v, nil", got, err, child)
+	}
+	reader, err := source.Fetch(ctx, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotRootContent, err := io.ReadAll(reader)
+	_ = reader.Close()
+	if err != nil || !bytes.Equal(gotRootContent, rootContent) {
+		t.Fatalf("Fetch(root) = %q, %v, want %q, nil", gotRootContent, err, rootContent)
+	}
+	reader, err = source.Fetch(ctx, child)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotChildContent, err := io.ReadAll(reader)
+	_ = reader.Close()
+	if err != nil || !bytes.Equal(gotChildContent, childContent) {
+		t.Fatalf("Fetch(child) = %q, %v, want %q, nil", gotChildContent, err, childContent)
+	}
+	for _, target := range []ocispec.Descriptor{root, child} {
+		if exists, err := source.Exists(ctx, target); err != nil || !exists {
+			t.Fatalf("Exists(%v) = %v, %v, want true, nil", target.Digest, exists, err)
+		}
+	}
+	if exists, err := source.Exists(ctx, ocispec.Descriptor{Digest: digest.FromString("missing")}); err != nil || exists {
+		t.Fatalf("Exists(missing) = %v, %v, want false, nil", exists, err)
+	}
+	if predecessors, err := source.Predecessors(ctx, root); err != nil || predecessors != nil {
+		t.Fatalf("Predecessors(root) = %v, %v, want nil, nil", predecessors, err)
+	}
+	if predecessors, err := source.Predecessors(ctx, child); err != nil || predecessors != nil {
+		t.Fatalf("Predecessors(child) = %v, %v, want nil, nil", predecessors, err)
+	}
+}
+
+func Test_doMultipleCopy_usesReferrerListerWrapper(t *testing.T) {
+	ctx := context.Background()
+	src := &testReferrerSource{Store: memory.New()}
+	selectedContent := []byte("selected")
+	unselectedContent := []byte("unselected")
+	selected := content.NewDescriptorFromBytes("application/octet-stream", selectedContent)
+	unselected := content.NewDescriptorFromBytes("application/octet-stream", unselectedContent)
+	selected.Platform = &ocispec.Platform{OS: "linux", Architecture: "amd64"}
+	unselected.Platform = &ocispec.Platform{OS: "linux", Architecture: "arm64"}
+	for _, item := range []struct {
+		desc ocispec.Descriptor
+		data []byte
+	}{
+		{selected, selectedContent},
+		{unselected, unselectedContent},
+	} {
+		if err := src.Push(ctx, item.desc, bytes.NewReader(item.data)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	index := ocispec.Index{Versioned: specs.Versioned{SchemaVersion: 2}, MediaType: ocispec.MediaTypeImageIndex, Manifests: []ocispec.Descriptor{selected, unselected}}
+	indexContent, err := json.Marshal(index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := content.NewDescriptorFromBytes(ocispec.MediaTypeImageIndex, indexContent)
+	if err := src.Push(ctx, root, bytes.NewReader(indexContent)); err != nil {
+		t.Fatal(err)
+	}
+	if err := src.Tag(ctx, root, "source"); err != nil {
+		t.Fatal(err)
+	}
+	dst := memory.New()
+	opts := &copyOptions{
+		Platform: option.Platforms{Platforms: []*ocispec.Platform{{OS: "linux", Architecture: "amd64"}}},
+	}
+	opts.From.Reference = "source"
+	opts.To.Reference = "destination"
+	statusHandler := discardCopyHandler{DiscardHandler: status.NewDiscardHandler()}
+	metadataHandler := discardMetadataHandler{Discard: metadata.NewDiscardHandler()}
+	if err := doMultipleCopy(ctx, statusHandler, metadataHandler, src, dst, opts, root, index, []ocispec.Descriptor{selected}); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := dst.Resolve(ctx, "destination"); err != nil {
+		t.Fatal(err)
+	} else if got.Digest == root.Digest {
+		t.Fatal("filtered copy retained the original root digest")
+	}
+}
+
+func Test_filterIndexContent_preservesExtensions(t *testing.T) {
+	indexContent := []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","x-vendor":{"future":true},"manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","size":10,"platform":{"os":"linux","architecture":"amd64","features":["sse4"]},"x-descriptor":"keep"},{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","size":11,"platform":{"os":"linux","architecture":"arm64"}}]}`)
+	selected := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Digest:    "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		Size:      10,
+	}
+	filtered, err := filterIndexContent(indexContent, []ocispec.Descriptor{selected})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(filtered, &raw); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := raw["x-vendor"]; !ok {
+		t.Fatal("filtered index dropped the top-level extension")
+	}
+	if !strings.Contains(string(filtered), `"features":["sse4"]`) || !strings.Contains(string(filtered), `"x-descriptor":"keep"`) {
+		t.Fatalf("filtered index dropped descriptor extensions: %s", filtered)
+	}
+	var manifests []json.RawMessage
+	if err := json.Unmarshal(raw["manifests"], &manifests); err != nil {
+		t.Fatal(err)
+	}
+	if len(manifests) != 1 {
+		t.Fatalf("filtered manifest count = %d, want 1", len(manifests))
+	}
+}
+
+func Test_filterIndexContent_errors(t *testing.T) {
+	tests := []struct {
+		name    string
+		content []byte
+	}{
+		{name: "invalid index", content: []byte("{")},
+		{name: "missing manifests", content: []byte(`{"schemaVersion":2}`)},
+		{name: "invalid manifests", content: []byte(`{"manifests":{}}`)},
+		{name: "invalid descriptor", content: []byte(`{"manifests":[1]}`)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := filterIndexContent(tt.content, nil); err == nil {
+				t.Fatal("filterIndexContent() error = nil, want an error")
+			}
+		})
+	}
+}
+
+func Test_allPlatformManifestsSelected_ignoresPlatformlessEntries(t *testing.T) {
+	index := ocispec.Index{Manifests: []ocispec.Descriptor{
+		{Platform: &ocispec.Platform{OS: "linux", Architecture: "amd64"}},
+		{Platform: &ocispec.Platform{OS: "linux", Architecture: "arm64"}},
+		{},
+	}}
+	opts := &copyOptions{Platform: option.Platforms{Platforms: []*ocispec.Platform{
+		{OS: "linux", Architecture: "amd64"},
+		{OS: "linux", Architecture: "arm64"},
+	}}}
+	if !allPlatformManifestsSelected(index, opts) {
+		t.Fatal("all platform-bearing manifests should be considered selected")
+	}
+	opts.Platform.Platforms = []*ocispec.Platform{{OS: "linux", Architecture: "amd64"}}
+	if allPlatformManifestsSelected(index, opts) {
+		t.Fatal("an unselected platform-bearing manifest was treated as selected")
+	}
+}
+
+func Test_filterManifestByPlatform_keepsAssociatedDescriptors(t *testing.T) {
+	ctx := context.Background()
+	src := memory.New()
+	selected := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Digest:    digest.FromString("selected"),
+		Size:      8,
+		Platform:  &ocispec.Platform{OS: "linux", Architecture: "amd64"},
+	}
+	associated := ocispec.Descriptor{
+		MediaType:   "application/vnd.in-toto+json",
+		Digest:      digest.FromString("attestation"),
+		Size:        10,
+		Annotations: map[string]string{"vnd.docker.reference.digest": selected.Digest.String()},
+	}
+	unselected := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Digest:    digest.FromString("unselected"),
+		Size:      10,
+		Platform:  &ocispec.Platform{OS: "linux", Architecture: "arm64"},
+	}
+	index := ocispec.Index{Versioned: specs.Versioned{SchemaVersion: 2}, MediaType: ocispec.MediaTypeImageIndex, Manifests: []ocispec.Descriptor{selected, associated, unselected}}
+	indexContent, err := json.Marshal(index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := content.NewDescriptorFromBytes(ocispec.MediaTypeImageIndex, indexContent)
+	if err := src.Push(ctx, root, bytes.NewReader(indexContent)); err != nil {
+		t.Fatal(err)
+	}
+	opts := &copyOptions{Platform: option.Platforms{Platforms: []*ocispec.Platform{{OS: "linux", Architecture: "amd64"}}}}
+	_, filtered, err := filterManifestByPlatform(ctx, src, root, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(filtered) != 2 || !content.Equal(filtered[0], selected) || !content.Equal(filtered[1], associated) {
+		t.Fatalf("filtered manifests = %#v, want selected manifest and its associated descriptor", filtered)
+	}
+}
+
+func Test_associatedWithSelectedManifest(t *testing.T) {
+	selected := []ocispec.Descriptor{{Digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}
+	associated := ocispec.Descriptor{Annotations: map[string]string{"vnd.docker.reference.digest": selected[0].Digest.String()}}
+	if !associatedWithSelectedManifest(associated, selected) {
+		t.Fatal("associated attestation was not recognized")
+	}
+	if associatedWithSelectedManifest(ocispec.Descriptor{}, selected) {
+		t.Fatal("unassociated descriptor was recognized")
+	}
+}
+
+func Test_copyMultiplePlatforms_plainManifestError(t *testing.T) {
+	ctx := context.Background()
+	src := memory.New()
+	desc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageManifest, manifestContent)
+	if err := src.Push(ctx, desc, bytes.NewReader(manifestContent)); err != nil {
+		t.Fatal(err)
+	}
+	if err := src.Tag(ctx, desc, "plain"); err != nil {
+		t.Fatal(err)
+	}
+	opts := &copyOptions{}
+	opts.From.RawReference = "src-layout:plain"
+	opts.From.Reference = "plain"
+	err := copyMultiplePlatforms(ctx, nil, nil, src, memory.New(), opts)
+	if err == nil || !strings.Contains(err.Error(), `"src-layout:plain" is not an image index or a manifest list`) {
+		t.Fatalf("copyMultiplePlatforms() error = %v, want source reference", err)
+	}
+	if !strings.Contains(err.Error(), "use a single --platform value") {
+		t.Fatalf("copyMultiplePlatforms() error = %v, want recommendation", err)
 	}
 }

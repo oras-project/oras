@@ -45,13 +45,63 @@ func (opts *Platform) Parse(*cobra.Command) error {
 	if opts.platform == "" {
 		return nil
 	}
+	p, err := parsePlatform(opts.platform)
+	if err != nil {
+		return err
+	}
+	opts.Platform = p
+	return nil
+}
 
+// Platforms is the multi-value platform option used by commands that support
+// selecting more than one platform at a time.
+type Platforms struct {
+	platforms       []string
+	Platforms       []*ocispec.Platform
+	FlagDescription string
+}
+
+// ApplyFlags applies the --platform flag to a multi-platform option.
+func (opts *Platforms) ApplyFlags(fs *pflag.FlagSet) {
+	if opts.FlagDescription == "" {
+		opts.FlagDescription = "request platform"
+	}
+	fs.StringSliceVarP(&opts.platforms, "platform", "", nil, opts.FlagDescription+" in the form of `os[/arch][/variant][:os_version]` or a comma-separated list")
+}
+
+// Parse parses the input platform flags to OCI platform types.
+func (opts *Platforms) Parse(*cobra.Command) error {
+	if len(opts.platforms) == 0 {
+		return nil
+	}
+	opts.Platforms = make([]*ocispec.Platform, 0, len(opts.platforms))
+	seen := make(map[string]struct{}, len(opts.platforms))
+	for _, platformStr := range opts.platforms {
+		platformStr = strings.TrimSpace(platformStr)
+		if platformStr == "" {
+			return fmt.Errorf("invalid platform: value cannot be empty")
+		}
+		p, err := parsePlatform(platformStr)
+		if err != nil {
+			return err
+		}
+		key := strings.Join([]string{p.OS, p.Architecture, p.Variant, p.OSVersion}, "\x00")
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		opts.Platforms = append(opts.Platforms, p)
+	}
+	return nil
+}
+
+func parsePlatform(platformStr string) (*ocispec.Platform, error) {
 	// OS[/Arch[/Variant]][:OSVersion]
-	// If Arch is not provided, will use GOARCH instead
-	var platformStr string
+	// If Arch is not provided, use GOARCH instead.
 	var p ocispec.Platform
-	platformStr, p.OSVersion, _ = strings.Cut(opts.platform, ":")
-	parts := strings.Split(platformStr, "/")
+	platformPart, osVersion, _ := strings.Cut(platformStr, ":")
+	p.OSVersion = osVersion
+	parts := strings.Split(platformPart, "/")
 	switch len(parts) {
 	case 3:
 		p.Variant = parts[2]
@@ -61,17 +111,16 @@ func (opts *Platform) Parse(*cobra.Command) error {
 	case 1:
 		p.Architecture = runtime.GOARCH
 	default:
-		return fmt.Errorf("failed to parse platform %q: expected format os[/arch[/variant]]", opts.platform)
+		return nil, fmt.Errorf("failed to parse platform %q: expected format os[/arch[/variant]]", platformStr)
 	}
 	p.OS = parts[0]
 	if p.OS == "" {
-		return fmt.Errorf("invalid platform: OS cannot be empty")
+		return nil, fmt.Errorf("invalid platform: OS cannot be empty")
 	}
 	if p.Architecture == "" {
-		return fmt.Errorf("invalid platform: Architecture cannot be empty")
+		return nil, fmt.Errorf("invalid platform: Architecture cannot be empty")
 	}
-	opts.Platform = &p
-	return nil
+	return &p, nil
 }
 
 // ArtifactPlatform option struct.
