@@ -325,3 +325,16 @@ func TestPullCleanup_PreservesExistingFile(t *testing.T) {
 		t.Fatalf("existing file changed: got %q", got)
 	}
 }
+
+func TestPullCleanup_TrackRoot(t *testing.T) {
+	cleanup, err := newPullCleanup(t.TempDir())
+	if err != nil {
+		t.Fatalf("newPullCleanup() error = %v", err)
+	}
+
+	cleanup.track(".")
+
+	if len(cleanup.created) != 0 {
+		t.Fatalf("cleanup.created = %v, want empty", cleanup.created)
+	}
+}
