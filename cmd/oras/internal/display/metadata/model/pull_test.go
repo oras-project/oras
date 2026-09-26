@@ -88,7 +88,8 @@ func TestNewFile_path(t *testing.T) {
 			filepath.Join(outputDir, "sub", "file.txt")},
 		{"absolute name ignores the output dir", absolute, absolute},
 		{"absolute name is cleaned",
-			filepath.Join(outputDir, "a", "..", "b.txt"),
+			filepath.Join(outputDir, "a") + string(filepath.Separator) +
+				".." + string(filepath.Separator) + "b.txt",
 			filepath.Join(outputDir, "b.txt")},
 	}
 	for _, tt := range tests {
@@ -208,5 +209,30 @@ func TestPulled_Files_returnsCopy(t *testing.T) {
 	}
 	if want := filepath.Join(outputDir, "file.txt"); second[0].Path != want {
 		t.Errorf("Files() path = %q, want %q", second[0].Path, want)
+	}
+}
+
+// Add and Files are mutex-protected, so exercise them together to give -race
+// something to inspect, as TestTagged_Tags_concurrent does for the tag model.
+func TestPulled_concurrent(t *testing.T) {
+	outputDir := t.TempDir()
+	var pulled Pulled
+	names := []string{"a.txt", "b.txt", "c.txt", "d.txt",
+		"e.txt", "f.txt", "g.txt", "h.txt"}
+	done := make(chan error, len(names))
+	for _, name := range names {
+		go func() {
+			err := pulled.Add(name, outputDir, pullTestDescriptor, "layer/"+name)
+			_ = pulled.Files()
+			done <- err
+		}()
+	}
+	for range names {
+		if err := <-done; err != nil {
+			t.Errorf("Add() error = %v, want nil", err)
+		}
+	}
+	if got := pulled.Files(); len(got) != len(names) {
+		t.Errorf("Files() = %d entries, want %d", len(got), len(names))
 	}
 }
