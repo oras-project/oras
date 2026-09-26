@@ -307,6 +307,36 @@ var _ = Describe("OCI spec 1.1 registry users:", func() {
 				MatchStatus(multi_arch.LinuxAMD64StateKeys, true, len(multi_arch.LinuxAMD64StateKeys)).Exec()
 		})
 
+		It("should not leave partial output when pulling multiple platforms with duplicate filenames", func() {
+			repo := fmt.Sprintf("command/pull/%d/multi-platform-duplicate", GinkgoRandomSeed())
+			tempDir := GinkgoT().TempDir()
+			amd64Dir := filepath.Join(tempDir, "amd64")
+			arm64Dir := filepath.Join(tempDir, "arm64")
+			pullRoot := filepath.Join(tempDir, "pulled")
+
+			Expect(os.MkdirAll(amd64Dir, 0o755)).ShouldNot(HaveOccurred())
+			Expect(os.MkdirAll(arm64Dir, 0o755)).ShouldNot(HaveOccurred())
+			Expect(os.WriteFile(filepath.Join(amd64Dir, "tool"), []byte("amd64 content\n"), 0o644)).ShouldNot(HaveOccurred())
+			Expect(os.WriteFile(filepath.Join(arm64Dir, "tool"), []byte("arm64 content\n"), 0o644)).ShouldNot(HaveOccurred())
+			Expect(os.MkdirAll(pullRoot, 0o755)).ShouldNot(HaveOccurred())
+
+			ORAS("push", RegistryRef(ZOTHost, repo, "linux-amd64"), "tool:application/octet-stream", "--artifact-platform", "linux/amd64").
+				WithWorkDir(amd64Dir).Exec()
+
+			ORAS("push", RegistryRef(ZOTHost, repo, "linux-arm64"), "tool:application/octet-stream", "--artifact-platform", "linux/arm64").
+				WithWorkDir(arm64Dir).Exec()
+
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, repo, "multi"), "linux-amd64", "linux-arm64").
+				WithWorkDir(tempDir).Exec()
+
+			ORAS("pull", RegistryRef(ZOTHost, repo, "multi"), "-o", pullRoot).
+				ExpectFailure().
+				MatchErrKeyWords("duplicate name").
+				WithWorkDir(tempDir).Exec()
+
+			Expect(filepath.Join(pullRoot, "tool")).ShouldNot(BeAnExistingFile())
+		})
+
 		It("should pull an artifact with blob", func() {
 			pullRoot := GinkgoT().TempDir()
 			ORAS("pull", RegistryRef(ZOTHost, ArtifactRepo, blob.Tag), "-o", pullRoot).Exec()

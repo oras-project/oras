@@ -19,6 +19,8 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
+	"path/filepath"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -129,6 +131,59 @@ Example - Pull artifact files tagged 'example.com:v1' from an OCI image layout f
 	return oerrors.Command(cmd, &opts.Target)
 }
 
+type pullCleanup struct {
+	mu      sync.Mutex
+	root    string
+	seen    map[string]struct{}
+	created map[string]struct{}
+}
+
+func newPullCleanup(output string) (*pullCleanup, error) {
+	root, err := filepath.Abs(output)
+	if err != nil {
+		return nil, err
+	}
+	return &pullCleanup{
+		root:    root,
+		seen:    make(map[string]struct{}),
+		created: make(map[string]struct{}),
+	}, nil
+}
+
+// track marks name for cleanup if it does not exist yet.
+// It must be called before name is written.
+func (c *pullCleanup) track(name string) {
+	if !filepath.IsLocal(name) {
+		// outside the output directory: not ours to remove
+		return
+	}
+	path := filepath.Join(c.root, name)
+	if path == c.root {
+		return
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if _, ok := c.seen[path]; ok {
+		return
+	}
+	c.seen[path] = struct{}{}
+	if _, err := os.Lstat(path); errors.Is(err, os.ErrNotExist) {
+		c.created[path] = struct{}{}
+	}
+}
+
+func (c *pullCleanup) cleanup() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	var err error
+	for path := range c.created {
+		err = errors.Join(err, os.RemoveAll(path))
+	}
+	return err
+}
+
 func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	statusHandler, metadataHandler, err := display.NewPullHandler(opts.Printer, opts.Format, opts.Path, opts.TTY)
@@ -152,10 +207,17 @@ func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 	if err != nil {
 		return err
 	}
+
+	cleanup, err := newPullCleanup(opts.Output)
+	if err != nil {
+		return err
+	}
+
 	dst, err := file.New(opts.Output)
 	if err != nil {
 		return err
 	}
+
 	defer func() {
 		if err := dst.Close(); pullError == nil {
 			pullError = err
@@ -164,8 +226,12 @@ func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 	dst.AllowPathTraversalOnWrite = opts.PathTraversal
 	dst.DisableOverwrite = opts.KeepOldFiles
 
-	desc, err := doPull(ctx, src, dst, copyOptions, metadataHandler, statusHandler, opts)
+	desc, err := doPull(ctx, src, dst, copyOptions, metadataHandler, statusHandler, opts, cleanup)
 	if err != nil {
+		if cleanupErr := cleanup.cleanup(); cleanupErr != nil {
+			_ = opts.Printer.Println("Warning: failed to remove partial output:", cleanupErr)
+		}
+
 		if !errors.Is(err, file.ErrPathTraversalDisallowed) {
 			return err
 		}
@@ -179,7 +245,7 @@ func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 	return metadataHandler.Render()
 }
 
-func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, opts oras.CopyOptions, metadataHandler metadata.PullHandler, statusHandler status.PullHandler, po *pullOptions) (ocispec.Descriptor, error) {
+func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, opts oras.CopyOptions, metadataHandler metadata.PullHandler, statusHandler status.PullHandler, po *pullOptions, cleanup *pullCleanup) (ocispec.Descriptor, error) {
 	var configPath, configMediaType string
 	var err error
 
@@ -266,6 +332,11 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 			}
 			ret = append(ret, s)
 		}
+		for _, s := range ret {
+			if name := s.Annotations[ocispec.AnnotationTitle]; name != "" {
+				cleanup.track(name)
+			}
+		}
 		return ret, nil
 	}
 
@@ -283,6 +354,7 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 				if err = metadataHandler.OnFilePulled(name, po.Output, s, po.Path); err != nil {
 					return err
 				}
+
 				if err = notifyOnce(&printed, s, statusHandler.OnNodeRestored); err != nil {
 					return err
 				}
