@@ -19,7 +19,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"sync"
@@ -133,43 +132,43 @@ Example - Pull artifact files tagged 'example.com:v1' from an OCI image layout f
 }
 
 type pullCleanup struct {
-	mu       sync.Mutex
-	existing map[string]struct{}
-	created  map[string]struct{}
+	mu      sync.Mutex
+	root    string
+	seen    map[string]struct{}
+	created map[string]struct{}
 }
 
 func newPullCleanup(output string) (*pullCleanup, error) {
-	existing := make(map[string]struct{})
-
-	output, err := filepath.Abs(output)
+	root, err := filepath.Abs(output)
 	if err != nil {
 		return nil, err
 	}
-
-	err = filepath.WalkDir(output, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if !d.IsDir() {
-			existing[path] = struct{}{}
-		}
-		return nil
-	})
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return nil, err
-	}
-
 	return &pullCleanup{
-		existing: existing,
-		created:  make(map[string]struct{}),
+		root:    root,
+		seen:    make(map[string]struct{}),
+		created: make(map[string]struct{}),
 	}, nil
 }
 
-func (c *pullCleanup) add(path string) {
+// track marks name for cleanup if it does not exist yet.
+// It must be called before name is written.
+func (c *pullCleanup) track(name string) {
+	if !filepath.IsLocal(name) {
+		// outside the output directory: not ours to remove
+		return
+	}
+	path := filepath.Join(c.root, name)
+	if path == c.root {
+		return
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
-
-	if _, existed := c.existing[path]; !existed {
+	if _, ok := c.seen[path]; ok {
+		return
+	}
+	c.seen[path] = struct{}{}
+	if _, err := os.Lstat(path); errors.Is(err, os.ErrNotExist) {
 		c.created[path] = struct{}{}
 	}
 }
@@ -180,9 +179,7 @@ func (c *pullCleanup) cleanup() error {
 
 	var err error
 	for path := range c.created {
-		if removeErr := os.Remove(path); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
-			err = errors.Join(err, removeErr)
-		}
+		err = errors.Join(err, os.RemoveAll(path))
 	}
 	return err
 }
@@ -231,7 +228,9 @@ func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 
 	desc, err := doPull(ctx, src, dst, copyOptions, metadataHandler, statusHandler, opts, cleanup)
 	if err != nil {
-		_ = cleanup.cleanup()
+		if cleanupErr := cleanup.cleanup(); cleanupErr != nil {
+			_ = opts.Printer.Println("Warning: failed to remove partial output:", cleanupErr)
+		}
 
 		if !errors.Is(err, file.ErrPathTraversalDisallowed) {
 			return err
@@ -333,6 +332,11 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 			}
 			ret = append(ret, s)
 		}
+		for _, s := range ret {
+			if name := s.Annotations[ocispec.AnnotationTitle]; name != "" {
+				cleanup.track(name)
+			}
+		}
 		return ret, nil
 	}
 
@@ -350,16 +354,6 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 				if err = metadataHandler.OnFilePulled(name, po.Output, s, po.Path); err != nil {
 					return err
 				}
-				path := name
-				if !filepath.IsAbs(path) {
-					path, err = filepath.Abs(filepath.Join(po.Output, path))
-					if err != nil {
-						return err
-					}
-				} else {
-					path = filepath.Clean(path)
-				}
-				cleanup.add(path)
 
 				if err = notifyOnce(&printed, s, statusHandler.OnNodeRestored); err != nil {
 					return err
