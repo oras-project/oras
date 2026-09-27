@@ -92,7 +92,9 @@ var _ = Describe("Multi-platform copy users:", func() {
 			Expect(platformsFound["linux/arm64"]).To(BeTrue())
 
 			// Also check that referrers were copied for the selected platforms
-			ORAS("discover", dst, "--artifact-type", "signature").Exec()
+			ORAS("discover", dst, "--artifact-type", "signature").
+				MatchKeyWords(ma.LinuxAMD64Referrer.Digest.String()).
+				Exec()
 		})
 
 		It("should copy a single platform when only one platform is specified", func() {
