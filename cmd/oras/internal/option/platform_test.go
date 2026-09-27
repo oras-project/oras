@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -116,5 +117,22 @@ func TestPlatforms_Parse_empty(t *testing.T) {
 				t.Error("Platforms.Parse() error = nil, want an error")
 			}
 		})
+	}
+}
+
+func TestPlatforms_Parse_noValues(t *testing.T) {
+	var opts Platforms
+	if err := opts.Parse(nil); err != nil {
+		t.Fatalf("Platforms.Parse() error = %v, want nil", err)
+	}
+	if len(opts.Platforms) != 0 {
+		t.Fatalf("Platforms = %#v, want no parsed platforms", opts.Platforms)
+	}
+}
+
+func TestPlatforms_Parse_invalidPlatform(t *testing.T) {
+	opts := &Platforms{platforms: []string{"linux/amd64/variant/extra"}}
+	if err := opts.Parse(nil); err == nil || !strings.Contains(err.Error(), "failed to parse platform") {
+		t.Fatalf("Platforms.Parse() error = %v, want invalid platform error", err)
 	}
 }
