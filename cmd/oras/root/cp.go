@@ -28,6 +28,7 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
@@ -48,6 +49,12 @@ import (
 	"oras.land/oras/internal/listener"
 	"oras.land/oras/internal/registryutil"
 )
+
+// dockerReferenceDigestAnnotation links a BuildKit attestation manifest in an
+// index to the image manifest it describes. Other attestation association
+// conventions are not inferred by platform filtering.
+// Reference: https://github.com/moby/buildkit/blob/master/docs/attestations/attestation-storage.md
+const dockerReferenceDigestAnnotation = "vnd.docker.reference.digest"
 
 type copyOptions struct {
 	option.Common
@@ -156,20 +163,20 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	// Check if multiple platforms are specified
 	if len(opts.Platform.Platforms) > 1 {
 		// Handle multiple platforms - copy manifests that match the specified platforms
-		return copyMultiplePlatforms(ctx, statusHandler, metadataHandler, src, dst, opts)
+		return copyMultiplePlatforms(ctx, logger, statusHandler, metadataHandler, src, dst, opts)
 	}
 
 	// Handle single platform or recursive mode
-	return copySinglePlatformOrRecursive(ctx, statusHandler, metadataHandler, src, dst, opts)
+	return copySinglePlatformOrRecursive(ctx, statusHandler, metadataHandler, src, dst, opts, true)
 }
 
-func copySinglePlatformOrRecursive(ctx context.Context, statusHandler status.CopyHandler, metadataHandler metadata.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) error {
+func copySinglePlatformOrRecursive(ctx context.Context, statusHandler status.CopyHandler, metadataHandler metadata.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions, rootInSource bool) error {
 	desc, err := doCopy(ctx, statusHandler, src, dst, opts)
 	if err != nil {
 		return err
 	}
 
-	if from, err := digest.Parse(opts.From.Reference); err == nil && from != desc.Digest {
+	if from, err := digest.Parse(opts.From.Reference); rootInSource && err == nil && from != desc.Digest {
 		// correct source digest
 		opts.From.RawReference = fmt.Sprintf("%s@%s", opts.From.Path, desc.Digest.String())
 	}
@@ -191,7 +198,7 @@ func copySinglePlatformOrRecursive(ctx context.Context, statusHandler status.Cop
 }
 
 // copyMultiplePlatforms handles copying when multiple platforms are specified
-func copyMultiplePlatforms(ctx context.Context, statusHandler status.CopyHandler, metadataHandler metadata.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) error {
+func copyMultiplePlatforms(ctx context.Context, logger logrus.FieldLogger, statusHandler status.CopyHandler, metadataHandler metadata.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) error {
 	// Resolve the source reference to get the root descriptor
 	resolveOpts := oras.DefaultResolveOptions
 	// We don't set TargetPlatform here since we want to get the full index/list
@@ -213,31 +220,31 @@ func copyMultiplePlatforms(ctx context.Context, statusHandler status.CopyHandler
 		}
 	}
 
-	index, filteredManifests, err := filterManifestByPlatform(ctx, src, root, opts)
+	indexContent, index, filteredManifests, err := filterManifestByPlatform(ctx, src, root, opts)
 	if err != nil {
 		return err
 	}
 
-	// If every platform-bearing manifest was selected, preserve the original
-	// root so that its digest, referrers, and platform-less entries are kept.
-	if allPlatformManifestsSelected(index, opts) {
-		return copySinglePlatformOrRecursive(ctx, statusHandler, metadataHandler, src, dst, opts)
+	// If filtering retained every index entry, preserve the original root so
+	// that its digest, referrers, and all entries are kept.
+	if len(filteredManifests) == len(index.Manifests) {
+		return copySinglePlatformOrRecursive(ctx, statusHandler, metadataHandler, src, dst, opts, true)
 	}
 
 	// Perform multiple copies
-	return doMultipleCopy(ctx, statusHandler, metadataHandler, src, dst, opts, root, index, filteredManifests)
+	return doMultipleCopy(ctx, logger, statusHandler, metadataHandler, src, dst, opts, root, indexContent, filteredManifests)
 }
 
-func filterManifestByPlatform(ctx context.Context, src oras.ReadOnlyGraphTarget, root ocispec.Descriptor, opts *copyOptions) (ocispec.Index, []ocispec.Descriptor, error) {
+func filterManifestByPlatform(ctx context.Context, src oras.ReadOnlyGraphTarget, root ocispec.Descriptor, opts *copyOptions) ([]byte, ocispec.Index, []ocispec.Descriptor, error) {
 	// For indexes/lists, fetch the index content
 	indexContent, err := content.FetchAll(ctx, src, root)
 	if err != nil {
-		return ocispec.Index{}, nil, fmt.Errorf("failed to fetch index: %w", err)
+		return nil, ocispec.Index{}, nil, fmt.Errorf("failed to fetch index: %w", err)
 	}
 
 	var index ocispec.Index
 	if err = json.Unmarshal(indexContent, &index); err != nil {
-		return ocispec.Index{}, nil, fmt.Errorf("failed to parse index: %w", err)
+		return nil, ocispec.Index{}, nil, fmt.Errorf("failed to parse index: %w", err)
 	}
 
 	// Find the platform-bearing manifests selected by the request first. This
@@ -268,40 +275,36 @@ func filterManifestByPlatform(ctx context.Context, src oras.ReadOnlyGraphTarget,
 	}
 	// Return error with details about unmatched platforms
 	if len(unmatchedPlatforms) > 0 {
-		return ocispec.Index{}, nil, fmt.Errorf("some requested platforms were not matched; unmatched platforms: [%s]; available platforms in index: [%s]",
-			strings.Join(unmatchedPlatforms, ", "), strings.Join(availablePlatforms, ", "))
+		return nil, ocispec.Index{}, nil, &oerrors.Error{
+			Err:            fmt.Errorf("unmatched platforms: [%s]", strings.Join(unmatchedPlatforms, ", ")),
+			Recommendation: fmt.Sprintf("available platforms in index: [%s]", strings.Join(availablePlatforms, ", ")),
+		}
 	}
 
 	var filteredManifests []ocispec.Descriptor
 	for _, manifest := range index.Manifests {
-		if slices.ContainsFunc(selectedPlatformManifests, func(selected ocispec.Descriptor) bool {
-			return content.Equal(selected, manifest)
-		}) || associatedWithSelectedManifest(manifest, selectedPlatformManifests) {
+		if keepsManifest(manifest, selectedPlatformManifests) {
 			filteredManifests = append(filteredManifests, manifest)
 		}
 	}
-	return index, filteredManifests, nil
+	return indexContent, index, filteredManifests, nil
 }
 
-func allPlatformManifestsSelected(index ocispec.Index, opts *copyOptions) bool {
-	for _, manifest := range index.Manifests {
-		if manifest.Platform != nil && !matchesAnyPlatform(manifest.Platform, opts.Platform.Platforms) {
-			return false
-		}
+// keepsManifest reports whether an index entry survives platform filtering.
+// BuildKit attestations using dockerReferenceDigestAnnotation follow their
+// subject manifest. Platform-less entries are retained because their purpose
+// cannot be inferred. Other entries are kept only when their platform matches.
+func keepsManifest(manifest ocispec.Descriptor, selected []ocispec.Descriptor) bool {
+	if referenceDigest := manifest.Annotations[dockerReferenceDigestAnnotation]; referenceDigest != "" {
+		return slices.ContainsFunc(selected, func(desc ocispec.Descriptor) bool {
+			return referenceDigest == desc.Digest.String()
+		})
 	}
-	return true
-}
-
-func associatedWithSelectedManifest(manifest ocispec.Descriptor, selected []ocispec.Descriptor) bool {
-	if manifest.Annotations == nil {
-		return false
-	}
-	referenceDigest := manifest.Annotations["vnd.docker.reference.digest"]
-	if referenceDigest == "" {
-		return false
+	if manifest.Platform == nil {
+		return true
 	}
 	return slices.ContainsFunc(selected, func(desc ocispec.Descriptor) bool {
-		return referenceDigest == desc.Digest.String()
+		return content.Equal(desc, manifest)
 	})
 }
 
@@ -319,11 +322,7 @@ func formatPlatform(platform *ocispec.Platform) string {
 	return result
 }
 
-func doMultipleCopy(ctx context.Context, statusHandler status.CopyHandler, metadataHandler metadata.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions, root ocispec.Descriptor, _ ocispec.Index, filteredManifests []ocispec.Descriptor) error {
-	originalIndexContent, err := content.FetchAll(ctx, src, root)
-	if err != nil {
-		return fmt.Errorf("failed to fetch index: %w", err)
-	}
+func doMultipleCopy(ctx context.Context, logger logrus.FieldLogger, statusHandler status.CopyHandler, metadataHandler metadata.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions, root ocispec.Descriptor, originalIndexContent []byte, filteredManifests []ocispec.Descriptor) error {
 	indexContent, err := filterIndexContent(originalIndexContent, filteredManifests)
 	if err != nil {
 		return fmt.Errorf("failed to filter index: %w", err)
@@ -345,29 +344,92 @@ func doMultipleCopy(ctx context.Context, statusHandler status.CopyHandler, metad
 			ReferrerLister:      referrerLister,
 		}
 	}
-	if opts.recursive && opts.Printer != nil {
-		if err := opts.Printer.Println("Warning: referrers of the source index are not copied because selecting a subset of platforms produces a new index digest"); err != nil {
-			return err
-		}
+	if opts.recursive {
+		logger.Warn("referrers of the source index are not copied because selecting a subset of platforms produces a new index digest")
 	}
-	return copySinglePlatformOrRecursive(ctx, statusHandler, metadataHandler, filteredTarget, dst, opts)
+	return copySinglePlatformOrRecursive(ctx, statusHandler, metadataHandler, filteredTarget, dst, opts, false)
 }
 
+// filterIndexContent rewrites only the manifests array, preserving source key
+// order and the raw JSON for all retained descriptors and other index fields.
 func filterIndexContent(indexContent []byte, selected []ocispec.Descriptor) ([]byte, error) {
-	var index map[string]json.RawMessage
-	if err := json.Unmarshal(indexContent, &index); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(indexContent))
+	token, err := decoder.Token()
+	if err != nil {
 		return nil, err
 	}
-	manifestContent, ok := index["manifests"]
-	if !ok {
+	if token != json.Delim('{') {
+		return nil, errors.New("index is not a JSON object")
+	}
+	var buffer bytes.Buffer
+	buffer.WriteByte('{')
+	var foundManifests bool
+	for decoder.More() {
+		keyToken, err := decoder.Token()
+		if err != nil {
+			return nil, err
+		}
+		key, ok := keyToken.(string)
+		if !ok {
+			return nil, errors.New("index contains a non-string key")
+		}
+		var value json.RawMessage
+		if err := decoder.Decode(&value); err != nil {
+			return nil, err
+		}
+		if key == "manifests" {
+			if foundManifests {
+				return nil, errors.New("index contains multiple manifests arrays")
+			}
+			foundManifests = true
+			value, err = filterManifestArray(value, selected)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if buffer.Len() > 1 {
+			buffer.WriteByte(',')
+		}
+		encodedKey, err := json.Marshal(key)
+		if err != nil {
+			return nil, err
+		}
+		buffer.Write(encodedKey)
+		buffer.WriteByte(':')
+		buffer.Write(value)
+	}
+	if !foundManifests {
 		return nil, errors.New("index does not contain a manifests array")
 	}
-	var manifests []json.RawMessage
-	if err := json.Unmarshal(manifestContent, &manifests); err != nil {
+	if _, err := decoder.Token(); err != nil {
 		return nil, err
 	}
+	var trailing json.RawMessage
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		if err == nil {
+			return nil, errors.New("index contains trailing JSON values")
+		}
+		return nil, err
+	}
+	buffer.WriteByte('}')
+	return buffer.Bytes(), nil
+}
+
+func filterManifestArray(manifestContent json.RawMessage, selected []ocispec.Descriptor) (json.RawMessage, error) {
+	decoder := json.NewDecoder(bytes.NewReader(manifestContent))
+	token, err := decoder.Token()
+	if err != nil {
+		return nil, err
+	}
+	if token != json.Delim('[') {
+		return nil, errors.New("index manifests is not an array")
+	}
 	filtered := make([]json.RawMessage, 0, len(selected))
-	for _, raw := range manifests {
+	for decoder.More() {
+		var raw json.RawMessage
+		if err := decoder.Decode(&raw); err != nil {
+			return nil, err
+		}
 		var manifest ocispec.Descriptor
 		if err := json.Unmarshal(raw, &manifest); err != nil {
 			return nil, err
@@ -378,12 +440,26 @@ func filterIndexContent(indexContent []byte, selected []ocispec.Descriptor) ([]b
 			filtered = append(filtered, raw)
 		}
 	}
-	encoded, err := json.Marshal(filtered)
-	if err != nil {
+	if _, err := decoder.Token(); err != nil {
 		return nil, err
 	}
-	index["manifests"] = encoded
-	return json.Marshal(index)
+	var trailing json.RawMessage
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		if err == nil {
+			return nil, errors.New("index manifests contains trailing JSON values")
+		}
+		return nil, err
+	}
+	var buffer bytes.Buffer
+	buffer.WriteByte('[')
+	for i, raw := range filtered {
+		if i > 0 {
+			buffer.WriteByte(',')
+		}
+		buffer.Write(raw)
+	}
+	buffer.WriteByte(']')
+	return buffer.Bytes(), nil
 }
 
 // filteredIndexSource presents a filtered index at the original source
