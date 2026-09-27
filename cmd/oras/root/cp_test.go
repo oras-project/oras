@@ -26,6 +26,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -37,10 +38,12 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/status"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/testutils"
 )
@@ -977,6 +980,30 @@ type fetchCountingTarget struct {
 	rootFetches int
 }
 
+type fetchOverrideTarget struct {
+	oras.ReadOnlyGraphTarget
+	root ocispec.Descriptor
+	data []byte
+	err  error
+}
+
+func (s *fetchOverrideTarget) Resolve(ctx context.Context, reference string) (ocispec.Descriptor, error) {
+	if reference == "source" {
+		return s.root, nil
+	}
+	return s.ReadOnlyGraphTarget.Resolve(ctx, reference)
+}
+
+func (s *fetchOverrideTarget) Fetch(ctx context.Context, desc ocispec.Descriptor) (io.ReadCloser, error) {
+	if content.Equal(desc, s.root) {
+		if s.err != nil {
+			return nil, s.err
+		}
+		return io.NopCloser(bytes.NewReader(s.data)), nil
+	}
+	return s.ReadOnlyGraphTarget.Fetch(ctx, desc)
+}
+
 func (s *fetchCountingTarget) Fetch(ctx context.Context, desc ocispec.Descriptor) (io.ReadCloser, error) {
 	if content.Equal(desc, s.root) {
 		s.rootFetches++
@@ -1024,6 +1051,72 @@ func Test_filterManifestsByPlatform(t *testing.T) {
 	opts.Platform.Platforms = []*ocispec.Platform{{OS: "windows", Architecture: "amd64"}}
 	if _, _, _, err = filterManifestByPlatform(context.Background(), src, root, opts); err == nil || !strings.Contains(err.Error(), "linux/amd64") {
 		t.Fatalf("filterManifestsByPlatform() error = %v, want available platforms", err)
+	}
+}
+
+func Test_platformMatches(t *testing.T) {
+	manifestPlatform := &ocispec.Platform{OS: "windows", Architecture: "amd64", Variant: "v2", OSVersion: "10.0"}
+	tests := []struct {
+		name     string
+		manifest *ocispec.Platform
+		target   *ocispec.Platform
+		want     bool
+	}{
+		{name: "nil manifest", target: manifestPlatform},
+		{name: "nil target", manifest: manifestPlatform},
+		{name: "OS mismatch", manifest: &ocispec.Platform{OS: "linux", Architecture: "amd64"}, target: manifestPlatform},
+		{name: "architecture mismatch", manifest: &ocispec.Platform{OS: "windows", Architecture: "arm64"}, target: manifestPlatform},
+		{name: "variant mismatch", manifest: &ocispec.Platform{OS: "windows", Architecture: "amd64", Variant: "v1"}, target: manifestPlatform},
+		{name: "OS version mismatch", manifest: &ocispec.Platform{OS: "windows", Architecture: "amd64", OSVersion: "11"}, target: manifestPlatform},
+		{name: "omitted optional fields match", manifest: manifestPlatform, target: &ocispec.Platform{OS: "windows", Architecture: "amd64"}, want: true},
+		{name: "all fields match", manifest: manifestPlatform, target: manifestPlatform, want: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := platformMatches(tt.manifest, tt.target); got != tt.want {
+				t.Fatalf("platformMatches(%#v, %#v) = %t, want %t", tt.manifest, tt.target, got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_formatPlatform(t *testing.T) {
+	tests := []struct {
+		name string
+		in   *ocispec.Platform
+		want string
+	}{
+		{name: "unknown", in: nil, want: "<unknown>"},
+		{name: "basic", in: &ocispec.Platform{OS: "linux", Architecture: "amd64"}, want: "linux/amd64"},
+		{name: "variant and OS version", in: &ocispec.Platform{OS: "windows", Architecture: "amd64", Variant: "v2", OSVersion: "10.0"}, want: "windows/amd64/v2:10.0"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := formatPlatform(tt.in); got != tt.want {
+				t.Fatalf("formatPlatform(%#v) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_keepsManifest(t *testing.T) {
+	selected := ocispec.Descriptor{Digest: digest.FromString("selected")}
+	tests := []struct {
+		name     string
+		manifest ocispec.Descriptor
+		want     bool
+	}{
+		{name: "platformless entry is retained", manifest: ocispec.Descriptor{Digest: digest.FromString("unknown")}, want: true},
+		{name: "selected buildx attestation is retained", manifest: ocispec.Descriptor{Annotations: map[string]string{dockerReferenceDigestAnnotation: selected.Digest.String()}}, want: true},
+		{name: "unselected buildx attestation is dropped", manifest: ocispec.Descriptor{Annotations: map[string]string{dockerReferenceDigestAnnotation: digest.FromString("other").String()}}, want: false},
+		{name: "unselected platform is dropped", manifest: ocispec.Descriptor{Platform: &ocispec.Platform{OS: "linux", Architecture: "arm64"}}, want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := keepsManifest(tt.manifest, []ocispec.Descriptor{selected}); got != tt.want {
+				t.Fatalf("keepsManifest(%#v) = %t, want %t", tt.manifest, got, tt.want)
+			}
+		})
 	}
 }
 
@@ -1429,11 +1522,35 @@ func Test_filterIndexContent_errors(t *testing.T) {
 		{name: "invalid descriptor", content: []byte(`{"manifests":[1]}`)},
 		{name: "trailing index value", content: []byte(`{"manifests":[]} {}`)},
 		{name: "trailing manifests value", content: []byte(`{"manifests":[] []}`)},
+		{name: "duplicate manifests arrays", content: []byte(`{"manifests":[],"manifests":[]}`)},
+		{name: "truncated index object", content: []byte(`{"manifests":[]`)},
+		{name: "malformed index value", content: []byte(`{"manifests":[],"extension":invalid}`)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if _, err := filterIndexContent(tt.content, nil); err == nil {
 				t.Fatal("filterIndexContent() error = nil, want an error")
+			}
+		})
+	}
+}
+
+func Test_filterManifestArray_errors(t *testing.T) {
+	tests := []struct {
+		name    string
+		content []byte
+	}{
+		{name: "not an array", content: []byte(`{}`)},
+		{name: "invalid descriptor", content: []byte(`[1]`)},
+		{name: "invalid array value", content: []byte(`[{},]`)},
+		{name: "truncated array", content: []byte(`[{} `)},
+		{name: "trailing JSON value", content: []byte(`[{}] {}`)},
+		{name: "malformed trailing data", content: []byte(`[{}] x`)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := filterManifestArray(tt.content, nil); err == nil {
+				t.Fatal("filterManifestArray() error = nil, want an error")
 			}
 		})
 	}
@@ -1489,14 +1606,151 @@ func Test_copyMultiplePlatforms_plainManifestError(t *testing.T) {
 	if err := src.Tag(ctx, desc, "plain"); err != nil {
 		t.Fatal(err)
 	}
-	opts := &copyOptions{}
-	opts.From.RawReference = "src-layout:plain"
-	opts.From.Reference = "plain"
-	err := copyMultiplePlatforms(ctx, logrus.New(), nil, nil, src, memory.New(), opts)
-	if err == nil || !strings.Contains(err.Error(), `"src-layout:plain" is not an image index or a manifest list`) {
-		t.Fatalf("copyMultiplePlatforms() error = %v, want source reference", err)
+	for _, tt := range []struct {
+		name          string
+		rawReference  string
+		wantReference string
+	}{
+		{name: "preserves input reference", rawReference: "src-layout:plain", wantReference: `"src-layout:plain"`},
+		{name: "falls back to parsed reference", wantReference: `"plain"`},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := &copyOptions{}
+			opts.From.RawReference = tt.rawReference
+			opts.From.Reference = "plain"
+			err := copyMultiplePlatforms(ctx, logrus.New(), nil, nil, src, memory.New(), opts)
+			if err == nil || !strings.Contains(err.Error(), tt.wantReference+" is not an image index or a manifest list") {
+				t.Fatalf("copyMultiplePlatforms() error = %v, want source reference %s", err, tt.wantReference)
+			}
+			if !strings.Contains(err.Error(), "use a single --platform value") {
+				t.Fatalf("copyMultiplePlatforms() error = %v, want recommendation", err)
+			}
+		})
 	}
-	if !strings.Contains(err.Error(), "use a single --platform value") {
-		t.Fatalf("copyMultiplePlatforms() error = %v, want recommendation", err)
+}
+
+func Test_copyMultiplePlatforms_reportsIndexErrors(t *testing.T) {
+	ctx := context.Background()
+	t.Run("resolve failure", func(t *testing.T) {
+		opts := &copyOptions{}
+		opts.From.Reference = "missing"
+		err := copyMultiplePlatforms(ctx, logrus.New(), nil, nil, memory.New(), memory.New(), opts)
+		if err == nil || !strings.Contains(err.Error(), "failed to resolve missing") {
+			t.Fatalf("copyMultiplePlatforms() error = %v, want resolve error", err)
+		}
+	})
+	t.Run("malformed index", func(t *testing.T) {
+		indexContent := []byte("{")
+		root := content.NewDescriptorFromBytes(ocispec.MediaTypeImageIndex, indexContent)
+		src := &fetchOverrideTarget{ReadOnlyGraphTarget: memory.New(), root: root, data: indexContent}
+		opts := &copyOptions{}
+		opts.From.Reference = "source"
+		if err := copyMultiplePlatforms(ctx, logrus.New(), nil, nil, src, memory.New(), opts); err == nil || !strings.Contains(err.Error(), "failed to parse index") {
+			t.Fatalf("copyMultiplePlatforms() error = %v, want index parse error", err)
+		}
+	})
+	t.Run("index fetch failure", func(t *testing.T) {
+		indexContent := []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[]}`)
+		root := content.NewDescriptorFromBytes(ocispec.MediaTypeImageIndex, indexContent)
+		src := &fetchOverrideTarget{ReadOnlyGraphTarget: memory.New(), root: root, err: errors.New("fetch failed")}
+		opts := &copyOptions{}
+		opts.From.Reference = "source"
+		if err := copyMultiplePlatforms(ctx, logrus.New(), nil, nil, src, memory.New(), opts); err == nil || !strings.Contains(err.Error(), "failed to fetch index") {
+			t.Fatalf("copyMultiplePlatforms() error = %v, want fetch error", err)
+		}
+	})
+	t.Run("unmatched requested platform", func(t *testing.T) {
+		src, _, _ := newMultiPlatformSource(t)
+		opts := &copyOptions{Platform: option.Platforms{Platforms: []*ocispec.Platform{{OS: "windows", Architecture: "amd64"}}}}
+		opts.From.Reference = "source"
+		err := copyMultiplePlatforms(ctx, logrus.New(), nil, nil, src, memory.New(), opts)
+		var platformError *oerrors.Error
+		if !errors.As(err, &platformError) || !strings.Contains(err.Error(), "unmatched platforms") {
+			t.Fatalf("copyMultiplePlatforms() error = %v, want unmatched platform error", err)
+		}
+	})
+}
+
+func Test_doMultipleCopy_rejectsInvalidFilteredIndex(t *testing.T) {
+	opts := &copyOptions{}
+	err := doMultipleCopy(context.Background(), logrus.New(), nil, nil, memory.New(), memory.New(), opts,
+		ocispec.Descriptor{MediaType: ocispec.MediaTypeImageIndex}, []byte(`[]`), nil)
+	if err == nil || !strings.Contains(err.Error(), "failed to filter index") {
+		t.Fatalf("doMultipleCopy() error = %v, want filtered-index error", err)
+	}
+}
+
+func Test_copyCmd_rejectsInvalidPlatform(t *testing.T) {
+	cmd := copyCmd()
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"--platform", "linux/amd64/variant/extra", "source", "destination"})
+	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "failed to parse platform") {
+		t.Fatalf("copyCmd().Execute() error = %v, want invalid platform error", err)
+	}
+}
+
+func Test_copyCmd_platformSelection(t *testing.T) {
+	for _, tt := range []struct {
+		name              string
+		platforms         string
+		wantMediaType     string
+		wantManifestCount int
+	}{
+		{name: "single platform keeps manifest output", platforms: "linux/amd64", wantMediaType: ocispec.MediaTypeImageManifest},
+		{name: "multiple platforms produce filtered index", platforms: "linux/amd64,linux/arm/v7", wantMediaType: ocispec.MediaTypeImageIndex, wantManifestCount: 2},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			source, _, _ := newMultiPlatformSource(t)
+			sourcePath := filepath.Join(t.TempDir(), "source")
+			sourceLayout, err := oci.New(sourcePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := oras.Copy(ctx, source, "source", sourceLayout, "source", oras.DefaultCopyOptions); err != nil {
+				t.Fatalf("failed to prepare source layout: %v", err)
+			}
+
+			destinationPath := filepath.Join(t.TempDir(), "destination")
+			cmd := copyCmd()
+			cmd.SetContext(ctx)
+			cmd.SetOut(io.Discard)
+			cmd.SetErr(io.Discard)
+			cmd.SetArgs([]string{
+				"--from-oci-layout", "--to-oci-layout", "--platform", tt.platforms,
+				sourcePath + ":source", destinationPath + ":destination",
+			})
+			if err := cmd.Execute(); err != nil {
+				t.Fatalf("copy command failed: %v", err)
+			}
+
+			destination, err := oci.New(destinationPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			root, err := destination.Resolve(ctx, "destination")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if root.MediaType != tt.wantMediaType {
+				t.Fatalf("destination media type = %q, want %q", root.MediaType, tt.wantMediaType)
+			}
+			if tt.wantManifestCount > 0 {
+				data, err := content.FetchAll(ctx, destination, root)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var index ocispec.Index
+				if err := json.Unmarshal(data, &index); err != nil {
+					t.Fatal(err)
+				}
+				if len(index.Manifests) != tt.wantManifestCount || index.Manifests[1].Platform.Variant != "v7" {
+					t.Fatalf("filtered manifests = %#v, want amd64 and arm/v7", index.Manifests)
+				}
+			}
+		})
 	}
 }
