@@ -71,32 +71,28 @@ func TestMakeFileAnnotations(t *testing.T) {
 	tests := []struct {
 		name     string
 		path     string
-		title    string
 		wantPath string
 	}{
 		{
 			name:     "root level file",
 			path:     "file.txt",
-			title:    "file.txt",
 			wantPath: "file.txt",
 		},
 		{
 			name:     "nested file",
 			path:     "subdir/file.txt",
-			title:    "file.txt",
 			wantPath: "subdir/file.txt",
 		},
 		{
 			name:     "deeply nested file",
 			path:     "a/b/c/file.txt",
-			title:    "file.txt",
 			wantPath: "a/b/c/file.txt",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := MakeFileAnnotations(tt.path, tt.title)
+			got := MakeFileAnnotations(tt.path)
 
 			if got[AnnotationFilePath] != tt.wantPath {
 				t.Errorf("MakeFileAnnotations() path = %v, want %v", got[AnnotationFilePath], tt.wantPath)
