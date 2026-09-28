@@ -296,10 +296,10 @@ func TestCommand(t *testing.T) {
 			gotErr = err
 			return true, modifiedErr
 		}))
-		if err := cmd.RunE(cmd, nil); err != modifiedErr {
+		if err := cmd.RunE(cmd, nil); !errors.Is(err, modifiedErr) {
 			t.Errorf("RunE() error = %v, want %v", err, modifiedErr)
 		}
-		if gotErr != runErr {
+		if !errors.Is(gotErr, runErr) {
 			t.Errorf("modifier received %v, want %v", gotErr, runErr)
 		}
 	})
@@ -358,7 +358,7 @@ func TestTrimErrBasicCredentialNotFound(t *testing.T) {
 func Test_reWrap_midNotInOuter(t *testing.T) {
 	inner := errors.New("inner")
 	got := reWrap(errors.New("outer"), errors.New("mid"), inner)
-	if got != inner {
+	if !errors.Is(got, inner) {
 		t.Errorf("reWrap() = %v, want inner", got)
 	}
 }
