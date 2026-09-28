@@ -48,8 +48,6 @@ type WalkOptions struct {
 	FollowSymlinks bool
 	// IncludeEmpty includes empty directories in the tree.
 	IncludeEmpty bool
-	// ExcludePatterns are glob patterns for files/directories to exclude.
-	ExcludePatterns []string
 }
 
 // FileCount returns the total number of files in this node and its descendants.
@@ -185,11 +183,6 @@ func walkDir(absPath, relPath string, parent *Node, opts WalkOptions) error {
 		childRelPath := filepath.Join(relPath, name)
 		childAbsPath := filepath.Join(absPath, name)
 
-		// Check exclusion patterns
-		if shouldExclude(name, childRelPath, opts.ExcludePatterns) {
-			continue
-		}
-
 		info, err := getFileInfo(entry, childAbsPath, opts.FollowSymlinks)
 		if err != nil {
 			return fmt.Errorf("failed to stat %q: %w", childAbsPath, err)
@@ -222,21 +215,6 @@ func getFileInfo(entry fs.DirEntry, path string, followSymlinks bool) (fs.FileIn
 		return os.Stat(path)
 	}
 	return entry.Info()
-}
-
-// shouldExclude checks if a path should be excluded based on patterns.
-func shouldExclude(name, relPath string, patterns []string) bool {
-	for _, pattern := range patterns {
-		// Check against name
-		if matched, _ := filepath.Match(pattern, name); matched {
-			return true
-		}
-		// Check against relative path
-		if matched, _ := filepath.Match(pattern, relPath); matched {
-			return true
-		}
-	}
-	return false
 }
 
 // pruneEmpty removes empty directories from the tree.

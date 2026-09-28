@@ -168,7 +168,7 @@ func Test_pushArtifact_packError(t *testing.T) {
 	pack := func() (ocispec.Descriptor, error) {
 		return ocispec.Descriptor{}, packErr
 	}
-	copyFn := func(desc ocispec.Descriptor) error {
+	copyFn := func(_ ocispec.Descriptor) error {
 		return nil
 	}
 
@@ -190,7 +190,7 @@ func Test_pushArtifact_copyError(t *testing.T) {
 			Size:      100,
 		}, nil
 	}
-	copyFn := func(desc ocispec.Descriptor) error {
+	copyFn := func(_ ocispec.Descriptor) error {
 		return copyErr
 	}
 
@@ -212,7 +212,7 @@ func Test_pushArtifact_success(t *testing.T) {
 	pack := func() (ocispec.Descriptor, error) {
 		return expectedDesc, nil
 	}
-	copyFn := func(desc ocispec.Descriptor) error {
+	copyFn := func(_ ocispec.Descriptor) error {
 		return nil
 	}
 
@@ -348,5 +348,127 @@ func Test_pushCmd_PreRunE_recursiveValidation(t *testing.T) {
 				t.Errorf("error %q does not contain %q", err.Error(), tt.wantErr)
 			}
 		})
+	}
+}
+
+// newRecursiveTestDir creates a nested directory tree for recursive push tests.
+func newRecursiveTestDir(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	files := map[string]string{
+		"a.txt":            "a",
+		"sub/b.txt":        "b",
+		"sub/nested/c.txt": "c",
+	}
+	for name, data := range files {
+		p := filepath.Join(root, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(data), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return root
+}
+
+func runPushCmd(t *testing.T, args ...string) error {
+	t.Helper()
+	cmd := pushCmd()
+	cmd.SetArgs(args)
+	cmd.SetOut(&strings.Builder{})
+	cmd.SetErr(&strings.Builder{})
+	cmd.SetContext(context.Background())
+	return cmd.Execute()
+}
+
+func Test_runPushRecursive_ociLayout(t *testing.T) {
+	srcDir := newRecursiveTestDir(t)
+	layoutDir := filepath.Join(t.TempDir(), "layout")
+	exportPath := filepath.Join(t.TempDir(), "manifest.json")
+	annotationFile := filepath.Join(t.TempDir(), "annotations.json")
+	if err := os.WriteFile(annotationFile, []byte(`{"$manifest":{"k":"v"},"a.txt":{"file":"a"}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := runPushCmd(t,
+		"--oci-layout",
+		"--recursive",
+		"--max-blobs-per-manifest", "1",
+		"--annotation-file", annotationFile,
+		"--export-manifest", exportPath,
+		"--disable-path-validation",
+		layoutDir+":v1,v2",
+		srcDir,
+	); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	store, err := oci.New(layoutDir)
+	if err != nil {
+		t.Fatalf("failed to open pushed layout: %v", err)
+	}
+	for _, tag := range []string{"v1", "v2"} {
+		if _, err := store.Resolve(context.Background(), tag); err != nil {
+			t.Errorf("expected tag %q to be resolvable, got error: %v", tag, err)
+		}
+	}
+	if _, err := os.Stat(exportPath); err != nil {
+		t.Errorf("expected exported manifest at %q: %v", exportPath, err)
+	}
+}
+
+func Test_runPushRecursive_noTag(t *testing.T) {
+	srcDir := newRecursiveTestDir(t)
+	layoutDir := filepath.Join(t.TempDir(), "layout")
+
+	if err := runPushCmd(t,
+		"--oci-layout",
+		"--recursive",
+		"--format", "json",
+		"--disable-path-validation",
+		layoutDir,
+		srcDir,
+	); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func Test_runPushRecursive_preserveEmptyDirs(t *testing.T) {
+	srcDir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(srcDir, "empty"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	layoutDir := filepath.Join(t.TempDir(), "layout")
+
+	if err := runPushCmd(t,
+		"--oci-layout",
+		"--recursive",
+		"--preserve-empty-dirs",
+		"--disable-path-validation",
+		layoutDir+":v1",
+		srcDir,
+	); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func Test_runPushRecursive_brokenSymlink(t *testing.T) {
+	srcDir := t.TempDir()
+	if err := os.Symlink(filepath.Join(srcDir, "missing"), filepath.Join(srcDir, "broken")); err != nil {
+		t.Skipf("symlinks not supported: %v", err)
+	}
+	layoutDir := filepath.Join(t.TempDir(), "layout")
+
+	err := runPushCmd(t,
+		"--oci-layout",
+		"--recursive",
+		"--follow-symlinks",
+		"--disable-path-validation",
+		layoutDir+":v1",
+		srcDir,
+	)
+	if err == nil || !strings.Contains(err.Error(), "failed to walk directory") {
+		t.Fatalf("got error %v, want walk error", err)
 	}
 }

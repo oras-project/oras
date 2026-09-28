@@ -17,10 +17,17 @@ package manifestutil
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"strconv"
 	"testing"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras/internal/dir"
 )
 
@@ -238,5 +245,188 @@ func TestChunkDescriptors(t *testing.T) {
 				t.Errorf("chunkDescriptors() = %d chunks, want %d", len(chunks), tt.expectedCount)
 			}
 		})
+	}
+}
+
+// failingPusher fails pushes whose media type matches failOn with err.
+type failingPusher struct {
+	failOn string
+	err    error
+}
+
+func (p *failingPusher) Push(_ context.Context, desc ocispec.Descriptor, r io.Reader) error {
+	if _, err := io.ReadAll(r); err != nil {
+		return err
+	}
+	if desc.MediaType == p.failOn {
+		return p.err
+	}
+	return nil
+}
+
+func testFileDesc(i int) ocispec.Descriptor {
+	return ocispec.Descriptor{
+		MediaType: "application/vnd.oci.image.layer.v1.tar",
+		Digest:    content.NewDescriptorFromBytes("", []byte(strconv.Itoa(i))).Digest,
+		Size:      1,
+	}
+}
+
+// nestedTestNode returns a root dir containing a file and a subdir with a file.
+func nestedTestNode() (*dir.Node, map[string]ocispec.Descriptor) {
+	root := &dir.Node{
+		Name:  "root",
+		Path:  ".",
+		IsDir: true,
+		Children: []*dir.Node{
+			{Name: "a.txt", Path: "a.txt"},
+			{Name: "sub", Path: "sub", IsDir: true, Children: []*dir.Node{
+				{Name: "b.txt", Path: "sub/b.txt"},
+			}},
+		},
+	}
+	return root, map[string]ocispec.Descriptor{
+		"a.txt":     testFileDesc(1),
+		"sub/b.txt": testFileDesc(2),
+	}
+}
+
+func TestBuilder_BuildFromNode_PushErrors(t *testing.T) {
+	pushErr := errors.New("push failed")
+	for _, mediaType := range []string{
+		ocispec.MediaTypeImageConfig,
+		ocispec.MediaTypeImageManifest,
+		ocispec.MediaTypeImageIndex,
+	} {
+		t.Run(mediaType, func(t *testing.T) {
+			root, fileDescs := nestedTestNode()
+			builder := NewBuilder(&failingPusher{failOn: mediaType, err: pushErr}, BuilderOptions{})
+			if _, err := builder.BuildFromNode(context.Background(), root, fileDescs); !errors.Is(err, pushErr) {
+				t.Fatalf("BuildFromNode() error = %v, want %v", err, pushErr)
+			}
+		})
+	}
+}
+
+func TestBuilder_BuildFromNode_ChunkPushError(t *testing.T) {
+	pushErr := errors.New("push failed")
+	root := &dir.Node{Name: "root", Path: ".", IsDir: true}
+	fileDescs := map[string]ocispec.Descriptor{}
+	for i := range 3 {
+		name := fmt.Sprintf("f%d", i)
+		root.Children = append(root.Children, &dir.Node{Name: name, Path: name})
+		fileDescs[name] = testFileDesc(i)
+	}
+	builder := NewBuilder(&failingPusher{failOn: ocispec.MediaTypeImageManifest, err: pushErr}, BuilderOptions{MaxBlobsPerManifest: 1})
+	if _, err := builder.BuildFromNode(context.Background(), root, fileDescs); !errors.Is(err, pushErr) {
+		t.Fatalf("BuildFromNode() error = %v, want %v", err, pushErr)
+	}
+}
+
+func TestBuilder_BuildFromNode_AlreadyExists(t *testing.T) {
+	for _, mediaType := range []string{
+		ocispec.MediaTypeImageConfig,
+		ocispec.MediaTypeImageManifest,
+		ocispec.MediaTypeImageIndex,
+	} {
+		t.Run(mediaType, func(t *testing.T) {
+			root, fileDescs := nestedTestNode()
+			builder := NewBuilder(&failingPusher{failOn: mediaType, err: errdef.ErrAlreadyExists}, BuilderOptions{})
+			if _, err := builder.BuildFromNode(context.Background(), root, fileDescs); err != nil {
+				t.Fatalf("BuildFromNode() error = %v", err)
+			}
+		})
+	}
+}
+
+func TestBuilder_BuildFromNode_ArtifactType(t *testing.T) {
+	artifactType := "application/vnd.example"
+	root, fileDescs := nestedTestNode()
+	builder := NewBuilder(memory.New(), BuilderOptions{ArtifactType: artifactType})
+	result, err := builder.BuildFromNode(context.Background(), root, fileDescs)
+	if err != nil {
+		t.Fatalf("BuildFromNode() error = %v", err)
+	}
+	if result.Root.ArtifactType != artifactType {
+		t.Errorf("root ArtifactType = %q, want %q", result.Root.ArtifactType, artifactType)
+	}
+	if result.IndexCount != 1 || result.ManifestCount != 2 {
+		t.Errorf("IndexCount = %d, ManifestCount = %d, want 1, 2", result.IndexCount, result.ManifestCount)
+	}
+}
+
+func TestBuilder_BuildFromNode_FileNode(t *testing.T) {
+	builder := NewBuilder(memory.New(), BuilderOptions{})
+	want := testFileDesc(1)
+
+	result, err := builder.BuildFromNode(context.Background(), &dir.Node{Name: "a", Path: "a"}, map[string]ocispec.Descriptor{"a": want})
+	if err != nil {
+		t.Fatalf("BuildFromNode() error = %v", err)
+	}
+	if result.Root.Digest != want.Digest {
+		t.Errorf("Root = %v, want %v", result.Root.Digest, want.Digest)
+	}
+
+	result, err = builder.BuildFromNode(context.Background(), &dir.Node{Name: "missing", Path: "missing"}, nil)
+	if err != nil {
+		t.Fatalf("BuildFromNode() error = %v", err)
+	}
+	if result.Root.Digest != "" {
+		t.Errorf("Root = %v, want empty descriptor", result.Root.Digest)
+	}
+}
+
+func TestBuilder_BuildFromNode_SkipsEmptySubdir(t *testing.T) {
+	root := &dir.Node{
+		Name:  "root",
+		Path:  ".",
+		IsDir: true,
+		Children: []*dir.Node{
+			{Name: "a.txt", Path: "a.txt"},
+			{Name: "empty", Path: "empty", IsDir: true},
+		},
+	}
+	builder := NewBuilder(memory.New(), BuilderOptions{})
+	result, err := builder.BuildFromNode(context.Background(), root, map[string]ocispec.Descriptor{"a.txt": testFileDesc(1)})
+	if err != nil {
+		t.Fatalf("BuildFromNode() error = %v", err)
+	}
+	if result.Root.MediaType != ocispec.MediaTypeImageManifest || result.IndexCount != 0 {
+		t.Errorf("got root %s with %d indexes, want a single manifest", result.Root.MediaType, result.IndexCount)
+	}
+}
+
+func TestBuilder_BuildFromNode_ChunkIndexAnnotation(t *testing.T) {
+	ctx := context.Background()
+	store := memory.New()
+	root := &dir.Node{Name: "root", Path: ".", IsDir: true}
+	fileDescs := map[string]ocispec.Descriptor{}
+	for i := range 12 {
+		name := fmt.Sprintf("f%02d", i)
+		root.Children = append(root.Children, &dir.Node{Name: name, Path: name})
+		fileDescs[name] = testFileDesc(i)
+	}
+
+	builder := NewBuilder(store, BuilderOptions{MaxBlobsPerManifest: 1})
+	result, err := builder.BuildFromNode(ctx, root, fileDescs)
+	if err != nil {
+		t.Fatalf("BuildFromNode() error = %v", err)
+	}
+
+	indexBytes, err := content.FetchAll(ctx, store, result.Root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var index ocispec.Index
+	if err := json.Unmarshal(indexBytes, &index); err != nil {
+		t.Fatal(err)
+	}
+	if len(index.Manifests) != 12 {
+		t.Fatalf("got %d manifests, want 12", len(index.Manifests))
+	}
+	for i, m := range index.Manifests {
+		if got, want := m.Annotations["org.oras.content.chunk.index"], strconv.Itoa(i); got != want {
+			t.Errorf("manifest %d chunk index = %q, want %q", i, got, want)
+		}
 	}
 }
