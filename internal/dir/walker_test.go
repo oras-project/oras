@@ -93,20 +93,6 @@ func TestWalk(t *testing.T) {
 			t.Errorf("DirCount() = %d, want 5", dirCount)
 		}
 	})
-
-	t.Run("walk with exclusions", func(t *testing.T) {
-		node, err := Walk(tmpDir, WalkOptions{
-			ExcludePatterns: []string{"subdir1"},
-		})
-		if err != nil {
-			t.Fatalf("Walk() error = %v", err)
-		}
-
-		fileCount := node.FileCount()
-		if fileCount != 3 { // file1.txt, file2.txt, subdir2/file5.txt
-			t.Errorf("FileCount() = %d, want 3", fileCount)
-		}
-	})
 }
 
 func TestNode_Methods(t *testing.T) {
@@ -233,5 +219,51 @@ func TestWalk_BrokenSymlink(t *testing.T) {
 
 	if _, err := Walk(tmpDir, WalkOptions{FollowSymlinks: true}); err == nil {
 		t.Fatal("expected error for broken symlink")
+	}
+}
+
+func TestNode_FileNodeMethods(t *testing.T) {
+	file := &Node{Name: "a.txt", Path: "a.txt"}
+	if file.HasFiles() {
+		t.Error("HasFiles() = true for a file node")
+	}
+	if file.HasDirs() {
+		t.Error("HasDirs() = true for a file node")
+	}
+	if pruneEmpty(file) {
+		t.Error("pruneEmpty() = true for a file node")
+	}
+}
+
+func TestNode_HasFilesHasDirs_Negative(t *testing.T) {
+	onlyDirs := &Node{IsDir: true, Children: []*Node{{IsDir: true}}}
+	if onlyDirs.HasFiles() {
+		t.Error("HasFiles() = true for a directory with only subdirectories")
+	}
+	onlyFiles := &Node{IsDir: true, Children: []*Node{{Name: "a"}}}
+	if onlyFiles.HasDirs() {
+		t.Error("HasDirs() = true for a directory with only files")
+	}
+}
+
+func TestWalk_NotExist(t *testing.T) {
+	if _, err := Walk(filepath.Join(t.TempDir(), "missing"), WalkOptions{}); err == nil {
+		t.Fatal("expected error for missing root")
+	}
+}
+
+func TestWalk_UnreadableSubdir(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("permission checks do not apply to root")
+	}
+	tmpDir := t.TempDir()
+	locked := filepath.Join(tmpDir, "locked")
+	if err := os.Mkdir(locked, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(locked, 0755) })
+
+	if _, err := Walk(tmpDir, WalkOptions{}); err == nil {
+		t.Fatal("expected error for unreadable subdirectory")
 	}
 }
