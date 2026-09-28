@@ -27,6 +27,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -1031,7 +1032,7 @@ func Test_filterManifestsByPlatform(t *testing.T) {
 	src, root, _ := newMultiPlatformSource(t)
 	platforms := option.Platforms{Platforms: []*ocispec.Platform{{OS: "linux", Architecture: "arm"}}}
 	opts := &copyOptions{Platform: platforms}
-	_, _, selected, err := filterManifestByPlatform(context.Background(), src, root, opts)
+	_, index, selected, err := filterManifestByPlatform(context.Background(), src, root, opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1044,13 +1045,90 @@ func Test_filterManifestsByPlatform(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(selected) != 1 || selected[0].Platform.Variant != "v7" {
+	if len(selected) != 1 || index.Manifests[selected[0]].Platform.Variant != "v7" {
 		t.Fatalf("selected %#v, want only arm/v7", selected)
 	}
 
 	opts.Platform.Platforms = []*ocispec.Platform{{OS: "windows", Architecture: "amd64"}}
 	if _, _, _, err = filterManifestByPlatform(context.Background(), src, root, opts); err == nil || !strings.Contains(err.Error(), "linux/amd64") {
 		t.Fatalf("filterManifestsByPlatform() error = %v, want available platforms", err)
+	}
+}
+
+func Test_filterManifestByPlatform_recommendsUniqueImagePlatforms(t *testing.T) {
+	ctx := context.Background()
+	src := memory.New()
+	amd64 := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Digest:    digest.FromString("amd64"),
+		Size:      10,
+		Platform:  &ocispec.Platform{OS: "linux", Architecture: "amd64"},
+	}
+	attestation := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Digest:    digest.FromString("attestation"),
+		Size:      10,
+		Platform:  &ocispec.Platform{OS: "unknown", Architecture: "unknown"},
+		Annotations: map[string]string{
+			dockerReferenceDigestAnnotation: amd64.Digest.String(),
+		},
+	}
+	index := ocispec.Index{
+		Versioned: specs.Versioned{SchemaVersion: 2},
+		MediaType: ocispec.MediaTypeImageIndex,
+		Manifests: []ocispec.Descriptor{amd64, amd64, attestation},
+	}
+	indexContent, err := json.Marshal(index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := content.NewDescriptorFromBytes(ocispec.MediaTypeImageIndex, indexContent)
+	if err := src.Push(ctx, root, bytes.NewReader(indexContent)); err != nil {
+		t.Fatal(err)
+	}
+	opts := &copyOptions{Platform: option.Platforms{Platforms: []*ocispec.Platform{{OS: "windows", Architecture: "amd64"}}}}
+
+	_, _, _, err = filterManifestByPlatform(ctx, src, root, opts)
+	if err == nil {
+		t.Fatal("filterManifestByPlatform() error = nil, want unmatched platform error")
+	}
+	if got := err.Error(); !strings.Contains(got, "available platforms in index: [linux/amd64]") || strings.Contains(got, "unknown/unknown") {
+		t.Fatalf("filterManifestByPlatform() error = %q, want one image platform and no attestation platform", got)
+	}
+}
+
+func Test_filterManifestByPlatform_selectsSharedDigestByPosition(t *testing.T) {
+	ctx := context.Background()
+	src := memory.New()
+	sharedDigest := digest.FromString("shared-arm-manifest")
+	index := ocispec.Index{
+		Versioned: specs.Versioned{SchemaVersion: 2},
+		MediaType: ocispec.MediaTypeImageIndex,
+		Manifests: []ocispec.Descriptor{
+			{MediaType: ocispec.MediaTypeImageManifest, Digest: digest.FromString("amd64"), Size: 10, Platform: &ocispec.Platform{OS: "linux", Architecture: "amd64"}},
+			{MediaType: ocispec.MediaTypeImageManifest, Digest: sharedDigest, Size: 20, Platform: &ocispec.Platform{OS: "linux", Architecture: "arm", Variant: "v6"}},
+			{MediaType: ocispec.MediaTypeImageManifest, Digest: sharedDigest, Size: 20, Platform: &ocispec.Platform{OS: "linux", Architecture: "arm", Variant: "v7"}},
+		},
+	}
+	indexContent, err := json.Marshal(index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := content.NewDescriptorFromBytes(ocispec.MediaTypeImageIndex, indexContent)
+	if err := src.Push(ctx, root, bytes.NewReader(indexContent)); err != nil {
+		t.Fatal(err)
+	}
+	opts := &copyOptions{Platform: option.Platforms{Platforms: []*ocispec.Platform{
+		{OS: "linux", Architecture: "amd64"},
+		{OS: "linux", Architecture: "arm", Variant: "v7"},
+	}}}
+
+	_, _, kept, err := filterManifestByPlatform(ctx, src, root, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(kept, []int{0, 2}) {
+		t.Fatalf("kept positions = %v, want [0 2]", kept)
 	}
 }
 
@@ -1100,20 +1178,22 @@ func Test_formatPlatform(t *testing.T) {
 }
 
 func Test_keepsManifest(t *testing.T) {
-	selected := ocispec.Descriptor{Digest: digest.FromString("selected")}
+	selected := ocispec.Descriptor{Digest: digest.FromString("selected"), Platform: &ocispec.Platform{OS: "linux", Architecture: "amd64"}}
 	tests := []struct {
 		name     string
 		manifest ocispec.Descriptor
+		selected map[int]bool
 		want     bool
 	}{
 		{name: "platformless entry is retained", manifest: ocispec.Descriptor{Digest: digest.FromString("unknown")}, want: true},
-		{name: "selected buildx attestation is retained", manifest: ocispec.Descriptor{Annotations: map[string]string{dockerReferenceDigestAnnotation: selected.Digest.String()}}, want: true},
+		{name: "selected buildx attestation is retained", manifest: ocispec.Descriptor{Annotations: map[string]string{dockerReferenceDigestAnnotation: selected.Digest.String()}}, selected: map[int]bool{0: true}, want: true},
 		{name: "unselected buildx attestation is dropped", manifest: ocispec.Descriptor{Annotations: map[string]string{dockerReferenceDigestAnnotation: digest.FromString("other").String()}}, want: false},
 		{name: "unselected platform is dropped", manifest: ocispec.Descriptor{Platform: &ocispec.Platform{OS: "linux", Architecture: "arm64"}}, want: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := keepsManifest(tt.manifest, []ocispec.Descriptor{selected}); got != tt.want {
+			manifests := []ocispec.Descriptor{selected, tt.manifest}
+			if got := keepsManifest(1, tt.manifest, manifests, tt.selected); got != tt.want {
 				t.Fatalf("keepsManifest(%#v) = %t, want %t", tt.manifest, got, tt.want)
 			}
 		})
@@ -1461,7 +1541,7 @@ func Test_doMultipleCopy_usesReferrerListerWrapper(t *testing.T) {
 	opts.To.Reference = "destination"
 	statusHandler := discardCopyHandler{DiscardHandler: status.NewDiscardHandler()}
 	metadataHandler := discardMetadataHandler{Discard: metadata.NewDiscardHandler()}
-	if err := doMultipleCopy(ctx, logrus.New(), statusHandler, metadataHandler, src, dst, opts, root, indexContent, []ocispec.Descriptor{selected}); err != nil {
+	if err := doMultipleCopy(ctx, logrus.New(), statusHandler, metadataHandler, src, dst, opts, root, indexContent, []int{0}); err != nil {
 		t.Fatal(err)
 	}
 	if got, err := dst.Resolve(ctx, "destination"); err != nil {
@@ -1473,12 +1553,7 @@ func Test_doMultipleCopy_usesReferrerListerWrapper(t *testing.T) {
 
 func Test_filterIndexContent_preservesExtensions(t *testing.T) {
 	indexContent := []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","x-vendor":{"future":true},"manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","size":10,"platform":{"os":"linux","architecture":"amd64","features":["sse4"]},"x-descriptor":"keep"},{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","size":11,"platform":{"os":"linux","architecture":"arm64"}}]}`)
-	selected := ocispec.Descriptor{
-		MediaType: ocispec.MediaTypeImageManifest,
-		Digest:    "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-		Size:      10,
-	}
-	filtered, err := filterIndexContent(indexContent, []ocispec.Descriptor{selected})
+	filtered, err := filterIndexContent(indexContent, []int{0})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1591,8 +1666,8 @@ func Test_filterManifestByPlatform_keepsAssociatedDescriptors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(filtered) != 2 || !content.Equal(filtered[0], selected) || !content.Equal(filtered[1], associated) {
-		t.Fatalf("filtered manifests = %#v, want selected manifest and its associated descriptor", filtered)
+	if len(filtered) != 2 || filtered[0] != 0 || filtered[1] != 1 {
+		t.Fatalf("filtered manifest positions = %#v, want [0 1]", filtered)
 	}
 }
 
@@ -1635,8 +1710,9 @@ func Test_copyMultiplePlatforms_reportsIndexErrors(t *testing.T) {
 		opts := &copyOptions{}
 		opts.From.Reference = "missing"
 		err := copyMultiplePlatforms(ctx, logrus.New(), nil, nil, memory.New(), memory.New(), opts)
-		if err == nil || !strings.Contains(err.Error(), "failed to resolve missing") {
-			t.Fatalf("copyMultiplePlatforms() error = %v, want resolve error", err)
+		var copyErr *oras.CopyError
+		if !errors.As(err, &copyErr) || copyErr.Origin != oras.CopyErrorOriginSource || !strings.Contains(err.Error(), "not found") {
+			t.Fatalf("copyMultiplePlatforms() error = %v, want source resolve error", err)
 		}
 	})
 	t.Run("malformed index", func(t *testing.T) {
