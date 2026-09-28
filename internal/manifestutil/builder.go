@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"maps"
+	"strconv"
 
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -159,7 +160,7 @@ func (b *Builder) buildNode(ctx context.Context, node *dir.Node, fileDescs map[s
 				ocispec.AnnotationTitle: node.Name,
 			}
 			if len(chunks) > 1 {
-				annotations["org.oras.content.chunk.index"] = string(rune('0' + i))
+				annotations["org.oras.content.chunk.index"] = strconv.Itoa(i)
 			}
 			manifestDesc, err := b.createManifestWithAnnotations(ctx, chunkDescs, annotations, result)
 			if err != nil {
