@@ -464,9 +464,6 @@ func runPushRecursive(cmd *cobra.Command, opts *pushOptions) error {
 		return fmt.Errorf("failed to tag root: %w", err)
 	}
 
-	// Create a combined source for copying
-	combinedSource := contentutil.MultiReadOnlyTarget(memoryStore, store)
-
 	// Copy options
 	copyOptions := oras.DefaultCopyOptions
 	copyOptions.Concurrency = opts.concurrency
@@ -479,9 +476,9 @@ func runPushRecursive(cmd *cobra.Command, opts *pushOptions) error {
 
 	// Copy the graph
 	if tag := opts.Reference; tag == "" {
-		err = oras.CopyGraph(ctx, combinedSource, dst, result.Root, copyOptions.CopyGraphOptions)
+		err = oras.CopyGraph(ctx, union, dst, result.Root, copyOptions.CopyGraphOptions)
 	} else {
-		_, err = oras.Copy(ctx, combinedSource, result.Root.Digest.String(), dst, tag, copyOptions)
+		_, err = oras.Copy(ctx, union, result.Root.Digest.String(), dst, tag, copyOptions)
 	}
 	if err != nil {
 		return oerrors.UnwrapCopyError(err)

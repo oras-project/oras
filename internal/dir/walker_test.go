@@ -205,36 +205,6 @@ func TestFlattenFiles(t *testing.T) {
 	}
 }
 
-func TestChunkFiles(t *testing.T) {
-	nodes := []*Node{
-		{Name: "1"},
-		{Name: "2"},
-		{Name: "3"},
-		{Name: "4"},
-		{Name: "5"},
-	}
-
-	tests := []struct {
-		name     string
-		maxSize  int
-		expected int
-	}{
-		{"no chunking needed", 10, 1},
-		{"exact split", 5, 1},
-		{"two chunks", 3, 2},
-		{"five chunks", 1, 5},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			chunks := ChunkFiles(nodes, tt.maxSize)
-			if len(chunks) != tt.expected {
-				t.Errorf("ChunkFiles() chunks = %d, want %d", len(chunks), tt.expected)
-			}
-		})
-	}
-}
-
 func TestWalk_SingleFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "single.txt")
@@ -252,5 +222,16 @@ func TestWalk_SingleFile(t *testing.T) {
 	}
 	if node.Name != "single.txt" {
 		t.Errorf("node.Name = %q, want %q", node.Name, "single.txt")
+	}
+}
+
+func TestWalk_BrokenSymlink(t *testing.T) {
+	tmpDir := t.TempDir()
+	if err := os.Symlink(filepath.Join(tmpDir, "missing"), filepath.Join(tmpDir, "broken")); err != nil {
+		t.Skipf("symlinks not supported: %v", err)
+	}
+
+	if _, err := Walk(tmpDir, WalkOptions{FollowSymlinks: true}); err == nil {
+		t.Fatal("expected error for broken symlink")
 	}
 }

@@ -17,6 +17,7 @@ limitations under the License.
 package dir
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -191,8 +192,7 @@ func walkDir(absPath, relPath string, parent *Node, opts WalkOptions) error {
 
 		info, err := getFileInfo(entry, childAbsPath, opts.FollowSymlinks)
 		if err != nil {
-			// Skip files we can't stat (e.g., broken symlinks)
-			continue
+			return fmt.Errorf("failed to stat %q: %w", childAbsPath, err)
 		}
 
 		child := &Node{
@@ -277,21 +277,4 @@ func flattenFilesRecursive(node *Node, files *[]*Node) {
 	for _, child := range node.Children {
 		flattenFilesRecursive(child, files)
 	}
-}
-
-// ChunkFiles splits a list of nodes into chunks of at most maxSize.
-func ChunkFiles(nodes []*Node, maxSize int) [][]*Node {
-	if maxSize <= 0 || len(nodes) <= maxSize {
-		return [][]*Node{nodes}
-	}
-
-	var chunks [][]*Node
-	for i := 0; i < len(nodes); i += maxSize {
-		end := i + maxSize
-		if end > len(nodes) {
-			end = len(nodes)
-		}
-		chunks = append(chunks, nodes[i:end])
-	}
-	return chunks
 }
