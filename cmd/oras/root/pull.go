@@ -168,8 +168,15 @@ func (c *pullCleanup) track(name string) {
 		return
 	}
 	c.seen[path] = struct{}{}
-	if _, err := os.Lstat(path); errors.Is(err, os.ErrNotExist) {
-		c.created[path] = struct{}{}
+	outermost := ""
+	for p := path; p != c.root && filepath.Dir(p) != p; p = filepath.Dir(p) {
+		if _, err := os.Lstat(p); !errors.Is(err, os.ErrNotExist) {
+			break
+		}
+		outermost = p
+	}
+	if outermost != "" {
+		c.created[outermost] = struct{}{}
 	}
 }
 
@@ -229,7 +236,7 @@ func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 	desc, err := doPull(ctx, src, dst, copyOptions, metadataHandler, statusHandler, opts, cleanup)
 	if err != nil {
 		if cleanupErr := cleanup.cleanup(); cleanupErr != nil {
-			_ = opts.Printer.Println("Warning: failed to remove partial output:", cleanupErr)
+			logger.Warnf("failed to remove partial output: %v", cleanupErr)
 		}
 
 		if !errors.Is(err, file.ErrPathTraversalDisallowed) {
