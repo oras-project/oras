@@ -53,8 +53,7 @@ func MakeDirectoryAnnotations(path, name string) map[string]string {
 }
 
 // MakeFileAnnotations creates annotations for a file descriptor.
-// The title should be the filename for display purposes.
-func MakeFileAnnotations(path, title string) map[string]string {
+func MakeFileAnnotations(path string) map[string]string {
 	return map[string]string{
 		AnnotationFilePath: path,
 	}
