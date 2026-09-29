@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/spf13/pflag"
@@ -35,6 +36,15 @@ func TestPacker_FlagInit(_ *testing.T) {
 		Packer
 	}
 	ApplyFlags(&test, pflag.NewFlagSet("oras-test", pflag.ExitOnError))
+}
+
+func TestPacker_ParseAbsolutePathWarning(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "test.txt")
+	opts := Packer{FileRefs: []string{path}}
+	err := opts.Parse(nil)
+	if !errors.Is(err, errPathValidation) || !strings.Contains(err.Error(), "insecure and not recommended") || !strings.Contains(err.Error(), path) {
+		t.Fatalf("unexpected error: %v", err)
+	}
 }
 
 func TestPacker_parseAnnotations_err(t *testing.T) {
