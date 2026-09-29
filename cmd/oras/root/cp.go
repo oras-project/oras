@@ -58,7 +58,7 @@ const dockerReferenceDigestAnnotation = "vnd.docker.reference.digest"
 
 type copyOptions struct {
 	option.Common
-	Platform option.Platforms
+	option.Platforms
 	option.BinaryTarget
 	option.Terminal
 
@@ -161,16 +161,16 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	statusHandler, metadataHandler := display.NewCopyHandler(opts.Printer, opts.TTY, dst)
 
 	// Check if multiple platforms are specified
-	if len(opts.Platform.Platforms) > 1 {
+	if len(opts.Platforms.Platforms) > 1 {
 		// Handle multiple platforms - copy manifests that match the specified platforms
 		return copyMultiplePlatforms(ctx, logger, statusHandler, metadataHandler, src, dst, opts)
 	}
 
 	// Handle single platform or recursive mode
-	return copySinglePlatformOrRecursive(ctx, statusHandler, metadataHandler, src, dst, opts, true)
+	return copyAndFinalize(ctx, statusHandler, metadataHandler, src, dst, opts, true)
 }
 
-func copySinglePlatformOrRecursive(ctx context.Context, statusHandler status.CopyHandler, metadataHandler metadata.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions, rootInSource bool) error {
+func copyAndFinalize(ctx context.Context, statusHandler status.CopyHandler, metadataHandler metadata.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions, rootInSource bool) error {
 	desc, err := doCopy(ctx, statusHandler, src, dst, opts)
 	if err != nil {
 		return err
@@ -228,7 +228,16 @@ func copyMultiplePlatforms(ctx context.Context, logger logrus.FieldLogger, statu
 	// If filtering retained every index entry, preserve the original root so
 	// that its digest, referrers, and all entries are kept.
 	if len(kept) == len(index.Manifests) {
-		return copySinglePlatformOrRecursive(ctx, statusHandler, metadataHandler, src, dst, opts, true)
+		return copyAndFinalize(ctx, statusHandler, metadataHandler, src, dst, opts, true)
+	}
+
+	// Equivalent platform selectors can resolve to a single manifest. Keep the
+	// established single-platform result instead of wrapping it in a one-entry
+	// index merely because the request used more than one spelling.
+	if len(kept) == 1 && index.Manifests[kept[0]].Platform != nil {
+		singleOpts := *opts
+		singleOpts.Platforms.Platforms = []*ocispec.Platform{index.Manifests[kept[0]].Platform}
+		return copyAndFinalize(ctx, statusHandler, metadataHandler, src, dst, &singleOpts, true)
 	}
 
 	// Perform multiple copies
@@ -243,12 +252,18 @@ func filterManifestByPlatform(ctx context.Context, src oras.ReadOnlyGraphTarget,
 	// For indexes/lists, fetch the index content
 	indexContent, err := content.FetchAll(ctx, src, root)
 	if err != nil {
-		return nil, ocispec.Index{}, nil, fmt.Errorf("failed to fetch index: %w", err)
+		return nil, ocispec.Index{}, nil, &oras.CopyError{
+			Origin: oras.CopyErrorOriginSource,
+			Err:    fmt.Errorf("failed to fetch index: %w", err),
+		}
 	}
 
 	var index ocispec.Index
 	if err = json.Unmarshal(indexContent, &index); err != nil {
-		return nil, ocispec.Index{}, nil, fmt.Errorf("failed to parse index: %w", err)
+		return nil, ocispec.Index{}, nil, &oras.CopyError{
+			Origin: oras.CopyErrorOriginSource,
+			Err:    fmt.Errorf("failed to parse index: %w", err),
+		}
 	}
 
 	// Find the platform-bearing manifests selected by the request first. This
@@ -266,14 +281,14 @@ func filterManifestByPlatform(ctx context.Context, src oras.ReadOnlyGraphTarget,
 			availablePlatforms = append(availablePlatforms, platform)
 			availablePlatformSet[platform] = true
 		}
-		if matchesAnyPlatform(manifest.Platform, opts.Platform.Platforms) {
+		if matchesAnyPlatform(manifest.Platform, opts.Platforms.Platforms) {
 			selected[i] = true
 		}
 	}
 
 	// Check if any platforms were unmatched
 	var unmatchedPlatforms []string
-	for _, platform := range opts.Platform.Platforms {
+	for _, platform := range opts.Platforms.Platforms {
 		platformStr := formatPlatform(platform)
 		contains := slices.ContainsFunc(index.Manifests, func(manifest ocispec.Descriptor) bool {
 			return manifest.Annotations[dockerReferenceDigestAnnotation] == "" && platformMatches(manifest.Platform, platform)
@@ -356,9 +371,15 @@ func doMultipleCopy(ctx context.Context, logger logrus.FieldLogger, statusHandle
 		}
 	}
 	if opts.recursive {
-		logger.Warn("referrers of the source index are not copied because selecting a subset of platforms produces a new index digest")
+		referrers, err := registry.Referrers(ctx, src, root, "")
+		if err != nil {
+			return &oras.CopyError{Origin: oras.CopyErrorOriginSource, Err: err}
+		}
+		if len(referrers) > 0 {
+			logger.Warn("referrers of the source index are not copied because selecting a subset of platforms produces a new index digest")
+		}
 	}
-	return copySinglePlatformOrRecursive(ctx, statusHandler, metadataHandler, filteredTarget, dst, opts, false)
+	return copyAndFinalize(ctx, statusHandler, metadataHandler, filteredTarget, dst, opts, false)
 }
 
 // filterIndexContent rewrites only the manifests array, preserving source key
@@ -601,8 +622,8 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 	extendedCopyGraphOptions.OnMounted = copyHandler.OnMounted
 
 	rOpts := oras.DefaultResolveOptions
-	if len(opts.Platform.Platforms) == 1 {
-		rOpts.TargetPlatform = opts.Platform.Platforms[0]
+	if len(opts.Platforms.Platforms) == 1 {
+		rOpts.TargetPlatform = opts.Platforms.Platforms[0]
 	}
 
 	// Define the execution logic as a closure so we can retry it
@@ -627,8 +648,8 @@ func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOn
 		stdCopyOpts := oras.CopyOptions{
 			CopyGraphOptions: copyOpts.CopyGraphOptions,
 		}
-		if len(opts.Platform.Platforms) == 1 {
-			stdCopyOpts.WithTargetPlatform(opts.Platform.Platforms[0])
+		if len(opts.Platforms.Platforms) == 1 {
+			stdCopyOpts.WithTargetPlatform(opts.Platforms.Platforms[0])
 		}
 		return oras.Copy(ctx, src, opts.From.Reference, dst, opts.To.Reference, stdCopyOpts)
 	}

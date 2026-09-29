@@ -56,6 +56,28 @@ var _ = Describe("Multi-platform copy users:", func() {
 			Expect(platformsFound["linux/arm64"]).To(BeTrue())
 		})
 
+		It("should copy multiple platforms supplied by repeated flags", func() {
+			src := RegistryRef(ZOTHost, ImageRepo, ma.Tag)
+			dst := RegistryRef(ZOTHost, cpMultiPlatformTestRepo("repeated-platform-flags"), "copiedMulti")
+
+			ORAS("cp", src, dst, "--platform", "linux/amd64", "--platform", "linux/arm64").Exec()
+
+			manifest := ORAS("manifest", "fetch", dst).Exec().Out.Contents()
+			var index ocispec.Index
+			Expect(json.Unmarshal(manifest, &index)).ShouldNot(HaveOccurred())
+			Expect(index.Manifests).To(HaveLen(2))
+		})
+
+		It("should reject multiple platforms for a plain manifest", func() {
+			src := RegistryRef(ZOTHost, ImageRepo, ma.LinuxAMD64.Digest.String())
+			dst := RegistryRef(ZOTHost, cpMultiPlatformTestRepo("plain-manifest"), "copied")
+
+			ORAS("cp", src, dst, "--platform", "linux/amd64,linux/arm64").
+				ExpectFailure().
+				MatchErrKeyWords(src, "is not an image index or a manifest list").
+				Exec()
+		})
+
 		It("should fail to copy multiple platforms when some platforms are not available", func() {
 			src := RegistryRef(ZOTHost, ImageRepo, ma.Tag)
 			dst := RegistryRef(ZOTHost, cpMultiPlatformTestRepo("missing-platform"), "copiedMissing")
@@ -74,6 +96,7 @@ var _ = Describe("Multi-platform copy users:", func() {
 
 			// Copy multiple platforms with referrers: linux/amd64 and linux/arm64
 			ORAS("cp", src, dst, "-r", "--platform", "linux/amd64,linux/arm64").
+				MatchErrKeyWords("referrers of the source index are not copied").
 				Exec()
 
 			// validate
@@ -95,6 +118,11 @@ var _ = Describe("Multi-platform copy users:", func() {
 			ORAS("discover", RegistryRef(ZOTHost, dstRepo, ma.LinuxAMD64.Digest.String()), "--artifact-type", ma.LinuxAMD64Referrer.ArtifactType).
 				MatchKeyWords(ma.LinuxAMD64Referrer.Digest.String()).
 				Exec()
+
+			// The filtered index has a new digest, so the source index referrer
+			// cannot be attached to it and must not appear at the destination.
+			discovered := ORAS("discover", dst).Exec().Out.Contents()
+			Expect(string(discovered)).NotTo(ContainSubstring(ma.IndexReferrerDigest))
 		})
 
 		It("should copy a single platform when only one platform is specified", func() {

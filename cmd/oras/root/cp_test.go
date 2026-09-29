@@ -1031,7 +1031,7 @@ func (discardMetadataHandler) OnCopied(*option.BinaryTarget, ocispec.Descriptor)
 func Test_filterManifestsByPlatform(t *testing.T) {
 	src, root, _ := newMultiPlatformSource(t)
 	platforms := option.Platforms{Platforms: []*ocispec.Platform{{OS: "linux", Architecture: "arm"}}}
-	opts := &copyOptions{Platform: platforms}
+	opts := &copyOptions{Platforms: platforms}
 	_, index, selected, err := filterManifestByPlatform(context.Background(), src, root, opts)
 	if err != nil {
 		t.Fatal(err)
@@ -1040,7 +1040,7 @@ func Test_filterManifestsByPlatform(t *testing.T) {
 		t.Fatalf("selected %d manifests, want 2", len(selected))
 	}
 
-	opts.Platform.Platforms = []*ocispec.Platform{{OS: "linux", Architecture: "arm", Variant: "v7"}}
+	opts.Platforms.Platforms = []*ocispec.Platform{{OS: "linux", Architecture: "arm", Variant: "v7"}}
 	_, _, selected, err = filterManifestByPlatform(context.Background(), src, root, opts)
 	if err != nil {
 		t.Fatal(err)
@@ -1049,9 +1049,37 @@ func Test_filterManifestsByPlatform(t *testing.T) {
 		t.Fatalf("selected %#v, want only arm/v7", selected)
 	}
 
-	opts.Platform.Platforms = []*ocispec.Platform{{OS: "windows", Architecture: "amd64"}}
+	opts.Platforms.Platforms = []*ocispec.Platform{{OS: "windows", Architecture: "amd64"}}
 	if _, _, _, err = filterManifestByPlatform(context.Background(), src, root, opts); err == nil || !strings.Contains(err.Error(), "linux/amd64") {
 		t.Fatalf("filterManifestsByPlatform() error = %v, want available platforms", err)
+	}
+}
+
+func Test_filterManifestByPlatform_attributesSourceFailures(t *testing.T) {
+	root := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageIndex,
+		Digest:    digest.FromString("source-index"),
+		Size:      12,
+	}
+	opts := &copyOptions{Platforms: option.Platforms{Platforms: []*ocispec.Platform{{OS: "linux", Architecture: "amd64"}}}}
+	tests := []struct {
+		name string
+		src  oras.ReadOnlyGraphTarget
+	}{
+		{name: "fetch", src: &fetchFailingReadOnlyGraphTarget{}},
+		{name: "parse", src: &invalidJSONReadOnlyGraphTarget{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _, _, err := filterManifestByPlatform(context.Background(), tt.src, root, opts)
+			var copyErr *oras.CopyError
+			if !errors.As(err, &copyErr) {
+				t.Fatalf("filterManifestByPlatform() error = %v, want *oras.CopyError", err)
+			}
+			if copyErr.Origin != oras.CopyErrorOriginSource {
+				t.Fatalf("copy error origin = %v, want source", copyErr.Origin)
+			}
+		})
 	}
 }
 
@@ -1086,7 +1114,7 @@ func Test_filterManifestByPlatform_recommendsUniqueImagePlatforms(t *testing.T) 
 	if err := src.Push(ctx, root, bytes.NewReader(indexContent)); err != nil {
 		t.Fatal(err)
 	}
-	opts := &copyOptions{Platform: option.Platforms{Platforms: []*ocispec.Platform{{OS: "windows", Architecture: "amd64"}}}}
+	opts := &copyOptions{Platforms: option.Platforms{Platforms: []*ocispec.Platform{{OS: "windows", Architecture: "amd64"}}}}
 
 	_, _, _, err = filterManifestByPlatform(ctx, src, root, opts)
 	if err == nil {
@@ -1118,7 +1146,7 @@ func Test_filterManifestByPlatform_selectsSharedDigestByPosition(t *testing.T) {
 	if err := src.Push(ctx, root, bytes.NewReader(indexContent)); err != nil {
 		t.Fatal(err)
 	}
-	opts := &copyOptions{Platform: option.Platforms{Platforms: []*ocispec.Platform{
+	opts := &copyOptions{Platforms: option.Platforms{Platforms: []*ocispec.Platform{
 		{OS: "linux", Architecture: "amd64"},
 		{OS: "linux", Architecture: "arm", Variant: "v7"},
 	}}}
@@ -1205,7 +1233,7 @@ func Test_doMultipleCopy_copiesFilteredIndex(t *testing.T) {
 	src, root, index := newMultiPlatformSource(t)
 	dst := memory.New()
 	opts := &copyOptions{
-		Platform: option.Platforms{Platforms: []*ocispec.Platform{
+		Platforms: option.Platforms{Platforms: []*ocispec.Platform{
 			{OS: "linux", Architecture: "amd64"},
 			{OS: "linux", Architecture: "arm", Variant: "v7"},
 		}},
@@ -1255,7 +1283,7 @@ func Test_copyMultiplePlatforms_allSelectionPreservesRoot(t *testing.T) {
 	src, root, _ := newMultiPlatformSource(t)
 	dst := memory.New()
 	opts := &copyOptions{
-		Platform: option.Platforms{Platforms: []*ocispec.Platform{
+		Platforms: option.Platforms{Platforms: []*ocispec.Platform{
 			{OS: "linux", Architecture: "amd64"},
 			{OS: "linux", Architecture: "arm"},
 		}},
@@ -1276,12 +1304,51 @@ func Test_copyMultiplePlatforms_allSelectionPreservesRoot(t *testing.T) {
 	}
 }
 
+func Test_copyMultiplePlatforms_equivalentSelectorsCopyManifest(t *testing.T) {
+	ctx := context.Background()
+	src, _, index := newMultiPlatformSource(t)
+	index.Manifests = []ocispec.Descriptor{index.Manifests[0], index.Manifests[2]}
+	indexContent, err := json.Marshal(index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := content.NewDescriptorFromBytes(ocispec.MediaTypeImageIndex, indexContent)
+	if err := src.Push(ctx, root, bytes.NewReader(indexContent)); err != nil {
+		t.Fatal(err)
+	}
+	if err := src.Tag(ctx, root, "source"); err != nil {
+		t.Fatal(err)
+	}
+	dst := memory.New()
+	opts := &copyOptions{Platforms: option.Platforms{Platforms: []*ocispec.Platform{
+		{OS: "linux", Architecture: "arm"},
+		{OS: "linux", Architecture: "arm", Variant: "v7"},
+	}}}
+	opts.From.Reference = "source"
+	opts.To.Reference = "destination"
+	statusHandler := discardCopyHandler{DiscardHandler: status.NewDiscardHandler()}
+	metadataHandler := discardMetadataHandler{Discard: metadata.NewDiscardHandler()}
+	if err := copyMultiplePlatforms(ctx, logrus.New(), statusHandler, metadataHandler, src, dst, opts); err != nil {
+		t.Fatal(err)
+	}
+	got, err := dst.Resolve(ctx, "destination")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.MediaType != ocispec.MediaTypeImageManifest {
+		t.Fatalf("destination media type = %q, want image manifest", got.MediaType)
+	}
+	if got.Digest != index.Manifests[1].Digest {
+		t.Fatalf("destination digest = %v, want selected arm/v7 manifest %v", got.Digest, index.Manifests[1].Digest)
+	}
+}
+
 func Test_copyMultiplePlatforms_buildxAttestationsPreserveRootAndSourceReference(t *testing.T) {
 	ctx := context.Background()
 	src, root, index := newBuildxMultiPlatformSource(t)
 	dst := memory.New()
 	opts := &copyOptions{
-		Platform: option.Platforms{Platforms: []*ocispec.Platform{
+		Platforms: option.Platforms{Platforms: []*ocispec.Platform{
 			{OS: "linux", Architecture: "amd64"},
 			{OS: "linux", Architecture: "arm", Variant: "v6"},
 			{OS: "linux", Architecture: "arm", Variant: "v7"},
@@ -1317,7 +1384,7 @@ func Test_copyMultiplePlatforms_buildxSubsetKeepsOnlySelectedAttestations(t *tes
 	countingSrc := &fetchCountingTarget{ReadOnlyGraphTarget: src, root: root}
 	dst := memory.New()
 	opts := &copyOptions{
-		Platform: option.Platforms{Platforms: []*ocispec.Platform{
+		Platforms: option.Platforms{Platforms: []*ocispec.Platform{
 			{OS: "linux", Architecture: "amd64"},
 			{OS: "linux", Architecture: "arm", Variant: "v7"},
 		}},
@@ -1372,9 +1439,13 @@ func Test_doMultipleCopy_recursiveCopiesSelectedReferrer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	rootReferrer, err := oras.PackManifest(ctx, src, oras.PackManifestVersion1_1, "application/vnd.test.index-signature", oras.PackManifestOptions{Subject: &root})
+	if err != nil {
+		t.Fatal(err)
+	}
 	dst := memory.New()
 	opts := &copyOptions{
-		Platform:  option.Platforms{Platforms: []*ocispec.Platform{{OS: "linux", Architecture: "amd64"}}},
+		Platforms: option.Platforms{Platforms: []*ocispec.Platform{{OS: "linux", Architecture: "amd64"}}},
 		recursive: true,
 	}
 	opts.From.Reference = "source"
@@ -1397,6 +1468,11 @@ func Test_doMultipleCopy_recursiveCopiesSelectedReferrer(t *testing.T) {
 	} else if !exists {
 		t.Fatal("recursive filtered copy did not include the selected manifest referrer")
 	}
+	if exists, err := dst.Exists(ctx, rootReferrer); err != nil {
+		t.Fatal(err)
+	} else if exists {
+		t.Fatal("recursive filtered copy included a referrer of the original index")
+	}
 	if exists, err := dst.Exists(ctx, index.Manifests[1]); err != nil {
 		t.Fatal(err)
 	} else if exists {
@@ -1404,6 +1480,33 @@ func Test_doMultipleCopy_recursiveCopiesSelectedReferrer(t *testing.T) {
 	}
 	if got := warning.String(); !strings.Contains(got, "level=warning") || !strings.Contains(got, "referrers of the source index are not copied") {
 		t.Fatalf("warning = %q, want source-index referrer warning", got)
+	}
+}
+
+func Test_doMultipleCopy_recursiveDoesNotWarnWithoutRootReferrers(t *testing.T) {
+	ctx := context.Background()
+	src, root, _ := newMultiPlatformSource(t)
+	dst := memory.New()
+	opts := &copyOptions{
+		Platforms: option.Platforms{Platforms: []*ocispec.Platform{{OS: "linux", Architecture: "amd64"}}},
+		recursive: true,
+	}
+	opts.From.Reference = "source"
+	opts.To.Reference = "destination"
+	var warning bytes.Buffer
+	logger := logrus.New()
+	logger.SetOutput(&warning)
+	indexContent, _, selected, err := filterManifestByPlatform(ctx, src, root, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	statusHandler := discardCopyHandler{DiscardHandler: status.NewDiscardHandler()}
+	metadataHandler := discardMetadataHandler{Discard: metadata.NewDiscardHandler()}
+	if err := doMultipleCopy(ctx, logger, statusHandler, metadataHandler, src, dst, opts, root, indexContent, selected); err != nil {
+		t.Fatal(err)
+	}
+	if got := warning.String(); got != "" {
+		t.Fatalf("warning = %q, want no warning for a referrer-free source index", got)
 	}
 }
 
@@ -1535,7 +1638,7 @@ func Test_doMultipleCopy_usesReferrerListerWrapper(t *testing.T) {
 	}
 	dst := memory.New()
 	opts := &copyOptions{
-		Platform: option.Platforms{Platforms: []*ocispec.Platform{{OS: "linux", Architecture: "amd64"}}},
+		Platforms: option.Platforms{Platforms: []*ocispec.Platform{{OS: "linux", Architecture: "amd64"}}},
 	}
 	opts.From.Reference = "source"
 	opts.To.Reference = "destination"
@@ -1661,7 +1764,7 @@ func Test_filterManifestByPlatform_keepsAssociatedDescriptors(t *testing.T) {
 	if err := src.Push(ctx, root, bytes.NewReader(indexContent)); err != nil {
 		t.Fatal(err)
 	}
-	opts := &copyOptions{Platform: option.Platforms{Platforms: []*ocispec.Platform{{OS: "linux", Architecture: "amd64"}}}}
+	opts := &copyOptions{Platforms: option.Platforms{Platforms: []*ocispec.Platform{{OS: "linux", Architecture: "amd64"}}}}
 	_, _, filtered, err := filterManifestByPlatform(ctx, src, root, opts)
 	if err != nil {
 		t.Fatal(err)
@@ -1737,7 +1840,7 @@ func Test_copyMultiplePlatforms_reportsIndexErrors(t *testing.T) {
 	})
 	t.Run("unmatched requested platform", func(t *testing.T) {
 		src, _, _ := newMultiPlatformSource(t)
-		opts := &copyOptions{Platform: option.Platforms{Platforms: []*ocispec.Platform{{OS: "windows", Architecture: "amd64"}}}}
+		opts := &copyOptions{Platforms: option.Platforms{Platforms: []*ocispec.Platform{{OS: "windows", Architecture: "amd64"}}}}
 		opts.From.Reference = "source"
 		err := copyMultiplePlatforms(ctx, logrus.New(), nil, nil, src, memory.New(), opts)
 		var platformError *oerrors.Error

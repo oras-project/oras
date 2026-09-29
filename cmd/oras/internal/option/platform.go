@@ -66,7 +66,7 @@ func (opts *Platforms) ApplyFlags(fs *pflag.FlagSet) {
 	if opts.FlagDescription == "" {
 		opts.FlagDescription = "request platform"
 	}
-	fs.StringSliceVarP(&opts.platforms, "platform", "", nil, opts.FlagDescription+" in the form of `os[/arch][/variant][:os_version]` or a comma-separated list")
+	fs.StringSliceVarP(&opts.platforms, "platform", "", nil, opts.FlagDescription+" in the form of `os[/arch][/variant][:os_version]`, repeatable or comma-separated")
 }
 
 // Parse parses the input platform flags to OCI platform types.
