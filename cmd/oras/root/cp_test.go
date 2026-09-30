@@ -1208,20 +1208,26 @@ func Test_formatPlatform(t *testing.T) {
 func Test_keepsManifest(t *testing.T) {
 	selected := ocispec.Descriptor{Digest: digest.FromString("selected"), Platform: &ocispec.Platform{OS: "linux", Architecture: "amd64"}}
 	tests := []struct {
-		name     string
-		manifest ocispec.Descriptor
-		selected map[int]bool
-		want     bool
+		name              string
+		manifest          ocispec.Descriptor
+		unselectedSibling *ocispec.Descriptor
+		selected          map[int]bool
+		want              bool
 	}{
 		{name: "platformless entry is retained", manifest: ocispec.Descriptor{Digest: digest.FromString("unknown")}, want: true},
+		{name: "platformless alias of an unselected manifest is dropped", manifest: ocispec.Descriptor{Digest: digest.FromString("unselected")}, unselectedSibling: &ocispec.Descriptor{Digest: digest.FromString("unselected"), Platform: &ocispec.Platform{OS: "linux", Architecture: "arm64"}}, selected: map[int]bool{0: true}, want: false},
 		{name: "selected buildx attestation is retained", manifest: ocispec.Descriptor{Annotations: map[string]string{dockerReferenceDigestAnnotation: selected.Digest.String()}}, selected: map[int]bool{0: true}, want: true},
 		{name: "unselected buildx attestation is dropped", manifest: ocispec.Descriptor{Annotations: map[string]string{dockerReferenceDigestAnnotation: digest.FromString("other").String()}}, want: false},
 		{name: "unselected platform is dropped", manifest: ocispec.Descriptor{Platform: &ocispec.Platform{OS: "linux", Architecture: "arm64"}}, want: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			manifests := []ocispec.Descriptor{selected, tt.manifest}
-			if got := keepsManifest(1, tt.manifest, manifests, tt.selected); got != tt.want {
+			manifests := []ocispec.Descriptor{selected}
+			if tt.unselectedSibling != nil {
+				manifests = append(manifests, *tt.unselectedSibling)
+			}
+			manifests = append(manifests, tt.manifest)
+			if got := keepsManifest(len(manifests)-1, tt.manifest, manifests, tt.selected); got != tt.want {
 				t.Fatalf("keepsManifest(%#v) = %t, want %t", tt.manifest, got, tt.want)
 			}
 		})
@@ -1507,6 +1513,50 @@ func Test_doMultipleCopy_recursiveDoesNotWarnWithoutRootReferrers(t *testing.T) 
 	}
 	if got := warning.String(); got != "" {
 		t.Fatalf("warning = %q, want no warning for a referrer-free source index", got)
+	}
+}
+
+type rootReferrersFailingSource struct {
+	oras.ReadOnlyGraphTarget
+	rootDigest digest.Digest
+	err        error
+}
+
+func (s *rootReferrersFailingSource) Referrers(_ context.Context, desc ocispec.Descriptor, _ string, fn func([]ocispec.Descriptor) error) error {
+	if desc.Digest == s.rootDigest {
+		return s.err
+	}
+	return fn(nil)
+}
+
+func Test_doMultipleCopy_recursiveContinuesWhenRootReferrerProbeFails(t *testing.T) {
+	ctx := context.Background()
+	base, root, _ := newMultiPlatformSource(t)
+	src := &rootReferrersFailingSource{ReadOnlyGraphTarget: base, rootDigest: root.Digest, err: errors.New("referrer lookup unavailable")}
+	dst := memory.New()
+	opts := &copyOptions{
+		Platforms: option.Platforms{Platforms: []*ocispec.Platform{{OS: "linux", Architecture: "amd64"}}},
+		recursive: true,
+	}
+	opts.From.Reference = "source"
+	opts.To.Reference = "destination"
+	indexContent, _, selected, err := filterManifestByPlatform(ctx, src, root, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root.Annotations = map[string]string{"stale": "annotation"}
+	root.Data = []byte("stale descriptor data")
+	statusHandler := discardCopyHandler{DiscardHandler: status.NewDiscardHandler()}
+	metadataHandler := discardMetadataHandler{Discard: metadata.NewDiscardHandler()}
+	if err := doMultipleCopy(ctx, logrus.New(), statusHandler, metadataHandler, src, dst, opts, root, indexContent, selected); err != nil {
+		t.Fatalf("doMultipleCopy() error = %v, want copy to continue after warning probe failure", err)
+	}
+	gotRoot, err := dst.Resolve(ctx, "destination")
+	if err != nil {
+		t.Fatalf("destination was not copied: %v", err)
+	}
+	if gotRoot.Annotations != nil || len(gotRoot.Data) != 0 {
+		t.Fatalf("filtered root retained source descriptor metadata: %#v", gotRoot)
 	}
 }
 

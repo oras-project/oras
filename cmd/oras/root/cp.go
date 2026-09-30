@@ -317,8 +317,9 @@ func filterManifestByPlatform(ctx context.Context, src oras.ReadOnlyGraphTarget,
 // keepsManifest reports whether the index entry at position i survives platform
 // filtering, given the positions selected by platform matching. BuildKit
 // attestations using dockerReferenceDigestAnnotation follow their subject
-// manifest. Platform-less entries are retained because their purpose cannot be
-// inferred. Other entries are kept only when their own position was selected.
+// manifest. A platform-less entry is retained only when it is not another
+// reference to a manifest excluded by platform filtering. Other entries are
+// kept only when their own position was selected.
 func keepsManifest(i int, manifest ocispec.Descriptor, manifests []ocispec.Descriptor, selected map[int]bool) bool {
 	if referenceDigest := manifest.Annotations[dockerReferenceDigestAnnotation]; referenceDigest != "" {
 		for j := range manifests {
@@ -329,6 +330,11 @@ func keepsManifest(i int, manifest ocispec.Descriptor, manifests []ocispec.Descr
 		return false
 	}
 	if manifest.Platform == nil {
+		for j, candidate := range manifests {
+			if candidate.Platform != nil && !selected[j] && candidate.Digest == manifest.Digest {
+				return false
+			}
+		}
 		return true
 	}
 	return selected[i]
@@ -354,9 +360,7 @@ func doMultipleCopy(ctx context.Context, logger logrus.FieldLogger, statusHandle
 		return fmt.Errorf("failed to filter index: %w", err)
 	}
 
-	filteredRoot := root
-	filteredRoot.Digest = digest.FromBytes(indexContent)
-	filteredRoot.Size = int64(len(indexContent))
+	filteredRoot := content.NewDescriptorFromBytes(root.MediaType, indexContent)
 	filteredSource := &filteredIndexSource{
 		ReadOnlyGraphTarget: src,
 		reference:           opts.From.Reference,
@@ -372,10 +376,7 @@ func doMultipleCopy(ctx context.Context, logger logrus.FieldLogger, statusHandle
 	}
 	if opts.recursive {
 		referrers, err := registry.Referrers(ctx, src, root, "")
-		if err != nil {
-			return &oras.CopyError{Origin: oras.CopyErrorOriginSource, Err: err}
-		}
-		if len(referrers) > 0 {
+		if err == nil && len(referrers) > 0 {
 			logger.Warn("referrers of the source index are not copied because selecting a subset of platforms produces a new index digest")
 		}
 	}
