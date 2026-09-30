@@ -83,7 +83,7 @@ Example - Fetch raw manifest tagged 'example.com:v1' from an OCI image layout fo
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			switch {
 			case opts.outputPath == "-" && opts.FormatFlag != option.FormatTypeText.Name:
-				return fmt.Errorf("`--output -` cannot be used with `--format %s` at the same time", opts.Template)
+				return fmt.Errorf("`--output -` cannot be used with `--format %s` at the same time", opts.FormatFlag)
 			case opts.outputPath == "-" && opts.OutputDescriptor:
 				return fmt.Errorf("`--descriptor` cannot be used with `--output -` at the same time")
 			}

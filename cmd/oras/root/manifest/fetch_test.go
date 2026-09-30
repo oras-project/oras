@@ -41,3 +41,19 @@ func Test_fetchManifest_errType(t *testing.T) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 }
+
+func Test_fetchCmd_outputAndFormat(t *testing.T) {
+	cmd := fetchCmd()
+	cmd.SetArgs([]string{
+		"localhost:5000/hello:v1",
+		"--output", "-",
+		"--format", "go-template",
+		"--template", "{{.digest}}",
+	})
+
+	err := cmd.Execute()
+	want := "`--output -` cannot be used with `--format go-template` at the same time"
+	if err == nil || err.Error() != want {
+		t.Fatalf("got %v, want %v", err, want)
+	}
+}
