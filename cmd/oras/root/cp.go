@@ -376,7 +376,7 @@ func doMultipleCopy(ctx context.Context, logger logrus.FieldLogger, statusHandle
 	}
 	if opts.recursive {
 		referrers, err := registry.Referrers(ctx, src, root, "")
-		if err == nil && len(referrers) > 0 {
+		if err != nil || len(referrers) > 0 {
 			logger.Warn("referrers of the source index are not copied because selecting a subset of platforms produces a new index digest")
 		}
 	}

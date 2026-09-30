@@ -1546,10 +1546,17 @@ func Test_doMultipleCopy_recursiveContinuesWhenRootReferrerProbeFails(t *testing
 	}
 	root.Annotations = map[string]string{"stale": "annotation"}
 	root.Data = []byte("stale descriptor data")
+	var warning bytes.Buffer
+	logger := logrus.New()
+	logger.SetOutput(&warning)
+	logger.SetFormatter(&logrus.TextFormatter{DisableTimestamp: true})
 	statusHandler := discardCopyHandler{DiscardHandler: status.NewDiscardHandler()}
 	metadataHandler := discardMetadataHandler{Discard: metadata.NewDiscardHandler()}
-	if err := doMultipleCopy(ctx, logrus.New(), statusHandler, metadataHandler, src, dst, opts, root, indexContent, selected); err != nil {
+	if err := doMultipleCopy(ctx, logger, statusHandler, metadataHandler, src, dst, opts, root, indexContent, selected); err != nil {
 		t.Fatalf("doMultipleCopy() error = %v, want copy to continue after warning probe failure", err)
+	}
+	if got := warning.String(); !strings.Contains(got, "level=warning") || !strings.Contains(got, "referrers of the source index are not copied") {
+		t.Fatalf("warning = %q, want source-index referrer warning after probe failure", got)
 	}
 	gotRoot, err := dst.Resolve(ctx, "destination")
 	if err != nil {
