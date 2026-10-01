@@ -55,10 +55,6 @@ default: lint test build-$(OS)-$(ARCH)
 test: tidy vendor check-encoding  ## tidy and run tests
 	$(GO_EXE) test -race -v -coverprofile=coverage.txt -covermode=atomic -coverpkg=$(PKG) $(PKG)
 
-.PHONY: teste2e
-teste2e:  ## run end to end tests
-	./test/e2e/scripts/e2e.sh $(shell git rev-parse --show-toplevel) --clean
-
 .PHONY: covhtml
 covhtml:  ## look at code coverage
 	open .cover/coverage.html
@@ -174,13 +170,6 @@ fetch-dist:  ## fetch distribution (requires gh CLI: https://cli.github.com)
 	@command -v gh >/dev/null 2>&1 || { echo "gh CLI not found. Install: https://cli.github.com"; exit 1; }
 	mkdir -p _dist
 	gh release download v${VERSION} --repo $(ORAS_REPO) --dir _dist --clobber
-
-.PHONY: teste2e-covdata
-teste2e-covdata:  ## test e2e coverage
-	export GOCOVERDIR=$(CURDIR)/test/e2e/.cover; \
-	rm -rf $$GOCOVERDIR; \
-	mkdir -p $$GOCOVERDIR; \
-	$(MAKE) teste2e && $(GO_EXE) tool covdata textfmt -i=$$GOCOVERDIR -o "$(CURDIR)/test/e2e/coverage.txt"
 
 .PHONY: release-prep
 release-prep:  ## prepare release: bump version, create PR
