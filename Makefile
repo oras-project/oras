@@ -60,8 +60,9 @@ teste2e:  ## run end to end tests
 	./test/e2e/scripts/e2e.sh $(shell git rev-parse --show-toplevel) --clean
 
 .PHONY: covhtml
-covhtml:  ## look at code coverage
-	open .cover/coverage.html
+covhtml:  test ## generate and open the coverage report
+	$(GO_EXE) tool cover -html=coverage.txt -o coverage.html
+	open coverage.html
 
 .PHONY: clean
 clean:  ## clean up build
