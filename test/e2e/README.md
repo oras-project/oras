@@ -16,6 +16,12 @@ The e2e testing infrastructure deploys three OCI-compliant registries to a Kuber
 - `kubectl` configured to access your cluster
 - Sufficient cluster resources (at least 2 CPU cores and 4GB RAM recommended)
 
+If you do not have a cluster yet, create one with [kind](https://kind.sigs.k8s.io/):
+
+```bash
+kind create cluster
+```
+
 ## Quick Start
 
 ### Deploy Registries
@@ -109,19 +115,36 @@ oras pull localhost:5000/myrepo/myartifact:latest
 test/e2e/
 ├── README.md              # This file
 ├── Dockerfile             # Container image for running e2e tests
-├── registry_test.go       # Sample e2e tests
+├── go.mod                 # Separate Go module holding the e2e suites
+├── go.sum                 # Checksums for the e2e module's dependencies
+├── go.work                # Workspace file linking this module to the root module
+├── suite/                 # Ginkgo test suites
+│   ├── auth/                  # Login and credential specs
+│   ├── command/               # ORAS CLI command specs
+│   └── scenario/              # Multi-command scenario specs
+├── internal/              # Helpers shared by the suites
+│   ├── testdata/              # Registry configs and hosts the specs read
+│   └── utils/                 # Command execution, output matching, suite setup
 ├── k8s/                   # Kubernetes manifests
 │   ├── namespace.yaml          # Namespace definition
 │   ├── docker-registry.yaml    # Docker Registry v2 deployment
 │   ├── fallback-registry.yaml  # Fallback Registry deployment
 │   ├── zot-registry.yaml       # Zot Registry deployment
 │   └── e2e-test-job.yaml       # Job definition for running tests
-└── scripts/               # Management scripts
-    ├── deploy.sh          # Deploy all registries
-    ├── teardown.sh        # Remove all registries
-    ├── status.sh          # Check status of registries
-    ├── build-image.sh     # Build test container image
-    └── run-tests.sh       # Run e2e tests as Kubernetes job
+├── scripts/               # Management scripts
+│   ├── deploy.sh          # Deploy all registries
+│   ├── teardown.sh        # Remove all registries
+│   ├── status.sh          # Check status of registries
+│   ├── build-image.sh     # Build test container image
+│   ├── generate-cache-db.sh # Seed the registry content cache
+│   ├── run-tests.sh       # Run e2e tests as Kubernetes job
+│   └── run-interactive.sh # Start a pod for running tests interactively
+└── testdata/              # Artifact fixtures consumed by the specs
+    ├── distribution/          # Images and indexes used by the specs
+    ├── files/                 # Payloads pushed by the specs
+    ├── zot/                   # Zot-specific config fixtures
+    ├── empty.registry.config  # Config with no credentials
+    └── legacy.registry.config # Config using the legacy auth layout
 ```
 
 ## Registry Configurations
@@ -250,48 +273,97 @@ kubectl describe job oras-e2e-tests -n oras-e2e-tests
 
 ### Environment Variables
 
-Tests running in the Kubernetes Job automatically receive these environment variables:
+Tests running in the Kubernetes Job automatically receive these environment
+variables (see `k8s/e2e-test-job.yaml`):
 
-- `DOCKER_REGISTRY_HOST` - Docker Registry endpoint (docker-registry.oras-e2e-tests.svc.cluster.local:5000)
-- `FALLBACK_REGISTRY_HOST` - Fallback Registry endpoint (fallback-registry.oras-e2e-tests.svc.cluster.local:5000)
+- `ORAS_REGISTRY_HOST` - Docker Registry endpoint (docker-registry.oras-e2e-tests.svc.cluster.local:5000)
+- `ORAS_REGISTRY_FALLBACK_HOST` - Fallback Registry endpoint (fallback-registry.oras-e2e-tests.svc.cluster.local:5000)
 - `ZOT_REGISTRY_HOST` - Zot Registry endpoint (zot-registry.oras-e2e-tests.svc.cluster.local:5000)
+- `ORAS_PATH` - Path to the `oras` binary under test
 - `ORAS_E2E_PLAIN_HTTP` - Set to "true" for plain HTTP communication
 - `ORAS_E2E_TIMEOUT` - Test timeout (default: 10m)
 
+These names are the keys read by `internal/utils`. When a variable is unset, the
+suites fall back to `localhost:5000`, `localhost:6000`, and `localhost:7000` for
+the three registries respectively, and build `oras` from source into a temporary
+binary if `ORAS_PATH` is not set.
+
+> Note: the Job manifest also sets `DOCKER_REGISTRY_HOST` and
+> `FALLBACK_REGISTRY_HOST`, which are used by the manifest's own readiness probe.
+> The specs do not read them.
+
 ## Writing E2E Tests
 
-The e2e tests in `test/e2e/registry_test.go` demonstrate how to write tests that work both locally and in Kubernetes:
+The e2e tests are [Ginkgo](https://onsi.github.io/ginkgo/) suites that exercise the
+`oras` CLI as a subprocess rather than driving the library directly. Each package
+under `suite/` owns a `RunSpecs` entry point and lives in the separate
+`oras.land/oras/test/e2e` module:
+
+| Suite | Entry point | Covers |
+| --- | --- | --- |
+| `suite/auth/` | `auth_test.go` | `oras login`, credential handling |
+| `suite/command/` | `command_suite_test.go` | individual CLI commands |
+| `suite/scenario/` | `scenario_test.go` | multi-command scenarios |
+
+Shared setup lives in `internal/utils/init.go`. It resolves the registry endpoints
+from the environment, builds (or locates) the `oras` binary under test, and logs
+in to each registry before any spec runs. Helpers for building and asserting on
+commands are in `internal/utils/exec.go`.
+
+A spec, for example from `suite/command/push.go`, looks like this:
 
 ```go
-// getRegistryConfig adapts to the environment
-func getRegistryConfig() (dockerHost, zotHost string, plainHTTP bool) {
-    // When running in Kubernetes, these env vars are set
-    dockerHost = os.Getenv("DOCKER_REGISTRY_HOST")
-    if dockerHost == "" {
-        // Fall back to localhost for local testing
-        dockerHost = "localhost:5000"
-    }
+var _ = Describe("Remote registry users:", func() {
+	tag := "e2e"
+	When("pushing to OCI spec v1.0 registries", func() {
+		It("should push files without customized media types", func() {
+			repo := pushTestRepo("no-mediatype")
+			tempDir := PrepareTempFiles()
+			ref := RegistryRef(ZOTHost, repo, tag)
 
-    zotHost = os.Getenv("ZOT_REGISTRY_HOST")
-    if zotHost == "" {
-        zotHost = "localhost:5001"
-    }
+			ORAS("push", ref, foobar.FileBarName).
+				MatchStatus(statusKeys, true, len(statusKeys)).
+				WithWorkDir(tempDir).Exec()
 
-    plainHTTP = os.Getenv("ORAS_E2E_PLAIN_HTTP") == "true"
-    return dockerHost, zotHost, plainHTTP
-}
+			// validate
+			fetched := ORAS("manifest", "fetch", ref).Exec().Out.Contents()
+			var manifest ocispec.Manifest
+			Expect(json.Unmarshal(fetched, &manifest)).ShouldNot(HaveOccurred())
+			Expect(manifest.Layers).Should(ContainElements(foobar.BlobBarDescriptor("application/vnd.oci.image.layer.v1.tar")))
+		})
+	})
+})
+```
 
-func TestDockerRegistry(t *testing.T) {
-    dockerHost, _, plainHTTP := getRegistryConfig()
+Note that `ORAS(...)` builds the command, the matcher methods attach assertions,
+and `Exec()` runs it. `ExpectFailure()` inverts the exit-code check,
+`MatchErrKeyWords` asserts on stderr, and `RegistryRef`/`LayoutRef` construct
+references. Registry endpoints are reached through the package-level `Host`,
+`FallbackHost`, and `ZOTHost` variables rather than read from the environment in
+each spec.
 
-    repo, err := remote.NewRepository(dockerHost + "/test/artifact")
-    if err != nil {
-        t.Fatal(err)
-    }
-    repo.PlainHTTP = plainHTTP
+### Running a Single Suite or Spec Locally
 
-    // Your test logic here...
-}
+With the registries deployed and reachable, run the suites directly with Ginkgo:
+
+```bash
+cd test/e2e
+
+# Run everything, as CI does
+ginkgo -r -p --race suite
+
+# Run one suite
+ginkgo -r -p suite/command
+
+# Run one spec by name
+ginkgo -r -p suite/command --focus "should push files without customized media types"
+```
+
+By default `init.go` builds `oras` from source into a temporary binary. Point
+`ORAS_PATH` at an existing build to test that instead:
+
+```bash
+ORAS_PATH=/path/to/oras ginkgo -r -p suite/command
 ```
 
 ## CI/CD Integration
