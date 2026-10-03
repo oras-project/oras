@@ -46,7 +46,7 @@ spec:
           value: "fallback-registry.oras-e2e-tests.svc.cluster.local:5000"
         - name: ZOT_REGISTRY_HOST
           value: "zot-registry.oras-e2e-tests.svc.cluster.local:5000"
-        # Required by e2e tests (matching prepare.sh)
+        # Required by e2e tests (matching test/e2e/internal/utils/init.go)
         - name: ORAS_REGISTRY_HOST
           value: "docker-registry.oras-e2e-tests.svc.cluster.local:5000"
         - name: ORAS_REGISTRY_FALLBACK_HOST
