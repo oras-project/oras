@@ -48,8 +48,6 @@ _dist/
 .DS_Store
 
 # Distribution storage files for local E2E testing
-test/e2e/testdata/distribution/mount/docker/
-test/e2e/testdata/distribution/mount_fallback/docker/
 
 
 # OCI Layout Files ZOT storage files for local E2E testing
