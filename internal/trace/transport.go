@@ -220,8 +220,17 @@ func containsCredentials(body string) bool {
 	var value any
 	decoder := json.NewDecoder(strings.NewReader(body))
 	decoder.UseNumber()
-	if err := decoder.Decode(&value); err == nil {
-		return containsCredentialValue(value)
+	for {
+		err := decoder.Decode(&value)
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			break
+		}
+		if containsCredentialValue(value) {
+			return true
+		}
 	}
 	lowerBody := strings.ToLower(body)
 	for _, key := range credentialJSONKeys {

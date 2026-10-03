@@ -292,6 +292,15 @@ func Test_logResponseBody(t *testing.T) {
 			wantData: []byte(`{"access_token":"12345"}`),
 			want:     "   Response body redacted due to potential credentials",
 		},
+		{
+			name: "Body contains access_token in second JSON value",
+			resp: &http.Response{
+				Body:   io.NopCloser(bytes.NewReader([]byte(`{"status":"ok"}{"access_token":"12345"}`))),
+				Header: http.Header{"Content-Type": []string{"application/json"}},
+			},
+			wantData: []byte(`{"status":"ok"}{"access_token":"12345"}`),
+			want:     "   Response body redacted due to potential credentials",
+		},
 	}
 
 	for _, tt := range tests {
@@ -481,6 +490,11 @@ func Test_containsCredentials(t *testing.T) {
 			name: "Does not contain credentials",
 			body: `{"key": "value"}`,
 			want: false,
+		},
+		{
+			name: "Contains access token in second JSON value",
+			body: `{"status": "ok"}{"access_token": "12345"}`,
+			want: true,
 		},
 		{
 			name: "Empty body",
