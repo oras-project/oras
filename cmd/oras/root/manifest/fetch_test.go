@@ -19,7 +19,10 @@ import (
 	"bytes"
 	"context"
 	stderrs "errors"
+	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
@@ -113,5 +116,86 @@ func Test_fetchConfigContent_withinLimit(t *testing.T) {
 	}
 	if !bytes.Equal(got, data) {
 		t.Fatalf("got %q, want %q", got, data)
+	}
+}
+
+func Test_fetchConfig_outputFile(t *testing.T) {
+	tempDir := t.TempDir()
+	layoutDir := filepath.Join(tempDir, "layout")
+	outputPath := filepath.Join(tempDir, "config.json")
+
+	config := []byte(`{"architecture":"amd64"}`)
+	configDigest := digest.FromBytes(config)
+
+	manifest := []byte(fmt.Sprintf(`{
+		"schemaVersion": 2,
+		"config": {
+			"mediaType": %q,
+			"digest": %q,
+			"size": %d
+		},
+		"layers": []
+	}`, ocispec.MediaTypeImageConfig, configDigest, len(config)))
+	manifestDigest := digest.FromBytes(manifest)
+
+	if err := os.MkdirAll(filepath.Join(layoutDir, "blobs", "sha256"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	ociLayout := []byte(`{"imageLayoutVersion":"1.0.0"}`)
+	if err := os.WriteFile(filepath.Join(layoutDir, "oci-layout"), ociLayout, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	index := []byte(fmt.Sprintf(`{
+		"schemaVersion": 2,
+		"manifests": [{
+			"mediaType": %q,
+			"digest": %q,
+			"size": %d,
+			"annotations": {
+				"org.opencontainers.image.ref.name": "test:v1"
+			}
+		}]
+	}`, ocispec.MediaTypeImageManifest, manifestDigest, len(manifest)))
+	if err := os.WriteFile(filepath.Join(layoutDir, "index.json"), index, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(
+		filepath.Join(layoutDir, "blobs", "sha256", configDigest.Encoded()),
+		config,
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(
+		filepath.Join(layoutDir, "blobs", "sha256", manifestDigest.Encoded()),
+		manifest,
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	rootCmd := &cobra.Command{Use: "oras"}
+	rootCmd.AddCommand(fetchConfigCmd())
+	rootCmd.SetArgs([]string{
+		"fetch-config",
+		"--oci-layout-path", layoutDir,
+		"test:v1",
+		"--output", outputPath,
+	})
+
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, config) {
+		t.Fatalf("got %q, want %q", got, config)
 	}
 }

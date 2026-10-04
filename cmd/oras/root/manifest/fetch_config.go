@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -113,8 +114,28 @@ func fetchConfig(cmd *cobra.Command, opts *fetchConfigOptions) (fetchErr error) 
 
 	if !opts.OutputDescriptor || opts.outputPath != "" {
 		// fetch config content
-		contentBytes, err := fetchConfigContent(ctx, src, configDesc)
+		if opts.outputPath != "" && opts.outputPath != "-" {
+			file, err := os.Create(opts.outputPath)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if err := file.Close(); fetchErr == nil {
+					fetchErr = err
+				}
+			}()
 
+			reader, err := src.Fetch(ctx, configDesc)
+			if err != nil {
+				return err
+			}
+			defer reader.Close()
+
+			_, err = io.Copy(file, reader)
+			return err
+		}
+
+		contentBytes, err := fetchConfigContent(ctx, src, configDesc)
 		if err != nil {
 			return err
 		}
@@ -122,11 +143,6 @@ func fetchConfig(cmd *cobra.Command, opts *fetchConfigOptions) (fetchErr error) 
 		if opts.outputPath == "" || opts.outputPath == "-" {
 			// output config content
 			return opts.Output(os.Stdout, contentBytes)
-		}
-
-		// save config into the local file if the output path is provided
-		if err = os.WriteFile(opts.outputPath, contentBytes, 0666); err != nil {
-			return err
 		}
 	}
 
@@ -146,12 +162,18 @@ func fetchConfigContent(ctx context.Context, src oras.ReadOnlyTarget, configDesc
 	const maxConfigSize int64 = 4 * 1024 * 1024
 
 	if configDesc.Size > maxConfigSize {
-		return nil, fmt.Errorf(
-			"config size %v exceeds MaxBytes %v: %w",
-			configDesc.Size,
-			maxConfigSize,
-			errdef.ErrSizeExceedsLimit,
-		)
+		return nil, &oerrors.Error{
+			Err: fmt.Errorf(
+				"config size %v exceeds the limit of %v bytes: %w",
+				configDesc.Size,
+				maxConfigSize,
+				errdef.ErrSizeExceedsLimit,
+			),
+			Recommendation: fmt.Sprintf(
+				`To download a large config, use "oras blob fetch --output <file> <repository>@%s"`,
+				configDesc.Digest,
+			),
+		}
 	}
 
 	return content.FetchAll(ctx, src, configDesc)
