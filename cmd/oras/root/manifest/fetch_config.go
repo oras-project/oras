@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
@@ -112,7 +113,8 @@ func fetchConfig(cmd *cobra.Command, opts *fetchConfigOptions) (fetchErr error) 
 
 	if !opts.OutputDescriptor || opts.outputPath != "" {
 		// fetch config content
-		contentBytes, err := content.FetchAll(ctx, src, configDesc)
+		contentBytes, err := fetchConfigContent(ctx, src, configDesc)
+
 		if err != nil {
 			return err
 		}
@@ -138,6 +140,21 @@ func fetchConfig(cmd *cobra.Command, opts *fetchConfigOptions) (fetchErr error) 
 	}
 
 	return nil
+}
+
+func fetchConfigContent(ctx context.Context, src oras.ReadOnlyTarget, configDesc ocispec.Descriptor) ([]byte, error) {
+	const maxConfigSize int64 = 4 * 1024 * 1024
+
+	if configDesc.Size > maxConfigSize {
+		return nil, fmt.Errorf(
+			"config size %v exceeds MaxBytes %v: %w",
+			configDesc.Size,
+			maxConfigSize,
+			errdef.ErrSizeExceedsLimit,
+		)
+	}
+
+	return content.FetchAll(ctx, src, configDesc)
 }
 
 func fetchConfigDesc(ctx context.Context, src oras.ReadOnlyTarget, reference string, targetPlatform *ocispec.Platform) (ocispec.Descriptor, error) {
