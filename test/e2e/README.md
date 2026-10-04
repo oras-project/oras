@@ -123,7 +123,7 @@ test/e2e/
 │   ├── command/               # ORAS CLI command specs
 │   └── scenario/              # Multi-command scenario specs
 ├── internal/              # Helpers shared by the suites
-│   ├── testdata/              # Registry configs and hosts the specs read
+│   ├── testdata/              # Artifact fixtures and constants used by specs
 │   └── utils/                 # Command execution, output matching, suite setup
 ├── k8s/                   # Kubernetes manifests
 │   ├── namespace.yaml          # Namespace definition
@@ -142,7 +142,7 @@ test/e2e/
 └── testdata/              # Artifact fixtures consumed by the specs
     ├── distribution/          # Images and indexes used by the specs
     ├── files/                 # Payloads pushed by the specs
-    ├── zot/                   # Zot-specific config fixtures
+    ├── zot/                   # Pre-seeded OCI layout and cache.db served by zot
     ├── empty.registry.config  # Config with no credentials
     └── legacy.registry.config # Config using the legacy auth layout
 ```
@@ -283,14 +283,15 @@ variables (see `k8s/e2e-test-job.yaml`):
 - `ORAS_E2E_PLAIN_HTTP` - Set to "true" for plain HTTP communication
 - `ORAS_E2E_TIMEOUT` - Test timeout (default: 10m)
 
-These names are the keys read by `internal/utils`. When a variable is unset, the
-suites fall back to `localhost:5000`, `localhost:6000`, and `localhost:7000` for
-the three registries respectively, and build `oras` from source into a temporary
-binary if `ORAS_PATH` is not set.
+The host variables, `ORAS_PATH`, and `ORAS_E2E_PLAIN_HTTP` are the keys read by
+`internal/utils`; `ORAS_E2E_TIMEOUT` is consumed only by the Job's shell, which
+passes it to `ginkgo --timeout`. When a host variable is unset, the suites fall
+back to `localhost:5000`, `localhost:6000`, and `localhost:7000` respectively,
+and build `oras` from source into a temporary binary if `ORAS_PATH` is not set.
 
 > Note: the Job manifest also sets `DOCKER_REGISTRY_HOST` and
-> `FALLBACK_REGISTRY_HOST`, which are used by the manifest's own readiness probe.
-> The specs do not read them.
+> `FALLBACK_REGISTRY_HOST`, which are used by the Job's registry-readiness wait
+> loop and by `scripts/run-interactive.sh`. The specs do not read them.
 
 ## Writing E2E Tests
 
@@ -316,6 +317,10 @@ A spec, for example from `suite/command/push.go`, looks like this:
 var _ = Describe("Remote registry users:", func() {
 	tag := "e2e"
 	When("pushing to OCI spec v1.0 registries", func() {
+		statusKeys := []match.StateKey{
+			foobar.ImageConfigStateKey("application/vnd.oci.empty.v1+json"),
+			foobar.FileBarStateKey,
+		}
 		It("should push files without customized media types", func() {
 			repo := pushTestRepo("no-mediatype")
 			tempDir := PrepareTempFiles()
@@ -342,13 +347,21 @@ references. Registry endpoints are reached through the package-level `Host`,
 `FallbackHost`, and `ZOTHost` variables rather than read from the environment in
 each spec.
 
-### Running a Single Suite or Spec Locally
+### Running a Single Suite or Spec
 
-With the registries deployed and reachable, run the suites directly with Ginkgo:
+`CopyZOTRepo` copies straight into zot's **storage filesystem**, so the suites
+need the `/zot-data` volume mounted — network access to a port-forwarded
+registry is not enough. Use the interactive pod, which mounts it and sets
+`ORAS_PATH`:
 
 ```bash
-cd test/e2e
+./test/e2e/scripts/run-interactive.sh
+```
 
+Ginkgo wants its flags *before* the package list, and `--focus` is a regex over
+the full spec text. Inside the pod:
+
+```bash
 # Run everything, as CI does
 ginkgo -r -p --race suite
 
@@ -356,14 +369,7 @@ ginkgo -r -p --race suite
 ginkgo -r -p suite/command
 
 # Run one spec by name
-ginkgo -r -p suite/command --focus "should push files without customized media types"
-```
-
-By default `init.go` builds `oras` from source into a temporary binary. Point
-`ORAS_PATH` at an existing build to test that instead:
-
-```bash
-ORAS_PATH=/path/to/oras ginkgo -r -p suite/command
+ginkgo -r -p --focus "Remote registry users.*without customized media types" suite/command
 ```
 
 ## CI/CD Integration
