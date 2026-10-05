@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -32,6 +33,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/root/manifest/common"
 	"oras.land/oras/internal/descriptor"
 )
 
@@ -114,32 +116,46 @@ func fetchConfig(cmd *cobra.Command, opts *fetchConfigOptions) (fetchErr error) 
 
 	if !opts.OutputDescriptor || opts.outputPath != "" {
 		// fetch config content
-		if opts.outputPath != "" && opts.outputPath != "-" {
+		if opts.outputPath != "" {
 			reader, err := src.Fetch(ctx, configDesc)
 			if err != nil {
 				return err
 			}
 			defer reader.Close()
 
-			file, err := os.Create(opts.outputPath)
-			if err != nil {
-				return err
+			var output io.Writer
+			var file *os.File
+			if opts.outputPath == "-" {
+				output = cmd.OutOrStdout()
+			} else {
+				file, err = os.CreateTemp(filepath.Dir(opts.outputPath), "oras-config-*")
+				if err != nil {
+					return err
+				}
+				defer func() {
+					_ = file.Close()
+					if fetchErr != nil {
+						_ = os.Remove(file.Name())
+					}
+				}()
+				output = file
 			}
-			defer func() {
-				if err := file.Close(); fetchErr == nil {
-					fetchErr = err
-				}
-				if fetchErr != nil {
-					_ = os.Remove(opts.outputPath)
-				}
-			}()
 
 			vr := content.NewVerifyReader(reader, configDesc)
-			if _, err = io.Copy(file, vr); err != nil {
+			if _, err = io.Copy(output, vr); err != nil {
 				return err
 			}
 			if err := vr.Verify(); err != nil {
 				return err
+			}
+
+			if opts.outputPath != "-" {
+				if err := file.Close(); err != nil {
+					return err
+				}
+				if err := os.Rename(file.Name(), opts.outputPath); err != nil {
+					return err
+				}
 			}
 		} else {
 			contentBytes, err := fetchConfigContent(ctx, src, configDesc)
@@ -165,14 +181,13 @@ func fetchConfig(cmd *cobra.Command, opts *fetchConfigOptions) (fetchErr error) 
 }
 
 func fetchConfigContent(ctx context.Context, src oras.ReadOnlyTarget, configDesc ocispec.Descriptor) ([]byte, error) {
-	const maxConfigSize int64 = 4 * 1024 * 1024
 
-	if configDesc.Size > maxConfigSize {
+	if configDesc.Size > common.MaxConfigSize {
 		return nil, &oerrors.Error{
 			Err: fmt.Errorf(
 				"config size %v exceeds the limit of %v bytes: %w",
 				configDesc.Size,
-				maxConfigSize,
+				common.MaxConfigSize,
 				errdef.ErrSizeExceedsLimit,
 			),
 			Recommendation: fmt.Sprintf(

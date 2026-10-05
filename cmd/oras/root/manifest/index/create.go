@@ -36,13 +36,12 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/root/manifest/common"
 	"oras.land/oras/internal/contentutil"
 	"oras.land/oras/internal/descriptor"
 	"oras.land/oras/internal/docker"
 	"oras.land/oras/internal/listener"
 )
-
-var maxConfigSize int64 = 4 * 1024 * 1024 // 4 MiB
 
 // mediaTypeRegexp is the regular expression pattern required for a valid
 // media type, as defined in the image spec schema:
@@ -189,8 +188,8 @@ func getPlatform(ctx context.Context, target oras.ReadOnlyTarget, manifest *ocis
 		return nil, nil //nolint:nilnil
 	}
 	// if config size is larger than 4 MiB, discontinue the fetch
-	if manifest.Config.Size > maxConfigSize {
-		return nil, fmt.Errorf("config size %v exceeds MaxBytes %v: %w", manifest.Config.Size, maxConfigSize, errdef.ErrSizeExceedsLimit)
+	if manifest.Config.Size > common.MaxConfigSize {
+		return nil, fmt.Errorf("config size %v exceeds MaxBytes %v: %w", manifest.Config.Size, common.MaxConfigSize, errdef.ErrSizeExceedsLimit)
 	}
 	// fetch config content
 	contentBytes, err := content.FetchAll(ctx, target, manifest.Config)
