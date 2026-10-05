@@ -123,7 +123,8 @@ test/e2e/
 │   ├── command/               # ORAS CLI command specs
 │   └── scenario/              # Multi-command scenario specs
 ├── internal/              # Helpers shared by the suites
-│   ├── testdata/              # Go fixture packages (artifact, feature, foobar) used by specs
+│   ├── testdata/              # Go fixture packages (artifact, feature, foobar,
+│   │                           # multi_arch, nonjson_config) used by specs
 │   └── utils/                 # Command execution, output matching, suite setup
 ├── k8s/                   # Kubernetes manifests
 │   ├── namespace.yaml          # Namespace definition
