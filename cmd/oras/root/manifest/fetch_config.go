@@ -115,6 +115,12 @@ func fetchConfig(cmd *cobra.Command, opts *fetchConfigOptions) (fetchErr error) 
 	if !opts.OutputDescriptor || opts.outputPath != "" {
 		// fetch config content
 		if opts.outputPath != "" && opts.outputPath != "-" {
+			reader, err := src.Fetch(ctx, configDesc)
+			if err != nil {
+				return err
+			}
+			defer reader.Close()
+
 			file, err := os.Create(opts.outputPath)
 			if err != nil {
 				return err
@@ -123,26 +129,26 @@ func fetchConfig(cmd *cobra.Command, opts *fetchConfigOptions) (fetchErr error) 
 				if err := file.Close(); fetchErr == nil {
 					fetchErr = err
 				}
+				if fetchErr != nil {
+					_ = os.Remove(opts.outputPath)
+				}
 			}()
 
-			reader, err := src.Fetch(ctx, configDesc)
+			vr := content.NewVerifyReader(reader, configDesc)
+			if _, err = io.Copy(file, vr); err != nil {
+				return err
+			}
+			if err := vr.Verify(); err != nil {
+				return err
+			}
+		} else {
+			contentBytes, err := fetchConfigContent(ctx, src, configDesc)
 			if err != nil {
 				return err
 			}
-			defer reader.Close()
 
-			_, err = io.Copy(file, reader)
-			return err
-		}
-
-		contentBytes, err := fetchConfigContent(ctx, src, configDesc)
-		if err != nil {
-			return err
-		}
-
-		if opts.outputPath == "" || opts.outputPath == "-" {
 			// output config content
-			return opts.Output(os.Stdout, contentBytes)
+			return opts.Output(cmd.OutOrStdout(), contentBytes)
 		}
 	}
 
@@ -152,7 +158,7 @@ func fetchConfig(cmd *cobra.Command, opts *fetchConfigOptions) (fetchErr error) 
 		if err != nil {
 			return err
 		}
-		return opts.Output(os.Stdout, descBytes)
+		return opts.Output(cmd.OutOrStdout(), descBytes)
 	}
 
 	return nil

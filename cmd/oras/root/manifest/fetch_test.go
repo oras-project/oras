@@ -18,11 +18,13 @@ package manifest
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	stderrs "errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
@@ -178,13 +180,18 @@ func Test_fetchConfig_outputFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	var output bytes.Buffer
+
 	rootCmd := &cobra.Command{Use: "oras"}
-	rootCmd.AddCommand(fetchConfigCmd())
+	cmd := fetchConfigCmd()
+	cmd.SetOut(&output)
+	rootCmd.AddCommand(cmd)
 	rootCmd.SetArgs([]string{
 		"fetch-config",
 		"--oci-layout-path", layoutDir,
 		"test:v1",
 		"--output", outputPath,
+		"--descriptor",
 	})
 
 	if err := rootCmd.Execute(); err != nil {
@@ -197,5 +204,94 @@ func Test_fetchConfig_outputFile(t *testing.T) {
 	}
 	if !bytes.Equal(got, config) {
 		t.Fatalf("got %q, want %q", got, config)
+	}
+	var gotDesc ocispec.Descriptor
+	if err := json.Unmarshal(output.Bytes(), &gotDesc); err != nil {
+		t.Fatalf("failed to decode descriptor output: %v", err)
+	}
+	if gotDesc.Digest != configDigest {
+		t.Fatalf("got digest %q, want %q", gotDesc.Digest, configDigest)
+	}
+}
+
+func Test_fetchConfig_outputFile_digestMismatch(t *testing.T) {
+	tempDir := t.TempDir()
+	layoutDir := filepath.Join(tempDir, "layout")
+	outputPath := filepath.Join(tempDir, "config.json")
+
+	config := []byte(`{"architecture":"amd64"}`)
+	expectedDigest := digest.FromString("expected")
+
+	manifest := []byte(fmt.Sprintf(`{
+		"schemaVersion": 2,
+		"config": {
+			"mediaType": %q,
+			"digest": %q,
+			"size": %d
+		},
+		"layers": []
+	}`, ocispec.MediaTypeImageConfig, expectedDigest, len(config)))
+	manifestDigest := digest.FromBytes(manifest)
+
+	if err := os.MkdirAll(filepath.Join(layoutDir, "blobs", "sha256"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	ociLayout := []byte(`{"imageLayoutVersion":"1.0.0"}`)
+	if err := os.WriteFile(filepath.Join(layoutDir, "oci-layout"), ociLayout, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	index := []byte(fmt.Sprintf(`{
+		"schemaVersion": 2,
+		"manifests": [{
+			"mediaType": %q,
+			"digest": %q,
+			"size": %d,
+			"annotations": {
+				"org.opencontainers.image.ref.name": "test:v1"
+			}
+		}]
+	}`, ocispec.MediaTypeImageManifest, manifestDigest, len(manifest)))
+	if err := os.WriteFile(filepath.Join(layoutDir, "index.json"), index, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(
+		filepath.Join(layoutDir, "blobs", "sha256", expectedDigest.Encoded()),
+		config,
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(
+		filepath.Join(layoutDir, "blobs", "sha256", manifestDigest.Encoded()),
+		manifest,
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	rootCmd := &cobra.Command{Use: "oras"}
+	cmd := fetchConfigCmd()
+	rootCmd.AddCommand(cmd)
+	rootCmd.SetArgs([]string{
+		"fetch-config",
+		"--oci-layout-path", layoutDir,
+		"test:v1",
+		"--output", outputPath,
+	})
+
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected digest mismatch error")
+	} else if !strings.Contains(err.Error(), "mismatched digest") {
+		t.Fatalf("got %v, want mismatched digest error", err)
+	}
+
+	if _, err := os.Stat(outputPath); err == nil {
+		t.Fatalf("output file still exists")
+	} else if !os.IsNotExist(err) {
+		t.Fatalf("failed to check output file: %v", err)
 	}
 }
