@@ -181,7 +181,6 @@ func fetchConfig(cmd *cobra.Command, opts *fetchConfigOptions) (fetchErr error) 
 }
 
 func fetchConfigContent(ctx context.Context, src oras.ReadOnlyTarget, configDesc ocispec.Descriptor) ([]byte, error) {
-
 	if configDesc.Size > common.MaxConfigSize {
 		return nil, &oerrors.Error{
 			Err: fmt.Errorf(
