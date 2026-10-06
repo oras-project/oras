@@ -535,6 +535,94 @@ func Test_fetchConfig_outputFile_renameError(t *testing.T) {
 	}
 }
 
+func Test_fetchConfig_descriptorOnly(t *testing.T) {
+	tempDir := t.TempDir()
+	layoutDir := filepath.Join(tempDir, "layout")
+
+	config := []byte(`{"architecture":"amd64"}`)
+	configDigest := digest.FromBytes(config)
+
+	manifest := []byte(fmt.Sprintf(`{
+        "schemaVersion": 2,
+        "config": {
+            "mediaType": %q,
+            "digest": %q,
+            "size": %d
+        },
+        "layers": []
+    }`, ocispec.MediaTypeImageConfig, configDigest, len(config)))
+	manifestDigest := digest.FromBytes(manifest)
+
+	if err := os.MkdirAll(filepath.Join(layoutDir, "blobs", "sha256"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(
+		filepath.Join(layoutDir, "oci-layout"),
+		[]byte(`{"imageLayoutVersion":"1.0.0"}`),
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	index := []byte(fmt.Sprintf(`{
+        "schemaVersion": 2,
+        "manifests": [{
+            "mediaType": %q,
+            "digest": %q,
+            "size": %d,
+            "annotations": {
+                "org.opencontainers.image.ref.name": "test:v1"
+            }
+        }]
+    }`, ocispec.MediaTypeImageManifest, manifestDigest, len(manifest)))
+
+	if err := os.WriteFile(filepath.Join(layoutDir, "index.json"), index, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(
+		filepath.Join(layoutDir, "blobs", "sha256", configDigest.Encoded()),
+		config,
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(
+		filepath.Join(layoutDir, "blobs", "sha256", manifestDigest.Encoded()),
+		manifest,
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	var output bytes.Buffer
+
+	rootCmd := &cobra.Command{Use: "oras"}
+	cmd := fetchConfigCmd()
+	cmd.SetOut(&output)
+	rootCmd.AddCommand(cmd)
+	rootCmd.SetArgs([]string{
+		"fetch-config",
+		"--oci-layout-path", layoutDir,
+		"test:v1",
+		"--descriptor",
+	})
+
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	var got ocispec.Descriptor
+	if err := json.Unmarshal(output.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Digest != configDigest {
+		t.Fatalf("got digest %q, want %q", got.Digest, configDigest)
+	}
+}
+
 func Test_fetchConfig_outputFile_digestMismatch(t *testing.T) {
 	tempDir := t.TempDir()
 	layoutDir := filepath.Join(tempDir, "layout")
