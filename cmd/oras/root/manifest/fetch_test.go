@@ -304,6 +304,89 @@ func Test_fetchConfig_outputFile(t *testing.T) {
 	}
 }
 
+func Test_fetchConfig_outputStdout(t *testing.T) {
+	tempDir := t.TempDir()
+	layoutDir := filepath.Join(tempDir, "layout")
+
+	config := []byte(`{"architecture":"amd64"}`)
+	configDigest := digest.FromBytes(config)
+
+	manifest := []byte(fmt.Sprintf(`{
+        "schemaVersion": 2,
+        "config": {
+            "mediaType": %q,
+            "digest": %q,
+            "size": %d
+        },
+        "layers": []
+    }`, ocispec.MediaTypeImageConfig, configDigest, len(config)))
+	manifestDigest := digest.FromBytes(manifest)
+
+	if err := os.MkdirAll(filepath.Join(layoutDir, "blobs", "sha256"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(
+		filepath.Join(layoutDir, "oci-layout"),
+		[]byte(`{"imageLayoutVersion":"1.0.0"}`),
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	index := []byte(fmt.Sprintf(`{
+        "schemaVersion": 2,
+        "manifests": [{
+            "mediaType": %q,
+            "digest": %q,
+            "size": %d,
+            "annotations": {
+                "org.opencontainers.image.ref.name": "test:v1"
+            }
+        }]
+    }`, ocispec.MediaTypeImageManifest, manifestDigest, len(manifest)))
+
+	if err := os.WriteFile(filepath.Join(layoutDir, "index.json"), index, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(
+		filepath.Join(layoutDir, "blobs", "sha256", configDigest.Encoded()),
+		config,
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(
+		filepath.Join(layoutDir, "blobs", "sha256", manifestDigest.Encoded()),
+		manifest,
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	var output bytes.Buffer
+
+	rootCmd := &cobra.Command{Use: "oras"}
+	cmd := fetchConfigCmd()
+	cmd.SetOut(&output)
+	rootCmd.AddCommand(cmd)
+	rootCmd.SetArgs([]string{
+		"fetch-config",
+		"--oci-layout-path", layoutDir,
+		"test:v1",
+	})
+
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	if !bytes.Equal(output.Bytes(), config) {
+		t.Fatalf("got %q, want %q", output.Bytes(), config)
+	}
+}
+
 func Test_fetchConfig_outputFile_fetchError(t *testing.T) {
 	tempDir := t.TempDir()
 	layoutDir := filepath.Join(tempDir, "layout")
