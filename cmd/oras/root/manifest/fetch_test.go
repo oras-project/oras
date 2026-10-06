@@ -216,7 +216,7 @@ func Test_fetchConfig_outputFile(t *testing.T) {
 	layoutDir := filepath.Join(tempDir, "layout")
 	outputPath := filepath.Join(tempDir, "config.json")
 
-	config := []byte(`{"architecture":"amd64"}`)
+	config := bytes.Repeat([]byte("a"), int(common.MaxConfigSize)+1)
 	configDigest := digest.FromBytes(config)
 
 	manifest := []byte(fmt.Sprintf(`{

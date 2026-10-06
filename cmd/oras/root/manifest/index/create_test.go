@@ -27,6 +27,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/display/status"
+	"oras.land/oras/cmd/oras/root/manifest/common"
 )
 
 type testReadOnlyTarget struct {
@@ -316,6 +317,22 @@ func Test_enrichDescriptor(t *testing.T) {
 			target:            NewTestReadOnlyTarget(`unused`),
 			manifestBytes:     []byte(`not actually an index`),
 			manifestMediaType: "application/vnd.oci.image.index.v1+json",
+			wantErr:           true,
+		},
+		{
+			name:   "child manifest, config exceeds size limit",
+			target: NewTestReadOnlyTarget("(unused)"),
+			manifestBytes: []byte(fmt.Sprintf(`{
+		        "schemaVersion": 2,
+		        "mediaType": "application/vnd.oci.image.manifest.v1+json",
+		        "config": {
+		            "mediaType": "application/vnd.oci.image.config.v1+json",
+		            "digest": "sha256:5fefde2b739e2ff1976ecea4fb4f5e4827a1c424e9b1fb147ba5fd21b9197422",
+		            "size": %d
+		        },
+		        "layers": []
+		    }`, common.MaxConfigSize+1)),
+			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
 			wantErr:           true,
 		},
 	}
