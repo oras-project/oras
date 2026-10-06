@@ -457,6 +457,84 @@ func Test_fetchConfig_outputFile_createError(t *testing.T) {
 	}
 }
 
+func Test_fetchConfig_outputFile_renameError(t *testing.T) {
+	tempDir := t.TempDir()
+	layoutDir := filepath.Join(tempDir, "layout")
+	outputPath := filepath.Join(tempDir, "config.json")
+
+	config := []byte(`{"architecture":"amd64"}`)
+	configDigest := digest.FromBytes(config)
+
+	manifest := []byte(fmt.Sprintf(`{
+        "schemaVersion": 2,
+        "config": {
+            "mediaType": %q,
+            "digest": %q,
+            "size": %d
+        },
+        "layers": []
+    }`, ocispec.MediaTypeImageConfig, configDigest, len(config)))
+	manifestDigest := digest.FromBytes(manifest)
+
+	if err := os.MkdirAll(filepath.Join(layoutDir, "blobs", "sha256"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(
+		filepath.Join(layoutDir, "oci-layout"),
+		[]byte(`{"imageLayoutVersion":"1.0.0"}`),
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	index := []byte(fmt.Sprintf(`{
+        "schemaVersion": 2,
+        "manifests": [{
+            "mediaType": %q,
+            "digest": %q,
+            "size": %d,
+            "annotations": {
+                "org.opencontainers.image.ref.name": "test:v1"
+            }
+        }]
+    }`, ocispec.MediaTypeImageManifest, manifestDigest, len(manifest)))
+
+	if err := os.WriteFile(
+		filepath.Join(layoutDir, "index.json"),
+		index,
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(
+		filepath.Join(layoutDir, "blobs", "sha256", manifestDigest.Encoded()),
+		manifest,
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Mkdir(outputPath, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	rootCmd := &cobra.Command{Use: "oras"}
+	cmd := fetchConfigCmd()
+	rootCmd.AddCommand(cmd)
+	rootCmd.SetArgs([]string{
+		"fetch-config",
+		"--oci-layout-path", layoutDir,
+		"test:v1",
+		"--output", outputPath,
+	})
+
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected rename error")
+	}
+}
+
 func Test_fetchConfig_outputFile_digestMismatch(t *testing.T) {
 	tempDir := t.TempDir()
 	layoutDir := filepath.Join(tempDir, "layout")
