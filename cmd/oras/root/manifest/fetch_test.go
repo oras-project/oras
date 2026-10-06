@@ -90,6 +90,21 @@ func Test_fetchCmd_outputAndFormat(t *testing.T) {
 	}
 }
 
+func Test_fetchConfigCmd_outputAndPretty(t *testing.T) {
+	cmd := fetchConfigCmd()
+	cmd.SetArgs([]string{
+		"localhost:5000/hello:v1",
+		"--output", "-",
+		"--pretty",
+	})
+
+	err := cmd.Execute()
+	want := "`--output -` cannot be used with `--pretty` at the same time"
+	if err == nil || err.Error() != want {
+		t.Fatalf("got %v, want %v", err, want)
+	}
+}
+
 func Test_fetchConfigContent_sizeExceedsLimit(t *testing.T) {
 	target := &testConfigTarget{}
 	desc := ocispec.Descriptor{
@@ -586,6 +601,14 @@ func Test_fetchConfig_outputFile_renameError(t *testing.T) {
 	if err := os.WriteFile(
 		filepath.Join(layoutDir, "index.json"),
 		index,
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(
+		filepath.Join(layoutDir, "blobs", "sha256", configDigest.Encoded()),
+		config,
 		0644,
 	); err != nil {
 		t.Fatal(err)

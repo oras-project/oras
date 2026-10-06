@@ -189,7 +189,7 @@ func getPlatform(ctx context.Context, target oras.ReadOnlyTarget, manifest *ocis
 	}
 	// if config size is larger than 4 MiB, discontinue the fetch
 	if manifest.Config.Size > common.MaxConfigSize {
-		return nil, fmt.Errorf("config size %v exceeds MaxBytes %v: %w", manifest.Config.Size, common.MaxConfigSize, errdef.ErrSizeExceedsLimit)
+		return nil, fmt.Errorf("config size %v exceeds the limit of %v bytes: %w", manifest.Config.Size, common.MaxConfigSize, errdef.ErrSizeExceedsLimit)
 	}
 	// fetch config content
 	contentBytes, err := content.FetchAll(ctx, target, manifest.Config)

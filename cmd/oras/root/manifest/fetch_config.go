@@ -79,6 +79,9 @@ Example - Fetch and print the prettified descriptor of the config:
 			if opts.outputPath == "-" && opts.OutputDescriptor {
 				return errors.New("`--output -` cannot be used with `--descriptor` at the same time")
 			}
+			if opts.outputPath == "-" && opts.Pretty.Pretty {
+				return errors.New("`--output -` cannot be used with `--pretty` at the same time")
+			}
 			opts.RawReference = args[0]
 			return option.Parse(cmd, &opts)
 		},
@@ -148,8 +151,13 @@ func fetchConfig(cmd *cobra.Command, opts *fetchConfigOptions) (fetchErr error) 
 			if err := vr.Verify(); err != nil {
 				return err
 			}
-
 			if opts.outputPath != "-" {
+				if err := file.Chmod(0644); err != nil {
+					return err
+				}
+				if err := file.Sync(); err != nil {
+					return err
+				}
 				if err := file.Close(); err != nil {
 					return err
 				}
