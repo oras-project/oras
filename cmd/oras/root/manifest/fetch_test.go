@@ -90,21 +90,6 @@ func Test_fetchCmd_outputAndFormat(t *testing.T) {
 	}
 }
 
-func Test_fetchConfigCmd_outputAndPretty(t *testing.T) {
-	cmd := fetchConfigCmd()
-	cmd.SetArgs([]string{
-		"localhost:5000/hello:v1",
-		"--output", "-",
-		"--pretty",
-	})
-
-	err := cmd.Execute()
-	want := "`--output -` cannot be used with `--pretty` at the same time"
-	if err == nil || err.Error() != want {
-		t.Fatalf("got %v, want %v", err, want)
-	}
-}
-
 func Test_fetchConfigContent_sizeExceedsLimit(t *testing.T) {
 	target := &testConfigTarget{}
 	desc := ocispec.Descriptor{
@@ -203,6 +188,173 @@ func Test_fetchConfig_outputStdout_exceedsLimit(t *testing.T) {
 
 	if !bytes.Equal(output.Bytes(), config) {
 		t.Fatalf("got %d bytes, want %d", output.Len(), len(config))
+	}
+}
+
+func Test_fetchConfig_outputStdoutPretty_exceedsLimit(t *testing.T) {
+	tempDir := t.TempDir()
+	layoutDir := filepath.Join(tempDir, "layout")
+
+	config := bytes.Repeat([]byte("a"), int(common.MaxConfigSize)+1)
+	configDigest := digest.FromBytes(config)
+
+	manifest := []byte(fmt.Sprintf(`{
+		"schemaVersion": 2,
+		"config": {
+			"mediaType": %q,
+			"digest": %q,
+			"size": %d
+		},
+		"layers": []
+	}`, ocispec.MediaTypeImageConfig, configDigest, len(config)))
+	manifestDigest := digest.FromBytes(manifest)
+
+	if err := os.MkdirAll(filepath.Join(layoutDir, "blobs", "sha256"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(
+		filepath.Join(layoutDir, "oci-layout"),
+		[]byte(`{"imageLayoutVersion":"1.0.0"}`),
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	index := []byte(fmt.Sprintf(`{
+		"schemaVersion": 2,
+		"manifests": [{
+			"mediaType": %q,
+			"digest": %q,
+			"size": %d,
+			"annotations": {
+				"org.opencontainers.image.ref.name": "test:v1"
+			}
+		}]
+	}`, ocispec.MediaTypeImageManifest, manifestDigest, len(manifest)))
+
+	if err := os.WriteFile(filepath.Join(layoutDir, "index.json"), index, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(
+		filepath.Join(layoutDir, "blobs", "sha256", configDigest.Encoded()),
+		config,
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(
+		filepath.Join(layoutDir, "blobs", "sha256", manifestDigest.Encoded()),
+		manifest,
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	rootCmd := &cobra.Command{Use: "oras"}
+	cmd := fetchConfigCmd()
+	rootCmd.AddCommand(cmd)
+	rootCmd.SetArgs([]string{
+		"fetch-config",
+		"--oci-layout-path", layoutDir,
+		"--output", "-",
+		"--pretty",
+		"test:v1",
+	})
+
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected config size limit error")
+	}
+	if !strings.Contains(err.Error(), "exceeds the limit") {
+		t.Fatalf("got %q, want config size limit error", err)
+	}
+}
+
+func Test_fetchConfig_outputStdoutPretty(t *testing.T) {
+	tempDir := t.TempDir()
+	layoutDir := filepath.Join(tempDir, "layout")
+
+	config := []byte(`{"architecture":"amd64"}`)
+	configDigest := digest.FromBytes(config)
+
+	manifest := []byte(fmt.Sprintf(`{
+		"schemaVersion": 2,
+		"config": {
+			"mediaType": %q,
+			"digest": %q,
+			"size": %d
+		},
+		"layers": []
+	}`, ocispec.MediaTypeImageConfig, configDigest, len(config)))
+	manifestDigest := digest.FromBytes(manifest)
+
+	if err := os.MkdirAll(filepath.Join(layoutDir, "blobs", "sha256"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(
+		filepath.Join(layoutDir, "oci-layout"),
+		[]byte(`{"imageLayoutVersion":"1.0.0"}`),
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	index := []byte(fmt.Sprintf(`{
+		"schemaVersion": 2,
+		"manifests": [{
+			"mediaType": %q,
+			"digest": %q,
+			"size": %d,
+			"annotations": {
+				"org.opencontainers.image.ref.name": "test:v1"
+			}
+		}]
+	}`, ocispec.MediaTypeImageManifest, manifestDigest, len(manifest)))
+
+	if err := os.WriteFile(filepath.Join(layoutDir, "index.json"), index, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(
+		filepath.Join(layoutDir, "blobs", "sha256", configDigest.Encoded()),
+		config,
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(
+		filepath.Join(layoutDir, "blobs", "sha256", manifestDigest.Encoded()),
+		manifest,
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	var output bytes.Buffer
+
+	rootCmd := &cobra.Command{Use: "oras"}
+	cmd := fetchConfigCmd()
+	cmd.SetOut(&output)
+	rootCmd.AddCommand(cmd)
+	rootCmd.SetArgs([]string{
+		"fetch-config",
+		"--oci-layout-path", layoutDir,
+		"--output", "-",
+		"--pretty",
+		"test:v1",
+	})
+
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	want := "{\n  \"architecture\": \"amd64\"\n}\n"
+	if output.String() != want {
+		t.Fatalf("got %q, want %q", output.String(), want)
 	}
 }
 
@@ -396,7 +548,6 @@ func Test_fetchConfig_outputStdout(t *testing.T) {
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
-
 	if !bytes.Equal(output.Bytes(), config) {
 		t.Fatalf("got %q, want %q", output.Bytes(), config)
 	}
