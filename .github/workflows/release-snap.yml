@@ -37,7 +37,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: extract version
         id: version
         run: |
@@ -52,13 +52,36 @@ jobs:
           sed -i 's/{VERSION}/${{ steps.version.outputs.version }}/g' snapcraft.yaml
           sed -i 's/{ARCH}/${{ matrix.arch }}/g' snapcraft.yaml
           cat snapcraft.yaml
-      - uses: canonical/action-build@3bdaa03e1ba6bf59a65f84a751d943d549a54e79 # v1.3.0
+
+      - name: build
         id: build
-      - uses: canonical/action-publish@214b86e5ca036ead1668c79afb81e550e6c54d40 # v1.2.0
-        name: publish
+        env:
+          SNAPCRAFT_BUILD_ENVIRONMENT: lxd
+          SNAPCRAFT_IMAGE_INFO: '{"build_url":"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+        run: |
+          sudo chown root:root /
+          sudo groupadd --force --system lxd
+          sudo usermod --append --groups lxd "$(id -un)"
+          if [ -x /snap/bin/lxd ]; then
+            sudo snap refresh lxd
+          else
+            sudo snap install lxd
+          fi
+          sudo lxd init --auto
+          sudo iptables -P FORWARD ACCEPT
+          if [ -x /snap/bin/snapcraft ]; then
+            sudo snap refresh --classic snapcraft
+          else
+            sudo snap install --classic snapcraft
+          fi
+          sudo -u "$(id -un)" -E /snap/bin/snapcraft
+          echo "snap=$(ls ./*.snap)" >> "$GITHUB_OUTPUT"
+
+      - name: publish
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
-        with:
-          snap: ${{ steps.build.outputs.snap }}
-          release: ${{ steps.version.outputs.release }}
+          SNAP_FILE: ${{ steps.build.outputs.snap }}
+          SNAP_RELEASE: ${{ steps.version.outputs.release }}
+        run: |
+          /snap/bin/snapcraft upload "$SNAP_FILE" --release "$SNAP_RELEASE"
 

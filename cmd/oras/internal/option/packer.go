@@ -40,7 +40,7 @@ const (
 
 var (
 	errAnnotationConflict = errors.New("`--annotation` and `--annotation-file` cannot be both specified")
-	errPathValidation     = errors.New("absolute file path detected. If it's intentional, use --disable-path-validation flag to skip this check")
+	errPathValidation     = errors.New("absolute file paths are insecure and not recommended. If it's intentional, use --disable-path-validation flag to skip this check")
 )
 
 // Packer option struct.

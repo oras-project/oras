@@ -33,7 +33,9 @@ else
   ARCH = amd64
 endif
 
-TARGET_OBJS ?= checksums.txt darwin_amd64.tar.gz darwin_arm64.tar.gz linux_amd64.tar.gz linux_arm64.tar.gz linux_armv7.tar.gz linux_s390x.tar.gz linux_ppc64le.tar.gz linux_riscv64.tar.gz linux_loong64.tar.gz windows_amd64.zip freebsd_amd64.tar.gz
+ORAS_REPO   ?= oras-project/oras
+
+TARGET_OBJS ?= checksums.txt darwin_amd64.tar.gz darwin_arm64.tar.gz linux_amd64.tar.gz linux_arm64.tar.gz linux_armv7.tar.gz linux_s390x.tar.gz linux_ppc64le.tar.gz linux_riscv64.tar.gz linux_loong64.tar.gz windows_amd64.zip windows_arm64.zip freebsd_amd64.tar.gz
 
 LDFLAGS = -w
 ifdef VERSION
@@ -53,13 +55,10 @@ default: lint test build-$(OS)-$(ARCH)
 test: tidy vendor check-encoding  ## tidy and run tests
 	$(GO_EXE) test -race -v -coverprofile=coverage.txt -covermode=atomic -coverpkg=$(PKG) $(PKG)
 
-.PHONY: teste2e
-teste2e:  ## run end to end tests
-	./test/e2e/scripts/e2e.sh $(shell git rev-parse --show-toplevel) --clean
-
 .PHONY: covhtml
-covhtml:  ## look at code coverage
-	open .cover/coverage.html
+covhtml:  test ## generate and open the coverage report
+	$(GO_EXE) tool cover -html=coverage.txt -o coverage.html
+	open coverage.html
 
 .PHONY: clean
 clean:  ## clean up build
@@ -168,25 +167,26 @@ vendor:  ## go mod vendor
 	GO111MODULE=on $(GO_EXE) mod vendor
 
 .PHONY: fetch-dist
-fetch-dist:  ## fetch distribution
+fetch-dist:  ## fetch distribution (requires gh CLI: https://cli.github.com)
+	@command -v gh >/dev/null 2>&1 || { echo "gh CLI not found. Install: https://cli.github.com"; exit 1; }
 	mkdir -p _dist
-	cd _dist && \
-	for obj in ${TARGET_OBJS} ; do \
-		curl -sSL -o oras_${VERSION}_$${obj} https://github.com/oras-project/oras/releases/download/v${VERSION}/oras_${VERSION}_$${obj} ; \
-	done
+	gh release download v${VERSION} --repo $(ORAS_REPO) --dir _dist --clobber
 
-.PHONY: sign
-sign:  ## sign
-	for f in $$(ls _dist/*.{gz,txt} 2>/dev/null) ; do \
-		gpg --armor --detach-sign $${f} ; \
-	done
+.PHONY: release-prep
+release-prep:  ## prepare release: bump version, create PR
+	@scripts/release.sh prep $(VERSION)
 
-.PHONY: teste2e-covdata
-teste2e-covdata:  ## test e2e coverage
-	export GOCOVERDIR=$(CURDIR)/test/e2e/.cover; \
-	rm -rf $$GOCOVERDIR; \
-	mkdir -p $$GOCOVERDIR; \
-	$(MAKE) teste2e && $(GO_EXE) tool covdata textfmt -i=$$GOCOVERDIR -o "$(CURDIR)/test/e2e/coverage.txt"
+.PHONY: release-tag
+release-tag:  ## tag release: create and push signed tag
+	@scripts/release.sh tag $(VERSION) $(SHA)
+
+.PHONY: release-validate
+release-validate:  ## validate release: verify CI, artifacts, checksums
+	@scripts/release.sh validate
+
+.PHONY: release-publish
+release-publish:  ## publish release: verify signatures, publish, trigger snap
+	@scripts/release.sh publish
 
 .PHONY: help
 help:  ## Display this help

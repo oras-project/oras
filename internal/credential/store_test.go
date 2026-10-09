@@ -17,33 +17,63 @@ package credential
 
 import (
 	"os"
-	"path"
-	"reflect"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
 
+// TestNewStoreMalformedConfig covers the error path on every platform: JSON
+// decoding fails the same way everywhere, unlike file permissions.
+func TestNewStoreMalformedConfig(t *testing.T) {
+	filename := filepath.Join(t.TempDir(), "config.json")
+	if err := os.WriteFile(filename, []byte("{not json"), 0600); err != nil {
+		t.Fatalf("cannot create config file: %v", err)
+	}
+
+	credStore, err := NewStore(filename)
+	if credStore != nil {
+		t.Errorf("expected NewStore to return a nil store, got %v", credStore)
+	}
+	if err == nil {
+		t.Fatal("expected NewStore to return an error, got nil")
+	}
+	if want := "failed to decode config file"; !strings.Contains(err.Error(), want) {
+		t.Errorf("expected error to contain %q, got %q", want, err.Error())
+	}
+}
+
 func TestNewStoreError(t *testing.T) {
-	tmpDir := t.TempDir()
-	filename := path.Join(tmpDir, "testfile.txt")
+	if runtime.GOOS == "windows" {
+		// os.Chmod on Windows only toggles the read-only attribute and cannot
+		// clear the read permission, so the file stays readable and NewStore
+		// succeeds. See https://pkg.go.dev/os#Chmod.
+		t.Skip("os.Chmod cannot make a file unreadable on Windows")
+	}
+	if os.Geteuid() == 0 {
+		// Permission bits do not restrict root, so the file stays readable.
+		t.Skip("root bypasses file permissions")
+	}
+
+	filename := filepath.Join(t.TempDir(), "testfile.txt")
 	file, err := os.Create(filename)
 	if err != nil {
-		t.Errorf("error: cannot create file : %v", err)
+		t.Fatalf("cannot create file: %v", err)
 	}
 	defer func() { _ = file.Close() }()
 
-	err = os.Chmod(filename, 000)
-	if err != nil {
-		t.Errorf("error: cannot change file permissions: %v", err)
+	if err := os.Chmod(filename, 000); err != nil {
+		t.Fatalf("cannot change file permissions: %v", err)
 	}
+
 	credStore, err := NewStore(filename)
 	if credStore != nil {
-		t.Errorf("Expected NewStore to return nil but actually returned %v ", credStore)
+		t.Errorf("expected NewStore to return a nil store, got %v", credStore)
 	}
-	if err != nil {
-		ok := strings.Contains(err.Error(), "failed to open config file")
-		reflect.DeepEqual(ok, true)
-	} else {
-		t.Errorf("Expected err to be not nil")
+	if err == nil {
+		t.Fatal("expected NewStore to return an error, got nil")
+	}
+	if want := "failed to open config file"; !strings.Contains(err.Error(), want) {
+		t.Errorf("expected error to contain %q, got %q", want, err.Error())
 	}
 }

@@ -120,11 +120,25 @@ func init() {
 		}
 
 		// Login
-		cmd := exec.Command(ORASPath, "login", Host, "-u", Username, "-p", Password)
-		gomega.Expect(cmd.Run()).ShouldNot(gomega.HaveOccurred())
-		cmd = exec.Command(ORASPath, "login", FallbackHost, "-u", Username, "-p", Password)
-		gomega.Expect(cmd.Run()).ShouldNot(gomega.HaveOccurred())
-		cmd = exec.Command(ORASPath, "login", ZOTHost, "-u", Username, "-p", Password)
-		gomega.Expect(cmd.Run()).ShouldNot(gomega.HaveOccurred())
+		cmd := exec.Command(ORASPath, "login", Host, "-u", Username, "-p", Password, "--plain-http")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Login to %s failed:\n%s\n", Host, string(output))
+		}
+		gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+
+		cmd = exec.Command(ORASPath, "login", FallbackHost, "-u", Username, "-p", Password, "--plain-http")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Login to %s failed:\n%s\n", FallbackHost, string(output))
+		}
+		gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+
+		cmd = exec.Command(ORASPath, "login", ZOTHost, "-u", Username, "-p", Password, "--plain-http")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Login to %s failed:\n%s\n", ZOTHost, string(output))
+		}
+		gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 	})
 }

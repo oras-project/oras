@@ -20,16 +20,20 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/root/manifest/common"
 	"oras.land/oras/internal/descriptor"
 )
 
@@ -112,19 +116,60 @@ func fetchConfig(cmd *cobra.Command, opts *fetchConfigOptions) (fetchErr error) 
 
 	if !opts.OutputDescriptor || opts.outputPath != "" {
 		// fetch config content
-		contentBytes, err := content.FetchAll(ctx, src, configDesc)
-		if err != nil {
-			return err
-		}
+		if opts.outputPath != "" && (opts.outputPath != "-" || !opts.Pretty.Pretty) {
+			reader, err := src.Fetch(ctx, configDesc)
+			if err != nil {
+				return err
+			}
+			defer reader.Close()
 
-		if opts.outputPath == "" || opts.outputPath == "-" {
+			var output io.Writer
+			var file *os.File
+			if opts.outputPath == "-" {
+				output = cmd.OutOrStdout()
+			} else {
+				file, err = os.CreateTemp(filepath.Dir(opts.outputPath), "oras-config-*")
+				if err != nil {
+					return err
+				}
+				defer func() {
+					_ = file.Close()
+					if fetchErr != nil {
+						_ = os.Remove(file.Name())
+					}
+				}()
+				output = file
+			}
+
+			vr := content.NewVerifyReader(reader, configDesc)
+			if _, err = io.Copy(output, vr); err != nil {
+				return err
+			}
+			if err := vr.Verify(); err != nil {
+				return err
+			}
+			if opts.outputPath != "-" {
+				if err := file.Chmod(0644); err != nil {
+					return err
+				}
+				if err := file.Sync(); err != nil {
+					return err
+				}
+				if err := file.Close(); err != nil {
+					return err
+				}
+				if err := os.Rename(file.Name(), opts.outputPath); err != nil {
+					return err
+				}
+			}
+		} else {
+			contentBytes, err := fetchConfigContent(ctx, src, configDesc)
+			if err != nil {
+				return err
+			}
+
 			// output config content
-			return opts.Output(os.Stdout, contentBytes)
-		}
-
-		// save config into the local file if the output path is provided
-		if err = os.WriteFile(opts.outputPath, contentBytes, 0666); err != nil {
-			return err
+			return opts.Output(cmd.OutOrStdout(), contentBytes)
 		}
 	}
 
@@ -134,10 +179,29 @@ func fetchConfig(cmd *cobra.Command, opts *fetchConfigOptions) (fetchErr error) 
 		if err != nil {
 			return err
 		}
-		return opts.Output(os.Stdout, descBytes)
+		return opts.Output(cmd.OutOrStdout(), descBytes)
 	}
 
 	return nil
+}
+
+func fetchConfigContent(ctx context.Context, src oras.ReadOnlyTarget, configDesc ocispec.Descriptor) ([]byte, error) {
+	if configDesc.Size > common.MaxConfigSize {
+		return nil, &oerrors.Error{
+			Err: fmt.Errorf(
+				"config size %v exceeds the limit of %v bytes: %w",
+				configDesc.Size,
+				common.MaxConfigSize,
+				errdef.ErrSizeExceedsLimit,
+			),
+			Recommendation: fmt.Sprintf(
+				`To download a large config, use "oras blob fetch --output <file> <repository>@%s"`,
+				configDesc.Digest,
+			),
+		}
+	}
+
+	return content.FetchAll(ctx, src, configDesc)
 }
 
 func fetchConfigDesc(ctx context.Context, src oras.ReadOnlyTarget, reference string, targetPlatform *ocispec.Platform) (ocispec.Descriptor, error) {

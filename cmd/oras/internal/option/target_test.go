@@ -133,7 +133,8 @@ func Test_parseOCILayoutReference(t *testing.T) {
 	}{
 		{"Empty input", "", "", "", true},
 		{"Empty path and tag", ":", "", "", true},
-		{"Empty path and digest", "@", "", "", false},
+		{"Empty path and digest", "@", "", "", true},
+		{"Empty path and valid digest", "@sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a", "", "", true},
 		{"Empty digest", "path@", "path", "", false},
 		{"Empty tag", "path:", "path", "", false},
 		{"path and digest", "path@digest", "path", "digest", false},

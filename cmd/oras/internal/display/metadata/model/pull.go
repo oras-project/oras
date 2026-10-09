@@ -61,6 +61,9 @@ type pull struct {
 
 // NewPull creates a new metadata struct for pull command.
 func NewPull(digestReference string, files []File) any {
+	if files == nil {
+		files = []File{}
+	}
 	return pull{
 		DigestReference: DigestReference{
 			Reference: digestReference,

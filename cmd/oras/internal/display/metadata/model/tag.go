@@ -36,8 +36,8 @@ func (tag *Tagged) AddTag(t string) {
 
 // Tags returns the tags.
 func (tag *Tagged) Tags() []string {
-	tag.lock.RLock()
-	defer tag.lock.RUnlock()
+	tag.lock.Lock()
+	defer tag.lock.Unlock()
 	slices.Sort(tag.tags)
-	return tag.tags
+	return slices.Clone(tag.tags)
 }

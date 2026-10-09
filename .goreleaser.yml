@@ -49,8 +49,6 @@ builds:
   - goos: freebsd
     goarch: s390x
   - goos: windows
-    goarch: arm64
-  - goos: windows
     goarch: arm
   - goos: darwin
     goarch: arm

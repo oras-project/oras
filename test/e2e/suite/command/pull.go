@@ -299,12 +299,42 @@ var _ = Describe("OCI spec 1.1 registry users:", func() {
 			tempDir := PrepareTempFiles()
 			ref := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
 			out := ORAS("pull", ref, "--format", "go-template={{.reference}}").WithWorkDir(tempDir).Exec().Out.Contents()
-			Expect(out).To(Equal([]byte("localhost:7000/command/artifacts@sha256:fd6ed2f36b5465244d5dc86cb4e7df0ab8a9d24adc57825099f522fe009a22bb")))
+			Expect(out).To(Equal([]byte(fmt.Sprintf("%s/%s@%s", ZOTHost, ArtifactRepo, foobar.Digest))))
 		})
 
 		It("should pull specific platform", func() {
 			ORAS("pull", RegistryRef(ZOTHost, ImageRepo, "multi"), "--platform", "linux/amd64", "-o", GinkgoT().TempDir()).
 				MatchStatus(multi_arch.LinuxAMD64StateKeys, true, len(multi_arch.LinuxAMD64StateKeys)).Exec()
+		})
+
+		It("should not leave partial output when pulling multiple platforms with duplicate filenames", func() {
+			repo := fmt.Sprintf("command/pull/%d/multi-platform-duplicate", GinkgoRandomSeed())
+			tempDir := GinkgoT().TempDir()
+			amd64Dir := filepath.Join(tempDir, "amd64")
+			arm64Dir := filepath.Join(tempDir, "arm64")
+			pullRoot := filepath.Join(tempDir, "pulled")
+
+			Expect(os.MkdirAll(amd64Dir, 0o755)).ShouldNot(HaveOccurred())
+			Expect(os.MkdirAll(arm64Dir, 0o755)).ShouldNot(HaveOccurred())
+			Expect(os.WriteFile(filepath.Join(amd64Dir, "tool"), []byte("amd64 content\n"), 0o644)).ShouldNot(HaveOccurred())
+			Expect(os.WriteFile(filepath.Join(arm64Dir, "tool"), []byte("arm64 content\n"), 0o644)).ShouldNot(HaveOccurred())
+			Expect(os.MkdirAll(pullRoot, 0o755)).ShouldNot(HaveOccurred())
+
+			ORAS("push", RegistryRef(ZOTHost, repo, "linux-amd64"), "tool:application/octet-stream", "--artifact-platform", "linux/amd64").
+				WithWorkDir(amd64Dir).Exec()
+
+			ORAS("push", RegistryRef(ZOTHost, repo, "linux-arm64"), "tool:application/octet-stream", "--artifact-platform", "linux/arm64").
+				WithWorkDir(arm64Dir).Exec()
+
+			ORAS("manifest", "index", "create", RegistryRef(ZOTHost, repo, "multi"), "linux-amd64", "linux-arm64").
+				WithWorkDir(tempDir).Exec()
+
+			ORAS("pull", RegistryRef(ZOTHost, repo, "multi"), "-o", pullRoot).
+				ExpectFailure().
+				MatchErrKeyWords("duplicate name").
+				WithWorkDir(tempDir).Exec()
+
+			Expect(filepath.Join(pullRoot, "tool")).ShouldNot(BeAnExistingFile())
 		})
 
 		It("should pull an artifact with blob", func() {

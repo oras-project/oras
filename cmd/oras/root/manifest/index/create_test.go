@@ -27,6 +27,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/display/status"
+	"oras.land/oras/cmd/oras/root/manifest/common"
 )
 
 type testReadOnlyTarget struct {
@@ -173,6 +174,31 @@ func Test_enrichDescriptor(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:   "child manifest, non-image config with platform fields",
+			target: NewTestReadOnlyTarget(`{"architecture":"testarch","os":"testos"}`),
+			manifestBytes: []byte(`
+		        {
+		            "schemaVersion": 2,
+		            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+		            "artifactType": "application/vnd.example",
+		            "config": {
+		                "mediaType": "application/vnd.example.config+json",
+		                "digest": "sha256:5fefde2b739e2ff1976ecea4fb4f5e4827a1c424e9b1fb147ba5fd21b9197422",
+		                "size": 41
+		            },
+		            "layers": []
+		        }
+		    `),
+			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
+			checkDesc: func(t *testing.T, gotDesc, _ ocispec.Descriptor) {
+				t.Helper()
+				if gotDesc.Platform != nil {
+					t.Errorf("Platform = %#v, want nil", gotDesc.Platform)
+				}
+			},
+			wantErr: false,
+		},
+		{
 			name:   "child manifest, valid with platform",
 			target: NewTestReadOnlyTarget(`{"architecture":"testarch","os":"testos"}`),
 			manifestBytes: []byte(`
@@ -197,6 +223,34 @@ func Test_enrichDescriptor(t *testing.T) {
 				if got, want := gotDesc.ArtifactType, "application/vnd.example"; got != want {
 					t.Errorf("ArtifactType = %s, want %s", got, want)
 				}
+				wantPlatform := &ocispec.Platform{
+					Architecture: "testarch",
+					OS:           "testos",
+				}
+				if !reflect.DeepEqual(gotDesc.Platform, wantPlatform) {
+					t.Errorf("Platform = %#v, want %#v", gotDesc.Platform, wantPlatform)
+				}
+			},
+			wantErr: false,
+		},
+		{
+			name:   "child manifest, docker config with platform",
+			target: NewTestReadOnlyTarget(`{"architecture":"testarch","os":"testos"}`),
+			manifestBytes: []byte(`
+				{
+					"schemaVersion": 2,
+					"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+					"config": {
+						"mediaType": "application/vnd.docker.container.image.v1+json",
+						"digest": "sha256:5fefde2b739e2ff1976ecea4fb4f5e4827a1c424e9b1fb147ba5fd21b9197422",
+						"size": 41
+					},
+					"layers": []
+				}
+			`),
+			manifestMediaType: "application/vnd.docker.distribution.manifest.v2+json",
+			checkDesc: func(t *testing.T, gotDesc, _ ocispec.Descriptor) {
+				t.Helper()
 				wantPlatform := &ocispec.Platform{
 					Architecture: "testarch",
 					OS:           "testos",
@@ -359,6 +413,22 @@ func Test_enrichDescriptor(t *testing.T) {
 			target:            NewTestReadOnlyTarget(`unused`),
 			manifestBytes:     []byte(`not actually an index`),
 			manifestMediaType: "application/vnd.oci.image.index.v1+json",
+			wantErr:           true,
+		},
+		{
+			name:   "child manifest, config exceeds size limit",
+			target: NewTestReadOnlyTarget("(unused)"),
+			manifestBytes: []byte(fmt.Sprintf(`{
+		        "schemaVersion": 2,
+		        "mediaType": "application/vnd.oci.image.manifest.v1+json",
+		        "config": {
+		            "mediaType": "application/vnd.oci.image.config.v1+json",
+		            "digest": "sha256:5fefde2b739e2ff1976ecea4fb4f5e4827a1c424e9b1fb147ba5fd21b9197422",
+		            "size": %d
+		        },
+		        "layers": []
+		    }`, common.MaxConfigSize+1)),
+			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
 			wantErr:           true,
 		},
 	}

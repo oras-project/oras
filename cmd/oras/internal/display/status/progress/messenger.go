@@ -15,45 +15,96 @@ limitations under the License.
 
 package progress
 
-import "oras.land/oras/internal/progress"
+import (
+	"sync"
+
+	"oras.land/oras/internal/progress"
+)
 
 // messenger is progress message channel.
+//
+// The update channel is deliberately never closed. Trackers are handed to
+// io.Reader / io.Writer wrappers that can outlive the operation they track,
+// most notably the net/http request body reader, which keeps being read by
+// the transport write loop after the round trip returns. Closing the channel
+// would let such a late Update or Fail send on a closed channel and panic.
+// Instead, Close closes the done channel and every send races the done signal,
+// so late updates are dropped instead of panicking.
 type messenger struct {
-	update  chan statusUpdate
-	closed  bool
-	prompts map[progress.State]string
+	update    chan statusUpdate
+	done      chan struct{}
+	closeOnce sync.Once
+	prompts   map[progress.State]string
+}
+
+// newMessenger creates a new messenger.
+func newMessenger(prompts map[progress.State]string) *messenger {
+	return &messenger{
+		update:  make(chan statusUpdate, bufferSize),
+		done:    make(chan struct{}),
+		prompts: prompts,
+	}
+}
+
+// send delivers the update unless the messenger is already closed.
+func (m *messenger) send(update statusUpdate) {
+	select {
+	case m.update <- update:
+	case <-m.done:
+		// the messenger is closed, drop the update
+	}
 }
 
 // Update sends the status to the message channel.
 func (m *messenger) Update(status progress.Status) error {
 	switch status.State {
 	case progress.StateInitialized:
-		m.update <- updateStatusStartTime()
+		m.send(updateStatusStartTime())
 	case progress.StateTransmitting:
 		select {
 		case m.update <- updateStatusMessage(m.prompts[progress.StateTransmitting], status.Offset):
 		default:
-			// drop message if channel is full
+			// drop message if channel is full or the messenger is closed
 		}
 	default:
-		m.update <- updateStatusMessage(m.prompts[status.State], status.Offset)
+		m.send(updateStatusMessage(m.prompts[status.State], status.Offset))
 	}
 	return nil
 }
 
 // Fail sends the error to the message channel.
 func (m *messenger) Fail(err error) error {
-	m.update <- updateStatusError(err)
+	m.send(updateStatusError(err))
 	return nil
 }
 
-// Close marks the progress as completed and closes the message channel.
+// Close marks the progress as completed and stops the message channel.
 func (m *messenger) Close() error {
-	if m.closed {
-		return nil
-	}
-	m.update <- updateStatusEndTime()
-	close(m.update)
-	m.closed = true
+	m.closeOnce.Do(func() {
+		// the done channel is still open, so this update is guaranteed to be
+		// delivered to the drain goroutine before it stops
+		m.send(updateStatusEndTime())
+		close(m.done)
+	})
 	return nil
+}
+
+// drain applies the status updates to s until the messenger is closed.
+func (m *messenger) drain(s *status) {
+	for {
+		select {
+		case update := <-m.update:
+			update(s)
+		case <-m.done:
+			// apply the updates that are still buffered, then stop
+			for {
+				select {
+				case update := <-m.update:
+					update(s)
+				default:
+					return
+				}
+			}
+		}
+	}
 }

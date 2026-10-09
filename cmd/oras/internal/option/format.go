@@ -100,29 +100,28 @@ func (f *Format) ApplyFlags(fs *pflag.FlagSet) {
 
 // Parse parses the input format flag.
 func (f *Format) Parse(cmd *cobra.Command) error {
-	// print deprecation message for table format
-	if f.FormatFlag == FormatTypeTable.Name {
-		_, _ = fmt.Fprint(cmd.ErrOrStderr(), "Format \"table\" is deprecated and will be removed in a future release.\n")
-	}
 	if err := f.parseFlag(); err != nil {
 		return err
-	}
-
-	if f.Type == FormatTypeText.Name {
-		// flag not specified
-		return nil
-	}
-
-	if f.Type == FormatTypeGoTemplate.Name && f.Template == "" {
-		return &oerrors.Error{
-			Err:            fmt.Errorf("%q format specified but no template given", f.Type),
-			Recommendation: fmt.Sprintf("use `--format %s=TEMPLATE` to specify the template", f.Type),
-		}
 	}
 
 	var optionalTypes []string
 	for _, t := range f.allowedTypes {
 		if f.Type == t.Name {
+			if f.Type == FormatTypeText.Name {
+				// flag not specified
+				return nil
+			}
+
+			if f.Type == FormatTypeTable.Name {
+				_, _ = fmt.Fprint(cmd.ErrOrStderr(), "Format \"table\" is deprecated and will be removed in a future release.\n")
+			}
+
+			if f.Type == FormatTypeGoTemplate.Name && f.Template == "" {
+				return &oerrors.Error{
+					Err:            fmt.Errorf("%q format specified but no template given", f.Type),
+					Recommendation: fmt.Sprintf("use `--format %s=TEMPLATE` to specify the template", f.Type),
+				}
+			}
 			// type validation passed
 			return nil
 		}
