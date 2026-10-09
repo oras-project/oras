@@ -138,6 +138,9 @@ func (target *Target) parseOCILayoutReference() error {
 		// `digest` found
 		path = raw[:idx]
 		ref = raw[idx+1:]
+		if path == "" {
+			return errors.Join(fmt.Errorf("found empty file path in %q", raw), errdef.ErrInvalidReference)
+		}
 	} else {
 		// find `tag`
 		var err error
