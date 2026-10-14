@@ -189,6 +189,12 @@ func fetchIndex(ctx context.Context, handler status.ManifestIndexUpdateHandler, 
 	if err := json.Unmarshal(content, &index); err != nil {
 		return ocispec.Index{}, err
 	}
+	if index.MediaType == "" {
+		// mediaType is optional in older indexes. Fall back to the resolved
+		// descriptor, which IsIndex has already checked, so the updated index
+		// is not repacked as application/octet-stream.
+		index.MediaType = desc.MediaType
+	}
 	return index, nil
 }
 
