@@ -316,6 +316,9 @@ func Test_updateCmd_invalidExtraTag(t *testing.T) {
 	err := cmd.Execute()
 	if err == nil || err.Error() != "empty extra tag" {
 		t.Fatalf("got %v, want empty extra tag error", err)
+	}
+}
+
 type testIndexTarget struct {
 	content   []byte
 	mediaType string
