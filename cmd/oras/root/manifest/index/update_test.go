@@ -16,8 +16,10 @@ limitations under the License.
 package index
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"reflect"
 	"testing"
 
@@ -25,6 +27,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras/cmd/oras/internal/display/status"
+	"oras.land/oras/internal/docker"
 )
 
 type testUpdateDisplayStatus struct {
@@ -297,6 +300,67 @@ func Test_mergeIndexes(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("mergeIndexes() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+type testIndexTarget struct {
+	content   []byte
+	mediaType string
+}
+
+func (t *testIndexTarget) Exists(_ context.Context, _ ocispec.Descriptor) (bool, error) {
+	return true, nil
+}
+
+func (t *testIndexTarget) Fetch(_ context.Context, _ ocispec.Descriptor) (io.ReadCloser, error) {
+	return io.NopCloser(bytes.NewReader(t.content)), nil
+}
+
+func (t *testIndexTarget) Resolve(_ context.Context, _ string) (ocispec.Descriptor, error) {
+	return ocispec.Descriptor{
+		MediaType: t.mediaType,
+		Digest:    digest.FromBytes(t.content),
+		Size:      int64(len(t.content)),
+	}, nil
+}
+
+func Test_fetchIndex_mediaType(t *testing.T) {
+	tests := []struct {
+		name          string
+		body          string
+		descMediaType string
+		want          string
+	}{
+		{
+			name:          "body carries mediaType",
+			body:          `{"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[]}`,
+			descMediaType: ocispec.MediaTypeImageIndex,
+			want:          ocispec.MediaTypeImageIndex,
+		},
+		{
+			name:          "body omits mediaType",
+			body:          `{"schemaVersion":2,"manifests":[]}`,
+			descMediaType: ocispec.MediaTypeImageIndex,
+			want:          ocispec.MediaTypeImageIndex,
+		},
+		{
+			name:          "docker manifest list is preserved",
+			body:          `{"schemaVersion":2,"mediaType":"application/vnd.docker.distribution.manifest.list.v2+json","manifests":[]}`,
+			descMediaType: docker.MediaTypeManifestList,
+			want:          docker.MediaTypeManifestList,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			target := &testIndexTarget{content: []byte(tt.body), mediaType: tt.descMediaType}
+			got, err := fetchIndex(context.Background(), &testUpdateDisplayStatus{}, target, "test")
+			if err != nil {
+				t.Fatalf("fetchIndex() error = %v", err)
+			}
+			if got.MediaType != tt.want {
+				t.Errorf("fetchIndex() MediaType = %q, want %q", got.MediaType, tt.want)
 			}
 		})
 	}
