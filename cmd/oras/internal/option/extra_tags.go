@@ -31,7 +31,7 @@ func ValidateExtraTags(tags []string) error {
 
 		ref := registry.Reference{Reference: tag}
 		if err := ref.ValidateReferenceAsTag(); err != nil {
-			return fmt.Errorf("invalid extra tag %q: %w", tag, err)
+			return fmt.Errorf("invalid extra tag: %w", err)
 		}
 	}
 	return nil

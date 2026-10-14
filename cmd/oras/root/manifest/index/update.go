@@ -94,7 +94,10 @@ Example - Update an index to remove any existing artifact type:
 					return fmt.Errorf("remove: %s is not a digest", manifestRef)
 				}
 			}
-			return option.Parse(cmd, &opts)
+			if err := option.Parse(cmd, &opts); err != nil {
+				return err
+			}
+			return option.ValidateExtraTags(opts.tags)
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return updateIndex(cmd, opts)
