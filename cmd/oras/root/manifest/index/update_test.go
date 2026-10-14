@@ -379,3 +379,17 @@ func Test_fetchIndex_mediaType(t *testing.T) {
 		})
 	}
 }
+
+func Test_updateCmd_invalidHeader(t *testing.T) {
+	cmd := updateCmd()
+	cmd.SetArgs([]string{
+		"localhost:5000/hello:v1",
+		"--add", "linux-amd64",
+		"--header", "invalid",
+	})
+
+	err := cmd.Execute()
+	if err == nil || err.Error() != `invalid header: "invalid"` {
+		t.Fatalf("got %v, want invalid header error", err)
+	}
+}

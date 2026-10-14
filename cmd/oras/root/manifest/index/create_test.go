@@ -514,3 +514,17 @@ func Test_createCmd_invalidExtraTag(t *testing.T) {
 		t.Fatalf("got %v, want empty extra tag error", err)
 	}
 }
+
+func Test_createCmd_invalidHeader(t *testing.T) {
+	cmd := createCmd()
+	cmd.SetArgs([]string{
+		"localhost:5000/hello:v1",
+		"linux-amd64",
+		"--header", "invalid",
+	})
+
+	err := cmd.Execute()
+	if err == nil || err.Error() != `invalid header: "invalid"` {
+		t.Fatalf("got %v, want invalid header error", err)
+	}
+}

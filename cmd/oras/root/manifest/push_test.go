@@ -29,3 +29,17 @@ func Test_pushManifestCmd_invalidExtraTag(t *testing.T) {
 		t.Fatalf("got %v, want empty extra tag error", err)
 	}
 }
+
+func Test_pushManifestCmd_invalidHeader(t *testing.T) {
+	cmd := pushCmd()
+	cmd.SetArgs([]string{
+		"localhost:5000/hello:v1",
+		"manifest.json",
+		"--header", "invalid",
+	})
+
+	err := cmd.Execute()
+	if err == nil || err.Error() != `invalid header: "invalid"` {
+		t.Fatalf("got %v, want invalid header error", err)
+	}
+}
