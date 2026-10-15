@@ -101,7 +101,11 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 			refs := strings.Split(args[0], ",")
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
-			return option.Parse(cmd, &opts)
+
+			if err := option.Parse(cmd, &opts); err != nil {
+				return err
+			}
+			return option.ValidateExtraTags(opts.extraRefs)
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts.Printer.Verbose = opts.verbose

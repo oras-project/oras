@@ -1990,3 +1990,16 @@ func Test_copyCmd_platformSelection(t *testing.T) {
 		})
 	}
 }
+
+func Test_copyCmd_invalidExtraTag(t *testing.T) {
+	cmd := copyCmd()
+	cmd.SetArgs([]string{
+		"localhost:5000/source:v1",
+		"localhost:5000/destination:v1,,invalid@@tag",
+	})
+
+	err := cmd.Execute()
+	if err == nil || err.Error() != "empty extra tag" {
+		t.Fatalf("got %v, want empty extra tag error", err)
+	}
+}

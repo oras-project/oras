@@ -305,6 +305,20 @@ func Test_mergeIndexes(t *testing.T) {
 	}
 }
 
+func Test_updateCmd_invalidExtraTag(t *testing.T) {
+	cmd := updateCmd()
+	cmd.SetArgs([]string{
+		"localhost:5000/hello:v1",
+		"--add", "linux-amd64",
+		"--tag", "",
+	})
+
+	err := cmd.Execute()
+	if err == nil || err.Error() != "empty extra tag" {
+		t.Fatalf("got %v, want empty extra tag error", err)
+	}
+}
+
 type testIndexTarget struct {
 	content   []byte
 	mediaType string
@@ -363,5 +377,19 @@ func Test_fetchIndex_mediaType(t *testing.T) {
 				t.Errorf("fetchIndex() MediaType = %q, want %q", got.MediaType, tt.want)
 			}
 		})
+	}
+}
+
+func Test_updateCmd_invalidHeader(t *testing.T) {
+	cmd := updateCmd()
+	cmd.SetArgs([]string{
+		"localhost:5000/hello:v1",
+		"--add", "linux-amd64",
+		"--header", "invalid",
+	})
+
+	err := cmd.Execute()
+	if err == nil || err.Error() != `invalid header: "invalid"` {
+		t.Fatalf("got %v, want invalid header error", err)
 	}
 }
