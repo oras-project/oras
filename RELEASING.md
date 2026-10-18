@@ -27,7 +27,7 @@ The script validates the version and release branch, updates `internal/version/v
 
 It also prints a release-vote template for Slack `#oras-maintainers`. The pull request must pass CI and receive the required maintainer super-majority approval before merging.
 
-Releases for the current series and new minor versions are prepared from `main`. Patch releases for older series must use their corresponding `release-X.Y` branch. Set `ORAS_MAIN_RELEASE_VERSION` to override the release series detected for `main` when necessary.
+Releases (major, minor, and patch alike) are prepared and tagged from `main` by default. Only a backport to an older minor series, after a newer minor has shipped, uses a `release-X.Y` maintenance branch. Set `ORAS_MAIN_RELEASE_VERSION` to override the release series detected for `main` when necessary.
 
 ### 2. Tag the release
 
