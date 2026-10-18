@@ -12,6 +12,7 @@ Before starting a release:
 - Install `gpg`; `publish` uses it to verify artifact signatures even if you sign with SSH.
 - Ensure the ORAS project release public key is available in [`KEYS`](KEYS) for artifact signature verification.
 - Before releasing, update the Go version in `go.mod` and the relevant GitHub Actions workflows when the project moves to a new Go version.
+- Make sure the branch you are releasing from (`main`, or the maintenance branch for a backport release) is in a releasable state and that fixes for applicable critical and high CVEs have landed on it.
 
 ## Release process
 
