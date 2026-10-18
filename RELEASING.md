@@ -63,6 +63,15 @@ scripts/release.sh publish VERSION
 
 The script verifies artifact signatures against the ORAS project release key, adds verification information to the release notes, publishes the GitHub Release, and triggers the Snap publishing workflow (with `isStable=false` for pre-releases).
 
+## Backport releases
+
+If an older minor series needs a fix after a newer minor has shipped, release it from a `release-X.Y` maintenance branch instead of `main`:
+
+1. If `release-X.Y` does not exist yet, cut it from that series' last tag and push it, for example `git branch release-1.2 v1.2.3` followed by `git push <remote> release-1.2`.
+2. Cherry-pick the fix onto `release-X.Y` through a pull request against that branch.
+3. Check out `release-X.Y` and run `scripts/release.sh prep VERSION`. The release pull request targets `release-X.Y`.
+4. Continue with the tag, validate, and publish steps as usual, tagging the merged commit on `release-X.Y`.
+
 ## Dry runs
 
 Use `--dry-run` to preview the `prep` and `tag` phases without changing the repository:
