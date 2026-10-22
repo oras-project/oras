@@ -319,18 +319,16 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 					// empty layer
 					continue
 				}
-				if s.Annotations[ocispec.AnnotationTitle] == "" {
-					// unnamed layers are skipped
-					if err = metadataHandler.OnLayerSkipped(s); err != nil {
-						return nil, err
-					}
-				}
 				ss, err := content.Successors(ctx, fetcher, s)
 				if err != nil {
 					return nil, err
 				}
 				if len(ss) == 0 {
-					// skip s if it is unnamed AND has no successors.
+					// skip s if it is unnamed AND has no successors; unnamed
+					// manifests and indexes are still traversed, not skipped.
+					if err = metadataHandler.OnLayerSkipped(s); err != nil {
+						return nil, err
+					}
 					if err := notifyOnce(&printed, s, statusHandler.OnNodeSkipped); err != nil {
 						return nil, err
 					}

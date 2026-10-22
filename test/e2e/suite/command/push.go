@@ -791,9 +791,9 @@ var _ = Describe("Remote registry users:", func() {
 		buildRecursiveDir := func() (string, map[string]string) {
 			srcDir := GinkgoT().TempDir()
 			files := map[string]string{
-				"file1.txt":              "root file one\n",
-				"file2.txt":              "root file two\n",
-				"subdir/file3.txt":       "subdir file three\n",
+				"file1.txt":               "root file one\n",
+				"file2.txt":               "root file two\n",
+				"subdir/file3.txt":        "subdir file three\n",
 				"subdir/nested/file4.txt": "nested file four\n",
 			}
 			for rel, content := range files {
@@ -818,9 +818,12 @@ var _ = Describe("Remote registry users:", func() {
 				Exec()
 
 			dstDir := GinkgoT().TempDir()
+			// The untitled child manifests must not be reported as skipped
+			// layers — the pull must complete with the "Pulled" summary.
 			ORAS("pull", ref).
 				WithWorkDir(dstDir).
 				WithDescription("pull after recursive push").
+				MatchKeyWords("Pulled ", "Digest: ").
 				Exec()
 
 			for rel, want := range files {
