@@ -71,7 +71,7 @@ func TestBuildFromNode_noAnnotationTitleOnIndexDescriptors(t *testing.T) {
 		fileDesc.Annotations = map[string]string{ocispec.AnnotationTitle: "subdir/file.txt"}
 		fileDescs := map[string]ocispec.Descriptor{"subdir/file.txt": fileDesc}
 
-		assertNoAnnotationTitleInAllIndexes(t, ctx, store, b, root, fileDescs)
+		assertNoAnnotationTitleInAllIndexes(ctx, t, store, b, root, fileDescs)
 	})
 
 	t.Run("files and subdirs at root", func(t *testing.T) {
@@ -118,18 +118,18 @@ func TestBuildFromNode_noAnnotationTitleOnIndexDescriptors(t *testing.T) {
 			return d
 		}
 		fileDescs := map[string]ocispec.Descriptor{
-			"root.txt":              mkDesc("root.txt", "root"),
-			"subdir/sub.txt":        mkDesc("subdir/sub.txt", "sub"),
+			"root.txt":               mkDesc("root.txt", "root"),
+			"subdir/sub.txt":         mkDesc("subdir/sub.txt", "sub"),
 			"subdir/nested/deep.txt": mkDesc("subdir/nested/deep.txt", "deep"),
 		}
 
-		assertNoAnnotationTitleInAllIndexes(t, ctx, store, b, root, fileDescs)
+		assertNoAnnotationTitleInAllIndexes(ctx, t, store, b, root, fileDescs)
 	})
 }
 
 // assertNoAnnotationTitleInAllIndexes builds from node and recursively checks
 // every Image Index in the store for manifest entries that have AnnotationTitle.
-func assertNoAnnotationTitleInAllIndexes(t *testing.T, ctx context.Context, store interface {
+func assertNoAnnotationTitleInAllIndexes(ctx context.Context, t *testing.T, store interface {
 	content.Pusher
 	content.Fetcher
 }, b *Builder, root *dir.Node, fileDescs map[string]ocispec.Descriptor) {
