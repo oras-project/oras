@@ -319,6 +319,21 @@ func Test_pushCmd_PreRunE_recursiveValidation(t *testing.T) {
 			wantErr: "is not a directory; --recursive requires a directory",
 		},
 		{
+			name: "recursive with absolute directory path",
+			args: []string{"localhost:5000/test:v1"},
+			setup: func(t *testing.T) string {
+				t.Helper()
+				// t.TempDir() returns an absolute path; recursive push must
+				// disable the absolute-path validation that applies to
+				// file-as-artifact arguments.
+				return t.TempDir()
+			},
+			flags: map[string]string{
+				"recursive": "true",
+			},
+			wantErr: "",
+		},
+		{
 			name: "recursive with nonexistent path",
 			args: []string{"localhost:5000/test:v1", "nonexistent_path"},
 			setup: func(t *testing.T) string {
@@ -354,10 +369,16 @@ func Test_pushCmd_PreRunE_recursiveValidation(t *testing.T) {
 
 			// Run PreRunE
 			err := cmd.PreRunE(cmd, args)
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				return
+			}
 			if err == nil {
 				t.Fatal("expected error")
 			}
-			if tt.wantErr != "" && !strings.Contains(err.Error(), tt.wantErr) {
+			if !strings.Contains(err.Error(), tt.wantErr) {
 				t.Errorf("error %q does not contain %q", err.Error(), tt.wantErr)
 			}
 		})
