@@ -131,6 +131,9 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
+			if err := option.ValidateExtraTags(opts.extraRefs); err != nil {
+				return err
+			}
 			opts.DisableTTY(opts.Debug, false)
 			if opts.manifestConfigRef != "" && opts.artifactType == "" {
 				if !cmd.Flags().Changed("image-spec") {

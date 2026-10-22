@@ -83,3 +83,16 @@ func Test_runPush_force(t *testing.T) {
 		}
 	}
 }
+
+func Test_pushCmd_invalidExtraTag(t *testing.T) {
+	cmd := pushCmd()
+	cmd.SetArgs([]string{
+		"localhost:5000/hello:v1,,invalid@@tag",
+		"hi.txt",
+	})
+
+	err := cmd.Execute()
+	if err == nil || err.Error() != "empty extra tag" {
+		t.Fatalf("got %v, want empty extra tag error", err)
+	}
+}

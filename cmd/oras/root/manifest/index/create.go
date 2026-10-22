@@ -100,7 +100,12 @@ Example - Create an index and output the index to stdout, auto push will be disa
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
 			opts.sources = args[1:]
-			return option.Parse(cmd, &opts)
+
+			if err := option.Parse(cmd, &opts); err != nil {
+				return err
+			}
+
+			return option.ValidateExtraTags(opts.extraRefs)
 		},
 		Aliases: []string{"pack"},
 		RunE: func(cmd *cobra.Command, _ []string) error {

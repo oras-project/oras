@@ -20,7 +20,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
 func Test_tagManifest_remoteNotFound(t *testing.T) {
@@ -38,5 +41,19 @@ func Test_tagManifest_remoteNotFound(t *testing.T) {
 	cmd.SetArgs([]string{"--plain-http", uri.Host + "/test:v1", "v2"})
 	if err := cmd.Execute(); err == nil {
 		t.Fatal("tag error = nil, want not found error")
+	}
+}
+
+func Test_tagCmd_requiresSourceAndDestination(t *testing.T) {
+	rootCmd := &cobra.Command{Use: "oras"}
+	rootCmd.AddCommand(tagCmd())
+	rootCmd.SetArgs([]string{"tag", "localhost:5000/hello:v1"})
+
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected an argument validation error")
+	}
+	if !strings.Contains(err.Error(), "at least 2 arguments") {
+		t.Fatalf("expected an argument count error, got %v", err)
 	}
 }
