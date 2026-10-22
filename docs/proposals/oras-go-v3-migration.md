@@ -12,27 +12,15 @@ oras-go v3 introduces a new module path (`github.com/oras-project/oras-go/v3`), 
 - Fixing a process-safety bug in the cache (`oci.New` vs `oci.NewStorage`).
 - Unlocking new user-facing capabilities: Podman auth.json credentials, per-registry TLS from `certs.d`, and automatic registry mirrors via `registries.conf`.
 
+Reference: [oras-go v3 migration guide](https://github.com/oras-project/oras-go/blob/main/MIGRATION_GUIDE.md).
+
 ## Background & Context
 
 ### What PR #2002 Already Covers
 
-The branch `feat/migrate-to-oras-go-v3` completes the mechanical migration:
+PR #2002 completes the mechanical migration: the module path change and the call-site updates for v3's breaking API changes (credentials, repository and registry fields, reference parsing, login/logout, scope hints, and the referrers capability). The [oras-go v3 migration guide](https://github.com/oras-project/oras-go/blob/main/MIGRATION_GUIDE.md) documents each of these changes in full.
 
-| Status | Change |
-|--------|--------|
-| ✅ Done | Import path `oras.land/oras-go/v2` → `github.com/oras-project/oras-go/v3` |
-| ✅ Done | `auth.Credential{}` → `credentials.Credential{}` |
-| ✅ Done | `client.Credential =` → `client.CredentialFunc =` |
-| ✅ Done | `credentials.Credential(store)` / `store.Get` → `remote.NewCredentialFunc(store)` |
-| ✅ Done | Username/password token flow kept via `auth.NewCompositeTokenFetcher` |
-| ✅ Done | `credentials.Login/Logout` → `remote.Login/Logout` |
-| ✅ Done | `repo.Client/PlainHTTP/HandleWarning` → `repo.Registry.*` |
-| ✅ Done | `repo.Reference.Repository` → `repo.RepositoryName` |
-| ✅ Done | `ref.Reference` (field) → `ref.GetReference()` |
-| ✅ Done | `registry.ParseReference` → `properties.NewReference` |
-| ✅ Done | `ref.ValidateReferenceAsTag()` → `ref.ValidateTag()` |
-| ✅ Done | `auth.AppendRepositoryScope` takes `properties.Reference` |
-| ✅ Done | `SetReferrersCapability()` — void, no longer returns error |
+PR #2002 also keeps the v2 distribution-spec token flow for username/password credentials by configuring `auth.NewCompositeTokenFetcher` in legacy mode, as described in the guide's "Bearer token flow" section.
 
 ### New Packages in oras-go v3
 
