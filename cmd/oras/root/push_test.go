@@ -769,3 +769,40 @@ func Test_runPushRecursive_brokenSymlink(t *testing.T) {
 		t.Fatalf("got error %v, want walk error", err)
 	}
 }
+
+// Test_runPushRecursive_manifestTitleAnnotation verifies that a user-supplied
+// org.opencontainers.image.title manifest annotation does not end up on
+// structural descriptors. The chunk, index, and root descriptors would all
+// share that title, so pull failed with "duplicate name" and materialized
+// manifest JSON as a file.
+func Test_runPushRecursive_manifestTitleAnnotation(t *testing.T) {
+	srcDir := t.TempDir()
+	// files plus a subdirectory force a chunk manifest under an index
+	if err := os.WriteFile(filepath.Join(srcDir, "a"), []byte("a"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(srcDir, "sub"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(srcDir, "sub", "b"), []byte("b"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	layoutDir := filepath.Join(t.TempDir(), "layout")
+
+	if err := runPushCmd(t,
+		"--oci-layout",
+		"--recursive",
+		"--annotation", "org.opencontainers.image.title=custom",
+		"--disable-path-validation",
+		layoutDir+":v1",
+		srcDir,
+	); err != nil {
+		t.Fatalf("push: %v", err)
+	}
+
+	outDir := t.TempDir()
+	if err := runPullCmd(t, "--oci-layout", layoutDir+":v1", "-o", outDir); err != nil {
+		t.Fatalf("pull: %v", err)
+	}
+	assertTree(t, outDir, "a", "sub/", "sub/b")
+}

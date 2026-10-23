@@ -248,8 +248,8 @@ func (b *Builder) createManifestWithAnnotations(ctx context.Context, layers []oc
 
 	manifestDesc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageManifest, manifestBytes)
 	manifestDesc.ArtifactType = b.opts.ArtifactType
-	if len(annotations) > 0 {
-		manifestDesc.Annotations = annotations
+	if descAnnotations := structuralAnnotations(annotations); len(descAnnotations) > 0 {
+		manifestDesc.Annotations = descAnnotations
 	}
 
 	if err := b.pusher.Push(ctx, manifestDesc, bytes.NewReader(manifestBytes)); err != nil {
@@ -300,8 +300,8 @@ func (b *Builder) createIndex(ctx context.Context, manifests []ocispec.Descripto
 
 	indexDesc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageIndex, indexBytes)
 	indexDesc.ArtifactType = b.opts.ArtifactType
-	if len(annotations) > 0 {
-		indexDesc.Annotations = annotations
+	if descAnnotations := structuralAnnotations(annotations); len(descAnnotations) > 0 {
+		indexDesc.Annotations = descAnnotations
 	}
 
 	if err := b.pusher.Push(ctx, indexDesc, bytes.NewReader(indexBytes)); err != nil {
@@ -314,6 +314,25 @@ func (b *Builder) createIndex(ctx context.Context, manifests []ocispec.Descripto
 	result.AllDescriptors = append(result.AllDescriptors, indexDesc)
 
 	return indexDesc, nil
+}
+
+// structuralAnnotations returns annotations with ocispec.AnnotationTitle
+// removed. User manifest annotations may contain a title and are kept in the
+// manifest content, but structural descriptors (directory manifests, chunk
+// manifests, indexes, and the root) must never carry one: oras pull
+// materializes any titled descriptor as a file, and several structural
+// descriptors sharing the same title fail the pull with "duplicate name".
+func structuralAnnotations(annotations map[string]string) map[string]string {
+	if _, ok := annotations[ocispec.AnnotationTitle]; !ok {
+		return annotations
+	}
+	filtered := make(map[string]string, len(annotations)-1)
+	for k, v := range annotations {
+		if k != ocispec.AnnotationTitle {
+			filtered[k] = v
+		}
+	}
+	return filtered
 }
 
 // chunkDescriptors splits a list of descriptors into chunks of at most maxSize.
