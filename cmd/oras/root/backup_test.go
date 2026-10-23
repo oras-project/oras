@@ -31,12 +31,12 @@ import (
 
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/oras-project/oras-go/v3"
+	"github.com/oras-project/oras-go/v3/content"
+	"github.com/oras-project/oras-go/v3/content/memory"
+	"github.com/oras-project/oras-go/v3/errdef"
+	"github.com/oras-project/oras-go/v3/registry/remote"
 	"github.com/sirupsen/logrus"
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/content/memory"
-	"oras.land/oras-go/v2/errdef"
-	"oras.land/oras-go/v2/registry/remote"
 )
 
 func TestParseArtifactReferences(t *testing.T) {
@@ -403,7 +403,7 @@ func Test_resolveTags(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to create remote repository: %v", err)
 		}
-		repo.PlainHTTP = true
+		repo.Registry.PlainHTTP = true
 
 		tags, descs, err := resolveTags(ctx, repo, []string{"v1", "v2"})
 		if err != nil {
@@ -435,7 +435,7 @@ func Test_resolveTags(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to create remote repository: %v", err)
 		}
-		repo.PlainHTTP = true
+		repo.Registry.PlainHTTP = true
 
 		_, _, err = resolveTags(ctx, repo, []string{"non-existent"})
 		if wantErr := errdef.ErrNotFound; !errors.Is(err, wantErr) {
@@ -458,7 +458,7 @@ func Test_resolveTags(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to create remote repository: %v", err)
 		}
-		repo.PlainHTTP = true
+		repo.Registry.PlainHTTP = true
 
 		tags, descs, err := resolveTags(ctx, repo, nil)
 		if err != nil {
@@ -491,7 +491,7 @@ func Test_resolveTags(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to create remote repository: %v", err)
 		}
-		repo.PlainHTTP = true
+		repo.Registry.PlainHTTP = true
 
 		_, _, err = resolveTags(ctx, repo, nil)
 		if err == nil {
@@ -516,7 +516,7 @@ func Test_resolveTags(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to create remote repository: %v", err)
 		}
-		repo.PlainHTTP = true
+		repo.Registry.PlainHTTP = true
 
 		_, _, err = resolveTags(ctx, repo, nil)
 		if wantErr := errdef.ErrNotFound; !errors.Is(err, wantErr) {
@@ -537,7 +537,7 @@ func Test_resolveTags(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to create remote repository: %v", err)
 		}
-		repo.PlainHTTP = true
+		repo.Registry.PlainHTTP = true
 
 		tags, descs, err := resolveTags(ctx, repo, nil)
 		if err != nil {
