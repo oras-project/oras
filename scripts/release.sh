@@ -373,6 +373,11 @@ do_validate() {
     validate_version "$version"
     info "Validating release v${version}"
 
+    if ! gh attestation verify --help 2>/dev/null | grep -q -- "--source-ref"; then
+        error "'gh attestation verify --source-ref' is not available. Upgrade the GitHub CLI to v2.68.0 or later."
+        exit 1
+    fi
+
     # Wait for CI workflows
     info "Checking CI workflow status..."
     local workflows=("release-ghcr" "release-github")
@@ -442,6 +447,28 @@ do_validate() {
         exit 1
     fi
     success "Checksums verified"
+
+    # Verify the build provenance attestations made by release-github.yml
+    info "Verifying build provenance attestations..."
+    local attested=0
+    for subject in _dist/oras_"${version}"_*.tar.gz _dist/oras_"${version}"_*.zip "_dist/oras_${version}_checksums.txt"; do
+        [ -f "$subject" ] || continue
+        if gh attestation verify "$subject" --repo "$REPO" \
+            --signer-workflow "${REPO}/.github/workflows/release-github.yml" \
+            --source-ref "refs/tags/v${version}" \
+            --deny-self-hosted-runners >/dev/null; then
+            success "Attestation verified: $(basename "$subject")"
+            attested=$(( attested + 1 ))
+        else
+            error "No valid build provenance attestation for $(basename "$subject")"
+            exit 1
+        fi
+    done
+    if [ "$attested" -eq 0 ]; then
+        error "No release archives found in _dist/ to verify attestations for."
+        exit 1
+    fi
+    success "All ${attested} attestations verified"
 
     # Test binary for the current OS/arch
     local os arch artifact
@@ -551,10 +578,10 @@ do_publish() {
         if [[ "$existing_notes" == *"## Verification"* ]]; then
             info "Release notes already carry a Verification section, leaving them as they are"
         else
-            info "Adding signing key info to release notes..."
-            local note="## Verification\n\nRelease artifacts are signed with the ORAS project release key \`${RELEASE_SIGNING_KEY}\`. Signatures (\`.asc\` files) are attached to this release.\n\nPublic keys are available in the [KEYS](https://github.com/${REPO}/blob/main/KEYS) file."
+            info "Adding verification info to release notes..."
+            local note="## Verification\n\nRelease artifacts are signed with the ORAS project release key \`${RELEASE_SIGNING_KEY}\`. Signatures (\`.asc\` files) are attached to this release.\n\nPublic keys are available in the [KEYS](https://github.com/${REPO}/blob/main/KEYS) file.\n\nRelease archives and the checksums file also have GitHub build provenance attestations. Verify an archive with:\n\n\`\`\`sh\ngh attestation verify oras_${version}_linux_amd64.tar.gz --repo ${REPO}\n\`\`\`\n\nThe attestations are Sigstore bundles, so they can also be downloaded with \`gh attestation download\` and checked with \`cosign verify-blob-attestation\`."
             gh release edit "v${version}" --repo "$REPO" --notes "$(printf '%s\n\n%b' "$existing_notes" "$note")"
-            success "Release notes updated with signing key info"
+            success "Release notes updated with verification info"
         fi
     fi
 
