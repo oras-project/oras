@@ -46,6 +46,11 @@ type BuilderOptions struct {
 	// ManifestAnnotations are annotations to add to all manifests.
 	ManifestAnnotations map[string]string
 
+	// ConfigAnnotations are annotations to set on the config descriptor of
+	// each manifest, matching PackManifestOptions.ConfigAnnotations in the
+	// ordinary push path.
+	ConfigAnnotations map[string]string
+
 	// PreserveEmptyDirs includes empty directories as empty manifests.
 	PreserveEmptyDirs bool
 }
@@ -217,6 +222,9 @@ func (b *Builder) createManifestWithAnnotations(ctx context.Context, layers []oc
 	// Create empty config
 	configBytes := []byte("{}")
 	configDesc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageConfig, configBytes)
+	if len(b.opts.ConfigAnnotations) > 0 {
+		configDesc.Annotations = b.opts.ConfigAnnotations
+	}
 
 	// Push config
 	if err := b.pusher.Push(ctx, configDesc, bytes.NewReader(configBytes)); err != nil {
