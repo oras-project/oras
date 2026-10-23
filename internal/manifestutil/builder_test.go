@@ -285,6 +285,84 @@ func TestBuildFromNode_manifestAnnotationsOnChunkManifests(t *testing.T) {
 	}
 }
 
+// TestBuildFromNode_titleManifestAnnotationNotOnDescriptors verifies that a
+// user-supplied org.opencontainers.image.title manifest annotation stays in
+// the manifest content but never lands on structural descriptors, where it
+// would make oras pull materialize manifests as files and fail with
+// "duplicate name" when several structural descriptors share the title.
+func TestBuildFromNode_titleManifestAnnotationNotOnDescriptors(t *testing.T) {
+	ctx := context.Background()
+	store := memory.New()
+	b := NewBuilder(store, BuilderOptions{
+		MaxBlobsPerManifest: 1000,
+		ManifestAnnotations: map[string]string{
+			ocispec.AnnotationTitle: "custom",
+			"hello":                 "world",
+		},
+	})
+
+	// files plus a subdirectory produce a chunk manifest under an index
+	root := &dir.Node{
+		Name:  "root",
+		Path:  ".",
+		IsDir: true,
+		Children: []*dir.Node{
+			{Name: "a", Path: "a", IsDir: false},
+			{
+				Name:  "sub",
+				Path:  "sub",
+				IsDir: true,
+				Children: []*dir.Node{
+					{Name: "b", Path: "sub/b", IsDir: false},
+				},
+			},
+		},
+	}
+	mkDesc := func(path, data string) ocispec.Descriptor {
+		d := content.NewDescriptorFromBytes("application/octet-stream", []byte(data))
+		d.Annotations = map[string]string{ocispec.AnnotationTitle: path}
+		return d
+	}
+	fileDescs := map[string]ocispec.Descriptor{
+		"a":     mkDesc("a", "a"),
+		"sub/b": mkDesc("sub/b", "b"),
+	}
+
+	res, err := b.BuildFromNode(ctx, root, fileDescs)
+	if err != nil {
+		t.Fatalf("BuildFromNode() error = %v", err)
+	}
+	if title, ok := res.Root.Annotations[ocispec.AnnotationTitle]; ok {
+		t.Errorf("root descriptor has AnnotationTitle=%q", title)
+	}
+	if res.Root.Annotations["hello"] != "world" {
+		t.Errorf("root descriptor lost non-title manifest annotation: %v", res.Root.Annotations)
+	}
+	for i, desc := range res.AllDescriptors {
+		if descriptor := desc.Annotations; descriptor != nil {
+			if title, ok := descriptor[ocispec.AnnotationTitle]; ok {
+				t.Errorf("descriptor[%d] (%s) has AnnotationTitle=%q", i, desc.MediaType, title)
+			}
+		}
+		// the manifest content must keep the user's annotations verbatim
+		rc, err := store.Fetch(ctx, desc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var m struct {
+			Annotations map[string]string `json:"annotations"`
+		}
+		err = json.NewDecoder(rc).Decode(&m)
+		_ = rc.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if m.Annotations[ocispec.AnnotationTitle] != "custom" || m.Annotations["hello"] != "world" {
+			t.Errorf("descriptor[%d] (%s) content annotations = %v, want title=custom and hello=world", i, desc.MediaType, m.Annotations)
+		}
+	}
+}
+
 // TestBuildFromNode_invalidArtifactType verifies that artifact types are held
 // to the same media type validation that oras.PackManifest applies in the
 // ordinary push path.
