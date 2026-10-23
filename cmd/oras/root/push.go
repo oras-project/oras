@@ -188,6 +188,10 @@ Example - [Experimental] Push a directory recursively with custom max blobs per 
 				return err
 			}
 
+			if !opts.Recursive.Recursive && cmd.Flags().Changed("max-blobs-per-manifest") {
+				return errors.New("--max-blobs-per-manifest requires --recursive")
+			}
+
 			// Recursive push has some restrictions
 			if opts.Recursive.Recursive {
 				if opts.manifestConfigRef != "" {
@@ -469,6 +473,7 @@ func runPushRecursive(cmd *cobra.Command, opts *pushOptions) error {
 		MaxBlobsPerManifest: opts.MaxBlobsPerManifest,
 		ArtifactType:        opts.artifactType,
 		ManifestAnnotations: opts.Annotations[option.AnnotationManifest],
+		ConfigAnnotations:   opts.Annotations[option.AnnotationConfig],
 		PreserveEmptyDirs:   opts.PreserveEmptyDirs,
 	})
 

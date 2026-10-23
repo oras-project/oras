@@ -373,6 +373,19 @@ func Test_pushCmd_PreRunE_recursiveValidation(t *testing.T) {
 			wantErr: "--image-spec v1.0 cannot be used with --recursive",
 		},
 		{
+			name: "max-blobs-per-manifest without recursive",
+			args: []string{"localhost:5000/test:v1", "hi.txt"},
+			setup: func(t *testing.T) string {
+				t.Helper()
+				return ""
+			},
+			flags: map[string]string{
+				"max-blobs-per-manifest":  "50",
+				"disable-path-validation": "true",
+			},
+			wantErr: "--max-blobs-per-manifest requires --recursive",
+		},
+		{
 			name: "recursive with invalid artifact type",
 			args: []string{"localhost:5000/test:v1"},
 			setup: func(t *testing.T) string {
@@ -805,4 +818,53 @@ func Test_runPushRecursive_manifestTitleAnnotation(t *testing.T) {
 		t.Fatalf("pull: %v", err)
 	}
 	assertTree(t, outDir, "a", "sub/", "sub/b")
+}
+
+// Test_runPushRecursive_configAnnotations verifies that $config annotations
+// from an annotation file are applied to the config descriptors of recursive
+// manifests. They used to be silently dropped: ordinary push passes them to
+// PackManifestOptions, but the recursive builder pushed bare "{}" configs.
+func Test_runPushRecursive_configAnnotations(t *testing.T) {
+	srcDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(srcDir, "a"), []byte("a"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	annotationFile := filepath.Join(t.TempDir(), "annotations.json")
+	if err := os.WriteFile(annotationFile, []byte(`{"$config":{"k":"v"}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	layoutDir := filepath.Join(t.TempDir(), "layout")
+
+	if err := runPushCmd(t,
+		"--oci-layout",
+		"--recursive",
+		"--annotation-file", annotationFile,
+		"--disable-path-validation",
+		layoutDir+":v1",
+		srcDir,
+	); err != nil {
+		t.Fatalf("push: %v", err)
+	}
+
+	store, err := oci.New(layoutDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	rootDesc, err := store.Resolve(ctx, "v1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rc, err := store.Fetch(ctx, rootDesc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = rc.Close() }()
+	var manifest ocispec.Manifest
+	if err := json.NewDecoder(rc).Decode(&manifest); err != nil {
+		t.Fatal(err)
+	}
+	if manifest.Config.Annotations["k"] != "v" {
+		t.Errorf("config annotations = %v, want k=v", manifest.Config.Annotations)
+	}
 }
