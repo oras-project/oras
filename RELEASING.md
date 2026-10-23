@@ -6,7 +6,7 @@ ORAS CLI releases are managed by [`scripts/release.sh`](scripts/release.sh), whi
 
 Before starting a release:
 
-- Install the GitHub CLI (`gh`) and authenticate it.
+- Install the GitHub CLI (`gh`) v2.49.0 or later and authenticate it. `validate` uses `gh attestation verify`, which older versions do not have.
 - Ensure the `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE` GitHub Actions secrets are configured for release signing.
 - Configure Git commit and tag signing (GPG or SSH).
 - Install `gpg`; `publish` uses it to verify artifact signatures even if you sign with SSH.
@@ -50,7 +50,7 @@ Run `validate` right after tagging; it waits up to 30 minutes for the tag-trigge
 scripts/release.sh validate VERSION
 ```
 
-The script downloads release artifacts, checks their SHA-256 checksums, and verifies the binary version and available commit information.
+The script downloads release artifacts, checks their SHA-256 checksums, verifies the build provenance attestations of every archive and the checksums file, and verifies the binary version and available commit information. It fails if any of these has no valid attestation.
 
 Review the release notes and verify that the GitHub Release is associated with the intended `vVERSION` tag and commit, not a GoReleaser placeholder tag such as `untagged-<hash>`.
 
@@ -62,7 +62,7 @@ After validation succeeds, run:
 scripts/release.sh publish VERSION
 ```
 
-The script verifies artifact signatures against the ORAS project release key, adds verification information to the release notes, publishes the GitHub Release, and triggers the Snap publishing workflow (with `isStable=false` for pre-releases).
+The script verifies artifact signatures against the ORAS project release key, adds verification information to the release notes (the GPG instructions and the `gh attestation verify` steps), publishes the GitHub Release, and triggers the Snap publishing workflow (with `isStable=false` for pre-releases).
 
 ## Dry runs
 
@@ -80,6 +80,25 @@ scripts/release.sh --dry-run tag VERSION COMMIT_SHA
 - Update the [oras-www](https://github.com/oras-project/oras-www) documentation as needed.
 - Announce the release in Slack `#oras`.
 - Publish applicable security advisories after the release has shipped.
+
+## Verifying release artifacts
+
+Users can verify a downloaded release in two ways.
+
+With GPG, import the public key from [`KEYS`](KEYS) and check the detached signature that is attached to the release:
+
+```sh
+gpg --import KEYS
+gpg --verify oras_VERSION_linux_amd64.tar.gz.asc oras_VERSION_linux_amd64.tar.gz
+```
+
+With the GitHub CLI, check the build provenance attestation:
+
+```sh
+gh attestation verify oras_VERSION_linux_amd64.tar.gz --repo oras-project/oras
+```
+
+The attestations are Sigstore bundles, so they can also be downloaded with `gh attestation download` and checked with `cosign verify-blob-attestation`.
 
 ## Implementation references
 
