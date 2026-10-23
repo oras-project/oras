@@ -18,6 +18,7 @@ package dir
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -250,6 +251,129 @@ func TestWalk_NotExist(t *testing.T) {
 	if _, err := Walk(filepath.Join(t.TempDir(), "missing"), WalkOptions{}); err == nil {
 		t.Fatal("expected error for missing root")
 	}
+}
+
+// TestWalk_SymlinksSkippedWithoutFollow verifies that without FollowSymlinks,
+// symbolic links are excluded from the tree entirely, not typed as regular
+// files, which would let loading open a target outside the walked root.
+func TestWalk_SymlinksSkippedWithoutFollow(t *testing.T) {
+	outsideDir := t.TempDir()
+	outsideFile := filepath.Join(outsideDir, "secret.txt")
+	if err := os.WriteFile(outsideFile, []byte("OUTSIDE DATA"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	tmpDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmpDir, "regular.txt"), []byte("in"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outsideFile, filepath.Join(tmpDir, "filelink")); err != nil {
+		t.Skipf("symlinks not supported: %v", err)
+	}
+	if err := os.Symlink(outsideDir, filepath.Join(tmpDir, "dirlink")); err != nil {
+		t.Fatal(err)
+	}
+
+	var skipped []string
+	node, err := Walk(tmpDir, WalkOptions{OnSkip: func(path string) {
+		skipped = append(skipped, path)
+	}})
+	if err != nil {
+		t.Fatalf("Walk() error = %v", err)
+	}
+
+	files := FlattenFiles(node)
+	if len(files) != 1 || files[0].Path != "regular.txt" {
+		t.Errorf("expected only regular.txt in tree, got %v", files)
+	}
+	if len(skipped) != 2 {
+		t.Errorf("OnSkip called with %v, want [dirlink filelink]", skipped)
+	}
+}
+
+// TestWalk_FollowSymlinks_EscapeRejected verifies that followed symlinks must
+// resolve within the walked root.
+func TestWalk_FollowSymlinks_EscapeRejected(t *testing.T) {
+	outsideDir := t.TempDir()
+	outsideFile := filepath.Join(outsideDir, "secret.txt")
+	if err := os.WriteFile(outsideFile, []byte("OUTSIDE DATA"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	for name, target := range map[string]string{"file link": outsideFile, "dir link": outsideDir} {
+		t.Run(name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			if err := os.Symlink(target, filepath.Join(tmpDir, "link")); err != nil {
+				t.Skipf("symlinks not supported: %v", err)
+			}
+			_, err := Walk(tmpDir, WalkOptions{FollowSymlinks: true})
+			if err == nil || !strings.Contains(err.Error(), "outside the directory being pushed") {
+				t.Fatalf("got error %v, want containment error", err)
+			}
+		})
+	}
+}
+
+// TestWalk_FollowSymlinks_WithinRoot verifies that a symlink resolving inside
+// the root is followed.
+func TestWalk_FollowSymlinks_WithinRoot(t *testing.T) {
+	tmpDir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(tmpDir, "real"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "real", "a.txt"), []byte("a"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(tmpDir, "real"), filepath.Join(tmpDir, "alias")); err != nil {
+		t.Skipf("symlinks not supported: %v", err)
+	}
+
+	node, err := Walk(tmpDir, WalkOptions{FollowSymlinks: true})
+	if err != nil {
+		t.Fatalf("Walk() error = %v", err)
+	}
+	var paths []string
+	for _, f := range FlattenFiles(node) {
+		paths = append(paths, f.Path)
+	}
+	want := []string{"alias/a.txt", "real/a.txt"}
+	if len(paths) != len(want) || paths[0] != want[0] || paths[1] != want[1] {
+		t.Errorf("file paths = %v, want %v", paths, want)
+	}
+}
+
+// TestWalk_FollowSymlinks_CycleDetected verifies that a symlink resolving to a
+// directory already on the traversal chain fails with an explicit cycle error
+// instead of the OS "too many levels of symbolic links" error.
+func TestWalk_FollowSymlinks_CycleDetected(t *testing.T) {
+	t.Run("self link to root", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(tmpDir, "a.txt"), []byte("a"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(tmpDir, filepath.Join(tmpDir, "self")); err != nil {
+			t.Skipf("symlinks not supported: %v", err)
+		}
+		_, err := Walk(tmpDir, WalkOptions{FollowSymlinks: true})
+		if err == nil || !strings.Contains(err.Error(), "symbolic link cycle detected") {
+			t.Fatalf("got error %v, want cycle error", err)
+		}
+	})
+
+	t.Run("link to ancestor", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		nested := filepath.Join(tmpDir, "a", "b")
+		if err := os.MkdirAll(nested, 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(filepath.Join(tmpDir, "a"), filepath.Join(nested, "up")); err != nil {
+			t.Skipf("symlinks not supported: %v", err)
+		}
+		_, err := Walk(tmpDir, WalkOptions{FollowSymlinks: true, IncludeEmpty: true})
+		if err == nil || !strings.Contains(err.Error(), "symbolic link cycle detected") {
+			t.Fatalf("got error %v, want cycle error", err)
+		}
+	})
 }
 
 func TestWalk_UnreadableSubdir(t *testing.T) {
