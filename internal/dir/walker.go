@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 )
 
 // Node represents a file or directory in the tree structure.
@@ -44,10 +45,16 @@ type Node struct {
 
 // WalkOptions configures the directory walking behavior.
 type WalkOptions struct {
-	// FollowSymlinks follows symbolic links when walking.
+	// FollowSymlinks follows symbolic links when walking. Followed links must
+	// resolve within the walked root; targets outside the root are rejected.
+	// When disabled, symbolic links are skipped entirely so that their targets
+	// are never opened.
 	FollowSymlinks bool
 	// IncludeEmpty includes empty directories in the tree.
 	IncludeEmpty bool
+	// OnSkip, if set, is called with the slash-separated relative path of each
+	// symbolic link skipped because FollowSymlinks is disabled.
+	OnSkip func(path string)
 }
 
 // FileCount returns the total number of files in this node and its descendants.
@@ -153,8 +160,18 @@ func Walk(root string, opts WalkOptions) (*Node, error) {
 		IsDir:   true,
 	}
 
-	err = walkDir(absRoot, ".", rootNode, opts)
+	resolvedRoot, err := filepath.EvalSymlinks(absRoot)
 	if err != nil {
+		return nil, err
+	}
+	w := &walker{
+		opts: opts,
+		root: resolvedRoot,
+		// resolved paths of directories on the current recursion chain,
+		// used to detect symbolic link cycles
+		onChain: map[string]struct{}{resolvedRoot: {}},
+	}
+	if err := w.walkDir(absRoot, resolvedRoot, ".", rootNode); err != nil {
 		return nil, err
 	}
 
@@ -166,8 +183,16 @@ func Walk(root string, opts WalkOptions) (*Node, error) {
 	return rootNode, nil
 }
 
+// walker carries the state needed to enforce the symlink policy during a walk.
+type walker struct {
+	opts    WalkOptions
+	root    string
+	onChain map[string]struct{}
+}
+
 // walkDir recursively walks a directory and builds the tree.
-func walkDir(absPath, relPath string, parent *Node, opts WalkOptions) error {
+// resolvedPath is absPath with all symbolic links resolved.
+func (w *walker) walkDir(absPath, resolvedPath, relPath string, parent *Node) error {
 	entries, err := os.ReadDir(absPath)
 	if err != nil {
 		return err
@@ -183,38 +208,76 @@ func walkDir(absPath, relPath string, parent *Node, opts WalkOptions) error {
 		childRelPath := filepath.Join(relPath, name)
 		childAbsPath := filepath.Join(absPath, name)
 
-		info, err := getFileInfo(entry, childAbsPath, opts.FollowSymlinks)
-		if err != nil {
-			return fmt.Errorf("failed to stat %q: %w", childAbsPath, err)
-		}
-
-		child := &Node{
-			Name:    name,
-			Path:    filepath.ToSlash(childRelPath),
-			AbsPath: childAbsPath,
-			IsDir:   info.IsDir(),
-			Size:    info.Size(),
-			Parent:  parent,
-		}
-
-		if child.IsDir {
-			if err := walkDir(childAbsPath, childRelPath, child, opts); err != nil {
-				return err
+		var info fs.FileInfo
+		childResolved := filepath.Join(resolvedPath, name)
+		if entry.Type()&fs.ModeSymlink != 0 {
+			if !w.opts.FollowSymlinks {
+				// Never hand a symlink onward as a regular file: loading it
+				// would open the target, which may live outside the root.
+				if w.opts.OnSkip != nil {
+					w.opts.OnSkip(filepath.ToSlash(childRelPath))
+				}
+				continue
+			}
+			info, err = os.Stat(childAbsPath)
+			if err != nil {
+				return fmt.Errorf("failed to stat %q: %w", childAbsPath, err)
+			}
+			childResolved, err = filepath.EvalSymlinks(childAbsPath)
+			if err != nil {
+				return fmt.Errorf("failed to resolve symbolic link %q: %w", childAbsPath, err)
+			}
+			if !isWithin(w.root, childResolved) {
+				return fmt.Errorf("symbolic link %q resolves to %q outside the directory being pushed", filepath.ToSlash(childRelPath), childResolved)
+			}
+		} else {
+			info, err = entry.Info()
+			if err != nil {
+				return fmt.Errorf("failed to stat %q: %w", childAbsPath, err)
 			}
 		}
 
-		parent.Children = append(parent.Children, child)
+		switch {
+		case info.IsDir():
+			if _, ok := w.onChain[childResolved]; ok {
+				return fmt.Errorf("symbolic link cycle detected: %q resolves to %q which is already being walked", filepath.ToSlash(childRelPath), childResolved)
+			}
+			child := &Node{
+				Name:    name,
+				Path:    filepath.ToSlash(childRelPath),
+				AbsPath: childAbsPath,
+				IsDir:   true,
+				Parent:  parent,
+			}
+			w.onChain[childResolved] = struct{}{}
+			err := w.walkDir(childAbsPath, childResolved, childRelPath, child)
+			delete(w.onChain, childResolved)
+			if err != nil {
+				return err
+			}
+			parent.Children = append(parent.Children, child)
+		case info.Mode().IsRegular():
+			parent.Children = append(parent.Children, &Node{
+				Name:    name,
+				Path:    filepath.ToSlash(childRelPath),
+				AbsPath: childAbsPath,
+				Size:    info.Size(),
+				Parent:  parent,
+			})
+		default:
+			// FIFOs, sockets, and device files cannot be represented as blobs;
+			// opening a FIFO without a writer would block indefinitely.
+			return fmt.Errorf("unsupported file type (%s) at %q: only regular files, directories, and symbolic links are supported", info.Mode().Type(), filepath.ToSlash(childRelPath))
+		}
 	}
 
 	return nil
 }
 
-// getFileInfo gets file info, optionally following symlinks.
-func getFileInfo(entry fs.DirEntry, path string, followSymlinks bool) (fs.FileInfo, error) {
-	if entry.Type()&fs.ModeSymlink != 0 && followSymlinks {
-		return os.Stat(path)
-	}
-	return entry.Info()
+// isWithin reports whether path is root or lies under root.
+// Both paths must be absolute and symlink-resolved.
+func isWithin(root, path string) bool {
+	return path == root || strings.HasPrefix(path, root+string(filepath.Separator))
 }
 
 // pruneEmpty removes empty directories from the tree.
