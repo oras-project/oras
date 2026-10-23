@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"maps"
 	"strconv"
 
@@ -82,6 +83,11 @@ func NewBuilder(pusher content.Pusher, opts BuilderOptions) *Builder {
 // File descriptors must already be pushed and provided in fileDescs map (path -> descriptor).
 // Returns the root descriptor for this node.
 func (b *Builder) BuildFromNode(ctx context.Context, node *dir.Node, fileDescs map[string]ocispec.Descriptor) (*BuildResult, error) {
+	if b.opts.ArtifactType != "" {
+		if err := ValidateMediaType(b.opts.ArtifactType); err != nil {
+			return nil, fmt.Errorf("invalid artifact type: %w", err)
+		}
+	}
 	result := &BuildResult{}
 
 	rootDesc, err := b.buildNode(ctx, node, fileDescs, result, true)
@@ -119,7 +125,7 @@ func (b *Builder) buildNode(ctx context.Context, node *dir.Node, fileDescs map[s
 			return ocispec.Descriptor{}, err
 		}
 		if childDesc.Digest != "" {
-			// Assign (replace) directory annotations — do NOT merge with
+			// Assign (replace) directory annotations. Do NOT merge with
 			// maps.Copy, which would preserve any AnnotationTitle set by
 			// createIndex and cause oras pull to treat the index as a file.
 			childDesc.Annotations = descriptor.MakeDirectoryAnnotations(childDir.Path, childDir.Name)
@@ -158,12 +164,13 @@ func (b *Builder) buildNode(ctx context.Context, node *dir.Node, fileDescs map[s
 			// Do NOT set AnnotationTitle here. When this descriptor is stored
 			// in the parent index's manifests list, oras pull's PostCopy calls
 			// content.Successors on the index and then OnFilePulled for every
-			// successor that has AnnotationTitle — which would try to create a
+			// successor that has AnnotationTitle, which would try to create a
 			// file named "<dirname>" and fail with "is a directory" when that
 			// directory already exists on disk. The file layers inside the
 			// manifest carry their own AnnotationTitle values which is what
 			// drives actual file restoration during pull.
 			annotations := make(map[string]string)
+			maps.Copy(annotations, b.opts.ManifestAnnotations)
 			if len(chunks) > 1 {
 				annotations["org.oras.content.chunk.index"] = strconv.Itoa(i)
 			}
@@ -184,9 +191,14 @@ func (b *Builder) buildNode(ctx context.Context, node *dir.Node, fileDescs map[s
 
 // createManifest creates and pushes an OCI manifest.
 func (b *Builder) createManifest(ctx context.Context, layers []ocispec.Descriptor, node *dir.Node, result *BuildResult, isRoot bool) (ocispec.Descriptor, error) {
+	// Do NOT set ocispec.AnnotationTitle here. Structural descriptors
+	// (directory manifests, including the root) must never carry a title:
+	// oras pull materializes any titled descriptor as a file, so a titled
+	// root manifest would be written out as a file named after the pushed
+	// directory, colliding with same-named files or directories.
 	annotations := make(map[string]string)
 	if node != nil {
-		annotations[ocispec.AnnotationTitle] = node.Name
+		maps.Copy(annotations, descriptor.MakeDirectoryAnnotations(node.Path, node.Name))
 	}
 	if isRoot {
 		maps.Copy(annotations, descriptor.MakeRootAnnotations())
@@ -256,8 +268,8 @@ func (b *Builder) createManifestWithAnnotations(ctx context.Context, layers []oc
 func (b *Builder) createIndex(ctx context.Context, manifests []ocispec.Descriptor, node *dir.Node, result *BuildResult, isRoot bool) (ocispec.Descriptor, error) {
 	// Do NOT add ocispec.AnnotationTitle here. If AnnotationTitle is present on
 	// a descriptor stored in a parent index's manifests list, oras pull will
-	// call metadataHandler.OnFilePulled with that name and try to create a file
-	// — which fails with "is a directory" when a same-named directory exists.
+	// call metadataHandler.OnFilePulled with that name and try to create a file,
+	// which fails with "is a directory" when a same-named directory exists.
 	annotations := make(map[string]string)
 	if node != nil {
 		maps.Copy(annotations, descriptor.MakeDirectoryAnnotations(node.Path, node.Name))
@@ -312,10 +324,7 @@ func chunkDescriptors(descs []ocispec.Descriptor, maxSize int) [][]ocispec.Descr
 
 	var chunks [][]ocispec.Descriptor
 	for i := 0; i < len(descs); i += maxSize {
-		end := i + maxSize
-		if end > len(descs) {
-			end = len(descs)
-		}
+		end := min(i+maxSize, len(descs))
 		chunks = append(chunks, descs[i:end])
 	}
 	return chunks

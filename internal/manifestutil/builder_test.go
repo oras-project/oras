@@ -39,7 +39,7 @@ import (
 // org.opencontainers.image.title = "<dirname>". oras pull's PostCopy calls
 // content.Successors on each copied descriptor; for any successor that has
 // AnnotationTitle it calls metadataHandler.OnFilePulled, which tries to
-// open/create that path as a file — failing with "is a directory" when a
+// open/create that path as a file, failing with "is a directory" when a
 // directory with that name already exists on disk.
 //
 // Two shapes trigger the bug:
@@ -86,7 +86,7 @@ func TestBuildFromNode_noAnnotationTitleOnIndexDescriptors(t *testing.T) {
 		// root.Name already exists as a directory.
 		//
 		// Similarly, "subdir" has files AND a nested subdirectory, so it also
-		// produces a chunk manifest with AnnotationTitle = "subdir" — which
+		// produces a chunk manifest with AnnotationTitle = "subdir", which
 		// fails when the subdir directory exists on disk.
 		root := &dir.Node{
 			Name:  "mydir",
@@ -159,7 +159,7 @@ func assertNoAnnotationTitleInAllIndexes(ctx context.Context, t *testing.T, stor
 
 		for i, m := range idx.Manifests {
 			if title, ok := m.Annotations[ocispec.AnnotationTitle]; ok {
-				t.Errorf("%s manifest[%d] has AnnotationTitle=%q — "+
+				t.Errorf("%s manifest[%d] has AnnotationTitle=%q: "+
 					"oras pull will call OnFilePulled(%q) and fail with \"is a directory\"",
 					label, i, title, title)
 			}
@@ -170,6 +170,144 @@ func assertNoAnnotationTitleInAllIndexes(ctx context.Context, t *testing.T, stor
 		}
 	}
 	checkIndex(res.Root, "root")
+}
+
+// TestBuildFromNode_noAnnotationTitleOnRoot is a regression test for the flat
+// root directory case: the root manifest descriptor carried AnnotationTitle =
+// <directory basename>, which OCI layouts and registries preserve, so oras
+// pull materialized the root manifest JSON as an extra file named after the
+// pushed directory, or failed with "duplicate name" / "is a directory" when
+// that name collided with real content.
+func TestBuildFromNode_noAnnotationTitleOnRoot(t *testing.T) {
+	ctx := context.Background()
+	store := memory.New()
+	b := NewBuilder(store, BuilderOptions{MaxBlobsPerManifest: 1000})
+
+	// Flat tree: only files at the root, so the root is a plain manifest.
+	root := &dir.Node{
+		Name:  "src",
+		Path:  ".",
+		IsDir: true,
+		Children: []*dir.Node{
+			{Name: "a", Path: "a", IsDir: false},
+		},
+	}
+	fileDesc := content.NewDescriptorFromBytes("application/octet-stream", []byte("a"))
+	fileDesc.Annotations = map[string]string{ocispec.AnnotationTitle: "a"}
+	fileDescs := map[string]ocispec.Descriptor{"a": fileDesc}
+
+	res, err := b.BuildFromNode(ctx, root, fileDescs)
+	if err != nil {
+		t.Fatalf("BuildFromNode() error = %v", err)
+	}
+	if res.Root.MediaType != ocispec.MediaTypeImageManifest {
+		t.Fatalf("root MediaType = %q, want %q", res.Root.MediaType, ocispec.MediaTypeImageManifest)
+	}
+	if title, ok := res.Root.Annotations[ocispec.AnnotationTitle]; ok {
+		t.Errorf("root descriptor has AnnotationTitle=%q: oras pull will materialize the manifest as a file", title)
+	}
+
+	rc, err := store.Fetch(ctx, res.Root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rc.Close()
+	var manifest ocispec.Manifest
+	if err := json.NewDecoder(rc).Decode(&manifest); err != nil {
+		t.Fatal(err)
+	}
+	if title, ok := manifest.Annotations[ocispec.AnnotationTitle]; ok {
+		t.Errorf("root manifest content has AnnotationTitle=%q", title)
+	}
+}
+
+// TestBuildFromNode_manifestAnnotationsOnChunkManifests verifies that
+// user-supplied manifest annotations are applied to chunk manifests too, as
+// the ManifestAnnotations option documents ("annotations to add to all
+// manifests").
+func TestBuildFromNode_manifestAnnotationsOnChunkManifests(t *testing.T) {
+	ctx := context.Background()
+	store := memory.New()
+	b := NewBuilder(store, BuilderOptions{
+		MaxBlobsPerManifest: 1,
+		ManifestAnnotations: map[string]string{"hello": "world"},
+	})
+
+	// Files plus a subdirectory force the root files into chunk manifests.
+	root := &dir.Node{
+		Name:  "root",
+		Path:  ".",
+		IsDir: true,
+		Children: []*dir.Node{
+			{Name: "a", Path: "a", IsDir: false},
+			{Name: "b", Path: "b", IsDir: false},
+			{
+				Name:  "subdir",
+				Path:  "subdir",
+				IsDir: true,
+				Children: []*dir.Node{
+					{Name: "c", Path: "subdir/c", IsDir: false},
+				},
+			},
+		},
+	}
+	mkDesc := func(path, data string) ocispec.Descriptor {
+		d := content.NewDescriptorFromBytes("application/octet-stream", []byte(data))
+		d.Annotations = map[string]string{ocispec.AnnotationTitle: path}
+		return d
+	}
+	fileDescs := map[string]ocispec.Descriptor{
+		"a":        mkDesc("a", "a"),
+		"b":        mkDesc("b", "b"),
+		"subdir/c": mkDesc("subdir/c", "c"),
+	}
+
+	res, err := b.BuildFromNode(ctx, root, fileDescs)
+	if err != nil {
+		t.Fatalf("BuildFromNode() error = %v", err)
+	}
+	for i, desc := range res.AllDescriptors {
+		rc, err := store.Fetch(ctx, desc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var m struct {
+			Annotations map[string]string `json:"annotations"`
+		}
+		err = json.NewDecoder(rc).Decode(&m)
+		_ = rc.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if m.Annotations["hello"] != "world" {
+			t.Errorf("descriptor[%d] (%s) missing manifest annotation hello=world, got %v", i, desc.MediaType, m.Annotations)
+		}
+	}
+}
+
+// TestBuildFromNode_invalidArtifactType verifies that artifact types are held
+// to the same media type validation that oras.PackManifest applies in the
+// ordinary push path.
+func TestBuildFromNode_invalidArtifactType(t *testing.T) {
+	ctx := context.Background()
+	store := memory.New()
+	b := NewBuilder(store, BuilderOptions{ArtifactType: "not a media type"})
+
+	root := &dir.Node{
+		Name:  "root",
+		Path:  ".",
+		IsDir: true,
+		Children: []*dir.Node{
+			{Name: "a", Path: "a", IsDir: false},
+		},
+	}
+	fileDesc := content.NewDescriptorFromBytes("application/octet-stream", []byte("a"))
+	fileDescs := map[string]ocispec.Descriptor{"a": fileDesc}
+
+	_, err := b.BuildFromNode(ctx, root, fileDescs)
+	if !errors.Is(err, errdef.ErrInvalidMediaType) {
+		t.Fatalf("got error %v, want %v", err, errdef.ErrInvalidMediaType)
+	}
 }
 
 func TestNewBuilder(t *testing.T) {
