@@ -38,8 +38,6 @@ parts:
       - go/1.26/stable
     build-packages:
       - make
-    stage-packages:
-      - ca-certificates
     override-build: |
       make "build-linux-$CRAFT_TARGET_ARCH"
       install -D -m755 bin/linux/$CRAFT_TARGET_ARCH/oras $CRAFT_PART_INSTALL/bin/oras
