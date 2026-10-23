@@ -18,6 +18,7 @@ package root
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -364,6 +365,14 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 					return err
 				}
 			}
+			// Restore directories recorded by recursive push. File writes
+			// create their parent directories implicitly; this is what
+			// restores empty directories.
+			if dirPath, ok := s.Annotations[descriptor.AnnotationDirectoryPath]; ok {
+				if err = restoreDirectory(po.Output, dirPath, po.PathTraversal, cleanup); err != nil {
+					return err
+				}
+			}
 		}
 		printed.Store(descriptor.GenerateContentKey(desc), true)
 		return statusHandler.OnNodeDownloaded(desc)
@@ -372,6 +381,27 @@ func doPull(ctx context.Context, src oras.ReadOnlyTarget, dst oras.GraphTarget, 
 	// Copy
 	desc, err := oras.Copy(ctx, src, po.Reference, dst, po.Reference, opts)
 	return desc, oerrors.UnwrapCopyError(err) // we don't need the CopyError information so we unwrap it here
+}
+
+// restoreDirectory creates the directory recorded in a descriptor's directory
+// path annotation under the output directory. The annotation value comes from
+// remote content, so it is held to the same path-traversal policy as file
+// names.
+func restoreDirectory(output, dirPath string, allowPathTraversal bool, cleanup *pullCleanup) error {
+	if dirPath == "" || dirPath == "." {
+		// the root of the pushed directory is the output directory itself
+		return nil
+	}
+	rel := filepath.Clean(filepath.FromSlash(dirPath))
+	if !filepath.IsLocal(rel) && !allowPathTraversal {
+		return fmt.Errorf("%s: %w", dirPath, file.ErrPathTraversalDisallowed)
+	}
+	cleanup.track(rel)
+	target := rel
+	if !filepath.IsAbs(target) {
+		target = filepath.Join(output, rel)
+	}
+	return os.MkdirAll(target, 0777)
 }
 
 func notifyOnce(notified *sync.Map, s ocispec.Descriptor, notify func(ocispec.Descriptor) error) error {
