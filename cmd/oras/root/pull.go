@@ -418,6 +418,18 @@ func restoreDirectory(output, dirPath string, allowPathTraversal bool, cleanup *
 // symlinks in target's existing ancestors causes it to escape base. It mirrors
 // the symlink-aware containment check the file store applies to file writes.
 func checkDirectoryEscape(base, target string) error {
+	// Normalize both paths to absolute before resolving symlinks: with a
+	// relative output directory, a safe absolute symlink target inside it
+	// would otherwise be compared against a relative base and filepath.Rel
+	// would report traversal.
+	base, err := filepath.Abs(base)
+	if err != nil {
+		return err
+	}
+	target, err = filepath.Abs(target)
+	if err != nil {
+		return err
+	}
 	realBase, err := filepath.EvalSymlinks(base)
 	if err != nil {
 		if os.IsNotExist(err) {
