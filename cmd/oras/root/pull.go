@@ -22,6 +22,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -393,15 +394,69 @@ func restoreDirectory(output, dirPath string, allowPathTraversal bool, cleanup *
 		return nil
 	}
 	rel := filepath.Clean(filepath.FromSlash(dirPath))
-	if !filepath.IsLocal(rel) && !allowPathTraversal {
-		return fmt.Errorf("%s: %w", dirPath, file.ErrPathTraversalDisallowed)
-	}
-	cleanup.track(rel)
 	target := rel
 	if !filepath.IsAbs(target) {
 		target = filepath.Join(output, rel)
 	}
+	if !allowPathTraversal {
+		if !filepath.IsLocal(rel) {
+			return fmt.Errorf("%s: %w", dirPath, file.ErrPathTraversalDisallowed)
+		}
+		// The lexical check above does not resolve symlinks: os.MkdirAll
+		// follows them, so an existing symlink component under the output
+		// directory would redirect creation outside it. Re-check after
+		// resolving symlinks, like the file store does for file writes.
+		if err := checkDirectoryEscape(output, target); err != nil {
+			return fmt.Errorf("%s: %w", dirPath, err)
+		}
+	}
+	cleanup.track(rel)
 	return os.MkdirAll(target, 0777)
+}
+
+// checkDirectoryEscape returns file.ErrPathTraversalDisallowed if resolving
+// symlinks in target's existing ancestors causes it to escape base. It mirrors
+// the symlink-aware containment check the file store applies to file writes.
+func checkDirectoryEscape(base, target string) error {
+	realBase, err := filepath.EvalSymlinks(base)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// base does not exist yet; no symlinks to follow
+			return nil
+		}
+		return err
+	}
+	// resolve symlinks in the deepest existing ancestor of target and append
+	// the non-existent components verbatim
+	realTarget := target
+	dir := target
+	var suffix string
+	for {
+		resolved, err := filepath.EvalSymlinks(dir)
+		if err == nil {
+			realTarget = filepath.Join(resolved, suffix)
+			break
+		}
+		if !os.IsNotExist(err) {
+			return err
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			// reached the filesystem root
+			break
+		}
+		suffix = filepath.Join(filepath.Base(dir), suffix)
+		dir = parent
+	}
+	rel, err := filepath.Rel(realBase, realTarget)
+	if err != nil {
+		return file.ErrPathTraversalDisallowed
+	}
+	rel = filepath.ToSlash(rel)
+	if rel == ".." || strings.HasPrefix(rel, "../") {
+		return file.ErrPathTraversalDisallowed
+	}
+	return nil
 }
 
 func notifyOnce(notified *sync.Map, s ocispec.Descriptor, notify func(ocispec.Descriptor) error) error {
