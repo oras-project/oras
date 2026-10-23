@@ -6,7 +6,7 @@ ORAS CLI releases are managed by [`scripts/release.sh`](scripts/release.sh), whi
 
 Before starting a release:
 
-- Install the GitHub CLI (`gh`) v2.49.0 or later and authenticate it. `validate` uses `gh attestation verify`, which older versions do not have.
+- Install the GitHub CLI (`gh`) v2.68.0 or later and authenticate it. `validate` uses `gh attestation verify` with `--source-ref`, which older versions do not have.
 - Ensure the `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE` GitHub Actions secrets are configured for release signing.
 - Configure Git commit and tag signing (GPG or SSH).
 - Install `gpg`; `publish` uses it to verify artifact signatures even if you sign with SSH.
@@ -50,7 +50,7 @@ Run `validate` right after tagging; it waits up to 30 minutes for the tag-trigge
 scripts/release.sh validate VERSION
 ```
 
-The script downloads release artifacts, checks their SHA-256 checksums, verifies the build provenance attestations of every archive and the checksums file, and verifies the binary version and available commit information. It fails if any of these has no valid attestation.
+The script downloads release artifacts, checks their SHA-256 checksums, verifies the build provenance attestations of every archive and the checksums file, and verifies the binary version and available commit information. It fails if any of these has no valid attestation. A tag on a maintenance branch must include the attestation step in `release-github.yml`, or `validate` fails.
 
 Review the release notes and verify that the GitHub Release is associated with the intended `vVERSION` tag and commit, not a GoReleaser placeholder tag such as `untagged-<hash>`.
 

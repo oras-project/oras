@@ -373,8 +373,8 @@ do_validate() {
     validate_version "$version"
     info "Validating release v${version}"
 
-    if ! gh attestation verify --help &>/dev/null; then
-        error "'gh attestation verify' is not available. Upgrade the GitHub CLI to v2.49.0 or later."
+    if ! gh attestation verify --help 2>/dev/null | grep -q -- "--source-ref"; then
+        error "'gh attestation verify --source-ref' is not available. Upgrade the GitHub CLI to v2.68.0 or later."
         exit 1
     fi
 
@@ -453,7 +453,10 @@ do_validate() {
     local attested=0
     for subject in _dist/oras_"${version}"_*.tar.gz _dist/oras_"${version}"_*.zip "_dist/oras_${version}_checksums.txt"; do
         [ -f "$subject" ] || continue
-        if gh attestation verify "$subject" --repo "$REPO" >/dev/null; then
+        if gh attestation verify "$subject" --repo "$REPO" \
+            --signer-workflow "${REPO}/.github/workflows/release-github.yml" \
+            --source-ref "refs/tags/v${version}" \
+            --deny-self-hosted-runners >/dev/null; then
             success "Attestation verified: $(basename "$subject")"
             attested=$(( attested + 1 ))
         else
