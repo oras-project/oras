@@ -17,6 +17,7 @@ package root
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -345,6 +346,45 @@ func Test_pushCmd_PreRunE_recursiveValidation(t *testing.T) {
 			},
 			wantErr: "cannot access",
 		},
+		{
+			name: "recursive with artifact platform",
+			args: []string{"localhost:5000/test:v1"},
+			setup: func(t *testing.T) string {
+				t.Helper()
+				return t.TempDir()
+			},
+			flags: map[string]string{
+				"recursive":         "true",
+				"artifact-platform": "linux/arm64",
+			},
+			wantErr: "--artifact-platform cannot be used with --recursive",
+		},
+		{
+			name: "recursive with image-spec v1.0",
+			args: []string{"localhost:5000/test:v1"},
+			setup: func(t *testing.T) string {
+				t.Helper()
+				return t.TempDir()
+			},
+			flags: map[string]string{
+				"recursive":  "true",
+				"image-spec": "v1.0",
+			},
+			wantErr: "--image-spec v1.0 cannot be used with --recursive",
+		},
+		{
+			name: "recursive with invalid artifact type",
+			args: []string{"localhost:5000/test:v1"},
+			setup: func(t *testing.T) string {
+				t.Helper()
+				return t.TempDir()
+			},
+			flags: map[string]string{
+				"recursive":     "true",
+				"artifact-type": "not a media type",
+			},
+			wantErr: "invalid media type",
+		},
 	}
 
 	for _, tt := range tests {
@@ -468,6 +508,35 @@ func Test_runPushRecursive_noTag(t *testing.T) {
 	}
 }
 
+// Test_runPushRecursive_jsonOutput verifies that --format json emits a single
+// valid JSON document: the plain-text summary must not be appended to it.
+func Test_runPushRecursive_jsonOutput(t *testing.T) {
+	srcDir := newRecursiveTestDir(t)
+	layoutDir := filepath.Join(t.TempDir(), "layout")
+
+	cmd := pushCmd()
+	var out strings.Builder
+	cmd.SetArgs([]string{
+		"--oci-layout",
+		"--recursive",
+		"--format", "json",
+		"--disable-path-validation",
+		layoutDir + ":v1",
+		srcDir,
+	})
+	cmd.SetOut(&out)
+	cmd.SetErr(&strings.Builder{})
+	cmd.SetContext(context.Background())
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var doc map[string]any
+	if err := json.Unmarshal([]byte(out.String()), &doc); err != nil {
+		t.Fatalf("output is not a single JSON document: %v\noutput:\n%s", err, out.String())
+	}
+}
+
 func Test_runPushRecursive_preserveEmptyDirs(t *testing.T) {
 	srcDir := t.TempDir()
 	if err := os.Mkdir(filepath.Join(srcDir, "empty"), 0755); err != nil {
@@ -485,6 +554,200 @@ func Test_runPushRecursive_preserveEmptyDirs(t *testing.T) {
 	); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+}
+
+func runPullCmd(t *testing.T, args ...string) error {
+	t.Helper()
+	cmd := pullCmd()
+	cmd.SetArgs(args)
+	cmd.SetOut(&strings.Builder{})
+	cmd.SetErr(&strings.Builder{})
+	cmd.SetContext(context.Background())
+	return cmd.Execute()
+}
+
+// listTree returns the relative slash paths of all entries under root,
+// suffixing directories with "/".
+func listTree(t *testing.T, root string) []string {
+	t.Helper()
+	var entries []string
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		if rel == "." {
+			return nil
+		}
+		rel = filepath.ToSlash(rel)
+		if info.IsDir() {
+			rel += "/"
+		}
+		entries = append(entries, rel)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return entries
+}
+
+func assertTree(t *testing.T, root string, want ...string) {
+	t.Helper()
+	got := listTree(t, root)
+	if len(got) != len(want) {
+		t.Fatalf("output tree = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("output tree = %v, want %v", got, want)
+		}
+	}
+}
+
+// Test_runPushRecursive_flatDirRoundTrip is a regression test: the root
+// manifest descriptor used to carry AnnotationTitle = <directory basename>, so
+// pulling a flat directory produced an extra file named after the source
+// directory containing manifest JSON, and failed with "duplicate name" or
+// "is a directory" when that name collided.
+func Test_runPushRecursive_flatDirRoundTrip(t *testing.T) {
+	srcDir := filepath.Join(t.TempDir(), "src")
+	// "src" matches the source directory basename: the historical collision case
+	for _, name := range []string{"a", "src"} {
+		if err := os.MkdirAll(srcDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(srcDir, name), []byte(name), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	layoutDir := filepath.Join(t.TempDir(), "layout")
+
+	if err := runPushCmd(t,
+		"--oci-layout",
+		"--recursive",
+		"--disable-path-validation",
+		layoutDir+":v1",
+		srcDir,
+	); err != nil {
+		t.Fatalf("push: %v", err)
+	}
+
+	outDir := t.TempDir()
+	if err := runPullCmd(t, "--oci-layout", layoutDir+":v1", "-o", outDir); err != nil {
+		t.Fatalf("pull: %v", err)
+	}
+	assertTree(t, outDir, "a", "src")
+	for _, name := range []string{"a", "src"} {
+		data, err := os.ReadFile(filepath.Join(outDir, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(data) != name {
+			t.Errorf("file %q content = %q, want %q", name, data, name)
+		}
+	}
+}
+
+// Test_runPushRecursive_emptyDirRoundTrip verifies that --preserve-empty-dirs
+// round-trips: pull restores the empty directory.
+func Test_runPushRecursive_emptyDirRoundTrip(t *testing.T) {
+	srcDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(srcDir, "a.txt"), []byte("a"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(srcDir, "sub", "empty"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	layoutDir := filepath.Join(t.TempDir(), "layout")
+
+	if err := runPushCmd(t,
+		"--oci-layout",
+		"--recursive",
+		"--preserve-empty-dirs",
+		"--disable-path-validation",
+		layoutDir+":v1",
+		srcDir,
+	); err != nil {
+		t.Fatalf("push: %v", err)
+	}
+
+	outDir := t.TempDir()
+	if err := runPullCmd(t, "--oci-layout", layoutDir+":v1", "-o", outDir); err != nil {
+		t.Fatalf("pull: %v", err)
+	}
+	assertTree(t, outDir, "a.txt", "sub/", "sub/empty/")
+}
+
+// Test_runPushRecursive_annotationRename verifies that renaming a file through
+// an annotation file works: the store must register the file under the
+// annotated title, or copying fails with "not found".
+func Test_runPushRecursive_annotationRename(t *testing.T) {
+	srcDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(srcDir, "a"), []byte("a"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	annotationFile := filepath.Join(t.TempDir(), "annotations.json")
+	if err := os.WriteFile(annotationFile, []byte(`{"a":{"org.opencontainers.image.title":"renamed"}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	layoutDir := filepath.Join(t.TempDir(), "layout")
+
+	if err := runPushCmd(t,
+		"--oci-layout",
+		"--recursive",
+		"--annotation-file", annotationFile,
+		"--disable-path-validation",
+		layoutDir+":v1",
+		srcDir,
+	); err != nil {
+		t.Fatalf("push: %v", err)
+	}
+
+	outDir := t.TempDir()
+	if err := runPullCmd(t, "--oci-layout", layoutDir+":v1", "-o", outDir); err != nil {
+		t.Fatalf("pull: %v", err)
+	}
+	assertTree(t, outDir, "renamed")
+}
+
+// Test_runPushRecursive_symlinkNotFollowed verifies that without
+// --follow-symlinks a symlink is skipped entirely: its target contents,
+// which may live outside the pushed directory, must never be uploaded.
+func Test_runPushRecursive_symlinkNotFollowed(t *testing.T) {
+	outsideDir := t.TempDir()
+	outsideFile := filepath.Join(outsideDir, "secret")
+	if err := os.WriteFile(outsideFile, []byte("OUTSIDE DATA"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	srcDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(srcDir, "a"), []byte("a"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outsideFile, filepath.Join(srcDir, "link")); err != nil {
+		t.Skipf("symlinks not supported: %v", err)
+	}
+	layoutDir := filepath.Join(t.TempDir(), "layout")
+
+	if err := runPushCmd(t,
+		"--oci-layout",
+		"--recursive",
+		"--disable-path-validation",
+		layoutDir+":v1",
+		srcDir,
+	); err != nil {
+		t.Fatalf("push: %v", err)
+	}
+
+	outDir := t.TempDir()
+	if err := runPullCmd(t, "--oci-layout", layoutDir+":v1", "-o", outDir); err != nil {
+		t.Fatalf("pull: %v", err)
+	}
+	assertTree(t, outDir, "a")
 }
 
 func Test_runPushRecursive_brokenSymlink(t *testing.T) {
