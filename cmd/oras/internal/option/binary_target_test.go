@@ -17,6 +17,7 @@ package option
 
 import (
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -97,6 +98,66 @@ func TestBinaryTarget_ModifyError(t *testing.T) {
 			}
 			if err.Error() != tc.wantErr.Error() {
 				t.Errorf("ModifyError() error = %q, want %q", err.Error(), tc.wantErr.Error())
+			}
+		})
+	}
+}
+
+func TestBinaryTarget_Parse_resolveFlag(t *testing.T) {
+	const (
+		src = "src.example:443:10.0.0.1"
+		dst = "dst.example:443:10.0.0.2"
+	)
+	tests := []struct {
+		name     string
+		args     []string
+		wantFrom []string
+		wantTo   []string
+	}{
+		{
+			name:     "no base rules",
+			args:     []string{"--from-resolve", src, "--to-resolve", dst},
+			wantFrom: []string{src},
+			wantTo:   []string{dst},
+		},
+		{
+			name:     "base rules with spare capacity",
+			args:     []string{"--resolve", "a:1:1.1.1.1", "--resolve", "b:1:1.1.1.1", "--resolve", "c:1:1.1.1.1", "--from-resolve", src, "--to-resolve", dst},
+			wantFrom: []string{"a:1:1.1.1.1", "b:1:1.1.1.1", "c:1:1.1.1.1", src},
+			wantTo:   []string{"a:1:1.1.1.1", "b:1:1.1.1.1", "c:1:1.1.1.1", dst},
+		},
+		{
+			name:     "base rules without spare capacity",
+			args:     []string{"--resolve", "a:1:1.1.1.1", "--resolve", "b:1:1.1.1.1", "--resolve", "c:1:1.1.1.1", "--resolve", "d:1:1.1.1.1", "--from-resolve", src, "--to-resolve", dst},
+			wantFrom: []string{"a:1:1.1.1.1", "b:1:1.1.1.1", "c:1:1.1.1.1", "d:1:1.1.1.1", src},
+			wantTo:   []string{"a:1:1.1.1.1", "b:1:1.1.1.1", "c:1:1.1.1.1", "d:1:1.1.1.1", dst},
+		},
+		{
+			name:     "only one side-specific rule",
+			args:     []string{"--resolve", "a:1:1.1.1.1", "--resolve", "b:1:1.1.1.1", "--resolve", "c:1:1.1.1.1", "--from-resolve", src},
+			wantFrom: []string{"a:1:1.1.1.1", "b:1:1.1.1.1", "c:1:1.1.1.1", src},
+			wantTo:   []string{"a:1:1.1.1.1", "b:1:1.1.1.1", "c:1:1.1.1.1"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := BinaryTarget{
+				From: Target{RawReference: "src.example/repo:tag"},
+				To:   Target{RawReference: "dst.example/repo:tag"},
+			}
+			cmd := &cobra.Command{}
+			opts.ApplyFlags(cmd.Flags())
+			if err := cmd.ParseFlags(tt.args); err != nil {
+				t.Fatalf("cmd.ParseFlags() error = %v", err)
+			}
+			if err := opts.Parse(cmd); err != nil {
+				t.Fatalf("BinaryTarget.Parse() error = %v", err)
+			}
+			if !slices.Equal(opts.From.resolveFlag, tt.wantFrom) {
+				t.Errorf("From.resolveFlag = %v, want %v", opts.From.resolveFlag, tt.wantFrom)
+			}
+			if !slices.Equal(opts.To.resolveFlag, tt.wantTo) {
+				t.Errorf("To.resolveFlag = %v, want %v", opts.To.resolveFlag, tt.wantTo)
 			}
 		})
 	}
