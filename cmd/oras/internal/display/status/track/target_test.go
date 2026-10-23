@@ -26,7 +26,9 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/errdef"
+	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/internal/progress"
 	"oras.land/oras/internal/testutils"
@@ -34,6 +36,11 @@ import (
 
 type testReferenceGraphTarget struct {
 	oras.GraphTarget
+}
+
+type testReferenceMounterGraphTarget struct {
+	*testReferenceGraphTarget
+	registry.Mounter
 }
 
 func (t *testReferenceGraphTarget) PushReference(ctx context.Context, expected ocispec.Descriptor, content io.Reader, reference string) error {
@@ -85,9 +92,47 @@ func Test_referenceGraphTarget_PushReference(t *testing.T) {
 	}
 }
 
-func Test_referenceGraphTarget_Mount(_ *testing.T) {
-	target := graphTarget{GraphTarget: &remote.Repository{}}
-	_ = target.Mount(context.Background(), ocispec.Descriptor{}, "", nil)
+func TestNewTarget_mountCapabilityMatchesUnderlyingTarget(t *testing.T) {
+	store, err := oci.New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name          string
+		underlying    oras.GraphTarget
+		wantMount     bool
+		wantReference bool
+	}{
+		{name: "memory", underlying: memory.New(), wantMount: false},
+		{name: "OCI layout", underlying: store, wantMount: false},
+		{name: "remote", underlying: &remote.Repository{}, wantMount: true, wantReference: true},
+		{name: "reference", underlying: &testReferenceGraphTarget{memory.New()}, wantReference: true},
+		{name: "reference and mount", underlying: &testReferenceMounterGraphTarget{
+			testReferenceGraphTarget: &testReferenceGraphTarget{memory.New()},
+			Mounter:                  &remote.Repository{},
+		}, wantMount: true, wantReference: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, device, err := testutils.NewPipe()
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = device.Close() }()
+			tracked, err := NewTarget(tc.underlying, nil, device)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = tracked.Close() }()
+			_, mounted := tracked.(registry.Mounter)
+			if mounted != tc.wantMount {
+				t.Errorf("registry.Mounter supported = %v, want %v", mounted, tc.wantMount)
+			}
+			_, reference := tracked.(registry.ReferencePusher)
+			if reference != tc.wantReference {
+				t.Errorf("registry.ReferencePusher supported = %v, want %v", reference, tc.wantReference)
+			}
+		})
+	}
 }
 
 func Test_graphTarget_Push_alreadyExists(t *testing.T) {
