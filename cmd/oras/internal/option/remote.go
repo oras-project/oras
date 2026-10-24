@@ -17,7 +17,9 @@ package option
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -47,35 +49,47 @@ import (
 )
 
 var (
-	// sharedClient is a package-level auth client that can be shared across
-	// multiple command executions to avoid re-authentication. The client's
-	// cache stores OAuth tokens obtained during the first authentication.
-	sharedClient     *auth.Client
-	sharedClientLock sync.RWMutex
+	// sharedCaches holds auth caches that are reused across command executions
+	// in the same process to avoid re-authentication. Caches are keyed by
+	// credential identity, because auth.Cache itself is keyed only by registry
+	// and scope: clients with different credentials must not share tokens.
+	sharedCaches     = map[string]auth.Cache{}
+	sharedCachesLock sync.Mutex
 )
 
-// SetSharedClient sets a shared auth client to be reused across command
-// executions. This allows multiple commands to share the same authentication
-// cache, avoiding repeated authentication requests to the registry.
-func SetSharedClient(client *auth.Client) {
-	sharedClientLock.Lock()
-	defer sharedClientLock.Unlock()
-	sharedClient = client
+// sharedCache returns the auth cache shared by all clients with the given
+// credential identity, creating it if needed.
+func sharedCache(identity string) auth.Cache {
+	sharedCachesLock.Lock()
+	defer sharedCachesLock.Unlock()
+	cache, ok := sharedCaches[identity]
+	if !ok {
+		cache = auth.NewCache()
+		sharedCaches[identity] = cache
+	}
+	return cache
 }
 
-// GetSharedClient returns the shared auth client if one has been set.
-// Returns nil if no shared client has been configured.
-func GetSharedClient() *auth.Client {
-	sharedClientLock.RLock()
-	defer sharedClientLock.RUnlock()
-	return sharedClient
+// clearSharedCaches removes all shared auth caches.
+func clearSharedCaches() {
+	sharedCachesLock.Lock()
+	defer sharedCachesLock.Unlock()
+	clear(sharedCaches)
 }
 
-// ClearSharedClient removes the shared auth client.
-func ClearSharedClient() {
-	sharedClientLock.Lock()
-	defer sharedClientLock.Unlock()
-	sharedClient = nil
+// credentialIdentity returns a key identifying the credential source of a
+// client. Static credentials are identified by username and a hash of the
+// secrets; otherwise the credential store is identified by its config paths.
+func credentialIdentity(cred auth.Credential, configs []string) string {
+	if cred != auth.EmptyCredential {
+		h := sha256.New()
+		for _, secret := range []string{cred.Password, cred.RefreshToken, cred.AccessToken} {
+			h.Write([]byte(secret))
+			h.Write([]byte{0})
+		}
+		return "static\x00" + cred.Username + "\x00" + hex.EncodeToString(h.Sum(nil))
+	}
+	return "store\x00" + strings.Join(configs, "\x00")
 }
 
 const (
@@ -428,13 +442,8 @@ func (remo *Remote) authClient(registry string, plainHTTP, debug bool) (client *
 		}
 	}
 
-	// Check if there's a shared client we can reuse for its cache
-	var cache auth.Cache
-	if existing := GetSharedClient(); existing != nil {
-		cache = existing.Cache
-	} else {
-		cache = auth.NewCache()
-	}
+	cred := remo.Credential()
+	cache := sharedCache(credentialIdentity(cred, remo.Configs))
 
 	client = &auth.Client{
 		Client: &http.Client{
@@ -450,7 +459,6 @@ func (remo *Remote) authClient(registry string, plainHTTP, debug bool) (client *
 		client.Client.Transport = trace.NewTransport(client.Client.Transport, sensitiveHeaders...)
 	}
 
-	cred := remo.Credential()
 	if cred != auth.EmptyCredential {
 		client.Credential = func(_ context.Context, _ string) (auth.Credential, error) {
 			return cred, nil
@@ -462,11 +470,6 @@ func (remo *Remote) authClient(registry string, plainHTTP, debug bool) (client *
 			return nil, err
 		}
 		client.Credential = credentials.Credential(remo.store)
-	}
-
-	// Store this client as the shared client for subsequent commands
-	if GetSharedClient() == nil {
-		SetSharedClient(client)
 	}
 
 	return

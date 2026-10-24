@@ -159,8 +159,8 @@ func TestRemote_authClient_RawCredential(t *testing.T) {
 }
 
 func TestRemote_authClient_SharedCache(t *testing.T) {
-	ClearSharedClient()
-	t.Cleanup(ClearSharedClient)
+	clearSharedCaches()
+	t.Cleanup(clearSharedCaches)
 
 	opts := Remote{
 		Username: "test-user",
@@ -169,9 +169,6 @@ func TestRemote_authClient_SharedCache(t *testing.T) {
 	first, err := opts.authClient("hostname", false, false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
-	}
-	if got := GetSharedClient(); got != first {
-		t.Fatalf("expected first client to be shared, got %p", got)
 	}
 
 	const (
@@ -198,6 +195,81 @@ func TestRemote_authClient_SharedCache(t *testing.T) {
 	}
 	if got != want {
 		t.Fatalf("expected cached token %q, got %q", want, got)
+	}
+}
+
+func TestRemote_authClient_SharedCacheByCredential(t *testing.T) {
+	clearSharedCaches()
+	t.Cleanup(clearSharedCaches)
+
+	const (
+		registry = "registry.example.com"
+		cacheKey = "repository:test:pull"
+	)
+	newClient := func(t *testing.T, opts Remote) *auth.Client {
+		t.Helper()
+		client, err := opts.authClient(registry, false, false)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		return client
+	}
+	from := newClient(t, Remote{Username: "user-a", Secret: "password-a"})
+	if _, err := from.Cache.Set(context.Background(), registry, auth.SchemeBearer, cacheKey, func(context.Context) (string, error) {
+		return "token-a", nil
+	}); err != nil {
+		t.Fatalf("unexpected error when populating cache: %v", err)
+	}
+
+	tests := []struct {
+		name   string
+		opts   Remote
+		shared bool
+	}{
+		{name: "same credential", opts: Remote{Username: "user-a", Secret: "password-a"}, shared: true},
+		{name: "different username", opts: Remote{Username: "user-b", Secret: "password-a"}},
+		{name: "different password", opts: Remote{Username: "user-a", Secret: "password-b"}},
+		{name: "identity token", opts: Remote{Secret: "password-a"}},
+		{name: "credential store", opts: Remote{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := newClient(t, tt.opts)
+			got, err := client.Cache.GetToken(context.Background(), registry, auth.SchemeBearer, cacheKey)
+			if tt.shared {
+				if err != nil || got != "token-a" {
+					t.Fatalf("expected shared cached token, got %q, err %v", got, err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("expected no cached token, got %q", got)
+			}
+		})
+	}
+}
+
+func TestRemote_authClient_SharedCacheByConfig(t *testing.T) {
+	clearSharedCaches()
+	t.Cleanup(clearSharedCaches)
+
+	tmp := t.TempDir()
+	configA := filepath.Join(tmp, "a.json")
+	configB := filepath.Join(tmp, "b.json")
+	newCache := func(t *testing.T, configs ...string) auth.Cache {
+		t.Helper()
+		opts := Remote{Configs: configs}
+		client, err := opts.authClient("hostname", false, false)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		return client.Cache
+	}
+	if newCache(t, configA) != newCache(t, configA) {
+		t.Fatal("expected clients using the same registry config to share a cache")
+	}
+	if newCache(t, configA) == newCache(t, configB) {
+		t.Fatal("expected clients using different registry configs not to share a cache")
 	}
 }
 
