@@ -45,6 +45,16 @@ type referenceGraphTarget struct {
 	*graphTarget
 }
 
+type mounterGraphTarget struct {
+	*graphTarget
+	registry.Mounter
+}
+
+type referenceMounterGraphTarget struct {
+	*referenceGraphTarget
+	registry.Mounter
+}
+
 // NewTarget creates a new tracked Target.
 func NewTarget(t oras.GraphTarget, prompts map[progress.State]string, tty *os.File) (GraphTarget, error) {
 	manager, err := sprogress.NewManager(tty, prompts)
@@ -56,19 +66,18 @@ func NewTarget(t oras.GraphTarget, prompts map[progress.State]string, tty *os.Fi
 		manager:     manager,
 	}
 
+	mounter, canMount := t.(registry.Mounter)
 	if _, ok := t.(registry.ReferencePusher); ok {
-		return &referenceGraphTarget{
-			graphTarget: gt,
-		}, nil
+		rgt := &referenceGraphTarget{graphTarget: gt}
+		if canMount {
+			return &referenceMounterGraphTarget{referenceGraphTarget: rgt, Mounter: mounter}, nil
+		}
+		return rgt, nil
+	}
+	if canMount {
+		return &mounterGraphTarget{graphTarget: gt, Mounter: mounter}, nil
 	}
 	return gt, nil
-}
-
-// Mount mounts a blob from a specified repository. This method is invoked only
-// by the `*remote.Repository` target.
-func (t *graphTarget) Mount(ctx context.Context, desc ocispec.Descriptor, fromRepo string, getContent func() (io.ReadCloser, error)) error {
-	mounter := t.GraphTarget.(registry.Mounter)
-	return mounter.Mount(ctx, desc, fromRepo, getContent)
 }
 
 // Push pushes the content to the base oras.GraphTarget with tracking.
