@@ -17,9 +17,7 @@ package option
 
 import (
 	"context"
-	"crypto/sha256"
 	"crypto/tls"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -53,13 +51,13 @@ var (
 	// in the same process to avoid re-authentication. Caches are keyed by
 	// credential identity, because auth.Cache itself is keyed only by registry
 	// and scope: clients with different credentials must not share tokens.
-	sharedCaches     = map[string]auth.Cache{}
+	sharedCaches     = map[credentialIdentity]auth.Cache{}
 	sharedCachesLock sync.Mutex
 )
 
 // sharedCache returns the auth cache shared by all clients with the given
 // credential identity, creating it if needed.
-func sharedCache(identity string) auth.Cache {
+func sharedCache(identity credentialIdentity) auth.Cache {
 	sharedCachesLock.Lock()
 	defer sharedCachesLock.Unlock()
 	cache, ok := sharedCaches[identity]
@@ -77,19 +75,21 @@ func clearSharedCaches() {
 	clear(sharedCaches)
 }
 
-// credentialIdentity returns a key identifying the credential source of a
-// client. Static credentials are identified by username and a hash of the
-// secrets; otherwise the credential store is identified by its config paths.
-func credentialIdentity(cred auth.Credential, configs []string) string {
+// credentialIdentity identifies the credential source of a client. Static
+// credentials are identified by the credential itself; otherwise the
+// credential store is identified by its config paths. The key is held only in
+// memory and is compared directly, so no secret is hashed or encoded.
+type credentialIdentity struct {
+	cred    auth.Credential
+	configs string
+}
+
+// newCredentialIdentity returns the credential identity of a client.
+func newCredentialIdentity(cred auth.Credential, configs []string) credentialIdentity {
 	if cred != auth.EmptyCredential {
-		h := sha256.New()
-		for _, secret := range []string{cred.Password, cred.RefreshToken, cred.AccessToken} {
-			h.Write([]byte(secret))
-			h.Write([]byte{0})
-		}
-		return "static\x00" + cred.Username + "\x00" + hex.EncodeToString(h.Sum(nil))
+		return credentialIdentity{cred: cred}
 	}
-	return "store\x00" + strings.Join(configs, "\x00")
+	return credentialIdentity{configs: strings.Join(configs, "\x00")}
 }
 
 const (
@@ -443,7 +443,7 @@ func (remo *Remote) authClient(registry string, plainHTTP, debug bool) (client *
 	}
 
 	cred := remo.Credential()
-	cache := sharedCache(credentialIdentity(cred, remo.Configs))
+	cache := sharedCache(newCredentialIdentity(cred, remo.Configs))
 
 	client = &auth.Client{
 		Client: &http.Client{
