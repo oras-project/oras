@@ -20,59 +20,19 @@ import (
 	stderrors "errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	oras "oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/content/oci"
-	"oras.land/oras/cmd/oras/internal/display/metadata"
-	"oras.land/oras/cmd/oras/internal/display/status"
+	"oras.land/oras/cmd/oras/internal/display/displaytest"
 	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/contentutil"
 )
-
-type recordingPushStatusHandler struct {
-	status.DiscardHandler
-	fileLoadingCalls []string
-	onFileLoadingErr error
-}
-
-func (h *recordingPushStatusHandler) OnFileLoading(name string) error {
-	h.fileLoadingCalls = append(h.fileLoadingCalls, name)
-	return h.onFileLoadingErr
-}
-
-type recordingPushMetadataHandler struct {
-	metadata.Discard
-	copiedCalls int
-	taggedCalls []string
-	renderCalls int
-}
-
-func (h *recordingPushMetadataHandler) OnCopied(
-	_ *option.Target,
-	_ ocispec.Descriptor,
-) error {
-	h.copiedCalls++
-	return nil
-}
-
-func (h *recordingPushMetadataHandler) OnTagged(
-	_ ocispec.Descriptor,
-	tag string,
-) error {
-	h.taggedCalls = append(h.taggedCalls, tag)
-	return nil
-}
-
-func (h *recordingPushMetadataHandler) Render() error {
-	h.renderCalls++
-	return nil
-}
 
 func Test_runPush_errType(t *testing.T) {
 	// prepare
@@ -147,8 +107,10 @@ func Test_pushCmd_invalidExtraTag(t *testing.T) {
 func Test_doPushCommand_fileLoadingError(t *testing.T) {
 	ctx := context.Background()
 	wantErr := stderrors.New("file loading failed")
-	handler := &recordingPushStatusHandler{
-		onFileLoadingErr: wantErr,
+	recorder := &displaytest.CallRecorder{}
+	statusHandler := &displaytest.RecordingPushStatusHandler{
+		Recorder:       recorder,
+		FileLoadingErr: wantErr,
 	}
 
 	opts := &pushOptions{}
@@ -159,25 +121,24 @@ func Test_doPushCommand_fileLoadingError(t *testing.T) {
 		ctx,
 		opts,
 		oras.PackManifestOptions{},
+		nil, // store is never used: OnFileLoading fails before addFile
 		nil,
 		nil,
-		nil,
-		handler,
-		&recordingPushMetadataHandler{},
+		statusHandler,
+		&displaytest.RecordingPushMetadataHandler{Recorder: recorder},
 		func() (oras.GraphTarget, error) {
 			targetCreated = true
 			return nil, stderrors.New("unexpected target creation")
 		},
 	)
-
 	if !stderrors.Is(err, wantErr) {
 		t.Fatalf("doPushCommand() error = %v, want %v", err, wantErr)
 	}
 	if targetCreated {
 		t.Fatal("destination was created after file loading failed")
 	}
-	if len(handler.fileLoadingCalls) != 1 {
-		t.Fatalf("OnFileLoading called %d times, want 1", len(handler.fileLoadingCalls))
+	if !reflect.DeepEqual(recorder.Calls, []string{"OnFileLoading"}) {
+		t.Fatalf("handler calls = %v, want [OnFileLoading]", recorder.Calls)
 	}
 }
 
@@ -199,19 +160,16 @@ func Test_doPushCommand_displayHandlerCalls(t *testing.T) {
 	union := contentutil.MultiReadOnlyTarget(memoryStore, store)
 	destination := memory.New()
 
-	statusHandler := &recordingPushStatusHandler{}
-	metadataHandler := &recordingPushMetadataHandler{}
+	recorder := &displaytest.CallRecorder{}
+	statusHandler := &displaytest.RecordingPushStatusHandler{Recorder: recorder}
+	metadataHandler := &displaytest.RecordingPushMetadataHandler{Recorder: recorder}
 
-	opts := &pushOptions{
-		Packer: option.Packer{
-			FileRefs: []string{filePath},
-		},
-		ImageSpec: option.ImageSpec{
-			PackVersion: oras.PackManifestVersion1_1,
-		},
-		artifactType: "application/vnd.example.test",
-		extraRefs:    []string{"tag2"},
-	}
+	opts := &pushOptions{}
+	opts.FileRefs = []string{filePath}
+	opts.Reference = "tag1"
+	opts.PackVersion = oras.PackManifestVersion1_1
+	opts.artifactType = "application/example"
+	opts.extraRefs = []string{"tag2"}
 
 	err = doPushCommand(
 		ctx,
@@ -230,16 +188,126 @@ func Test_doPushCommand_displayHandlerCalls(t *testing.T) {
 		t.Fatalf("doPushCommand() error = %v", err)
 	}
 
-	if len(statusHandler.fileLoadingCalls) != 1 {
-		t.Errorf("OnFileLoading called %d times, want 1", len(statusHandler.fileLoadingCalls))
+	wantCalls := []string{"OnFileLoading", "OnCopied", "OnTagged:tag2", "Render"}
+	if !reflect.DeepEqual(recorder.Calls, wantCalls) {
+		t.Errorf("handler calls = %v, want %v", recorder.Calls, wantCalls)
 	}
-	if metadataHandler.copiedCalls != 1 {
-		t.Errorf("OnCopied called %d times, want 1", metadataHandler.copiedCalls)
+}
+
+func Test_doPushCommand_onCopiedError(t *testing.T) {
+	ctx := context.Background()
+	recorder := &displaytest.CallRecorder{}
+	wantErr := stderrors.New("OnCopied failed")
+	metadataHandler := &displaytest.RecordingPushMetadataHandler{
+		Recorder:  recorder,
+		CopiedErr: wantErr,
 	}
-	if len(metadataHandler.taggedCalls) != 1 || metadataHandler.taggedCalls[0] != "tag2" {
-		t.Errorf("OnTagged calls = %v, want [tag2]", metadataHandler.taggedCalls)
+
+	store, err := file.New("")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if metadataHandler.renderCalls != 1 {
-		t.Errorf("Render called %d times, want 1", metadataHandler.renderCalls)
+	defer store.Close()
+
+	memoryStore := memory.New()
+	union := contentutil.MultiReadOnlyTarget(memoryStore, store)
+
+	filePath := filepath.Join(t.TempDir(), "hello.txt")
+	if err := os.WriteFile(filePath, []byte("hello world"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	exportPath := filepath.Join(t.TempDir(), "manifest.json")
+	opts := &pushOptions{}
+	opts.FileRefs = []string{filePath}
+	opts.Reference = "tag1"
+	opts.PackVersion = oras.PackManifestVersion1_1
+	opts.artifactType = "application/example"
+	opts.extraRefs = []string{"tag2"}
+	opts.ManifestExportPath = exportPath
+
+	statusHandler := &displaytest.RecordingPushStatusHandler{Recorder: recorder}
+	err = doPushCommand(
+		ctx,
+		opts,
+		oras.PackManifestOptions{},
+		store,
+		memoryStore,
+		union,
+		statusHandler,
+		metadataHandler,
+		func() (oras.GraphTarget, error) {
+			return memory.New(), nil
+		},
+	)
+	if !stderrors.Is(err, wantErr) {
+		t.Fatalf("doPushCommand() error = %v, want %v", err, wantErr)
+	}
+	if _, err := os.Stat(exportPath); !stderrors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected manifest export file not to exist, stat error = %v", err)
+	}
+
+	wantCalls := []string{"OnFileLoading", "OnCopied"}
+	if !reflect.DeepEqual(recorder.Calls, wantCalls) {
+		t.Errorf("handler calls = %v, want %v", recorder.Calls, wantCalls)
+	}
+}
+
+func Test_doPushCommand_renderError(t *testing.T) {
+	ctx := context.Background()
+	recorder := &displaytest.CallRecorder{}
+	wantErr := stderrors.New("Render failed")
+	metadataHandler := &displaytest.RecordingPushMetadataHandler{
+		Recorder:  recorder,
+		RenderErr: wantErr,
+	}
+
+	store, err := file.New("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+
+	memoryStore := memory.New()
+	union := contentutil.MultiReadOnlyTarget(memoryStore, store)
+
+	filePath := filepath.Join(t.TempDir(), "hello.txt")
+	if err := os.WriteFile(filePath, []byte("hello world"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	exportPath := filepath.Join(t.TempDir(), "manifest.json")
+	opts := &pushOptions{}
+	opts.FileRefs = []string{filePath}
+	opts.Reference = "tag1"
+	opts.PackVersion = oras.PackManifestVersion1_1
+	opts.artifactType = "application/example"
+	opts.extraRefs = []string{"tag2"}
+	opts.ManifestExportPath = exportPath
+
+	statusHandler := &displaytest.RecordingPushStatusHandler{Recorder: recorder}
+	err = doPushCommand(
+		ctx,
+		opts,
+		oras.PackManifestOptions{},
+		store,
+		memoryStore,
+		union,
+		statusHandler,
+		metadataHandler,
+		func() (oras.GraphTarget, error) {
+			return memory.New(), nil
+		},
+	)
+	if !stderrors.Is(err, wantErr) {
+		t.Fatalf("doPushCommand() error = %v, want %v", err, wantErr)
+	}
+	if _, err := os.Stat(exportPath); !stderrors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected manifest export file not to exist, stat error = %v", err)
+	}
+
+	wantCalls := []string{"OnFileLoading", "OnCopied", "OnTagged:tag2", "Render"}
+	if !reflect.DeepEqual(recorder.Calls, wantCalls) {
+		t.Errorf("handler calls = %v, want %v", recorder.Calls, wantCalls)
 	}
 }

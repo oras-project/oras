@@ -269,6 +269,7 @@ func doPushCommand(
 		return root, nil
 	}
 
+	// prepare push
 	originalDst, err := newTarget()
 	if err != nil {
 		return err
@@ -301,6 +302,7 @@ func doPushCommand(
 		return oerrors.UnwrapCopyError(err) // we don't need the CopyError information so we unwrap it here
 	}
 
+	// Push
 	root, err := doPush(dst, stopTrack, pack, copyWithScopeHint)
 	if err != nil {
 		return err
