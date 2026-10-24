@@ -32,7 +32,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/errdef"
+	"oras.land/oras/cmd/oras/internal/display/displaytest"
 	"oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/cmd/oras/root/manifest/common"
@@ -56,6 +58,25 @@ func (t *testConfigTarget) Resolve(context.Context, string) (ocispec.Descriptor,
 
 var _ oras.ReadOnlyTarget = (*testConfigTarget)(nil)
 
+func manifestFetchTarget(t *testing.T) oras.ReadOnlyTarget {
+	t.Helper()
+	ctx := context.Background()
+	target := memory.New()
+	manifest := []byte(`{"schemaVersion":2}`)
+	desc := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Digest:    digest.FromBytes(manifest),
+		Size:      int64(len(manifest)),
+	}
+	if err := target.Push(ctx, desc, bytes.NewReader(manifest)); err != nil {
+		t.Fatalf("Push() error = %v", err)
+	}
+	if err := target.Tag(ctx, desc, "test"); err != nil {
+		t.Fatalf("Tag() error = %v", err)
+	}
+	return target
+}
+
 func Test_fetchManifest_errType(t *testing.T) {
 	// prepare
 	cmd := &cobra.Command{}
@@ -71,6 +92,53 @@ func Test_fetchManifest_errType(t *testing.T) {
 	want := errors.UnsupportedFormatTypeError(opts.Format.Type).Error()
 	if got != want {
 		t.Fatalf("got %v, want %v", got, want)
+	}
+}
+
+func Test_doFetchManifest_contentPathHandlerCalls(t *testing.T) {
+	recorder := &displaytest.CallRecorder{}
+	contentHandler := &displaytest.RecordingManifestFetchContentHandler{Recorder: recorder}
+	metadataHandler := &displaytest.RecordingManifestFetchMetadataHandler{Recorder: recorder}
+	opts := &fetchOptions{Target: option.Target{Reference: "test", RawReference: "test"}}
+
+	if err := doFetchManifest(context.Background(), manifestFetchTarget(t), opts, metadataHandler, contentHandler); err != nil {
+		t.Fatalf("doFetchManifest() error = %v", err)
+	}
+	if got, want := recorder.Calls, []string{"OnContentFetched", "OnFetched"}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("handler calls = %v, want %v", got, want)
+	}
+}
+
+func Test_doFetchManifest_contentHandlerError(t *testing.T) {
+	wantedErr := stderrs.New("content handler failed")
+	recorder := &displaytest.CallRecorder{}
+	contentHandler := &displaytest.RecordingManifestFetchContentHandler{Recorder: recorder, ContentFetchedErr: wantedErr}
+	metadataHandler := &displaytest.RecordingManifestFetchMetadataHandler{Recorder: recorder}
+	opts := &fetchOptions{Target: option.Target{Reference: "test", RawReference: "test"}}
+
+	err := doFetchManifest(context.Background(), manifestFetchTarget(t), opts, metadataHandler, contentHandler)
+	if !stderrs.Is(err, wantedErr) {
+		t.Fatalf("doFetchManifest() error = %v, want %v", err, wantedErr)
+	}
+	if len(recorder.Calls) != 1 || recorder.Calls[0] != "OnContentFetched" {
+		t.Fatalf("handler calls = %v, want [OnContentFetched]", recorder.Calls)
+	}
+}
+
+func Test_doFetchManifest_descriptorOnly(t *testing.T) {
+	recorder := &displaytest.CallRecorder{}
+	contentHandler := &displaytest.RecordingManifestFetchContentHandler{Recorder: recorder}
+	metadataHandler := &displaytest.RecordingManifestFetchMetadataHandler{Recorder: recorder}
+	opts := &fetchOptions{
+		Target:     option.Target{Reference: "test", RawReference: "test"},
+		Descriptor: option.Descriptor{OutputDescriptor: true},
+	}
+
+	if err := doFetchManifest(context.Background(), manifestFetchTarget(t), opts, metadataHandler, contentHandler); err != nil {
+		t.Fatalf("doFetchManifest() error = %v", err)
+	}
+	if got, want := recorder.Calls, []string{"OnFetched"}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("metadata handler calls = %v, want %v", got, want)
 	}
 }
 
@@ -375,6 +443,28 @@ func Test_fetchConfigContent_withinLimit(t *testing.T) {
 	}
 	if !bytes.Equal(got, data) {
 		t.Fatalf("got %q, want %q", got, data)
+	}
+}
+
+func Test_fetchConfigDesc_rejectsNonImageManifest(t *testing.T) {
+	ctx := context.Background()
+	target := memory.New()
+	content := []byte(`{"config": {}}`)
+	desc := ocispec.Descriptor{
+		MediaType: "application/json",
+		Digest:    digest.FromBytes(content),
+		Size:      int64(len(content)),
+	}
+	if err := target.Push(ctx, desc, bytes.NewReader(content)); err != nil {
+		t.Fatalf("Push() error = %v", err)
+	}
+	if err := target.Tag(ctx, desc, "test"); err != nil {
+		t.Fatalf("Tag() error = %v", err)
+	}
+
+	_, err := fetchConfigDesc(ctx, target, "test", nil)
+	if err == nil || !strings.Contains(err.Error(), "is not an image manifest and does not have a config") {
+		t.Fatalf("fetchConfigDesc() error = %v, want non-image-manifest error", err)
 	}
 }
 

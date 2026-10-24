@@ -15,7 +15,52 @@ limitations under the License.
 
 package manifest
 
-import "testing"
+import (
+	"errors"
+	"reflect"
+	"testing"
+
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras/cmd/oras/internal/display/metadata/text"
+	"oras.land/oras/cmd/oras/internal/display/status"
+	"oras.land/oras/cmd/oras/internal/option"
+)
+
+type recordingManifestPushStatusHandler struct {
+	calls []string
+	err   error
+}
+
+func (h *recordingManifestPushStatusHandler) OnManifestPushSkipped() error {
+	h.calls = append(h.calls, "OnManifestPushSkipped")
+	return h.err
+}
+func (h *recordingManifestPushStatusHandler) OnManifestPushing() error {
+	h.calls = append(h.calls, "OnManifestPushing")
+	return h.err
+}
+func (h *recordingManifestPushStatusHandler) OnManifestPushed() error {
+	h.calls = append(h.calls, "OnManifestPushed")
+	return h.err
+}
+
+type recordingManifestPushMetadataHandler struct {
+	calls []string
+	err   error
+}
+
+func (h *recordingManifestPushMetadataHandler) OnTagged(ocispec.Descriptor, string) error {
+	h.calls = append(h.calls, "OnTagged")
+	return h.err
+}
+func (h *recordingManifestPushMetadataHandler) OnManifestPushed(ocispec.Descriptor) error {
+	h.calls = append(h.calls, "OnManifestPushed")
+	return h.err
+}
+func (h *recordingManifestPushMetadataHandler) Render() error {
+	h.calls = append(h.calls, "Render")
+	return h.err
+}
 
 func Test_pushManifestCmd_invalidExtraTag(t *testing.T) {
 	cmd := pushCmd()
@@ -41,5 +86,36 @@ func Test_pushManifestCmd_invalidHeader(t *testing.T) {
 	err := cmd.Execute()
 	if err == nil || err.Error() != `invalid header: "invalid"` {
 		t.Fatalf("got %v, want invalid header error", err)
+	}
+}
+
+func TestNewManifestPushHandlers_injected(t *testing.T) {
+	statusHandler := &recordingManifestPushStatusHandler{}
+	metadataHandler := &recordingManifestPushMetadataHandler{}
+	gotStatus, gotMetadata := newManifestPushHandlers(pushOptions{}, ocispec.Descriptor{}, manifestPushHandlers{statusHandler, metadataHandler})
+	if gotStatus != statusHandler || gotMetadata != metadataHandler {
+		t.Fatal("newManifestPushHandlers() did not return injected handlers")
+	}
+}
+
+func TestNewManifestPushHandlers_default(t *testing.T) {
+	opts := pushOptions{Target: option.Target{Reference: "example:v1"}}
+	gotStatus, gotMetadata := newManifestPushHandlers(opts, ocispec.Descriptor{})
+	if reflect.TypeOf(gotStatus) != reflect.TypeOf(status.NewTextManifestPushHandler(nil, ocispec.Descriptor{})) {
+		t.Errorf("status handler type = %T, want text manifest push handler", gotStatus)
+	}
+	if reflect.TypeOf(gotMetadata) != reflect.TypeOf(text.NewManifestPushHandler(nil, &opts.Target)) {
+		t.Errorf("metadata handler type = %T, want text manifest push handler", gotMetadata)
+	}
+}
+
+func TestRecordingManifestPushHandlers_errorStopsSequence(t *testing.T) {
+	wantedErr := errors.New("manifest push failed")
+	statusHandler := &recordingManifestPushStatusHandler{err: wantedErr}
+	if err := statusHandler.OnManifestPushing(); !errors.Is(err, wantedErr) {
+		t.Fatalf("OnManifestPushing() error = %v, want %v", err, wantedErr)
+	}
+	if got, want := statusHandler.calls, []string{"OnManifestPushing"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("status calls = %v, want %v", got, want)
 	}
 }

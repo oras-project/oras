@@ -19,10 +19,13 @@ import (
 	"context"
 	"errors"
 	"io"
+	"reflect"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras/cmd/oras/internal/display/metadata/tree"
+	"oras.land/oras/cmd/oras/internal/option"
 )
 
 // cyclicReferrerTarget is a minimal ReadOnlyGraphTarget that serves a
@@ -55,14 +58,42 @@ func (t *cyclicReferrerTarget) Resolve(context.Context, string) (ocispec.Descrip
 // recordingDiscoverHandler counts OnDiscovered calls.
 type recordingDiscoverHandler struct {
 	count int
+	calls []string
+	err   error
 }
 
 func (h *recordingDiscoverHandler) OnDiscovered(_, _ ocispec.Descriptor) error {
 	h.count++
+	h.calls = append(h.calls, "OnDiscovered")
+	return h.err
+}
+
+func (h *recordingDiscoverHandler) Render() error {
+	h.calls = append(h.calls, "Render")
 	return nil
 }
 
-func (h *recordingDiscoverHandler) Render() error { return nil }
+func TestNewDiscoverHandler_injected(t *testing.T) {
+	want := &recordingDiscoverHandler{}
+	got, err := newDiscoverHandler(&discoverOptions{}, ocispec.Descriptor{}, want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != want {
+		t.Fatal("newDiscoverHandler() did not return injected handler")
+	}
+}
+
+func TestNewDiscoverHandler_default(t *testing.T) {
+	opts := &discoverOptions{Format: option.Format{Type: option.FormatTypeTree.Name}}
+	got, err := newDiscoverHandler(opts, ocispec.Descriptor{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reflect.TypeOf(got) != reflect.TypeOf(tree.NewDiscoverHandler(nil, "", ocispec.Descriptor{}, false, nil)) {
+		t.Errorf("handler type = %T, want tree handler", got)
+	}
+}
 
 func TestFetchAllReferrers_CyclicGraphTerminates(t *testing.T) {
 	descA := ocispec.Descriptor{MediaType: ocispec.MediaTypeImageManifest, Digest: digest.FromString("A"), Size: 1}
@@ -81,5 +112,20 @@ func TestFetchAllReferrers_CyclicGraphTerminates(t *testing.T) {
 	// Each edge (A->B and B->A) is reported exactly once.
 	if handler.count != 2 {
 		t.Errorf("OnDiscovered called %d times, want 2", handler.count)
+	}
+}
+
+func TestFetchAllReferrers_HandlerErrorStopsTraversal(t *testing.T) {
+	wantedErr := errors.New("discover handler failed")
+	desc := ocispec.Descriptor{Digest: digest.FromString("root"), MediaType: ocispec.MediaTypeImageManifest}
+	target := &cyclicReferrerTarget{referrers: map[digest.Digest][]ocispec.Descriptor{
+		desc.Digest: {{Digest: digest.FromString("child"), MediaType: ocispec.MediaTypeImageManifest}},
+	}}
+	handler := &recordingDiscoverHandler{err: wantedErr}
+	if err := fetchAllReferrers(context.Background(), target, desc, "", handler, 0, make(map[digest.Digest]bool)); !errors.Is(err, wantedErr) {
+		t.Fatalf("fetchAllReferrers() error = %v, want %v", err, wantedErr)
+	}
+	if got, want := handler.calls, []string{"OnDiscovered"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
 }
