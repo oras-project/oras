@@ -77,7 +77,15 @@ scripts/release.sh --dry-run tag VERSION COMMIT_SHA
 
 ## Post-release tasks
 
-- Update the [oras-www](https://github.com/oras-project/oras-www) documentation as needed.
+- Open a pull request in [oras-www](https://github.com/oras-project/oras-www) and complete the following checklist, replacing `X.Y` with the release series and `VERSION` with the full release version:
+  - For a new minor or preview release, add the version to `versions.json`, `versions-map`, `versioned_docs/`, and `versioned_sidebars/`, following the preview-to-GA steps in `tools/refresh-commands.sh`.
+  - In `versions-map`, set the `X.Y` line to `X.Y VERSION`, run `npm run refresh-commands`, and commit the regenerated `versioned_docs/version-X.Y/commands/` files.
+  - In `versioned_docs/version-X.Y/installation.mdx`, update every pinned version, including download snippets, direct links, `go install`, the `ghcr.io/oras-project/oras` image, and the `doras` alias, then refresh the sample `oras version` output from the released binary.
+  - In `versioned_docs/version-X.Y/how_to_guides/verifying_binaries.mdx`, update the example version and asset file names.
+  - In `src/components/ORAS_CLI/index.jsx`, update the homepage installation snippet.
+  - Publish a blog post for a minor release; a blog post is optional for a patch release.
+  - Link the pull request from the release-vote or announcement thread.
+  - The release is not finished until this pull request is open.
 - Announce the release in Slack `#oras`.
 - Publish applicable security advisories after the release has shipped.
 
