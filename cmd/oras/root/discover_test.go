@@ -16,9 +16,11 @@ limitations under the License.
 package root
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
@@ -81,5 +83,25 @@ func TestFetchAllReferrers_CyclicGraphTerminates(t *testing.T) {
 	// Each edge (A->B and B->A) is reported exactly once.
 	if handler.count != 2 {
 		t.Errorf("OnDiscovered called %d times, want 2", handler.count)
+	}
+}
+
+func TestDiscoverCmd_OutputDeprecationMessage(t *testing.T) {
+	for _, format := range []string{"tree", "table", "json"} {
+		t.Run(format, func(t *testing.T) {
+			cmd := discoverCmd()
+			var stderr bytes.Buffer
+			cmd.SetErr(&stderr)
+			if err := cmd.ParseFlags([]string{"--output", format}); err != nil {
+				t.Fatal(err)
+			}
+			if err := cmd.PreRunE(cmd, []string{"localhost:5000/hello:v1"}); err != nil {
+				t.Fatal(err)
+			}
+			want := "[DEPRECATED] --output is deprecated, try `--format " + format + "` instead"
+			if !strings.Contains(stderr.String(), want) {
+				t.Errorf("stderr = %q, want it to contain %q", stderr.String(), want)
+			}
+		})
 	}
 }
