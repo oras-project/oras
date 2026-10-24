@@ -22,6 +22,8 @@ import (
 
 	"oras.land/oras/internal/testutils"
 
+	"oras.land/oras/cmd/oras/internal/display/metadata/json"
+	"oras.land/oras/cmd/oras/internal/display/metadata/template"
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
 	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -31,9 +33,80 @@ import (
 func TestNewPushHandler(t *testing.T) {
 	mockFetcher := testutils.NewMockFetcher()
 	printer := output.NewPrinter(os.Stdout, os.Stderr)
-	_, _, err := NewPushHandler(printer, option.Format{Type: option.FormatTypeText.Name}, os.Stdout, mockFetcher.Fetcher)
-	if err != nil {
-		t.Errorf("NewPushHandler() error = %v, want nil", err)
+
+	tests := []struct {
+		name           string
+		format         option.Format
+		tty            *os.File
+		wantStatusType reflect.Type
+		wantMetaType   reflect.Type
+		wantError      bool
+	}{
+		{
+			name:           "text",
+			format:         option.Format{Type: option.FormatTypeText.Name},
+			wantStatusType: reflect.TypeOf(&status.TextPushHandler{}),
+			wantMetaType:   reflect.TypeOf(&text.PushHandler{}),
+		},
+		{
+			name:           "text with TTY",
+			format:         option.Format{Type: option.FormatTypeText.Name},
+			tty:            os.Stdout,
+			wantStatusType: reflect.TypeOf(&status.TTYPushHandler{}),
+			wantMetaType:   reflect.TypeOf(&text.PushHandler{}),
+		},
+		{
+			name:           "JSON",
+			format:         option.Format{Type: option.FormatTypeJSON.Name},
+			wantStatusType: reflect.TypeOf(status.DiscardHandler{}),
+			wantMetaType:   reflect.TypeOf(&json.PushHandler{}),
+		},
+		{
+			name:           "JSON with TTY",
+			format:         option.Format{Type: option.FormatTypeJSON.Name},
+			tty:            os.Stdout,
+			wantStatusType: reflect.TypeOf(&status.TTYPushHandler{}),
+			wantMetaType:   reflect.TypeOf(&json.PushHandler{}),
+		},
+		{
+			name:           "Go template",
+			format:         option.Format{Type: option.FormatTypeGoTemplate.Name, Template: "{{.name}}"},
+			wantStatusType: reflect.TypeOf(status.DiscardHandler{}),
+			wantMetaType:   reflect.TypeOf(&template.PushHandler{}),
+		},
+		{
+			name:      "unsupported format",
+			format:    option.Format{Type: "unsupported"},
+			wantError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			statusHandler, metadataHandler, err := NewPushHandler(
+				printer, tt.format, tt.tty, mockFetcher.Fetcher,
+			)
+
+			if tt.wantError {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				if statusHandler != nil || metadataHandler != nil {
+					t.Fatal("expected nil handlers for unsupported format")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("NewPushHandler() error = %v", err)
+			}
+			if got := reflect.TypeOf(statusHandler); got != tt.wantStatusType {
+				t.Errorf("status handler type = %v, want %v", got, tt.wantStatusType)
+			}
+			if got := reflect.TypeOf(metadataHandler); got != tt.wantMetaType {
+				t.Errorf("metadata handler type = %v, want %v", got, tt.wantMetaType)
+			}
+		})
 	}
 }
 
