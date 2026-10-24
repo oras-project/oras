@@ -42,6 +42,7 @@ import (
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras/cmd/oras/internal/display/displaytest"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
@@ -134,59 +135,48 @@ func TestMain(m *testing.M) {
 
 func Test_doCopy(t *testing.T) {
 	// prepare
-	reader, child, err := testutils.NewPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = child.Close() }()
 	var opts copyOptions
-	opts.TTY = child
 	opts.From.Reference = memDesc.Digest.String()
 	dst := memory.New()
-	handler := status.NewTTYCopyHandler(opts.TTY)
+	recorder := &displaytest.CallRecorder{}
+	handler := &displaytest.RecordingCopyStatusHandler{Recorder: recorder}
 	// test
-	_, err = doCopy(context.Background(), handler, memStore, dst, &opts)
+	_, err := doCopy(context.Background(), handler, memStore, dst, &opts)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// validate
-	if err = testutils.MatchPipe(reader, child, "Copied", memDesc.MediaType, "100.00%", memDesc.Digest.String()); err != nil {
-		t.Fatal(err)
+	if got, want := recorder.Calls, []string{"PreCopy", "PostCopy"}; !slices.Equal(got, want) {
+		t.Errorf("handler calls = %v, want %v", got, want)
 	}
 }
 
 func Test_doCopy_skipped(t *testing.T) {
 	// prepare
-	reader, child, err := testutils.NewPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = child.Close() }()
 	var opts copyOptions
-	opts.TTY = child
 	opts.From.Reference = memDesc.Digest.String()
-	handler := status.NewTTYCopyHandler(opts.TTY)
+	recorder := &displaytest.CallRecorder{}
+	handler := &displaytest.RecordingCopyStatusHandler{Recorder: recorder}
 
 	// test
-	_, err = doCopy(context.Background(), handler, memStore, memStore, &opts)
+	_, err := doCopy(context.Background(), handler, memStore, memStore, &opts)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// validate
-	if err = testutils.MatchPipe(reader, child, "Exists", memDesc.MediaType, "100.00%", memDesc.Digest.String()); err != nil {
-		t.Fatal(err)
+	if got, want := recorder.Calls, []string{"OnCopySkipped"}; !slices.Equal(got, want) {
+		t.Errorf("handler calls = %v, want %v", got, want)
 	}
 }
 
 func Test_doCopy_mounted(t *testing.T) {
 	// prepare
-	reader, child, err := testutils.NewPipe()
+	_, child, err := testutils.NewPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = child.Close() }()
 	var opts copyOptions
-	opts.TTY = child
 	opts.From.Reference = manifestDigest
 	// mocked repositories
 	from, err := remote.NewRepository(fmt.Sprintf("%s/%s", host, repoFrom))
@@ -199,7 +189,8 @@ func Test_doCopy_mounted(t *testing.T) {
 		t.Fatal(err)
 	}
 	to.PlainHTTP = true
-	handler := status.NewTTYCopyHandler(opts.TTY)
+	recorder := &displaytest.CallRecorder{}
+	handler := &displaytest.RecordingCopyStatusHandler{Recorder: recorder}
 
 	// test
 	_, err = doCopy(context.Background(), handler, from, to, &opts)
@@ -207,8 +198,8 @@ func Test_doCopy_mounted(t *testing.T) {
 		t.Fatal(err)
 	}
 	// validate
-	if err = testutils.MatchPipe(reader, child, "Mounted", configMediaType, "100.00%", configDigest); err != nil {
-		t.Fatal(err)
+	if got, want := recorder.Calls, []string{"OnMounted", "PreCopy", "PostCopy"}; !slices.Equal(got, want) {
+		t.Errorf("handler calls = %v, want %v", got, want)
 	}
 }
 
@@ -287,13 +278,12 @@ func Test_doCopy_mountFallback(t *testing.T) {
 	testHost := "localhost:" + uri.Port()
 
 	// prepare
-	reader, child, err := testutils.NewPipe()
+	_, child, err := testutils.NewPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = child.Close() }()
 	var opts copyOptions
-	opts.TTY = child
 	opts.From.Reference = manifestDigest
 	// mocked repositories
 	from, err := remote.NewRepository(fmt.Sprintf("%s/%s", testHost, repoFromFallback))
@@ -306,7 +296,8 @@ func Test_doCopy_mountFallback(t *testing.T) {
 		t.Fatal(err)
 	}
 	to.PlainHTTP = true
-	handler := status.NewTTYCopyHandler(opts.TTY)
+	recorder := &displaytest.CallRecorder{}
+	handler := &displaytest.RecordingCopyStatusHandler{Recorder: recorder}
 
 	// test
 	_, err = doCopy(context.Background(), handler, from, to, &opts)
@@ -322,8 +313,8 @@ func Test_doCopy_mountFallback(t *testing.T) {
 		t.Error("expected blob to be uploaded via regular upload after mount failure")
 	}
 	// validate output shows "Copied" instead of "Mounted"
-	if err = testutils.MatchPipe(reader, child, "Copied", configMediaType, "100.00%", configDigest); err != nil {
-		t.Fatal(err)
+	if got, want := recorder.Calls, []string{"PreCopy", "PostCopy", "PreCopy", "PostCopy"}; !slices.Equal(got, want) {
+		t.Errorf("handler calls = %v, want %v", got, want)
 	}
 }
 

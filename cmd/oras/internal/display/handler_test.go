@@ -113,17 +113,143 @@ func TestNewPushHandler(t *testing.T) {
 func TestNewAttachHandler(t *testing.T) {
 	mockFetcher := testutils.NewMockFetcher()
 	printer := output.NewPrinter(os.Stdout, os.Stderr)
-	_, _, err := NewAttachHandler(printer, option.Format{Type: option.FormatTypeText.Name}, os.Stdout, mockFetcher.Fetcher)
-	if err != nil {
-		t.Errorf("NewAttachHandler() error = %v, want nil", err)
+
+	tests := []struct {
+		name           string
+		format         option.Format
+		tty            *os.File
+		wantStatusType reflect.Type
+		wantMetaType   reflect.Type
+		wantErr        bool
+	}{
+		{
+			name:           "text",
+			format:         option.Format{Type: option.FormatTypeText.Name},
+			wantStatusType: reflect.TypeOf((*status.TextPushHandler)(nil)),
+			wantMetaType:   reflect.TypeOf(text.NewAttachHandler(printer)),
+		},
+		{
+			name:           "text with tty",
+			format:         option.Format{Type: option.FormatTypeText.Name},
+			tty:            os.Stdout,
+			wantStatusType: reflect.TypeOf((*status.TTYPushHandler)(nil)),
+			wantMetaType:   reflect.TypeOf(text.NewAttachHandler(printer)),
+		},
+		{
+			name:           "json",
+			format:         option.Format{Type: option.FormatTypeJSON.Name},
+			wantStatusType: reflect.TypeOf(status.DiscardHandler{}),
+			wantMetaType:   reflect.TypeOf(json.NewAttachHandler(printer)),
+		},
+		{
+			name:           "template",
+			format:         option.Format{Type: option.FormatTypeGoTemplate.Name},
+			wantStatusType: reflect.TypeOf(status.DiscardHandler{}),
+			wantMetaType:   reflect.TypeOf(template.NewAttachHandler(printer, "")),
+		},
+		{
+			name:    "unsupported format",
+			format:  option.Format{Type: "unsupported"},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			statusHandler, metadataHandler, err := NewAttachHandler(
+				printer, tt.format, tt.tty, mockFetcher.Fetcher,
+			)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected an error for unsupported format")
+				}
+				if statusHandler != nil || metadataHandler != nil {
+					t.Fatal("expected nil handlers for unsupported format")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("NewAttachHandler() error = %v", err)
+			}
+			if got := reflect.TypeOf(statusHandler); got != tt.wantStatusType {
+				t.Errorf("status handler type = %v, want %v", got, tt.wantStatusType)
+			}
+			if got := reflect.TypeOf(metadataHandler); got != tt.wantMetaType {
+				t.Errorf("metadata handler type = %v, want %v", got, tt.wantMetaType)
+			}
+		})
 	}
 }
 
 func TestNewPullHandler(t *testing.T) {
 	printer := output.NewPrinter(os.Stdout, os.Stderr)
-	_, _, err := NewPullHandler(printer, option.Format{Type: option.FormatTypeText.Name}, "", os.Stdout)
-	if err != nil {
-		t.Errorf("NewPullHandler() error = %v, want nil", err)
+
+	tests := []struct {
+		name           string
+		format         option.Format
+		tty            *os.File
+		wantStatusType reflect.Type
+		wantMetaType   reflect.Type
+		wantErr        bool
+	}{
+		{
+			name:           "text",
+			format:         option.Format{Type: option.FormatTypeText.Name},
+			wantStatusType: reflect.TypeOf((*status.TextPullHandler)(nil)),
+			wantMetaType:   reflect.TypeOf(text.NewPullHandler(printer)),
+		},
+		{
+			name:           "text with tty",
+			format:         option.Format{Type: option.FormatTypeText.Name},
+			tty:            os.Stdout,
+			wantStatusType: reflect.TypeOf((*status.TTYPullHandler)(nil)),
+			wantMetaType:   reflect.TypeOf(text.NewPullHandler(printer)),
+		},
+		{
+			name:           "json",
+			format:         option.Format{Type: option.FormatTypeJSON.Name},
+			wantStatusType: reflect.TypeOf(status.DiscardHandler{}),
+			wantMetaType:   reflect.TypeOf(json.NewPullHandler(printer, "")),
+		},
+		{
+			name:           "template",
+			format:         option.Format{Type: option.FormatTypeGoTemplate.Name},
+			wantStatusType: reflect.TypeOf(status.DiscardHandler{}),
+			wantMetaType:   reflect.TypeOf(template.NewPullHandler(printer, "", "")),
+		},
+		{
+			name:    "unsupported format",
+			format:  option.Format{Type: "unsupported"},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			statusHandler, metadataHandler, err := NewPullHandler(
+				printer, tt.format, "", tt.tty,
+			)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected an error for unsupported format")
+				}
+				if statusHandler != nil || metadataHandler != nil {
+					t.Fatal("expected nil handlers for unsupported format")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("NewPullHandler() error = %v", err)
+			}
+			if got := reflect.TypeOf(statusHandler); got != tt.wantStatusType {
+				t.Errorf("status handler type = %v, want %v", got, tt.wantStatusType)
+			}
+			if got := reflect.TypeOf(metadataHandler); got != tt.wantMetaType {
+				t.Errorf("metadata handler type = %v, want %v", got, tt.wantMetaType)
+			}
+		})
 	}
 }
 
@@ -146,64 +272,114 @@ func TestNewCopyHandler(t *testing.T) {
 }
 
 func TestNewRepoTagsHandler(t *testing.T) {
+	out := os.Stdout
+
 	tests := []struct {
-		name        string
-		format      option.Format
-		expectError bool
+		name     string
+		format   option.Format
+		wantType reflect.Type
+		wantErr  bool
 	}{
-		{"text format", option.Format{Type: option.FormatTypeText.Name}, false},
-		{"JSON format", option.Format{Type: option.FormatTypeJSON.Name}, false},
-		{"Go template", option.Format{Type: option.FormatTypeGoTemplate.Name, Template: "{{.tags}}"}, false},
-		{"unsupported", option.Format{Type: "unsupported"}, true},
+		{
+			name:     "text",
+			format:   option.Format{Type: option.FormatTypeText.Name},
+			wantType: reflect.TypeOf(text.NewRepoTagsHandler(out)),
+		},
+		{
+			name:     "json",
+			format:   option.Format{Type: option.FormatTypeJSON.Name},
+			wantType: reflect.TypeOf(json.NewRepoTagsHandler(out)),
+		},
+		{
+			name:     "template",
+			format:   option.Format{Type: option.FormatTypeGoTemplate.Name},
+			wantType: reflect.TypeOf(template.NewRepoTagsHandler(out, "")),
+		},
+		{
+			name:    "unsupported format",
+			format:  option.Format{Type: "unsupported"},
+			wantErr: true,
+		},
 	}
 
 	// Test with stdout
 	for _, tt := range tests {
-		t.Run(tt.name+" with stdout", func(t *testing.T) {
-			handler, err := NewRepoTagsHandler(os.Stdout, tt.format)
-			if tt.expectError && err == nil {
-				t.Error("expected error, got nil")
+		t.Run(tt.name, func(t *testing.T) {
+			handler, err := NewRepoTagsHandler(out, tt.format)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("NewRepoTagsHandler() error = nil, want error")
+				}
+				if handler != nil {
+					t.Fatal("NewRepoTagsHandler() handler != nil, want nil")
+				}
+				return
 			}
-			if !tt.expectError {
-				if err != nil {
-					t.Errorf("error = %v, want nil", err)
-				}
-				if handler == nil {
-					t.Error("returned nil handler")
-				}
+
+			if err != nil {
+				t.Fatalf("NewRepoTagsHandler() error = %v, want nil", err)
+			}
+			if got := reflect.TypeOf(handler); got != tt.wantType {
+				t.Errorf("handler type = %v, want %v", got, tt.wantType)
 			}
 		})
 	}
 }
 
 func TestNewRepoListHandler(t *testing.T) {
+	out := os.Stdout
+	registry := "registry.example.com"
+	namespace := "example"
+
 	tests := []struct {
-		name        string
-		format      option.Format
-		expectError bool
+		name     string
+		format   option.Format
+		wantType reflect.Type
+		wantErr  bool
 	}{
-		{"text format", option.Format{Type: option.FormatTypeText.Name}, false},
-		{"JSON format", option.Format{Type: option.FormatTypeJSON.Name}, false},
-		{"Go template", option.Format{Type: option.FormatTypeGoTemplate.Name, Template: "{{.repositories}}"}, false},
-		{"unsupported", option.Format{Type: "unsupported"}, true},
+		{
+			name:     "text",
+			format:   option.Format{Type: option.FormatTypeText.Name},
+			wantType: reflect.TypeOf(text.NewRepoListHandler(out, namespace)),
+		},
+		{
+			name:     "json",
+			format:   option.Format{Type: option.FormatTypeJSON.Name},
+			wantType: reflect.TypeOf(json.NewRepoListHandler(out, registry)),
+		},
+		{
+			name:     "template",
+			format:   option.Format{Type: option.FormatTypeGoTemplate.Name},
+			wantType: reflect.TypeOf(template.NewRepoListHandler(out, "", registry)),
+		},
+		{
+			name:    "unsupported format",
+			format:  option.Format{Type: "unsupported"},
+			wantErr: true,
+		},
 	}
 
 	// Test with stdout
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			registry := "example.com"
-			namespace := "foo/bar"
-			handler, err := NewRepoListHandler(os.Stdout, tt.format, registry, namespace)
-			if tt.expectError && err == nil {
-				t.Error("expected error, got nil")
+			handler, err := NewRepoListHandler(out, tt.format, registry, namespace)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("NewRepoListHandler() error = nil, want error")
+				}
+				if handler != nil {
+					t.Fatal("NewRepoListHandler() handler != nil, want nil")
+				}
+				return
 			}
-			if !tt.expectError {
-				if err != nil {
-					t.Errorf("error = %v, want nil", err)
-				}
-				if handler == nil {
-					t.Error("returned nil handler")
-				}
+
+			if err != nil {
+				t.Fatalf("NewRepoListHandler() error = %v, want nil", err)
+			}
+			if got := reflect.TypeOf(handler); got != tt.wantType {
+				t.Errorf("handler type = %v, want %v", got, tt.wantType)
 			}
 		})
 	}
