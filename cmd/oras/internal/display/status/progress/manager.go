@@ -38,6 +38,7 @@ var errManagerStopped = errors.New("progress output manager has already been sto
 type manager struct {
 	status       []*status
 	lock         sync.RWMutex // locks status, console and closing, write lock is used for adding new status so that it has a higher priority
+	renderLock   sync.Mutex   // prevents concurrent renders from interleaving console frames
 	console      console.Console
 	updating     sync.WaitGroup
 	closing      bool
@@ -86,6 +87,8 @@ func (m *manager) start() {
 }
 
 func (m *manager) render() {
+	m.renderLock.Lock()
+	defer m.renderLock.Unlock()
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 

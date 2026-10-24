@@ -19,7 +19,9 @@ import (
 	"errors"
 	"regexp"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/status/console"
@@ -105,6 +107,62 @@ func Test_manager(t *testing.T) {
 		if !equal(c.view[i], v) {
 			t.Errorf("console view[%d] = %q, want %q", i, c.view[i], v)
 		}
+	}
+}
+
+type blockingRenderConsole struct {
+	*mockConsole
+	entered chan struct{}
+	release chan struct{}
+	first   atomic.Bool
+}
+
+func (c *blockingRenderConsole) OutputTo(_ uint, _ string) {
+	if c.first.CompareAndSwap(false, true) {
+		c.entered <- struct{}{}
+		<-c.release
+		return
+	}
+	// Only a second concurrent frame can arrive while the first is blocked.
+	select {
+	case <-c.release:
+	default:
+		c.entered <- struct{}{}
+	}
+}
+
+func Test_manager_render_serializes_console_frames(t *testing.T) {
+	c := &blockingRenderConsole{
+		mockConsole: newMockConsole(80, 24),
+		entered:     make(chan struct{}, 2),
+		release:     make(chan struct{}),
+	}
+	m := &manager{console: c, status: []*status{newStatus(ocispec.Descriptor{Size: 1})}}
+	firstDone := make(chan struct{})
+	go func() {
+		m.render()
+		close(firstDone)
+	}()
+	<-c.entered // first render is blocked inside OutputTo
+	secondStarted := make(chan struct{})
+	secondDone := make(chan struct{})
+	go func() {
+		close(secondStarted)
+		m.render()
+		close(secondDone)
+	}()
+	<-secondStarted
+	var overlapped bool
+	select {
+	case <-c.entered:
+		overlapped = true
+	case <-time.After(100 * time.Millisecond):
+	}
+	close(c.release)
+	<-firstDone
+	<-secondDone
+	if overlapped {
+		t.Fatal("a second render wrote to the console before the first frame finished")
 	}
 }
 
