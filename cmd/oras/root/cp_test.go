@@ -169,6 +169,38 @@ func Test_doCopy_skipped(t *testing.T) {
 	}
 }
 
+func Test_copyAndFinalize_handlerCalls(t *testing.T) {
+	var opts copyOptions
+	opts.From.Reference = memDesc.Digest.String()
+	recorder := &displaytest.CallRecorder{}
+	statusHandler := &displaytest.RecordingCopyStatusHandler{Recorder: recorder}
+	metadataHandler := &displaytest.RecordingCopyMetadataHandler{Recorder: recorder}
+
+	if err := copyAndFinalize(context.Background(), statusHandler, metadataHandler, memStore, memory.New(), &opts, true); err != nil {
+		t.Fatalf("copyAndFinalize() error = %v", err)
+	}
+	if got, want := recorder.Calls, []string{"PreCopy", "PostCopy", "OnCopied", "Render"}; !slices.Equal(got, want) {
+		t.Errorf("handler calls = %v, want %v", got, want)
+	}
+}
+
+func Test_copyAndFinalize_onCopiedError(t *testing.T) {
+	wantedErr := errors.New("metadata copy failed")
+	var opts copyOptions
+	opts.From.Reference = memDesc.Digest.String()
+	recorder := &displaytest.CallRecorder{}
+	statusHandler := &displaytest.RecordingCopyStatusHandler{Recorder: recorder}
+	metadataHandler := &displaytest.RecordingCopyMetadataHandler{Recorder: recorder, CopiedErr: wantedErr}
+
+	err := copyAndFinalize(context.Background(), statusHandler, metadataHandler, memStore, memory.New(), &opts, true)
+	if !errors.Is(err, wantedErr) {
+		t.Fatalf("copyAndFinalize() error = %v, want %v", err, wantedErr)
+	}
+	if got, want := recorder.Calls, []string{"PreCopy", "PostCopy", "OnCopied"}; !slices.Equal(got, want) {
+		t.Errorf("handler calls = %v, want %v", got, want)
+	}
+}
+
 func Test_doCopy_mounted(t *testing.T) {
 	// prepare
 	_, child, err := testutils.NewPipe()

@@ -23,6 +23,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -33,6 +34,13 @@ type resolveOptions struct {
 	option.Target
 
 	fullRef bool
+}
+
+func newResolveHandler(opts *resolveOptions, injected ...metadata.ResolveHandler) metadata.ResolveHandler {
+	if len(injected) == 1 {
+		return injected[0]
+	}
+	return display.NewResolveHandler(opts.Printer, opts.fullRef, opts.Path)
 }
 
 func resolveCmd() *cobra.Command {
@@ -63,7 +71,7 @@ Example - Resolve digest of the target artifact:
 	return oerrors.Command(cmd, &opts.Target)
 }
 
-func runResolve(cmd *cobra.Command, opts *resolveOptions) error {
+func runResolve(cmd *cobra.Command, opts *resolveOptions, injected ...metadata.ResolveHandler) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	repo, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
@@ -72,7 +80,7 @@ func runResolve(cmd *cobra.Command, opts *resolveOptions) error {
 	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
 		return err
 	}
-	metadataHandler := display.NewResolveHandler(opts.Printer, opts.fullRef, opts.Path)
+	metadataHandler := newResolveHandler(opts, injected...)
 	resolveOpts := oras.DefaultResolveOptions
 	resolveOpts.TargetPlatform = opts.Platform.Platform
 	desc, err := oras.Resolve(ctx, repo, opts.Reference, resolveOpts)

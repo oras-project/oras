@@ -19,7 +19,9 @@ import (
 	"context"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/status"
+	"oras.land/oras/cmd/oras/internal/option"
 )
 
 // RecordingCopyStatusHandler records copy status handler calls.
@@ -50,4 +52,24 @@ func (h *RecordingCopyStatusHandler) PostCopy(_ context.Context, _ ocispec.Descr
 func (h *RecordingCopyStatusHandler) OnMounted(_ context.Context, _ ocispec.Descriptor) error {
 	h.Recorder.Record("OnMounted")
 	return nil
+}
+
+// RecordingCopyMetadataHandler records copy metadata handler calls.
+type RecordingCopyMetadataHandler struct {
+	metadata.Discard
+	Recorder  *CallRecorder
+	CopiedErr error
+	RenderErr error
+}
+
+// OnCopied records the copied event and returns the configured error.
+func (h *RecordingCopyMetadataHandler) OnCopied(_ *option.BinaryTarget, _ ocispec.Descriptor) error {
+	h.Recorder.Record("OnCopied")
+	return h.CopiedErr
+}
+
+// Render records the render call and returns the configured error.
+func (h *RecordingCopyMetadataHandler) Render() error {
+	h.Recorder.Record("Render")
+	return h.RenderErr
 }

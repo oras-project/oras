@@ -20,12 +20,16 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 
+	"oras.land/oras/cmd/oras/internal/display/displaytest"
+	"oras.land/oras/cmd/oras/internal/display/metadata/text"
+	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -96,5 +100,46 @@ func Test_attachCmd_configAnnotationsWiredToPackOpts(t *testing.T) {
 	}
 	if packOpts.ConfigAnnotations["org.example.key"] != "val" {
 		t.Fatalf("expected 'org.example.key'='val', got %v", packOpts.ConfigAnnotations)
+	}
+}
+
+func TestNewAttachHandlers_injected(t *testing.T) {
+	recorder := &displaytest.CallRecorder{}
+	want := attachHandlers{
+		status:   &displaytest.RecordingAttachStatusHandler{Recorder: recorder},
+		metadata: &displaytest.RecordingAttachMetadataHandler{Recorder: recorder},
+	}
+	got, err := newAttachHandlers(&attachOptions{}, nil, want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.status != want.status || got.metadata != want.metadata {
+		t.Fatal("newAttachHandlers() did not return injected handlers")
+	}
+}
+
+func TestNewAttachHandlers_default(t *testing.T) {
+	got, err := newAttachHandlers(&attachOptions{Format: option.Format{Type: option.FormatTypeText.Name}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reflect.TypeOf(got.status) != reflect.TypeOf(status.NewTextAttachHandler(nil, nil)) {
+		t.Errorf("status handler type = %T, want text attach handler", got.status)
+	}
+	if reflect.TypeOf(got.metadata) != reflect.TypeOf(text.NewAttachHandler(nil)) {
+		t.Errorf("metadata handler type = %T, want text attach handler", got.metadata)
+	}
+}
+
+func TestRecordingAttachHandlers_callOrderAndError(t *testing.T) {
+	recorder := &displaytest.CallRecorder{}
+	statusHandler := &displaytest.RecordingAttachStatusHandler{Recorder: recorder, TrackErr: errors.New("track failed")}
+	metadataHandler := &displaytest.RecordingAttachMetadataHandler{Recorder: recorder}
+	if _, _, err := statusHandler.TrackTarget(nil); err == nil {
+		t.Fatal("TrackTarget() error = nil, want error")
+	}
+	metadataHandler.OnAttached(nil, ocispec.Descriptor{}, ocispec.Descriptor{})
+	if got, want := recorder.Calls, []string{"TrackTarget", "OnAttached"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
 }

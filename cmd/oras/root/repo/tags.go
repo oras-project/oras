@@ -25,6 +25,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/contentutil"
@@ -37,6 +38,13 @@ type showTagsOptions struct {
 
 	last             string
 	excludeDigestTag bool
+}
+
+func newRepoTagsHandler(opts *showTagsOptions, injected ...metadata.RepoTagsHandler) (metadata.RepoTagsHandler, error) {
+	if len(injected) == 1 {
+		return injected[0], nil
+	}
+	return display.NewRepoTagsHandler(opts.Printer, opts.Format)
 }
 
 func showTagsCmd() *cobra.Command {
@@ -94,7 +102,7 @@ Example - [Experimental] Show tags of a specific repository in OCI layout:
 	return oerrors.Command(cmd, &opts.Target)
 }
 
-func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
+func showTags(cmd *cobra.Command, opts *showTagsOptions, injected ...metadata.RepoTagsHandler) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	finder, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
@@ -125,7 +133,7 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 		logger.Warnf("[Experimental] querying tags associated to %s, it may take a while...\n", targetDigest)
 	}
 
-	handler, err := display.NewRepoTagsHandler(opts.Printer, opts.Format)
+	handler, err := newRepoTagsHandler(opts, injected...)
 	if err != nil {
 		return err
 	}

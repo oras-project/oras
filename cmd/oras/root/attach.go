@@ -29,6 +29,8 @@ import (
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
+	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -49,6 +51,22 @@ type attachOptions struct {
 	concurrency       int
 	// Deprecated: verbose is deprecated and will be removed in the future.
 	verbose bool
+}
+
+type attachHandlers struct {
+	status   status.AttachHandler
+	metadata metadata.AttachHandler
+}
+
+func newAttachHandlers(opts *attachOptions, fetcher content.Fetcher, injected ...attachHandlers) (attachHandlers, error) {
+	if len(injected) == 1 {
+		return injected[0], nil
+	}
+	statusHandler, metadataHandler, err := display.NewAttachHandler(opts.Printer, opts.Format, opts.TTY, fetcher)
+	if err != nil {
+		return attachHandlers{}, err
+	}
+	return attachHandlers{status: statusHandler, metadata: metadataHandler}, nil
 }
 
 func attachCmd() *cobra.Command {
@@ -152,7 +170,7 @@ func buildAttachPackOpts(opts *attachOptions, subject ocispec.Descriptor, descs 
 	}
 }
 
-func runAttach(cmd *cobra.Command, opts *attachOptions) error {
+func runAttach(cmd *cobra.Command, opts *attachOptions, injected ...attachHandlers) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	if len(opts.FileRefs) == 0 && len(opts.Annotations[option.AnnotationManifest]) == 0 {
 		return &oerrors.Error{
@@ -182,10 +200,12 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	if err != nil {
 		return fmt.Errorf("failed to resolve %s: %w", opts.Reference, err)
 	}
-	statusHandler, metadataHandler, err := display.NewAttachHandler(opts.Printer, opts.Format, opts.TTY, store)
+	handlers, err := newAttachHandlers(opts, store, injected...)
 	if err != nil {
 		return err
 	}
+	statusHandler := handlers.status
+	metadataHandler := handlers.metadata
 	descs, err := loadFiles(ctx, store, opts.Annotations, opts.FileRefs, statusHandler)
 	if err != nil {
 		return err

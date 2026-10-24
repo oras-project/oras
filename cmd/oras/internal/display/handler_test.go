@@ -20,11 +20,17 @@ import (
 	"reflect"
 	"testing"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/internal/testutils"
 
+	"oras.land/oras/cmd/oras/internal/display/content"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
+	"oras.land/oras/cmd/oras/internal/display/metadata/descriptor"
 	"oras.land/oras/cmd/oras/internal/display/metadata/json"
+	"oras.land/oras/cmd/oras/internal/display/metadata/table"
 	"oras.land/oras/cmd/oras/internal/display/metadata/template"
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
+	"oras.land/oras/cmd/oras/internal/display/metadata/tree"
 	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/cmd/oras/internal/output"
@@ -434,4 +440,253 @@ func TestNewRestoreHandler(t *testing.T) {
 			t.Errorf("expected *text.RestoreHandler actual %v", reflect.TypeOf(metadataHandler))
 		}
 	})
+}
+
+func TestNewManifestFetchHandler(t *testing.T) {
+	out := os.Stdout
+	tests := []struct {
+		name             string
+		format           option.Format
+		outputDescriptor bool
+		outputPath       string
+		wantMetadataType reflect.Type
+		wantContentType  reflect.Type
+	}{
+		{
+			name:             "text descriptor",
+			format:           option.Format{Type: option.FormatTypeText.Name},
+			outputDescriptor: true,
+			wantMetadataType: reflect.TypeOf(descriptor.NewManifestFetchHandler(out, false)),
+			wantContentType:  reflect.TypeOf(content.NewManifestFetchHandler(out, false, "")),
+		},
+		{
+			name:             "json stdout",
+			format:           option.Format{Type: option.FormatTypeJSON.Name},
+			wantMetadataType: reflect.TypeOf(json.NewManifestFetchHandler(out)),
+			wantContentType:  reflect.TypeOf(content.NewDiscardHandler()),
+		},
+		{
+			name:             "template file",
+			format:           option.Format{Type: option.FormatTypeGoTemplate.Name, Template: "{{.digest}}"},
+			outputPath:       "manifest.json",
+			wantMetadataType: reflect.TypeOf(template.NewManifestFetchHandler(out, "{{.digest}}")),
+			wantContentType:  reflect.TypeOf(content.NewManifestFetchHandler(out, false, "manifest.json")),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			metadataHandler, contentHandler, err := NewManifestFetchHandler(out, tt.format, tt.outputDescriptor, false, tt.outputPath)
+			if err != nil {
+				t.Fatalf("NewManifestFetchHandler() error = %v", err)
+			}
+			if got := reflect.TypeOf(metadataHandler); got != tt.wantMetadataType {
+				t.Errorf("metadata handler type = %v, want %v", got, tt.wantMetadataType)
+			}
+			if got := reflect.TypeOf(contentHandler); got != tt.wantContentType {
+				t.Errorf("content handler type = %v, want %v", got, tt.wantContentType)
+			}
+		})
+	}
+}
+
+func TestNewDiscoverHandler(t *testing.T) {
+	out := os.Stdout
+	desc := ocispec.Descriptor{}
+	tests := []struct {
+		name     string
+		format   option.Format
+		tty      *os.File
+		wantType reflect.Type
+	}{
+		{name: "tree", format: option.Format{Type: option.FormatTypeTree.Name}, wantType: reflect.TypeOf(tree.NewDiscoverHandler(out, "", desc, false, nil))},
+		{name: "tree with TTY", format: option.Format{Type: option.FormatTypeTree.Name}, tty: os.Stdout, wantType: reflect.TypeOf(tree.NewDiscoverHandler(out, "", desc, false, os.Stdout))},
+		{name: "table", format: option.Format{Type: option.FormatTypeTable.Name}, wantType: reflect.TypeOf(table.NewDiscoverHandler(out, "ref", desc, false))},
+		{name: "json", format: option.Format{Type: option.FormatTypeJSON.Name}, wantType: reflect.TypeOf(json.NewDiscoverHandler(out, desc, ""))},
+		{name: "template", format: option.Format{Type: option.FormatTypeGoTemplate.Name, Template: "{{.digest}}"}, wantType: reflect.TypeOf(template.NewDiscoverHandler(out, desc, "", "{{.digest}}"))},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NewDiscoverHandler(out, tt.format, "", "ref", desc, false, tt.tty)
+			if err != nil {
+				t.Fatalf("NewDiscoverHandler() error = %v", err)
+			}
+			if gotType := reflect.TypeOf(got); gotType != tt.wantType {
+				t.Errorf("handler type = %v, want %v", gotType, tt.wantType)
+			}
+		})
+	}
+}
+
+func TestNewTagHandler(t *testing.T) {
+	printer := output.NewPrinter(os.Stdout, os.Stderr)
+	handler := NewTagHandler(printer, option.Target{Reference: "example:v1"})
+	if got, want := reflect.TypeOf(handler), reflect.TypeOf(text.NewTagHandler(printer, option.Target{Reference: "example:v1"})); got != want {
+		t.Errorf("handler type = %v, want %v", got, want)
+	}
+}
+
+func TestNewManifestDeleteHandler(t *testing.T) {
+	printer := output.NewPrinter(os.Stdout, os.Stderr)
+	target := &option.Target{Reference: "example:v1"}
+	handler := NewManifestDeleteHandler(printer, target)
+	if got, want := reflect.TypeOf(handler), reflect.TypeOf(text.NewManifestDeleteHandler(printer, target)); got != want {
+		t.Errorf("handler type = %v, want %v", got, want)
+	}
+}
+
+func TestNewResolveHandler(t *testing.T) {
+	printer := output.NewPrinter(os.Stdout, os.Stderr)
+	handler := NewResolveHandler(printer, true, "descriptor.json")
+	if got, want := reflect.TypeOf(handler), reflect.TypeOf(text.NewResolveHandler(printer, true, "descriptor.json")); got != want {
+		t.Errorf("handler type = %v, want %v", got, want)
+	}
+}
+
+func TestNewBlobDeleteHandler(t *testing.T) {
+	printer := output.NewPrinter(os.Stdout, os.Stderr)
+	target := &option.Target{Reference: "example:v1"}
+	handler := NewBlobDeleteHandler(printer, target)
+	if got, want := reflect.TypeOf(handler), reflect.TypeOf(text.NewBlobDeleteHandler(printer, target)); got != want {
+		t.Errorf("handler type = %v, want %v", got, want)
+	}
+}
+
+func TestNewBlobPushHandler_outputDescriptor(t *testing.T) {
+	printer := output.NewPrinter(os.Stdout, os.Stderr)
+	statusHandler, metadataHandler := NewBlobPushHandler(printer, true, false, ocispec.Descriptor{}, nil)
+	if got, want := reflect.TypeOf(statusHandler), reflect.TypeOf(status.NewDiscardHandler()); got != want {
+		t.Errorf("status handler type = %v, want %v", got, want)
+	}
+	if got, want := reflect.TypeOf(metadataHandler), reflect.TypeOf(metadata.NewDiscardHandler()); got != want {
+		t.Errorf("metadata handler type = %v, want %v", got, want)
+	}
+}
+
+func TestNewBlobPushHandler_output(t *testing.T) {
+	printer := output.NewPrinter(os.Stdout, os.Stderr)
+	desc := ocispec.Descriptor{}
+	tests := []struct {
+		name             string
+		tty              *os.File
+		wantStatusType   reflect.Type
+		wantMetadataType reflect.Type
+	}{
+		{name: "text", wantStatusType: reflect.TypeOf(status.NewTextBlobPushHandler(printer, desc)), wantMetadataType: reflect.TypeOf(text.NewBlobPushHandler(printer, desc))},
+		{name: "TTY", tty: os.Stdout, wantStatusType: reflect.TypeOf(status.NewTTYBlobPushHandler(os.Stdout, desc)), wantMetadataType: reflect.TypeOf(text.NewBlobPushHandler(printer, desc))},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotStatus, gotMetadata := NewBlobPushHandler(printer, false, false, desc, tt.tty)
+			if got := reflect.TypeOf(gotStatus); got != tt.wantStatusType {
+				t.Errorf("status handler type = %v, want %v", got, tt.wantStatusType)
+			}
+			if got := reflect.TypeOf(gotMetadata); got != tt.wantMetadataType {
+				t.Errorf("metadata handler type = %v, want %v", got, tt.wantMetadataType)
+			}
+		})
+	}
+}
+
+func TestNewManifestPushHandler_outputDescriptor(t *testing.T) {
+	printer := output.NewPrinter(os.Stdout, os.Stderr)
+	statusHandler, metadataHandler := NewManifestPushHandler(printer, true, false, ocispec.Descriptor{}, nil)
+	if got, want := reflect.TypeOf(statusHandler), reflect.TypeOf(status.NewDiscardHandler()); got != want {
+		t.Errorf("status handler type = %v, want %v", got, want)
+	}
+	if got, want := reflect.TypeOf(metadataHandler), reflect.TypeOf(metadata.NewDiscardHandler()); got != want {
+		t.Errorf("metadata handler type = %v, want %v", got, want)
+	}
+}
+
+func TestNewManifestPushHandler_output(t *testing.T) {
+	printer := output.NewPrinter(os.Stdout, os.Stderr)
+	desc := ocispec.Descriptor{}
+	target := &option.Target{Reference: "example:v1"}
+	statusHandler, metadataHandler := NewManifestPushHandler(printer, false, false, desc, target)
+	if got, want := reflect.TypeOf(statusHandler), reflect.TypeOf(status.NewTextManifestPushHandler(printer, desc)); got != want {
+		t.Errorf("status handler type = %v, want %v", got, want)
+	}
+	if got, want := reflect.TypeOf(metadataHandler), reflect.TypeOf(text.NewManifestPushHandler(printer, target)); got != want {
+		t.Errorf("metadata handler type = %v, want %v", got, want)
+	}
+}
+
+func TestNewManifestIndexCreateHandler_outputModes(t *testing.T) {
+	printer := output.NewPrinter(os.Stdout, os.Stderr)
+	tests := []struct {
+		name         string
+		outputPath   string
+		statusType   reflect.Type
+		metadataType reflect.Type
+		contentType  reflect.Type
+	}{
+		{
+			name:         "stdout",
+			statusType:   reflect.TypeOf(status.NewTextManifestIndexCreateHandler(printer)),
+			metadataType: reflect.TypeOf(text.NewManifestIndexCreateHandler(printer)),
+			contentType:  reflect.TypeOf(content.NewDiscardHandler()),
+		},
+		{
+			name:         "raw stdout",
+			outputPath:   "-",
+			statusType:   reflect.TypeOf(status.NewDiscardHandler()),
+			metadataType: reflect.TypeOf(metadata.NewDiscardHandler()),
+			contentType:  reflect.TypeOf(content.NewManifestIndexCreateHandler(printer, false, "-")),
+		},
+		{
+			name:         "file",
+			outputPath:   "index.json",
+			statusType:   reflect.TypeOf(status.NewTextManifestIndexCreateHandler(printer)),
+			metadataType: reflect.TypeOf(text.NewManifestIndexCreateHandler(printer)),
+			contentType:  reflect.TypeOf(content.NewManifestIndexCreateHandler(printer, false, "index.json")),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotStatus, gotMetadata, gotContent := NewManifestIndexCreateHandler(tt.outputPath, printer, false)
+			if reflect.TypeOf(gotStatus) != tt.statusType || reflect.TypeOf(gotMetadata) != tt.metadataType || reflect.TypeOf(gotContent) != tt.contentType {
+				t.Errorf("handler types = (%T, %T, %T), want (%v, %v, %v)", gotStatus, gotMetadata, gotContent, tt.statusType, tt.metadataType, tt.contentType)
+			}
+		})
+	}
+}
+
+func TestNewManifestIndexUpdateHandler_outputModes(t *testing.T) {
+	printer := output.NewPrinter(os.Stdout, os.Stderr)
+	tests := []struct {
+		name         string
+		outputPath   string
+		statusType   reflect.Type
+		metadataType reflect.Type
+		contentType  reflect.Type
+	}{
+		{
+			name:         "stdout",
+			statusType:   reflect.TypeOf(status.NewTextManifestIndexUpdateHandler(printer)),
+			metadataType: reflect.TypeOf(text.NewManifestIndexCreateHandler(printer)),
+			contentType:  reflect.TypeOf(content.NewDiscardHandler()),
+		},
+		{
+			name:         "raw stdout",
+			outputPath:   "-",
+			statusType:   reflect.TypeOf(status.NewDiscardHandler()),
+			metadataType: reflect.TypeOf(metadata.NewDiscardHandler()),
+			contentType:  reflect.TypeOf(content.NewManifestIndexCreateHandler(printer, false, "-")),
+		},
+		{
+			name:         "file",
+			outputPath:   "index.json",
+			statusType:   reflect.TypeOf(status.NewTextManifestIndexUpdateHandler(printer)),
+			metadataType: reflect.TypeOf(text.NewManifestIndexCreateHandler(printer)),
+			contentType:  reflect.TypeOf(content.NewManifestIndexCreateHandler(printer, false, "index.json")),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotStatus, gotMetadata, gotContent := NewManifestIndexUpdateHandler(tt.outputPath, printer, false)
+			if reflect.TypeOf(gotStatus) != tt.statusType || reflect.TypeOf(gotMetadata) != tt.metadataType || reflect.TypeOf(gotContent) != tt.contentType {
+				t.Errorf("handler types = (%T, %T, %T), want (%v, %v, %v)", gotStatus, gotMetadata, gotContent, tt.statusType, tt.metadataType, tt.contentType)
+			}
+		})
+	}
 }

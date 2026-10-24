@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/internal/listener"
 
 	"github.com/spf13/cobra"
@@ -38,6 +39,13 @@ type tagOptions struct {
 
 	concurrency int
 	targetRefs  []string
+}
+
+func newTagHandler(opts *tagOptions, injected ...metadata.TagHandler) metadata.TagHandler {
+	if len(injected) == 1 {
+		return injected[0]
+	}
+	return display.NewTagHandler(opts.Printer, opts.Target)
 }
 
 func tagCmd() *cobra.Command {
@@ -101,7 +109,7 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 	return oerrors.Command(cmd, &opts.Target)
 }
 
-func tagManifest(cmd *cobra.Command, opts *tagOptions) error {
+func tagManifest(cmd *cobra.Command, opts *tagOptions, injected ...metadata.TagHandler) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	target, err := opts.NewTarget(opts.Common, logger)
 	if err != nil {
@@ -118,7 +126,7 @@ func tagManifest(cmd *cobra.Command, opts *tagOptions) error {
 
 	tagNOpts := oras.DefaultTagNOptions
 	tagNOpts.Concurrency = opts.concurrency
-	tagHandler := display.NewTagHandler(opts.Printer, opts.Target)
+	tagHandler := newTagHandler(opts, injected...)
 	tagListener := listener.NewTagListener(target, tagHandler.OnTagging, tagHandler.OnTagged)
 	_, err = oras.TagN(
 		ctx,

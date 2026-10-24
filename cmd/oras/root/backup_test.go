@@ -37,6 +37,8 @@ import (
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras/cmd/oras/internal/display/metadata/text"
+	"oras.land/oras/cmd/oras/internal/display/status"
 )
 
 func TestParseArtifactReferences(t *testing.T) {
@@ -202,6 +204,36 @@ func TestParseArtifactReferences(t *testing.T) {
 				t.Errorf("expected references %v, got %v", tt.wantTags, references)
 			}
 		})
+	}
+}
+
+func TestNewBackupHandlers_injected(t *testing.T) {
+	wantStatus := &mockBackupHandler{}
+	wantMetadata := &mockBackupHandler{}
+	got := newBackupHandlers(&backupOptions{}, nil, backupHandlers{status: wantStatus, metadata: wantMetadata})
+	if got.status != wantStatus || got.metadata != wantMetadata {
+		t.Fatal("newBackupHandlers() did not return injected handlers")
+	}
+}
+
+func TestNewBackupHandlers_default(t *testing.T) {
+	got := newBackupHandlers(&backupOptions{repository: "example/repo"}, nil)
+	if reflect.TypeOf(got.status) != reflect.TypeOf(status.NewTextBackupHandler(nil, nil)) {
+		t.Errorf("status handler type = %T, want text backup handler", got.status)
+	}
+	if reflect.TypeOf(got.metadata) != reflect.TypeOf(text.NewBackupHandler("example/repo", nil)) {
+		t.Errorf("metadata handler type = %T, want text backup handler", got.metadata)
+	}
+}
+
+func TestMockBackupHandler_callOrderAndError(t *testing.T) {
+	wantedErr := errors.New("tags failed")
+	handler := &mockBackupHandler{tagsFoundResult: wantedErr}
+	if err := handler.OnTagsFound(nil); !errors.Is(err, wantedErr) {
+		t.Fatalf("OnTagsFound() error = %v, want %v", err, wantedErr)
+	}
+	if got, want := handler.calls, []string{"OnTagsFound"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
 }
 
@@ -724,31 +756,63 @@ func (m *mockLogger) Fatalln(_ ...any)   {}
 func (m *mockLogger) Panicln(_ ...any)   {}
 
 type mockBackupHandler struct {
+	calls              []string
 	tarExportingCalled bool
 	tarExportedCalled  bool
 	tarExportingResult error
 	tarExportedResult  error
+	tagsFoundResult    error
+}
+
+func (m *mockBackupHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
+	m.calls = append(m.calls, "StartTracking")
+	return gt, nil
+}
+
+func (m *mockBackupHandler) StopTracking() error {
+	m.calls = append(m.calls, "StopTracking")
+	return nil
+}
+
+func (m *mockBackupHandler) OnCopySkipped(context.Context, ocispec.Descriptor) error {
+	m.calls = append(m.calls, "OnCopySkipped")
+	return nil
+}
+
+func (m *mockBackupHandler) PreCopy(context.Context, ocispec.Descriptor) error {
+	m.calls = append(m.calls, "PreCopy")
+	return nil
+}
+
+func (m *mockBackupHandler) PostCopy(context.Context, ocispec.Descriptor) error {
+	m.calls = append(m.calls, "PostCopy")
+	return nil
 }
 
 func (m *mockBackupHandler) OnTarExporting(_ string) error {
+	m.calls = append(m.calls, "OnTarExporting")
 	m.tarExportingCalled = true
 	return m.tarExportingResult
 }
 
 func (m *mockBackupHandler) OnTarExported(_ string, _ int64) error {
+	m.calls = append(m.calls, "OnTarExported")
 	m.tarExportedCalled = true
 	return m.tarExportedResult
 }
 
 func (m *mockBackupHandler) OnTagsFound(_ []string) error {
-	return nil
+	m.calls = append(m.calls, "OnTagsFound")
+	return m.tagsFoundResult
 }
 
 func (m *mockBackupHandler) OnArtifactPulled(_ string, _ int) error {
+	m.calls = append(m.calls, "OnArtifactPulled")
 	return nil
 }
 
 func (m *mockBackupHandler) OnBackupCompleted(_ int, _ string, _ time.Duration) error {
+	m.calls = append(m.calls, "OnBackupCompleted")
 	return nil
 }
 
