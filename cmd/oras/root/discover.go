@@ -102,7 +102,7 @@ Example - Discover referrers of the manifest tagged 'example.com:v1' in an OCI i
 			if cmd.Flags().Changed("output") {
 				switch opts.Format.Type {
 				case option.FormatTypeTree.Name, option.FormatTypeJSON.Name, option.FormatTypeTable.Name:
-					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "[DEPRECATED] --output is deprecated, try `--format %s` instead\n", opts.Template)
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "[DEPRECATED] --output is deprecated, try `--format %s` instead\n", opts.Format.Type)
 				default:
 					return errors.New("output type can only be tree, table or json")
 				}
