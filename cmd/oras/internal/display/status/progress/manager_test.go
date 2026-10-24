@@ -133,7 +133,7 @@ func (c *blockingRenderConsole) OutputTo(_ uint, _ string) {
 
 func Test_manager_render_serializes_console_frames(t *testing.T) {
 	c := &blockingRenderConsole{
-		mockConsole: newMockConsole(80, 24),
+		mockConsole: newMockConsole(60, 20),
 		entered:     make(chan struct{}, 2),
 		release:     make(chan struct{}),
 	}
