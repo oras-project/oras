@@ -16,6 +16,7 @@ limitations under the License.
 package blob
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -26,6 +27,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/registryutil"
@@ -74,17 +76,33 @@ Example - Delete a blob and print its descriptor:
 	return oerrors.Command(cmd, &opts.Target)
 }
 
-func deleteBlob(cmd *cobra.Command, opts *deleteBlobOptions) (err error) {
+func deleteBlob(cmd *cobra.Command, opts *deleteBlobOptions, injected ...metadata.BlobDeleteHandler) (err error) {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	blobs, err := opts.NewBlobDeleter(opts.Common, logger)
 	if err != nil {
 		return err
 	}
+
+	return deleteBlobWithDeleter(ctx, cmd, opts, blobs, injected...)
+}
+
+func deleteBlobWithDeleter(
+	ctx context.Context,
+	cmd *cobra.Command,
+	opts *deleteBlobOptions,
+	blobs option.ResolvableDeleter,
+	injected ...metadata.BlobDeleteHandler,
+) error {
 	if err := opts.EnsureReferenceNotEmpty(cmd, false); err != nil {
 		return err
 	}
 
-	metadataHandler := display.NewBlobDeleteHandler(opts.Printer, &opts.Target)
+	var metadataHandler metadata.BlobDeleteHandler
+	if len(injected) == 1 {
+		metadataHandler = injected[0]
+	} else {
+		metadataHandler = display.NewBlobDeleteHandler(opts.Printer, &opts.Target)
+	}
 
 	// add both pull and delete scope hints for dst repository to save potential delete-scope token requests during deleting
 	ctx = registryutil.WithScopeHint(ctx, blobs, auth.ActionPull, auth.ActionDelete)

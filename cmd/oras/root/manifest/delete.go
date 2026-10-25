@@ -16,6 +16,7 @@ limitations under the License.
 package manifest
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -26,6 +27,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/registryutil"
@@ -78,17 +80,33 @@ Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614
 	return oerrors.Command(cmd, &opts.Target)
 }
 
-func deleteManifest(cmd *cobra.Command, opts *deleteOptions) error {
+func deleteManifest(cmd *cobra.Command, opts *deleteOptions, injected ...metadata.ManifestDeleteHandler) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	manifests, err := opts.NewManifestDeleter(opts.Common, logger)
 	if err != nil {
 		return err
 	}
+
+	return deleteManifestWithDeleter(ctx, cmd, opts, manifests, injected...)
+}
+
+func deleteManifestWithDeleter(
+	ctx context.Context,
+	cmd *cobra.Command,
+	opts *deleteOptions,
+	manifests option.ResolvableDeleter,
+	injected ...metadata.ManifestDeleteHandler,
+) error {
 	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
 		return err
 	}
 
-	metadataHandler := display.NewManifestDeleteHandler(opts.Printer, &opts.Target)
+	var metadataHandler metadata.ManifestDeleteHandler
+	if len(injected) == 1 {
+		metadataHandler = injected[0]
+	} else {
+		metadataHandler = display.NewManifestDeleteHandler(opts.Printer, &opts.Target)
+	}
 
 	// add both pull and delete scope hints for dst repository to save potential delete-scope token requests during deleting
 	hints := []string{auth.ActionPull, auth.ActionDelete}
