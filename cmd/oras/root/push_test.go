@@ -137,8 +137,9 @@ func Test_doPushCommand_fileLoadingError(t *testing.T) {
 	if targetCreated {
 		t.Fatal("destination was created after file loading failed")
 	}
-	if !reflect.DeepEqual(recorder.Calls, []string{"OnFileLoading"}) {
-		t.Fatalf("handler calls = %v, want [OnFileLoading]", recorder.Calls)
+	got := recorder.Snapshot()
+	if !reflect.DeepEqual(got, []string{"OnFileLoading"}) {
+		t.Fatalf("handler calls = %v, want [OnFileLoading]", got)
 	}
 }
 
@@ -189,8 +190,9 @@ func Test_doPushCommand_displayHandlerCalls(t *testing.T) {
 	}
 
 	wantCalls := []string{"OnFileLoading", "OnCopied", "OnTagged:tag2", "Render"}
-	if !reflect.DeepEqual(recorder.Calls, wantCalls) {
-		t.Errorf("handler calls = %v, want %v", recorder.Calls, wantCalls)
+	got := recorder.Snapshot()
+	if !reflect.DeepEqual(got, wantCalls) {
+		t.Errorf("handler calls = %v, want %v", got, wantCalls)
 	}
 }
 
@@ -248,8 +250,9 @@ func Test_doPushCommand_onCopiedError(t *testing.T) {
 	}
 
 	wantCalls := []string{"OnFileLoading", "OnCopied"}
-	if !reflect.DeepEqual(recorder.Calls, wantCalls) {
-		t.Errorf("handler calls = %v, want %v", recorder.Calls, wantCalls)
+	got := recorder.Snapshot()
+	if !reflect.DeepEqual(got, wantCalls) {
+		t.Errorf("handler calls = %v, want %v", got, wantCalls)
 	}
 }
 
@@ -307,7 +310,8 @@ func Test_doPushCommand_renderError(t *testing.T) {
 	}
 
 	wantCalls := []string{"OnFileLoading", "OnCopied", "OnTagged:tag2", "Render"}
-	if !reflect.DeepEqual(recorder.Calls, wantCalls) {
-		t.Errorf("handler calls = %v, want %v", recorder.Calls, wantCalls)
+	got := recorder.Snapshot()
+	if !reflect.DeepEqual(got, wantCalls) {
+		t.Errorf("handler calls = %v, want %v", got, wantCalls)
 	}
 }

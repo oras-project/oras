@@ -67,7 +67,7 @@ func TestRecordingRestoreHandlers_callOrderAndError(t *testing.T) {
 	if err := statusHandler.PreCopy(context.Background(), ocispec.Descriptor{}); !errors.Is(err, wantedErr) {
 		t.Fatalf("PreCopy() error = %v, want %v", err, wantedErr)
 	}
-	if got, want := recorder.Calls, []string{"OnTagsFound", "PreCopy"}; !reflect.DeepEqual(got, want) {
+	if got, want := recorder.Snapshot(), []string{"OnTagsFound", "PreCopy"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
 }

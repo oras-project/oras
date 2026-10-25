@@ -148,7 +148,7 @@ func TestRecordingAttachHandlers_callOrderAndError(t *testing.T) {
 		t.Fatal("TrackTarget() error = nil, want error")
 	}
 	metadataHandler.OnAttached(nil, ocispec.Descriptor{}, ocispec.Descriptor{})
-	if got, want := recorder.Calls, []string{"TrackTarget", "OnAttached"}; !reflect.DeepEqual(got, want) {
+	if got, want := recorder.Snapshot(), []string{"TrackTarget", "OnAttached"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
 }
@@ -186,7 +186,7 @@ func TestRunAttach_injectedHandlers(t *testing.T) {
 	if err := runAttach(cmd, opts, handlers); err != nil {
 		t.Fatal(err)
 	}
-	if len(recorder.Calls) == 0 {
+	if len(recorder.Snapshot()) == 0 {
 		t.Fatal("attach handlers recorded no calls")
 	}
 }

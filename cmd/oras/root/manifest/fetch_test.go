@@ -105,7 +105,7 @@ func Test_doFetchManifest_contentPathHandlerCalls(t *testing.T) {
 	if err := doFetchManifest(context.Background(), manifestFetchTarget(t), opts, metadataHandler, contentHandler); err != nil {
 		t.Fatalf("doFetchManifest() error = %v", err)
 	}
-	if got, want := recorder.Calls, []string{"OnContentFetched", "OnFetched"}; fmt.Sprint(got) != fmt.Sprint(want) {
+	if got, want := recorder.Snapshot(), []string{"OnContentFetched", "OnFetched"}; fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
 }
@@ -121,8 +121,9 @@ func Test_doFetchManifest_contentHandlerError(t *testing.T) {
 	if !stderrs.Is(err, wantedErr) {
 		t.Fatalf("doFetchManifest() error = %v, want %v", err, wantedErr)
 	}
-	if len(recorder.Calls) != 1 || recorder.Calls[0] != "OnContentFetched" {
-		t.Fatalf("handler calls = %v, want [OnContentFetched]", recorder.Calls)
+	got := recorder.Snapshot()
+	if len(got) != 1 || got[0] != "OnContentFetched" {
+		t.Fatalf("handler calls = %v, want [OnContentFetched]", got)
 	}
 }
 
@@ -138,7 +139,7 @@ func Test_doFetchManifest_descriptorOnly(t *testing.T) {
 	if err := doFetchManifest(context.Background(), manifestFetchTarget(t), opts, metadataHandler, contentHandler); err != nil {
 		t.Fatalf("doFetchManifest() error = %v", err)
 	}
-	if got, want := recorder.Calls, []string{"OnFetched"}; fmt.Sprint(got) != fmt.Sprint(want) {
+	if got, want := recorder.Snapshot(), []string{"OnFetched"}; fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("metadata handler calls = %v, want %v", got, want)
 	}
 }

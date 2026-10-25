@@ -146,7 +146,7 @@ func Test_doCopy(t *testing.T) {
 		t.Fatal(err)
 	}
 	// validate
-	if got, want := recorder.Calls, []string{"PreCopy", "PostCopy"}; !slices.Equal(got, want) {
+	if got, want := recorder.Snapshot(), []string{"PreCopy", "PostCopy"}; !slices.Equal(got, want) {
 		t.Errorf("handler calls = %v, want %v", got, want)
 	}
 }
@@ -164,7 +164,7 @@ func Test_doCopy_skipped(t *testing.T) {
 		t.Fatal(err)
 	}
 	// validate
-	if got, want := recorder.Calls, []string{"OnCopySkipped"}; !slices.Equal(got, want) {
+	if got, want := recorder.Snapshot(), []string{"OnCopySkipped"}; !slices.Equal(got, want) {
 		t.Errorf("handler calls = %v, want %v", got, want)
 	}
 }
@@ -179,7 +179,7 @@ func Test_copyAndFinalize_handlerCalls(t *testing.T) {
 	if err := copyAndFinalize(context.Background(), statusHandler, metadataHandler, memStore, memory.New(), &opts, true); err != nil {
 		t.Fatalf("copyAndFinalize() error = %v", err)
 	}
-	if got, want := recorder.Calls, []string{"PreCopy", "PostCopy", "OnCopied", "Render"}; !slices.Equal(got, want) {
+	if got, want := recorder.Snapshot(), []string{"PreCopy", "PostCopy", "OnCopied", "Render"}; !slices.Equal(got, want) {
 		t.Errorf("handler calls = %v, want %v", got, want)
 	}
 }
@@ -196,7 +196,7 @@ func Test_copyAndFinalize_onCopiedError(t *testing.T) {
 	if !errors.Is(err, wantedErr) {
 		t.Fatalf("copyAndFinalize() error = %v, want %v", err, wantedErr)
 	}
-	if got, want := recorder.Calls, []string{"PreCopy", "PostCopy", "OnCopied"}; !slices.Equal(got, want) {
+	if got, want := recorder.Snapshot(), []string{"PreCopy", "PostCopy", "OnCopied"}; !slices.Equal(got, want) {
 		t.Errorf("handler calls = %v, want %v", got, want)
 	}
 }
@@ -230,7 +230,7 @@ func Test_doCopy_mounted(t *testing.T) {
 		t.Fatal(err)
 	}
 	// validate
-	if got, want := recorder.Calls, []string{"OnMounted", "PreCopy", "PostCopy"}; !slices.Equal(got, want) {
+	if got, want := recorder.Snapshot(), []string{"OnMounted", "PreCopy", "PostCopy"}; !slices.Equal(got, want) {
 		t.Errorf("handler calls = %v, want %v", got, want)
 	}
 }
@@ -345,7 +345,7 @@ func Test_doCopy_mountFallback(t *testing.T) {
 		t.Error("expected blob to be uploaded via regular upload after mount failure")
 	}
 	// validate output shows "Copied" instead of "Mounted"
-	if got, want := recorder.Calls, []string{"PreCopy", "PostCopy", "PreCopy", "PostCopy"}; !slices.Equal(got, want) {
+	if got, want := recorder.Snapshot(), []string{"PreCopy", "PostCopy", "PreCopy", "PostCopy"}; !slices.Equal(got, want) {
 		t.Errorf("handler calls = %v, want %v", got, want)
 	}
 }

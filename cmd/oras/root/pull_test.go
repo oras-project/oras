@@ -114,7 +114,7 @@ func TestDoPull_StopsBeforeCopyWhenTrackingFails(t *testing.T) {
 	if !errors.Is(err, wantedErr) {
 		t.Fatalf("doPull() error = %v, want %v", err, wantedErr)
 	}
-	if got, want := recorder.Calls, []string{"TrackTarget"}; !reflect.DeepEqual(got, want) {
+	if got, want := recorder.Snapshot(), []string{"TrackTarget"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("status handler calls = %v, want %v", got, want)
 	}
 }
@@ -218,8 +218,9 @@ func TestDoPull_TracksFilePath(t *testing.T) {
 		t.Fatalf("pulled content = %q, want %q", data, content)
 	}
 	wantCalls := []string{"TrackTarget", "OnNodeDownloading", "OnNodeProcessing", "OnNodeDownloading", "OnNodeDownloaded", "OnNodeDownloaded", "StopTrackTarget"}
-	if !reflect.DeepEqual(recorder.Calls, wantCalls) {
-		t.Fatalf("status handler calls = %v, want %v", recorder.Calls, wantCalls)
+	got := recorder.Snapshot()
+	if !reflect.DeepEqual(got, wantCalls) {
+		t.Fatalf("status handler calls = %v, want %v", got, wantCalls)
 	}
 }
 
@@ -279,8 +280,9 @@ func TestDoPull_OnNodeProcessingError(t *testing.T) {
 		t.Fatalf("doPull() error = %v, want %v", err, wantedErr)
 	}
 	wantCalls := []string{"TrackTarget", "OnNodeDownloading", "OnNodeProcessing", "StopTrackTarget"}
-	if !reflect.DeepEqual(recorder.Calls, wantCalls) {
-		t.Fatalf("status handler calls = %v, want %v", recorder.Calls, wantCalls)
+	got := recorder.Snapshot()
+	if !reflect.DeepEqual(got, wantCalls) {
+		t.Fatalf("status handler calls = %v, want %v", got, wantCalls)
 	}
 	if _, err := os.Stat(filepath.Join(output, "tool")); !os.IsNotExist(err) {
 		t.Fatalf("output file exists after processing failed")

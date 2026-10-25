@@ -16,6 +16,8 @@ limitations under the License.
 package displaytest
 
 import (
+	"sync"
+
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/status"
@@ -24,12 +26,24 @@ import (
 
 // CallRecorder records handler calls in the order they occur.
 type CallRecorder struct {
+	mu    sync.Mutex
 	Calls []string
 }
 
 // Record appends a call to the log.
 func (r *CallRecorder) Record(call string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	r.Calls = append(r.Calls, call)
+}
+
+// Snapshot returns a copy of the recorded calls.
+func (r *CallRecorder) Snapshot() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	return append([]string(nil), r.Calls...)
 }
 
 // RecordingPushStatusHandler records push status handler calls.

@@ -148,7 +148,7 @@ func TestRecordingHandlers(t *testing.T) {
 	if err := restoreMetadata.OnRestoreCompleted(1, "repo", 0); !errors.Is(err, stopErr) {
 		t.Fatalf("OnRestoreCompleted() error = %v, want %v", err, stopErr)
 	}
-	if len(recorder.Calls) == 0 {
+	if len(recorder.Snapshot()) == 0 {
 		t.Fatal("handlers recorded no calls")
 	}
 }
