@@ -16,10 +16,12 @@ limitations under the License.
 package root
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
@@ -127,5 +129,25 @@ func TestFetchAllReferrers_HandlerErrorStopsTraversal(t *testing.T) {
 	}
 	if got, want := handler.calls, []string{"OnDiscovered"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("handler calls = %v, want %v", got, want)
+	}
+}
+
+func TestDiscoverCmd_OutputDeprecationMessage(t *testing.T) {
+	for _, format := range []string{"tree", "table", "json"} {
+		t.Run(format, func(t *testing.T) {
+			cmd := discoverCmd()
+			var stderr bytes.Buffer
+			cmd.SetErr(&stderr)
+			if err := cmd.ParseFlags([]string{"--output", format}); err != nil {
+				t.Fatal(err)
+			}
+			if err := cmd.PreRunE(cmd, []string{"localhost:5000/hello:v1"}); err != nil {
+				t.Fatal(err)
+			}
+			want := "[DEPRECATED] --output is deprecated, try `--format " + format + "` instead"
+			if !strings.Contains(stderr.String(), want) {
+				t.Errorf("stderr = %q, want it to contain %q", stderr.String(), want)
+			}
+		})
 	}
 }

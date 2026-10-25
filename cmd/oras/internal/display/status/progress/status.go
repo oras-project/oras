@@ -74,8 +74,9 @@ func newStatus(desc ocispec.Descriptor) *status {
 //	mark(1) bar(22) speed(8) action(<=11) name(<=126)        size_per_size(<=13) percent(8) time(>=6)
 //	 └─ digest(72)
 func (s *status) Render(width int) [2]string {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
+	// write lock: rendering advances the spinner and the speed window
+	s.lock.Lock()
+	defer s.lock.Unlock()
 
 	// obtain object name
 	name := s.descriptor.Annotations[ocispec.AnnotationTitle]

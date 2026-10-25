@@ -41,11 +41,9 @@ jobs:
       - name: extract version
         id: version
         run: |
-          if [[ "${{ github.event.inputs.isStable }}" == "true" ]]; then
-            echo "release=stable,candidate" >> $GITHUB_OUTPUT
-          else
-            echo "release=candidate" >> $GITHUB_OUTPUT
-          fi
+          # The store token can only release to stable. candidate, beta and
+          # edge are closed and follow stable, so pre-releases aren't published.
+          echo "release=stable" >> $GITHUB_OUTPUT
           echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
       - name: make snapcraft
         run: |
@@ -78,6 +76,7 @@ jobs:
           echo "snap=$(ls ./*.snap)" >> "$GITHUB_OUTPUT"
 
       - name: publish
+        if: ${{ inputs.isStable }}
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
           SNAP_FILE: ${{ steps.build.outputs.snap }}
