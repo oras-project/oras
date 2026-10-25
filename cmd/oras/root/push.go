@@ -327,6 +327,7 @@ func doPushCommand(
 	if err = metadataHandler.Render(); err != nil {
 		return err
 	}
+
 	// Export manifest
 	return opts.ExportManifest(ctx, memoryStore, root)
 }

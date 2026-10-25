@@ -146,6 +146,16 @@ func TestDoPull_TracksFilePath(t *testing.T) {
 		t.Fatalf("Push() layer error = %v", err)
 	}
 
+	skippedContent := []byte("unnamed layer\n")
+	skippedLayer := ocispec.Descriptor{
+		MediaType: "application/octet-stream",
+		Digest:    digest.FromBytes(skippedContent),
+		Size:      int64(len(skippedContent)),
+	}
+	if err := src.Push(ctx, skippedLayer, bytes.NewReader(skippedContent)); err != nil {
+		t.Fatalf("Push() skipped layer error = %v", err)
+	}
+
 	manifest := ocispec.Manifest{
 		Versioned: specs.Versioned{
 			SchemaVersion: 2,
@@ -158,6 +168,7 @@ func TestDoPull_TracksFilePath(t *testing.T) {
 		},
 		Layers: []ocispec.Descriptor{
 			layerDesc,
+			skippedLayer,
 		},
 	}
 
@@ -217,7 +228,7 @@ func TestDoPull_TracksFilePath(t *testing.T) {
 	if string(data) != string(content) {
 		t.Fatalf("pulled content = %q, want %q", data, content)
 	}
-	wantCalls := []string{"TrackTarget", "OnNodeDownloading", "OnNodeProcessing", "OnNodeDownloading", "OnNodeDownloaded", "OnNodeDownloaded", "StopTrackTarget"}
+	wantCalls := []string{"TrackTarget", "OnNodeDownloading", "OnNodeProcessing", "OnNodeSkipped", "OnNodeDownloading", "OnNodeDownloaded", "OnNodeDownloaded", "StopTrackTarget"}
 	got := recorder.Snapshot()
 	if !reflect.DeepEqual(got, wantCalls) {
 		t.Fatalf("status handler calls = %v, want %v", got, wantCalls)
