@@ -16,11 +16,16 @@ limitations under the License.
 package manifest
 
 import (
+	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
 	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -117,5 +122,60 @@ func TestRecordingManifestPushHandlers_errorStopsSequence(t *testing.T) {
 	}
 	if got, want := statusHandler.calls, []string{"OnManifestPushing"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("status calls = %v, want %v", got, want)
+	}
+}
+
+func TestPushManifestToTarget_handlerCallOrderAndError(t *testing.T) {
+	ctx := context.Background()
+	target := memory.New()
+	wantedErr := errors.New("manifest push failed")
+	statusHandler := &recordingManifestPushStatusHandler{err: wantedErr}
+	metadataHandler := &recordingManifestPushMetadataHandler{}
+	err := pushManifestToTarget(ctx, target, "application/vnd.oci.image.manifest.v1+json", []byte(`{"schemaVersion":2}`), "v1", false, statusHandler)
+	if !errors.Is(err, wantedErr) {
+		t.Fatalf("pushManifestToTarget() error = %v, want %v", err, wantedErr)
+	}
+	if got, want := statusHandler.calls, []string{"OnManifestPushing"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("status calls = %v, want %v", got, want)
+	}
+	if len(metadataHandler.calls) != 0 {
+		t.Fatalf("metadata calls = %v, want none", metadataHandler.calls)
+	}
+
+	statusHandler.err = nil
+	if err := pushManifestToTarget(ctx, target, "application/vnd.oci.image.manifest.v1+json", []byte(`{"schemaVersion":2}`), "v1", true, statusHandler); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := statusHandler.calls, []string{"OnManifestPushing", "OnManifestPushSkipped"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("status calls = %v, want %v", got, want)
+	}
+	statusHandler.calls = nil
+	if err := pushManifestToTarget(ctx, target, "application/vnd.oci.image.manifest.v1+json", []byte(`{"schemaVersion":2}`), "v2", false, statusHandler); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := statusHandler.calls, []string{"OnManifestPushing", "OnManifestPushed"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("status calls = %v, want %v", got, want)
+	}
+}
+
+func TestPushManifest_injectedHandlers(t *testing.T) {
+	layout := t.TempDir()
+	fileRef := filepath.Join(t.TempDir(), "manifest.json")
+	if err := os.WriteFile(fileRef, []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	opts := pushOptions{Target: option.Target{Type: option.TargetTypeOCILayout, Path: layout, Reference: "source"}, fileRef: fileRef}
+	statusHandler := &recordingManifestPushStatusHandler{}
+	metadataHandler := &recordingManifestPushMetadataHandler{}
+	cmd := &cobra.Command{Use: "manifest push"}
+	cmd.SetContext(context.Background())
+	if err := pushManifest(cmd, opts, manifestPushHandlers{statusHandler, metadataHandler}); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := statusHandler.calls, []string{"OnManifestPushing", "OnManifestPushed"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("status calls = %v, want %v", got, want)
+	}
+	if got, want := metadataHandler.calls, []string{"OnManifestPushed", "Render"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("metadata calls = %v, want %v", got, want)
 	}
 }

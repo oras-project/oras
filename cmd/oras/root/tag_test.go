@@ -24,7 +24,9 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/listener"
@@ -83,6 +85,74 @@ func TestTagListener_handlerCallOrderAndError(t *testing.T) {
 		t.Fatalf("Tag() error = %v, want %v", err, wantedErr)
 	}
 	if got, want := handler.calls, []string{"OnTagging"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("handler calls = %v, want %v", got, want)
+	}
+}
+
+func TestTagWithHandler_handlerCallOrderAndError(t *testing.T) {
+	ctx := context.Background()
+	target := memory.New()
+	desc, err := oras.PackManifest(ctx, target, oras.PackManifestVersion1_1, "application/example", oras.PackManifestOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := target.Tag(ctx, desc, "source"); err != nil {
+		t.Fatal(err)
+	}
+	wantedErr := errors.New("tagging failed")
+	handler := &recordingTagHandler{err: wantedErr}
+	opts := oras.DefaultTagNOptions
+	err = tagWithHandler(ctx, target, "source", []string{"destination"}, opts, handler)
+	if !errors.Is(err, wantedErr) {
+		t.Fatalf("tagWithHandler() error = %v, want %v", err, wantedErr)
+	}
+	if got, want := handler.calls, []string{"OnTagging"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("handler calls = %v, want %v", got, want)
+	}
+}
+
+func TestTagWithHandler_handlerCallOrder(t *testing.T) {
+	ctx := context.Background()
+	target := memory.New()
+	desc, err := oras.PackManifest(ctx, target, oras.PackManifestVersion1_1, "application/example", oras.PackManifestOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := target.Tag(ctx, desc, "source"); err != nil {
+		t.Fatal(err)
+	}
+	handler := &recordingTagHandler{}
+	err = tagWithHandler(ctx, target, "source", []string{"destination"}, oras.DefaultTagNOptions, handler)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := handler.calls, []string{"OnTagging", "OnTagged"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("handler calls = %v, want %v", got, want)
+	}
+}
+
+func TestTagManifest_injectedHandler(t *testing.T) {
+	ctx := context.Background()
+	layout := t.TempDir()
+	store, err := oci.New(layout)
+	if err != nil {
+		t.Fatal(err)
+	}
+	desc, err := oras.PackManifest(ctx, store, oras.PackManifestVersion1_1, "application/example", oras.PackManifestOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Tag(ctx, desc, "source"); err != nil {
+		t.Fatal(err)
+	}
+	opts := &tagOptions{Target: option.Target{Type: option.TargetTypeOCILayout, Path: layout, Reference: "source", RawReference: "source"}, targetRefs: []string{"destination"}}
+	handler := &recordingTagHandler{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(ctx)
+	if err := tagManifest(cmd, opts, handler); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := handler.calls, []string{"OnTagging", "OnTagged"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
 }

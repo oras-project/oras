@@ -183,20 +183,8 @@ func pushManifest(cmd *cobra.Command, opts pushOptions, injected ...manifestPush
 	if err != nil {
 		return err
 	}
-	if match {
-		if err := statusHandler.OnManifestPushSkipped(); err != nil {
-			return err
-		}
-	} else {
-		if err = statusHandler.OnManifestPushing(); err != nil {
-			return err
-		}
-		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil {
-			return err
-		}
-		if err = statusHandler.OnManifestPushed(); err != nil {
-			return err
-		}
+	if err := pushManifestToTarget(ctx, target, mediaType, contentBytes, ref, match, statusHandler); err != nil {
+		return err
 	}
 
 	tagBytesNOpts := oras.DefaultTagBytesNOptions
@@ -226,6 +214,19 @@ func pushManifest(cmd *cobra.Command, opts pushOptions, injected ...manifestPush
 	}
 
 	return metadataHandler.Render()
+}
+
+func pushManifestToTarget(ctx context.Context, target oras.Target, mediaType string, contentBytes []byte, ref string, match bool, handler status.ManifestPushHandler) error {
+	if match {
+		return handler.OnManifestPushSkipped()
+	}
+	if err := handler.OnManifestPushing(); err != nil {
+		return err
+	}
+	if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil {
+		return err
+	}
+	return handler.OnManifestPushed()
 }
 
 // matchDigest checks whether the manifest's digest matches to it in the remote

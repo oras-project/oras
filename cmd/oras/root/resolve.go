@@ -16,6 +16,7 @@ limitations under the License.
 package root
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -83,9 +84,13 @@ func runResolve(cmd *cobra.Command, opts *resolveOptions, injected ...metadata.R
 	metadataHandler := newResolveHandler(opts, injected...)
 	resolveOpts := oras.DefaultResolveOptions
 	resolveOpts.TargetPlatform = opts.Platform.Platform
-	desc, err := oras.Resolve(ctx, repo, opts.Reference, resolveOpts)
+	return resolveWithHandler(ctx, repo, opts.Reference, resolveOpts, metadataHandler)
+}
+
+func resolveWithHandler(ctx context.Context, repo oras.ReadOnlyTarget, reference string, opts oras.ResolveOptions, handler metadata.ResolveHandler) error {
+	desc, err := oras.Resolve(ctx, repo, reference, opts)
 	if err != nil {
 		return fmt.Errorf("failed to resolve digest: %w", err)
 	}
-	return metadataHandler.OnResolved(desc)
+	return handler.OnResolved(desc)
 }

@@ -16,6 +16,7 @@ limitations under the License.
 package root
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -127,13 +128,17 @@ func tagManifest(cmd *cobra.Command, opts *tagOptions, injected ...metadata.TagH
 	tagNOpts := oras.DefaultTagNOptions
 	tagNOpts.Concurrency = opts.concurrency
 	tagHandler := newTagHandler(opts, injected...)
-	tagListener := listener.NewTagListener(target, tagHandler.OnTagging, tagHandler.OnTagged)
-	_, err = oras.TagN(
+	return tagWithHandler(ctx, target, opts.Reference, opts.targetRefs, tagNOpts, tagHandler)
+}
+
+func tagWithHandler(ctx context.Context, target oras.Target, reference string, targetRefs []string, opts oras.TagNOptions, handler metadata.TagHandler) error {
+	tagListener := listener.NewTagListener(target, handler.OnTagging, handler.OnTagged)
+	_, err := oras.TagN(
 		ctx,
 		tagListener,
-		opts.Reference,
-		opts.targetRefs,
-		tagNOpts,
+		reference,
+		targetRefs,
+		opts,
 	)
 	return err
 }
