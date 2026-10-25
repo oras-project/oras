@@ -95,6 +95,8 @@ func (target *Target) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&target.Path, target.prefix+"oci-layout-path", "", "[Experimental] set the path for the "+target.description+"OCI image layout target")
 }
 
+const errHeaderFlagsOnOCILayout = "custom header flags cannot be used on an OCI image layout target"
+
 // Parse gets target options from user input.
 func (target *Target) Parse(cmd *cobra.Command) error {
 	if err := oerrors.CheckMutuallyExclusiveFlags(cmd.Flags(), target.flagPrefix+"oci-layout-path", target.flagPrefix+"oci-layout"); err != nil {
@@ -105,11 +107,14 @@ func (target *Target) Parse(cmd *cobra.Command) error {
 	case target.IsOCILayout:
 		target.Type = TargetTypeOCILayout
 		if len(target.headerFlags) != 0 {
-			return errors.New("custom header flags cannot be used on an OCI image layout target")
+			return errors.New(errHeaderFlagsOnOCILayout)
 		}
 		return target.parseOCILayoutReference()
 	case target.Path != "":
 		target.Type = TargetTypeOCILayout
+		if len(target.headerFlags) != 0 {
+			return errors.New(errHeaderFlagsOnOCILayout)
+		}
 		target.Reference = target.RawReference
 		return nil
 	default:
