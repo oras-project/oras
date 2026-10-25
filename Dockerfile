@@ -21,6 +21,17 @@ RUN make "build-$(echo $TARGETPLATFORM | tr / -)"
 RUN mv ${ORASPKG}/bin/${TARGETPLATFORM}/oras /go/bin/oras
 
 FROM docker.io/library/alpine:3.24.2
+ARG OCI_VERSION=dev
+ARG OCI_REVISION=unknown
+LABEL org.opencontainers.image.title="ORAS CLI" \
+      org.opencontainers.image.description="OCI registry client for managing artifacts" \
+      org.opencontainers.image.source="https://github.com/oras-project/oras" \
+      org.opencontainers.image.url="https://oras.land/" \
+      org.opencontainers.image.documentation="https://oras.land/docs/" \
+      org.opencontainers.image.vendor="ORAS Project" \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.version="${OCI_VERSION}" \
+      org.opencontainers.image.revision="${OCI_REVISION}"
 RUN apk --update add ca-certificates
 COPY --from=builder /go/bin/oras /bin/oras
 RUN mkdir /workspace
