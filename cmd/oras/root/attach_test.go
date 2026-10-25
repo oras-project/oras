@@ -140,19 +140,6 @@ func TestNewAttachHandlers_invalidFormat(t *testing.T) {
 	}
 }
 
-func TestRecordingAttachHandlers_callOrderAndError(t *testing.T) {
-	recorder := &displaytest.CallRecorder{}
-	statusHandler := &displaytest.RecordingAttachStatusHandler{Recorder: recorder, TrackErr: errors.New("track failed")}
-	metadataHandler := &displaytest.RecordingAttachMetadataHandler{Recorder: recorder}
-	if _, _, err := statusHandler.TrackTarget(nil); err == nil {
-		t.Fatal("TrackTarget() error = nil, want error")
-	}
-	metadataHandler.OnAttached(nil, ocispec.Descriptor{}, ocispec.Descriptor{})
-	if got, want := recorder.Snapshot(), []string{"TrackTarget", "OnAttached"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("handler calls = %v, want %v", got, want)
-	}
-}
-
 func TestRunAttach_injectedHandlers(t *testing.T) {
 	ctx := context.Background()
 	layout := t.TempDir()
@@ -186,7 +173,20 @@ func TestRunAttach_injectedHandlers(t *testing.T) {
 	if err := runAttach(cmd, opts, handlers); err != nil {
 		t.Fatal(err)
 	}
-	if len(recorder.Snapshot()) == 0 {
-		t.Fatal("attach handlers recorded no calls")
+
+	wantCalls := []string{
+		"OnFileLoading",
+		"TrackTarget",
+		"OnCopySkipped",
+		"PreCopy",
+		"PostCopy",
+		"PreCopy",
+		"PostCopy",
+		"StopTrackTarget",
+		"OnAttached",
+		"Render",
+	}
+	if got := recorder.Snapshot(); !reflect.DeepEqual(got, wantCalls) {
+		t.Errorf("handler calls = %v, want %v", got, wantCalls)
 	}
 }

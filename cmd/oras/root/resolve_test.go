@@ -22,27 +22,17 @@ import (
 	"strings"
 	"testing"
 
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras/cmd/oras/internal/display/displaytest"
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
-type recordingResolveHandler struct {
-	calls []string
-	err   error
-}
-
-func (h *recordingResolveHandler) OnResolved(ocispec.Descriptor) error {
-	h.calls = append(h.calls, "OnResolved")
-	return h.err
-}
-
 func TestNewResolveHandler_injected(t *testing.T) {
-	want := &recordingResolveHandler{}
+	want := &displaytest.RecordingResolveHandler{Recorder: &displaytest.CallRecorder{}}
 	got := newResolveHandler(&resolveOptions{}, want)
 	if got != want {
 		t.Fatal("newResolveHandler() did not return injected handler")
@@ -57,17 +47,6 @@ func TestNewResolveHandler_default(t *testing.T) {
 	}
 }
 
-func TestRecordingResolveHandler_error(t *testing.T) {
-	wantedErr := errors.New("resolve output failed")
-	handler := &recordingResolveHandler{err: wantedErr}
-	if err := handler.OnResolved(ocispec.Descriptor{}); !errors.Is(err, wantedErr) {
-		t.Fatalf("OnResolved() error = %v, want %v", err, wantedErr)
-	}
-	if got, want := handler.calls, []string{"OnResolved"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("handler calls = %v, want %v", got, want)
-	}
-}
-
 func TestResolveWithHandler_callsInjectedHandler(t *testing.T) {
 	ctx := context.Background()
 	target := memory.New()
@@ -78,12 +57,13 @@ func TestResolveWithHandler_callsInjectedHandler(t *testing.T) {
 	if err := target.Tag(ctx, desc, "source"); err != nil {
 		t.Fatal(err)
 	}
-	handler := &recordingResolveHandler{err: errors.New("resolve output failed")}
+	recorder := &displaytest.CallRecorder{}
+	handler := &displaytest.RecordingResolveHandler{Recorder: recorder, Err: errors.New("resolve output failed")}
 	err = resolveWithHandler(ctx, target, "source", oras.DefaultResolveOptions, handler)
-	if !errors.Is(err, handler.err) {
-		t.Fatalf("resolveWithHandler() error = %v, want %v", err, handler.err)
+	if !errors.Is(err, handler.Err) {
+		t.Fatalf("resolveWithHandler() error = %v, want %v", err, handler.Err)
 	}
-	if got, want := handler.calls, []string{"OnResolved"}; !reflect.DeepEqual(got, want) {
+	if got, want := recorder.Snapshot(), []string{"OnResolved"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
 	if desc.Digest == "" {
@@ -92,7 +72,7 @@ func TestResolveWithHandler_callsInjectedHandler(t *testing.T) {
 }
 
 func TestResolveWithHandler_resolveError(t *testing.T) {
-	err := resolveWithHandler(context.Background(), memory.New(), "missing", oras.DefaultResolveOptions, &recordingResolveHandler{})
+	err := resolveWithHandler(context.Background(), memory.New(), "missing", oras.DefaultResolveOptions, &displaytest.RecordingResolveHandler{Recorder: &displaytest.CallRecorder{}})
 	if err == nil || !strings.Contains(err.Error(), "failed to resolve digest") {
 		t.Fatalf("resolveWithHandler() error = %v, want wrapped resolve error", err)
 	}
@@ -113,13 +93,14 @@ func TestRunResolve_injectedHandler(t *testing.T) {
 		t.Fatal(err)
 	}
 	opts := &resolveOptions{Target: option.Target{Type: option.TargetTypeOCILayout, Path: layout, Reference: "source"}}
-	handler := &recordingResolveHandler{}
+	recorder := &displaytest.CallRecorder{}
+	handler := &displaytest.RecordingResolveHandler{Recorder: recorder}
 	cmd := &cobra.Command{}
 	cmd.SetContext(ctx)
 	if err := runResolve(cmd, opts, handler); err != nil {
 		t.Fatal(err)
 	}
-	if got, want := handler.calls, []string{"OnResolved"}; !reflect.DeepEqual(got, want) {
+	if got, want := recorder.Snapshot(), []string{"OnResolved"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
 }

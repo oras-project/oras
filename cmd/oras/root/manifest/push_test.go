@@ -27,55 +27,11 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras/cmd/oras/internal/display/displaytest"
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
 	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/cmd/oras/internal/option"
 )
-
-type recordingManifestPushStatusHandler struct {
-	calls []string
-	err   error
-}
-
-func (h *recordingManifestPushStatusHandler) OnManifestPushSkipped() error {
-	h.calls = append(h.calls, "OnManifestPushSkipped")
-	return h.err
-}
-func (h *recordingManifestPushStatusHandler) OnManifestPushing() error {
-	h.calls = append(h.calls, "OnManifestPushing")
-	return h.err
-}
-func (h *recordingManifestPushStatusHandler) OnManifestPushed() error {
-	h.calls = append(h.calls, "OnManifestPushed")
-	return h.err
-}
-
-type recordingManifestPushMetadataHandler struct {
-	calls []string
-	err   error
-}
-
-type failingManifestPushTarget struct {
-	*memory.Store
-	err error
-}
-
-func (t *failingManifestPushTarget) Push(context.Context, ocispec.Descriptor, io.Reader) error {
-	return t.err
-}
-
-func (h *recordingManifestPushMetadataHandler) OnTagged(ocispec.Descriptor, string) error {
-	h.calls = append(h.calls, "OnTagged")
-	return h.err
-}
-func (h *recordingManifestPushMetadataHandler) OnManifestPushed(ocispec.Descriptor) error {
-	h.calls = append(h.calls, "OnManifestPushed")
-	return h.err
-}
-func (h *recordingManifestPushMetadataHandler) Render() error {
-	h.calls = append(h.calls, "Render")
-	return h.err
-}
 
 func Test_pushManifestCmd_invalidExtraTag(t *testing.T) {
 	cmd := pushCmd()
@@ -105,8 +61,9 @@ func Test_pushManifestCmd_invalidHeader(t *testing.T) {
 }
 
 func TestNewManifestPushHandlers_injected(t *testing.T) {
-	statusHandler := &recordingManifestPushStatusHandler{}
-	metadataHandler := &recordingManifestPushMetadataHandler{}
+	recorder := &displaytest.CallRecorder{}
+	statusHandler := &displaytest.RecordingPushStatusHandler{Recorder: recorder}
+	metadataHandler := &displaytest.RecordingPushMetadataHandler{Recorder: recorder}
 	gotStatus, gotMetadata := newManifestPushHandlers(pushOptions{}, ocispec.Descriptor{}, manifestPushHandlers{statusHandler, metadataHandler})
 	if gotStatus != statusHandler || gotMetadata != metadataHandler {
 		t.Fatal("newManifestPushHandlers() did not return injected handlers")
@@ -124,59 +81,60 @@ func TestNewManifestPushHandlers_default(t *testing.T) {
 	}
 }
 
-func TestRecordingManifestPushHandlers_errorStopsSequence(t *testing.T) {
-	wantedErr := errors.New("manifest push failed")
-	statusHandler := &recordingManifestPushStatusHandler{err: wantedErr}
-	if err := statusHandler.OnManifestPushing(); !errors.Is(err, wantedErr) {
-		t.Fatalf("OnManifestPushing() error = %v, want %v", err, wantedErr)
-	}
-	if got, want := statusHandler.calls, []string{"OnManifestPushing"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("status calls = %v, want %v", got, want)
-	}
-}
-
 func TestPushManifestToTarget_handlerCallOrderAndError(t *testing.T) {
 	ctx := context.Background()
 	target := memory.New()
 	wantedErr := errors.New("manifest push failed")
-	statusHandler := &recordingManifestPushStatusHandler{err: wantedErr}
-	metadataHandler := &recordingManifestPushMetadataHandler{}
+	recorder := &displaytest.CallRecorder{}
+	statusHandler := &displaytest.RecordingPushStatusHandler{
+		Recorder:        recorder,
+		ManifestPushErr: wantedErr,
+	}
+
 	err := pushManifestToTarget(ctx, target, "application/vnd.oci.image.manifest.v1+json", []byte(`{"schemaVersion":2}`), "v1", false, statusHandler)
 	if !errors.Is(err, wantedErr) {
 		t.Fatalf("pushManifestToTarget() error = %v, want %v", err, wantedErr)
 	}
-	if got, want := statusHandler.calls, []string{"OnManifestPushing"}; !reflect.DeepEqual(got, want) {
+	if got, want := recorder.Snapshot(), []string{"OnManifestPushing"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("status calls = %v, want %v", got, want)
 	}
-	if len(metadataHandler.calls) != 0 {
-		t.Fatalf("metadata calls = %v, want none", metadataHandler.calls)
-	}
 
-	statusHandler.err = nil
+	statusHandler.ManifestPushErr = nil
 	if err := pushManifestToTarget(ctx, target, "application/vnd.oci.image.manifest.v1+json", []byte(`{"schemaVersion":2}`), "v1", true, statusHandler); err != nil {
 		t.Fatal(err)
 	}
-	if got, want := statusHandler.calls, []string{"OnManifestPushing", "OnManifestPushSkipped"}; !reflect.DeepEqual(got, want) {
+	if got, want := recorder.Snapshot(), []string{"OnManifestPushing", "OnManifestPushSkipped"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("status calls = %v, want %v", got, want)
 	}
-	statusHandler.calls = nil
+
 	if err := pushManifestToTarget(ctx, target, "application/vnd.oci.image.manifest.v1+json", []byte(`{"schemaVersion":2}`), "v2", false, statusHandler); err != nil {
 		t.Fatal(err)
 	}
-	if got, want := statusHandler.calls, []string{"OnManifestPushing", "OnManifestPushed"}; !reflect.DeepEqual(got, want) {
+	if got, want := recorder.Snapshot(), []string{"OnManifestPushing", "OnManifestPushSkipped", "OnManifestPushing", "OnManifestPushed"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("status calls = %v, want %v", got, want)
 	}
 }
 
+type failingManifestPushTarget struct {
+	*memory.Store
+	err error
+}
+
+func (t *failingManifestPushTarget) Push(_ context.Context, _ ocispec.Descriptor, _ io.Reader) error {
+	return t.err
+}
+
 func TestPushManifestToTarget_targetError(t *testing.T) {
 	wantedErr := errors.New("target push failed")
-	statusHandler := &recordingManifestPushStatusHandler{}
+	recorder := &displaytest.CallRecorder{}
+	statusHandler := &displaytest.RecordingPushStatusHandler{Recorder: recorder}
 	target := &failingManifestPushTarget{Store: memory.New(), err: wantedErr}
+
 	err := pushManifestToTarget(context.Background(), target, "application/vnd.oci.image.manifest.v1+json", []byte(`{"schemaVersion":2}`), "v1", false, statusHandler)
 	if !errors.Is(err, wantedErr) {
 		t.Fatalf("pushManifestToTarget() error = %v, want %v", err, wantedErr)
 	}
-	if got, want := statusHandler.calls, []string{"OnManifestPushing"}; !reflect.DeepEqual(got, want) {
+	if got, want := recorder.Snapshot(), []string{"OnManifestPushing"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("status calls = %v, want %v", got, want)
 	}
 }
@@ -188,18 +146,24 @@ func TestPushManifest_injectedHandlers(t *testing.T) {
 		t.Fatal(err)
 	}
 	opts := pushOptions{Target: option.Target{Type: option.TargetTypeOCILayout, Path: layout, Reference: "source"}, fileRef: fileRef}
-	statusHandler := &recordingManifestPushStatusHandler{}
-	metadataHandler := &recordingManifestPushMetadataHandler{}
+
+	recorder := &displaytest.CallRecorder{}
+	statusHandler := &displaytest.RecordingPushStatusHandler{Recorder: recorder}
+	metadataHandler := &displaytest.RecordingPushMetadataHandler{Recorder: recorder}
+
 	cmd := &cobra.Command{Use: "manifest push"}
 	cmd.SetContext(context.Background())
 	if err := pushManifest(cmd, opts, manifestPushHandlers{statusHandler, metadataHandler}); err != nil {
 		t.Fatal(err)
 	}
-	if got, want := statusHandler.calls, []string{"OnManifestPushing", "OnManifestPushed"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("status calls = %v, want %v", got, want)
-	}
-	if got, want := metadataHandler.calls, []string{"OnManifestPushed", "Render"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("metadata calls = %v, want %v", got, want)
+
+	if got, want := recorder.Snapshot(), []string{
+		"OnManifestPushing",
+		"OnManifestPushed",
+		"OnManifestPushed",
+		"Render",
+	}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
 }
 
@@ -210,15 +174,22 @@ func TestPushManifest_injectedStatusError(t *testing.T) {
 		t.Fatal(err)
 	}
 	opts := pushOptions{Target: option.Target{Type: option.TargetTypeOCILayout, Path: layout, Reference: "source"}, fileRef: fileRef}
+
 	wantedErr := errors.New("status failed")
-	statusHandler := &recordingManifestPushStatusHandler{err: wantedErr}
-	metadataHandler := &recordingManifestPushMetadataHandler{}
+	recorder := &displaytest.CallRecorder{}
+	statusHandler := &displaytest.RecordingPushStatusHandler{
+		Recorder:        recorder,
+		ManifestPushErr: wantedErr,
+	}
+	metadataHandler := &displaytest.RecordingPushMetadataHandler{Recorder: recorder}
+
 	cmd := &cobra.Command{Use: "manifest push"}
 	cmd.SetContext(context.Background())
 	if err := pushManifest(cmd, opts, manifestPushHandlers{statusHandler, metadataHandler}); !errors.Is(err, wantedErr) {
 		t.Fatalf("pushManifest() error = %v, want %v", err, wantedErr)
 	}
-	if got, want := statusHandler.calls, []string{"OnManifestPushing"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("status calls = %v, want %v", got, want)
+
+	if got, want := recorder.Snapshot(), []string{"OnManifestPushing"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
 }

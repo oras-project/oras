@@ -29,14 +29,19 @@ import (
 
 type testManifestDeleteDeleter struct {
 	resolveErr error
+	deleteErr  error
+	deleted    bool
 }
 
 func (f *testManifestDeleteDeleter) Resolve(context.Context, string) (ocispec.Descriptor, error) {
-	return ocispec.Descriptor{}, f.resolveErr
+	return ocispec.Descriptor{
+		Digest: "sha256:1234",
+	}, f.resolveErr
 }
 
 func (f *testManifestDeleteDeleter) Delete(context.Context, ocispec.Descriptor) error {
-	return nil
+	f.deleted = true
+	return f.deleteErr
 }
 
 type testRecordingManifestDeleteHandler struct {
@@ -82,5 +87,51 @@ func Test_deleteManifestWithDeleter_manifestMissing(t *testing.T) {
 	}
 	if handler.deletedCalls != 0 {
 		t.Errorf("OnManifestDeleted() calls = %d, want 0", handler.deletedCalls)
+	}
+}
+
+func Test_deleteManifest_invalidTargetType(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
+
+	opts := &deleteOptions{}
+	opts.Type = "invalid"
+
+	err := deleteManifest(cmd, opts)
+	if err == nil {
+		t.Fatal("deleteManifest() error = nil, want unknown target type error")
+	}
+	if got, want := err.Error(), `unknown target type: "invalid"`; got != want {
+		t.Fatalf("deleteManifest() error = %q, want %q", got, want)
+	}
+}
+
+func Test_deleteManifestWithDeleter_deleted(t *testing.T) {
+	opts := &deleteOptions{}
+	opts.Reference = "sha256:1234"
+	opts.RawReference = "example.com/repo@sha256:1234"
+	opts.Force = true
+
+	handler := &testRecordingManifestDeleteHandler{}
+	deleter := &testManifestDeleteDeleter{}
+
+	err := deleteManifestWithDeleter(
+		context.Background(),
+		&cobra.Command{},
+		opts,
+		deleter,
+		handler,
+	)
+	if err != nil {
+		t.Fatalf("deleteManifestWithDeleter() error = %v, want nil", err)
+	}
+	if !deleter.deleted {
+		t.Fatal("Delete() was not called")
+	}
+	if handler.deletedCalls != 1 {
+		t.Errorf("OnManifestDeleted() calls = %d, want 1", handler.deletedCalls)
+	}
+	if handler.missingCalls != 0 {
+		t.Errorf("OnManifestMissing() calls = %d, want 0", handler.missingCalls)
 	}
 }

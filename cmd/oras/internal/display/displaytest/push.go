@@ -49,8 +49,9 @@ func (r *CallRecorder) Snapshot() []string {
 // RecordingPushStatusHandler records push status handler calls.
 type RecordingPushStatusHandler struct {
 	status.DiscardHandler
-	Recorder       *CallRecorder
-	FileLoadingErr error
+	Recorder        *CallRecorder
+	FileLoadingErr  error
+	ManifestPushErr error
 }
 
 // OnFileLoading records the file-loading event and returns the configured error.
@@ -59,13 +60,29 @@ func (h *RecordingPushStatusHandler) OnFileLoading(_ string) error {
 	return h.FileLoadingErr
 }
 
+func (h *RecordingPushStatusHandler) OnManifestPushSkipped() error {
+	h.Recorder.Record("OnManifestPushSkipped")
+	return h.ManifestPushErr
+}
+
+func (h *RecordingPushStatusHandler) OnManifestPushing() error {
+	h.Recorder.Record("OnManifestPushing")
+	return h.ManifestPushErr
+}
+
+func (h *RecordingPushStatusHandler) OnManifestPushed() error {
+	h.Recorder.Record("OnManifestPushed")
+	return h.ManifestPushErr
+}
+
 // RecordingPushMetadataHandler records push metadata handler calls.
 type RecordingPushMetadataHandler struct {
 	metadata.Discard
-	Recorder  *CallRecorder
-	CopiedErr error
-	TaggedErr error
-	RenderErr error
+	Recorder          *CallRecorder
+	CopiedErr         error
+	TaggedErr         error
+	RenderErr         error
+	ManifestPushedErr error
 }
 
 // OnCopied records the copied event and returns the configured error.
@@ -84,6 +101,11 @@ func (h *RecordingPushMetadataHandler) OnTagged(
 ) error {
 	h.Recorder.Record("OnTagged:" + tag)
 	return h.TaggedErr
+}
+
+func (h *RecordingPushMetadataHandler) OnManifestPushed(_ ocispec.Descriptor) error {
+	h.Recorder.Record("OnManifestPushed")
+	return h.ManifestPushedErr
 }
 
 // Render records the render call and returns the configured error.

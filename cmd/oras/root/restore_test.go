@@ -86,4 +86,7 @@ func TestRunRestore_injectedHandlers_reportsInputError(t *testing.T) {
 	if err := runRestore(cmd, opts, handlers); err == nil {
 		t.Fatal("runRestore() error = nil, want input path error")
 	}
+	if got := recorder.Snapshot(); len(got) != 0 {
+		t.Fatalf("handler calls = %v, want no calls when input validation fails", got)
+	}
 }

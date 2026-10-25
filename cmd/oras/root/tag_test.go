@@ -27,25 +27,11 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras/cmd/oras/internal/display/displaytest"
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/listener"
 )
-
-type recordingTagHandler struct {
-	calls []string
-	err   error
-}
-
-func (h *recordingTagHandler) OnTagging(ocispec.Descriptor, string) error {
-	h.calls = append(h.calls, "OnTagging")
-	return h.err
-}
-
-func (h *recordingTagHandler) OnTagged(ocispec.Descriptor, string) error {
-	h.calls = append(h.calls, "OnTagged")
-	return nil
-}
 
 func Test_tagCmd_requiresSourceAndDestination(t *testing.T) {
 	rootCmd := &cobra.Command{Use: "oras"}
@@ -62,7 +48,7 @@ func Test_tagCmd_requiresSourceAndDestination(t *testing.T) {
 }
 
 func TestNewTagHandler_injected(t *testing.T) {
-	want := &recordingTagHandler{}
+	want := &displaytest.RecordingTagHandler{Recorder: &displaytest.CallRecorder{}}
 	if got := newTagHandler(&tagOptions{}, want); got != want {
 		t.Fatal("newTagHandler() did not return injected handler")
 	}
@@ -79,12 +65,13 @@ func TestTagListener_handlerCallOrderAndError(t *testing.T) {
 	target := memory.New()
 	desc := ocispec.Descriptor{MediaType: ocispec.MediaTypeImageManifest}
 	wantedErr := errors.New("tagging failed")
-	handler := &recordingTagHandler{err: wantedErr}
+	recorder := &displaytest.CallRecorder{}
+	handler := &displaytest.RecordingTagHandler{Recorder: recorder, TaggingErr: wantedErr}
 	wrapped := listener.NewTagListener(target, handler.OnTagging, handler.OnTagged)
 	if err := wrapped.Tag(context.Background(), desc, "v1"); !errors.Is(err, wantedErr) {
 		t.Fatalf("Tag() error = %v, want %v", err, wantedErr)
 	}
-	if got, want := handler.calls, []string{"OnTagging"}; !reflect.DeepEqual(got, want) {
+	if got, want := recorder.Snapshot(), []string{"OnTagging"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
 }
@@ -100,13 +87,14 @@ func TestTagWithHandler_handlerCallOrderAndError(t *testing.T) {
 		t.Fatal(err)
 	}
 	wantedErr := errors.New("tagging failed")
-	handler := &recordingTagHandler{err: wantedErr}
+	recorder := &displaytest.CallRecorder{}
+	handler := &displaytest.RecordingTagHandler{Recorder: recorder, TaggingErr: wantedErr}
 	opts := oras.DefaultTagNOptions
 	err = tagWithHandler(ctx, target, "source", []string{"destination"}, opts, handler)
 	if !errors.Is(err, wantedErr) {
 		t.Fatalf("tagWithHandler() error = %v, want %v", err, wantedErr)
 	}
-	if got, want := handler.calls, []string{"OnTagging"}; !reflect.DeepEqual(got, want) {
+	if got, want := recorder.Snapshot(), []string{"OnTagging"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
 }
@@ -121,12 +109,13 @@ func TestTagWithHandler_handlerCallOrder(t *testing.T) {
 	if err := target.Tag(ctx, desc, "source"); err != nil {
 		t.Fatal(err)
 	}
-	handler := &recordingTagHandler{}
+	recorder := &displaytest.CallRecorder{}
+	handler := &displaytest.RecordingTagHandler{Recorder: recorder}
 	err = tagWithHandler(ctx, target, "source", []string{"destination"}, oras.DefaultTagNOptions, handler)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := handler.calls, []string{"OnTagging", "OnTagged"}; !reflect.DeepEqual(got, want) {
+	if got, want := recorder.Snapshot(), []string{"OnTagging", "OnTagged"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
 }
@@ -146,13 +135,14 @@ func TestTagManifest_injectedHandler(t *testing.T) {
 		t.Fatal(err)
 	}
 	opts := &tagOptions{Target: option.Target{Type: option.TargetTypeOCILayout, Path: layout, Reference: "source", RawReference: "source"}, targetRefs: []string{"destination"}}
-	handler := &recordingTagHandler{}
+	recorder := &displaytest.CallRecorder{}
+	handler := &displaytest.RecordingTagHandler{Recorder: recorder}
 	cmd := &cobra.Command{}
 	cmd.SetContext(ctx)
 	if err := tagManifest(cmd, opts, handler); err != nil {
 		t.Fatal(err)
 	}
-	if got, want := handler.calls, []string{"OnTagging", "OnTagged"}; !reflect.DeepEqual(got, want) {
+	if got, want := recorder.Snapshot(), []string{"OnTagging", "OnTagged"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
 }

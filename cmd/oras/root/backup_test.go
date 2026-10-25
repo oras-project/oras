@@ -38,6 +38,7 @@ import (
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras/cmd/oras/internal/display/displaytest"
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
 	"oras.land/oras/cmd/oras/internal/display/status"
 )
@@ -227,30 +228,30 @@ func TestNewBackupHandlers_default(t *testing.T) {
 	}
 }
 
-func TestMockBackupHandler_callOrderAndError(t *testing.T) {
-	wantedErr := errors.New("tags failed")
-	handler := &mockBackupHandler{tagsFoundResult: wantedErr}
-	if err := handler.OnTagsFound(nil); !errors.Is(err, wantedErr) {
-		t.Fatalf("OnTagsFound() error = %v, want %v", err, wantedErr)
-	}
-	if got, want := handler.calls, []string{"OnTagsFound"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("handler calls = %v, want %v", got, want)
-	}
-}
-
 func TestRunBackup_injectedHandlers_reportsSourceError(t *testing.T) {
 	ctx := context.Background()
-	opts := &backupOptions{output: t.TempDir(), outputFormat: outputFormatDir, repository: "localhost:5000/example", tags: []string{"missing"}}
-	handler := &mockBackupHandler{}
-	handlers := backupHandlers{
-		status:   handler,
-		metadata: handler,
+	opts := &backupOptions{
+		output:       t.TempDir(),
+		outputFormat: outputFormatDir,
+		repository:   "localhost:5000/example",
+		tags:         []string{"missing"},
 	}
+
+	recorder := &displaytest.CallRecorder{}
+	handlers := backupHandlers{
+		status:   &displaytest.RecordingBackupStatusHandler{Recorder: recorder},
+		metadata: &displaytest.RecordingBackupMetadataHandler{Recorder: recorder},
+	}
+
 	cmd := &cobra.Command{}
 	cmd.SetContext(ctx)
 	opts.Remote.ApplyFlags(cmd.Flags())
+
 	if err := runBackup(cmd, opts, handlers); err == nil {
 		t.Fatal("runBackup() error = nil, want source repository error")
+	}
+	if got := recorder.Snapshot(); len(got) != 0 {
+		t.Fatalf("handler calls = %v, want no calls when source resolution fails", got)
 	}
 }
 

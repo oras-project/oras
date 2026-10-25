@@ -17,46 +17,37 @@ package blob
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2/errdef"
 
+	"oras.land/oras/cmd/oras/internal/display/displaytest"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
 type fakeBlobDeleter struct {
 	resolveErr error
+	deleteErr  error
+	deleted    bool
 }
 
 func (f *fakeBlobDeleter) Resolve(context.Context, string) (ocispec.Descriptor, error) {
-	return ocispec.Descriptor{}, f.resolveErr
+	return ocispec.Descriptor{
+		Digest: "sha256:1234",
+	}, f.resolveErr
 }
 
 func (f *fakeBlobDeleter) Delete(context.Context, ocispec.Descriptor) error {
-	return nil
-}
-
-type recordingBlobDeleteHandler struct {
-	missingCalls int
-	deletedCalls int
-	missingErr   error
-}
-
-func (h *recordingBlobDeleteHandler) OnBlobMissing() error {
-	h.missingCalls++
-	return h.missingErr
-}
-
-func (h *recordingBlobDeleteHandler) OnBlobDeleted() error {
-	h.deletedCalls++
-	return nil
+	f.deleted = true
+	return f.deleteErr
 }
 
 var _ option.ResolvableDeleter = (*fakeBlobDeleter)(nil)
-var _ metadata.BlobDeleteHandler = (*recordingBlobDeleteHandler)(nil)
+var _ metadata.BlobDeleteHandler = (*displaytest.RecordingBlobDeleteHandler)(nil)
 
 func Test_deleteBlobWithDeleter_blobMissing(t *testing.T) {
 	opts := &deleteBlobOptions{}
@@ -64,7 +55,8 @@ func Test_deleteBlobWithDeleter_blobMissing(t *testing.T) {
 	opts.RawReference = "example.com/repo@sha256:missing"
 	opts.Force = true
 
-	handler := &recordingBlobDeleteHandler{}
+	recorder := &displaytest.CallRecorder{}
+	handler := &displaytest.RecordingBlobDeleteHandler{Recorder: recorder}
 	deleter := &fakeBlobDeleter{resolveErr: errdef.ErrNotFound}
 
 	err := deleteBlobWithDeleter(
@@ -77,10 +69,51 @@ func Test_deleteBlobWithDeleter_blobMissing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("deleteBlobWithDeleter() error = %v, want nil", err)
 	}
-	if handler.missingCalls != 1 {
-		t.Errorf("OnBlobMissing() calls = %d, want 1", handler.missingCalls)
+	if got, want := recorder.Snapshot(), []string{"OnBlobMissing"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
-	if handler.deletedCalls != 0 {
-		t.Errorf("OnBlobDeleted() calls = %d, want 0", handler.deletedCalls)
+}
+
+func Test_deleteBlob_invalidTargetType(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
+
+	opts := &deleteBlobOptions{}
+	opts.Type = "invalid"
+
+	err := deleteBlob(cmd, opts)
+	if err == nil {
+		t.Fatal("deleteBlob() error = nil, want unknown target type error")
+	}
+	if got, want := err.Error(), `unknown target type: "invalid"`; got != want {
+		t.Fatalf("deleteBlob() error = %q, want %q", got, want)
+	}
+}
+
+func Test_deleteBlobWithDeleter_deleted(t *testing.T) {
+	opts := &deleteBlobOptions{}
+	opts.Reference = "sha256:1234"
+	opts.RawReference = "example.com/repo@sha256:1234"
+	opts.Force = true
+
+	recorder := &displaytest.CallRecorder{}
+	handler := &displaytest.RecordingBlobDeleteHandler{Recorder: recorder}
+	deleter := &fakeBlobDeleter{}
+
+	err := deleteBlobWithDeleter(
+		context.Background(),
+		&cobra.Command{},
+		opts,
+		deleter,
+		handler,
+	)
+	if err != nil {
+		t.Fatalf("deleteBlobWithDeleter() error = %v, want nil", err)
+	}
+	if !deleter.deleted {
+		t.Fatal("Delete() was not called")
+	}
+	if got, want := recorder.Snapshot(), []string{"OnBlobDeleted"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
 }

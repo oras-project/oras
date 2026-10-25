@@ -25,27 +25,13 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"oras.land/oras/cmd/oras/internal/display/displaytest"
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
-type recordingRepoTagsHandler struct {
-	calls []string
-	err   error
-}
-
-func (h *recordingRepoTagsHandler) OnTagListed(string) error {
-	h.calls = append(h.calls, "OnTagListed")
-	return h.err
-}
-
-func (h *recordingRepoTagsHandler) Render() error {
-	h.calls = append(h.calls, "Render")
-	return nil
-}
-
 func TestNewRepoTagsHandler_injected(t *testing.T) {
-	want := &recordingRepoTagsHandler{}
+	want := &displaytest.RecordingRepoTagsHandler{Recorder: &displaytest.CallRecorder{}}
 	got, err := newRepoTagsHandler(&showTagsOptions{}, want)
 	if err != nil {
 		t.Fatal(err)
@@ -75,11 +61,16 @@ func TestNewRepoTagsHandler_invalidFormat(t *testing.T) {
 
 func TestRecordingRepoTagsHandler_callOrderAndError(t *testing.T) {
 	wantedErr := errors.New("tag listing failed")
-	handler := &recordingRepoTagsHandler{err: wantedErr}
+	recorder := &displaytest.CallRecorder{}
+	handler := &displaytest.RecordingRepoTagsHandler{
+		Recorder:     recorder,
+		TagListedErr: wantedErr,
+	}
+
 	if err := handler.OnTagListed("v1"); !errors.Is(err, wantedErr) {
 		t.Fatalf("OnTagListed() error = %v, want %v", err, wantedErr)
 	}
-	if got, want := handler.calls, []string{"OnTagListed"}; !reflect.DeepEqual(got, want) {
+	if got, want := recorder.Snapshot(), []string{"OnTagListed"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
 }
@@ -101,11 +92,12 @@ func TestShowTags_injectedHandler(t *testing.T) {
 	if err := cmd.Flags().Set("plain-http", "true"); err != nil {
 		t.Fatal(err)
 	}
-	handler := &recordingRepoTagsHandler{}
+	recorder := &displaytest.CallRecorder{}
+	handler := &displaytest.RecordingRepoTagsHandler{Recorder: recorder}
 	if err := showTags(cmd, opts, handler); err != nil {
 		t.Fatal(err)
 	}
-	if got, want := handler.calls, []string{"OnTagListed", "Render"}; !reflect.DeepEqual(got, want) {
+	if got, want := recorder.Snapshot(), []string{"OnTagListed", "Render"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
 }
