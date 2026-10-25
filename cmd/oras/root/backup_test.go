@@ -32,6 +32,7 @@ import (
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
@@ -234,6 +235,22 @@ func TestMockBackupHandler_callOrderAndError(t *testing.T) {
 	}
 	if got, want := handler.calls, []string{"OnTagsFound"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("handler calls = %v, want %v", got, want)
+	}
+}
+
+func TestRunBackup_injectedHandlers_reportsSourceError(t *testing.T) {
+	ctx := context.Background()
+	opts := &backupOptions{output: t.TempDir(), outputFormat: outputFormatDir, repository: "localhost:5000/example", tags: []string{"missing"}}
+	handler := &mockBackupHandler{}
+	handlers := backupHandlers{
+		status:   handler,
+		metadata: handler,
+	}
+	cmd := &cobra.Command{}
+	cmd.SetContext(ctx)
+	opts.Remote.ApplyFlags(cmd.Flags())
+	if err := runBackup(cmd, opts, handlers); err == nil {
+		t.Fatal("runBackup() error = nil, want source repository error")
 	}
 }
 

@@ -16,10 +16,15 @@ limitations under the License.
 package repo
 
 import (
+	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -61,6 +66,13 @@ func TestNewRepoListHandler_default(t *testing.T) {
 	}
 }
 
+func TestNewRepoListHandler_invalidFormat(t *testing.T) {
+	_, err := newRepoListHandler(&repositoryOptions{Format: option.Format{Type: "invalid"}}, "registry.example")
+	if err == nil {
+		t.Fatal("newRepoListHandler() error = nil, want invalid format error")
+	}
+}
+
 func TestEmitRepositories_filtersAndStopsOnError(t *testing.T) {
 	wantedErr := errors.New("listing failed")
 	handler := &recordingRepoListHandler{err: wantedErr}
@@ -69,6 +81,32 @@ func TestEmitRepositories_filtersAndStopsOnError(t *testing.T) {
 		t.Fatalf("emitRepositories() error = %v, want %v", err, wantedErr)
 	}
 	if got, want := handler.calls, []string{"example/a"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("handler calls = %v, want %v", got, want)
+	}
+}
+
+func TestListRepository_injectedHandler(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v2/_catalog" {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write([]byte(`{"repositories":["example/a","other/b"]}`))
+	}))
+	defer server.Close()
+	host := strings.TrimPrefix(server.URL, "http://")
+	opts := &repositoryOptions{hostname: host, namespace: "example/"}
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
+	opts.Remote.ApplyFlags(cmd.Flags())
+	if err := cmd.Flags().Set("plain-http", "true"); err != nil {
+		t.Fatal(err)
+	}
+	handler := &recordingRepoListHandler{}
+	if err := listRepository(cmd, opts, handler); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := handler.calls, []string{"example/a", "Render"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
 }

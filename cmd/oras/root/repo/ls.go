@@ -49,6 +49,7 @@ func newRepoListHandler(opts *repositoryOptions, registryName string, injected .
 func emitRepositories(repos []string, namespace string, handler metadata.RepoListHandler) error {
 	for _, repo := range repos {
 		if namespace == "" || strings.HasPrefix(repo, namespace) {
+			// list repositories under the specified namespace
 			if err := handler.OnRepositoryListed(repo); err != nil {
 				return err
 			}
@@ -112,7 +113,6 @@ func listRepository(cmd *cobra.Command, opts *repositoryOptions, injected ...met
 		return err
 	}
 	err = reg.Repositories(ctx, opts.last, func(repos []string) error {
-		// list repositories under the specified namespace
 		return emitRepositories(repos, opts.namespace, handler)
 	})
 

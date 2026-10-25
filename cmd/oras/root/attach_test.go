@@ -26,6 +26,8 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content/oci"
 
 	"oras.land/oras/cmd/oras/internal/display/displaytest"
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
@@ -131,6 +133,13 @@ func TestNewAttachHandlers_default(t *testing.T) {
 	}
 }
 
+func TestNewAttachHandlers_invalidFormat(t *testing.T) {
+	_, err := newAttachHandlers(&attachOptions{Format: option.Format{Type: "invalid"}}, nil)
+	if err == nil {
+		t.Fatal("newAttachHandlers() error = nil, want invalid format error")
+	}
+}
+
 func TestRecordingAttachHandlers_callOrderAndError(t *testing.T) {
 	recorder := &displaytest.CallRecorder{}
 	statusHandler := &displaytest.RecordingAttachStatusHandler{Recorder: recorder, TrackErr: errors.New("track failed")}
@@ -141,5 +150,43 @@ func TestRecordingAttachHandlers_callOrderAndError(t *testing.T) {
 	metadataHandler.OnAttached(nil, ocispec.Descriptor{}, ocispec.Descriptor{})
 	if got, want := recorder.Calls, []string{"TrackTarget", "OnAttached"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("handler calls = %v, want %v", got, want)
+	}
+}
+
+func TestRunAttach_injectedHandlers(t *testing.T) {
+	ctx := context.Background()
+	layout := t.TempDir()
+	store, err := oci.New(layout)
+	if err != nil {
+		t.Fatal(err)
+	}
+	desc, err := oras.PackManifest(ctx, store, oras.PackManifestVersion1_1, "application/example", oras.PackManifestOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Tag(ctx, desc, "source"); err != nil {
+		t.Fatal(err)
+	}
+	fileRef := filepath.Join(t.TempDir(), "layer.txt")
+	if err := os.WriteFile(fileRef, []byte("layer"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	recorder := &displaytest.CallRecorder{}
+	opts := &attachOptions{
+		Target:       option.Target{Type: option.TargetTypeOCILayout, Path: layout, Reference: "source"},
+		Packer:       option.Packer{FileRefs: []string{fileRef}},
+		artifactType: "application/example.artifact",
+	}
+	handlers := attachHandlers{
+		status:   &displaytest.RecordingAttachStatusHandler{Recorder: recorder},
+		metadata: &displaytest.RecordingAttachMetadataHandler{Recorder: recorder},
+	}
+	cmd := &cobra.Command{}
+	cmd.SetContext(ctx)
+	if err := runAttach(cmd, opts, handlers); err != nil {
+		t.Fatal(err)
+	}
+	if len(recorder.Calls) == 0 {
+		t.Fatal("attach handlers recorded no calls")
 	}
 }

@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/display/displaytest"
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
 	"oras.land/oras/cmd/oras/internal/display/status"
@@ -68,5 +69,21 @@ func TestRecordingRestoreHandlers_callOrderAndError(t *testing.T) {
 	}
 	if got, want := recorder.Calls, []string{"OnTagsFound", "PreCopy"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("handler calls = %v, want %v", got, want)
+	}
+}
+
+func TestRunRestore_injectedHandlers_reportsInputError(t *testing.T) {
+	ctx := context.Background()
+	recorder := &displaytest.CallRecorder{}
+	opts := &restoreOptions{repository: "localhost:5000/example", input: t.TempDir() + "/missing"}
+	handlers := restoreHandlers{
+		status:   &displaytest.RecordingRestoreStatusHandler{Recorder: recorder},
+		metadata: &displaytest.RecordingRestoreMetadataHandler{Recorder: recorder},
+	}
+	cmd := &cobra.Command{}
+	cmd.SetContext(ctx)
+	opts.Remote.ApplyFlags(cmd.Flags())
+	if err := runRestore(cmd, opts, handlers); err == nil {
+		t.Fatal("runRestore() error = nil, want input path error")
 	}
 }

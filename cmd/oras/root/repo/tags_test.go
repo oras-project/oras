@@ -16,10 +16,15 @@ limitations under the License.
 package repo
 
 import (
+	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/display/metadata/text"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -61,6 +66,13 @@ func TestNewRepoTagsHandler_default(t *testing.T) {
 	}
 }
 
+func TestNewRepoTagsHandler_invalidFormat(t *testing.T) {
+	_, err := newRepoTagsHandler(&showTagsOptions{Format: option.Format{Type: "invalid"}})
+	if err == nil {
+		t.Fatal("newRepoTagsHandler() error = nil, want invalid format error")
+	}
+}
+
 func TestRecordingRepoTagsHandler_callOrderAndError(t *testing.T) {
 	wantedErr := errors.New("tag listing failed")
 	handler := &recordingRepoTagsHandler{err: wantedErr}
@@ -68,6 +80,32 @@ func TestRecordingRepoTagsHandler_callOrderAndError(t *testing.T) {
 		t.Fatalf("OnTagListed() error = %v, want %v", err, wantedErr)
 	}
 	if got, want := handler.calls, []string{"OnTagListed"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("handler calls = %v, want %v", got, want)
+	}
+}
+
+func TestShowTags_injectedHandler(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v2/example/tags/list" {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write([]byte(`{"name":"example","tags":["v1"]}`))
+	}))
+	defer server.Close()
+	host := strings.TrimPrefix(server.URL, "http://")
+	opts := &showTagsOptions{Target: option.Target{Type: option.TargetTypeRemote, RawReference: host + "/example"}}
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
+	opts.Remote.ApplyFlags(cmd.Flags())
+	if err := cmd.Flags().Set("plain-http", "true"); err != nil {
+		t.Fatal(err)
+	}
+	handler := &recordingRepoTagsHandler{}
+	if err := showTags(cmd, opts, handler); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := handler.calls, []string{"OnTagListed", "Render"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
 }

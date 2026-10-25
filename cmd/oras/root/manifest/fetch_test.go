@@ -33,6 +33,7 @@ import (
 
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras/cmd/oras/internal/display/displaytest"
 	"oras.land/oras/cmd/oras/internal/errors"
@@ -155,6 +156,32 @@ func Test_fetchCmd_outputAndFormat(t *testing.T) {
 	want := "`--output -` cannot be used with `--format go-template` at the same time"
 	if err == nil || err.Error() != want {
 		t.Fatalf("got %v, want %v", err, want)
+	}
+}
+
+func TestFetchManifest_ociLayoutExecution(t *testing.T) {
+	ctx := context.Background()
+	layout := t.TempDir()
+	store, err := oci.New(layout)
+	if err != nil {
+		t.Fatal(err)
+	}
+	desc, err := oras.PackManifest(ctx, store, oras.PackManifestVersion1_1, "application/example", oras.PackManifestOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Tag(ctx, desc, "source"); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "manifest.json")
+	rootCmd := &cobra.Command{Use: "oras"}
+	rootCmd.AddCommand(fetchCmd())
+	rootCmd.SetArgs([]string{"fetch", "--oci-layout-path", layout, "source", "--output", out})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Stat(out); err != nil || info.Size() == 0 {
+		t.Fatalf("manifest output invalid: info=%v err=%v", info, err)
 	}
 }
 

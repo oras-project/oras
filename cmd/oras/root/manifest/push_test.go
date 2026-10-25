@@ -18,6 +18,7 @@ package manifest
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -52,6 +53,15 @@ func (h *recordingManifestPushStatusHandler) OnManifestPushed() error {
 type recordingManifestPushMetadataHandler struct {
 	calls []string
 	err   error
+}
+
+type failingManifestPushTarget struct {
+	*memory.Store
+	err error
+}
+
+func (t *failingManifestPushTarget) Push(context.Context, ocispec.Descriptor, io.Reader) error {
+	return t.err
 }
 
 func (h *recordingManifestPushMetadataHandler) OnTagged(ocispec.Descriptor, string) error {
@@ -158,6 +168,19 @@ func TestPushManifestToTarget_handlerCallOrderAndError(t *testing.T) {
 	}
 }
 
+func TestPushManifestToTarget_targetError(t *testing.T) {
+	wantedErr := errors.New("target push failed")
+	statusHandler := &recordingManifestPushStatusHandler{}
+	target := &failingManifestPushTarget{Store: memory.New(), err: wantedErr}
+	err := pushManifestToTarget(context.Background(), target, "application/vnd.oci.image.manifest.v1+json", []byte(`{"schemaVersion":2}`), "v1", false, statusHandler)
+	if !errors.Is(err, wantedErr) {
+		t.Fatalf("pushManifestToTarget() error = %v, want %v", err, wantedErr)
+	}
+	if got, want := statusHandler.calls, []string{"OnManifestPushing"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("status calls = %v, want %v", got, want)
+	}
+}
+
 func TestPushManifest_injectedHandlers(t *testing.T) {
 	layout := t.TempDir()
 	fileRef := filepath.Join(t.TempDir(), "manifest.json")
@@ -177,5 +200,25 @@ func TestPushManifest_injectedHandlers(t *testing.T) {
 	}
 	if got, want := metadataHandler.calls, []string{"OnManifestPushed", "Render"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("metadata calls = %v, want %v", got, want)
+	}
+}
+
+func TestPushManifest_injectedStatusError(t *testing.T) {
+	layout := t.TempDir()
+	fileRef := filepath.Join(t.TempDir(), "manifest.json")
+	if err := os.WriteFile(fileRef, []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	opts := pushOptions{Target: option.Target{Type: option.TargetTypeOCILayout, Path: layout, Reference: "source"}, fileRef: fileRef}
+	wantedErr := errors.New("status failed")
+	statusHandler := &recordingManifestPushStatusHandler{err: wantedErr}
+	metadataHandler := &recordingManifestPushMetadataHandler{}
+	cmd := &cobra.Command{Use: "manifest push"}
+	cmd.SetContext(context.Background())
+	if err := pushManifest(cmd, opts, manifestPushHandlers{statusHandler, metadataHandler}); !errors.Is(err, wantedErr) {
+		t.Fatalf("pushManifest() error = %v, want %v", err, wantedErr)
+	}
+	if got, want := statusHandler.calls, []string{"OnManifestPushing"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("status calls = %v, want %v", got, want)
 	}
 }

@@ -26,6 +26,9 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras/cmd/oras/internal/display/metadata/tree"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -149,5 +152,31 @@ func TestDiscoverCmd_OutputDeprecationMessage(t *testing.T) {
 				t.Errorf("stderr = %q, want it to contain %q", stderr.String(), want)
 			}
 		})
+	}
+}
+
+func TestRunDiscover_injectedHandler(t *testing.T) {
+	ctx := context.Background()
+	layout := t.TempDir()
+	store, err := oci.New(layout)
+	if err != nil {
+		t.Fatal(err)
+	}
+	desc, err := oras.PackManifest(ctx, store, oras.PackManifestVersion1_1, "application/example", oras.PackManifestOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Tag(ctx, desc, "source"); err != nil {
+		t.Fatal(err)
+	}
+	opts := &discoverOptions{Target: option.Target{Type: option.TargetTypeOCILayout, Path: layout, Reference: "source"}}
+	handler := &recordingDiscoverHandler{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(ctx)
+	if err := runDiscover(cmd, opts, handler); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := handler.calls, []string{"Render"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
 }
