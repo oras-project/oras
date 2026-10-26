@@ -90,7 +90,10 @@ jobs:
             [[ -z "$tag" ]] && continue
             tag_args+=(--tag "$tag")
           done <<< "$IMAGE_TAGS"
-          docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7,linux/s390x,linux/ppc64le "${tag_args[@]}" --push .
+          docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7,linux/s390x,linux/ppc64le \
+            --build-arg OCI_VERSION="${GITHUB_REF#refs/*/}" \
+            --build-arg OCI_REVISION="$GITHUB_SHA" \
+            "${tag_args[@]}" --push .
       - name: clear
         if: always()
         run: |
