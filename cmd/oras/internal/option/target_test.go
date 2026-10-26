@@ -92,6 +92,35 @@ func TestTarget_Parse_to_oci_and_oci_path(t *testing.T) {
 	}
 }
 
+func TestTarget_Parse_oci_header_flags(t *testing.T) {
+	tests := []struct {
+		name   string
+		prefix string
+		args   []string
+	}{
+		{"oci layout", "", []string{"--oci-layout", "--header", "foo:bar"}},
+		{"oci layout path", "", []string{"--oci-layout-path", "foo", "--header", "foo:bar"}},
+		{"source oci layout path", "from", []string{"--from-oci-layout-path", "foo", "--from-header", "foo:bar"}},
+		{"destination oci layout path", "to", []string{"--to-oci-layout-path", "foo", "--to-header", "foo:bar"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := Target{RawReference: "mocked/test"}
+			cmd := &cobra.Command{}
+			opts.setFlagDetails(tt.prefix, "test")
+			opts.ApplyFlags(cmd.Flags())
+			cmd.SetArgs(tt.args)
+			if err := cmd.Execute(); err != nil {
+				t.Fatalf("cmd.Execute() error = %v", err)
+			}
+			err := opts.Parse(cmd)
+			if err == nil || !strings.Contains(err.Error(), "custom header flags cannot be used on an OCI image layout target") {
+				t.Errorf("Target.Parse() error = %v, want an error about custom header flags", err)
+			}
+		})
+	}
+}
+
 func TestTarget_Parse_remote(t *testing.T) {
 	opts := Target{
 		RawReference: "mocked/test",
