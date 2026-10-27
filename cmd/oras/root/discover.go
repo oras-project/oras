@@ -47,6 +47,13 @@ type discoverOptions struct {
 	verbose bool
 }
 
+func newDiscoverHandler(opts *discoverOptions, desc ocispec.Descriptor, injected ...metadata.DiscoverHandler) (metadata.DiscoverHandler, error) {
+	if len(injected) == 1 {
+		return injected[0], nil
+	}
+	return display.NewDiscoverHandler(opts.Printer, opts.Format, opts.Path, opts.RawReference, desc, opts.verbose, opts.TTY)
+}
+
 func discoverCmd() *cobra.Command {
 	var opts discoverOptions
 	cmd := &cobra.Command{
@@ -132,7 +139,7 @@ Example - Discover referrers of the manifest tagged 'example.com:v1' in an OCI i
 	return oerrors.Command(cmd, &opts.Target)
 }
 
-func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
+func runDiscover(cmd *cobra.Command, opts *discoverOptions, injected ...metadata.DiscoverHandler) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	repo, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
 	if err != nil {
@@ -150,7 +157,7 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 		return err
 	}
 
-	handler, err := display.NewDiscoverHandler(opts.Printer, opts.Format, opts.Path, opts.RawReference, desc, opts.verbose, opts.TTY)
+	handler, err := newDiscoverHandler(opts, desc, injected...)
 	if err != nil {
 		return err
 	}

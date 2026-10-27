@@ -37,6 +37,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
+	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/docker"
@@ -71,6 +72,19 @@ type backupOptions struct {
 	outputFormat outputFormat
 	repository   string
 	tags         []string
+}
+
+type backupHandlers struct {
+	status   status.BackupHandler
+	metadata metadata.BackupHandler
+}
+
+func newBackupHandlers(opts *backupOptions, fetcher content.Fetcher, injected ...backupHandlers) backupHandlers {
+	if len(injected) == 1 {
+		return injected[0]
+	}
+	statusHandler, metadataHandler := display.NewBackupHandler(opts.Printer, opts.TTY, opts.repository, fetcher)
+	return backupHandlers{status: statusHandler, metadata: metadataHandler}
 }
 
 func backupCmd() *cobra.Command {
@@ -152,7 +166,7 @@ Example - Set custom concurrency level:
 	return oerrors.Command(cmd, &opts.Remote)
 }
 
-func runBackup(cmd *cobra.Command, opts *backupOptions) error {
+func runBackup(cmd *cobra.Command, opts *backupOptions, injected ...backupHandlers) error {
 	if opts.output == "" {
 		return errors.New("the output path cannot be empty")
 	}
@@ -204,7 +218,9 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 	if err != nil {
 		return fmt.Errorf("failed to prepare OCI store for backup: %w", err)
 	}
-	statusHandler, metadataHandler := display.NewBackupHandler(opts.Printer, opts.TTY, opts.repository, dstOCI)
+	handlers := newBackupHandlers(opts, dstOCI, injected...)
+	statusHandler := handlers.status
+	metadataHandler := handlers.metadata
 
 	// Resolve tags to back up
 	tags, roots, err := resolveTags(ctx, srcRepo, opts.tags)

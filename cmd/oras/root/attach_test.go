@@ -20,12 +20,18 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content/oci"
 
+	"oras.land/oras/cmd/oras/internal/display/displaytest"
+	"oras.land/oras/cmd/oras/internal/display/metadata/text"
+	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/cmd/oras/internal/option"
 )
 
@@ -96,5 +102,91 @@ func Test_attachCmd_configAnnotationsWiredToPackOpts(t *testing.T) {
 	}
 	if packOpts.ConfigAnnotations["org.example.key"] != "val" {
 		t.Fatalf("expected 'org.example.key'='val', got %v", packOpts.ConfigAnnotations)
+	}
+}
+
+func TestNewAttachHandlers_injected(t *testing.T) {
+	recorder := &displaytest.CallRecorder{}
+	want := attachHandlers{
+		status:   &displaytest.RecordingAttachStatusHandler{Recorder: recorder},
+		metadata: &displaytest.RecordingAttachMetadataHandler{Recorder: recorder},
+	}
+	got, err := newAttachHandlers(&attachOptions{}, nil, want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.status != want.status || got.metadata != want.metadata {
+		t.Fatal("newAttachHandlers() did not return injected handlers")
+	}
+}
+
+func TestNewAttachHandlers_default(t *testing.T) {
+	got, err := newAttachHandlers(&attachOptions{Format: option.Format{Type: option.FormatTypeText.Name}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reflect.TypeOf(got.status) != reflect.TypeOf(status.NewTextAttachHandler(nil, nil)) {
+		t.Errorf("status handler type = %T, want text attach handler", got.status)
+	}
+	if reflect.TypeOf(got.metadata) != reflect.TypeOf(text.NewAttachHandler(nil)) {
+		t.Errorf("metadata handler type = %T, want text attach handler", got.metadata)
+	}
+}
+
+func TestNewAttachHandlers_invalidFormat(t *testing.T) {
+	_, err := newAttachHandlers(&attachOptions{Format: option.Format{Type: "invalid"}}, nil)
+	if err == nil {
+		t.Fatal("newAttachHandlers() error = nil, want invalid format error")
+	}
+}
+
+func TestRunAttach_injectedHandlers(t *testing.T) {
+	ctx := context.Background()
+	layout := t.TempDir()
+	store, err := oci.New(layout)
+	if err != nil {
+		t.Fatal(err)
+	}
+	desc, err := oras.PackManifest(ctx, store, oras.PackManifestVersion1_1, "application/example", oras.PackManifestOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Tag(ctx, desc, "source"); err != nil {
+		t.Fatal(err)
+	}
+	fileRef := filepath.Join(t.TempDir(), "layer.txt")
+	if err := os.WriteFile(fileRef, []byte("layer"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	recorder := &displaytest.CallRecorder{}
+	opts := &attachOptions{
+		Target:       option.Target{Type: option.TargetTypeOCILayout, Path: layout, Reference: "source"},
+		Packer:       option.Packer{FileRefs: []string{fileRef}},
+		artifactType: "application/example.artifact",
+	}
+	handlers := attachHandlers{
+		status:   &displaytest.RecordingAttachStatusHandler{Recorder: recorder},
+		metadata: &displaytest.RecordingAttachMetadataHandler{Recorder: recorder},
+	}
+	cmd := &cobra.Command{}
+	cmd.SetContext(ctx)
+	if err := runAttach(cmd, opts, handlers); err != nil {
+		t.Fatal(err)
+	}
+
+	wantCalls := []string{
+		"OnFileLoading",
+		"TrackTarget",
+		"OnCopySkipped",
+		"PreCopy",
+		"PostCopy",
+		"PreCopy",
+		"PostCopy",
+		"StopTrackTarget",
+		"OnAttached",
+		"Render",
+	}
+	if got := recorder.Snapshot(); !reflect.DeepEqual(got, wantCalls) {
+		t.Errorf("handler calls = %v, want %v", got, wantCalls)
 	}
 }

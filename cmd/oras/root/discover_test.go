@@ -20,11 +20,18 @@ import (
 	"context"
 	"errors"
 	"io"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/spf13/cobra"
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras/cmd/oras/internal/display/displaytest"
+	"oras.land/oras/cmd/oras/internal/display/metadata/tree"
+	"oras.land/oras/cmd/oras/internal/option"
 )
 
 // cyclicReferrerTarget is a minimal ReadOnlyGraphTarget that serves a
@@ -54,17 +61,27 @@ func (t *cyclicReferrerTarget) Resolve(context.Context, string) (ocispec.Descrip
 	return ocispec.Descriptor{}, errors.New("not implemented")
 }
 
-// recordingDiscoverHandler counts OnDiscovered calls.
-type recordingDiscoverHandler struct {
-	count int
+func TestNewDiscoverHandler_injected(t *testing.T) {
+	want := &displaytest.RecordingDiscoverHandler{Recorder: &displaytest.CallRecorder{}}
+	got, err := newDiscoverHandler(&discoverOptions{}, ocispec.Descriptor{}, want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != want {
+		t.Fatal("newDiscoverHandler() did not return injected handler")
+	}
 }
 
-func (h *recordingDiscoverHandler) OnDiscovered(_, _ ocispec.Descriptor) error {
-	h.count++
-	return nil
+func TestNewDiscoverHandler_default(t *testing.T) {
+	opts := &discoverOptions{Format: option.Format{Type: option.FormatTypeTree.Name}}
+	got, err := newDiscoverHandler(opts, ocispec.Descriptor{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reflect.TypeOf(got) != reflect.TypeOf(tree.NewDiscoverHandler(nil, "", ocispec.Descriptor{}, false, nil)) {
+		t.Errorf("handler type = %T, want tree handler", got)
+	}
 }
-
-func (h *recordingDiscoverHandler) Render() error { return nil }
 
 func TestFetchAllReferrers_CyclicGraphTerminates(t *testing.T) {
 	descA := ocispec.Descriptor{MediaType: ocispec.MediaTypeImageManifest, Digest: digest.FromString("A"), Size: 1}
@@ -74,15 +91,33 @@ func TestFetchAllReferrers_CyclicGraphTerminates(t *testing.T) {
 		descA.Digest: {descB},
 		descB.Digest: {descA},
 	}}
-	handler := &recordingDiscoverHandler{}
+	recorder := &displaytest.CallRecorder{}
+	handler := &displaytest.RecordingDiscoverHandler{Recorder: recorder}
 
 	// depth 0 means unlimited; without cycle detection this never returns.
 	if err := fetchAllReferrers(context.Background(), target, descA, "", handler, 0, make(map[digest.Digest]bool)); err != nil {
 		t.Fatalf("fetchAllReferrers() error = %v", err)
 	}
 	// Each edge (A->B and B->A) is reported exactly once.
-	if handler.count != 2 {
-		t.Errorf("OnDiscovered called %d times, want 2", handler.count)
+	calls := recorder.Snapshot()
+	if got, want := calls, []string{"OnDiscovered", "OnDiscovered"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("handler calls = %v, want %v", got, want)
+	}
+}
+
+func TestFetchAllReferrers_HandlerErrorStopsTraversal(t *testing.T) {
+	wantedErr := errors.New("discover handler failed")
+	desc := ocispec.Descriptor{Digest: digest.FromString("root"), MediaType: ocispec.MediaTypeImageManifest}
+	target := &cyclicReferrerTarget{referrers: map[digest.Digest][]ocispec.Descriptor{
+		desc.Digest: {{Digest: digest.FromString("child"), MediaType: ocispec.MediaTypeImageManifest}},
+	}}
+	recorder := &displaytest.CallRecorder{}
+	handler := &displaytest.RecordingDiscoverHandler{Recorder: recorder, Err: wantedErr}
+	if err := fetchAllReferrers(context.Background(), target, desc, "", handler, 0, make(map[digest.Digest]bool)); !errors.Is(err, wantedErr) {
+		t.Fatalf("fetchAllReferrers() error = %v, want %v", err, wantedErr)
+	}
+	if got, want := recorder.Snapshot(), []string{"OnDiscovered"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
 }
 
@@ -103,5 +138,32 @@ func TestDiscoverCmd_OutputDeprecationMessage(t *testing.T) {
 				t.Errorf("stderr = %q, want it to contain %q", stderr.String(), want)
 			}
 		})
+	}
+}
+
+func TestRunDiscover_injectedHandler(t *testing.T) {
+	ctx := context.Background()
+	layout := t.TempDir()
+	store, err := oci.New(layout)
+	if err != nil {
+		t.Fatal(err)
+	}
+	desc, err := oras.PackManifest(ctx, store, oras.PackManifestVersion1_1, "application/example", oras.PackManifestOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Tag(ctx, desc, "source"); err != nil {
+		t.Fatal(err)
+	}
+	opts := &discoverOptions{Target: option.Target{Type: option.TargetTypeOCILayout, Path: layout, Reference: "source"}}
+	recorder := &displaytest.CallRecorder{}
+	handler := &displaytest.RecordingDiscoverHandler{Recorder: recorder}
+	cmd := &cobra.Command{}
+	cmd.SetContext(ctx)
+	if err := runDiscover(cmd, opts, handler); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := recorder.Snapshot(), []string{"Render"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("handler calls = %v, want %v", got, want)
 	}
 }

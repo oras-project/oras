@@ -24,6 +24,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/repository"
@@ -36,6 +37,25 @@ type repositoryOptions struct {
 	hostname  string
 	namespace string
 	last      string
+}
+
+func newRepoListHandler(opts *repositoryOptions, registryName string, injected ...metadata.RepoListHandler) (metadata.RepoListHandler, error) {
+	if len(injected) == 1 {
+		return injected[0], nil
+	}
+	return display.NewRepoListHandler(opts.Printer, opts.Format, registryName, opts.namespace)
+}
+
+func emitRepositories(repos []string, namespace string, handler metadata.RepoListHandler) error {
+	for _, repo := range repos {
+		if namespace == "" || strings.HasPrefix(repo, namespace) {
+			// list repositories under the specified namespace
+			if err := handler.OnRepositoryListed(repo); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func listCmd() *cobra.Command {
@@ -81,27 +101,19 @@ Example - [Experimental] List the repositories under the registry using the give
 	return oerrors.Command(cmd, &opts.Remote)
 }
 
-func listRepository(cmd *cobra.Command, opts *repositoryOptions) error {
+func listRepository(cmd *cobra.Command, opts *repositoryOptions, injected ...metadata.RepoListHandler) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	reg, err := opts.NewRegistry(opts.hostname, opts.Common, logger)
 	if err != nil {
 		return err
 	}
 
-	handler, err := display.NewRepoListHandler(opts.Printer, opts.Format, reg.Reference.Registry, opts.namespace)
+	handler, err := newRepoListHandler(opts, reg.Reference.Registry, injected...)
 	if err != nil {
 		return err
 	}
 	err = reg.Repositories(ctx, opts.last, func(repos []string) error {
-		for _, repo := range repos {
-			if opts.namespace == "" || strings.HasPrefix(repo, opts.namespace) {
-				// list repositories under the specified namespace
-				if err := handler.OnRepositoryListed(repo); err != nil {
-					return err
-				}
-			}
-		}
-		return nil
+		return emitRepositories(repos, opts.namespace, handler)
 	})
 
 	if err != nil {

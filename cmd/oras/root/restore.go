@@ -28,9 +28,12 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
+	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
+	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	orasio "oras.land/oras/internal/io"
@@ -50,6 +53,19 @@ type restoreOptions struct {
 	// derived options
 	repository string
 	tags       []string
+}
+
+type restoreHandlers struct {
+	status   status.RestoreHandler
+	metadata metadata.RestoreHandler
+}
+
+func newRestoreHandlers(opts *restoreOptions, dstRepo *remote.Repository, injected ...restoreHandlers) restoreHandlers {
+	if len(injected) == 1 {
+		return injected[0]
+	}
+	statusHandler, metadataHandler := display.NewRestoreHandler(opts.Printer, opts.TTY, dstRepo, opts.dryRun)
+	return restoreHandlers{status: statusHandler, metadata: metadataHandler}
 }
 
 func restoreCmd() *cobra.Command {
@@ -127,7 +143,7 @@ Example - Set custom concurrency level:
 	return oerrors.Command(cmd, &opts.Remote)
 }
 
-func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
+func runRestore(cmd *cobra.Command, opts *restoreOptions, injected ...restoreHandlers) error {
 	if opts.input == "" {
 		return errors.New("the input path cannot be empty")
 	}
@@ -139,7 +155,9 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 	if err != nil {
 		return fmt.Errorf("failed to prepare target repository %q: %w", opts.repository, err)
 	}
-	statusHandler, metadataHandler := display.NewRestoreHandler(opts.Printer, opts.TTY, dstRepo, opts.dryRun)
+	handlers := newRestoreHandlers(opts, dstRepo, injected...)
+	statusHandler := handlers.status
+	metadataHandler := handlers.metadata
 
 	// prepare the source OCI store
 	var srcOCI oras.ReadOnlyGraphTarget

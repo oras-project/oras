@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	digest "github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
@@ -31,6 +32,8 @@ import (
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
+	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/manifest"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -50,6 +53,18 @@ type pushOptions struct {
 	mediaType   string
 	// Deprecated: verbose is deprecated and will be removed in the future.
 	verbose bool
+}
+
+type manifestPushHandlers struct {
+	status   status.ManifestPushHandler
+	metadata metadata.ManifestPushHandler
+}
+
+func newManifestPushHandlers(opts pushOptions, desc ocispec.Descriptor, injected ...manifestPushHandlers) (status.ManifestPushHandler, metadata.ManifestPushHandler) {
+	if len(injected) == 1 {
+		return injected[0].status, injected[0].metadata
+	}
+	return display.NewManifestPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc, &opts.Target)
 }
 
 func pushCmd() *cobra.Command {
@@ -122,7 +137,7 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 	return oerrors.Command(cmd, &opts.Target)
 }
 
-func pushManifest(cmd *cobra.Command, opts pushOptions) error {
+func pushManifest(cmd *cobra.Command, opts pushOptions, injected ...manifestPushHandlers) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 	var target oras.Target
 	var err error
@@ -158,7 +173,7 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 
 	// prepare manifest descriptor
 	desc := content.NewDescriptorFromBytes(mediaType, contentBytes)
-	statusHandler, metadataHandler := display.NewManifestPushHandler(opts.Printer, opts.OutputDescriptor, opts.Pretty.Pretty, desc, &opts.Target)
+	statusHandler, metadataHandler := newManifestPushHandlers(opts, desc, injected...)
 
 	ref := opts.Reference
 	if ref == "" {
@@ -168,20 +183,8 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 	if err != nil {
 		return err
 	}
-	if match {
-		if err := statusHandler.OnManifestPushSkipped(); err != nil {
-			return err
-		}
-	} else {
-		if err = statusHandler.OnManifestPushing(); err != nil {
-			return err
-		}
-		if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil {
-			return err
-		}
-		if err = statusHandler.OnManifestPushed(); err != nil {
-			return err
-		}
+	if err := pushManifestToTarget(ctx, target, mediaType, contentBytes, ref, match, statusHandler); err != nil {
+		return err
 	}
 
 	tagBytesNOpts := oras.DefaultTagBytesNOptions
@@ -211,6 +214,19 @@ func pushManifest(cmd *cobra.Command, opts pushOptions) error {
 	}
 
 	return metadataHandler.Render()
+}
+
+func pushManifestToTarget(ctx context.Context, target oras.Target, mediaType string, contentBytes []byte, ref string, match bool, handler status.ManifestPushHandler) error {
+	if match {
+		return handler.OnManifestPushSkipped()
+	}
+	if err := handler.OnManifestPushing(); err != nil {
+		return err
+	}
+	if _, err := oras.TagBytes(ctx, target, mediaType, contentBytes, ref); err != nil {
+		return err
+	}
+	return handler.OnManifestPushed()
 }
 
 // matchDigest checks whether the manifest's digest matches to it in the remote
