@@ -38,6 +38,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote/errcode"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
+	"oras.land/oras/internal/contentutil"
 )
 
 const (
@@ -240,6 +241,9 @@ func (target *Target) NewReadonlyTarget(ctx context.Context, common Common, logg
 func (target *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, allowTag bool) error {
 	if target.Reference == "" {
 		return oerrors.NewErrEmptyTagOrDigest(target.RawReference, cmd, allowTag)
+	}
+	if !allowTag && !contentutil.IsDigest(target.Reference) {
+		return fmt.Errorf("%q: reference must be a digest", target.RawReference)
 	}
 	return nil
 }
