@@ -20,7 +20,7 @@ WORKDIR ${ORASPKG}
 RUN make "build-$(echo $TARGETPLATFORM | tr / -)"
 RUN mv ${ORASPKG}/bin/${TARGETPLATFORM}/oras /go/bin/oras
 
-FROM docker.io/library/alpine:3.24.2
+FROM docker.io/library/alpine:3.24.3
 ARG OCI_VERSION=dev
 ARG OCI_REVISION=unknown
 LABEL org.opencontainers.image.title="ORAS CLI" \
