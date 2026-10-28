@@ -348,15 +348,6 @@ do_tag() {
     run git push "${REMOTE}" "v${version}"
     success "Tag pushed"
 
-    # Create release branch for new minor versions
-    if is_new_minor "$version"; then
-        local release_branch="release-$(get_major_minor "$version")"
-        info "New minor version detected. Creating release branch ${release_branch}..."
-        run git branch "$release_branch" "$sha"
-        run git push "${REMOTE}" "$release_branch"
-        success "Release branch ${release_branch} pushed"
-    fi
-
     echo ""
     info "CI workflows triggered. Monitor at:"
     echo "  https://github.com/${REPO}/actions?query=event%3Apush+branch%3Av${version}"
