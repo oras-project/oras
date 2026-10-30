@@ -237,13 +237,14 @@ func (target *Target) NewReadonlyTarget(ctx context.Context, common Common, logg
 	return nil, fmt.Errorf("unknown target type: %q", target.Type)
 }
 
-// EnsureReferenceNotEmpty returns formalized error when the reference is empty.
+// EnsureReferenceNotEmpty returns an error when the reference is empty
+// or when tags are not allowed and the reference is not a digest.
 func (target *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, allowTag bool) error {
 	if target.Reference == "" {
 		return oerrors.NewErrEmptyTagOrDigest(target.RawReference, cmd, allowTag)
 	}
 	if !allowTag && !contentutil.IsDigest(target.Reference) {
-		return fmt.Errorf("%q: reference must be a digest", target.RawReference)
+		return oerrors.NewErrEmptyTagOrDigest(target.RawReference, cmd, false)
 	}
 	return nil
 }

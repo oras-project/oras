@@ -482,11 +482,18 @@ func TestTarget_EnsureReferenceNotEmpty(t *testing.T) {
 				Reference:    tt.reference,
 			}
 
-			err := target.EnsureReferenceNotEmpty(&cobra.Command{}, tt.allowTag)
+			rootCmd := &cobra.Command{Use: "oras"}
+			blobCmd := &cobra.Command{Use: "blob"}
+			fetchCmd := &cobra.Command{Use: "fetch"}
+
+			rootCmd.AddCommand(blobCmd)
+			blobCmd.AddCommand(fetchCmd)
+
+			err := target.EnsureReferenceNotEmpty(fetchCmd, tt.allowTag)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("EnsureReferenceNotEmpty() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			if err != nil && tt.wantErr && !strings.Contains(err.Error(), "reference must be a digest") {
+			if err != nil && tt.wantErr && !strings.Contains(err.Error(), "no digest specified") {
 				t.Errorf("EnsureReferenceNotEmpty() error = %v, want digest error", err)
 			}
 		})
