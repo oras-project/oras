@@ -18,7 +18,6 @@ package root
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	stderrors "errors"
 	"os"
 	"path/filepath"
@@ -34,9 +33,6 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/display/displaytest"
 	oraserrors "oras.land/oras/cmd/oras/internal/errors"
-	"oras.land/oras/cmd/oras/internal/option"
-	"oras.land/oras/internal/contentutil"
-)
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/contentutil"
 )
@@ -400,7 +396,7 @@ func Test_runPushRecursive_walkError(t *testing.T) {
 }
 
 func Test_pushArtifact_packError(t *testing.T) {
-	packErr := errors.New("pack error")
+	packErr := stderrors.New("pack error")
 	pack := func() (ocispec.Descriptor, error) {
 		return ocispec.Descriptor{}, packErr
 	}
@@ -412,13 +408,13 @@ func Test_pushArtifact_packError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error from pack")
 	}
-	if !errors.Is(err, packErr) {
+	if !stderrors.Is(err, packErr) {
 		t.Fatalf("got error %v, want %v", err, packErr)
 	}
 }
 
 func Test_pushArtifact_copyError(t *testing.T) {
-	copyErr := errors.New("copy error")
+	copyErr := stderrors.New("copy error")
 	pack := func() (ocispec.Descriptor, error) {
 		return ocispec.Descriptor{
 			MediaType: "application/vnd.oci.image.manifest.v1+json",
@@ -434,7 +430,7 @@ func Test_pushArtifact_copyError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error from copy")
 	}
-	if !errors.Is(err, copyErr) {
+	if !stderrors.Is(err, copyErr) {
 		t.Fatalf("got error %v, want %v", err, copyErr)
 	}
 }
