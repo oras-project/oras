@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"oras.land/oras-go/v2/errdef"
+	"github.com/oras-project/oras-go/v3/errdef"
 )
 
 // mediaTypeRegexp checks the format of media types. It mirrors the validation
