@@ -27,6 +27,7 @@ import (
 
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	oras "github.com/oras-project/oras-go/v3"
 	"github.com/oras-project/oras-go/v3/content"
 	"github.com/oras-project/oras-go/v3/errdef"
 	"oras.land/oras/internal/descriptor"
@@ -40,7 +41,9 @@ type BuilderOptions struct {
 	// and combined in an index.
 	MaxBlobsPerManifest int
 
-	// ArtifactType is the artifact type for manifests.
+	// ArtifactType is the artifact type for manifests. If empty, it defaults
+	// to oras.MediaTypeUnknownArtifact: packing a v1.1 artifact requires an
+	// artifact type when the config is the empty JSON descriptor.
 	ArtifactType string
 
 	// ManifestAnnotations are annotations to add to all manifests.
@@ -77,6 +80,9 @@ type Builder struct {
 func NewBuilder(pusher content.Pusher, opts BuilderOptions) *Builder {
 	if opts.MaxBlobsPerManifest <= 0 {
 		opts.MaxBlobsPerManifest = 1000
+	}
+	if opts.ArtifactType == "" {
+		opts.ArtifactType = oras.MediaTypeUnknownArtifact
 	}
 	return &Builder{
 		opts:   opts,
@@ -213,57 +219,28 @@ func (b *Builder) createManifest(ctx context.Context, layers []ocispec.Descripto
 	return b.createManifestWithAnnotations(ctx, layers, annotations, result)
 }
 
-// createManifestWithAnnotations creates and pushes an OCI manifest with specific annotations.
+// createManifestWithAnnotations packs and pushes an OCI v1.1 artifact
+// manifest with specific annotations. PackManifest uses the empty JSON
+// descriptor as the config and, when there are no layers, as a placeholder
+// layer: a "{}" blob typed as an image config and an empty layers list are
+// both invalid for OCI artifacts.
 func (b *Builder) createManifestWithAnnotations(ctx context.Context, layers []ocispec.Descriptor, annotations map[string]string, result *BuildResult) (ocispec.Descriptor, error) {
-	if layers == nil {
-		layers = []ocispec.Descriptor{}
-	}
-
-	// Create empty config
-	configBytes := []byte("{}")
-	configDesc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageConfig, configBytes)
-	if len(b.opts.ConfigAnnotations) > 0 {
-		configDesc.Annotations = b.opts.ConfigAnnotations
-	}
-
-	// Push config
-	if err := b.pusher.Push(ctx, configDesc, bytes.NewReader(configBytes)); err != nil {
-		// Ignore if already exists
-		if !errors.Is(err, errdef.ErrAlreadyExists) {
-			return ocispec.Descriptor{}, err
-		}
-	}
-
-	manifest := ocispec.Manifest{
-		Versioned: specs.Versioned{
-			SchemaVersion: 2,
-		},
-		MediaType: ocispec.MediaTypeImageManifest,
-		Config:    configDesc,
-		Layers:    layers,
-	}
-	if b.opts.ArtifactType != "" {
-		manifest.ArtifactType = b.opts.ArtifactType
-	}
-	if len(annotations) > 0 {
-		manifest.Annotations = annotations
-	}
-
-	manifestBytes, err := json.Marshal(manifest)
+	manifestDesc, err := oras.PackManifest(ctx, b.pusher, oras.PackManifestVersion1_1, b.opts.ArtifactType, oras.PackManifestOptions{
+		Layers:              layers,
+		ManifestAnnotations: annotations,
+		ConfigAnnotations:   b.opts.ConfigAnnotations,
+	})
 	if err != nil {
 		return ocispec.Descriptor{}, err
 	}
 
-	manifestDesc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageManifest, manifestBytes)
-	manifestDesc.ArtifactType = b.opts.ArtifactType
+	// PackManifest copies the full manifest annotations onto the returned
+	// descriptor; structural descriptors must never carry a title (see
+	// structuralAnnotations).
 	if descAnnotations := structuralAnnotations(annotations); len(descAnnotations) > 0 {
 		manifestDesc.Annotations = descAnnotations
-	}
-
-	if err := b.pusher.Push(ctx, manifestDesc, bytes.NewReader(manifestBytes)); err != nil {
-		if !errors.Is(err, errdef.ErrAlreadyExists) {
-			return ocispec.Descriptor{}, err
-		}
+	} else {
+		manifestDesc.Annotations = nil
 	}
 
 	result.ManifestCount++
