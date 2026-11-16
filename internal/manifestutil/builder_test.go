@@ -651,7 +651,7 @@ func nestedTestNode() (*dir.Node, map[string]ocispec.Descriptor) {
 func TestBuilder_BuildFromNode_PushErrors(t *testing.T) {
 	pushErr := errors.New("push failed")
 	for _, mediaType := range []string{
-		ocispec.MediaTypeImageConfig,
+		ocispec.MediaTypeEmptyJSON,
 		ocispec.MediaTypeImageManifest,
 		ocispec.MediaTypeImageIndex,
 	} {
@@ -682,7 +682,7 @@ func TestBuilder_BuildFromNode_ChunkPushError(t *testing.T) {
 
 func TestBuilder_BuildFromNode_AlreadyExists(t *testing.T) {
 	for _, mediaType := range []string{
-		ocispec.MediaTypeImageConfig,
+		ocispec.MediaTypeEmptyJSON,
 		ocispec.MediaTypeImageManifest,
 		ocispec.MediaTypeImageIndex,
 	} {
@@ -786,4 +786,81 @@ func TestBuilder_BuildFromNode_ChunkIndexAnnotation(t *testing.T) {
 			t.Errorf("manifest %d chunk index = %q, want %q", i, got, want)
 		}
 	}
+}
+
+// TestBuildFromNode_validArtifactShape is a regression test for the review
+// finding on https://github.com/oras-project/oras/pull/2045: recursive push
+// produced manifests whose config was a "{}" blob typed as an OCI image
+// config, and preserved empty directories produced manifests with an empty
+// layers list. Neither is a valid OCI v1.1 artifact: the image-config media
+// type implies a runnable image config, and layers must not be empty. The
+// v1.1 artifact guidance uses the empty JSON descriptor
+// (application/vnd.oci.empty.v1+json) as the config, and as the placeholder
+// layer when a manifest has no content.
+func TestBuildFromNode_validArtifactShape(t *testing.T) {
+	ctx := context.Background()
+
+	assertEmptyJSON := func(t *testing.T, desc ocispec.Descriptor, role string) {
+		t.Helper()
+		if desc.MediaType != ocispec.MediaTypeEmptyJSON ||
+			desc.Digest != ocispec.DescriptorEmptyJSON.Digest ||
+			desc.Size != ocispec.DescriptorEmptyJSON.Size {
+			t.Errorf("%s = {MediaType: %q, Digest: %s, Size: %d}, want the empty JSON descriptor",
+				role, desc.MediaType, desc.Digest, desc.Size)
+		}
+	}
+
+	t.Run("manifest configs use the empty JSON descriptor", func(t *testing.T) {
+		store := memory.New()
+		b := NewBuilder(store, BuilderOptions{})
+		root, fileDescs := nestedTestNode()
+		result, err := b.BuildFromNode(ctx, root, fileDescs)
+		if err != nil {
+			t.Fatalf("BuildFromNode() error = %v", err)
+		}
+		var manifests int
+		for _, desc := range result.AllDescriptors {
+			if desc.MediaType != ocispec.MediaTypeImageManifest {
+				continue
+			}
+			manifests++
+			manifestBytes, err := content.FetchAll(ctx, store, desc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var manifest ocispec.Manifest
+			if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
+				t.Fatal(err)
+			}
+			assertEmptyJSON(t, manifest.Config, "manifest config")
+		}
+		if manifests == 0 {
+			t.Fatal("no image manifests were built")
+		}
+	})
+
+	t.Run("empty directory manifest carries the placeholder layer", func(t *testing.T) {
+		store := memory.New()
+		b := NewBuilder(store, BuilderOptions{PreserveEmptyDirs: true})
+		root := &dir.Node{Name: "emptydir", Path: ".", IsDir: true}
+		result, err := b.BuildFromNode(ctx, root, map[string]ocispec.Descriptor{})
+		if err != nil {
+			t.Fatalf("BuildFromNode() error = %v", err)
+		}
+		manifestBytes, err := content.FetchAll(ctx, store, result.Root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var manifest ocispec.Manifest
+		if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
+			t.Fatal(err)
+		}
+		if len(manifest.Layers) != 1 {
+			t.Fatalf("got %d layers, want exactly one placeholder layer", len(manifest.Layers))
+		}
+		assertEmptyJSON(t, manifest.Layers[0], "placeholder layer")
+		if _, err := content.FetchAll(ctx, store, manifest.Layers[0]); err != nil {
+			t.Errorf("placeholder layer blob was not pushed: %v", err)
+		}
+	})
 }
