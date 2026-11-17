@@ -38,7 +38,7 @@ After the release pull request is approved and merged, tag the merged commit:
 scripts/release.sh tag VERSION COMMIT_SHA
 ```
 
-The script verifies that the commit records the requested version, creates and pushes a signed `vVERSION` tag, and creates a `release-X.Y` branch for a new minor release.
+The script verifies that the commit records the requested version, then creates and pushes a signed `vVERSION` tag. Maintenance branches (`release-X.Y`) are created manually when a backport to an older release series is needed.
 
 The tag triggers the `release-github` and `release-ghcr` workflows.
 
