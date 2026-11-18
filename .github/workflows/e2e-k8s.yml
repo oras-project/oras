@@ -66,11 +66,25 @@ jobs:
           ./status.sh
 
       - name: Run E2E Tests
+        id: e2e
         run: |
           cd test/e2e/scripts
           ./run-tests.sh
         env:
           ORAS_PATH: /workspace/bin/linux/amd64/oras
+
+      - name: Collect E2E Coverage
+        id: coverage
+        if: ${{ !cancelled() && (steps.e2e.outcome == 'success' || steps.e2e.outcome == 'failure') }}
+        run: ./test/e2e/scripts/collect-coverage.sh
+
+      - name: Upload E2E Coverage
+        if: ${{ !cancelled() && steps.coverage.outcome == 'success' }}
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: e2e-coverage-go${{ matrix.go-version }}
+          path: test/e2e/coverage.txt
+          if-no-files-found: error
 
       - name: Show Registry Logs on Failure
         if: failure()

@@ -39,6 +39,16 @@ spec:
         # Enable CGO (required for -race flag)
         - name: CGO_ENABLED
           value: "1"
+        # Keep instrumented builds within the Job's CPU and memory limits.
+        - name: GOMAXPROCS
+          value: "2"
+        # Isolate coverage from previous Jobs on the same node.
+        - name: POD_UID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.uid
+        - name: GOCOVERDIR
+          value: "/coverage/$(POD_UID)"
         # Registry endpoints accessible within the cluster
         - name: DOCKER_REGISTRY_HOST
           value: "docker-registry.oras-e2e-tests.svc.cluster.local:5000"
@@ -95,7 +105,7 @@ spec:
           echo "-----------------------------------"
 
           # Run the tests with ginkgo (ORAS_PATH is set by entrypoint)
-          ginkgo -r -p --race --timeout=${ORAS_E2E_TIMEOUT} suite
+          ginkgo -r -p --procs=2 --race --timeout=${ORAS_E2E_TIMEOUT} suite
           TEST_EXIT_CODE=$?
 
           echo ""
@@ -116,9 +126,15 @@ spec:
             memory: "4Gi"
             cpu: "2000m"
         volumeMounts:
+        - name: coverage
+          mountPath: /coverage
         - name: zot-data
           mountPath: /zot-data
       volumes:
+      - name: coverage
+        hostPath:
+          path: /tmp/oras-e2e-coverage
+          type: DirectoryOrCreate
       - name: zot-data
         hostPath:
           path: /tmp/oras-e2e-zot-data
