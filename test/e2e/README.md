@@ -139,6 +139,7 @@ test/e2e/
 │   ├── build-image.sh     # Build test container image
 │   ├── generate-cache-db.sh # Seed the registry content cache
 │   ├── run-tests.sh       # Run e2e tests as Kubernetes job
+│   ├── collect-coverage.sh # Extract KinD coverage and generate coverage.txt
 │   └── run-interactive.sh # Start a pod for running tests interactively
 └── testdata/              # Artifact fixtures consumed by the specs
     ├── distribution/          # Images and indexes used by the specs
@@ -272,6 +273,34 @@ kubectl get jobs -n oras-e2e-tests
 kubectl describe job oras-e2e-tests -n oras-e2e-tests
 ```
 
+### Collecting Coverage from KinD
+
+The Job sets `GOCOVERDIR`, so each Ginkgo process builds an instrumented ORAS
+binary. Coverage is written to a Pod-specific directory on the node's
+`/tmp/oras-e2e-coverage` hostPath and survives the test container's exit.
+The Job uses two parallel Ginkgo processes and `GOMAXPROCS=2` to bound the
+instrumented builds alongside the race-enabled test runner.
+
+After the Job finishes, collect coverage before tearing down the cluster:
+
+```bash
+./test/e2e/scripts/collect-coverage.sh
+go tool cover -func=test/e2e/coverage.txt
+```
+
+The collector requires Docker access to the KinD node, `kubectl` using the test
+cluster's context, and the Go version used by the test image. It streams only the
+latest Job Pod's data from the running KinD node using `tar` (`docker cp` cannot
+read KinD's `/tmp` tmpfs), converts it with `go tool covdata textfmt`, and rejects
+reports without non-zero `cmd/oras/...` coverage. It also supports terminated
+failed Pods, whose coverage is partial. Data remains on the node until the KinD
+cluster is deleted; each new Pod uses a separate directory.
+
+The `e2e-k8s` workflow uploads `test/e2e/coverage.txt` as the
+`e2e-coverage-go<version>` artifact, including partial coverage when tests fail
+but collection succeeds. A collection failure, including a report without
+non-zero `cmd/oras/...` coverage, fails the job even when the tests pass.
+
 ### Environment Variables
 
 Tests running in the Kubernetes Job automatically receive these environment
@@ -281,6 +310,7 @@ variables (see `k8s/e2e-test-job.yaml`):
 - `ORAS_REGISTRY_FALLBACK_HOST` - Fallback Registry endpoint (fallback-registry.oras-e2e-tests.svc.cluster.local:5000)
 - `ZOT_REGISTRY_HOST` - Zot Registry endpoint (zot-registry.oras-e2e-tests.svc.cluster.local:5000)
 - `ORAS_PATH` - Path to the `oras` binary under test
+- `GOCOVERDIR` - Per-Pod coverage directory; causes suite setup to rebuild ORAS with instrumentation instead of using `ORAS_PATH`
 - `ORAS_E2E_PLAIN_HTTP` - Set to "true" for plain HTTP communication
 - `ORAS_E2E_TIMEOUT` - Test timeout (default: 10m)
 
