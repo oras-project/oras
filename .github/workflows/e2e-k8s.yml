@@ -86,6 +86,17 @@ jobs:
           path: test/e2e/coverage.txt
           if-no-files-found: error
 
+      - name: Upload E2E Coverage to codecov.io
+        if: ${{ !cancelled() && steps.coverage.outcome == 'success' }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          fail_ci_if_error: true
+          files: test/e2e/coverage.txt
+          disable_search: true
+          name: e2e-go${{ matrix.go-version }}
+
       - name: Show Registry Logs on Failure
         if: failure()
         run: |

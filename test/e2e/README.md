@@ -301,6 +301,21 @@ The `e2e-k8s` workflow uploads `test/e2e/coverage.txt` as the
 but collection succeeds. A collection failure, including a report without
 non-zero `cmd/oras/...` coverage, fails the job even when the tests pass.
 
+The workflow also uploads that profile to Codecov as `e2e-go<version>`;
+the `build` workflow uploads unit coverage as `unit-go<version>`.
+Both upload steps fail their workflow job on upload errors.
+Codecov waits for two processed uploads before publishing coverage statuses and the PR
+comment, then applies the 75% project target to the combined report.
+This count assumes one upload from each workflow's current Go matrix;
+matrix changes and reruns can change the number of uploads for a commit.
+
+Failed tests still fail the job even when partial coverage is uploaded.
+If collection fails, no e2e report is uploaded and Codecov may keep waiting for
+the second upload, so check the workflow results as well as coverage statuses.
+Fork pull requests do not receive `CODECOV_TOKEN`; their uploads rely on
+[Codecov's public-fork support](https://docs.codecov.com/docs/codecov-tokens#uploading-without-a-token)
+and must be verified in CI.
+
 ### Environment Variables
 
 Tests running in the Kubernetes Job automatically receive these environment
