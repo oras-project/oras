@@ -298,7 +298,8 @@ cluster is deleted; each new Pod uses a separate directory.
 
 The `e2e-k8s` workflow uploads `test/e2e/coverage.txt` as the
 `e2e-coverage-go<version>` artifact, including partial coverage when tests fail
-but collection succeeds. Coverage collection does not change the test result.
+but collection succeeds. A collection failure, including a report without
+non-zero `cmd/oras/...` coverage, fails the job even when the tests pass.
 
 ### Environment Variables
 
