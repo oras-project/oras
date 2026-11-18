@@ -198,10 +198,10 @@ var _ = Describe("1.1 registry users:", func() {
 			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
 			CopyZOTRepo(ImageRepo, testRepo)
 			// test
-			delimitter := "---"
-			output := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName, "--format", fmt.Sprintf("go-template={{.reference}}%s{{.artifactType}}", delimitter)).
+			delimiter := "---"
+			output := ORAS("attach", "--artifact-type", "test/attach", subjectRef, fmt.Sprintf("%s:%s", foobar.AttachFileName, foobar.AttachFileMedia), "--export-manifest", exportName, "--format", fmt.Sprintf("go-template={{.reference}}%s{{.artifactType}}", delimiter)).
 				WithWorkDir(tempDir).Exec().Out.Contents()
-			ref, artifactType, _ := strings.Cut(string(output), delimitter)
+			ref, artifactType, _ := strings.Cut(string(output), delimiter)
 			// validate
 			Expect(artifactType).To(Equal("test/attach"))
 			fetched := ORAS("manifest", "fetch", ref).Exec().Out.Contents()

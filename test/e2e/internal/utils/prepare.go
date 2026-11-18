@@ -28,7 +28,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 )
 
-// CopyZOTRepo copies oci layout data between repostories.
+// CopyZOTRepo copies oci layout data between repositories.
 func CopyZOTRepo(fromRepo string, toRepo string) {
 	// Check if zot PVC is mounted (Kubernetes environment)
 	zotDataMount := "/zot-data"
