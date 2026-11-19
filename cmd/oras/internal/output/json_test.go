@@ -83,7 +83,7 @@ func Test_ToMap(t *testing.T) {
 	if ok == false {
 		t.Errorf("Expected key number does not exist %v", actual)
 	}
-	if value != 5.0 {
+	if value != int64(5) {
 		t.Errorf("Expected value 5 not equal to actual %v", value)
 	}
 	for k := range actual {
@@ -106,5 +106,41 @@ func Test_ToMap_error(t *testing.T) {
 	_, err := ToMap(given)
 	if err == nil {
 		t.Error("Expected error")
+	}
+}
+
+func Test_ToMap_integers(t *testing.T) {
+	type layer struct {
+		Size int64 `json:"size"`
+	}
+	type test struct {
+		Size   int64   `json:"size"`
+		Ratio  float64 `json:"ratio"`
+		Layers []layer `json:"layers"`
+	}
+	// 5 MiB is the size of a typical blob, the second value is above 2^53
+	// and cannot be represented exactly by a float64.
+	given := test{
+		Size:   5 * 1024 * 1024,
+		Ratio:  0.5,
+		Layers: []layer{{Size: 9007199254740993}},
+	}
+	actual, err := ToMap(given)
+	if err != nil {
+		t.Fatal("Expected no error got <" + err.Error() + ">")
+	}
+	if value := actual["size"]; value != int64(5242880) {
+		t.Errorf("Expected size 5242880 of type int64, got %v (%T)", value, value)
+	}
+	if value := actual["ratio"]; value != 0.5 {
+		t.Errorf("Expected ratio 0.5 of type float64, got %v (%T)", value, value)
+	}
+	layers, ok := actual["layers"].([]any)
+	if !ok || len(layers) != 1 {
+		t.Fatalf("Expected one layer, got %v", actual["layers"])
+	}
+	layerSize := layers[0].(map[string]any)["size"]
+	if layerSize != int64(9007199254740993) {
+		t.Errorf("Expected layer size 9007199254740993 of type int64, got %v (%T)", layerSize, layerSize)
 	}
 }
