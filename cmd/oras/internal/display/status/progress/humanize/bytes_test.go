@@ -61,6 +61,8 @@ func TestToBytes(t *testing.T) {
 		{"1 MB", args{1024 * 1024}, Bytes{1, "MB"}},
 		{"1 GB", args{1024 * 1024 * 1024}, Bytes{1, "GB"}},
 		{"1 TB", args{1024 * 1024 * 1024 * 1024}, Bytes{1, "TB"}},
+		{"just below 1 MB rolls over", args{1024*1024 - 1}, Bytes{1, "MB"}},
+		{"just below 1 GB rolls over", args{1024*1024*1024 - 1}, Bytes{1, "GB"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
