@@ -154,7 +154,7 @@ Example - Set custom concurrency level:
 	return oerrors.Command(cmd, &opts.Remote)
 }
 
-func runBackup(cmd *cobra.Command, opts *backupOptions) error {
+func runBackup(cmd *cobra.Command, opts *backupOptions) (retErr error) {
 	if opts.output == "" {
 		return errors.New("the output path cannot be empty")
 	}
@@ -167,6 +167,8 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		dstRoot = opts.output
 	case outputFormatTar:
 		// test if the output file can be created and fail early if there is an issue
+		_, statErr := os.Stat(opts.output)
+		outputExisted := statErr == nil
 		fp, err := os.OpenFile(opts.output, os.O_CREATE|os.O_WRONLY, 0666)
 		if err != nil {
 			if fi, statErr := os.Stat(opts.output); statErr == nil && fi.IsDir() {
@@ -179,6 +181,14 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		}
 		if err := fp.Close(); err != nil {
 			return fmt.Errorf("unable to close output file %s: %w", opts.output, err)
+		}
+		if !outputExisted {
+			// the file was only created to fail early, do not leave it empty if the backup fails
+			defer func() {
+				if retErr != nil {
+					removeEmptyFile(opts.output, logger)
+				}
+			}()
 		}
 
 		// create a temporary directory as the working directory for OCI store
@@ -369,6 +379,17 @@ func finalizeBackupOutput(dstRoot string, opts *backupOptions, logger logrus.Fie
 		return fmt.Errorf("failed to stat output file %s: %w", opts.output, err)
 	}
 	return metadataHandler.OnTarExported(opts.output, fi.Size())
+}
+
+// removeEmptyFile removes the file at path if it exists and is empty.
+func removeEmptyFile(path string, logger logrus.FieldLogger) {
+	fi, err := os.Stat(path)
+	if err != nil || !fi.Mode().IsRegular() || fi.Size() != 0 {
+		return
+	}
+	if err := os.Remove(path); err != nil {
+		logger.Debugf("failed to remove empty output file %s: %v", path, err)
+	}
 }
 
 // resolveTags resolves tags to their descriptors.
