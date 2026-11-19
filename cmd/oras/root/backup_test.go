@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -268,6 +269,60 @@ func Test_doBackup_tagsFoundError(t *testing.T) {
 	if got, want := recorder.Snapshot(), []string{"OnTagsFound"}; !reflect.DeepEqual(got, want) {
 		t.Errorf("handler calls = %v, want %v", got, want)
 	}
+}
+
+func Test_backupCmd_failedBackupToTar(t *testing.T) {
+	// a registry address that refuses connections, so the backup fails after
+	// the output file has been created
+	srv := httptest.NewServer(http.NotFoundHandler())
+	host := strings.TrimPrefix(srv.URL, "http://")
+	srv.Close()
+
+	runBackupCmd := func(t *testing.T, output string) {
+		t.Helper()
+		cmd := backupCmd()
+		cmd.SetOut(io.Discard)
+		cmd.SetErr(io.Discard)
+		cmd.SetArgs([]string{"--output", output, "--plain-http", host + "/repo:v1"})
+		if err := cmd.Execute(); err == nil {
+			t.Fatal("expected the backup to fail, got no error")
+		}
+	}
+
+	t.Run("output file created by the command is removed", func(t *testing.T) {
+		output := filepath.Join(t.TempDir(), "backup.tar")
+		runBackupCmd(t, output)
+		if _, err := os.Stat(output); !os.IsNotExist(err) {
+			t.Errorf("expected %s to be removed after the failed backup, stat error = %v", output, err)
+		}
+	})
+
+	t.Run("existing empty output file is kept", func(t *testing.T) {
+		output := filepath.Join(t.TempDir(), "backup.tar")
+		if err := os.WriteFile(output, nil, 0666); err != nil {
+			t.Fatal(err)
+		}
+		runBackupCmd(t, output)
+		if _, err := os.Stat(output); err != nil {
+			t.Errorf("expected the existing %s to be kept, got %v", output, err)
+		}
+	})
+
+	t.Run("existing output file with content is kept", func(t *testing.T) {
+		output := filepath.Join(t.TempDir(), "backup.tar")
+		want := []byte("previous backup")
+		if err := os.WriteFile(output, want, 0666); err != nil {
+			t.Fatal(err)
+		}
+		runBackupCmd(t, output)
+		got, err := os.ReadFile(output)
+		if err != nil {
+			t.Fatalf("expected the existing %s to be kept, got %v", output, err)
+		}
+		if string(got) != string(want) {
+			t.Errorf("existing output content = %q, want %q", got, want)
+		}
+	})
 }
 
 func TestFinalizeBackupOutput(t *testing.T) {
