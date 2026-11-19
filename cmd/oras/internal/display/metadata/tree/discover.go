@@ -18,7 +18,9 @@ package tree
 import (
 	"fmt"
 	"io"
+	"maps"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/morikuni/aec"
@@ -90,8 +92,9 @@ func (h *discoverHandler) OnDiscovered(referrer, subject ocispec.Descriptor) err
 			annotationsTitle = annotationsColor.Apply(annotationsTitle)
 		}
 		annotationsNode := referrerNode.Add(annotationsTitle)
-		for k, v := range referrer.Annotations {
-			bytes, err := yaml.Marshal(map[string]string{k: v})
+		// iterate in key order so that the output is stable between runs
+		for _, k := range slices.Sorted(maps.Keys(referrer.Annotations)) {
+			bytes, err := yaml.Marshal(map[string]string{k: referrer.Annotations[k]})
 			if err != nil {
 				return err
 			}
