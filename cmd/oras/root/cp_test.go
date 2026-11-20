@@ -184,6 +184,33 @@ func Test_copyAndFinalize_handlerCalls(t *testing.T) {
 	}
 }
 
+func Test_copyAndFinalize_extraTagsWithoutDestinationTag(t *testing.T) {
+	var opts copyOptions
+	opts.From.Reference = memDesc.Digest.String()
+	opts.extraRefs = []string{"extra1", "extra2"}
+	recorder := &displaytest.CallRecorder{}
+	statusHandler := &displaytest.RecordingCopyStatusHandler{Recorder: recorder}
+	metadataHandler := &displaytest.RecordingCopyMetadataHandler{Recorder: recorder}
+	// An OCI store resolves a digest reference, like a registry does.
+	dst, err := oci.New(t.TempDir())
+	if err != nil {
+		t.Fatalf("oci.New() error = %v", err)
+	}
+
+	if err := copyAndFinalize(context.Background(), statusHandler, metadataHandler, memStore, dst, &opts, true); err != nil {
+		t.Fatalf("copyAndFinalize() error = %v", err)
+	}
+	for _, tag := range opts.extraRefs {
+		got, err := dst.Resolve(context.Background(), tag)
+		if err != nil {
+			t.Fatalf("dst.Resolve(%q) error = %v", tag, err)
+		}
+		if got.Digest != memDesc.Digest {
+			t.Errorf("dst.Resolve(%q) digest = %s, want %s", tag, got.Digest, memDesc.Digest)
+		}
+	}
+}
+
 func Test_copyAndFinalize_onCopiedError(t *testing.T) {
 	wantedErr := errors.New("metadata copy failed")
 	var opts copyOptions
