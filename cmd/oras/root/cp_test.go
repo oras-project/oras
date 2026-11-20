@@ -184,21 +184,42 @@ func Test_copyAndFinalize_handlerCalls(t *testing.T) {
 	}
 }
 
+// tagFailTarget is an OCI store that fails to tag.
+type tagFailTarget struct {
+	*oci.Store
+}
+
+func (tagFailTarget) Tag(context.Context, ocispec.Descriptor, string) error {
+	return errors.New("tag failed")
+}
+
 func Test_copyAndFinalize_extraTags(t *testing.T) {
 	tests := []struct {
 		name        string
 		toReference string
+		extraRefs   []string
+		failTag     bool
 		wantTags    []string
+		wantErr     bool
 	}{
 		{
 			name:        "without destination tag",
 			toReference: "",
+			extraRefs:   []string{"extra1", "extra2"},
 			wantTags:    []string{"extra1", "extra2"},
 		},
 		{
 			name:        "with destination tag",
 			toReference: "main",
+			extraRefs:   []string{"extra1", "extra2"},
 			wantTags:    []string{"main", "extra1", "extra2"},
+		},
+		{
+			name:        "extra tag cannot be applied",
+			toReference: "",
+			extraRefs:   []string{"extra1"},
+			failTag:     true,
+			wantErr:     true,
 		},
 	}
 	for _, tt := range tests {
@@ -206,7 +227,7 @@ func Test_copyAndFinalize_extraTags(t *testing.T) {
 			var opts copyOptions
 			opts.From.Reference = memDesc.Digest.String()
 			opts.To.Reference = tt.toReference
-			opts.extraRefs = []string{"extra1", "extra2"}
+			opts.extraRefs = tt.extraRefs
 			recorder := &displaytest.CallRecorder{}
 			statusHandler := &displaytest.RecordingCopyStatusHandler{Recorder: recorder}
 			metadataHandler := &displaytest.RecordingCopyMetadataHandler{Recorder: recorder}
@@ -215,9 +236,14 @@ func Test_copyAndFinalize_extraTags(t *testing.T) {
 			if err != nil {
 				t.Fatalf("oci.New() error = %v", err)
 			}
+			var target oras.GraphTarget = dst
+			if tt.failTag {
+				target = tagFailTarget{dst}
+			}
 
-			if err := copyAndFinalize(context.Background(), statusHandler, metadataHandler, memStore, dst, &opts, true); err != nil {
-				t.Fatalf("copyAndFinalize() error = %v", err)
+			err = copyAndFinalize(context.Background(), statusHandler, metadataHandler, memStore, target, &opts, true)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("copyAndFinalize() error = %v, wantErr %t", err, tt.wantErr)
 			}
 			for _, tag := range tt.wantTags {
 				got, err := dst.Resolve(context.Background(), tag)
