@@ -23,7 +23,10 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	oras "github.com/oras-project/oras-go/v3"
 	"github.com/spf13/pflag"
 )
 
@@ -194,5 +197,59 @@ func TestPacker_decodeJSON(t *testing.T) {
 	err = decodeJSON(path, &annotation.Annotations)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestPacker_ReproducibleTime(t *testing.T) {
+	t.Setenv("SOURCE_DATE_EPOCH", "")
+	var opts Packer
+	got := opts.ReproducibleTime()
+	want := time.Unix(0, 0).UTC()
+	if got.Unix() != want.Unix() {
+		t.Fatalf("unexpected time: got %v, want %v", got, want)
+	}
+
+	// set SDE -> epoch 1700000000
+	t.Setenv("SOURCE_DATE_EPOCH", "1700000000")
+	got = opts.ReproducibleTime()
+	want = time.Unix(1700000000, 0).UTC()
+	if got.Unix() != want.Unix() {
+		t.Fatalf("unexpected time: got %v, want %v", got, want)
+	}
+
+	// malformed SDE -> fall back to zero time
+	t.Setenv("SOURCE_DATE_EPOCH", "not-a-number")
+	got = opts.ReproducibleTime()
+	want = time.Unix(0, 0).UTC()
+	if got.Unix() != want.Unix() {
+		t.Fatalf("unexpected time for malformed SDE: got %v, want %v", got, want)
+	}
+}
+
+func TestPacker_ApplyReproducible(t *testing.T) {
+	var packOpts oras.PackManifestOptions
+
+	t.Setenv("SOURCE_DATE_EPOCH", "1700000000")
+	opts := Packer{Reproducible: true}
+	opts.ApplyReproducible(&packOpts)
+	if packOpts.ManifestAnnotations[ocispec.AnnotationCreated] != "2023-11-14T22:13:20Z" {
+		t.Fatalf("unexpected created: %v", packOpts.ManifestAnnotations[ocispec.AnnotationCreated])
+	}
+
+	// user-supplied created wins
+	packOpts = oras.PackManifestOptions{}
+	packOpts.ManifestAnnotations = map[string]string{ocispec.AnnotationCreated: "2020-01-01T00:00:00Z"}
+	opts.ApplyReproducible(&packOpts)
+	if packOpts.ManifestAnnotations[ocispec.AnnotationCreated] != "2020-01-01T00:00:00Z" {
+		t.Fatalf("user created should win: %v", packOpts.ManifestAnnotations[ocispec.AnnotationCreated])
+	}
+
+	// not reproducible -> unchanged
+	packOpts = oras.PackManifestOptions{}
+	packOpts.ManifestAnnotations = map[string]string{"foo": "bar"}
+	opts = Packer{Reproducible: false}
+	opts.ApplyReproducible(&packOpts)
+	if got, want := packOpts.ManifestAnnotations["foo"], "bar"; got != want {
+		t.Fatalf("unexpected annotations: got %v, want %v", got, want)
 	}
 }

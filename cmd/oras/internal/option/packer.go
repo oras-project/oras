@@ -20,11 +20,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	oras "github.com/oras-project/oras-go/v3"
 	"github.com/oras-project/oras-go/v3/content"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -52,6 +56,14 @@ type Packer struct {
 	AnnotationFilePath     string
 
 	FileRefs []string
+
+	// Reproducible controls if the packed manifest and tarballs should be
+	// byte-for-byte reproducible. When true, the manifest's
+	// org.opencontainers.image.created annotation is fixed and the tarballs
+	// are generated with a fixed modification time. The time comes from the
+	// SOURCE_DATE_EPOCH environment variable when set, otherwise from the
+	// zero time (epoch 0: "1970-01-01T00:00:00Z").
+	Reproducible bool
 }
 
 // ApplyFlags applies flags to a command flag set.
@@ -61,6 +73,39 @@ func (opts *Packer) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&opts.ManifestExportPath, "export-manifest", "", "", "`path` of the pushed manifest")
 	fs.StringVarP(&opts.AnnotationFilePath, "annotation-file", "", "", "path of the annotation file")
 	fs.BoolVarP(&opts.PathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
+	fs.BoolVar(&opts.Reproducible, "reproducible", false, "use a fixed creation timestamp so the attached/pushed manifest and tarballs are byte-for-byte reproducible")
+}
+
+// ReproducibleTime returns the timestamp to use for reproducible builds. It
+// reads the SOURCE_DATE_EPOCH environment variable and falls back to the zero
+// time (epoch 0). The returned time is always UTC.
+func (opts *Packer) ReproducibleTime() time.Time {
+	if v := os.Getenv("SOURCE_DATE_EPOCH"); v != "" {
+		if epoch, err := strconv.ParseInt(v, 10, 64); err == nil {
+			return time.Unix(epoch, 0).UTC()
+		}
+	}
+	return time.Unix(0, 0).UTC()
+}
+
+// ApplyReproducible fixes the manifest annotations for reproducible builds.
+// It only sets org.opencontainers.image.created when the user hasn't supplied
+// one, and clones the map first so the caller's input is not mutated.
+func (opts *Packer) ApplyReproducible(packOpts *oras.PackManifestOptions) {
+	if !opts.Reproducible {
+		return
+	}
+	t := opts.ReproducibleTime()
+
+	// Clone to avoid mutating the caller's map in place.
+	annotations := maps.Clone(packOpts.ManifestAnnotations)
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+	if _, ok := annotations[ocispec.AnnotationCreated]; !ok {
+		annotations[ocispec.AnnotationCreated] = t.Format(time.RFC3339)
+	}
+	packOpts.ManifestAnnotations = annotations
 }
 
 // ExportManifest saves the pushed manifest to a local file.

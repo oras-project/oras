@@ -23,6 +23,7 @@ import (
 	"reflect"
 	"testing"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	oras "github.com/oras-project/oras-go/v3"
 	"github.com/oras-project/oras-go/v3/content/file"
 	"github.com/oras-project/oras-go/v3/content/memory"
@@ -313,5 +314,125 @@ func Test_doPushCommand_renderError(t *testing.T) {
 	got := recorder.Snapshot()
 	if !reflect.DeepEqual(got, wantCalls) {
 		t.Errorf("handler calls = %v, want %v", got, wantCalls)
+	}
+}
+
+func Test_runPush_reproducible(t *testing.T) {
+	ctx := context.Background()
+	t.Setenv("SOURCE_DATE_EPOCH", "1700000000")
+
+	tmpDir := t.TempDir()
+	fileName := "hi.txt"
+	filePath := filepath.Join(tmpDir, fileName)
+	if err := os.WriteFile(filePath, []byte("hello world"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	// first push to layout1
+	cmd := pushCmd()
+	cmd.SetArgs([]string{
+		"--reproducible",
+		"--oci-layout",
+		"--disable-path-validation",
+		filepath.Join(tmpDir, "layout1") + ":tag1",
+		filePath,
+	})
+	cmd.SetContext(ctx)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// second push to layout2 with the same SDE
+	cmd2 := pushCmd()
+	cmd2.SetArgs([]string{
+		"--reproducible",
+		"--oci-layout",
+		"--disable-path-validation",
+		filepath.Join(tmpDir, "layout2") + ":tag1",
+		filePath,
+	})
+	cmd2.SetContext(ctx)
+	if err := cmd2.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// digests must be byte-identical
+	digests := map[string]string{}
+	for _, layoutDir := range []string{filepath.Join(tmpDir, "layout1"), filepath.Join(tmpDir, "layout2")} {
+		store, err := oci.New(layoutDir)
+		if err != nil {
+			t.Fatalf("failed to open layout %q: %v", layoutDir, err)
+		}
+		desc, err := store.Resolve(ctx, "tag1")
+		if err != nil {
+			t.Fatalf("failed to resolve tag1 in %q: %v", layoutDir, err)
+		}
+		digests[layoutDir] = desc.Digest.String()
+	}
+	if digests[filepath.Join(tmpDir, "layout1")] != digests[filepath.Join(tmpDir, "layout2")] {
+		t.Fatalf("digests differ across runs: %v", digests)
+	}
+}
+
+func Test_runPush_reproducible_unstableSDE(t *testing.T) {
+	ctx := context.Background()
+	t.Setenv("SOURCE_DATE_EPOCH", "1700000001")
+
+	tmpDir := t.TempDir()
+	fileName := "hi.txt"
+	filePath := filepath.Join(tmpDir, fileName)
+	if err := os.WriteFile(filePath, []byte("hello world"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := pushCmd()
+	cmd.SetArgs([]string{
+		"--reproducible",
+		"--oci-layout",
+		tmpDir + "/layout:tag1",
+		"--disable-path-validation",
+		filePath,
+	})
+	cmd.SetContext(ctx)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	store, err := oci.New(tmpDir + "/layout")
+	if err != nil {
+		t.Fatalf("failed to open layout: %v", err)
+	}
+	desc, err := store.Resolve(ctx, "tag1")
+	if err != nil {
+		t.Fatalf("failed to resolve tag1: %v", err)
+	}
+	wantCreated := "2023-11-14T22:13:21Z"
+	if got := desc.Annotations[ocispec.AnnotationCreated]; got != wantCreated {
+		t.Fatalf("unexpected created annotation: got %q, want %q", got, wantCreated)
+	}
+}
+
+func Test_runPush_reproducible_malformedSDE(t *testing.T) {
+	ctx := context.Background()
+	t.Setenv("SOURCE_DATE_EPOCH", "not-a-number")
+
+	tmpDir := t.TempDir()
+	fileName := "hi.txt"
+	filePath := filepath.Join(tmpDir, fileName)
+	if err := os.WriteFile(filePath, []byte("hello world"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := pushCmd()
+	cmd.SetArgs([]string{
+		"--reproducible",
+		"--oci-layout",
+		tmpDir + "/layout:tag1",
+		"--disable-path-validation",
+		filePath,
+	})
+	cmd.SetContext(ctx)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
