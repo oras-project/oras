@@ -19,7 +19,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/oras-project/oras-go/v3"
@@ -50,7 +49,6 @@ type attachOptions struct {
 	artifactType      string
 	manifestConfigRef string
 	concurrency       int
-	reproducible      bool
 	// Deprecated: verbose is deprecated and will be removed in the future.
 	verbose bool
 }
@@ -138,7 +136,6 @@ Example - Attach file 'hi.txt' with the custom manifest config "config.json" of 
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
 	opts.FlagDescription = "attach to an arch-specific subject"
 	_ = cmd.MarkFlagRequired("artifact-type")
-	cmd.Flags().BoolVar(&opts.reproducible, "reproducible", false, "use a fixed creation timestamp so the attached manifest and tarballs are byte-for-byte reproducible")
 	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
 	opts.EnableDistributionSpecFlag()
 	opts.SetTypes(option.FormatTypeText, option.FormatTypeJSON, option.FormatTypeGoTemplate)
@@ -196,8 +193,12 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 }
 
 func doAttach(ctx context.Context, opts *attachOptions, store *file.Store, dst oras.GraphTarget, subject ocispec.Descriptor, statusHandler status.AttachHandler, metadataHandler metadata.AttachHandler) (ocispec.Descriptor, error) {
-	if opts.reproducible {
-		store.TarReproducible = true
+	if opts.Reproducible {
+		t, err := opts.ReproducibleTime()
+		if err != nil {
+			return ocispec.Descriptor{}, err
+		}
+		store.TarModTime = &t
 	}
 
 	descs, err := loadFiles(ctx, store, opts.Annotations, opts.FileRefs, statusHandler)
@@ -217,15 +218,9 @@ func doAttach(ctx context.Context, opts *attachOptions, store *file.Store, dst o
 	graphCopyOptions.PostCopy = statusHandler.PostCopy
 
 	packOpts := buildAttachPackOpts(opts, subject, descs)
-	if opts.reproducible {
+	if opts.Reproducible {
 		// make manifest reproducible
-		annotations := packOpts.ManifestAnnotations
-		if annotations == nil {
-			annotations = map[string]string{}
-		}
-		zero := time.Unix(0, 0).UTC()
-		annotations[ocispec.AnnotationCreated] = zero.Format(time.RFC3339)
-		packOpts.ManifestAnnotations = annotations
+		opts.ApplyReproducible(&packOpts)
 	}
 
 	if opts.manifestConfigRef != "" {

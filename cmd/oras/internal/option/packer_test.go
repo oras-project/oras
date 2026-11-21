@@ -23,7 +23,10 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	oras "github.com/oras-project/oras-go/v3"
 	"github.com/spf13/pflag"
 )
 
@@ -194,5 +197,59 @@ func TestPacker_decodeJSON(t *testing.T) {
 	err = decodeJSON(path, &annotation.Annotations)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestPacker_ReproducibleTime(t *testing.T) {
+	t.Setenv("SOURCE_DATE_EPOCH", "")
+	var opts Packer
+	got, err := opts.ReproducibleTime()
+	want := time.Unix(0, 0).UTC()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.Unix() != want.Unix() {
+		t.Fatalf("unexpected time: got %v, want %v", got, want)
+	}
+
+	t.Setenv("SOURCE_DATE_EPOCH", "-1")
+	_, err = opts.ReproducibleTime()
+	if err == nil {
+		t.Fatalf("expected error for negative SDE: got %v", err)
+	}
+
+	t.Setenv("SOURCE_DATE_EPOCH", "1700000000")
+	got, err = opts.ReproducibleTime()
+	want = time.Unix(1700000000, 0).UTC()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.Unix() != want.Unix() {
+		t.Fatalf("unexpected time: got %v, want %v", got, want)
+	}
+
+	t.Setenv("SOURCE_DATE_EPOCH", "not-a-number")
+	_, err = opts.ReproducibleTime()
+	if err == nil {
+		t.Fatalf("expected error for malformed SDE: got %v", err)
+	}
+}
+
+func TestPacker_ApplyReproducible(t *testing.T) {
+	var packOpts oras.PackManifestOptions
+
+	t.Setenv("SOURCE_DATE_EPOCH", "1700000000")
+	opts := Packer{Reproducible: true}
+	opts.ApplyReproducible(&packOpts)
+	if packOpts.ManifestAnnotations[ocispec.AnnotationCreated] != "2023-11-14T22:13:20Z" {
+		t.Fatalf("unexpected created: %v", packOpts.ManifestAnnotations[ocispec.AnnotationCreated])
+	}
+
+	// user-supplied created wins
+	packOpts = oras.PackManifestOptions{}
+	packOpts.ManifestAnnotations = map[string]string{ocispec.AnnotationCreated: "2020-01-01T00:00:00Z"}
+	opts.ApplyReproducible(&packOpts)
+	if packOpts.ManifestAnnotations[ocispec.AnnotationCreated] != "2020-01-01T00:00:00Z" {
+		t.Fatalf("user created should win: %v", packOpts.ManifestAnnotations[ocispec.AnnotationCreated])
 	}
 }
