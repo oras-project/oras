@@ -131,7 +131,7 @@ func Test_doAttach_handlerCalls(t *testing.T) {
 	statusHandler := &displaytest.RecordingAttachStatusHandler{Recorder: recorder}
 	metadataHandler := &displaytest.RecordingAttachMetadataHandler{Recorder: recorder}
 
-	if err := doAttach(ctx, opts, store, dst, subject, statusHandler, metadataHandler); err != nil {
+	if _, err := doAttach(ctx, opts, store, dst, subject, statusHandler, metadataHandler); err != nil {
 		t.Fatal(err)
 	}
 

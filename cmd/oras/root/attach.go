@@ -191,23 +191,24 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 	if err != nil {
 		return err
 	}
-	return doAttach(ctx, opts, store, dst, subject, statusHandler, metadataHandler)
+	_, err = doAttach(ctx, opts, store, dst, subject, statusHandler, metadataHandler)
+	return err
 }
 
-func doAttach(ctx context.Context, opts *attachOptions, store *file.Store, dst oras.GraphTarget, subject ocispec.Descriptor, statusHandler status.AttachHandler, metadataHandler metadata.AttachHandler) error {
+func doAttach(ctx context.Context, opts *attachOptions, store *file.Store, dst oras.GraphTarget, subject ocispec.Descriptor, statusHandler status.AttachHandler, metadataHandler metadata.AttachHandler) (ocispec.Descriptor, error) {
 	if opts.reproducible {
 		store.TarReproducible = true
 	}
 
 	descs, err := loadFiles(ctx, store, opts.Annotations, opts.FileRefs, statusHandler)
 	if err != nil {
-		return err
+		return ocispec.Descriptor{}, err
 	}
 
 	// prepare push
 	dst, stopTrack, err := statusHandler.TrackTarget(dst)
 	if err != nil {
-		return err
+		return ocispec.Descriptor{}, err
 	}
 	graphCopyOptions := oras.DefaultCopyGraphOptions
 	graphCopyOptions.Concurrency = opts.concurrency
@@ -230,11 +231,11 @@ func doAttach(ctx context.Context, opts *attachOptions, store *file.Store, dst o
 	if opts.manifestConfigRef != "" {
 		path, cfgMediaType, err := fileref.Parse(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
 		if err != nil {
-			return err
+			return ocispec.Descriptor{}, err
 		}
 		desc, err := addFile(ctx, store, option.AnnotationConfig, cfgMediaType, path)
 		if err != nil {
-			return err
+			return ocispec.Descriptor{}, err
 		}
 		desc.Annotations = opts.Annotations[option.AnnotationConfig]
 		packOpts.ConfigDescriptor = &desc
@@ -265,14 +266,14 @@ func doAttach(ctx context.Context, opts *attachOptions, store *file.Store, dst o
 	// Attach
 	root, err := doPush(dst, stopTrack, pack, copyFunc)
 	if err != nil {
-		return err
+		return ocispec.Descriptor{}, err
 	}
 	metadataHandler.OnAttached(&opts.Target, root, subject)
 	err = metadataHandler.Render()
 	if err != nil {
-		return err
+		return ocispec.Descriptor{}, err
 	}
 
 	// Export manifest
-	return opts.ExportManifest(ctx, store, root)
+	return root, opts.ExportManifest(ctx, store, root)
 }
