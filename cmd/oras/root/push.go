@@ -197,6 +197,14 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 		return err
 	}
 	defer func() { _ = store.Close() }()
+
+	if opts.Reproducible {
+		// make manifest reproducible
+		t := opts.ReproducibleTime()
+		store.TarModTime = &t
+		opts.ApplyReproducible(&packOpts)
+	}
+
 	if opts.manifestConfigRef != "" {
 		path, cfgMediaType, err := fileref.Parse(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
 		if err != nil {
