@@ -17,6 +17,7 @@ package root
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/option"
@@ -36,6 +37,9 @@ func New() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "oras [command]",
 		SilenceUsage: true,
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			return validateConcurrency(cmd)
+		},
 	}
 	cmd.AddCommand(
 		pullCmd(),
@@ -55,4 +59,23 @@ func New() *cobra.Command {
 		repo.Cmd(),
 	)
 	return cmd
+}
+
+// validateConcurrency rejects a negative --concurrency level. The copy graph treats a limit of
+// zero as "no limit" (errgroup semantics), and a negative limit is passed through to it just the
+// same, so a negative value silently removes the limit instead of lowering it.
+func validateConcurrency(cmd *cobra.Command) error {
+	flag := cmd.Flags().Lookup("concurrency")
+	if flag == nil || !flag.Changed {
+		return nil
+	}
+
+	level, err := cmd.Flags().GetInt("concurrency")
+	if err != nil {
+		return err
+	}
+	if level < 0 {
+		return fmt.Errorf("`--concurrency %d` is invalid: concurrency level must not be negative (use 0 for no limit)", level)
+	}
+	return nil
 }
