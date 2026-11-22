@@ -340,7 +340,6 @@ func Test_runPush_reproducible(t *testing.T) {
 	}
 	cmd := pushCmd()
 	cmd.SetArgs([]string{
-		"--reproducible",
 		"--oci-layout",
 		"--disable-path-validation",
 		filepath.Join(tmpDir, "layout1") + ":tag1",
@@ -358,7 +357,6 @@ func Test_runPush_reproducible(t *testing.T) {
 	}
 	cmd2 := pushCmd()
 	cmd2.SetArgs([]string{
-		"--reproducible",
 		"--oci-layout",
 		"--disable-path-validation",
 		filepath.Join(tmpDir, "layout2") + ":tag1",
@@ -400,7 +398,6 @@ func Test_runPush_reproducible_unstableSDE(t *testing.T) {
 
 	cmd := pushCmd()
 	cmd.SetArgs([]string{
-		"--reproducible",
 		"--oci-layout",
 		tmpDir + "/layout:tag1",
 		"--disable-path-validation",

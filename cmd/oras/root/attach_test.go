@@ -183,8 +183,7 @@ func Test_doAttach_nonreproducible_withoutSourceDateEpoch(t *testing.T) {
 
 		opts := &attachOptions{
 			Packer: option.Packer{
-				FileRefs:     []string{fileRef},
-				Reproducible: true,
+				FileRefs: []string{fileRef},
 			},
 			artifactType: "application/example.artifact",
 			Target:       option.Target{Path: layoutDir},
@@ -238,8 +237,7 @@ func Test_doAttach_reproducible_withSourceDateEpoch(t *testing.T) {
 
 		opts := &attachOptions{
 			Packer: option.Packer{
-				FileRefs:     []string{fileRef},
-				Reproducible: true,
+				FileRefs: []string{fileRef},
 			},
 			artifactType: "application/example.artifact",
 			Target:       option.Target{Path: layoutDir},
@@ -290,8 +288,7 @@ func Test_doAttach_reproducible_preservesUserCreated(t *testing.T) {
 	}
 	opts := &attachOptions{
 		Packer: option.Packer{
-			FileRefs:     []string{fileRef},
-			Reproducible: true,
+			FileRefs: []string{fileRef},
 		},
 		artifactType: "application/example.artifact",
 		Target:       option.Target{Path: dst1},

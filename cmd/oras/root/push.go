@@ -123,6 +123,9 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 
 Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with tag 'example.com:test':
   oras push example.com:test hi.txt --oci-layout-path layout-dir
+
+Example - Push file "hi.txt" reproducibly with SOURCE_DATE_EPOCH:
+  SOURCE_DATE_EPOCH=1700000000 oras push localhost:5000/hello:v1 hi.txt
 `,
 		Args: oerrors.CheckArgs(argument.AtLeast(1), "the destination for pushing"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -198,15 +201,15 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	}
 	defer func() { _ = store.Close() }()
 
-	if opts.Reproducible {
-		// make manifest reproducible
-		t, err := opts.ReproducibleTime()
-		if err != nil {
-			return err
-		}
-		store.TarModTime = &t
-		opts.ApplyReproducible(&packOpts)
+	t, err := opts.ReproducibleTime()
+	if err != nil {
+		return err
 	}
+	if !t.IsZero() {
+		store.TarModTime = &t
+	}
+	// make manifest reproducible
+	opts.ApplyReproducible(&packOpts)
 
 	if opts.manifestConfigRef != "" {
 		path, cfgMediaType, err := fileref.Parse(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)

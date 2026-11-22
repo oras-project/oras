@@ -204,7 +204,7 @@ func TestPacker_ReproducibleTime(t *testing.T) {
 	t.Setenv("SOURCE_DATE_EPOCH", "")
 	var opts Packer
 	got, err := opts.ReproducibleTime()
-	want := time.Unix(0, 0).UTC()
+	want := time.Time{}
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -239,7 +239,7 @@ func TestPacker_ApplyReproducible(t *testing.T) {
 	var packOpts oras.PackManifestOptions
 
 	t.Setenv("SOURCE_DATE_EPOCH", "1700000000")
-	opts := Packer{Reproducible: true}
+	var opts Packer
 	opts.ApplyReproducible(&packOpts)
 	if packOpts.ManifestAnnotations[ocispec.AnnotationCreated] != "2023-11-14T22:13:20Z" {
 		t.Fatalf("unexpected created: %v", packOpts.ManifestAnnotations[ocispec.AnnotationCreated])

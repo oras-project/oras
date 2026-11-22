@@ -99,6 +99,9 @@ Example - Attach file to the manifest tagged 'example.com:v1' in an OCI image la
 
 Example - Attach file 'hi.txt' with the custom manifest config "config.json" of the custom media type "application/vnd.me.config":
   oras attach --artifact-type doc/example --config config.json:application/vnd.me.config localhost:5000/hello:v1 hi.txt
+
+Example - Attach file 'hi.txt' reproducibly with SOURCE_DATE_EPOCH:
+  SOURCE_DATE_EPOCH=1700000000 oras attach --artifact-type doc/example localhost:5000/hello:v1 hi.txt
 `,
 		Args: oerrors.CheckArgs(argument.AtLeast(1), "the destination artifact for attaching."),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -193,11 +196,11 @@ func runAttach(cmd *cobra.Command, opts *attachOptions) error {
 }
 
 func doAttach(ctx context.Context, opts *attachOptions, store *file.Store, dst oras.GraphTarget, subject ocispec.Descriptor, statusHandler status.AttachHandler, metadataHandler metadata.AttachHandler) (ocispec.Descriptor, error) {
-	if opts.Reproducible {
-		t, err := opts.ReproducibleTime()
-		if err != nil {
-			return ocispec.Descriptor{}, err
-		}
+	t, err := opts.ReproducibleTime()
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	if !t.IsZero() {
 		store.TarModTime = &t
 	}
 
@@ -218,10 +221,8 @@ func doAttach(ctx context.Context, opts *attachOptions, store *file.Store, dst o
 	graphCopyOptions.PostCopy = statusHandler.PostCopy
 
 	packOpts := buildAttachPackOpts(opts, subject, descs)
-	if opts.Reproducible {
-		// make manifest reproducible
-		opts.ApplyReproducible(&packOpts)
-	}
+	// make manifest reproducible
+	opts.ApplyReproducible(&packOpts)
 
 	if opts.manifestConfigRef != "" {
 		path, cfgMediaType, err := fileref.Parse(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)

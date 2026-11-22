@@ -56,14 +56,6 @@ type Packer struct {
 	AnnotationFilePath     string
 
 	FileRefs []string
-
-	// Reproducible controls if the packed manifest and tarballs should be
-	// byte-for-byte reproducible. When true, the manifest's
-	// org.opencontainers.image.created annotation is fixed and the tarballs
-	// are generated with a fixed modification time. The time comes from the
-	// SOURCE_DATE_EPOCH environment variable when set, otherwise from the
-	// zero time (epoch 0: "1970-01-01T00:00:00Z").
-	Reproducible bool
 }
 
 // ApplyFlags applies flags to a command flag set.
@@ -73,12 +65,11 @@ func (opts *Packer) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&opts.ManifestExportPath, "export-manifest", "", "", "`path` of the pushed manifest")
 	fs.StringVarP(&opts.AnnotationFilePath, "annotation-file", "", "", "path of the annotation file")
 	fs.BoolVarP(&opts.PathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
-	fs.BoolVar(&opts.Reproducible, "reproducible", false, "use a fixed creation timestamp so the attached/pushed manifest and tarballs are byte-for-byte reproducible")
 }
 
 // ReproducibleTime returns the timestamp to use for reproducible builds. It
 // reads the SOURCE_DATE_EPOCH environment variable and falls back to the zero
-// time (epoch 0). The returned time is always UTC.
+// time (Time.IsZero) if it is not set. The returned time is always UTC.
 func (opts *Packer) ReproducibleTime() (time.Time, error) {
 	if v := os.Getenv("SOURCE_DATE_EPOCH"); v != "" {
 		epoch, err := strconv.ParseInt(v, 10, 64)
@@ -90,7 +81,7 @@ func (opts *Packer) ReproducibleTime() (time.Time, error) {
 		}
 		return time.Unix(epoch, 0).UTC(), nil
 	}
-	return time.Unix(0, 0).UTC(), nil
+	return time.Time{}, nil
 }
 
 // ApplyReproducible fixes the manifest annotations for reproducible builds.
@@ -98,7 +89,7 @@ func (opts *Packer) ReproducibleTime() (time.Time, error) {
 // one, and clones the map first so the caller's input is not mutated.
 func (opts *Packer) ApplyReproducible(packOpts *oras.PackManifestOptions) {
 	t, err := opts.ReproducibleTime()
-	if err != nil {
+	if err != nil || t.IsZero() {
 		return
 	}
 
