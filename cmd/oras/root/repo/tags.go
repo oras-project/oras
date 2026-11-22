@@ -103,27 +103,40 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 		return err
 	}
 
-	// if a repository path is given, filter the tags under the repository
-	var targetPrefix string
+	// if a repository path is given, filter the tags under the repository.
+	// For OCI layouts, the repository is encoded in the reference and must be
+	// resolved for repository, tag and digest forms alike.
+	var targetPrefix, targetDigest, targetReference string
 	if opts.Target.Type == option.TargetTypeOCILayout {
 		ref, err := properties.NewReference(opts.Reference)
-		if err == nil && ref.GetReference() == "" {
+		if err == nil && ref.Repository != "" {
 			targetPrefix = fmt.Sprintf("%s/%s:", ref.Registry, ref.Repository)
+			switch {
+			case ref.Digest != "":
+				targetDigest = ref.Digest
+			case ref.Tag != "":
+				// tags in an OCI layout are stored with the repository prefix
+				targetReference = targetPrefix + ref.Tag
+			}
 		}
 	}
 
 	// if a tag is given, show the associated tags
-	var targetDigest string
 	if targetPrefix == "" && opts.Reference != "" {
 		if contentutil.IsDigest(opts.Reference) {
 			targetDigest = opts.Reference
 		} else {
-			desc, err := finder.Resolve(ctx, opts.Reference)
-			if err != nil {
-				return err
-			}
-			targetDigest = desc.Digest.String()
+			targetReference = opts.Reference
 		}
+	}
+	if targetDigest == "" && targetReference != "" {
+		desc, err := finder.Resolve(ctx, targetReference)
+		if err != nil {
+			return err
+		}
+		targetDigest = desc.Digest.String()
+	}
+	if targetDigest != "" {
 		logger.Warnf("[Experimental] querying tags associated to %s, it may take a while...\n", targetDigest)
 	}
 
@@ -139,6 +152,7 @@ func doShowTags(ctx context.Context, finder option.ReadOnlyGraphTagFinderTarget,
 		for _, tag := range tags {
 			// if --oci-layout-path is used with a repository path, filter the
 			// tags under the repository.
+			fullTag := tag
 			if targetPrefix != "" {
 				scopedTag, ok := strings.CutPrefix(tag, targetPrefix)
 				if !ok {
@@ -160,7 +174,7 @@ func doShowTags(ctx context.Context, finder option.ReadOnlyGraphTagFinderTarget,
 					}
 					continue
 				}
-				desc, err := finder.Resolve(ctx, tag)
+				desc, err := finder.Resolve(ctx, fullTag)
 				if err != nil {
 					return err
 				}
