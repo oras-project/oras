@@ -20,11 +20,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	oras "github.com/oras-project/oras-go/v3"
 	"github.com/oras-project/oras-go/v3/content"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -61,6 +65,43 @@ func (opts *Packer) ApplyFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&opts.ManifestExportPath, "export-manifest", "", "", "`path` of the pushed manifest")
 	fs.StringVarP(&opts.AnnotationFilePath, "annotation-file", "", "", "path of the annotation file")
 	fs.BoolVarP(&opts.PathValidationDisabled, "disable-path-validation", "", false, "skip path validation")
+}
+
+// ReproducibleTime returns the timestamp to use for reproducible builds. It
+// reads the SOURCE_DATE_EPOCH environment variable and falls back to the zero
+// time (Time.IsZero) if it is not set. The returned time is always UTC.
+func (opts *Packer) ReproducibleTime() (time.Time, error) {
+	if v := os.Getenv("SOURCE_DATE_EPOCH"); v != "" {
+		epoch, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			return time.Time{}, fmt.Errorf("invalid SOURCE_DATE_EPOCH %q: %w", v, err)
+		}
+		if epoch < 0 {
+			return time.Time{}, fmt.Errorf("invalid SOURCE_DATE_EPOCH %q: must be a non-negative integer", v)
+		}
+		return time.Unix(epoch, 0).UTC(), nil
+	}
+	return time.Time{}, nil
+}
+
+// ApplyReproducible fixes the manifest annotations for reproducible builds.
+// It only sets org.opencontainers.image.created when the user hasn't supplied
+// one, and clones the map first so the caller's input is not mutated.
+func (opts *Packer) ApplyReproducible(packOpts *oras.PackManifestOptions) {
+	t, err := opts.ReproducibleTime()
+	if err != nil || t.IsZero() {
+		return
+	}
+
+	// Clone to avoid mutating the caller's map in place.
+	annotations := maps.Clone(packOpts.ManifestAnnotations)
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+	if _, ok := annotations[ocispec.AnnotationCreated]; !ok {
+		annotations[ocispec.AnnotationCreated] = t.Format(time.RFC3339)
+	}
+	packOpts.ManifestAnnotations = annotations
 }
 
 // ExportManifest saves the pushed manifest to a local file.
