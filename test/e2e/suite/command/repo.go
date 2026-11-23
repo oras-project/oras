@@ -714,7 +714,23 @@ var _ = Describe("OCI image layout users:", func() {
 			// prepare
 			root := prepare(ImageRepo, foobar.Tag, "example.registry.com/foo:latest", "example.registry.com/foo:v1.2.6", "test.com/bar:v1")
 			// test
-			ORAS("repo", "tags", "--oci-layout-path", root, "example.registry.com/foo:latest").MatchKeyWords(foobar.Tag, "example.registry.com/foo:latest", "example.registry.com/foo:v1.2.6", "test.com/bar:v1").Exec()
+			session := ORAS("repo", "tags", "--oci-layout-path", root, "example.registry.com/foo:latest").MatchKeyWords("latest\n", "v1.2.6\n").Exec()
+			Expect(session.Out).ShouldNot(gbytes.Say(foobar.Tag))
+			Expect(session.Out).ShouldNot(gbytes.Say("example.registry.com/foo:latest"))
+			Expect(session.Out).ShouldNot(gbytes.Say("example.registry.com/foo:v1.2.6"))
+			Expect(session.Out).ShouldNot(gbytes.Say("test.com/bar:v1"))
+		})
+
+		It("should still find associated tags if a full digest reference is provided", func() {
+			// prepare
+			root := prepare(ImageRepo, foobar.Tag, "example.registry.com/foo:latest", "example.registry.com/foo:v1.2.6", "test.com/bar:v1")
+			// test
+			digestRef := "example.registry.com/foo@" + foobar.Digest
+			session := ORAS("repo", "tags", "--oci-layout-path", root, digestRef).MatchKeyWords("latest\n", "v1.2.6\n").Exec()
+			Expect(session.Out).ShouldNot(gbytes.Say(foobar.Tag))
+			Expect(session.Out).ShouldNot(gbytes.Say("example.registry.com/foo:latest"))
+			Expect(session.Out).ShouldNot(gbytes.Say("example.registry.com/foo:v1.2.6"))
+			Expect(session.Out).ShouldNot(gbytes.Say("test.com/bar:v1"))
 		})
 
 		It("should not show digest tags if --exclude-digest-tags is used", func() {
