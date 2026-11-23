@@ -44,15 +44,49 @@ func PrintJSON(out io.Writer, data []byte, pretty bool) error {
 }
 
 // ToMap converts the data to a map[string]any with json tag as key.
+// Integral numbers are converted to int64 instead of float64, so that large
+// values such as blob sizes are not printed in scientific notation or rounded
+// when they are rendered by a template.
 func ToMap(data any) (map[string]any, error) {
 	// slow but easy
 	content, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
 	}
+	decoder := json.NewDecoder(bytes.NewReader(content))
+	decoder.UseNumber()
 	var ret map[string]any
-	if err = json.Unmarshal(content, &ret); err != nil {
+	if err = decoder.Decode(&ret); err != nil {
 		return nil, err
 	}
+	for k, v := range ret {
+		ret[k] = convertNumbers(v)
+	}
 	return ret, nil
+}
+
+// convertNumbers replaces every json.Number in v with an int64 when the number
+// is an integer that fits in an int64, or with a float64 otherwise.
+func convertNumbers(v any) any {
+	switch v := v.(type) {
+	case map[string]any:
+		for key, value := range v {
+			v[key] = convertNumbers(value)
+		}
+		return v
+	case []any:
+		for i, value := range v {
+			v[i] = convertNumbers(value)
+		}
+		return v
+	case json.Number:
+		if i, err := v.Int64(); err == nil {
+			return i
+		}
+		if f, err := v.Float64(); err == nil {
+			return f
+		}
+		return v
+	}
+	return v
 }
