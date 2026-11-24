@@ -16,18 +16,24 @@ limitations under the License.
 package text
 
 import (
+	"fmt"
 	"sync/atomic"
 
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/cmd/oras/internal/output"
 )
 
+// helmConfigMediaType is the config media type of a Helm chart artifact.
+const helmConfigMediaType = "application/vnd.cncf.helm.config.v1+json"
+
 // PullHandler handles text metadata output for pull events.
 type PullHandler struct {
 	printer      *output.Printer
 	layerSkipped atomic.Bool
+	helmChart    atomic.Bool
 	target       *option.Target
 	root         ocispec.Descriptor
 }
@@ -44,8 +50,11 @@ func (ph *PullHandler) OnFilePulled(_ string, _ string, _ ocispec.Descriptor, _ 
 }
 
 // OnLayerSkipped implements metadata.PullHandler.
-func (ph *PullHandler) OnLayerSkipped(ocispec.Descriptor) error {
+func (ph *PullHandler) OnLayerSkipped(desc ocispec.Descriptor) error {
 	ph.layerSkipped.Store(true)
+	if desc.MediaType == helmConfigMediaType {
+		ph.helmChart.Store(true)
+	}
 	return nil
 }
 
@@ -59,10 +68,26 @@ func (ph *PullHandler) OnPulled(target *option.Target, desc ocispec.Descriptor) 
 func (ph *PullHandler) Render() error {
 	if ph.layerSkipped.Load() {
 		_ = ph.printer.Printf("Skipped pulling layers without file name in %q\n", ocispec.AnnotationTitle)
-		_ = ph.printer.Printf("Use 'oras copy %s --to-oci-layout <layout-dir>' to pull all layers.\n", ph.target.RawReference)
+		if cmd := ph.helmPullCommand(); cmd != "" {
+			_ = ph.printer.Printf("Use '%s' to pull the Helm chart.\n", cmd)
+		} else {
+			_ = ph.printer.Printf("Use 'oras copy %s --to-oci-layout <layout-dir>' to pull all layers.\n", ph.target.RawReference)
+		}
 	} else {
 		_ = ph.printer.Println("Pulled", ph.target.GetDisplayReference())
 		_ = ph.printer.Println("Digest:", ph.root.Digest)
 	}
 	return nil
+}
+
+// helmPullCommand returns the helm command that pulls the target, or an empty
+// string if the target is not a Helm chart in a remote registry.
+func (ph *PullHandler) helmPullCommand() string {
+	if !ph.helmChart.Load() || ph.target.Type != option.TargetTypeRemote {
+		return ""
+	}
+	if _, err := digest.Parse(ph.target.Reference); err == nil {
+		return fmt.Sprintf("helm pull oci://%s@%s", ph.target.Path, ph.target.Reference)
+	}
+	return fmt.Sprintf("helm pull oci://%s --version %s", ph.target.Path, ph.target.Reference)
 }
