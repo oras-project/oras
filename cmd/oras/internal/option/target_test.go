@@ -47,6 +47,14 @@ func TestTarget_Parse_oci_path(t *testing.T) {
 			raw:  "mocked/test:latest",
 		},
 		{
+			name: "reference with registry port",
+			raw:  "localhost:5000/hello:v1",
+		},
+		{
+			name: "uppercase reference",
+			raw:  "MyRepo:v1",
+		},
+		{
 			name:    "tag containing space passes parse",
 			raw:     "mocked/test:BAD TAG",
 			wantErr: false,
@@ -61,9 +69,9 @@ func TestTarget_Parse_oci_path(t *testing.T) {
 			raw:  "mocked/test@sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
 		},
 		{
-			name:    "invalid digest",
+			name:    "reference with @ in name passes parse",
 			raw:     "mocked/test@not-a-digest",
-			wantErr: true,
+			wantErr: false,
 		},
 	}
 
@@ -245,76 +253,6 @@ func Test_parseOCILayoutReference(t *testing.T) {
 			}
 			if opts.Reference != tt.want1 {
 				t.Errorf("parseOCILayoutReference() got1 = %v, want %v", opts.Reference, tt.want1)
-			}
-		})
-	}
-}
-
-func Test_parseOCILayoutPathReference(t *testing.T) {
-	tests := []struct {
-		name    string
-		raw     string
-		wantErr bool
-	}{
-		{
-			name: "reference without tag",
-			raw:  "mocked/test",
-		},
-		{
-			name: "valid tag",
-			raw:  "mocked/test:latest",
-		},
-		{
-			name: "short reference with tag",
-			raw:  "test:v1",
-		},
-		{
-			name: "reference with registry port",
-			raw:  "localhost:5000/hello:v1",
-		},
-		{
-			name: "uppercase reference",
-			raw:  "MyRepo:v1",
-		},
-		{
-			name:    "tag containing space passes parse",
-			raw:     "mocked/test:BAD TAG",
-			wantErr: false,
-		},
-		{
-			name:    "tag containing invalid characters passes parse",
-			raw:     "mocked/test:bad!tag",
-			wantErr: false,
-		},
-		{
-			name: "valid digest",
-			raw:  "mocked/test@sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
-		},
-		{
-			name:    "invalid digest",
-			raw:     "mocked/test@not-a-digest",
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			opts := Target{RawReference: tt.raw}
-			err := opts.parseOCILayoutPathReference()
-
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("parseOCILayoutPathReference() error = %v, wantErr %v", err, tt.wantErr)
-			}
-
-			if tt.wantErr {
-				if !errors.Is(err, errdef.ErrInvalidReference) {
-					t.Errorf("parseOCILayoutPathReference() error = %v, want %v", err, errdef.ErrInvalidReference)
-				}
-				return
-			}
-
-			if opts.Reference != tt.raw {
-				t.Errorf("parseOCILayoutPathReference() got reference %q, want %q", opts.Reference, tt.raw)
 			}
 		})
 	}

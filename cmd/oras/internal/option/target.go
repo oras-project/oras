@@ -118,7 +118,11 @@ func (target *Target) Parse(cmd *cobra.Command) error {
 			return errors.New(errHeaderFlagsOnOCILayout)
 		}
 
-		return target.parseOCILayoutPathReference()
+		// The reference name is stored as-is in the OCI layout's
+		// org.opencontainers.image.ref.name annotation. It is not a registry
+		// reference and is not split into repository and tag components.
+		target.Reference = target.RawReference
+		return nil
 	default:
 		target.Type = TargetTypeRemote
 		ref, err := repository.ParseReference(target.RawReference)
@@ -159,23 +163,6 @@ func (target *Target) parseOCILayoutReference() error {
 	}
 	target.Path = path
 	target.Reference = ref
-	return nil
-}
-
-// parseOCILayoutPathReference validates the reference for an OCI layout path.
-func (target *Target) parseOCILayoutPathReference() error {
-	raw := target.RawReference
-	if atIndex := strings.LastIndex(raw, "@"); atIndex != -1 {
-		digest := raw[atIndex+1:]
-		if !contentutil.IsDigest(digest) {
-			return errors.Join(
-				fmt.Errorf("invalid digest: %q", digest),
-				errdef.ErrInvalidReference,
-			)
-		}
-	}
-
-	target.Reference = raw
 	return nil
 }
 
