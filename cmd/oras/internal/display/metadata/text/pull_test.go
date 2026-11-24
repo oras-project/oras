@@ -155,5 +155,69 @@ func TestPullHandler_Render(t *testing.T) {
 	}
 }
 
+func TestPullHandler_RenderHelmChart(t *testing.T) {
+	const skipped = "Skipped pulling layers without file name in \"org.opencontainers.image.title\"\n"
+	chartLayer := ocispec.Descriptor{MediaType: "application/vnd.cncf.helm.chart.content.v1.tar+gzip"}
+	helmConfig := ocispec.Descriptor{MediaType: "application/vnd.cncf.helm.config.v1+json"}
+	digest := "sha256:b2eb9186e71afc45b00067073bdb69230fc5d82c1b0c8f78691bfa29ca026d1b"
+
+	tests := []struct {
+		name       string
+		target     *option.Target
+		skipped    []ocispec.Descriptor
+		wantOutput string
+	}{
+		{
+			name:    "helm chart by tag",
+			target:  &option.Target{Type: option.TargetTypeRemote, RawReference: "example.com/charts/app:1.2.3", Path: "example.com/charts/app", Reference: "1.2.3"},
+			skipped: []ocispec.Descriptor{chartLayer, helmConfig},
+			wantOutput: skipped +
+				"Use 'helm pull oci://example.com/charts/app --version 1.2.3' to pull the Helm chart.\n",
+		},
+		{
+			name:    "helm chart by digest",
+			target:  &option.Target{Type: option.TargetTypeRemote, RawReference: "example.com/charts/app@" + digest, Path: "example.com/charts/app", Reference: digest},
+			skipped: []ocispec.Descriptor{helmConfig},
+			wantOutput: skipped +
+				"Use 'helm pull oci://example.com/charts/app@" + digest + "' to pull the Helm chart.\n",
+		},
+		{
+			name:    "helm chart in an OCI layout",
+			target:  &option.Target{Type: option.TargetTypeOCILayout, RawReference: "layout:1.2.3", Path: "layout", Reference: "1.2.3"},
+			skipped: []ocispec.Descriptor{helmConfig},
+			wantOutput: skipped +
+				"Use 'oras copy layout:1.2.3 --to-oci-layout <layout-dir>' to pull all layers.\n",
+		},
+		{
+			name:    "other artifact",
+			target:  &option.Target{Type: option.TargetTypeRemote, RawReference: "example.com/repo:v1", Path: "example.com/repo", Reference: "v1"},
+			skipped: []ocispec.Descriptor{{MediaType: "application/vnd.example.config.v1+json"}},
+			wantOutput: skipped +
+				"Use 'oras copy example.com/repo:v1 --to-oci-layout <layout-dir>' to pull all layers.\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var out bytes.Buffer
+			handler := NewPullHandler(output.NewPrinter(&out, os.Stderr))
+
+			handler.OnPulled(tt.target, ocispec.Descriptor{Digest: "sha256:abc"})
+			for _, desc := range tt.skipped {
+				if err := handler.OnLayerSkipped(desc); err != nil {
+					t.Fatalf("OnLayerSkipped() error = %v", err)
+				}
+			}
+			if err := handler.Render(); err != nil {
+				t.Fatalf("Render() error = %v, want nil", err)
+			}
+
+			if got := out.String(); got != tt.wantOutput {
+				t.Errorf("Render() output = %q, want %q", got, tt.wantOutput)
+			}
+		})
+	}
+}
+
 // Ensure PullHandler satisfies the metadata.PullHandler interface.
 var _ metadata.PullHandler = (*PullHandler)(nil)
