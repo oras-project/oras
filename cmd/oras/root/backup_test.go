@@ -352,6 +352,99 @@ func Test_doBackup_tagsFoundError(t *testing.T) {
 	}
 }
 
+// newBackupPlatformSource returns a source with an index tagged "v1" holding a
+// linux/amd64 and a linux/arm64 manifest.
+func newBackupPlatformSource(t *testing.T) (src oras.GraphTarget, amd64, arm64 ocispec.Descriptor) {
+	t.Helper()
+	ctx := context.Background()
+	src = memory.New()
+	pack := func(artifactType, arch string) ocispec.Descriptor {
+		desc, err := oras.PackManifest(ctx, src, oras.PackManifestVersion1_1, artifactType, oras.PackManifestOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		desc.Platform = &ocispec.Platform{OS: "linux", Architecture: arch}
+		return desc
+	}
+	amd64 = pack("application/example.amd64", "amd64")
+	arm64 = pack("application/example.arm64", "arm64")
+	indexBytes, err := json.Marshal(ocispec.Index{
+		Versioned: specs.Versioned{SchemaVersion: 2},
+		MediaType: ocispec.MediaTypeImageIndex,
+		Manifests: []ocispec.Descriptor{amd64, arm64},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	indexDesc, err := oras.PushBytes(ctx, src, ocispec.MediaTypeImageIndex, indexBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := src.Tag(ctx, indexDesc, "v1"); err != nil {
+		t.Fatal(err)
+	}
+	return src, amd64, arm64
+}
+
+func Test_doBackup_platform(t *testing.T) {
+	ctx := context.Background()
+
+	run := func(t *testing.T, platform *ocispec.Platform) (*oci.Store, error) {
+		t.Helper()
+		src, _, _ := newBackupPlatformSource(t)
+		dstRoot := t.TempDir()
+		dst, err := oci.New(dstRoot)
+		if err != nil {
+			t.Fatal(err)
+		}
+		opts := &backupOptions{output: dstRoot, outputFormat: outputFormatDir, repository: "example", tags: []string{"v1"}}
+		opts.Platform.Platform = platform
+		recorder := &displaytest.CallRecorder{}
+		err = doBackup(ctx, opts, logrus.New(), src, dst, dstRoot, time.Now(),
+			&displaytest.RecordingBackupStatusHandler{Recorder: recorder},
+			&displaytest.RecordingBackupMetadataHandler{Recorder: recorder})
+		return dst, err
+	}
+
+	t.Run("selected platform only", func(t *testing.T) {
+		dst, err := run(t, &ocispec.Platform{OS: "linux", Architecture: "arm64"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, amd64, arm64 := newBackupPlatformSource(t)
+		got, err := dst.Resolve(ctx, "example:v1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.Digest != arm64.Digest {
+			t.Errorf("example:v1 digest = %v, want the arm64 manifest %v", got.Digest, arm64.Digest)
+		}
+		if ok, _ := dst.Exists(ctx, amd64); ok {
+			t.Error("the amd64 manifest was backed up, want only the selected platform")
+		}
+	})
+
+	t.Run("no platform backs up the whole index", func(t *testing.T) {
+		dst, err := run(t, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, amd64, arm64 := newBackupPlatformSource(t)
+		for _, desc := range []ocispec.Descriptor{amd64, arm64} {
+			if ok, _ := dst.Exists(ctx, desc); !ok {
+				t.Errorf("manifest %v was not backed up", desc.Digest)
+			}
+		}
+	})
+
+	t.Run("no matching platform", func(t *testing.T) {
+		_, err := run(t, &ocispec.Platform{OS: "linux", Architecture: "s390x"})
+		if !errors.Is(err, errdef.ErrNotFound) {
+			t.Fatalf("doBackup() error = %v, want %v", err, errdef.ErrNotFound)
+		}
+	})
+}
+
 func Test_backupCmd_failedBackupToTar(t *testing.T) {
 	// a registry address that refuses connections, so the backup fails after
 	// the output file has been created
