@@ -116,6 +116,10 @@ func (target *Target) Parse(cmd *cobra.Command) error {
 		if len(target.headerFlags) != 0 {
 			return errors.New(errHeaderFlagsOnOCILayout)
 		}
+
+		// The reference name is stored as-is in the OCI layout's
+		// org.opencontainers.image.ref.name annotation. It is not a registry
+		// reference and is not split into repository and tag components.
 		target.Reference = target.RawReference
 		return nil
 	default:
