@@ -129,7 +129,11 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 			targetReference = opts.Reference
 		}
 	}
-	if targetDigest == "" && targetReference != "" {
+	if targetDigest != "" {
+		if _, err := finder.Resolve(ctx, targetDigest); err != nil {
+			return err
+		}
+	} else if targetReference != "" {
 		desc, err := finder.Resolve(ctx, targetReference)
 		if err != nil {
 			return err

@@ -24,6 +24,7 @@ import (
 
 	"github.com/oras-project/oras-go/v3"
 	"github.com/oras-project/oras-go/v3/content/oci"
+	"github.com/oras-project/oras-go/v3/errdef"
 	"oras.land/oras/cmd/oras/internal/display/displaytest"
 )
 
@@ -160,5 +161,15 @@ func Test_showTags_ociLayoutPathWithRepository(t *testing.T) {
 	}
 	if got, want := out.String(), "v1\nv2\n"; got != want {
 		t.Errorf("repo tags output = %q, want %q", got, want)
+	}
+}
+
+func Test_showTags_ociLayoutPathWithMissingDigest(t *testing.T) {
+	root, _ := newScopedTagsTestLayout(t)
+	missing := "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+	for _, ref := range []string{"example.com/repo@" + missing, missing} {
+		if _, err := runShowTags(t, "--oci-layout-path", root, ref); !errors.Is(err, errdef.ErrNotFound) {
+			t.Errorf("repo tags %s error = %v, want %v", ref, err, errdef.ErrNotFound)
+		}
 	}
 }
