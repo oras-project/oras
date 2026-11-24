@@ -606,7 +606,7 @@ func Test_resolveTags(t *testing.T) {
 		}
 		repo.Registry.PlainHTTP = true
 
-		tags, descs, err := resolveTags(ctx, repo, []string{"v1", "v2"})
+		tags, descs, err := resolveTags(ctx, repo, []string{"v1", "v2"}, oras.DefaultResolveOptions)
 		if err != nil {
 			t.Fatalf("resolveTags() error = %v, wantErr nil", err)
 		}
@@ -638,7 +638,7 @@ func Test_resolveTags(t *testing.T) {
 		}
 		repo.Registry.PlainHTTP = true
 
-		_, _, err = resolveTags(ctx, repo, []string{"non-existent"})
+		_, _, err = resolveTags(ctx, repo, []string{"non-existent"}, oras.DefaultResolveOptions)
 		if wantErr := errdef.ErrNotFound; !errors.Is(err, wantErr) {
 			t.Errorf("resolveTags() error = %v, wantErr %v", err, wantErr)
 		}
@@ -661,7 +661,7 @@ func Test_resolveTags(t *testing.T) {
 		}
 		repo.Registry.PlainHTTP = true
 
-		tags, descs, err := resolveTags(ctx, repo, nil)
+		tags, descs, err := resolveTags(ctx, repo, nil, oras.DefaultResolveOptions)
 		if err != nil {
 			t.Fatalf("resolveTags() error = %v, wantErr nil", err)
 		}
@@ -694,7 +694,7 @@ func Test_resolveTags(t *testing.T) {
 		}
 		repo.Registry.PlainHTTP = true
 
-		_, _, err = resolveTags(ctx, repo, nil)
+		_, _, err = resolveTags(ctx, repo, nil, oras.DefaultResolveOptions)
 		if err == nil {
 			t.Error("resolveTags() error = nil, wantErr not nil")
 		}
@@ -719,7 +719,7 @@ func Test_resolveTags(t *testing.T) {
 		}
 		repo.Registry.PlainHTTP = true
 
-		_, _, err = resolveTags(ctx, repo, nil)
+		_, _, err = resolveTags(ctx, repo, nil, oras.DefaultResolveOptions)
 		if wantErr := errdef.ErrNotFound; !errors.Is(err, wantErr) {
 			t.Errorf("resolveTags() error = %v, wantErr %v", err, wantErr)
 		}
@@ -740,7 +740,7 @@ func Test_resolveTags(t *testing.T) {
 		}
 		repo.Registry.PlainHTTP = true
 
-		tags, descs, err := resolveTags(ctx, repo, nil)
+		tags, descs, err := resolveTags(ctx, repo, nil, oras.DefaultResolveOptions)
 		if err != nil {
 			t.Fatalf("resolveTags() error = %v, wantErr nil", err)
 		}
@@ -755,7 +755,7 @@ func Test_resolveTags(t *testing.T) {
 	t.Run("target does not support tag listing", func(t *testing.T) {
 		// Use a simple mock that doesn't implement registry.TagLister
 		target := memory.New()
-		_, _, err := resolveTags(ctx, target, nil)
+		_, _, err := resolveTags(ctx, target, nil, oras.DefaultResolveOptions)
 		if wantErr := errTagListNotSupported; !errors.Is(err, wantErr) {
 			t.Errorf("resolveTags() error = %v, wantErr %v", err, wantErr)
 		}

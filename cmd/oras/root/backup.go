@@ -64,6 +64,7 @@ type backupOptions struct {
 	option.Common
 	option.Remote
 	option.Terminal
+	option.Platform
 
 	// flags
 	output           string
@@ -92,6 +93,9 @@ Example - Back up to a tar archive:
 
 Example - Back up an artifact along with its referrers (e.g. attestations, SBOMs):
   oras backup --output hello --include-referrers localhost:5000/hello:v1
+
+Example - Back up only one platform of a multi-platform artifact:
+  oras backup --output hello --platform linux/arm64 localhost:5000/hello:v1
 
 Example - Back up multiple specific tags:
   oras backup --output hello localhost:5000/hello:v1,v2,v3
@@ -149,6 +153,7 @@ Example - Set custom concurrency level:
 	// optional flags
 	cmd.Flags().BoolVarP(&opts.includeReferrers, "include-referrers", "", false, "back up the artifact with its referrers (e.g., attestations, SBOMs)")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
+	opts.FlagDescription = "back up only the artifacts matching the platform"
 	opts.EnableDistributionSpecFlag()
 	// apply flags
 	option.ApplyFlags(&opts, cmd.Flags())
@@ -233,7 +238,9 @@ func doBackup(
 	metadataHandler metadata.BackupHandler,
 ) error {
 	// Resolve tags to back up
-	tags, roots, err := resolveTags(ctx, srcRepo, opts.tags)
+	resolveOpts := oras.DefaultResolveOptions
+	resolveOpts.TargetPlatform = opts.Platform.Platform
+	tags, roots, err := resolveTags(ctx, srcRepo, opts.tags, resolveOpts)
 	if err != nil {
 		return err
 	}
@@ -418,13 +425,13 @@ func removeEmptyFile(path string, logger logrus.FieldLogger) {
 	}
 }
 
-// resolveTags resolves tags to their descriptors.
+// resolveTags resolves tags to their descriptors using resolveOpts.
 // It returns the resolved tags and their corresponding descriptors.
-func resolveTags(ctx context.Context, target oras.ReadOnlyTarget, specifiedTags []string) ([]string, []ocispec.Descriptor, error) {
+func resolveTags(ctx context.Context, target oras.ReadOnlyTarget, specifiedTags []string, resolveOpts oras.ResolveOptions) ([]string, []ocispec.Descriptor, error) {
 	var descs []ocispec.Descriptor
 	resolve := func(tags []string) error {
 		for _, tag := range tags {
-			desc, err := oras.Resolve(ctx, target, tag, oras.DefaultResolveOptions)
+			desc, err := oras.Resolve(ctx, target, tag, resolveOpts)
 			if err != nil {
 				return fmt.Errorf("failed to resolve tag %q: %w", tag, err)
 			}
