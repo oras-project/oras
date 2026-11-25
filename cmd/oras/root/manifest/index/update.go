@@ -166,7 +166,7 @@ func updateIndex(cmd *cobra.Command, opts updateOptions) error {
 		return err
 	}
 	if opts.outputPath == "" {
-		if err := pushIndex(ctx, displayStatus, displayMetadata, target, desc, indexBytes, opts.Reference, opts.tags, path); err != nil {
+		if err := pushIndex(ctx, displayStatus, displayMetadata, target, desc, indexBytes, &opts.Target, opts.tags, path); err != nil {
 			return err
 		}
 	}

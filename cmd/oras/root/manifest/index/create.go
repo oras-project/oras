@@ -155,7 +155,7 @@ func createIndex(cmd *cobra.Command, opts createOptions) error {
 		return err
 	}
 	if opts.outputPath == "" {
-		if err := pushIndex(ctx, displayStatus, displayMetadata, target, desc, indexBytes, opts.Reference, opts.extraRefs, opts.GetDisplayReference()); err != nil {
+		if err := pushIndex(ctx, displayStatus, displayMetadata, target, desc, indexBytes, &opts.Target, opts.extraRefs, opts.GetDisplayReference()); err != nil {
 			return err
 		}
 	}
@@ -214,10 +214,10 @@ func getPlatform(ctx context.Context, target oras.ReadOnlyTarget, manifest *ocis
 }
 
 func pushIndex(ctx context.Context, displayStatus status.ManifestIndexCreateHandler, taggedHandler metadata.TaggedHandler,
-	target oras.Target, desc ocispec.Descriptor, content []byte, ref string, extraRefs []string, path string) error {
+	target oras.Target, desc ocispec.Descriptor, content []byte, opts *option.Target, extraRefs []string, path string) error {
 	// push the index
 	var err error
-	if ref == "" || contentutil.IsDigest(ref) {
+	if ref := opts.Reference; ref == "" || contentutil.IsDigest(ref) {
 		err = target.Push(ctx, desc, bytes.NewReader(content))
 	} else {
 		_, err = oras.TagBytes(ctx, target, desc.MediaType, content, ref)
@@ -229,7 +229,7 @@ func pushIndex(ctx context.Context, displayStatus status.ManifestIndexCreateHand
 		return err
 	}
 	if len(extraRefs) != 0 {
-		tagListener := listener.NewTaggedListener(target, taggedHandler.OnTagged)
+		tagListener := listener.NewTaggedListener(opts.ExtraTagTarget(target), taggedHandler.OnTagged)
 		if _, err = oras.TagBytesN(ctx, tagListener, desc.MediaType, content, extraRefs, oras.DefaultTagBytesNOptions); err != nil {
 			return err
 		}

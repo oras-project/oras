@@ -189,11 +189,12 @@ func doPushManifest(
 
 	tagBytesNOpts := oras.DefaultTagBytesNOptions
 	tagBytesNOpts.Concurrency = opts.concurrency
+	extraTagTarget := opts.ExtraTagTarget(target)
 
 	// outputs manifest's descriptor
 	if opts.OutputDescriptor {
 		if len(opts.extraRefs) != 0 {
-			if _, err = oras.TagBytesN(ctx, target, mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
+			if _, err = oras.TagBytesN(ctx, extraTagTarget, mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 				return err
 			}
 		}
@@ -207,7 +208,7 @@ func doPushManifest(
 		return err
 	}
 	if len(opts.extraRefs) != 0 {
-		tagListener := listener.NewTaggedListener(target, metadataHandler.OnTagged)
+		tagListener := listener.NewTaggedListener(extraTagTarget, metadataHandler.OnTagged)
 		if _, err = oras.TagBytesN(ctx, tagListener, mediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}

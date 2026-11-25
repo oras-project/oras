@@ -342,7 +342,7 @@ func doPushCommand(
 		}
 		tagBytesNOpts := oras.DefaultTagBytesNOptions
 		tagBytesNOpts.Concurrency = opts.concurrency
-		dst := listener.NewTagListener(originalDst, nil, metadataHandler.OnTagged)
+		dst := listener.NewTaggedListener(opts.ExtraTagTarget(originalDst), metadataHandler.OnTagged)
 		if _, err = oras.TagBytesN(ctx, dst, root.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}

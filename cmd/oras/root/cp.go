@@ -191,7 +191,7 @@ func copyAndFinalize(ctx context.Context, statusHandler status.CopyHandler, meta
 	if len(opts.extraRefs) != 0 {
 		tagNOpts := oras.DefaultTagNOptions
 		tagNOpts.Concurrency = opts.concurrency
-		tagListener := listener.NewTaggedListener(dst, metadataHandler.OnTagged)
+		tagListener := listener.NewTaggedListener(opts.To.ExtraTagTarget(dst), metadataHandler.OnTagged)
 		// Without a destination tag the content was copied untagged, so tag it by digest.
 		srcReference := opts.To.Reference
 		if srcReference == "" {
