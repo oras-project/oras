@@ -307,7 +307,7 @@ EcROYUZZYQ==
 =hio0
 -----END PGP PUBLIC KEY BLOCK-----
 
-# removed in #1261 (2024-01-31)
+# removed in #1262 (2024-02-01)
 pub   rsa4096 2022-06-24 [SC] [expires: 2023-06-24]
       95BB6CD46CA30D2B9CAEE56C9F2CD437A97DCB8F
 uid           [ultimate] Shiwei Zhang <shizh@microsoft.com>
