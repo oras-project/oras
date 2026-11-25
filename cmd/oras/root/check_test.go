@@ -790,6 +790,33 @@ func Test_checkLayout_resolveNestedDigest(t *testing.T) {
 	})
 }
 
+func Test_checkLayout_resolveLargeBlob(t *testing.T) {
+	b := newLayoutBuilder(t)
+	// A blob larger than maxCheckManifestSize is not a manifest, but its
+	// descriptor must still carry the full size.
+	big := bytes.Repeat([]byte("x"), maxCheckManifestSize+1234)
+	layer := b.blob(testLayerType, big)
+	// Tag a manifest that does not reference the layer, so the layer is only
+	// reachable by its digest.
+	other, _ := b.image(nil, b.blob(testLayerType, []byte("small")))
+	b.tag(other, "v1")
+	layout, err := newCheckLayout(b.dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := layout.Resolve(context.Background(), layer.Digest.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Size != int64(len(big)) {
+		t.Errorf("Resolve(large blob) size = %d, want %d", got.Size, len(big))
+	}
+	out, err := runLayoutCheck(t, b.dir, layer.Digest.String(), nil)
+	if err != nil || !strings.Contains(out, "Checked 1 nodes: 1 verified, 0 failed") {
+		t.Errorf("err = %v, out = %q", err, out)
+	}
+}
+
 func Test_isForeignLayer(t *testing.T) {
 	for mediaType, want := range map[string]bool{
 		"application/vnd.oci.image.layer.nondistributable.v1.tar":      true,

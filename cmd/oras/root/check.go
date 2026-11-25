@@ -101,7 +101,6 @@ Example - Check the image for one platform of a multi-platform artifact:
 	}
 
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", defaultCheckConcurrency, "number of blobs checked at the same time; 0 or less uses the default")
-	option.AddDeprecatedVerboseFlag(cmd.Flags())
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
@@ -489,7 +488,12 @@ func (l *checkLayout) resolveBlob(ctx context.Context, dgst digest.Digest) (ocis
 	}
 	desc.Size = int64(len(body))
 	if desc.Size > maxCheckManifestSize {
-		// Too big to be a manifest.
+		// Too big to be a manifest; count the rest to get the real size.
+		rest, err := io.Copy(io.Discard, rc)
+		if err != nil {
+			return ocispec.Descriptor{}, err
+		}
+		desc.Size += rest
 		return desc, nil
 	}
 	var fields struct {
