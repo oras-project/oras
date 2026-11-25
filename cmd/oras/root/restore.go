@@ -20,12 +20,14 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/oras-project/oras-go/v3"
 	"github.com/oras-project/oras-go/v3/content"
 	"github.com/oras-project/oras-go/v3/content/oci"
+	"github.com/oras-project/oras-go/v3/errdef"
 	"github.com/oras-project/oras-go/v3/registry"
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/argument"
@@ -185,7 +187,7 @@ func doRestore(
 	}
 
 	// resolve tags to restore
-	tags, roots, err := resolveTags(ctx, srcOCI, opts.tags)
+	srcRefs, tags, roots, err := resolveRestoreRefs(ctx, srcOCI, opts.tags)
 	if err != nil {
 		return err
 	}
@@ -241,7 +243,7 @@ func doRestore(
 			}()
 
 			if opts.excludeReferrers {
-				_, err := oras.Copy(ctx, srcOCI, tag, trackedDst, tag, copyOpts)
+				_, err := oras.Copy(ctx, srcOCI, srcRefs[i], trackedDst, tag, copyOpts)
 				return err
 			}
 			return recursiveCopy(ctx, srcOCI, trackedDst, tag, roots[i], extCopyGraphOpts)
@@ -256,4 +258,65 @@ func doRestore(
 
 	duration := time.Since(startTime)
 	return metadataHandler.OnRestoreCompleted(len(tags), opts.repository, duration)
+}
+
+// resolveRestoreRefs resolves the artifacts to restore from the backup in src.
+// For each artifact it returns the reference stored in the backup, the tag to
+// restore it as, and its descriptor.
+//
+// Backups store the full reference (<registry>/<repository>:<tag>) in
+// org.opencontainers.image.ref.name. Backups created by earlier versions store
+// only the tag. Specified tags are matched against the tag of each stored
+// reference, so they work with either format.
+func resolveRestoreRefs(ctx context.Context, src oras.ReadOnlyTarget, specifiedTags []string) (srcRefs, tags []string, roots []ocispec.Descriptor, err error) {
+	storedRefs, storedRoots, err := resolveTags(ctx, src, nil)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	byTag := make(map[string]int, len(storedRefs))
+	storedTags := make([]string, len(storedRefs))
+	for i, ref := range storedRefs {
+		tag, err := tagFromRefName(ref)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		if j, ok := byTag[tag]; ok {
+			return nil, nil, nil, fmt.Errorf("references %q and %q in the backup both restore to tag %q", storedRefs[j], ref, tag)
+		}
+		byTag[tag] = i
+		storedTags[i] = tag
+	}
+
+	if len(specifiedTags) == 0 {
+		return storedRefs, storedTags, storedRoots, nil
+	}
+	srcRefs = make([]string, 0, len(specifiedTags))
+	roots = make([]ocispec.Descriptor, 0, len(specifiedTags))
+	for _, tag := range specifiedTags {
+		i, ok := byTag[tag]
+		if !ok {
+			return nil, nil, nil, fmt.Errorf("failed to resolve tag %q: %w", tag, errdef.ErrNotFound)
+		}
+		srcRefs = append(srcRefs, storedRefs[i])
+		roots = append(roots, storedRoots[i])
+	}
+	return srcRefs, specifiedTags, roots, nil
+}
+
+// tagFromRefName returns the tag in an org.opencontainers.image.ref.name value
+// written by oras backup. The value is either a full reference such as
+// localhost:5000/repo:v1, or just a tag for backups created by earlier versions.
+func tagFromRefName(name string) (string, error) {
+	if !strings.ContainsAny(name, "/:@") {
+		// tag-only reference from a backup created by an earlier version
+		return name, nil
+	}
+	ref, err := registry.ParseReference(name)
+	if err != nil {
+		return "", fmt.Errorf("invalid reference %q in the backup: %w", name, err)
+	}
+	if err := ref.ValidateReferenceAsTag(); err != nil {
+		return "", fmt.Errorf("reference %q in the backup does not have a tag: %w", name, err)
+	}
+	return ref.Reference, nil
 }
