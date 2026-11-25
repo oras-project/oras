@@ -220,6 +220,35 @@ func Test_resolveRestoreRefs(t *testing.T) {
 			t.Error("expected an error for references sharing a tag")
 		}
 	})
+
+	t.Run("specified tag shared by two references", func(t *testing.T) {
+		_, _, _, err := resolveRestoreRefs(ctx, newLayout(t, "localhost:5000/a:v1", "localhost:5000/b:v1"), []string{"v1"})
+		if err == nil {
+			t.Error("expected an error for a specified tag shared by two references")
+		}
+	})
+
+	t.Run("unrelated entries do not block specified tags", func(t *testing.T) {
+		// an entry without a tag and two entries sharing tag v2
+		layout := newLayout(t, "localhost:5000/example:v1", "localhost:5000/example", "localhost:5000/a:v2", "localhost:5000/b:v2")
+		srcRefs, tags, _, err := resolveRestoreRefs(ctx, layout, []string{"v1"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := []string{"localhost:5000/example:v1"}; !reflect.DeepEqual(srcRefs, want) {
+			t.Errorf("srcRefs = %v, want %v", srcRefs, want)
+		}
+		if want := []string{"v1"}; !reflect.DeepEqual(tags, want) {
+			t.Errorf("tags = %v, want %v", tags, want)
+		}
+	})
+
+	t.Run("invalid entry fails restoring all tags", func(t *testing.T) {
+		_, _, _, err := resolveRestoreRefs(ctx, newLayout(t, "localhost:5000/example:v1", "localhost:5000/example"), nil)
+		if err == nil {
+			t.Error("expected an error for an entry without a tag")
+		}
+	})
 }
 
 func Test_tagFromRefName(t *testing.T) {
@@ -230,6 +259,7 @@ func Test_tagFromRefName(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "tag only", refName: "v1.0", want: "v1.0"},
+		{name: "invalid tag only", refName: "invalid+tag", wantErr: true},
 		{name: "full reference", refName: "docker.io/library/alpine:3.19", want: "3.19"},
 		{name: "registry with port", refName: "localhost:5000/repo:v1", want: "v1"},
 		{name: "nested repository", refName: "registry.example.com/a/b/c:latest", want: "latest"},

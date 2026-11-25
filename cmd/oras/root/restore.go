@@ -274,32 +274,44 @@ func resolveRestoreRefs(ctx context.Context, src oras.ReadOnlyTarget, specifiedT
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	byTag := make(map[string]int, len(storedRefs))
+	// When tags are specified, entries that are not requested are not checked,
+	// so an unrelated entry in the layout does not block the restore.
+	restoreAll := len(specifiedTags) == 0
+	byTag := make(map[string][]int, len(storedRefs))
 	storedTags := make([]string, len(storedRefs))
 	for i, ref := range storedRefs {
 		tag, err := tagFromRefName(ref)
 		if err != nil {
-			return nil, nil, nil, err
+			if restoreAll {
+				return nil, nil, nil, err
+			}
+			continue
 		}
-		if j, ok := byTag[tag]; ok {
-			return nil, nil, nil, fmt.Errorf("references %q and %q in the backup both restore to tag %q", storedRefs[j], ref, tag)
-		}
-		byTag[tag] = i
+		byTag[tag] = append(byTag[tag], i)
 		storedTags[i] = tag
 	}
 
-	if len(specifiedTags) == 0 {
+	if restoreAll {
+		for _, tag := range storedTags {
+			if matches := byTag[tag]; len(matches) > 1 {
+				return nil, nil, nil, fmt.Errorf("references %q and %q in the backup both restore to tag %q", storedRefs[matches[0]], storedRefs[matches[1]], tag)
+			}
+		}
 		return storedRefs, storedTags, storedRoots, nil
 	}
 	srcRefs = make([]string, 0, len(specifiedTags))
 	roots = make([]ocispec.Descriptor, 0, len(specifiedTags))
 	for _, tag := range specifiedTags {
-		i, ok := byTag[tag]
-		if !ok {
+		matches := byTag[tag]
+		switch len(matches) {
+		case 0:
 			return nil, nil, nil, fmt.Errorf("failed to resolve tag %q: %w", tag, errdef.ErrNotFound)
+		case 1:
+		default:
+			return nil, nil, nil, fmt.Errorf("references %q and %q in the backup both restore to tag %q", storedRefs[matches[0]], storedRefs[matches[1]], tag)
 		}
-		srcRefs = append(srcRefs, storedRefs[i])
-		roots = append(roots, storedRoots[i])
+		srcRefs = append(srcRefs, storedRefs[matches[0]])
+		roots = append(roots, storedRoots[matches[0]])
 	}
 	return srcRefs, specifiedTags, roots, nil
 }
@@ -310,6 +322,9 @@ func resolveRestoreRefs(ctx context.Context, src oras.ReadOnlyTarget, specifiedT
 func tagFromRefName(name string) (string, error) {
 	if !strings.ContainsAny(name, "/:@") {
 		// tag-only reference from a backup created by an earlier version
+		if err := (properties.Reference{Tag: name}).ValidateTag(); err != nil {
+			return "", fmt.Errorf("invalid tag %q in the backup: %w", name, err)
+		}
 		return name, nil
 	}
 	ref, err := properties.NewReference(name)

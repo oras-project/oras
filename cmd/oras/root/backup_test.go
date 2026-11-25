@@ -285,6 +285,51 @@ func Test_doBackup_storesFullReference(t *testing.T) {
 	}
 }
 
+func Test_doBackup_replacesTagOnlyEntry(t *testing.T) {
+	ctx := context.Background()
+	dstRoot := t.TempDir()
+	dst, err := oci.New(dstRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// simulate an output written by an earlier version, which stored only the tag
+	src := newBackupTestSource(t)
+	if err := oras.CopyGraph(ctx, src, dst, mustResolve(t, src, "v1"), oras.DefaultCopyGraphOptions); err != nil {
+		t.Fatal(err)
+	}
+	if err := dst.Tag(ctx, mustResolve(t, src, "v1"), "v1"); err != nil {
+		t.Fatal(err)
+	}
+
+	opts := &backupOptions{output: dstRoot, outputFormat: outputFormatDir, repository: "localhost:5000/example", tags: []string{"v1"}}
+	recorder := &displaytest.CallRecorder{}
+	statusHandler := &displaytest.RecordingBackupStatusHandler{Recorder: recorder}
+	metadataHandler := &displaytest.RecordingBackupMetadataHandler{Recorder: recorder}
+	if err := doBackup(ctx, opts, logrus.New(), src, dst, dstRoot, time.Now(), statusHandler, metadataHandler); err != nil {
+		t.Fatal(err)
+	}
+
+	var refs []string
+	if err := dst.Tags(ctx, "", func(tags []string) error {
+		refs = append(refs, tags...)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"localhost:5000/example:v1"}; !reflect.DeepEqual(refs, want) {
+		t.Errorf("references in backup = %v, want %v", refs, want)
+	}
+}
+
+func mustResolve(t *testing.T, target oras.ReadOnlyTarget, ref string) ocispec.Descriptor {
+	t.Helper()
+	desc, err := target.Resolve(context.Background(), ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return desc
+}
+
 func Test_doBackup_tagsFoundError(t *testing.T) {
 	ctx := context.Background()
 	dstRoot := t.TempDir()

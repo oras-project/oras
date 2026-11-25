@@ -30,6 +30,7 @@ import (
 	"github.com/oras-project/oras-go/v3"
 	"github.com/oras-project/oras-go/v3/content"
 	"github.com/oras-project/oras-go/v3/content/oci"
+	"github.com/oras-project/oras-go/v3/errdef"
 	"github.com/oras-project/oras-go/v3/registry"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -286,6 +287,9 @@ func doBackup(
 		if err != nil {
 			return fmt.Errorf("failed to back up tag %q from %q to %q: %w", tag, opts.repository, dstRoot, oerrors.UnwrapCopyError(err))
 		}
+		if err := untagLegacyRef(ctx, dstOCI, tag); err != nil {
+			return fmt.Errorf("failed to remove tag-only entry %q from %q: %w", tag, dstRoot, err)
+		}
 		if err := metadataHandler.OnArtifactPulled(tag, referrerCount); err != nil {
 			return err
 		}
@@ -296,6 +300,22 @@ func doBackup(
 	}
 	duration := time.Since(startTime)
 	return metadataHandler.OnBackupCompleted(len(tags), opts.output, duration)
+}
+
+// untagLegacyRef removes a tag-only entry for tag from dst. Backups created by
+// earlier versions store only the tag, so backing up into such an output would
+// otherwise leave two entries that restore to the same tag.
+func untagLegacyRef(ctx context.Context, dst oras.GraphTarget, tag string) error {
+	untagger, ok := dst.(interface {
+		Untag(ctx context.Context, reference string) error
+	})
+	if !ok {
+		return nil
+	}
+	if err := untagger.Untag(ctx, tag); err != nil && !errors.Is(err, errdef.ErrNotFound) {
+		return err
+	}
+	return nil
 }
 
 // backupTag copies the artifact identified by the tag from src to dst.
