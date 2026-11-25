@@ -30,6 +30,7 @@ import (
 	"github.com/oras-project/oras-go/v3"
 	"github.com/oras-project/oras-go/v3/content"
 	"github.com/oras-project/oras-go/v3/content/oci"
+	"github.com/oras-project/oras-go/v3/errdef"
 	"github.com/oras-project/oras-go/v3/registry"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -260,6 +261,12 @@ func doBackup(
 	}
 
 	for i, tag := range tags {
+		// Store the full reference (e.g. localhost:5000/repo:v1) in
+		// org.opencontainers.image.ref.name, as described in
+		// docs/proposals/backup-restore-multi.md. The OCI store writes the
+		// reference passed to Tag into that annotation.
+		fullRef := opts.repository + ":" + tag
+
 		referrerCount, err := func() (referrerCount int, retErr error) {
 			trackedDst, err := statusHandler.StartTracking(dstOCI)
 			if err != nil {
@@ -273,12 +280,15 @@ func doBackup(
 			}()
 
 			if opts.includeReferrers {
-				return backupTagWithReferrers(ctx, srcRepo, trackedDst, tag, roots[i], extCopyGraphOpts)
+				return backupTagWithReferrers(ctx, srcRepo, trackedDst, fullRef, roots[i], extCopyGraphOpts)
 			}
-			return 0, backupTag(ctx, srcRepo, trackedDst, tag, roots[i], copyGraphOpts)
+			return 0, backupTag(ctx, srcRepo, trackedDst, fullRef, roots[i], copyGraphOpts)
 		}()
 		if err != nil {
 			return fmt.Errorf("failed to back up tag %q from %q to %q: %w", tag, opts.repository, dstRoot, oerrors.UnwrapCopyError(err))
+		}
+		if err := untagLegacyRef(ctx, dstOCI, tag); err != nil {
+			return fmt.Errorf("failed to remove tag-only entry %q from %q: %w", tag, dstRoot, err)
 		}
 		if err := metadataHandler.OnArtifactPulled(tag, referrerCount); err != nil {
 			return err
@@ -290,6 +300,22 @@ func doBackup(
 	}
 	duration := time.Since(startTime)
 	return metadataHandler.OnBackupCompleted(len(tags), opts.output, duration)
+}
+
+// untagLegacyRef removes a tag-only entry for tag from dst. Backups created by
+// earlier versions store only the tag, so backing up into such an output would
+// otherwise leave two entries that restore to the same tag.
+func untagLegacyRef(ctx context.Context, dst oras.GraphTarget, tag string) error {
+	untagger, ok := dst.(interface {
+		Untag(ctx context.Context, reference string) error
+	})
+	if !ok {
+		return nil
+	}
+	if err := untagger.Untag(ctx, tag); err != nil && !errors.Is(err, errdef.ErrNotFound) {
+		return err
+	}
+	return nil
 }
 
 // backupTag copies the artifact identified by the tag from src to dst.

@@ -16,6 +16,7 @@ limitations under the License.
 package command
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -25,6 +26,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -46,10 +48,26 @@ func verifyBackupTarStructure(tarPath string) {
 	Expect(tarPath).NotTo(BeADirectory())
 }
 
-func compareBackupRef(srcRef, dstRef string) {
+// ociLayoutPath is the flag that reads an OCI layout at a path, taking the
+// reference as a separate argument.
+const ociLayoutPath = "--oci-layout-path"
+
+// compareBackupRef compares the manifest of srcRef with the manifest stored
+// under layoutRef in the backup at layoutPath. Backups store tagged artifacts
+// under their full reference (e.g. localhost:5000/repo:v1), which the
+// --oci-layout <path>:<tag> form cannot address, so the backup is read with
+// --oci-layout-path. layoutRef is a full reference or a digest.
+func compareBackupRef(srcRef, layoutPath, layoutRef string) {
 	srcManifest := ORAS("manifest", "fetch", srcRef).WithDescription("fetch from source to validate").Exec().Out.Contents()
-	dstManifest := ORAS("manifest", "fetch", Flags.Layout, dstRef).WithDescription("fetch from destination OCI layout to validate").Exec().Out.Contents()
+	dstManifest := ORAS("manifest", "fetch", ociLayoutPath, layoutPath, layoutRef).WithDescription("fetch from destination OCI layout to validate").Exec().Out.Contents()
 	Expect(srcManifest).To(Equal(dstManifest))
+}
+
+// backupReferrers returns the digests of the referrers of layoutRef in the
+// backup at layoutPath.
+func backupReferrers(layoutPath, layoutRef string) []string {
+	referrers := ORAS("discover", ociLayoutPath, layoutPath, layoutRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
+	return strings.Split(strings.TrimSpace(string(referrers)), "\n")
 }
 
 func backupTestRepo(text string) string {
@@ -131,8 +149,7 @@ var _ = Describe("ORAS users:", func() {
 			verifyBackupDirectoryStructure(outDir)
 
 			// Verify backed up content
-			dstRef := LayoutRef(outDir, foobar.Tag)
-			compareBackupRef(srcRef, dstRef)
+			compareBackupRef(srcRef, outDir, srcRef)
 		})
 
 		It("should backup an artifact with its referrers to a directory", func() {
@@ -151,11 +168,9 @@ var _ = Describe("ORAS users:", func() {
 			verifyBackupDirectoryStructure(outDir)
 
 			// Verify backed up content
-			dstRef := LayoutRef(outDir, foobar.Tag)
-			compareBackupRef(srcRef, dstRef)
-			referrers := ORAS("discover", Flags.Layout, dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
-			for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
-				compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), LayoutRef(outDir, referrerDgst))
+			compareBackupRef(srcRef, outDir, srcRef)
+			for _, referrerDgst := range backupReferrers(outDir, srcRef) {
+				compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), outDir, referrerDgst)
 			}
 		})
 
@@ -174,8 +189,7 @@ var _ = Describe("ORAS users:", func() {
 			verifyBackupDirectoryStructure(outDir)
 
 			// Verify backed up content
-			dstRef := LayoutRef(outDir, ma.Tag)
-			compareBackupRef(srcRef, dstRef)
+			compareBackupRef(srcRef, outDir, srcRef)
 		})
 
 		It("should successfully backup a multi-arch artifact with referrers to a directory", func() {
@@ -194,11 +208,9 @@ var _ = Describe("ORAS users:", func() {
 			verifyBackupDirectoryStructure(outDir)
 
 			// Verify backed up content
-			dstRef := LayoutRef(outDir, ma.Tag)
-			compareBackupRef(srcRef, dstRef)
-			referrers := ORAS("discover", Flags.Layout, dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
-			for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
-				compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), LayoutRef(outDir, referrerDgst))
+			compareBackupRef(srcRef, outDir, srcRef)
+			for _, referrerDgst := range backupReferrers(outDir, srcRef) {
+				compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), outDir, referrerDgst)
 			}
 		})
 
@@ -229,16 +241,15 @@ var _ = Describe("ORAS users:", func() {
 			verifyBackupDirectoryStructure(outDir)
 
 			// Verify backed up content
-			dstRef := LayoutRef(outDir, tag)
 			// validate that the index is copied
-			compareBackupRef(srcRef, dstRef)
+			compareBackupRef(srcRef, outDir, srcRef)
 			// validate that the child images are copied
-			compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:ab01d6e284e843d51fb5e753904a540f507a62361a5fd7e434e4f27b285ca5c9"), LayoutRef(outDir, "sha256:ab01d6e284e843d51fb5e753904a540f507a62361a5fd7e434e4f27b285ca5c9"))
-			compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:6aa11331ce0c766d6333b60dac98d584d98eea45fa93bbfc9b5bdb915ce3a43f"), LayoutRef(outDir, "sha256:6aa11331ce0c766d6333b60dac98d584d98eea45fa93bbfc9b5bdb915ce3a43f"))
+			compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:ab01d6e284e843d51fb5e753904a540f507a62361a5fd7e434e4f27b285ca5c9"), outDir, "sha256:ab01d6e284e843d51fb5e753904a540f507a62361a5fd7e434e4f27b285ca5c9")
+			compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:6aa11331ce0c766d6333b60dac98d584d98eea45fa93bbfc9b5bdb915ce3a43f"), outDir, "sha256:6aa11331ce0c766d6333b60dac98d584d98eea45fa93bbfc9b5bdb915ce3a43f")
 			// validate that the referrers of the child images are copied
-			compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:359bac7f6a262e0f36e83b6b78ee3cc7a0bb8813e04d330328ca7ca9785e1e0b"), LayoutRef(outDir, "sha256:359bac7f6a262e0f36e83b6b78ee3cc7a0bb8813e04d330328ca7ca9785e1e0b"))
-			compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:938419ae89a9947476bbed93abc5eb7abf7d5708be69679fe6cc4b22afe8fdd5"), LayoutRef(outDir, "sha256:938419ae89a9947476bbed93abc5eb7abf7d5708be69679fe6cc4b22afe8fdd5"))
-			compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:20e7d3a6ce087c54238c18a3428853b50cdaf4478a9d00caa8304119b58ae8a9"), LayoutRef(outDir, "sha256:20e7d3a6ce087c54238c18a3428853b50cdaf4478a9d00caa8304119b58ae8a9"))
+			compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:359bac7f6a262e0f36e83b6b78ee3cc7a0bb8813e04d330328ca7ca9785e1e0b"), outDir, "sha256:359bac7f6a262e0f36e83b6b78ee3cc7a0bb8813e04d330328ca7ca9785e1e0b")
+			compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:938419ae89a9947476bbed93abc5eb7abf7d5708be69679fe6cc4b22afe8fdd5"), outDir, "sha256:938419ae89a9947476bbed93abc5eb7abf7d5708be69679fe6cc4b22afe8fdd5")
+			compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, "sha256:20e7d3a6ce087c54238c18a3428853b50cdaf4478a9d00caa8304119b58ae8a9"), outDir, "sha256:20e7d3a6ce087c54238c18a3428853b50cdaf4478a9d00caa8304119b58ae8a9")
 		})
 
 		It("should successfully backup an image to tar file", func() {
@@ -255,8 +266,7 @@ var _ = Describe("ORAS users:", func() {
 			verifyBackupTarStructure(outTar)
 
 			// Verify backed up content
-			dstRef := LayoutRef(outTar, foobar.Tag)
-			compareBackupRef(srcRef, dstRef)
+			compareBackupRef(srcRef, outTar, srcRef)
 		})
 
 		It("should successfully backup an image to tar file (case insensitive)", func() {
@@ -273,8 +283,7 @@ var _ = Describe("ORAS users:", func() {
 			verifyBackupTarStructure(outTar)
 
 			// Verify backed up content
-			dstRef := LayoutRef(outTar, foobar.Tag)
-			compareBackupRef(srcRef, dstRef)
+			compareBackupRef(srcRef, outTar, srcRef)
 		})
 	})
 
@@ -300,7 +309,8 @@ var _ = Describe("ORAS users:", func() {
 
 			// Verify backed up content
 			for _, tag := range srcTags {
-				compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, tag), LayoutRef(outDir, tag))
+				srcRef := RegistryRef(ZOTHost, ArtifactRepo, tag)
+				compareBackupRef(srcRef, outDir, srcRef)
 			}
 		})
 
@@ -327,11 +337,9 @@ var _ = Describe("ORAS users:", func() {
 			// Verify backed up content
 			for _, tag := range srcTags {
 				srcRef := RegistryRef(ZOTHost, ArtifactRepo, tag)
-				dstRef := LayoutRef(outDir, tag)
-				compareBackupRef(srcRef, dstRef)
-				referrers := ORAS("discover", Flags.Layout, dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
-				for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
-					compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), LayoutRef(outDir, referrerDgst))
+				compareBackupRef(srcRef, outDir, srcRef)
+				for _, referrerDgst := range backupReferrers(outDir, srcRef) {
+					compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), outDir, referrerDgst)
 				}
 			}
 		})
@@ -363,7 +371,7 @@ var _ = Describe("ORAS users:", func() {
 
 			// Verify backed up content
 			for _, tag := range srcTags {
-				compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, tag), LayoutRef(outDir, tag))
+				compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, tag), outDir, RegistryRef(ZOTHost, testRepo, tag))
 			}
 		})
 
@@ -398,11 +406,10 @@ var _ = Describe("ORAS users:", func() {
 			// Verify backed up content
 			for _, tag := range srcTags {
 				srcRef := RegistryRef(ZOTHost, ArtifactRepo, tag)
-				dstRef := LayoutRef(outDir, tag)
-				compareBackupRef(srcRef, dstRef)
-				referrers := ORAS("discover", Flags.Layout, dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
-				for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
-					compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), LayoutRef(outDir, referrerDgst))
+				layoutRef := RegistryRef(ZOTHost, testRepo, tag)
+				compareBackupRef(srcRef, outDir, layoutRef)
+				for _, referrerDgst := range backupReferrers(outDir, layoutRef) {
+					compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), outDir, referrerDgst)
 				}
 			}
 		})
@@ -422,11 +429,9 @@ var _ = Describe("ORAS users:", func() {
 			verifyBackupDirectoryStructure(outDir)
 
 			// Verify backed up content
-			dstRef := LayoutRef(outDir, foobar.Tag)
-			compareBackupRef(srcRef, dstRef)
-			referrers := ORAS("discover", Flags.Layout, dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
-			for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
-				compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), LayoutRef(outDir, referrerDgst))
+			compareBackupRef(srcRef, outDir, srcRef)
+			for _, referrerDgst := range backupReferrers(outDir, srcRef) {
+				compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), outDir, referrerDgst)
 			}
 		})
 
@@ -443,11 +448,9 @@ var _ = Describe("ORAS users:", func() {
 			verifyBackupDirectoryStructure(outDir)
 
 			// Verify backed up content
-			dstRef := LayoutRef(outDir, foobar.Tag)
-			compareBackupRef(srcRef, dstRef)
-			referrers := ORAS("discover", Flags.Layout, dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
-			for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
-				compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), LayoutRef(outDir, referrerDgst))
+			compareBackupRef(srcRef, outDir, srcRef)
+			for _, referrerDgst := range backupReferrers(outDir, srcRef) {
+				compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), outDir, referrerDgst)
 			}
 		})
 	})
@@ -467,7 +470,39 @@ var _ = Describe("ORAS users:", func() {
 			// Verify directory structure was created correctly
 			verifyBackupDirectoryStructure(outDir)
 			// Verify backed up content
-			compareBackupRef(src, LayoutRef(outDir, ma.Tag))
+			compareBackupRef(src, outDir, src)
+		})
+	})
+
+	When("verifying the reference annotation", func() {
+		It("should store the full reference in org.opencontainers.image.ref.name", func() {
+			tmpDir := GinkgoT().TempDir()
+			outDir := filepath.Join(tmpDir, "backup-full-reference")
+			repo := backupTestRepo("full-reference")
+			tag := "v1.0"
+			srcRef := RegistryRef(ZOTHost, repo, tag)
+
+			prepare(RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag), srcRef)
+
+			ORAS("backup", "--output", outDir, srcRef).Exec()
+
+			verifyBackupDirectoryStructure(outDir)
+
+			// Read and verify index.json annotations
+			indexPath := filepath.Join(outDir, "index.json")
+			indexBytes, err := os.ReadFile(indexPath)
+			Expect(err).ToNot(HaveOccurred())
+
+			var index ocispec.Index
+			err = json.Unmarshal(indexBytes, &index)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(index.Manifests).ToNot(BeEmpty())
+
+			// Verify the full reference is stored in ref.name and no title is set
+			annotations := index.Manifests[0].Annotations
+			expectedFullRef := fmt.Sprintf("%s/%s:%s", ZOTHost, repo, tag)
+			Expect(annotations[ocispec.AnnotationRefName]).To(Equal(expectedFullRef))
+			Expect(annotations).ToNot(HaveKey(ocispec.AnnotationTitle))
 		})
 	})
 
