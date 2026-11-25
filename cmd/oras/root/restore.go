@@ -29,6 +29,7 @@ import (
 	"github.com/oras-project/oras-go/v3/content/oci"
 	"github.com/oras-project/oras-go/v3/errdef"
 	"github.com/oras-project/oras-go/v3/registry"
+	"github.com/oras-project/oras-go/v3/registry/remote/properties"
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
@@ -311,12 +312,12 @@ func tagFromRefName(name string) (string, error) {
 		// tag-only reference from a backup created by an earlier version
 		return name, nil
 	}
-	ref, err := registry.ParseReference(name)
+	ref, err := properties.NewReference(name)
 	if err != nil {
 		return "", fmt.Errorf("invalid reference %q in the backup: %w", name, err)
 	}
-	if err := ref.ValidateReferenceAsTag(); err != nil {
-		return "", fmt.Errorf("reference %q in the backup does not have a tag: %w", name, err)
+	if ref.Tag == "" || ref.Digest != "" {
+		return "", fmt.Errorf("reference %q in the backup must have a tag and no digest: %w", name, errdef.ErrInvalidReference)
 	}
-	return ref.Reference, nil
+	return ref.Tag, nil
 }

@@ -234,6 +234,7 @@ func Test_tagFromRefName(t *testing.T) {
 		{name: "registry with port", refName: "localhost:5000/repo:v1", want: "v1"},
 		{name: "nested repository", refName: "registry.example.com/a/b/c:latest", want: "latest"},
 		{name: "digest reference", refName: "localhost:5000/repo@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412", wantErr: true},
+		{name: "tag and digest", refName: "localhost:5000/repo:v1@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412", wantErr: true},
 		{name: "repository without tag", refName: "localhost:5000/repo", wantErr: true},
 		{name: "invalid reference", refName: "localhost:5000/Repo:v1", wantErr: true},
 	}
