@@ -414,7 +414,7 @@ func checkManifestShape(mediaType string, body []byte) error {
 	switch {
 	case isCheckIndex(mediaType) && (!hasIndexShape || hasImageShape):
 		return fmt.Errorf("%w: it is described as %s but its body is not an index", errCheckInvalid, mediaType)
-	case isCheckImageManifest(mediaType) && (hasIndexShape || !hasImageShape):
+	case isCheckImageManifest(mediaType) && (hasIndexShape || (!hasImageShape && fields.MediaType == "")):
 		return fmt.Errorf("%w: it is described as %s but its body is not a manifest", errCheckInvalid, mediaType)
 	}
 	return nil
@@ -458,14 +458,16 @@ func newCheckLayout(layoutPath string) (*checkLayout, error) {
 
 // maxCheckManifestSize is the largest manifest or index that check reads into
 // memory, and the most of a blob that is read to find out what a digest
-// reference points to. Registries do not accept larger manifests.
+// reference points to. It matches the default limit in oras-go.
 const maxCheckManifestSize = 4 * 1024 * 1024
 
 // Resolve finds a manifest in the top-level index by its tag, or by its digest.
 // A digest that is not listed in the top-level index, such as a manifest nested
 // in an index, is looked up in the blob storage.
 func (l *checkLayout) Resolve(ctx context.Context, reference string) (ocispec.Descriptor, error) {
-	for _, desc := range l.manifests {
+	// The last match wins, as it does when oras-go loads the index.
+	for i := len(l.manifests) - 1; i >= 0; i-- {
+		desc := l.manifests[i]
 		if desc.Digest.String() == reference || desc.Annotations[ocispec.AnnotationRefName] == reference {
 			return desc, nil
 		}
@@ -492,7 +494,12 @@ func (l *checkLayout) resolveBlob(ctx context.Context, dgst digest.Digest) (ocis
 	}
 	desc.Size = int64(len(body))
 	if desc.Size > maxCheckManifestSize {
-		// Too big to be a manifest; count the rest to get the real size.
+		// Too big to read as a manifest. If it looks like JSON it may still be
+		// one, and checking only its bytes would skip everything it references.
+		if strings.HasPrefix(strings.TrimSpace(string(body)), "{") {
+			return ocispec.Descriptor{}, fmt.Errorf("%s is larger than the limit of %d bytes and may be a manifest", dgst, maxCheckManifestSize)
+		}
+		// Not a manifest; count the rest to get the real size.
 		rest, err := io.Copy(io.Discard, rc)
 		if err != nil {
 			return ocispec.Descriptor{}, err
@@ -515,7 +522,7 @@ func (l *checkLayout) resolveBlob(ctx context.Context, dgst digest.Digest) (ocis
 		desc.MediaType = fields.MediaType
 	case fields.Manifests != nil:
 		desc.MediaType = ocispec.MediaTypeImageIndex
-	case fields.Config != nil || fields.Layers != nil || fields.Blobs != nil:
+	case fields.Config != nil && fields.Layers != nil:
 		desc.MediaType = ocispec.MediaTypeImageManifest
 	}
 	return desc, nil
