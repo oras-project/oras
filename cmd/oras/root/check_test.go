@@ -37,6 +37,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/oras-project/oras-go/v3"
 	"github.com/oras-project/oras-go/v3/content"
+	"github.com/oras-project/oras-go/v3/content/oci"
 	"github.com/oras-project/oras-go/v3/errdef"
 	"github.com/oras-project/oras-go/v3/registry/remote"
 	"github.com/spf13/cobra"
@@ -692,6 +693,8 @@ func Test_checkManifestShape(t *testing.T) {
 		{"image manifest with its media type", ocispec.MediaTypeImageManifest, `{"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{}}`, false},
 		{"docker manifest", docker.MediaTypeManifest, `{"schemaVersion":2,"mediaType":"application/vnd.docker.distribution.manifest.v2+json","config":{},"layers":[]}`, false},
 		{"artifact manifest", graph.MediaTypeArtifactManifest, `{"mediaType":"application/vnd.oci.artifact.manifest.v1+json","blobs":[]}`, false},
+		{"artifact manifest without blobs", graph.MediaTypeArtifactManifest, `{"mediaType":"application/vnd.oci.artifact.manifest.v1+json"}`, false},
+		{"artifact manifest with no shape", graph.MediaTypeArtifactManifest, `{}`, true},
 		{"index", ocispec.MediaTypeImageIndex, `{"schemaVersion":2,"manifests":[]}`, false},
 		{"docker manifest list", docker.MediaTypeManifestList, `{"schemaVersion":2,"manifests":[]}`, false},
 		{"image manifest with an index body", ocispec.MediaTypeImageManifest, `{"manifests":[]}`, true},
@@ -793,6 +796,78 @@ func Test_checkLayout_resolveNestedDigest(t *testing.T) {
 			t.Errorf("err = %v, out = %q", err, out)
 		}
 	})
+}
+
+func Test_checkLayout_resolveDuplicateTag(t *testing.T) {
+	b := newLayoutBuilder(t)
+	first, _ := b.image(nil, b.blob(testLayerType, []byte("first")))
+	layer := b.blob(testLayerType, []byte("last"))
+	last, _ := b.image(nil, layer)
+	b.tag(first, "v1")
+	b.tag(last, "v1")
+
+	store, err := oci.NewFromFS(context.Background(), os.DirFS(b.dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := store.Resolve(context.Background(), "v1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, path := range map[string]string{"directory": b.dir, "tar archive": b.tarball()} {
+		layout, err := newCheckLayout(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := layout.Resolve(context.Background(), "v1")
+		if err != nil || got.Digest != want.Digest || got.Digest != last.Digest {
+			t.Errorf("%s: Resolve(v1) = %s, %v; want %s, as oras-go resolves it", name, got.Digest, err, want.Digest)
+		}
+	}
+
+	// The artifact that oras-go would use is broken, so the check must fail.
+	if err := os.Remove(b.blobPath(layer)); err != nil {
+		t.Fatal(err)
+	}
+	out, err := runLayoutCheck(t, b.dir, "v1", nil)
+	wantFailure(t, out, err, "Missing")
+}
+
+func Test_checkLayout_resolveImageConfig(t *testing.T) {
+	b := newLayoutBuilder(t)
+	// An image config has a config field too, but it is not a manifest.
+	config := b.json(ocispec.MediaTypeImageConfig, ocispec.Image{Config: ocispec.ImageConfig{Cmd: []string{"sh"}}})
+	manifest := b.json(ocispec.MediaTypeImageManifest, ocispec.Manifest{Versioned: specVersion, Config: config, Layers: []ocispec.Descriptor{}})
+	b.tag(manifest, "v1")
+	out, err := runLayoutCheck(t, b.dir, config.Digest.String(), nil)
+	if err != nil || !strings.Contains(out, "Checked 1 nodes: 1 verified, 0 failed") {
+		t.Errorf("err = %v, out = %q", err, out)
+	}
+}
+
+func Test_checkLayout_resolveOversizedManifest(t *testing.T) {
+	b := newLayoutBuilder(t)
+	// Neither the config nor the layer is stored, so checking only the bytes of
+	// the manifest would be a false pass.
+	missing := ocispec.Descriptor{MediaType: testLayerType, Digest: digest.FromString("not stored"), Size: 10}
+	data, err := json.Marshal(ocispec.Manifest{
+		Versioned: specVersion, MediaType: ocispec.MediaTypeImageManifest, Config: missing, Layers: []ocispec.Descriptor{missing},
+		Annotations: map[string]string{"padding": strings.Repeat("x", maxCheckManifestSize)},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, _ := b.image(nil)
+	b.tag(other, "v1")
+	for name, body := range map[string][]byte{"compact": data, "leading whitespace": append([]byte("\n\t "), data...)} {
+		t.Run(name, func(t *testing.T) {
+			oversized := b.blob(ocispec.MediaTypeImageManifest, body)
+			out, err := runLayoutCheck(t, b.dir, oversized.Digest.String(), nil)
+			if err == nil || !strings.Contains(err.Error(), "may be a manifest") {
+				t.Errorf("err = %v, out = %q; want an error that the blob may be a manifest", err, out)
+			}
+		})
+	}
 }
 
 func Test_checkLayout_resolveLargeBlob(t *testing.T) {
@@ -952,6 +1027,18 @@ func Test_check_otherManifestFormats(t *testing.T) {
 		os.Remove(b.blobPath(blob))
 		out, err := runLayoutCheck(t, b.dir, "v1", nil)
 		wantFailure(t, out, err, "Missing")
+	})
+	t.Run("artifact manifest without blobs", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		subject, _ := b.image(nil)
+		artifact := b.json(graph.MediaTypeArtifactManifest, graph.Artifact{
+			MediaType: graph.MediaTypeArtifactManifest, ArtifactType: "application/vnd.test", Subject: &subject,
+		})
+		b.tag(artifact, "v1")
+		out, err := runLayoutCheck(t, b.dir, "v1", nil)
+		if err != nil || !strings.Contains(out, "Checked 3 nodes: 3 verified, 0 failed") {
+			t.Errorf("err = %v, out = %q", err, out)
+		}
 	})
 	t.Run("an empty index", func(t *testing.T) {
 		b := newLayoutBuilder(t)
