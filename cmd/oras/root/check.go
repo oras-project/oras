@@ -229,6 +229,9 @@ func (c *checker) findSuccessors(ctx context.Context, fetcher content.Fetcher, d
 	if !isCheckManifest(desc.MediaType) {
 		return nil, nil
 	}
+	if desc.Size > maxCheckManifestSize {
+		return nil, fmt.Errorf("%w: a manifest of %d bytes is larger than the limit of %d bytes", errCheckInvalid, desc.Size, maxCheckManifestSize)
+	}
 	body, err := content.FetchAll(ctx, fetcher, desc)
 	if err != nil {
 		return nil, err
@@ -280,7 +283,8 @@ func (c *checker) summarize(report *oras.VerifyGraphReport) error {
 	sortFindings(failures)
 	sortFindings(warnings)
 
-	total := len(report.Verified) + len(report.Failed)
+	// An absent subject is not a node of the target, so it is not counted.
+	total := len(report.Verified) + len(failures)
 	if err := c.printer.Println(fmt.Sprintf("Checked %d nodes: %d verified, %d failed", total, len(report.Verified), len(failures))); err != nil {
 		return err
 	}
@@ -452,9 +456,9 @@ func newCheckLayout(layoutPath string) (*checkLayout, error) {
 	return &checkLayout{ReadOnlyStorage: storage, manifests: index.Manifests}, nil
 }
 
-// maxCheckManifestSize caps how much of a blob is read to find out what a
-// digest reference points to. It is the manifest size limit used elsewhere in
-// oras.
+// maxCheckManifestSize is the largest manifest or index that check reads into
+// memory, and the most of a blob that is read to find out what a digest
+// reference points to. Registries do not accept larger manifests.
 const maxCheckManifestSize = 4 * 1024 * 1024
 
 // Resolve finds a manifest in the top-level index by its tag, or by its digest.

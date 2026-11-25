@@ -354,8 +354,9 @@ func Test_check_subject(t *testing.T) {
 		if err != nil {
 			t.Fatalf("check failed on an absent subject: %v\n%s", err, out)
 		}
-		if got := summary(out); len(got) != 2 || !strings.HasPrefix(got[1], "Warning: the subject "+subject.Digest.String()) {
-			t.Errorf("summary = %q, want a warning for the subject", got)
+		got := summary(out)
+		if len(got) != 2 || got[0] != "Checked 2 nodes: 2 verified, 0 failed" || !strings.HasPrefix(got[1], "Warning: the subject "+subject.Digest.String()) {
+			t.Errorf("summary = %q, want 2 verified nodes and a warning for the subject", got)
 		}
 	})
 	t.Run("corrupt subject fails", func(t *testing.T) {
@@ -815,6 +816,17 @@ func Test_checkLayout_resolveLargeBlob(t *testing.T) {
 	if err != nil || !strings.Contains(out, "Checked 1 nodes: 1 verified, 0 failed") {
 		t.Errorf("err = %v, out = %q", err, out)
 	}
+}
+
+func Test_check_oversizedManifest(t *testing.T) {
+	b := newLayoutBuilder(t)
+	// The descriptor claims a manifest larger than the limit; it is rejected
+	// before any of it is read.
+	huge := ocispec.Descriptor{MediaType: ocispec.MediaTypeImageManifest, Digest: digest.FromString("huge"), Size: maxCheckManifestSize + 1}
+	idx := b.json(ocispec.MediaTypeImageIndex, ocispec.Index{Versioned: specVersion, Manifests: []ocispec.Descriptor{huge}})
+	b.tag(idx, "v1")
+	out, err := runLayoutCheck(t, b.dir, "v1", nil)
+	wantFailure(t, out, err, "Invalid")
 }
 
 func Test_isForeignLayer(t *testing.T) {
