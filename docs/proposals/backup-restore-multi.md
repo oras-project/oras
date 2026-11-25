@@ -18,11 +18,11 @@ Every backup records the full reference (`<registry>/<repository>:<tag>`) of eac
 
 **Out of Scope:** Backing up an entire registry (all repositories) is not supported. For registry-wide backup and replication, use registry-native features (e.g., Harbor replication, ACR geo-replication) or vendor-specific backup tools. Multi-repository backup should be used for intentional, bounded operations where users specify exactly which repositories to backup.
 
-This proposal maintains full backward compatibility with single-repository operations while introducing intuitive, human-centric syntax for multi-repository workflows.
+This proposal keeps existing `oras backup` command lines working and keeps earlier backups restorable, while introducing intuitive, human-centric syntax for multi-repository workflows. `oras restore` changes how its target argument is interpreted (see [Backward Compatibility](#backward-compatibility)).
 
 ## Design Principles
 
-1. **Backward Compatibility**: Existing single-repository command lines continue to work, and backups created by earlier versions can still be restored (see [Backward Compatibility](#backward-compatibility))
+1. **Backward Compatibility**: Existing `oras backup` command lines continue to work, and backups created by earlier versions can still be restored (see [Backward Compatibility](#backward-compatibility))
 2. **Progressive Disclosure**: Simple cases remain simple; complexity is introduced only when needed
 3. **Consistency**: Multi-repository syntax follows established patterns from single-repository design
 4. **Flexibility**: Support for repository mapping and restructuring during restore
@@ -196,7 +196,7 @@ oras restore [flags] --input <path> --rules <rules-file>
 - **Repository mapping**: Complex mappings via rules file
 - **Name preservation**: By default, repository paths and tags from the backup are preserved; only the source registry host is replaced by the target
 - **Flexible targets**: Can restore to different registries than original backup source
-- **Single-repository backups**: When the backup contains exactly one repository, a positional argument is the target repository, as in the current single-repository `oras restore`
+- **Consistent targets**: A single positional argument is always `<target-registry>[/<namespace>]`, however many repositories the backup holds. A backup containing only `docker.io/library/redis` restores to `<target>/library/redis`, the same place it would go in a multi-repository backup. To restore under a different repository name, use a rules file (Mode 3); simpler renaming may be added later
 - **Collision detection**: Before anything is pushed, restore checks that no two source repositories map to the same target repository (see [Restoring Backups from Multiple Registries](#restoring-backups-from-multiple-registries))
 
 ### Restore Modes
@@ -570,15 +570,19 @@ The value is not limited in length by the OCI Image Spec. In practice it is boun
 `oras restore` parses each `org.opencontainers.image.ref.name` value with the ORAS reference parser:
 
 - **Full reference** (all backups created by this version, e.g., `"docker.io/library/alpine:latest"`): The registry, repository and tag are extracted. The registry and repository identify the source for mapping; the tag is used as the destination tag.
-- **Tag-only** (backups created by earlier versions, e.g., `"latest"`): Treated as a tag in a single repository with no recorded source. These backups can only be restored with an explicit target repository, as today.
+- **Tag-only** (backups created by earlier versions, e.g., `"latest"`): Treated as a tag in a single repository with no recorded source. There is no repository path to keep, so the positional argument is the target repository, as today.
 
 **Example:**
 ```bash
 oras backup --output backup.tar docker.io/library/alpine:latest
 
-# Restore to a different registry
-oras restore --input backup.tar registry.mycompany.com/alpine:latest
-# Result: docker.io/library/alpine:latest → registry.mycompany.com/alpine:latest
+# Restore to a different registry; the repository path is kept
+oras restore --input backup.tar registry.mycompany.com
+# Result: docker.io/library/alpine:latest → registry.mycompany.com/library/alpine:latest
+
+# Restore under a namespace
+oras restore --input backup.tar registry.mycompany.com/mirror
+# Result: docker.io/library/alpine:latest → registry.mycompany.com/mirror/library/alpine:latest
 ```
 
 > [!NOTE]
@@ -821,13 +825,14 @@ oras backup --output /backups/critical-apps-$DATE.tar \
 find /backups -name "critical-apps-*.tar" -mtime +7 -delete
 
 # After incident, restore specific version
+# Target the registry: repository paths such as production/frontend are kept
 oras restore --input /backups/critical-apps-20251120.tar \
-  registry.mycompany.com/production \
+  registry.mycompany.com \
   --dry-run  # Verify first
 
 # Then actual restore
 oras restore --input /backups/critical-apps-20251120.tar \
-  registry.mycompany.com/production
+  registry.mycompany.com
 ```
 
 ### Use Case 4: Repository Consolidation
@@ -930,18 +935,26 @@ All existing authentication, TLS, and connection flags continue to work with mul
 
 ## Backward Compatibility
 
-Existing single-repository command lines continue to work:
+Existing single-repository backup command lines continue to work:
 
 ```bash
 oras backup --output backup.tar registry.com/repo:tag
-oras restore --input backup.tar registry.com/repo:tag
 oras backup --output backup.tar registry.com/repo
-oras restore --input backup.tar registry.com/repo
 ```
 
-Multi-repository support is activated only when:
-- Multiple repository arguments are provided
-- A rules file is specified
+**Restore target:** `oras restore` always treats a single positional argument as `<target-registry>[/<namespace>]` and keeps the source repository path under it. This changes existing restore command lines:
+
+```bash
+oras backup --output backup.tar registry.com/team/repo:tag
+oras restore --input backup.tar target.com/team/repo
+# Before: registry.com/team/repo:tag → target.com/team/repo:tag
+# Now:    registry.com/team/repo:tag → target.com/team/repo/team/repo:tag
+
+oras restore --input backup.tar target.com
+# Now:    registry.com/team/repo:tag → target.com/team/repo:tag
+```
+
+Tag-only backups created by earlier versions are the exception: they record no repository path, so the argument remains the target repository.
 
 **Backup format:** `oras backup` and `oras restore` are experimental, and this proposal changes the backup format without an opt-in flag:
 
@@ -950,7 +963,7 @@ Multi-repository support is activated only when:
 - **New backups, old client**: Not supported. Earlier versions use the `ref.name` value directly as the destination tag, which fails for a full reference. Users must upgrade the client that restores.
 - **Other ORAS commands on new backups**: Address artifacts with `--oci-layout-path <path> <full-reference>`; `--oci-layout <path>:<tag>` no longer resolves (see [Inspecting Backup Contents](#inspecting-backup-contents)).
 
-The release notes for the version that ships this change must call out the format change.
+The release notes for the version that ships this change must call out the format change and the new interpretation of the restore target.
 
 ## Summary
 
@@ -963,7 +976,7 @@ Key features:
 - **Repository mapping**: Powerful remapping capabilities for restructuring during restore, with collision detection
 - **Safety features**: Dry-run preview and clear validation
 - **Enterprise-ready**: Credential store support per registry, error recovery, and progress reporting
-- **Backward compatible**: Single-repository command lines unchanged; existing backups remain restorable
+- **Consistent restore targets**: Repository paths are always kept under the restore target; existing backup command lines are unchanged and existing backups remain restorable
 
 **Out of Scope:**
 - **Entire registry backup**: Not supported. Use registry-native replication/backup features for registry-wide operations.
