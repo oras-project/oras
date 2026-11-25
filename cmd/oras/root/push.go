@@ -103,6 +103,9 @@ Example - Push file to the insecure registry:
 Example - Push file to the HTTP registry:
   oras push --plain-http localhost:5000/hello:v1 hi.txt
 
+Example - Push file over HTTPS using HTTP/1.1:
+  oras push --http1.1 registry.example.com/hello:v1 hi.txt
+
 Example - Push repository with manifest annotations:
   oras push --annotation "key=val" localhost:5000/hello:v1
 
@@ -137,6 +140,9 @@ Example - Push file "hi.txt" reproducibly with SOURCE_DATE_EPOCH:
 				return err
 			}
 			if opts.Target.Type == option.TargetTypeOCILayout {
+				if opts.HTTP1Only {
+					return errors.New("--http1.1 requires a registry destination")
+				}
 				if opts.IsOCILayout {
 					if opts.Reference != "" && !strings.Contains(opts.RawReference, "@") {
 						if err := option.ValidateOCILayoutTag(opts.Reference); err != nil {
@@ -188,6 +194,7 @@ Example - Push file "hi.txt" reproducibly with SOURCE_DATE_EPOCH:
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "`path` of image config file")
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().BoolVarP(&opts.force, "force", "", false, "force a deep traversal of the destination graph before tagging the root; useful when the destination is partially populated (e.g. by a registry cache)")
+	cmd.Flags().BoolVar(&opts.HTTP1Only, "http1.1", false, "use HTTP/1.1 for connections to the destination registry")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
 	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")

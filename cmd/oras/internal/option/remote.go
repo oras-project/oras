@@ -92,6 +92,7 @@ type Remote struct {
 	CertFilePath    string
 	KeyFilePath     string
 	Insecure        bool
+	HTTP1Only       bool
 	Configs         []string
 	Username        string
 	secretFromStdin bool
@@ -309,7 +310,7 @@ func (remo *Remote) tlsConfig(transport *properties.Transport) (*tls.Config, err
 	return config, nil
 }
 
-// registryCredentialTransport scopes client certificates and custom headers to a registry origin.
+// registryCredentialTransport scopes transport settings and custom headers to a registry origin.
 type registryCredentialTransport struct {
 	registryScheme    string
 	registry          string
@@ -386,6 +387,34 @@ func splitAuthority(authority, defaultPort string) (host, port string) {
 	return strings.Trim(authority, "[]"), defaultPort
 }
 
+// setRegistryTLSDialer limits client certificates to the registry's TLS connections.
+func setRegistryTLSDialer(transport *http.Transport, registryScheme, registry string) {
+	transport.DialTLSContext = func(ctx context.Context, network, address string) (net.Conn, error) {
+		conn, err := transport.DialContext(ctx, network, address)
+		if err != nil {
+			return nil, err
+		}
+		tlsConfig := transport.TLSClientConfig.Clone()
+		if !sameRegistryOrigin("https", address, registryScheme, registry) {
+			tlsConfig.Certificates = nil
+		}
+		if tlsConfig.ServerName == "" {
+			tlsConfig.ServerName, _ = splitAuthority(address, "443")
+		}
+		tlsConn := tls.Client(conn, tlsConfig)
+		if transport.TLSHandshakeTimeout > 0 {
+			handshakeContext, cancel := context.WithTimeout(ctx, transport.TLSHandshakeTimeout)
+			defer cancel()
+			ctx = handshakeContext
+		}
+		if err := tlsConn.HandshakeContext(ctx); err != nil {
+			_ = conn.Close()
+			return nil, err
+		}
+		return tlsConn, nil
+	}
+}
+
 // authClient assembles a oras auth client.
 func (remo *Remote) authClient(registry string, plainHTTP, debug bool) (client *auth.Client, err error) {
 	return remo.authClientWithProperties(registry, plainHTTP, debug, nil, nil)
@@ -422,32 +451,20 @@ func (remo *Remote) authClientWithProperties(registry string, plainHTTP, debug b
 		sensitiveHeaders = append(sensitiveHeaders, name)
 	}
 	if hasClientCertificate {
-		baseTransport.DialTLSContext = func(ctx context.Context, network, address string) (net.Conn, error) {
-			conn, err := dialContext(ctx, network, address)
-			if err != nil {
-				return nil, err
-			}
-			tlsConfig := baseTransport.TLSClientConfig.Clone()
-			if !sameRegistryOrigin("https", address, registryScheme, registry) {
-				tlsConfig.Certificates = nil
-			}
-			if tlsConfig.ServerName == "" {
-				tlsConfig.ServerName, _ = splitAuthority(address, "443")
-			}
-			tlsConn := tls.Client(conn, tlsConfig)
-			if baseTransport.TLSHandshakeTimeout > 0 {
-				handshakeContext, cancel := context.WithTimeout(ctx, baseTransport.TLSHandshakeTimeout)
-				defer cancel()
-				ctx = handshakeContext
-			}
-			if err := tlsConn.HandshakeContext(ctx); err != nil {
-				_ = conn.Close()
-				return nil, err
-			}
-			return tlsConn, nil
+		setRegistryTLSDialer(baseTransport, registryScheme, registry)
+	}
+	registryBase := baseTransport
+	if remo.HTTP1Only {
+		registryBase = baseTransport.Clone()
+		registryBase.Protocols = new(http.Protocols)
+		registryBase.Protocols.SetHTTP1(true)
+		// The cloned TLS config can still advertise HTTP/2 in ALPN.
+		registryBase.TLSClientConfig.NextProtos = []string{"http/1.1"}
+		if hasClientCertificate {
+			setRegistryTLSDialer(registryBase, registryScheme, registry)
 		}
 	}
-	registryTransport := retry.NewTransport(baseTransport)
+	registryTransport := retry.NewTransport(registryBase)
 	var fallbackTransport http.RoundTripper = registryTransport
 	if hasClientCertificate {
 		withoutCertificate := baseTransport.Clone()
@@ -455,9 +472,11 @@ func (remo *Remote) authClientWithProperties(registry string, plainHTTP, debug b
 		fallbackConfig.Certificates = nil
 		withoutCertificate.TLSClientConfig = fallbackConfig
 		fallbackTransport = retry.NewTransport(withoutCertificate)
+	} else if remo.HTTP1Only {
+		fallbackTransport = retry.NewTransport(baseTransport)
 	}
 	var transport http.RoundTripper = registryTransport
-	if hasClientCertificate || len(sensitiveHeaders) != 0 {
+	if hasClientCertificate || len(sensitiveHeaders) != 0 || remo.HTTP1Only {
 		transport = &registryCredentialTransport{
 			registryScheme:    registryScheme,
 			registry:          registry,

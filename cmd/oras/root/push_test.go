@@ -16,14 +16,22 @@ limitations under the License.
 package root
 
 import (
+	"bytes"
 	"context"
+	"encoding/pem"
 	stderrors "errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	oras "github.com/oras-project/oras-go/v3"
 	"github.com/oras-project/oras-go/v3/content/file"
@@ -35,6 +43,101 @@ import (
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/contentutil"
 )
+
+func Test_pushCmd_http1OnlyRequiresRegistry(t *testing.T) {
+	layout := filepath.Join(t.TempDir(), "layout")
+	cmd := pushCmd()
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetArgs([]string{"--oci-layout", "--http1.1", layout + ":tag"})
+	if err := cmd.Execute(); err == nil || err.Error() != "--http1.1 requires a registry destination" {
+		t.Fatalf("got %v, want --http1.1 requires a registry destination", err)
+	}
+	if _, err := os.Stat(layout); !stderrors.Is(err, os.ErrNotExist) {
+		t.Fatalf("layout stat = %v, want %v", err, os.ErrNotExist)
+	}
+}
+
+func Test_pushCmd_registryUploadProtocol(t *testing.T) {
+	t.Setenv("GODEBUG", os.Getenv("GODEBUG")+",http2client=1,http2server=1")
+
+	payload := []byte("artifact to upload")
+	for _, tt := range []struct {
+		name      string
+		http1Only bool
+		protocol  string
+	}{
+		{name: "default", protocol: "HTTP/2.0"},
+		{name: "http1.1", http1Only: true, protocol: "HTTP/1.1"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			const uploads = "/v2/example/blobs/uploads/"
+			const session = uploads + "session"
+			var uploaded atomic.Bool
+			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Proto != tt.protocol {
+					t.Errorf("%s %s used %s, want %s", r.Method, r.URL.Path, r.Proto, tt.protocol)
+				}
+				switch {
+				case r.Method == http.MethodHead:
+					w.WriteHeader(http.StatusNotFound)
+				case r.Method == http.MethodPost && r.URL.Path == uploads:
+					w.Header().Set("Location", session)
+					w.WriteHeader(http.StatusAccepted)
+				case r.Method == http.MethodPut && (r.URL.Path == session || strings.HasPrefix(r.URL.Path, "/v2/example/manifests/")):
+					body, err := io.ReadAll(r.Body)
+					if err != nil {
+						t.Errorf("read %s request: %v", r.URL.Path, err)
+						w.WriteHeader(http.StatusBadRequest)
+						return
+					}
+					bodyDigest := digest.FromBytes(body).String()
+					if r.URL.Path == session {
+						if got := r.URL.Query().Get("digest"); got != bodyDigest {
+							t.Errorf("upload digest = %s, want %s", got, bodyDigest)
+						}
+						if bytes.Equal(body, payload) {
+							uploaded.Store(true)
+						}
+					}
+					w.Header().Set("Docker-Content-Digest", bodyDigest)
+					w.WriteHeader(http.StatusCreated)
+				default:
+					t.Errorf("unexpected registry request: %s %s", r.Method, r.URL)
+					w.WriteHeader(http.StatusBadRequest)
+				}
+			}))
+			server.EnableHTTP2 = true
+			server.StartTLS()
+			defer server.Close()
+
+			dir := t.TempDir()
+			t.Chdir(dir)
+			cert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw})
+			if err := os.WriteFile("ca.pem", cert, 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile("hello.txt", payload, 0600); err != nil {
+				t.Fatal(err)
+			}
+
+			host := strings.TrimPrefix(server.URL, "https://")
+			args := []string{"--ca-file", "ca.pem", "--registry-config", filepath.Join(dir, "config.json"), host + "/example:test", "hello.txt"}
+			if tt.http1Only {
+				args = append(args, "--http1.1")
+			}
+			cmd := pushCmd()
+			cmd.SetArgs(args)
+			cmd.SetOut(io.Discard)
+			if err := cmd.ExecuteContext(t.Context()); err != nil {
+				t.Fatal(err)
+			}
+			if !uploaded.Load() {
+				t.Error("registry did not receive the artifact bytes")
+			}
+		})
+	}
+}
 
 func Test_runPush_errType(t *testing.T) {
 	// prepare

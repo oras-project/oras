@@ -891,20 +891,31 @@ func TestRemoteNewRegistryScopesClientCertificateToEffectiveHost(t *testing.T) {
 }
 
 func TestRemote_authClientScopesClientCertificateToRegistry(t *testing.T) {
-	sinkCertificate := make(chan bool, 1)
+	t.Setenv("GODEBUG", os.Getenv("GODEBUG")+",http2client=1,http2server=1")
+
+	type observation struct {
+		protocol       string
+		hasCertificate bool
+	}
+	observe := func(r *http.Request) observation {
+		return observation{r.Proto, len(r.TLS.PeerCertificates) > 0}
+	}
+	sinkObservation := make(chan observation, 1)
 	sink := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		sinkCertificate <- len(r.TLS.PeerCertificates) > 0
+		sinkObservation <- observe(r)
 		w.WriteHeader(http.StatusNoContent)
 	}))
+	sink.EnableHTTP2 = true
 	sink.TLS = loadTestingTLSConfig()
 	sink.StartTLS()
 	defer sink.Close()
 
-	sourceCertificate := make(chan bool, 1)
+	sourceObservation := make(chan observation, 1)
 	source := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		sourceCertificate <- len(r.TLS.PeerCertificates) > 0
+		sourceObservation <- observe(r)
 		http.Redirect(w, r, sink.URL, http.StatusFound)
 	}))
+	source.EnableHTTP2 = true
 	source.TLS = loadTestingTLSConfig()
 	source.StartTLS()
 	defer source.Close()
@@ -927,32 +938,46 @@ func TestRemote_authClientScopesClientCertificateToRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	opts := Remote{
-		CACertFilePath: caPath,
-		CertFilePath:   clientCertPath,
-		KeyFilePath:    clientKeyPath,
-	}
-	client, err := opts.authClient(sourceURL.Host, false, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, source.URL, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := resp.Body.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	if !<-sourceCertificate {
-		t.Fatal("client certificate was not sent to the configured registry")
-	}
-	if <-sinkCertificate {
-		t.Fatal("client certificate was sent to a different redirect origin")
+	for _, tt := range []struct {
+		name         string
+		http1Only    bool
+		wantProtocol string
+	}{
+		{name: "default", wantProtocol: "HTTP/2.0"},
+		{name: "http1.1", http1Only: true, wantProtocol: "HTTP/1.1"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := Remote{
+				CACertFilePath: caPath,
+				CertFilePath:   clientCertPath,
+				KeyFilePath:    clientKeyPath,
+				HTTP1Only:      tt.http1Only,
+			}
+			client, err := opts.authClient(sourceURL.Host, false, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, source.URL, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			resp, err := client.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := resp.Body.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if resp.StatusCode != http.StatusNoContent {
+				t.Fatalf("redirect ended with HTTP status %d, want %d", resp.StatusCode, http.StatusNoContent)
+			}
+			if got, want := <-sourceObservation, (observation{tt.wantProtocol, true}); got != want {
+				t.Errorf("registry request = %+v, want %+v", got, want)
+			}
+			if got, want := <-sinkObservation, (observation{"HTTP/2.0", false}); got != want {
+				t.Errorf("redirected request = %+v, want %+v", got, want)
+			}
+		})
 	}
 }
 
