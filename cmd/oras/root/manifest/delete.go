@@ -16,16 +16,18 @@ limitations under the License.
 package manifest
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 
+	"github.com/oras-project/oras-go/v3/errdef"
+	"github.com/oras-project/oras-go/v3/registry/remote/auth"
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/v2/errdef"
-	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/registryutil"
@@ -84,11 +86,20 @@ func deleteManifest(cmd *cobra.Command, opts *deleteOptions) error {
 	if err != nil {
 		return err
 	}
+
+	return doDeleteManifest(ctx, cmd, opts, manifests, display.NewManifestDeleteHandler(opts.Printer, &opts.Target))
+}
+
+func doDeleteManifest(
+	ctx context.Context,
+	cmd *cobra.Command,
+	opts *deleteOptions,
+	manifests option.ResolvableDeleter,
+	metadataHandler metadata.ManifestDeleteHandler,
+) error {
 	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
 		return err
 	}
-
-	metadataHandler := display.NewManifestDeleteHandler(opts.Printer, &opts.Target)
 
 	// add both pull and delete scope hints for dst repository to save potential delete-scope token requests during deleting
 	hints := []string{auth.ActionPull, auth.ActionDelete}
@@ -109,7 +120,7 @@ func deleteManifest(cmd *cobra.Command, opts *deleteOptions) error {
 	}
 
 	prompt := fmt.Sprintf("Are you sure you want to delete the manifest %q and all tags associated with it?", desc.Digest)
-	confirmed, err := opts.AskForConfirmation(os.Stdin, prompt)
+	confirmed, err := opts.AskForConfirmation(cmd.InOrStdin(), prompt)
 	if err != nil {
 		return err
 	}

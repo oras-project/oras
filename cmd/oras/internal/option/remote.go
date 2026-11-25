@@ -23,27 +23,55 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"os"
+	"net/netip"
+	"slices"
 	"strconv"
 	"strings"
-	"sync"
 
+	"github.com/oras-project/oras-go/v3/errdef"
+	"github.com/oras-project/oras-go/v3/registry/remote"
+	"github.com/oras-project/oras-go/v3/registry/remote/auth"
+	"github.com/oras-project/oras-go/v3/registry/remote/credentials"
+	"github.com/oras-project/oras-go/v3/registry/remote/errcode"
+	"github.com/oras-project/oras-go/v3/registry/remote/properties"
+	"github.com/oras-project/oras-go/v3/registry/remote/retry"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"oras.land/oras-go/v2/errdef"
-	"oras.land/oras-go/v2/registry/remote"
-	"oras.land/oras-go/v2/registry/remote/auth"
-	"oras.land/oras-go/v2/registry/remote/credentials"
-	"oras.land/oras-go/v2/registry/remote/errcode"
-	"oras.land/oras-go/v2/registry/remote/retry"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/internal/credential"
 	"oras.land/oras/internal/crypto"
+	"oras.land/oras/internal/logutil"
 	onet "oras.land/oras/internal/net"
+	"oras.land/oras/internal/repository"
 	"oras.land/oras/internal/trace"
 	"oras.land/oras/internal/version"
 )
+
+// ensureAuthCaches binds the remote to the auth cache store of the current
+// command invocation, if one is available.
+func (remo *Remote) ensureAuthCaches(common Common) {
+	if common.authCaches != nil {
+		remo.authCaches = common.authCaches
+	}
+}
+
+// credentialIdentity identifies the credential source of a client. Static
+// credentials are identified by the credential itself; otherwise the
+// credential store is identified by its config paths. The key is held only in
+// memory and is compared directly, so no secret is hashed or encoded.
+type credentialIdentity struct {
+	cred    credentials.Credential
+	configs string
+}
+
+// newCredentialIdentity returns the credential identity of a client.
+func newCredentialIdentity(cred credentials.Credential, configs []string) credentialIdentity {
+	if !cred.IsEmpty() {
+		return credentialIdentity{cred: cred}
+	}
+	return credentialIdentity{configs: strings.Join(configs, "\x00")}
+}
 
 const (
 	caFileFlag                 = "ca-file"
@@ -74,9 +102,10 @@ type Remote struct {
 	applyDistributionSpec bool
 	headerFlags           []string
 	headers               http.Header
-	warned                map[string]*sync.Map
+	warned                map[string]func(remote.Warning)
 	plainHTTP             func() (plainHTTP bool, enforced bool)
 	store                 credentials.Store
+	authCaches            *authCacheStore
 }
 
 // EnableDistributionSpecFlag set distribution specification flag as applicable.
@@ -170,14 +199,29 @@ func (remo *Remote) Parse(cmd *cobra.Command) error {
 
 // readSecret tries to read password or identity token with
 // optional cmd prompt.
-func (remo *Remote) readSecret(cmd *cobra.Command) (err error) {
-	if cmd.Flags().Changed(identityTokenFlag) {
-		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "WARNING! Using --identity-token via the CLI is insecure. Use --identity-token-stdin.")
-	} else if cmd.Flags().Changed(passwordFlag) {
-		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
-	} else if remo.secretFromStdin {
+func (remo *Remote) readSecret(cmd *cobra.Command) error {
+	secretFlags := []struct {
+		flag      string
+		stdinFlag string
+	}{
+		{identityTokenFlag, identityTokenFromStdinFlag},
+		{passwordFlag, passwordFromStdinFlag},
+	}
+	for _, sf := range secretFlags {
+		flagName := remo.flagPrefix + sf.flag
+		if cmd.Flags().Changed(flagName) {
+			stdinName := remo.flagPrefix + sf.stdinFlag
+			if cmd.Flags().Lookup(stdinName) != nil {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "WARNING! Using --%s via the CLI is insecure. Use --%s.\n", flagName, stdinName)
+			} else {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "WARNING! Using --%s via the CLI is insecure.\n", flagName)
+			}
+			return nil
+		}
+	}
+	if remo.secretFromStdin {
 		// Prompt for credential
-		secret, err := io.ReadAll(os.Stdin)
+		secret, err := io.ReadAll(cmd.InOrStdin())
 		if err != nil {
 			return err
 		}
@@ -226,20 +270,37 @@ func (remo *Remote) parseResolve(baseDial onet.DialFunc) (onet.DialFunc, error) 
 	return dialer.DialContext, nil
 }
 
-// tlsConfig assembles the tls config.
-func (remo *Remote) tlsConfig() (*tls.Config, error) {
+// tlsConfig assembles the tls config. Settings from transport, resolved from
+// the containers configuration, are merged with the flags: the flags add CA
+// certificates and replace the client certificate.
+func (remo *Remote) tlsConfig(transport *properties.Transport) (*tls.Config, error) {
 	config := &tls.Config{
 		InsecureSkipVerify: remo.Insecure,
 	}
+	var caFiles []string
+	certFile, keyFile := remo.CertFilePath, remo.KeyFilePath
+	if transport != nil {
+		config.InsecureSkipVerify = config.InsecureSkipVerify || transport.Insecure
+		if transport.CACert != "" {
+			caFiles = append(caFiles, transport.CACert)
+		}
+		caFiles = append(caFiles, transport.CACerts...)
+		if certFile == "" && keyFile == "" {
+			certFile, keyFile = transport.Cert, transport.Key
+		}
+	}
 	if remo.CACertFilePath != "" {
+		caFiles = append(caFiles, remo.CACertFilePath)
+	}
+	if len(caFiles) != 0 {
 		var err error
-		config.RootCAs, err = crypto.LoadCertPool(remo.CACertFilePath)
+		config.RootCAs, err = crypto.LoadCertPool(caFiles...)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if remo.CertFilePath != "" && remo.KeyFilePath != "" {
-		cert, err := tls.LoadX509KeyPair(remo.CertFilePath, remo.KeyFilePath)
+	if certFile != "" && keyFile != "" {
+		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 		if err != nil {
 			return nil, err
 		}
@@ -248,12 +309,105 @@ func (remo *Remote) tlsConfig() (*tls.Config, error) {
 	return config, nil
 }
 
+// registryCredentialTransport scopes client certificates and custom headers to a registry origin.
+type registryCredentialTransport struct {
+	registryScheme    string
+	registry          string
+	registryTransport http.RoundTripper
+	fallbackTransport http.RoundTripper
+	sensitiveHeaders  []string
+}
+
+func (t *registryCredentialTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if sameRegistryOrigin(req.URL.Scheme, req.URL.Host, t.registryScheme, t.registry) {
+		return t.registryTransport.RoundTrip(req)
+	}
+	if len(t.sensitiveHeaders) != 0 {
+		// Clone deep-copies the header map, so the caller's request is untouched.
+		req = req.Clone(req.Context())
+		removeHeaders(req.Header, t.sensitiveHeaders)
+	}
+	return t.fallbackTransport.RoundTrip(req)
+}
+
+func removeHeaders(header http.Header, names []string) {
+	for key := range header {
+		for _, name := range names {
+			if strings.EqualFold(key, name) {
+				delete(header, key)
+				break
+			}
+		}
+	}
+}
+
+func sameRegistryOrigin(scheme, authority, registryScheme, registry string) bool {
+	if !strings.EqualFold(scheme, registryScheme) {
+		return false
+	}
+	defaultPort := "443"
+	if strings.EqualFold(scheme, "http") {
+		defaultPort = "80"
+	}
+	host, port := splitAuthority(authority, defaultPort)
+	registryHost, registryPort := splitAuthority(registry, defaultPort)
+	return sameHost(host, registryHost) && port == registryPort
+}
+
+// sameHost reports whether two host components denote the same host. IP
+// literals are compared by parsed address so that equivalent IPv6 spellings
+// (for example "::1" and "0:0:0:0:0:0:0:1") match, while zone identifiers,
+// which are case-sensitive, must be identical. DNS names are compared
+// case-insensitively.
+func sameHost(host, registryHost string) bool {
+	addr, err := netip.ParseAddr(host)
+	if err != nil {
+		// Not an IP literal: compare as a DNS name.
+		if _, err := netip.ParseAddr(registryHost); err == nil {
+			return false
+		}
+		return strings.EqualFold(host, registryHost)
+	}
+	registryAddr, err := netip.ParseAddr(registryHost)
+	if err != nil {
+		return false
+	}
+	return addr == registryAddr
+}
+
+func splitAuthority(authority, defaultPort string) (host, port string) {
+	host, port, err := net.SplitHostPort(authority)
+	if err == nil {
+		if port == "" {
+			port = defaultPort
+		}
+		return host, port
+	}
+	return strings.Trim(authority, "[]"), defaultPort
+}
+
 // authClient assembles a oras auth client.
-func (remo *Remote) authClient(_ string, debug bool) (client *auth.Client, err error) {
-	config, err := remo.tlsConfig()
+func (remo *Remote) authClient(registry string, plainHTTP, debug bool) (client *auth.Client, err error) {
+	return remo.authClientWithProperties(registry, plainHTTP, debug, nil, nil)
+}
+
+// authClientWithProperties assembles a oras auth client, applying the
+// registry properties and credential fallback resolved from the containers
+// configuration when they are not nil.
+func (remo *Remote) authClientWithProperties(registry string, plainHTTP, debug bool, props *properties.Registry, fallbackStore credentials.Store) (client *auth.Client, err error) {
+	var transportProps *properties.Transport
+	if props != nil {
+		transportProps = &props.Transport
+	}
+	config, err := remo.tlsConfig(transportProps)
 	if err != nil {
 		return nil, err
 	}
+	registryScheme := "https"
+	if plainHTTP {
+		registryScheme = "http"
+	}
+	hasClientCertificate := len(config.Certificates) != 0
 	baseTransport := http.DefaultTransport.(*http.Transport).Clone()
 	baseTransport.TLSClientConfig = config
 	dialContext, err := remo.parseResolve(baseTransport.DialContext)
@@ -261,42 +415,128 @@ func (remo *Remote) authClient(_ string, debug bool) (client *auth.Client, err e
 		return nil, err
 	}
 	baseTransport.DialContext = dialContext
-	client = &auth.Client{
-		Client: &http.Client{
-			// http.RoundTripper with a retry using the DefaultPolicy
-			// see: https://pkg.go.dev/oras.land/oras-go/v2/registry/remote/retry#Policy
-			Transport: retry.NewTransport(baseTransport),
-		},
-		Cache:  auth.NewCache(),
-		Header: remo.headers,
+
+	// sensitiveHeaders are the custom --header names supplied for this registry.
+	sensitiveHeaders := make([]string, 0, len(remo.headers))
+	for name := range remo.headers {
+		sensitiveHeaders = append(sensitiveHeaders, name)
 	}
-	client.SetUserAgent("oras/" + version.GetVersion())
-	if debug {
-		client.Client.Transport = trace.NewTransport(client.Client.Transport)
+	if hasClientCertificate {
+		baseTransport.DialTLSContext = func(ctx context.Context, network, address string) (net.Conn, error) {
+			conn, err := dialContext(ctx, network, address)
+			if err != nil {
+				return nil, err
+			}
+			tlsConfig := baseTransport.TLSClientConfig.Clone()
+			if !sameRegistryOrigin("https", address, registryScheme, registry) {
+				tlsConfig.Certificates = nil
+			}
+			if tlsConfig.ServerName == "" {
+				tlsConfig.ServerName, _ = splitAuthority(address, "443")
+			}
+			tlsConn := tls.Client(conn, tlsConfig)
+			if baseTransport.TLSHandshakeTimeout > 0 {
+				handshakeContext, cancel := context.WithTimeout(ctx, baseTransport.TLSHandshakeTimeout)
+				defer cancel()
+				ctx = handshakeContext
+			}
+			if err := tlsConn.HandshakeContext(ctx); err != nil {
+				_ = conn.Close()
+				return nil, err
+			}
+			return tlsConn, nil
+		}
+	}
+	registryTransport := retry.NewTransport(baseTransport)
+	var fallbackTransport http.RoundTripper = registryTransport
+	if hasClientCertificate {
+		withoutCertificate := baseTransport.Clone()
+		fallbackConfig := config.Clone()
+		fallbackConfig.Certificates = nil
+		withoutCertificate.TLSClientConfig = fallbackConfig
+		fallbackTransport = retry.NewTransport(withoutCertificate)
+	}
+	var transport http.RoundTripper = registryTransport
+	if hasClientCertificate || len(sensitiveHeaders) != 0 {
+		transport = &registryCredentialTransport{
+			registryScheme:    registryScheme,
+			registry:          registry,
+			registryTransport: registryTransport,
+			fallbackTransport: fallbackTransport,
+			sensitiveHeaders:  sensitiveHeaders,
+		}
 	}
 
 	cred := remo.Credential()
-	if cred != auth.EmptyCredential {
-		client.Credential = func(_ context.Context, _ string) (auth.Credential, error) {
+	if remo.authCaches == nil {
+		remo.authCaches = newAuthCacheStore()
+	}
+	cache := remo.authCaches.cache(newCredentialIdentity(cred, remo.Configs))
+
+	client = &auth.Client{
+		Client: &http.Client{
+			// http.RoundTripper with a retry using the DefaultPolicy
+			// see: https://pkg.go.dev/github.com/oras-project/oras-go/v3/registry/remote/retry#Policy
+			Transport: transport,
+		},
+		Cache:  cache,
+		Header: remo.headers.Clone(),
+	}
+	client.SetUserAgent("oras/" + version.GetVersion())
+	if debug {
+		client.Client.Transport = trace.NewTransport(client.Client.Transport, sensitiveHeaders...)
+	}
+	// oras-go v3 defaults to the OAuth2 password grant for username/password
+	// credentials. Keep the v2 behavior of the distribution-spec token flow,
+	// which is the only flow some registries implement. Set after SetUserAgent
+	// so the fetcher captures the populated header.
+	client.TokenFetcher = auth.NewCompositeTokenFetcher(client.Client, client.Header, client.ClientID, true)
+	if props != nil {
+		if props.Attributes.TokenFlow == properties.TokenFlowOAuth2 {
+			// registries.conf asked for the OAuth2 flow without a fallback.
+			fetcher := auth.NewCompositeTokenFetcher(client.Client, client.Header, client.ClientID, false)
+			fetcher.StrictOAuth2 = true
+			client.TokenFetcher = fetcher
+		}
+		client.BlockedRealmPrefixes = slices.Clone(props.Attributes.BlockedRealmPrefixes)
+	}
+
+	if !cred.IsEmpty() {
+		client.CredentialFunc = func(_ context.Context, _ properties.Resource) (credentials.Credential, error) {
 			return cred, nil
 		}
 	} else {
-		var err error
-		remo.store, err = credential.NewStore(remo.Configs...)
+		store, err := remo.credentialStore()
 		if err != nil {
 			return nil, err
 		}
-		client.Credential = credentials.Credential(remo.store)
+		if fallbackStore != nil {
+			store = credentials.NewStoreWithFallbacks(store, fallbackStore)
+		}
+		client.CredentialFunc = remote.NewCredentialFunc(store)
 	}
+
 	return
+}
+
+func (remo *Remote) credentialStore() (credentials.Store, error) {
+	if remo.store == nil {
+		store, err := credential.NewStore(remo.Configs...)
+		if err != nil {
+			return nil, err
+		}
+		remo.store = store
+	}
+	return remo.store, nil
 }
 
 // ConfigPath returns the config path of the credential store.
 func (remo *Remote) ConfigPath() (string, error) {
-	if remo.store == nil {
-		return "", errors.New("no credential store initialized")
+	store, err := remo.credentialStore()
+	if err != nil {
+		return "", err
 	}
-	if ds, ok := remo.store.(*credentials.DynamicStore); ok {
+	if ds, ok := store.(*credentials.DynamicStore); ok {
 		return ds.ConfigPath(), nil
 	}
 	return "", errors.New("store doesn't support getting config path")
@@ -320,37 +560,41 @@ func (remo *Remote) parseCustomHeaders() error {
 }
 
 // Credential returns a credential based on the remote options.
-func (remo *Remote) Credential() auth.Credential {
+func (remo *Remote) Credential() credentials.Credential {
 	return credential.Credential(remo.Username, remo.Secret)
 }
 
-func (remo *Remote) handleWarning(registry string, logger logrus.FieldLogger) func(warning remote.Warning) {
+// warningHandler returns the warning handler for registry. Handlers are cached
+// per registry so that each distinct warning is logged once per registry.
+func (remo *Remote) warningHandler(registry string, logger logrus.FieldLogger) func(warning remote.Warning) {
 	if remo.warned == nil {
-		remo.warned = make(map[string]*sync.Map)
+		remo.warned = make(map[string]func(remote.Warning))
 	}
-	warned := remo.warned[registry]
-	if warned == nil {
-		warned = &sync.Map{}
-		remo.warned[registry] = warned
+	handler := remo.warned[registry]
+	if handler == nil {
+		handler = remote.NewWarningLogger(registry, logutil.NewSlogLogger(logger))
+		remo.warned[registry] = handler
 	}
-	logger = logger.WithField("registry", registry)
-	return func(warning remote.Warning) {
-		if _, loaded := warned.LoadOrStore(warning.WarningValue, struct{}{}); !loaded {
-			logger.Warn(warning.Text)
-		}
-	}
+	return handler
 }
 
 // NewRegistry assembles a oras remote registry.
 func (remo *Remote) NewRegistry(registry string, common Common, logger logrus.FieldLogger) (reg *remote.Registry, err error) {
+	if err = repository.RejectScheme(registry); err != nil {
+		return nil, err
+	}
+	if containersConfigEnabled() {
+		return remo.newConfiguredRegistry(registry, common, logger)
+	}
 	reg, err = remote.NewRegistry(registry)
 	if err != nil {
 		return nil, err
 	}
 	registry = reg.Reference.Registry
 	reg.PlainHTTP = remo.isPlainHTTP(registry)
-	reg.HandleWarning = remo.handleWarning(registry, logger)
-	if reg.Client, err = remo.authClient(registry, common.Debug); err != nil {
+	reg.HandleWarning = remo.warningHandler(registry, logger)
+	remo.ensureAuthCaches(common)
+	if reg.Client, err = remo.authClient(reg.Reference.Host(), reg.PlainHTTP, common.Debug); err != nil {
 		return nil, err
 	}
 	return
@@ -358,6 +602,12 @@ func (remo *Remote) NewRegistry(registry string, common Common, logger logrus.Fi
 
 // NewRepository assembles a oras remote repository.
 func (remo *Remote) NewRepository(reference string, common Common, logger logrus.FieldLogger) (repo *remote.Repository, err error) {
+	if err = repository.RejectScheme(reference); err != nil {
+		return nil, err
+	}
+	if containersConfigEnabled() {
+		return remo.newConfiguredRepository(reference, common, logger)
+	}
 	repo, err = remote.NewRepository(reference)
 	if err != nil {
 		if errors.Is(err, errdef.ErrInvalidReference) {
@@ -365,17 +615,16 @@ func (remo *Remote) NewRepository(reference string, common Common, logger logrus
 		}
 		return nil, err
 	}
-	registry := repo.Reference.Registry
-	repo.PlainHTTP = remo.isPlainHTTP(registry)
-	repo.HandleWarning = remo.handleWarning(registry, logger)
-	if repo.Client, err = remo.authClient(registry, common.Debug); err != nil {
+	registry := repo.Registry.Reference.Registry
+	repo.Registry.PlainHTTP = remo.isPlainHTTP(registry)
+	repo.Registry.HandleWarning = remo.warningHandler(registry, logger)
+	remo.ensureAuthCaches(common)
+	if repo.Registry.Client, err = remo.authClient(repo.Reference().Host(), repo.Registry.PlainHTTP, common.Debug); err != nil {
 		return nil, err
 	}
 	repo.SkipReferrersGC = true
 	if remo.ReferrersAPI != ReferrersStateUnknown {
-		if err := repo.SetReferrersCapability(remo.ReferrersAPI == ReferrersStateSupported); err != nil {
-			return nil, err
-		}
+		repo.SetReferrersCapability(remo.ReferrersAPI == ReferrersStateSupported)
 	}
 	return
 }

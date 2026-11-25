@@ -1,5 +1,3 @@
-//go:build !windows && !darwin
-
 /*
 Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,120 +16,99 @@ limitations under the License.
 package console
 
 import (
+	"bytes"
+	"errors"
 	"os"
 	"testing"
-
-	containerd "github.com/containerd/console"
-	"oras.land/oras/internal/testutils"
 )
 
-func givenConsole(t *testing.T) (c Console, pty containerd.Console) {
-	t.Helper()
-	pty, _, err := containerd.NewPty()
-	if err != nil {
-		t.Fatal(err)
-	}
+var errFake = errors.New("fake size error")
 
-	c = &console{
-		Console: pty,
-	}
-	return c, pty
+// fakeTerminal is an in-memory terminal used to exercise the cursor and escape
+// code logic without a real terminal.
+type fakeTerminal struct {
+	bytes.Buffer
+	height int
+	width  int
+	err    error
 }
 
-func givenTestConsole(t *testing.T) (c Console, pty containerd.Console, tty *os.File) {
-	t.Helper()
-	var err error
-	pty, tty, err = testutils.NewPty()
-	if err != nil {
-		t.Fatal(err)
-	}
-	c, err = NewConsole(tty)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return
+func (f *fakeTerminal) size() (height, width int, err error) {
+	return f.height, f.width, f.err
 }
 
-func validateSize(t *testing.T, gotWidth, gotHeight, wantWidth, wantHeight int) {
-	t.Helper()
-	if gotWidth != wantWidth {
-		t.Errorf("Console.Size() gotWidth = %v, want %v", gotWidth, wantWidth)
-	}
-	if gotHeight != wantHeight {
-		t.Errorf("Console.Size() gotHeight = %v, want %v", gotHeight, wantHeight)
-	}
+func newFakeConsole(ft *fakeTerminal) *console {
+	return &console{term: ft}
 }
 
 func TestNewConsole(t *testing.T) {
-	_, err := NewConsole(os.Stdin)
-	if err == nil {
-		t.Error("expected error creating bogus console")
+	if _, err := NewConsole(nil); err == nil {
+		t.Error("expected error creating console from nil file")
+	}
+	c, err := NewConsole(os.Stdin)
+	if err != nil {
+		t.Errorf("unexpected error creating console: %v", err)
+	}
+	if c == nil {
+		t.Error("expected a non-nil console")
 	}
 }
 
 func TestConsole_GetHeightWidth(t *testing.T) {
-	c, pty := givenConsole(t)
-
-	// minimal width and height
-	gotHeight, gotWidth := c.GetHeightWidth()
-	validateSize(t, gotWidth, gotHeight, MinWidth, MinHeight)
-
-	// zero width
-	_ = pty.Resize(containerd.WinSize{Width: 0, Height: MinHeight})
-	gotHeight, gotWidth = c.GetHeightWidth()
-	validateSize(t, gotWidth, gotHeight, MinWidth, MinHeight)
-
-	// zero height
-	_ = pty.Resize(containerd.WinSize{Width: MinWidth, Height: 0})
-	gotHeight, gotWidth = c.GetHeightWidth()
-	validateSize(t, gotWidth, gotHeight, MinWidth, MinHeight)
-
-	// valid zero and height
-	_ = pty.Resize(containerd.WinSize{Width: 200, Height: 100})
-	gotHeight, gotWidth = c.GetHeightWidth()
-	validateSize(t, gotWidth, gotHeight, 200, 100)
-}
-
-func TestConsole_NewRow(t *testing.T) {
-	c, pty, tty := givenTestConsole(t)
-
-	c.NewRow()
-
-	err := testutils.MatchPty(pty, tty, "\x1b8\r\n\x1b7")
-	if err != nil {
-		t.Fatalf("NewRow output error: %v", err)
+	tests := []struct {
+		name                  string
+		ft                    *fakeTerminal
+		wantHeight, wantWidth int
+	}{
+		{"size error falls back to minimum", &fakeTerminal{err: errFake}, MinHeight, MinWidth},
+		{"below minimum is clamped", &fakeTerminal{height: 1, width: 1}, MinHeight, MinWidth},
+		{"width below minimum is clamped", &fakeTerminal{height: 100, width: 1}, 100, MinWidth},
+		{"height below minimum is clamped", &fakeTerminal{height: 1, width: 200}, MinHeight, 200},
+		{"valid size is preserved", &fakeTerminal{height: 100, width: 200}, 100, 200},
 	}
-}
-
-func TestConsole_OutputTo(t *testing.T) {
-	c, pty, tty := givenTestConsole(t)
-
-	c.OutputTo(1, "test string")
-
-	err := testutils.MatchPty(pty, tty, "\x1b8\x1b[1Ftest string\x1b[0m\r\n\x1b[0K")
-	if err != nil {
-		t.Fatalf("OutputTo output error: %v", err)
-	}
-}
-
-func TestConsole_Restore(t *testing.T) {
-	c, pty, tty := givenTestConsole(t)
-
-	c.Restore()
-
-	err := testutils.MatchPty(pty, tty, "\x1b8\x1b[0G\x1b[2K\x1b[?25h")
-	if err != nil {
-		t.Fatalf("Restore output error: %v", err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := newFakeConsole(tt.ft)
+			gotHeight, gotWidth := c.GetHeightWidth()
+			if gotHeight != tt.wantHeight || gotWidth != tt.wantWidth {
+				t.Errorf("GetHeightWidth() = (%d, %d), want (%d, %d)", gotHeight, gotWidth, tt.wantHeight, tt.wantWidth)
+			}
+		})
 	}
 }
 
 func TestConsole_Save(t *testing.T) {
-	c, pty, tty := givenTestConsole(t)
-
+	ft := &fakeTerminal{}
+	c := newFakeConsole(ft)
 	c.Save()
+	if got, want := ft.String(), "\x1b[?25l\x1b7\x1b[0m"; got != want {
+		t.Errorf("Save() = %q, want %q", got, want)
+	}
+}
 
-	err := testutils.MatchPty(pty, tty, "\x1b[?25l\x1b7\x1b[0m")
-	if err != nil {
-		t.Fatalf("Save output error: %v", err)
+func TestConsole_NewRow(t *testing.T) {
+	ft := &fakeTerminal{}
+	c := newFakeConsole(ft)
+	c.NewRow()
+	if got, want := ft.String(), "\x1b8\n\x1b7"; got != want {
+		t.Errorf("NewRow() = %q, want %q", got, want)
+	}
+}
+
+func TestConsole_OutputTo(t *testing.T) {
+	ft := &fakeTerminal{}
+	c := newFakeConsole(ft)
+	c.OutputTo(1, "test string")
+	if got, want := ft.String(), "\x1b8\x1b[1Ftest string\x1b[0m\n\x1b[0K"; got != want {
+		t.Errorf("OutputTo() = %q, want %q", got, want)
+	}
+}
+
+func TestConsole_Restore(t *testing.T) {
+	ft := &fakeTerminal{}
+	c := newFakeConsole(ft)
+	c.Restore()
+	if got, want := ft.String(), "\x1b8\x1b[0G\x1b[2K\x1b[?25h"; got != want {
+		t.Errorf("Restore() = %q, want %q", got, want)
 	}
 }

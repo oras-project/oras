@@ -24,7 +24,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
-	"oras.land/oras-go/v2/registry"
+	"github.com/oras-project/oras-go/v3/registry"
 )
 
 // ORASPath points to the to-be-tested oras binary.
@@ -120,11 +120,25 @@ func init() {
 		}
 
 		// Login
-		cmd := exec.Command(ORASPath, "login", Host, "-u", Username, "-p", Password)
-		gomega.Expect(cmd.Run()).ShouldNot(gomega.HaveOccurred())
-		cmd = exec.Command(ORASPath, "login", FallbackHost, "-u", Username, "-p", Password)
-		gomega.Expect(cmd.Run()).ShouldNot(gomega.HaveOccurred())
-		cmd = exec.Command(ORASPath, "login", ZOTHost, "-u", Username, "-p", Password)
-		gomega.Expect(cmd.Run()).ShouldNot(gomega.HaveOccurred())
+		cmd := exec.Command(ORASPath, "login", Host, "-u", Username, "-p", Password, "--plain-http")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Login to %s failed:\n%s\n", Host, string(output))
+		}
+		gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+
+		cmd = exec.Command(ORASPath, "login", FallbackHost, "-u", Username, "-p", Password, "--plain-http")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Login to %s failed:\n%s\n", FallbackHost, string(output))
+		}
+		gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+
+		cmd = exec.Command(ORASPath, "login", ZOTHost, "-u", Username, "-p", Password, "--plain-http")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Login to %s failed:\n%s\n", ZOTHost, string(output))
+		}
+		gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 	})
 }

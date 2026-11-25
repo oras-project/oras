@@ -25,8 +25,9 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras-go/v2"
+	"github.com/oras-project/oras-go/v3"
 	"oras.land/oras/cmd/oras/internal/display/status"
+	"oras.land/oras/cmd/oras/root/manifest/common"
 )
 
 type testReadOnlyTarget struct {
@@ -173,6 +174,31 @@ func Test_enrichDescriptor(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:   "child manifest, non-image config with platform fields",
+			target: NewTestReadOnlyTarget(`{"architecture":"testarch","os":"testos"}`),
+			manifestBytes: []byte(`
+		        {
+		            "schemaVersion": 2,
+		            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+		            "artifactType": "application/vnd.example",
+		            "config": {
+		                "mediaType": "application/vnd.example.config+json",
+		                "digest": "sha256:5fefde2b739e2ff1976ecea4fb4f5e4827a1c424e9b1fb147ba5fd21b9197422",
+		                "size": 41
+		            },
+		            "layers": []
+		        }
+		    `),
+			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
+			checkDesc: func(t *testing.T, gotDesc, _ ocispec.Descriptor) {
+				t.Helper()
+				if gotDesc.Platform != nil {
+					t.Errorf("Platform = %#v, want nil", gotDesc.Platform)
+				}
+			},
+			wantErr: false,
+		},
+		{
 			name:   "child manifest, valid with platform",
 			target: NewTestReadOnlyTarget(`{"architecture":"testarch","os":"testos"}`),
 			manifestBytes: []byte(`
@@ -197,6 +223,34 @@ func Test_enrichDescriptor(t *testing.T) {
 				if got, want := gotDesc.ArtifactType, "application/vnd.example"; got != want {
 					t.Errorf("ArtifactType = %s, want %s", got, want)
 				}
+				wantPlatform := &ocispec.Platform{
+					Architecture: "testarch",
+					OS:           "testos",
+				}
+				if !reflect.DeepEqual(gotDesc.Platform, wantPlatform) {
+					t.Errorf("Platform = %#v, want %#v", gotDesc.Platform, wantPlatform)
+				}
+			},
+			wantErr: false,
+		},
+		{
+			name:   "child manifest, docker config with platform",
+			target: NewTestReadOnlyTarget(`{"architecture":"testarch","os":"testos"}`),
+			manifestBytes: []byte(`
+				{
+					"schemaVersion": 2,
+					"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+					"config": {
+						"mediaType": "application/vnd.docker.container.image.v1+json",
+						"digest": "sha256:5fefde2b739e2ff1976ecea4fb4f5e4827a1c424e9b1fb147ba5fd21b9197422",
+						"size": 41
+					},
+					"layers": []
+				}
+			`),
+			manifestMediaType: "application/vnd.docker.distribution.manifest.v2+json",
+			checkDesc: func(t *testing.T, gotDesc, _ ocispec.Descriptor) {
+				t.Helper()
 				wantPlatform := &ocispec.Platform{
 					Architecture: "testarch",
 					OS:           "testos",
@@ -239,6 +293,102 @@ func Test_enrichDescriptor(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:   "old-style artifact, artifactType falls back to config mediaType",
+			target: NewTestReadOnlyTarget(`intentionally not valid JSON`),
+			manifestBytes: []byte(`
+				{
+					"schemaVersion": 2,
+					"mediaType": "application/vnd.oci.image.manifest.v1+json",
+					"config": {
+						"mediaType": "application/vnd.example.config",
+						"digest": "sha256:dc889043956f34871cc04ae96e03efc29dfe2f582c26195a72dd4827f4dd830d",
+						"size": 28
+					},
+					"layers": []
+				}
+			`),
+			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
+			checkDesc: func(t *testing.T, gotDesc, _ ocispec.Descriptor) {
+				t.Helper()
+				if got, want := gotDesc.ArtifactType, "application/vnd.example.config"; got != want {
+					t.Errorf("ArtifactType = %s, want %s", got, want)
+				}
+			},
+			wantErr: false,
+		},
+		{
+			name:   "empty artifactType with OCI image config stays empty",
+			target: NewTestReadOnlyTarget(`intentionally not valid JSON`),
+			manifestBytes: []byte(`
+				{
+					"schemaVersion": 2,
+					"mediaType": "application/vnd.oci.image.manifest.v1+json",
+					"config": {
+						"mediaType": "application/vnd.oci.image.config.v1+json",
+						"digest": "sha256:dc889043956f34871cc04ae96e03efc29dfe2f582c26195a72dd4827f4dd830d",
+						"size": 28
+					},
+					"layers": []
+				}
+			`),
+			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
+			checkDesc: func(t *testing.T, gotDesc, _ ocispec.Descriptor) {
+				t.Helper()
+				if got := gotDesc.ArtifactType; got != "" {
+					t.Errorf("ArtifactType = %q, want empty", got)
+				}
+			},
+			wantErr: false,
+		},
+		{
+			name:   "empty artifactType with empty JSON config stays empty",
+			target: NewTestReadOnlyTarget(`intentionally not valid JSON`),
+			manifestBytes: []byte(`
+				{
+					"schemaVersion": 2,
+					"mediaType": "application/vnd.oci.image.manifest.v1+json",
+					"config": {
+						"mediaType": "application/vnd.oci.empty.v1+json",
+						"digest": "sha256:dc889043956f34871cc04ae96e03efc29dfe2f582c26195a72dd4827f4dd830d",
+						"size": 28
+					},
+					"layers": []
+				}
+			`),
+			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
+			checkDesc: func(t *testing.T, gotDesc, _ ocispec.Descriptor) {
+				t.Helper()
+				if got := gotDesc.ArtifactType; got != "" {
+					t.Errorf("ArtifactType = %q, want empty", got)
+				}
+			},
+			wantErr: false,
+		},
+		{
+			name:   "empty artifactType with docker image config stays empty",
+			target: NewTestReadOnlyTarget(`intentionally not valid JSON`),
+			manifestBytes: []byte(`
+				{
+					"schemaVersion": 2,
+					"mediaType": "application/vnd.oci.image.manifest.v1+json",
+					"config": {
+						"mediaType": "application/vnd.docker.container.image.v1+json",
+						"digest": "sha256:dc889043956f34871cc04ae96e03efc29dfe2f582c26195a72dd4827f4dd830d",
+						"size": 28
+					},
+					"layers": []
+				}
+			`),
+			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
+			checkDesc: func(t *testing.T, gotDesc, _ ocispec.Descriptor) {
+				t.Helper()
+				if got := gotDesc.ArtifactType; got != "" {
+					t.Errorf("ArtifactType = %q, want empty", got)
+				}
+			},
+			wantErr: false,
+		},
+		{
 			name:              "child of unrecognized type",
 			target:            NewTestReadOnlyTarget("(unused)"),
 			manifestBytes:     []byte(`{}`),
@@ -263,6 +413,22 @@ func Test_enrichDescriptor(t *testing.T) {
 			target:            NewTestReadOnlyTarget(`unused`),
 			manifestBytes:     []byte(`not actually an index`),
 			manifestMediaType: "application/vnd.oci.image.index.v1+json",
+			wantErr:           true,
+		},
+		{
+			name:   "child manifest, config exceeds size limit",
+			target: NewTestReadOnlyTarget("(unused)"),
+			manifestBytes: []byte(fmt.Sprintf(`{
+		        "schemaVersion": 2,
+		        "mediaType": "application/vnd.oci.image.manifest.v1+json",
+		        "config": {
+		            "mediaType": "application/vnd.oci.image.config.v1+json",
+		            "digest": "sha256:5fefde2b739e2ff1976ecea4fb4f5e4827a1c424e9b1fb147ba5fd21b9197422",
+		            "size": %d
+		        },
+		        "layers": []
+		    }`, common.MaxConfigSize+1)),
+			manifestMediaType: "application/vnd.oci.image.manifest.v1+json",
 			wantErr:           true,
 		},
 	}
@@ -332,5 +498,33 @@ func Test_validateMediaType(t *testing.T) {
 				t.Errorf("unexpected error for valid media type %q: %s", tt.input, err)
 			}
 		})
+	}
+}
+
+func Test_createCmd_invalidExtraTag(t *testing.T) {
+	cmd := createCmd()
+	cmd.SetArgs([]string{
+		"/tmp/test-oci-extra:v1,,invalid@@tag",
+		"linux-amd64",
+		"--oci-layout",
+	})
+
+	err := cmd.Execute()
+	if err == nil || err.Error() != "empty extra tag" {
+		t.Fatalf("got %v, want empty extra tag error", err)
+	}
+}
+
+func Test_createCmd_invalidHeader(t *testing.T) {
+	cmd := createCmd()
+	cmd.SetArgs([]string{
+		"localhost:5000/hello:v1",
+		"linux-amd64",
+		"--header", "invalid",
+	})
+
+	err := cmd.Execute()
+	if err == nil || err.Error() != `invalid header: "invalid"` {
+		t.Fatalf("got %v, want invalid header error", err)
 	}
 }

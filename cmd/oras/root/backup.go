@@ -27,21 +27,23 @@ import (
 	"time"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/oras-project/oras-go/v3"
+	"github.com/oras-project/oras-go/v3/content"
+	"github.com/oras-project/oras-go/v3/content/oci"
+	"github.com/oras-project/oras-go/v3/registry"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/content/oci"
-	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
+	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/docker"
 	"oras.land/oras/internal/graph"
 	orasio "oras.land/oras/internal/io"
+	"oras.land/oras/internal/repository"
 )
 
 // outputFormat defines the format of the backup output.
@@ -152,7 +154,7 @@ Example - Set custom concurrency level:
 	return oerrors.Command(cmd, &opts.Remote)
 }
 
-func runBackup(cmd *cobra.Command, opts *backupOptions) error {
+func runBackup(cmd *cobra.Command, opts *backupOptions) (retErr error) {
 	if opts.output == "" {
 		return errors.New("the output path cannot be empty")
 	}
@@ -165,6 +167,8 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		dstRoot = opts.output
 	case outputFormatTar:
 		// test if the output file can be created and fail early if there is an issue
+		_, statErr := os.Stat(opts.output)
+		outputExisted := statErr == nil
 		fp, err := os.OpenFile(opts.output, os.O_CREATE|os.O_WRONLY, 0666)
 		if err != nil {
 			if fi, statErr := os.Stat(opts.output); statErr == nil && fi.IsDir() {
@@ -177,6 +181,14 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		}
 		if err := fp.Close(); err != nil {
 			return fmt.Errorf("unable to close output file %s: %w", opts.output, err)
+		}
+		if !outputExisted {
+			// the file was only created to fail early, do not leave it empty if the backup fails
+			defer func() {
+				if retErr != nil {
+					removeEmptyFile(opts.output, logger)
+				}
+			}()
 		}
 
 		// create a temporary directory as the working directory for OCI store
@@ -205,7 +217,20 @@ func runBackup(cmd *cobra.Command, opts *backupOptions) error {
 		return fmt.Errorf("failed to prepare OCI store for backup: %w", err)
 	}
 	statusHandler, metadataHandler := display.NewBackupHandler(opts.Printer, opts.TTY, opts.repository, dstOCI)
+	return doBackup(ctx, opts, logger, srcRepo, dstOCI, dstRoot, startTime, statusHandler, metadataHandler)
+}
 
+func doBackup(
+	ctx context.Context,
+	opts *backupOptions,
+	logger logrus.FieldLogger,
+	srcRepo oras.ReadOnlyGraphTarget,
+	dstOCI oras.GraphTarget,
+	dstRoot string,
+	startTime time.Time,
+	statusHandler status.BackupHandler,
+	metadataHandler metadata.BackupHandler,
+) error {
 	// Resolve tags to back up
 	tags, roots, err := resolveTags(ctx, srcRepo, opts.tags)
 	if err != nil {
@@ -364,6 +389,17 @@ func finalizeBackupOutput(dstRoot string, opts *backupOptions, logger logrus.Fie
 	return metadataHandler.OnTarExported(opts.output, fi.Size())
 }
 
+// removeEmptyFile removes the file at path if it exists and is empty.
+func removeEmptyFile(path string, logger logrus.FieldLogger) {
+	fi, err := os.Stat(path)
+	if err != nil || !fi.Mode().IsRegular() || fi.Size() != 0 {
+		return
+	}
+	if err := os.Remove(path); err != nil {
+		logger.Debugf("failed to remove empty output file %s: %v", path, err)
+	}
+}
+
 // resolveTags resolves tags to their descriptors.
 // It returns the resolved tags and their corresponding descriptors.
 func resolveTags(ctx context.Context, target oras.ReadOnlyTarget, specifiedTags []string) ([]string, []ocispec.Descriptor, error) {
@@ -417,16 +453,19 @@ func parseArtifactReferences(artifactRefs string) (string, []string, error) {
 		return "", nil, fmt.Errorf("digest references are not supported: %q", artifactRefs)
 	}
 	refParts := strings.Split(artifactRefs, ",")
-	mainRef := refParts[0]
+	// A trailing ':' denotes an empty tag. oras-go v3 rejects it as a missing
+	// tag, so strip it before parsing; an empty main tag combined with extra
+	// tags is still rejected below.
+	mainRef := strings.TrimSuffix(refParts[0], ":")
 	extraTags := refParts[1:]
 
 	// validate repository
-	parsedRepo, err := registry.ParseReference(mainRef)
+	parsedRepo, err := repository.ParseReference(mainRef)
 	if err != nil {
 		return "", nil, fmt.Errorf("invalid reference %q: %w", mainRef, err)
 	}
-	mainTag := parsedRepo.Reference
-	parsedRepo.Reference = "" // clear the tag
+	mainTag := parsedRepo.Tag
+	parsedRepo.Tag = "" // clear the tag
 	repository := parsedRepo.String()
 	if mainTag == "" && len(extraTags) == 0 {
 		// no tags
@@ -439,10 +478,11 @@ func parseArtifactReferences(artifactRefs string) (string, []string, error) {
 		if tag == "" {
 			return "", nil, fmt.Errorf("empty tag in reference %q", artifactRefs)
 		}
-		parsedRepo.Reference = tag
-		if err := parsedRepo.ValidateReferenceAsTag(); err != nil {
+		parsedRepo.Tag = tag
+		if err := parsedRepo.ValidateTag(); err != nil {
 			return "", nil, fmt.Errorf("invalid tag %q in reference %q: %w", tag, artifactRefs, err)
 		}
+		parsedRepo.Tag = ""
 	}
 	return repository, tags, nil
 }

@@ -25,17 +25,27 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/oras-project/oras-go/v3/registry/remote"
+	"github.com/oras-project/oras-go/v3/registry/remote/auth"
+	"github.com/oras-project/oras-go/v3/registry/remote/credentials"
+	"github.com/oras-project/oras-go/v3/registry/remote/properties"
+	"github.com/oras-project/oras-go/v3/registry/remote/retry"
 	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"oras.land/oras-go/v2/registry/remote/auth"
 )
 
 var ts *httptest.Server
@@ -131,7 +141,7 @@ func TestRemote_authClient_RawCredential(t *testing.T) {
 	if _, err := rand.Read(password); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	want := auth.Credential{
+	want := credentials.Credential{
 		Username: "mocked^^??oras-@@!#",
 		Password: base64.StdEncoding.EncodeToString(password),
 	}
@@ -139,11 +149,11 @@ func TestRemote_authClient_RawCredential(t *testing.T) {
 		Username: want.Username,
 		Secret:   want.Password,
 	}
-	client, err := opts.authClient("hostname", false)
+	client, err := opts.authClient("hostname", false, false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	got, err := client.Credential(nil, "")
+	got, err := client.CredentialFunc(nil, properties.Resource{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -153,11 +163,210 @@ func TestRemote_authClient_RawCredential(t *testing.T) {
 	}
 }
 
+func TestRemote_authClient_SharedCache(t *testing.T) {
+	opts := Remote{
+		Username:   "test-user",
+		Secret:     "test-password",
+		authCaches: newAuthCacheStore(),
+	}
+	first, err := opts.authClient("hostname", false, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	const (
+		registry = "registry.example.com"
+		cacheKey = "repository:test:pull"
+		want     = "test-token"
+	)
+	if _, err := first.Cache.Set(context.Background(), registry, auth.SchemeBearer, cacheKey, func(context.Context) (string, error) {
+		return want, nil
+	}); err != nil {
+		t.Fatalf("unexpected error when populating shared cache: %v", err)
+	}
+
+	second, err := opts.authClient("hostname", false, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if second == first {
+		t.Fatal("expected a new auth client")
+	}
+	got, err := second.Cache.GetToken(context.Background(), registry, auth.SchemeBearer, cacheKey)
+	if err != nil {
+		t.Fatalf("unexpected error when reading shared cache: %v", err)
+	}
+	if got != want {
+		t.Fatalf("expected cached token %q, got %q", want, got)
+	}
+}
+
+func TestRemote_authClient_SharedCacheByCredential(t *testing.T) {
+	const (
+		registry = "registry.example.com"
+		cacheKey = "repository:test:pull"
+	)
+	store := newAuthCacheStore()
+	newClient := func(t *testing.T, opts Remote) *auth.Client {
+		t.Helper()
+		opts.authCaches = store
+		client, err := opts.authClient(registry, false, false)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		return client
+	}
+	from := newClient(t, Remote{Username: "user-a", Secret: "password-a"})
+	if _, err := from.Cache.Set(context.Background(), registry, auth.SchemeBearer, cacheKey, func(context.Context) (string, error) {
+		return "token-a", nil
+	}); err != nil {
+		t.Fatalf("unexpected error when populating cache: %v", err)
+	}
+
+	tests := []struct {
+		name   string
+		opts   Remote
+		shared bool
+	}{
+		{name: "same credential", opts: Remote{Username: "user-a", Secret: "password-a"}, shared: true},
+		{name: "different username", opts: Remote{Username: "user-b", Secret: "password-a"}},
+		{name: "different password", opts: Remote{Username: "user-a", Secret: "password-b"}},
+		{name: "identity token", opts: Remote{Secret: "password-a"}},
+		{name: "credential store", opts: Remote{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := newClient(t, tt.opts)
+			got, err := client.Cache.GetToken(context.Background(), registry, auth.SchemeBearer, cacheKey)
+			if tt.shared {
+				if err != nil || got != "token-a" {
+					t.Fatalf("expected shared cached token, got %q, err %v", got, err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("expected no cached token, got %q", got)
+			}
+		})
+	}
+}
+
+func TestRemote_authClient_SharedCacheByConfig(t *testing.T) {
+	tmp := t.TempDir()
+	configA := filepath.Join(tmp, "a.json")
+	configB := filepath.Join(tmp, "b.json")
+	store := newAuthCacheStore()
+	newCache := func(t *testing.T, configs ...string) auth.Cache {
+		t.Helper()
+		opts := Remote{Configs: configs, authCaches: store}
+		client, err := opts.authClient("hostname", false, false)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		return client.Cache
+	}
+	if newCache(t, configA) != newCache(t, configA) {
+		t.Fatal("expected clients using the same registry config to share a cache")
+	}
+	if newCache(t, configA) == newCache(t, configB) {
+		t.Fatal("expected clients using different registry configs not to share a cache")
+	}
+}
+
+func TestRemote_authClient_InvocationScopedCache(t *testing.T) {
+	const (
+		registry = "registry.example.com"
+		cacheKey = "repository:test:pull"
+	)
+	newClient := func(t *testing.T, store *authCacheStore, opts Remote) *auth.Client {
+		t.Helper()
+		opts.authCaches = store
+		client, err := opts.authClient(registry, false, false)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		return client
+	}
+
+	// Clients built within the same invocation (same store) with the same
+	// credentials share a cache.
+	store := newAuthCacheStore()
+	from := newClient(t, store, Remote{Username: "user-a", Secret: "password-a"})
+	if _, err := from.Cache.Set(context.Background(), registry, auth.SchemeBearer, cacheKey, func(context.Context) (string, error) {
+		return "token-a", nil
+	}); err != nil {
+		t.Fatalf("unexpected error when populating cache: %v", err)
+	}
+	to := newClient(t, store, Remote{Username: "user-a", Secret: "password-a"})
+	got, err := to.Cache.GetToken(context.Background(), registry, auth.SchemeBearer, cacheKey)
+	if err != nil || got != "token-a" {
+		t.Fatalf("expected shared cache within one invocation, got %q, err %v", got, err)
+	}
+
+	// Clients built in a different invocation (different store) do not share
+	// the cache, even with identical credentials.
+	otherStore := newAuthCacheStore()
+	other := newClient(t, otherStore, Remote{Username: "user-a", Secret: "password-a"})
+	if _, err := other.Cache.GetToken(context.Background(), registry, auth.SchemeBearer, cacheKey); err == nil {
+		t.Fatal("expected cache not to leak across invocations")
+	}
+}
+
+func TestRemote_authClient_SharedCacheWiring(t *testing.T) {
+	const registry = "registry.example.com"
+	newCache := func(t *testing.T, common Common, opts Remote) auth.Cache {
+		t.Helper()
+		opts.plainHTTP = plainHTTPNotSpecified
+		repo, err := opts.NewRepository(registry+"/test", common, logrus.New())
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		client, ok := repo.Registry.Client.(*auth.Client)
+		if !ok {
+			t.Fatalf("unexpected client type %T", repo.Registry.Client)
+		}
+		return client.Cache
+	}
+
+	common := Common{authCaches: newAuthCacheStore()}
+	if got, want := newCache(t, common, Remote{Username: "user-a", Secret: "password-a"}), newCache(t, common, Remote{Username: "user-a", Secret: "password-a"}); got != want {
+		t.Fatal("expected clients with the same credentials in one invocation to share a cache")
+	}
+	if newCache(t, common, Remote{Username: "user-a", Secret: "password-a"}) == newCache(t, common, Remote{Username: "user-b", Secret: "password-b"}) {
+		t.Fatal("expected clients with different credentials not to share a cache")
+	}
+}
+
+func TestRemote_ensureAuthCaches_Reexecution(t *testing.T) {
+	cmd := &cobra.Command{}
+	common := Common{}
+	remote := Remote{}
+	if err := common.Parse(cmd); err != nil {
+		t.Fatal(err)
+	}
+	remote.ensureAuthCaches(common)
+	first := remote.authCaches
+	if first == nil {
+		t.Fatal("expected initial auth cache store")
+	}
+	if err := common.Parse(cmd); err != nil {
+		t.Fatal(err)
+	}
+	remote.ensureAuthCaches(common)
+	if remote.authCaches == first || remote.authCaches != common.authCaches {
+		t.Fatal("expected remote to bind to the new invocation's store")
+	}
+	remote.ensureAuthCaches(Common{})
+	if remote.authCaches != common.authCaches {
+		t.Fatal("missing common store must not reset the remote cache")
+	}
+}
+
 func TestRemote_authClient_skipTlsVerify(t *testing.T) {
 	opts := Remote{
 		Insecure: true,
 	}
-	client, err := opts.authClient("hostname", false)
+	client, err := opts.authClient("hostname", false, false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -181,7 +390,7 @@ func TestRemote_authClient_CARoots(t *testing.T) {
 	opts := Remote{
 		CACertFilePath: caPath,
 	}
-	client, err := opts.authClient("hostname", false)
+	client, err := opts.authClient("hostname", false, false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -207,7 +416,7 @@ func TestRemote_authClient_resolve(t *testing.T) {
 		resolveFlag: []string{fmt.Sprintf("%s:%s:%s", testHost, URL.Port(), URL.Hostname())},
 		Insecure:    true,
 	}
-	client, err := opts.authClient(testHost, false)
+	client, err := opts.authClient(testHost, false, false)
 	if err != nil {
 		t.Fatalf("unexpected error when creating auth client: %v", err)
 	}
@@ -606,5 +815,597 @@ func TestRemote_parseCustomHeaders(t *testing.T) {
 				t.Errorf("Remote.parseCustomHeaders() = %v, want %v", opts.headers, tt.want)
 			}
 		})
+	}
+}
+
+func TestSameRegistryOrigin(t *testing.T) {
+	tests := []struct {
+		name           string
+		scheme         string
+		authority      string
+		registryScheme string
+		registry       string
+		want           bool
+	}{
+		{"same authority", "https", "registry.example:5443", "https", "registry.example:5443", true},
+		{"case insensitive host", "HTTPS", "REGISTRY.EXAMPLE:5443", "https", "registry.example:5443", true},
+		{"implicit HTTPS port", "https", "registry.example", "https", "registry.example:443", true},
+		{"explicit HTTPS port", "https", "registry.example:443", "https", "registry.example", true},
+		{"empty explicit HTTPS port", "https", "registry.example:", "https", "registry.example", true},
+		{"plain HTTP registry", "http", "registry.example", "http", "registry.example:80", true},
+		{"different port", "https", "registry.example:5443", "https", "registry.example:443", false},
+		{"different host", "https", "redirect.example:443", "https", "registry.example:443", false},
+		{"different scheme", "http", "registry.example:443", "https", "registry.example:443", false},
+		{"same IPv4 literal", "https", "127.0.0.1:5443", "https", "127.0.0.1:5443", true},
+		{"compressed and expanded IPv6", "https", "[::1]:5443", "https", "[0:0:0:0:0:0:0:1]:5443", true},
+		{"uppercase IPv6 hex digits", "https", "[fe80::ABCD]:5443", "https", "[fe80::abcd]:5443", true},
+		{"IPv6 implicit HTTPS port", "https", "[::1]", "https", "[::1]:443", true},
+		{"IPv6 explicit HTTPS port", "https", "[::1]:443", "https", "[::1]", true},
+		{"IPv6 different port", "https", "[::1]:5443", "https", "[::1]:443", false},
+		{"different IPv6 address", "https", "[::2]:443", "https", "[::1]:443", false},
+		{"IPv6 zone identifier case differs", "https", "[fe80::1%eth0]:443", "https", "[fe80::1%ETH0]:443", false},
+		{"same IPv6 zone identifier", "https", "[fe80::1%eth0]:443", "https", "[fe80::1%eth0]:443", true},
+		{"IPv6 zone identifier only on registry", "https", "[fe80::1]:443", "https", "[fe80::1%eth0]:443", false},
+		{"IP literal against DNS name", "https", "[::1]:443", "https", "registry.example:443", false},
+		{"DNS name against IP literal", "https", "registry.example:443", "https", "[::1]:443", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := sameRegistryOrigin(tt.scheme, tt.authority, tt.registryScheme, tt.registry); got != tt.want {
+				t.Fatalf("sameRegistryOrigin() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRemoteNewRegistryScopesClientCertificateToEffectiveHost(t *testing.T) {
+	tempDir := t.TempDir()
+	clientCertPath := filepath.Join(tempDir, "oras-test-client.pem")
+	if err := os.WriteFile(clientCertPath, localhostClientCert, 0600); err != nil {
+		t.Fatal(err)
+	}
+	clientKeyPath := filepath.Join(tempDir, "oras-test-client.key")
+	if err := os.WriteFile(clientKeyPath, testingKey(localhostClientKey), 0600); err != nil {
+		t.Fatal(err)
+	}
+	opts := Remote{
+		CertFilePath: clientCertPath,
+		KeyFilePath:  clientKeyPath,
+		plainHTTP:    plainHTTPNotSpecified,
+	}
+	reg, err := opts.NewRegistry("docker.io", Common{}, logrus.New())
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, ok := reg.Client.(*auth.Client)
+	if !ok {
+		t.Fatalf("registry client has type %T, want *auth.Client", reg.Client)
+	}
+	transport, ok := client.Client.Transport.(*registryCredentialTransport)
+	if !ok {
+		t.Fatalf("registry transport has type %T, want *registryCredentialTransport", client.Client.Transport)
+	}
+	if got, want := transport.registry, "registry-1.docker.io"; got != want {
+		t.Fatalf("client certificate registry = %q, want %q", got, want)
+	}
+}
+
+func TestRemote_authClientScopesClientCertificateToRegistry(t *testing.T) {
+	sinkCertificate := make(chan bool, 1)
+	sink := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sinkCertificate <- len(r.TLS.PeerCertificates) > 0
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	sink.TLS = loadTestingTLSConfig()
+	sink.StartTLS()
+	defer sink.Close()
+
+	sourceCertificate := make(chan bool, 1)
+	source := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sourceCertificate <- len(r.TLS.PeerCertificates) > 0
+		http.Redirect(w, r, sink.URL, http.StatusFound)
+	}))
+	source.TLS = loadTestingTLSConfig()
+	source.StartTLS()
+	defer source.Close()
+
+	tempDir := t.TempDir()
+	caPath := filepath.Join(tempDir, "oras-test.pem")
+	if err := os.WriteFile(caPath, localhostServerCert, 0600); err != nil {
+		t.Fatal(err)
+	}
+	clientCertPath := filepath.Join(tempDir, "oras-test-client.pem")
+	if err := os.WriteFile(clientCertPath, localhostClientCert, 0600); err != nil {
+		t.Fatal(err)
+	}
+	clientKeyPath := filepath.Join(tempDir, "oras-test-client.key")
+	if err := os.WriteFile(clientKeyPath, testingKey(localhostClientKey), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	sourceURL, err := url.Parse(source.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opts := Remote{
+		CACertFilePath: caPath,
+		CertFilePath:   clientCertPath,
+		KeyFilePath:    clientKeyPath,
+	}
+	client, err := opts.authClient(sourceURL.Host, false, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, source.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := resp.Body.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	if !<-sourceCertificate {
+		t.Fatal("client certificate was not sent to the configured registry")
+	}
+	if <-sinkCertificate {
+		t.Fatal("client certificate was sent to a different redirect origin")
+	}
+}
+
+func TestRemote_authClientDoesNotSendClientCertificateToHTTPSProxy(t *testing.T) {
+	proxyCertificate := make(chan bool, 2)
+	var registryAddress string
+	proxy := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxyCertificate <- len(r.TLS.PeerCertificates) > 0
+		if r.Method != http.MethodConnect {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		if r.Host != registryAddress {
+			http.Error(w, "unexpected CONNECT target", http.StatusForbidden)
+			return
+		}
+		upstream, err := (&net.Dialer{}).DialContext(r.Context(), "tcp", registryAddress)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		hijacker, ok := w.(http.Hijacker)
+		if !ok {
+			_ = upstream.Close()
+			http.Error(w, "proxy does not support hijacking", http.StatusInternalServerError)
+			return
+		}
+		downstream, rw, err := hijacker.Hijack()
+		if err != nil {
+			_ = upstream.Close()
+			return
+		}
+		if _, err := rw.WriteString("HTTP/1.1 200 Connection Established\r\n\r\n"); err != nil {
+			_ = downstream.Close()
+			_ = upstream.Close()
+			return
+		}
+		if err := rw.Flush(); err != nil {
+			_ = downstream.Close()
+			_ = upstream.Close()
+			return
+		}
+		go func() {
+			defer downstream.Close()
+			defer upstream.Close()
+			_, _ = io.Copy(downstream, upstream)
+		}()
+		go func() {
+			defer downstream.Close()
+			defer upstream.Close()
+			_, _ = io.Copy(upstream, downstream)
+		}()
+	}))
+	proxy.TLS = loadTestingTLSConfig()
+	proxy.TLS.ClientAuth = tls.RequestClientCert
+	proxy.StartTLS()
+	defer proxy.Close()
+
+	registryCertificate := make(chan bool, 1)
+	registry := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		registryCertificate <- len(r.TLS.PeerCertificates) > 0
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	registry.TLS = loadTestingTLSConfig()
+	registry.TLS.ClientAuth = tls.RequestClientCert
+	registry.StartTLS()
+	defer registry.Close()
+	registryURL, err := url.Parse(registry.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	registryAddress = registryURL.Host
+
+	tempDir := t.TempDir()
+	caPath := filepath.Join(tempDir, "oras-test.pem")
+	if err := os.WriteFile(caPath, localhostServerCert, 0600); err != nil {
+		t.Fatal(err)
+	}
+	clientCertPath := filepath.Join(tempDir, "oras-test-client.pem")
+	if err := os.WriteFile(clientCertPath, localhostClientCert, 0600); err != nil {
+		t.Fatal(err)
+	}
+	clientKeyPath := filepath.Join(tempDir, "oras-test-client.key")
+	if err := os.WriteFile(clientKeyPath, testingKey(localhostClientKey), 0600); err != nil {
+		t.Fatal(err)
+	}
+	opts := Remote{
+		CACertFilePath: caPath,
+		CertFilePath:   clientCertPath,
+		KeyFilePath:    clientKeyPath,
+	}
+	proxyURL, err := url.Parse(proxy.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name       string
+		registry   string
+		plainHTTP  bool
+		requestURL string
+	}{
+		{"HTTPS registry", registryURL.Host, false, registry.URL},
+		{"plain HTTP registry", "registry.example", true, "http://registry.example/v2/"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client, err := opts.authClient(tt.registry, tt.plainHTTP, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			scopedTransport, ok := client.Client.Transport.(*registryCredentialTransport)
+			if !ok {
+				t.Fatalf("registry transport has type %T, want *registryCredentialTransport", client.Client.Transport)
+			}
+			retryTransport, ok := scopedTransport.registryTransport.(*retry.Transport)
+			if !ok {
+				t.Fatalf("registry route has type %T, want *retry.Transport", scopedTransport.registryTransport)
+			}
+			baseTransport, ok := retryTransport.Base.(*http.Transport)
+			if !ok {
+				t.Fatalf("registry retry base has type %T, want *http.Transport", retryTransport.Base)
+			}
+			baseTransport.Proxy = http.ProxyURL(proxyURL)
+			defer baseTransport.CloseIdleConnections()
+
+			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, tt.requestURL, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			resp, err := client.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := resp.Body.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if presented := <-proxyCertificate; presented {
+				t.Fatal("registry client certificate was sent to the HTTPS proxy")
+			}
+			if !tt.plainHTTP && !<-registryCertificate {
+				t.Fatal("registry did not receive its client certificate through the HTTPS proxy")
+			}
+		})
+	}
+}
+
+func TestRemote_authClientPreservesTLSHandshakeTimeout(t *testing.T) {
+	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	accepted := make(chan net.Conn, 1)
+	go func() {
+		conn, err := listener.Accept()
+		if err == nil {
+			accepted <- conn
+		}
+	}()
+	defer func() {
+		_ = listener.Close()
+		select {
+		case conn := <-accepted:
+			_ = conn.Close()
+		default:
+		}
+	}()
+
+	tempDir := t.TempDir()
+	clientCertPath := filepath.Join(tempDir, "oras-test-client.pem")
+	if err := os.WriteFile(clientCertPath, localhostClientCert, 0600); err != nil {
+		t.Fatal(err)
+	}
+	clientKeyPath := filepath.Join(tempDir, "oras-test-client.key")
+	if err := os.WriteFile(clientKeyPath, testingKey(localhostClientKey), 0600); err != nil {
+		t.Fatal(err)
+	}
+	opts := Remote{
+		CertFilePath: clientCertPath,
+		KeyFilePath:  clientKeyPath,
+	}
+	client, err := opts.authClient(listener.Addr().String(), false, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	scopedTransport := client.Client.Transport.(*registryCredentialTransport)
+	retryTransport := scopedTransport.registryTransport.(*retry.Transport)
+	baseTransport := retryTransport.Base.(*http.Transport)
+	baseTransport.TLSHandshakeTimeout = 20 * time.Millisecond
+	defer baseTransport.CloseIdleConnections()
+
+	req, err := http.NewRequestWithContext(
+		context.Background(),
+		http.MethodGet,
+		"https://"+listener.Addr().String()+"/v2/",
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := time.Now()
+	resp, err := baseTransport.RoundTrip(req)
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
+	if err == nil {
+		t.Fatal("expected TLS handshake timeout")
+	}
+	if elapsed := time.Since(start); elapsed > time.Second {
+		t.Fatalf("TLS handshake timeout took %v", elapsed)
+	}
+}
+
+func TestRemote_authClientScopesCustomHeadersToRegistry(t *testing.T) {
+	const secret = "private-api-key"
+
+	sinkHeader := make(chan string, 1)
+	sink := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sinkHeader <- r.Header.Get("X-API-Key")
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer sink.Close()
+
+	sourceHeader := make(chan string, 1)
+	source := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sourceHeader <- r.Header.Get("X-API-Key")
+		http.Redirect(w, r, sink.URL, http.StatusFound)
+	}))
+	defer source.Close()
+
+	sourceURL, err := url.Parse(source.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opts := Remote{headerFlags: []string{"X-API-Key: " + secret}}
+	if err := opts.parseCustomHeaders(); err != nil {
+		t.Fatal(err)
+	}
+	client, err := opts.authClient(sourceURL.Host, true, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, source.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := resp.Body.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := <-sourceHeader; got != secret {
+		t.Fatalf("configured registry received X-API-Key %q, want %q", got, secret)
+	}
+	if got := <-sinkHeader; got != "" {
+		t.Fatalf("different redirect origin received X-API-Key %q", got)
+	}
+}
+
+func TestRemote_authClientDoesNotShareHeaderState(t *testing.T) {
+	received := make(chan http.Header, 1)
+	sink := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received <- r.Header.Clone()
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer sink.Close()
+
+	opts := Remote{headerFlags: []string{"X-API-Key: private-api-key"}}
+	if err := opts.parseCustomHeaders(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := opts.authClient("registry.example", true, false); err != nil {
+		t.Fatal(err)
+	}
+	client, err := opts.authClient("registry.example", true, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, sink.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := resp.Body.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	header := <-received
+	if got := header.Get("X-API-Key"); got != "" {
+		t.Fatalf("different origin received X-API-Key %q", got)
+	}
+	if got := header.Get("User-Agent"); !strings.HasPrefix(got, "oras/") {
+		t.Fatalf("different origin received User-Agent %q, want oras/ prefix", got)
+	}
+}
+
+func TestRemote_NewRepository_referrersAPI(t *testing.T) {
+	tests := []struct {
+		name  string
+		state referrersState
+		want  properties.ReferrersAPI
+	}{
+		{"unknown", ReferrersStateUnknown, properties.ReferrersAPIUnknown},
+		{"supported", ReferrersStateSupported, properties.ReferrersAPISupported},
+		{"unsupported", ReferrersStateUnsupported, properties.ReferrersAPIUnsupported},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := Remote{
+				DistributionSpec: DistributionSpec{ReferrersAPI: tt.state},
+				plainHTTP:        plainHTTPNotSpecified,
+			}
+			repo, err := opts.NewRepository("localhost:5000/test", Common{}, logrus.New())
+			if err != nil {
+				t.Fatalf("Remote.NewRepository() error = %v", err)
+			}
+			if got := repo.ReferrersCapability(); got != tt.want {
+				t.Errorf("Repository.ReferrersCapability() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRemote_authClient_dockerHubCredential(t *testing.T) {
+	// docker.io credentials are saved under the legacy index key, but requests
+	// go to registry-1.docker.io.
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	encoded := base64.StdEncoding.EncodeToString([]byte("mocked-user:mocked-pass"))
+	config := fmt.Sprintf(`{"auths":{"https://index.docker.io/v1/":{"auth":%q}}}`, encoded)
+	if err := os.WriteFile(configPath, []byte(config), 0600); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	opts := Remote{Configs: []string{configPath}}
+	client, err := opts.authClient("registry-1.docker.io", false, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	got, err := client.CredentialFunc(context.Background(), properties.Resource{Registry: "registry-1.docker.io"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.Username != "mocked-user" || got.Password != "mocked-pass" {
+		t.Fatalf("expect credential from index.docker.io key, got: %v", got)
+	}
+}
+
+func TestRemote_NewRegistry_scheme(t *testing.T) {
+	opts := Remote{}
+	if _, err := opts.NewRegistry("http://localhost:5000", Common{}, logrus.New()); err == nil {
+		t.Fatal("expect NewRegistry to reject a URL scheme")
+	}
+	if _, err := opts.NewRepository("http://localhost:5000/repo", Common{}, logrus.New()); err == nil {
+		t.Fatal("expect NewRepository to reject a URL scheme")
+	}
+}
+
+func TestRemote_warningHandler(t *testing.T) {
+	logger, hook := test.NewNullLogger()
+	opts := Remote{plainHTTP: plainHTTPNotSpecified}
+	newWarning := func(text string) remote.Warning {
+		return remote.Warning{WarningValue: remote.WarningValue{Code: 299, Agent: "-", Text: text}}
+	}
+
+	// handlers for the same registry share dedup state across clients
+	repo, err := opts.NewRepository("localhost:5000/repo", Common{}, logger)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	reg, err := opts.NewRegistry("localhost:5000", Common{}, logger)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	repo.Registry.HandleWarning(newWarning("foo"))
+	repo.Registry.HandleWarning(newWarning("foo"))
+	reg.HandleWarning(newWarning("foo"))
+	reg.HandleWarning(newWarning("bar"))
+
+	// a different registry logs separately
+	other, err := opts.NewRegistry("localhost:6000", Common{}, logger)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	other.HandleWarning(newWarning("foo"))
+	other.HandleWarning(newWarning("foo"))
+
+	want := []struct {
+		registry string
+		text     string
+	}{
+		{"localhost:5000", "foo"},
+		{"localhost:5000", "bar"},
+		{"localhost:6000", "foo"},
+	}
+	entries := hook.AllEntries()
+	if len(entries) != len(want) {
+		t.Fatalf("got %d log entries, want %d: %v", len(entries), len(want), entries)
+	}
+	for i, w := range want {
+		if entries[i].Level != logrus.WarnLevel {
+			t.Errorf("entry %d level = %v, want %v", i, entries[i].Level, logrus.WarnLevel)
+		}
+		if entries[i].Message != w.text {
+			t.Errorf("entry %d message = %q, want %q", i, entries[i].Message, w.text)
+		}
+		if got := entries[i].Data["registry"]; got != w.registry {
+			t.Errorf("entry %d registry = %v, want %v", i, got, w.registry)
+		}
+	}
+}
+
+func TestRemote_ConfigPath_independentOfAuthClient(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.json")
+	if err := os.WriteFile(configPath, []byte(`{}`), 0o600); err != nil {
+		t.Fatalf("WriteFile error = %v", err)
+	}
+
+	opts := Remote{Configs: []string{configPath}}
+	got, err := opts.ConfigPath()
+	if err != nil {
+		t.Fatalf("ConfigPath() error = %v", err)
+	}
+	if got != configPath {
+		t.Errorf("ConfigPath() = %q, want %q", got, configPath)
+	}
+
+	decorated := opts.DecorateCredentialError(auth.ErrBasicCredentialNotFound)
+	wantQuotedPath := fmt.Sprintf("at %q", configPath)
+	if !strings.Contains(decorated.Recommendation, wantQuotedPath) {
+		t.Errorf("DecorateCredentialError() recommendation = %q, want substring %q", decorated.Recommendation, wantQuotedPath)
+	}
+
+	secondConfig := filepath.Join(dir, "config2.json")
+	if err := os.WriteFile(secondConfig, []byte(`{}`), 0o600); err != nil {
+		t.Fatalf("WriteFile error = %v", err)
+	}
+	multiOpts := Remote{Configs: []string{configPath, secondConfig}}
+	if _, err := multiOpts.ConfigPath(); err == nil {
+		t.Error("ConfigPath() with multiple config files = nil, want error")
+	}
+
+	invalidConfig := filepath.Join(dir, "invalid.json")
+	if err := os.WriteFile(invalidConfig, []byte(`{invalid`), 0o600); err != nil {
+		t.Fatalf("WriteFile error = %v", err)
+	}
+	invalidOpts := Remote{Configs: []string{invalidConfig}}
+	if _, err := invalidOpts.ConfigPath(); err == nil {
+		t.Error("ConfigPath() with invalid config JSON = nil, want error")
 	}
 }

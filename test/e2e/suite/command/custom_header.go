@@ -29,11 +29,13 @@ var _ = Describe("1.1 registry users:", func() {
 	headerTestRepo := func(text string) string {
 		return fmt.Sprintf("command/headertest/%d/%s", GinkgoRandomSeed(), text)
 	}
+	// Custom header values are scrubbed from --debug output since they may
+	// carry credentials, so only the header names are expected in the logs.
 	var (
 		FoobarHeaderInput = "Foo:bar"
-		FoobarHeader      = "\"Foo\": \"bar\"\n"
+		FoobarHeader      = "\"Foo\": \"*****\"\n"
 		AbHeaderInput     = "A: b"
-		AbHeader          = "\"A\": \" b\"\n"
+		AbHeader          = "\"A\": \"*****\"\n"
 	)
 	When("custom header is provided", func() {
 		It("attach", func() {

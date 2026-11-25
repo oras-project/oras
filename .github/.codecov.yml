@@ -11,6 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+codecov:
+  notify:
+    # One unit-test upload and one KinD e2e upload per commit.
+    after_n_builds: 2
+
+comment:
+  after_n_builds: 2
+
 coverage:
   status:
     project:
@@ -21,3 +29,8 @@ coverage:
       default:
         target: 80%
         if_ci_failed: error
+
+ignore:
+  - "test/**"
+  - "docs/**"
+  - "internal/testutils/**"

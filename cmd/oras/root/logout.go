@@ -16,9 +16,10 @@ limitations under the License.
 package root
 
 import (
+	"github.com/oras-project/oras-go/v3/registry/remote"
+	"github.com/oras-project/oras-go/v3/registry/remote/properties"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/v2/registry/remote/credentials"
 	"oras.land/oras/cmd/oras/internal/argument"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/internal/credential"
@@ -38,8 +39,11 @@ func logoutCmd() *cobra.Command {
 		Short: "Log out from a remote registry",
 		Long: `Log out from a remote registry
 
-Example - Logout:
+Example - Log out from a registry:
   oras logout localhost:5000
+
+Example - Log out from a registry with a custom auth config path:
+  oras logout --registry-config ~/.config/oras/auth.json localhost:5000
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the registry you want to log out"),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -63,5 +67,9 @@ func runLogout(cmd *cobra.Command, opts logoutOptions) error {
 	if err != nil {
 		return err
 	}
-	return credentials.Logout(ctx, store, opts.hostname)
+	resource, err := properties.ParseResource(opts.hostname)
+	if err != nil {
+		return err
+	}
+	return remote.Logout(ctx, store, resource)
 }

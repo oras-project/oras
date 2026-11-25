@@ -58,6 +58,17 @@ type ExecOption struct {
 
 // ORAS returns default execution option for oras binary.
 func ORAS(args ...string) *ExecOption {
+	// Add --plain-http flag when ORAS_E2E_PLAIN_HTTP is set
+	// This is needed for Kubernetes environments where registries use HTTP
+	if os.Getenv("ORAS_E2E_PLAIN_HTTP") == "true" && len(args) > 0 {
+		// cp/copy command uses --from-plain-http and --to-plain-http instead of --plain-http
+		if args[0] == "cp" || args[0] == "copy" {
+			args = append(args, "--from-plain-http", "--to-plain-http")
+		} else if args[0] != "version" {
+			// version command doesn't need --plain-http
+			args = append(args, "--plain-http")
+		}
+	}
 	return Binary(orasBinary, args...)
 }
 
@@ -162,6 +173,18 @@ func (opts *ExecOption) MatchStatus(keys []match.StateKey, verbose bool, success
 	return opts
 }
 
+// redactArgs returns a copy of args with values following password flags replaced by "***".
+func redactArgs(args []string) []string {
+	redacted := make([]string, len(args))
+	copy(redacted, args)
+	for i, arg := range redacted {
+		if strings.HasPrefix(arg, "--") && strings.Contains(arg, "password") && i+1 < len(redacted) {
+			redacted[i+1] = "***"
+		}
+	}
+	return redacted
+}
+
 // Exec run the execution based on opts.
 func (opts *ExecOption) Exec() *gexec.Session {
 	if opts == nil {
@@ -180,7 +203,7 @@ func (opts *ExecOption) Exec() *gexec.Session {
 			opts.text = "fail"
 		}
 	}
-	description := fmt.Sprintf("\n>> should %s: %s %s >>", opts.text, opts.binary, strings.Join(opts.args, " "))
+	description := fmt.Sprintf("\n>> should %s: %s %s >>", opts.text, opts.binary, strings.Join(redactArgs(opts.args), " "))
 	ginkgo.By(description)
 
 	var cmd *exec.Cmd
@@ -196,7 +219,6 @@ func (opts *ExecOption) Exec() *gexec.Session {
 		Expect(os.Chdir(opts.workDir)).ShouldNot(HaveOccurred())
 		defer os.Chdir(wd)
 	}
-	fmt.Println(description)
 	session, err := gexec.Start(cmd, os.Stdout, os.Stderr)
 	Expect(err).ShouldNot(HaveOccurred())
 	if opts.exitCode == notResponding {

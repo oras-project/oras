@@ -17,6 +17,7 @@ package progress
 
 import (
 	"errors"
+	"sync"
 	"testing"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -24,14 +25,11 @@ import (
 )
 
 func Test_messenger_Update(t *testing.T) {
-	m := &messenger{
-		update: make(chan statusUpdate, 1),
-		prompts: map[progress.State]string{
-			progress.StateInitialized:  "initialized",
-			progress.StateTransmitting: "testing",
-			progress.StateTransmitted:  "tested",
-		},
-	}
+	m := newMessenger(map[progress.State]string{
+		progress.StateInitialized:  "initialized",
+		progress.StateTransmitting: "testing",
+		progress.StateTransmitted:  "tested",
+	})
 	defer func() { _ = m.Close() }()
 	desc := ocispec.Descriptor{
 		MediaType: "application/vnd.docker.image.rootfs.diff.tar.gzip",
@@ -110,9 +108,7 @@ func Test_messenger_Update(t *testing.T) {
 }
 
 func Test_messenger_Fail(t *testing.T) {
-	m := &messenger{
-		update: make(chan statusUpdate, 1),
-	}
+	m := newMessenger(nil)
 	defer func() { _ = m.Close() }()
 	s := new(status)
 	errTest := errors.New("test error")
@@ -128,14 +124,63 @@ func Test_messenger_Fail(t *testing.T) {
 }
 
 func Test_messenger_Close(t *testing.T) {
-	m := &messenger{
-		update: make(chan statusUpdate, 1),
-	}
+	m := newMessenger(nil)
 	if err := m.Close(); err != nil {
 		t.Fatalf("messenger.Close() error = %v, wantErr nil", err)
 	}
 	// double close should not panic or return an error
 	if err := m.Close(); err != nil {
 		t.Fatalf("messenger.Close() error = %v, wantErr nil", err)
+	}
+}
+
+// Test_messenger_Close_concurrentUpdate reproduces the "send on closed
+// channel" panic reported in #2125: a tracked reader owned by another
+// goroutine, e.g. the net/http transport write loop, keeps calling Update and
+// Fail after the tracker has been closed.
+func Test_messenger_Close_concurrentUpdate(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		m := newMessenger(map[progress.State]string{
+			progress.StateTransmitting: "testing",
+			progress.StateTransmitted:  "tested",
+		})
+		s := new(status)
+		var wg sync.WaitGroup
+
+		// drain the updates the same way manager.newTracker does
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			m.drain(s)
+		}()
+
+		// keep reporting progress and failures while the messenger is closed
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 100; j++ {
+				if err := m.Update(progress.Status{
+					State:  progress.StateTransmitted,
+					Offset: int64(j),
+				}); err != nil {
+					t.Errorf("messenger.Update() error = %v, wantErr nil", err)
+					return
+				}
+				if err := m.Fail(errors.New("test error")); err != nil {
+					t.Errorf("messenger.Fail() error = %v, wantErr nil", err)
+					return
+				}
+			}
+		}()
+
+		if err := m.Close(); err != nil {
+			t.Fatalf("messenger.Close() error = %v, wantErr nil", err)
+		}
+		wg.Wait()
+
+		// Close must always be recorded, even when it races with updates
+		if s.endTime.IsZero() {
+			t.Error("messenger.Close() endTime = zero, want non-zero")
+		}
 	}
 }

@@ -22,10 +22,10 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/oras-project/oras-go/v3"
+	"github.com/oras-project/oras-go/v3/content"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
@@ -94,7 +94,10 @@ Example - Update an index to remove any existing artifact type:
 					return fmt.Errorf("remove: %s is not a digest", manifestRef)
 				}
 			}
-			return option.Parse(cmd, &opts)
+			if err := option.Parse(cmd, &opts); err != nil {
+				return err
+			}
+			return option.ValidateExtraTags(opts.tags)
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return updateIndex(cmd, opts)
@@ -188,6 +191,12 @@ func fetchIndex(ctx context.Context, handler status.ManifestIndexUpdateHandler, 
 	var index ocispec.Index
 	if err := json.Unmarshal(content, &index); err != nil {
 		return ocispec.Index{}, err
+	}
+	if index.MediaType == "" {
+		// mediaType is optional in older indexes. Fall back to the resolved
+		// descriptor, which IsIndex has already checked, so the updated index
+		// is not repacked as application/octet-stream.
+		index.MediaType = desc.MediaType
 	}
 	return index, nil
 }

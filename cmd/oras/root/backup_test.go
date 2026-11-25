@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -31,12 +32,14 @@ import (
 
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/oras-project/oras-go/v3"
+	"github.com/oras-project/oras-go/v3/content"
+	"github.com/oras-project/oras-go/v3/content/memory"
+	"github.com/oras-project/oras-go/v3/content/oci"
+	"github.com/oras-project/oras-go/v3/errdef"
+	"github.com/oras-project/oras-go/v3/registry/remote"
 	"github.com/sirupsen/logrus"
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/content/memory"
-	"oras.land/oras-go/v2/errdef"
-	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras/cmd/oras/internal/display/displaytest"
 )
 
 func TestParseArtifactReferences(t *testing.T) {
@@ -203,6 +206,123 @@ func TestParseArtifactReferences(t *testing.T) {
 			}
 		})
 	}
+}
+
+func newBackupTestSource(t *testing.T) oras.GraphTarget {
+	t.Helper()
+	src := memory.New()
+	desc, err := oras.PackManifest(context.Background(), src, oras.PackManifestVersion1_1, "application/example", oras.PackManifestOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := src.Tag(context.Background(), desc, "v1"); err != nil {
+		t.Fatal(err)
+	}
+	return src
+}
+
+func Test_doBackup_handlerCalls(t *testing.T) {
+	ctx := context.Background()
+	dstRoot := t.TempDir()
+	dst, err := oci.New(dstRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opts := &backupOptions{output: dstRoot, outputFormat: outputFormatDir, repository: "example", tags: []string{"v1"}}
+	recorder := &displaytest.CallRecorder{}
+	statusHandler := &displaytest.RecordingBackupStatusHandler{Recorder: recorder}
+	metadataHandler := &displaytest.RecordingBackupMetadataHandler{Recorder: recorder}
+
+	if err := doBackup(ctx, opts, logrus.New(), newBackupTestSource(t), dst, dstRoot, time.Now(), statusHandler, metadataHandler); err != nil {
+		t.Fatal(err)
+	}
+
+	calls := recorder.Snapshot()
+	if len(calls) < 5 {
+		t.Fatalf("handler calls = %v, want at least 5", calls)
+	}
+	if got, want := calls[:2], []string{"OnTagsFound", "StartTracking"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("first handler calls = %v, want %v", got, want)
+	}
+	if got, want := calls[len(calls)-3:], []string{"StopTracking", "OnArtifactPulled", "OnBackupCompleted"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("last handler calls = %v, want %v", got, want)
+	}
+}
+
+func Test_doBackup_tagsFoundError(t *testing.T) {
+	ctx := context.Background()
+	dstRoot := t.TempDir()
+	dst, err := oci.New(dstRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opts := &backupOptions{output: dstRoot, outputFormat: outputFormatDir, repository: "example", tags: []string{"v1"}}
+	wantErr := errors.New("tags found failed")
+	recorder := &displaytest.CallRecorder{}
+	statusHandler := &displaytest.RecordingBackupStatusHandler{Recorder: recorder}
+	metadataHandler := &displaytest.RecordingBackupMetadataHandler{Recorder: recorder, TagsFoundErr: wantErr}
+
+	err = doBackup(ctx, opts, logrus.New(), newBackupTestSource(t), dst, dstRoot, time.Now(), statusHandler, metadataHandler)
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("doBackup() error = %v, want %v", err, wantErr)
+	}
+	if got, want := recorder.Snapshot(), []string{"OnTagsFound"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("handler calls = %v, want %v", got, want)
+	}
+}
+
+func Test_backupCmd_failedBackupToTar(t *testing.T) {
+	// a registry address that refuses connections, so the backup fails after
+	// the output file has been created
+	srv := httptest.NewServer(http.NotFoundHandler())
+	host := strings.TrimPrefix(srv.URL, "http://")
+	srv.Close()
+
+	runBackupCmd := func(t *testing.T, output string) {
+		t.Helper()
+		cmd := backupCmd()
+		cmd.SetOut(io.Discard)
+		cmd.SetErr(io.Discard)
+		cmd.SetArgs([]string{"--output", output, "--plain-http", host + "/repo:v1"})
+		if err := cmd.Execute(); err == nil {
+			t.Fatal("expected the backup to fail, got no error")
+		}
+	}
+
+	t.Run("output file created by the command is removed", func(t *testing.T) {
+		output := filepath.Join(t.TempDir(), "backup.tar")
+		runBackupCmd(t, output)
+		if _, err := os.Stat(output); !os.IsNotExist(err) {
+			t.Errorf("expected %s to be removed after the failed backup, stat error = %v", output, err)
+		}
+	})
+
+	t.Run("existing empty output file is kept", func(t *testing.T) {
+		output := filepath.Join(t.TempDir(), "backup.tar")
+		if err := os.WriteFile(output, nil, 0666); err != nil {
+			t.Fatal(err)
+		}
+		runBackupCmd(t, output)
+		if _, err := os.Stat(output); err != nil {
+			t.Errorf("expected the existing %s to be kept, got %v", output, err)
+		}
+	})
+
+	t.Run("existing output file with content is kept", func(t *testing.T) {
+		output := filepath.Join(t.TempDir(), "backup.tar")
+		want := []byte("previous backup")
+		if err := os.WriteFile(output, want, 0666); err != nil {
+			t.Fatal(err)
+		}
+		runBackupCmd(t, output)
+		got, err := os.ReadFile(output)
+		if err != nil {
+			t.Fatalf("expected the existing %s to be kept, got %v", output, err)
+		}
+		if string(got) != string(want) {
+			t.Errorf("existing output content = %q, want %q", got, want)
+		}
+	})
 }
 
 func TestFinalizeBackupOutput(t *testing.T) {
@@ -403,7 +523,7 @@ func Test_resolveTags(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to create remote repository: %v", err)
 		}
-		repo.PlainHTTP = true
+		repo.Registry.PlainHTTP = true
 
 		tags, descs, err := resolveTags(ctx, repo, []string{"v1", "v2"})
 		if err != nil {
@@ -435,7 +555,7 @@ func Test_resolveTags(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to create remote repository: %v", err)
 		}
-		repo.PlainHTTP = true
+		repo.Registry.PlainHTTP = true
 
 		_, _, err = resolveTags(ctx, repo, []string{"non-existent"})
 		if wantErr := errdef.ErrNotFound; !errors.Is(err, wantErr) {
@@ -458,7 +578,7 @@ func Test_resolveTags(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to create remote repository: %v", err)
 		}
-		repo.PlainHTTP = true
+		repo.Registry.PlainHTTP = true
 
 		tags, descs, err := resolveTags(ctx, repo, nil)
 		if err != nil {
@@ -491,7 +611,7 @@ func Test_resolveTags(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to create remote repository: %v", err)
 		}
-		repo.PlainHTTP = true
+		repo.Registry.PlainHTTP = true
 
 		_, _, err = resolveTags(ctx, repo, nil)
 		if err == nil {
@@ -516,7 +636,7 @@ func Test_resolveTags(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to create remote repository: %v", err)
 		}
-		repo.PlainHTTP = true
+		repo.Registry.PlainHTTP = true
 
 		_, _, err = resolveTags(ctx, repo, nil)
 		if wantErr := errdef.ErrNotFound; !errors.Is(err, wantErr) {
@@ -537,7 +657,7 @@ func Test_resolveTags(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to create remote repository: %v", err)
 		}
-		repo.PlainHTTP = true
+		repo.Registry.PlainHTTP = true
 
 		tags, descs, err := resolveTags(ctx, repo, nil)
 		if err != nil {
@@ -724,31 +844,63 @@ func (m *mockLogger) Fatalln(_ ...any)   {}
 func (m *mockLogger) Panicln(_ ...any)   {}
 
 type mockBackupHandler struct {
+	calls              []string
 	tarExportingCalled bool
 	tarExportedCalled  bool
 	tarExportingResult error
 	tarExportedResult  error
+	tagsFoundResult    error
+}
+
+func (m *mockBackupHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
+	m.calls = append(m.calls, "StartTracking")
+	return gt, nil
+}
+
+func (m *mockBackupHandler) StopTracking() error {
+	m.calls = append(m.calls, "StopTracking")
+	return nil
+}
+
+func (m *mockBackupHandler) OnCopySkipped(context.Context, ocispec.Descriptor) error {
+	m.calls = append(m.calls, "OnCopySkipped")
+	return nil
+}
+
+func (m *mockBackupHandler) PreCopy(context.Context, ocispec.Descriptor) error {
+	m.calls = append(m.calls, "PreCopy")
+	return nil
+}
+
+func (m *mockBackupHandler) PostCopy(context.Context, ocispec.Descriptor) error {
+	m.calls = append(m.calls, "PostCopy")
+	return nil
 }
 
 func (m *mockBackupHandler) OnTarExporting(_ string) error {
+	m.calls = append(m.calls, "OnTarExporting")
 	m.tarExportingCalled = true
 	return m.tarExportingResult
 }
 
 func (m *mockBackupHandler) OnTarExported(_ string, _ int64) error {
+	m.calls = append(m.calls, "OnTarExported")
 	m.tarExportedCalled = true
 	return m.tarExportedResult
 }
 
 func (m *mockBackupHandler) OnTagsFound(_ []string) error {
-	return nil
+	m.calls = append(m.calls, "OnTagsFound")
+	return m.tagsFoundResult
 }
 
 func (m *mockBackupHandler) OnArtifactPulled(_ string, _ int) error {
+	m.calls = append(m.calls, "OnArtifactPulled")
 	return nil
 }
 
 func (m *mockBackupHandler) OnBackupCompleted(_ int, _ string, _ time.Duration) error {
+	m.calls = append(m.calls, "OnBackupCompleted")
 	return nil
 }
 

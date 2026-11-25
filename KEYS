@@ -7,6 +7,16 @@ For users to import keys:
        or
        gpg --import KEYS
 
+To verify a release, download the checksums file and its detached
+signature from the release assets, then verify with the imported keys:
+       gpg --import KEYS
+       gpg --verify oras_<version>_checksums.txt.asc oras_<version>_checksums.txt
+
+Newer releases sign the checksums file automatically in the release
+workflow using the "ORAS Project Release Signing" key
+(C6FC42F0DE84A345FAADB742F44418110791EF37). Earlier releases were signed
+manually by an individual maintainer's key (both are listed below).
+
 Developers to add their keys:
         pgp -kxa <your name> and append it to this file.
         or
@@ -85,4 +95,20 @@ hEdWAwEIB4h4BBgWCgAgFiEELaRh0TsMJ4Re36d/5GKjiUy6qkcFAmhCwxACGwwA
 CgkQ5GKjiUy6qkfIYAEAnN+lGbgYfzmB2JIj/qb39teFmciJCU8vfxfkNKeE7FoA
 /jV/gyOIb3rPCBxzkbBOoFi76lGK4GUdEZNU6OJAg1QD
 =ePpx
+-----END PGP PUBLIC KEY BLOCK-----
+pub   ed25519 2026-07-13 [SC]
+      C6FC42F0DE84A345FAADB742F44418110791EF37
+uid           [ultimate] ORAS Project Release Signing <cncf-oras-maintainers@lists.cncf.io>
+sig 3        F44418110791EF37 2026-07-13  [self-signature]
+
+-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+mDMEalVhihYJKwYBBAHaRw8BAQdA56vV8wwUieNmNq3U3D1aIZI6n+fTArN0eYVx
+C9wQ49+0Qk9SQVMgUHJvamVjdCBSZWxlYXNlIFNpZ25pbmcgPGNuY2Ytb3Jhcy1t
+YWludGFpbmVyc0BsaXN0cy5jbmNmLmlvPoivBBMWCgBXFiEExvxC8N6Eo0X6rbdC
+9EQYEQeR7zcFAmpVYYobFIAAAAAABAAObWFudTIsMi41KzEuMTIsMCwzAhsDBQsJ
+CAcCAiICBhUKCQgLAgQWAgMBAh4HAheAAAoJEPREGBEHke83OOwA/1wm5SLdQ/vU
+0HYBq2aoWubI3Cycx0iJtmWr4EpBEoIXAQC90f56D8kvaqh5pVqiYiDFnW/hqRW2
+hgRzY6sk5H7bAw==
+=2Eeb
 -----END PGP PUBLIC KEY BLOCK-----

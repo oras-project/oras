@@ -20,11 +20,12 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/registry"
+	"github.com/oras-project/oras-go/v3"
+	"github.com/oras-project/oras-go/v3/registry"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
@@ -101,7 +102,7 @@ Example - Discover referrers of the manifest tagged 'example.com:v1' in an OCI i
 			if cmd.Flags().Changed("output") {
 				switch opts.Format.Type {
 				case option.FormatTypeTree.Name, option.FormatTypeJSON.Name, option.FormatTypeTable.Name:
-					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "[DEPRECATED] --output is deprecated, try `--format %s` instead\n", opts.Template)
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "[DEPRECATED] --output is deprecated, try `--format %s` instead\n", opts.Format.Type)
 				default:
 					return errors.New("output type can only be tree, table or json")
 				}
@@ -153,13 +154,26 @@ func runDiscover(cmd *cobra.Command, opts *discoverOptions) error {
 	if err != nil {
 		return err
 	}
-	if err := fetchAllReferrers(ctx, repo, desc, opts.artifactType, handler, opts.depth); err != nil {
+	return doDiscover(ctx, repo, desc, opts.artifactType, opts.depth, handler)
+}
+
+func doDiscover(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, depth int, handler metadata.DiscoverHandler) error {
+	if err := fetchAllReferrers(ctx, repo, desc, artifactType, handler, depth, make(map[digest.Digest]bool)); err != nil {
 		return err
 	}
 	return handler.Render()
 }
 
-func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, handler metadata.DiscoverHandler, depth int) error {
+// fetchAllReferrers recursively discovers the referrers of desc. visited tracks
+// the descriptors already traversed so that a cyclic referrer graph (e.g.
+// A -> B -> A), which a malicious registry can craft, does not cause unbounded
+// recursion.
+func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc ocispec.Descriptor, artifactType string, handler metadata.DiscoverHandler, depth int, visited map[digest.Digest]bool) error {
+	if visited[desc.Digest] {
+		return nil
+	}
+	visited[desc.Digest] = true
+
 	results, err := registry.Referrers(ctx, repo, desc, artifactType)
 	if err != nil {
 		return err
@@ -180,7 +194,7 @@ func fetchAllReferrers(ctx context.Context, repo oras.ReadOnlyGraphTarget, desc 
 			Digest:    r.Digest,
 			Size:      r.Size,
 			MediaType: r.MediaType,
-		}, artifactType, handler, nextDepth); err != nil {
+		}, artifactType, handler, nextDepth, visited); err != nil {
 			return err
 		}
 	}

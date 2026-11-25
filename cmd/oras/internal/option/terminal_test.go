@@ -1,5 +1,3 @@
-//go:build !windows && !darwin
-
 /*
 Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +25,7 @@ import (
 )
 
 func TestTerminal_Parse(t *testing.T) {
-	_, device, err := testutils.NewPty()
+	_, device, err := testutils.NewPipe()
 	if err != nil {
 		t.Fatal(err)
 	}

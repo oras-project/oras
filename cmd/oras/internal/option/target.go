@@ -29,15 +29,17 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content/oci"
-	"oras.land/oras-go/v2/errdef"
-	"oras.land/oras-go/v2/registry"
-	"oras.land/oras-go/v2/registry/remote"
-	"oras.land/oras-go/v2/registry/remote/auth"
-	"oras.land/oras-go/v2/registry/remote/errcode"
+	"github.com/oras-project/oras-go/v3"
+	"github.com/oras-project/oras-go/v3/content/oci"
+	"github.com/oras-project/oras-go/v3/errdef"
+	"github.com/oras-project/oras-go/v3/registry/remote"
+	"github.com/oras-project/oras-go/v3/registry/remote/auth"
+	"github.com/oras-project/oras-go/v3/registry/remote/errcode"
+	"github.com/oras-project/oras-go/v3/registry/remote/properties"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
+	"oras.land/oras/internal/contentutil"
+	"oras.land/oras/internal/repository"
 )
 
 const (
@@ -60,7 +62,6 @@ type Target struct {
 
 	IsOCILayout bool
 
-	prefix      string
 	description string
 }
 
@@ -72,7 +73,7 @@ func (target *Target) GetDisplayReference() string {
 // setFlagDetails set directional flag prefix and description details
 func (target *Target) setFlagDetails(prefix, description string) {
 	if prefix != "" {
-		target.prefix = prefix + "-"
+		target.flagPrefix = prefix + "-"
 		target.description = description + " "
 	}
 }
@@ -87,13 +88,15 @@ func (target *Target) setFlagDetails(prefix, description string) {
 // Since there is only one target type besides the default `registry` type,
 // the full form is not implemented until a new type comes in.
 func (target *Target) ApplyFlags(fs *pflag.FlagSet) {
-	target.ApplyFlagsWithPrefix(fs, target.prefix, target.description)
-	if target.prefix == "" {
+	target.ApplyFlagsWithPrefix(fs, target.flagPrefix, target.description)
+	if target.flagPrefix == "" {
 		target.applyStdinFlags(fs)
 	}
-	fs.BoolVarP(&target.IsOCILayout, target.prefix+"oci-layout", "", false, "set "+target.description+"target as an OCI image layout")
-	fs.StringVar(&target.Path, target.prefix+"oci-layout-path", "", "[Experimental] set the path for the "+target.description+"OCI image layout target")
+	fs.BoolVarP(&target.IsOCILayout, target.flagPrefix+"oci-layout", "", false, "set "+target.description+"target as an OCI image layout")
+	fs.StringVar(&target.Path, target.flagPrefix+"oci-layout-path", "", "[Experimental] set the path for the "+target.description+"OCI image layout target")
 }
+
+const errHeaderFlagsOnOCILayout = "custom header flags cannot be used on an OCI image layout target"
 
 // Parse gets target options from user input.
 func (target *Target) Parse(cmd *cobra.Command) error {
@@ -105,16 +108,23 @@ func (target *Target) Parse(cmd *cobra.Command) error {
 	case target.IsOCILayout:
 		target.Type = TargetTypeOCILayout
 		if len(target.headerFlags) != 0 {
-			return errors.New("custom header flags cannot be used on an OCI image layout target")
+			return errors.New(errHeaderFlagsOnOCILayout)
 		}
 		return target.parseOCILayoutReference()
 	case target.Path != "":
 		target.Type = TargetTypeOCILayout
+		if len(target.headerFlags) != 0 {
+			return errors.New(errHeaderFlagsOnOCILayout)
+		}
+
+		// The reference name is stored as-is in the OCI layout's
+		// org.opencontainers.image.ref.name annotation. It is not a registry
+		// reference and is not split into repository and tag components.
 		target.Reference = target.RawReference
 		return nil
 	default:
 		target.Type = TargetTypeRemote
-		ref, err := registry.ParseReference(target.RawReference)
+		ref, err := repository.ParseReference(target.RawReference)
 		if err != nil {
 			return &oerrors.Error{
 				OperationType:  oerrors.OperationTypeParseArtifactReference,
@@ -122,8 +132,9 @@ func (target *Target) Parse(cmd *cobra.Command) error {
 				Recommendation: "Please make sure the provided reference is in the form of <registry>/<repo>[:tag|@digest]",
 			}
 		}
-		target.Reference = ref.Reference
-		ref.Reference = ""
+		target.Reference = ref.GetReference()
+		ref.Tag = ""
+		ref.Digest = ""
 		target.Path = ref.String()
 		return target.Remote.Parse(cmd)
 	}
@@ -138,6 +149,9 @@ func (target *Target) parseOCILayoutReference() error {
 		// `digest` found
 		path = raw[:idx]
 		ref = raw[idx+1:]
+		if path == "" {
+			return errors.Join(fmt.Errorf("found empty file path in %q", raw), errdef.ErrInvalidReference)
+		}
 	} else {
 		// find `tag`
 		var err error
@@ -156,89 +170,103 @@ func (target *Target) newOCIStore() (*oci.Store, error) {
 }
 
 func (target *Target) newRepository(common Common, logger logrus.FieldLogger) (*remote.Repository, error) {
-	return target.NewRepository(target.RawReference, common, logger)
+	// Path holds the reference with any tag or digest stripped, which is what
+	// remote.NewRepository requires.
+	return target.NewRepository(target.Path, common, logger)
+}
+
+func resolveByTargetType[T any](target *Target, ociFn func() (T, error), remoteFn func() (T, error)) (T, error) {
+	switch target.Type {
+	case TargetTypeOCILayout:
+		return ociFn()
+	case TargetTypeRemote:
+		return remoteFn()
+	default:
+		var zero T
+		return zero, fmt.Errorf("unknown target type: %q", target.Type)
+	}
 }
 
 // NewTarget generates a new target based on target.
 func (target *Target) NewTarget(common Common, logger logrus.FieldLogger) (oras.GraphTarget, error) {
-	switch target.Type {
-	case TargetTypeOCILayout:
-		return target.newOCIStore()
-	case TargetTypeRemote:
-		return target.newRepository(common, logger)
-	}
-	return nil, fmt.Errorf("unknown target type: %q", target.Type)
+	return resolveByTargetType(
+		target,
+		func() (oras.GraphTarget, error) { return target.newOCIStore() },
+		func() (oras.GraphTarget, error) { return target.newRepository(common, logger) },
+	)
+}
+
+func (target *Target) newDeleter(common Common, logger logrus.FieldLogger, selectDeleter func(*remote.Repository) ResolvableDeleter) (ResolvableDeleter, error) {
+	return resolveByTargetType(
+		target,
+		func() (ResolvableDeleter, error) { return target.newOCIStore() },
+		func() (ResolvableDeleter, error) {
+			repo, err := target.newRepository(common, logger)
+			if err != nil {
+				return nil, err
+			}
+			return selectDeleter(repo), nil
+		},
+	)
 }
 
 // NewBlobDeleter generates a new blob deleter based on target.
 func (target *Target) NewBlobDeleter(common Common, logger logrus.FieldLogger) (ResolvableDeleter, error) {
-	switch target.Type {
-	case TargetTypeOCILayout:
-		return target.newOCIStore()
-	case TargetTypeRemote:
-		repo, err := target.newRepository(common, logger)
-		if err != nil {
-			return nil, err
-		}
-		return repo.Blobs(), nil
-	}
-	return nil, fmt.Errorf("unknown target type: %q", target.Type)
+	return target.newDeleter(common, logger, func(repo *remote.Repository) ResolvableDeleter {
+		return repo.Blobs()
+	})
 }
 
-// NewManifestDeleter generates a new blob deleter based on target.
+// NewManifestDeleter generates a new manifest deleter based on target.
 func (target *Target) NewManifestDeleter(common Common, logger logrus.FieldLogger) (ResolvableDeleter, error) {
-	switch target.Type {
-	case TargetTypeOCILayout:
-		return target.newOCIStore()
-	case TargetTypeRemote:
-		repo, err := target.newRepository(common, logger)
-		if err != nil {
-			return nil, err
-		}
-		return repo.Manifests(), nil
-	}
-	return nil, fmt.Errorf("unknown target type: %q", target.Type)
+	return target.newDeleter(common, logger, func(repo *remote.Repository) ResolvableDeleter {
+		return repo.Manifests()
+	})
 }
 
 // NewReadonlyTarget generates a new read only target based on target.
 func (target *Target) NewReadonlyTarget(ctx context.Context, common Common, logger logrus.FieldLogger) (ReadOnlyGraphTagFinderTarget, error) {
-	switch target.Type {
-	case TargetTypeOCILayout:
-		info, err := os.Stat(target.Path)
-		if err != nil {
-			if errors.Is(err, fs.ErrNotExist) {
-				return nil, fmt.Errorf("invalid argument %q: failed to find path %q: %w", target.RawReference, target.Path, err)
+	return resolveByTargetType(
+		target,
+		func() (ReadOnlyGraphTagFinderTarget, error) {
+			info, err := os.Stat(target.Path)
+			if err != nil {
+				if errors.Is(err, fs.ErrNotExist) {
+					return nil, fmt.Errorf("invalid argument %q: failed to find path %q: %w", target.RawReference, target.Path, err)
+				}
+				return nil, err
 			}
-			return nil, err
-		}
-		if info.IsDir() {
-			return oci.NewFromFS(ctx, os.DirFS(target.Path))
-		}
-		store, err := oci.NewFromTar(ctx, target.Path)
-		if err != nil {
-			if errors.Is(err, io.ErrUnexpectedEOF) {
-				return nil, fmt.Errorf("%q does not look like a tar archive: %w", target.Path, err)
+			if info.IsDir() {
+				return oci.NewFromFS(ctx, os.DirFS(target.Path))
 			}
-			return nil, err
-		}
-		return store, nil
-	case TargetTypeRemote:
-		return target.NewRepository(target.RawReference, common, logger)
-	}
-	return nil, fmt.Errorf("unknown target type: %q", target.Type)
+			store, err := oci.NewFromTar(ctx, target.Path)
+			if err != nil {
+				if errors.Is(err, io.ErrUnexpectedEOF) {
+					return nil, fmt.Errorf("%q does not look like a tar archive: %w", target.Path, err)
+				}
+				return nil, err
+			}
+			return store, nil
+		},
+		func() (ReadOnlyGraphTagFinderTarget, error) { return target.NewRepository(target.Path, common, logger) },
+	)
 }
 
-// EnsureReferenceNotEmpty returns formalized error when the reference is empty.
+// EnsureReferenceNotEmpty returns an error when the reference is empty
+// or when tags are not allowed and the reference is not a digest.
 func (target *Target) EnsureReferenceNotEmpty(cmd *cobra.Command, allowTag bool) error {
 	if target.Reference == "" {
 		return oerrors.NewErrEmptyTagOrDigest(target.RawReference, cmd, allowTag)
+	}
+	if !allowTag && !contentutil.IsDigest(target.Reference) {
+		return oerrors.NewErrEmptyTagOrDigest(target.RawReference, cmd, false)
 	}
 	return nil
 }
 
 // ModifyError handles error during cmd execution.
 func (target *Target) ModifyError(cmd *cobra.Command, err error) (bool, error) {
-	if target.IsOCILayout {
+	if target.Type == TargetTypeOCILayout || target.IsOCILayout {
 		// short circuit for non-remote targets
 		return false, err
 	}
@@ -260,11 +288,11 @@ func (target *Target) ModifyError(cmd *cobra.Command, err error) (bool, error) {
 		return false, err
 	}
 
-	ref := registry.Reference{Registry: target.RawReference}
+	ref := properties.Reference{Registry: target.RawReference}
 	if errResp.URL.Host != ref.Host() {
 		// raw reference is not registry host
 		var parseErr error
-		ref, parseErr = registry.ParseReference(target.RawReference)
+		ref, parseErr = properties.NewReference(target.RawReference)
 		if parseErr != nil {
 			// this should not happen
 			return false, err

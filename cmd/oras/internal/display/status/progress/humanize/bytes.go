@@ -40,8 +40,15 @@ func ToBytes(sizeInBytes int64) Bytes {
 		// only support up to TB
 		e = len(units) - 1
 	}
-	p := f / math.Pow(base, float64(e))
-	return Bytes{RoundTo(p), units[e]}
+	p := RoundTo(f / math.Pow(base, float64(e)))
+	if p >= base && e < len(units)-1 {
+		// Rounding can push the value up to a full unit, e.g. a size just
+		// below 1 MB rounds to 1024 KB. Promote it to the next unit so it is
+		// shown as "1 MB" instead of "1024 KB".
+		e++
+		p = RoundTo(f / math.Pow(base, float64(e)))
+	}
+	return Bytes{p, units[e]}
 }
 
 // String returns the string representation of Bytes.

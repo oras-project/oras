@@ -1,6 +1,7 @@
 {
     "storage": {
-        "rootDirectory": "/etc/zot"
+        "rootDirectory": "/etc/zot",
+        "dedupe": true
     },
     "http": {
         "address": "0.0.0.0",

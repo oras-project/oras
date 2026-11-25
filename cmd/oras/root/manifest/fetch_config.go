@@ -20,16 +20,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
+	"io"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/oras-project/oras-go/v3"
+	"github.com/oras-project/oras-go/v3/content"
+	"github.com/oras-project/oras-go/v3/errdef"
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/root/manifest/common"
 	"oras.land/oras/internal/descriptor"
 )
 
@@ -89,7 +91,7 @@ Example - Fetch and print the prettified descriptor of the config:
 	return oerrors.Command(cmd, &opts.Target)
 }
 
-func fetchConfig(cmd *cobra.Command, opts *fetchConfigOptions) (fetchErr error) {
+func fetchConfig(cmd *cobra.Command, opts *fetchConfigOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
 
 	repo, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
@@ -112,19 +114,35 @@ func fetchConfig(cmd *cobra.Command, opts *fetchConfigOptions) (fetchErr error) 
 
 	if !opts.OutputDescriptor || opts.outputPath != "" {
 		// fetch config content
-		contentBytes, err := content.FetchAll(ctx, src, configDesc)
-		if err != nil {
-			return err
-		}
+		if opts.outputPath != "" && (opts.outputPath != "-" || !opts.Pretty.Pretty) {
+			reader, err := src.Fetch(ctx, configDesc)
+			if err != nil {
+				return err
+			}
+			defer reader.Close()
 
-		if opts.outputPath == "" || opts.outputPath == "-" {
+			write := func(w io.Writer) error {
+				vr := content.NewVerifyReader(reader, configDesc)
+				if _, err := io.Copy(w, vr); err != nil {
+					return err
+				}
+				return vr.Verify()
+			}
+			if opts.outputPath == "-" {
+				if err := write(cmd.OutOrStdout()); err != nil {
+					return err
+				}
+			} else if err := writeOutputFile(opts.outputPath, write); err != nil {
+				return err
+			}
+		} else {
+			contentBytes, err := fetchConfigContent(ctx, src, configDesc)
+			if err != nil {
+				return err
+			}
+
 			// output config content
-			return opts.Output(os.Stdout, contentBytes)
-		}
-
-		// save config into the local file if the output path is provided
-		if err = os.WriteFile(opts.outputPath, contentBytes, 0666); err != nil {
-			return err
+			return opts.Output(cmd.OutOrStdout(), contentBytes)
 		}
 	}
 
@@ -134,10 +152,29 @@ func fetchConfig(cmd *cobra.Command, opts *fetchConfigOptions) (fetchErr error) 
 		if err != nil {
 			return err
 		}
-		return opts.Output(os.Stdout, descBytes)
+		return opts.Output(cmd.OutOrStdout(), descBytes)
 	}
 
 	return nil
+}
+
+func fetchConfigContent(ctx context.Context, src oras.ReadOnlyTarget, configDesc ocispec.Descriptor) ([]byte, error) {
+	if configDesc.Size > common.MaxConfigSize {
+		return nil, &oerrors.Error{
+			Err: fmt.Errorf(
+				"config size %v exceeds the limit of %v bytes: %w",
+				configDesc.Size,
+				common.MaxConfigSize,
+				errdef.ErrSizeExceedsLimit,
+			),
+			Recommendation: fmt.Sprintf(
+				`To download a large config, use "oras blob fetch --output <file> <repository>@%s"`,
+				configDesc.Digest,
+			),
+		}
+	}
+
+	return content.FetchAll(ctx, src, configDesc)
 }
 
 func fetchConfigDesc(ctx context.Context, src oras.ReadOnlyTarget, reference string, targetPlatform *ocispec.Platform) (ocispec.Descriptor, error) {

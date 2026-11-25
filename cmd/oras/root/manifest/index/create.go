@@ -25,10 +25,10 @@ import (
 
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/oras-project/oras-go/v3"
+	"github.com/oras-project/oras-go/v3/content"
+	"github.com/oras-project/oras-go/v3/errdef"
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
@@ -36,12 +36,12 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/root/manifest/common"
 	"oras.land/oras/internal/contentutil"
 	"oras.land/oras/internal/descriptor"
+	"oras.land/oras/internal/docker"
 	"oras.land/oras/internal/listener"
 )
-
-var maxConfigSize int64 = 4 * 1024 * 1024 // 4 MiB
 
 // mediaTypeRegexp is the regular expression pattern required for a valid
 // media type, as defined in the image spec schema:
@@ -100,7 +100,12 @@ Example - Create an index and output the index to stdout, auto push will be disa
 			opts.RawReference = refs[0]
 			opts.extraRefs = refs[1:]
 			opts.sources = args[1:]
-			return option.Parse(cmd, &opts)
+
+			if err := option.Parse(cmd, &opts); err != nil {
+				return err
+			}
+
+			return option.ValidateExtraTags(opts.extraRefs)
 		},
 		Aliases: []string{"pack"},
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -183,9 +188,13 @@ func fetchSourceManifests(ctx context.Context, displayStatus status.ManifestInde
 }
 
 func getPlatform(ctx context.Context, target oras.ReadOnlyTarget, manifest *ocispec.Manifest) (*ocispec.Platform, error) {
+	if manifest.Config.MediaType != ocispec.MediaTypeImageConfig &&
+		manifest.Config.MediaType != docker.MediaTypeConfig {
+		return nil, nil //nolint:nilnil
+	}
 	// if config size is larger than 4 MiB, discontinue the fetch
-	if manifest.Config.Size > maxConfigSize {
-		return nil, fmt.Errorf("config size %v exceeds MaxBytes %v: %w", manifest.Config.Size, maxConfigSize, errdef.ErrSizeExceedsLimit)
+	if manifest.Config.Size > common.MaxConfigSize {
+		return nil, fmt.Errorf("config size %v exceeds the limit of %v bytes: %w", manifest.Config.Size, common.MaxConfigSize, errdef.ErrSizeExceedsLimit)
 	}
 	// fetch config content
 	contentBytes, err := content.FetchAll(ctx, target, manifest.Config)
@@ -241,6 +250,18 @@ func enrichDescriptor(ctx context.Context, target oras.ReadOnlyTarget, desc ocis
 			return ocispec.Descriptor{}, err
 		}
 		desc.ArtifactType = manifest.ArtifactType
+		if desc.ArtifactType == "" {
+			// Old-style artifacts predate the manifest artifactType field and
+			// convey their type through config.mediaType instead. Per the
+			// image-spec descriptor guidance, fall back to config.mediaType so
+			// the enriched descriptor still advertises an artifactType.
+			switch manifest.Config.MediaType {
+			case ocispec.MediaTypeImageConfig, ocispec.MediaTypeEmptyJSON, docker.MediaTypeConfig:
+				// standard image / empty config: not an artifact type, leave empty
+			default:
+				desc.ArtifactType = manifest.Config.MediaType
+			}
+		}
 	} else if descriptor.IsIndex(desc) {
 		var index ocispec.Index
 		if err := json.Unmarshal(manifestBytes, &index); err != nil {

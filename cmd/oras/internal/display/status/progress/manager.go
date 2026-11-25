@@ -37,9 +37,11 @@ var errManagerStopped = errors.New("progress output manager has already been sto
 
 type manager struct {
 	status       []*status
-	lock         sync.RWMutex // locks status and console, write lock is used for adding new status so that it has a higher priority
+	lock         sync.RWMutex // locks status, console and closing, write lock is used for adding new status so that it has a higher priority
+	renderLock   sync.Mutex   // prevents concurrent renders from interleaving console frames
 	console      console.Console
 	updating     sync.WaitGroup
+	closing      bool
 	renderDone   chan struct{}
 	renderClosed chan struct{}
 	prompts      map[progress.State]string
@@ -85,6 +87,8 @@ func (m *manager) start() {
 }
 
 func (m *manager) render() {
+	m.renderLock.Lock()
+	defer m.renderLock.Unlock()
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 
@@ -112,34 +116,38 @@ func (m *manager) Track(desc ocispec.Descriptor) (progress.Tracker, error) {
 		return nil, errManagerStopped
 	}
 
+	// render takes the read lock, so call it before taking the write lock
 	m.render()
 	s := newStatus(desc)
 	m.lock.Lock()
+	defer m.lock.Unlock()
+	if m.closing {
+		return nil, errManagerStopped
+	}
 	m.status = append(m.status, s)
 	m.console.NewRow()
 	m.console.NewRow()
-	m.lock.Unlock()
+	// add to m.updating under the lock so that it happens before Close waits on it
 	return m.newTracker(s), nil
 }
 
 func (m *manager) newTracker(s *status) progress.Tracker {
-	ch := make(chan statusUpdate, bufferSize)
+	msg := newMessenger(m.prompts)
 	m.updating.Go(func() {
-		for update := range ch {
-			update(s)
-		}
+		msg.drain(s)
 	})
-	return &messenger{
-		update:  ch,
-		prompts: m.prompts,
-	}
+	return msg
 }
 
 // Close stops all status and waits for updating and rendering.
 func (m *manager) Close() error {
-	if m.closed() {
+	m.lock.Lock()
+	if m.closing {
+		m.lock.Unlock()
 		return errManagerStopped
 	}
+	m.closing = true
+	m.lock.Unlock()
 	// 1. wait for update to stop
 	m.updating.Wait()
 	// 2. stop periodic rendering

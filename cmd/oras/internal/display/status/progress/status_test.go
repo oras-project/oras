@@ -19,6 +19,7 @@ import (
 	"errors"
 	"reflect"
 	"regexp"
+	"sync"
 	"testing"
 	"time"
 
@@ -252,6 +253,27 @@ func Test_status_Render(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_status_Render_concurrent(_ *testing.T) {
+	// An empty blob in progress makes Render update the spinner and the speed
+	// window before calling fmt, whose sync.Pool would otherwise order the
+	// goroutines for the race detector.
+	s := newStatus(ocispec.Descriptor{
+		MediaType: "application/octet-stream",
+		Size:      0,
+		Digest:    "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+	})
+	updateStatusStartTime()(s)
+	updateStatusMessage("Uploading", 0)(s)
+
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Go(func() {
+			_ = s.Render(80)
+		})
+	}
+	wg.Wait()
 }
 
 func Test_status_durationString(t *testing.T) {

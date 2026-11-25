@@ -17,20 +17,22 @@ package root
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/oras-project/oras-go/v3"
+	"github.com/oras-project/oras-go/v3/content"
+	"github.com/oras-project/oras-go/v3/content/file"
+	"github.com/oras-project/oras-go/v3/content/memory"
+	"github.com/oras-project/oras-go/v3/registry/remote/auth"
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/content/file"
-	"oras.land/oras-go/v2/content/memory"
-	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/fileref"
@@ -52,6 +54,7 @@ type pushOptions struct {
 	extraRefs         []string
 	manifestConfigRef string
 	artifactType      string
+	force             bool
 	concurrency       int
 	// Deprecated: verbose is deprecated and will be removed in the future.
 	verbose bool
@@ -120,6 +123,9 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 
 Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with tag 'example.com:test':
   oras push example.com:test hi.txt --oci-layout-path layout-dir
+
+Example - Push file "hi.txt" reproducibly with SOURCE_DATE_EPOCH:
+  SOURCE_DATE_EPOCH=1700000000 oras push localhost:5000/hello:v1 hi.txt
 `,
 		Args: oerrors.CheckArgs(argument.AtLeast(1), "the destination for pushing"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -128,6 +134,18 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 			opts.extraRefs = refs[1:]
 			opts.FileRefs = args[1:]
 			if err := option.Parse(cmd, &opts); err != nil {
+				return err
+			}
+			if opts.Target.Type == option.TargetTypeOCILayout {
+				if opts.IsOCILayout {
+					if opts.Reference != "" && !strings.Contains(opts.RawReference, "@") {
+						if err := option.ValidateOCILayoutTag(opts.Reference); err != nil {
+							return err
+						}
+					}
+				}
+			}
+			if err := option.ValidateExtraTags(opts.extraRefs); err != nil {
 				return err
 			}
 			opts.DisableTTY(opts.Debug, false)
@@ -169,6 +187,7 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 	}
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "`path` of image config file")
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
+	cmd.Flags().BoolVarP(&opts.force, "force", "", false, "force a deep traversal of the destination graph before tagging the root; useful when the destination is partially populated (e.g. by a registry cache)")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
 	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
@@ -190,6 +209,17 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 		return err
 	}
 	defer func() { _ = store.Close() }()
+
+	t, err := opts.ReproducibleTime()
+	if err != nil {
+		return err
+	}
+	if !t.IsZero() {
+		store.TarModTime = &t
+	}
+	// make manifest reproducible
+	opts.ApplyReproducible(&packOpts)
+
 	if opts.manifestConfigRef != "" {
 		path, cfgMediaType, err := fileref.Parse(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
 		if err != nil {
@@ -226,6 +256,26 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	if err != nil {
 		return err
 	}
+	return doPushCommand(
+		ctx, opts, packOpts, store, memoryStore, union,
+		statusHandler, metadataHandler,
+		func() (oras.GraphTarget, error) {
+			return opts.NewTarget(opts.Common, logger)
+		},
+	)
+}
+
+func doPushCommand(
+	ctx context.Context,
+	opts *pushOptions,
+	packOpts oras.PackManifestOptions,
+	store *file.Store,
+	memoryStore *memory.Store,
+	union oras.ReadOnlyTarget,
+	statusHandler status.PushHandler,
+	metadataHandler metadata.PushHandler,
+	newTarget func() (oras.GraphTarget, error),
+) error {
 	descs, err := loadFiles(ctx, store, opts.Annotations, opts.FileRefs, statusHandler)
 	if err != nil {
 		return err
@@ -243,9 +293,16 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	}
 
 	// prepare push
-	originalDst, err := opts.NewTarget(opts.Common, logger)
+	originalDst, err := newTarget()
 	if err != nil {
 		return err
+	}
+	// Keep the unwrapped destination for scope hinting; WithScopeHint relies
+	// on a concrete *remote.Repository type assertion and would silently
+	// skip the hint if passed the TraversingTarget wrapper.
+	scopeHintDst := originalDst
+	if opts.force {
+		originalDst = &contentutil.TraversingTarget{GraphTarget: originalDst}
 	}
 	dst, stopTrack, err := statusHandler.TrackTarget(originalDst)
 	if err != nil {
@@ -259,7 +316,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	copyWithScopeHint := func(root ocispec.Descriptor) error {
 		// add both pull and push scope hints for dst repository
 		// to save potential push-scope token requests during copy
-		ctx = registryutil.WithScopeHint(ctx, originalDst, auth.ActionPull, auth.ActionPush)
+		ctx = registryutil.WithScopeHint(ctx, scopeHintDst, auth.ActionPull, auth.ActionPush)
 
 		if tag := opts.Reference; tag == "" {
 			err = oras.CopyGraph(ctx, union, dst, root, copyOptions.CopyGraphOptions)
@@ -274,8 +331,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 	if err != nil {
 		return err
 	}
-	err = metadataHandler.OnCopied(&opts.Target, root)
-	if err != nil {
+	if err = metadataHandler.OnCopied(&opts.Target, root); err != nil {
 		return err
 	}
 
@@ -292,8 +348,7 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 		}
 	}
 
-	err = metadataHandler.Render()
-	if err != nil {
+	if err = metadataHandler.Render(); err != nil {
 		return err
 	}
 

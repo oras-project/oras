@@ -70,14 +70,15 @@ var _ = Describe("ORAS beginners:", func() {
 				Expect(helpStr).To(ContainSubstring("go-template"))
 
 				// Check for example in help text
-				Expect(helpStr).To(ContainSubstring("oras repo ls localhost:5000 --format json"))
-				Expect(helpStr).To(ContainSubstring("oras repo ls localhost:5000 --format go-template"))
+				Expect(helpStr).To(ContainSubstring("oras repo ls"))
+				Expect(helpStr).To(ContainSubstring("--format json"))
+				Expect(helpStr).To(ContainSubstring("--format go-template"))
 			})
 		})
 		When("running `repo tags`", func() {
 			It("should show help description with feature flags", func() {
 				out := ORAS("repo", "tags", "--help").MatchKeyWords(ExampleDesc).Exec().Out
-				Expect(out).Should(gbytes.Say("--exclude-digest-tags\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
+				Expect(out).Should(gbytes.Say("--exclude-digest-tags(\\[=true\\|false\\])?\\s+%s", regexp.QuoteMeta(feature.Preview.Mark)))
 			})
 
 			It("should call sub-commands with aliases", func() {
@@ -109,8 +110,9 @@ var _ = Describe("ORAS beginners:", func() {
 				Expect(helpStr).To(ContainSubstring("go-template"))
 
 				// Check for example in help text
-				Expect(helpStr).To(ContainSubstring("oras repo tags localhost:5000/hello --format json"))
-				Expect(helpStr).To(ContainSubstring("oras repo tags localhost:5000/hello --format go-template"))
+				Expect(helpStr).To(ContainSubstring("oras repo tags"))
+				Expect(helpStr).To(ContainSubstring("--format json"))
+				Expect(helpStr).To(ContainSubstring("--format go-template"))
 			})
 		})
 	})
@@ -712,7 +714,23 @@ var _ = Describe("OCI image layout users:", func() {
 			// prepare
 			root := prepare(ImageRepo, foobar.Tag, "example.registry.com/foo:latest", "example.registry.com/foo:v1.2.6", "test.com/bar:v1")
 			// test
-			ORAS("repo", "tags", "--oci-layout-path", root, "example.registry.com/foo:latest").MatchKeyWords(foobar.Tag, "example.registry.com/foo:latest", "example.registry.com/foo:v1.2.6", "test.com/bar:v1").Exec()
+			session := ORAS("repo", "tags", "--oci-layout-path", root, "example.registry.com/foo:latest").MatchKeyWords("latest\n", "v1.2.6\n").Exec()
+			Expect(session.Out).ShouldNot(gbytes.Say(foobar.Tag))
+			Expect(session.Out).ShouldNot(gbytes.Say("example.registry.com/foo:latest"))
+			Expect(session.Out).ShouldNot(gbytes.Say("example.registry.com/foo:v1.2.6"))
+			Expect(session.Out).ShouldNot(gbytes.Say("test.com/bar:v1"))
+		})
+
+		It("should still find associated tags if a full digest reference is provided", func() {
+			// prepare
+			root := prepare(ImageRepo, foobar.Tag, "example.registry.com/foo:latest", "example.registry.com/foo:v1.2.6", "test.com/bar:v1")
+			// test
+			digestRef := "example.registry.com/foo@" + foobar.Digest
+			session := ORAS("repo", "tags", "--oci-layout-path", root, digestRef).MatchKeyWords("latest\n", "v1.2.6\n").Exec()
+			Expect(session.Out).ShouldNot(gbytes.Say(foobar.Tag))
+			Expect(session.Out).ShouldNot(gbytes.Say("example.registry.com/foo:latest"))
+			Expect(session.Out).ShouldNot(gbytes.Say("example.registry.com/foo:v1.2.6"))
+			Expect(session.Out).ShouldNot(gbytes.Say("test.com/bar:v1"))
 		})
 
 		It("should not show digest tags if --exclude-digest-tags is used", func() {

@@ -84,7 +84,7 @@ var _ = Describe("1.1 registry users:", func() {
 		It("should add multiple tags to an existent manifest when providing tag reference", func() {
 			tagAndValidate(ZOTHost, ImageRepo, multi_arch.Tag, multi_arch.Digest, "tag1-via-tag", "tag1-via-tag", "tag1-via-tag")
 		})
-		It("should tag a referrer witout tag schema", func() {
+		It("should tag a referrer without tag schema", func() {
 			// parepare:
 			repo := fmt.Sprintf("command/tag/%d/referrers", GinkgoRandomSeed())
 			ORAS("cp", "-r", RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag), "--to-distribution-spec", "v1.1-referrers-api", RegistryRef(ZOTHost, repo, foobar.Tag)).Exec()
@@ -103,7 +103,7 @@ var _ = Describe("1.1 registry users:", func() {
 
 var _ = Describe("1.0 registry users:", func() {
 	When("running `tag`", func() {
-		It("should tag a referrer witout tag schema", func() {
+		It("should tag a referrer without tag schema", func() {
 			// prepare: copy to the fallback registry
 			repo := fmt.Sprintf("command/tag/%d/referrers", GinkgoRandomSeed())
 			ORAS("cp", "-r", RegistryRef(FallbackHost, ArtifactRepo, foobar.Tag), "--to-distribution-spec", "v1.1-referrers-api", RegistryRef(FallbackHost, repo, foobar.Tag)).Exec()

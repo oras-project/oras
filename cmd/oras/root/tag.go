@@ -16,16 +16,18 @@ limitations under the License.
 package root
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
 	"oras.land/oras/internal/listener"
 
+	"github.com/oras-project/oras-go/v3"
+	"github.com/oras-project/oras-go/v3/errdef"
+	"github.com/oras-project/oras-go/v3/registry/remote"
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/errdef"
-	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
@@ -74,7 +76,7 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 					Recommendation: fmt.Sprintf(`If you want to list available tags in %s, use "oras repo tags"`, container),
 				}
 			}
-			return oerrors.CheckArgs(argument.AtLeast(1), "the artifact to be retagged and the tags to be added")(cmd, args)
+			return oerrors.CheckArgs(argument.AtLeast(2), "the artifact to be retagged and the tags to be added")(cmd, args)
 		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			opts.RawReference = args[0]
@@ -108,9 +110,7 @@ func tagManifest(cmd *cobra.Command, opts *tagOptions) error {
 		return err
 	}
 	if targetRepo, ok := target.(*remote.Repository); ok {
-		// Since referrer capability has not been set or detected yet,
-		// nil is the only returned value and thus can be ignored
-		_ = targetRepo.SetReferrersCapability(true)
+		targetRepo.SetReferrersCapability(true)
 	}
 	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
 		return err
@@ -119,13 +119,17 @@ func tagManifest(cmd *cobra.Command, opts *tagOptions) error {
 	tagNOpts := oras.DefaultTagNOptions
 	tagNOpts.Concurrency = opts.concurrency
 	tagHandler := display.NewTagHandler(opts.Printer, opts.Target)
-	tagListener := listener.NewTagListener(target, tagHandler.OnTagging, tagHandler.OnTagged)
-	_, err = oras.TagN(
+	return doTag(ctx, target, opts.Reference, opts.targetRefs, tagNOpts, tagHandler)
+}
+
+func doTag(ctx context.Context, target oras.Target, reference string, targetRefs []string, opts oras.TagNOptions, handler metadata.TagHandler) error {
+	tagListener := listener.NewTagListener(target, handler.OnTagging, handler.OnTagged)
+	_, err := oras.TagN(
 		ctx,
 		tagListener,
-		opts.Reference,
-		opts.targetRefs,
-		tagNOpts,
+		reference,
+		targetRefs,
+		opts,
 	)
 	return err
 }

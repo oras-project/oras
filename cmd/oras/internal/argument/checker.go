@@ -20,13 +20,22 @@ import "fmt"
 // Exactly checks if the number of arguments is exactly cnt.
 func Exactly(cnt int) func(args []string) (bool, string) {
 	return func(args []string) (bool, string) {
-		return len(args) == cnt, fmt.Sprintf("exactly %d argument", cnt)
+		return len(args) == cnt, fmt.Sprintf("exactly %d %s", cnt, noun(cnt))
 	}
 }
 
 // AtLeast checks if the number of arguments is larger or equal to cnt.
 func AtLeast(cnt int) func(args []string) (bool, string) {
 	return func(args []string) (bool, string) {
-		return len(args) >= cnt, fmt.Sprintf("at least %d argument", cnt)
+		return len(args) >= cnt, fmt.Sprintf("at least %d %s", cnt, noun(cnt))
 	}
+}
+
+// noun returns the correctly pluralized noun for cnt arguments, as specified in
+// docs/proposals/error-handling-guideline.md.
+func noun(cnt int) string {
+	if cnt == 1 {
+		return "argument"
+	}
+	return "arguments"
 }

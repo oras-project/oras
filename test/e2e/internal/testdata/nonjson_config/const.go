@@ -21,8 +21,9 @@ import (
 
 var (
 	Descriptor = ocispec.Descriptor{
-		MediaType: "application/vnd.oci.image.manifest.v1+json",
-		Digest:    "sha256:9d16f5505246424aed7116cb21216704ba8c919997d0f1f37e154c11d509e1d2",
-		Size:      529,
+		MediaType:    "application/vnd.oci.image.manifest.v1+json",
+		Digest:       "sha256:9d16f5505246424aed7116cb21216704ba8c919997d0f1f37e154c11d509e1d2",
+		Size:         529,
+		ArtifactType: "application/vnd.unknown.config.v1+json",
 	}
 )

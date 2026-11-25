@@ -16,15 +16,17 @@ limitations under the License.
 package repo
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/opencontainers/go-digest"
+	"github.com/oras-project/oras-go/v3/registry/remote/properties"
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/v2/registry"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
 	"oras.land/oras/cmd/oras/internal/display"
+	"oras.land/oras/cmd/oras/internal/display/metadata"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/contentutil"
@@ -101,27 +103,44 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 		return err
 	}
 
-	// if a repository path is given, filter the tags under the repository
-	var targetPrefix string
+	// if a repository path is given, filter the tags under the repository.
+	// For OCI layouts, the repository is encoded in the reference and must be
+	// resolved for repository, tag and digest forms alike.
+	var targetPrefix, targetDigest, targetReference string
 	if opts.Target.Type == option.TargetTypeOCILayout {
-		ref, err := registry.ParseReference(opts.Reference)
-		if err == nil && ref.Reference == "" {
+		ref, err := properties.NewReference(opts.Reference)
+		if err == nil && ref.Repository != "" {
 			targetPrefix = fmt.Sprintf("%s/%s:", ref.Registry, ref.Repository)
+			switch {
+			case ref.Digest != "":
+				targetDigest = ref.Digest
+			case ref.Tag != "":
+				// tags in an OCI layout are stored with the repository prefix
+				targetReference = targetPrefix + ref.Tag
+			}
 		}
 	}
 
 	// if a tag is given, show the associated tags
-	var targetDigest string
 	if targetPrefix == "" && opts.Reference != "" {
 		if contentutil.IsDigest(opts.Reference) {
 			targetDigest = opts.Reference
 		} else {
-			desc, err := finder.Resolve(ctx, opts.Reference)
-			if err != nil {
-				return err
-			}
-			targetDigest = desc.Digest.String()
+			targetReference = opts.Reference
 		}
+	}
+	if targetDigest != "" {
+		if _, err := finder.Resolve(ctx, targetDigest); err != nil {
+			return err
+		}
+	} else if targetReference != "" {
+		desc, err := finder.Resolve(ctx, targetReference)
+		if err != nil {
+			return err
+		}
+		targetDigest = desc.Digest.String()
+	}
+	if targetDigest != "" {
 		logger.Warnf("[Experimental] querying tags associated to %s, it may take a while...\n", targetDigest)
 	}
 
@@ -129,10 +148,15 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 	if err != nil {
 		return err
 	}
-	err = finder.Tags(ctx, opts.last, func(tags []string) error {
+	return doShowTags(ctx, finder, opts, targetPrefix, targetDigest, handler)
+}
+
+func doShowTags(ctx context.Context, finder option.ReadOnlyGraphTagFinderTarget, opts *showTagsOptions, targetPrefix, targetDigest string, handler metadata.RepoTagsHandler) error {
+	err := finder.Tags(ctx, opts.last, func(tags []string) error {
 		for _, tag := range tags {
 			// if --oci-layout-path is used with a repository path, filter the
 			// tags under the repository.
+			fullTag := tag
 			if targetPrefix != "" {
 				scopedTag, ok := strings.CutPrefix(tag, targetPrefix)
 				if !ok {
@@ -154,7 +178,7 @@ func showTags(cmd *cobra.Command, opts *showTagsOptions) error {
 					}
 					continue
 				}
-				desc, err := finder.Resolve(ctx, tag)
+				desc, err := finder.Resolve(ctx, fullTag)
 				if err != nil {
 					return err
 				}

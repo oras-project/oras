@@ -27,13 +27,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: ['1.25']
+        go-version: ['1.26']
       fail-fast: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Setup Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version: ${{ matrix.go-version }}
           check-latest: true
@@ -41,20 +41,31 @@ jobs:
         run: make build-linux-amd64
       - name: Run Unit Tests
         run: make test
-      - name: Run E2E Tests
-        run: |
-          if [[ $GITHUB_REF_NAME == v* && $GITHUB_REF_TYPE == tag ]]; then
-            make teste2e
-          else
-            make teste2e-covdata
-          fi
-        env:
-          ORAS_PATH: bin/linux/amd64/oras
       - name: Check Version
         run: bin/linux/amd64/oras version
+      - name: Check OCI image metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --tag oras-oci-label-test --build-arg OCI_VERSION=v1.2.3 --build-arg OCI_REVISION="$GITHUB_SHA" .
+          label() {
+            docker image inspect oras-oci-label-test --format '{{json .Config.Labels}}' | jq -r --arg key "$1" '.[$key] // empty'
+          }
+          test "$(label org.opencontainers.image.source)" = 'https://github.com/oras-project/oras'
+          test "$(label org.opencontainers.image.url)" = 'https://oras.land/'
+          test "$(label org.opencontainers.image.documentation)" = 'https://oras.land/docs/'
+          test "$(label org.opencontainers.image.title)" = 'ORAS CLI'
+          test "$(label org.opencontainers.image.description)" = 'OCI registry client for managing artifacts'
+          test "$(label org.opencontainers.image.vendor)" = 'ORAS Project'
+          test "$(label org.opencontainers.image.licenses)" = 'Apache-2.0'
+          test "$(label org.opencontainers.image.version)" = 'v1.2.3'
+          test "$(label org.opencontainers.image.revision)" = "$GITHUB_SHA"
       - name: Upload coverage to codecov.io
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
           fail_ci_if_error: true
+          files: coverage.txt
+          disable_search: true
+          name: unit-go${{ matrix.go-version }}

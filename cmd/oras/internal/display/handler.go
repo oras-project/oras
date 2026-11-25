@@ -20,7 +20,7 @@ import (
 	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	fetcher "oras.land/oras-go/v2/content"
+	fetcher "github.com/oras-project/oras-go/v3/content"
 
 	"oras.land/oras/cmd/oras/internal/display/content"
 	"oras.land/oras/cmd/oras/internal/display/metadata"
@@ -225,7 +225,7 @@ func NewManifestIndexUpdateHandler(outputPath string, printer *output.Printer, p
 // NewCopyHandler returns copy handlers.
 func NewCopyHandler(printer *output.Printer, tty *os.File, fetcher fetcher.Fetcher) (status.CopyHandler, metadata.CopyHandler) {
 	if tty != nil {
-		return status.NewTTYCopyHandler(tty), text.NewCopyHandler(printer)
+		return status.NewTTYCopyHandler(tty, fetcher), text.NewCopyHandler(printer)
 	}
 	return status.NewTextCopyHandler(printer, fetcher), text.NewCopyHandler(printer)
 }

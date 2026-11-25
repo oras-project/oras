@@ -16,6 +16,7 @@ limitations under the License.
 package output
 
 import (
+	"bytes"
 	"os"
 	"testing"
 )
@@ -23,5 +24,23 @@ import (
 func Test_parseAndWrite_err(t *testing.T) {
 	if err := ParseAndWrite(os.Stdout, func() {}, ""); err == nil {
 		t.Errorf("should return error")
+	}
+}
+
+func Test_parseAndWrite_integers(t *testing.T) {
+	type layer struct {
+		Size int64 `json:"size"`
+	}
+	object := struct {
+		Layers []layer `json:"layers"`
+	}{
+		Layers: []layer{{Size: 5 * 1024 * 1024}, {Size: 10_000_000_000}},
+	}
+	var buf bytes.Buffer
+	if err := ParseAndWrite(&buf, object, "{{range .layers}}{{.size}} {{end}}"); err != nil {
+		t.Fatalf("ParseAndWrite() error = %v", err)
+	}
+	if got, want := buf.String(), "5242880 10000000000 "; got != want {
+		t.Errorf("ParseAndWrite() = %q, want %q", got, want)
 	}
 }

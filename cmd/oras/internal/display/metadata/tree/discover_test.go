@@ -124,3 +124,51 @@ func TestDiscoverHandler_OnDiscovered(t *testing.T) {
 		}
 	})
 }
+
+func TestDiscoverHandler_OnDiscovered_sortedAnnotations(t *testing.T) {
+	path := "localhost:5000/test"
+	subjectDesc := ocispec.Descriptor{
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Digest:    "sha256:9d16f5505246424aed7116cb21216704ba8c919997d0f1f37e154c11d509e1d2",
+		Size:      529,
+	}
+	referrerDesc := ocispec.Descriptor{
+		MediaType: "application/vnd.oci.image.manifest.v1+json",
+		Digest:    digest.Digest("sha256:e2c6633a79985906f1ed55c592718c73c41e809fb9818de232a635904a74d48d"),
+		Size:      660,
+		Annotations: map[string]string{
+			"zeta":                             "1",
+			"alpha":                            "2",
+			"mid":                              "3",
+			"beta":                             "4",
+			"org.opencontainers.image.created": "2023-01-18T08:37:42Z",
+		},
+		ArtifactType: "test/sbom.file",
+	}
+	want := `localhost:5000/test@sha256:9d16f5505246424aed7116cb21216704ba8c919997d0f1f37e154c11d509e1d2
+└── test/sbom.file
+    └── sha256:e2c6633a79985906f1ed55c592718c73c41e809fb9818de232a635904a74d48d
+        └── [annotations]
+            ├── alpha: "2"
+            ├── beta: "4"
+            ├── mid: "3"
+            ├── org.opencontainers.image.created: "2023-01-18T08:37:42Z"
+            └── zeta: "1"
+`
+
+	// Go randomizes map iteration, so render several times to make sure the
+	// order of the annotations does not change between runs.
+	for i := 0; i < 20; i++ {
+		var buf bytes.Buffer
+		h := NewDiscoverHandler(&buf, path, subjectDesc, true, nil)
+		if err := h.OnDiscovered(referrerDesc, subjectDesc); err != nil {
+			t.Fatalf("OnDiscovered() error = %v", err)
+		}
+		if err := h.Render(); err != nil {
+			t.Fatalf("Render() error = %v", err)
+		}
+		if got := buf.String(); got != want {
+			t.Fatalf("Render() on run %d = \n%s\nwant\n%s", i, got, want)
+		}
+	}
+}
