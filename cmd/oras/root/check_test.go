@@ -761,6 +761,51 @@ func Test_checkLayout_resolve(t *testing.T) {
 	}
 }
 
+func Test_checkLayout_resolveNestedDigest(t *testing.T) {
+	b := newLayoutBuilder(t)
+	m1, _ := b.image(nil, b.blob(testLayerType, []byte("one")))
+	m2, _ := b.image(nil, b.blob(testLayerType, []byte("two")))
+	idx := b.json(ocispec.MediaTypeImageIndex, ocispec.Index{Versioned: specVersion, Manifests: []ocispec.Descriptor{m1, m2}})
+	b.tag(idx, "v1")
+	layout, err := newCheckLayout(b.dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []ocispec.Descriptor{m1, m2, idx} {
+		got, err := layout.Resolve(context.Background(), want.Digest.String())
+		if err != nil || got.Digest != want.Digest || got.MediaType != want.MediaType || got.Size != want.Size {
+			t.Errorf("Resolve(%s) = %+v, %v; want %+v", want.Digest, got, err, want)
+		}
+	}
+	unknown := digest.FromString("not in the layout")
+	if _, err := layout.Resolve(context.Background(), unknown.String()); !errors.Is(err, errdef.ErrNotFound) {
+		t.Errorf("Resolve(unknown digest) error = %v, want not found", err)
+	}
+
+	t.Run("check a manifest nested in an index", func(t *testing.T) {
+		out, err := runLayoutCheck(t, b.dir, m2.Digest.String(), nil)
+		if err != nil || !strings.Contains(out, "Checked 3 nodes: 3 verified, 0 failed") {
+			t.Errorf("err = %v, out = %q", err, out)
+		}
+	})
+}
+
+func Test_isForeignLayer(t *testing.T) {
+	for mediaType, want := range map[string]bool{
+		"application/vnd.oci.image.layer.nondistributable.v1.tar":      true,
+		"application/vnd.oci.image.layer.nondistributable.v1.tar+gzip": true,
+		"application/vnd.oci.image.layer.nondistributable.v1.tar+zstd": true,
+		"application/vnd.docker.image.rootfs.foreign.diff.tar.gzip":    true,
+		"application/vnd.oci.image.layer.v1.tar+gzip":                  false,
+		"application/vnd.test.nondistributable.thing":                  false,
+		"application/vnd.docker.image.rootfs.diff.tar.gzip":            false,
+	} {
+		if got := isForeignLayer(mediaType); got != want {
+			t.Errorf("isForeignLayer(%q) = %v, want %v", mediaType, got, want)
+		}
+	}
+}
+
 func Test_newCheckLayout_errors(t *testing.T) {
 	t.Run("index.json is not JSON", func(t *testing.T) {
 		b := newLayoutBuilder(t)
@@ -973,6 +1018,15 @@ func Test_checkCmd(t *testing.T) {
 		out, err := runCheckCmd(t, "--oci-layout", b.dir+":v1")
 		if err != nil || !strings.Contains(out, "Checked 3 nodes: 3 verified, 0 failed") {
 			t.Errorf("err = %v, out = %q", err, out)
+		}
+	})
+	t.Run("a line for each node, which has no title", func(t *testing.T) {
+		out, err := runCheckCmd(t, "--oci-layout", b.dir+":v1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := strings.Count(out, "Verified "); got != 3 {
+			t.Errorf("got %d Verified lines, want 3: %q", got, out)
 		}
 	})
 	t.Run("an intact layout archive", func(t *testing.T) {

@@ -95,6 +95,7 @@ Example - Check the image for one platform of a multi-platform artifact:
 			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			opts.Printer.Verbose = true // most nodes have no title, and PrintStatus hides them otherwise
 			return runCheck(cmd, &opts)
 		},
 	}
@@ -213,7 +214,7 @@ func doCheck(ctx context.Context, src oras.ReadOnlyTarget, reference string, res
 			return printer.PrintStatus(desc, status)
 		},
 	})
-	// A walk that stopped early is reported before the summary, because the
+	// A walk that stopped early returns an error and no summary, because the
 	// report is then incomplete and must not be read as a pass.
 	if err != nil {
 		return fmt.Errorf("check stopped before it finished: %w", err)
@@ -373,9 +374,18 @@ func isCheckImageManifest(mediaType string) bool {
 		mediaType == graph.MediaTypeArtifactManifest
 }
 
+// isForeignLayer reports whether a layer is a foreign layer. These are the
+// exact media types that oras-go drops from the walk; any other type is
+// verified, not skipped.
 func isForeignLayer(mediaType string) bool {
-	return strings.Contains(mediaType, ".nondistributable.") ||
-		mediaType == "application/vnd.docker.image.rootfs.foreign.diff.tar.gzip"
+	switch mediaType {
+	case "application/vnd.oci.image.layer.nondistributable.v1.tar",
+		"application/vnd.oci.image.layer.nondistributable.v1.tar+gzip",
+		"application/vnd.oci.image.layer.nondistributable.v1.tar+zstd",
+		"application/vnd.docker.image.rootfs.foreign.diff.tar.gzip":
+		return true
+	}
+	return false
 }
 
 // checkManifestShape compares the body of a manifest with the media type of the
@@ -443,14 +453,64 @@ func newCheckLayout(layoutPath string) (*checkLayout, error) {
 	return &checkLayout{ReadOnlyStorage: storage, manifests: index.Manifests}, nil
 }
 
+// maxCheckManifestSize caps how much of a blob is read to find out what a
+// digest reference points to. It is the manifest size limit used elsewhere in
+// oras.
+const maxCheckManifestSize = 4 * 1024 * 1024
+
 // Resolve finds a manifest in the top-level index by its tag, or by its digest.
-func (l *checkLayout) Resolve(_ context.Context, reference string) (ocispec.Descriptor, error) {
+// A digest that is not listed in the top-level index, such as a manifest nested
+// in an index, is looked up in the blob storage.
+func (l *checkLayout) Resolve(ctx context.Context, reference string) (ocispec.Descriptor, error) {
 	for _, desc := range l.manifests {
 		if desc.Digest.String() == reference || desc.Annotations[ocispec.AnnotationRefName] == reference {
 			return desc, nil
 		}
 	}
+	if dgst, err := digest.Parse(reference); err == nil {
+		return l.resolveBlob(ctx, dgst)
+	}
 	return ocispec.Descriptor{}, fmt.Errorf("%s: %w", reference, errdef.ErrNotFound)
+}
+
+// resolveBlob builds a descriptor for a blob that the top-level index does not
+// list. The media type comes from the body of the manifest; a blob that is not
+// a manifest is described as a plain blob, and is checked against its digest.
+func (l *checkLayout) resolveBlob(ctx context.Context, dgst digest.Digest) (ocispec.Descriptor, error) {
+	desc := ocispec.Descriptor{MediaType: "application/octet-stream", Digest: dgst}
+	rc, err := l.Fetch(ctx, desc)
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	defer rc.Close()
+	body, err := io.ReadAll(io.LimitReader(rc, maxCheckManifestSize+1))
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	desc.Size = int64(len(body))
+	if desc.Size > maxCheckManifestSize {
+		// Too big to be a manifest.
+		return desc, nil
+	}
+	var fields struct {
+		MediaType string          `json:"mediaType"`
+		Manifests json.RawMessage `json:"manifests"`
+		Config    json.RawMessage `json:"config"`
+		Layers    json.RawMessage `json:"layers"`
+		Blobs     json.RawMessage `json:"blobs"`
+	}
+	if err := json.Unmarshal(body, &fields); err != nil {
+		return desc, nil
+	}
+	switch {
+	case isCheckManifest(fields.MediaType):
+		desc.MediaType = fields.MediaType
+	case fields.Manifests != nil:
+		desc.MediaType = ocispec.MediaTypeImageIndex
+	case fields.Config != nil || fields.Layers != nil || fields.Blobs != nil:
+		desc.MediaType = ocispec.MediaTypeImageManifest
+	}
+	return desc, nil
 }
 
 // readTarFile reads one file from a tar archive. The tar file system of oras-go
