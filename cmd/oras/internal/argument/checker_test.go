@@ -76,3 +76,32 @@ func TestAtLeast(t *testing.T) {
 		})
 	}
 }
+
+func TestAtMost(t *testing.T) {
+	tests := []struct {
+		name    string
+		cnt     int
+		args    []string
+		wantOK  bool
+		wantMsg string
+	}{
+		{"none allowed, none given", 0, nil, true, "at most 0 arguments"},
+		{"none allowed, one given", 0, []string{"a"}, false, "at most 0 arguments"},
+		{"one allowed, none given", 1, nil, true, "at most 1 argument"},
+		{"one allowed, one given", 1, []string{"a"}, true, "at most 1 argument"},
+		{"one allowed, two given", 1, []string{"a", "b"}, false, "at most 1 argument"},
+		{"two allowed, two given", 2, []string{"a", "b"}, true, "at most 2 arguments"},
+		{"two allowed, three given", 2, []string{"a", "b", "c"}, false, "at most 2 arguments"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotOK, gotMsg := AtMost(tt.cnt)(tt.args)
+			if gotOK != tt.wantOK {
+				t.Errorf("AtMost(%d)(%v) ok = %v, want %v", tt.cnt, tt.args, gotOK, tt.wantOK)
+			}
+			if gotMsg != tt.wantMsg {
+				t.Errorf("AtMost(%d)(%v) msg = %q, want %q", tt.cnt, tt.args, gotMsg, tt.wantMsg)
+			}
+		})
+	}
+}

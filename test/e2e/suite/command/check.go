@@ -59,8 +59,8 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("check").ExpectFailure().MatchErrKeyWords("Error:", "the artifact reference to check").Exec()
 		})
 
-		It("should fail when the artifact reference has no tag or digest", func() {
-			ORAS("check", Flags.Layout, PrepareTempOCI(ArtifactRepo)).ExpectFailure().
+		It("should fail when a registry reference has no tag or digest", func() {
+			ORAS("check", ZOTHost+"/"+ArtifactRepo).ExpectFailure().
 				MatchErrKeyWords("Error:", "no tag or digest specified").Exec()
 		})
 
@@ -113,6 +113,32 @@ var _ = Describe("OCI image layout users:", func() {
 				MatchKeyWords("Checked 3 nodes: 3 verified, 0 failed").Exec()
 		})
 
+		It("should verify a whole OCI image layout directory with --oci-layout and --oci-layout-path", func() {
+			root := PrepareTempOCI(ArtifactRepo)
+			ORAS("check", Flags.Layout, root).
+				MatchKeyWords("Verified", "0 failed").Exec()
+			ORAS("check", ociLayoutPath, root).
+				MatchKeyWords("Verified", "0 failed").Exec()
+		})
+
+		It("should fail when --platform is used with a whole OCI image layout", func() {
+			root := PrepareTempOCI(ImageRepo)
+			ORAS("check", Flags.Layout, root, "--platform", "linux/amd64").ExpectFailure().
+				MatchErrKeyWords("Error:", "--platform").Exec()
+		})
+
+		It("should fail on a whole OCI image layout with a corrupt blob and a stray file", func() {
+			root := PrepareTempOCI(ArtifactRepo)
+			replaceBlob(root, foobar.BarBlobDigest, []byte("baz"))
+			Expect(os.WriteFile(filepath.Join(root, "blobs", "stray.txt"), []byte("stray"), 0o644)).To(Succeed())
+			ORAS("check", Flags.Layout, root).ExpectFailure().
+				MatchKeyWords(
+					"Corrupt:", foobar.BarBlobDigest,
+					"Unable to check: blobs/stray.txt:",
+				).
+				MatchErrKeyWords("Error:", "check failed:").Exec()
+		})
+
 		It("should fail and name the corrupt blob when a layer was changed", func() {
 			root := PrepareTempOCI(ArtifactRepo)
 			replaceBlob(root, foobar.BarBlobDigest, []byte("baz")) // same size as "bar"
@@ -161,6 +187,29 @@ var _ = Describe("Common registry users:", func() {
 				MatchKeyWords("Checked 4 nodes: 4 verified, 0 failed").Exec()
 			ORAS("check", RegistryRef(ZOTHost, repo, foobar.Digest)).
 				MatchKeyWords("Checked 4 nodes: 4 verified, 0 failed").Exec()
+		})
+
+		It("should verify the directory and tar output of oras backup", func() {
+			repo := checkTestRepo("backup")
+			root := PrepareTempOCI(ArtifactRepo)
+			ref := RegistryRef(ZOTHost, repo, foobar.Tag)
+			ORAS("cp", Flags.FromLayout, LayoutRef(root, foobar.Tag), ref).Exec()
+
+			tempDir := GinkgoT().TempDir()
+			backupDir := filepath.Join(tempDir, "backup-dir")
+			backupTar := filepath.Join(tempDir, "backup.tar")
+			ORAS("backup", ref, "-o", backupDir).Exec()
+			ORAS("backup", ref, "-o", backupTar).Exec()
+
+			ORAS("check", Flags.Layout, backupDir).
+				MatchKeyWords("Checked 4 nodes: 4 verified, 0 failed").Exec()
+			ORAS("check", ociLayoutPath, backupDir).
+				MatchKeyWords("Checked 4 nodes: 4 verified, 0 failed").Exec()
+			ORAS("check", Flags.Layout, backupTar).
+				MatchKeyWords(
+					"Checked 4 nodes: 4 verified, 0 failed",
+					"Not checked: unreferenced blobs and stray files are not checked in a tar archive",
+				).Exec()
 		})
 
 		It("should verify one platform of a multi-platform artifact in a registry", func() {
