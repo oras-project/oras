@@ -230,7 +230,7 @@ func (c *checker) findSuccessors(ctx context.Context, fetcher content.Fetcher, d
 		return nil, nil
 	}
 	if desc.Size > maxCheckManifestSize {
-		return nil, fmt.Errorf("%w: a manifest of %d bytes is larger than the limit of %d bytes", errCheckInvalid, desc.Size, maxCheckManifestSize)
+		return nil, fmt.Errorf("a manifest of %d bytes is larger than the limit of %d bytes, so it was not read", desc.Size, maxCheckManifestSize)
 	}
 	body, err := content.FetchAll(ctx, fetcher, desc)
 	if err != nil {

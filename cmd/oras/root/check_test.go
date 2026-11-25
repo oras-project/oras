@@ -630,6 +630,10 @@ func Test_check_registry(t *testing.T) {
 			conn, _, _ := w.(http.Hijacker).Hijack()
 			conn.Close()
 		}), "Unable to check"},
+		{"short blob with Content-Length", serveLayer(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Length", "4")
+			_, _ = w.Write(layerData[:4])
+		}), "Unable to check"},
 		{"short blob without Content-Length", serveLayer(func(w http.ResponseWriter, _ *http.Request) {
 			w.(http.Flusher).Flush()
 			_, _ = w.Write(layerData[:4])
@@ -826,7 +830,7 @@ func Test_check_oversizedManifest(t *testing.T) {
 	idx := b.json(ocispec.MediaTypeImageIndex, ocispec.Index{Versioned: specVersion, Manifests: []ocispec.Descriptor{huge}})
 	b.tag(idx, "v1")
 	out, err := runLayoutCheck(t, b.dir, "v1", nil)
-	wantFailure(t, out, err, "Invalid")
+	wantFailure(t, out, err, "Unable to check")
 }
 
 func Test_isForeignLayer(t *testing.T) {
