@@ -249,6 +249,42 @@ func Test_doBackup_handlerCalls(t *testing.T) {
 	}
 }
 
+func Test_doBackup_storesFullReference(t *testing.T) {
+	ctx := context.Background()
+	dstRoot := t.TempDir()
+	dst, err := oci.New(dstRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opts := &backupOptions{output: dstRoot, outputFormat: outputFormatDir, repository: "localhost:5000/example", tags: []string{"v1"}}
+	recorder := &displaytest.CallRecorder{}
+	statusHandler := &displaytest.RecordingBackupStatusHandler{Recorder: recorder}
+	metadataHandler := &displaytest.RecordingBackupMetadataHandler{Recorder: recorder}
+
+	if err := doBackup(ctx, opts, logrus.New(), newBackupTestSource(t), dst, dstRoot, time.Now(), statusHandler, metadataHandler); err != nil {
+		t.Fatal(err)
+	}
+
+	indexBytes, err := os.ReadFile(filepath.Join(dstRoot, "index.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var index ocispec.Index
+	if err := json.Unmarshal(indexBytes, &index); err != nil {
+		t.Fatal(err)
+	}
+	if len(index.Manifests) != 1 {
+		t.Fatalf("index.json has %d manifests, want 1", len(index.Manifests))
+	}
+	annotations := index.Manifests[0].Annotations
+	if got, want := annotations[ocispec.AnnotationRefName], "localhost:5000/example:v1"; got != want {
+		t.Errorf("%s = %q, want %q", ocispec.AnnotationRefName, got, want)
+	}
+	if title, ok := annotations[ocispec.AnnotationTitle]; ok {
+		t.Errorf("%s = %q, want no title annotation", ocispec.AnnotationTitle, title)
+	}
+}
+
 func Test_doBackup_tagsFoundError(t *testing.T) {
 	ctx := context.Background()
 	dstRoot := t.TempDir()

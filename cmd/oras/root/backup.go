@@ -260,13 +260,11 @@ func doBackup(
 	}
 
 	for i, tag := range tags {
-		// Add the full image reference to the title annotation
-		root := roots[i]
+		// Store the full reference (e.g. localhost:5000/repo:v1) in
+		// org.opencontainers.image.ref.name, as described in
+		// docs/proposals/backup-restore-multi.md. The OCI store writes the
+		// reference passed to Tag into that annotation.
 		fullRef := opts.repository + ":" + tag
-		if root.Annotations == nil {
-			root.Annotations = make(map[string]string, 1)
-		}
-		root.Annotations[ocispec.AnnotationTitle] = fullRef
 
 		referrerCount, err := func() (referrerCount int, retErr error) {
 			trackedDst, err := statusHandler.StartTracking(dstOCI)
@@ -281,9 +279,9 @@ func doBackup(
 			}()
 
 			if opts.includeReferrers {
-				return backupTagWithReferrers(ctx, srcRepo, trackedDst, tag, root, extCopyGraphOpts)
+				return backupTagWithReferrers(ctx, srcRepo, trackedDst, fullRef, roots[i], extCopyGraphOpts)
 			}
-			return 0, backupTag(ctx, srcRepo, trackedDst, tag, root, copyGraphOpts)
+			return 0, backupTag(ctx, srcRepo, trackedDst, fullRef, roots[i], copyGraphOpts)
 		}()
 		if err != nil {
 			return fmt.Errorf("failed to back up tag %q from %q to %q: %w", tag, opts.repository, dstRoot, oerrors.UnwrapCopyError(err))

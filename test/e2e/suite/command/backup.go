@@ -473,11 +473,11 @@ var _ = Describe("ORAS users:", func() {
 		})
 	})
 
-	When("verifying annotations", func() {
-		It("should set org.opencontainers.image.title annotation with full reference", func() {
+	When("verifying the reference annotation", func() {
+		It("should store the full reference in org.opencontainers.image.ref.name", func() {
 			tmpDir := GinkgoT().TempDir()
-			outDir := filepath.Join(tmpDir, "backup-title-annotation")
-			repo := backupTestRepo("title-annotation")
+			outDir := filepath.Join(tmpDir, "backup-full-reference")
+			repo := backupTestRepo("full-reference")
 			tag := "v1.0"
 			srcRef := RegistryRef(ZOTHost, repo, tag)
 
@@ -497,11 +497,11 @@ var _ = Describe("ORAS users:", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(index.Manifests).ToNot(BeEmpty())
 
-			// Verify annotations on the first manifest
+			// Verify the full reference is stored in ref.name and no title is set
 			annotations := index.Manifests[0].Annotations
-			Expect(annotations["org.opencontainers.image.ref.name"]).To(Equal(tag))
 			expectedFullRef := fmt.Sprintf("%s/%s:%s", ZOTHost, repo, tag)
-			Expect(annotations[ocispec.AnnotationTitle]).To(Equal(expectedFullRef))
+			Expect(annotations[ocispec.AnnotationRefName]).To(Equal(expectedFullRef))
+			Expect(annotations).ToNot(HaveKey(ocispec.AnnotationTitle))
 		})
 	})
 
