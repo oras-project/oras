@@ -1,0 +1,477 @@
+/*
+Copyright The ORAS Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package root
+
+import (
+	"archive/tar"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path"
+	"path/filepath"
+	"sort"
+	"strings"
+	"sync"
+
+	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/oras-project/oras-go/v3"
+	"github.com/oras-project/oras-go/v3/content"
+	"github.com/oras-project/oras-go/v3/content/oci"
+	"github.com/oras-project/oras-go/v3/errdef"
+	"github.com/spf13/cobra"
+	"oras.land/oras/cmd/oras/internal/argument"
+	"oras.land/oras/cmd/oras/internal/command"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
+	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/cmd/oras/internal/output"
+	"oras.land/oras/internal/docker"
+	"oras.land/oras/internal/graph"
+)
+
+// defaultCheckConcurrency is the number of blobs checked at the same time
+// when --concurrency is not set to a positive value. It matches the default
+// used by oras-go's VerifyGraph.
+const defaultCheckConcurrency = 8
+
+type checkOptions struct {
+	option.Common
+	option.Platform
+	option.Target
+
+	concurrency int
+}
+
+func checkCmd() *cobra.Command {
+	var opts checkOptions
+
+	cmd := &cobra.Command{
+		Use:   "check [flags] <name>{:<tag>|@<digest>}",
+		Short: "[Experimental] Verify that an artifact is complete and intact",
+		Long: `[Experimental] Verify that an artifact is complete and intact
+
+The check reads the manifest, config and every layer of the artifact, in a
+registry or an OCI image layout, and proves that each one is present and
+matches its digest and size. Every byte is downloaded or read. The check
+continues after a failure and reports every problem it finds, and the command
+exits with a non-zero status if any check fails.
+
+The check only proves that content matches its digests. It does not detect that
+a tag was moved to other content, and it does not prove who published the
+content. A blob that a registry cut short may be reported as unable to check
+rather than as corrupt.
+
+Example - Check an artifact in a registry:
+  oras check localhost:5000/hello-world:v1
+
+Example - Check an artifact by digest:
+  oras check localhost:5000/hello-world@sha256:0a4d6bd4e0a1a3a5a0f1e5c0b0c4e3d2a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4
+
+Example - Check an artifact in an OCI image layout:
+  oras check --oci-layout ./layout-dir:v1
+
+Example - Check the image for one platform of a multi-platform artifact:
+  oras check --platform linux/arm64 localhost:5000/hello-world:v1
+`,
+		Args: oerrors.CheckArgs(argument.Exactly(1), "the artifact reference to check"),
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			opts.RawReference = args[0]
+			return option.Parse(cmd, &opts)
+		},
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runCheck(cmd, &opts)
+		},
+	}
+
+	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", defaultCheckConcurrency, "number of blobs checked at the same time; 0 or less uses the default")
+	option.AddDeprecatedVerboseFlag(cmd.Flags())
+	option.ApplyFlags(&opts, cmd.Flags())
+	return oerrors.Command(cmd, &opts.Target)
+}
+
+func runCheck(cmd *cobra.Command, opts *checkOptions) error {
+	ctx, logger := command.GetLogger(cmd, &opts.Common)
+	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
+		return err
+	}
+
+	var (
+		src      oras.ReadOnlyTarget
+		isLayout = opts.Type == option.TargetTypeOCILayout
+	)
+	if isLayout {
+		layout, err := newCheckLayout(opts.Path)
+		if err != nil {
+			return fmt.Errorf("invalid argument %q: %w", opts.RawReference, err)
+		}
+		src = layout
+	} else {
+		repo, err := opts.NewReadonlyTarget(ctx, opts.Common, logger)
+		if err != nil {
+			return err
+		}
+		src = repo
+	}
+
+	resolveOpts := oras.DefaultResolveOptions
+	resolveOpts.TargetPlatform = opts.Platform.Platform
+	return doCheck(ctx, src, opts.Reference, resolveOpts, isLayout, opts.concurrency, opts.Printer)
+}
+
+// checkClass is the kind of problem found in a node.
+type checkClass int
+
+// The classes are ordered by how the summary lists them.
+const (
+	classMissing checkClass = iota
+	classCorrupt
+	classInvalid
+	classUnchecked
+)
+
+func (c checkClass) String() string {
+	switch c {
+	case classMissing:
+		return "Missing"
+	case classCorrupt:
+		return "Corrupt"
+	case classInvalid:
+		return "Invalid"
+	default:
+		return "Unable to check"
+	}
+}
+
+// errCheckInvalid marks content that is present but not a valid artifact node.
+var errCheckInvalid = errors.New("invalid content")
+
+// checkFinding is one failed node and the reason.
+type checkFinding struct {
+	desc  ocispec.Descriptor
+	class checkClass
+	err   error
+}
+
+// checker holds the state shared by the concurrent callbacks of one check.
+type checker struct {
+	root     ocispec.Descriptor
+	isLayout bool
+	printer  *output.Printer
+
+	mu sync.Mutex
+	// bySubject and byOther record how each digest was reached: through a
+	// subject edge, or through any other edge. They are written when the
+	// parent is read, which always happens before the child is checked.
+	bySubject map[digest.Digest]bool
+	byOther   map[digest.Digest]bool
+	// foreign holds the digests of foreign layers, which oras-go drops from
+	// the walk.
+	foreign map[digest.Digest]bool
+}
+
+func doCheck(ctx context.Context, src oras.ReadOnlyTarget, reference string, resolveOpts oras.ResolveOptions, isLayout bool, concurrency int, printer *output.Printer) error {
+	root, err := oras.Resolve(ctx, src, reference, resolveOpts)
+	if err != nil {
+		return fmt.Errorf("failed to resolve %q: %w", reference, err)
+	}
+
+	c := &checker{
+		root:      root,
+		isLayout:  isLayout,
+		printer:   printer,
+		bySubject: make(map[digest.Digest]bool),
+		byOther:   map[digest.Digest]bool{root.Digest: true},
+		foreign:   make(map[digest.Digest]bool),
+	}
+	if concurrency <= 0 {
+		concurrency = defaultCheckConcurrency
+	}
+	report, err := oras.VerifyGraph(ctx, src, root, oras.VerifyGraphOptions{
+		Concurrency:    concurrency,
+		FindSuccessors: c.findSuccessors,
+		PostVerify: func(_ context.Context, desc ocispec.Descriptor, verifyErr error) error {
+			status := "Verified"
+			if verifyErr != nil {
+				status = "Failed"
+			}
+			return printer.PrintStatus(desc, status)
+		},
+	})
+	// A walk that stopped early is reported before the summary, because the
+	// report is then incomplete and must not be read as a pass.
+	if err != nil {
+		return fmt.Errorf("check stopped before it finished: %w", err)
+	}
+	return c.summarize(report)
+}
+
+// findSuccessors reads a manifest or index, checks that its body matches the
+// media type of the descriptor that points to it, and returns every node it
+// references, including its config and its subject. Other nodes have no
+// successors and are checked by reading them in full.
+func (c *checker) findSuccessors(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+	if !isCheckManifest(desc.MediaType) {
+		return nil, nil
+	}
+	body, err := content.FetchAll(ctx, fetcher, desc)
+	if err != nil {
+		return nil, err
+	}
+	if err := checkManifestShape(desc.MediaType, body); err != nil {
+		return nil, err
+	}
+	nodes, subject, config, err := graph.Successors(ctx, fetcher, desc)
+	if err != nil {
+		return nil, err
+	}
+
+	successors := make([]ocispec.Descriptor, 0, len(nodes)+2)
+	successors = append(successors, nodes...)
+	if config != nil {
+		successors = append(successors, *config)
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, node := range nodes {
+		c.byOther[node.Digest] = true
+		if isForeignLayer(node.MediaType) {
+			c.foreign[node.Digest] = true
+		}
+	}
+	if config != nil {
+		c.byOther[config.Digest] = true
+	}
+	if subject != nil {
+		successors = append(successors, *subject)
+		c.bySubject[subject.Digest] = true
+	}
+	return successors, nil
+}
+
+// summarize prints the result in a stable order and returns an error if any
+// node failed.
+func (c *checker) summarize(report *oras.VerifyGraphReport) error {
+	var failures []checkFinding
+	var warnings []checkFinding
+	for _, failed := range report.Failed {
+		finding := checkFinding{desc: failed.Descriptor, class: c.classify(failed.Err), err: failed.Err}
+		if c.isAbsentSubject(finding) {
+			warnings = append(warnings, finding)
+			continue
+		}
+		failures = append(failures, finding)
+	}
+	sortFindings(failures)
+	sortFindings(warnings)
+
+	total := len(report.Verified) + len(report.Failed)
+	if err := c.printer.Println(fmt.Sprintf("Checked %d nodes: %d verified, %d failed", total, len(report.Verified), len(failures))); err != nil {
+		return err
+	}
+	for _, finding := range failures {
+		if err := c.printer.Println(fmt.Sprintf("%s: %s %s: %s", finding.class, finding.desc.MediaType, finding.desc.Digest, finding.err)); err != nil {
+			return err
+		}
+	}
+	for _, finding := range warnings {
+		if err := c.printer.Println(fmt.Sprintf("Warning: the subject %s is not in the target, which the OCI image spec allows", finding.desc.Digest)); err != nil {
+			return err
+		}
+	}
+	c.mu.Lock()
+	foreign := len(c.foreign)
+	c.mu.Unlock()
+	if foreign > 0 {
+		if err := c.printer.Println(fmt.Sprintf("Not checked: %d foreign layers, which are not stored in the target", foreign)); err != nil {
+			return err
+		}
+	}
+	if len(failures) > 0 {
+		// A plain error: it must not wrap errdef.ErrNotFound or an
+		// errcode.ErrorResponse, which Target.ModifyError would present as
+		// a registry error.
+		return fmt.Errorf("check failed: %d of %d nodes did not pass", len(failures), total)
+	}
+	return nil
+}
+
+// isAbsentSubject reports whether a failed node is a subject that is simply
+// not in the target. The OCI image spec allows that, so it is only a warning.
+// A subject that is present but fails, a node that is also reached another way,
+// and the artifact that was asked for are always failures.
+func (c *checker) isAbsentSubject(f checkFinding) bool {
+	if f.class != classMissing || f.desc.Digest == c.root.Digest {
+		return false
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.bySubject[f.desc.Digest] && !c.byOther[f.desc.Digest]
+}
+
+// classify names the problem behind an error. Only content that is proven
+// wrong is called corrupt; anything uncertain is unable to check.
+func (c *checker) classify(err error) checkClass {
+	var syntaxErr *json.SyntaxError
+	var typeErr *json.UnmarshalTypeError
+	switch {
+	case errors.Is(err, errdef.ErrNotFound):
+		return classMissing
+	case errors.Is(err, content.ErrMismatchedDigest), errors.Is(err, content.ErrTrailingData):
+		return classCorrupt
+	// A short read from a registry can be a dropped connection, so it is
+	// proof of corruption only for a local layout.
+	case errors.Is(err, io.ErrUnexpectedEOF) && c.isLayout:
+		return classCorrupt
+	case errors.Is(err, errCheckInvalid), errors.Is(err, errdef.ErrInvalidDigest),
+		errors.As(err, &syntaxErr), errors.As(err, &typeErr),
+		strings.Contains(err.Error(), "invalid successor descriptor"):
+		return classInvalid
+	default:
+		return classUnchecked
+	}
+}
+
+func sortFindings(findings []checkFinding) {
+	sort.Slice(findings, func(i, j int) bool {
+		a, b := findings[i], findings[j]
+		if a.class != b.class {
+			return a.class < b.class
+		}
+		if a.desc.MediaType != b.desc.MediaType {
+			return a.desc.MediaType < b.desc.MediaType
+		}
+		return a.desc.Digest < b.desc.Digest
+	})
+}
+
+func isCheckManifest(mediaType string) bool {
+	return isCheckIndex(mediaType) || isCheckImageManifest(mediaType)
+}
+
+func isCheckIndex(mediaType string) bool {
+	return mediaType == ocispec.MediaTypeImageIndex || mediaType == docker.MediaTypeManifestList
+}
+
+func isCheckImageManifest(mediaType string) bool {
+	return mediaType == ocispec.MediaTypeImageManifest || mediaType == docker.MediaTypeManifest ||
+		mediaType == graph.MediaTypeArtifactManifest
+}
+
+func isForeignLayer(mediaType string) bool {
+	return strings.Contains(mediaType, ".nondistributable.") ||
+		mediaType == "application/vnd.docker.image.rootfs.foreign.diff.tar.gzip"
+}
+
+// checkManifestShape compares the body of a manifest with the media type of the
+// descriptor that points to it. The mediaType field of a manifest is optional,
+// so when it is absent the shape of the body decides: an index has manifests,
+// an image manifest has a config or blobs.
+func checkManifestShape(mediaType string, body []byte) error {
+	var fields struct {
+		MediaType string          `json:"mediaType"`
+		Manifests json.RawMessage `json:"manifests"`
+		Config    json.RawMessage `json:"config"`
+		Layers    json.RawMessage `json:"layers"`
+		Blobs     json.RawMessage `json:"blobs"`
+	}
+	if err := json.Unmarshal(body, &fields); err != nil {
+		return err
+	}
+	if fields.MediaType != "" && fields.MediaType != mediaType {
+		return fmt.Errorf("%w: the body says its media type is %s, but it is described as %s", errCheckInvalid, fields.MediaType, mediaType)
+	}
+	hasIndexShape := fields.Manifests != nil
+	hasImageShape := fields.Config != nil || fields.Layers != nil || fields.Blobs != nil
+	switch {
+	case isCheckIndex(mediaType) && (!hasIndexShape || hasImageShape):
+		return fmt.Errorf("%w: it is described as %s but its body is not an index", errCheckInvalid, mediaType)
+	case isCheckImageManifest(mediaType) && (hasIndexShape || !hasImageShape):
+		return fmt.Errorf("%w: it is described as %s but its body is not a manifest", errCheckInvalid, mediaType)
+	}
+	return nil
+}
+
+// checkLayout reads an OCI image layout, in a directory or in a tar archive,
+// without loading its graph. That way one corrupt manifest is reported as a
+// failed node, and does not stop an intact tag next to it from being checked.
+type checkLayout struct {
+	content.ReadOnlyStorage
+	manifests []ocispec.Descriptor
+}
+
+func newCheckLayout(layoutPath string) (*checkLayout, error) {
+	info, err := os.Stat(layoutPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find path %q: %w", layoutPath, err)
+	}
+	var (
+		storage content.ReadOnlyStorage
+		raw     []byte
+	)
+	if info.IsDir() {
+		storage = oci.NewStorageFromFS(os.DirFS(layoutPath))
+		raw, err = os.ReadFile(filepath.Join(layoutPath, ocispec.ImageIndexFile))
+	} else {
+		storage, err = oci.NewStorageFromTar(layoutPath)
+		if err == nil {
+			raw, err = readTarFile(layoutPath, ocispec.ImageIndexFile)
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("%q is not an OCI image layout: %w", layoutPath, err)
+	}
+	var index ocispec.Index
+	if err := json.Unmarshal(raw, &index); err != nil {
+		return nil, fmt.Errorf("%q has an %s that cannot be read: %w", layoutPath, ocispec.ImageIndexFile, err)
+	}
+	return &checkLayout{ReadOnlyStorage: storage, manifests: index.Manifests}, nil
+}
+
+// Resolve finds a manifest in the top-level index by its tag, or by its digest.
+func (l *checkLayout) Resolve(_ context.Context, reference string) (ocispec.Descriptor, error) {
+	for _, desc := range l.manifests {
+		if desc.Digest.String() == reference || desc.Annotations[ocispec.AnnotationRefName] == reference {
+			return desc, nil
+		}
+	}
+	return ocispec.Descriptor{}, fmt.Errorf("%s: %w", reference, errdef.ErrNotFound)
+}
+
+// readTarFile reads one file from a tar archive. The tar file system of oras-go
+// is internal, so the index has to be read here.
+func readTarFile(archive, name string) ([]byte, error) {
+	f, err := os.Open(archive)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	reader := tar.NewReader(f)
+	for {
+		header, err := reader.Next()
+		if errors.Is(err, io.EOF) {
+			return nil, fmt.Errorf("%s: %w", name, errdef.ErrNotFound)
+		}
+		if err != nil {
+			return nil, err
+		}
+		if header.Typeflag == tar.TypeReg && path.Clean(header.Name) == name {
+			return io.ReadAll(reader)
+		}
+	}
+}
