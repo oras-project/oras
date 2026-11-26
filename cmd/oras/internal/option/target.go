@@ -166,6 +166,18 @@ func (target *Target) newOCIStore() (*oci.Store, error) {
 	return oci.New(target.Path)
 }
 
+// newDeletionOCIStore opens an existing OCI image layout for deletion without
+// initializing it when the path does not exist.
+func (target *Target) newDeletionOCIStore() (*oci.Store, error) {
+	if _, err := os.Stat(target.Path); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, fmt.Errorf("invalid argument %q: failed to find path %q: %w", target.RawReference, target.Path, err)
+		}
+		return nil, err
+	}
+	return oci.New(target.Path)
+}
+
 func (target *Target) newRepository(common Common, logger logrus.FieldLogger) (*remote.Repository, error) {
 	// Path holds the reference with any tag or digest stripped, which is what
 	// remote.NewRepository requires.
@@ -187,7 +199,7 @@ func (target *Target) NewTarget(common Common, logger logrus.FieldLogger) (oras.
 func (target *Target) NewBlobDeleter(common Common, logger logrus.FieldLogger) (ResolvableDeleter, error) {
 	switch target.Type {
 	case TargetTypeOCILayout:
-		return target.newOCIStore()
+		return target.newDeletionOCIStore()
 	case TargetTypeRemote:
 		repo, err := target.newRepository(common, logger)
 		if err != nil {
@@ -202,7 +214,7 @@ func (target *Target) NewBlobDeleter(common Common, logger logrus.FieldLogger) (
 func (target *Target) NewManifestDeleter(common Common, logger logrus.FieldLogger) (ResolvableDeleter, error) {
 	switch target.Type {
 	case TargetTypeOCILayout:
-		return target.newOCIStore()
+		return target.newDeletionOCIStore()
 	case TargetTypeRemote:
 		repo, err := target.newRepository(common, logger)
 		if err != nil {

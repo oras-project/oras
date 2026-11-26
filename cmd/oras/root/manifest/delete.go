@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 
 	"github.com/oras-project/oras-go/v3/errdef"
@@ -82,12 +83,21 @@ Example - Delete a manifest by digest 'sha256:99e4703fbf30916f549cd6bfa9cdbab614
 
 func deleteManifest(cmd *cobra.Command, opts *deleteOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
+	handler := display.NewManifestDeleteHandler(opts.Printer, &opts.Target)
 	manifests, err := opts.NewManifestDeleter(opts.Common, logger)
 	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			if refErr := opts.EnsureReferenceNotEmpty(cmd, true); refErr != nil {
+				return refErr
+			}
+			if opts.Force && !opts.OutputDescriptor {
+				return handler.OnManifestMissing()
+			}
+		}
 		return err
 	}
 
-	return doDeleteManifest(ctx, cmd, opts, manifests, display.NewManifestDeleteHandler(opts.Printer, &opts.Target))
+	return doDeleteManifest(ctx, cmd, opts, manifests, handler)
 }
 
 func doDeleteManifest(

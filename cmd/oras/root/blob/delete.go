@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 
 	"github.com/oras-project/oras-go/v3/errdef"
@@ -78,12 +79,21 @@ Example - Delete a blob and print its descriptor:
 
 func deleteBlob(cmd *cobra.Command, opts *deleteBlobOptions) (err error) {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
+	handler := display.NewBlobDeleteHandler(opts.Printer, &opts.Target)
 	blobs, err := opts.NewBlobDeleter(opts.Common, logger)
 	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			if refErr := opts.EnsureReferenceNotEmpty(cmd, false); refErr != nil {
+				return refErr
+			}
+			if opts.Force && !opts.OutputDescriptor {
+				return handler.OnBlobMissing()
+			}
+		}
 		return err
 	}
 
-	return doDeleteBlob(ctx, cmd, opts, blobs, display.NewBlobDeleteHandler(opts.Printer, &opts.Target))
+	return doDeleteBlob(ctx, cmd, opts, blobs, handler)
 }
 
 func doDeleteBlob(
