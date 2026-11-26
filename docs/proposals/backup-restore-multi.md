@@ -44,7 +44,7 @@ Where each repository reference follows the format:
 <registry>/<repository>[:<tag1>[,<tag2>...]]
 ```
 
-References may point to different registries. See [Authentication Handling](#authentication-handling) for how credentials and connection flags apply when more than one registry is involved.
+References may point to different registries. See [Authentication Handling](#authentication-handling) for how credentials and connection settings are configured for each registry.
 
 ### Behavior
 
@@ -54,7 +54,7 @@ References may point to different registries. See [Authentication Handling](#aut
 - **Selective tags**: Tags can be specified per repository using comma-separated list
 - **Deduplication**: Blobs are deduplicated across all repositories and registries in the backup
 - **Referrers**: When `--include-referrers` is used, referrers for all specified artifacts are included
-- **Registry-specific flags**: Connection flags (TLS, headers, etc.) apply to every source registry. Credential flags are only accepted when all references share one registry (see [Authentication Handling](#authentication-handling))
+- **No global registry flags**: Credential, TLS, header and distribution-spec flags are removed, because one value cannot say which registry it applies to. Credentials and connection settings come from per-registry configuration (see [Authentication Handling](#authentication-handling))
 
 ### Examples
 
@@ -741,7 +741,7 @@ Use either:
 
 Other validation errors, all raised before any artifact is copied:
 
-- **Credential flags with multiple registries**: `--username`, `--password`, `--password-stdin` or `--identity-token` used with references from more than one registry (see [Authentication Handling](#authentication-handling))
+- **Removed registry flags**: any of the flags listed in [Removed Flags](#removed-flags), with an error that names the per-registry replacement
 - **Target collisions**: two source repositories map to the same target repository (see [Collisions](#collisions))
 - **Tag conflicts**: two sources write the same tag to the same target repository
 - **Tag or digest in the restore target**: the positional argument must be `<target-registry>[/<namespace>]`; use `--include` to select tags
@@ -750,15 +750,34 @@ Other validation errors, all raised before any artifact is copied:
 
 ## Authentication Handling
 
-Multi-repository operations use the same authentication mechanisms as single-repository commands.
+`oras backup` and `oras restore` can talk to more than one registry in a single command: a backup can read from several source registries, and a restore with a rules file can push to several target registries. A flag that holds one value for "the registry" is ambiguous in that case. It is unclear which registry `--plain-http` or `--ca-file` is meant for, and credentials, client certificates and headers would be sent to every registry the command talks to.
 
-**Single registry:** When all references come from one registry, all registry-specific flags (`--username`, `--password`, `--plain-http`, `--insecure`, `--ca-file`, etc.) work as they do today.
+To keep the behavior the same whether a command touches one registry or many, both commands drop the global registry flags and take all registry settings from per-registry configuration. This applies even when all references share one registry.
 
-**Multiple registries:** Credentials are looked up per registry from the credential store, the same way other ORAS commands do. Log in to each registry beforehand with `oras login`, or point to a config file with `--registry-config`.
+### Removed Flags
 
-- **Credential flags** (`--username`, `--password`, `--password-stdin`, `--identity-token`): rejected when the references span more than one registry, because it would be unclear which registry they belong to.
-- **Connection flags** (`--plain-http`, `--insecure`, `--ca-file`, `--cert-file`, `--key-file`, `-H`/`--header`, `--resolve`): apply to every source registry. Per-registry connection settings are out of scope for this proposal; split the backup if registries need different settings.
-- **Restore** pushes to a single target registry in Modes 1 and 2, so all flags behave as they do today. When a rules file maps to more than one target registry, the same rules as for multi-registry backup apply.
+| Removed flag(s) | Replacement |
+|---|---|
+| `-u`/`--username`, `-p`/`--password`, `--password-stdin`, `--identity-token`, `--identity-token-stdin` | `oras login` for each registry (credential store), or `--registry-config` |
+| `--ca-file`, `--cert-file`, `--key-file` | Per-registry CA and client certificates in `certs.d` |
+| `--insecure` | `insecure = true` for the registry in `registries.conf` |
+| `--plain-http` | Per-registry plain HTTP setting (see [Prerequisites](#prerequisites)); `localhost` keeps its plain HTTP auto-detection |
+| `--distribution-spec` | Referrers API auto-detection per registry, or `referrers-api` for the registry in `registries.conf` |
+| `-H`/`--header` | None. Per-registry headers are out of scope |
+
+### Kept Flags
+
+| Flag | Why it stays |
+|---|---|
+| `--registry-config` | The auth file is keyed by registry host |
+| `--resolve` | Each entry names its own `host:port` |
+
+### Prerequisites
+
+The replacements above must be available before the flags are removed:
+
+- **Per-registry plain HTTP.** Today plain HTTP is only chosen by `--plain-http` or the `localhost` auto-detection. `insecure` in `registries.conf` skips TLS verification but does not switch to HTTP. A per-registry way to choose plain HTTP is needed, either by letting `insecure` also allow HTTP (as podman does) or with a separate setting.
+- **Containers configuration.** `registries.conf` and `certs.d` are currently read only when `ORAS_EXPERIMENTAL_CONTAINERS_CONFIG` is set. Either `backup` and `restore` read them without that variable, or this change waits until the support is no longer experimental.
 
 **Example:**
 ```bash
@@ -963,9 +982,9 @@ Tools that package images for air-gapped environments can read the full referenc
 - `--include <pattern>`: Restore only the artifacts whose source reference matches `[<registry>/]<repository>[:<tag>]`, with `*` as a wildcard (Mode 2). Repeatable. Cannot be used with `--rules`.
 - `--preserve-source-registry`: Keep the source registry host as the first path component of each target repository (Modes 1 and 2). Avoids collisions when restoring a multi-registry backup to one registry. Cannot be used with `--rules`.
 
-### Common Flags (Enhanced)
+### Common Flags (Removed)
 
-All existing authentication, TLS, and connection flags continue to work with multi-repository operations. With references from more than one registry, credential flags are rejected and connection flags apply to every registry (see [Authentication Handling](#authentication-handling)).
+The global credential, TLS, header and distribution-spec flags are removed from both commands. `--registry-config` and `--resolve` remain. See [Removed Flags](#removed-flags) for the replacement of each flag.
 
 ## Backward Compatibility
 
@@ -1006,7 +1025,17 @@ oras restore --input backup.tar --include '*:v1' --include '*:v2' target.com/rep
 - **New backups, old client**: Not supported. Earlier versions use the `ref.name` value directly as the destination tag, which fails for a full reference. Users must upgrade the client that restores.
 - **Other ORAS commands on new backups**: Address artifacts with `--oci-layout-path <path> <full-reference>`; `--oci-layout <path>:<tag>` no longer resolves (see [Inspecting Backup Contents](#inspecting-backup-contents)).
 
-The release notes for the version that ships this change must call out the format change and the new interpretation of the restore target.
+**Registry flags:** command lines that use any of the [removed flags](#removed-flags) fail with an error that names the replacement:
+
+```bash
+# Before
+oras backup --output backup.tar -u user -p secret --plain-http registry.lan:5000/app:v1
+# Now
+oras login registry.lan:5000
+oras backup --output backup.tar registry.lan:5000/app:v1   # plain HTTP configured for registry.lan:5000
+```
+
+The release notes for the version that ships this change must call out the format change, the new interpretation of the restore target and the removed flags.
 
 ## Summary
 
@@ -1018,11 +1047,11 @@ Key features:
 - **Flexible restore options**: Direct, selective, or rules-based restoration
 - **Repository mapping**: Powerful remapping capabilities for restructuring during restore, with collision detection
 - **Safety features**: Dry-run preview and clear validation
-- **Enterprise-ready**: Credential store support per registry, error recovery, and progress reporting
+- **Enterprise-ready**: Credentials and connection settings per registry, error recovery, and progress reporting
 - **Consistent restore targets**: Repository paths are always kept under the restore target; existing backup command lines are unchanged and existing backups remain restorable
 
 **Out of Scope:**
 - **Entire registry backup**: Not supported. Use registry-native replication/backup features for registry-wide operations.
 - **Pattern-based backup selection**: Backup takes explicit references only; wildcards over registry contents are not included in this proposal and may be considered in future iterations if customer demand exists. (Restore's `--include` patterns only match what is already in the backup.)
-- **Per-registry connection settings**: Connection flags apply to all source registries. Split the backup if registries need different TLS or header settings.
+- **Per-registry flag syntax**: Flags such as `--header <host>=<name>:<value>` are not included. Registry settings come from configuration files; per-registry flags may be considered later if there is demand.
 
