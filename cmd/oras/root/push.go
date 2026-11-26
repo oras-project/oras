@@ -123,6 +123,9 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 
 Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with tag 'example.com:test':
   oras push example.com:test hi.txt --oci-layout-path layout-dir
+
+Example - Push file "hi.txt" reproducibly with SOURCE_DATE_EPOCH:
+  SOURCE_DATE_EPOCH=1700000000 oras push localhost:5000/hello:v1 hi.txt
 `,
 		Args: oerrors.CheckArgs(argument.AtLeast(1), "the destination for pushing"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -132,6 +135,15 @@ Example - Push file "hi.txt" into an OCI image layout folder 'layout-dir' with t
 			opts.FileRefs = args[1:]
 			if err := option.Parse(cmd, &opts); err != nil {
 				return err
+			}
+			if opts.Target.Type == option.TargetTypeOCILayout {
+				if opts.IsOCILayout {
+					if opts.Reference != "" && !strings.Contains(opts.RawReference, "@") {
+						if err := option.ValidateOCILayoutTag(opts.Reference); err != nil {
+							return err
+						}
+					}
+				}
 			}
 			if err := option.ValidateExtraTags(opts.extraRefs); err != nil {
 				return err
@@ -197,6 +209,17 @@ func runPush(cmd *cobra.Command, opts *pushOptions) error {
 		return err
 	}
 	defer func() { _ = store.Close() }()
+
+	t, err := opts.ReproducibleTime()
+	if err != nil {
+		return err
+	}
+	if !t.IsZero() {
+		store.TarModTime = &t
+	}
+	// make manifest reproducible
+	opts.ApplyReproducible(&packOpts)
+
 	if opts.manifestConfigRef != "" {
 		path, cfgMediaType, err := fileref.Parse(opts.manifestConfigRef, oras.MediaTypeUnknownConfig)
 		if err != nil {
@@ -319,7 +342,7 @@ func doPushCommand(
 		}
 		tagBytesNOpts := oras.DefaultTagBytesNOptions
 		tagBytesNOpts.Concurrency = opts.concurrency
-		dst := listener.NewTagListener(originalDst, nil, metadataHandler.OnTagged)
+		dst := listener.NewTaggedListener(opts.ExtraTagTarget(originalDst), metadataHandler.OnTagged)
 		if _, err = oras.TagBytesN(ctx, dst, root.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
 		}

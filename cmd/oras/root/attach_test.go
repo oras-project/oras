@@ -18,11 +18,13 @@ package root
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/oras-project/oras-go/v3"
@@ -131,7 +133,7 @@ func Test_doAttach_handlerCalls(t *testing.T) {
 	statusHandler := &displaytest.RecordingAttachStatusHandler{Recorder: recorder}
 	metadataHandler := &displaytest.RecordingAttachMetadataHandler{Recorder: recorder}
 
-	if err := doAttach(ctx, opts, store, dst, subject, statusHandler, metadataHandler); err != nil {
+	if _, err := doAttach(ctx, opts, store, dst, subject, statusHandler, metadataHandler); err != nil {
 		t.Fatal(err)
 	}
 
@@ -144,5 +146,163 @@ func Test_doAttach_handlerCalls(t *testing.T) {
 	}
 	if got, want := calls[len(calls)-3:], []string{"StopTrackTarget", "OnAttached", "Render"}; !reflect.DeepEqual(got, want) {
 		t.Errorf("last handler calls = %v, want %v", got, want)
+	}
+}
+
+func Test_doAttach_nonreproducible_withoutSourceDateEpoch(t *testing.T) {
+	ctx := context.Background()
+	t.Setenv("SOURCE_DATE_EPOCH", "")
+
+	dst, err := oci.New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	subject, err := oras.PackManifest(ctx, dst, oras.PackManifestVersion1_1, "application/example", oras.PackManifestOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fileRef := filepath.Join(t.TempDir(), "layer.txt")
+	if err := os.WriteFile(fileRef, []byte("layer"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	recorder := &displaytest.CallRecorder{}
+	statusHandler := &displaytest.RecordingAttachStatusHandler{Recorder: recorder}
+	metadataHandler := &displaytest.RecordingAttachMetadataHandler{Recorder: recorder}
+
+	var digests [2]string
+	for idx := 0; idx < 2; idx++ {
+		layoutDir := filepath.Join(t.TempDir(), fmt.Sprintf("layout%d", idx))
+		if err := os.MkdirAll(layoutDir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		store, err := file.New("")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = store.Close() }()
+
+		opts := &attachOptions{
+			Packer: option.Packer{
+				FileRefs: []string{fileRef},
+			},
+			artifactType: "application/example.artifact",
+			Target:       option.Target{Path: layoutDir},
+		}
+		root, err := doAttach(ctx, opts, store, dst, subject, statusHandler, metadataHandler)
+		if err != nil {
+			t.Fatalf("attach %d: %v", idx, err)
+		}
+		if root.Digest.String() == "" {
+			t.Fatal("empty digest")
+		}
+		digests[idx] = root.Digest.String()
+		time.Sleep(1 * time.Second)
+	}
+	if digests[0] == digests[1] {
+		t.Fatalf("digests equal across attach runs: %v", digests)
+	}
+}
+
+func Test_doAttach_reproducible_withSourceDateEpoch(t *testing.T) {
+	ctx := context.Background()
+	t.Setenv("SOURCE_DATE_EPOCH", "1700000000")
+
+	dst, err := oci.New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	subject, err := oras.PackManifest(ctx, dst, oras.PackManifestVersion1_1, "application/example", oras.PackManifestOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fileRef := filepath.Join(t.TempDir(), "layer.txt")
+	if err := os.WriteFile(fileRef, []byte("layer"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	recorder := &displaytest.CallRecorder{}
+	statusHandler := &displaytest.RecordingAttachStatusHandler{Recorder: recorder}
+	metadataHandler := &displaytest.RecordingAttachMetadataHandler{Recorder: recorder}
+
+	var digests [2]string
+	for idx := 0; idx < 2; idx++ {
+		layoutDir := filepath.Join(t.TempDir(), fmt.Sprintf("layout%d", idx))
+		if err := os.MkdirAll(layoutDir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		store, err := file.New("")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = store.Close() }()
+
+		opts := &attachOptions{
+			Packer: option.Packer{
+				FileRefs: []string{fileRef},
+			},
+			artifactType: "application/example.artifact",
+			Target:       option.Target{Path: layoutDir},
+		}
+		root, err := doAttach(ctx, opts, store, dst, subject, statusHandler, metadataHandler)
+		if err != nil {
+			t.Fatalf("attach %d: %v", idx, err)
+		}
+		if root.Digest.String() == "" {
+			t.Fatal("empty digest")
+		}
+		digests[idx] = root.Digest.String()
+		time.Sleep(1 * time.Second)
+	}
+	if digests[0] != digests[1] {
+		t.Fatalf("digests differ across attach runs: %v", digests)
+	}
+}
+
+func Test_doAttach_reproducible_preservesUserCreated(t *testing.T) {
+	ctx := context.Background()
+	t.Setenv("SOURCE_DATE_EPOCH", "1700000000")
+
+	dst, err := oci.New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	subject, err := oras.PackManifest(ctx, dst, oras.PackManifestVersion1_1, "application/example", oras.PackManifestOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fileRef := filepath.Join(t.TempDir(), "layer.txt")
+	if err := os.WriteFile(fileRef, []byte("layer"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	store, err := file.New("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	recorder := &displaytest.CallRecorder{}
+	statusHandler := &displaytest.RecordingAttachStatusHandler{Recorder: recorder}
+	metadataHandler := &displaytest.RecordingAttachMetadataHandler{Recorder: recorder}
+
+	dst1 := t.TempDir() + "/layout1"
+	if err := os.MkdirAll(dst1, 0700); err != nil {
+		t.Fatal(err)
+	}
+	opts := &attachOptions{
+		Packer: option.Packer{
+			FileRefs: []string{fileRef},
+		},
+		artifactType: "application/example.artifact",
+		Target:       option.Target{Path: dst1},
+	}
+	opts.Annotations = map[string]map[string]string{
+		option.AnnotationManifest: {
+			ocispec.AnnotationCreated: "2020-01-01T00:00:00Z",
+		},
+	}
+	root, err := doAttach(ctx, opts, store, dst, subject, statusHandler, metadataHandler)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := root.Annotations[ocispec.AnnotationCreated]; got != "2020-01-01T00:00:00Z" {
+		t.Fatalf("user-created annotation should be preserved: got %q", got)
 	}
 }

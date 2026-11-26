@@ -113,6 +113,23 @@ var _ = Describe("ORAS users:", func() {
 			CompareRef(srcRef, dstRef)
 		})
 
+		It("should restore from a tag-only backup created by an earlier version", func() {
+			// Earlier versions of oras backup stored only the tag in
+			// org.opencontainers.image.ref.name, as oras cp does for an OCI layout.
+			tmpDir := GinkgoT().TempDir()
+			srcRef := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
+			backupDir := filepath.Join(tmpDir, "backup-tag-only")
+			ORAS("cp", srcRef, Flags.ToLayout, LayoutRef(backupDir, foobar.Tag)).Exec()
+
+			testRepo := restoreTestRepo("restore-tag-only")
+			dstRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			ORAS("restore", "--input", backupDir, Flags.ExcludeReferrers, dstRef).
+				MatchKeyWords("Successfully restored 1 tag(s)").
+				Exec()
+
+			CompareRef(srcRef, dstRef)
+		})
+
 		It("should restore an artifact with its referrers from a directory", func() {
 			// Create a backup with referrers
 			tmpDir := GinkgoT().TempDir()

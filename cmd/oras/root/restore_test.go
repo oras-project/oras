@@ -28,11 +28,19 @@ import (
 	"github.com/oras-project/oras-go/v3"
 	"github.com/oras-project/oras-go/v3/content/memory"
 	"github.com/oras-project/oras-go/v3/content/oci"
+	"github.com/oras-project/oras-go/v3/errdef"
 	"oras.land/oras/cmd/oras/internal/display/displaytest"
 	orasio "oras.land/oras/internal/io"
 )
 
 func newRestoreTestTar(t *testing.T) string {
+	t.Helper()
+	return newRestoreTestTarWithRefs(t, "v1")
+}
+
+// newRestoreTestTarWithRefs creates a backup tar archive holding one manifest
+// for each ref, stored under that ref in org.opencontainers.image.ref.name.
+func newRestoreTestTarWithRefs(t *testing.T, refs ...string) string {
 	t.Helper()
 	ctx := context.Background()
 	layoutDir := t.TempDir()
@@ -40,12 +48,16 @@ func newRestoreTestTar(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	desc, err := oras.PackManifest(ctx, layout, oras.PackManifestVersion1_1, "application/example", oras.PackManifestOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := layout.Tag(ctx, desc, "v1"); err != nil {
-		t.Fatal(err)
+	for _, ref := range refs {
+		desc, err := oras.PackManifest(ctx, layout, oras.PackManifestVersion1_1, "application/example", oras.PackManifestOptions{
+			ManifestAnnotations: map[string]string{"ref": ref},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := layout.Tag(ctx, desc, ref); err != nil {
+			t.Fatal(err)
+		}
 	}
 	tarPath := filepath.Join(t.TempDir(), "backup.tar")
 	tarFile, err := os.Create(tarPath)
@@ -110,5 +122,161 @@ func Test_doRestore_artifactPushedError(t *testing.T) {
 	}
 	if calls := recorder.Snapshot(); slices.Contains(calls, "OnRestoreCompleted") {
 		t.Errorf("handler calls = %v, want no OnRestoreCompleted after an error", calls)
+	}
+}
+
+func Test_doRestore_fullReferenceBackup(t *testing.T) {
+	tests := []struct {
+		name     string
+		refs     []string
+		tags     []string
+		wantTags []string
+	}{
+		{
+			name:     "full references, all tags",
+			refs:     []string{"localhost:5000/example:v1", "localhost:5000/example:v2"},
+			wantTags: []string{"v1", "v2"},
+		},
+		{
+			name:     "full references, specified tag",
+			refs:     []string{"localhost:5000/example:v1", "localhost:5000/example:v2"},
+			tags:     []string{"v2"},
+			wantTags: []string{"v2"},
+		},
+		{
+			name:     "tag-only backup from an earlier version",
+			refs:     []string{"v1"},
+			tags:     []string{"v1"},
+			wantTags: []string{"v1"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			opts := &restoreOptions{input: newRestoreTestTarWithRefs(t, tt.refs...), repository: "registry.example.com/example", tags: tt.tags}
+			recorder := &displaytest.CallRecorder{}
+			statusHandler := &displaytest.RecordingRestoreStatusHandler{Recorder: recorder}
+			metadataHandler := &displaytest.RecordingRestoreMetadataHandler{Recorder: recorder}
+			dst := memory.New()
+
+			if err := doRestore(ctx, opts, dst, time.Now(), statusHandler, metadataHandler); err != nil {
+				t.Fatal(err)
+			}
+
+			for _, tag := range tt.wantTags {
+				if _, err := dst.Resolve(ctx, tag); err != nil {
+					t.Errorf("tag %q not restored: %v", tag, err)
+				}
+			}
+			for _, ref := range tt.refs {
+				if slices.Contains(tt.wantTags, ref) {
+					continue
+				}
+				if _, err := dst.Resolve(ctx, ref); err == nil {
+					t.Errorf("stored reference %q was pushed as a tag", ref)
+				}
+			}
+		})
+	}
+}
+
+func Test_resolveRestoreRefs(t *testing.T) {
+	ctx := context.Background()
+	newLayout := func(t *testing.T, refs ...string) oras.ReadOnlyTarget {
+		t.Helper()
+		layout, err := oci.NewFromTar(ctx, newRestoreTestTarWithRefs(t, refs...))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return layout
+	}
+
+	t.Run("maps stored references to tags", func(t *testing.T) {
+		srcRefs, tags, roots, err := resolveRestoreRefs(ctx, newLayout(t, "localhost:5000/example:v1"), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := []string{"localhost:5000/example:v1"}; !reflect.DeepEqual(srcRefs, want) {
+			t.Errorf("srcRefs = %v, want %v", srcRefs, want)
+		}
+		if want := []string{"v1"}; !reflect.DeepEqual(tags, want) {
+			t.Errorf("tags = %v, want %v", tags, want)
+		}
+		if len(roots) != 1 {
+			t.Errorf("roots = %v, want 1 descriptor", roots)
+		}
+	})
+
+	t.Run("specified tag not in backup", func(t *testing.T) {
+		_, _, _, err := resolveRestoreRefs(ctx, newLayout(t, "localhost:5000/example:v1"), []string{"v2"})
+		if !errors.Is(err, errdef.ErrNotFound) {
+			t.Errorf("error = %v, want %v", err, errdef.ErrNotFound)
+		}
+	})
+
+	t.Run("two references restore to the same tag", func(t *testing.T) {
+		_, _, _, err := resolveRestoreRefs(ctx, newLayout(t, "localhost:5000/a:v1", "localhost:5000/b:v1"), nil)
+		if err == nil {
+			t.Error("expected an error for references sharing a tag")
+		}
+	})
+
+	t.Run("specified tag shared by two references", func(t *testing.T) {
+		_, _, _, err := resolveRestoreRefs(ctx, newLayout(t, "localhost:5000/a:v1", "localhost:5000/b:v1"), []string{"v1"})
+		if err == nil {
+			t.Error("expected an error for a specified tag shared by two references")
+		}
+	})
+
+	t.Run("unrelated entries do not block specified tags", func(t *testing.T) {
+		// an entry without a tag and two entries sharing tag v2
+		layout := newLayout(t, "localhost:5000/example:v1", "localhost:5000/example", "localhost:5000/a:v2", "localhost:5000/b:v2")
+		srcRefs, tags, _, err := resolveRestoreRefs(ctx, layout, []string{"v1"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := []string{"localhost:5000/example:v1"}; !reflect.DeepEqual(srcRefs, want) {
+			t.Errorf("srcRefs = %v, want %v", srcRefs, want)
+		}
+		if want := []string{"v1"}; !reflect.DeepEqual(tags, want) {
+			t.Errorf("tags = %v, want %v", tags, want)
+		}
+	})
+
+	t.Run("invalid entry fails restoring all tags", func(t *testing.T) {
+		_, _, _, err := resolveRestoreRefs(ctx, newLayout(t, "localhost:5000/example:v1", "localhost:5000/example"), nil)
+		if err == nil {
+			t.Error("expected an error for an entry without a tag")
+		}
+	})
+}
+
+func Test_tagFromRefName(t *testing.T) {
+	tests := []struct {
+		name    string
+		refName string
+		want    string
+		wantErr bool
+	}{
+		{name: "tag only", refName: "v1.0", want: "v1.0"},
+		{name: "invalid tag only", refName: "invalid+tag", wantErr: true},
+		{name: "full reference", refName: "docker.io/library/alpine:3.19", want: "3.19"},
+		{name: "registry with port", refName: "localhost:5000/repo:v1", want: "v1"},
+		{name: "nested repository", refName: "registry.example.com/a/b/c:latest", want: "latest"},
+		{name: "digest reference", refName: "localhost:5000/repo@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412", wantErr: true},
+		{name: "tag and digest", refName: "localhost:5000/repo:v1@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412", wantErr: true},
+		{name: "repository without tag", refName: "localhost:5000/repo", wantErr: true},
+		{name: "invalid reference", refName: "localhost:5000/Repo:v1", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tagFromRefName(tt.refName)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("tagFromRefName(%q) error = %v, wantErr %v", tt.refName, err, tt.wantErr)
+			}
+			if got != tt.want {
+				t.Errorf("tagFromRefName(%q) = %q, want %q", tt.refName, got, tt.want)
+			}
+		})
 	}
 }

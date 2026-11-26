@@ -42,6 +42,26 @@ The script verifies that the commit records the requested version, then creates 
 
 The tag triggers the `release-github` and `release-ghcr` workflows.
 
+#### Container image tags
+
+[`release-ghcr`](.github/workflows/release-ghcr.yml) publishes the ORAS image to `ghcr.io/oras-project/oras`:
+
+- Every pushed `v*` tag publishes an image tagged with that exact tag, for example `v1.4.0-rc.1`.
+- Every push to `main` publishes the `main` image tag.
+- Only stable release tags (`vX.Y.Z`, with no pre-release suffix) can move the rolling tags. Each rolling tag is decided on its own:
+  - `vX.Y` moves if the release is the highest stable `vX.Y.*` tag.
+  - `vX` moves if the release is the highest stable `vX.*.*` tag.
+  - `latest` moves if the release is the highest stable tag overall.
+
+The rolling tags are recalculated from all tags in the repository each time the workflow runs. So a pre-release or a backport to an older series does not move rolling tags backwards, and neither does re-running an older release workflow. The behavior is the same whether the release is tagged from `main` or from a `release-X.Y` branch.
+
+| Tag pushed | Image tags published |
+|---|---|
+| `v1.4.0-rc.1` (pre-release) | `v1.4.0-rc.1` |
+| `v1.4.0` (newest stable) | `v1.4.0`, `v1.4`, `v1`, `latest` |
+| `v1.3.5` (backport while `v1.4.0` exists) | `v1.3.5`, `v1.3` |
+| `v1.9.2` (backport while `v2.0.0` exists) | `v1.9.2`, `v1.9`, `v1` |
+
 ### 3. Validate the release
 
 Run `validate` right after tagging; it waits up to 30 minutes for the tag-triggered workflows to finish:

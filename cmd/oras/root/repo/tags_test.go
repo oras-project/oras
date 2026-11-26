@@ -24,6 +24,7 @@ import (
 
 	"github.com/oras-project/oras-go/v3"
 	"github.com/oras-project/oras-go/v3/content/oci"
+	"github.com/oras-project/oras-go/v3/errdef"
 	"oras.land/oras/cmd/oras/internal/display/displaytest"
 )
 
@@ -69,6 +70,70 @@ func Test_doShowTags_handlerErrorSkipsRender(t *testing.T) {
 	}
 }
 
+func newScopedTagsTestLayout(t *testing.T) (root, digest string) {
+	t.Helper()
+	ctx := context.Background()
+	root = t.TempDir()
+	store, err := oci.New(root)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	desc, err := oras.PackManifest(ctx, store, oras.PackManifestVersion1_1, "application/vnd.test", oras.PackManifestOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	for _, ref := range []string{"example.com/repo:v1", "example.com/repo:v2", "other.com/other:v9"} {
+		if err := store.Tag(ctx, desc, ref); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	}
+	return root, desc.Digest.String()
+}
+
+func runShowTags(t *testing.T, args ...string) (string, error) {
+	t.Helper()
+	var out bytes.Buffer
+	cmd := showTagsCmd()
+	cmd.SetContext(context.Background())
+	cmd.SetOut(&out)
+	cmd.SetArgs(args)
+	err := cmd.Execute()
+	return out.String(), err
+}
+
+func Test_showTags_ociLayoutPathWithTagReference(t *testing.T) {
+	root, _ := newScopedTagsTestLayout(t)
+	out, err := runShowTags(t, "--oci-layout-path", root, "example.com/repo:v1")
+	if err != nil {
+		t.Fatalf("repo tags error = %v", err)
+	}
+	if got, want := out, "v1\nv2\n"; got != want {
+		t.Errorf("repo tags output = %q, want %q", got, want)
+	}
+}
+
+func Test_showTags_ociLayoutPathWithDigestReference(t *testing.T) {
+	root, digest := newScopedTagsTestLayout(t)
+	out, err := runShowTags(t, "--oci-layout-path", root, "example.com/repo@"+digest)
+	if err != nil {
+		t.Fatalf("repo tags error = %v", err)
+	}
+	if got, want := out, "v1\nv2\n"; got != want {
+		t.Errorf("repo tags output = %q, want %q", got, want)
+	}
+}
+
+func Test_showTags_ociLayoutPathWithBareDigest(t *testing.T) {
+	root, digest := newScopedTagsTestLayout(t)
+	out, err := runShowTags(t, "--oci-layout-path", root, digest)
+	if err != nil {
+		t.Fatalf("repo tags error = %v", err)
+	}
+	if got, want := out, "example.com/repo:v1\nexample.com/repo:v2\nother.com/other:v9\n"; got != want {
+		t.Errorf("repo tags output = %q, want %q", got, want)
+	}
+}
+
 func Test_showTags_ociLayoutPathWithRepository(t *testing.T) {
 	ctx := context.Background()
 	root := t.TempDir()
@@ -96,5 +161,15 @@ func Test_showTags_ociLayoutPathWithRepository(t *testing.T) {
 	}
 	if got, want := out.String(), "v1\nv2\n"; got != want {
 		t.Errorf("repo tags output = %q, want %q", got, want)
+	}
+}
+
+func Test_showTags_ociLayoutPathWithMissingDigest(t *testing.T) {
+	root, _ := newScopedTagsTestLayout(t)
+	missing := "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+	for _, ref := range []string{"example.com/repo@" + missing, missing} {
+		if _, err := runShowTags(t, "--oci-layout-path", root, ref); !errors.Is(err, errdef.ErrNotFound) {
+			t.Errorf("repo tags %s error = %v, want %v", ref, err, errdef.ErrNotFound)
+		}
 	}
 }

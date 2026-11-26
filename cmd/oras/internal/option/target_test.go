@@ -26,6 +26,7 @@ import (
 
 	"github.com/oras-project/oras-go/v3/errdef"
 	"github.com/oras-project/oras-go/v3/registry/remote"
+	"github.com/oras-project/oras-go/v3/registry/remote/auth"
 	"github.com/oras-project/oras-go/v3/registry/remote/errcode"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -33,17 +34,76 @@ import (
 )
 
 func TestTarget_Parse_oci_path(t *testing.T) {
-	opts := Target{
-		Path:         "foo",
-		RawReference: "mocked/test",
+	tests := []struct {
+		name    string
+		raw     string
+		wantErr bool
+	}{
+		{
+			name: "reference without tag",
+			raw:  "mocked/test",
+		},
+		{
+			name: "valid tag",
+			raw:  "mocked/test:latest",
+		},
+		{
+			name: "reference with registry port",
+			raw:  "localhost:5000/hello:v1",
+		},
+		{
+			name: "uppercase reference",
+			raw:  "MyRepo:v1",
+		},
+		{
+			name:    "tag containing space passes parse",
+			raw:     "mocked/test:BAD TAG",
+			wantErr: false,
+		},
+		{
+			name:    "tag containing invalid characters passes parse",
+			raw:     "mocked/test:bad!tag",
+			wantErr: false,
+		},
+		{
+			name: "digest reference",
+			raw:  "mocked/test@sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+		},
+		{
+			name:    "reference with @ in name passes parse",
+			raw:     "mocked/test@not-a-digest",
+			wantErr: false,
+		},
 	}
-	cmd := &cobra.Command{}
-	ApplyFlags(&opts, cmd.Flags())
-	if err := opts.Parse(cmd); err != nil {
-		t.Errorf("Target.Parse() error = %v", err)
-	}
-	if opts.Type != TargetTypeOCILayout {
-		t.Errorf("Target.Parse() failed, got %q, want %q", opts.Type, TargetTypeOCILayout)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := Target{
+				Path:         "foo",
+				RawReference: tt.raw,
+			}
+			cmd := &cobra.Command{}
+			ApplyFlags(&opts, cmd.Flags())
+
+			err := opts.Parse(cmd)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("Target.Parse() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.wantErr {
+				if !errors.Is(err, errdef.ErrInvalidReference) {
+					t.Errorf("Target.Parse() error = %v, want %v", err, errdef.ErrInvalidReference)
+				}
+				return
+			}
+
+			if opts.Type != TargetTypeOCILayout {
+				t.Errorf("Target.Parse() got type %q, want %q", opts.Type, TargetTypeOCILayout)
+			}
+			if opts.Reference != tt.raw {
+				t.Errorf("Target.Parse() got reference %q, want %q", opts.Reference, tt.raw)
+			}
+		})
 	}
 }
 
@@ -152,10 +212,6 @@ func TestTarget_Parse_remote_err(t *testing.T) {
 }
 
 func Test_parseOCILayoutReference(t *testing.T) {
-	opts := Target{
-		RawReference: "/test",
-		IsOCILayout:  false,
-	}
 	tests := []struct {
 		name    string
 		raw     string
@@ -171,15 +227,28 @@ func Test_parseOCILayoutReference(t *testing.T) {
 		{"Empty tag", "path:", "path", "", false},
 		{"path and digest", "path@digest", "path", "digest", false},
 		{"path and tag", "path:tag", "path", "tag", false},
+		{"Invalid tag with space", "path:BAD TAG", "path", "BAD TAG", false},
+		{"Invalid tag with invalid character", "path:bad!tag", "path", "bad!tag", false},
+		{"Valid OCI layout reference with build metadata", "path:1.0.0+build", "path", "1.0.0+build", false},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			opts.RawReference = tt.raw
+			opts := Target{RawReference: tt.raw}
 			err := opts.parseOCILayoutReference()
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseOCILayoutReference() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
+			if tt.wantErr {
+				if !errors.Is(err, errdef.ErrInvalidReference) {
+					t.Errorf("parseOCILayoutReference() error = %v, want %v", err, errdef.ErrInvalidReference)
+				}
+				return
+			}
+
 			if opts.Path != tt.want {
 				t.Errorf("parseOCILayoutReference() got = %v, want %v", opts.Path, tt.want)
 			}
@@ -225,6 +294,14 @@ func TestTarget_ModifyError_NotFound(t *testing.T) {
 			wantErrPrefix: "Error:",
 			wantModified:  false,
 			isOCILayout:   true,
+		},
+		{
+			name:          "oci layout path not found",
+			targetType:    TargetTypeOCILayout,
+			rawReference:  "latest",
+			wantErrPrefix: "Error:",
+			wantModified:  false,
+			isOCILayout:   false,
 		},
 		{
 			name:          "remote not found",
@@ -584,5 +661,67 @@ func TestTarget_Parse_remote_scheme(t *testing.T) {
 		if err := opts.Parse(cmd); err == nil {
 			t.Errorf("expect Target.Parse(%q) to fail but not", raw)
 		}
+	}
+}
+
+func TestTarget_ModifyError_ociLayoutPathSkipsRemoteHandling(t *testing.T) {
+	opts := &Target{
+		Type:         TargetTypeOCILayout,
+		Path:         t.TempDir(),
+		RawReference: "latest",
+		IsOCILayout:  false,
+	}
+	errs := []error{
+		auth.ErrBasicCredentialNotFound,
+		errdef.ErrNotFound,
+		&errcode.ErrorResponse{
+			URL:        &url.URL{Host: "localhost:5000"},
+			StatusCode: http.StatusUnauthorized,
+		},
+	}
+	for _, inputErr := range errs {
+		cmd := &cobra.Command{}
+		modified, got := opts.ModifyError(cmd, inputErr)
+		if modified {
+			t.Errorf("ModifyError(%T) modified = true, want false", inputErr)
+		}
+		if !errors.Is(got, inputErr) {
+			t.Errorf("ModifyError(%T) = %v, want %v", inputErr, got, inputErr)
+		}
+		if gotPrefix, wantPrefix := cmd.ErrPrefix(), "Error:"; gotPrefix != wantPrefix {
+			t.Errorf("ModifyError(%T) cmd.ErrPrefix() = %q, want %q", inputErr, gotPrefix, wantPrefix)
+		}
+	}
+}
+
+func TestTarget_unknownTypeErrors(t *testing.T) {
+	opts := Target{Type: "unsupported"}
+	if _, err := opts.NewTarget(Common{}, logrus.New()); err == nil || !strings.Contains(err.Error(), "unknown target type") {
+		t.Errorf("NewTarget() error = %v, want unknown target type error", err)
+	}
+	if _, err := opts.NewBlobDeleter(Common{}, logrus.New()); err == nil || !strings.Contains(err.Error(), "unknown target type") {
+		t.Errorf("NewBlobDeleter() error = %v, want unknown target type error", err)
+	}
+	if _, err := opts.NewManifestDeleter(Common{}, logrus.New()); err == nil || !strings.Contains(err.Error(), "unknown target type") {
+		t.Errorf("NewManifestDeleter() error = %v, want unknown target type error", err)
+	}
+	if _, err := opts.NewReadonlyTarget(context.Background(), Common{}, logrus.New()); err == nil || !strings.Contains(err.Error(), "unknown target type") {
+		t.Errorf("NewReadonlyTarget() error = %v, want unknown target type error", err)
+	}
+}
+
+func TestTarget_NewTarget_ociLayout(t *testing.T) {
+	opts := Target{
+		Type: TargetTypeOCILayout,
+		Path: t.TempDir(),
+	}
+	if _, err := opts.NewTarget(Common{}, logrus.New()); err != nil {
+		t.Errorf("NewTarget() error = %v", err)
+	}
+	if _, err := opts.NewBlobDeleter(Common{}, logrus.New()); err != nil {
+		t.Errorf("NewBlobDeleter() error = %v", err)
+	}
+	if _, err := opts.NewManifestDeleter(Common{}, logrus.New()); err != nil {
+		t.Errorf("NewManifestDeleter() error = %v", err)
 	}
 }
