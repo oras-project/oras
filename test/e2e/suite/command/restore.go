@@ -99,6 +99,8 @@ var _ = Describe("ORAS users:", func() {
 
 			// Prepare target repo for restore
 			testRepo := restoreTestRepo("restore-single-tag-dir")
+			// the backup records the source repository, which is restored under the target
+			restoredRepo := testRepo + "/" + ImageRepo
 			dstRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
 
 			// Restore from backup directory
@@ -110,7 +112,7 @@ var _ = Describe("ORAS users:", func() {
 				Exec()
 
 			// Verify restored content
-			CompareRef(srcRef, dstRef)
+			CompareRef(srcRef, RegistryRef(ZOTHost, restoredRepo, foobar.Tag))
 		})
 
 		It("should restore from a tag-only backup created by an earlier version", func() {
@@ -140,6 +142,8 @@ var _ = Describe("ORAS users:", func() {
 
 			// Create target repo for restore
 			testRepo := restoreTestRepo("restore-with-referrers")
+			// the backup records the source repository, which is restored under the target
+			restoredRepo := testRepo + "/" + ArtifactRepo
 			dstRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
 
 			// Restore from backup with referrers
@@ -152,12 +156,12 @@ var _ = Describe("ORAS users:", func() {
 				Exec()
 
 			// Verify restored content
-			CompareRef(srcRef, dstRef)
+			CompareRef(srcRef, RegistryRef(ZOTHost, restoredRepo, foobar.Tag))
 
 			// Verify referrers were restored
-			referrers := ORAS("discover", dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
+			referrers := ORAS("discover", RegistryRef(ZOTHost, restoredRepo, foobar.Tag), "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
 			for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
-				CompareRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), RegistryRef(ZOTHost, testRepo, referrerDgst))
+				CompareRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), RegistryRef(ZOTHost, restoredRepo, referrerDgst))
 			}
 		})
 
@@ -171,6 +175,8 @@ var _ = Describe("ORAS users:", func() {
 
 			// Create target repo for restore
 			testRepo := restoreTestRepo("restore-multi-arch")
+			// the backup records the source repository, which is restored under the target
+			restoredRepo := testRepo + "/" + ArtifactRepo
 			dstRef := RegistryRef(ZOTHost, testRepo, ma.Tag)
 
 			// Restore from backup directory
@@ -183,7 +189,7 @@ var _ = Describe("ORAS users:", func() {
 				Exec()
 
 			// Verify restored content
-			CompareRef(srcRef, dstRef)
+			CompareRef(srcRef, RegistryRef(ZOTHost, restoredRepo, ma.Tag))
 		})
 
 		It("should successfully restore a multi-arch artifact with referrers from a directory", func() {
@@ -196,6 +202,8 @@ var _ = Describe("ORAS users:", func() {
 
 			// Create target repo for restore
 			testRepo := restoreTestRepo("restore-multi-arch-referrers")
+			// the backup records the source repository, which is restored under the target
+			restoredRepo := testRepo + "/" + ArtifactRepo
 			dstRef := RegistryRef(ZOTHost, testRepo, ma.Tag)
 
 			// Restore multi-arch with referrers
@@ -208,12 +216,12 @@ var _ = Describe("ORAS users:", func() {
 				Exec()
 
 			// Verify restored content
-			CompareRef(srcRef, dstRef)
+			CompareRef(srcRef, RegistryRef(ZOTHost, restoredRepo, ma.Tag))
 
 			// Verify referrers were restored
-			referrers := ORAS("discover", dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
+			referrers := ORAS("discover", RegistryRef(ZOTHost, restoredRepo, ma.Tag), "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
 			for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
-				CompareRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), RegistryRef(ZOTHost, testRepo, referrerDgst))
+				CompareRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), RegistryRef(ZOTHost, restoredRepo, referrerDgst))
 			}
 		})
 
@@ -229,6 +237,8 @@ var _ = Describe("ORAS users:", func() {
 
 			// Create target repo for restore
 			testRepo := restoreTestRepo("restore-multi-arch-child-referrers")
+			// the backup records the source repository, which is restored under the target
+			restoredRepo := testRepo + "/" + ArtifactRepo
 			dstRef := RegistryRef(ZOTHost, testRepo, tag)
 
 			// Restore from backup directory
@@ -252,30 +262,30 @@ var _ = Describe("ORAS users:", func() {
 
 			// Verify restored content
 			// validate that the index is restored correctly
-			CompareRef(srcRef, dstRef)
+			CompareRef(srcRef, RegistryRef(ZOTHost, restoredRepo, tag))
 
 			// validate that the child images are restored correctly
 			CompareRef(
 				RegistryRef(ZOTHost, ArtifactRepo, "sha256:ab01d6e284e843d51fb5e753904a540f507a62361a5fd7e434e4f27b285ca5c9"),
-				RegistryRef(ZOTHost, testRepo, "sha256:ab01d6e284e843d51fb5e753904a540f507a62361a5fd7e434e4f27b285ca5c9"),
+				RegistryRef(ZOTHost, restoredRepo, "sha256:ab01d6e284e843d51fb5e753904a540f507a62361a5fd7e434e4f27b285ca5c9"),
 			)
 			CompareRef(
 				RegistryRef(ZOTHost, ArtifactRepo, "sha256:6aa11331ce0c766d6333b60dac98d584d98eea45fa93bbfc9b5bdb915ce3a43f"),
-				RegistryRef(ZOTHost, testRepo, "sha256:6aa11331ce0c766d6333b60dac98d584d98eea45fa93bbfc9b5bdb915ce3a43f"),
+				RegistryRef(ZOTHost, restoredRepo, "sha256:6aa11331ce0c766d6333b60dac98d584d98eea45fa93bbfc9b5bdb915ce3a43f"),
 			)
 
 			// validate that the referrers of the child images are restored correctly
 			CompareRef(
 				RegistryRef(ZOTHost, ArtifactRepo, "sha256:359bac7f6a262e0f36e83b6b78ee3cc7a0bb8813e04d330328ca7ca9785e1e0b"),
-				RegistryRef(ZOTHost, testRepo, "sha256:359bac7f6a262e0f36e83b6b78ee3cc7a0bb8813e04d330328ca7ca9785e1e0b"),
+				RegistryRef(ZOTHost, restoredRepo, "sha256:359bac7f6a262e0f36e83b6b78ee3cc7a0bb8813e04d330328ca7ca9785e1e0b"),
 			)
 			CompareRef(
 				RegistryRef(ZOTHost, ArtifactRepo, "sha256:938419ae89a9947476bbed93abc5eb7abf7d5708be69679fe6cc4b22afe8fdd5"),
-				RegistryRef(ZOTHost, testRepo, "sha256:938419ae89a9947476bbed93abc5eb7abf7d5708be69679fe6cc4b22afe8fdd5"),
+				RegistryRef(ZOTHost, restoredRepo, "sha256:938419ae89a9947476bbed93abc5eb7abf7d5708be69679fe6cc4b22afe8fdd5"),
 			)
 			CompareRef(
 				RegistryRef(ZOTHost, ArtifactRepo, "sha256:20e7d3a6ce087c54238c18a3428853b50cdaf4478a9d00caa8304119b58ae8a9"),
-				RegistryRef(ZOTHost, testRepo, "sha256:20e7d3a6ce087c54238c18a3428853b50cdaf4478a9d00caa8304119b58ae8a9"),
+				RegistryRef(ZOTHost, restoredRepo, "sha256:20e7d3a6ce087c54238c18a3428853b50cdaf4478a9d00caa8304119b58ae8a9"),
 			)
 		})
 
@@ -289,6 +299,8 @@ var _ = Describe("ORAS users:", func() {
 
 			// Create target repo for restore
 			testRepo := restoreTestRepo("restore-single-tag-tar")
+			// the backup records the source repository, which is restored under the target
+			restoredRepo := testRepo + "/" + ImageRepo
 			dstRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
 
 			// Restore from backup tar
@@ -301,7 +313,7 @@ var _ = Describe("ORAS users:", func() {
 				Exec()
 
 			// Verify restored content
-			CompareRef(srcRef, dstRef)
+			CompareRef(srcRef, RegistryRef(ZOTHost, restoredRepo, foobar.Tag))
 		})
 
 		It("should restore an artifact with its referrers from a tar file", func() {
@@ -314,6 +326,8 @@ var _ = Describe("ORAS users:", func() {
 
 			// Create target repo for restore
 			testRepo := restoreTestRepo("restore-with-referrers-tar")
+			// the backup records the source repository, which is restored under the target
+			restoredRepo := testRepo + "/" + ArtifactRepo
 			dstRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
 
 			// Restore from backup tar with referrers
@@ -326,12 +340,12 @@ var _ = Describe("ORAS users:", func() {
 				Exec()
 
 			// Verify restored content
-			CompareRef(srcRef, dstRef)
+			CompareRef(srcRef, RegistryRef(ZOTHost, restoredRepo, foobar.Tag))
 
 			// Verify referrers were restored
-			referrers := ORAS("discover", dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
+			referrers := ORAS("discover", RegistryRef(ZOTHost, restoredRepo, foobar.Tag), "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
 			for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
-				CompareRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), RegistryRef(ZOTHost, testRepo, referrerDgst))
+				CompareRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), RegistryRef(ZOTHost, restoredRepo, referrerDgst))
 			}
 		})
 
@@ -345,6 +359,8 @@ var _ = Describe("ORAS users:", func() {
 
 			// Create target repo for restore
 			testRepo := restoreTestRepo("restore-multi-arch-tar")
+			// the backup records the source repository, which is restored under the target
+			restoredRepo := testRepo + "/" + ArtifactRepo
 			dstRef := RegistryRef(ZOTHost, testRepo, ma.Tag)
 
 			// Restore from backup tar
@@ -357,7 +373,7 @@ var _ = Describe("ORAS users:", func() {
 				Exec()
 
 			// Verify restored content
-			CompareRef(srcRef, dstRef)
+			CompareRef(srcRef, RegistryRef(ZOTHost, restoredRepo, ma.Tag))
 		})
 	})
 
@@ -373,6 +389,8 @@ var _ = Describe("ORAS users:", func() {
 
 			// Create target repo for restore
 			testRepo := restoreTestRepo("restore-multiple-tags")
+			// the backup records the source repository, which is restored under the target
+			restoredRepo := testRepo + "/" + ArtifactRepo
 			dstRefs := fmt.Sprintf("%s/%s:%s", ZOTHost, testRepo, strings.Join(srcTags, ","))
 
 			// Restore multiple tags
@@ -389,7 +407,7 @@ var _ = Describe("ORAS users:", func() {
 			for _, tag := range srcTags {
 				CompareRef(
 					RegistryRef(ZOTHost, ArtifactRepo, tag),
-					RegistryRef(ZOTHost, testRepo, tag),
+					RegistryRef(ZOTHost, restoredRepo, tag),
 				)
 			}
 		})
@@ -405,6 +423,8 @@ var _ = Describe("ORAS users:", func() {
 
 			// Create target repo for restore
 			testRepo := restoreTestRepo("restore-multiple-tags-referrers")
+			// the backup records the source repository, which is restored under the target
+			restoredRepo := testRepo + "/" + ArtifactRepo
 			dstRefs := fmt.Sprintf("%s/%s:%s", ZOTHost, testRepo, strings.Join(srcTags, ","))
 
 			// Restore multiple tags with referrers
@@ -423,14 +443,14 @@ var _ = Describe("ORAS users:", func() {
 			// Verify restored content
 			for _, tag := range srcTags {
 				srcRef := RegistryRef(ZOTHost, ArtifactRepo, tag)
-				dstRef := RegistryRef(ZOTHost, testRepo, tag)
+				dstRef := RegistryRef(ZOTHost, restoredRepo, tag)
 
 				CompareRef(srcRef, dstRef)
 
 				// Verify referrers were restored for each tag
 				referrers := ORAS("discover", dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
 				for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
-					CompareRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), RegistryRef(ZOTHost, testRepo, referrerDgst))
+					CompareRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), RegistryRef(ZOTHost, restoredRepo, referrerDgst))
 				}
 			}
 		})
@@ -453,6 +473,8 @@ var _ = Describe("ORAS users:", func() {
 
 			// Create target repo for restore
 			testDstRepo := restoreTestRepo("restore-all-tags")
+			// the backup records the source repository, which is restored under the target
+			restoredRepo := testDstRepo + "/" + testSrcRepo
 			dstRepoRef := fmt.Sprintf("%s/%s", ZOTHost, testDstRepo)
 
 			// Restore all tags from backup
@@ -469,7 +491,7 @@ var _ = Describe("ORAS users:", func() {
 			for _, tag := range srcTags {
 				CompareRef(
 					RegistryRef(ZOTHost, testSrcRepo, tag),
-					RegistryRef(ZOTHost, testDstRepo, tag),
+					RegistryRef(ZOTHost, restoredRepo, tag),
 				)
 			}
 		})
@@ -494,6 +516,8 @@ var _ = Describe("ORAS users:", func() {
 
 			// Create target repo for restore
 			testDstRepo := restoreTestRepo("restore-all-tags-referrers")
+			// the backup records the source repository, which is restored under the target
+			restoredRepo := testDstRepo + "/" + testSrcRepo
 			dstRepoRef := fmt.Sprintf("%s/%s", ZOTHost, testDstRepo)
 
 			// Restore all tags and their referrers from backup
@@ -512,14 +536,14 @@ var _ = Describe("ORAS users:", func() {
 			// Verify all tags and their referrers were restored
 			for _, tag := range srcTags {
 				srcRef := RegistryRef(ZOTHost, testSrcRepo, tag)
-				dstRef := RegistryRef(ZOTHost, testDstRepo, tag)
+				dstRef := RegistryRef(ZOTHost, restoredRepo, tag)
 
 				CompareRef(srcRef, dstRef)
 
 				// Verify referrers were restored for each tag
 				referrers := ORAS("discover", dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
 				for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
-					CompareRef(RegistryRef(ZOTHost, testSrcRepo, referrerDgst), RegistryRef(ZOTHost, testDstRepo, referrerDgst))
+					CompareRef(RegistryRef(ZOTHost, testSrcRepo, referrerDgst), RegistryRef(ZOTHost, restoredRepo, referrerDgst))
 				}
 			}
 		})
@@ -537,14 +561,15 @@ var _ = Describe("ORAS users:", func() {
 			// Create target repo for restore
 			testRepo := restoreTestRepo("restore-dry-run")
 			dstRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			restoredRef := RegistryRef(ZOTHost, testRepo+"/"+ImageRepo, foobar.Tag)
 
 			ORAS("restore", "--input", backupDir, Flags.ExcludeReferrers, "--dry-run", dstRef).
-				MatchKeyWords("would push tag", "0 referrer(s)").
+				MatchKeyWords("would push tag", srcRef, restoredRef, "0 referrer(s)").
 				MatchKeyWords("Dry run complete", "1 tag(s) would be restored").
 				Exec()
 
 			// Verify nothing was actually pushed
-			ORAS("manifest", "fetch", dstRef).
+			ORAS("manifest", "fetch", restoredRef).
 				ExpectFailure().
 				MatchErrKeyWords("Error response from registry:", "not found").
 				Exec()
@@ -561,14 +586,15 @@ var _ = Describe("ORAS users:", func() {
 			// Create target repo for restore
 			testRepo := restoreTestRepo("restore-dry-run-referrers")
 			dstRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			restoredRef := RegistryRef(ZOTHost, testRepo+"/"+ArtifactRepo, foobar.Tag)
 
 			ORAS("restore", "--input", backupDir, "--dry-run", dstRef).
-				MatchKeyWords("would push tag", "2 referrer(s)").
+				MatchKeyWords("would push tag", srcRef, restoredRef, "2 referrer(s)").
 				MatchKeyWords("Dry run complete", "1 tag(s) would be restored").
 				Exec()
 
 			// Verify nothing was actually pushed
-			ORAS("manifest", "fetch", dstRef).
+			ORAS("manifest", "fetch", restoredRef).
 				ExpectFailure().
 				MatchErrKeyWords("Error response from registry:", "not found").
 				Exec()
@@ -586,6 +612,8 @@ var _ = Describe("ORAS users:", func() {
 
 			// Create target repo for restore
 			testRepo := restoreTestRepo("restore-concurrency")
+			// the backup records the source repository, which is restored under the target
+			restoredRepo := testRepo + "/" + ImageRepo
 			dstRef := RegistryRef(ZOTHost, testRepo, ma.Tag)
 
 			stateKeys := ma.IndexStateKeys
@@ -594,7 +622,7 @@ var _ = Describe("ORAS users:", func() {
 				Exec()
 
 			// Verify restored content
-			CompareRef(srcRef, dstRef)
+			CompareRef(srcRef, RegistryRef(ZOTHost, restoredRepo, ma.Tag))
 		})
 	})
 
@@ -609,6 +637,8 @@ var _ = Describe("ORAS users:", func() {
 
 			// Create target repo for restore
 			testRepo := restoreTestRepo("restore-referrers-api")
+			// the backup records the source repository, which is restored under the target
+			restoredRepo := testRepo + "/" + ArtifactRepo
 			dstRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
 
 			ORAS("restore", "--input", backupDir, Flags.DistributionSpec, "v1.1-referrers-api", dstRef).
@@ -616,12 +646,12 @@ var _ = Describe("ORAS users:", func() {
 				Exec()
 
 			// Verify restored content
-			CompareRef(srcRef, dstRef)
+			CompareRef(srcRef, RegistryRef(ZOTHost, restoredRepo, foobar.Tag))
 
 			// Verify referrers were restored
-			referrers := ORAS("discover", dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
+			referrers := ORAS("discover", RegistryRef(ZOTHost, restoredRepo, foobar.Tag), "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
 			for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
-				CompareRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), RegistryRef(ZOTHost, testRepo, referrerDgst))
+				CompareRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), RegistryRef(ZOTHost, restoredRepo, referrerDgst))
 			}
 		})
 
@@ -634,6 +664,8 @@ var _ = Describe("ORAS users:", func() {
 
 			// Create target repo for restore
 			testRepo := restoreTestRepo("restore-referrers-tag")
+			// the backup records the source repository, which is restored under the target
+			restoredRepo := testRepo + "/" + ArtifactRepo
 			dstRef := RegistryRef(FallbackHost, testRepo, foobar.Tag)
 
 			ORAS("restore", "--input", backupDir, Flags.DistributionSpec, "v1.1-referrers-tag", dstRef).
@@ -641,12 +673,12 @@ var _ = Describe("ORAS users:", func() {
 				Exec()
 
 			// Verify restored content
-			CompareRef(srcRef, dstRef)
+			CompareRef(srcRef, RegistryRef(FallbackHost, restoredRepo, foobar.Tag))
 
 			// Verify referrers were restored
-			referrers := ORAS("discover", dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
+			referrers := ORAS("discover", RegistryRef(FallbackHost, restoredRepo, foobar.Tag), "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
 			for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
-				CompareRef(RegistryRef(FallbackHost, ArtifactRepo, referrerDgst), RegistryRef(FallbackHost, testRepo, referrerDgst))
+				CompareRef(RegistryRef(FallbackHost, ArtifactRepo, referrerDgst), RegistryRef(FallbackHost, restoredRepo, referrerDgst))
 			}
 		})
 	})

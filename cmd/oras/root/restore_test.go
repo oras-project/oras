@@ -18,6 +18,7 @@ package root
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -71,13 +72,28 @@ func newRestoreTestTarWithRefs(t *testing.T, refs ...string) string {
 	return tarPath
 }
 
+// newRestoreTestTargets returns a function that creates an in-memory
+// repository for each target repository, and the repositories it created.
+func newRestoreTestTargets() (func(string) (oras.GraphTarget, error), map[string]*memory.Store) {
+	stores := make(map[string]*memory.Store)
+	return func(repo string) (oras.GraphTarget, error) {
+		store, ok := stores[repo]
+		if !ok {
+			store = memory.New()
+			stores[repo] = store
+		}
+		return store, nil
+	}, stores
+}
+
 func Test_doRestore_handlerCalls(t *testing.T) {
-	opts := &restoreOptions{input: newRestoreTestTar(t), repository: "example"}
+	opts := &restoreOptions{input: newRestoreTestTar(t), repository: "localhost:5000/example"}
 	recorder := &displaytest.CallRecorder{}
 	statusHandler := &displaytest.RecordingRestoreStatusHandler{Recorder: recorder}
 	metadataHandler := &displaytest.RecordingRestoreMetadataHandler{Recorder: recorder}
 
-	if err := doRestore(context.Background(), opts, memory.New(), time.Now(), statusHandler, metadataHandler); err != nil {
+	newTarget, _ := newRestoreTestTargets()
+	if err := doRestore(context.Background(), opts, newTarget, time.Now(), statusHandler, metadataHandler); err != nil {
 		t.Fatal(err)
 	}
 
@@ -94,12 +110,13 @@ func Test_doRestore_handlerCalls(t *testing.T) {
 }
 
 func Test_doRestore_dryRun(t *testing.T) {
-	opts := &restoreOptions{input: newRestoreTestTar(t), repository: "example", dryRun: true}
+	opts := &restoreOptions{input: newRestoreTestTar(t), repository: "localhost:5000/example", dryRun: true}
 	recorder := &displaytest.CallRecorder{}
 	statusHandler := &displaytest.RecordingRestoreStatusHandler{Recorder: recorder}
 	metadataHandler := &displaytest.RecordingRestoreMetadataHandler{Recorder: recorder}
 
-	if err := doRestore(context.Background(), opts, memory.New(), time.Now(), statusHandler, metadataHandler); err != nil {
+	newTarget, _ := newRestoreTestTargets()
+	if err := doRestore(context.Background(), opts, newTarget, time.Now(), statusHandler, metadataHandler); err != nil {
 		t.Fatal(err)
 	}
 
@@ -110,13 +127,14 @@ func Test_doRestore_dryRun(t *testing.T) {
 }
 
 func Test_doRestore_artifactPushedError(t *testing.T) {
-	opts := &restoreOptions{input: newRestoreTestTar(t), repository: "example"}
+	opts := &restoreOptions{input: newRestoreTestTar(t), repository: "localhost:5000/example"}
 	wantErr := errors.New("artifact pushed failed")
 	recorder := &displaytest.CallRecorder{}
 	statusHandler := &displaytest.RecordingRestoreStatusHandler{Recorder: recorder}
 	metadataHandler := &displaytest.RecordingRestoreMetadataHandler{Recorder: recorder, ArtifactPushedErr: wantErr}
 
-	err := doRestore(context.Background(), opts, memory.New(), time.Now(), statusHandler, metadataHandler)
+	newTarget, _ := newRestoreTestTargets()
+	err := doRestore(context.Background(), opts, newTarget, time.Now(), statusHandler, metadataHandler)
 	if !errors.Is(err, wantErr) {
 		t.Fatalf("doRestore() error = %v, want %v", err, wantErr)
 	}
@@ -127,56 +145,108 @@ func Test_doRestore_artifactPushedError(t *testing.T) {
 
 func Test_doRestore_fullReferenceBackup(t *testing.T) {
 	tests := []struct {
-		name     string
-		refs     []string
-		tags     []string
-		wantTags []string
+		name   string
+		refs   []string
+		target string
+		tags   []string
+		// target repository -> restored tags
+		want map[string][]string
 	}{
 		{
-			name:     "full references, all tags",
-			refs:     []string{"localhost:5000/example:v1", "localhost:5000/example:v2"},
-			wantTags: []string{"v1", "v2"},
+			name:   "full references, all tags",
+			refs:   []string{"localhost:5000/example:v1", "localhost:5000/example:v2"},
+			target: "registry.example.com/ns",
+			want:   map[string][]string{"registry.example.com/ns/example": {"v1", "v2"}},
 		},
 		{
-			name:     "full references, specified tag",
-			refs:     []string{"localhost:5000/example:v1", "localhost:5000/example:v2"},
-			tags:     []string{"v2"},
-			wantTags: []string{"v2"},
+			name:   "full references, specified tag",
+			refs:   []string{"localhost:5000/example:v1", "localhost:5000/example:v2"},
+			target: "registry.example.com/ns",
+			tags:   []string{"v2"},
+			want:   map[string][]string{"registry.example.com/ns/example": {"v2"}},
 		},
 		{
-			name:     "tag-only backup from an earlier version",
-			refs:     []string{"v1"},
-			tags:     []string{"v1"},
-			wantTags: []string{"v1"},
+			name:   "multiple repositories to a registry",
+			refs:   []string{"docker.io/library/redis:7.2", "ghcr.io/oras-project/oras:v1"},
+			target: "registry.example.com",
+			want: map[string][]string{
+				"registry.example.com/library/redis":     {"7.2"},
+				"registry.example.com/oras-project/oras": {"v1"},
+			},
+		},
+		{
+			name:   "same tag in multiple repositories",
+			refs:   []string{"localhost:5000/a:v1", "localhost:5000/b:v1"},
+			target: "registry.example.com/ns",
+			tags:   []string{"v1"},
+			want: map[string][]string{
+				"registry.example.com/ns/a": {"v1"},
+				"registry.example.com/ns/b": {"v1"},
+			},
+		},
+		{
+			name:   "tag-only backup from an earlier version",
+			refs:   []string{"v1"},
+			target: "registry.example.com/example",
+			tags:   []string{"v1"},
+			want:   map[string][]string{"registry.example.com/example": {"v1"}},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			opts := &restoreOptions{input: newRestoreTestTarWithRefs(t, tt.refs...), repository: "registry.example.com/example", tags: tt.tags}
+			opts := &restoreOptions{input: newRestoreTestTarWithRefs(t, tt.refs...), repository: tt.target, tags: tt.tags}
 			recorder := &displaytest.CallRecorder{}
 			statusHandler := &displaytest.RecordingRestoreStatusHandler{Recorder: recorder}
 			metadataHandler := &displaytest.RecordingRestoreMetadataHandler{Recorder: recorder}
-			dst := memory.New()
+			newTarget, stores := newRestoreTestTargets()
 
-			if err := doRestore(ctx, opts, dst, time.Now(), statusHandler, metadataHandler); err != nil {
+			if err := doRestore(ctx, opts, newTarget, time.Now(), statusHandler, metadataHandler); err != nil {
 				t.Fatal(err)
 			}
 
-			for _, tag := range tt.wantTags {
-				if _, err := dst.Resolve(ctx, tag); err != nil {
-					t.Errorf("tag %q not restored: %v", tag, err)
-				}
+			if len(stores) != len(tt.want) {
+				t.Errorf("restored to %d repositories, want %d", len(stores), len(tt.want))
 			}
-			for _, ref := range tt.refs {
-				if slices.Contains(tt.wantTags, ref) {
+			for repo, tags := range tt.want {
+				store, ok := stores[repo]
+				if !ok {
+					t.Errorf("nothing restored to %q", repo)
 					continue
 				}
-				if _, err := dst.Resolve(ctx, ref); err == nil {
-					t.Errorf("stored reference %q was pushed as a tag", ref)
+				for _, tag := range tags {
+					if _, err := store.Resolve(ctx, tag); err != nil {
+						t.Errorf("tag %q not restored to %q: %v", tag, repo, err)
+					}
+				}
+				for _, ref := range tt.refs {
+					if slices.Contains(tags, ref) {
+						continue
+					}
+					if _, err := store.Resolve(ctx, ref); err == nil {
+						t.Errorf("stored reference %q was pushed as a tag to %q", ref, repo)
+					}
 				}
 			}
 		})
+	}
+}
+
+func Test_doRestore_collision(t *testing.T) {
+	refs := []string{"docker.io/library/nginx:1.25", "mirror.gcr.io/library/nginx:1.25"}
+	for _, dryRun := range []bool{false, true} {
+		opts := &restoreOptions{input: newRestoreTestTarWithRefs(t, refs...), repository: "registry.example.com", dryRun: dryRun}
+		recorder := &displaytest.CallRecorder{}
+		statusHandler := &displaytest.RecordingRestoreStatusHandler{Recorder: recorder}
+		metadataHandler := &displaytest.RecordingRestoreMetadataHandler{Recorder: recorder}
+		newTarget, stores := newRestoreTestTargets()
+
+		if err := doRestore(context.Background(), opts, newTarget, time.Now(), statusHandler, metadataHandler); err == nil {
+			t.Errorf("dryRun=%v: expected an error for two repositories restoring to the same target", dryRun)
+		}
+		if len(stores) != 0 {
+			t.Errorf("dryRun=%v: restored to %v, want nothing pushed", dryRun, stores)
+		}
 	}
 }
 
@@ -214,19 +284,24 @@ func Test_resolveRestoreRefs(t *testing.T) {
 		}
 	})
 
-	t.Run("two references restore to the same tag", func(t *testing.T) {
-		_, _, _, err := resolveRestoreRefs(ctx, newLayout(t, "localhost:5000/a:v1", "localhost:5000/b:v1"), nil)
-		if err == nil {
-			t.Error("expected an error for references sharing a tag")
-		}
-	})
-
-	t.Run("specified tag shared by two references", func(t *testing.T) {
-		_, _, _, err := resolveRestoreRefs(ctx, newLayout(t, "localhost:5000/a:v1", "localhost:5000/b:v1"), []string{"v1"})
-		if err == nil {
-			t.Error("expected an error for a specified tag shared by two references")
-		}
-	})
+	for _, specifiedTags := range [][]string{nil, {"v1"}} {
+		t.Run(fmt.Sprintf("same tag in two repositories, specified tags %v", specifiedTags), func(t *testing.T) {
+			srcRefs, tags, roots, err := resolveRestoreRefs(ctx, newLayout(t, "localhost:5000/a:v1", "localhost:5000/b:v1"), specifiedTags)
+			if err != nil {
+				t.Fatal(err)
+			}
+			slices.Sort(srcRefs)
+			if want := []string{"localhost:5000/a:v1", "localhost:5000/b:v1"}; !reflect.DeepEqual(srcRefs, want) {
+				t.Errorf("srcRefs = %v, want %v", srcRefs, want)
+			}
+			if want := []string{"v1", "v1"}; !reflect.DeepEqual(tags, want) {
+				t.Errorf("tags = %v, want %v", tags, want)
+			}
+			if len(roots) != 2 {
+				t.Errorf("roots = %v, want 2 descriptors", roots)
+			}
+		})
+	}
 
 	t.Run("unrelated entries do not block specified tags", func(t *testing.T) {
 		// an entry without a tag and two entries sharing tag v2
@@ -276,6 +351,117 @@ func Test_tagFromRefName(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("tagFromRefName(%q) = %q, want %q", tt.refName, got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_restoreTargets(t *testing.T) {
+	tests := []struct {
+		name                   string
+		target                 string
+		srcRefs                []string
+		preserveSourceRegistry bool
+		want                   []string
+		wantErr                bool
+	}{
+		{
+			name:    "registry target",
+			target:  "harbor.local",
+			srcRefs: []string{"docker.io/library/redis:7.2", "ghcr.io/oras-project/oras:v1.3.0"},
+			want:    []string{"harbor.local/library/redis", "harbor.local/oras-project/oras"},
+		},
+		{
+			name:    "namespace target",
+			target:  "harbor.local/myproject",
+			srcRefs: []string{"docker.io/library/redis:7.2"},
+			want:    []string{"harbor.local/myproject/library/redis"},
+		},
+		{
+			name:    "single repository is not restored to the target itself",
+			target:  "harbor.local/myproject/redis",
+			srcRefs: []string{"docker.io/library/redis:7.2"},
+			want:    []string{"harbor.local/myproject/redis/library/redis"},
+		},
+		{
+			name:    "registry with port",
+			target:  "localhost:5000",
+			srcRefs: []string{"localhost:5001/repo:v1", "localhost:5001/repo:v2"},
+			want:    []string{"localhost:5000/repo", "localhost:5000/repo"},
+		},
+		{
+			name:                   "preserve source registry",
+			target:                 "harbor.local",
+			srcRefs:                []string{"docker.io/library/nginx:1.25", "mirror.gcr.io/library/nginx:1.25"},
+			preserveSourceRegistry: true,
+			want:                   []string{"harbor.local/docker.io/library/nginx", "harbor.local/mirror.gcr.io/library/nginx"},
+		},
+		{
+			name:                   "preserve source registry with a port",
+			target:                 "harbor.local",
+			srcRefs:                []string{"localhost:5000/repo:v1"},
+			preserveSourceRegistry: true,
+			wantErr:                true,
+		},
+		{
+			name:    "collision",
+			target:  "harbor.local",
+			srcRefs: []string{"docker.io/library/nginx:1.25", "mirror.gcr.io/library/nginx:1.25"},
+			wantErr: true,
+		},
+		{
+			name:    "tag-only backup from an earlier version",
+			target:  "harbor.local/myproject/redis",
+			srcRefs: []string{"v1", "v2"},
+			want:    []string{"harbor.local/myproject/redis", "harbor.local/myproject/redis"},
+		},
+		{
+			name:    "tag-only backup to a registry",
+			target:  "harbor.local",
+			srcRefs: []string{"v1"},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := restoreTargets(tt.target, tt.srcRefs, tt.preserveSourceRegistry)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("restoreTargets() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("restoreTargets() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_parseRestoreTarget(t *testing.T) {
+	tests := []struct {
+		name     string
+		target   string
+		wantRepo string
+		wantTags []string
+		wantErr  bool
+	}{
+		{name: "registry", target: "harbor.local", wantRepo: "harbor.local"},
+		{name: "registry with port", target: "localhost:5000", wantRepo: "localhost:5000"},
+		{name: "namespace", target: "harbor.local/myproject", wantRepo: "harbor.local/myproject"},
+		{name: "namespace with tags", target: "harbor.local/myproject:v1,v2", wantRepo: "harbor.local/myproject", wantTags: []string{"v1", "v2"}},
+		{name: "empty", target: "", wantErr: true},
+		{name: "invalid registry", target: "harbor local", wantErr: true},
+		{name: "digest", target: "harbor.local/myproject@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotRepo, gotTags, err := parseRestoreTarget(tt.target)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("parseRestoreTarget(%q) error = %v, wantErr %v", tt.target, err, tt.wantErr)
+			}
+			if gotRepo != tt.wantRepo {
+				t.Errorf("parseRestoreTarget(%q) repository = %q, want %q", tt.target, gotRepo, tt.wantRepo)
+			}
+			if !reflect.DeepEqual(gotTags, tt.wantTags) {
+				t.Errorf("parseRestoreTarget(%q) tags = %v, want %v", tt.target, gotTags, tt.wantTags)
 			}
 		})
 	}

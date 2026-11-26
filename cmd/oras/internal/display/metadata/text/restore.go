@@ -64,11 +64,11 @@ func (rh *RestoreHandler) OnTagsFound(tags []string) error {
 }
 
 // OnArtifactPushed implements metadata.RestoreHandler.
-func (rh *RestoreHandler) OnArtifactPushed(tag string, referrerCount int) error {
+func (rh *RestoreHandler) OnArtifactPushed(srcRef, dstRef string, referrerCount int) error {
 	if rh.dryRun {
-		return rh.printer.Printf("Dry run: would push tag %s with %d referrer(s)\n", tag, referrerCount)
+		return rh.printer.Printf("Dry run: would push tag %s to %s with %d referrer(s)\n", srcRef, dstRef, referrerCount)
 	}
-	return rh.printer.Printf("Pushed tag %s with %d referrer(s)\n", tag, referrerCount)
+	return rh.printer.Printf("Pushed tag %s to %s with %d referrer(s)\n", srcRef, dstRef, referrerCount)
 }
 
 // OnRestoreCompleted implements metadata.RestoreHandler.
