@@ -270,7 +270,7 @@ func doRestore(
 // only the tag. Specified tags are matched against the tag of each stored
 // reference, so they work with either format.
 func resolveRestoreRefs(ctx context.Context, src oras.ReadOnlyTarget, specifiedTags []string) (srcRefs, tags []string, roots []ocispec.Descriptor, err error) {
-	storedRefs, storedRoots, err := resolveTags(ctx, src, nil, oras.DefaultResolveOptions, nil)
+	storedRefs, storedRoots, err := resolveTags(ctx, src, nil)
 	if err != nil {
 		return nil, nil, nil, err
 	}

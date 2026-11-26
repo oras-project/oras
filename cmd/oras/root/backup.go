@@ -64,7 +64,7 @@ type backupOptions struct {
 	option.Common
 	option.Remote
 	option.Terminal
-	option.Platform
+	option.Platforms
 
 	// flags
 	output           string
@@ -123,6 +123,9 @@ Example - Set custom concurrency level:
 			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
+			if len(opts.Platforms.Platforms) > 1 {
+				return errors.New("multiple platforms are not supported yet")
+			}
 
 			// parse repo and references
 			var err error
@@ -153,7 +156,7 @@ Example - Set custom concurrency level:
 	// optional flags
 	cmd.Flags().BoolVarP(&opts.includeReferrers, "include-referrers", "", false, "back up the artifact with its referrers (e.g., attestations, SBOMs)")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
-	opts.FlagDescription = "back up only the manifest matching the platform"
+	opts.Platforms.FlagDescription = "back up only the manifest matching the platform"
 	opts.EnableDistributionSpecFlag()
 	// apply flags
 	option.ApplyFlags(&opts, cmd.Flags())
@@ -238,24 +241,16 @@ func doBackup(
 	metadataHandler metadata.BackupHandler,
 ) error {
 	// Resolve tags to back up
-	resolveOpts := oras.DefaultResolveOptions
-	resolveOpts.TargetPlatform = opts.Platform.Platform
-	var skip func(tag string, err error) bool
-	skipped := 0
-	if opts.Platform.Platform != nil {
-		// When backing up every tag, leave out artifacts with no manifest for the platform.
-		skip = func(tag string, err error) bool {
-			if !errors.Is(err, errdef.ErrNotFound) && !errors.Is(err, errdef.ErrUnsupported) {
-				return false
-			}
-			logger.Warnf("skipping tag %q, it has no manifest for the requested platform: %v", tag, err)
-			skipped++
-			return true
-		}
-	}
-	tags, roots, err := resolveTags(ctx, srcRepo, opts.tags, resolveOpts, skip)
+	tags, roots, err := resolveTags(ctx, srcRepo, opts.tags)
 	if err != nil {
 		return err
+	}
+	skipped := 0
+	if len(opts.Platforms.Platforms) == 1 {
+		tags, roots, skipped, err = selectPlatformRoots(ctx, srcRepo, tags, roots, opts.Platforms.Platforms[0], len(opts.tags) > 0, logger)
+		if err != nil {
+			return err
+		}
 	}
 	if len(tags) == 0 && skipped > 0 {
 		return &oerrors.Error{
@@ -444,30 +439,108 @@ func removeEmptyFile(path string, logger logrus.FieldLogger) {
 	}
 }
 
-// resolveTags resolves tags to their descriptors using resolveOpts.
-// It returns the resolved tags and their corresponding descriptors. A discovered
-// tag that fails to resolve is left out if skip is not nil and returns true.
-func resolveTags(ctx context.Context, target oras.ReadOnlyTarget, specifiedTags []string, resolveOpts oras.ResolveOptions, skip func(tag string, err error) bool) ([]string, []ocispec.Descriptor, error) {
-	var descs []ocispec.Descriptor
-	resolve := func(tags []string, discovered bool) ([]string, error) {
-		resolved := make([]string, 0, len(tags))
-		for _, tag := range tags {
-			desc, err := oras.Resolve(ctx, target, tag, resolveOpts)
-			if err != nil {
-				if discovered && skip != nil && skip(tag, err) {
-					continue
-				}
-				return nil, fmt.Errorf("failed to resolve tag %q: %w", tag, err)
+// errPlatformMismatch is returned for an image built only for other platforms.
+var errPlatformMismatch = fmt.Errorf("%w: no manifest for the requested platform", errdef.ErrNotFound)
+
+// selectPlatformRoots replaces each root with its manifest for platform. A listed tag
+// that is built only for other platforms is skipped with a warning; a named one fails.
+func selectPlatformRoots(ctx context.Context, src content.ReadOnlyStorage, tags []string, roots []ocispec.Descriptor, platform *ocispec.Platform, named bool, logger logrus.FieldLogger) ([]string, []ocispec.Descriptor, int, error) {
+	var keptTags []string
+	var keptRoots []ocispec.Descriptor
+	skipped := 0
+	for i, tag := range tags {
+		root, err := selectPlatform(ctx, src, roots[i], platform)
+		if err != nil {
+			if errors.Is(err, errPlatformMismatch) && !named {
+				logger.Warnf("skipping tag %q: %v", tag, err)
+				skipped++
+				continue
 			}
-			resolved = append(resolved, tag)
+			return nil, nil, 0, fmt.Errorf("failed to select the platform for tag %q: %w", tag, err)
+		}
+		keptTags = append(keptTags, tag)
+		keptRoots = append(keptRoots, root)
+	}
+	return keptTags, keptRoots, skipped, nil
+}
+
+// selectPlatform returns the manifest for platform from a multi-platform index, or the
+// image itself if it was built for platform. Anything without a platform is returned as is.
+func selectPlatform(ctx context.Context, src content.ReadOnlyStorage, root ocispec.Descriptor, platform *ocispec.Platform) (ocispec.Descriptor, error) {
+	switch root.MediaType {
+	case ocispec.MediaTypeImageIndex, docker.MediaTypeManifestList:
+		var index ocispec.Index
+		if err := fetchJSON(ctx, src, root, &index); err != nil {
+			return ocispec.Descriptor{}, err
+		}
+		hasPlatform := false
+		for _, m := range index.Manifests {
+			if m.Platform == nil {
+				continue
+			}
+			hasPlatform = true
+			if platformMatches(m.Platform, platform) {
+				return m, nil
+			}
+		}
+		if !hasPlatform {
+			return root, nil
+		}
+		return ocispec.Descriptor{}, errPlatformMismatch
+	case ocispec.MediaTypeImageManifest, docker.MediaTypeManifest:
+		var manifest ocispec.Manifest
+		if err := fetchJSON(ctx, src, root, &manifest); err != nil {
+			return ocispec.Descriptor{}, err
+		}
+		if manifest.Config.MediaType != ocispec.MediaTypeImageConfig && manifest.Config.MediaType != docker.MediaTypeConfig {
+			return root, nil
+		}
+		var config ocispec.Platform
+		if err := fetchJSON(ctx, src, manifest.Config, &config); err != nil {
+			return ocispec.Descriptor{}, err
+		}
+		if config.OS == "" && config.Architecture == "" {
+			return root, nil
+		}
+		if platformMatches(&config, platform) {
+			return root, nil
+		}
+		return ocispec.Descriptor{}, errPlatformMismatch
+	default:
+		return root, nil
+	}
+}
+
+// fetchJSON fetches desc from src and decodes it into v.
+func fetchJSON(ctx context.Context, src content.ReadOnlyStorage, desc ocispec.Descriptor, v any) error {
+	data, err := content.FetchAll(ctx, src, desc)
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(data, v); err != nil {
+		return fmt.Errorf("failed to parse %s %s: %w", desc.MediaType, desc.Digest, err)
+	}
+	return nil
+}
+
+// resolveTags resolves tags to their descriptors.
+// It returns the resolved tags and their corresponding descriptors.
+func resolveTags(ctx context.Context, target oras.ReadOnlyTarget, specifiedTags []string) ([]string, []ocispec.Descriptor, error) {
+	var descs []ocispec.Descriptor
+	resolve := func(tags []string) error {
+		for _, tag := range tags {
+			desc, err := oras.Resolve(ctx, target, tag, oras.DefaultResolveOptions)
+			if err != nil {
+				return fmt.Errorf("failed to resolve tag %q: %w", tag, err)
+			}
 			descs = append(descs, desc)
 		}
-		return resolved, nil
+		return nil
 	}
 	if len(specifiedTags) > 0 {
 		// resolve the specified tags
 		descs = make([]ocispec.Descriptor, 0, len(specifiedTags))
-		if _, err := resolve(specifiedTags, false); err != nil {
+		if err := resolve(specifiedTags); err != nil {
 			return nil, nil, err
 		}
 		return specifiedTags, descs, nil
@@ -480,11 +553,10 @@ func resolveTags(ctx context.Context, target oras.ReadOnlyTarget, specifiedTags 
 		return nil, nil, errTagListNotSupported
 	}
 	if err := tagLister.Tags(ctx, "", func(gotTags []string) error {
-		resolved, err := resolve(gotTags, true)
-		if err != nil {
+		if err := resolve(gotTags); err != nil {
 			return err
 		}
-		tags = append(tags, resolved...)
+		tags = append(tags, gotTags...)
 		return nil
 	}); err != nil {
 		return nil, nil, fmt.Errorf("failed to find tags: %w", err)
