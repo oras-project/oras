@@ -39,6 +39,7 @@ import (
 	"github.com/oras-project/oras-go/v3/errdef"
 	"github.com/oras-project/oras-go/v3/registry/remote"
 	"github.com/sirupsen/logrus"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"oras.land/oras/cmd/oras/internal/display/displaytest"
 )
 
@@ -352,35 +353,48 @@ func Test_doBackup_tagsFoundError(t *testing.T) {
 	}
 }
 
-// newBackupPlatformSource returns a source with an index tagged "v1" holding a
-// linux/amd64 and a linux/arm64 manifest.
+// newBackupPlatformSource returns a source that lists its tags. "v1" is an
+// index of a linux/amd64 and a linux/arm64 manifest, "v2" an index of the
+// amd64 manifest only and "v3" an artifact with no platform.
 func newBackupPlatformSource(t *testing.T) (src oras.GraphTarget, amd64, arm64 ocispec.Descriptor) {
 	t.Helper()
 	ctx := context.Background()
-	src = memory.New()
+	src, err := oci.New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	pack := func(artifactType, arch string) ocispec.Descriptor {
 		desc, err := oras.PackManifest(ctx, src, oras.PackManifestVersion1_1, artifactType, oras.PackManifestOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}
-		desc.Platform = &ocispec.Platform{OS: "linux", Architecture: arch}
+		if arch != "" {
+			desc.Platform = &ocispec.Platform{OS: "linux", Architecture: arch}
+		}
 		return desc
+	}
+	tagIndex := func(tag string, manifests ...ocispec.Descriptor) {
+		indexBytes, err := json.Marshal(ocispec.Index{
+			Versioned: specs.Versioned{SchemaVersion: 2},
+			MediaType: ocispec.MediaTypeImageIndex,
+			Manifests: manifests,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		indexDesc, err := oras.PushBytes(ctx, src, ocispec.MediaTypeImageIndex, indexBytes)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := src.Tag(ctx, indexDesc, tag); err != nil {
+			t.Fatal(err)
+		}
 	}
 	amd64 = pack("application/example.amd64", "amd64")
 	arm64 = pack("application/example.arm64", "arm64")
-	indexBytes, err := json.Marshal(ocispec.Index{
-		Versioned: specs.Versioned{SchemaVersion: 2},
-		MediaType: ocispec.MediaTypeImageIndex,
-		Manifests: []ocispec.Descriptor{amd64, arm64},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	indexDesc, err := oras.PushBytes(ctx, src, ocispec.MediaTypeImageIndex, indexBytes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := src.Tag(ctx, indexDesc, "v1"); err != nil {
+	tagIndex("v1", amd64, arm64)
+	tagIndex("v2", amd64)
+	if err := src.Tag(ctx, pack("application/example.noplatform", ""), "v3"); err != nil {
 		t.Fatal(err)
 	}
 	return src, amd64, arm64
@@ -389,25 +403,33 @@ func newBackupPlatformSource(t *testing.T) (src oras.GraphTarget, amd64, arm64 o
 func Test_doBackup_platform(t *testing.T) {
 	ctx := context.Background()
 
-	run := func(t *testing.T, platform *ocispec.Platform) (*oci.Store, error) {
+	run := func(t *testing.T, src oras.GraphTarget, opts *backupOptions, logger logrus.FieldLogger) (*oci.Store, error) {
 		t.Helper()
-		src, _, _ := newBackupPlatformSource(t)
 		dstRoot := t.TempDir()
 		dst, err := oci.New(dstRoot)
 		if err != nil {
 			t.Fatal(err)
 		}
-		opts := &backupOptions{output: dstRoot, outputFormat: outputFormatDir, repository: "example", tags: []string{"v1"}}
-		opts.Platform.Platform = platform
+		opts.output = dstRoot
+		opts.outputFormat = outputFormatDir
+		opts.repository = "example"
 		recorder := &displaytest.CallRecorder{}
-		err = doBackup(ctx, opts, logrus.New(), src, dst, dstRoot, time.Now(),
+		err = doBackup(ctx, opts, logger, src, dst, dstRoot, time.Now(),
 			&displaytest.RecordingBackupStatusHandler{Recorder: recorder},
 			&displaytest.RecordingBackupMetadataHandler{Recorder: recorder})
 		return dst, err
 	}
+	backupV1 := func(t *testing.T, platform *ocispec.Platform) (*oci.Store, error) {
+		t.Helper()
+		src, _, _ := newBackupPlatformSource(t)
+		opts := &backupOptions{tags: []string{"v1"}}
+		opts.Platform.Platform = platform
+		return run(t, src, opts, logrus.New())
+	}
+	arm64Platform := &ocispec.Platform{OS: "linux", Architecture: "arm64"}
 
 	t.Run("selected platform only", func(t *testing.T) {
-		dst, err := run(t, &ocispec.Platform{OS: "linux", Architecture: "arm64"})
+		dst, err := backupV1(t, arm64Platform)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -425,7 +447,7 @@ func Test_doBackup_platform(t *testing.T) {
 	})
 
 	t.Run("no platform backs up the whole index", func(t *testing.T) {
-		dst, err := run(t, nil)
+		dst, err := backupV1(t, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -438,9 +460,52 @@ func Test_doBackup_platform(t *testing.T) {
 	})
 
 	t.Run("no matching platform", func(t *testing.T) {
-		_, err := run(t, &ocispec.Platform{OS: "linux", Architecture: "s390x"})
+		_, err := backupV1(t, &ocispec.Platform{OS: "linux", Architecture: "s390x"})
 		if !errors.Is(err, errdef.ErrNotFound) {
 			t.Fatalf("doBackup() error = %v, want %v", err, errdef.ErrNotFound)
+		}
+	})
+
+	t.Run("all tags skips artifacts without the platform", func(t *testing.T) {
+		src, _, arm64 := newBackupPlatformSource(t)
+		opts := &backupOptions{}
+		opts.Platform.Platform = arm64Platform
+		logger, hook := logrustest.NewNullLogger()
+		dst, err := run(t, src, opts, logger)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := dst.Resolve(ctx, "example:v1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.Digest != arm64.Digest {
+			t.Errorf("example:v1 digest = %v, want the arm64 manifest %v", got.Digest, arm64.Digest)
+		}
+		for _, ref := range []string{"example:v2", "example:v3"} {
+			if _, err := dst.Resolve(ctx, ref); !errors.Is(err, errdef.ErrNotFound) {
+				t.Errorf("Resolve(%q) error = %v, want %v", ref, err, errdef.ErrNotFound)
+			}
+		}
+		var warned []string
+		for _, entry := range hook.AllEntries() {
+			if entry.Level == logrus.WarnLevel {
+				warned = append(warned, entry.Message)
+			}
+		}
+		if len(warned) != 2 || !strings.Contains(warned[0], `"v2"`) || !strings.Contains(warned[1], `"v3"`) {
+			t.Errorf("warnings = %q, want one for v2 and one for v3", warned)
+		}
+	})
+
+	t.Run("all tags without the platform", func(t *testing.T) {
+		src, _, _ := newBackupPlatformSource(t)
+		opts := &backupOptions{}
+		opts.Platform.Platform = &ocispec.Platform{OS: "linux", Architecture: "s390x"}
+		logger, _ := logrustest.NewNullLogger()
+		_, err := run(t, src, opts, logger)
+		if err == nil || !strings.Contains(err.Error(), "has a manifest for the requested platform") {
+			t.Fatalf("doBackup() error = %v, want no artifact matching the platform", err)
 		}
 	})
 }
@@ -699,7 +764,7 @@ func Test_resolveTags(t *testing.T) {
 		}
 		repo.Registry.PlainHTTP = true
 
-		tags, descs, err := resolveTags(ctx, repo, []string{"v1", "v2"}, oras.DefaultResolveOptions)
+		tags, descs, err := resolveTags(ctx, repo, []string{"v1", "v2"}, oras.DefaultResolveOptions, nil)
 		if err != nil {
 			t.Fatalf("resolveTags() error = %v, wantErr nil", err)
 		}
@@ -731,7 +796,7 @@ func Test_resolveTags(t *testing.T) {
 		}
 		repo.Registry.PlainHTTP = true
 
-		_, _, err = resolveTags(ctx, repo, []string{"non-existent"}, oras.DefaultResolveOptions)
+		_, _, err = resolveTags(ctx, repo, []string{"non-existent"}, oras.DefaultResolveOptions, nil)
 		if wantErr := errdef.ErrNotFound; !errors.Is(err, wantErr) {
 			t.Errorf("resolveTags() error = %v, wantErr %v", err, wantErr)
 		}
@@ -754,7 +819,7 @@ func Test_resolveTags(t *testing.T) {
 		}
 		repo.Registry.PlainHTTP = true
 
-		tags, descs, err := resolveTags(ctx, repo, nil, oras.DefaultResolveOptions)
+		tags, descs, err := resolveTags(ctx, repo, nil, oras.DefaultResolveOptions, nil)
 		if err != nil {
 			t.Fatalf("resolveTags() error = %v, wantErr nil", err)
 		}
@@ -787,7 +852,7 @@ func Test_resolveTags(t *testing.T) {
 		}
 		repo.Registry.PlainHTTP = true
 
-		_, _, err = resolveTags(ctx, repo, nil, oras.DefaultResolveOptions)
+		_, _, err = resolveTags(ctx, repo, nil, oras.DefaultResolveOptions, nil)
 		if err == nil {
 			t.Error("resolveTags() error = nil, wantErr not nil")
 		}
@@ -812,7 +877,7 @@ func Test_resolveTags(t *testing.T) {
 		}
 		repo.Registry.PlainHTTP = true
 
-		_, _, err = resolveTags(ctx, repo, nil, oras.DefaultResolveOptions)
+		_, _, err = resolveTags(ctx, repo, nil, oras.DefaultResolveOptions, nil)
 		if wantErr := errdef.ErrNotFound; !errors.Is(err, wantErr) {
 			t.Errorf("resolveTags() error = %v, wantErr %v", err, wantErr)
 		}
@@ -833,7 +898,7 @@ func Test_resolveTags(t *testing.T) {
 		}
 		repo.Registry.PlainHTTP = true
 
-		tags, descs, err := resolveTags(ctx, repo, nil, oras.DefaultResolveOptions)
+		tags, descs, err := resolveTags(ctx, repo, nil, oras.DefaultResolveOptions, nil)
 		if err != nil {
 			t.Fatalf("resolveTags() error = %v, wantErr nil", err)
 		}
@@ -848,7 +913,7 @@ func Test_resolveTags(t *testing.T) {
 	t.Run("target does not support tag listing", func(t *testing.T) {
 		// Use a simple mock that doesn't implement registry.TagLister
 		target := memory.New()
-		_, _, err := resolveTags(ctx, target, nil, oras.DefaultResolveOptions)
+		_, _, err := resolveTags(ctx, target, nil, oras.DefaultResolveOptions, nil)
 		if wantErr := errTagListNotSupported; !errors.Is(err, wantErr) {
 			t.Errorf("resolveTags() error = %v, wantErr %v", err, wantErr)
 		}

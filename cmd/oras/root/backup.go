@@ -240,9 +240,28 @@ func doBackup(
 	// Resolve tags to back up
 	resolveOpts := oras.DefaultResolveOptions
 	resolveOpts.TargetPlatform = opts.Platform.Platform
-	tags, roots, err := resolveTags(ctx, srcRepo, opts.tags, resolveOpts)
+	var skip func(tag string, err error) bool
+	skipped := 0
+	if opts.Platform.Platform != nil {
+		// When backing up every tag, leave out artifacts with no manifest for the platform.
+		skip = func(tag string, err error) bool {
+			if !errors.Is(err, errdef.ErrNotFound) && !errors.Is(err, errdef.ErrUnsupported) {
+				return false
+			}
+			logger.Warnf("skipping tag %q, it has no manifest for the requested platform: %v", tag, err)
+			skipped++
+			return true
+		}
+	}
+	tags, roots, err := resolveTags(ctx, srcRepo, opts.tags, resolveOpts, skip)
 	if err != nil {
 		return err
+	}
+	if len(tags) == 0 && skipped > 0 {
+		return &oerrors.Error{
+			Err:            fmt.Errorf("no tagged artifact in repository %q has a manifest for the requested platform", opts.repository),
+			Recommendation: "Try another platform, or remove --platform to back up every tagged artifact",
+		}
 	}
 	if len(tags) == 0 {
 		return &oerrors.Error{
@@ -426,23 +445,29 @@ func removeEmptyFile(path string, logger logrus.FieldLogger) {
 }
 
 // resolveTags resolves tags to their descriptors using resolveOpts.
-// It returns the resolved tags and their corresponding descriptors.
-func resolveTags(ctx context.Context, target oras.ReadOnlyTarget, specifiedTags []string, resolveOpts oras.ResolveOptions) ([]string, []ocispec.Descriptor, error) {
+// It returns the resolved tags and their corresponding descriptors. A discovered
+// tag that fails to resolve is left out if skip is not nil and returns true.
+func resolveTags(ctx context.Context, target oras.ReadOnlyTarget, specifiedTags []string, resolveOpts oras.ResolveOptions, skip func(tag string, err error) bool) ([]string, []ocispec.Descriptor, error) {
 	var descs []ocispec.Descriptor
-	resolve := func(tags []string) error {
+	resolve := func(tags []string, discovered bool) ([]string, error) {
+		resolved := make([]string, 0, len(tags))
 		for _, tag := range tags {
 			desc, err := oras.Resolve(ctx, target, tag, resolveOpts)
 			if err != nil {
-				return fmt.Errorf("failed to resolve tag %q: %w", tag, err)
+				if discovered && skip != nil && skip(tag, err) {
+					continue
+				}
+				return nil, fmt.Errorf("failed to resolve tag %q: %w", tag, err)
 			}
+			resolved = append(resolved, tag)
 			descs = append(descs, desc)
 		}
-		return nil
+		return resolved, nil
 	}
 	if len(specifiedTags) > 0 {
 		// resolve the specified tags
 		descs = make([]ocispec.Descriptor, 0, len(specifiedTags))
-		if err := resolve(specifiedTags); err != nil {
+		if _, err := resolve(specifiedTags, false); err != nil {
 			return nil, nil, err
 		}
 		return specifiedTags, descs, nil
@@ -455,10 +480,11 @@ func resolveTags(ctx context.Context, target oras.ReadOnlyTarget, specifiedTags 
 		return nil, nil, errTagListNotSupported
 	}
 	if err := tagLister.Tags(ctx, "", func(gotTags []string) error {
-		if err := resolve(gotTags); err != nil {
+		resolved, err := resolve(gotTags, true)
+		if err != nil {
 			return err
 		}
-		tags = append(tags, gotTags...)
+		tags = append(tags, resolved...)
 		return nil
 	}); err != nil {
 		return nil, nil, fmt.Errorf("failed to find tags: %w", err)
