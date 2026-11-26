@@ -118,3 +118,89 @@ func TestOCILayoutPathExtraTags(t *testing.T) {
 	run("push", "--oci-layout-path", layout, "bare,bare-alias", "--disable-path-validation", input)
 	checkAliases(layout, "bare", "bare-alias")
 }
+
+func TestOCILayoutPathTag(t *testing.T) {
+	ctx := t.Context()
+	dir := t.TempDir()
+	layout := filepath.Join(dir, "layout")
+	input := filepath.Join(dir, "app.txt")
+	app := "localhost:5000/team/app"
+	other := "example.com/team/other"
+
+	run := func(args ...string) string {
+		t.Helper()
+		var out bytes.Buffer
+		cmd := New()
+		cmd.SetOut(&out)
+		cmd.SetArgs(args)
+		if err := cmd.ExecuteContext(ctx); err != nil {
+			t.Fatalf("oras %v: %v", args, err)
+		}
+		return out.String()
+	}
+	push := func(data string, args ...string) {
+		t.Helper()
+		if err := os.WriteFile(input, []byte(data), 0600); err != nil {
+			t.Fatal(err)
+		}
+		run(append(append([]string{"push", "--disable-path-validation"}, args...), input)...)
+	}
+	resolve := func(ref string) (string, error) {
+		t.Helper()
+		store, err := oci.New(layout)
+		if err != nil {
+			t.Fatal(err)
+		}
+		desc, err := store.Resolve(ctx, ref)
+		return desc.Digest.String(), err
+	}
+	mustResolve := func(ref string) string {
+		t.Helper()
+		got, err := resolve(ref)
+		if err != nil {
+			t.Fatalf("resolve %q: %v", ref, err)
+		}
+		return got
+	}
+
+	push("first artifact", "--oci-layout-path", layout, app+":v1")
+	push("second artifact", "--oci-layout-path", layout, other+":v1")
+	appDigest, otherDigest := mustResolve(app+":v1"), mustResolve(other+":v1")
+	if appDigest == otherDigest {
+		t.Fatal("test artifacts unexpectedly have the same digest")
+	}
+
+	run("tag", "--oci-layout-path", layout, app+":v1", "latest", "stable")
+	run("tag", "--oci-layout-path", layout, other+":v1", "latest")
+
+	for ref, want := range map[string]string{
+		app + ":latest":   appDigest,
+		app + ":stable":   appDigest,
+		other + ":latest": otherDigest,
+	} {
+		if got := mustResolve(ref); got != want {
+			t.Errorf("%q resolves to %s, want %s", ref, got, want)
+		}
+	}
+	for _, bare := range []string{"latest", "stable"} {
+		if _, err := resolve(bare); !errors.Is(err, errdef.ErrNotFound) {
+			t.Errorf("bare %q lookup = %v, want %v", bare, err, errdef.ErrNotFound)
+		}
+	}
+	if got := run("repo", "tags", "--oci-layout-path", layout, app); got != "latest\nstable\nv1\n" {
+		t.Errorf("repository tags = %q, want tags latest, stable, v1", got)
+	}
+
+	// The --oci-layout form has no repository: its tags stay bare.
+	push("legacy artifact", "--oci-layout", layout+":legacy")
+	run("tag", "--oci-layout", layout+":legacy", "legacy-alias")
+	if got, want := mustResolve("legacy-alias"), mustResolve("legacy"); got != want {
+		t.Errorf("legacy-alias resolves to %s, want %s", got, want)
+	}
+	// So does a bare reference with --oci-layout-path.
+	push("bare artifact", "--oci-layout-path", layout, "bare")
+	run("tag", "--oci-layout-path", layout, "bare", "bare-alias")
+	if got, want := mustResolve("bare-alias"), mustResolve("bare"); got != want {
+		t.Errorf("bare-alias resolves to %s, want %s", got, want)
+	}
+}

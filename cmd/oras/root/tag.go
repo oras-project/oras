@@ -119,7 +119,9 @@ func tagManifest(cmd *cobra.Command, opts *tagOptions) error {
 	tagNOpts := oras.DefaultTagNOptions
 	tagNOpts.Concurrency = opts.concurrency
 	tagHandler := display.NewTagHandler(opts.Printer, opts.Target)
-	return doTag(ctx, target, opts.Reference, opts.targetRefs, tagNOpts, tagHandler)
+	// With --oci-layout-path and a repository-qualified reference, store the new
+	// tags under that repository, as the extra tags of push and copy are.
+	return doTag(ctx, opts.ExtraTagTarget(target), opts.Reference, opts.targetRefs, tagNOpts, tagHandler)
 }
 
 func doTag(ctx context.Context, target oras.Target, reference string, targetRefs []string, opts oras.TagNOptions, handler metadata.TagHandler) error {
