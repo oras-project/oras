@@ -508,6 +508,39 @@ func Test_doBackup_platform(t *testing.T) {
 			t.Fatalf("doBackup() error = %v, want no artifact matching the platform", err)
 		}
 	})
+
+	t.Run("platform with referrers", func(t *testing.T) {
+		src, amd64, arm64 := newBackupPlatformSource(t)
+		index, err := src.Resolve(ctx, "v1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		attach := func(subject ocispec.Descriptor) ocispec.Descriptor {
+			desc, err := oras.PackManifest(ctx, src, oras.PackManifestVersion1_1, "application/example.sbom", oras.PackManifestOptions{Subject: &subject})
+			if err != nil {
+				t.Fatal(err)
+			}
+			return desc
+		}
+		arm64Referrer := attach(arm64)
+		amd64Referrer := attach(amd64)
+		indexReferrer := attach(index)
+
+		opts := &backupOptions{tags: []string{"v1"}, includeReferrers: true}
+		opts.Platform.Platform = arm64Platform
+		dst, err := run(t, src, opts, logrus.New())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if ok, _ := dst.Exists(ctx, arm64Referrer); !ok {
+			t.Error("the referrer of the arm64 manifest was not backed up")
+		}
+		for name, desc := range map[string]ocispec.Descriptor{"amd64 manifest": amd64Referrer, "index": indexReferrer} {
+			if ok, _ := dst.Exists(ctx, desc); ok {
+				t.Errorf("the referrer of the %s was backed up, want only the arm64 manifest's", name)
+			}
+		}
+	})
 }
 
 func Test_backupCmd_failedBackupToTar(t *testing.T) {
