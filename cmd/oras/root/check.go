@@ -443,7 +443,7 @@ func doCheckLayoutDir(ctx context.Context, layoutPath string, concurrency int, p
 func doCheckLayoutTar(ctx context.Context, layoutPath string, concurrency int, printer *output.Printer) error {
 	layout, err := newCheckLayout(layoutPath)
 	if err != nil {
-		return fmt.Errorf("%q is not an OCI image layout: %w", layoutPath, err)
+		return err
 	}
 
 	c := &checker{
@@ -457,10 +457,35 @@ func doCheckLayoutTar(ctx context.Context, layoutPath string, concurrency int, p
 	if err != nil {
 		return err
 	}
+	if f := checkTarOCILayout(layoutPath); f != nil {
+		walkResult.failures = append(walkResult.failures, *f)
+	}
 
 	sortFindings(walkResult.failures)
 	sortFindings(walkResult.warnings)
 	return c.printSummary(len(walkResult.verified), walkResult.failures, walkResult.warnings, nil, 0, true)
+}
+
+func checkTarOCILayout(layoutPath string) *checkFinding {
+	data, err := readTarFile(layoutPath, ocispec.ImageLayoutFile)
+	if err != nil {
+		if errors.Is(err, errdef.ErrNotFound) {
+			err = errdef.ErrNotFound
+		}
+		return &checkFinding{path: ocispec.ImageLayoutFile, class: classInvalid, err: err}
+	}
+	var layout ocispec.ImageLayout
+	if err := json.Unmarshal(data, &layout); err != nil {
+		return &checkFinding{path: ocispec.ImageLayoutFile, class: classInvalid, err: err}
+	}
+	if layout.Version != ocispec.ImageLayoutVersion {
+		return &checkFinding{
+			path:  ocispec.ImageLayoutFile,
+			class: classInvalid,
+			err:   fmt.Errorf("imageLayoutVersion %q: expected %q", layout.Version, ocispec.ImageLayoutVersion),
+		}
+	}
+	return nil
 }
 
 type layoutWalkResult struct {
@@ -651,14 +676,33 @@ func (c *checker) summarize(report *oras.VerifyGraphReport) error {
 }
 
 func (c *checker) printSummary(verified int, failures, warnings []checkFinding, leftovers []oci.LayoutFinding, unreferenced int, isTar bool) error {
+	var nodeFailures, layoutProblems []checkFinding
+	for _, f := range failures {
+		if f.desc.Digest != "" {
+			nodeFailures = append(nodeFailures, f)
+		} else {
+			layoutProblems = append(layoutProblems, f)
+		}
+	}
+
 	// An absent subject is not a node of the target, so it is not counted.
-	total := verified + len(failures)
-	if err := c.printer.Println(fmt.Sprintf("Checked %d nodes: %d verified, %d failed", total, verified, len(failures))); err != nil {
+	total := verified + len(nodeFailures)
+	if err := c.printer.Println(fmt.Sprintf("Checked %d nodes: %d verified, %d failed", total, verified, len(nodeFailures))); err != nil {
 		return err
 	}
-	for _, finding := range failures {
+	for _, finding := range nodeFailures {
 		if err := c.printer.Println(fmt.Sprintf("%s: %s: %s", finding.class, finding.label(), finding.err)); err != nil {
 			return err
+		}
+	}
+	if len(layoutProblems) > 0 {
+		if err := c.printer.Println(fmt.Sprintf("Layout problems: %d", len(layoutProblems))); err != nil {
+			return err
+		}
+		for _, finding := range layoutProblems {
+			if err := c.printer.Println(fmt.Sprintf("%s: %s: %s", finding.class, finding.label(), finding.err)); err != nil {
+				return err
+			}
 		}
 	}
 	for _, finding := range warnings {
@@ -693,11 +737,18 @@ func (c *checker) printSummary(verified int, failures, warnings []checkFinding, 
 			return err
 		}
 	}
-	if len(failures) > 0 {
+	if len(nodeFailures) > 0 || len(layoutProblems) > 0 {
 		// A plain error: it must not wrap errdef.ErrNotFound or an
 		// errcode.ErrorResponse, which Target.ModifyError would present as
 		// a registry error.
-		return fmt.Errorf("check failed: %d of %d nodes did not pass", len(failures), total)
+		switch {
+		case len(nodeFailures) > 0 && len(layoutProblems) > 0:
+			return fmt.Errorf("check failed: %d of %d nodes did not pass; %d layout problems", len(nodeFailures), total, len(layoutProblems))
+		case len(nodeFailures) > 0:
+			return fmt.Errorf("check failed: %d of %d nodes did not pass", len(nodeFailures), total)
+		default:
+			return fmt.Errorf("check failed: %d layout problems", len(layoutProblems))
+		}
 	}
 	return nil
 }

@@ -214,7 +214,7 @@ func runCheckOn(ctx context.Context, src oras.ReadOnlyTarget, ref string, isLayo
 func summary(out string) []string {
 	var lines []string
 	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
-		for _, prefix := range []string{"Checked ", "Missing:", "Corrupt:", "Invalid:", "Unable to check:", "Warning:", "Not checked:", "Note:"} {
+		for _, prefix := range []string{"Checked ", "Layout problems:", "Missing:", "Corrupt:", "Invalid:", "Unable to check:", "Warning:", "Not checked:", "Note:"} {
 			if strings.HasPrefix(line, prefix) {
 				lines = append(lines, line)
 				break
@@ -1422,6 +1422,12 @@ func Test_checkWholeLayout_directory(t *testing.T) {
 		if err == nil {
 			t.Fatalf("expected error, got nil\noutput:\n%s", out)
 		}
+		if !strings.Contains(out, "Checked 1 nodes: 1 verified, 0 failed") {
+			t.Errorf("want Checked 1 nodes: 1 verified, 0 failed, got:\n%s", out)
+		}
+		if !strings.Contains(out, "Layout problems: 2") {
+			t.Errorf("want Layout problems: 2, got:\n%s", out)
+		}
 		if !strings.Contains(out, "Invalid: index.json:") {
 			t.Errorf("want Invalid: index.json line, got:\n%s", out)
 		}
@@ -1596,6 +1602,13 @@ func Test_checkWholeLayout_directory(t *testing.T) {
 		if err == nil {
 			t.Fatalf("expected error, got nil\noutput:\n%s", out)
 		}
+		if !strings.Contains(err.Error(), "2 layout problems") {
+			t.Errorf("err = %v, want 2 layout problems", err)
+		}
+		lines := summary(out)
+		if len(lines) < 2 || lines[0] != "Checked 3 nodes: 3 verified, 0 failed" || lines[1] != "Layout problems: 2" {
+			t.Errorf("summary = %q, want 3 verified/0 failed and 2 layout problems", lines)
+		}
 		if !strings.Contains(out, "Unable to check: blobs/stray.txt:") {
 			t.Errorf("want Unable to check for stray file, got:\n%s", out)
 		}
@@ -1713,13 +1726,60 @@ func Test_checkWholeLayout_tar(t *testing.T) {
 		}
 	})
 
+	t.Run("missing oci-layout in tar archive", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		m, _ := b.image(nil, b.blob(testLayerType, []byte("ok")))
+		b.tag(m, "v1")
+		if err := os.Remove(filepath.Join(b.dir, ocispec.ImageLayoutFile)); err != nil {
+			t.Fatal(err)
+		}
+
+		out, err := runWholeLayoutCheck(t, b.tarball())
+		if err == nil {
+			t.Fatalf("expected error, got nil\noutput:\n%s", out)
+		}
+		if !strings.Contains(out, "Checked 3 nodes: 3 verified, 0 failed") {
+			t.Errorf("want Checked 3 nodes: 3 verified, 0 failed, got:\n%s", out)
+		}
+		if !strings.Contains(out, "Layout problems: 1") {
+			t.Errorf("want Layout problems: 1, got:\n%s", out)
+		}
+		if !strings.Contains(out, "Invalid: oci-layout:") {
+			t.Errorf("want Invalid: oci-layout line, got:\n%s", out)
+		}
+	})
+
+	t.Run("invalid oci-layout version in tar archive", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		m, _ := b.image(nil, b.blob(testLayerType, []byte("ok")))
+		b.tag(m, "v1")
+		if err := os.WriteFile(filepath.Join(b.dir, ocispec.ImageLayoutFile), []byte(`{"imageLayoutVersion":"2.0.0"}`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		out, err := runWholeLayoutCheck(t, b.tarball())
+		if err == nil {
+			t.Fatalf("expected error, got nil\noutput:\n%s", out)
+		}
+		if !strings.Contains(out, "Checked 3 nodes: 3 verified, 0 failed") {
+			t.Errorf("want Checked 3 nodes: 3 verified, 0 failed, got:\n%s", out)
+		}
+		if !strings.Contains(out, "Layout problems: 1") {
+			t.Errorf("want Layout problems: 1, got:\n%s", out)
+		}
+		if !strings.Contains(out, "Invalid: oci-layout:") {
+			t.Errorf("want Invalid: oci-layout line, got:\n%s", out)
+		}
+	})
+
 	t.Run("not a tar archive", func(t *testing.T) {
 		p := filepath.Join(t.TempDir(), "not-a-tar")
 		if err := os.WriteFile(p, []byte("plain text"), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := runWholeLayoutCheck(t, p); err == nil || !strings.Contains(err.Error(), "not an OCI image layout") {
-			t.Errorf("err = %v", err)
+		_, err := runWholeLayoutCheck(t, p)
+		if err == nil || strings.Count(err.Error(), "not an OCI image layout") != 1 {
+			t.Errorf("err = %v, want single 'not an OCI image layout' prefix", err)
 		}
 	})
 }
