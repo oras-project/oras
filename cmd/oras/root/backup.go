@@ -94,7 +94,7 @@ Example - Back up to a tar archive:
 Example - Back up an artifact along with its referrers (e.g. attestations, SBOMs):
   oras backup --output hello --include-referrers localhost:5000/hello:v1
 
-Example - Back up only one platform of a multi-platform artifact:
+Example - Back up only one platform of a multi-platform artifact (the stored tag points at that platform's manifest, not the index):
   oras backup --output hello --platform linux/arm64 localhost:5000/hello:v1
 
 Example - Back up multiple specific tags:
@@ -153,7 +153,7 @@ Example - Set custom concurrency level:
 	// optional flags
 	cmd.Flags().BoolVarP(&opts.includeReferrers, "include-referrers", "", false, "back up the artifact with its referrers (e.g., attestations, SBOMs)")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
-	opts.FlagDescription = "back up only the artifacts matching the platform"
+	opts.FlagDescription = "back up only the manifest matching the platform"
 	opts.EnableDistributionSpecFlag()
 	// apply flags
 	option.ApplyFlags(&opts, cmd.Flags())
