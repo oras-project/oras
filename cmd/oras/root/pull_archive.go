@@ -37,9 +37,6 @@ import (
 )
 
 func runPullArchive(ctx context.Context, src oras.ReadOnlyTarget, opts *pullOptions, metadataHandler metadata.PullHandler, statusHandler status.PullHandler) error {
-	if !strings.EqualFold(filepath.Ext(opts.OutputArchive), ".zip") {
-		return fmt.Errorf("unsupported output archive %q: expected a .zip filename", opts.OutputArchive)
-	}
 	root, err := oras.Resolve(ctx, src, opts.Reference, oras.ResolveOptions{TargetPlatform: opts.Platform.Platform})
 	if err != nil {
 		return err
@@ -48,7 +45,7 @@ func runPullArchive(ctx context.Context, src oras.ReadOnlyTarget, opts *pullOpti
 	if err != nil {
 		return err
 	}
-	if err := savePullArchive(opts.OutputArchive, opts.KeepOldFiles, func(w io.Writer) error {
+	if err := savePullArchive(opts.Output, opts.KeepOldFiles, func(w io.Writer) error {
 		return writePullZIP(ctx, w, src, files, statusHandler)
 	}); err != nil {
 		return err

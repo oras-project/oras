@@ -18,6 +18,7 @@ package root
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -53,7 +54,7 @@ type pullOptions struct {
 	IncludeSubject    bool
 	PathTraversal     bool
 	Output            string
-	OutputArchive     string
+	ArchiveFormat     string
 	ManifestConfigRef string
 	// Deprecated: verbose is deprecated and will be removed in the future.
 	verbose bool
@@ -101,19 +102,27 @@ Example - Pull artifact files from an OCI layout archive 'layout.tar':
   oras pull --oci-layout layout.tar:v1
 
 Example - Pull artifact files directly into a reproducible ZIP archive:
-  oras pull localhost:5000/hello:v1 --output-archive hello.zip
+  oras pull localhost:5000/hello:v1 -o hello.zip --archive zip
 
 Example - Pull artifact files tagged 'example.com:v1' from an OCI image layout folder 'layout-dir':
   oras pull example.com:v1 --oci-layout-path layout-dir
 `,
 		Args: oerrors.CheckArgs(argument.Exactly(1), "the artifact reference you want to pull"),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Flags().Changed("archive") {
+				if opts.ArchiveFormat != "zip" {
+					return fmt.Errorf("unsupported archive format %q: supported format is zip", opts.ArchiveFormat)
+				}
+				if !cmd.Flags().Changed("output") || opts.Output == "" {
+					return errors.New("--output is required with --archive")
+				}
+			}
 			opts.RawReference = args[0]
 			err := option.Parse(cmd, &opts)
 			if err != nil {
 				return err
 			}
-			opts.DisableTTY(opts.Debug || opts.OutputArchive != "", false)
+			opts.DisableTTY(opts.Debug || opts.ArchiveFormat != "", false)
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -125,17 +134,16 @@ Example - Pull artifact files tagged 'example.com:v1' from an OCI image layout f
 	cmd.Flags().BoolVarP(&opts.KeepOldFiles, "keep-old-files", "k", false, "do not replace existing files when pulling, treat them as errors")
 	cmd.Flags().BoolVarP(&opts.PathTraversal, "allow-path-traversal", "T", false, "allow storing files out of the output directory")
 	cmd.Flags().BoolVarP(&opts.IncludeSubject, "include-subject", "", false, "recursively pull the subject of artifacts")
-	cmd.Flags().StringVarP(&opts.Output, "output", "o", ".", "output directory")
-	cmd.Flags().StringVar(&opts.OutputArchive, "output-archive", "", "save files directly to a reproducible ZIP archive (regular files and directories; links are unsupported)")
+	cmd.Flags().StringVarP(&opts.Output, "output", "o", ".", "output directory or archive file when --archive is set")
+	cmd.Flags().StringVar(&opts.ArchiveFormat, "archive", "", "archive format for output file (supported: zip; regular files and directories only)")
 	cmd.Flags().StringVarP(&opts.ManifestConfigRef, "config", "", "", "output manifest config file")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
 	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
 	opts.SetTypes(option.FormatTypeText, option.FormatTypeJSON, option.FormatTypeGoTemplate)
 	option.ApplyFlags(&opts, cmd.Flags())
-	cmd.MarkFlagsMutuallyExclusive("output-archive", "output")
-	cmd.MarkFlagsMutuallyExclusive("output-archive", "allow-path-traversal")
-	cmd.MarkFlagsMutuallyExclusive("output-archive", "format")
+	cmd.MarkFlagsMutuallyExclusive("archive", "allow-path-traversal")
+	cmd.MarkFlagsMutuallyExclusive("archive", "format")
 	return oerrors.Command(cmd, &opts.Target)
 }
 
@@ -222,7 +230,7 @@ func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 	if err != nil {
 		return err
 	}
-	if opts.OutputArchive != "" {
+	if opts.ArchiveFormat != "" {
 		return runPullArchive(ctx, src, opts, metadataHandler, statusHandler)
 	}
 

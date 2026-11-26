@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"io/fs"
 	"maps"
 	"os"
 	"path/filepath"
@@ -36,6 +37,7 @@ import (
 	"github.com/oras-project/oras-go/v3/content"
 	"github.com/oras-project/oras-go/v3/content/file"
 	"github.com/oras-project/oras-go/v3/content/memory"
+	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/display/status"
 	"oras.land/oras/cmd/oras/internal/option"
 )
@@ -66,7 +68,7 @@ func archiveOptions(t *testing.T, src *memory.Store, root ocispec.Descriptor) *p
 	if err := src.Tag(t.Context(), root, "test"); err != nil {
 		t.Fatal(err)
 	}
-	return &pullOptions{Target: option.Target{Reference: "test"}, OutputArchive: filepath.Join(t.TempDir(), "result.zip")}
+	return &pullOptions{Target: option.Target{Reference: "test"}, Output: filepath.Join(t.TempDir(), "result.zip"), ArchiveFormat: "zip"}
 }
 
 func archiveContents(t *testing.T, filename string) (map[string]string, []string) {
@@ -107,7 +109,7 @@ func TestPullArchive_ReproducibleAliases(t *testing.T) {
 		if err := runPullArchive(t.Context(), src, opts, pullMetadataHandler{}, status.DiscardHandler{}); err != nil {
 			t.Fatal(err)
 		}
-		data, err := os.ReadFile(opts.OutputArchive)
+		data, err := os.ReadFile(opts.Output)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -117,14 +119,14 @@ func TestPullArchive_ReproducibleAliases(t *testing.T) {
 			t.Fatal("identical input produced different ZIP bytes")
 		}
 	}
-	got, names := archiveContents(t, opts.OutputArchive)
+	got, names := archiveContents(t, opts.Output)
 	if want := map[string]string{"a.txt": "shared payload", "b.txt": "shared payload"}; !maps.Equal(got, want) {
 		t.Fatalf("files = %v, want %v", got, want)
 	}
 	if !reflect.DeepEqual(names, []string{"a.txt", "b.txt"}) {
 		t.Fatalf("entry order = %v", names)
 	}
-	entries, err := os.ReadDir(filepath.Dir(opts.OutputArchive))
+	entries, err := os.ReadDir(filepath.Dir(opts.Output))
 	if err != nil || len(entries) != 1 {
 		t.Fatalf("unexpected staged or extracted files: %v, %v", entries, err)
 	}
@@ -143,7 +145,7 @@ func TestPullArchive_SubjectAndConfig(t *testing.T) {
 		if err := runPullArchive(t.Context(), src, opts, pullMetadataHandler{}, status.DiscardHandler{}); err != nil {
 			t.Fatal(err)
 		}
-		got, _ := archiveContents(t, opts.OutputArchive)
+		got, _ := archiveContents(t, opts.Output)
 		if got["config.json"] != `{"answer":42}` {
 			t.Fatalf("config missing: %v", got)
 		}
@@ -173,7 +175,7 @@ func TestPullArchive_Platform(t *testing.T) {
 	if err := runPullArchive(t.Context(), src, opts, pullMetadataHandler{}, status.DiscardHandler{}); err != nil {
 		t.Fatal(err)
 	}
-	got, _ := archiveContents(t, opts.OutputArchive)
+	got, _ := archiveContents(t, opts.Output)
 	if got["arch.txt"] != "arm64" {
 		t.Fatalf("selected files = %v", got)
 	}
@@ -214,7 +216,7 @@ func TestPullArchive_Directory(t *testing.T) {
 	if err := runPullArchive(t.Context(), src, opts, pullMetadataHandler{}, status.DiscardHandler{}); err != nil {
 		t.Fatal(err)
 	}
-	got, _ := archiveContents(t, opts.OutputArchive)
+	got, _ := archiveContents(t, opts.Output)
 	if got["src/run"] != "#!/bin/sh\necho hello\n" {
 		t.Fatalf("directory contents = %v", got)
 	}
@@ -249,7 +251,7 @@ func TestPullArchive_InvalidEntries(t *testing.T) {
 			if err := runPullArchive(t.Context(), src, opts, pullMetadataHandler{}, status.DiscardHandler{}); err == nil {
 				t.Fatal("unsafe path accepted")
 			}
-			if _, err := os.Stat(opts.OutputArchive); !errors.Is(err, os.ErrNotExist) {
+			if _, err := os.Stat(opts.Output); !errors.Is(err, os.ErrNotExist) {
 				t.Fatalf("output created for unsafe input: %v", err)
 			}
 		})
@@ -348,16 +350,46 @@ func TestPullZIP_CorruptContent(t *testing.T) {
 	}
 }
 
+func TestPullZIP_EntryCollisions(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		first     string
+		firstMode fs.FileMode
+		second    string
+		mode      fs.FileMode
+		wantErr   bool
+	}{
+		{name: "file with directory name", first: "other", second: "file/", wantErr: true},
+		{name: "duplicate file", first: "file", second: "file", wantErr: true},
+		{name: "directory repeated", first: "dir", firstMode: fs.ModeDir, second: "dir", mode: fs.ModeDir},
+		{name: "file below file", first: "parent", second: "parent/child", wantErr: true},
+		{name: "file replacing directory", first: "dir/child", second: "dir", wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var output bytes.Buffer
+			z := &pullZIP{w: zip.NewWriter(&output), names: make(map[string]bool)}
+			if err := z.add(tc.first, tc.firstMode, strings.NewReader("first")); err != nil {
+				t.Fatal(err)
+			}
+			err := z.add(tc.second, tc.mode, strings.NewReader("second"))
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("second entry error = %v, want error = %v", err, tc.wantErr)
+			}
+			if err := z.w.Close(); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
 func TestPullArchive_FlagConflicts(t *testing.T) {
-	for _, flag := range []string{"output", "allow-path-traversal", "format"} {
+	for _, flag := range []string{"allow-path-traversal", "format"} {
 		cmd := pullCmd()
-		if err := cmd.Flags().Set("output-archive", "result.zip"); err != nil {
+		if err := cmd.Flags().Set("archive", "zip"); err != nil {
 			t.Fatal(err)
 		}
 		value := "true"
 		switch flag {
-		case "output":
-			value = "out"
 		case "format":
 			value = "json"
 		}
@@ -365,8 +397,47 @@ func TestPullArchive_FlagConflicts(t *testing.T) {
 			t.Fatal(err)
 		}
 		if err := cmd.ValidateFlagGroups(); err == nil {
-			t.Fatalf("--output-archive accepted with --%s", flag)
+			t.Fatalf("--archive accepted with --%s", flag)
 		}
+	}
+}
+
+func TestPullArchive_Command(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		args    []string
+		wantErr string
+	}{
+		{name: "zip", args: []string{"--archive", "zip", "-o", "result.zip"}},
+		{name: "filename without extension", args: []string{"--archive", "zip", "-o", "result"}},
+		{name: "format independent of extension", args: []string{"--archive", "zip", "-o", "result.tar"}},
+		{name: "ordinary directory", args: []string{"-o", "files"}},
+		{name: "missing output", args: []string{"--archive", "zip"}, wantErr: "--output is required"},
+		{name: "empty output", args: []string{"--archive", "zip", "--output="}, wantErr: "--output is required"},
+		{name: "unsupported format", args: []string{"--archive", "tar", "-o", "result.zip"}, wantErr: "unsupported archive format"},
+		{name: "empty format", args: []string{"--archive=", "-o", "result.zip"}, wantErr: "unsupported archive format"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := pullCmd()
+			cmd.SetOut(io.Discard)
+			cmd.SetErr(io.Discard)
+			cmd.SetArgs(append(tc.args, "localhost:5000/test:v1"))
+			ran := false
+			cmd.RunE = func(*cobra.Command, []string) error {
+				ran = true
+				return nil
+			}
+			err := cmd.Execute()
+			if tc.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantErr) || ran {
+					t.Fatalf("error = %v, ran = %v, want %q before pulling", err, ran, tc.wantErr)
+				}
+				return
+			}
+			if err != nil || !ran {
+				t.Fatalf("error = %v, ran = %v", err, ran)
+			}
+		})
 	}
 }
 
